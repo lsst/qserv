@@ -1,0 +1,18 @@
+# -*- python -*-
+Import("env")
+import glob
+
+for src in glob.glob("*.cc"):
+    env.Program(src, LIBS=env.getlibs(env["eups_product"]))
+
+#
+# Tests
+#
+import lsst.tests
+
+tests = lsst.tests.Control(env, verbose = True)
+tests.run("*.cc")
+
+for target in tests.run("*.py"):
+     env.Depends(target,
+        "../python/lsst/qserv/worker/_workerLib%s" % (env['LDMODULESUFFIX']))
