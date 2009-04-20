@@ -1,0 +1,4 @@
+# -*- python -*-
+Import('env')
+
+env.Doxygen("doxygen.conf")
