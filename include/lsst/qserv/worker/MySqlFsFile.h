@@ -49,11 +49,14 @@ public:
     int getCXinfo(char cxtype[4], int& cxrsz);
 
 private:
-    int chunkId;
+
+    bool _runScript(std::string const& script, std::string const& dbName);
+
+    int _chunkId;
     std::string _userName;
-    std::string _dbName;
+    std::string _dumpName;
 };
 
-}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::worker
 
 #endif

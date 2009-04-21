@@ -19,6 +19,6 @@ public:
     char const* FName(void);
 };
 
-}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::worker
 
 #endif

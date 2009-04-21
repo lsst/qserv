@@ -1,4 +1,6 @@
-#include "MySqlFsDirectory.h"
+#include "lsst/qserv/worker/MySqlFsDirectory.h"
+
+#include <errno.h>
 
 namespace qWorker = lsst::qserv::worker;
 

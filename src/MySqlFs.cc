@@ -1,10 +1,12 @@
-#include "MySqlFs.h"
+#include "lsst/qserv/worker/MySqlFs.h"
 
 #include "XrdSec/XrdSecEntity.hh"
 #include "XrdSys/XrdSysError.hh"
 
-#include "MySqlFsDirectory.h"
-#include "MySqlFsFile.h"
+#include "lsst/qserv/worker/MySqlFsDirectory.h"
+#include "lsst/qserv/worker/MySqlFsFile.h"
+
+#include <errno.h>
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -53,7 +55,7 @@ int qWorker::MySqlFs::getStats(char* buff, int blen) {
 }
 
 char const* qWorker::MySqlFs::getVersion(void) {
-    return "$Id$;
+    return "$Id$";
 }
 
 int qWorker::MySqlFs::mkdir(

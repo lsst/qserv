@@ -65,6 +65,6 @@ private:
     XrdSysError* _eDest;
 };
 
-}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::worker
 
 #endif

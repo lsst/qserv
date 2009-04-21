@@ -1,10 +1,13 @@
-#include "MySqlFs.h"
+#include "lsst/qserv/worker/MySqlFsFile.h"
 
 #include "XrdSec/XrdSecEntity.hh"
 #include "XrdSys/XrdSysError.hh"
 
 #include "boost/regex.hpp"
+#include "boost/format.hpp"
 #include "mysql/mysql.h"
+
+#include <errno.h>
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -19,8 +22,8 @@ qWorker::MySqlFsFile::~MySqlFsFile(void) {
 int qWorker::MySqlFsFile::open(
     char const* fileName, XrdSfsFileOpenMode openMode, mode_t createMode,
     XrdSecEntity const* client, char const* opaque) {
-    _chunkId = strtod(fileName, 0, 10);
-    _userName = std::string(client);
+    _chunkId = strtol(fileName, 0, 10);
+    _userName = std::string(client->name);
     return SFS_OK;
 }
 
@@ -46,9 +49,22 @@ int qWorker::MySqlFsFile::getMmap(void** Addr, off_t &Size) {
     return SFS_ERROR;
 }
 
+
+int dumpFileOpen(std::string const& dbName) {
+    return -1;
+}
+
+bool dumpFileExists(std::string const& dbName) {
+    return false;
+}
+
+std::string md5_hash_to_string(char const* buffer, int bufferSize) {
+    return "HASH";
+}
+
 int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
                           XrdSfsXferSize prereadSz) {
-    if (!dumpFileExists(_dbName)) {
+    if (!dumpFileExists(_dumpName)) {
         error.setErrInfo(ENOENT, "Query results missing");
         return SFS_ERROR;
     }
@@ -57,19 +73,19 @@ int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
 
 XrdSfsXferSize qWorker::MySqlFsFile::read(
     XrdSfsFileOffset fileOffset, char* buffer, XrdSfsXferSize bufferSize) {
-    int fd = dumpFileOpen(_dbName);
+    int fd = dumpFileOpen(_dumpName);
     if (fd == -1) {
-        error.setErrInfo(::errno, "Query results missing");
+        error.setErrInfo(errno, "Query results missing");
         return -1;
     }
     off_t pos = lseek(fd, fileOffset, SEEK_SET);
     if (pos == static_cast<off_t>(-1) || pos != fileOffset) {
-        error.setErrInfo(::errno, "Unable to seek in query results");
+        error.setErrInfo(errno, "Unable to seek in query results");
         return -1;
     }
     ssize_t bytes = read(fd, buffer, bufferSize);
     if (bytes == -1) {
-        error.setErrInfo(::errno, "Unable to read query results");
+        error.setErrInfo(errno, "Unable to read query results");
         return -1;
     }
     return bytes;
@@ -97,11 +113,11 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
         hash.substr(0, 3) + "/" + hash.substr(3, 3) + "/" + hash + ".dump";
     std::string dbName = "q_" + hash;
 
-    if (dumpFileExists()) {
+    if (dumpFileExists(_dumpName)) {
         return bufferSize;
     }
 
-    if (!runScript(std::string(buffer, bufferSize), dbName)) {
+    if (!_runScript(std::string(buffer, bufferSize), dbName)) {
         return -1;
     }
     return bufferSize;
@@ -111,6 +127,7 @@ static std::string runQuery(MYSQL* db, std::string query) {
     if (mysql_real_query(db, query.c_str(), query.size()) != 0) {
         return "Unable to execute query: " + query;
     }
+    int status = 0;
     do {
         MYSQL_RES* result = mysql_store_result(db);
         if (result) {
@@ -151,7 +168,7 @@ bool qWorker::MySqlFsFile::_runScript(
         return false;
     }
 
-    std::string result = _runQuery(db.get(), "CREATE DATABASE " + dbName);
+    std::string result = runQuery(db.get(), "CREATE DATABASE " + dbName);
     if (result.size() != 0) {
         error.setErrInfo(EIO, result.c_str());
         return false;
@@ -162,23 +179,23 @@ bool qWorker::MySqlFsFile::_runScript(
         return false;
     }
 
-    boost::regex re("\d+");
-    std::string firstLine = query.substr(0, query.find('\n'));
-    boost::sregex_iterator i = make_regex_iterator(firstLine, re);
+    boost::regex re("\\d+");
+    std::string firstLine = script.substr(0, script.find('\n'));
+    boost::sregex_iterator i = boost::make_regex_iterator(firstLine, re);
     while (i != boost::sregex_iterator()) {
         std::string subChunk = (*i).str(0);
-        std::string processedQuery = (boost::format(query) % subChunk).str();
-        result = _runQuery(db.get(), processedQuery);
+        std::string processedQuery = (boost::format(script) % subChunk).str();
+        result = runQuery(db.get(), processedQuery);
         if (result.size() != 0) {
             error.setErrInfo(
-                EIO, (result + std::endl + "Query: " + processedQuery).c_str());
+                EIO, (result + "\nQuery: " + processedQuery).c_str());
             return false;
         }
     }
 
-    // mysqldump _dbName
+    // mysqldump _dbName to _dumpName
 
-    std::string result = _runQuery(db.get(), "DROP DATABASE " + dbName);
+    result = runQuery(db.get(), "DROP DATABASE " + dbName);
     if (result.size() != 0) {
         error.setErrInfo(EIO, result.c_str());
         return false;
