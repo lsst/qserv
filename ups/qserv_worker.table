@@ -3,6 +3,7 @@
 setupRequired(boost >= 1.37.0)
 setupRequired(utils >= 3.4.3)
 setupRequired(pex_exceptions >= 3.2.2)
+setupRequired(mysqlclient >= 5.0.45)
 
 # The following is boilerplate for all packages.
 setupRequired(base >= 3.1)

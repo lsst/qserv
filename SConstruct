@@ -8,7 +8,7 @@ import lsst.SConsUtils as scons
 
 # List the direct *and indirect* pacakage dependencies of your package here.
 # Indirect dependencies are needed to get header files.
-dependencies = ["boost", "python", "utils", "pex_exceptions", "xrd_worker"]
+dependencies = ["boost", "python", "utils", "pex_exceptions", "mysqlclient"]
 
 env = scons.makeEnv(
         # The name of your package goes here.
@@ -31,9 +31,13 @@ env = scons.makeEnv(
         ["boost", "boost/regex.hpp", "boost_regex:C++"],
         ["python", "Python.h"],
         ["utils", "lsst/utils/Utils.h", "utils:C++"],
-        ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"]
-        ["xrd_worker", "xrd_worker.hpp", "xrd_worker:C++"]
+        ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"],
+        ["mysqlclient", "mysql/mysql.h", "mysqlclient:C"]
         ])
+env.Append(CPPPATH = ["/home/ktl/xrootd/src"])
+env.Append(LIBPATH = ["/home/ktl/xrootd/lib/i386_linux26"])
+env.libs["qserv_worker"] += ["XrdSys"]
+
 # Describe what your package contains here.
 env.Help("""
 LSST Query Services worker package

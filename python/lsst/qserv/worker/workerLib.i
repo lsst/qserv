@@ -9,8 +9,6 @@ Access to the classes from the qserv_worker library
 %module(package="lsst.qserv.worker", docstring=qserv_worker_DOCSTRING) workerLib
 
 %{
-#include "lsst/daf/base/Citizen.h"
-#include "lsst/daf/base/PropertySet.h"
 %}
 
 %include "lsst/p_lsstSwig.i"
