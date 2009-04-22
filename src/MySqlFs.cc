@@ -6,7 +6,7 @@
 #include "lsst/qserv/worker/MySqlFsDirectory.h"
 #include "lsst/qserv/worker/MySqlFsFile.h"
 
-#include <errno.h>
+#include <cerrno>
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -120,6 +120,7 @@ XrdSfsFileSystem* XrdSfsGetFileSystem(
     static qWorker::MySqlFs myFS(&eRoute);
 
     eRoute.Say("MySqlFs (MySQL File System)");
+    eRoute.Say(myFS.getVersion());
 
     return &myFS;
 }
