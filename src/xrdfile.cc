@@ -1,114 +1,65 @@
-#include "Python.h"
+#define FAKE_XRD 1
+
+#ifdef FAKE_XRD
 #include <iostream>
-
-#define NO_XRD 1
-
-#ifndef NO_XRD
+#else
 #include "XrdPosixExtern.hh"
 #endif
 
+#include "lsst/qserv/master/xrdfile.h"
 
-#ifndef NO_XRD
-static PyObject* xrdOpen(PyObject *self, PyObject *args) {
-    const char *filePath;
-    int fh;
+namespace qMaster = lsst::qserv::master;
 
-    if (!PyArg_ParseTuple(args, "s", &filePath))
-        return NULL;
-    fh = XrdPosix_Open(filePath, O_RDWR);
-
-    return Py_BuildValue("i", fh);
+#ifdef FAKE_XRD // Fake placeholder implemenation
+int qMaster::xrdOpen(const char *path, int oflag) {
+    static int fakeDes=50;
+    std::cout << "xrd openfile " << path << " returning ("
+	      << fakeDes << ")" << std::endl;
+    return fakeDes;
 }
 
-static PyObject* xrdWrite(PyObject *self, PyObject *args) {
-    int fh;
-    const char *data;
-    int size;
-    long long result;
-
-    if (!PyArg_ParseTuple(args, "is#", &fh, &data, &size))
-        return NULL;
-    result = XrdPosix_Write(fh, int fildes, data, size);
-
-    return Py_BuildValue("i", result);
-}
-
-static PyObject* xrdRead(PyObject *self, PyObject *args) {
-    int fh;
-    char *data;
-    char* finaldata = 0;
-    int size = 0;
-    int chunksize = 200; // set small for now.
-    long long result = chunksize;
-    PyObject* obj;
-
-    data = malloc(chunksize);
-    assert(data);
-    if (!PyArg_ParseTuple(args, "i", &fh))
-        return NULL;
-    while(result == chunksize) {
-	// Might be possible to optimize if I think harder.
-	result = XrdPosix_Read(fh, data, chunksize); // perform read
-	finaldata = realloc(finaldata, size + result); // make room
-	memcpy(finaldata+size, data, result); // copy result
-	size += result; // update size
+long long qMaster::xrdRead(int fildes, void *buf, unsigned long long nbyte) {
+    static char fakeResults[] = "This is totally fake.";
+    int len=strlen(fakeResults);
+    std::cout << "xrd read " << fildes << ": faked" << std::endl;
+    if(nbyte > static_cast<unsigned long long>(len)) {
+	nbyte = len+1;
     }
-    free(data);
-    obj =  Py_BuildValue("s", finaldata); 
-    free(finaldata);
-    return obj;
+    memcpy(buf, fakeResults, nbyte);
+    return nbyte;
 }
 
-
-#else // ------------------------------ Fake placeholder implemenation
-static PyObject* xrdOpen(PyObject *self, PyObject *args) {
-    std::cout << "xrd openfile (50)" << std::endl;
-    return Py_BuildValue("i",  50);
+long long qMaster::xrdWrite(int fildes, const void *buf, 
+			    unsigned long long nbyte) {
+    std::string s;
+    s.assign(static_cast<const char*>(buf), nbyte);
+    std::cout << "xrd write (" <<  fildes << ") \"" 
+	      << s << std::endl;
+    return nbyte;
 }
 
-static PyObject* xrdWrite(PyObject *self, PyObject *args) {
-    int fh;
-    const char *data;
-    int size;
-    long long result;
-
-    if (!PyArg_ParseTuple(args, "is#", &fh, &data, &size))
-        return NULL;
-    std::cout << "xrd write to descriptor " <<  fh << " \"" 
-	      << std::string(data, size) << std::endl;
-    return Py_BuildValue("i", size);
+int qMaster::xrdClose(int fildes) {
+    std::cout << "xrd close (" << fildes << ")" << std::endl;
+    return 0; // Always pretend to succeed.
 }
 
-static PyObject* xrdRead(PyObject *self, PyObject *args) {
-    int fh;
-    std::cout << "xrd read: faked" << std::endl;
-    return Py_BuildValue("s",  "fake read results");
+#else // Not faked: choose the real XrdPosix implementation.
+
+int qMaster::xrdOpen(const char *path, int oflag) {
+    return XrdPosix_Open(path, oflag);
 }
 
-static PyObject* xrdClose(PyObject *self, PyObject *args) {
-    int fh;
-    if (!PyArg_ParseTuple(args, "i", &fh))
-        return NULL;
-    std::cout << "xrd close file" << fh << std::endl;
-    return Py_BuildValue("i",  0);
+long long qMaster::xrdRead(int fildes, void *buf, unsigned long long nbyte) {
+    return XrdPosix_Read(fildes, buf, nbyte); 
 }
 
+long long qMaster::xrdWrite(int fildes, const void *buf, 
+			    unsigned long long nbyte) {
+    return XrdPosix_Write(fildes, buf, nbyte);
+}
+
+int qMaster::xrdClose(int fildes) {
+    return XrdPosix_Close(fildes);
+}
 #endif
 
-
-// Python method table
-static PyMethodDef xrdFileMethods[] = {
-    {"xrdOpen",  xrdOpen, METH_VARARGS,
-     "Open an Xrd file for read-write.  Returns a (int) file handle."},
-    {"xrdRead",  xrdRead, METH_VARARGS,
-     "Read some bytes from an Xrd file."},
-    {"xrdWrite",  xrdWrite, METH_VARARGS,
-     "Write some bytes to an Xrd File."},
-    {"xrdClose",  xrdClose, METH_VARARGS,
-     "Close  an Xrd File."},
-    {NULL, NULL, 0, NULL}        /* Sentinel */
-};
-
-PyMODINIT_FUNC initxrdfile(void) {
-    (void) Py_InitModule("xrdfile", xrdFileMethods);
-}

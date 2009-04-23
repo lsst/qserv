@@ -8,7 +8,7 @@ import lsst.SConsUtils as scons
 
 # List the direct *and indirect* pacakage dependencies of your package here.
 # Indirect dependencies are needed to get header files.
-dependencies = ["boost", "python", "utils", "pex_exceptions", "xrd_master"]
+dependencies = ["boost", "python", "utils", "pex_exceptions"]
 
 env = scons.makeEnv(
         # The name of your package goes here.
@@ -32,7 +32,6 @@ env = scons.makeEnv(
         ["python", "Python.h"],
         ["utils", "lsst/utils/Utils.h", "utils:C++"],
         ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"]
-        ["xrd_master", "xrd_master.hpp", "xrd_master:C++"]
         ])
 # Describe what your package contains here.
 env.Help("""

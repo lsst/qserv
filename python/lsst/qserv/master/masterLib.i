@@ -8,11 +8,6 @@ Access to the classes from the qserv_master library
 %feature("autodoc", "1");
 %module(package="lsst.qserv.master", docstring=qserv_master_DOCSTRING) masterLib
 
-%{
-#include "lsst/daf/base/Citizen.h"
-#include "lsst/daf/base/PropertySet.h"
-%}
-
 %include "lsst/p_lsstSwig.i"
 
 %lsst_exceptions()
