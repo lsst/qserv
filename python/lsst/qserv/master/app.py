@@ -1,38 +1,76 @@
 import MySQLdb as sql
 
-#import xrdfile # FIXME: how to locate?
+import sqlparser
 
 
 class Persistence:
     def __init__(self):
-        self.conn = None
+        self._conn = None
         pass
+
     def activate(self):
-        self.conn = sql.connect(host = "localhost",
+        self._conn = sql.connect(host = "localhost",
                                 user = "test",
                                 passwd = "",
                                 db = "test")
-        c = self.conn.cursor()
+        c = self._conn.cursor()
         # should check if db exists here.
         pass
-    def dropSilent(self, cursor, tables):
+
+    def _dropSilent(self, cursor, tables):
         for t in tables:
             try:
                 cursor.execute('DROP TABLE %s;' %t)
             finally:
                 pass
         pass
+
     def makeTables(self):
-        c = self.conn.cursor()
-        self.dropSilent(c, ['tasks',])
+        c = self._conn.cursor()
+        self._dropSilent(c, ['tasks', 'partmap'])
         c.execute("CREATE TABLE tasks (id int, queryText text);")
-        
+        c.execute("CREATE TABLE partmap (%s);" % (", ".join([
+                        "chunkId int", "subchunkId int", 
+                        "ramin float", "ramax float", 
+                        "declmin float", "declmax float"])))
         c.close()
+        self._populatePartFake()
         pass
+
+    def _populatePartFake(self):
+        c = self._conn.cursor()
+        #
+        # fake chunk layout (all subchunk 0 right now)
+        # +----+-----+
+        # | 1  |  2  |
+        # +----+-----+    center at 0,0
+        # | 3  |  4  |
+        # +----+-----+
+        # 
+        # ^
+        # |
+        # |ra+
+        #
+        # decl+
+        # -------->
+        
+        # chunkId, subchunkId, ramin, ramax, declmin, declmax
+        fakeInfin = 100.0
+        fakeRows = [(1, 0, 0.0, fakeInfin, -fakeInfin, 0.0),
+                    (2, 0, 0.0, fakeInfin, 0.0, fakeInfin),
+                    (3, 0, -fakeInfin, 0.0, -fakeInfin, 0.0),
+                    (4, 0, -fakeInfin, 0.0, 0.0, fakeInfin),
+                    ]
+        for cTuple in fakeRows:
+            sqlstr = 'INSERT INTO partmap VALUES %s;' % str(cTuple) 
+            c.execute(sqlstr)
+        c.close()
+
+    
     def nextId(self):
-        if not self.conn:
+        if not self._conn:
             self.activate()
-        c = self.conn.cursor()
+        c = self._conn.cursor()
         c.execute('SELECT MAX(id) FROM tasks;') # non-atomic.
         maxId = c.fetchall()[0][0]
         if not maxId:
@@ -45,7 +83,7 @@ class Persistence:
         """taskparam should be a tuple of (id, query)
         You can pass None for id, and let the system assign a safe id.
         """
-        if not self.conn:
+        if not self._conn:
             self.activate()
         if taskparam[0] == None:
             a = list(taskparam)
@@ -55,7 +93,7 @@ class Persistence:
         taskstr = str(taskparam)
         sqlstr = 'INSERT INTO tasks VALUES %s' % taskstr
         print "---",sqlstr
-        self.conn.cursor().execute(sqlstr)
+        self._conn.cursor().execute(sqlstr)
         return a[0]
 
 class TaskTracker:
@@ -80,7 +118,10 @@ class QueryAction:
         self.querystring = query
         pass
     def invoke(self):
-        
+
+        sqlparser.test(self.querystring)
+        tokens = sqlparser.getTokens(self.querystring)
+         
         print "null query invoke"
         pass
 

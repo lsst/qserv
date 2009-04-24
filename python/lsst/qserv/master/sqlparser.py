@@ -10,14 +10,18 @@ from pyparsing import \
     alphanums, ParseException, Forward, oneOf, quotedString, \
     ZeroOrMore, restOfLine, Keyword, upcaseTokens
 
-def test( str ):
-    print str,"->"
+def getTokens(qstr):
+    return simpleSQL.parseString(qstr)
+    
+def test(qstr):
+    print qstr,"->"
     try:
-        tokens = simpleSQL.parseString( str )
+        tokens = simpleSQL.parseString(qstr)
         print "tokens = ",        tokens
         print "tokens.columns =", tokens.columns
         print "tokens.tables =",  tokens.tables
         print "tokens.where =", tokens.where
+        print tokens.column
     except ParseException, err:
         print " "*err.loc + "^\n" + err.msg
         print err
@@ -54,13 +58,21 @@ intNum = Combine( Optional(arithSign) + Word( nums ) +
             Optional( E + Optional("+") + Word(nums) ) )
 
 columnRval = realNum | intNum | quotedString | columnName # need to add support for alg expressions
+
+def addWhereCondition(tokens):
+    print "where condition:", tokens
+    print tokens.items()
+    print dir(tokens)
+    pass
 whereCondition = Group(
     ( columnName + binop + columnRval ) |
     ( columnName + in_ + "(" + delimitedList( columnRval ) + ")" ) |
     ( columnName + in_ + "(" + selectStmt + ")" ) |
-    ( columnName + between_ + columnRval + and_ + columnRval ) |
+    ( columnName.setResultsName("column") + between_ + columnRval + and_ + columnRval ) |
     ( "(" + whereExpression + ")" ) 
     )
+whereCondition.addParseAction(addWhereCondition)
+
 whereExpression << whereCondition + ZeroOrMore( ( and_ | or_ ) + whereExpression ) 
 
 # define the grammar

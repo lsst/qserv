@@ -1,9 +1,9 @@
-#define FAKE_XRD 1
+//#define FAKE_XRD 1
 
 #ifdef FAKE_XRD
 #include <iostream>
 #else
-#include "XrdPosixExtern.hh"
+#include "XrdPosix/XrdPosixExtern.hh"
 #endif
 
 #include "lsst/qserv/master/xrdfile.h"

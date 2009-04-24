@@ -28,15 +28,24 @@ env = scons.makeEnv(
         # If a header and library are required, list them both.
         # The library name should not include "lib" or ".so" or ".dylib".
         # It should always have ":C++" suffixed.
-        ["boost", "boost/regex.hpp", "boost_regex:C++"],
+#        ["boost", "boost/regex.hpp", "boost_regex:C++"],
         ["python", "Python.h"],
         ["utils", "lsst/utils/Utils.h", "utils:C++"],
         ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"]
         ])
+# Manual Xrd dependencies
+env.Append(CPPPATH = [os.environ["LSST_HOME"] + "/../xrdsrc"])
+env.Append(LIBPATH = [os.environ["LSST_HOME"] + "/../xrdlib"])
+env.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
+                       "-D_LARGEFILE64_SOURCE",
+                       "-D_FILE_OFFSET_BITS=64"])
+env.libs["qserv_master"] += ["XrdPosix"]
+
 # Describe what your package contains here.
 env.Help("""
 LSST Query Services master server package
 """)
+
 
 ###############################################################################
 # Boilerplate below here.  Do not modify.
@@ -77,3 +86,4 @@ if files:
     env.Command("TAGS", files, "etags -o $TARGET $SOURCES")
 
 env.Declare()
+print "Finally, env has cppflags:", env["CPPFLAGS"]

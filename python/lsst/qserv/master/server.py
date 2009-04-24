@@ -75,7 +75,10 @@ class ClientInterface:
         if 'q' in req.args:
             a = app.QueryAction(flatargs['q'])
             id = self.tracker.track("myquery", a, flatargs['q'])
-            reactor.callInThread(a.invoke)
+            if 'lsstRunning' in dir(reactor):
+                reactor.callInThread(a.invoke)
+            else:
+                a.invoke()
             return "got query, q='" + flatargs['q'] + "' your id is %d" % (id)
         else:
             return "no query in string, try q='select...'"
@@ -156,17 +159,18 @@ class Master:
         # init listening
         reactor.listenTCP(self.port, twisted.web.server.Site(root))
 
-        print "Starting Lspeed interface on port: %d"% self.port
+        print "Starting Qserv interface on port: %d"% self.port
+
+        # Insert a memento so we can check if the reactor is running.
+        reactor.lsstRunning = True 
         reactor.run()
         pass
    
-
-def selftest():
-
+def runServer():
     m = Master()
     m.listen()
     pass
 
 
 if __name__ == "__main__":
-    selftest()
+    runServer()
