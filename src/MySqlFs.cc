@@ -19,11 +19,11 @@ qWorker::MySqlFs::~MySqlFs(void) {
 // Object Allocation Functions
 //
 XrdSfsDirectory* qWorker::MySqlFs::newDir(char* user) {
-    return new qWorker::MySqlFsDirectory(user);
+    return new qWorker::MySqlFsDirectory(_eDest, user);
 }
 
 XrdSfsFile* qWorker::MySqlFs::newFile(char* user) {
-    return new qWorker::MySqlFsFile(user);
+    return new qWorker::MySqlFsFile(_eDest, user);
 }
 
 // Other Functions

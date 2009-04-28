@@ -5,20 +5,21 @@
 
 #include "XrdSys/XrdSysLogger.hh"
 #include <cerrno>
+#include <iostream>
+#include "boost/scoped_ptr.hpp"
 
 namespace test = boost::test_tools;
 
+static XrdSysLogger logDest;
+
 struct FsFixture {
     FsFixture(void) {
-        // This ends up in a static, so it can't be put into a smart pointer.
-        _lp = new XrdSysLogger;
         // This is actually a pointer to a static instance, so it can't be put
-        // into a smart pointer, either.
-        _fs = XrdSfsGetFileSystem(0, _lp, 0);
+        // into a smart pointer.
+        _fs = XrdSfsGetFileSystem(0, &logDest, 0);
     };
     ~FsFixture(void) { };
 
-    XrdSysLogger* _lp;
     XrdSfsFileSystem* _fs;
 };
 
@@ -65,7 +66,7 @@ BOOST_AUTO_TEST_CASE(FsUnimplemented) {
 
 BOOST_AUTO_TEST_CASE(Directory) {
     BOOST_CHECK(_fs != 0);
-    std::auto_ptr<XrdSfsDirectory> dir(_fs->newDir());
+    boost::scoped_ptr<XrdSfsDirectory> dir(_fs->newDir());
     BOOST_CHECK(dir.get() != 0);
 
     BOOST_CHECK_EQUAL(dir->open("/tmp"), SFS_ERROR);
@@ -76,7 +77,7 @@ BOOST_AUTO_TEST_CASE(Directory) {
 
 BOOST_AUTO_TEST_CASE(FileUnimplemented) {
     BOOST_CHECK(_fs != 0);
-    std::auto_ptr<XrdSfsFile> file(_fs->newFile());
+    boost::scoped_ptr<XrdSfsFile> file(_fs->newFile());
     BOOST_CHECK(file.get() != 0);
     XrdOucErrInfo outErr;
     BOOST_CHECK_EQUAL(file->fctl(0, "x", outErr), SFS_ERROR);
@@ -92,6 +93,21 @@ BOOST_AUTO_TEST_CASE(FileUnimplemented) {
     char buf[4];
     int ret;
     BOOST_CHECK_EQUAL(file->getCXinfo(buf, ret), SFS_ERROR);
+}
+
+BOOST_AUTO_TEST_CASE(File) {
+    BOOST_CHECK(_fs != 0);
+    boost::scoped_ptr<XrdSfsFile> file(_fs->newFile());
+    BOOST_CHECK(file.get() != 0);
+    file->open("314159", O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
+    std::string query = "-- 42,99\nSELECT COUNT(*);";
+    XrdSfsXferSize sz = file->write(0, query.c_str(), query.size());
+    BOOST_CHECK_EQUAL(sz, -1);
+    int err;
+    std::cerr << file->error.getErrText(err) << ": Error " << err << std::endl;
+    char result[4096];
+    sz = file->read(0, result, sizeof(result)); 
+    file->close();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

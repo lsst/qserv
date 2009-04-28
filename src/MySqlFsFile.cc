@@ -13,7 +13,8 @@ namespace qWorker = lsst::qserv::worker;
 
 static std::string DUMP_BASE = "/tmp/lspeed/queries/";
 
-qWorker::MySqlFsFile::MySqlFsFile(char* user) : XrdSfsFile(user) {
+qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user) :
+    XrdSfsFile(user), _eDest(lp) {
 }
 
 qWorker::MySqlFsFile::~MySqlFsFile(void) {
@@ -22,13 +23,23 @@ qWorker::MySqlFsFile::~MySqlFsFile(void) {
 int qWorker::MySqlFsFile::open(
     char const* fileName, XrdSfsFileOpenMode openMode, mode_t createMode,
     XrdSecEntity const* client, char const* opaque) {
+    if (fileName == 0) {
+        error.setErrInfo(EINVAL, "Null filename");
+        return SFS_ERROR;
+    }
     _chunkId = strtol(fileName, 0, 10);
-    _userName = std::string(client->name);
+    if (client != 0) {
+        _userName = std::string(client->name);
+    }
+    _eDest->Say((boost::format("File open(%1%) by %2%")
+                 % _chunkId % _userName).str().c_str());
     return SFS_OK;
 }
 
 int qWorker::MySqlFsFile::close(void) {
     // optionally remove dump file
+    _eDest->Say((boost::format("File close(%1%) by %2%")
+                 % _chunkId % _userName).str().c_str());
     return SFS_OK;
 }
 
@@ -41,6 +52,8 @@ int qWorker::MySqlFsFile::fctl(
 }
 
 char const* qWorker::MySqlFsFile::FName(void) {
+    _eDest->Say((boost::format("File FName(%1%) by %2%")
+                 % _chunkId % _userName).str().c_str());
     return 0;
 }
 
@@ -64,6 +77,8 @@ std::string md5_hash_to_string(char const* buffer, int bufferSize) {
 
 int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
                           XrdSfsXferSize prereadSz) {
+    _eDest->Say((boost::format("File read(%1%) at %2% by %3%")
+                 % _chunkId % fileOffset % _userName).str().c_str());
     if (!dumpFileExists(_dumpName)) {
         error.setErrInfo(ENOENT, "Query results missing");
         return SFS_ERROR;
@@ -73,6 +88,8 @@ int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
 
 XrdSfsXferSize qWorker::MySqlFsFile::read(
     XrdSfsFileOffset fileOffset, char* buffer, XrdSfsXferSize bufferSize) {
+    _eDest->Say((boost::format("File read(%1%) at %2%  for %3% by %4%")
+                 % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
     int fd = dumpFileOpen(_dumpName);
     if (fd == -1) {
         error.setErrInfo(errno, "Query results missing");
@@ -99,6 +116,8 @@ int qWorker::MySqlFsFile::read(XrdSfsAio* aioparm) {
 XrdSfsXferSize qWorker::MySqlFsFile::write(
     XrdSfsFileOffset fileOffset, char const* buffer,
     XrdSfsXferSize bufferSize) {
+    _eDest->Say((boost::format("File write(%1%) at %2%  for %3% by %4%")
+                 % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
     if (fileOffset != 0) {
         error.setErrInfo(EINVAL, "Write beyond beginning of file");
         return -1;
@@ -117,6 +136,8 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
         return bufferSize;
     }
 
+    _eDest->Say((boost::format("Db = %1%, dump = %2%:\n%3%")
+                 % dbName % _dumpName % buffer).str().c_str());
     if (!_runScript(std::string(buffer, bufferSize), dbName)) {
         return -1;
     }

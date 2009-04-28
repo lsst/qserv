@@ -3,13 +3,15 @@
 
 #include "XrdSfs/XrdSfsInterface.hh"
 
+class XrdSysError;
+
 namespace lsst {
 namespace qserv {
 namespace worker {
 
 class MySqlFsDirectory : public XrdSfsDirectory {
 public:
-    MySqlFsDirectory(char* user = 0);
+    MySqlFsDirectory(XrdSysError* lp, char* user = 0);
     ~MySqlFsDirectory(void);
 
     int open(char const* dirName, XrdSecEntity const* client = 0,
@@ -17,6 +19,9 @@ public:
     char const* nextEntry(void);
     int close(void);
     char const* FName(void);
+
+private:
+    XrdSysError* _eDest;
 };
 
 }}} // namespace lsst::qserv::worker

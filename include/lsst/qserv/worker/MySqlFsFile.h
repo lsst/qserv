@@ -17,7 +17,7 @@ namespace worker {
 
 class MySqlFsFile : public XrdSfsFile {
 public:
-    MySqlFsFile(char* user = 0);
+    MySqlFsFile(XrdSysError* lp, char* user = 0);
     ~MySqlFsFile(void);
 
     int open(char const* fileName, XrdSfsFileOpenMode openMode,
@@ -49,9 +49,9 @@ public:
     int getCXinfo(char cxtype[4], int& cxrsz);
 
 private:
-
     bool _runScript(std::string const& script, std::string const& dbName);
 
+    XrdSysError* _eDest;
     int _chunkId;
     std::string _userName;
     std::string _dumpName;
