@@ -36,7 +36,7 @@ env = scons.makeEnv(
         ])
 env.Append(CPPPATH = ["/home/ktl/xrootd/src"])
 env.Append(LIBPATH = ["/home/ktl/xrootd/lib/i386_linux26"])
-env.libs["qserv_worker"] += ["XrdSys"]
+env.libs["qserv_worker"] += ["XrdSys", "ssl"]
 
 # Describe what your package contains here.
 env.Help("""

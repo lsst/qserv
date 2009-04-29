@@ -10,9 +10,10 @@ for src in glob.glob("*.cc"):
 #
 import lsst.tests
 
+suffix = env['LDMODULESUFFIX']
 tests = lsst.tests.Control(env, verbose = True)
-tests.run("*.cc")
+for target in tests.run("*.cc"):
+    env.Depends(target, "../lib/libqserv_worker%s" % (suffix,))
 
 for target in tests.run("*.py"):
-     env.Depends(target,
-        "../python/lsst/qserv/worker/_workerLib%s" % (env['LDMODULESUFFIX']))
+    env.Depends(target, "../python/lsst/qserv/worker/_workerLib%s" % (suffix,))

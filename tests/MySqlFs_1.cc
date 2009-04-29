@@ -5,6 +5,7 @@
 
 #include "XrdSys/XrdSysLogger.hh"
 #include <cerrno>
+#include <cstring>
 #include <iostream>
 #include "boost/scoped_ptr.hpp"
 
@@ -100,13 +101,17 @@ BOOST_AUTO_TEST_CASE(File) {
     boost::scoped_ptr<XrdSfsFile> file(_fs->newFile());
     BOOST_CHECK(file.get() != 0);
     file->open("314159", O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
-    std::string query = "-- 42,99\nSELECT COUNT(*);";
+    std::string query = "-- 42,99\nSELECT COUNT(*) FROM Object;";
     XrdSfsXferSize sz = file->write(0, query.c_str(), query.size());
     BOOST_CHECK_EQUAL(sz, -1);
     int err;
-    std::cerr << file->error.getErrText(err) << ": Error " << err << std::endl;
+    std::cerr << file->error.getErrText(err);
+    std::cerr << ": " << strerror(err) << std::endl;
     char result[4096];
     sz = file->read(0, result, sizeof(result)); 
+    BOOST_CHECK_EQUAL(sz, -1);
+    std::cerr << file->error.getErrText(err);
+    std::cerr << ": " << strerror(err) << std::endl;
     file->close();
 }
 

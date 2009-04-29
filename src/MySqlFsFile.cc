@@ -5,13 +5,70 @@
 
 #include "boost/regex.hpp"
 #include "boost/format.hpp"
-#include "mysql/mysql.h"
-
 #include <errno.h>
+#include "mysql/mysql.h"
+#include <openssl/md5.h>
 
 namespace qWorker = lsst::qserv::worker;
 
-static std::string DUMP_BASE = "/tmp/lspeed/queries/";
+// Must end in a slash.
+static std::string DUMP_BASE = "/tmp/qserv/";
+
+class DbHandle {
+public:
+    DbHandle(void) : _db(mysql_init(0)) { };
+    ~DbHandle(void) {
+        if (_db) {
+            mysql_close(_db);
+            _db = 0;
+        }
+    };
+    MYSQL* get(void) const { return _db; };
+private:
+    MYSQL* _db;
+};
+
+static std::string hashQuery(char const* buffer, int bufferSize) {
+    unsigned char hashVal[MD5_DIGEST_LENGTH];
+    MD5(reinterpret_cast<unsigned char const*>(buffer), bufferSize, hashVal);
+    std::string result;
+    for (int i = 0; i < MD5_DIGEST_LENGTH; ++i) {
+        result += (boost::format("%02x") % static_cast<int>(hashVal[i])).str();
+    }
+    return result;
+}
+
+static std::string hashToPath(std::string const& hash) {
+    return DUMP_BASE +
+        hash.substr(0, 3) + "/" + hash.substr(3, 3) + "/" + hash + ".dump";
+}
+
+static std::string runQuery(MYSQL* db, std::string query,
+                            std::string arg=std::string()) {
+    if (arg.size() != 0) {
+        // TODO -- bind arg
+    }
+    if (mysql_real_query(db, query.c_str(), query.size()) != 0) {
+        return "Unable to execute query: " + query;
+    }
+    int status = 0;
+    do {
+        MYSQL_RES* result = mysql_store_result(db);
+        if (result) {
+            // TODO -- Do something with it?
+            mysql_free_result(result);
+        }
+        else if (mysql_field_count(db) != 0) {
+            return "Unable to store result for query: " + query;
+        }
+        status = mysql_next_result(db);
+        if (status > 0) {
+            return "Error retrieving results for query: " + query;
+        }
+    } while (status == 0);
+    return std::string();
+}
+
 
 qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user) :
     XrdSfsFile(user), _eDest(lp) {
@@ -71,10 +128,6 @@ bool dumpFileExists(std::string const& dbName) {
     return false;
 }
 
-std::string md5_hash_to_string(char const* buffer, int bufferSize) {
-    return "HASH";
-}
-
 int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
                           XrdSfsXferSize prereadSz) {
     _eDest->Say((boost::format("File read(%1%) at %2% by %3%")
@@ -88,7 +141,7 @@ int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
 
 XrdSfsXferSize qWorker::MySqlFsFile::read(
     XrdSfsFileOffset fileOffset, char* buffer, XrdSfsXferSize bufferSize) {
-    _eDest->Say((boost::format("File read(%1%) at %2%  for %3% by %4%")
+    _eDest->Say((boost::format("File read(%1%) at %2% for %3% by %4%")
                  % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
     int fd = dumpFileOpen(_dumpName);
     if (fd == -1) {
@@ -116,7 +169,7 @@ int qWorker::MySqlFsFile::read(XrdSfsAio* aioparm) {
 XrdSfsXferSize qWorker::MySqlFsFile::write(
     XrdSfsFileOffset fileOffset, char const* buffer,
     XrdSfsXferSize bufferSize) {
-    _eDest->Say((boost::format("File write(%1%) at %2%  for %3% by %4%")
+    _eDest->Say((boost::format("File write(%1%) at %2% for %3% by %4%")
                  % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
     if (fileOffset != 0) {
         error.setErrInfo(EINVAL, "Write beyond beginning of file");
@@ -127,9 +180,8 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
         return -1;
     }
 
-    std::string hash = md5_hash_to_string(buffer, bufferSize);
-    _dumpName = DUMP_BASE +
-        hash.substr(0, 3) + "/" + hash.substr(3, 3) + "/" + hash + ".dump";
+    std::string hash = hashQuery(buffer, bufferSize);
+    _dumpName = hashToPath(hash);
     std::string dbName = "q_" + hash;
 
     if (dumpFileExists(_dumpName)) {
@@ -144,40 +196,36 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     return bufferSize;
 }
 
-static std::string runQuery(MYSQL* db, std::string query) {
-    if (mysql_real_query(db, query.c_str(), query.size()) != 0) {
-        return "Unable to execute query: " + query;
-    }
-    int status = 0;
-    do {
-        MYSQL_RES* result = mysql_store_result(db);
-        if (result) {
-            mysql_free_result(result);
-        }
-        else if (mysql_field_count(db) != 0) {
-            return "Unable to store result for query: " + query;
-        }
-        status = mysql_next_result(db);
-        if (status > 0) {
-            return "Error retrieving results for query: " + query;
-        }
-    } while (status == 0);
-    return std::string();
+int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
+    error.setErrInfo(ENOTSUP, "Operation not supported");
+    return SFS_ERROR;
 }
 
-class DbHandle {
-public:
-    DbHandle(void) : _db(mysql_init(0)) { };
-    ~DbHandle(void) {
-        if (_db) {
-            mysql_close(_db);
-            _db = 0;
-        }
-    };
-    MYSQL* get(void) const { return _db; };
-private:
-    MYSQL* _db;
-};
+int qWorker::MySqlFsFile::sync(void) {
+    error.setErrInfo(ENOTSUP, "Operation not supported");
+    return SFS_ERROR;
+}
+
+int qWorker::MySqlFsFile::sync(XrdSfsAio* aiop) {
+    error.setErrInfo(ENOTSUP, "Operation not supported");
+    return SFS_ERROR;
+}
+
+int qWorker::MySqlFsFile::stat(struct stat* buf) {
+    error.setErrInfo(ENOTSUP, "Operation not supported");
+    return SFS_ERROR;
+}
+
+int qWorker::MySqlFsFile::truncate(XrdSfsFileOffset fileOffset) {
+    error.setErrInfo(ENOTSUP, "Operation not supported");
+    return SFS_ERROR;
+}
+
+int qWorker::MySqlFsFile::getCXinfo(char cxtype[4], int &cxrsz) {
+    error.setErrInfo(ENOTSUP, "Operation not supported");
+    return SFS_ERROR;
+}
+
 
 bool qWorker::MySqlFsFile::_runScript(
     std::string const& script, std::string const& dbName) {
@@ -215,6 +263,28 @@ bool qWorker::MySqlFsFile::_runScript(
     }
 
     // mysqldump _dbName to _dumpName
+    std::string cmd = (boost::format("mysqldump %1% > %2%")
+                       % dbName % _dumpName).str();
+    if (system(cmd.c_str()) != 0) {
+        error.setErrInfo(errno, ("Unable to dump database " + dbName +
+                                 " to " + _dumpName).c_str());
+        return false;
+    }
+
+    // Record query in query cache table
+    result = runQuery(db.get(),
+                      "INSERT INTO qcache.Queries "
+                      "(queryTime, query, db, path) "
+                      "VALUES (NOW(), ?, "
+                          "'" + dbName + "'"
+                          ", "
+                          "'" + _dumpName + "'"
+                          ")",
+                      script);
+    if (result.size() != 0) {
+        error.setErrInfo(EIO, result.c_str());
+        return false;
+    }
 
     result = runQuery(db.get(), "DROP DATABASE " + dbName);
     if (result.size() != 0) {
@@ -223,34 +293,4 @@ bool qWorker::MySqlFsFile::_runScript(
     }
 
     return true;
-}
-
-int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
-    error.setErrInfo(ENOTSUP, "Operation not supported");
-    return SFS_ERROR;
-}
-
-int qWorker::MySqlFsFile::sync(void) {
-    error.setErrInfo(ENOTSUP, "Operation not supported");
-    return SFS_ERROR;
-}
-
-int qWorker::MySqlFsFile::sync(XrdSfsAio* aiop) {
-    error.setErrInfo(ENOTSUP, "Operation not supported");
-    return SFS_ERROR;
-}
-
-int qWorker::MySqlFsFile::stat(struct stat* buf) {
-    error.setErrInfo(ENOTSUP, "Operation not supported");
-    return SFS_ERROR;
-}
-
-int qWorker::MySqlFsFile::truncate(XrdSfsFileOffset fileOffset) {
-    error.setErrInfo(ENOTSUP, "Operation not supported");
-    return SFS_ERROR;
-}
-
-int qWorker::MySqlFsFile::getCXinfo(char cxtype[4], int &cxrsz) {
-    error.setErrInfo(ENOTSUP, "Operation not supported");
-    return SFS_ERROR;
 }
