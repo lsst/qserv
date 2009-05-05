@@ -96,6 +96,12 @@ class Persistence:
         self._conn.cursor().execute(sqlstr)
         return a[0]
 
+    def issueQuery(self, query):
+        c = self._conn.cursor()
+        c.execute(query)
+        return c.fetchall()
+    pass
+
 class TaskTracker:
     def __init__(self):
         self.tasks = {}
@@ -115,14 +121,43 @@ class TaskTracker:
 
 class QueryAction:
     def __init__(self, query):
-        self.querystring = query
+        self.queryStr = query
+        self.queryMunger = None ## sqlparser.QueryMunger()
         pass
     def invoke(self):
+        self.queryMunger = sqlparser.QueryMunger(self.queryStr)
+        
+        query = self.queryMunger.computePartMapQuery()
+        p = Persistence()
+        p.activate()
+        chunktuples = p.issueQuery(query)
+        
+        for t in chunktuples:
+            q = self.queryMunger.computeChunkQuery(t)
+            self.issueXrd(t, q)
+        
 
-        sqlparser.test(self.querystring)
-        tokens = sqlparser.getTokens(self.querystring)
+        #print self.queryStr, "resulted in", query
+        ## sqlparser.test(self.queryStr)
+        
+        # Want parser to:
+        # a) help me munge the query for the partmap DB
+        # b) help me re-form the original query for the chunk/subchunk pairs.
+        
+        #  tokens = sqlparser.getTokens(self.queryStr)
+        
+        # Then, for each chunk/subchunk, dispatch the cmd via xrd.
+        # Later, we will fork for parallelism.  Test serially first.
          
         print "null query invoke"
+        pass
+
+    def issueXrd(self, chunktuple, query):
+        (chunk, subchunk) = chunktuple
+        host = "localhost"
+        port = 8888
+        urlTempl = "xrootd://%s:%d//query/object/%d" %(host, port, chunk)
+        print "Issuing (%d %d)" % chunktuple, "via", urlTempl
         pass
 
 class CheckAction:
@@ -159,4 +194,31 @@ class XrdAction:
         xrdfile.xrdClose(self.handle)
         pass
     
+
+tokens_where = [ ['where', 
+                  [ ['RA', 'between', '2', 'and', '5'] ], 
+                  'and', 
+                  [ ['DECL', 'between', '1', 'and', '10'] ]
+                  ] 
+                 ]
+
+whereList = [ ( [
+            ( ['RA', 'between', '2', 'and', '5'], 
+              {'column': [('RA', 0)] }
+              )
+            ], {}),
+              ( [ 
+            ( ['DECL', 'between', '1', 'and', '10'], 
+              {'column': [('DECL', 0)]}
+              )
+            ], {})
+              ]
+#      partmin                   partmax 
+#  rmin           rmax
+# 
+
+def clauses(col, cmin, cmax):
+    return ["%s between %smin and %smax" % (cmin, col, col),
+            "%s between %smin and %smax" % (cmax, col, col),
+            "%smin between %s and %s" % (col, cmin, cmax)]
 
