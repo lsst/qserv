@@ -1,6 +1,10 @@
+import os
 import MySQLdb as sql
 
+# package import
 import sqlparser
+from lsst.qserv.master import xrdOpen, xrdClose, xrdRead, xrdWrite
+from lsst.qserv.master import charArray_frompointer, charArray
 
 
 class Persistence:
@@ -158,6 +162,22 @@ class QueryAction:
         port = 8888
         urlTempl = "xrootd://%s:%d//query/object/%d" %(host, port, chunk)
         print "Issuing (%d %d)" % chunktuple, "via", urlTempl
+        handle = xrdOpen(urlTempl, os.O_RDWR)
+        print "got handle", handle
+        q = "placeholder"
+        wCount = xrdWrite(handle, charArray_frompointer(q), len(q))
+        print "wrote ", wCount, "out of", len(q)
+        while True:
+            bufSize = 10
+            buf = charArray(bufSize)
+            rCount = xrdRead(handle, buf, bufSize)
+            print "got", rCount, 
+            if rCount <= 0:
+                break
+            s = "".join(map(lambda x: buf[x], range(rCount)))
+            print "(", s, ")"
+
+                         
         pass
 
 class CheckAction:

@@ -7,8 +7,16 @@ Access to the classes from the qserv_master library
 
 %feature("autodoc", "1");
 %module(package="lsst.qserv.master", docstring=qserv_master_DOCSTRING) masterLib
+%{
+#include "lsst/qserv/master/xrdfile.h"
+%}
 
 %include "lsst/p_lsstSwig.i"
+%include typemaps.i
+%include cstring.i
+%include carrays.i
+%include cdata.i
+%array_class(char, charArray);
 
 %lsst_exceptions()
 %import "lsst/pex/exceptions/exceptionsLib.i"
@@ -19,6 +27,9 @@ Access to the classes from the qserv_master library
 
 // Include all classes to wrap:
 // %include "lsst/qserv/master/Master.h"
+
+ // %apply (void *STRING, unsigned long long LENGTH) { (void *buf, unsigned long long nbyte) };
+%include "lsst/qserv/master/xrdfile.h"
 
 // Instantiate any templates here:
 // %template(setBool) lsst::daf::base::PropertySet::set<bool>;
