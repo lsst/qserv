@@ -72,6 +72,12 @@ static std::string runQuery(MYSQL* db, std::string query,
 
 qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user) :
     XrdSfsFile(user), _eDest(lp) {
+    // Capture userName at this point.
+    // Param user is: user.pid:fd@host 
+    // (See XRootd Protocol spec: 4.2.1.1 Connection name format)
+    char* cursor = user;
+    while(cursor && (*cursor != '.')) cursor++;
+    _userName = std::string(user, cursor - user);
 }
 
 qWorker::MySqlFsFile::~MySqlFsFile(void) {
