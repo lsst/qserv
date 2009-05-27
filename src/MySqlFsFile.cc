@@ -71,7 +71,8 @@ static std::string runQuery(MYSQL* db, std::string query,
 
 
 qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user) :
-    XrdSfsFile(user), _eDest(lp) {
+    XrdSfsFile(user), _eDest(lp), 
+    _socketFilename("/var/lib/mysql/mysql.sock") {
     // Capture userName at this point.
     // Param user is: user.pid:fd@host 
     // (See XRootd Protocol spec: 4.2.1.1 Connection name format)
@@ -236,7 +237,8 @@ int qWorker::MySqlFsFile::getCXinfo(char cxtype[4], int &cxrsz) {
 bool qWorker::MySqlFsFile::_runScript(
     std::string const& script, std::string const& dbName) {
     DbHandle db;
-    if (mysql_real_connect(db.get(), 0, _userName.c_str(), 0, 0, 0, 0,
+    if (mysql_real_connect(db.get(), 0, _userName.c_str(), 0, 0, 0, 
+			   _socketFilename.c_str(),
                            CLIENT_MULTI_STATEMENTS) == 0) {
         error.setErrInfo(
             EIO, ("Unable to connect to MySQL as " + _userName).c_str());
