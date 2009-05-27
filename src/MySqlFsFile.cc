@@ -92,9 +92,6 @@ int qWorker::MySqlFsFile::open(
         return SFS_ERROR;
     }
     _chunkId = strtol(fileName, 0, 10);
-    if (client != 0) {
-        _userName = std::string(client->name);
-    }
     _eDest->Say((boost::format("File open(%1%) by %2%")
                  % _chunkId % _userName).str().c_str());
     return SFS_OK;
