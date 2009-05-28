@@ -14,6 +14,11 @@ namespace qWorker = lsst::qserv::worker;
 // Must end in a slash.
 static std::string DUMP_BASE = "/tmp/qserv/";
 
+static std::string CREATE_SUBCHUNK_SCRIPT =
+    "CREATE TABLE Object_%1%_%2% ENGINE = MEMORY "
+    "AS SELECT * FROM Object_%1% WHERE subchunkId = %2%;";
+static std::string CLEANUP_SUBCHUNK_SCRIPT = "DROP TABLE Object_%1%_%2%;";
+
 class DbHandle {
 public:
     DbHandle(void) : _db(mysql_init(0)) { };
@@ -253,18 +258,26 @@ bool qWorker::MySqlFsFile::_runScript(
         return false;
     }
 
-    boost::regex re("\\d+");
     std::string firstLine = script.substr(0, script.find('\n'));
-    boost::sregex_iterator i = boost::make_regex_iterator(firstLine, re);
-    while (i != boost::sregex_iterator()) {
+    boost::regex re("\\d+");
+    std::string processedQuery;
+    std::string cleanupScript;
+    for (boost::sregex_iterator i = boost::make_regex_iterator(firstLine, re);
+         i != boost::sregex_iterator(); ++i) {
         std::string subChunk = (*i).str(0);
-        std::string processedQuery = (boost::format(script) % subChunk).str();
-        result = runQuery(db.get(), processedQuery);
-        if (result.size() != 0) {
-            error.setErrInfo(
-                EIO, (result + "\nQuery: " + processedQuery).c_str());
-            return false;
-        }
+        processedQuery +=
+            (boost::format(CREATE_SUBCHUNK_SCRIPT)
+             % _chunkId % subChunk).str();
+        cleanupScript +=
+            (boost::format(CLEANUP_SUBCHUNK_SCRIPT)
+             % _chunkId % subChunk).str();
+    }
+    processedQuery += script;
+    processedQuery += cleanupScript;
+    result = runQuery(db.get(), processedQuery);
+    if (result.size() != 0) {
+        error.setErrInfo(EIO, (result + "\nQuery: " + processedQuery).c_str());
+        return false;
     }
 
     // mysqldump _dbName to _dumpName
