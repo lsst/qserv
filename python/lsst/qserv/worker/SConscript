@@ -1,6 +1,0 @@
-# -*- python -*-
-Import("env")
-
-pkg = env["eups_product"]
-env.CheckSwig("python", ilang="c++", includedProducts="utils pex_exceptions")
-env.LoadableModuleIncomplete("_workerLib", Split("workerLib.i"), LIBS=env.getlibs(pkg))

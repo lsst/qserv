@@ -55,6 +55,7 @@ private:
     int _chunkId;
     std::string _userName;
     std::string _dumpName;
+    std::string _socketFilename;
 };
 
 }}} // namespace lsst::qserv::worker

@@ -8,7 +8,7 @@ import lsst.SConsUtils as scons
 
 # List the direct *and indirect* pacakage dependencies of your package here.
 # Indirect dependencies are needed to get header files.
-dependencies = ["boost", "python", "utils", "pex_exceptions", "mysqlclient"]
+dependencies = ["boost", "mysqlclient"]
 
 env = scons.makeEnv(
         # The name of your package goes here.
@@ -22,16 +22,10 @@ env = scons.makeEnv(
         # could be listed, but typically ensuring that one is available will
         # be sufficient to make sure the rest of the package is available.
 
-        # If just a header is required, list it.
-        ["boost", "boost/shared_ptr.hpp"],
-
         # If a header and library are required, list them both.
         # The library name should not include "lib" or ".so" or ".dylib".
         # It should always have ":C++" suffixed.
         ["boost", "boost/regex.hpp", "boost_regex:C++"],
-        ["python", "Python.h"],
-        ["utils", "lsst/utils/Utils.h", "utils:C++"],
-        ["pex_exceptions", "lsst/pex/exceptions/Runtime.h", "pex_exceptions:C++"],
         ["mysqlclient", "mysql/mysql.h", "mysqlclient:C"]
         ])
 env.Append(CPPPATH = ["/home/ktl/xrootd/src"])

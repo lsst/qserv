@@ -15,5 +15,5 @@ tests = lsst.tests.Control(env, verbose = True)
 for target in tests.run("*.cc"):
     env.Depends(target, "../lib/libqserv_worker%s" % (suffix,))
 
-for target in tests.run("*.py"):
-    env.Depends(target, "../python/lsst/qserv/worker/_workerLib%s" % (suffix,))
+# for target in tests.run("*.py"):
+#     env.Depends(target, "../python/lsst/qserv/worker/_workerLib%s" % (suffix,))
