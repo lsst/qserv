@@ -5,9 +5,12 @@
 
 #include "boost/regex.hpp"
 #include "boost/format.hpp"
+#include <cstdlib>
+#include <fcntl.h>
 #include <errno.h>
 #include "mysql/mysql.h"
 #include <openssl/md5.h>
+#include <unistd.h>
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -15,9 +18,11 @@ namespace qWorker = lsst::qserv::worker;
 static std::string DUMP_BASE = "/tmp/qserv/";
 
 static std::string CREATE_SUBCHUNK_SCRIPT =
-    "CREATE TABLE Object_%1%_%2% ENGINE = MEMORY "
-    "AS SELECT * FROM Object_%1% WHERE subchunkId = %2%;";
-static std::string CLEANUP_SUBCHUNK_SCRIPT = "DROP TABLE Object_%1%_%2%;";
+    "CREATE DATABASE IF NOT EXISTS Subchunks_%1%;"
+    "CREATE TABLE IF NOT EXISTS Subchunks_%1%.Object_%1%_%2% ENGINE = MEMORY "
+    "AS SELECT * FROM LSST.Object_%1% WHERE subchunkId = %2%;";
+static std::string CLEANUP_SUBCHUNK_SCRIPT =
+    "DROP TABLE Subchunks_%1%.Object_%1%_%2%;";
 
 class DbHandle {
 public:
@@ -54,7 +59,8 @@ static std::string runQuery(MYSQL* db, std::string query,
         // TODO -- bind arg
     }
     if (mysql_real_query(db, query.c_str(), query.size()) != 0) {
-        return "Unable to execute query: " + query;
+        return std::string("Unable to execute query: ") + mysql_error(db) +
+            "\nQuery = " + query;
     }
     int status = 0;
     do {
@@ -68,7 +74,8 @@ static std::string runQuery(MYSQL* db, std::string query,
         }
         status = mysql_next_result(db);
         if (status > 0) {
-            return "Error retrieving results for query: " + query;
+            return std::string("Error retrieving results for query: ") +
+                mysql_error(db) + "\nQuery = " + query;
         }
     } while (status == 0);
     return std::string();
@@ -130,11 +137,13 @@ int qWorker::MySqlFsFile::getMmap(void** Addr, off_t &Size) {
 
 
 int dumpFileOpen(std::string const& dbName) {
-    return -1;
+    return open(dbName.c_str(), O_RDONLY);
 }
 
 bool dumpFileExists(std::string const& dbName) {
-    return false;
+    struct stat statbuf;
+    return ::stat(dbName.c_str(), &statbuf) == 0 &&
+        S_ISREG(statbuf.st_mode) && (statbuf.st_mode & S_IRUSR) == S_IRUSR;
 }
 
 int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
@@ -157,16 +166,17 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
         error.setErrInfo(errno, "Query results missing");
         return -1;
     }
-    off_t pos = lseek(fd, fileOffset, SEEK_SET);
+    off_t pos = ::lseek(fd, fileOffset, SEEK_SET);
     if (pos == static_cast<off_t>(-1) || pos != fileOffset) {
         error.setErrInfo(errno, "Unable to seek in query results");
         return -1;
     }
-    ssize_t bytes = read(fd, buffer, bufferSize);
+    ssize_t bytes = ::read(fd, buffer, bufferSize);
     if (bytes == -1) {
         error.setErrInfo(errno, "Unable to read query results");
         return -1;
     }
+    ::close(fd);
     return bytes;
 }
 
@@ -247,7 +257,14 @@ bool qWorker::MySqlFsFile::_runScript(
         return false;
     }
 
-    std::string result = runQuery(db.get(), "CREATE DATABASE " + dbName);
+    std::string result =
+        runQuery(db.get(), "DROP DATABASE IF EXISTS " + dbName);
+    if (result.size() != 0) {
+        error.setErrInfo(EIO, result.c_str());
+        return false;
+    }
+
+    result = runQuery(db.get(), "CREATE DATABASE " + dbName);
     if (result.size() != 0) {
         error.setErrInfo(EIO, result.c_str());
         return false;
@@ -281,8 +298,22 @@ bool qWorker::MySqlFsFile::_runScript(
     }
 
     // mysqldump _dbName to _dumpName
-    std::string cmd = (boost::format("mysqldump %1% > %2%")
-                       % dbName % _dumpName).str();
+    std::string::size_type pos = 0;
+    struct stat statbuf;
+    while ((pos = _dumpName.find('/', pos + 1)) != std::string::npos) {
+        std::string dir(_dumpName, 0, pos);
+        if (::stat(dir.c_str(), &statbuf) == -1) {
+            if (errno == ENOENT) {
+                mkdir(dir.c_str(), 0777);
+            }
+        }
+    }
+
+    std::string cmd = (boost::format(
+            "/usr/bin/mysqldump"
+            " --compact --add-locks --create-options --skip-lock-tables"
+            " --result-file=%1% %2%")
+                       % _dumpName % dbName).str();
     if (system(cmd.c_str()) != 0) {
         error.setErrInfo(errno, ("Unable to dump database " + dbName +
                                  " to " + _dumpName).c_str());
@@ -290,6 +321,7 @@ bool qWorker::MySqlFsFile::_runScript(
     }
 
     // Record query in query cache table
+    /*
     result = runQuery(db.get(),
                       "INSERT INTO qcache.Queries "
                       "(queryTime, query, db, path) "
@@ -303,6 +335,7 @@ bool qWorker::MySqlFsFile::_runScript(
         error.setErrInfo(EIO, result.c_str());
         return false;
     }
+    */
 
     result = runQuery(db.get(), "DROP DATABASE " + dbName);
     if (result.size() != 0) {

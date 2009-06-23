@@ -1,19 +1,25 @@
 # -*- python -*-
+import subprocess, os, sys
+
 Import("env")
-import glob
 
-for src in glob.glob("*.cc"):
-    env.Program(src, LIBS=env.getlibs(env["eups_product"]))
+env.Append(LIBPATH = ["../lib"])
+env.Append(LIBS = ["qserv_worker"])
 
-#
-# Tests
-#
-import lsst.tests
+def run_test(target, source, env):
+    log = file(str(target[0]) + ".failed", "w")
+    ret = subprocess.call(str(source[0]),
+            stdout=log, stderr=log, env=os.environ)
+    log.close()
+    if ret == 0:
+        os.rename(str(target[0]) + ".failed", str(target[0]))
+    else:
+        print >> sys.stderr, "*** TEST FAILED ***", source[0]
+    return ret
 
-suffix = env['LDMODULESUFFIX']
-tests = lsst.tests.Control(env, verbose = True)
-for target in tests.run("*.cc"):
-    env.Depends(target, "../lib/libqserv_worker%s" % (suffix,))
-
-# for target in tests.run("*.py"):
-#     env.Depends(target, "../python/lsst/qserv/worker/_workerLib%s" % (suffix,))
+bld = Builder(action = run_test, prefix = ".tests/")
+env.Append(BUILDERS = {'Test': bld})
+for src in Glob("*.cc"):
+    prog = env.Program(src)
+    test = env.Test(prog)
+    env.Depends(test, env['built_libs'])

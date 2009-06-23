@@ -2,10 +2,12 @@
 Import('env')
 import os, fnmatch
 
-pkg = env["eups_product"]
 sources = []
 for root, dirs, files in os.walk("../src"):
     sources += [os.path.join(root, f) for f in fnmatch.filter(files, "*.cc")]
     dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
-env.SharedLibrary(pkg, sources,
-    LIBS=filter(lambda x: x != pkg, env.getlibs(pkg)))
+env.Append(CPPPATH = ['../include'])
+env.Replace(RPATH = env['LIBPATH'])
+env.Append(RPATH = [os.path.realpath('.')])
+lib = env.SharedLibrary("qserv_worker", sources)
+env.Append(built_libs = [lib])

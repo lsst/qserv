@@ -3,76 +3,69 @@
 # Setup our environment
 #
 # Do not change these
-import glob, os.path, re, sys
-import lsst.SConsUtils as scons
+import glob, os, re, sys
 
-# List the direct *and indirect* pacakage dependencies of your package here.
-# Indirect dependencies are needed to get header files.
-dependencies = ["boost", "mysqlclient"]
+env = Environment()
 
-env = scons.makeEnv(
-        # The name of your package goes here.
-        "qserv_worker",
-        # This is used to try to get some version information.
-        r"$HeadURL$",
-        [
-        # For each dependency above, include one or more lines listing
-        # at least one required header file and, if needed, a shared library.
-        # For maximum safety, all header files and all shared libraries used
-        # could be listed, but typically ensuring that one is available will
-        # be sufficient to make sure the rest of the package is available.
+xrd_dir = "/scratch/xrd/xrootd";
+if os.environ.has_key('XRD_DIR'):
+    xrd_dir = os.environ['XRD_DIR']
+if not os.path.exists(xrd_dir):
+    xrd_dir = "/home/ktl"
+if not os.path.exists(xrd_dir):
+    print >> sys.stderr, "Could not locate xrootd base directory"
+    Exit(1)
+xrd_platform = "x86_64_linux_26"
+if not os.path.exists(os.path.join(xrd_dir, "lib", xrd_platform)):
+    xrd_platform = "i386_linux26"
+if not os.path.exists(os.path.join(xrd_dir, "lib", xrd_platform)):
+    print >> sys.stderr, "Could not locate xrootd libraries"
+    Exit(1)
+env.Append(CPPPATH = [os.path.join(xrd_dir, "src")])
+env.Append(LIBPATH = [os.path.join(xrd_dir, "lib", xrd_platform)])
 
-        # If a header and library are required, list them both.
-        # The library name should not include "lib" or ".so" or ".dylib".
-        # It should always have ":C++" suffixed.
-        ["boost", "boost/regex.hpp", "boost_regex:C++"],
-        ["mysqlclient", "mysql/mysql.h", "mysqlclient:C"]
-        ])
-env.Append(CPPPATH = ["/home/ktl/xrootd/src"])
-env.Append(LIBPATH = ["/home/ktl/xrootd/lib/i386_linux26"])
-env.libs["qserv_worker"] += ["XrdSys", "ssl"]
+boost_dir = "/u1/lsst/stack/Linux64/external/boost/1.37.0"
+if os.environ.has_key('BOOST_DIR'):
+    boost_dir = os.environ['BOOST_DIR']
+if not os.path.exists(boost_dir):
+    boost_dir = "/afs/slac/g/ki/lsst/home/Linux/external/boost/1.37.0"
+if not os.path.exists(boost_dir):
+    print >> sys.stderr, "Could not locate Boost base directory (BOOST_DIR)"
+    Exit(1)
+env.Append(CPPPATH = [os.path.join(boost_dir, "include")])
+env.Append(LIBPATH = [os.path.join(boost_dir, "lib")])
+
+conf = Configure(env)
+if not conf.CheckLibWithHeader("mysqlclient", "mysql/mysql.h", "c"):
+    print >> sys.stderr, "Could not locate mysqlclient"
+    Exit(1)
+if not conf.CheckLib("ssl"):
+    print >> sys.stderr, "Could not locate ssl"
+    Exit(1)
+if not conf.CheckLibWithHeader("XrdSys", "XrdSfs/XrdSfsInterface.hh", "C++"):
+    print >> sys.stderr, "Could not locate XrdSys"
+    Exit(1)
+if not conf.CheckCXXHeader("boost/regex.hpp"):
+    print >> sys.stderr, "Could not locate Boost headers"
+    Exit(1)
+if not conf.CheckLib("boost_regex-gcc43-mt", language="C++") \
+    and not conf.CheckLib("boost_regex-gcc34-mt", language="C++") \
+    and not conf.CheckLib("boost_regex", language="C++"):
+    print >> sys.stderr, "Could not locate boost_regex library"
+    Exit(1)
+env = conf.Finish()
 
 # Describe what your package contains here.
 env.Help("""
 LSST Query Services worker package
 """)
 
-###############################################################################
-# Boilerplate below here.  Do not modify.
-
-pkg = env["eups_product"]
-env.libs[pkg] += env.getlibs(" ".join(dependencies))
-
 #
 # Build/install things
 #
-for d in Split("lib python examples tests doc"):
-    if d == "python":
-        d = os.path.join(d, "lsst")
-        for i in pkg.split("_"):
-            d = os.path.join(d, i)
+for d in Split("lib tests doc"):
     if os.path.isdir(d):
         try:
-            SConscript(os.path.join(d, "SConscript"))
+            SConscript(os.path.join(d, "SConscript"), exports='env')
         except Exception, e:
             print >> sys.stderr, "%s: %s" % (os.path.join(d, "SConscript"), e)
-
-env['IgnoreFiles'] = r"(~$|\.pyc$|^\.svn$|\.o$)"
-
-Alias("install", [env.Install(env['prefix'], "python"),
-                  env.Install(env['prefix'], "include"),
-                  env.Install(env['prefix'], "lib"),
-                  env.InstallAs(os.path.join(env['prefix'], "doc", "doxygen"),
-                                os.path.join("doc", "htmlDir")),
-                  env.InstallEups(os.path.join(env['prefix'], "ups"))])
-
-scons.CleanTree(r"*~ core *.so *.os *.o")
-
-#
-# Build TAGS files
-#
-files = scons.filesToTag()
-if files:
-    env.Command("TAGS", files, "etags -o $TARGET $SOURCES")
-
-env.Declare()
