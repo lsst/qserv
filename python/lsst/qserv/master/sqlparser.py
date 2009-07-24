@@ -1,4 +1,7 @@
 
+from collections import defaultdict
+from itertools import imap
+
 # Extended from Paul McGuire's simpleSQL.py which was a sample from
 # the pyparsing project ( http://pyparsing.wikispaces.com/ )
 # Some changes:
@@ -107,17 +110,29 @@ class QueryMunger:
                  "%smin between %s and %s" % (col, cmin, cmax)]
         return "(%s)" % " OR ".join(clist)
         
-    def computeChunkQuery(self, chunktuple):
-        # chunktuple is (chunkid, subchunkid)
+    def computeChunkQuery(self, chunk, sublist):
+        print "chunk query for c=", chunk, " sl=", sublist 
         g = Grammar()
         def replaceObj(tokens):
             for i in range(len(tokens)):
-                if tokens[i].upper() == "OBJ":
-                    tokens[i] = "OBJ_%d_%d" % chunktuple
+                if tokens[i].upper() == "OBJECT":
+                    tokens[i] = "Subchunks_%d.Object_%d_%d"
             
         g.tableAction.append(replaceObj)
         blah = g.simpleSQL.parseString(self.original)
-        return self._flatten(blah)
+        print "sublist", sublist
+        header = '-- SUBCHUNKS:' + ", ".join(imap(str,sublist))
+        querytemplate = self._flatten(blah) + ";"
+        chunkqueries = [querytemplate % (chunk, s, chunk) for s in sublist]
+        return "\n".join([header] + chunkqueries)
+
+    def collectSubChunkTuples(self, chunktuples):
+        # Use dictionary to collect tuples by chunk #.
+        d = defaultdict(list)
+        for chunk, subchunk in chunktuples:
+            d[chunk].append(subchunk)
+        
+        return d
     
     def computePartMapQuery(self):
         g = Grammar()
@@ -138,9 +153,9 @@ class QueryMunger:
             whereList.append(tok)
         g.whereExpAction.append(convert)
  
-        print self.original, "BEFORE_____"
+        #print self.original, "BEFORE_____"
         t = g.simpleSQL.parseString(self.original)
-        print self.original, "AFTER_____"
+        #print self.original, "AFTER_____"
         flatTokens = self._flatten(t)
         flatWhere = self._flatten(t.where)
         flatFirst = flatTokens[:flatTokens.find(flatWhere)]
@@ -151,7 +166,7 @@ class QueryMunger:
         # print "flatmunge", flatMunge
         
         pquery = "SELECT chunkid,subchunkid FROM partmap %s;" % flatWhere
-
+        
         # Unpack from the parser structure.
         whereList = map(lambda t: t[0][0], whereList) 
 
@@ -252,7 +267,7 @@ if __name__ == '__main__':
     quer = "select * from obj where ra between 2 and 5 and decl between 1 and 10;"
     test(quer)
     tokens = getTokens(quer)
-    print "aslist", tokens.asList()
-    print "where", tokens.where
-    print "wherecond", tokens.where.asList()
+    # print "aslist", tokens.asList()
+    # print "where", tokens.where
+    # print "wherecond", tokens.where.asList()
     pass

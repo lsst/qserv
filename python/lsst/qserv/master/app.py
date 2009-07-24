@@ -1,3 +1,4 @@
+
 import os
 import MySQLdb as sql
 
@@ -14,11 +15,13 @@ class Persistence:
 
     def activate(self):
         self._conn = sql.connect(host = "localhost",
-                                user = "test",
-                                passwd = "",
-                                db = "test")
+                                 user = "test",
+                                 passwd = "",
+                                 db = "test")
         c = self._conn.cursor()
         # should check if db exists here.
+        # Database gets populated with fake data automatically, but
+        # the db "test" must exist.
         pass
 
     def _dropSilent(self, cursor, tables):
@@ -135,10 +138,11 @@ class QueryAction:
         p = Persistence()
         p.activate()
         chunktuples = p.issueQuery(query)
+        collected = self.queryMunger.collectSubChunkTuples(chunktuples)
         
-        for t in chunktuples:
-            q = self.queryMunger.computeChunkQuery(t)
-            self.issueXrd(t, q)
+        for chunk in collected:
+            q = self.queryMunger.computeChunkQuery(chunk, collected[chunk])
+            self.issueXrd(chunk, q)
         
 
         #print self.queryStr, "resulted in", query
@@ -156,19 +160,27 @@ class QueryAction:
         print "null query invoke"
         pass
 
-    def issueXrd(self, chunktuple, query):
-        (chunk, subchunk) = chunktuple
-        host = "localhost"
-        port = 8888
-        urlTempl = "xrootd://%s:%d//query/object/%d" %(host, port, chunk)
-        print "Issuing (%d %d)" % chunktuple, "via", urlTempl
+    def issueXrd(self, chunk, query):
+
+        print "Asked to issue '%s' to xrd." % query
+        # debug:
+        #query = "--SUBCHUNKS: 0\nselect * from qserv.dummy_%1% ;"
+
+        ## Will need to add specificity for particular tables
+        host = "lsst-dev01"
+        port = 1094
+        user = "qsmaster"
+        urlTempl = "xroot://%s@%s:%d//query/%d" % (user, host, port, chunk)
+        print "Issuing (%d)" % chunk, "via", urlTempl
+        print "query is", query
+        ## return
         handle = xrdOpen(urlTempl, os.O_RDWR)
         print "got handle", handle
-        q = "placeholder"
+        q = query
         wCount = xrdWrite(handle, charArray_frompointer(q), len(q))
         print "wrote ", wCount, "out of", len(q)
         while True:
-            bufSize = 10
+            bufSize = 10 # lower level may ignore, so may want to set big.
             buf = charArray(bufSize)
             rCount = xrdRead(handle, buf, bufSize)
             print "got", rCount, 
@@ -176,6 +188,8 @@ class QueryAction:
                 break
             s = "".join(map(lambda x: buf[x], range(rCount)))
             print "(", s, ")"
+            # always quit right now. 
+            break
 
                          
         pass

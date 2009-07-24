@@ -25,7 +25,7 @@ class TestAppFunctions(unittest.TestCase):
         class Dummy:
             pass
         arg = Dummy()
-        arg.args = {'q':['select * from obj where ra between 2 and 5 and decl between 1 and 10;',]}
+        arg.args = {'q':['select * from Object where ra between 2 and 5 and decl between 1 and 10;',]}
         print ci.query(arg)
         self.assert_(True) # placeholder
 
