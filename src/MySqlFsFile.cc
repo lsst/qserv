@@ -81,6 +81,18 @@ static std::string runQuery(MYSQL* db, std::string query,
     return std::string();
 }
 
+static int findChunkNumber(char const* path) {
+    // path looks like: "/query/314159"
+    // Idea: Choose last /-delimited element and try conversion.
+    std::string p(path);
+    int last = p.length()-1;
+    // Strip trailing / if present
+    if(p[last] == '/') --last;
+    int first = p.rfind('/', last) + 1 ; // Move right of the found '/'
+    std::string numberstring = p.substr(first, 1 + last - first);
+    long result = strtol(numberstring.c_str(), 0, 10);
+    return result;
+}
 
 qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user) :
     XrdSfsFile(user), _eDest(lp), 
@@ -103,9 +115,10 @@ int qWorker::MySqlFsFile::open(
         error.setErrInfo(EINVAL, "Null filename");
         return SFS_ERROR;
     }
-    _chunkId = strtol(fileName, 0, 10);
-    _eDest->Say((boost::format("File open(%1%) by %2%")
-                 % _chunkId % _userName).str().c_str());
+
+    _chunkId = findChunkNumber(fileName);
+    _eDest->Say((boost::format("File open %1%(%2%) by %3%")
+                 % fileName % _chunkId % _userName).str().c_str());
     return SFS_OK;
 }
 
