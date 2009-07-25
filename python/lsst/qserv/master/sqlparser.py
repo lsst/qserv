@@ -123,7 +123,7 @@ class QueryMunger:
         print "sublist", sublist
         header = '-- SUBCHUNKS:' + ", ".join(imap(str,sublist))
         querytemplate = self._flatten(blah) + ";"
-        chunkqueries = [querytemplate % (chunk, s, chunk) for s in sublist]
+        chunkqueries = [querytemplate % (chunk, chunk, s) for s in sublist]
         return "\n".join([header] + chunkqueries)
 
     def collectSubChunkTuples(self, chunktuples):
