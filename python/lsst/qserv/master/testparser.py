@@ -3,9 +3,43 @@ import unittest
 
 import app
 import server
+import sqlparser
 
+nearNeighborQuery = """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+  AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;"""
+nnSelectPart = "SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl)"
+
+def flatten(someList):
+    if(type(someList) == type([])):
+        print someList, "is a list outer"
+        r = []
+        for e in someList:
+            if(type(e) == type([])):
+                print e, "is a list"
+                r.extend(flatten(e))
+            else:
+                r.append(e)
+        return r
+    print someList, "isn't a list"
+    return "Error"
+        
 class TestAppFunctions(unittest.TestCase):
     def setUp(self):
+        pass
+    
+    def testGrammarSelectPart(self):
+        """Test select-portion parsing"""
+        g = sqlparser.Grammar()
+        res = g.selectPart.parseString(nnSelectPart)
+        self.assert_("spdist" in res[:])
+        res = g.identExpr.parseString("spdist(a.b, c.d)")
+        self.assert_("spdist" in res[:])
+        res = g.functionExpr.parseString("spdist(a.b, c.d)")
+        
+    def testGrammarParseNearNeighbor(self):
+        """Tries to parse a near neighbor query."""
+        g = sqlparser.Grammar()
+        g.simpleSQL.parseString(nearNeighborQuery)
         pass
 
     def testQueryInsert(self):
@@ -25,7 +59,8 @@ class TestAppFunctions(unittest.TestCase):
         class Dummy:
             pass
         arg = Dummy()
-        arg.args = {'q':['select * from Object where ra between 2 and 5 and decl between 1 and 10;',]}
+        #arg.args = {'q':['select * from Object where ra between 2 and 5 and decl between 1 and 10;',]} 
+        arg.args = {'q':[nearNeighborQuery]}
         print ci.query(arg)
         self.assert_(True) # placeholder
 

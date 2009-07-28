@@ -30,17 +30,43 @@ class Grammar:
         selectStmt = Forward()
         selectToken = Keyword("select", caseless=True)
         fromToken   = Keyword("from", caseless=True)
+        asToken   = Keyword("as", caseless=True)
 
-        ident          = Word( alphas, alphanums + "_$" ).setName("identifier")
+        ident = Word( alphas, alphanums + "_$" ).setName("identifier")
+
         columnName     = delimitedList( ident, ".", combine=True )
-        columnName.setParseAction(upcaseTokens)
-
+        #columnName.setParseAction(upcaseTokens)
         columnNameList = Group( delimitedList( columnName ) )
+
+        functionExpr = ident + Literal('(') + columnNameList + Literal(')')
+        alias = Forward()
+        identExpr  = functionExpr | ident
+        self.identExpr = identExpr
+        self.functionExpr = functionExpr
+        alias = ident.copy()
+
+        selectableList = Group( delimitedList(identExpr | columnName ))
+        columnRef = columnName
+        functionSpec = functionExpr
+        valueExprPrimary = functionSpec | columnRef
+        numPrimary = valueExprPrimary ## | numericValFunc
+        factor = Optional(Literal("+") | Literal("-")) + numPrimary
+        term = Forward()
+        term = factor | (term + Literal("*") + factor) | (term + Literal("/") + factor)
+        numericExpr = Forward()
+        numericExpr = term | (numericExpr + Literal('+') + term) | (numericExpr + Literal('-') + term)
+        valueExpr = numericExpr ## | stringExpr | dateExpr | intervalExpr
+        derivedColumn = valueExpr + Optional(Optional(asToken) + alias)
+        selectSubList = delimitedList(derivedColumn)
+
+
         tableName      = delimitedList( ident, ".", combine=True )
         tableName.setParseAction(upcaseTokens)
         self.tableAction = []
         tableName.addParseAction(self.actionWrapper(self.tableAction))
-        tableNameList  = Group( delimitedList( tableName ) )
+        genericTableName = tableName + Optional(Optional(asToken) + ident) 
+        tableNameList  = Group( delimitedList( genericTableName ) )
+
 
         whereExpression = Forward()
         and_ = Keyword("and", caseless=True)
@@ -76,9 +102,9 @@ class Grammar:
    
         whereExpression << whereCondition.setResultsName("wherecond") + ZeroOrMore( ( and_ | or_ ) + whereExpression ) 
 
+        self.selectPart = selectToken + ( '*' | selectSubList ).setResultsName( "columns" )
         # define the grammar
-        selectStmt      << ( selectToken + 
-                             ( '*' | columnNameList ).setResultsName( "columns" ) + 
+        selectStmt      << ( self.selectPart +                         
                              fromToken + 
                              tableNameList.setResultsName( "tables" ) + 
                              Optional( Group( CaselessLiteral("where") 
