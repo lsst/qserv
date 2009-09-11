@@ -39,7 +39,8 @@ class TestAppFunctions(unittest.TestCase):
     def testGrammarParseNearNeighbor(self):
         """Tries to parse a near neighbor query."""
         g = sqlparser.Grammar()
-        g.simpleSQL.parseString(nearNeighborQuery)
+        res = g.simpleSQL.parseString(nearNeighborQuery)
+        
         pass
 
     def testQueryInsert(self):

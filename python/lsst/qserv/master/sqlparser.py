@@ -6,12 +6,16 @@ from itertools import imap
 # the pyparsing project ( http://pyparsing.wikispaces.com/ )
 # Some changes:
 # support for BETWEEN in WHERE expressions
+# support for aliasing.  AS keyword is required, otherwise pyparsing
+# mistakes "FROM" for an alias (pyparsing is not recursive descent). 
+
+
 
 from pyparsing import \
     Literal, CaselessLiteral, Word, Upcase,\
     delimitedList, Optional, Combine, Group, alphas, nums, \
     alphanums, ParseException, Forward, oneOf, quotedString, \
-    ZeroOrMore, restOfLine, Keyword, upcaseTokens
+    ZeroOrMore, restOfLine, Keyword, upcaseTokens, Or
 
 class Grammar:
 
@@ -31,6 +35,7 @@ class Grammar:
         selectToken = Keyword("select", caseless=True)
         fromToken   = Keyword("from", caseless=True)
         asToken   = Keyword("as", caseless=True)
+        semicolon = Literal(";")
 
         ident = Word( alphas, alphanums + "_$" ).setName("identifier")
 
@@ -56,17 +61,21 @@ class Grammar:
         numericExpr = Forward()
         numericExpr = term | (numericExpr + Literal('+') + term) | (numericExpr + Literal('-') + term)
         valueExpr = numericExpr ## | stringExpr | dateExpr | intervalExpr
-        derivedColumn = valueExpr + Optional(Optional(asToken) + alias)
+        derivedColumn = valueExpr + Optional(asToken + alias)
         selectSubList = delimitedList(derivedColumn)
 
 
         tableName      = delimitedList( ident, ".", combine=True )
-        tableName.setParseAction(upcaseTokens)
+        # don't upcase table names anymore
+        # tableName.setParseAction(upcaseTokens) 
         self.tableAction = []
         tableName.addParseAction(self.actionWrapper(self.tableAction))
-        genericTableName = tableName + Optional(Optional(asToken) + ident) 
+        tableName.setResultsName("table")
+        tableAlias = tableName + asToken + ident.setResultsName("aliasName")
+        tableAlias.setResultsName("alias")
+        genericTableName = tableAlias | tableName
+        genericTableName = genericTableName.setResultsName("tablename")
         tableNameList  = Group( delimitedList( genericTableName ) )
-
 
         whereExpression = Forward()
         and_ = Keyword("and", caseless=True)
@@ -100,17 +109,54 @@ class Grammar:
         whereCondition = Group(whereConditionFlat 
                                | ( "(" + whereExpression + ")" ))
    
-        whereExpression << whereCondition.setResultsName("wherecond") + ZeroOrMore( ( and_ | or_ ) + whereExpression ) 
+        #whereExpression << whereCondition.setResultsName("wherecond")
+        #+ ZeroOrMore( ( and_ | or_ ) + whereExpression ) 
+        def scAnd(tok):
+            print "scAnd", tok
+            if "TRUE" == tok[0][0]:
+                tok = tok[2] 
+            elif "TRUE" == tok[2][0]:
+                tok = tok[0]
+                
+            return tok
+        def scOr(tok):
+            print "scOr", tok
+            if ("TRUE" == tok[0][0]) or ("TRUE" == tok[2][0]):
+                tok = [["TRUE"]]
+            return tok
+        def scWhere(tok):
+            if ("TRUE" == tok[0][0]) or ("TRUE" == tok[2][0]):
+                tok = [["TRUE"]]
+            return tok
+        
+        def collapseWhere(tok):
+#            if "TRUE" == tok[1][0]:
+ #               tok = None
+            return tok
+                        
+        whereCondNamed = whereCondition
+        andExpr = whereCondNamed + and_ + whereExpression
+        orExpr = whereCondNamed + or_ + whereExpression
+        andExpr.addParseAction(scAnd)
+        orExpr.addParseAction(scOr)
+        whereExpression << Or([andExpr, orExpr, whereCondNamed])
+        whereExpression.addParseAction(scWhere)
+         
 
         self.selectPart = selectToken + ( '*' | selectSubList ).setResultsName( "columns" )
+        whereClause = Optional(Group(CaselessLiteral("where") + 
+                                      whereExpression), 
+                               "").setResultsName("where") 
+        self.whereClause = whereClause.setResultsName("asdfl")
+        whereClause.addParseAction(collapseWhere)
+
         # define the grammar
         selectStmt      << ( self.selectPart +                         
                              fromToken + 
-                             tableNameList.setResultsName( "tables" ) + 
-                             Optional( Group( CaselessLiteral("where") 
-                                              + whereExpression ), "" ).setResultsName("where") )
+                             tableNameList.setResultsName( "tables" ) +
+                             whereClause)
     
-        self.simpleSQL = selectStmt
+        self.simpleSQL = selectStmt + semicolon
 
         # define Oracle comment format, and ignore them
         oracleSqlComment = "--" + restOfLine
@@ -162,6 +208,7 @@ class QueryMunger:
     
     def computePartMapQuery(self):
         g = Grammar()
+        pVariables = set(["RA", "DECL"])
         tableList = []
         whereList = []
 
@@ -173,29 +220,47 @@ class QueryMunger:
             x = tokens[0] # Unnest
             if x[1].upper() == "BETWEEN":
                 return self.convertBetween(x)
+            return tokens
             
         # Track the where expressions
         def accuWhere(tok):
             whereList.append(tok)
-        g.whereExpAction.append(convert)
+            return tok
+        def compose(tok):
+            return convert(tok)
+            
+        def onlyStatic(tok):
+            print "---whereCond action", tok
+            condition = tok[0]
+            def partMapCares(token):
+                return token.upper() in pVariables
+            if not filter(partMapCares, condition):
+                tok[0] = "TRUE";
+            return tok
+        #g.whereExpAction.append(convert)
+        #g.whereExpAction.append(compose)
+        g.whereExpAction.append(onlyStatic)
  
-        #print self.original, "BEFORE_____"
-        t = g.simpleSQL.parseString(self.original)
-        #print self.original, "AFTER_____"
+        print self.original, "BEFORE_____"
+        t = g.simpleSQL.parseString(self.original, parseAll=True)
+        print self.original, "AFTER_____"
         flatTokens = self._flatten(t)
+        print "flatTokens", flatTokens
         flatWhere = self._flatten(t.where)
+        print "whereList", whereList
+        print "FlatWhere----",flatWhere
         flatFirst = flatTokens[:flatTokens.find(flatWhere)]
-        flatTable = self._flatten(tableList)
+        QueryMunger.lastwhere = t.where
         # print "whereflatten", flatWhere 
         # print "flatFirst", flatFirst
-        flatMunge = flatFirst[:flatFirst.find(flatTable)]
+        #flatMunge = flatFirst[:flatFirst.find(flatTable)]
         # print "flatmunge", flatMunge
         
         pquery = "SELECT chunkid,subchunkid FROM partmap %s;" % flatWhere
         
         # Unpack from the parser structure.
         whereList = map(lambda t: t[0][0], whereList) 
-
+        print "unpacked wherelist",whereList
 ## self._flatten(t.where)
         return pquery
 
@@ -289,6 +354,20 @@ def findLocationFromQuery(query):
     # by chunk and node.
     pass
 
+def mytest():
+    q3 = """SELECT id FROM Object where blah < 3 AND decl > 4;""" 
+    q2 = """SELECT id FROM Object where ra between 2 and 5 AND blah <
+    3 AND decl > 4;"""
+    q = """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+  AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;"""
+#    qm = QueryMunger(q)
+#    s = qm.computePartMapQuery()
+    qm2 = QueryMunger(q3)
+    s2 = qm2.computePartMapQuery()
+
+    print "pmquery=", s2
+
+
 if __name__ == '__main__':
     quer = "select * from obj where ra between 2 and 5 and decl between 1 and 10;"
     test(quer)
@@ -297,3 +376,6 @@ if __name__ == '__main__':
     # print "where", tokens.where
     # print "wherecond", tokens.where.asList()
     pass
+
+
+    

@@ -135,6 +135,7 @@ class QueryAction:
         self.queryMunger = sqlparser.QueryMunger(self.queryStr)
         
         query = self.queryMunger.computePartMapQuery()
+        print "partmapquery is", query
         p = Persistence()
         p.activate()
         chunktuples = p.issueQuery(query)
