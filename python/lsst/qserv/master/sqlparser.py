@@ -9,8 +9,6 @@ from itertools import imap
 # support for aliasing.  AS keyword is required, otherwise pyparsing
 # mistakes "FROM" for an alias (pyparsing is not recursive descent). 
 
-
-
 from pyparsing import \
     Literal, CaselessLiteral, Word, Upcase,\
     delimitedList, Optional, Combine, Group, alphas, nums, \
@@ -35,6 +33,7 @@ class Grammar:
         selectToken = Keyword("select", caseless=True)
         fromToken   = Keyword("from", caseless=True)
         asToken   = Keyword("as", caseless=True)
+        whereToken = Keyword("where", caseless=True)
         semicolon = Literal(";")
 
         ident = Word( alphas, alphanums + "_$" ).setName("identifier")
@@ -108,7 +107,7 @@ class Grammar:
         whereConditionFlat.addParseAction(self.actionWrapper(self.whereExpAction))
         whereCondition = Group(whereConditionFlat 
                                | ( "(" + whereExpression + ")" ))
-   
+
         #whereExpression << whereCondition.setResultsName("wherecond")
         #+ ZeroOrMore( ( and_ | or_ ) + whereExpression ) 
         def scAnd(tok):
@@ -125,37 +124,42 @@ class Grammar:
                 tok = [["TRUE"]]
             return tok
         def scWhere(tok):
-            if ("TRUE" == tok[0][0]) or ("TRUE" == tok[2][0]):
-                tok = [["TRUE"]]
-            return tok
+            newtok = []
+            i = 0
+            while i < len(tok):
+                if str(tok[i]) in ["TRUE",str(["TRUE"])] and (i+1) < len(tok):
+                    if str(tok[i+1]).upper() == "AND":
+                        i += 2
+                        continue
+                    elif str(tok[i+i]).upper() == "OR":
+                        break
+                newtok.append(tok[i])
+                i += 1
+            return newtok
         
         def collapseWhere(tok):
-#            if "TRUE" == tok[1][0]:
- #               tok = None
+            #collapse.append(tok[0][1])
+            if ["TRUE"] == tok.asList()[0][1]:
+                tok = [] 
             return tok
-                        
-        whereCondNamed = whereCondition
-        andExpr = whereCondNamed + and_ + whereExpression
-        orExpr = whereCondNamed + or_ + whereExpression
-        andExpr.addParseAction(scAnd)
-        orExpr.addParseAction(scOr)
-        whereExpression << Or([andExpr, orExpr, whereCondNamed])
+        andExpr = and_ + whereExpression
+        orExpr = or_ + whereExpression
+        whereExpression << whereCondition + ZeroOrMore(
+            andExpr | orExpr)
         whereExpression.addParseAction(scWhere)
-         
 
         self.selectPart = selectToken + ( '*' | selectSubList ).setResultsName( "columns" )
-        whereClause = Optional(Group(CaselessLiteral("where") + 
-                                      whereExpression), 
-                               "").setResultsName("where") 
-        self.whereClause = whereClause.setResultsName("asdfl")
+        whereClause = Group(whereToken + 
+                            whereExpression).setResultsName("where") 
         whereClause.addParseAction(collapseWhere)
+        self.fromPart = fromToken + tableNameList.setResultsName("tables")
 
         # define the grammar
         selectStmt      << ( self.selectPart +                         
                              fromToken + 
                              tableNameList.setResultsName( "tables" ) +
                              whereClause)
-    
+        
         self.simpleSQL = selectStmt + semicolon
 
         # define Oracle comment format, and ignore them
@@ -230,38 +234,22 @@ class QueryMunger:
             return convert(tok)
             
         def onlyStatic(tok):
-            print "---whereCond action", tok
             condition = tok[0]
             def partMapCares(token):
                 return token.upper() in pVariables
             if not filter(partMapCares, condition):
                 tok[0] = "TRUE";
             return tok
-        #g.whereExpAction.append(convert)
-        #g.whereExpAction.append(compose)
         g.whereExpAction.append(onlyStatic)
  
-        print self.original, "BEFORE_____"
+        #print self.original, "BEFORE_____"
         t = g.simpleSQL.parseString(self.original, parseAll=True)
-        print self.original, "AFTER_____"
-        flatTokens = self._flatten(t)
-        print "flatTokens", flatTokens
+        #print self.original, "AFTER_____"
+        #flatTokens = self._flatten(t)
         flatWhere = self._flatten(t.where)
-        print "whereList", whereList
-        print "FlatWhere----",flatWhere
-        flatFirst = flatTokens[:flatTokens.find(flatWhere)]
-        QueryMunger.lastwhere = t.where
-        # print "whereflatten", flatWhere 
-        # print "flatFirst", flatFirst
-        #flatMunge = flatFirst[:flatFirst.find(flatTable)]
-        # print "flatmunge", flatMunge
         
         pquery = "SELECT chunkid,subchunkid FROM partmap %s;" % flatWhere
         
-        # Unpack from the parser structure.
-        whereList = map(lambda t: t[0][0], whereList) 
-        print "unpacked wherelist",whereList
-## self._flatten(t.where)
         return pquery
 
     def _flatten(self, l):
@@ -354,19 +342,16 @@ def findLocationFromQuery(query):
     # by chunk and node.
     pass
 
+qs=[ """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+  AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;""",
+     """SELECT id FROM Object where ra between 2 and 5 AND blah < 3 AND decl > 4;""", 
+     """SELECT id FROM Object where blah < 3 AND decl > 4;""" ]
 def mytest():
-    q3 = """SELECT id FROM Object where blah < 3 AND decl > 4;""" 
-    q2 = """SELECT id FROM Object where ra between 2 and 5 AND blah <
-    3 AND decl > 4;"""
-    q = """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
-  AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;"""
-#    qm = QueryMunger(q)
-#    s = qm.computePartMapQuery()
-    qm2 = QueryMunger(q3)
-    s2 = qm2.computePartMapQuery()
-
-    print "pmquery=", s2
-
+    for q in qs:
+        qm = QueryMunger(q)
+        s = qm.computePartMapQuery()
+        print "pmquery=", s
+    pass
 
 if __name__ == '__main__':
     quer = "select * from obj where ra between 2 and 5 and decl between 1 and 10;"
