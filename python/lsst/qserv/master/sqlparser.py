@@ -1,6 +1,7 @@
 
 from collections import defaultdict
 from itertools import imap
+import string
 
 # Extended from Paul McGuire's simpleSQL.py which was a sample from
 # the pyparsing project ( http://pyparsing.wikispaces.com/ )
@@ -192,14 +193,14 @@ class QueryMunger:
         def replaceObj(tokens):
             for i in range(len(tokens)):
                 if tokens[i].upper() == "OBJECT":
-                    tokens[i] = "Subchunks_%d.Object_%d_%d"
+                    tokens[i] = "Subchunks_${subc}.Object_${chunk}_${subc}"
             
         g.tableAction.append(replaceObj)
         blah = g.simpleSQL.parseString(self.original)
         print "sublist", sublist
         header = '-- SUBCHUNKS:' + ", ".join(imap(str,sublist))
-        querytemplate = self._flatten(blah) + ";"
-        chunkqueries = [querytemplate % (chunk, chunk, s) for s in sublist]
+        querytemplate = string.Template(self._flatten(blah) + ";")
+        chunkqueries = [querytemplate.substitute({'chunk': chunk, 'subc':s}) for s in sublist]
         return "\n".join([header] + chunkqueries)
 
     def collectSubChunkTuples(self, chunktuples):
