@@ -50,7 +50,9 @@ class Grammar:
         self.functionExpr = functionExpr # Debug
         alias = ident.copy()
 
-        selectableList = Group( delimitedList(identExpr | columnName ))
+        selectableName = identExpr | columnName
+
+        selectableList = Group( selectableName + ZeroOrMore(","+selectableName))
         columnRef = columnName
         functionSpec = functionExpr
         valueExprPrimary = functionSpec | columnRef
@@ -59,7 +61,7 @@ class Grammar:
         term = Forward()
         term = factor | (term + Literal("*") + factor) | (term + Literal("/") + factor)
         numericExpr = Forward()
-        numericExpr = term | (numericExpr + Literal('+') + term) | (numericExpr + Literal('-') + term)
+        numericExpr << term | (numericExpr + Literal('+') + term) | (numericExpr + Literal('-') + term)
         valueExpr = numericExpr ## | stringExpr | dateExpr | intervalExpr
         derivedColumn = valueExpr + Optional(asToken + alias)
         selectSubList = derivedColumn + ZeroOrMore("," + derivedColumn)
@@ -75,7 +77,8 @@ class Grammar:
         tableAlias.setResultsName("alias")
         genericTableName = tableAlias | tableName
         genericTableName = genericTableName.setResultsName("tablename")
-        tableNameList  = Group( delimitedList( genericTableName ) )
+        tableNameList  = Group( genericTableName 
+                                + ZeroOrMore("," + genericTableName))
 
         whereExpression = Forward()
         and_ = Keyword("and", caseless=True)
@@ -94,17 +97,17 @@ class Grammar:
                           Optional( E + Optional("+") + Word(nums) ) )
 
         # need to add support for alg expressions
-        columnRval = realNum | intNum | quotedString | columnName 
+        columnRval = realNum | intNum | quotedString | numericExpr
 
         self.whereExpAction = []
 
+        namedRv = columnRval.setResultsName("column")
         whereConditionFlat = Group(
-            ( columnName + binop + columnRval ) |
-            ( columnName + in_ + "(" + delimitedList( columnRval ) + ")" ) |
-            ( columnName + in_ + "(" + selectStmt + ")" ) |
-            ( columnName.setResultsName("column") 
-              + between_ + columnRval + and_ + columnRval ) 
-            )
+            ( namedRv + binop + columnRval ) |
+            ( namedRv + in_ + "(" + columnRval + ZeroOrMore(","+namedRv) + ")" ) |
+            ( namedRv + in_ + "(" + selectStmt + ")" ) |
+            ( namedRv + between_ + namedRv + and_ + namedRv ) )
+
         whereConditionFlat.addParseAction(self.actionWrapper(self.whereExpAction))
         whereCondition = Group(whereConditionFlat 
                                | ( "(" + whereExpression + ")" ))
@@ -193,7 +196,7 @@ class QueryMunger:
         def replaceObj(tokens):
             for i in range(len(tokens)):
                 if tokens[i].upper() == "OBJECT":
-                    tokens[i] = "Subchunks_${subc}.Object_${chunk}_${subc}"
+                    tokens[i] = "Subchunks_${chunk}.Object_${chunk}_${subc}"
             
         g.tableAction.append(replaceObj)
         parsed = g.simpleSQL.parseString(self.original)
@@ -236,8 +239,11 @@ class QueryMunger:
         def onlyStatic(tok):
             condition = tok[0]
             def partMapCares(token):
+                if getattr(token, '__iter__', False):
+                    return map(partMapCares, token)
                 return token.upper() in pVariables
-            if not filter(partMapCares, condition):
+            # Always collapse function calls since we can't pre-eval them.
+            if "(" in condition.asList() or not filter(partMapCares, condition):
                 tok[0] = "TRUE";
             return tok
         g.whereExpAction.append(onlyStatic)
@@ -360,12 +366,16 @@ qs=[ """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl)
   AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;""",
      """SELECT id FROM Object where ra between 2 and 5 AND blah < 3 AND decl > 4;""", 
      """SELECT id FROM Object where blah < 3 AND decl > 4;""",
-     "SELECT id,spdist(ra,decl,ra,decl) FROM Object WHERE id=1;" ]
+     "SELECT id,spdist(ra,decl,ra,decl) FROM Object WHERE id=1;",
+     """SELECT id,spdist(ra,decl,ra,decl) FROM Object WHERE spdist(ra,decl,ra,decl) < 1 AND id=1;""" ]
+qsl=[]
 def mytest():
     for q in qs:
         qm = QueryMunger(q)
+        qsl.append(q)
         s = qm.computePartMapQuery()
         print "pmquery=", s
+        
     pass
 
 if __name__ == '__main__':
