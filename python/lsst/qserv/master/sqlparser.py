@@ -43,7 +43,7 @@ class Grammar:
         #columnName.setParseAction(upcaseTokens)
         columnNameList = Group( columnName + ZeroOrMore("," + columnName))
 
-        functionExpr = ident + Literal('(') + columnNameList + Literal(')')
+        functionExpr = ident + Optional("."+ident) + Literal('(') + columnNameList + Literal(')')
         alias = Forward()
         identExpr  = functionExpr | ident
         self.identExpr = identExpr # Debug
@@ -59,9 +59,9 @@ class Grammar:
         numPrimary = valueExprPrimary ## | numericValFunc
         factor = Optional(Literal("+") | Literal("-")) + numPrimary
         term = Forward()
-        term = factor | (term + Literal("*") + factor) | (term + Literal("/") + factor)
+        term << (factor | (term + Literal("*") + factor) | (term + Literal("/") + factor))
         numericExpr = Forward()
-        numericExpr << term | (numericExpr + Literal('+') + term) | (numericExpr + Literal('-') + term)
+        numericExpr << (term | (numericExpr + Literal('+') + term) | (numericExpr + Literal('-') + term))
         valueExpr = numericExpr ## | stringExpr | dateExpr | intervalExpr
         derivedColumn = valueExpr + Optional(asToken + alias)
         selectSubList = derivedColumn + ZeroOrMore("," + derivedColumn)
@@ -265,8 +265,8 @@ class QueryMunger:
     def _flattenNoSpace(self, l):
         if isinstance(l, str): return l
         else:
-            nospaceBefore = ",();" ## set([",", "(", ")"])
-            nospaceAfter = ",(" ## set([",", "(", ")"])
+            nospaceBefore = ",.();" ## set([",", "(", ")"])
+            nospaceAfter = ",.(" ## set([",", "(", ")"])
             spaced = []
             for x in l:
                 flat = self._flattenNoSpace(x)
@@ -366,8 +366,8 @@ qs=[ """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl)
   AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;""",
      """SELECT id FROM Object where ra between 2 and 5 AND blah < 3 AND decl > 4;""", 
      """SELECT id FROM Object where blah < 3 AND decl > 4;""",
-     "SELECT id,spdist(ra,decl,ra,decl) FROM Object WHERE id=1;",
-     """SELECT id,spdist(ra,decl,ra,decl) FROM Object WHERE spdist(ra,decl,ra,decl) < 1 AND id=1;""" ]
+     "SELECT id,LSST.spdist(ra,decl,ra,decl) FROM Object WHERE id=1;",
+     """SELECT id,LSST.spdist(ra,decl,ra,decl) FROM Object WHERE LSST.spdist(ra,decl,ra,decl) < 1 AND id=1;""" ]
 qsl=[]
 def mytest():
     for q in qs:
