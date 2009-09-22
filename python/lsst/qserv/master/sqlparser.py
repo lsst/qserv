@@ -41,13 +41,13 @@ class Grammar:
 
         columnName     = delimitedList( ident, ".", combine=True )
         #columnName.setParseAction(upcaseTokens)
-        columnNameList = Group( delimitedList( columnName ) )
+        columnNameList = Group( columnName + ZeroOrMore("," + columnName))
 
         functionExpr = ident + Literal('(') + columnNameList + Literal(')')
         alias = Forward()
         identExpr  = functionExpr | ident
-        self.identExpr = identExpr
-        self.functionExpr = functionExpr
+        self.identExpr = identExpr # Debug
+        self.functionExpr = functionExpr # Debug
         alias = ident.copy()
 
         selectableList = Group( delimitedList(identExpr | columnName ))
@@ -62,7 +62,7 @@ class Grammar:
         numericExpr = term | (numericExpr + Literal('+') + term) | (numericExpr + Literal('-') + term)
         valueExpr = numericExpr ## | stringExpr | dateExpr | intervalExpr
         derivedColumn = valueExpr + Optional(asToken + alias)
-        selectSubList = delimitedList(derivedColumn)
+        selectSubList = derivedColumn + ZeroOrMore("," + derivedColumn)
 
 
         tableName      = delimitedList( ident, ".", combine=True )
@@ -151,7 +151,7 @@ class Grammar:
 
         self.selectPart = selectToken + ( '*' | selectSubList ).setResultsName( "columns" )
         whereClause = Group(whereToken + 
-                            whereExpression).setResultsName("where") 
+                                     whereExpression).setResultsName("where") 
         whereClause.addParseAction(collapseWhere)
         self.fromPart = fromToken + tableNameList.setResultsName("tables")
 
@@ -196,10 +196,9 @@ class QueryMunger:
                     tokens[i] = "Subchunks_${subc}.Object_${chunk}_${subc}"
             
         g.tableAction.append(replaceObj)
-        blah = g.simpleSQL.parseString(self.original)
-        print "sublist", sublist
+        parsed = g.simpleSQL.parseString(self.original)
         header = '-- SUBCHUNKS:' + ", ".join(imap(str,sublist))
-        querytemplate = string.Template(self._flatten(blah) + ";")
+        querytemplate = string.Template(self._flattenNoSpace(parsed))
         chunkqueries = [querytemplate.substitute({'chunk': chunk, 'subc':s}) for s in sublist]
         return "\n".join([header] + chunkqueries)
 
@@ -254,9 +253,23 @@ class QueryMunger:
         return pquery
 
     def _flatten(self, l):
-      if isinstance(l, str): return l
-      else: return " ".join(map(self._flatten, l))
+        if isinstance(l, str): return l
+        else: return " ".join(map(self._flatten, l))
 
+    def _flattenNoSpace(self, l):
+        if isinstance(l, str): return l
+        else:
+            nospaceBefore = ",();" ## set([",", "(", ")"])
+            nospaceAfter = ",(" ## set([",", "(", ")"])
+            spaced = []
+            for x in l:
+                flat = self._flattenNoSpace(x)
+                if spaced and (flat not in nospaceBefore
+                               and spaced[-1] not in nospaceAfter):
+                      spaced.append(" ")
+                spaced.append(self._flattenNoSpace(x)) 
+
+            return "".join(spaced)
     pass
 
 
@@ -346,7 +359,8 @@ def findLocationFromQuery(query):
 qs=[ """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
   AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;""",
      """SELECT id FROM Object where ra between 2 and 5 AND blah < 3 AND decl > 4;""", 
-     """SELECT id FROM Object where blah < 3 AND decl > 4;""" ]
+     """SELECT id FROM Object where blah < 3 AND decl > 4;""",
+     "SELECT id,spdist(ra,decl,ra,decl) FROM Object WHERE id=1;" ]
 def mytest():
     for q in qs:
         qm = QueryMunger(q)
