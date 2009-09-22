@@ -220,9 +220,11 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
         return bufferSize;
     }
 
+    std::string strBuffer(buffer, bufferSize);
+
     _eDest->Say((boost::format("Db = %1%, dump = %2%:\n%3%")
-                 % dbName % _dumpName % buffer).str().c_str());
-    if (!_runScript(std::string(buffer, bufferSize), dbName)) {
+                 % dbName % _dumpName % strBuffer).str().c_str());
+    if (!_runScript(strBuffer, dbName)) {
         return -1;
     }
     return bufferSize;
