@@ -144,7 +144,6 @@ class QueryAction:
         for chunk in collected:
             q = self.queryMunger.computeChunkQuery(chunk, collected[chunk])
             self.issueXrd(chunk, q)
-        
 
         #print self.queryStr, "resulted in", query
         ## sqlparser.test(self.queryStr)
@@ -180,19 +179,19 @@ class QueryAction:
         q = query
         wCount = xrdWrite(handle, charArray_frompointer(q), len(q))
         print "wrote ", wCount, "out of", len(q)
-        while True:
-            bufSize = 10 # lower level may ignore, so may want to set big.
-            buf = charArray(bufSize)
-            rCount = xrdRead(handle, buf, bufSize)
-            print "got", rCount, 
-            if rCount <= 0:
+        if wCount == len(q):
+            while True:
+                bufSize = 1000 # lower level may ignore, so may want to set big.
+                buf = charArray(bufSize)
+                rCount = xrdRead(handle, buf, bufSize)
+                print "got", rCount, 
+                if rCount <= 0:
+                    break
+                s = "".join(map(lambda x: buf[x], range(rCount)))
+                print "(", s, ")"
+                # always quit right now. 
                 break
-            s = "".join(map(lambda x: buf[x], range(rCount)))
-            print "(", s, ")"
-            # always quit right now. 
-            break
-
-                         
+        xrdClose(handle)
         pass
 
 class CheckAction:
