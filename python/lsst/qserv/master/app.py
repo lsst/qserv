@@ -1,10 +1,14 @@
+# app package for lsst.qserv.master
 
+# Standard Python imports
+from itertools import imap
 import os
 import MySQLdb as sql
 
 # package import
 import sqlparser
 from lsst.qserv.master import xrdOpen, xrdClose, xrdRead, xrdWrite
+from lsst.qserv.master import xrdLseekSet
 from lsst.qserv.master import charArray_frompointer, charArray
 
 
@@ -106,7 +110,7 @@ class Persistence:
     def issueQuery(self, query):
         c = self._conn.cursor()
         c.execute(query)
-        return c.fetchall()
+        return c.fetchall()    
     pass
 
 class TaskTracker:
@@ -130,6 +134,7 @@ class QueryAction:
     def __init__(self, query):
         self.queryStr = query
         self.queryMunger = None ## sqlparser.QueryMunger()
+        self.db = Persistence()
         pass
     def invoke(self):
         self.queryMunger = sqlparser.QueryMunger(self.queryStr)
@@ -140,11 +145,30 @@ class QueryAction:
         p.activate()
         chunktuples = p.issueQuery(query)
         collected = self.queryMunger.collectSubChunkTuples(chunktuples)
-        
+        createTemplate = "CREATE TABLE IF NOT EXISTS %s ";
+        tableTemplate = "result_%s";
+        q = ""
         for chunk in collected:
-            q = self.queryMunger.computeChunkQuery(chunk, collected[chunk])
-            self.issueXrd(chunk, q)
+            if False: ## Deprecated
+                q = self.queryMunger.computeChunkQuery(chunk, 
+                                                       collected[chunk])
+            else:
+                header = '-- SUBCHUNKS:' + ", ".join(imap(str,collected[chunk]))
+                #header = '-- SUBCHUNKS:0,1'
+                cq = self.queryMunger.expandSubQueries(chunk,
+                                                       collected[chunk])
+                tableName = tableTemplate % str(chunk)
+                resultPrepend = createTemplate % tableName
+                q = "\n".join([header] + map(lambda s: resultPrepend+s, 
+                                             cq))
+            success = self.issueXrd(chunk, q, 
+                                    lambda d: self.mergeTableDump(tableName, d))
 
+            
+            if not success: 
+                print "Unsuccessful with %s on chunk %d" % (self.queryStr, chunk)
+                break
+        print "results available in db test, as table 'result'"
         #print self.queryStr, "resulted in", query
         ## sqlparser.test(self.queryStr)
         
@@ -157,10 +181,9 @@ class QueryAction:
         # Then, for each chunk/subchunk, dispatch the cmd via xrd.
         # Later, we will fork for parallelism.  Test serially first.
          
-        print "null query invoke"
         pass
 
-    def issueXrd(self, chunk, query):
+    def issueXrd(self, chunk, query, outputFunc):
 
         print "Asked to issue '%s' to xrd." % query
         # debug:
@@ -172,27 +195,61 @@ class QueryAction:
         user = "qsmaster"
         urlTempl = "xroot://%s@%s:%d//query/%d" % (user, host, port, chunk)
         print "Issuing (%d)" % chunk, "via", urlTempl
-        print "query is", query
+        successful = True
         ## return
         handle = xrdOpen(urlTempl, os.O_RDWR)
-        print "got handle", handle
         q = query
         wCount = xrdWrite(handle, charArray_frompointer(q), len(q))
-        print "wrote ", wCount, "out of", len(q)
+        #print "wrote ", wCount, "out of", len(q)
+        resultBufferList = []
         if wCount == len(q):
+            xrdLseekSet(handle, 0L); ## Seek to beginning to read from beginning.
             while True:
-                bufSize = 1000 # lower level may ignore, so may want to set big.
+                bufSize = 65536 # lower level may ignore, so may want to set big.
                 buf = charArray(bufSize)
                 rCount = xrdRead(handle, buf, bufSize)
-                print "got", rCount, 
+                print "recv", rCount
                 if rCount <= 0:
-                    break
+                    successful = False
+                    break ## 
                 s = "".join(map(lambda x: buf[x], range(rCount)))
-                print "(", s, ")"
+                resultBufferList.append(s)
+                ##print "(", s, ")"
                 # always quit right now. 
-                break
+
+                if rCount < bufSize:
+                    break
+                ## break
+        else:
+            successful = False
         xrdClose(handle)
+
+        if resultBufferList:
+            # print "Result buffer is", 
+            # for s in resultBufferList:
+            #     print "----",s,"----"
+            outputFunc("".join(resultBufferList))
+        return successful
+
+    def mergeTableDump(self, tableName, dump):
+        db = "test"
+        # Apply dump.  This ingests the dump into a table named tableName
+        self.applySql(db, dump)
+
+        ## Might need to specially handle null results.
+        # Merge table results into the real results table.
+        mergeSql = "CREATE TABLE IF NOT EXISTS result SELECT * FROM %s;"
+        self.applySql(db, mergeSql % tableName)
+
+        # Get rid of the table we ingested, since we've used it.
+        self.applySql(db, "DROP TABLE %s;" % tableName)
         pass
+
+    def applySql(self, dbName, qtext):
+        self.db.activate()
+        r = self.db.issueQuery(("USE %s;" % dbName) + qtext)
+        pass
+        
 
 class CheckAction:
     def __init__(self, tracker, handle):

@@ -79,7 +79,7 @@ class ClientInterface:
                 reactor.callInThread(a.invoke)
             else:
                 a.invoke()
-            return "got query, q='" + flatargs['q'] + "' your id is %d" % (id)
+            return "Server processed, q='" + flatargs['q'] + "' your id is %d" % (id)
         else:
             return "no query in string, try q='select...'"
 

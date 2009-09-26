@@ -190,8 +190,15 @@ class QueryMunger:
                  "%smin between %s and %s" % (col, cmin, cmax)]
         return "(%s)" % " OR ".join(clist)
         
+
+    ## Deprecated.
     def computeChunkQuery(self, chunk, sublist):
         print "chunk query for c=", chunk, " sl=", sublist 
+        header = '-- SUBCHUNKS:' + ", ".join(imap(str,sublist))
+        chunkqueries = self.expandSubQueries(chunk, sublist)
+        return "\n".join([header] + chunkqueries)
+
+    def expandSubQueries(self, chunk, sublist):
         g = Grammar()
         def replaceObj(tokens):
             for i in range(len(tokens)):
@@ -200,10 +207,10 @@ class QueryMunger:
             
         g.tableAction.append(replaceObj)
         parsed = g.simpleSQL.parseString(self.original)
-        header = '-- SUBCHUNKS:' + ", ".join(imap(str,sublist))
         querytemplate = string.Template(self._flattenNoSpace(parsed))
+        #sublist = [sublist[0]] ## DEBUG: do only one subchunk
         chunkqueries = [querytemplate.substitute({'chunk': chunk, 'subc':s}) for s in sublist]
-        return "\n".join([header] + chunkqueries)
+        return chunkqueries
 
     def collectSubChunkTuples(self, chunktuples):
         # Use dictionary to collect tuples by chunk #.
@@ -362,12 +369,15 @@ def findLocationFromQuery(query):
     # by chunk and node.
     pass
 
-qs=[ """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+qs=[ """SELECT o1.id as o1id,o2.id as o2id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
   AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;""",
      """SELECT id FROM Object where ra between 2 and 5 AND blah < 3 AND decl > 4;""", 
      """SELECT id FROM Object where blah < 3 AND decl > 4;""",
      "SELECT id,LSST.spdist(ra,decl,ra,decl) FROM Object WHERE id=1;",
      """SELECT id,LSST.spdist(ra,decl,ra,decl) FROM Object WHERE LSST.spdist(ra,decl,ra,decl) < 1 AND id=1;""" ]
+## Make sure qserv-worker mysql user (e.g. qsmaster) has privileges to execute LSST.spdist
+## GRANT EXECUTE ON LSST.* TO 'qsmaster'@'localhost';
+## -- might need to invoke GRANT with superuser.
 qsl=[]
 def mytest():
     for q in qs:

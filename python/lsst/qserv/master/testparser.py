@@ -7,7 +7,7 @@ import sqlparser
 
 nearNeighborQueryAlias = """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
   AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;"""
-nearNeighborQueryMySql = """SELECT o1.id,o2.id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+nearNeighborQueryMySql = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
   AS dist FROM Object AS o1, Object AS o2 WHERE LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 25 AND o1.id != o2.id;"""
 nearNeighborQuery = nearNeighborQueryMySql
 nnSelectPart = "SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl)"
