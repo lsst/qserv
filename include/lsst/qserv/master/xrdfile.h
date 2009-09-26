@@ -13,6 +13,9 @@ long long xrdWrite(int fildes, const void *buf, unsigned long long nbyte);
 
 int xrdClose(int fildes);
 
+long long xrdLseekSet(int fildes, unsigned long long offset);
+
+
 }}} // namespace lsst::qserv::master
 
 #endif // #ifndef LSST_QSERV_MASTER_XRDFILE_H

@@ -1,7 +1,7 @@
 //#define FAKE_XRD 1
-
-#ifdef FAKE_XRD
 #include <iostream>
+#ifdef FAKE_XRD
+
 #else
 #include "XrdPosix/XrdPosixExtern.hh"
 #endif
@@ -43,6 +43,9 @@ int qMaster::xrdClose(int fildes) {
     return 0; // Always pretend to succeed.
 }
 
+long long qMaster::xrdLseekSet(int fildes, off_t offset) {
+    return offset; // Always pretend to succeed
+}
 #else // Not faked: choose the real XrdPosix implementation.
 
 int qMaster::xrdOpen(const char *path, int oflag) {
@@ -50,16 +53,29 @@ int qMaster::xrdOpen(const char *path, int oflag) {
 }
 
 long long qMaster::xrdRead(int fildes, void *buf, unsigned long long nbyte) {
-    return XrdPosix_Read(fildes, buf, nbyte); 
+    // std::cout << "xrd trying to read (" <<  fildes << ") " 
+    // 	      << nbyte << " bytes" << std::endl;
+    long long readCount;
+    readCount = XrdPosix_Read(fildes, buf, nbyte); 
+    //std::cout << "read " << readCount << " from xrd." << std::endl;
+    return readCount;
 }
 
 long long qMaster::xrdWrite(int fildes, const void *buf, 
 			    unsigned long long nbyte) {
+    // std::string s;
+    // s.assign(static_cast<const char*>(buf), nbyte);
+    // std::cout << "xrd write (" <<  fildes << ") \"" 
+    // 	      << s << "\"" << std::endl;
     return XrdPosix_Write(fildes, buf, nbyte);
 }
 
 int qMaster::xrdClose(int fildes) {
     return XrdPosix_Close(fildes);
+}
+ 
+long long qMaster::xrdLseekSet(int fildes, unsigned long long offset) {
+    return XrdPosix_Lseek(fildes, offset, SEEK_SET);
 }
 #endif
 
