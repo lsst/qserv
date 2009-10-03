@@ -16,6 +16,8 @@ if not os.path.exists(xrd_dir):
     print >> sys.stderr, "Could not locate xrootd base directory"
     Exit(1)
 xrd_platform = "x86_64_linux_26"
+if os.environ.has_key('XRD_PLATFORM'):
+    xrd_platform = os.environ['XRD_PLATFORM']
 if not os.path.exists(os.path.join(xrd_dir, "lib", xrd_platform)):
     xrd_platform = "i386_linux26"
 if not os.path.exists(os.path.join(xrd_dir, "lib", xrd_platform)):
@@ -35,12 +37,30 @@ if not os.path.exists(boost_dir):
 env.Append(CPPPATH = [os.path.join(boost_dir, "include")])
 env.Append(LIBPATH = [os.path.join(boost_dir, "lib")])
 
+if os.environ.has_key('SSL_DIR'):
+    ssl_dir = os.environ['SSL_DIR']
+    if os.path.exists(ssl_dir):
+        env.Append(LIBPATH=[ssl_dir])
+
+if os.environ.has_key('MYSQL_DIR'):
+    mysql_dir = os.environ['MYSQL_DIR']
+    if os.path.exists(mysql_dir):
+        env.Append(LIBPATH=[os.path.join(mysql_dir,"lib")])
+        env.Append(CPPPATH=[os.path.join(mysql_dir,"include")])
+
+
+
 conf = Configure(env)
+
+if not conf.CheckLib("ssl"):
+    print >> sys.stderr, "Could not locate ssl"
+    Exit(1)
+
 if not conf.CheckLibWithHeader("mysqlclient", "mysql/mysql.h", "c"):
     print >> sys.stderr, "Could not locate mysqlclient"
     Exit(1)
-if not conf.CheckLib("ssl"):
-    print >> sys.stderr, "Could not locate ssl"
+if not conf.CheckDeclaration("mysql_next_result", "#include <mysql/mysql.h>","c++" ):
+    print >> sys.stderr, "mysqlclient too old. (check MYSQL_DIR)."
     Exit(1)
 if not conf.CheckLibWithHeader("XrdSys", "XrdSfs/XrdSfsInterface.hh", "C++"):
     print >> sys.stderr, "Could not locate XrdSys"
