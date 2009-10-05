@@ -11,7 +11,7 @@ xrd_dir = "/scratch/xrd/xrootd";
 if os.environ.has_key('XRD_DIR'):
     xrd_dir = os.environ['XRD_DIR']
 if not os.path.exists(xrd_dir):
-    xrd_dir = "/home/ktl"
+    xrd_dir = "/home/ktl/xrootd"
 if not os.path.exists(xrd_dir):
     print >> sys.stderr, "Could not locate xrootd base directory"
     Exit(1)
@@ -30,7 +30,7 @@ boost_dir = "/u1/lsst/stack/Linux64/external/boost/1.37.0"
 if os.environ.has_key('BOOST_DIR'):
     boost_dir = os.environ['BOOST_DIR']
 if not os.path.exists(boost_dir):
-    boost_dir = "/afs/slac/g/ki/lsst/home/Linux/external/boost/1.37.0"
+    boost_dir = "/afs/slac/g/ki/lsst/home/DMS/Linux/external/boost/1.37.0"
 if not os.path.exists(boost_dir):
     print >> sys.stderr, "Could not locate Boost base directory (BOOST_DIR)"
     Exit(1)

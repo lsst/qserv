@@ -3,8 +3,9 @@ import subprocess, os, sys
 
 Import("env")
 
-env.Append(LIBPATH = ["../lib"])
-env.Append(LIBS = ["qserv_worker"])
+testEnv = env.Clone()
+testEnv.Append(LIBPATH = ["../lib"])
+testEnv.Append(LIBS = ["qserv_worker", "stdc++"])
 
 def run_test(target, source, env):
     log = file(str(target[0]) + ".failed", "w")
@@ -18,8 +19,8 @@ def run_test(target, source, env):
     return ret
 
 bld = Builder(action = run_test, prefix = ".tests/")
-env.Append(BUILDERS = {'Test': bld})
+testEnv.Append(BUILDERS = {'Test': bld})
 for src in Glob("*.cc"):
-    prog = env.Program(src)
-    test = env.Test(prog)
-    env.Depends(test, env['built_libs'])
+    prog = testEnv.Program(src)
+    test = testEnv.Test(prog)
+    testEnv.Depends(test, testEnv['built_libs'])
