@@ -45,15 +45,17 @@ if os.environ.has_key('SSL_DIR'):
 if os.environ.has_key('MYSQL_DIR'):
     mysql_dir = os.environ['MYSQL_DIR']
     if os.path.exists(mysql_dir):
-        env.Append(LIBPATH=[os.path.join(mysql_dir,"lib")])
-        env.Append(CPPPATH=[os.path.join(mysql_dir,"include")])
-
+        env.Prepend(LIBPATH=[os.path.join(mysql_dir,"lib","mysql")])
+        env.Prepend(CPPPATH=[os.path.join(mysql_dir,"include")])
 
 
 conf = Configure(env)
 
 if not conf.CheckLib("ssl"):
     print >> sys.stderr, "Could not locate ssl"
+    Exit(1)
+if not conf.CheckLib("crypto"):
+    print >> sys.stderr, "Could not locate crypto"
     Exit(1)
 
 if not conf.CheckLibWithHeader("mysqlclient", "mysql/mysql.h", "c"):
