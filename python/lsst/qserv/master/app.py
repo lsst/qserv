@@ -3,6 +3,8 @@
 # Standard Python imports
 from itertools import imap
 import os
+import sys
+import threading
 import MySQLdb as sql
 
 # package import
@@ -129,13 +131,66 @@ class TaskTracker:
     def task(self, taskId):
         return self.tasks[taskId]["task"]
 
+class XrdOperation(threading.Thread):
+        def __init__(self, chunk, query, outputFunc, outputArg):
+            threading.Thread.__init__(self)
+            host = "lsst-dev01"
+            port = 1094
+            user = "qsmaster"
+            self.chunk = chunk
+            self.query = query
+            self.outputFunc = outputFunc
+            self.outputArg = outputArg
+            self.url = "xroot://%s@%s:%d//query/%d" % (user, host, port, chunk)
+            self.successful = None
+            pass
+
+        def run(self):
+            print "Issuing (%d)" % self.chunk, "via", self.url
+            self.successful = True
+
+            handle = xrdOpen(self.url, os.O_RDWR)
+            q = self.query
+            wCount = xrdWrite(handle, charArray_frompointer(q), len(q))
+            #print "wrote ", wCount, "out of", len(q)
+            resultBufferList = []
+            if wCount == len(q):
+                xrdLseekSet(handle, 0L); ## Seek to beginning to read from beginning.
+                while True:
+                    bufSize = 65536 # lower level may ignore, so may want to set big.
+                    buf = charArray(bufSize)
+                    rCount = xrdRead(handle, buf, bufSize)
+                    print "recv", rCount
+                    if rCount <= 0:
+                        successful = False
+                        break ## 
+                    s = "".join(map(lambda x: buf[x], range(rCount)))
+                    resultBufferList.append(s)
+                    if rCount < bufSize:
+                        break
+                    pass
+                self.successful = True
+            else:
+                self.successful = False
+            xrdClose(handle)
+            if resultBufferList:
+                # print "Result buffer is", 
+                # for s in resultBufferList:
+                #     print "----",s,"----"
+                self.outputFunc(self.outputArg, "".join(resultBufferList))
+            print "Thread for", self.chunk, "complete."
+            return self.successful
+        pass
 
 class QueryAction:
     def __init__(self, query):
         self.queryStr = query
         self.queryMunger = None ## sqlparser.QueryMunger()
         self.db = Persistence()
+        self.running = {}
+        self.resultLock = threading.Lock()
         pass
+
     def invoke(self):
         self.queryMunger = sqlparser.QueryMunger(self.queryStr)
         
@@ -161,13 +216,14 @@ class QueryAction:
                 resultPrepend = createTemplate % tableName
                 q = "\n".join([header] + map(lambda s: resultPrepend+s, 
                                              cq))
-            success = self.issueXrd(chunk, q, 
-                                    lambda d: self.mergeTableDump(tableName, d))
-
+                xo = XrdOperation(chunk, q, self.mergeTableDump, tableName) 
+                xo.start()
+                self.running[chunk] = xo
+        for (c,xo) in self.running.items():
+            xo.join()
+            if not xo.successful:
+                print "Unsuccessful with %s on chunk %d" % (self.queryStr, c)
             
-            if not success: 
-                print "Unsuccessful with %s on chunk %d" % (self.queryStr, chunk)
-                break
         print "results available in db test, as table 'result'"
         #print self.queryStr, "resulted in", query
         ## sqlparser.test(self.queryStr)
@@ -182,67 +238,26 @@ class QueryAction:
         # Later, we will fork for parallelism.  Test serially first.
          
         pass
-
-    def issueXrd(self, chunk, query, outputFunc):
-
-        print "Asked to issue '%s' to xrd." % query
-        # debug:
-        #query = "--SUBCHUNKS: 0\nselect * from qserv.dummy_%1% ;"
-
-        ## Will need to add specificity for particular tables
-        host = "lsst-dev01"
-        port = 1094
-        user = "qsmaster"
-        urlTempl = "xroot://%s@%s:%d//query/%d" % (user, host, port, chunk)
-        print "Issuing (%d)" % chunk, "via", urlTempl
-        successful = True
-        ## return
-        handle = xrdOpen(urlTempl, os.O_RDWR)
-        q = query
-        wCount = xrdWrite(handle, charArray_frompointer(q), len(q))
-        #print "wrote ", wCount, "out of", len(q)
-        resultBufferList = []
-        if wCount == len(q):
-            xrdLseekSet(handle, 0L); ## Seek to beginning to read from beginning.
-            while True:
-                bufSize = 65536 # lower level may ignore, so may want to set big.
-                buf = charArray(bufSize)
-                rCount = xrdRead(handle, buf, bufSize)
-                print "recv", rCount
-                if rCount <= 0:
-                    successful = False
-                    break ## 
-                s = "".join(map(lambda x: buf[x], range(rCount)))
-                resultBufferList.append(s)
-                ##print "(", s, ")"
-                # always quit right now. 
-
-                if rCount < bufSize:
-                    break
-                ## break
-        else:
-            successful = False
-        xrdClose(handle)
-
-        if resultBufferList:
-            # print "Result buffer is", 
-            # for s in resultBufferList:
-            #     print "----",s,"----"
-            outputFunc("".join(resultBufferList))
-        return successful
+        
 
     def mergeTableDump(self, tableName, dump):
         db = "test"
         # Apply dump.  This ingests the dump into a table named tableName
+        
+        self.resultLock.acquire()
         self.applySql(db, dump)
 
         ## Might need to specially handle null results.
         # Merge table results into the real results table.
-        mergeSql = "CREATE TABLE IF NOT EXISTS result SELECT * FROM %s;"
-        self.applySql(db, mergeSql % tableName)
-
+        try:
+            mergeSql = "CREATE TABLE IF NOT EXISTS result SELECT * FROM %s;"
+            self.applySql(db, mergeSql % tableName)
+        except:
+            print "Problem merging after ", dump[:100]
+            pass
         # Get rid of the table we ingested, since we've used it.
         self.applySql(db, "DROP TABLE %s;" % tableName)
+        self.resultLock.release()
         pass
 
     def applySql(self, dbName, qtext):
