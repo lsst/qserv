@@ -5,6 +5,7 @@ from itertools import imap
 import os
 import sys
 import threading
+import time
 import MySQLdb as sql
 
 # package import
@@ -148,10 +149,10 @@ class XrdOperation(threading.Thread):
         def run(self):
             print "Issuing (%d)" % self.chunk, "via", self.url
             self.successful = True
-
             handle = xrdOpen(self.url, os.O_RDWR)
             q = self.query
             wCount = xrdWrite(handle, charArray_frompointer(q), len(q))
+            print self.url, "Wrote"
             #print "wrote ", wCount, "out of", len(q)
             resultBufferList = []
             if wCount == len(q):
@@ -178,7 +179,7 @@ class XrdOperation(threading.Thread):
                 # for s in resultBufferList:
                 #     print "----",s,"----"
                 self.outputFunc(self.outputArg, "".join(resultBufferList))
-            print "Thread for", self.chunk, "complete."
+            print "[", self.chunk, "complete]",
             return self.successful
         pass
 
@@ -189,6 +190,7 @@ class QueryAction:
         self.db = Persistence()
         self.running = {}
         self.resultLock = threading.Lock()
+
         pass
 
     def invoke(self):
@@ -203,6 +205,8 @@ class QueryAction:
         createTemplate = "CREATE TABLE IF NOT EXISTS %s ";
         tableTemplate = "result_%s";
         q = ""
+        self.db.activate()
+
         for chunk in collected:
             if False: ## Deprecated
                 q = self.queryMunger.computeChunkQuery(chunk, 
@@ -219,6 +223,8 @@ class QueryAction:
                 xo = XrdOperation(chunk, q, self.mergeTableDump, tableName) 
                 xo.start()
                 self.running[chunk] = xo
+            pass
+
         for (c,xo) in self.running.items():
             xo.join()
             if not xo.successful:
@@ -242,9 +248,9 @@ class QueryAction:
 
     def mergeTableDump(self, tableName, dump):
         db = "test"
-        # Apply dump.  This ingests the dump into a table named tableName
-        
+
         self.resultLock.acquire()
+        # Apply dump.  This ingests the dump into a table named tableName
         self.applySql(db, dump)
 
         ## Might need to specially handle null results.
@@ -261,7 +267,6 @@ class QueryAction:
         pass
 
     def applySql(self, dbName, qtext):
-        self.db.activate()
         r = self.db.issueQuery(("USE %s;" % dbName) + qtext)
         pass
         

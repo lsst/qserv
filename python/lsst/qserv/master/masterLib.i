@@ -6,7 +6,7 @@ Access to the classes from the qserv_master library
 %enddef
 
 %feature("autodoc", "1");
-%module(package="lsst.qserv.master", docstring=qserv_master_DOCSTRING) masterLib
+%module("threads"=1, package="lsst.qserv.master", docstring=qserv_master_DOCSTRING) masterLib
 %{
 #include "lsst/qserv/master/xrdfile.h"
 %}
