@@ -77,14 +77,31 @@ class TinySql:
         
         return "\n".join(createSql)
                    
+## Partitioning parameters:
+## DC3b: 1500 partitions of 100k rows = 150M rows. 
+##
+## USNO data : ra from -1(*) to 360, decl -90 to 90.  
+## USNO ~ 1B.
+##
+## 1M objs -> ra -1(*) to 0.6, decl -90 to 90
+# 1/150th the size means 1/150 partitions: 10 partitions.
+## So, partition... 2 in ra space. ~0.3 degree, 3 subdiv
+## 18 in decl space, 100 subdiv
+# chunks: 0.3 deg ra, 10 deg decl
+# subchunks: 0.1 deg ra, 0.1 deg decl
 
 def split():
-    if True:
+    if True: # 1M USNO 36(10800) total
+        ra_chunks = 2
+        ra_sub = 3
+        decl_chunks = 18
+        decl_sub = 100
+    elif False: # Arbitrary venetian strips 96(1152) total
         ra_chunks = 24
         ra_sub = 4 
         decl_chunks = 4
         decl_sub = 3
-    else:
+    else: ## Simple: 12(36) total
         ra_chunks = 3
         ra_sub = 1 
         decl_chunks = 4

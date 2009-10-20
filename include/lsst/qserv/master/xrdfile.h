@@ -15,6 +15,7 @@ int xrdClose(int fildes);
 
 long long xrdLseekSet(int fildes, unsigned long long offset);
 
+int xrdReadStr(int fildes, char *str, int len);
 
 }}} // namespace lsst::qserv::master
 

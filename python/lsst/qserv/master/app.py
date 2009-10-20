@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 import MySQLdb as sql
+from string import Template
 
 # package import
 import sqlparser
@@ -152,16 +153,18 @@ class XrdOperation(threading.Thread):
             handle = xrdOpen(self.url, os.O_RDWR)
             q = self.query
             wCount = xrdWrite(handle, charArray_frompointer(q), len(q))
-            print self.url, "Wrote"
             #print "wrote ", wCount, "out of", len(q)
             resultBufferList = []
             if wCount == len(q):
+                print self.url, "Wrote OK"
                 xrdLseekSet(handle, 0L); ## Seek to beginning to read from beginning.
                 while True:
                     bufSize = 65536 # lower level may ignore, so may want to set big.
+                    bufSize = 8192000
                     buf = charArray(bufSize)
                     rCount = xrdRead(handle, buf, bufSize)
-                    print "recv", rCount
+                    tup = (self.chunk, len(resultBufferList), rCount)
+                    print "chunk %d [packet %d] recv %d" % tup
                     if rCount <= 0:
                         successful = False
                         break ## 
@@ -172,6 +175,7 @@ class XrdOperation(threading.Thread):
                     pass
                 self.successful = True
             else:
+                print self.url, "Write failed!"
                 self.successful = False
             xrdClose(handle)
             if resultBufferList:
@@ -202,28 +206,33 @@ class QueryAction:
         p.activate()
         chunktuples = p.issueQuery(query)
         collected = self.queryMunger.collectSubChunkTuples(chunktuples)
+        #collected = dict(collected.items()[:3]) ## DEBUG: Force only 3 chunks
         createTemplate = "CREATE TABLE IF NOT EXISTS %s ";
+        insertTemplate = "INSERT INTO %s ";
         tableTemplate = "result_%s";
         q = ""
         self.db.activate()
 
         for chunk in collected:
-            if False: ## Deprecated
-                q = self.queryMunger.computeChunkQuery(chunk, 
-                                                       collected[chunk])
-            else:
-                header = '-- SUBCHUNKS:' + ", ".join(imap(str,collected[chunk]))
-                #header = '-- SUBCHUNKS:0,1'
-                cq = self.queryMunger.expandSubQueries(chunk,
-                                                       collected[chunk])
+                subc = collected[chunk][:2] # DEBUG: force only 2 subchunks
+                header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
+
+                cq = self.queryMunger.expandSubQueries(chunk, subc)
                 tableName = tableTemplate % str(chunk)
-                resultPrepend = createTemplate % tableName
-                q = "\n".join([header] + map(lambda s: resultPrepend+s, 
-                                             cq))
+                createPrep = createTemplate % tableName
+                insertPrep = insertTemplate % tableName
+                qlist = []
+                if cq:
+                    qlist.append(createPrep + cq[0])
+                    remain = cq[1:]
+                    if remain:
+                        qlist.extend(imap(lambda s: insertPrep + s, remain))
+                q = "\n".join([header] + qlist)
+                #print "-----------------",q
                 xo = XrdOperation(chunk, q, self.mergeTableDump, tableName) 
                 xo.start()
                 self.running[chunk] = xo
-            pass
+
 
         for (c,xo) in self.running.items():
             xo.join()
@@ -248,16 +257,24 @@ class QueryAction:
 
     def mergeTableDump(self, tableName, dump):
         db = "test"
+        targetTable = "result"
 
         self.resultLock.acquire()
+
         # Apply dump.  This ingests the dump into a table named tableName
-        self.applySql(db, dump)
+        # The dump should be newline-separated.
+        self.applySqlSep(db, dump, ";\n")
 
         ## Might need to specially handle null results.
         # Merge table results into the real results table.
+        destSrc = (targetTable, tableName)
+        mergeSql = [
+            "CREATE TABLE IF NOT EXISTS %s like %s;" % destSrc,
+            "INSERT INTO %s SELECT * FROM %s;" % destSrc]
+            
         try:
-            mergeSql = "CREATE TABLE IF NOT EXISTS result SELECT * FROM %s;"
-            self.applySql(db, mergeSql % tableName)
+            for s in mergeSql:
+                self.applySql(db, s) 
         except:
             print "Problem merging after ", dump[:100]
             pass
@@ -268,6 +285,14 @@ class QueryAction:
 
     def applySql(self, dbName, qtext):
         r = self.db.issueQuery(("USE %s;" % dbName) + qtext)
+        pass
+
+    def applySqlSep(self, dbName, qtext, sep):
+        if sep in qtext:
+            for l in qtext.split(sep):
+                self.applySql(dbName, l + sep)
+        else:
+            self.applySql(dbName, qtext)
         pass
         
 

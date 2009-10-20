@@ -28,7 +28,8 @@ Access to the classes from the qserv_master library
 // Include all classes to wrap:
 // %include "lsst/qserv/master/Master.h"
 
- // %apply (void *STRING, unsigned long long LENGTH) { (void *buf, unsigned long long nbyte) };
+ //%apply (void *STRING, unsigned long long LENGTH) { (void *buf, unsigned long long nbyte) };
+%apply (char *STRING, int LENGTH) { (char *str, int len) };
 %include "lsst/qserv/master/xrdfile.h"
 
 // Instantiate any templates here:

@@ -61,6 +61,11 @@ long long qMaster::xrdRead(int fildes, void *buf, unsigned long long nbyte) {
     return readCount;
 }
 
+int qMaster::xrdReadStr(int fildes, char *buf, int len) {
+    return xrdRead(fildes, static_cast<void*>(buf), 
+		   static_cast<unsigned long long>(len));
+}
+
 long long qMaster::xrdWrite(int fildes, const void *buf, 
 			    unsigned long long nbyte) {
     // std::string s;
@@ -77,5 +82,6 @@ int qMaster::xrdClose(int fildes) {
 long long qMaster::xrdLseekSet(int fildes, unsigned long long offset) {
     return XrdPosix_Lseek(fildes, offset, SEEK_SET);
 }
+
 #endif
 
