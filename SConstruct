@@ -87,4 +87,3 @@ if files:
     env.Command("TAGS", files, "etags -o $TARGET $SOURCES")
 
 env.Declare()
-print "Finally, env has cppflags:", env["CPPFLAGS"]
