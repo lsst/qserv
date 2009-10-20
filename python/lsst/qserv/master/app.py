@@ -12,7 +12,7 @@ from string import Template
 # package import
 import sqlparser
 from lsst.qserv.master import xrdOpen, xrdClose, xrdRead, xrdWrite
-from lsst.qserv.master import xrdLseekSet
+from lsst.qserv.master import xrdLseekSet, xrdReadStr
 from lsst.qserv.master import charArray_frompointer, charArray
 
 
@@ -159,17 +159,15 @@ class XrdOperation(threading.Thread):
                 print self.url, "Wrote OK"
                 xrdLseekSet(handle, 0L); ## Seek to beginning to read from beginning.
                 while True:
-                    bufSize = 65536 # lower level may ignore, so may want to set big.
                     bufSize = 8192000
-                    buf = charArray(bufSize)
-                    rCount = xrdRead(handle, buf, bufSize)
+                    buf = "".center(bufSize) # Fill buffer
+                    rCount = xrdReadStr(handle, buf)
                     tup = (self.chunk, len(resultBufferList), rCount)
                     print "chunk %d [packet %d] recv %d" % tup
                     if rCount <= 0:
                         successful = False
                         break ## 
-                    s = "".join(map(lambda x: buf[x], range(rCount)))
-                    resultBufferList.append(s)
+                    resultBufferList.append(buf[:rCount])
                     if rCount < bufSize:
                         break
                     pass
