@@ -43,15 +43,18 @@ def setXrd(cands):
 print >> sys.stderr, "Using xrootd inc/lib: ", xrd_inc, xrd_lib
 
 ## Setup the SWIG environment
-swigEnv = Environment(SWIGFLAGS=['-python', '-c++', '-Iinclude'],
-                      CPPPATH=[distutils.sysconfig.get_python_inc(),
-                               'include'],
-                      SHLIBPREFIX="", )
+swigEnv = Environment()
 
+swigEnv.Tool('swig')
+swigEnv['SWIGFLAGS'] = ['-python', '-c++', '-Iinclude'],
+swigEnv['CPPPATH'] = [distutils.sysconfig.get_python_inc(), 'include'],
+swigEnv['SHLIBPREFIX'] = ""
 ## SWIG 1.3.29 has bugs which cause the build to fail.
 ## 1.3.36 is known to work.
 if os.environ.has_key('SWIG'):
     swigEnv['SWIG'] = os.environ['SWIG']
+
+
 
 swigEnv.Append(CPPPATH = [xrd_inc])
 swigEnv.Append(LIBPATH = [xrd_lib])
