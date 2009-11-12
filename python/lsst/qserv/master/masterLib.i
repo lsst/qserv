@@ -9,6 +9,7 @@ Access to the classes from the qserv_master library
  //%module("threads"=1, package="lsst.qserv.master", docstring=qserv_master_DOCSTRING) masterLib
 %module("threads"=1, package="lsst.qserv.master") masterLib
 %{
+#define SWIG_FILE_WITH_INIT
 #include "lsst/qserv/master/xrdfile.h"
 %}
 

@@ -71,7 +71,7 @@ swigEnv.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
                            "-D_FILE_OFFSET_BITS=64",
                            "-D_REENTRANT"])
 pyPath = 'python/lsst/qserv/master'
-pyLib = os.path.join(pyPath, 'masterLib.so')
+pyLib = os.path.join(pyPath, '_masterLib.so')
 srcPaths = [os.path.join('src', 'xrdfile.cc'),
             os.path.join(pyPath, 'masterLib.i')]
 swigEnv.SharedLibrary(pyLib, srcPaths)
