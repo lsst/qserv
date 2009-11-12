@@ -6,7 +6,7 @@
 import glob, os.path, re, sys
 import distutils.sysconfig
 
-
+env = Environment()
 
 def makePythonDist():
     print 'dist', distutils.sysconfig.get_python_inc()
@@ -65,6 +65,7 @@ if os.environ.has_key('SWIG'):
 
 swigEnv.Append(CPPPATH = [xrd_inc])
 swigEnv.Append(LIBPATH = [xrd_lib])
+swigEnv.Append(LIBS = ["XrdPosix"])
 swigEnv.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
                            "-D_LARGEFILE64_SOURCE",
                            "-D_FILE_OFFSET_BITS=64",
