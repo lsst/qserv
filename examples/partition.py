@@ -157,7 +157,8 @@ def _csvArgs(conf):
              'escapechar': conf.escapechar,
              'quoting': conf.quoting,
              'quotechar': conf.quotechar,
-             'skipinitialspace': conf.skipinitialspace
+             'skipinitialspace': conf.skipinitialspace,
+             'lineterminator': '\n'
            }
 
 class InputSplit(object):
@@ -1188,7 +1189,7 @@ def _parseChunk(path, conf):
         roff = mem.tell()
         mem.seek(saveoff)
         records[i][2] = roff
-        records[i][3] = offsets[reader.line_num] - roff
+        records[i][3] = offsets[reader.line_num] - roff - 1
         assert records[i][3] > 0
         records[i][4] = int(row[0])
         line = reader.line_num
@@ -1783,8 +1784,8 @@ def main():
 
     if conf.numChunks:
         # Adaptive chunking
-        if conf.numChunks < 1:
-            parser.error("Target number of chunks must be positive.")
+        if conf.numChunks < 10:
+            parser.error("Target number of chunks must be >= 10.")
         if conf.rowsPerSubChunk < 1:
             parser.error("Target sub-chunk row count must be positive.")
         if conf.binSize < 0.0001:
