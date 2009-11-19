@@ -860,7 +860,7 @@ class PartitionReducer(object):
             self.chunker.setBounds(self.coords, self.bounds)
             row = (key, subChunkId, histogram[subChunkId], self.bounds[0],
                    self.bounds[1], self.bounds[2], self.bounds[3],
-                   self.chunker.alpha[self.coords[1]])
+                   self.chunker.overlap, self.chunker.alpha[self.coords[1]])
             self.writer.writerow(row)
         fcntl.lockf(self.file.fileno(), fcntl.LOCK_EX)
         try:
@@ -931,9 +931,13 @@ def chunk(conf, inputFiles):
 #
 # This requires 5 reads and 3 writes (modulo overlap expansion) of the
 # entire input dataset, so a slowdown of at least 4x relative to standard
-# spatial chunking is to be expected. The target chunk count should be set
-# such that a N chunks can fit entirely in memory, where N is the number
-# of concurrent worker processes.
+# spatial chunking is expected. In practice the slowdown is much smaller,
+# possibly because bucket sorting on chunks directly (rather than into stripes
+# and then into chunks) can result in lots of small writes if the input is
+# randomly distributed across the sky. In the adaptive case it is important
+# to set the target chunk count such that a N chunks can fit entirely in
+# memory, where N is the number of concurrent worker processes. Otherwise,
+# swapping will sap performance.
 #
 # Problems and future work:
 #
@@ -1333,7 +1337,8 @@ class SubChunker(object):
                     # Write out last sub-chunk to the partition map
                     b.append(self.thetaMax)
                     self.partitionWriter.writerow((self.chunkId, scId,
-                        j - lc + 1, b[-2], b[-1], phiMin, phiMax, alpha[-1]))
+                        j - lc + 1, b[-2], b[-1], phiMin, phiMax,
+                        self.overlap, alpha[-1]))
                     scRows = len(r)
                 if r[j][4] == 0:
                     if (j > scRows and r[j][1] != r[j - 1][1]):
@@ -1344,7 +1349,8 @@ class SubChunker(object):
                         # Write out a sub-chunk to the partition map
                         b.append(r[j][1])
                         self.partitionWriter.writerow((self.chunkId, scId,
-                            j - lc, b[-2], b[-1], phiMin, phiMax, alpha[-1]))
+                            j - lc, b[-2], b[-1], phiMin, phiMax,
+                            self.overlap, alpha[-1]))
                         lc = j
                         scRows += rpsc
                         scId += 1
