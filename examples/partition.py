@@ -147,7 +147,7 @@ except ImportError:
             return not self == other
 
 
-# -- Iterating over CSV records in memory mapped file sections --------
+# -- Iterating over CSV records in file subsets --------
 
 def _csvArgs(conf):
     """Extract and return csv formatting arguments from conf.
@@ -859,7 +859,8 @@ class PartitionReducer(object):
             self.chunker.setCoordsFromIds(key, subChunkId, self.coords)
             self.chunker.setBounds(self.coords, self.bounds)
             row = (key, subChunkId, histogram[subChunkId], self.bounds[0],
-                   self.bounds[1], self.bounds[2], self.bounds[3])
+                   self.bounds[1], self.bounds[2], self.bounds[3],
+                   self.chunker.alpha[self.coords[1]])
             self.writer.writerow(row)
         fcntl.lockf(self.file.fileno(), fcntl.LOCK_EX)
         try:
@@ -1159,7 +1160,7 @@ def _lineOffsets(m):
     for line in MMapIter(m):
         yield m.tell()
 
-def _parseChunk(path, conf):
+def parseChunk(path, conf):
     """Read chunk and extract record positions and offsets. Returns a tuple
     (f, mem, records) where file is an open file object for path, mem is
     the result of memory-mapping the entire chunk file, and records is a
@@ -1196,7 +1197,7 @@ def _parseChunk(path, conf):
     records = np.resize(records, i)
     return (f, mem, records)
 
-def _computeSubStripes(recs, nrows, phiMax):
+def computeSubStripes(recs, nrows, phiMax):
     """Compute sub-stripes for a chunk. Return a tuple
     (A, S, P) where A is a numpy array of indexes listing the elements of
     recs in ascending latitude angle order, S is a list of sub-stripe
@@ -1273,7 +1274,7 @@ class SubChunker(object):
         self.overlap = conf.overlap
         self.rowsPerSubChunk = conf.rowsPerSubChunk
         self.delimiter = conf.delimiter
-        self.file, self.mem, self.records = _parseChunk(path, conf)
+        self.file, self.mem, self.records = parseChunk(path, conf)
         prefixes = (conf.chunkPrefix, conf.chunkPrefix + 'SelfOverlap')
         d = os.path.dirname(path)
         paths = [os.path.join(d, p + ("_%d.csv" % chunkId)) for p in prefixes]
@@ -1296,8 +1297,8 @@ class SubChunker(object):
         """Compute and write out sub-chunk boundaries, write out chunk
         sorted by sub-chunk id, and write out self-overlap entries.
         """
-        arr, ss, ssPhi = _computeSubStripes(self.records,
-                                            self.rowsPerSubChunk, self.phiMax)
+        arr, ss, ssPhi = computeSubStripes(self.records,
+                                           self.rowsPerSubChunk, self.phiMax)
         if arr == None:
             return
         sc = []
@@ -1313,6 +1314,7 @@ class SubChunker(object):
                                          self.rowsPerSubChunk)
             scRows = rpsc
             phiMin, phiMax = ssPhi[i], ssPhi[i + 1]
+            alpha.append(maxAlpha(self.overlap, max(abs(phiMin), abs(phiMax))))
             subarr = arr[iMin:iMax]
             subarr = subarr[self.records[subarr].argsort(order='theta')]
             arr[iMin:iMax] = subarr
@@ -1331,7 +1333,7 @@ class SubChunker(object):
                     # Write out last sub-chunk to the partition map
                     b.append(self.thetaMax)
                     self.partitionWriter.writerow((self.chunkId, scId,
-                        j - lc + 1, b[-2], b[-1], phiMin, phiMax))
+                        j - lc + 1, b[-2], b[-1], phiMin, phiMax, alpha[-1]))
                     scRows = len(r)
                 if r[j][4] == 0:
                     if (j > scRows and r[j][1] != r[j - 1][1]):
@@ -1341,15 +1343,14 @@ class SubChunker(object):
                                 sub-stripe: use coarser partitioning!"""))
                         # Write out a sub-chunk to the partition map
                         b.append(r[j][1])
-                        self.partitionWriter.writerow((self.chunkId,
-                            scId, j - lc, b[-2], b[-1], phiMin, phiMax))
+                        self.partitionWriter.writerow((self.chunkId, scId,
+                            j - lc, b[-2], b[-1], phiMin, phiMax, alpha[-1]))
                         lc = j
                         scRows += rpsc
                         scId += 1
                     # Write row to current chunk
                     self._writeRow(0, scId, r[j])
             sc.append(np.array(b, dtype=np.float64))
-            alpha.append(maxAlpha(self.overlap, max(abs(phiMin), abs(phiMax))))
 
         # Sub-chunk boundaries are now known - handle overlap
         for i in xrange(len(ss) - 1):
