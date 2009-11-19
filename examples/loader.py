@@ -180,7 +180,7 @@ class SqlActions(object):
                 "ALTER TABLE %s ADD INDEX (subChunkId);" % table)
             self.cursor.fetchall()
 
-    def testChunkTable(chunkPrefix, chunkId, partTable):
+    def testChunkTable(self, chunkPrefix, chunkId, partTable):
         """Run sanity checks on a chunk table set (the chunk table,
         and optionally a self and full overlap table). For now, the
         spherical coordinates of chunk table entries are hardcoded
@@ -247,21 +247,21 @@ class SqlActions(object):
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
                 WHERE NOT ((
                     c.decl >= p.declMin AND c.decl < p.declMax AND
-                    IF(p.thetaMax >= 360.0,
-                       c.ra + 360.0 >= p.thetaMax,
-                       c.ra >= p.thetaMax) AND
-                    IF(p.thetaMax + p.alpha >= 360.0,
-                       c.ra + 360.0 < p.thetaMax + p.alpha,
-                       c.ra < p.thetaMax + p.alpha)
+                    IF(p.raMax >= 360.0,
+                       c.ra + 360.0 >= p.raMax,
+                       c.ra >= p.raMax) AND
+                    IF(p.raMax + p.alpha >= 360.0,
+                       c.ra + 360.0 < p.raMax + p.alpha,
+                       c.ra < p.raMax + p.alpha)
                     ) OR (
                        c.decl < p.declMin AND
                        c.decl >= p.declMin - p.overlap AND
-                       IF(p.thetaMax + p.alpha >= 360.0,
-                          c.ra + 360.0 < p.thetaMax + p.alpha,
-                          c.ra < p.thetaMax + p.alpha) AND
-                       IF(p.thetaMin - p.alpha < 0.0,
-                          c.ra - 360.0 >= p.thetaMax - p.alpha,
-                          c.ra >= p.thetaMax - p.alpha)
+                       IF(p.raMax + p.alpha >= 360.0,
+                          c.ra + 360.0 < p.raMax + p.alpha,
+                          c.ra < p.raMax + p.alpha) AND
+                       IF(p.raMin - p.alpha < 0.0,
+                          c.ra - 360.0 >= p.raMin - p.alpha,
+                          c.ra >= p.raMin - p.alpha)
                     )
                 );""" % (selfTable, partTable))
             nfailed = self.cursor.fetchone()[0]
@@ -281,23 +281,23 @@ class SqlActions(object):
                 WHERE NOT (
                     c.decl >= p.declMin - p.overlap AND
                     c.decl < p.declMax + p.overlap AND
-                    IF(p.thetaMax + p.alpha >= 360.0,
-                       c.ra + 360.0 < p.thetaMax + p.alpha,
-                       c.ra < p.thetaMax + p.alpha) AND
-                    IF(p.thetaMin - p.alpha < 0.0,
-                       c.ra - 360.0 >= p.thetaMax - p.alpha,
-                       c.ra >= p.thetaMax - p.alpha)
+                    IF(p.raMax + p.alpha >= 360.0,
+                       c.ra + 360.0 < p.raMax + p.alpha,
+                       c.ra < p.raMax + p.alpha) AND
+                    IF(p.raMin - p.alpha < 0.0,
+                       c.ra - 360.0 >= p.raMin - p.alpha,
+                       c.ra >= p.raMin - p.alpha)
                 ) OR (
                     c.ra >= p.raMin AND c.ra < p.raMax AND
                     c.decl >= p.declMin AND c.decl < p.declMax                
-                );""" % (selfTable, partTable))
+                );""" % (fullTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print dedent("""\
                     ERROR: found %d full-overlap records assigned to chunk 
                            %d (%s) falling outside the bounds of their
                            sub-chunk full-overlap regions.""" %
-                    (nfailed, chunkId, selfTable))
+                    (nfailed, chunkId, fullTable))
 
         # Test 6: make sure the partition map sub-chunk row counts agree
         # with the loaded table
@@ -510,7 +510,7 @@ def loadWorker(args):
                 act.loadChunk(table, prototype, f, params.npad, True)
             if params.test:
                 partTable = tableFromPath(params.partFile, params, '_worker_')
-                act.loadPartitions(partTable, opts.partFile)
+                act.loadPartitions(partTable, params.partFile)
                 try:
                     pfx = params.database + '.' + params.chunkPrefix
                     chunkId = chunkIdFromPath(files[0])
