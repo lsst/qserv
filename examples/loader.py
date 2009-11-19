@@ -526,6 +526,7 @@ def loadWorker(args):
     """
     params, chunks = args
     act = SqlActions(params.host, params.port, params.user, params.password)
+    partTable = None
     try:
         act.createDatabase(params.database)
         prototype = params.database + '.' + params.chunkPrefix + "Prototype"
@@ -533,20 +534,23 @@ def loadWorker(args):
             act.createPrototype(prototype, params.schema)
         if params.npad != None and params.npad > 0:
             act.createPaddedTable(prototype, params.npad)
+        if params.test:
+            partTable = tableFromPath(params.partFile, params, '_worker_')
+            act.loadPartitions(partTable, params.partFile)
         for files in chunks:
             for f in files:
                 table = tableFromPath(f, params)
                 act.loadChunk(table, prototype, f, params.npad, True)
             if params.test:
-                partTable = tableFromPath(params.partFile, params, '_worker_')
-                act.loadPartitions(partTable, params.partFile)
-                try:
-                    pfx = params.database + '.' + params.chunkPrefix
-                    chunkId = chunkIdFromPath(files[0])
-                    act.testChunkTable(pfx, chunkId, partTable)
-                finally:
-                    act.dropTable(partTable)
+                pfx = params.database + '.' + params.chunkPrefix
+                chunkId = chunkIdFromPath(files[0])
+                act.testChunkTable(pfx, chunkId, partTable)
     finally:
+        if partTable:
+            try:
+                act.dropTable(partTable)
+            except:
+                pass
         act.close()
 
 
