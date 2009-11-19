@@ -245,31 +245,47 @@ class SqlActions(object):
             self.cursor.execute("""
                 SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
+                WHERE c.ra >= p.raMin AND c.ra < p.raMax AND
+                      c.decl >= p.declMin AND c.decl < p.declMax;""" %
+                (selfTable, partTable))
+            nfailed = self.cursor.fetchone()[0]
+            if nfailed > 0:
+                print dedent("""\
+                    ERROR: found %d self-overlap records assigned to chunk 
+                           %d (%s) falling inside their sub-chunks.""" %
+                    (nfailed, chunkId, selfTable))
+            self.cursor.execute("""
+                SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
+                ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
                 WHERE NOT ((
-                    c.decl >= p.declMin AND c.decl < p.declMax AND
-                    IF(p.raMax >= 360.0,
-                       c.ra + 360.0 >= p.raMax,
-                       c.ra >= p.raMax) AND
-                    IF(p.raMax + p.alpha >= 360.0,
-                       c.ra + 360.0 < p.raMax + p.alpha,
-                       c.ra < p.raMax + p.alpha)
+                        c.decl >= p.declMin AND c.decl < p.declMax AND (
+                            c.ra + 360.0 <  p.raMax + p.alpha AND
+                            c.ra + 360.0 >= p.raMax
+                        ) OR (
+                            c.ra <  p.raMax + p.alpha AND
+                            c.ra >= p.raMin
+                        )
                     ) OR (
-                       c.decl < p.declMin AND
-                       c.decl >= p.declMin - p.overlap AND
-                       IF(p.raMax + p.alpha >= 360.0,
-                          c.ra + 360.0 < p.raMax + p.alpha,
-                          c.ra < p.raMax + p.alpha) AND
-                       IF(p.raMin - p.alpha < 0.0,
-                          c.ra - 360.0 >= p.raMin - p.alpha,
-                          c.ra >= p.raMin - p.alpha)
+                        c.decl < p.declMin AND
+                        c.decl >= p.declMin - p.overlap AND ((
+                                c.ra + 360.0 <  p.raMax + p.alpha AND
+                                c.ra + 360.0 >= p.raMin - p.alpha
+                            ) OR (
+                                c.ra <  p.raMax + p.alpha AND
+                                c.ra >= p.raMin - p.alpha
+                            ) OR (
+                                c.ra - 360.0 <  p.raMax + p.alpha AND
+                                c.ra - 360.0 >= p.raMin - p.alpha
+                            )
+                        )
                     )
                 );""" % (selfTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print dedent("""\
-                    ERROR: found %d self-overlap records assigned to chunk 
-                           %d (%s) falling outside the bounds of their
-                           sub-chunk self-overlap regions.""" %
+                    WARNING: found %d self-overlap records assigned to chunk 
+                             %d (%s) falling outside the bounds of their
+                             sub-chunk self-overlap regions.""" %
                     (nfailed, chunkId, selfTable))
 
         # Test 5: make sure all full-overlap entries are outside but
@@ -278,25 +294,38 @@ class SqlActions(object):
             self.cursor.execute("""
                 SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
                 ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
-                WHERE NOT (
-                    c.decl >= p.declMin - p.overlap AND
-                    c.decl < p.declMax + p.overlap AND
-                    IF(p.raMax + p.alpha >= 360.0,
-                       c.ra + 360.0 < p.raMax + p.alpha,
-                       c.ra < p.raMax + p.alpha) AND
-                    IF(p.raMin - p.alpha < 0.0,
-                       c.ra - 360.0 >= p.raMin - p.alpha,
-                       c.ra >= p.raMin - p.alpha)
-                ) OR (
-                    c.ra >= p.raMin AND c.ra < p.raMax AND
-                    c.decl >= p.declMin AND c.decl < p.declMax                
-                );""" % (fullTable, partTable))
+                WHERE c.ra >= p.raMin AND c.ra < p.raMax AND
+                      c.decl >= p.declMin AND c.decl < p.declMax;""" %
+                (fullTable, partTable))
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print dedent("""\
                     ERROR: found %d full-overlap records assigned to chunk 
-                           %d (%s) falling outside the bounds of their
-                           sub-chunk full-overlap regions.""" %
+                           %d (%s) falling inside their sub-chunks.""" %
+                    (nfailed, chunkId, fullTable))
+            self.cursor.execute("""
+                SELECT COUNT(*) FROM %s AS c INNER JOIN %s AS p
+                ON (c.chunkId = p.chunkId AND c.subChunkId = p.subChunkId)
+                WHERE NOT (
+                    c.decl >= p.declMin - p.overlap AND
+                    c.decl < p.declMax + p.overlap AND ((
+                            c.ra + 360.0 <  p.raMax + p.alpha AND
+                            c.ra + 360.0 >= p.raMin - p.alpha
+                        ) OR (
+                            c.ra <  p.raMax + p.alpha AND
+                            c.ra >= p.raMin - p.alpha
+                        ) OR (
+                            c.ra - 360.0 <  p.raMax + p.alpha AND
+                            c.ra - 360.0 >= p.raMin - p.alpha
+                        )
+                    )
+                );""" % (fullTable, partTable))
+            nfailed = self.cursor.fetchone()[0]
+            if nfailed > 0:
+                print dedent("""\
+                    WARNING: found %d full-overlap records assigned to chunk 
+                             %d (%s) falling outside the bounds of their
+                             sub-chunk full-overlap regions.""" %
                     (nfailed, chunkId, fullTable))
 
         # Test 6: make sure the partition map sub-chunk row counts agree
@@ -368,7 +397,7 @@ def getWorkers(patternsOrPaths, master):
     names.
     """
     if patternsOrPaths == None or len(patternsOrPaths) == 0:
-        return [master]
+        return [master.strip()]
     workers = {}
     for pp in patternsOrPaths:
         if os.path.isfile(pp):
@@ -378,7 +407,7 @@ def getWorkers(patternsOrPaths, master):
             finally:
                 f.close()
         else:
-            patterns = [pp]
+            patterns = [pp.strip()]
         for pat in patterns:
             a = pat.split(',')
             hostPort = a[0]
