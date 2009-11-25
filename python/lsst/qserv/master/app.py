@@ -216,10 +216,8 @@ class QueryAction:
             t = self.running.pop(p)
             self.finished[p] = t
             if not t.successful:
-                print "Unsuccessful with %s on chunk %d" % (self.queryStr, c)
-            
-            
-                
+                print "Unsuccessful with %s on chunk %d" % (self.queryStr, p)
+        pass
         
     def invoke(self):
         self.queryMunger = sqlparser.QueryMunger(self.queryStr)
