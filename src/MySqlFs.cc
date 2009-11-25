@@ -8,9 +8,23 @@
 
 #include <cerrno>
 
+// Externally declare XrdSfs loader to cheat on Andy's suggestion.
+extern XrdSfsFileSystem *XrdXrootdloadFileSystem(XrdSysError *, char *, 
+						 const char *);
+
+
 namespace qWorker = lsst::qserv::worker;
 
-qWorker::MySqlFs::MySqlFs(XrdSysError* lp) : XrdSfsFileSystem(), _eDest(lp) {
+qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName) 
+  : XrdSfsFileSystem(), _eDest(lp) {
+
+    _eDest->Say("MySqlFs loading libXrdOfs.so for clustering cmsd support.");
+    XrdSfsFileSystem* fs;
+    fs = XrdXrootdloadFileSystem(_eDest, "libXrdOfs.so", cFileName);
+    if(fs == 0) {
+	_eDest->Say("Problem loading libXrdOfs.so. Clustering won't work.");
+    }
+
 }
 
 qWorker::MySqlFs::~MySqlFs(void) {
@@ -115,13 +129,12 @@ class XrdSysLogger;
 extern "C" {
 
 XrdSfsFileSystem* XrdSfsGetFileSystem(
-    XrdSfsFileSystem* native_fs, XrdSysLogger* lp, char const*) {
+    XrdSfsFileSystem* native_fs, XrdSysLogger* lp, char const* fileName) {
     static XrdSysError eRoute(lp, "MySqlFs");
-    static qWorker::MySqlFs myFS(&eRoute);
+    static qWorker::MySqlFs myFS(&eRoute, fileName);
 
     eRoute.Say("MySqlFs (MySQL File System)");
     eRoute.Say(myFS.getVersion());
-
     return &myFS;
 }
 

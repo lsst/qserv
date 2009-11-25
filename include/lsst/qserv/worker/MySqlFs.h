@@ -11,7 +11,7 @@ namespace worker {
 
 class MySqlFs : public XrdSfsFileSystem {
 public:
-    MySqlFs(XrdSysError* lp);
+    MySqlFs(XrdSysError* lp, char const* cFileName);
     virtual ~MySqlFs(void);
 
 // Object Allocation Functions
