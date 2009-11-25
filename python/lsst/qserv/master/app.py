@@ -22,9 +22,11 @@ class Persistence:
         pass
 
     def activate(self):
+        socket = os.getenv("QSM_DBSOCK", "/data/lsst/run/mysql.sock")
         self._conn = sql.connect(host = "localhost",
                                  user = "test",
                                  passwd = "",
+                                 unix_socket = socket,
                                  db = "test")
         c = self._conn.cursor()
         # should check if db exists here.
@@ -42,14 +44,16 @@ class Persistence:
 
     def makeTables(self):
         c = self._conn.cursor()
-        self._dropSilent(c, ['tasks', 'partmap'])
+        self._dropSilent(c, ['tasks']) # don't drop the partmap anymore
         c.execute("CREATE TABLE tasks (id int, queryText text);")
-        c.execute("CREATE TABLE partmap (%s);" % (", ".join([
-                        "chunkId int", "subchunkId int", 
-                        "ramin float", "ramax float", 
-                        "declmin float", "declmax float"])))
+        # We aren't in charge of the partition map anymore.
+        # c.execute("CREATE TABLE partmap (%s);" % (", ".join([
+        #                 "chunkId int", "subchunkId int", 
+        #                 "ramin float", "ramax float", 
+        #                 "declmin float", "declmax float"])))
+        # self._populatePartFake()
         c.close()
-        self._populatePartFake()
+
         pass
 
     def _populatePartFake(self):
@@ -136,16 +140,20 @@ class TaskTracker:
 class XrdOperation(threading.Thread):
         def __init__(self, chunk, query, outputFunc, outputArg):
             threading.Thread.__init__(self)
-            host = "lsst-dev01"
-            port = 1094
-            user = "qsmaster"
+
             self.chunk = chunk
             self.query = query
             self.outputFunc = outputFunc
             self.outputArg = outputArg
-            self.url = "xroot://%s@%s:%d//query/%d" % (user, host, port, chunk)
+            self.url = ""
+            self.setXrd()
             self.successful = None
             pass
+
+        def setXrd(self):
+            hostport = os.getenv("QSERV_XRD","lsst-dev01:1094")
+            user = "qsmaster"
+            self.url = "xroot://%s@%s//query/%d" % (user, hostport, self.chunk)
 
         def run(self):
             print "Issuing (%d)" % self.chunk, "via", self.url
@@ -192,9 +200,27 @@ class QueryAction:
         self.db = Persistence()
         self.running = {}
         self.resultLock = threading.Lock()
-
+        self.finished = {}
+        self.threadHighWater = 200
         pass
 
+    def _joinAny(self):
+        poppable = []
+        while (not poppable) and (self.running):  # keep waiting 
+            for (chunk, thread) in self.running.items():
+                if not thread.isAlive(): 
+                    poppable.append(chunk)
+            if not poppable: 
+                time.sleep(0.5) # Don't spin-check too fast.
+        for p in poppable: # Move the threads out.
+            t = self.running.pop(p)
+            self.finished[p] = t
+            if not t.successful:
+                print "Unsuccessful with %s on chunk %d" % (self.queryStr, c)
+            
+            
+                
+        
     def invoke(self):
         self.queryMunger = sqlparser.QueryMunger(self.queryStr)
         
@@ -227,10 +253,12 @@ class QueryAction:
                         qlist.extend(imap(lambda s: insertPrep + s, remain))
                 q = "\n".join([header] + qlist)
                 #print "-----------------",q
+                if len(self.running) > self.threadHighWater:
+                    print "Reaping"
+                    self._joinAny()
                 xo = XrdOperation(chunk, q, self.mergeTableDump, tableName) 
                 xo.start()
                 self.running[chunk] = xo
-
 
         for (c,xo) in self.running.items():
             xo.join()
