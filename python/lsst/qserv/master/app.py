@@ -234,6 +234,8 @@ class QueryAction:
         tableTemplate = "result_%s";
         q = ""
         self.db.activate()
+        # Drop result table to make room.
+        self.applySql("test", "DROP TABLE IF EXISTS result;")
 
         for chunk in collected:
                 subc = collected[chunk][:2] # DEBUG: force only 2 subchunks
