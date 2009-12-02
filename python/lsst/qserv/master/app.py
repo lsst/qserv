@@ -201,7 +201,7 @@ class QueryAction:
         self.running = {}
         self.resultLock = threading.Lock()
         self.finished = {}
-        self.threadHighWater = 200
+        self.threadHighWater = 50
         pass
 
     def _joinAny(self):

@@ -7,8 +7,11 @@ import sqlparser
 
 nearNeighborQueryAlias = """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
   AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;"""
+## tuson124 is down. :( and this version selects chunks on it.
+##nearNeighborQueryMySql = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+###  AS dist FROM Object AS o1, Object AS o2 WHERE o1.ra between 10.5 and 11.5 and o2.decl between 9.7 and 10 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id;"""
 nearNeighborQueryMySql = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
-  AS dist FROM Object AS o1, Object AS o2 WHERE LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 25 AND o1.id != o2.id;"""
+  AS dist FROM Object AS o1, Object AS o2 WHERE o1.ra between 30.5 and 31.5 and o2.decl between -20 and -19.2 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id;"""
 nearNeighborQuery = nearNeighborQueryMySql
 nnSelectPart = "SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl)"
 

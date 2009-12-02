@@ -2,6 +2,7 @@
 from collections import defaultdict
 from itertools import imap
 import string
+import sys
 
 # Extended from Paul McGuire's simpleSQL.py which was a sample from
 # the pyparsing project ( http://pyparsing.wikispaces.com/ )
@@ -174,9 +175,27 @@ class Grammar:
 class QueryMunger:
     def __init__(self, query):
         self.original = query
-        pass
-    
+        self.pVariables = set(["ra", "decl"])
 
+
+        #self.inequalities = set(["<",">","<=",">="])
+        # Conversion won't really work if ra/decl appear on both sides.
+        minTemp = "%sMin %s %s"
+        maxTemp = "%sMax %s %s" 
+        self.inequalities = { "<" : lambda t: minTemp % self._fixOrder(t),
+                              ">" : lambda t: maxTemp % self._fixOrder(t),
+                              "<=" : lambda t: minTemp % self._fixOrder(t),
+                              ">=" : lambda t: maxTemp % self._fixOrder(t)
+                              }
+        pass
+
+    def _fixOrder(self, tokList):
+        if tokList[0] in self.pVariables:
+            return tuple(tokList)
+        else:
+            r = tokList[:]
+            r.reverse()
+            return tuple(r)
     def disasmBetween(self, tokList):
         x = tokList
         return {"col" : x[0],
@@ -185,18 +204,20 @@ class QueryMunger:
 
     def convertBetween(self, tokList):
         (col, dum, cmin, dum_, cmax) = tokList
-        clist = ["%s between %smin and %smax" % (cmin, col, col),
-                 "%s between %smin and %smax" % (cmax, col, col),
-                 "%smin between %s and %s" % (col, cmin, cmax)]
+        clist = ["%s between %sMin and %sMax" % (cmin, col, col),
+                 "%s between %sMin and %sMax" % (cmax, col, col),
+                 "%sMin between %s and %s" % (col, cmin, cmax)]
         return "(%s)" % " OR ".join(clist)
-        
 
-    ## Deprecated.
-    def computeChunkQuery(self, chunk, sublist):
-        print "chunk query for c=", chunk, " sl=", sublist 
-        header = '-- SUBCHUNKS:' + ", ".join(imap(str,sublist))
-        chunkqueries = self.expandSubQueries(chunk, sublist)
-        return "\n".join([header] + chunkqueries)
+    def convertInequality(self, tokList):
+        return self.inequalities[tokList[1]](tokList[:])
+        
+    def convertPVar(self, v):
+        if getattr(v, "split", False):
+            last = v.split(".")[-1]
+            if last.lower() in self.pVariables:
+                return last
+        return v
 
     def expandSubQueries(self, chunk, sublist):
         g = Grammar()
@@ -222,7 +243,6 @@ class QueryMunger:
     
     def computePartMapQuery(self):
         g = Grammar()
-        pVariables = set(["RA", "DECL"])
         tableList = []
         whereList = []
 
@@ -231,9 +251,12 @@ class QueryMunger:
             if x[1].upper() == "BETWEEN":
                 return self.disasmBetween(x)
         def convert(tokens):
-            x = tokens[0] # Unnest
+            # Unnest and blindly un-qualify partition-vars
+            x = tokens[0]
             if x[1].upper() == "BETWEEN":
                 return self.convertBetween(x)
+            if x[1] in self.inequalities:
+                return self.convertInequality(x)
             return tokens
             
         # Track the where expressions
@@ -242,19 +265,29 @@ class QueryMunger:
             return tok
         def compose(tok):
             return convert(tok)
-            
+
+        # Needed: real dataflow parsing
+        # For now, cheat and assume that *.ra and *.decl 
+        # should be used for bounding boxes.
         def onlyStatic(tok):
             condition = tok[0]
+            #print "checking for static in",condition
+            for i in range(len(condition)):
+                condition[i] = self.convertPVar(condition[i])
+            #print "now",condition
+                
+
             def partMapCares(token):
                 if getattr(token, '__iter__', False):
                     return map(partMapCares, token)
-                return token.upper() in pVariables
+                return token.lower() in self.pVariables
+            
             # Always collapse function calls since we can't pre-eval them.
             if "(" in condition.asList() or not filter(partMapCares, condition):
                 tok[0] = "TRUE";
             return tok
         g.whereExpAction.append(onlyStatic)
- 
+        g.whereExpAction.append(convert)
         #print self.original, "BEFORE_____"
         t = g.simpleSQL.parseString(self.original, parseAll=True)
         #print self.original, "AFTER_____"
@@ -371,6 +404,10 @@ def findLocationFromQuery(query):
 
 qs=[ """SELECT o1.id as o1id,o2.id as o2id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
   AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;""",
+     """SELECT o1.id as o1id,o2.id as o2id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+  AS dist FROM Object AS o1, Object AS o2 
+  WHERE o1.ra between 5 and 6 AND dist < 0.5 AND o1.id != o2.id;""",
+"""SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) \n  AS dist FROM Object AS o1, Object AS o2 WHERE o1.ra between 10.5 and 11.5 and o2.decl between 9.7 and 10 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id;""",
      """SELECT id FROM Object where ra between 2 and 5 AND blah < 3 AND decl > 4;""", 
      """SELECT id FROM Object where blah < 3 AND decl > 4;""",
      "SELECT id,LSST.spdist(ra,decl,ra,decl) FROM Object WHERE id=1;",
@@ -384,7 +421,7 @@ def mytest():
         qm = QueryMunger(q)
         qsl.append(q)
         s = qm.computePartMapQuery()
-        print "pmquery=", s
+        print "Query:", q, "\ngives pmquery:", s
         
     pass
 
