@@ -56,6 +56,7 @@ private:
     std::string _userName;
     std::string _dumpName;
     std::string _socketFilename;
+    std::string _mysqldumpPath;
 };
 
 }}} // namespace lsst::qserv::worker

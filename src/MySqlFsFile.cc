@@ -11,6 +11,7 @@
 #include "mysql/mysql.h"
 #include <openssl/md5.h>
 #include <unistd.h>
+#include <sstream>
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -96,13 +97,21 @@ static int findChunkNumber(char const* path) {
 
 qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user) :
     XrdSfsFile(user), _eDest(lp), 
-    _socketFilename("/var/lib/mysql/mysql.sock") {
+    _socketFilename("/var/lib/mysql/mysql.sock"),
+    _mysqldumpPath("/usr/bin/mysqldump") {
+
     // Capture userName at this point.
     // Param user is: user.pid:fd@host 
     // (See XRootd Protocol spec: 4.2.1.1 Connection name format)
     char* cursor = user;
     while(cursor && (*cursor != '.')) cursor++;
     _userName = std::string(user, cursor - user);
+    // Try to capture socket filename from environment
+    char* sock = ::getenv("QSW_DBSOCK");
+    if(sock != (char*)0) { _socketFilename = sock; }
+    // Capture alternative mysqldump
+    char* path = ::getenv("QSW_MYSQLDUMP");
+    if(path != (char*)0) { _mysqldumpPath = path; }
 }
 
 qWorker::MySqlFsFile::~MySqlFsFile(void) {
@@ -164,6 +173,9 @@ int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
     _eDest->Say((boost::format("File read(%1%) at %2% by %3%")
                  % _chunkId % fileOffset % _userName).str().c_str());
     if (!dumpFileExists(_dumpName)) {
+      std::string s = "Can't find dumpfile: " + _dumpName;
+      _eDest->Say(s.c_str());
+
         error.setErrInfo(ENOENT, "Query results missing");
         return SFS_ERROR;
     }
@@ -176,8 +188,20 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
                  % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
     int fd = dumpFileOpen(_dumpName);
     if (fd == -1) {
+      std::stringstream ss;
+      ss << (void*)this << "  Can't open dumpfile: " << _dumpName;
+      std::string s;
+      ss >> s;
+      _eDest->Say(s.c_str());
+
         error.setErrInfo(errno, "Query results missing");
         return -1;
+    } else {
+      std::stringstream ss;
+      ss << (void*)this << "  Dumpfile OK: " << _dumpName;
+      std::string s;
+      ss >> s;
+      _eDest->Say(s.c_str());
     }
     off_t pos = ::lseek(fd, fileOffset, SEEK_SET);
     if (pos == static_cast<off_t>(-1) || pos != fileOffset) {
@@ -222,8 +246,8 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
 
     std::string strBuffer(buffer, bufferSize);
 
-    _eDest->Say((boost::format("Db = %1%, dump = %2%:\n%3%")
-                 % dbName % _dumpName % strBuffer).str().c_str());
+    _eDest->Say((boost::format("(fileobj:%4%) Db = %1%, dump = %2%:\n%3%")
+                 % dbName % _dumpName % strBuffer % (void*)(this)).str().c_str());
     if (!_runScript(strBuffer, dbName)) {
         return -1;
     }
@@ -324,8 +348,7 @@ bool qWorker::MySqlFsFile::_runScript(
         }
     }
 
-    std::string cmd = (boost::format(
-            "/usr/bin/mysqldump"
+    std::string cmd = _mysqldumpPath + (boost::format(
             " --compact --add-locks --create-options --skip-lock-tables"
             " --result-file=%1% %2%")
                        % _dumpName % dbName).str();
