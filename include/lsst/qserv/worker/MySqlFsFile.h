@@ -50,6 +50,7 @@ public:
 
 private:
     bool _runScript(std::string const& script, std::string const& dbName);
+    void _setDumpNameAsChunkId();
 
     XrdSysError* _eDest;
     int _chunkId;

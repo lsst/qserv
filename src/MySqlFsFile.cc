@@ -12,6 +12,7 @@
 #include <openssl/md5.h>
 #include <unistd.h>
 #include <sstream>
+#include <iostream> // For file-scoped debug output
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -79,6 +80,64 @@ static std::string runQuery(MYSQL* db, std::string query,
                 mysql_error(db) + "\nQuery = " + query;
         }
     } while (status == 0);
+    return std::string();
+}
+
+static std::string runQueryInPieces(MYSQL* db, std::string query,
+				    std::string arg=std::string()) {
+    // Run a larger query in pieces split by semicolon/newlines.
+    // This tries to avoid the max_allowed_packet
+    // (MySQL client/server protocol) problem.
+    // MySQL default max_allowed_packet=1MB
+    std::string queryPiece;
+    std::string subResult;
+    std::string delimiter = ";\n";
+    std::string::size_type pieceBegin=0;
+    std::string::size_type pieceEnd=0;
+    std::string::size_type qEnd=query.length();
+    std::string::size_type sizeTarget=25;
+    std::string::size_type searchTarget;
+    unsigned pieceCount = 0;
+
+    while(pieceEnd != qEnd) { 
+	searchTarget = pieceBegin + sizeTarget;
+	if(searchTarget < qEnd) {  // Is it worth splitting?
+	    pieceEnd = query.rfind(delimiter, searchTarget);
+	
+	    // Did we find a split-point?
+	    if((pieceEnd > pieceBegin) && (pieceEnd != std::string::npos)) {
+		pieceEnd += delimiter.size();
+	    } else {
+		// Look forward instead of backward.
+		pieceEnd = query.find(delimiter, pieceBegin + sizeTarget);
+		if(pieceEnd != std::string::npos) { // Found?
+		    pieceEnd += delimiter.size(); 
+		} else { // Not found bkwd/fwd. Use end.
+		    pieceEnd = qEnd; 
+		}
+	    }
+	} else { // Remaining is small. Don't split further.
+	    pieceEnd = qEnd; 
+	}
+	queryPiece = "";
+	queryPiece.assign(query, pieceBegin, pieceEnd-pieceBegin);
+        subResult = runQuery(db, queryPiece, arg);
+	// On error, the partial error is as good as the global.
+	if(!subResult.empty()) {
+	    unsigned s=pieceEnd-pieceBegin;
+
+	    
+	    return subResult + (boost::format("---Error with piece %1% complete (size=%2%).") % pieceCount % s).str();;
+	}
+	++pieceCount;
+	std::cout << boost::format("Piece %1% complete.") % pieceCount;
+
+	pieceBegin = pieceEnd;
+    }
+    // Can't use _eDest (we are in file-scope)
+    std::cout << boost::format("Executed query in %1% pieces.") % pieceCount;
+    
+    // Getting here means that none of the pieces failed.
     return std::string();
 }
 
@@ -172,6 +231,7 @@ int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
                           XrdSfsXferSize prereadSz) {
     _eDest->Say((boost::format("File read(%1%) at %2% by %3%")
                  % _chunkId % fileOffset % _userName).str().c_str());
+    if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
     if (!dumpFileExists(_dumpName)) {
       std::string s = "Can't find dumpfile: " + _dumpName;
       _eDest->Say(s.c_str());
@@ -186,6 +246,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
     XrdSfsFileOffset fileOffset, char* buffer, XrdSfsXferSize bufferSize) {
     _eDest->Say((boost::format("File read(%1%) at %2% for %3% by %4%")
                  % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
+    if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
     int fd = dumpFileOpen(_dumpName);
     if (fd == -1) {
       std::stringstream ss;
@@ -237,7 +298,9 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     }
 
     std::string hash = hashQuery(buffer, bufferSize);
-    _dumpName = hashToPath(hash);
+    // _dumpName = hashToPath(hash);
+    // workaround _dumpName by forcing _dumpName = chunkname
+    _setDumpNameAsChunkId();
     std::string dbName = "q_" + hash;
 
     if (dumpFileExists(_dumpName)) {
@@ -323,14 +386,14 @@ bool qWorker::MySqlFsFile::_runScript(
         std::string subChunk = (*i).str(0);
         processedQuery +=
             (boost::format(CREATE_SUBCHUNK_SCRIPT)
-             % _chunkId % subChunk).str();
+             % _chunkId % subChunk).str() + "\n";
         cleanupScript +=
             (boost::format(CLEANUP_SUBCHUNK_SCRIPT)
-             % _chunkId % subChunk).str();
+             % _chunkId % subChunk).str() + "\n";
     }
     processedQuery += script;
     processedQuery += cleanupScript;
-    result = runQuery(db.get(), processedQuery);
+    result = runQueryInPieces(db.get(), processedQuery);
     if (result.size() != 0) {
         error.setErrInfo(EIO, (result + "\nQuery: " + processedQuery).c_str());
         return false;
@@ -382,4 +445,10 @@ bool qWorker::MySqlFsFile::_runScript(
     }
 
     return true;
+}
+
+void qWorker::MySqlFsFile::_setDumpNameAsChunkId() {
+    std::stringstream ss;
+    ss << _chunkId;
+    ss >> _dumpName;
 }
