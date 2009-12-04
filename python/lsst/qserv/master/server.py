@@ -1,16 +1,18 @@
+# Standard Python imports
+from itertools import ifilter
+import logging 
+import os
+import sys
+import time
 
+# Twisted imports
 from twisted.internet import reactor
 import twisted.web.resource 
 import twisted.web.static
 import twisted.web
 import twisted.web.server 
 
-import logging 
-import os
-import sys
-from itertools import ifilter
-
-# lspeed local
+# Package imports
 import app
 
 
@@ -75,10 +77,13 @@ class ClientInterface:
         if 'q' in req.args:
             a = app.QueryAction(flatargs['q'])
             id = self.tracker.track("myquery", a, flatargs['q'])
+            stats = time.qServQueryTimer[time.qServRunningName]
+            stats["appInvokeStart"] = time.time()
             if 'lsstRunning' in dir(reactor):
                 reactor.callInThread(a.invoke)
             else:
                 a.invoke()
+            stats["appInvokeFinish"] = time.time()
             return "Server processed, q='" + flatargs['q'] + "' your id is %d" % (id)
         else:
             return "no query in string, try q='select...'"

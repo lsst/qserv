@@ -9,12 +9,11 @@ import time
 import MySQLdb as sql
 from string import Template
 
-# package import
+# Package imports
 import sqlparser
 from lsst.qserv.master import xrdOpen, xrdClose, xrdRead, xrdWrite
 from lsst.qserv.master import xrdLseekSet, xrdReadStr
 from lsst.qserv.master import charArray_frompointer, charArray
-
 
 class Persistence:
     def __init__(self):
@@ -157,6 +156,9 @@ class XrdOperation(threading.Thread):
 
         def run(self):
             print "Issuing (%d)" % self.chunk, "via", self.url
+            stats = time.qServQueryTimer[time.qServRunningName]
+            taskName = "chunkQ_" + str(self.chunk)
+            stats[taskName+"Start"] = time.time()
             self.successful = True
             handle = xrdOpen(self.url, os.O_RDWR)
             q = self.query
@@ -188,14 +190,21 @@ class XrdOperation(threading.Thread):
                 # print "Result buffer is", 
                 # for s in resultBufferList:
                 #     print "----",s,"----"
+                stats[taskName+"postStart"] = time.time()
                 self.outputFunc(self.outputArg, "".join(resultBufferList))
+                stats[taskName+"postFinish"] = time.time()
             print "[", self.chunk, "complete]",
+            stats[taskName+"Finish"] = time.time()
             return self.successful
         pass
 
 class QueryAction:
     def __init__(self, query):
-        self.queryStr = query
+        self.queryStr = query.strip()# Pull trailing whitespace
+        # Force semicolon to facilitate worker-side splitting
+        if self.queryStr[-1] != ";":  # Add terminal semicolon
+            self.queryStr += ";" 
+            
         self.queryMunger = None ## sqlparser.QueryMunger()
         self.db = Persistence()
         self.running = {}
@@ -220,6 +229,9 @@ class QueryAction:
         pass
         
     def invoke(self):
+        print "Query invoking..."
+        stats = time.qServQueryTimer[time.qServRunningName]
+        stats["queryActionStart"] = time.time()
         self.queryMunger = sqlparser.QueryMunger(self.queryStr)
         
         query = self.queryMunger.computePartMapQuery()
@@ -238,7 +250,7 @@ class QueryAction:
         self.applySql("test", "DROP TABLE IF EXISTS result;")
 
         for chunk in collected:
-                subc = collected[chunk][:2] # DEBUG: force only 2 subchunks
+                subc = collected[chunk][:5] # DEBUG: force less subchunks
                 header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
 
                 cq = self.queryMunger.expandSubQueries(chunk, subc)
@@ -266,6 +278,7 @@ class QueryAction:
                 print "Unsuccessful with %s on chunk %d" % (self.queryStr, c)
             
         print "results available in db test, as table 'result'"
+        stats["queryActionFinish"] = time.time()
         #print self.queryStr, "resulted in", query
         ## sqlparser.test(self.queryStr)
         

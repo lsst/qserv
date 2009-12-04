@@ -285,6 +285,7 @@ class QueryMunger:
             # Always collapse function calls since we can't pre-eval them.
             if "(" in condition.asList() or not filter(partMapCares, condition):
                 tok[0] = "TRUE";
+
             return tok
         g.whereExpAction.append(onlyStatic)
         g.whereExpAction.append(convert)
