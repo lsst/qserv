@@ -13,6 +13,8 @@ nearNeighborQueryAlias = """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.
 nearNeighborQueryMySql = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
   AS dist FROM Object AS o1, Object AS o2 WHERE o1.ra between 30.5 and 31.5 and o2.decl between -20 and -19.2 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id;"""
 nearNeighborQuery = nearNeighborQueryMySql
+slowNearNeighborQuery = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+  AS dist FROM Object AS o1, Object AS o2 WHERE LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id;"""
 nnSelectPart = "SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl)"
 
 def flatten(someList):
@@ -62,19 +64,31 @@ class TestAppFunctions(unittest.TestCase):
     def testServerQuery(self):
         """Apply a canned query using the server's client interface
         """
-        ci = server.ClientInterface()
-        class Dummy:
-            pass
-        arg = Dummy()
-        #arg.args = {'q':['select * from Object where ra between 2 and 5 and decl between 1 and 10;',]} 
-        arg.args = {'q':[nearNeighborQuery]}
-        print ci.query(arg)
+        self._invokeTimedServerQuery(nearNeighborQuery, "Light 1 sq.degree near-neighbor query")
+
+    def testServerSlowQuery(self):
+        "Apply a canned query to the server. (all chunks,subchunks"
+        query = slowNearNeighborQuery
+        self._invokeTimedServerQuery(query, "Mr.Slow")
         self.assert_(True) # placeholder
+
+    def testSlow(self):
+        "Alias for ServerSlowQuery"
+        return self.testServerSlowQuery()
 
     def clearTables(self):
         p = app.Persistence()
         p.activate()
         p.makeTables() # start anew
+
+    def _invokeTimedServerQuery(self, q, name="untitled"):
+        ci = server.ClientInterface()
+        class Dummy:
+            pass
+        arg = Dummy()
+        arg.args = {'q':[q]}
+        print ci.query(arg)
+        self.assert_(True) # placeholder
     
     pass
 
