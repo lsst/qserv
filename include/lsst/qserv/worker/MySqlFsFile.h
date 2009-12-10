@@ -3,9 +3,11 @@
 
 #include <sys/types.h>
     
+#include <deque>
 #include <string>
 
 #include "XrdSfs/XrdSfsInterface.hh"
+#include "mysql/mysql.h"
 
 class XrdSysError;
 class XrdSysLogger;
@@ -49,6 +51,32 @@ public:
     int getCXinfo(char cxtype[4], int& cxrsz);
 
 private:
+    class StringBuffer {
+    public:
+	StringBuffer() {}
+	~StringBuffer() { reset(); }
+	void addBuffer(char const* buffer, XrdSfsXferSize bufferSize);
+	std::string getStr() const;
+	XrdSfsFileOffset getLength() const;
+	void reset();
+    private:
+	typedef std::pair<char*,XrdSfsXferSize> Pair;
+	std::deque<Pair> _buffers;
+    };
+
+    bool _addWritePacket(char const* buffer, XrdSfsXferSize bufferSize);
+    bool _flushWrite();
+    bool _hasPacketEof(char const* buffer, XrdSfsXferSize bufferSize) const;
+
+    std::string _runScriptPiece(MYSQL*const db,
+				std::string const& scriptId, 
+				std::string const& pieceName,
+				std::string const& piece);
+    std::string _runScriptPieces(MYSQL*const db, 
+				 std::string const& scriptId,
+				 std::string const& build, 
+				 std::string const& run, 
+				 std::string const& cleanup);
     bool _runScript(std::string const& script, std::string const& dbName);
     void _setDumpNameAsChunkId();
 
@@ -58,6 +86,7 @@ private:
     std::string _dumpName;
     std::string _socketFilename;
     std::string _mysqldumpPath;
+    StringBuffer _queryBuffer;
 };
 
 }}} // namespace lsst::qserv::worker

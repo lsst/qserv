@@ -5,10 +5,15 @@
 
 #include "boost/regex.hpp"
 #include "boost/format.hpp"
+#include <algorithm>
 #include <cstdlib>
+#include <cstring>
+#include <ctime>
 #include <fcntl.h>
+#include <functional>
 #include <errno.h>
 #include "mysql/mysql.h"
+#include <numeric>
 #include <openssl/md5.h>
 #include <unistd.h>
 #include <sstream>
@@ -38,6 +43,26 @@ public:
     MYSQL* get(void) const { return _db; };
 private:
     MYSQL* _db;
+};
+
+// Functor to delete containers of pair<type*, dontcare>
+template<class Pair> struct ptrDestroyFirst {
+    ptrDestroyFirst() {}
+    void operator() (Pair x) { delete[] x.first;}
+};
+#if 0
+// Functor to compute size of pair<dontcare, int>
+template<class Pair> struct accumulateSecond{    
+    accumulateSecond() {}
+    typename Pair::T2 operator() (typename Pair::T2 x, typename Pair& p) { return x + p.second; }
+};
+#endif
+struct accumulateSecond {    
+    accumulateSecond() {}
+    XrdSfsXferSize operator() (XrdSfsXferSize x, 
+			       std::pair<char*, XrdSfsXferSize> const& p) { 
+	return x + p.second; 
+    }
 };
 
 static std::string hashQuery(char const* buffer, int bufferSize) {
@@ -121,12 +146,14 @@ static std::string runQueryInPieces(MYSQL* db, std::string query,
 	}
 	queryPiece = "";
 	queryPiece.assign(query, pieceBegin, pieceEnd-pieceBegin);
-        subResult = runQuery(db, queryPiece, arg);
+	// Catch empty strings.
+	if(!queryPiece.empty() && queryPiece[0] != '\0') {
+	   subResult = runQuery(db, queryPiece, arg);
+	  }
 	// On error, the partial error is as good as the global.
 	if(!subResult.empty()) {
 	    unsigned s=pieceEnd-pieceBegin;
-
-	    
+	    std::stringstream ss;
 	    return subResult + (boost::format("---Error with piece %1% complete (size=%2%).") % pieceCount % s).str();;
 	}
 	++pieceCount;
@@ -244,8 +271,10 @@ int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
 
 XrdSfsXferSize qWorker::MySqlFsFile::read(
     XrdSfsFileOffset fileOffset, char* buffer, XrdSfsXferSize bufferSize) {
-    _eDest->Say((boost::format("File read(%1%) at %2% for %3% by %4%")
-                 % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
+    std::string msg;
+    msg = (boost::format("File read(%1%) at %2% for %3% by %4% [actual=%5%]")
+	   % _chunkId % fileOffset % bufferSize % _userName % _dumpName).str();
+    _eDest->Say(msg.c_str());
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
     int fd = dumpFileOpen(_dumpName);
     if (fd == -1) {
@@ -288,34 +317,26 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     XrdSfsXferSize bufferSize) {
     _eDest->Say((boost::format("File write(%1%) at %2% for %3% by %4%")
                  % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
-    if (fileOffset != 0) {
-        error.setErrInfo(EINVAL, "Write beyond beginning of file");
+    XrdSfsFileOffset expectedOffset = _queryBuffer.getLength();
+    if (fileOffset != expectedOffset) {
+	std::string msg = (boost::format("%1% Expected offset: %2%, got %3%.") 
+			   % "Non-contiguous write to file." 
+			   % expectedOffset % fileOffset).str();
+        error.setErrInfo(EINVAL, msg.c_str());
         return -1;
     }
     if (bufferSize <= 0) {
         error.setErrInfo(EINVAL, "No query provided");
         return -1;
     }
+    _addWritePacket(buffer, bufferSize);
 
-    std::string hash = hashQuery(buffer, bufferSize);
-    // _dumpName = hashToPath(hash);
-    // workaround _dumpName by forcing _dumpName = chunkname
-    _setDumpNameAsChunkId();
-    std::string dbName = "q_" + hash;
-
-    if (dumpFileExists(_dumpName)) {
-        return bufferSize;
-    }
-
-    std::string strBuffer(buffer, bufferSize);
-
-    _eDest->Say((boost::format("(fileobj:%4%) Db = %1%, dump = %2%:\n%3%")
-                 % dbName % _dumpName % strBuffer % (void*)(this)).str().c_str());
-    if (!_runScript(strBuffer, dbName)) {
-        return -1;
+    if(_hasPacketEof(buffer, bufferSize)) {
+	return _flushWrite();
     }
     return bufferSize;
 }
+
 
 int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
@@ -347,10 +368,131 @@ int qWorker::MySqlFsFile::getCXinfo(char cxtype[4], int &cxrsz) {
     return SFS_ERROR;
 }
 
+void qWorker::MySqlFsFile::StringBuffer::addBuffer(
+    char const* buffer, XrdSfsXferSize bufferSize) {
+    char* newItem = new char[bufferSize];
+    assert(newItem != (char*)0);
+    memcpy(newItem, buffer, bufferSize);
+    _buffers.push_back(Pair(newItem,bufferSize));
+}
+
+std::string qWorker::MySqlFsFile::StringBuffer::getStr() const {
+    typedef std::deque<Pair> BufDeq;
+    std::string accumulated;
+    BufDeq::const_iterator bi; 
+    BufDeq::const_iterator bend = _buffers.end(); 
+
+    accumulated.reserve(getLength());
+    for(bi = _buffers.begin(); bi != bend; ++bi) {
+	Pair const& p = *bi;
+	accumulated += std::string(p.first, p.second);
+    }
+    return accumulated;
+}
+
+XrdSfsFileOffset qWorker::MySqlFsFile::StringBuffer::getLength() const {
+    return std::accumulate(_buffers.begin(), _buffers.end(), 
+			   0, accumulateSecond());
+}
+
+void qWorker::MySqlFsFile::StringBuffer::reset() {
+    for_each(_buffers.begin(), _buffers.end(), ptrDestroyFirst<Pair>());
+    _buffers.clear();
+}
+
+
+bool qWorker::MySqlFsFile::_addWritePacket(char const* buffer, 
+					   XrdSfsXferSize bufferSize) {
+    _queryBuffer.addBuffer(buffer, bufferSize);
+    return true;
+}
+
+bool qWorker::MySqlFsFile::_flushWrite() {
+    std::string script = _queryBuffer.getStr();
+    std::string hash = hashQuery(script.data(), script.length());
+    // _dumpName = hashToPath(hash);
+    // workaround _dumpName by forcing _dumpName = chunkname
+    _setDumpNameAsChunkId();
+    std::string dbName = "q_" + hash;
+    // Do not print query-- could be multi-megabytes.
+    _eDest->Say((boost::format("(fileobj:%3%) Db = %1%, dump = %2%")
+                 % dbName % _dumpName % (void*)(this)).str().c_str());
+    
+    if (dumpFileExists(_dumpName)) {
+    _eDest->Say((boost::format("Reusing pre-existing dump = %1%")
+                 % _dumpName).str().c_str());
+        return true;
+    }
+
+    if (!_runScript(script, dbName)) {
+	_eDest->Say((boost::format("(FinishFail:%3%) Db = %1%, dump = %2%")
+                 % dbName % _dumpName % (void*)(this)).str().c_str());
+	
+        return false;
+    } else {
+	_eDest->Say((boost::format("(FinishOK:%3%) Db = %1%, dump = %2%")
+                 % dbName % _dumpName % (void*)(this)).str().c_str());
+
+    }
+    return true;
+}
+
+bool qWorker::MySqlFsFile::_hasPacketEof(
+    char const* buffer, XrdSfsXferSize bufferSize) const {
+    if(bufferSize < 4) {
+	return false;
+    }
+    char const* last4 = buffer-4+bufferSize;
+    return ((last4[0] == '\0') &&
+	    (last4[1] == '\0') &&
+	    (last4[2] == '\0') &&
+	    (last4[3] == '\0'));
+}
+
+std::string qWorker::MySqlFsFile::_runScriptPiece(
+    MYSQL*const db,
+    std::string const& scriptId, 
+    std::string const& pieceName, std::string const& piece) {
+    std::string result;
+    _eDest->Say((boost::format("TIMING,%1%%2%Start,%3%")
+                 % scriptId % pieceName % ::time(NULL)).str().c_str());
+    result = runQueryInPieces(db, piece);
+    _eDest->Say((boost::format("TIMING,%1%%2%Finish,%3%")
+                 % scriptId % pieceName % ::time(NULL)).str().c_str());
+    if(!result.empty()) {
+	_eDest->Say((boost::format("Broken! ,%1%%2%---%3%")
+		     % scriptId % pieceName % result).str().c_str());
+	result += "(during " + pieceName + ")\nQueryFragment: " + piece;
+    }
+    return result;
+}		   
+
+std::string qWorker::MySqlFsFile::_runScriptPieces(
+    MYSQL*const db,
+    std::string const& scriptId, std::string const& build, 
+    std::string const& run, std::string const& cleanup) {
+
+    std::string result;    
+
+    result = _runScriptPiece(db, scriptId, "QueryBuildSub", build);
+    if(result.empty()) {
+	result = _runScriptPiece(db, scriptId, "QueryExec", run);
+	if(result.empty()) {
+	}
+	// Always destroy subchunks.
+	result += _runScriptPiece(db, scriptId, "QueryDestroySub", cleanup);
+    } 
+    return result;
+}
+
 
 bool qWorker::MySqlFsFile::_runScript(
     std::string const& script, std::string const& dbName) {
     DbHandle db;
+    std::string scriptId = dbName.substr(0, 6);
+    _eDest->Say((boost::format("TIMING,%1%ScriptStart,%2%")
+                 % scriptId % ::time(NULL)).str().c_str());
+
     if (mysql_real_connect(db.get(), 0, _userName.c_str(), 0, 0, 0, 
 			   _socketFilename.c_str(),
                            CLIENT_MULTI_STATEMENTS) == 0) {
@@ -379,25 +521,31 @@ bool qWorker::MySqlFsFile::_runScript(
 
     std::string firstLine = script.substr(0, script.find('\n'));
     boost::regex re("\\d+");
-    std::string processedQuery;
+    std::string buildScript;
     std::string cleanupScript;
+    _eDest->Say((boost::format("TIMING,%1%QueryFormatStart,%2%")
+                 % scriptId % ::time(NULL)).str().c_str());
+
     for (boost::sregex_iterator i = boost::make_regex_iterator(firstLine, re);
          i != boost::sregex_iterator(); ++i) {
         std::string subChunk = (*i).str(0);
-        processedQuery +=
+        buildScript +=
             (boost::format(CREATE_SUBCHUNK_SCRIPT)
              % _chunkId % subChunk).str() + "\n";
         cleanupScript +=
             (boost::format(CLEANUP_SUBCHUNK_SCRIPT)
              % _chunkId % subChunk).str() + "\n";
     }
-    processedQuery += script;
-    processedQuery += cleanupScript;
-    result = runQueryInPieces(db.get(), processedQuery);
-    if (result.size() != 0) {
-        error.setErrInfo(EIO, (result + "\nQuery: " + processedQuery).c_str());
-        return false;
+    _eDest->Say((boost::format("TIMING,%1%QueryFormatFinish,%2%")
+                 % scriptId % ::time(NULL)).str().c_str());
+    
+    result = _runScriptPieces(db.get(), scriptId, buildScript, 
+			      script, cleanupScript);
+    if(!result.empty()) {
+        error.setErrInfo(EIO, result.c_str());
+	return false;
     }
+
 
     // mysqldump _dbName to _dumpName
     std::string::size_type pos = 0;
@@ -415,10 +563,17 @@ bool qWorker::MySqlFsFile::_runScript(
             " --compact --add-locks --create-options --skip-lock-tables"
             " --result-file=%1% %2%")
                        % _dumpName % dbName).str();
-    if (system(cmd.c_str()) != 0) {
-        error.setErrInfo(errno, ("Unable to dump database " + dbName +
+    { 
+	_eDest->Say((boost::format("TIMING,%1%QueryDumpStart,%2%")
+		     % scriptId % ::time(NULL)).str().c_str());
+	int cmdResult = system(cmd.c_str());
+	_eDest->Say((boost::format("TIMING,%1%QueryDumpFinish,%2%")
+		     % scriptId % ::time(NULL)).str().c_str());
+	if (cmdResult != 0) {
+	    error.setErrInfo(errno, ("Unable to dump database " + dbName +
                                  " to " + _dumpName).c_str());
-        return false;
+	    return false;
+	}
     }
 
     // Record query in query cache table
@@ -444,11 +599,14 @@ bool qWorker::MySqlFsFile::_runScript(
         return false;
     }
 
+    _eDest->Say((boost::format("TIMING,%1%ScriptFinish,%2%")
+                 % scriptId % ::time(NULL)).str().c_str());
+
     return true;
 }
 
 void qWorker::MySqlFsFile::_setDumpNameAsChunkId() {
     std::stringstream ss;
-    ss << _chunkId;
+    ss << DUMP_BASE << _chunkId << ".dump";
     ss >> _dumpName;
 }
