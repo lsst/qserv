@@ -1,6 +1,7 @@
 # app package for lsst.qserv.master
 
 # Standard Python imports
+import hashlib
 from itertools import imap
 import os
 import sys
@@ -14,6 +15,23 @@ import sqlparser
 from lsst.qserv.master import xrdOpen, xrdClose, xrdRead, xrdWrite
 from lsst.qserv.master import xrdLseekSet, xrdReadStr
 from lsst.qserv.master import charArray_frompointer, charArray
+import code, traceback, signal
+
+def debug(sig, frame):
+    """Interrupt running process, and provide a python prompt for
+    interactive debugging."""
+    d={'_frame':frame}         # Allow access to frame object.
+    d.update(frame.f_globals)  # Unless shadowed by global
+    d.update(frame.f_locals)
+
+    i = code.InteractiveConsole(d)
+    message  = "Signal recieved : entering python shell.\nTraceback:\n"
+    message += ''.join(traceback.format_stack(frame))
+    i.interact(message)
+
+def listen():
+    signal.signal(signal.SIGUSR1, debug)  # Register handler
+listen()
 
 class Persistence:
     def __init__(self):
@@ -124,7 +142,6 @@ class TaskTracker:
     def __init__(self):
         self.tasks = {}
         self.pers = Persistence()
-
         pass
 
     def track(self, name, task, querytext):
@@ -163,6 +180,7 @@ class XrdOperation(threading.Thread):
             handle = xrdOpen(self.url, os.O_RDWR)
             q = self.query
             wCount = xrdWrite(handle, charArray_frompointer(q), len(q))
+
             #print "wrote ", wCount, "out of", len(q)
             resultBufferList = []
             if wCount == len(q):
@@ -191,7 +209,7 @@ class XrdOperation(threading.Thread):
                 # for s in resultBufferList:
                 #     print "----",s,"----"
                 stats[taskName+"postStart"] = time.time()
-                self.outputFunc(self.outputArg, "".join(resultBufferList))
+                self.outputFunc(self.outputArg, resultBufferList)
                 stats[taskName+"postFinish"] = time.time()
             print "[", self.chunk, "complete]",
             stats[taskName+"Finish"] = time.time()
@@ -233,15 +251,20 @@ class QueryAction:
         stats = time.qServQueryTimer[time.qServRunningName]
         stats["queryActionStart"] = time.time()
         self.queryMunger = sqlparser.QueryMunger(self.queryStr)
+        # 64bit hash is enough for now(testing).
+        self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:16] 
+        self.resultPath = self.setupDumpSaver(self.queryHash)
         
         query = self.queryMunger.computePartMapQuery()
         print "partmapquery is", query
         p = Persistence()
         p.activate()
+        stats["partMapPrepStart"] = time.time()
         chunktuples = p.issueQuery(query)
         collected = self.queryMunger.collectSubChunkTuples(chunktuples)
-        #collected = dict(collected.items()[:3]) ## DEBUG: Force only 3 chunks
-        createTemplate = "CREATE TABLE IF NOT EXISTS %s ";
+        collected = dict(collected.items()[:3]) ## DEBUG: Force only 3 chunks
+        stats["partMapPrepFinish"] = time.time()
+        createTemplate = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY ";
         insertTemplate = "INSERT INTO %s ";
         tableTemplate = "result_%s";
         q = ""
@@ -250,7 +273,7 @@ class QueryAction:
         self.applySql("test", "DROP TABLE IF EXISTS result;")
 
         for chunk in collected:
-                subc = collected[chunk][:5] # DEBUG: force less subchunks
+                subc = collected[chunk]#[:100] # DEBUG: force less subchunks
                 header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
 
                 cq = self.queryMunger.expandSubQueries(chunk, subc)
@@ -263,12 +286,19 @@ class QueryAction:
                     remain = cq[1:]
                     if remain:
                         qlist.extend(imap(lambda s: insertPrep + s, remain))
-                q = "\n".join([header] + qlist)
-                #print "-----------------",q
+                        
+                q = "\n".join([header] + qlist + ["\0\0\0\0"])  
+                # \0\0\0\0 is the magic query terminator for the 
+                # worker to detect.
+                print "-----------------"
+                print "chunk=", chunk, 
+                print "header=", header
+                print "create=", qlist[0]
+
                 if len(self.running) > self.threadHighWater:
                     print "Reaping"
                     self._joinAny()
-                xo = XrdOperation(chunk, q, self.mergeTableDump, tableName) 
+                xo = XrdOperation(chunk, q, self.saveTableDump, tableName) 
                 xo.start()
                 self.running[chunk] = xo
 
@@ -277,7 +307,7 @@ class QueryAction:
             if not xo.successful:
                 print "Unsuccessful with %s on chunk %d" % (self.queryStr, c)
             
-        print "results available in db test, as table 'result'"
+        print "results available at fs path,", self.resultPath
         stats["queryActionFinish"] = time.time()
         #print self.queryStr, "resulted in", query
         ## sqlparser.test(self.queryStr)
@@ -292,9 +322,37 @@ class QueryAction:
         # Later, we will fork for parallelism.  Test serially first.
          
         pass
-        
 
-    def mergeTableDump(self, tableName, dump):
+    def setupDumpSaver(self, hashkey):
+        path = "/tmp/qserv_"+hashkey
+        # Make room, recursive delete.
+        try:
+            os.rmdir(path)
+        except OSError, e: 
+            if e.errno == 39:
+                # If not empty, make it empty
+                for f in os.listdir(path):
+                    os.remove(os.path.join(path, f))
+                    # Do not recurse.  qserv-managed dir will not require it.
+                os.rmdir(path)
+            pass
+        # Now make a nice, new directory
+        os.mkdir(path)
+        return path
+    
+    def saveTableDump(self, tableName, dumpPieces):
+        name = os.path.join(self.resultPath, tableName)
+        dumpfile = open(name, "wb")
+        bytes = 0
+        for f in dumpPieces:
+            dumpfile.write(f)
+            bytes += len(f)
+        dumpfile.close()
+        print "Wrote to %s, %d bytes" % (name, bytes)
+        pass
+
+        
+    def mergeTableDump(self, tableName, dumpPieces):
         db = "test"
         targetTable = "result"
 
@@ -302,7 +360,19 @@ class QueryAction:
 
         # Apply dump.  This ingests the dump into a table named tableName
         # The dump should be newline-separated.
-        self.applySqlSep(db, dump, ";\n")
+        if False:
+            self.applySqlSep(db, dumpPieces, ";\n")
+        else:
+            from subprocess import Popen, PIPE
+            p = Popen(["/home/wang55/bin/mysql","test"], bufsize=0, 
+                      stdin=PIPE, close_fds=True)
+            if False:
+                p.communicate("".join(dumpPieces))
+            else:
+                for f in dumpPieces:
+                    p.stdin.write(f)
+                p.communicate()
+
 
         ## Might need to specially handle null results.
         # Merge table results into the real results table.

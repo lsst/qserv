@@ -24,7 +24,9 @@ nearNeighborQueryMySqlTemplate = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdi
 
 nearNeighborQuery = nearNeighborQueryMySql
 slowNearNeighborQuery = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
-  AS dist FROM Object AS o1, Object AS o2 WHERE LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id;"""
+  AS dist FROM Object AS o1, Object AS o2 
+  WHERE LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 AND o1.id != o2.id;"""
+# Distance of 0.002 produces a selectivity of 10% on USNO.
 nnSelectPart = "SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl)"
 
 def randomBoundedNearNeigbor(raSize=1.0, declSize=1.0, seed=None):

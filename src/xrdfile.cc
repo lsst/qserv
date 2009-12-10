@@ -4,6 +4,9 @@
 
 #else
 #include "XrdPosix/XrdPosixExtern.hh"
+#include "XrdClient/XrdClientConst.hh"
+#include "XrdClient/XrdClientEnv.hh"
+#include <limits>
 #endif
 
 #include "lsst/qserv/master/xrdfile.h"
@@ -46,9 +49,16 @@ int qMaster::xrdClose(int fildes) {
 long long qMaster::xrdLseekSet(int fildes, off_t offset) {
     return offset; // Always pretend to succeed
 }
+
 #else // Not faked: choose the real XrdPosix implementation.
 
 int qMaster::xrdOpen(const char *path, int oflag) {
+    // Set timeouts to effectively disable client timeouts.
+    //EnvPutInt(NAME_CONNECTTIMEOUT, 3600*24*10); // Don't set this!
+    EnvPutInt(NAME_REQUESTTIMEOUT, std::numeric_limits<int>::max());
+    EnvPutInt(NAME_DATASERVERCONN_TTL, std::numeric_limits<int>::max());
+    // Don't need to lengthen load-balancer timeout.??
+    //EnvPutInt(NAME_LBSERVERCONN_TTL, std::numeric_limits<int>::max());
     return XrdPosix_Open(path, oflag);
 }
 

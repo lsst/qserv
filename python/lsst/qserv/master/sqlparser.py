@@ -412,7 +412,12 @@ qs=[ """SELECT o1.id as o1id,o2.id as o2id,spdist(o1.ra, o1.decl, o2.ra, o2.decl
      """SELECT id FROM Object where ra between 2 and 5 AND blah < 3 AND decl > 4;""", 
      """SELECT id FROM Object where blah < 3 AND decl > 4;""",
      "SELECT id,LSST.spdist(ra,decl,ra,decl) FROM Object WHERE id=1;",
-     """SELECT id,LSST.spdist(ra,decl,ra,decl) FROM Object WHERE LSST.spdist(ra,decl,ra,decl) < 1 AND id=1;""" ]
+     """SELECT id,LSST.spdist(ra,decl,ra,decl) FROM Object WHERE LSST.spdist(ra,decl,ra,decl) < 1 AND id=1;""",
+     """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+  AS dist FROM Object AS o1, Object AS o2 
+  WHERE ABS(o1.ra - o2.ra) < 0.00083 / COS(RADIANS(o2.decl))
+    AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 
+    AND o1.id != o2.id;"""]
 ## Make sure qserv-worker mysql user (e.g. qsmaster) has privileges to execute LSST.spdist
 ## GRANT EXECUTE ON LSST.* TO 'qsmaster'@'localhost';
 ## -- might need to invoke GRANT with superuser.
