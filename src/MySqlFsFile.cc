@@ -1,10 +1,12 @@
 #include "lsst/qserv/worker/MySqlFsFile.h"
 
 #include "XrdSec/XrdSecEntity.hh"
+#include "XrdSfs/XrdSfsAio.hh"
 #include "XrdSys/XrdSysError.hh"
 
 #include "boost/regex.hpp"
 #include "boost/format.hpp"
+#include "boost/thread.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -43,6 +45,46 @@ public:
     MYSQL* get(void) const { return _db; };
 private:
     MYSQL* _db;
+};
+
+class ReadCallable {
+public:
+    ReadCallable(qWorker::MySqlFsFile& fsfile_,
+		    XrdSfsAio* aioparm_)
+	: fsfile(fsfile_), aioparm(aioparm_), sfsAio(aioparm_->sfsAio) {}
+
+    void operator()() {
+	aioparm->Result = fsfile.read(sfsAio.aio_offset, 
+				      (char*)sfsAio.aio_buf, 
+				      sfsAio.aio_nbytes);
+	aioparm->doneRead();
+    }
+private:
+    qWorker::MySqlFsFile& fsfile;
+    XrdSfsAio* aioparm;
+    struct aiocb& sfsAio;
+
+};
+
+class WriteCallable {
+public:
+    WriteCallable(qWorker::MySqlFsFile& fsfile_,
+		   XrdSfsAio* aioparm_)
+	: fsfile(fsfile_), aioparm(aioparm_), sfsAio(aioparm_->sfsAio) {}
+
+    void operator()() {
+	// Check for mysql busy-ness.
+	// Normal write
+	aioparm->Result = fsfile.write(sfsAio.aio_offset, 
+				       (char const*)sfsAio.aio_buf, 
+				       sfsAio.aio_nbytes);
+	aioparm->doneWrite();
+    }
+private:
+    qWorker::MySqlFsFile& fsfile;
+    XrdSfsAio* aioparm;
+    struct aiocb& sfsAio;
+    
 };
 
 // Functor to delete containers of pair<type*, dontcare>
@@ -270,7 +312,8 @@ int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
       _eDest->Say(s.c_str());
 
         error.setErrInfo(ENOENT, "Query results missing");
-        return SFS_ERROR;
+        //return SFS_ERROR;
+	return -ENOENT;
     }
     return SFS_OK;
 }
@@ -291,7 +334,8 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
       _eDest->Say(s.c_str());
 
         error.setErrInfo(errno, "Query results missing");
-        return -1;
+	//return -1;
+        return -errno;
     } else {
       std::stringstream ss;
       ss << (void*)this << "  Dumpfile OK: " << _dumpName;
@@ -302,20 +346,24 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
     off_t pos = ::lseek(fd, fileOffset, SEEK_SET);
     if (pos == static_cast<off_t>(-1) || pos != fileOffset) {
         error.setErrInfo(errno, "Unable to seek in query results");
-        return -1;
+        //return -1;
+	return -errno;
     }
     ssize_t bytes = ::read(fd, buffer, bufferSize);
     if (bytes == -1) {
         error.setErrInfo(errno, "Unable to read query results");
-        return -1;
+        //return -1;
+	return -errno;
     }
     ::close(fd);
     return bytes;
 }
 
 int qWorker::MySqlFsFile::read(XrdSfsAio* aioparm) {
-    error.setErrInfo(ENOTSUP, "Operation not supported");
-    return SFS_ERROR;
+    // Spawn a throwaway thread that calls the normal, blocking read.
+    boost::thread t(ReadCallable(*this, aioparm));
+
+    return SFS_OK;
 }
 
 XrdSfsXferSize qWorker::MySqlFsFile::write(
@@ -329,11 +377,13 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
 			   % "Non-contiguous write to file." 
 			   % expectedOffset % fileOffset).str();
         error.setErrInfo(EINVAL, msg.c_str());
-        return -1;
+        //return -1;
+	return -EINVAL;
     }
     if (bufferSize <= 0) {
         error.setErrInfo(EINVAL, "No query provided");
-        return -1;
+        //return -1;
+	return -EINVAL;
     }
     _addWritePacket(buffer, bufferSize);
 
@@ -342,20 +392,24 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
 	if(!querySuccess) {
 	    _eDest->Say("Flush returned fail.");
 	    error.setErrInfo(EIO, "Error executing query.");
-	    return -1;
+	    //return -1;
+	    return -EIO;
 	}
 	_eDest->Say("Flush ok, ready to return good.");
 
     }
     _eDest->Say((boost::format("File write(%1%) at %2% for %3% by %4%  --FINISH--")
-                 % _chunkId % fileOffset % bufferSize % _userName).str().c_str();
+                 % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
+    
     return bufferSize;
 }
 
-
+	
 int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
-    error.setErrInfo(ENOTSUP, "Operation not supported");
-    return SFS_ERROR;
+    // Spawn a thread that calls the normal write call.
+    boost::thread t(WriteCallable(*this, aioparm));
+		    
+    return SFS_OK;
 }
 
 int qWorker::MySqlFsFile::sync(void) {

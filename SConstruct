@@ -75,6 +75,9 @@ if not conf.CheckLib("boost_regex-gcc43-mt", language="C++") \
     and not conf.CheckLib("boost_regex", language="C++"):
     print >> sys.stderr, "Could not locate boost_regex library"
     Exit(1)
+if not conf.CheckLib("boost_thread", language="C++"):
+    print >> sys.stderr, "Could not locate boost_thread library"
+    Exit(1)
 env = conf.Finish()
 
 # Describe what your package contains here.
