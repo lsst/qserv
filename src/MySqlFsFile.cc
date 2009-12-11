@@ -218,9 +218,15 @@ int qWorker::MySqlFsFile::open(
 }
 
 int qWorker::MySqlFsFile::close(void) {
-    // optionally remove dump file
     _eDest->Say((boost::format("File close(%1%) by %2%")
                  % _chunkId % _userName).str().c_str());
+    
+    // Must remove dump file while we are doing the single-query workaround
+    int result = ::unlink(_dumpName.c_str());
+    if(result != 0) {
+	_eDest->Say((boost::format("Error removing dump file(%1%): %2%")
+		     % _dumpName % strerror(errno)).str().c_str());
+    }
     return SFS_OK;
 }
 
@@ -332,8 +338,17 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     _addWritePacket(buffer, bufferSize);
 
     if(_hasPacketEof(buffer, bufferSize)) {
-	return _flushWrite();
+	bool querySuccess = _flushWrite();
+	if(!querySuccess) {
+	    _eDest->Say("Flush returned fail.");
+	    error.setErrInfo(EIO, "Error executing query.");
+	    return -1;
+	}
+	_eDest->Say("Flush ok, ready to return good.");
+
     }
+    _eDest->Say((boost::format("File write(%1%) at %2% for %3% by %4%  --FINISH--")
+                 % _chunkId % fileOffset % bufferSize % _userName).str().c_str();
     return bufferSize;
 }
 
@@ -432,7 +447,6 @@ bool qWorker::MySqlFsFile::_flushWrite() {
     } else {
 	_eDest->Say((boost::format("(FinishOK:%3%) Db = %1%, dump = %2%")
                  % dbName % _dumpName % (void*)(this)).str().c_str());
-
     }
     return true;
 }
