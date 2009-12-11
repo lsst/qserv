@@ -1,0 +1,18 @@
+if tuson121*
+all.role manager
+xrootd.fslib libXrdOfs.so
+
+else
+all.role server
+xrootd.fslib libqserv_worker.so
+oss.localroot /data/lsst/lspexport
+olb.space linger 0 recalc 15 min 10m 11m
+xrootd.async force
+fi
+
+cms.pidpath /data/lsst
+all.adminpath /data/lsst
+all.manager tuson121:2131
+all.export /query/ nolock
+xrd.network nodnr
+ 
