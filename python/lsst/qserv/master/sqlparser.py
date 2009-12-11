@@ -3,6 +3,7 @@ from collections import defaultdict
 from itertools import imap
 import string
 import sys
+import traceback
 
 # Extended from Paul McGuire's simpleSQL.py which was a sample from
 # the pyparsing project ( http://pyparsing.wikispaces.com/ )
@@ -11,6 +12,7 @@ import sys
 # support for aliasing.  AS keyword is required, otherwise pyparsing
 # mistakes "FROM" for an alias (pyparsing is not recursive descent). 
 
+import pyparsing
 from pyparsing import \
     Literal, CaselessLiteral, Word, Upcase,\
     delimitedList, Optional, Combine, Group, alphas, nums, \
@@ -43,8 +45,9 @@ class Grammar:
         columnName     = delimitedList( ident, ".", combine=True )
         #columnName.setParseAction(upcaseTokens)
         columnNameList = Group( columnName + ZeroOrMore("," + columnName))
-
-        functionExpr = ident + Optional("."+ident) + Literal('(') + columnNameList + Literal(')')
+#        selectableList = Forward()
+        columnRvalList = Forward()
+        functionExpr = ident + Optional("."+ident) + Literal('(') + columnRvalList + Literal(')')
         alias = Forward()
         identExpr  = functionExpr | ident
         self.identExpr = identExpr # Debug
@@ -59,10 +62,21 @@ class Grammar:
         valueExprPrimary = functionSpec | columnRef
         numPrimary = valueExprPrimary ## | numericValFunc
         factor = Optional(Literal("+") | Literal("-")) + numPrimary
+        muldiv = oneOf("* /")
         term = Forward()
-        term << (factor | (term + Literal("*") + factor) | (term + Literal("/") + factor))
+        term << factor + Optional(muldiv + factor)
         numericExpr = Forward()
-        numericExpr << (term | (numericExpr + Literal('+') + term) | (numericExpr + Literal('-') + term))
+        addsub = oneOf("+ -")
+        numericExpr << term + Optional(addsub + numericExpr)
+
+        arithop = oneOf("+ - * /")
+        columnNumericExpr = Forward()
+        cTerm = valueExprPrimary
+        testme = valueExprPrimary + arithop + valueExprPrimary
+        columnNumericExpr << cTerm + Optional(arithop + columnNumericExpr)
+        colNumExpList = Group( columnNumericExpr + ZeroOrMore(","+columnNumericExpr)) 
+        
+
         valueExpr = numericExpr ## | stringExpr | dateExpr | intervalExpr
         derivedColumn = valueExpr + Optional(asToken + alias)
         selectSubList = derivedColumn + ZeroOrMore("," + derivedColumn)
@@ -98,12 +112,14 @@ class Grammar:
                           Optional( E + Optional("+") + Word(nums) ) )
 
         # need to add support for alg expressions
-        columnRval = realNum | intNum | quotedString | numericExpr
+        columnRval = realNum | intNum | quotedString | columnNumericExpr# | numericExpr 
+        columnRvalList << Group( columnRval + ZeroOrMore("," + columnRval))
 
         self.whereExpAction = []
 
         namedRv = columnRval.setResultsName("column")
         whereConditionFlat = Group(
+            ( functionSpec + binop + columnRval) |
             ( namedRv + binop + columnRval ) |
             ( namedRv + in_ + "(" + columnRval + ZeroOrMore(","+namedRv) + ")" ) |
             ( namedRv + in_ + "(" + selectStmt + ")" ) |
@@ -112,6 +128,13 @@ class Grammar:
         whereConditionFlat.addParseAction(self.actionWrapper(self.whereExpAction))
         whereCondition = Group(whereConditionFlat 
                                | ( "(" + whereExpression + ")" ))
+
+        # Test code to try to make an expression parse.
+        # print whereConditionFlat.parseString("ABS(o1.ra - o2.ra) < 0.00083 / COS(RADIANS(o2.decl))")
+        # goodFunction = ident + Literal('(') + columnNumericExpr  + Literal(')')
+        # print "ADFDSFDSF",testme.parseString("o1.ra - o2.ra", parseAll=True)
+        # print "ADSFDSFAD", goodFunction.parseString("ABS(o1.ra - o2.ra)")
+
 
         #whereExpression << whereCondition.setResultsName("wherecond")
         #+ ZeroOrMore( ( and_ | or_ ) + whereExpression ) 
@@ -245,7 +268,6 @@ class QueryMunger:
         g = Grammar()
         tableList = []
         whereList = []
-
         def disasm(tokens):
             x = tokens[0] # Unnest
             if x[1].upper() == "BETWEEN":
@@ -296,7 +318,6 @@ class QueryMunger:
         flatWhere = self._flatten(t.where)
         
         pquery = "SELECT chunkid,subchunkid FROM partmap %s;" % flatWhere
-        
         return pquery
 
     def _flatten(self, l):
@@ -413,21 +434,45 @@ qs=[ """SELECT o1.id as o1id,o2.id as o2id,spdist(o1.ra, o1.decl, o2.ra, o2.decl
      """SELECT id FROM Object where blah < 3 AND decl > 4;""",
      "SELECT id,LSST.spdist(ra,decl,ra,decl) FROM Object WHERE id=1;",
      """SELECT id,LSST.spdist(ra,decl,ra,decl) FROM Object WHERE LSST.spdist(ra,decl,ra,decl) < 1 AND id=1;""",
-     """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+     """SELECT o1.id
+  FROM Object AS o1, Object AS o2 
+  WHERE ABS(o1.ra-o2.ra) < 0.00083 / COS(RADIANS(o2.decl)) 
+    ;""", # This one doesn't work right now.
+     """SELECT o1.id
+  FROM Object AS o1, Object AS o2 
+  WHERE ABS(o1.decl-o2.decl) < 0.00083
+    ;""" # This one works.
+     ]
+
+
+xxx= """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
   AS dist FROM Object AS o1, Object AS o2 
   WHERE ABS(o1.ra - o2.ra) < 0.00083 / COS(RADIANS(o2.decl))
     AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 
-    AND o1.id != o2.id;"""]
+    AND o1.id != o2.id;"""
 ## Make sure qserv-worker mysql user (e.g. qsmaster) has privileges to execute LSST.spdist
 ## GRANT EXECUTE ON LSST.* TO 'qsmaster'@'localhost';
 ## -- might need to invoke GRANT with superuser.
+def breakapart(s):
+    l = 0
+    r = ""
+    while(l < len(s)):
+        r += "<%d>%s" % (l, s[l:l+5])
+        l += 5
+    return r
+              
 qsl=[]
 def mytest():
     for q in qs:
+
         qm = QueryMunger(q)
         qsl.append(q)
-        s = qm.computePartMapQuery()
-        print "Query:", q, "\ngives pmquery:", s
+        try:
+            s = qm.computePartMapQuery()
+            print "Query:", q, "\nGot pmquery:", s
+        except pyparsing.ParseException, e:
+            print "Failed on q=",breakapart(q)
+            traceback.print_exc(file=sys.stdout)
         
     pass
 

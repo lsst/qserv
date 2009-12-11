@@ -59,15 +59,25 @@ int qMaster::xrdOpen(const char *path, int oflag) {
     EnvPutInt(NAME_DATASERVERCONN_TTL, std::numeric_limits<int>::max());
     // Don't need to lengthen load-balancer timeout.??
     //EnvPutInt(NAME_LBSERVERCONN_TTL, std::numeric_limits<int>::max());
-    return XrdPosix_Open(path, oflag);
+    time_t seconds;
+    time(&seconds);
+    std::cout << ::asctime(localtime(&seconds)) << "Open " << path << " in flight\n";
+    int res = XrdPosix_Open(path, oflag);
+    time(&seconds);
+    std::cout << ::asctime(localtime(&seconds)) << "Open " << path << " finished.\n";
+    return res;
 }
 
 long long qMaster::xrdRead(int fildes, void *buf, unsigned long long nbyte) {
     // std::cout << "xrd trying to read (" <<  fildes << ") " 
     // 	      << nbyte << " bytes" << std::endl;
+    time_t seconds;
+    time(&seconds);
+    std::cout << ::asctime(localtime(&seconds)) << "Read " << fildes << " in flight\n";
     long long readCount;
     readCount = XrdPosix_Read(fildes, buf, nbyte); 
-    //std::cout << "read " << readCount << " from xrd." << std::endl;
+    time(&seconds);
+    std::cout << ::asctime(localtime(&seconds)) << "Read " << fildes << " finished.\n";    //std::cout << "read " << readCount << " from xrd." << std::endl;
     return readCount;
 }
 
@@ -82,7 +92,13 @@ long long qMaster::xrdWrite(int fildes, const void *buf,
     // s.assign(static_cast<const char*>(buf), nbyte);
     // std::cout << "xrd write (" <<  fildes << ") \"" 
     // 	      << s << "\"" << std::endl;
-    return XrdPosix_Write(fildes, buf, nbyte);
+    time_t seconds;
+    time(&seconds);
+    std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " in flight\n";
+    long long res = XrdPosix_Write(fildes, buf, nbyte);
+    time(&seconds);
+    std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " finished.\n";
+  return res;
 }
 
 int qMaster::xrdClose(int fildes) {

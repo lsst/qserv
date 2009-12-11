@@ -201,7 +201,7 @@ class XrdOperation(threading.Thread):
                     pass
                 self.successful = True
             else:
-                print self.url, "Write failed!"
+                print self.url, "Write failed!", wCount
                 self.successful = False
             xrdClose(handle)
             if resultBufferList:
@@ -261,7 +261,9 @@ class QueryAction:
         p.activate()
         stats["partMapPrepStart"] = time.time()
         chunktuples = p.issueQuery(query)
+        stats["partMapCollectStart"] = time.time()
         collected = self.queryMunger.collectSubChunkTuples(chunktuples)
+        stats["partMapCollectFinish"] = time.time()
         collected = dict(collected.items()[:3]) ## DEBUG: Force only 3 chunks
         stats["partMapPrepFinish"] = time.time()
         createTemplate = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY ";
@@ -273,7 +275,9 @@ class QueryAction:
         self.applySql("test", "DROP TABLE IF EXISTS result;")
 
         for chunk in collected:
-                subc = collected[chunk]#[:100] # DEBUG: force less subchunks
+            
+                subc = collected[chunk][:2000] # DEBUG: force less subchunks
+                # MySQL will probably run out of memory with >2k subchunks.
                 header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
 
                 cq = self.queryMunger.expandSubQueries(chunk, subc)
@@ -292,7 +296,7 @@ class QueryAction:
                 # worker to detect.
                 print "-----------------"
                 print "chunk=", chunk, 
-                print "header=", header
+                print "header=", header[:70],"..."
                 print "create=", qlist[0]
 
                 if len(self.running) > self.threadHighWater:
@@ -426,19 +430,6 @@ def results(tracker, handle):
         return None
 
         
-        
-class XrdAction:
-    def __init__(self):
-        self.handle = None
-        pass
-
-    def invoke(self):
-        self.handle = xrdfile.xrdOpen(self.xrdPath)
-        writtenbytes = xrdfile.xrdWrite(self.handle)
-        readbytes = xrdfile.xrdRead(self.handle)
-        xrdfile.xrdClose(self.handle)
-        pass
-    
 
 tokens_where = [ ['where', 
                   [ ['RA', 'between', '2', 'and', '5'] ], 
