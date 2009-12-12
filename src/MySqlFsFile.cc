@@ -47,44 +47,94 @@ private:
     MYSQL* _db;
 };
 
+class Semaphore {
+    Semaphore(int count=1) : _count(count) {
+	assert(count > 0);
+    }
+
+    void proberen() {
+	// Lock the count variable
+	boost::unique_lock<boost::mutex> lock(_countLock);
+	while(_count <= 0) {
+	//     sleep (release lock) until wakeup
+	    _countCondition.wait(lock);
+	}
+	assert(_count > 0);
+	--_count;
+	// Lock is unlocked when we leave scope.
+    }
+
+    void verhogen() {
+	{
+	    // Lock the count variable.
+	    boost::lock_guard<boost::mutex> lock(_countLock);
+	    ++count;
+	}
+	// Wake up one of the waiters.
+	_countCondition.notify_one();
+	
+    }
+
+    inline void get() { proberen(); }
+    inline void release() { verhogen(); }
+private:
+    boost::mutex _countLock;
+    boost::condition_variable _countCondition;
+    int count;
+};
+
 class ReadCallable {
 public:
-    ReadCallable(qWorker::MySqlFsFile& fsfile_,
-		    XrdSfsAio* aioparm_)
-	: fsfile(fsfile_), aioparm(aioparm_), sfsAio(aioparm_->sfsAio) {}
+    ReadCallable(qWorker::MySqlFsFile& fsfile,
+		    XrdSfsAio* aioparm)
+	: _fsfile(fsfile), _aioparm(aioparm), _sfsAio(aioparm->sfsAio) {}
 
     void operator()() {
-	aioparm->Result = fsfile.read(sfsAio.aio_offset, 
-				      (char*)sfsAio.aio_buf, 
-				      sfsAio.aio_nbytes);
-	aioparm->doneRead();
+	_aioparm->Result = _fsfile.read(_sfsAio.aio_offset, 
+				      (char*)_sfsAio.aio_buf, 
+				      _sfsAio.aio_nbytes);
+	_aioparm->doneRead();
     }
 private:
-    qWorker::MySqlFsFile& fsfile;
-    XrdSfsAio* aioparm;
-    struct aiocb& sfsAio;
+    qWorker::MySqlFsFile& _fsfile;
+    XrdSfsAio* _aioparm;
+    struct aiocb& _sfsAio;
 
 };
 
 class WriteCallable {
 public:
-    WriteCallable(qWorker::MySqlFsFile& fsfile_,
-		   XrdSfsAio* aioparm_)
-	: fsfile(fsfile_), aioparm(aioparm_), sfsAio(aioparm_->sfsAio) {}
+    WriteCallable(qWorker::MySqlFsFile& fsfile,
+		   XrdSfsAio* aioparm)
+	: _fsfile(fsfile), _aioparm(aioparm), _sfsAio(aioparm->sfsAio),
+	  _sema(2) // for now, two simultaneous writes (queries)
+    {}
 
     void operator()() {
 	// Check for mysql busy-ness.
+	_sema.proberen();
 	// Normal write
-	aioparm->Result = fsfile.write(sfsAio.aio_offset, 
-				       (char const*)sfsAio.aio_buf, 
-				       sfsAio.aio_nbytes);
-	aioparm->doneWrite();
+	_aioparm->Result = _fsfile.write(_sfsAio.aio_offset, 
+					 (char const*)_sfsAio.aio_buf, 
+					 _sfsAio.aio_nbytes);
+	if(_aioparm->Result == -EINVAL) { 
+	    // Might be out-of-order write?  Sleep, then retry once.
+	    // Really should rewrite to support out-of-order writes.
+	    _aioparm->Result = _fsfile.write(_sfsAio.aio_offset, 
+					     (char const*)_sfsAio.aio_buf, 
+					     _sfsAio.aio_nbytes);
+	    // Then, just accept error.  
+	}
+	_sema.verhogen();
+	_aioparm->doneWrite();
     }
+
 private:
-    qWorker::MySqlFsFile& fsfile;
-    XrdSfsAio* aioparm;
-    struct aiocb& sfsAio;
-    
+    qWorker::MySqlFsFile& _fsfile;
+    XrdSfsAio* _aioparm;
+    struct aiocb& _sfsAio;
+    static Semaphore _sema;
+
 };
 
 // Functor to delete containers of pair<type*, dontcare>
@@ -291,7 +341,6 @@ int qWorker::MySqlFsFile::getMmap(void** Addr, off_t &Size) {
     return SFS_ERROR;
 }
 
-
 int dumpFileOpen(std::string const& dbName) {
     return open(dbName.c_str(), O_RDONLY);
 }
@@ -377,6 +426,9 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
 			   % "Non-contiguous write to file." 
 			   % expectedOffset % fileOffset).str();
         error.setErrInfo(EINVAL, msg.c_str());
+    _eDest->Say((boost::format("File write(%1%) at %2% for %3% by %4% is broken: %5%")
+                 % _chunkId % fileOffset % bufferSize % _userName % msg).str().c_str());
+
         //return -1;
 	return -EINVAL;
     }
