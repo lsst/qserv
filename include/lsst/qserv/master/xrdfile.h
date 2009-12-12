@@ -5,6 +5,8 @@ namespace lsst {
 namespace qserv {
 namespace master {
 	
+void xrdInit(); // Perform some library initialization (call only once).
+
 int xrdOpen(const char *path, int oflag);
 
 long long xrdRead(int fildes, void *buf, unsigned long long nbyte);

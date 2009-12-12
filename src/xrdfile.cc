@@ -13,7 +13,12 @@
 
 namespace qMaster = lsst::qserv::master;
 
+// Statics
+static bool qMasterXrdInitialized = false; // Library initialized?
+
 #ifdef FAKE_XRD // Fake placeholder implemenation
+void qMaster::xrdInit() {}
+
 int qMaster::xrdOpen(const char *path, int oflag) {
     static int fakeDes=50;
     std::cout << "xrd openfile " << path << " returning ("
@@ -52,13 +57,24 @@ long long qMaster::xrdLseekSet(int fildes, off_t offset) {
 
 #else // Not faked: choose the real XrdPosix implementation.
 
-int qMaster::xrdOpen(const char *path, int oflag) {
+void qMaster::xrdInit() {
+    qMasterXrdInitialized = true;
+
     // Set timeouts to effectively disable client timeouts.
     //EnvPutInt(NAME_CONNECTTIMEOUT, 3600*24*10); // Don't set this!
+    
     EnvPutInt(NAME_REQUESTTIMEOUT, std::numeric_limits<int>::max());
     EnvPutInt(NAME_DATASERVERCONN_TTL, std::numeric_limits<int>::max());
+    // Can't set to max, since it gets added to time(), and max would overflow.
+    // Set to 3 years.
+    EnvPutInt(NAME_TRANSACTIONTIMEOUT, 60*60*24*365*3); 
+
     // Don't need to lengthen load-balancer timeout.??
     //EnvPutInt(NAME_LBSERVERCONN_TTL, std::numeric_limits<int>::max());
+}
+
+int qMaster::xrdOpen(const char *path, int oflag) {
+    if(!qMasterXrdInitialized) { xrdInit(); }
     time_t seconds;
     time(&seconds);
     std::cout << ::asctime(localtime(&seconds)) << "Open " << path << " in flight\n";
@@ -97,7 +113,7 @@ long long qMaster::xrdWrite(int fildes, const void *buf,
     std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " in flight\n";
     long long res = XrdPosix_Write(fildes, buf, nbyte);
     time(&seconds);
-    std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " finished.\n";
+    std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " finished. (" << res << ")\n";
   return res;
 }
 

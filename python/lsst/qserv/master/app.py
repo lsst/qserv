@@ -193,15 +193,15 @@ class XrdOperation(threading.Thread):
                     tup = (self.chunk, len(resultBufferList), rCount)
                     print "chunk %d [packet %d] recv %d" % tup
                     if rCount <= 0:
-                        successful = False
+                        self.successful = False
                         break ## 
                     resultBufferList.append(buf[:rCount])
                     if rCount < bufSize:
                         break
                     pass
-                self.successful = True
+                pass
             else:
-                print self.url, "Write failed!", wCount
+                print self.url, "Write failed! (%d of %d)" %(wCount, len(q))
                 self.successful = False
             xrdClose(handle)
             if resultBufferList:
