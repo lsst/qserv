@@ -76,11 +76,11 @@ void qMaster::xrdInit() {
 int qMaster::xrdOpen(const char *path, int oflag) {
     if(!qMasterXrdInitialized) { xrdInit(); }
     time_t seconds;
-    time(&seconds);
-    std::cout << ::asctime(localtime(&seconds)) << "Open " << path << " in flight\n";
+    //time(&seconds);
+    //std::cout << ::asctime(localtime(&seconds)) << "Open " << path << " in flight\n";
     int res = XrdPosix_Open(path, oflag);
-    time(&seconds);
-    std::cout << ::asctime(localtime(&seconds)) << "Open " << path << " finished.\n";
+    //time(&seconds);
+    //std::cout << ::asctime(localtime(&seconds)) << "Open " << path << " finished.\n";
     return res;
 }
 
@@ -88,12 +88,12 @@ long long qMaster::xrdRead(int fildes, void *buf, unsigned long long nbyte) {
     // std::cout << "xrd trying to read (" <<  fildes << ") " 
     // 	      << nbyte << " bytes" << std::endl;
     time_t seconds;
-    time(&seconds);
-    std::cout << ::asctime(localtime(&seconds)) << "Read " << fildes << " in flight\n";
+    //time(&seconds);
+    //std::cout << ::asctime(localtime(&seconds)) << "Read " << fildes << " in flight\n";
     long long readCount;
     readCount = XrdPosix_Read(fildes, buf, nbyte); 
-    time(&seconds);
-    std::cout << ::asctime(localtime(&seconds)) << "Read " << fildes << " finished.\n";    //std::cout << "read " << readCount << " from xrd." << std::endl;
+    //time(&seconds);
+    //std::cout << ::asctime(localtime(&seconds)) << "Read " << fildes << " finished.\n";    //std::cout << "read " << readCount << " from xrd." << std::endl;
     return readCount;
 }
 
@@ -109,11 +109,11 @@ long long qMaster::xrdWrite(int fildes, const void *buf,
     // std::cout << "xrd write (" <<  fildes << ") \"" 
     // 	      << s << "\"" << std::endl;
     time_t seconds;
-    time(&seconds);
-    std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " in flight\n";
+    //time(&seconds);
+    //std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " in flight\n";
     long long res = XrdPosix_Write(fildes, buf, nbyte);
-    time(&seconds);
-    std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " finished. (" << res << ")\n";
+    //time(&seconds);
+    //std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " finished. (" << res << ")\n";
   return res;
 }
 

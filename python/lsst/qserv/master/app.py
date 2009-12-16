@@ -4,6 +4,7 @@
 import hashlib
 from itertools import imap
 import os
+import random
 import sys
 import threading
 import time
@@ -172,7 +173,7 @@ class XrdOperation(threading.Thread):
             self.url = "xroot://%s@%s//query/%d" % (user, hostport, self.chunk)
 
         def run(self):
-            print "Issuing (%d)" % self.chunk, "via", self.url
+            #print "Issuing (%d)" % self.chunk, "via", self.url
             stats = time.qServQueryTimer[time.qServRunningName]
             taskName = "chunkQ_" + str(self.chunk)
             stats[taskName+"Start"] = time.time()
@@ -184,14 +185,14 @@ class XrdOperation(threading.Thread):
             #print "wrote ", wCount, "out of", len(q)
             resultBufferList = []
             if wCount == len(q):
-                print self.url, "Wrote OK"
+                #print self.url, "Wrote OK"
                 xrdLseekSet(handle, 0L); ## Seek to beginning to read from beginning.
                 while True:
                     bufSize = 8192000
                     buf = "".center(bufSize) # Fill buffer
                     rCount = xrdReadStr(handle, buf)
                     tup = (self.chunk, len(resultBufferList), rCount)
-                    print "chunk %d [packet %d] recv %d" % tup
+                    #print "chunk %d [packet %d] recv %d" % tup
                     if rCount <= 0:
                         self.successful = False
                         break ## 
@@ -228,7 +229,7 @@ class QueryAction:
         self.running = {}
         self.resultLock = threading.Lock()
         self.finished = {}
-        self.threadHighWater = 50
+        self.threadHighWater = 130 # Python can't make more than 159??
         pass
 
     def _joinAny(self):
@@ -241,9 +242,10 @@ class QueryAction:
                 time.sleep(0.5) # Don't spin-check too fast.
         for p in poppable: # Move the threads out.
             t = self.running.pop(p)
-            self.finished[p] = t
+            self.finished[p] = t.successful
             if not t.successful:
                 print "Unsuccessful with %s on chunk %d" % (self.queryStr, p)
+            # Don't save existing thread object.
         pass
         
     def invoke(self):
@@ -264,7 +266,10 @@ class QueryAction:
         stats["partMapCollectStart"] = time.time()
         collected = self.queryMunger.collectSubChunkTuples(chunktuples)
         stats["partMapCollectFinish"] = time.time()
-        collected = dict(collected.items()[:3]) ## DEBUG: Force only 3 chunks
+        #collected = dict(collected.items()[:5]) ## DEBUG: Force only 3 chunks
+        ##collected = dict(random.sample(collected.items(), 10)) ## DEBUG: Force only 3 chunks
+        chunkNums = collected.keys()
+        random.shuffle(chunkNums) # Try to balance among workers.
         stats["partMapPrepFinish"] = time.time()
         createTemplate = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY ";
         insertTemplate = "INSERT INTO %s ";
@@ -273,8 +278,8 @@ class QueryAction:
         self.db.activate()
         # Drop result table to make room.
         self.applySql("test", "DROP TABLE IF EXISTS result;")
-
-        for chunk in collected:
+        
+        for chunk in chunkNums:
             
                 subc = collected[chunk][:2000] # DEBUG: force less subchunks
                 # MySQL will probably run out of memory with >2k subchunks.
@@ -294,10 +299,13 @@ class QueryAction:
                 q = "\n".join([header] + qlist + ["\0\0\0\0"])  
                 # \0\0\0\0 is the magic query terminator for the 
                 # worker to detect.
-                print "-----------------"
-                print "chunk=", chunk, 
-                print "header=", header[:70],"..."
-                print "create=", qlist[0]
+                #print "-----------------"
+                print "dispatch chunk=", chunk, 
+                print "run=%d fin=%d tot=%d" %(len(self.running), 
+                                               len(self.finished), 
+                                               len(chunkNums))
+                #print "header=", header[:70],"..."
+                #print "create=", qlist[0]
 
                 if len(self.running) > self.threadHighWater:
                     print "Reaping"
@@ -308,9 +316,12 @@ class QueryAction:
 
         for (c,xo) in self.running.items():
             xo.join()
+            t = self.running.pop(c)
+            self.finished[c] = t.successful
             if not xo.successful:
                 print "Unsuccessful with %s on chunk %d" % (self.queryStr, c)
-            
+            # discard thread object.
+        
         print "results available at fs path,", self.resultPath
         stats["queryActionFinish"] = time.time()
         #print self.queryStr, "resulted in", query
