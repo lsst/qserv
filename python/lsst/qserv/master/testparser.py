@@ -25,7 +25,13 @@ nearNeighborQueryMySqlTemplate = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdi
 nearNeighborQuery = nearNeighborQueryMySql
 slowNearNeighborQuery = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
   AS dist FROM Object AS o1, Object AS o2 
-  WHERE ABS(o1.decl-o2.decl) < 0.00083 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 AND o1.id != o2.id;"""
+  WHERE ABS(o1.decl-o2.decl) < 0.001 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 AND o1.id != o2.id;"""
+selectSmallQuery = """SELECT * FROM Object 
+WHERE ra BETWEEN 20 AND 20.2 
+AND decl BETWEEN 2 AND 2.2;"""
+tableScanQuery = """SELECT * FROM Object
+WHERE bMag2 > 21.2;
+"""
 # Distance of 0.002 produces a selectivity of 10% on USNO.
 nnSelectPart = "SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl)"
 
@@ -92,6 +98,18 @@ class TestAppFunctions(unittest.TestCase):
     def testSlow(self):
         "Alias for ServerSlowQuery"
         return self.testServerSlowQuery()
+
+    def testHigh(self):
+        "Test a high volume (amt of data touched) query"
+        self._invokeTimedServerQuery(tableScanQuery, "HighVolTableScan")
+        self.assert_(True)
+        pass
+
+    def testLow(self):
+        "Test a low volume (amt of data touched) query"
+        self._invokeTimedServerQuery(selectSmallQuery, "LowVolSpatial")
+        self.assert_(True)
+        pass
 
     def clearTables(self):
         p = app.Persistence()
