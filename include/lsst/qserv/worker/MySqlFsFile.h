@@ -6,6 +6,7 @@
 #include <deque>
 #include <string>
 
+#include "boost/thread.hpp"
 #include "XrdSfs/XrdSfsInterface.hh"
 #include "mysql/mysql.h"
 
@@ -53,18 +54,34 @@ public:
 private:
     class StringBuffer {
     public:
-	StringBuffer() {}
+        StringBuffer() : _totalSize(0) {}
 	~StringBuffer() { reset(); }
-	void addBuffer(char const* buffer, XrdSfsXferSize bufferSize);
+	void addBuffer(XrdSfsFileOffset offset, char const* buffer, 
+		       XrdSfsXferSize bufferSize);
 	std::string getStr() const;
 	XrdSfsFileOffset getLength() const;
+	std::string getDigest() const;
 	void reset();
     private:
-	typedef std::pair<char*,XrdSfsXferSize> Pair;
-	std::deque<Pair> _buffers;
+	struct Fragment {
+	    Fragment(XrdSfsFileOffset offset_, char const* buffer_, 
+		     XrdSfsXferSize bufferSize_) 
+	    : offset(offset_), buffer(buffer_), bufferSize(bufferSize_) {}
+
+	    XrdSfsFileOffset offset; 
+	    char const* buffer;
+	    XrdSfsXferSize bufferSize;
+	};
+
+	typedef std::deque<Fragment> FragmentDeque;
+	FragmentDeque _buffers;
+	XrdSfsFileOffset _totalSize;
+	boost::mutex _mutex;
+	std::stringstream _ss;
     };
 
-    bool _addWritePacket(char const* buffer, XrdSfsXferSize bufferSize);
+    bool _addWritePacket(XrdSfsFileOffset offset, char const* buffer, 
+			 XrdSfsXferSize bufferSize);
     bool _flushWrite();
     bool _hasPacketEof(char const* buffer, XrdSfsXferSize bufferSize) const;
 

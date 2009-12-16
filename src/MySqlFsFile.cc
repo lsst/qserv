@@ -21,6 +21,8 @@
 #include <sstream>
 #include <iostream> // For file-scoped debug output
 
+#define QSERV_USE_STUPID_STRING 1
+
 namespace qWorker = lsst::qserv::worker;
 
 // Must end in a slash.
@@ -48,7 +50,8 @@ private:
 };
 
 class Semaphore {
-    Semaphore(int count=1) : _count(count) {
+public:
+    explicit Semaphore(int count=1) : _count(count) {
 	assert(count > 0);
     }
 
@@ -68,7 +71,7 @@ class Semaphore {
 	{
 	    // Lock the count variable.
 	    boost::lock_guard<boost::mutex> lock(_countLock);
-	    ++count;
+	    ++_count;
 	}
 	// Wake up one of the waiters.
 	_countCondition.notify_one();
@@ -80,7 +83,7 @@ class Semaphore {
 private:
     boost::mutex _countLock;
     boost::condition_variable _countCondition;
-    int count;
+    int _count;
 };
 
 class ReadCallable {
@@ -105,9 +108,9 @@ private:
 class WriteCallable {
 public:
     WriteCallable(qWorker::MySqlFsFile& fsfile,
-		   XrdSfsAio* aioparm)
-	: _fsfile(fsfile), _aioparm(aioparm), _sfsAio(aioparm->sfsAio),
-	  _sema(2) // for now, two simultaneous writes (queries)
+		  XrdSfsAio* aioparm, char* buffer)
+	: _fsfile(fsfile), _aioparm(aioparm), _sfsAio(aioparm->sfsAio), 
+	  _buffer(buffer)
     {}
 
     void operator()() {
@@ -115,47 +118,38 @@ public:
 	_sema.proberen();
 	// Normal write
 	_aioparm->Result = _fsfile.write(_sfsAio.aio_offset, 
-					 (char const*)_sfsAio.aio_buf, 
+					 (char const*)_buffer, 
 					 _sfsAio.aio_nbytes);
-	if(_aioparm->Result == -EINVAL) { 
-	    // Might be out-of-order write?  Sleep, then retry once.
-	    // Really should rewrite to support out-of-order writes.
-	    _aioparm->Result = _fsfile.write(_sfsAio.aio_offset, 
-					     (char const*)_sfsAio.aio_buf, 
-					     _sfsAio.aio_nbytes);
-	    // Then, just accept error.  
-	}
 	_sema.verhogen();
+	delete[] _buffer;
+	_buffer = 0;
+	if(_aioparm->Result != _sfsAio.aio_nbytes) {
+	    // overwrite error result with generic IO error?
+	    _aioparm->Result = -EIO;
+	}
 	_aioparm->doneWrite();
     }
 
 private:
     qWorker::MySqlFsFile& _fsfile;
     XrdSfsAio* _aioparm;
+    char* _buffer;
     struct aiocb& _sfsAio;
     static Semaphore _sema;
 
 };
 
-// Functor to delete containers of pair<type*, dontcare>
-template<class Pair> struct ptrDestroyFirst {
-    ptrDestroyFirst() {}
-    void operator() (Pair x) { delete[] x.first;}
+// for now, two simultaneous writes (queries)
+Semaphore WriteCallable::_sema(2);
+
+template <class T> struct ptrDestroy {
+    void operator() (T& x) { delete[] x.buffer;}
 };
-#if 0
-// Functor to compute size of pair<dontcare, int>
-template<class Pair> struct accumulateSecond{    
-    accumulateSecond() {}
-    typename Pair::T2 operator() (typename Pair::T2 x, typename Pair& p) { return x + p.second; }
+
+template <class T> struct offsetLess {
+    bool operator() (T const& x, T const& y) { return x.offset < y.offset;}
 };
-#endif
-struct accumulateSecond {    
-    accumulateSecond() {}
-    XrdSfsXferSize operator() (XrdSfsXferSize x, 
-			       std::pair<char*, XrdSfsXferSize> const& p) { 
-	return x + p.second; 
-    }
-};
+
 
 static std::string hashQuery(char const* buffer, int bufferSize) {
     unsigned char hashVal[MD5_DIGEST_LENGTH];
@@ -420,6 +414,9 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     XrdSfsXferSize bufferSize) {
     _eDest->Say((boost::format("File write(%1%) at %2% for %3% by %4%")
                  % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
+    // for now, disable expected offset since writes can come out-of-order
+    if (false) { 
+
     XrdSfsFileOffset expectedOffset = _queryBuffer.getLength();
     if (fileOffset != expectedOffset) {
 	std::string msg = (boost::format("%1% Expected offset: %2%, got %3%.") 
@@ -432,14 +429,17 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
         //return -1;
 	return -EINVAL;
     }
+    }
     if (bufferSize <= 0) {
         error.setErrInfo(EINVAL, "No query provided");
         //return -1;
 	return -EINVAL;
     }
-    _addWritePacket(buffer, bufferSize);
+    _addWritePacket(fileOffset, buffer, bufferSize);
+    _eDest->Say((boost::format("File write(%1%) Added.") % _chunkId).str().c_str());
 
     if(_hasPacketEof(buffer, bufferSize)) {
+    _eDest->Say((boost::format("File write(%1%) Flushing.") % _chunkId).str().c_str());
 	bool querySuccess = _flushWrite();
 	if(!querySuccess) {
 	    _eDest->Say("Flush returned fail.");
@@ -459,8 +459,21 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
 	
 int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
     // Spawn a thread that calls the normal write call.
-    boost::thread t(WriteCallable(*this, aioparm));
-		    
+    char* buffer = new char[aioparm->sfsAio.aio_nbytes];
+    assert(buffer != (char*)0);
+    memcpy(buffer, (char const*)aioparm->sfsAio.aio_buf, 
+	   aioparm->sfsAio.aio_nbytes);
+    int printlen = 100;
+    if(printlen > aioparm->sfsAio.aio_nbytes) {
+	printlen = aioparm->sfsAio.aio_nbytes;
+    }
+    std::string s(buffer,printlen);
+    int offset = aioparm->sfsAio.aio_offset;
+    _eDest->Say((boost::format("File write(%1%) at %2% : %3%")
+                 % _chunkId % offset % s).str().c_str());
+    
+    boost::thread t(WriteCallable(*this, aioparm, buffer));
+    
     return SFS_OK;
 }
 
@@ -490,45 +503,113 @@ int qWorker::MySqlFsFile::getCXinfo(char cxtype[4], int &cxrsz) {
 }
 
 void qWorker::MySqlFsFile::StringBuffer::addBuffer(
-    char const* buffer, XrdSfsXferSize bufferSize) {
+    XrdSfsFileOffset offset, char const* buffer, XrdSfsXferSize bufferSize) {
+#if QSERV_USE_STUPID_STRING
+    boost::unique_lock<boost::mutex> lock(_mutex);
+    _ss << std::string(buffer,bufferSize);
+    _totalSize += bufferSize;
+#else
     char* newItem = new char[bufferSize];
     assert(newItem != (char*)0);
     memcpy(newItem, buffer, bufferSize);
-    _buffers.push_back(Pair(newItem,bufferSize));
+    { // Assume(!) that there are no overlapping writes.
+	boost::unique_lock<boost::mutex> lock(_mutex);
+	_buffers.push_back(Fragment(offset, buffer, bufferSize));
+	_totalSize += bufferSize;
+    }
+#endif
 }
 
 std::string qWorker::MySqlFsFile::StringBuffer::getStr() const {
-    typedef std::deque<Pair> BufDeq;
+#if QSERV_USE_STUPID_STRING
+    // Cast away const in order to lock.
+    boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
+    boost::unique_lock<boost::mutex> lock(mutex);
+    return _ss.str();
+#else
     std::string accumulated;
-    BufDeq::const_iterator bi; 
-    BufDeq::const_iterator bend = _buffers.end(); 
+    if(false) {
+    // Cast away const to perform a sort (which doesn't logically change state)
+    FragmentDeque& nonConst = const_cast<FragmentDeque&>(_buffers);
+    std::sort(nonConst.begin(), nonConst.end(), offsetLess<Fragment>());
+    }
+    FragmentDeque::const_iterator bi; 
+    FragmentDeque::const_iterator bend = _buffers.end(); 
 
-    accumulated.reserve(getLength());
+    //    accumulated.assign(getLength(), '\0'); // 
     for(bi = _buffers.begin(); bi != bend; ++bi) {
-	Pair const& p = *bi;
-	accumulated += std::string(p.first, p.second);
+	Fragment const& p = *bi;
+	accumulated += std::string(p.buffer, p.bufferSize);
+	// Perform "writes" of the buffers into the string
+	// Assume that we end up with a contiguous string.
+	//accumulated.replace(p.offset, p.bufferSize, p.buffer, p.bufferSize);
     }
     return accumulated;
+#endif
 }
+
+std::string qWorker::MySqlFsFile::StringBuffer::getDigest() const {  
+#if QSERV_USE_STUPID_STRING
+    // Cast away const in order to lock.
+    boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
+    boost::unique_lock<boost::mutex> lock(mutex);
+    int length = 200;
+    if(length > _totalSize) 
+	length = _totalSize;
+    
+    return std::string(_ss.str().data(), length); 
+#else
+    FragmentDeque::const_iterator bi; 
+    FragmentDeque::const_iterator bend = _buffers.end(); 
+
+    std::stringstream ss;
+    for(bi = _buffers.begin(); bi != bend; ++bi) {
+	Fragment const& p = *bi;
+	ss << "Offset=" << p.offset << "\n";
+	int fragsize = 100;
+	if(fragsize > p.bufferSize) fragsize = p.bufferSize;
+	ss << std::string(p.buffer, fragsize) << "\n";
+    }
+    return ss.str();
+#endif
+}
+
 
 XrdSfsFileOffset qWorker::MySqlFsFile::StringBuffer::getLength() const {
+    return _totalSize;
+    // Might be wise to do a sanity check sometime (overlapping writes!)
+#if 0
+    struct accumulateSize {    
+	XrdSfsXferSize operator() (XrdSfsFileOffset x, Fragment const& p) { 
+	    return x + p.bufferSize; 
+	}
+    };
     return std::accumulate(_buffers.begin(), _buffers.end(), 
-			   0, accumulateSecond());
+			   0, accumulateSize());
+#endif
 }
+
 
 void qWorker::MySqlFsFile::StringBuffer::reset() {
-    for_each(_buffers.begin(), _buffers.end(), ptrDestroyFirst<Pair>());
-    _buffers.clear();
+    {
+	boost::unique_lock<boost::mutex> lock(_mutex);
+	std::for_each(_buffers.begin(), _buffers.end(), ptrDestroy<Fragment>());
+	_buffers.clear();
+    }
 }
 
 
-bool qWorker::MySqlFsFile::_addWritePacket(char const* buffer, 
+bool qWorker::MySqlFsFile::_addWritePacket(XrdSfsFileOffset offset, 
+					   char const* buffer, 
 					   XrdSfsXferSize bufferSize) {
-    _queryBuffer.addBuffer(buffer, bufferSize);
+    _queryBuffer.addBuffer(offset, buffer, bufferSize);
     return true;
 }
 
 bool qWorker::MySqlFsFile::_flushWrite() {
+    std::string digest =  _queryBuffer.getDigest();
+    _eDest->Say("Getting digest");
+    _eDest->Say(digest.c_str());
     std::string script = _queryBuffer.getStr();
     std::string hash = hashQuery(script.data(), script.length());
     // _dumpName = hashToPath(hash);
@@ -538,7 +619,8 @@ bool qWorker::MySqlFsFile::_flushWrite() {
     // Do not print query-- could be multi-megabytes.
     _eDest->Say((boost::format("(fileobj:%3%) Db = %1%, dump = %2%")
                  % dbName % _dumpName % (void*)(this)).str().c_str());
-    
+    _eDest->Say(_queryBuffer.getDigest().c_str());
+
     if (dumpFileExists(_dumpName)) {
     _eDest->Say((boost::format("Reusing pre-existing dump = %1%")
                  % _dumpName).str().c_str());
