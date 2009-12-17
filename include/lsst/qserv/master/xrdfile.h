@@ -4,6 +4,13 @@
 namespace lsst {
 namespace qserv {
 namespace master {
+
+struct XrdTransResult {
+  int open;
+  int queryWrite;
+  int read;
+  int localWrite;  
+};
 	
 void xrdInit(); // Perform some library initialization (call only once).
 
@@ -18,6 +25,16 @@ int xrdClose(int fildes);
 long long xrdLseekSet(int fildes, unsigned long long offset);
 
 int xrdReadStr(int fildes, char *str, int len);
+
+void xrdReadToLocalFile(int fildes, int fragmentSize, 
+			const char* filename, 
+			int* write, int* read);
+
+XrdTransResult xrdOpenWriteReadSaveClose(const char *path, 
+					 const char* buf, int len, 
+					 int fragmentSize,
+					 const char* outfile);
+
 
 }}} // namespace lsst::qserv::master
 

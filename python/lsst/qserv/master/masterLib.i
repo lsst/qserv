@@ -32,7 +32,10 @@ Access to the classes from the qserv_master library
 
  //%apply (void *STRING, unsigned long long LENGTH) { (void *buf, unsigned long long nbyte) };
 %apply (char *STRING, int LENGTH) { (char *str, int len) };
+//%apply (const char *STRING, int LENGTH) { (const char *str, int len) };
+%apply int *OUTPUT { int *write, int *read };
 %include "lsst/qserv/master/xrdfile.h"
+
 
 // Instantiate any templates here:
 // %template(setBool) lsst::daf::base::PropertySet::set<bool>;

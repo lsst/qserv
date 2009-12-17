@@ -15,6 +15,7 @@ from string import Template
 import sqlparser
 from lsst.qserv.master import xrdOpen, xrdClose, xrdRead, xrdWrite
 from lsst.qserv.master import xrdLseekSet, xrdReadStr
+from lsst.qserv.master import xrdReadToLocalFile, xrdOpenWriteReadSaveClose
 from lsst.qserv.master import charArray_frompointer, charArray
 import code, traceback, signal
 
@@ -154,65 +155,147 @@ class TaskTracker:
     def task(self, taskId):
         return self.tasks[taskId]["task"]
 
+class SleepingThread(threading.Thread):
+    def __init__(self, howlong=1.0):
+        self.howlong=howlong
+        threading.Thread.__init__(self)
+    def run(self):
+        time.sleep(self.howlong)
+
 class XrdOperation(threading.Thread):
-        def __init__(self, chunk, query, outputFunc, outputArg):
+        def __init__(self, chunk, query, outputFunc, outputArg, resultPath):
             threading.Thread.__init__(self)
 
-            self.chunk = chunk
-            self.query = query
-            self.outputFunc = outputFunc
-            self.outputArg = outputArg
-            self.url = ""
+            self._chunk = chunk
+            self._query = query
+            self._queryLen = len(query)
+            self._outputFunc = outputFunc
+            self._outputArg = outputArg
+            self._url = ""
             self.setXrd()
             self.successful = None
+            self._handle = None
+            self._resultBufferList = []
+            self._usingCppTransaction = True
+            self._usingXrdReadTo = True
+            self._targetName = os.path.join(resultPath, self._outputArg)
+            self._readSize = 8192000
             pass
 
         def setXrd(self):
             hostport = os.getenv("QSERV_XRD","lsst-dev01:1094")
             user = "qsmaster"
-            self.url = "xroot://%s@%s//query/%d" % (user, hostport, self.chunk)
-
-        def run(self):
-            #print "Issuing (%d)" % self.chunk, "via", self.url
-            stats = time.qServQueryTimer[time.qServRunningName]
-            taskName = "chunkQ_" + str(self.chunk)
-            stats[taskName+"Start"] = time.time()
-            self.successful = True
-            handle = xrdOpen(self.url, os.O_RDWR)
-            q = self.query
-            wCount = xrdWrite(handle, charArray_frompointer(q), len(q))
-
-            #print "wrote ", wCount, "out of", len(q)
-            resultBufferList = []
-            if wCount == len(q):
-                #print self.url, "Wrote OK"
-                xrdLseekSet(handle, 0L); ## Seek to beginning to read from beginning.
-                while True:
-                    bufSize = 8192000
-                    buf = "".center(bufSize) # Fill buffer
-                    rCount = xrdReadStr(handle, buf)
-                    tup = (self.chunk, len(resultBufferList), rCount)
-                    #print "chunk %d [packet %d] recv %d" % tup
-                    if rCount <= 0:
-                        self.successful = False
-                        break ## 
-                    resultBufferList.append(buf[:rCount])
-                    if rCount < bufSize:
-                        break
-                    pass
+            self._url = "xroot://%s@%s//query/%d" % (user, hostport, self._chunk)
+        def _doRead(self):
+            xrdLseekSet(self._handle, 0L); ## Seek to beginning to read from beginning.
+            while True:
+                bufSize = self._readSize
+                buf = "".center(bufSize) # Fill buffer
+                rCount = xrdReadStr(self._handle, buf)
+                tup = (self._chunk, len(self._resultBufferList), rCount)
+                #print "chunk %d [packet %d] recv %d" % tup
+                if rCount <= 0:
+                    return False
+                self._resultBufferList.append(buf[:rCount])
+                del buf # Really get rid of the buffer
+                if rCount < bufSize:
+                    break
                 pass
-            else:
-                print self.url, "Write failed! (%d of %d)" %(wCount, len(q))
-                self.successful = False
-            xrdClose(handle)
-            if resultBufferList:
+            return True
+
+
+        def _doPostProc(self, stats, taskName):
+            if self._resultBufferList:
                 # print "Result buffer is", 
                 # for s in resultBufferList:
                 #     print "----",s,"----"
                 stats[taskName+"postStart"] = time.time()
-                self.outputFunc(self.outputArg, resultBufferList)
+                self._outputFunc(self._outputArg, self._resultBufferList)
                 stats[taskName+"postFinish"] = time.time()
-            print "[", self.chunk, "complete]",
+            del self._resultBufferList # Really get rid of the result buffer
+            pass
+
+        def _readAndPostProc(self, stats, taskName):
+            stats[taskName+"postStart"] = time.time()
+            success = self._doRead()
+            xrdClose(self._handle)
+            if success:
+                self._doPostProc(stats, taskName)
+            stats[taskName+"postFinish"] = time.time()
+            return success
+
+        def _copyToLocal(self, stats, taskName):
+            """_copyToLocal performs the necessary xrdRead and file writing 
+            to copy xrd data to a local file, using C++ code for heavylifting.
+            Warning!  This duplicates saveTableDump functionality.
+            Use only one of these.  """
+            xrdLseekSet(self._handle, 0L); ## Seek to beginning to read from beg
+            stats[taskName+"postStart"] = time.time()
+            writeRes, readRes = xrdReadToLocalFile(self._handle, 
+                                                   self._readSize,
+                                                   self._targetName)
+            xrdClose(self._handle)
+            stats[taskName+"postFinish"] = time.time()
+            if readRes < 0:
+                print "Couldn't read %d, error %d" %(self._chunk, -readRes)
+                return False
+            elif writeRes < 0:
+                print "Couldn't write %s, error %d" %(self._targetName, 
+                                                      -writeRes)
+                return False
+            return True
+
+        def _doCppTransaction(self, stats, taskName):
+            packedResult = xrdOpenWriteReadSaveClose(self._url,
+                                                     self._query, 
+                                                     self._readSize,
+                                                     self._targetName);
+            if packedResult.open < 0:
+                print "Error: open ", self._url
+                return False
+            if packedResult.queryWrite < 0:
+                print "Error: dispatch/write %s (%d) e=%d" \
+                    % (self._url, packedResult.open, packedResult.queryWrite)
+                return False
+            if packedResult.read < 0:
+                print "Error: result readback %s (%d) e=%d" \
+                    % (self._url, packedResult.open, packedResult.read)
+                return False
+            if packedResult.localWrite < 0:
+                print "Error: result writeout %s (%d) file %s e=%d" \
+                    % (self._url, packedResult.open, 
+                       self._targetName, packedResult.localWrite)
+                return False
+            return True
+
+        def _doNormalTransaction(self, stats, taskName):
+            self._handle = xrdOpen(self._url, os.O_RDWR)
+            wCount = xrdWrite(self._handle, charArray_frompointer(self._query), 
+                              self._queryLen)
+            self._query = None # Save memory!
+            success = True
+            if wCount == self._queryLen:
+                #print self._url, "Wrote OK", wCount, "out of", self._queryLen
+                if self._usingXrdReadTo:
+                    success = self._copyToLocal(stats, taskName)
+                else:
+                    success = self._readAndPostProc(stats, taskName)
+            else:
+                print self._url, "Write failed! (%d of %d)" %(wCount, self._queryLen)
+                success = False
+            return success
+
+        def run(self):
+            #print "Issuing (%d)" % self._chunk, "via", self._url
+            stats = time.qServQueryTimer[time.qServRunningName]
+            taskName = "chunkQ_" + str(self._chunk)
+            stats[taskName+"Start"] = time.time()
+            self.successful = True
+            if self._usingCppTransaction:
+                self.successful = self._doCppTransaction(stats, taskName)
+            else:
+                self.successful = self._doNormalTransaction(stats, taskName)
+            print "[", self._chunk, "complete]",
             stats[taskName+"Finish"] = time.time()
             return self.successful
         pass
@@ -232,14 +315,22 @@ class QueryAction:
         self.threadHighWater = 130 # Python can't make more than 159??
         pass
 
-    def _joinAny(self):
+    def _joinAny(self, jostle=False):
         poppable = []
         while (not poppable) and (self.running):  # keep waiting 
             for (chunk, thread) in self.running.items():
                 if not thread.isAlive(): 
                     poppable.append(chunk)
             if not poppable: 
-                time.sleep(0.5) # Don't spin-check too fast.
+                if jostle:
+                    sys.stderr.write("poke! " + str(len(self.running)))
+                    j = SleepingThread(0.4)
+                    j.start()
+                    j.join()
+                else:
+                    time.sleep(0.5) # Don't spin-check too fast.
+                    
+                    
         for p in poppable: # Move the threads out.
             t = self.running.pop(p)
             self.finished[p] = t.successful
@@ -265,11 +356,12 @@ class QueryAction:
         chunktuples = p.issueQuery(query)
         stats["partMapCollectStart"] = time.time()
         collected = self.queryMunger.collectSubChunkTuples(chunktuples)
+        del chunktuples # Free chunktuples memory
         stats["partMapCollectFinish"] = time.time()
         #collected = dict(collected.items()[:5]) ## DEBUG: Force only 3 chunks
-        ##collected = dict(random.sample(collected.items(), 10)) ## DEBUG: Force only 3 chunks
         chunkNums = collected.keys()
         random.shuffle(chunkNums) # Try to balance among workers.
+        #chunkNums = chunkNums[:200]
         stats["partMapPrepFinish"] = time.time()
         createTemplate = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY ";
         insertTemplate = "INSERT INTO %s ";
@@ -295,7 +387,9 @@ class QueryAction:
                     remain = cq[1:]
                     if remain:
                         qlist.extend(imap(lambda s: insertPrep + s, remain))
-                        
+                        del remain
+                createPrep = ""
+                insertPrep = ""
                 q = "\n".join([header] + qlist + ["\0\0\0\0"])  
                 # \0\0\0\0 is the magic query terminator for the 
                 # worker to detect.
@@ -306,14 +400,25 @@ class QueryAction:
                                                len(chunkNums))
                 #print "header=", header[:70],"..."
                 #print "create=", qlist[0]
-
+                del header
+                del qlist
                 if len(self.running) > self.threadHighWater:
                     print "Reaping"
                     self._joinAny()
-                xo = XrdOperation(chunk, q, self.saveTableDump, tableName) 
+                xo = XrdOperation(chunk, q, self.saveTableDump, tableName, self.resultPath) 
+                del q
                 xo.start()
                 self.running[chunk] = xo
+        # Try reaping until there's not much left
+        remaining = self.running.keys()
+        remaining.sort()
+        print "All dispatched, periodic ", remaining
 
+        self._joinAny()
+        while len(self.running) > 4:
+            time.sleep(1)
+            self._joinAny()
+        #print "Joining the stragglers ", self.running.keys() 
         for (c,xo) in self.running.items():
             xo.join()
             t = self.running.pop(c)
@@ -356,6 +461,8 @@ class QueryAction:
         return path
     
     def saveTableDump(self, tableName, dumpPieces):
+        """Write dumpPieces into a file, named after the table name.
+        This shouldn't get called when xrdReadToLocalFile is in use."""
         name = os.path.join(self.resultPath, tableName)
         dumpfile = open(name, "wb")
         bytes = 0
@@ -468,4 +575,13 @@ def clauses(col, cmin, cmax):
     return ["%s between %smin and %smax" % (cmin, col, col),
             "%s between %smin and %smax" % (cmax, col, col),
             "%smin between %s and %s" % (col, cmin, cmax)]
+
+# Watch out for memory errors:
+# Exception in thread Thread-2897:
+# Traceback (most recent call last):
+#   File "/home/wang55/scratch/s/Linux/external/python/2.5.2/lib/python2.5/threading.py", line 486, in __bootstrap_inner
+#     self.run()
+#   File "/home/wang55/5node/m121/lsst/qserv/master/app.py", line 192, in run
+#     buf = "".center(bufSize) # Fill buffer
+# MemoryError
 
