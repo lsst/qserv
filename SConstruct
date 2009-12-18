@@ -46,6 +46,20 @@ def setXrd(cands):
             return (inc, lib)
     print >> sys.stderr, "Could not locate xrootd libraries"
     Exit(1)
+
+def findBoost(default="/home/wang55/r/"):
+    boost_dir = default
+    if os.environ.has_key('BOOST_DIR'):
+        boost_dir = os.environ['BOOST_DIR']
+    if not os.path.exists(boost_dir):
+        boost_dir = "/afs/slac/g/ki/lsst/home/DMS/Linux/external/boost/1.37.0"
+    if not os.path.exists(boost_dir):
+        print >> sys.stderr, "Could not locate Boost base directory (BOOST_DIR)"
+        Exit(1)
+    return [os.path.join(boost_dir, "include"),
+            os.path.join(boost_dir, "lib")]
+
+
 (xrd_inc, xrd_lib) = setXrd(xrd_cands)
 print >> sys.stderr, "Using xrootd inc/lib: ", xrd_inc, xrd_lib
 
@@ -75,6 +89,24 @@ pyLib = os.path.join(pyPath, '_masterLib.so')
 srcPaths = [os.path.join('src', 'xrdfile.cc'),
             os.path.join(pyPath, 'masterLib.i')]
 swigEnv.SharedLibrary(pyLib, srcPaths)
+
+boostEnv = swigEnv.Clone()
+bpath = findBoost()
+boostEnv.Append(CPPPATH=bpath[0])
+boostEnv.Append(LIBPATH=bpath[1])
+boostEnv.Append(CPPFLAGS="-g")
+runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
+             'srcPaths' : map(lambda x: os.path.join('src', x), 
+                         ["xrdfile.cc", "runTransactions.cc"]),
+             }
+conf = Configure(boostEnv)
+if not conf.CheckCXXHeader("boost/thread.hpp"):
+    print >> sys.stderr, "Could not locate Boost headers"
+    Exit(1)
+if not conf.CheckLib("boost_thread", language="C++"):
+    print >> sys.stderr, "Could not locate boost_thread library"
+boostEnv = conf.Finish()
+boostEnv.Program(runTrans['bin'], runTrans["srcPaths"])
 
 # Describe what your package contains here.
 swigEnv.Help("""
