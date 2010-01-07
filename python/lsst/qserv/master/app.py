@@ -4,6 +4,8 @@
 import hashlib
 from itertools import imap
 import os
+import cProfile as profile
+import pstats
 import random
 import sys
 import threading
@@ -172,14 +174,17 @@ class XrdOperation(threading.Thread):
             self._outputFunc = outputFunc
             self._outputArg = outputArg
             self._url = ""
-            self.setXrd()
-            self.successful = None
             self._handle = None
             self._resultBufferList = []
             self._usingCppTransaction = True
             self._usingXrdReadTo = True
             self._targetName = os.path.join(resultPath, self._outputArg)
             self._readSize = 8192000
+
+            self.successful = None
+            self.profileName = "/tmp/qserv_chunk%d_profile" % chunk # Public.
+
+            self.setXrd()
             pass
 
         def setXrd(self):
@@ -250,6 +255,7 @@ class XrdOperation(threading.Thread):
                                                      self._query, 
                                                      self._readSize,
                                                      self._targetName);
+            self._query = None # Reclaim memory
             if packedResult.open < 0:
                 print "Error: open ", self._url
                 return False
@@ -286,6 +292,11 @@ class XrdOperation(threading.Thread):
             return success
 
         def run(self):
+            #profile.runctx("self._doMyWork()", globals(), locals(), 
+            #                self.profileName)
+            self._doMyWork()
+
+        def _doMyWork(self):
             #print "Issuing (%d)" % self._chunk, "via", self._url
             stats = time.qServQueryTimer[time.qServRunningName]
             taskName = "chunkQ_" + str(self._chunk)
@@ -313,9 +324,13 @@ class QueryAction:
         self.resultLock = threading.Lock()
         self.finished = {}
         self.threadHighWater = 130 # Python can't make more than 159??
+        self._slowDispatchTime = 0.3
+        self._brokenChunks = []
+        self._coolDownTime = 10
         pass
 
-    def _joinAny(self, jostle=False):
+    def _joinAny(self, jostle=False, printProfile=False):
+        # Should delete jostling code
         poppable = []
         while (not poppable) and (self.running):  # keep waiting 
             for (chunk, thread) in self.running.items():
@@ -329,15 +344,43 @@ class QueryAction:
                     j.join()
                 else:
                     time.sleep(0.5) # Don't spin-check too fast.
-                    
-                    
+                                        
         for p in poppable: # Move the threads out.
             t = self.running.pop(p)
+            t.join()
             self.finished[p] = t.successful
             if not t.successful:
                 print "Unsuccessful with %s on chunk %d" % (self.queryStr, p)
+                self._brokenChunks.append(p)
+            if printProfile:
+                p = pstats.Stats(t.profileName)
+                p.strip_dirs().sort_stats(-1).print_stats()
+
+                
             # Don't save existing thread object.
         pass
+
+    def _joinAll(self):
+        for (c,xo) in self.running.items():
+            xo.join()
+            t = self.running.pop(c)
+            self.finished[c] = t.successful
+            if not xo.successful:
+                print "Unsuccessful with %s on chunk %d" % (self.queryStr, c)
+                self._brokenChunks.append(p)
+            # discard thread object.
+
+    def _progressiveJoinAll(self, **kwargs):
+        self._joinAny()
+        while len(self.running) > 4:
+            time.sleep(1)
+            joinTime = time.time()
+            self._joinAny(**kwargs)
+            joinTime -= time.time()
+            sys.stderr.write("(%d) " % len(self.running))
+            
+        print "Almost done..."
+        self._joinAll()
         
     def invoke(self):
         print "Query invoking..."
@@ -372,7 +415,7 @@ class QueryAction:
         self.applySql("test", "DROP TABLE IF EXISTS result;")
         
         for chunk in chunkNums:
-            
+                dispatchStart = time.time()
                 subc = collected[chunk][:2000] # DEBUG: force less subchunks
                 # MySQL will probably run out of memory with >2k subchunks.
                 header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
@@ -402,30 +445,29 @@ class QueryAction:
                 #print "create=", qlist[0]
                 del header
                 del qlist
-                if len(self.running) > self.threadHighWater:
-                    print "Reaping"
-                    self._joinAny()
                 xo = XrdOperation(chunk, q, self.saveTableDump, tableName, self.resultPath) 
                 del q
                 xo.start()
                 self.running[chunk] = xo
+                dispatchTime = time.time() - dispatchStart
+                if dispatchTime > self._slowDispatchTime: 
+                    print "Slow dispatch detected. Draining all queries,"
+                    # Drain *everyone*
+                    self._progressiveJoinAll()
+                    print "Cooling down for %d seconds." % self._coolDownTime
+                    time.sleep(self._coolDownTime)
+                    print "Back to work!"
+                        
+                elif len(self.running) > self.threadHighWater:
+                    print "Reaping"
+                    self._joinAny()
+                    print "Reap done"
+
         # Try reaping until there's not much left
         remaining = self.running.keys()
         remaining.sort()
         print "All dispatched, periodic ", remaining
-
-        self._joinAny()
-        while len(self.running) > 4:
-            time.sleep(1)
-            self._joinAny()
-        #print "Joining the stragglers ", self.running.keys() 
-        for (c,xo) in self.running.items():
-            xo.join()
-            t = self.running.pop(c)
-            self.finished[c] = t.successful
-            if not xo.successful:
-                print "Unsuccessful with %s on chunk %d" % (self.queryStr, c)
-            # discard thread object.
+        self._progressiveJoinAll()
         
         print "results available at fs path,", self.resultPath
         stats["queryActionFinish"] = time.time()

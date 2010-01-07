@@ -96,10 +96,33 @@ private:
 // for now, two simultaneous writes (queries)
 Semaphore TransactionCallable::_sema(120);
 
+class ClosingCallable {
+public:
+    ClosingCallable(int fd) : _fd(fd) {}
+
+    void operator()();
+
+    static void addOne(int fd) {
+	boost::unique_lock<boost::mutex> lock(_groupLock);
+	_closers.create_thread(ClosingCallable(fd));
+    }
+    static void joinAll() {
+	boost::unique_lock<boost::mutex> lock(_groupLock);
+	_closers.join_all();
+    }
+
+private:
+    int _fd;
+    static boost::mutex _groupLock;
+    static boost::thread_group _closers;
+    
+};
+
+
 
 class Manager {
 public:
-    Manager() : _highWaterThreads(100) {}
+    Manager() : _highWaterThreads(120) {}
     void setupFile(std::string const& file);
     void run();
 private:
@@ -181,10 +204,17 @@ void TransactionCallable::operator()() {
     using namespace lsst::qserv::master;
     std::cout << _spec.path << " in flight\n";
     XrdTransResult r = xrdOpenWriteReadSaveClose(_spec.path.c_str(),
-						 _spec.query.c_str(),
-						 _spec.query.length(),
-						 8192000,
-						 "/dev/null");
+					    _spec.query.c_str(),
+					    _spec.query.length(),
+					    8192000,
+					    "/dev/null");
+#if 0
+    if(r.open > 0) { // Spawn a separate thread to close.
+	ClosingCallable t(s);
+	_threads.push_back(make_shared<boost::thread>(t));
+	
+    }
+#endif
     std::cout << _spec.path << " finished\n";
 
 }
@@ -219,16 +249,30 @@ void Manager::_joinOne() {
 }
 
 void Manager::run() {
+    int inFlight = 0;
+    time_t lastReap;
+    time_t thisReap;
+    int reapSize;
+    int thisSize;
+    time(&thisReap);
     if(_reader.get() == 0) { return; }
     while(1) {
 	TransactionSpec s = _reader->getSpec();
 	if(s.isNull()) { break; }
 	TransactionCallable t(s);
 	_threads.push_back(make_shared<boost::thread>(t));
-	if(_threads.size() > _highWaterThreads) {
-	    std::cout << "Reaping.\n";
+	++inFlight;
+	thisSize = _threads.size();
+	if(thisSize > _highWaterThreads) {
+	    lastReap = thisReap;
+	    std::cout << "Reaping, "<< inFlight << " dispatched.\n";
 	    _joinOne();
-	    std::cout << "Done reaping.\n";
+	    time(&thisReap);
+	    reapSize = _threads.size();
+	    std::cout << thisReap << " Done reaping, " << reapSize
+		      << " still flying, completion rate=" 
+		      << (1.0+thisSize - reapSize)*1.0/(1.0+thisReap - lastReap)
+		      << "\n"  ;
 	}
 	if(_threads.size() > 1000) break; // DEBUG early exit.
     }
@@ -241,7 +285,7 @@ void Manager::run() {
 int main(int const argc, char const* argv[]) {
     Manager m;
     std::cout << "Setting up file\n";
-    m.setupFile("xrdTransaction.trace.2kplus");
+    m.setupFile("xrdTransaction.trace");
     std::cout << "Running\n";
     m.run();
     

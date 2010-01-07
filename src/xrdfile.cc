@@ -1,8 +1,12 @@
 //#define FAKE_XRD 1
 #include <iostream>
+#include <string>
+#include <sstream>
+
 #ifdef FAKE_XRD
 
 #else
+#include "XrdPosix/XrdPosixLinkage.hh"
 #include "XrdPosix/XrdPosixExtern.hh"
 #include "XrdClient/XrdClientConst.hh"
 #include "XrdClient/XrdClientEnv.hh"
@@ -16,6 +20,26 @@ namespace qMaster = lsst::qserv::master;
 
 // Statics
 static bool qMasterXrdInitialized = false; // Library initialized?
+extern XrdPosixLinkage Xunix;
+
+namespace dbg {
+void recordTrans(char const* path, char const* buf, int len) {
+    static char traceFile[] = "/dev/shm/xrdTransaction.trace";
+    std::string record;
+    {
+	std::stringstream ss;
+	ss << "####" << path << "####" << std::string(buf, len) << "####\n";
+	record = ss.str();
+    }
+    int fd = open(traceFile, O_CREAT|O_WRONLY|O_APPEND);
+    if( fd != -1) {
+	int res = write(fd, record.data(), record.length());
+	close(fd);
+    }
+}
+
+} // End namespace dbg
+
 
 #ifdef FAKE_XRD // Fake placeholder implemenation
 void qMaster::xrdInit() {}
@@ -59,6 +83,7 @@ long long qMaster::xrdLseekSet(int fildes, off_t offset) {
 #else // Not faked: choose the real XrdPosix implementation.
 
 void qMaster::xrdInit() {
+    static int Init = Xunix.Init(&Init);
     qMasterXrdInitialized = true;
 
     // Set timeouts to effectively disable client timeouts.
@@ -74,27 +99,40 @@ void qMaster::xrdInit() {
     //EnvPutInt(NAME_LBSERVERCONN_TTL, std::numeric_limits<int>::max());
 }
 
+#define QSM_TIMESTART(name, path)			\
+    time_t start;\
+    time_t finish;\
+    char timebuf[30];				\
+    time(&start);\
+    asctime_r(localtime(&start), timebuf);\
+    timebuf[strlen(timebuf)-1] = 0;\
+    std::cout << timebuf <<" " << name << " "	\
+              << path << " in flight\n";
+#define QSM_TIMESTOP(name, path)			\
+    time(&finish);\
+    asctime_r(localtime(&finish), timebuf);\
+    timebuf[strlen(timebuf)-1] = 0;\
+    std::cout << timebuf  << " (" \
+	      << finish - start \
+              << ") " << name << " " \
+	      << path << " finished.""\n";
+
+
 int qMaster::xrdOpen(const char *path, int oflag) {
     if(!qMasterXrdInitialized) { xrdInit(); }
-    time_t seconds;
-    //time(&seconds);
-    //std::cout << ::asctime(localtime(&seconds)) << "Open " << path << " in flight\n";
+    QSM_TIMESTART("Open", path+32)
     int res = XrdPosix_Open(path, oflag);
-    //time(&seconds);
-    //std::cout << ::asctime(localtime(&seconds)) << "Open " << path << " finished.\n";
+    QSM_TIMESTOP("Open", path+32)
     return res;
 }
 
 long long qMaster::xrdRead(int fildes, void *buf, unsigned long long nbyte) {
     // std::cout << "xrd trying to read (" <<  fildes << ") " 
     // 	      << nbyte << " bytes" << std::endl;
-    time_t seconds;
-    //time(&seconds);
-    //std::cout << ::asctime(localtime(&seconds)) << "Read " << fildes << " in flight\n";
+    QSM_TIMESTART("Read", fildes);  
     long long readCount;
     readCount = XrdPosix_Read(fildes, buf, nbyte); 
-    //time(&seconds);
-    //std::cout << ::asctime(localtime(&seconds)) << "Read " << fildes << " finished.\n";    //std::cout << "read " << readCount << " from xrd." << std::endl;
+    QSM_TIMESTOP("Read", fildes);
     return readCount;
 }
 
@@ -104,17 +142,17 @@ long long qMaster::xrdWrite(int fildes, const void *buf,
     // s.assign(static_cast<const char*>(buf), nbyte);
     // std::cout << "xrd write (" <<  fildes << ") \"" 
     // 	      << s << "\"" << std::endl;
-    time_t seconds;
-    //time(&seconds);
-    //std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " in flight\n";
+    QSM_TIMESTART("Write", fildes);
     long long res = XrdPosix_Write(fildes, buf, nbyte);
-    //time(&seconds);
-    //std::cout << ::asctime(localtime(&seconds)) << "Write " << fildes << " finished. (" << res << ")\n";
-  return res;
+    QSM_TIMESTOP("Write", fildes);
+    return res;
 }
 
 int qMaster::xrdClose(int fildes) {
-    return XrdPosix_Close(fildes);
+    QSM_TIMESTART("Close", fildes);    
+    int result = XrdPosix_Close(fildes);
+    QSM_TIMESTOP("Close", fildes);    
+    return result;
 }
  
 long long qMaster::xrdLseekSet(int fildes, unsigned long long offset) {
@@ -206,6 +244,8 @@ qMaster::XrdTransResult qMaster::xrdOpenWriteReadSaveClose(
 
     XrdTransResult r; 
 
+    dbg::recordTrans(path, buf, len); // Record the trace file.
+
     int fh = xrdOpen(path, O_RDWR);
     if(fh == -1) {
 	r.open = -errno;
@@ -223,6 +263,35 @@ qMaster::XrdTransResult qMaster::xrdOpenWriteReadSaveClose(
 			   &(r.localWrite), &(r.read));
     }
     xrdClose(fh);
+    return r;
+}
+
+qMaster::XrdTransResult qMaster::xrdOpenWriteReadSave(
+    const char *path, 
+    const char* buf, int len, // Query
+    int fragmentSize,
+    const char* outfile) {
+
+    XrdTransResult r; 
+
+    dbg::recordTrans(path, buf, len); // Record the trace file.
+
+    int fh = xrdOpen(path, O_RDWR);
+    if(fh == -1) {
+	r.open = -errno;
+	return r;
+    } else {
+	r.open = fh;
+    }
+
+    int writeCount = xrdWrite(fh, buf, len);
+    if(writeCount != len) {
+	r.queryWrite = -errno;
+    } else {
+	r.queryWrite = writeCount;
+	xrdReadToLocalFile(fh, fragmentSize, outfile, 
+			   &(r.localWrite), &(r.read));
+    }
     return r;
 }
 
