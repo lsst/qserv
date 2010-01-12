@@ -5,8 +5,12 @@
     
 #include <deque>
 #include <string>
-
+#include <sstream>
+#ifdef DO_NOT_USE_BOOST
+#include "XrdSys/XrdSysPthread.hh"
+#else
 #include "boost/thread.hpp"
+#endif
 #include "XrdSfs/XrdSfsInterface.hh"
 #include "mysql/mysql.h"
 
@@ -76,7 +80,11 @@ private:
 	typedef std::deque<Fragment> FragmentDeque;
 	FragmentDeque _buffers;
 	XrdSfsFileOffset _totalSize;
+#if DO_NOT_USE_BOOST
+	XrdSysMutex _mutex;
+#else
 	boost::mutex _mutex;
+#endif
 	std::stringstream _ss;
     };
 

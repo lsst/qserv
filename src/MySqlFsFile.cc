@@ -4,9 +4,18 @@
 #include "XrdSfs/XrdSfsAio.hh"
 #include "XrdSys/XrdSysError.hh"
 
-#include "boost/regex.hpp"
-#include "boost/format.hpp"
-#include "boost/thread.hpp"
+#if DO_NOT_USE_BOOST
+#include <regex.h>
+#  include "XrdSys/XrdSysPthread.hh"
+#  include "lsst/qserv/worker/Regex.h"
+#  include "lsst/qserv/worker/format.h"
+#else
+#  include "boost/regex.hpp"
+#  include "boost/thread.hpp"
+#  include "boost/format.hpp"
+#endif
+
+
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -16,7 +25,12 @@
 #include <errno.h>
 #include "mysql/mysql.h"
 #include <numeric>
+#ifdef __SUNPRO_CC
+#include <sys/md5.h>
+#else // Linux?
 #include <openssl/md5.h>
+#endif
+#include <set>
 #include <unistd.h>
 #include <sstream>
 #include <iostream> // For file-scoped debug output
@@ -48,6 +62,122 @@ public:
 private:
     MYSQL* _db;
 };
+
+#if DO_NOT_USE_BOOST
+typedef lsst::qserv::worker::PosFormat Pformat;
+
+/// xrootd-dependent unique_lock
+class UniqueLock { // scoped lock.
+public:
+    explicit UniqueLock(XrdSysMutex& m) : _m(m) {
+	_m.Lock();
+    }
+    ~UniqueLock() { _m.UnLock(); }
+private:
+    XrdSysMutex& _m;
+};
+
+/// An xrootd-dependent semaphore wrapper
+class Semaphore { 
+public:
+    explicit Semaphore(int count=0) : _sema(count) {}
+    inline void proberen() { _sema.Wait(); }
+    inline void verhogen() { _sema.Post(); }
+    inline void get() { proberen(); }
+    inline void release() { verhogen(); }
+private:
+    XrdSysSemaphore _sema;
+};
+
+/// An xrootd-dependent thread library that 
+/// roughly follows boost::thread semantics.
+class ThreadDetail {
+public:
+    virtual ~ThreadDetail() {}
+    virtual void run() = 0;
+    virtual void * (*function())(void *) = 0;
+
+    void setTid(pthread_t t) {
+	_tid = t;
+    }
+protected:
+    pthread_t _tid;
+};
+
+
+class ThreadManager {
+public:
+    typedef std::set<ThreadDetail*> DetailSet;
+#if 0
+    template <typename Callable>
+    static ThreadDetail* newTrackedDetail(Callable& c) {
+	ThreadDetail* td = new ThreadDetailSpecific<Callable>(c);
+	_detailMutex.Lock();
+	_details.insert(td);
+	_detailMutex.UnLock();
+	return td;
+    }
+#endif
+    static void takeControl(ThreadDetail* td) {
+	_detailMutex.Lock();
+	_details.insert(td);
+	_detailMutex.UnLock();
+    }
+    
+    static void forgetDetail(ThreadDetail* td) {
+	_detailMutex.Lock();
+	_details.erase(td);
+	delete td;
+	_detailMutex.UnLock();
+    }
+private:
+    static XrdSysMutex _detailMutex;
+    static DetailSet _details;
+};
+template <typename Callable> 
+void* invokeCallableDetail(void* threadDetail) {
+    ThreadDetail* td = reinterpret_cast<ThreadDetail*>(threadDetail);
+    td->run();
+    ThreadManager::forgetDetail(td);
+}
+
+template <typename Callable> 
+class ThreadDetailSpecific : public ThreadDetail {
+public:
+    ThreadDetailSpecific(Callable const& c) : _c(new Callable(c)) {}
+    virtual ~ThreadDetailSpecific() {
+	delete _c;
+    }
+    virtual void run() {
+	(*_c)();
+    }
+    virtual void * (*function())(void *) {
+	return invokeCallableDetail<Callable>;
+    }
+private:
+    Callable* _c;
+};
+template <typename Callable>
+ThreadDetail* newDetail(Callable const& c) {
+    return new ThreadDetailSpecific<Callable>(c);
+}
+
+
+class Thread { 
+public:
+    explicit Thread(ThreadDetail* td) {
+	_detail = td; //ThreadManager::newTrackedDetail<Callable>(c);
+	pthread_t newTid;
+	XrdSysThread::Run(&newTid, _detail->function(), _detail);
+	_detail->setTid(newTid);
+    }
+
+private:
+    ThreadDetail* _detail;
+};
+
+#else  // Implement semaphore on top of boost::thread primatives.
+typedef boost::format Pformat;
 
 class Semaphore {
 public:
@@ -85,6 +215,8 @@ private:
     boost::condition_variable _countCondition;
     int _count;
 };
+
+#endif
 
 class ReadCallable {
 public:
@@ -150,16 +282,36 @@ template <class T> struct offsetLess {
     bool operator() (T const& x, T const& y) { return x.offset < y.offset;}
 };
 
+#ifdef __SUNPRO_CC // MD5(...) not defined on Solaris's ssl impl.
+namespace {
+    inline unsigned char* MD5(unsigned char const* d,
+			      unsigned long n,
+			      unsigned char* md) {
+	// Defined with RFC 1321 MD5 functions.
+	MD5_CTX ctx;
+	assert(md != NULL); // Don't support null input.
+	MD5Init(&ctx);
+	MD5Update(&ctx, d, n);
+	MD5Final(md, &ctx);
+	return md;
+    }
+}
+#endif
 
 static std::string hashQuery(char const* buffer, int bufferSize) {
     unsigned char hashVal[MD5_DIGEST_LENGTH];
     MD5(reinterpret_cast<unsigned char const*>(buffer), bufferSize, hashVal);
+#ifdef DO_NOT_USE_BOOST
+    return qWorker::hashFormat(hashVal, MD5_DIGEST_LENGTH);
+#else
     std::string result;
     for (int i = 0; i < MD5_DIGEST_LENGTH; ++i) {
         result += (boost::format("%02x") % static_cast<int>(hashVal[i])).str();
     }
     return result;
+#endif
 }
+
 
 static std::string hashToPath(std::string const& hash) {
     return DUMP_BASE +
@@ -240,15 +392,15 @@ static std::string runQueryInPieces(MYSQL* db, std::string query,
 	if(!subResult.empty()) {
 	    unsigned s=pieceEnd-pieceBegin;
 	    std::stringstream ss;
-	    return subResult + (boost::format("---Error with piece %1% complete (size=%2%).") % pieceCount % s).str();;
+	    return subResult + (Pformat("---Error with piece %1% complete (size=%2%).") % pieceCount % s).str();;
 	}
 	++pieceCount;
-	std::cout << boost::format("Piece %1% complete.") % pieceCount;
+	std::cout << Pformat("Piece %1% complete.") % pieceCount;
 
 	pieceBegin = pieceEnd;
     }
     // Can't use _eDest (we are in file-scope)
-    std::cout << boost::format("Executed query in %1% pieces.") % pieceCount;
+    std::cout << Pformat("Executed query in %1% pieces.") % pieceCount;
     
     // Getting here means that none of the pieces failed.
     return std::string();
@@ -298,19 +450,19 @@ int qWorker::MySqlFsFile::open(
     }
 
     _chunkId = findChunkNumber(fileName);
-    _eDest->Say((boost::format("File open %1%(%2%) by %3%")
+    _eDest->Say((Pformat("File open %1%(%2%) by %3%")
                  % fileName % _chunkId % _userName).str().c_str());
     return SFS_OK;
 }
 
 int qWorker::MySqlFsFile::close(void) {
-    _eDest->Say((boost::format("File close(%1%) by %2%")
+    _eDest->Say((Pformat("File close(%1%) by %2%")
                  % _chunkId % _userName).str().c_str());
     
     // Must remove dump file while we are doing the single-query workaround
     int result = ::unlink(_dumpName.c_str());
     if(result != 0) {
-	_eDest->Say((boost::format("Error removing dump file(%1%): %2%")
+	_eDest->Say((Pformat("Error removing dump file(%1%): %2%")
 		     % _dumpName % strerror(errno)).str().c_str());
     }
     return SFS_OK;
@@ -325,7 +477,7 @@ int qWorker::MySqlFsFile::fctl(
 }
 
 char const* qWorker::MySqlFsFile::FName(void) {
-    _eDest->Say((boost::format("File FName(%1%) by %2%")
+    _eDest->Say((Pformat("File FName(%1%) by %2%")
                  % _chunkId % _userName).str().c_str());
     return 0;
 }
@@ -347,7 +499,7 @@ bool dumpFileExists(std::string const& dbName) {
 
 int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
                           XrdSfsXferSize prereadSz) {
-    _eDest->Say((boost::format("File read(%1%) at %2% by %3%")
+    _eDest->Say((Pformat("File read(%1%) at %2% by %3%")
                  % _chunkId % fileOffset % _userName).str().c_str());
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
     if (!dumpFileExists(_dumpName)) {
@@ -364,7 +516,7 @@ int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
 XrdSfsXferSize qWorker::MySqlFsFile::read(
     XrdSfsFileOffset fileOffset, char* buffer, XrdSfsXferSize bufferSize) {
     std::string msg;
-    msg = (boost::format("File read(%1%) at %2% for %3% by %4% [actual=%5%]")
+    msg = (Pformat("File read(%1%) at %2% for %3% by %4% [actual=%5%]")
 	   % _chunkId % fileOffset % bufferSize % _userName % _dumpName).str();
     _eDest->Say(msg.c_str());
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
@@ -404,26 +556,31 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
 
 int qWorker::MySqlFsFile::read(XrdSfsAio* aioparm) {
     // Spawn a throwaway thread that calls the normal, blocking read.
+#if DO_NOT_USE_BOOST 
+    ThreadDetail* td = newDetail<ReadCallable>(ReadCallable(*this, aioparm));
+    ThreadManager::takeControl(td);
+    Thread t(td);
+#else
     boost::thread t(ReadCallable(*this, aioparm));
-
+#endif
     return SFS_OK;
 }
 
 XrdSfsXferSize qWorker::MySqlFsFile::write(
     XrdSfsFileOffset fileOffset, char const* buffer,
     XrdSfsXferSize bufferSize) {
-    _eDest->Say((boost::format("File write(%1%) at %2% for %3% by %4%")
+    _eDest->Say((Pformat("File write(%1%) at %2% for %3% by %4%")
                  % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
     // for now, disable expected offset since writes can come out-of-order
     if (false) { 
 
     XrdSfsFileOffset expectedOffset = _queryBuffer.getLength();
     if (fileOffset != expectedOffset) {
-	std::string msg = (boost::format("%1% Expected offset: %2%, got %3%.") 
+	std::string msg = (Pformat("%1% Expected offset: %2%, got %3%.") 
 			   % "Non-contiguous write to file." 
 			   % expectedOffset % fileOffset).str();
         error.setErrInfo(EINVAL, msg.c_str());
-    _eDest->Say((boost::format("File write(%1%) at %2% for %3% by %4% is broken: %5%")
+    _eDest->Say((Pformat("File write(%1%) at %2% for %3% by %4% is broken: %5%")
                  % _chunkId % fileOffset % bufferSize % _userName % msg).str().c_str());
 
         //return -1;
@@ -436,10 +593,10 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
 	return -EINVAL;
     }
     _addWritePacket(fileOffset, buffer, bufferSize);
-    _eDest->Say((boost::format("File write(%1%) Added.") % _chunkId).str().c_str());
+    _eDest->Say((Pformat("File write(%1%) Added.") % _chunkId).str().c_str());
 
     if(_hasPacketEof(buffer, bufferSize)) {
-    _eDest->Say((boost::format("File write(%1%) Flushing.") % _chunkId).str().c_str());
+    _eDest->Say((Pformat("File write(%1%) Flushing.") % _chunkId).str().c_str());
 	bool querySuccess = _flushWrite();
 	if(!querySuccess) {
 	    _eDest->Say("Flush returned fail.");
@@ -450,7 +607,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
 	_eDest->Say("Flush ok, ready to return good.");
 
     }
-    _eDest->Say((boost::format("File write(%1%) at %2% for %3% by %4%  --FINISH--")
+    _eDest->Say((Pformat("File write(%1%) at %2% for %3% by %4%  --FINISH--")
                  % _chunkId % fileOffset % bufferSize % _userName).str().c_str());
     
     return bufferSize;
@@ -469,10 +626,15 @@ int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
     }
     std::string s(buffer,printlen);
     int offset = aioparm->sfsAio.aio_offset;
-    _eDest->Say((boost::format("File write(%1%) at %2% : %3%")
+    _eDest->Say((Pformat("File write(%1%) at %2% : %3%")
                  % _chunkId % offset % s).str().c_str());
-    
+#if DO_NOT_USE_BOOST
+    ThreadDetail* td = newDetail<WriteCallable>(WriteCallable(*this, aioparm, buffer));
+    ThreadManager::takeControl(td);
+    Thread t(td);
+#else
     boost::thread t(WriteCallable(*this, aioparm, buffer));
+#endif
     
     return SFS_OK;
 }
@@ -505,15 +667,24 @@ int qWorker::MySqlFsFile::getCXinfo(char cxtype[4], int &cxrsz) {
 void qWorker::MySqlFsFile::StringBuffer::addBuffer(
     XrdSfsFileOffset offset, char const* buffer, XrdSfsXferSize bufferSize) {
 #if QSERV_USE_STUPID_STRING
+#  if DO_NOT_USE_BOOST
+    UniqueLock lock(_mutex);
+#  else
     boost::unique_lock<boost::mutex> lock(_mutex);
+#  endif
     _ss << std::string(buffer,bufferSize);
     _totalSize += bufferSize;
+
 #else
     char* newItem = new char[bufferSize];
     assert(newItem != (char*)0);
     memcpy(newItem, buffer, bufferSize);
     { // Assume(!) that there are no overlapping writes.
+#  if DO_NOT_USE_BOOST
+	UniqueLock lock(_mutex);
+#  else
 	boost::unique_lock<boost::mutex> lock(_mutex);
+#  endif
 	_buffers.push_back(Fragment(offset, buffer, bufferSize));
 	_totalSize += bufferSize;
     }
@@ -523,8 +694,12 @@ void qWorker::MySqlFsFile::StringBuffer::addBuffer(
 std::string qWorker::MySqlFsFile::StringBuffer::getStr() const {
 #if QSERV_USE_STUPID_STRING
     // Cast away const in order to lock.
+#if DO_NOT_USE_BOOST
+    UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
+#else
     boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
     boost::unique_lock<boost::mutex> lock(mutex);
+#endif
     return _ss.str();
 #else
     std::string accumulated;
@@ -551,8 +726,12 @@ std::string qWorker::MySqlFsFile::StringBuffer::getStr() const {
 std::string qWorker::MySqlFsFile::StringBuffer::getDigest() const {  
 #if QSERV_USE_STUPID_STRING
     // Cast away const in order to lock.
+#if DO_NOT_USE_BOOST
+    UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
+#else
     boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
     boost::unique_lock<boost::mutex> lock(mutex);
+#endif
     int length = 200;
     if(length > _totalSize) 
 	length = _totalSize;
@@ -592,7 +771,11 @@ XrdSfsFileOffset qWorker::MySqlFsFile::StringBuffer::getLength() const {
 
 void qWorker::MySqlFsFile::StringBuffer::reset() {
     {
+#if DO_NOT_USE_BOOST
+	UniqueLock lock(_mutex);
+#else
 	boost::unique_lock<boost::mutex> lock(_mutex);
+#endif
 	std::for_each(_buffers.begin(), _buffers.end(), ptrDestroy<Fragment>());
 	_buffers.clear();
     }
@@ -617,23 +800,23 @@ bool qWorker::MySqlFsFile::_flushWrite() {
     _setDumpNameAsChunkId();
     std::string dbName = "q_" + hash;
     // Do not print query-- could be multi-megabytes.
-    _eDest->Say((boost::format("(fileobj:%3%) Db = %1%, dump = %2%")
+    _eDest->Say((Pformat("(fileobj:%3%) Db = %1%, dump = %2%")
                  % dbName % _dumpName % (void*)(this)).str().c_str());
     _eDest->Say(_queryBuffer.getDigest().c_str());
 
     if (dumpFileExists(_dumpName)) {
-    _eDest->Say((boost::format("Reusing pre-existing dump = %1%")
+    _eDest->Say((Pformat("Reusing pre-existing dump = %1%")
                  % _dumpName).str().c_str());
         return true;
     }
 
     if (!_runScript(script, dbName)) {
-	_eDest->Say((boost::format("(FinishFail:%3%) Db = %1%, dump = %2%")
+	_eDest->Say((Pformat("(FinishFail:%3%) Db = %1%, dump = %2%")
                  % dbName % _dumpName % (void*)(this)).str().c_str());
 	
         return false;
     } else {
-	_eDest->Say((boost::format("(FinishOK:%3%) Db = %1%, dump = %2%")
+	_eDest->Say((Pformat("(FinishOK:%3%) Db = %1%, dump = %2%")
                  % dbName % _dumpName % (void*)(this)).str().c_str());
     }
     return true;
@@ -656,13 +839,13 @@ std::string qWorker::MySqlFsFile::_runScriptPiece(
     std::string const& scriptId, 
     std::string const& pieceName, std::string const& piece) {
     std::string result;
-    _eDest->Say((boost::format("TIMING,%1%%2%Start,%3%")
+    _eDest->Say((Pformat("TIMING,%1%%2%Start,%3%")
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     result = runQueryInPieces(db, piece);
-    _eDest->Say((boost::format("TIMING,%1%%2%Finish,%3%")
+    _eDest->Say((Pformat("TIMING,%1%%2%Finish,%3%")
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     if(!result.empty()) {
-	_eDest->Say((boost::format("Broken! ,%1%%2%---%3%")
+	_eDest->Say((Pformat("Broken! ,%1%%2%---%3%")
 		     % scriptId % pieceName % result).str().c_str());
 	result += "(during " + pieceName + ")\nQueryFragment: " + piece;
     }
@@ -692,7 +875,7 @@ bool qWorker::MySqlFsFile::_runScript(
     std::string const& script, std::string const& dbName) {
     DbHandle db;
     std::string scriptId = dbName.substr(0, 6);
-    _eDest->Say((boost::format("TIMING,%1%ScriptStart,%2%")
+    _eDest->Say((Pformat("TIMING,%1%ScriptStart,%2%")
                  % scriptId % ::time(NULL)).str().c_str());
 
     if (mysql_real_connect(db.get(), 0, _userName.c_str(), 0, 0, 0, 
@@ -722,23 +905,29 @@ bool qWorker::MySqlFsFile::_runScript(
     }
 
     std::string firstLine = script.substr(0, script.find('\n'));
-    boost::regex re("\\d+");
     std::string buildScript;
     std::string cleanupScript;
-    _eDest->Say((boost::format("TIMING,%1%QueryFormatStart,%2%")
+    _eDest->Say((Pformat("TIMING,%1%QueryFormatStart,%2%")
                  % scriptId % ::time(NULL)).str().c_str());
-
+    
+#ifdef DO_NOT_USE_BOOST
+    Regex re("[0-9][0-9]*");
+    for(Regex::Iterator i = re.newIterator(firstLine);
+	i != Regex::Iterator::end(); ++i) {
+#else // }
+    boost::regex re("\\d+");
     for (boost::sregex_iterator i = boost::make_regex_iterator(firstLine, re);
          i != boost::sregex_iterator(); ++i) {
-        std::string subChunk = (*i).str(0);
+#endif
+	std::string subChunk = (*i).str(0);
         buildScript +=
-            (boost::format(CREATE_SUBCHUNK_SCRIPT)
+            (Pformat(CREATE_SUBCHUNK_SCRIPT)
              % _chunkId % subChunk).str() + "\n";
         cleanupScript +=
-            (boost::format(CLEANUP_SUBCHUNK_SCRIPT)
+            (Pformat(CLEANUP_SUBCHUNK_SCRIPT)
              % _chunkId % subChunk).str() + "\n";
     }
-    _eDest->Say((boost::format("TIMING,%1%QueryFormatFinish,%2%")
+    _eDest->Say((Pformat("TIMING,%1%QueryFormatFinish,%2%")
                  % scriptId % ::time(NULL)).str().c_str());
     
     result = _runScriptPieces(db.get(), scriptId, buildScript, 
@@ -761,15 +950,15 @@ bool qWorker::MySqlFsFile::_runScript(
         }
     }
 
-    std::string cmd = _mysqldumpPath + (boost::format(
+    std::string cmd = _mysqldumpPath + (Pformat(
             " --compact --add-locks --create-options --skip-lock-tables"
             " --result-file=%1% %2%")
                        % _dumpName % dbName).str();
     { 
-	_eDest->Say((boost::format("TIMING,%1%QueryDumpStart,%2%")
+	_eDest->Say((Pformat("TIMING,%1%QueryDumpStart,%2%")
 		     % scriptId % ::time(NULL)).str().c_str());
 	int cmdResult = system(cmd.c_str());
-	_eDest->Say((boost::format("TIMING,%1%QueryDumpFinish,%2%")
+	_eDest->Say((Pformat("TIMING,%1%QueryDumpFinish,%2%")
 		     % scriptId % ::time(NULL)).str().c_str());
 	if (cmdResult != 0) {
 	    error.setErrInfo(errno, ("Unable to dump database " + dbName +
@@ -801,7 +990,7 @@ bool qWorker::MySqlFsFile::_runScript(
         return false;
     }
 
-    _eDest->Say((boost::format("TIMING,%1%ScriptFinish,%2%")
+    _eDest->Say((Pformat("TIMING,%1%ScriptFinish,%2%")
                  % scriptId % ::time(NULL)).str().c_str());
 
     return true;
