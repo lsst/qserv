@@ -73,11 +73,12 @@ class RebalanceProgram:
         start = 0
 
         for i in range(self._opts.dirs):
-            length = i * nominal
+            length =  nominal
             if extra: 
                 length += 1
                 extra -= 1
             stop = start + length
+            #print i, "with", stop-start,"files"
             if stop > chunkCount:
                 stop = chunkCount
             targetdir = self._opts.target + str(i)
@@ -86,7 +87,6 @@ class RebalanceProgram:
             except OSError:
                 os.makedirs(targetdir)
                 pass
-
 
             for j in range(start, stop):
                 for f in self._chunkFiles[j]:
