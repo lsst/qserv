@@ -367,7 +367,7 @@ class QueryAction:
             self.finished[c] = t.successful
             if not xo.successful:
                 print "Unsuccessful with %s on chunk %d" % (self.queryStr, c)
-                self._brokenChunks.append(p)
+                self._brokenChunks.append(c)
             # discard thread object.
 
     def _progressiveJoinAll(self, **kwargs):
