@@ -324,7 +324,7 @@ class QueryAction:
         self.resultLock = threading.Lock()
         self.finished = {}
         self.threadHighWater = 130 # Python can't make more than 159??
-        self._slowDispatchTime = 0.3
+        self._slowDispatchTime = 0.5
         self._brokenChunks = []
         self._coolDownTime = 10
         pass
@@ -413,7 +413,7 @@ class QueryAction:
         self.db.activate()
         # Drop result table to make room.
         self.applySql("test", "DROP TABLE IF EXISTS result;")
-        
+        triedAgain = False
         for chunk in chunkNums:
                 dispatchStart = time.time()
                 subc = collected[chunk][:2000] # DEBUG: force less subchunks
@@ -451,17 +451,20 @@ class QueryAction:
                 self.running[chunk] = xo
                 dispatchTime = time.time() - dispatchStart
                 if dispatchTime > self._slowDispatchTime: 
-                    print "Slow dispatch detected. Draining all queries,"
-                    # Drain *everyone*
-                    self._progressiveJoinAll()
-                    print "Cooling down for %d seconds." % self._coolDownTime
-                    time.sleep(self._coolDownTime)
-                    print "Back to work!"
-                        
+                    if triedAgain:
+                        print "Slow dispatch detected. Draining all queries,"
+                        # Drain *everyone*
+                        self._progressiveJoinAll()
+                        print "Cooling down for %d seconds." % self._coolDownTime 
+                        time.sleep(self._coolDownTime)
+                        print "Back to work!"
+                    triedAgain = True
                 elif len(self.running) > self.threadHighWater:
                     print "Reaping"
                     self._joinAny()
                     print "Reap done"
+                else:
+                    triedAgain = False
 
         # Try reaping until there's not much left
         remaining = self.running.keys()

@@ -259,6 +259,7 @@ qMaster::XrdTransResult qMaster::xrdOpenWriteReadSaveClose(
 	r.queryWrite = -errno;
     } else {
 	r.queryWrite = writeCount;
+	xrdLseekSet(fh, 0);
 	xrdReadToLocalFile(fh, fragmentSize, outfile, 
 			   &(r.localWrite), &(r.read));
     }
@@ -289,6 +290,7 @@ qMaster::XrdTransResult qMaster::xrdOpenWriteReadSave(
 	r.queryWrite = -errno;
     } else {
 	r.queryWrite = writeCount;
+	xrdLseekSet(fh, 0);
 	xrdReadToLocalFile(fh, fragmentSize, outfile, 
 			   &(r.localWrite), &(r.read));
     }
