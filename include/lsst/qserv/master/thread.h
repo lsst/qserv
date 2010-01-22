@@ -6,6 +6,7 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 #include <map>
+#include <set>
 
 namespace lsst {
 namespace qserv {
@@ -114,13 +115,22 @@ private:
 
 class QueryManager {
 public:
+    /// A callable object that performs a (chunk-query) transaction according
+    /// to its specification, and reports its completion to a query 
+    /// manager.  Restarts with new transaction if available.
     class ManagedCallable {
     public:
+        explicit ManagedCallable();
 	explicit ManagedCallable(QueryManager& qm, int id, 
 				 TransactionSpec const& t);
+        ManagedCallable& operator=(ManagedCallable const& m);
+
 	void operator()();
+        void setResult(XrdTransResult const& r);
+        void getResult(XrdTransResult const& r);
+        int getId() const { return _id;}
     private:
-	QueryManager& _qm;
+	QueryManager* _qm;
 	int _id;
 	TransactionCallable _c;
     };
@@ -133,26 +143,37 @@ public:
     void join(int id);
     bool tryJoin(int id);
     XrdTransResult const& status(int id) const;
+    void joinEverything();
+
 
     ManagedCallable completeAndFetch(int id, XrdTransResult const& r);
-    void addThread(ManagedCallable* c);
-    void dropThread(ManagedCallable* c);
+    void addCallable(ManagedCallable* c);
+    void dropCallable(ManagedCallable* c);
 private:
     int _getNextId();
     void _addThreadIfSpace();
+    boost::shared_ptr<ManagedCallable> _getNextCallable();
+
+    boost::shared_ptr<boost::thread> _startThread();
+    void _tryJoinAll();
+
     
     typedef std::deque<boost::shared_ptr<boost::thread> > ThreadDeque;
     typedef std::deque<IdCallable> CallableDeque;
     typedef std::map<int, ManagedCallable> CallableMap;
+    typedef std::map<int, XrdTransResult> ResultMap;
 
     ThreadDeque _threads;
     int _highWaterThreads;
+    boost::mutex _threadsMutex;
+    boost::mutex _callablesMutex;
     boost::mutex _waitingMutex;
     boost::mutex _runningMutex;
     boost::mutex _finishedMutex;
     CallableDeque _waiting;
     CallableMap _running;
-    CallableMap _finished;
+    ResultMap _finished;
+    std::set<ManagedCallable*> _callables;
 };
 
 }}} // namespace lsst::qserv::master

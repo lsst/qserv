@@ -87,17 +87,22 @@ swigEnv.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
 pyPath = 'python/lsst/qserv/master'
 pyLib = os.path.join(pyPath, '_masterLib.so')
 srcPaths = [os.path.join('src', 'xrdfile.cc'),
+            os.path.join('src', 'thread.cc'),
+            os.path.join('src', 'dispatcher.cc'),
             os.path.join(pyPath, 'masterLib.i')]
+bpath = findBoost()
+swigEnv.Append(CPPPATH=bpath[0])
+swigEnv.Append(LIBPATH=bpath[1])
 swigEnv.SharedLibrary(pyLib, srcPaths)
 
 boostEnv = swigEnv.Clone()
-bpath = findBoost()
-boostEnv.Append(CPPPATH=bpath[0])
-boostEnv.Append(LIBPATH=bpath[1])
+##boostEnv.Append(CPPPATH=bpath[0])
+##boostEnv.Append(LIBPATH=bpath[1])
 boostEnv.Append(CPPFLAGS="-g")
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
              'srcPaths' : map(lambda x: os.path.join('src', x), 
-                         ["xrdfile.cc", "runTransactions.cc"]),
+                         ["xrdfile.cc", "runTransactions.cc", 
+                          "thread.cc", "dispatcher.cc"]),
              }
 conf = Configure(boostEnv)
 if not conf.CheckCXXHeader("boost/thread.hpp"):
