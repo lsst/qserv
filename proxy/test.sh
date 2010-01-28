@@ -16,5 +16,6 @@ mysql --port=4040 --protocol=TCP proxyTest -e "select * from Obj WHERE objectId=
 
 mysql --port=4040 --protocol=TCP proxyTest -e "select * from Obj WHERE areaSpec_box(1,2,3,4) AND objectId=45 AND x>3"
 
-mysql -e "DROP DATABASE proxyTest"
+mysql --port=4040 --protocol=TCP proxyTest -e "select * from Obj WHERE objectId IN 44"
 
+mysql -e "DROP DATABASE proxyTest"

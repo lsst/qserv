@@ -11,6 +11,35 @@
 --   "  objectId", "5,6,7,8" and so on
 
 
+-- constants (kind of)
+ERR_AND_EXPECTED   = -4001
+ERR_BAD_ARG        = -4002
+ERR_NOT_SUPPORTED  = -4003
+ERR_OR_NOT_ALLOWED = -4004
+
+-- global error status and message
+__errNo__  = 0
+__errMsg__ = ""
+
+
+function setErr(errNo, errMsg)
+    __errNo__  = errNo
+    __errMsg__ = errMsg
+    return errNo
+end
+
+
+function sendErr()
+    local e = -1 * __errNo__ -- mysql doesn't like negative errors
+    proxy.response = {
+        type     = proxy.MYSQLD_PACKET_ERR,
+        errmsg   = __errMsg__,
+        errcode  = e,
+        sqlstate = 'Proxy',
+    }
+    print ("ERROR "..e..": "..__errMsg__)
+    return proxy.PROXY_SEND_RESULT
+end
 
 
 function string.removeExtraWhiteSpaces(q)
@@ -50,8 +79,7 @@ function parse_areaspecbox(s)
         print ("ra1/dec1/ra2/dec2 for box: '" .. string.sub(params, 0) .. "'")
         return p2
     end
-    print "Error parsing parameters for AREASPEC_BOX"
-    return -1
+    return setErr(ERR_BAD_ARG, "Invalid arguments after aresSpec_BOX: '"..params.."'")
 end
 
 
@@ -68,8 +96,7 @@ function parse_objectId(s)
         print ("objectId is: '" .. string.sub(params, 0) .. "'")
         return p2-1
     end
-    print "Error parsing parameters for OBJECTID="
-    return -1
+    return setErr(ERR_BAD_ARG, "Invalid argument")
 end
 
 
@@ -101,9 +128,7 @@ function parse_predicates(q, p)
         if string.find(s, "^AREASPEC_BOX") then
             c = parse_areaspecbox(s)
             if c < 0 then
-                print "Error parsing AREASPEC_BOX"
-                retV = -1
-                break
+                return c
             end
             nParsed = nParsed + c
             s = string.sub(q, nParsed)
@@ -111,50 +136,43 @@ function parse_predicates(q, p)
         elseif string.find(s, "^OBJECTID=") then
             c = parse_objectId(s)
             if c < 0 then
-                print "Error parsing OBJECTID"
-                retV = -1
-                break
+                __errMsg__ = __errMsg__ .. " ("..s..")"
+                return c
             end
             nParsed = nParsed + c
             s = string.sub(q, nParsed)
             tokenFound = true
         elseif string.find(s, "^OBJECTID IN") then
-            print ("OBJECTID IN not supported yet, sorry")
-            retV = -1
-            break
+            return setErr(ERR_NOT_SUPPORTED, "Sorry, objectId IN is not supported")
         end
         -- end of looking for special tokens
 
         if not tokenFound then
             print "Done (reached first unknown token)"
-            retV = nParsed
-            break
+            return nParsed
+        end
+        if string.len(s) < 4 then
+            print "Done (no more predicates)"
+            return nParsed
+        end
+           
+        if string.byte(s) == 32 then -- skip space
+            s = string.sub(s, 2)
+            nParsed = nParsed + 1
+        end
+        if string.find(s, "^AND") then
+            s = string.sub(s, 5)
+            nParsed = nParsed + 5
+        elseif string.find(s, "^OR") then
+            return setErr(ERR_OR_NOT_ALLOWED, "'OR' is not allowed here: '"..s.."'")
         else
-            if string.len(s) < 4 then
-                print "Done (no more predicates)"
-                retV = nParsed
-            else
-                if string.byte(s) == 32 then -- skip space
-                    s = string.sub(s, 2)
-                    nParsed = nParsed + 1
-                end
-                if string.find(s, "^AND") then
-                    s = string.sub(s, 5)
-                    nParsed = nParsed + 5
-                elseif string.find(s, "^OR") then
-                   print "Error: found OR around special tokens."
-                   retV = -1
-                   break
-                else
-                   print ("Error: AND expected, s='"..s.."'")
-                   retV = -1
-                   break
-                end
-            end
+            return setErr(ERR_AND_EXPECTED, "'AND' was expected here: '"..s.."'")
         end
     end
     return retV
 end
+
+
 
 
 function read_query(packet)
@@ -163,13 +181,18 @@ function read_query(packet)
         q = string.removeExtraWhiteSpaces(string.sub(packet,2))
         qU = string.upper(q)
         p1 = string.find(qU, "WHERE")
-	if p1 then
+        if p1 then
             p2 = parse_predicates(qU, p1+6) -- 6=length of 'where '
+            if ( p2 < 0 ) then
+                return sendErr()
+            end
             pEnd = string.len(qU)
             q2 = string.sub(q, 0, p1-1) .. "WHERE " .. string.sub(q, p2-1, pEnd)
             print ("The query now is: " .. q2)
         else
             print ("There is no WHERE, query will be passed unchanged")
         end
-   end
+    end
 end
+
+
