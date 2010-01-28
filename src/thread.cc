@@ -2,6 +2,8 @@
 
 // Standard
 #include <fstream>
+#include <sys/mman.h>
+#include <fcntl.h>
 // Boost
 #include <boost/make_shared.hpp>
 // LSST 
@@ -32,15 +34,31 @@ int seekMagic(int start, char* buffer, int term) {
 // TransactionSpec
 //////////////////////////////////////////////////////////////////////
 qMaster::TransactionSpec::Reader::Reader(std::string const& file) {
-    // Read the file into memory.  All of it.
-    using namespace std;
-    ifstream is;
-    is.open(file.c_str(), ios::binary);
+    _mmapFd = -1;
+    _mmapChunk = 0;
+    _rawContents = NULL;
+    _setupMmap(file);
+    //_readWholeFile(file);
+    _pos = 0;
+}
+qMaster::TransactionSpec::Reader::~Reader() {
+    if(_rawContents != NULL) delete[] _rawContents; // cleanup 
+    _cleanupMmap();
+}
 
+void qMaster::TransactionSpec::Reader::_readWholeFile(std::string const& file) {
+    // Read the file into memory.  All of it.
+    std::ifstream is;
+    is.open(file.c_str(), std::ios::binary);
+    
     // get length of file:
-    is.seekg(0, ios::end);
+    is.seekg(0, std::ios::end);
     _rawLength = is.tellg();
-    is.seekg(0, ios::beg);
+    if(_rawLength <= 0) {
+	_rawContents = NULL; 
+	return;
+    }
+    is.seekg(0, std::ios::beg);
     
     // allocate memory:
     _rawContents = new char[_rawLength];
@@ -48,10 +66,62 @@ qMaster::TransactionSpec::Reader::Reader(std::string const& file) {
     // read data as a block:
     is.read(_rawContents, _rawLength);
     is.close();
-    _pos = 0;
+ }
+
+void qMaster::TransactionSpec::Reader::_setupMmap(std::string const& file) {
+    { // get length
+	std::ifstream is;
+	is.open(file.c_str(), std::ios::binary);
+	
+	// get length of file:
+	is.seekg(0, std::ios::end);
+	_rawLength = is.tellg();
+	is.close();
+    }
+    // 0x1000: 4K, 0x10000: 64K 0x100000:1M, 0x1000 000: 16M
+    _mmapDefaultSize = 0x1000000; // 16M
+    _mmapChunkSize = _mmapDefaultSize; 
+    _mmapMinimum = 0x40000; // 256K
+    _mmapOffset = 0;
+    _mmapFd = open(file.c_str(), O_RDONLY);
+    _mmapChunk = NULL;
+    _mmapChunk = (char*)mmap(NULL, _mmapDefaultSize, PROT_READ, MAP_PRIVATE, 
+		      _mmapFd, _mmapOffset);
+    if(_mmapChunk == (void*)-1) {
+	perror("error mmaping.");
+    }
+    assert(_mmapChunk != (void*)-1);
 }
 
+void qMaster::TransactionSpec::Reader::_advanceMmap() { 
+    int distToEnd = _rawLength - _mmapOffset;
+    if(distToEnd > _mmapDefaultSize) { // Non-last chunk?
+	int posInChunk = _pos - _mmapOffset;
+	int distToBorder = _mmapDefaultSize - posInChunk;
+	if(distToBorder < _mmapMinimum) {
+	    munmap(_mmapChunk, _mmapDefaultSize);
+	    _mmapOffset += _mmapDefaultSize - _mmapMinimum;
+	    _mmapChunk = (char*)mmap(NULL, _mmapDefaultSize, PROT_READ, 
+				     MAP_PRIVATE, _mmapFd, _mmapOffset);
+	    assert(_mmapChunk != (void*)-1);
 
+	    if((_rawLength - _mmapOffset) < _mmapDefaultSize) {
+		// Chunk exceeds end of file.
+		// Overwrite mmap chunk size
+		_mmapChunkSize = _rawLength - _mmapOffset;
+	    }
+	}
+    }
+}
+
+void qMaster::TransactionSpec::Reader::_cleanupMmap() {
+    if(_mmapChunk != NULL) {
+	munmap(_mmapChunk, _mmapChunkSize);
+    }
+    if(_mmapFd != -1) {
+	close(_mmapFd);
+    }
+}
 
 qMaster::TransactionSpec qMaster::TransactionSpec::Reader::getSpec() {
 
@@ -59,25 +129,35 @@ qMaster::TransactionSpec qMaster::TransactionSpec::Reader::getSpec() {
     int endPath;
     int beginQuery;
     int endQuery;
+    //int bufEnd = _rawContents;
+    int bufEnd = _mmapChunkSize;;
+
     const int magicLength=4;
     qMaster::TransactionSpec ts;
 
-    beginPath = seekMagic(_pos, _rawContents, _rawLength);
-    if(beginPath == _rawLength) return ts;
+    //beginPath = seekMagic(_pos, _rawContents, bufEnd);
+    beginPath = seekMagic(_pos-_mmapOffset, _mmapChunk, bufEnd);
+    if(beginPath == bufEnd) return ts;
     beginPath += magicLength; // Start after magic sequence.
 
-    endPath = seekMagic(beginPath, _rawContents, _rawLength);
-    if(endPath == _rawLength) return ts;
+    //endPath = seekMagic(beginPath, _rawContents, bufEnd);
+    endPath = seekMagic(beginPath, _mmapChunk, bufEnd);
+    if(endPath == bufEnd) return ts;
     beginQuery = endPath + magicLength;
 
-    endQuery = seekMagic(beginQuery, _rawContents, _rawLength);
-    if(endQuery == _rawLength) return ts;
-    ts.path = std::string(_rawContents + beginPath, endPath - beginPath);
-    ts.query = std::string(_rawContents + beginQuery, endQuery - beginQuery);
+    //endQuery = seekMagic(beginQuery, _rawContents, bufEnd);
+    endQuery = seekMagic(beginQuery, _mmapChunk, bufEnd);
+    if(endQuery == bufEnd) return ts;
+    //    ts.path = std::string(_rawContents + beginPath, endPath - beginPath);
+    //    ts.query = std::string(_rawContents + beginQuery, endQuery - beginQuery);
+    ts.path = std::string(_mmapChunk + beginPath, endPath - beginPath);
+    ts.query = std::string(_mmapChunk + beginQuery, endQuery - beginQuery);
     ts.savePath = "/dev/null";
-    ts.bufferSize = 8192000;
-    _pos = endQuery + magicLength; // Advance past the detected marker.
-    return ts; // FIXME placeholder
+    ts.bufferSize = 1024000;
+    //_pos = endQuery + magicLength; // Advance past the detected marker.
+    _pos = _mmapOffset + endQuery + magicLength; // Advance past the detected marker.
+    _advanceMmap();
+    return ts; 
 }
 //////////////////////////////////////////////////////////////////////
 // TransactionCallable
@@ -271,8 +351,14 @@ void qMaster::QueryManager::_tryJoinAll() {
     }
 }
 void qMaster::QueryManager::joinEverything() {
+    time_t now;
+    time_t last;
     while(1) {
+	std::cout << "Threads left:" << _threads.size() << std::endl;
+	time(&last);
 	_tryJoinAll();
+	time(&now);
+	std::cout << "Joinloop took:" << now-last << std::endl;
 	if(_threads.size() > 0) {
 	    sleep(1);
 	} else {

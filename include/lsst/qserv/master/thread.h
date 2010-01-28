@@ -76,10 +76,21 @@ public:
     class Reader {
     public:
 	Reader(std::string const& inFile);
-	~Reader() { delete[] _rawContents; }
+	~Reader();
 	TransactionSpec getSpec();
     private:
+	void _readWholeFile(std::string const& inFile);
+	void _setupMmap(std::string const& inFile);
+	void _cleanupMmap();
+	void _advanceMmap();
+
 	char* _rawContents;
+	char* _mmapChunk;
+	int _mmapFd;
+	int _mmapOffset;
+	int _mmapChunkSize;
+	int _mmapDefaultSize;
+	int _mmapMinimum;
 	int _rawLength;
 	int _pos;
     };    

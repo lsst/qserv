@@ -27,7 +27,7 @@ void alternative() {
 	s = r.getSpec()) {
 	submitQuery(session, s);
 	++i;
-	if(i > 200) break; // Stop early for debugging.
+	//if(i > 2000) break; // Stop early for debugging.
     }
     QueryState s = qMaster::joinSession(session);
 }
