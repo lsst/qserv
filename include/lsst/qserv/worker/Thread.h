@@ -5,6 +5,11 @@
 
 #include "XrdSys/XrdSysPthread.hh"
 
+#ifdef DO_NOT_USE_BOOST
+#else
+#include "boost/thread.hpp"
+#endif
+
 namespace lsst {
 namespace qserv {
 namespace worker {
