@@ -3,17 +3,15 @@
 
 #include <sys/types.h>
     
-#include <deque>
 #include <string>
 #include <sstream>
-#ifdef DO_NOT_USE_BOOST
-#include "XrdSys/XrdSysPthread.hh"
-#else
-#include "boost/thread.hpp"
-#endif
 #include "XrdSfs/XrdSfsInterface.hh"
 #include "mysql/mysql.h"
 
+// pkg includes
+#include "lsst/qserv/worker/Base.h"
+
+// Forward
 class XrdSysError;
 class XrdSysLogger;
 class XrdSfsAio;
@@ -56,43 +54,16 @@ public:
     int getCXinfo(char cxtype[4], int& cxrsz);
 
 private:
-    class StringBuffer {
-    public:
-        StringBuffer() : _totalSize(0) {}
-	~StringBuffer() { reset(); }
-	void addBuffer(XrdSfsFileOffset offset, char const* buffer, 
-		       XrdSfsXferSize bufferSize);
-	std::string getStr() const;
-	XrdSfsFileOffset getLength() const;
-	std::string getDigest() const;
-	void reset();
-    private:
-	struct Fragment {
-	    Fragment(XrdSfsFileOffset offset_, char const* buffer_, 
-		     XrdSfsXferSize bufferSize_) 
-	    : offset(offset_), buffer(buffer_), bufferSize(bufferSize_) {}
-
-	    XrdSfsFileOffset offset; 
-	    char const* buffer;
-	    XrdSfsXferSize bufferSize;
-	};
-
-	typedef std::deque<Fragment> FragmentDeque;
-	FragmentDeque _buffers;
-	XrdSfsFileOffset _totalSize;
-#if DO_NOT_USE_BOOST
-	XrdSysMutex _mutex;
-#else
-	boost::mutex _mutex;
-#endif
-	std::stringstream _ss;
-    };
+    enum FileClass {COMBO, TWO_WRITE, TWO_READ, UNKNOWN};
 
     bool _addWritePacket(XrdSfsFileOffset offset, char const* buffer, 
 			 XrdSfsXferSize bufferSize);
     bool _flushWrite();
+    bool _flushWriteDetach();
+    bool _flushWriteSync();
     bool _hasPacketEof(char const* buffer, XrdSfsXferSize bufferSize) const;
 
+    FileClass _getFileClass(std::string const& filename);
     std::string _runScriptPiece(MYSQL*const db,
 				std::string const& scriptId, 
 				std::string const& pieceName,
@@ -107,10 +78,12 @@ private:
 
     XrdSysError* _eDest;
     int _chunkId;
+    FileClass _fileClass;
     std::string _userName;
     std::string _dumpName;
     std::string _socketFilename;
     std::string _mysqldumpPath;
+    std::string _script;
     StringBuffer _queryBuffer;
 };
 
