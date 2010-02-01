@@ -120,7 +120,7 @@ void qWorker::StringBuffer::addBuffer(
 #  else
 	boost::unique_lock<boost::mutex> lock(_mutex);
 #  endif
-	_buffers.push_back(Fragment(offset, buffer, bufferSize));
+	_buffers.push_back(Fragment(offset, newItem, bufferSize));
 	_totalSize += bufferSize;
     }
 #endif

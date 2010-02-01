@@ -118,9 +118,7 @@ static int findChunkNumber(char const* path) {
 }
 
 qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user) :
-    XrdSfsFile(user), _eDest(lp), 
-    _socketFilename("/var/lib/mysql/mysql.sock"),
-    _mysqldumpPath("/usr/bin/mysqldump") {
+    XrdSfsFile(user), _eDest(lp) {
 
     // Capture userName at this point.
     // Param user is: user.pid:fd@host 
@@ -128,12 +126,6 @@ qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user) :
     char* cursor = user;
     while(cursor && (*cursor != '.')) cursor++;
     _userName = std::string(user, cursor - user);
-    // Try to capture socket filename from environment
-    char* sock = ::getenv("QSW_DBSOCK");
-    if(sock != (char*)0) { _socketFilename = sock; }
-    // Capture alternative mysqldump
-    char* path = ::getenv("QSW_MYSQLDUMP");
-    if(path != (char*)0) { _mysqldumpPath = path; }
 }
 
 qWorker::MySqlFsFile::~MySqlFsFile(void) {
