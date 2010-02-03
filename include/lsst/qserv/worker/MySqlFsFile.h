@@ -27,7 +27,7 @@ public:
 
     int open(char const* fileName, XrdSfsFileOpenMode openMode,
              mode_t createMode, XrdSecEntity const* client = 0,
-    char const* opaque = 0);
+	     char const* opaque = 0);
     int close(void);
     int fctl(int const cmd, char const* args, XrdOucErrInfo& outError);
     char const* FName(void);
@@ -58,6 +58,7 @@ private:
 
     bool _addWritePacket(XrdSfsFileOffset offset, char const* buffer, 
 			 XrdSfsXferSize bufferSize);
+    void _addCallback(char const* filename);
     bool _flushWrite();
     bool _flushWriteDetach();
     bool _flushWriteSync();
@@ -73,6 +74,7 @@ private:
 				 std::string const& build, 
 				 std::string const& run, 
 				 std::string const& cleanup);
+    bool _isResultReady(char const* filename);
     bool _runScript(std::string const& script, std::string const& dbName);
     void _setDumpNameAsChunkId();
 

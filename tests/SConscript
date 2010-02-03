@@ -7,6 +7,11 @@ testEnv = env.Clone()
 testEnv.Append(LIBPATH = ["../lib"])
 testEnv.Append(LIBS = ["qserv_worker", "stdc++"])
 
+smallEnv = env.Clone()
+smallEnv.Append(LIBPATH = ["../lib"])
+smallEnv.Replace(LIBS = ["stdc++"])
+smallTests = {"MySqlFs_2.cc":["boost_thread","boost_signals"]}
+
 def run_test(target, source, env):
     log = file(str(target[0]) + ".failed", "w")
     ret = subprocess.call(str(source[0]),
@@ -20,7 +25,15 @@ def run_test(target, source, env):
 
 bld = Builder(action = run_test, prefix = ".tests/")
 testEnv.Append(BUILDERS = {'Test': bld})
+smallEnv.Append(BUILDERS = {'Test': bld})
 for src in Glob("*.cc"):
-    prog = testEnv.Program(src)
-    test = testEnv.Test(prog)
-    testEnv.Depends(test, testEnv['built_libs'])
+    key = str(src)
+    if key in smallTests:
+        eenv = smallEnv
+        eenv.Append(LIBS = smallTests[key])
+    else:
+        eenv = testEnv
+    prog = eenv.Program(src)
+    test = eenv.Test(prog)
+    if src not in smallTests:
+        env.Depends(test, testEnv['built_libs'])

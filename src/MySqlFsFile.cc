@@ -2,6 +2,7 @@
 
 #include "XrdSec/XrdSecEntity.hh"
 #include "XrdSfs/XrdSfsAio.hh"
+#include "XrdSfs/XrdSfsCallBack.hh" // For Open-callbacks(FinishListener)
 #include "XrdSys/XrdSysError.hh"
 
 #if DO_NOT_USE_BOOST
@@ -150,9 +151,14 @@ int qWorker::MySqlFsFile::open(
 		     % fileName % _userName).str().c_str());
 	break;
     case TWO_READ:
-	_eDest->Say((Pformat("File open %1% for result reading by %2%")
-		     % fileName % _userName).str().c_str());
-	break;
+	if(_isResultReady(fileName)) {
+	    _eDest->Say((Pformat("File open %1% for result reading by %2%")
+			 % fileName % _userName).str().c_str());
+	} else {
+	    _addCallback(fileName);
+	    return SFS_STARTED;
+	}
+
     default:
 	_eDest->Say((Pformat("Unrecognized file open %1% by %2%")
 		     % fileName % _userName).str().c_str());
@@ -339,6 +345,42 @@ bool qWorker::MySqlFsFile::_addWritePacket(XrdSfsFileOffset offset,
     return true;
 }
 
+class FinishListener { // Inherit from a running object.
+public:
+    FinishListener(XrdSfsCallBack* cb) : _callback(cb) {}
+    virtual void operator()(int errorCode=0, char const* msg=0) {
+	if(errorCode != 0) {
+	    _callback->Reply_OK();
+	} else {
+	    _callback->Reply_Error(errorCode, msg);
+	}
+	_callback = 0;
+	// _callback will be auto-destructed after any Reply_* call.
+    }
+private:
+    XrdSfsCallBack* _callback;
+};
+
+void qWorker::MySqlFsFile::_addCallback(char const* filename) {
+    assert(_fileClass == TWO_READ);
+    // Construct callback.
+    XrdSfsCallBack * callback = XrdSfsCallBack::Create(&error);
+    // Add callback to running object
+    // FIXME retrieve query from manager.
+    // Then, add callback.  If not running, manually invoke.    
+}
+
+bool qWorker::MySqlFsFile::_isResultReady(char const* filename) {
+    assert(_fileClass == TWO_READ);
+    // Lookup result hash.
+    // FIXME
+    // Check if query done.
+    // FIXME
+    // Sanity check that result file exists.
+    return false; // FIXME. Placeholder until we implement
+}
+
+
 bool qWorker::MySqlFsFile::_flushWrite() {
     switch(_fileClass) {
     case TWO_WRITE:
@@ -359,7 +401,8 @@ bool qWorker::MySqlFsFile::_flushWriteDetach() {
     // Spawn.
     _eDest->Say((Pformat("Unattached exec in flight for Db = %1%, dump = %2%")
                  % s.dbName % s.resultPath % (void*)(this)).str().c_str());
-    launchThread(QueryRunner(error, *_eDest, _userName, s));
+    // FIXME
+    //launchTrackedThread(id, QueryRunner(error, *_eDest, _userName, s));
     return true;
 }
 
