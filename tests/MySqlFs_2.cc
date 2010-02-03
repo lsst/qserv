@@ -37,6 +37,23 @@ BOOST_AUTO_TEST_CASE(IntKey) {
     std::string msg;
     StrCallable sc(msg);
     rt.listenOnce(5, sc);
+    BOOST_CHECK(rt.getSignalCount() == 1);
+    BOOST_CHECK(rt.getNewsCount() == 0);
+    rt.notify(4,"no!");
+    BOOST_CHECK(rt.getNewsCount() == 1);
+    BOOST_CHECK(rt.getSignalCount() == 2);
+    BOOST_CHECK(msg.size() == 0);
+    rt.notify(5, "five");
+    BOOST_CHECK(rt.getNewsCount() == 2);
+    BOOST_CHECK(rt.getSignalCount() == 2);
+    BOOST_CHECK(msg.size() == 4);
+    std::string msg2;
+    StrCallable sc2(msg2);
+    rt.listenOnce(4, sc2);
+    BOOST_CHECK(rt.getNewsCount() == 2);
+    BOOST_CHECK(rt.getSignalCount() == 2);
+    BOOST_CHECK(msg2.size() == 3);
+
 		 
 }
 

@@ -1,5 +1,6 @@
 #ifndef LSST_QSERV_WORKER_RESULT_TRACKER_H
 #define LSST_QSERV_WORKER_RESULT_TRACKER_H
+#include <deque>
 #include <boost/signal.hpp>
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
@@ -22,8 +23,7 @@ public:
 	{	
 	    boost::unique_lock<boost::mutex> slock(s->mutex);
 	    s->signal(i); // Notify listeners
-	    // Get rid of listeners by constructing anew.
-	    s->signal = typename ResultTracker<Key,Item>::Signal(); 
+	    s->clearListeners();
 	    // Save news item
 	    boost::unique_lock<boost::mutex> nlock(_newsMutex);
 	    _news[k] = i;
@@ -58,7 +58,7 @@ public:
 		c2(i->second); 
 	    } else {
 		// No news, so subscribe.
-		s->signal.connect(c); 
+		s->connections.push_back(s->signal.connect(c)); 
 	    }
 	}
     }
@@ -81,8 +81,18 @@ private:
 
     struct LockableSignal {
     public:
+	typedef std::deque<boost::signals::connection> CDeque;
 	boost::mutex mutex;
 	Signal signal;
+	CDeque connections; // Remember connections so we can disconnect.
+	void clearListeners() {
+	    CDeque::iterator i, end;
+	    for(i=connections.begin(), end=connections.end();
+		i != end; ++i) {
+		i->disconnect();
+	    }
+	    
+	}
     };
     typedef boost::shared_ptr<LockableSignal> LSPtr;
     typedef std::map<Key, LSPtr> SignalMap;
