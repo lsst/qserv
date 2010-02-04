@@ -58,24 +58,18 @@ private:
 
     bool _addWritePacket(XrdSfsFileOffset offset, char const* buffer, 
 			 XrdSfsXferSize bufferSize);
-    void _addCallback(char const* filename);
+    void _addCallback(std::string const& filename);
     bool _flushWrite();
     bool _flushWriteDetach();
     bool _flushWriteSync();
     bool _hasPacketEof(char const* buffer, XrdSfsXferSize bufferSize) const;
 
+    // File path functionality
     FileClass _getFileClass(std::string const& filename);
-    std::string _runScriptPiece(MYSQL*const db,
-				std::string const& scriptId, 
-				std::string const& pieceName,
-				std::string const& piece);
-    std::string _runScriptPieces(MYSQL*const db, 
-				 std::string const& scriptId,
-				 std::string const& build, 
-				 std::string const& run, 
-				 std::string const& cleanup);
+    std::string _stripPath(std::string const& filename);
+
     bool _isResultReady(char const* filename);
-    bool _runScript(std::string const& script, std::string const& dbName);
+    //    bool _runScript(std::string const& script, std::string const& dbName);
     void _setDumpNameAsChunkId();
 
     XrdSysError* _eDest;
@@ -83,8 +77,10 @@ private:
     FileClass _fileClass;
     std::string _userName;
     std::string _dumpName;
+    bool _hasRead;
     std::string _script;
     StringBuffer _queryBuffer;
+
 };
 
 }}} // namespace lsst::qserv::worker

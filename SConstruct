@@ -25,7 +25,7 @@ if not os.path.exists(os.path.join(xrd_dir, "lib", xrd_platform)):
     Exit(1)
 env.Append(CPPPATH = [os.path.join(xrd_dir, "src")])
 env.Append(LIBPATH = [os.path.join(xrd_dir, "lib", xrd_platform)])
-
+print "xrd lib path is", os.path.join(xrd_dir,"lib",xrd_platform)
 boost_dir = "/u1/lsst/stack/Linux64/external/boost/1.37.0"
 if os.environ.has_key('BOOST_DIR'):
     boost_dir = os.environ['BOOST_DIR']
@@ -67,6 +67,10 @@ if not conf.CheckDeclaration("mysql_next_result", "#include <mysql/mysql.h>","c+
 if not conf.CheckLibWithHeader("XrdSys", "XrdSfs/XrdSfsInterface.hh", "C++"):
     print >> sys.stderr, "Could not locate XrdSys"
     Exit(1)
+# Can't get this to work...
+#if not conf.CheckLib("XrdSfs", language="C++"):
+#    print >> sys.stderr, "Could not locate XrdSfs"
+#    Exit(1)
 if not conf.CheckCXXHeader("boost/regex.hpp"):
     print >> sys.stderr, "Could not locate Boost headers"
     Exit(1)
@@ -77,6 +81,9 @@ if not conf.CheckLib("boost_regex-gcc43-mt", language="C++") \
     Exit(1)
 if not conf.CheckLib("boost_thread", language="C++"):
     print >> sys.stderr, "Could not locate boost_thread library"
+    Exit(1)
+if not conf.CheckLib("boost_signals", language="C++"):
+    print >> sys.stderr, "Could not locate boost_signals library"
     Exit(1)
 env = conf.Finish()
 

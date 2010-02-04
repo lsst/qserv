@@ -10,12 +10,16 @@ namespace qserv {
 namespace worker {
 
 typedef std::pair<int,char const*> ResultItem;
+typedef std::pair<int, std::string> ErrorPair;
+typedef boost::shared_ptr<ErrorPair> ErrorPtr;
+
 
 // Make sure Item is a primitive that can be copied.
 template <typename Key, typename Item>
 class ResultTracker {
 public:
     typedef boost::signal<void (Item)> Signal;
+    typedef boost::shared_ptr<Item> ItemPtr;
 
     void notify(Key const& k, Item const& i) {
 	_verifyKey(k); // Force k to exist in _signals
@@ -62,8 +66,17 @@ public:
 	    }
 	}
     }
+    ItemPtr getNews(Key const& k) {
+	ItemPtr p;
+	typename NewsMap::iterator i = _news.find(k);
+	if(i != _news.end()) { 
+	    p = boost::make_shared<Item>(i->second);
+	}
+	return p;
+    }
+
     int getNewsCount() const {
-	return _news.size();
+	return _news.size(); // 
     }
     int getSignalCount() const {
 	return _signals.size();

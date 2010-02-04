@@ -151,11 +151,13 @@ int qWorker::MySqlFsFile::open(
 		     % fileName % _userName).str().c_str());
 	break;
     case TWO_READ:
+	_dumpName = hashToResultPath(fileName); 
+	_hasRead = false;
 	if(_isResultReady(fileName)) {
 	    _eDest->Say((Pformat("File open %1% for result reading by %2%")
 			 % fileName % _userName).str().c_str());
 	} else {
-	    _addCallback(fileName);
+	    _addCallback(_stripPath(fileName));
 	    return SFS_STARTED;
 	}
 
@@ -170,12 +172,14 @@ int qWorker::MySqlFsFile::open(
 int qWorker::MySqlFsFile::close(void) {
     _eDest->Say((Pformat("File close(%1%) by %2%")
                  % _chunkId % _userName).str().c_str());
-    
-    // Must remove dump file while we are doing the single-query workaround
-    int result = ::unlink(_dumpName.c_str());
-    if(result != 0) {
-	_eDest->Say((Pformat("Error removing dump file(%1%): %2%")
-		     % _dumpName % strerror(errno)).str().c_str());
+    if((_fileClass == COMBO)  ||
+       ((_fileClass == TWO_READ) && _hasRead) )	{
+	// Must remove dump file while we are doing the single-query workaround
+	int result = ::unlink(_dumpName.c_str());
+	if(result != 0) {
+	    _eDest->Say((Pformat("Error removing dump file(%1%): %2%")
+			 % _dumpName % strerror(errno)).str().c_str());
+	}
     }
     return SFS_OK;
 }
@@ -201,6 +205,7 @@ int qWorker::MySqlFsFile::getMmap(void** Addr, off_t &Size) {
 
 int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
                           XrdSfsXferSize prereadSz) {
+    _hasRead = true;
     _eDest->Say((Pformat("File read(%1%) at %2% by %3%")
                  % _chunkId % fileOffset % _userName).str().c_str());
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
@@ -218,6 +223,7 @@ int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
 XrdSfsXferSize qWorker::MySqlFsFile::read(
     XrdSfsFileOffset fileOffset, char* buffer, XrdSfsXferSize bufferSize) {
     std::string msg;
+    _hasRead = true;
     msg = (Pformat("File read(%1%) at %2% for %3% by %4% [actual=%5%]")
 	   % _chunkId % fileOffset % bufferSize % _userName % _dumpName).str();
     _eDest->Say(msg.c_str());
@@ -257,6 +263,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
 }
 
 int qWorker::MySqlFsFile::read(XrdSfsAio* aioparm) {
+    _hasRead = true;
     // Spawn a throwaway thread that calls the normal, blocking read.
     launchThread(ReadCallable(*this, aioparm));
     return SFS_OK;
@@ -348,11 +355,11 @@ bool qWorker::MySqlFsFile::_addWritePacket(XrdSfsFileOffset offset,
 class FinishListener { // Inherit from a running object.
 public:
     FinishListener(XrdSfsCallBack* cb) : _callback(cb) {}
-    virtual void operator()(int errorCode=0, char const* msg=0) {
-	if(errorCode != 0) {
+    virtual void operator()(qWorker::ErrorPair const& p) {
+	if(p.first != 0) {
 	    _callback->Reply_OK();
 	} else {
-	    _callback->Reply_Error(errorCode, msg);
+	    _callback->Reply_Error(p.first, p.second.c_str());
 	}
 	_callback = 0;
 	// _callback will be auto-destructed after any Reply_* call.
@@ -361,23 +368,27 @@ private:
     XrdSfsCallBack* _callback;
 };
 
-void qWorker::MySqlFsFile::_addCallback(char const* filename) {
+void qWorker::MySqlFsFile::_addCallback(std::string const& filename) {
     assert(_fileClass == TWO_READ);
     // Construct callback.
     XrdSfsCallBack * callback = XrdSfsCallBack::Create(&error);
     // Add callback to running object
-    // FIXME retrieve query from manager.
-    // Then, add callback.  If not running, manually invoke.    
+    QueryRunner::getTracker().listenOnce(filename, FinishListener(callback));
+    // FIXME
 }
 
 bool qWorker::MySqlFsFile::_isResultReady(char const* filename) {
     assert(_fileClass == TWO_READ);
     // Lookup result hash.
-    // FIXME
+    ErrorPtr p = QueryRunner::getTracker().getNews(filename);
     // Check if query done.
-    // FIXME
-    // Sanity check that result file exists.
-    return false; // FIXME. Placeholder until we implement
+    if(p.get() != 0) {
+	return true;
+	// Sanity check that result file exists.
+	// FIXME
+    }
+
+    return false; 
 }
 
 
@@ -401,8 +412,7 @@ bool qWorker::MySqlFsFile::_flushWriteDetach() {
     // Spawn.
     _eDest->Say((Pformat("Unattached exec in flight for Db = %1%, dump = %2%")
                  % s.dbName % s.resultPath % (void*)(this)).str().c_str());
-    // FIXME
-    //launchTrackedThread(id, QueryRunner(error, *_eDest, _userName, s));
+    launchThread(QueryRunner(error, *_eDest, _userName, s));
     return true;
 }
 
@@ -440,6 +450,16 @@ qWorker::MySqlFsFile::FileClass qWorker::MySqlFsFile::_getFileClass(std::string 
 
 }
 
+std::string qWorker::MySqlFsFile::_stripPath(std::string const& filename) {
+    // Expecting something like "/results/0123aeb31b1c29a"
+    // Strip out everything before and including the last /
+    std::string::size_type pos = filename.rfind("/");
+    if(pos == std::string::npos) {
+	return filename;
+    }
+    return filename.substr(1+pos, std::string::npos);
+	
+}
 
 
 void qWorker::MySqlFsFile::_setDumpNameAsChunkId() {

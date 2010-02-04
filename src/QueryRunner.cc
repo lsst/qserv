@@ -198,18 +198,22 @@ bool qWorker::QueryRunner::operator()() {
 	if (qWorker::dumpFileExists(_meta.resultPath)) {
 	    _e.Say((Pformat("Reusing pre-existing dump = %1%")
 			 % _meta.resultPath).str().c_str());
+	    // The system should probably catch this earlier.
+	    getTracker().notify(_meta.hash, ErrorPair(0,""));
 	    return true;
 	}
 	
 	if (!_runScript(_meta.script, _meta.dbName)) {
 	    _e.Say((Pformat("(FinishFail:%1%) %2%")
 			 % (void*)(this) % dbDump).str().c_str());
-	    
+	    getTracker().notify(_meta.hash,
+				ErrorPair(-1,"Script exec failure"));
 	    return false;
 	} else {
 	    _e.Say((Pformat("(FinishOK:%1%) %2%")
 			 % (void*)(this) % dbDump).str().c_str());
 	}
+	getTracker().notify(_meta.hash, ErrorPair(0,""));
 	return true;
 }
 

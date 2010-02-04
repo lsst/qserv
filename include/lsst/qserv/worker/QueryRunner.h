@@ -1,6 +1,7 @@
 
 #include "XrdSfs/XrdSfsInterface.hh"
 #include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/worker/ResultTracker.h"
 namespace lsst {
 namespace qserv {
 namespace worker {
@@ -28,10 +29,14 @@ ExecEnv& getExecEnv();
 
 class QueryRunner {
 public:
+    typedef ResultTracker<std::string, ErrorPair> Tracker;
     QueryRunner(XrdOucErrInfo& ei, XrdSysError& e, 
 		std::string const& user, ScriptMeta s,
 		std::string overrideDump=std::string());
     bool operator()();
+
+    // Static: 
+    static Tracker& getTracker() { static Tracker t; return t;}
 
 private:
     bool _runScript(std::string const& script, std::string const& dbName);
@@ -53,6 +58,7 @@ private:
     XrdSysError& _e;
     std::string _user;
     ScriptMeta _meta;
+
 };
 
  int dumpFileOpen(std::string const& dbName);

@@ -5,7 +5,7 @@ Import("env")
 
 testEnv = env.Clone()
 testEnv.Append(LIBPATH = ["../lib"])
-testEnv.Append(LIBS = ["qserv_worker", "stdc++"])
+testEnv.Append(LIBS = ["qserv_worker", "stdc++", "XrdSfs"])
 
 smallEnv = env.Clone()
 smallEnv.Append(LIBPATH = ["../lib"])

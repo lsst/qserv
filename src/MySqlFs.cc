@@ -19,11 +19,14 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
   : XrdSfsFileSystem(), _eDest(lp) {
 
     _eDest->Say("MySqlFs loading libXrdOfs.so for clustering cmsd support.");
+#ifdef NO_XROOTD_FS
+#else
     XrdSfsFileSystem* fs;
     fs = XrdXrootdloadFileSystem(_eDest, "libXrdOfs.so", cFileName);
     if(fs == 0) {
 	_eDest->Say("Problem loading libXrdOfs.so. Clustering won't work.");
     }
+#endif
 
 }
 
