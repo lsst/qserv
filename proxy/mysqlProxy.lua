@@ -1,4 +1,7 @@
 
+
+require ("xmlrpc.http")
+
 -- todos:
 --  * enforce single bounding box
 --  * supress errors "FUNCTION proxyTest.areaSpec_box does not exist"
@@ -10,11 +13,19 @@
 --   "  objectId", "5,6,7,8" and so on
 
 
+
+rpcHost = "http://127.0.0.1"
+rpcPort = 7080
+
+rpcHP = rpcHost .. ":" .. rpcPort
+
+
 -- constants (kind of)
 ERR_AND_EXPECTED   = -4001
 ERR_BAD_ARG        = -4002
 ERR_NOT_SUPPORTED  = -4003
 ERR_OR_NOT_ALLOWED = -4004
+ERR_RPC_CALL       = -4005
 
 -- global error status and message
 __errNo__  = 0
@@ -191,6 +202,17 @@ function read_query(packet)
                        "WHERE " .. 
                        string.sub(q, p2-1, pEnd)
             print ("The query now is: " .. q2)
+
+            local ok, res = 
+               xmlrpc.http.call (rpcHP, "submitQuery", q2, "whatever")
+            if (ok) then
+                print ("got via rpc " .. res)
+                -- for i, v in pairs(res) do print ('\t', i, v) end
+            else
+                setErr(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
+                return sendErr()
+            end
+
         else
             print ("There is no WHERE, query will be passed unchanged")
         end

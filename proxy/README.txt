@@ -1,7 +1,6 @@
 
-# To start mysql proxy
-./bin/mysql-proxy --proxy-lua-script=mysqlProxy.lua
+# Start mysql proxy and rpcServer using provided scripts
 
-# To talk to mysql proxy from mysql client
+# Talk to mysql proxy from mysql client using
 mysql --port=4040 --protocol=TCP
 

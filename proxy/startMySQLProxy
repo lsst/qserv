@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# this script starts mysql proxy
+# --lua-path and --lua-cpath are needed because 
+# we need access to xmlrpc packages, and mysqlproxy
+# overwrites pre-installed lua modules
+
+# of course all these path are here temporarily
+/home/becla/work/mysql-proxy-0.8.0/bin/mysql-proxy \
+--proxy-lua-script=/home/becla/work/lsst/qservMaster/proxy/mysqlProxy.lua \
+--lua-path='/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/?.lua' \
+--lua-cpath='/usr/lib/lua/5.1/?.so;/usr/lib/lua/5.1/?/?.so'
