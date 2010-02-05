@@ -2,7 +2,6 @@
 
 #include "XrdSec/XrdSecEntity.hh"
 #include "XrdSfs/XrdSfsAio.hh"
-#include "XrdSfs/XrdSfsCallBack.hh" // For Open-callbacks(FinishListener)
 #include "XrdSys/XrdSysError.hh"
 
 #if DO_NOT_USE_BOOST
@@ -118,8 +117,9 @@ static int findChunkNumber(char const* path) {
     return result;
 }
 
-qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user) :
-    XrdSfsFile(user), _eDest(lp) {
+qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user, 
+				  AddCallbackFunction::Ptr acf) :
+    XrdSfsFile(user), _eDest(lp), _addCallbackF(acf) {
 
     // Capture userName at this point.
     // Param user is: user.pid:fd@host 
@@ -232,8 +232,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
     if (fd == -1) {
       std::stringstream ss;
       ss << (void*)this << "  Can't open dumpfile: " << _dumpName;
-      std::string s;
-      ss >> s;
+      std::string s = ss.str();
       _eDest->Say(s.c_str());
 
         error.setErrInfo(errno, "Query results missing");
@@ -352,29 +351,10 @@ bool qWorker::MySqlFsFile::_addWritePacket(XrdSfsFileOffset offset,
     return true;
 }
 
-class FinishListener { // Inherit from a running object.
-public:
-    FinishListener(XrdSfsCallBack* cb) : _callback(cb) {}
-    virtual void operator()(qWorker::ErrorPair const& p) {
-	if(p.first != 0) {
-	    _callback->Reply_OK();
-	} else {
-	    _callback->Reply_Error(p.first, p.second.c_str());
-	}
-	_callback = 0;
-	// _callback will be auto-destructed after any Reply_* call.
-    }
-private:
-    XrdSfsCallBack* _callback;
-};
-
 void qWorker::MySqlFsFile::_addCallback(std::string const& filename) {
     assert(_fileClass == TWO_READ);
-    // Construct callback.
-    XrdSfsCallBack * callback = XrdSfsCallBack::Create(&error);
-    // Add callback to running object
-    QueryRunner::getTracker().listenOnce(filename, FinishListener(callback));
-    // FIXME
+    assert(_addCallbackF.get() != 0);
+    (*_addCallbackF)(*this, filename);
 }
 
 bool qWorker::MySqlFsFile::_isResultReady(char const* filename) {

@@ -10,7 +10,15 @@ testEnv.Append(LIBS = ["qserv_worker", "stdc++", "XrdSfs"])
 smallEnv = env.Clone()
 smallEnv.Append(LIBPATH = ["../lib"])
 smallEnv.Replace(LIBS = ["stdc++"])
-smallTests = {"MySqlFs_2.cc":["boost_thread","boost_signals"]}
+smallEnv.Append(CCFLAGS= "-g -Wall")
+smallTests = {"MySqlFs_2.cc":["boost_thread","boost_signals", 
+                              "XrdSys", "XrdSfs",
+                              "mysqlclient", "boost_regex", "ssl"]}
+smallTestsSrc = {"MySqlFs_2.cc":["../src/MySqlFsFile.cc",
+                                 "../src/Base.cc",
+                                 "../src/QueryRunner.cc"
+
+                                 ]}
 
 def run_test(target, source, env):
     log = file(str(target[0]) + ".failed", "w")
@@ -31,6 +39,8 @@ for src in Glob("*.cc"):
     if key in smallTests:
         eenv = smallEnv
         eenv.Append(LIBS = smallTests[key])
+        if key in smallTestsSrc:
+            src = [str(src)] +  smallTestsSrc[key]
     else:
         eenv = testEnv
     prog = eenv.Program(src)

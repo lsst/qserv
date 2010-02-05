@@ -23,8 +23,6 @@ public:
 private:
     MYSQL* _db;
 };
-    
-
 std::string runQuery(MYSQL* db, std::string query,
                             std::string arg=std::string()) {
     if (arg.size() != 0) {
@@ -53,10 +51,9 @@ std::string runQuery(MYSQL* db, std::string query,
     return std::string();
 }
 
-} // anonymous namespace
 
 std::string runQueryInPieces(MYSQL* db, std::string query,
-				    std::string arg=std::string()) {
+			     std::string arg=std::string()) {
     // Run a larger query in pieces split by semicolon/newlines.
     // This tries to avoid the max_allowed_packet
     // (MySQL client/server protocol) problem.
@@ -115,45 +112,46 @@ std::string runQueryInPieces(MYSQL* db, std::string query,
     return std::string();
 }
 
-
-
-std::string qWorker::QueryRunner::_runScriptPiece(
-    MYSQL*const db,
-    std::string const& scriptId, 
-    std::string const& pieceName, std::string const& piece) {
+std::string runScriptPiece(XrdSysError& e,
+			    MYSQL*const db,
+			    std::string const& scriptId, 
+			    std::string const& pieceName,
+			    std::string const& piece) {
     std::string result;
-    _e.Say((Pformat("TIMING,%1%%2%Start,%3%")
+    e.Say((Pformat("TIMING,%1%%2%Start,%3%")
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     result = runQueryInPieces(db, piece);
-    _e.Say((Pformat("TIMING,%1%%2%Finish,%3%")
+    e.Say((Pformat("TIMING,%1%%2%Finish,%3%")
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     if(!result.empty()) {
-	_e.Say((Pformat("Broken! ,%1%%2%---%3%")
+	e.Say((Pformat("Broken! ,%1%%2%---%3%")
 		     % scriptId % pieceName % result).str().c_str());
 	result += "(during " + pieceName + ")\nQueryFragment: " + piece;
     }
     return result;
 }		   
 
-std::string qWorker::QueryRunner::_runScriptPieces(
-    MYSQL*const db,
-    std::string const& scriptId, std::string const& build, 
-    std::string const& run, std::string const& cleanup) {
-
+std::string runScriptPieces(XrdSysError& e,
+			    MYSQL*const db,
+			    std::string const& scriptId, 
+			    std::string const& build, 
+			    std::string const& run, 
+			    std::string const& cleanup) {
     std::string result;    
 
-    result = _runScriptPiece(db, scriptId, "QueryBuildSub", build);
+    result = runScriptPiece(e, db, scriptId, "QueryBuildSub", build);
     if(result.empty()) {
-	result = _runScriptPiece(db, scriptId, "QueryExec", run);
+	result = runScriptPiece(e, db, scriptId, "QueryExec", run);
 	if(result.empty()) {
 	}
 	// Always destroy subchunks.
-	result += _runScriptPiece(db, scriptId, "QueryDestroySub", cleanup);
+	result += runScriptPiece(e, db, scriptId, "QueryDestroySub", cleanup);
     } 
     return result;
 }
+    
 
-
+} // anonymous namespace
 
 
 qWorker::ExecEnv& qWorker::getExecEnv() {
@@ -277,8 +275,8 @@ bool qWorker::QueryRunner::_runScript(
     _e.Say((Pformat("TIMING,%1%QueryFormatFinish,%2%")
                  % scriptId % ::time(NULL)).str().c_str());
     
-    result = _runScriptPieces(db.get(), scriptId, buildScript, 
-			      script, cleanupScript);
+    result = runScriptPieces(_e, db.get(), scriptId, buildScript, 
+			     script, cleanupScript);
     if(!result.empty()) {
         _errinfo.setErrInfo(EIO, result.c_str());
 	return false;

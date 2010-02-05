@@ -2,18 +2,49 @@
 
 #include "XrdSec/XrdSecEntity.hh"
 #include "XrdSys/XrdSysError.hh"
+#include "XrdSfs/XrdSfsCallBack.hh" // For Open-callbacks(FinishListener)
 
 #include "lsst/qserv/worker/MySqlFsDirectory.h"
 #include "lsst/qserv/worker/MySqlFsFile.h"
-
+#include "lsst/qserv/worker/QueryRunner.h"
 #include <cerrno>
 
 // Externally declare XrdSfs loader to cheat on Andy's suggestion.
 extern XrdSfsFileSystem *XrdXrootdloadFileSystem(XrdSysError *, char *, 
 						 const char *);
-
-
 namespace qWorker = lsst::qserv::worker;
+
+namespace { 
+ 
+template<class Callback>
+class FinishListener { 
+public:
+    FinishListener(Callback* cb) : _callback(cb) {}
+    virtual void operator()(qWorker::ErrorPair const& p) {
+	if(p.first != 0) {
+	    _callback->Reply_OK();
+	} else {
+	    _callback->Reply_Error(p.first, p.second.c_str());
+	}
+	_callback = 0;
+	// _callback will be auto-destructed after any Reply_* call.
+    }
+private:
+    Callback* _callback;
+};
+
+class AddCallbackFunc : public qWorker::AddCallbackFunction {
+public:
+    typedef boost::shared_ptr<AddCallbackFunc> Ptr;
+    virtual ~AddCallbackFunc() {}
+    virtual void operator()(XrdSfsFile& caller, std::string const& filename) {
+	XrdSfsCallBack * callback = XrdSfsCallBack::Create(&(caller.error));
+	// Register callback with opener.
+	qWorker::QueryRunner::getTracker().listenOnce(
+            filename, FinishListener<XrdSfsCallBack>(callback));
+    }
+};
+} // anonymous namespace
 
 qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName) 
   : XrdSfsFileSystem(), _eDest(lp) {
@@ -40,7 +71,8 @@ XrdSfsDirectory* qWorker::MySqlFs::newDir(char* user) {
 }
 
 XrdSfsFile* qWorker::MySqlFs::newFile(char* user) {
-    return new qWorker::MySqlFsFile(_eDest, user);
+    return new qWorker::MySqlFsFile(_eDest, user, 
+				    boost::make_shared<AddCallbackFunc>());
 }
 
 // Other Functions

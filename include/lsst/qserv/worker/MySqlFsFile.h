@@ -20,9 +20,17 @@ namespace lsst {
 namespace qserv {
 namespace worker {
 
+class AddCallbackFunction {
+public:
+    typedef boost::shared_ptr<AddCallbackFunction> Ptr;
+    virtual ~AddCallbackFunction() {}
+    virtual void operator()(XrdSfsFile& caller, std::string const& filename) = 0;
+};
+    
 class MySqlFsFile : public XrdSfsFile {
 public:
-    MySqlFsFile(XrdSysError* lp, char* user = 0);
+    MySqlFsFile(XrdSysError* lp, char* user = 0, 
+		AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr() );
     ~MySqlFsFile(void);
 
     int open(char const* fileName, XrdSfsFileOpenMode openMode,
@@ -73,6 +81,7 @@ private:
     void _setDumpNameAsChunkId();
 
     XrdSysError* _eDest;
+    AddCallbackFunction::Ptr _addCallbackF;
     int _chunkId;
     FileClass _fileClass;
     std::string _userName;

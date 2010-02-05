@@ -1,7 +1,10 @@
-
+#ifndef LSST_QSERV_WORKER_QUERYRUNNER_H
+#define LSST_QSERV_WORKER_QUERYRUNNER_H
 #include "XrdSfs/XrdSfsInterface.hh"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/ResultTracker.h"
+
+
 namespace lsst {
 namespace qserv {
 namespace worker {
@@ -40,18 +43,6 @@ public:
 
 private:
     bool _runScript(std::string const& script, std::string const& dbName);
-    std::string _runScriptPiece(MYSQL*const db,
-				std::string const& scriptId, 
-				std::string const& pieceName,
-				std::string const& piece);
-
-    std::string _runScriptPieces(MYSQL*const db,
-				 std::string const& scriptId, 
-				 std::string const& build, 
-				 std::string const& run, 
-				 std::string const& cleanup);
-
-
 
     ExecEnv& _env;
     XrdOucErrInfo& _errinfo;
@@ -64,8 +55,5 @@ private:
  int dumpFileOpen(std::string const& dbName);
  bool dumpFileExists(std::string const& dumpFilename);
 
-
-
-
-
 }}}
+#endif // LSST_QSERV_WORKER_QUERYRUNNER_H
