@@ -64,7 +64,7 @@ std::string runQueryInPieces(MYSQL* db, std::string query,
     std::string::size_type pieceBegin=0;
     std::string::size_type pieceEnd=0;
     std::string::size_type qEnd=query.length();
-    std::string::size_type sizeTarget=25;
+    std::string::size_type sizeTarget=25; // Is this too small?
     std::string::size_type searchTarget;
     unsigned pieceCount = 0;
 
@@ -88,10 +88,19 @@ std::string runQueryInPieces(MYSQL* db, std::string query,
 	} else { // Remaining is small. Don't split further.
 	    pieceEnd = qEnd; 
 	}
+
 	queryPiece = "";
-	queryPiece.assign(query, pieceBegin, pieceEnd-pieceBegin);
+	// Backoff whitepace or null.
+	int pos = pieceEnd;
+	char c = query[pos];
+	while((c == '\0') || (c == '\n') 
+	      || (c == ' ') || (c == '\t')) { c = query[--pos];}
+	if (pos > pieceBegin) {
+	    queryPiece.assign(query, pieceBegin, pos-pieceBegin);
+	}
 	// Catch empty strings.
 	if(!queryPiece.empty() && queryPiece[0] != '\0') {
+	    //std::cout << "PIECE--" << queryPiece << "--" << std::endl;
 	   subResult = runQuery(db, queryPiece, arg);
 	  }
 	// On error, the partial error is as good as the global.
@@ -120,13 +129,16 @@ std::string runScriptPiece(XrdSysError& e,
     std::string result;
     e.Say((Pformat("TIMING,%1%%2%Start,%3%")
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
+    //e.Say(("Hi. my piece is++"+piece+"++").c_str());
+	
     result = runQueryInPieces(db, piece);
     e.Say((Pformat("TIMING,%1%%2%Finish,%3%")
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     if(!result.empty()) {
+	result += "(during " + pieceName + ")\nQueryFragment: " + piece;
 	e.Say((Pformat("Broken! ,%1%%2%---%3%")
 		     % scriptId % pieceName % result).str().c_str());
-	result += "(during " + pieceName + ")\nQueryFragment: " + piece;
+
     }
     return result;
 }		   

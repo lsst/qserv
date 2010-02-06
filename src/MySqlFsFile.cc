@@ -400,7 +400,7 @@ bool qWorker::MySqlFsFile::_flushWriteSync() {
     ScriptMeta s(_queryBuffer, _chunkId);
     _script = s.script;
     _setDumpNameAsChunkId(); // Because reads may get detached from writes.
-
+    //_eDest->Say((Pformat("db=%1%.") % s.dbName).str().c_str());
     QueryRunner runner(error, *_eDest, _userName, s, _dumpName);
     return runner();
 }

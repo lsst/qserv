@@ -24,14 +24,19 @@ using boost::make_shared;
 static XrdSysLogger logDest;
 static XrdSysError errDest(&logDest);
 
+
+
+
 // For chunk 9980, subchunks 1,3 (tuson26 right now)
 std::string queryNonMagic =
-    "-- SUBCHUNKS: 1,3\n"
     "CREATE TABLE Result AS "
+    "-- SUBCHUNKS: 1,3\n"
     "SELECT COUNT(*) FROM "
-    "SELECT * from (SELECT * FROM Subchunks_9980.Object_9980_1 "
+    "(SELECT * FROM Subchunks_9880.Object_9880_1 "
     "UNION "
-    "SELECT * FROM Subchunks_9980.Object_9980_3) AS _Obj_Subchunks;"; 
+    "SELECT * FROM Subchunks_9880.Object_9880_3) AS _Obj_Subchunks;"; 
+//SELECT COUNT(*) FROM (SELECT * FROM Subchunks_9880.Object_9880_1 UNION SELECT * FROM Subchunks_9880.Object_9880_3) AS _Obj_Subchunks;
+
 std::string query(queryNonMagic + std::string(4, '\0')); // Force magic EOF
 std::string queryHash = qWorker::hashQuery(query.c_str(), query.size());
 std::string queryResultPath = "/result/"+queryHash;
@@ -112,7 +117,7 @@ BOOST_AUTO_TEST_CASE(QueryAttemptCombo) {
     // params: filename, openMode(ignored), createMode(ignored), 
     // clientSecEntity(ignored), opaque(ignored)
 
-    lastResult = invokeFile.open("/query/9980",0,0,0,0);
+    lastResult = invokeFile.open("/query/9880",0,0,0,0);
     BOOST_CHECK_EQUAL(lastResult, SFS_OK);
     lastResult = invokeFile.write(0, query.c_str(), query.size());
     BOOST_CHECK_EQUAL(lastResult, query.size());
@@ -136,29 +141,60 @@ BOOST_AUTO_TEST_CASE(QueryAttemptCombo) {
     }
     
     lastResult = invokeFile.close();
-    BOOST_CHECK_EQUAL(lastResult, SFS_OK);
-    
-
+    BOOST_CHECK_EQUAL(lastResult, SFS_OK);    
 }
-#if 0
-BOOST_AUTO_TEST_CASE(QueryAttemptCombo) {
-    lastResult = invokeFile.open("/query2/9980",0,0,0,0);
+
+BOOST_AUTO_TEST_CASE(QueryAttemptTwo) {
+
+    lastResult = invokeFile.open("/query2/9880",0,0,0,0);
     BOOST_CHECK_EQUAL(lastResult, SFS_OK);
     lastResult = invokeFile.write(0, query.c_str(), query.size());
     BOOST_CHECK_EQUAL(lastResult, query.size());
     lastResult = invokeFile.close();
     BOOST_CHECK_EQUAL(lastResult, SFS_OK);
-    
-
-    lastResult = invokeFile.open(queryResultPath.c_str(),0,0,0,0);
-    BOOST_CHECK_EQUAL(lastResult, SFS_STARTED);
-    qWorker::ErrorPtr p;
+#if 0
     while(1) {
-	p = getTracker().getNews(queryResultPath);
-	if(p.get() != 0) break;
-	sleep(1);
+	lastResult = resultFile.open(queryResultPath.c_str(),0,0,0,0);
+	if(lastResult == SFS_OK) {
+	    break;
+	} else if(lastResult == SFS_STARTED) {
+	    qWorker::ErrorPtr p;
+	    int i = 0;
+	    while(i < 10) {
+		p = getTracker().getNews(queryResultPath);
+		if(p.get() != 0) break;
+		sleep(1);
+		++i;
+	    }
+	    continue; // Try opening again.
+	} else {
+	    BOOST_CHECK((lastResult == SFS_OK) || (lastResult == SFS_STARTED));
+	    break;
+	}
+    }
+
+    int pos = 0;
+    const int blocksize = 1024;
+    char contents[blocksize+1];
+    while(1) {
+	lastResult = resultFile.read(pos, contents, blocksize);
+	BOOST_CHECK(lastResult >= 0);
+	if(lastResult >= 0) {
+	    pos += blocksize;
+	    contents[lastResult] = '\0';
+	    std::cout << "recv("<< lastResult 
+		      << "):" << contents << std::endl;
+	} else {
+	    std::cout << "recv error("<< lastResult 
+		      << "):" << std::endl;
+	}
+	if(lastResult < blocksize)
+	    break;
     }
     
-}
+    lastResult = resultFile.close();
+    BOOST_CHECK_EQUAL(lastResult, SFS_OK);    
 #endif
+}
+
 BOOST_AUTO_TEST_SUITE_END()
