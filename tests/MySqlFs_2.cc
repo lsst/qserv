@@ -25,8 +25,6 @@ static XrdSysLogger logDest;
 static XrdSysError errDest(&logDest);
 
 
-
-
 // For chunk 9980, subchunks 1,3 (tuson26 right now)
 std::string queryNonMagic =
     "CREATE TABLE Result AS "
@@ -44,10 +42,10 @@ std::string queryResultPath = "/result/"+queryHash;
 struct TrackerFixture {
     TrackerFixture() :
 	invokeFile(&errDest, "qsmaster", make_shared<AddCallbackFunc>()),
-	resultFile(&errDest, "qsmaster") {}
+	resultFile(&errDest, "qsmaster", make_shared<AddCallbackFunc>()) {}
     class StrCallable {
     public:
-	StrCallable(std::string& s) : isNotified(false), val(s) {}
+	StrCallable(std::string& s) : val(s), isNotified(false)  {}
 	void operator()(std::string const& s) {
 	    isNotified = true;
 	    val.assign(s);
@@ -58,6 +56,7 @@ struct TrackerFixture {
     class Listener {
     public:
 	Listener(std::string const& filename) :_filename(filename) {}
+	virtual ~Listener() {}
 	virtual void operator()(qWorker::ErrorPair const& p) {
 	    std::cout << "notification received for file " 
 		      << _filename << std::endl;
@@ -72,6 +71,7 @@ struct TrackerFixture {
 	virtual ~AddCallbackFunc() {}
 	virtual void operator()(XrdSfsFile& caller, 
 				std::string const& filename) {
+	    std::cout << "Will listen for " << filename << ".\n";
 	    qWorker::QueryRunner::getTracker().listenOnce(filename, Listener(filename));
 	}
     };
@@ -79,10 +79,26 @@ struct TrackerFixture {
     qWorker::QueryRunner::Tracker& getTracker() { // alias.
 	return qWorker::QueryRunner::getTracker();
     }
+
+    void printNews() { // 
+	
+	typedef qWorker::QueryRunner::Tracker Tracker;
+	Tracker& t = getTracker();
+	Tracker::NewsMap& nm = t.debugGetNews();
+	Tracker::NewsMap::iterator i = nm.begin();
+	Tracker::NewsMap::iterator end = nm.end();
+	std::cout << "dumping newsmap " << std::endl;
+	for(; i != end; ++i) {
+	    std::cout << "str=" << i->first << " code=" 
+		      << i->second.first << std:: endl;
+	}
+    }
+
     
     qWorker::MySqlFsFile invokeFile;
     qWorker::MySqlFsFile resultFile;
     int lastResult;
+    qWorker::QueryRunner::Tracker* debugTrackerPtr;
 };
 
 
@@ -120,7 +136,7 @@ BOOST_AUTO_TEST_CASE(QueryAttemptCombo) {
     lastResult = invokeFile.open("/query/9880",0,0,0,0);
     BOOST_CHECK_EQUAL(lastResult, SFS_OK);
     lastResult = invokeFile.write(0, query.c_str(), query.size());
-    BOOST_CHECK_EQUAL(lastResult, query.size());
+    BOOST_CHECK_EQUAL((unsigned)lastResult, query.size());
     int pos = 0;
     const int blocksize = 1024;
     char contents[blocksize+1];
@@ -146,14 +162,16 @@ BOOST_AUTO_TEST_CASE(QueryAttemptCombo) {
 
 BOOST_AUTO_TEST_CASE(QueryAttemptTwo) {
 
+    debugTrackerPtr = &getTracker();
+    debugTrackerPtr->debugReset();
     lastResult = invokeFile.open("/query2/9880",0,0,0,0);
     BOOST_CHECK_EQUAL(lastResult, SFS_OK);
     lastResult = invokeFile.write(0, query.c_str(), query.size());
-    BOOST_CHECK_EQUAL(lastResult, query.size());
+    BOOST_CHECK_EQUAL((unsigned)lastResult, query.size());
     lastResult = invokeFile.close();
     BOOST_CHECK_EQUAL(lastResult, SFS_OK);
-#if 0
     while(1) {
+	std::cout << "attempting open of " << queryResultPath << "\n";
 	lastResult = resultFile.open(queryResultPath.c_str(),0,0,0,0);
 	if(lastResult == SFS_OK) {
 	    break;
@@ -161,8 +179,9 @@ BOOST_AUTO_TEST_CASE(QueryAttemptTwo) {
 	    qWorker::ErrorPtr p;
 	    int i = 0;
 	    while(i < 10) {
-		p = getTracker().getNews(queryResultPath);
+		p = getTracker().getNews(queryHash);
 		if(p.get() != 0) break;
+		printNews();
 		sleep(1);
 		++i;
 	    }
@@ -194,7 +213,7 @@ BOOST_AUTO_TEST_CASE(QueryAttemptTwo) {
     
     lastResult = resultFile.close();
     BOOST_CHECK_EQUAL(lastResult, SFS_OK);    
-#endif
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

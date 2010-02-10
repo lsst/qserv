@@ -76,7 +76,7 @@ private:
     FileClass _getFileClass(std::string const& filename);
     std::string _stripPath(std::string const& filename);
 
-    bool _isResultReady(char const* filename);
+    bool _isResultReady(std::string const& physFilename);
     //    bool _runScript(std::string const& script, std::string const& dbName);
     void _setDumpNameAsChunkId();
 

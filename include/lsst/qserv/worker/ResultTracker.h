@@ -18,9 +18,31 @@ typedef boost::shared_ptr<ErrorPair> ErrorPtr;
 template <typename Key, typename Item>
 class ResultTracker {
 public:
+    ////////////////////////////////////////////////////
+    // Typedefs and inner classes
     typedef boost::signal<void (Item)> Signal;
+    struct LockableSignal {
+    public:
+	typedef std::deque<boost::signals::connection> CDeque;
+	boost::mutex mutex;
+	Signal signal;
+	CDeque connections; // Remember connections so we can disconnect.
+	void clearListeners() {
+	    CDeque::iterator i, end;
+	    for(i=connections.begin(), end=connections.end();
+		i != end; ++i) {
+		i->disconnect();
+	    }
+	    
+	}
+    };
+    ////////////////////////////////////////////////////
     typedef boost::shared_ptr<Item> ItemPtr;
-
+    typedef boost::shared_ptr<LockableSignal> LSPtr;
+    typedef std::map<Key, LSPtr> SignalMap;
+    typedef std::map<Key, Item> NewsMap;
+    //////////////////////////////////////////////////
+    // Methods
     void notify(Key const& k, Item const& i) {
 	_verifyKey(k); // Force k to exist in _signals
 	LSPtr s = _signals[k];
@@ -81,6 +103,13 @@ public:
     int getSignalCount() const {
 	return _signals.size();
     }
+    // Debug methods
+    NewsMap& debugGetNews() { return _news; }
+    SignalMap& debugGetSignals() { return _signals; }
+    void debugReset() {
+	_signals.clear();
+	_news.clear();
+    }
 private:
     void _verifyKey(Key const& k) {
 	if(_signals.find(k) == _signals.end()) {
@@ -92,24 +121,6 @@ private:
 	}	
     }
 
-    struct LockableSignal {
-    public:
-	typedef std::deque<boost::signals::connection> CDeque;
-	boost::mutex mutex;
-	Signal signal;
-	CDeque connections; // Remember connections so we can disconnect.
-	void clearListeners() {
-	    CDeque::iterator i, end;
-	    for(i=connections.begin(), end=connections.end();
-		i != end; ++i) {
-		i->disconnect();
-	    }
-	    
-	}
-    };
-    typedef boost::shared_ptr<LockableSignal> LSPtr;
-    typedef std::map<Key, LSPtr> SignalMap;
-    typedef std::map<Key, Item> NewsMap;
     SignalMap _signals;
     NewsMap _news;
     boost::mutex _signalsMutex;

@@ -129,6 +129,7 @@ void* invokeCallableDetail(void* threadDetail) {
     ThreadDetail* td = reinterpret_cast<ThreadDetail*>(threadDetail);
     td->run();
     ThreadManager::forgetDetail(td);
+    return 0; // Placeholder--callables return null.
 }
 
 template <typename Callable> 

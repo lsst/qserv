@@ -43,17 +43,22 @@ public:
 
 private:
     bool _runScript(std::string const& script, std::string const& dbName);
+    bool _performMysqldump(std::string const& dbName, 
+			   std::string const& dumpFile);
+    bool _isExecutable(std::string const& execName);
 
     ExecEnv& _env;
     XrdOucErrInfo& _errinfo;
     XrdSysError& _e;
     std::string _user;
     ScriptMeta _meta;
+    std::string _scriptId;
 
 };
 
  int dumpFileOpen(std::string const& dbName);
  bool dumpFileExists(std::string const& dumpFilename);
+
 
 }}}
 #endif // LSST_QSERV_WORKER_QUERYRUNNER_H

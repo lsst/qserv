@@ -84,7 +84,7 @@ public:
 	_sema.verhogen();
 	delete[] _buffer;
 	_buffer = 0;
-	if(_aioparm->Result != _sfsAio.aio_nbytes) {
+	if(_aioparm->Result != (int)_sfsAio.aio_nbytes) {
 	    // overwrite error result with generic IO error?
 	    _aioparm->Result = -EIO;
 	}
@@ -94,8 +94,8 @@ public:
 private:
     qWorker::MySqlFsFile& _fsfile;
     XrdSfsAio* _aioparm;
-    char* _buffer;
     struct aiocb& _sfsAio;
+    char* _buffer;
     static qWorker::Semaphore _sema;
 };
 // for now, two simultaneous writes (queries)
@@ -135,6 +135,8 @@ qWorker::MySqlFsFile::~MySqlFsFile(void) {
 int qWorker::MySqlFsFile::open(
     char const* fileName, XrdSfsFileOpenMode openMode, mode_t createMode,
     XrdSecEntity const* client, char const* opaque) {
+
+    std::string hash;
     if (fileName == 0) {
         error.setErrInfo(EINVAL, "Null filename");
         return SFS_ERROR;
@@ -147,20 +149,22 @@ int qWorker::MySqlFsFile::open(
 		     % fileName % _chunkId % _userName).str().c_str());
 	break;
     case TWO_WRITE:
-	_eDest->Say((Pformat("File open %1% for query invocation by %3%")
+	_eDest->Say((Pformat("File open %1% for query invocation by %2%")
 		     % fileName % _userName).str().c_str());
 	break;
     case TWO_READ:
-	_dumpName = hashToResultPath(fileName); 
+	hash = _stripPath(fileName);
+	_dumpName = hashToResultPath(hash); 
 	_hasRead = false;
-	if(_isResultReady(fileName)) {
+	if(_isResultReady(_dumpName)) {
 	    _eDest->Say((Pformat("File open %1% for result reading by %2%")
 			 % fileName % _userName).str().c_str());
+	    // If result is error, then return SFS_ERROR.
 	} else {
-	    _addCallback(_stripPath(fileName));
+	    _addCallback(hash);
 	    return SFS_STARTED;
 	}
-
+	break;
     default:
 	_eDest->Say((Pformat("Unrecognized file open %1% by %2%")
 		     % fileName % _userName).str().c_str());
@@ -305,7 +309,7 @@ int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
     assert(buffer != (char*)0);
     memcpy(buffer, (char const*)aioparm->sfsAio.aio_buf, 
 	   aioparm->sfsAio.aio_nbytes);
-    int printlen = 100;
+    unsigned printlen = 100;
     if(printlen > aioparm->sfsAio.aio_nbytes) {
 	printlen = aioparm->sfsAio.aio_nbytes;
     }
@@ -357,10 +361,11 @@ void qWorker::MySqlFsFile::_addCallback(std::string const& filename) {
     (*_addCallbackF)(*this, filename);
 }
 
-bool qWorker::MySqlFsFile::_isResultReady(char const* filename) {
+bool qWorker::MySqlFsFile::_isResultReady(std::string const& physFilename) {
     assert(_fileClass == TWO_READ);
     // Lookup result hash.
-    ErrorPtr p = QueryRunner::getTracker().getNews(filename);
+    std::string hash = _stripPath(physFilename);
+    ErrorPtr p = QueryRunner::getTracker().getNews(hash);
     // Check if query done.
     if(p.get() != 0) {
 	return true;
@@ -391,7 +396,7 @@ bool qWorker::MySqlFsFile::_flushWriteDetach() {
     _script = s.script;
     // Spawn.
     _eDest->Say((Pformat("Unattached exec in flight for Db = %1%, dump = %2%")
-                 % s.dbName % s.resultPath % (void*)(this)).str().c_str());
+                 % s.dbName % s.resultPath ).str().c_str());
     launchThread(QueryRunner(error, *_eDest, _userName, s));
     return true;
 }

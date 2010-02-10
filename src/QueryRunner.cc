@@ -96,7 +96,7 @@ std::string runQueryInPieces(MYSQL* db, std::string query,
 	while((c == '\0') || (c == '\n') 
 	      || (c == ' ') || (c == '\t')) { c = query[--pos];}
 	if (pos > pieceBegin) {
-	    queryPiece.assign(query, pieceBegin, pos-pieceBegin);
+	    queryPiece.assign(query, pieceBegin, pos-(int)pieceBegin);
 	}
 	// Catch empty strings.
 	if(!queryPiece.empty() && queryPiece[0] != '\0') {
@@ -110,12 +110,12 @@ std::string runQueryInPieces(MYSQL* db, std::string query,
 	    return subResult + (Pformat("---Error with piece %1% complete (size=%2%).") % pieceCount % s).str();;
 	}
 	++pieceCount;
-	std::cout << Pformat("Piece %1% complete.") % pieceCount;
+	//std::cout << Pformat("Piece %1% complete.") % pieceCount;
 
 	pieceBegin = pieceEnd;
     }
     // Can't use _eDest (we are in file-scope)
-    std::cout << Pformat("Executed query in %1% pieces.") % pieceCount;
+    //std::cout << Pformat("Executed query in %1% pieces.") % pieceCount;
     
     // Getting here means that none of the pieces failed.
     return std::string();
@@ -192,7 +192,7 @@ qWorker::QueryRunner::QueryRunner(XrdOucErrInfo& ei, XrdSysError& e,
 				  std::string const& user,
 				  qWorker::ScriptMeta s, 
 				  std::string overrideDump) 
-    :_errinfo(ei), _env(getExecEnv()), _e(e), _user(user), _meta(s) {
+    :_env(getExecEnv()), _errinfo(ei), _e(e), _user(user), _meta(s) {
 	if(!overrideDump.empty()) {
 	    _meta.resultPath = overrideDump;   
 	}
@@ -227,13 +227,53 @@ bool qWorker::QueryRunner::operator()() {
 	return true;
 }
 
+bool qWorker::QueryRunner::_isExecutable(std::string const& execFile) {
+     return 0 == ::access(execFile.c_str(), X_OK);
+}
+
+bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName, 
+					     std::string const& dumpFile) {
+
+    // Dump a database to a dumpfile.
+    std::string::size_type pos = 0;
+    struct stat statbuf;
+    while ((pos = dumpFile.find('/', pos + 1)) != std::string::npos) {
+        std::string dir(dumpFile, 0, pos);
+        if (::stat(dir.c_str(), &statbuf) == -1) {
+            if (errno == ENOENT) {
+                mkdir(dir.c_str(), 0777);
+            }
+        }
+    }
+
+    if(!_isExecutable(_env.getMysqldumpPath())) {
+	// Shell exec will crash a boost test case badly in this case.
+	return false; // Can't do dump w/o an executable.
+    }
+    std::string cmd = _env.getMysqldumpPath() + (Pformat(
+            " --compact --add-locks --create-options --skip-lock-tables"
+            " --result-file=%1% %2%")
+                       % dumpFile % dbName).str();
+    _e.Say((Pformat("TIMING,%1%QueryDumpStart,%2%")
+	    % _scriptId % ::time(NULL)).str().c_str());
+    int cmdResult = system(cmd.c_str());
+
+    _e.Say((Pformat("TIMING,%1%QueryDumpFinish,%2%")
+	    % _scriptId % ::time(NULL)).str().c_str());
+    if (cmdResult != 0) {
+	_errinfo.setErrInfo(errno, ("Unable to dump database " + dbName +
+				    " to " + dumpFile).c_str());
+	return false;
+    }
+    return true;
+}
 
 bool qWorker::QueryRunner::_runScript(
     std::string const& script, std::string const& dbName) {
     DbHandle db;
-    std::string scriptId = dbName.substr(0, 6);
+    _scriptId = dbName.substr(0, 6);
     _e.Say((Pformat("TIMING,%1%ScriptStart,%2%")
-                 % scriptId % ::time(NULL)).str().c_str());
+                 % _scriptId % ::time(NULL)).str().c_str());
 
     if (mysql_real_connect(db.get(), 0, _user.c_str(), 0, 0, 0, 
 			   _env.getSocketFilename().c_str(),
@@ -265,7 +305,7 @@ bool qWorker::QueryRunner::_runScript(
     std::string buildScript;
     std::string cleanupScript;
     _e.Say((Pformat("TIMING,%1%QueryFormatStart,%2%")
-                 % scriptId % ::time(NULL)).str().c_str());
+                 % _scriptId % ::time(NULL)).str().c_str());
     
 #ifdef DO_NOT_USE_BOOST
     Regex re("[0-9][0-9]*");
@@ -285,44 +325,16 @@ bool qWorker::QueryRunner::_runScript(
              % _meta.chunkId % subChunk).str() + "\n";
     }
     _e.Say((Pformat("TIMING,%1%QueryFormatFinish,%2%")
-                 % scriptId % ::time(NULL)).str().c_str());
+                 % _scriptId % ::time(NULL)).str().c_str());
     
-    result = runScriptPieces(_e, db.get(), scriptId, buildScript, 
+    result = runScriptPieces(_e, db.get(), _scriptId, buildScript, 
 			     script, cleanupScript);
     if(!result.empty()) {
         _errinfo.setErrInfo(EIO, result.c_str());
 	return false;
     }
 
-
-    // mysqldump _dbName to _meta.resultPath
-    std::string::size_type pos = 0;
-    struct stat statbuf;
-    while ((pos = _meta.resultPath.find('/', pos + 1)) != std::string::npos) {
-        std::string dir(_meta.resultPath, 0, pos);
-        if (::stat(dir.c_str(), &statbuf) == -1) {
-            if (errno == ENOENT) {
-                mkdir(dir.c_str(), 0777);
-            }
-        }
-    }
-
-    std::string cmd = _env.getMysqldumpPath() + (Pformat(
-            " --compact --add-locks --create-options --skip-lock-tables"
-            " --result-file=%1% %2%")
-                       % _meta.resultPath % dbName).str();
-    { 
-	_e.Say((Pformat("TIMING,%1%QueryDumpStart,%2%")
-		     % scriptId % ::time(NULL)).str().c_str());
-	int cmdResult = system(cmd.c_str());
-	_e.Say((Pformat("TIMING,%1%QueryDumpFinish,%2%")
-		     % scriptId % ::time(NULL)).str().c_str());
-	if (cmdResult != 0) {
-	    _errinfo.setErrInfo(errno, ("Unable to dump database " + dbName +
-                                 " to " + _meta.resultPath).c_str());
-	    return false;
-	}
-    }
+    bool dumpSuccess = _performMysqldump(dbName, _meta.resultPath);
 
     // Record query in query cache table
     /*
@@ -348,9 +360,12 @@ bool qWorker::QueryRunner::_runScript(
     }
 
     _e.Say((Pformat("TIMING,%1%ScriptFinish,%2%")
-                 % scriptId % ::time(NULL)).str().c_str());
-
-    return true;
+                 % _scriptId % ::time(NULL)).str().c_str());
+    if(dumpSuccess) {
+	return true;
+    } else {
+	return false;
+    }
 }
 
 int qWorker::dumpFileOpen(std::string const& dbName) {
