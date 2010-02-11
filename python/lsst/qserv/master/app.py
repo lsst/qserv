@@ -310,7 +310,67 @@ class XrdOperation(threading.Thread):
             stats[taskName+"Finish"] = time.time()
             return self.successful
         pass
+class QueryPreparer:
+    def __init__(self, queryStr):
+        self.queryMunger = sqlparser.QueryMunger(queryStr)
+        self.queryHash = hashlib.md5(queryStr).hexdigest()
+        self.resultPath = self.setupDumpSaver(self.queryHash)
+        self.createTemplate = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY ";
+        self.insertTemplate = "INSERT INTO %s ";
+        self.tableTemplate = "result_%s";
+        self.db = Persistence()
+        pass
 
+    def computePartSet(self):
+        """compute the set of chunks,subchunks needed for the query.
+        Results are saved internally for later usage."""
+        query = self.queryMunger.computePartMapQuery()
+        print "partmapquery is", query
+        self.db.activate()
+        stats["partMapPrepStart"] = time.time()
+        chunktuples = self.db.issueQuery(query)
+        stats["partMapCollectStart"] = time.time()
+        self.collectedSet = self.queryMunger.collectSubChunkTuples(chunktuples)
+        del chunktuples # Free chunktuples memory
+        stats["partMapCollectFinish"] = time.time()
+        #collected = dict(collected.items()[:5]) ## DEBUG: Force only 3 chunks
+        self.chunkNums = self.collectedSet.keys()
+        random.shuffle(self.chunkNums) # Try to balance among workers.
+        #chunkNums = chunkNums[:200]
+        stats["partMapPrepFinish"] = time.time()
+
+    def clearDb(self):
+        self.db.activate()
+        # Drop result table to make room.
+        r = self.db.issueQuery("USE test; DROP TABLE IF EXISTS result;")
+        pass
+
+    def getQueryIterable(self):
+        return imap(lambda c: [c] + self.computeQuery(c), self.chunkNums)
+
+    def computeQuery(self, chunk):
+        tableName = self.tableTemplate % str(chunk)
+        createPrep = self.createTemplate % tableName
+        insertPrep = self.insertTemplate % tableName
+
+        subc = self.collected[chunk][:2000] # DEBUG: force less subchunks
+        # MySQL will probably run out of memory with >2k subchunks.
+        header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))                
+        cq = self.queryMunger.expandSubQueries(chunk, subc)
+        qlist = []
+        if cq:
+            qlist.append(createPrep + cq[0])
+            remain = cq[1:]
+            if remain:
+                qlist.extend(imap(lambda s: insertPrep + s, remain))
+                del remain
+        del createPrep
+        del insertPrep
+        q = "\n".join([header] + qlist + ["\0\0\0\0"])  
+        return [tableName,q]
+
+
+    
 class QueryAction:
     def __init__(self, query):
         self.queryStr = query.strip()# Pull trailing whitespace
@@ -327,6 +387,7 @@ class QueryAction:
         self._slowDispatchTime = 0.5
         self._brokenChunks = []
         self._coolDownTime = 10
+        self._preparer = QueryPreparer(query)
         pass
 
     def _joinAny(self, jostle=False, printProfile=False):
@@ -382,6 +443,20 @@ class QueryAction:
         print "Almost done..."
         self._joinAll()
         
+    def invoke2(self):
+        self._preparer.computePartSet()
+        self._preparer.clearDb()
+        for chunk,table,q in self._preparer.getQueryIterable():
+            xo = XrdOperation(chunk, q, lambda x:x, table, 
+                              self.setupDumpSaver(self._preparer.queryHash))
+        ## s = newSession()
+        ## ## for each
+        ## i = submitQuery(s,chunk,q,savename)
+        ## inFlight[chunk] = i
+        ## ## end for each
+        ## joinSession(s)
+
+    
     def invoke(self):
         print "Query invoking..."
         stats = time.qServQueryTimer[time.qServRunningName]
@@ -419,7 +494,7 @@ class QueryAction:
                 subc = collected[chunk][:2000] # DEBUG: force less subchunks
                 # MySQL will probably run out of memory with >2k subchunks.
                 header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
-
+                
                 cq = self.queryMunger.expandSubQueries(chunk, subc)
                 tableName = tableTemplate % str(chunk)
                 createPrep = createTemplate % tableName
@@ -446,6 +521,7 @@ class QueryAction:
                 del header
                 del qlist
                 xo = XrdOperation(chunk, q, self.saveTableDump, tableName, self.resultPath) 
+                ##id = submitQuery(session, chunk, q, self.resultPath);
                 del q
                 xo.start()
                 self.running[chunk] = xo

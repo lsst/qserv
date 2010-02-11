@@ -11,7 +11,7 @@ enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};
 void initDispatcher();
 int submitQuery(int session, int chunk, char* str, int len, char* savePath);
 int submitQuery(int session, lsst::qserv::master::TransactionSpec const& s);
-QueryState joinChunk(int session, int chunk);
+QueryState joinQuery(int session, int id);
 QueryState joinSession(int session);
 int newSession();
 void discardSession(int session);

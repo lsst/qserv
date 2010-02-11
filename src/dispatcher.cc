@@ -49,12 +49,28 @@ int qMaster::submitQuery(int session, int chunk, char* str, int len, char* saveP
 
 int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s) {
     QueryManager& qm = getManager(session);
-    qm.add(s);
-    return 1; // always session 1, until we support another one.
+    int queryId = 0;
+    /* queryId = */ qm.add(s); 
+    return queryId;
 }
 
-qMaster::QueryState qMaster::joinChunk(int session, int chunk) {
-    // FIXME
+qMaster::QueryState qMaster::joinQuery(int session, int id) {
+    // Block until specific query id completes.
+    QueryManager& qm = getManager(session);
+    qm.join(id);
+    qm.status(id); // get status
+    // If error, report
+    return UNKNOWN; // FIXME: convert status to querystate.
+}
+
+qMaster::QueryState qMaster::tryJoinQuery(int session, int id) {
+    QueryManager& qm = getManager(session);
+    // Just get the status and return it.
+    if(qm.tryJoin(id)) {
+	return SUCCESS; 
+    } else {
+	return ERROR;
+    }   
 }
 
 qMaster::QueryState qMaster::joinSession(int session) {
@@ -64,7 +80,6 @@ qMaster::QueryState qMaster::joinSession(int session) {
 }
 
 int qMaster::newSession() {
-    // FIXME
     return 1; // For now, always give session # 1
 }
 
