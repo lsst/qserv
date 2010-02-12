@@ -485,9 +485,7 @@ class QueryAction:
         random.shuffle(chunkNums) # Try to balance among workers.
         #chunkNums = chunkNums[:200]
         stats["partMapPrepFinish"] = time.time()
-        createTemplate = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY ";
-        insertTemplate = "INSERT INTO %s ";
-        tableTemplate = "result_%s";
+        self.initQueryPreparer()
         q = ""
         self.db.activate()
         # Drop result table to make room.
@@ -495,37 +493,16 @@ class QueryAction:
         triedAgain = False
         for chunk in chunkNums:
                 dispatchStart = time.time()
-                subc = collected[chunk][:2000] # DEBUG: force less subchunks
-                # MySQL will probably run out of memory with >2k subchunks.
-                header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
-                
-                cq = self.queryMunger.expandSubQueries(chunk, subc)
-                tableName = tableTemplate % str(chunk)
-                createPrep = createTemplate % tableName
-                insertPrep = insertTemplate % tableName
-                qlist = []
-                if cq:
-                    qlist.append(createPrep + cq[0])
-                    remain = cq[1:]
-                    if remain:
-                        qlist.extend(imap(lambda s: insertPrep + s, remain))
-                        del remain
-                createPrep = ""
-                insertPrep = ""
-                q = "\n".join([header] + qlist + ["\0\0\0\0"])  
-                # \0\0\0\0 is the magic query terminator for the 
-                # worker to detect.
-                #print "-----------------"
+                (tableName, q) = self.prepareChunkQuery(collected, chunk)
                 print "dispatch chunk=", chunk, 
                 print "run=%d fin=%d tot=%d" %(len(self.running), 
                                                len(self.finished), 
                                                len(chunkNums))
                 #print "header=", header[:70],"..."
                 #print "create=", qlist[0]
-                del header
-                del qlist
+                #xrdSubmitTransaction(chunk, q, 
+                #                     os.path.join(self.resultPath, tableName))
                 xo = XrdOperation(chunk, q, self.saveTableDump, tableName, self.resultPath) 
-                ##id = submitQuery(session, chunk, q, self.resultPath);
                 del q
                 xo.start()
                 self.running[chunk] = xo
@@ -538,6 +515,7 @@ class QueryAction:
                         print "Cooling down for %d seconds." % self._coolDownTime 
                         time.sleep(self._coolDownTime)
                         print "Back to work!"
+                        triedAgain = False
                     triedAgain = True
                 elif len(self.running) > self.threadHighWater:
                     print "Reaping"
@@ -568,6 +546,33 @@ class QueryAction:
          
         pass
 
+    def initQueryPreparer(self):
+        self.createTemplate = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY ";
+        self.insertTemplate = "INSERT INTO %s ";
+        self.tableTemplate = "result_%s";
+
+        pass
+    def prepareChunkQuery(self, subchunks, chunk ):
+        subc = subchunks[chunk][:2000] # DEBUG: force less subchunks
+        # MySQL will probably run out of memory with >2k subchunks.
+        header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
+
+        cq = self.queryMunger.expandSubQueries(chunk, subc)
+        tableName = self.tableTemplate % str(chunk)
+        createPrep = self.createTemplate % tableName
+        insertPrep = self.insertTemplate % tableName
+        qlist = []
+        if cq:
+            qlist.append(createPrep + cq[0])
+            remain = cq[1:]
+            if remain:
+                qlist.extend(imap(lambda s: insertPrep + s, remain))
+                del remain
+        q = "\n".join([header] + qlist + ["\0\0\0\0"])  
+        # \0\0\0\0 is the magic query terminator for the 
+        # worker to detect.
+        return (tableName, q)
+    
     def setupDumpSaver(self, hashkey):
         path = "/tmp/qserv_"+hashkey
         # Make room, recursive delete.

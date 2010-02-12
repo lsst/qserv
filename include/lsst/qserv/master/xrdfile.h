@@ -1,6 +1,10 @@
 #ifndef LSST_QSERV_MASTER_XRDFILE_H
 #define LSST_QSERV_MASTER_XRDFILE_H
 
+#include <string>
+
+class XrdPosixCallBack; // Forward.
+
 namespace lsst {
 namespace qserv {
 namespace master {
@@ -15,6 +19,7 @@ struct XrdTransResult {
 void xrdInit(); // Perform some library initialization (call only once).
 
 int xrdOpen(const char *path, int oflag);
+int xrdOpenAsync(const char* path, int oflag, XrdPosixCallBack *cbP);
 
 long long xrdRead(int fildes, void *buf, unsigned long long nbyte);
 
@@ -23,6 +28,8 @@ long long xrdWrite(int fildes, const void *buf, unsigned long long nbyte);
 int xrdClose(int fildes);
 
 long long xrdLseekSet(int fildes, unsigned long long offset);
+
+std::string xrdGetEndpoint(int fildes);
 
 int xrdReadStr(int fildes, char *str, int len);
 

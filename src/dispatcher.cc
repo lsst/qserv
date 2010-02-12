@@ -1,23 +1,13 @@
 // -*- LSST-C++ -*-
 
-#include "boost/format.hpp"
-
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/dispatcher.h"
 #include "lsst/qserv/master/thread.h"
+#include "lsst/qserv/master/xrootd.h"
 
 namespace qMaster = lsst::qserv::master;
 
 namespace {
-    std::string makeUrl(int chunk) {
-	char* hostport = ::getenv("QSERV_XRD");
-	if(hostport == NULL) {
-	    hostport = "lsst-dev01:1094";
-	}
-	char* user = "qsmaster";
-	boost::format f("xroot://%s@%s//query/%d");
-	return (f % user % hostport % chunk).str();
-    }
     qMaster::QueryManager& getManager(int session) {
 	// Singleton for now. //
 	static boost::shared_ptr<qMaster::QueryManager> qm;
@@ -26,6 +16,17 @@ namespace {
 	}
 	return *qm;
     }
+
+    qMaster::AsyncQueryManager& getAsyncManager(int session) {
+	// Singleton for now. //
+	static boost::shared_ptr<qMaster::AsyncQueryManager> qm;
+	if(qm.get() == NULL) {
+	    qm = boost::make_shared<qMaster::AsyncQueryManager>();
+	}
+	assert(qm.get() != NULL);
+	return *qm;
+    }
+    
 }
 
 void qMaster::initDispatcher() {
@@ -43,12 +44,16 @@ int qMaster::submitQuery(int session, int chunk, char* str, int len, char* saveP
     t.path = savePath;
     t.query = std::string(str, len);
     t.bufferSize = 8192000;
-    t.path = makeUrl(chunk);
+    t.path = qMaster::makeUrl("query", chunk);
     return submitQuery(session, TransactionSpec(t));
 }
 
 int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s) {
+#if 1
+    AsyncQueryManager& qm = getAsyncManager(session);
+#else
     QueryManager& qm = getManager(session);
+#endif
     int queryId = 0;
     /* queryId = */ qm.add(s); 
     return queryId;
@@ -56,26 +61,40 @@ int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s) {
 
 qMaster::QueryState qMaster::joinQuery(int session, int id) {
     // Block until specific query id completes.
+#if 1
+    AsyncQueryManager& qm = getAsyncManager(session);
+#else
     QueryManager& qm = getManager(session);
-    qm.join(id);
-    qm.status(id); // get status
+#endif
+    //qm.join(id);
+    //qm.status(id); // get status
     // If error, report
     return UNKNOWN; // FIXME: convert status to querystate.
 }
 
 qMaster::QueryState qMaster::tryJoinQuery(int session, int id) {
+#if 1
+    AsyncQueryManager& qm = getAsyncManager(session);
+#else
     QueryManager& qm = getManager(session);
+#endif
+#if 0 // Not implemented yet
     // Just get the status and return it.
     if(qm.tryJoin(id)) {
 	return SUCCESS; 
     } else {
 	return ERROR;
     }   
+#endif
 }
 
 qMaster::QueryState qMaster::joinSession(int session) {
     // FIXME
+#if 1
+    AsyncQueryManager& qm = getAsyncManager(session);
+#else
     QueryManager& qm = getManager(session);
+#endif
     qm.joinEverything();
 }
 

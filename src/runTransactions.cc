@@ -16,6 +16,7 @@ using boost::make_shared;
 
 namespace qMaster = lsst::qserv::master;
 
+
 void alternative() {
     // alternate harness.
     using qMaster::QueryState;

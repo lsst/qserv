@@ -80,9 +80,9 @@ class ClientInterface:
             stats = time.qServQueryTimer[time.qServRunningName]
             stats["appInvokeStart"] = time.time()
             if 'lsstRunning' in dir(reactor):
-                reactor.callInThread(a.invoke)
+                reactor.callInThread(a.invoke3)
             else:
-                a.invoke()
+                a.invoke3()
             stats["appInvokeFinish"] = time.time()
             return "Server processed, q='" + flatargs['q'] + "' your id is %d" % (id)
         else:

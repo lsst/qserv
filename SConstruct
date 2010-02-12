@@ -22,7 +22,7 @@ if os.environ.has_key('XRD_DIR'):
     xrd_cands.insert(0, os.environ['XRD_DIR'])
 
 def findXrdLib(path):
-    platforms = ["x86_64_linux_26","i386_linux26"]
+    platforms = ["x86_64_linux_26","i386_linux26","i386_linux26_dbg"]
     if os.environ.has_key('XRD_PLATFORM'):
         platforms.insert(0, os.environ['XRD_PLATFORM'])
     for p in platforms:
@@ -89,6 +89,7 @@ pyLib = os.path.join(pyPath, '_masterLib.so')
 srcPaths = [os.path.join('src', 'xrdfile.cc'),
             os.path.join('src', 'thread.cc'),
             os.path.join('src', 'dispatcher.cc'),
+            os.path.join('src', 'xrootd.cc'),
             os.path.join(pyPath, 'masterLib.i')]
 bpath = findBoost()
 swigEnv.Append(CPPPATH=bpath[0])
@@ -102,7 +103,7 @@ boostEnv.Append(CPPFLAGS="-g")
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
              'srcPaths' : map(lambda x: os.path.join('src', x), 
                          ["xrdfile.cc", "runTransactions.cc", 
-                          "thread.cc", "dispatcher.cc"]),
+                          "thread.cc", "dispatcher.cc", "xrootd.cc"]),
              }
 conf = Configure(boostEnv)
 if not conf.CheckCXXHeader("boost/thread.hpp"):
@@ -111,6 +112,10 @@ if not conf.CheckCXXHeader("boost/thread.hpp"):
 if not conf.CheckLib("boost_thread", language="C++") \
     and not conf.CheckLib("boost_thread-mt", language="C++"):
     print >> sys.stderr, "Could not locate boost_thread library"
+if not conf.CheckLib("ssl"):
+    print >> sys.stderr, "Could not locate ssl"
+    Exit(1)
+
 boostEnv = conf.Finish()
 boostEnv.Program(runTrans['bin'], runTrans["srcPaths"])
 

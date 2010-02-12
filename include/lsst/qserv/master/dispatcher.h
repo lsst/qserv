@@ -12,6 +12,7 @@ void initDispatcher();
 int submitQuery(int session, int chunk, char* str, int len, char* savePath);
 int submitQuery(int session, lsst::qserv::master::TransactionSpec const& s);
 QueryState joinQuery(int session, int id);
+QueryState tryJoinQuery(int session, int id);
 QueryState joinSession(int session);
 int newSession();
 void discardSession(int session);

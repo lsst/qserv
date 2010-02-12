@@ -8,10 +8,12 @@
 #else
 #include "XrdPosix/XrdPosixLinkage.hh"
 #include "XrdPosix/XrdPosixExtern.hh"
+#include "XrdPosix/XrdPosixXrootd.hh"
 #include "XrdClient/XrdClientConst.hh"
 #include "XrdClient/XrdClientEnv.hh"
 #include <limits>
 #include <fcntl.h>
+#include <assert.h>
 #endif
 
 #include "lsst/qserv/master/xrdfile.h"
@@ -89,11 +91,14 @@ void qMaster::xrdInit() {
     // Set timeouts to effectively disable client timeouts.
     //EnvPutInt(NAME_CONNECTTIMEOUT, 3600*24*10); // Don't set this!
     
-    EnvPutInt(NAME_REQUESTTIMEOUT, std::numeric_limits<int>::max());
-    EnvPutInt(NAME_DATASERVERCONN_TTL, std::numeric_limits<int>::max());
+    // Don't set these for two-file model?
+    //EnvPutInt(NAME_REQUESTTIMEOUT, std::numeric_limits<int>::max());
+    //    EnvPutInt(NAME_DATASERVERCONN_TTL, std::numeric_limits<int>::max());
+
+
     // Can't set to max, since it gets added to time(), and max would overflow.
     // Set to 3 years.
-    EnvPutInt(NAME_TRANSACTIONTIMEOUT, 60*60*24*365*3); 
+    //    EnvPutInt(NAME_TRANSACTIONTIMEOUT, 60*60*24*365*3); 
 
     // Don't need to lengthen load-balancer timeout.??
     //EnvPutInt(NAME_LBSERVERCONN_TTL, std::numeric_limits<int>::max());
@@ -117,21 +122,33 @@ void qMaster::xrdInit() {
               << ") " << name << " " \
 	      << path << " finished.""\n";
 
-
 int qMaster::xrdOpen(const char *path, int oflag) {
     if(!qMasterXrdInitialized) { xrdInit(); }
-    QSM_TIMESTART("Open", path+32)
-    int res = XrdPosix_Open(path, oflag);
-    QSM_TIMESTOP("Open", path+32)
+    QSM_TIMESTART("Open", path+32);
+    //int res = XrdPosix_Open(path, oflag);
+    int res = XrdPosixXrootd::Open(path,oflag);
+    QSM_TIMESTOP("Open", path+32);
     return res;
 }
+
+int qMaster::xrdOpenAsync(const char* path, int oflag, XrdPosixCallBack *cbP) {
+    if(!qMasterXrdInitialized) { xrdInit(); }
+    QSM_TIMESTART("OpenAsy", path+32);
+    int res = XrdPosixXrootd::Open(path,oflag, 0, cbP); 
+    // not sure what to do with mode, so set to 0 right now.
+    QSM_TIMESTOP("OpenAsy", path+32);
+    assert(res == -1);
+    return -errno; // Return something that indicates "in progress"
+}
+
+
 
 long long qMaster::xrdRead(int fildes, void *buf, unsigned long long nbyte) {
     // std::cout << "xrd trying to read (" <<  fildes << ") " 
     // 	      << nbyte << " bytes" << std::endl;
     QSM_TIMESTART("Read", fildes);  
     long long readCount;
-    readCount = XrdPosix_Read(fildes, buf, nbyte); 
+    readCount = XrdPosixXrootd::Read(fildes, buf, nbyte); 
     QSM_TIMESTOP("Read", fildes);
     return readCount;
 }
@@ -143,25 +160,38 @@ long long qMaster::xrdWrite(int fildes, const void *buf,
     // std::cout << "xrd write (" <<  fildes << ") \"" 
     // 	      << s << "\"" << std::endl;
     QSM_TIMESTART("Write", fildes);
-    long long res = XrdPosix_Write(fildes, buf, nbyte);
+    long long res = XrdPosixXrootd::Write(fildes, buf, nbyte);
     QSM_TIMESTOP("Write", fildes);
     return res;
 }
 
 int qMaster::xrdClose(int fildes) {
     QSM_TIMESTART("Close", fildes);    
-    int result = XrdPosix_Close(fildes);
+    int result = XrdPosixXrootd::Close(fildes);
     QSM_TIMESTOP("Close", fildes);    
     return result;
 }
  
 long long qMaster::xrdLseekSet(int fildes, unsigned long long offset) {
-    return XrdPosix_Lseek(fildes, offset, SEEK_SET);
+    return XrdPosixXrootd::Lseek(fildes, offset, SEEK_SET);
 }
 
 int qMaster::xrdReadStr(int fildes, char *buf, int len) {
     return xrdRead(fildes, static_cast<void*>(buf), 
 		   static_cast<unsigned long long>(len));
+}
+
+std::string qMaster::xrdGetEndpoint(int fildes) {
+    // Re: XrdPosixXrootd::endPoint() 
+    // "the max you will ever need is 264 bytes"
+    const int maxSize=265;
+    char buffer[maxSize]; 
+    int port = XrdPosixXrootd::endPoint(fildes, buffer, maxSize);
+    if(port > 0) { // valid port?
+	return std::string(buffer);
+    } else {
+	return std::string();
+    }
 }
 
 /// Return codes for writing and reading are written to *write and *read.

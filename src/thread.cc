@@ -9,13 +9,30 @@
 // LSST 
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/thread.h"
+#include "lsst/qserv/master/xrootd.h"
 
+// Xrootd
+#include "XrdPosix/XrdPosixCallBack.hh"
 using boost::make_shared;
 
 namespace qMaster = lsst::qserv::master;
 
 // Local Helpers --------------------------------------------------
 namespace { 
+
+// Doctors the query path to specify the async path.
+// Modifies the string in-place.
+void doctorQueryPath(std::string& path) {
+    std::string::size_type pos;
+    std::string before("/query/");
+    std::string after("/query2/");
+
+    pos = path.find(before);
+    if(pos != std::string::npos) {
+	path.replace(pos, before.size(), after);
+    } // Otherwise, don't doctor.
+}
+
 int seekMagic(int start, char* buffer, int term) {
     // Find magic sequence
     const char m[] = "####"; // MAGIC!
@@ -28,7 +45,102 @@ int seekMagic(int start, char* buffer, int term) {
     }
     return term;
 }
+} // anonymous namespace
+
+
+//////////////////////////////////////////////////////////////////////
+// class ChunkQuery 
+//////////////////////////////////////////////////////////////////////
+void qMaster::ChunkQuery::Complete(int Result) {
+	bool isReallyComplete = false;
+	switch(_state) {
+	default:
+	case WRITE: // Opened, so we can send off the query
+	    _result.open = Result;
+	    if(Result < 0) { // error? 
+		_result.open = Result;
+		isReallyComplete = true;
+	    } else {
+		_sendQuery(Result);
+	    }
+	    break;
+	case READ: // Opened, so we can read-back the results.
+	    if(Result < 0) { // error? 
+		_result.read = Result;
+		isReallyComplete = true;
+	    } else {
+		_readResults(Result);
+	    }
+	    break;
+	}
+
+	if(isReallyComplete) { _notifyManager(); }
+    }
+
+qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id, 
+				qMaster::AsyncQueryManager* mgr) 
+    : _spec(t), _manager(mgr), _id(id), XrdPosixCallBack() {
+    assert(_manager != NULL);
 }
+
+void qMaster::ChunkQuery::run() {
+    _state = WRITE;
+    std::cout << "Opening " << _spec.path << "\n";
+    int result = qMaster::xrdOpenAsync(_spec.path.c_str(), O_WRONLY, this);
+    if(result != -EINPROGRESS) {
+	// don't continue, set result with the error.
+	_result.open = result;
+	_notifyManager(); // manager should delete me.
+    } else {
+	std::cout << "Waiting for " << _spec.path << "\n";
+    
+	_hash = qMaster::hashQuery(_spec.query.c_str(), _spec.query.size());
+    }
+    // Callback(Complete) will handle the rest.
+}
+
+void qMaster::ChunkQuery::_sendQuery(int fd) {
+	bool isReallyComplete = false;
+	// Now write
+	int len = _spec.query.length();
+	int writeCount = qMaster::xrdWrite(fd, _spec.query.c_str(), len);
+	if(writeCount != len) {
+	    _result.queryWrite = -errno;
+	    isReallyComplete = true;
+	} else {
+	    _result.queryWrite = writeCount;
+	    _queryHostPort = qMaster::xrdGetEndpoint(fd);
+	    _resultUrl = qMaster::makeUrl(_queryHostPort.c_str(), "result", 
+					  _hash);
+	    qMaster::xrdClose(fd); 
+	    _state = READ;
+	    std::cout  << "opening async read to " << _resultUrl << "\n";
+	    int result = qMaster::xrdOpenAsync(_resultUrl.c_str(), 
+					       O_RDONLY, this);
+	    if(result != -EINPROGRESS) {
+		_result.read = result;
+		isReallyComplete = true;
+	    }  // open for read in progress.
+	} // Write ok
+	    
+	if(isReallyComplete) { _notifyManager(); }
+}
+
+void qMaster::ChunkQuery::_readResults(int fd) {
+	int const fragmentSize = 4*1024*1024; // 4MB fragment size
+	bool isReallyComplete = false;
+	// Now read.
+	qMaster::xrdReadToLocalFile(fd, fragmentSize, _spec.savePath.c_str(), 
+			   &(_result.localWrite), &(_result.read));
+	qMaster::xrdClose(fd);
+	_notifyManager(); // This is a successful completion.
+}
+    
+void qMaster::ChunkQuery::_notifyManager() {
+	_manager->finalizeQuery(_id, _result);
+}
+
+
 
 //////////////////////////////////////////////////////////////////////
 // TransactionSpec
@@ -239,6 +351,45 @@ void qMaster::Manager::run() {
 		  joinBoostThread<boost::shared_ptr<boost::thread> >());
 }
 
+////////////////////////////////////////////////////////////
+// AsyncQueryManager
+////////////////////////////////////////////////////////////
+int qMaster::AsyncQueryManager::add(TransactionSpec const& t) {
+    // For now, artificially limit the number of chunks in flight.
+    int id = _getNextId();
+    assert(id >= 0);
+    if(t.isNull()) { return -1; }
+    TransactionSpec ts(t);
+
+    doctorQueryPath(ts.path);
+    {
+	boost::unique_lock<boost::mutex> lock(_queriesMutex);
+	_queries[id] = boost::make_shared<ChunkQuery>(ts, id, this);
+    }
+    std::cout << "Added query with path " << ts.savePath << "\n";
+    _queries[id]->run(); 
+}
+
+void qMaster::AsyncQueryManager::finalizeQuery(int id, 
+					       XrdTransResult const& r) {
+    {
+	boost::unique_lock<boost::mutex> lock(_queriesMutex);
+	_queries.erase(id);
+    }
+    //_results.[id] = r;
+
+}
+
+void qMaster::AsyncQueryManager::joinEverything() {
+    while(!_queries.empty()) {
+	std::cout << "Still " << _queries.size() << " in flight." << std::endl;
+	sleep(1); 
+    }
+}
+
+////////////////////////////////////////////////////////////
+// QueryManager
+////////////////////////////////////////////////////////////
 
 /// Adds a transaction (open/write/read/close) operation to the query
 /// manager, which is run with best-effort.

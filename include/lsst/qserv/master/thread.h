@@ -5,12 +5,15 @@
 #include "boost/make_shared.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
 
+#include "XrdPosix/XrdPosixCallBack.hh"
 #include <map>
 #include <set>
 
 namespace lsst {
 namespace qserv {
 namespace master {
+
+class AsyncQueryManager; // Forward
 
 template<class T> struct joinBoostThread  {
     joinBoostThread() {} 
@@ -24,7 +27,6 @@ template<class T> struct tryJoinBoostThread  {
 	return x->timed_join(seconds(0)); 
     }
 };
-
 
 class Semaphore {  // Duplicated in lsst/qserv/worker/src/MySqlFsFile.cc
 public:
@@ -109,8 +111,7 @@ private:
 };
  
 class Manager {
-public:
-    explicit Manager() : _highWaterThreads(120) {}
+public:    explicit Manager() : _highWaterThreads(120) {}
     void setupFile(std::string const& file);
     void run();
 
@@ -122,6 +123,61 @@ private:
     typedef std::deque<boost::shared_ptr<boost::thread> > ThreadDeque;
     ThreadDeque _threads;
     int _highWaterThreads;
+};
+
+//////////////////////////////////////////////////////////////////////
+// class ChunkQuery 
+// Handles chunk query execution, like openwritereadsaveclose, but
+// with dual asynchronous opening.  Should lessen need for separate
+// threads.  Not sure if it will be enough though.
+// 
+//////////////////////////////////////////////////////////////////////
+class ChunkQuery : public XrdPosixCallBack {
+public:
+    enum WaitState {WRITE, READ};
+    
+    virtual void Complete(int Result);
+    explicit ChunkQuery(TransactionSpec const& t, int id,
+			AsyncQueryManager* mgr);
+    virtual ~ChunkQuery() {}
+
+    void run();
+    XrdTransResult const& results() const { return _result; }
+private:
+    void _sendQuery(int fd);
+    void _readResults(int fd);
+    void _notifyManager();
+
+    int _id;
+    TransactionSpec _spec;
+    WaitState _state;
+    XrdTransResult _result;
+    std::string _hash;
+    std::string _resultUrl;
+    std::string _queryHostPort;
+    AsyncQueryManager* _manager;
+};// class ChunkQuery
+
+
+class AsyncQueryManager {
+public:
+    explicit AsyncQueryManager() {}
+
+    int add(TransactionSpec const& t);
+    void join(int id);
+    bool tryJoin(int id);
+    XrdTransResult const& status(int id) const;
+    void joinEverything();
+
+    void finalizeQuery(int id,  XrdTransResult const& r);
+private:
+    typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
+
+    int _getNextId() {return ++_lastId;}
+
+    boost::mutex _queriesMutex;
+    int _lastId;
+    QueryMap _queries;
 };
 
 class QueryManager {
