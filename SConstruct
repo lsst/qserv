@@ -44,7 +44,7 @@ def setXrd(cands):
         (inc, lib) = (findXrdInc(c), findXrdLib(c))
         if inc and lib:
             return (inc, lib)
-    print >> sys.stderr, "Could not locate xrootd libraries"
+    print >> sys.stderr, "Could not locate xrootd libraries (try XRD_DIR XRD_PLATFORM)"
     Exit(1)
 
 def findBoost(default="/home/wang55/r/"):

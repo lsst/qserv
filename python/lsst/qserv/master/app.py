@@ -449,13 +449,17 @@ class QueryAction:
         for chunk,table,q in self._preparer.getQueryIterable():
             xo = XrdOperation(chunk, q, lambda x:x, table, 
                               self.setupDumpSaver(self._preparer.queryHash))
-        ## s = newSession()
-        ## ## for each
-        ## i = submitQuery(s,chunk,q,savename)
-        ## inFlight[chunk] = i
-        ## ## end for each
-        ## joinSession(s)
+        return
 
+    def invoke3(self):
+        self._preparer.computePartSet()
+        self._preparer.clearDb()
+        sessionId = newSession()
+        for chunk,table,q in self._preparer.getQueryIterable():
+            i = submitQuery(sessionId, chunk, q, saveName)
+            inFlight[chunk] = i
+        state = joinSession(sessionId)
+        return
     
     def invoke(self):
         print "Query invoking..."
