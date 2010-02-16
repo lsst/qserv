@@ -11,7 +11,13 @@ require ("xmlrpc.http")
 --     cleanQueryString is the query without special hints
 --     hintString: "box", "1,2,11,12", "box", "5,55,6,66", "objectId", "3",
 --   "  objectId", "5,6,7,8" and so on
-
+-- * check if there is "objectId=" or "objectId IN" in the section
+     of query which we are skipping
+-- * support "SHOW TABLES", "SHOW DATABASES"
+-- * support DESCRIBE
+-- * handle commands that are not supported:
+--   INSERT, UPDATE, LOAD INTO, CREATE, ALTER, TRUNCATE, DROP,
+--   EXPLAIN, SHOW, GRANT, FLASH, ..."
 
 
 rpcHost = "http://127.0.0.1"
