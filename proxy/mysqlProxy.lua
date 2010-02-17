@@ -12,7 +12,7 @@ require ("xmlrpc.http")
 --     hintString: "box", "1,2,11,12", "box", "5,55,6,66", "objectId", "3",
 --   "  objectId", "5,6,7,8" and so on
 -- * check if there is "objectId=" or "objectId IN" in the section
-     of query which we are skipping
+--   of query which we are skipping
 -- * support "SHOW TABLES", "SHOW DATABASES"
 -- * support DESCRIBE
 -- * handle commands that are not supported:
@@ -190,38 +190,80 @@ end
 
 
 
+function processQueryLocally(q)
+    -- print ("Processing locally: " .. q)
+    print ("Processing locally")
+    return 0
+end
+
+
+function sendToQserv(q)
+    local p1 = string.find(q, "WHERE")
+    if p1 then
+        local p2 = parse_predicates(q, p1+6) -- 6=length of 'where '
+        if ( p2 < 0 ) then
+            return sendErr()
+        end
+        local pEnd = string.len(q)
+        local q2 = string.sub(q, 0, p1-1) .. 
+                   "WHERE " .. 
+                   string.sub(q, p2-1, pEnd)
+        print ("The query now is: " .. q2)
+
+        local ok, res = 
+           xmlrpc.http.call (rpcHP, "submitQuery", q2, "whatever")
+        if (ok) then
+            print ("got via rpc " .. res)
+            -- for i, v in pairs(res) do print ('\t', i, v) end
+        else
+            setErr(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
+            return sendErr()
+        end
+    else
+        print ("There is no WHERE, query will be passed unchanged")
+    end
+end
+
 
 function read_query(packet)
     if string.byte(packet) == proxy.COM_QUERY then
         print("\n*******************\nIntercepted: " .. string.sub(packet, 2))
+
+        -- massage the query string to simplify its processing
         local q = string.removeExtraWhiteSpaces(string.sub(packet,2))
-        local qU = string.upper(q) .. ' ' -- it is useful to always have a space
-                                          -- even at the end of last predicate
-        local p1 = string.find(qU, "WHERE")
-        if p1 then
-            local p2 = parse_predicates(qU, p1+6) -- 6=length of 'where '
-            if ( p2 < 0 ) then
-                return sendErr()
-            end
-            local pEnd = string.len(qU)
-            local q2 = string.sub(q, 0, p1-1) .. 
-                       "WHERE " .. 
-                       string.sub(q, p2-1, pEnd)
-            print ("The query now is: " .. q2)
+            -- it is useful to always have a space
+            -- even at the end of last predicate
+        local qU = string.upper(q) .. ' '
 
-            local ok, res = 
-               xmlrpc.http.call (rpcHP, "submitQuery", q2, "whatever")
-            if (ok) then
-                print ("got via rpc " .. res)
-                -- for i, v in pairs(res) do print ('\t', i, v) end
-            else
-                setErr(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
-                return sendErr()
-            end
-
-        else
-            print ("There is no WHERE, query will be passed unchanged")
+        -- check for special queries that can be handled locally
+        if string.find(qU, "^SELECT @@VERSION_COMMENT LIMIT") or
+           string.find(qU, "^SHOW DATABASES") or
+           string.find(qU, "^SHOW TABLES") or
+           string.find(qU, "^DESCRIBE ") or
+           string.find(qU, "^DESC ") then
+            return processQueryLocally(qU)
         end
+
+        -- check for queries that are disallowed
+        if string.find(qU, "^INSERT ") or
+           string.find(qU, "^UPDATE ") or
+           string.find(qU, "^LOAD ") or
+           string.find(qU, "^CREATE ") or
+           string.find(qU, "^ALTER ") or
+           string.find(qU, "^TRUNCATE ") or
+           string.find(qU, "^DROP ") then
+            setErr(ERR_NOT_SUPPORTED, "Sorry, this type of queries is disallowed.")
+            return sendErr()
+        end
+
+        -- check for queries that we don't support yet
+        if string.find(qU, "^EXPLAIN ") then
+            setErr(ERR_NOT_SUPPORTED, "Sorry, this type of queries is not supported in DC3b.")
+            return sendErr()
+        end
+
+        -- process the query and send it to qserv
+        return sendToQserv(qU)
     end
 end
 
