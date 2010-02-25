@@ -109,8 +109,9 @@ conf = Configure(boostEnv)
 if not conf.CheckCXXHeader("boost/thread.hpp"):
     print >> sys.stderr, "Could not locate Boost headers"
     Exit(1)
-if not conf.CheckLib("boost_thread", language="C++") \
-    and not conf.CheckLib("boost_thread-mt", language="C++"):
+if not conf.CheckLib("boost_thread-gcc34-mt", language="C++") \
+        and not conf.CheckLib("boost_thread", language="C++") \
+        and not conf.CheckLib("boost_thread-mt", language="C++"):
     print >> sys.stderr, "Could not locate boost_thread library"
 if not conf.CheckLib("ssl"):
     print >> sys.stderr, "Could not locate ssl"

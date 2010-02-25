@@ -165,7 +165,7 @@ private:
 
 class AsyncQueryManager {
 public:
-    explicit AsyncQueryManager() {}
+    explicit AsyncQueryManager() :_lastId(0) {}
 
     int add(TransactionSpec const& t);
     void join(int id);
