@@ -95,7 +95,7 @@ std::string runQueryInPieces(MYSQL* db, std::string query,
 	char c = query[pos];
 	while((c == '\0') || (c == '\n') 
 	      || (c == ' ') || (c == '\t')) { c = query[--pos];}
-	if (pos > pieceBegin) {
+	if (pos > (int)pieceBegin) {
 	    queryPiece.assign(query, pieceBegin, pos-(int)pieceBegin);
 	}
 	// Catch empty strings.

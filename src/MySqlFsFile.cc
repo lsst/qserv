@@ -149,6 +149,7 @@ int qWorker::MySqlFsFile::open(
 		     % fileName % _chunkId % _userName).str().c_str());
 	break;
     case TWO_WRITE:
+	_chunkId = findChunkNumber(fileName);
 	_eDest->Say((Pformat("File open %1% for query invocation by %2%")
 		     % fileName % _userName).str().c_str());
 	break;

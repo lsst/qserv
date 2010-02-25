@@ -82,8 +82,12 @@ std::string qWorker::hashToPath(std::string const& hash) {
 std::string qWorker::hashToResultPath(std::string const& hash) {
     // Not sure whether we want a different path later.
     // For now, drop the .dump extension.
-    return DUMP_BASE +
-        hash.substr(0, 3) + "/" + hash.substr(3, 3) + "/" + hash;
+    //    return DUMP_BASE +
+    //        hash.substr(0, 3) + "/" + hash.substr(3, 3) + "/" + hash;
+    // And drop the two-level directory to keep client complexity down since
+    // xrootd seems to check raw paths.
+    return DUMP_BASE + "/" + hash;
+
 }
 
 //////////////////////////////////////////////////////////////////////
