@@ -18,6 +18,11 @@ namespace qMaster = lsst::qserv::master;
 
 
 void alternative() {
+    int stopCount = 0;
+    char* envStopCount = ::getenv("QS_STOPCOUNT");
+    if(envStopCount != (char*)0) { stopCount = atoi(envStopCount); }
+
+
     // alternate harness.
     using qMaster::QueryState;
     qMaster::initDispatcher();
@@ -28,7 +33,7 @@ void alternative() {
 	s = r.getSpec()) {
 	submitQuery(session, s);
 	++i;
-	//if(i > 2000) break; // Stop early for debugging.
+	if(stopCount && (i > stopCount)) break; // Stop early for debugging.
     }
     QueryState s = qMaster::joinSession(session);
 }

@@ -134,7 +134,9 @@ private:
 //////////////////////////////////////////////////////////////////////
 class ChunkQuery : public XrdPosixCallBack {
 public:
-    enum WaitState {WRITE, READ};
+    enum WaitState {WRITE_OPEN, WRITE_WRITE, 
+		    READ_OPEN, READ_READ,
+		    COMPLETE, CORRUPT};
     
     virtual void Complete(int Result);
     explicit ChunkQuery(TransactionSpec const& t, int id,
@@ -143,6 +145,7 @@ public:
 
     void run();
     XrdTransResult const& results() const { return _result; }
+    std::string getDesc() const;
 private:
     void _sendQuery(int fd);
     void _readResults(int fd);
@@ -152,6 +155,7 @@ private:
     TransactionSpec _spec;
     WaitState _state;
     XrdTransResult _result;
+    boost::mutex _mutex;
     std::string _hash;
     std::string _resultUrl;
     std::string _queryHostPort;
@@ -172,8 +176,19 @@ public:
     void finalizeQuery(int id,  XrdTransResult const& r);
 private:
     typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
+    class printQueryMapValue {
+    public:
+	printQueryMapValue(std::ostream& os_) : os(os_) {}
+	void operator()(QueryMap::value_type const& qv) {
+	    os << "Query with id=" << qv.first;
+	    os << ": " << qv.second->getDesc() << std::endl;
+	}
+	std::ostream& os;
+    };
 
     int _getNextId() {return ++_lastId;}
+    void _printState(std::ostream& os);
+
 
     boost::mutex _queriesMutex;
     int _lastId;
