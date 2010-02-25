@@ -4,21 +4,11 @@ import subprocess, os, sys
 Import("env")
 
 testEnv = env.Clone()
-testEnv.Append(LIBPATH = ["../lib"])
-testEnv.Append(LIBS = ["qserv_worker", "stdc++", "XrdSfs"])
+testEnv.Append(LIBPATH = ["../bldNoXrd/src"])
+#testEnv.Append(CPPPATH = ["../include"])
+testEnv.Append(LIBS = ["qserv_worker", "stdc++"])
+#testEnv.Append(CCFLAGS=["-DNO_XROOTD_FS"])
 
-smallEnv = env.Clone()
-smallEnv.Append(LIBPATH = ["../lib"])
-smallEnv.Replace(LIBS = ["stdc++"])
-smallEnv.Append(CCFLAGS= "-g -Wall")
-smallTests = {"MySqlFs_2.cc":["boost_thread","boost_signals", 
-                              "XrdSys", "XrdSfs",
-                              "mysqlclient", "boost_regex", "ssl"]}
-smallTestsSrc = {"MySqlFs_2.cc":["../src/MySqlFsFile.cc",
-                                 "../src/Base.cc",
-                                 "../src/QueryRunner.cc"
-
-                                 ]}
 
 def run_test(target, source, env):
     log = file(str(target[0]) + ".failed", "w")
@@ -33,17 +23,9 @@ def run_test(target, source, env):
 
 bld = Builder(action = run_test, prefix = ".tests/")
 testEnv.Append(BUILDERS = {'Test': bld})
-smallEnv.Append(BUILDERS = {'Test': bld})
+
 for src in Glob("*.cc"):
-    key = str(src)
-    if key in smallTests:
-        eenv = smallEnv
-        eenv.Append(LIBS = smallTests[key])
-        if key in smallTestsSrc:
-            src = [str(src)] +  smallTestsSrc[key]
-    else:
-        eenv = testEnv
-    prog = eenv.Program(src)
-    test = eenv.Test(prog)
-    if src not in smallTests:
-        env.Depends(test, testEnv['built_libs'])
+    prog = testEnv.Program(src)
+    test = testEnv.Test(prog)
+    testEnv.Depends(test, testEnv['built_libs'])
+    pass

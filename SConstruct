@@ -19,6 +19,7 @@ xrd_platform = "x86_64_linux_26"
 if os.environ.has_key('XRD_PLATFORM'):
     xrd_platform = os.environ['XRD_PLATFORM']
 if not os.path.exists(os.path.join(xrd_dir, "lib", xrd_platform)):
+    print "No 64bit"
     xrd_platform = "i386_linux26"
 if not os.path.exists(os.path.join(xrd_dir, "lib", xrd_platform)):
     print >> sys.stderr, "Could not locate xrootd libraries"
@@ -67,22 +68,22 @@ if not conf.CheckDeclaration("mysql_next_result", "#include <mysql/mysql.h>","c+
 if not conf.CheckLibWithHeader("XrdSys", "XrdSfs/XrdSfsInterface.hh", "C++"):
     print >> sys.stderr, "Could not locate XrdSys"
     Exit(1)
-# Can't get this to work...
-#if not conf.CheckLib("XrdSfs", language="C++"):
-#    print >> sys.stderr, "Could not locate XrdSfs"
-#    Exit(1)
-if not conf.CheckCXXHeader("boost/regex.hpp"):
+
+if not conf.CheckLib("boost_regex-gcc34-mt", language="C++") \
+        and not conf.CheckCXXHeader("boost/regex.hpp"):
     print >> sys.stderr, "Could not locate Boost headers"
     Exit(1)
 if not conf.CheckLib("boost_regex-gcc43-mt", language="C++") \
-    and not conf.CheckLib("boost_regex-gcc34-mt", language="C++") \
-    and not conf.CheckLib("boost_regex", language="C++"):
+        and not conf.CheckLib("boost_regex-gcc34-mt", language="C++") \
+        and not conf.CheckLib("boost_regex", language="C++"):
     print >> sys.stderr, "Could not locate boost_regex library"
     Exit(1)
-if not conf.CheckLib("boost_thread", language="C++"):
+if not conf.CheckLib("boost_thread-gcc34-mt", language="C++") \
+        and not conf.CheckLib("boost_thread", language="C++"):
     print >> sys.stderr, "Could not locate boost_thread library"
     Exit(1)
-if not conf.CheckLib("boost_signals", language="C++"):
+if not conf.CheckLib("boost_signals-gcc34-mt", language="C++") \
+        and not conf.CheckLib("boost_signals", language="C++"):
     print >> sys.stderr, "Could not locate boost_signals library"
     Exit(1)
 env = conf.Finish()
@@ -95,7 +96,18 @@ LSST Query Services worker package
 #
 # Build/install things
 #
-for d in Split("lib tests doc"):
+
+## Build lib twice, with and without xrd
+## Must invoke w/ build_dir at top-level SConstruct.
+envNoXrd = env.Clone(CCFLAGS=["-g","-DNO_XROOTD_FS"])
+for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
+    try:
+        SConscript("SConscript.lib", build_dir=bldDir,
+                   exports={'env' : expEnv})
+    except Exception, e:
+        print >> sys.stderr, "%s: %s" % (os.path.join("src", "SConscript.lib"), e)
+        
+for d in Split("tests doc"): 
     if os.path.isdir(d):
         try:
             SConscript(os.path.join(d, "SConscript"), exports='env')
