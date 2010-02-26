@@ -1,23 +1,33 @@
 
+-- For questions, contact Jacek Becla
+
+
 require ("xmlrpc.http")
 
 -- todos:
---  * enforce single bounding box
+--  * support "objectId IN", DESCRIBE
+--
+--  * communication with user, returning results etc
+--
+--  * improve error checking:
+--    - enforce single bounding box
+--    - check if there is "objectId=" or "objectId IN" in the section
+--      of query which we are skipping
+--    - block "SHOW" except "SHOW DATABASES" and "SHOW TABLES"
+--
 --  * supress errors "FUNCTION proxyTest.areaSpec_box does not exist"
---  * communicating with user, returning results etc
---  * talk to master via xml rpc
--- * api: invoke(cleanQueryString, hintString)
---     cleanQueryString is the query without special hints
---     hintString: "box", "1,2,11,12", "box", "5,55,6,66", "objectId", "3",
---   "  objectId", "5,6,7,8" and so on
--- * check if there is "objectId=" or "objectId IN" in the section
---   of query which we are skipping
--- * support "SHOW TABLES", "SHOW DATABASES"
--- * support DESCRIBE
--- * handle commands that are not supported (GRANT)
--- * test what happens when I change db (use x; later use y)
+--
+--  * test what happens when I change db (use x; later use y)
 
 
+
+
+-- API between lua and qserv:
+--  * invoke(cleanQueryString, hintString)
+--  * cleanQueryString is the query without special hints: objectId 
+--    related hints are passed through, but bounding boxes are not
+--  * hintString: "box", "1,2,11,12", "box", "5,55,6,66", 
+--    "objectId", "3", "objectId", "5,6,7,8" and so on
 
 
 ----------------------------------------------------------------------
@@ -26,7 +36,6 @@ require ("xmlrpc.http")
 
 rpcHost = "http://127.0.0.1"
 rpcPort = 7080
-
 rpcHP = rpcHost .. ":" .. rpcPort
 
 
@@ -38,11 +47,9 @@ ERR_OR_NOT_ALLOWED = -4004
 ERR_RPC_CALL       = -4005
 
 
-
 -- error status and message
 __errNo__  = 0
 __errMsg__ = ""
-
 
 
 -- query string and array containing hints
@@ -54,8 +61,7 @@ hintsToPassArr = {}
 -- global flags indicating if there is already 'WHERE' 
 -- in the queryStr and whether "AND' is needed
 haveWhere = false
-andIsNeeded = false
-
+andNeeded = false
 
 ----------------------------------------------------------------------
 --                       "public" functions                         --
@@ -225,7 +231,7 @@ function parse_areaspecbox(s)
         -- queryToPassStr = queryToPassStr .. 
         --               " ra BETWEEN "..t[1].." AND "..t[3].." AND"..
         --               " decl BETWEEN "..t[2].." AND "..t[4]
-        -- andIsNeeded = true
+        -- andNeeded = true
         return p2
     end
     return setErr(ERR_BAD_ARG, "Invalid arguments after areaSpec_BOX: '"..params.."'")
@@ -246,7 +252,7 @@ function parse_objectId(s)
         hintsToPassArr["objectId"] = params
         addWhereAndIfNeeded()
         queryToPassStr = queryToPassStr..' objectId='..params
-        andIsNeeded = true
+        andNeeded = true
         return p2-1
     end
     return setErr(ERR_BAD_ARG, "Invalid argument")
@@ -299,7 +305,7 @@ function addWhereAndIfNeeded()
     if not haveWhere then
         queryToPassStr = queryToPassStr .. 'WHERE'
         haveWhere = true
-    elseif andIsNeeded then
+    elseif andNeeded then
         queryToPassStr = queryToPassStr .. ' AND'
     end
 end
