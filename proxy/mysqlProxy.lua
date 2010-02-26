@@ -221,11 +221,11 @@ function parse_areaspecbox(s)
             return setErr(ERR_BAD_ARG, "Incorrect number of arguments " ..
                                        "after areaSpec_BOX: '"..params.."'")
         end
-        addWhereAndIfNeeded()
-        queryToPassStr = queryToPassStr .. 
-                      " ra BETWEEN "..t[1].." AND "..t[3].." AND"..
-                      " decl BETWEEN "..t[2].." AND "..t[4]
-        andIsNeeded = true
+        -- addWhereAndIfNeeded()
+        -- queryToPassStr = queryToPassStr .. 
+        --               " ra BETWEEN "..t[1].." AND "..t[3].." AND"..
+        --               " decl BETWEEN "..t[2].." AND "..t[4]
+        -- andIsNeeded = true
         return p2
     end
     return setErr(ERR_BAD_ARG, "Invalid arguments after areaSpec_BOX: '"..params.."'")
