@@ -59,6 +59,21 @@ def findBoost(default="/home/wang55/r/"):
     return [os.path.join(boost_dir, "include"),
             os.path.join(boost_dir, "lib")]
 
+def addBoostAndSslToEnv(env):
+    conf = Configure(env)
+    if not conf.CheckCXXHeader("boost/thread.hpp"):
+        print >> sys.stderr, "Could not locate Boost headers"
+        Exit(1)
+    if not conf.CheckLib("boost_thread-gcc34-mt", language="C++") \
+            and not conf.CheckLib("boost_thread", language="C++") \
+            and not conf.CheckLib("boost_thread-mt", language="C++"):
+        print >> sys.stderr, "Could not locate boost_thread library"
+    if not conf.CheckLib("ssl"):
+        print >> sys.stderr, "Could not locate ssl"
+        Exit(1)
+    return conf.Finish()
+
+
 
 (xrd_inc, xrd_lib) = setXrd(xrd_cands)
 print >> sys.stderr, "Using xrootd inc/lib: ", xrd_inc, xrd_lib
@@ -94,6 +109,7 @@ srcPaths = [os.path.join('src', 'xrdfile.cc'),
 bpath = findBoost()
 swigEnv.Append(CPPPATH=bpath[0])
 swigEnv.Append(LIBPATH=bpath[1])
+swigEnv = addBoostAndSslToEnv(swigEnv)
 swigEnv.SharedLibrary(pyLib, srcPaths)
 
 boostEnv = swigEnv.Clone()
@@ -105,19 +121,6 @@ runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
                          ["xrdfile.cc", "runTransactions.cc", 
                           "thread.cc", "dispatcher.cc", "xrootd.cc"]),
              }
-conf = Configure(boostEnv)
-if not conf.CheckCXXHeader("boost/thread.hpp"):
-    print >> sys.stderr, "Could not locate Boost headers"
-    Exit(1)
-if not conf.CheckLib("boost_thread-gcc34-mt", language="C++") \
-        and not conf.CheckLib("boost_thread", language="C++") \
-        and not conf.CheckLib("boost_thread-mt", language="C++"):
-    print >> sys.stderr, "Could not locate boost_thread library"
-if not conf.CheckLib("ssl"):
-    print >> sys.stderr, "Could not locate ssl"
-    Exit(1)
-
-boostEnv = conf.Finish()
 boostEnv.Program(runTrans['bin'], runTrans["srcPaths"])
 
 # Describe what your package contains here.

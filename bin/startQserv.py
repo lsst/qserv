@@ -5,7 +5,7 @@ from optparse import OptionParser
 from lsst.qserv.master.testparser import TestAppFunctions
 from lsst.qserv.master import server
 from lsst.qserv.master import app
-
+from lsst.qserv.master import client
 
 def runParserTest():
     """Invokes the test cases in the lsst.qserv.master.testparser module
@@ -38,6 +38,9 @@ def main():
     parser.add_option("-T",
                       dest="testName", default=None, metavar="NAME", 
                       help="Run a test named NAME.")
+    parser.add_option("--sanity-client", action="store_true",
+                      dest="sanityClient", default=False,
+                      help="Sanity-check a running server.")
 
     (options, args) = parser.parse_args()
 
@@ -49,6 +52,9 @@ def main():
         return
     elif options.testName:
         runNamedTest(options.testName)
+        return
+    elif options.sanityClient:
+        client.runSanityClient()
         return
     else:
         server.runServer()

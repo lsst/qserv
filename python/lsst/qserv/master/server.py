@@ -11,10 +11,15 @@ import twisted.web.resource
 import twisted.web.static
 import twisted.web
 import twisted.web.server 
+from twisted.web import xmlrpc
 
 # Package imports
 import app
 
+# Module settings
+defaultPort = 8000
+defaultPath = "c"
+defaultXmlPath = "x"
 
 class ClientResource(twisted.web.resource.Resource):
     def __init__(self, interface):
@@ -58,33 +63,51 @@ class FunctionResource(twisted.web.resource.Resource):
         return twisted.web.resource.Resource.getChild(
             self, name, request)
 
+class XmlRpcInterface(xmlrpc.XMLRPC):
+    def __init__(self, appInterface):
+        xmlrpc.XMLRPC.__init__(self)
+        self.appInterface = appInterface
+        self._bindAppInterface()
+        pass
+    def _bindAppInterface(self):
+        """Import the appInterface functions for publishing."""
+        prefix = 'xmlrpc'
+        map(lambda x: setattr(self, "_".join([prefix,x]), 
+                              getattr(self.appInterface, x)), 
+            self.appInterface.publishable)
+        pass
+
+    def xmlrpc_echo(self, echostr):
+        "Echo a string back (useful for sanity checking)."
+        s = str(echostr)
+        return s
 
 
-class ClientInterface:
-    def __init__(self):
-        self.tracker = app.TaskTracker()
+class HttpInterface:
+    def __init__(self, appInterface):
+        self.appInterface = appInterface
         okname = ifilter(lambda x: "_" not in x, dir(self))
         self.publishable = filter(lambda x: hasattr(getattr(self,x), 'func_doc'), 
                                   okname)
-        
-        pass
-
     def query(self, req):
-        "Issue a query. Params: q=querystring"
+        "Issue a query. Params: q=querystring, h=hintstring"
         print req
         flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
         #printdir(arg)
+        
         if 'q' in req.args:
-            a = app.QueryAction(flatargs['q'])
-            id = self.tracker.track("myquery", a, flatargs['q'])
-            stats = time.qServQueryTimer[time.qServRunningName]
-            stats["appInvokeStart"] = time.time()
-            if 'lsstRunning' in dir(reactor):
-                reactor.callInThread(a.invoke3)
-            else:
-                a.invoke3()
-            stats["appInvokeFinish"] = time.time()
-            return "Server processed, q='" + flatargs['q'] + "' your id is %d" % (id)
+            h = flatargs.get('h', None)
+            resp = ""
+            if h:
+                warning = "FIXME: No unmarshalling code for hints."
+                warning += "WARNING, no partitions will be used."
+                resp += warning
+                print warning
+                h = None
+
+            taskId = self.appInterface.query(flatargs('q'), h)
+            resp += "Server processed, q='" + flatargs['q'] + "' your id is %d" % (taskId)
+            return resp
         else:
             return "no query in string, try q='select...'"
 
@@ -103,26 +126,26 @@ class ClientInterface:
     def check(self, req):
         "Check status of query or task. Params: h=handle"
         print req
+        key = 'id'
         flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
-        if 'h' in req.args and int:
-            a = app.CheckAction(self.tracker, flatargs['h'])
-            a.invoke()
-            
-            return "\n".join(["checking status of query with handle %s" % flatargs['h'],
-                              " would return \%done got %d", a.results])
+        if key in req.args and int(flatargs[key]):
+            res = self.appInterface.check(flatargs[key])
+            resp = ["checking status of query with handle %s" % flatargs[key],
+                    " would return \%done got %d", res]
+            return "\n".join(resp)
 
         else:
-            return "\n".join([ "no handle in string, try h=handle ",
-                               "where handle is the handle you got back from your initial query."])
+            return "\n".join([ "no handle in string, try %s=<taskId> " % key,
+                               "where <taskId> was returned from the initial query."])
     def results(self, req):
         "Get results location for a query or task. Params: h=handle"
         print req
         flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
-        if 'h' in req.args:
-            return "\n".join(["retrieving status of query with handle %s" % flatargs['h'],
+        key = 'id'
+        if key in req.args:
+            return "\n".join(["retrieving status of query with handle %s" % flatargs[key],
                               " would return db handle ",
-                              app.results(self.tracker, flatargs['h']) ])
-
+                              self.appInterface(flatargs[key])])
         else:
             return "\n".join([ "no handle in string, try h=handle ",
                                "where handle is the handle you got back from your initial query."])
@@ -130,13 +153,69 @@ class ClientInterface:
 
     def reset(self, req):
         "Resets/restarts server uncleanly. No params."
+        return self.appInterface.reset() # Should not return
+
+    def stop(self, req):
+        "Unceremoniously stop the server."
+        return self.appInterface.stop()
+        reactor.stop()
+    pass
+
+
+
+class AppInterface:
+    def __init__(self):
+        self.tracker = app.TaskTracker()
+        okname = ifilter(lambda x: "_" not in x, dir(self))
+        self.publishable = filter(lambda x: hasattr(getattr(self,x), 'func_doc'), 
+                                  okname)
+        pass
+
+    def query(self, q, hints):
+        "Issue a query. q=querystring, h=hint list"
+        a = app.QueryAction(q)
+        taskId = self.tracker.track("myquery", a, flatargs['q'])
+        stats = time.qServQueryTimer[time.qServRunningName]
+        stats["appInvokeStart"] = time.time()
+        if 'lsstRunning' in dir(reactor):
+            reactor.callInThread(a.invoke3)
+        else:
+            a.invoke3()
+            stats["appInvokeFinish"] = time.time()
+        return taskId
+
+    def help(self):
+        """A brief help message showing available commands"""
+        r = "" ## self._handyHeader()
+        r += "\n<pre>available commands:\n"
+        sorted =  map(lambda x: (x, getattr(self, x)), self.publishable)
+        sorted.sort()
+        for (k,v) in sorted:
+            r += "%-20s : %s\n" %(k, v.func_doc)
+        r += "</pre>\n"
+        return r
+
+
+    def check(self, taskId):
+        "Check status of query or task. Params: "
+        a = app.CheckAction(self.tracker, taskId)
+        a.invoke()
+        return a.results
+
+    def results(self, taskId):
+        "Get results location for a query or task. Params: taskId"
+        return app.results(self.tracker, taskId)
+
+
+    def reset(self):
+        "Resets/restarts server uncleanly. No params."
         args = sys.argv #take the original arguments
         args.insert(0, sys.executable) # add python
         os.execv(sys.executable, args) # replace self with new python.
         print "Reset failed:",sys.executable, str(args)
         return # This will not return.  os.execv should overwrite us.
 
-    def stop(self, req):
+    def stop(self):
         "Unceremoniously stop the server."
         reactor.stop()
     pass
@@ -144,20 +223,21 @@ class ClientInterface:
 class Master:
 
     def __init__(self):
-        self.port = 8000
+        self.port = defaultPort # module-level default
         pass
 
     def listen(self):
         root = twisted.web.resource.Resource()
         twisted.web.static.loadMimeTypes() # load from /etc/mime.types
-
-        c = ClientInterface()
         
-        # not sure I need this now.
-        root.putChild("c", ClientResource(ClientInterface()))
+        ai = AppInterface()
+        c = HttpInterface(ai)
+        xml = XmlRpcInterface(ai)
+        # not sure I need the sub-pat http interface
+        root.putChild(defaultPath, ClientResource(c))
+        root.putChild(defaultXmlPath, xml)
 
         # publish the the client functions
-        c.publishable
         for x in c.publishable:
             root.putChild(x, FunctionResource(getattr(c, x)))
 

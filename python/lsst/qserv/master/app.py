@@ -365,8 +365,10 @@ class QueryPreparer:
                 qlist.extend(imap(lambda s: insertPrep + s, remain))
                 del remain
         del createPrep
-        del insertPrep
         q = "\n".join([header] + qlist + ["\0\0\0\0"])  
+        del qlist
+        #del insertPrep #Python thinks insertPrep is still bound.
+        
         return [tableName,q]
 
 
