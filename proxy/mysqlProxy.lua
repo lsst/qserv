@@ -53,12 +53,6 @@ queryToPassStr = ""
 hintsToPassArr = {}
 
 
--- global flags indicating if there is already 'WHERE' 
--- in the queryStr and whether "AND' is needed
-haveWhere = false
-andNeeded = false
-
-
 -------------------------------------------------------------------------------
 --                             error handling                                --
 -------------------------------------------------------------------------------
@@ -195,6 +189,11 @@ utils = utilities()
 -------------------------------------------------------------------------------
 
 function miniParser()
+    local self = { haveWhere = false, andNeeded = false }
+
+    local setAndNeeded = function()
+        andNeeded = true
+    end
 
     local addWhereAndIfNeeded = function()
         if not haveWhere then
@@ -228,7 +227,7 @@ function miniParser()
             -- queryToPassStr = queryToPassStr .. 
             --               " ra BETWEEN "..t[1].." AND "..t[3].." AND"..
             --               " decl BETWEEN "..t[2].." AND "..t[4]
-            -- andNeeded = true
+            -- parser.setAndNeeded()
             return p2
         end
         return err.set(ERR_BAD_ARG, 
@@ -250,7 +249,7 @@ function miniParser()
             hintsToPassArr["objectId"] = params
             addWhereAndIfNeeded()
             queryToPassStr = queryToPassStr..' objectId='..params
-            andNeeded = true
+            parser.setAndNeeded()
             return p2-1
         end
         return err.set(ERR_BAD_ARG, "Invalid argument")
@@ -334,6 +333,7 @@ function miniParser()
     ---------------------------------------------------------------------------
 
     return {
+        setAndNeeded = setAndNeeded,
         parseIt = parseIt
     }
 end
