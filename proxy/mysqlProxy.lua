@@ -159,7 +159,7 @@ function parse_predicates(q, p)
 
     while true do
         local tokenFound = false
-        if string.find(s, "^AREASPEC_BOX") then
+        if string.find(s, "^QSERV_AREASPEC_BOX") then
             local c = parse_areaspecbox(s)
             if c < 0 then
                 return c
@@ -214,7 +214,7 @@ end
 --    negative: failure
 --    positive: number of characters processed by this function
 function parse_areaspecbox(s)
-    local p1 = string.len("AREASPEC_BOX")
+    local p1 = string.len("QSERV_AREASPEC_BOX")
     -- print ("parsing args for areaspecbox: '" .. string.sub(s, p1) .. "'")
     local p2 = string.find(s, ')')
     if p2 then
@@ -225,7 +225,7 @@ function parse_areaspecbox(s)
         t = csvToTable(params)
         if not 4 == table.getn(t) then
             return setErr(ERR_BAD_ARG, "Incorrect number of arguments " ..
-                                       "after areaSpec_BOX: '"..params.."'")
+                                       "after qserv_areaSpec_box: '"..params.."'")
         end
         -- addWhereAndIfNeeded()
         -- queryToPassStr = queryToPassStr .. 
@@ -234,7 +234,7 @@ function parse_areaspecbox(s)
         -- andNeeded = true
         return p2
     end
-    return setErr(ERR_BAD_ARG, "Invalid arguments after areaSpec_BOX: '"..params.."'")
+    return setErr(ERR_BAD_ARG, "Invalid arguments after qserv_areaSpec_box: '"..params.."'")
 end
 
 ----------------------------------------------------------------------
