@@ -59,7 +59,14 @@ def findBoost(default="/home/wang55/r/"):
     return [os.path.join(boost_dir, "include"),
             os.path.join(boost_dir, "lib")]
 
-def addBoostAndSslToEnv(env):
+def findAntlr(default="/opt/local"):
+    antlr_dir=default
+    if os.environ.has_key("ANTLR_DIR"):
+        antlr_dir = os.environ["ANTLR_DIR"]
+    return [os.path.join(antlr_dir, "include"),
+            os.path.join(antlr_dir, "lib")]
+
+def addBoostAndSslAndAntlrToEnv(env):
     conf = Configure(env)
     if not conf.CheckCXXHeader("boost/thread.hpp"):
         print >> sys.stderr, "Could not locate Boost headers"
@@ -71,6 +78,12 @@ def addBoostAndSslToEnv(env):
         print >> sys.stderr, "Could not locate boost_thread library"
     if not conf.CheckLib("ssl"):
         print >> sys.stderr, "Could not locate ssl"
+        Exit(1)
+    if not conf.CheckCXXHeader("antlr/AST.hpp"):
+        print >> sys.stderr, "Could not locate ANTLR headers"
+        Exit(1)
+    if not conf.CheckLib("antlr", language="C++"):
+        print >> sys.stderr, "Could not find ANTLR lib"
         Exit(1)
     return conf.Finish()
 
@@ -108,9 +121,12 @@ srcPaths = [os.path.join('src', 'xrdfile.cc'),
             os.path.join('src', 'xrootd.cc'),
             os.path.join(pyPath, 'masterLib.i')]
 bpath = findBoost()
-swigEnv.Append(CPPPATH=bpath[0])
-swigEnv.Append(LIBPATH=bpath[1])
-swigEnv = addBoostAndSslToEnv(swigEnv)
+apath = findAntlr()
+swigEnv.Append(CPPPATH=[bpath[0], apath[0]])
+swigEnv.Append(LIBPATH=[bpath[1], apath[1]])
+
+
+swigEnv = addBoostAndSslAndAntlrToEnv(swigEnv)
 swigEnv.SharedLibrary(pyLib, srcPaths)
 
 boostEnv = swigEnv.Clone()
