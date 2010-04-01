@@ -17,7 +17,7 @@ if 'install' in COMMAND_LINE_TARGETS:
 
 searchRoots = ['/usr/local/'] # search in /usr/local by default.
 if os.environ.has_key('SEARCH_ROOTS'):
-    searchRoots += os.environ['SEARCH_ROOTS'].split(":")
+    searchRoots = os.environ['SEARCH_ROOTS'].split(":")
 
 # Scalla/xrootd is more complex to find.
 class XrdHelper:
