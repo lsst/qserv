@@ -15,104 +15,125 @@ def makePythonDist():
 if 'install' in COMMAND_LINE_TARGETS:
     makePythonDist()
 
+searchRoots = ['/usr/local/'] # search in /usr/local by default.
+if os.environ.has_key('SEARCH_ROOTS'):
+    searchRoots += os.environ['SEARCH_ROOTS'].split(":")
 
-# Manual Xrd dependencies
-xrd_cands = ['/usr/local/']
-if os.environ.has_key('XRD_DIR'):
-    xrd_cands.insert(0, os.environ['XRD_DIR'])
+# Scalla/xrootd is more complex to find.
+class XrdHelper:
+    def __init__(self, roots):
+        self.cands = roots
+        if os.environ.has_key('XRD_DIR'):
+            self.cands.insert(0, os.environ['XRD_DIR'])
 
-def findXrdLib(path):
-    platforms = ["x86_64_linux_26","i386_linux26","i386_linux26_dbg"]
-    if os.environ.has_key('XRD_PLATFORM'):
-        platforms.insert(0, os.environ['XRD_PLATFORM'])
-    for p in platforms:
-        libpath = os.path.join(path, "lib", p)
-        if os.path.exists(libpath):
-            return libpath
-    return None
+        self.platforms = ["x86_64_linux_26","i386_linux26","i386_linux26_dbg"]
+        if os.environ.has_key('XRD_PLATFORM'):
+            self.platforms.insert(0, os.environ['XRD_PLATFORM'])
+        pass
 
-def findXrdInc(path):
-    paths = map(lambda p: os.path.join(path, p), ["include/xrootd", "src"])
-    for p in paths:
-        neededFile = os.path.join(p, "XrdPosix/XrdPosix.hh")
-        if os.path.exists(neededFile):
-            return p
-    return None
+    def getXrdLibInc(self):
+        for c in self.cands:
+            (inc, lib) = (self._findXrdInc(c), self._findXrdLib(c))
+            if inc and lib:
+                return (inc, lib)
+        return (None, None)
 
-def setXrd(cands):
-    for c in cands:
-        (inc, lib) = (findXrdInc(c), findXrdLib(c))
-        if inc and lib:
-            return (inc, lib)
-    print >> sys.stderr, "Could not locate xrootd libraries (try XRD_DIR XRD_PLATFORM)"
-    Exit(1)
+    def _findXrdLib(self, path):
+        for p in self.platforms:
+            libpath = os.path.join(path, "lib", p)
+            if os.path.exists(libpath):
+                return libpath
+        return None
 
-def findBoost(default="/home/wang55/r/"):
-    boost_dir = default
-    if os.environ.has_key('BOOST_DIR'):
-        boost_dir = os.environ['BOOST_DIR']
-    if not os.path.exists(boost_dir):
-        boost_dir = "/afs/slac/g/ki/lsst/home/DMS/Linux/external/boost/1.37.0"
-    if not os.path.exists(boost_dir):
-        print >> sys.stderr, "Could not locate Boost base directory (BOOST_DIR)"
-        Exit(1)
-    return [os.path.join(boost_dir, "include"),
-            os.path.join(boost_dir, "lib")]
+    def _findXrdInc(self, path):
+        paths = map(lambda p: os.path.join(path, p), ["include/xrootd", "src"])
+        for p in paths:
+            neededFile = os.path.join(p, "XrdPosix/XrdPosix.hh")
+            if os.path.exists(neededFile):
+                return p
+        return None
+    pass
 
-def findAntlr(default="/opt/local"):
-    antlr_dir=default
-    if os.environ.has_key("ANTLR_DIR"):
-        antlr_dir = os.environ["ANTLR_DIR"]
-    return [os.path.join(antlr_dir, "include"),
-            os.path.join(antlr_dir, "lib")]
+def composeEnv(env, roots=[], includes=[], libs=[]):
+    env.Append(CPPPATH=[os.path.join(x, "include") for x in roots])
+    env.Append(CPPPATH=includes)
+    env.Append(LIBPATH=[os.path.join(x, "lib") for x in roots])
+    env.Append(LIBPATH=libs)
+    return env
 
-def addBoostAndSslAndAntlrToEnv(env):
-    conf = Configure(env)
-    if not conf.CheckCXXHeader("boost/thread.hpp"):
-        print >> sys.stderr, "Could not locate Boost headers"
-        Exit(1)
-    if not conf.CheckLib("boost_thread-gcc34-mt", language="C++") \
-            and not conf.CheckLib("boost_thread-gcc41-mt", language="C++") \
-            and not conf.CheckLib("boost_thread", language="C++") \
-            and not conf.CheckLib("boost_thread-mt", language="C++"):
-        print >> sys.stderr, "Could not locate boost_thread library"
-    if not conf.CheckLib("ssl"):
-        print >> sys.stderr, "Could not locate ssl"
-        Exit(1)
-    if not conf.CheckCXXHeader("antlr/AST.hpp"):
-        print >> sys.stderr, "Could not locate ANTLR headers"
-        Exit(1)
-    if not conf.CheckLib("antlr", language="C++"):
-        print >> sys.stderr, "Could not find ANTLR lib"
-        Exit(1)
-    return conf.Finish()
+# Start checking deps
+# -------------------
+hasXrootd = True
+canBuild = True
 
+# Find Scalla/xrootd directories
+x = XrdHelper(searchRoots)
+(xrd_inc, xrd_lib) = x.getXrdLibInc()
+if (not xrd_inc) or (not xrd_lib):
+    print >>sys.stderr, "Can't find xrootd headers or libraries"
+    hasXrootd = False
+else:
+    print >> sys.stderr, "Using xrootd inc/lib: ", xrd_inc, xrd_lib
 
+# Build the environment
+env = Environment()
+env.Tool('swig')
+env['SWIGFLAGS'] = ['-python', '-c++', '-Iinclude'],
+env['CPPPATH'] = [distutils.sysconfig.get_python_inc(), 'include'],
+env['SHLIBPREFIX'] = ""
 
-(xrd_inc, xrd_lib) = setXrd(xrd_cands)
-print >> sys.stderr, "Using xrootd inc/lib: ", xrd_inc, xrd_lib
-
-## Setup the SWIG environment
-swigEnv = Environment()
-
-swigEnv.Tool('swig')
-swigEnv['SWIGFLAGS'] = ['-python', '-c++', '-Iinclude'],
-swigEnv['CPPPATH'] = [distutils.sysconfig.get_python_inc(), 'include'],
-swigEnv['SHLIBPREFIX'] = ""
+## Allow user-specified swig tool
 ## SWIG 1.3.29 has bugs which cause the build to fail.
 ## 1.3.36 is known to work.
 if os.environ.has_key('SWIG'):
-    swigEnv['SWIG'] = os.environ['SWIG']
+    env['SWIG'] = os.environ['SWIG']
 
+composeEnv(env, roots=searchRoots, includes=[xrd_inc], libs=[xrd_inc])
+if hasXrootd:
+    env.Append(CPPPATH = [xrd_inc])
+    env.Append(LIBPATH = [xrd_lib])
+env.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
+                       "-D_LARGEFILE64_SOURCE",
+                       "-D_FILE_OFFSET_BITS=64",
+                       "-D_REENTRANT",
+                       "-g"])
 
+# Start configuration tests
+conf = Configure(env)
 
-swigEnv.Append(CPPPATH = [xrd_inc])
-swigEnv.Append(LIBPATH = [xrd_lib])
-swigEnv.Append(LIBS = ["XrdPosix"])
-swigEnv.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
-                           "-D_LARGEFILE64_SOURCE",
-                           "-D_FILE_OFFSET_BITS=64",
-                           "-D_REENTRANT"])
+# XrdPosix library
+if not conf.CheckLib("XrdPosix", language="C++"):
+    print >>sys.stderr, "Can't use XrdPosix lib"
+    hasXrootd = False
+
+# boost thread library
+if not conf.CheckLib("boost_thread-gcc34-mt", language="C++") \
+        and not conf.CheckLib("boost_thread-gcc41-mt", language="C++") \
+        and not conf.CheckLib("boost_thread", language="C++") \
+        and not conf.CheckLib("boost_thread-mt", language="C++"):
+    print >>sys.stderr, "Can't find boost_thread"
+    canBuild = False
+
+# libssl
+if not conf.CheckLib("ssl"):
+    print >> sys.stderr, "Could not locate ssl"
+    canBuild = False
+
+# ANTLR
+if not conf.CheckCXXHeader("antlr/AST.hpp"):
+    print >> sys.stderr, "Could not locate ANTLR headers"
+    canBuild = False
+if not conf.CheckLib("antlr", language="C++"):
+    print >> sys.stderr, "Could not find ANTLR lib"
+    canBuild = False
+
+    
+# Close out configuration
+env = conf.Finish()    
+if hasXrootd:
+    env.Append(LIBS = ["XrdPosix"])
+canBuild = canBuild and hasXrootd
+
 pyPath = 'python/lsst/qserv/master'
 pyLib = os.path.join(pyPath, '_masterLib.so')
 srcPaths = [os.path.join('src', 'xrdfile.cc'),
@@ -120,19 +141,8 @@ srcPaths = [os.path.join('src', 'xrdfile.cc'),
             os.path.join('src', 'dispatcher.cc'),
             os.path.join('src', 'xrootd.cc'),
             os.path.join(pyPath, 'masterLib.i')]
-bpath = findBoost()
-apath = findAntlr()
-swigEnv.Append(CPPPATH=[bpath[0], apath[0]])
-swigEnv.Append(LIBPATH=[bpath[1], apath[1]])
 
 
-swigEnv = addBoostAndSslAndAntlrToEnv(swigEnv)
-swigEnv.SharedLibrary(pyLib, srcPaths)
-
-boostEnv = swigEnv.Clone()
-##boostEnv.Append(CPPPATH=bpath[0])
-##boostEnv.Append(LIBPATH=bpath[1])
-boostEnv.Append(CPPFLAGS="-g")
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
              'srcPaths' : map(lambda x: os.path.join('src', x), 
                          ["xrdfile.cc", "runTransactions.cc", 
@@ -143,24 +153,29 @@ testParser = { 'bin' : os.path.join('bin', 'testCppParser'),
                                 ["parser.cc", "testCppParser.cc", 
                                  "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"]),
                }
-boostEnv.Program(runTrans['bin'], runTrans["srcPaths"])
-boostEnv.Program(testParser['bin'], testParser["srcPaths"])
+if canBuild:
+    env.SharedLibrary(pyLib, srcPaths)
+    env.Program(runTrans['bin'], runTrans["srcPaths"])
+    env.Program(testParser['bin'], testParser["srcPaths"])
 
 # Describe what your package contains here.
-swigEnv.Help("""
+env.Help("""
 LSST Query Services master server package
 """)
 
 #
 # Build/install things
 #
-for d in Split("lib python examples tests doc"):
+for d in Split("lib examples doc"):
     if os.path.isdir(d):
         try:
             SConscript(os.path.join(d, "SConscript"), exports='env')
         except Exception, e:
             print >> sys.stderr, "%s: %s" % (os.path.join(d, "SConscript"), e)
 
+if not canBuild:
+    print >>sys.stderr, "****** Fatal errors. Didn't build anything. ******"
+    
 
 # env['IgnoreFiles'] = r"(~$|\.pyc$|^\.svn$|\.o$)"
 
