@@ -122,7 +122,13 @@ runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
                          ["xrdfile.cc", "runTransactions.cc", 
                           "thread.cc", "dispatcher.cc", "xrootd.cc"]),
              }
+testParser = { 'bin' : os.path.join('bin', 'testCppParser'),
+               'srcPaths' : map(lambda x: os.path.join('src', x), 
+                                ["parser.cc", "testCppParser.cc", 
+                                 "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"]),
+               }
 boostEnv.Program(runTrans['bin'], runTrans["srcPaths"])
+boostEnv.Program(testParser['bin'], testParser["srcPaths"])
 
 # Describe what your package contains here.
 swigEnv.Help("""

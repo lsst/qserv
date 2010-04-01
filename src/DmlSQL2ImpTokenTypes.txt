@@ -1,0 +1,178 @@
+// $ANTLR 2.7.2
+DmlSQL2Imp    // input token vocab name
+SQL2NRW_ada="ada"=5
+SQL2RW_all="all"=58
+SQL2RW_and="and"=61
+SQL2RW_any="any"=62
+SQL2RW_as="as"=64
+SQL2RW_asc="asc"=65
+SQL2RW_at="at"=67
+SQL2RW_avg="avg"=69
+SQL2RW_between="between"=71
+SQL2RW_bit="bit"=72
+SQL2RW_bit_length="bit_length"=73
+SQL2RW_both="both"=74
+SQL2RW_by="by"=75
+SQL2RW_case="case"=78
+SQL2RW_cast="cast"=79
+SQL2RW_char="char"=81
+SQL2RW_character="character"=82
+SQL2RW_char_length="char_length"=83
+SQL2RW_character_length="character_length"=84
+SQL2RW_coalesce="coalesce"=87
+SQL2RW_collate="collate"=88
+SQL2RW_convert="convert"=97
+SQL2RW_corresponding="corresponding"=98
+SQL2RW_count="count"=99
+SQL2RW_cross="cross"=101
+SQL2RW_current="current"=102
+SQL2RW_current_date="current_date"=103
+SQL2RW_current_time="current_time"=104
+SQL2RW_current_timestamp="current_timestamp"=105
+SQL2RW_current_user="current_user"=106
+SQL2RW_date="date"=108
+SQL2RW_day="day"=109
+SQL2RW_dec="dec"=111
+SQL2RW_decimal="decimal"=112
+SQL2RW_default="default"=114
+SQL2RW_delete="delete"=117
+SQL2RW_desc="desc"=118
+SQL2RW_distinct="distinct"=123
+SQL2RW_double="double"=125
+SQL2RW_else="else"=127
+SQL2RW_end="end"=128
+SQL2RW_escape="escape"=130
+SQL2RW_except="except"=131
+SQL2RW_exists="exists"=135
+SQL2RW_extract="extract"=137
+SQL2RW_false="false"=138
+SQL2RW_float="float"=141
+SQL2RW_for="for"=142
+SQL2RW_from="from"=145
+SQL2RW_full="full"=146
+SQL2RW_global="global"=148
+SQL2RW_group="group"=152
+SQL2RW_having="having"=153
+SQL2RW_hour="hour"=154
+SQL2RW_in="in"=157
+SQL2RW_indicator="indicator"=158
+SQL2RW_inner="inner"=160
+SQL2RW_insert="insert"=163
+SQL2RW_int="int"=164
+SQL2RW_integer="integer"=165
+SQL2RW_intersect="intersect"=166
+SQL2RW_interval="interval"=167
+SQL2RW_into="into"=168
+SQL2RW_is="is"=169
+SQL2RW_join="join"=171
+SQL2RW_leading="leading"=175
+SQL2RW_left="left"=176
+SQL2RW_like="like"=178
+SQL2RW_local="local"=179
+SQL2RW_lower="lower"=180
+SQL2RW_match="match"=181
+SQL2RW_max="max"=182
+SQL2RW_min="min"=183
+SQL2RW_minute="minute"=184
+SQL2RW_module="module"=185
+SQL2RW_month="month"=186
+SQL2RW_national="national"=188
+SQL2RW_natural="natural"=189
+SQL2RW_nchar="nchar"=190
+SQL2RW_not="not"=193
+SQL2RW_null="null"=194
+SQL2RW_nullif="nullif"=195
+SQL2RW_numeric="numeric"=196
+SQL2RW_octet_length="octet_length"=197
+SQL2RW_of="of"=198
+SQL2RW_on="on"=199
+SQL2RW_only="only"=200
+SQL2RW_or="or"=203
+SQL2RW_order="order"=204
+SQL2RW_outer="outer"=205
+SQL2RW_overlaps="overlaps"=207
+SQL2RW_partial="partial"=209
+SQL2RW_position="position"=210
+SQL2RW_precision="precision"=211
+SQL2RW_read="read"=219
+SQL2RW_real="real"=220
+SQL2RW_right="right"=225
+SQL2RW_second="second"=230
+SQL2RW_select="select"=232
+SQL2RW_session_user="session_user"=234
+SQL2RW_set="set"=235
+SQL2RW_smallint="smallint"=237
+SQL2RW_some="some"=238
+SQL2RW_substring="substring"=244
+SQL2RW_sum="sum"=245
+SQL2RW_system_user="system_user"=246
+SQL2RW_table="table"=247
+SQL2RW_then="then"=249
+SQL2RW_time="time"=250
+SQL2RW_timestamp="timestamp"=251
+SQL2RW_timezone_hour="timezone_hour"=252
+SQL2RW_timezone_minute="timezone_minute"=253
+SQL2RW_to="to"=254
+SQL2RW_trailing="trailing"=255
+SQL2RW_translate="translate"=257
+SQL2RW_trim="trim"=259
+SQL2RW_true="true"=260
+SQL2RW_union="union"=261
+SQL2RW_unique="unique"=262
+SQL2RW_unknown="unknown"=263
+SQL2RW_update="update"=264
+SQL2RW_upper="upper"=265
+SQL2RW_user="user"=267
+SQL2RW_using="using"=268
+SQL2RW_value="value"=269
+SQL2RW_values="values"=270
+SQL2RW_varchar="varchar"=271
+SQL2RW_varying="varying"=272
+SQL2RW_when="when"=274
+SQL2RW_where="where"=276
+SQL2RW_with="with"=277
+SQL2RW_year="year"=280
+SQL2RW_zone="zone"=281
+UNSIGNED_INTEGER("an integer number")=282 // Imaginary token based on subtoken typecasting - see the rule <EXACT_NUM_LIT>
+APPROXIMATE_NUM_LIT("a number")=283 // Imaginary token based on subtoken typecasting - see the rule <EXACT_NUM_LIT>
+QUOTE("'")=284 // Imaginary token based on subtoken typecasting - see the rule <CHAR_STRING>
+PERIOD(".")=285 // Imaginary token based on subtoken typecasting - see the rule <EXACT_NUM_LIT>
+MINUS_SIGN("-")=286 // Imaginary token based on subtoken typecasting - see the rule <SEPARATOR>
+UNDERSCORE("_")=287 // Imaginary token based on subtoken typecasting - see the rule <INTRODUCER>
+DOUBLE_PERIOD("..")=288 // Imaginary token based on subtoken typecasting - see the rule <EXACT_NUM_LIT>
+NOT_EQUALS_OP("<>")=289 // Imaginary token based on subtoken typecasting - see the rule <LESS_THAN_OP>
+LESS_THAN_OR_EQUALS_OP("<=")=290 // Imaginary token based on subtoken typecasting - see the rule <LESS_THAN_OP>
+GREATER_THAN_OR_EQUALS_OP(">=")=291 // Imaginary token based on subtoken typecasting - see the rule <GREATER_THAN_OP>
+CONCATENATION_OP("||")=292 // Imaginary token based on subtoken typecasting - see the rule <VERTICAL_BAR>
+NATIONAL_CHAR_STRING_LIT("a national character string")=293 // Imaginary token based on subtoken typecasting - see the rule <REGULAR_ID>
+BIT_STRING_LIT("a bit string")=294 // Imaginary token based on subtoken typecasting - see the rule <REGULAR_ID>
+HEX_STRING_LIT("a hexadecimal string")=295 // Imaginary token based on subtoken typecasting - see the rule <REGULAR_ID>
+EMBDD_VARIABLE_NAME("an embedded variable")=296 // Imaginary token based on subtoken typecasting - see the rule <COLON>
+REGULAR_ID("an identifier")=297
+EXACT_NUM_LIT("a number")=298
+CHAR_STRING("a character string")=299
+DELIMITED_ID("a delimited identifier")=300
+PERCENT("%")=301
+AMPERSAND("&")=302
+LEFT_PAREN("(")=303
+RIGHT_PAREN(")")=304
+ASTERISK("*")=305
+PLUS_SIGN("+")=306
+COMMA(",")=307
+SOLIDUS("/")=308
+COLON(":")=309
+SEMICOLON(";")=310
+LESS_THAN_OP("<")=311
+EQUALS_OP("=")=312
+GREATER_THAN_OP(">")=313
+QUESTION_MARK("?")=314
+VERTICAL_BAR("|")=315
+LEFT_BRACKET("[")=316
+RIGHT_BRACKET("]")=317
+INTRODUCER("introducing _")=318
+SIMPLE_LETTER("a letter")=319
+SEPARATOR("a separator")=320
+COMMENT("a comment")=321
+NEWLINE("the new line character")=322
+SPACE("the space character")=323
+ANY_CHAR("any character")=324
