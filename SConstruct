@@ -35,6 +35,7 @@ if not os.path.exists(boost_dir):
 if not os.path.exists(boost_dir):
     print >> sys.stderr, "Could not locate Boost base directory (BOOST_DIR)"
     Exit(1)
+
 env.Append(CPPPATH = [os.path.join(boost_dir, "include")])
 env.Append(LIBPATH = [os.path.join(boost_dir, "lib")])
 
@@ -73,16 +74,19 @@ if not conf.CheckLib("boost_regex-gcc34-mt", language="C++") \
         and not conf.CheckCXXHeader("boost/regex.hpp"):
     print >> sys.stderr, "Could not locate Boost headers"
     Exit(1)
-if not conf.CheckLib("boost_regex-gcc43-mt", language="C++") \
-        and not conf.CheckLib("boost_regex-gcc34-mt", language="C++") \
-        and not conf.CheckLib("boost_regex", language="C++"):
+if not (conf.CheckLib("boost_regex-gcc43-mt", language="C++") 
+        or conf.CheckLib("boost_regex-gcc41-mt", language="C++") 
+        or conf.CheckLib("boost_regex-gcc34-mt", language="C++") 
+        ) and not conf.CheckLib("boost_regex", language="C++"):
     print >> sys.stderr, "Could not locate boost_regex library"
     Exit(1)
 if not conf.CheckLib("boost_thread-gcc34-mt", language="C++") \
+        and not conf.CheckLib("boost_thread-gcc41-mt", language="C++") \
         and not conf.CheckLib("boost_thread", language="C++"):
     print >> sys.stderr, "Could not locate boost_thread library"
     Exit(1)
 if not conf.CheckLib("boost_signals-gcc34-mt", language="C++") \
+        and not conf.CheckLib("boost_signals-gcc41-mt", language="C++") \
         and not conf.CheckLib("boost_signals", language="C++"):
     print >> sys.stderr, "Could not locate boost_signals library"
     Exit(1)
