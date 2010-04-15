@@ -1,0 +1,20 @@
+[partitioner]
+substripes = 2
+stripes = 10
+
+[frontend]
+xrootd = lsst-dev01:1094
+scratch_path = /dev/shm/qserv
+xrootd_user = qsmaster
+
+[resultdb]
+passwd = 
+db = qservResult
+unix_socket = /u1/local/mysql.sock
+host = 
+user = qsmaster
+port = 0
+
+[mysql]
+mysqlclient=
+
