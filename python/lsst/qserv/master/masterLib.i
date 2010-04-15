@@ -39,6 +39,7 @@ Access to the classes from the qserv_master library
 %apply (char *STRING, int LENGTH) { (char *str, int len) };
 //%apply (const char *STRING, int LENGTH) { (const char *str, int len) };
 %apply int *OUTPUT { int *write, int *read };
+%include "lsst/qserv/master/transaction.h"
 %include "lsst/qserv/master/xrdfile.h"
 %include "lsst/qserv/master/dispatcher.h"
 %include "lsst/qserv/master/parser.h"

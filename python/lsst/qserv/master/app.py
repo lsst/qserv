@@ -1,6 +1,7 @@
 # app package for lsst.qserv.master
 
 # Standard Python imports
+import errno
 import hashlib
 from itertools import imap
 import os
@@ -20,11 +21,21 @@ from lsst.qserv.master import geometry
 from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap
 
 # SWIG'd functions
+
+# xrdfile - raw xrootd access
 from lsst.qserv.master import xrdOpen, xrdClose, xrdRead, xrdWrite
 from lsst.qserv.master import xrdLseekSet, xrdReadStr
 from lsst.qserv.master import xrdReadToLocalFile, xrdOpenWriteReadSaveClose
+
 from lsst.qserv.master import charArray_frompointer, charArray
-from lsst.qserv.master import newSession
+
+# transaction
+from lsst.qserv.master import TransactionSpec
+
+# Dispatcher 
+from lsst.qserv.master import newSession, submitQuery, initDispatcher
+
+# Parser
 from lsst.qserv.master import ChunkMapping, SqlSubstitution
 
 
@@ -54,7 +65,6 @@ listen()
 ######################################################################
 def makePmap():
     c = lsst.qserv.master.config.config
-    print >>sys.stderr, dir(c), type(c), c
     stripes = c.getint("partitioner", "stripes")
     substripes = c.getint("partitioner", "substripes")
     if (stripes < 1) or (substripes < 1):
@@ -430,6 +440,48 @@ class QueryPreparer:
         
         return [tableName,q]
 
+class QueryCollater:
+    def __init__(self, sessionId):
+        self.sessionId = sessionId
+        self.inFlight = {}
+        self.scratchPath = None
+        self._setupScratch()
+        pass
+    
+    def submit(self, chunk, q):
+        saveName = self._saveName(chunk)
+        self.inFlight[chunk] = submitQuery(self.sessionId, chunk, q, saveName)
+        print >>sys.stderr, "Chunk %d to %s" % (chunk, saveName)
+        #state = joinSession(self.sessionId)
+
+    def finish(self):
+        # FIXME: make sure all subqueries finish.
+        # Merge all results.
+        pass # Not implemented yet
+
+    def _saveName(self, chunk):
+        dumpName = "%s_%s.dump" % (str(self.sessionId), str(chunk))
+        return os.path.join(self.scratchPath, dumpName)
+
+    def _setupScratch(self):
+        # Make sure scratch directory exists.
+        cm = lsst.qserv.master.config
+        c = lsst.qserv.master.config.config
+
+        scratchPath = c.get("frontend", "scratch_path")
+        try: # Make sure the path is there
+            os.makedirs(scratchPath)
+        except OSError, exc: 
+            if exc.errno == errno.EEXIST:
+                pass
+            else: 
+                raise cm.ConfigError("Bad scratch_dir")
+        # Make sure we can read/write the dir.
+        if not os.access(scratchPath, os.R_OK | os.W_OK):
+            raise cm.ConfigError("No access for scratch_path")
+        self.scratchPath = scratchPath
+        pass
+    
 class HintedQueryAction:
     def __init__(self, query, hints, pmap):
         self.queryStr = query.strip()# Pull trailing whitespace
@@ -455,7 +507,12 @@ class HintedQueryAction:
             self.mapping.addChunkKey("Object")
         dummyMap = self.mapping.getMapReference(2,3)
         self.substitution = SqlSubstitution(query, dummyMap)
+        self.sessionId = newSession()
+        self.collater = QueryCollater(self.sessionId)
         pass
+
+    def _headerFunc(self, subc=[]):
+        return '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
 
     def _parseRegions(self, hints):
         return [SphericalBox([0,0],[1,1])] # Hardcode right now.
@@ -489,23 +546,32 @@ class HintedQueryAction:
         return query ## FIXME Should expand-as-we-go
 
     def invoke(self):
-        self.sessionId = newSession()
+
         inFlight = self.queriesInFlight # copy to local ref.
         for chunkId, subIter in self.intersectIter:
             if self.needSubChunk:
                 for subChunkId, xRegions in subIter:
+                    
                     pass
             else:
                 q = self._makeChunkQuery(chunkId)
-                print >>sys.stderr, q
+                self.collater.submit(chunkId, q)
+                print >>sys.stderr, q, "submitted"
             #i = submitQuery(sessionId, chunk, q, saveName)
                 #inFlight[chunk] = i
         #state = joinSession(self.sessionId)
         return
 
+    def getResult(self):
+        ### Not sure this is the right abstraction yet.
+        self.collater.finish()
+        
+
     def _makeChunkQuery(self, chunkId):
+        # Prefix with empty subchunk spec.
+        query = self._headerFunc() 
         ref = self.mapping.getMapReference(chunkId,0)
-        query = self.substitution.transform(ref)
+        query += self.substitution.transform(ref)
         return query
         
 

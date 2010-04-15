@@ -19,6 +19,7 @@ defaultConfig = StringIO("""\
 [frontend]
 xrootd=lsst-dev01:1094
 xrootd_user=qsmaster
+scratch_path=/dev/shm/qserv
 
 [resultdb]
 host=
@@ -31,6 +32,9 @@ passwd=
 [partitioner]
 stripes=18
 substripes=10
+
+
+
 """)
 
 
