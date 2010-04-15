@@ -1,13 +1,21 @@
 // -*- LSST-C++ -*-
 #ifndef LSST_QSERV_MASTER_THREAD_H
 #define LSST_QSERV_MASTER_THREAD_H
+
+// Standard
+#include <map>
+#include <set>
+
+// Boost
 #include "boost/thread.hpp"
 #include "boost/make_shared.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
 
+// Scalla/xrootd
 #include "XrdPosix/XrdPosixCallBack.hh"
-#include <map>
-#include <set>
+
+// Package
+#include "lsst/qserv/master/transaction.h"
 
 namespace lsst {
 namespace qserv {
@@ -65,38 +73,29 @@ private:
     int _count;
 };
 
-class TransactionSpec {
 
+class TransactionSpec::Reader {
 public:
-    std::string path;
-    std::string query;
-    int bufferSize;
-    std::string savePath;
-    
-    bool isNull() const { return path.length() == 0; }
+    Reader(std::string const& inFile);
+    ~Reader();
+    TransactionSpec getSpec();
+private:
+    void _readWholeFile(std::string const& inFile);
+    void _setupMmap(std::string const& inFile);
+    void _cleanupMmap();
+    void _advanceMmap();
 
-    class Reader {
-    public:
-	Reader(std::string const& inFile);
-	~Reader();
-	TransactionSpec getSpec();
-    private:
-	void _readWholeFile(std::string const& inFile);
-	void _setupMmap(std::string const& inFile);
-	void _cleanupMmap();
-	void _advanceMmap();
+    char* _rawContents;
+    char* _mmapChunk;
+    int _mmapFd;
+    int _mmapOffset;
+    int _mmapChunkSize;
+    int _mmapDefaultSize;
+    int _mmapMinimum;
+    int _rawLength;
+    int _pos;
+};    
 
-	char* _rawContents;
-	char* _mmapChunk;
-	int _mmapFd;
-	int _mmapOffset;
-	int _mmapChunkSize;
-	int _mmapDefaultSize;
-	int _mmapMinimum;
-	int _rawLength;
-	int _pos;
-    };    
-};
 
 class TransactionCallable {
 public:

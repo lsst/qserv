@@ -334,3 +334,8 @@ ChunkMapping::Map ChunkMapping::getMapping(int chunk, int subChunk) {
     }
     return m;
 }
+
+ChunkMapping::Map const& ChunkMapping::getMapReference(int chunk, int subChunk) {
+    _instanceMap = getMapping(chunk, subChunk);
+    return _instanceMap;
+}

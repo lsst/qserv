@@ -129,14 +129,14 @@ class TestAppFunctions(unittest.TestCase):
         stats = queryTimer[name]
         stats["overallStart"] = time.time()
         stats["clientInterfaceInitStart"] = time.time()
-        ci = server.ClientInterface()
+        ci = server.AppInterface()
         class Dummy:
             pass
         arg = Dummy()
         arg.args = {'q':[q]}
         stats["clientInterfaceInitFinish"] = time.time()
         stats["interfaceQueryStart"] = time.time()
-        print ci.query(arg)
+        print ci.query(arg, None)
         stats["interfaceQueryFinish"] = time.time()
         stats["overallFinish"] = time.time()
         out = open("qservMaster_timing.py","a")

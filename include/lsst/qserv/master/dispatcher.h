@@ -1,7 +1,9 @@
 #ifndef LSST_QSERV_MASTER_DISPATCHER_H
 #define LSST_QSERV_MASTER_DISPATCHER_H
 
-#include "lsst/qserv/master/thread.h" // need to refactor out.
+#include "lsst/qserv/master/transaction.h" 
+#include "lsst/qserv/master/xrdfile.h"
+
 namespace lsst {
 namespace qserv {
 namespace master {
@@ -16,7 +18,7 @@ QueryState tryJoinQuery(int session, int id);
 QueryState joinSession(int session);
 int newSession();
 void discardSession(int session);
-XrdTransResult getQueryResult(int session, int chunk);
+lsst::qserv::master::XrdTransResult getQueryResult(int session, int chunk);
 
 
 }}} // namespace lsst::qserv:master

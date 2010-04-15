@@ -21,10 +21,16 @@ xrootd=lsst-dev01:1094
 xrootd_user=qsmaster
 
 [resultdb]
-#host=localhost
-#port=8000
-unix_socket=/data/lsst/run/mysql.sock
+host=
+port=0
+unix_socket=/u1/local/mysql.sock
 db=test
+user=qsmaster
+passwd=
+
+[partitioner]
+stripes=18
+substripes=10
 """)
 
 
@@ -32,6 +38,9 @@ db=test
 config = None
 loadedFile = None
 
+######################################################################
+## Methods
+######################################################################
 def load(filename=None):
     if filename:
         _loadFile(filename)
@@ -47,7 +56,20 @@ def printTo(outHandle):
     config.write(outHandle)
     pass
 
-####################################################
+######################################################################
+## Error classes
+######################################################################
+class ConfigError(Exception):
+    """An error in qserv configuration (Bad/missing values)."""
+    def __init__(self, reason):
+        self.reason = value
+    def __str__(self):
+        return repr(self.reason)
+
+
+######################################################################
+## Local
+######################################################################
 def _initialize():
     "Perform some static initialization upon loading"
     if os.environ.has_key(envFilenameVar):

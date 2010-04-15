@@ -13,8 +13,13 @@
 // Forward
 class Substitution;
 
-// Typedefs:
-typedef std::map<std::string,std::string> StringMapping;
+typedef std::map<std::string, std::string> StringMapping;
+// class StringMapping 
+// A placeholder that SWIG can translate into a Python dict.
+// class StringMapping : public std::map<std::string,std::string> {
+// public:
+//     StringMapping(); 
+// };
 
 class Substitution {
 public:
@@ -77,7 +82,13 @@ public:
 
     ChunkMapping() {}
 
+    // Get a Mapping object
     Map getMapping(int chunk, int subChunk);
+
+    // Get a reference to this instance's Mapping, which is overwritten
+    // each time this method is called.
+    Map const& getMapReference(int chunk, int subChunk);
+
     void addChunkKey(std::string const& key) { _map[key] = CHUNK; }
     void addSubChunkKey(std::string const& key) { _map[key] = CHUNK_WITH_SUB; }
         
@@ -94,6 +105,7 @@ private:
     }
 
     ModeMap _map;
+    Map _instanceMap;
 };
 
 

@@ -1,29 +1,39 @@
+# Standard
+from itertools import ifilter
+import time
 
 # Package imports
 import app
 
-
-
+# Main AppInterface class
+#
+# We expect front-facing "normal usage" to come through this
+# interface, which is intended to make a friendly wrapper around the
+# functionality from the app module. 
 class AppInterface:
     def __init__(self, reactor=None):
         self.tracker = app.TaskTracker()
         okname = ifilter(lambda x: "_" not in x, dir(self))
-        self.publishable = filter(lambda x: hasattr(getattr(self,x), 'func_doc'), 
+        self.publishable = filter(lambda x: hasattr(getattr(self,x), 
+                                                    'func_doc'), 
                                   okname)
         self.reactor = reactor
+        self.pmap = app.makePmap()
         pass
 
     def query(self, q, hints):
         "Issue a query. q=querystring, h=hint list"
-        a = app.QueryAction(q)
-        taskId = self.tracker.track("myquery", a, flatargs['q'])
-        stats = time.qServQueryTimer[time.qServRunningName]
-        stats["appInvokeStart"] = time.time()
-        if 'lsstRunning' in dir(reactor):
-            reactor.callInThread(a.invoke3)
+        a = app.HintedQueryAction(q, hints, self.pmap)
+        # FIXME: Need to fix task tracker.
+        #taskId = self.tracker.track("myquery", a, q)
+        #stats = time.qServQueryTimer[time.qServRunningName]
+        #stats["appInvokeStart"] = time.time()
+        if 'lsstRunning' in dir(self.reactor):
+            self.reactor.callInThread(a.invoke3)
         else:
-            a.invoke3()
-            stats["appInvokeFinish"] = time.time()
+            a.invoke()
+            #stats["appInvokeFinish"] = time.time()
+        return 1 ## FIXME
         return taskId
 
     def help(self):

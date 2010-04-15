@@ -63,6 +63,9 @@ def main():
         print a.query(q)
         return
     elif options.testName:
+        # from lsst.qserv.master import testHintedParser
+        # t = testHintedParser.TestHintedParser()
+        
         suite = unittest.TestSuite()
         suite.addTest(TestHintedParser('test' + options.testName))
         unittest.TextTestRunner(verbosity=2).run(suite)

@@ -15,10 +15,20 @@ from string import Template
 
 # Package imports
 import sqlparser
+import lsst.qserv.master.config
+from lsst.qserv.master import geometry
+from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap
+
+# SWIG'd functions
 from lsst.qserv.master import xrdOpen, xrdClose, xrdRead, xrdWrite
 from lsst.qserv.master import xrdLseekSet, xrdReadStr
 from lsst.qserv.master import xrdReadToLocalFile, xrdOpenWriteReadSaveClose
 from lsst.qserv.master import charArray_frompointer, charArray
+from lsst.qserv.master import newSession
+from lsst.qserv.master import ChunkMapping, SqlSubstitution
+
+
+# Experimental interactive prompt (not currently working)
 import code, traceback, signal
 
 def debug(sig, frame):
@@ -37,18 +47,64 @@ def listen():
     signal.signal(signal.SIGUSR1, debug)  # Register handler
 listen()
 
+
+
+######################################################################
+## Methods
+######################################################################
+def makePmap():
+    c = lsst.qserv.master.config.config
+    print >>sys.stderr, dir(c), type(c), c
+    stripes = c.getint("partitioner", "stripes")
+    substripes = c.getint("partitioner", "substripes")
+    if (stripes < 1) or (substripes < 1):
+        msg = "Partitioner's stripes and substripes must be natural numbers."
+        raise lsst.qserv.master.config.ConfigError(msg)
+    p = SphericalBoxPartitionMap(stripes, substripes) 
+    return p
+
+######################################################################
+## Classes
+######################################################################
 class Persistence:
     def __init__(self):
         self._conn = None
         pass
 
+    def check(self):
+        if not self._conn:
+            self.activate()
+        if not self._conn:
+           return False
+        return True
+
     def activate(self):
-        socket = os.getenv("QSM_DBSOCK", "/data/lsst/run/mysql.sock")
-        self._conn = sql.connect(host = "localhost",
-                                 user = "test",
-                                 passwd = "",
-                                 unix_socket = socket,
-                                 db = "test")
+        config = lsst.qserv.master.config.config
+         #os.getenv("QSM_DBSOCK", "/data/lsst/run/mysql.sock")
+        socket = config.get("resultdb", "unix_socket")
+        user = config.get("resultdb", "user")
+        passwd = config.get("resultdb", "passwd")
+        host = config.get("resultdb", "host")
+        port = config.getint("resultdb", "port")
+        db = config.get("resultdb", "db")
+        try: # Socket file first
+            self._conn = sql.connect(user=user,
+                                     passwd=passwd,
+                                     unix_socket=socket,
+                                     db=db)
+        except Exception, e:
+            try:
+                self._conn = sql.connect(user=user,
+                                         passwd=passwd,
+                                         host=host,
+                                         port=port,
+                                         db=db)
+            except Exception, e2:
+                print >>sys.stderr, "Couldn't connect using file", socket, e
+                msg = "Couldn't connect using %s:%s" %(host,port)
+                print >>sys.stderr, msg, e2
+                self._conn = None
+                return
         c = self._conn.cursor()
         # should check if db exists here.
         # Database gets populated with fake data automatically, but
@@ -310,6 +366,7 @@ class XrdOperation(threading.Thread):
             stats[taskName+"Finish"] = time.time()
             return self.successful
         pass
+
 class QueryPreparer:
     def __init__(self, queryStr):
         self.queryMunger = sqlparser.QueryMunger(queryStr)
@@ -320,6 +377,8 @@ class QueryPreparer:
         self.tableTemplate = "result_%s";
         self.db = Persistence()
         pass
+
+
 
     def computePartSet(self):
         """compute the set of chunks,subchunks needed for the query.
@@ -371,8 +430,86 @@ class QueryPreparer:
         
         return [tableName,q]
 
+class HintedQueryAction:
+    def __init__(self, query, hints, pmap):
+        self.queryStr = query.strip()# Pull trailing whitespace
+        # Force semicolon to facilitate worker-side splitting
+        if self.queryStr[-1] != ";":  # Add terminal semicolon
+            self.queryStr += ";" 
+        self.pmap = pmap
+            
 
-    
+        self.isFullSky = False # Does query involves whole sky
+        self.chunkList = None # List of chunks,subchunks needed
+         ## {chunknum : subchunks, ...}
+        self._evaluateHints(self._parseRegions(hints), pmap)
+
+        # Ids for queries in this session
+        self.queriesInFlight = {}
+        ## FIXME: Integrate SQL parse tool.
+        self.mapping = ChunkMapping()
+        self.mapping.addChunkKey("Source")
+        if self.needSubChunk:
+            self.mapping.addSubChunkKey("Object")
+        else:
+            self.mapping.addChunkKey("Object")
+        dummyMap = self.mapping.getMapReference(2,3)
+        self.substitution = SqlSubstitution(query, dummyMap)
+        pass
+
+    def _parseRegions(self, hints):
+        return [SphericalBox([0,0],[1,1])] # Hardcode right now.
+
+    def _evaluateHints(self, regions, pmap):
+        """Modify self.fullSky and self.partitionCoverage according to 
+        spatial hints"""
+        self.isFullSky = False
+        self.needSubChunk = False
+        self.chunkList = None # FIXME
+        self.intersectIter = pmap.intersect(regions)
+
+         # for subChunkId, xRegions in subIter:
+         #     assert isinstance(xRegions, set)
+         #     if len(xRegions) == 0:
+         #         # the sub-chunk is completely contained in at least
+         #         # one constraint
+         #         ...
+         #     else:
+         #         # xRegions is a set of SphericalRegion objects
+         #         # partially overlapping the sub-chunk
+         #         ...
+        pass
+
+    def _expandQuery(self, chunk, subChunks):
+        """Expands the query for a given chunk and list of subchunks.
+        A single SQL query becomes, per chunk:
+        -- one whole-chunk subquery when no subchunking is needed
+        -- n subqueries, one per subchunk.
+        """
+        return query ## FIXME Should expand-as-we-go
+
+    def invoke(self):
+        self.sessionId = newSession()
+        inFlight = self.queriesInFlight # copy to local ref.
+        for chunkId, subIter in self.intersectIter:
+            if self.needSubChunk:
+                for subChunkId, xRegions in subIter:
+                    pass
+            else:
+                q = self._makeChunkQuery(chunkId)
+                print >>sys.stderr, q
+            #i = submitQuery(sessionId, chunk, q, saveName)
+                #inFlight[chunk] = i
+        #state = joinSession(self.sessionId)
+        return
+
+    def _makeChunkQuery(self, chunkId):
+        ref = self.mapping.getMapReference(chunkId,0)
+        query = self.substitution.transform(ref)
+        return query
+        
+
+
 class QueryAction:
     def __init__(self, query):
         self.queryStr = query.strip()# Pull trailing whitespace

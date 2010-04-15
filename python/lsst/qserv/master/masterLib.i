@@ -12,12 +12,16 @@ Access to the classes from the qserv_master library
 #define SWIG_FILE_WITH_INIT
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/dispatcher.h"
+#include "lsst/qserv/master/parser.h"
 %}
 
 // %include "lsst/p_lsstSwig.i"
 %include typemaps.i
 %include cstring.i
-%include carrays.i
+%include carrays.i  
+%include "std_map.i"
+%include "std_string.i"
+
 %include cdata.i
 %array_class(char, charArray);
 
@@ -36,6 +40,8 @@ Access to the classes from the qserv_master library
 //%apply (const char *STRING, int LENGTH) { (const char *str, int len) };
 %apply int *OUTPUT { int *write, int *read };
 %include "lsst/qserv/master/xrdfile.h"
+%include "lsst/qserv/master/dispatcher.h"
+%include "lsst/qserv/master/parser.h"
 
 
 // Instantiate any templates here:
