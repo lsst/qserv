@@ -3,7 +3,7 @@
 #include <list>
 #include <map>
 #include <string>
-#include "parser.h"
+#include "lsst/qserv/master/parser.h"
 
 
 //namespace test = boost::test_tools;

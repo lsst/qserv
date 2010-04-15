@@ -1,7 +1,10 @@
-#ifndef LSST_SQL_PARSER_HELPER
-#define LSST_SQL_PARSER_HELPER
+#ifndef LSST_QSERV_SQL_PARSER_BASE
+#define LSST_QSERV_SQL_PARSER_BASE
 #include "antlr/CommonAST.hpp"
-#include "boost/shared_ptr.hpp"
+
+// Abstract types to be used in the SQL grammar.
+// * Not placed in include/ 
+// * Placed with DmlSQL2.g and SqlSQL2.g, which generate .cpp and .hpp
 class VoidFourRefFunc {
 public: 
     virtual ~VoidFourRefFunc() {}
@@ -14,5 +17,5 @@ public:
 };
 
 
-#endif // LSST_SQL_PARSER_HELPER
+#endif // LSST_QSERV_SQL_PARSER_BASE
 

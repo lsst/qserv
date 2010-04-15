@@ -134,13 +134,17 @@ if hasXrootd:
     env.Append(LIBS = ["XrdPosix"])
 canBuild = canBuild and hasXrootd
 
+parserSrcs = map(lambda x: os.path.join('src', x), 
+                 ["parser.cc", "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"] )
+             
+
 pyPath = 'python/lsst/qserv/master'
 pyLib = os.path.join(pyPath, '_masterLib.so')
 srcPaths = [os.path.join('src', 'xrdfile.cc'),
             os.path.join('src', 'thread.cc'),
             os.path.join('src', 'dispatcher.cc'),
             os.path.join('src', 'xrootd.cc'),
-            os.path.join(pyPath, 'masterLib.i')]
+            os.path.join(pyPath, 'masterLib.i')] + parserSrcs
 
 
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
@@ -148,10 +152,11 @@ runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
                          ["xrdfile.cc", "runTransactions.cc", 
                           "thread.cc", "dispatcher.cc", "xrootd.cc"]),
              }
+# Lexer and Parser cpp files should have been generated with
+# "antlr -glib DmlSQL2.g SqlSQL2.g"
 testParser = { 'bin' : os.path.join('bin', 'testCppParser'),
-               'srcPaths' : map(lambda x: os.path.join('src', x), 
-                                ["parser.cc", "testCppParser.cc", 
-                                 "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"]),
+               'srcPaths' : (parserSrcs +
+                             [os.path.join("tests","testCppParser.cc")]),
                }
 if canBuild:
     env.SharedLibrary(pyLib, srcPaths)

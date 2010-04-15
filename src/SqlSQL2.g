@@ -81,6 +81,7 @@ header {
 ANTLR_USING_NAMESPACE(std)
 ANTLR_USING_NAMESPACE(antlr)
 #include "parserBase.h"
+#include "boost/shared_ptr.hpp"
 //  Global header ends here
 }
 

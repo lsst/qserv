@@ -1,12 +1,22 @@
-#include <sstream>
+// Standard
 #include <iostream>
-#include "SqlSQL2Parser.hpp"
-#include "SqlSQL2Lexer.hpp"
+#include <sstream>
+#include <list>
+
+// Boost
+#include "boost/shared_ptr.hpp"
+
+// ANTLR
 #include "antlr/AST.hpp"
 #include "antlr/CommonAST.hpp"
-#include "boost/shared_ptr.hpp"
-#include <list>
-#include "parser.h"
+
+// Package
+#include "lsst/qserv/master/parser.h"
+
+// Local (placed in src/)
+#include "SqlSQL2Parser.hpp"
+#include "SqlSQL2Lexer.hpp"
+
 
 namespace { // Anonymous
 
