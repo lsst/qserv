@@ -18,7 +18,7 @@ class TestHintedParser(unittest.TestCase):
     def testBasic(self):
 #        config.load()
         a = app.AppInterface()
-        a.query("SELECT * FROM Object WHERE bMag2 > 21.2;", None)
+        a.query("SELECT * FROM LSST.Object WHERE bMag2 > 21.2;", None)
         print "Done Query."
         pass
     

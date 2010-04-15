@@ -8,17 +8,21 @@ import os
 import cProfile as profile
 import pstats
 import random
+from subprocess import Popen, PIPE
 import sys
 import threading
 import time
-import MySQLdb as sql
 from string import Template
+
+# Mysql
+import MySQLdb as sql
 
 # Package imports
 import sqlparser
 import lsst.qserv.master.config
 from lsst.qserv.master import geometry
 from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap
+
 
 # SWIG'd functions
 
@@ -34,6 +38,7 @@ from lsst.qserv.master import TransactionSpec
 
 # Dispatcher 
 from lsst.qserv.master import newSession, submitQuery, initDispatcher
+from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
 
 # Parser
 from lsst.qserv.master import ChunkMapping, SqlSubstitution
@@ -446,19 +451,79 @@ class QueryCollater:
         self.inFlight = {}
         self.scratchPath = None
         self._setupScratch()
+        self._mergeCount = 0
+        self._setDbParams() # Sets up more db params
         pass
     
-    def submit(self, chunk, q):
+    def submit(self, chunk, table, q):
         saveName = self._saveName(chunk)
-        self.inFlight[chunk] = submitQuery(self.sessionId, chunk, q, saveName)
+        handle = submitQuery(self.sessionId, chunk, q, saveName)
+        self.inFlight[chunk] = (handle, table)
         print >>sys.stderr, "Chunk %d to %s" % (chunk, saveName)
         #state = joinSession(self.sessionId)
 
     def finish(self):
-        # FIXME: make sure all subqueries finish.
+        for (k,v) in self.inFlight.items():
+            s = tryJoinQuery(self.sessionId, v[0])
+            print "State of", k, "is", getQueryStateString(s)
+
+        s = joinSession(self.sessionId)
+        print "Final state of all queries", getQueryStateString(s)
+        
         # Merge all results.
+        for (k,v) in self.inFlight.items():
+            self._mergeTable(self._saveName(k), v[1])
+
         pass # Not implemented yet
 
+    def _setDbParams(self):
+        c = lsst.qserv.master.config.config
+        self._dbSock = c.get("resultdb", "unix_socket")
+        self._dbUser = c.get("resultdb", "user")
+        self._dbName = c.get("resultdb", "db")
+        
+        self._finalName = "resultXXX"; # FIXME: should use hash+timestamp
+        self._finalQname = "%s.%s" % (self._dbName, self._finalName)
+
+        self._mysqlBin = c.get("mysql", "mysqlclient")
+        if not self._mysqlBin:
+            self._mysqlBin = "mysql"
+
+    def _mergeTable(self, dumpFile, tableName):
+        dropSql = "DROP TABLE IF EXISTS %s;" % self._finalQname
+        createSql = "CREATE TABLE %s SELECT * FROM %s;" % (self._finalQname,
+                                                           tableName)
+        insertSql = "INSERT INTO %s SELECT * FROM %s;" % (self._finalQname,
+                                                           tableName)
+        cleanupSql = "DROP TABLE %s;" % tableName
+        
+            
+        cmdBase = "%s --socket=%s -u %s %s " % (self._mysqlBin, self._dbSock, 
+                                                self._dbUser,
+                                                self._dbName)
+        loadCmd = cmdBase + " <" + dumpFile
+        mergeSql = ""
+        self._mergeCount += 1
+        if self._mergeCount <= 1:
+            mergeSql += dropSql + createSql + "\n"
+        else:
+            mergeSql += insertSql + "\n";
+        mergeSql += cleanupSql
+        rc = os.system(loadCmd)
+        if rc != 0:
+            print "Error loading result table :", dumpFile
+        else:
+            cmdList = cmdBase.strip().split(" ")
+            p = Popen(cmdList, bufsize=0, 
+                      stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                      close_fds=True)
+            (outdata, errdata) = p.communicate(mergeSql)
+            p.stdin.close()
+            if p.wait() != 0:
+                print "Error merging (%s)." % mergeSql, outdata, errdata
+            pass
+        pass
+        
     def _saveName(self, chunk):
         dumpName = "%s_%s.dump" % (str(self.sessionId), str(chunk))
         return os.path.join(self.scratchPath, dumpName)
@@ -509,6 +574,10 @@ class HintedQueryAction:
         self.substitution = SqlSubstitution(query, dummyMap)
         self.sessionId = newSession()
         self.collater = QueryCollater(self.sessionId)
+
+        self.queryHash = hashlib.md5(query).hexdigest()[:16] 
+        self.resultTableTmpl = "r_%s" % self.queryHash + "_%s"
+        self.createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;
         pass
 
     def _headerFunc(self, subc=[]):
@@ -554,12 +623,14 @@ class HintedQueryAction:
                     
                     pass
             else:
-                q = self._makeChunkQuery(chunkId)
-                self.collater.submit(chunkId, q)
+                table = self.resultTableTmpl % str(chunkId)
+                q = self._makeChunkQuery(chunkId, table)
+                self.collater.submit(chunkId, table, q)
                 print >>sys.stderr, q, "submitted"
             #i = submitQuery(sessionId, chunk, q, saveName)
                 #inFlight[chunk] = i
         #state = joinSession(self.sessionId)
+        self.collater.finish()
         return
 
     def getResult(self):
@@ -567,11 +638,13 @@ class HintedQueryAction:
         self.collater.finish()
         
 
-    def _makeChunkQuery(self, chunkId):
+    def _makeChunkQuery(self, chunkId, table):
         # Prefix with empty subchunk spec.
-        query = self._headerFunc() 
+        query = self._headerFunc() +"\n"
         ref = self.mapping.getMapReference(chunkId,0)
+        query += self.createTableTmpl % table
         query += self.substitution.transform(ref)
+        print query
         return query
         
 

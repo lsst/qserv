@@ -164,6 +164,9 @@ private:
 
 class AsyncQueryManager {
 public:
+    typedef std::pair<int, XrdTransResult> Result;
+    typedef std::deque<Result> ResultDeque;
+
     explicit AsyncQueryManager() :_lastId(0) {}
 
     int add(TransactionSpec const& t);
@@ -171,10 +174,12 @@ public:
     bool tryJoin(int id);
     XrdTransResult const& status(int id) const;
     void joinEverything();
-
+    ResultDeque const& getFinalState() { return _results; }
     void finalizeQuery(int id,  XrdTransResult const& r);
+
 private:
     typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
+
     class printQueryMapValue {
     public:
 	printQueryMapValue(std::ostream& os_) : os(os_) {}
@@ -192,6 +197,8 @@ private:
     boost::mutex _queriesMutex;
     int _lastId;
     QueryMap _queries;
+    ResultDeque _results;
+
 };
 
 class QueryManager {

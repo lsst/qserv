@@ -224,7 +224,9 @@ void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize,
 	return;
     }
 
-    int localFileDesc = open(filename, O_CREAT|O_WRONLY|O_TRUNC);
+    int localFileDesc = open(filename, 
+			     O_CREAT|O_WRONLY|O_TRUNC,
+			     S_IRUSR|S_IWUSR);
     if(localFileDesc == -1) {
 	writeRes = -errno;
     }
@@ -233,6 +235,7 @@ void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize,
 			      static_cast<unsigned long long>(fragmentSize));
 	if(readRes <= 0) { // Done, or error.
 	    readRes = -errno;
+	    
 	    break;
 	}
 	if(writeRes >= 0) { // No error yet?

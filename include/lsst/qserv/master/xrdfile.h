@@ -14,6 +14,12 @@ struct XrdTransResult {
     int queryWrite;
     int read;
     int localWrite;  
+    bool isSuccessful() const {
+	return ((open > 0) && // Successful open
+		(queryWrite > 0) && // Some bytes sent off
+		(read >= 0) && // Some results read back
+		(localWrite > 0)); // Saved some result bytes.
+    }
 };
 	
 void xrdInit(); // Perform some library initialization (call only once).

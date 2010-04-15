@@ -16,6 +16,7 @@ int submitQuery(int session, lsst::qserv::master::TransactionSpec const& s);
 QueryState joinQuery(int session, int id);
 QueryState tryJoinQuery(int session, int id);
 QueryState joinSession(int session);
+std::string const& getQueryStateString(QueryState const& qs);
 int newSession();
 void discardSession(int session);
 lsst::qserv::master::XrdTransResult getQueryResult(int session, int chunk);

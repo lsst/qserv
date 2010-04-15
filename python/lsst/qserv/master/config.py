@@ -25,7 +25,7 @@ scratch_path=/dev/shm/qserv
 host=
 port=0
 unix_socket=/u1/local/mysql.sock
-db=test
+db=qservResult
 user=qsmaster
 passwd=
 
@@ -33,7 +33,8 @@ passwd=
 stripes=18
 substripes=10
 
-
+[mysql]
+mysqlclient=
 
 """)
 

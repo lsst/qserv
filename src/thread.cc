@@ -57,7 +57,7 @@ void qMaster::ChunkQuery::Complete(int Result) {
 	switch(_state) {
 	case WRITE_OPEN: // Opened, so we can send off the query
 	    {
-		boost::unique_lock<boost::mutex> lock(_mutex);
+		boost::lock_guard<boost::mutex> lock(_mutex);
 		_result.open = Result;
 	    }
 	    if(Result < 0) { // error? 
@@ -72,6 +72,8 @@ void qMaster::ChunkQuery::Complete(int Result) {
 	case READ_OPEN: // Opened, so we can read-back the results.
 	    if(Result < 0) { // error? 
 		_result.read = Result;
+		std::cout << "Problem reading result: read=" 
+			  << _result.read << std::endl;
 		isReallyComplete = true;
 		_state = COMPLETE;
 	    } else {
@@ -91,9 +93,20 @@ qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id,
 				qMaster::AsyncQueryManager* mgr) 
     : _spec(t), _manager(mgr), _id(id), XrdPosixCallBack() {
     assert(_manager != NULL);
+    _result.open = 0;
+    _result.queryWrite = 0;
+    _result.read = 0;
+    _result.localWrite = 0;
+    // Patch the spec to include the magic query terminator.
+    _spec.query.append(4,0); // four null bytes.
+
 }
 
 void qMaster::ChunkQuery::run() {
+    // This lock ensures that the remaining ChunkQuery::Complete() calls
+    // do not proceed until this initial step completes.
+    boost::lock_guard<boost::mutex> lock(_mutex);
+
     _state = WRITE_OPEN;
     std::cout << "Opening " << _spec.path << "\n";
     int result = qMaster::xrdOpenAsync(_spec.path.c_str(), O_WRONLY, this);
@@ -106,7 +119,6 @@ void qMaster::ChunkQuery::run() {
 	_notifyManager(); // manager should delete me.
     } else {
 	std::cout << "Waiting for " << _spec.path << "\n";
-	boost::unique_lock<boost::mutex> lock(_mutex);
 	_hash = qMaster::hashQuery(_spec.query.c_str(), 
 				   _spec.query.size());
 	
@@ -412,7 +424,7 @@ int qMaster::AsyncQueryManager::add(TransactionSpec const& t) {
 
     doctorQueryPath(ts.path);
     {
-	boost::unique_lock<boost::mutex> lock(_queriesMutex);
+	boost::lock_guard<boost::mutex> lock(_queriesMutex);
 	_queries[id] = boost::make_shared<ChunkQuery>(ts, id, this);
     }
     std::cout << "Added query id=" << id << " url=" << ts.path 
@@ -423,14 +435,15 @@ int qMaster::AsyncQueryManager::add(TransactionSpec const& t) {
 void qMaster::AsyncQueryManager::finalizeQuery(int id, 
 					       XrdTransResult const& r) {
     {
-	boost::unique_lock<boost::mutex> lock(_queriesMutex);
+	boost::lock_guard<boost::mutex> lock(_queriesMutex);
 	_queries.erase(id);
     }
-    //_results.[id] = r;
+    _results.push_back(Result(id,r));
 
 }
 
 void qMaster::AsyncQueryManager::joinEverything() {
+    _printState(std::cout);
     while(!_queries.empty()) {
 	std::cout << "Still " << _queries.size() << " in flight." << std::endl;
 	_printState(std::cout);
@@ -463,7 +476,7 @@ int qMaster::QueryManager::add(TransactionSpec const& t, int id) {
     if(t.isNull()) { return -1; }
     qMaster::TransactionCallable tc(t);
     {
-	boost::unique_lock<boost::mutex> lock(_waitingMutex);
+	boost::lock_guard<boost::mutex> lock(_waitingMutex);
 	_waiting.push_back(IdCallable(id, ManagedCallable(*this, id, t)));
     }
     _addThreadIfSpace();
@@ -479,8 +492,8 @@ qMaster::QueryManager::ManagedCallable qMaster::QueryManager::completeAndFetch(i
     TransactionSpec nullSpec;
     int nextId = -1;
     {
-	boost::unique_lock<boost::mutex> rlock(_runningMutex);
-	boost::unique_lock<boost::mutex> flock(_finishedMutex);
+	boost::lock_guard<boost::mutex> rlock(_runningMutex);
+	boost::lock_guard<boost::mutex> flock(_finishedMutex);
 	// Pull from _running
         _running.erase(id);        
 	// Insert into _finished
@@ -498,8 +511,8 @@ qMaster::QueryManager::ManagedCallable qMaster::QueryManager::completeAndFetch(i
 
 boost::shared_ptr<qMaster::QueryManager::ManagedCallable> qMaster::QueryManager::_getNextCallable() {
     boost::shared_ptr<ManagedCallable> mc; 
-    boost::unique_lock<boost::mutex> wlock(_waitingMutex);
-    boost::unique_lock<boost::mutex> rlock(_runningMutex);
+    boost::lock_guard<boost::mutex> wlock(_waitingMutex);
+    boost::lock_guard<boost::mutex> rlock(_runningMutex);
     int nextId = -1;
     // Try to pull from _waiting
     if(!_waiting.empty()) {
@@ -519,13 +532,13 @@ int qMaster::QueryManager::_getNextId() {
     // FIXME(eventually) should track ids in use and recycle ids like pids.
     static int x = 0;
     static boost::mutex mutex;
-    boost::unique_lock<boost::mutex> lock(mutex);
+    boost::lock_guard<boost::mutex> lock(mutex);
     return ++x;
 }
 
 void qMaster::QueryManager::_addThreadIfSpace() {
     {
-        boost::unique_lock<boost::mutex> lock(_callablesMutex);
+        boost::lock_guard<boost::mutex> lock(_callablesMutex);
         if(_callables.size() >= _highWaterThreads) {
             // Don't add if there are already lots of callables in flight.
             return; 
@@ -533,7 +546,7 @@ void qMaster::QueryManager::_addThreadIfSpace() {
     }
     _tryJoinAll();
     {
-        boost::unique_lock<boost::mutex> lock(_threadsMutex);
+        boost::lock_guard<boost::mutex> lock(_threadsMutex);
         if(_threads.size() < _highWaterThreads) {
             boost::shared_ptr<boost::thread> t = _startThread();
             if(t.get() != 0) {
@@ -544,7 +557,7 @@ void qMaster::QueryManager::_addThreadIfSpace() {
 }
 
 void qMaster::QueryManager::_tryJoinAll() {
-    boost::unique_lock<boost::mutex> lock(_threadsMutex);
+    boost::lock_guard<boost::mutex> lock(_threadsMutex);
     int oldsize = _threads.size();
     ThreadDeque newDeq;
     if(oldsize == 0) return;
@@ -585,13 +598,13 @@ boost::shared_ptr<boost::thread> qMaster::QueryManager::_startThread() {
 
 
 void qMaster::QueryManager::addCallable(ManagedCallable* c) {
-    boost::unique_lock<boost::mutex> lock(_callablesMutex);
+    boost::lock_guard<boost::mutex> lock(_callablesMutex);
     _callables.insert(c);
     // FIXME: is there something else to do?
 }
 
 void qMaster::QueryManager::dropCallable(ManagedCallable* c) {
-    boost::unique_lock<boost::mutex> lock(_callablesMutex);
+    boost::lock_guard<boost::mutex> lock(_callablesMutex);
     _callables.erase(c);
     // FIXME: is there something else to do?
 }
