@@ -165,7 +165,9 @@ std::string runScriptPieces(XrdSysError& e,
 
 } // anonymous namespace
 
-
+////////////////////////////////////////////////////////////////////////
+// lsst::qserv::worker::ExecEnv
+////////////////////////////////////////////////////////////////////////
 qWorker::ExecEnv& qWorker::getExecEnv() {
     static ExecEnv e;
     if(!e._isReady) {
@@ -187,64 +189,143 @@ void qWorker::ExecEnv::_setup() {
 
 }
 
+////////////////////////////////////////////////////////////////////////
+// lsst::qserv::worker::QueryRunnerManager
+////////////////////////////////////////////////////////////////////////
+qWorker::QueryRunnerArg const& qWorker::QueryRunnerManager::getQueueHead() const {
+    assert(!_queue.empty());
+    return _queue.front();
+}
 
+void qWorker::QueryRunnerManager::add(qWorker::QueryRunnerArg const& a) {
+    ++_jobTotal;
+    _queue.push_back(a);
+}
+
+void qWorker::QueryRunnerManager::popQueueHead() {
+    assert(!_queue.empty());
+    _queue.pop_front();
+}
+
+////////////////////////////////////////////////////////////////////////
+// lsst::qserv::worker::QueryRunner
+////////////////////////////////////////////////////////////////////////
 qWorker::QueryRunner::QueryRunner(XrdOucErrInfo& ei, XrdSysError& e, 
 				  std::string const& user,
-				  qWorker::ScriptMeta s, 
+				  qWorker::ScriptMeta const& s, 
 				  std::string overrideDump) 
-    :_env(getExecEnv()), _errinfo(ei), _e(e), _user(user), _meta(s) {
+    : _env(getExecEnv()), _errinfo(ei), _e(e), _user(user), _meta(s) {
 	if(!overrideDump.empty()) {
 	    _meta.resultPath = overrideDump;   
 	}
 }
-    
-bool qWorker::QueryRunner::operator()() {
-        // Do not print query-- could be multi-megabytes.
-	std::string dbDump = (Pformat("Db = %1%, dump = %2%")
-			      % _meta.dbName % _meta.resultPath).str();
-	_e.Say((Pformat("(fileobj:%1%) %2%")
-		     % (void*)(this) % dbDump).str().c_str());
 
-	if (qWorker::dumpFileExists(_meta.resultPath)) {
-	    _e.Say((Pformat("Reusing pre-existing dump = %1%")
-			 % _meta.resultPath).str().c_str());
-	    // The system should probably catch this earlier.
-	    getTracker().notify(_meta.hash, ErrorPair(0,""));
-	    return true;
+qWorker::QueryRunner::QueryRunner(QueryRunnerArg const& a) 
+    : _env(getExecEnv()), _errinfo(a.ei), _e(a.e), _user(a.user), _meta(a.s) {
+	if(!a.overrideDump.empty()) {
+	    _meta.resultPath = a.overrideDump;   
 	}
-	
-	if (!_runScript(_meta.script, _meta.dbName)) {
-	    _e.Say((Pformat("(FinishFail:%1%) %2%")
-			 % (void*)(this) % dbDump).str().c_str());
-	    getTracker().notify(_meta.hash,
-				ErrorPair(-1,"Script exec failure"));
-	    return false;
-	} else {
-	    _e.Say((Pformat("(FinishOK:%1%) %2%")
-			 % (void*)(this) % dbDump).str().c_str());
-	}
+}
+
+void qWorker::QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
+    // _env should be identical since it's static (for sure?).
+    //_errinfo and _e should be tied to the MySqlFs instance and constant(?)
+    _user = a.user;
+    _meta = a.s;
+    if(!a.overrideDump.empty()) {
+	_meta.resultPath = a.overrideDump;   
+    }
+}
+
+bool qWorker::QueryRunner::_act() {
+    char msg[] = "Exec in flight for Db = %1%, dump = %2%";
+    _e.Say((Pformat(msg) % _meta.dbName % _meta.resultPath).str().c_str());
+
+    // Do not print query-- could be multi-megabytes.
+    std::string dbDump = (Pformat("Db = %1%, dump = %2%")
+			  % _meta.dbName % _meta.resultPath).str();
+    _e.Say((Pformat("(fileobj:%1%) %2%")
+	    % (void*)(this) % dbDump).str().c_str());
+
+    if (qWorker::dumpFileExists(_meta.resultPath)) {
+	_e.Say((Pformat("Reusing pre-existing dump = %1%")
+		% _meta.resultPath).str().c_str());
+	// The system should probably catch this earlier.
 	getTracker().notify(_meta.hash, ErrorPair(0,""));
 	return true;
+    }
+	
+    if (!_runScript(_meta.script, _meta.dbName)) {
+	_e.Say((Pformat("(FinishFail:%1%) %2%")
+		% (void*)(this) % dbDump).str().c_str());
+	getTracker().notify(_meta.hash,
+			    ErrorPair(-1,"Script exec failure"));
+	return false;
+    } 
+
+    _e.Say((Pformat("(FinishOK:%1%) %2%")
+	    % (void*)(this) % dbDump).str().c_str());
+    getTracker().notify(_meta.hash, ErrorPair(0,""));
+    return true;
+}
+
+bool qWorker::QueryRunner::operator()() {
+    bool haveWork = true;
+    Manager& mgr = getMgr();
+    {
+	boost::lock_guard<boost::mutex> m(mgr.getMutex());
+	mgr.addRunner();
+	_e.Say((Pformat("(Queued: %1%, running: %2%)")
+		% mgr.getQueueLength() % mgr.getRunnerCount()).str().c_str());
+	
+    }
+    while(haveWork) {
+	_act();
+	{
+	    boost::lock_guard<boost::mutex> m(mgr.getMutex());
+	    _e.Say((Pformat("(Looking for work... Queued: %1%, running: %2%)")
+		    % mgr.getQueueLength() 
+		    % mgr.getRunnerCount()).str().c_str());
+
+	    if(mgr.hasSpace() && (mgr.getQueueLength() > 0)) {
+		_setNewQuery(mgr.getQueueHead()); // Switch to new query
+		mgr.popQueueHead();
+	    } else {
+		mgr.dropRunner();
+		haveWork = false;
+	    }
+	}
+	
+    } // finished with work.
+
+    return true;
 }
 
 bool qWorker::QueryRunner::_isExecutable(std::string const& execFile) {
      return 0 == ::access(execFile.c_str(), X_OK);
 }
 
-bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName, 
-					     std::string const& dumpFile) {
-
-    // Dump a database to a dumpfile.
+void qWorker::QueryRunner::_mkdirP(std::string const& filePath) {
+    // Quick and dirty mkdir -p functionality.  No error checking.
     std::string::size_type pos = 0;
     struct stat statbuf;
-    while ((pos = dumpFile.find('/', pos + 1)) != std::string::npos) {
-        std::string dir(dumpFile, 0, pos);
+    while ((pos = filePath.find('/', pos + 1)) != std::string::npos) {
+        std::string dir(filePath, 0, pos);
         if (::stat(dir.c_str(), &statbuf) == -1) {
             if (errno == ENOENT) {
                 mkdir(dir.c_str(), 0777);
             }
         }
     }
+}
+
+bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName, 
+					     std::string const& dumpFile) {
+
+    // Dump a database to a dumpfile.
+    
+    // Make sure the path exists
+    _mkdirP(dumpFile);
 
     if(!_isExecutable(_env.getMysqldumpPath())) {
 	// Shell exec will crash a boost test case badly in this case.
@@ -252,14 +333,18 @@ bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName,
     }
     std::string cmd = _env.getMysqldumpPath() + (Pformat(
             " --compact --add-locks --create-options --skip-lock-tables"
-            " --result-file=%1% %2%")
-                       % dumpFile % dbName).str();
+	    " --socket=%1%"
+            " --result-file=%2% %3%")
+            % _env.getSocketFilename() % dumpFile % dbName).str();
+    _e.Say((Pformat("dump cmdline: %1%") % cmd).str().c_str());
+
     _e.Say((Pformat("TIMING,%1%QueryDumpStart,%2%")
 	    % _scriptId % ::time(NULL)).str().c_str());
     int cmdResult = system(cmd.c_str());
 
     _e.Say((Pformat("TIMING,%1%QueryDumpFinish,%2%")
 	    % _scriptId % ::time(NULL)).str().c_str());
+
     if (cmdResult != 0) {
 	_errinfo.setErrInfo(errno, ("Unable to dump database " + dbName +
 				    " to " + dumpFile).c_str());
@@ -271,15 +356,23 @@ bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName,
 bool qWorker::QueryRunner::_runScript(
     std::string const& script, std::string const& dbName) {
     DbHandle db;
+    int subChunkCount = 0;
+
     _scriptId = dbName.substr(0, 6);
     _e.Say((Pformat("TIMING,%1%ScriptStart,%2%")
                  % _scriptId % ::time(NULL)).str().c_str());
+
+    //    _e.Say((Pformat("Trying connect Mysql using %1%") 
+    //		% _env.getSocketFilename()).str().c_str());
 
     if (mysql_real_connect(db.get(), 0, _user.c_str(), 0, 0, 0, 
 			   _env.getSocketFilename().c_str(),
                            CLIENT_MULTI_STATEMENTS) == 0) {
         _errinfo.setErrInfo(
             EIO, ("Unable to connect to MySQL as " + _user).c_str());
+
+	_e.Say((Pformat("Cfg error! connect Mysql as %1% using %2%") 
+		% _env.getSocketFilename() % _user).str().c_str());
         return false;
     }
 
@@ -287,17 +380,23 @@ bool qWorker::QueryRunner::_runScript(
         runQuery(db.get(), "DROP DATABASE IF EXISTS " + dbName);
     if (result.size() != 0) {
         _errinfo.setErrInfo(EIO, result.c_str());
+	_e.Say((Pformat("Cfg error! couldn't drop resultdb. %1%.")
+		% result).str().c_str());
         return false;
     }
 
     result = runQuery(db.get(), "CREATE DATABASE " + dbName);
     if (result.size() != 0) {
         _errinfo.setErrInfo(EIO, result.c_str());
+	_e.Say((Pformat("Cfg error! couldn't create resultdb. %1%.") 
+		% result).str().c_str());
         return false;
     }
 
     if (mysql_select_db(db.get(), dbName.c_str()) != 0) {
         _errinfo.setErrInfo(EIO, ("Unable to select database " + dbName).c_str());
+	_e.Say((Pformat("Cfg error! couldn't select resultdb. %1%.") 
+		% result).str().c_str());
         return false;
     }
 
@@ -323,6 +422,7 @@ bool qWorker::QueryRunner::_runScript(
         cleanupScript +=
             (Pformat(CLEANUP_SUBCHUNK_SCRIPT)
              % _meta.chunkId % subChunk).str() + "\n";
+	++subChunkCount;
     }
     _e.Say((Pformat("TIMING,%1%QueryFormatFinish,%2%")
                  % _scriptId % ::time(NULL)).str().c_str());

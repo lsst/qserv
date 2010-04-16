@@ -102,6 +102,19 @@ private:
 qWorker::Semaphore WriteCallable::_sema(2);
 
 
+bool flushOrQueue(qWorker::QueryRunnerArg const& a)  {
+    qWorker::QueryRunner::Manager& mgr = qWorker::QueryRunner::getMgr();
+    {
+	boost::lock_guard<boost::mutex> m(mgr.getMutex());
+	if(mgr.hasSpace()) {
+	    // Spawn.
+	    launchThread(qWorker::QueryRunner(a));
+	} else {
+	    mgr.add(a);
+	}
+    }
+    return true;
+}
 
 
 static int findChunkNumber(char const* path) {
@@ -179,7 +192,13 @@ int qWorker::MySqlFsFile::close(void) {
                  % _chunkId % _userName).str().c_str());
     if((_fileClass == COMBO)  ||
        ((_fileClass == TWO_READ) && _hasRead) )	{
+	// Get rid of the news.
+	std::string hash = _stripPath(_dumpName);
+	QueryRunner::getTracker().clearNews(hash);
+
 	// Must remove dump file while we are doing the single-query workaround
+	// _eDest->Say((Pformat("Not Removing dump file(%1%)")
+	// 		 % _dumpName ).str().c_str());
 	int result = ::unlink(_dumpName.c_str());
 	if(result != 0) {
 	    _eDest->Say((Pformat("Error removing dump file(%1%): %2%")
@@ -393,13 +412,9 @@ bool qWorker::MySqlFsFile::_flushWrite() {
 }
 
 bool qWorker::MySqlFsFile::_flushWriteDetach() {
-    ScriptMeta s(_queryBuffer, _chunkId);
-    _script = s.script;
-    // Spawn.
-    _eDest->Say((Pformat("Unattached exec in flight for Db = %1%, dump = %2%")
-                 % s.dbName % s.resultPath ).str().c_str());
-    launchThread(QueryRunner(error, *_eDest, _userName, s));
-    return true;
+    qWorker::QueryRunnerArg a(error, *_eDest, _userName, 
+			      ScriptMeta(_queryBuffer, _chunkId));
+    return flushOrQueue(a);
 }
 
 bool qWorker::MySqlFsFile::_flushWriteSync() {
