@@ -19,23 +19,37 @@ class AppInterface:
                                   okname)
         self.reactor = reactor
         self.pmap = app.makePmap()
+        self.actions = {} 
+        
         pass
 
-    def query(self, q, hints):
-        "Issue a query. q=querystring, h=hint list"
+    def queryNow(self, q, hints):
+        """Issue a query. q=querystring, h=hint list
+        @return query results
+        This executes the query, waits for completion, and returns results."""
         a = app.HintedQueryAction(q, hints, self.pmap)
+        a.invoke()
+        r = a.getResult()
+        return app.getResultTable(r)
+    
+    def query(self, q, hints):
+        """Issue a query, and return a taskId that can be used for tracking.
+        taskId is a 16 byte string, but should be treated as an 
+        opaque identifier."""
         # FIXME: Need to fix task tracker.
         #taskId = self.tracker.track("myquery", a, q)
         #stats = time.qServQueryTimer[time.qServRunningName]
         #stats["appInvokeStart"] = time.time()
+        a = app.HintedQueryAction(q, hints, self.pmap)
+        key = a.queryHash
+        self.actions[key] = a
         if 'lsstRunning' in dir(self.reactor):
-            self.reactor.callInThread(a.invoke3)
+            self.reactor.callInThread(a.invoke)
         else:
             a.invoke()
-            #stats["appInvokeFinish"] = time.time()
-        return 1 ## FIXME
-        return taskId
-
+        #stats["appInvokeFinish"] = time.time()
+        return key
+        
     def help(self):
         """A brief help message showing available commands"""
         r = "" ## self._handyHeader()

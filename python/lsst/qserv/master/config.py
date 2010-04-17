@@ -21,6 +21,10 @@ xrootd=lsst-dev01:1094
 xrootd_user=qsmaster
 scratch_path=/dev/shm/qserv
 
+[mgmtdb]
+db=qservMeta
+# Steal resultdb settings for now.
+
 [resultdb]
 host=
 port=0

@@ -78,6 +78,33 @@ def makePmap():
     p = SphericalBoxPartitionMap(stripes, substripes) 
     return p
 
+def getResultTable(tableName):
+    """A convenience function that uses the mysql client to get quick 
+    results."""
+    # Minimal sanitizing
+    tableName = tableName.strip()
+    assert not filter(lambda x: x in tableName, ["(",")",";"])
+    sqlCmd = "SELECT * FROM %s;" % tableName
+
+    # Get config
+    config = lsst.qserv.master.config.config
+    socket = config.get("resultdb", "unix_socket")
+    db = config.get("resultdb", "db")
+    mysql = config.get("mysql", "mysqlclient")
+    if not mysql:
+        mysql = "mysql"
+
+    # Execute
+    cmdList = [mysql, "--socket", socket, db]
+    p = Popen(cmdList, bufsize=0, 
+              stdin=PIPE, stdout=PIPE, close_fds=True)
+    (outdata,errdummy) = p.communicate(sqlCmd)
+    p.stdin.close()
+    if p.wait() != 0:
+        return "Error getting table %s." % tableName, outdata
+    return outdata
+    
+    
 ######################################################################
 ## Classes
 ######################################################################
@@ -213,6 +240,8 @@ class Persistence:
         return c.fetchall()    
     pass
 
+########################################################################
+
 class TaskTracker:
     def __init__(self):
         self.tasks = {}
@@ -228,12 +257,16 @@ class TaskTracker:
     def task(self, taskId):
         return self.tasks[taskId]["task"]
 
+########################################################################
+
 class SleepingThread(threading.Thread):
     def __init__(self, howlong=1.0):
         self.howlong=howlong
         threading.Thread.__init__(self)
     def run(self):
         time.sleep(self.howlong)
+
+########################################################################
 
 class XrdOperation(threading.Thread):
         def __init__(self, chunk, query, outputFunc, outputArg, resultPath):
@@ -278,7 +311,6 @@ class XrdOperation(threading.Thread):
                     break
                 pass
             return True
-
 
         def _doPostProc(self, stats, taskName):
             if self._resultBufferList:
@@ -382,6 +414,8 @@ class XrdOperation(threading.Thread):
             return self.successful
         pass
 
+########################################################################
+
 class QueryPreparer:
     def __init__(self, queryStr):
         self.queryMunger = sqlparser.QueryMunger(queryStr)
@@ -445,6 +479,80 @@ class QueryPreparer:
         
         return [tableName,q]
 
+########################################################################
+
+class RegionFactory:
+    def __init__(self):
+        self._constraintNames = {
+            "areaSpec_box" : self._handleBox,
+            "areaSpec_circle" : self._handleCircle,
+            "areaSpec_ellipse" : self._handleEllipse,
+            "areaSpec_poly": self._handleConvexPolygon
+            }
+        pass
+
+    def _handleBox(self, hList):
+        # ramin, declmin, ramax, declmax
+        assert len(hList) >= 4, "Not enough values for box"
+        bounds = map(float, hList[:4]) 
+        return (hList[4:], SphericalBox(bounds[:2], bounds[2:]))
+    def _handleCircle(self, hList):
+        # ra,decl, radius
+        assert len(hList) >= 3, "Not enough values for circle"
+        params = map(float, hList[:3]) 
+        return (hList[3:], SphericalCircle(bounds[:2], bounds[2:]))
+    def _handleEllipse(self, hList):
+        # ra,decl, majorlen,minorlen,majorangle
+        assert len(hList) >= 5, "Not enough values for ellipse"
+        params = map(float, hList[:5])
+        return (hList[5:], SphericalEllipse(params[:2], params[2],
+                                            params[3], params[4]))
+    def _handleConvexPolygon(self, hList):
+        # For now, list of vertices only, in counter-clockwise order
+        # vertex count, ra1,decl1, ra2,decl2, ra3,decl3, ... raN,declN
+        # Note that:
+        # N = vertex_count, and 
+        # N >= 3 in order to be considered a polygon.
+        count = int(h[0]) # counts are integer
+        next = 1 + (2*count)
+        assert len(hList) >= next, "Not enough values for polygon(%d)" % count
+        
+        params = map(float, hList[1 : next])
+        # Not sure if a list of 2-tuples is okay as a list of vertices.
+        return (hList[next:], SphericalConvexPolygon(zip(params[::2],
+                                                         params[1::2])))
+    def getRegionFromHint(self, hList):
+        """
+        Convert a hint string list into a list of geometry regions that
+        can be used with a partition mapper.
+        
+        @param hList a list of strings
+        @return None on error
+        @return list of spherical regions if successful
+        """
+        current = hList
+        regions = []
+        cType = None
+        try:
+            while current:
+                name = current[0]
+                if name in self._constraintNames: # spec?
+                    (current, reg) = self._constraintNames[name](current[1:])
+                    cType = name
+                elif cType: # No spec?  Retry with previous type
+                    (current, reg) = self._constraintNames[cType](current)
+                else: # No previous type, and no current match--> error
+                    self.errorDesc = "No hint name found."
+                    return None
+                regions.append(reg)
+        except Exception, e:
+            self.errorDesc = e.message
+            return None
+
+        return regions
+                                          
+########################################################################
+
 class QueryCollater:
     def __init__(self, sessionId):
         self.sessionId = sessionId
@@ -474,7 +582,11 @@ class QueryCollater:
         for (k,v) in self.inFlight.items():
             self._mergeTable(self._saveName(k), v[1])
 
-        pass # Not implemented yet
+
+    def getResultTableName(self):
+        ## Should do sanity checking to make sure that the name has been
+        ## computed.
+        return self._finalQname
 
     def _setDbParams(self):
         c = lsst.qserv.master.config.config
@@ -547,52 +659,67 @@ class QueryCollater:
         self.scratchPath = scratchPath
         pass
     
+########################################################################
+
 class HintedQueryAction:
     def __init__(self, query, hints, pmap):
         self.queryStr = query.strip()# Pull trailing whitespace
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
-        self.pmap = pmap
-            
+        self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:16] 
 
-        self.isFullSky = False # Does query involves whole sky
-        self.chunkList = None # List of chunks,subchunks needed
+        self._pmap = pmap            
+        self._isFullSky = False # Does query involves whole sky
+        self._chunkList = None # List of chunks,subchunks needed
          ## {chunknum : subchunks, ...}
         self._evaluateHints(self._parseRegions(hints), pmap)
 
         # Ids for queries in this session
-        self.queriesInFlight = {}
-        ## FIXME: Integrate SQL parse tool.
-        self.mapping = ChunkMapping()
-        self.mapping.addChunkKey("Source")
-        if self.needSubChunk:
-            self.mapping.addSubChunkKey("Object")
-        else:
-            self.mapping.addChunkKey("Object")
-        dummyMap = self.mapping.getMapReference(2,3)
-        self.substitution = SqlSubstitution(query, dummyMap)
-        self.sessionId = newSession()
-        self.collater = QueryCollater(self.sessionId)
+        self._queriesInFlight = {}
 
-        self.queryHash = hashlib.md5(query).hexdigest()[:16] 
-        self.resultTableTmpl = "r_%s" % self.queryHash + "_%s"
-        self.createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;
+        self._mapping = ChunkMapping()         # Table remapping
+        self._mapping.addChunkKey("Source")
+        if self._needSubChunk:
+            self._mapping.addSubChunkKey("Object")
+        else:
+            self._mapping.addChunkKey("Object")
+        dummyMap = self._mapping.getMapReference(2,3)
+        self._substitution = SqlSubstitution(query, dummyMap)
+        self._sessionId = newSession()
+        self._collater = QueryCollater(self._sessionId)
+
+
+        self._resultTableTmpl = "r_%s" % self.queryHash + "_%s"
+        self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;
         pass
 
     def _headerFunc(self, subc=[]):
         return '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
 
     def _parseRegions(self, hints):
-        return [SphericalBox([0,0],[1,1])] # Hardcode right now.
+        r = RegionFactory()
+        regs = r.getRegionFromHint(hints)
+        if regs != None:
+            return regs
+        else:
+            s = "Error parsing hint string %s, using hardcoded [0,0]-[1,1]"
+            print s % r.errorDesc 
+            return [SphericalBox([0,0],[1,1])] # Hardcode right now.
+        pass
 
     def _evaluateHints(self, regions, pmap):
         """Modify self.fullSky and self.partitionCoverage according to 
         spatial hints"""
-        self.isFullSky = False
-        self.needSubChunk = False
-        self.chunkList = None # FIXME
-        self.intersectIter = pmap.intersect(regions)
+        self._isFullSky = False
+        self._needSubChunk = False
+        self._chunkList = None # FIXME
+
+        if regions == []:
+            self._isFullSky = True
+            self._intersectIter = pmap
+        else:
+            self._intersectIter = pmap.intersect(regions)
 
          # for subChunkId, xRegions in subIter:
          #     assert isinstance(xRegions, set)
@@ -615,35 +742,32 @@ class HintedQueryAction:
         return query ## FIXME Should expand-as-we-go
 
     def invoke(self):
-
-        inFlight = self.queriesInFlight # copy to local ref.
-        for chunkId, subIter in self.intersectIter:
-            if self.needSubChunk:
+        inFlight = self._queriesInFlight # copy to local ref.
+        for chunkId, subIter in self._intersectIter:
+            if self._needSubChunk:
                 for subChunkId, xRegions in subIter:
                     
                     pass
             else:
-                table = self.resultTableTmpl % str(chunkId)
+                table = self._resultTableTmpl % str(chunkId)
                 q = self._makeChunkQuery(chunkId, table)
-                self.collater.submit(chunkId, table, q)
+                self._collater.submit(chunkId, table, q)
                 print >>sys.stderr, q, "submitted"
-            #i = submitQuery(sessionId, chunk, q, saveName)
-                #inFlight[chunk] = i
-        #state = joinSession(self.sessionId)
-        self.collater.finish()
         return
 
     def getResult(self):
-        ### Not sure this is the right abstraction yet.
-        self.collater.finish()
-        
+        """Wait for query to complete (as necessary) and then return 
+        a handle to the result."""
+        self._collater.finish()
+        table = self._collater.getResultTableName()
+        return table
 
     def _makeChunkQuery(self, chunkId, table):
         # Prefix with empty subchunk spec.
         query = self._headerFunc() +"\n"
-        ref = self.mapping.getMapReference(chunkId,0)
-        query += self.createTableTmpl % table
-        query += self.substitution.transform(ref)
+        ref = self._mapping.getMapReference(chunkId,0)
+        query += self._createTableTmpl % table
+        query += self._substitution.transform(ref)
         print query
         return query
         
