@@ -49,7 +49,32 @@ void tryAutoSubstitute() {
     }
 }
 
+void tryNnSubstitute() {
+    std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2 where o1.id != o2.id and dista(o1.ra,o1.decl,o2.ra,o2.decl) < 1;";
+    ChunkMapping c;
+    c.addChunkKey("Source");
+    c.addSubChunkKey("Object");
+    SqlSubstitution ss(stmt, c.getMapping(32,53432));
+    for(int i = 4; i < 6; ++i) {
+	std::cout << "--" << ss.transform(c.getMapping(i,3)) << std::endl;
+    }
+}
+
+void tryTriple() {
+    std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2, LSST.Source where o1.id != o2.id and dista(o1.ra,o1.decl,o2.ra,o2.decl) < 1 and Source.oid=o1.id;";
+    ChunkMapping c;
+    c.addChunkKey("Source");
+    c.addSubChunkKey("Object");
+    c.addSubChunkKey("ObjectSub");
+    SqlSubstitution ss(stmt, c.getMapping(32,53432));
+    for(int i = 4; i < 6; ++i) {
+	std::cout << "--" << ss.transform(c.getMapping(i,3)) << std::endl;
+    }
+}
+
 int main(int, char**) {
     tryAutoSubstitute();
+    tryNnSubstitute();
+    tryTriple();
     return 0;
 }

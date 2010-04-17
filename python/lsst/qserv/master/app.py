@@ -567,7 +567,7 @@ class QueryCollater:
         saveName = self._saveName(chunk)
         handle = submitQuery(self.sessionId, chunk, q, saveName)
         self.inFlight[chunk] = (handle, table)
-        print >>sys.stderr, "Chunk %d to %s" % (chunk, saveName)
+        print "Chunk %d to %s    (%s)" % (chunk, saveName, table)
         #state = joinSession(self.sessionId)
 
     def finish(self):

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <list>
+#include <deque>
 
 // Boost
 #include "boost/shared_ptr.hpp"
@@ -50,6 +51,42 @@ public:
 	a->setText("AwesomeTable");
     }
 };
+    
+    template <typename AnAst>
+    std::string walkTree(AnAst r) {
+	//DFS walk?
+	// Print child (child will print siblings)
+	std::string result;
+	RefAST c = r->getFirstChild();
+	if(c.get()) {
+	    result = walkTree(c);
+	}
+	// Now print sibling(s)
+	RefAST s = r->getNextSibling();
+	if(s.get()) {
+	    if(!result.empty()) result += " ";
+	    result += walkTree(s);
+	}
+	if(!result.empty()) result = " " + result;
+	return r->getText() + result;
+	
+    }
+
+    template <typename AnAst, typename Visitor>
+    void walkTreeVisit(AnAst r, Visitor& v) {
+	//DFS walk?
+	v(r);
+	RefAST c = r->getFirstChild();
+	if(c.get()) {
+	    walkTreeVisit(c, v);
+	}
+	// Now print sibling(s)
+	RefAST s = r->getNextSibling();
+	if(s.get()) {
+	    walkTreeVisit(s, v);
+	}
+	
+    }
 
 class Templater {
 public:
@@ -97,6 +134,95 @@ public:
     private:
 	Templater& _templater;
     };
+    struct TypeVisitor {
+    public:
+	void operator()(RefAST& a) {
+	    std::cout << "(" << a->getText() << " " 
+		      << a->getType() << " " 
+		      << a->typeName()
+		      << ") " << std::endl;
+	}
+    };
+    class JoinVisitor {
+    public:
+	JoinVisitor(std::string delim, std::string subPrefix) 
+	    : _delim(delim), _subPrefix(subPrefix) {}
+	void operator()(RefAST& a) {
+	    if(_isDelimited(a->getText())) {
+		_addRef(a);
+	    }
+	}
+	void applySubChunkRule() {
+	    RefMapIter e = _map.end();
+	    for(RefMapIter i = _map.begin(); i != e; ++i) {
+		if(i->second.size() > 1) {
+		    _reassignRefs(i->second);
+		}
+	    }
+	}
+    private:
+	typedef std::deque<RefAST> RefList;
+	typedef RefList::iterator RefListIter;
+	typedef std::map<std::string, RefList> RefMap;
+	typedef RefMap::value_type RefMapValue;
+	typedef RefMap::iterator RefMapIter;
+
+	void _addRef(RefAST& a) {
+	    std::string key(a->getText());
+	    if(_map.find(key) == _map.end()) {
+		_map.insert(RefMap::value_type(key,RefList()));
+	    }
+	    _map[key].push_back(a);
+	}
+	bool _isDelimited(std::string const& s) {
+	    std::string::size_type lpos = s.find(_delim);
+	    if(std::string::npos != lpos && lpos == 0) {
+		std::string::size_type rpos = s.rfind(_delim);
+		if((std::string::npos != rpos) 
+		   && (rpos == s.size()-_delim.size())) {
+		    return true;
+		}
+	    }
+	    return false;
+	}
+	void _reassignRefs(RefList& l) {
+	    RefListIter e = l.end();
+	    int num=1;
+	    for(RefListIter i = l.begin(); i != e; ++i) {
+		RefAST& r = *i;
+		std::string orig = r->getText();
+		stringstream specss; 
+		specss << _subPrefix << num++;
+		orig.insert(orig.rfind(_delim), specss.str());
+		r->setText(orig);
+	    }
+	}
+	RefMap _map;
+	std::string _delim;
+	std::string _subPrefix;
+    };
+    class TableListHandler : public VoidTwoRefFunc {
+    public: 
+	TableListHandler(Templater& t) : _templater(t) {}
+	virtual ~TableListHandler() {}
+	virtual void operator()(RefAST a, RefAST b)  {
+	    TypeVisitor t;
+	    JoinVisitor j("*?*", "_sc");
+	    walkTreeVisit(a,j);
+	    j.applySubChunkRule();
+	    //walkTreeVisit(a,t);
+	    // std::cout << "tablelist " << walkTree(a) 
+	    // 	      << "### " << walkTree(b) << " " ;
+	    // for(RefAST s = b->getNextSibling();
+	    // 	s.get(); s = s->getNextSibling()) {
+	    // 	std::cout << "sib " << walkTree(s);
+	    // }
+	    
+	    
+	}
+    private:
+	Templater& _templater;
+    };
 
     typedef std::map<std::string, char> ReMap;
     
@@ -127,24 +253,8 @@ public:
     boost::shared_ptr<ColumnHandler> getColumnHandler() {
 	return boost::shared_ptr<ColumnHandler>(new ColumnHandler(*this));
     }
-    template <typename AnAst>
-    std::string walkTree(AnAst r) {
-	//DFS walk?
-	// Print child (child will print siblings)
-	std::string result;
-	RefAST c = r->getFirstChild();
-	if(c.get()) {
-	    result = walkTree(c);
-	}
-	// Now print sibling(s)
-	RefAST s = r->getNextSibling();
-	if(s.get()) {
-	    if(!result.empty()) result += " ";
-	    result += walkTree(s);
-	}
-	if(!result.empty()) result = " " + result;
-	return r->getText() + result;
-	
+    boost::shared_ptr<TableListHandler> getTableListHandler() {
+	return boost::shared_ptr<TableListHandler>(new TableListHandler(*this));
     }
 private:
     void _processName(RefAST n) {
@@ -178,6 +288,7 @@ public:
 	_templater.setKeynames(names.begin(), names.end());
 	_parser._columnRefHandler = _templater.getColumnHandler();
 	_parser._qualifiedNameHandler = _templater.getTableHandler();
+	_parser._tableListHandler = _templater.getTableListHandler();
     }
 
     std::string getParseResult() {
@@ -243,7 +354,11 @@ std::string Substitution::transform(Mapping const& m) {
 	result += _template.substr(pos, i->position - pos);
 	// Copy substitution
 	Mapping::const_iterator s = m.find(i->name);
-	result += s->second;
+	if(s == m.end()) {
+	    result += i->name; // passthrough.
+	} else {
+	    result += s->second; // perform substitution
+	}
 	// Update position
 	pos = i->position + i->length;
     }
@@ -324,12 +439,21 @@ ChunkMapping::Map ChunkMapping::getMapping(int chunk, int subChunk) {
     ModeMap::const_iterator end = _map.end();
     std::string chunkStr = _toString(chunk);
     std::string subChunkStr = _toString(subChunk);
+    static const std::string one("1");
+    static const std::string two("2");
+    // Insert mapping for: plainchunk, plainsubchunk1, plainsubchunk2
     for(ModeMap::const_iterator i = _map.begin(); i != end; ++i) {
 	if(i->second == CHUNK) {
 	    m.insert(MapValue(i->first, i->first + "_" + chunkStr));
 	} else if (i->second == CHUNK_WITH_SUB) {
-	    m.insert(MapValue(i->first, i->first + "_" 
-			      + chunkStr + "_" + subChunkStr));
+	    // Object --> Object_chunk
+	    // Object_s1 --> Object_chunk_subchunk
+	    // Object_s2 --> Object_chunk_subchunk (FIXME: add overlap)
+	    m.insert(MapValue(i->first, i->first + "_" + chunkStr));
+	    m.insert(MapValue(i->first + _subPrefix + one, 
+			      i->first + "_" + chunkStr + "_" + subChunkStr));
+	    m.insert(MapValue(i->first + _subPrefix + two, 
+			      i->first + "_" + chunkStr + "_" + subChunkStr));
 	}
     }
     return m;

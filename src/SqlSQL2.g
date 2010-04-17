@@ -148,9 +148,16 @@ void handleQualifiedName(RefAST a, RefAST b, RefAST c) {
     }
     return; // Do-nothing placeholder
 }
-public: // Public (until we decide to use this grammar)
+void handleTableList(RefAST a, RefAST b) {
+    if(_tableListHandler.get()) {
+        (*_tableListHandler)(a, b);
+    }
+    return; // Do-nothing placeholder
+}
+public: // Public (Until the functionality is complete?)
 boost::shared_ptr<VoidThreeRefFunc> _qualifiedNameHandler;
 boost::shared_ptr<VoidFourRefFunc> _columnRefHandler;
+boost::shared_ptr<VoidTwoRefFunc> _tableListHandler;
 //  Class body inset ends here
 }
 

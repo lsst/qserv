@@ -15,6 +15,11 @@ public:
     virtual ~VoidThreeRefFunc() {}
     virtual void operator()(RefAST a, RefAST b, RefAST c) = 0;
 };
+class VoidTwoRefFunc {
+public: 
+    virtual ~VoidTwoRefFunc() {}
+    virtual void operator()(RefAST a, RefAST b) = 0;
+};
 
 
 #endif // LSST_QSERV_SQL_PARSER_BASE

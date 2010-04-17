@@ -1183,7 +1183,7 @@ from_clause :
 
 //{ Rule #--- <table_ref_list> was introduced to keep the identical fashion of <table_exp> clauses
 table_ref_list : 
-	table_ref (COMMA table_ref)*
+	a:table_ref (COMMA b:table_ref)*  {handleTableList(a_AST, b_AST);}
 ;
 //}
 

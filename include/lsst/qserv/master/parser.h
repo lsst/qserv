@@ -80,7 +80,7 @@ public:
     typedef std::map<std::string,std::string> Map;
     typedef Map::value_type MapValue;
 
-    ChunkMapping() {}
+ ChunkMapping() :_subPrefix("_sc") {}
 
     // Get a Mapping object
     Map getMapping(int chunk, int subChunk);
@@ -106,6 +106,7 @@ private:
 
     ModeMap _map;
     Map _instanceMap;
+    std::string _subPrefix;
 };
 
 
