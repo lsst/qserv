@@ -34,9 +34,9 @@ require ("xmlrpc.http")
 --                        global variables (yuck)                            --
 -------------------------------------------------------------------------------
 
-rpcHost = "http://127.0.0.1"
+rpcHost = "127.0.0.1"
 rpcPort = 7080
-rpcHP = rpcHost .. ":" .. rpcPort
+rpcHP = "http://" .. rpcHost .. ":" .. rpcPort
 
 
 -- constants (kind of)
