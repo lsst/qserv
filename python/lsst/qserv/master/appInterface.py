@@ -49,6 +49,14 @@ class AppInterface:
             a.invoke()
         #stats["appInvokeFinish"] = time.time()
         return key
+
+    def joinQuery(self, taskId):
+        """Wait for a query to finish, then return its results."""
+        if str(taskId) not in self.actions:
+            return None
+        a = self.actions[taskId]
+        r = a.getResult()
+        return r
         
     def help(self):
         """A brief help message showing available commands"""
@@ -71,6 +79,10 @@ class AppInterface:
     def results(self, taskId):
         "Get results location for a query or task. Params: taskId"
         return app.results(self.tracker, taskId)
+
+    def resultTableString(self, table):
+        """Get contents of a result table."""
+        return app.getResultTable(table)
 
 
     def reset(self):

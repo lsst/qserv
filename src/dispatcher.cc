@@ -4,10 +4,26 @@
 #include "lsst/qserv/master/dispatcher.h"
 #include "lsst/qserv/master/thread.h"
 #include "lsst/qserv/master/xrootd.h"
+#include "lsst/qserv/master/SessionManager.h"
 
 namespace qMaster = lsst::qserv::master;
 
+using lsst::qserv::master::SessionManager;
+typedef SessionManager<qMaster::AsyncQueryManager::Ptr> SessionMgr;
+typedef boost::shared_ptr<SessionMgr> SessionMgrPtr;
 namespace {
+
+    SessionMgr& getSessionManager() {
+	// Singleton for now.
+	static SessionMgrPtr sm;
+	if(sm.get() == NULL) {
+	    sm = boost::make_shared<SessionMgr>();
+	}
+	assert(sm.get() != NULL);
+	return *sm;
+    }
+
+    // Deprecated
     qMaster::QueryManager& getManager(int session) {
 	// Singleton for now. //
 	static boost::shared_ptr<qMaster::QueryManager> qm;
@@ -18,14 +34,9 @@ namespace {
     }
 
     qMaster::AsyncQueryManager& getAsyncManager(int session) {
-	// Singleton for now. //
-	static boost::shared_ptr<qMaster::AsyncQueryManager> qm;
-	if(qm.get() == NULL) {
-	    qm = boost::make_shared<qMaster::AsyncQueryManager>();
-	}
-	assert(qm.get() != NULL);
-	return *qm;
+	return *(getSessionManager().getSession(session));
     }
+
     
 }
 
@@ -149,12 +160,14 @@ std::string const& qMaster::getQueryStateString(QueryState const& qs) {
 
 
 int qMaster::newSession() {
-    return 1; // For now, always give session # 1
+    AsyncQueryManager::Ptr m = boost::make_shared<qMaster::AsyncQueryManager>();
+    int id = getSessionManager().newSession(m);
+    return id;
 }
 
 void qMaster::discardSession(int session) {
-    // FIXME
-    return; // For now, don't discard.
+    getSessionManager().discardSession(session);
+    return; 
 }
 
 qMaster::XrdTransResult qMaster::getQueryResult(int session, int chunk) {

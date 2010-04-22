@@ -166,6 +166,7 @@ class AsyncQueryManager {
 public:
     typedef std::pair<int, XrdTransResult> Result;
     typedef std::deque<Result> ResultDeque;
+    typedef boost::shared_ptr<AsyncQueryManager> Ptr;
 
     explicit AsyncQueryManager() :_lastId(0) {}
 

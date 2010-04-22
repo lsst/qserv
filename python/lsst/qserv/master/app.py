@@ -588,13 +588,19 @@ class QueryCollater:
         ## computed.
         return self._finalQname
 
+    def _getTimeStampId(self):
+        unixtime = time.time()
+        # Use the lower digits as pseudo-unique (usec, sec % 10000)
+        # FIXME: is there a better idea?
+        return str(int(1000000*(unixtime % 10000)))
+
     def _setDbParams(self):
         c = lsst.qserv.master.config.config
         self._dbSock = c.get("resultdb", "unix_socket")
         self._dbUser = c.get("resultdb", "user")
         self._dbName = c.get("resultdb", "db")
         
-        self._finalName = "resultXXX"; # FIXME: should use hash+timestamp
+        self._finalName = "result_%s" % self._getTimeStampId();
         self._finalQname = "%s.%s" % (self._dbName, self._finalName)
 
         self._mysqlBin = c.get("mysql", "mysqlclient")
@@ -687,7 +693,8 @@ class HintedQueryAction:
         self._collater = QueryCollater(self._sessionId)
 
 
-        self._resultTableTmpl = "r_%s" % self.queryHash + "_%s"
+        self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
+                                             self.queryHash) + "_%s"
         self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;
         self._insertTableTmpl = "INSERT INTO TABLE %s " ;
         pass
