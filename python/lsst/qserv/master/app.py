@@ -680,10 +680,7 @@ class HintedQueryAction:
 
         self._mapping = ChunkMapping()         # Table remapping
         self._mapping.addChunkKey("Source")
-        if self._needSubChunk:
-            self._mapping.addSubChunkKey("Object")
-        else:
-            self._mapping.addChunkKey("Object")
+        self._mapping.addSubChunkKey("Object")
         dummyMap = self._mapping.getMapReference(2,3)
         self._substitution = SqlSubstitution(query, dummyMap)
         self._sessionId = newSession()
@@ -692,6 +689,7 @@ class HintedQueryAction:
 
         self._resultTableTmpl = "r_%s" % self.queryHash + "_%s"
         self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;
+        self._insertTableTmpl = "INSERT INTO TABLE %s " ;
         pass
 
     def _headerFunc(self, subc=[]):
@@ -744,15 +742,14 @@ class HintedQueryAction:
     def invoke(self):
         inFlight = self._queriesInFlight # copy to local ref.
         for chunkId, subIter in self._intersectIter:
-            if self._needSubChunk:
-                for subChunkId, xRegions in subIter:
-                    
-                    pass
+            table = self._resultTableTmpl % str(chunkId)
+            q = None
+            if self._substitution.getChunkLevel() > 1:
+                q = self._makeSubChunkQuery(chunkId, subIter, table)
             else:
-                table = self._resultTableTmpl % str(chunkId)
                 q = self._makeChunkQuery(chunkId, table)
-                self._collater.submit(chunkId, table, q)
-                print >>sys.stderr, q, "submitted"
+            self._collater.submit(chunkId, table, q)
+            print >>sys.stderr, q, "submitted"
         return
 
     def getResult(self):
@@ -770,6 +767,27 @@ class HintedQueryAction:
         query += self._substitution.transform(ref)
         print query
         return query
+
+    def _makeSubChunkQuery(self, chunkId, subIter, table):
+        qList = [None] # Include placeholder for header
+        scList = None
+        # Extract list first.
+        if self._isFullSky:
+            scList = [x for x in subIter]
+        else:
+            scList = [sub for (sub, regions) in subIter]
+
+        pfx = None
+        for subChunkId in scList:
+            ref = self._mapping.getMapReference(chunkId, subChunkId)
+            q = self._substitution.transform(ref)
+            if pfx:
+                qList.append(pfx + q)
+            else:
+                qList.append((self._createTableTmpl % table) + q)
+                pfx = self._insertTableTmpl % table
+        qList[0] = self._headerFunc(scList)
+        return "\n".join(qList)
         
 
 

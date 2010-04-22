@@ -63,15 +63,20 @@ public:
     SqlSubstitution(std::string const& sqlStatement, Mapping const& mapping);
     
     std::string transform(Mapping const& m);
-
+    
+    /// 0: none, 1: chunk, 2: subchunk
+    bool getChunkLevel() const { return _chunkLevel; }
+    
 private:
     typedef boost::shared_ptr<Substitution> SubstPtr;
 
     void _build(std::string const& sqlStatement, Mapping const& mapping);
+    void _computeChunkLevel(bool hasChunks, bool hasSubChunks);
 
     std::string _delimiter;
     std::string _errorMsg;
     SubstPtr _substitution;
+    int _chunkLevel;
 };
 
 
@@ -89,6 +94,8 @@ public:
     // each time this method is called.
     Map const& getMapReference(int chunk, int subChunk);
 
+    // ChunkKeys: tables partitioned into chunks (not subc)
+    // SubChunkKeys: tables partitioned into chunks and subchunks.
     void addChunkKey(std::string const& key) { _map[key] = CHUNK; }
     void addSubChunkKey(std::string const& key) { _map[key] = CHUNK_WITH_SUB; }
         

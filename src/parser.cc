@@ -146,10 +146,13 @@ public:
     class JoinVisitor {
     public:
 	JoinVisitor(std::string delim, std::string subPrefix) 
-	    : _delim(delim), _subPrefix(subPrefix) {}
+	    : _delim(delim), _subPrefix(subPrefix),
+	      _hasChunks(false), _hasSubChunks(false) 
+	{}
 	void operator()(RefAST& a) {
 	    if(_isDelimited(a->getText())) {
 		_addRef(a);
+		_hasChunks = true;
 	    }
 	}
 	void applySubChunkRule() {
@@ -157,9 +160,12 @@ public:
 	    for(RefMapIter i = _map.begin(); i != e; ++i) {
 		if(i->second.size() > 1) {
 		    _reassignRefs(i->second);
+		    _hasSubChunks = true;
 		}
 	    }
 	}
+	bool getHasChunks() const { return _hasChunks; }
+	bool getHasSubChunks() const { return _hasSubChunks; }
     private:
 	typedef std::deque<RefAST> RefList;
 	typedef RefList::iterator RefListIter;
@@ -200,7 +206,11 @@ public:
 	RefMap _map;
 	std::string _delim;
 	std::string _subPrefix;
+	// May want to store chunk table names and subchunk table names.
+	bool _hasChunks;
+	bool _hasSubChunks;
     };
+
     class TableListHandler : public VoidTwoRefFunc {
     public: 
 	TableListHandler(Templater& t) : _templater(t) {}
@@ -210,18 +220,15 @@ public:
 	    JoinVisitor j("*?*", "_sc");
 	    walkTreeVisit(a,j);
 	    j.applySubChunkRule();
-	    //walkTreeVisit(a,t);
-	    // std::cout << "tablelist " << walkTree(a) 
-	    // 	      << "### " << walkTree(b) << " " ;
-	    // for(RefAST s = b->getNextSibling();
-	    // 	s.get(); s = s->getNextSibling()) {
-	    // 	std::cout << "sib " << walkTree(s);
-	    // }
-	    
-	    
+	    _hasChunks = j.getHasChunks();
+	    _hasSubChunks = j.getHasSubChunks();
 	}
+	bool getHasChunks() const { return _hasChunks; }
+	bool getHasSubChunks() const { return _hasSubChunks; }
     private:
 	Templater& _templater;
+	bool _hasChunks;
+	bool _hasSubChunks;
     };
 
     typedef std::map<std::string, char> ReMap;
@@ -288,7 +295,8 @@ public:
 	_templater.setKeynames(names.begin(), names.end());
 	_parser._columnRefHandler = _templater.getColumnHandler();
 	_parser._qualifiedNameHandler = _templater.getTableHandler();
-	_parser._tableListHandler = _templater.getTableListHandler();
+	_tableListHandler = _templater.getTableListHandler();
+	_parser._tableListHandler = _tableListHandler;
     }
 
     std::string getParseResult() {
@@ -312,6 +320,12 @@ public:
 	return std::string(); // Error.
 
     }
+    bool getHasChunks() const { 
+	return _tableListHandler->getHasChunks();
+    }
+    bool getHasSubChunks() const { 
+	return _tableListHandler->getHasSubChunks();
+    }
 
     std::string const& getError() const {
 	return _errorMsg;
@@ -324,6 +338,7 @@ private:
     SqlSQL2Parser _parser;
     std::string _delimiter;
     Templater _templater;
+    boost::shared_ptr<Templater::TableListHandler>  _tableListHandler;
 
     std::string _errorMsg;
 
@@ -423,12 +438,29 @@ void SqlSubstitution::_build(std::string const& sqlStatement,
     SqlParseRunner spr(sqlStatement, _delimiter);
     spr.setup(names);
     std::string template_ = spr.getParseResult();
-	
+
+    _computeChunkLevel(spr.getHasChunks(), spr.getHasSubChunks());
+
     if(template_.empty()) {
 	_errorMsg = spr.getError();
     }
     _substitution = SubstPtr(new Substitution(template_, _delimiter));
 	
+}
+
+void SqlSubstitution::_computeChunkLevel(bool hasChunks, bool hasSubChunks) {
+    // SqlParseRunner's TableList handler will know if it applied 
+    // any subchunk rules, or if it detected any chunked tables.
+
+    if(hasChunks) {
+	if(hasSubChunks) {
+	    _chunkLevel = 2;
+	} else {
+	    _chunkLevel = 1;
+	}
+    } else {
+	_chunkLevel = 0;
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
