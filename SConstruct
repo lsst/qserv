@@ -142,6 +142,7 @@ pyPath = 'python/lsst/qserv/master'
 pyLib = os.path.join(pyPath, '_masterLib.so')
 srcPaths = [os.path.join('src', 'xrdfile.cc'),
             os.path.join('src', 'thread.cc'),
+            os.path.join('src', "TableMerger.cc"),
             os.path.join('src', 'dispatcher.cc'),
             os.path.join('src', 'xrootd.cc'),
             os.path.join(pyPath, 'masterLib.i')] + parserSrcs

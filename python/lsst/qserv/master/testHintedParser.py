@@ -56,5 +56,16 @@ class TestHintedParser(unittest.TestCase):
         print "Done hinted query."
         print a.resultTableString(r2)
         
+    def testParallelQuery2(self):
+        a = app.AppInterface()
+        id1 = a.query(*self.basicQuery)
+        id2 = a.query(*self.hintQuery2)
+        r1 = a.joinQuery(id1)
+        print "Done fullsky query."
+        print a.resultTableString(r1)
+
+        r2 = a.joinQuery(id2)
+        print "Done hinted query."
+        print a.resultTableString(r2)
         
 

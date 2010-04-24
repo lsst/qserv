@@ -13,6 +13,7 @@ Access to the classes from the qserv_master library
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/dispatcher.h"
 #include "lsst/qserv/master/parser.h"
+#include "lsst/qserv/master/TableMerger.h"
 %}
 
 // %include "lsst/p_lsstSwig.i"
@@ -43,6 +44,7 @@ Access to the classes from the qserv_master library
 %include "lsst/qserv/master/xrdfile.h"
 %include "lsst/qserv/master/dispatcher.h"
 %include "lsst/qserv/master/parser.h"
+%include "lsst/qserv/master/TableMerger.h"
 
 
 // Instantiate any templates here:

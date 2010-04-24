@@ -42,7 +42,8 @@ from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
 
 # Parser
 from lsst.qserv.master import ChunkMapping, SqlSubstitution
-
+# Merger
+from lsst.qserv.master import TableMerger, TableMergerError, TableMergerConfig
 
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
@@ -580,7 +581,8 @@ class QueryCollater:
         
         # Merge all results.
         for (k,v) in self.inFlight.items():
-            self._mergeTable(self._saveName(k), v[1])
+            self._merger.merge(self._saveName(k), v[1])
+            #self._mergeTable(self._saveName(k), v[1])
 
 
     def getResultTableName(self):
@@ -606,6 +608,11 @@ class QueryCollater:
         self._mysqlBin = c.get("mysql", "mysqlclient")
         if not self._mysqlBin:
             self._mysqlBin = "mysql"
+        # setup C++ merger
+        mergeConfig = TableMergerConfig(self._dbName, self._finalQname, 
+                                       self._dbUser, self._dbSock, 
+                                       self._mysqlBin)
+        self._merger = TableMerger(mergeConfig)
 
     def _mergeTable(self, dumpFile, tableName):
         dropSql = "DROP TABLE IF EXISTS %s;" % self._finalQname
