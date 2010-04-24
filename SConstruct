@@ -151,7 +151,8 @@ srcPaths = [os.path.join('src', 'xrdfile.cc'),
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
              'srcPaths' : map(lambda x: os.path.join('src', x), 
                          ["xrdfile.cc", "runTransactions.cc", 
-                          "thread.cc", "dispatcher.cc", "xrootd.cc"]),
+                          "thread.cc", "TableMerger.cc",
+                          "dispatcher.cc", "xrootd.cc"]),
              }
 # Lexer and Parser cpp files should have been generated with
 # "antlr -glib DmlSQL2.g SqlSQL2.g"

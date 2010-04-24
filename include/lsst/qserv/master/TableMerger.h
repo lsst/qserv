@@ -32,17 +32,16 @@ public:
 
 class TableMerger {
 public:
-    // Workaround. SWIG doesn't support nested classes.
-    //typedef TableMergerError Error;
-    //typedef TableMergerConfig Config;
-
     TableMerger(TableMergerConfig const& c);
+
     bool merge(std::string const& dumpFile, std::string const& tableName);
     
-    TableMergerError getError() { return _error; }
+    TableMergerError const& getError() const { return _error; }
+    std::string getTargetTable() const {return _config.targetTable; }
 
 private:
     std::string _buildSql(std::string const& tableName);
+    void _fixupTargetName();
     bool _importResult(std::string const& dumpFile);
 
     static std::string const _dropSql;

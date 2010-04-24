@@ -50,23 +50,25 @@ void qMaster::initDispatcher() {
 /// @param len Query string length
 /// @param savePath File path (with name) which will store the result (file, not dir)
 /// @return a token identifying the session??? FIXME
-int qMaster::submitQuery(int session, int chunk, char* str, int len, char* savePath) {
+int qMaster::submitQuery(int session, int chunk, char* str, int len, char* savePath, std::string const& resultName) {
     TransactionSpec t;
     t.query = std::string(str, len);
     t.bufferSize = 8192000;
     t.path = qMaster::makeUrl("query", chunk);
     t.savePath = savePath;
-    return submitQuery(session, TransactionSpec(t));
+    return submitQuery(session, TransactionSpec(t), resultName);
 }
 
-int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s) {
+int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s, std::string const& resultName) {
+    int queryId = 0;
 #if 1
     AsyncQueryManager& qm = getAsyncManager(session);
+    qm.add(s, resultName); 
 #else
     QueryManager& qm = getManager(session);
+    qm.add(s); 
 #endif
-    int queryId = 0;
-    /* queryId = */ qm.add(s); 
+    /* queryId = */ 
     return queryId;
 }
 
@@ -163,6 +165,14 @@ int qMaster::newSession() {
     AsyncQueryManager::Ptr m = boost::make_shared<qMaster::AsyncQueryManager>();
     int id = getSessionManager().newSession(m);
     return id;
+}
+
+void qMaster::configureSessionMerger(int session, TableMergerConfig const& c) {
+    getAsyncManager(session).configureMerger(c);    
+}
+
+std::string qMaster::getSessionResultName(int session) {
+    return getAsyncManager(session).getMergeResultName();
 }
 
 void qMaster::discardSession(int session) {

@@ -11,11 +11,14 @@
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/thread.h"
 #include "lsst/qserv/master/xrootd.h"
+#include "lsst/qserv/master/TableMerger.h"
 
 // Xrootd
 #include "XrdPosix/XrdPosixCallBack.hh"
-using boost::make_shared;
 
+
+// Namespace modifiers
+using boost::make_shared;
 namespace qMaster = lsst::qserv::master;
 
 // Local Helpers --------------------------------------------------
@@ -415,7 +418,8 @@ void qMaster::Manager::run() {
 ////////////////////////////////////////////////////////////
 // AsyncQueryManager
 ////////////////////////////////////////////////////////////
-int qMaster::AsyncQueryManager::add(TransactionSpec const& t) {
+int qMaster::AsyncQueryManager::add(TransactionSpec const& t, 
+				    std::string const& resultName) {
     // For now, artificially limit the number of chunks in flight.
     int id = _getNextId();
     assert(id >= 0);
@@ -425,18 +429,21 @@ int qMaster::AsyncQueryManager::add(TransactionSpec const& t) {
     doctorQueryPath(ts.path);
     {
 	boost::lock_guard<boost::mutex> lock(_queriesMutex);
-	_queries[id] = boost::make_shared<ChunkQuery>(ts, id, this);
+	_queries[id] = QuerySpec(boost::make_shared<ChunkQuery>(ts, id, this),
+				 resultName);
     }
     std::cout << "Added query id=" << id << " url=" << ts.path 
 	      << " with save " << ts.savePath << "\n";
-    _queries[id]->run(); 
+    _queries[id].first->run(); 
 }
 
 void qMaster::AsyncQueryManager::finalizeQuery(int id, 
 					       XrdTransResult const& r) {
+    QuerySpec& s = _queries[id];
+    _merger->merge(s.first->getSavePath(), s.second);
     {
 	boost::lock_guard<boost::mutex> lock(_queriesMutex);
-	_queries.erase(id);
+	_queries.erase(id); //Warning! s is invalid now.
     }
     _results.push_back(Result(id,r));
 
@@ -450,6 +457,18 @@ void qMaster::AsyncQueryManager::joinEverything() {
 	sleep(1); 
     }
 }
+
+void qMaster::AsyncQueryManager::configureMerger(TableMergerConfig const& c) {
+    _merger = boost::make_shared<TableMerger>(c);
+}
+
+std::string qMaster::AsyncQueryManager::getMergeResultName() const {
+    if(_merger.get()) {
+	return _merger->getTargetTable();
+    }
+    return std::string();
+}
+
 
 void qMaster::AsyncQueryManager::_printState(std::ostream& os) {
     typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;

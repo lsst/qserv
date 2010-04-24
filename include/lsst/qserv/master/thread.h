@@ -21,7 +21,11 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
-class AsyncQueryManager; // Forward
+// Forward
+class AsyncQueryManager; 
+class TableMerger;
+class TableMergerConfig;
+
 
 template<class T> struct joinBoostThread  {
     joinBoostThread() {} 
@@ -145,6 +149,8 @@ public:
     void run();
     XrdTransResult const& results() const { return _result; }
     std::string getDesc() const;
+    std::string const& getSavePath() const { return _spec.savePath; }
+
 private:
     void _sendQuery(int fd);
     void _readResults(int fd);
@@ -162,6 +168,13 @@ private:
 };// class ChunkQuery
 
 
+//////////////////////////////////////////////////////////////////////
+// class AsyncQueryManager 
+// Babysits a related set of queries.  Issues asynchronously handles 
+// preparation, status-checking, and post-processing (if a merger has 
+// been configured).
+// 
+//////////////////////////////////////////////////////////////////////
 class AsyncQueryManager {
 public:
     typedef std::pair<int, XrdTransResult> Result;
@@ -169,24 +182,28 @@ public:
     typedef boost::shared_ptr<AsyncQueryManager> Ptr;
 
     explicit AsyncQueryManager() :_lastId(0) {}
+    void configureMerger(TableMergerConfig const& c);
 
-    int add(TransactionSpec const& t);
+    int add(TransactionSpec const& t, std::string const& resultName);
     void join(int id);
     bool tryJoin(int id);
     XrdTransResult const& status(int id) const;
     void joinEverything();
     ResultDeque const& getFinalState() { return _results; }
     void finalizeQuery(int id,  XrdTransResult const& r);
-
+    std::string getMergeResultName() const;
+    
 private:
-    typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
+    typedef std::pair<boost::shared_ptr<ChunkQuery>, std::string> QuerySpec;
+    typedef std::map<int, QuerySpec> QueryMap;
 
     class printQueryMapValue {
     public:
 	printQueryMapValue(std::ostream& os_) : os(os_) {}
 	void operator()(QueryMap::value_type const& qv) {
 	    os << "Query with id=" << qv.first;
-	    os << ": " << qv.second->getDesc() << std::endl;
+	    os << ": " << qv.second.first->getDesc() 
+	       << ", " << qv.second.second << std::endl;
 	}
 	std::ostream& os;
     };
@@ -199,7 +216,7 @@ private:
     int _lastId;
     QueryMap _queries;
     ResultDeque _results;
-
+    boost::shared_ptr<TableMerger> _merger;
 };
 
 class QueryManager {

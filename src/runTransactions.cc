@@ -36,6 +36,7 @@ void alternative() {
 	if(stopCount && (i > stopCount)) break; // Stop early for debugging.
     }
     QueryState s = qMaster::joinSession(session);
+    qMaster::discardSession(session);
 }
 void original() {
     qMaster::Manager m;

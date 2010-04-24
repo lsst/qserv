@@ -44,6 +44,7 @@ from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
 from lsst.qserv.master import ChunkMapping, SqlSubstitution
 # Merger
 from lsst.qserv.master import TableMerger, TableMergerError, TableMergerConfig
+from lsst.qserv.master import configureSessionMerger, getSessionResultName
 
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
@@ -558,8 +559,7 @@ class QueryCollater:
     def __init__(self, sessionId):
         self.sessionId = sessionId
         self.inFlight = {}
-        self.scratchPath = None
-        self._setupScratch()
+        self.scratchPath = setupResultScratch()
         self._mergeCount = 0
         self._setDbParams() # Sets up more db params
         pass
@@ -652,58 +652,126 @@ class QueryCollater:
     def _saveName(self, chunk):
         dumpName = "%s_%s.dump" % (str(self.sessionId), str(chunk))
         return os.path.join(self.scratchPath, dumpName)
+########################################################################
+def setupResultScratch():
+    # Make sure scratch directory exists.
+    cm = lsst.qserv.master.config
+    c = lsst.qserv.master.config.config
+    
+    scratchPath = c.get("frontend", "scratch_path")
+    try: # Make sure the path is there
+        os.makedirs(scratchPath)
+    except OSError, exc: 
+        if exc.errno == errno.EEXIST:
+            pass
+        else: 
+            raise cm.ConfigError("Bad scratch_dir")
+    # Make sure we can read/write the dir.
+    if not os.access(scratchPath, os.R_OK | os.W_OK):
+        raise cm.ConfigError("No access for scratch_path")
+    return scratchPath
 
-    def _setupScratch(self):
-        # Make sure scratch directory exists.
-        cm = lsst.qserv.master.config
-        c = lsst.qserv.master.config.config
+########################################################################    
+class QueryBabysitter:
+    """Watches over queries in-flight.  An instrument of query care that 
+    can be used by a client.  Unlike the collater, it doesn't do merging.
+    """
+    def __init__(self, sessionId, queryHash):
+        self._sessionId = sessionId
+        self._inFlight = {}
+        # Scratch mgmt (Consider putting somewhere else)
+        self._scratchPath = setupResultScratch()
 
-        scratchPath = c.get("frontend", "scratch_path")
-        try: # Make sure the path is there
-            os.makedirs(scratchPath)
-        except OSError, exc: 
-            if exc.errno == errno.EEXIST:
-                pass
-            else: 
-                raise cm.ConfigError("Bad scratch_dir")
-        # Make sure we can read/write the dir.
-        if not os.access(scratchPath, os.R_OK | os.W_OK):
-            raise cm.ConfigError("No access for scratch_path")
-        self.scratchPath = scratchPath
+        self._setupMerger() 
         pass
     
-########################################################################
+    def _setupMerger(self):
+        c = lsst.qserv.master.config.config
+        dbSock = c.get("resultdb", "unix_socket")
+        dbUser = c.get("resultdb", "user")
+        dbName = c.get("resultdb", "db")        
 
+        mysqlBin = c.get("mysql", "mysqlclient")
+        if not mysqlBin:
+            mysqlBin = "mysql"
+        mergeConfig = TableMergerConfig(dbName, "", 
+                                        dbUser, dbSock, 
+                                        mysqlBin)
+        configureSessionMerger(self._sessionId, mergeConfig)
+
+    def submit(self, chunk, table, q):
+        saveName = self._saveName(chunk)
+        handle = submitQuery(self._sessionId, chunk, q, saveName, table)
+        self._inFlight[chunk] = (handle, table)
+        print "Chunk %d to %s    (%s)" % (chunk, saveName, table)
+
+    def finish(self):
+        for (k,v) in self._inFlight.items():
+            s = tryJoinQuery(self._sessionId, v[0])
+            print "State of", k, "is", getQueryStateString(s)
+
+        s = joinSession(self._sessionId)
+        print "Final state of all queries", getQueryStateString(s)
+        
+
+    def getResultTableName(self):
+        ## Should do sanity checking to make sure that the name has been
+        ## computed.
+        return getSessionResultName(self._sessionId)
+
+    def _saveName(self, chunk):
+        ## Want to delegate this to the merger.
+        dumpName = "%s_%s.dump" % (str(self._sessionId), str(chunk))
+        return os.path.join(self._scratchPath, dumpName)
+
+########################################################################
+class PartitioningConfig: 
+    """ An object that stores information about the partitioning setup.
+    FIXME: construct from a db table or config file.
+    """
+    def __init__(self):
+        ## public
+        self.chunked = set(["Source"])
+        self.subchunked = set(["Object"])
+        self.chunkMapping = ChunkMapping()
+        # (setup)
+        map(self.chunkMapping.addChunkKey, self.chunked)
+        map(self.chunkMapping.addSubChunkKey, self.subchunked)
+
+    def getMapRef(self, chunk, subchunk):
+        """@return a map reference suitable for sql parsing and substitution.
+        For convenience.
+        """
+        return self.chunkMapping.getMapReference(chunk, subchunk)
+    pass
+########################################################################
 class HintedQueryAction:
+    """A HintedQueryAction encapsulates logic to prepare, execute, and 
+    retrieve results of a query that has a hint string."""
     def __init__(self, query, hints, pmap):
         self.queryStr = query.strip()# Pull trailing whitespace
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
         self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:16] 
+        self._sessionId = newSession()
+        self._babysitter = QueryBabysitter(self._sessionId, self.queryHash)
 
+        # Hint evaluation
         self._pmap = pmap            
         self._isFullSky = False # Does query involves whole sky
-        self._chunkList = None # List of chunks,subchunks needed
-         ## {chunknum : subchunks, ...}
         self._evaluateHints(self._parseRegions(hints), pmap)
 
-        # Ids for queries in this session
-        self._queriesInFlight = {}
+        # Table mapping 
+        self._pConfig = PartitioningConfig()
+        self._substitution = SqlSubstitution(query, 
+                                             self._pConfig.getMapRef(2,3))
 
-        self._mapping = ChunkMapping()         # Table remapping
-        self._mapping.addChunkKey("Source")
-        self._mapping.addSubChunkKey("Object")
-        dummyMap = self._mapping.getMapReference(2,3)
-        self._substitution = SqlSubstitution(query, dummyMap)
-        self._sessionId = newSession()
-        self._collater = QueryCollater(self._sessionId)
-
-
-        self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
-                                             self.queryHash) + "_%s"
+        ## For generating subqueries
         self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;
         self._insertTableTmpl = "INSERT INTO TABLE %s " ;
+        self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
+                                             self.queryHash) + "_%s"
         pass
 
     def _headerFunc(self, subc=[]):
@@ -724,37 +792,14 @@ class HintedQueryAction:
         """Modify self.fullSky and self.partitionCoverage according to 
         spatial hints"""
         self._isFullSky = False
-        self._needSubChunk = False
-        self._chunkList = None # FIXME
-
         if regions == []:
             self._isFullSky = True
             self._intersectIter = pmap
         else:
             self._intersectIter = pmap.intersect(regions)
-
-         # for subChunkId, xRegions in subIter:
-         #     assert isinstance(xRegions, set)
-         #     if len(xRegions) == 0:
-         #         # the sub-chunk is completely contained in at least
-         #         # one constraint
-         #         ...
-         #     else:
-         #         # xRegions is a set of SphericalRegion objects
-         #         # partially overlapping the sub-chunk
-         #         ...
         pass
 
-    def _expandQuery(self, chunk, subChunks):
-        """Expands the query for a given chunk and list of subchunks.
-        A single SQL query becomes, per chunk:
-        -- one whole-chunk subquery when no subchunking is needed
-        -- n subqueries, one per subchunk.
-        """
-        return query ## FIXME Should expand-as-we-go
-
     def invoke(self):
-        inFlight = self._queriesInFlight # copy to local ref.
         for chunkId, subIter in self._intersectIter:
             table = self._resultTableTmpl % str(chunkId)
             q = None
@@ -762,21 +807,24 @@ class HintedQueryAction:
                 q = self._makeSubChunkQuery(chunkId, subIter, table)
             else:
                 q = self._makeChunkQuery(chunkId, table)
-            self._collater.submit(chunkId, table, q)
+            self._babysitter.submit(chunkId, table, q)
+            #self._collater.submit(chunkId, table, q)
             print >>sys.stderr, q, "submitted"
         return
 
     def getResult(self):
         """Wait for query to complete (as necessary) and then return 
         a handle to the result."""
-        self._collater.finish()
-        table = self._collater.getResultTableName()
+        self._babysitter.finish()
+        table = self._babysitter.getResultTableName()
+        #self._collater.finish()
+        #table = self._collater.getResultTableName()
         return table
 
     def _makeChunkQuery(self, chunkId, table):
         # Prefix with empty subchunk spec.
         query = self._headerFunc() +"\n"
-        ref = self._mapping.getMapReference(chunkId,0)
+        ref = self._pConfig.chunkMapping.getMapReference(chunkId,0)
         query += self._createTableTmpl % table
         query += self._substitution.transform(ref)
         print query
@@ -793,7 +841,7 @@ class HintedQueryAction:
 
         pfx = None
         for subChunkId in scList:
-            ref = self._mapping.getMapReference(chunkId, subChunkId)
+            ref = self._pConfig.getMapRef(chunkId, subChunkId)
             q = self._substitution.transform(ref)
             if pfx:
                 qList.append(pfx + q)
