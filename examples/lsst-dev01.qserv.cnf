@@ -1,6 +1,11 @@
+
 [partitioner]
 substripes = 2
 stripes = 10
+
+[table]
+chunked=Source,FaintSource
+subchunked=Object
 
 [frontend]
 xrootd = lsst-dev01:1094

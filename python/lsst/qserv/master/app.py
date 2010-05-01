@@ -730,20 +730,39 @@ class PartitioningConfig:
     FIXME: construct from a db table or config file.
     """
     def __init__(self):
+        self.clear() # reset fields
+
+    def clear(self):
         ## public
-        self.chunked = set(["Source"])
-        self.subchunked = set(["Object"])
+        self.chunked = set([])
+        self.subchunked = set([])
         self.chunkMapping = ChunkMapping()
-        # (setup)
-        map(self.chunkMapping.addChunkKey, self.chunked)
-        map(self.chunkMapping.addSubChunkKey, self.subchunked)
+        pass
+
+    def applyConfig(self):
+        c = lsst.qserv.master.config.config
+        try:
+            chk = c.get("table", "chunked")
+            subchk = c.get("table", "subchunked")
+            self.chunked.update(chk.split(","))
+            self.subchunked.update(subchk.split(","))    
+        except:
+            print "Error: Bad or missing chunked/subchunked spec."
+        self._updateMap()
+        pass
 
     def getMapRef(self, chunk, subchunk):
         """@return a map reference suitable for sql parsing and substitution.
         For convenience.
         """
         return self.chunkMapping.getMapReference(chunk, subchunk)
+
+    def _updateMap(self):
+        map(self.chunkMapping.addChunkKey, self.chunked)
+        map(self.chunkMapping.addSubChunkKey, self.subchunked)
+
     pass
+
 ########################################################################
 class HintedQueryAction:
     """A HintedQueryAction encapsulates logic to prepare, execute, and 
@@ -763,7 +782,8 @@ class HintedQueryAction:
         self._evaluateHints(self._parseRegions(hints), pmap)
 
         # Table mapping 
-        self._pConfig = PartitioningConfig()
+        self._pConfig = PartitioningConfig() # Should be shared.
+        self._pConfig.applyConfig()
         self._substitution = SqlSubstitution(query, 
                                              self._pConfig.getMapRef(2,3))
 

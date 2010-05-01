@@ -37,6 +37,10 @@ passwd=
 stripes=18
 substripes=10
 
+[table]
+chunked=Source,FaintSource
+subchunked=Object
+
 [mysql]
 mysqlclient=
 
@@ -102,3 +106,8 @@ def _loadFile(filename):
 
 # Static initialization
 _initialize()
+
+# Self-test
+if __name__ == "__main__":
+    load()
+    printTo(sys.stdout)
