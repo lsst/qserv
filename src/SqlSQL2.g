@@ -154,10 +154,24 @@ void handleTableList(RefAST a, RefAST b) {
     }
     return; // Do-nothing placeholder
 }
+void handleAlias(RefAST a, RefAST b) {
+    if(_aliasHandler.get()) {
+        (*_aliasHandler)(a, b);
+    }
+    return; // Do-nothing placeholder
+}
+void handleSetFctSpec(RefAST fct) {
+    if(_setFctSpecHandler.get()) {
+        (*_setFctSpecHandler)(fct);
+    }
+    return; // Do-nothing placeholder
+}
 public: // Public (Until the functionality is complete?)
 boost::shared_ptr<VoidThreeRefFunc> _qualifiedNameHandler;
 boost::shared_ptr<VoidFourRefFunc> _columnRefHandler;
 boost::shared_ptr<VoidTwoRefFunc> _tableListHandler;
+boost::shared_ptr<VoidTwoRefFunc> _aliasHandler;
+boost::shared_ptr<VoidOneRefFunc> _setFctSpecHandler;
 //  Class body inset ends here
 }
 

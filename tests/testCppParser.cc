@@ -72,9 +72,23 @@ void tryTriple() {
     }
 }
 
+void tryAggregate() {
+    std::string stmt = "select sum(bMagF), sum(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
+    ChunkMapping c;
+    c.addChunkKey("Source");
+    c.addSubChunkKey("Object");
+    SqlSubstitution ss(stmt, c.getMapping(32,53432));
+    for(int i = 4; i < 6; ++i) {
+	std::cout << "--" << ss.transform(c.getMapping(i,3)) << std::endl;
+    }
+}
+
+
+
 int main(int, char**) {
-    tryAutoSubstitute();
-    tryNnSubstitute();
-    tryTriple();
+    //tryAutoSubstitute();
+    //tryNnSubstitute();
+    //tryTriple();
+    tryAggregate();
     return 0;
 }

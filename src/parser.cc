@@ -51,42 +51,87 @@ public:
 	a->setText("AwesomeTable");
     }
 };
-    
-    template <typename AnAst>
-    std::string walkTree(AnAst r) {
-	//DFS walk?
-	// Print child (child will print siblings)
-	std::string result;
-	RefAST c = r->getFirstChild();
-	if(c.get()) {
-	    result = walkTree(c);
-	}
-	// Now print sibling(s)
-	RefAST s = r->getNextSibling();
-	if(s.get()) {
-	    if(!result.empty()) result += " ";
-	    result += walkTree(s);
-	}
-	if(!result.empty()) result = " " + result;
-	return r->getText() + result;
-	
-    }
 
-    template <typename AnAst, typename Visitor>
-    void walkTreeVisit(AnAst r, Visitor& v) {
-	//DFS walk?
-	v(r);
-	RefAST c = r->getFirstChild();
-	if(c.get()) {
-	    walkTreeVisit(c, v);
-	}
-	// Now print sibling(s)
-	RefAST s = r->getNextSibling();
-	if(s.get()) {
-	    walkTreeVisit(s, v);
-	}
-	
+    
+template <typename AnAst>
+std::string walkTree(AnAst r) {
+    //DFS walk?
+    // Print child (child will print siblings)
+    std::string result;
+    RefAST c = r->getFirstChild();
+    if(c.get()) {
+	result = walkTree(c);
     }
+    // Now print sibling(s)
+    RefAST s = r->getNextSibling();
+    if(s.get()) {
+	if(!result.empty()) result += " ";
+	result += walkTree(s);
+    }
+    if(!result.empty()) result = " " + result;
+    return r->getText() + result;
+	
+}
+
+template <typename AnAst, typename Visitor>
+void walkTreeVisit(AnAst r, Visitor& v) {
+    //DFS walk?
+    v(r);
+    RefAST c = r->getFirstChild();
+    if(c.get()) {
+	walkTreeVisit(c, v);
+    }
+    // Now print sibling(s)
+    RefAST s = r->getNextSibling();
+    if(s.get()) {
+	walkTreeVisit(s, v);
+    }
+	
+}
+
+class TestAliasHandler : public VoidTwoRefFunc {
+public: 
+    virtual ~TestAliasHandler() {}
+    virtual void operator()(RefAST a, RefAST b)  {
+	if(b.get()) {
+	    std::cout << "Alias " << tokenText(a) 
+		      << " = " << tokenText(b) << std::endl;
+	}
+    }
+};
+
+
+class TestSetFuncHandler : public VoidOneRefFunc {
+public: 
+    typedef map<std::string, int> Map;
+    typedef Map::const_iterator MapConstIter;
+    typedef Map::iterator MapIter;
+
+    TestSetFuncHandler() {
+	_map["count"] = 1;
+	_map["avg"] = 1;
+	_map["max"] = 1;
+	_map["min"] = 1;
+	_map["sum"] = 1;
+    }
+    virtual ~TestSetFuncHandler() {}
+    virtual void operator()(RefAST a) {
+	std::cout << "Got setfunc " << walkTree(a) << std::endl;
+	//verify aggregation cmd.
+	std::string origAgg = tokenText(a);
+	MapConstIter i = _map.find(origAgg); // case-sensitivity?
+	if(i == _map.end()) {
+	    std::cout << origAgg << " is not an aggregate." << std::endl;
+	    return; // Skip.  Actually, this would be an parser bug.
+	}
+	// Extract meaning and label parts.
+	// meaning is function + arguments
+	// label is aliased name, if available, or function+arguments text otherwise.
+	//std::string label = 
+      
+    }
+    Map _map;
+};
 
 class Templater {
 public:
@@ -278,8 +323,6 @@ private:
 };
 
 
-
-
 class SqlParseRunner {
 public:
     SqlParseRunner(std::string const& statement, std::string const& delimiter) :
@@ -297,6 +340,10 @@ public:
 	_parser._qualifiedNameHandler = _templater.getTableHandler();
 	_tableListHandler = _templater.getTableListHandler();
 	_parser._tableListHandler = _tableListHandler;
+	_parser._setFctSpecHandler 
+	    = boost::shared_ptr<TestSetFuncHandler>(new TestSetFuncHandler());
+	_parser._aliasHandler 
+	    = boost::shared_ptr<TestAliasHandler>(new TestAliasHandler());
     }
 
     std::string getParseResult() {

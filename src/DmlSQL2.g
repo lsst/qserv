@@ -576,14 +576,15 @@ select_sublist :
 
 //  Rule #033 <as_clause> was incorporated in the rule #167 <derived_column>
 //{ Rule #167 <derived_column>
+// danielw: Make "as" optional to comply with MySQL.  Side effects unknown.
 derived_column : 
-	value_exp ("as" column_name)?
+	val:value_exp (("as")? lbl:column_name)? {handleAlias(val_AST, lbl_AST);}
 ;
 //}
 
 //{ Rule #630 <value_exp_primary> was reorganized to resolve ambiguities and tune performance
 value_exp_primary : 
-	  set_fct_spec
+	  fct:set_fct_spec {handleSetFctSpec(fct_AST);}
 	| case_exp 
 	| cast_spec 
 	| {LA(1) == INTRODUCER}? ((column_ref)=>column_ref | unsigned_value_spec)
