@@ -561,8 +561,8 @@ qualified_name :
 
 //{ Rule #474 <select_list>
 select_list : 
-	  ASTERISK
-	| select_sublist (COMMA select_sublist)*
+	  ASTERISK {handleSelectStar();}
+	| a:select_sublist (COMMA select_sublist)* {handleSelectList(a_AST);}
 ;
 //}
 

@@ -52,10 +52,67 @@ public:
     }
 };
 
-    
+template <typename AnAst>
+struct TrivialCheckTerm {
+    bool operator()(AnAst r, int depth) {return false; }
+};
+
+template <typename AnAst>
+struct ParenCheckTerm {
+    bool operator()(AnAst r, int depth) {
+	return (depth == 0) && (tokenText(r) == ")");
+    }
+};
+
+template <typename AnAst>
+struct SibCheckTerm {
+    SibCheckTerm(AnAst lastSib_) : lastSib(lastSib_) {}
+    bool operator()(AnAst r, int depth) {
+	return (depth == 0) && (r == lastSib);
+    }
+    AnAst lastSib;
+};
+
+template <typename AnAst>
+struct PrintVisitor {
+public:
+    void operator()(AnAst a) {
+	if(!result.empty()) {
+	    result += " " + a->getText();
+	} else {
+	    result = a->getText();
+	}
+    }
+    std::string result;
+};
+
+template <typename AnAst>
+struct CompactPrintVisitor {
+public:
+    void operator()(AnAst a) {
+	std::string s = a->getText();
+	if(!s.empty() && !result.empty()) {
+	    int last = result[result.size()-1];
+	    int next = s[0];
+	    if(shouldSeparate(last,next)) {
+		result += " ";
+	    } 
+	}
+	result += s;
+    }
+    bool shouldSeparate(int last, int next) {
+	return (isalnum(last) && isalnum(next)) // adjoining alnums
+	    || ((last == '*') && isalnum(next)) // *saf
+	    || ((next == '*') && isalnum(last)) // saf*
+	    || ((last == ')') && isalnum(next)) // )asdf
+	    ;
+    }
+    std::string result;
+};
+
 template <typename AnAst>
 std::string walkTree(AnAst r) {
-    //DFS walk?
+    //DFS walk
     // Print child (child will print siblings)
     std::string result;
     RefAST c = r->getFirstChild();
@@ -73,20 +130,87 @@ std::string walkTree(AnAst r) {
 	
 }
 
-template <typename AnAst, typename Visitor>
-void walkTreeVisit(AnAst r, Visitor& v) {
+
+template <typename AnAst, typename Visitor, typename CheckTerm>
+void walkTreeVisit(AnAst r, Visitor& v, CheckTerm& ct, int depth=0) {
     //DFS walk?
     v(r);
+    //if(ct(r,depth)) return; // On terminal, visit only.
     RefAST c = r->getFirstChild();
     if(c.get()) {
-	walkTreeVisit(c, v);
+	std::cout << "Child: " << tokenText(r) << "----" << tokenText(c) 
+		  << std::endl;
+	walkTreeVisit(c, v, ct, depth+1);
     }
     // Now print sibling(s)
     RefAST s = r->getNextSibling();
-    if(s.get()) {
-	walkTreeVisit(s, v);
+    if(s.get() && !ct(r,depth)) {
+	//	std::cout << "Sib: " << tokenText(r) << "----" << tokenText(s) 
+	//		  << std::endl;
+	walkTreeVisit(s, v, ct, depth);
     }
 	
+}
+
+template <typename AnAst, typename Visitor>
+void walkTreeVisit(AnAst r, Visitor& v) {
+    TrivialCheckTerm<AnAst> t;
+    walkTreeVisit(r, v, t);
+}
+
+template <typename AnAst>
+std::string walkTreeString(AnAst r) {
+    CompactPrintVisitor<AnAst> p;
+    TrivialCheckTerm<AnAst> t;
+    walkTreeVisit(r, p, t);
+    return p.result;
+}
+
+template <typename AnAst>
+std::string walkBoundedTreeString(AnAst r, AnAst lastSib) {
+    CompactPrintVisitor<AnAst> p;
+    SibCheckTerm<AnAst> t(lastSib);
+    walkTreeVisit(r, p, t);
+    return p.result;
+}
+
+
+template <typename AnAst>
+std::string getFuncString(AnAst r) {
+    CompactPrintVisitor<AnAst> p;
+    ParenCheckTerm<AnAst> t;
+    walkTreeVisit(r, p, t);
+    return p.result;
+}
+
+template <typename AnAst>
+AnAst getLastSibling(AnAst r) {
+    AnAst last;
+    do {
+	last = r;
+	r = r->getNextSibling();
+    } while(r.get());
+    return last;
+}
+
+RefAST collapseNodeRange(RefAST start, RefAST bound) {
+    // Destroy a node's siblings stopping (but including) a bound
+    // This is useful in patching up an AST, substituting one parse 
+    // element for another. 
+    // @return the missing fragment so the caller can save it.
+
+    // Example:
+    // RefAST someList;
+    // RefAST listBound = getLastSibling(someList)
+    // someList->setTokenText("Something new")
+    // collapseNodeRange(someList, listBound)
+    
+    // This is a simple linked-list ranged delete.
+    assert(start.get());
+    assert(bound.get());
+    RefAST dead = start->getNextSibling();
+    start->setNextSibling(bound);
+    return dead;
 }
 
 class TestAliasHandler : public VoidTwoRefFunc {
@@ -98,6 +222,17 @@ public:
 		      << " = " << tokenText(b) << std::endl;
 	}
     }
+};
+
+class TestSelectListHandler : public VoidOneRefFunc {
+public: 
+    virtual ~TestSelectListHandler() {}
+    virtual void operator()(RefAST a)  {
+	RefAST bound = getLastSibling(a);
+	std::cout << "SelectList " << walkTreeString(a) 
+		  << "--From " << a << " to " << bound << std::endl;
+    }
+    
 };
 
 
@@ -116,7 +251,7 @@ public:
     }
     virtual ~TestSetFuncHandler() {}
     virtual void operator()(RefAST a) {
-	std::cout << "Got setfunc " << walkTree(a) << std::endl;
+	std::cout << "Got setfunc " << walkTreeString(a) << std::endl;
 	//verify aggregation cmd.
 	std::string origAgg = tokenText(a);
 	MapConstIter i = _map.find(origAgg); // case-sensitivity?
@@ -132,6 +267,270 @@ public:
     }
     Map _map;
 };
+
+class AggregateMgr {
+public:
+    typedef std::pair<RefAST, RefAST> NodeBound;
+    class AliasVal {
+    public:
+	AliasVal(RefAST lbl_, RefAST meaning_) : lbl(lbl_), meaning(meaning_){}
+	RefAST lbl;
+	RefAST meaning;
+    };
+    class AggregateRecord {
+    public:
+	NodeBound lbl;
+	NodeBound meaning;
+	std::string orig; // Original
+	std::string pass; // Subquery
+	std::string fixup; // Merging/fixup
+	std::ostream& printTo(std::ostream& os) {
+	    os << "Aggregate orig=" << orig << std::endl 
+	       << "pass=" << pass  << std::endl
+	       << "fixup=" << fixup;
+	}
+    };
+    typedef std::map<RefAST, AggregateRecord> AggMap;
+    class AggBuilderIf {
+    public:
+	typedef boost::shared_ptr<AggBuilderIf> Ptr;
+	virtual AggregateRecord operator()(NodeBound const& lbl,
+					   NodeBound const& meaning) = 0;
+    };
+    class EasyAggBuilder : public AggBuilderIf {
+    public:
+	virtual AggregateRecord operator()(NodeBound const& lbl,
+					   NodeBound const& meaning) {
+	    AggregateRecord a;
+	    a.lbl = lbl;
+	    a.meaning = meaning;
+	    if(lbl.first != meaning.first) {
+		assert(lbl.second.get()); // must have bound.
+		a.orig = walkBoundedTreeString(meaning.first, lbl.second);
+	    } else {
+		a.orig = walkBoundedTreeString(meaning.first, meaning.second);
+	    }
+	    a.pass = a.orig;
+	    a.fixup = computeFixup(meaning, lbl);
+	    return a;
+	}
+	std::string computeFixup(NodeBound meaning, NodeBound lbl) {
+	    std::string agg = tokenText(meaning.first);
+	    RefAST lparen = meaning.first->getNextSibling();
+	    assert(lparen.get());
+	    RefAST paramAst = lparen->getNextSibling();
+	    assert(paramAst.get());
+	    std::string param = getFuncString(paramAst);
+	    std::string lblText = walkBoundedTreeString(lbl.first, lbl.second);
+	    // Orig: agg ( param ) lbl
+	    // Fixup: agg ( quoted-lbl) 
+	    return agg + "(`" + lblText + "`) AS `" + lblText + "`";
+	}
+    };
+    class CountAggBuilder {
+    };
+    class AvgAggBuilder {
+    };
+    
+    class SetFuncHandler : public VoidOneRefFunc {
+    public: 
+	typedef map<std::string, AggBuilderIf::Ptr> Map;
+	typedef Map::const_iterator MapConstIter;
+	typedef Map::iterator MapIter;
+
+	typedef std::deque<NodeBound> Deque;
+	typedef Deque::const_iterator DequeConstIter;
+	typedef Deque::iterator DequeIterator;
+	
+	SetFuncHandler() {
+	    _map["count"].reset();
+	    _map["avg"].reset();
+	    _map["max"].reset(new EasyAggBuilder());
+	    _map["min"].reset(new EasyAggBuilder());
+	    _map["sum"].reset(new EasyAggBuilder());
+	}
+	virtual ~SetFuncHandler() {}
+	virtual void operator()(RefAST a) {
+	    //std::cout << "---- SETFUNC: ----" << walkTreeString(a) << std::endl;
+	    std::string origAgg = tokenText(a);
+	    MapConstIter i = _map.find(origAgg); // case-sensitivity?
+	    assert(i != _map.end());
+	    _aggs.push_back(NodeBound(a, getLastSibling(a)));
+	}
+	Deque const& getAggs() const { return _aggs; }
+	Map& getProcs() { return _map; }
+    private:
+	Deque _aggs;
+	Map _map;
+    }; // class SetFuncHandler
+
+    class AliasHandler : public VoidTwoRefFunc {
+    public: 
+	typedef std::map<RefAST, NodeBound> Map;
+	typedef Map::const_iterator MapConstIter;
+	typedef Map::iterator MapIter;
+
+	AliasHandler() {}
+	virtual ~AliasHandler() {}
+	virtual void operator()(RefAST a, RefAST b)  {
+	    if(b.get()) {
+		_map[a] = NodeBound(b, getLastSibling(a));
+	    }
+	}
+	Map const& getInvAliases() const { return _map; }
+    private:
+	Map _map;
+    }; // class AliasHandler
+
+    class SelectListHandler : public VoidOneRefFunc {
+    public: 
+	class SelectStarHandler : public VoidVoidFunc {
+	public: 
+	    SelectStarHandler(SelectListHandler& h) : handler(h) {}
+	    virtual ~SelectStarHandler() {}
+	    virtual void operator()() { handler.handleSelectStar(); }
+	    SelectListHandler& handler;
+	};
+	typedef std::deque<RefAST> SelectList;
+	typedef SelectList::const_iterator SelectListConstIter;
+	typedef std::deque<SelectList> Deque;
+	SelectListHandler() : isStarFirst(false) {}
+	virtual ~SelectListHandler() {}
+	virtual void operator()(RefAST a)  {
+	    if(selectLists.size() == 0) {
+		firstSelectBound.first = a;
+		firstSelectBound.second = getLastSibling(a);
+	    }
+	    selectLists.push_back(SelectList());
+	    SelectList& sl = selectLists.back();
+	    //std::cout << "sl ";
+	    for(RefAST i = a; i.get(); 
+		i = i->getNextSibling()) { 
+		sl.push_back(i);
+		//std::cout << tokenText(i) << " ";
+	    }
+	    std::cout << std::endl;
+	    
+	}
+	void handleSelectStar() {
+	    if(selectLists.empty()) {
+		isStarFirst = true;
+	    }
+	}
+	boost::shared_ptr<SelectStarHandler> getSelectStarHandler() {
+	    typedef boost::shared_ptr<SelectStarHandler> Ptr;
+	    return Ptr(new SelectStarHandler(*this));
+	}
+	Deque selectLists;
+	NodeBound firstSelectBound;
+	bool isStarFirst;
+    }; // class SelectListHandler
+
+    AggregateMgr() : _aliaser(new AliasHandler()),
+		     _setFuncer(new SetFuncHandler()),
+		     _selectLister(new SelectListHandler()) {
+    }
+    
+    void postprocess() {
+	AliasHandler::Map const& aMap = _aliaser->getInvAliases();
+	AliasHandler::MapConstIter aEnd = aMap.end();
+	SetFuncHandler::Deque const& aggd = _setFuncer->getAggs();
+
+	for(SetFuncHandler::DequeConstIter i = aggd.begin(); 
+	    i != aggd.end(); ++i) {
+	    AliasHandler::MapConstIter f = aMap.find(i->first);
+	    std::string agg = tokenText(i->first);
+	    if(f != aEnd) {
+		//std::cout << agg << " aliased as " 
+		//<< tokenText(f->second.first) << std::endl;
+		SetFuncHandler::Map& m = _setFuncer->getProcs();
+		AggregateRecord a = (*m[agg])(f->second, *i);
+		//a.printTo(std::cout) << std::endl;
+		_aggRecords[i->first] = a;
+		
+	    } else {
+		SetFuncHandler::Map& m = _setFuncer->getProcs();
+		AggregateRecord a = (*m[agg])(*i, *i);
+		//a.printTo(std::cout) << std::endl;
+		_aggRecords[i->first] = a;
+	    }
+	}
+    }
+    void applyAggPass() {
+	std::string passText = getPassSelect();
+	if(passText == "*") {
+	    // SELECT * means we don't have to fix anything.
+	    return;
+	}
+	NodeBound const& nb = _selectLister->firstSelectBound;
+	RefAST orphans = collapseNodeRange(nb.first, nb.second);
+	nb.first->setText(passText);
+    }
+    std::string getPassSelect() {
+	if(_passSelect.empty()) {
+	    _computeSelects();
+	}
+	return _passSelect;
+    }
+    std::string getFixupSelect() {
+	if(_fixupSelect.empty()) {
+	    _computeSelects();
+	}
+	return _fixupSelect;
+	
+    }
+    void _computeSelects() {
+	// passSelect = "".join(map(lambda s: s.pass, selectList))
+	// fixupSelect = "".join(map(lambda s: s.fixup, selectList))
+	if(_selectLister->isStarFirst) {
+	    _passSelect = "*";
+	    _fixupSelect = "*";
+	    return;
+	}
+	SelectListHandler::Deque& d = _selectLister->selectLists;
+	assert(!d.empty());
+	if(d.size() > 1) {
+	    std::cout << "Warning, multiple select lists->subqueries?" 
+		      << std::endl; // FIXME. Should be sterner?
+	}
+	std::stringstream ps;
+	std::stringstream fs;
+	SelectListHandler::SelectList& sl = d[0];
+	bool written = false;
+	for(SelectListHandler::SelectListConstIter i=sl.begin();
+	    i != sl.end(); ++i) {
+	    // get the pass record.
+	    if(_aggRecords.find(*i) != _aggRecords.end()) {
+		if(written) {
+		    ps << ", ";
+		    fs << ", ";
+		}
+		ps << _aggRecords[*i].pass;
+		fs << _aggRecords[*i].fixup;
+		written = true;
+	    }
+	} 
+	_passSelect = ps.str();
+	_fixupSelect = fs.str();
+	
+    
+    }
+
+    boost::shared_ptr<VoidTwoRefFunc> getAliasHandler() {return _aliaser;}
+    boost::shared_ptr<VoidOneRefFunc> getSetFuncHandler() {return _setFuncer;}
+    boost::shared_ptr<VoidOneRefFunc> getSelectListHandler() {return _selectLister;}
+    boost::shared_ptr<VoidVoidFunc> getSelectStarHandler() {
+	return _selectLister->getSelectStarHandler();
+    }
+    std::string _passSelect;
+    std::string _fixupSelect;
+    
+private:
+    boost::shared_ptr<AliasHandler> _aliaser;
+    boost::shared_ptr<SetFuncHandler> _setFuncer;
+    boost::shared_ptr<SelectListHandler> _selectLister;
+    AggMap _aggRecords;
+}; // class AggregateMgr
 
 class Templater {
 public:
@@ -340,22 +739,38 @@ public:
 	_parser._qualifiedNameHandler = _templater.getTableHandler();
 	_tableListHandler = _templater.getTableListHandler();
 	_parser._tableListHandler = _tableListHandler;
-	_parser._setFctSpecHandler 
-	    = boost::shared_ptr<TestSetFuncHandler>(new TestSetFuncHandler());
-	_parser._aliasHandler 
-	    = boost::shared_ptr<TestAliasHandler>(new TestAliasHandler());
+	_parser._setFctSpecHandler = _aggMgr.getSetFuncHandler();
+	_parser._aliasHandler = _aggMgr.getAliasHandler();
+	_parser._selectListHandler = _aggMgr.getSelectListHandler();
+	_parser._selectStarHandler = _aggMgr.getSelectStarHandler();
     }
 
     std::string getParseResult() {
+	if(_errorMsg.empty() && _parseResult.empty()) {
+	    _computeParseResult();
+	}
+	return _parseResult;
+    }
+    std::string getAggParseResult() {
+	if(_errorMsg.empty() && _aggParseResult.empty()) {
+	    _computeParseResult();
+	}
+	return _aggParseResult;
+    }
+    void _computeParseResult() {
 	try {
 	    _parser.initializeASTFactory(_factory);
 	    _parser.setASTFactory(&_factory);
 	    _parser.sql_stmt();
-	    RefCommonAST ast = RefCommonAST(_parser.getAST());
-	    
+	    _aggMgr.postprocess();
+	    RefAST ast = _parser.getAST();
 	    if (ast) {
+		//std::cout << "fixupSelect " << getFixupSelect();
+		//std::cout << "passSelect " << getPassSelect();
 		// ";" is not in the AST, so add it back.
-		return ast->toStringList() +";"; 
+		_parseResult = walkTreeString(ast) + ";";
+		_aggMgr.applyAggPass();
+		_aggParseResult = walkTreeString(ast) + ";";
 	    } else {
 		_errorMsg = "Error: no AST from parse";
 	    }
@@ -364,8 +779,7 @@ public:
 	} catch( exception& e ) {
 	    _errorMsg = std::string("General exception: ") + e.what();
 	}
-	return std::string(); // Error.
-
+	return; // Error.
     }
     bool getHasChunks() const { 
 	return _tableListHandler->getHasChunks();
@@ -373,7 +787,15 @@ public:
     bool getHasSubChunks() const { 
 	return _tableListHandler->getHasSubChunks();
     }
-
+    bool getNeedsFixup() const {
+	return false; // FIXME
+    }
+    std::string getFixupSelect() {
+	return _aggMgr.getFixupSelect();
+    }
+    std::string getPassSelect() {
+	return _aggMgr.getPassSelect();
+    }
     std::string const& getError() const {
 	return _errorMsg;
     }
@@ -385,8 +807,11 @@ private:
     SqlSQL2Parser _parser;
     std::string _delimiter;
     Templater _templater;
+    AggregateMgr _aggMgr;
     boost::shared_ptr<Templater::TableListHandler>  _tableListHandler;
 
+    std::string _parseResult;
+    std::string _aggParseResult;
     std::string _errorMsg;
 
 };
@@ -477,6 +902,8 @@ std::string SqlSubstitution::transform(Mapping const& m) {
 void SqlSubstitution::_build(std::string const& sqlStatement, 
 			     Mapping const& mapping) {
     // 
+    std::string template_;
+
     Mapping::const_iterator end = mapping.end();
     std::list<std::string> names;
     for(Mapping::const_iterator i=mapping.begin(); i != end; ++i) {
@@ -484,8 +911,11 @@ void SqlSubstitution::_build(std::string const& sqlStatement,
     }
     SqlParseRunner spr(sqlStatement, _delimiter);
     spr.setup(names);
-    std::string template_ = spr.getParseResult();
-
+    if(spr.getNeedsFixup()) {
+	template_ = spr.getAggParseResult();
+    } else {
+	template_ = spr.getParseResult();
+    } 
     _computeChunkLevel(spr.getHasChunks(), spr.getHasSubChunks());
 
     if(template_.empty()) {

@@ -166,12 +166,28 @@ void handleSetFctSpec(RefAST fct) {
     }
     return; // Do-nothing placeholder
 }
+void handleSelectList(RefAST a) {
+    if(_selectListHandler.get()) {
+        (*_selectListHandler)(a);
+    }
+    return; // Do-nothing placeholder
+    
+}
+void handleSelectStar() {
+    if(_selectStarHandler.get()) {
+        (*_selectStarHandler)();
+    }
+    return; // Do-nothing placeholder    
+}
+
 public: // Public (Until the functionality is complete?)
 boost::shared_ptr<VoidThreeRefFunc> _qualifiedNameHandler;
 boost::shared_ptr<VoidFourRefFunc> _columnRefHandler;
 boost::shared_ptr<VoidTwoRefFunc> _tableListHandler;
 boost::shared_ptr<VoidTwoRefFunc> _aliasHandler;
 boost::shared_ptr<VoidOneRefFunc> _setFctSpecHandler;
+boost::shared_ptr<VoidOneRefFunc> _selectListHandler;
+boost::shared_ptr<VoidVoidFunc> _selectStarHandler;
 //  Class body inset ends here
 }
 

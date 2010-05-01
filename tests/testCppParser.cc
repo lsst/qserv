@@ -73,7 +73,7 @@ void tryTriple() {
 }
 
 void tryAggregate() {
-    std::string stmt = "select sum(bMagF), sum(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
+    std::string stmt = "select sum(pm_declErr),sum(bMagF), sum(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
     ChunkMapping c;
     c.addChunkKey("Source");
     c.addSubChunkKey("Object");
@@ -86,7 +86,7 @@ void tryAggregate() {
 
 
 int main(int, char**) {
-    //tryAutoSubstitute();
+    tryAutoSubstitute();
     //tryNnSubstitute();
     //tryTriple();
     tryAggregate();

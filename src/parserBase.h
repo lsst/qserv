@@ -25,6 +25,12 @@ public:
     virtual ~VoidOneRefFunc() {}
     virtual void operator()(RefAST a) = 0;
 };
+class VoidVoidFunc {
+public: 
+    virtual ~VoidVoidFunc() {}
+    virtual void operator()() = 0;
+};
+
 
 
 #endif // LSST_QSERV_SQL_PARSER_BASE
