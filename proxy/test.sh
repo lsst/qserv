@@ -2,7 +2,7 @@
 
 
 
-mysql -e "CREATE DATABASE proxyTest; CREATE TABLE proxyTest.Obj (objectId INT, x INT)"
+mysql -e "CREATE DATABASE proxyTest; USE proxyTest; CREATE TABLE Obj (objectId INT, x INT); INSERT INTO Obj VALUES (1,11),(2,12),(3,13); CREATE TABLE dummyResults(f FLOAT); INSERT INTO dummyResults VALUES (1.11), (2.22), (3.33), (4.44)"
 
 
 # these all should succeed

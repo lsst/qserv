@@ -13,7 +13,7 @@ class Example(xmlrpc.XMLRPC):
         print "query '", query, "' submitted, conditions: ", conditions
         #time.sleep(5)
         print "done sleeping"
-        return "resultTableName"
+        return "dummyResults"
 
 if __name__ == '__main__':
     from twisted.internet import reactor

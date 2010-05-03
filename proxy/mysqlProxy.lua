@@ -45,7 +45,9 @@ ERR_BAD_ARG        = -4002
 ERR_NOT_SUPPORTED  = -4003
 ERR_OR_NOT_ALLOWED = -4004
 ERR_RPC_CALL       = -4005
+ERR_BAD_RES_TNAME  = -4006
 
+SUCCESS            = 0
 
 -- query string and array containing hints
 -- These two will be passed to qserv
@@ -60,6 +62,13 @@ hintsToPassArr = {}
 function errors ()
     local self = { __errNo__ = 0, __errMsg__ = "" }
 
+    ---------------------------------------------------------------------------
+
+    local errNo = function()
+        return __errNo__
+    end
+
+    ---------------------------------------------------------------------------
     local set = function(errNo, errMsg)
         __errNo__  = errNo
         __errMsg__ = errMsg
@@ -93,6 +102,7 @@ function errors ()
     ---------------------------------------------------------------------------
 
     return {
+        errNo = errNo,
         set = set,
         append = append,
         send = send,
@@ -406,8 +416,15 @@ qType = queryType()
 
 function queryProcessing()
 
+    local self = { resultTableName = nil }
+
+    ---------------------------------------------------------------------------
+
     -- q  - original query
     -- qU - original query but all uppercase
+    -- 
+    -- returns 0 on success
+    --
     local sendToQserv = function(q, qU)
         local p1 = string.find(qU, "WHERE")
         if p1 then
@@ -418,7 +435,7 @@ function queryProcessing()
             hintsToPassStr = utils.tableToString(hintsToPassArr)
             -- Add all remaining predicates
             if ( p2 < 0 ) then
-                return err.send()
+                return err.errNo()
             end
             local pEnd = string.len(qU)
             queryToPassStr = queryToPassStr .. ' ' .. string.sub(q, p2, pEnd)
@@ -433,12 +450,13 @@ function queryProcessing()
         local ok, res = 
            xmlrpc.http.call (rpcHP, "submitQuery", 
                              queryToPassStr, hintsToPassArr)
-        if (ok) then
-            -- print ("got via rpc " .. res)
-            -- for i, v in pairs(res) do print ('\t', i, v) end
-        else
-            return err.setAndSend(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
+        if (not ok) then
+            return err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
         end
+
+        resultTableName = res
+
+        return SUCCESS
     end
 
     ---------------------------------------------------------------------------
@@ -446,14 +464,28 @@ function queryProcessing()
     local processLocally = function(q)
         -- print ("Processing locally: " .. q)
         print ("Processing locally")
-        return 0
+        return SUCCESS
+    end
+
+    ---------------------------------------------------------------------------
+
+    local prepForFetchingResults = function(proxy)
+        if resultTableName == nil then
+            return err.set(ERR_BAD_RES_TNAME, "Invalid result table name ")
+        end
+
+        print ("got via rpc " .. resultTableName)
+        q = "SELECT * FROM " .. resultTableName
+        proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q)
+        return SUCCESS
     end
 
     ---------------------------------------------------------------------------
 
     return {
         sendToQserv = sendToQserv,
-        processLocally = processLocally
+        processLocally = processLocally,
+        prepForFetchingResults = prepForFetchingResults
     }
 
 end
@@ -476,6 +508,8 @@ function read_query(packet)
         local qU = string.upper(q) .. ' '
 
         -- check for special queries that can be handled locally
+        -- note we make no modifications to proxy.queries, 
+        -- so the packet will be sent as-is
         if qType.isLocal(qU) then
             return qProc.processLocally(qU)
         end
@@ -489,7 +523,17 @@ function read_query(packet)
         end
 
         -- process the query and send it to qserv
-        return qProc.sendToQserv(q, qU)
+        if not qProc.sendToQserv(q, qU) == SUCCESS then
+            return err.send()
+        end
+
+        -- configure proxy to fetch results from 
+        -- the appropriate result table
+        if qProc.prepForFetchingResults(proxy) < 0 then
+            return err.send()
+        end
+        return proxy.PROXY_SEND_QUERY
+
     end
 end
 
