@@ -423,7 +423,6 @@ function queryProcessing()
     -- q  - original query
     -- qU - original query but all uppercase
     -- 
-    -- returns 0 on success
     --
     local sendToQserv = function(q, qU)
         local p1 = string.find(qU, "WHERE")
@@ -523,7 +522,7 @@ function read_query(packet)
         end
 
         -- process the query and send it to qserv
-        if not qProc.sendToQserv(q, qU) == SUCCESS then
+        if qProc.sendToQserv(q, qU) < 0 then
             return err.send()
         end
 
