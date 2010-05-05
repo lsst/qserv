@@ -18,13 +18,24 @@ class TestHintedParser(unittest.TestCase):
         WHERE ra BETWEEN 1.5 AND 4.4 AND decl BETWEEN -10 AND -2
         ;""",                     
               ["areaSpec_box", "1.5", "-10", "4.4", "-2"])
-        hq2 = ("""SELECT * from LSST.Object 
+        hq2 = ("""SELECT pm_raErr from LSST.Object 
         WHERE ra BETWEEN 1.5 AND 4.1 AND decl BETWEEN -10 AND -2
         ;""",                     
               ["areaSpec_box", "1.5", "-10", "4.1", "-2"])
+        ahq1 = ("""SELECT sum(pm_raErr) from LSST.Object 
+        WHERE ra BETWEEN 1.5 AND 4.1 AND decl BETWEEN -10 AND -2
+        ;""",                     
+              ["areaSpec_box", "1.5", "-10", "4.1", "-2"])
+        ahq2 = ("""SELECT sum(pm_raErr),count(pm_raErr),avg(pm_raErr) from LSST.Object 
+        WHERE ra BETWEEN 1.5 AND 4.1 AND decl BETWEEN -10 AND -2
+        ;""",                     
+              ["areaSpec_box", "1.5", "-10", "4.1", "-2"])
+
         self.basicQuery = bq
         self.hintQuery = hq
         self.hintQuery2 = hq2
+        self.aggQuery1 = ahq1
+        self.aggQuery2 = ahq2
         pass
     
     def testBasic(self):
@@ -68,4 +79,20 @@ class TestHintedParser(unittest.TestCase):
         print "Done hinted query."
         print a.resultTableString(r2)
         
+    def testAggQuery(self):
+        a = app.AppInterface()
+        id1 = a.query(*self.aggQuery1)
+        r1 = a.joinQuery(id1)
+        print "Done aggregate query."
+        print a.resultTableString(r1)
 
+    def testAvgQuery(self):
+        a = app.AppInterface()
+        id1 = a.query(*self.hintQuery2)
+        id2 = a.query(*self.aggQuery2)
+        r1 = a.joinQuery(id1)
+        r2 = a.joinQuery(id2)
+        print "Done aggregate query."
+        print a.resultTableString(r1)
+        print a.resultTableString(r2)
+        

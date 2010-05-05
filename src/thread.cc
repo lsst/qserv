@@ -456,6 +456,7 @@ void qMaster::AsyncQueryManager::joinEverything() {
 	_printState(std::cout);
 	sleep(1); 
     }
+    _merger->finalize();
 }
 
 void qMaster::AsyncQueryManager::configureMerger(TableMergerConfig const& c) {

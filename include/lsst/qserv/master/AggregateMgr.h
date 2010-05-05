@@ -32,11 +32,10 @@ public:
     std::string orig; // Original
     std::string pass; // Subquery
     std::string fixup; // Merging/fixup
-    std::ostream& printTo(std::ostream& os) {
-	os << "Aggregate orig=" << orig << std::endl 
-	   << "pass=" << pass  << std::endl
-	   << "fixup=" << fixup;
-    }
+    std::ostream& printTo(std::ostream& os);
+    void fillStandard(NodeBound const& lbl_, NodeBound const& meaning_);
+    std::string getFuncParam() const;
+    std::string getLabelText() const;
 };
 
 class AggregateMgr {
@@ -59,11 +58,22 @@ public:
     public:
 	virtual AggregateRecord operator()(NodeBound const& lbl,
 					   NodeBound const& meaning);
-	std::string computeFixup(NodeBound meaning, NodeBound lbl); 
+    private:
+	std::string _computeFixup(AggregateRecord const& a); 
     };
-    class CountAggBuilder {
+    class CountAggBuilder : public AggBuilderIf {
+    public:
+	virtual AggregateRecord operator()(NodeBound const& lbl,
+					   NodeBound const& meaning);
+    private:
+	std::string _computeFixup(AggregateRecord const& a); 
     };
-    class AvgAggBuilder {
+    class AvgAggBuilder : public AggBuilderIf {
+    public:
+	virtual AggregateRecord operator()(NodeBound const& lbl,
+					   NodeBound const& meaning);
+    private:
+	void _computePassFixup(AggregateRecord& a); 
     };
     
     class SetFuncHandler : public VoidOneRefFunc {
@@ -145,25 +155,32 @@ public:
     
     void postprocess();
     void applyAggPass();
+
     std::string getPassSelect();
     std::string getFixupSelect();
-    void _computeSelects();
-
+    
+    bool getHasAggregate() const { return _hasAggregate; }
     boost::shared_ptr<VoidTwoRefFunc> getAliasHandler() {return _aliaser;}
     boost::shared_ptr<VoidOneRefFunc> getSetFuncHandler() {return _setFuncer;}
     boost::shared_ptr<VoidOneRefFunc> getSelectListHandler() {return _selectLister;}
     boost::shared_ptr<VoidVoidFunc> getSelectStarHandler() {
 	return _selectLister->getSelectStarHandler();
     }
-    std::string _passSelect;
-    std::string _fixupSelect;
-    
 private:
+    void _computeSelects();
     boost::shared_ptr<AliasHandler> _aliaser;
     boost::shared_ptr<SetFuncHandler> _setFuncer;
     boost::shared_ptr<SelectListHandler> _selectLister;
     AggMap _aggRecords;
+    std::string _passSelect;
+    std::string _fixupSelect;
+    bool _hasAggregate;
+
 }; // class AggregateMgr
 
 }}} // lsst::qserv::master
 #endif // LSST_QSERV_MASTER_AGGREGATEMGR_H
+// Local Variables: 
+// mode:c++
+// comment-column:0 
+// End:             

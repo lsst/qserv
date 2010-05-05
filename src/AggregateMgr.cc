@@ -1,9 +1,49 @@
 #include <sstream>
+#include <boost/format.hpp>
 #include "lsst/qserv/master/AggregateMgr.h"
 using lsst::qserv::master::AggregateMgr;
 using lsst::qserv::master::AggregateRecord;
 using lsst::qserv::master::NodeBound;
 
+
+
+////////////////////////////////////////////////////////////////////////
+// AggregateRecord
+////////////////////////////////////////////////////////////////////////
+std::ostream& AggregateRecord::printTo(std::ostream& os) {
+    os << "Aggregate orig=" << orig << std::endl 
+       << "pass=" << pass  << std::endl
+       << "fixup=" << fixup;
+}
+void AggregateRecord::fillStandard(NodeBound const& lbl_, 
+				   NodeBound const& meaning_) {
+    
+    // Fill label and meaning 
+    // (i.e., label=bmagSum, meaning=sum(bmag) for sum(bmag) as bmagSum)
+    lbl = lbl_;
+    meaning = meaning_;
+    if(lbl.first != meaning.first) { // If there is an alias, include it.
+	assert(lbl.second.get()); // must have bound.
+		orig = walkBoundedTreeString(meaning.first, lbl.second);
+    } else { // No alias. Use meaning only
+	orig = walkBoundedTreeString(meaning.first, meaning.second);
+    }
+}
+std::string AggregateRecord::getFuncParam() const {
+    antlr::RefAST lParen = meaning.first->getNextSibling();
+    assert(lParen.get());
+    antlr::RefAST paramAst = lParen->getNextSibling();
+    assert(paramAst.get());
+    std::string p = getFuncString(paramAst);
+    if(')' == *(p.rbegin())) { // chop the end, if it's a ')'
+	p.erase(p.size()-1);
+    }
+    return p;
+}
+
+std::string AggregateRecord::getLabelText() const {
+    return walkBoundedTreeString(lbl.first, lbl.second);
+}
 
 ////////////////////////////////////////////////////////////////////////
 // AggregateMgr::EasyAggBuilder
@@ -11,44 +51,79 @@ using lsst::qserv::master::NodeBound;
 AggregateRecord AggregateMgr::EasyAggBuilder::operator()(NodeBound const& lbl,
 							 NodeBound const& meaning) {
     AggregateRecord a;
-    a.lbl = lbl;
-    a.meaning = meaning;
-    if(lbl.first != meaning.first) {
-	assert(lbl.second.get()); // must have bound.
-		a.orig = walkBoundedTreeString(meaning.first, lbl.second);
-    } else {
-	a.orig = walkBoundedTreeString(meaning.first, meaning.second);
-    }
+    a.fillStandard(lbl, meaning);
     a.pass = a.orig;
-    a.fixup = computeFixup(meaning, lbl);
+    a.fixup = _computeFixup(a);
     return a;
 }
 
 
-std::string AggregateMgr::EasyAggBuilder::computeFixup(NodeBound meaning, 
-						       NodeBound lbl) {
-    std::string agg = tokenText(meaning.first);
-    antlr::RefAST lparen = meaning.first->getNextSibling();
-    assert(lparen.get());
-    antlr::RefAST paramAst = lparen->getNextSibling();
-    assert(paramAst.get());
-    std::string param = getFuncString(paramAst);
-    std::string lblText = walkBoundedTreeString(lbl.first, lbl.second);
+std::string AggregateMgr::EasyAggBuilder::_computeFixup(AggregateRecord const& a) {
+    std::string agg = tokenText(a.meaning.first);
+    std::string lblText = a.getLabelText();
+    // Orig: agg ( param ) lbl
+    // Fixup: agg ( quoted-lbl) 
+    return agg + "(`" + lblText + "`) AS `" + lblText + "`";
+}
+////////////////////////////////////////////////////////////////////////
+// AggregateMgr::CountAggBuilder
+////////////////////////////////////////////////////////////////////////
+AggregateRecord AggregateMgr::CountAggBuilder::operator()(NodeBound const& lbl,
+							  NodeBound const& meaning) {
+    AggregateRecord a;
+    a.fillStandard(lbl, meaning);
+    a.pass = a.orig;
+    a.fixup = _computeFixup(a);
+    return a;
+}
+
+std::string AggregateMgr::CountAggBuilder::_computeFixup(AggregateRecord const& a) {
+    std::string agg = "SUM"; //tokenText(meaning.first);
+    std::string lblText = a.getLabelText();
     // Orig: agg ( param ) lbl
     // Fixup: agg ( quoted-lbl) 
     return agg + "(`" + lblText + "`) AS `" + lblText + "`";
 }
 
 ////////////////////////////////////////////////////////////////////////
+// AggregateMgr::AvgAggBuilder
+////////////////////////////////////////////////////////////////////////
+AggregateRecord AggregateMgr::AvgAggBuilder::operator()(NodeBound const& lbl,
+							NodeBound const& meaning) {
+    AggregateRecord a;
+    a.fillStandard(lbl, meaning);
+    _computePassFixup(a);
+    return a;
+}
+
+
+void AggregateMgr::AvgAggBuilder::_computePassFixup(AggregateRecord& a) { 
+    std::string param = a.getFuncParam();
+    // Consider sanitizing param to eliminate problematic symbols
+
+    // Convert avg(x) to sum(x) as avgs_x,count(x) as avgc_x for pass.;
+    std::string sumAlias = "avgs_" + param;
+    std::string countAlias = "avgc_" + param;
+    boost::format passFmt("SUM(%1%) AS %2%, COUNT(%1%) AS %3%");
+    a.pass = (passFmt % param % sumAlias % countAlias).str();
+    // Convert avg(x) to sum(avgs_x)/sum(avgc_x) `avg(epoch)` for fixup.
+    boost::format fixFmt("SUM(%1%)/SUM(%2%) AS `%3%`");
+    a.fixup = (fixFmt % sumAlias % countAlias % a.getLabelText()).str();
+
+}
+
+
+////////////////////////////////////////////////////////////////////////
 // AggregateMgr::SetFuncHandler
 ////////////////////////////////////////////////////////////////////////
 AggregateMgr::SetFuncHandler::SetFuncHandler() {
-	    _map["count"].reset();
-	    _map["avg"].reset();
-	    _map["max"].reset(new EasyAggBuilder());
-	    _map["min"].reset(new EasyAggBuilder());
-	    _map["sum"].reset(new EasyAggBuilder());
-	}
+    _map["count"].reset(new CountAggBuilder());
+    _map["avg"].reset(new AvgAggBuilder());
+    _map["max"].reset(new EasyAggBuilder());
+    _map["min"].reset(new EasyAggBuilder());
+    _map["sum"].reset(new EasyAggBuilder());
+}
+
 void AggregateMgr::SetFuncHandler::operator()(antlr::RefAST a) {
     //std::cout << "---- SETFUNC: ----" << walkTreeString(a) << std::endl;
     std::string origAgg = tokenText(a);
@@ -90,7 +165,8 @@ void AggregateMgr::SelectListHandler::operator()(antlr::RefAST a)  {
 ////////////////////////////////////////////////////////////////////////
 AggregateMgr::AggregateMgr() : _aliaser(new AliasHandler()),
 			       _setFuncer(new SetFuncHandler()),
-			       _selectLister(new SelectListHandler(*_aliaser)) {
+			       _selectLister(new SelectListHandler(*_aliaser)),
+			       _hasAggregate(false) {
 }
 
 void AggregateMgr::postprocess() {
@@ -118,6 +194,7 @@ void AggregateMgr::postprocess() {
 	}
     }
 }
+
 void AggregateMgr::applyAggPass() {
     std::string passText = getPassSelect();
     if(passText == "*") {
@@ -126,7 +203,8 @@ void AggregateMgr::applyAggPass() {
     }
     NodeBound const& nb = _selectLister->firstSelectBound;
     antlr::RefAST orphans = collapseNodeRange(nb.first, nb.second);
-    nb.first->setText(passText);
+    nb.first->setText(passText); // Reassign text.
+    nb.first->setFirstChild(antlr::RefAST()); // Set as childless.
 }
 std::string AggregateMgr::getPassSelect() {
     if(_passSelect.empty()) {
@@ -147,6 +225,7 @@ void AggregateMgr::_computeSelects() {
     if(_selectLister->isStarFirst) {
 	_passSelect = "*";
 	_fixupSelect = "*";
+	_hasAggregate = false;
 	return;
     }
     SelectListHandler::Deque& d = _selectLister->selectLists;
@@ -159,8 +238,7 @@ void AggregateMgr::_computeSelects() {
     std::stringstream fs;
     NodeList& sl = d[0];
     bool written = false;
-    for(NodeListConstIter i=sl.begin();
-	i != sl.end(); ++i) {
+    for(NodeListConstIter i=sl.begin(); i != sl.end(); ++i) {
 	NodeBound const& nb = *i;
 	// get the pass record.
 	if(written) {
@@ -172,7 +250,7 @@ void AggregateMgr::_computeSelects() {
 	if(_aggRecords.find(nb.first) != _aggRecords.end()) {
 	    ps << _aggRecords[nb.first].pass;
 	    fs << _aggRecords[nb.first].fixup;
-	
+	    _hasAggregate = true;
 	} else {
 	    std::string nonAgg = walkBoundedTreeString(nb.first, nb.second);
 	    ps << nonAgg;
@@ -182,8 +260,6 @@ void AggregateMgr::_computeSelects() {
     } 
     _passSelect = ps.str();
     _fixupSelect = fs.str();
-	
-    
 }
 
 

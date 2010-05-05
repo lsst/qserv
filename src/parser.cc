@@ -71,8 +71,8 @@ public:
 	    _aggMgr.postprocess();
 	    RefAST ast = _parser.getAST();
 	    if (ast) {
-		std::cout << "fixupSelect " << getFixupSelect();
-		std::cout << "passSelect " << getPassSelect();
+		//std::cout << "fixupSelect " << getFixupSelect();
+		//std::cout << "passSelect " << getPassSelect();
 		// ";" is not in the AST, so add it back.
 		_parseResult = walkTreeString(ast) + ";";
 		_aggMgr.applyAggPass();
@@ -93,14 +93,17 @@ public:
     bool getHasSubChunks() const { 
 	return _tableListHandler->getHasSubChunks();
     }
-    bool getNeedsFixup() const {
-	return false; // FIXME
-    }
     std::string getFixupSelect() {
 	return _aggMgr.getFixupSelect();
     }
     std::string getPassSelect() {
 	return _aggMgr.getPassSelect();
+    }
+    bool getHasAggregate() {
+	if(_errorMsg.empty() && _parseResult.empty()) {
+	    _computeParseResult();
+	}
+	return _aggMgr.getHasAggregate();
     }
     std::string const& getError() const {
 	return _errorMsg;
@@ -217,17 +220,20 @@ void SqlSubstitution::_build(std::string const& sqlStatement,
     }
     SqlParseRunner spr(sqlStatement, _delimiter);
     spr.setup(names);
-    if(spr.getNeedsFixup()) {
+    if(spr.getHasAggregate()) {
 	template_ = spr.getAggParseResult();
     } else {
 	template_ = spr.getParseResult();
     } 
     _computeChunkLevel(spr.getHasChunks(), spr.getHasSubChunks());
-
+    
     if(template_.empty()) {
 	_errorMsg = spr.getError();
     }
     _substitution = SubstPtr(new Substitution(template_, _delimiter));
+    _hasAggregate = spr.getHasAggregate();
+    _fixupSelect = spr.getFixupSelect();
+    
 	
 }
 

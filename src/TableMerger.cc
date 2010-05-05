@@ -23,10 +23,15 @@ std::string getTimeStampId() {
 
 std::string const TableMerger::_dropSql("DROP TABLE IF EXISTS %s;");
 std::string const TableMerger::_createSql("CREATE TABLE %s SELECT * FROM %s;");
+std::string const TableMerger::_createFixSql("CREATE TABLE %s SELECT %s FROM %s;");
 std::string const TableMerger::_insertSql("INSERT INTO %s SELECT * FROM %s;");
 std::string const TableMerger::_cleanupSql("DROP TABLE %s;");
 std::string const TableMerger::_cmdBase("%1% --socket=%2% -u %3% %4%");
 
+
+////////////////////////////////////////////////////////////////////////
+// public
+////////////////////////////////////////////////////////////////////////
 TableMerger::TableMerger(TableMergerConfig const& c) 
     : _config(c), _tableCount(0) {
     _fixupTargetName();
@@ -36,8 +41,39 @@ TableMerger::TableMerger(TableMergerConfig const& c)
 
 bool TableMerger::merge(std::string const& dumpFile, 
 			std::string const& tableName) {
-    _importResult(dumpFile);
-    std::string sql = _buildSql(tableName);
+    std::string sql;
+    _importResult(dumpFile); 
+    {
+	boost::lock_guard<boost::mutex> g(_countMutex);
+	bool create = false;
+	++_tableCount;
+	if(_tableCount == 1) {
+	    sql = _buildMergeSql(tableName, true);
+	    return _applySql(sql); // must happen first.
+	}
+    }
+    // No locking needed if not first, after updating the counter.
+    sql = _buildMergeSql(tableName, false); 
+    return _applySql(sql);
+}
+
+bool TableMerger::finalize() {
+    if(_mergeTable != _config.targetTable) {
+	std::string cleanup = (boost::format(_cleanupSql) % _mergeTable).str();
+
+	// Need to perform fixup for aggregation.
+	std::string sql = (boost::format(_createFixSql) 
+			   % _config.targetTable 
+			   % _config.fixupSelect
+			   % _mergeTable).str() + cleanup;
+	return _applySql(sql);
+    }
+    return true;
+}
+////////////////////////////////////////////////////////////////////////
+// private
+////////////////////////////////////////////////////////////////////////
+bool TableMerger::_applySql(std::string const& sql) {
     FILE* fp;
     fp = popen(_loadCmd.c_str(), "w"); // check error
     if(fp == NULL) {
@@ -64,15 +100,16 @@ bool TableMerger::merge(std::string const& dumpFile,
     }
 }
 
-std::string TableMerger::_buildSql(std::string const& tableName) {
+std::string TableMerger::_buildMergeSql(std::string const& tableName, 
+					bool create) {
     std::string cleanup = (boost::format(_cleanupSql) % tableName).str();
-
-    if(_tableCount == 0) {
-	return (boost::format(_dropSql) % _config.targetTable).str() 
-	    + (boost::format(_createSql) % _config.targetTable 
+    
+    if(create) {
+	return (boost::format(_dropSql) % _mergeTable).str() 
+	    + (boost::format(_createSql) % _mergeTable 
 	       % tableName).str() + cleanup;
     } else {
-	return (boost::format(_insertSql) %  _config.targetTable 
+	return (boost::format(_insertSql) %  _mergeTable 
 		% tableName).str() + cleanup;
     }
 }
@@ -82,6 +119,12 @@ void TableMerger::_fixupTargetName() {
 	assert(!_config.targetDb.empty());
 	_config.targetTable = (boost::format("%1%.result_%2%") 
 			       % _config.targetDb % getTimeStampId()).str();
+    }
+    if(!_config.fixupSelect.empty()) {
+	// Set merging temporary if needed.
+	_mergeTable = _config.targetTable + "_m"; 
+    } else {
+	_mergeTable = _config.targetTable;
     }
 }
 

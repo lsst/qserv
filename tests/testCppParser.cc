@@ -75,8 +75,9 @@ void tryTriple() {
 }
 
 void tryAggregate() {
-    std::string stmt = "select sum(pm_declErr),sum(bMagF), sum(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
-    std::string stmt2 = "select sum(pm_declErr),chunkId, sum(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
+    std::string stmt = "select sum(pm_declErr),sum(bMagF), count(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
+    std::string stmt2 = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
+
     ChunkMapping c;
     c.addChunkKey("Source");
     c.addSubChunkKey("Object");

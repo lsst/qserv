@@ -676,16 +676,16 @@ class QueryBabysitter:
     """Watches over queries in-flight.  An instrument of query care that 
     can be used by a client.  Unlike the collater, it doesn't do merging.
     """
-    def __init__(self, sessionId, queryHash):
+    def __init__(self, sessionId, queryHash, fixup):
         self._sessionId = sessionId
         self._inFlight = {}
         # Scratch mgmt (Consider putting somewhere else)
         self._scratchPath = setupResultScratch()
 
-        self._setupMerger() 
+        self._setupMerger(fixup) 
         pass
     
-    def _setupMerger(self):
+    def _setupMerger(self, fixup):
         c = lsst.qserv.master.config.config
         dbSock = c.get("resultdb", "unix_socket")
         dbUser = c.get("resultdb", "user")
@@ -694,7 +694,7 @@ class QueryBabysitter:
         mysqlBin = c.get("mysql", "mysqlclient")
         if not mysqlBin:
             mysqlBin = "mysql"
-        mergeConfig = TableMergerConfig(dbName, "", 
+        mergeConfig = TableMergerConfig(dbName, "", fixup,
                                         dbUser, dbSock, 
                                         mysqlBin)
         configureSessionMerger(self._sessionId, mergeConfig)
@@ -727,7 +727,6 @@ class QueryBabysitter:
 ########################################################################
 class PartitioningConfig: 
     """ An object that stores information about the partitioning setup.
-    FIXME: construct from a db table or config file.
     """
     def __init__(self):
         self.clear() # reset fields
@@ -774,7 +773,7 @@ class HintedQueryAction:
             self.queryStr += ";" 
         self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:16] 
         self._sessionId = newSession()
-        self._babysitter = QueryBabysitter(self._sessionId, self.queryHash)
+
 
         # Hint evaluation
         self._pmap = pmap            
@@ -786,6 +785,13 @@ class HintedQueryAction:
         self._pConfig.applyConfig()
         self._substitution = SqlSubstitution(query, 
                                              self._pConfig.getMapRef(2,3))
+
+        # Query babysitter.
+        fixup = ""
+        if self._substitution.getHasAggregate():
+            fixup = self._substitution.getFixupSelect();
+        self._babysitter = QueryBabysitter(self._sessionId, self.queryHash,
+                                           fixup)
 
         ## For generating subqueries
         self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;

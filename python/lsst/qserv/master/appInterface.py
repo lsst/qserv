@@ -57,7 +57,7 @@ class AppInterface:
         a = self.actions[taskId]
         r = a.getResult()
         return r
-        
+
     def help(self):
         """A brief help message showing available commands"""
         r = "" ## self._handyHeader()

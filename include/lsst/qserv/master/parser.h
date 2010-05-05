@@ -66,6 +66,8 @@ public:
     
     /// 0: none, 1: chunk, 2: subchunk
     bool getChunkLevel() const { return _chunkLevel; }
+    bool getHasAggregate() const {return _hasAggregate; }
+    std::string getFixupSelect() const { return _fixupSelect; }
 
 private:
     typedef boost::shared_ptr<Substitution> SubstPtr;
@@ -77,6 +79,8 @@ private:
     std::string _errorMsg;
     SubstPtr _substitution;
     int _chunkLevel;
+    bool _hasAggregate;
+    std::string _fixupSelect;
 };
 
 

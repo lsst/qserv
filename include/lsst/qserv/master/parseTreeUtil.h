@@ -174,7 +174,7 @@ AnAst collapseNodeRange(AnAst start, AnAst bound) {
     assert(start.get());
     assert(bound.get());
     AnAst dead = start->getNextSibling();
-    start->setNextSibling(bound);
+    start->setNextSibling(bound->getNextSibling());
     return dead;
 }
 
