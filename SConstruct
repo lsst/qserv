@@ -135,7 +135,9 @@ if hasXrootd:
 canBuild = canBuild and hasXrootd
 
 parserSrcs = map(lambda x: os.path.join('src', x), 
-                 ["parser.cc", "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"] )
+                 ["parser.cc", "AggregateMgr.cc", "Templater.cc",
+                  "dbgParse.cc",
+                  "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"] )
              
 
 pyPath = 'python/lsst/qserv/master'

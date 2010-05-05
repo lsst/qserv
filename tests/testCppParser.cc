@@ -11,9 +11,11 @@
 
 struct ParserFixture {
     ParserFixture(void) {
-	// empty
+	cMapping.addChunkKey("Source");
+	cMapping.addSubChunkKey("Object");
     };
     ~ParserFixture(void) { };
+    ChunkMapping cMapping;
 };
 
 //BOOST_FIXTURE_TEST_SUITE(QservSuite, ParserFixture)
@@ -74,6 +76,7 @@ void tryTriple() {
 
 void tryAggregate() {
     std::string stmt = "select sum(pm_declErr),sum(bMagF), sum(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
+    std::string stmt2 = "select sum(pm_declErr),chunkId, sum(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
     ChunkMapping c;
     c.addChunkKey("Source");
     c.addSubChunkKey("Object");
@@ -81,6 +84,9 @@ void tryAggregate() {
     for(int i = 4; i < 6; ++i) {
 	std::cout << "--" << ss.transform(c.getMapping(i,3)) << std::endl;
     }
+    SqlSubstitution ss2(stmt2, c.getMapping(32,4352));
+    std::cout << "--" << ss2.transform(c.getMapping(24,3)) << std::endl;
+    
 }
 
 

@@ -66,7 +66,7 @@ public:
     
     /// 0: none, 1: chunk, 2: subchunk
     bool getChunkLevel() const { return _chunkLevel; }
-    
+
 private:
     typedef boost::shared_ptr<Substitution> SubstPtr;
 

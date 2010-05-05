@@ -8,22 +8,24 @@
 class VoidFourRefFunc {
 public: 
     virtual ~VoidFourRefFunc() {}
-    virtual void operator()(RefAST a, RefAST b, RefAST c, RefAST d) = 0;
+    virtual void operator()(antlr::RefAST a, antlr::RefAST b, 
+			    antlr::RefAST c, antlr::RefAST d) = 0;
 };
 class VoidThreeRefFunc {
 public: 
     virtual ~VoidThreeRefFunc() {}
-    virtual void operator()(RefAST a, RefAST b, RefAST c) = 0;
+    virtual void operator()(antlr::RefAST a, antlr::RefAST b, 
+			    antlr::RefAST c) = 0;
 };
 class VoidTwoRefFunc {
 public: 
     virtual ~VoidTwoRefFunc() {}
-    virtual void operator()(RefAST a, RefAST b) = 0;
+    virtual void operator()(antlr::RefAST a, antlr::RefAST b) = 0;
 };
 class VoidOneRefFunc {
 public: 
     virtual ~VoidOneRefFunc() {}
-    virtual void operator()(RefAST a) = 0;
+    virtual void operator()(antlr::RefAST a) = 0;
 };
 class VoidVoidFunc {
 public: 

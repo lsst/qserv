@@ -78,9 +78,25 @@ header {
 //  Global header starts here, at the top of all generated files
 
 // #include <iostream> // if you want to use some cout's in the actions
-ANTLR_USING_NAMESPACE(std)
-ANTLR_USING_NAMESPACE(antlr)
-#include "parserBase.h"
+//ANTLR_USING_NAMESPACE(std)
+//ANTLR_USING_NAMESPACE(antlr)
+using antlr::BitSet;
+using antlr::RefToken;
+#ifdef INC_CharScanner_hpp__
+using antlr::LexerSharedInputState;
+using antlr::CharScanner;
+using std::istream; // Antlr auto-generated code relies on imported std.
+using antlr::InputBuffer;
+#else
+using antlr::ASTFactory;
+using antlr::LLkParser;
+using antlr::ParserSharedInputState;
+using antlr::TokenBuffer;
+using antlr::TokenStream;
+using antlr::RefAST;
+
+#endif
+#include "lsst/qserv/master/parserBase.h"
 #include "boost/shared_ptr.hpp"
 //  Global header ends here
 }
@@ -97,7 +113,8 @@ options {
 // SqlSQL2Lexer is derived from DmlSQL2Lexer
 {
 //  Class preamble starts here - right before the class definition in the generated class file
-
+using namespace antlr; // OK: in cpp file
+using namespace std; // OK: in cpp file
 //  Class preamble ends here
 }
 class SqlSQL2Lexer extends DmlSQL2Lexer;
@@ -109,7 +126,6 @@ options {
 
 {
 //  Class body inset starts here - at the top within the generated class body
-
 //  Class body inset ends here
 }
 // This redundant definition is here because ANTLR requires at least one rule per class
@@ -118,7 +134,8 @@ PERCENT : '%' ; // Not used in the parser
 // SqlSQL2Parser is derived from DmlSQL2Parser
 {
 //  Class preamble starts here - right before the class definition in the generated class file
-
+using namespace antlr; // OK: in cpp file
+using namespace std; // OK: in cpp file
 //  Class preamble ends here
 }
 
@@ -179,6 +196,14 @@ void handleSelectStar() {
     }
     return; // Do-nothing placeholder    
 }
+
+// void handleSelect() {
+//     if(_selectStarHandler.get()) {
+//         (*_selectStarHandler)();
+//     }
+//     return; // Do-nothing placeholder    
+// }
+
 
 public: // Public (Until the functionality is complete?)
 boost::shared_ptr<VoidThreeRefFunc> _qualifiedNameHandler;
