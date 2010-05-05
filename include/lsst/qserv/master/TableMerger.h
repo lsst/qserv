@@ -18,16 +18,18 @@ class TableMergerConfig {
 public:
     TableMergerConfig(std::string targetDb_, std::string targetTable_,
 		      std::string fixupSelect_,
+		      std::string fixupPost_,
 		      std::string user_, std::string socket_,
 		      std::string mySqlCmd_) 
 	:  targetDb(targetDb_),  targetTable(targetTable_),
-	fixupSelect(fixupSelect_),
-	user(user_),  socket(socket_), mySqlCmd(mySqlCmd_)  
+	   fixupSelect(fixupSelect_), fixupPost(fixupPost_),
+	   user(user_),  socket(socket_), mySqlCmd(mySqlCmd_)  
     {}
 
     std::string targetDb; // for final result, and imported result
     std::string targetTable;
     std::string fixupSelect;
+    std::string fixupPost;
     std::string user;
     std::string socket;
     std::string mySqlCmd;

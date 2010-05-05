@@ -68,6 +68,7 @@ public:
     bool getChunkLevel() const { return _chunkLevel; }
     bool getHasAggregate() const {return _hasAggregate; }
     std::string getFixupSelect() const { return _fixupSelect; }
+    std::string getFixupPost() const { return _fixupPost; }
 
 private:
     typedef boost::shared_ptr<Substitution> SubstPtr;
@@ -81,6 +82,7 @@ private:
     int _chunkLevel;
     bool _hasAggregate;
     std::string _fixupSelect;
+    std::string _fixupPost;
 };
 
 

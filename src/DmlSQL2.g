@@ -1196,13 +1196,13 @@ where_clause :
 
 //{ Rule #281 <group_by_clause>
 group_by_clause : 
-	"group" "by" grouping_column_ref_list 
+	"group" "by" a:grouping_column_ref_list {handleGroupBy(a_AST);}
 ;
 //}
 
 //{ Rule #279 <grouping_column_ref>
 grouping_column_ref : 
-	column_ref (collate_clause)? 
+	a:column_ref (collate_clause)? {handleGroupColumn(a_AST);}
 ;
 //}
 

@@ -24,7 +24,7 @@
 namespace qMaster = lsst::qserv::master;
 using std::stringstream;
 using qMaster::walkTreeString;
-
+using qMaster::AggregateMgr;
 
 namespace { // Anonymous
 
@@ -49,6 +49,8 @@ public:
 	_parser._aliasHandler = _aggMgr.getAliasHandler();
 	_parser._selectListHandler = _aggMgr.getSelectListHandler();
 	_parser._selectStarHandler = _aggMgr.getSelectStarHandler();
+	_parser._groupByHandler = _aggMgr.getGroupByHandler();
+	_parser._groupColumnHandler = _aggMgr.getGroupColumnHandler();
     }
 
     std::string getParseResult() {
@@ -95,6 +97,9 @@ public:
     }
     std::string getFixupSelect() {
 	return _aggMgr.getFixupSelect();
+    }
+    std::string getFixupPost() {
+	return _aggMgr.getFixupPost();
     }
     std::string getPassSelect() {
 	return _aggMgr.getPassSelect();
@@ -188,10 +193,8 @@ void Substitution::_build(std::string const& delim) {
 	pos = endpos;
 
 	// Sanity check:
-	// Check to see if the name is in names.
-	    
+	// Check to see if the name is in names.	    
     }
-
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -233,7 +236,7 @@ void SqlSubstitution::_build(std::string const& sqlStatement,
     _substitution = SubstPtr(new Substitution(template_, _delimiter));
     _hasAggregate = spr.getHasAggregate();
     _fixupSelect = spr.getFixupSelect();
-    
+    _fixupPost = spr.getFixupPost();
 	
 }
 

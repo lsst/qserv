@@ -694,7 +694,9 @@ class QueryBabysitter:
         mysqlBin = c.get("mysql", "mysqlclient")
         if not mysqlBin:
             mysqlBin = "mysql"
-        mergeConfig = TableMergerConfig(dbName, "", fixup,
+
+        mergeConfig = TableMergerConfig(dbName, "", 
+                                        fixup[0], fixup[1],
                                         dbUser, dbSock, 
                                         mysqlBin)
         configureSessionMerger(self._sessionId, mergeConfig)
@@ -787,11 +789,13 @@ class HintedQueryAction:
                                              self._pConfig.getMapRef(2,3))
 
         # Query babysitter.
-        fixup = ""
+        fixupSelect = ""
+        fixupPost = ""
         if self._substitution.getHasAggregate():
-            fixup = self._substitution.getFixupSelect();
+            fixupSelect = self._substitution.getFixupSelect()
+            fixupPost = self._substitution.getFixupPost()
         self._babysitter = QueryBabysitter(self._sessionId, self.queryHash,
-                                           fixup)
+                                           (fixupSelect, fixupPost))
 
         ## For generating subqueries
         self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;

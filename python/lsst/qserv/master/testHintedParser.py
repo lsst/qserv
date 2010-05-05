@@ -30,12 +30,16 @@ class TestHintedParser(unittest.TestCase):
         WHERE ra BETWEEN 1.5 AND 4.1 AND decl BETWEEN -10 AND -2
         ;""",                     
               ["areaSpec_box", "1.5", "-10", "4.1", "-2"])
-
+        gbq1 = ("""SELECT avg(pm_raErr),chunkId from LSST.Object 
+        WHERE ra BETWEEN 1.5 AND 34.1 AND decl BETWEEN -25 AND -2
+        GROUP BY chunkId
+        ;""", ["areaSpec_box", "1.5", "-25", "34.1", "-2"])
         self.basicQuery = bq
         self.hintQuery = hq
         self.hintQuery2 = hq2
         self.aggQuery1 = ahq1
         self.aggQuery2 = ahq2
+        self.groupByQuery1 = gbq1
         pass
     
     def testBasic(self):
@@ -96,3 +100,9 @@ class TestHintedParser(unittest.TestCase):
         print a.resultTableString(r1)
         print a.resultTableString(r2)
         
+    def testGroupByQuery(self):
+        a = app.AppInterface()
+        id1 = a.query(*self.groupByQuery1)
+        r1 = a.joinQuery(id1)
+        print "Done avg groupby query."
+        print a.resultTableString(r1)

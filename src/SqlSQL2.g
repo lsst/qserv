@@ -196,6 +196,18 @@ void handleSelectStar() {
     }
     return; // Do-nothing placeholder    
 }
+void handleGroupBy(RefAST a) {
+    if(_groupByHandler.get()) {
+        (*_groupByHandler)(a);
+    }
+    return; // Do-nothing placeholder    
+}
+void handleGroupColumn(RefAST a) {
+    if(_groupColumnHandler.get()) {
+        (*_groupColumnHandler)(a);
+    }
+    return; // Do-nothing placeholder    
+}
 
 // void handleSelect() {
 //     if(_selectStarHandler.get()) {
@@ -213,6 +225,8 @@ boost::shared_ptr<VoidTwoRefFunc> _aliasHandler;
 boost::shared_ptr<VoidOneRefFunc> _setFctSpecHandler;
 boost::shared_ptr<VoidOneRefFunc> _selectListHandler;
 boost::shared_ptr<VoidVoidFunc> _selectStarHandler;
+boost::shared_ptr<VoidOneRefFunc> _groupByHandler;
+boost::shared_ptr<VoidOneRefFunc> _groupColumnHandler;
 //  Class body inset ends here
 }
 

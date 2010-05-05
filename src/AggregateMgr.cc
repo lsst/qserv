@@ -160,12 +160,52 @@ void AggregateMgr::SelectListHandler::operator()(antlr::RefAST a)  {
 #endif
 	    
 }
+
+////////////////////////////////////////////////////////////////////////
+// AggregateMgr::GroupByHandler
+////////////////////////////////////////////////////////////////////////
+void AggregateMgr::GroupByHandler::operator()(antlr::RefAST a) {
+    std::cout << "Got GroupBy: " << walkTreeString(a) << std::endl;
+    _isFrozen = true;
+}
+void AggregateMgr::GroupByHandler::addColumn(NodeBound const& n) {
+    if(!_isFrozen) {
+	_columns.push_back(n);
+	std::cout << "GroupBy new column: " << walkTreeString(n.first) 
+		  << std::endl;
+    } else {
+	std::cout << "Don't know how to handle multiple group by clauses."
+		  << std::endl;
+    }
+}
+std::string AggregateMgr::GroupByHandler::getGroupByString() const {
+    NodeList::const_iterator i;
+    NodeList::const_iterator end = _columns.end();
+    bool written = false;
+    std::stringstream ss;
+    ss << "GROUP BY ";
+    for(i = _columns.begin(); i != end; ++i) {
+	if(written) ss << ",";
+	ss << "`" << walkBoundedTreeString(i->first, i->second)
+	   << "`";
+    }
+    return ss.str();
+}
+////////////////////////////////////////////////////////////////////////
+// AggregateMgr::GroupColumnHandler
+////////////////////////////////////////////////////////////////////////
+void AggregateMgr::GroupColumnHandler::operator()(antlr::RefAST a) {
+    h.addColumn(NodeBound(a, getLastSibling(a)));
+}
+
 ////////////////////////////////////////////////////////////////////////
 // AggregateMgr
 ////////////////////////////////////////////////////////////////////////
 AggregateMgr::AggregateMgr() : _aliaser(new AliasHandler()),
 			       _setFuncer(new SetFuncHandler()),
 			       _selectLister(new SelectListHandler(*_aliaser)),
+			       _groupByer(new GroupByHandler()),
+			       _groupColumner(new GroupColumnHandler(*_groupByer)),
 			       _hasAggregate(false) {
 }
 
@@ -219,6 +259,14 @@ std::string AggregateMgr::getFixupSelect() {
     return _fixupSelect;
 	
 }
+std::string AggregateMgr::getFixupPost() {
+    // Fixup suffix will be ready when the fixup select is ready.
+    if(_fixupSelect.empty()) { 
+	_computeSelects();
+    }
+    return _fixupPost;
+	
+}
 void AggregateMgr::_computeSelects() {
     // passSelect = "".join(map(lambda s: s.pass, selectList))
     // fixupSelect = "".join(map(lambda s: s.fixup, selectList))
@@ -258,8 +306,16 @@ void AggregateMgr::_computeSelects() {
 	}
 	
     } 
+    _computePost();
     _passSelect = ps.str();
     _fixupSelect = fs.str();
 }
 
-
+void AggregateMgr::_computePost() {
+    // For now, only handle group by.
+    if(_groupByer->getHasColumns()) {
+	_fixupPost = _groupByer->getGroupByString();
+    } else {
+	_fixupPost = ""; 
+    }
+}

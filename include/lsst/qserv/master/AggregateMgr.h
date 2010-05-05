@@ -150,6 +150,26 @@ public:
 	NodeBound firstSelectBound;
 	bool isStarFirst;
     }; // class SelectListHandler
+
+    class GroupByHandler : public VoidOneRefFunc {
+    public: 
+	GroupByHandler() : _isFrozen(false) {}
+	virtual ~GroupByHandler() {}
+	virtual void operator()(antlr::RefAST a);
+	void addColumn(NodeBound const& n);
+	std::string getGroupByString() const;
+	bool getHasColumns() { return !_columns.empty(); }
+    private:
+	NodeList _columns;
+	bool _isFrozen;
+    }; // class GroupByHandler
+    class GroupColumnHandler : public VoidOneRefFunc {
+    public: 
+	GroupColumnHandler(GroupByHandler& h_) :h(h_) {}
+	virtual ~GroupColumnHandler() {}
+	virtual void operator()(antlr::RefAST a);
+	GroupByHandler& h;
+    }; // class GroupColumnHandler
     
     AggregateMgr();
     
@@ -158,6 +178,7 @@ public:
 
     std::string getPassSelect();
     std::string getFixupSelect();
+    std::string getFixupPost();
     
     bool getHasAggregate() const { return _hasAggregate; }
     boost::shared_ptr<VoidTwoRefFunc> getAliasHandler() {return _aliaser;}
@@ -166,14 +187,25 @@ public:
     boost::shared_ptr<VoidVoidFunc> getSelectStarHandler() {
 	return _selectLister->getSelectStarHandler();
     }
+    boost::shared_ptr<VoidOneRefFunc> getGroupByHandler() {
+	return _groupByer; 
+    }
+    boost::shared_ptr<VoidOneRefFunc> getGroupColumnHandler() { 
+	return _groupColumner;
+    }
+
 private:
     void _computeSelects();
+    void _computePost();
     boost::shared_ptr<AliasHandler> _aliaser;
     boost::shared_ptr<SetFuncHandler> _setFuncer;
     boost::shared_ptr<SelectListHandler> _selectLister;
+    boost::shared_ptr<GroupByHandler> _groupByer;
+    boost::shared_ptr<GroupColumnHandler> _groupColumner;
     AggMap _aggRecords;
     std::string _passSelect;
     std::string _fixupSelect;
+    std::string _fixupPost;
     bool _hasAggregate;
 
 }; // class AggregateMgr

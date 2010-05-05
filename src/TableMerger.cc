@@ -1,5 +1,6 @@
 #include <sys/time.h> 
 #include <sstream>
+#include <iostream>
 #include <boost/format.hpp>
 #include "lsst/qserv/master/TableMerger.h"
 using lsst::qserv::master::TableMerger;
@@ -23,7 +24,7 @@ std::string getTimeStampId() {
 
 std::string const TableMerger::_dropSql("DROP TABLE IF EXISTS %s;");
 std::string const TableMerger::_createSql("CREATE TABLE %s SELECT * FROM %s;");
-std::string const TableMerger::_createFixSql("CREATE TABLE %s SELECT %s FROM %s;");
+std::string const TableMerger::_createFixSql("CREATE TABLE %s SELECT %s FROM %s %s;");
 std::string const TableMerger::_insertSql("INSERT INTO %s SELECT * FROM %s;");
 std::string const TableMerger::_cleanupSql("DROP TABLE %s;");
 std::string const TableMerger::_cmdBase("%1% --socket=%2% -u %3% %4%");
@@ -65,7 +66,8 @@ bool TableMerger::finalize() {
 	std::string sql = (boost::format(_createFixSql) 
 			   % _config.targetTable 
 			   % _config.fixupSelect
-			   % _mergeTable).str() + cleanup;
+			   % _mergeTable 
+			   % _config.fixupPost).str() + cleanup;
 	return _applySql(sql);
     }
     return true;
