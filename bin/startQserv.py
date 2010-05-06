@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 import unittest
 from optparse import OptionParser
+import sys
 
 from lsst.qserv.master.testparser import TestAppFunctions
 from lsst.qserv.master import server
 from lsst.qserv.master import app
 from lsst.qserv.master import client
+from lsst.qserv.master import config
 
 def runParserTest():
     """Invokes the test cases in the lsst.qserv.master.testparser module
@@ -42,7 +44,18 @@ def main():
                       dest="sanityClient", default=False,
                       help="Sanity-check a running server.")
 
+    parser.add_option("-c", "--config", dest="configFile", default=None,
+                      help="Use config file. Can also be specified with\n" +
+                      "%s as an environment variable." % config.envFilenameVar)
     (options, args) = parser.parse_args()
+
+    # Modifying options
+    if options.configFile:
+        config.load(options.configFile)
+    else:
+        config.load()
+    print "Configuration:"
+    config.printTo(sys.stdout)
 
     if options.resettables == True:
         resetTables()

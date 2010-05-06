@@ -2,7 +2,7 @@
 
 import time
 
-from twisted.web import xmlrpc, server
+from twisted.web import xmlrpc, server, resource
 
 class Example(xmlrpc.XMLRPC):
 
@@ -17,8 +17,11 @@ class Example(xmlrpc.XMLRPC):
 
 if __name__ == '__main__':
     from twisted.internet import reactor
+
     r = Example()
-    reactor.listenTCP(7080, server.Site(r))
+    root = resource.Resource()
+    root.putChild("x", r)
+    reactor.listenTCP(7080, server.Site(root))
     reactor.run()
 
 

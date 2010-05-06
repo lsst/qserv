@@ -31,6 +31,13 @@ class AppInterface:
         a.invoke()
         r = a.getResult()
         return app.getResultTable(r)
+
+    def submitQuery(self,query,conditions):
+        """Simplified mysqlproxy version.  returns table name."""
+        a = app.HintedQueryAction(query, conditions, self.pmap)
+        a.invoke()
+        r = a.getResult()
+        return r
     
     def query(self, q, hints):
         """Issue a query, and return a taskId that can be used for tracking.

@@ -36,7 +36,7 @@ require ("xmlrpc.http")
 
 rpcHost = "127.0.0.1"
 rpcPort = 7080
-rpcHP = "http://" .. rpcHost .. ":" .. rpcPort
+rpcHP = "http://" .. rpcHost .. ":" .. rpcPort .. "/x"
 
 
 -- constants (kind of)

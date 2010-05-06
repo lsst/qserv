@@ -7,6 +7,7 @@ import sys
 from lsst.qserv.master import appInterface as app
 from lsst.qserv.master import config
 from lsst.qserv.master.testHintedParser import TestHintedParser
+
 def main():    
 
     parser = OptionParser()

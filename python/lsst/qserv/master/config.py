@@ -20,6 +20,7 @@ defaultConfig = StringIO("""\
 xrootd=lsst-dev01:1094
 xrootd_user=qsmaster
 scratch_path=/dev/shm/qserv
+port=7080
 
 [mgmtdb]
 db=qservMeta

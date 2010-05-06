@@ -14,7 +14,8 @@ import twisted.web.server
 from twisted.web import xmlrpc
 
 # Package imports
-import appInterface
+from appInterface import AppInterface
+import config
 
 # Module settings
 defaultPort = 8000
@@ -75,6 +76,7 @@ class XmlRpcInterface(xmlrpc.XMLRPC):
         map(lambda x: setattr(self, "_".join([prefix,x]), 
                               getattr(self.appInterface, x)), 
             self.appInterface.publishable)
+        print "contents:"," ".join(filter(lambda x:"xmlrpc_" in x, dir(self)))
         pass
 
     def xmlrpc_echo(self, echostr):
@@ -165,7 +167,12 @@ class HttpInterface:
 class Master:
 
     def __init__(self):
-        self.port = defaultPort # module-level default
+        try:
+            cfg = config.config
+            self.port = cfg.getint("frontend","port")
+        except:
+            print "Bad or missing port for server. Using",defaultPort
+            self.port = defaultPort
         pass
 
     def listen(self):
