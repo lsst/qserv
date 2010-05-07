@@ -22,13 +22,11 @@ class Example(xmlrpc.XMLRPC):
 
 
     def xmlrpc_submitQuery(self, query, conditions):
-        def hardWork():
-            print "query '", query, "' submitted, conditions: ", conditions
-            #time.sleep(5)
-            #print "done sleeping"
-            return "dummyResults%s" % nextX()
-        return deferToThread(hardWork)
-
+        print "query '", query, "' submitted, conditions: ", conditions
+        #time.sleep(5)
+        #print "done sleeping"
+        x = nextX()
+        return ["dummyResults%s" % x, "dummyResults%sLock" % x]
 
 if __name__ == '__main__':
     from twisted.internet import reactor

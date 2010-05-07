@@ -453,8 +453,8 @@ function queryProcessing()
             return err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
         end
 
-        resultTableName = res
-        lockTableName = (res .. "Lock")
+        resultTableName = res[1]
+        lockTableName = res[2]
 
         return SUCCESS
     end
