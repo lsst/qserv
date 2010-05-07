@@ -88,7 +88,11 @@ env['SHLIBPREFIX'] = ""
 if os.environ.has_key('SWIG'):
     env['SWIG'] = os.environ['SWIG']
 
-composeEnv(env, roots=searchRoots, includes=[xrd_inc], libs=[xrd_inc])
+searchLibs = [xrd_lib]
+searchLibs += filter(os.path.exists, 
+                     map(lambda r: os.path.join(r,"lib","mysql"),searchRoots))
+
+composeEnv(env, roots=searchRoots, includes=[xrd_inc], libs=searchLibs)
 if hasXrootd:
     env.Append(CPPPATH = [xrd_inc])
     env.Append(LIBPATH = [xrd_lib])
@@ -127,6 +131,14 @@ if not conf.CheckLib("antlr", language="C++"):
     print >> sys.stderr, "Could not find ANTLR lib"
     canBuild = False
 
+# MySQL
+if not conf.CheckCXXHeader("mysql/mysql.h"):
+    print >> sys.stderr, "Could not locate MySQL headers"
+    canBuild = False
+if not conf.CheckLib("mysqlclient_r", language="C++"):
+    print >> sys.stderr, "Could not find multithreaded mysql(mysqlclient_r)"
+    canBuild = False
+
     
 # Close out configuration
 env = conf.Finish()    
@@ -142,19 +154,18 @@ parserSrcs = map(lambda x: os.path.join('src', x),
 
 pyPath = 'python/lsst/qserv/master'
 pyLib = os.path.join(pyPath, '_masterLib.so')
-srcPaths = [os.path.join('src', 'xrdfile.cc'),
-            os.path.join('src', 'thread.cc'),
-            os.path.join('src', "TableMerger.cc"),
-            os.path.join('src', 'dispatcher.cc'),
-            os.path.join('src', 'xrootd.cc'),
-            os.path.join(pyPath, 'masterLib.i')] + parserSrcs
+dispatchSrcs = map(lambda x: os.path.join('src', x), 
+                   ["xrdfile.cc", 
+                    "thread.cc", "TableMerger.cc",
+                    "sql.cc",
+                    "dispatcher.cc", "xrootd.cc"])
+
+srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs
 
 
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
-             'srcPaths' : map(lambda x: os.path.join('src', x), 
-                         ["xrdfile.cc", "runTransactions.cc", 
-                          "thread.cc", "TableMerger.cc",
-                          "dispatcher.cc", "xrootd.cc"]),
+             'srcPaths' : dispatchSrcs + [os.path.join('src',
+                                                       "runTransactions.cc")]
              }
 # Lexer and Parser cpp files should have been generated with
 # "antlr -glib DmlSQL2.g SqlSQL2.g"

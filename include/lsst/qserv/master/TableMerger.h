@@ -48,6 +48,7 @@ public:
     bool finalize();
 private:
     bool _applySql(std::string const& sql);
+    bool _applySqlLocal(std::string const& sql);
     std::string _buildMergeSql(std::string const& tableName, bool create);
     void _fixupTargetName();
     bool _importResult(std::string const& dumpFile);

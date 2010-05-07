@@ -100,6 +100,10 @@ bool TableMerger::_applySql(std::string const& sql) {
 	_error.description = "Error finalizing merge step..";
 	return false;
     }
+    return true;
+}
+bool TableMerger::_applySqlLocal(std::string const& sql) {
+    return false;
 }
 
 std::string TableMerger::_buildMergeSql(std::string const& tableName, 
