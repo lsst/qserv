@@ -4,6 +4,7 @@ import time
 
 # Package imports
 import app
+import proxy
 
 # Main AppInterface class
 #
@@ -32,12 +33,27 @@ class AppInterface:
         r = a.getResult()
         return app.getResultTable(r)
 
-    def submitQuery(self,query,conditions):
+    def submitQuery(self, query, conditions):
+        return self.submitQuery1(query, conditions)
+
+    def submitQuery1(self,query,conditions):
         """Simplified mysqlproxy version.  returns table name."""
         a = app.HintedQueryAction(query, conditions, self.pmap)
-        a.invoke()
+        a.invoke()        
         r = a.getResult()
         return r
+
+    def submitQuery2(self,query,conditions):
+        """Simplified mysqlproxy version.  
+        @returns result table name, lock table name, but before completion."""
+        resultName = allocateResultName(id(self))
+        lockName = allocateLockName(id(self))
+        lock = proxy.Lock(lockName)
+        lock.lock()
+        a = app.HintedQueryAction(query, conditions, self.pmap, resultName)
+        a.invoke()
+        lock.unlockAfter(a.getResult)
+        return (result, lockname)
     
     def query(self, q, hints):
         """Issue a query, and return a taskId that can be used for tracking.

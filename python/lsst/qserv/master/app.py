@@ -22,7 +22,7 @@ import sqlparser
 import lsst.qserv.master.config
 from lsst.qserv.master import geometry
 from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap
-
+from db import TaskDb as Persistence
 
 # SWIG'd functions
 
@@ -110,139 +110,6 @@ def getResultTable(tableName):
 ######################################################################
 ## Classes
 ######################################################################
-class Persistence:
-    def __init__(self):
-        self._conn = None
-        pass
-
-    def check(self):
-        if not self._conn:
-            self.activate()
-        if not self._conn:
-           return False
-        return True
-
-    def activate(self):
-        config = lsst.qserv.master.config.config
-         #os.getenv("QSM_DBSOCK", "/data/lsst/run/mysql.sock")
-        socket = config.get("resultdb", "unix_socket")
-        user = config.get("resultdb", "user")
-        passwd = config.get("resultdb", "passwd")
-        host = config.get("resultdb", "host")
-        port = config.getint("resultdb", "port")
-        db = config.get("resultdb", "db")
-        try: # Socket file first
-            self._conn = sql.connect(user=user,
-                                     passwd=passwd,
-                                     unix_socket=socket,
-                                     db=db)
-        except Exception, e:
-            try:
-                self._conn = sql.connect(user=user,
-                                         passwd=passwd,
-                                         host=host,
-                                         port=port,
-                                         db=db)
-            except Exception, e2:
-                print >>sys.stderr, "Couldn't connect using file", socket, e
-                msg = "Couldn't connect using %s:%s" %(host,port)
-                print >>sys.stderr, msg, e2
-                self._conn = None
-                return
-        c = self._conn.cursor()
-        # should check if db exists here.
-        # Database gets populated with fake data automatically, but
-        # the db "test" must exist.
-        pass
-
-    def _dropSilent(self, cursor, tables):
-        for t in tables:
-            try:
-                cursor.execute('DROP TABLE %s;' %t)
-            finally:
-                pass
-        pass
-
-    def makeTables(self):
-        c = self._conn.cursor()
-        self._dropSilent(c, ['tasks']) # don't drop the partmap anymore
-        c.execute("CREATE TABLE tasks (id int, queryText text);")
-        # We aren't in charge of the partition map anymore.
-        # c.execute("CREATE TABLE partmap (%s);" % (", ".join([
-        #                 "chunkId int", "subchunkId int", 
-        #                 "ramin float", "ramax float", 
-        #                 "declmin float", "declmax float"])))
-        # self._populatePartFake()
-        c.close()
-
-        pass
-
-    def _populatePartFake(self):
-        c = self._conn.cursor()
-        #
-        # fake chunk layout (all subchunk 0 right now)
-        # +----+-----+
-        # | 1  |  2  |
-        # +----+-----+    center at 0,0
-        # | 3  |  4  |
-        # +----+-----+
-        # 
-        # ^
-        # |
-        # |ra+
-        #
-        # decl+
-        # -------->
-        
-        # chunkId, subchunkId, ramin, ramax, declmin, declmax
-        fakeInfin = 100.0
-        fakeRows = [(1, 0, 0.0, fakeInfin, -fakeInfin, 0.0),
-                    (2, 0, 0.0, fakeInfin, 0.0, fakeInfin),
-                    (3, 0, -fakeInfin, 0.0, -fakeInfin, 0.0),
-                    (4, 0, -fakeInfin, 0.0, 0.0, fakeInfin),
-                    ]
-        for cTuple in fakeRows:
-            sqlstr = 'INSERT INTO partmap VALUES %s;' % str(cTuple) 
-            c.execute(sqlstr)
-        c.close()
-
-    
-    def nextId(self):
-        if not self._conn:
-            self.activate()
-        c = self._conn.cursor()
-        c.execute('SELECT MAX(id) FROM tasks;') # non-atomic.
-        maxId = c.fetchall()[0][0]
-        if not maxId:
-            return 1
-        else:
-            return 1 + maxId
-        
-        
-    def addTask(self, taskparam):
-        """taskparam should be a tuple of (id, query)
-        You can pass None for id, and let the system assign a safe id.
-        """
-        if not self._conn:
-            self.activate()
-        if taskparam[0] == None:
-            a = list(taskparam)
-            a[0] = int(self.nextId())
-            assert type(a[0]) is int
-            taskparam = tuple(a)
-        taskstr = str(taskparam)
-        sqlstr = 'INSERT INTO tasks VALUES %s' % taskstr
-        print "---",sqlstr
-        self._conn.cursor().execute(sqlstr)
-        return a[0]
-
-    def issueQuery(self, query):
-        c = self._conn.cursor()
-        c.execute(query)
-        return c.fetchall()    
-    pass
-
-########################################################################
 
 class TaskTracker:
     def __init__(self):
@@ -676,16 +543,16 @@ class QueryBabysitter:
     """Watches over queries in-flight.  An instrument of query care that 
     can be used by a client.  Unlike the collater, it doesn't do merging.
     """
-    def __init__(self, sessionId, queryHash, fixup):
+    def __init__(self, sessionId, queryHash, fixup, resultName=""):
         self._sessionId = sessionId
         self._inFlight = {}
         # Scratch mgmt (Consider putting somewhere else)
         self._scratchPath = setupResultScratch()
 
-        self._setupMerger(fixup) 
+        self._setupMerger(fixup, resultName) 
         pass
-    
-    def _setupMerger(self, fixup):
+
+    def _setupMerger(self, fixup, resultName):
         c = lsst.qserv.master.config.config
         dbSock = c.get("resultdb", "unix_socket")
         dbUser = c.get("resultdb", "user")
@@ -695,7 +562,7 @@ class QueryBabysitter:
         if not mysqlBin:
             mysqlBin = "mysql"
 
-        mergeConfig = TableMergerConfig(dbName, "", 
+        mergeConfig = TableMergerConfig(dbName, resultName, 
                                         fixup[0], fixup[1],
                                         dbUser, dbSock, 
                                         mysqlBin)
@@ -715,7 +582,6 @@ class QueryBabysitter:
         s = joinSession(self._sessionId)
         print "Final state of all queries", getQueryStateString(s)
         
-
     def getResultTableName(self):
         ## Should do sanity checking to make sure that the name has been
         ## computed.
@@ -768,7 +634,7 @@ class PartitioningConfig:
 class HintedQueryAction:
     """A HintedQueryAction encapsulates logic to prepare, execute, and 
     retrieve results of a query that has a hint string."""
-    def __init__(self, query, hints, pmap):
+    def __init__(self, query, hints, pmap, resultName=""):
         self.queryStr = query.strip()# Pull trailing whitespace
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
@@ -795,7 +661,8 @@ class HintedQueryAction:
             fixupSelect = self._substitution.getFixupSelect()
             fixupPost = self._substitution.getFixupPost()
         self._babysitter = QueryBabysitter(self._sessionId, self.queryHash,
-                                           (fixupSelect, fixupPost))
+                                           (fixupSelect, fixupPost),
+                                           resultName)
 
         ## For generating subqueries
         self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;
