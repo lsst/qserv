@@ -3,6 +3,9 @@
 #include <iostream>
 #include <boost/format.hpp>
 #include "lsst/qserv/master/TableMerger.h"
+#include "lsst/qserv/master/sql.h"
+using lsst::qserv::master::SqlConfig;
+using lsst::qserv::master::SqlConnection;
 using lsst::qserv::master::TableMerger;
 using lsst::qserv::master::TableMergerError;
 using lsst::qserv::master::TableMergerConfig;
@@ -20,6 +23,15 @@ std::string getTimeStampId() {
     // FIXME: is there a better idea?
 }
 
+boost::shared_ptr<SqlConfig> makeSqlConfig(TableMergerConfig const& c) {
+    boost::shared_ptr<SqlConfig> sc(new SqlConfig());
+    assert(sc.get());
+    sc->username = c.user;
+    sc->dbName = c.targetDb;
+    sc->socket = c.socket;
+    return sc;
+}
+    
 } // anonymous namespace
 
 std::string const TableMerger::_dropSql("DROP TABLE IF EXISTS %s;");
@@ -34,7 +46,9 @@ std::string const TableMerger::_cmdBase("%1% --socket=%2% -u %3% %4%");
 // public
 ////////////////////////////////////////////////////////////////////////
 TableMerger::TableMerger(TableMergerConfig const& c) 
-    : _config(c), _tableCount(0) {
+    : _config(c),
+      _sqlConfig(makeSqlConfig(c)),
+      _tableCount(0) {
     _fixupTargetName();
     _loadCmd = (boost::format(_cmdBase)
 		% c.mySqlCmd % c.socket % c.user % c.targetDb).str();    
@@ -76,8 +90,12 @@ bool TableMerger::finalize() {
 // private
 ////////////////////////////////////////////////////////////////////////
 bool TableMerger::_applySql(std::string const& sql) {
+
     FILE* fp;
-    fp = popen(_loadCmd.c_str(), "w"); // check error
+    {
+	boost::lock_guard<boost::mutex> m(_popenMutex);
+	fp = popen(_loadCmd.c_str(), "w"); // check error
+    }
     if(fp == NULL) {
 	_error.status = TableMergerError::MYSQLOPEN;
 	_error.errorCode = 0;
@@ -93,7 +111,11 @@ bool TableMerger::_applySql(std::string const& sql) {
 	pclose(fp); // cleanup
 	return false;
     }
-    int r = pclose(fp);
+    int r;
+    {
+	boost::lock_guard<boost::mutex> m(_popenMutex);
+	r = pclose(fp);
+    }
     if(r == -1) {
 	_error.status = TableMergerError::TERMINATE;
 	_error.errorCode = r;
@@ -102,8 +124,29 @@ bool TableMerger::_applySql(std::string const& sql) {
     }
     return true;
 }
+
 bool TableMerger::_applySqlLocal(std::string const& sql) {
-    return false;
+    SqlConnection sc(*_sqlConfig);
+    if(!sc.connectToDb()) {
+	std::stringstream ss;
+	_error.status = TableMergerError::MYSQLCONNECT;
+	_error.errorCode = sc.getMySqlErrno();
+	ss << "Code:" << _error.errorCode << " "
+	   << sc.getMySqlError();
+	_error.description = "Error connecting to db." + ss.str();
+	return false;
+    }
+    if(!sc.apply(sql)) {
+	std::stringstream ss;
+	_error.status = TableMergerError::MYSQLEXEC;
+	_error.errorCode = sc.getMySqlErrno();
+	ss << "Code:" << _error.errorCode << " "
+	   << sc.getMySqlError();
+	_error.description = "Error applying sql." + ss.str();
+	return false;
+    }
+
+    return true;
 }
 
 std::string TableMerger::_buildMergeSql(std::string const& tableName, 

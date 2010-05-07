@@ -2,14 +2,19 @@
 #define LSST_QSERV_MASTER_TABLE_MERGER_H
 #include <string>
 #include <boost/thread.hpp> // for mutex. 
+#include <boost/shared_ptr.hpp> // for mutex. 
 
 namespace lsst {
 namespace qserv {
 namespace master {
+// Forward
+class SqlConfig;
+class SqlConnection;
 
 struct TableMergerError {
 public:
-    enum {NONE, IMPORT, MYSQLOPEN, MERGEWRITE, TERMINATE} status;
+    enum {NONE, IMPORT, MYSQLOPEN, MERGEWRITE, TERMINATE, 
+	  MYSQLCONNECT, MYSQLEXEC} status;
     int errorCode;
     std::string description;
 };
@@ -60,14 +65,17 @@ private:
     static std::string const _cleanupSql;
     static std::string const _cmdBase;
 
-    std::string _loadCmd;
     TableMergerConfig _config;
+    std::string _loadCmd;
+    boost::shared_ptr<SqlConfig> _sqlConfig;
+
     std::string _mergeTable;
     TableMergerError _error;
     long long _resultLimit;
     int _tableCount;
     boost::mutex _countMutex;
-	
+    boost::mutex _popenMutex;
+    
 };
 
 }}} // namespace lsst::qserv::master

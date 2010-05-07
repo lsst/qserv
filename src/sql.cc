@@ -1,4 +1,4 @@
-
+ 
 #include <sstream>
 
 // Boost
@@ -9,13 +9,34 @@
 
 using lsst::qserv::master::SqlConnection;
 
+bool SqlConnection::_isReady = false;
+boost::mutex SqlConnection::_sharedMutex;
+
+SqlConnection::SqlConnection(SqlConfig const& sc, bool useThreadMgmt) 
+    : _conn(NULL), _config(sc), 
+      _connected(false), _useThreadMgmt(useThreadMgmt) { 
+    {
+	boost::lock_guard<boost::mutex> g(_sharedMutex);
+	if(!_isReady) {
+	    int rc = mysql_library_init(0, NULL, NULL);
+	    assert(0 == rc);
+	}
+    }
+    if(useThreadMgmt) {
+	mysql_thread_init();
+    }
+    
+}
 SqlConnection::~SqlConnection() {
     if(!_conn) {
 	mysql_close(_conn);
     }
+    if(_useThreadMgmt) {
+	mysql_thread_end();
+    }
 }
-bool SqlConnection::connectToResultDb() {
-
+bool SqlConnection::connectToDb() {
+    if(_connected) return true;
     return _init() && _connect();
 }
 
@@ -35,6 +56,7 @@ bool SqlConnection::apply(std::string const& sql) {
 ////////////////////////////////////////////////////////////////////////
 // private
 ////////////////////////////////////////////////////////////////////////
+
 bool SqlConnection::_init() {
     assert(_conn == NULL);
     _conn = mysql_init(NULL);
@@ -50,17 +72,18 @@ bool SqlConnection::_connect() {
     unsigned long clientFlag = CLIENT_MULTI_STATEMENTS;
     MYSQL* c = mysql_real_connect
 	(_conn, 
-	 _socket.empty() ?_hostname.c_str() : 0, 
-	 _username.empty() ? 0 : _username.c_str(), 
-	 _password.empty() ? 0 : _password.c_str(), 
-	 _dbName.empty() ? 0 : _dbName.c_str(), 
-	 _port,
-	 _socket.empty() ? 0 : _socket.c_str(), 
+	 _config.socket.empty() ?_config.hostname.c_str() : 0, 
+	 _config.username.empty() ? 0 : _config.username.c_str(), 
+	 _config.password.empty() ? 0 : _config.password.c_str(), 
+	 _config.dbName.empty() ? 0 : _config.dbName.c_str(), 
+	 _config.port,
+	 _config.socket.empty() ? 0 : _config.socket.c_str(), 
 	 clientFlag);
     if(c == NULL) {
 	_storeMysqlError(c);
 	return false;
     }
+    _connected = true;
     return true;
 }
 
