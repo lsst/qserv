@@ -14,9 +14,6 @@ import threading
 import time
 from string import Template
 
-# Mysql
-import MySQLdb as sql
-
 # Package imports
 import sqlparser
 import lsst.qserv.master.config
