@@ -2,8 +2,7 @@
 
 
 
-mysql -e "CREATE DATABASE proxyTest; USE proxyTest; CREATE TABLE Obj (objectId INT, x INT); INSERT INTO Obj VALUES (1,11),(2,12),(3,13); CREATE TABLE dummyResults(f FLOAT); INSERT INTO dummyResults VALUES (1.11), (2.22), (3.33), (4.44)"
-
+mysql -e "CREATE DATABASE proxyTest; USE proxyTest; CREATE TABLE Obj (objectId INT, x INT); INSERT INTO Obj VALUES (1,11),(2,12),(3,13); CREATE TABLE dummyResults1(f FLOAT); INSERT INTO dummyResults1 VALUES (1.11), (2.22), (3.33), (4.44); CREATE TABLE dummyResults1Lock (i int); CREATE TABLE dummyResults2(f FLOAT); INSERT INTO dummyResults2 VALUES (5.55), (6.66); CREATE TABLE dummyResults2Lock (i int); CREATE TABLE dummyResults3(f FLOAT); INSERT INTO dummyResults3 VALUES (7.77), (8.88), (9.99); CREATE TABLE dummyResults3Lock (i int)"
 
 # these all should succeed
 mysql --port=4040 --protocol=TCP proxyTest -e "select * from Obj WHERE x>7"

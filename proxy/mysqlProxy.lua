@@ -416,7 +416,7 @@ qType = queryType()
 
 function queryProcessing()
 
-    local self = { resultTableName = nil }
+    local self = { lockTableName = nil, resultTableName = nil }
 
     ---------------------------------------------------------------------------
 
@@ -454,6 +454,7 @@ function queryProcessing()
         end
 
         resultTableName = res
+        lockTableName = (res .. "Lock")
 
         return SUCCESS
     end
@@ -474,8 +475,15 @@ function queryProcessing()
         end
 
         print ("got via rpc " .. resultTableName)
-        q = "SELECT * FROM " .. resultTableName
-        proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q)
+
+        q1 = "SELECT * FROM " .. lockTableName
+        proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q1,
+                             {resultset_is_needed = true})
+
+        q2 = "SELECT * FROM " .. resultTableName
+        proxy.queries:append(2, string.char(proxy.COM_QUERY) .. q2,
+                             {resultset_is_needed = true})
+
         return SUCCESS
     end
 
@@ -537,3 +545,18 @@ function read_query(packet)
 end
 
 
+function read_query_result(inj)
+    -- we injected query with the id=1 (for locking purpose)
+    if (inj.type == 1) then
+        print("q1 - ignoring")
+        for row in inj.resultset.rows do
+            print("   " .. row[1])
+        end
+        return proxy.PROXY_IGNORE_RESULT
+    else
+        print("q2 - passing")
+        for row in inj.resultset.rows do
+            print("   " .. row[1])
+        end
+    end
+ end 
