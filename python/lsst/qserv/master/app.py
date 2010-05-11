@@ -350,67 +350,70 @@ class QueryPreparer:
 class RegionFactory:
     def __init__(self):
         self._constraintNames = {
-            "areaSpec_box" : self._handleBox,
-            "areaSpec_circle" : self._handleCircle,
-            "areaSpec_ellipse" : self._handleEllipse,
-            "areaSpec_poly": self._handleConvexPolygon
+            "box" : self._handleBox,
+            "circle" : self._handleCircle,
+            "ellipse" : self._handleEllipse,
+            "poly": self._handleConvexPolygon
             }
         pass
-
-    def _handleBox(self, hList):
+    def _splitParams(self, name, tupleSize, param):
+        print param
+        hList = map(float,param.split(","))
+        assert 0 == (len(hList) % tupleSize), "Wrong # for %s." % name
+        # Split a long param list into tuples.
+        return map(lambda x: hList[tupleSize*x : tupleSize*(x+1)],
+                   range(len(hList)/tupleSize))
+        
+    def _handleBox(self, param):
         # ramin, declmin, ramax, declmax
-        assert len(hList) >= 4, "Not enough values for box"
-        bounds = map(float, hList[:4]) 
-        return (hList[4:], SphericalBox(bounds[:2], bounds[2:]))
-    def _handleCircle(self, hList):
+        return map(lambda t: SphericalBox(t[:2], t[2:]),
+                   self._splitParams("box", 4, param))
+    def _handleCircle(self, param):
         # ra,decl, radius
-        assert len(hList) >= 3, "Not enough values for circle"
-        params = map(float, hList[:3]) 
-        return (hList[3:], SphericalCircle(bounds[:2], bounds[2:]))
-    def _handleEllipse(self, hList):
+        return map(lambda t: SphericalBox(t[:2], t[2:]),
+                   self._splitParams("circle", 3, param))
+    def _handleEllipse(self, param):
         # ra,decl, majorlen,minorlen,majorangle
-        assert len(hList) >= 5, "Not enough values for ellipse"
-        params = map(float, hList[:5])
-        return (hList[5:], SphericalEllipse(params[:2], params[2],
-                                            params[3], params[4]))
-    def _handleConvexPolygon(self, hList):
+        return map(lambda t: SphericalBox(t[:2], t[2], t[3], t[4]),
+                   self._splitParams("ellipse", 5, param))
+    def _handleConvexPolygon(self, param):
         # For now, list of vertices only, in counter-clockwise order
         # vertex count, ra1,decl1, ra2,decl2, ra3,decl3, ... raN,declN
         # Note that:
         # N = vertex_count, and 
         # N >= 3 in order to be considered a polygon.
-        count = int(h[0]) # counts are integer
-        next = 1 + (2*count)
-        assert len(hList) >= next, "Not enough values for polygon(%d)" % count
-        
-        params = map(float, hList[1 : next])
-        # Not sure if a list of 2-tuples is okay as a list of vertices.
-        return (hList[next:], SphericalConvexPolygon(zip(params[::2],
-                                                         params[1::2])))
-    def getRegionFromHint(self, hList):
+        h = param.split(",")
+        polys = []
+        while true:
+            count = int(h[0]) # counts are integer
+            next = 1 + (2*count)
+            assert len(hList) >= next, \
+                "Not enough values for polygon(%d)" % count
+            flatVertices = map(float, h[1 : next])
+            # Not sure if a list of 2-tuples is okay as a list of vertices.
+            polys.append(SphericalConvexPolygon(zip(flatVertices[::2],
+                                                    flatVertices[1::2])))
+            h = h[next:]
+        return polys
+
+    def getRegionFromHint(self, hintDict):
         """
         Convert a hint string list into a list of geometry regions that
         can be used with a partition mapper.
         
-        @param hList a list of strings
+        @param hintDict a dictionary of hints
         @return None on error
         @return list of spherical regions if successful
         """
-        current = hList
         regions = []
-        cType = None
         try:
-            while current:
-                name = current[0]
+            for name,param in hintDict.items():
                 if name in self._constraintNames: # spec?
-                    (current, reg) = self._constraintNames[name](current[1:])
-                    cType = name
-                elif cType: # No spec?  Retry with previous type
-                    (current, reg) = self._constraintNames[cType](current)
+                    regs = self._constraintNames[name](param)
+                    regions.extend(regs)
                 else: # No previous type, and no current match--> error
-                    self.errorDesc = "No hint name found."
+                    self.errorDesc = "Bad Hint name found:"+name
                     return None
-                regions.append(reg)
         except Exception, e:
             self.errorDesc = e.message
             return None

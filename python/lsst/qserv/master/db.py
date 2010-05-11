@@ -5,6 +5,8 @@
 # Mysql
 import MySQLdb as sql
 
+# Package
+import lsst.qserv.master.config
 
 class Db:
     def __init__(self):

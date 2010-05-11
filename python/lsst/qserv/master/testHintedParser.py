@@ -17,23 +17,23 @@ class TestHintedParser(unittest.TestCase):
         hq = ("""SELECT * from LSST.Object 
         WHERE ra BETWEEN 1.5 AND 4.4 AND decl BETWEEN -10 AND -2
         ;""",                     
-              ["areaSpec_box", "1.5", "-10", "4.4", "-2"])
+              {"box": "1.5,-10,4.4,-2"})
         hq2 = ("""SELECT pm_raErr from LSST.Object 
         WHERE ra BETWEEN 1.5 AND 4.1 AND decl BETWEEN -10 AND -2
         ;""",                     
-              ["areaSpec_box", "1.5", "-10", "4.1", "-2"])
+              {"box": "1.5, -10, 4.1, -2"})
         ahq1 = ("""SELECT sum(pm_raErr) from LSST.Object 
         WHERE ra BETWEEN 1.5 AND 4.1 AND decl BETWEEN -10 AND -2
         ;""",                     
-              ["areaSpec_box", "1.5", "-10", "4.1", "-2"])
+              {"box": "1.5, -10, 4.1, -2"})
         ahq2 = ("""SELECT sum(pm_raErr),count(pm_raErr),avg(pm_raErr) from LSST.Object 
         WHERE ra BETWEEN 1.5 AND 4.1 AND decl BETWEEN -10 AND -2
         ;""",                     
-              ["areaSpec_box", "1.5", "-10", "4.1", "-2"])
+              {"box": "1.5, -10, 4.1, -2"})
         gbq1 = ("""SELECT avg(pm_raErr),chunkId from LSST.Object 
         WHERE ra BETWEEN 1.5 AND 34.1 AND decl BETWEEN -25 AND -2
         GROUP BY chunkId
-        ;""", ["areaSpec_box", "1.5", "-25", "34.1", "-2"])
+        ;""", {"box": "1.5, -25, 34.1, -2"})
         self.basicQuery = bq
         self.hintQuery = hq
         self.hintQuery2 = hq2

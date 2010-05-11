@@ -5,6 +5,7 @@ import time
 # Package imports
 import app
 import proxy
+import lsst.qserv.master.config as config
 
 # Main AppInterface class
 #
@@ -21,7 +22,10 @@ class AppInterface:
         self.reactor = reactor
         self.pmap = app.makePmap()
         self.actions = {} 
-        
+        # set id counter to seconds since the epoch, mod 1 year.
+        self._idCounter = int(time.time() % (60*60*24*365))
+        self._resultDb = config.config.get("resultdb", "db")
+
         pass
 
     def queryNow(self, q, hints):
@@ -34,7 +38,7 @@ class AppInterface:
         return app.getResultTable(r)
 
     def submitQuery(self, query, conditions):
-        return self.submitQuery1(query, conditions)
+        return self.submitQuery2(query, conditions)
 
     def submitQuery1(self,query,conditions):
         """Simplified mysqlproxy version.  returns table name."""
@@ -46,14 +50,16 @@ class AppInterface:
     def submitQuery2(self,query,conditions):
         """Simplified mysqlproxy version.  
         @returns result table name, lock table name, but before completion."""
-        resultName = allocateResultName(id(self))
-        lockName = allocateLockName(id(self))
+        taskId = self._idCounter # RAW hazard, but this part is single-threaded
+        self._idCounter += 1
+        resultName = "%s.result_%d" % (self._resultDb, taskId)
+        lockName = "%s.lock_%d" % (self._resultDb, taskId)
         lock = proxy.Lock(lockName)
         lock.lock()
         a = app.HintedQueryAction(query, conditions, self.pmap, resultName)
         a.invoke()
         lock.unlockAfter(a.getResult)
-        return (result, lockname)
+        return (resultName, lockName)
     
     def query(self, q, hints):
         """Issue a query, and return a taskId that can be used for tracking.
