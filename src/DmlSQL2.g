@@ -250,6 +250,7 @@ COLON :
 SEMICOLON : ';' ; 
 LESS_THAN_OP : '<' ('>' {$setType(NOT_EQUALS_OP);} | '=' {$setType(LESS_THAN_OR_EQUALS_OP);})?; 
 EQUALS_OP : '=' ; 
+NOT_EQUALS_OP_ALT : "!=" ; // DanielW: add != recognition.
 GREATER_THAN_OP : '>' ('=' {$setType(GREATER_THAN_OR_EQUALS_OP);})?; 
 QUESTION_MARK : '?' ; 
 // protected UNDERSCORE : '_' SEPARATOR ; // subtoken typecast within <INTRODUCER>
@@ -608,9 +609,8 @@ function_ref :
 //	id (options{greedy=true;}:PERIOD id (options{greedy=true;}:PERIOD id)?)?
 
 function_spec : 
-        a:function_ref LEFT_PAREN function_parameter_spec RIGHT_PAREN { 
-            std::cout << "function: " << a_AST->getText() << std::endl; }
-;
+        a:function_ref LEFT_PAREN function_parameter_spec RIGHT_PAREN
+    ;
 
 
 
@@ -779,6 +779,7 @@ comp_op :
 	| GREATER_THAN_OP 
 	| LESS_THAN_OR_EQUALS_OP
 	| GREATER_THAN_OR_EQUALS_OP
+    | NOT_EQUALS_OP_ALT
 ;
 //}
 

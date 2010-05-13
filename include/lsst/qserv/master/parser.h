@@ -65,7 +65,7 @@ public:
     std::string transform(Mapping const& m);
     
     /// 0: none, 1: chunk, 2: subchunk
-    bool getChunkLevel() const { return _chunkLevel; }
+    int getChunkLevel() const { return _chunkLevel; }
     bool getHasAggregate() const {return _hasAggregate; }
     std::string getError() const { return _errorMsg; }
     std::string getFixupSelect() const { return _fixupSelect; }

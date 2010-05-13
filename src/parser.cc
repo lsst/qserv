@@ -236,7 +236,6 @@ void SqlSubstitution::_build(std::string const& sqlStatement,
     _hasAggregate = spr.getHasAggregate();
     _fixupSelect = spr.getFixupSelect();
     _fixupPost = spr.getFixupPost();
-	
 }
 
 void SqlSubstitution::_computeChunkLevel(bool hasChunks, bool hasSubChunks) {

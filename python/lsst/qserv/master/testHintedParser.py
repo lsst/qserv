@@ -34,12 +34,20 @@ class TestHintedParser(unittest.TestCase):
         WHERE ra BETWEEN 1.5 AND 34.1 AND decl BETWEEN -25 AND -2
         GROUP BY chunkId
         ;""", {"box": "1.5, -25, 34.1, -2"})
+        nnq1 = ("""
+SELECT o1.id as o1id,o2.id as o2id,
+       LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+ AS dist FROM Object AS o1, Object AS o2 
+ WHERE ABS(o1.decl-o2.decl) < 1
+     AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1
+     AND o1.id != o2.id;""", {"box":"1.5, -25, 34.1, -2"})
         self.basicQuery = bq
         self.hintQuery = hq
         self.hintQuery2 = hq2
         self.aggQuery1 = ahq1
         self.aggQuery2 = ahq2
         self.groupByQuery1 = gbq1
+        self.nearNeighQuery1 = nnq1
         pass
     
     def testBasic(self):
@@ -105,4 +113,11 @@ class TestHintedParser(unittest.TestCase):
         id1 = a.query(*self.groupByQuery1)
         r1 = a.joinQuery(id1)
         print "Done avg groupby query."
+        print a.resultTableString(r1)
+
+    def testNnQuery(self):
+        a = app.AppInterface()
+        id1 = a.query(*self.nearNeighQuery1)
+        r1 = a.joinQuery(id1)
+        print "Done near neighbor query."
         print a.resultTableString(r1)

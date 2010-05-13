@@ -52,11 +52,17 @@ void tryAutoSubstitute() {
 }
 
 void tryNnSubstitute() {
-    std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2 where o1.id != o2.id and dista(o1.ra,o1.decl,o2.ra,o2.decl) < 1;";
+    std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2 where o1.id != o2.id and spdist(o1.ra,o1.decl,o2.ra,o2.decl) < 1;";
+    stmt = "select * from LSST.Object as o1, LSST.Object as o2 where o1.id != o2.id and LSST.spdist(o1.ra,o1.decl,o2.ra,o2.decl) < 1 AND o1.id != o2.id;";
     ChunkMapping c;
     c.addChunkKey("Source");
     c.addSubChunkKey("Object");
     SqlSubstitution ss(stmt, c.getMapping(32,53432));
+    if(!ss.getError().empty()) {
+	std::cout << "ERROR constructing substitution: " 
+		  << ss.getError() << std::endl;
+	return;
+    }
     for(int i = 4; i < 6; ++i) {
 	std::cout << "--" << ss.transform(c.getMapping(i,3)) << std::endl;
     }
@@ -90,12 +96,18 @@ void tryAggregate() {
     
 }
 
+// SELECT o1.id as o1id,o2.id as o2id,
+//        LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+//  AS dist FROM Object AS o1, Object AS o2 
+//  WHERE ABS(o1.decl-o2.decl) < 0.001 
+//      AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 
+//      AND o1.id != o2.id;
 
 
 int main(int, char**) {
-    tryAutoSubstitute();
-    //tryNnSubstitute();
+    //    tryAutoSubstitute();
+    tryNnSubstitute();
     //tryTriple();
-    tryAggregate();
+    //    tryAggregate();
     return 0;
 }

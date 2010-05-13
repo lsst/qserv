@@ -8,6 +8,7 @@ import os
 import cProfile as profile
 import pstats
 import random
+import re
 from subprocess import Popen, PIPE
 import sys
 import threading
@@ -666,7 +667,7 @@ class HintedQueryAction:
 
         ## For generating subqueries
         self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;
-        self._insertTableTmpl = "INSERT INTO TABLE %s " ;
+        self._insertTableTmpl = "INSERT INTO %s " ;
         self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
                                              self.queryHash) + "_%s"
         pass
@@ -700,7 +701,8 @@ class HintedQueryAction:
         for chunkId, subIter in self._intersectIter:
             table = self._resultTableTmpl % str(chunkId)
             q = None
-            if self._substitution.getChunkLevel() > 1:
+            x =  self._substitution.getChunkLevel()
+            if x> 1:
                 q = self._makeSubChunkQuery(chunkId, subIter, table)
             else:
                 q = self._makeChunkQuery(chunkId, table)
@@ -740,14 +742,31 @@ class HintedQueryAction:
         for subChunkId in scList:
             ref = self._pConfig.getMapRef(chunkId, subChunkId)
             q = self._substitution.transform(ref)
+            q = self._fixSubChunkDb(q, chunkId, subChunkId) # FIXME:Push to C++ 
             if pfx:
                 qList.append(pfx + q)
             else:
                 qList.append((self._createTableTmpl % table) + q)
                 pfx = self._insertTableTmpl % table
         qList[0] = self._headerFunc(scList)
-        return "\n".join(qList)
         
+        return "\n".join(qList)
+
+    def _fixSubChunkDb(self, q, chunk, subChunk):
+        # Replace sometable_CC_SS or anything.sometable_CC_SS 
+        # with Subchunks_CC, 
+        # where CC and SS are chunk and subchunk numbers, respectively.
+        # Note that "sometable" is any subchunked table.
+
+        subchunked = self._pConfig.subchunked
+        res = q
+        for s in subchunked:
+            sName = "%s_%d_%d" % (s, chunk, subChunk)
+            patStr = "(\w+[.])?%s" % sName
+            sub = "Subchunks_%d.%s" % (chunk, sName)
+            res = re.sub(patStr, sub, res)
+        return res
+  
 
 
 class QueryAction:
