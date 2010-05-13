@@ -83,7 +83,7 @@ public:
 		_errorMsg = "Error: no AST from parse";
 	    }
 	} catch( antlr::ANTLRException& e ) {
-	    _errorMsg =  "Parse exception: " + e.getMessage();
+	    _errorMsg =  "Parse exception: " + e.toString();
 	} catch( std::exception& e ) {
 	    _errorMsg = std::string("General exception: ") + e.what();
 	}
@@ -229,7 +229,6 @@ void SqlSubstitution::_build(std::string const& sqlStatement,
 	template_ = spr.getParseResult();
     } 
     _computeChunkLevel(spr.getHasChunks(), spr.getHasSubChunks());
-    
     if(template_.empty()) {
 	_errorMsg = spr.getError();
     }

@@ -587,9 +587,9 @@ value_exp_primary :
 	  fct:set_fct_spec {handleSetFctSpec(fct_AST);}
 	| case_exp 
 	| cast_spec 
+    | (function_ref LEFT_PAREN) => function_spec
 	| {LA(1) == INTRODUCER}? ((column_ref)=>column_ref | unsigned_value_spec)
 	| {LA(1) != INTRODUCER}? column_ref
-    | function_spec
 	| unsigned_value_spec
 	| (LEFT_PAREN value_exp RIGHT_PAREN)=> LEFT_PAREN value_exp RIGHT_PAREN 
 	| scalar_subquery 
@@ -601,10 +601,16 @@ function_parameter_spec :
       value_exp (COMMA value_exp)*
     ;
    
+function_ref :
+        id (options{greedy=true;}:PERIOD id)?
+        ;
+//    	id (options{greedy=true;}:PERIOD id)? 
+//	id (options{greedy=true;}:PERIOD id (options{greedy=true;}:PERIOD id)?)?
 
 function_spec : 
-        (function_name LEFT_PAREN function_parameter_spec RIGHT_PAREN)=> function_name LEFT_PAREN function_parameter_spec RIGHT_PAREN
-    ;
+        a:function_ref LEFT_PAREN function_parameter_spec RIGHT_PAREN { 
+            std::cout << "function: " << a_AST->getText() << std::endl; }
+;
 
 
 
@@ -1577,7 +1583,7 @@ table_name :
 //}
 
 function_name :
-     qualified_name
+     qualified_name 
     ;
 //{ Rule #423 <qualified_local_table_name>
 qualified_local_table_name :
