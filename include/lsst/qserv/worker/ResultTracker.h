@@ -1,17 +1,20 @@
 #ifndef LSST_QSERV_WORKER_RESULT_TRACKER_H
 #define LSST_QSERV_WORKER_RESULT_TRACKER_H
 #include <deque>
+#include <iostream>
+
 #include <boost/signal.hpp>
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+
 namespace lsst {
 namespace qserv {
 namespace worker {
 
 typedef std::pair<int,char const*> ResultItem;
-typedef std::pair<int, std::string> ErrorPair;
-typedef boost::shared_ptr<ErrorPair> ErrorPtr;
+typedef std::pair<int, std::string> ResultError;
+typedef boost::shared_ptr<ResultError> ResultErrorPtr;
 
 
 // Make sure Item is a primitive that can be copied.
@@ -48,6 +51,8 @@ public:
 	LSPtr s = _signals[k];
 	{	
 	    boost::unique_lock<boost::mutex> slock(s->mutex);
+	    //std::cerr << "Callback (tracker) signalling " 
+	    //	      << k << " ---- " << std::endl;
 	    s->signal(i); // Notify listeners
 	    s->clearListeners();
 	    // Save news item
@@ -68,6 +73,7 @@ public:
 	    boost::unique_lock<boost::mutex> lock(_newsMutex);
 	    typename NewsMap::iterator i = _news.find(k);
 	    if(i != _news.end()) { // If already reported, reuse.
+		//std::cerr << "Callback reuse Chance --1--" << std::endl;
 		Callable c2(c);
 		c2(i->second);
 		return; // No need to actually subscribe.
@@ -80,6 +86,7 @@ public:
 	    // Check again, in case there was a notification.
 	    typename NewsMap::iterator i = _news.find(k);
 	    if(i != _news.end()) { 
+		//std::cerr << "Callback reuse Chance --2--" << std::endl;
 		Callable c2(c);
 		c2(i->second); 
 	    } else {

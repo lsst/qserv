@@ -170,10 +170,15 @@ int qWorker::MySqlFsFile::open(
 	hash = _stripPath(fileName);
 	_dumpName = hashToResultPath(hash); 
 	_hasRead = false;
-	if(_isResultReady(_dumpName)) {
-	    _eDest->Say((Pformat("File open %1% for result reading by %2%")
-			 % fileName % _userName).str().c_str());
-	    // If result is error, then return SFS_ERROR.
+	ResultErrorPtr p = _getResultState(_dumpName);
+	if(p.get()) {
+	    if(p->first == 0) {
+		_eDest->Say((Pformat("File open %1% for result reading by %2%")
+			     % fileName % _userName).str().c_str());
+	    } else { // Error, so report it.
+		_eDest->Say((Pformat("File open %1% fail. Query error: %2%.")
+			     % fileName & p->second).str().c_str());
+		return SFS_ERROR;
 	} else {
 	    _addCallback(hash);
 	    return SFS_STARTED;
@@ -381,19 +386,12 @@ void qWorker::MySqlFsFile::_addCallback(std::string const& filename) {
     (*_addCallbackF)(*this, filename);
 }
 
-bool qWorker::MySqlFsFile::_isResultReady(std::string const& physFilename) {
+qWorker::ResultErrorPtr qWorker::MySqlFsFile::_getResultState(std::string const& physFilename) {
     assert(_fileClass == TWO_READ);
     // Lookup result hash.
     std::string hash = _stripPath(physFilename);
-    ErrorPtr p = QueryRunner::getTracker().getNews(hash);
-    // Check if query done.
-    if(p.get() != 0) {
-	return true;
-	// Sanity check that result file exists.
-	// FIXME
-    }
-
-    return false; 
+    ResultErrorPtr p = QueryRunner::getTracker().getNews(hash);
+    return p;
 }
 
 

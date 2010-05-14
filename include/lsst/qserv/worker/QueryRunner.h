@@ -60,6 +60,7 @@ public:
 
     // const
     bool hasSpace() const { return _running < _limit; }
+    bool isOverloaded() const { return _running > _limit; }
     QueryRunnerArg const& getQueueHead() const;
     int getQueueLength() const { return _queue.size();}
     int getRunnerCount() const { return _running;}
@@ -86,7 +87,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 class QueryRunner {
 public:
-    typedef ResultTracker<std::string, ErrorPair> Tracker;
+    typedef ResultTracker<std::string, ResultError> Tracker;
     typedef QueryRunnerManager Manager;
     QueryRunner(XrdOucErrInfo& ei, XrdSysError& e, 
 		std::string const& user, ScriptMeta const& s,

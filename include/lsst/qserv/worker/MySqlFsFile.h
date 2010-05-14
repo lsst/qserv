@@ -10,6 +10,7 @@
 
 // pkg includes
 #include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/worker/ResultTracker.h"
 
 // Forward
 class XrdSysError;
@@ -76,8 +77,8 @@ private:
     FileClass _getFileClass(std::string const& filename);
     std::string _stripPath(std::string const& filename);
 
-    bool _isResultReady(std::string const& physFilename);
-    //    bool _runScript(std::string const& script, std::string const& dbName);
+    ResultErrorPtr _getResultState(std::string const& physFilename);
+
     void _setDumpNameAsChunkId();
 
     XrdSysError* _eDest;

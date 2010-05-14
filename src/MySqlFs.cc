@@ -8,6 +8,7 @@
 #include "lsst/qserv/worker/MySqlFsFile.h"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include <cerrno>
+#include <iostream>
 
 // Externally declare XrdSfs loader to cheat on Andy's suggestion.
 extern XrdSfsFileSystem *XrdXrootdloadFileSystem(XrdSysError *, char *, 
@@ -20,10 +21,13 @@ template<class Callback>
 class FinishListener { 
 public:
     FinishListener(Callback* cb) : _callback(cb) {}
-    virtual void operator()(qWorker::ErrorPair const& p) {
-	if(p.first != 0) {
+    virtual void operator()(qWorker::ResultError const& p) {
+	if(p.first == 0) {
+	    // std::cerr << "Callback=OK!\t" << (void*)_callback << std::endl;
 	    _callback->Reply_OK();
 	} else {
+	    //std::cerr << "Callback error! " << p.first 
+	    //	      << " desc=" << p.second << std::endl;
 	    _callback->Reply_Error(p.first, p.second.c_str());
 	}
 	_callback = 0;
@@ -40,6 +44,7 @@ public:
     virtual void operator()(XrdSfsFile& caller, std::string const& filename) {
 	XrdSfsCallBack * callback = XrdSfsCallBack::Create(&(caller.error));
 	// Register callback with opener.
+	//std::cerr << "Callback reg!\t" << (void*)callback << std::endl;	
 	qWorker::QueryRunner::getTracker().listenOnce(
             filename, FinishListener<XrdSfsCallBack>(callback));
     }

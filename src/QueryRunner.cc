@@ -25,10 +25,10 @@ private:
 };
 std::string runQuery(MYSQL* db, std::string query,
                             std::string arg=std::string()) {
-    if (arg.size() != 0) {
+    if(arg.size() != 0) {
         // TODO -- bind arg
     }
-    if (mysql_real_query(db, query.c_str(), query.size()) != 0) {
+    if(mysql_real_query(db, query.c_str(), query.size()) != 0) {
         return std::string("Unable to execute query: ") + mysql_error(db) +
             "\nQuery = " + query;
     }
@@ -251,7 +251,7 @@ bool qWorker::QueryRunner::_act() {
 	_e.Say((Pformat("Reusing pre-existing dump = %1%")
 		% _meta.resultPath).str().c_str());
 	// The system should probably catch this earlier.
-	getTracker().notify(_meta.hash, ErrorPair(0,""));
+	getTracker().notify(_meta.hash, ResultError(0,""));
 	return true;
     }
 	
@@ -259,13 +259,13 @@ bool qWorker::QueryRunner::_act() {
 	_e.Say((Pformat("(FinishFail:%1%) %2%")
 		% (void*)(this) % dbDump).str().c_str());
 	getTracker().notify(_meta.hash,
-			    ErrorPair(-1,"Script exec failure"));
+			    ResultError(-1,"Script exec failure"));
 	return false;
     } 
 
     _e.Say((Pformat("(FinishOK:%1%) %2%")
 	    % (void*)(this) % dbDump).str().c_str());
-    getTracker().notify(_meta.hash, ErrorPair(0,""));
+    getTracker().notify(_meta.hash, ResultError(0,""));
     return true;
 }
 
@@ -287,7 +287,7 @@ bool qWorker::QueryRunner::operator()() {
 		    % mgr.getQueueLength() 
 		    % mgr.getRunnerCount()).str().c_str());
 
-	    if(mgr.hasSpace() && (mgr.getQueueLength() > 0)) {
+	    if((!mgr.isOverloaded()) && (mgr.getQueueLength() > 0)) {
 		_setNewQuery(mgr.getQueueHead()); // Switch to new query
 		mgr.popQueueHead();
 	    } else {
@@ -365,9 +365,9 @@ bool qWorker::QueryRunner::_runScript(
     //    _e.Say((Pformat("Trying connect Mysql using %1%") 
     //		% _env.getSocketFilename()).str().c_str());
 
-    if (mysql_real_connect(db.get(), 0, _user.c_str(), 0, 0, 0, 
-			   _env.getSocketFilename().c_str(),
-                           CLIENT_MULTI_STATEMENTS) == 0) {
+    if(mysql_real_connect(db.get(), 0, _user.c_str(), 0, 0, 0, 
+			  _env.getSocketFilename().c_str(),
+			  CLIENT_MULTI_STATEMENTS) == 0) {
         _errinfo.setErrInfo(
             EIO, ("Unable to connect to MySQL as " + _user).c_str());
 
@@ -378,7 +378,7 @@ bool qWorker::QueryRunner::_runScript(
 
     std::string result =
         runQuery(db.get(), "DROP DATABASE IF EXISTS " + dbName);
-    if (result.size() != 0) {
+    if (!result.empty()) {
         _errinfo.setErrInfo(EIO, result.c_str());
 	_e.Say((Pformat("Cfg error! couldn't drop resultdb. %1%.")
 		% result).str().c_str());
@@ -386,7 +386,7 @@ bool qWorker::QueryRunner::_runScript(
     }
 
     result = runQuery(db.get(), "CREATE DATABASE " + dbName);
-    if (result.size() != 0) {
+    if (!result.empty()) {
         _errinfo.setErrInfo(EIO, result.c_str());
 	_e.Say((Pformat("Cfg error! couldn't create resultdb. %1%.") 
 		% result).str().c_str());
