@@ -256,8 +256,8 @@ bool qWorker::QueryRunner::_act() {
     }
 	
     if (!_runScript(_meta.script, _meta.dbName)) {
-	_e.Say((Pformat("(FinishFail:%1%) %2%")
-		% (void*)(this) % dbDump).str().c_str());
+	_e.Say((Pformat("(FinishFail:%1%) %2% hash=%3%")
+		% (void*)(this) % dbDump % _meta.hash).str().c_str());
 	getTracker().notify(_meta.hash,
 			    ResultError(-1,"Script exec failure"));
 	return false;

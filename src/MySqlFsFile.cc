@@ -149,7 +149,8 @@ int qWorker::MySqlFsFile::open(
     char const* fileName, XrdSfsFileOpenMode openMode, mode_t createMode,
     XrdSecEntity const* client, char const* opaque) {
 
-    std::string hash;
+    int rc;
+
     if (fileName == 0) {
         error.setErrInfo(EINVAL, "Null filename");
         return SFS_ERROR;
@@ -167,21 +168,9 @@ int qWorker::MySqlFsFile::open(
 		     % fileName % _userName).str().c_str());
 	break;
     case TWO_READ:
-	hash = _stripPath(fileName);
-	_dumpName = hashToResultPath(hash); 
-	_hasRead = false;
-	ResultErrorPtr p = _getResultState(_dumpName);
-	if(p.get()) {
-	    if(p->first == 0) {
-		_eDest->Say((Pformat("File open %1% for result reading by %2%")
-			     % fileName % _userName).str().c_str());
-	    } else { // Error, so report it.
-		_eDest->Say((Pformat("File open %1% fail. Query error: %2%.")
-			     % fileName & p->second).str().c_str());
-		return SFS_ERROR;
-	} else {
-	    _addCallback(hash);
-	    return SFS_STARTED;
+	rc = _handleTwoReadOpen(fileName);
+	if(rc != SFS_OK) {
+	    return rc;
 	}
 	break;
     default:
@@ -390,6 +379,7 @@ qWorker::ResultErrorPtr qWorker::MySqlFsFile::_getResultState(std::string const&
     assert(_fileClass == TWO_READ);
     // Lookup result hash.
     std::string hash = _stripPath(physFilename);
+    //std::cout << "Getting news for hash=" << hash << std::endl;
     ResultErrorPtr p = QueryRunner::getTracker().getNews(hash);
     return p;
 }
@@ -466,4 +456,25 @@ void qWorker::MySqlFsFile::_setDumpNameAsChunkId() {
     std::stringstream ss;
     ss << DUMP_BASE << _chunkId << ".dump";
     ss >> _dumpName;
+}
+
+int qWorker::MySqlFsFile::_handleTwoReadOpen(char const* fileName) {
+    std::string hash = _stripPath(fileName);
+    _dumpName = hashToResultPath(hash); 
+    _hasRead = false;
+    ResultErrorPtr p = _getResultState(_dumpName);
+    if(p.get()) {
+	if(p->first == 0) {
+	    _eDest->Say((Pformat("File open %1% for result reading by %2%")
+			 % fileName % _userName).str().c_str());
+	} else { // Error, so report it.
+	    _eDest->Say((Pformat("File open %1% fail. Query error: %2%.")
+			 % fileName % p->second).str().c_str());
+	    return SFS_ERROR;
+	}
+    } else {
+	_addCallback(hash);
+	return SFS_STARTED;
+    }
+    return SFS_OK;
 }

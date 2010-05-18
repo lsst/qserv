@@ -73,6 +73,8 @@ private:
     bool _flushWriteSync();
     bool _hasPacketEof(char const* buffer, XrdSfsXferSize bufferSize) const;
 
+    int _handleTwoReadOpen(char const* fileName);
+
     // File path functionality
     FileClass _getFileClass(std::string const& filename);
     std::string _stripPath(std::string const& filename);
