@@ -318,6 +318,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
 
 	
 int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
+#if 0 // Disable deferred writing since it doesn't block.
     // Spawn a thread that calls the normal write call.
     char* buffer = new char[aioparm->sfsAio.aio_nbytes];
     assert(buffer != (char*)0);
@@ -327,12 +328,24 @@ int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
     if(printlen > aioparm->sfsAio.aio_nbytes) {
 	printlen = aioparm->sfsAio.aio_nbytes;
     }
-    std::string s(buffer,printlen);
+    std::string s(buffer, printlen);
     int offset = aioparm->sfsAio.aio_offset;
     _eDest->Say((Pformat("File write(%1%) at %2% : %3%")
                  % _chunkId % offset % s).str().c_str());
     launchThread(WriteCallable(*this, aioparm, buffer));
     return SFS_OK;
+#else
+    
+    aioparm->Result = write(aioparm->sfsAio.aio_offset, 
+			    (const char*)aioparm->sfsAio.aio_buf,
+			    aioparm->sfsAio.aio_nbytes);
+    if(aioparm->Result != (int)aioparm->sfsAio.aio_nbytes) {
+	// overwrite error result with generic IO error?
+	aioparm->Result = -EIO;
+    }
+    aioparm->doneWrite();
+    return SFS_OK;
+#endif
 }
 
 int qWorker::MySqlFsFile::sync(void) {
@@ -400,7 +413,7 @@ bool qWorker::MySqlFsFile::_flushWrite() {
 }
 
 bool qWorker::MySqlFsFile::_flushWriteDetach() {
-    qWorker::QueryRunnerArg a(error, *_eDest, _userName, 
+    qWorker::QueryRunnerArg a(*_eDest, _userName, 
 			      ScriptMeta(_queryBuffer, _chunkId));
     return flushOrQueue(a);
 }
@@ -410,7 +423,7 @@ bool qWorker::MySqlFsFile::_flushWriteSync() {
     _script = s.script;
     _setDumpNameAsChunkId(); // Because reads may get detached from writes.
     //_eDest->Say((Pformat("db=%1%.") % s.dbName).str().c_str());
-    QueryRunner runner(error, *_eDest, _userName, s, _dumpName);
+    QueryRunner runner(*_eDest, _userName, s, _dumpName);
     return runner();
 }
 

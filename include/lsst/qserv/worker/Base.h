@@ -23,6 +23,7 @@ namespace qserv {
 namespace worker {
 // Forward:
 class StringBuffer;
+class StringBuffer2;
 
 // Constants
 extern std::string DUMP_BASE;
@@ -37,6 +38,7 @@ std::string hashToResultPath(std::string const& hash);
 
 struct ScriptMeta {
     ScriptMeta(StringBuffer const& b, int chunkId_);
+    ScriptMeta(StringBuffer2 const& b, int chunkId_);
     std::string script;
     std::string hash;
     std::string dbName;
@@ -76,6 +78,29 @@ class StringBuffer {
 #endif
 	std::stringstream _ss;
     };
+
+class StringBuffer2 {
+public:
+    StringBuffer2() : _buffer(0), 
+		      _bufferSize(0),_bytesWritten(0) {}
+    ~StringBuffer2() { reset(); }
+    void addBuffer(XrdSfsFileOffset offset, char const* buffer, 
+		   XrdSfsXferSize bufferSize);
+    std::string getStr() const;
+    XrdSfsFileOffset getLength() const;
+    std::string getDigest() const;
+    void reset();
+private:
+    void _setSize(unsigned size);
+#if DO_NOT_USE_BOOST
+    XrdSysMutex _mutex;
+#else
+    boost::mutex _mutex;
+#endif
+    char* _buffer;
+    unsigned _bufferSize;
+    unsigned _bytesWritten;
+};
 
 }}}
 

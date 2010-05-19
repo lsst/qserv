@@ -53,8 +53,13 @@ public:
 
 qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName) 
   : XrdSfsFileSystem(), _eDest(lp) {
-
+    static boost::mutex m;
+    boost::lock_guard<boost::mutex> l(m);
     _eDest->Say("MySqlFs loading libXrdOfs.so for clustering cmsd support.");
+    _isMysqlFail = mysql_library_init(0, NULL, NULL);
+    if(_isMysqlFail) {
+	_eDest->Say("Problem initializing MySQL library. Behavior undefined.");
+    }
 #ifdef NO_XROOTD_FS
 #else
     XrdSfsFileSystem* fs;
@@ -67,6 +72,9 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
 }
 
 qWorker::MySqlFs::~MySqlFs(void) {
+    if(!_isMysqlFail) {
+	mysql_library_end();
+    }
 }
 
 // Object Allocation Functions

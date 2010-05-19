@@ -60,7 +60,7 @@ if not conf.CheckLib("crypto"):
     print >> sys.stderr, "Could not locate crypto"
     Exit(1)
 
-if not conf.CheckLibWithHeader("mysqlclient", "mysql/mysql.h", "c"):
+if not conf.CheckLibWithHeader("mysqlclient_r", "mysql/mysql.h", "c"):
     print >> sys.stderr, "Could not locate mysqlclient"
     Exit(1)
 if not conf.CheckDeclaration("mysql_next_result", "#include <mysql/mysql.h>","c++" ):
@@ -104,6 +104,7 @@ LSST Query Services worker package
 ## Build lib twice, with and without xrd
 ## Must invoke w/ build_dir at top-level SConstruct.
 envNoXrd = env.Clone(CCFLAGS=["-g","-DNO_XROOTD_FS"])
+env.Append(CCFLAGS=['-g'])
 for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
     try:
         SConscript("SConscript.lib", build_dir=bldDir,

@@ -101,6 +101,14 @@ qWorker::ScriptMeta::ScriptMeta(StringBuffer const& b, int chunkId_) {
     chunkId = chunkId_;
 }
 
+qWorker::ScriptMeta::ScriptMeta(StringBuffer2 const& b, int chunkId_) {
+    script = b.getStr();
+    hash = hashQuery(script.data(), script.length());
+    dbName = "q_" + hash;
+    resultPath = hashToResultPath(hash);
+    chunkId = chunkId_;
+}
+
 //////////////////////////////////////////////////////////////////////
 // StringBuffer
 //////////////////////////////////////////////////////////////////////
@@ -134,15 +142,18 @@ void qWorker::StringBuffer::addBuffer(
 std::string qWorker::StringBuffer::getStr() const {
 #if QSERV_USE_STUPID_STRING
     // Cast away const in order to lock.
-#if DO_NOT_USE_BOOST
+#   if DO_NOT_USE_BOOST
     UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
-#else
+#   else
     boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
     boost::unique_lock<boost::mutex> lock(mutex);
-#endif
+#   endif
     return _ss.str();
 #else
     std::string accumulated;
+    char* accStr = new char[_totalSize];
+    assert(accStr);
+    int cursor=0;
     if(false) {
     // Cast away const to perform a sort (which doesn't logically change state)
     FragmentDeque& nonConst = const_cast<FragmentDeque&>(_buffers);
@@ -154,11 +165,16 @@ std::string qWorker::StringBuffer::getStr() const {
     //    accumulated.assign(getLength(), '\0'); // 
     for(bi = _buffers.begin(); bi != bend; ++bi) {
 	Fragment const& p = *bi;
-	accumulated += std::string(p.buffer, p.bufferSize);
+	//accumulated += std::string(p.buffer, p.bufferSize);
+	memcpy(accStr+cursor, p.buffer, p.bufferSize);
+	cursor += p.bufferSize;
 	// Perform "writes" of the buffers into the string
 	// Assume that we end up with a contiguous string.
 	//accumulated.replace(p.offset, p.bufferSize, p.buffer, p.bufferSize);
     }
+    assert(cursor == _totalSize);
+    accumulated.assign(accStr, cursor);
+    delete[] accStr;
     return accumulated;
 #endif
 }
@@ -220,3 +236,90 @@ void qWorker::StringBuffer::reset() {
 	_buffers.clear();
     }
 }
+//////////////////////////////////////////////////////////////////////
+// StringBuffer2 
+// A mutex-protected string buffer that uses a raw c-string.
+//////////////////////////////////////////////////////////////////////
+void qWorker::StringBuffer2::addBuffer(
+    XrdSfsFileOffset offset, char const* buffer, XrdSfsXferSize bufferSize) {
+
+#  if DO_NOT_USE_BOOST
+    UniqueLock lock(_mutex);
+#  else
+    boost::unique_lock<boost::mutex> lock(_mutex);
+#  endif
+    if(_bufferSize < offset+bufferSize) {
+	_setSize(offset+bufferSize);
+    }
+     memcpy(_buffer+offset, buffer, bufferSize);
+    _bytesWritten += bufferSize;
+}
+
+std::string qWorker::StringBuffer2::getStr() const {
+    // Bad idea to call this if the buffer has holes.
+    // Cast away const in order to lock.
+#if DO_NOT_USE_BOOST
+    UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
+#else
+    boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
+    boost::unique_lock<boost::mutex> lock(mutex);
+#endif
+    assert(_bytesWritten == _bufferSize); //no holes.
+    return std::string(_buffer, _bytesWritten);
+}
+
+std::string qWorker::StringBuffer2::getDigest() const {  
+    // Don't call this unless the buffer has no holes.
+    // Cast away const in order to lock.
+#if DO_NOT_USE_BOOST
+    UniqueLock lock(const_cast<XrdSysMutex&>(_mutex));
+#else
+    boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
+    boost::unique_lock<boost::mutex> lock(mutex);
+#endif
+    assert(_bytesWritten == _bufferSize); //no holes.
+    int length = 200;
+    if(length > _bytesWritten) 
+	length = _bytesWritten;
+    
+    return std::string(_buffer, length); 
+}
+
+
+XrdSfsFileOffset qWorker::StringBuffer2::getLength() const {
+    return _bytesWritten;
+}
+
+
+void qWorker::StringBuffer2::reset() {
+#if DO_NOT_USE_BOOST
+    UniqueLock lock(_mutex);
+#else
+    boost::unique_lock<boost::mutex> lock(_mutex);
+#endif
+    if(_buffer) {
+	delete[] _buffer;
+	_buffer = 0;
+	_bufferSize = 0;
+    }
+    _bytesWritten = 0;
+}
+
+void qWorker::StringBuffer2::_setSize(unsigned size) {
+    if(size==0) {
+	if(_buffer) {
+	    delete[] _buffer;
+	    _buffer = 0;
+	    _bufferSize = 0;
+	}
+	return;
+    }
+    char* newBuffer = new char[size];
+    if(_buffer) {
+	memcpy(newBuffer, _buffer, _bufferSize);
+	delete[] _buffer;
+    }
+    _buffer = newBuffer;
+    _bufferSize = size;
+}
+

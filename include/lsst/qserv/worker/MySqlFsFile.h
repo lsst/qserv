@@ -32,7 +32,7 @@ class MySqlFsFile : public XrdSfsFile {
 public:
     MySqlFsFile(XrdSysError* lp, char* user = 0, 
 		AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr() );
-    ~MySqlFsFile(void);
+    virtual ~MySqlFsFile(void);
 
     int open(char const* fileName, XrdSfsFileOpenMode openMode,
              mode_t createMode, XrdSecEntity const* client = 0,
@@ -91,7 +91,7 @@ private:
     std::string _dumpName;
     bool _hasRead;
     std::string _script;
-    StringBuffer _queryBuffer;
+    StringBuffer2 _queryBuffer;
 
 };
 

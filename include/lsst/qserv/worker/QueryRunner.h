@@ -40,12 +40,11 @@ ExecEnv& getExecEnv();
 ////////////////////////////////////////////////////////////////////////
 class QueryRunnerArg {
 public:
-    QueryRunnerArg(XrdOucErrInfo& ei_, XrdSysError& e_, 
+    QueryRunnerArg(XrdSysError& e_, 
 		   std::string const& user_, ScriptMeta const& s_,
 		   std::string overrideDump_=std::string()) 
-	: ei(ei_), e(e_), user(user_), s(s_), overrideDump(overrideDump_) { }
+	: e(e_), user(user_), s(s_), overrideDump(overrideDump_) { }
 
-    XrdOucErrInfo& ei;
     XrdSysError& e;
     std::string user;
     ScriptMeta s;
@@ -89,10 +88,11 @@ class QueryRunner {
 public:
     typedef ResultTracker<std::string, ResultError> Tracker;
     typedef QueryRunnerManager Manager;
-    QueryRunner(XrdOucErrInfo& ei, XrdSysError& e, 
+    QueryRunner(XrdSysError& e, 
 		std::string const& user, ScriptMeta const& s,
 		std::string overrideDump=std::string());
-    QueryRunner(QueryRunnerArg const& a);
+    explicit QueryRunner(QueryRunnerArg const& a);
+    ~QueryRunner();
     bool operator()();
 
     // Static: 
@@ -103,18 +103,23 @@ private:
     bool _act();
     void _mkdirP(std::string const& filePath);
     bool _runScript(std::string const& script, std::string const& dbName);
+    void _buildSubchunkScripts(std::string const& script,
+			       std::string& build, std::string& cleanup);
+    bool _prepareAndSelectResultDb(MYSQL* db, 
+				   std::string const& dbName);
     bool _performMysqldump(std::string const& dbName, 
 			   std::string const& dumpFile);
     bool _isExecutable(std::string const& execName);
     void _setNewQuery(QueryRunnerArg const& a);
+    std::string _getErrorString() const;
 
     ExecEnv& _env;
-    XrdOucErrInfo& _errinfo;
     XrdSysError& _e;
     std::string _user;
     ScriptMeta _meta;
     std::string _scriptId;
-
+    int _errorNo;
+    std::string _errorDesc;
 };
 
  int dumpFileOpen(std::string const& dbName);
