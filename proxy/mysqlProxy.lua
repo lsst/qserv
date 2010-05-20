@@ -483,6 +483,13 @@ function queryProcessing()
         q2 = "SELECT * FROM " .. resultTableName
         proxy.queries:append(2, string.char(proxy.COM_QUERY) .. q2,
                              {resultset_is_needed = true})
+	q3 = "DROP TABLE " .. lockTableName
+        proxy.queries:append(3, string.char(proxy.COM_QUERY) .. q3,
+                             {resultset_is_needed = true})
+
+	q4 = "DROP TABLE " .. resultTableName
+        proxy.queries:append(4, string.char(proxy.COM_QUERY) .. q4,
+                             {resultset_is_needed = true})
 
         return SUCCESS
     end
@@ -552,6 +559,15 @@ function read_query_result(inj)
         for row in inj.resultset.rows do
             print("   " .. row[1])
         end
+        return proxy.PROXY_IGNORE_RESULT
+     elseif (inj.type == 3) or
+            (inj.type == 4) then 
+	-- Proxy will complain if we try to touch 'inj' for these:
+	-- (critical) (read_query_result) ...attempt to call a nil value
+	-- (critical) proxy-plugin.c.303: got asked to send a resultset, 
+	--            but ignoring it as we already have sent 1 resultset(s).
+	--            injection-id: 3
+        print("cleanup q(3,4) - ignoring")
         return proxy.PROXY_IGNORE_RESULT
     else
         print("q2 - passing")
