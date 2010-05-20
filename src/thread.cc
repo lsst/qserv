@@ -69,7 +69,7 @@ void qMaster::ChunkQuery::Complete(int Result) {
 	    _state = COMPLETE;
 	} else {
 	    _state = WRITE_WRITE;
-	    _sendQuery(Result);
+	    _sendQuery(Result);	   
 	}
 	break;
     case READ_OPEN: // Opened, so we can read-back the results.
@@ -159,35 +159,35 @@ std::string qMaster::ChunkQuery::getDesc() const {
 }
 
 void qMaster::ChunkQuery::_sendQuery(int fd) {
-	bool isReallyComplete = false;
-	// Now write
-	int len = _spec.query.length();
-	int writeCount = qMaster::xrdWrite(fd, _spec.query.c_str(), len);
-	if(writeCount != len) {
-	    _result.queryWrite = -errno;
+    bool isReallyComplete = false;
+    // Now write
+    int len = _spec.query.length();
+    int writeCount = qMaster::xrdWrite(fd, _spec.query.c_str(), len);
+    if(writeCount != len) {
+	_result.queryWrite = -errno;
+	isReallyComplete = true;
+	// To be safe, close file anyway.
+	qMaster::xrdClose(fd);
+    } else {
+	_result.queryWrite = writeCount;
+	_queryHostPort = qMaster::xrdGetEndpoint(fd);
+	_resultUrl = qMaster::makeUrl(_queryHostPort.c_str(), "result", 
+				      _hash);
+	qMaster::xrdClose(fd); 
+	_state = READ_OPEN;
+	std::cout  << "opening async read to " << _resultUrl << "\n";
+	int result = qMaster::xrdOpenAsync(_resultUrl.c_str(), 
+					   O_RDONLY, this);
+	if(result != -EINPROGRESS) {
+	    _result.read = result;
 	    isReallyComplete = true;
-	    // To be safe, close file anyway.
-	    qMaster::xrdClose(fd);
-	} else {
-	    _result.queryWrite = writeCount;
-	    _queryHostPort = qMaster::xrdGetEndpoint(fd);
-	    _resultUrl = qMaster::makeUrl(_queryHostPort.c_str(), "result", 
-					  _hash);
-	    qMaster::xrdClose(fd); 
-	    _state = READ_OPEN;
-	    std::cout  << "opening async read to " << _resultUrl << "\n";
-	    int result = qMaster::xrdOpenAsync(_resultUrl.c_str(), 
-					       O_RDONLY, this);
-	    if(result != -EINPROGRESS) {
-		_result.read = result;
-		isReallyComplete = true;
-	    }  // open for read in progress.
-	} // Write ok
+	}  // open for read in progress.
+    } // Write ok
 	    
-	if(isReallyComplete) { 
-	    _state=COMPLETE;
-	    _notifyManager(); 
-	}
+    if(isReallyComplete) { 
+	_state=COMPLETE;
+	_notifyManager(); 
+    }
 }
 
 void qMaster::ChunkQuery::_readResults(int fd) {
@@ -197,6 +197,7 @@ void qMaster::ChunkQuery::_readResults(int fd) {
 			   &(_result.localWrite), &(_result.read));
 	qMaster::xrdClose(fd);
 	_state = COMPLETE;
+
 	_notifyManager(); // This is a successful completion.
 }
     
@@ -443,13 +444,19 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 					       XrdTransResult const& r) {
     std::string dumpFile;
     std::string tableName;
-    {
-	boost::lock_guard<boost::mutex> lock(_queriesMutex);
-	QuerySpec& s = _queries[id];
-	dumpFile = s.first->getSavePath();
-	tableName = s.second;
+    if(r.read >= 0) {
+	{ // lock scope
+	    boost::lock_guard<boost::mutex> lock(_queriesMutex);
+	    QuerySpec& s = _queries[id];
+	    dumpFile = s.first->getSavePath();
+	    tableName = s.second;
+	    s.first.reset(); // clear out chunkquery.
+	} // end lock scope
+	_merger->merge(dumpFile, tableName);
+    } // end if 
+    else { 
+	std::cout << " Skipped merge, since read failed." << std::endl;
     }
-    _merger->merge(dumpFile, tableName);
     {
 	boost::lock_guard<boost::mutex> lock(_queriesMutex);
 	_queries.erase(id); //Warning! s is invalid now.
