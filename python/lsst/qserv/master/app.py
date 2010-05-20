@@ -358,7 +358,6 @@ class RegionFactory:
             }
         pass
     def _splitParams(self, name, tupleSize, param):
-        print param
         hList = map(float,param.split(","))
         assert 0 == (len(hList) % tupleSize), "Wrong # for %s." % name
         # Split a long param list into tuples.

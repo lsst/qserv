@@ -208,11 +208,15 @@ private:
 	std::ostream& os;
     };
 
-    int _getNextId() {return ++_lastId;}
+    int _getNextId() {
+	boost::lock_guard<boost::mutex> m(_idMutex); 
+	return ++_lastId;
+    }
     void _printState(std::ostream& os);
 
-
+    boost::mutex _idMutex;
     boost::mutex _queriesMutex;
+    boost::mutex _resultsMutex;
     int _lastId;
     QueryMap _queries;
     ResultDeque _results;

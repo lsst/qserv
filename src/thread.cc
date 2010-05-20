@@ -56,40 +56,40 @@ int seekMagic(int start, char* buffer, int term) {
 // class ChunkQuery 
 //////////////////////////////////////////////////////////////////////
 void qMaster::ChunkQuery::Complete(int Result) {
-	bool isReallyComplete = false;
-	switch(_state) {
-	case WRITE_OPEN: // Opened, so we can send off the query
-	    {
-		boost::lock_guard<boost::mutex> lock(_mutex);
-		_result.open = Result;
-	    }
-	    if(Result < 0) { // error? 
-		_result.open = Result;
-		isReallyComplete = true;
-		_state = COMPLETE;
-	    } else {
-		_state = WRITE_WRITE;
-		_sendQuery(Result);
-	    }
-	    break;
-	case READ_OPEN: // Opened, so we can read-back the results.
-	    if(Result < 0) { // error? 
-		_result.read = Result;
-		std::cout << "Problem reading result: read=" 
-			  << _result.read << std::endl;
-		isReallyComplete = true;
-		_state = COMPLETE;
-	    } else {
-		_state = READ_READ;
-		_readResults(Result);
-	    }
-	    break;
-	default:
-	    isReallyComplete = true;
-	    _state = CORRUPT;
+    bool isReallyComplete = false;
+    switch(_state) {
+    case WRITE_OPEN: // Opened, so we can send off the query
+	{
+	    boost::lock_guard<boost::mutex> lock(_mutex);
+	    _result.open = Result;
 	}
+	if(Result < 0) { // error? 
+	    _result.open = Result;
+	    isReallyComplete = true;
+	    _state = COMPLETE;
+	} else {
+	    _state = WRITE_WRITE;
+	    _sendQuery(Result);
+	}
+	break;
+    case READ_OPEN: // Opened, so we can read-back the results.
+	if(Result < 0) { // error? 
+	    _result.read = Result;
+	    std::cout << "Problem reading result: read=" 
+		      << _result.read << std::endl;
+	    isReallyComplete = true;
+	    _state = COMPLETE;
+	} else {
+	    _state = READ_READ;
+	    _readResults(Result);
+	}
+	break;
+    default:
+	isReallyComplete = true;
+	_state = CORRUPT;
+    }
 
-	if(isReallyComplete) { _notifyManager(); }
+    if(isReallyComplete) { _notifyManager(); }
 }
 
 qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id, 
@@ -427,31 +427,42 @@ int qMaster::AsyncQueryManager::add(TransactionSpec const& t,
     TransactionSpec ts(t);
 
     doctorQueryPath(ts.path);
+    QuerySpec qs(boost::make_shared<ChunkQuery>(ts, id, this),
+		 resultName);
     {
 	boost::lock_guard<boost::mutex> lock(_queriesMutex);
-	_queries[id] = QuerySpec(boost::make_shared<ChunkQuery>(ts, id, this),
-				 resultName);
+	_queries[id] = qs;
     }
     std::cout << "Added query id=" << id << " url=" << ts.path 
 	      << " with save " << ts.savePath << "\n";
-    _queries[id].first->run(); 
+
+    qs.first->run();
 }
 
 void qMaster::AsyncQueryManager::finalizeQuery(int id, 
 					       XrdTransResult const& r) {
-    QuerySpec& s = _queries[id];
-    _merger->merge(s.first->getSavePath(), s.second);
+    std::string dumpFile;
+    std::string tableName;
+    {
+	boost::lock_guard<boost::mutex> lock(_queriesMutex);
+	QuerySpec& s = _queries[id];
+	dumpFile = s.first->getSavePath();
+	tableName = s.second;
+    }
+    _merger->merge(dumpFile, tableName);
     {
 	boost::lock_guard<boost::mutex> lock(_queriesMutex);
 	_queries.erase(id); //Warning! s is invalid now.
     }
-    _results.push_back(Result(id,r));
-
+    {
+	boost::lock_guard<boost::mutex> lock(_resultsMutex);
+	_results.push_back(Result(id,r));
+    }
 }
 
 void qMaster::AsyncQueryManager::joinEverything() {
-    _printState(std::cout);
-    while(!_queries.empty()) {
+    //_printState(std::cout);
+    while(!_queries.empty()) { // FIXME: Should make this condition-var based.
 	std::cout << "Still " << _queries.size() << " in flight." << std::endl;
 	_printState(std::cout);
 	sleep(1); 

@@ -60,7 +60,6 @@ bool TableMerger::merge(std::string const& dumpFile,
     _importResult(dumpFile); 
     {
 	boost::lock_guard<boost::mutex> g(_countMutex);
-	bool create = false;
 	++_tableCount;
 	if(_tableCount == 1) {
 	    sql = _buildMergeSql(tableName, true);
@@ -108,7 +107,10 @@ bool TableMerger::_applySql(std::string const& sql) {
 	_error.status = TableMergerError::MERGEWRITE;
 	_error.errorCode = written;
 	_error.description = "Error writing sql to mysql process..";
-	pclose(fp); // cleanup
+	{
+	    boost::lock_guard<boost::mutex> m(_popenMutex);
+	    pclose(fp); // cleanup
+	}
 	return false;
     }
     int r;
