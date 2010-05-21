@@ -36,10 +36,28 @@ std::string qWorker::DUMP_BASE = "/tmp/qserv/";
 std::string qWorker::CREATE_SUBCHUNK_SCRIPT =
     "CREATE DATABASE IF NOT EXISTS Subchunks_%1%;"
     "CREATE TABLE IF NOT EXISTS Subchunks_%1%.Object_%1%_%2% ENGINE = MEMORY "
-    "AS SELECT * FROM LSST.Object_%1% WHERE subchunkId = %2%;";
+    "AS SELECT * FROM LSST.Object_%1% WHERE subchunkId = %2%;"
+    "CREATE TABLE IF NOT EXISTS Subchunks_%1%.ObjectSelfOverlap_%1%_%2% "
+    "ENGINE = MEMORY "
+    "AS SELECT * FROM LSST.ObjectSelfOverlap_%1% WHERE subchunkId = %2%;"
+    "CREATE TABLE IF NOT EXISTS Subchunks_%1%.ObjectFullOverlap_%1%_%2% "
+    "ENGINE = MEMORY "
+    "AS SELECT * FROM LSST.ObjectFullOverlap_%1% WHERE subchunkId = %2%;"
+    ;
 std::string qWorker::CLEANUP_SUBCHUNK_SCRIPT =
-    "DROP TABLE Subchunks_%1%.Object_%1%_%2%;";
+    "DROP TABLE Subchunks_%1%.Object_%1%_%2%;"
+    "DROP TABLE Subchunks_%1%.ObjectSelfOverlap_%1%_%2%;"
+    "DROP TABLE Subchunks_%1%.ObjectFullOverlap_%1%_%2%;"
+    ;
 
+// Note:
+// Not all Object partitions will have overlap tables created by the 
+// partitioner.  Thus we need to create empty overlap tables to prevent 
+// run-time errors.  The following command might be useful:
+//
+// echo "show tables in LSST;" | mysql --socket=/u1/local/mysql.sock  \
+// | grep Object_ | sed 's/\(.*\)_\(.*\)/create table if not exists LSST.
+//
 
 //////////////////////////////////////////////////////////////////////
 // Hashing-related
