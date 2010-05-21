@@ -16,6 +16,8 @@ namespace master {
 
 class Templater {
 public:
+    typedef std::map<std::string, int> IntMap;
+
     class ColumnHandler : public VoidFourRefFunc {
     public:    
 	ColumnHandler(Templater& t) : _templater(t) {}
@@ -80,12 +82,14 @@ public:
 	void applySubChunkRule();
 	bool getHasChunks() const { return _hasChunks; }
 	bool getHasSubChunks() const { return _hasSubChunks; }
+	IntMap getUsageCount() const;
     private:
 	typedef std::deque<antlr::RefAST> RefList;
 	typedef RefList::iterator RefListIter;
 	typedef std::map<std::string, RefList> RefMap;
 	typedef RefMap::value_type RefMapValue;
 	typedef RefMap::iterator RefMapIter;
+	typedef RefMap::const_iterator RefMapConstIter;
 
 	void _addRef(antlr::RefAST& a);
 	bool _isDelimited(std::string const& s);
@@ -105,10 +109,12 @@ public:
 	virtual void operator()(antlr::RefAST a, antlr::RefAST b);
 	bool getHasChunks() const { return _hasChunks; }
 	bool getHasSubChunks() const { return _hasSubChunks; }
+	IntMap const& getUsageCount() const { return _usageCount; }
     private:
 	Templater& _templater;
 	bool _hasChunks;
 	bool _hasSubChunks;
+	IntMap _usageCount;
     };
 
     typedef std::map<std::string, char> ReMap;

@@ -76,9 +76,17 @@ public:
 		//std::cout << "fixupSelect " << getFixupSelect();
 		//std::cout << "passSelect " << getPassSelect();
 		// ";" is not in the AST, so add it back.
-		_parseResult = walkTreeString(ast) + ";";
+		_parseResult = walkTreeString(ast);
 		_aggMgr.applyAggPass();
-		_aggParseResult = walkTreeString(ast) + ";";
+		_aggParseResult = walkTreeString(ast);
+		if(_tableListHandler->getHasSubChunks()) {
+		    _makeOverlapMap();
+		    _aggParseResult = _composeOverlap(_aggParseResult);
+		    _parseResult = _composeOverlap(_parseResult);
+		}
+		_aggParseResult += ";";
+		_parseResult += ";";
+
 	    } else {
 		_errorMsg = "Error: no AST from parse";
 	    }
@@ -87,7 +95,20 @@ public:
 	} catch( std::exception& e ) {
 	    _errorMsg = std::string("General exception: ") + e.what();
 	}
-	return; // Error.
+
+	return; 
+    }
+    void _makeOverlapMap() {
+	qMaster::Templater::IntMap im = _tableListHandler->getUsageCount();
+	qMaster::Templater::IntMap::iterator e = im.end();
+	for(qMaster::Templater::IntMap::iterator i = im.begin(); i != e; ++i) {
+	    _overlapMap[i->first+"_sc2"] = i->first + "_sfo";
+	}
+
+    }
+    std::string _composeOverlap(std::string const& query) {
+	Substitution s(query, _delimiter, false);
+	return query + " union " + s.transform(_overlapMap);
     }
     bool getHasChunks() const { 
 	return _tableListHandler->getHasChunks();
@@ -123,10 +144,11 @@ private:
     qMaster::Templater _templater;
     qMaster::AggregateMgr _aggMgr;
     boost::shared_ptr<qMaster::Templater::TableListHandler>  _tableListHandler;
-
+    
     std::string _parseResult;
     std::string _aggParseResult;
     std::string _errorMsg;
+    StringMapping _overlapMap;
 
 };
 } // Anonymous namespace
@@ -134,8 +156,8 @@ private:
 ///////////////////////////////////////////////////////////////////////////
 // class Substitution
 ///////////////////////////////////////////////////////////////////////////
-Substitution::Substitution(std::string template_, std::string const& delim) 
-    : _template(template_) {
+Substitution::Substitution(std::string template_, std::string const& delim, bool shouldFinalize) 
+    : _template(template_), _shouldFinalize(shouldFinalize) {
     _build(delim);
 }
     
@@ -149,6 +171,11 @@ std::string Substitution::transform(Mapping const& m) {
     // No re-allocations if transformations are constant-size.
     result.reserve(_template.size()); 
 
+#if 0
+    for(Mapping::const_iterator i = m.begin(); i != m.end(); ++i) {
+	std::cout << "mapping " << i->first << " " << i->second << std::endl;
+    }
+#endif
     for(std::vector<Item>::const_iterator i = _index.begin();
 	i != _index.end(); ++i) {
 	// Copy bits since last match
@@ -184,10 +211,15 @@ void Substitution::_build(std::string const& delim) {
 	pos = _template.find(delim, pos+1)) {
 	unsigned endpos = _template.find(delim, pos + delimLength);
 	Item newItem;
-	newItem.position = pos;
-	newItem.length = (endpos - pos) + delimLength;
+	if(_shouldFinalize) {
+	    newItem.position = pos;	
+	    newItem.length = (endpos - pos) + delimLength;
+	} else {
+	    newItem.position = pos + delimLength;
+	    newItem.length = endpos - pos - delimLength;
+	}
 	newItem.name.assign(_template, pos + delimLength,
-			    newItem.length - delimLength - delimLength);
+			    endpos - pos - delimLength);
 	// Note: length includes two delimiters.
 	_index.push_back(newItem);
 	pos = endpos;
@@ -232,7 +264,7 @@ void SqlSubstitution::_build(std::string const& sqlStatement,
     if(template_.empty()) {
 	_errorMsg = spr.getError();
     }
-    _substitution = SubstPtr(new Substitution(template_, _delimiter));
+    _substitution = SubstPtr(new Substitution(template_, _delimiter, true));
     _hasAggregate = spr.getHasAggregate();
     _fixupSelect = spr.getFixupSelect();
     _fixupPost = spr.getFixupPost();
@@ -265,17 +297,32 @@ ChunkMapping::Map ChunkMapping::getMapping(int chunk, int subChunk) {
     static const std::string two("2");
     // Insert mapping for: plainchunk, plainsubchunk1, plainsubchunk2
     for(ModeMap::const_iterator i = _map.begin(); i != end; ++i) {
+	// Object --> Object_chunk
+	// Object_so --> ObjectSelfOverlap_chunk
+	// Object_fo --> ObjectFullOverlap_chunk
+	// Object_s1 --> Object_chunk_subchunk
+	// Object_s2 --> Object_chunk_subchunk
+	// Object_sso --> ObjectSelfOverlap_chunk_subchunk
+	// Object_sfo --> ObjectFullOverlap_chunk_subchunk
+	std::string c("_" + chunkStr);
+	std::string sc("_" + subChunkStr);
+	std::string soc("SelfOverlap_" + chunkStr);
+	std::string foc("FullOverlap_" + chunkStr);
+	m.insert(MapValue(i->first, i->first + c));
+	m.insert(MapValue(i->first + "_so", i->first + soc));
+	m.insert(MapValue(i->first + "_fo", i->first + foc));
 	if(i->second == CHUNK) {
-	    m.insert(MapValue(i->first, i->first + "_" + chunkStr));
+	    // No additional work needed
 	} else if (i->second == CHUNK_WITH_SUB) {
-	    // Object --> Object_chunk
-	    // Object_s1 --> Object_chunk_subchunk
-	    // Object_s2 --> Object_chunk_subchunk (FIXME: add overlap)
-	    m.insert(MapValue(i->first, i->first + "_" + chunkStr));
 	    m.insert(MapValue(i->first + _subPrefix + one, 
-			      i->first + "_" + chunkStr + "_" + subChunkStr));
+			      i->first + c + sc));
+	    // Might deprecate the _s2 version in this context
 	    m.insert(MapValue(i->first + _subPrefix + two, 
-			      i->first + "_" + chunkStr + "_" + subChunkStr));
+			      i->first + c + sc));
+	    m.insert(MapValue(i->first + "_sso", 
+			      i->first + soc + sc));
+	    m.insert(MapValue(i->first + "_sfo", 
+			      i->first + foc + sc));
 	}
     }
     return m;

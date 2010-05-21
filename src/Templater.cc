@@ -22,6 +22,19 @@ void Templater::JoinVisitor::applySubChunkRule() {
 	}
     }
 }
+Templater::IntMap Templater::JoinVisitor::getUsageCount() const{
+    IntMap im;
+    RefMapConstIter e = _map.end();
+    register int delimLength = _delim.length();
+    register int delimLength2 = delimLength + delimLength;
+    for(RefMapConstIter i = _map.begin(); i != e; ++i) {
+	RefMapValue const& v = *i;
+	std::string key = v.first.substr(delimLength, 
+					 v.first.length()-delimLength2);
+	im[key] = v.second.size();
+    }
+    return im;
+}
 
 void Templater::JoinVisitor::_addRef(antlr::RefAST& a) {
     std::string key(a->getText());
@@ -65,6 +78,7 @@ void Templater::TableListHandler::operator()(antlr::RefAST a,
     j.applySubChunkRule();
     _hasChunks = j.getHasChunks();
     _hasSubChunks = j.getHasSubChunks();
+    _usageCount = j.getUsageCount();
 }
 
 

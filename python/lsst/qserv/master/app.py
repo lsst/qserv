@@ -701,7 +701,7 @@ class HintedQueryAction:
             table = self._resultTableTmpl % str(chunkId)
             q = None
             x =  self._substitution.getChunkLevel()
-            if x> 1:
+            if x > 1:
                 q = self._makeSubChunkQuery(chunkId, subIter, table)
             else:
                 q = self._makeChunkQuery(chunkId, table)
@@ -759,7 +759,15 @@ class HintedQueryAction:
 
         subchunked = self._pConfig.subchunked
         res = q
+        slist = []
         for s in subchunked:
+            slist.append(s)
+            if "FullOverlap" not in s:
+                slist.append(s+"FullOverlap")
+            if "SelfOverlap" not in s:
+                slist.append(s+"SelfOverlap")
+        
+        for s in slist:
             sName = "%s_%d_%d" % (s, chunk, subChunk)
             patStr = "(\w+[.])?%s" % sName
             sub = "Subchunks_%d.%s" % (chunk, sName)

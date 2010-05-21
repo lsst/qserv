@@ -28,7 +28,7 @@ public:
     typedef std::vector<StringPair> MapVector;
     typedef std::vector<std::string> StringVector;
 
-    Substitution(std::string template_, std::string const& delim);
+    Substitution(std::string template_, std::string const& delim, bool shouldFinalize=true);
     
     std::string transform(Mapping const& m);
 
@@ -52,7 +52,7 @@ private:
 
     std::vector<Item> _index;
     std::string _template;
-	
+    bool _shouldFinalize;
 };
 
 
@@ -89,7 +89,7 @@ private:
 
 class ChunkMapping {
 public:
-    typedef std::map<std::string,std::string> Map;
+    typedef StringMapping Map;
     typedef Map::value_type MapValue;
 
  ChunkMapping() :_subPrefix("_sc") {}
@@ -105,7 +105,6 @@ public:
     // SubChunkKeys: tables partitioned into chunks and subchunks.
     void addChunkKey(std::string const& key) { _map[key] = CHUNK; }
     void addSubChunkKey(std::string const& key) { _map[key] = CHUNK_WITH_SUB; }
-        
 private:
     enum Mode {UNKNOWN, CHUNK, CHUNK_WITH_SUB};
     typedef std::map<std::string, Mode> ModeMap;
