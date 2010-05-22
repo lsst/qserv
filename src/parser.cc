@@ -1,4 +1,5 @@
 // Standard
+#include <cstring>
 #include <iostream>
 #include <sstream>
 #include <list>
@@ -6,6 +7,8 @@
 
 // Boost
 #include "boost/shared_ptr.hpp"
+#include "boost/format.hpp"
+#include "boost/regex.hpp"
 
 // ANTLR
 #include "antlr/AST.hpp"
@@ -28,6 +31,14 @@ using qMaster::AggregateMgr;
 
 namespace { // Anonymous
 
+// Helper for checking strings
+bool endsWith(std::string const& s, char const* ending) {
+    std::string::size_type p = s.rfind(ending, std::string::npos);
+    std::string::size_type l = std::strlen(ending);
+    return p == (s.size() - l);
+}
+
+// SQL parser interaction manager
 class SqlParseRunner {
 public:
     SqlParseRunner(std::string const& statement, std::string const& delimiter) :
@@ -238,13 +249,32 @@ SqlSubstitution::SqlSubstitution(std::string const& sqlStatement,
     _build(sqlStatement, mapping);
     //
 }
+
+void SqlSubstitution::importSubChunkTables(char** cStringArr) {
+    _subChunked.clear();
+    for(int i=0; cStringArr[i]; ++i) {
+        std::string s = cStringArr[i];
+        _subChunked.push_back(s);
+        if(!endsWith(s, "SelfOverlap")) {
+            _subChunked.push_back(s + "SelfOverlap");
+        }
+        if(!endsWith(s, "FullOverlap")) {
+            _subChunked.push_back(s + "FullOverlap");
+        }        
+    }
+}
     
-std::string SqlSubstitution::transform(Mapping const& m) {
+std::string SqlSubstitution::transform(Mapping const& m, int chunk, 
+                                       int subChunk) {
+    return _fixDbRef(_substitution->transform(m), chunk, subChunk);
+}
+
+std::string SqlSubstitution::substituteOnly(Mapping const& m) {
     return _substitution->transform(m);
 }
 
 void SqlSubstitution::_build(std::string const& sqlStatement, 
-			     Mapping const& mapping) {
+                             Mapping const& mapping) {
     // 
     std::string template_;
 
@@ -268,6 +298,38 @@ void SqlSubstitution::_build(std::string const& sqlStatement,
     _hasAggregate = spr.getHasAggregate();
     _fixupSelect = spr.getFixupSelect();
     _fixupPost = spr.getFixupPost();
+}
+
+
+std::string SqlSubstitution::_fixDbRef(std::string const& s, 
+                                       int chunk, int subChunk) {
+
+    // # Replace sometable_CC_SS or anything.sometable_CC_SS 
+    // # with Subchunks_CC, 
+    // # where CC and SS are chunk and subchunk numbers, respectively.
+    // # Note that "sometable" is any subchunked table.
+    std::string result = s;
+    DequeConstIter e = _subChunked.end();
+    for(DequeConstIter i=_subChunked.begin(); i != e; ++i) {
+        std::string sName = (boost::format("%s_%d_%d") 
+                             % *i % chunk % subChunk).str();
+        std::string pat = (boost::format("(\\w+\\.)?%s") % sName).str();        
+        boost::regex r(pat);
+        std::string sub = (boost::format("Subchunks_%d.%s") 
+                           % chunk % sName).str();
+        //std::cout << "sName=" << sName << "  pat=" << pat << std::endl;
+        result =  boost::regex_replace(result, r, sub);
+        //std::cout << "out=" << result << std::endl;
+    }
+    return result;
+
+    // for s in slist:
+    //     sName = "%s_%d_%d" % (s, chunk, subChunk)
+    //     patStr = "(\w+[.])?%s" % sName
+    //     sub = "Subchunks_%d.%s" % (chunk, sName)
+    //     res = re.sub(patStr, sub, res)
+    // return res
+
 }
 
 void SqlSubstitution::_computeChunkLevel(bool hasChunks, bool hasSubChunks) {

@@ -110,13 +110,16 @@ if not conf.CheckLib("XrdPosix", language="C++"):
     print >>sys.stderr, "Can't use XrdPosix lib"
     hasXrootd = False
 
-# boost thread library
-if not conf.CheckLib("boost_thread-gcc34-mt", language="C++") \
-        and not conf.CheckLib("boost_thread-gcc41-mt", language="C++") \
-        and not conf.CheckLib("boost_thread", language="C++") \
-        and not conf.CheckLib("boost_thread-mt", language="C++"):
-    print >>sys.stderr, "Can't find boost_thread"
-    canBuild = False
+# boost library reqs
+def checkBoost(lib):
+    if not conf.CheckLib(lib + "-gcc34-mt", language="C++") \
+            and not conf.CheckLib(lib + "-gcc41-mt", language="C++") \
+            and not conf.CheckLib(lib, language="C++") \
+            and not conf.CheckLib(lib + "-mt", language="C++"):
+        print >>sys.stderr, "Can't find " + lib
+        canBuild = False
+checkBoost("boost_thread")
+checkBoost("boost_regex")
 
 # libssl
 if not conf.CheckLib("ssl"):

@@ -33,10 +33,10 @@ void trySubstitute() {
 
 
     SqlSubstitution s(stmt, m);
-    std::cout << "Plain transform " << s.transform(m) << std::endl;
+    std::cout << "Plain transform " << s.substituteOnly(m) << std::endl;
     m["Object"] = "Object_10_22";
     m["Source"] = "Source_10_22";
-    std::cout << "Next transform " << s.transform(m) << std::endl;
+    std::cout << "Next transform " << s.substituteOnly(m) << std::endl;
 }
 
 //BOOST_AUTO_TEST_CASE(SqlSubstitution) {
@@ -47,24 +47,28 @@ void tryAutoSubstitute() {
     c.addSubChunkKey("Object");
     SqlSubstitution ss(stmt, c.getMapping(32,53432));
     for(int i = 4; i < 6; ++i) {
-	std::cout << "--" << ss.transform(c.getMapping(i,3)) << std::endl;
+	std::cout << "--" << ss.transform(c.getMapping(i,3), i, 3) 
+                  << std::endl;
     }
 }
 
 void tryNnSubstitute() {
     std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2 where o1.id != o2.id and spdist(o1.ra,o1.decl,o2.ra,o2.decl) < 1;";
     stmt = "select * from LSST.Object as o1, LSST.Object as o2 where o1.id != o2.id and LSST.spdist(o1.ra,o1.decl,o2.ra,o2.decl) < 1 AND o1.id != o2.id;";
+    char* imported[] = {"Source","Object"};
+
     ChunkMapping c;
     c.addChunkKey("Source");
     c.addSubChunkKey("Object");
     SqlSubstitution ss(stmt, c.getMapping(32,53432));
+    ss.importSubChunkTables(imported);
     if(!ss.getError().empty()) {
 	std::cout << "ERROR constructing substitution: " 
 		  << ss.getError() << std::endl;
 	return;
     }
     for(int i = 4; i < 6; ++i) {
-	std::cout << "--" << ss.transform(c.getMapping(i,3)) << std::endl;
+	std::cout << "--" << ss.transform(c.getMapping(i,3),i,3) << std::endl;
     }
 }
 
@@ -76,7 +80,7 @@ void tryTriple() {
     c.addSubChunkKey("ObjectSub");
     SqlSubstitution ss(stmt, c.getMapping(32,53432));
     for(int i = 4; i < 6; ++i) {
-	std::cout << "--" << ss.transform(c.getMapping(i,3)) << std::endl;
+	std::cout << "--" << ss.transform(c.getMapping(i,3),i,3) << std::endl;
     }
 }
 
@@ -89,10 +93,10 @@ void tryAggregate() {
     c.addSubChunkKey("Object");
     SqlSubstitution ss(stmt, c.getMapping(32,53432));
     for(int i = 4; i < 6; ++i) {
-	std::cout << "--" << ss.transform(c.getMapping(i,3)) << std::endl;
+	std::cout << "--" << ss.transform(c.getMapping(i,3),i,3) << std::endl;
     }
     SqlSubstitution ss2(stmt2, c.getMapping(32,4352));
-    std::cout << "--" << ss2.transform(c.getMapping(24,3)) << std::endl;
+    std::cout << "--" << ss2.transform(c.getMapping(24,3),24,3) << std::endl;
     
 }
 

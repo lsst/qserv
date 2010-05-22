@@ -7,6 +7,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <deque>
 // Boost
 #include "boost/shared_ptr.hpp"
 
@@ -59,10 +60,14 @@ private:
 class SqlSubstitution {
 public:
     typedef StringMapping Mapping;
+    typedef std::deque<std::string> Deque;
+    typedef Deque::const_iterator DequeConstIter;
 
     SqlSubstitution(std::string const& sqlStatement, Mapping const& mapping);
     
-    std::string transform(Mapping const& m);
+    void importSubChunkTables(char** cStringArr);
+    std::string transform(Mapping const& m, int chunk, int subChunk);
+    std::string substituteOnly(Mapping const& m);
     
     /// 0: none, 1: chunk, 2: subchunk
     int getChunkLevel() const { return _chunkLevel; }
@@ -76,6 +81,7 @@ private:
 
     void _build(std::string const& sqlStatement, Mapping const& mapping);
     void _computeChunkLevel(bool hasChunks, bool hasSubChunks);
+    std::string _fixDbRef(std::string const& s, int chunk, int subChunk);
 
     std::string _delimiter;
     std::string _errorMsg;
@@ -84,6 +90,7 @@ private:
     bool _hasAggregate;
     std::string _fixupSelect;
     std::string _fixupPost;
+    Deque _subChunked;
 };
 
 
