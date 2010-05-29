@@ -206,14 +206,14 @@ AggregateMgr::AggregateMgr() : _aliaser(new AliasHandler()),
 			       _selectLister(new SelectListHandler(*_aliaser)),
 			       _groupByer(new GroupByHandler()),
 			       _groupColumner(new GroupColumnHandler(*_groupByer)),
-			       _hasAggregate(false) {
+			       _hasAggregate(false), _isMissingSelect(false) {
 }
 
 void AggregateMgr::postprocess() {
     AliasHandler::Map const& aMap = _aliaser->getInvAliases();
     AliasHandler::MapConstIter aEnd = aMap.end();
     SetFuncHandler::Deque const& aggd = _setFuncer->getAggs();
-
+    
     for(SetFuncHandler::DequeConstIter i = aggd.begin(); 
 	i != aggd.end(); ++i) {
 	AliasHandler::MapConstIter f = aMap.find(i->first);
@@ -237,7 +237,7 @@ void AggregateMgr::postprocess() {
 
 void AggregateMgr::applyAggPass() {
     std::string passText = getPassSelect();
-    if(passText == "*") {
+    if(passText.empty() || (passText == "*")) {
 	// SELECT * means we don't have to fix anything.
 	return;
     }
@@ -246,22 +246,24 @@ void AggregateMgr::applyAggPass() {
     nb.first->setText(passText); // Reassign text.
     nb.first->setFirstChild(antlr::RefAST()); // Set as childless.
 }
+
 std::string AggregateMgr::getPassSelect() {
-    if(_passSelect.empty()) {
+    if(_isMissingSelect && _passSelect.empty()) {
 	_computeSelects();
     }
     return _passSelect;
 }
+
 std::string AggregateMgr::getFixupSelect() {
-    if(_fixupSelect.empty()) {
+    if(!_isMissingSelect && _fixupSelect.empty()) {
 	_computeSelects();
     }
-    return _fixupSelect;
-	
+    return _fixupSelect;	
 }
+
 std::string AggregateMgr::getFixupPost() {
     // Fixup suffix will be ready when the fixup select is ready.
-    if(_fixupSelect.empty()) { 
+    if(!_isMissingSelect && _fixupSelect.empty()) { 
 	_computeSelects();
     }
     return _fixupPost;
@@ -277,6 +279,10 @@ void AggregateMgr::_computeSelects() {
 	return;
     }
     SelectListHandler::Deque& d = _selectLister->selectLists;
+    if(d.empty()) {
+        _isMissingSelect = true;
+        return;
+    }
     assert(!d.empty());
     if(d.size() > 1) {
 	std::cout << "Warning, multiple select lists->subqueries?" 

@@ -7,6 +7,7 @@ import sys
 from lsst.qserv.master import appInterface as app
 from lsst.qserv.master import config
 from lsst.qserv.master.testHintedParser import TestHintedParser
+from lsst.qserv.master.testAppInterface import TestAppInterface
 
 def main():    
 
@@ -29,6 +30,9 @@ def main():
                       help="Use FILENAME to get hints. Use with --query.")
 
     parser.add_option("--hintTest",
+                      dest="hintTest", default=None, metavar="NAME", 
+                      help="Run a hintedParser test named NAME.")
+    parser.add_option("--test",
                       dest="testName", default=None, metavar="NAME", 
                       help="Run a hintedParser test named NAME.")
 
@@ -64,11 +68,17 @@ def main():
         print a.query(q)
         return
     elif options.testName:
+        
+        suite = unittest.TestSuite()
+        suite.addTest(TestAppInterface('test' + options.testName))
+        unittest.TextTestRunner(verbosity=2).run(suite)
+
+    elif options.hintTest:
         # from lsst.qserv.master import testHintedParser
         # t = testHintedParser.TestHintedParser()
         
         suite = unittest.TestSuite()
-        suite.addTest(TestHintedParser('test' + options.testName))
+        suite.addTest(TestHintedParser('test' + options.hintTest))
         unittest.TextTestRunner(verbosity=2).run(suite)
     else:
         print "No action specified.  Need --help ?"

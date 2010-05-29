@@ -39,7 +39,7 @@ stripes=18
 substripes=10
 
 [table]
-chunked=Source,FaintSource
+chunked=Source,ForcedSource
 subchunked=Object
 
 [mysql]
@@ -76,7 +76,7 @@ def printTo(outHandle):
 class ConfigError(Exception):
     """An error in qserv configuration (Bad/missing values)."""
     def __init__(self, reason):
-        self.reason = value
+        self.reason = reason
     def __str__(self):
         return repr(self.reason)
 

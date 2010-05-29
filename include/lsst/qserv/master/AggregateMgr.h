@@ -207,6 +207,7 @@ private:
     std::string _fixupSelect;
     std::string _fixupPost;
     bool _hasAggregate;
+    bool _isMissingSelect;
 
 }; // class AggregateMgr
 

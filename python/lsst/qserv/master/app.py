@@ -535,7 +535,7 @@ def setupResultScratch():
             raise cm.ConfigError("Bad scratch_dir")
     # Make sure we can read/write the dir.
     if not os.access(scratchPath, os.R_OK | os.W_OK):
-        raise cm.ConfigError("No access for scratch_path")
+        raise cm.ConfigError("No access for scratch_path(%s)" % scratchPath)
     return scratchPath
 
 ########################################################################    
@@ -649,11 +649,14 @@ class HintedQueryAction:
         self._evaluateHints(self._parseRegions(hints), pmap)
 
         # Table mapping 
-        self._pConfig = PartitioningConfig() # Should be shared.
-        self._pConfig.applyConfig()
-        self._substitution = SqlSubstitution(query, 
-                                             self._pConfig.getMapRef(2,3))
-        self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
+        try:
+            self._pConfig = PartitioningConfig() # Should be shared.
+            self._pConfig.applyConfig()
+            self._substitution = SqlSubstitution(query, 
+                                                 self._pConfig.getMapRef(2,3))
+            self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
+        except:
+            self._isValid = False
 
         # Query babysitter.
         fixupSelect = ""
@@ -670,6 +673,7 @@ class HintedQueryAction:
         self._insertTableTmpl = "INSERT INTO %s " ;
         self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
                                              self.queryHash) + "_%s"
+        self._isValid = True
         pass
 
     def _headerFunc(self, subc=[]):
