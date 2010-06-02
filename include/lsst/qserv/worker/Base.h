@@ -30,6 +30,8 @@ extern std::string DUMP_BASE;
 extern std::string CREATE_SUBCHUNK_SCRIPT; 
 extern std::string CLEANUP_SUBCHUNK_SCRIPT;
 
+// Result-writing
+void updateResultPath(char const* resultPath=0);
 
 // Hashing-related
 std::string hashQuery(char const* buffer, int bufferSize);

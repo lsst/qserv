@@ -68,7 +68,7 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
 	_eDest->Say("Problem loading libXrdOfs.so. Clustering won't work.");
     }
 #endif
-
+    updateResultPath();
 }
 
 qWorker::MySqlFs::~MySqlFs(void) {

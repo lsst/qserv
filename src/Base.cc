@@ -26,6 +26,9 @@ template <class T> struct offsetLess {
 };
 }
 
+bool checkWritablePath(char const* path) {
+    return 0 == ::access(path, W_OK | X_OK);
+}
 
 //////////////////////////////////////////////////////////////////////
 // Constants
@@ -90,6 +93,18 @@ std::string qWorker::hashQuery(char const* buffer, int bufferSize) {
     }
     return result;
 #endif
+}
+
+
+void qWorker::updateResultPath(char const* resultPath) {
+    if(resultPath && checkWritablePath(resultPath)) {
+        DUMP_BASE.assign(resultPath);
+        return;
+    } 
+    char* path =::getenv("QSW_RESULTPATH");
+    if(checkWritablePath(path)) {
+        DUMP_BASE.assign(path);
+    }
 }
 
 std::string qWorker::hashToPath(std::string const& hash) {
