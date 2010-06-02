@@ -245,7 +245,7 @@ void Substitution::_build(std::string const& delim) {
 ///////////////////////////////////////////////////////////////////////////
 SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
 				 Mapping const& mapping) 
-    : _delimiter("*?*") {
+    : _delimiter("*?*"), _hasAggregate(false) {
     _build(sqlStatement, mapping);
     //
 }
@@ -266,10 +266,12 @@ void SqlSubstitution::importSubChunkTables(char** cStringArr) {
     
 std::string SqlSubstitution::transform(Mapping const& m, int chunk, 
                                        int subChunk) {
+    if(!_substitution.get()) return std::string();
     return _fixDbRef(_substitution->transform(m), chunk, subChunk);
 }
 
 std::string SqlSubstitution::substituteOnly(Mapping const& m) {
+    if(!_substitution.get()) return std::string();
     return _substitution->transform(m);
 }
 
@@ -293,11 +295,12 @@ void SqlSubstitution::_build(std::string const& sqlStatement,
     _computeChunkLevel(spr.getHasChunks(), spr.getHasSubChunks());
     if(template_.empty()) {
 	_errorMsg = spr.getError();
+    } else {
+        _substitution = SubstPtr(new Substitution(template_, _delimiter, true));
+        _hasAggregate = spr.getHasAggregate();
+        _fixupSelect = spr.getFixupSelect();
+        _fixupPost = spr.getFixupPost();
     }
-    _substitution = SubstPtr(new Substitution(template_, _delimiter, true));
-    _hasAggregate = spr.getHasAggregate();
-    _fixupSelect = spr.getFixupSelect();
-    _fixupPost = spr.getFixupPost();
 }
 
 

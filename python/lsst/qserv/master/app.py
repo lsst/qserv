@@ -654,10 +654,16 @@ class HintedQueryAction:
             self._pConfig.applyConfig()
             self._substitution = SqlSubstitution(query, 
                                                  self._pConfig.getMapRef(2,3))
-            self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
+            if self._substitution.getError():
+                self._error = self._substitution.getError()
+                self._isValid = False
+            else:
+                self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
         except:
             self._isValid = False
 
+        if not self._isValid:
+            return
         # Query babysitter.
         fixupSelect = ""
         fixupPost = ""
@@ -723,6 +729,9 @@ class HintedQueryAction:
         #self._collater.finish()
         #table = self._collater.getResultTableName()
         return table
+
+    def getIsValid(self):
+        return self._isValid
 
     def _makeChunkQuery(self, chunkId, table):
         # Prefix with empty subchunk spec.
