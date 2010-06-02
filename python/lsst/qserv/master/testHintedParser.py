@@ -14,6 +14,9 @@ class TestHintedParser(unittest.TestCase):
 
     def setUp(self):
         bq = ("SELECT * FROM LSST.Object WHERE bMag2 > 21.2;", None)
+        bqPt1 = ("SELECT * FROM LSST.Object WHERE rRadius_SG > 500;", 
+                 {"box": "148, 1.6, 152, 2.3"})
+
         hq = ("""SELECT * from LSST.Object 
         WHERE ra BETWEEN 1.5 AND 4.4 AND decl BETWEEN -10 AND -2
         ;""",                     
@@ -41,7 +44,15 @@ SELECT o1.id as o1id,o2.id as o2id,
  WHERE ABS(o1.decl-o2.decl) < 1
      AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1
      AND o1.id != o2.id;""", {"box":"1.5, -25, 34.1, -2"})
+        self.osjoinQ = (
+            """
+SELECT o1.objectId, o1.rRadius_SG, s.sourceId, s.psfFlux, s.apFlux 
+FROM LSST.Object o1, LSST.Source s 
+WHERE o1.objectId=s.objectId AND o1.rRadius_SG > 600;""", 
+                   {"box": "148, 1.6, 152, 2.3"})
+                   
         self.basicQuery = bq
+        self.basicPt1Query = bqPt1
         self.hintQuery = hq
         self.hintQuery2 = hq2
         self.aggQuery1 = ahq1
@@ -49,23 +60,31 @@ SELECT o1.id as o1id,o2.id as o2id,
         self.groupByQuery1 = gbq1
         self.nearNeighQuery1 = nnq1
         pass
-    
+                
+    def _performTestQueryAction(self, queryTuple):
+        a = app.AppInterface()
+        result = a.queryNow(*queryTuple)
+        print "Done Query."
+        print result
+        pass
+        
     def testBasic(self):
         """This is a non-spatially-restricted query that might
         be really expensive."""
-        a = app.AppInterface()
-        result = a.queryNow(*self.basicQuery)
-        
-        print "Done Query."
-        print result
-        pass
+        return self._performTestQueryAction(self.basicQuery)
+
+    def testBasicPt1(self):
+        """This is a somewhat spatially-restricted query that uses PT1 
+        Object schema"""
+        return self._performTestQueryAction(self.basicPt1Query)
+
+    def testSourceObjJoin(self):
+        """This is a Object-source join.
+        Using PT1 Object schema"""
+        return self._performTestQueryAction(self.osjoinQ)
 
     def testBoxHints(self):
-        a = app.AppInterface()
-        result = a.queryNow(*self.hintQuery)
-        print "Done Query."
-        print result
-        pass
+        return self._performTestQueryAction(self.hintQuery)
 
     def testParallelQuery(self):
         a = app.AppInterface()
