@@ -11,6 +11,10 @@
 // Boost
 #include "boost/shared_ptr.hpp"
 
+namespace lsst {
+namespace qserv {
+namespace master {
+
 // Forward
 class Substitution;
 
@@ -129,5 +133,6 @@ private:
     std::string _subPrefix;
 };
 
+}}} // namespace lsst::qserv::master
 
 #endif // LSST_QSERV_MASTER_PARSER_H

@@ -16,16 +16,10 @@
 
 // Package
 #include "lsst/qserv/master/parser.h"
-#include "lsst/qserv/master/AggregateMgr.h"
 #include "lsst/qserv/master/parseTreeUtil.h"
-#include "lsst/qserv/master/Templater.h"
-
-// Local (placed in src/)
-#include "SqlSQL2Parser.hpp" 
-#include "SqlSQL2Lexer.hpp"
+#include "lsst/qserv/master/SqlParseRunner.h"
 
 namespace qMaster = lsst::qserv::master;
-using std::stringstream;
 using qMaster::walkTreeString;
 using qMaster::AggregateMgr;
 
@@ -38,141 +32,19 @@ bool endsWith(std::string const& s, char const* ending) {
     return p == (s.size() - l);
 }
 
-// SQL parser interaction manager
-class SqlParseRunner {
-public:
-    SqlParseRunner(std::string const& statement, std::string const& delimiter) :
-	_statement(statement),
-	_stream(statement, stringstream::in | stringstream::out),
-	_lexer(_stream),
-	_parser(_lexer),
-	_delimiter(delimiter),
-	_templater(_delimiter)
-    { }
-
-    void setup(std::list<std::string> const& names) {
-	_templater.setKeynames(names.begin(), names.end());
-	_parser._columnRefHandler = _templater.getColumnHandler();
-	_parser._qualifiedNameHandler = _templater.getTableHandler();
-	_tableListHandler = _templater.getTableListHandler();
-	_parser._tableListHandler = _tableListHandler;
-	_parser._setFctSpecHandler = _aggMgr.getSetFuncHandler();
-	_parser._aliasHandler = _aggMgr.getAliasHandler();
-	_parser._selectListHandler = _aggMgr.getSelectListHandler();
-	_parser._selectStarHandler = _aggMgr.getSelectStarHandler();
-	_parser._groupByHandler = _aggMgr.getGroupByHandler();
-	_parser._groupColumnHandler = _aggMgr.getGroupColumnHandler();
-    }
-
-    std::string getParseResult() {
-	if(_errorMsg.empty() && _parseResult.empty()) {
-	    _computeParseResult();
-	}
-	return _parseResult;
-    }
-    std::string getAggParseResult() {
-	if(_errorMsg.empty() && _aggParseResult.empty()) {
-	    _computeParseResult();
-	}
-	return _aggParseResult;
-    }
-    void _computeParseResult() {
-	try {
-	    _parser.initializeASTFactory(_factory);
-	    _parser.setASTFactory(&_factory);
-	    _parser.sql_stmt();
-	    _aggMgr.postprocess();
-	    RefAST ast = _parser.getAST();
-	    if (ast) {
-		//std::cout << "fixupSelect " << getFixupSelect();
-		//std::cout << "passSelect " << getPassSelect();
-		// ";" is not in the AST, so add it back.
-		_parseResult = walkTreeString(ast);
-		_aggMgr.applyAggPass();
-		_aggParseResult = walkTreeString(ast);
-		if(_tableListHandler->getHasSubChunks()) {
-		    _makeOverlapMap();
-		    _aggParseResult = _composeOverlap(_aggParseResult);
-		    _parseResult = _composeOverlap(_parseResult);
-		}
-		_aggParseResult += ";";
-		_parseResult += ";";
-
-	    } else {
-		_errorMsg = "Error: no AST from parse";
-	    }
-	} catch( antlr::ANTLRException& e ) {
-	    _errorMsg =  "Parse exception: " + e.toString();
-	} catch( std::exception& e ) {
-	    _errorMsg = std::string("General exception: ") + e.what();
-	}
-
-	return; 
-    }
-    void _makeOverlapMap() {
-	qMaster::Templater::IntMap im = _tableListHandler->getUsageCount();
-	qMaster::Templater::IntMap::iterator e = im.end();
-	for(qMaster::Templater::IntMap::iterator i = im.begin(); i != e; ++i) {
-	    _overlapMap[i->first+"_sc2"] = i->first + "_sfo";
-	}
-
-    }
-    std::string _composeOverlap(std::string const& query) {
-	Substitution s(query, _delimiter, false);
-	return query + " union " + s.transform(_overlapMap);
-    }
-    bool getHasChunks() const { 
-	return _tableListHandler->getHasChunks();
-    }
-    bool getHasSubChunks() const { 
-	return _tableListHandler->getHasSubChunks();
-    }
-    std::string getFixupSelect() {
-	return _aggMgr.getFixupSelect();
-    }
-    std::string getFixupPost() {
-	return _aggMgr.getFixupPost();
-    }
-    std::string getPassSelect() {
-	return _aggMgr.getPassSelect();
-    }
-    bool getHasAggregate() {
-	if(_errorMsg.empty() && _parseResult.empty()) {
-	    _computeParseResult();
-	}
-	return _aggMgr.getHasAggregate();
-    }
-    std::string const& getError() const {
-	return _errorMsg;
-    }
-private:
-    std::string _statement;
-    std::stringstream _stream;
-    ASTFactory _factory;
-    SqlSQL2Lexer _lexer;
-    SqlSQL2Parser _parser;
-    std::string _delimiter;
-    qMaster::Templater _templater;
-    qMaster::AggregateMgr _aggMgr;
-    boost::shared_ptr<qMaster::Templater::TableListHandler>  _tableListHandler;
-    
-    std::string _parseResult;
-    std::string _aggParseResult;
-    std::string _errorMsg;
-    StringMapping _overlapMap;
-
-};
 } // Anonymous namespace
 
 ///////////////////////////////////////////////////////////////////////////
 // class Substitution
 ///////////////////////////////////////////////////////////////////////////
-Substitution::Substitution(std::string template_, std::string const& delim, bool shouldFinalize) 
+qMaster::Substitution::Substitution(std::string template_, 
+                                    std::string const& delim, 
+                                    bool shouldFinalize) 
     : _template(template_), _shouldFinalize(shouldFinalize) {
     _build(delim);
 }
     
-std::string Substitution::transform(Mapping const& m) {
+std::string qMaster::Substitution::transform(Mapping const& m) {
     // This can be made more efficient by pre-sizing the result buffer
     // copying directly into it, rather than creating
     // intermediate string objects and appending.
@@ -214,7 +86,7 @@ std::string Substitution::transform(Mapping const& m) {
 //         pos       endpos
 //           |-length-|
 //        name = Name
-void Substitution::_build(std::string const& delim) {
+void qMaster::Substitution::_build(std::string const& delim) {
     //int maxLength = _max(names.begin(), names.end());
     int delimLength = delim.length();
     for(unsigned pos=_template.find(delim); 
@@ -243,14 +115,14 @@ void Substitution::_build(std::string const& delim) {
 ///////////////////////////////////////////////////////////////////////////
 // class SqlSubstitution
 ///////////////////////////////////////////////////////////////////////////
-SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
+qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
 				 Mapping const& mapping) 
     : _delimiter("*?*"), _hasAggregate(false) {
     _build(sqlStatement, mapping);
     //
 }
 
-void SqlSubstitution::importSubChunkTables(char** cStringArr) {
+void qMaster::SqlSubstitution::importSubChunkTables(char** cStringArr) {
     _subChunked.clear();
     for(int i=0; cStringArr[i]; ++i) {
         std::string s = cStringArr[i];
@@ -264,18 +136,18 @@ void SqlSubstitution::importSubChunkTables(char** cStringArr) {
     }
 }
     
-std::string SqlSubstitution::transform(Mapping const& m, int chunk, 
+std::string qMaster::SqlSubstitution::transform(Mapping const& m, int chunk, 
                                        int subChunk) {
     if(!_substitution.get()) return std::string();
     return _fixDbRef(_substitution->transform(m), chunk, subChunk);
 }
 
-std::string SqlSubstitution::substituteOnly(Mapping const& m) {
+std::string qMaster::SqlSubstitution::substituteOnly(Mapping const& m) {
     if(!_substitution.get()) return std::string();
     return _substitution->transform(m);
 }
 
-void SqlSubstitution::_build(std::string const& sqlStatement, 
+void qMaster::SqlSubstitution::_build(std::string const& sqlStatement, 
                              Mapping const& mapping) {
     // 
     std::string template_;
@@ -285,26 +157,27 @@ void SqlSubstitution::_build(std::string const& sqlStatement,
     for(Mapping::const_iterator i=mapping.begin(); i != end; ++i) {
 	names.push_back(i->first);
     }
-    SqlParseRunner spr(sqlStatement, _delimiter);
-    spr.setup(names);
-    if(spr.getHasAggregate()) {
-	template_ = spr.getAggParseResult();
+    boost::shared_ptr<SqlParseRunner> spr(newSqlParseRunner(sqlStatement, 
+                                                            _delimiter));
+    spr->setup(names);
+    if(spr->getHasAggregate()) {
+	template_ = spr->getAggParseResult();
     } else {
-	template_ = spr.getParseResult();
+	template_ = spr->getParseResult();
     } 
-    _computeChunkLevel(spr.getHasChunks(), spr.getHasSubChunks());
+    _computeChunkLevel(spr->getHasChunks(), spr->getHasSubChunks());
     if(template_.empty()) {
-	_errorMsg = spr.getError();
+	_errorMsg = spr->getError();
     } else {
         _substitution = SubstPtr(new Substitution(template_, _delimiter, true));
-        _hasAggregate = spr.getHasAggregate();
-        _fixupSelect = spr.getFixupSelect();
-        _fixupPost = spr.getFixupPost();
+        _hasAggregate = spr->getHasAggregate();
+        _fixupSelect = spr->getFixupSelect();
+        _fixupPost = spr->getFixupPost();
     }
 }
 
 
-std::string SqlSubstitution::_fixDbRef(std::string const& s, 
+std::string qMaster::SqlSubstitution::_fixDbRef(std::string const& s, 
                                        int chunk, int subChunk) {
 
     // # Replace sometable_CC_SS or anything.sometable_CC_SS 
@@ -335,7 +208,7 @@ std::string SqlSubstitution::_fixDbRef(std::string const& s,
 
 }
 
-void SqlSubstitution::_computeChunkLevel(bool hasChunks, bool hasSubChunks) {
+void qMaster::SqlSubstitution::_computeChunkLevel(bool hasChunks, bool hasSubChunks) {
     // SqlParseRunner's TableList handler will know if it applied 
     // any subchunk rules, or if it detected any chunked tables.
 
@@ -353,7 +226,7 @@ void SqlSubstitution::_computeChunkLevel(bool hasChunks, bool hasSubChunks) {
 ///////////////////////////////////////////////////////////////////////////
 //class ChunkMapping
 ///////////////////////////////////////////////////////////////////////////
-ChunkMapping::Map ChunkMapping::getMapping(int chunk, int subChunk) {
+qMaster::ChunkMapping::Map qMaster::ChunkMapping::getMapping(int chunk, int subChunk) {
     Map m;
     ModeMap::const_iterator end = _map.end();
     std::string chunkStr = _toString(chunk);
@@ -393,7 +266,7 @@ ChunkMapping::Map ChunkMapping::getMapping(int chunk, int subChunk) {
     return m;
 }
 
-ChunkMapping::Map const& ChunkMapping::getMapReference(int chunk, int subChunk) {
+qMaster::ChunkMapping::Map const& qMaster::ChunkMapping::getMapReference(int chunk, int subChunk) {
     _instanceMap = getMapping(chunk, subChunk);
     return _instanceMap;
 }
