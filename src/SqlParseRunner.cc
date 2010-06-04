@@ -56,6 +56,7 @@ std::string qMaster::SqlParseRunner::getAggParseResult() {
 }
 void qMaster::SqlParseRunner::_computeParseResult() {
     try {
+        _factory.reset(new ASTFactory());
         _parser->initializeASTFactory(*_factory);
         _parser->setASTFactory(_factory.get());
         _parser->sql_stmt();
