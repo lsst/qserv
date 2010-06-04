@@ -1,21 +1,40 @@
-//#define BOOST_TEST_MODULE testCppParser_1
-//#include "boost/test/included/unit_test.hpp"
+#define BOOST_TEST_MODULE testCppParser
+#include "boost/test/included/unit_test.hpp"
 #include <list>
 #include <map>
 #include <string>
 #include "lsst/qserv/master/parser.h"
+#include "lsst/qserv/master/SqlParseRunner.h"
+
+using lsst::qserv::master::ChunkMapping;
+using lsst::qserv::master::SqlSubstitution;
+using lsst::qserv::master::SqlParseRunner;
+namespace test = boost::test_tools;
+
+namespace {
 
 
-//namespace test = boost::test_tools;
+std::auto_ptr<ChunkMapping> newTestMapping() {
+    std::auto_ptr<ChunkMapping> cm(new ChunkMapping());
+    cm->addChunkKey("Source");
+    cm->addChunkKey("Object");
+    return cm;
+}
 
+} // anonymous namespace
 
 struct ParserFixture {
-    ParserFixture(void) {
+    ParserFixture(void) 
+        : delimiter("%$#") {
 	cMapping.addChunkKey("Source");
 	cMapping.addSubChunkKey("Object");
+        tableNames.push_back("Object");
+        tableNames.push_back("Source");
     };
     ~ParserFixture(void) { };
     ChunkMapping cMapping;
+    std::list<std::string> tableNames;
+    std::string delimiter;
 };
 
 //BOOST_FIXTURE_TEST_SUITE(QservSuite, ParserFixture)
@@ -88,18 +107,69 @@ void tryAggregate() {
     std::string stmt = "select sum(pm_declErr),sum(bMagF), count(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
     std::string stmt2 = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
 
-    ChunkMapping c;
-    c.addChunkKey("Source");
-    c.addSubChunkKey("Object");
-    SqlSubstitution ss(stmt, c.getMapping(32,53432));
+    std::auto_ptr<ChunkMapping> c = newTestMapping();
+    SqlSubstitution ss(stmt, c->getMapping(32,53432));
     for(int i = 4; i < 6; ++i) {
-	std::cout << "--" << ss.transform(c.getMapping(i,3),i,3) << std::endl;
+	std::cout << "--" << ss.transform(c->getMapping(i,3),i,3) << std::endl;
     }
-    SqlSubstitution ss2(stmt2, c.getMapping(32,4352));
-    std::cout << "--" << ss2.transform(c.getMapping(24,3),24,3) << std::endl;
+    SqlSubstitution ss2(stmt2, c->getMapping(32,4352));
+    std::cout << "--" << ss2.transform(c->getMapping(24,3),24,3) << std::endl;
     
 }
 
+#if 1
+BOOST_FIXTURE_TEST_SUITE(CppParser, ParserFixture)
+
+BOOST_AUTO_TEST_CASE(TrivialSub) {
+    std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
+    SqlParseRunner spr(stmt, delimiter, "LSST");
+    spr.setup(tableNames);
+    std::string parseResult = spr.getParseResult();
+    // std::cout << stmt << " is parsed into " << parseResult
+    //           << std::endl;
+    BOOST_CHECK(!parseResult.empty());
+    BOOST_CHECK(spr.getHasChunks());
+    BOOST_CHECK(!spr.getHasSubChunks());
+    BOOST_CHECK(!spr.getHasAggregate());
+}
+
+BOOST_AUTO_TEST_CASE(NoSub) {
+    std::string stmt = "SELECT * FROM Filter WHERE filterId=4;";
+    std::string goodRes = "SELECT * FROM LSST.Filter WHERE filterId=4;";
+    SqlParseRunner spr(stmt, delimiter, "LSST");
+    spr.setup(tableNames);
+    std::string parseResult = spr.getParseResult();
+    // std::cout << stmt << " is parsed into " << parseResult 
+    //           << std::endl;
+    BOOST_CHECK(!parseResult.empty());
+    BOOST_CHECK_EQUAL(parseResult, goodRes);
+    BOOST_CHECK(!spr.getHasChunks());
+    BOOST_CHECK(!spr.getHasSubChunks());
+    BOOST_CHECK(!spr.getHasAggregate());
+    
+}
+
+BOOST_AUTO_TEST_CASE(Aggregate) {
+    std::string stmt = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
+
+    SqlSubstitution ss(stmt, cMapping.getMapping(32,53432));
+    for(int i = 4; i < 6; ++i) {
+	// std::cout << "--" << ss.transform(cMapping.getMapping(i,3),i,3) 
+        //           << std::endl;
+        BOOST_CHECK_EQUAL(ss.getChunkLevel(), 1);
+        BOOST_CHECK(ss.getHasAggregate());
+        // std::cout << "fixupsel " << ss.getFixupSelect() << std::endl
+        //           << "fixuppost " << ss.getFixupPost() << std::endl;
+        BOOST_CHECK_EQUAL(ss.getFixupSelect(), 
+                          "sum(`sum(pm_declErr)`) AS `sum(pm_declErr)`, `chunkId`, SUM(avgs_bMagF2)/SUM(avgc_bMagF2) AS `bmf2`");
+        BOOST_CHECK_EQUAL(ss.getFixupPost(), "GROUP BY `chunkId`");
+
+    }
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+#endif
 // SELECT o1.id as o1id,o2.id as o2id,
 //        LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
 //  AS dist FROM Object AS o1, Object AS o2 
@@ -107,7 +177,7 @@ void tryAggregate() {
 //      AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 
 //      AND o1.id != o2.id;
 
-
+#if 0
 int main(int, char**) {
     //    tryAutoSubstitute();
     tryNnSubstitute();
@@ -115,3 +185,4 @@ int main(int, char**) {
     //    tryAggregate();
     return 0;
 }
+#endif

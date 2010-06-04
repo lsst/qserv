@@ -1,4 +1,8 @@
 #include <sstream>
+#include <list>
+
+#include <antlr/ASTFactory.hpp>
+
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/Templater.h"
 
@@ -67,13 +71,69 @@ void Templater::JoinVisitor::_reassignRefs(RefList& l) {
     }
 }
 
+//
+class ImplicitDbVisitor {
+    public:
+    ImplicitDbVisitor() {
+        std::cout << "newVisit" << std::endl;
+}
+    void operator()(antlr::RefAST& a) {
+        std::cout << "dbVisit: " << a->getText() << std::endl;
+        lastRefs.push_back(a);
+        if(!isName(a)) {
+            return;
+        }
+        std::cout << "table name!" << std::endl;
+        // check for db . table
+        RefList::reverse_iterator i = lastRefs.rbegin();
+        
+    }
+
+    inline bool isAlpha(char c) {
+        return (('a' <= c) && (c <= 'z')) // lower case
+            || (('A' <= c) && (c <= 'Z')); // upper case
+    }
+
+    inline bool isValidChar(char c) {
+        return ((('a' <= c) && (c <= 'z')) // lower case
+                || (('A' <= c) && (c <= 'Z')) // upper case
+                || (('0' <= c) && (c <= '9')) // digit
+                || (c == '_') // underscore
+                || (c == '$')); // dollar sign
+    }
+
+    bool isName(antlr::RefAST const& a) {
+        std::string t = a->getText();
+        char const* p;
+        bool charsOk = true;
+        bool hasAlpha = false;
+        for(p = t.c_str(); charsOk && *p; ++p) {
+            //std::cout << "->" << *p << std::endl;
+            charsOk &= isValidChar(*p);
+        } 
+        if(!charsOk) return false;
+        for(p = t.c_str(); *p && !hasAlpha; ++p) {
+            hasAlpha |= isAlpha(*p);
+        }
+        return hasAlpha;
+        // 
+    }
+
+    typedef std::list<antlr::RefAST> RefList;
+    RefList lastRefs;
+};
+
+
+
 ////////////////////////////////////////////////////////////////////////
 // Templater::TableListHandler
 ////////////////////////////////////////////////////////////////////////
 void Templater::TableListHandler::operator()(antlr::RefAST a, 
 					     antlr::RefAST b) {
     TypeVisitor t;
-    JoinVisitor j("*?*", "_sc");
+    JoinVisitor j(_templater.getDelimiter(), "_sc");
+    //ImplicitDbVisitor v;
+    //walkTreeVisit(a,v);
     walkTreeVisit(a,j);
     j.applySubChunkRule();
     _hasChunks = j.getHasChunks();
@@ -81,4 +141,32 @@ void Templater::TableListHandler::operator()(antlr::RefAST a,
     _usageCount = j.getUsageCount();
 }
 
+////////////////////////////////////////////////////////////////////////
+// Templater
+////////////////////////////////////////////////////////////////////////
+std::string const Templater::_nameSep(".");
+
+Templater::Templater(std::string const& delimiter, 
+                     antlr::ASTFactory* factory,
+                     std::string const& defaultDb) 
+    : _delimiter(delimiter), _factory(factory), _defaultDb(defaultDb) {
+}
+
+
+
+
+void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
+    if(!_defaultDb.empty() && !db.get()) {
+        // no explicit Db?  Create one, and link it in.
+        antlr::RefAST newChild = _factory->create();
+        newChild->setText(n->getText());
+        newChild->setNextSibling(n->getNextSibling());
+        n->setNextSibling(newChild);
+        n->setText(_defaultDb + _nameSep);
+        n = newChild;
+    }
+    if(isSpecial(n->getText())) {
+        n->setText(mungeName(n->getText()));
+    }
+}
 

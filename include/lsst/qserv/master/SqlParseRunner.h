@@ -24,7 +24,9 @@ class SqlParseRunner {
 /// SQL parser interaction manager
 
 public:
-    SqlParseRunner(std::string const& statement, std::string const& delimiter);
+    SqlParseRunner(std::string const& statement, 
+                   std::string const& delimiter,
+                   std::string const& defaultDb="");
     void setup(std::list<std::string> const& names);
     std::string getParseResult();
     std::string getAggParseResult();
@@ -70,7 +72,8 @@ private:
 };
 
 boost::shared_ptr<SqlParseRunner> newSqlParseRunner(std::string const& statement, 
-                                                    std::string const& delimiter);
+                                                    std::string const& delimiter,
+                                                    std::string const& defaultDb="");
 
 }}} // namespace lsst::qserv::master
 

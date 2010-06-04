@@ -165,15 +165,16 @@ void AggregateMgr::SelectListHandler::operator()(antlr::RefAST a)  {
 // AggregateMgr::GroupByHandler
 ////////////////////////////////////////////////////////////////////////
 void AggregateMgr::GroupByHandler::operator()(antlr::RefAST a) {
-    std::cout << "Got GroupBy: " << walkTreeString(a) << std::endl;
+    //std::cout << "Got GroupBy: " << walkTreeString(a) << std::endl;
     _isFrozen = true;
 }
 void AggregateMgr::GroupByHandler::addColumn(NodeBound const& n) {
     if(!_isFrozen) {
 	_columns.push_back(n);
-	std::cout << "GroupBy new column: " << walkTreeString(n.first) 
-		  << std::endl;
+	//std::cout << "GroupBy new column: " << walkTreeString(n.first) 
+	//	  << std::endl;
     } else {
+        // FIXME. Need to handle this or note as an error.
 	std::cout << "Don't know how to handle multiple group by clauses."
 		  << std::endl;
     }
@@ -236,6 +237,7 @@ void AggregateMgr::postprocess() {
 }
 
 void AggregateMgr::applyAggPass() {
+    _isMissingSelect = true;
     std::string passText = getPassSelect();
     if(passText.empty() || (passText == "*")) {
 	// SELECT * means we don't have to fix anything.

@@ -10,6 +10,11 @@
 
 #include "lsst/qserv/master/parserBase.h"
 
+// Forward
+namespace antlr {
+    class ASTFactory; 
+}
+
 namespace lsst {
 namespace qserv {
 namespace master {
@@ -25,11 +30,11 @@ public:
 	virtual void operator()(antlr::RefAST a, antlr::RefAST b, 
 				antlr::RefAST c, antlr::RefAST d) {
 	    if(d.get()) {
-		_templater._processName(c);
+		_templater._processName(b, c);
 	    } else if(c.get()) {
-		_templater._processName(b);
+		_templater._processName(a, b);
 	    } else if(b.get()) {
-		_templater._processName(a);
+		_templater._processName(antlr::RefAST(), a);
 	    }
 	    // std::cout << "col _" << tokenText(a) 
 	    // 	      << "_ _" << tokenText(b) 
@@ -50,11 +55,11 @@ public:
 	virtual void operator()(antlr::RefAST a, antlr::RefAST b, antlr::RefAST c)  {
 	    // right-most is the table name.
 	    if(c.get()) {
-		_templater._processName(c);
+		_templater._processName(b, c);
 	    } else if(b.get()) {
-		_templater._processName(b);
+		_templater._processName(a, b);
 	    } else if(a.get()) {
-		_templater._processName(a);
+		_templater._processName(antlr::RefAST(), a);
 	    }
 	    // std::cout << "qualname " << tokenText(a) 
 	    // 	      << " " << tokenText(b) << " " 
@@ -119,11 +124,11 @@ public:
 
     typedef std::map<std::string, char> ReMap;
     
-    Templater(std::string const& delimiter="*?*") 
-	: _delimiter(delimiter) {
-    }
-    ~Templater() {
-    }
+    Templater(std::string const& delimiter="*?*", 
+              antlr::ASTFactory* factory=0, 
+              std::string const& defaultDb=std::string());
+    ~Templater() { }
+
     template <typename Iter>
     void setKeynames(Iter begin, Iter end) {
 	// Clear the map, then fill it.
@@ -140,25 +145,30 @@ public:
     bool isSpecial(std::string const& s) {
 	return _map.find(s) != _map.end();
     }
-    boost::shared_ptr<TableHandler> getTableHandler() {
+    boost::shared_ptr<TableHandler> newTableHandler() {
 	return boost::shared_ptr<TableHandler>(new TableHandler(*this));
     }
-    boost::shared_ptr<ColumnHandler> getColumnHandler() {
+    boost::shared_ptr<ColumnHandler> newColumnHandler() {
 	return boost::shared_ptr<ColumnHandler>(new ColumnHandler(*this));
     }
-    boost::shared_ptr<TableListHandler> getTableListHandler() {
+    boost::shared_ptr<TableListHandler> newTableListHandler() {
 	return boost::shared_ptr<TableListHandler>(new TableListHandler(*this));
     }
-private:
-    void _processName(antlr::RefAST n) {
-	if(isSpecial(n->getText())) {
-	    n->setText(mungeName(n->getText()));
-	}
-    }
 
+    std::string const& getDelimiter() const { return _delimiter; 
+}
+private:
+    void _processName(antlr::RefAST db, antlr::RefAST n); 
+    
     ReMap _map;
     std::string _delimiter;
+    antlr::ASTFactory* _factory;
+    std::string const _defaultDb;
 
+    // static const
+    static std::string const _nameSep;
+
+    // Scope exceptions
     friend class Templater::TableHandler;
     friend class Templater::ColumnHandler;
 };

@@ -13,31 +13,36 @@ using std::stringstream;
 
 boost::shared_ptr<qMaster::SqlParseRunner> 
 qMaster::newSqlParseRunner( std::string const& statement, 
-                            std::string const& delimiter) {
-    return boost::make_shared<qMaster::SqlParseRunner>(statement, delimiter);
+                            std::string const& delimiter,
+                            std::string const& defaultDb) {
+    return boost::make_shared<qMaster::SqlParseRunner>(statement, 
+                                                       delimiter, 
+                                                       defaultDb);
 }
 
 qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement, 
-                                        std::string const& delimiter) :
+                                        std::string const& delimiter,
+                                        std::string const& defaultDb) :
     _statement(statement),
     _stream(statement, stringstream::in | stringstream::out),
     _lexer(new SqlSQL2Lexer(_stream)),
     _parser(new SqlSQL2Parser(*_lexer)),
     _delimiter(delimiter),
-    _templater(_delimiter)
+    _factory(new ASTFactory()),
+    _templater(_delimiter, _factory.get(), defaultDb)
 { 
 }
 
 void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
     _templater.setKeynames(names.begin(), names.end());
-    _parser->_columnRefHandler = _templater.getColumnHandler();
-    _parser->_qualifiedNameHandler = _templater.getTableHandler();
-    _tableListHandler = _templater.getTableListHandler();
+    _parser->_columnRefHandler = _templater.newColumnHandler();
+    _parser->_qualifiedNameHandler = _templater.newTableHandler();
+    _tableListHandler = _templater.newTableListHandler();
     _parser->_tableListHandler = _tableListHandler;
     _parser->_setFctSpecHandler = _aggMgr.getSetFuncHandler();
     _parser->_aliasHandler = _aggMgr.getAliasHandler();
     _parser->_selectListHandler = _aggMgr.getSelectListHandler();
-    _parser->_selectStarHandler = _aggMgr.getSelectStarHandler();
+    _parser->_selectStarHandler = _aggMgr.newSelectStarHandler();
     _parser->_groupByHandler = _aggMgr.getGroupByHandler();
     _parser->_groupColumnHandler = _aggMgr.getGroupColumnHandler();
 }
@@ -56,7 +61,6 @@ std::string qMaster::SqlParseRunner::getAggParseResult() {
 }
 void qMaster::SqlParseRunner::_computeParseResult() {
     try {
-        _factory.reset(new ASTFactory());
         _parser->initializeASTFactory(*_factory);
         _parser->setASTFactory(_factory.get());
         _parser->sql_stmt();

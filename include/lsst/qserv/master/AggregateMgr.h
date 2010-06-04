@@ -141,7 +141,7 @@ public:
 		isStarFirst = true; 
 	    } 
 	}
-	boost::shared_ptr<SelectStarHandler> getSelectStarHandler() {
+	boost::shared_ptr<SelectStarHandler> newSelectStarHandler() {
 	    typedef boost::shared_ptr<SelectStarHandler> Ptr;
 	    return Ptr(new SelectStarHandler(*this));
 	}
@@ -163,6 +163,7 @@ public:
 	NodeList _columns;
 	bool _isFrozen;
     }; // class GroupByHandler
+
     class GroupColumnHandler : public VoidOneRefFunc {
     public: 
 	GroupColumnHandler(GroupByHandler& h_) :h(h_) {}
@@ -184,8 +185,8 @@ public:
     boost::shared_ptr<VoidTwoRefFunc> getAliasHandler() {return _aliaser;}
     boost::shared_ptr<VoidOneRefFunc> getSetFuncHandler() {return _setFuncer;}
     boost::shared_ptr<VoidOneRefFunc> getSelectListHandler() {return _selectLister;}
-    boost::shared_ptr<VoidVoidFunc> getSelectStarHandler() {
-	return _selectLister->getSelectStarHandler();
+    boost::shared_ptr<VoidVoidFunc> newSelectStarHandler() {
+	return _selectLister->newSelectStarHandler();
     }
     boost::shared_ptr<VoidOneRefFunc> getGroupByHandler() {
 	return _groupByer; 
