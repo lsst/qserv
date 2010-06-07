@@ -14,7 +14,8 @@ import MySQLdb as sql
 import sys
 import time
 
-createSourceSql = """CREATE TABLE %s.%s
+dropSourceSql = "DROP TABLE IF EXISTS %s.%s;"
+createSourceSql = """CREATE TABLE IF NOT EXISTS %s.%s
 (
 	sourceId BIGINT NOT NULL,
 	ampExposureId BIGINT NULL,
@@ -87,7 +88,7 @@ createSourceSql = """CREATE TABLE %s.%s
 	INDEX movingObjectId (movingObjectId ASC),
 	INDEX objectId (objectId ASC),
 	INDEX procHistoryId (procHistoryId ASC)
-) TYPE=MyISAM;"""
+) ENGINE=MyISAM;"""
 
 class SourceGenerator:
     def __init__(self):
@@ -114,7 +115,7 @@ class SourceGenerator:
                               (f, getattr(self, "_new" 
                                           + f[0].capitalize() + f[1:])), 
                               self._synthFields)
-        self._insertSourceTmpl = "INSERT INTO %(table)s (" \
+        self._insertSourceTmpl = "INSERT INTO %(db)s.%(table)s (" \
             + ",".join(self._synthFields) \
             + ") VALUES %(values)s;"""
         self._lastId=0;
@@ -199,6 +200,11 @@ class App:
     def __init__(self):
         self._objPrefix = "Object_"
         self._srcPrefix = "Source_"
+        # Default mysql packet size limit = 1M.
+        #  size of source table value is ~ 226 bytes as a string.  
+        # 4000*226 = 904,000
+        # 3000*226 = 678,000
+        self._rowBatchSize = 3000
         pass
 
 
@@ -231,9 +237,16 @@ class App:
                           help="don't print status messages to stdout")
         parser.add_option("--createTables", 
                           action="store_true", dest="createTables",
-                          default="false", 
-                          help="Create destination tables (default=%default)",
+                          default=False, 
+                          help="Create/overwrite destination tables before insert (default=%default)",
                           )
+        parser.add_option("--multiply", dest="multiply",
+                          action="store", type="int", default=1,
+                          help="Set sources per object (default %default)")
+        parser.add_option("-w", "--write", 
+                          action="store_true", dest="write",
+                          help="Write SQL to db rather than to console. (default=%default)",
+                          default=False)
         parser.add_option("--cripple",
                           action="store_true", dest="cripple", default=False,
                           help="Limit the functionality to ease debugging")
@@ -256,9 +269,23 @@ class App:
             return
         
         self._getTableList(conn)
-        srcStatements = self._synthesizeSources(conn)
-        print srcStatements
+        srcStatements = self._computeSynthesizeCmds(conn)
+        if self._options.write:
+            self._applySql(conn, srcStatements)
+        else:
+            print "\n".join(srcStatements)
+        pass
 
+    def _applySql(self, conn, stmts):
+        c = conn.cursor()
+        try:
+            for s in stmts:
+                c.execute(s)
+                c.fetchall() # need to detect errors
+        except Exception, e:
+            
+            print "Error writing new Source tables.", e
+        pass
     def _getTableList(self, connection):
         c = connection.cursor()
         c.execute("show tables in %s;" % self._options.database)
@@ -270,41 +297,64 @@ class App:
         self._objects = cands
         self._chunks = map(lambda n: n[len(self._objPrefix):], cands)
 
-    def _synthesizeSources(self, connection):
+    def _computeSynthesizeCmds(self, connection):
         c = connection.cursor()
         cmds = []
         for i in self._chunks:
             if self._options.createTables:
+                cmds.append(dropSourceSql %(self._options.database,
+                                            self._srcPrefix + str(i)))
                 cmds.append(createSourceSql %(self._options.database,
                                               self._srcPrefix + str(i)))
-            cmds.append(self._makeSrcStmt(c, i))
+            cmds.extend(self._makeSrcStmt(c, i))
             if self._options.cripple:
                 break # do only one right now.
-        return "\n".join(cmds)
+        return cmds
 
     def _makeSrcStmt(self, cursor, chunk):
+        """Return list of sql statements that insert rows into the table."""
+        output = []
+        def flushStmt(output, values):
+            output.append(self._srcGen.getInsertTemplate() % {
+                    "table" : self._srcPrefix + str(chunk),
+                    "db" : self._options.database,
+                    "values" : ",".join(values) })
+            values = []
+            
+
         stmt  = "SELECT * FROM %s.%s;" % (self._options.database, 
                                         self._objPrefix + str(chunk))
         cursor.execute(stmt)
         values = []
         for s in cursor.fetchall():
-            values.append(self._srcGen.generateValueStmt(self._formObj(s)))
-            if len(values) < 1:
-                print s,"------>",values[-1]
+            for i in range(self._options.multiply):
+                values.append(self._srcGen.generateValueStmt(self._formObj(s)))
+            if len(values) > self._rowBatchSize:
+                flushStmt(output, values)
+                values = []
             pass
-        srcStmt = self._srcGen.getInsertTemplate() % {
-            "table" : self._srcPrefix + str(chunk),
-            "values" : ",".join(values) }
-        return srcStmt
+        if values:
+            flushStmt(output, values)
+        
+        return output
 
 
     def _formObj(self, objtuple):
+        # USNO-B object
         #| id | ra | decl | pm_ra | pm_raErr | pm_decl 
         #   0    1     2       3       4          5
         #| pm_declErr | epoch  | bMag  | bMagF | rMag  | rMagF 
         #     6          7        8       9       10      11
         #| bMag2 | bMagF2 | rMag2 | rMagF2 | chunkId | subChunkId 
         #    12      13       14      15       16          17
+        
+        # PT1 Object:
+        # objectId | iauId | ra_PS | ra_PS_Sigma | decl_PS | decl_PS_Sigma
+        #    0        1        2       3               4         5
+        # radecl_PS_Cov | ra_SG | ra_SG_Sigma | decl_SG | decl_SG_Sigma
+        #    6              7        8              9         10
+        # (using ra_PS and decl_PS, we would have [0,2,4] below.)
+
         return PretendObject(*map(lambda x: x(objtuple), 
                                   imap(operator.itemgetter, [0,1,2])))
                         
