@@ -60,11 +60,13 @@ std::string qMaster::SqlParseRunner::getAggParseResult() {
     return _aggParseResult;
 }
 void qMaster::SqlParseRunner::_computeParseResult() {
+    bool hasBadDbs = false;
     try {
         _parser->initializeASTFactory(*_factory);
         _parser->setASTFactory(_factory.get());
         _parser->sql_stmt();
         _aggMgr.postprocess();
+        hasBadDbs = 0 < _templater.getBadDbs().size();
         RefAST ast = _parser->getAST();
         if (ast) {
             //std::cout << "fixupSelect " << getFixupSelect();
@@ -89,7 +91,9 @@ void qMaster::SqlParseRunner::_computeParseResult() {
     } catch( std::exception& e ) {
         _errorMsg = std::string("General exception: ") + e.what();
     }
-
+    if(hasBadDbs) {
+        _errorMsg += " Query references prohibited dbs.";
+    }
     return; 
 }
 void qMaster::SqlParseRunner::_makeOverlapMap() {

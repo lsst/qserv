@@ -150,10 +150,8 @@ Templater::Templater(std::string const& delimiter,
                      antlr::ASTFactory* factory,
                      std::string const& defaultDb) 
     : _delimiter(delimiter), _factory(factory), _defaultDb(defaultDb) {
+    _dbWhitelist["LSST"] = 'a'; // LSST db is OK.
 }
-
-
-
 
 void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
     if(!_defaultDb.empty() && !db.get()) {
@@ -164,9 +162,23 @@ void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
         n->setNextSibling(newChild);
         n->setText(_defaultDb + _nameSep);
         n = newChild;
+    } else {
+        std::string dbStr = db->getText();
+        if(!_isDbOk(dbStr)) {
+            _markBadDb(dbStr);
+        }
     }
     if(isSpecial(n->getText())) {
         n->setText(mungeName(n->getText()));
     }
 }
 
+////////////////////////////////////////////////////////////////////////
+bool Templater::_isDbOk(std::string const& db) {
+    return _dbWhitelist.end() != _dbWhitelist.find(db);
+}
+
+////////////////////////////////////////////////////////////////////////
+void Templater::_markBadDb(std::string const& db) {
+    _badDbs.push_back(db);
+}

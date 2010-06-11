@@ -123,6 +123,7 @@ public:
     };
 
     typedef std::map<std::string, char> ReMap;
+    typedef std::deque<std::string> StringList;
     
     Templater(std::string const& delimiter="*?*", 
               antlr::ASTFactory* factory=0, 
@@ -156,14 +157,22 @@ public:
     }
 
     std::string const& getDelimiter() const { return _delimiter; 
-}
+    }
+
+    StringList const& getBadDbs() const { return _badDbs; }
+    void addGoodDb(std::string const& db) { _dbWhitelist[db] = 'a'; }
+    
 private:
+    bool _isDbOk(std::string const& db);
+    void _markBadDb(std::string const& db);
     void _processName(antlr::RefAST db, antlr::RefAST n); 
     
     ReMap _map;
+    ReMap _dbWhitelist;
     std::string _delimiter;
     antlr::ASTFactory* _factory;
     std::string const _defaultDb;
+    StringList _badDbs;
 
     // static const
     static std::string const _nameSep;
