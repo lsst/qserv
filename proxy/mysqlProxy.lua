@@ -367,7 +367,14 @@ function queryType()
         end
         return false
     end
-
+    ---------------------------------------------------------------------------
+    local shouldPassToResultDb = function(qU)
+        if string.find(qU, "^SELECT DATABASE()") then
+            return true
+        else
+            return false
+        end
+    end
     ---------------------------------------------------------------------------
 
     local isDisallowed = function(qU)
@@ -402,6 +409,7 @@ function queryType()
 
     return {
         isLocal = isLocal,
+        shouldPassToResultDb = shouldPassToResultDb,
         isDisallowed = isDisallowed,
         isNotSupported = isNotSupported
     }
@@ -426,11 +434,13 @@ function queryProcessing()
     --
     local sendToQserv = function(q, qU)
         local p1 = string.find(qU, "WHERE")
+        hintsToPassArr = {} -- Reset hints (it's global)
         if p1 then
             queryToPassStr = string.sub(q, 0, p1-1)
 
             -- Handle special predicates, modify queryToPassStr as necessary
             local p2 = parser.parseIt(qU, p1+6) -- 6=length of 'where '
+            -- Add client db context
             hintsToPassStr = utils.tableToString(hintsToPassArr)
             -- Add all remaining predicates
             if ( p2 < 0 ) then
@@ -442,6 +452,7 @@ function queryProcessing()
             queryToPassStr = q
             hintsToPassStr = ""
         end
+        hintsToPassArr["db"] = proxy.connection.client.default_db
 
         print ("Passing query: " .. queryToPassStr)
         print ("Passing hints: " .. hintsToPassStr)
@@ -462,7 +473,6 @@ function queryProcessing()
     ---------------------------------------------------------------------------
 
     local processLocally = function(q)
-        -- print ("Processing locally: " .. q)
         print ("Processing locally")
         return SUCCESS
     end
@@ -526,6 +536,8 @@ function read_query(packet)
         -- so the packet will be sent as-is
         if qType.isLocal(qU) then
             return qProc.processLocally(qU)
+        elseif qType.shouldPassToResultDb(qU) then
+            return -- Return nothing to indicate passthrough.
         end
         -- check for queries that are disallowed
         if qType.isDisallowed(qU) then

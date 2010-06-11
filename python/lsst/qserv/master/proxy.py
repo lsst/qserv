@@ -32,5 +32,16 @@ class Lock:
             function()
             lock.unlock()
         threadid = thread.start_new_thread(waitAndUnlock, tuple())
-        
+
     pass
+
+def clearLocks():
+    """Get rid of all the locks in the db.(UNFINISHED)"""
+    # Probably need to get a regex for lock table names.
+    # Might put this function in db class.
+    db = lsst.qserv.master.db.Db()
+    db.activate()
+    db.applySql("DROP TABLES %s;" 
+                % (" ".join(map(lambda t:resultDb+"."+t,
+                                ["lock_asdf"]))))
+    

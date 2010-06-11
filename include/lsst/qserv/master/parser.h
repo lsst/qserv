@@ -67,7 +67,9 @@ public:
     typedef std::deque<std::string> Deque;
     typedef Deque::const_iterator DequeConstIter;
 
-    SqlSubstitution(std::string const& sqlStatement, Mapping const& mapping);
+    SqlSubstitution(std::string const& sqlStatement, 
+                    Mapping const& mapping, 
+                    std::string const& defaultDb="");
     
     void importSubChunkTables(char** cStringArr);
     std::string transform(Mapping const& m, int chunk, int subChunk);
@@ -83,7 +85,8 @@ public:
 private:
     typedef boost::shared_ptr<Substitution> SubstPtr;
 
-    void _build(std::string const& sqlStatement, Mapping const& mapping);
+    void _build(std::string const& sqlStatement, Mapping const& mapping,
+                std::string const& defaultDb);
     void _computeChunkLevel(bool hasChunks, bool hasSubChunks);
     std::string _fixDbRef(std::string const& s, int chunk, int subChunk);
 

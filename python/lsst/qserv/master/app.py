@@ -354,7 +354,8 @@ class RegionFactory:
             "box" : self._handleBox,
             "circle" : self._handleCircle,
             "ellipse" : self._handleEllipse,
-            "poly": self._handleConvexPolygon
+            "poly": self._handleConvexPolygon,
+            "db" : self._handleNop
             }
         pass
     def _splitParams(self, name, tupleSize, param):
@@ -395,6 +396,10 @@ class RegionFactory:
                                                     flatVertices[1::2])))
             h = h[next:]
         return polys
+
+    def _handleNop(self, param):
+        return []
+
 
     def getRegionFromHint(self, hintDict):
         """
@@ -647,18 +652,20 @@ class HintedQueryAction:
         self._pmap = pmap            
         self._isFullSky = False # Does query involves whole sky
         self._evaluateHints(self._parseRegions(hints), pmap)
-
+        self._dbContext = hints.get("db", "")
         # Table mapping 
         try:
             self._pConfig = PartitioningConfig() # Should be shared.
             self._pConfig.applyConfig()
             self._substitution = SqlSubstitution(query, 
-                                                 self._pConfig.getMapRef(2,3))
+                                                 self._pConfig.getMapRef(2,3),
+                                                 self._dbContext)
             if self._substitution.getError():
                 self._error = self._substitution.getError()
                 self._isValid = False
             else:
                 self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
+                self._isValid = True
         except:
             self._isValid = False
 
@@ -691,9 +698,12 @@ class HintedQueryAction:
         if regs != None:
             return regs
         else:
-            s = "Error parsing hint string %s, using hardcoded [0,0]-[1,1]"
-            print s % r.errorDesc 
-            return [SphericalBox([0,0],[1,1])] # Hardcode right now.
+            if r.errorDesc:
+                s = "Error parsing hint string %s, using hardcoded [0,0]-[1,1]"
+                print s % r.errorDesc 
+                # How can we give a good error msg to the client?
+                return [SphericalBox([0,0],[1,1])] # Hardcode right now.
+            return []
         pass
 
     def _evaluateHints(self, regions, pmap):

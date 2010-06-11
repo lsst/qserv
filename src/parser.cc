@@ -116,9 +116,10 @@ void qMaster::Substitution::_build(std::string const& delim) {
 // class SqlSubstitution
 ///////////////////////////////////////////////////////////////////////////
 qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
-				 Mapping const& mapping) 
+                                          Mapping const& mapping,
+                                          std::string const& defaultDb) 
     : _delimiter("*?*"), _hasAggregate(false) {
-    _build(sqlStatement, mapping);
+    _build(sqlStatement, mapping, defaultDb);
     //
 }
 
@@ -148,7 +149,8 @@ std::string qMaster::SqlSubstitution::substituteOnly(Mapping const& m) {
 }
 
 void qMaster::SqlSubstitution::_build(std::string const& sqlStatement, 
-                             Mapping const& mapping) {
+                                      Mapping const& mapping,
+                                      std::string const& defaultDb) {
     // 
     std::string template_;
 
@@ -158,7 +160,8 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement,
 	names.push_back(i->first);
     }
     boost::shared_ptr<SqlParseRunner> spr(newSqlParseRunner(sqlStatement, 
-                                                            _delimiter));
+                                                            _delimiter,
+                                                            defaultDb));
     spr->setup(names);
     if(spr->getHasAggregate()) {
 	template_ = spr->getAggParseResult();
