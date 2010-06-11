@@ -124,19 +124,23 @@ void qMaster::xrdInit() {
 
 int qMaster::xrdOpen(const char *path, int oflag) {
     if(!qMasterXrdInitialized) { xrdInit(); }
-    QSM_TIMESTART("Open", path+32);
+    char const* abbrev = path;  while((abbrev[0] != '\0') && *abbrev++ != '/');
+    QSM_TIMESTART("Open", abbrev);
     //int res = XrdPosix_Open(path, oflag);
     int res = XrdPosixXrootd::Open(path,oflag);
-    QSM_TIMESTOP("Open", path+32);
+    QSM_TIMESTOP("Open", abbrev);
     return res;
 }
 
 int qMaster::xrdOpenAsync(const char* path, int oflag, XrdPosixCallBack *cbP) {
     if(!qMasterXrdInitialized) { xrdInit(); }
-    QSM_TIMESTART("OpenAsy", path+32);
+    char const* abbrev = path;  while((abbrev[0] != '\0') && *abbrev++ != '/');
+    while((abbrev[0] != '\0') && *abbrev++ != '/');
+    while((abbrev[0] != '\0') && *abbrev++ != '/');
+    QSM_TIMESTART("OpenAsy", abbrev);
     int res = XrdPosixXrootd::Open(path,oflag, 0, cbP); 
     // not sure what to do with mode, so set to 0 right now.
-    QSM_TIMESTOP("OpenAsy", path+32);
+    QSM_TIMESTOP("OpenAsy", abbrev);
     assert(res == -1);
     return -errno; // Return something that indicates "in progress"
 }

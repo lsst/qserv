@@ -75,7 +75,7 @@ void qMaster::ChunkQuery::Complete(int Result) {
     case READ_OPEN: // Opened, so we can read-back the results.
 	if(Result < 0) { // error? 
 	    _result.read = Result;
-	    std::cout << "Problem reading result: read=" 
+	    std::cout << "Problem reading result: open returned " 
 		      << _result.read << std::endl;
 	    isReallyComplete = true;
 	    _state = COMPLETE;
@@ -167,12 +167,18 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
 	_result.queryWrite = -errno;
 	isReallyComplete = true;
 	// To be safe, close file anyway.
+        std::cout << (std::string() + "Error closing of " 
+                      + boost::lexical_cast<std::string>(fd)  + " dumpPath "
+                      + _spec.savePath + "\n");
 	qMaster::xrdClose(fd);
     } else {
 	_result.queryWrite = writeCount;
 	_queryHostPort = qMaster::xrdGetEndpoint(fd);
 	_resultUrl = qMaster::makeUrl(_queryHostPort.c_str(), "result", 
 				      _hash);
+        std::cout << (std::string() + "Normal closing of " 
+                      + boost::lexical_cast<std::string>(fd)  + " dumpPath "
+                      + _spec.savePath + "\n");
 	qMaster::xrdClose(fd); 
 	_state = READ_OPEN;
 	std::cout  << "opening async read to " << _resultUrl << "\n";
@@ -451,15 +457,17 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 	    dumpFile = s.first->getSavePath();
 	    tableName = s.second;
 	    s.first.reset(); // clear out chunkquery.
+            _queries.erase(id); // Don't need it anymore
 	} // end lock scope
-	_merger->merge(dumpFile, tableName);
+        if(r.read > 0) {
+            _merger->merge(dumpFile, tableName);
+        }
     } // end if 
     else { 
-	std::cout << " Skipped merge, since read failed." << std::endl;
-    }
-    {
-	boost::lock_guard<boost::mutex> lock(_queriesMutex);
-	_queries.erase(id); //Warning! s is invalid now.
+        boost::lock_guard<boost::mutex> lock(_queriesMutex);
+        _queries.erase(id);
+	std::cout << " Skipped merge (read failed for id=" 
+                  << id << ")" << std::endl;
     }
     {
 	boost::lock_guard<boost::mutex> lock(_resultsMutex);
@@ -468,11 +476,15 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 }
 
 void qMaster::AsyncQueryManager::joinEverything() {
+    boost::unique_lock<boost::mutex> lock(_queriesMutex);
     //_printState(std::cout);
     while(!_queries.empty()) { // FIXME: Should make this condition-var based.
-	std::cout << "Still " << _queries.size() << " in flight." << std::endl;
-	_printState(std::cout);
+        std::cout << "Still " << _queries.size() 
+                  << " in flight." << std::endl;
+        _printState(std::cout);
+        lock.unlock();
 	sleep(1); 
+        lock.lock();
     }
     _merger->finalize();
 }

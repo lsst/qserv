@@ -35,10 +35,10 @@ boost::shared_ptr<SqlConfig> makeSqlConfig(TableMergerConfig const& c) {
 } // anonymous namespace
 
 std::string const TableMerger::_dropSql("DROP TABLE IF EXISTS %s;");
-std::string const TableMerger::_createSql("CREATE TABLE %s SELECT * FROM %s;");
-std::string const TableMerger::_createFixSql("CREATE TABLE %s SELECT %s FROM %s %s;");
+std::string const TableMerger::_createSql("CREATE TABLE IF NOT EXISTS %s SELECT * FROM %s;");
+std::string const TableMerger::_createFixSql("CREATE TABLE IF NOT EXISTS %s SELECT %s FROM %s %s;");
 std::string const TableMerger::_insertSql("INSERT INTO %s SELECT * FROM %s;");
-std::string const TableMerger::_cleanupSql("DROP TABLE %s;");
+std::string const TableMerger::_cleanupSql("DROP TABLE IF EXISTS %s;");
 std::string const TableMerger::_cmdBase("%1% --socket=%2% -u %3% %4%");
 
 
@@ -56,6 +56,7 @@ TableMerger::TableMerger(TableMergerConfig const& c)
 
 bool TableMerger::merge(std::string const& dumpFile, 
 			std::string const& tableName) {
+    bool isOk = true;
     std::string sql;
     _importResult(dumpFile); 
     {
@@ -63,7 +64,11 @@ bool TableMerger::merge(std::string const& dumpFile,
 	++_tableCount;
 	if(_tableCount == 1) {
 	    sql = _buildMergeSql(tableName, true);
-	    return _applySql(sql); // must happen first.
+            isOk = _applySql(sql);
+            if(!isOk) {
+                --_tableCount; // We failed merging the table.
+            }
+	    return isOk; // must happen first.
 	}
     }
     // No locking needed if not first, after updating the counter.
