@@ -150,6 +150,7 @@ public:
     XrdTransResult const& results() const { return _result; }
     std::string getDesc() const;
     std::string const& getSavePath() const { return _spec.savePath; }
+    void squash();
 
 private:
     void _sendQuery(int fd);
@@ -180,8 +181,8 @@ public:
     typedef std::pair<int, XrdTransResult> Result;
     typedef std::deque<Result> ResultDeque;
     typedef boost::shared_ptr<AsyncQueryManager> Ptr;
-
-    explicit AsyncQueryManager() :_lastId(0) {}
+    
+    explicit AsyncQueryManager() :_lastId(0), _isExecFaulty(false) {}
     void configureMerger(TableMergerConfig const& c);
 
     int add(TransactionSpec const& t, std::string const& resultName);
@@ -208,16 +209,28 @@ private:
 	std::ostream& os;
     };
 
+    class squashQuery {
+    public:
+        squashQuery() {}
+        void operator()(QueryMap::value_type const& qv) {
+            boost::shared_ptr<ChunkQuery> cq = qv.second.first;
+            cq->squash();
+        }
+    };
+
+
     int _getNextId() {
 	boost::lock_guard<boost::mutex> m(_idMutex); 
 	return ++_lastId;
     }
     void _printState(std::ostream& os);
+    void _squashExecution();
 
     boost::mutex _idMutex;
     boost::mutex _queriesMutex;
     boost::mutex _resultsMutex;
     int _lastId;
+    bool _isExecFaulty;
     QueryMap _queries;
     ResultDeque _results;
     boost::shared_ptr<TableMerger> _merger;

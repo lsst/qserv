@@ -158,6 +158,11 @@ std::string qMaster::ChunkQuery::getDesc() const {
     return ss.str();
 }
 
+void qMaster::ChunkQuery::squash() {
+    // squash this query so that it stops running.
+}
+    
+
 void qMaster::ChunkQuery::_sendQuery(int fd) {
     bool isReallyComplete = false;
     // Now write
@@ -430,8 +435,12 @@ int qMaster::AsyncQueryManager::add(TransactionSpec const& t,
     // For now, artificially limit the number of chunks in flight.
     int id = _getNextId();
     assert(id >= 0);
-    if(t.isNull()) { return -1; }
+    if(t.isNull() || _isExecFaulty) { 
+        // If empty spec or fault already detected, refuse to run.
+        return -1; 
+    }
     TransactionSpec ts(t);
+
 
     doctorQueryPath(ts.path);
     QuerySpec qs(boost::make_shared<ChunkQuery>(ts, id, this),
@@ -466,6 +475,8 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     else { 
         boost::lock_guard<boost::mutex> lock(_queriesMutex);
         _queries.erase(id);
+        _isExecFaulty = true;
+        _squashExecution();
 	std::cout << " Skipped merge (read failed for id=" 
                   << id << ")" << std::endl;
     }
@@ -504,6 +515,16 @@ std::string qMaster::AsyncQueryManager::getMergeResultName() const {
 void qMaster::AsyncQueryManager::_printState(std::ostream& os) {
     typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
     std::for_each(_queries.begin(), _queries.end(), printQueryMapValue(os));
+
+}
+
+void qMaster::AsyncQueryManager::_squashExecution() {
+    // Halt new query dispatches and cancel the ones in flight.
+    // This attempts to save on resources and latency, once a query
+    // fault is detected.
+    boost::unique_lock<boost::mutex> lock(_queriesMutex);
+    typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
+    std::for_each(_queries.begin(), _queries.end(), squashQuery());
 
 }
 
