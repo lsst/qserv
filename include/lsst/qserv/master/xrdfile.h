@@ -13,7 +13,7 @@ struct XrdTransResult {
     int open;
     int queryWrite;
     int read;
-    int localWrite;  
+    int localWrite;
     bool isSuccessful() const {
 	return ((open > 0) && // Successful open
 		(queryWrite > 0) && // Some bytes sent off

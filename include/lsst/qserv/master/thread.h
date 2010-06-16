@@ -114,7 +114,8 @@ private:
 };
  
 class Manager {
-public:    explicit Manager() : _highWaterThreads(120) {}
+public:    
+    explicit Manager() : _highWaterThreads(120) {}
     void setupFile(std::string const& file);
     void run();
 

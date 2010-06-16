@@ -58,6 +58,7 @@ int seekMagic(int start, char* buffer, int term) {
 void qMaster::ChunkQuery::Complete(int Result) {
     bool isReallyComplete = false;
     if(_shouldSquash) {
+        
         _squashAtCallback(Result);
         return; // Anything else to do?
     }
@@ -98,7 +99,8 @@ void qMaster::ChunkQuery::Complete(int Result) {
 
 qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id, 
 				qMaster::AsyncQueryManager* mgr) 
-    : _spec(t), _manager(mgr), _id(id), XrdPosixCallBack() {
+    : _spec(t), _manager(mgr), _id(id), _shouldSquash(false), 
+      XrdPosixCallBack() {
     assert(_manager != NULL);
     _result.open = 0;
     _result.queryWrite = 0;
@@ -201,6 +203,7 @@ void qMaster::ChunkQuery::_squashAtCallback(int result) {
         badState = true;
 	break;
     }
+    _state = ABORTED;
     _notifyManager();
     if(badState) {
         std::cout << "Unexpected state at squashing. Expecting READ_OPEN "
@@ -509,6 +512,8 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     /// We delete the ChunkQuery (the caller) here, so a ref would be invalid.
     std::string dumpFile;
     std::string tableName;
+    // std::cout << "finalizing. read=" << r.read << " and status is "
+    //           << (aborted ? "ABORTED" : "okay") << std::endl;
 
     if((!aborted) && (r.read >= 0)) {
 	{ // lock scope
@@ -519,7 +524,9 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 	    s.first.reset(); // clear out chunkquery.
             _queries.erase(id); // Don't need it anymore
 	} // end lock scope
-        if(r.read > 0) {
+        if(r.localWrite > 0) {
+            // std::cout << "Merging from " << dumpFile << " into "
+            //           << tableName << std::endl;
             _merger->merge(dumpFile, tableName);
         }
     } // end if 
