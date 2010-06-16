@@ -139,7 +139,7 @@ class ChunkQuery : public XrdPosixCallBack {
 public:
     enum WaitState {WRITE_OPEN, WRITE_WRITE, 
 		    READ_OPEN, READ_READ,
-		    COMPLETE, CORRUPT};
+		    COMPLETE, CORRUPT, ABORTED};
     
     virtual void Complete(int Result);
     explicit ChunkQuery(TransactionSpec const& t, int id,
@@ -150,12 +150,13 @@ public:
     XrdTransResult const& results() const { return _result; }
     std::string getDesc() const;
     std::string const& getSavePath() const { return _spec.savePath; }
-    void squash();
+    void requestSquash() { _shouldSquash = true; }
 
 private:
     void _sendQuery(int fd);
     void _readResults(int fd);
     void _notifyManager();
+    void _squashAtCallback(int result);
 
     int _id;
     TransactionSpec _spec;
@@ -166,6 +167,7 @@ private:
     std::string _resultUrl;
     std::string _queryHostPort;
     AsyncQueryManager* _manager;
+    bool _shouldSquash;
 };// class ChunkQuery
 
 
@@ -191,7 +193,7 @@ public:
     XrdTransResult const& status(int id) const;
     void joinEverything();
     ResultDeque const& getFinalState() { return _results; }
-    void finalizeQuery(int id,  XrdTransResult const& r);
+    void finalizeQuery(int id,  XrdTransResult r, bool aborted); 
     std::string getMergeResultName() const;
     
 private:
@@ -214,7 +216,7 @@ private:
         squashQuery() {}
         void operator()(QueryMap::value_type const& qv) {
             boost::shared_ptr<ChunkQuery> cq = qv.second.first;
-            cq->squash();
+            cq->requestSquash();
         }
     };
 
@@ -231,6 +233,7 @@ private:
     boost::mutex _resultsMutex;
     int _lastId;
     bool _isExecFaulty;
+    int _squashCount;
     QueryMap _queries;
     ResultDeque _results;
     boost::shared_ptr<TableMerger> _merger;

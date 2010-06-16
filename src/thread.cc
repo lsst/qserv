@@ -57,6 +57,10 @@ int seekMagic(int start, char* buffer, int term) {
 //////////////////////////////////////////////////////////////////////
 void qMaster::ChunkQuery::Complete(int Result) {
     bool isReallyComplete = false;
+    if(_shouldSquash) {
+        _squashAtCallback(Result);
+        return; // Anything else to do?
+    }
     switch(_state) {
     case WRITE_OPEN: // Opened, so we can send off the query
 	{
@@ -152,14 +156,56 @@ std::string qMaster::ChunkQuery::getDesc() const {
     case CORRUPT:
 	ss << "corrupted";
 	break;
+    case ABORTED:
+	ss << "aborted/squashed";
+	break;
+
     default:
 	break;
     }
     return ss.str();
 }
 
-void qMaster::ChunkQuery::squash() {
+void qMaster::ChunkQuery::_squashAtCallback(int result) {
     // squash this query so that it stops running.
+    bool badState = false;
+    switch(_state) {
+    case WRITE_OPEN:
+        // Just close the channel w/o sending a query.
+	qMaster::xrdClose(result);
+        
+	break;
+    case WRITE_WRITE:
+	// Shouldn't get called in this state.
+        badState = true;
+	break;
+    case READ_OPEN:
+        // Close the channel w/o reading the result (which might be faulty)
+	qMaster::xrdClose(result);
+        
+	break;
+    case READ_READ:
+	// Shouldn't get called in this state.
+        badState = true;
+	break;
+    case COMPLETE:
+        // Shouldn't get called here, but doesn't matter.
+        badState = true;
+	break;
+    case CORRUPT:
+        // Shouldn't get called here either.
+        badState = true;
+	break;
+    default:
+        // Unknown state.
+        badState = true;
+	break;
+    }
+    _notifyManager();
+    if(badState) {
+        std::cout << "Unexpected state at squashing. Expecting READ_OPEN "
+                  << "or WRITE_OPEN, got:" << getDesc() << std::endl;
+    }
 }
     
 
@@ -172,7 +218,7 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
 	_result.queryWrite = -errno;
 	isReallyComplete = true;
 	// To be safe, close file anyway.
-        std::cout << (std::string() + "Error closing of " 
+        std::cout << (std::string() + "Error-caused closing of " 
                       + boost::lexical_cast<std::string>(fd)  + " dumpPath "
                       + _spec.savePath + "\n");
 	qMaster::xrdClose(fd);
@@ -213,7 +259,7 @@ void qMaster::ChunkQuery::_readResults(int fd) {
 }
     
 void qMaster::ChunkQuery::_notifyManager() {
-	_manager->finalizeQuery(_id, _result);
+    _manager->finalizeQuery(_id, _result, (_state == ABORTED));
 }
 
 
@@ -456,10 +502,15 @@ int qMaster::AsyncQueryManager::add(TransactionSpec const& t,
 }
 
 void qMaster::AsyncQueryManager::finalizeQuery(int id, 
-					       XrdTransResult const& r) {
+					       XrdTransResult r,
+                                               bool aborted) {
+    /// Finalize a query.
+    /// Note that all parameters should be copies and not const references.
+    /// We delete the ChunkQuery (the caller) here, so a ref would be invalid.
     std::string dumpFile;
     std::string tableName;
-    if(r.read >= 0) {
+
+    if((!aborted) && (r.read >= 0)) {
 	{ // lock scope
 	    boost::lock_guard<boost::mutex> lock(_queriesMutex);
 	    QuerySpec& s = _queries[id];
@@ -473,16 +524,21 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
         }
     } // end if 
     else { 
-        boost::lock_guard<boost::mutex> lock(_queriesMutex);
-        _queries.erase(id);
-        _isExecFaulty = true;
-        _squashExecution();
-	std::cout << " Skipped merge (read failed for id=" 
-                  << id << ")" << std::endl;
+        {
+            boost::lock_guard<boost::mutex> lock(_queriesMutex);
+            _queries.erase(id);
+        }
+        if(!aborted) {
+            _isExecFaulty = true;
+            _squashExecution();
+            std::cout << " Skipped merge (read failed for id=" 
+                      << id << ")" << std::endl;
+        } 
     }
     {
 	boost::lock_guard<boost::mutex> lock(_resultsMutex);
 	_results.push_back(Result(id,r));
+        if(aborted) ++_squashCount; // Borrow result mutex to protect counter.
     }
 }
 
