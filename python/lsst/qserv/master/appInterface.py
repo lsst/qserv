@@ -34,7 +34,7 @@ class AppInterface:
         This executes the query, waits for completion, and returns results."""
         a = app.HintedQueryAction(q, hints, self.pmap)
         if not a.getIsValid():
-            return "Error during query parse step."
+            return "Error during query parse step." + a.getError()
         a.invoke()
         r = a.getResult()
         return app.getResultTable(r)

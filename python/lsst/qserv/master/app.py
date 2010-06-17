@@ -651,8 +651,7 @@ class HintedQueryAction:
         # Hint evaluation
         self._pmap = pmap            
         self._isFullSky = False # Does query involves whole sky
-        self._evaluateHints(self._parseRegions(hints), pmap)
-        self._dbContext = hints.get("db", "")
+        self._evaluateHints(hints, pmap)
         # Table mapping 
         try:
             self._pConfig = PartitioningConfig() # Should be shared.
@@ -666,7 +665,8 @@ class HintedQueryAction:
             else:
                 self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
                 self._isValid = True
-        except:
+        except Exception, e:
+            print "Exception!",e
             self._isValid = False
 
         if not self._isValid:
@@ -706,15 +706,21 @@ class HintedQueryAction:
             return []
         pass
 
-    def _evaluateHints(self, regions, pmap):
+    def _evaluateHints(self, hints, pmap):
         """Modify self.fullSky and self.partitionCoverage according to 
         spatial hints"""
+        self._isFullSky = True
+        self._intersectIter = pmap
+        self._dbContext = "LSST" ## FIXME. should be configurable
+        print hints
+        if hints:
+            print hints
+            regions = self._parseRegions(hints)
+            self._dbContext = hints.get("db", "")
+            if regions != []:
+                self._intersectIter = pmap.intersect(regions)
+                self._isFullSky = False
         self._isFullSky = False
-        if regions == []:
-            self._isFullSky = True
-            self._intersectIter = pmap
-        else:
-            self._intersectIter = pmap.intersect(regions)
         pass
 
     def invoke(self):
@@ -731,6 +737,11 @@ class HintedQueryAction:
             print >>sys.stderr, q, "submitted"
         return
 
+    def getError(self):
+        try:
+            return self._error
+        except:
+            return ""
     def getResult(self):
         """Wait for query to complete (as necessary) and then return 
         a handle to the result."""
