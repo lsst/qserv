@@ -689,8 +689,9 @@ class HintedQueryAction:
         self._isValid = True
         pass
 
-    def _headerFunc(self, subc=[]):
-        return '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
+    def _headerFunc(self, tableNames, subc=[]):
+        return ['-- SUBCHUNKS:' + ", ".join(imap(str,subc)),
+                '-- RESULTTABLES:' + ",".join(tableNames)]
 
     def _parseRegions(self, hints):
         r = RegionFactory()
@@ -756,7 +757,7 @@ class HintedQueryAction:
 
     def _makeChunkQuery(self, chunkId, table):
         # Prefix with empty subchunk spec.
-        query = self._headerFunc() +"\n"
+        query = "\n".join(self._headerFunc([table])) +"\n"
         ref = self._pConfig.chunkMapping.getMapReference(chunkId,0)
         query += self._createTableTmpl % table
         query += self._substitution.substituteOnly(ref)
@@ -781,7 +782,7 @@ class HintedQueryAction:
             else:
                 qList.append((self._createTableTmpl % table) + q)
                 pfx = self._insertTableTmpl % table
-        qList[0] = self._headerFunc(scList)
+        qList = self._headerFunc([table], scList)
         
         return "\n".join(qList)
 
