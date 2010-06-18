@@ -5,6 +5,7 @@
 #include "lsst/qserv/master/thread.h"
 #include "lsst/qserv/master/xrootd.h"
 #include "lsst/qserv/master/SessionManager.h"
+#include "lsst/qserv/master/AsyncQueryManager.h"
 
 namespace qMaster = lsst::qserv::master;
 

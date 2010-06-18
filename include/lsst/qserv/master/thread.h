@@ -11,21 +11,12 @@
 #include "boost/make_shared.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
 
-// Scalla/xrootd
-#include "XrdPosix/XrdPosixCallBack.hh"
-
 // Package
 #include "lsst/qserv/master/transaction.h"
 
 namespace lsst {
 namespace qserv {
 namespace master {
-
-// Forward
-class AsyncQueryManager; 
-class TableMerger;
-class TableMergerConfig;
-
 
 template<class T> struct joinBoostThread  {
     joinBoostThread() {} 
@@ -129,116 +120,6 @@ private:
     int _highWaterThreads;
 };
 
-//////////////////////////////////////////////////////////////////////
-// class ChunkQuery 
-// Handles chunk query execution, like openwritereadsaveclose, but
-// with dual asynchronous opening.  Should lessen need for separate
-// threads.  Not sure if it will be enough though.
-// 
-//////////////////////////////////////////////////////////////////////
-class ChunkQuery : public XrdPosixCallBack {
-public:
-    enum WaitState {WRITE_OPEN, WRITE_WRITE, 
-		    READ_OPEN, READ_READ,
-		    COMPLETE, CORRUPT, ABORTED};
-    
-    virtual void Complete(int Result);
-    explicit ChunkQuery(TransactionSpec const& t, int id,
-			AsyncQueryManager* mgr);
-    virtual ~ChunkQuery() {}
-
-    void run();
-    XrdTransResult const& results() const { return _result; }
-    std::string getDesc() const;
-    std::string const& getSavePath() const { return _spec.savePath; }
-    void requestSquash() { _shouldSquash = true; }
-
-private:
-    void _sendQuery(int fd);
-    void _readResults(int fd);
-    void _notifyManager();
-    void _squashAtCallback(int result);
-
-    int _id;
-    TransactionSpec _spec;
-    WaitState _state;
-    XrdTransResult _result;
-    boost::mutex _mutex;
-    std::string _hash;
-    std::string _resultUrl;
-    std::string _queryHostPort;
-    AsyncQueryManager* _manager;
-    bool _shouldSquash;
-};// class ChunkQuery
-
-
-//////////////////////////////////////////////////////////////////////
-// class AsyncQueryManager 
-// Babysits a related set of queries.  Issues asynchronously handles 
-// preparation, status-checking, and post-processing (if a merger has 
-// been configured).
-// 
-//////////////////////////////////////////////////////////////////////
-class AsyncQueryManager {
-public:
-    typedef std::pair<int, XrdTransResult> Result;
-    typedef std::deque<Result> ResultDeque;
-    typedef boost::shared_ptr<AsyncQueryManager> Ptr;
-    
-    explicit AsyncQueryManager() :_lastId(0), _isExecFaulty(false) {}
-    void configureMerger(TableMergerConfig const& c);
-
-    int add(TransactionSpec const& t, std::string const& resultName);
-    void join(int id);
-    bool tryJoin(int id);
-    XrdTransResult const& status(int id) const;
-    void joinEverything();
-    ResultDeque const& getFinalState() { return _results; }
-    void finalizeQuery(int id,  XrdTransResult r, bool aborted); 
-    std::string getMergeResultName() const;
-    
-private:
-    typedef std::pair<boost::shared_ptr<ChunkQuery>, std::string> QuerySpec;
-    typedef std::map<int, QuerySpec> QueryMap;
-
-    class printQueryMapValue {
-    public:
-	printQueryMapValue(std::ostream& os_) : os(os_) {}
-	void operator()(QueryMap::value_type const& qv) {
-	    os << "Query with id=" << qv.first;
-	    os << ": " << qv.second.first->getDesc() 
-	       << ", " << qv.second.second << std::endl;
-	}
-	std::ostream& os;
-    };
-
-    class squashQuery {
-    public:
-        squashQuery() {}
-        void operator()(QueryMap::value_type const& qv) {
-            boost::shared_ptr<ChunkQuery> cq = qv.second.first;
-            cq->requestSquash();
-        }
-    };
-
-
-    int _getNextId() {
-	boost::lock_guard<boost::mutex> m(_idMutex); 
-	return ++_lastId;
-    }
-    void _printState(std::ostream& os);
-    void _squashExecution();
-
-    boost::mutex _idMutex;
-    boost::mutex _queriesMutex;
-    boost::mutex _resultsMutex;
-    int _lastId;
-    bool _isExecFaulty;
-    int _squashCount;
-    QueryMap _queries;
-    ResultDeque _results;
-    boost::shared_ptr<TableMerger> _merger;
-};
 
 class QueryManager {
 public:

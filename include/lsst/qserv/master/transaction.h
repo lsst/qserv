@@ -1,5 +1,6 @@
 #ifndef LSST_QSERV_MASTER_TRANSACTION_H
 #define LSST_QSERV_MASTER_TRANSACTION_H
+#include <string>
 
 namespace lsst {
 namespace qserv {
