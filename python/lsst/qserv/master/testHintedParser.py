@@ -50,6 +50,8 @@ SELECT o1.objectId, o1.rRadius_SG, s.sourceId, s.psfFlux, s.apFlux
 FROM LSST.Object o1, LSST.Source s 
 WHERE o1.objectId=s.objectId AND o1.rRadius_SG > 600;""", 
                    {"box": "148, 1.6, 152, 2.3"})
+        allskyPt1 = ("SELECT * FROM Object WHERE rRadius_SG > 500;", 
+                     {"db": "LSST"})
                    
         self.basicQuery = bq
         self.basicPt1Query = bqPt1
@@ -59,6 +61,7 @@ WHERE o1.objectId=s.objectId AND o1.rRadius_SG > 600;""",
         self.aggQuery2 = ahq2
         self.groupByQuery1 = gbq1
         self.nearNeighQuery1 = nnq1
+        self.allskyPt1 = allskyPt1
         pass
                 
     def _performTestQueryAction(self, queryTuple):
@@ -140,3 +143,8 @@ WHERE o1.objectId=s.objectId AND o1.rRadius_SG > 600;""",
         r1 = a.joinQuery(id1)
         print "Done near neighbor query."
         print a.resultTableString(r1)
+
+    def testAllskyPt1(self):
+        """This is a non spatially-restricted query that uses PT1 
+        Object schema"""
+        return self._performTestQueryAction(self.allskyPt1)
