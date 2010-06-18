@@ -202,6 +202,15 @@ qWorker::ExecEnv& qWorker::getExecEnv() {
     return e;
 }
 
+char const* qWorker::ExecEnv::_getEnvDefault(char const* varName, 
+                                             char const* defVal) {
+    char const* s = ::getenv(varName);
+    if(s != (char const*)0) { return s; 
+    } else { 
+        return defVal; 
+    }
+}
+
 void qWorker::ExecEnv::_setup() {
     // Try to capture socket filename from environment
     char* sock = ::getenv("QSW_DBSOCK");
@@ -213,6 +222,8 @@ void qWorker::ExecEnv::_setup() {
     if(path != (char*)0) { _mysqldumpPath = path; }
     else { _mysqldumpPath = "/usr/bin/mysqldump"; }
 
+    // Capture alternative shared scratch db
+    _scratchDb = _getEnvDefault("QSW_SCRATCHDB", "qservScratch");
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -360,7 +371,8 @@ void qWorker::QueryRunner::_mkdirP(std::string const& filePath) {
 }
 
 bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName, 
-					     std::string const& dumpFile) {
+					     std::string const& dumpFile,
+                                             std::string const& tables) {
 
     // Dump a database to a dumpfile.
     
@@ -374,8 +386,8 @@ bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName,
     std::string cmd = _env.getMysqldumpPath() + (Pformat(
             " --compact --add-locks --create-options --skip-lock-tables"
 	    " --socket=%1%"
-            " --result-file=%2% %3%")
-            % _env.getSocketFilename() % dumpFile % dbName).str();
+            " --result-file=%2% %3% %4%")
+            % _env.getSocketFilename() % dumpFile % dbName % tables).str();
     _e.Say((Pformat("dump cmdline: %1%") % cmd).str().c_str());
 
     _e.Say((Pformat("TIMING,%1%QueryDumpStart,%2%")
@@ -401,6 +413,7 @@ bool qWorker::QueryRunner::_runScript(
     std::string result;
     std::string buildScript;
     std::string cleanupScript;
+    std::string tables; 
 
     _scriptId = dbName.substr(0, 6);
     _e.Say((Pformat("TIMING,%1%ScriptStart,%2%")
@@ -417,8 +430,16 @@ bool qWorker::QueryRunner::_runScript(
 		% _env.getSocketFilename() % _user).str().c_str());
         return false;
     }
-    if(!_prepareAndSelectResultDb(db.get(), dbName)) {
-	return false;
+
+    tables = _getDumpTableList(script);
+    if(tables.empty()) {
+        if(!_prepareAndSelectResultDb(db.get(), dbName)) {
+            return false;
+        }
+    } else {
+        if(!_prepareScratchDb(db.get())) {
+            return false;
+        }
     }
     _buildSubchunkScripts(script, buildScript, cleanupScript);
     result = runScriptPieces(_e, db.get(), _scriptId, buildScript, 
@@ -428,7 +449,7 @@ bool qWorker::QueryRunner::_runScript(
 	_errorDesc += result;
 	return false;
     }
-    bool dumpSuccess = _performMysqldump(dbName, _meta.resultPath);
+    bool dumpSuccess = _performMysqldump(dbName, _meta.resultPath, tables);
     // Record query in query cache table
     /*
     result = runQuery(db.get(),
@@ -528,6 +549,54 @@ bool qWorker::QueryRunner::_prepareAndSelectResultDb(MYSQL* db,
     return true;
 }
 
+bool qWorker::QueryRunner::_prepareScratchDb(MYSQL* db) {
+    std::string dbName = _env.getScratchDb();
+
+    std::string result = runQuery(db, "CREATE DATABASE IF NOT EXISTS " 
+                                  + dbName);
+    if (!result.empty()) {
+	_errorNo = EIO;
+	_errorDesc += result;
+	_e.Say((Pformat("Cfg error! couldn't create scratch db. %1%.") 
+		% result).str().c_str());
+        return false;
+    }
+    if (mysql_select_db(db, dbName.c_str()) != 0) {
+	_errorNo = EIO;
+	_errorDesc += "Unable to select database " + dbName;
+	_e.Say((Pformat("Cfg error! couldn't select scratch db. %1%.") 
+		% result).str().c_str());
+        return false;
+    }
+    return true;
+}
+
+std::string qWorker::QueryRunner::_getDumpTableList(std::string const& script) {
+    // Find resultTable prefix    
+    char const prefix[] = "-- RESULTTABLES:";
+    int prefixLen = sizeof(prefix);
+    std::string::size_type prefixOffset = script.find(prefix);
+    if(prefixOffset == std::string::npos) { // no table indicator?
+        return std::string();
+    }
+    prefixOffset += prefixLen;
+    std::string tables = script.substr(prefixOffset, 
+                                       script.find('\n', prefixOffset)
+                                       - prefixOffset);
+    // Convert commas to spaces
+    for(int i=0, e=tables.size(); i < e; ++i) {
+        char& c = tables[i];
+        if(c == ',') 
+            c = ' ';
+    }
+    return tables;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////
+// Helpers
+////////////////////////////////////////////////////////////////////////
 int qWorker::dumpFileOpen(std::string const& dbName) {
     return open(dbName.c_str(), O_RDONLY);
 }

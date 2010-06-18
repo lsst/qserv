@@ -24,14 +24,17 @@ class ExecEnv {
 public:
     std::string const& getSocketFilename() const { return _socketFilename; }
     std::string const& getMysqldumpPath() const { return _mysqldumpPath; }
+    std::string const& getScratchDb() const { return _scratchDb; }
 private:
-    ExecEnv() : _isReady(false){}
+    ExecEnv() : _isReady(false) {}
+    char const* _getEnvDefault(char const* varName, char const* defVal);
     void _setup();
     
     bool _isReady;
-    // trim this list.
+
     std::string _socketFilename;
     std::string _mysqldumpPath;
+    std::string _scratchDb;
 
     friend ExecEnv& getExecEnv();
 };
@@ -101,14 +104,17 @@ public:
 
 private:
     bool _act();
+    std::string _getDumpTableList(std::string const& script);
     void _mkdirP(std::string const& filePath);
     bool _runScript(std::string const& script, std::string const& dbName);
     void _buildSubchunkScripts(std::string const& script,
 			       std::string& build, std::string& cleanup);
     bool _prepareAndSelectResultDb(MYSQL* db, 
 				   std::string const& dbName);
+    bool _prepareScratchDb(MYSQL* db);
     bool _performMysqldump(std::string const& dbName, 
-			   std::string const& dumpFile);
+			   std::string const& dumpFile,
+			   std::string const& tables);
     bool _isExecutable(std::string const& execName);
     void _setNewQuery(QueryRunnerArg const& a);
     std::string _getErrorString() const;
