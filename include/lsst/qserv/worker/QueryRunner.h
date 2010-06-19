@@ -104,9 +104,17 @@ public:
 
 private:
     bool _act();
+    void _appendError(int errorNo, std::string const& desc);
+    bool _connectDbServer(MYSQL* db);
+    bool _dropDb(MYSQL* db, std::string const& name);
+    bool _dropTables(MYSQL* db, std::string const& tables);
     std::string _getDumpTableList(std::string const& script);
     void _mkdirP(std::string const& filePath);
     bool _runScript(std::string const& script, std::string const& dbName);
+    bool _runScriptCore(MYSQL* db, std::string const& script,
+                        std::string const& dbName,
+                        std::string const& tableList);
+
     void _buildSubchunkScripts(std::string const& script,
 			       std::string& build, std::string& cleanup);
     bool _prepareAndSelectResultDb(MYSQL* db, 

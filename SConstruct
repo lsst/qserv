@@ -104,7 +104,7 @@ LSST Query Services worker package
 ## Build lib twice, with and without xrd
 ## Must invoke w/ build_dir at top-level SConstruct.
 envNoXrd = env.Clone(CCFLAGS=["-g","-DNO_XROOTD_FS"])
-env.Append(CCFLAGS=['-g'])
+env.Append(CCFLAGS=['-g','-pedantic','-Wno-long-long'])
 for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
     try:
         SConscript("SConscript.lib", build_dir=bldDir,
