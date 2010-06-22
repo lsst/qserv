@@ -34,7 +34,8 @@ public:
     typedef std::deque<Result> ResultDeque;
     typedef boost::shared_ptr<AsyncQueryManager> Ptr;
     
-    explicit AsyncQueryManager() :_lastId(0), _isExecFaulty(false) {}
+    explicit AsyncQueryManager() 
+        :_lastId(1000000000), _isExecFaulty(false), _queryCount(0) {}
     void configureMerger(TableMergerConfig const& c);
 
     int add(TransactionSpec const& t, std::string const& resultName);
@@ -69,6 +70,7 @@ private:
     int _squashCount;
     QueryMap _queries;
     ResultDeque _results;
+    int _queryCount;
     boost::shared_ptr<TableMerger> _merger;
 };
 

@@ -9,6 +9,8 @@ namespace master {
 class TransactionSpec {
 
 public:
+ TransactionSpec() : chunkId(-1) {}
+    int chunkId;
     std::string path;
     std::string query;
     int bufferSize;

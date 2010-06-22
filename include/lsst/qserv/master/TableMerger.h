@@ -68,6 +68,7 @@ private:
     TableMergerConfig _config;
     std::string _loadCmd;
     boost::shared_ptr<SqlConfig> _sqlConfig;
+    boost::shared_ptr<SqlConnection> _sqlConn;
 
     std::string _mergeTable;
     TableMergerError _error;
@@ -75,6 +76,7 @@ private:
     int _tableCount;
     boost::mutex _countMutex;
     boost::mutex _popenMutex;
+    boost::mutex _sqlMutex;
     
 };
 

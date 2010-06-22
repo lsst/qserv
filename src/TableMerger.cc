@@ -60,12 +60,15 @@ bool TableMerger::merge(std::string const& dumpFile,
     std::string sql;
     _importResult(dumpFile); 
     {
+        //std::cout << "Importing " << tableName << std::endl;
 	boost::lock_guard<boost::mutex> g(_countMutex);
 	++_tableCount;
 	if(_tableCount == 1) {
 	    sql = _buildMergeSql(tableName, true);
             isOk = _applySql(sql);
             if(!isOk) {
+                std::cout << "Failed importing! " << tableName 
+                          << " " << _error.description << std::endl;
                 --_tableCount; // We failed merging the table.
             }
 	    return isOk; // must happen first.
@@ -94,7 +97,7 @@ bool TableMerger::finalize() {
 // private
 ////////////////////////////////////////////////////////////////////////
 bool TableMerger::_applySql(std::string const& sql) {
-
+    return _applySqlLocal(sql); //try local impl now.
     FILE* fp;
     {
 	boost::lock_guard<boost::mutex> m(_popenMutex);
@@ -106,12 +109,12 @@ bool TableMerger::_applySql(std::string const& sql) {
 	_error.description = "Error starting mysql process.";
 	return false;
     }
-    int written = fwrite(sql.c_str(), sql.size(), 
-			 sizeof(std::string::value_type), fp);
+    int written = fwrite(sql.c_str(), sizeof(std::string::value_type), 
+                         sql.size(), fp);
     if(written != (sql.size()*sizeof(std::string::value_type))) {
 	_error.status = TableMergerError::MERGEWRITE;
 	_error.errorCode = written;
-	_error.description = "Error writing sql to mysql process..";
+	_error.description = "Error writing sql to mysql process.." + sql;
 	{
 	    boost::lock_guard<boost::mutex> m(_popenMutex);
 	    pclose(fp); // cleanup
@@ -133,22 +136,26 @@ bool TableMerger::_applySql(std::string const& sql) {
 }
 
 bool TableMerger::_applySqlLocal(std::string const& sql) {
-    SqlConnection sc(*_sqlConfig);
-    if(!sc.connectToDb()) {
-	std::stringstream ss;
-	_error.status = TableMergerError::MYSQLCONNECT;
-	_error.errorCode = sc.getMySqlErrno();
-	ss << "Code:" << _error.errorCode << " "
-	   << sc.getMySqlError();
-	_error.description = "Error connecting to db." + ss.str();
-	return false;
+    boost::lock_guard<boost::mutex> m(_sqlMutex);
+    if(!_sqlConn.get()) {
+        _sqlConn.reset(new SqlConnection(*_sqlConfig));
+        if(!_sqlConn->connectToDb()) {
+            std::stringstream ss;
+            _error.status = TableMergerError::MYSQLCONNECT;
+            _error.errorCode = _sqlConn->getMySqlErrno();
+            ss << "Code:" << _error.errorCode << " "
+               << _sqlConn->getMySqlError();
+            _error.description = "Error connecting to db." + ss.str();
+            _sqlConn.reset();
+            return false;
+        }
     }
-    if(!sc.apply(sql)) {
+    if(!_sqlConn->apply(sql)) {
 	std::stringstream ss;
 	_error.status = TableMergerError::MYSQLEXEC;
-	_error.errorCode = sc.getMySqlErrno();
+	_error.errorCode = _sqlConn->getMySqlErrno();
 	ss << "Code:" << _error.errorCode << " "
-	   << sc.getMySqlError();
+	   << _sqlConn->getMySqlError();
 	_error.description = "Error applying sql." + ss.str();
 	return false;
     }

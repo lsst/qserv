@@ -734,8 +734,7 @@ class HintedQueryAction:
             else:
                 q = self._makeChunkQuery(chunkId, table)
             self._babysitter.submit(chunkId, table, q)
-            #self._collater.submit(chunkId, table, q)
-            print >>sys.stderr, q, "submitted"
+            ##print >>sys.stderr, q, "submitted"
         return
 
     def getError(self):
@@ -761,7 +760,7 @@ class HintedQueryAction:
         ref = self._pConfig.chunkMapping.getMapReference(chunkId,0)
         query += self._createTableTmpl % table
         query += self._substitution.substituteOnly(ref)
-        print query
+        #print query
         return query
 
     def _makeSubChunkQuery(self, chunkId, subIter, table):

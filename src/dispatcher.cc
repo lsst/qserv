@@ -50,9 +50,10 @@ void qMaster::initDispatcher() {
 /// @param str Query string (c-string)
 /// @param len Query string length
 /// @param savePath File path (with name) which will store the result (file, not dir)
-/// @return a token identifying the session??? FIXME
+/// @return a token identifying the session
 int qMaster::submitQuery(int session, int chunk, char* str, int len, char* savePath, std::string const& resultName) {
     TransactionSpec t;
+    t.chunkId = chunk;
     t.query = std::string(str, len);
     t.bufferSize = 8192000;
     t.path = qMaster::makeUrl("query", chunk);
@@ -65,6 +66,8 @@ int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s, std::st
 #if 1
     AsyncQueryManager& qm = getAsyncManager(session);
     qm.add(s, resultName); 
+    //std::cout << "Dispatcher added  " << s.chunkId << std::endl;
+
 #else
     QueryManager& qm = getManager(session);
     qm.add(s); 

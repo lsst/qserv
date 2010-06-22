@@ -28,7 +28,7 @@ SqlConnection::SqlConnection(SqlConfig const& sc, bool useThreadMgmt)
     
 }
 SqlConnection::~SqlConnection() {
-    if(!_conn) {
+    if(_conn) {
 	mysql_close(_conn);
     }
     if(_useThreadMgmt) {
