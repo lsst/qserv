@@ -3,7 +3,7 @@
 # Standard Python imports
 import errno
 import hashlib
-from itertools import imap
+from itertools import chain, imap
 import os
 import cProfile as profile
 import pstats
@@ -21,6 +21,7 @@ import lsst.qserv.master.config
 from lsst.qserv.master import geometry
 from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap
 from db import TaskDb as Persistence
+from db import Db
 
 # SWIG'd functions
 
@@ -355,7 +356,9 @@ class RegionFactory:
             "circle" : self._handleCircle,
             "ellipse" : self._handleEllipse,
             "poly": self._handleConvexPolygon,
-            "db" : self._handleNop
+            # Handled elsewhere
+            "db" : self._handleNop,
+            "objectId" : self._handleNop
             }
         pass
     def _splitParams(self, name, tupleSize, param):
@@ -399,7 +402,6 @@ class RegionFactory:
 
     def _handleNop(self, param):
         return []
-
 
     def getRegionFromHint(self, hintDict):
         """
@@ -713,16 +715,43 @@ class HintedQueryAction:
         self._isFullSky = True
         self._intersectIter = pmap
         self._dbContext = "LSST" ## FIXME. should be configurable
-        print hints
         if hints:
-            print hints
             regions = self._parseRegions(hints)
             self._dbContext = hints.get("db", "")
+            ids = hints.get("objectId", "")
             if regions != []:
                 self._intersectIter = pmap.intersect(regions)
                 self._isFullSky = False
-        self._isFullSky = False
+            if ids:
+                chunkIds = self._getChunkIdsFromObjs(ids)
+                if regions != []:
+                    self._intersectIter = chain(self._intersectIter, chunkIds)
+                else:
+                    self._intersectIter = map(lambda i: (i,[]), chunkIds)
+                self._isFullSky = False
         pass
+
+    def _getChunkIdsFromObjs(self, ids):
+        table = "LSST.ObjectChunkIndex"
+        objCol = "objectId"
+        chunkCol = "chunkId"
+        try:
+            test = ",".join(map(str, map(int, ids.split(","))))
+            chopped = filter(lambda c: not c.isspace(), ids)
+            assert test == chopped
+        except Exception, e:
+            print "Error converting objectId spec. ", ids, "Ignoring.",e
+            #print test,"---",chopped
+            return []
+        sql = "SELECT %s FROM %s WHERE %s IN (%s);" % (chunkCol, table,
+                                                       objCol, ids)
+        db = Db()
+        db.activate()
+        cids = db.applySql(sql)
+        cids = map(lambda t: t[0], cids)
+        del db
+        print cids
+        return cids
 
     def invoke(self):
         for chunkId, subIter in self._intersectIter:

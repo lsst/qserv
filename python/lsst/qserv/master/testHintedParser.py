@@ -148,3 +148,9 @@ WHERE o1.objectId=s.objectId AND o1.rRadius_SG > 600;""",
         """This is a non spatially-restricted query that uses PT1 
         Object schema"""
         return self._performTestQueryAction(self.allskyPt1)
+
+    def testObjIdHint(self):
+        return self._performTestQueryAction((
+                "SELECT * FROM Object WHERE objectId =428457347514371;", 
+                     {"db": "LSST", "objectId" : "428457347514371"}))
+
