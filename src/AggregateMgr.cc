@@ -1,3 +1,6 @@
+#include <functional>
+#include <algorithm>
+#include <locale>
 #include <sstream>
 #include <boost/format.hpp>
 #include "lsst/qserv/master/AggregateMgr.h"
@@ -5,6 +8,18 @@ using lsst::qserv::master::AggregateMgr;
 using lsst::qserv::master::AggregateRecord;
 using lsst::qserv::master::NodeBound;
 
+////////////////////////////////////////////////////////////////////////
+// Helpers:
+////////////////////////////////////////////////////////////////////////
+class posixTolower {
+public:
+    posixTolower() : _locale("POSIX") {}
+    char operator()(char c) {
+        return std::tolower(c, _locale);
+    }
+private:
+    std::locale _locale;
+};
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -127,8 +142,10 @@ AggregateMgr::SetFuncHandler::SetFuncHandler() {
 void AggregateMgr::SetFuncHandler::operator()(antlr::RefAST a) {
     //std::cout << "---- SETFUNC: ----" << walkTreeString(a) << std::endl;
     std::string origAgg = tokenText(a);
+    std::transform(origAgg.begin(), origAgg.end(), origAgg.begin(), 
+                   posixTolower());
     MapConstIter i = _map.find(origAgg); // case-sensitivity?
-    assert(i != _map.end());
+    assert(i != _map.end()); // need to convert this into a reasonable error checker that can return a result... otherwise, should catch exception higher up.
     _aggs.push_back(NodeBound(a, getLastSibling(a)));
 }
 ////////////////////////////////////////////////////////////////////////
@@ -219,6 +236,8 @@ void AggregateMgr::postprocess() {
 	i != aggd.end(); ++i) {
 	AliasHandler::MapConstIter f = aMap.find(i->first);
 	std::string agg = tokenText(i->first);
+        std::transform(agg.begin(), agg.end(), agg.begin(), 
+                   posixTolower());
 	if(f != aEnd) {
 	    //std::cout << agg << " aliased as " 
 	    //<< tokenText(f->second.first) << std::endl;
