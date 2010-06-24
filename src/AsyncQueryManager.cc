@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include <boost/make_shared.hpp>
+#include "boost/date_time/posix_time/posix_time_types.hpp" 
 
 #include "lsst/qserv/master/AsyncQueryManager.h"
 #include "lsst/qserv/master/ChunkQuery.h"
@@ -132,6 +133,7 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 	boost::lock_guard<boost::mutex> lock(_resultsMutex);
 	_results.push_back(Result(id,r));
         if(aborted) ++_squashCount; // Borrow result mutex to protect counter.
+        if(_queries.empty()) _queriesEmpty.notify_all();
     }
 }
 
@@ -140,23 +142,14 @@ void qMaster::AsyncQueryManager::joinEverything() {
     int lastCount = -1;
     int count;
     //_printState(std::cout);
-    while(!_queries.empty()) { // FIXME: Should make this condition-var based.
+   while(!_queries.empty()) { 
         count = _queries.size();
         if(count != lastCount) {
             std::cout << "Still " << count
                       << " in flight." << std::endl;
             count = lastCount;
         }
-        lock.unlock();
-	sleep(1); 
-        lock.lock();
-    }
-    {
-	boost::lock_guard<boost::mutex> lock(_resultsMutex);
-        while(_results.size() < _queryCount) {
-            std::cout << "Waiting for " << (_queryCount - _results.size())
-                      << " results to report" << std::endl;
-        }
+        _queriesEmpty.timed_wait(lock, boost::posix_time::seconds(5));
     }
     _merger->finalize();
 }
