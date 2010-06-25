@@ -161,21 +161,8 @@ void AggregateMgr::SelectListHandler::operator()(antlr::RefAST a)  {
 	firstSelectBound.first = a;
 	firstSelectBound.second = getLastSibling(a);
     }
-#if 0
-    selectLists.push_back(SelectList());
-    SelectList& sl = selectLists.back();
-    //std::cout << "sl ";
-    for(antlr::RefAST i = a; i.get(); 
-	i = i->getNextSibling()) { 
-	sl.push_back(i);
-	//std::cout << tokenText(i) << " ";
-    }
-    //std::cout << std::endl;
-#else
     selectLists.push_back(_aHandler.getNodeListCopy());
     _aHandler.resetNodeList();
-#endif
-	    
 }
 
 ////////////////////////////////////////////////////////////////////////
