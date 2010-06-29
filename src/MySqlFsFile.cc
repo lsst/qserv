@@ -138,7 +138,7 @@ qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user,
     // Param user is: user.pid:fd@host 
     // (See XRootd Protocol spec: 4.2.1.1 Connection name format)
     char* cursor = user;
-    while(cursor && (*cursor != '.')) cursor++;
+    while(cursor && (*cursor != '.')) ++cursor;
     _userName = std::string(user, cursor - user);
 }
 
@@ -292,6 +292,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     std::string descr((Pformat("File write(%1%) at %2% for %3% by %4%")
 		       % _chunkId % fileOffset % bufferSize % _userName).str());
     _eDest->Say(descr.c_str());
+    //    return -EINVAL; // Garble for error testing.
 
     if (bufferSize <= 0) {
         error.setErrInfo(EINVAL, "No query provided");

@@ -5,6 +5,7 @@
 #include "XrdSys/XrdSysError.hh"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/worker/Config.h"
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -200,44 +201,6 @@ std::string commasToSpaces(std::string const& s) {
 } // anonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
-// lsst::qserv::worker::ExecEnv
-////////////////////////////////////////////////////////////////////////
-qWorker::ExecEnv& qWorker::getExecEnv() {
-    static ExecEnv e;
-    static boost::mutex m;
-
-    boost::lock_guard<boost::mutex> lock(m);
-    if(!e._isReady) {
-	e._setup();
-    } 
-    return e;
-}
-
-char const* qWorker::ExecEnv::_getEnvDefault(char const* varName, 
-                                             char const* defVal) {
-    char const* s = ::getenv(varName);
-    if(s != (char const*)0) { return s; 
-    } else { 
-        return defVal; 
-    }
-}
-
-void qWorker::ExecEnv::_setup() {
-    // Try to capture socket filename from environment
-    char* sock = ::getenv("QSW_DBSOCK");
-    if(sock != (char*)0) { _socketFilename = sock; }
-    else { _socketFilename = "/var/lib/mysql/mysql.sock"; }
-
-    // Capture alternative mysqldump
-    char* path = ::getenv("QSW_MYSQLDUMP");
-    if(path != (char*)0) { _mysqldumpPath = path; }
-    else { _mysqldumpPath = "/usr/bin/mysqldump"; }
-
-    // Capture alternative shared scratch db
-    _scratchDb = _getEnvDefault("QSW_SCRATCHDB", "qservScratch");
-}
-
-////////////////////////////////////////////////////////////////////////
 // lsst::qserv::worker::QueryRunnerManager
 ////////////////////////////////////////////////////////////////////////
 qWorker::QueryRunnerArg const& qWorker::QueryRunnerManager::getQueueHead() const {
@@ -262,7 +225,7 @@ qWorker::QueryRunner::QueryRunner(XrdSysError& e,
 				  std::string const& user,
 				  qWorker::ScriptMeta const& s, 
 				  std::string overrideDump) 
-    : _env(getExecEnv()), _e(e), _user(user.c_str()), _meta(s) {
+    : _e(e), _user(user.c_str()), _meta(s) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     if(!overrideDump.empty()) {
@@ -271,7 +234,7 @@ qWorker::QueryRunner::QueryRunner(XrdSysError& e,
 }
 
 qWorker::QueryRunner::QueryRunner(QueryRunnerArg const& a) 
-    : _env(getExecEnv()), _e(a.e), _user(a.user), _meta(a.s) {
+    : _e(a.e), _user(a.user), _meta(a.s) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     if(!a.overrideDump.empty()) {
@@ -319,7 +282,6 @@ bool qWorker::QueryRunner::operator()() {
 // private:
 ////////////////////////////////////////////////////////////////////////
 void qWorker::QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
-    // _env should be identical since it's static (for sure?).
     //_e should be tied to the MySqlFs instance and constant(?)
     _user = a.user;
     _meta = a.s;
@@ -373,11 +335,11 @@ bool qWorker::QueryRunner::_connectDbServer(MYSQL* db) {
 			  0,  // host
 			  _user.c_str(), // user
 			  0, 0, 0, //passwd, db, port
-			  _env.getSocketFilename().c_str(), // socket
+			  getConfig().getString("mysqlSocket").c_str(), 
 			  CLIENT_MULTI_STATEMENTS) == 0) {
         _appendError(EIO, "Unable to connect to MySQL as " + _user);
 	_e.Say((Pformat("Cfg error! connect Mysql as %1% using %2%") 
-		% _env.getSocketFilename() % _user).str().c_str());
+		% getConfig().getString("mysqlSocket") % _user).str().c_str());
         return false;
     }
     return true;
@@ -434,15 +396,18 @@ bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName,
     // Make sure the path exists
     _mkdirP(dumpFile);
 
-    if(!_isExecutable(_env.getMysqldumpPath())) {
+    // Should put dump path validation in config class
+    if(!_isExecutable(getConfig().getString("mysqlDump"))) {
 	// Shell exec will crash a boost test case badly in this case.
 	return false; // Can't do dump w/o an executable.
     }
-    std::string cmd = _env.getMysqldumpPath() + (Pformat(
+    std::string cmd = getConfig().getString("mysqlDump") + 
+        (Pformat(
             " --compact --add-locks --create-options --skip-lock-tables"
 	    " --socket=%1%"
             " --result-file=%2% %3% %4%")
-            % _env.getSocketFilename() % dumpFile % dbName % tables).str();
+         % getConfig().getString("mysqlSocket") 
+         % dumpFile % dbName % tables).str();
     _e.Say((Pformat("dump cmdline: %1%") % cmd).str().c_str());
 
     _e.Say((Pformat("TIMING,%1%QueryDumpStart,%2%")
@@ -470,7 +435,7 @@ bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
     std::string realDbName(dbName);
 
     if(!tableList.empty()) {
-        realDbName = _env.getScratchDb();
+        realDbName = getConfig().getString("scratchDb");
     }
 
     _buildSubchunkScripts(script, buildScript, cleanupScript);
@@ -606,7 +571,7 @@ bool qWorker::QueryRunner::_prepareAndSelectResultDb(MYSQL* db,
 
 
 bool qWorker::QueryRunner::_prepareScratchDb(MYSQL* db) {
-    std::string dbName = _env.getScratchDb();
+    std::string dbName = getConfig().getString("scratchDb");
 
     std::string result = runQuery(db, "CREATE DATABASE IF NOT EXISTS " 
                                   + dbName);

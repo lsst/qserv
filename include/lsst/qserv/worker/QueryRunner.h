@@ -18,28 +18,6 @@ namespace lsst {
 namespace qserv {
 namespace worker {
 
-
-////////////////////////////////////////////////////////////////////////
-class ExecEnv {
-public:
-    std::string const& getSocketFilename() const { return _socketFilename; }
-    std::string const& getMysqldumpPath() const { return _mysqldumpPath; }
-    std::string const& getScratchDb() const { return _scratchDb; }
-private:
-    ExecEnv() : _isReady(false) {}
-    char const* _getEnvDefault(char const* varName, char const* defVal);
-    void _setup();
-    
-    bool _isReady;
-
-    std::string _socketFilename;
-    std::string _mysqldumpPath;
-    std::string _scratchDb;
-
-    friend ExecEnv& getExecEnv();
-};
-
-ExecEnv& getExecEnv();
 ////////////////////////////////////////////////////////////////////////
 class QueryRunnerArg {
 public:
@@ -127,7 +105,6 @@ private:
     void _setNewQuery(QueryRunnerArg const& a);
     std::string _getErrorString() const;
 
-    ExecEnv& _env;
     XrdSysError& _e;
     std::string _user;
     ScriptMeta _meta;
