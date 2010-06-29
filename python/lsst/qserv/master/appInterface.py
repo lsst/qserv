@@ -64,7 +64,8 @@ class AppInterface:
             lock.unlockAfter(a.getResult)
         else:
             lock.unlock()
-        return (resultName, lockName)
+            return ("error","error",a.getError())
+        return (resultName, lockName, "")
     
     def query(self, q, hints):
         """Issue a query, and return a taskId that can be used for tracking.

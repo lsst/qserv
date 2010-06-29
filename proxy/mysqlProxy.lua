@@ -46,6 +46,7 @@ ERR_NOT_SUPPORTED  = -4003
 ERR_OR_NOT_ALLOWED = -4004
 ERR_RPC_CALL       = -4005
 ERR_BAD_RES_TNAME  = -4006
+ERR_QSERV_ERROR    = -4100
 
 SUCCESS            = 0
 
@@ -461,11 +462,17 @@ function queryProcessing()
            xmlrpc.http.call (rpcHP, "submitQuery", 
                              queryToPassStr, hintsToPassArr)
         if (not ok) then
-            return err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
+           return err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
         end
 
         resultTableName = res[1]
         lockTableName = res[2]
+        qservError = res[3]
+
+        if resultTableName == "error" then
+           return err.set(ERR_QSERV_ERROR, "Qserv error: " .. qservError)
+        end
+           
 
         return SUCCESS
     end
@@ -549,7 +556,9 @@ function read_query(packet)
         end
 
         -- process the query and send it to qserv
-        if qProc.sendToQserv(q, qU) < 0 then
+        local sendResult = qProc.sendToQserv(q, qU)
+        print ("Sendresult " .. sendResult)
+        if sendResult < 0 then
             return err.send()
         end
 
