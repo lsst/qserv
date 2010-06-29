@@ -59,8 +59,11 @@ class AppInterface:
         lock = proxy.Lock(lockName)
         lock.lock()
         a = app.HintedQueryAction(query, conditions, self.pmap, resultName)
-        a.invoke()
-        lock.unlockAfter(a.getResult)
+        if a.getIsValid():
+            a.invoke()
+            lock.unlockAfter(a.getResult)
+        else:
+            lock.unlock()
         return (resultName, lockName)
     
     def query(self, q, hints):

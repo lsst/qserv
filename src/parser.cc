@@ -84,7 +84,7 @@ std::string qMaster::Substitution::transform(Mapping const& m) {
 // blah blah ***Name*** blah blah
 //           |         |
 //         pos       endpos
-//           |-length-|
+//           |-length--|
 //        name = Name
 void qMaster::Substitution::_build(std::string const& delim) {
     //int maxLength = _max(names.begin(), names.end());
@@ -169,7 +169,7 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement,
 	template_ = spr->getParseResult();
     } 
     _computeChunkLevel(spr->getHasChunks(), spr->getHasSubChunks());
-    if(template_.empty()) {
+    if(template_.empty() || !spr->getError().empty()) {
 	_errorMsg = spr->getError();
     } else {
         _substitution = SubstPtr(new Substitution(template_, _delimiter, true));

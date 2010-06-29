@@ -154,14 +154,18 @@ Templater::Templater(std::string const& delimiter,
 }
 
 void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
-    if(!_defaultDb.empty() && !db.get()) {
-        // no explicit Db?  Create one, and link it in.
-        antlr::RefAST newChild = _factory->create();
-        newChild->setText(n->getText());
-        newChild->setNextSibling(n->getNextSibling());
-        n->setNextSibling(newChild);
-        n->setText(_defaultDb + _nameSep);
-        n = newChild;
+    if(!db.get()) {
+        if(!_defaultDb.empty() && _isDbOk(_defaultDb)) {
+            // no explicit Db?  Create one, and link it in.
+            antlr::RefAST newChild = _factory->create();
+            newChild->setText(n->getText());
+            newChild->setNextSibling(n->getNextSibling());
+            n->setNextSibling(newChild);
+            n->setText(_defaultDb + _nameSep);
+            n = newChild;
+        } else { // No context and bad/missing defaultDb
+            _markBadDb(_defaultDb);
+        }
     } else {
         std::string dbStr = db->getText();
         if(!_isDbOk(dbStr)) {
