@@ -6,9 +6,9 @@ import time
 import thread
 
 class Lock:
-    createTmpl = "CREATE TABLE IF NOT EXISTS %s (dummy FLOAT) ENGINE=MEMORY;"
+    createTmpl = "CREATE TABLE IF NOT EXISTS %s (err CHAR(255), dummy FLOAT) ENGINE=MEMORY;"
     lockTmpl = "LOCK TABLES %s WRITE;"
-    writeTmpl = "INSERT INTO %s VALUES (%f);"
+    writeTmpl = "INSERT INTO %s VALUES ('%s', %f);"
     unlockTmpl = "UNLOCK TABLES;"
 
     def __init__(self, tablename):
@@ -19,7 +19,13 @@ class Lock:
         self.db.activate()
         self.db.applySql((Lock.createTmpl % self._tableName) 
                          + (Lock.lockTmpl % self._tableName)
-                         + (Lock.writeTmpl % (self._tableName, time.time())))
+                         + (Lock.writeTmpl % (self._tableName, "dummy", 
+                                              time.time())))
+        pass
+
+    def addError(self, error):
+        self.db.applySql(Lock.writeTmpl % (self._tableName, "ERR "+ error, 
+                                           time.time()))
         pass
 
     def unlock(self):

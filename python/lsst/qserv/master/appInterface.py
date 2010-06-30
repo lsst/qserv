@@ -58,7 +58,8 @@ class AppInterface:
         lockName = "%s.lock_%d" % (self._resultDb, taskId)
         lock = proxy.Lock(lockName)
         lock.lock()
-        a = app.HintedQueryAction(query, conditions, self.pmap, resultName)
+        a = app.HintedQueryAction(query, conditions, self.pmap, 
+                                  lambda e: lock.addError(e), resultName)
         if a.getIsValid():
             a.invoke()
             lock.unlockAfter(a.getResult)

@@ -550,13 +550,15 @@ class QueryBabysitter:
     """Watches over queries in-flight.  An instrument of query care that 
     can be used by a client.  Unlike the collater, it doesn't do merging.
     """
-    def __init__(self, sessionId, queryHash, fixup, resultName=""):
+    def __init__(self, sessionId, queryHash, fixup, 
+                 reportError=lambda e:None, resultName=""):
         self._sessionId = sessionId
         self._inFlight = {}
         # Scratch mgmt (Consider putting somewhere else)
         self._scratchPath = setupResultScratch()
 
         self._setupMerger(fixup, resultName) 
+        self._reportError = reportError
         pass
 
     def _setupMerger(self, fixup, resultName):
@@ -587,6 +589,8 @@ class QueryBabysitter:
             print "State of", k, "is", getQueryStateString(s)
 
         s = joinSession(self._sessionId)
+        if s != "success":
+            self._reportError("Error during execution")
         print "Final state of all queries", getQueryStateString(s)
         
     def getResultTableName(self):
@@ -641,7 +645,7 @@ class PartitioningConfig:
 class HintedQueryAction:
     """A HintedQueryAction encapsulates logic to prepare, execute, and 
     retrieve results of a query that has a hint string."""
-    def __init__(self, query, hints, pmap, resultName=""):
+    def __init__(self, query, hints, pmap, reportError, resultName=""):
         self.queryStr = query.strip()# Pull trailing whitespace
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
@@ -681,8 +685,8 @@ class HintedQueryAction:
             fixupPost = self._substitution.getFixupPost()
         self._babysitter = QueryBabysitter(self._sessionId, self.queryHash,
                                            (fixupSelect, fixupPost),
-                                           resultName)
-
+                                           reportError, resultName)
+        self._reportError = reportError
         ## For generating subqueries
         self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;
         self._insertTableTmpl = "INSERT INTO %s " ;
@@ -771,6 +775,7 @@ class HintedQueryAction:
             return self._error
         except:
             return ""
+
     def getResult(self):
         """Wait for query to complete (as necessary) and then return 
         a handle to the result."""

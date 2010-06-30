@@ -46,7 +46,9 @@ ERR_NOT_SUPPORTED  = -4003
 ERR_OR_NOT_ALLOWED = -4004
 ERR_RPC_CALL       = -4005
 ERR_BAD_RES_TNAME  = -4006
-ERR_QSERV_ERROR    = -4100
+ERR_QSERV_GENERIC  = -4100
+ERR_QSERV_PARSE    = -4110
+ERR_QSERV_RUNTIME  = -4120
 
 SUCCESS            = 0
 
@@ -184,11 +186,17 @@ function utilities()
         return q
     end
 
+    local startsWith = function (String,Start)
+       return string.sub(String,1,string.len(Start))==Start
+    end
+
+    
     ---------------------------------------------------------------------------
     return {
         tableToString = tableToString,
         csvToTable = csvToTable,
-        removeExtraWhiteSpaces = removeExtraWhiteSpaces
+        removeExtraWhiteSpaces = removeExtraWhiteSpaces,
+        startsWith = startsWith
     }
 end
 
@@ -470,7 +478,7 @@ function queryProcessing()
         qservError = res[3]
 
         if resultTableName == "error" then
-           return err.set(ERR_QSERV_ERROR, "Qserv error: " .. qservError)
+           return err.set(ERR_QSERV_PARSE, "Qserv error: " .. qservError)
         end
            
 
@@ -578,7 +586,12 @@ function read_query_result(inj)
     if (inj.type == 1) then
         print("q1 - ignoring")
         for row in inj.resultset.rows do
-            print("   " .. row[1])
+           print("   " .. row[1] .. " " .. row[2])
+           if utils.startsWith(row[1], "ERR") then
+              err.set(ERR_QSERV_RUNTIME,
+                      "Error during execution: '"..row[1].."'")
+              return err.send()
+           end
         end
         return proxy.PROXY_IGNORE_RESULT
      elseif (inj.type == 3) or
