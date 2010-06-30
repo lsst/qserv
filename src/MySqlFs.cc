@@ -7,6 +7,7 @@
 #include "lsst/qserv/worker/MySqlFsDirectory.h"
 #include "lsst/qserv/worker/MySqlFsFile.h"
 #include "lsst/qserv/worker/QueryRunner.h"
+#include "lsst/qserv/worker/Config.h"
 #include <cerrno>
 #include <iostream>
 
@@ -59,6 +60,10 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
     _isMysqlFail = mysql_library_init(0, NULL, NULL);
     if(_isMysqlFail) {
 	_eDest->Say("Problem initializing MySQL library. Behavior undefined.");
+    }
+    if(!getConfig().getIsValid()) {
+        _eDest->Say(("Configration invalid: " + getConfig().getError() 
+                     + " -- Behavior undefined.").c_str());
     }
 #ifdef NO_XROOTD_FS
 #else

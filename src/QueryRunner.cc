@@ -369,9 +369,6 @@ bool qWorker::QueryRunner::_dropTables(MYSQL* db,
 std::string qWorker::QueryRunner::_getErrorString() const {
     return (Pformat("%1%: %2%") % _errorNo % _errorDesc).str();
 }
-bool qWorker::QueryRunner::_isExecutable(std::string const& execFile) {
-     return 0 == ::access(execFile.c_str(), X_OK);
-}
 
 void qWorker::QueryRunner::_mkdirP(std::string const& filePath) {
     // Quick and dirty mkdir -p functionality.  No error checking.
@@ -396,11 +393,6 @@ bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName,
     // Make sure the path exists
     _mkdirP(dumpFile);
 
-    // Should put dump path validation in config class
-    if(!_isExecutable(getConfig().getString("mysqlDump"))) {
-	// Shell exec will crash a boost test case badly in this case.
-	return false; // Can't do dump w/o an executable.
-    }
     std::string cmd = getConfig().getString("mysqlDump") + 
         (Pformat(
             " --compact --add-locks --create-options --skip-lock-tables"

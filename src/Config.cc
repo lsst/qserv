@@ -4,6 +4,7 @@
 namespace qWorker = lsst::qserv::worker;
 
 namespace { 
+    // Settings declaration ////////////////////////////////////////////////
     static const int settingsCount = 5;
     // key, env var name, default, description
     static const char* settings[settingsCount][4] = {
@@ -18,6 +19,8 @@ namespace {
         {"scratchDb", "QSW_SCRATCHDB", "qservScratch", 
          "MySQL db for creating temporary result tables."}
     };
+
+    // Singleton Config object support /////////////////////////////////////
     qWorker::Config& getConfigHelper() {
         static qWorker::Config c;
         return c;
@@ -26,14 +29,28 @@ namespace {
         getConfigHelper();
     }
     boost::once_flag configHelperFlag = BOOST_ONCE_INIT;
+
+    // Validator code /////////////////////////////////////////////////////
+    bool isExecutable(std::string const& execFile) {
+        return 0 == ::access(execFile.c_str(), X_OK);
+    }
+
+    bool validateMysql(qWorker::Config const& c) {
+        // Can't do dump w/o an executable.
+	// Shell exec will crash a boost test case badly if this fails.
+        return isExecutable(c.getString("mysqlDump"));
+        // In the future, could try connecting to mysql instance here.
+    }
+
 }
 
 ////////////////////////////////////////////////////////////////////////
 qWorker::Config::Config() {
     _load();
+    _validate();
 }
 
-std::string const& qWorker::Config::getString(std::string const& key) {
+std::string const& qWorker::Config::getString(std::string const& key) const {
     static const std::string n;
     StringMap::const_iterator i = _map.find(key);
     if(i == _map.end()) {
@@ -54,10 +71,27 @@ char const* qWorker::Config::_getEnvDefault(char const* varName,
 
 
 void qWorker::Config::_load() {
+    // assume we're thread-protected.
     for(int i = 0; i < settingsCount; ++i) {
         _map[settings[i][0]] = _getEnvDefault(settings[i][1], settings[i][2]);
     }
 }
+
+void qWorker::Config::_validate() {
+    // assume we're thread-protected
+    bool valid = true;
+    std::string error;
+    bool r;
+
+    r = validateMysql(*this);
+    valid &= r;
+    if(!r) {
+        error += "Bad mysqldump path.";
+    }
+    _isValid = valid;
+    _error = error;
+}
+
 ////////////////////////////////////////////////////////////////////////
 qWorker::Config& qWorker::getConfig() {
     boost::call_once(callOnceHelper, configHelperFlag);
