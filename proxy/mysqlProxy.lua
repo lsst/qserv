@@ -503,7 +503,7 @@ function queryProcessing()
             return err.set(ERR_BAD_RES_TNAME, "Invalid result table name ")
         end
 
-        print ("got via rpc " .. resultTableName)
+        print ("got via rpc " .. resultTableName .. " lock " .. lockTableName)
 
         q1 = "SELECT * FROM " .. lockTableName
         proxy.queries:append(1, string.char(proxy.COM_QUERY) .. q1,

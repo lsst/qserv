@@ -1,6 +1,8 @@
 #ifndef LSST_QSERV_MASTER_SQLSUBSTITUTION_H
 #define LSST_QSERV_MASTER_SQLSUBSTITUTION_H
 
+#include <deque>
+
 #include "lsst/qserv/master/ChunkMapping.h"
 #include "lsst/qserv/master/Substitution.h"
 

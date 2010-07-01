@@ -12,7 +12,9 @@ Access to the classes from the qserv_master library
 #define SWIG_FILE_WITH_INIT
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/dispatcher.h"
-#include "lsst/qserv/master/parser.h"
+#include "lsst/qserv/master/Substitution.h"
+#include "lsst/qserv/master/SqlSubstitution.h"
+#include "lsst/qserv/master/ChunkMapping.h"
 #include "lsst/qserv/master/TableMerger.h"
 %}
 
@@ -81,7 +83,9 @@ Access to the classes from the qserv_master library
 %include "lsst/qserv/master/transaction.h"
 %include "lsst/qserv/master/xrdfile.h"
 %include "lsst/qserv/master/dispatcher.h"
-%include "lsst/qserv/master/parser.h"
+%include "lsst/qserv/master/Substitution.h"
+%include "lsst/qserv/master/SqlSubstitution.h"
+%include "lsst/qserv/master/ChunkMapping.h"
 %include "lsst/qserv/master/TableMerger.h"
 
 

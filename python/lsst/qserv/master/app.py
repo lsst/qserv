@@ -589,9 +589,10 @@ class QueryBabysitter:
             print "State of", k, "is", getQueryStateString(s)
 
         s = joinSession(self._sessionId)
-        if s != "success":
+        resStr = getQueryStateString(s)
+        if resStr != "success":
             self._reportError("Error during execution")
-        print "Final state of all queries", getQueryStateString(s)
+        print "Final state of all queries", resStr
         
     def getResultTableName(self):
         ## Should do sanity checking to make sure that the name has been

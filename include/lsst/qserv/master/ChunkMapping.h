@@ -2,21 +2,15 @@
 #define LSST_QSERV_MASTER_CHUNKMAPPING_H
 
 // C++ 
-#include <iostream>
 #include <map>
 #include <string>
 #include <sstream>
-#include <vector>
-#include <deque>
 // Boost
 #include "boost/shared_ptr.hpp"
 
 namespace lsst {
 namespace qserv {
 namespace master {
-
-// Forward
-class Substitution;
 
 typedef std::map<std::string, std::string> StringMapping;
 // class StringMapping 
@@ -26,16 +20,13 @@ typedef std::map<std::string, std::string> StringMapping;
 //     StringMapping(); 
 // };
 
-
-
-
 class ChunkMapping {
 public:
     typedef StringMapping Map;
     typedef Map::value_type MapValue;
-
- ChunkMapping() :_subPrefix("_sc") {}
-
+    
+    ChunkMapping() :_subPrefix("_sc") {}
+    
     // Get a Mapping object
     Map getMapping(int chunk, int subChunk);
 
@@ -66,4 +57,4 @@ private:
 
 }}} // namespace lsst::qserv::master
 
-#endif // LSST_QSERV_MASTER_PARSER_H
+#endif // LSST_QSERV_MASTER_CHUNKMAPPING_H
