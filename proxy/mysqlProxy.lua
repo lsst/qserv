@@ -57,6 +57,10 @@ SUCCESS            = 0
 queryToPassStr = ""
 hintsToPassArr = {}
 
+-- global variables have per-session(client) scope
+-- queryErrorCount -- number of run-time errors detected during query exec.
+queryErrorCount = 0
+
 
 -------------------------------------------------------------------------------
 --                             error handling                                --
@@ -563,6 +567,9 @@ function read_query(packet)
             return err.send()
         end
 
+        -- Reset error count
+        queryErrorCount = 0
+
         -- process the query and send it to qserv
         local sendResult = qProc.sendToQserv(q, qU)
         print ("Sendresult " .. sendResult)
@@ -580,17 +587,17 @@ function read_query(packet)
     end
 end
 
-
 function read_query_result(inj)
     -- we injected query with the id=1 (for locking purpose)
     if (inj.type == 1) then
         print("q1 - ignoring")
         for row in inj.resultset.rows do
            print("   " .. row[1] .. " " .. row[2])
-           if utils.startsWith(row[1], "ERR") then
-              err.set(ERR_QSERV_RUNTIME,
-                      "Error during execution: '"..row[1].."'")
-              return err.send()
+           if utils.startsWith(row[1], "ERR ") then
+              queryErrorCount  = queryErrorCount + 1
+              return err.setAndSend(ERR_QSERV_RUNTIME,
+                                    "Error during execution: '"..
+                                       string.sub(row[1], 5) .."'")   
            end
         end
         return proxy.PROXY_IGNORE_RESULT
@@ -603,8 +610,11 @@ function read_query_result(inj)
 	--            injection-id: 3
         print("cleanup q(3,4) - ignoring")
         return proxy.PROXY_IGNORE_RESULT
-    else
-        print("q2 - passing")
+     elseif (queryErrorCount > 0) then
+        print("q2 - already have errors, ignoring")
+        return proxy.PROXY_IGNORE_RESULT
+     else
+        print("q2 - passing" .. testState)
         for row in inj.resultset.rows do
             print("   " .. row[1])
         end
