@@ -8,6 +8,7 @@
 // package
 #include "lsst/qserv/master/parser.h"
 #include "lsst/qserv/master/AggregateMgr.h"
+#include "lsst/qserv/master/ChunkMapping.h"
 #include "lsst/qserv/master/Templater.h"
 
 

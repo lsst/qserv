@@ -3,7 +3,7 @@
 #include <list>
 #include <map>
 #include <string>
-#include "lsst/qserv/master/parser.h"
+#include "lsst/qserv/master/SqlSubstitution.h"
 #include "lsst/qserv/master/SqlParseRunner.h"
 
 using lsst::qserv::master::ChunkMapping;

@@ -6,6 +6,7 @@
 #include "SqlSQL2Lexer.hpp"
 
 #include "lsst/qserv/master/SqlParseRunner.h"
+#include "lsst/qserv/master/Substitution.h"
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;

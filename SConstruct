@@ -150,10 +150,13 @@ if hasXrootd:
 canBuild = canBuild and hasXrootd
 
 parserSrcs = map(lambda x: os.path.join('src', x), 
-                 ["parser.cc", "AggregateMgr.cc", 
+                 ["AggregateMgr.cc", 
                   "SqlParseRunner.cc",
                   "Templater.cc",
                   "dbgParse.cc",
+                  "SqlSubstitution.cc",
+                  "Substitution.cc",
+                  "ChunkMapping.cc",
                   "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"] )
              
 
