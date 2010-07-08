@@ -259,6 +259,8 @@ void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize,
     if(localFileDesc != -1) {
 	int res = close(localFileDesc);
 	if((res == -1) && (writeRes >= 0)) {
+            std::cout << "Bad local close for descriptor " << localFileDesc
+                      << std::endl;
 	    writeRes = -errno;
 	} else {
 	    writeRes = bytesWritten; // Update successful result.

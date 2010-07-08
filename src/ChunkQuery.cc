@@ -17,6 +17,15 @@
 using boost::make_shared;
 namespace qMaster = lsst::qserv::master;
 
+namespace {
+    void errnoComplain(char const* desc, int num, int errn) {
+        char buf[256];
+        ::strerror_r(errno, buf, 256);
+        buf[256]='\0';
+        std::cout << desc << ": " << num << " " << buf << std::endl; 
+    }
+}
+
 
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery 
@@ -137,11 +146,19 @@ std::string qMaster::ChunkQuery::getDesc() const {
 void qMaster::ChunkQuery::_squashAtCallback(int result) {
     // squash this query so that it stops running.
     bool badState = false;
+    int res;
+    if(result < 0) { // Fail, don't have to squash.
+        _state = ABORTED;
+        _notifyManager();
+        return;
+    }
     switch(_state) {
     case WRITE_OPEN:
         // Just close the channel w/o sending a query.
-	qMaster::xrdClose(result);
-        
+	res = qMaster::xrdClose(result);
+        if(res != 0) {
+            errnoComplain("Bad close while squashing write open",result, errno);
+        }
 	break;
     case WRITE_WRITE:
 	// Shouldn't get called in this state.
@@ -149,8 +166,10 @@ void qMaster::ChunkQuery::_squashAtCallback(int result) {
 	break;
     case READ_OPEN:
         // Close the channel w/o reading the result (which might be faulty)
-	qMaster::xrdClose(result);
-        
+	res = qMaster::xrdClose(result);
+        if(res != 0) {
+            errnoComplain("Bad close while squashing read open",result, errno);
+        }        
 	break;
     case READ_READ:
 	// Shouldn't get called in this state.
@@ -183,6 +202,7 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
     // Now write
     int len = _spec.query.length();
     int writeCount = qMaster::xrdWrite(fd, _spec.query.c_str(), len);
+    int res;
     if(writeCount != len) {
 	_result.queryWrite = -errno;
 	isReallyComplete = true;
@@ -190,7 +210,10 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
         std::cout << (std::string() + "Error-caused closing of " 
                       + boost::lexical_cast<std::string>(fd)  + " dumpPath "
                       + _spec.savePath + "\n");
-	qMaster::xrdClose(fd);
+	res = qMaster::xrdClose(fd);
+        if(res != 0) {
+            errnoComplain("Bad close after dispatching", fd, errno);
+        }
     } else {
 	_result.queryWrite = writeCount;
 	_queryHostPort = qMaster::xrdGetEndpoint(fd);
@@ -199,7 +222,10 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
         std::cout << (std::string() + "Normal closing of " 
                       + boost::lexical_cast<std::string>(fd)  + " dumpPath "
                       + _spec.savePath + "\n");
-	qMaster::xrdClose(fd); 
+	res = qMaster::xrdClose(fd); 
+        if(res != 0) {
+            errnoComplain("Bad close after dispatching", fd, errno);
+        }
 	_state = READ_OPEN;
 	std::cout  << "opening async read to " << _resultUrl << "\n";
 	int result = qMaster::xrdOpenAsync(_resultUrl.c_str(), 
@@ -209,7 +235,6 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
 	    isReallyComplete = true;
 	}  // open for read in progress.
     } // Write ok
-	    
     if(isReallyComplete) { 
 	_state=COMPLETE;
 	_notifyManager(); 
@@ -221,9 +246,11 @@ void qMaster::ChunkQuery::_readResults(int fd) {
 	// Now read.
 	qMaster::xrdReadToLocalFile(fd, fragmentSize, _spec.savePath.c_str(), 
 			   &(_result.localWrite), &(_result.read));
-	qMaster::xrdClose(fd);
+	int res = qMaster::xrdClose(fd);
+        if(res != 0) {
+            errnoComplain("Error closing after result read", fd, errno);
+        }
 	_state = COMPLETE;
-
 	_notifyManager(); // This is a successful completion.
 }
     

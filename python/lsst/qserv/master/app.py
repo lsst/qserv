@@ -448,7 +448,7 @@ class QueryCollater:
     def finish(self):
         for (k,v) in self.inFlight.items():
             s = tryJoinQuery(self.sessionId, v[0])
-            print "State of", k, "is", getQueryStateString(s)
+            #print "State of", k, "is", getQueryStateString(s)
 
         s = joinSession(self.sessionId)
         print "Final state of all queries", getQueryStateString(s)
@@ -586,7 +586,7 @@ class QueryBabysitter:
     def finish(self):
         for (k,v) in self._inFlight.items():
             s = tryJoinQuery(self._sessionId, v[0])
-            print "State of", k, "is", getQueryStateString(s)
+            #print "State of", k, "is", getQueryStateString(s)
 
         s = joinSession(self._sessionId)
         resStr = getQueryStateString(s)
