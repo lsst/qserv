@@ -215,8 +215,8 @@ function miniParser()
     local self = { haveWhere = false, andNeeded = false }
 
     local setAndNeeded = function()
-        andNeeded = true
-    end
+                            andNeeded = true
+                         end
 
     local addWhereAndIfNeeded = function()
         if not haveWhere then
@@ -225,7 +225,13 @@ function miniParser()
         elseif andNeeded then
             queryToPassStr = queryToPassStr .. ' AND'
         end
-    end
+     end
+
+    local reset = function()
+                     haveWhere = false
+                     andNeeded = false
+                  end
+    
 
     ---------------------------------------------------------------------------
 
@@ -356,8 +362,9 @@ function miniParser()
     ---------------------------------------------------------------------------
 
     return {
-        setAndNeeded = setAndNeeded,
-        parseIt = parseIt
+       setAndNeeded = setAndNeeded,
+       parseIt = parseIt,
+       reset = reset
     }
 end
 
@@ -447,6 +454,7 @@ function queryProcessing()
     --
     local sendToQserv = function(q, qU)
         local p1 = string.find(qU, "WHERE")
+        parser.reset()
         hintsToPassArr = {} -- Reset hints (it's global)
         if p1 then
             queryToPassStr = string.sub(q, 0, p1-1)
@@ -614,7 +622,7 @@ function read_query_result(inj)
         print("q2 - already have errors, ignoring")
         return proxy.PROXY_IGNORE_RESULT
      else
-        print("q2 - passing" .. testState)
+        print("q2 - passing")
         for row in inj.resultset.rows do
             print("   " .. row[1])
         end
