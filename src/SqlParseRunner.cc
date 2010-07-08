@@ -12,6 +12,18 @@
 namespace qMaster = lsst::qserv::master;
 using std::stringstream;
 
+// Helper
+class LimitHandler : public VoidOneRefFunc {
+public: 
+    LimitHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
+    virtual ~LimitHandler() {}
+    virtual void operator()(antlr::RefAST i) {
+        std::cout << "Got limit -> " << i->getText() << std::endl;
+    }
+private:
+    qMaster::SqlParseRunner& _spr;
+};
+
 boost::shared_ptr<qMaster::SqlParseRunner> 
 qMaster::newSqlParseRunner( std::string const& statement, 
                             std::string const& delimiter,
@@ -32,6 +44,7 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
     _factory(new ASTFactory()),
     _templater(_delimiter, _factory.get(), defaultDb)
 { 
+    std::cout << "(int)PARSING:"<< statement << std::endl;
 }
 
 void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
@@ -46,6 +59,7 @@ void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
     _parser->_selectStarHandler = _aggMgr.newSelectStarHandler();
     _parser->_groupByHandler = _aggMgr.getGroupByHandler();
     _parser->_groupColumnHandler = _aggMgr.getGroupColumnHandler();
+    _parser->_limitHandler.reset(new LimitHandler(*this));
 }
 
 std::string qMaster::SqlParseRunner::getParseResult() {
@@ -97,6 +111,7 @@ void qMaster::SqlParseRunner::_computeParseResult() {
     }
     return; 
 }
+
 void qMaster::SqlParseRunner::_makeOverlapMap() {
     qMaster::Templater::IntMap im = _tableListHandler->getUsageCount();
     qMaster::Templater::IntMap::iterator e = im.end();
@@ -105,10 +120,12 @@ void qMaster::SqlParseRunner::_makeOverlapMap() {
     }
 
 }
+
 std::string qMaster::SqlParseRunner::_composeOverlap(std::string const& query) {
     Substitution s(query, _delimiter, false);
     return query + " union " + s.transform(_overlapMap);
 }
+
 bool qMaster::SqlParseRunner::getHasAggregate() {
     if(_errorMsg.empty() && _parseResult.empty()) {
         _computeParseResult();

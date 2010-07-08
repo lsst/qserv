@@ -209,6 +209,13 @@ void handleGroupColumn(RefAST a) {
     return; // Do-nothing placeholder    
 }
 
+void handleLimit(RefAST i) {
+    if(_limitHandler.get()) {
+        (*_limitHandler)(i);
+    }
+    return; // Do-nothing placeholder    
+}
+
 // void handleSelect() {
 //     if(_selectStarHandler.get()) {
 //         (*_selectStarHandler)();
@@ -227,6 +234,7 @@ boost::shared_ptr<VoidOneRefFunc> _selectListHandler;
 boost::shared_ptr<VoidVoidFunc> _selectStarHandler;
 boost::shared_ptr<VoidOneRefFunc> _groupByHandler;
 boost::shared_ptr<VoidOneRefFunc> _groupColumnHandler;
+boost::shared_ptr<VoidOneRefFunc> _limitHandler;
 //  Class body inset ends here
 }
 

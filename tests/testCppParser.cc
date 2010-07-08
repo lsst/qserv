@@ -167,6 +167,40 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(Limit) {
+    std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 limit 2;";
+    
+    SqlSubstitution ss(stmt, cMapping.getMapping(32,53432));
+    for(int i = 4; i < 6; ++i) {
+	//std::cout << "--" << ss.transform(cMapping.getMapping(i,3),i,3) 
+        //           << std::endl;
+        BOOST_CHECK_EQUAL(ss.getChunkLevel(), 1);
+        BOOST_CHECK(!ss.getHasAggregate());
+        if(!ss.getError().empty()) { std::cout << ss.getError() << std::endl;}
+        BOOST_CHECK(ss.getError().empty());
+        // std::cout << "fixupsel " << ss.getFixupSelect() << std::endl
+        //           << "fixuppost " << ss.getFixupPost() << std::endl;
+
+    }
+}
+
+BOOST_AUTO_TEST_CASE(OrderBy) {
+    std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;";
+
+    SqlSubstitution ss(stmt, cMapping.getMapping(32,53432));
+    for(int i = 4; i < 6; ++i) {
+	//std::cout << "--" << ss.transform(cMapping.getMapping(i,3),i,3) 
+        //           << std::endl;
+        BOOST_CHECK_EQUAL(ss.getChunkLevel(), 1);
+        BOOST_CHECK(!ss.getHasAggregate());
+        if(!ss.getError().empty()) { std::cout << ss.getError() << std::endl;}
+        BOOST_CHECK(ss.getError().empty());
+        // std::cout << "fixupsel " << ss.getFixupSelect() << std::endl
+        //           << "fixuppost " << ss.getFixupPost() << std::endl;
+
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 #endif

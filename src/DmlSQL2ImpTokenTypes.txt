@@ -176,3 +176,4 @@ COMMENT("a comment")=321
 NEWLINE("the new line character")=322
 SPACE("the space character")=323
 ANY_CHAR("any character")=324
+SQL2RW_limit="limit"=400

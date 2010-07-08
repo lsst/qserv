@@ -392,11 +392,18 @@ sql_data_stmt :
 //{ Rule #--- <select_stmt> was refined to include an optional <into_clause> - see EXF5
 select_stmt : 
 	query_exp 
-	  ( into_clause (order_by_clause)? (updatability_clause)?
-	  | order_by_clause (into_clause)? (updatability_clause)?
+	  ( into_clause (order_by_clause)? (limit_clause)? (updatability_clause)?
+	  | order_by_clause (into_clause)? (limit_clause)? (updatability_clause)?
 	  | updatability_clause (into_clause)?
+      | limit_clause
 	  |
-	  )
+	  ) 
+;
+//}
+
+//{ MySQL limit <limit_clause> 
+limit_clause : 
+	"limit" i:UNSIGNED_INTEGER {handleLimit(i_AST);} 
 ;
 //}
 

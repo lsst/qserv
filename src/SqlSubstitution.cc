@@ -68,6 +68,7 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement,
     for(Mapping::const_iterator i=mapping.begin(); i != end; ++i) {
 	names.push_back(i->first);
     }
+    std::cout << "PARSING: " << sqlStatement << std::endl;
     boost::shared_ptr<SqlParseRunner> spr(newSqlParseRunner(sqlStatement, 
                                                             _delimiter,
                                                             defaultDb));

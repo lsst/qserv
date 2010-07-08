@@ -50,6 +50,13 @@ public:
     std::string const& getError() const {
 	return _errorMsg;
     }
+    int getLimit() const {
+        return _limit;
+    }
+    void setLimit(int lim) {
+        _limit = lim;
+    }
+
 private:
     void _computeParseResult();
     void _makeOverlapMap();
@@ -69,7 +76,7 @@ private:
     std::string _aggParseResult;
     std::string _errorMsg;
     StringMapping _overlapMap;
-
+    int _limit;
 };
 
 boost::shared_ptr<SqlParseRunner> newSqlParseRunner(std::string const& statement, 
