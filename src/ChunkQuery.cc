@@ -242,10 +242,13 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
 }
 
 void qMaster::ChunkQuery::_readResults(int fd) {
-	int const fragmentSize = 4*1024*1024; // 4MB fragment size
+	int const fragmentSize = 4*1024*1024; // 4MB fragment size (param?)
+        // Should limit cumulative result size for merging.  Now is a
+        // good time. Configurable, with default=1G?
+
 	// Now read.
 	qMaster::xrdReadToLocalFile(fd, fragmentSize, _spec.savePath.c_str(), 
-			   &(_result.localWrite), &(_result.read));
+			   &(_result.localWrite), &(_result.read));        
 	int res = qMaster::xrdClose(fd);
         if(res != 0) {
             errnoComplain("Error closing after result read", fd, errno);
