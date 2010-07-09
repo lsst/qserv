@@ -7,6 +7,8 @@
 
 #include "lsst/qserv/master/SqlParseRunner.h"
 #include "lsst/qserv/master/Substitution.h"
+#include "lsst/qserv/master/parseTreeUtil.h"
+
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
@@ -22,10 +24,26 @@ public:
         int limit;
         ss >> limit;
         _spr.setLimit(limit);
-        std::cout << "Got limit -> " << limit << std::endl;            
+        //std::cout << "Got limit -> " << limit << std::endl;            
     }
 private:
     qMaster::SqlParseRunner& _spr;
+};
+
+class OrderByHandler : public VoidOneRefFunc {
+public: 
+    OrderByHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
+    virtual ~OrderByHandler() {}
+    virtual void operator()(antlr::RefAST i) {
+        using qMaster::walkBoundedTreeString;
+        using qMaster::getLastSibling;
+        std::string cols = walkBoundedTreeString( i, getLastSibling(i));
+        _spr.setOrderBy(cols);
+        //std::cout << "Got orderby -> " << cols << std::endl; 
+    }
+private:
+    qMaster::SqlParseRunner& _spr;
+
 };
 
 boost::shared_ptr<qMaster::SqlParseRunner> 
@@ -64,6 +82,7 @@ void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
     _parser->_groupByHandler = _aggMgr.getGroupByHandler();
     _parser->_groupColumnHandler = _aggMgr.getGroupColumnHandler();
     _parser->_limitHandler.reset(new LimitHandler(*this));
+    _parser->_orderByHandler.reset(new OrderByHandler(*this));
 }
 
 std::string qMaster::SqlParseRunner::getParseResult() {

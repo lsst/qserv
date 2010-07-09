@@ -54,13 +54,12 @@ public:
     std::string const& getError() const {
 	return _errorMsg;
     }
-    int getLimit() const {
-        return _mFixup.limit;
-    }
     void setLimit(int limit) {
         _mFixup.limit = limit;
     }
-
+    void setOrderBy(std::string const& cols) {
+        _mFixup.orderBy = cols;
+    }
 private:
     void _computeParseResult();
     void _makeOverlapMap();

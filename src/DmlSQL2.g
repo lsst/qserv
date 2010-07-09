@@ -415,7 +415,7 @@ into_clause :
 
 //{ Rule #383 <order_by_clause>
 order_by_clause : 
-	"order" "by" sort_spec_list 
+	"order" "by" i:sort_spec_list {handleOrderBy(i_AST);} 
 ;
 //}
 

@@ -216,6 +216,13 @@ void handleLimit(RefAST i) {
     return; // Do-nothing placeholder    
 }
 
+void handleOrderBy(RefAST i) {
+    if(_orderByHandler.get()) {
+        (*_orderByHandler)(i);
+    }
+    return; // Do-nothing placeholder    
+}
+
 // void handleSelect() {
 //     if(_selectStarHandler.get()) {
 //         (*_selectStarHandler)();
@@ -235,6 +242,7 @@ boost::shared_ptr<VoidVoidFunc> _selectStarHandler;
 boost::shared_ptr<VoidOneRefFunc> _groupByHandler;
 boost::shared_ptr<VoidOneRefFunc> _groupColumnHandler;
 boost::shared_ptr<VoidOneRefFunc> _limitHandler;
+boost::shared_ptr<VoidOneRefFunc> _orderByHandler;
 //  Class body inset ends here
 }
 
