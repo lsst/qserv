@@ -18,7 +18,11 @@ public:
     LimitHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
     virtual ~LimitHandler() {}
     virtual void operator()(antlr::RefAST i) {
-        std::cout << "Got limit -> " << i->getText() << std::endl;
+        std::stringstream ss(i->getText());
+        int limit;
+        ss >> limit;
+        _spr.setLimit(limit);
+        std::cout << "Got limit -> " << limit << std::endl;            
     }
 private:
     qMaster::SqlParseRunner& _spr;
@@ -97,7 +101,11 @@ void qMaster::SqlParseRunner::_computeParseResult() {
             }
             _aggParseResult += ";";
             _parseResult += ";";
-
+            _mFixup.select = _aggMgr.getFixupSelect();
+            _mFixup.post = _aggMgr.getFixupPost();
+            //"", /* FIXME need orderby */
+            _mFixup.needsFixup = _aggMgr.getHasAggregate() 
+                || (_mFixup.limit != -1) || (!_mFixup.orderBy.empty());
         } else {
             _errorMsg = "Error: no AST from parse";
         }

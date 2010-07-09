@@ -4,6 +4,8 @@
 #include <boost/thread.hpp> // for mutex. 
 #include <boost/shared_ptr.hpp> // for mutex. 
 
+#include "lsst/qserv/master/mergeTypes.h"
+
 namespace lsst {
 namespace qserv {
 namespace master {
@@ -22,19 +24,17 @@ public:
 class TableMergerConfig {
 public:
     TableMergerConfig(std::string targetDb_, std::string targetTable_,
-		      std::string fixupSelect_,
-		      std::string fixupPost_,
+                      MergeFixup const& mFixup_,
 		      std::string user_, std::string socket_,
 		      std::string mySqlCmd_) 
 	:  targetDb(targetDb_),  targetTable(targetTable_),
-	   fixupSelect(fixupSelect_), fixupPost(fixupPost_),
-	   user(user_),  socket(socket_), mySqlCmd(mySqlCmd_)  
+           mFixup(mFixup_),
+	   user(user_),  socket(socket_), mySqlCmd(mySqlCmd_)
     {}
 
     std::string targetDb; // for final result, and imported result
     std::string targetTable;
-    std::string fixupSelect;
-    std::string fixupPost;
+    MergeFixup mFixup;
     std::string user;
     std::string socket;
     std::string mySqlCmd;
@@ -55,6 +55,7 @@ private:
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql);
     std::string _buildMergeSql(std::string const& tableName, bool create);
+    std::string _buildOrderByLimit();
     void _fixupTargetName();
     bool _importResult(std::string const& dumpFile);
 

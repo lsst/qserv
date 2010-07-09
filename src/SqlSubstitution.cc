@@ -84,8 +84,7 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement,
     } else {
         _substitution = SubstPtr(new Substitution(template_, _delimiter, true));
         _hasAggregate = spr->getHasAggregate();
-        _fixupSelect = spr->getFixupSelect();
-        _fixupPost = spr->getFixupPost();
+        _mFixup = spr->getMergeFixup();
     }
 }
 

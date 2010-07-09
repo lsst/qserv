@@ -82,13 +82,15 @@ bool TableMerger::merge(std::string const& dumpFile,
 bool TableMerger::finalize() {
     if(_mergeTable != _config.targetTable) {
 	std::string cleanup = (boost::format(_cleanupSql) % _mergeTable).str();
+        std::string fixupSuffix = _config.mFixup.post + _buildOrderByLimit();
+
 
 	// Need to perform fixup for aggregation.
 	std::string sql = (boost::format(_createFixSql) 
 			   % _config.targetTable 
-			   % _config.fixupSelect
+			   % _config.mFixup.select
 			   % _mergeTable 
-			   % _config.fixupPost).str() + cleanup;
+			   % fixupSuffix).str() + cleanup;
 	return _applySql(sql);
     }
     return true;
@@ -177,13 +179,26 @@ std::string TableMerger::_buildMergeSql(std::string const& tableName,
     }
 }
 
+std::string TableMerger::_buildOrderByLimit() {
+    std::stringstream ss;
+    if(!_config.mFixup.orderBy.empty()) {
+        ss << "ORDER BY " << _config.mFixup.orderBy;
+    }
+    if(_config.mFixup.limit != -1) {
+        if(!_config.mFixup.orderBy.empty()) { ss << " "; }
+        ss << "LIMIT " << _config.mFixup.limit;
+    }
+    return ss.str();
+}
+
 void TableMerger::_fixupTargetName() {
     if(_config.targetTable.empty()) {
 	assert(!_config.targetDb.empty());
 	_config.targetTable = (boost::format("%1%.result_%2%") 
 			       % _config.targetDb % getTimeStampId()).str();
     }
-    if(!_config.fixupSelect.empty()) {
+    
+    if(_config.mFixup.needsFixup) {
 	// Set merging temporary if needed.
 	_mergeTable = _config.targetTable + "_m"; 
     } else {

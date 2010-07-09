@@ -6,6 +6,7 @@
 #include <sstream>
 
 // package
+#include "lsst/qserv/master/mergeTypes.h"
 #include "lsst/qserv/master/parser.h"
 #include "lsst/qserv/master/AggregateMgr.h"
 #include "lsst/qserv/master/ChunkMapping.h"
@@ -43,6 +44,9 @@ public:
     std::string getFixupPost() {
 	return _aggMgr.getFixupPost();
     }
+    MergeFixup const& getMergeFixup() const {
+        return _mFixup;
+    }
     std::string getPassSelect() {
 	return _aggMgr.getPassSelect();
     }
@@ -51,10 +55,10 @@ public:
 	return _errorMsg;
     }
     int getLimit() const {
-        return _limit;
+        return _mFixup.limit;
     }
-    void setLimit(int lim) {
-        _limit = lim;
+    void setLimit(int limit) {
+        _mFixup.limit = limit;
     }
 
 private:
@@ -76,7 +80,7 @@ private:
     std::string _aggParseResult;
     std::string _errorMsg;
     StringMapping _overlapMap;
-    int _limit;
+    MergeFixup _mFixup;
 };
 
 boost::shared_ptr<SqlParseRunner> newSqlParseRunner(std::string const& statement, 

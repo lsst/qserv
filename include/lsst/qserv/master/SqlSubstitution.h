@@ -5,6 +5,7 @@
 
 #include "lsst/qserv/master/ChunkMapping.h"
 #include "lsst/qserv/master/Substitution.h"
+#include "lsst/qserv/master/mergeTypes.h"
 
 namespace lsst {
 namespace qserv {
@@ -15,6 +16,7 @@ public:
     typedef StringMapping Mapping;
     typedef std::deque<std::string> Deque;
     typedef Deque::const_iterator DequeConstIter;
+    typedef lsst::qserv::master::MergeFixup MergeFixup;
 
     SqlSubstitution(std::string const& sqlStatement, 
                     Mapping const& mapping, 
@@ -28,8 +30,9 @@ public:
     int getChunkLevel() const { return _chunkLevel; }
     bool getHasAggregate() const {return _hasAggregate; }
     std::string getError() const { return _errorMsg; }
-    std::string getFixupSelect() const { return _fixupSelect; }
-    std::string getFixupPost() const { return _fixupPost; }
+    std::string getFixupSelect() const { return _mFixup.select; }
+    std::string getFixupPost() const { return _mFixup.post; }
+    MergeFixup const& getMergeFixup() const { return _mFixup; }
 
 private:
     typedef boost::shared_ptr<Substitution> SubstPtr;
@@ -44,8 +47,7 @@ private:
     SubstPtr _substitution;
     int _chunkLevel;
     bool _hasAggregate;
-    std::string _fixupSelect;
-    std::string _fixupPost;
+    MergeFixup _mFixup;
     Deque _subChunked;
 };
 

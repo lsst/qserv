@@ -483,6 +483,8 @@ class QueryCollater:
         if not self._mysqlBin:
             self._mysqlBin = "mysql"
         # setup C++ merger
+        # FIXME: This code is deprecated-- it doesn't properly 
+        # configure the merger.
         mergeConfig = TableMergerConfig(self._dbName, self._finalQname, 
                                        self._dbUser, self._dbSock, 
                                        self._mysqlBin)
@@ -572,7 +574,7 @@ class QueryBabysitter:
             mysqlBin = "mysql"
 
         mergeConfig = TableMergerConfig(dbName, resultName, 
-                                        fixup[0], fixup[1],
+                                        fixup,
                                         dbUser, dbSock, 
                                         mysqlBin)
         configureSessionMerger(self._sessionId, mergeConfig)
@@ -679,13 +681,8 @@ class HintedQueryAction:
         if not self._isValid:
             return
         # Query babysitter.
-        fixupSelect = ""
-        fixupPost = ""
-        if self._substitution.getHasAggregate():
-            fixupSelect = self._substitution.getFixupSelect()
-            fixupPost = self._substitution.getFixupPost()
         self._babysitter = QueryBabysitter(self._sessionId, self.queryHash,
-                                           (fixupSelect, fixupPost),
+                                           self._substitution.getMergeFixup(),
                                            reportError, resultName)
         self._reportError = reportError
         ## For generating subqueries
