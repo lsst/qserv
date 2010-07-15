@@ -52,10 +52,12 @@ all.adminpath /data/lsst
 # host:port of manager instance (2131 is default)
 all.manager tuson121:2131
 
-# Valid paths that can be accessed.  
+# Do not change. This specifies valid virtual paths that can be accessed.  
 # "nolock" directive prevents write-locking and is important for qserv
-# 
+# qserv is hardcoded for these paths. 
 all.export /query2/ nolock
+all.export /result/ nolock
+
 
 # Optional: Prevent dns resolution in logs.  
 # This may speed up request processing.
