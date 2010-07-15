@@ -1,0 +1,280 @@
+== qserv quick installation guide ==
+[[wiki:LSSTDatabase LSST Data Mgmt]] [[wiki:dbScalableArch qserv]] 
+
+=== Preliminaries ===
+First, collect all the software you will be needing:
+ * Scons
+ * Python 2.5+
+ * Twisted networking libraries for python
+ * MySQL 5.1+
+ * xrootd/Scalla qserv-customized fork
+ * qserv master source
+ * qserv worker source
+
+==== Terminology ====
+qserv consists of one front-end node ("master") which dispatches
+work/queries to one or more "worker" nodes. Multi-master operation
+should be possible, but is untested.  This section introduces the
+parts of qserv and how they interact with each other.
+
+ * mysqlproxy: Receives MySQL queries from any MySQL client, performs
+   basic query checks and forwards XML-RPC calls to the qserv-master for
+   processing.
+
+ * qserv-master: High-level query management daemon that accepts
+   XML-RPC queries from the mysqlproxy instance, and performs
+   processing to generate and dispatch sub-queries to compute query
+   results.  Acts as an xrootd client to the xrootd/Scalla system
+   while performing subquery dispatch and execution.
+
+ * xrootd/Scalla system: Acts to insulate the master from data layout
+   topology changes, allowing continuous operation despite worker
+   joining/leaving, data replication, or crashing.  A pair of daemons
+   xrootd and cmsd collaborate on each master or worker node to manage
+   cluster state and perform query service.
+
+ * qserv-worker: Implemented as a filesystem plugin to an xrootd
+   daemon in "server" mode. On a worker node, an xrootd will be
+   running with a qserv-worker plugin.  This plugin receives
+   subqueries addressed with a file (named by partition number),
+   executes them against a local MySQL instance, and furnishes results
+   addressed by another file (named according to the hash of the
+   subquery).
+
+ * MySQL: Provides metadata and results processing as well as backend
+   subquery execution.  MySQL was chosen because of its relatively high
+   performing queries on our targeted read-only dataset.
+
+
+=== Software Compilation ===
+Compile everything.  No special compilation options are necessary,
+except those that locate dependency paths for qserv.  
+
+Example paths in build scripts for for lsst-dev01.
+qserv-master:
+{{{
+export LSST_EXTHOME=/u1/lsst/stack/Linux64/external
+export XRD_DIR=/u1/lsst/stack/xrd
+export XRD_PLATFORM=x86_64_linux_26_dbg
+export SCONS_BIN=$LSST_EXTHOME/sconsDistrib/0.98.5/bin
+export SWIG=$LSST_EXTHOME/swig/1.3.36+2/bin/swig
+export SEARCH_ROOTS=/opt/local:/u1/local
+$SCONS_BIN/scons 
+}}}
+qserv-worker:
+{{{
+LSSTEXT=/u1/lsst/stack/Linux64/external
+export BOOST_DIR=/opt/local
+export MYSQL_DIR=$LSSTEXT/mysqlclient/5.0.45+1
+SCONS_BIN=$LSSTEXT/sconsDistrib/0.98.5/bin
+export XRD_PLATFORM=x86_64_linux_26_dbg 
+export XRD_DIR=/u1/lsst/stack/xrd 
+$SCONS_BIN/scons $1 $2 $3 $4 $5 $6
+}}}
+
+=== Software Assembly: Master ===
+The front-end consists of three components:
+* MySQL server (for results and query aggregation)
+* xrootd/cmsd in manager mode
+* qserv master daemon
+* mysqlproxy
+
+==== MySQL Server ====
+ * Start the MySQL server on the front-end machine.
+ * Create a MySQL user.  We have tested with user=qsmaster.  This is the
+   user name that the qserv front-end uses to connect with the MySQL
+   database.  
+ * Create a database to hold results. qservResult is what we have used
+   for development.
+ * Grant full control of the result database to the database user you
+   created earlier. 
+==== xrootd/cmsd ====
+ * Create a working directory for xrootd/cmsd.     
+ * Copy the sample xrootd configuration file from examples/lsp.cf in
+ your qserv master source distribution to this new working directory
+ and modify it to your needs.  A  single configuration file can be
+ shared among all xrootd/cmsd pairs for both master and worker nodes. 
+ * Edit the configuration file.
+   * Change the hostname of the manager in the if-block and later
+   where the manager's host:port is specified.  Server hostnames do
+   not need to be specified since they will determine their hostnames
+   by introspection and register these with the manager.
+   * Change the paths for: 
+   {{{
+   oss.localroot /data/lsst/lspexport
+   }}}
+   This is a writable path that is used by the cmsd to determine which
+   files (for qserv, partitions) are available and publishable by that
+   instance.  This is not your working directory, but may be a
+   subdirectory of it.
+   {{{
+   cms.pidpath /data/lsst
+   all.adminpath /data/lsst
+   }}}
+   These writable paths will be used to save logging and other
+   run-time xrootd/cmsd information.  These should probably point at
+   your working directory.
+
+   {{{
+   all.export /query2/ nolock
+   all.export /result/ nolock
+   }}}
+   Do not change these paths.
+
+ * Copy the trunk/lib/libqserv_worker_xrd.so from your qserv-worker
+ compilation into the working directory for your xrootd instance.
+ Each time you recompile qserv-worker code, you will need to recopy
+ this file.
+ * Start xrootd/cmsd on the master node (in manager mode) and then on
+ your worker nodes (in server mode).  Check the log files for error
+ messages. In the master node, you should see events for workers
+ registering.  In the worker nodes, you should see events for
+ successfully registering with the master.
+   * You may need to configure the worker via environment
+    variables. FIXME.
+
+==== qserv master/front-end ====
+ * Copy the examples/lsst-dev01.qserv.cnf from the qserv-master source
+ and edit it to suit your needs.  In particular, you will probably
+ need to change the "unix_socket" used by qserv to connect to MySQL,
+ and the "scratch_path" where qserv will temporarily buffer subquery
+ results before loading them into the result table. The partitioning
+ information also needs to be configured as your data is partitioned
+ (Data partitioning is discussed later in this document.).
+ * If your python path includes the python/ subdirectory of your
+ qserv-master source tree, you can start the front-end by invoking
+ bin/startQserv.py in the qserv-master source.
+=== Loading Data ===
+==== Preliminaries ====
+You will need:
+ * Object or Source data in csv(and the corresponding schema)
+ * partition.py from qserv/master/examples/
+
+We have tested loading DC3b PT1 Object and Source data, and USNO-B
+Object data. 
+
+==== Running the partitioner ====
+ * For the PT1 data, we have used:
+ {{{
+ python partition.py -PSource -t 32 -p 33 ../source.csv -S 10 -s 2
+ python partition.py -PObject -t 2 -p 4 ../object.csv -S 10 -s 2
+ }}}
+ The parameters "-S 10" and "-s 2" specify the spatial chunk sizes.
+ Since qserv assumes that all partitioned data is partitioned
+ identically (i.e., according to the same spatial boundaries), these
+ parameters must be the same for all data you load into a particular
+ qserv cluster.
+
+ FYI, the single CCD data we have used so far only results in one chunk.
+
+ * For USNO it's a little tricky.  We have a reduced (1/100,000th the
+ size) data set for testing functionality, and we are using rather
+ large (spatially) chunks for it.
+ {{{
+ python partition.py -t 1 -p 2 obj_div100k_lineno.csv -S 10 -s 2
+ }}}
+ The full USNO-B set has 1 billion objects, and needs increased
+ chunking to provide reasonable performance in O(n^2) join queries.
+ See the built-in help for partition.py for more information.
+ 
+==== Loading the data ====
+ The partitioner should result in a set of directories named
+ "stripe_N".  Within each stripe_N directory, there are csv files for
+ the partitioned tables and overlap tables (for joins).  Each is
+ numbered according to chunk number.  e.g., stripe_1 may contain
+ chunks 36,37,38,39,40:
+ {{{
+ ObjectFullOverlap_36.csv  ObjectSelfOverlap_36.csv  Object_36.csv
+ ObjectFullOverlap_37.csv  ObjectSelfOverlap_37.csv  Object_37.csv
+ ObjectFullOverlap_38.csv  ObjectSelfOverlap_38.csv  Object_38.csv
+ ObjectFullOverlap_39.csv  ObjectSelfOverlap_39.csv  Object_39.csv
+ ObjectFullOverlap_40.csv  ObjectSelfOverlap_40.csv  Object_40.csv
+ }}}
+ These chunks are spatially adjacent, but qserv does not require
+ adjacent chunks to be loaded into the same server. In this example,
+ chunks 36, 37, 38, 39, and 40 could go into five different servers.
+ * Distribute these chunks among the workers and load them into the
+ workers' MySQL instances, in a database named "LSST."  Use the
+ appropriate schema according to your input data, noting that the
+ partitioner has added two columns, chunkId and subChunkId to each row
+ in the csv files.  The csv files are named according to their table
+ name, e.g., ObjectFullOverlap_36.csv should be loaded into
+ LSST.ObjectFullOverlap_36 .
+ * Continue until all chunks are loaded for all tables are loaded.
+ * On each worker, create dummy files in the xrootd exported path so
+ that the xrootd daemon will report ownership of the worker's chunks.
+ For example, if your export directory is {{{/data/lsst/lspexport}}},
+ and the worker carries chunks 5, 23, and 132, create dummy files in a
+ query2/ subdirectory in that path.  i.e. 
+ {{{
+ mkdir -p /data/lsst/lspexport/query2
+ touch /data/lsst/lspexport/query2/{5,23,132}
+ }}}
+ * (Alternative: Try the qserv/master/examples/loader.py .  It requires
+ TCP socket connectable MySQL instances, but handles much of the grunt
+ work.)
+
+ Now the worker databases should be loaded with data, and the Scalla
+ system should be primed with chunk locality information.
+==== Adding the ObjectId index ====
+ * Use qserv/master/bin/createObjectIdIndex.py to create the objectId
+   index table for speeding up queries for particular objectIds.  The
+   script queries a MySql instance for tables matching "LSST.Object*"
+   and creates a table ObjectChunkIndex.  
+ * The ObjectChunkIndex table should ultimately reside on the
+ master/frontend node and contain all objectIds from all chunks.  Note
+ that the script only works for a single node, so you will need to
+ manually merge rows if you have multiple workers.
+
+The objectId index feature is relatively new to qserv, so please
+suggest/implement changes to improve its robustness, usability,
+configurability, etc.
+
+=== Appendix ===
+==== Notes on xrootd/Scalla ====
+The xrootd/Scalla system was originally written as a distributed
+high-performance filesystem for serving particle physics data.
+Its design tradeoffs reflect its heritage in supporting high volume
+particle physics data access by a dispersed set of users worldwide
+with little downtime and a shoestring staff.  
+
+Typically, each node in the system runs one xrootd instance and one
+cmsd instance, and the pair operate in either "manager" or "server"
+modes.  For clusters up to 63 worker nodes, one manager is needed.
+(For larger clusters, a "supervisor" node is used.  Its use has not
+been tested in qserv development so far.)  Manager nodes operate as
+*redirectors* and cluster managers.  Server nodes register themselves
+with their manager node when they are alive and able to service
+requests.
+
+Qserv subqueries are dispatched to workers in a two-file model.
+First, a file named according to a partition number is opened, and the
+subquery is written into the resulting file descriptor.  Another file,
+named as the hash of the subquery, is opened and subquery results are
+read from its file descriptor.  When an xrootd client opens a file, it
+contacts the manager pair (whose host name is in the file's URL),
+which redirects the client to open a connection to the server pair
+which hosts the data of interest.  After it writes the subquery into
+the server, the client memoizes the particular server's URL so that it
+may be contacted directly for the query results.  (Remembering the
+server URL is an optimization which avoids contacting the manager to
+resolve the result file's server.)
+
+In each xrootd/cmsd pair, the xrootd instance handles external client
+requests, and the cmsd instance handles file location and node
+registration.  xrootd instances delegate file location resolution and
+registration to their associated cmsd.  At startup, xrootd instances
+register with their cmsd instances, and server cmsd instances register
+with the manager cmsd.  To lookup a file location, a manager cmsd
+broadcasts a poll to all of its registered cmsd servers for the
+particular file and accepts the first (positive) response.  Negative
+answers are communicated by not responding to the broadcast.  Once the
+manager cmsd receives the answer, it relays the server's connection
+information to its xrootd, which relays it back to the client.
+File-to-server mappings are cached by the manager cmsd.  Note that the
+xrootd/cmsd pairs are stateless, except for server registration and
+lookup caching in the manager.
+
+
+
+
