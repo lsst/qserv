@@ -3,8 +3,8 @@
   *
   * Provided are methods for
   * @li computing the angular separation between two points on the unit sphere
-  * @li testing whether points belong to various spherical boxes, circles,
-  *     ellipses and convex polygons.
+  * @li testing whether points belong to spherical boxes, circles, ellipses and
+  *     convex polygons.
   *
   * @author Serge Monkewitz
   */
@@ -13,7 +13,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <mysql.h>
+#include "mysql/mysql.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,16 +68,18 @@ my_bool qserv_angSep_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
 }
 
 /** Returns the angular separation in degrees between two spherical
-  * coordinate pairs.
+  * coordinate pairs (ra1, dec1) and (ra2, dec2).
   *
   * Consumes 4 arguments ra1, dec1, ra2 and dec2 all of type REAL:
-  *   ra1:   right ascension of the first position (deg)
-  *   dec1:  declination of the first position (deg)
-  *   ra2:   right ascension of the second position (deg)
-  *   dec2:  declination of the second position (deg)
+  * @li ra1:  right ascension of the first position (deg)
+  * @li dec1: declination of the first position (deg)
+  * @li ra2:  right ascension of the second position (deg)
+  * @li dec2: declination of the second position (deg)
   *
-  * The angular separation in degrees between (ra1, dec1) and (ra2, dec2)
-  * is returned, also as a REAL.
+  * Also:
+  * @li If any parameter is NULL, NULL is returned.
+  * @li If dec1 or dec2 lies outside of [-90, 90], this is an error
+  *     and NULL is returned.
   */
 double qserv_angSep(UDF_INIT *initid,
                     UDF_ARGS *args,
@@ -98,8 +100,8 @@ double qserv_angSep(UDF_INIT *initid,
     dec1 = *(double *) args->args[1];
     dec2 = *(double *) args->args[3];
     if (dec1 < -90.0 || dec1 > 90.0 || dec2 < -90.0 || dec2 > 90.0) {
-        *error = 1;
-        return 0;
+        *is_null = 1;
+        return 0.0;
     }
     return _qserv_angSep(*(double *) args->args[0], dec1,
                          *(double *) args->args[2], dec2);
@@ -132,7 +134,7 @@ my_bool qserv_ptInSphBox_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
             const_item = 0;
         }
     }
-    initid->maybe_null = 0;
+    initid->maybe_null = 1;
     initid->const_item = const_item;
     return 0;
 }
@@ -141,8 +143,26 @@ my_bool qserv_ptInSphBox_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
   * the given position, and 0 otherwise.
   *
   * Consumes 6 arguments ra, dec, ra_min, dec_min, ra_max and dec_max, in
-  * that order and all of type REAL.
-  * TODO
+  * that order, all of type REAL and in units of degrees. (ra, dec) is the
+  * position to test - the remaining parameters specify the spherical box.
+  *
+  * Note that:
+  * @li If any parameter is NULL, the return value is 0.
+  * @li If dec, dec_min or dec_max lies outside of [-90, 90],
+  *     this is an error and NULL is returned.
+  * @li If dec_min is greater than dec_max, the spherical box is empty
+  *     and 0 is returned.
+  * @li If both ra_min and ra_max lie in the range [0, 360], then ra_max
+  *     can be less than ra_min. For example, a box with ra_min = 350
+  *     and ra_max = 10 includes points with right ascensions in the ranges
+  *     [350, 360) and [0, 10].
+  * @li If either ra_min or ra_max lies outside of [0, 360], then ra_min
+  *     must be <= ra_max (otherwise, NULL is returned), though the values
+  *     can be arbitrary. If the two are separated by 360 degrees or more,
+  *     then the box spans [0, 360). Otherwise, both values are range reduced.
+  *     For example, a spherical box with ra_min = 350 and ra_max = 370
+  *     includes points with right ascensions in the rnages [350, 360) and
+  *     [0, 10].
   */
 long long qserv_ptInSphBox(UDF_INIT *initid,
                            UDF_ARGS *args,
@@ -166,11 +186,11 @@ long long qserv_ptInSphBox(UDF_INIT *initid,
     /* Check arguments. */
     if (dec < -90.0 || dec_min < -90.0 || dec_max < -90.0 ||
         dec > 90.0 || dec_min > 90.0 || dec_max > 90.0) {
-        *error = 1;
+        *is_null= 1;
         return 0;
     }
     if (ra_max < ra_min && (ra_max < 0.0 || ra_min > 360.0)) {
-        *error = 1;
+        *is_null= 1;
         return 0;
     }
     if (dec_min > dec_max || dec < dec_min || dec > dec_max) {
@@ -216,7 +236,7 @@ my_bool qserv_ptInSphCircle_init(UDF_INIT *initid,
             const_item = 0;
         }
     }
-    initid->maybe_null = 0;
+    initid->maybe_null = 1;
     initid->const_item = const_item;
     initid->ptr = 0;
     /* For constant radius circles, cache (sin(radius/2))^2 across calls. */
@@ -233,14 +253,19 @@ void qserv_ptInSphCircle_deinit(UDF_INIT *initid) {
 /** Returns 1 if the given circle on the unit sphere contains
   * the specified position and 0 otherwise.
   *
-  * Consumes 5 arguments ra, dec, ra_cen, dec_cen and radius, in that order
-  * and all of type REAL:
+  * Consumes 5 arguments, all of type REAL:
+  * @li ra:       right ascension of position to test (deg)
+  * @li dec:      declination of position to test (deg)
+  * @li ra_cen:   right ascension of circle center (deg)
+  * @li dec_cen:  declination of circle center (deg)
+  * @li radius:   radius (opening angle) of circle (deg)
   *
-  *   ra       right ascension of position to test (deg)
-  *   dec      declination of position to test (deg)
-  *   ra_cen   right ascension of circle center (deg)
-  *   dec_cen  declination of circle center (deg)
-  *   radius   radius (opening angle) of circle (deg)
+  * Note that:
+  * @li If any parameter is NULL, the return value is 0.
+  * @li If dec or dec_cen lies outside of [-90, 90],
+  *     this is an error and NULL is returned.
+  * @li If radius is negative or greater than 180, this is
+  *     an error and NULL is returned.
   */
 long long qserv_ptInSphCircle(UDF_INIT *initid,
                               UDF_ARGS *args,
@@ -261,11 +286,11 @@ long long qserv_ptInSphCircle(UDF_INIT *initid,
     r = *(double *) args->args[4];
     /* Check arguments */
     if (dec < -90.0 || dec > 90.0 || decCen < -90.0 || decCen > 90.0) {
-        *error = 1;
+        *is_null = 1;
         return 0;
     }
     if (r < 0.0 || r > 180.0) {
-        *error = 1;
+        *is_null = 1;
         return 0;
     }
     deltaDec = fabs(dec - decCen);
@@ -327,7 +352,7 @@ my_bool qserv_ptInSphEllipse_init(UDF_INIT *initid,
             }
         }
     }
-    initid->maybe_null = 0;
+    initid->maybe_null = 1;
     initid->const_item = const_item;
     initid->ptr = 0;
     /* If ellipse parameters are constant, allocate derived quantity cache. */
@@ -344,16 +369,23 @@ void qserv_ptInSphEllipse_deinit(UDF_INIT *initid) {
 /** Returns 1 if the given ellipse on the unit sphere contains
   * the specified position and 0 otherwise.
   *
-  * Consumes 7 arguments ra, dec, ra_cen, dec_cen, smaa, smia and ang, in
-  * that order and all of type REAL:
+  * Consumes 7 arguments, all of type REAL:
+  * @li ra:       right ascension of position to test (deg)
+  * @li dec:      declination of position to test (deg)
+  * @li ra_cen:   right ascension of ellipse center (deg)
+  * @li dec_cen:  declination of ellipse center (deg)
+  * @li smaa:     semi-major axis length (arcsec)
+  * @li smia:     semi-minor axis length (arcsec)
+  * @li ang:      ellipse position angle (deg)
   *
-  *   ra       right ascension of position to test (deg)
-  *   dec      declination of position to test (deg)
-  *   ra_cen   right ascension of ellipse center (deg)
-  *   dec_cen  declination of ellipse center (deg)
-  *   smaa     semi-major axis length (arcsec)
-  *   smia     semi-minor axis length (arcsec)
-  *   ang      ellipse position angle (deg)
+  * Note that:
+  * @li If any parameter is NULL, the return value is 0.
+  * @li If dec or dec_cen lies outside of [-90, 90],
+  *     this is an error and NULL is returned.
+  * @li If smia is negative or greater than smaa, this is
+  *     an error and NULL is returned.
+  * @li If smaa is greater than 36000 arcsec (10 deg), this
+  *     is an error and NULL is returned.
   */
 long long qserv_ptInSphEllipse(UDF_INIT *initid,
                                UDF_ARGS *args,
@@ -375,7 +407,7 @@ long long qserv_ptInSphEllipse(UDF_INIT *initid,
     dec = *(double *) args->args[1];
     decCen = *(double *) args->args[3];
     if (dec < -90.0 || dec > 90.0 || decCen < -90.0 || decCen > 90.0) {
-        *error = 1;
+        *is_null = 1;
         return 0;
     }
     /* Semi-minor axis length m and semi-major axis length M must satisfy
@@ -383,7 +415,7 @@ long long qserv_ptInSphEllipse(UDF_INIT *initid,
     m = *(double *) args->args[5];
     M = *(double *) args->args[4];
     if (m < 0.0 || m > M || M > 10.0 * QSERV_ARCSEC_PER_DEG) {
-        *error = 1;
+        *is_null = 1;
         return 0;
     }
     ellipse.valid = 0;
@@ -495,7 +527,6 @@ static int _qserv_parseSphPoly(_qserv_sphPoly_t *poly,
     char buffer[256];
     double verts[16*2];
     double c;
-    unsigned long i;
     /* Use stack allocated buffers where possible. */
     double *v = verts;
     char *s = buffer, *vs = 0, *ep = 0;
@@ -590,7 +621,7 @@ my_bool qserv_ptInSphPoly_init(UDF_INIT *initid,
             const_item = 0;
         }
     }
-    initid->maybe_null = 0;
+    initid->maybe_null = 1;
     initid->const_item = const_item;
     initid->ptr = 0;
     /* If polygon spec is constant, parse and cache it. */
@@ -623,19 +654,27 @@ void qserv_ptInSphPoly_deinit(UDF_INIT *initid) {
   * Consumes 3 arguments ra, dec and poly. The ra and dec parameters
   * must be convertible to a REAL, and poly must be a STRING.
   *
-  *   ra       right ascension of position to test (deg)
-  *   dec      declination of position to test (deg)
-  *   poly     polygon specification
+  * @li ra:    right ascension of position to test (deg)
+  * @li dec:   declination of position to test (deg)
+  * @li poly:  polygon specification
+  *
+  * Note that:
+  * @li If any input parameter is NULL, 0 is returned.
+  * @li If dec is outside of [-90,90], this is an error and NULL is returned.
+  * @li If the polygon spec is invalid or cannot be parsed (e.g. because the
+  *     the server has run out of memory), this is an error and the return
+  *     value is NULL.
   *
   * A polygon specification consists of a space separated list of vertex
   * coordinate pairs: "ra_0 dec_0 ra_1 dec_1 .... ra_n dec_n". There must
-  * be at least 3 coordinate pairs. Also, if the following conditions are not
-  * satisfied, then the return value of the function is undefined:
+  * be at least 3 coordinate pairs and declinations must lie in the range
+  * [-90,90]. Also, if the following conditions are not satisfied, then the
+  * return value of the function is undefined:
   *
-  * - vertices are hemispherical
-  * - vertices form a convex polygon when connected with great circle edges
-  * - vertices lie in counter-clockwise order when viewed from a position
-  *   outside the unit sphere and inside the half-space containing them.
+  * @li vertices are hemispherical
+  * @li vertices form a convex polygon when connected with great circle edges
+  * @li vertices lie in counter-clockwise order when viewed from a position
+  * @li outside the unit sphere and inside the half-space containing them.
   */
 long long qserv_ptInSphPoly(UDF_INIT *initid,
                             UDF_ARGS *args,
@@ -656,7 +695,7 @@ long long qserv_ptInSphPoly(UDF_INIT *initid,
     /* Check that dec is in range */
     dec = *(double *) args->args[1];
     if (dec < -90.0 || dec > 90.0) {
-        *error = 1;
+        *is_null = 1;
         return 0;
     }
     ra = *(double *) args->args[0] * QSERV_RAD_PER_DEG;
@@ -667,7 +706,7 @@ long long qserv_ptInSphPoly(UDF_INIT *initid,
     } else {
         pp = &poly;
         if (_qserv_parseSphPoly(pp, args->args[2], args->lengths[2]) != 0) {
-            *error = 1;
+            *is_null = 1;
             return 0;
         }
     }

@@ -1,0 +1,12 @@
+# -*- python -*-
+Import('env')
+import os, fnmatch, glob
+
+sources=[]
+for root, dirs, files in os.walk('../../udf'):
+    sources += fnmatch.filter(files, "*.c")
+    dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
+
+env.Append(CFLAGS=['-O2'])
+lib = env.SharedLibrary("qserv_udf", sources)
+env.Append(built_libs=[lib])

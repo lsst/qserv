@@ -92,6 +92,39 @@ if not conf.CheckLib("boost_signals-gcc34-mt", language="C++") \
     Exit(1)
 env = conf.Finish()
 
+checkSinCosSource = """
+    #include <math.h>
+    int main(int argc, char **argv)
+    {
+        double s, c;
+        sincos(0.5, &s, &c);
+        return 0;
+    }
+    """
+
+def CheckSinCos(context):
+    context.Message('Checking for sincos()...')
+    result = context.TryLink(checkSinCosSource, '.c')
+    context.Result(result)
+    return result
+
+udfEnv = Environment()
+if os.environ.has_key('MYSQL_SERVER_DIR'):
+    mysql_server_dir = os.environ['MYSQL_SERVER_DIR']
+    if os.path.isdir(mysql_server_dir):
+        udfEnv.Prepend(CPPPATH=[os.path.join(mysql_server_dir,"include")])
+udfEnv.Append(CPPDEFINES=["-D_GNU_SOURCE"])
+conf = Configure(udfEnv, custom_tests = {'CheckSinCos' : CheckSinCos})
+if not conf.CheckLibWithHeader("m", "math.h", "c"):
+    print >> sys.stderr, "Could not locate libm"
+    Exit(1)
+if conf.CheckSinCos():
+    conf.env.Append(CPPDEFINES=["-DQSERV_HAVE_SINCOS=1"])
+if not conf.CheckHeader("mysql/mysql.h"):
+    print >> sys.stderr, "Could not locate mysql"
+    Exit(1)
+udfEnv = conf.Finish()
+
 # Describe what your package contains here.
 env.Help("""
 LSST Query Services worker package
@@ -111,7 +144,13 @@ for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
                    exports={'env' : expEnv})
     except Exception, e:
         print >> sys.stderr, "%s: %s" % (os.path.join("src", "SConscript.lib"), e)
-        
+
+# Build UDFs
+try:
+    SConscript("SConscript.udf", build_dir='bld', exports={'env': udfEnv})
+except Exception, e:
+    print >> sys.stderr, "%s: %s" % (os.path.join("udf", "SConscript"), e)
+
 for d in Split("tests doc"): 
     if os.path.isdir(d):
         try:
