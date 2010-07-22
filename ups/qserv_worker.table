@@ -2,6 +2,7 @@
 # version number.
 setupRequired(boost >= 1.37.0)
 setupRequired(mysqlclient >= 5.0.45)
+setupOptional(mysqlpython >= 1.2.2)
 
 # The following is boilerplate for all packages.
 setupRequired(base >= 3.1)

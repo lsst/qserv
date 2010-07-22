@@ -49,7 +49,9 @@ my_bool qserv_angSep_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     int i;
     my_bool maybe_null = 0, const_item = 1;
     if (args->arg_count != 4) {
-        strcpy(message, "qserv_angSep() expects 4 arguments");
+        strncpy(message, "qserv_angSep() expects 4 arguments",
+                MYSQL_ERRMSG_SIZE - 1);
+        message[MYSQL_ERRMSG_SIZE - 1] = '\0';
         return 1;
     }
     for (i = 0; i < 4; ++i) {
@@ -125,7 +127,9 @@ my_bool qserv_ptInSphBox_init(UDF_INIT *initid, UDF_ARGS *args, char *message) {
     int i;
     my_bool const_item = 1;
     if (args->arg_count != 6) {
-        strcpy(message, "qserv_ptInSphBox() expects 6 arguments");
+        strncpy(message, "qserv_ptInSphBox() expects 6 arguments",
+                MYSQL_ERRMSG_SIZE - 1);
+        message[MYSQL_ERRMSG_SIZE - 1] = '\0';
         return 1;
     }
     for (i = 0; i < 6; ++i) {
@@ -227,7 +231,9 @@ my_bool qserv_ptInSphCircle_init(UDF_INIT *initid,
     int i;
     my_bool const_item = 1;
     if (args->arg_count != 5) {
-        strcpy(message, "qserv_ptInSphCircle() expects 5 arguments");
+        strncpy(message, "qserv_ptInSphCircle() expects 5 arguments",
+                MYSQL_ERRMSG_SIZE - 1);
+        message[MYSQL_ERRMSG_SIZE - 1] = '\0';
         return 1;
     }
     for (i = 0; i < 5; ++i) {
@@ -340,7 +346,9 @@ my_bool qserv_ptInSphEllipse_init(UDF_INIT *initid,
     int i;
     my_bool const_item = 1, const_ellipse = 1;
     if (args->arg_count != 7) {
-        strcpy(message, "qserv_ptInSphEllipse() expects 7 arguments");
+        strncpy(message, "qserv_ptInSphEllipse() expects 7 arguments",
+                MYSQL_ERRMSG_SIZE - 1);
+        message[MYSQL_ERRMSG_SIZE - 1] = '\0';
         return 1;
     }
     for (i = 0; i < 7; ++i) {
@@ -605,12 +613,15 @@ my_bool qserv_ptInSphPoly_init(UDF_INIT *initid,
     int i;
     my_bool const_item = 1, const_poly = 1;
     if (args->arg_count != 3) {
-        strcpy(message, "qserv_ptInSphPoly() expects 3 arguments");
+        strncpy(message, "qserv_ptInSphPoly() expects 3 arguments",
+                MYSQL_ERRMSG_SIZE - 1);
+        message[MYSQL_ERRMSG_SIZE - 1] = '\0';
         return 1;
     }
     if (args->arg_type[2] != STRING_RESULT) {
-        strcpy(message, "qserv_ptInSphPoly() expects polygon "
-               "specification to be a string");
+        strncpy(message, "qserv_ptInSphPoly() expects polygon "
+                "specification to be a string", MYSQL_ERRMSG_SIZE - 1);
+        message[MYSQL_ERRMSG_SIZE - 1] = '\0';
         return 1;
     }
     const_item = args->args[2] != 0;
@@ -628,13 +639,15 @@ my_bool qserv_ptInSphPoly_init(UDF_INIT *initid,
     if (const_poly) {
         _qserv_sphPoly_t *poly = calloc(1, sizeof(_qserv_sphPoly_t));
         if (poly == 0) {
-            strcpy(message, "qserv_ptInSphPoly(): failed to allocate memory "
-                   "for polygon");
+            strncpy(message, "qserv_ptInSphPoly(): failed to allocate memory "
+                    "for polygon", MYSQL_ERRMSG_SIZE - 1);
+            message[MYSQL_ERRMSG_SIZE - 1] = '\0';
             return 1;
         }
         if (_qserv_parseSphPoly(poly, args->args[2], args->lengths[2]) != 0) {
-            strcpy(message, "qserv_ptInSphPoly(): failed to parse spherical "
-                   "convex polygon spec");
+            strncpy(message, "qserv_ptInSphPoly(): failed to parse spherical "
+                    "convex polygon spec", MYSQL_ERRMSG_SIZE - 1);
+            message[MYSQL_ERRMSG_SIZE - 1] = '\0';
             free(poly);
             return 1;
         }

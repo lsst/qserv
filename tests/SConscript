@@ -29,3 +29,6 @@ for src in Glob("*.cc"):
     test = testEnv.Test(prog)
     testEnv.Depends(test, testEnv['built_libs'])
     pass
+
+for src in Glob("*.py"):
+    testEnv.Test(src)
