@@ -61,6 +61,10 @@ public:
     XrdTransResult const& results() const { return _result; }
     std::string getDesc() const;
     std::string const& getSavePath() const { return _spec.savePath; }
+    int getSaveSize() const { 
+        if(_result.read > 0) return _result.localWrite; 
+        else return -1;
+    }
     void requestSquash() { _shouldSquash = true; }
 
 private:

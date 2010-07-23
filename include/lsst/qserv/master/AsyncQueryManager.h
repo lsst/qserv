@@ -58,7 +58,9 @@ public:
     typedef boost::shared_ptr<AsyncQueryManager> Ptr;
     
     explicit AsyncQueryManager() 
-        :_lastId(1000000000), _isExecFaulty(false), _queryCount(0) {}
+        :_lastId(1000000000), _isExecFaulty(false), _queryCount(0),
+        _shouldLimitResult(false), _totalSize(0),
+        _resultLimit(1024*1024*1024) {}
     void configureMerger(TableMergerConfig const& c);
 
     int add(TransactionSpec const& t, std::string const& resultName);
@@ -69,7 +71,7 @@ public:
     ResultDeque const& getFinalState() { return _results; }
     void finalizeQuery(int id,  XrdTransResult r, bool aborted); 
     std::string getMergeResultName() const;
-    
+
 private:
     typedef std::pair<boost::shared_ptr<ChunkQuery>, std::string> QuerySpec;
     typedef std::map<int, QuerySpec> QueryMap;
@@ -83,7 +85,10 @@ private:
 	return ++_lastId;
     }
     void _printState(std::ostream& os);
+    void _addNewResult(ssize_t dumpSize, std::string const& dumpFile, 
+                       std::string const& tableName);
     void _squashExecution();
+    void _squashRemaining();
 
     boost::mutex _idMutex;
     boost::mutex _queriesMutex;
@@ -95,6 +100,9 @@ private:
     QueryMap _queries;
     ResultDeque _results;
     int _queryCount;
+    bool _shouldLimitResult;
+    ssize_t _resultLimit;
+    ssize_t _totalSize;
     boost::shared_ptr<TableMerger> _merger;
 };
 

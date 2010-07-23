@@ -270,7 +270,7 @@ void qMaster::ChunkQuery::_readResults(int fd) {
 
 	// Now read.
 	qMaster::xrdReadToLocalFile(fd, fragmentSize, _spec.savePath.c_str(), 
-			   &(_result.localWrite), &(_result.read));        
+			   &(_result.localWrite), &(_result.read));
 	int res = qMaster::xrdClose(fd);
         if(res != 0) {
             errnoComplain("Error closing after result read", fd, errno);

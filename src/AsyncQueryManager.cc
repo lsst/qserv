@@ -116,6 +116,7 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     /// We delete the ChunkQuery (the caller) here, so a ref would be invalid.
     std::string dumpFile;
     std::string tableName;
+    int dumpSize;
     // std::cout << "finalizing. read=" << r.read << " and status is "
     //           << (aborted ? "ABORTED" : "okay") << std::endl;
 
@@ -124,16 +125,12 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 	    boost::lock_guard<boost::mutex> lock(_queriesMutex);
 	    QuerySpec& s = _queries[id];
 	    dumpFile = s.first->getSavePath();
+            dumpSize = s.first->getSaveSize(); 
 	    tableName = s.second;
+            assert(r.localWrite == dumpSize);
 	    s.first.reset(); // clear out chunkquery.
         } // Lock-free merge
-        if(r.localWrite > 0) {
-            bool mergeResult = _merger->merge(dumpFile, tableName);
-             // std::cout << "Merge of " << dumpFile << " into "
-             //           << tableName 
-             //           << (mergeResult ? " OK----" : " FAIL====") 
-             //           << std::endl;
-        }
+        _addNewResult(dumpSize, dumpFile, tableName);
         { // Lock again to erase.
 	    boost::lock_guard<boost::mutex> lock(_queriesMutex);
             _queries.erase(id); // Don't need it anymore
@@ -187,7 +184,25 @@ std::string qMaster::AsyncQueryManager::getMergeResultName() const {
     return std::string();
 }
 
+void qMaster::AsyncQueryManager::_addNewResult(ssize_t dumpSize, 
+                                               std::string const& dumpFile, 
+                                               std::string const& tableName) {
+    assert(dumpSize >= 0);
+    _totalSize += dumpSize;
 
+    if(_shouldLimitResult && (_totalSize > _resultLimit)) {
+        _squashRemaining();
+    }
+            
+    if(dumpSize > 0) {
+        bool mergeResult = _merger->merge(dumpFile, tableName);
+        // std::cout << "Merge of " << dumpFile << " into "
+        //           << tableName 
+        //           << (mergeResult ? " OK----" : " FAIL====") 
+        //           << std::endl;
+    }
+
+}
 void qMaster::AsyncQueryManager::_printState(std::ostream& os) {
     typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
     std::for_each(_queries.begin(), _queries.end(), printQueryMapValue(os));
@@ -202,4 +217,8 @@ void qMaster::AsyncQueryManager::_squashExecution() {
     typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
     std::for_each(_queries.begin(), _queries.end(), squashQuery());
 
+}
+
+void qMaster::AsyncQueryManager::_squashRemaining() {
+    _squashExecution();  // Not sure if this is right. FIXME
 }
