@@ -40,48 +40,66 @@ namespace lsst {
 namespace qserv {
 namespace worker {
 
+// Forward
+class QueryRunner;
+
 ////////////////////////////////////////////////////////////////////////
 class QueryRunnerArg {
 public:
-    QueryRunnerArg(XrdSysError& e_, 
+    QueryRunnerArg(XrdSysError* e_, 
 		   std::string const& user_, ScriptMeta const& s_,
 		   std::string overrideDump_=std::string()) 
 	: e(e_), user(user_), s(s_), overrideDump(overrideDump_) { }
 
-    XrdSysError& e;
+    XrdSysError* e; // must be assignable
     std::string user;
     ScriptMeta s;
     std::string overrideDump;
 };
 
+class ArgFunc {
+public:
+    virtual ~ArgFunc() {}
+    virtual void operator()(QueryRunnerArg const& )=0;
+};
+
 ////////////////////////////////////////////////////////////////////////
 class QueryRunnerManager {
 public:
- QueryRunnerManager() : _limit(8), _jobTotal(0) {}
+    QueryRunnerManager() : _limit(8), _jobTotal(0) {}
     ~QueryRunnerManager() {}
 
     // const
-    bool hasSpace() const { return _running < _limit; }
-    bool isOverloaded() const { return _running > _limit; }
-    QueryRunnerArg const& getQueueHead() const;
-    int getQueueLength() const { return _queue.size();}
-    int getRunnerCount() const { return _running;}
+    bool hasSpace() const { return _runners.size() < _limit; }
+    bool isOverloaded() const { return _runners.size() > _limit; }
+    int getQueueLength() const { return _args.size();}
+    int getRunnerCount() const { return _runners.size();}
 
     // non-const
-    void add(QueryRunnerArg const& a);
+    void runOrEnqueue(QueryRunnerArg const& a);
     void setSpaceLimit(int limit) { _limit = limit; }
-    void popQueueHead();
-    void addRunner() { ++_running; }
-    void dropRunner() { --_running; }
+    bool squashByHash(std::string const& hash);
+    void addRunner(QueryRunner* q); 
+    void dropRunner(QueryRunner* q);
+    bool recycleRunner(ArgFunc* r);
 
     // Mutex
     boost::mutex& getMutex() { return _mutex; }
 
 private:
-    typedef std::deque<QueryRunnerArg> QueryQueue;
-    QueryQueue _queue;
+    typedef std::deque<QueryRunnerArg> ArgQueue;
+    typedef std::deque<QueryRunner*> QueryQueue;
+
+    QueryRunnerArg const& _getQueueHead() const;
+    void _popQueueHead();
+    bool _cancelQueued(std::string const& hash);
+    bool _cancelRunning(std::string const& hash);
+    void _enqueue(QueryRunnerArg const& a);
+
+    ArgQueue _args;
+    QueryQueue _runners;
     int _jobTotal;
-    int _running;
+    
     int _limit;
     boost::mutex _mutex;    
 };
@@ -97,12 +115,15 @@ public:
     explicit QueryRunner(QueryRunnerArg const& a);
     ~QueryRunner();
     bool operator()();
+    std::string const& getHash() const { return _meta.hash; }
+    void poison(std::string const& hash);
 
     // Static: 
     static Tracker& getTracker() { static Tracker t; return t;}
     static Manager& getMgr() { static Manager m; return m;}
 
 private:
+    typedef std::deque<std::string> StringDeque;
     bool _act();
     void _appendError(int errorNo, std::string const& desc);
     bool _connectDbServer(MYSQL* db);
@@ -126,6 +147,7 @@ private:
     bool _isExecutable(std::string const& execName);
     void _setNewQuery(QueryRunnerArg const& a);
     std::string _getErrorString() const;
+    boost::shared_ptr<ArgFunc> getResetFunc();
 
     XrdSysError& _e;
     std::string _user;
@@ -133,6 +155,8 @@ private:
     std::string _scriptId;
     int _errorNo;
     std::string _errorDesc;
+    boost::mutex _poisonedMutex;
+    StringDeque _poisoned;
 };
 
  int dumpFileOpen(std::string const& dbName);

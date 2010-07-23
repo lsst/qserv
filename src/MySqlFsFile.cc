@@ -38,6 +38,7 @@
 #endif
 #include "lsst/qserv/worker/Thread.h"
 #include "lsst/qserv/worker/QueryRunner.h"
+#include "lsst/qserv/worker/MySqlFsCommon.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -126,15 +127,7 @@ qWorker::Semaphore WriteCallable::_sema(2);
 
 bool flushOrQueue(qWorker::QueryRunnerArg const& a)  {
     qWorker::QueryRunner::Manager& mgr = qWorker::QueryRunner::getMgr();
-    {
-	boost::lock_guard<boost::mutex> m(mgr.getMutex());
-	if(mgr.hasSpace()) {
-	    // Spawn.
-	    launchThread(qWorker::QueryRunner(a));
-	} else {
-	    mgr.add(a);
-	}
-    }
+    mgr.runOrEnqueue(a);
     return true;
 }
 
@@ -177,19 +170,19 @@ int qWorker::MySqlFsFile::open(
         error.setErrInfo(EINVAL, "Null filename");
         return SFS_ERROR;
     }
-    _fileClass = _getFileClass(fileName);
+    _fileClass = fs::computeFileClass(fileName);
     switch(_fileClass) {
-    case COMBO:
+    case fs::COMBO:
 	_chunkId = findChunkNumber(fileName);
 	_eDest->Say((Pformat("File open %1%(%2%) by %3%")
 		     % fileName % _chunkId % _userName).str().c_str());
 	break;
-    case TWO_WRITE:
+    case fs::TWO_WRITE:
 	_chunkId = findChunkNumber(fileName);
 	_eDest->Say((Pformat("File open %1% for query invocation by %2%")
 		     % fileName % _userName).str().c_str());
 	break;
-    case TWO_READ:
+    case fs::TWO_READ:
 	rc = _handleTwoReadOpen(fileName);
 	if(rc != SFS_OK) {
 	    return rc;
@@ -206,10 +199,10 @@ int qWorker::MySqlFsFile::open(
 int qWorker::MySqlFsFile::close(void) {
     _eDest->Say((Pformat("File close(%1%) by %2%")
                  % _chunkId % _userName).str().c_str());
-    if((_fileClass == COMBO)  ||
-       ((_fileClass == TWO_READ) && _hasRead) )	{
+    if((_fileClass == fs::COMBO)  ||
+       ((_fileClass == fs::TWO_READ) && _hasRead) )	{
 	// Get rid of the news.
-	std::string hash = _stripPath(_dumpName);
+	std::string hash = fs::stripPath(_dumpName);
 	QueryRunner::getTracker().clearNews(hash);
 
 	// Must remove dump file while we are doing the single-query workaround
@@ -406,15 +399,15 @@ bool qWorker::MySqlFsFile::_addWritePacket(XrdSfsFileOffset offset,
 }
 
 void qWorker::MySqlFsFile::_addCallback(std::string const& filename) {
-    assert(_fileClass == TWO_READ);
+    assert(_fileClass == fs::TWO_READ);
     assert(_addCallbackF.get() != 0);
     (*_addCallbackF)(*this, filename);
 }
 
 qWorker::ResultErrorPtr qWorker::MySqlFsFile::_getResultState(std::string const& physFilename) {
-    assert(_fileClass == TWO_READ);
+    assert(_fileClass == fs::TWO_READ);
     // Lookup result hash.
-    std::string hash = _stripPath(physFilename);
+    std::string hash = fs::stripPath(physFilename);
     //std::cout << "Getting news for hash=" << hash << std::endl;
     ResultErrorPtr p = QueryRunner::getTracker().getNews(hash);
     return p;
@@ -423,9 +416,9 @@ qWorker::ResultErrorPtr qWorker::MySqlFsFile::_getResultState(std::string const&
 
 bool qWorker::MySqlFsFile::_flushWrite() {
     switch(_fileClass) {
-    case TWO_WRITE:
+    case fs::TWO_WRITE:
 	return _flushWriteDetach();
-    case COMBO:
+    case fs::COMBO:
 	return _flushWriteSync();
     default:
 	_eDest->Say("Wrong filestate for writing. FIX THIS BUG.");
@@ -436,7 +429,7 @@ bool qWorker::MySqlFsFile::_flushWrite() {
 }
 
 bool qWorker::MySqlFsFile::_flushWriteDetach() {
-    qWorker::QueryRunnerArg a(*_eDest, _userName, 
+    qWorker::QueryRunnerArg a(_eDest, _userName, 
 			      ScriptMeta(_queryBuffer, _chunkId));
     return flushOrQueue(a);
 }
@@ -462,29 +455,6 @@ bool qWorker::MySqlFsFile::_hasPacketEof(
 	    (last4[3] == '\0'));
 }
 
-qWorker::MySqlFsFile::FileClass qWorker::MySqlFsFile::_getFileClass(std::string const& filename) {
-    if(std::string::npos != filename.find("/query2/")) {
-	return TWO_WRITE;
-    } else if(std::string::npos != filename.find("/result/")) {
-	return TWO_READ;
-    } else if(std::string::npos != filename.find("/query/")) {
-	return COMBO;
-    } else {
-	return UNKNOWN;
-    }
-
-}
-
-std::string qWorker::MySqlFsFile::_stripPath(std::string const& filename) {
-    // Expecting something like "/results/0123aeb31b1c29a"
-    // Strip out everything before and including the last /
-    std::string::size_type pos = filename.rfind("/");
-    if(pos == std::string::npos) {
-	return filename;
-    }
-    return filename.substr(1+pos, std::string::npos);
-	
-}
 
 
 void qWorker::MySqlFsFile::_setDumpNameAsChunkId() {
@@ -495,7 +465,7 @@ void qWorker::MySqlFsFile::_setDumpNameAsChunkId() {
 }
 
 int qWorker::MySqlFsFile::_handleTwoReadOpen(char const* fileName) {
-    std::string hash = _stripPath(fileName);
+    std::string hash = fs::stripPath(fileName);
     _dumpName = hashToResultPath(hash); 
     _hasRead = false;
     ResultErrorPtr p = _getResultState(_dumpName);
@@ -506,6 +476,7 @@ int qWorker::MySqlFsFile::_handleTwoReadOpen(char const* fileName) {
 	} else { // Error, so report it.
 	    _eDest->Say((Pformat("File open %1% fail. Query error: %2%.")
 			 % fileName % p->second).str().c_str());
+            error.setErrInfo(EINVAL, p->second.c_str());
 	    return SFS_ERROR;
 	}
     } else {

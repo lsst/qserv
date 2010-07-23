@@ -33,6 +33,20 @@ namespace qWorker = lsst::qserv::worker;
 
 namespace {
 
+/// matchHash: helper functor that matches queries by hash.
+class matchHash { 
+public:
+    matchHash(std::string const& hash_) : hash(hash_) {}
+    inline bool operator()(qWorker::QueryRunnerArg const& a) {
+        return a.s.hash == hash;
+    }
+    inline bool operator()(qWorker::QueryRunner const* r) {
+        return r->getHash() == hash;
+    }
+    std::string hash;
+};
+
+
 class DbHandle {
 public:
     DbHandle(void) : _db((MYSQL*)malloc(sizeof(MYSQL))) { 
@@ -60,8 +74,8 @@ std::string runQuery(MYSQL* db, char const*  query, int qSize,
 	MYSQL_RES* result = mysql_store_result(db);
 	if(result) mysql_free_result(result);
 	
-        return std::string("Unable to execute query: ") + mysql_error(db) +
-            "\nQuery = " + std::string(query, qSize);
+        return std::string("Unable to execute query: ") + mysql_error(db);
+        //    + "\nQuery = " + std::string(query, qSize);
     }
     int status = 0;
     do {
@@ -89,7 +103,8 @@ std::string runQuery(MYSQL* db, std::string const query,
 }
 
 
-std::string runQueryInPieces(MYSQL* db, std::string const& query,
+std::string runQueryInPieces(XrdSysError& e, MYSQL* db, 
+                             std::string const& query,
 			     std::string arg=std::string()) {
     // Run a larger query in pieces split by semicolon/newlines.
     // This tries to avoid the max_allowed_packet
@@ -147,8 +162,9 @@ std::string runQueryInPieces(MYSQL* db, std::string const& query,
 	// On error, the partial error is as good as the global.
 	if(!subResult.empty()) {
 	    unsigned s=pieceEnd-pieceBegin;
-	    return (Pformat("%1%---Error with piece %2% complete (size=%3%).") 
-		    % subResult % pieceCount % s).str();
+	    e.Say((Pformat("%1%---Error with piece %2% complete (size=%3%).") 
+                   % subResult % pieceCount % s).str().c_str());
+            return subResult;
 	}
 	++pieceCount;
 	//std::cout << Pformat("Piece %1% complete.") % pieceCount;
@@ -172,7 +188,7 @@ std::string runScriptPiece(XrdSysError& e,
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     //e.Say(("Hi. my piece is++"+piece+"++").c_str());
 	
-    result = runQueryInPieces(db, piece);
+    result = runQueryInPieces(e, db, piece);
     e.Say((Pformat("TIMING,%1%%2%Finish,%3%")
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     if(!result.empty()) {
@@ -225,19 +241,92 @@ std::string commasToSpaces(std::string const& s) {
 ////////////////////////////////////////////////////////////////////////
 // lsst::qserv::worker::QueryRunnerManager
 ////////////////////////////////////////////////////////////////////////
-qWorker::QueryRunnerArg const& qWorker::QueryRunnerManager::getQueueHead() const {
-    assert(!_queue.empty());
-    return _queue.front();
+qWorker::QueryRunnerArg const& qWorker::QueryRunnerManager::_getQueueHead() const {
+    assert(!_args.empty());
+    return _args.front();
 }
 
-void qWorker::QueryRunnerManager::add(qWorker::QueryRunnerArg const& a) {
+
+void qWorker::QueryRunnerManager::runOrEnqueue(qWorker::QueryRunnerArg const& a) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    if(hasSpace()) {
+        // Spawn.
+        boost::thread t(qWorker::QueryRunner(a));
+    } else {
+        _enqueue(a);
+    }
+}
+
+bool qWorker::QueryRunnerManager::squashByHash(std::string const& hash) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    bool success = _cancelQueued(hash) || _cancelRunning(hash);
+    // Check if squash okay?
+    return success;
+}
+
+void qWorker::QueryRunnerManager::_popQueueHead() {
+    assert(!_args.empty());
+    _args.pop_front();
+}
+
+void qWorker::QueryRunnerManager::addRunner(QueryRunner* q) {
+    // The QueryRunner object will only add itself if it is valid, and 
+    // will drop itself before it becomes invalid.
+    boost::lock_guard<boost::mutex> m(_mutex);
+    _runners.push_back(q);    
+}
+
+void qWorker::QueryRunnerManager::dropRunner(QueryRunner* q) {
+    // The QueryRunner object will only add itself if it is valid, and 
+    // will drop itself before it becomes invalid.
+    boost::lock_guard<boost::mutex> m(_mutex);
+    QueryQueue::iterator b = _runners.begin();
+    QueryQueue::iterator e = _runners.end();
+    QueryQueue::iterator qi = find(b, e, q);
+    assert(qi != e); // Otherwise the deque is corrupted.
+    _runners.erase(qi);
+}
+
+bool qWorker::QueryRunnerManager::recycleRunner(ArgFunc* af) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    if((!isOverloaded()) && (!_args.empty())) {
+        (*af)(_getQueueHead()); // Switch to new query
+        _popQueueHead();
+        return true;
+    } 
+    return false;
+}
+
+
+////////////////////////////////////////////////////////////////////////
+// private:
+bool qWorker::QueryRunnerManager::_cancelQueued(std::string const& hash) {
+    // Should be locked now.
+    ArgQueue::iterator b = _args.begin();
+    ArgQueue::iterator e = _args.end();
+    ArgQueue::iterator q = find_if(b, e, matchHash(hash));
+    if(q != e) {
+        _args.erase(q);
+        return true;
+    }
+    return false;
+}
+
+bool qWorker::QueryRunnerManager::_cancelRunning(std::string const& hash) {
+    // Should be locked now.
+    QueryQueue::iterator b = _runners.begin();
+    QueryQueue::iterator e = _runners.end();
+    QueryQueue::iterator q = find_if(b, e, matchHash(hash));
+    if(q != e) {
+        (*q)->poison(hash); // Poison the query exec, by hash.
+        return true;
+    }
+    return false;
+}
+
+void qWorker::QueryRunnerManager::_enqueue(qWorker::QueryRunnerArg const& a) {
     ++_jobTotal;
-    _queue.push_back(a);
-}
-
-void qWorker::QueryRunnerManager::popQueueHead() {
-    assert(!_queue.empty());
-    _queue.pop_front();
+    _args.push_back(a);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -256,7 +345,7 @@ qWorker::QueryRunner::QueryRunner(XrdSysError& e,
 }
 
 qWorker::QueryRunner::QueryRunner(QueryRunnerArg const& a) 
-    : _e(a.e), _user(a.user), _meta(a.s) {
+    : _e(*(a.e)), _user(a.user), _meta(a.s) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     if(!a.overrideDump.empty()) {
@@ -271,16 +360,28 @@ qWorker::QueryRunner::~QueryRunner() {
 bool qWorker::QueryRunner::operator()() {
     bool haveWork = true;
     Manager& mgr = getMgr();
+    boost::shared_ptr<ArgFunc> afPtr(getResetFunc());
     {
 	boost::lock_guard<boost::mutex> m(mgr.getMutex());
-	mgr.addRunner();
+	mgr.addRunner(this);
 	_e.Say((Pformat("(Queued: %1%, running: %2%)")
 		% mgr.getQueueLength() % mgr.getRunnerCount()).str().c_str());
 	
     }
     while(haveWork) {
-	_act();
+	_act(); 
+        // FIXME: add poison handling
 	{
+#if 1
+            _e.Say((Pformat("(Looking for work... Queued: %1%, running: %2%)")
+                    % mgr.getQueueLength() 
+                    % mgr.getRunnerCount()).str().c_str());
+            bool reused = mgr.recycleRunner(afPtr.get());
+            if(!reused) {
+                mgr.dropRunner(this);
+                haveWork = false;
+            }
+#else                
 	    boost::lock_guard<boost::mutex> m(mgr.getMutex());
 	    _e.Say((Pformat("(Looking for work... Queued: %1%, running: %2%)")
 		    % mgr.getQueueLength() 
@@ -290,14 +391,20 @@ bool qWorker::QueryRunner::operator()() {
 		_setNewQuery(mgr.getQueueHead()); // Switch to new query
 		mgr.popQueueHead();
 	    } else {
-		mgr.dropRunner();
+		mgr.dropRunner(this);
 		haveWork = false;
 	    }
+#endif
 	}
 	
     } // finished with work.
 
     return true;
+}
+
+void qWorker::QueryRunner::poison(std::string const& hash) {
+    boost::lock_guard<boost::mutex> lock(_poisonedMutex);
+    _poisoned.push_back(hash);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -315,6 +422,7 @@ void qWorker::QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
 }
 
 bool qWorker::QueryRunner::_act() {
+    // FIXME: add poison handling
     char msg[] = "Exec in flight for Db = %1%, dump = %2%";
     _e.Say((Pformat(msg) % _meta.dbName % _meta.resultPath).str().c_str());
 
@@ -621,6 +729,18 @@ std::string qWorker::QueryRunner::_getDumpTableList(std::string const& script) {
     return tables;
 }
 
+boost::shared_ptr<qWorker::ArgFunc> qWorker::QueryRunner::getResetFunc() {
+    class ResetFunc : public ArgFunc {
+    public:
+        ResetFunc(QueryRunner* r) : runner(r) {}
+        void operator()(QueryRunnerArg const& a) {
+            runner->_setNewQuery(a);
+        }
+        QueryRunner* runner;
+    };
+    ArgFunc* af = new ResetFunc(this); 
+    return boost::shared_ptr<qWorker::ArgFunc>(af);
+}
 
 ////////////////////////////////////////////////////////////////////////
 // Helpers

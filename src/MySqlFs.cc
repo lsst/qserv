@@ -160,10 +160,20 @@ int qWorker::MySqlFs::prepare(XrdSfsPrep& pargs, XrdOucErrInfo& outError,
     return SFS_ERROR;
 }
 
+/// rem() : discard/squash a query result and the running/queued query
+///  that would-have/has-had produced it.
 int qWorker::MySqlFs::rem(char const* path, XrdOucErrInfo& outError,
                      XrdSecEntity const* client, char const* opaque) {
-    outError.setErrInfo(ENOTSUP, "Operation not supported");
-    return SFS_ERROR;
+    // Check for qserv result path
+    fs::FileClass c = fs::computeFileClass(path);
+    if(c != fs::TWO_READ) { // Only support removal of result files.
+        outError.setErrInfo(ENOTSUP, "Operation not supported");
+        return SFS_ERROR;
+    }
+    std::string hash = fs::stripPath(path);
+    // Signal query squashing
+    qWorker::QueryRunner::Manager& mgr = qWorker::QueryRunner::getMgr();
+    mgr.squashByHash(hash);
 }
 
 int qWorker::MySqlFs::remdir(char const* dirName, XrdOucErrInfo& outError,

@@ -33,6 +33,7 @@
 // pkg includes
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/ResultTracker.h"
+#include "lsst/qserv/worker/MySqlFsCommon.h"
 
 // Forward
 class XrdSysError;
@@ -85,8 +86,6 @@ public:
     int getCXinfo(char cxtype[4], int& cxrsz);
 
 private:
-    enum FileClass {COMBO, TWO_WRITE, TWO_READ, UNKNOWN};
-
     bool _addWritePacket(XrdSfsFileOffset offset, char const* buffer, 
 			 XrdSfsXferSize bufferSize);
     void _addCallback(std::string const& filename);
@@ -97,10 +96,6 @@ private:
 
     int _handleTwoReadOpen(char const* fileName);
 
-    // File path functionality
-    FileClass _getFileClass(std::string const& filename);
-    std::string _stripPath(std::string const& filename);
-
     ResultErrorPtr _getResultState(std::string const& physFilename);
 
     void _setDumpNameAsChunkId();
@@ -108,7 +103,7 @@ private:
     XrdSysError* _eDest;
     AddCallbackFunction::Ptr _addCallbackF;
     int _chunkId;
-    FileClass _fileClass;
+    fs::FileClass _fileClass;
     std::string _userName;
     std::string _dumpName;
     bool _hasRead;
