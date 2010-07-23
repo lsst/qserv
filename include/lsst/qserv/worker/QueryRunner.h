@@ -148,6 +148,9 @@ private:
     void _setNewQuery(QueryRunnerArg const& a);
     std::string _getErrorString() const;
     boost::shared_ptr<ArgFunc> getResetFunc();
+    bool _checkPoisoned();
+    boost::shared_ptr<CheckFlag> _makeAbort();
+    bool _poisonCleanup();
 
     XrdSysError& _e;
     std::string _user;

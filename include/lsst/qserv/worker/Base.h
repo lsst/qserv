@@ -70,6 +70,11 @@ struct ScriptMeta {
     int chunkId;
 };
 
+class CheckFlag {
+public:
+    virtual ~CheckFlag() {}
+    virtual bool operator()() = 0;
+};
  
 class StringBuffer {
     public:

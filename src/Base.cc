@@ -70,9 +70,9 @@ std::string qWorker::CREATE_SUBCHUNK_SCRIPT =
     "AS SELECT * FROM LSST.ObjectFullOverlap_%1% WHERE subchunkId = %2%;"
     ;
 std::string qWorker::CLEANUP_SUBCHUNK_SCRIPT =
-    "DROP TABLE Subchunks_%1%.Object_%1%_%2%;"
-    "DROP TABLE Subchunks_%1%.ObjectSelfOverlap_%1%_%2%;"
-    "DROP TABLE Subchunks_%1%.ObjectFullOverlap_%1%_%2%;"
+    "DROP TABLE IF EXISTS Subchunks_%1%.Object_%1%_%2%;"
+    "DROP TABLE IF EXISTS Subchunks_%1%.ObjectSelfOverlap_%1%_%2%;"
+    "DROP TABLE IF EXISTS Subchunks_%1%.ObjectFullOverlap_%1%_%2%;"
     ;
 
 // Note:

@@ -46,7 +46,6 @@ public:
     std::string hash;
 };
 
-
 class DbHandle {
 public:
     DbHandle(void) : _db((MYSQL*)malloc(sizeof(MYSQL))) { 
@@ -105,7 +104,7 @@ std::string runQuery(MYSQL* db, std::string const query,
 
 std::string runQueryInPieces(XrdSysError& e, MYSQL* db, 
                              std::string const& query,
-			     std::string arg=std::string()) {
+			     qWorker::CheckFlag* checkAbort) {
     // Run a larger query in pieces split by semicolon/newlines.
     // This tries to avoid the max_allowed_packet
     // (MySQL client/server protocol) problem.
@@ -157,10 +156,10 @@ std::string runQueryInPieces(XrdSysError& e, MYSQL* db,
 	// Catch empty strings.
 	if(pieceSize && queryPiece[0] != '\0') {
 	    //std::cout << "PIECE--" << queryPiece << "--" << std::endl;
-	    subResult = runQuery(db, queryPiece, pieceSize, arg);
+	    subResult = runQuery(db, queryPiece, pieceSize);
 	  }
 	// On error, the partial error is as good as the global.
-	if(!subResult.empty()) {
+	if(!subResult.empty() || (checkAbort && (*checkAbort)())) {
 	    unsigned s=pieceEnd-pieceBegin;
 	    e.Say((Pformat("%1%---Error with piece %2% complete (size=%3%).") 
                    % subResult % pieceCount % s).str().c_str());
@@ -179,16 +178,17 @@ std::string runQueryInPieces(XrdSysError& e, MYSQL* db,
 }
 
 std::string runScriptPiece(XrdSysError& e,
-			    MYSQL*const db,
-			    std::string const& scriptId, 
-			    std::string const& pieceName,
-			    std::string const& piece) {
+                           MYSQL*const db,
+                           std::string const& scriptId, 
+                           std::string const& pieceName,
+                           std::string const& piece, 
+                           qWorker::CheckFlag* checkAbort) {
     std::string result;
     e.Say((Pformat("TIMING,%1%%2%Start,%3%")
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     //e.Say(("Hi. my piece is++"+piece+"++").c_str());
 	
-    result = runQueryInPieces(e, db, piece);
+    result = runQueryInPieces(e, db, piece, checkAbort);
     e.Say((Pformat("TIMING,%1%%2%Finish,%3%")
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     if(!result.empty()) {
@@ -205,22 +205,25 @@ std::string runScriptPieces(XrdSysError& e,
 			    std::string const& scriptId, 
 			    std::string const& build, 
 			    std::string const& run, 
-			    std::string const& cleanup) {
+			    std::string const& cleanup,
+                            qWorker::CheckFlag* checkAbort) {
     std::string result;    
     std::string eResult;
 
-    result = runScriptPiece(e, db, scriptId, "QueryBuildSub", build);
+    result = runScriptPiece(e, db, scriptId, "QueryBuildSub", build, 
+                            checkAbort);
     if(result.empty()) {
-	eResult = runScriptPiece(e, db, scriptId, "QueryExec", run);
+	eResult = runScriptPiece(e, db, scriptId, "QueryExec", run,
+                                 checkAbort);
 	if(eResult.empty()) {
 	} else {
 	    e.Say((Pformat("Fail QueryExec phase for %1%: %2%") 
 		   % scriptId % result).str().c_str());
 	    result += eResult;
 	}
-	// Always destroy subchunks.
-	result += runScriptPiece(e, db, scriptId, "QueryDestroySub", cleanup);
-    } 
+    }
+    // Always destroy subchunks, no aborting.
+    result += runScriptPiece(e, db, scriptId, "QueryDestroySub", cleanup, 0);
     return result;
 }
 
@@ -369,34 +372,19 @@ bool qWorker::QueryRunner::operator()() {
 	
     }
     while(haveWork) {
-	_act(); 
-        // FIXME: add poison handling
-	{
-#if 1
-            _e.Say((Pformat("(Looking for work... Queued: %1%, running: %2%)")
-                    % mgr.getQueueLength() 
-                    % mgr.getRunnerCount()).str().c_str());
-            bool reused = mgr.recycleRunner(afPtr.get());
-            if(!reused) {
-                mgr.dropRunner(this);
-                haveWork = false;
-            }
-#else                
-	    boost::lock_guard<boost::mutex> m(mgr.getMutex());
-	    _e.Say((Pformat("(Looking for work... Queued: %1%, running: %2%)")
-		    % mgr.getQueueLength() 
-		    % mgr.getRunnerCount()).str().c_str());
-
-	    if((!mgr.isOverloaded()) && (mgr.getQueueLength() > 0)) {
-		_setNewQuery(mgr.getQueueHead()); // Switch to new query
-		mgr.popQueueHead();
-	    } else {
-		mgr.dropRunner(this);
-		haveWork = false;
-	    }
-#endif
-	}
-	
+        if(_checkPoisoned()) {
+            _poisonCleanup();
+        } else {
+            _act(); 
+        }
+        _e.Say((Pformat("(Looking for work... Queued: %1%, running: %2%)")
+                % mgr.getQueueLength() 
+                % mgr.getRunnerCount()).str().c_str());
+        bool reused = mgr.recycleRunner(afPtr.get());
+        if(!reused) {
+            mgr.dropRunner(this);
+            haveWork = false;
+        }
     } // finished with work.
 
     return true;
@@ -410,6 +398,13 @@ void qWorker::QueryRunner::poison(std::string const& hash) {
 ////////////////////////////////////////////////////////////////////////
 // private:
 ////////////////////////////////////////////////////////////////////////
+bool qWorker::QueryRunner::_checkPoisoned() {
+    boost::lock_guard<boost::mutex> lock(_poisonedMutex);
+    StringDeque::const_iterator i = find(_poisoned.begin(), 
+                                         _poisoned.end(), _meta.hash);
+    return i != _poisoned.end();
+}
+
 void qWorker::QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
     //_e should be tied to the MySqlFs instance and constant(?)
     _user = a.user;
@@ -422,7 +417,6 @@ void qWorker::QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
 }
 
 bool qWorker::QueryRunner::_act() {
-    // FIXME: add poison handling
     char msg[] = "Exec in flight for Db = %1%, dump = %2%";
     _e.Say((Pformat(msg) % _meta.dbName % _meta.resultPath).str().c_str());
 
@@ -452,6 +446,10 @@ bool qWorker::QueryRunner::_act() {
     _e.Say((Pformat("(FinishOK:%1%) %2%")
 	    % (void*)(this) % dbDump).str().c_str());
     getTracker().notify(_meta.hash, ResultError(0,""));
+    return true;
+}
+
+bool qWorker::QueryRunner::_poisonCleanup() {
     return true;
 }
 
@@ -559,10 +557,10 @@ bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
     if(!tableList.empty()) {
         realDbName = getConfig().getString("scratchDb");
     }
-
+    boost::shared_ptr<CheckFlag> check(_makeAbort());
     _buildSubchunkScripts(script, buildScript, cleanupScript);
     std::string result = runScriptPieces(_e, db, _scriptId, buildScript, 
-			     script, cleanupScript);
+                                         script, cleanupScript, check.get());
     if(!result.empty()) { 
         _appendError(EIO, result); 
         return false;
@@ -571,6 +569,8 @@ bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
         _appendError(EIO, "mysqldump failure");
 	return false;
     }
+    return true;
+}
     
     // Record query in query cache table
     /*
@@ -589,8 +589,6 @@ bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
         return false;
     }
     */
-    return true;
-}
 
 bool qWorker::QueryRunner::_runScript(
     std::string const& script, std::string const& dbName) {
@@ -616,8 +614,9 @@ bool qWorker::QueryRunner::_runScript(
     } else if(!_prepareScratchDb(db.get())) {
         return false;
     }
-    
-    scriptSuccess = _runScriptCore(db.get(), script, dbName, commasToSpaces(tables));
+    if(_checkPoisoned()) return false; // Check for poison
+    scriptSuccess = _runScriptCore(db.get(), script, dbName, 
+                                   commasToSpaces(tables));
 
     if(!tables.empty()) {
         _dropTables(db.get(), tables);
@@ -740,6 +739,18 @@ boost::shared_ptr<qWorker::ArgFunc> qWorker::QueryRunner::getResetFunc() {
     };
     ArgFunc* af = new ResetFunc(this); 
     return boost::shared_ptr<qWorker::ArgFunc>(af);
+}
+
+boost::shared_ptr<qWorker::CheckFlag> qWorker::QueryRunner::_makeAbort() {
+    class Check : public CheckFlag {
+    public:
+        Check(QueryRunner& qr) : runner(qr) {}
+        virtual ~Check() {}
+        bool operator()() { return runner._checkPoisoned(); }
+        QueryRunner& runner;
+    };
+    CheckFlag* cf = new Check(*this);
+    return boost::shared_ptr<CheckFlag>(cf);
 }
 
 ////////////////////////////////////////////////////////////////////////
