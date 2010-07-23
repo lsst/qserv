@@ -65,13 +65,15 @@ public:
         if(_result.read > 0) return _result.localWrite; 
         else return -1;
     }
-    void requestSquash() { _shouldSquash = true; }
+    void requestSquash();
 
 private:
     void _sendQuery(int fd);
     void _readResults(int fd);
     void _notifyManager();
+    bool _openForRead(std::string const& url);
     void _squashAtCallback(int result);
+    void _unlinkResult(std::string const& url);
 
     int _id;
     TransactionSpec _spec;

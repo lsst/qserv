@@ -188,7 +188,10 @@ void qMaster::AsyncQueryManager::_addNewResult(ssize_t dumpSize,
                                                std::string const& dumpFile, 
                                                std::string const& tableName) {
     assert(dumpSize >= 0);
-    _totalSize += dumpSize;
+    {
+        boost::lock_guard<boost::mutex> lock(_totalSizeMutex);
+        _totalSize += dumpSize; 
+    }
 
     if(_shouldLimitResult && (_totalSize > _resultLimit)) {
         _squashRemaining();

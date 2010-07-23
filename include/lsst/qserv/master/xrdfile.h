@@ -62,7 +62,8 @@ std::string xrdGetEndpoint(int fildes);
 int xrdReadStr(int fildes, char *str, int len);
 
 void xrdReadToLocalFile(int fildes, int fragmentSize, 
-                        const char* filename, 
+                        const char* filename,
+                        bool const* abortFlag,
                         int* write, int* read);
 
 XrdTransResult xrdOpenWriteReadSaveClose(const char *path, 

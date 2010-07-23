@@ -93,6 +93,7 @@ private:
     boost::mutex _idMutex;
     boost::mutex _queriesMutex;
     boost::mutex _resultsMutex;
+    boost::mutex _totalSizeMutex;
     boost::condition_variable _queriesEmpty;
     int _lastId;
     bool _isExecFaulty;

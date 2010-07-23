@@ -229,10 +229,12 @@ std::string qMaster::xrdGetEndpoint(int fildes) {
 /// @param fragmentSize -- size to grab from xrootd server 
 ///        (64K <= size <= 100MB; a few megs are good)
 /// @param filename -- filename of file that will receive the result 
+/// @param abortFlag -- Flag to check to see if we've been aborted.
 /// @return write -- How many bytes were written, or -errno (negative errno).
 /// @return read -- How many bytes were read, or -errno (negative errno).
 void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize, 
 				 const char* filename, 
+                                 bool const *abortFlag,
 				 int* write, int* read) {
     size_t bytesRead = 0;
     size_t bytesWritten = 0;
@@ -257,13 +259,15 @@ void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize,
 	writeRes = -errno;
     }
     while(1) {
+        if(abortFlag && (*abortFlag)) break;
 	readRes = xrdRead(fildes, buffer, 
 			      static_cast<unsigned long long>(fragmentSize));
 	if(readRes <= 0) { // Done, or error.
 	    readRes = -errno;
 	    
 	    break;
-	}
+	}                                       
+        bytesRead += readRes;
 	if(writeRes >= 0) { // No error yet?
 	    writeRes = pwrite(localFileDesc, buffer, 
 			      readRes, bytesWritten);
@@ -321,7 +325,7 @@ qMaster::XrdTransResult qMaster::xrdOpenWriteReadSaveClose(
     } else {
 	r.queryWrite = writeCount;
 	xrdLseekSet(fh, 0);
-	xrdReadToLocalFile(fh, fragmentSize, outfile, 
+	xrdReadToLocalFile(fh, fragmentSize, outfile, 0,
 			   &(r.localWrite), &(r.read));
     }
     xrdClose(fh);
@@ -352,7 +356,7 @@ qMaster::XrdTransResult qMaster::xrdOpenWriteReadSave(
     } else {
 	r.queryWrite = writeCount;
 	xrdLseekSet(fh, 0);
-	xrdReadToLocalFile(fh, fragmentSize, outfile, 
+	xrdReadToLocalFile(fh, fragmentSize, outfile, 0,
 			   &(r.localWrite), &(r.read));
     }
     return r;
