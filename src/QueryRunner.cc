@@ -28,11 +28,11 @@
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/Config.h"
+#include "lsst/qserv/worker/SqlFragmenter.h"
 
 namespace qWorker = lsst::qserv::worker;
 
 namespace {
-
 /// matchHash: helper functor that matches queries by hash.
 class matchHash { 
 public:
@@ -109,66 +109,19 @@ std::string runQueryInPieces(XrdSysError& e, MYSQL* db,
     // This tries to avoid the max_allowed_packet
     // (MySQL client/server protocol) problem.
     // MySQL default max_allowed_packet=1MB
-    std::string queryPiece;
     std::string subResult;
-    std::string delimiter = ";\n";
-    std::string::size_type pieceBegin=0;
-    std::string::size_type pieceEnd=0;
-    std::string::size_type qEnd=query.length();
-    std::string::size_type sizeTarget=25; // Is this too small?
-    std::string::size_type searchTarget;
-    unsigned pieceCount = 0;
+    qWorker::SqlFragmenter sf(query);
+    while(!sf.isDone()) {
+        qWorker::SqlFragmenter::Piece p = sf.getNextPiece();
+        subResult = runQuery(db, p.first, p.second);
 
-    while(pieceEnd != qEnd) { 
-	searchTarget = pieceBegin + sizeTarget;
-	if(searchTarget < qEnd) {  // Is it worth splitting?
-	    pieceEnd = query.rfind(delimiter, searchTarget);
-	
-	    // Did we find a split-point?
-	    if((pieceEnd > pieceBegin) && (pieceEnd != std::string::npos)) {
-		pieceEnd += delimiter.size();
-	    } else {
-		// Look forward instead of backward.
-		pieceEnd = query.find(delimiter, pieceBegin + sizeTarget);
-		if(pieceEnd != std::string::npos) { // Found?
-		    pieceEnd += delimiter.size(); 
-		} else { // Not found bkwd/fwd. Use end.
-		    pieceEnd = qEnd; 
-		}
-	    }
-	} else { // Remaining is small. Don't split further.
-	    pieceEnd = qEnd; 
-	}
-
-	//queryPiece = "";
-	// Backoff whitepace or null.
-	int pos = pieceEnd;
-	char c = query[pos];
-	char const* queryPiece;
-	int pieceSize = 0;
-	while((c == '\0') || (c == '\n') 
-	      || (c == ' ') || (c == '\t')) { c = query[--pos];}
-	if (pos > (int)pieceBegin) {
-	    queryPiece = query.data() + pieceBegin;
-	    pieceSize = pos - (int)pieceBegin;
-	    //queryPiece.assign(query, pieceBegin, pos-(int)pieceBegin);
-	}
-	// Catch empty strings.
-	if(pieceSize && queryPiece[0] != '\0') {
-	    //std::cout << "PIECE--" << queryPiece << "--" << std::endl;
-	    subResult = runQuery(db, queryPiece, pieceSize);
-	  }
 	// On error, the partial error is as good as the global.
 	if(!subResult.empty() || (checkAbort && (*checkAbort)())) {
-	    unsigned s=pieceEnd-pieceBegin;
+	    unsigned s=p.second;
 	    e.Say((Pformat("%1%---Error with piece %2% complete (size=%3%).") 
-                   % subResult % pieceCount % s).str().c_str());
+                   % subResult % sf.getCount() % s).str().c_str());
             return subResult;
 	}
-	++pieceCount;
-	//std::cout << Pformat("Piece %1% complete.") % pieceCount;
-
-	pieceBegin = pieceEnd;
     }
     // Can't use _eDest (we are in file-scope)
     //std::cout << Pformat("Executed query in %1% pieces.") % pieceCount;
