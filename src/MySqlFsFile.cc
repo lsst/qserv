@@ -131,7 +131,6 @@ bool flushOrQueue(qWorker::QueryRunnerArg const& a)  {
     return true;
 }
 
-
 static int findChunkNumber(char const* path) {
     // path looks like: "/query/314159"
     // Idea: Choose last /-delimited element and try conversion.

@@ -95,7 +95,7 @@ private:
     bool _cancelQueued(std::string const& hash);
     bool _cancelRunning(std::string const& hash);
     void _enqueue(QueryRunnerArg const& a);
-
+ 
     ArgQueue _args;
     QueryQueue _runners;
     int _jobTotal;
@@ -158,7 +158,7 @@ private:
     std::string _scriptId;
     int _errorNo;
     std::string _errorDesc;
-    boost::mutex _poisonedMutex;
+    boost::shared_ptr<boost::mutex> _poisonedMutex;
     StringDeque _poisoned;
 };
 

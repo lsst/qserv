@@ -191,6 +191,12 @@ std::string commasToSpaces(std::string const& s) {
     return r;
 }
     
+template <typename Callable>
+void launchThread(Callable const& c) {
+    // Oddly enough, inlining the line below instead of
+    // calling this function doesn't work.
+    boost::thread t(c);
+}
 
 } // anonymous namespace
 
@@ -202,12 +208,12 @@ qWorker::QueryRunnerArg const& qWorker::QueryRunnerManager::_getQueueHead() cons
     return _args.front();
 }
 
-
 void qWorker::QueryRunnerManager::runOrEnqueue(qWorker::QueryRunnerArg const& a) {
     boost::lock_guard<boost::mutex> m(_mutex);
     if(hasSpace()) {
-        // Spawn.
-        boost::thread t(qWorker::QueryRunner(a));
+        // Can't simply do: boost::thread t(qWorker::QueryRunner(a));
+        // Must call function.
+        launchThread(qWorker::QueryRunner(a)); 
     } else {
         _enqueue(a);
     }
@@ -292,7 +298,8 @@ qWorker::QueryRunner::QueryRunner(XrdSysError& e,
 				  std::string const& user,
 				  qWorker::ScriptMeta const& s, 
 				  std::string overrideDump) 
-    : _e(e), _user(user.c_str()), _meta(s) {
+    : _e(e), _user(user.c_str()), _meta(s), 
+      _poisonedMutex(new boost::mutex()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     if(!overrideDump.empty()) {
@@ -301,7 +308,8 @@ qWorker::QueryRunner::QueryRunner(XrdSysError& e,
 }
 
 qWorker::QueryRunner::QueryRunner(QueryRunnerArg const& a) 
-    : _e(*(a.e)), _user(a.user), _meta(a.s) {
+    : _e(*(a.e)), _user(a.user), _meta(a.s),
+      _poisonedMutex(new boost::mutex()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     if(!a.overrideDump.empty()) {
@@ -317,13 +325,9 @@ bool qWorker::QueryRunner::operator()() {
     bool haveWork = true;
     Manager& mgr = getMgr();
     boost::shared_ptr<ArgFunc> afPtr(getResetFunc());
-    {
-	boost::lock_guard<boost::mutex> m(mgr.getMutex());
-	mgr.addRunner(this);
-	_e.Say((Pformat("(Queued: %1%, running: %2%)")
-		% mgr.getQueueLength() % mgr.getRunnerCount()).str().c_str());
-	
-    }
+    mgr.addRunner(this);
+    _e.Say((Pformat("(Queued: %1%, running: %2%)")
+            % mgr.getQueueLength() % mgr.getRunnerCount()).str().c_str());
     while(haveWork) {
         if(_checkPoisoned()) {
             _poisonCleanup();
@@ -344,7 +348,7 @@ bool qWorker::QueryRunner::operator()() {
 }
 
 void qWorker::QueryRunner::poison(std::string const& hash) {
-    boost::lock_guard<boost::mutex> lock(_poisonedMutex);
+    boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
     _poisoned.push_back(hash);
 }
 
@@ -352,7 +356,7 @@ void qWorker::QueryRunner::poison(std::string const& hash) {
 // private:
 ////////////////////////////////////////////////////////////////////////
 bool qWorker::QueryRunner::_checkPoisoned() {
-    boost::lock_guard<boost::mutex> lock(_poisonedMutex);
+    boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
     StringDeque::const_iterator i = find(_poisoned.begin(), 
                                          _poisoned.end(), _meta.hash);
     return i != _poisoned.end();

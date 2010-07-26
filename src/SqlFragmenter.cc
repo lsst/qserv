@@ -30,10 +30,9 @@ qWorker::SqlFragmenter::SqlFragmenter(std::string const& query)
     : _query(query),
       _pNext(0),
       _qEnd(query.length()),
-      _sizeTarget(25), // too little?
+      _sizeTarget(1024), // too little?
       _count(0)
 {
-    _advance();
 }
 
 qWorker::SqlFragmenter::Piece const& qWorker::SqlFragmenter::getNextPiece() {
