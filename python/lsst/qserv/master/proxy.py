@@ -22,7 +22,16 @@
 
 #
 ## lsst.qserv.master.proxy
-## A package providing helper logic to interface with the mysql proxy.
+# A package providing helper logic to interface with the mysql proxy.
+# Code that is related to interaction with the mysqlproxy interface
+# should reside here.  This includes code to manage the lock-tables
+# that are used to by the qserv frontend to block the proxy while
+# queries are being processed, while not blocking the Lua scripting
+# layer inside the proxy.  Blocking in the Lua scripting layer
+# effectively blocks all query processing in the proxy, since the Lua
+# instance is single-threaded.
+# 
+
 import lsst.qserv.master.db
 import time
 import thread

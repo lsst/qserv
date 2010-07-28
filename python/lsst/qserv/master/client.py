@@ -22,6 +22,14 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+# The "client" module was designed to implement a qserv client.  This
+# code should be used for:
+# * sanity-checking and testing of the XML-RPC and HTTP top-level
+# interfaces to qserv. 
+# * modeling example interactions with qserv that do not use the
+# mysqlproxy interface.
+#
+# This code is unfinished and not in active use. (7/27/2010: danielw)
 
 # Standard Python imports
 import xmlrpclib

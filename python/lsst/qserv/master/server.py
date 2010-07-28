@@ -20,6 +20,11 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+# server.py : This module implements the HTTP and XML-RPC interfacing
+# logic using the Twisted networking library.  The XML-RPC interface
+# exposes functionality from the AppInterface class, while the HTTP
+# interface has not yet been updated to do the same.
+
 # Standard Python imports
 from itertools import ifilter
 import logging 

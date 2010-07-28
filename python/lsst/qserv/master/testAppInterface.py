@@ -22,10 +22,13 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+# testAppInterface.py : A module with Python unittest code for testing
+# functionality available through the appInterface module.  Currently
+# only includes minimal fuzz testing and (unfinished) query replaying.
+
 
 # Standard Python imports
 import unittest
-##import os
 import sys
 import time
 

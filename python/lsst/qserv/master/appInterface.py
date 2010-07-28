@@ -34,6 +34,11 @@ import lsst.qserv.master.config as config
 # We expect front-facing "normal usage" to come through this
 # interface, which is intended to make a friendly wrapper around the
 # functionality from the app module. 
+#
+# AppInterface instances can underlie an HTTP or XML-RPC server (via
+# server.py), or be used directly by test programs or
+# development/administrative code. 
+# 
 class AppInterface:
     def __init__(self, reactor=None):
         self.tracker = app.TaskTracker()
@@ -62,16 +67,16 @@ class AppInterface:
         return app.getResultTable(r)
 
     def submitQuery(self, query, conditions):
-        return self.submitQuery2(query, conditions)
+        return self.submitQueryWithLock(query, conditions)
 
-    def submitQuery1(self,query,conditions):
+    def submitQueryPlain(self, query, conditions):
         """Simplified mysqlproxy version.  returns table name."""
         a = app.HintedQueryAction(query, conditions, self.pmap)
         a.invoke()        
         r = a.getResult()
         return r
 
-    def submitQuery2(self,query,conditions):
+    def submitQueryWithLock(self, query, conditions):
         """Simplified mysqlproxy version.  
         @returns result table name, lock table name, but before completion."""
         taskId = self._idCounter # RAW hazard, but this part is single-threaded

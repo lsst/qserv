@@ -23,6 +23,11 @@
 #
 # lsst.qserv.master.db - Package for direct-db interaction.
 #
+# This package is meant to abstract database interaction so that
+# efforts to port qserv to other database implementations can be
+# localized here. 
+# 
+# Non-functioning task-tracking db operations reside here as well.
 
 # Mysql
 import MySQLdb as sql

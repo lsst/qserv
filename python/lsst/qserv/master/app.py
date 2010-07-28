@@ -20,7 +20,24 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# app package for lsst.qserv.master
+# app module for lsst.qserv.master
+#
+# The app module can be thought-of as the top-level code module for
+# the qserv frontend's functionality.  It implements the "interesting"
+# code that accepts an incoming query, parses it, generates
+# subqueries, dispatches to workers, collects results, and returns to
+# the caller, marshalling code from other modules as necessary.
+# 
+# This is the  "high-level application logic" and glue of the qserv
+# master/frontend.  
+#
+# Warning: Older code for older/alternate parsing models and
+# older/alternate dispatch/collection models remains here, in
+# anticipation of supporting performance investigation.  The most
+# current functionality can be understood by examining the
+# HintedQueryAction class, QueryBabysitter class, and other related
+# classes. 
+# 
 
 # Standard Python imports
 import errno

@@ -22,10 +22,16 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+# testHintedParser : A module with Python unittest cases that was
+# originally intended to exercise the new parser, but has grown to
+# feed hinted queries into the appInterface module, since direct
+# access to the C++ parser is not available in the Python layer.
+#
+# FIXME: should test hint-processing and region extraction here
+# (refactoring hint/region code as necessary to allow this. 
 
 # Standard Python imports
 import unittest
-##import os
 import sys
 import time
 
@@ -33,6 +39,8 @@ import time
 import lsst.qserv.master
 from lsst.qserv.master import appInterface as app
 from lsst.qserv.master import config
+
+
 class TestHintedParser(unittest.TestCase):
 
     def setUp(self):

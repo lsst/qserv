@@ -22,6 +22,9 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+# testparser - A somewhat out-of-date test driver program that invokes
+# non-hinted queries and expects the original python-based SQL parser.
+# This module should probably be removed soon.
 
 # Standard Python imports
 import unittest

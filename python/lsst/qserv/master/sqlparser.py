@@ -20,6 +20,11 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+# sqlparser.py : This module implements a basic SQL parser using a
+# simplified SQL grammar.  The grammar supports only a basic subset of
+# SQL.  Due to the grammar's limitations and difficulties in extending
+# it, qserv now uses an ANTLR-based grammar implemented in C++.  This
+# module may disappear in the future.
 
 from collections import defaultdict
 from itertools import imap

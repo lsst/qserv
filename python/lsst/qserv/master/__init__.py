@@ -20,4 +20,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+# lsst.qserv.master module initialization
+
+# Import SWIG'd C++ code
 from masterLib import *

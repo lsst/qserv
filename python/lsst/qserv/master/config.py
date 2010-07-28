@@ -20,10 +20,20 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# config.py module for qserv configuration file parsing and defaults
+# config.py : a module for qserv configuration file parsing and defaults
 # 
-# It should be the "executable" python code's responsibility to invoke
-# loading, since it should be the one parsing arguments. 
+# The config module should contain all possible configuration options
+# and parameters for the qserv master's operation.  Currently, it does
+# not include configuration of the xrootd system, nor does it include
+# configuration of workers (which are configured via environment
+# variables). 
+# 
+# A sample configuration is included in this module, and should be
+# be similar to the sample configuration in examples/lsst-dev01.qserv.cnf
+# 
+# It should be the "executable" python code's (e.g., startQserv.py's)
+# responsibility to invoke loading, since it should be the one parsing
+# arguments.  
 
 # Standard Python
 import ConfigParser

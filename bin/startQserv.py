@@ -22,6 +22,13 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+# startQserv.py -- This is a "driver" program that provides a
+# command-line interface to start qserv or its tests.  Specifically,
+# you can:
+# * Run tests (invoke cases in testHintedParser.py and testAppInterface.py)
+# * Start up a qserv frontend for testing.  Does not include starting
+#   up the required xrootd/cmsd instances.
+
 import unittest
 from optparse import OptionParser
 import sys
@@ -54,9 +61,11 @@ def resetTables():
 
 def main():    
     parser = OptionParser()
-    parser.add_option("--reset-tables", action="store_true", 
-                      dest="resettables", default=False, 
-                      help="Reset tables instead of starting the server")
+
+    # Db-backed task tracking is not supported right now.
+    # parser.add_option("--reset-tables", action="store_true", 
+    #                   dest="resettables", default=False, 
+    #                   help="Reset tables instead of starting the server ()")
     parser.add_option("-t", "--test", action="store_true", 
                       dest="test", default=False, 
                       help="Run tests instead of starting the server")
