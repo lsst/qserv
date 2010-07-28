@@ -22,6 +22,15 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+# qservTool - a module for testing and performing
+# development/administrative actions on qserv.
+#
+# Tasks that test specific parts of qserv code and do not involve
+# end-to-end query processing should reside here.  Administrative and
+# development actions performed on an existing qserv instance should
+# also go here.  Some functionality from startQserv.py probably needs
+# to be moved here.
+
 import unittest
 from optparse import OptionParser
 import sys

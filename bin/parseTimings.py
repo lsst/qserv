@@ -19,7 +19,9 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-
+# parseTimings.py extracts timing information from an xrootd server
+# log file and generates a .csv file that can be used with your
+# favorite plotting software.
 
 import time
 import qservMaster_timing as timingVars

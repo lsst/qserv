@@ -20,6 +20,13 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
+# createObjectIdIndex.py creates an ObjectId-to-ChunkId table for use
+# with qserv.  It is invoked on a csv file that has a chunkId column
+# and writes into a MySQL table.
+#
+# This code is in a "barely works" level of development and should be
+# enhanced/rewritten soon. 
+
 from itertools import imap
 import os
 import sys
