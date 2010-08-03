@@ -91,9 +91,9 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement,
 	names.push_back(i->first);
     }
     std::cout << "PARSING: " << sqlStatement << std::endl;
-    boost::shared_ptr<SqlParseRunner> spr(newSqlParseRunner(sqlStatement, 
-                                                            _delimiter,
-                                                            defaultDb));
+    boost::shared_ptr<SqlParseRunner> spr;
+    spr = SqlParseRunner::newInstance(sqlStatement, 
+                                      _delimiter, defaultDb);
     spr->setup(names);
     if(spr->getHasAggregate()) {
 	template_ = spr->getAggParseResult();

@@ -22,8 +22,9 @@
  
 #ifndef LSST_QSERV_MASTER_SQL_H
 #define LSST_QSERV_MASTER_SQL_H
-// Not sure we should use this, since it will probably conflict
-// with db usage via the python api. *grumble*
+// sql.h - SQL interface module.  Convenience code/abstraction layer
+// fro calling into MySQL.  Uncertain of how this usage conflicts with
+// db usage via the python MySQLdb api. 
 
 
 // Standard
@@ -38,6 +39,7 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
+/// class SqlConfig : Value class for configuring the MySQL connection
 class SqlConfig {
 public:
     SqlConfig() : port(0) {}
@@ -48,7 +50,8 @@ public:
     unsigned int port;
     std::string socket;
 };
-    
+
+/// class SqlConnection : Class for interacting with a MySQL database.
 class SqlConnection {
 public:
     SqlConnection(SqlConfig const& sc, bool useThreadMgmt=false); 

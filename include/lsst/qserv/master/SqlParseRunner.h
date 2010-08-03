@@ -44,13 +44,20 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
-class SqlParseRunner {
-/// SQL parser interaction manager
+// Forward
+class LimitHandler; // Parse handler
+class OrderByHandler; // Parse handler
 
+/// class SqlParseRunner - drives the ANTLR-generated SQL parser.
+/// Attaches a set of handlers to the grammar and triggers the parsing
+/// of a string as a SQL select statement, then provides a templated
+/// SQL statement that can undergo substitution to generate subqueries.
+class SqlParseRunner {
 public:
-    SqlParseRunner(std::string const& statement, 
-                   std::string const& delimiter,
-                   std::string const& defaultDb="");
+    typedef boost::shared_ptr<SqlParseRunner> Ptr;
+    static Ptr newInstance(std::string const& statement, 
+                           std::string const& delimiter,
+                           std::string const& defaultDb="");
     void setup(std::list<std::string> const& names);
     std::string getParseResult();
     std::string getAggParseResult();
@@ -76,16 +83,23 @@ public:
     std::string const& getError() const {
 	return _errorMsg;
     }
-    void setLimit(int limit) {
-        _mFixup.limit = limit;
-    }
-    void setOrderBy(std::string const& cols) {
-        _mFixup.orderBy = cols;
-    }
 private:
+    SqlParseRunner(std::string const& statement, 
+                   std::string const& delimiter,
+                   std::string const& defaultDb="");
     void _computeParseResult();
     void _makeOverlapMap();
     std::string _composeOverlap(std::string const& query);
+
+    friend class LimitHandler;
+    friend class OrderByHandler;
+    void _setLimitForHandler(int limit) { 
+        _mFixup.limit = limit; 
+    }
+    void _setOrderByForHandler(std::string const& cols) { 
+        _mFixup.orderBy = cols; 
+    }
+
 
     std::string _statement;
     std::stringstream _stream;
@@ -103,10 +117,6 @@ private:
     StringMapping _overlapMap;
     MergeFixup _mFixup;
 };
-
-boost::shared_ptr<SqlParseRunner> newSqlParseRunner(std::string const& statement, 
-                                                    std::string const& delimiter,
-                                                    std::string const& defaultDb="");
 
 }}} // namespace lsst::qserv::master
 

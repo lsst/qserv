@@ -20,6 +20,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  
+/// TableMerger.h declares:
+/// 
+/// struct TableMergerError 
+/// class TableMergerConfig 
+/// class TableMerger 
+
 #ifndef LSST_QSERV_MASTER_TABLE_MERGER_H
 #define LSST_QSERV_MASTER_TABLE_MERGER_H
 #include <string>
@@ -35,6 +41,7 @@ namespace master {
 class SqlConfig;
 class SqlConnection;
 
+/// struct TableMergerError - value class for TableMerger error code.
 struct TableMergerError {
 public:
     enum {NONE, IMPORT, MYSQLOPEN, MERGEWRITE, TERMINATE, 
@@ -43,6 +50,7 @@ public:
     std::string description;
 };
 
+/// class TableMergerConfig - value class for configuring a TableMerger
 class TableMergerConfig {
 public:
     TableMergerConfig(std::string targetDb_, std::string targetTable_,
@@ -62,7 +70,9 @@ public:
     std::string mySqlCmd;
 };
 
-
+/// class TableMerger : A class that performs merging of subquery
+/// result tables from dumpfiles sent back by workers. merge() should
+/// be called after each result is read back from the worker.
 class TableMerger {
 public:
     TableMerger(TableMergerConfig const& c);

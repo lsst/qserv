@@ -29,6 +29,9 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
+/// class Substitution : Simply performs substitution on a template
+/// string using a supplied string-to-string mapping.  Optimized for
+/// repeated substitution using different mappings.
 class Substitution {
 public:
     typedef std::pair<std::string, std::string> StringPair;

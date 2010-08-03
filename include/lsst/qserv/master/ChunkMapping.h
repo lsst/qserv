@@ -34,14 +34,12 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
-typedef std::map<std::string, std::string> StringMapping;
-// class StringMapping 
-// A placeholder that SWIG can translate into a Python dict.
-// class StringMapping : public std::map<std::string,std::string> {
-// public:
-//     StringMapping(); 
-// };
 
+typedef std::map<std::string, std::string> StringMapping;
+
+// class ChunkMapping is a helper class that generates mappings from
+// placeholder table references to physical table names. 
+// 
 class ChunkMapping {
 public:
     typedef StringMapping Map;
@@ -49,7 +47,7 @@ public:
     
     ChunkMapping() :_subPrefix("_sc") {}
     
-    // Get a Mapping object
+    // Get a StringMapping for use with the Substitution class
     Map getMapping(int chunk, int subChunk);
 
     // Get a reference to this instance's Mapping, which is overwritten

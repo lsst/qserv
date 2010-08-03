@@ -37,7 +37,7 @@ namespace qMaster = lsst::qserv::master;
 using std::stringstream;
 
 // Helper
-class LimitHandler : public VoidOneRefFunc {
+class qMaster::LimitHandler : public VoidOneRefFunc {
 public: 
     LimitHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
     virtual ~LimitHandler() {}
@@ -45,14 +45,14 @@ public:
         std::stringstream ss(i->getText());
         int limit;
         ss >> limit;
-        _spr.setLimit(limit);
+        _spr._setLimitForHandler(limit);
         //std::cout << "Got limit -> " << limit << std::endl;            
     }
 private:
     qMaster::SqlParseRunner& _spr;
 };
 
-class OrderByHandler : public VoidOneRefFunc {
+class qMaster::OrderByHandler : public VoidOneRefFunc {
 public: 
     OrderByHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
     virtual ~OrderByHandler() {}
@@ -60,7 +60,7 @@ public:
         using qMaster::walkBoundedTreeString;
         using qMaster::getLastSibling;
         std::string cols = walkBoundedTreeString( i, getLastSibling(i));
-        _spr.setOrderBy(cols);
+        _spr._setOrderByForHandler(cols);
         //std::cout << "Got orderby -> " << cols << std::endl; 
     }
 private:
@@ -69,12 +69,12 @@ private:
 };
 
 boost::shared_ptr<qMaster::SqlParseRunner> 
-qMaster::newSqlParseRunner( std::string const& statement, 
-                            std::string const& delimiter,
-                            std::string const& defaultDb) {
-    return boost::make_shared<qMaster::SqlParseRunner>(statement, 
-                                                       delimiter, 
-                                                       defaultDb);
+qMaster::SqlParseRunner::newInstance(std::string const& statement, 
+                                     std::string const& delimiter,
+                                     std::string const& defaultDb) {
+    return boost::shared_ptr<SqlParseRunner>(new SqlParseRunner(statement, 
+                                                                delimiter,
+                                                                defaultDb));
 }
 
 qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement, 

@@ -28,6 +28,8 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
+/// class MergeFixup - A value class that specifies the SQL predicates
+/// to use when merging subqueries into final results. 
 class MergeFixup {
 public:
     MergeFixup(std::string select_,

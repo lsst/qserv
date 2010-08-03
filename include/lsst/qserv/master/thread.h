@@ -21,7 +21,11 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+
+/// thread.h - A module for threading needs for qserv.  Initially, it
+/// provided thread management for subquery threads.  Much of this is
+/// no longer needed since we have switched to asynchronous
+/// (non-blocking) usage of the Xrootd client libraries.
 #ifndef LSST_QSERV_MASTER_THREAD_H
 #define LSST_QSERV_MASTER_THREAD_H
 

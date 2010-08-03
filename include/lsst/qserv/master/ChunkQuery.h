@@ -65,6 +65,8 @@ public:
         if(_result.read > 0) return _result.localWrite; 
         else return -1;
     }
+    // Attempt to squash this query's execution.  This implies that
+    // nobody cares about this query's results anymore.
     void requestSquash();
 
 private:

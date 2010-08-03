@@ -144,30 +144,32 @@ BOOST_FIXTURE_TEST_SUITE(CppParser, ParserFixture)
 
 BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
-    SqlParseRunner spr(stmt, delimiter, "LSST");
-    spr.setup(tableNames);
-    std::string parseResult = spr.getParseResult();
+    SqlParseRunner::Ptr spr = SqlParseRunner::newInstance(stmt, 
+                                                          delimiter, "LSST");
+    spr->setup(tableNames);
+    std::string parseResult = spr->getParseResult();
     // std::cout << stmt << " is parsed into " << parseResult
     //           << std::endl;
     BOOST_CHECK(!parseResult.empty());
-    BOOST_CHECK(spr.getHasChunks());
-    BOOST_CHECK(!spr.getHasSubChunks());
-    BOOST_CHECK(!spr.getHasAggregate());
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
 }
 
 BOOST_AUTO_TEST_CASE(NoSub) {
     std::string stmt = "SELECT * FROM Filter WHERE filterId=4;";
     std::string goodRes = "SELECT * FROM LSST.Filter WHERE filterId=4;";
-    SqlParseRunner spr(stmt, delimiter, "LSST");
-    spr.setup(tableNames);
-    std::string parseResult = spr.getParseResult();
+    SqlParseRunner::Ptr spr(SqlParseRunner::newInstance(stmt, 
+                                                        delimiter, "LSST"));
+    spr->setup(tableNames);
+    std::string parseResult = spr->getParseResult();
     // std::cout << stmt << " is parsed into " << parseResult 
     //           << std::endl;
     BOOST_CHECK(!parseResult.empty());
     BOOST_CHECK_EQUAL(parseResult, goodRes);
-    BOOST_CHECK(!spr.getHasChunks());
-    BOOST_CHECK(!spr.getHasSubChunks());
-    BOOST_CHECK(!spr.getHasAggregate());
+    BOOST_CHECK(!spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
     
 }
 

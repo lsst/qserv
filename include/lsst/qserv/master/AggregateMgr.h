@@ -19,6 +19,22 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+// AggregateMgr.h: 
+// class AggregateMgr -- top-level class
+// class AggregateMgr::AliasVal -- value class for aliases
+//
+// -- Specific classes for constructing AggregateRecords --
+// class AggregateMgr::{AggBuilderIf, 
+//                      EasyAggBuilder, CountAggBuilder, AvgAggBuilder}
+//
+// -- Handlers that get plugged into the parser.
+// class AggregateMgr::{SetFuncHandler, AliasHandler, SelectListHandler, 
+//                      GroupByHandler, GroupColumnHandler}
+//
+// class AggregateRecord
+// NodeBound, NodeList typedefs
+//
  
 #ifndef LSST_QSERV_MASTER_AGGREGATEMGR_H
 #define LSST_QSERV_MASTER_AGGREGATEMGR_H
@@ -48,7 +64,7 @@ typedef std::deque<NodeBound> NodeList;
 typedef NodeList::const_iterator NodeListConstIter;
 
 // Aggregate Record is a value class for all the information you need
-// to successfully perform distributed aggregation.
+// to successfully perform aggregation of distributed queries.
 // lbl and meaning record the original aggregation invocation (+alias)
 // orig, pass, and fixup record SQL expressions
 class AggregateRecord {
@@ -116,7 +132,7 @@ private:
 
 }; // class AggregateMgr
 
-// AliasVal records an alias definition
+// AliasVal records an alias definition in an ANTLR AST
 class AggregateMgr::AliasVal {
 public:
     AliasVal(antlr::RefAST lbl_, antlr::RefAST meaning_) : lbl(lbl_), meaning(meaning_){}

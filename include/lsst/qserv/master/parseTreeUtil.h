@@ -19,7 +19,9 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+
+/// parseTreeUtil.h - contains utility functions for examining,
+/// processing, and manipulating the ANTLR parse tree.   
 #ifndef LSST_QSERV_MASTER_PARSETREEUTIL_H
 #define LSST_QSERV_MASTER_PARSETREEUTIL_H
 #include <cassert>

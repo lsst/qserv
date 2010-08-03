@@ -19,6 +19,9 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+/// dispatcher.h - main interface to be exported via SWIG for the
+/// frontend's Python layer to initiate subqueries and join them.
  
 #ifndef LSST_QSERV_MASTER_DISPATCHER_H
 #define LSST_QSERV_MASTER_DISPATCHER_H

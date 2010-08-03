@@ -19,6 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+/// xrdfile.h - a module created to cleanly export xrootd client
+/// functions to the Python layer via SWIG.  These functions no longer
+/// serve that purpose since xrootd management no longer happens
+/// across SWIG.  Consider refactoring these, or folding them into a
+/// coherent layer that abstracts the rest of qserv from
+/// xrootd-specific semantics.
  
 #ifndef LSST_QSERV_MASTER_XRDFILE_H
 #define LSST_QSERV_MASTER_XRDFILE_H

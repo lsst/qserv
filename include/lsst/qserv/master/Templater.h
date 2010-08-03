@@ -41,10 +41,14 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
+/// class Templater : A templating module that helps produce string
+/// templates for substitution for making SQL subqueries.  Manages db
+/// whitelist for access control.
 class Templater {
 public:
     typedef std::map<std::string, int> IntMap;
 
+    // ColumnHandler: hooks into parser's production for column name references.
     class ColumnHandler : public VoidFourRefFunc {
     public:    
 	ColumnHandler(Templater& t) : _templater(t) {}
@@ -69,7 +73,7 @@ public:
 	Templater& _templater;
 	
     };
-    
+    // TableHandler: hooks into parser's production for table name references.
     class TableHandler : public VoidThreeRefFunc {
     public: 
 	TableHandler(Templater& t) : _templater(t) {}
@@ -128,7 +132,8 @@ public:
 	bool _hasChunks;
 	bool _hasSubChunks;
     };
-
+    // TableListHandler - hooks into parser's production of table
+    // lists (in FROM clauses)
     class TableListHandler : public VoidTwoRefFunc {
     public: 
 	TableListHandler(Templater& t) : _templater(t) {}

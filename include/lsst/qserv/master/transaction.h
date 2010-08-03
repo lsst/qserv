@@ -19,7 +19,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+
 #ifndef LSST_QSERV_MASTER_TRANSACTION_H
 #define LSST_QSERV_MASTER_TRANSACTION_H
 #include <string>
@@ -28,6 +28,9 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
+/// class TransactionSpec - A value class for the minimum
+/// specification of a subquery, as far as the xrootd layer is
+/// concerned.
 class TransactionSpec {
 
 public:

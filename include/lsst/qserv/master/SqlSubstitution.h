@@ -33,6 +33,10 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
+/// class SqlSubstitution : From an existing SQL statement, parse and
+/// generate subqueries according for supplied chunk and subchunk numbers.
+/// Uses SqlParseRunner for parsing and Substitution to perform the text
+/// substitution.
 class SqlSubstitution {
 public:
     typedef StringMapping Mapping;

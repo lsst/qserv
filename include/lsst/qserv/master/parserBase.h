@@ -24,7 +24,7 @@
 #define LSST_QSERV_SQL_PARSER_BASE
 #include "antlr/CommonAST.hpp"
 
-// Abstract types to be used in the SQL grammar.
+// parserBase.h Abstract types to be used in the SQL grammar.
 // * Not placed in include/ 
 // * Placed with DmlSQL2.g and SqlSQL2.g, which generate .cpp and .hpp
 class VoidFourRefFunc {

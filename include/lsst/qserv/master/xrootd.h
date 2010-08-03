@@ -26,7 +26,8 @@
 #define LSST_QSERV_MASTER_XROOTD_H
 
 
-// xrootd.h : consolidates xrootd/lower-level helper functions.
+// xrootd.h : consolidates xrootd/lower-level helper functions (i.e.,
+// dealing with xrootd URLs) 
 
 namespace lsst {
 namespace qserv {
