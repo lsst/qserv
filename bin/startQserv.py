@@ -89,10 +89,7 @@ def main():
     print "Configuration:"
     config.printTo(sys.stdout)
 
-    if options.resettables == True:
-        resetTables()
-        return
-    elif options.test == True:
+    if options.test == True:
         runParserTest()
         return
     elif options.testName:
