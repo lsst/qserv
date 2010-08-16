@@ -1,6 +1,12 @@
 # -*- python -*-
 import subprocess, os, sys
 
+skipUdfTest = False
+try:
+    import MySQLdb
+except ImportError:
+    skipUdfTest = True
+
 Import("env")
 
 testEnv = env.Clone()
@@ -30,5 +36,7 @@ for src in Glob("*.cc"):
     testEnv.Depends(test, testEnv['built_libs'])
     pass
 
-for src in Glob("*.py"):
-    testEnv.Test(src)
+if skipUdfTest:
+    print "WARNING: skipping UDF unit test - unable to import MySQLdb"
+else:
+    testEnv.Test("MySqlUdf.py")

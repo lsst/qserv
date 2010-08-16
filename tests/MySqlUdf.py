@@ -5,10 +5,7 @@ import optparse
 import random
 import sys
 import unittest
-try:
-    import MySQLdb as sql
-except ImportError:
-    sql = None
+import MySQLdb as sql
 
 
 def dbparam(x):
@@ -260,9 +257,6 @@ def main():
                       default="",
                       help="Password for db login. ('-' prompts)")
     (_options, args) = parser.parse_args()
-    if sql is None:
-        print >>sys.stderr, "Unable to import MySQLdb; skipping UDF unit tests"
-        sys.exit(1)
     if _options.password == "-":
         _options.password = getpass.getpass()
     random.seed(123456789)
