@@ -58,7 +58,8 @@ from string import Template
 import sqlparser
 import lsst.qserv.master.config
 from lsst.qserv.master import geometry
-from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap
+from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap\
+    SphericalConvexPolygon, convexHull
 from db import TaskDb as Persistence
 from db import Db
 
@@ -395,6 +396,7 @@ class RegionFactory:
             "circle" : self._handleCircle,
             "ellipse" : self._handleEllipse,
             "poly": self._handleConvexPolygon,
+            "hull": self._handleConvexHull,
             # Handled elsewhere
             "db" : self._handleNop,
             "objectId" : self._handleNop
@@ -425,20 +427,34 @@ class RegionFactory:
         # Note that:
         # N = vertex_count, and 
         # N >= 3 in order to be considered a polygon.
+        return self._handlePointSequence(SphericalConvexPolygon,
+                                         "convex polygon", param)
+
+    def _handleConvexHull(self, param):
+        # ConvexHull is adds a processing step to create a polygon from
+        # an unordered set of points.
+        # Points are given as ra,dec pairs:
+        # point count, ra1,decl1, ra2,decl2, ra3,decl3, ... raN,declN
+        # Note that:
+        # N = point_count, and 
+        # N >= 3 in order to define a hull with nonzero area.
+        return self._handlePointSequence(convexHull, "convex hull", param)
+
+    def _handlePointSequence(self, constructor, name, param):
         h = param.split(",")
         polys = []
         while true:
             count = int(h[0]) # counts are integer
             next = 1 + (2*count)
             assert len(hList) >= next, \
-                "Not enough values for polygon(%d)" % count
-            flatVertices = map(float, h[1 : next])
-            # Not sure if a list of 2-tuples is okay as a list of vertices.
-            polys.append(SphericalConvexPolygon(zip(flatVertices[::2],
-                                                    flatVertices[1::2])))
+                "Not enough values for %s (%d)" % (name, count)
+            flatPoints = map(float, h[1 : next])
+            # A list of 2-tuples should be okay as a list of vertices.
+            polys.append(constructor(zip(flatPoints[::2],
+                                        flatPoints[1::2])))
             h = h[next:]
         return polys
-
+        
     def _handleNop(self, param):
         return []
 
