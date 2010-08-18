@@ -22,14 +22,22 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# qservTool - a module for testing and performing
-# development/administrative actions on qserv.
+# Data duplicator - duplicates a PT1 tile so that overall data set size
+# is large enough for meaningful scalability testing.
+# 
+# Approach:
+# For each table row, for the following columns, transform with a 
+# simple function of f: old, raOff, declOff, copyNum -> new
 #
-# Tasks that test specific parts of qserv code and do not involve
-# end-to-end query processing should reside here.  Administrative and
-# development actions performed on an existing qserv instance should
-# also go here.  Some functionality from startQserv.py probably needs
-# to be moved here.
+# ranges for PT1 imsim data:
+#   scienceCcdExposureId: 43729169930 -> 43914280686
+#   rawAmpExposureId: 1399333437760 -> 1400862560911 
+#   objectId: 396180668284928 -> 439529773203912
+#   sourceId:  2865834880532484 -> 2877966299037945 
+#   ra:  -5.203 -> 5.222
+#   decl:  -4.34239174635 ->  4.725055533 
+#
+# 
 
 import optparse
 import sys
