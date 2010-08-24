@@ -55,6 +55,11 @@ Access to the classes from the qserv_master library
 // %lsst_exceptions()
 // %import "lsst/pex/exceptions/exceptionsLib.i"
 
+// Instantiate the map we need
+namespace std {
+    %template(StringMap) map<std::string, std::string>;
+};
+
 
 // ------------------------------------------------------------------------
 // Copied from http://www.swig.org/Doc1.3/Python.html#Python_nn59

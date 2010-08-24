@@ -57,6 +57,7 @@ struct ParserFixture {
     ChunkMapping cMapping;
     std::list<std::string> tableNames;
     std::string delimiter;
+    std::map<std::string, std::string> config;
 };
 
 //BOOST_FIXTURE_TEST_SUITE(QservSuite, ParserFixture)
@@ -67,13 +68,14 @@ void trySubstitute() {
     names.push_front("Object");
     names.push_front("Source");
     std::map<std::string,std::string> m;
+    std::map<std::string,std::string> cfg; // dummy config
     m["Object"] = "Object_24_35";
     m["Source"] = "Source_24_35";
 
     std::string stmt = "select * from LSST.Object as o1, LSST.Source where o1.id = 4 and LSST.Source.flux > 4 and ra < 5 and dista(ra,decl,ra,decl) < 1; select * from Temp;";
 
-
-    SqlSubstitution s(stmt, m);
+    
+    SqlSubstitution s(stmt, m, cfg);
     std::cout << "Plain transform " << s.substituteOnly(m) << std::endl;
     m["Object"] = "Object_10_22";
     m["Source"] = "Source_10_22";
@@ -83,10 +85,11 @@ void trySubstitute() {
 //BOOST_AUTO_TEST_CASE(SqlSubstitution) {
 void tryAutoSubstitute() {
     std::string stmt = "select * from LSST.Object as o1, LSST.Source where o1.id = 4 and LSST.Source.flux > 4 and ra < 5 and dista(ra,decl,ra,decl) < 1; select * from Temp;";
+    std::map<std::string,std::string> cfg; // dummy config
     ChunkMapping c;
     c.addChunkKey("Source");
     c.addSubChunkKey("Object");
-    SqlSubstitution ss(stmt, c.getMapping(32,53432));
+    SqlSubstitution ss(stmt, c.getMapping(32,53432), cfg);
     for(int i = 4; i < 6; ++i) {
 	std::cout << "--" << ss.transform(c.getMapping(i,3), i, 3) 
                   << std::endl;
@@ -97,11 +100,12 @@ void tryNnSubstitute() {
     std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2 where o1.id != o2.id and spdist(o1.ra,o1.decl,o2.ra,o2.decl) < 1;";
     stmt = "select * from LSST.Object as o1, LSST.Object as o2 where o1.id != o2.id and LSST.spdist(o1.ra,o1.decl,o2.ra,o2.decl) < 1 AND o1.id != o2.id;";
     char* imported[] = {"Source","Object"};
+    std::map<std::string,std::string> cfg; // dummy config
 
     ChunkMapping c;
     c.addChunkKey("Source");
     c.addSubChunkKey("Object");
-    SqlSubstitution ss(stmt, c.getMapping(32,53432));
+    SqlSubstitution ss(stmt, c.getMapping(32,53432), cfg);
     ss.importSubChunkTables(imported);
     if(!ss.getError().empty()) {
 	std::cout << "ERROR constructing substitution: " 
@@ -115,11 +119,12 @@ void tryNnSubstitute() {
 
 void tryTriple() {
     std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2, LSST.Source where o1.id != o2.id and dista(o1.ra,o1.decl,o2.ra,o2.decl) < 1 and Source.oid=o1.id;";
+    std::map<std::string,std::string> cfg; // dummy config
     ChunkMapping c;
     c.addChunkKey("Source");
     c.addSubChunkKey("Object");
     c.addSubChunkKey("ObjectSub");
-    SqlSubstitution ss(stmt, c.getMapping(32,53432));
+    SqlSubstitution ss(stmt, c.getMapping(32,53432), cfg);
     for(int i = 4; i < 6; ++i) {
 	std::cout << "--" << ss.transform(c.getMapping(i,3),i,3) << std::endl;
     }
@@ -128,13 +133,14 @@ void tryTriple() {
 void tryAggregate() {
     std::string stmt = "select sum(pm_declErr),sum(bMagF), count(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
     std::string stmt2 = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
+    std::map<std::string,std::string> cfg; // dummy config
 
     std::auto_ptr<ChunkMapping> c = newTestMapping();
-    SqlSubstitution ss(stmt, c->getMapping(32,53432));
+    SqlSubstitution ss(stmt, c->getMapping(32,53432), cfg);
     for(int i = 4; i < 6; ++i) {
 	std::cout << "--" << ss.transform(c->getMapping(i,3),i,3) << std::endl;
     }
-    SqlSubstitution ss2(stmt2, c->getMapping(32,4352));
+    SqlSubstitution ss2(stmt2, c->getMapping(32,4352), cfg);
     std::cout << "--" << ss2.transform(c->getMapping(24,3),24,3) << std::endl;
     
 }
@@ -176,7 +182,7 @@ BOOST_AUTO_TEST_CASE(NoSub) {
 BOOST_AUTO_TEST_CASE(Aggregate) {
     std::string stmt = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
 
-    SqlSubstitution ss(stmt, cMapping.getMapping(32,53432));
+    SqlSubstitution ss(stmt, cMapping.getMapping(32,53432), config);
     for(int i = 4; i < 6; ++i) {
 	// std::cout << "--" << ss.transform(cMapping.getMapping(i,3),i,3) 
         //           << std::endl;
@@ -194,7 +200,7 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
 BOOST_AUTO_TEST_CASE(Limit) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 limit 2;";
     
-    SqlSubstitution ss(stmt, cMapping.getMapping(32,53432));
+    SqlSubstitution ss(stmt, cMapping.getMapping(32,53432), config);
     for(int i = 4; i < 6; ++i) {
 	//std::cout << "--" << ss.transform(cMapping.getMapping(i,3),i,3) 
         //           << std::endl;
@@ -210,8 +216,8 @@ BOOST_AUTO_TEST_CASE(Limit) {
 
 BOOST_AUTO_TEST_CASE(OrderBy) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;";
-
-    SqlSubstitution ss(stmt, cMapping.getMapping(32,53432));
+    
+    SqlSubstitution ss(stmt, cMapping.getMapping(32,53432), config);
     for(int i = 4; i < 6; ++i) {
 	//std::cout << "--" << ss.transform(cMapping.getMapping(i,3),i,3) 
         //           << std::endl;

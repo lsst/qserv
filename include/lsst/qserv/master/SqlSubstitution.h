@@ -43,10 +43,11 @@ public:
     typedef std::deque<std::string> Deque;
     typedef Deque::const_iterator DequeConstIter;
     typedef lsst::qserv::master::MergeFixup MergeFixup;
+    typedef std::map<std::string, std::string> StringMap;
 
     SqlSubstitution(std::string const& sqlStatement, 
                     Mapping const& mapping, 
-                    std::string const& defaultDb="");
+                    std::map<std::string, std::string> const& config);
     
     void importSubChunkTables(char** cStringArr);
     std::string transform(Mapping const& m, int chunk, int subChunk);

@@ -48,8 +48,13 @@ bool endsWith(std::string const& s, char const* ending) {
 
 qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
                                           Mapping const& mapping,
-                                          std::string const& defaultDb) 
+                                          std::map<std::string, std::string> const& config)
     : _delimiter("*?*"), _hasAggregate(false) {
+    std::string defaultDb;
+    StringMap::const_iterator i = config.find("table.defaultDb");
+    if(i != config.end()) {
+        defaultDb = i->second;
+    }
     _build(sqlStatement, mapping, defaultDb);
     //
 }
