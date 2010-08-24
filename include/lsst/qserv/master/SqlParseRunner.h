@@ -55,8 +55,11 @@ class OrderByHandler; // Parse handler
 class SqlParseRunner {
 public:
     typedef boost::shared_ptr<SqlParseRunner> Ptr;
+    typedef Templater::IntMap IntMap;
+
     static Ptr newInstance(std::string const& statement, 
                            std::string const& delimiter,
+                           IntMap const& dbWhiteList,
                            std::string const& defaultDb="");
     void setup(std::list<std::string> const& names);
     std::string getParseResult();
@@ -86,6 +89,7 @@ public:
 private:
     SqlParseRunner(std::string const& statement, 
                    std::string const& delimiter,
+                   IntMap const& dbWhiteList,
                    std::string const& defaultDb="");
     void _computeParseResult();
     void _makeOverlapMap();

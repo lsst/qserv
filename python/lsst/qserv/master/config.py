@@ -41,12 +41,17 @@ from cStringIO import StringIO
 import os
 import sys
 
+# Package
+from lsst.qserv.master import StringMap # C++ STL map<string,string>
+
+
 # Defaults for the configuration itself
 defaultFilename = "/etc/qserv.cnf"
 envFilename = None
 envFilenameVar = "QSERV_CONFIG"
 
 # qserv built-in defaults:
+# Note that section names and key names are lower-cased by python.
 defaultConfig = StringIO("""\
 [frontend]
 xrootd=lsst-dev01:1094
@@ -73,6 +78,7 @@ substripes=10
 [table]
 chunked=Source,ForcedSource
 subchunked=Object
+alloweddbs=LSST
 
 [mysql]
 mysqlclient=
@@ -101,6 +107,13 @@ def load(filename=None):
 def printTo(outHandle):
     config.write(outHandle)
     pass
+
+def getStringMap():
+    m = StringMap()
+    for s in config.sections():
+        for (k,v) in config.items(s):
+            m[s + "." + k] = v
+    return m
 
 ######################################################################
 ## Error classes

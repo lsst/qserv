@@ -170,9 +170,10 @@ std::string const Templater::_nameSep(".");
 
 Templater::Templater(std::string const& delimiter, 
                      antlr::ASTFactory* factory,
+                     Templater::IntMap const& dbWhiteList,
                      std::string const& defaultDb) 
-    : _delimiter(delimiter), _factory(factory), _defaultDb(defaultDb) {
-    _dbWhitelist["LSST"] = 'a'; // LSST db is OK.
+    : _delimiter(delimiter), _factory(factory), _defaultDb(defaultDb),
+      _dbWhiteList(dbWhiteList) {
 }
 
 void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
@@ -201,7 +202,7 @@ void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
 
 ////////////////////////////////////////////////////////////////////////
 bool Templater::_isDbOk(std::string const& db) {
-    return _dbWhitelist.end() != _dbWhitelist.find(db);
+    return _dbWhiteList.end() != _dbWhiteList.find(db);
 }
 
 ////////////////////////////////////////////////////////////////////////

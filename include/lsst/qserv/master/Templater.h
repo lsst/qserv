@@ -154,6 +154,7 @@ public:
     
     Templater(std::string const& delimiter="*?*", 
               antlr::ASTFactory* factory=0, 
+              IntMap const& dbWhiteList=IntMap(),
               std::string const& defaultDb=std::string());
     ~Templater() { }
 
@@ -187,7 +188,7 @@ public:
     }
 
     StringList const& getBadDbs() const { return _badDbs; }
-    void addGoodDb(std::string const& db) { _dbWhitelist[db] = 'a'; }
+    void addGoodDb(std::string const& db) { _dbWhiteList[db] = 1; }
     
 private:
     bool _isDbOk(std::string const& db);
@@ -195,7 +196,7 @@ private:
     void _processName(antlr::RefAST db, antlr::RefAST n); 
     
     ReMap _map;
-    ReMap _dbWhitelist;
+    IntMap _dbWhiteList;
     std::string _delimiter;
     antlr::ASTFactory* _factory;
     std::string const _defaultDb;

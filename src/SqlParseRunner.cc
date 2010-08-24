@@ -71,14 +71,17 @@ private:
 boost::shared_ptr<qMaster::SqlParseRunner> 
 qMaster::SqlParseRunner::newInstance(std::string const& statement, 
                                      std::string const& delimiter,
+                                     SqlParseRunner::IntMap const& dbWhiteList,
                                      std::string const& defaultDb) {
     return boost::shared_ptr<SqlParseRunner>(new SqlParseRunner(statement, 
                                                                 delimiter,
+                                                                dbWhiteList,
                                                                 defaultDb));
 }
 
 qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement, 
                                         std::string const& delimiter,
+                                        SqlParseRunner::IntMap const& dbWhiteList,
                                         std::string const& defaultDb) :
     _statement(statement),
     _stream(statement, stringstream::in | stringstream::out),
@@ -86,7 +89,7 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
     _parser(new SqlSQL2Parser(*_lexer)),
     _delimiter(delimiter),
     _factory(new ASTFactory()),
-    _templater(_delimiter, _factory.get(), defaultDb)
+    _templater(_delimiter, _factory.get(), dbWhiteList, defaultDb)
 { 
     std::cout << "(int)PARSING:"<< statement << std::endl;
 }

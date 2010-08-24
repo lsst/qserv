@@ -52,12 +52,16 @@ struct ParserFixture {
 	cMapping.addSubChunkKey("Object");
         tableNames.push_back("Object");
         tableNames.push_back("Source");
+        whiteList["LSST"] = 1;
+        defaultDb = "LSST";
     };
     ~ParserFixture(void) { };
     ChunkMapping cMapping;
     std::list<std::string> tableNames;
     std::string delimiter;
     std::map<std::string, std::string> config;
+    std::map<std::string, int> whiteList;
+    std::string defaultDb;
 };
 
 //BOOST_FIXTURE_TEST_SUITE(QservSuite, ParserFixture)
@@ -151,7 +155,9 @@ BOOST_FIXTURE_TEST_SUITE(CppParser, ParserFixture)
 BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
     SqlParseRunner::Ptr spr = SqlParseRunner::newInstance(stmt, 
-                                                          delimiter, "LSST");
+                                                          delimiter,
+                                                          whiteList,
+                                                          defaultDb);
     spr->setup(tableNames);
     std::string parseResult = spr->getParseResult();
     // std::cout << stmt << " is parsed into " << parseResult
@@ -166,7 +172,9 @@ BOOST_AUTO_TEST_CASE(NoSub) {
     std::string stmt = "SELECT * FROM Filter WHERE filterId=4;";
     std::string goodRes = "SELECT * FROM LSST.Filter WHERE filterId=4;";
     SqlParseRunner::Ptr spr(SqlParseRunner::newInstance(stmt, 
-                                                        delimiter, "LSST"));
+                                                        delimiter,
+                                                        whiteList, 
+                                                        defaultDb));
     spr->setup(tableNames);
     std::string parseResult = spr->getParseResult();
     // std::cout << stmt << " is parsed into " << parseResult 
