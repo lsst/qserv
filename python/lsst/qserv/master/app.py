@@ -58,8 +58,8 @@ from string import Template
 import sqlparser
 import lsst.qserv.master.config
 from lsst.qserv.master import geometry
-from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap\
-    SphericalConvexPolygon, convexHull
+from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap
+from lsst.qserv.master.geometry import SphericalConvexPolygon, convexHull
 from db import TaskDb as Persistence
 from db import Db
 
@@ -716,13 +716,17 @@ class HintedQueryAction:
         self._pmap = pmap            
         self._isFullSky = False # Does query involves whole sky
         self._evaluateHints(hints, pmap)
+        # Config preparation
+        configModule = lsst.qserv.master.config
+        qConfig = configModule.getStringMap()
+        qConfig["table.defaultDb"] = self._dbContext
         # Table mapping 
         try:
             self._pConfig = PartitioningConfig() # Should be shared.
             self._pConfig.applyConfig()
             self._substitution = SqlSubstitution(query, 
                                                  self._pConfig.getMapRef(2,3),
-                                                 self._dbContext)
+                                                 qConfig)
             if self._substitution.getError():
                 self._error = self._substitution.getError()
                 self._isValid = False
