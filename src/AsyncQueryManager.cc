@@ -171,6 +171,8 @@ void qMaster::AsyncQueryManager::joinEverything() {
         _queriesEmpty.timed_wait(lock, boost::posix_time::seconds(5));
     }
     _merger->finalize();
+    std::cout << "Query finish. " << _queryCount << " dispatched." << std::endl;
+
 }
 
 void qMaster::AsyncQueryManager::configureMerger(TableMergerConfig const& c) {

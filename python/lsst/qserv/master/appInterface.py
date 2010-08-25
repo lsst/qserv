@@ -52,8 +52,22 @@ class AppInterface:
         # set id counter to seconds since the epoch, mod 1 year.
         self._idCounter = int(time.time() % (60*60*24*365))
         self._resultDb = config.config.get("resultdb", "db")
-
         pass
+
+    def _callWithThread(self, function):
+        if 'lsstRunning' in dir(self.reactor):
+            self.reactor.callInThread(function)
+        else:
+            function()
+        pass
+
+    def _getThreadFunc(self):
+        if 'lsstRunning' in dir(self.reactor):
+            return self.reactor.callInThread
+        else:
+            return lambda f: thread.start_new_thread(f, tuple())
+        pass
+        
 
     def queryNow(self, q, hints):
         """Issue a query. q=querystring, h=hint list
@@ -88,8 +102,8 @@ class AppInterface:
         a = app.HintedQueryAction(query, conditions, self.pmap, 
                                   lambda e: lock.addError(e), resultName)
         if a.getIsValid():
-            a.invoke()
-            lock.unlockAfter(a.getResult)
+            self._callWithThread(a.invoke)
+            lock.unlockAfter(self._getThreadFunc(), a.getResult)
         else:
             lock.unlock()
             return ("error","error",a.getError())
@@ -106,10 +120,7 @@ class AppInterface:
         a = app.HintedQueryAction(q, hints, self.pmap)
         key = a.queryHash
         self.actions[key] = a
-        if 'lsstRunning' in dir(self.reactor):
-            self.reactor.callInThread(a.invoke)
-        else:
-            a.invoke()
+        self._callWithThread(a.invoke)
         #stats["appInvokeFinish"] = time.time()
         return key
 

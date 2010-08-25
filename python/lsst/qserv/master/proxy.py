@@ -63,7 +63,7 @@ class Lock:
         self.db.applySql(Lock.unlockTmpl)
         pass
 
-    def unlockAfter(self, function):
+    def unlockAfter(self, threadCreateFunc, function):
         def waitAndUnlock():
             lock = self
             function()

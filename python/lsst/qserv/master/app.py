@@ -117,6 +117,7 @@ def makePmap():
         msg = "Partitioner's stripes and substripes must be natural numbers."
         raise lsst.qserv.master.config.ConfigError(msg)
     p = SphericalBoxPartitionMap(stripes, substripes) 
+    print "Using %d stripes and %d substripes." % (stripes, substripes)
     return p
 
 def getResultTable(tableName):
@@ -750,6 +751,8 @@ class HintedQueryAction:
         self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
                                              self.queryHash) + "_%s"
         self._isValid = True
+        self._invokeLock = threading.Semaphore()
+        self._invokeLock.acquire() # Prevent result retrieval before invoke
         pass
 
     def _headerFunc(self, tableNames, subc=[]):
@@ -790,6 +793,7 @@ class HintedQueryAction:
                 else:
                     self._intersectIter = map(lambda i: (i,[]), chunkIds)
                 self._isFullSky = False
+        print "Affected chunks: ", [x[0] for x in self._intersectIter]
         pass
 
     def _getChunkIdsFromObjs(self, ids):
@@ -825,6 +829,7 @@ class HintedQueryAction:
                 q = self._makeChunkQuery(chunkId, table)
             self._babysitter.submit(chunkId, table, q)
             ##print >>sys.stderr, q, "submitted"
+        self._invokeLock.release()
         return
 
     def getError(self):
@@ -836,7 +841,9 @@ class HintedQueryAction:
     def getResult(self):
         """Wait for query to complete (as necessary) and then return 
         a handle to the result."""
+        self._invokeLock.acquire()
         self._babysitter.finish()
+        self._invokeLock.release()
         table = self._babysitter.getResultTableName()
         #self._collater.finish()
         #table = self._collater.getResultTableName()

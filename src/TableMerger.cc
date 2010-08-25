@@ -113,6 +113,7 @@ bool TableMerger::finalize() {
 			   % _config.mFixup.select
 			   % _mergeTable 
 			   % fixupSuffix).str() + cleanup;
+        std::cout << "Merging w/" << sql << std::endl;
 	return _applySql(sql);
     }
     return true;
