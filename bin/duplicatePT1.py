@@ -202,7 +202,7 @@ class GroupWriter:
 class Writer:
     def __init__(self, copyParam, csvFile, headerRow):
         (raOff, declOff, copyNum) = copyParam
-        self.w = open(csvFile, "w")
+        self.w = open(csvFile, "w",0) # no buffering
         # Make column index
         self.headerDict = dict(zip(headerRow, range(len(headerRow))))
 
@@ -309,8 +309,11 @@ class App:
                                      self.options.end),
                         self.options.outPrefix, self.options.columnNames)
         for f in self.args:
-            map(lambda l: w.write(l.split(self.options.delimiter)), 
-                skipGen(f, self.options.lineSkip))
+            # Using map() would lead to unwanted Python buffering.
+            for l in skipGen(f, self.options.lineSkip):
+                w.write(l.split(self.options.delimiter)), 
+
+
         pass
     pass
 
