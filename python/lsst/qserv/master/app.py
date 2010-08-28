@@ -709,7 +709,7 @@ class HintedQueryAction:
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
-        self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:16] 
+        self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:18] 
         self._sessionId = newSession()
 
 
@@ -750,6 +750,7 @@ class HintedQueryAction:
         self._insertTableTmpl = "INSERT INTO %s " ;
         self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
                                              self.queryHash) + "_%s"
+        # We want result table names longer than result-merging table names.
         self._isValid = True
         self._invokeLock = threading.Semaphore()
         self._invokeLock.acquire() # Prevent result retrieval before invoke

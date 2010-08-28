@@ -164,7 +164,10 @@ pyPath = 'python/lsst/qserv/master'
 pyLib = os.path.join(pyPath, '_masterLib.so')
 dispatchSrcs = map(lambda x: os.path.join('src', x), 
                    ["xrdfile.cc", 
-                    "thread.cc", "TableMerger.cc",
+                    "thread.cc", 
+                    "MmapFile.cc",
+                    "TableMerger.cc",
+                    "SqlInsertIter.cc",
                     "sql.cc",
                     "dispatcher.cc", "xrootd.cc",
                     "AsyncQueryManager.cc",

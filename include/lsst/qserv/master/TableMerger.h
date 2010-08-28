@@ -78,6 +78,7 @@ public:
     TableMerger(TableMergerConfig const& c);
 
     bool merge(std::string const& dumpFile, std::string const& tableName);
+    bool merge2(std::string const& dumpFile, std::string const& tableName);
     
     TableMergerError const& getError() const { return _error; }
     std::string getTargetTable() const {return _config.targetTable; }
@@ -90,6 +91,14 @@ private:
     std::string _buildOrderByLimit();
     void _fixupTargetName();
     bool _importResult(std::string const& dumpFile);
+    bool _slowImport(std::string const& dumpFile, 
+                    std::string const& tableName);
+    bool _importFromBuffer(char const* buf, std::size_t size, 
+                          std::string const& tableName);
+    bool _importBufferCreate(char const* buf, std::size_t size, 
+                            std::string const& tableName);
+    bool _importBufferInsert(char const* buf, std::size_t size,
+                             std::string const& tableName, bool allowNull);
 
     static std::string const _dropSql;
     static std::string const _createSql;

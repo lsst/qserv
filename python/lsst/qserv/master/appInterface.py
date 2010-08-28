@@ -95,6 +95,9 @@ class AppInterface:
         @returns result table name, lock table name, but before completion."""
         taskId = self._idCounter # RAW hazard, but this part is single-threaded
         self._idCounter += 1
+        # resultName should be shorter than 20 characters so it is always
+        # shorter than intermediate table names. 
+        # This allows in-place name replacement optimization while merging.
         resultName = "%s.result_%d" % (self._resultDb, taskId)
         lockName = "%s.lock_%d" % (self._resultDb, taskId)
         lock = proxy.Lock(lockName)
