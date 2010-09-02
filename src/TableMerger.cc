@@ -78,9 +78,9 @@ void inplaceReplace(std::string& s, std::string const& old,
     if(rplc.size() < rplcSize) { // do padding for in-place
         rplc += std::string(rplcSize - rplc.size(), ' ');
     }
-    std::cout << "rplc " << rplc << " old=" << s.substr(pos-1, rplcSize+2) << std::endl;
+    //std::cout << "rplc " << rplc << " old=" << s.substr(pos-1, rplcSize+2) << std::endl;
     s.replace(pos, rplcSize, rplc);
-    std::cout << "newnew: " << s.substr(pos-5, rplcSize+10) << std::endl;
+    //std::cout << "newnew: " << s.substr(pos-5, rplcSize+10) << std::endl;
     return;
 }
 std::string extractReplacedCreateStmt(char const* s, ::off_t size,
@@ -202,7 +202,7 @@ bool TableMerger::_applySql(std::string const& sql) {
 bool TableMerger::_applySqlLocal(std::string const& sql) {
     boost::lock_guard<boost::mutex> m(_sqlMutex);
     if(!_sqlConn.get()) {
-        _sqlConn.reset(new SqlConnection(*_sqlConfig));
+        _sqlConn.reset(new SqlConnection(*_sqlConfig, true));
         if(!_sqlConn->connectToDb()) {
             std::stringstream ss;
             _error.status = TableMergerError::MYSQLCONNECT;
@@ -212,6 +212,9 @@ bool TableMerger::_applySqlLocal(std::string const& sql) {
             _error.description = "Error connecting to db." + ss.str();
             _sqlConn.reset();
             return false;
+        } else {
+            std::cout << "TableMerger " << (void*) this 
+                      << " connected to db." << std::endl;
         }
     }
     if(!_sqlConn->apply(sql)) {
@@ -318,7 +321,7 @@ bool TableMerger::_importBufferCreate(char const* buf, std::size_t size,
                                                       tableName, 
                                                       targetTable,
                                                       dropQuote);
-    std::cout << "CREATE-----" << _mergeTable << std::endl;
+    //std::cout << "CREATE-----" << _mergeTable << std::endl;
     return _applySql(dropSql + createSql);
 }
 
@@ -329,7 +332,7 @@ bool TableMerger::_importBufferInsert(char const* buf, std::size_t size,
     // Search the buffer for the insert statement, 
     // patch it (and future occurrences for the old table name, 
     // and merge directly.
-    std::cout << "MERGE INTO-----" << _mergeTable << std::endl;
+    //std::cout << "MERGE INTO-----" << _mergeTable << std::endl;
     for(SqlInsertIter i(buf, size, tableName); 
         !i.isDone(); 
         ++i) {

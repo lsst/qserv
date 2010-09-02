@@ -331,6 +331,8 @@ void qMaster::ChunkQuery::_notifyManager() {
     bool aborted = (_state==ABORTED) 
         || _shouldSquash 
         || (_result.queryWrite < 0);
+    //std::cout << "cqnotify " << _id  << " " << (void*) _manager 
+    //<< std::endl;
     _manager->finalizeQuery(_id, _result, aborted);
 }
 

@@ -639,7 +639,7 @@ class QueryBabysitter:
         saveName = self._saveName(chunk)
         handle = submitQuery(self._sessionId, chunk, q, saveName, table)
         self._inFlight[chunk] = (handle, table)
-        print "Chunk %d to %s    (%s)" % (chunk, saveName, table)
+        #print "Chunk %d to %s    (%s)" % (chunk, saveName, table)
 
     def finish(self):
         for (k,v) in self._inFlight.items():
@@ -794,7 +794,7 @@ class HintedQueryAction:
                 else:
                     self._intersectIter = map(lambda i: (i,[]), chunkIds)
                 self._isFullSky = False
-        print "Affected chunks: ", [x[0] for x in self._intersectIter]
+        #print "Affected chunks: ", [x[0] for x in self._intersectIter]
         pass
 
     def _getChunkIdsFromObjs(self, ids):
@@ -820,6 +820,7 @@ class HintedQueryAction:
         return cids
 
     def invoke(self):
+        #count=0
         for chunkId, subIter in self._intersectIter:
             table = self._resultTableTmpl % str(chunkId)
             q = None
@@ -829,6 +830,8 @@ class HintedQueryAction:
             else:
                 q = self._makeChunkQuery(chunkId, table)
             self._babysitter.submit(chunkId, table, q)
+            #count += 1
+            #if count >= 1: break
             ##print >>sys.stderr, q, "submitted"
         self._invokeLock.release()
         return

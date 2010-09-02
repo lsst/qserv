@@ -72,7 +72,11 @@ public:
     squashQuery() {}
     void operator()(QueryMap::value_type const& qv) {
         boost::shared_ptr<ChunkQuery> cq = qv.second.first;
-        cq->requestSquash();
+        if(cq.get()) {
+            // Query may have been completed, and its memory freed,
+            // but still exist briefly before it is deleted from the map.
+            cq->requestSquash();
+        }
     }
 };
 
@@ -120,7 +124,8 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     // std::cout << "finalizing. read=" << r.read << " and status is "
     //           << (aborted ? "ABORTED" : "okay") << std::endl;
 
-    if((!aborted) && (r.read >= 0)) {
+    if((!aborted) && (r.open >= 0) && (r.queryWrite >= 0) 
+       && (r.read >= 0)) {
 	{ // Lock scope for reading
 	    boost::lock_guard<boost::mutex> lock(_queriesMutex);
 	    QuerySpec& s = _queries[id];
@@ -152,6 +157,7 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 	boost::lock_guard<boost::mutex> lock(_resultsMutex);
 	_results.push_back(Result(id,r));
         if(aborted) ++_squashCount; // Borrow result mutex to protect counter.
+        boost::lock_guard<boost::mutex> qLock(_queriesMutex);
         if(_queries.empty()) _queriesEmpty.notify_all();
     }
 }
@@ -171,7 +177,8 @@ void qMaster::AsyncQueryManager::joinEverything() {
         _queriesEmpty.timed_wait(lock, boost::posix_time::seconds(5));
     }
     _merger->finalize();
-    std::cout << "Query finish. " << _queryCount << " dispatched." << std::endl;
+    std::cout << "Query finish. " << _queryCount << " dispatched." 
+              << std::endl;
 
 }
 

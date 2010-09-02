@@ -139,8 +139,8 @@ struct mergeStatus {
 		      << " lWrite: " << x.second.localWrite << std::endl;
 	    isSuccessful = false;
 	} else {
-	    std::cout << "Chunk " << x.first << " successful with "
-		      << x.second.localWrite << std::endl;
+	    std::cout << "Chunk " << x.first << " OK ("
+		      << x.second.localWrite << ")\t";
 	}
     }
     bool& isSuccessful;
