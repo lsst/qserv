@@ -23,14 +23,18 @@
  */
  
 #include <openssl/md5.h>
+#include <sstream>
 #include "boost/format.hpp"
 #include "lsst/qserv/master/xrootd.h"
 
 namespace qMaster = lsst::qserv::master;
 
 std::string qMaster::makeUrl(char const* typeStr, int chunk) {
-    std::string s = (boost::format("%d") % chunk).str();
-    return makeUrl(NULL, typeStr, s);
+    std::stringstream s;
+    s << chunk;
+    // boost::format version is 5x slower.
+    //std::string s = (boost::format("%d") % chunk).str();
+    return makeUrl(NULL, typeStr, s.str());
 }
 
 std::string qMaster::makeUrl(char const* hostport, 
@@ -43,10 +47,31 @@ std::string qMaster::makeUrl(char const* hostport,
 	    hostport = "lsst-dev01:1094";
 	}
     }
+#if 0
     char* user = "qsmaster";
     boost::format f("xroot://%s@%s//%s/%s");
     return (f % user % hostport % typeStr % s).str();
+#else 
+    // This is ~8.5x faster than the boost::format version.
+    std::string pfx = "xroot://";
+    std::string user("qsmaster");
+    std::string tstr(typeStr);
+    std::string ret;
+    ret.reserve(pfx.size() + user.size() + 1 + 2 + 1 
+                + tstr.size() + s.size());
+    ret += pfx;
+    ret += user;
+    ret += "@";
+    ret += hostport;
+    ret += "//";
+    ret += typeStr;
+    ret += "/";
+    ret += s;
+    return ret;
+#endif
 }
+
+
 
 // hashQuery
 // a query hasher.  
@@ -54,9 +79,13 @@ std::string qMaster::makeUrl(char const* hostport,
 std::string qMaster::hashQuery(char const* buffer, int bufferSize) {
     unsigned char hashVal[MD5_DIGEST_LENGTH];
     MD5(reinterpret_cast<unsigned char const*>(buffer), bufferSize, hashVal);
-    std::string result;
+    std::stringstream s;
+    s.flags(std::ios::hex);
+    s.fill('0');
     for (int i = 0; i < MD5_DIGEST_LENGTH; ++i) {
-        result += (boost::format("%02x") % static_cast<int>(hashVal[i])).str();
+        s.width(2);
+        s << static_cast<unsigned int>(hashVal[i]);
     }
-    return result;
+    // C++ stream version is ~30x faster than boost::format version.
+    return s.str();
 }
