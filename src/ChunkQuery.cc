@@ -61,7 +61,6 @@ namespace {
             errnoComplain(("Faulty close " + comment2).c_str(), fd, errno);
         }
     }
-
 }
 
 
@@ -104,6 +103,9 @@ void qMaster::ChunkQuery::Complete(int Result) {
 	break;
     default:
 	isReallyComplete = true;
+        std::cout << "FIXME: ChunkQuery @ " << _state 
+                  << " Complete() -> CORRUPT " << CORRUPT
+                  << std::endl;
 	_state = CORRUPT;
     }
 
@@ -277,6 +279,8 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
     // Now write
     int len = _spec.query.length();
     int writeCount = qMaster::xrdWrite(fd, _spec.query.c_str(), len);
+    // Get rid of the query string to save space
+    _spec.query.clear();
     int res;
     if(writeCount != len) {
 	_result.queryWrite = -errno;
