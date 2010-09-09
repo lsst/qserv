@@ -101,7 +101,9 @@ class AppInterface:
         resultName = "%s.result_%d" % (self._resultDb, taskId)
         lockName = "%s.lock_%d" % (self._resultDb, taskId)
         lock = proxy.Lock(lockName)
-        lock.lock()
+        if not lock.lock():
+            return ("error", "error",
+                    "error locking result, check qserv/db config.")
         a = app.HintedQueryAction(query, conditions, self.pmap, 
                                   lambda e: lock.addError(e), resultName)
         if a.getIsValid():

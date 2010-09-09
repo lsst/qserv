@@ -47,12 +47,13 @@ class Lock:
         pass
     def lock(self):
         self.db = lsst.qserv.master.db.Db()
-        self.db.activate()
+        if not self.db.check(): # Can't lock.
+            return False
         self.db.applySql((Lock.createTmpl % self._tableName) 
                          + (Lock.lockTmpl % self._tableName)
                          + (Lock.writeTmpl % (self._tableName, "dummy", 
                                               time.time())))
-        pass
+        return True
 
     def addError(self, error):
         self.db.applySql(Lock.writeTmpl % (self._tableName, "ERR "+ error, 
