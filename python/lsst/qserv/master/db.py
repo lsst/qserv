@@ -29,6 +29,7 @@
 # 
 # Non-functioning task-tracking db operations reside here as well.
 
+import sys
 # Mysql
 import MySQLdb as sql
 
@@ -56,6 +57,7 @@ class Db:
         host = config.get("resultdb", "host")
         port = config.getint("resultdb", "port")
         db = config.get("resultdb", "db")
+        #print "DB CONNECT: ", user, " p=", passwd, " sock=", socket, " db=", db
         try: # Socket file first
             self._conn = sql.connect(user=user,
                                      passwd=passwd,
