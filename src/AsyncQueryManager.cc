@@ -192,6 +192,20 @@ std::string qMaster::AsyncQueryManager::getMergeResultName() const {
     }
     return std::string();
 }
+////////////////////////////////////////////////////////////////////////
+// private: ////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+void qMaster::AsyncQueryManager::_readConfig(std::map<std::string,std::string> const& cfg) {
+    StringMap::const_iterator i = cfg.find("frontend.xrootd");
+    if(i != cfg.end()) {
+        _xrootdHostPort = i->second;
+    } else {
+        std::cout << "WARNING! No xrootd spec. Using lsst-dev01:1094" 
+                  << std::endl;
+        _xrootdHostPort = "lsst-dev01:1094";
+    }
+}
+
 
 void qMaster::AsyncQueryManager::_addNewResult(ssize_t dumpSize, 
                                                std::string const& dumpFile, 

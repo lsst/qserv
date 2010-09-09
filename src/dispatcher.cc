@@ -76,10 +76,12 @@ void qMaster::initDispatcher() {
 /// @return a token identifying the session
 int qMaster::submitQuery(int session, int chunk, char* str, int len, char* savePath, std::string const& resultName) {
     TransactionSpec t;
+    AsyncQueryManager& qm = getAsyncManager(session);
+    std::string const hp = qm.getXrootdHostPort();
     t.chunkId = chunk;
     t.query = std::string(str, len);
     t.bufferSize = 8192000;
-    t.path = qMaster::makeUrl("query", chunk);
+    t.path = qMaster::makeUrl(hp.c_str(), "query", chunk);
     t.savePath = savePath;
     return submitQuery(session, TransactionSpec(t), resultName);
 }
@@ -187,9 +189,8 @@ std::string const& qMaster::getQueryStateString(QueryState const& qs) {
 
 }
 
-
-int qMaster::newSession() {
-    AsyncQueryManager::Ptr m = boost::make_shared<qMaster::AsyncQueryManager>();
+int qMaster::newSession(std::map<std::string,std::string> const& config) {
+    AsyncQueryManager::Ptr m = boost::make_shared<qMaster::AsyncQueryManager>(config);
     int id = getSessionManager().newSession(m);
     return id;
 }

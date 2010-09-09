@@ -91,7 +91,7 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
     _factory(new ASTFactory()),
     _templater(_delimiter, _factory.get(), dbWhiteList, defaultDb)
 { 
-    std::cout << "(int)PARSING:"<< statement << std::endl;
+    //std::cout << "(int)PARSING:"<< statement << std::endl;
 }
 
 void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {

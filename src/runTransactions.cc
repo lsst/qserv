@@ -41,6 +41,7 @@ namespace qMaster = lsst::qserv::master;
 
 
 void alternative() {
+    std::map<std::string,std::string> dumbMap;
     int stopCount = 0;
     char* envStopCount = ::getenv("QS_STOPCOUNT");
     if(envStopCount != (char*)0) { stopCount = atoi(envStopCount); }
@@ -49,7 +50,7 @@ void alternative() {
     // alternate harness.
     using qMaster::QueryState;
     qMaster::initDispatcher();
-    int session = qMaster::newSession();
+    int session = qMaster::newSession(dumbMap);
     qMaster::TransactionSpec::Reader r("xrdTransaction.trace");
     int i = 0;
     for(qMaster::TransactionSpec s = r.getSpec(); !s.isNull();

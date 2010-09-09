@@ -498,7 +498,7 @@ class QueryCollater:
         saveName = self._saveName(chunk)
         handle = submitQuery(self.sessionId, chunk, q, saveName)
         self.inFlight[chunk] = (handle, table)
-        print "Chunk %d to %s    (%s)" % (chunk, saveName, table)
+        #print "Chunk %d to %s    (%s)" % (chunk, saveName, table)
         #state = joinSession(self.sessionId)
 
     def finish(self):
@@ -710,17 +710,19 @@ class HintedQueryAction:
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
         self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:18] 
-        self._sessionId = newSession()
-
+        self._dbContext = "LSST" # Later adjusted by hints.        
 
         # Hint evaluation
         self._pmap = pmap            
         self._isFullSky = False # Does query involves whole sky
-        self._evaluateHints(hints, pmap)
+        self._evaluateHints(hints, pmap) # Also gets new dbContext
+
         # Config preparation
         configModule = lsst.qserv.master.config
         qConfig = configModule.getStringMap()
         qConfig["table.defaultDb"] = self._dbContext
+        self._sessionId = newSession(qConfig)
+
         # Table mapping 
         try:
             self._pConfig = PartitioningConfig() # Should be shared.
@@ -779,7 +781,7 @@ class HintedQueryAction:
         spatial hints"""
         self._isFullSky = True
         self._intersectIter = pmap
-        self._dbContext = "LSST" ## FIXME. should be configurable
+
         if hints:
             regions = self._parseRegions(hints)
             self._dbContext = hints.get("db", "")
