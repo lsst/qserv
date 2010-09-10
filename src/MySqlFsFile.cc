@@ -407,7 +407,7 @@ qWorker::ResultErrorPtr qWorker::MySqlFsFile::_getResultState(std::string const&
     assert(_fileClass == fs::TWO_READ);
     // Lookup result hash.
     std::string hash = fs::stripPath(physFilename);
-    //std::cout << "Getting news for hash=" << hash << std::endl;
+    //_eDest->Say(("Getting news for hash=" +hash).c_str());
     ResultErrorPtr p = QueryRunner::getTracker().getNews(hash);
     return p;
 }

@@ -66,7 +66,7 @@ public:
 ////////////////////////////////////////////////////////////////////////
 class QueryRunnerManager {
 public:
-    QueryRunnerManager() : _limit(8), _jobTotal(0) {}
+    QueryRunnerManager() : _limit(8), _jobTotal(0) { _init(); }
     ~QueryRunnerManager() {}
 
     // const
@@ -90,6 +90,7 @@ private:
     typedef std::deque<QueryRunnerArg> ArgQueue;
     typedef std::deque<QueryRunner*> QueryQueue;
 
+    void _init();
     QueryRunnerArg const& _getQueueHead() const;
     void _popQueueHead();
     bool _cancelQueued(std::string const& hash);

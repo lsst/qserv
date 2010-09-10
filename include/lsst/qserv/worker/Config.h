@@ -36,6 +36,7 @@ namespace worker {
 class Config {
 public:
     Config();
+    int getInt(std::string const& key, int defVal=-1) const;
     std::string const& getString(std::string const& key) const;
     bool getIsValid() const { return _isValid; }
     std::string const& getError() const { return _error; }

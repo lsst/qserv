@@ -203,6 +203,11 @@ void launchThread(Callable const& c) {
 ////////////////////////////////////////////////////////////////////////
 // lsst::qserv::worker::QueryRunnerManager
 ////////////////////////////////////////////////////////////////////////
+void qWorker::QueryRunnerManager::_init() {
+    // Check config for numthreads.
+    _limit = getConfig().getInt("numThreads", _limit);     
+}
+
 qWorker::QueryRunnerArg const& qWorker::QueryRunnerManager::_getQueueHead() const {
     assert(!_args.empty());
     return _args.front();
@@ -401,7 +406,7 @@ bool qWorker::QueryRunner::_act() {
     } 
 
     _e.Say((Pformat("(FinishOK:%1%) %2%")
-	    % (void*)(this) % dbDump).str().c_str());
+	    % (void*)(this) % dbDump).str().c_str());    
     getTracker().notify(_meta.hash, ResultError(0,""));
     return true;
 }

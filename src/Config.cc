@@ -22,12 +22,14 @@
  
 #include "lsst/qserv/worker/Config.h"
 
+#include <sstream>
 #include <boost/thread/once.hpp>
+
 namespace qWorker = lsst::qserv::worker;
 
 namespace { 
     // Settings declaration ////////////////////////////////////////////////
-    static const int settingsCount = 5;
+    static const int settingsCount = 6;
     // key, env var name, default, description
     static const char* settings[settingsCount][4] = {
         {"xrdQueryPath", "QSW_XRDQUERYPATH", "/query2", 
@@ -39,7 +41,9 @@ namespace {
         {"scratchPath", "QSW_SCRATCHPATH", "/tmp/qserv",
          "path to store (temporary) dump files, e.g., /tmp/qserv"},
         {"scratchDb", "QSW_SCRATCHDB", "qservScratch", 
-         "MySQL db for creating temporary result tables."}
+         "MySQL db for creating temporary result tables."},
+        {"numThreads", "QSW_NUMTHREADS", "4", 
+         "Number of in-flight query threads allowed."}
     };
 
     // Singleton Config object support /////////////////////////////////////
@@ -70,6 +74,18 @@ namespace {
 qWorker::Config::Config() {
     _load();
     _validate();
+}
+
+int qWorker::Config::getInt(std::string const& key, int defVal) const {
+    int ret = defVal;
+    StringMap::const_iterator i = _map.find(key);
+    if(i == _map.end()) {
+        return defVal;
+    }
+    // coerce the string to int.
+    std::stringstream s(i->second);
+    s >> ret;
+    return ret;
 }
 
 std::string const& qWorker::Config::getString(std::string const& key) const {
