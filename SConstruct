@@ -5,6 +5,9 @@
 # Do not change these
 import glob, os, re, sys
 
+# Note: This uses the build-variant feature in Scons, which is known to be 
+# troublesome in Scons 0.98.5.  Scons 1.2.0 and 2.0.1 are known to work.
+
 env = Environment()
 
 xrd_dir = "/scratch/xrd/xrootd";
@@ -15,13 +18,17 @@ if not os.path.exists(xrd_dir):
 if not os.path.exists(xrd_dir):
     print >> sys.stderr, "Could not locate xrootd base directory"
     Exit(1)
-xrd_platform = "x86_64_linux_26"
+xrd_platform = None
+platforms = ["x86_64_linux_26", "x86_64_linux_26_dbg", 
+             "i386_linux26","i386_linux26_dbg"]
 if os.environ.has_key('XRD_PLATFORM'):
-    xrd_platform = os.environ['XRD_PLATFORM']
-if not os.path.exists(os.path.join(xrd_dir, "lib", xrd_platform)):
-    print "No 64bit"
-    xrd_platform = "i386_linux26"
-if not os.path.exists(os.path.join(xrd_dir, "lib", xrd_platform)):
+    platforms.insert(0, os.environ['XRD_PLATFORM'])
+for p in platforms:
+    if os.path.exists(os.path.join(xrd_dir, "lib", p)):
+        print "Using platform=", p
+        xrd_platform = p
+        break
+if not xrd_platform:
     print >> sys.stderr, "Could not locate xrootd libraries"
     Exit(1)
 env.Append(CPPPATH = [os.path.join(xrd_dir, "src")])
@@ -147,6 +154,7 @@ for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
 
 # Build UDFs
 try:
+    raise 1
     SConscript("SConscript.udf", build_dir='bld', exports={'env': udfEnv})
 except Exception, e:
     print >> sys.stderr, "%s: %s" % (os.path.join("udf", "SConscript"), e)
