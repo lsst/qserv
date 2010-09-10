@@ -59,7 +59,8 @@ public:
     typedef std::map<std::string, std::string> StringMap;
     
     explicit AsyncQueryManager(std::map<std::string,std::string> const& cfg) 
-        :_lastId(1000000000), _isExecFaulty(false), _queryCount(0),
+        :_lastId(1000000000), _isExecFaulty(false), _isSquashed(false),
+        _queryCount(0),
         _shouldLimitResult(false), _totalSize(0),
         _resultLimit(1024*1024*1024) { _readConfig(cfg); }
     void configureMerger(TableMergerConfig const& c);
@@ -100,6 +101,7 @@ private:
     boost::condition_variable _queriesEmpty;
     int _lastId;
     bool _isExecFaulty;
+    bool _isSquashed;
     int _squashCount;
     QueryMap _queries;
     ResultDeque _results;

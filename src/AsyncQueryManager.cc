@@ -123,7 +123,7 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     int dumpSize;
     // std::cout << "finalizing. read=" << r.read << " and status is "
     //           << (aborted ? "ABORTED" : "okay") << std::endl;
-
+    //std::cout << ((void*)this) << "Finalizing query (" << id << ")" << std::endl;
     if((!aborted) && (r.open >= 0) && (r.queryWrite >= 0) 
        && (r.read >= 0)) {
 	{ // Lock scope for reading
@@ -160,8 +160,13 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
         boost::lock_guard<boost::mutex> qLock(_queriesMutex);
         if(_queries.empty()) _queriesEmpty.notify_all();
     }
+    //std::cout << (void*)this << " Done finalizing query (" << id << ")" << std::endl;
 }
 
+// FIXME: With squashing, we should be able to return the result earlier.
+// So, clients will call joinResult(), to get the result, and let a reaper
+// thread call joinEverything, since that ensures that this object has 
+// ceased activity and can recycle resources.
 void qMaster::AsyncQueryManager::joinEverything() {
     boost::unique_lock<boost::mutex> lock(_queriesMutex);
     int lastCount = -1;
@@ -239,9 +244,17 @@ void qMaster::AsyncQueryManager::_squashExecution() {
     // Halt new query dispatches and cancel the ones in flight.
     // This attempts to save on resources and latency, once a query
     // fault is detected.
-    boost::unique_lock<boost::mutex> lock(_queriesMutex);
     typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
-    std::for_each(_queries.begin(), _queries.end(), squashQuery());
+
+    //std::cout << "Squash requested by "<<(void*)this << std::endl;
+    boost::unique_lock<boost::mutex> lock(_queriesMutex);
+    if(!_isSquashed) {
+        std::for_each(_queries.begin(), _queries.end(), squashQuery());
+        _isSquashed = true;
+    } else {
+        //std::cout << "Ignoring redundant squash request." << std::endl;
+    }
+
 
 }
 

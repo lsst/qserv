@@ -126,6 +126,11 @@ qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id,
 
 }
 
+qMaster::ChunkQuery::~ChunkQuery() {
+    // std::cout << "ChunkQuery (" << _id << ", " << _hash 
+    //           << "): Goodbye!" << std::endl;
+}
+
 void qMaster::ChunkQuery::run() {
     // This lock ensures that the remaining ChunkQuery::Complete() calls
     // do not proceed until this initial step completes.
@@ -184,6 +189,7 @@ std::string qMaster::ChunkQuery::getDesc() const {
 }
 
 void qMaster::ChunkQuery::requestSquash() { 
+    //std::cout << "Squash requested for (" << _id << ", " << _hash << ")" << std::endl;
     _shouldSquash = true; 
     switch(_state) {
     case WRITE_OPEN:
@@ -214,6 +220,7 @@ void qMaster::ChunkQuery::requestSquash() {
 
 
 void qMaster::ChunkQuery::_squashAtCallback(int result) {
+    //std::cout << "Squashing at callback (" << _id << ", " << _hash << ")" << std::endl;
     // squash this query so that it stops running.
     bool badState = false;
     int res;
@@ -268,9 +275,13 @@ void qMaster::ChunkQuery::_squashAtCallback(int result) {
     
 bool qMaster::ChunkQuery::_openForRead(std::string const& url) {
     _state = READ_OPEN;
-    std::cout  << "opening async read to " << url << "\n";
+    //std::cout  << "opening async read to " << url << "\n";
     _result.read = qMaster::xrdOpenAsync(url.c_str(), 
                                        O_RDONLY, this);
+    // std::cout << "Async read for " << _hash << " got " << _result.read
+    //           << " --> " 
+    //           << ((_result.read == -EINPROGRESS) ? "ASYNC OK" : "fail?")
+    //           << std::endl;
     return _result.read == -EINPROGRESS; // -EINPROGRESS is successful.
 }
 
@@ -299,10 +310,12 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
         if(_shouldSquash) {
             _unlinkResult(_resultUrl);
             isReallyComplete = true;
+        } else {
+            // Only attempt opening the read if not squashing.
+            if(!_openForRead(_resultUrl)) {
+                isReallyComplete = true;
+            }  
         }
-        if(!_openForRead(_resultUrl)) {
-            isReallyComplete = true;
-	}  
     } // Write ok
     if(isReallyComplete) { 
 	_state=COMPLETE;

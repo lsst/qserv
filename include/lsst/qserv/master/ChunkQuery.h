@@ -55,7 +55,7 @@ public:
     virtual void Complete(int Result);
     explicit ChunkQuery(TransactionSpec const& t, int id,
 			AsyncQueryManager* mgr);
-    virtual ~ChunkQuery() {}
+    virtual ~ChunkQuery();
 
     void run();
     XrdTransResult const& results() const { return _result; }
