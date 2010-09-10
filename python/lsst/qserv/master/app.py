@@ -796,6 +796,10 @@ class HintedQueryAction:
                 else:
                     self._intersectIter = map(lambda i: (i,[]), chunkIds)
                 self._isFullSky = False
+        # If hints only apply when partitioned tables are in play.
+        # FIXME: we should check if partitionined tables are being accessed,
+        # and then act to support the heaviest need (e.g., if a chunked table
+        # is being used, then issue chunked queries).
         #print "Affected chunks: ", [x[0] for x in self._intersectIter]
         pass
 
@@ -858,13 +862,20 @@ class HintedQueryAction:
     def getIsValid(self):
         return self._isValid
 
+    def _makeNonPartQuery(self, table):
+        # Should be able to do less work than chunk query.
+        query = "\n".join(self._headerFunc([table])) +"\n"
+        ref = self._pConfig.chunkMapping.getMapReference(0,0)
+        query += self._createTableTmpl % table
+        query += self._substitution.substituteOnly(ref)
+        return query
+
     def _makeChunkQuery(self, chunkId, table):
         # Prefix with empty subchunk spec.
         query = "\n".join(self._headerFunc([table])) +"\n"
         ref = self._pConfig.chunkMapping.getMapReference(chunkId,0)
         query += self._createTableTmpl % table
         query += self._substitution.substituteOnly(ref)
-        #print query
         return query
 
     def _makeSubChunkQuery(self, chunkId, subIter, table):
