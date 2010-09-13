@@ -228,6 +228,11 @@ bool qWorker::QueryRunnerManager::squashByHash(std::string const& hash) {
     boost::lock_guard<boost::mutex> m(_mutex);
     bool success = _cancelQueued(hash) || _cancelRunning(hash);
     // Check if squash okay?
+    if(success) {
+        // Notify the tracker in case someone is waiting.
+        ResultError r(-2, "Squashed by request");
+        QueryRunner::getTracker().notify(hash, r);
+    }
     return success;
 }
 
@@ -338,6 +343,7 @@ bool qWorker::QueryRunner::operator()() {
             _poisonCleanup();
         } else {
             _act(); 
+            // Might be wise to clean up poison for the current hash anyway.
         }
         _e.Say((Pformat("(Looking for work... Queued: %1%, running: %2%)")
                 % mgr.getQueueLength() 
@@ -412,6 +418,13 @@ bool qWorker::QueryRunner::_act() {
 }
 
 bool qWorker::QueryRunner::_poisonCleanup() {
+    StringDeque::iterator i;
+    boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
+    i = find(_poisoned.begin(), _poisoned.end(), _meta.hash);
+    if(i == _poisoned.end()) {
+        return false;
+    }
+    _poisoned.erase(i);
     return true;
 }
 
@@ -576,7 +589,10 @@ bool qWorker::QueryRunner::_runScript(
     } else if(!_prepareScratchDb(db.get())) {
         return false;
     }
-    if(_checkPoisoned()) return false; // Check for poison
+    if(_checkPoisoned()) { // Check for poison
+        _poisonCleanup(); // Clean it up.
+        return false; 
+    }
     scriptSuccess = _runScriptCore(db.get(), script, dbName, 
                                    commasToSpaces(tables));
 

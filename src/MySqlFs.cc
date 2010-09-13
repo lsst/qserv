@@ -174,6 +174,7 @@ int qWorker::MySqlFs::rem(char const* path, XrdOucErrInfo& outError,
     // Signal query squashing
     qWorker::QueryRunner::Manager& mgr = qWorker::QueryRunner::getMgr();
     mgr.squashByHash(hash);
+    return SFS_OK;
 }
 
 int qWorker::MySqlFs::remdir(char const* dirName, XrdOucErrInfo& outError,

@@ -144,6 +144,36 @@ static int findChunkNumber(char const* path) {
     return result;
 }
 
+class Timer { // duplicate of lsst::qserv:master::Timer
+public:
+    void start() { ::gettimeofday(&startTime, NULL); }
+    void stop() { ::gettimeofday(&stopTime, NULL); }
+    double getElapsed() const { 
+        time_t seconds = stopTime.tv_sec - startTime.tv_sec;
+        suseconds_t usec = stopTime.tv_usec - startTime.tv_usec;
+        return seconds + (usec * 0.000001);
+    }
+    char const* getStartTimeStr() const {
+        char* buf = const_cast<char*>(startTimeStr); // spiritually const
+        asctime_r(localtime(&stopTime.tv_sec), buf); 
+        buf[strlen(startTimeStr)-1] = 0;
+        return startTimeStr;
+    }
+
+    char startTimeStr[30];
+    struct ::timeval startTime;
+    struct ::timeval stopTime;
+
+    friend std::ostream& operator<<(std::ostream& os, Timer const& tm);
+};
+std::ostream& operator<<(std::ostream& os, Timer const& tm) {
+    os << tm.getStartTimeStr() << " " << tm.getElapsed();
+    return os;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// MySqlFsFile
+//////////////////////////////////////////////////////////////////////////////
 qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user, 
 				  AddCallbackFunction::Ptr acf) :
     XrdSfsFile(user), _eDest(lp), _addCallbackF(acf) {
@@ -303,6 +333,9 @@ int qWorker::MySqlFsFile::read(XrdSfsAio* aioparm) {
 XrdSfsXferSize qWorker::MySqlFsFile::write(
     XrdSfsFileOffset fileOffset, char const* buffer,
     XrdSfsXferSize bufferSize) {
+    Timer t;
+    std::stringstream ss;
+    t.start();
     std::string descr((Pformat("File write(%1%) at %2% for %3% by %4%")
 		       % _chunkId % fileOffset % bufferSize % _userName).str());
     _eDest->Say(descr.c_str());
@@ -328,39 +361,26 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
 
     }
     _eDest->Say((descr + " --FINISH--").c_str());
+    t.stop();
+    ss << _chunkId << " WriteSpawn " << t;
+    std::string sst(ss.str());
+    _eDest->Say(sst.c_str());
     return bufferSize;
 }
 
 	
 int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
-#if 0 // Disable deferred writing since it doesn't block.
-    // Spawn a thread that calls the normal write call.
-    char* buffer = new char[aioparm->sfsAio.aio_nbytes];
-    assert(buffer != (char*)0);
-    memcpy(buffer, (char const*)aioparm->sfsAio.aio_buf, 
-	   aioparm->sfsAio.aio_nbytes);
-    unsigned printlen = 100;
-    if(printlen > aioparm->sfsAio.aio_nbytes) {
-	printlen = aioparm->sfsAio.aio_nbytes;
-    }
-    std::string s(buffer, printlen);
-    int offset = aioparm->sfsAio.aio_offset;
-    _eDest->Say((Pformat("File write(%1%) at %2% : %3%")
-                 % _chunkId % offset % s).str().c_str());
-    launchThread(WriteCallable(*this, aioparm, buffer));
-    return SFS_OK;
-#else
-    
     aioparm->Result = write(aioparm->sfsAio.aio_offset, 
 			    (const char*)aioparm->sfsAio.aio_buf,
 			    aioparm->sfsAio.aio_nbytes);
+    _eDest->Say("AIO write.");
+
     if(aioparm->Result != (int)aioparm->sfsAio.aio_nbytes) {
 	// overwrite error result with generic IO error?
 	aioparm->Result = -EIO;
     }
     aioparm->doneWrite();
     return SFS_OK;
-#endif
 }
 
 int qWorker::MySqlFsFile::sync(void) {
