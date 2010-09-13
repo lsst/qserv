@@ -31,6 +31,7 @@
 // Package
 #include "lsst/qserv/master/transaction.h"
 #include "lsst/qserv/master/xrdfile.h"
+#include "lsst/qserv/master/Timer.h"
 
 namespace lsst {
 namespace qserv {
@@ -87,6 +88,13 @@ private:
     std::string _queryHostPort;
     AsyncQueryManager* _manager;
     bool _shouldSquash;
+    Timer _writeOpenTimer;
+    Timer _writeTimer;
+    Timer _writeCloseTimer;
+    Timer _readOpenTimer;
+    Timer _readTimer;
+    Timer _readCloseTimer;
+    
 };// class ChunkQuery
 
 }}} // lsst::qserv::master namespace

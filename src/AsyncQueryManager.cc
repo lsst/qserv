@@ -28,6 +28,7 @@
 #include "lsst/qserv/master/AsyncQueryManager.h"
 #include "lsst/qserv/master/ChunkQuery.h"
 #include "lsst/qserv/master/TableMerger.h"
+#include "lsst/qserv/master/Timer.h"
 
 // Namespace modifiers
 using boost::make_shared;
@@ -115,6 +116,9 @@ int qMaster::AsyncQueryManager::add(TransactionSpec const& t,
 void qMaster::AsyncQueryManager::finalizeQuery(int id, 
 					       XrdTransResult r,
                                                bool aborted) {
+    std::stringstream ss;
+    Timer t1;
+    t1.start();
     /// Finalize a query.
     /// Note that all parameters should be copies and not const references.
     /// We delete the ChunkQuery (the caller) here, so a ref would be invalid.
@@ -126,6 +130,8 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     //std::cout << ((void*)this) << "Finalizing query (" << id << ")" << std::endl;
     if((!aborted) && (r.open >= 0) && (r.queryWrite >= 0) 
        && (r.read >= 0)) {
+            Timer t2;
+            t2.start();
 	{ // Lock scope for reading
 	    boost::lock_guard<boost::mutex> lock(_queriesMutex);
 	    QuerySpec& s = _queries[id];
@@ -140,10 +146,19 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 	    boost::lock_guard<boost::mutex> lock(_queriesMutex);
             _queries.erase(id); // Don't need it anymore
 	} 
+        t2.stop();
+        ss << id << " QmFinalizeMerge " << t2 << std::endl;
+
     } // end if 
     else { 
+        Timer t2e;
+        t2e.start();
         {
+            Timer t2e1;
+            t2e1.start();
             boost::lock_guard<boost::mutex> lock(_queriesMutex);
+            t2e1.stop();
+            ss << id << " QmFinalizeErrorLockWait " << t2e1 << std::endl;
             _queries.erase(id);
         }
         if(!aborted) {
@@ -152,7 +167,11 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
             std::cout << " Skipped merge (read failed for id=" 
                       << id << ")" << std::endl;
         } 
+        t2e.stop();
+        ss << id << " QmFinalizeError " << t2e << std::endl;
     }
+    Timer t3;
+    t3.start();
     {
 	boost::lock_guard<boost::mutex> lock(_resultsMutex);
 	_results.push_back(Result(id,r));
@@ -160,7 +179,12 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
         boost::lock_guard<boost::mutex> qLock(_queriesMutex);
         if(_queries.empty()) _queriesEmpty.notify_all();
     }
+    t3.stop();
+    ss << id << " QmFinalizeResult " << t3 << std::endl;
     //std::cout << (void*)this << " Done finalizing query (" << id << ")" << std::endl;
+    t1.stop();
+    ss << id << " QmFinalize " << t1 << std::endl;
+    std::cout << ss.str();
 }
 
 // FIXME: With squashing, we should be able to return the result earlier.
@@ -245,17 +269,17 @@ void qMaster::AsyncQueryManager::_squashExecution() {
     // This attempts to save on resources and latency, once a query
     // fault is detected.
     typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
-
+    if(_isSquashed) return;  
     //std::cout << "Squash requested by "<<(void*)this << std::endl;
     boost::unique_lock<boost::mutex> lock(_queriesMutex);
     if(!_isSquashed) {
+        Timer t;
+        t.start();
         std::for_each(_queries.begin(), _queries.end(), squashQuery());
+        t.stop();
+        std::cout << "AsyncQM squashExec " << t << std::endl;
         _isSquashed = true;
-    } else {
-        //std::cout << "Ignoring redundant squash request." << std::endl;
-    }
-
-
+    } 
 }
 
 void qMaster::AsyncQueryManager::_squashRemaining() {

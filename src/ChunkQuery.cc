@@ -61,6 +61,7 @@ namespace {
             errnoComplain(("Faulty close " + comment2).c_str(), fd, errno);
         }
     }
+
 }
 
 
@@ -68,14 +69,16 @@ namespace {
 // class ChunkQuery 
 //////////////////////////////////////////////////////////////////////
 void qMaster::ChunkQuery::Complete(int Result) {
+    std::stringstream ss;
     bool isReallyComplete = false;
-    if(_shouldSquash) {
-        
+    if(_shouldSquash) {        
         _squashAtCallback(Result);
         return; // Anything else to do?
     }
     switch(_state) {
     case WRITE_OPEN: // Opened, so we can send off the query
+        _writeOpenTimer.stop();
+        ss << _hash << " WriteOpen " << _writeOpenTimer << std::endl;
 	{
 	    boost::lock_guard<boost::mutex> lock(_mutex);
 	    _result.open = Result;
@@ -90,6 +93,8 @@ void qMaster::ChunkQuery::Complete(int Result) {
 	}
 	break;
     case READ_OPEN: // Opened, so we can read-back the results.
+        _readOpenTimer.stop();
+        ss << _hash << " ReadOpen " << _readOpenTimer << std::endl;
 	if(Result < 0) { // error? 
 	    _result.read = Result;
 	    std::cout << "Problem reading result: open returned " 
@@ -103,13 +108,12 @@ void qMaster::ChunkQuery::Complete(int Result) {
 	break;
     default:
 	isReallyComplete = true;
-        std::cout << "FIXME: ChunkQuery @ " << _state 
-                  << " Complete() -> CORRUPT " << CORRUPT
-                  << std::endl;
+        ss << "FIXME: ChunkQuery @ " << _state 
+           << " Complete() -> CORRUPT " << CORRUPT << std::endl;
 	_state = CORRUPT;
     }
-
     if(isReallyComplete) { _notifyManager(); }
+    std::cout << ss.str();
 }
 
 qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id, 
@@ -138,6 +142,7 @@ void qMaster::ChunkQuery::run() {
 
     _state = WRITE_OPEN;
     std::cout << "Opening " << _spec.path << "\n";
+    _writeOpenTimer.start();
     int result = qMaster::xrdOpenAsync(_spec.path.c_str(), O_WRONLY, this);
     if(result != -EINPROGRESS) {
 	// don't continue, set result with the error.
@@ -222,6 +227,7 @@ void qMaster::ChunkQuery::requestSquash() {
 void qMaster::ChunkQuery::_squashAtCallback(int result) {
     //std::cout << "Squashing at callback (" << _id << ", " << _hash << ")" << std::endl;
     // squash this query so that it stops running.
+    std::stringstream ss;
     bool badState = false;
     int res;
     if(result < 0) { // Fail, don't have to squash.
@@ -231,8 +237,13 @@ void qMaster::ChunkQuery::_squashAtCallback(int result) {
     }
     switch(_state) {
     case WRITE_OPEN:
+        _writeOpenTimer.stop();
+        ss << _hash << " WriteOpen* " << _writeOpenTimer << std::endl;
         // Just close the channel w/o sending a query.
+        _writeCloseTimer.start();
 	res = qMaster::xrdClose(result);
+        _writeCloseTimer.stop();
+        ss << _hash << " WriteClose* " << _writeCloseTimer << std::endl;
         if(res != 0) {
             errnoComplain("Bad close while squashing write open",result, errno);
         }
@@ -243,7 +254,10 @@ void qMaster::ChunkQuery::_squashAtCallback(int result) {
 	break;
     case READ_OPEN:
         // Close the channel w/o reading the result (which might be faulty)
+        _readCloseTimer.start();
 	res = qMaster::xrdClose(result);
+        _readCloseTimer.stop();
+        ss << _hash << " ReadClose* " << _readCloseTimer << std::endl;
         if(res != 0) {
             errnoComplain("Bad close while squashing read open",result, errno);
         }        
@@ -276,6 +290,7 @@ void qMaster::ChunkQuery::_squashAtCallback(int result) {
 bool qMaster::ChunkQuery::_openForRead(std::string const& url) {
     _state = READ_OPEN;
     //std::cout  << "opening async read to " << url << "\n";
+    _readOpenTimer.start();
     _result.read = qMaster::xrdOpenAsync(url.c_str(), 
                                        O_RDONLY, this);
     // std::cout << "Async read for " << _hash << " got " << _result.read
@@ -286,10 +301,15 @@ bool qMaster::ChunkQuery::_openForRead(std::string const& url) {
 }
 
 void qMaster::ChunkQuery::_sendQuery(int fd) {
+    std::stringstream ss;
     bool isReallyComplete = false;
     // Now write
     int len = _spec.query.length();
+    _writeTimer.start();
     int writeCount = qMaster::xrdWrite(fd, _spec.query.c_str(), len);
+    _writeTimer.stop();
+    ss << _hash << " WriteQuery " << _writeTimer << std::endl;
+    
     // Get rid of the query string to save space
     _spec.query.clear();
     int res;
@@ -297,15 +317,22 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
 	_result.queryWrite = -errno;
 	isReallyComplete = true;
 	// To be safe, close file anyway.
+        _writeCloseTimer.start();
+        ss << _hash << " WriteQuery " << _writeTimer << std::endl;
         closeFd(fd, "Error-caused", "dumpPath " + _spec.savePath, 
                 "post-dispatch");
+        _writeCloseTimer.stop();
+        ss << _hash << " WriteClose " << _writeTimer << std::endl;
     } else {
 	_result.queryWrite = writeCount;
 	_queryHostPort = qMaster::xrdGetEndpoint(fd);
 	_resultUrl = qMaster::makeUrl(_queryHostPort.c_str(), "result", 
 				      _hash);
+        _writeCloseTimer.start();
         closeFd(fd, "Normal", "dumpPath " + _spec.savePath, 
                 "post-dispatch");
+        _writeCloseTimer.stop();
+        ss << _hash << " WriteClose " << _writeTimer << std::endl;
 
         if(_shouldSquash) {
             _unlinkResult(_resultUrl);
@@ -321,6 +348,7 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
 	_state=COMPLETE;
 	_notifyManager(); 
     }
+    std::cout << ss.str();
 }
 
 void qMaster::ChunkQuery::_readResults(int fd) {
@@ -329,10 +357,16 @@ void qMaster::ChunkQuery::_readResults(int fd) {
         // good time. Configurable, with default=1G?
 
 	// Now read.
+        _readTimer.start();
 	qMaster::xrdReadToLocalFile(fd, fragmentSize, _spec.savePath.c_str(), 
                                     &_shouldSquash,
                                     &(_result.localWrite), &(_result.read));
+        _readTimer.stop();
+        std::cout << _hash << " ReadResults " << _readTimer << std::endl;
+        _readCloseTimer.start();
 	int res = qMaster::xrdClose(fd);
+        _readCloseTimer.stop();
+        std::cout << _hash << " ReadClose " << _readTimer << std::endl;
         if(res != 0) {
             errnoComplain("Error closing after result read", fd, errno);
         }

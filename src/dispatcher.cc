@@ -153,7 +153,7 @@ qMaster::QueryState qMaster::joinSession(int session) {
     qm.joinEverything();
     AsyncQueryManager::ResultDeque const& d = qm.getFinalState();
     bool successful;
-    std::for_each(d.begin(), d.end(), mergeStatus(successful));
+    //std::for_each(d.begin(), d.end(), mergeStatus(successful));
     
     std::cout << "Joined everything" << std::endl;
     if(successful) {
