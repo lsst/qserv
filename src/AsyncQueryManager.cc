@@ -125,6 +125,7 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     std::string dumpFile;
     std::string tableName;
     int dumpSize;
+    bool isDone = false;
     // std::cout << "finalizing. read=" << r.read << " and status is "
     //           << (aborted ? "ABORTED" : "okay") << std::endl;
     //std::cout << ((void*)this) << "Finalizing query (" << id << ")" << std::endl;
@@ -142,10 +143,7 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 	    s.first.reset(); // clear out chunkquery.
         } // Lock-free merge
         _addNewResult(dumpSize, dumpFile, tableName);
-        { // Lock again to erase.
-	    boost::lock_guard<boost::mutex> lock(_queriesMutex);
-            _queries.erase(id); // Don't need it anymore
-	} 
+        // Erase right before notifying.
         t2.stop();
         ss << id << " QmFinalizeMerge " << t2 << std::endl;
 
@@ -153,14 +151,6 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     else { 
         Timer t2e;
         t2e.start();
-        {
-            Timer t2e1;
-            t2e1.start();
-            boost::lock_guard<boost::mutex> lock(_queriesMutex);
-            t2e1.stop();
-            ss << id << " QmFinalizeErrorLockWait " << t2e1 << std::endl;
-            _queries.erase(id);
-        }
         if(!aborted) {
             _isExecFaulty = true;
             _squashExecution();
@@ -176,8 +166,15 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 	boost::lock_guard<boost::mutex> lock(_resultsMutex);
 	_results.push_back(Result(id,r));
         if(aborted) ++_squashCount; // Borrow result mutex to protect counter.
-        boost::lock_guard<boost::mutex> qLock(_queriesMutex);
-        if(_queries.empty()) _queriesEmpty.notify_all();
+        { // Lock again to erase.
+            Timer t2e1;
+            t2e1.start();
+            boost::lock_guard<boost::mutex> lock(_queriesMutex);
+            _queries.erase(id);
+            if(_queries.empty()) _queriesEmpty.notify_all();
+            t2e1.stop();
+            ss << id << " QmFinalizeErase " << t2e1 << std::endl;
+	} 
     }
     t3.stop();
     ss << id << " QmFinalizeResult " << t3 << std::endl;
@@ -270,15 +267,16 @@ void qMaster::AsyncQueryManager::_squashExecution() {
     // fault is detected.
     typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
     if(_isSquashed) return;  
+    _isSquashed = true; // Mark before acquiring lock--faster.
     //std::cout << "Squash requested by "<<(void*)this << std::endl;
-    boost::unique_lock<boost::mutex> lock(_queriesMutex);
-    if(!_isSquashed) {
+    {
+        boost::unique_lock<boost::mutex> lock(_queriesMutex);
         Timer t;
         t.start();
         std::for_each(_queries.begin(), _queries.end(), squashQuery());
         t.stop();
         std::cout << "AsyncQM squashExec " << t << std::endl;
-        _isSquashed = true;
+        _isSquashed = true; // Ensure that flag wasn't trampled.
     } 
 }
 
