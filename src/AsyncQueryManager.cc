@@ -109,8 +109,8 @@ int qMaster::AsyncQueryManager::add(TransactionSpec const& t,
     }
     std::cout << "Added query id=" << id << " url=" << ts.path 
 	      << " with save " << ts.savePath << "\n";
-
     qs.first->run();
+    return id;
 }
 
 void qMaster::AsyncQueryManager::finalizeQuery(int id, 
@@ -125,7 +125,6 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     std::string dumpFile;
     std::string tableName;
     int dumpSize;
-    bool isDone = false;
     // std::cout << "finalizing. read=" << r.read << " and status is "
     //           << (aborted ? "ABORTED" : "okay") << std::endl;
     //std::cout << ((void*)this) << "Finalizing query (" << id << ")" << std::endl;

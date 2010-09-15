@@ -152,7 +152,6 @@ class ImplicitDbVisitor {
 ////////////////////////////////////////////////////////////////////////
 void Templater::TableListHandler::operator()(antlr::RefAST a, 
 					     antlr::RefAST b) {
-    TypeVisitor t;
     JoinVisitor j(_templater.getDelimiter(), "_sc");
     //ImplicitDbVisitor v;
     //walkTreeVisit(a,v);
@@ -172,8 +171,8 @@ Templater::Templater(std::string const& delimiter,
                      antlr::ASTFactory* factory,
                      Templater::IntMap const& dbWhiteList,
                      std::string const& defaultDb) 
-    : _delimiter(delimiter), _factory(factory), _defaultDb(defaultDb),
-      _dbWhiteList(dbWhiteList) {
+    : _delimiter(delimiter), _factory(factory), 
+      _dbWhiteList(dbWhiteList), _defaultDb(defaultDb) {
 }
 
 void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {

@@ -100,7 +100,8 @@ env.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
                        "-D_LARGEFILE64_SOURCE",
                        "-D_FILE_OFFSET_BITS=64",
                        "-D_REENTRANT",
-                       "-g"])
+                       "-g",
+                       "-pedantic", "-Wno-long-long", "-Wall"])
 
 # Start configuration tests
 conf = Configure(env)

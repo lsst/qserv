@@ -65,7 +65,6 @@ bool SqlConnection::connectToDb() {
 bool SqlConnection::apply(std::string const& sql) {
     assert(_conn);
 
-    MYSQL_RES* result;
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
 	_storeMysqlError(_conn);
 	return false;

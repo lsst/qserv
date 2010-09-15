@@ -188,8 +188,6 @@ void qMaster::SqlSubstitution::_computeChunkLevel(bool hasChunks, bool hasSubChu
 
 void qMaster::SqlSubstitution::_readConfig(qMaster::SqlSubstitution::StringMap const& m) {
     std::string delimiter(",");
-    std::string::size_type pos = 0;
-    std::string::size_type lastPos = 0;
     std::string wlPacked;
 
     StringMap::const_iterator i = m.find("table.defaultdb");

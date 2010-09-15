@@ -60,6 +60,7 @@ namespace {
         if(res != 0) {
             errnoComplain(("Faulty close " + comment2).c_str(), fd, errno);
         }
+        return res;
     }
 
 }
@@ -118,8 +119,9 @@ void qMaster::ChunkQuery::Complete(int Result) {
 
 qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id, 
 				qMaster::AsyncQueryManager* mgr) 
-    : _spec(t), _manager(mgr), _id(id), _shouldSquash(false), 
-      XrdPosixCallBack() {
+    : XrdPosixCallBack(),
+      _id(id), _spec(t), _manager(mgr),
+      _shouldSquash(false) {
     assert(_manager != NULL);
     _result.open = 0;
     _result.queryWrite = 0;
@@ -312,7 +314,6 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
     
     // Get rid of the query string to save space
     _spec.query.clear();
-    int res;
     if(writeCount != len) {
 	_result.queryWrite = -errno;
 	isReallyComplete = true;
@@ -385,4 +386,5 @@ void qMaster::ChunkQuery::_notifyManager() {
 
 void qMaster::ChunkQuery::_unlinkResult(std::string const& url) {
     int res = XrdPosixXrootd::Unlink(url.c_str());
+    // FIXME: decide how to handle error here.
 }

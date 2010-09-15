@@ -51,6 +51,7 @@ std::ostream& AggregateRecord::printTo(std::ostream& os) {
     os << "Aggregate orig=" << orig << std::endl 
        << "pass=" << pass  << std::endl
        << "fixup=" << fixup;
+    return os;
 }
 void AggregateRecord::fillStandard(NodeBound const& lbl_, 
 				   NodeBound const& meaning_) {

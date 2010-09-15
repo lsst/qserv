@@ -61,8 +61,9 @@ public:
     explicit AsyncQueryManager(std::map<std::string,std::string> const& cfg) 
         :_lastId(1000000000), _isExecFaulty(false), _isSquashed(false),
         _queryCount(0),
-        _shouldLimitResult(false), _totalSize(0),
-        _resultLimit(1024*1024*1024) { _readConfig(cfg); }
+        _shouldLimitResult(false), 
+        _resultLimit(1024*1024*1024), _totalSize(0)
+            { _readConfig(cfg); }
     void configureMerger(TableMergerConfig const& c);
 
     int add(TransactionSpec const& t, std::string const& resultName);

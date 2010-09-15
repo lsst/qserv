@@ -128,24 +128,34 @@ qMaster::QueryState qMaster::tryJoinQuery(int session, int id) {
 	return ERROR;
     }   
 #endif
+    // FIXME...consider dropping this.
+    // need return val.
 }
 
 struct mergeStatus {
-    mergeStatus(bool& success) : isSuccessful(success) {isSuccessful = true;}
+    mergeStatus(bool& success, bool shouldPrint_=false) 
+        : isSuccessful(success), shouldPrint(shouldPrint_) {
+        isSuccessful = true;
+    }
     void operator() (qMaster::AsyncQueryManager::Result const& x) { 
 	if(! x.second.isSuccessful()) {
-	    std::cout << "Chunk " << x.first << " error " << std::endl
-		      << "open: " << x.second.open 
-		      << " qWrite: " << x.second.queryWrite 
-		      << " read: " << x.second.read 
-		      << " lWrite: " << x.second.localWrite << std::endl;
+            if(shouldPrint) {
+                std::cout << "Chunk " << x.first << " error " << std::endl
+                          << "open: " << x.second.open 
+                          << " qWrite: " << x.second.queryWrite 
+                          << " read: " << x.second.read 
+                          << " lWrite: " << x.second.localWrite << std::endl;
+            }
 	    isSuccessful = false;
 	} else {
-	    std::cout << "Chunk " << x.first << " OK ("
-		      << x.second.localWrite << ")\t";
+            if(shouldPrint) {
+                std::cout << "Chunk " << x.first << " OK ("
+                          << x.second.localWrite << ")\t";
+            }
 	}
     }
     bool& isSuccessful;
+    bool shouldPrint;
 };
 
 qMaster::QueryState qMaster::joinSession(int session) {
@@ -153,7 +163,7 @@ qMaster::QueryState qMaster::joinSession(int session) {
     qm.joinEverything();
     AsyncQueryManager::ResultDeque const& d = qm.getFinalState();
     bool successful;
-    //std::for_each(d.begin(), d.end(), mergeStatus(successful));
+    std::for_each(d.begin(), d.end(), mergeStatus(successful));
     
     std::cout << "Joined everything" << std::endl;
     if(successful) {
@@ -209,5 +219,5 @@ void qMaster::discardSession(int session) {
 }
 
 qMaster::XrdTransResult qMaster::getQueryResult(int session, int chunk) {
-    // FIXME
+    return XrdTransResult();    // FIXME
 }

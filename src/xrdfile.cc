@@ -143,6 +143,12 @@ void qMaster::xrdInit() {
 	      << finish - start \
               << ") " << name << " " \
 	      << path << " finished.""\n";
+#if 1 // Turn off xrd call timing
+#undef QSM_TIMESTART
+#undef QSM_TIMESTOP
+#define QSM_TIMESTART(name, path)
+#define QSM_TIMESTOP(name, path)
+#endif
 
 int qMaster::xrdOpen(const char *path, int oflag) {
     if(!qMasterXrdInitialized) { xrdInit(); }
