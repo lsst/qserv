@@ -89,8 +89,13 @@ if os.environ.has_key('SWIG'):
     env['SWIG'] = os.environ['SWIG']
 
 searchLibs = [xrd_lib]
-searchLibs += filter(os.path.exists, 
-                     map(lambda r: os.path.join(r,"lib","mysql"),searchRoots))
+mysqlRoots = filter(lambda r: "mysql" in r, searchRoots)
+if mysqlRoots:
+    searchLibs += filter(os.path.exists, 
+                     map(lambda r: os.path.join(r,"lib", "mysql"),mysqlRoots))
+else:
+    searchLibs += filter(os.path.exists, 
+                         map(lambda r: os.path.join(r,"lib","mysql"),searchRoots))
 
 composeEnv(env, roots=searchRoots, includes=[xrd_inc], libs=searchLibs)
 if hasXrootd:
