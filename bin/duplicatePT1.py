@@ -36,6 +36,9 @@
 #   sourceId:  2865834880532484 -> 2877966299037945 
 #   ra:  -5.203 -> 5.222
 #   decl:  -4.34239174635 ->  4.725055533 
+# Max copies: ra: 33, decl: 19
+# avoid poles and ask for 33, 17
+
 #
 # Designed to process outputs of something like:
 #  mysqldump --fields-terminated=,  -T /tmp/testdump imsim Raw_Amp_Exposure Raw_Amp_To_Snap_Ccd_Exposure
@@ -148,7 +151,7 @@ def copyParamGen(originalBox, raCopies=2**30, declCopies=2**30,
         if trimSize % 2:
             return candList[half+1 : -half]
         return candList[half : -half]
-
+    
     raList = trimByCopies(raCopies, clip([-180, 180], [oRaMin, oRaMax], 
                                          raWidth, 
                                          range(-raOffCount, 
@@ -158,6 +161,7 @@ def copyParamGen(originalBox, raCopies=2**30, declCopies=2**30,
                                              range(-declOffCount, 
                                                     declOffCount+1)))
     copyNum = 0
+    print len(raList),len(declList)
     # There are redundant iterations, but it shouldn't be a speed problem
     for declOff in raList:
         for raOff in declList:
