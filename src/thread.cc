@@ -243,7 +243,7 @@ void qMaster::Manager::_joinOne() {
 			    back_inserter(newDeq),
 			    tryJoinBoostThread<boost::shared_ptr<boost::thread> >());
 	// newDeq now has threads that didn't join.
-	if(newDeq.size() == oldsize) {
+	if(newDeq.size() == (unsigned)oldsize) {
 	    newDeq.clear();
 	    boost::this_thread::sleep(boost::posix_time::milliseconds(500));
 	} else {
@@ -310,6 +310,7 @@ int qMaster::QueryManager::add(TransactionSpec const& t, int id) {
 	_waiting.push_back(IdCallable(id, ManagedCallable(*this, id, t)));
     }
     _addThreadIfSpace();
+    return id;
 }
 
 /// Record the result of a completed query transaction, 
@@ -320,7 +321,6 @@ int qMaster::QueryManager::add(TransactionSpec const& t, int id) {
 /// @return The next callable that can be executed.
 qMaster::QueryManager::ManagedCallable qMaster::QueryManager::completeAndFetch(int id, XrdTransResult const& r) {
     TransactionSpec nullSpec;
-    int nextId = -1;
     {
 	boost::lock_guard<boost::mutex> rlock(_runningMutex);
 	boost::lock_guard<boost::mutex> flock(_finishedMutex);
@@ -369,7 +369,7 @@ int qMaster::QueryManager::_getNextId() {
 void qMaster::QueryManager::_addThreadIfSpace() {
     {
         boost::lock_guard<boost::mutex> lock(_callablesMutex);
-        if(_callables.size() >= _highWaterThreads) {
+        if(_callables.size() >= (unsigned)_highWaterThreads) {
             // Don't add if there are already lots of callables in flight.
             return; 
         }
@@ -377,7 +377,7 @@ void qMaster::QueryManager::_addThreadIfSpace() {
     _tryJoinAll();
     {
         boost::lock_guard<boost::mutex> lock(_threadsMutex);
-        if(_threads.size() < _highWaterThreads) {
+        if(_threads.size() < (unsigned)_highWaterThreads) {
             boost::shared_ptr<boost::thread> t = _startThread();
             if(t.get() != 0) {
                 _threads.push_back(t);
@@ -395,7 +395,7 @@ void qMaster::QueryManager::_tryJoinAll() {
 			back_inserter(newDeq),
 			tryJoinBoostThread<boost::shared_ptr<boost::thread> >());
     // newDeq now has threads that didn't join.
-    if(newDeq.size() == oldsize) {
+    if(newDeq.size() == (unsigned)oldsize) {
 	newDeq.clear();
     } else {
 	_threads = newDeq;
@@ -456,6 +456,7 @@ qMaster::QueryManager::ManagedCallable& qMaster::QueryManager::ManagedCallable::
     _qm = m._qm;
     _id = m._id;
     _c = m._c;
+    return *this;
 }
 
 void qMaster::QueryManager::ManagedCallable::operator()() {

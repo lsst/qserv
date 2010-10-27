@@ -99,7 +99,9 @@ void qMaster::ChunkQuery::Complete(int Result) {
 	if(Result < 0) { // error? 
 	    _result.read = Result;
 	    std::cout << "Problem reading result: open returned " 
-		      << _result.read << std::endl;
+		      << _result.read << " for chunk=" << _spec.chunkId 
+                      << " with url=" << _resultUrl
+                      << std::endl;
 	    isReallyComplete = true;
 	    _state = COMPLETE;
 	} else {

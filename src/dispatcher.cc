@@ -130,6 +130,7 @@ qMaster::QueryState qMaster::tryJoinQuery(int session, int id) {
 #endif
     // FIXME...consider dropping this.
     // need return val.
+    return UNKNOWN;
 }
 
 struct mergeStatus {

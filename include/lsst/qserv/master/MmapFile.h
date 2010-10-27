@@ -51,7 +51,7 @@ public:
     void const* getBuf() const { return _buf; }
     ::off_t getSize() const { return _fstat.st_size; }
 private:
-    MmapFile() : _fd(0), _buf(0) {}
+    MmapFile() : _buf(0), _fd(0) {}
     MmapFile(MmapFile const&); // disable copy constructor
 
     void _init(std::string const& filename, bool read_, bool write_);

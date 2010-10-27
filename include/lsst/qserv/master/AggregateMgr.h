@@ -147,6 +147,7 @@ public:
     typedef boost::shared_ptr<AggBuilderIf> Ptr;
     virtual AggregateRecord operator()(NodeBound const& lbl,
                                        NodeBound const& meaning) = 0;
+    virtual ~AggBuilderIf() {}
 };
 
 // EasyAggBuilder builds AggregateRecords that are easy--same

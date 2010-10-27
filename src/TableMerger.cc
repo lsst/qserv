@@ -109,7 +109,8 @@ std::string dropDbContext(std::string const& tableName,
     std::string contextDot = context + ".";
     if(tableName.substr(0,contextDot.size()) == contextDot) {
         return tableName.substr(contextDot.size());
-    }
+    } 
+    return tableName;
 }
 } // anonymous namespace
 
@@ -175,7 +176,7 @@ bool TableMerger::_applySql(std::string const& sql) {
     }
     int written = fwrite(sql.c_str(), sizeof(std::string::value_type), 
                          sql.size(), fp);
-    if(written != (sql.size()*sizeof(std::string::value_type))) {
+    if(((unsigned)written) != (sql.size() * sizeof(std::string::value_type))) {
 	_error.status = TableMergerError::MERGEWRITE;
 	_error.errorCode = written;
 	_error.description = "Error writing sql to mysql process.." + sql;
@@ -312,7 +313,6 @@ bool TableMerger::merge2(std::string const& dumpFile,
 
 bool TableMerger::_importBufferCreate(char const* buf, std::size_t size, 
                                      std::string const& tableName) {
-    bool wasApplied = false;
     std::string dropSql = "DROP TABLE IF EXISTS " + tableName + ";";
     // Perform the (patched) CREATE TABLE, then process as an INSERT.
     bool dropQuote = (std::string::npos != _mergeTable.find("."));
