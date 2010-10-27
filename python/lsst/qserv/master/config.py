@@ -74,6 +74,7 @@ passwd=
 [partitioner]
 stripes=18
 substripes=10
+emptyChunkListFile=
 
 [table]
 chunked=Source,ForcedSource

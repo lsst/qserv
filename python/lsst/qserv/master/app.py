@@ -722,6 +722,9 @@ class HintedQueryAction:
         qConfig = configModule.getStringMap()
         qConfig["table.defaultDb"] = self._dbContext
         self._sessionId = newSession(qConfig)
+        cf = configModule.config.get("partitioner", "emptyChunkListFile")
+        self._emptyChunks = self._loadEmptyChunks(cf)
+        
 
         # Table mapping 
         try:
@@ -776,6 +779,22 @@ class HintedQueryAction:
             return []
         pass
 
+    def _loadEmptyChunks(self, filename):
+        def tolerantInt(i):
+            try:
+                return int(i)
+            except:
+                return None
+        empty = set()
+        try:
+            if filename:
+                s = open(filename).read()
+                empty = set(map(tolerantInt, s.split("\n")))
+        except:
+            print "ERROR: partitioner.emptyChunkListFile specified bad or missing chunk file"
+
+        return empty
+
     def _evaluateHints(self, hints, pmap):
         """Modify self.fullSky and self.partitionCoverage according to 
         spatial hints"""
@@ -828,6 +847,8 @@ class HintedQueryAction:
     def invoke(self):
         #count=0
         for chunkId, subIter in self._intersectIter:
+            if chunkId in self._emptyChunks:
+                continue # FIXME: What if all chunks are empty?
             table = self._resultTableTmpl % str(chunkId)
             q = None
             x =  self._substitution.getChunkLevel()
