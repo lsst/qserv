@@ -91,16 +91,23 @@ public:
     }
     template <typename Callable>
     void listenOnce(Key const& k, Callable const& c) {
+        bool shouldFire = false;
+        Item fireParam;
 	{ // This block is an optional optimization.
 	    boost::unique_lock<boost::mutex> lock(_newsMutex);
 	    typename NewsMap::iterator i = _news.find(k);
 	    if(i != _news.end()) { // If already reported, reuse.
-		//std::cerr << "Callback reuse Chance --1--" << std::endl;
-		Callable c2(c);
-		c2(i->second);
-		return; // No need to actually subscribe.
+                shouldFire = true;
+                fireParam = i->second;
 	    }
 	}
+        if(shouldFire) { // Fire the callback outside the lock, since
+                         // it could block. 
+            //std::cerr << "Callback reuse Chance --1--" << std::endl;
+            Callable c2(c);
+            c2(fireParam);
+            return; // No need to actually subscribe.
+        }
 	_verifyKey(k);
 	LSPtr s = _signals[k];
 	{	
@@ -108,14 +115,19 @@ public:
 	    // Check again, in case there was a notification.
 	    typename NewsMap::iterator i = _news.find(k);
 	    if(i != _news.end()) { 
-		//std::cerr << "Callback reuse Chance --2--" << std::endl;
-		Callable c2(c);
-		c2(i->second); 
+                shouldFire = true;
+                fireParam = i->second;
 	    } else {
 		// No news, so subscribe.
 		s->connections.push_back(s->signal.connect(c)); 
 	    }
 	}
+        if(shouldFire) {
+            //std::cerr << "Callback reuse Chance --2--" << std::endl;
+            Callable c2(c);
+            c2(fireParam); 
+            return;
+        }
     }
     ItemPtr getNews(Key const& k) {
 	ItemPtr p;
