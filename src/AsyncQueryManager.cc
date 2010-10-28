@@ -68,17 +68,37 @@ public:
     std::ostream& os;
 };
 
+
 class qMaster::AsyncQueryManager::squashQuery {
 public:
-    squashQuery() {}
+    squashQuery(boost::mutex& mutex_, QueryMap& queries_) 
+        :mutex(mutex_), queries(queries_) {}
     void operator()(QueryMap::value_type const& qv) {
         boost::shared_ptr<ChunkQuery> cq = qv.second.first;
-        if(cq.get()) {
-            // Query may have been completed, and its memory freed,
-            // but still exist briefly before it is deleted from the map.
-            cq->requestSquash();
+        if(!cq.get()) return;
+        {
+            boost::unique_lock<boost::mutex> lock(mutex);
+            QueryMap::iterator i = queries.find(qv.first);
+            if(i != queries.end()) {
+                cq = i->second.first; // Get the shared version.
+                if(!cq.get())   {
+                    //qv.second.first.reset(); // Erase ours too.
+                    return;
+                }
+                //idInProgress = i->first;
+            }
         }
+        // Query may have been completed, and its memory freed,
+        // but still exist briefly before it is deleted from the map.
+        Timer t;
+        t.start();
+        cq->requestSquash();        
+        t.stop();
+        std::cout << "qSquash " << t << std::endl;
+
     }
+    boost::mutex& mutex;
+    QueryMap& queries;
 };
 
 ////////////////////////////////////////////////////////////
@@ -139,7 +159,7 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
             dumpSize = s.first->getSaveSize(); 
 	    tableName = s.second;
             assert(r.localWrite == dumpSize);
-	    s.first.reset(); // clear out chunkquery.
+            s.first.reset(); // clear out chunkquery.
         } // Lock-free merge
         _addNewResult(dumpSize, dumpFile, tableName);
         // Erase right before notifying.
@@ -191,6 +211,8 @@ void qMaster::AsyncQueryManager::joinEverything() {
     boost::unique_lock<boost::mutex> lock(_queriesMutex);
     int lastCount = -1;
     int count;
+    int moreDetailThreshold = 5;
+    int complainCount = 0;
     //_printState(std::cout);
    while(!_queries.empty()) { 
         count = _queries.size();
@@ -198,6 +220,11 @@ void qMaster::AsyncQueryManager::joinEverything() {
             std::cout << "Still " << count
                       << " in flight." << std::endl;
             count = lastCount;
+            ++complainCount;
+            if(complainCount > moreDetailThreshold) {
+                _printState(std::cout);
+                complainCount = 0;
+            }
         }
         _queriesEmpty.timed_wait(lock, boost::posix_time::seconds(5));
     }
@@ -264,19 +291,27 @@ void qMaster::AsyncQueryManager::_squashExecution() {
     // Halt new query dispatches and cancel the ones in flight.
     // This attempts to save on resources and latency, once a query
     // fault is detected.
-    typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
+    
     if(_isSquashed) return;  
     _isSquashed = true; // Mark before acquiring lock--faster.
     //std::cout << "Squash requested by "<<(void*)this << std::endl;
+    Timer t;
+    // Squashing is dependent on network latency and remote worker
+    // responsiveness, so make a copy so others don't have to wait.
+    std::vector<std::pair<int, QuerySpec> > myQueries;
     {
         boost::unique_lock<boost::mutex> lock(_queriesMutex);
-        Timer t;
         t.start();
-        std::for_each(_queries.begin(), _queries.end(), squashQuery());
-        t.stop();
-        std::cout << "AsyncQM squashExec " << t << std::endl;
-        _isSquashed = true; // Ensure that flag wasn't trampled.
-    } 
+        myQueries.resize(_queries.size());
+        std::cout << "AsyncQM squashExec copy " <<  std::endl;
+        std::copy(_queries.begin(), _queries.end(), myQueries.begin());
+    }
+    std::cout << "AsyncQM squashExec iteration " <<  std::endl;
+    std::for_each(myQueries.begin(), myQueries.end(), squashQuery(_queriesMutex, _queries));
+    t.stop();
+    std::cout << "AsyncQM squashExec " << t << std::endl;
+    _isSquashed = true; // Ensure that flag wasn't trampled.
+     
 }
 
 void qMaster::AsyncQueryManager::_squashRemaining() {

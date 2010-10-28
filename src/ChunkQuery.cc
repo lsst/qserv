@@ -63,6 +63,12 @@ namespace {
         return res;
     }
 
+    class scopedTrue {
+    public:
+        scopedTrue(bool& val_) : value(val_) { value = true; }
+        ~scopedTrue() { value = false; }
+        bool& value;
+    };
 }
 
 
@@ -70,6 +76,10 @@ namespace {
 // class ChunkQuery 
 //////////////////////////////////////////////////////////////////////
 void qMaster::ChunkQuery::Complete(int Result) {
+    // Prevent multiple Complete() callbacks from stacking. 
+    while(_isCompletingCallback) {} // spin-wait
+    scopedTrue t(_isCompletingCallback);
+
     std::stringstream ss;
     bool isReallyComplete = false;
     if(_shouldSquash) {        
@@ -122,7 +132,9 @@ void qMaster::ChunkQuery::Complete(int Result) {
 qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id, 
 				qMaster::AsyncQueryManager* mgr) 
     : XrdPosixCallBack(),
-      _id(id), _spec(t), _manager(mgr),
+      _id(id), _spec(t), 
+      _isCompletingCallback(false),
+      _manager(mgr),
       _shouldSquash(false) {
     assert(_manager != NULL);
     _result.open = 0;
@@ -335,6 +347,7 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
         closeFd(fd, "Normal", "dumpPath " + _spec.savePath, 
                 "post-dispatch");
         _writeCloseTimer.stop();
+        ss << _hash << " QuerySize " << len << std::endl;
         ss << _hash << " WriteClose " << _writeTimer << std::endl;
 
         if(_shouldSquash) {

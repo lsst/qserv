@@ -59,7 +59,8 @@ public:
     typedef std::map<std::string, std::string> StringMap;
     
     explicit AsyncQueryManager(std::map<std::string,std::string> const& cfg) 
-        :_lastId(1000000000), _isExecFaulty(false), _isSquashed(false),
+        :_lastId(1000000000), 
+        _isExecFaulty(false), _isSquashed(false),
         _queryCount(0),
         _shouldLimitResult(false), 
         _resultLimit(1024*1024*1024), _totalSize(0)
@@ -77,6 +78,7 @@ public:
     std::string const& getXrootdHostPort() const { return _xrootdHostPort; };
 
 private:
+    // QuerySpec: ChunkQuery object + result name
     typedef std::pair<boost::shared_ptr<ChunkQuery>, std::string> QuerySpec;
     typedef std::map<int, QuerySpec> QueryMap;
 

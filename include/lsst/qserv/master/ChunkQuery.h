@@ -81,6 +81,7 @@ private:
     int _id;
     TransactionSpec _spec;
     WaitState _state;
+    bool _isCompletingCallback;
     XrdTransResult _result;
     boost::mutex _mutex;
     std::string _hash;
