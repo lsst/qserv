@@ -117,10 +117,12 @@ void qMaster::xrdInit() {
     //EnvPutInt(NAME_REQUESTTIMEOUT, std::numeric_limits<int>::max());
     //    EnvPutInt(NAME_DATASERVERCONN_TTL, std::numeric_limits<int>::max());
 
-
+    // TRANSACTIONTIMEOUT needs to get extended since it limits how
+    // long the client will wait for an open() callback response.
     // Can't set to max, since it gets added to time(), and max would overflow.
     // Set to 3 years.
-    //    EnvPutInt(NAME_TRANSACTIONTIMEOUT, 60*60*24*365*3); 
+    EnvPutInt(NAME_TRANSACTIONTIMEOUT, 60*60*24*365*3); 
+
 
     // Don't need to lengthen load-balancer timeout.??
     //EnvPutInt(NAME_LBSERVERCONN_TTL, std::numeric_limits<int>::max());
