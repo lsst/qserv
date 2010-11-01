@@ -85,7 +85,7 @@ void qMaster::MmapFile::_init(std::string const& filename,
                                      mapProt, MAP_SHARED, _fd, 0))
         )
        ) {
-        if((MAP_FAILED == _buf) && _fstat.st_size > (1ULL << 30)) {
+        if((MAP_FAILED == _buf) && _fstat.st_size > ((off_t)1ULL << 30)) {
             std::cout << "DEBUG: file too big? (mmap failed) "
                       << std::endl;
         }

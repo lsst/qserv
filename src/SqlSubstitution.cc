@@ -77,11 +77,12 @@ void printMap(Map const& m) {
 } // Anonymous namespace
 
 qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
-                                          Mapping const& mapping,
+                                          ChunkMapping const& mapping,
                                           std::map<std::string, std::string> const& config)
-    : _delimiter("*?*"), _hasAggregate(false) {
+    : _delimiter("*?*"), _hasAggregate(false), _mapping(mapping) {
+    // Note: makes copy of chunkmapping.
     _readConfig(config);
-    _build(sqlStatement, mapping);
+    _build(sqlStatement);
     //
 }
 
@@ -99,8 +100,9 @@ void qMaster::SqlSubstitution::importSubChunkTables(char** cStringArr) {
     }
 }
     
-std::string qMaster::SqlSubstitution::transform(Mapping const& m, int chunk, 
-                                       int subChunk) {
+std::string qMaster::SqlSubstitution::transform(int chunk, int subChunk) {
+    boost::lock_guard<boost::mutex> lock(_mappingMutex);
+    Mapping const& m = _mapping.getMapReference(chunk, subChunk);
     if(!_substitution.get()) return std::string();
     return _fixDbRef(_substitution->transform(m), chunk, subChunk);
 }
@@ -110,13 +112,14 @@ std::string qMaster::SqlSubstitution::substituteOnly(Mapping const& m) {
     return _substitution->transform(m);
 }
 
-void qMaster::SqlSubstitution::_build(std::string const& sqlStatement, 
-                                      Mapping const& mapping) {
+void qMaster::SqlSubstitution::_build(std::string const& sqlStatement) {
+    boost::lock_guard<boost::mutex> lock(_mappingMutex);
+    Mapping const& m = _mapping.getMapReference(999999,999999); 
     std::string template_;
 
-    Mapping::const_iterator end = mapping.end();
+    Mapping::const_iterator end = m.end();
     std::list<std::string> names;
-    for(Mapping::const_iterator i=mapping.begin(); i != end; ++i) {
+    for(Mapping::const_iterator i=m.begin(); i != end; ++i) {
 	names.push_back(i->first);
     }
     std::cout << "PARSING: " << sqlStatement << std::endl;

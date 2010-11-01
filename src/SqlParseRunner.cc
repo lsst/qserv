@@ -85,9 +85,9 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
                                         std::string const& defaultDb) :
     _statement(statement),
     _stream(statement, stringstream::in | stringstream::out),
+    _factory(new ASTFactory()),
     _lexer(new SqlSQL2Lexer(_stream)),
     _parser(new SqlSQL2Parser(*_lexer)),
-    _factory(new ASTFactory()),
     _delimiter(delimiter),
     _templater(_delimiter, _factory.get(), dbWhiteList, defaultDb)
 { 

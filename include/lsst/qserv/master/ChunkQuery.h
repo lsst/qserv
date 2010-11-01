@@ -81,9 +81,9 @@ private:
     int _id;
     TransactionSpec _spec;
     WaitState _state;
-    bool _isCompletingCallback;
     XrdTransResult _result;
     boost::mutex _mutex;
+    boost::shared_ptr<boost::mutex> _completeMutexP;
     std::string _hash;
     std::string _resultUrl;
     std::string _queryHostPort;

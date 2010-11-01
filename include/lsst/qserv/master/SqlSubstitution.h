@@ -25,6 +25,8 @@
 
 #include <deque>
 
+#include <boost/thread.hpp>
+
 #include "lsst/qserv/master/ChunkMapping.h"
 #include "lsst/qserv/master/Substitution.h"
 #include "lsst/qserv/master/mergeTypes.h"
@@ -46,13 +48,13 @@ public:
     typedef std::map<std::string, std::string> StringMap;
 
     SqlSubstitution(std::string const& sqlStatement, 
-                    Mapping const& mapping, 
+                    ChunkMapping const& mapping, 
                     std::map<std::string, std::string> const& config);
     /// config should include qserv master config + current session context
     /// i.e., defaultDb=LSST (or defaultDb=TestDb)
 
     void importSubChunkTables(char** cStringArr);
-    std::string transform(Mapping const& m, int chunk, int subChunk);
+    std::string transform(int chunk, int subChunk);
     std::string substituteOnly(Mapping const& m);
     
     /// 0: none, 1: chunk, 2: subchunk
@@ -66,7 +68,7 @@ public:
 private:
     typedef boost::shared_ptr<Substitution> SubstPtr;
 
-    void _build(std::string const& sqlStatement, Mapping const& mapping);
+    void _build(std::string const& sqlStatement);
     void _computeChunkLevel(bool hasChunks, bool hasSubChunks);
     std::string _fixDbRef(std::string const& s, int chunk, int subChunk);
     void _readConfig(StringMap const& m);
@@ -78,7 +80,8 @@ private:
     bool _hasAggregate;
     MergeFixup _mFixup;
     Deque _subChunked;
-
+    ChunkMapping _mapping;
+    boost::mutex _mappingMutex;
     // Config
     std::string _defaultDb;
     std::map<std::string, int> _dbWhiteList;

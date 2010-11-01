@@ -37,8 +37,8 @@ Access to the classes from the qserv_master library
 #include "lsst/qserv/master/dispatcher.h"
 #include "lsst/qserv/master/mergeTypes.h"
 #include "lsst/qserv/master/Substitution.h"
-#include "lsst/qserv/master/SqlSubstitution.h"
 #include "lsst/qserv/master/ChunkMapping.h"
+#include "lsst/qserv/master/SqlSubstitution.h"
 #include "lsst/qserv/master/TableMerger.h"
 %}
 
@@ -114,8 +114,8 @@ namespace std {
 %include "lsst/qserv/master/mergeTypes.h"
 %include "lsst/qserv/master/dispatcher.h"
 %include "lsst/qserv/master/Substitution.h"
-%include "lsst/qserv/master/SqlSubstitution.h"
 %include "lsst/qserv/master/ChunkMapping.h"
+%include "lsst/qserv/master/SqlSubstitution.h"
 %include "lsst/qserv/master/TableMerger.h"
 
 

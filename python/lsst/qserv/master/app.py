@@ -731,7 +731,7 @@ class HintedQueryAction:
             self._pConfig = PartitioningConfig() # Should be shared.
             self._pConfig.applyConfig()
             self._substitution = SqlSubstitution(query, 
-                                                 self._pConfig.getMapRef(2,3),
+                                                 self._pConfig.chunkMapping,
                                                  qConfig)
             if self._substitution.getError():
                 self._error = self._substitution.getError()
@@ -910,8 +910,7 @@ class HintedQueryAction:
 
         pfx = None
         for subChunkId in scList:
-            ref = self._pConfig.getMapRef(chunkId, subChunkId)
-            q = self._substitution.transform(ref, chunkId, subChunkId)
+            q = self._substitution.transform(chunkId, subChunkId)
             if pfx:
                 qList.append(pfx + q)
             else:

@@ -77,8 +77,8 @@ namespace {
 //////////////////////////////////////////////////////////////////////
 void qMaster::ChunkQuery::Complete(int Result) {
     // Prevent multiple Complete() callbacks from stacking. 
-    while(_isCompletingCallback) {} // spin-wait
-    scopedTrue t(_isCompletingCallback);
+    boost::shared_ptr<boost::mutex> m(_completeMutexP);
+    boost::lock_guard<boost::mutex> lock(*m);
 
     std::stringstream ss;
     bool isReallyComplete = false;
@@ -133,7 +133,6 @@ qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id,
 				qMaster::AsyncQueryManager* mgr) 
     : XrdPosixCallBack(),
       _id(id), _spec(t), 
-      _isCompletingCallback(false),
       _manager(mgr),
       _shouldSquash(false) {
     assert(_manager != NULL);
@@ -143,7 +142,7 @@ qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id,
     _result.localWrite = 0;
     // Patch the spec to include the magic query terminator.
     _spec.query.append(4,0); // four null bytes.
-
+    _completeMutexP.reset(new boost::mutex);
 }
 
 qMaster::ChunkQuery::~ChunkQuery() {
