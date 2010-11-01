@@ -116,12 +116,20 @@ std::string runQueryInPieces(XrdSysError& e, MYSQL* db,
         subResult = runQuery(db, p.first, p.second);
 
 	// On error, the partial error is as good as the global.
-	if(!subResult.empty() || (checkAbort && (*checkAbort)())) {
+	if(!subResult.empty()) {
 	    unsigned s=p.second;
-	    e.Say((Pformat("%1%---Error with piece %2% complete (size=%3%).") 
+	    e.Say((Pformat(">>%1%<<---Error with piece %2% complete (size=%3%).") 
                    % subResult % sf.getCount() % s).str().c_str());
             return subResult;
-	}
+        } else if(checkAbort && (*checkAbort)()) {
+            if(sf.isDone()) {
+                e.Say("Query finished, though client requested abort.");
+            } else {
+                e.Say((Pformat("Aborting query by request (%1% complete).") 
+                       % sf.getCount()).str().c_str());
+                return std::string("Query poisoned by client request.");
+            }
+        }
     }
     // Can't use _eDest (we are in file-scope)
     //std::cout << Pformat("Executed query in %1% pieces.") % pieceCount;
