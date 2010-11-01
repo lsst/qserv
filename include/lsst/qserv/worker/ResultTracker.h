@@ -29,6 +29,7 @@
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include "lsst/qserv/worker/WorkQueue.h"
 
 namespace lsst {
 namespace qserv {
@@ -37,7 +38,6 @@ namespace worker {
 typedef std::pair<int,char const*> ResultItem;
 typedef std::pair<int, std::string> ResultError;
 typedef boost::shared_ptr<ResultError> ResultErrorPtr;
-
 
 // Make sure Item is a primitive that can be copied.
 template <typename Key, typename Item>
@@ -61,6 +61,16 @@ public:
 	    
 	}
     };
+    // Wrap up a notification into a no-argument functor that can be queued.
+    template <class C>
+    class ResultCallable : public WorkQueue::Callable {
+    public:
+        typedef boost::shared_ptr<ResultCallable> Ptr;
+        ResultCallable(C const& c, Item const& i) : _c(c), _i(i) {}
+        virtual void operator()() { _c(_i); }
+        C _c;
+        Item _i;
+    };
     ////////////////////////////////////////////////////
     typedef boost::shared_ptr<Item> ItemPtr;
     typedef boost::shared_ptr<LockableSignal> LSPtr;
@@ -68,6 +78,8 @@ public:
     typedef std::map<Key, Item> NewsMap;
     //////////////////////////////////////////////////
     // Methods
+    //////////////////////////////////////////////////
+    ResultTracker() : _workQueue(3) {} // Callback pool w/ 3 threads
     void notify(Key const& k, Item const& i) {
 	_verifyKey(k); // Force k to exist in _signals
 	LSPtr s = _signals[k];
@@ -91,23 +103,16 @@ public:
     }
     template <typename Callable>
     void listenOnce(Key const& k, Callable const& c) {
-        bool shouldFire = false;
-        Item fireParam;
 	{ // This block is an optional optimization.
 	    boost::unique_lock<boost::mutex> lock(_newsMutex);
 	    typename NewsMap::iterator i = _news.find(k);
 	    if(i != _news.end()) { // If already reported, reuse.
-                shouldFire = true;
-                fireParam = i->second;
+                boost::shared_ptr<ResultCallable<Callable> > rc;
+                rc.reset(new ResultCallable<Callable>(c,i->second));
+                _workQueue.add(rc);
+                return;
 	    }
 	}
-        if(shouldFire) { // Fire the callback outside the lock, since
-                         // it could block. 
-            //std::cerr << "Callback reuse Chance --1--" << std::endl;
-            Callable c2(c);
-            c2(fireParam);
-            return; // No need to actually subscribe.
-        }
 	_verifyKey(k);
 	LSPtr s = _signals[k];
 	{	
@@ -115,19 +120,15 @@ public:
 	    // Check again, in case there was a notification.
 	    typename NewsMap::iterator i = _news.find(k);
 	    if(i != _news.end()) { 
-                shouldFire = true;
-                fireParam = i->second;
+                boost::shared_ptr<ResultCallable<Callable> > rc;
+                rc.reset(new ResultCallable<Callable>(c,i->second));
+                _workQueue.add(rc);
+                return;
 	    } else {
 		// No news, so subscribe.
 		s->connections.push_back(s->signal.connect(c)); 
 	    }
 	}
-        if(shouldFire) {
-            //std::cerr << "Callback reuse Chance --2--" << std::endl;
-            Callable c2(c);
-            c2(fireParam); 
-            return;
-        }
     }
     ItemPtr getNews(Key const& k) {
 	ItemPtr p;
@@ -166,7 +167,7 @@ private:
     NewsMap _news;
     boost::mutex _signalsMutex;
     boost::mutex _newsMutex;
-
+    WorkQueue _workQueue;
 };
     
 }}} // namespace lsst::qserv::worker

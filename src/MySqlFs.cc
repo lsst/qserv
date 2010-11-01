@@ -39,7 +39,7 @@ extern XrdSfsFileSystem *XrdXrootdloadFileSystem(XrdSysError *, char *,
 namespace qWorker = lsst::qserv::worker;
 
 namespace { 
- 
+
 template<class Callback>
 class FinishListener { 
 public:

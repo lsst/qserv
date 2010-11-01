@@ -31,6 +31,8 @@
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include <deque>
+
 namespace lsst {
 namespace qserv {
 namespace worker {

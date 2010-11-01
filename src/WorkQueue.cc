@@ -26,7 +26,7 @@
 // all threads have died before returning.
 //
 #include "lsst/qserv/worker/WorkQueue.h"
-
+#include <iostream>
 namespace qWorker = lsst::qserv::worker;
 
 class qWorker::WorkQueue::Runner {
@@ -107,3 +107,59 @@ void qWorker::WorkQueue::_addRunner() {
     _runnerRegistered.wait(lock);
     //_runners.back()->run();
 }
+
+//////////////////////////////////////////////////////////////////////
+// Test code
+//////////////////////////////////////////////////////////////////////
+
+namespace {
+class MyCallable : public qWorker::WorkQueue::Callable {
+public:
+    typedef boost::shared_ptr<MyCallable> Ptr;
+
+    MyCallable(int id, float time)  : _myId(id), _spinTime(time) {}
+    virtual void operator()() {
+        std::stringstream ss;
+        struct timespec ts;
+        struct timespec rem;
+
+
+        ss << "MyCallable " << _myId << " (" << _spinTime
+           << ") STARTED spinning" << std::endl;
+        std::cout << ss.str();
+        ss.str() = "";
+        ts.tv_sec = (long)_spinTime;
+        ts.tv_nsec = (long)((1e9)*(_spinTime - ts.tv_sec));
+        if(-1 == nanosleep(&ts, &rem)) {
+            ss << "Interrupted " ;
+        }
+        
+
+        ss << "MyCallable " << _myId << " (" << _spinTime
+           << ") STOPPED spinning" << std::endl;
+        std::cout << ss.str();
+
+        
+    }
+    int _myId;
+    float _spinTime;
+    
+};
+
+void test() {
+    using namespace std;
+    struct timespec ts;
+    struct timespec rem;
+    ts.tv_sec = 10;
+    ts.tv_nsec=0;
+    cout << "main started" << endl;
+    qWorker::WorkQueue wq(10);
+    cout << "wq started " << endl;
+    for(int i=0; i < 50; ++i) {
+        wq.add(MyCallable::Ptr(new MyCallable(i, 0.2)));
+    }
+    cout << "added items" << endl;
+    //nanosleep(&ts,&rem);
+}
+
+} // anonymous namespace
