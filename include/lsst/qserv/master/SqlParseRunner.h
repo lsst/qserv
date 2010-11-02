@@ -29,11 +29,10 @@
 
 // package
 #include "lsst/qserv/master/mergeTypes.h"
-#include "lsst/qserv/master/parser.h"
 #include "lsst/qserv/master/AggregateMgr.h"
 #include "lsst/qserv/master/ChunkMapping.h"
 #include "lsst/qserv/master/Templater.h"
-
+#include "lsst/qserv/master/SpatialUdfHandler.h"
 
 // Forward
 class ASTFactory;
@@ -113,6 +112,7 @@ private:
     std::string _delimiter;
     Templater _templater;
     AggregateMgr _aggMgr;
+    SpatialUdfHandler _spatialUdfHandler;
     boost::shared_ptr<Templater::TableListHandler>  _tableListHandler;
     
     std::string _parseResult;

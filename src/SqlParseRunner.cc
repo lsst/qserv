@@ -108,6 +108,8 @@ void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
     _parser->_groupColumnHandler = _aggMgr.getGroupColumnHandler();
     _parser->_limitHandler.reset(new LimitHandler(*this));
     _parser->_orderByHandler.reset(new OrderByHandler(*this));
+    _parser->_fromWhereHandler = _spatialUdfHandler.getFromWhereHandler();
+    _parser->_whereCondHandler= _spatialUdfHandler.getWhereCondHandler();
 }
 
 std::string qMaster::SqlParseRunner::getParseResult() {

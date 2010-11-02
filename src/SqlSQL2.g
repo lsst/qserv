@@ -223,6 +223,19 @@ void handleOrderBy(RefAST i) {
     return; // Do-nothing placeholder    
 }
 
+void handleFromWhere(RefAST fw) {
+    if(_fromWhereHandler.get()) {
+        (*_fromWhereHandler)(fw);
+    }
+    return; // Do-nothing placeholder    
+}
+void handleWhereCondition(RefAST wc) {
+    if(_whereCondHandler.get()) {
+        (*_whereCondHandler)(wc);
+    }
+    return; // Do-nothing placeholder    
+}
+
 // void handleSelect() {
 //     if(_selectStarHandler.get()) {
 //         (*_selectStarHandler)();
@@ -243,6 +256,11 @@ boost::shared_ptr<VoidOneRefFunc> _groupByHandler;
 boost::shared_ptr<VoidOneRefFunc> _groupColumnHandler;
 boost::shared_ptr<VoidOneRefFunc> _limitHandler;
 boost::shared_ptr<VoidOneRefFunc> _orderByHandler;
+
+// for WHERE clause editing/injection.
+boost::shared_ptr<VoidOneRefFunc> _fromWhereHandler;
+boost::shared_ptr<VoidOneRefFunc> _whereCondHandler;
+
 //  Class body inset ends here
 }
 

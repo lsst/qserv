@@ -1182,14 +1182,21 @@ named_columns_join :
 //}
 
 //{ Rule #575 <table_exp>
+//  danielw: Replace "from_clause (where_clause)?" 
+//  with "from_with_where" to facilitate where-clause modification.
 table_exp : 
-	from_clause 
-	(where_clause)? 
+	a:from_with_where
 	(group_by_clause)? 
-	(having_clause)? 
+	(having_clause)? {handleFromWhere(a_AST);}
 ;
 //}
 
+// danielw: introduce from_with_where to help with clause editing/injection.
+from_with_where :
+        from_clause
+        (where_clause)?
+    ;
+        
 //{ Rule #265 <from_clause>
 from_clause : 
 	"from" table_ref_list 
@@ -1204,7 +1211,7 @@ table_ref_list :
 
 //{ Rule #637 <where_clause>
 where_clause : 
-	"where" search_condition 
+	"where" a:search_condition {handleWhereCondition(a_AST);}
 ;
 //}
 

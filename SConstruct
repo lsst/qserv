@@ -111,11 +111,6 @@ env.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
 # Start configuration tests
 conf = Configure(env)
 
-# XrdPosix library
-if not conf.CheckLib("XrdPosix", language="C++"):
-    print >>sys.stderr, "Can't use XrdPosix lib"
-    hasXrootd = False
-
 # boost library reqs
 def checkBoost(lib):
     if not conf.CheckLib(lib + "-gcc34-mt", language="C++") \
@@ -127,17 +122,24 @@ def checkBoost(lib):
 checkBoost("boost_thread")
 checkBoost("boost_regex")
 
-# libssl
-if not conf.CheckLib("ssl"):
-    print >> sys.stderr, "Could not locate ssl"
-    canBuild = False
-
 # ANTLR
 if not conf.CheckCXXHeader("antlr/AST.hpp"):
     print >> sys.stderr, "Could not locate ANTLR headers"
     canBuild = False
 if not conf.CheckLib("antlr", language="C++"):
     print >> sys.stderr, "Could not find ANTLR lib"
+    canBuild = False
+
+# Close out configuration for no parse test env
+parseEnv = conf.Finish()
+parseEnv = parseEnv.Clone(LIBS=parseEnv["LIBS"][:])
+print parseEnv["LIBS"]
+env = parseEnv.Clone()
+conf = Configure(env)
+
+# libssl
+if not conf.CheckLib("ssl"):
+    print >> sys.stderr, "Could not locate ssl"
     canBuild = False
 
 # MySQL
@@ -148,11 +150,13 @@ if not conf.CheckLib("mysqlclient_r", language="C++"):
     print >> sys.stderr, "Could not find multithreaded mysql(mysqlclient_r)"
     canBuild = False
 
-    
-# Close out configuration
+# XrdPosix library
+if not conf.CheckLib("XrdPosix", language="C++"):
+    print >>sys.stderr, "Can't use XrdPosix lib"
+    hasXrootd = False
+
 env = conf.Finish()    
-if hasXrootd:
-    env.Append(LIBS = ["XrdPosix"])
+print parseEnv["LIBS"]
 canBuild = canBuild and hasXrootd
 
 parserSrcs = map(lambda x: os.path.join('src', x), 
@@ -163,6 +167,7 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "SqlSubstitution.cc",
                   "Substitution.cc",
                   "ChunkMapping.cc",
+                  "SpatialUdfHandler.cc",
                   "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"] )
              
 
@@ -196,7 +201,7 @@ testParser = { 'bin' : os.path.join('bin', 'testCppParser'),
 if canBuild:
     env.SharedLibrary(pyLib, srcPaths)
     env.Program(runTrans['bin'], runTrans["srcPaths"])
-    env.Program(testParser['bin'], testParser["srcPaths"])
+    parseEnv.Program(testParser['bin'], testParser["srcPaths"])
 
 # Describe what your package contains here.
 env.Help("""
