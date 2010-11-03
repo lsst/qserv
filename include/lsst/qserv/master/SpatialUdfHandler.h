@@ -23,23 +23,33 @@
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/parserBase.h"
 
+// Forward
+namespace antlr {
+class ASTFactory;
+}
+
 namespace lsst {
 namespace qserv {
 namespace master {
 
 class SpatialUdfHandler {
 public:
-    SpatialUdfHandler();
+    SpatialUdfHandler(antlr::ASTFactory* factory);
     boost::shared_ptr<VoidOneRefFunc> getFromWhereHandler() { 
         return _fromWhere; 
     }
     boost::shared_ptr<VoidOneRefFunc> getWhereCondHandler() {
         return _whereCond;
     }
+
+    void setExpression(std::string const& funcName, 
+                       double* first, int nitems);
     
-private:
-    void markAsPatched() { _isPatched = true; }
-    bool getIsPatched() const { return _isPatched; }
+ private:
+    void _markAsPatched() { _isPatched = true; }
+    bool _getIsPatched() const { return _isPatched; }
+    std::string getWhereIntruder() const { return _whereIntruder; }
+    antlr::ASTFactory* getASTFactory() { return _factory; }
 
     class FromWhereHandler;
     class WhereCondHandler;
@@ -49,6 +59,8 @@ private:
     boost::shared_ptr<VoidOneRefFunc> _fromWhere;
     boost::shared_ptr<VoidOneRefFunc> _whereCond;
     bool _isPatched;
+    antlr::ASTFactory* _factory;
+    std::string _whereIntruder;
 };
 
 }}} // namespace lsst::qserv::master

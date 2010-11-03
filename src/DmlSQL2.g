@@ -1211,7 +1211,7 @@ table_ref_list :
 
 //{ Rule #637 <where_clause>
 where_clause : 
-	"where" a:search_condition {handleWhereCondition(a_AST);}
+	w:"where" search_condition {handleWhereCondition(w_AST);}
 ;
 //}
 

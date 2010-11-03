@@ -229,9 +229,9 @@ void handleFromWhere(RefAST fw) {
     }
     return; // Do-nothing placeholder    
 }
-void handleWhereCondition(RefAST wc) {
+void handleWhereCondition(RefAST where) {
     if(_whereCondHandler.get()) {
-        (*_whereCondHandler)(wc);
+        (*_whereCondHandler)(where);
     }
     return; // Do-nothing placeholder    
 }

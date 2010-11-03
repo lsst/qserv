@@ -171,20 +171,15 @@ Templater::Templater(std::string const& delimiter,
                      antlr::ASTFactory* factory,
                      Templater::IntMap const& dbWhiteList,
                      std::string const& defaultDb) 
-    : _delimiter(delimiter), _factory(factory), 
-      _dbWhiteList(dbWhiteList), _defaultDb(defaultDb) {
+    : _dbWhiteList(dbWhiteList), _delimiter(delimiter),
+      _factory(factory), _defaultDb(defaultDb) {
 }
 
 void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
     if(!db.get()) {
         if(!_defaultDb.empty() && _isDbOk(_defaultDb)) {
             // no explicit Db?  Create one, and link it in.
-            antlr::RefAST newChild = _factory->create();
-            newChild->setText(n->getText());
-            newChild->setNextSibling(n->getNextSibling());
-            n->setNextSibling(newChild);
-            n->setText(_defaultDb + _nameSep);
-            n = newChild;
+            n = insertTextNodeBefore(_factory, _defaultDb + _nameSep, n);
         } else { // No context and bad/missing defaultDb
             _markBadDb(_defaultDb);
         }

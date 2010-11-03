@@ -19,12 +19,15 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+#include "lsst/qserv/master/SpatialUdfHandler.h"
  
+// Pkg
+#include "lsst/qserv/master/parseTreeUtil.h"
+
 // Boost
 #include <boost/make_shared.hpp>
-
-#include "lsst/qserv/master/SpatialUdfHandler.h"
-#include "lsst/qserv/master/parseTreeUtil.h"
+// std
+#include <sstream>
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
@@ -39,9 +42,12 @@ public:
     FromWhereHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
     virtual ~FromWhereHandler() {}
     virtual void operator()(antlr::RefAST fw) {
-        if(_suh.getIsPatched()) {
-            // Need to insert clause after from.
-            // FIXME: insert code here
+        if(!_suh._getIsPatched()) {
+            if(_suh.getASTFactory() && !_suh.getWhereIntruder().empty()) {
+                std::string intruder = "WHERE " + _suh.getWhereIntruder();
+                insertTextNodeAfter(_suh.getASTFactory(), intruder, 
+                                getLastSibling(fw));
+            }
         } else {
             // Already patched, don't do anything.
         }
@@ -58,12 +64,15 @@ class qMaster::SpatialUdfHandler::WhereCondHandler : public VoidOneRefFunc {
 public:
     WhereCondHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
     virtual ~WhereCondHandler() {}
-    virtual void operator()(antlr::RefAST wc) {
+    virtual void operator()(antlr::RefAST where) {
         // If we see a where condition, we can immediately patch it.
-        // FIXME: insert code here
+        if(_suh.getASTFactory()  && !_suh.getWhereIntruder().empty()) {
+            std::string intruder = _suh.getWhereIntruder() + " AND";
+            insertTextNodeAfter(_suh.getASTFactory(), intruder, where);
+        }
         // Remember that we patched the tree.
-        _suh.markAsPatched();
-        std::cout << "whereCond: " << walkTreeString(wc) << std::endl;
+        _suh._markAsPatched();
+        std::cout << "whereCond: " << walkTreeString(where) << std::endl;
         //std::cout << "Got limit -> " << limit << std::endl;            
     }
 private:
@@ -73,8 +82,32 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler
 ////////////////////////////////////////////////////////////////////////
-qMaster::SpatialUdfHandler::SpatialUdfHandler() 
+qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory)
     : _fromWhere(new FromWhereHandler(*this)),
       _whereCond(new WhereCondHandler(*this)),
-      _isPatched(false) {
+      _isPatched(false),
+      _factory(factory) {
+    if(!_factory) {
+        std::cerr << "WARNING: SpatialUdfHandler non-functional (null factory)"
+                  << std::endl;
+    }
+    // For testing:
+    //    double dummy[] = {0.0,0.0,1,1};
+    //    setExpression("box",dummy, 4);
 }
+
+void qMaster::SpatialUdfHandler::setExpression(std::string const& funcName,
+                                               double* first, int nitems) {
+    std::stringstream ss;
+    int oneless = nitems - 1;
+    ss << funcName << "(";
+    if(nitems > 0) {
+        for(int i=0; i < oneless; ++i) {
+            ss << first[i] << ", ";
+        }
+        ss << first[oneless];
+    }
+    ss << ")";
+    _whereIntruder = ss.str();
+}
+    

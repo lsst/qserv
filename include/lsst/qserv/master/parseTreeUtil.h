@@ -30,6 +30,11 @@
 
 #include "antlr/AST.hpp"
 
+// Forward
+namespace antlr {
+class ASTFactory;
+}
+
 namespace lsst {
 namespace qserv {
 namespace master {
@@ -94,6 +99,7 @@ public:
 	    || ((last == '*') && isalnum(next)) // *saf
 	    || ((next == '*') && isalnum(last)) // saf*
 	    || ((last == ')') && isalnum(next)) // )asdf
+	    || ((last == '#') && isalnum(next)) // #asdf
 	    ;
     }
     std::string result;
@@ -201,6 +207,19 @@ AnAst collapseNodeRange(AnAst start, AnAst bound) {
     start->setNextSibling(bound->getNextSibling());
     return dead;
 }
+
+// Creates a new text node and and puts it into the tree
+// after the specified node, but before the node's next sibling.
+antlr::RefAST insertTextNodeAfter(antlr::ASTFactory* factory, 
+                                  std::string const& s, 
+                                  antlr::RefAST n);
+
+// Overwrites the text for the specified node, putting the old text into
+// a new text node placed after the specified node but before the
+// node's next sibling.
+antlr::RefAST insertTextNodeBefore(antlr::ASTFactory* factory, 
+                                  std::string const& s, 
+                                   antlr::RefAST n);
 
 
 }}} // lsst::qserv::master

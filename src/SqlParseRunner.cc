@@ -89,7 +89,8 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
     _lexer(new SqlSQL2Lexer(_stream)),
     _parser(new SqlSQL2Parser(*_lexer)),
     _delimiter(delimiter),
-    _templater(_delimiter, _factory.get(), dbWhiteList, defaultDb)
+    _templater(delimiter, _factory.get(), dbWhiteList, defaultDb),
+    _spatialUdfHandler(_factory.get())
 { 
     //std::cout << "(int)PARSING:"<< statement << std::endl;
 }

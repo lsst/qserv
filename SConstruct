@@ -133,7 +133,6 @@ if not conf.CheckLib("antlr", language="C++"):
 # Close out configuration for no parse test env
 parseEnv = conf.Finish()
 parseEnv = parseEnv.Clone(LIBS=parseEnv["LIBS"][:])
-print parseEnv["LIBS"]
 env = parseEnv.Clone()
 conf = Configure(env)
 
@@ -156,13 +155,13 @@ if not conf.CheckLib("XrdPosix", language="C++"):
     hasXrootd = False
 
 env = conf.Finish()    
-print parseEnv["LIBS"]
 canBuild = canBuild and hasXrootd
 
 parserSrcs = map(lambda x: os.path.join('src', x), 
                  ["AggregateMgr.cc", 
                   "SqlParseRunner.cc",
                   "Templater.cc",
+                  "parseTreeUtil.cc",
                   "dbgParse.cc",
                   "SqlSubstitution.cc",
                   "Substitution.cc",
