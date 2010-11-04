@@ -177,3 +177,9 @@ NEWLINE("the new line character")=322
 SPACE("the space character")=323
 ANY_CHAR("any character")=324
 SQL2RW_limit="limit"=400
+SQL2RW_qserv_areaspec_box="qserv_areaspec_box"=410
+SQL2RW_qserv_areaspec_circle="qserv_areaspec_circle"=411
+SQL2RW_qserv_areaspec_ellipse="qserv_areaspec_ellipse"=412
+SQL2RW_qserv_areaspec_poly="qserv_areaspec_poly"=413
+SQL2RW_qserv_areaspec_hull="qserv_areaspec_hull"=414
+SQL2RW_qserv_areaspec_objectId="qserv_areaspec_objectId"=415

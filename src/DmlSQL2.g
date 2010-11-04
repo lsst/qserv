@@ -1210,10 +1210,44 @@ table_ref_list :
 //}
 
 //{ Rule #637 <where_clause>
+// danielw: Add special qserv restrictor(optional) to trap spatial specs
 where_clause : 
-	w:"where" search_condition {handleWhereCondition(w_AST);}
+	w:"where" qserv_restrictor (AND search_condition)?
+        {handleWhereCondition(w_AST);}
+    | "where" search_condition
+; 
+//}
+
+//{ Qserv partitioning/indexing restriction specification
+qserv_restrictor :
+    qserv_fct_spec (AND qserv_fct_spec)* {handleQservRestrictor();}
 ;
 //}
+
+//{ A single invocation to a qserv restriction function
+qserv_fct_spec : 
+        n:qserv_fct_name LEFT_PAREN (f:signed_num_lit (COMMA signed_num_lit)*)? RIGHT_PAREN
+        {handleQservFctSpec(n_AST,f_AST);}
+    ;
+//}
+
+//{
+float_num :
+    (sign)? EXACT_NUM_LIT
+;
+//}
+
+//{
+qserv_fct_name :
+   "qserv_areaspec_box" 
+    | "qserv_areaspec_circle"
+    | "qserv_areaspec_ellipse"
+    | "qserv_areaspec_poly"
+    | "qserv_areaspec_hull"
+    | "qserv_areaspec_objectId"
+;
+//}
+
 
 //{ Rule #281 <group_by_clause>
 group_by_clause : 

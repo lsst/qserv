@@ -235,6 +235,16 @@ void handleWhereCondition(RefAST where) {
     }
     return; // Do-nothing placeholder    
 }
+void handleQservRestrictor() {
+    if(_qservRestrictorHandler.get()) {
+        (*_qservRestrictorHandler)();
+    }
+}
+void handleQservFctSpec(RefAST name, RefAST params) {
+    if(_qservFctSpecHandler.get()) {
+        (*_qservFctSpecHandler)(name, params);
+    }
+}
 
 // void handleSelect() {
 //     if(_selectStarHandler.get()) {
@@ -260,6 +270,9 @@ boost::shared_ptr<VoidOneRefFunc> _orderByHandler;
 // for WHERE clause editing/injection.
 boost::shared_ptr<VoidOneRefFunc> _fromWhereHandler;
 boost::shared_ptr<VoidOneRefFunc> _whereCondHandler;
+// for qserv restriction detector
+boost::shared_ptr<VoidVoidFunc> _qservRestrictorHandler;
+boost::shared_ptr<VoidTwoRefFunc> _qservFctSpecHandler;
 
 //  Class body inset ends here
 }
