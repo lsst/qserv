@@ -27,12 +27,59 @@
 // Boost
 #include <boost/make_shared.hpp>
 // std
+#include <algorithm>
+#include <cstdlib>
+#include <list>
+#include <iostream>
+#include <iterator>
 #include <sstream>
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
 using std::stringstream;
 
+// Internal helpers
+namespace {
+    class strToDoubleFunc {
+    public:
+        double operator()(std::string const& s) { 
+            char const* start = s.c_str();
+            char const* eptr;
+            // Cast away const. strtod won't write any chars anyway.
+            double d = std::strtod(start, const_cast<char**>(&eptr));
+            if(s.size() != static_cast<std::string::size_type>(eptr-start)) {
+                std::stringstream s;
+                s << "Exception converting string to double ("
+                  << s << ")";
+                throw s.str();
+            }
+            return d;
+        }
+    };
+    
+    // Tokenize a string delimited by ',' and place it into a container, 
+    // transforming it if desired.
+    template <class Container, class T>
+    Container& tokenizeInto(std::string const& s, 
+                            Container& c) {
+        std::string delimiter(",");
+        std::string::size_type pos = 0;
+        std::string::size_type lastPos = 0;
+        T transform;
+        lastPos = s.find_first_not_of(delimiter, 0);
+        while(std::string::npos != lastPos) {
+            pos = s.find_first_of(delimiter, lastPos);
+            std::string token(s, lastPos, pos-lastPos);
+            c.push_back(transform(token));
+            if(std::string::npos == pos) {
+                break;
+            } else {
+                lastPos = s.find_first_not_of(delimiter, pos);
+            }
+        }
+        return c;
+    }
+} // anonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler::FromWhereHandler
@@ -80,11 +127,51 @@ private:
 };
 
 ////////////////////////////////////////////////////////////////////////
+// SpatialUdfHandler::RestrictorHandler
+////////////////////////////////////////////////////////////////////////
+class qMaster::SpatialUdfHandler::RestrictorHandler : public VoidVoidFunc {
+public:
+    RestrictorHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
+    virtual ~RestrictorHandler() {}
+    virtual void operator()() {
+        std::cout << "Finalizing qserv restrictor spec" << std::endl;
+    }
+private:
+    qMaster::SpatialUdfHandler& _suh;
+};
+
+////////////////////////////////////////////////////////////////////////
+// SpatialUdfHandler::FctSpecHandler
+////////////////////////////////////////////////////////////////////////
+class qMaster::SpatialUdfHandler::FctSpecHandler : public VoidTwoRefFunc {
+public:
+    FctSpecHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
+    virtual ~FctSpecHandler() {}
+    virtual void operator()(antlr::RefAST name, antlr::RefAST params) {
+
+        std::string paramStrRaw = walkTreeString(params);
+        std::string paramStr = paramStrRaw.substr(0, paramStrRaw.size() - 1);
+        std::list<double> paramNums;
+        tokenizeInto<std::list<double>, strToDoubleFunc>(paramStr, paramNums);
+
+        std::cout << "Got new restrictor spec " 
+                  << name->getText() << "--";
+        std::copy(paramNums.begin(), paramNums.end(), 
+                  std::ostream_iterator<double>(std::cout, ","));
+        std::cout << std::endl;
+    }
+private:
+    qMaster::SpatialUdfHandler& _suh;
+};
+
+////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler
 ////////////////////////////////////////////////////////////////////////
 qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory)
     : _fromWhere(new FromWhereHandler(*this)),
       _whereCond(new WhereCondHandler(*this)),
+      _restrictor(new RestrictorHandler(*this)),
+      _fctSpec(new FctSpecHandler(*this)),
       _isPatched(false),
       _factory(factory) {
     if(!_factory) {

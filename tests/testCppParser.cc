@@ -54,6 +54,8 @@ struct ParserFixture {
         tableNames.push_back("Source");
         whiteList["LSST"] = 1;
         defaultDb = "LSST";
+        config["table.defaultdb"] ="LSST";
+        config["table.alloweddbs"] = "LSST";
     };
     ~ParserFixture(void) { };
     ChunkMapping cMapping;
@@ -217,6 +219,22 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
         //           << "fixuppost " << ss.getFixupPost() << std::endl;
 
     }
+}
+BOOST_AUTO_TEST_CASE(Restrictor) {
+    std::string stmt = "select * from Object where qserv_areaspec_box(0,0,1,1);";
+    SqlParseRunner::Ptr spr = SqlParseRunner::newInstance(stmt, 
+                                                          delimiter,
+                                                          whiteList,
+                                                          defaultDb);
+    spr->setup(tableNames);
+    std::string parseResult = spr->getParseResult();
+    // std::cout << stmt << " is parsed into " << parseResult
+    //           << std::endl;
+    BOOST_CHECK(!parseResult.empty());
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

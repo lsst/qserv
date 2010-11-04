@@ -41,6 +41,12 @@ public:
     boost::shared_ptr<VoidOneRefFunc> getWhereCondHandler() {
         return _whereCond;
     }
+    boost::shared_ptr<VoidVoidFunc> getRestrictorHandler() {
+        return _restrictor;
+    }
+    boost::shared_ptr<VoidTwoRefFunc> getFctSpecHandler() {
+        return _fctSpec;
+    }
 
     void setExpression(std::string const& funcName, 
                        double* first, int nitems);
@@ -51,13 +57,21 @@ public:
     std::string getWhereIntruder() const { return _whereIntruder; }
     antlr::ASTFactory* getASTFactory() { return _factory; }
 
+    // Where-clause manipulation
     class FromWhereHandler;
     class WhereCondHandler;
     friend class FromWhereHandler;
     friend class WhereCondHandler;
+    // Restriction spec detection
+    class RestrictorHandler;
+    class FctSpecHandler;
+    friend class RestrictorHandler;
+    friend class FctSpecHandler;
 
     boost::shared_ptr<VoidOneRefFunc> _fromWhere;
     boost::shared_ptr<VoidOneRefFunc> _whereCond;
+    boost::shared_ptr<VoidVoidFunc> _restrictor;
+    boost::shared_ptr<VoidTwoRefFunc> _fctSpec;
     bool _isPatched;
     antlr::ASTFactory* _factory;
     std::string _whereIntruder;
