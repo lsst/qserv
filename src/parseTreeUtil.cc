@@ -34,14 +34,11 @@ namespace qMaster=lsst::qserv::master;
 antlr::RefAST qMaster::insertTextNodeAfter(antlr::ASTFactory* factory, 
                                            std::string const& s, 
                                            antlr::RefAST n) {
-#if 1
     antlr::RefAST newChild = factory->create();
     newChild->setText(s); 
     newChild->setNextSibling(n->getNextSibling());
     n->setNextSibling(newChild);
     return n;
-#else
-#endif
 }
 
 // Overwrites the text for the specified node, putting the old text into
@@ -50,11 +47,6 @@ antlr::RefAST qMaster::insertTextNodeAfter(antlr::ASTFactory* factory,
 antlr::RefAST qMaster::insertTextNodeBefore(antlr::ASTFactory* factory, 
                                             std::string const& s, 
                                             antlr::RefAST n) {
-#if 0
-    std::string oldText = n->getText();
-    n->setText(s);
-    return insertTextNodeAfter(factory, oldText, n);
-#else
    antlr::RefAST newChild = factory->create();
    newChild->setText(n->getText());
    newChild->setNextSibling(n->getNextSibling());
@@ -62,6 +54,5 @@ antlr::RefAST qMaster::insertTextNodeBefore(antlr::ASTFactory* factory,
    n->setText(s);
    n = newChild;
    return n;
-#endif
 }
 

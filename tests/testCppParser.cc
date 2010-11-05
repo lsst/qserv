@@ -58,6 +58,14 @@ struct ParserFixture {
         config["table.alloweddbs"] = "LSST";
     };
     ~ParserFixture(void) { };
+    SqlParseRunner::Ptr getRunner(std::string const& stmt) {
+        SqlParseRunner::Ptr p;
+        p = SqlParseRunner::newInstance(stmt, delimiter,
+                                        whiteList, defaultDb);
+        p->setup(tableNames);
+        return p;
+    }
+
     ChunkMapping cMapping;
     std::list<std::string> tableNames;
     std::string delimiter;
@@ -220,13 +228,7 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
 
     }
 }
-BOOST_AUTO_TEST_CASE(Restrictor) {
-    std::string stmt = "select * from Object where qserv_areaspec_box(0,0,1,1);";
-    SqlParseRunner::Ptr spr = SqlParseRunner::newInstance(stmt, 
-                                                          delimiter,
-                                                          whiteList,
-                                                          defaultDb);
-    spr->setup(tableNames);
+void testStmt2(SqlParseRunner::Ptr spr) {
     std::string parseResult = spr->getParseResult();
     // std::cout << stmt << " is parsed into " << parseResult
     //           << std::endl;
@@ -234,7 +236,16 @@ BOOST_AUTO_TEST_CASE(Restrictor) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(!spr->getHasAggregate());
+}
 
+BOOST_AUTO_TEST_CASE(RestrictorBox) {
+    std::string stmt = "select * from Object where qserv_areaspec_box(0,0,1,1);";
+    testStmt2(getRunner(stmt));
+
+}
+BOOST_AUTO_TEST_CASE(RestrictorObjectId) {
+    std::string stmt = "select * from Object where qserv_objectId(2,3145,9999);";
+    testStmt2(getRunner(stmt));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

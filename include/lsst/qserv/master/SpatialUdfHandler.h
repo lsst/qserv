@@ -19,7 +19,9 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+#ifndef LSST_QSERV_MASTER_SPATIALUDFHANDLER_H
+#define LSST_QSERV_MASTER_SPATIALUDFHANDLER_H
+#include <list> 
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/parserBase.h"
 
@@ -56,6 +58,8 @@ public:
     bool _getIsPatched() const { return _isPatched; }
     std::string getWhereIntruder() const { return _whereIntruder; }
     antlr::ASTFactory* getASTFactory() { return _factory; }
+    void _setHasRestriction() { _hasRestriction = true; }
+    bool _getHasRestriction() const { return _hasRestriction; } 
 
     // Where-clause manipulation
     class FromWhereHandler;
@@ -67,6 +71,9 @@ public:
     class FctSpecHandler;
     friend class RestrictorHandler;
     friend class FctSpecHandler;
+    // Restriction spec
+    class Restriction;
+    typedef boost::shared_ptr<Restriction> RestrictionPtr;
 
     boost::shared_ptr<VoidOneRefFunc> _fromWhere;
     boost::shared_ptr<VoidOneRefFunc> _whereCond;
@@ -75,6 +82,10 @@ public:
     bool _isPatched;
     antlr::ASTFactory* _factory;
     std::string _whereIntruder;
+    std::list<RestrictionPtr> _restrictions;
+    bool _hasRestriction;
 };
 
 }}} // namespace lsst::qserv::master
+
+#endif // LSST_QSERV_MASTER_SPATIALUDFHANDLER_H

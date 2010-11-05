@@ -36,10 +36,14 @@
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
+
 using std::stringstream;
+using boost::make_shared;
 
 // Internal helpers
 namespace {
+typedef std::map<std::string, std::string> StringMapping; // temporary
+
     class strToDoubleFunc {
     public:
         double operator()(std::string const& s) { 
@@ -79,7 +83,145 @@ namespace {
         }
         return c;
     }
+    template <typename Target>
+    class coercePrint {
+    public:
+        coercePrint(std::ostream& o_, const char* d_) 
+            : o(o_), d(d_), first(true) {}
+        template<typename T>
+        void operator()(T const& t) { 
+            if(!first) { o << d; }
+            else { first = false; }
+            o << (Target)t;
+        }
+        std::ostream& o;
+        char const* d;
+        bool first;
+    };
+
+    template <class Map>
+    typename Map::mapped_type const& getFromMap(Map const& m, 
+                                              typename Map::key_type const& key,
+                                              typename Map::mapped_type const& defValue) {
+        typename Map::const_iterator i = m.find(key);
+        if(i == m.end()) {
+            return defValue;
+        } else {
+            return i->second;
+        }
+    }
+
 } // anonymous namespace
+
+////////////////////////////////////////////////////////////////////////
+// SpatialUdfHandler::Restriction
+////////////////////////////////////////////////////////////////////////
+class qMaster::SpatialUdfHandler::Restriction {
+public:
+    template <class C>
+    Restriction(std::string const& name, C const& c) 
+        : _name(name), _params(c.size()) { 
+        std::copy(c.begin(), c.end(), _params.begin()); 
+        _setGenerator();
+    }
+
+    std::string getUdfCallString(StringMapping const& tableConfig) {
+        if(_generator.get()) {
+            return (*_generator)(tableConfig);
+        }
+        return std::string();
+    }
+    class Generator {
+    public:
+        virtual ~Generator() {}
+        virtual std::string operator()(StringMapping const& tableConfig) = 0; 
+    private:
+    };
+private:
+    class ObjectIdGenerator : public Generator {
+    public:
+        ObjectIdGenerator(std::vector<double> const& paramNums_) 
+            :  paramNums(paramNums_) {}
+
+
+        virtual std::string operator()(StringMapping const& tableConfig) {
+            std::stringstream s;
+            std::string oidStr(getFromMap<StringMapping>(tableConfig,
+                                                         "objectIdCol", 
+                                                         "objectId"));
+            s << oidStr << " IN (";
+            // coerce params to integer.
+            std::for_each(paramNums.begin(), paramNums.end(), 
+                          coercePrint<int>(s, ","));
+            s << ")";
+            return s.str();
+        }
+        std::vector<double> const& paramNums; 
+    };
+
+    class AreaGenerator : public Generator {
+    public:
+        AreaGenerator(char const* fName_, int paramCount_,
+                      std::vector<double> const& params_) 
+            :  fName(fName_), paramCount(paramCount_), params(params_) {}
+        virtual std::string operator()(StringMapping const& tableConfig) {
+            std::stringstream s;
+            std::string raStr(getFromMap<StringMapping>(tableConfig,
+                                                         "raCol", 
+                                                         "ra"));
+
+            std::string declStr(getFromMap<StringMapping>(tableConfig,
+                                                         "declCol", 
+                                                         "decl"));
+            s << "qserv_" << fName << "(" << raStr << "," << declStr
+              << ",";
+            if(paramCount == USE_STRING) {
+                s << '"'; // Place params inside a string.
+                std::for_each(params.begin(), params.end(), 
+                              coercePrint<double>(s," "));
+                s << '"';
+            } else {
+                std::for_each(params.begin(), params.end(), 
+                              coercePrint<double>(s,","));
+                if(params.size() > 
+                   static_cast<std::vector<double>::size_type>(paramCount)) {
+                    throw std::string("multi not supported yet");
+                }
+            }
+            s << ")";
+            return s.str();
+        }
+        char const* const fName;
+        const int paramCount;
+        std::vector<double> const& params; 
+        static const int USE_STRING = -999;
+    };
+    void _setGenerator();
+    std::string _name;
+    std::vector<double> _params;
+    boost::shared_ptr<Generator> _generator;
+};
+
+void qMaster::SpatialUdfHandler::Restriction::_setGenerator() {
+    if(_name == "qserv_areaspec_box") {
+        _generator.reset(dynamic_cast<Generator*>
+                         (new AreaGenerator("ptInSphBox", 4, _params)));
+    } else if(_name == "qserv_areaspec_circle") {
+        _generator.reset(dynamic_cast<Generator*>
+                         (new AreaGenerator("ptInSphCircle", 3, _params)));
+    } else if(_name == "qserv_areaspec_ellipse") {
+        _generator.reset(dynamic_cast<Generator*>
+                         (new AreaGenerator("ptInSphEllipse", 5, _params)));
+    } else if(_name == "qserv_areaspec_poly") {
+        _generator.reset(dynamic_cast<Generator*>
+                         (new AreaGenerator("ptInSphPoly", 
+                                            AreaGenerator::USE_STRING,
+                                            _params)));
+    } else if(_name == "qserv_objectId") {
+        ObjectIdGenerator* g = new ObjectIdGenerator(_params);
+        _generator.reset(dynamic_cast<Generator*>(g));
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler::FromWhereHandler
@@ -119,7 +261,7 @@ public:
         }
         // Remember that we patched the tree.
         _suh._markAsPatched();
-        std::cout << "whereCond: " << walkTreeString(where) << std::endl;
+        //std::cout << "whereCond: " << walkTreeString(where) << std::endl;
         //std::cout << "Got limit -> " << limit << std::endl;            
     }
 private:
@@ -134,7 +276,9 @@ public:
     RestrictorHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
     virtual ~RestrictorHandler() {}
     virtual void operator()() {
-        std::cout << "Finalizing qserv restrictor spec" << std::endl;
+        
+        //std::cout << "Finalizing qserv restrictor spec" << std::endl;
+        _suh._setHasRestriction();
     }
 private:
     qMaster::SpatialUdfHandler& _suh;
@@ -148,17 +292,33 @@ public:
     FctSpecHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
     virtual ~FctSpecHandler() {}
     virtual void operator()(antlr::RefAST name, antlr::RefAST params) {
-
+        if(_suh._getHasRestriction()) {
+            std::cout << "ERROR: conflicting restriction clauses."
+                      << " Ignoring " << walkTreeString(name)
+                      << std::endl;
+            return;
+        }
         std::string paramStrRaw = walkTreeString(params);
         std::string paramStr = paramStrRaw.substr(0, paramStrRaw.size() - 1);
         std::list<double> paramNums;
-        tokenizeInto<std::list<double>, strToDoubleFunc>(paramStr, paramNums);
 
-        std::cout << "Got new restrictor spec " 
-                  << name->getText() << "--";
+        tokenizeInto<std::list<double>, strToDoubleFunc>(paramStr, paramNums);
+        boost::shared_ptr<Restriction> r(new Restriction(name->getText(),
+                                                         paramNums));
+        _suh._restrictions.push_back(r);
+        
+        // Debug printout:
+        // std::cout << "Got new restrictor spec " 
+        //    << name->getText() << "--";
         std::copy(paramNums.begin(), paramNums.end(), 
                   std::ostream_iterator<double>(std::cout, ","));
-        std::cout << std::endl;
+        StringMapping cfg;
+        cfg["objectIdCol"] = "realObjectId";
+        std::cout << "Spec yielded " << r->getUdfCallString(cfg) <<std::endl;
+
+        // Edit the parse tree
+        collapseNodeRange(name, getLastSibling(params));
+        name->setText(r->getUdfCallString(cfg));
     }
 private:
     qMaster::SpatialUdfHandler& _suh;
@@ -169,11 +329,12 @@ private:
 ////////////////////////////////////////////////////////////////////////
 qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory)
     : _fromWhere(new FromWhereHandler(*this)),
-      _whereCond(new WhereCondHandler(*this)),
-      _restrictor(new RestrictorHandler(*this)),
-      _fctSpec(new FctSpecHandler(*this)),
-      _isPatched(false),
-      _factory(factory) {
+    _whereCond(new WhereCondHandler(*this)),
+    _restrictor(new RestrictorHandler(*this)),
+    _fctSpec(new FctSpecHandler(*this)),
+    _isPatched(false),
+    _factory(factory),
+    _hasRestriction(false) {
     if(!_factory) {
         std::cerr << "WARNING: SpatialUdfHandler non-functional (null factory)"
                   << std::endl;
@@ -197,4 +358,13 @@ void qMaster::SpatialUdfHandler::setExpression(std::string const& funcName,
     ss << ")";
     _whereIntruder = ss.str();
 }
-    
+#if 0
+// MySQL UDF signatures.  see udf/MySqlSpatialUdf.c in qserv/worker
+    double qserv_angSep (ra1, dec1, ra2, dec2);
+    int qserv_ptInSphBox (ra, dec, ramin, decmin, ramax,decmax);
+    int qserv_ptInSphCircle (ra, dec, racenter, deccenter, radius);
+    int  qserv_ptInSphEllipse (ra, dec, racenter,deccenter, smaa,smia,ang);
+    int qserv_ptInSphPoly (ra, dec, ra0, poly);
+    // poly = string.  "ra0 dec0 ra1 dec1 ra2 dec2 ..." 
+    // space separated ra/dec pairs.
+#endif
