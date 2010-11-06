@@ -86,6 +86,7 @@ public:
 	return _errorMsg;
     }
 private:
+    class SpatialTableNotifier;
     SqlParseRunner(std::string const& statement, 
                    std::string const& delimiter,
                    IntMap const& dbWhiteList,
@@ -110,6 +111,8 @@ private:
     boost::shared_ptr<SqlSQL2Lexer> _lexer;
     boost::shared_ptr<SqlSQL2Parser> _parser;
     std::string _delimiter;
+    boost::shared_ptr<SpatialTableNotifier> _spatialTableNotifier;
+    StringMap _tableConfig;
     Templater _templater;
     AggregateMgr _aggMgr;
     SpatialUdfHandler _spatialUdfHandler;

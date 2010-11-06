@@ -68,6 +68,23 @@ private:
 
 };
 
+// SpatialTableNotifier : receive notification that query has chosen a spatial
+// table.  This can then trigger the preparation of the table metadata to 
+// provide the context for the where-clause manipulator to rewrite 
+// appropriately. 
+class qMaster::SqlParseRunner::SpatialTableNotifier
+    : public qMaster::Templater::Notifier {
+public:
+    SpatialTableNotifier(SqlParseRunner& spr) : _spr(spr) {}
+    void operator()(std::string const& name) {
+        // FIXME: setup the right config.
+        std::cout << "Picked " << name << " as spatial table." << std::endl;
+    }
+private:
+    SqlParseRunner& _spr;
+};
+
+
 boost::shared_ptr<qMaster::SqlParseRunner> 
 qMaster::SqlParseRunner::newInstance(std::string const& statement, 
                                      std::string const& delimiter,
@@ -89,8 +106,10 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
     _lexer(new SqlSQL2Lexer(_stream)),
     _parser(new SqlSQL2Parser(*_lexer)),
     _delimiter(delimiter),
-    _templater(delimiter, _factory.get(), dbWhiteList, defaultDb),
-    _spatialUdfHandler(_factory.get())
+    _spatialTableNotifier(new SpatialTableNotifier(*this)),
+    _templater(delimiter, _factory.get(), dbWhiteList, defaultDb,
+               *_spatialTableNotifier),
+    _spatialUdfHandler(_factory.get(), _tableConfig)
 { 
     //std::cout << "(int)PARSING:"<< statement << std::endl;
 }

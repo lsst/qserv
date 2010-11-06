@@ -42,7 +42,6 @@ using boost::make_shared;
 
 // Internal helpers
 namespace {
-typedef std::map<std::string, std::string> StringMapping; // temporary
 
     class strToDoubleFunc {
     public:
@@ -125,7 +124,7 @@ public:
         _setGenerator();
     }
 
-    std::string getUdfCallString(StringMapping const& tableConfig) {
+    std::string getUdfCallString(StringMap const& tableConfig) {
         if(_generator.get()) {
             return (*_generator)(tableConfig);
         }
@@ -134,7 +133,7 @@ public:
     class Generator {
     public:
         virtual ~Generator() {}
-        virtual std::string operator()(StringMapping const& tableConfig) = 0; 
+        virtual std::string operator()(StringMap const& tableConfig) = 0; 
     private:
     };
 private:
@@ -144,9 +143,9 @@ private:
             :  paramNums(paramNums_) {}
 
 
-        virtual std::string operator()(StringMapping const& tableConfig) {
+        virtual std::string operator()(StringMap const& tableConfig) {
             std::stringstream s;
-            std::string oidStr(getFromMap<StringMapping>(tableConfig,
+            std::string oidStr(getFromMap<StringMap>(tableConfig,
                                                          "objectIdCol", 
                                                          "objectId"));
             s << oidStr << " IN (";
@@ -164,13 +163,13 @@ private:
         AreaGenerator(char const* fName_, int paramCount_,
                       std::vector<double> const& params_) 
             :  fName(fName_), paramCount(paramCount_), params(params_) {}
-        virtual std::string operator()(StringMapping const& tableConfig) {
+        virtual std::string operator()(StringMap const& tableConfig) {
             std::stringstream s;
-            std::string raStr(getFromMap<StringMapping>(tableConfig,
+            std::string raStr(getFromMap<StringMap>(tableConfig,
                                                          "raCol", 
                                                          "ra"));
 
-            std::string declStr(getFromMap<StringMapping>(tableConfig,
+            std::string declStr(getFromMap<StringMap>(tableConfig,
                                                          "declCol", 
                                                          "decl"));
             s << "qserv_" << fName << "(" << raStr << "," << declStr
@@ -312,13 +311,12 @@ public:
         //    << name->getText() << "--";
         std::copy(paramNums.begin(), paramNums.end(), 
                   std::ostream_iterator<double>(std::cout, ","));
-        StringMapping cfg;
-        cfg["objectIdCol"] = "realObjectId";
-        std::cout << "Spec yielded " << r->getUdfCallString(cfg) <<std::endl;
+        std::cout << "Spec yielded " 
+                  << r->getUdfCallString(_suh.getTableConfig()) <<std::endl;
 
         // Edit the parse tree
         collapseNodeRange(name, getLastSibling(params));
-        name->setText(r->getUdfCallString(cfg));
+        name->setText(r->getUdfCallString(_suh.getTableConfig()));
     }
 private:
     qMaster::SpatialUdfHandler& _suh;
@@ -327,14 +325,17 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler
 ////////////////////////////////////////////////////////////////////////
-qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory)
+qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory, 
+                                              StringMap const& tableConfig)
+    
     : _fromWhere(new FromWhereHandler(*this)),
-    _whereCond(new WhereCondHandler(*this)),
-    _restrictor(new RestrictorHandler(*this)),
-    _fctSpec(new FctSpecHandler(*this)),
-    _isPatched(false),
-    _factory(factory),
-    _hasRestriction(false) {
+      _whereCond(new WhereCondHandler(*this)),
+      _restrictor(new RestrictorHandler(*this)),
+      _fctSpec(new FctSpecHandler(*this)),
+      _isPatched(false),
+      _factory(factory),
+      _hasRestriction(false),
+      _tableConfig(tableConfig) {
     if(!_factory) {
         std::cerr << "WARNING: SpatialUdfHandler non-functional (null factory)"
                   << std::endl;

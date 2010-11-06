@@ -24,6 +24,7 @@
 #include <list> 
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/parserBase.h"
+#include "lsst/qserv/master/common.h"
 
 // Forward
 namespace antlr {
@@ -33,10 +34,16 @@ class ASTFactory;
 namespace lsst {
 namespace qserv {
 namespace master {
+// Forward
 
 class SpatialUdfHandler {
 public:
-    SpatialUdfHandler(antlr::ASTFactory* factory);
+    /// @param factory : an ANTLR AST factory
+    /// @param tableConfig : configuration of current spatial table.
+    /// Only copies the reference, expecting the config to live
+    /// (and probably change) over the life of this instance.
+    SpatialUdfHandler(antlr::ASTFactory* factory, 
+                      StringMap const& tableConfig);
     boost::shared_ptr<VoidOneRefFunc> getFromWhereHandler() { 
         return _fromWhere; 
     }
@@ -60,6 +67,7 @@ public:
     antlr::ASTFactory* getASTFactory() { return _factory; }
     void _setHasRestriction() { _hasRestriction = true; }
     bool _getHasRestriction() const { return _hasRestriction; } 
+    StringMap const& getTableConfig() const { return _tableConfig; }
 
     // Where-clause manipulation
     class FromWhereHandler;
@@ -84,6 +92,7 @@ public:
     std::string _whereIntruder;
     std::list<RestrictionPtr> _restrictions;
     bool _hasRestriction;
+    StringMap const& _tableConfig;
 };
 
 }}} // namespace lsst::qserv::master

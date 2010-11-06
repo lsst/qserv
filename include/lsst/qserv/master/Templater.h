@@ -148,14 +148,22 @@ public:
 	bool _hasSubChunks;
 	IntMap _usageCount;
     };
-
+    // SpatialTableNameNotifier
+    class Notifier {
+    public:
+        virtual void operator()(std::string const& name) {};
+        virtual ~Notifier() {}
+        static Notifier nullInstance;
+    };
+    // Templater 
     typedef std::map<std::string, char> ReMap;
     typedef std::deque<std::string> StringList;
     
     Templater(std::string const& delimiter="*?*", 
               antlr::ASTFactory* factory=0, 
               IntMap const& dbWhiteList=IntMap(),
-              std::string const& defaultDb=std::string());
+              std::string const& defaultDb=std::string(),
+              Notifier& spatialTableNotifier=Notifier::nullInstance);
     ~Templater() { }
 
     template <typename Iter>
@@ -201,6 +209,8 @@ private:
     antlr::ASTFactory* _factory;
     std::string const _defaultDb;
     StringList _badDbs;
+    Notifier& _spatialTableNameNotifier;
+    std::string _spatialTableName;
 
     // static const
     static std::string const _nameSep;

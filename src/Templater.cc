@@ -170,12 +170,16 @@ std::string const Templater::_nameSep(".");
 Templater::Templater(std::string const& delimiter, 
                      antlr::ASTFactory* factory,
                      Templater::IntMap const& dbWhiteList,
-                     std::string const& defaultDb) 
+                     std::string const& defaultDb,
+                     Notifier& spatialTableNameNotifier_) 
     : _dbWhiteList(dbWhiteList), _delimiter(delimiter),
-      _factory(factory), _defaultDb(defaultDb) {
+      _factory(factory), _defaultDb(defaultDb),
+      _spatialTableNameNotifier(spatialTableNameNotifier_) {
 }
 
 void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
+    std::string dbName;
+    std::string tableName = n->getText();
     if(!db.get()) {
         if(!_defaultDb.empty() && _isDbOk(_defaultDb)) {
             // no explicit Db?  Create one, and link it in.
@@ -184,13 +188,17 @@ void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
             _markBadDb(_defaultDb);
         }
     } else {
-        std::string dbStr = db->getText();
-        if(!_isDbOk(dbStr)) {
-            _markBadDb(dbStr);
+        dbName = db->getText();
+        if(!_isDbOk(dbName)) {
+            _markBadDb(dbName);
         }
     }
-    if(isSpecial(n->getText())) {
-        n->setText(mungeName(n->getText()));
+    if(isSpecial(tableName)) {
+        if(_spatialTableName.empty()) {
+            _spatialTableName = tableName;
+            _spatialTableNameNotifier(tableName);
+        }
+        n->setText(mungeName(tableName));
     }
 }
 
