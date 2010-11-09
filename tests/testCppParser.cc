@@ -52,20 +52,20 @@ struct ParserFixture {
 	cMapping.addSubChunkKey("Object");
         tableNames.push_back("Object");
         tableNames.push_back("Source");
-        whiteList["LSST"] = 1;
-        defaultDb = "LSST";
         config["table.defaultdb"] ="LSST";
         config["table.alloweddbs"] = "LSST";
+        config["table.partitionCols"] = "Object:ra_Test,decl_Test,objectIdObjTest;"
+            "Source:raObjectTest,declObjectTest,objectIdSourceTest";
+
     };
     ~ParserFixture(void) { };
     SqlParseRunner::Ptr getRunner(std::string const& stmt) {
         SqlParseRunner::Ptr p;
-        p = SqlParseRunner::newInstance(stmt, delimiter,
-                                        whiteList, defaultDb);
+        
+        p = SqlParseRunner::newInstance(stmt, delimiter, config);
         p->setup(tableNames);
         return p;
     }
-
     ChunkMapping cMapping;
     std::list<std::string> tableNames;
     std::string delimiter;
@@ -146,8 +146,7 @@ BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
     SqlParseRunner::Ptr spr = SqlParseRunner::newInstance(stmt, 
                                                           delimiter,
-                                                          whiteList,
-                                                          defaultDb);
+                                                          config);
     spr->setup(tableNames);
     std::string parseResult = spr->getParseResult();
     // std::cout << stmt << " is parsed into " << parseResult
@@ -163,8 +162,7 @@ BOOST_AUTO_TEST_CASE(NoSub) {
     std::string goodRes = "SELECT * FROM LSST.Filter WHERE filterId=4;";
     SqlParseRunner::Ptr spr(SqlParseRunner::newInstance(stmt, 
                                                         delimiter,
-                                                        whiteList, 
-                                                        defaultDb));
+                                                        config));
     spr->setup(tableNames);
     std::string parseResult = spr->getParseResult();
     // std::cout << stmt << " is parsed into " << parseResult 
@@ -245,6 +243,10 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
 }
 BOOST_AUTO_TEST_CASE(RestrictorObjectId) {
     std::string stmt = "select * from Object where qserv_objectId(2,3145,9999);";
+    testStmt2(getRunner(stmt));
+}
+BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
+    std::string stmt = "select * from Object as o1 where qserv_objectId(2,3145,9999);";
     testStmt2(getRunner(stmt));
 }
 

@@ -33,6 +33,7 @@
 #include "lsst/qserv/master/ChunkMapping.h"
 #include "lsst/qserv/master/Templater.h"
 #include "lsst/qserv/master/SpatialUdfHandler.h"
+#include "lsst/qserv/master/parseHandlers.h"
 
 // Forward
 class ASTFactory;
@@ -58,8 +59,7 @@ public:
 
     static Ptr newInstance(std::string const& statement, 
                            std::string const& delimiter,
-                           IntMap const& dbWhiteList,
-                           std::string const& defaultDb="");
+                           StringMap const& config);
     void setup(std::list<std::string> const& names);
     std::string getParseResult();
     std::string getAggParseResult();
@@ -85,16 +85,23 @@ public:
     std::string const& getError() const {
 	return _errorMsg;
     }
+    void prepareTableConfig(std::string const& tableName);
+    void updateTableConfig(std::string const& tName, StringMap const& m);
 private:
     class SpatialTableNotifier;
+
+    // Setup and construction
     SqlParseRunner(std::string const& statement, 
                    std::string const& delimiter,
-                   IntMap const& dbWhiteList,
-                   std::string const& defaultDb="");
+                   StringMap const& config);
+    void _readConfig(StringMap const& m);
+
+    // Helpers for operation
     void _computeParseResult();
     void _makeOverlapMap();
     std::string _composeOverlap(std::string const& query);
 
+    // Parse handlers
     friend class LimitHandler;
     friend class OrderByHandler;
     void _setLimitForHandler(int limit) { 
@@ -103,7 +110,10 @@ private:
     void _setOrderByForHandler(std::string const& cols) { 
         _mFixup.orderBy = cols; 
     }
-
+    
+    // Table partition handling
+    class PartitionTupleProcessor;
+    friend class ParititonTupleProcessor;
 
     std::string _statement;
     std::stringstream _stream;
@@ -113,16 +123,21 @@ private:
     std::string _delimiter;
     boost::shared_ptr<SpatialTableNotifier> _spatialTableNotifier;
     StringMap _tableConfig;
+    std::map<std::string, StringMap> _tableConfigMap;
     Templater _templater;
-    AggregateMgr _aggMgr;
     SpatialUdfHandler _spatialUdfHandler;
+    AliasMgr _aliasMgr;
+    AggregateMgr _aggMgr;
     boost::shared_ptr<Templater::TableListHandler>  _tableListHandler;
     
     std::string _parseResult;
     std::string _aggParseResult;
     std::string _errorMsg;
-    StringMapping _overlapMap;
+    StringMap _overlapMap;
     MergeFixup _mFixup;
+
+    std::map<std::string, int> _dbWhiteList;
+
 };
 
 }}} // namespace lsst::qserv::master

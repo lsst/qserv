@@ -174,8 +174,8 @@ void AggregateMgr::SetFuncHandler::operator()(antlr::RefAST a) {
 ////////////////////////////////////////////////////////////////////////
 // AggregateMgr::SelectListHandler
 ////////////////////////////////////////////////////////////////////////
-AggregateMgr::SelectListHandler::SelectListHandler(AliasHandler& h) 
-    : _aHandler(h), isStarFirst(false) {
+AggregateMgr::SelectListHandler::SelectListHandler(AliasMgr& h) 
+    : _aMgr(h), isStarFirst(false) {
 } 
 
 void AggregateMgr::SelectListHandler::operator()(antlr::RefAST a)  {
@@ -184,8 +184,8 @@ void AggregateMgr::SelectListHandler::operator()(antlr::RefAST a)  {
 	firstSelectBound.first = a;
 	firstSelectBound.second = getLastSibling(a);
     }
-    selectLists.push_back(_aHandler.getNodeListCopy());
-    _aHandler.resetNodeList();
+    selectLists.push_back(_aMgr.getColumnNodeListCopy());
+    _aMgr.resetColumnNodeList();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -229,22 +229,21 @@ void AggregateMgr::GroupColumnHandler::operator()(antlr::RefAST a) {
 ////////////////////////////////////////////////////////////////////////
 // AggregateMgr
 ////////////////////////////////////////////////////////////////////////
-AggregateMgr::AggregateMgr() : _aliaser(new AliasHandler()),
-			       _setFuncer(new SetFuncHandler()),
-			       _selectLister(new SelectListHandler(*_aliaser)),
-			       _groupByer(new GroupByHandler()),
-			       _groupColumner(new GroupColumnHandler(*_groupByer)),
-			       _hasAggregate(false), _isMissingSelect(false) {
+AggregateMgr::AggregateMgr(AliasMgr& am) 
+    : _setFuncer(new SetFuncHandler()),
+      _selectLister(new SelectListHandler(am)),
+      _groupByer(new GroupByHandler()),
+      _groupColumner(new GroupColumnHandler(*_groupByer)),
+      _hasAggregate(false), _isMissingSelect(false) {
 }
 
-void AggregateMgr::postprocess() {
-    AliasHandler::Map const& aMap = _aliaser->getInvAliases();
-    AliasHandler::MapConstIter aEnd = aMap.end();
+void AggregateMgr::postprocess(AliasMgr::NodeMap const& aMap) {
+    AliasMgr::NodeMap::const_iterator aEnd = aMap.end();
     SetFuncHandler::Deque const& aggd = _setFuncer->getAggs();
     
     for(SetFuncHandler::DequeConstIter i = aggd.begin(); 
 	i != aggd.end(); ++i) {
-	AliasHandler::MapConstIter f = aMap.find(i->first);
+        AliasMgr::NodeMap::const_iterator f = aMap.find(i->first);
 	std::string agg = tokenText(i->first);
         std::transform(agg.begin(), agg.end(), agg.begin(), 
                    posixTolower());

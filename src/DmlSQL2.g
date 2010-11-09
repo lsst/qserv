@@ -586,7 +586,7 @@ select_sublist :
 //{ Rule #167 <derived_column>
 // danielw: Make "as" optional to comply with MySQL.  Side effects unknown.
 derived_column : 
-	val:value_exp (("as")? lbl:column_name)? {handleAlias(val_AST, lbl_AST);}
+	val:value_exp (("as")? lbl:column_name)? {handleColumnAlias(val_AST, lbl_AST);}
 ;
 //}
 
@@ -1120,7 +1120,8 @@ table_ref :
 //  Rule #169 <derived_table> was replaced by <table_subquery> in the rule <table_ref_aux>
 //{ Rule #--- <table_ref_aux> was introduced to avoid recursion, see also rule #325 <joined_table>
 table_ref_aux : 
-	(table_name | /*derived_table*/table_subquery) (("as")? correlation_name (LEFT_PAREN derived_column_list RIGHT_PAREN)?)? 
+	(n:table_name | /*derived_table*/q:table_subquery) ((as:"as")? c:correlation_name (LEFT_PAREN derived_column_list RIGHT_PAREN)?)? 
+{handleTableAlias(n_AST, q_AST, as_AST, c_AST);}
 ;
 //}
 

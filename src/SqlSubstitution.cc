@@ -44,26 +44,6 @@ bool endsWith(std::string const& s, char const* ending) {
     return p == (s.size() - l);
 }
 
-std::map<std::string,int>& tokenizeInto(std::string const& s, 
-                                        std::map<std::string, int>& e) {
-    std::string delimiter(",");
-    std::string::size_type pos = 0;
-    std::string::size_type lastPos = 0;
-    
-    e.clear();
-    lastPos = s.find_first_not_of(delimiter, 0);
-    while(std::string::npos != lastPos) {
-        pos = s.find_first_of(delimiter, lastPos);
-        e[std::string(s, lastPos, pos-lastPos)] = 1;
-        if(std::string::npos == pos) {
-            break;
-        } else {
-            lastPos = s.find_first_not_of(delimiter, pos);
-        }
-    }
-    return e;
-}
-
 template <class Map>
 void printMap(Map const& m) {
     typename Map::const_iterator b = m.begin();
@@ -78,10 +58,11 @@ void printMap(Map const& m) {
 
 qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
                                           ChunkMapping const& mapping,
-                                          std::map<std::string, std::string> const& config)
-    : _delimiter("*?*"), _hasAggregate(false), _mapping(mapping) {
+                                          qMaster::StringMap const& config)
+    : _delimiter("*?*"), _hasAggregate(false), 
+      _mapping(mapping), 
+      _config(config) {
     // Note: makes copy of chunkmapping.
-    _readConfig(config);
     _build(sqlStatement);
     //
 }
@@ -102,30 +83,29 @@ void qMaster::SqlSubstitution::importSubChunkTables(char** cStringArr) {
     
 std::string qMaster::SqlSubstitution::transform(int chunk, int subChunk) {
     boost::lock_guard<boost::mutex> lock(_mappingMutex);
-    Mapping const& m = _mapping.getMapReference(chunk, subChunk);
+    StringMap const& m = _mapping.getMapReference(chunk, subChunk);
     if(!_substitution.get()) return std::string();
     return _fixDbRef(_substitution->transform(m), chunk, subChunk);
 }
 
-std::string qMaster::SqlSubstitution::substituteOnly(Mapping const& m) {
+std::string qMaster::SqlSubstitution::substituteOnly(qMaster::StringMap const& m) {
     if(!_substitution.get()) return std::string();
     return _substitution->transform(m);
 }
 
 void qMaster::SqlSubstitution::_build(std::string const& sqlStatement) {
     boost::lock_guard<boost::mutex> lock(_mappingMutex);
-    Mapping const& m = _mapping.getMapReference(999999,999999); 
+    StringMap const& m = _mapping.getMapReference(999999,999999); 
     std::string template_;
 
-    Mapping::const_iterator end = m.end();
+    StringMap::const_iterator end = m.end();
     std::list<std::string> names;
-    for(Mapping::const_iterator i=m.begin(); i != end; ++i) {
+    for(StringMap::const_iterator i=m.begin(); i != end; ++i) {
 	names.push_back(i->first);
     }
     std::cout << "PARSING: " << sqlStatement << std::endl;
     boost::shared_ptr<SqlParseRunner> spr;
-    spr = SqlParseRunner::newInstance(sqlStatement, _delimiter,
-                                      _dbWhiteList,_defaultDb);
+    spr = SqlParseRunner::newInstance(sqlStatement, _delimiter, _config);
     spr->setup(names);
     if(spr->getHasAggregate()) {
 	template_ = spr->getAggParseResult();
@@ -189,21 +169,3 @@ void qMaster::SqlSubstitution::_computeChunkLevel(bool hasChunks, bool hasSubChu
     }
 }
 
-void qMaster::SqlSubstitution::_readConfig(qMaster::SqlSubstitution::StringMap const& m) {
-    std::string delimiter(",");
-    std::string wlPacked;
-
-    StringMap::const_iterator i = m.find("table.defaultdb");
-    if(i != m.end()) {
-        _defaultDb = i->second;
-    }
-    i = m.find("table.alloweddbs");
-    if(i != m.end()) {
-        tokenizeInto(i->second, _dbWhiteList);
-        //printMap(_dbWhiteList);
-    } else {
-        std::cout << "WARNING!  No dbs in whitelist. Using LSST." << std::endl;
-        _dbWhiteList["LSST"] = 1;
-    }    
-}    
-    

@@ -161,10 +161,11 @@ public:
     
     Templater(std::string const& delimiter="*?*", 
               antlr::ASTFactory* factory=0, 
-              IntMap const& dbWhiteList=IntMap(),
-              std::string const& defaultDb=std::string(),
               Notifier& spatialTableNotifier=Notifier::nullInstance);
     ~Templater() { }
+    void setup(IntMap const& dbWhiteList=IntMap(),
+               std::string const& defaultDb=std::string());
+
 
     template <typename Iter>
     void setKeynames(Iter begin, Iter end) {
@@ -207,7 +208,7 @@ private:
     IntMap _dbWhiteList;
     std::string _delimiter;
     antlr::ASTFactory* _factory;
-    std::string const _defaultDb;
+    std::string _defaultDb;
     StringList _badDbs;
     Notifier& _spatialTableNameNotifier;
     std::string _spatialTableName;

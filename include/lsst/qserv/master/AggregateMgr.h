@@ -55,13 +55,11 @@
 #include "lsst/qserv/master/parserBase.h" 
 #include "lsst/qserv/master/parseTreeUtil.h"
 
+#include "lsst/qserv/master/parseHandlers.h"
+
 namespace lsst {
 namespace qserv {
 namespace master {
-
-typedef std::pair<antlr::RefAST, antlr::RefAST> NodeBound;
-typedef std::deque<NodeBound> NodeList;
-typedef NodeList::const_iterator NodeListConstIter;
 
 // Aggregate Record is a value class for all the information you need
 // to successfully perform aggregation of distributed queries.
@@ -98,9 +96,9 @@ public:
     class GroupByHandler;
     class GroupColumnHandler;
 
-    AggregateMgr();
+    AggregateMgr(AliasMgr& am);
     
-    void postprocess();
+    void postprocess(AliasMgr::NodeMap const& aMap);
     void applyAggPass();
 
     std::string getPassSelect();
@@ -108,7 +106,6 @@ public:
     std::string getFixupPost();
     
     bool getHasAggregate() const { return _hasAggregate; }
-    boost::shared_ptr<VoidTwoRefFunc> getAliasHandler(); 
     boost::shared_ptr<VoidOneRefFunc> getSetFuncHandler();
     boost::shared_ptr<VoidOneRefFunc> getSelectListHandler();
     boost::shared_ptr<VoidVoidFunc> newSelectStarHandler();
@@ -118,7 +115,6 @@ public:
 private:
     void _computeSelects();
     void _computePost();
-    boost::shared_ptr<AliasHandler> _aliaser;
     boost::shared_ptr<SetFuncHandler> _setFuncer;
     boost::shared_ptr<SelectListHandler> _selectLister;
     boost::shared_ptr<GroupByHandler> _groupByer;
@@ -201,32 +197,6 @@ private:
     Map _map;
 }; // class AggregateMgr::SetFuncHandler
 
-// AliasHandler is bolted to the SQL parser, where it gets called for
-// each aliasing instance.
-class AggregateMgr::AliasHandler : public VoidTwoRefFunc {
-public: 
-    typedef std::map<antlr::RefAST, NodeBound> Map;
-    typedef Map::const_iterator MapConstIter;
-    typedef Map::iterator MapIter;
-
-    AliasHandler() {}
-    virtual ~AliasHandler() {}
-    virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
-        using lsst::qserv::master::getLastSibling;
-        if(b.get()) {
-            _map[a] = NodeBound(b, getLastSibling(a));
-        }
-        _nodes.push_back(NodeBound(a, getLastSibling(a)));
-        // Save column ref for pass/fixup computation, 
-        // regardless of alias.
-    }
-    Map const& getInvAliases() const { return _map; }
-    NodeList getNodeListCopy() { return _nodes; }
-    void resetNodeList() { _nodes.clear(); }
-private:
-    Map _map;
-    NodeList _nodes;
-}; // class AggregateMgr::AliasHandler
 
 //  SelectListHandler is bolted to the parser so it gets called once
 //  the column/reference list is detected.
@@ -239,11 +209,9 @@ public:
         virtual void operator()() { handler.handleSelectStar(); }
         SelectListHandler& handler;
     };
-    // typedef std::deque<antlr::RefAST> SelectList;
-    // typedef SelectList::const_iterator SelectListConstIter;
-    // typedef std::deque<SelectList> Deque;
+
     typedef std::deque<NodeList> Deque;
-    SelectListHandler(AliasHandler& h);
+    SelectListHandler(AliasMgr& h);
     virtual ~SelectListHandler() {}
     virtual void operator()(antlr::RefAST a);
     void handleSelectStar() { 
@@ -255,7 +223,7 @@ public:
         typedef boost::shared_ptr<SelectStarHandler> Ptr;
         return Ptr(new SelectStarHandler(*this));
     }
-    AliasHandler& _aHandler; // Get help from AliasHandler
+    AliasMgr& _aMgr; // Get help from AliasHandler
     Deque selectLists;
     NodeBound firstSelectBound;
     bool isStarFirst;
@@ -286,11 +254,6 @@ public:
 }; // class GroupColumnHandler
 
 // AggregateMgr inlines
-inline
-boost::shared_ptr<VoidTwoRefFunc> AggregateMgr::getAliasHandler() {
-    return _aliaser;
-}
-
 inline 
 boost::shared_ptr<VoidOneRefFunc> AggregateMgr::getSetFuncHandler() {
     return _setFuncer;

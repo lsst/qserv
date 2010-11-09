@@ -30,6 +30,7 @@
 #include "lsst/qserv/master/ChunkMapping.h"
 #include "lsst/qserv/master/Substitution.h"
 #include "lsst/qserv/master/mergeTypes.h"
+#include "lsst/qserv/master/common.h"
 
 namespace lsst {
 namespace qserv {
@@ -41,21 +42,21 @@ namespace master {
 /// substitution.
 class SqlSubstitution {
 public:
-    typedef StringMapping Mapping;
+    // Help SWIG detect StringMap
+    typedef lsst::qserv::master::StringMap StringMap;
     typedef std::deque<std::string> Deque;
     typedef Deque::const_iterator DequeConstIter;
     typedef lsst::qserv::master::MergeFixup MergeFixup;
-    typedef std::map<std::string, std::string> StringMap;
 
     SqlSubstitution(std::string const& sqlStatement, 
                     ChunkMapping const& mapping, 
-                    std::map<std::string, std::string> const& config);
+                    StringMap const& config);
     /// config should include qserv master config + current session context
     /// i.e., defaultDb=LSST (or defaultDb=TestDb)
 
     void importSubChunkTables(char** cStringArr);
     std::string transform(int chunk, int subChunk);
-    std::string substituteOnly(Mapping const& m);
+    std::string substituteOnly(StringMap const& m);
     
     /// 0: none, 1: chunk, 2: subchunk
     int getChunkLevel() const { return _chunkLevel; }
@@ -71,7 +72,6 @@ private:
     void _build(std::string const& sqlStatement);
     void _computeChunkLevel(bool hasChunks, bool hasSubChunks);
     std::string _fixDbRef(std::string const& s, int chunk, int subChunk);
-    void _readConfig(StringMap const& m);
 
     std::string _delimiter;
     std::string _errorMsg;
@@ -82,9 +82,7 @@ private:
     Deque _subChunked;
     ChunkMapping _mapping;
     boost::mutex _mappingMutex;
-    // Config
-    std::string _defaultDb;
-    std::map<std::string, int> _dbWhiteList;
+    StringMap _config;
 
 };
 

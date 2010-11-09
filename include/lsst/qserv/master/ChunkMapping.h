@@ -30,19 +30,19 @@
 // Boost
 #include "boost/shared_ptr.hpp"
 
+// Package
+#include "lsst/qserv/master/common.h"
+
 namespace lsst {
 namespace qserv {
 namespace master {
-
-
-typedef std::map<std::string, std::string> StringMapping;
 
 // class ChunkMapping is a helper class that generates mappings from
 // placeholder table references to physical table names. 
 // 
 class ChunkMapping {
 public:
-    typedef StringMapping Map;
+    typedef StringMap Map;
     typedef Map::value_type MapValue;
     
     ChunkMapping() :_subPrefix("_sc") {}

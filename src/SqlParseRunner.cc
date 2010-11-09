@@ -30,11 +30,15 @@
 #include "lsst/qserv/master/SqlParseRunner.h"
 #include "lsst/qserv/master/Substitution.h"
 #include "lsst/qserv/master/parseTreeUtil.h"
-
+#include "lsst/qserv/master/stringUtil.h"
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
 using std::stringstream;
+
+// Anonymous helpers
+namespace {
+} // anonymous namespace
 
 // Helper
 class qMaster::LimitHandler : public VoidOneRefFunc {
@@ -77,6 +81,7 @@ class qMaster::SqlParseRunner::SpatialTableNotifier
 public:
     SpatialTableNotifier(SqlParseRunner& spr) : _spr(spr) {}
     void operator()(std::string const& name) {
+        _spr.prepareTableConfig(name);
         // FIXME: setup the right config.
         std::cout << "Picked " << name << " as spatial table." << std::endl;
     }
@@ -84,22 +89,55 @@ private:
     SqlParseRunner& _spr;
 };
 
+/// PartitionTupleProcessor : Function object that ingests config
+/// entries from table.partitionCols.
+/// e.g. table.partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
+/// First, split by ";", and then this object imports the resulting entries.
+/// 
+class qMaster::SqlParseRunner::PartitionTupleProcessor {
+public:
+    PartitionTupleProcessor(SqlParseRunner& spr) : _spr(spr) {}
+    void operator()(std::string const& s) {
+        vec.clear();
+        tokenizeInto(s, ":", vec, passFunc<std::string>());
+        if(vec.size() != 2) {
+            if(vec.size() == 0) {
+                return; // Nothing to do.
+            }
+            std::cout << "Error, badly formed partition col spec: " << s 
+                      << std::endl;
+            return;
+        }
+        std::string name = vec[0];
+        columns.clear();
+        tokenizeInto(vec[1], ",", columns, passFunc<std::string>());
+        StringMap sm;
+        sm["raCol"] = columns[0];
+        sm["declCol"] = columns[1];
+        sm["objectIdCol"] = columns[2];
+        _spr.updateTableConfig(name, sm);
+    }
+    
+    private:
+
+    std::vector<std::string> vec;    
+    std::vector<std::string> columns;
+    SqlParseRunner& _spr;
+};
+
 
 boost::shared_ptr<qMaster::SqlParseRunner> 
 qMaster::SqlParseRunner::newInstance(std::string const& statement, 
                                      std::string const& delimiter,
-                                     SqlParseRunner::IntMap const& dbWhiteList,
-                                     std::string const& defaultDb) {
+                                     qMaster::StringMap const& config) {
     return boost::shared_ptr<SqlParseRunner>(new SqlParseRunner(statement, 
                                                                 delimiter,
-                                                                dbWhiteList,
-                                                                defaultDb));
+                                                                config));
 }
 
 qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement, 
                                         std::string const& delimiter,
-                                        SqlParseRunner::IntMap const& dbWhiteList,
-                                        std::string const& defaultDb) :
+                                        qMaster::StringMap const& config) :
     _statement(statement),
     _stream(statement, stringstream::in | stringstream::out),
     _factory(new ASTFactory()),
@@ -107,10 +145,12 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
     _parser(new SqlSQL2Parser(*_lexer)),
     _delimiter(delimiter),
     _spatialTableNotifier(new SpatialTableNotifier(*this)),
-    _templater(delimiter, _factory.get(), dbWhiteList, defaultDb,
-               *_spatialTableNotifier),
-    _spatialUdfHandler(_factory.get(), _tableConfig)
+    _templater(delimiter, _factory.get(), *_spatialTableNotifier),
+    _spatialUdfHandler(_factory.get(), _tableConfig),
+    _aliasMgr(),
+    _aggMgr(_aliasMgr)
 { 
+    _readConfig(config);
     //std::cout << "(int)PARSING:"<< statement << std::endl;
 }
 
@@ -121,7 +161,8 @@ void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
     _tableListHandler = _templater.newTableListHandler();
     _parser->_tableListHandler = _tableListHandler;
     _parser->_setFctSpecHandler = _aggMgr.getSetFuncHandler();
-    _parser->_aliasHandler = _aggMgr.getAliasHandler();
+    _parser->_columnAliasHandler = _aliasMgr.getColumnAliasHandler();
+    _parser->_tableAliasHandler = _aliasMgr.getTableAliasHandler();
     _parser->_selectListHandler = _aggMgr.getSelectListHandler();
     _parser->_selectStarHandler = _aggMgr.newSelectStarHandler();
     _parser->_groupByHandler = _aggMgr.getGroupByHandler();
@@ -152,7 +193,7 @@ void qMaster::SqlParseRunner::_computeParseResult() {
         _parser->initializeASTFactory(*_factory);
         _parser->setASTFactory(_factory.get());
         _parser->sql_stmt();
-        _aggMgr.postprocess();
+        _aggMgr.postprocess(_aliasMgr.getInvAliases());
         hasBadDbs = 0 < _templater.getBadDbs().size();
         RefAST ast = _parser->getAST();
         if (ast) {
@@ -209,3 +250,44 @@ bool qMaster::SqlParseRunner::getHasAggregate() {
     return _aggMgr.getHasAggregate();
 }
 
+void qMaster::SqlParseRunner::prepareTableConfig(std::string const& tableName) {
+    // Hardcoded for Object table in PT1 schema right now.
+    StringMap sm;
+    _tableConfig = getFromMap(_tableConfigMap, tableName, sm);
+    if(_tableConfig.size() == 0) {
+        std::cout << "Error getting table config." << std::endl;
+        _tableConfig["raCol"] = "ra_PS";
+        _tableConfig["declCol"] = "decl_PS";
+        _tableConfig["objectIdCol"] = "objectId";
+    }
+}
+
+void qMaster::SqlParseRunner::updateTableConfig(std::string const& tName, 
+                                                qMaster::StringMap const& m) {
+    _tableConfigMap[tName] = m;
+}
+
+void qMaster::SqlParseRunner::_readConfig(qMaster::StringMap const& m) {
+    std::string blank;
+    std::list<std::string> tokens;
+    std::string defaultDb;
+    IntMap whiteList;
+    // FIXME: Much of this could be done at startup and cached.
+    defaultDb = getFromMap(m, "table.defaultdb", blank);
+
+    tokenizeInto(getFromMap(m, "table.alloweddbs", blank), ",", tokens, 
+                 passFunc<std::string>());
+    if(tokens.size() > 0) {
+        fillMapFromKeys(tokens, whiteList);
+    } else {
+        std::cout << "WARNING!  No dbs in whitelist. Using LSST." << std::endl;
+        whiteList["LSST"] = 1;
+    }    
+    _templater.setup(whiteList, defaultDb);
+    tokens.clear();
+    tokenizeInto(getFromMap(m,"table.partitionCols", blank), ";", tokens,
+                 passFunc<std::string>());
+    for_each(tokens.begin(), tokens.end(), PartitionTupleProcessor(*this));
+}    
+
+    

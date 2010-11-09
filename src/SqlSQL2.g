@@ -171,9 +171,16 @@ void handleTableList(RefAST a, RefAST b) {
     }
     return; // Do-nothing placeholder
 }
-void handleAlias(RefAST a, RefAST b) {
-    if(_aliasHandler.get()) {
-        (*_aliasHandler)(a, b);
+void handleColumnAlias(RefAST a, RefAST b) {
+    if(_columnAliasHandler.get()) {
+        (*_columnAliasHandler)(a, b);
+    }
+    return; // Do-nothing placeholder
+}
+void handleTableAlias(RefAST tableName, RefAST subQuery, 
+                      RefAST as, RefAST alias) {
+    if(_tableAliasHandler.get()) {
+        (*_tableAliasHandler)(tableName, subQuery, as, alias);
     }
     return; // Do-nothing placeholder
 }
@@ -258,7 +265,8 @@ public: // Public (Until the functionality is complete?)
 boost::shared_ptr<VoidThreeRefFunc> _qualifiedNameHandler;
 boost::shared_ptr<VoidFourRefFunc> _columnRefHandler;
 boost::shared_ptr<VoidTwoRefFunc> _tableListHandler;
-boost::shared_ptr<VoidTwoRefFunc> _aliasHandler;
+boost::shared_ptr<VoidTwoRefFunc> _columnAliasHandler;
+boost::shared_ptr<VoidFourRefFunc> _tableAliasHandler;
 boost::shared_ptr<VoidOneRefFunc> _setFctSpecHandler;
 boost::shared_ptr<VoidOneRefFunc> _selectListHandler;
 boost::shared_ptr<VoidVoidFunc> _selectStarHandler;

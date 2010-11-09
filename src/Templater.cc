@@ -169,13 +169,17 @@ std::string const Templater::_nameSep(".");
 
 Templater::Templater(std::string const& delimiter, 
                      antlr::ASTFactory* factory,
-                     Templater::IntMap const& dbWhiteList,
-                     std::string const& defaultDb,
                      Notifier& spatialTableNameNotifier_) 
-    : _dbWhiteList(dbWhiteList), _delimiter(delimiter),
-      _factory(factory), _defaultDb(defaultDb),
+    :  _delimiter(delimiter),
+      _factory(factory),
       _spatialTableNameNotifier(spatialTableNameNotifier_) {
 }
+void Templater::setup(Templater::IntMap const& dbWhiteList,
+                      std::string const& defaultDb) {
+    _dbWhiteList = dbWhiteList;
+    _defaultDb = defaultDb;
+}
+
 
 void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
     std::string dbName;

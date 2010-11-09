@@ -23,6 +23,7 @@
  
 // Pkg
 #include "lsst/qserv/master/parseTreeUtil.h"
+#include "lsst/qserv/master/stringUtil.h"
 
 // Boost
 #include <boost/make_shared.hpp>
@@ -43,45 +44,6 @@ using boost::make_shared;
 // Internal helpers
 namespace {
 
-    class strToDoubleFunc {
-    public:
-        double operator()(std::string const& s) { 
-            char const* start = s.c_str();
-            char const* eptr;
-            // Cast away const. strtod won't write any chars anyway.
-            double d = std::strtod(start, const_cast<char**>(&eptr));
-            if(s.size() != static_cast<std::string::size_type>(eptr-start)) {
-                std::stringstream s;
-                s << "Exception converting string to double ("
-                  << s << ")";
-                throw s.str();
-            }
-            return d;
-        }
-    };
-    
-    // Tokenize a string delimited by ',' and place it into a container, 
-    // transforming it if desired.
-    template <class Container, class T>
-    Container& tokenizeInto(std::string const& s, 
-                            Container& c) {
-        std::string delimiter(",");
-        std::string::size_type pos = 0;
-        std::string::size_type lastPos = 0;
-        T transform;
-        lastPos = s.find_first_not_of(delimiter, 0);
-        while(std::string::npos != lastPos) {
-            pos = s.find_first_of(delimiter, lastPos);
-            std::string token(s, lastPos, pos-lastPos);
-            c.push_back(transform(token));
-            if(std::string::npos == pos) {
-                break;
-            } else {
-                lastPos = s.find_first_not_of(delimiter, pos);
-            }
-        }
-        return c;
-    }
     template <typename Target>
     class coercePrint {
     public:
@@ -97,18 +59,6 @@ namespace {
         char const* d;
         bool first;
     };
-
-    template <class Map>
-    typename Map::mapped_type const& getFromMap(Map const& m, 
-                                              typename Map::key_type const& key,
-                                              typename Map::mapped_type const& defValue) {
-        typename Map::const_iterator i = m.find(key);
-        if(i == m.end()) {
-            return defValue;
-        } else {
-            return i->second;
-        }
-    }
 
 } // anonymous namespace
 
@@ -301,7 +251,7 @@ public:
         std::string paramStr = paramStrRaw.substr(0, paramStrRaw.size() - 1);
         std::list<double> paramNums;
 
-        tokenizeInto<std::list<double>, strToDoubleFunc>(paramStr, paramNums);
+        tokenizeInto(paramStr, ",", paramNums, strToDoubleFunc());
         boost::shared_ptr<Restriction> r(new Restriction(name->getText(),
                                                          paramNums));
         _suh._restrictions.push_back(r);
