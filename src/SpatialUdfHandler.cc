@@ -41,26 +41,6 @@ namespace qMaster = lsst::qserv::master;
 using std::stringstream;
 using boost::make_shared;
 
-// Internal helpers
-namespace {
-
-    template <typename Target>
-    class coercePrint {
-    public:
-        coercePrint(std::ostream& o_, const char* d_) 
-            : o(o_), d(d_), first(true) {}
-        template<typename T>
-        void operator()(T const& t) { 
-            if(!first) { o << d; }
-            else { first = false; }
-            o << (Target)t;
-        }
-        std::ostream& o;
-        char const* d;
-        bool first;
-    };
-
-} // anonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler::Restriction
@@ -96,8 +76,8 @@ private:
         virtual std::string operator()(StringMap const& tableConfig) {
             std::stringstream s;
             std::string oidStr(getFromMap<StringMap>(tableConfig,
-                                                         "objectIdCol", 
-                                                         "objectId"));
+                                                     "objectIdCol", 
+                                                     "objectId"));
             s << oidStr << " IN (";
             // coerce params to integer.
             std::for_each(paramNums.begin(), paramNums.end(), 

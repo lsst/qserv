@@ -226,29 +226,63 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
 
     }
 }
-void testStmt2(SqlParseRunner::Ptr spr) {
+void testStmt2(SqlParseRunner::Ptr spr, bool shouldFail=false) {
     std::string parseResult = spr->getParseResult();
     // std::cout << stmt << " is parsed into " << parseResult
     //           << std::endl;
-    BOOST_CHECK(!parseResult.empty());
-    BOOST_CHECK(spr->getHasChunks());
-    BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(!spr->getHasAggregate());
+
+    if(shouldFail) {
+        BOOST_CHECK(!spr->getError().empty());
+    } else {
+        if(!spr->getError().empty()) { 
+            std::cout << spr->getError() << std::endl;
+        }
+        BOOST_CHECK(spr->getError().empty());
+        BOOST_CHECK(!parseResult.empty());
+    }
 }
 
 BOOST_AUTO_TEST_CASE(RestrictorBox) {
     std::string stmt = "select * from Object where qserv_areaspec_box(0,0,1,1);";
-    testStmt2(getRunner(stmt));
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
 
 }
 BOOST_AUTO_TEST_CASE(RestrictorObjectId) {
     std::string stmt = "select * from Object where qserv_objectId(2,3145,9999);";
-    testStmt2(getRunner(stmt));
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+
 }
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::string stmt = "select * from Object as o1 where qserv_objectId(2,3145,9999);";
-    testStmt2(getRunner(stmt));
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
 }
+BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
+    std::string stmt = "select count(*) from Object as o1, Object as o2 where qserv_areaspec_box(6,6,7,7) AND o1.ra_PS between 6 and 7 and o1.decl_PS between 6 and 7 ;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
+}
+
+BOOST_AUTO_TEST_CASE(BadDbAccess) {
+    std::string stmt = "select count(*) from Bad.Object as o1, Object o2 where qserv_areaspec_box(6,6,7,7) AND o1.ra_PS between 6 and 7 and o1.decl_PS between 6 and 7 ;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr, true);
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 

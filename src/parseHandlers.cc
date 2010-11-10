@@ -57,6 +57,10 @@ public:
                             antlr::RefAST as,
                             antlr::RefAST alias)  {
         using lsst::qserv::master::getLastSibling;
+        std::string logicalName;
+        std::string physicalName;
+        antlr::RefAST tableBound;
+
         if(subQuery.get()) {
             std::cout << "ERROR!! Unexpected subquery alias in query. " 
                       << subQuery->getText();
@@ -65,13 +69,24 @@ public:
         assert(table.get());
         if(alias.get()) {
             antlr::RefAST bound = table;
-            while(bound->getNextSibling() != as) {
+            logicalName = walkTreeString(alias);
+            if(as.get()) {
+                tableBound = as;
+            } else {
+                tableBound = alias;
+            }
+            while(bound->getNextSibling() != tableBound) {
                 bound = bound->getNextSibling(); 
             }
-            std::cout << "table map " << walkBoundedTreeString(table, bound)
-                      << " --to-- "
-                      << walkTreeString(alias) << std::endl;
+            physicalName = walkBoundedTreeString(table, bound);
+        } else {
+            physicalName = walkTreeString(table);
+            logicalName = physicalName;
         }
+        std::cout << "table map " << physicalName 
+                  << " --to-- "
+                  << logicalName << std::endl;
+        
     }
 private:
     AliasMgr& _am;

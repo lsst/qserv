@@ -224,7 +224,11 @@ void qMaster::SqlParseRunner::_computeParseResult() {
         _errorMsg = std::string("General exception: ") + e.what();
     }
     if(hasBadDbs) {
-        _errorMsg += " Query references prohibited dbs.";
+        std::stringstream ss;
+        ss << " Query references prohibited dbs: ";
+        Templater::StringList const& sl = _templater.getBadDbs();
+        std::for_each(sl.begin(), sl.end(), coercePrint<std::string>(ss, ","));
+        _errorMsg += ss.str();
     }
     return; 
 }

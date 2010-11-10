@@ -92,5 +92,22 @@ std::map<typename Container::value_type,int>& fillMapFromKeys(Container const& c
     return e;
 }
 
+
+template <typename Target>
+class coercePrint {
+public:
+    coercePrint(std::ostream& o_, const char* d_) 
+        : o(o_), d(d_), first(true) {}
+    template<typename T>
+    void operator()(T const& t) { 
+            if(!first) { o << d; }
+            else { first = false; }
+            o << (Target)t;
+    }
+    std::ostream& o;
+    char const* d;
+    bool first;
+};
+
 }}} // namesapce lsst::qserv::master
 #endif // LSST_QSERV_MASTER_STRINGUTIL_H
