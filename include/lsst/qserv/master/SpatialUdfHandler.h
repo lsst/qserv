@@ -43,7 +43,8 @@ public:
     /// Only copies the reference, expecting the config to live
     /// (and probably change) over the life of this instance.
     SpatialUdfHandler(antlr::ASTFactory* factory, 
-                      StringMap const& tableConfig);
+                      StringMapMap const& tableConfigMap,
+                      StringPairList const& spatialTables);
     boost::shared_ptr<VoidOneRefFunc> getFromWhereHandler() { 
         return _fromWhere; 
     }
@@ -67,7 +68,8 @@ public:
     antlr::ASTFactory* getASTFactory() { return _factory; }
     void _setHasRestriction() { _hasRestriction = true; }
     bool _getHasRestriction() const { return _hasRestriction; } 
-    StringMap const& getTableConfig() const { return _tableConfig; }
+    StringMap const& getTableConfig(std::string const& tName) const;
+    StringPairList const& getSpatialTables() const { return _spatialTables; }
 
     // Where-clause manipulation
     class FromWhereHandler;
@@ -92,7 +94,8 @@ public:
     std::string _whereIntruder;
     std::list<RestrictionPtr> _restrictions;
     bool _hasRestriction;
-    StringMap const& _tableConfig;
+    StringMapMap const& _tableConfigMap;
+    StringPairList const& _spatialTables;
 };
 
 }}} // namespace lsst::qserv::master

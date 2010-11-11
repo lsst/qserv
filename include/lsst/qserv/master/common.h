@@ -22,12 +22,17 @@
  
 #ifndef LSST_QSERV_MASTER_COMMON_H
 #define LSST_QSERV_MASTER_COMMON_H
+
+#include <list>
 #include <map>
+
 namespace lsst {
 namespace qserv {
 namespace master {
 
 typedef std::map<std::string, std::string> StringMap;
+typedef std::map<std::string, StringMap> StringMapMap;
+typedef std::list<std::pair<std::string, std::string> > StringPairList;
 
 template <class Map>
 typename Map::mapped_type const& getFromMap(Map const& m, 
@@ -38,6 +43,16 @@ typename Map::mapped_type const& getFromMap(Map const& m,
         return defValue;
     } else {
         return i->second;
+    }
+}
+
+template <class Map, class Func>
+void forEachMapped(Map const& m, Func& f) {
+    typename Map::const_iterator b = m.begin();
+    typename Map::const_iterator e = m.end();
+    typename Map::const_iterator i;
+    for(i = b; i != e; ++i) {
+        f(i->second);
     }
 }
 

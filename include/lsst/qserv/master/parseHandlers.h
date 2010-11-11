@@ -76,6 +76,9 @@ public:
     NodeList getColumnNodeListCopy() { return _columnAliasNodes; }
     void resetColumnNodeList() { _columnAliasNodes.clear(); }
 
+    StringMap const& getTableAliasMap() const { return _tableMap; }
+
+
 private:
     // Invoked by child handlers.
     void addTableAlias(std::string const& tName, std::string const& alias);

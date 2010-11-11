@@ -229,7 +229,12 @@ void handleOrderBy(RefAST i) {
     }
     return; // Do-nothing placeholder    
 }
-
+void handleFrom() {
+    if(_fromHandler.get()) {
+        (*_fromHandler)();
+    }
+    return; // Do-nothing placeholder    
+}
 void handleFromWhere(RefAST fw) {
     if(_fromWhereHandler.get()) {
         (*_fromWhereHandler)(fw);
@@ -276,6 +281,7 @@ boost::shared_ptr<VoidOneRefFunc> _limitHandler;
 boost::shared_ptr<VoidOneRefFunc> _orderByHandler;
 
 // for WHERE clause editing/injection.
+boost::shared_ptr<VoidVoidFunc> _fromHandler;
 boost::shared_ptr<VoidOneRefFunc> _fromWhereHandler;
 boost::shared_ptr<VoidOneRefFunc> _whereCondHandler;
 // for qserv restriction detector

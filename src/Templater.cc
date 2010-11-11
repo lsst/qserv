@@ -27,6 +27,7 @@
 
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/Templater.h"
+#include "lsst/qserv/master/common.h"
 
 using lsst::qserv::master::Templater;
 
@@ -180,14 +181,25 @@ void Templater::setup(Templater::IntMap const& dbWhiteList,
     _defaultDb = defaultDb;
 }
 
+bool Templater::_isAlias(std::string const& alias) {
+    return 1 == getFromMap(_tableAliases, alias, 0);
+}
+
+void Templater::addAliasFunc::operator()(std::string const& aName) {
+    _t._tableAliases[aName] = 1;
+}
 
 void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
     std::string dbName;
     std::string tableName = n->getText();
     if(!db.get()) {
+        // Check if alias.  If so, do not touch.
+        //std::cout << "PROCESS: " << tableName << std::endl;
+        if(_isAlias(tableName)) return; // Do not process.
         if(!_defaultDb.empty() && _isDbOk(_defaultDb)) {
             // no explicit Db?  Create one, and link it in.
             n = insertTextNodeBefore(_factory, _defaultDb + _nameSep, n);
+            dbName = _defaultDb;
         } else { // No context and bad/missing defaultDb
             _markBadDb(_defaultDb);
         }
@@ -198,11 +210,9 @@ void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
         }
     }
     if(isSpecial(tableName)) {
-        if(_spatialTableName.empty()) {
-            _spatialTableName = tableName;
-            _spatialTableNameNotifier(tableName);
-        }
-        n->setText(mungeName(tableName));
+        std::string mungedName = mungeName(tableName);
+        _spatialTableNameNotifier(tableName, dbName + "." + mungedName);
+        n->setText(mungedName);
     }
 }
 

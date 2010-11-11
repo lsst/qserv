@@ -83,9 +83,10 @@ public:
             physicalName = walkTreeString(table);
             logicalName = physicalName;
         }
-        std::cout << "table map " << physicalName 
-                  << " --to-- "
-                  << logicalName << std::endl;
+        // std::cout << "table map " << physicalName 
+        //           << " --to-- "
+        //           << logicalName << std::endl;
+        _am.addTableAlias(physicalName, logicalName);
         
     }
 private:

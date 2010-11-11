@@ -19,9 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+
+// Standard
+#include <functional>
+
 // Boost
 #include <boost/make_shared.hpp>
+#include <boost/bind.hpp>
 
 // Local (placed in src/)
 #include "SqlSQL2Parser.hpp" 
@@ -40,7 +44,10 @@ using std::stringstream;
 namespace {
 } // anonymous namespace
 
-// Helper
+// Helpers
+////////////////////////////////////////////////////////////////////////
+// LimitHandler : Handle "LIMIT n" parse events
+////////////////////////////////////////////////////////////////////////
 class qMaster::LimitHandler : public VoidOneRefFunc {
 public: 
     LimitHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
@@ -55,7 +62,9 @@ public:
 private:
     qMaster::SqlParseRunner& _spr;
 };
-
+////////////////////////////////////////////////////////////////////////
+// OrderByHandler : Handle "ORDER BY colname" events
+////////////////////////////////////////////////////////////////////////
 class qMaster::OrderByHandler : public VoidOneRefFunc {
 public: 
     OrderByHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
@@ -71,24 +80,64 @@ private:
     qMaster::SqlParseRunner& _spr;
 
 };
-
+////////////////////////////////////////////////////////////////////////
 // SpatialTableNotifier : receive notification that query has chosen a spatial
 // table.  This can then trigger the preparation of the table metadata to 
 // provide the context for the where-clause manipulator to rewrite 
 // appropriately. 
+////////////////////////////////////////////////////////////////////////
 class qMaster::SqlParseRunner::SpatialTableNotifier
     : public qMaster::Templater::Notifier {
 public:
     SpatialTableNotifier(SqlParseRunner& spr) : _spr(spr) {}
-    void operator()(std::string const& name) {
-        _spr.prepareTableConfig(name);
-        // FIXME: setup the right config.
-        std::cout << "Picked " << name << " as spatial table." << std::endl;
+    virtual void operator()(std::string const& refName, 
+                            std::string const& name) {
+        _spr.prepareTableConfig(refName, name);
+        // std::cout << "Picked " << name << " as spatial table("
+        //           << refName << ")." << std::endl;
     }
 private:
     SqlParseRunner& _spr;
 };
+////////////////////////////////////////////////////////////////////////
+// FromHandler : handle parse-acceptance of FROM... clause.  Rewrites
+// spatial tables with aliases so that WHERE clause manipulation can
+// utilize aliases if available.
+////////////////////////////////////////////////////////////////////////
+class qMaster::SqlParseRunner::FromHandler : public VoidVoidFunc {
+public: 
+    // A functor to perform the rewrite
+    class rewrite {
+    public:
+        rewrite(StringMap const& tm) : _tm(tm) {}
+        void operator()(StringPairList::value_type& v) {
+            std::string s = getFromMap(_tm, v.second, blank);
+            if(s.empty()) return;
+            v.second = s;
+        }
+        std::string blank;
+        StringMap const& _tm;
+    };
+    // FromHandler
+    FromHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
+    virtual ~FromHandler() {}
+    virtual void operator()() {
+        // For each table alias, rewrite the spatial name mapping,
+        StringMap const& tableAliasMap = _spr._aliasMgr.getTableAliasMap();
+        for_each(_spr._spatialTables.begin(), _spr._spatialTables.end(), 
+                 rewrite(tableAliasMap));
+        Templater::addAliasFunc f(_spr._templater);
+        forEachMapped(tableAliasMap, f);
 
+        // std::for_each(tableAliasMap.begin(), tableAliasMap.end(), 
+        //               boost::bind(Templater::addAliasFunc(_spr._templater),
+        //                           boost::bind(&StringMap::value_type::second,_1)
+
+
+    }
+private:
+    qMaster::SqlParseRunner& _spr;
+};
 /// PartitionTupleProcessor : Function object that ingests config
 /// entries from table.partitionCols.
 /// e.g. table.partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
@@ -146,7 +195,7 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
     _delimiter(delimiter),
     _spatialTableNotifier(new SpatialTableNotifier(*this)),
     _templater(delimiter, _factory.get(), *_spatialTableNotifier),
-    _spatialUdfHandler(_factory.get(), _tableConfig),
+    _spatialUdfHandler(_factory.get(), _tableConfigMap, _spatialTables),
     _aliasMgr(),
     _aggMgr(_aliasMgr)
 { 
@@ -169,6 +218,7 @@ void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
     _parser->_groupColumnHandler = _aggMgr.getGroupColumnHandler();
     _parser->_limitHandler.reset(new LimitHandler(*this));
     _parser->_orderByHandler.reset(new OrderByHandler(*this));
+    _parser->_fromHandler.reset(new FromHandler(*this));
     _parser->_fromWhereHandler = _spatialUdfHandler.getFromWhereHandler();
     _parser->_whereCondHandler= _spatialUdfHandler.getWhereCondHandler();
     _parser->_qservRestrictorHandler = _spatialUdfHandler.getRestrictorHandler();
@@ -254,16 +304,10 @@ bool qMaster::SqlParseRunner::getHasAggregate() {
     return _aggMgr.getHasAggregate();
 }
 
-void qMaster::SqlParseRunner::prepareTableConfig(std::string const& tableName) {
-    // Hardcoded for Object table in PT1 schema right now.
-    StringMap sm;
-    _tableConfig = getFromMap(_tableConfigMap, tableName, sm);
-    if(_tableConfig.size() == 0) {
-        std::cout << "Error getting table config." << std::endl;
-        _tableConfig["raCol"] = "ra_PS";
-        _tableConfig["declCol"] = "decl_PS";
-        _tableConfig["objectIdCol"] = "objectId";
-    }
+void qMaster::SqlParseRunner::prepareTableConfig(std::string const& tableName,
+                                                 std::string const& refTableName) {
+    _spatialTables.push_back(StringPairList::value_type(tableName, 
+                                                        refTableName));
 }
 
 void qMaster::SqlParseRunner::updateTableConfig(std::string const& tName, 

@@ -151,7 +151,8 @@ public:
     // SpatialTableNameNotifier
     class Notifier {
     public:
-        virtual void operator()(std::string const& name) {};
+        virtual void operator()(std::string const& refName, 
+                                std::string const& name) {};
         virtual ~Notifier() {}
         static Notifier nullInstance;
     };
@@ -198,21 +199,28 @@ public:
 
     StringList const& getBadDbs() const { return _badDbs; }
     void addGoodDb(std::string const& db) { _dbWhiteList[db] = 1; }
-    
+    class addAliasFunc {
+    public:
+        addAliasFunc(Templater& t) : _t(t) {}
+        void operator()(std::string const& aName);
+        Templater& _t;
+    };
+    friend class addAliasFunc;
 private:
+    bool _isAlias(std::string const& alias);
     bool _isDbOk(std::string const& db);
     void _markBadDb(std::string const& db);
     void _processName(antlr::RefAST db, antlr::RefAST n); 
     
     ReMap _map;
     IntMap _dbWhiteList;
+    IntMap _tableAliases;
     std::string _delimiter;
     antlr::ASTFactory* _factory;
     std::string _defaultDb;
     StringList _badDbs;
     Notifier& _spatialTableNameNotifier;
-    std::string _spatialTableName;
-
+    
     // static const
     static std::string const _nameSep;
 

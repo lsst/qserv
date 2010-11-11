@@ -1200,7 +1200,7 @@ from_with_where :
         
 //{ Rule #265 <from_clause>
 from_clause : 
-	"from" table_ref_list 
+	"from" table_ref_list {handleFrom();}
 ;
 //}
 

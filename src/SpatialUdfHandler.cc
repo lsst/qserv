@@ -54,16 +54,18 @@ public:
         _setGenerator();
     }
 
-    std::string getUdfCallString(StringMap const& tableConfig) {
+    std::string getUdfCallString(std::string const& tName, 
+                                 StringMap const& tableConfig) {
         if(_generator.get()) {
-            return (*_generator)(tableConfig);
+            return (*_generator)(tName, tableConfig);
         }
         return std::string();
     }
     class Generator {
     public:
         virtual ~Generator() {}
-        virtual std::string operator()(StringMap const& tableConfig) = 0; 
+        virtual std::string operator()(std::string const& tName, 
+                                       StringMap const& tableConfig) = 0; 
     private:
     };
 private:
@@ -73,7 +75,8 @@ private:
             :  paramNums(paramNums_) {}
 
 
-        virtual std::string operator()(StringMap const& tableConfig) {
+        virtual std::string operator()(std::string const& tName, 
+                                       StringMap const& tableConfig) {
             std::stringstream s;
             std::string oidStr(getFromMap<StringMap>(tableConfig,
                                                      "objectIdCol", 
@@ -93,17 +96,19 @@ private:
         AreaGenerator(char const* fName_, int paramCount_,
                       std::vector<double> const& params_) 
             :  fName(fName_), paramCount(paramCount_), params(params_) {}
-        virtual std::string operator()(StringMap const& tableConfig) {
+
+        virtual std::string operator()(std::string const& tName, 
+                                       StringMap const& tableConfig) {
             std::stringstream s;
             std::string raStr(getFromMap<StringMap>(tableConfig,
                                                          "raCol", 
                                                          "ra"));
-
             std::string declStr(getFromMap<StringMap>(tableConfig,
                                                          "declCol", 
                                                          "decl"));
-            s << "qserv_" << fName << "(" << raStr << "," << declStr
-              << ",";
+            
+            s << "(qserv_" << fName << "(" << tName << "." << raStr 
+              << "," << tName << "." << declStr << ",";
             if(paramCount == USE_STRING) {
                 s << '"'; // Place params inside a string.
                 std::for_each(params.begin(), params.end(), 
@@ -117,7 +122,7 @@ private:
                     throw std::string("multi not supported yet");
                 }
             }
-            s << ")";
+            s << ") = 1)";
             return s.str();
         }
         char const* const fName;
@@ -169,7 +174,7 @@ public:
         } else {
             // Already patched, don't do anything.
         }
-        std::cout << "fromWhere: " << walkTreeString(fw) << std::endl;
+        // std::cout << "fromWhere: " << walkTreeString(fw) << std::endl;
     }
 private:
     qMaster::SpatialUdfHandler& _suh;
@@ -230,6 +235,7 @@ public:
         std::string paramStrRaw = walkTreeString(params);
         std::string paramStr = paramStrRaw.substr(0, paramStrRaw.size() - 1);
         std::list<double> paramNums;
+        std::stringstream ss;
 
         tokenizeInto(paramStr, ",", paramNums, strToDoubleFunc());
         boost::shared_ptr<Restriction> r(new Restriction(name->getText(),
@@ -239,14 +245,23 @@ public:
         // Debug printout:
         // std::cout << "Got new restrictor spec " 
         //    << name->getText() << "--";
-        std::copy(paramNums.begin(), paramNums.end(), 
-                  std::ostream_iterator<double>(std::cout, ","));
-        std::cout << "Spec yielded " 
-                  << r->getUdfCallString(_suh.getTableConfig()) <<std::endl;
-
+        // std::copy(paramNums.begin(), paramNums.end(), 
+        //           std::ostream_iterator<double>(std::cout, ","));
+        StringPairList const& sp = _suh.getSpatialTables();
+        StringPairList::const_iterator spi;
+        StringPairList::const_iterator spe = sp.end();
+        bool first = true;
+        for(spi = sp.begin(); spi != spe; ++spi) {
+            if(!first) ss << " AND ";
+            else first = false;
+            //std::cout << spi->first << "------" << spi->second << std::endl;
+            ss << r->getUdfCallString(spi->second, _suh.getTableConfig(spi->first));
+        }        
+        // std::cout << "Spec yielded " 
+        //           << ss.str() <<std::endl;
         // Edit the parse tree
         collapseNodeRange(name, getLastSibling(params));
-        name->setText(r->getUdfCallString(_suh.getTableConfig()));
+        name->setText(ss.str());
     }
 private:
     qMaster::SpatialUdfHandler& _suh;
@@ -256,8 +271,8 @@ private:
 // SpatialUdfHandler
 ////////////////////////////////////////////////////////////////////////
 qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory, 
-                                              StringMap const& tableConfig)
-    
+                                              StringMapMap const& tableConfigMap,
+                                              StringPairList const& spatialTables)
     : _fromWhere(new FromWhereHandler(*this)),
       _whereCond(new WhereCondHandler(*this)),
       _restrictor(new RestrictorHandler(*this)),
@@ -265,7 +280,8 @@ qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory,
       _isPatched(false),
       _factory(factory),
       _hasRestriction(false),
-      _tableConfig(tableConfig) {
+      _tableConfigMap(tableConfigMap),
+      _spatialTables(spatialTables) {
     if(!_factory) {
         std::cerr << "WARNING: SpatialUdfHandler non-functional (null factory)"
                   << std::endl;
@@ -289,6 +305,12 @@ void qMaster::SpatialUdfHandler::setExpression(std::string const& funcName,
     ss << ")";
     _whereIntruder = ss.str();
 }
+
+qMaster::StringMap const& qMaster::SpatialUdfHandler::getTableConfig(std::string const& tName) const {
+    StringMap sm;
+    return getFromMap(_tableConfigMap, tName, sm);
+}
+
 #if 0
 // MySQL UDF signatures.  see udf/MySqlSpatialUdf.c in qserv/worker
     double qserv_angSep (ra1, dec1, ra2, dec2);
@@ -298,4 +320,5 @@ void qMaster::SpatialUdfHandler::setExpression(std::string const& funcName,
     int qserv_ptInSphPoly (ra, dec, ra0, poly);
     // poly = string.  "ra0 dec0 ra1 dec1 ra2 dec2 ..." 
     // space separated ra/dec pairs.
+// Functions return 1 if true, 0 if false, NULL on error
 #endif

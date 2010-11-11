@@ -61,6 +61,7 @@ public:
                            std::string const& delimiter,
                            StringMap const& config);
     void setup(std::list<std::string> const& names);
+    std::string const& getStatement() const { return _statement; }
     std::string getParseResult();
     std::string getAggParseResult();
     bool getHasChunks() const { 
@@ -85,10 +86,13 @@ public:
     std::string const& getError() const {
 	return _errorMsg;
     }
-    void prepareTableConfig(std::string const& tableName);
+    void prepareTableConfig(std::string const& tableName,
+                            std::string const& refTableName);
     void updateTableConfig(std::string const& tName, StringMap const& m);
 private:
     class SpatialTableNotifier;
+    class FromHandler;
+    friend class FromHandler;
 
     // Setup and construction
     SqlParseRunner(std::string const& statement, 
@@ -122,8 +126,10 @@ private:
     boost::shared_ptr<SqlSQL2Parser> _parser;
     std::string _delimiter;
     boost::shared_ptr<SpatialTableNotifier> _spatialTableNotifier;
-    StringMap _tableConfig;
+
     std::map<std::string, StringMap> _tableConfigMap;
+    StringPairList _spatialTables;
+
     Templater _templater;
     SpatialUdfHandler _spatialUdfHandler;
     AliasMgr _aliasMgr;
