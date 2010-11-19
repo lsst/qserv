@@ -10,6 +10,7 @@ import socket
 import stat
 import subprocess
 import sys
+import time
 
 try:
     import MySQLdb
@@ -40,6 +41,8 @@ class QservAdmin(object):
 
         if dbUrl is not None:
             self._dbConnect(dbUrl, password)
+
+        self.host = socket.getfqdn() + str(os.getpid())
 
     def __destroy__(self):
         self.conn.close()
@@ -97,9 +100,10 @@ class QservAdmin(object):
         cur.execute(
                 self._cmd("SELECT value FROM GlobalConfig WHERE param = %s"),
                 (param,))
-        if cur.rowcount != 1:
+        row = cur.fetchone()
+        if row is None:
             raise RuntimeError, "No value stored for parameter: " + param
-        return cur.fetchone()[0]
+        return row[0]
 
     def getParams(self):
         self._dbConnect()
@@ -114,19 +118,34 @@ class QservAdmin(object):
         self._dbConnect()
         cur = self.conn.cursor()
         cur.execute(self._cmd(
-            "UPDATE GlobalConfig SET value = %s WHERE param = %s"),
-            (value, param))
+            "REPLACE INTO GlobalConfig VALUES (%s, %s)"),
+            (param, value))
         self.conn.commit()
 
-    def addHost(self, hostPattern, port, configDict):
+    def addHost(self, hostPattern, configDict):
         hostType = configDict['type']
         self._dbConnect()
         cur = self.conn.cursor()
         cur.execute(
-                self._cmd("INSERT INTO StaticConfig VALUES (%s, %s, %s)"),
-                    (hostPattern, port, hostType))
+                self._cmd("INSERT INTO StaticConfig VALUES (%s, %s)"),
+                    (hostPattern, hostType))
         self.conn.commit()
         pass
+
+    def delHost(self, hostPattern, configDict):
+        hostType = configDict['type']
+        self._dbConnect()
+        cur = self.conn.cursor()
+        cur.execute(self._cmd(
+            "DELETE FROM StaticConfig WHERE hostPattern = %s AND hostType = %s"),
+            (hostPattern, hostType))
+        self.conn.commit()
+
+    def lsHost(self):
+        self._dbConnect()
+        cur = self.conn.cursor()
+        cur.execute("SELECT * FROM StaticConfig")
+        return cur.fetchall()
 
     def execute(self, nodeList, cmdList, filePattern=None):
         nodeSet = self._getNodeSet(nodeList)
@@ -174,10 +193,9 @@ class QservAdmin(object):
         nodeSet = self._getNodeSet(nodeList)
         cur = self.conn.cursor()
         result = []
-        for host, port in nodeSet:
+        for host in nodeSet:
             cur.execute(self._cmd(
-                "SELECT * FROM DynamicConfig WHERE host = %s AND port = %s"),
-                (host, port))
+                "SELECT * FROM DynamicConfig WHERE host = %s"), (host,))
             result.append(cur.fetchone())
         return result
 
@@ -196,7 +214,12 @@ class QservAdmin(object):
         self.start(nodeList)
 
     def shutdown(self):
+        self._dbConnect()
         self.stop(["ALL"])
+        cur = self.conn.cursor()
+        cur.execute("DELETE FROM DynamicConfig")
+        cur.execute("DELETE FROM MasterBid")
+        self.conn.commit()
 
     def initDb(self, dbUrl):
         self._dbConnect(dbUrl, newDb=True)
@@ -207,59 +230,84 @@ class QservAdmin(object):
         pass
 
     def register(self):
-        host = socket.getfqdn()
         self._dbConnect()
+        numFrontEnds = int(self.getParam("NUM_FRONTENDS"))
         cur = self.conn.cursor()
         cur.execute(self._cmd(
-            "SELECT hostPattern, port FROM StaticConfig" +
-            " WHERE hostType = 'MASTER' AND port NOT IN (" +
-            "SELECT port FROM DynamicConfig WHERE host = %s)"), (host,))
-        for pat, port in cur.fetchall():
-            if re.match(pat, host):
-                try:
-                    cur.execute(self._cmd(
-                        "INSERT INTO MasterBid VALUES (1, %s, %s);"),
-                        (host, port))
-                    cur.execute(self._cmd(
-                        "INSERT INTO DynamicConfig VALUES (%s, %s, %s, NULL);"),
-                        (host, port, "MANAGER"))
-                    self.conn.commit()
-                    return (port, "MANAGER")
-                except:
+            "SELECT hostPattern FROM StaticConfig WHERE hostType = 'MASTER'"))
+        for row in cur.fetchall():
+            pat = row[0]
+            if re.match(pat, self.host):
+                for i in xrange(numFrontEnds):
                     try:
                         cur.execute(self._cmd(
-                            "INSERT INTO MasterBid VALUES (2, %s, %s);"),
-                            (host, port))
+                            "INSERT INTO MasterBid VALUES (%s, %s);"),
+                            (i, self.host))
+                        if i < 2:
+                            hostType = "MANAGER"
+                        else:
+                            hostType = "FRONTEND"
                         cur.execute(self._cmd(
-                            "INSERT INTO DynamicConfig VALUES (%s, %s, %s, NULL);"),
-                            (host, port, "MANAGER"))
+                            "INSERT INTO DynamicConfig VALUES (%s, %s, NULL);"),
+                            (self.host, hostType))
                         self.conn.commit()
-                        return (port, "MANAGER")
-                    except:
-                        try:
-                            cur.execute(self._cmd(
-                                "INSERT INTO DynamicConfig VALUES (%s, %s, %s, NULL);"),
-                                (host, port, "FRONTEND"))
-                            self.conn.commit()
-                            return (port, "FRONTEND")
-                        except:
-                            pass
+                        return hostType
+                    except Exception, e:
+                        pass
         cur.execute(self._cmd(
-            "SELECT hostPattern, port FROM StaticConfig" +
-            " WHERE hostType = 'WORKER' AND port NOT IN (" +
-            "SELECT port FROM DynamicConfig WHERE host = %s)"), (host,))
-        for pat, port in cur.fetchall():
-            if re.match(pat, host):
+            "SELECT hostPattern FROM StaticConfig WHERE hostType = 'WORKER'"))
+        for row in cur.fetchall():
+            pat = row[0]
+            if re.match(pat, self.host):
                 try:
                     cur.execute(self._cmd(
-                        "INSERT INTO DynamicConfig VALUES (%s, %s, %s, NULL);"),
-                        (host, port, "WORKER"))
+                        "INSERT INTO DynamicConfig VALUES (%s, %s, NULL);"),
+                        (self.host, "WORKER"))
                     self.conn.commit()
-                    return (port, "WORKER")
-                except:
+                    return "WORKER"
+                except Exception, e:
                     pass
-        raise RuntimeError, "No available match for host: %s" % (host,)
+        raise RuntimeError, "No available match for host: %s" % (self.host,)
     
+    def waitForMasters(self):
+        self._dbConnect()
+        numFrontEnds = int(self.getParam("NUM_FRONTENDS"))
+        observedFrontEnds = 0
+        while observedFrontEnds < numFrontEnds:
+            time.sleep(2)
+            cur = self.conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM DynamicConfig WHERE hostType IN ('MANAGER', 'FRONTEND')")
+            observedFrontEnds = cur.fetchone()[0]
+
+    def waitForMasterStart(self):
+        self._dbConnect()
+        numFrontEnds = int(self.getParam("NUM_FRONTENDS"))
+        observedFrontEnds = 0
+        while observedFrontEnds < numFrontEnds:
+            sys.sleep(2)
+            cur = self.conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM DynamicConfig WHERE hostType IN ('MANAGER', 'FRONTEND') AND pid IS NOT NULL")
+            observedFrontEnds = cur.fetchone()[0]
+
+    def localInstall(self, hostType):
+        execEnv = dict(host=self.host, managers=self._getManagers(),
+                frontends=self._getFrontEnds)
+        script = self.getParam(hostType + "_INSTALL_SCRIPT")
+        with open(script, "r") as scriptFile:
+            exec scriptFile in execEnv
+
+    def loadPartitions(self):
+        execEnv = dict(host=self.host, partitions=partitionList)
+        script = self.getParam("PARTITION_LOAD_SCRIPT")
+        with open(script, "r") as scriptFile:
+            exec scriptFile in execEnv
+
+    def localStartup(self, hostType):
+        execEnv = dict(host=self.host)
+        script = self.getParam(hostType + "_RUN_SCRIPT")
+        with open(script, "r") as scriptFile:
+            exec scriptFile in execEnv
+
 ###############################################################################
 #
 # Internal database connection routines
@@ -350,28 +398,25 @@ class QservAdmin(object):
             cur.execute("""
             CREATE TABLE StaticConfig (
                 hostPattern VARCHAR(255) NOT NULL,
-                port INTEGER NOT NULL,
-                hostType VARCHAR(6) NOT NULL,
-                UNIQUE (hostPattern, port)
+                hostType VARCHAR(6) NOT NULL
             )""" + createExtra + ";")
             cur.execute("""
             CREATE TABLE DynamicConfig (
                 host VARCHAR(255) NOT NULL,
-                port INTEGER NOT NULL,
                 hostType VARCHAR(8) NOT NULL,
                 pid INTEGER,
-                UNIQUE(host, port)
+                UNIQUE (host)
             )""" + createExtra + ";")
             cur.execute("""
             CREATE TABLE GlobalConfig (
                 param VARCHAR(80) NOT NULL,
-                value %s
+                value %s,
+                UNIQUE (param)
             )""" % (valueType,) + createExtra + ";")
             cur.execute("""
             CREATE TABLE MasterBid (
                 masterNum INT NOT NULL,
                 host VARCHAR(255) NOT NULL,
-                port INTEGER NOT NULL,
                 PRIMARY KEY (masterNum)
             )""" + createExtra + ";")
             self.conn.commit()
@@ -406,12 +451,12 @@ class QservAdmin(object):
         self._dbConnect()
         cur = self.conn.cursor()
         if hostType is None:
-            cur.execute("SELECT host, port FROM DynamicConfig")
+            cur.execute("SELECT host FROM DynamicConfig")
         else:
             cur.execute(self._cmd(
-                "SELECT host, port FROM DynamicConfig WHERE hostType = %s"),
+                "SELECT host FROM DynamicConfig WHERE hostType = %s"),
                 (hostType,))
-        return cur.fetchall()
+        return [_[0] for _ in cur.fetchall()]
 
     def _getWorkers(self):
         return self._getHosts("WORKER")
@@ -424,6 +469,8 @@ class QservAdmin(object):
 
     def _getNodeSet(self, nodeList):
         nodeSet = set()
+        if len(nodeList) == 0:
+            nodeList = ["ALL"]
         for node in nodeList:
             if node in ("WORKERS", "FRONTENDS", "MANAGERS", "ALL"):
                 if node == "WORKERS":
@@ -457,8 +504,11 @@ Commands:
   get {PARAM|*}         prints value of global configuration parameter
   set PARAM {VALUE|-f FILE}
                         sets global configuration parameter
-  addhost PATTERN PORT [config options]
-                        adds host or host pattern with port to static config
+  addhost PATTERN [config options]
+                        adds host or host pattern to static config
+  delhost PATTERN [config options]
+                        deletes host or host pattern from static config
+  lshost                lists host patterns from static config
 
   status -n NODE        gives status information on specified node(s)
   start -n NODE         starts specified node(s) (fixed configuration only)
@@ -468,7 +518,7 @@ Commands:
 
   initdb                sets up administrative database
   install -n NODE       installs qserv software on node
-  register              registers current host, returning port and type"""
+  register              registers current host, returning type"""
 
         parser = OptionParser(usage=usage)
         group = OptionGroup(parser, "Overall Options")
@@ -536,14 +586,21 @@ Commands:
         self.setParam(args[0], value)
 
     def _cmd_addhost(self, options, args):
-        self.addHost(args[0], args[1], {'type': options.type})
+        self.addHost(args[0], {'type': options.type})
+
+    def _cmd_delhost(self, options, args):
+        self.delHost(args[0], {'type': options.type})
+
+    def _cmd_lshost(self, options, args):
+        for row in self.lsHost():
+            print "Host pattern:", row[0], "Type:", row[1]
 
     def _cmd_exec(self, options, args):
         self.execute(options.nodeList, args, options.filepattern)
 
     def _cmd_status(self, options, args):
         for row in self.status(options.nodeList):
-            print "Host:", row[0], "Port:", row[1], "Type:", row[2], "Pid:", row[3]
+            print "Host:", row[0], "Type:", row[1], "Pid:", row[2]
 
     def _cmd_start(self, options, args):
         self.start(options.nodeList)
@@ -570,6 +627,16 @@ Commands:
 
     def _cmd_register(self, options, args):
         print self.register()
+
+    def _cmd_batch(self, options, args):
+        hostType = self.register()
+        self.waitForMasters()
+        self.localInstall(hostType)
+        if hostType == "WORKER":
+            self.loadPartitions()
+            self.waitForMasterStart()
+        self.localStartup(hostType)
+
 
 def main():
     qsadm = QservAdmin()
