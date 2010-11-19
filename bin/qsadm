@@ -1,0 +1,581 @@
+#!/usr/bin/env python
+
+from __future__ import with_statement
+import getpass
+from optparse import OptionParser, OptionGroup
+import os
+import re
+import select
+import socket
+import stat
+import subprocess
+import sys
+
+try:
+    import MySQLdb
+    haveMySQL = True
+except:
+    haveMySQL = False
+try:
+    import sqlite3
+    haveSQLite = True
+except:
+    try:
+        import sqlite as sqlite3
+        haveSQLite = True
+    except:
+        haveSQLite = False
+
+class QservAdmin(object):
+    """Class for administering a qserv instance."""
+
+    def __init__(self, dbUrl=None, password=None):
+        """Constructor.
+
+        @param dbUrl optional string of form "{db type}://{user}@{db host}[:{db port}]/{db name}" pointing to the admin database
+        """
+
+        self.dotPath = os.path.expanduser("~/.qsadm")
+        self.conn = None
+
+        if dbUrl is not None:
+            self._dbConnect(dbUrl, password)
+
+    def __destroy__(self):
+        self.conn.close()
+
+###############################################################################
+#
+# Primary administration methods
+#
+###############################################################################
+
+    def setDb(self, dbUrl):
+        """Save database connection info in a cache at self.dotPath (~/.qsadm).
+        Asks user for password if needed.
+
+        @param dbUrl optional string of form "{db type}://[{user}@{db host}[:{db port}]]/{db name}" pointing to the admin database
+        """
+
+        exists = os.access(self.dotPath, os.R_OK)
+
+        dbType, dbHost, dbPort, dbName, username = self._parseDbUrl(dbUrl)
+        print "Database type:", dbType
+        if dbHost is not None:
+            print "Database host:", dbHost
+        if dbPort is not None:
+            print "Database port:", dbPort
+        print "Database name:", dbName
+        if username is not None:
+            print "Username:", username
+
+        needsPassword = self._needsPassword(dbType)
+        if needsPassword:
+            password = getpass.getpass()
+            password2 = getpass.getpass("Confirm password: ")
+            if password != password2:
+                raise RuntimeError, "Passwords do not match" + \
+                        (", cache unchanged" if exists else "")
+
+        with open(self.dotPath, "w") as f:
+            print >>f, dbUrl
+        os.chmod(self.dotPath, stat.S_IRUSR | stat.S_IWUSR)
+        if needsPassword:
+            with open(self.dotPath, "a") as f:
+                print >>f, password
+
+    def getDb(self):
+        exists = os.access(self.dotPath, os.R_OK)
+        if not exists:
+            raise RuntimeError, "No admin database URL saved"
+        else:
+            return self._readDotFile()[0]
+
+    def getParam(self, param):
+        self._dbConnect()
+        cur = self.conn.cursor()
+        cur.execute(
+                self._cmd("SELECT value FROM GlobalConfig WHERE param = %s"),
+                (param,))
+        if cur.rowcount != 1:
+            raise RuntimeError, "No value stored for parameter: " + param
+        return cur.fetchone()[0]
+
+    def getParams(self):
+        self._dbConnect()
+        cur = self.conn.cursor()
+        cur.execute("SELECT param, value FROM GlobalConfig")
+        params = dict()
+        for k, v in cur.fetchall():
+            params[k] = v
+        return params
+
+    def setParam(self, param, value):
+        self._dbConnect()
+        cur = self.conn.cursor()
+        cur.execute(self._cmd(
+            "UPDATE GlobalConfig SET value = %s WHERE param = %s"),
+            (value, param))
+        self.conn.commit()
+
+    def addHost(self, hostPattern, port, configDict):
+        hostType = configDict['type']
+        self._dbConnect()
+        cur = self.conn.cursor()
+        cur.execute(
+                self._cmd("INSERT INTO StaticConfig VALUES (%s, %s, %s)"),
+                    (hostPattern, port, hostType))
+        self.conn.commit()
+        pass
+
+    def execute(self, nodeList, cmdList, filePattern=None):
+        nodeSet = self._getNodeSet(nodeList)
+        if filePattern is not None:
+            procList = []
+            for n in nodeSet:
+                outfileName = filePattern % (n,)
+                if not os.path.exists(os.path.dirname(outfileName)):
+                    os.makedirs(os.path.dirname(outfileName))
+                outfile = open(outfileName, "w")
+                procList.append(subprocess.Popen(["ssh", n] + cmdList,
+                    stdout=outfile, stderr=subprocess.STDOUT))
+            for proc in procList:
+                proc.wait()
+            return
+        else:
+            fdList = []
+            procs = {}
+            for n in nodeSet:
+                proc = subprocess.Popen(["ssh", n] + cmdList,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                fdList.append(proc.stdout)
+                procs[proc.stdout.fileno()] = (proc, n)
+
+            while True:
+                try:
+                    rlist = select.select(fdList, [], [])[0]
+                except KeyboardInterrupt:
+                    print >>sys.stderr, "*** Interrupted from keyboard"
+                    for fd in fdList:
+                        os.kill(procs[fd.fileno()][0].pid, 15)
+                    sys.exit(1)
+                for fd in rlist:
+                    line = fd.readline()
+                    if line == "":
+                        procs[fd.fileno()][0].wait()
+                        fdList.remove(fd)
+                        if len(fdList) == 0:
+                            return
+                    else:
+                        print procs[fd.fileno()][1] + ":", line,
+
+    def status(self, nodeList):
+        self._dbConnect()
+        nodeSet = self._getNodeSet(nodeList)
+        cur = self.conn.cursor()
+        result = []
+        for host, port in nodeSet:
+            cur.execute(self._cmd(
+                "SELECT * FROM DynamicConfig WHERE host = %s AND port = %s"),
+                (host, port))
+            result.append(cur.fetchone())
+        return result
+
+    def start(self, nodeList):
+        self._dbConnect()
+        nodeSet = self._getNodeSet(nodeList)
+        pass
+
+    def stop(self, nodeList):
+        self._dbConnect()
+        nodeSet = self._getNodeSet(nodeList)
+        pass
+
+    def restart(self, nodeList):
+        self.stop(nodeList)
+        self.start(nodeList)
+
+    def shutdown(self):
+        self.stop(["ALL"])
+
+    def initDb(self, dbUrl):
+        self._dbConnect(dbUrl, newDb=True)
+
+    def install(self, nodeList):
+        self._dbConnect()
+        nodeSet = self._getNodeSet(nodeList)
+        pass
+
+    def register(self):
+        host = socket.getfqdn()
+        self._dbConnect()
+        cur = self.conn.cursor()
+        cur.execute(self._cmd(
+            "SELECT hostPattern, port FROM StaticConfig" +
+            " WHERE hostType = 'MASTER' AND port NOT IN (" +
+            "SELECT port FROM DynamicConfig WHERE host = %s)"), (host,))
+        for pat, port in cur.fetchall():
+            if re.match(pat, host):
+                try:
+                    cur.execute(self._cmd(
+                        "INSERT INTO MasterBid VALUES (1, %s, %s);"),
+                        (host, port))
+                    cur.execute(self._cmd(
+                        "INSERT INTO DynamicConfig VALUES (%s, %s, %s, NULL);"),
+                        (host, port, "MANAGER"))
+                    self.conn.commit()
+                    return (port, "MANAGER")
+                except:
+                    try:
+                        cur.execute(self._cmd(
+                            "INSERT INTO MasterBid VALUES (2, %s, %s);"),
+                            (host, port))
+                        cur.execute(self._cmd(
+                            "INSERT INTO DynamicConfig VALUES (%s, %s, %s, NULL);"),
+                            (host, port, "MANAGER"))
+                        self.conn.commit()
+                        return (port, "MANAGER")
+                    except:
+                        try:
+                            cur.execute(self._cmd(
+                                "INSERT INTO DynamicConfig VALUES (%s, %s, %s, NULL);"),
+                                (host, port, "FRONTEND"))
+                            self.conn.commit()
+                            return (port, "FRONTEND")
+                        except:
+                            pass
+        cur.execute(self._cmd(
+            "SELECT hostPattern, port FROM StaticConfig" +
+            " WHERE hostType = 'WORKER' AND port NOT IN (" +
+            "SELECT port FROM DynamicConfig WHERE host = %s)"), (host,))
+        for pat, port in cur.fetchall():
+            if re.match(pat, host):
+                try:
+                    cur.execute(self._cmd(
+                        "INSERT INTO DynamicConfig VALUES (%s, %s, %s, NULL);"),
+                        (host, port, "WORKER"))
+                    self.conn.commit()
+                    return (port, "WORKER")
+                except:
+                    pass
+        raise RuntimeError, "No available match for host: %s" % (host,)
+    
+###############################################################################
+#
+# Internal database connection routines
+#
+###############################################################################
+
+    def _parseDbUrl(self, dbUrl):
+        """(Internal) Parse admin database URL into components.
+
+        @param dbUrl optional string of form "{db type}://[{user}@{db host}[:{db port}]]/{db name}" pointing to the admin database
+        @return dbType
+        @return dbHost None if not specified
+        @return dbPort None if not specified
+        @return dbName (restricted to alphanumerics, dot, and underscore)
+        @return username None if not specified
+        """
+        m = re.match(r'(\w+)://(([\w.]+)@([\w.]+)(:(\d+))?)?/([\w.]+)', dbUrl)
+        if not m:
+            raise RuntimeError, "Unrecognized database URL: " + dbUrl
+        return m.group(1), m.group(4), m.group(6), m.group(7), m.group(3)
+
+    def _needsPassword(self, dbType):
+        """(Internal) Return True if database type requires a password."""
+
+        return not dbType.startswith("sqlite")
+
+    def _dbConnect(self, dbUrl=None, password=None, newDb=False):
+        """(Internal) Connect to the admin database.
+
+        @param dbUrl optional string of form "{db type}://[{user}@{db host}[:{db port}]]/{db name}" pointing to the admin database
+        @param password optional password string for admin database
+        @param newDb if True, create the database
+
+        Connection information is read from the cache if no dbUrl is provided.
+
+        Password is read from the user if needed by the database type and not
+        provided as an argument or via the cache.
+        """
+
+        if self.conn is not None:
+            return
+
+        createExtra = ""
+        if dbUrl is None:
+            dbUrl, password = self._readDotFile()
+        dbType, dbHost, dbPort, dbName, username = self._parseDbUrl(dbUrl)
+        if dbType == "mysql" and haveMySQL:
+            if password is None:
+                password = getpass.getpass()
+            if dbPort is None:
+                dbPort = 3306
+            if newDb:
+                valueType = "MEDIUMTEXT"
+                with MySQLdb.connect(
+                        host=dbHost,
+                        port=dbPort,
+                        user=username,
+                        passwd=password) as cur:
+                    # dbName has been restricted to alphanumerics by
+                    # parseDbUrl, so this is not a security hole
+                    cur.execute("DROP DATABASE IF EXISTS `%s`;" % (dbName,))
+                    cur.execute("CREATE DATABASE `%s`;" % (dbName,))
+            self.conn = MySQLdb.connect(
+                    host=dbHost,
+                    port=dbPort,
+                    user=username,
+                    passwd=password,
+                    db=dbName)
+            self._cmd = lambda cmd: cmd
+            createExtra = " ENGINE=InnoDB"
+        elif dbType in ["sqlite3", "sqlite"] and haveSQLite:
+            self.conn = sqlite3.connect(database=dbName)
+            if not self.conn:
+                raise RuntimeError, \
+                        "Unable to connect to SQLite database: " + dbName
+            self._cmd = lambda cmd: cmd.replace("%s", "?")
+            if newDb:
+                valueType = "TEXT"
+                self.conn.execute("DROP TABLE IF EXISTS StaticConfig;")
+                self.conn.execute("DROP TABLE IF EXISTS DynamicConfig;")
+                self.conn.execute("DROP TABLE IF EXISTS GlobalConfig;")
+                self.conn.execute("DROP TABLE IF EXISTS MasterBid;")
+        else:
+            raise RuntimeError, \
+                    "Unrecognized/unavailable database type: " + dbType
+        if newDb:
+            cur = self.conn.cursor()
+            cur.execute("""
+            CREATE TABLE StaticConfig (
+                hostPattern VARCHAR(255) NOT NULL,
+                port INTEGER NOT NULL,
+                hostType VARCHAR(6) NOT NULL,
+                UNIQUE (hostPattern, port)
+            )""" + createExtra + ";")
+            cur.execute("""
+            CREATE TABLE DynamicConfig (
+                host VARCHAR(255) NOT NULL,
+                port INTEGER NOT NULL,
+                hostType VARCHAR(8) NOT NULL,
+                pid INTEGER,
+                UNIQUE(host, port)
+            )""" + createExtra + ";")
+            cur.execute("""
+            CREATE TABLE GlobalConfig (
+                param VARCHAR(80) NOT NULL,
+                value %s
+            )""" % (valueType,) + createExtra + ";")
+            cur.execute("""
+            CREATE TABLE MasterBid (
+                masterNum INT NOT NULL,
+                host VARCHAR(255) NOT NULL,
+                port INTEGER NOT NULL,
+                PRIMARY KEY (masterNum)
+            )""" + createExtra + ";")
+            self.conn.commit()
+
+    def _readDotFile(self):
+        """(Internal) Read the database connection info cache from self.dotPath (~/.qsadm).
+        """
+
+        if not os.access(self.dotPath, os.R_OK):
+            raise RuntimeError, "No database URL provided " + \
+                    "and ~/.qsadm does not exist or is inaccessible."
+
+        with open(self.dotPath, "r") as f:
+            lines = f.readlines()
+            if len(lines) < 1:
+                raise RuntimeError, "Empty ~/.qsadm cache file"
+            elif len(lines) < 2:
+                dbUrl = lines[0].strip()
+                password = None
+            else:
+                dbUrl = lines[0].strip()
+                password = lines[1].strip('\n')
+        return dbUrl, password
+
+###############################################################################
+#
+# Internal database manipulation routines
+#
+###############################################################################
+
+    def _getHosts(self, hostType=None):
+        self._dbConnect()
+        cur = self.conn.cursor()
+        if hostType is None:
+            cur.execute("SELECT host, port FROM DynamicConfig")
+        else:
+            cur.execute(self._cmd(
+                "SELECT host, port FROM DynamicConfig WHERE hostType = %s"),
+                (hostType,))
+        return cur.fetchall()
+
+    def _getWorkers(self):
+        return self._getHosts("WORKER")
+
+    def _getFrontEnds(self):
+        return self._getHosts("FRONTEND")
+
+    def _getManagers(self):
+        return self._getHosts("MANAGER")
+
+    def _getNodeSet(self, nodeList):
+        nodeSet = set()
+        for node in nodeList:
+            if node in ("WORKERS", "FRONTENDS", "MANAGERS", "ALL"):
+                if node == "WORKERS":
+                    nodeSet.update(set(self._getWorkers()))
+                elif node == "FRONTENDS":
+                    nodeSet.update(set(self._getFrontEnds()))
+                elif node == "MANAGERS":
+                    nodeSet.update(set(self._getManagers()))
+                else:
+                    nodeSet.update(set(self._getHosts()))
+            else:
+                nodeSet.add(node)
+        return nodeSet
+
+###############################################################################
+#
+# Option parsing and main program
+#
+###############################################################################
+
+    def parseOptions(self):
+        usage = """usage: %prog [-v] [-u DBURL] COMMAND [options] [args]
+
+Commands:
+  setdb                 saves database URL and credentials in ~/.qsadm
+  getdb                 lists current saved database URL
+
+  exec -n NODE [-o FILEPATTERN] -- CMD
+                        executes CMD on specified node(s)
+
+  get {PARAM|*}         prints value of global configuration parameter
+  set PARAM {VALUE|-f FILE}
+                        sets global configuration parameter
+  addhost PATTERN PORT [config options]
+                        adds host or host pattern with port to static config
+
+  status -n NODE        gives status information on specified node(s)
+  start -n NODE         starts specified node(s) (fixed configuration only)
+  stop -n NODE          stops specified node(s)
+  restart -n NODE       restarts specified node(s) (fixed configuration only)
+  shutdown              shuts down entire system
+
+  initdb                sets up administrative database
+  install -n NODE       installs qserv software on node
+  register              registers current host, returning port and type"""
+
+        parser = OptionParser(usage=usage)
+        group = OptionGroup(parser, "Overall Options")
+        group.add_option("-v", "--verbose", action="store_true",
+                dest="verbose")
+        group.add_option("-u", "--url", dest="dbUrl",
+                help="admin database URL of form {db type}://{user}@{db host}[:{db port}]/{db name}")
+        parser.add_option_group(group)
+
+        group = OptionGroup(parser, "Node Selection Option (can be repeated)")
+        group.add_option("-n", "--node", dest="nodeList", action="append",
+                default=[],
+                help="nodes (name|MASTERS|MANAGERS|FRONTENDS|WORKERS|ALL)")
+        parser.add_option_group(group)
+
+        group = OptionGroup(parser, "Exec Option")
+        group.add_option("-o", "--output", dest="filepattern",
+                help="output log file name pattern (using %s for hostname)")
+        parser.add_option_group(group)
+
+        group = OptionGroup(parser, "Node Configuration Options")
+        group.add_option("-t", "--type", dest="type",
+                default="WORKER",
+                help="node type (MASTER|WORKER)")
+        group.add_option("-f", "--file", dest="file",
+                help="file containing configuration parameter value text")
+        parser.add_option_group(group)
+
+        (options, args) = parser.parse_args()
+
+        if len(args) < 1:
+            parser.error("No subcommand given")
+        cmd = "_cmd_" + args[0]
+        if not hasattr(self, cmd):
+            parser.error("Unrecognized command: " + cmd)
+        del args[0]
+        return getattr(self, cmd), options, args
+
+    """The following functions reformat the provided options and arguments
+    into arguments for the actual methods above."""
+
+    def _cmd_setdb(self, options, args):
+        if options.dbUrl is None and len(args) == 1:
+            options.dbUrl = args[0]
+        else:
+            raise RuntimeError, "No database URL provided"
+        self.setDb(options.dbUrl)
+
+    def _cmd_getdb(self, options, args):
+        print self.getDb()
+
+    def _cmd_get(self, options, args):
+        if args[0] == '*':
+            for k, v in self.getParams().iteritems():
+                print k, "=", v
+        else:
+            print self.getParam(args[0])
+
+    def _cmd_set(self, options, args):
+        if options.file is not None:
+            with open(options.file, "r") as f:
+                value = f.read(1000000)
+        else:
+            value = args[1]
+        self.setParam(args[0], value)
+
+    def _cmd_addhost(self, options, args):
+        self.addHost(args[0], args[1], {'type': options.type})
+
+    def _cmd_exec(self, options, args):
+        self.execute(options.nodeList, args, options.filepattern)
+
+    def _cmd_status(self, options, args):
+        for row in self.status(options.nodeList):
+            print "Host:", row[0], "Port:", row[1], "Type:", row[2], "Pid:", row[3]
+
+    def _cmd_start(self, options, args):
+        self.start(options.nodeList)
+
+    def _cmd_stop(self, options, args):
+        self.stop(options.nodeList)
+
+    def _cmd_restart(self, options, args):
+        self.restart(options.nodeList)
+
+    def _cmd_shutdown(self, options, args):
+        self.shutdown()
+
+    def _cmd_initdb(self, options, args):
+        if options.dbUrl is None:
+            if len(args) == 1:
+                options.dbUrl = args[0]
+            else:
+                raise RuntimeError, "No database URL provided"
+        self.initDb(options.dbUrl)
+
+    def _cmd_install(self, options, args):
+        self.install(options.nodeList)
+
+    def _cmd_register(self, options, args):
+        print self.register()
+
+def main():
+    qsadm = QservAdmin()
+    (cmd, options, args) = qsadm.parseOptions()
+    cmd(options, args)
+
+if __name__ == "__main__":
+    main()
+
