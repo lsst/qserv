@@ -38,11 +38,10 @@ class QservAdmin(object):
 
         self.dotPath = os.path.expanduser("~/.qsadm")
         self.conn = None
+        self.fakeHost = False
 
         if dbUrl is not None:
             self._dbConnect(dbUrl, password)
-
-        self.host = socket.getfqdn() + str(os.getpid())
 
     def __destroy__(self):
         self.conn.close()
@@ -230,6 +229,7 @@ class QservAdmin(object):
         pass
 
     def register(self):
+        host = self.getHost()
         self._dbConnect()
         numFrontEnds = int(self.getParam("NUM_FRONTENDS"))
         cur = self.conn.cursor()
@@ -237,19 +237,19 @@ class QservAdmin(object):
             "SELECT hostPattern FROM StaticConfig WHERE hostType = 'MASTER'"))
         for row in cur.fetchall():
             pat = row[0]
-            if re.match(pat, self.host):
+            if re.match(pat, host):
                 for i in xrange(numFrontEnds):
                     try:
                         cur.execute(self._cmd(
                             "INSERT INTO MasterBid VALUES (%s, %s);"),
-                            (i, self.host))
+                            (i, host))
                         if i < 2:
                             hostType = "MANAGER"
                         else:
                             hostType = "FRONTEND"
                         cur.execute(self._cmd(
                             "INSERT INTO DynamicConfig VALUES (%s, %s, NULL);"),
-                            (self.host, hostType))
+                            (host, hostType))
                         self.conn.commit()
                         return hostType
                     except Exception, e:
@@ -258,16 +258,16 @@ class QservAdmin(object):
             "SELECT hostPattern FROM StaticConfig WHERE hostType = 'WORKER'"))
         for row in cur.fetchall():
             pat = row[0]
-            if re.match(pat, self.host):
+            if re.match(pat, host):
                 try:
                     cur.execute(self._cmd(
                         "INSERT INTO DynamicConfig VALUES (%s, %s, NULL);"),
-                        (self.host, "WORKER"))
+                        (host, "WORKER"))
                     self.conn.commit()
                     return "WORKER"
                 except Exception, e:
                     pass
-        raise RuntimeError, "No available match for host: %s" % (self.host,)
+        raise RuntimeError, "No available match for host: %s" % (host,)
     
     def waitForMasters(self):
         self._dbConnect()
@@ -290,23 +290,77 @@ class QservAdmin(object):
             observedFrontEnds = cur.fetchone()[0]
 
     def localInstall(self, hostType):
-        execEnv = dict(host=self.host, managers=self._getManagers(),
-                frontends=self._getFrontEnds)
+        execEnv = dict(host=self.getHost(), managers=self._getManagers(),
+                frontends=self._getFrontEnds())
         script = self.getParam(hostType + "_INSTALL_SCRIPT")
         with open(script, "r") as scriptFile:
             exec scriptFile in execEnv
 
+    def partitionStrategy(self):
+        numPartitions = int(self.getParam("NUM_PARTITIONS"))
+        numNodes = int(self.getParam("NUM_NODES"))
+        cur = self.conn.cursor()
+        cur.execute(self._cmd(
+            "SELECT hostId FROM DynamicConfig WHERE host = %s"),
+            (self.getHost(),))
+        nodeId = cur.fetchone()[0]
+        partitionList = [_ for _ in xrange(numPartitions) \
+                if _ % numNodes == nodeId]
+        return partitionList
+
     def loadPartitions(self):
-        execEnv = dict(host=self.host, partitions=partitionList)
+        self._dbConnect()
+        host = self.getHost()
+        partitionList = self.partitionStrategy()
+        cur = self.conn.cursor()
+        for partition in partitionList:
+            cur.execute(self._cmd(
+                "INSERT INTO PartitionConfig VALUES (%s, %s)"),
+                (host, partition))
+        self.conn.commit()
+
+        execEnv = dict(host=self.getHost(), partitions=partitionList)
         script = self.getParam("PARTITION_LOAD_SCRIPT")
         with open(script, "r") as scriptFile:
             exec scriptFile in execEnv
 
     def localStartup(self, hostType):
-        execEnv = dict(host=self.host)
+        self._dbConnect()
+        host = self.getHost()
+        cur = self.conn.cursor()
+        cur.execute(self._cmd(
+            "UPDATE DynamicConfig SET pid = %s WHERE host = %s"),
+            (os.getpid(), host))
+        execEnv = dict(host=host)
         script = self.getParam(hostType + "_RUN_SCRIPT")
         with open(script, "r") as scriptFile:
             exec scriptFile in execEnv
+
+    def getHost(self):
+        host = socket.getfqdn()
+        if self.fakeHost:
+            host += "-" + str(os.getpid())
+        return host
+
+    def dumpConfig(self):
+        self._dbConnect()
+        cur = self.conn.cursor()
+        print "Global Configuration:"
+        cur.execute("SELECT * FROM GlobalConfig")
+        print cur.fetchall()
+        print "Static Configuration:"
+        cur.execute("SELECT * FROM StaticConfig")
+        print cur.fetchall()
+        print "Partition Configuration:"
+        cur.execute("SELECT * FROM PartitionConfig")
+        print cur.fetchall()
+        print "Dynamic Configuration:"
+        cur.execute("SELECT * FROM DynamicConfig")
+        print cur.fetchall()
+        print "Master Bidding Table:"
+        cur.execute("SELECT * FROM MasterBid")
+        print cur.fetchall()
+
 
 ###############################################################################
 #
@@ -361,6 +415,8 @@ class QservAdmin(object):
                 dbPort = 3306
             if newDb:
                 valueType = "MEDIUMTEXT"
+                createExtra = " ENGINE=InnoDB"
+                autoinc = " AUTO_INCREMENT"
                 with MySQLdb.connect(
                         host=dbHost,
                         port=dbPort,
@@ -377,18 +433,23 @@ class QservAdmin(object):
                     passwd=password,
                     db=dbName)
             self._cmd = lambda cmd: cmd
-            createExtra = " ENGINE=InnoDB"
         elif dbType in ["sqlite3", "sqlite"] and haveSQLite:
             self.conn = sqlite3.connect(database=dbName)
             if not self.conn:
                 raise RuntimeError, \
                         "Unable to connect to SQLite database: " + dbName
-            self._cmd = lambda cmd: cmd.replace("%s", "?")
+            if sqlite3.paramstyle != "pyformat":
+                self._cmd = lambda cmd: cmd.replace("%s", "?")
+            else:
+                self._cmd = lambda cmd: cmd
             if newDb:
                 valueType = "TEXT"
-                self.conn.execute("DROP TABLE IF EXISTS StaticConfig;")
-                self.conn.execute("DROP TABLE IF EXISTS DynamicConfig;")
+                createExtra = ""
+                autoinc = "PRIMARY KEY AUTOINCREMENT"
                 self.conn.execute("DROP TABLE IF EXISTS GlobalConfig;")
+                self.conn.execute("DROP TABLE IF EXISTS StaticConfig;")
+                self.conn.execute("DROP TABLE IF EXISTS PartitionConfig;")
+                self.conn.execute("DROP TABLE IF EXISTS DynamicConfig;")
                 self.conn.execute("DROP TABLE IF EXISTS MasterBid;")
         else:
             raise RuntimeError, \
@@ -396,23 +457,29 @@ class QservAdmin(object):
         if newDb:
             cur = self.conn.cursor()
             cur.execute("""
-            CREATE TABLE StaticConfig (
-                hostPattern VARCHAR(255) NOT NULL,
-                hostType VARCHAR(6) NOT NULL
-            )""" + createExtra + ";")
-            cur.execute("""
-            CREATE TABLE DynamicConfig (
-                host VARCHAR(255) NOT NULL,
-                hostType VARCHAR(8) NOT NULL,
-                pid INTEGER,
-                UNIQUE (host)
-            )""" + createExtra + ";")
-            cur.execute("""
             CREATE TABLE GlobalConfig (
                 param VARCHAR(80) NOT NULL,
                 value %s,
                 UNIQUE (param)
             )""" % (valueType,) + createExtra + ";")
+            cur.execute("""
+            CREATE TABLE StaticConfig (
+                hostPattern VARCHAR(255) NOT NULL,
+                hostType VARCHAR(6) NOT NULL
+            )""" + createExtra + ";")
+            cur.execute("""
+            CREATE TABLE PartitionConfig (
+                hostId INTEGER,
+                partition INTEGER
+            )""" + createExtra + ";")
+            cur.execute("""
+            CREATE TABLE DynamicConfig (
+                hostId INTEGER %s,
+                host VARCHAR(255) NOT NULL,
+                hostType VARCHAR(8) NOT NULL,
+                pid INTEGER,
+                UNIQUE (host)
+            )""" % autoinc + createExtra + ";")
             cur.execute("""
             CREATE TABLE MasterBid (
                 masterNum INT NOT NULL,
@@ -509,6 +576,7 @@ Commands:
   delhost PATTERN [config options]
                         deletes host or host pattern from static config
   lshost                lists host patterns from static config
+  dumpconfig            dumps entire configuration database
 
   status -n NODE        gives status information on specified node(s)
   start -n NODE         starts specified node(s) (fixed configuration only)
@@ -547,7 +615,12 @@ Commands:
                 help="file containing configuration parameter value text")
         parser.add_option_group(group)
 
+        parser.add_option("--fake-host", dest="fakeHost", action="store_true",
+                help="fake variable host names with process id for testing")
+
         (options, args) = parser.parse_args()
+
+        self.fakeHost = options.fakeHost
 
         if len(args) < 1:
             parser.error("No subcommand given")
@@ -637,6 +710,8 @@ Commands:
             self.waitForMasterStart()
         self.localStartup(hostType)
 
+    def _cmd_dumpconfig(self, options, args):
+        self.dumpConfig()
 
 def main():
     qsadm = QservAdmin()
