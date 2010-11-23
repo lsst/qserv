@@ -216,6 +216,7 @@ class QservAdmin(object):
         self._dbConnect()
         self.stop(["ALL"])
         cur = self.conn.cursor()
+        cur.execute("DELETE FROM PartitionConfig")
         cur.execute("DELETE FROM DynamicConfig")
         cur.execute("DELETE FROM MasterBid")
         self.conn.commit()
@@ -231,6 +232,7 @@ class QservAdmin(object):
     def register(self):
         host = self.getHost()
         self._dbConnect()
+        numManagers = int(self.getParam("NUM_MANAGERS"))
         numFrontEnds = int(self.getParam("NUM_FRONTENDS"))
         cur = self.conn.cursor()
         cur.execute(self._cmd(
@@ -239,34 +241,48 @@ class QservAdmin(object):
             pat = row[0]
             if re.match(pat, host):
                 for i in xrange(numFrontEnds):
-                    try:
-                        cur.execute(self._cmd(
-                            "INSERT INTO MasterBid VALUES (%s, %s);"),
-                            (i, host))
-                        if i < 2:
-                            hostType = "MANAGER"
-                        else:
-                            hostType = "FRONTEND"
-                        cur.execute(self._cmd(
-                            "INSERT INTO DynamicConfig VALUES (%s, %s, NULL);"),
-                            (host, hostType))
-                        self.conn.commit()
-                        return hostType
-                    except Exception, e:
-                        pass
+                    done = False
+                    while not done:
+                        try:
+                            cur.execute(self._cmd(
+                                "INSERT INTO MasterBid VALUES (%s, %s);"),
+                                (i, host))
+                            if i < numManagers:
+                                hostType = "MANAGER"
+                            else:
+                                hostType = "FRONTEND"
+                            cur.execute(self._cmd(
+                                "INSERT INTO DynamicConfig VALUES (NULL, %s, %s, NULL);"),
+                                (host, hostType))
+                            self.conn.commit()
+                            return hostType
+                        except sqlite3.OperationalError, e:
+                            print e
+                        except sqlite3.IntegrityError, e:
+                            done = True
+                        except Exception, e:
+                            print type(e), e
+                            done = True
         cur.execute(self._cmd(
             "SELECT hostPattern FROM StaticConfig WHERE hostType = 'WORKER'"))
         for row in cur.fetchall():
             pat = row[0]
             if re.match(pat, host):
-                try:
-                    cur.execute(self._cmd(
-                        "INSERT INTO DynamicConfig VALUES (%s, %s, NULL);"),
-                        (host, "WORKER"))
-                    self.conn.commit()
-                    return "WORKER"
-                except Exception, e:
-                    pass
+                done = False
+                while not done:
+                    try:
+                        cur.execute(self._cmd(
+                            "INSERT INTO DynamicConfig VALUES (NULL, %s, %s, NULL);"),
+                            (host, "WORKER"))
+                        self.conn.commit()
+                        return "WORKER"
+                    except sqlite3.OperationalError, e:
+                        print e
+                    except sqlite3.IntegrityError, e:
+                        done = True
+                    except Exception, e:
+                        print type(e), e
+                        done = True
         raise RuntimeError, "No available match for host: %s" % (host,)
     
     def waitForMasters(self):
@@ -284,7 +300,7 @@ class QservAdmin(object):
         numFrontEnds = int(self.getParam("NUM_FRONTENDS"))
         observedFrontEnds = 0
         while observedFrontEnds < numFrontEnds:
-            sys.sleep(2)
+            time.sleep(2)
             cur = self.conn.cursor()
             cur.execute("SELECT COUNT(*) FROM DynamicConfig WHERE hostType IN ('MANAGER', 'FRONTEND') AND pid IS NOT NULL")
             observedFrontEnds = cur.fetchone()[0]
@@ -336,6 +352,16 @@ class QservAdmin(object):
         with open(script, "r") as scriptFile:
             exec scriptFile in execEnv
 
+    def waitForStart(self):
+        self._dbConnect()
+        numFrontEnds = int(self.getParam("NUM_NODES"))
+        observedNodes = 0
+        while observedNodes < numNodes:
+            time.sleep(2)
+            cur = self.conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM DynamicConfig WHERE pid IS NOT NULL")
+            observedNodes = cur.fetchone()[0]
+
     def getHost(self):
         host = socket.getfqdn()
         if self.fakeHost:
@@ -378,7 +404,7 @@ class QservAdmin(object):
         @return dbName (restricted to alphanumerics, dot, and underscore)
         @return username None if not specified
         """
-        m = re.match(r'(\w+)://(([\w.]+)@([\w.]+)(:(\d+))?)?/([\w.]+)', dbUrl)
+        m = re.match(r'(\w+)://(([\w.]+)@([\w.]+)(:(\d+))?)?/([\w./]+)', dbUrl)
         if not m:
             raise RuntimeError, "Unrecognized database URL: " + dbUrl
         return m.group(1), m.group(4), m.group(6), m.group(7), m.group(3)
@@ -562,6 +588,7 @@ class QservAdmin(object):
         usage = """usage: %prog [-v] [-u DBURL] COMMAND [options] [args]
 
 Commands:
+  initdb                sets up administrative database
   setdb                 saves database URL and credentials in ~/.qsadm
   getdb                 lists current saved database URL
 
@@ -584,9 +611,34 @@ Commands:
   restart -n NODE       restarts specified node(s) (fixed configuration only)
   shutdown              shuts down entire system
 
-  initdb                sets up administrative database
   install -n NODE       installs qserv software on node
-  register              registers current host, returning type"""
+
+  register              registers current host, returning type
+  batch                 registers, configures, and starts current host
+  batchwait             waits for all nodes to start
+
+  dumpconfig            dumps out current configuration in admin database
+  
+Parameters:
+  NUM_MANAGERS          Number of managers to configure
+  NUM_FRONTENDS         Number of frontends to configure (including managers)
+  NUM_NODES             Total number of nodes expected
+  NUM_PARTITIONS        Number of partitions to be loaded
+  MANAGER_INSTALL_SCRIPT
+  FRONTEND_INSTALL_SCRIPT
+  WORKER_INSTALL_SCRIPT
+                        Python install script pathnames (receive names of
+                        host, managers, and frontends in global variables with
+                        those names)
+  MANAGER_RUN_SCRIPT
+  FRONTEND_RUN_SCRIPT
+  WORKER_RUN_SCRIPT
+                        Python startup script pathnames (receive name of
+                        host in global variable with that name)
+  PARTITION_LOAD_SCRIPT
+                        Python script to load partitions into node (receives
+                        name of host and list of partition numbers in global
+                        variables host/partitions)"""
 
         parser = OptionParser(usage=usage)
         group = OptionGroup(parser, "Overall Options")
@@ -709,6 +761,9 @@ Commands:
             self.loadPartitions()
             self.waitForMasterStart()
         self.localStartup(hostType)
+
+    def _cmd_batchwait(self, options, args):
+        self.waitForStart()
 
     def _cmd_dumpconfig(self, options, args):
         self.dumpConfig()
