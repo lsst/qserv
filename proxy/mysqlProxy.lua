@@ -382,7 +382,8 @@ function queryType()
             string.find(qU, "^SHOW DATABASES") or
             string.find(qU, "^SHOW TABLES") or
             string.find(qU, "^DESCRIBE ") or
-            string.find(qU, "^DESC ") then
+            string.find(qU, "^DESC ") or
+            string.find(qU, "^SELECT CURRENT_USER()") then
             return true
         end
         return false
@@ -444,7 +445,7 @@ qType = queryType()
 
 function queryProcessing()
 
-    local self = { lockTableName = nil, resultTableName = nil }
+    local self = { lockTableName = nil, resultTableName = nil, qservError = "" }
 
     ---------------------------------------------------------------------------
 
