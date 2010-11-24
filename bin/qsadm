@@ -305,6 +305,17 @@ class QservAdmin(object):
             cur.execute("SELECT COUNT(*) FROM DynamicConfig WHERE hostType IN ('MANAGER', 'FRONTEND') AND pid IS NOT NULL")
             observedFrontEnds = cur.fetchone()[0]
 
+    def waitForWorkerReg(self):
+        self._dbConnect()
+        numFrontEnds = int(self.getParam("NUM_FRONTENDS"))
+        numWorkers = int(self.getParam("NUM_NODES")) - numFrontEnds
+        observedWorkers = 0
+        while observedWorkers < numWorkers:
+            time.sleep(2)
+            cur = self.conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM DynamicConfig WHERE hostType = 'WORKER'")
+            observedWorkers = cur.fetchone()[0]
+
     def localInstall(self, hostType):
         execEnv = dict(host=self.getHost(), managers=self._getManagers(),
                 frontends=self._getFrontEnds())
@@ -313,13 +324,12 @@ class QservAdmin(object):
             exec scriptFile in execEnv
 
     def partitionStrategy(self):
+        host = self.getHost()
         numPartitions = int(self.getParam("NUM_PARTITIONS"))
         numNodes = int(self.getParam("NUM_NODES"))
         cur = self.conn.cursor()
-        cur.execute(self._cmd(
-            "SELECT hostId FROM DynamicConfig WHERE host = %s"),
-            (self.getHost(),))
-        nodeId = cur.fetchone()[0]
+        cur.execute("SELECT host FROM DynamicConfig ORDER BY hostId")
+        nodeId = cur.fetchall().index((host,))
         partitionList = [_ for _ in xrange(numPartitions) \
                 if _ % numNodes == nodeId]
         return partitionList
@@ -758,6 +768,7 @@ Parameters:
         self.waitForMasters()
         self.localInstall(hostType)
         if hostType == "WORKER":
+            self.waitForWorkerReg()
             self.loadPartitions()
             self.waitForMasterStart()
         self.localStartup(hostType)
