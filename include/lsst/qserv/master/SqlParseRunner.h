@@ -104,6 +104,7 @@ private:
     void _computeParseResult();
     void _makeOverlapMap();
     std::string _composeOverlap(std::string const& query);
+    std::string _interpretBadDbs(Templater::StringList const& bd);
 
     // Parse handlers
     friend class LimitHandler;

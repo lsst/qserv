@@ -42,21 +42,20 @@ namespace master {
 /// substitution.
 class SqlSubstitution {
 public:
-    // Help SWIG detect StringMap
-    typedef lsst::qserv::master::StringMap StringMap;
     typedef std::deque<std::string> Deque;
     typedef Deque::const_iterator DequeConstIter;
     typedef lsst::qserv::master::MergeFixup MergeFixup;
 
+    // Non-typedef'd map is necessary for SWIG.
     SqlSubstitution(std::string const& sqlStatement, 
                     ChunkMapping const& mapping, 
-                    StringMap const& config);
+                    std::map<std::string,std::string> const& config);
     /// config should include qserv master config + current session context
     /// i.e., defaultDb=LSST (or defaultDb=TestDb)
 
     void importSubChunkTables(char** cStringArr);
     std::string transform(int chunk, int subChunk);
-    std::string substituteOnly(StringMap const& m);
+    std::string substituteOnly(std::map<std::string, std::string> const& m);
     
     /// 0: none, 1: chunk, 2: subchunk
     int getChunkLevel() const { return _chunkLevel; }

@@ -283,6 +283,7 @@ BOOST_AUTO_TEST_CASE(BadDbAccess) {
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr, true);
 }
+
 BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     std::string stmt = "select * from LSST.Object o, LSST.Source s WHERE "
         "qserv_areaspec_box(2,2,3,3) AND o.objectId = s.objectId;";
@@ -293,6 +294,17 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(!spr->getHasAggregate());
 }
+
+BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
+    std::string stmt = "select count(*) from Object as o1, Object as o2;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 

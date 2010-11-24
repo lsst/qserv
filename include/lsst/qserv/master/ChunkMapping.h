@@ -52,7 +52,7 @@ public:
 
     // Get a reference to this instance's Mapping, which is overwritten
     // each time this method is called.
-    Map const& getMapReference(int chunk, int subChunk);
+    std::map<std::string,std::string> const& getMapReference(int chunk, int subChunk);
 
     // ChunkKeys: tables partitioned into chunks (not subc)
     // SubChunkKeys: tables partitioned into chunks and subchunks.

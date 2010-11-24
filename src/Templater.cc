@@ -201,6 +201,7 @@ void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
             n = insertTextNodeBefore(_factory, _defaultDb + _nameSep, n);
             dbName = _defaultDb;
         } else { // No context and bad/missing defaultDb
+            //std::cout << _defaultDb << " is bad(default)." << std::endl;
             _markBadDb(_defaultDb);
         }
     } else {

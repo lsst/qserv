@@ -274,13 +274,35 @@ void qMaster::SqlParseRunner::_computeParseResult() {
         _errorMsg = std::string("General exception: ") + e.what();
     }
     if(hasBadDbs) {
-        std::stringstream ss;
-        ss << " Query references prohibited dbs: ";
-        Templater::StringList const& sl = _templater.getBadDbs();
-        std::for_each(sl.begin(), sl.end(), coercePrint<std::string>(ss, ","));
-        _errorMsg += ss.str();
+        _errorMsg += _interpretBadDbs(_templater.getBadDbs());
     }
     return; 
+}
+
+// Interprets a list of bad dbs and computes an appropriate error message.
+std::string qMaster::SqlParseRunner::_interpretBadDbs(qMaster::Templater::StringList const& bd) {
+    std::stringstream ss;
+    typedef qMaster::Templater::StringList::const_iterator ConstIter;
+    ConstIter end = bd.end();
+    bool hasDefBad = false;  // default db is bad.
+    bool hasRealBad = false; // specified db is bad.
+    coercePrint<std::string> cp(ss, ",");
+    for(ConstIter ci = bd.begin(); ci != end; ++ci) {
+        if(ci->empty()) {
+            hasDefBad = true;
+        } else {
+            if(!hasRealBad) {
+                ss << " Query references prohibited dbs: ";
+                hasRealBad = true;
+            }              
+            cp(*ci);
+        }
+    }
+    if(hasDefBad) { 
+        return "No database selected. " + ss.str();
+    } else {
+        return ss.str();
+    }        
 }
 
 void qMaster::SqlParseRunner::_makeOverlapMap() {

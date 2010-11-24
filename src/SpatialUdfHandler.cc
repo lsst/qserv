@@ -139,13 +139,16 @@ private:
 void qMaster::SpatialUdfHandler::Restriction::_setGenerator() {
     if(_name == "qserv_areaspec_box") {
         _generator.reset(dynamic_cast<Generator*>
-                         (new AreaGenerator("ptInSphBox", 4, _params)));
+                         (new AreaGenerator("ptInSphBox", 
+                                            4, _params)));
     } else if(_name == "qserv_areaspec_circle") {
         _generator.reset(dynamic_cast<Generator*>
-                         (new AreaGenerator("ptInSphCircle", 3, _params)));
+                         (new AreaGenerator("ptInSphCircle", 
+                                            3, _params)));
     } else if(_name == "qserv_areaspec_ellipse") {
         _generator.reset(dynamic_cast<Generator*>
-                         (new AreaGenerator("ptInSphEllipse", 5, _params)));
+                         (new AreaGenerator("ptInSphEllipse", 
+                                            5, _params)));
     } else if(_name == "qserv_areaspec_poly") {
         _generator.reset(dynamic_cast<Generator*>
                          (new AreaGenerator("ptInSphPoly", 
