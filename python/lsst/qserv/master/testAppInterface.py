@@ -49,6 +49,11 @@ class TestAppInterface(unittest.TestCase):
         """
         self._applyQueryFromFile("/etc/motd")
 
+    def testShortCircuit(self):
+        r = app.computeShortCircuitQuery("select current_user()",{})
+        self.assertEqual(r, ("qserv@%", "", "")
+        pass
+
     def _makeBadHint(self):
         "This should be randomized."
         d = {"I":32,"like":44,"peaches,":66, 

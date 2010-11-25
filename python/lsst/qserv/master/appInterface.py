@@ -93,6 +93,10 @@ class AppInterface:
     def submitQueryWithLock(self, query, conditions):
         """Simplified mysqlproxy version.  
         @returns result table name, lock table name, but before completion."""
+        # Short-circuit the standard proxy/client queries.
+        quickResult = app.computeShortCircuitQuery(query, conditions)
+        if quickResult: return quickResult
+        
         taskId = self._idCounter # RAW hazard, but this part is single-threaded
         self._idCounter += 1
         # resultName should be shorter than 20 characters so it is always

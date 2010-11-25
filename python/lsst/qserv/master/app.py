@@ -105,10 +105,16 @@ def listen():
 listen()
 
 
-
 ######################################################################
 ## Methods
 ######################################################################
+## MySQL interface helpers
+def computeShortCircuitQuery(query, conditions):
+    if query == "select current_user()":
+        return ("qserv@%","","")
+    return # not a short circuit query.
+
+## Helpers
 def makePmap():
     c = lsst.qserv.master.config.config
     stripes = c.getint("partitioner", "stripes")
@@ -403,6 +409,7 @@ class RegionFactory:
             "objectId" : self._handleNop
             }
         pass
+
     def _splitParams(self, name, tupleSize, param):
         hList = map(float,param.split(","))
         assert 0 == (len(hList) % tupleSize), "Wrong # for %s." % name
@@ -721,6 +728,9 @@ class HintedQueryAction:
         configModule = lsst.qserv.master.config
         qConfig = configModule.getStringMap()
         qConfig["table.defaultDb"] = self._dbContext
+        # e.g., hints["box"] = "2.3,2.1,5.0,4.2"
+        qConfig["query.hints"] = ";".join(
+            map(lambda (k,v): k + "," + v), hints))
         self._sessionId = newSession(qConfig)
         cf = configModule.config.get("partitioner", "emptyChunkListFile")
         self._emptyChunks = self._loadEmptyChunks(cf)
@@ -856,6 +866,7 @@ class HintedQueryAction:
                 q = self._makeSubChunkQuery(chunkId, subIter, table)
             else:
                 q = self._makeChunkQuery(chunkId, table)
+            print "DISPATCH: ", q
             self._babysitter.submit(chunkId, table, q)
             #count += 1
             #if count >= 1: break
@@ -886,17 +897,15 @@ class HintedQueryAction:
     def _makeNonPartQuery(self, table):
         # Should be able to do less work than chunk query.
         query = "\n".join(self._headerFunc([table])) +"\n"
-        ref = self._pConfig.chunkMapping.getMapReference(0,0)
         query += self._createTableTmpl % table
-        query += self._substitution.substituteOnly(ref)
+        query += self._substitution.transform(0,0)
         return query
 
     def _makeChunkQuery(self, chunkId, table):
         # Prefix with empty subchunk spec.
         query = "\n".join(self._headerFunc([table])) +"\n"
-        ref = self._pConfig.chunkMapping.getMapReference(chunkId,0)
         query += self._createTableTmpl % table
-        query += self._substitution.substituteOnly(ref)
+        query += self._substitution.transform(chunkId, 0)
         return query
 
     def _makeSubChunkQuery(self, chunkId, subIter, table):
@@ -909,6 +918,7 @@ class HintedQueryAction:
             scList = [sub for (sub, regions) in subIter]
 
         pfx = None
+        qList = self._headerFunc([table], scList)
         for subChunkId in scList:
             q = self._substitution.transform(chunkId, subChunkId)
             if pfx:
@@ -916,8 +926,6 @@ class HintedQueryAction:
             else:
                 qList.append((self._createTableTmpl % table) + q)
                 pfx = self._insertTableTmpl % table
-        qList = self._headerFunc([table], scList)
-        
         return "\n".join(qList)
 
     def _fixSubChunkDb(self, q, chunk, subChunk):
