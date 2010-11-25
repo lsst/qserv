@@ -59,10 +59,16 @@ struct ParserFixture {
 
     };
     ~ParserFixture(void) { };
+
     SqlParseRunner::Ptr getRunner(std::string const& stmt) {
+        return getRunner(stmt, config);
+    }
+
+    SqlParseRunner::Ptr getRunner(std::string const& stmt, 
+                                  std::map<std::string,std::string> const& cfg) {
         SqlParseRunner::Ptr p;
         
-        p = SqlParseRunner::newInstance(stmt, delimiter, config);
+        p = SqlParseRunner::newInstance(stmt, delimiter, cfg);
         p->setup(tableNames);
         return p;
     }
@@ -298,6 +304,28 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
 BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
     std::string stmt = "select count(*) from Object as o1, Object as o2;";
     SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
+}
+
+BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
+    std::string stmt = "select count(*) from LSST.Object as o1, LSST.Object as o2;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
+}
+
+BOOST_AUTO_TEST_CASE(ObjectSelfJoinOutBand) {
+    std::string stmt = "select count(*) from LSST.Object as o1, LSST.Object as o2;";
+    std::map<std::string, std::string> hintedCfg(config);
+    hintedCfg["query.hints"] = "circle,1,1,1.3;box,5,2,6,3";
+    SqlParseRunner::Ptr spr = getRunner(stmt, hintedCfg);
     testStmt2(spr);
     std::cout << "Parse result: " << spr->getParseResult() << std::endl;
     BOOST_CHECK(spr->getHasChunks());

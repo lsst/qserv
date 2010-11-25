@@ -84,6 +84,7 @@ void qMaster::SqlSubstitution::importSubChunkTables(char** cStringArr) {
 std::string qMaster::SqlSubstitution::transform(int chunk, int subChunk) {
     boost::lock_guard<boost::mutex> lock(_mappingMutex);
     StringMap const& m = _mapping.getMapReference(chunk, subChunk);
+    //std::cout << "Transforming for " << chunk << " " << subChunk << std::endl;
     if(!_substitution.get()) return std::string();
     return _fixDbRef(_substitution->transform(m), chunk, subChunk);
 }

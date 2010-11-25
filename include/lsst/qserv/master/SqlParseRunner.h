@@ -89,6 +89,8 @@ public:
     void prepareTableConfig(std::string const& tableName,
                             std::string const& refTableName);
     void updateTableConfig(std::string const& tName, StringMap const& m);
+    void addHintExpr(std::string const& name, 
+                     double const* params, int paramCount);
 private:
     class SpatialTableNotifier;
     class FromHandler;
@@ -119,6 +121,8 @@ private:
     // Table partition handling
     class PartitionTupleProcessor;
     friend class ParititonTupleProcessor;
+    // Query hint plumbing
+    class HintTupleProcessor;
 
     std::string _statement;
     std::stringstream _stream;

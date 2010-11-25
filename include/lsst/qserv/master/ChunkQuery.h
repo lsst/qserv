@@ -63,7 +63,7 @@ public:
     std::string getDesc() const;
     std::string const& getSavePath() const { return _spec.savePath; }
     int getSaveSize() const { 
-        if(_result.read > 0) return _result.localWrite; 
+        if(_result.read >= 0) return _result.localWrite; 
         else return -1;
     }
     // Attempt to squash this query's execution.  This implies that

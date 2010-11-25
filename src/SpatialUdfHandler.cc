@@ -19,6 +19,11 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+/**
+ * SpatialUdfHandler - class for dealing with in-band spatial udf
+ * specifiers.  Patches WHERE clauses appropriately with generated udf
+ * function calls.
+ */
 #include "lsst/qserv/master/SpatialUdfHandler.h"
  
 // Pkg
@@ -41,7 +46,6 @@ namespace qMaster = lsst::qserv::master;
 using std::stringstream;
 using boost::make_shared;
 
-
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler::Restriction
 ////////////////////////////////////////////////////////////////////////
@@ -53,9 +57,14 @@ public:
         std::copy(c.begin(), c.end(), _params.begin()); 
         _setGenerator();
     }
-
+    Restriction(std::string const& name, double const* first, int nItems) 
+        : _name(name), _params(nItems) { 
+        std::copy(first, first+nItems, _params.begin());
+        _setGenerator();
+    }
+    
     std::string getUdfCallString(std::string const& tName, 
-                                 StringMap const& tableConfig) {
+                                 StringMap const& tableConfig) const {
         if(_generator.get()) {
             return (*_generator)(tName, tableConfig);
         }
@@ -157,6 +166,9 @@ void qMaster::SpatialUdfHandler::Restriction::_setGenerator() {
     } else if(_name == "qserv_objectId") {
         ObjectIdGenerator* g = new ObjectIdGenerator(_params);
         _generator.reset(dynamic_cast<Generator*>(g));
+    } else {
+        std::cout << "Unmatched restriction spec: " << _name 
+                  << ", ignoring." << std::endl;
     }
 }
 
@@ -169,6 +181,7 @@ public:
     virtual ~FromWhereHandler() {}
     virtual void operator()(antlr::RefAST fw) {
         if(!_suh._getIsPatched()) {
+            _suh._finalizeOutBand();
             if(_suh.getASTFactory() && !_suh.getWhereIntruder().empty()) {
                 std::string intruder = "WHERE " + _suh.getWhereIntruder();
                 insertTextNodeAfter(_suh.getASTFactory(), intruder, 
@@ -229,6 +242,7 @@ public:
     FctSpecHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
     virtual ~FctSpecHandler() {}
     virtual void operator()(antlr::RefAST name, antlr::RefAST params) {
+        std::stringstream ss;
         if(_suh._getHasRestriction()) {
             std::cout << "ERROR: conflicting restriction clauses."
                       << " Ignoring " << walkTreeString(name)
@@ -238,28 +252,12 @@ public:
         std::string paramStrRaw = walkTreeString(params);
         std::string paramStr = paramStrRaw.substr(0, paramStrRaw.size() - 1);
         std::list<double> paramNums;
-        std::stringstream ss;
 
         tokenizeInto(paramStr, ",", paramNums, strToDoubleFunc());
         boost::shared_ptr<Restriction> r(new Restriction(name->getText(),
                                                          paramNums));
         _suh._restrictions.push_back(r);
-        
-        // Debug printout:
-        // std::cout << "Got new restrictor spec " 
-        //    << name->getText() << "--";
-        // std::copy(paramNums.begin(), paramNums.end(), 
-        //           std::ostream_iterator<double>(std::cout, ","));
-        StringPairList const& sp = _suh.getSpatialTables();
-        StringPairList::const_iterator spi;
-        StringPairList::const_iterator spe = sp.end();
-        bool first = true;
-        for(spi = sp.begin(); spi != spe; ++spi) {
-            if(!first) ss << " AND ";
-            else first = false;
-            //std::cout << spi->first << "------" << spi->second << std::endl;
-            ss << r->getUdfCallString(spi->second, _suh.getTableConfig(spi->first));
-        }        
+        _suh._expandRestriction(*r, ss);
         // std::cout << "Spec yielded " 
         //           << ss.str() <<std::endl;
         // Edit the parse tree
@@ -289,29 +287,82 @@ qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory,
         std::cerr << "WARNING: SpatialUdfHandler non-functional (null factory)"
                   << std::endl;
     }
+
+    _udfName["box"] = "qserv_ptInSphBox";
+    _udfName["circle"] = "qserv_ptInSphCircle";
+    _udfName["ellipse"] = "qserv_ptInSphEllipse";
+    _udfName["poly"] = "ptInSphPoly";
+    _specName["box"] = "qserv_areaspec_box";
+    _specName["circle"] = "qserv_areaspec_circle";
+    _specName["ellipse"] = "qserv_areaspec_ellipse";
+    _specName["poly"] = "qserv_areaspec_poly";
     // For testing:
     //    double dummy[] = {0.0,0.0,1,1};
     //    setExpression("box",dummy, 4);
 }
 
-void qMaster::SpatialUdfHandler::setExpression(std::string const& funcName,
-                                               double* first, int nitems) {
+void qMaster::SpatialUdfHandler::addExpression(std::string const& funcName,
+                                               double const* first, int nitems) {
     std::stringstream ss;
-    int oneless = nitems - 1;
-    ss << funcName << "(";
-    if(nitems > 0) {
-        for(int i=0; i < oneless; ++i) {
-            ss << first[i] << ", ";
-        }
-        ss << first[oneless];
-    }
-    ss << ")";
-    _whereIntruder = ss.str();
+    boost::shared_ptr<Restriction> r(new Restriction(_specName[funcName], 
+                                                     first, nitems));
+    _restrictions.push_back(r);
+    _hasProcessedOutBand = false;
 }
 
 qMaster::StringMap const& qMaster::SpatialUdfHandler::getTableConfig(std::string const& tName) const {
     StringMap sm;
     return getFromMap(_tableConfigMap, tName, sm);
+}
+
+class qMaster::SpatialUdfHandler::processWrapper {
+public:
+    processWrapper(SpatialUdfHandler& suh, std::ostream& o) 
+        : _suh(suh), _o(o), _first(true) {}
+
+    void operator()(boost::shared_ptr<Restriction> const& r) {
+        if(!_first) _o << " AND ";
+        _suh._expandRestriction(*r, _o);
+        _first = false;
+    }
+    SpatialUdfHandler& _suh;
+    std::ostream& _o;
+    bool _first;
+};
+
+
+std::ostream& qMaster::SpatialUdfHandler::_expandRestriction(Restriction const& r, std::ostream& o) {
+    // Debug printout:
+    // std::cout << "Got new restrictor spec " 
+    //    << name->getText() << "--";
+    // std::copy(paramNums.begin(), paramNums.end(), 
+    //           std::ostream_iterator<double>(std::cout, ","));
+    StringPairList const& sp = getSpatialTables();
+    StringPairList::const_iterator spi;
+    StringPairList::const_iterator spe = sp.end();
+    bool first = true;
+    for(spi = sp.begin(); spi != spe; ++spi) {
+        if(!first) o << " AND ";
+        else first = false;
+        //std::cout << spi->first << "------" << spi->second << std::endl;
+        o << r.getUdfCallString(spi->second, 
+                                getTableConfig(spi->first));
+    }
+    return o;
+}
+
+void qMaster::SpatialUdfHandler::_finalizeOutBand() {
+    std::stringstream o;
+    if(!_hasProcessedOutBand) {
+        std::for_each(_restrictions.begin(), 
+                      _restrictions.end(), processWrapper(*this, o));
+        _hasProcessedOutBand = true;
+    }
+    if(!_whereIntruder.empty()) {
+        _whereIntruder += " AND "  + o.str();
+    } else {
+        _whereIntruder = o.str();
+    }
 }
 
 #if 0

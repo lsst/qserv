@@ -138,6 +138,7 @@ public:
 private:
     qMaster::SqlParseRunner& _spr;
 };
+
 /// PartitionTupleProcessor : Function object that ingests config
 /// entries from table.partitionCols.
 /// e.g. table.partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
@@ -174,6 +175,43 @@ public:
     SqlParseRunner& _spr;
 };
 
+/// HintTupleProcessor: Function object that ingests config
+/// entries from query.hints
+/// e.g. query.hints=box,0,0,5,1;circle,1,1,1;
+/// Split by ',' and then add the directives to the spatial handler.
+/// 
+class qMaster::SqlParseRunner::HintTupleProcessor {
+public:
+    HintTupleProcessor(SqlParseRunner& spr) : _spr(spr) {}
+    void operator()(std::string const& s) {
+        const int maxParams=1000;
+        double params[maxParams];
+        int vecSize;
+
+        _vec.clear();
+        tokenizeInto(s, ",", _vec, passFunc<std::string>());
+        vecSize = _vec.size();
+        if(vecSize < 2) {
+            if(vecSize == 0) {
+                return; // Nothing to do.
+            }
+            std::cout << "Error, badly formed partition col spec: " << s 
+                      << std::endl;
+            return;
+        }
+        assert(vecSize < (maxParams+1));
+        std::string name = _vec[0];
+        for(int i=0; i < (vecSize-1); ++i) {
+            params[i] = toDouble(_vec[i+1]);
+        }
+        _spr.addHintExpr(name, params, vecSize-1);
+    }
+    
+private:
+    std::vector<std::string> _vec;
+    strToDoubleFunc toDouble;
+    SqlParseRunner& _spr;
+};
 
 boost::shared_ptr<qMaster::SqlParseRunner> 
 qMaster::SqlParseRunner::newInstance(std::string const& statement, 
@@ -337,14 +375,26 @@ void qMaster::SqlParseRunner::updateTableConfig(std::string const& tName,
     _tableConfigMap[tName] = m;
 }
 
+void qMaster::SqlParseRunner::addHintExpr(std::string const& name, 
+                                          double const* params, 
+                                          int paramCount) {
+    _spatialUdfHandler.addExpression(name, params, paramCount);
+}
+
 void qMaster::SqlParseRunner::_readConfig(qMaster::StringMap const& m) {
     std::string blank;
     std::list<std::string> tokens;
     std::string defaultDb;
     IntMap whiteList;
-    // FIXME: Much of this could be done at startup and cached.
-    defaultDb = getFromMap(m, "table.defaultdb", blank);
 
+    defaultDb = getFromMap(m, "table.defaultdb", blank); // client DB context
+
+    tokens.clear();
+    tokenizeInto(getFromMap(m,"query.hints", blank), ";", tokens,
+                 passFunc<std::string>());
+    for_each(tokens.begin(), tokens.end(), HintTupleProcessor(*this));
+
+    // FIXME: Much of this could be done at startup and cached.
     tokenizeInto(getFromMap(m, "table.alloweddbs", blank), ",", tokens, 
                  passFunc<std::string>());
     if(tokens.size() > 0) {
@@ -358,6 +408,7 @@ void qMaster::SqlParseRunner::_readConfig(qMaster::StringMap const& m) {
     tokenizeInto(getFromMap(m,"table.partitionCols", blank), ";", tokens,
                  passFunc<std::string>());
     for_each(tokens.begin(), tokens.end(), PartitionTupleProcessor(*this));
+
 }    
 
     

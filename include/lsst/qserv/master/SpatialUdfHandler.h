@@ -38,6 +38,8 @@ namespace master {
 
 class SpatialUdfHandler {
 public:
+    typedef std::map<std::string,char const*> StringCharMap;
+
     /// @param factory : an ANTLR AST factory
     /// @param tableConfig : configuration of current spatial table.
     /// Only copies the reference, expecting the config to live
@@ -58,19 +60,10 @@ public:
         return _fctSpec;
     }
 
-    void setExpression(std::string const& funcName, 
-                       double* first, int nitems);
+    void addExpression(std::string const& funcName, 
+                       double const* first, int nitems);
     
  private:
-    void _markAsPatched() { _isPatched = true; }
-    bool _getIsPatched() const { return _isPatched; }
-    std::string getWhereIntruder() const { return _whereIntruder; }
-    antlr::ASTFactory* getASTFactory() { return _factory; }
-    void _setHasRestriction() { _hasRestriction = true; }
-    bool _getHasRestriction() const { return _hasRestriction; } 
-    StringMap const& getTableConfig(std::string const& tName) const;
-    StringPairList const& getSpatialTables() const { return _spatialTables; }
-
     // Where-clause manipulation
     class FromWhereHandler;
     class WhereCondHandler;
@@ -84,16 +77,38 @@ public:
     // Restriction spec
     class Restriction;
     typedef boost::shared_ptr<Restriction> RestrictionPtr;
+    // Helper for restriction expansion
+    class processWrapper;
+    friend class processWrapper;
+
+    void _markAsPatched() { _isPatched = true; }
+    bool _getIsPatched() const { return _isPatched; }
+    std::string getWhereIntruder() const { return _whereIntruder; }
+    antlr::ASTFactory* getASTFactory() { return _factory; }
+    void _setHasRestriction() { _hasRestriction = true; }
+    bool _getHasRestriction() const { return _hasRestriction; } 
+    StringMap const& getTableConfig(std::string const& tName) const;
+    StringPairList const& getSpatialTables() const { return _spatialTables; }
+
+    void _finalizeOutBand();
+    std::ostream& _expandRestriction(Restriction const& r, std::ostream& o);
+
+
 
     boost::shared_ptr<VoidOneRefFunc> _fromWhere;
     boost::shared_ptr<VoidOneRefFunc> _whereCond;
     boost::shared_ptr<VoidVoidFunc> _restrictor;
     boost::shared_ptr<VoidTwoRefFunc> _fctSpec;
+
+    StringCharMap _udfName; // table lookup: consider making static.
+    StringCharMap _specName; // table lookup: consider making static.
+
     bool _isPatched;
     antlr::ASTFactory* _factory;
     std::string _whereIntruder;
     std::list<RestrictionPtr> _restrictions;
     bool _hasRestriction;
+    bool _hasProcessedOutBand;
     StringMapMap const& _tableConfigMap;
     StringPairList const& _spatialTables;
 };
