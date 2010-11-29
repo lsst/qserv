@@ -730,11 +730,11 @@ class HintedQueryAction:
         qConfig["table.defaultDb"] = self._dbContext
         # e.g., hints["box"] = "2.3,2.1,5.0,4.2"
         qConfig["query.hints"] = ";".join(
-            map(lambda (k,v): k + "," + v), hints))
+            map(lambda (k,v): k + "," + v), 
+            hints)
         self._sessionId = newSession(qConfig)
         cf = configModule.config.get("partitioner", "emptyChunkListFile")
-        self._emptyChunks = self._loadEmptyChunks(cf)
-        
+        self._emptyChunks = self._loadEmptyChunks(cf)        
 
         # Table mapping 
         try:
