@@ -457,7 +457,7 @@ function queryProcessing()
         local p1 = string.find(qU, "WHERE")
         parser.reset()
         hintsToPassArr = {} -- Reset hints (it's global)
-        if p1 then
+        if false and p1 then
             queryToPassStr = string.sub(q, 0, p1-1)
 
             -- Handle special predicates, modify queryToPassStr as necessary
