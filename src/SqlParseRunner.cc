@@ -202,6 +202,7 @@ public:
         assert(vecSize < (maxParams+1));
         std::string name = _vec[0];
         for(int i=0; i < (vecSize-1); ++i) {
+            //std::cout << "converting " << _vec[i+1] << std::endl;
             params[i] = toDouble(_vec[i+1]);
         }
         _spr.addHintExpr(name, params, vecSize-1);

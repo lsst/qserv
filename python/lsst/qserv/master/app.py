@@ -729,9 +729,10 @@ class HintedQueryAction:
         qConfig = configModule.getStringMap()
         qConfig["table.defaultDb"] = self._dbContext
         # e.g., hints["box"] = "2.3,2.1,5.0,4.2"
+        hintCopy = hints.copy()
+        hintCopy.pop("db") # Remove db hint--only pass spatial hints now.
         qConfig["query.hints"] = ";".join(
-            map(lambda (k,v): k + "," + v), 
-            hints)
+            map(lambda (k,v): k + "," + v, hintCopy.items()))
         self._sessionId = newSession(qConfig)
         cf = configModule.config.get("partitioner", "emptyChunkListFile")
         self._emptyChunks = self._loadEmptyChunks(cf)        

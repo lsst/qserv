@@ -38,10 +38,10 @@ public:
         // Cast away const. strtod won't write any chars anyway.
         double d = std::strtod(start, const_cast<char**>(&eptr));
         if(s.size() != static_cast<std::string::size_type>(eptr-start)) {
-            std::stringstream s;
-            s << "Exception converting string to double ("
+            std::stringstream ss;
+            ss << "Exception converting string to double ("
               << s << ")";
-            throw s.str();
+            throw ss.str();
         }
         return d;
     }
