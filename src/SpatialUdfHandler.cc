@@ -345,6 +345,8 @@ std::ostream& qMaster::SpatialUdfHandler::_expandRestriction(Restriction const& 
         if(!first) o << " AND ";
         else first = false;
         //std::cout << spi->first << "------" << spi->second << std::endl;
+        std::cout << "Expanding restr for table: " 
+                  << spi->first << std::endl;
         o << r.getUdfCallString(spi->second, 
                                 getTableConfig(spi->first));
     }

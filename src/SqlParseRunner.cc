@@ -406,7 +406,7 @@ void qMaster::SqlParseRunner::_readConfig(qMaster::StringMap const& m) {
     }    
     _templater.setup(whiteList, defaultDb);
     tokens.clear();
-    tokenizeInto(getFromMap(m,"table.partitionCols", blank), ";", tokens,
+    tokenizeInto(getFromMap(m,"table.partitioncols", blank), ";", tokens,
                  passFunc<std::string>());
     for_each(tokens.begin(), tokens.end(), PartitionTupleProcessor(*this));
 

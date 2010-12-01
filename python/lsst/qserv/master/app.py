@@ -727,7 +727,7 @@ class HintedQueryAction:
         # Config preparation
         configModule = lsst.qserv.master.config
         qConfig = configModule.getStringMap()
-        qConfig["table.defaultDb"] = self._dbContext
+        qConfig["table.defaultdb"] = self._dbContext
         # e.g., hints["box"] = "2.3,2.1,5.0,4.2"
         hintCopy = hints.copy()
         hintCopy.pop("db") # Remove db hint--only pass spatial hints now.
