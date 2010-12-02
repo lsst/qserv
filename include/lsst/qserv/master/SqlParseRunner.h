@@ -86,8 +86,8 @@ public:
     std::string const& getError() const {
 	return _errorMsg;
     }
-    void prepareTableConfig(std::string const& tableName,
-                            std::string const& refTableName);
+    void addMungedSpatial(std::string const& mungedTable,
+                          std::string const& refTable);
     void updateTableConfig(std::string const& tName, StringMap const& m);
     void addHintExpr(std::string const& name, 
                      double const* params, int paramCount);
@@ -133,8 +133,9 @@ private:
     boost::shared_ptr<SpatialTableNotifier> _spatialTableNotifier;
 
     std::map<std::string, StringMap> _tableConfigMap;
-    StringPairList _spatialTables;
 
+    StringPairList _spatialTables; // reference(name/alias) -> referent spatial table
+    StringMap _mungeMap;
     Templater _templater;
     SpatialUdfHandler _spatialUdfHandler;
     AliasMgr _aliasMgr;

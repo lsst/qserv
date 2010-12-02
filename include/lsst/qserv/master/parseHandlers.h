@@ -77,15 +77,17 @@ public:
     void resetColumnNodeList() { _columnAliasNodes.clear(); }
 
     StringMap const& getTableAliasMap() const { return _tableMap; }
+    StringPairList const& getTableAliases() const { return _tableAliases; }
 
 
 private:
     // Invoked by child handlers.
-    void addTableAlias(std::string const& tName, std::string const& alias);
+    void addTableAlias(std::string const& alias, std::string const& tName);
 
     NodeMap _columnAliasNodeMap;
     NodeList _columnAliasNodes;
-    StringMap _tableMap;
+    StringMap _tableMap; // Map aliases to their targets.
+    StringPairList _tableAliases; // List of (aliased) tables in order of appearance.
 };
 
 }}} // lsst::qserv::master

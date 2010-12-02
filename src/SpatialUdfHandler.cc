@@ -183,9 +183,17 @@ public:
         if(!_suh._getIsPatched()) {
             _suh._finalizeOutBand();
             if(_suh.getASTFactory() && !_suh.getWhereIntruder().empty()) {
-                std::string intruder = "WHERE " + _suh.getWhereIntruder();
-                insertTextNodeAfter(_suh.getASTFactory(), intruder, 
-                                getLastSibling(fw));
+                std::cout << "patching via FromWhere" << std::endl;
+                if(_suh._recentWhere.get()) {
+                    std::string intruder = _suh.getWhereIntruder() + " AND ";
+                    insertTextNodeAfter(_suh.getASTFactory(), intruder, 
+                                        _suh._recentWhere);
+                    _suh._recentWhere = 0; // Reset.
+                } else {
+                    std::string intruder = "WHERE " + _suh.getWhereIntruder();
+                    insertTextNodeAfter(_suh.getASTFactory(), intruder, 
+                                        getLastSibling(fw));
+                }
             }
         } else {
             // Already patched, don't do anything.
@@ -204,13 +212,17 @@ public:
     WhereCondHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
     virtual ~WhereCondHandler() {}
     virtual void operator()(antlr::RefAST where) {
+        _suh._recentWhere = where;
         // If we see a where condition, we can immediately patch it.
         if(_suh.getASTFactory()  && !_suh.getWhereIntruder().empty()) {
+            std::cout << "patching via Where" << std::endl;
+            // std::cout << "Patching Where, orig=" 
+            //           << where->getText() << std::endl;
             std::string intruder = _suh.getWhereIntruder() + " AND";
             insertTextNodeAfter(_suh.getASTFactory(), intruder, where);
+            // Remember that we patched the tree.
+            _suh._markAsPatched();
         }
-        // Remember that we patched the tree.
-        _suh._markAsPatched();
         //std::cout << "whereCond: " << walkTreeString(where) << std::endl;
         //std::cout << "Got limit -> " << limit << std::endl;            
     }
@@ -256,7 +268,7 @@ public:
         tokenizeInto(paramStr, ",", paramNums, strToDoubleFunc());
         boost::shared_ptr<Restriction> r(new Restriction(name->getText(),
                                                          paramNums));
-        _suh._restrictions.push_back(r);
+        _suh._inbandRestrictions.push_back(r); // Track separately.
         _suh._expandRestriction(*r, ss);
         // std::cout << "Spec yielded " 
         //           << ss.str() <<std::endl;
@@ -306,6 +318,7 @@ void qMaster::SpatialUdfHandler::addExpression(std::string const& funcName,
     std::stringstream ss;
     boost::shared_ptr<Restriction> r(new Restriction(_specName[funcName], 
                                                      first, nitems));
+    //std::cout << "adding restriction: " << funcName << std::endl;
     _restrictions.push_back(r);
     _hasProcessedOutBand = false;
 }
@@ -344,11 +357,11 @@ std::ostream& qMaster::SpatialUdfHandler::_expandRestriction(Restriction const& 
     for(spi = sp.begin(); spi != spe; ++spi) {
         if(!first) o << " AND ";
         else first = false;
-        //std::cout << spi->first << "------" << spi->second << std::endl;
-        std::cout << "Expanding restr for table: " 
-                  << spi->first << std::endl;
-        o << r.getUdfCallString(spi->second, 
-                                getTableConfig(spi->first));
+        // std::cout << "Expanding restr for table: " 
+        //           << spi->first << "--second--" 
+        //           << spi->second << std::endl;
+        o << r.getUdfCallString(spi->first, 
+                                getTableConfig(spi->second));
     }
     return o;
 }
@@ -356,6 +369,7 @@ std::ostream& qMaster::SpatialUdfHandler::_expandRestriction(Restriction const& 
 void qMaster::SpatialUdfHandler::_finalizeOutBand() {
     std::stringstream o;
     if(!_hasProcessedOutBand) {
+        //std::cout << "Processing out-band" << std::endl;
         std::for_each(_restrictions.begin(), 
                       _restrictions.end(), processWrapper(*this, o));
         _hasProcessedOutBand = true;
@@ -372,7 +386,7 @@ void qMaster::SpatialUdfHandler::_finalizeOutBand() {
     double qserv_angSep (ra1, dec1, ra2, dec2);
     int qserv_ptInSphBox (ra, dec, ramin, decmin, ramax,decmax);
     int qserv_ptInSphCircle (ra, dec, racenter, deccenter, radius);
-    int  qserv_ptInSphEllipse (ra, dec, racenter,deccenter, smaa,smia,ang);
+    int qserv_ptInSphEllipse (ra, dec, racenter,deccenter, smaa,smia,ang);
     int qserv_ptInSphPoly (ra, dec, ra0, poly);
     // poly = string.  "ra0 dec0 ra1 dec1 ra2 dec2 ..." 
     // space separated ra/dec pairs.

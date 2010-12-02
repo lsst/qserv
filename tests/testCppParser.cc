@@ -54,7 +54,7 @@ struct ParserFixture {
         tableNames.push_back("Source");
         config["table.defaultdb"] ="LSST";
         config["table.alloweddbs"] = "LSST";
-        config["table.partitionCols"] = "Object:ra_Test,decl_Test,objectIdObjTest;"
+        config["table.partitioncols"] = "Object:ra_Test,decl_Test,objectIdObjTest;"
             "Source:raObjectTest,declObjectTest,objectIdSourceTest";
 
     };
@@ -293,19 +293,23 @@ BOOST_AUTO_TEST_CASE(BadDbAccess) {
 BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     std::string stmt = "select * from LSST.Object o, LSST.Source s WHERE "
         "qserv_areaspec_box(2,2,3,3) AND o.objectId = s.objectId;";
+    std::string expected = "select * from LSST.%$#Object%$# o,LSST.%$#Source%$# s WHERE (qserv_ptInSphBox(o.ra_Test,o.decl_Test,2,2,3,3) = 1) AND (qserv_ptInSphBox(s.raObjectTest,s.declObjectTest,2,2,3,3) = 1) AND o.objectId=s.objectId;";
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
     std::cout << "Parse result: " << spr->getParseResult() << std::endl;
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(!spr->getHasAggregate());
+    BOOST_CHECK(spr->getParseResult() == expected);
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
     std::string stmt = "select count(*) from Object as o1, Object as o2;";
+    std::string expected = "select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sc2%$# as o2 UNION select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sfo%$# as o2;";
+
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
-    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    //std::cout << "Parse result: " << spr->getParseResult() << std::endl;
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
@@ -313,36 +317,44 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     std::string stmt = "select count(*) from LSST.Object as o1, LSST.Object as o2;";
+    std::string expected = "select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sc2%$# as o2 UNION select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sfo%$# as o2;";
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
     std::cout << "Parse result: " << spr->getParseResult() << std::endl;
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
+    BOOST_CHECK(spr->getParseResult() == expected);
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinOutBand) {
     std::string stmt = "select count(*) from LSST.Object as o1, LSST.Object as o2;";
+    std::string expected ="select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sc2%$# as o2 WHERE (qserv_ptInSphCircle(o1.ra_Test,o1.decl_Test,1,1,1.3) = 1) AND (qserv_ptInSphCircle(o2.ra_Test,o2.decl_Test,1,1,1.3) = 1) AND (qserv_ptInSphBox(o1.ra_Test,o1.decl_Test,5,2,6,3) = 1) AND (qserv_ptInSphBox(o2.ra_Test,o2.decl_Test,5,2,6,3) = 1) UNION select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sfo%$# as o2 WHERE (qserv_ptInSphCircle(o1.ra_Test,o1.decl_Test,1,1,1.3) = 1) AND (qserv_ptInSphCircle(o2.ra_Test,o2.decl_Test,1,1,1.3) = 1) AND (qserv_ptInSphBox(o1.ra_Test,o1.decl_Test,5,2,6,3) = 1) AND (qserv_ptInSphBox(o2.ra_Test,o2.decl_Test,5,2,6,3) = 1);";
+
     std::map<std::string, std::string> hintedCfg(config);
     hintedCfg["query.hints"] = "circle,1,1,1.3;box,5,2,6,3";
     SqlParseRunner::Ptr spr = getRunner(stmt, hintedCfg);
     testStmt2(spr);
-    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    //std::cout << "Parse result: " << spr->getParseResult() << std::endl;
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
+    BOOST_CHECK(spr->getParseResult() == expected);
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     std::string stmt = "select count(*) from LSST.Object o1,LSST.Object o2 WHERE qserv_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) < 0.2";
+    std::string expected = "select count(*) from LSST.%$#Object_sc1%$# o1,LSST.%$#Object_sc2%$# o2 WHERE (qserv_ptInSphBox(o1.ra_Test,o1.decl_Test,5.5,5.5,6.1,6.1) = 1) AND (qserv_ptInSphBox(o2.ra_Test,o2.decl_Test,5.5,5.5,6.1,6.1) = 1) AND qserv_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS)<0.2 UNION select count(*) from LSST.%$#Object_sc1%$# o1,LSST.%$#Object_sfo%$# o2 WHERE (qserv_ptInSphBox(o1.ra_Test,o1.decl_Test,5.5,5.5,6.1,6.1) = 1) AND (qserv_ptInSphBox(o2.ra_Test,o2.decl_Test,5.5,5.5,6.1,6.1) = 1) AND qserv_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS)<0.2;";
+
     std::map<std::string, std::string> hintedCfg(config);
     hintedCfg["query.hints"] = "box,5.5,5.5,6.1,6.1";
     SqlParseRunner::Ptr spr = getRunner(stmt, hintedCfg);
     testStmt2(spr);
-    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
+    BOOST_CHECK(spr->getParseResult() == expected);
 }
 
 

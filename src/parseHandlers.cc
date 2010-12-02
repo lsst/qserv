@@ -83,11 +83,7 @@ public:
             physicalName = walkTreeString(table);
             logicalName = physicalName;
         }
-        // std::cout << "table map " << physicalName 
-        //           << " --to-- "
-        //           << logicalName << std::endl;
-        _am.addTableAlias(physicalName, logicalName);
-        
+        _am.addTableAlias(logicalName, physicalName);
     }
 private:
     AliasMgr& _am;
@@ -104,7 +100,8 @@ boost::shared_ptr<VoidFourRefFunc> qMaster::AliasMgr::getTableAliasHandler() {
     return boost::shared_ptr<VoidFourRefFunc>(new TableAliasHandler(*this));
 }
 
-void qMaster::AliasMgr::addTableAlias(std::string const& tName, 
-                                      std::string const& alias) {
-    _tableMap[tName] = alias;
+void qMaster::AliasMgr::addTableAlias(std::string const& alias, 
+                                      std::string const& tName) {
+    _tableMap[alias] = tName;
+    _tableAliases.push_back(StringMap::value_type(alias,tName));
 }

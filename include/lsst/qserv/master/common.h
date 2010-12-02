@@ -56,5 +56,15 @@ void forEachMapped(Map const& m, Func& f) {
     }
 }
 
+template <class Map, class Func>
+void forEachFirst(Map const& m, Func& f) {
+    typename Map::const_iterator b = m.begin();
+    typename Map::const_iterator e = m.end();
+    typename Map::const_iterator i;
+    for(i = b; i != e; ++i) {
+        f(i->first);
+    }
+}
+
 }}} // namesapce lsst::qserv::master
 #endif // LSST_QSERV_MASTER_COMMON_H

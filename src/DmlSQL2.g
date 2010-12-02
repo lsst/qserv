@@ -1213,9 +1213,9 @@ table_ref_list :
 //{ Rule #637 <where_clause>
 // danielw: Add special qserv restrictor(optional) to trap spatial specs
 where_clause : 
-	w:"where" qserv_restrictor (boolean_factor_op search_condition)?
-        {handleWhereCondition(w_AST);}
-    | "where" search_condition
+	w1:"where" qserv_restrictor (boolean_factor_op search_condition)?
+        {handleWhereCondition(w1_AST);}
+    | w2:"where" search_condition {handleWhereCondition(w2_AST);}
 ; 
 //}
 

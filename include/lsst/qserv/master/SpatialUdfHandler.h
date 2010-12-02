@@ -25,6 +25,7 @@
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/parserBase.h"
 #include "lsst/qserv/master/common.h"
+#include "antlr/ASTRefCount.hpp"
 
 // Forward
 namespace antlr {
@@ -89,11 +90,9 @@ public:
     bool _getHasRestriction() const { return _hasRestriction; } 
     StringMap const& getTableConfig(std::string const& tName) const;
     StringPairList const& getSpatialTables() const { return _spatialTables; }
-
+    
     void _finalizeOutBand();
     std::ostream& _expandRestriction(Restriction const& r, std::ostream& o);
-
-
 
     boost::shared_ptr<VoidOneRefFunc> _fromWhere;
     boost::shared_ptr<VoidOneRefFunc> _whereCond;
@@ -107,10 +106,12 @@ public:
     antlr::ASTFactory* _factory;
     std::string _whereIntruder;
     std::list<RestrictionPtr> _restrictions;
+    std::list<RestrictionPtr> _inbandRestrictions;
     bool _hasRestriction;
     bool _hasProcessedOutBand;
     StringMapMap const& _tableConfigMap;
     StringPairList const& _spatialTables;
+    antlr::RefAST _recentWhere;
 };
 
 }}} // namespace lsst::qserv::master

@@ -92,13 +92,14 @@ public:
     SpatialTableNotifier(SqlParseRunner& spr) : _spr(spr) {}
     virtual void operator()(std::string const& refName, 
                             std::string const& name) {
-        _spr.prepareTableConfig(refName, name);
+        _spr.addMungedSpatial(name, refName);
         // std::cout << "Picked " << name << " as spatial table("
         //           << refName << ")." << std::endl;
     }
 private:
     SqlParseRunner& _spr;
 };
+
 ////////////////////////////////////////////////////////////////////////
 // FromHandler : handle parse-acceptance of FROM... clause.  Rewrites
 // spatial tables with aliases so that WHERE clause manipulation can
@@ -107,33 +108,38 @@ private:
 class qMaster::SqlParseRunner::FromHandler : public VoidVoidFunc {
 public: 
     // A functor to perform the rewrite
-    class rewrite {
+    class addToRewrite {
     public:
-        rewrite(StringMap const& tm) : _tm(tm) {}
-        void operator()(StringPairList::value_type& v) {
-            std::string s = getFromMap(_tm, v.second, blank);
+        addToRewrite(StringPairList& stm, StringMap const& tableMungeMap) 
+            : _stm(stm),  _tableMungeMap(tableMungeMap) {}
+        void operator()(StringPairList::value_type const& v) {
+            // Lookup referent table using table name.
+            std::string s = getFromMap(_tableMungeMap, v.second, blank);
             if(s.empty()) return;
-            v.second = s;
+            // std::cout << "FROM rewriting " << v.first << " " 
+            //           << v.second << s << std::endl;
+            _stm.push_back(StringPairList::value_type(v.first, s));
         }
         std::string blank;
-        StringMap const& _tm;
+        StringPairList& _stm;
+        StringMap const& _tableMungeMap;
     };
+
     // FromHandler
     FromHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
     virtual ~FromHandler() {}
     virtual void operator()() {
         // For each table alias, rewrite the spatial name mapping,
-        StringMap const& tableAliasMap = _spr._aliasMgr.getTableAliasMap();
-        for_each(_spr._spatialTables.begin(), _spr._spatialTables.end(), 
-                 rewrite(tableAliasMap));
+        _spr._spatialTables.clear();
+        StringPairList const& tableAliases = _spr._aliasMgr.getTableAliases();
+        for_each(tableAliases.begin(), tableAliases.end(), 
+                 addToRewrite(_spr._spatialTables, _spr._mungeMap));
         Templater::addAliasFunc f(_spr._templater);
-        forEachMapped(tableAliasMap, f);
+        forEachFirst(_spr._aliasMgr.getTableAliasMap(), f);
 
         // std::for_each(tableAliasMap.begin(), tableAliasMap.end(), 
         //               boost::bind(Templater::addAliasFunc(_spr._templater),
         //                           boost::bind(&StringMap::value_type::second,_1)
-
-
     }
 private:
     qMaster::SqlParseRunner& _spr;
@@ -355,7 +361,7 @@ void qMaster::SqlParseRunner::_makeOverlapMap() {
 
 std::string qMaster::SqlParseRunner::_composeOverlap(std::string const& query) {
     Substitution s(query, _delimiter, false);
-    return query + " union " + s.transform(_overlapMap);
+    return query + " UNION " + s.transform(_overlapMap);
 }
 
 bool qMaster::SqlParseRunner::getHasAggregate() {
@@ -365,10 +371,19 @@ bool qMaster::SqlParseRunner::getHasAggregate() {
     return _aggMgr.getHasAggregate();
 }
 
-void qMaster::SqlParseRunner::prepareTableConfig(std::string const& tableName,
-                                                 std::string const& refTableName) {
-    _spatialTables.push_back(StringPairList::value_type(tableName, 
-                                                        refTableName));
+void qMaster::SqlParseRunner::addMungedSpatial(std::string const& mungedTable,
+                                               std::string const& refTable) {
+    std::string blank;
+    std::string s = getFromMap(_mungeMap, mungedTable, blank);
+    if(s != blank) {
+        if(s != refTable) {
+            std::cerr << "ERROR! Conflicting munged referent: " 
+                      << mungedTable << " -> " << s << " (existing), "
+                      << refTable << " (new)" << std::endl;
+        }
+    } else {
+        _mungeMap[mungedTable] = refTable;
+    }
 }
 
 void qMaster::SqlParseRunner::updateTableConfig(std::string const& tName, 
