@@ -478,10 +478,10 @@ function queryProcessing()
 
         print ("Passing query: " .. queryToPassStr)
         print ("Passing hints: " .. hintsToPassStr)
-
+        local queryToPassProtect = "<![CDATA[" .. queryToPassStr .. "]]>"
         local ok, res = 
            xmlrpc.http.call (rpcHP, "submitQuery", 
-                             queryToPassStr, hintsToPassArr)
+                             queryToPassProtect, hintsToPassArr)
         if (not ok) then
            return err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
         end

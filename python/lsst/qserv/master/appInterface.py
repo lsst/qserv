@@ -96,9 +96,9 @@ class AppInterface:
         # Short-circuit the standard proxy/client queries.
         quickResult = app.computeShortCircuitQuery(query, conditions)
         if quickResult: return quickResult
-        
         taskId = self._idCounter # RAW hazard, but this part is single-threaded
         self._idCounter += 1
+
         # resultName should be shorter than 20 characters so it is always
         # shorter than intermediate table names. 
         # This allows in-place name replacement optimization while merging.

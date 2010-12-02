@@ -333,6 +333,18 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinOutBand) {
     BOOST_CHECK(spr->getHasAggregate());
 }
 
+BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
+    std::string stmt = "select count(*) from LSST.Object o1,LSST.Object o2 WHERE qserv_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) < 0.2";
+    std::map<std::string, std::string> hintedCfg(config);
+    hintedCfg["query.hints"] = "box,5.5,5.5,6.1,6.1";
+    SqlParseRunner::Ptr spr = getRunner(stmt, hintedCfg);
+    testStmt2(spr);
+    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 
