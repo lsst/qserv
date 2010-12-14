@@ -508,8 +508,10 @@ bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName,
         (Pformat(
             " --compact --add-locks --create-options --skip-lock-tables"
 	    " --socket=%1%"
-            " --result-file=%2% %3% %4%")
+            " -u $%2%"
+            " --result-file=%3% %4% %5%")
          % getConfig().getString("mysqlSocket") 
+         % _user
          % dumpFile % dbName % tables).str();
     _e.Say((Pformat("dump cmdline: %1%") % cmd).str().c_str());
 
