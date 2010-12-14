@@ -78,7 +78,7 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
   : XrdSfsFileSystem(), _eDest(lp) {
     static boost::mutex m;
     boost::lock_guard<boost::mutex> l(m);
-    _eDest->Say("MySqlFs loading libXrdOfs.so for clustering cmsd support.");
+    _eDest->Say("MySqlFs initializing mysql library.");
     _isMysqlFail = mysql_library_init(0, NULL, NULL);
     if(_isMysqlFail) {
 	_eDest->Say("Problem initializing MySQL library. Behavior undefined.");
@@ -88,6 +88,7 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
                      + " -- Behavior undefined.").c_str());
     }
 #ifdef NO_XROOTD_FS
+	_eDest->Say("Skipping load of libXrdOfs.so (non xrootd build).");
 #else
     XrdSfsFileSystem* fs;
     fs = XrdXrootdloadFileSystem(_eDest, "libXrdOfs.so", cFileName);
