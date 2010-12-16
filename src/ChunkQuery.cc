@@ -106,6 +106,7 @@ void qMaster::ChunkQuery::Complete(int Result) {
     case READ_OPEN: // Opened, so we can read-back the results.
         _readOpenTimer.stop();
         ss << _hash << " ReadOpen " << _readOpenTimer << std::endl;
+
 	if(Result < 0) { // error? 
 	    _result.read = Result;
 	    std::cout << "Problem reading result: open returned " 
@@ -116,6 +117,7 @@ void qMaster::ChunkQuery::Complete(int Result) {
 	    _state = COMPLETE;
 	} else {
 	    _state = READ_READ;
+            //_manager->getReadPermission();
 	    _readResults(Result);
 	}
 	break;
@@ -153,16 +155,26 @@ qMaster::ChunkQuery::~ChunkQuery() {
 void qMaster::ChunkQuery::run() {
     // This lock ensures that the remaining ChunkQuery::Complete() calls
     // do not proceed until this initial step completes.
-    boost::lock_guard<boost::mutex> lock(_mutex);
-
+    boost::unique_lock<boost::mutex> lock(_mutex);
+    int result = 0;
     _state = WRITE_OPEN;
     std::cout << "Opening " << _spec.path << "\n";
     _writeOpenTimer.start();
-    int result = qMaster::xrdOpenAsync(_spec.path.c_str(), O_WRONLY, this);
+#if 0
+    while(true) {
+        result = qMaster::xrdOpenAsync(_spec.path.c_str(), O_WRONLY, this);
+        if(result == -EMFILE) {
+            _manager->signalTooManyFiles();
+            _manager->getWritePermission();
+        } else {
+            break;
+        }
+    }
     if(result != -EINPROGRESS) {
-	// don't continue, set result with the error.
-	std::cout << "Not EINPROGRESS, should not continue with " 
-		  << _spec.path << "\n";
+        // don't continue, set result with the error.
+        std::cout << "Not EINPROGRESS (" << result 
+                  << "), should not continue with " 
+                  << _spec.path << "\n";
 	_result.open = result;
 	_state = COMPLETE;
 	_notifyManager(); // manager should delete me.
@@ -172,6 +184,13 @@ void qMaster::ChunkQuery::run() {
 				   _spec.query.size());
 	
     }
+#else     //synchronous open:
+    _hash = qMaster::hashQuery(_spec.query.c_str(), 
+                               _spec.query.size());
+    result = qMaster::xrdOpen(_spec.path.c_str(), O_WRONLY);
+    lock.release()->unlock();
+    Complete(result);
+#endif
     // Callback(Complete) will handle the rest.
 }
 
@@ -304,6 +323,7 @@ void qMaster::ChunkQuery::_squashAtCallback(int result) {
     
 bool qMaster::ChunkQuery::_openForRead(std::string const& url) {
     _state = READ_OPEN;
+
     //std::cout  << "opening async read to " << url << "\n";
     _readOpenTimer.start();
     _result.read = qMaster::xrdOpenAsync(url.c_str(), 

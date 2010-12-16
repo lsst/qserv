@@ -163,6 +163,17 @@ struct mergeStatus {
     int firstN;
 };
 
+void qMaster::pauseReadTrans(int session) {
+    AsyncQueryManager& qm = getAsyncManager(session);
+    qm.pauseReadTrans();
+}
+
+void qMaster::resumeReadTrans(int session) {
+    AsyncQueryManager& qm = getAsyncManager(session);
+    qm.resumeReadTrans();
+    
+}
+
 qMaster::QueryState qMaster::joinSession(int session) {
     AsyncQueryManager& qm = getAsyncManager(session);
     qm.joinEverything();

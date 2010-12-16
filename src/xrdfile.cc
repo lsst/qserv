@@ -264,6 +264,13 @@ void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize,
 			     O_CREAT|O_WRONLY|O_TRUNC,
 			     S_IRUSR|S_IWUSR);
     if(localFileDesc == -1) {
+        while(errno == -EMFILE) {
+            std::cout << "EMFILE while trying to write locally." << std::endl;
+            sleep(1);
+            localFileDesc = open(filename, 
+                                 O_CREAT|O_WRONLY|O_TRUNC,
+                                 S_IRUSR|S_IWUSR);
+        }
 	writeRes = -errno;
     }
     while(1) {

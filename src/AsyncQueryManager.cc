@@ -244,6 +244,46 @@ std::string qMaster::AsyncQueryManager::getMergeResultName() const {
     }
     return std::string();
 }
+
+void qMaster::AsyncQueryManager::getReadPermission() {
+    boost::unique_lock<boost::mutex> lock(_canReadMutex);
+    if(!_canRead) {
+        while(!_canRead) {
+            _canReadCondition.timed_wait(lock, 
+                                         boost::posix_time::seconds(5));
+            if(_reliefFiles > 0)
+                break; // Allow "relief" from too many open files
+        }
+    }
+    
+}
+void qMaster::AsyncQueryManager::getWritePermission() {
+    boost::unique_lock<boost::mutex> lock(_canReadMutex);
+    while(!_canRead) { // only wait up to 5 seconds before continuing.
+        _canReadCondition.timed_wait(lock, 
+                                     boost::posix_time::seconds(5));
+    }
+}
+void qMaster::AsyncQueryManager::signalTooManyFiles() {
+    boost::unique_lock<boost::mutex> lock(_canReadMutex);
+    std::cout << "Too many files! relieving." << std::endl;
+    _reliefFiles = 500;
+    _canReadCondition.notify_all();
+}
+
+void qMaster::AsyncQueryManager::pauseReadTrans() {
+    boost::unique_lock<boost::mutex> lock(_canReadMutex);
+    _canRead = false;
+}
+
+void qMaster::AsyncQueryManager::resumeReadTrans() {
+    boost::unique_lock<boost::mutex> lock(_canReadMutex);
+    _canRead = true;
+    _canReadCondition.notify_all();
+
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // private: ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////

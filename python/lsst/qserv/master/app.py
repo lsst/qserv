@@ -78,7 +78,7 @@ from lsst.qserv.master import TransactionSpec
 # Dispatcher 
 from lsst.qserv.master import newSession, submitQuery, initDispatcher
 from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
-
+from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
 from lsst.qserv.master import ChunkMapping, SqlSubstitution
 # Merger
@@ -642,6 +642,14 @@ class QueryBabysitter:
                                         mysqlBin)
         configureSessionMerger(self._sessionId, mergeConfig)
 
+    def pauseReadback(self):
+        pauseReadTrans(self._sessionId)
+        pass
+
+    def resumeReadback(self):
+        resumeReadTrans(self._sessionId)
+        pass
+
     def submit(self, chunk, table, q):
         saveName = self._saveName(chunk)
         handle = submitQuery(self._sessionId, chunk, q, saveName, table)
@@ -857,7 +865,11 @@ class HintedQueryAction:
 
     def invoke(self):
         #count=0
+        self._babysitter.pauseReadback();
+        lastTime = time.time()
         for chunkId, subIter in self._intersectIter:
+            print "dispatch iter took %f seconds" % (time.time() - lastTime)
+            lastTime = time.time()
             if chunkId in self._emptyChunks:
                 continue # FIXME: What if all chunks are empty?
             table = self._resultTableTmpl % str(chunkId)
@@ -867,11 +879,16 @@ class HintedQueryAction:
                 q = self._makeSubChunkQuery(chunkId, subIter, table)
             else:
                 q = self._makeChunkQuery(chunkId, table)
+            prepTime = time.time()
             print "DISPATCH: ", q
             self._babysitter.submit(chunkId, table, q)
+            print "Chunk %d dispatch took %f seconds (prep: %f )" % (
+                chunkId, time.time() - lastTime, prepTime - lastTime)
+            lastTime = time.time()
             #count += 1
             #if count >= 1: break
             ##print >>sys.stderr, q, "submitted"
+        self._babysitter.resumeReadback()
         self._invokeLock.release()
         return
 

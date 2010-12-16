@@ -63,7 +63,8 @@ public:
         _isExecFaulty(false), _isSquashed(false),
         _queryCount(0),
         _shouldLimitResult(false), 
-        _resultLimit(1024*1024*1024), _totalSize(0)
+        _resultLimit(1024*1024*1024), _totalSize(0),
+        _canRead(true), _reliefFiles(0)
             { _readConfig(cfg); }
     void configureMerger(TableMergerConfig const& c);
 
@@ -76,6 +77,12 @@ public:
     void finalizeQuery(int id,  XrdTransResult r, bool aborted); 
     std::string getMergeResultName() const;
     std::string const& getXrootdHostPort() const { return _xrootdHostPort; };
+
+    void getReadPermission();
+    void getWritePermission();
+    void signalTooManyFiles();
+    void pauseReadTrans();
+    void resumeReadTrans();
 
 private:
     // QuerySpec: ChunkQuery object + result name
@@ -102,6 +109,9 @@ private:
     boost::mutex _resultsMutex;
     boost::mutex _totalSizeMutex;
     boost::condition_variable _queriesEmpty;
+    boost::mutex _canReadMutex;
+    boost::condition_variable _canReadCondition;
+
     int _lastId;
     bool _isExecFaulty;
     bool _isSquashed;
@@ -112,6 +122,9 @@ private:
     bool _shouldLimitResult;
     ssize_t _resultLimit;
     ssize_t _totalSize;
+    bool _canRead;
+    int _reliefFiles;
+
     std::string _xrootdHostPort;
     boost::shared_ptr<TableMerger> _merger;
 };
