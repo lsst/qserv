@@ -175,8 +175,9 @@ std::ostream& operator<<(std::ostream& os, Timer const& tm) {
 // MySqlFsFile
 //////////////////////////////////////////////////////////////////////////////
 qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user, 
-				  AddCallbackFunction::Ptr acf) :
-    XrdSfsFile(user), _eDest(lp), _addCallbackF(acf) {
+				  AddCallbackFunction::Ptr acf,
+                                  qWorker::fs::FileValidator::Ptr fv) :
+    XrdSfsFile(user), _eDest(lp), _addCallbackF(acf), _validator(fv) {
 
     // Capture userName at this point.
     // Param user is: user.pid:fd@host 
@@ -210,6 +211,13 @@ int qWorker::MySqlFsFile::open(
 	_chunkId = findChunkNumber(fileName);
 	_eDest->Say((Pformat("File open %1% for query invocation by %2%")
 		     % fileName % _userName).str().c_str());
+        if(!(*_validator)(fileName)) {
+            error.setErrInfo(ENOENT, "File does not exist");
+            _eDest->Say((Pformat("WARNING: unowned chunk query detected: %1%(%2%)")
+                         % fileName % _chunkId ).str().c_str());
+            return SFS_ERROR;        
+        }
+
 	break;
     case fs::TWO_READ:
 	rc = _handleTwoReadOpen(fileName);
@@ -238,6 +246,7 @@ int qWorker::MySqlFsFile::close(void) {
 	// _eDest->Say((Pformat("Not Removing dump file(%1%)")
 	// 		 % _dumpName ).str().c_str());
 	int result = ::unlink(_dumpName.c_str());
+        _eDest->Say((Pformat("Unlink: %1%") % _dumpName ).str().c_str());
 	if(result != 0) {
 	    _eDest->Say((Pformat("Error removing dump file(%1%): %2%")
 			 % _dumpName % strerror(errno)).str().c_str());
@@ -286,8 +295,14 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
     XrdSfsFileOffset fileOffset, char* buffer, XrdSfsXferSize bufferSize) {
     std::string msg;
     _hasRead = true;
-    msg = (Pformat("File read(%1%) at %2% for %3% by %4% [actual=%5%]")
-	   % _chunkId % fileOffset % bufferSize % _userName % _dumpName).str();
+    struct stat statbuf;
+    if (::stat(_dumpName.c_str(), &statbuf) == -1) {
+        statbuf.st_size = -errno;
+    }
+            
+    msg = (Pformat("File read(%1%) at %2% for %3% by %4% [actual=%5% %6%]")
+	   % _chunkId % fileOffset % bufferSize % _userName 
+           % _dumpName % statbuf.st_size).str();
     _eDest->Say(msg.c_str());
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
     int fd = qWorker::dumpFileOpen(_dumpName);

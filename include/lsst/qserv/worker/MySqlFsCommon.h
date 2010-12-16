@@ -24,6 +24,7 @@
 #define LSST_LSPEED_MYSQLFSCOMMON_H
 
 #include <string>
+#include <boost/shared_ptr.hpp>
 
 class XrdSysError;
 
@@ -37,6 +38,13 @@ enum FileClass {COMBO, TWO_WRITE, TWO_READ, UNKNOWN};
 // Xrootd file path functionality
 FileClass computeFileClass(std::string const& filename);
 std::string stripPath(std::string const& filename);
+
+class FileValidator {
+public:
+    typedef boost::shared_ptr<FileValidator> Ptr;
+    virtual ~FileValidator() {}
+    virtual bool operator()(std::string const& filename) = 0;
+};
 
 }}}} // lsst::qserv:worker::fs
 #endif

@@ -54,7 +54,8 @@ public:
 class MySqlFsFile : public XrdSfsFile {
 public:
     MySqlFsFile(XrdSysError* lp, char* user = 0, 
-		AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr() );
+		AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr(),
+                fs::FileValidator::Ptr fv = fs::FileValidator::Ptr());
     virtual ~MySqlFsFile(void);
 
     int open(char const* fileName, XrdSfsFileOpenMode openMode,
@@ -102,6 +103,7 @@ private:
 
     XrdSysError* _eDest;
     AddCallbackFunction::Ptr _addCallbackF;
+    fs::FileValidator::Ptr _validator;
     int _chunkId;
     fs::FileClass _fileClass;
     std::string _userName;

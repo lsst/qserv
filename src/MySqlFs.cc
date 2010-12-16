@@ -72,6 +72,25 @@ public:
             filename, FinishListener<XrdSfsCallBack>(callback));
     }
 };
+
+class FileValidator : public qWorker::fs::FileValidator {
+public:
+    typedef boost::shared_ptr<FileValidator> Ptr;
+    FileValidator(char const* localroot) : _localroot(localroot) {}
+    virtual ~FileValidator() {}
+    virtual bool operator()(std::string const& filename) {
+        std::string expanded(_localroot);
+        expanded += "/" + filename;
+        struct stat statbuf;
+        return ::stat(expanded.c_str(), &statbuf) == 0 &&
+            S_ISREG(statbuf.st_mode) && 
+            (statbuf.st_mode & S_IRUSR) == S_IRUSR;
+
+    }
+private:
+    char const* _localroot;
+};
+
 } // anonymous namespace
 
 qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName) 
@@ -97,6 +116,7 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
     }
 #endif
     updateResultPath();
+    _localroot = ::getenv("XRDLCLROOT");
 }
 
 qWorker::MySqlFs::~MySqlFs(void) {
@@ -113,7 +133,8 @@ XrdSfsDirectory* qWorker::MySqlFs::newDir(char* user) {
 
 XrdSfsFile* qWorker::MySqlFs::newFile(char* user) {
     return new qWorker::MySqlFsFile(_eDest, user, 
-				    boost::make_shared<AddCallbackFunc>());
+				    boost::make_shared<AddCallbackFunc>(),
+                                    boost::make_shared<FileValidator>(_localroot));
 }
 
 // Other Functions

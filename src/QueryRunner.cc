@@ -402,14 +402,17 @@ bool qWorker::QueryRunner::_act() {
     _e.Say((Pformat("(fileobj:%1%) %2%")
 	    % (void*)(this) % dbDump).str().c_str());
 
+    // Result files shouldn't get reused right now 
+    // since we trash them after they are read once
+#if 0 
     if (qWorker::dumpFileExists(_meta.resultPath)) {
-	_e.Say((Pformat("Reusing pre-existing dump = %1%")
-		% _meta.resultPath).str().c_str());
+	_e.Say((Pformat("Reusing pre-existing dump = %1% (chk=%2%)")
+		% _meta.resultPath % _meta.chunkId).str().c_str());
 	// The system should probably catch this earlier.
 	getTracker().notify(_meta.hash, ResultError(0,""));
 	return true;
     }
-	
+#endif	
     if (!_runScript(_meta.script, _meta.dbName)) {
 	_e.Say((Pformat("(FinishFail:%1%) %2% hash=%3%")
 		% (void*)(this) % dbDump % _meta.hash).str().c_str());
@@ -508,7 +511,7 @@ bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName,
         (Pformat(
             " --compact --add-locks --create-options --skip-lock-tables"
 	    " --socket=%1%"
-            " -u $%2%"
+            " -u %2%"
             " --result-file=%3% %4% %5%")
          % getConfig().getString("mysqlSocket") 
          % _user

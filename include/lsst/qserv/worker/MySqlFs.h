@@ -86,6 +86,7 @@ public:
 private:
     XrdSysError* _eDest;
     int _isMysqlFail;
+    char const* _localroot;
 };
 
 }}} // namespace lsst::qserv::worker
