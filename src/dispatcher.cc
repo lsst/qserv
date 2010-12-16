@@ -115,13 +115,14 @@ qMaster::QueryState qMaster::joinQuery(int session, int id) {
 }
 
 qMaster::QueryState qMaster::tryJoinQuery(int session, int id) {
+#if 0 // Not implemented yet
+    // Just get the status and return it.
+
 #if 1
     AsyncQueryManager& qm = getAsyncManager(session);
 #else
     QueryManager& qm = getManager(session);
 #endif
-#if 0 // Not implemented yet
-    // Just get the status and return it.
     if(qm.tryJoin(id)) {
 	return SUCCESS; 
     } else {
@@ -134,18 +135,20 @@ qMaster::QueryState qMaster::tryJoinQuery(int session, int id) {
 }
 
 struct mergeStatus {
-    mergeStatus(bool& success, bool shouldPrint_=false) 
-        : isSuccessful(success), shouldPrint(shouldPrint_) {
+    mergeStatus(bool& success, bool shouldPrint_=false, int firstN_=5) 
+        : isSuccessful(success), shouldPrint(shouldPrint_), 
+          firstN(firstN_) {
         isSuccessful = true;
     }
     void operator() (qMaster::AsyncQueryManager::Result const& x) { 
 	if(! x.second.isSuccessful()) {
-            if(shouldPrint) {
+            if(shouldPrint || (firstN > 0)) {
                 std::cout << "Chunk " << x.first << " error " << std::endl
                           << "open: " << x.second.open 
                           << " qWrite: " << x.second.queryWrite 
                           << " read: " << x.second.read 
                           << " lWrite: " << x.second.localWrite << std::endl;
+                --firstN;
             }
 	    isSuccessful = false;
 	} else {
@@ -157,6 +160,7 @@ struct mergeStatus {
     }
     bool& isSuccessful;
     bool shouldPrint;
+    int firstN;
 };
 
 qMaster::QueryState qMaster::joinSession(int session) {

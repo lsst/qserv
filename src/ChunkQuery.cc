@@ -385,6 +385,8 @@ void qMaster::ChunkQuery::_readResults(int fd) {
         if(res != 0) {
             errnoComplain("Error closing after result read", fd, errno);
         }
+        std::cout << _hash << " -- wrote " << _result.localWrite 
+                  << " read " << _result.read << std::endl;
 	_state = COMPLETE;
 	_notifyManager(); // This is a successful completion.
 }

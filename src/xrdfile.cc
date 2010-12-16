@@ -168,7 +168,7 @@ int qMaster::xrdOpenAsync(const char* path, int oflag, XrdPosixCallBack *cbP) {
     while((abbrev[0] != '\0') && *abbrev++ != '/');
     while((abbrev[0] != '\0') && *abbrev++ != '/');
     QSM_TIMESTART("OpenAsy", abbrev);
-    int res = XrdPosixXrootd::Open(path,oflag, 0, cbP); 
+    int res = XrdPosixXrootd::Open(path, oflag, 0, cbP); 
     // not sure what to do with mode, so set to 0 right now.
     QSM_TIMESTOP("OpenAsy", abbrev);
     assert(res == -1);
