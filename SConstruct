@@ -183,6 +183,7 @@ dispatchSrcs = map(lambda x: os.path.join('src', x),
                     "dispatcher.cc", "xrootd.cc",
                     "AsyncQueryManager.cc",
                     "ChunkQuery.cc",
+                    "WorkQueue.cc",
                     "Timer.cc"])
 
 srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs
