@@ -29,6 +29,7 @@
 #include "lsst/qserv/master/ChunkQuery.h"
 #include "lsst/qserv/master/TableMerger.h"
 #include "lsst/qserv/master/Timer.h"
+#include "lsst/qserv/common/WorkQueue.h"
 
 // Namespace modifiers
 using boost::make_shared;
@@ -172,6 +173,10 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
         t2e.start();
         if(!aborted) {
             _isExecFaulty = true;
+            std::cout << "Requesting squash " << id 
+                      << " because open=" << r.open
+                      << " queryWrite=" << r.queryWrite 
+                      << " read=" << r.read << std::endl;
             _squashExecution();
             std::cout << " Skipped merge (read failed for id=" 
                       << id << ")" << std::endl;
@@ -287,6 +292,11 @@ void qMaster::AsyncQueryManager::resumeReadTrans() {
 ////////////////////////////////////////////////////////////////////////
 // private: ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
+void qMaster::AsyncQueryManager::_initPool() {
+    const int readThreads = 100;
+    _readQueue = boost::make_shared<lsst::qserv::common::WorkQueue>(readThreads);
+}
+
 void qMaster::AsyncQueryManager::_readConfig(std::map<std::string,std::string> const& cfg) {
     StringMap::const_iterator i = cfg.find("frontend.xrootd");
     if(i != cfg.end()) {

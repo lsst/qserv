@@ -39,7 +39,8 @@ std::string qMaster::makeUrl(char const* hostport, char const* typeStr,
 }
 
 std::string qMaster::makeUrl(char const* hostport, 
-			     char const* typeStr, std::string const& s) {
+			     char const* typeStr, std::string const& s,
+                             char mode) {
 
     // typeStr is either "query" or "result"
     if(hostport == NULL) {
@@ -58,6 +59,10 @@ std::string qMaster::makeUrl(char const* hostport,
     std::string user("qsmaster");
     std::string tstr(typeStr);
     std::string ret;
+    if(mode != '\0') {
+        user += "."; 
+        user += mode;
+    }
     ret.reserve(pfx.size() + user.size() + 1 + 2 + 1 
                 + tstr.size() + s.size());
     ret += pfx;

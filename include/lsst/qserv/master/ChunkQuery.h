@@ -52,6 +52,8 @@ public:
     enum WaitState {WRITE_OPEN, WRITE_WRITE, 
 		    READ_OPEN, READ_READ,
 		    COMPLETE, CORRUPT, ABORTED};
+    class ReadCallable;
+    friend class ReadCallable;
     
     virtual void Complete(int Result);
     explicit ChunkQuery(TransactionSpec const& t, int id,

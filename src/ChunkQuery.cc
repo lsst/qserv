@@ -37,10 +37,13 @@
 #include "lsst/qserv/master/ChunkQuery.h"
 #include "lsst/qserv/master/xrootd.h"
 #include "lsst/qserv/master/AsyncQueryManager.h"
+#include "lsst/qserv/common/WorkQueue.h"
 
 // Namespace modifiers
 using boost::make_shared;
 namespace qMaster = lsst::qserv::master;
+namespace qCommon = lsst::qserv::common;
+using qCommon::WorkQueue;
 
 namespace {
     void errnoComplain(char const* desc, int num, int errn) {
@@ -69,8 +72,52 @@ namespace {
         ~scopedTrue() { value = false; }
         bool& value;
     };
-}
+}  // anonymous namespace
 
+//////////////////////////////////////////////////////////////////////
+// class ChunkQuery::ReadCallable
+//////////////////////////////////////////////////////////////////////
+class qMaster::ChunkQuery::ReadCallable : public WorkQueue::Callable {
+public:
+    typedef boost::shared_ptr<WorkQueue::Callable> CPtr;
+    explicit ReadCallable(qMaster::ChunkQuery& cq) : 
+        _cq(cq), _isRunning(false)
+    {}
+    virtual ~ReadCallable() {} // Must halt current operation.
+    virtual void operator()() {
+        // Use blocking reads to prevent implicit thread creation by 
+        // XrdClient
+        _cq._state = ChunkQuery::READ_OPEN;
+        _cq._readOpenTimer.start();
+        _isRunning = true;
+        int result = qMaster::xrdOpen(_cq._resultUrl.c_str(), O_RDONLY);
+        if(result == -1 ) {
+            if(errno == EINPROGRESS) {
+                std::cout << "Synchronous open returned EINPROGRESS!!!! "
+                          << _cq._spec.chunkId
+                          << std::endl;
+            }
+            _cq._result.read = -errno;
+            _cq._state = ChunkQuery::COMPLETE;
+            _cq._notifyManager(); 
+            return;
+        }
+        _cq.Complete(result);
+    }
+    virtual void abort() {
+        if(_isRunning) {
+            // This is the best we can do for squashing.
+            _cq._unlinkResult(_cq._resultUrl);             
+        }
+    }
+
+    static CPtr makeShared(qMaster::ChunkQuery& cq) {
+        return CPtr(new ReadCallable(cq));
+    }
+private:
+    ChunkQuery& _cq;
+    bool _isRunning;
+};
 
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery 
@@ -188,6 +235,9 @@ void qMaster::ChunkQuery::run() {
     _hash = qMaster::hashQuery(_spec.query.c_str(), 
                                _spec.query.size());
     result = qMaster::xrdOpen(_spec.path.c_str(), O_WRONLY);
+    if (result == -1) {
+        result = -errno;
+    }
     lock.release()->unlock();
     Complete(result);
 #endif
@@ -373,10 +423,14 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
             _unlinkResult(_resultUrl);
             isReallyComplete = true;
         } else {
+#if 1
             // Only attempt opening the read if not squashing.
+            _manager->getReadQueue().add(ReadCallable::makeShared(*this));
+#else
             if(!_openForRead(_resultUrl)) {
                 isReallyComplete = true;
             }  
+#endif
         }
     } // Write ok
     if(isReallyComplete) { 
@@ -405,7 +459,8 @@ void qMaster::ChunkQuery::_readResults(int fd) {
         if(res != 0) {
             errnoComplain("Error closing after result read", fd, errno);
         }
-        std::cout << _hash << " -- wrote " << _result.localWrite 
+        std::cout << _spec.chunkId << " " 
+                  << _hash << " -- wrote " << _result.localWrite 
                   << " read " << _result.read << std::endl;
 	_state = COMPLETE;
 	_notifyManager(); // This is a successful completion.
@@ -423,4 +478,9 @@ void qMaster::ChunkQuery::_notifyManager() {
 void qMaster::ChunkQuery::_unlinkResult(std::string const& url) {
     int res = XrdPosixXrootd::Unlink(url.c_str());
     // FIXME: decide how to handle error here.
+    if(res == -1) {
+        res = errno;
+        std::cout << "ChunkQuery abort error: unlink gave errno = " 
+                  << res << std::endl;
+    }
 }
