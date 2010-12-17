@@ -87,7 +87,7 @@ qCommon::WorkQueue::~WorkQueue() {
 
 void qCommon::WorkQueue::add(boost::shared_ptr<qCommon::WorkQueue::Callable> c) {
     boost::lock_guard<boost::mutex> lock(_mutex);
-    if(_isDead) {
+    if(_isDead && !isPoison(c.get())) {
         std::cout << "Queue refusing work: dead" << std::endl;
     } else {
         std::cout << "Added one" << std::endl;

@@ -411,7 +411,7 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
 	_result.queryWrite = writeCount;
 	_queryHostPort = qMaster::xrdGetEndpoint(fd);
 	_resultUrl = qMaster::makeUrl(_queryHostPort.c_str(), "result", 
-				      _hash);
+				      _hash, 'r');
         _writeCloseTimer.start();
         closeFd(fd, "Normal", "dumpPath " + _spec.savePath, 
                 "post-dispatch");
