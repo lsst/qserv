@@ -199,10 +199,19 @@ testParser = { 'bin' : os.path.join('bin', 'testCppParser'),
                'srcPaths' : (parserSrcs +
                              [os.path.join("tests","testCppParser.cc")]),
                }
+xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
+                'srcPaths' : map(lambda x: os.path.join('src', x), 
+                                 ["xrdfile.cc", 
+                                  "xrootd.cc", 
+                                  "WorkQueue.cc",
+                                  "xrdPrecache.cc"])}
+               
+
 if canBuild:
     env.SharedLibrary(pyLib, srcPaths)
     env.Program(runTrans['bin'], runTrans["srcPaths"])
     parseEnv.Program(testParser['bin'], testParser["srcPaths"])
+    env.Program(xrdPrecache['bin'], xrdPrecache["srcPaths"])
 
 # Describe what your package contains here.
 env.Help("""
