@@ -90,7 +90,6 @@ void qCommon::WorkQueue::add(boost::shared_ptr<qCommon::WorkQueue::Callable> c) 
     if(_isDead && !isPoison(c.get())) {
         std::cout << "Queue refusing work: dead" << std::endl;
     } else {
-        std::cout << "Added one" << std::endl;
         _queue.push_back(c);
         _queueNonEmpty.notify_all();
     }
@@ -103,7 +102,6 @@ boost::shared_ptr<qCommon::WorkQueue::Callable> qCommon::WorkQueue::getNextCalla
     }
     boost::shared_ptr<Callable> c = _queue.front();
     _queue.pop_front();
-    std::cout << "got work." << std::endl;
     return c;
 }
 void qCommon::WorkQueue::registerRunner(Runner* r) {

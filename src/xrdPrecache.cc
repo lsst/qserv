@@ -75,15 +75,32 @@ volatile int Callable::unitsDone = 0;
 
 class App {
 public:
-    App(std::string const& hostport) :_hostport(hostport) {
+    App(std::string const& hostport, int low, int high) 
+        :_hostport(hostport), _low(low), _high(high) {
     }
+
+    void initFromCmdLine(int argc, char const** argv) {
+        if(argc > 1 ) {
+            _hostport = argv[1];
+            if(argc == 4) {
+                _low = atoi(argv[2]);
+                _high = atoi(argv[3]);
+                            
+            }
+        }
+    }
+    
     void run() {
-        WorkQueue wq(200);
-        for(int i=0; i < 7200; ++i) {
+        int const poolSize = 500;
+        std::cout << "Using host=" << _hostport 
+                  << " range: " << _low << " " << _high << std::endl;
+
+        WorkQueue wq(poolSize);
+        for(int i=_low; i < _high; ++i) {
             wq.add(Callable::makeShared(qMaster::makeUrl(_hostport.c_str(), 
                                                          "query2", i)));
         }
-        while(Callable::unitsDone < 7200) {
+        while(Callable::unitsDone < (_high-_low)) {
             sleep(1);
         }
     }
@@ -91,12 +108,16 @@ public:
 private:
     std::string _hostport;
     std::string _urlTemp;
+    int _low;
+    int _high;
 };
 
 } // anonymous namespace
 
-int main(int,char**) {
-    App a("boer0021:1094");
+
+int main(int argc, char const** argv) {
+    App a("boer0021:1094", 0, 7200);
+    a.initFromCmdLine(argc, argv);
     a.run();
     return 0;
 }

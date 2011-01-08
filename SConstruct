@@ -211,7 +211,11 @@ if canBuild:
     env.SharedLibrary(pyLib, srcPaths)
     env.Program(runTrans['bin'], runTrans["srcPaths"])
     parseEnv.Program(testParser['bin'], testParser["srcPaths"])
-    env.Program(xrdPrecache['bin'], xrdPrecache["srcPaths"])
+    env.Program(target=xrdPrecache['bin'], source=xrdPrecache["srcPaths"],
+                LINKFLAGS='--static', 
+                LIBS=["XrdPosix", "XrdClient", "XrdSys", 
+                      "XrdNet", "XrdOuc", "XrdOss", "ssl", "crypto", "dl",
+                      "boost_thread", "pthread"])
 
 # Describe what your package contains here.
 env.Help("""
