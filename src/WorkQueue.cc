@@ -39,10 +39,10 @@ public:
     
     void operator()() {
         _w.registerRunner(this);
-        std::cerr << "Started!" << std::endl;
+        //std::cerr << "Started!" << std::endl;
         boost::shared_ptr<Callable> c = _w.getNextCallable();
         _c = c.get();
-        std::cerr << "got first job" << std::endl;
+        //std::cerr << "got first job" << std::endl;
         while(!_w.isPoison(c.get())) {
             (*c)();
             _c = 0;
@@ -113,12 +113,12 @@ void qCommon::WorkQueue::registerRunner(Runner* r) {
 void qCommon::WorkQueue::signalDeath(Runner* r) {
     boost::lock_guard<boost::mutex> lock(_runnersMutex); 
     RunnerDeque::iterator end = _runners.end();
-    std::cout << (void*) r << " dying" << std::endl;
+    //std::cout << (void*) r << " dying" << std::endl;
     for(RunnerDeque::iterator i = _runners.begin(); i != end; ++i) {
         if(*i == r) {
             _runners.erase(i);
             _runnersEmpty.notify_all();
-            std::cout << _runners.size() << " runners left" << std::endl;
+            //std::cout << _runners.size() << " runners left" << std::endl;
             return;
         }
     }
