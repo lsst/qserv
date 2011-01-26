@@ -54,9 +54,15 @@ public:
     }
     virtual void operator()() {
         int result = qMaster::xrdOpen(_url.c_str(), O_WRONLY);
-        ++unitsDone;
+        {
+            boost::lock_guard<boost::mutex> l(unitsMutex);
+            int* ptr = &unitsDone;        
+            ++unitsDone;
+        }
         if(result < 0) {
-            std::cout << "error with path " << _url << std::endl;
+            std::cout << "error " << result << " " << errno 
+                      << " with path " 
+                      << _url << std::endl;
             return;
         }
         result = qMaster::xrdClose(result);
@@ -67,11 +73,13 @@ public:
         
     }
     virtual void abort() {}
-    volatile static int unitsDone;
+    static int unitsDone;
+    static boost::mutex unitsMutex;
 private:
     std::string _url;
 };
-volatile int Callable::unitsDone = 0;
+int Callable::unitsDone = 0;
+
 
 class App {
 public:
@@ -91,7 +99,7 @@ public:
     }
     
     void run() {
-        int const poolSize = 500;
+        int const poolSize = 1000;
         std::cout << "Using host=" << _hostport 
                   << " range: " << _low << " " << _high << std::endl;
 
