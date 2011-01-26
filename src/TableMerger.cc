@@ -112,6 +112,7 @@ std::string dropDbContext(std::string const& tableName,
     } 
     return tableName;
 }
+
 } // anonymous namespace
 
 std::string const TableMerger::_dropSql("DROP TABLE IF EXISTS %s;");
@@ -121,7 +122,12 @@ std::string const TableMerger::_insertSql("INSERT INTO %s SELECT * FROM %s;");
 std::string const TableMerger::_cleanupSql("DROP TABLE IF EXISTS %s;");
 std::string const TableMerger::_cmdBase("%1% --socket=%2% -u %3% %4%");
 
-
+////////////////////////////////////////////////////////////////////////
+// TableMergerError
+////////////////////////////////////////////////////////////////////////
+bool TableMergerError::resultTooBig() const {
+    return (status == MYSQLEXEC) && (errorCode == 1114);
+}
 ////////////////////////////////////////////////////////////////////////
 // public
 ////////////////////////////////////////////////////////////////////////
@@ -345,6 +351,7 @@ bool TableMerger::_importBufferInsert(char const* buf, std::size_t size,
                            dropDbContext(_mergeTable, _config.targetDb), 
                            dropQuote);
             if(!_applySql(q)) {
+                if(_error.resultTooBig())
                 std::cout << "Failed importing! " << tableName 
                           << " " << _error.description << std::endl;
                 return false;

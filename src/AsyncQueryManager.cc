@@ -324,6 +324,12 @@ void qMaster::AsyncQueryManager::_addNewResult(ssize_t dumpSize,
             
     if(dumpSize > 0) {
         bool mergeResult = _merger->merge(dumpFile, tableName);
+        if(!mergeResult) {
+            TableMergerError e = _merger->getError();
+            if(e.resultTooBig()) {
+                _squashRemaining();
+            }
+        }
         // std::cout << "Merge of " << dumpFile << " into "
         //           << tableName 
         //           << (mergeResult ? " OK----" : " FAIL====") 

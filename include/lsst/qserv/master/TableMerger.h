@@ -48,6 +48,8 @@ public:
 	  MYSQLCONNECT, MYSQLEXEC} status;
     int errorCode;
     std::string description;
+    
+    bool resultTooBig() const;
 };
 
 /// class TableMergerConfig - value class for configuring a TableMerger
