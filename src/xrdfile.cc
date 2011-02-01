@@ -284,13 +284,20 @@ void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize,
 	}                                       
         bytesRead += readRes;
 	if(writeRes >= 0) { // No error yet?
-	    writeRes = pwrite(localFileDesc, buffer, 
-			      readRes, bytesWritten);
-	    if(writeRes != -1) {
-		bytesWritten += writeRes;
-	    } else {
-		writeRes = -errno; // Update write status
-	    }
+            while(1) {
+                writeRes = pwrite(localFileDesc, buffer, 
+                                  readRes, bytesWritten);
+                if(writeRes != -1) {
+                    bytesWritten += writeRes;
+                } else {
+                    if(errno == ENOSPC) {
+                        sleep(5); // sleep for 5 seconds.
+                        continue; // Try again.
+                    }
+                    writeRes = -errno; // Update write status
+                }
+                break;
+            }
 	}
 	if(readRes < fragmentSize) {
 	    break;
