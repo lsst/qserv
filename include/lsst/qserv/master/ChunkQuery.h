@@ -49,11 +49,15 @@ class AsyncQueryManager;
 //////////////////////////////////////////////////////////////////////
 class ChunkQuery : public XrdPosixCallBack {
 public:
-    enum WaitState {WRITE_OPEN, WRITE_WRITE, 
+    enum WaitState {WRITE_QUEUE,
+                    WRITE_OPEN, WRITE_WRITE, 
+                    READ_QUEUE,
 		    READ_OPEN, READ_READ,
 		    COMPLETE, CORRUPT, ABORTED};
     class ReadCallable;
+    class WriteCallable;
     friend class ReadCallable;
+    friend class WriteCallable;
     
     virtual void Complete(int Result);
     explicit ChunkQuery(TransactionSpec const& t, int id,

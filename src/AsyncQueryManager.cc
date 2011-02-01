@@ -63,8 +63,13 @@ public:
     printQueryMapValue(std::ostream& os_) : os(os_) {}
     void operator()(QueryMap::value_type const& qv) {
         os << "Query with id=" << qv.first;
-        os << ": " << qv.second.first->getDesc() 
-           << ", " << qv.second.second << std::endl;
+        os << ": ";
+        if(qv.second.first) {
+            os << qv.second.first->getDesc();
+        } else {
+            os << "(NULL)";
+        }
+        os << ", " << qv.second.second << std::endl;
     }
     std::ostream& os;
 };
@@ -293,8 +298,10 @@ void qMaster::AsyncQueryManager::resumeReadTrans() {
 // private: ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 void qMaster::AsyncQueryManager::_initPool() {
-    const int readThreads = 100;
+    const int readThreads = 20;
+    const int writeThreads = 500;
     _readQueue = boost::make_shared<lsst::qserv::common::WorkQueue>(readThreads);
+    _writeQueue = boost::make_shared<lsst::qserv::common::WorkQueue>(writeThreads);
 }
 
 void qMaster::AsyncQueryManager::_readConfig(std::map<std::string,std::string> const& cfg) {
@@ -324,6 +331,11 @@ void qMaster::AsyncQueryManager::_addNewResult(ssize_t dumpSize,
             
     if(dumpSize > 0) {
         bool mergeResult = _merger->merge(dumpFile, tableName);
+        int res = unlink(dumpFile.c_str()); // Hurry and delete dump file.
+        if(0 != res) {
+            std::cout << "Error removing dumpFile " << dumpFile
+                      << " errno=" << errno << std::endl;
+        }        
         if(!mergeResult) {
             TableMergerError e = _merger->getError();
             if(e.resultTooBig()) {

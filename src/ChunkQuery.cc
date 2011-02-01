@@ -118,6 +118,36 @@ private:
     ChunkQuery& _cq;
     bool _isRunning;
 };
+//////////////////////////////////////////////////////////////////////
+// class ChunkQuery::WriteCallable
+//////////////////////////////////////////////////////////////////////
+class qMaster::ChunkQuery::WriteCallable : public WorkQueue::Callable {
+public:
+    typedef boost::shared_ptr<WorkQueue::Callable> CPtr;
+    explicit WriteCallable(qMaster::ChunkQuery& cq) : 
+        _cq(cq)
+    {}
+    virtual ~WriteCallable() {} 
+    virtual void operator()() {
+        // Use blocking calls to prevent implicit thread creation by 
+        // XrdClient
+        _cq._state = ChunkQuery::WRITE_OPEN;
+        int result = qMaster::xrdOpen(_cq._spec.path.c_str(), O_WRONLY);
+        if (result == -1) {
+            result = -errno;
+        }
+        _cq.Complete(result);
+    }
+    virtual void abort() {
+        // Can't really squash myself.
+    }
+
+    static CPtr makeShared(qMaster::ChunkQuery& cq) {
+        return CPtr(new WriteCallable(cq));
+    }
+private:
+    ChunkQuery& _cq;
+};
 
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery 
@@ -204,9 +234,10 @@ void qMaster::ChunkQuery::run() {
     // do not proceed until this initial step completes.
     boost::unique_lock<boost::mutex> lock(_mutex);
     int result = 0;
-    _state = WRITE_OPEN;
     std::cout << "Opening " << _spec.path << "\n";
     _writeOpenTimer.start();
+    _hash = qMaster::hashQuery(_spec.query.c_str(), 
+                               _spec.query.size());
 #if 0
     while(true) {
         result = qMaster::xrdOpenAsync(_spec.path.c_str(), O_WRONLY, this);
@@ -226,14 +257,13 @@ void qMaster::ChunkQuery::run() {
 	_state = COMPLETE;
 	_notifyManager(); // manager should delete me.
     } else {
-	std::cout << "Waiting for " << _spec.path << "\n";
-	_hash = qMaster::hashQuery(_spec.query.c_str(), 
-				   _spec.query.size());
-	
+	std::cout << "Waiting for " << _spec.path << "\n";	
     }
-#else     //synchronous open:
-    _hash = qMaster::hashQuery(_spec.query.c_str(), 
-                               _spec.query.size());
+#elif 1
+    _state = WRITE_QUEUE;
+    WriteCallable w(*this);
+    _manager->getWriteQueue().add(WriteCallable::makeShared(*this));
+#else     //synchronous open:    
     result = qMaster::xrdOpen(_spec.path.c_str(), O_WRONLY);
     if (result == -1) {
         result = -errno;
@@ -249,12 +279,18 @@ std::string qMaster::ChunkQuery::getDesc() const {
     ss << "Query " << _id << " (" << _hash << ") " << _resultUrl
        << " " << _queryHostPort << " state=";
     switch(_state) {
+    case WRITE_QUEUE:
+	ss << "queuedWrite";
+	break;
     case WRITE_OPEN:
 	ss << "openingWrite";
 	break;
     case WRITE_WRITE:
 	ss << "writing";
 	break;
+    case READ_QUEUE:
+	ss << "queuedRead";
+        break;
     case READ_OPEN:
 	ss << "openingRead";
 	break;
@@ -424,6 +460,7 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
             isReallyComplete = true;
         } else {
 #if 1
+            _state = READ_QUEUE;
             // Only attempt opening the read if not squashing.
             _manager->getReadQueue().add(ReadCallable::makeShared(*this));
 #else

@@ -91,7 +91,7 @@ public:
     void pauseReadTrans();
     void resumeReadTrans();
     lsst::qserv::common::WorkQueue& getReadQueue() { return *_readQueue; }
-
+    lsst::qserv::common::WorkQueue& getWriteQueue() { return *_writeQueue; }
 private:
     // QuerySpec: ChunkQuery object + result name
     typedef std::pair<boost::shared_ptr<ChunkQuery>, std::string> QuerySpec;
@@ -137,8 +137,8 @@ private:
     std::string _xrootdHostPort;
     boost::shared_ptr<TableMerger> _merger;
     boost::shared_ptr<lsst::qserv::common::WorkQueue> _readQueue;
+    boost::shared_ptr<lsst::qserv::common::WorkQueue> _writeQueue;
 };
-
 }}} // lsst::qserv::master namespace
 
 #endif // LSST_QSERV_MASTER_ASYNCQUERYMANAGER_H
