@@ -38,6 +38,7 @@ from lsst.qserv.master import server
 from lsst.qserv.master import app
 from lsst.qserv.master import client
 from lsst.qserv.master import config
+from lsst.qserv.master import indexing
 
 def runParserTest():
     """Invokes the test cases in the lsst.qserv.master.testparser module
@@ -59,6 +60,12 @@ def resetTables():
     p.makeTables()
     pass
 
+def makeIndexes():
+    indexing.makeQservIndexes()
+    pass
+
+
+
 def main():    
     parser = OptionParser()
 
@@ -75,7 +82,9 @@ def main():
     parser.add_option("--sanity-client", action="store_true",
                       dest="sanityClient", default=False,
                       help="Sanity-check a running server.")
-
+    parser.add_option("--index", action="store_true",
+                      dest="makeIndex", default=False,
+                      help="Rebuild indexes.")
     parser.add_option("-c", "--config", dest="configFile", default=None,
                       help="Use config file. Can also be specified with\n" +
                       "%s as an environment variable." % config.envFilenameVar)
@@ -97,6 +106,9 @@ def main():
         return
     elif options.sanityClient:
         client.runSanityClient()
+        return
+    elif options.makeIndex:
+        makeIndexes()
         return
     else:
         server.runServer()
