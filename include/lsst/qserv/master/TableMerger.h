@@ -58,11 +58,15 @@ public:
     TableMergerConfig(std::string targetDb_, std::string targetTable_,
                       MergeFixup const& mFixup_,
 		      std::string user_, std::string socket_,
-		      std::string mySqlCmd_) 
+		      std::string mySqlCmd_, std::string dropMem_) 
 	:  targetDb(targetDb_),  targetTable(targetTable_),
            mFixup(mFixup_),
 	   user(user_),  socket(socket_), mySqlCmd(mySqlCmd_)
-    {}
+    {
+        if(dropMem_.size() > 0) {
+            dropMem = true;
+        }
+    }
 
     std::string targetDb; // for final result, and imported result
     std::string targetTable;
@@ -70,6 +74,7 @@ public:
     std::string user;
     std::string socket;
     std::string mySqlCmd;
+    bool dropMem;
 };
 
 /// class TableMerger : A class that performs merging of subquery

@@ -631,6 +631,7 @@ class QueryBabysitter:
         dbSock = c.get("resultdb", "unix_socket")
         dbUser = c.get("resultdb", "user")
         dbName = c.get("resultdb", "db")        
+        dropMem = c.get("resultdb","dropMem")
 
         mysqlBin = c.get("mysql", "mysqlclient")
         if not mysqlBin:
@@ -639,7 +640,7 @@ class QueryBabysitter:
         mergeConfig = TableMergerConfig(dbName, resultName, 
                                         fixup,
                                         dbUser, dbSock, 
-                                        mysqlBin)
+                                        mysqlBin, dropMem)
         configureSessionMerger(self._sessionId, mergeConfig)
 
     def pauseReadback(self):
@@ -868,10 +869,9 @@ class HintedQueryAction:
         self._babysitter.pauseReadback();
         lastTime = time.time()
         for chunkId, subIter in self._intersectIter:
-            print "dispatch iter took %f seconds" % (time.time() - lastTime)
-            lastTime = time.time()
             if chunkId in self._emptyChunks:
                 continue # FIXME: What if all chunks are empty?
+            print "Dispatch iter: ", time.time() - lastTime
             table = self._resultTableTmpl % str(chunkId)
             q = None
             x =  self._substitution.getChunkLevel()

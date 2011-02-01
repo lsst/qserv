@@ -327,6 +327,13 @@ bool TableMerger::_importBufferCreate(char const* buf, std::size_t size,
                                                       tableName, 
                                                       targetTable,
                                                       dropQuote);
+    if(_config.dropMem) {
+        std::string const memSpec = "ENGINE=MEMORY";
+        std::string::size_type pos = createSql.find(memSpec);
+        if(pos != std::string::npos) {
+            createSql.erase(pos, memSpec.size());
+        }
+    }
     //std::cout << "CREATE-----" << _mergeTable << std::endl;
     return _applySql(dropSql + createSql);
 }
