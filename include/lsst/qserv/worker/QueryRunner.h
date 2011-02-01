@@ -81,7 +81,7 @@ public:
     bool squashByHash(std::string const& hash);
     void addRunner(QueryRunner* q); 
     void dropRunner(QueryRunner* q);
-    bool recycleRunner(ArgFunc* r);
+    bool recycleRunner(ArgFunc* r, int lastChunkId);
 
     // Mutex
     boost::mutex& getMutex() { return _mutex; }
@@ -89,6 +89,7 @@ public:
 private:
     typedef std::deque<QueryRunnerArg> ArgQueue;
     typedef std::deque<QueryRunner*> QueryQueue;
+    class argMatch;
 
     void _init();
     QueryRunnerArg const& _getQueueHead() const;
@@ -96,7 +97,7 @@ private:
     bool _cancelQueued(std::string const& hash);
     bool _cancelRunning(std::string const& hash);
     void _enqueue(QueryRunnerArg const& a);
- 
+    
     ArgQueue _args;
     QueryQueue _runners;
     int _jobTotal;

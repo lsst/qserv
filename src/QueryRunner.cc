@@ -207,7 +207,17 @@ void launchThread(Callable const& c) {
 }
 
 } // anonymous namespace
-
+////////////////////////////////////////////////////////////////////////
+// lsst::qserv::worker::QueryRunnerManager::argMatch
+////////////////////////////////////////////////////////////////////////
+class qWorker::QueryRunnerManager::argMatch {
+public:
+    argMatch(int chunkId_) : chunkId(chunkId_) {}
+    bool operator()(ArgQueue::value_type const& v) {
+        return chunkId == v.s.chunkId;
+    }
+    int chunkId;
+};
 ////////////////////////////////////////////////////////////////////////
 // lsst::qserv::worker::QueryRunnerManager
 ////////////////////////////////////////////////////////////////////////
@@ -269,11 +279,24 @@ void qWorker::QueryRunnerManager::dropRunner(QueryRunner* q) {
     _runners.erase(qi);
 }
 
-bool qWorker::QueryRunnerManager::recycleRunner(ArgFunc* af) {
+bool qWorker::QueryRunnerManager::recycleRunner(ArgFunc* af, int lastChunkId) {
     boost::lock_guard<boost::mutex> m(_mutex);
     if((!isOverloaded()) && (!_args.empty())) {
-        (*af)(_getQueueHead()); // Switch to new query
-        _popQueueHead();
+        if(true) { // Simple version
+            (*af)(_getQueueHead()); // Switch to new query
+            _popQueueHead();
+        } else { // Prefer same chunk, if possible. 
+            // For now, don't worry about starving other chunks.
+            ArgQueue::iterator i;
+            i = std::find_if(_args.begin(), _args.end(), argMatch(lastChunkId));
+            if(i != _args.end()) {
+                (*af)(*i);
+                _args.erase(i);
+            } else {
+                (*af)(_getQueueHead()); // Switch to new query
+                _popQueueHead();            
+            }
+        }
         return true;
     } 
     return false;
@@ -358,7 +381,7 @@ bool qWorker::QueryRunner::operator()() {
         _e.Say((Pformat("(Looking for work... Queued: %1%, running: %2%)")
                 % mgr.getQueueLength() 
                 % mgr.getRunnerCount()).str().c_str());
-        bool reused = mgr.recycleRunner(afPtr.get());
+        bool reused = mgr.recycleRunner(afPtr.get(), _meta.chunkId);
         if(!reused) {
             mgr.dropRunner(this);
             haveWork = false;
