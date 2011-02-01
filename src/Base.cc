@@ -28,7 +28,9 @@
 #else // Linux?
 #include <openssl/md5.h>
 #endif
-
+#include <glob.h>
+#include <iostream>
+#include <fstream>
 // Boost
 #include <boost/format.hpp>
 
@@ -128,6 +130,23 @@ void qWorker::updateResultPath(char const* resultPath) {
         DUMP_BASE.assign(path);
     }
 }
+
+void qWorker::clearResultPath() {
+    // Conceptually: rm DUMP_BASE/*
+    glob_t globbuf;
+    std::string globstr(DUMP_BASE);
+    globstr += "/*";
+    // Glob, with no special opts, no error function
+    if(0 == glob(globstr.c_str(), 0, NULL, &globbuf)) {
+        char** s = globbuf.gl_pathv;
+        while(0 != *s) {
+            unlink(*s++); // delete file, ignore errors.
+        }
+        globfree(&globbuf);
+    }
+    
+}
+
 
 std::string qWorker::hashToPath(std::string const& hash) {
     return DUMP_BASE +

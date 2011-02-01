@@ -54,6 +54,7 @@ extern std::string CLEANUP_SUBCHUNK_SCRIPT;
 
 // Result-writing
 void updateResultPath(char const* resultPath=0);
+void clearResultPath();
 
 // Hashing-related
 std::string hashQuery(char const* buffer, int bufferSize);

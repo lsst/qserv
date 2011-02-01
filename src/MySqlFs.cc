@@ -116,6 +116,7 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
     }
 #endif
     updateResultPath();
+    clearResultPath();
     _localroot = ::getenv("XRDLCLROOT");
 }
 
