@@ -123,6 +123,8 @@ void qMaster::xrdInit() {
     // Set to 3 years.
     EnvPutInt(NAME_TRANSACTIONTIMEOUT, 60*60*24*365*3); 
 
+    // Disable XrdClient read caching.
+    EnvPutInt(NAME_READCACHESIZE, 0);
 
     // Don't need to lengthen load-balancer timeout.??
     //EnvPutInt(NAME_LBSERVERCONN_TTL, std::numeric_limits<int>::max());
