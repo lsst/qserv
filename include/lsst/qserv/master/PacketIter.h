@@ -27,6 +27,7 @@
 #ifndef LSST_QSERV_MASTER_PACKETITER_H
 #define LSST_QSERV_MASTER_PACKETITER_H
 #include <boost/shared_ptr.hpp>
+#include <string>
 #include <utility>
 
 namespace lsst {
@@ -41,12 +42,11 @@ public:
     
     explicit PacketIter();
 
-    /// Constructor.  Buffer must be valid over this object's lifetime.
+    /// Constructor. 
     explicit PacketIter(int xrdFd, int fragmentSize=2*1024*1024);
-    
-    ~PacketIter() {
-        if(_buffer != NULL) free(_buffer);
-    }
+    explicit PacketIter(std::string const& fileName, 
+                        int fragmentSize=2*1024*1024);
+    ~PacketIter();
 
     // Dereference
     const Value& operator*() const { 
@@ -62,10 +62,18 @@ public:
         return *this;
     }
 
+    // Increment, but combine next packet into current buffer.
+    // Result: iterator points at same place in the stream, but 
+    // current chunk is bigger.
+    // @return false if could not extend.
+    bool incrementExtend();
+
+
     // Const accessors:
     bool isDone() const { return _current.second == 0; }
     Pos getPos() const { return _pos; }
     int getErrno() const { return _errno;}
+    ssize_t getTotalSize() const { return _pos + _current.second; }
 private:
     void _setup();
     void _increment();
@@ -77,13 +85,16 @@ private:
     PacketIter operator++(int);
 
     int _xrdFd;
-    int _fragmentSize;
+    std::string _fileName;
+    int _fragSize;
     bool _started;
+    bool _memo;
     Value _current;
     bool _stop;
     void* _buffer;
     int _errno;
     Pos _pos;
+    int _realFd;
 };
 
 }}} // lsst::qserv::master

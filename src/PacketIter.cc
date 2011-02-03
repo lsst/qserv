@@ -22,6 +22,9 @@
 
 #include "lsst/qserv/master/PacketIter.h"
 #include "lsst/qserv/master/xrdfile.h"
+#include <fcntl.h>
+#include <errno.h>
+#include <iostream>
 
 namespace qMaster = lsst::qserv::master;
 
@@ -34,48 +37,105 @@ qMaster::PacketIter::PacketIter(int xrdFd, int fragmentSize)
       _fragSize(fragmentSize),
       _current(0,0), 
       _stop(false) {
-    const int minFragment = 65536;
-    if(_fragSize < minFragment) _fragSize = minFragment;
+    _setup();
 }
-    
+
+qMaster::PacketIter::PacketIter(std::string const& fileName, int fragmentSize) 
+    : _xrdFd(0), 
+      _fileName(fileName),
+      _fragSize(fragmentSize),
+      _current(0,0), 
+      _stop(false) {
+    _setup();
+}
+
+qMaster::PacketIter::~PacketIter() {
+    if(_buffer != NULL) free(_buffer);
+    if(_xrdFd != 0) {
+        xrdClose(_xrdFd);
+    } else if(_realFd != 0) {
+        ::close(_realFd);
+        _realFd = 0;
+    }
+}
+
+bool qMaster::PacketIter::incrementExtend() {
+    void* ptr = ::realloc(_current.first, _current.second + _fragSize);
+    if(!ptr) {
+        std::cerr << "Can't realloc for PacketIter. Raising exception." 
+              << std::endl;
+        assert(ptr);
+    }    
+    _buffer = ptr;
+    _current.first = static_cast<char*>(ptr);
+    Value secondHalf(_current.first + _current.second, _fragSize);
+    _fill(secondHalf);
+    _current.second += secondHalf.second;
+    if(secondHalf.second == 0) {
+        return false;
+    }
+    return true;    
+}
+
+////////////////////////////////////////////////////////////////////////
+// lsst::qserv::master::PacketIter private methods
+////////////////////////////////////////////////////////////////////////
 void qMaster::PacketIter::_setup() {
-    assert sizeof(char) == 1;
-    assert _current.first == 0;
-    assert _fragSize > 0;
+    const int minFragment = 65536;
+    _memo = false;
+    if(_fragSize < minFragment) _fragSize = minFragment;
+
+    assert(sizeof(char) == 1);
+    assert(_current.first == 0);
+    assert(_fragSize > 0);
     _buffer = malloc(_fragSize); // allocate space for two buffers.
     if(_buffer == NULL) {
         std::cerr << "Can't malloc for PacketIter. Raising exception." 
                   << std::endl;
-        assert _buffer != NULL;
+        assert(_buffer != NULL);
     }
-    _current.first = _buffer;
+    if(!_fileName.empty()) {
+        _realFd = open(_fileName.c_str(), O_RDONLY);
+        if(_realFd < 0) {
+            _current.second = 0;
+            _errno = errno;
+            return;
+        }
+    }
+    _current.first = static_cast<char*>(_buffer);
     _fill(_current);
 }
 
 void qMaster::PacketIter::_increment() {
     _pos += _current.second;
-    _fill(_current);
+    _fill(_current); 
 }
 
 void qMaster::PacketIter::_fill(Value& v) {
+    int readRes = 0;
     if(_stop) { 
         v.first = 0; 
         v.second = 0;
         return;
     }
-    int readRes = xrdRead(_xrdFd, v.first, 
-                          static_cast<unsigned long long>(_fragSize));
+    if(_xrdFd != 0) {
+        readRes = xrdRead(_xrdFd, v.first, 
+                          static_cast<unsigned long long>(v.second));
+    } else if(!_fileName.empty()) {
+        readRes = ::read(_realFd, v.first, v.second);
+    } else {
+        readRes = 0;
+    }
+     
     if(readRes < 0) {
         //Report error somehow
         _errno = errno;
     } 
-    v.second = readRes;
-    if(v.second < _fragSize) {
+    if(readRes < static_cast<int>(v.second)) {
         _stop = true;
     }
+    v.second = readRes;
 
 }
-
-int _xrdFd;
 
 

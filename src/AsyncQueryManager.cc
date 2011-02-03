@@ -30,6 +30,7 @@
 #include "lsst/qserv/master/TableMerger.h"
 #include "lsst/qserv/master/Timer.h"
 #include "lsst/qserv/common/WorkQueue.h"
+#include "lsst/qserv/master/PacketIter.h"
 
 // Namespace modifiers
 using boost::make_shared;
@@ -156,18 +157,25 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     //std::cout << ((void*)this) << "Finalizing query (" << id << ")" << std::endl;
     if((!aborted) && (r.open >= 0) && (r.queryWrite >= 0) 
        && (r.read >= 0)) {
-            Timer t2;
-            t2.start();
+        Timer t2;
+        t2.start();
+        boost::shared_ptr<PacketIter> resIter;
 	{ // Lock scope for reading
 	    boost::lock_guard<boost::mutex> lock(_queriesMutex);
-	    QuerySpec& s = _queries[id];
-	    dumpFile = s.first->getSavePath();
+            QuerySpec& s = _queries[id];
+            resIter = s.first->getResultIter();	
+            dumpFile = s.first->getSavePath();
             dumpSize = s.first->getSaveSize(); 
-	    tableName = s.second;
-            assert(r.localWrite == dumpSize);
-            s.first.reset(); // clear out chunkquery.
-        } // Lock-free merge
-        _addNewResult(dumpSize, dumpFile, tableName);
+            tableName = s.second;
+            //assert(r.localWrite == dumpSize); // not valid when using iter
+            s.first.reset(); // clear out chunkquery.            
+        } 
+        // Lock-free merge
+        if(resIter) {
+            _addNewResult(resIter, tableName);
+        } else {
+            _addNewResult(dumpSize, dumpFile, tableName);
+        }
         // Erase right before notifying.
         t2.stop();
         ss << id << " QmFinalizeMerge " << t2 << std::endl;
@@ -315,6 +323,22 @@ void qMaster::AsyncQueryManager::_readConfig(std::map<std::string,std::string> c
     }
 }
 
+
+void qMaster::AsyncQueryManager::_addNewResult(PacIterPtr pacIter,
+                                               std::string const& tableName) {
+    bool mergeResult = _merger->merge(pacIter, tableName);
+    _totalSize += pacIter->getTotalSize();
+    
+    if(_shouldLimitResult && (_totalSize > _resultLimit)) {
+        _squashRemaining();
+    }
+    if(!mergeResult) {
+        TableMergerError e = _merger->getError();
+        if(e.resultTooBig()) {
+            _squashRemaining();
+        }
+    }            
+}
 
 void qMaster::AsyncQueryManager::_addNewResult(ssize_t dumpSize, 
                                                std::string const& dumpFile, 

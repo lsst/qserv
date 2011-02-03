@@ -39,6 +39,7 @@ namespace master {
 
 // forward
 class AsyncQueryManager; 
+class PacketIter;
 
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery 
@@ -72,10 +73,11 @@ public:
         if(_result.read >= 0) return _result.localWrite; 
         else return -1;
     }
+    boost::shared_ptr<PacketIter> getResultIter();
+
     // Attempt to squash this query's execution.  This implies that
     // nobody cares about this query's results anymore.
     void requestSquash();
-
 private:
     void _sendQuery(int fd);
     void _readResults(int fd);

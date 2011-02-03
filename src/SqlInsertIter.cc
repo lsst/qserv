@@ -47,7 +47,7 @@ boost::regex makeNullInsertRegex(std::string const& tableName) {
 // Helpful debugging
 void printInserts(char const* buf, off_t bufSize, 
                   std::string const& tableName)  {
-    for(qMaster::SqlInsertIter i(buf, bufSize, tableName); !i.isDone(); 
+    for(qMaster::SqlInsertIter i(buf, bufSize, tableName, true); !i.isDone(); 
         ++i) {
         std::cout << "Sql[" << tableName << "]: " 
                   << (void*)i->first << "  --->  " 
@@ -63,12 +63,36 @@ void printInserts(char const* buf, off_t bufSize,
 } // anonymous namespace
 
 qMaster::SqlInsertIter::SqlInsertIter(char const* buf, off_t bufSize, 
-                                    std::string const& tableName)  {
+                                      std::string const& tableName,
+                                      bool allowNull) 
+    : _allowNull(allowNull) {
     _init(buf, bufSize, tableName);
 }
 
+qMaster::SqlInsertIter::SqlInsertIter(PacketIter::Ptr p,
+                                      std::string const& tableName,
+                                      bool allowNull) 
+    : _allowNull(allowNull) {
+    //_init(p, tableName);  // FIXME
+    // We will need to keep our own buffer.  This is because the regex
+    // iterator needs a continuous piece of memory. 
+    
+    // The idea is to keep a sliding window where we can run the regex search.
+    // While blocks can be found in the block, iterate over them.  
+    // When the search fails, remember where the last match
+    // terminated. 
+    // Now increment the packet iter.  
+    // realloc the buffer to fit the unmatched remainder +
+    // packetIter's advance (if needed). Note that buffer may be
+    // bigger than what we need.
+    // slide the unmatched to the beginning, memcpy the packetIter
+    // data into our buffer, and setup the regex match again.
+    // Continue.  
+    //
+}
+
 void qMaster::SqlInsertIter::_init(char const* buf, off_t bufSize, 
-                                 std::string const& tableName) {
+                                   std::string const& tableName) {
     assert(buf < (buf+bufSize));
     _blockExpr = makeLockInsertRegex(tableName);
     _blockFound = boost::regex_search(buf, buf+bufSize, 
@@ -85,4 +109,19 @@ bool qMaster::SqlInsertIter::isNullInsert() const {
     // Avoid constructing a string > 1MB just to check for null.
     if(_iter->length() > (1<<20)) return false;
     return boost::regex_match(_iter->str(), _nullExpr);
+}
+
+qMaster::SqlInsertIter& qMaster::SqlInsertIter::operator++() {
+    do {
+        _increment(); 
+    } while((!_allowNull) && isNullInsert());
+        return *this; 
+}
+
+void qMaster::SqlInsertIter::_increment() {
+    if(_pacIterP) {
+        // FIXME
+    } else { // If fully buffered.
+        ++_iter;
+    }
 }

@@ -145,6 +145,28 @@ bool TableMerger::merge(std::string const& dumpFile,
     return merge2(dumpFile, tableName);
 }
 
+bool TableMerger::merge(PacketIterPtr pacIter,
+			std::string const& tableName) {
+    bool allowNull = false;
+    {
+        //std::cout << "Importing " << tableName << std::endl;
+	boost::lock_guard<boost::mutex> g(_countMutex);
+	++_tableCount;
+	if(_tableCount == 1) {
+            bool isOk = _importBufferCreate(pacIter, tableName);
+            if(!isOk) {
+                --_tableCount; // We failed merging the table.
+                return false;
+            }
+            allowNull = true;
+	}
+    }
+    // No locking needed if not first, after updating the counter.
+    // Once the table is created, everyone should insert.
+    SqlInsertIter sii(pacIter, tableName, allowNull);
+    return _importIter(sii, tableName);
+}
+
 bool TableMerger::finalize() {
     if(_mergeTable != _config.targetTable) {
 	std::string cleanup = (boost::format(_cleanupSql) % _mergeTable).str();
@@ -317,9 +339,40 @@ bool TableMerger::merge2(std::string const& dumpFile,
     return _importBufferInsert(buf, size, tableName, allowNull);
 }
 
+bool TableMerger::_importBufferCreate(PacketIterPtr pacIter, 
+                                     std::string const& tableName) {
+    // Make create statement
+    std::string createStmt = _makeCreateStmt(pacIter, tableName);
+    return _dropAndCreate(tableName, createStmt);
+}
+
+std::string TableMerger::_makeCreateStmt(PacketIterPtr pacIterP, 
+                                         std::string const& tableName) {
+    // Perform the (patched) CREATE TABLE, then process as an INSERT.
+    bool dropQuote = (std::string::npos != _mergeTable.find("."));
+    std::string targetTable(dropDbContext(_mergeTable, _config.targetDb));
+    std::string createSql;
+    while(true) {
+        ::off_t sz = (*pacIterP)->second;
+        createSql = extractReplacedCreateStmt((*pacIterP)->first,
+                                              (*pacIterP)->second,
+                                              tableName, 
+                                              targetTable,
+                                              dropQuote);
+        if(!createSql.empty()) {
+            break;
+        }
+        // Extend, since we didn't find the CREATE statement.
+        if(!pacIterP->incrementExtend()) {
+            std::cerr << "ERROR! Didn't find create stmt." << std::endl;
+            assert((*pacIterP)->second != sz);
+        }
+    }
+    return createSql;
+}
+
 bool TableMerger::_importBufferCreate(char const* buf, std::size_t size, 
                                      std::string const& tableName) {
-    std::string dropSql = "DROP TABLE IF EXISTS " + tableName + ";";
     // Perform the (patched) CREATE TABLE, then process as an INSERT.
     bool dropQuote = (std::string::npos != _mergeTable.find("."));
     std::string targetTable(dropDbContext(_mergeTable, _config.targetDb));
@@ -327,6 +380,13 @@ bool TableMerger::_importBufferCreate(char const* buf, std::size_t size,
                                                       tableName, 
                                                       targetTable,
                                                       dropQuote);
+    return _dropAndCreate(tableName, createSql);
+}
+
+bool TableMerger::_dropAndCreate(std::string const& tableName, 
+                                 std::string& createSql) {
+
+    std::string dropSql = "DROP TABLE IF EXISTS " + tableName + ";";
     if(_config.dropMem) {
         std::string const memSpec = "ENGINE=MEMORY";
         std::string::size_type pos = createSql.find(memSpec);
@@ -338,36 +398,38 @@ bool TableMerger::_importBufferCreate(char const* buf, std::size_t size,
     return _applySql(dropSql + createSql);
 }
 
-bool TableMerger::_importBufferInsert(char const* buf, std::size_t size,
-                                      std::string const& tableName, 
-                                      bool allowNull) {
+bool TableMerger::_importIter(SqlInsertIter& sii, 
+                              std::string const& tableName) {
     int insertsCompleted = 0;
     // Search the buffer for the insert statement, 
     // patch it (and future occurrences for the old table name, 
     // and merge directly.
     //std::cout << "MERGE INTO-----" << _mergeTable << std::endl;
-    for(SqlInsertIter i(buf, size, tableName); 
-        !i.isDone(); 
-        ++i) {
-        if(allowNull || !i.isNullInsert()) {
-            char const* stmtBegin = i->first;
-            std::size_t stmtSize = i->second - stmtBegin;
-            std::string q(stmtBegin, stmtSize);
-            bool dropQuote = (std::string::npos != _mergeTable.find("."));
-            inplaceReplace(q, tableName, 
-                           dropDbContext(_mergeTable, _config.targetDb), 
-                           dropQuote);
-            if(!_applySql(q)) {
-                if(_error.resultTooBig())
+    for(; !sii.isDone(); ++sii) {
+        char const* stmtBegin = sii->first;
+        std::size_t stmtSize = sii->second - stmtBegin;
+        std::string q(stmtBegin, stmtSize);
+        bool dropQuote = (std::string::npos != _mergeTable.find("."));
+        inplaceReplace(q, tableName, 
+                       dropDbContext(_mergeTable, _config.targetDb), 
+                       dropQuote);
+        if(!_applySql(q)) {
+            if(_error.resultTooBig())
                 std::cout << "Failed importing! " << tableName 
                           << " " << _error.description << std::endl;
-                return false;
-            }
-            ++insertsCompleted;
+            return false;
         }
-        // Ignore inserts of nulls.
+        ++insertsCompleted;
     }
     return true; // 
+    
+}
+
+bool TableMerger::_importBufferInsert(char const* buf, std::size_t size,
+                                      std::string const& tableName, 
+                                      bool allowNull) {
+    SqlInsertIter sii(buf, size, tableName, allowNull);
+    return _importIter(sii, tableName);
 }
 
 bool TableMerger::_slowImport(std::string const& dumpFile, 

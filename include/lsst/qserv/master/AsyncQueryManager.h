@@ -49,6 +49,7 @@ class TableMerger;
 class TableMergerConfig;
 class XrdTransResult;
 class TransactionSpec;
+class PacketIter;
 
 //////////////////////////////////////////////////////////////////////
 // class AsyncQueryManager 
@@ -63,6 +64,7 @@ public:
     typedef std::deque<Result> ResultDeque;
     typedef boost::shared_ptr<AsyncQueryManager> Ptr;
     typedef std::map<std::string, std::string> StringMap;
+    typedef boost::shared_ptr<PacketIter> PacIterPtr;
     
     explicit AsyncQueryManager(std::map<std::string,std::string> const& cfg) 
         :_lastId(1000000000), 
@@ -110,6 +112,7 @@ private:
     void _printState(std::ostream& os);
     void _addNewResult(ssize_t dumpSize, std::string const& dumpFile, 
                        std::string const& tableName);
+    void _addNewResult(PacIterPtr pacIter, std::string const& tableName);
     void _squashExecution();
     void _squashRemaining();
 

@@ -50,26 +50,16 @@ public:
 
     /// Constructor.  Buffer must be valid over this object's lifetime.
     SqlInsertIter(char const* buf, off_t bufSize, 
-                  std::string const& tableName); 
+                  std::string const& tableName, bool allowNull); 
     SqlInsertIter(PacketIter::Ptr p,
-                  std::string const& tableName); 
+                  std::string const& tableName, bool allowNull); 
     
-    void _init(char const* buf, off_t bufSize, std::string const& tableName);
-
     // Dereference
     const Value& operator*() const { return (*_iter)[0]; }
     const Value* operator->() const { return &(*_iter)[0]; }
 
     // Increment
-    SqlInsertIter& operator++() { 
-        ++_iter;
-        return *this; 
-    }
-
-    SqlInsertIter operator++(int) { 
-        SqlInsertIter copy(*this);
-        ++_iter;
-        return copy; }
+    SqlInsertIter& operator++();
 
     // Const accessors:
     bool operator==(SqlInsertIter const& rhs) const {
@@ -80,12 +70,19 @@ public:
     bool isNullInsert() const;
 
 private:
+    SqlInsertIter operator++(int); // Disable: this isn't safe.
+
+    void _init(char const* buf, off_t bufSize, std::string const& tableName);
+    void _increment();
+
+    bool _allowNull;
     Iter _iter;
     Match _blockMatch;
     bool _blockFound;
     boost::regex _blockExpr;
     boost::regex _insExpr;
     boost::regex _nullExpr;
+    PacketIter::Ptr _pacIterP;
 };
 
 }}} // lsst::qserv::master

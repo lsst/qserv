@@ -313,6 +313,10 @@ std::string qMaster::ChunkQuery::getDesc() const {
     return ss.str();
 }
 
+boost::shared_ptr<qMaster::PacketIter> qMaster::ChunkQuery::getResultIter() {
+    return boost::shared_ptr<PacketIter>(); // FIXME
+}
+
 void qMaster::ChunkQuery::requestSquash() { 
     //std::cout << "Squash requested for (" << _id << ", " << _hash << ")" << std::endl;
     _shouldSquash = true; 
