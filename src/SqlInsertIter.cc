@@ -114,7 +114,7 @@ bool qMaster::SqlInsertIter::isNullInsert() const {
 qMaster::SqlInsertIter& qMaster::SqlInsertIter::operator++() {
     do {
         _increment(); 
-    } while((!_allowNull) && isNullInsert());
+    } while(!isDone() && (!_allowNull) && isNullInsert());
         return *this; 
 }
 

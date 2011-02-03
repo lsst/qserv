@@ -70,6 +70,7 @@ unix_socket=/u1/local/mysql.sock
 db=qservResult
 user=qsmaster
 passwd=
+dropMem=
 
 [partitioner]
 stripes=18
