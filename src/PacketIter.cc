@@ -37,16 +37,17 @@ qMaster::PacketIter::PacketIter(int xrdFd, int fragmentSize)
       _fragSize(fragmentSize),
       _current(0,0), 
       _stop(false) {
-    _setup();
+    _setup(false);
 }
 
-qMaster::PacketIter::PacketIter(std::string const& fileName, int fragmentSize) 
+qMaster::PacketIter::PacketIter(std::string const& fileName, int fragmentSize, 
+                                bool debug) 
     : _xrdFd(0), 
       _fileName(fileName),
       _fragSize(fragmentSize),
       _current(0,0), 
       _stop(false) {
-    _setup();
+    _setup(debug);
 }
 
 qMaster::PacketIter::~PacketIter() {
@@ -80,15 +81,15 @@ bool qMaster::PacketIter::incrementExtend() {
 ////////////////////////////////////////////////////////////////////////
 // lsst::qserv::master::PacketIter private methods
 ////////////////////////////////////////////////////////////////////////
-void qMaster::PacketIter::_setup() {
+void qMaster::PacketIter::_setup(bool debug) {
     const int minFragment = 65536;
     _memo = false;
-    if(_fragSize < minFragment) _fragSize = minFragment;
+    if(!debug && (_fragSize < minFragment)) _fragSize = minFragment;
 
     assert(sizeof(char) == 1);
     assert(_current.first == 0);
     assert(_fragSize > 0);
-    _buffer = malloc(_fragSize); // allocate space for two buffers.
+    _buffer = malloc(_fragSize); 
     if(_buffer == NULL) {
         std::cerr << "Can't malloc for PacketIter. Raising exception." 
                   << std::endl;
@@ -101,6 +102,7 @@ void qMaster::PacketIter::_setup() {
             _errno = errno;
             return;
         }
+        _current.second = _fragSize;
     }
     _current.first = static_cast<char*>(_buffer);
     _fill(_current);

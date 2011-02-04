@@ -187,6 +187,7 @@ dispatchSrcs = map(lambda x: os.path.join('src', x),
                     "WorkQueue.cc",
                     "Timer.cc"])
 
+
 srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs
 
 
@@ -200,6 +201,15 @@ testParser = { 'bin' : os.path.join('bin', 'testCppParser'),
                'srcPaths' : (parserSrcs +
                              [os.path.join("tests","testCppParser.cc")]),
                }
+# testIter doesn't need all dispatchSrcs, but it's not worth optimizing.
+testIter = { 'bin' : os.path.join('bin', 'testIter'),
+               'srcPaths' : ( map(lambda x: os.path.join('src', x), 
+                                  ["SqlInsertIter.cc",
+                                   "PacketIter.cc",
+                                   "Timer.cc",
+                                   "xrdfile.cc"]) +
+                              [os.path.join("tests","testIter.cc")])}
+
 xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
                 'srcPaths' : map(lambda x: os.path.join('src', x), 
                                  ["xrdfile.cc", 
@@ -211,6 +221,12 @@ xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
 if canBuild:
     env.SharedLibrary(pyLib, srcPaths)
     env.Program(runTrans['bin'], runTrans["srcPaths"])
+    env.Program(target=testIter['bin'], 
+                source=testIter["srcPaths"],
+                LINKFLAGS='--static',
+                LIBS=["XrdPosix", "XrdClient", "XrdSys", 
+                      "XrdNet", "XrdOuc", "XrdOss", "ssl", "crypto", "dl",
+                      "boost_thread", "boost_regex", "pthread"])
     parseEnv.Program(testParser['bin'], testParser["srcPaths"])
     env.Program(target=xrdPrecache['bin'], source=xrdPrecache["srcPaths"],
                 LINKFLAGS='--static', 

@@ -45,7 +45,7 @@ public:
     /// Constructor. 
     explicit PacketIter(int xrdFd, int fragmentSize=2*1024*1024);
     explicit PacketIter(std::string const& fileName, 
-                        int fragmentSize=2*1024*1024);
+                        int fragmentSize=2*1024*1024, bool debug=false);
     ~PacketIter();
 
     // Dereference
@@ -68,14 +68,13 @@ public:
     // @return false if could not extend.
     bool incrementExtend();
 
-
     // Const accessors:
     bool isDone() const { return _current.second == 0; }
     Pos getPos() const { return _pos; }
     int getErrno() const { return _errno;}
     ssize_t getTotalSize() const { return _pos + _current.second; }
 private:
-    void _setup();
+    void _setup(bool debug);
     void _increment();
     void _fill(Value& v);
 
