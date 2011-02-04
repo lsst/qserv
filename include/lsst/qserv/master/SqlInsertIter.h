@@ -54,6 +54,9 @@ public:
     SqlInsertIter(PacketIter::Ptr p,
                   std::string const& tableName, bool allowNull); 
     
+    // Destructor
+    ~SqlInsertIter();
+    
     // Dereference
     const Value& operator*() const { return (*_iter)[0]; }
     const Value* operator->() const { return &(*_iter)[0]; }
@@ -65,7 +68,7 @@ public:
     bool operator==(SqlInsertIter const& rhs) const {
         return _iter == rhs._iter;
     }
-    bool isDone() const { return _iter ==  Iter(); }
+    bool isDone() const;
     bool isMatch() const { return _blockFound; }
     bool isNullInsert() const;
 
@@ -73,16 +76,26 @@ private:
     SqlInsertIter operator++(int); // Disable: this isn't safe.
 
     void _init(char const* buf, off_t bufSize, std::string const& tableName);
+    void _initRegex(std::string const& tableName);
+    void _setupIter();
     void _increment();
+    bool _incrementFragment();
 
     bool _allowNull;
     Iter _iter;
     Match _blockMatch;
     bool _blockFound;
+    typedef unsigned long long BufOff;
+    char* _pBuffer;
+    BufOff _pBufSize; 
+    BufOff _pBufStart; // Start of non-junk in buffer
+    BufOff _pBufEnd; // End of non-junk in buffer
     boost::regex _blockExpr;
     boost::regex _insExpr;
     boost::regex _nullExpr;
     PacketIter::Ptr _pacIterP;
+
+    static Iter _nullIter;
 };
 
 }}} // lsst::qserv::master
