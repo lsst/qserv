@@ -31,9 +31,10 @@
 
 namespace test = boost::test_tools;
 using lsst::qserv::master::PacketIter;
+using lsst::qserv::master::SqlInsertIter;
 using std::string;
-namespace {
 
+namespace {
 
 } // anonymous namespace
 
@@ -48,33 +49,35 @@ struct IterFixture {
             "LOCK TABLES `r_4_1ff8f47beaf8909932_1003` WRITE;\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1288372);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1288372);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1127` VALUES (1654621);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1208` VALUES (564072);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_121` VALUES (855877);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1211` VALUES (564352);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1248` VALUES (632303);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1249` VALUES (561991);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1252` VALUES (562435);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1254` VALUES (632559);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1255` VALUES (562871);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1256` VALUES (581626);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1258` VALUES (563283);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1322` VALUES (1451023);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1327` VALUES (1474794);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_1329` VALUES (1545106);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_240` VALUES (6578574);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_242` VALUES (3938215);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_249` VALUES (3798854);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_251` VALUES (6601552);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_361` VALUES (1969958);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_362` VALUES (1916080);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_363` VALUES (1744053);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_374` VALUES (1732599);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_603` VALUES (424365);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_630` VALUES (1798521);\n"
-            "INSERT INTO `r_4_1ff8f47beaf8909932_721` VALUES (1821647);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1654621);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (564072);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (855877);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (564352);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (632303);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (561991);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (562435);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (632559);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (562871);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (581626);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (563283);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1451023);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1474794);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1545106);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (6578574);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (3938215);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (3798854);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (6601552);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1969958);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1916080);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1744053);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1732599);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (424365);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1798521);\n"
+            "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1821647);\n"
             "UNLOCK TABLES;\n";
+        totalInserts = 27;
         dummyFilename = "/tmp/qservTestIterFile.dummy";
+        tableName = "r_4_1ff8f47beaf8909932_1003";
         _setupDummy();
     }
     ~IterFixture(void) {}
@@ -91,18 +94,47 @@ struct IterFixture {
     char const* dummyBlock;
     int dummyLen;
     char const* dummyFilename;
+    std::string tableName;
+    unsigned totalInserts;
 };
 
 BOOST_FIXTURE_TEST_SUITE(IterTests, IterFixture)
 
-BOOST_AUTO_TEST_CASE(PlainIter) {
+BOOST_AUTO_TEST_CASE(PlainIterTest) {
     PacketIter::Ptr p(new PacketIter(string(dummyFilename), 512, true));
+    char const* c = dummyBlock;
+    bool same = true;
     for(; !p->isDone(); ++(*p)) {
-        std::cout << "frag: " << std::string((*p)->first, (*p)->second) 
-                  << std::endl;
-    }
-
+        PacketIter::Value const& v = **p;
+        // std::cout << "frag: " << std::string(v.first, v.second) 
+        //           << std::endl;
+        for(unsigned i=0; i < v.second; ++i) {
+            same = same && (*c == v.first[i]);
+            ++c;
+        }
+        BOOST_CHECK(same);
+    }    
 }
+
+BOOST_AUTO_TEST_CASE(SqlIterTest) {
+    for(int fragSize=16; fragSize < 512; fragSize*=2) {
+        PacketIter::Ptr p(new PacketIter(string(dummyFilename), 
+                                         fragSize, true));
+        SqlInsertIter sii(p, tableName, true);
+        int sCount = 0;
+        
+        for(; !sii.isDone(); ++sii) {
+            char const* stmtBegin = sii->first;
+            std::size_t stmtSize = sii->second - stmtBegin;
+            BOOST_CHECK(stmtSize > 0);
+            std::string q(stmtBegin, stmtSize);
+            //std::cout << "Statement---" << q << std::endl;
+            ++sCount;
+        }
+        BOOST_CHECK_EQUAL(static_cast<unsigned>(sCount), totalInserts);
+    }
+}
+
 
 
 BOOST_AUTO_TEST_SUITE_END()

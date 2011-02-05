@@ -30,13 +30,13 @@ namespace {
 // Helpers to make regex's
 boost::regex makeLockInsertRegex(std::string const& tableName) {
     return boost::regex("LOCK TABLES `?" + tableName + "`? WRITE;"
-                            "(.*?)(INSERT INTO[^;]*?;)*(.*?)"
+                            "(.*?)(INSERT INTO[^;]*?;)+(.*?)"
                         "UNLOCK TABLES;");
 }
 
 boost::regex makeLockInsertOpenRegex(std::string const& tableName) {
     return boost::regex("LOCK TABLES `?" + tableName + "`? WRITE;"
-                        "(.*?)(INSERT INTO[^;]*?;)*");
+                        "(.*?)(INSERT INTO[^;]*?;)+");
 }
     
 boost::regex makeInsertRegex(std::string const& tableName) {
@@ -103,7 +103,7 @@ qMaster::SqlInsertIter::SqlInsertIter(PacketIter::Ptr p,
     assert(!(*p).isDone());
     _pBufStart = 0;
     _pBufEnd = (*p)->second;
-    _pBufSize = 2 * _pBufSize; // Size to 2x first fragment size
+    _pBufSize = 2 * _pBufEnd; // Size to 2x first fragment size
     // (which may be bigger than average)
     _pBuffer = static_cast<char*>(malloc(_pBufSize));
 
@@ -146,8 +146,11 @@ bool qMaster::SqlInsertIter::_incrementFragment() {
     BufOff needSize = v.second + keepSize;
     if(needSize > (_pBufSize - _pBufEnd)) {
         if(needSize > _pBufSize) {
+            // std::cout << _pBufSize << " is too small" << std::endl
+            //           << "sqliter Realloc to " << needSize << std::endl;
             void* res = realloc(_pBuffer, needSize);
             assert(res);
+            _pBufSize = needSize;
             _pBuffer = static_cast<char*>(res);
         }
         memmove(_pBuffer, _pBuffer+_pBufStart, keepSize);
