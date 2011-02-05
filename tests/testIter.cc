@@ -47,31 +47,37 @@ struct IterFixture {
             ") ENGINE=MEMORY DEFAULT CHARSET=latin1;\n"
             "/*!40101 SET character_set_client = @saved_cs_client */;\n"
             "LOCK TABLES `r_4_1ff8f47beaf8909932_1003` WRITE;\n"
+
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1288372);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1288372);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1654621);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (564072);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (855877);\n"
+
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (564352);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (632303);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (561991);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (562435);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (632559);\n"
+
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (562871);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (581626);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (563283);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1451023);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1474794);\n"
+
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1545106);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (6578574);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (3938215);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (3798854);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (6601552);\n"
+
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1969958);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1916080);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1744053);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1732599);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (424365);\n"
+
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1798521);\n"
             "INSERT INTO `r_4_1ff8f47beaf8909932_1003` VALUES (1821647);\n"
             "UNLOCK TABLES;\n";
@@ -90,6 +96,20 @@ struct IterFixture {
         write(fd, dummyBlock, dummyLen);
         close(fd);
     }
+
+    unsigned iterateInserts(SqlInsertIter& sii) {
+        unsigned sCount = 0;
+        for(; !sii.isDone(); ++sii) {
+            char const* stmtBegin = sii->first;
+            std::size_t stmtSize = sii->second - stmtBegin;
+            BOOST_CHECK(stmtSize > 0);
+            std::string q(stmtBegin, stmtSize);
+            //std::cout << "Statement---" << q << std::endl;
+            ++sCount;
+        }
+        return sCount;
+    }
+
     
     char const* dummyBlock;
     int dummyLen;
@@ -121,18 +141,14 @@ BOOST_AUTO_TEST_CASE(SqlIterTest) {
         PacketIter::Ptr p(new PacketIter(string(dummyFilename), 
                                          fragSize, true));
         SqlInsertIter sii(p, tableName, true);
-        int sCount = 0;
-        
-        for(; !sii.isDone(); ++sii) {
-            char const* stmtBegin = sii->first;
-            std::size_t stmtSize = sii->second - stmtBegin;
-            BOOST_CHECK(stmtSize > 0);
-            std::string q(stmtBegin, stmtSize);
-            //std::cout << "Statement---" << q << std::endl;
-            ++sCount;
-        }
-        BOOST_CHECK_EQUAL(static_cast<unsigned>(sCount), totalInserts);
+        unsigned sCount = iterateInserts(sii);
+        BOOST_CHECK_EQUAL(sCount, totalInserts);
     }
+}
+BOOST_AUTO_TEST_CASE(SqlIterTestPlain) {
+    SqlInsertIter sii(dummyBlock, dummyLen, tableName, true);
+    unsigned sCount = iterateInserts(sii);
+    BOOST_CHECK_EQUAL(sCount, totalInserts);
 }
 
 

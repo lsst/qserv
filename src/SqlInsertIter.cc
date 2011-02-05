@@ -175,7 +175,7 @@ void qMaster::SqlInsertIter::_init(char const* buf, off_t bufSize,
                                       _blockMatch, lockInsertRegex);
     if(_blockFound) {
         _initRegex(tableName);
-        _iter = Iter(_blockMatch[3].first, _blockMatch[3].second,
+        _iter = Iter(_blockMatch[2].first, _blockMatch[3].second,
                      _insExpr);            
     }        
 }
