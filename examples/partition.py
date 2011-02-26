@@ -787,6 +787,14 @@ class Chunker(object):
                                 False))
         return results
 
+    def printConfig(self):
+        print "Number of stripes: %d" % self.getNumStripes()
+        print "Number of sub-stripes per stripe: %d" % self.numSubStripes
+        print "Stripe height: %.9g deg" % self.stripeHeight
+        print "Sub-stripe height: %.9g deg" % self.subStripeHeight,
+        print "(%d min)" % (self.subStripeHeight * 60)
+
+        
 class SpatialChunkMapper(object):
     """Mapper which bucket sorts CSV records by chunk; map output is
     [(chunkId, {subChunkId: numRows})].
@@ -900,10 +908,7 @@ def chunk(conf, inputFiles):
                                 conf.skipLines)
     if conf.verbose:
         chunker = Chunker(conf)
-        print "Number of stripes: %d" % chunker.getNumStripes()
-        print "Number of sub-stripes per stripe: %d" % chunker.numSubStripes
-        print "Stripe height: %.9g deg" % chunker.stripeHeight
-        print "Sub-stripe height: %.9g deg" % chunker.subStripeHeight
+        chunker.printConfig()
         print "Input splits:"
         for split in splits:
             print "\t%s" % split
@@ -1637,12 +1642,23 @@ def chunkAdaptively(conf, inputFiles):
 
 # -- Command line interface --------
 
+
 def main():
     # Command line parsing/usage
     t = time.time()
     usage = "usage: %prog [options] input_1 input_2 ..."
     parser = optparse.OptionParser(usage)
 
+    def explainArgs(option,opt,value,parser):
+        conf = parser.values
+        if conf.numChunks:
+            print "Adaptive chunking with", conf.numChunks, "chunks."
+        else:
+            print "Fixed spatial chunking:"
+            c = Chunker(conf)
+            c.printConfig()
+        print "Overlap:", conf.overlap, "deg (%d min)" %(conf.overlap * 60)
+        pass
     # General options
     general = optparse.OptionGroup(parser, "General options")
     general.add_option(
@@ -1688,6 +1704,9 @@ def main():
     general.add_option(
         "-d", "--debug", dest="debug", action="store_true",
         help="Print debug messages")
+    general.add_option(
+        "--explain", action="callback", callback=explainArgs,
+        help="Print current understanding of options and parameters")
     parser.add_option_group(general)
 
     # Standard chunking options
