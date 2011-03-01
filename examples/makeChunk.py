@@ -30,9 +30,18 @@
 # as necessary to pass to the partitioner, which should only output
 # the chunks specified.
 # 
-# 
+## PT1.1 Objects have the following box:
+## ra min: 357.977817138 = -2.0221828620000224
+## ra max: = 5.21559213586
+## decl min: -6.80690075667
+## decl max: 7.11656414672
+## thus 49.7 copies are possible in ra (49)
+## and 12.9 copies are possible in decl 
+## Somewhat less copies are made because of the distance expansion
+# near the poles.
 
 import csv
+import math
 import optparse
 import partition
 from textwrap import dedent
@@ -233,6 +242,56 @@ class App:
             a += 1
             #if a > 2: break
 
+    def computeStretch(self, phiSrc, phiDest):
+        math.cos(phiSrc)/cos(phiSrc +  phiDest)
+
+    def layoutDupeMap(self):
+        inputBoundsPt11 = [-2.0221828620000224, 5.21559213586,
+                            -6.80690075667, 7.11656414672]
+        
+        bounds = inputBoundsPt11
+        thetaSize = bounds[1] - bounds[0]
+        phiSize = bounds[3] - bounds[2]
+        
+        phiOffsetUnits = int(math.ceil(90.0 / phiSize))
+        thetaOffsetUnits = int(math.ceil(360.0 / thetaSize))
+
+        def stretchMin(phi):
+            return math.cos(bounds[2]) / math.cos(bounds[2] + phi)
+        def stretchMax(phi):
+            return math.cos(bounds[3]) / math.cos(bounds[3] + phi)
+
+        # Phi stripes
+        for i in range(-phiOffsetUnits, phiOffsetUnits, 1):
+            phiOffset = i * phiSize # phi has no stretching factor
+            (phiMin, phiMax) = (bounds[2] + phiOffset, bounds[3] + phiOffset)
+            if (phiMax < -90.0) or (phiMin > 90.0): continue
+            # theta blocks in a stripe
+            thetaMinPhiMin0 = 360 + (bounds[0] * stretchMin(phiMin))
+            thetaMinPhiMax0 = 360 + (bounds[0] * stretchMax(phiMax))
+            for j in range(0, thetaOffsetUnits):
+                # Constant RA sides
+                thetaMinRaw = (bounds[0] + (j * thetaSize))
+                thetaMinPhiMin = thetaMinRaw * stretchMin(phiMin)
+                thetaMinPhiMax = thetaMinRaw * stretchMax(phiMax) 
+                if ((thetaMinPhiMin > thetaMinPhiMin0) 
+                    or (thetaMinPhiMax > thetaMinPhiMax0)):
+                    break # no more blocks in this stripe
+                print thetaMinPhiMin0, thetaMinPhiMax0, "----"
+                if math.fabs(phiMin) < math.fabs(phiMax):
+                    print "Min", stretchMin(phiMin)
+                    thetaMin = thetaMinPhiMin
+                    thetaMax = thetaMinPhiMin + (thetaSize * stretchMin(phiMin))
+                else:
+                    print "Max", stretchMax(phiMax)
+                    thetaMin = thetaMinPhiMax
+                    thetaMax = thetaMinPhiMax + (thetaSize * stretchMax(phiMax))
+                print "Copy (%d,%d) : theta (%f, %f), phi (%f, %f) " % (
+                    j, i, thetaMin, thetaMax, phiMin, phiMax)
+            print "Iterate"
+            break
+        
+
     def run(self):
         (conf, inputs) = self.parser.parse_args()
         s = partition.SpatialChunkMapper(conf,int(time.time()))
@@ -240,7 +299,7 @@ class App:
         self.printChunkMap(s.writers)
         #self.printChunkCounts(s.chunker)
         self.printBounds(s.writers, s.chunker)
-        
+        self.layoutDupeMap()
             
 
 def main():
