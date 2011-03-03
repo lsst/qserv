@@ -948,7 +948,7 @@ class HintedQueryAction:
 
     def _fixSubChunkDb(self, q, chunk, subChunk):
         # Replace sometable_CC_SS or anything.sometable_CC_SS 
-        # with Subchunks_CC, 
+        # with Subchunks_CC.sometable_CC_SS, 
         # where CC and SS are chunk and subchunk numbers, respectively.
         # Note that "sometable" is any subchunked table.
 
