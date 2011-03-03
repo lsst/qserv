@@ -49,15 +49,27 @@ import random
 from textwrap import dedent
 import time
 
-class ChunkBounds:
-    def __init__(self, chunkId, bounds):
-        self.chunkId = chunkId
-        self.bounds = bounds[:]
-        pass
+import duplicator
 
         
-    def __str__(self):
-        return "%d : %s" % (self.chunkId, str(self.bounds))
+class DuplicatingIter:
+    def __init__(self, iterable, args):
+        self.iterable = iterable
+        self.gen = self._generateDuplicates(args)
+    def __iter__(self):
+        return self
+    def next(self):
+        return gen.next()
+    
+    def _generateDuplicates(self, args):
+        copyList = args.copyList
+        transformer = duplicator.Transformer(args)
+        transform = transformer.transform
+        for r in self.iterable:
+            for c in copyList:
+                r = transform(r, c)
+                yield t
+        
 
 class App:
     def __init__(self):
@@ -187,224 +199,56 @@ class App:
             dest="inputSplitSize", help=dedent("""\
             Approximate size in MiB of input file splits; defaults to %default.
             Fractional values are allowed."""))
+        # Duplication options
+        duplication = optparse.OptionGroup(parser, "Duplication options")
+        duplication.add_option(
+            "--node", type="int", default=0,
+            dest="node", help=dedent("""\
+            This node's number out of all nodes (0 - (total-1);
+            defaults to %default."""))
+        duplication.add_option(
+            "--nodeCount", type="int",
+            dest="nodeCount", help=dedent("""\
+            The total number of nodes.."""))
+        duplication.add_option(
+            "--chunkList", type="str",
+            dest="chunkList", help=dedent("""\
+            A comma-separated list of chunk numbers to generate.  
+            Cannot be used in conjunction with --node and --nodeCount."""))
+            
         parser.add_option_group(tuning)
         self.parser = parser
         pass
 
-    def printChunkMap(self, writers):
-        for declNum in range(len(writers)):
-            wl = writers[declNum]
-            for raNum in range(len(wl)):
-                w = wl[raNum]
-                print "%5s" % (w.chunkId),
-            print
+    def chunk(self, conf, inputFiles):
+        """Driver routine for standard spatial chunking.
+        """
+        splits = prepareDuplicatedSplits(inputFiles)
+        
+        if conf.verbose:
+            chunker = Chunker(conf)
+            chunker.printConfig()
+            print "Input splits:"
+            for split in splits:
+                print "\t%s" % split
+        numWorkers = conf.numWorkers
+        if numWorkers <= 0:
+            numWorkers = None
+        mapReduce(SpatialChunkMapper, PartitionReducer, 
+                  conf, splits, numWorkers)
         pass
 
-    def printChunkCounts(self, chunker):
-        for c in chunker.numChunks:
-            print c
-        print len(chunker.numSubChunks)
-
-    def extractPartitionBounds(self, writers, chunker):
-        coords = [0,0,0,0] # [stripenum, substripenum, chunkoff, subcoff]
-        bounds = [0,0,0,0] # [thetamin, thetamax, phimin, phimax]
-        stripes = []
-        thetaLim = 360.0
-        phiLim = 90.0
-        for stripeNum in range(len(writers)):
-            curStripes = []
-            wl = writers[stripeNum]
-            for w in wl:
-                #coords[3] = chunker.numSubStripes - 1
-                #coords[3] = chun
-                chunker.setCoordsFromIds(w.chunkId, 0, coords)
-                chunker.setBounds(coords, bounds)
-                c = ChunkBounds(w.chunkId, bounds)
-                #print w.chunkId, bounds
-                phiMin = bounds[2]
-                if stripes and not curStripes: # back-push phi mins
-                    for sc in stripes[-1]:
-                        sc.bounds[3] = phiMin
-                        pass
-                curStripes.append(c)
-            if len(curStripes) > 1:
-                # back-push theta mins 
-                curStripes[-1].bounds[1] = thetaLim
-                for i in range(len(curStripes) - 1):
-                    curStripes[i].bounds[1] = curStripes[i+1].bounds[0]
-                    pass
-            stripes.append(curStripes[:])
-        # patch last chunk
-        stripes[-1][0].bounds[1] = thetaLim
-        stripes[-1][0].bounds[3] = phiLim
-        a = 0
-        self.partStripes = stripes
-
-    def printPartBounds(self):
-        for s in self.partStripes:
-            print "Stripe", a
-            print "\n".join(map(str, s))
-            a += 1
-            #if a > 2: break
-
-    def layoutDupeMap(self):
-        inputBoundsPt11 = [-2.0221828620000224, 5.21559213586,
-                            -6.80690075667, 7.11656414672]
-        
-        bounds = inputBoundsPt11
-        thetaSize = bounds[1] - bounds[0]
-        phiSize = bounds[3] - bounds[2]
-        
-        phiOffsetUnits = int(math.ceil(90.0 / phiSize))
-        thetaOffsetUnits = int(math.ceil(360.0 / thetaSize))
-        
-        boundsRad = map(math.radians, bounds)
-        def stretchMin(phi):
-            if phi < -90.0: return 1e5 # Saturate at some number < Inf
-            return math.cos(boundsRad[2]) / math.cos(boundsRad[2] 
-                                                     + math.radians(phi))
-        def stretchMax(phi):
-            if phi > 90.0: return 1e5 # Saturate at some number < Inf
-            return math.cos(boundsRad[3]) / math.cos(boundsRad[3]
-                                                     + math.radians(phi))
-
-        stripes = {}
-        phiIndex = []
-        phiLast = (-phiOffsetUnits * phiSize) + bounds[2]
-        thetaIndices = []
-        # Phi stripes
-        for i in range(-phiOffsetUnits, phiOffsetUnits, 1):
-            stripe = []
-            thetaIndex = []
-            phiOffset = i * phiSize # phi has no stretching factor
-            (phiMin, phiMax) = (phiLast, bounds[3] + phiOffset)
-            if (phiMax < -90.0) or (phiMin > 90.0): 
-                phiLast = phiMax
-                continue
-            # theta blocks in a stripe
-            thetaMinPhiMin0 = 360 + (bounds[0] * stretchMin(phiMin))
-            thetaMinPhiMax0 = 360 + (bounds[0] * stretchMax(phiMax))
-            phiPositive = (math.fabs(phiMin) < math.fabs(phiMax))
-            thetaMaxLast = None
-            for j in range(0, thetaOffsetUnits):
-                # Constant RA sides
-                thetaMinRaw = (bounds[0] + (j * thetaSize))
-                thetaMinPhiMin = thetaMinRaw * stretchMin(phiMin)
-                thetaMinPhiMax = thetaMinRaw * stretchMax(phiMax) 
-                if phiPositive:
-                    if thetaMinPhiMin > thetaMinPhiMin0: break
-                    thetaMin = thetaMinPhiMin
-                    thetaMax = thetaMinPhiMin + (thetaSize * stretchMin(phiMin))
-                else:
-                    if thetaMinPhiMax > thetaMinPhiMax0: break
-                    thetaMin = thetaMinPhiMax
-                    thetaMax = thetaMinPhiMax + (thetaSize * stretchMax(phiMax))
-                if thetaMaxLast != None:
-                    thetaMin = thetaMaxLast
-                thetaIndex.append(thetaMin)
-                thetaMaxLast = thetaMax
-
-                #print "Copy (%d,%d) : theta (%f, %f), phi (%f, %f) " % (
-                #    j, i, thetaMin, thetaMax, phiMin, phiMax)
-                stripe.append([[j,i],[thetaMin, thetaMax, phiMin, phiMax]])
-            thetaIndex.append(thetaMaxLast)
-            thetaIndices.append(thetaIndex)
-            phiIndex.append(phiMin)
-            phiLast = phiMax
-            #print "Iterate"
-            stripes[i] = stripe
-        phiIndex.append(phiLast)
-        # prep
-        self.stripes = stripes
-        #print "Phi index:", phiIndex
-        self.phiIndex = phiIndex
-        self.thetaIndices = thetaIndices
-        #for s in thetaIndices:
-        #    print " ".join(map(lambda c:  "%2.1f" % c, s))
-        return stripes
-
-    def printCopyInfo(self):
-        copyCount = 0
-        for i in sorted(stripes.keys()):
-            copyCount += len(stripes[i])
-            first = stripes[i][0][1]
-            lastTheta = first[0]
-            phi = first[2:4]
-            print "phi: %f %f (%f,%d)" % (phi[0], phi[1], 
-                                          stretchMax(phi[1]), 
-                                          len(stripes[i])),
-            print "%.2f" % lastTheta,
-            for dupe in stripes[i]:
-                b = dupe[1]
-                print "%.2f" % b[1],
-                assert b[2] == phi[0]
-                assert b[3] == phi[1]
-                assert b[0] == lastTheta
-                lastTheta = b[1]
-            print ""
-        print copyCount, "duplicates"
-        
-
-    def findEnclosing(self, index, lower, upper):
-        first = -1
-        last = -1
-        for i in range(len(index)-1):
-            if first == -1:
-                if (lower >= index[i]) and (lower < index[i+1]):
-                    #print "(", lower, index[i],index[i+1], ")"
-                    first = i
-            if last == -1:
-                if upper <= index[i+1]: 
-                    last = i
-            pass
-        return range(first,last+1)
-
-    def testEnclosing(self):
-        index = range(0,110,10)
-        tests = [[0.01, 3],
-                 [31.2, 34],
-                 [35,54],
-                 [9.9,10.1],
-                 [99,100]]
-        for t in tests:
-            print t,"---",self.findEnclosing(index, t[0], t[1])
-
-    def computeCopies(self, bounds):
-        #bounds[3]=40
-        [thetaMin, thetaMax] = bounds[0:2]
-        [phiMin,phiMax] = bounds[2:4]
-        sList = sorted(self.stripes.keys())
-        dupeList = []
-        for i in self.findEnclosing(self.phiIndex, phiMin, phiMax):
-            phiOff = sList[i]
-            #print "For phiOff=",phiOff, 
-            #print self.thetaIndices[i]
-            for j in self.findEnclosing(self.thetaIndices[i], 
-                                        thetaMin, thetaMax):
-                dupeList.append([j,phiOff])
-        #print bounds
-        #self.printDupeList(dupeList)
-
-    def printDupeList(self, dList):        
-        try:
-            for (thetaOff, phiOff) in dList:
-                stripe = self.stripes[phiOff]
-                b = self.stripes[phiOff][thetaOff]
-                print b
-        except Exception, e:
-            print "errr!!", e
-            print dList
 
 
     def run(self):
         (conf, inputs) = self.parser.parse_args()
-        s = partition.SpatialChunkMapper(conf,int(time.time()))
         #print sum(map(len,s.writers))
         #self.printChunkMap(s.writers)
         #self.printChunkCounts(s.chunker)
-        self.extractPartitionBounds(s.writers, s.chunker)
-        self.layoutDupeMap()
-        self.computeCopies(random.choice(random.choice(self.partStripes)).bounds)
+        pd = duplicator.PartitionDef(conf)
+        dd = duplicator.DuplicationDef(conf)
+        pstripes = pd.partitionStripes
+        dd.computeCopies(random.choice(random.choice(pstripes)).bounds)
 
 def main():
     a = App()
