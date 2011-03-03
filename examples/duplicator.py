@@ -31,9 +31,16 @@ import time
 ## Local
 import partition
 
+## Tools
 def computeHeaderDict(headerRow):
     return dict(zip(headerRow, range(len(headerRow))))
 
+def stretchFactor(phiOldRad, phiNew):
+    if phiNew < -90.0: return 1e5 # Saturate at some number < Inf
+    return math.cos(phiOldRad) / math.cos(phiOldRad + math.radians(phiNew))
+    
+
+## Classes
 class ChunkBounds:
     def __init__(self, chunkId, bounds):
         self.chunkId = chunkId
@@ -124,14 +131,8 @@ class DuplicationDef:
         thetaOffsetUnits = int(math.ceil(360.0 / thetaSize))
         
         boundsRad = map(math.radians, bounds)
-        def stretchMin(phi):
-            if phi < -90.0: return 1e5 # Saturate at some number < Inf
-            return math.cos(boundsRad[2]) / math.cos(boundsRad[2] 
-                                                     + math.radians(phi))
-        def stretchMax(phi):
-            if phi > 90.0: return 1e5 # Saturate at some number < Inf
-            return math.cos(boundsRad[3]) / math.cos(boundsRad[3]
-                                                     + math.radians(phi))
+        def stretchMin(phi): return stretchFactor(boundsRad[2], phi)
+        def stretchMax(phi): return stretchFactor(boundsRad[3], phi)
 
         stripes = {}
         phiIndex = []
@@ -268,8 +269,6 @@ class DuplicationDef:
             print "errr!!", e
             print dList
 
-
-
 class Transform:
     def __init__(self, copyParam, headerDict):
         (raOff, declOff, copyNum) = copyParam
@@ -281,8 +280,8 @@ class Transform:
             if val > high: return val - identity
             return val
 
-        raFunc = lambda old: str(normalize(0, 360, 360, float(old) + raOff))
-        declFunc = lambda old: str(normalize(-90, 90, 180, float(old) + declOff))
+        raFunc = lambda old,r,d: str(normalize(0, 360, 360, float(old) + raOff))
+        declFunc = lambda old,r,d: str(normalize(-90, 90, 180, float(old) + declOff))
         skytileRange = 194400
         self.columnMap = {
             "scienceCcdExposureId" : lambda old: str((copyNum << 36) + int(old)),
@@ -318,6 +317,18 @@ class Transform:
         for c,f in self.columnMap.items():
             if c in headerDict:
                 self.transformMap[headerDict[c]] = f
+
+    def normalize(low, high, identity, val):
+        if val < low: return val + identity
+        if val > high: return val - identity
+        return val
+
+    def transformRaDecl(self, ra, decl):
+        raRaw = ra + self.raOff
+        declRaw = decl + self.declOff
+        return [self.normalize(0.0, 360, 360, 
+                              raRaw * stretchFactor(decl, declRaw)),
+                self.normalize(-90.0, 90.0, 180, declRaw)]                
 
     def transform(self, row):
         newRow = row[:]
