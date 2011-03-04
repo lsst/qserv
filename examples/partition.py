@@ -811,6 +811,11 @@ class SpatialChunkMapper(object):
         self.coords = np.array([0, 0, 0, 0], dtype=np.int32)
         self.bounds = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
         self.chunks = {}
+        if hasattr(conf, "chunkAcceptor"): # allow client to select chunks
+            self.chunkAcceptor = conf.chunkAcceptor
+        else: 
+            self.chunkAcceptor = lambda cid: True
+            
         # Build chunk writer arrays
         ns = self.chunker.getNumStripes()
         self.writers = []
@@ -823,9 +828,12 @@ class SpatialChunkMapper(object):
             for j in xrange(self.chunker.getNumChunks(i)):
                 # chunks are at least as wide as stripes are high, so j < ns*2
                 chunkId = i * ns * 2 + j
-                paths = [os.path.join(baseDir, p + ("_%d.csv" % chunkId))
-                         for p in prefixes]
-                self.writers[i].append(ChunkWriter(paths, chunkId, conf))
+                if not self.chunkAcceptor(chunkId): 
+                    self.writers[i].append(None)
+                else:
+                    paths = [os.path.join(baseDir, p + ("_%d.csv" % chunkId))
+                             for p in prefixes]
+                    self.writers[i].append(ChunkWriter(paths, chunkId, conf))
 
     def map(self, row):
         # extract position from row
@@ -835,6 +843,7 @@ class SpatialChunkMapper(object):
         self.chunker.setCoords(theta, phi, self.coords)
         self.chunker.setBounds(self.coords, self.bounds)
         chunkId, subChunkId = self.chunker.getIds(self.coords)
+        if not self.chunkAcceptor(chunkId): return # Reject the unaccepted
         # write row plus the chunkId and subChunkId to the appropriate file
         writer = self.writers[self.coords[0]][self.coords[2]]
         self.cache.update(writer)
