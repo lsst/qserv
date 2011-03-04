@@ -73,15 +73,13 @@ class DuplicatingIter:
 
 class App:
     def __init__(self):
+        self.parser = self._makeParser()
+        self.shouldDuplicate = False
+        pass
+
+    def _makeParser(self):
         usage = "usage: %prog [options] input_1 input_2 ..."
         parser = optparse.OptionParser(usage)
-        def explainArgs(option,opt,value,parser):
-            conf = parser.values
-            print "Fixed spatial chunking:"
-            c = partition.Chunker(conf)
-            c.printConfig()
-            print "Overlap:", conf.overlap, "deg (%d min)" %(conf.overlap * 60)
-            pass
         general = optparse.OptionGroup(parser, "General options")
         general.add_option(
             "-o", "--overlap", type="float", dest="overlap", default=0.01667,
@@ -127,7 +125,7 @@ class App:
             "-d", "--debug", dest="debug", action="store_true",
             help="Print debug messages")
         general.add_option(
-            "--explain", action="callback", callback=explainArgs,
+            "--explain", action="callback", callback=self._explainArgs,
             help="Print current understanding of options and parameters")
         parser.add_option_group(general)
 
@@ -143,6 +141,7 @@ class App:
             default=100, help=dedent("""\
             Number of sub-stripes to divide each stripe into. The default is
             %default."""))
+        
         parser.add_option_group(chunking)
 
         # CSV format options
@@ -199,8 +198,12 @@ class App:
             dest="inputSplitSize", help=dedent("""\
             Approximate size in MiB of input file splits; defaults to %default.
             Fractional values are allowed."""))
+
         # Duplication options
         duplication = optparse.OptionGroup(parser, "Duplication options")
+        duplication.add_option(
+            "--dupe", action="callback", callback=self._enableDuplication,
+            help="Turn on duplication.")
         duplication.add_option(
             "--node", type="int", default=0,
             dest="node", help=dedent("""\
@@ -215,9 +218,30 @@ class App:
             dest="chunkList", help=dedent("""\
             A comma-separated list of chunk numbers to generate.  
             Cannot be used in conjunction with --node and --nodeCount."""))
+        duplication.add_option(
+            "--bounds", dest="bounds",
+            default=
+            "-2.0221828620000224,5.21559213586,-6.80690075667,7.11656414672",
+            help=dedent("""\
+            Bounding box of input source to be replicated.  The form is
+            ra0,ra1,decl0,decl1 , where ra/decl are specified in degrees.  
+            Negative and/or floating point numbers are acceptable.  The 
+            default is from PT1.1 %default."""))
             
-        parser.add_option_group(tuning)
-        self.parser = parser
+        parser.add_option_group(duplication)
+        return parser
+
+    def _explainArgs(self, option, opt, value, parser):
+        conf = parser.values
+        print "Fixed spatial chunking:"
+        c = partition.Chunker(conf)
+        c.printConfig()
+        print "Overlap:", conf.overlap, "deg (%d min)" %(conf.overlap * 60)
+        pass
+
+    def _enableDuplication(self, option, opt, value, parser):
+        self.shouldDuplicate = True
+        
         pass
 
     def chunk(self, conf, inputFiles):
@@ -242,13 +266,12 @@ class App:
 
     def run(self):
         (conf, inputs) = self.parser.parse_args()
-        #print sum(map(len,s.writers))
-        #self.printChunkMap(s.writers)
-        #self.printChunkCounts(s.chunker)
-        pd = duplicator.PartitionDef(conf)
-        dd = duplicator.DuplicationDef(conf)
-        pstripes = pd.partitionStripes
-        dd.computeCopies(random.choice(random.choice(pstripes)).bounds)
+        if self.shouldDuplicate:
+            a.chunk(conf, inputs)
+        else:
+            print "No action specified.  Did you want to duplicate? (--dupe)"
+            
+
 
 def main():
     a = App()

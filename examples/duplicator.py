@@ -25,7 +25,9 @@
 # duplicator.py
 
 ## Python
+import csv
 import math
+import random
 import time
 
 ## Local
@@ -39,6 +41,12 @@ def stretchFactor(phiOldRad, phiNew):
     if phiNew < -90.0: return 1e5 # Saturate at some number < Inf
     return math.cos(phiOldRad) / math.cos(phiOldRad + math.radians(phiNew))
     
+# Normalization function (only normalizes by one period)
+def normalize(low, high, identity, val):
+    if val < low: return val + identity
+    if val > high: return val - identity
+    return val
+
 
 ## Classes
 class ChunkBounds:
@@ -49,6 +57,37 @@ class ChunkBounds:
         
     def __str__(self):
         return "%d : %s" % (self.chunkId, str(self.bounds))
+
+class DefaultConf:
+    @staticmethod
+    def getPartitionDef():
+        dc = DefaultConf()
+        dc.thetaColumn = 0
+        dc.phiColumn = 1
+        dc.overlap = 1/60.0
+        dc.numStripes = 18
+        dc.numSubStripes = 100
+        dc.chunkPrefix = "Test"
+        dc.outputDir = "/tmp/"
+        # CSV params
+        dc.delimiter = ","
+        dc.doublequote = True
+        dc.escapechar = '\\'
+        dc.quoting = csv.QUOTE_MINIMAL
+        dc.quotechar = '"'
+        dc.skipinitialspace = True
+        # Tuning
+        dc.outputBufferSize = 1.0
+        dc.maxOpenWriters = 32
+        dc.inputSplitSize = 64.0
+        dc.debug = False
+        return dc
+
+    @staticmethod
+    def getDuplicationDef():
+        dc = DefaultConf()
+        dc.bounds = "-2.0221828620000224,5.21559213586,-6.80690075667,7.11656414672"
+        return dc
 
 class PartitionDef:
     def __init__(self, conf):
@@ -113,17 +152,24 @@ class PartitionDef:
             a += 1
             #if a > 2: break
 
+
 class DuplicationDef:
     def __init__(self, conf):
+        self._importConf(conf)
         self.layoutDupeMap()
-        
         pass
 
-    def layoutDupeMap(self):
-        inputBoundsPt11 = [-2.0221828620000224, 5.21559213586,
-                            -6.80690075667, 7.11656414672]
-        
-        bounds = inputBoundsPt11
+    def _importConf(self, conf):
+        bstr = conf.bounds
+        if bstr:
+            bounds = map(float, bstr.split(","))
+        else:
+            raise StandardError("Faulty input bounding specification: %s"
+                                % bstr)
+        self.bounds = bounds
+
+    def layoutDupeMap(self):        
+        bounds = self.bounds
         thetaSize = bounds[1] - bounds[0]
         phiSize = bounds[3] - bounds[2]
         
@@ -270,16 +316,13 @@ class DuplicationDef:
             print dList
 
 class Transform:
-    def __init__(self, copyParam, headerDict):
-        (raOff, declOff, copyNum) = copyParam
+    def __init__(self, opts, headerDict):
+        self.phiOff = opts.phiOff
+        self.thetaOff = opts.thetaOff
+        self.phiCol = opts.phiCol
+        self.thetaCol = opts.thetaCol        
         self.headerDict = headerDict
         
-        # Normalization function.
-        def normalize(low, high, identity, val):
-            if val < low: return val + identity
-            if val > high: return val - identity
-            return val
-
         raFunc = lambda old,r,d: str(normalize(0, 360, 360, float(old) + raOff))
         declFunc = lambda old,r,d: str(normalize(-90, 90, 180, float(old) + declOff))
         skytileRange = 194400
@@ -347,3 +390,17 @@ class Transform:
 
     def hasTransform(self):
         return len(self.transformMap) != 0
+
+########################################################################
+## 
+########################################################################
+
+def main():
+    pd = PartitionDef(DefaultConf.getPartitionDef())
+    pstripes = pd.partitionStripes
+    dd = DuplicationDef(DefaultConf.getDuplicationDef())
+    dd.computeCopies(random.choice(random.choice(pstripes)).bounds)
+    pass
+
+if __name__ == "__main__":
+    main()
