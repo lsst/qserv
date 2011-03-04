@@ -56,10 +56,11 @@ class DuplicatingIter:
     def __init__(self, iterable, args):
         self.iterable = iterable
         self.gen = self._generateDuplicates(args)
+        self.next = self.gen.next # Replace my next() with the generator's
     def __iter__(self):
         return self
     def next(self):
-        return gen.next()
+        return self.gen.next()
     
     def _generateDuplicates(self, args):
         copyList = args.copyList
@@ -75,6 +76,51 @@ class App:
     def __init__(self):
         self.parser = self._makeParser()
         self.shouldDuplicate = False
+        self.conf = None
+        self.inputs = None
+        pass
+
+    def run(self):
+        self._ingestArgs()
+        if self.shouldDuplicate:
+            partition.chunk(self.conf, self.inputs)
+        else:
+            print "No action specified.  Did you want to duplicate? (--dupe)"
+        pass
+
+    def _explainArgs(self, option, opt, value, parser):
+        conf = parser.values
+        print "Fixed spatial chunking:"
+        c = partition.Chunker(conf)
+        c.printConfig()
+        print "Overlap:", conf.overlap, "deg (%d min)" %(conf.overlap * 60)
+        pass
+
+    def _enableDuplication(self, option, opt, value, parser):
+        self.shouldDuplicate = True
+        setattr(parser.values, "rowFilter", 
+                lambda rows: DuplicatingIter(rows, parser.values))
+        pass
+
+    def _ingestArgs(self):
+        (conf, inputs) = self.parser.parse_args()
+        
+        # Got inputs?
+        if len(inputs) == 0 and conf.shouldDuplicate:
+            parser.error("At least one input file must be specified")
+
+        # Validate and adjust sizes
+        if conf.outputBufferSize < 1.0 / 1024 or conf.outputBufferSize > 64.0:
+            parser.error(dedent("""\
+            Output buffer size must be at least 1KiB and no more than
+            64MiB."""))
+        conf.outputBufferSize = int(conf.outputBufferSize * 1048576.0)
+        if conf.inputSplitSize > 256.0:
+            parser.error("Input split size must not exceed 256 MiB.")
+        conf.inputSplitSize = int(conf.inputSplitSize * 1048576.0)
+
+        self.conf = conf
+        self.inputs = inputs
         pass
 
     def _makeParser(self):
@@ -230,47 +276,6 @@ class App:
             
         parser.add_option_group(duplication)
         return parser
-
-    def _explainArgs(self, option, opt, value, parser):
-        conf = parser.values
-        print "Fixed spatial chunking:"
-        c = partition.Chunker(conf)
-        c.printConfig()
-        print "Overlap:", conf.overlap, "deg (%d min)" %(conf.overlap * 60)
-        pass
-
-    def _enableDuplication(self, option, opt, value, parser):
-        self.shouldDuplicate = True
-        
-        pass
-
-    def chunk(self, conf, inputFiles):
-        """Driver routine for standard spatial chunking.
-        """
-        splits = prepareDuplicatedSplits(inputFiles)
-        
-        if conf.verbose:
-            chunker = Chunker(conf)
-            chunker.printConfig()
-            print "Input splits:"
-            for split in splits:
-                print "\t%s" % split
-        numWorkers = conf.numWorkers
-        if numWorkers <= 0:
-            numWorkers = None
-        mapReduce(SpatialChunkMapper, PartitionReducer, 
-                  conf, splits, numWorkers)
-        pass
-
-
-
-    def run(self):
-        (conf, inputs) = self.parser.parse_args()
-        if self.shouldDuplicate:
-            a.chunk(conf, inputs)
-        else:
-            print "No action specified.  Did you want to duplicate? (--dupe)"
-            
 
 
 def main():
