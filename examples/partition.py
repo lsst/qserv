@@ -320,7 +320,7 @@ def _dispatchMapper(args):
     mapper = mapperType(conf, i)
     rows = InputSplitIter(split, kwargs=_csvArgs(conf))
     if hasattr(conf, "rowFilter"): # Allow optional filter (e.g., duplicator)
-        rows = rowFilter(rows)
+        rows = conf.rowFilter(rows)
         
     for row in rows:
         _emit(mapper.map(row), results)
