@@ -64,12 +64,15 @@ class DuplicatingIter:
     
     def _generateDuplicates(self, args):
         copyList = args.copyList
-        transformer = duplicator.Transformer(args)
-        transform = transformer.transform
+        # FIXME
+        #transformer = duplicator.Transformer(args)
+        #transform = transformer.transform
         for r in self.iterable:
             for c in copyList:
-                r = transform(r, c)
-                yield t
+                yield r
+                #FIXME
+                #t = transform(r, c)
+                #yield t
         
 
 class App:
@@ -98,9 +101,6 @@ class App:
 
     def _enableDuplication(self, option, opt, value, parser):
         self.shouldDuplicate = True
-        setattr(parser.values, "rowFilter", 
-                lambda rows: DuplicatingIter(rows, parser.values))
-        pass
 
     def _ingestArgs(self):
         (conf, inputs) = self.parser.parse_args()
@@ -119,6 +119,14 @@ class App:
             parser.error("Input split size must not exceed 256 MiB.")
         conf.inputSplitSize = int(conf.inputSplitSize * 1048576.0)
 
+        if self.shouldDuplicate:
+            def dummyAccept(cid):
+                return (100 < cid) and (cid < 500)
+            # FIXME: setup config for duplicating iter and transformer.
+            setattr(conf, "rowFilter", 
+                    lambda rows: DuplicatingIter(rows, conf))
+            setattr(conf, "chunkAcceptor", dummyAccept)
+            setattr(conf, "copyList", [1,2,3,"FIXME"])
         self.conf = conf
         self.inputs = inputs
         pass
