@@ -319,6 +319,9 @@ def _dispatchMapper(args):
     results = []
     mapper = mapperType(conf, i)
     rows = InputSplitIter(split, kwargs=_csvArgs(conf))
+    if hasattr(conf, "rowFilter"): # Allow optional filter (e.g., duplicator)
+        rows = rowFilter(rows)
+        
     for row in rows:
         _emit(mapper.map(row), results)
     if hasattr(mapperType, 'finish'):
