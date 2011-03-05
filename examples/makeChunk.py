@@ -40,6 +40,7 @@
 ## Somewhat less copies are made because of the distance expansion
 # near the poles.
 
+# try -S60 -s18 ( 60 stripes, 18 substripes). used for pt1 testing
 import csv
 import itertools
 import math
@@ -57,22 +58,23 @@ class DuplicatingIter:
         self.iterable = iterable
         self.gen = self._generateDuplicates(args)
         self.next = self.gen.next # Replace my next() with the generator's
+
     def __iter__(self):
         return self
+
     def next(self):
         return self.gen.next()
     
     def _generateDuplicates(self, args):
         copyList = args.copyList
+        transformer = duplicator.Transformer(args)
         # FIXME
         #transformer = duplicator.Transformer(args)
         #transform = transformer.transform
         for r in self.iterable:
             for c in copyList:
-                yield r
-                #FIXME
-                #t = transform(r, c)
-                #yield t
+                r = transformer.transform(r,c)
+                if r: yield r
         
 
 class App:
@@ -81,6 +83,7 @@ class App:
         self.shouldDuplicate = False
         self.conf = None
         self.inputs = None
+        self.chunks = set()
         pass
 
     def run(self):
@@ -90,6 +93,27 @@ class App:
         else:
             print "No action specified.  Did you want to duplicate? (--dupe)"
         pass
+
+    def _chooseChunks(self, chosen, total, chunks):
+        assert type(chosen) == int
+        assert type(total) == int
+        print "Choosing chunks for %d (%d total) from %s chunks" % (
+            chosen, total, len(chunks))
+        # round robin selection
+        cLen = len(chunks)
+        i = 0
+        c = chosen
+        cList = []
+        if total == 1: return chunks[:]
+        for i in range(cLen/(total-1)):
+            if c > cLen: break
+            cList.append(chunks[c])
+            c += total
+        return cList
+
+    
+    def _chunkAcceptor(self, cid):
+        return cid in self.chunks
 
     def _explainArgs(self, option, opt, value, parser):
         conf = parser.values
@@ -111,24 +135,47 @@ class App:
 
         # Validate and adjust sizes
         if conf.outputBufferSize < 1.0 / 1024 or conf.outputBufferSize > 64.0:
-            parser.error(dedent("""\
+            self.parser.error(dedent("""\
             Output buffer size must be at least 1KiB and no more than
             64MiB."""))
         conf.outputBufferSize = int(conf.outputBufferSize * 1048576.0)
         if conf.inputSplitSize > 256.0:
-            parser.error("Input split size must not exceed 256 MiB.")
+            self.parser.error("Input split size must not exceed 256 MiB.")
         conf.inputSplitSize = int(conf.inputSplitSize * 1048576.0)
 
         if self.shouldDuplicate:
-            def dummyAccept(cid):
-                return (100 < cid) and (cid < 500)
-            # FIXME: setup config for duplicating iter and transformer.
-            setattr(conf, "rowFilter", 
-                    lambda rows: DuplicatingIter(rows, conf))
-            setattr(conf, "chunkAcceptor", dummyAccept)
-            setattr(conf, "copyList", [1,2,3,"FIXME"])
+            self._setupDuplication(conf)
         self.conf = conf
         self.inputs = inputs
+        pass
+
+    def _setupDuplication(self, conf):
+        if not conf.nodeCount: 
+            self.parser.error("Node count not specified (--nodeCount)")
+        pd = duplicator.PartitionDef(conf)
+        allChunkBounds = [cb for cList in pd.partitionStripes 
+                          for cb in cList]
+        chunkBounds = self._chooseChunks(conf.node, conf.nodeCount, 
+                                         allChunkBounds)
+        dd = duplicator.DuplicationDef(conf)
+        boundsList = map(lambda cb: cb.bounds, chunkBounds)
+        copyList = dd.computeAllCopies(boundsList)
+            
+        print len(copyList), "copies needed of", dd.dupeCount, "available"
+        print "Building", len(chunkBounds), "chunks"
+        copyOffsets = map(dd.getDupeInfo, copyList)
+        scma = duplicator.CsvSchema(conf)
+        if scma.thetaColumn:
+            # Override thetaColumn and phiColumn specs from schema
+            setattr(conf, "thetaColumn", scma.thetaColumn)
+            setattr(conf, "phiColumn", scma.thetaColumn)
+        setattr(conf, "headerColumns", scma.headerColumns)
+        # FIXME: setup config for duplicating iter and transformer.
+        setattr(conf, "rowFilter", 
+                lambda rows: DuplicatingIter(rows, conf))
+        self.chunks = set(map(lambda cb: cb.chunkId, chunkBounds))
+        setattr(conf, "chunkAcceptor", self._chunkAcceptor)
+        setattr(conf, "copyList", copyOffsets)
         pass
 
     def _makeParser(self):
@@ -147,12 +194,14 @@ class App:
             "-t", "--theta-column", type="int", dest="thetaColumn", default=0,
             help=dedent("""\
             0-based index of the longitude angle (e.g. right ascension) column
-            in the input CSV files; defaults to %default."""))
+            in the input CSV files; defaults to %default.
+            DEPRECATED: Use the schema options instead."""))
         general.add_option(
             "-p", "--phi-column", type="int", dest="phiColumn", default=1,
             help=dedent("""\
             0-based index of the latitude angle (e.g. declination)
-            column in the input CSV files; defaults to %default."""))
+            column in the input CSV files; defaults to %default.
+            DEPRECATED: Use the schema options instead."""))
         general.add_option(
             "-P", "--chunk-prefix", dest="chunkPrefix",  default="Object",
             help=dedent("""\
@@ -264,14 +313,15 @@ class App:
             This node's number out of all nodes (0 - (total-1);
             defaults to %default."""))
         duplication.add_option(
-            "--nodeCount", type="int",
+            "--node-count", type="int",
             dest="nodeCount", help=dedent("""\
             The total number of nodes.."""))
         duplication.add_option(
-            "--chunkList", type="str",
+            "--chunk-list", type="str",
             dest="chunkList", help=dedent("""\
             A comma-separated list of chunk numbers to generate.  
-            Cannot be used in conjunction with --node and --nodeCount."""))
+            Cannot be used in conjunction with --node and --nodeCount.
+            << NOT IMPLEMENTED >>"""))
         duplication.add_option(
             "--bounds", dest="bounds",
             default=
@@ -281,10 +331,33 @@ class App:
             ra0,ra1,decl0,decl1 , where ra/decl are specified in degrees.  
             Negative and/or floating point numbers are acceptable.  The 
             default is from PT1.1 %default."""))
-            
         parser.add_option_group(duplication)
+        
+        schema = optparse.OptionGroup(parser, "Schema options")
+        schema.add_option(
+            "--schema", type="str", metavar="FILE",
+            dest="schemaFile", help=dedent("""\
+            Derive column names from FILE, a file containing a MySQL 
+            CREATE TABLE statement of the form produced by an invocation 
+            of 'mysqldump -T ...' """))
+        schema.add_option("--columns", dest="columnNames", default=None,
+                          metavar="NAMES",
+                          help="Use NAMES as column names(e.g., " + 
+                          "'id,ra,dec,flux') for the input.")
+        schema.add_option(
+            "--theta-name", type="str", dest="thetaName", default="ra_PS",
+            help=dedent("""\
+            Name of column to use for longitude angle (e.g., right ascension)
+            in the input CSV files;
+            defaults to %default. Use 'raObject' for the Source table."""))
+        schema.add_option(
+            "--phi-name", type="str", dest="phiName", default="decl_PS",
+            help=dedent("""\
+            Name of column to use for latitude angle (e.g., declination) 
+            in the input CSV files;
+            defaults to %default. Use 'declObject' for the Source table."""))
+        parser.add_option_group(schema)
         return parser
-
 
 def main():
     a = App()
