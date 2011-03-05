@@ -26,8 +26,10 @@
 
 ## Python
 import csv
+from itertools import izip
 import math
 import random
+import string
 import time
 
 ## Local
@@ -57,6 +59,8 @@ class ChunkBounds:
         
     def __str__(self):
         return "%d : %s" % (self.chunkId, str(self.bounds))
+    def __repr__(self):
+        return "ChunkBounds(%s)" % self.__str__()
 
 class DefaultConf:
     @staticmethod
@@ -156,7 +160,7 @@ class PartitionDef:
 class DuplicationDef:
     def __init__(self, conf):
         self._importConf(conf)
-        self.layoutDupeMap()
+        self._layoutDupeMap()
         pass
 
     def _importConf(self, conf):
@@ -168,7 +172,7 @@ class DuplicationDef:
                                 % bstr)
         self.bounds = bounds
 
-    def layoutDupeMap(self):        
+    def _layoutDupeMap(self):        
         bounds = self.bounds
         thetaSize = bounds[1] - bounds[0]
         phiSize = bounds[3] - bounds[2]
@@ -184,6 +188,7 @@ class DuplicationDef:
         phiIndex = []
         phiLast = (-phiOffsetUnits * phiSize) + bounds[2]
         thetaIndices = []
+        copyNum = 1
         # Phi stripes
         for i in range(-phiOffsetUnits, phiOffsetUnits, 1):
             stripe = []
@@ -218,7 +223,11 @@ class DuplicationDef:
 
                 #print "Copy (%d,%d) : theta (%f, %f), phi (%f, %f) " % (
                 #    j, i, thetaMin, thetaMax, phiMin, phiMax)
-                stripe.append([[j,i],[thetaMin, thetaMax, phiMin, phiMax]])
+                stripe.append([[j, i], 
+                               copyNum,
+                               [thetaMin, thetaMax, phiMin, phiMax],
+                               [j*thetaSize, phiOffset]])
+                copyNum += 1
             thetaIndex.append(thetaMaxLast)
             thetaIndices.append(thetaIndex)
             phiIndex.append(phiMin)
@@ -231,7 +240,7 @@ class DuplicationDef:
         #print "Phi index:", phiIndex
         self.phiIndex = phiIndex
         self.thetaIndices = thetaIndices
-
+        self.dupeCount = sum(map(lambda l: len(l)-1, thetaIndices))
         #for s in thetaIndices:
         #    print " ".join(map(lambda c:  "%2.1f" % c, s))
         return stripes
@@ -283,10 +292,16 @@ class DuplicationDef:
             print t,"---",self.findEnclosing(index, t[0], t[1])
 
     def computeAllCopies(self, boundsList):
-        s = set()
+        s = []
         for b in boundsList:
-            s.update(self.computeCopies(b))
-        return s
+            s.extend(self.computeCopies(b))
+        last = None
+        reduced = []
+        for b in sorted(s):
+            if b == last: continue
+            reduced.append(b)
+            last = b
+        return reduced
 
     def computeCopies(self, bounds):
         #bounds[3]=40
@@ -301,9 +316,20 @@ class DuplicationDef:
             for j in self.findEnclosing(self.thetaIndices[i], 
                                         thetaMin, thetaMax):
                 dupeList.append([j,phiOff])
-        print bounds
-        self.printDupeList(dupeList)
+        #print bounds
+        #self.printDupeList(dupeList)
         return dupeList
+
+    def getDupeInfo(self, coord):
+        """@param coord: thetaOff, phiOff in stripe units
+        @return [[thetaOff(stripe units), phiOffset(stripe units)],
+        copyNum, # copy number
+        [thetaMin, thetaMax, phiMin, phiMax], # copy bounds
+        [thetaOffset(degrees), phiOffset(degrees)] # no stretch factor
+        ])
+        
+        [thetaOff, phiOff] in degrees (without stretch factor)"""
+        return self.stripes[coord[1]][coord[0]]
 
     def printDupeList(self, dList):        
         try:
@@ -315,70 +341,132 @@ class DuplicationDef:
             print "errr!!", e
             print dList
 
-class Transform:
-    def __init__(self, opts, headerDict):
-        self.phiOff = opts.phiOff
-        self.thetaOff = opts.thetaOff
-        self.phiCol = opts.phiCol
-        self.thetaCol = opts.thetaCol        
-        self.headerDict = headerDict
+class CsvSchema:
+    def __init__(self, conf=None):
+        """Compute various properties from a schema file.
+        Optionally, with a config containing schemaFile, thetaName, phiName,
+        compute column numbers for phi and theta.
+        """
+        self.thetaColumn = None
+        self.phiColumn = None
+        if conf: self._setAsConfig(conf)        
+        pass
+
+    def readSchemaFile(self, schemaFile):
+        columns = self._readSchema(open(schemaFile))
+        self._updateColumnNames(columns)
+        pass
+
+    def _updateColumnNames(self, columnNames):
+        self.headerColumns = dict(izip(columnNames, range(len(columnNames))))
+        self.columns = columnNames
+
+    def readCsvHeader(self, csvLine, delimiter=","):
+        """Read in column names from first line of csv file
+        @return True if successful"""
+        columns = csvLine.split(delimiter)
+        if len(columns) < 2: # Trivial test. must have at least ra,decl.
+            return False
+        self._updateColumnNames(columns)
+        return True
+
+    def applyColumnNameList(self, columnNames):
+        self._updateColumnNames(columnNames)
+
+    def _readSchema(self, fileObj):
+        """Read a sql header file (formatted in the way MySQL for
+        "show create table x")
+        @return a list of column names
+        """
+        create = None
+        term = None
+        createStr = "CREATE TABLE"
+        contents = fileObj.read();
+        lines = filter(lambda x:x, map(string.strip, contents.split("\n")))
+        num = 0
+        # Find CREATE section
+        for l in lines:
+            if not create and l.upper()[:len(createStr)] == createStr:
+                create = num
+            elif create and not term and l[-1] == ";":
+                term = num
+            num += 1
+        colLines = filter(lambda x: x and "`" == x[0], lines[create:term])
+        columns = [s[s.find("`")+1 : s.rfind("`")] for s in colLines]
+        return columns
+
+    def _setAsConfig(self, conf):
+        self.readSchemaFile(conf.schemaFile)
+        self.thetaColumn = self.headerColumns[conf.thetaName]
+        self.phiColumn = self.headerColumns[conf.phiName]
         
+
+
+class Transformer:
+    def __init__(self, opts):
+        self.phiCol = opts.phiColumn
+        self.thetaCol = opts.thetaColumn
+        self.headerColumns = opts.headerColumns
+
         raFunc = lambda old,r,d: str(normalize(0, 360, 360, float(old) + raOff))
         declFunc = lambda old,r,d: str(normalize(-90, 90, 180, float(old) + declOff))
         skytileRange = 194400
+             
         self.columnMap = {
-            "scienceCcdExposureId" : lambda old: str((copyNum << 36) + int(old)),
-            "rawAmpExposureId" : lambda old: str((copyNum << 41) + int(old)),
-            "sourceId" : lambda old: str((copyNum << 44) + int(old)),
-            "objectId" : lambda old: str(((copyNum*skytileRange) << 32) + int(old)),
-            "snapCcdExposureId" : lambda old: str((copyNum << 38) + int(old)),
+            "scienceCcdExposureId" : lambda old, copyNum: str((copyNum << 36) + int(old)),
+            "rawAmpExposureId" : lambda old, copyNum: str((copyNum << 41) + int(old)),
+            "sourceId" : lambda old, copyNum: str((copyNum << 44) + int(old)),
+            "objectId" : lambda old, copyNum: str(((copyNum*skytileRange) << 32) + int(old)),
+            "snapCcdExposureId" : lambda old, copyNum: str((copyNum << 38) + int(old)),
             }
-        # Add ra and decl column functions
-        for c in ['ra_PS',
-                  'ra_SG',  
-                  # raRange is a size, not a coordinate???
-                  "ra",
-                  # raFlux ???
-                  "raPeak",
-                  "raAstrom",
-                  "raObject",
-                  "crval1"
-                  ]:
-            self.columnMap[c] = raFunc
-        for c in ['decl_PS',
-                  'decl_SG',  
-                  "decl",
-                  "declPeak",
-                  "declAstrom",
-                  "declObject",
-                  "crval2",
-                  ]:
-            self.columnMap[c] = declFunc
-            
+        self._buildPairList(opts.headerColumns)
         self.transformMap = {}
         # Build transform map for this csv file.
         for c,f in self.columnMap.items():
-            if c in headerDict:
-                self.transformMap[headerDict[c]] = f
+            if c in self.headerColumns:
+                self.transformMap[self.headerColumns[c]] = f
+                
+    def _buildPairList(self, headerColumns):
+        self.thetaPhiPairs = []
+        for (r,d) in [
+            ('ra_PA"', 'decl_PS'),
+            ('ra_SG', 'decl_SG'),
+            ('ra', 'decl'),
+            ('raPeak', 'declPeak'),
+            ('raAstrom', 'declAstrom'),
+            ('raObject', 'declObject'),
+            ('crval1', 'crval2'),
+            ]:
+            if (r in headerColumns) and (d in headerColumns):
+                self.thetaPhiPairs.append((headerColumns[r], headerColumns[d]))
+                
+    def _transformThetaPhi(self, thetaPhi, thetaPhiOff):
+        (theta, phi) = thetaPhi
+        (thetaOff, phiOff) = thetaPhiOff
+        thetaRaw = theta + thetaOff
+        phiRaw = phi + phiOff
+        return [normalize(0.0, 360, 360, 
+                          thetaRaw * stretchFactor(phi, phiRaw)),
+                normalize(-90.0, 90.0, 180, phiRaw)]                
+        
 
-    def normalize(low, high, identity, val):
-        if val < low: return val + identity
-        if val > high: return val - identity
-        return val
-
-    def transformRaDecl(self, ra, decl):
-        raRaw = ra + self.raOff
-        declRaw = decl + self.declOff
-        return [self.normalize(0.0, 360, 360, 
-                              raRaw * stretchFactor(decl, declRaw)),
-                self.normalize(-90.0, 90.0, 180, declRaw)]                
-
-    def transform(self, row):
+    def transform(self, row, dupeInfo):
         newRow = row[:]
+        # FIXME: need to perform clipping.
+        # Transform the RA/decl pairs specially.  Only transform in pairs
+        for pair in self.thetaPhiPairs: 
+            thetaC = pair[0]
+            phiC = pair[1]
+            thetaphi = (float(row[thetaC]), float(row[phiC]))
+            thetaphi = self._transformThetaPhi(thetaphi, dupeInfo[3])
+            (newRow[thetaC], newRow[phiC]) = map(str, thetaphi)
+
         for col,f in self.transformMap.items():
             old = row[col]
             if old != "\\N":  # skip SQL null columns
-                newRow[col] = f(row[col])
+                newRow[col] = f(old, dupeInfo[1])
+        #print "old",filter(lambda s: "\\N" != s, row)
+        #print "new", filter(lambda s: "\\N" != s, newRow)
         return newRow
 
     def transformOnly(self, row, colList):
