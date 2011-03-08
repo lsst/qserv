@@ -349,7 +349,7 @@ class CsvSchema:
         """
         self.thetaColumn = None
         self.phiColumn = None
-        if conf: self._setAsConfig(conf)        
+        if conf: self._setAsConfig(conf)
         pass
 
     def readSchemaFile(self, schemaFile):
@@ -429,7 +429,7 @@ class Transformer:
     def _buildPairList(self, headerColumns):
         self.thetaPhiPairs = []
         for (r,d) in [
-            ('ra_PA"', 'decl_PS'),
+            ('ra_PS', 'decl_PS'),
             ('ra_SG', 'decl_SG'),
             ('ra', 'decl'),
             ('raPeak', 'declPeak'),
@@ -440,26 +440,42 @@ class Transformer:
             if (r in headerColumns) and (d in headerColumns):
                 self.thetaPhiPairs.append((headerColumns[r], headerColumns[d]))
                 
-    def _transformThetaPhi(self, thetaPhi, thetaPhiOff):
+    def _isInBounds(self, test, bounds):
+        theta = bounds[:2]
+        phi = bounds[2:4]
+        return ((theta[0] < test[0] < theta[1]) and
+                (phi[0] < test[1] < phi[1]))
+
+    def _transformThetaPhi(self, thetaPhi, thetaPhiOff, norm=True):
         (theta, phi) = thetaPhi
         (thetaOff, phiOff) = thetaPhiOff
         thetaRaw = theta + thetaOff
         phiRaw = phi + phiOff
-        return [normalize(0.0, 360, 360, 
-                          thetaRaw * stretchFactor(phi, phiRaw)),
-                normalize(-90.0, 90.0, 180, phiRaw)]                
+        if norm:
+            return [normalize(0.0, 360, 360, 
+                              thetaRaw * stretchFactor(phi, phiRaw)),
+                    normalize(-90.0, 90.0, 180, phiRaw)]
+        else:
+            return [thetaRaw * stretchFactor(phi, phiRaw), phiRaw]
         
 
     def transform(self, row, dupeInfo):
-        newRow = row[:]
-        # FIXME: need to perform clipping.
+        test = self._transformThetaPhi((float(row[self.thetaCol]),
+                                        float(row[self.phiCol])),
+                                       dupeInfo[3], False)
+        # Clip?
+        if not self._isInBounds(test, dupeInfo[2]): return None
+            #print "clipping phi", test[1]
+            #return None
+
+        newRow = row[:] 
         # Transform the RA/decl pairs specially.  Only transform in pairs
         for pair in self.thetaPhiPairs: 
             thetaC = pair[0]
             phiC = pair[1]
             thetaphi = (float(row[thetaC]), float(row[phiC]))
-            thetaphi = self._transformThetaPhi(thetaphi, dupeInfo[3])
-            (newRow[thetaC], newRow[phiC]) = map(str, thetaphi)
+            thetaphiNew = self._transformThetaPhi(thetaphi, dupeInfo[3])
+            (newRow[thetaC], newRow[phiC]) = map(str, thetaphiNew)
 
         for col,f in self.transformMap.items():
             old = row[col]
