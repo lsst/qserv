@@ -169,6 +169,16 @@ except ImportError:
         def __ne__(self, other):
             return not self == other
 
+# -- Working around pickle limitations --------
+pickleWorkaround = dict()
+pickleWorkaroundCounter = 0 
+
+def addPickleWorkaround(obj):
+    global pickleWorkaround, pickleWorkaroundCounter
+    n = pickleWorkaroundCounter
+    pickleWorkaroundCounter += 1
+    pickleWorkaround[n] = obj
+    return n
 
 # -- Iterating over CSV records in file subsets --------
 
@@ -320,8 +330,7 @@ def _dispatchMapper(args):
     mapper = mapperType(conf, i)
     rows = InputSplitIter(split, kwargs=_csvArgs(conf))
     if hasattr(conf, "rowFilter"): # Allow optional filter (e.g., duplicator)
-        rows = conf.rowFilter(rows)
-        
+        rows = pickleWorkaround[conf.rowFilter](rows)
     for row in rows:
         _emit(mapper.map(row), results)
     if hasattr(mapperType, 'finish'):
@@ -812,9 +821,9 @@ class SpatialChunkMapper(object):
         self.bounds = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
         self.chunks = {}
         if hasattr(conf, "chunkAcceptor"): # allow client to select chunks
-            self.chunkAcceptor = conf.chunkAcceptor
+            self.chunkAcceptor = pickleWorkaround[conf.chunkAcceptor]
         else: 
-            self.chunkAcceptor = lambda cid: True
+            self.chunkAcceptor = None
             
         # Build chunk writer arrays
         ns = self.chunker.getNumStripes()
@@ -828,7 +837,7 @@ class SpatialChunkMapper(object):
             for j in xrange(self.chunker.getNumChunks(i)):
                 # chunks are at least as wide as stripes are high, so j < ns*2
                 chunkId = i * ns * 2 + j
-                if not self.chunkAcceptor(chunkId): 
+                if self.chunkAcceptor and not self.chunkAcceptor(chunkId): 
                     self.writers[i].append(None)
                 else:
                     paths = [os.path.join(baseDir, p + ("_%d.csv" % chunkId))
@@ -843,7 +852,8 @@ class SpatialChunkMapper(object):
         self.chunker.setCoords(theta, phi, self.coords)
         self.chunker.setBounds(self.coords, self.bounds)
         chunkId, subChunkId = self.chunker.getIds(self.coords)
-        if not self.chunkAcceptor(chunkId): return # Reject the unaccepted
+        # Reject the unaccepted
+        if self.chunkAcceptor and not self.chunkAcceptor(chunkId): return 
         # write row plus the chunkId and subChunkId to the appropriate file
         writer = self.writers[self.coords[0]][self.coords[2]]
         self.cache.update(writer)
@@ -853,7 +863,7 @@ class SpatialChunkMapper(object):
                                           self.bounds)
         for ids, coords, both in overlap:
             w = self.writers[coords[0]][coords[1]]
-            if not w: return
+            if not w: continue
             self.cache.update(w)
             r = row + ids
             if both:

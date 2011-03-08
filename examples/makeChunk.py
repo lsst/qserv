@@ -67,18 +67,13 @@ class DuplicatingIter:
     def _generateDuplicates(self, args):
         copyList = args.copyList
         transformer = duplicator.Transformer(args)
-        #counter = dict(zip(map(lambda d:d[1], copyList), itertools.repeat(0)))
         for r in self.iterable:
-            #print "orig", r[args.thetaColumn], r[args.phiColumn]
             for c in copyList:
                 rnew = transformer.transform(r,c)
-                #print "trans", rnew[args.thetaColumn], rnew[args.phiColumn]
                 if rnew: 
-                    #counter[c[1]] += 1
                     yield rnew
                     
             pass
-        #print "\n".join(map(str,sorted(counter.items())))
         pass
 
         
@@ -182,7 +177,7 @@ class App:
                                          allChunkBounds)
         dd = duplicator.DuplicationDef(conf)
         boundsList = map(lambda cb: cb.bounds, chunkBounds)
-        # FIXME: need to pad edges with overlap distance
+
         paddedBounds = map(lambda b:self._padEdges(b, conf.overlap), 
                            boundsList)
         print "expanding copies to allow overlap=",conf.overlap
@@ -197,10 +192,12 @@ class App:
             setattr(conf, "thetaColumn", scma.thetaColumn)
             setattr(conf, "phiColumn", scma.phiColumn)
         setattr(conf, "headerColumns", scma.headerColumns)
-        setattr(conf, "rowFilter", 
-                lambda rows: DuplicatingIter(rows, conf))
+        pw = partition.addPickleWorkaround(
+            lambda rows: DuplicatingIter(rows, conf))
+        setattr(conf, "rowFilter", pw)
         self.chunks = set(map(lambda cb: cb.chunkId, chunkBounds))
-        setattr(conf, "chunkAcceptor", self._chunkAcceptor)
+        ca = partition.addPickleWorkaround(self._chunkAcceptor)
+        setattr(conf, "chunkAcceptor", ca)
         setattr(conf, "copyList", copyOffsets)
         pass
 
