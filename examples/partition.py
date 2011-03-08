@@ -853,6 +853,7 @@ class SpatialChunkMapper(object):
                                           self.bounds)
         for ids, coords, both in overlap:
             w = self.writers[coords[0]][coords[1]]
+            if not w: return
             self.cache.update(w)
             r = row + ids
             if both:
