@@ -51,7 +51,6 @@ from textwrap import dedent
 import time
 
 import duplicator
-
         
 class DuplicatingIter:
     def __init__(self, iterable, args):
@@ -68,13 +67,20 @@ class DuplicatingIter:
     def _generateDuplicates(self, args):
         copyList = args.copyList
         transformer = duplicator.Transformer(args)
-        # FIXME
-        #transformer = duplicator.Transformer(args)
-        #transform = transformer.transform
+        #counter = dict(zip(map(lambda d:d[1], copyList), itertools.repeat(0)))
         for r in self.iterable:
+            #print "orig", r[args.thetaColumn], r[args.phiColumn]
             for c in copyList:
-                r = transformer.transform(r,c)
-                if r: yield r
+                rnew = transformer.transform(r,c)
+                #print "trans", rnew[args.thetaColumn], rnew[args.phiColumn]
+                if rnew: 
+                    #counter[c[1]] += 1
+                    yield rnew
+                    
+            pass
+        #print "\n".join(map(str,sorted(counter.items())))
+        pass
+
         
 
 class App:
@@ -88,6 +94,10 @@ class App:
 
     def run(self):
         self._ingestArgs()
+        if self.conf.explainArgs:
+            self._explainArgs(self.conf)
+            return
+
         if self.shouldDuplicate:
             partition.chunk(self.conf, self.inputs)
         else:
@@ -116,7 +126,9 @@ class App:
         return cid in self.chunks
 
     def _explainArgs(self, option, opt, value, parser):
-        conf = parser.values
+        pass
+
+    def _explainArgs(self, conf):
         print "Fixed spatial chunking:"
         c = partition.Chunker(conf)
         c.printConfig()
@@ -130,8 +142,8 @@ class App:
         (conf, inputs) = self.parser.parse_args()
         
         # Got inputs?
-        if len(inputs) == 0 and conf.shouldDuplicate:
-            parser.error("At least one input file must be specified")
+        if len(inputs) == 0 and self.shouldDuplicate:
+            self.parser.error("At least one input file must be specified")
 
         # Validate and adjust sizes
         if conf.outputBufferSize < 1.0 / 1024 or conf.outputBufferSize > 64.0:
@@ -148,10 +160,21 @@ class App:
         self.conf = conf
         self.inputs = inputs
         pass
+    
+    def _padEdges(self, bounds, overlap):
+        newBounds = bounds[:]
+        # Stretch by max stretch.
+        factor = max(map(lambda p:math.fabs(1 / math.cos(p)), bounds[2:4]))
+        newBounds[0] -= overlap * factor
+        newBounds[1] += overlap * factor
+        #phi gets padded without stretch
+        newBounds[2] -= overlap
+        newBounds[3] += overlap
+        return newBounds 
 
     def _setupDuplication(self, conf):
         if not conf.nodeCount: 
-            self.parser.error("Node count not specified (--nodeCount)")
+            self.parser.error("Node count not specified (--node-count)")
         pd = duplicator.PartitionDef(conf)
         allChunkBounds = [cb for cList in pd.partitionStripes 
                           for cb in cList]
@@ -159,7 +182,11 @@ class App:
                                          allChunkBounds)
         dd = duplicator.DuplicationDef(conf)
         boundsList = map(lambda cb: cb.bounds, chunkBounds)
-        copyList = dd.computeAllCopies(boundsList)
+        # FIXME: need to pad edges with overlap distance
+        paddedBounds = map(lambda b:self._padEdges(b, conf.overlap), 
+                           boundsList)
+        print "expanding copies to allow overlap=",conf.overlap
+        copyList = dd.computeAllCopies(paddedBounds)
             
         print len(copyList), "copies needed of", dd.dupeCount, "available"
         print "Building", len(chunkBounds), "chunks"
@@ -168,9 +195,8 @@ class App:
         if scma.thetaColumn:
             # Override thetaColumn and phiColumn specs from schema
             setattr(conf, "thetaColumn", scma.thetaColumn)
-            setattr(conf, "phiColumn", scma.thetaColumn)
+            setattr(conf, "phiColumn", scma.phiColumn)
         setattr(conf, "headerColumns", scma.headerColumns)
-        # FIXME: setup config for duplicating iter and transformer.
         setattr(conf, "rowFilter", 
                 lambda rows: DuplicatingIter(rows, conf))
         self.chunks = set(map(lambda cb: cb.chunkId, chunkBounds))
@@ -228,7 +254,8 @@ class App:
             "-d", "--debug", dest="debug", action="store_true",
             help="Print debug messages")
         general.add_option(
-            "--explain", action="callback", callback=self._explainArgs,
+            "--explain", action="callback", dest="explainArgs",
+            action="store_true",
             help="Print current understanding of options and parameters")
         parser.add_option_group(general)
 
