@@ -152,6 +152,10 @@ class App:
 
         if self.shouldDuplicate:
             self._setupDuplication(conf)
+        if conf.printChunkLayout:
+            pass
+        if conf.printDupeLayout:
+            pass
         self.conf = conf
         self.inputs = inputs
         pass
@@ -175,11 +179,21 @@ class App:
                           for cb in cList]
         chunkBounds = self._chooseChunks(conf.node, conf.nodeCount, 
                                          allChunkBounds)
-        dd = duplicator.DuplicationDef(conf)
         boundsList = map(lambda cb: cb.bounds, chunkBounds)
-
         paddedBounds = map(lambda b:self._padEdges(b, conf.overlap), 
                            boundsList)
+
+        dd = duplicator.DuplicationDef(conf)        
+        if conf.printPlottable:
+            pd.printPartBounds(plottable=True)
+            dd.printCopyInfo(plottable=True)
+        else:
+            if conf.printDupeLayout:
+                dd.printCopyInfo()
+            if conf.printChunkLayout:
+                pd.printPartBounds()
+            
+
         print "expanding copies to allow overlap=",conf.overlap
         copyList = dd.computeAllCopies(paddedBounds)
             
@@ -268,7 +282,11 @@ class App:
             default=100, help=dedent("""\
             Number of sub-stripes to divide each stripe into. The default is
             %default."""))
-        
+        chunking.add_option(
+            "--print-chunk-layout", action="store_true", 
+            dest="printChunkLayout",
+            help="Print the chunk layout with chunk numbers and bounding boxes")
+
         parser.add_option_group(chunking)
 
         # CSV format options
@@ -355,6 +373,14 @@ class App:
             ra0,ra1,decl0,decl1 , where ra/decl are specified in degrees.  
             Negative and/or floating point numbers are acceptable.  The 
             default is from PT1.1 %default."""))
+        duplication.add_option(
+            "--print-dupe-layout", dest="printDupeLayout", 
+            action="store_true",
+            help="Print the layout of the duplicated copies")
+        duplication.add_option(
+            "--print-plottable", dest="printPlottable",
+            action="store_true",
+            help="Print something plottable by the hack tcl script")
         parser.add_option_group(duplication)
         
         schema = optparse.OptionGroup(parser, "Schema options")

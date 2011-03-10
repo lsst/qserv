@@ -149,11 +149,18 @@ class PartitionDef:
         print len(chunker.numSubChunks)
 
 
-    def printPartBounds(self):
-        for s in self.partStripes:
-            print "Stripe", a
-            print "\n".join(map(str, s))
-            a += 1
+    def printPartBounds(self, plottable=False):
+        for s in self.partitionStripes:
+            if plottable:
+                phi = s[0].bounds[2:4]
+                print "Chunk %f %f" % (phi[0], phi[1]),
+                for c in s:
+                    print "%d %.2f %.2f" % (c.chunkId, 
+                                            c.bounds[0], c.bounds[1]),
+                print
+            else:
+                print "\n".join(map(str, s))
+            #a += 1
             #if a > 2: break
 
 
@@ -245,20 +252,27 @@ class DuplicationDef:
         #    print " ".join(map(lambda c:  "%2.1f" % c, s))
         return stripes
 
-    def printCopyInfo(self):
+    def printCopyInfo(self, plottable=False):
+        stripes = self.stripes
         copyCount = 0
         for i in sorted(stripes.keys()):
             copyCount += len(stripes[i])
-            first = stripes[i][0][1]
+            first = stripes[i][0][2]
             lastTheta = first[0]
             phi = first[2:4]
-            print "phi: %f %f (%f,%d)" % (phi[0], phi[1], 
-                                          stretchMax(phi[1]), 
-                                          len(stripes[i])),
-            print "%.2f" % lastTheta,
+            if plottable:
+                print "Dupe %f %f" % (phi[0], phi[1]),
+            else:
+                print "phi: %f %f (%f,%d)" % (phi[0], phi[1], 
+                                              stretchFactor(0,sum(phi)/2.0),
+                                              len(stripes[i])),
+                print "%.2f" % lastTheta,
             for dupe in stripes[i]:
-                b = dupe[1]
-                print "%.2f" % b[1],
+                b = dupe[2]
+                if plottable:
+                    print "%d %.2f %.2f" % (dupe[1], b[0], b[1]),
+                else:
+                    print "%.2f" % b[1],
                 assert b[2] == phi[0]
                 assert b[3] == phi[1]
                 assert b[0] == lastTheta
@@ -266,7 +280,7 @@ class DuplicationDef:
             print ""
         print copyCount, "duplicates"
         
-
+    
     def findEnclosing(self, index, lower, upper):
         first = -1
         last = -1
