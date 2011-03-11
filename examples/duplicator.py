@@ -153,7 +153,7 @@ class PartitionDef:
         for s in self.partitionStripes:
             if plottable:
                 phi = s[0].bounds[2:4]
-                print "Chunk %f %f" % (phi[0], phi[1]),
+                print "ChunkPlot %f %f" % (phi[0], phi[1]),
                 for c in s:
                     print "%d %.2f %.2f" % (c.chunkId, 
                                             c.bounds[0], c.bounds[1]),
@@ -261,7 +261,7 @@ class DuplicationDef:
             lastTheta = first[0]
             phi = first[2:4]
             if plottable:
-                print "Dupe %f %f" % (phi[0], phi[1]),
+                print "DupePlot %f %f" % (phi[0], phi[1]),
             else:
                 print "phi: %f %f (%f,%d)" % (phi[0], phi[1], 
                                               stretchFactor(0,sum(phi)/2.0),

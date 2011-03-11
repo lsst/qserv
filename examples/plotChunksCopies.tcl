@@ -11,7 +11,8 @@ set plottableFile "/afs/slac/u/sf/danielw/current.plottable"
 set r 550
 
 # Viewing angle
-set phi0 50
+set phi0 -10
+#set phi0 50
 set theta0 90
 
 set pi 3.14159265358979323846264
@@ -73,7 +74,9 @@ proc drawLonLine {theta phi0 phi1 color} {
         }
     }
     set point [transform $phi1 $theta]
-    lappend coordList [lindex $point 0] [lindex $point 1]
+    if {$point != {}} then {
+        lappend coordList [lindex $point 0] [lindex $point 1]
+    }
 
     if {[llength $coordList] >= 4} {
         .win create line $coordList -fill $color -width 2.0
@@ -96,6 +99,15 @@ proc drawLatLine {phi color} {
 		.win create line $coordList -fill $color -width 2.0
 	}
 }
+
+proc drawText {theta phi color text} {
+    set point [transform $phi $theta]
+    #puts "$theta $phi $color $text"
+    if {$point != {}} then {
+        .win create text [lindex $point 0] [lindex $point 1] -text $text -fill $color
+    }
+}
+
 
 proc getData {fname name} {
     # Read a file return a list of the lines whose first token begins with $name
@@ -120,7 +132,7 @@ proc drawData {fname name color} {
     drawStripes $data $color
 }
 
-proc drawStripes {dataLines color} {
+proc drawStripes {dataLines color textcolor} {
     # Iterate over $dataLines and paint the encoded stripes in $color
     # lines are assumed to be encoded as:
     # Name phi0 phi1 num0 theta00 theta01 [num1 theta10 theta11 [num2 ...]]
@@ -131,18 +143,24 @@ proc drawStripes {dataLines color} {
         set arr [split $s " "]
         set phi0 [expr [lindex $arr 1]]
         set phi1 [expr [lindex $arr 2]]
+
+        set phiMid [expr ($phi0 + $phi1) / 2.0]
         #puts "phi0 $phi0 phi1 $phi1"
         drawLatLine $phi0 $color
         drawLatLine $phi1 $color
-
+        
 	for {set pos 3} {$pos <= [llength $arr]} {incr pos 3} {
             set num [lindex $arr $pos]
             set theta0 [lindex $arr [expr ($pos+1)]]
             set theta1 [lindex $arr [expr ($pos+2)]]
+            if {$theta0 == ""} { break }
+            set thetaMid [expr ($theta0 + $theta1) / 2.0]
             if {$num == ""} { break }
-            #puts "num $num theta $theta0 $theta1"
-            drawLonLine $theta0 $phi0 $phi1 $color
+            drawLonLine $theta0 $phi0 $phi1 $color 
             drawLonLine $theta1 $phi0 $phi1 $color
+            if {$textcolor != ""} {
+                drawText $thetaMid $phiMid $textcolor $num
+            }
 	}
     }
     update
@@ -164,9 +182,9 @@ proc drawGrid {color} {
 
 #drawGrid #222222
 
-drawStripes [getData $plottableFile  "Chunk"] #0000ff
+drawStripes [getData $plottableFile  "ChunkPlot"] #0000ff #1111ff
 puts "done chunk"
-drawStripes [getData $plottableFile "Dupe"] #c00000
+drawStripes [getData $plottableFile "DupePlot"] #c00000 #c01111
 puts "done dupe"
 
 # Allow the window and canvas to update

@@ -199,7 +199,8 @@ class App:
             
         print len(copyList), "copies needed of", dd.dupeCount, "available"
         print "Building", len(chunkBounds), "chunks"
-        copyOffsets = map(dd.getDupeInfo, copyList)
+        copyInfoList = map(dd.getDupeInfo, copyList)
+
         scma = duplicator.CsvSchema(conf)
         if scma.thetaColumn:
             # Override thetaColumn and phiColumn specs from schema
@@ -212,7 +213,10 @@ class App:
         self.chunks = set(map(lambda cb: cb.chunkId, chunkBounds))
         ca = partition.addPickleWorkaround(self._chunkAcceptor)
         setattr(conf, "chunkAcceptor", ca)
-        setattr(conf, "copyList", copyOffsets)
+        setattr(conf, "copyList", copyInfoList)
+        print "Chunk nums:", sorted(self.chunks)
+        print "Dupe nums:", sorted(map(lambda c: c[1], copyInfoList))
+
         pass
 
     def _makeParser(self):
