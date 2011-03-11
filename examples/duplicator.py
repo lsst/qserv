@@ -41,13 +41,31 @@ def computeHeaderDict(headerRow):
 
 def stretchFactor(phiOldRad, phiNew):
     if phiNew < -90.0: return 1e5 # Saturate at some number < Inf
-    return math.cos(phiOldRad) / math.cos(phiOldRad + math.radians(phiNew))
+    if phiNew > 90.0: return 1e5 # Saturate at some number < Inf
+    b =  math.cos(phiOldRad) / math.cos(math.radians(phiNew))
+    if b < 0.0: print b, math.degrees(phiOldRad), phiNew
+    assert b >= 0.0
+    return b
     
 # Normalization function (only normalizes by one period)
 def normalize(low, high, identity, val):
     if val < low: return val + identity
     if val > high: return val - identity
     return val
+
+def transformThetaPhi(thetaPhi, thetaPhiOff, norm=True):
+    (theta, phi) = thetaPhi
+    (thetaOff, phiOff) = thetaPhiOff
+    thetaRaw = theta + thetaOff
+    phiRaw = phi + phiOff
+    if norm:
+        return [normalize(0.0, 360, 360, 
+                          thetaRaw * stretchFactor(math.radians(phi), 
+                                                       phiRaw)),
+                normalize(-90.0, 90.0, 180, phiRaw)]
+    else:
+        return [thetaRaw * stretchFactor(math.radians(phi), phiRaw), phiRaw]
+    pass
 
 
 ## Classes
@@ -197,6 +215,8 @@ class DuplicationDef:
         thetaIndices = []
         copyNum = 1
         # Phi stripes
+        # This range of offset units assumes an equal number of 
+        # pos offset stripes and neg offset stripes
         for i in range(-phiOffsetUnits, phiOffsetUnits, 1):
             stripe = []
             thetaIndex = []
@@ -206,36 +226,31 @@ class DuplicationDef:
                 phiLast = phiMax
                 continue
             # theta blocks in a stripe
-            thetaMinPhiMin0 = 360 + (bounds[0] * stretchMin(phiMin))
-            thetaMinPhiMax0 = 360 + (bounds[0] * stretchMax(phiMax))
             phiPositive = (math.fabs(phiMin) < math.fabs(phiMax))
-            thetaMaxLast = None
+            if phiPositive:
+                stretch = stretchMin(phiMin)
+            else:
+                stretch = stretchMax(phiMax)
+            thetaStart = stretch * bounds[0]
+            thetaEnd = 360 + thetaStart 
+            thetaLast = thetaStart
             for j in range(0, thetaOffsetUnits):
                 # Constant RA sides
-                thetaMinRaw = (bounds[0] + (j * thetaSize))
-                thetaMinPhiMin = thetaMinRaw * stretchMin(phiMin)
-                thetaMinPhiMax = thetaMinRaw * stretchMax(phiMax) 
-                if phiPositive:
-                    if thetaMinPhiMin > thetaMinPhiMin0: break
-                    thetaMin = thetaMinPhiMin
-                    thetaMax = thetaMinPhiMin + (thetaSize * stretchMin(phiMin))
-                else:
-                    if thetaMinPhiMax > thetaMinPhiMax0: break
-                    thetaMin = thetaMinPhiMax
-                    thetaMax = thetaMinPhiMax + (thetaSize * stretchMax(phiMax))
-                if thetaMaxLast != None:
-                    thetaMin = thetaMaxLast
-                thetaIndex.append(thetaMin)
-                thetaMaxLast = thetaMax
-
+                thetaNext = thetaStart + ((j+1)  * thetaSize * stretch)
+                if thetaNext > thetaEnd:
+                    thetaNext = thetaEnd
+                thetaIndex.append(thetaLast)
                 #print "Copy (%d,%d) : theta (%f, %f), phi (%f, %f) " % (
                 #    j, i, thetaMin, thetaMax, phiMin, phiMax)
                 stripe.append([[j, i], 
                                copyNum,
-                               [thetaMin, thetaMax, phiMin, phiMax],
+                               [thetaLast, thetaNext, phiMin, phiMax],
                                [j*thetaSize, phiOffset]])
                 copyNum += 1
-            thetaIndex.append(thetaMaxLast)
+                if thetaNext == thetaEnd: break
+                thetaLast = thetaNext
+
+            thetaIndex.append(thetaLast) 
             thetaIndices.append(thetaIndex)
             phiIndex.append(phiMin)
             phiLast = phiMax
@@ -340,9 +355,7 @@ class DuplicationDef:
         copyNum, # copy number
         [thetaMin, thetaMax, phiMin, phiMax], # copy bounds
         [thetaOffset(degrees), phiOffset(degrees)] # no stretch factor
-        ])
-        
-        [thetaOff, phiOff] in degrees (without stretch factor)"""
+        """
         return self.stripes[coord[1]][coord[0]]
 
     def printDupeList(self, dList):        
@@ -354,6 +367,36 @@ class DuplicationDef:
         except Exception, e:
             print "errr!!", e
             print dList
+
+    def checkDupeSanityCoord(self, coord):
+        return self.checkDupeSanity(coord[1], coord[0])
+
+    def checkDupeSanity(self, phiOffUnits, thetaOffUnits):
+        dupe = self.stripes[phiOffUnits][thetaOffUnits]
+        [thetaMin0, thetaMax0, phiMin0, phiMax0] = self.bounds
+        [thetaMin1, thetaMax1, phiMin1, phiMax1] = dupe[2]
+        [thetaOff,phiOff] = dupe[3]
+        def compare(theta0, phi0, theta1, phi1, posStr):
+            thetaPhiNew = transformThetaPhi([theta0, phi0], 
+                                            [theta0 + thetaOff, 
+                                             phi0 + phiOff])
+            print "%s CopyBound %f \t%f \tGot %f \t%f" % (
+                posStr, theta1, phi1, thetaPhiNew[0], thetaPhiNew[1])
+            diff = (thetaPhiNew[0] - theta1, thetaPhiNew[1] - phi1)
+            print "%s diff is %f %f" % (posStr, diff[0], diff[1])
+            return diff
+
+        print "Dupe Sanity for copynum=%d at offset %d,%d" % (dupe[1], 
+                                                              dupe[0][1], 
+                                                              dupe[0][0])
+        # lower left
+        diff = compare(thetaMin0, phiMin0, thetaMin1, phiMin1, "LL")
+        diff = compare(thetaMax0, phiMin0, thetaMax1, phiMin1, "LR")
+        diff = compare(thetaMin0, phiMax0, thetaMin1, phiMax1, "UL")
+        diff = compare(thetaMax0, phiMax0, thetaMax1, phiMax1, "UR")
+        pass
+
+
 
 class CsvSchema:
     def __init__(self, conf=None):
@@ -414,8 +457,6 @@ class CsvSchema:
         self.thetaColumn = self.headerColumns[conf.thetaName]
         self.phiColumn = self.headerColumns[conf.phiName]
         
-
-
 class Transformer:
     def __init__(self, opts):
         self.phiCol = opts.phiColumn
@@ -460,27 +501,21 @@ class Transformer:
         return ((theta[0] < test[0] < theta[1]) and
                 (phi[0] < test[1] < phi[1]))
 
-    def _transformThetaPhi(self, thetaPhi, thetaPhiOff, norm=True):
-        (theta, phi) = thetaPhi
-        (thetaOff, phiOff) = thetaPhiOff
-        thetaRaw = theta + thetaOff
-        phiRaw = phi + phiOff
-        if norm:
-            return [normalize(0.0, 360, 360, 
-                              thetaRaw * stretchFactor(phi, phiRaw)),
-                    normalize(-90.0, 90.0, 180, phiRaw)]
-        else:
-            return [thetaRaw * stretchFactor(phi, phiRaw), phiRaw]
-        
 
     def transform(self, row, dupeInfo):
-        test = self._transformThetaPhi((float(row[self.thetaCol]),
+        test = transformThetaPhi((float(row[self.thetaCol]),
                                         float(row[self.phiCol])),
                                        dupeInfo[3], False)
+        print "Orig %0.3f %0.3f" % (float(row[self.thetaCol]), 
+                                    float(row[self.phiCol])),
+        print "Offset %0.2f %0.2f" % tuple(dupeInfo[3]),
+
         # Clip?
-        if not self._isInBounds(test, dupeInfo[2]): return None
-            #print "clipping phi", test[1]
-            #return None
+        if not self._isInBounds(test, dupeInfo[2]): #return None
+            print "reject"," ".join(map(lambda f: "%0.3f"%(f), test)),
+            print "bounds"," ".join(map(lambda f: "%0.3f"%(f), dupeInfo[2]))
+            return None
+        else: print "accept"
 
         newRow = row[:] 
         # Transform the RA/decl pairs specially.  Only transform in pairs
@@ -488,7 +523,7 @@ class Transformer:
             thetaC = pair[0]
             phiC = pair[1]
             thetaphi = (float(row[thetaC]), float(row[phiC]))
-            thetaphiNew = self._transformThetaPhi(thetaphi, dupeInfo[3])
+            thetaphiNew = transformThetaPhi(thetaphi, dupeInfo[3])
             (newRow[thetaC], newRow[phiC]) = map(str, thetaphiNew)
 
         for col,f in self.transformMap.items():
@@ -508,6 +543,9 @@ class Transformer:
 
     def hasTransform(self):
         return len(self.transformMap) != 0
+
+    def testBounds(self):
+        self.bounds
 
 ########################################################################
 ## 

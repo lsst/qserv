@@ -70,9 +70,7 @@ class DuplicatingIter:
         for r in self.iterable:
             for c in copyList:
                 rnew = transformer.transform(r,c)
-                if rnew: 
-                    yield rnew
-                    
+                if rnew: yield rnew
             pass
         pass
 
@@ -200,7 +198,8 @@ class App:
         print len(copyList), "copies needed of", dd.dupeCount, "available"
         print "Building", len(chunkBounds), "chunks"
         copyInfoList = map(dd.getDupeInfo, copyList)
-
+        for c in copyList:
+            dd.checkDupeSanityCoord(c)
         scma = duplicator.CsvSchema(conf)
         if scma.thetaColumn:
             # Override thetaColumn and phiColumn specs from schema
