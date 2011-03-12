@@ -43,8 +43,6 @@ def stretchFactor(phiOldRad, phiNew):
     if phiNew < -90.0: return 1e5 # Saturate at some number < Inf
     if phiNew > 90.0: return 1e5 # Saturate at some number < Inf
     b =  math.cos(phiOldRad) / math.cos(math.radians(phiNew))
-    if b < 0.0: print b, math.degrees(phiOldRad), phiNew
-    assert b >= 0.0
     return b
     
 # Normalization function (only normalizes by one period)
@@ -67,6 +65,38 @@ def transformThetaPhi(thetaPhi, thetaPhiOff, norm=True):
         return [thetaRaw * stretchFactor(math.radians(phi), phiRaw), phiRaw]
     pass
 
+def translateThetaPhiCorrected(thetaPhi, thetaPhiOff, thetaMid, phiRef, 
+                               norm=True):
+    """ Translate a source point on a spherical surface to another location
+    specified by offsets.  Correct stretching using the theta midpoint and
+    the reference phi in the source input patch.  The reference phi should 
+    be chosen as the phiStart when the output patch is mostly below the 
+    equator, and phiEnd when the patch is mostly above the equator.
+
+    The correction acts to re-center the output patch so that the 
+    coordinates pole-bound are not smeared off-center.
+
+    @param thetaPhi [theta, phi] position in the source patch 
+    @param thetaPhiOff [thetaOff, phiOff] offset of the relocated patch 
+    @param thetaMid avg(thetaRight, thetaLeft) in the original patch
+    @param phiRef Either phiLower or phiUpper, as described above.
+
+    thetaRight, thetaLeft, phiLower, phiUpper describe the input patch 
+    bounding box, where thetaRight < thetaLeft and phiLower < phiUpper.
+
+    All parameters are in degrees.
+    """
+    phiRaw = thetaPhi[1] + thetaPhiOff[1]
+    stretch = stretchFactor(math.radians(thetaPhi[1]), phiRaw)
+    cStretch = stretchFactor(math.radians(phiRef), 
+                             phiRef + thetaPhiOff[1])
+    theta = (thetaPhi[0] - thetaMid) * stretch + ((thetaMid + thetaPhiOff[0])
+                                                  * cStretch)
+    if norm:
+        return [normalize(0, 360, 360, theta),
+                normalize(-90, 90, 180, phiRaw)]
+    else:
+        return [theta, phiRaw]
 
 ## Classes
 class ChunkBounds:
@@ -225,27 +255,54 @@ class DuplicationDef:
             if (phiMax < -90.0) or (phiMin > 90.0): 
                 phiLast = phiMax
                 continue
+            phiMid = 0.5 * (phiMin + phiMax) 
+            
             # theta blocks in a stripe
-            phiPositive = (math.fabs(phiMin) < math.fabs(phiMax))
+            phiPositive = (phiMid > 0)
             if phiPositive:
                 stretch = stretchMin(phiMin)
+                phiRef = bounds[2]
             else:
                 stretch = stretchMax(phiMax)
+                phiRef = bounds[3]
             thetaStart = stretch * bounds[0]
+            if False: # Debug
+                compareMin = bounds[0] * stretchFactor(math.radians(bounds[2]), 
+                                                       phiMin)
+                compareMax = bounds[0] * stretchFactor(math.radians(bounds[3]), 
+                                                       phiMax)
+                pn = transformThetaPhi([bounds[0],bounds[2]], [0,phiOffset], False)
+                px = transformThetaPhi([bounds[0],bounds[3]], [0,phiOffset], False)        
+                print "ThetaStart", thetaStart, compareMin, compareMax, pn, px
+
             thetaEnd = 360 + thetaStart 
             thetaLast = thetaStart
             for j in range(0, thetaOffsetUnits):
                 # Constant RA sides
                 thetaNext = thetaStart + ((j+1)  * thetaSize * stretch)
+                if False: # Debug
+                    thetaOff = (j+1) * thetaSize
+                    thetaNextRaw = (bounds[0] + ((j+1)*thetaSize))
+                    compareMin = thetaNextRaw * stretchFactor(
+                        math.radians(bounds[2]), phiMin)
+                    compareMax = thetaNextRaw * stretchFactor(
+                        math.radians(bounds[3]), phiMax)
+                    pn = transformThetaPhi([bounds[0],bounds[2]], 
+                                           [thetaOff,phiOffset], False)
+                    px = transformThetaPhi([bounds[0],bounds[3]], 
+                                           [thetaOff,phiOffset], False)        
+                    print "ThetaN", thetaNext, compareMin, compareMax, pn, px
+
                 if thetaNext > thetaEnd:
                     thetaNext = thetaEnd
                 thetaIndex.append(thetaLast)
                 #print "Copy (%d,%d) : theta (%f, %f), phi (%f, %f) " % (
                 #    j, i, thetaMin, thetaMax, phiMin, phiMax)
-                stripe.append([[j, i], 
-                               copyNum,
-                               [thetaLast, thetaNext, phiMin, phiMax],
-                               [j*thetaSize, phiOffset]])
+                stripe.append([[j, i], # Offset in units
+                               copyNum, # ordinal number
+                               [thetaLast, thetaNext, phiMin, phiMax], # bounds
+                               [j*thetaSize, phiOffset], # Offset in deg
+                               phiRef]) # phi reference
                 copyNum += 1
                 if thetaNext == thetaEnd: break
                 thetaLast = thetaNext
@@ -351,10 +408,12 @@ class DuplicationDef:
 
     def getDupeInfo(self, coord):
         """@param coord: thetaOff, phiOff in stripe units
+
         @return [[thetaOff(stripe units), phiOffset(stripe units)],
         copyNum, # copy number
         [thetaMin, thetaMax, phiMin, phiMax], # copy bounds
-        [thetaOffset(degrees), phiOffset(degrees)] # no stretch factor
+        [thetaOffset(degrees), phiOffset(degrees)], # w/o stretch factor
+        phiRef] # reference phi for correction
         """
         return self.stripes[coord[1]][coord[0]]
 
@@ -372,14 +431,16 @@ class DuplicationDef:
         return self.checkDupeSanity(coord[1], coord[0])
 
     def checkDupeSanity(self, phiOffUnits, thetaOffUnits):
+        thetaMid = 0.5 * (self.bounds[0] + self.bounds[1])
         dupe = self.stripes[phiOffUnits][thetaOffUnits]
         [thetaMin0, thetaMax0, phiMin0, phiMax0] = self.bounds
         [thetaMin1, thetaMax1, phiMin1, phiMax1] = dupe[2]
         [thetaOff,phiOff] = dupe[3]
         def compare(theta0, phi0, theta1, phi1, posStr):
-            thetaPhiNew = transformThetaPhi([theta0, phi0], 
-                                            [theta0 + thetaOff, 
-                                             phi0 + phiOff])
+            thetaPhiNew = translateThetaPhiCorrected([theta0, phi0], 
+                                                     dupe[3],
+                                                     thetaMid,
+                                                     dupe[4], False)
             print "%s CopyBound %f \t%f \tGot %f \t%f" % (
                 posStr, theta1, phi1, thetaPhiNew[0], thetaPhiNew[1])
             diff = (thetaPhiNew[0] - theta1, thetaPhiNew[1] - phi1)
@@ -462,6 +523,8 @@ class Transformer:
         self.phiCol = opts.phiColumn
         self.thetaCol = opts.thetaColumn
         self.headerColumns = opts.headerColumns
+        bounds = map(float, opts.bounds.split(","))
+        self.thetaMid = (bounds[0] + bounds[1])/2.0
 
         raFunc = lambda old,r,d: str(normalize(0, 360, 360, float(old) + raOff))
         declFunc = lambda old,r,d: str(normalize(-90, 90, 180, float(old) + declOff))
@@ -503,19 +566,21 @@ class Transformer:
 
 
     def transform(self, row, dupeInfo):
-        test = transformThetaPhi((float(row[self.thetaCol]),
-                                        float(row[self.phiCol])),
-                                       dupeInfo[3], False)
-        print "Orig %0.3f %0.3f" % (float(row[self.thetaCol]), 
-                                    float(row[self.phiCol])),
-        print "Offset %0.2f %0.2f" % tuple(dupeInfo[3]),
+        test = translateThetaPhiCorrected((float(row[self.thetaCol]),
+                                           float(row[self.phiCol])),
+                                          dupeInfo[3],
+                                          self.thetaMid,
+                                          dupeInfo[4], False)
+ #       print "Orig %0.3f %0.3f" % (float(row[self.thetaCol]), 
+ #                                   float(row[self.phiCol])),
+ #       print "Offset %0.2f %0.2f" % tuple(dupeInfo[3]),
 
         # Clip?
         if not self._isInBounds(test, dupeInfo[2]): #return None
-            print "reject"," ".join(map(lambda f: "%0.3f"%(f), test)),
-            print "bounds"," ".join(map(lambda f: "%0.3f"%(f), dupeInfo[2]))
+#            print "reject"," ".join(map(lambda f: "%0.3f"%(f), test)),
+#            print "bounds"," ".join(map(lambda f: "%0.3f"%(f), dupeInfo[2]))
             return None
-        else: print "accept"
+#        else: print "accept"
 
         newRow = row[:] 
         # Transform the RA/decl pairs specially.  Only transform in pairs
@@ -523,7 +588,8 @@ class Transformer:
             thetaC = pair[0]
             phiC = pair[1]
             thetaphi = (float(row[thetaC]), float(row[phiC]))
-            thetaphiNew = transformThetaPhi(thetaphi, dupeInfo[3])
+            thetaphiNew = translateThetaPhiCorrected(
+                thetaphi, dupeInfo[3], self.thetaMid, dupeInfo[4])
             (newRow[thetaC], newRow[phiC]) = map(str, thetaphiNew)
 
         for col,f in self.transformMap.items():
