@@ -43,6 +43,7 @@
 # try -S60 -s18 ( 60 stripes, 18 substripes). used for pt1 testing
 import csv
 import itertools
+from itertools import chain
 import math
 import optparse
 import partition
@@ -67,6 +68,7 @@ class DuplicatingIter:
     def _generateDuplicates(self, args):
         copyList = args.copyList
         transformer = duplicator.Transformer(args)
+        #header = transformer.selectHeader()
         for r in self.iterable:
             for c in copyList:
                 rnew = transformer.transform(r,c)
@@ -198,8 +200,9 @@ class App:
         print len(copyList), "copies needed of", dd.dupeCount, "available"
         print "Building", len(chunkBounds), "chunks"
         copyInfoList = map(dd.getDupeInfo, copyList)
-        for c in copyList:
-            dd.checkDupeSanityCoord(c)
+#        for c in copyList:
+#            dd.checkDupeSanityCoord(c)
+        dd.checkDupeSanityThetaLim()
         scma = duplicator.CsvSchema(conf)
         if scma.thetaColumn:
             # Override thetaColumn and phiColumn specs from schema

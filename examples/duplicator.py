@@ -26,7 +26,7 @@
 
 ## Python
 import csv
-from itertools import izip
+from itertools import ifilter, imap, izip
 import math
 import random
 import string
@@ -98,6 +98,12 @@ def translateThetaPhiCorrected(thetaPhi, thetaPhiOff, thetaMid, phiRef,
     else:
         return [theta, phiRaw]
 
+def ptInDupe(point, dupeInfo):
+    (minTheta, maxTheta, minPhi, maxPhi) = dupeInfo[2]
+    if (minTheta <= point[0] < maxTheta) and (minPhi <= point[1] < maxPhi):
+        return True
+    return False
+    
 ## Classes
 class ChunkBounds:
     def __init__(self, chunkId, bounds):
@@ -427,6 +433,12 @@ class DuplicationDef:
             print "errr!!", e
             print dList
 
+    def checkDupeSanityThetaLim(self):
+        stripes = self.stripes
+        for i in sorted(stripes.keys()):
+            lastDupeCoord = stripes[i][-1][0]
+            self.checkDupeSanityCoord(lastDupeCoord)
+
     def checkDupeSanityCoord(self, coord):
         return self.checkDupeSanity(coord[1], coord[0])
 
@@ -529,7 +541,11 @@ class Transformer:
         raFunc = lambda old,r,d: str(normalize(0, 360, 360, float(old) + raOff))
         declFunc = lambda old,r,d: str(normalize(-90, 90, 180, float(old) + declOff))
         skytileRange = 194400
-             
+        nameCol = sorted(opts.headerColumns.items(), key=lambda t:t[1])
+        
+        assert nameCol[-1][1] == len(nameCol)-1
+        self.columnNames = [t[0] for t in nameCol]
+
         self.columnMap = {
             "scienceCcdExposureId" : lambda old, copyNum: str((copyNum << 36) + int(old)),
             "rawAmpExposureId" : lambda old, copyNum: str((copyNum << 41) + int(old)),
@@ -563,7 +579,24 @@ class Transformer:
         phi = bounds[2:4]
         return ((theta[0] < test[0] < theta[1]) and
                 (phi[0] < test[1] < phi[1]))
+            
+    def _getTransColumns(self):
+        columns = set()
+        for pair in self.thetaPhiPairs: 
+            columns.add(pair[0]) #theta
+            columns.add(pair[1]) #phi
+        for col,f in self.transformMap.items():
+            columns.add(col)
+        return columns
 
+    def selectHeader(self):
+        return self.selectColumns(self.columnNames)
+
+    def selectColumns(self, row):
+        outRows = imap(
+            lambda i:row[i], 
+            ifilter(lambda i: i in self._getTransColumns(), range(len(row))))
+        return outRows
 
     def transform(self, row, dupeInfo):
         test = translateThetaPhiCorrected((float(row[self.thetaCol]),
@@ -598,6 +631,8 @@ class Transformer:
                 newRow[col] = f(old, dupeInfo[1])
         #print "old",filter(lambda s: "\\N" != s, row)
         #print "new", filter(lambda s: "\\N" != s, newRow)
+        #assert ptInDupe([float(newRow[self.thetaCol]),
+        #                 float(newRow[self.phiCol])], dupeInfo)
         return newRow
 
     def transformOnly(self, row, colList):
