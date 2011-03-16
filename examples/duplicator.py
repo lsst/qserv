@@ -149,6 +149,7 @@ class DefaultConf:
         dc.maxOpenWriters = 32
         dc.inputSplitSize = 64.0
         dc.debug = False
+        dc.emptyStripes = 0
         return dc
 
     @staticmethod
@@ -256,6 +257,7 @@ class DuplicationDef:
             raise StandardError("Faulty input bounding specification: %s"
                                 % bstr)
         self.bounds = bounds
+        pass
 
     def _layoutDupeMap(self):        
         bounds = self.bounds
@@ -339,6 +341,13 @@ class DuplicationDef:
                 thetaLast = thetaNext
 
             thetaIndex.append(thetaLast) 
+            for x in range(1,len(thetaIndex)):
+                # Add entries for virtual duplicates in order to
+                # account for earlier indexes that are negative.
+                thetaNext = thetaIndex[x] + 360
+                thetaIndex.append(thetaNext)
+                if thetaNext > 360: break
+ 
             thetaIndices.append(thetaIndex)
             phiIndex.append(phiMin)
             phiLast = phiMax
@@ -346,15 +355,15 @@ class DuplicationDef:
             stripes[i] = stripe
         phiIndex.append(phiLast)
         # prep
-        self.stripes = stripes
+        self.stripes = stripes        
         #print "Phi index:", phiIndex
         self.phiIndex = phiIndex
         self.thetaIndices = thetaIndices
-        self.dupeCount = sum(map(lambda l: len(l)-1, thetaIndices))
+        self.dupeCount = copyNum 
         #for s in thetaIndices:
         #    print " ".join(map(lambda c:  "%2.1f" % c, s))
         return stripes
-
+ 
     def printCopyInfo(self, plottable=False):
         stripes = self.stripes
         copyCount = 0
@@ -369,7 +378,7 @@ class DuplicationDef:
                 print "phi: %f %f (%f,%d)" % (phi[0], phi[1], 
                                               stretchFactor(0,sum(phi)/2.0),
                                               len(stripes[i])),
-                print "%.2f" % lastTheta,
+                print "%.2f" % lastTheta,                
             for dupe in stripes[i]:
                 b = dupe[2]
                 if plottable:
@@ -383,7 +392,6 @@ class DuplicationDef:
             print ""
         print copyCount, "duplicates"
         
-    
     def findEnclosing(self, index, lower, upper):
         first = -1
         last = -1
@@ -397,17 +405,18 @@ class DuplicationDef:
                     last = i
             pass
         return range(first,last+1)
-
+ 
     def testEnclosing(self):
-        index = range(0,110,10)
+        index = range(-10,110,10)
         tests = [[0.01, 3],
                  [31.2, 34],
                  [35,54],
                  [9.9,10.1],
-                 [99,100]]
+                 [99,100],
+                 ]
         for t in tests:
             print t,"---",self.findEnclosing(index, t[0], t[1])
-
+ 
     def computeAllCopies(self, boundsList):
         s = []
         for b in boundsList:
@@ -436,7 +445,7 @@ class DuplicationDef:
         #print bounds
         #self.printDupeList(dupeList)
         return dupeList
-
+ 
     def getDupeInfo(self, coord):
         """@param coord: thetaOff, phiOff in stripe units
 
@@ -447,7 +456,10 @@ class DuplicationDef:
         phiRef,
         cStretch] # reference phi for correction
         """
-        return self.stripes[coord[1]][coord[0]]
+        s = self.stripes[coord[1]]
+        ln = len(s)
+        if coord[0] >= ln: return s[coord[0] - ln]
+        return s[coord[0]]
 
     def printDupeList(self, dList):        
         try:
@@ -495,7 +507,13 @@ class DuplicationDef:
         diff = compare(thetaMax0, phiMax0, thetaMax1, phiMax1, "UR")
         pass
 
-
+    def debugWraparound(self):
+        for i in range(-85, 90, 5):
+            bounds = [356, 359.99999, i, i+1]
+            dupeList = self.computeCopies(bounds)
+            print "for bounds", bounds, "get", map(
+                lambda t:t[:3] ,[self.getDupeInfo(d) for d in dupeList])
+        pass
 
 class CsvSchema:
     def __init__(self, conf=None):
@@ -557,15 +575,25 @@ class CsvSchema:
         self.phiColumn = self.headerColumns[conf.phiName]
         
 class Transformer:
+    def _subtractIfBigger(self, theta):
+        if theta >= self.normBounds[0]:
+            return theta - 360
+        return theta
+
     def __init__(self, opts):
         self.phiCol = opts.phiColumn
         self.thetaCol = opts.thetaColumn
         self.headerColumns = opts.headerColumns
         bounds = map(float, opts.bounds.split(","))
         self.thetaMid = (bounds[0] + bounds[1])/2.0
+        self.normBounds = map(lambda t: normalize(0,360,360,t), bounds[:2])
+        self.normBounds += map(lambda t: normalize(-90,90,180,t), bounds[2:])
 
-        raFunc = lambda old,r,d: str(normalize(0, 360, 360, float(old) + raOff))
-        declFunc = lambda old,r,d: str(normalize(-90, 90, 180, float(old) + declOff))
+        self.prepTheta = None
+        if bounds[0] < 0 < bounds[1]: # If theta spans 0 (PT1.1 expected)
+            self.prepTheta = self._subtractIfBigger
+            
+
         skytileRange = 194400
         nameCol = sorted(opts.headerColumns.items(), key=lambda t:t[1])
         
@@ -588,6 +616,8 @@ class Transformer:
                 
     def _buildPairList(self, headerColumns):
         self.thetaPhiPairs = []
+        # Find all ra/dec pairs in the header except the one that we
+        # are using as canonical--that one is treated specially.
         for (r,d) in [
             ('ra_PS', 'decl_PS'),
             ('ra_SG', 'decl_SG'),
@@ -597,7 +627,8 @@ class Transformer:
             ('raObject', 'declObject'),
             ('crval1', 'crval2'),
             ]:
-            if (r in headerColumns) and (d in headerColumns):
+            if ((r in headerColumns) and (d in headerColumns) 
+                and (headerColumns[r] != self.thetaCol)):
                 self.thetaPhiPairs.append((headerColumns[r], headerColumns[d]))
                 
     def _isInBounds(self, test, bounds):
@@ -623,23 +654,30 @@ class Transformer:
             lambda i:row[i], 
             ifilter(lambda i: i in self._getTransColumns(), range(len(row))))
         return outRows
-
+    
     def transform(self, row, dupeInfo):
-        test = translateThetaPhiCorrectedOpt((float(row[self.thetaCol]),
-                                              float(row[self.phiCol])),
+        thetaPhi = (float(row[self.thetaCol]), float(row[self.phiCol]))
+        if self.prepTheta:
+            thetaPhi = (self.prepTheta(thetaPhi[0]), thetaPhi[1])
+        test = translateThetaPhiCorrectedOpt(thetaPhi,
                                              dupeInfo[3],
                                              self.thetaMid,
                                              dupeInfo[5], 
                                              False)
         # Clip?
         if not self._isInBounds(test, dupeInfo[2]): return None
+        
+        newRow = row[:] # Add the transformed clipping ra/dec specially.
+        newRow[self.thetaCol] = str(test[0])
+        newRow[self.phiCol] = str(test[1])
 
-        newRow = row[:] 
         # Transform the RA/decl pairs specially.  Only transform in pairs
         for pair in self.thetaPhiPairs: 
             thetaC = pair[0]
             phiC = pair[1]
             thetaphi = (float(row[thetaC]), float(row[phiC]))
+            if self.prepTheta: 
+                thetaphi = (self.prepTheta(thetaphi[0]), thetaphi[1])
             thetaphiNew = translateThetaPhiCorrectedOpt(
                 thetaphi, dupeInfo[3], self.thetaMid, dupeInfo[5])
             (newRow[thetaC], newRow[phiC]) = map(str, thetaphiNew)
@@ -671,7 +709,9 @@ def main():
     pd = PartitionDef(DefaultConf.getPartitionDef())
     pstripes = pd.partitionStripes
     dd = DuplicationDef(DefaultConf.getDuplicationDef())
+    #dd.printCopyInfo()
     dd.computeCopies(random.choice(random.choice(pstripes)).bounds)
+    dd.debugWraparound()
     pass
 
 if __name__ == "__main__":
