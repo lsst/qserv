@@ -194,7 +194,7 @@ class App:
                 pd.printPartBounds()
             
 
-        print "expanding copies to allow overlap=",conf.overlap
+        print "Expanding allocated region to allow overlap=",conf.overlap
         copyList = dd.computeAllCopies(paddedBounds)
             
         print len(copyList), "copies needed of", dd.dupeCount, "available"
@@ -202,7 +202,7 @@ class App:
         copyInfoList = map(dd.getDupeInfo, copyList)
 #        for c in copyList:
 #            dd.checkDupeSanityCoord(c)
-        dd.checkDupeSanityThetaLim()
+#        dd.checkDupeSanityThetaLim()
         scma = duplicator.CsvSchema(conf)
         if scma.thetaColumn:
             # Override thetaColumn and phiColumn specs from schema
@@ -364,6 +364,18 @@ class App:
             "--node-count", type="int",
             dest="nodeCount", help=dedent("""\
             The total number of nodes.."""))
+        duplication.add_option(
+            "--empty-stripes", type="int", default=0,
+            dest="emptyStripes", help=dedent("""\
+            The number of stripes to leave empty.
+            Instead of duplicating to fill the sky, chunk stripes can be left
+            empty.  This can be used to limit the final data set size.  
+            Specify a number that indicates how many stripes will be 
+            subtracted from the full set of (partitioned) chunk stripes.
+            The most polar stripes will be emptied.  e.g., if 3 stripes 
+            are requested empty, the two southernmost (most negative phi)
+            stripes and one northernmost (most postive phi) stripe will 
+            be left empty."""))
         duplication.add_option(
             "--chunk-list", type="str",
             dest="chunkList", help=dedent("""\

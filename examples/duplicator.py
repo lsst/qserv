@@ -40,6 +40,7 @@ def computeHeaderDict(headerRow):
     return dict(zip(headerRow, range(len(headerRow))))
 
 def stretchFactor(phiOldRad, phiNew):
+    """Compute the stretching factor from a particular phi to a new phi"""
     if phiNew < -90.0: return 1e5 # Saturate at some number < Inf
     if phiNew > 90.0: return 1e5 # Saturate at some number < Inf
     b =  math.cos(phiOldRad) / math.cos(math.radians(phiNew))
@@ -86,10 +87,18 @@ def translateThetaPhiCorrected(thetaPhi, thetaPhiOff, thetaMid, phiRef,
 
     All parameters are in degrees.
     """
+    cStretch = computeCstretch(phiRef, thetaPhiOff[1])
+    return translateThetaPhiCorrectedOpt(thetaPhi, thetaPhiOff, thetaMid, 
+                                         cStretch, norm)
+
+def computeCstretch(phiRef, phiOff):
+    return stretchFactor(math.radians(phiRef), phiRef + phiOff)
+
+def translateThetaPhiCorrectedOpt(thetaPhi, thetaPhiOff, thetaMid, 
+                                  cStretch, norm=True):
+    """cStretch is constant over a particular duplicated region"""
     phiRaw = thetaPhi[1] + thetaPhiOff[1]
     stretch = stretchFactor(math.radians(thetaPhi[1]), phiRaw)
-    cStretch = stretchFactor(math.radians(phiRef), 
-                             phiRef + thetaPhiOff[1])
     theta = (thetaPhi[0] - thetaMid) * stretch + ((thetaMid + thetaPhiOff[0])
                                                   * cStretch)
     if norm:
@@ -97,6 +106,7 @@ def translateThetaPhiCorrected(thetaPhi, thetaPhiOff, thetaMid, phiRef,
                 normalize(-90, 90, 180, phiRaw)]
     else:
         return [theta, phiRaw]
+        
 
 def ptInDupe(point, dupeInfo):
     (minTheta, maxTheta, minPhi, maxPhi) = dupeInfo[2]
@@ -152,6 +162,20 @@ class PartitionDef:
         s = partition.SpatialChunkMapper(conf,int(time.time()))
         self.partitionStripes = self._extractPartitionBounds(s.writers, 
                                                              s.chunker)
+        totalChunks = sum([len(s) for s in self.partitionStripes])
+
+        if conf.emptyStripes > 0:
+            empty = conf.emptyStripes
+            top = empty / 2;
+            bottom = top
+            if empty > (top + bottom):
+                bottom += 1
+            self.partitionStripes = self.partitionStripes[bottom:-top]
+            reduceChunks = sum([len(s) for s in self.partitionStripes])
+            print "With %d stripes removed, %d of %d (%f%%) in set" % (
+                conf.emptyStripes, reduceChunks, totalChunks, 
+                reduceChunks * 1.0 / totalChunks)
+
         
     def _extractPartitionBounds(self, writers, chunker):
         coords = [0,0,0,0] # [stripenum, substripenum, chunkoff, subcoff]
@@ -308,7 +332,8 @@ class DuplicationDef:
                                copyNum, # ordinal number
                                [thetaLast, thetaNext, phiMin, phiMax], # bounds
                                [j*thetaSize, phiOffset], # Offset in deg
-                               phiRef]) # phi reference
+                               phiRef, # phi reference
+                               computeCstretch(phiRef, phiOffset)]) 
                 copyNum += 1
                 if thetaNext == thetaEnd: break
                 thetaLast = thetaNext
@@ -419,7 +444,8 @@ class DuplicationDef:
         copyNum, # copy number
         [thetaMin, thetaMax, phiMin, phiMax], # copy bounds
         [thetaOffset(degrees), phiOffset(degrees)], # w/o stretch factor
-        phiRef] # reference phi for correction
+        phiRef,
+        cStretch] # reference phi for correction
         """
         return self.stripes[coord[1]][coord[0]]
 
@@ -599,21 +625,14 @@ class Transformer:
         return outRows
 
     def transform(self, row, dupeInfo):
-        test = translateThetaPhiCorrected((float(row[self.thetaCol]),
-                                           float(row[self.phiCol])),
-                                          dupeInfo[3],
-                                          self.thetaMid,
-                                          dupeInfo[4], False)
- #       print "Orig %0.3f %0.3f" % (float(row[self.thetaCol]), 
- #                                   float(row[self.phiCol])),
- #       print "Offset %0.2f %0.2f" % tuple(dupeInfo[3]),
-
+        test = translateThetaPhiCorrectedOpt((float(row[self.thetaCol]),
+                                              float(row[self.phiCol])),
+                                             dupeInfo[3],
+                                             self.thetaMid,
+                                             dupeInfo[5], 
+                                             False)
         # Clip?
-        if not self._isInBounds(test, dupeInfo[2]): #return None
-#            print "reject"," ".join(map(lambda f: "%0.3f"%(f), test)),
-#            print "bounds"," ".join(map(lambda f: "%0.3f"%(f), dupeInfo[2]))
-            return None
-#        else: print "accept"
+        if not self._isInBounds(test, dupeInfo[2]): return None
 
         newRow = row[:] 
         # Transform the RA/decl pairs specially.  Only transform in pairs
@@ -621,18 +640,14 @@ class Transformer:
             thetaC = pair[0]
             phiC = pair[1]
             thetaphi = (float(row[thetaC]), float(row[phiC]))
-            thetaphiNew = translateThetaPhiCorrected(
-                thetaphi, dupeInfo[3], self.thetaMid, dupeInfo[4])
+            thetaphiNew = translateThetaPhiCorrectedOpt(
+                thetaphi, dupeInfo[3], self.thetaMid, dupeInfo[5])
             (newRow[thetaC], newRow[phiC]) = map(str, thetaphiNew)
 
         for col,f in self.transformMap.items():
             old = row[col]
             if old != "\\N":  # skip SQL null columns
                 newRow[col] = f(old, dupeInfo[1])
-        #print "old",filter(lambda s: "\\N" != s, row)
-        #print "new", filter(lambda s: "\\N" != s, newRow)
-        #assert ptInDupe([float(newRow[self.thetaCol]),
-        #                 float(newRow[self.phiCol])], dupeInfo)
         return newRow
 
     def transformOnly(self, row, colList):
