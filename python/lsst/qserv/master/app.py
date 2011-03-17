@@ -744,6 +744,8 @@ class HintedQueryAction:
             map(lambda (k,v): k + "," + v, hintCopy.items()))
         self._sessionId = newSession(qConfig)
         cf = configModule.config.get("partitioner", "emptyChunkListFile")
+        useMemory = configModule.config.get("tuning", "memoryEngine")
+
         self._emptyChunks = self._loadEmptyChunks(cf)        
 
         # Table mapping 
@@ -771,7 +773,10 @@ class HintedQueryAction:
                                            reportError, resultName)
         self._reportError = reportError
         ## For generating subqueries
-        self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY " ;
+        if useMemory == "yes":
+            engineSpec = "ENGINE=MEMORY "
+        else: engineSpec = ""
+        self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s " + engineSpec
         self._insertTableTmpl = "INSERT INTO %s " ;
         self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
                                              self.queryHash) + "_%s"

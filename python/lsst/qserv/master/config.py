@@ -82,6 +82,10 @@ chunked=Source,ForcedSource
 subchunked=Object
 alloweddbs=LSST
 
+[tuning]
+memoryEngine=yes
+
+
 [mysql]
 mysqlclient=
 
