@@ -77,6 +77,7 @@ class Indexer:
         print cids
         return cids
         #####
+
     def _makeIndex(self, table, pCols, iCols):
         selCols = ",".join(iCols)
         q = "SELECT %s FROM %s;" % (selCols, table)
@@ -103,7 +104,7 @@ class Indexer:
             if i in pCols: continue
             print "creating index for", i
             iq = "ALTER TABLE %s ADD INDEX %s;" % (indexName, i)
-            cids = db.applySql(sql)
+            cids = db.applySql(iq)
             cids = map(lambda t: t[0], cids)
             del db
             print cids
