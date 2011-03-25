@@ -86,8 +86,20 @@ class Db:
         return self._conn.cursor()
 
     def applySql(self, sql):
-        c = self._conn.cursor()
-        c.execute(sql)
+        failures = 0
+        while True:
+            c = self._conn.cursor()
+            try:
+                c.execute(sql)
+                break # Success: break out of the loop
+            except _mysql_exceptions.OperationalError as e:
+                failures += 1
+                if failures > 5: # MAGIC 5 
+                    print "Too many SQL failures, not retrying."
+                    self._conn = None
+                    return None
+                print "operational error, retrying", e
+            pass # Try again
         return c.fetchall()    
 
 
