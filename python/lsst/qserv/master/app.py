@@ -774,6 +774,7 @@ class HintedQueryAction:
         self._reportError = reportError
         ## For generating subqueries
         if useMemory == "yes":
+            print "Memory spec:", useMemory
             engineSpec = "ENGINE=MEMORY "
         else: engineSpec = ""
         self._createTableTmpl = "CREATE TABLE IF NOT EXISTS %s " + engineSpec
@@ -870,7 +871,7 @@ class HintedQueryAction:
         return cids
 
     def invoke(self):
-        #count=0
+        count=0
         self._babysitter.pauseReadback();
         lastTime = time.time()
         for chunkId, subIter in self._intersectIter:
@@ -891,7 +892,7 @@ class HintedQueryAction:
                 chunkId, time.time() - lastTime, prepTime - lastTime)
             lastTime = time.time()
             #count += 1
-            #if count >= 1: break
+            #if count >= 2: break
             ##print >>sys.stderr, q, "submitted"
         self._babysitter.resumeReadback()
         self._invokeLock.release()

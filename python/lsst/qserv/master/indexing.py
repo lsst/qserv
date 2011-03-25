@@ -89,7 +89,9 @@ class Indexer:
         # configure qserv to buffer in a big place
         #config.config.set("frontend", "scratch_path","/tmp/qsIndex")
 
-
+        db = Db()
+        db.activate()
+        db.applySql("DROP TABLE %s;" %(indexName)) #make room first.
         a = app.HintedQueryAction(q, {"db":"qservMeta"}, self.pmap, 
                                   lambda e: None, indexName)
         
@@ -98,12 +100,11 @@ class Indexer:
         print a.invoke() 
         print a.getResult()
         print "Retrieved result."
-        db = Db()
-        db.activate()
         for i in iCols:
             if i in pCols: continue
             print "creating index for", i
-            iq = "ALTER TABLE %s ADD INDEX %s;" % (indexName, i)
+            iq = "ALTER TABLE %s ADD INDEX (%s);" % (indexName, i)
+            print iq
             cids = db.applySql(iq)
             cids = map(lambda t: t[0], cids)
             del db
