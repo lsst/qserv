@@ -591,11 +591,11 @@ class CsvSchema:
                 match = ("_"+p[0], "_"+p[1])
                 break
             lw = p[1].lower()
-            if lw in self.headerColums:
+            if lw in self.headerColumns:
                 match = (p[0].lower(), p[1].lower())
                 break
             up = p[1].upper()
-            if up in self.headerColums:
+            if up in self.headerColumns:
                 match = (p[0].upper(), p[1].upper())
                 break
         if match:
