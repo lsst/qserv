@@ -69,9 +69,14 @@ class DuplicatingIter:
         copyList = args.copyList
         transformer = duplicator.Transformer(args)
         #header = transformer.selectHeader()
+        clip = args.clipChunkCols
+        if clip:
+            print "Clipping columns for chunk/subchunk"
         for r in self.iterable:
+            if clip: rw = r[:-2]
+            else: rw = r
             for c in copyList:
-                rnew = transformer.transform(r,c)
+                rnew = transformer.transform(rw,c)
                 if rnew: yield rnew
             pass
         pass
@@ -209,6 +214,8 @@ class App:
             setattr(conf, "thetaColumn", scma.thetaColumn)
             setattr(conf, "phiColumn", scma.phiColumn)
         setattr(conf, "headerColumns", scma.headerColumns)
+        if scma.clipChunkCols: setattr(conf, "clipChunkCols", True)
+        else: setattr(conf, "clipChunkCols", False)
         pw = partition.addPickleWorkaround(
             lambda rows: DuplicatingIter(rows, conf))
         setattr(conf, "rowFilter", pw)

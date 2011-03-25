@@ -523,6 +523,7 @@ class CsvSchema:
         """
         self.thetaColumn = None
         self.phiColumn = None
+        self.clipChunkCols = False
         if conf: self._setAsConfig(conf)
         pass
 
@@ -573,7 +574,36 @@ class CsvSchema:
         self.readSchemaFile(conf.schemaFile)
         self.thetaColumn = self.headerColumns[conf.thetaName]
         self.phiColumn = self.headerColumns[conf.phiName]
-        
+        if self._findChunkCols():
+            count = len(self.headerColumns)
+            if ((self.subChunkColumn == (count-1)) 
+                and (self.chunkColumn == (count-2))): 
+                self.clipChunkCols = True
+
+    def _findChunkCols(self):
+        cColumnsPatterns = [("chunkId","subChunkId"), ["chunk", "subChunk"]]
+        match = None
+        for p in cColumnsPatterns:
+            if p[1] in self.headerColumns:
+                match = p
+                break
+            if "_" + p[1] in self.headerColumns:
+                match = ("_"+p[0], "_"+p[1])
+                break
+            lw = p[1].lower()
+            if lw in self.headerColums:
+                match = (p[0].lower(), p[1].lower())
+                break
+            up = p[1].upper()
+            if up in self.headerColums:
+                match = (p[0].upper(), p[1].upper())
+                break
+        if match:
+            self.chunkColumn = self.headerColumns[match[0]]
+            self.subChunkColumn = self.headerColumns[match[1]]
+            return (self.chunkColumn, self.subChunkColumn)
+        pass
+            
 class Transformer:
     def _subtractIfBigger(self, theta):
         if theta >= self.normBounds[0]:
