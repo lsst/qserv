@@ -55,13 +55,14 @@ import time
 from string import Template
 
 # Package imports
+import metadata
 import sqlparser
 import lsst.qserv.master.config
 from lsst.qserv.master import geometry
 from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap
 from lsst.qserv.master.geometry import SphericalConvexPolygon, convexHull
-from db import TaskDb as Persistence
-from db import Db
+from lsst.qserv.master.db import TaskDb as Persistence
+from lsst.qserv.master.db import Db
 
 # SWIG'd functions
 
@@ -849,9 +850,9 @@ class HintedQueryAction:
         pass
 
     def _getChunkIdsFromObjs(self, ids):
-        table = "LSST.ObjectChunkIndex"
+        table = metadata.getIndexNameForTable("LSST.Object")
         objCol = "objectId"
-        chunkCol = "chunkId"
+        chunkCol = "_chunkId"
         try:
             test = ",".join(map(str, map(int, ids.split(","))))
             chopped = filter(lambda c: not c.isspace(), ids)

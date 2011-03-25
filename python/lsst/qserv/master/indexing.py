@@ -37,51 +37,28 @@
 # downloading overhead, so reducing unnecessary
 # dispatch/result-download is a big win for performance.
 #
+
+# Pkg imports.
 import app
 import config
+import metadata
 from db import Db
 
 class Indexer:
     def __init__(self):
-        self.metaDbName = config.config.get("mgmtdb","db")
         self.pmap = app.makePmap()
         
     def setupIndexes(self):
         p = PartitionGroup()
-        print p.tables
+        #print p.tables
         for (t,d) in p.tables.items():
             if d.has_key("index"):
                 self._makeIndex(t, p.partitionCols, d["index"])
         
-    def _indexNameForTable(self, tableName):
-        return self.metaDbName + "." + tableName.replace(".","__")
-        #####JUNK   
-        table = "LSST.ObjectChunkIndex"
-        objCol = "objectId"
-        chunkCol = "chunkId"
-        try:
-            test = ",".join(map(str, map(int, ids.split(","))))
-            chopped = filter(lambda c: not c.isspace(), ids)
-            assert test == chopped
-        except Exception, e:
-            print "Error converting objectId spec. ", ids, "Ignoring.",e
-            #print test,"---",chopped
-            return []
-        sql = "SELECT %s FROM %s WHERE %s IN (%s);" % (chunkCol, table,
-                                                       objCol, ids)
-        db = Db()
-        db.activate()
-        cids = db.applySql(sql)
-        cids = map(lambda t: t[0], cids)
-        del db
-        print cids
-        return cids
-        #####
-
     def _makeIndex(self, table, pCols, iCols):
         selCols = ",".join(iCols)
         q = "SELECT %s FROM %s;" % (selCols, table)
-        indexName = self._indexNameForTable(table)
+        indexName = metadata.getIndexNameForTable(table)
         # might need to drop this table.
 
         # configure merger to drop ENGINE=MEMORY from merged table.
@@ -92,7 +69,8 @@ class Indexer:
         db = Db()
         db.activate()
         db.applySql("DROP TABLE %s;" %(indexName)) #make room first.
-        a = app.HintedQueryAction(q, {"db":"qservMeta"}, self.pmap, 
+        a = app.HintedQueryAction(q, {"db" : metadata.getMetaDbName()}, 
+                                  self.pmap, 
                                   lambda e: None, indexName)
         
         assert a.getIsValid()
@@ -110,9 +88,7 @@ class Indexer:
             del db
             print cids
     pass
-
     
-
 def makeQservIndexes():
     i = Indexer()
     i.setupIndexes()
@@ -123,13 +99,13 @@ class PartitionGroup:
     # Hardcode for now.  Should merge with parts of the configuration
     # or split out into a more general qserv metadata system.
     def __init__(self): 
-        self.partitionCols = ["chunkId","subChunkId"]
+        self.partitionCols = ["_chunkId","_subChunkId"]
         self.tables = {"LSST.Object" : {"index" : ["objectId", 
-                                                   "chunkId", 
-                                                   "subChunkId"],
-                                        "partition" : ["chunkId",
-                                                       "subChunkId"]},
-                       "LSST.Source" : {"partition" : ["chunkId"]}
+                                                   "_chunkId", 
+                                                   "_subChunkId"],
+                                        "partition" : ["_chunkId",
+                                                       "_subChunkId"]},
+                       "LSST.Source" : {"partition" : ["_chunkId"]}
                        }
         pass
 
