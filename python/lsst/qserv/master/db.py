@@ -92,7 +92,7 @@ class Db:
             try:
                 c.execute(sql)
                 break # Success: break out of the loop
-            except _mysql_exceptions.OperationalError as e:
+            except _mysql_exceptions.OperationalError, e:
                 failures += 1
                 if failures > 5: # MAGIC 5 
                     print "Too many SQL failures, not retrying."
