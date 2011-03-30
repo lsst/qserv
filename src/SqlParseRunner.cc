@@ -190,8 +190,6 @@ class qMaster::SqlParseRunner::HintTupleProcessor {
 public:
     HintTupleProcessor(SqlParseRunner& spr) : _spr(spr) {}
     void operator()(std::string const& s) {
-        const int maxParams=1000;
-        double params[maxParams];
         int vecSize;
 
         _vec.clear();
@@ -205,13 +203,8 @@ public:
                       << std::endl;
             return;
         }
-        assert(vecSize < (maxParams+1));
-        std::string name = _vec[0];
-        for(int i=0; i < (vecSize-1); ++i) {
-            //std::cout << "converting " << _vec[i+1] << std::endl;
-            params[i] = toDouble(_vec[i+1]);
-        }
-        _spr.addHintExpr(name, params, vecSize-1);
+        // FIXME don't convert now. bigints can't fit in double.
+        _spr.addHintExpr(_vec);
     }
     
 private:
@@ -391,11 +384,10 @@ void qMaster::SqlParseRunner::updateTableConfig(std::string const& tName,
     _tableConfigMap[tName] = m;
 }
 
-void qMaster::SqlParseRunner::addHintExpr(std::string const& name, 
-                                          double const* params, 
-                                          int paramCount) {
-    _spatialUdfHandler.addExpression(name, params, paramCount);
+void qMaster::SqlParseRunner::addHintExpr(std::vector<std::string> const& vec) {
+    _spatialUdfHandler.addExpression(vec);
 }
+
 
 void qMaster::SqlParseRunner::_readConfig(qMaster::StringMap const& m) {
     std::string blank;

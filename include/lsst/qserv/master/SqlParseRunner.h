@@ -89,8 +89,8 @@ public:
     void addMungedSpatial(std::string const& mungedTable,
                           std::string const& refTable);
     void updateTableConfig(std::string const& tName, StringMap const& m);
-    void addHintExpr(std::string const& name, 
-                     double const* params, int paramCount);
+    void addHintExpr(std::vector<std::string> const& vec);
+
 private:
     class SpatialTableNotifier;
     class FromHandler;

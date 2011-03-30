@@ -61,8 +61,8 @@ public:
         return _fctSpec;
     }
 
-    void addExpression(std::string const& funcName, 
-                       double const* first, int nitems);
+    // @param vec is structured as [funcName, param1, param2, ...]
+    void addExpression(std::vector<std::string> const& vec);
     
  private:
     // Where-clause manipulation

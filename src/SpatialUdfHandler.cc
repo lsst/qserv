@@ -35,6 +35,7 @@
 // std
 #include <algorithm>
 #include <cstdlib>
+#include <deque>
 #include <list>
 #include <iostream>
 #include <iterator>
@@ -51,18 +52,12 @@ using boost::make_shared;
 ////////////////////////////////////////////////////////////////////////
 class qMaster::SpatialUdfHandler::Restriction {
 public:
-    template <class C>
-    Restriction(std::string const& name, C const& c) 
-        : _name(name), _params(c.size()) { 
-        std::copy(c.begin(), c.end(), _params.begin()); 
-        _setGenerator();
+    template <typename StrContainer>
+    Restriction(std::string const& specName, StrContainer const& nameAndParams) 
+        : _name(specName) {
+        _setGenerator(nameAndParams);
     }
-    Restriction(std::string const& name, double const* first, int nItems) 
-        : _name(name), _params(nItems) { 
-        std::copy(first, first+nItems, _params.begin());
-        _setGenerator();
-    }
-    
+
     std::string getUdfCallString(std::string const& tName, 
                                  StringMap const& tableConfig) const {
         if(_generator.get()) {
@@ -80,8 +75,10 @@ public:
 private:
     class ObjectIdGenerator : public Generator {
     public:
-        ObjectIdGenerator(std::vector<double> const& paramNums_) 
-            :  paramNums(paramNums_) {}
+        template <typename Iter>
+        ObjectIdGenerator(Iter begin, Iter end) 
+            : paramStrs(begin, end) {
+        }
 
 
         virtual std::string operator()(std::string const& tName, 
@@ -92,12 +89,12 @@ private:
                                                      "objectId"));
             s << oidStr << " IN (";
             // coerce params to integer.
-            std::for_each(paramNums.begin(), paramNums.end(), 
-                          coercePrint<int>(s, ","));
+            std::for_each(paramStrs.begin(), paramStrs.end(), 
+                          coercePrint<std::string>(s, ","));
             s << ")";
             return s.str();
         }
-        std::vector<double> const& paramNums; 
+        std::vector<std::string> paramStrs;
     };
 
     class AreaGenerator : public Generator {
@@ -139,38 +136,51 @@ private:
         std::vector<double> const& params; 
         static const int USE_STRING = -999;
     };
-    void _setGenerator();
+
+    template<typename StrContainer>
+    void _setGenerator(StrContainer const& v) {
+        if(_name == "qserv_areaspec_box") {
+            _importParams(v.begin() + 1, v.end(), v.size()-1);
+            _generator.reset(dynamic_cast<Generator*>
+                             (new AreaGenerator("ptInSphBox", 
+                                                4, _params)));
+        } else if(_name == "qserv_areaspec_circle") {
+            _importParams(v.begin() + 1, v.end(), v.size()-1);
+            _generator.reset(dynamic_cast<Generator*>
+                             (new AreaGenerator("ptInSphCircle", 
+                                                3, _params)));
+        } else if(_name == "qserv_areaspec_ellipse") {
+            _importParams(v.begin() + 1, v.end(), v.size()-1);
+            _generator.reset(dynamic_cast<Generator*>
+                             (new AreaGenerator("ptInSphEllipse", 
+                                                5, _params)));
+        } else if(_name == "qserv_areaspec_poly") {
+            _importParams(v.begin() + 1, v.end(), v.size()-1);
+            _generator.reset(dynamic_cast<Generator*>
+                             (new AreaGenerator("ptInSphPoly", 
+                                                AreaGenerator::USE_STRING,
+                                                _params)));
+        } else if(_name == "qserv_objectId") {
+            ObjectIdGenerator* g = new ObjectIdGenerator(v.begin() + 1, 
+                                                         v.end());
+            _generator.reset(dynamic_cast<Generator*>(g));
+        } else {
+            std::cout << "Unmatched restriction spec: " << _name 
+                      << ", ignoring." << std::endl;
+        }
+    }
+
+    template<typename Iter, typename Size>
+    void _importParams(Iter begin, Iter end, Size size) {
+        _params.resize(size);
+        std::transform(begin, end, _params.begin(), strToDoubleFunc());
+    }
+
     std::string _name;
     std::vector<double> _params;
     boost::shared_ptr<Generator> _generator;
 };
 
-void qMaster::SpatialUdfHandler::Restriction::_setGenerator() {
-    if(_name == "qserv_areaspec_box") {
-        _generator.reset(dynamic_cast<Generator*>
-                         (new AreaGenerator("ptInSphBox", 
-                                            4, _params)));
-    } else if(_name == "qserv_areaspec_circle") {
-        _generator.reset(dynamic_cast<Generator*>
-                         (new AreaGenerator("ptInSphCircle", 
-                                            3, _params)));
-    } else if(_name == "qserv_areaspec_ellipse") {
-        _generator.reset(dynamic_cast<Generator*>
-                         (new AreaGenerator("ptInSphEllipse", 
-                                            5, _params)));
-    } else if(_name == "qserv_areaspec_poly") {
-        _generator.reset(dynamic_cast<Generator*>
-                         (new AreaGenerator("ptInSphPoly", 
-                                            AreaGenerator::USE_STRING,
-                                            _params)));
-    } else if(_name == "qserv_objectId") {
-        ObjectIdGenerator* g = new ObjectIdGenerator(_params);
-        _generator.reset(dynamic_cast<Generator*>(g));
-    } else {
-        std::cout << "Unmatched restriction spec: " << _name 
-                  << ", ignoring." << std::endl;
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler::FromWhereHandler
@@ -263,11 +273,12 @@ public:
         }
         std::string paramStrRaw = walkTreeString(params);
         std::string paramStr = paramStrRaw.substr(0, paramStrRaw.size() - 1);
-        std::list<double> paramNums;
+        std::deque<std::string> paramStrs;
+        tokenizeInto(paramStr, ",", paramStrs, passFunc<std::string>());
+        paramStrs.push_front(name->getText());
 
-        tokenizeInto(paramStr, ",", paramNums, strToDoubleFunc());
         boost::shared_ptr<Restriction> r(new Restriction(name->getText(),
-                                                         paramNums));
+                                                         paramStrs));
         _suh._inbandRestrictions.push_back(r); // Track separately.
         _suh._expandRestriction(*r, ss);
         // std::cout << "Spec yielded " 
@@ -308,16 +319,15 @@ qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory,
     _specName["circle"] = "qserv_areaspec_circle";
     _specName["ellipse"] = "qserv_areaspec_ellipse";
     _specName["poly"] = "qserv_areaspec_poly";
+    _specName["objectId"] = "qserv_objectId";
     // For testing:
     //    double dummy[] = {0.0,0.0,1,1};
     //    setExpression("box",dummy, 4);
 }
 
-void qMaster::SpatialUdfHandler::addExpression(std::string const& funcName,
-                                               double const* first, int nitems) {
+void qMaster::SpatialUdfHandler::addExpression(std::vector<std::string> const& v) {
     std::stringstream ss;
-    boost::shared_ptr<Restriction> r(new Restriction(_specName[funcName], 
-                                                     first, nitems));
+    boost::shared_ptr<Restriction> r(new Restriction(_specName[v[0]], v));
     //std::cout << "adding restriction: " << funcName << std::endl;
     _restrictions.push_back(r);
     _hasProcessedOutBand = false;
