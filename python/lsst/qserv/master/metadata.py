@@ -38,10 +38,12 @@ _myRuntime = None
 
 # External interface
 def getIndexNameForTable(tableName):
+    global _myRuntime
     if not _myRuntime: _myRuntime = Runtime()
     return _myRuntime.metaDbName + "." + tableName.replace(".","__")
 
 def getMetaDbName():
+    global _myRuntime
     if not _myRuntime: _myRuntime = Runtime()
     return _myRuntime.metaDbName 
 
