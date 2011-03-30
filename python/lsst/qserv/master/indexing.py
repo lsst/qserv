@@ -99,13 +99,13 @@ class PartitionGroup:
     # Hardcode for now.  Should merge with parts of the configuration
     # or split out into a more general qserv metadata system.
     def __init__(self): 
-        self.partitionCols = ["_chunkId","_subChunkId"]
+        self.partitionCols = ["x_chunkId","x_subChunkId"]
         self.tables = {"LSST.Object" : {"index" : ["objectId", 
-                                                   "_chunkId", 
-                                                   "_subChunkId"],
-                                        "partition" : ["_chunkId",
-                                                       "_subChunkId"]},
-                       "LSST.Source" : {"partition" : ["_chunkId"]}
+                                                   "x_chunkId", 
+                                                   "x_subChunkId"],
+                                        "partition" : ["x_chunkId",
+                                                       "x_subChunkId"]},
+                       "LSST.Source" : {"partition" : ["x_chunkId"]}
                        }
         pass
 

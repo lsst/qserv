@@ -852,7 +852,7 @@ class HintedQueryAction:
     def _getChunkIdsFromObjs(self, ids):
         table = metadata.getIndexNameForTable("LSST.Object")
         objCol = "objectId"
-        chunkCol = "_chunkId"
+        chunkCol = "x_chunkId"
         try:
             test = ",".join(map(str, map(int, ids.split(","))))
             chopped = filter(lambda c: not c.isspace(), ids)

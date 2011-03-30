@@ -357,6 +357,22 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     BOOST_CHECK(spr->getParseResult() == expected);
 }
 
+BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
+    std::string stmt = " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr, true); // Should fail since leading _ is disallowed.
+}
+
+BOOST_AUTO_TEST_CASE(ChunkDensity) {
+    std::string stmt = " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), x_chunkId FROM Object GROUP BY x_chunkId;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
+}
+
+
 
 BOOST_AUTO_TEST_SUITE_END()
 
