@@ -32,6 +32,7 @@
 import sys
 # Mysql
 import MySQLdb as sql
+import _mysql_exceptions
 
 # Package
 import lsst.qserv.master.config
