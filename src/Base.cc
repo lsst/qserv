@@ -21,6 +21,10 @@
  */
  
 // Basic convention/API-related things that might be shared.
+//
+// TODO:
+//  Should parameterize things to stop hardcoding table names 
+// and column names.
 
 // Std
 #ifdef __SUNPRO_CC
@@ -63,13 +67,13 @@ std::string qWorker::DUMP_BASE = "/tmp/qserv/";
 std::string qWorker::CREATE_SUBCHUNK_SCRIPT =
     "CREATE DATABASE IF NOT EXISTS Subchunks_%1%;"
     "CREATE TABLE IF NOT EXISTS Subchunks_%1%.Object_%1%_%2% ENGINE = MEMORY "
-    "AS SELECT * FROM LSST.Object_%1% WHERE subchunkId = %2%;"
+    "AS SELECT * FROM LSST.Object_%1% WHERE x_subChunkId = %2%;"
     "CREATE TABLE IF NOT EXISTS Subchunks_%1%.ObjectSelfOverlap_%1%_%2% "
     "ENGINE = MEMORY "
-    "AS SELECT * FROM LSST.ObjectSelfOverlap_%1% WHERE subchunkId = %2%;"
+    "AS SELECT * FROM LSST.ObjectSelfOverlap_%1% WHERE x_subChunkId = %2%;"
     "CREATE TABLE IF NOT EXISTS Subchunks_%1%.ObjectFullOverlap_%1%_%2% "
     "ENGINE = MEMORY "
-    "AS SELECT * FROM LSST.ObjectFullOverlap_%1% WHERE subchunkId = %2%;"
+    "AS SELECT * FROM LSST.ObjectFullOverlap_%1% WHERE x_subChunkId = %2%;"
     ;
 std::string qWorker::CLEANUP_SUBCHUNK_SCRIPT =
     "DROP TABLE IF EXISTS Subchunks_%1%.Object_%1%_%2%;"
