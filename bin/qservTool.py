@@ -66,7 +66,7 @@ def main():
                       help="Run a hintedParser test named NAME.")
     parser.add_option("--test",
                       dest="testName", default=None, metavar="NAME", 
-                      help="Run a hintedParser test named NAME.")
+                      help="Run a appInterface test named NAME.")
 
     (options, args) = parser.parse_args()
 
@@ -99,8 +99,8 @@ def main():
             q = open(options.queryFile).read()
         print a.query(q)
         return
+
     elif options.testName:
-        
         suite = unittest.TestSuite()
         suite.addTest(TestAppInterface('test' + options.testName))
         unittest.TextTestRunner(verbosity=2).run(suite)
@@ -108,7 +108,6 @@ def main():
     elif options.hintTest:
         # from lsst.qserv.master import testHintedParser
         # t = testHintedParser.TestHintedParser()
-        
         suite = unittest.TestSuite()
         suite.addTest(TestHintedParser('test' + options.hintTest))
         unittest.TextTestRunner(verbosity=2).run(suite)

@@ -35,7 +35,38 @@ import time
 # Package imports
 import lsst.qserv.master
 from lsst.qserv.master import appInterface as app
+from lsst.qserv.master.app import HintedQueryAction, makePmap
 from lsst.qserv.master import config
+from db import Db
+
+def tryCountQuery():
+    tableName = "test.sanityTable"
+    def clear(t):
+        db = Db()
+        db.activate()
+        db.applySql("DROP TABLE IF EXISTS %s;" %(t))
+
+    pmap = makePmap()
+    q = "SELECT %s FROM %s %s;" % ("count(*)", "LSST.Object", "LIMIT 10")
+    a = HintedQueryAction(q, 
+                              {"db" : "test"},  # Use test db.
+                              pmap, 
+                              lambda e: None, tableName)
+        
+    assert a.getIsValid()
+    a.chunkLimit = 6
+    print "Trying q=",q
+    clear(tableName)
+    print a.invoke() 
+    print a.getResult()
+    db = Db()
+    db.activate()
+    db.applySql("select * from %s;" % tableName) #could print this
+
+    clear(tableName)
+            
+    
+    
 
 class TestAppInterface(unittest.TestCase):
     def setUp(self):
@@ -51,9 +82,12 @@ class TestAppInterface(unittest.TestCase):
 
     def testShortCircuit(self):
         r = app.computeShortCircuitQuery("select current_user()",{})
-        self.assertEqual(r, ("qserv@%", "", "")
+        self.assertEqual(r, ("qserv@%", "", ""))
         pass
 
+    def testCountQuery(self):
+        tryCountQuery()
+                         
     def _makeBadHint(self):
         "This should be randomized."
         d = {"I":32,"like":44,"peaches,":66, 
@@ -75,5 +109,3 @@ class TestAppInterface(unittest.TestCase):
         except:
             return None
     
-            
-        
