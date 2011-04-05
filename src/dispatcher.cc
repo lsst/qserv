@@ -141,7 +141,7 @@ struct mergeStatus {
         isSuccessful = true;
     }
     void operator() (qMaster::AsyncQueryManager::Result const& x) { 
-	if(! x.second.isSuccessful()) {
+	if(!x.second.isSuccessful()) {
             if(shouldPrint || (firstN > 0)) {
                 std::cout << "Chunk " << x.first << " error " << std::endl
                           << "open: " << x.second.open 

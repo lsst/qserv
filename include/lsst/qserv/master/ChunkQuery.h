@@ -81,6 +81,7 @@ public:
 private:
     void _sendQuery(int fd);
     void _readResults(int fd);
+    void _readResultsDefer(int fd);
     void _notifyManager();
     bool _openForRead(std::string const& url);
     void _squashAtCallback(int result);
@@ -95,6 +96,7 @@ private:
     std::string _hash;
     std::string _resultUrl;
     std::string _queryHostPort;
+    boost::shared_ptr<PacketIter> _packetIter;
     AsyncQueryManager* _manager;
     bool _shouldSquash;
     Timer _writeOpenTimer;

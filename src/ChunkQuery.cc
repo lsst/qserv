@@ -37,6 +37,7 @@
 #include "lsst/qserv/master/ChunkQuery.h"
 #include "lsst/qserv/master/xrootd.h"
 #include "lsst/qserv/master/AsyncQueryManager.h"
+#include "lsst/qserv/master/PacketIter.h"
 #include "lsst/qserv/common/WorkQueue.h"
 
 // Namespace modifiers
@@ -195,7 +196,8 @@ void qMaster::ChunkQuery::Complete(int Result) {
 	} else {
 	    _state = READ_READ;
             //_manager->getReadPermission();
-	    _readResults(Result);
+	    //_readResults(Result);
+	    _readResultsDefer(Result);
 	}
 	break;
     default:
@@ -314,7 +316,7 @@ std::string qMaster::ChunkQuery::getDesc() const {
 }
 
 boost::shared_ptr<qMaster::PacketIter> qMaster::ChunkQuery::getResultIter() {
-    return boost::shared_ptr<PacketIter>(); // FIXME
+    return _packetIter;
 }
 
 void qMaster::ChunkQuery::requestSquash() { 
@@ -479,6 +481,21 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
 	_notifyManager(); 
     }
     std::cout << ss.str();
+}
+
+void qMaster::ChunkQuery::_readResultsDefer(int fd) {
+	int const fragmentSize = 4*1024*1024; // 4MB fragment size (param?)
+        // Should limit cumulative result size for merging.  Now is a
+        // good time. Configurable, with default=1G?
+
+	// Now read.
+        // packetIter will close fd
+        _packetIter.reset(new PacketIter(fd, fragmentSize)); 
+        _result.localWrite = 1; // MAGIC: stuff the result so that it doesn't
+        // look like an error to skip the local write.
+        _state = COMPLETE;
+        std::cout << _hash << " ReadResults defer " << std::endl;
+        _notifyManager();
 }
 
 void qMaster::ChunkQuery::_readResults(int fd) {

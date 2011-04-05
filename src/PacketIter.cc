@@ -103,8 +103,8 @@ void qMaster::PacketIter::_setup(bool debug) {
             _errno = errno;
             return;
         }
-        _current.second = _fragSize;
     }
+    _current.second = _fragSize;
     _current.first = static_cast<char*>(_buffer);
     _fill(_current);
 }
