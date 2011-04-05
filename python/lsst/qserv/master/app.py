@@ -727,6 +727,7 @@ class HintedQueryAction:
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
         self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:18] 
+        self.chunkLimit = 2**32 # something big
         self._dbContext = "LSST" # Later adjusted by hints.        
 
         # Hint evaluation
@@ -874,6 +875,7 @@ class HintedQueryAction:
         count=0
         self._babysitter.pauseReadback();
         lastTime = time.time()
+        chunkLimit = self.chunkLimit
         for chunkId, subIter in self._intersectIter:
             if chunkId in self._emptyChunks:
                 continue # FIXME: What if all chunks are empty?
@@ -891,8 +893,8 @@ class HintedQueryAction:
             print "Chunk %d dispatch took %f seconds (prep: %f )" % (
                 chunkId, time.time() - lastTime, prepTime - lastTime)
             lastTime = time.time()
-            #count += 1
-            #if count >= 2: break
+            count += 1
+            if count >= chunkLimit: break
             ##print >>sys.stderr, q, "submitted"
         self._babysitter.resumeReadback()
         self._invokeLock.release()
