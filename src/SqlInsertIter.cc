@@ -202,16 +202,21 @@ bool qMaster::SqlInsertIter::isDone() const {
     }
 }
 
+/// Increment this iterator to point at the next INSERT statement.  
+/// If our buffer includes the full data dump, then this is easy--we 
+/// can just advance the regex iterator _iter.  However, when we are 
+/// iterating over the dump in "packets", we may need to advance
+/// the packet iterator.
 void qMaster::SqlInsertIter::_increment() {
     if(_pacIterP) {
         // Set _pBufStart to end of last match.
         _pBufStart = static_cast<BufOff>((*_iter)[0].second - _pBuffer);
-        ++_iter;
+        ++_iter; // Advance the regex to the next INSERT stmt
         while((_iter == _nullIter) && !_pacIterP->isDone()) {
-            _incrementFragment();
-            _setupIter();
+            _incrementFragment(); // Extend buffer
+            _setupIter(); // Reset the iterator.
         }
-        // FIXME
+        // Either we found an insert or there are no more packets.
     } else { // If fully buffered.
         ++_iter;
     }

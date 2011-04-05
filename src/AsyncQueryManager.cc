@@ -225,6 +225,7 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
 // So, clients will call joinResult(), to get the result, and let a reaper
 // thread call joinEverything, since that ensures that this object has 
 // ceased activity and can recycle resources.
+// This is a performance optimization.
 void qMaster::AsyncQueryManager::joinEverything() {
     boost::unique_lock<boost::mutex> lock(_queriesMutex);
     int lastCount = -1;

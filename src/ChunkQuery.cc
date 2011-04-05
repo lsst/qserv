@@ -200,7 +200,7 @@ void qMaster::ChunkQuery::Complete(int Result) {
 	break;
     default:
 	isReallyComplete = true;
-        ss << "FIXME: ChunkQuery @ " << _state 
+        ss << "Bad transition (likely bug): ChunkQuery @ " << _state 
            << " Complete() -> CORRUPT " << CORRUPT << std::endl;
 	_state = CORRUPT;
     }

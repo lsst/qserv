@@ -868,7 +868,6 @@ class HintedQueryAction:
         cids = db.applySql(sql)
         cids = map(lambda t: t[0], cids)
         del db
-        print cids
         return cids
 
     def invoke(self):
@@ -887,7 +886,7 @@ class HintedQueryAction:
             else:
                 q = self._makeChunkQuery(chunkId, table)
             prepTime = time.time()
-            print "DISPATCH: ", q
+            print "DISPATCH: ", q[:500] # Limit printout spew
             self._babysitter.submit(chunkId, table, q)
             print "Chunk %d dispatch took %f seconds (prep: %f )" % (
                 chunkId, time.time() - lastTime, prepTime - lastTime)
