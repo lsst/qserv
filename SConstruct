@@ -90,6 +90,9 @@ if os.environ.has_key('SWIG'):
 
 searchLibs = [xrd_lib]
 mysqlRoots = filter(lambda r: "mysql" in r, searchRoots)
+if os.environ.has_key('MYSQL_ROOT'):
+    mysqlRoots.append(os.environ['MYSQL_ROOT'])
+
 if mysqlRoots:
     searchLibs += filter(os.path.exists, 
                      map(lambda r: os.path.join(r,"lib", "mysql"),mysqlRoots))
