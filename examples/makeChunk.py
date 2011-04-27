@@ -2,7 +2,7 @@
 
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
+# Copyright 2008, 2009, 2010, 2011 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -115,8 +115,9 @@ class App:
         c = chosen
         cList = []
         if total == 1: return chunks[:]
+        #FIXME: perhaps range(cLen/total)?
         for i in range(cLen/(total-1)):
-            if c > cLen: break
+            if c >= cLen: break
             cList.append(chunks[c])
             c += total
         return cList
