@@ -185,6 +185,11 @@ class App:
                           for cb in cList]
         chunkBounds = self._chooseChunks(conf.node, conf.nodeCount, 
                                          allChunkBounds)
+        if conf.emptyFixed:
+            print "Empty (clipped) chunks:", pd.emptyChunks
+            emptySet = set(pd.emptyChunks)
+            chunkBounds = filter(lambda c:c not in emptySet, chunkBounds)
+            
         boundsList = map(lambda cb: cb.bounds, chunkBounds)
         paddedBounds = map(lambda b:self._padEdges(b, conf.overlap), 
                            boundsList)
@@ -383,7 +388,18 @@ class App:
             The most polar stripes will be emptied.  e.g., if 3 stripes 
             are requested empty, the two southernmost (most negative phi)
             stripes and one northernmost (most postive phi) stripe will 
-            be left empty."""))
+            be left empty. Chunk allocation applies to the new set.
+            (see --empty-fixed)"""))
+        duplication.add_option(
+            "--empty-fixed", action="store_true", 
+            dest="emptyFixed", help=dedent("""\
+            Set empty stripes after a fixed allocation.
+            This option requests chunk allocation to occur before removing
+            stripes from the final set.  Thus chunks will be allocated
+            assuming a non-empty final set, and then chunks will be removed
+            after allocation.  This allows allocations to be as compatible
+            as possible even with empty-stripe values.  (only applies when
+            --empty-stripes is chosen)."""))
         duplication.add_option(
             "--chunk-list", type="str",
             dest="chunkList", help=dedent("""\

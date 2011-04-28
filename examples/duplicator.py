@@ -171,7 +171,14 @@ class PartitionDef:
             bottom = top
             if empty > (top + bottom):
                 bottom += 1
-            self.partitionStripes = self.partitionStripes[bottom:-top]
+            if conf.emptyFixed:
+                removedBottom = self.partitionStripes[:bottom]
+                removedTop = self.partitionStripes[-top:]
+                removed = removedBottom + removedTop
+                self.emptyChunks = [cb for cList in removed
+                                    for cb in cList]
+            else:
+                self.partitionStripes = self.partitionStripes[bottom:-top]
             reduceChunks = sum([len(s) for s in self.partitionStripes])
             print "With %d stripes removed, %d of %d (%f%%) in set" % (
                 conf.emptyStripes, reduceChunks, totalChunks, 
