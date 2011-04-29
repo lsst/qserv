@@ -85,6 +85,8 @@ alloweddbs=LSST
 [tuning]
 memoryEngine=yes
 
+[debug]
+chunkLimit=-1
 
 [mysql]
 mysqlclient=

@@ -746,6 +746,10 @@ class HintedQueryAction:
             map(lambda (k,v): k + "," + v, hintCopy.items()))
         self._sessionId = newSession(qConfig)
         cf = configModule.config.get("partitioner", "emptyChunkListFile")
+        cfgLimit = int(configModule.config.get("debug", "chunkLimit"))
+        if cfgLimit > 0:
+            self.chunkLimit = cfgLimit
+            print "Using debugging chunklimit:",cfgLimit
         useMemory = configModule.config.get("tuning", "memoryEngine")
 
         self._emptyChunks = self._loadEmptyChunks(cf)        
