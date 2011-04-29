@@ -182,7 +182,7 @@ class PartitionDef:
             reduceChunks = sum([len(s) for s in self.partitionStripes])
             print "With %d stripes removed, %d of %d (%f%%) in set" % (
                 conf.emptyStripes, reduceChunks, totalChunks, 
-                reduceChunks * 1.0 / totalChunks)
+                reduceChunks * 100.0 / totalChunks)
 
         
     def _extractPartitionBounds(self, writers, chunker):
