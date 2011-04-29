@@ -42,8 +42,9 @@
 
 # try -S60 -s18 ( 60 stripes, 18 substripes). used for pt1 testing
 import csv
+from collections import defaultdict
 import itertools
-from itertools import chain
+from itertools import chain, imap, izip
 import math
 import optparse
 import partition
@@ -81,7 +82,62 @@ class DuplicatingIter:
             pass
         pass
 
+class Alloc:
+    def __init__(self, totalNodes, items, numGetter, conf):
+        self.total = totalNodes
+        self.numGetter = numGetter
+        self.items = items
+        self.conf = conf
+        self.mapping = self._compute(self.total, self.items)
+        self.invalid = self._computeInvalid(items)
+        self.sanity()
+        pass
+    
+    def getForNode(self, chosen):
+        items = self.items
+        # round robin selection
+        cLen = len(items)
+        i = 0
+        c = chosen
+        cList = []
+        stride = self.total
+        if stride == 1: return items[:]
+        #FIXME: perhaps range(cLen/total)?
+        for i in range(cLen/(stride-1)):
+            if c >= cLen: break
+            cList.append(items[c])
+            c += stride
+            
+        return cList
+
+    def sanity(self):
+        for (n,cl) in self.mapping.iteritems():
+            cl = map(self.numGetter, cl)
+            cl2 = map(self.numGetter, self.getForNode(n))
+            
+            if set(cl) != set(cl2):
+                print "Alloc mismatch for node", n
+                print "Map",cl
+                print "naive",cl2
+                return False
+        return True
+
+    def _compute(self, total, items):
+        d = defaultdict(list)
+        for (n,c) in izip(itertools.cycle(range(total)), items):
+            d[n].append(c)
+        return d
+
+    def _computeInvalid(self, items):
+        assert items
+        s = map(self.numGetter, items)
+        s.sort()
+        # Round up to 1000s
+        r = 1000.0
+        cmax = int(math.ceil(s[-1] / r) * r)
+        s = set(s)
         
+        return [e for e in range(cmax) if e not in s]
 
 class App:
     def __init__(self):
@@ -98,31 +154,15 @@ class App:
             self._explainArgs(self.conf)
             return
 
+        if self.conf.dryRun:
+            print "Dry run requested. Exiting now."
+            return
         if self.shouldDuplicate:
             partition.chunk(self.conf, self.inputs)
         else:
             print "No action specified.  Did you want to duplicate? (--dupe)"
         pass
 
-    def _chooseChunks(self, chosen, total, chunks):
-        assert type(chosen) == int
-        assert type(total) == int
-        print "Choosing chunks for %d (%d total) from %s chunks" % (
-            chosen, total, len(chunks))
-        # round robin selection
-        cLen = len(chunks)
-        i = 0
-        c = chosen
-        cList = []
-        if total == 1: return chunks[:]
-        #FIXME: perhaps range(cLen/total)?
-        for i in range(cLen/(total-1)):
-            if c >= cLen: break
-            cList.append(chunks[c])
-            c += total
-        return cList
-
-    
     def _chunkAcceptor(self, cid):
         return cid in self.chunks
 
@@ -156,10 +196,9 @@ class App:
             self.parser.error("Input split size must not exceed 256 MiB.")
         conf.inputSplitSize = int(conf.inputSplitSize * 1048576.0)
 
+        self._setupChunking(conf)
         if self.shouldDuplicate:
             self._setupDuplication(conf)
-        if conf.printChunkLayout:
-            pass
         if conf.printDupeLayout:
             pass
         self.conf = conf
@@ -177,23 +216,52 @@ class App:
         newBounds[3] += overlap
         return newBounds 
 
-    def _setupDuplication(self, conf):
+    def _setupChunking(self, conf): 
+        assert type(conf.node) == int
+        assert type(conf.nodeCount) == int
         if not conf.nodeCount: 
             self.parser.error("Node count not specified (--node-count)")
+
         pd = duplicator.PartitionDef(conf)
         allChunkBounds = [cb for cList in pd.partitionStripes 
                           for cb in cList]
-        chunkBounds = self._chooseChunks(conf.node, conf.nodeCount, 
-                                         allChunkBounds)
+        self._alloc = Alloc(conf.nodeCount, allChunkBounds, 
+                            lambda c:c.chunkId, self.conf)
+        
+        if conf.printAlloc:
+            m = self._alloc.mapping
+            keys = m.keys()
+            keys.sort()
+            s = "\n".join(map(lambda k: "%d : %s," 
+                              % (k, map(lambda c:c.chunkId,m[k])),
+                              keys))
+            print "[%s]" % s
+            pass
+
+        if conf.writeInvalid:
+            inv = self._alloc.invalid
+            open(conf.writeInvalid, "w").write(
+                "\n".join(imap(str,inv)))
+
+        chunkBounds = self._alloc.mapping[conf.node]
+        print "Choosing chunks for %d (%d total) from %s chunks" % (
+            conf.node, conf.nodeCount, len(allChunkBounds))
+
         if conf.emptyFixed:
             print "Empty (clipped) chunks:", pd.emptyChunks
             emptySet = set(pd.emptyChunks)
             chunkBounds = filter(lambda c:c not in emptySet, chunkBounds)
             
         boundsList = map(lambda cb: cb.bounds, chunkBounds)
-        paddedBounds = map(lambda b:self._padEdges(b, conf.overlap), 
-                           boundsList)
+        # Add padding for overlap
+        self.paddedBounds = map(lambda b:self._padEdges(b, conf.overlap), 
+                                boundsList)
+        self.chunkBounds = chunkBounds
+        pass
 
+    def _setupDuplication(self):
+        paddedBounds = self.paddedBounds
+        chunkBounds = self.chunkBounds
         dd = duplicator.DuplicationDef(conf)        
         if conf.printPlottable:
             pd.printPartBounds(plottable=True)
@@ -202,14 +270,13 @@ class App:
             if conf.printDupeLayout:
                 dd.printCopyInfo()
             if conf.printChunkLayout:
-                pd.printPartBounds()
-            
+                pd.printPartBounds()            
 
         print "Expanding allocated region to allow overlap=",conf.overlap
         copyList = dd.computeAllCopies(paddedBounds)
             
         print len(copyList), "copies needed of", dd.dupeCount, "available"
-        print "Building", len(chunkBounds), "chunks"
+        print "Building", len(paddedBounds), "chunks"
         copyInfoList = map(dd.getDupeInfo, copyList)
 #        for c in copyList:
 #            dd.checkDupeSanityCoord(c)
@@ -287,6 +354,9 @@ class App:
             "--explain", action="callback", dest="explainArgs",
             action="store_true",
             help="Print current understanding of options and parameters")
+        general.add_option(
+            "--dry-run", dest="dryRun", action="store_true",
+            help="Perform dry run (don't duplicate or partition)")
         parser.add_option_group(general)
 
         # Standard chunking options
@@ -423,6 +493,14 @@ class App:
             "--print-plottable", dest="printPlottable",
             action="store_true",
             help="Print something plottable by the hack tcl script")
+        duplication.add_option(
+            "--print-alloc", dest="printAlloc",
+            action="store_true",
+            help="Print a mapping from chunks to nodes")
+        duplication.add_option(
+            "--write-invalid", dest="writeInvalid",
+            help="Write out the invalid chunk list to a file.")
+
         parser.add_option_group(duplication)
         
         schema = optparse.OptionGroup(parser, "Schema options")
