@@ -50,11 +50,13 @@ class PacketIter;
 //////////////////////////////////////////////////////////////////////
 class ChunkQuery : public XrdPosixCallBack {
 public:
-    enum WaitState {WRITE_QUEUE,
+    enum WaitState {WRITE_QUEUE=100,
                     WRITE_OPEN, WRITE_WRITE, 
                     READ_QUEUE,
 		    READ_OPEN, READ_READ,
 		    COMPLETE, CORRUPT, ABORTED};
+    static char const* getWaitStateStr(WaitState s);
+
     class ReadCallable;
     class WriteCallable;
     friend class ReadCallable;
@@ -74,10 +76,10 @@ public:
         else return -1;
     }
     boost::shared_ptr<PacketIter> getResultIter();
-
     // Attempt to squash this query's execution.  This implies that
     // nobody cares about this query's results anymore.
     void requestSquash();
+
 private:
     void _sendQuery(int fd);
     void _readResults(int fd);

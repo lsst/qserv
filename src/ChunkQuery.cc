@@ -153,6 +153,22 @@ private:
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery 
 //////////////////////////////////////////////////////////////////////
+char const* qMaster::ChunkQuery::getWaitStateStr(WaitState s) {
+    switch(s) {
+    case WRITE_QUEUE: return "WRITE_QUEUE";
+    case WRITE_OPEN: return "WRITE_OPEN";
+    case WRITE_WRITE : return "WRITE_WRITE";
+    case READ_QUEUE: return "READ_QUEUE";
+    case READ_OPEN: return "READ_OPEN";
+    case READ_READ: return "READ_READ";
+    case COMPLETE : return "COMPLETE ";
+    case CORRUPT: return "CORRUPT";
+    case ABORTED: return "ABORTED";
+    default:
+        return "**UNKNOWN**";
+    }
+}
+
 void qMaster::ChunkQuery::Complete(int Result) {
     // Prevent multiple Complete() callbacks from stacking. 
     boost::shared_ptr<boost::mutex> m(_completeMutexP);
@@ -323,11 +339,18 @@ void qMaster::ChunkQuery::requestSquash() {
     //std::cout << "Squash requested for (" << _id << ", " << _hash << ")" << std::endl;
     _shouldSquash = true; 
     switch(_state) {
+    case WRITE_QUEUE: // Write is queued...
+        //FIXME: Remove the job from the work queue. 
+        // Actually, should just assume that other code will be clearing the queue.
+        break;
     case WRITE_OPEN:
         // Do nothing. Will get squashed at callback.
 	break;
     case WRITE_WRITE:
         // Do nothing. After write completes, it will check the squash flag.
+        break;
+    case READ_QUEUE:
+        // Assume job will be cleared from its queue.
         break;
     case READ_OPEN:
         // Squash with an unlink() call to the result file.
@@ -339,11 +362,13 @@ void qMaster::ChunkQuery::requestSquash() {
     case COMPLETE:
         // Do nothing.  It's too late to squash
 	break;
+    case ABORTED:
+        break; // Already squashed?
     case CORRUPT:
     default:
         // Something's screwed up.
         std::cout << "ChunkQuery squash failure. Bad state=" 
-                  << _state << std::endl;
+                  << getWaitStateStr(_state) << std::endl;
         // Not sure what we can do.
 	break;
     }    
