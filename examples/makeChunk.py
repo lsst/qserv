@@ -259,7 +259,7 @@ class App:
         self.chunkBounds = chunkBounds
         pass
 
-    def _setupDuplication(self):
+    def _setupDuplication(self, conf):
         paddedBounds = self.paddedBounds
         chunkBounds = self.chunkBounds
         dd = duplicator.DuplicationDef(conf)        
