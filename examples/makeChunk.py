@@ -248,7 +248,8 @@ class App:
             conf.node, conf.nodeCount, len(allChunkBounds))
 
         if conf.emptyFixed:
-            print "Empty (clipped) chunks:", pd.emptyChunks
+            print "Empty (clipped) chunks:", map(lambda c: c.chunkId,
+                                                 pd.emptyChunks)
             emptySet = set(pd.emptyChunks)
             chunkBounds = filter(lambda c:c not in emptySet, chunkBounds)
             
@@ -257,20 +258,18 @@ class App:
         self.paddedBounds = map(lambda b:self._padEdges(b, conf.overlap), 
                                 boundsList)
         self.chunkBounds = chunkBounds
+        if conf.printPlottable or conf.printChunkLayout:
+            pd.printPartBounds(plottable=conf.printPlottable)
+            
         pass
 
     def _setupDuplication(self, conf):
         paddedBounds = self.paddedBounds
         chunkBounds = self.chunkBounds
         dd = duplicator.DuplicationDef(conf)        
-        if conf.printPlottable:
-            pd.printPartBounds(plottable=True)
-            dd.printCopyInfo(plottable=True)
-        else:
-            if conf.printDupeLayout:
-                dd.printCopyInfo()
-            if conf.printChunkLayout:
-                pd.printPartBounds()            
+
+        if conf.printPlottable or conf.printChunkLayout:
+            dd.printCopyInfo(plottable=conf.printPlottable)
 
         print "Expanding allocated region to allow overlap=",conf.overlap
         copyList = dd.computeAllCopies(paddedBounds)
