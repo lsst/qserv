@@ -133,9 +133,21 @@ public:
         // Use blocking calls to prevent implicit thread creation by 
         // XrdClient
         _cq._state = ChunkQuery::WRITE_OPEN;
-        int result = qMaster::xrdOpen(_cq._spec.path.c_str(), O_WRONLY);
-        if (result == -1) {
-            result = -errno;
+        int tries = 5; // Arbitrarily try 5 times.
+        int result;
+        while(tries > 0) {
+            --tries;
+            result = qMaster::xrdOpen(_cq._spec.path.c_str(), O_WRONLY);
+            if (result == -1) {
+                if(errno == ENOENT) {
+                    std::cout << "Chunk not found for path:"
+                              << _cq._spec.path << " , "
+                              << tries << " tries left " << std::endl;
+                    continue;
+                }
+                result = -errno;
+            }
+            break;
         }
         _cq.Complete(result);
     }
@@ -251,12 +263,12 @@ void qMaster::ChunkQuery::run() {
     // This lock ensures that the remaining ChunkQuery::Complete() calls
     // do not proceed until this initial step completes.
     boost::unique_lock<boost::mutex> lock(_mutex);
-    int result = 0;
     std::cout << "Opening " << _spec.path << "\n";
     _writeOpenTimer.start();
     _hash = qMaster::hashQuery(_spec.query.c_str(), 
                                _spec.query.size());
 #if 0
+    int result = 0;
     while(true) {
         result = qMaster::xrdOpenAsync(_spec.path.c_str(), O_WRONLY, this);
         if(result == -EMFILE) {
