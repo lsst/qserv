@@ -103,6 +103,22 @@ class Db:
             pass # Try again
         return c.fetchall()    
 
+    def makeIfNotExist(self, db=None, table=None):
+        """ Create a database and/or a table
+        @param db : name of db to create
+        @param table : (tableName, columDefStr)"""
+        
+        dbTmpl = "CREATE DATABASE IF NOT EXISTS %s;"
+        tblTmpl = "CREATE TABLE IF NOT EXISTS %s %s;"
+        res = []
+        res.append(self.applySql(dbTmpl % db))
+        if table:
+            res.append(self.applySql(tblTmpl % (table[0], table[1])))
+        return res
+            
+        
+            
+
 
 class TaskDb:
     def __init__(self):

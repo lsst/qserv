@@ -50,6 +50,9 @@ class Indexer:
         
     def setupIndexes(self):
         p = PartitionGroup()
+        db = Db()
+        db.activate()
+        db.makeIfNotExist(db=metadata.getMetaDbName())
         #print p.tables
         for (t,d) in p.tables.items():
             if d.has_key("index"):
@@ -68,7 +71,7 @@ class Indexer:
 
         db = Db()
         db.activate()
-        db.applySql("DROP TABLE %s;" %(indexName)) #make room first.
+        db.applySql("DROP TABLE IF EXISTS %s;" %(indexName)) #make room first.
         a = app.HintedQueryAction(q, {"db" : metadata.getMetaDbName()}, 
                                   self.pmap, 
                                   lambda e: None, indexName)
