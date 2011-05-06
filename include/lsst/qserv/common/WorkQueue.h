@@ -43,13 +43,15 @@ public:
     public:
         virtual ~Callable() {} // Must halt current operation.
         virtual void operator()() = 0;
-        virtual void abort() {}
+        virtual void abort() {} // Halt while running or otherwise
+        virtual void cancel() {} // Cleanup (not run yet)
     };
 
     WorkQueue(int numRunners);
     ~WorkQueue();
 
     void add(boost::shared_ptr<Callable> c);
+    void cancelQueued();
 
     boost::shared_ptr<Callable> getNextCallable();
 

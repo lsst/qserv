@@ -36,7 +36,6 @@ class qCommon::WorkQueue::Runner {
 public:
     Runner(WorkQueue& w) : _w(w) { 
     }
-    
     void operator()() {
         _w.registerRunner(this);
         //std::cerr << "Started!" << std::endl;
@@ -92,6 +91,18 @@ void qCommon::WorkQueue::add(boost::shared_ptr<qCommon::WorkQueue::Callable> c) 
     } else {
         _queue.push_back(c);
         _queueNonEmpty.notify_all();
+    }
+}
+
+void qCommon::WorkQueue::cancelQueued() {
+    boost::unique_lock<boost::mutex> lock(_mutex);
+    boost::shared_ptr<Callable> c;
+    while(!_queue.empty()) {
+        c = _queue.front();
+        _queue.pop_front();
+        lock.unlock();
+        c->cancel();
+        lock.lock();
     }
 }
 

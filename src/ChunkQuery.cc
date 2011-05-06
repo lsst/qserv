@@ -154,7 +154,9 @@ public:
     virtual void abort() {
         // Can't really squash myself.
     }
-
+    virtual void cancel() {
+        _cq.Complete(-1);
+    }
     static CPtr makeShared(qMaster::ChunkQuery& cq) {
         return CPtr(new WriteCallable(cq));
     }

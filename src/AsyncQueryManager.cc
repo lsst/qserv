@@ -99,7 +99,7 @@ public:
         // but still exist briefly before it is deleted from the map.
         Timer t;
         t.start();
-        cq->requestSquash();        
+        cq->requestSquash();
         t.stop();
         std::cout << "qSquash " << t << std::endl;
 
@@ -399,6 +399,8 @@ void qMaster::AsyncQueryManager::_squashExecution() {
         std::cout << "AsyncQM squashExec copy " <<  std::endl;
         std::copy(_queries.begin(), _queries.end(), myQueries.begin());
     }
+    std::cout << "AsyncQM squashQueued" << std::endl;
+    _writeQueue->cancelQueued();
     std::cout << "AsyncQM squashExec iteration " <<  std::endl;
     std::for_each(myQueries.begin(), myQueries.end(), squashQuery(_queriesMutex, _queries));
     t.stop();
