@@ -227,7 +227,15 @@ class App:
                           for cb in cList]
         self._alloc = Alloc(conf.nodeCount, allChunkBounds, 
                             lambda c:c.chunkId, self.conf)
-        
+        if conf.chunkList:
+            cnums = map(int, str(conf.chunkList).split(","))
+            chunkBounds = filter(lambda cb:cb.chunkId in cnums, 
+                                 allChunkBounds)
+            pass
+        else:
+            chunkBounds = self._alloc.mapping[conf.node]
+            print "Choosing chunks for %d (%d total) from %s chunks" % (
+                conf.node, conf.nodeCount, len(allChunkBounds))
         if conf.printAlloc:
             m = self._alloc.mapping
             keys = m.keys()
@@ -243,9 +251,6 @@ class App:
             open(conf.writeInvalid, "w").write(
                 "\n".join(imap(str,inv)))
 
-        chunkBounds = self._alloc.mapping[conf.node]
-        print "Choosing chunks for %d (%d total) from %s chunks" % (
-            conf.node, conf.nodeCount, len(allChunkBounds))
 
         if conf.emptyFixed:
             print "Empty (clipped) chunks:", map(lambda c: c.chunkId,
@@ -474,7 +479,7 @@ class App:
             dest="chunkList", help=dedent("""\
             A comma-separated list of chunk numbers to generate.  
             Cannot be used in conjunction with --node and --nodeCount.
-            << NOT IMPLEMENTED >>"""))
+            (experimental)"""))
         duplication.add_option(
             "--bounds", dest="bounds",
             default=
