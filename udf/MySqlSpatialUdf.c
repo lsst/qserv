@@ -582,7 +582,7 @@ static int _qserv_parseSphPoly(_qserv_sphPoly_t *poly,
     if (n >= 6 && (n & 1) == 0) {
         /* Have at least 3 coordinate pairs. */
         n /= 2;
-        poly->edges = malloc(3 * n * sizeof(double));
+        poly->edges = (double*) malloc(3 * n * sizeof(double));
         if (poly->edges != 0) {
             _qserv_computeEdges(poly, v, n);
             ret = 0; /* success! */
@@ -637,7 +637,7 @@ my_bool qserv_ptInSphPoly_init(UDF_INIT *initid,
     initid->ptr = 0;
     /* If polygon spec is constant, parse and cache it. */
     if (const_poly) {
-        _qserv_sphPoly_t *poly = calloc(1, sizeof(_qserv_sphPoly_t));
+        _qserv_sphPoly_t *poly = (_qserv_sphPoly_t *) calloc(1, sizeof(_qserv_sphPoly_t));
         if (poly == 0) {
             strncpy(message, "qserv_ptInSphPoly(): failed to allocate memory "
                     "for polygon", MYSQL_ERRMSG_SIZE - 1);
