@@ -26,6 +26,7 @@
 // Std
 #include <deque>
 #include <string>
+#include <sstream>
 // Xrootd
 #include "XrdSfs/XrdSfsInterface.hh"
 
