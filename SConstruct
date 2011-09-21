@@ -56,7 +56,11 @@ if os.environ.has_key('MYSQL_DIR'):
     if os.path.exists(mysql_dir):
         env.Prepend(LIBPATH=[os.path.join(mysql_dir,"lib","mysql")])
         env.Prepend(CPPPATH=[os.path.join(mysql_dir,"include")])
-
+        path64 = os.path.join(mysql_dir,"lib64","mysql")
+        if os.path.exists(path64): env.Prepend(LIBPATH=[path64])
+else:
+    path64 = os.path.join("/usr","lib64","mysql")
+    if os.path.exists(path64): env.Prepend(LIBPATH=[path64])
 
 conf = Configure(env)
 
