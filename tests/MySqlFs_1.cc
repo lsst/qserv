@@ -26,6 +26,7 @@
 #include "boost/test/included/unit_test.hpp"
 
 #include "XrdSys/XrdSysLogger.hh"
+#include "lsst/qserv/worker/MySqlFs.h"
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>

@@ -14,7 +14,6 @@ for root, dirs, files in os.walk('../../src'):
 
 
 env.Append(CPPPATH = ['../include'])
-env.Append(LIBS=["XrdSfs"])
 lib = env.SharedLibrary("qserv_worker", 
                         sources)
 env.Append(built_libs=[lib])

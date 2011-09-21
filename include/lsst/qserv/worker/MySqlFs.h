@@ -91,4 +91,13 @@ private:
 
 }}} // namespace lsst::qserv::worker
 
+extern "C" { 
+// Forward
+class XrdSfsFileSystem;
+class XrdSysLogger;
+                                      
+XrdSfsFileSystem* XrdSfsGetFileSystem(XrdSfsFileSystem* native_fs, 
+                                             XrdSysLogger* lp, 
+                                             char const* fileName);
+}
 #endif

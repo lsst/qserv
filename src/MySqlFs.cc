@@ -40,6 +40,7 @@ namespace qWorker = lsst::qserv::worker;
 
 namespace { 
 
+#ifndef NO_XROOTD_FS
 template<class Callback>
 class FinishListener { 
 public:
@@ -72,7 +73,7 @@ public:
             filename, FinishListener<XrdSfsCallBack>(callback));
     }
 };
-
+#endif // ifndef NO_XROOTD_FS
 class FileValidator : public qWorker::fs::FileValidator {
 public:
     typedef boost::shared_ptr<FileValidator> Ptr;
@@ -133,9 +134,13 @@ XrdSfsDirectory* qWorker::MySqlFs::newDir(char* user) {
 }
 
 XrdSfsFile* qWorker::MySqlFs::newFile(char* user) {
+#ifdef NO_XROOTD_FS
+    return 0;
+#else
     return new qWorker::MySqlFsFile(_eDest, user, 
 				    boost::make_shared<AddCallbackFunc>(),
                                     boost::make_shared<FileValidator>(_localroot));
+#endif
 }
 
 // Other Functions
