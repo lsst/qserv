@@ -34,17 +34,14 @@ if not xrd_platform:
 env.Append(CPPPATH = [os.path.join(xrd_dir, "src")])
 env.Append(LIBPATH = [os.path.join(xrd_dir, "lib", xrd_platform)])
 print "xrd lib path is", os.path.join(xrd_dir,"lib",xrd_platform)
-boost_dir = "/u1/lsst/stack/Linux64/external/boost/1.37.0"
+
 if os.environ.has_key('BOOST_DIR'):
     boost_dir = os.environ['BOOST_DIR']
-if not os.path.exists(boost_dir):
-    boost_dir = "/afs/slac/g/ki/lsst/home/DMS/Linux/external/boost/1.37.0"
-if not os.path.exists(boost_dir):
-    print >> sys.stderr, "Could not locate Boost base directory (BOOST_DIR)"
-    Exit(1)
-
-env.Append(CPPPATH = [os.path.join(boost_dir, "include")])
-env.Append(LIBPATH = [os.path.join(boost_dir, "lib")])
+    if not os.path.exists(boost_dir):
+        print >> sys.stderr, "Could not locate Boost base directory (BOOST_DIR)"
+        Exit(1)
+    env.Append(CPPPATH = [os.path.join(boost_dir, "include")])
+    env.Append(LIBPATH = [os.path.join(boost_dir, "lib")])
 
 if os.environ.has_key('SSL_DIR'):
     ssl_dir = os.environ['SSL_DIR']
@@ -62,6 +59,8 @@ else:
     path64 = os.path.join("/usr","lib64","mysql")
     if os.path.exists(path64): env.Prepend(LIBPATH=[path64])
 
+# Add lib64 for Redhat/Fedora
+if os.path.exists("/usr/lib64"): env.Append(LIBPATH=["/usr/lib64"])
 conf = Configure(env)
 
 if not conf.CheckLib("ssl"):
@@ -93,6 +92,7 @@ if not (conf.CheckLib("boost_regex-gcc43-mt", language="C++")
     Exit(1)
 if not conf.CheckLib("boost_thread-gcc34-mt", language="C++") \
         and not conf.CheckLib("boost_thread-gcc41-mt", language="C++") \
+        and not conf.CheckLib("boost_thread-mt", language="C++") \
         and not conf.CheckLib("boost_thread", language="C++"):
     print >> sys.stderr, "Could not locate boost_thread library"
     Exit(1)
