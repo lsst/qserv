@@ -40,7 +40,26 @@ namespace qWorker = lsst::qserv::worker;
 
 namespace { 
 
-#ifndef NO_XROOTD_FS
+#ifdef NO_XROOTD_FS // Fake placeholder functions
+class FakeAddCallback : public qWorker::AddCallbackFunction {
+public:
+    typedef boost::shared_ptr<FakeAddCallback> Ptr;
+    virtual ~FakeAddCallback() {}
+    virtual void operator()(XrdSfsFile& caller, std::string const& filename) {
+    }
+};    
+
+class FakeFileValidator : public qWorker::fs::FileValidator {
+public:
+    typedef boost::shared_ptr<FakeFileValidator> Ptr;
+    FakeFileValidator() {}
+    virtual ~FakeFileValidator() {}
+    virtual bool operator()(std::string const& filename) {
+        return true;
+    }
+};
+
+#else // "Real" helper functors
 template<class Callback>
 class FinishListener { 
 public:
@@ -111,7 +130,8 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
 	_eDest->Say("Skipping load of libXrdOfs.so (non xrootd build).");
 #else
     XrdSfsFileSystem* fs;
-    fs = XrdXrootdloadFileSystem(_eDest, "libXrdOfs.so", cFileName);
+    fs = XrdXrootdloadFileSystem(_eDest, 
+                                 const_cast<char*>("libXrdOfs.so"), cFileName);
     if(fs == 0) {
 	_eDest->Say("Problem loading libXrdOfs.so. Clustering won't work.");
     }
@@ -135,7 +155,9 @@ XrdSfsDirectory* qWorker::MySqlFs::newDir(char* user) {
 
 XrdSfsFile* qWorker::MySqlFs::newFile(char* user) {
 #ifdef NO_XROOTD_FS
-    return 0;
+    return new qWorker::MySqlFsFile(_eDest, user, 
+				    boost::make_shared<FakeAddCallback>(),
+                                    boost::make_shared<FakeFileValidator>());
 #else
     return new qWorker::MySqlFsFile(_eDest, user, 
 				    boost::make_shared<AddCallbackFunc>(),

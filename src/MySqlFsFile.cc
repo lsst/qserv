@@ -174,7 +174,7 @@ std::ostream& operator<<(std::ostream& os, Timer const& tm) {
 //////////////////////////////////////////////////////////////////////////////
 // MySqlFsFile
 //////////////////////////////////////////////////////////////////////////////
-qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user, 
+qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char const* user, 
 				  AddCallbackFunction::Ptr acf,
                                   qWorker::fs::FileValidator::Ptr fv) :
     XrdSfsFile(user), _eDest(lp), _addCallbackF(acf), _validator(fv) {
@@ -184,7 +184,7 @@ qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char* user,
     // (See XRootd Protocol spec: 4.2.1.1 Connection name format)
     // Actually, master will pre-munge user as user.<mode>
     // where <mode> is "r" or "w".
-    char* cursor = user;
+    char const* cursor = user;
     while(cursor && (*cursor != '.')) ++cursor;
     _userName = std::string(user, cursor - user);
 }

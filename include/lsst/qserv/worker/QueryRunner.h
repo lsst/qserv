@@ -30,6 +30,7 @@
 #include "boost/thread.hpp" // for mutex support
 // xrootd
 #include "XrdSfs/XrdSfsInterface.hh"
+#include "mysql/mysql.h"
 
 // package
 #include "lsst/qserv/worker/Base.h"

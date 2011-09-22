@@ -26,7 +26,6 @@
 #include <iostream>
 
 #include <boost/signal.hpp>
-#include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 #include "lsst/qserv/worker/WorkQueue.h"

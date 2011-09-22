@@ -53,7 +53,7 @@ public:
     
 class MySqlFsFile : public XrdSfsFile {
 public:
-    MySqlFsFile(XrdSysError* lp, char* user = 0, 
+    MySqlFsFile(XrdSysError* lp, char const* user = 0, 
 		AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr(),
                 fs::FileValidator::Ptr fv = fs::FileValidator::Ptr());
     virtual ~MySqlFsFile(void);
