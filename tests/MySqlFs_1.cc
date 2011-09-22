@@ -108,8 +108,6 @@ BOOST_AUTO_TEST_CASE(FileUnimplemented) {
     BOOST_CHECK_EQUAL(file->fctl(0, "x", outErr), SFS_ERROR);
     off_t size;
     BOOST_CHECK_EQUAL(file->getMmap(0, size), SFS_ERROR);
-    BOOST_CHECK_EQUAL(file->read(static_cast<XrdSfsAio*>(0)), SFS_ERROR);
-    BOOST_CHECK_EQUAL(file->write(static_cast<XrdSfsAio*>(0)), SFS_ERROR);
     BOOST_CHECK_EQUAL(file->sync(), SFS_ERROR);
     BOOST_CHECK_EQUAL(file->sync(static_cast<XrdSfsAio*>(0)), SFS_ERROR);
     struct stat st;
@@ -124,7 +122,7 @@ BOOST_AUTO_TEST_CASE(File) {
     BOOST_CHECK(_fs != 0);
     boost::scoped_ptr<XrdSfsFile> file(_fs->newFile());
     BOOST_CHECK(file.get() != 0);
-    file->open("314159", O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
+    file->open("/query/314159", O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
     std::string query =
         "-- 42,99\n"
         "CREATE TABLE Result AS "
@@ -139,6 +137,7 @@ BOOST_AUTO_TEST_CASE(File) {
         std::cerr << ": " << strerror(err) << std::endl;
         BOOST_REQUIRE_NE(sz, -1);
     }
+#if 0 // FIXME: reading requires a separate open-read-close transaction
     char result[4096];
     sz = file->read(0, result, sizeof(result)); 
     if (sz == -1) {
@@ -146,8 +145,11 @@ BOOST_AUTO_TEST_CASE(File) {
         std::cerr << file->error.getErrText(err);
         std::cerr << ": " << strerror(err) << std::endl;
         BOOST_REQUIRE_NE(sz, -1);
+    } else if (sz < 0) { 
+        BOOST_REQUIRE_GE(sz, 0); 
     }
     std::cerr << std::string(result, sz) << std::endl;
+#endif
     file->close();
 }
 
