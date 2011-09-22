@@ -166,6 +166,7 @@ except Exception, e:
 for d in Split("tests doc"): 
     if os.path.isdir(d):
         try:
-            SConscript(os.path.join(d, "SConscript"), exports='env')
+            SConscript(os.path.join(d, "SConscript"), 
+                       exports={'env' : env, 'envNoXrd' : envNoXrd})
         except Exception, e:
             print >> sys.stderr, "%s: %s" % (os.path.join(d, "SConscript"), e)
