@@ -146,20 +146,27 @@ LSST Query Services worker package
 #
 
 ## Build lib twice, with and without xrd
-## Must invoke w/ build_dir at top-level SConstruct.
+## Must invoke w/ variant_dir at top-level SConstruct.
 envNoXrd = env.Clone(CCFLAGS=["-g","-DNO_XROOTD_FS"])
 env.Append(CCFLAGS=['-g','-pedantic','-Wno-long-long'])
+# Hack to workaround missing XrdSfs library in xrootd.
+sfsObjs = map(lambda f: env.SharedObject(os.path.join(xrd_dir, "src", 
+                                                      "XrdSfs", f)),
+              ["XrdSfsCallBack.cc","XrdSfsNative.cc"])
+env.Append(sfsObjs=sfsObjs)
+envNoXrd.Append(sfsObjs=sfsObjs)
 for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
     try:
-        SConscript("SConscript.lib", build_dir=bldDir,
-                   exports={'env' : expEnv})
+        VariantDir(bldDir, 'src')               
+        SConscript("src/SConscript.lib", variant_dir=bldDir,
+                   exports={'env' : expEnv, 'xrd_dir' : xrd_dir})
     except Exception, e:
         print >> sys.stderr, "%s: %s" % (os.path.join("src", "SConscript.lib"), e)
 
 # Build UDFs
 try:
-    raise 1
-    SConscript("SConscript.udf", build_dir='bld', exports={'env': udfEnv})
+    #raise Warning("Udf building DISABLED. Comment-out line in SConstruct to enable")
+    SConscript("SConscript.udf", variant_dir='bldUdf', exports={'env': udfEnv})
 except Exception, e:
     print >> sys.stderr, "%s: %s" % (os.path.join("udf", "SConscript"), e)
 

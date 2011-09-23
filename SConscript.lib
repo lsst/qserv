@@ -1,10 +1,11 @@
 # -*- python -*-
-Import('env')
+# DEPRECATED: Newer SCons has better handling for build/"variant" directories.
+# -danielw (9/22/2011)
 
 ## This indirection is necessary.  
 ## See:http://www.scons.org/wiki/UsingBuildDir
 ## "The solution is to use a subsidiary SConscript file in the 
 ## top level directory and refer to foo1.c relative to the build 
 ## directory: "
-SConscript('src/SConscript.lib', exports={'env': env})
+SConscript('src/SConscript.lib', exports={'env': env, 'xrd_dir' : xrd_dir})
 

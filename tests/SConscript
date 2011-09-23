@@ -11,10 +11,8 @@ Import("env")
 Import("envNoXrd")
 
 testEnv = envNoXrd.Clone()
-testEnv.Append(LIBPATH = ["../bldNoXrd/src"])
-#testEnv.Append(CPPPATH = ["../include"])
+testEnv.Append(LIBPATH = ["../bldNoXrd"])
 testEnv.Append(LIBS = ["qserv_worker", "stdc++"])
-#testEnv.Append(CCFLAGS=["-DNO_XROOTD_FS"])
 
 def patch_environ(environ, libpaths):
     if not libpaths: return environ
@@ -47,7 +45,6 @@ testEnv.Append(BUILDERS = {'Test': bld})
 for src in Glob("*.cc"):
     prog = testEnv.Program(src)
     test = testEnv.Test(prog)
-    testEnv.Depends(test, testEnv['built_libs'])
     pass
 
 if skipUdfTest:

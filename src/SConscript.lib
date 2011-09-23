@@ -1,19 +1,25 @@
 # -*- python -*-
 Import('env')
+Import('xrd_dir')
 import os, fnmatch
 
 # This seems not to work if placed in lib/
 # The path to ../src seems to prevent scons from building .os files in
 # the build dir.
 sources=[]
-#print os.getcwd(), os.listdir('../../src')
-for root, dirs, files in os.walk('../../src'):
+#print os.getcwd(), os.listdir('../src')
+for root, dirs, files in os.walk('../src'):
     sources += fnmatch.filter(files, "*.cc")
     # Filter out dotfiles?
     dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
 
-
 env.Append(CPPPATH = ['../include'])
-lib = env.SharedLibrary("qserv_worker", 
-                        sources)
-env.Append(built_libs=[lib])
+
+# Hack to workaround missing XrdSfs library in xrootd.
+if env.has_key('sfsObjs'):
+    sources += env["sfsObjs"]
+
+lib = env.SharedLibrary("qserv_worker", sources)
+installedLib = env.Install('lib', lib)
+env.Append(built_libs=[installedLib])
+
