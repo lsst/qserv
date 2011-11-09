@@ -1,45 +1,25 @@
 # -*- python -*-
 #
-# SConstruct for qserv/master
+# Setup our environment
 #
-#  
-# Helpful envvars:
-#
-# SEARCH_ROOTS : Set the include/lib search path prefixes.
-#                Redhat/Fedora users will want to add "/usr" so that
-#                /usr/lib64 is added.  Defaults to "/usr:/usr/local"
-# MYSQL_ROOT : Search a different root for MySQL. Useful if you have a
-#              MySQL build that isn't covered by SEARCH_ROOTS or if
-#              you'd like to override the version(s) found in system
-#              directories or SEARCH_ROOTS 
-# SWIG : The path to the swig binary to use.  Use this to specify a
-#        particular SWIG installation (1.3.29 is known to be faulty,
-#        and is shipped with RHEL5)
-#
-# Xrootd-specific variables:  The builder expects a xrootd source tree
-# compiled/built in-place, so the following XRD variables need to be
-# specified since the tree cannot be found automatically.
-# XRD_DIR : The path to the xrootd code checkout/clone (the top-level
-#           xrootd directory that holds src/, lib/, configure.classic,
-#           and others) 
-# XRD_PLATFORM : The platform id used by xrootd for the
-#                os/machine. e.g., x86_64_linux_26_dbg.  The builder
-#                will check $XRD_DIR/lib/$XRD_PLATFORM for xrootd
-#                libraries. 
-
-
+# 
 import glob, os.path, re, sys
 import distutils.sysconfig
 
+env = Environment()
 
-### Distribution creation
 def makePythonDist():
     print 'dist', distutils.sysconfig.get_python_inc()
     
+
 if 'install' in COMMAND_LINE_TARGETS:
     makePythonDist()
 
-# Xrootd/Scalla search helper
+searchRoots = ['/usr/local/'] # search in /usr/local by default.
+if os.environ.has_key('SEARCH_ROOTS'):
+    searchRoots = os.environ['SEARCH_ROOTS'].split(":")
+
+# Scalla/xrootd is more complex to find.
 class XrdHelper:
     def __init__(self, roots):
         self.cands = roots
@@ -74,31 +54,12 @@ class XrdHelper:
         return None
     pass
 
-## Boost checker
-def checkBoost(lib):
-    if not conf.CheckLib(lib + "-gcc34-mt", language="C++") \
-            and not conf.CheckLib(lib + "-gcc41-mt", language="C++") \
-            and not conf.CheckLib(lib, language="C++") \
-            and not conf.CheckLib(lib + "-mt", language="C++"):
-        print >>sys.stderr, "Can't find " + lib
-        canBuild = False
-
 def composeEnv(env, roots=[], includes=[], libs=[]):
     env.Append(CPPPATH=[os.path.join(x, "include") for x in roots])
     env.Append(CPPPATH=includes)
     env.Append(LIBPATH=[os.path.join(x, "lib") for x in roots])
     env.Append(LIBPATH=libs)
     return env
-
-
-##############################
-## Work starts here.
-##############################
-env = Environment()
-searchRoots = ['/usr', '/usr/local/'] # search in /usr/local by default.
-if os.environ.has_key('SEARCH_ROOTS'):
-    searchRoots = os.environ['SEARCH_ROOTS'].split(":")
-
 
 # Start checking deps
 # -------------------
@@ -132,13 +93,12 @@ mysqlRoots = filter(lambda r: "mysql" in r, searchRoots)
 if os.environ.has_key('MYSQL_ROOT'):
     mysqlRoots.append(os.environ['MYSQL_ROOT'])
 
-if not mysqlRoots: # If not overridden, use general search roots.
-    mysqlRoots = searchRoots
-
-# Look for mysql sub-directories. lib64 is important on RH/Fedora
-searchLibs += filter(os.path.exists, 
-                     [os.path.join(r, lb, "mysql") 
-                      for r in mysqlRoots for lb in ["lib","lib64"]])
+if mysqlRoots:
+    searchLibs += filter(os.path.exists, 
+                     map(lambda r: os.path.join(r,"lib", "mysql"),mysqlRoots))
+else:
+    searchLibs += filter(os.path.exists, 
+                         map(lambda r: os.path.join(r,"lib","mysql"),searchRoots))
 
 composeEnv(env, roots=searchRoots, includes=[xrd_inc], libs=searchLibs)
 if hasXrootd:
@@ -155,6 +115,13 @@ env.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
 conf = Configure(env)
 
 # boost library reqs
+def checkBoost(lib):
+    if not conf.CheckLib(lib + "-gcc34-mt", language="C++") \
+            and not conf.CheckLib(lib + "-gcc41-mt", language="C++") \
+            and not conf.CheckLib(lib, language="C++") \
+            and not conf.CheckLib(lib + "-mt", language="C++"):
+        print >>sys.stderr, "Can't find " + lib
+        canBuild = False
 checkBoost("boost_thread")
 checkBoost("boost_regex")
 
@@ -257,18 +224,18 @@ xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
 if canBuild:
     env.SharedLibrary(pyLib, srcPaths)
     env.Program(runTrans['bin'], runTrans["srcPaths"])
-#    env.Program(target=testIter['bin'], 
- #               source=testIter["srcPaths"],
-                #                LINKFLAGS='--static',
-  #              LIBS=["XrdPosix", "XrdClient", "XrdSys", 
-   #                   "XrdNet", "XrdOuc", "XrdOss", "crypto", "dl",
-    #                  "boost_thread", "boost_regex", "pthread"])
-#    parseEnv.Program(testParser['bin'], testParser["srcPaths"])
-#    env.Program(target=xrdPrecache['bin'], source=xrdPrecache["srcPaths"],
-#                LINKFLAGS='--static', 
-#                LIBS=["XrdPosix", "XrdClient", "XrdSys", 
-#                      "XrdNet", "XrdOuc", "XrdOss", "ssl", "crypto", "dl",
-#                      "boost_thread", "pthread"])
+    env.Program(target=testIter['bin'], 
+                source=testIter["srcPaths"],
+                LINKFLAGS='--static',
+                LIBS=["XrdPosix", "XrdClient", "XrdSys", 
+                      "XrdNet", "XrdOuc", "XrdOss", "ssl", "crypto", "dl",
+                      "boost_thread", "boost_regex", "pthread"])
+    parseEnv.Program(testParser['bin'], testParser["srcPaths"])
+    env.Program(target=xrdPrecache['bin'], source=xrdPrecache["srcPaths"],
+                LINKFLAGS='--static', 
+                LIBS=["XrdPosix", "XrdClient", "XrdSys", 
+                      "XrdNet", "XrdOuc", "XrdOss", "ssl", "crypto", "dl",
+                      "boost_thread", "pthread"])
 
 # Describe what your package contains here.
 env.Help("""

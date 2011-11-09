@@ -22,13 +22,7 @@
 
 #include "lsst/qserv/master/Timer.h"
 
-namespace lsst {
-namespace qserv {
-namespace master {
-
-std::ostream& operator<<(std::ostream& os, Timer const& tm) {
+std::ostream& lsst::qserv::master::operator<<(std::ostream& os, lsst::qserv::master::Timer const& tm) {
     os << tm.getStartTimeStr() << " " << tm.getElapsed();
     return os;
 }
-
-}}} // lsst::qserv::master

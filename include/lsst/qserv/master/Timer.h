@@ -27,7 +27,6 @@
 
 #include <sys/time.h>
 #include <iostream>
-#include <cstring>
 // Timer.h : A dirt-simple class for instrumenting ops in qserv.
 
 namespace lsst {
@@ -46,7 +45,7 @@ public:
     char const* getStartTimeStr() const {
         char* buf = const_cast<char*>(startTimeStr); // spiritually const
         asctime_r(localtime(&stopTime.tv_sec), buf); 
-        buf[std::strlen(startTimeStr)-1] = 0;
+        buf[strlen(startTimeStr)-1] = 0;
         return startTimeStr;
     }
 

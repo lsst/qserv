@@ -22,7 +22,7 @@
  
  
 #include <sstream>
-#include <cstdio>
+
 // Boost
 #include <boost/thread.hpp> // for mutex. 
 #include <boost/format.hpp> // for mutex. 
@@ -124,7 +124,7 @@ void SqlConnection::_discardResults(MYSQL* mysql) {
 	}
 	/* more results? -1 = no, >0 = error, 0 = yes (keep looping) */
 	if ((status = mysql_next_result(mysql)) > 0)
-            std::printf("Could not execute statement\n");
+	    printf("Could not execute statement\n");
     } while (status == 0);
         
 }
