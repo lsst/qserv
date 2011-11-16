@@ -1,0 +1,12 @@
+
+# /
+/.scon*
+/config.log
+/bld
+
+# /doc/
+/doc/htmlDir
+
+# /tests/
+/tests/.tests
+/tests/*_[1-9]
