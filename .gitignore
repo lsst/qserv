@@ -9,3 +9,18 @@ src/SqlSQL2TokenTypes.txt
 src/expandedSqlSQL2.g
 *~
 
+
+# /
+/.scon*
+/config.log
+
+# /doc/
+/doc/htmlDir
+
+# /python/lsst/qserv/master/
+/python/lsst/qserv/master/masterLib.py
+/python/lsst/qserv/master/*_wrap.*
+
+# /tests/
+/tests/.tests
+/tests/*_[1-9]
