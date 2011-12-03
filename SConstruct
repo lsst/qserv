@@ -176,6 +176,10 @@ conf = Configure(env)
 if not conf.CheckLib("ssl"):
     print >> sys.stderr, "Could not locate ssl"
     canBuild = False
+if not conf.CheckLib("crypto"):
+    print >> sys.stderr, "Could not locate libcrypto"
+    canBuild = False
+
 
 # MySQL
 if not conf.CheckCXXHeader("mysql/mysql.h"):
