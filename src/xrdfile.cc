@@ -110,7 +110,7 @@ void qMaster::xrdInit() {
     const int xrdOpenFiles = 1024*1024*1024; // 1 billion open files
     static int Init = Xunix.Init(&Init);
     // Use non-OS file descriptors
-    static XrdPosixXrootd::XrdPosixXrootd posixXrd(-xrdOpenFiles);
+    static XrdPosixXrootd posixXrd(-xrdOpenFiles);
     qMasterXrdInitialized = true;
 
     // Set timeouts to effectively disable client timeouts.
