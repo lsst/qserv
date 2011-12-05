@@ -1,5 +1,2 @@
-svn co @SVNROOT@/DMS/qserv/worker/tags/@VERSION@ @PRODUCT@-@VERSION@ &&
-cd @PRODUCT@-@VERSION@ &&
-setup -r . &&
-scons opt=3 &&
-scons opt=3 install
+@LSST BUILD@
+build_lsst @PRODUCT@ @VERSION@ @REPOVERSION@
