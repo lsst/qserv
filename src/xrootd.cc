@@ -39,15 +39,15 @@ std::string qMaster::makeUrl(char const* hostport, char const* typeStr,
 }
 
 std::string qMaster::makeUrl(char const* hostport, 
-			     char const* typeStr, std::string const& s,
+                             char const* typeStr, std::string const& s,
                              char mode) {
 
     // typeStr is either "query" or "result"
     if(hostport == NULL) {
-	hostport = ::getenv("QSERV_XRD");
-	if(hostport == NULL) {
-	    hostport = "lsst-dev01:1094";
-	}
+        hostport = ::getenv("QSERV_XRD");
+        if(hostport == NULL) {
+            hostport = "lsst-dev01:1094";
+        }
     }
 #if 0
     char* user = "qsmaster";
@@ -76,8 +76,6 @@ std::string qMaster::makeUrl(char const* hostport,
     return ret;
 #endif
 }
-
-
 
 // hashQuery
 // a query hasher.  

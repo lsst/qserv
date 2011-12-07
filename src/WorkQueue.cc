@@ -68,8 +68,8 @@ qCommon::WorkQueue::WorkQueue(int numRunners) : _isDead(false) {
         _addRunner();
     }
 }
+
 qCommon::WorkQueue::~WorkQueue() {
-    
     _dropQueue(true);
     int poisonToMake = 2*_runners.size(); // double dose of poison
     for(int i = 0; i < poisonToMake; ++i) {
@@ -79,12 +79,13 @@ qCommon::WorkQueue::~WorkQueue() {
 
     while(_runners.size() > 0) {
         _runnersEmpty.wait(lock);
-        std::cout << "signalled... " << _runners.size() << " remain" << std::endl;
+        std::cout << "signalled... " << _runners.size() 
+                  << " remain" << std::endl;
     }
-        
 }
 
-void qCommon::WorkQueue::add(boost::shared_ptr<qCommon::WorkQueue::Callable> c) {
+void 
+qCommon::WorkQueue::add(boost::shared_ptr<qCommon::WorkQueue::Callable> c) {
     boost::lock_guard<boost::mutex> lock(_mutex);
     if(_isDead && !isPoison(c.get())) {
         std::cout << "Queue refusing work: dead" << std::endl;
@@ -106,7 +107,8 @@ void qCommon::WorkQueue::cancelQueued() {
     }
 }
 
-boost::shared_ptr<qCommon::WorkQueue::Callable> qCommon::WorkQueue::getNextCallable() {
+boost::shared_ptr<qCommon::WorkQueue::Callable> 
+qCommon::WorkQueue::getNextCallable() {
     boost::unique_lock<boost::mutex> lock(_mutex);
     while(_queue.empty()) {
         _queueNonEmpty.wait(lock);
@@ -115,6 +117,7 @@ boost::shared_ptr<qCommon::WorkQueue::Callable> qCommon::WorkQueue::getNextCalla
     _queue.pop_front();
     return c;
 }
+
 void qCommon::WorkQueue::registerRunner(Runner* r) {
     boost::lock_guard<boost::mutex> lock(_runnersMutex); 
     _runners.push_back(r);
@@ -163,7 +166,6 @@ public:
         struct timespec ts;
         struct timespec rem;
 
-
         ss << "MyCallable " << _myId << " (" << _spinTime
            << ") STARTED spinning" << std::endl;
         std::cout << ss.str();
@@ -173,17 +175,13 @@ public:
         if(-1 == nanosleep(&ts, &rem)) {
             ss << "Interrupted " ;
         }
-        
 
         ss << "MyCallable " << _myId << " (" << _spinTime
            << ") STOPPED spinning" << std::endl;
         std::cout << ss.str();
-
-        
     }
     int _myId;
     float _spinTime;
-    
 };
 
 void test() {

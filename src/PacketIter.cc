@@ -65,7 +65,7 @@ bool qMaster::PacketIter::incrementExtend() {
     void* ptr = ::realloc(_current.first, _current.second + _fragSize);
     if(!ptr) {
         std::cerr << "Can't realloc for PacketIter. Raising exception." 
-              << std::endl;
+                  << std::endl;
         assert(ptr);
     }    
     _buffer = ptr;
@@ -138,7 +138,4 @@ void qMaster::PacketIter::_fill(Value& v) {
         _stop = true;
     }
     v.second = readRes;
-
 }
-
-

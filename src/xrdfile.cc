@@ -51,14 +51,14 @@ void recordTrans(char const* path, char const* buf, int len) {
     static char traceFile[] = "/dev/shm/xrdTransaction.trace";
     std::string record;
     {
-	std::stringstream ss;
-	ss << "####" << path << "####" << std::string(buf, len) << "####\n";
-	record = ss.str();
+        std::stringstream ss;
+        ss << "####" << path << "####" << std::string(buf, len) << "####\n";
+        record = ss.str();
     }
     int fd = open(traceFile, O_CREAT|O_WRONLY|O_APPEND);
     if( fd != -1) {
-	int res = write(fd, record.data(), record.length());
-	close(fd);
+        int res = write(fd, record.data(), record.length());
+        close(fd);
     }
 }
 
@@ -71,7 +71,7 @@ void qMaster::xrdInit() {}
 int qMaster::xrdOpen(const char *path, int oflag) {
     static int fakeDes=50;
     std::cout << "xrd openfile " << path << " returning ("
-	      << fakeDes << ")" << std::endl;
+              << fakeDes << ")" << std::endl;
     return fakeDes;
 }
 
@@ -80,18 +80,18 @@ long long qMaster::xrdRead(int fildes, void *buf, unsigned long long nbyte) {
     int len=strlen(fakeResults);
     std::cout << "xrd read " << fildes << ": faked" << std::endl;
     if(nbyte > static_cast<unsigned long long>(len)) {
-	nbyte = len+1;
+        nbyte = len+1;
     }
     memcpy(buf, fakeResults, nbyte);
     return nbyte;
 }
 
 long long qMaster::xrdWrite(int fildes, const void *buf, 
-			    unsigned long long nbyte) {
+                            unsigned long long nbyte) {
     std::string s;
     s.assign(static_cast<const char*>(buf), nbyte);
     std::cout << "xrd write (" <<  fildes << ") \"" 
-	      << s << std::endl;
+              << s << std::endl;
     return nbyte;
 }
 
@@ -133,23 +133,23 @@ void qMaster::xrdInit() {
     //EnvPutInt(NAME_LBSERVERCONN_TTL, std::numeric_limits<int>::max());
 }
 
-#define QSM_TIMESTART(name, path)			\
+#define QSM_TIMESTART(name, path) \
     time_t start;\
     time_t finish;\
-    char timebuf[30];				\
+    char timebuf[30];\
     time(&start);\
     asctime_r(localtime(&start), timebuf);\
     timebuf[strlen(timebuf)-1] = 0;\
     std::cout << timebuf <<" " << name << " "	\
               << path << " in flight\n";
-#define QSM_TIMESTOP(name, path)			\
+#define QSM_TIMESTOP(name, path) \
     time(&finish);\
     asctime_r(localtime(&finish), timebuf);\
     timebuf[strlen(timebuf)-1] = 0;\
     std::cout << timebuf  << " (" \
-	      << finish - start \
+              << finish - start \
               << ") " << name << " " \
-	      << path << " finished.""\n";
+              << path << " finished.""\n";
 #if 1 // Turn off xrd call timing
 #undef QSM_TIMESTART
 #undef QSM_TIMESTOP
@@ -193,7 +193,7 @@ long long qMaster::xrdRead(int fildes, void *buf, unsigned long long nbyte) {
 }
 
 long long qMaster::xrdWrite(int fildes, const void *buf, 
-			    unsigned long long nbyte) {
+                            unsigned long long nbyte) {
     // std::string s;
     // s.assign(static_cast<const char*>(buf), nbyte);
     // std::cout << "xrd write (" <<  fildes << ") \"" 
@@ -217,7 +217,7 @@ long long qMaster::xrdLseekSet(int fildes, unsigned long long offset) {
 
 int qMaster::xrdReadStr(int fildes, char *buf, int len) {
     return xrdRead(fildes, static_cast<void*>(buf), 
-		   static_cast<unsigned long long>(len));
+                   static_cast<unsigned long long>(len));
 }
 
 std::string qMaster::xrdGetEndpoint(int fildes) {
@@ -227,9 +227,9 @@ std::string qMaster::xrdGetEndpoint(int fildes) {
     char buffer[maxSize]; 
     int port = XrdPosixXrootd::endPoint(fildes, buffer, maxSize);
     if(port > 0) { // valid port?
-	return std::string(buffer);
+        return std::string(buffer);
     } else {
-	return std::string();
+        return std::string();
     }
 }
 
@@ -246,9 +246,9 @@ std::string qMaster::xrdGetEndpoint(int fildes) {
 /// @return write -- How many bytes were written, or -errno (negative errno).
 /// @return read -- How many bytes were read, or -errno (negative errno).
 void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize, 
-				 const char* filename, 
+                                 const char* filename, 
                                  bool const *abortFlag,
-				 int* write, int* read) {
+                                 int* write, int* read) {
     size_t bytesRead = 0;
     size_t bytesWritten = 0;
     int writeRes = 0;
@@ -260,14 +260,14 @@ void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize,
     buffer = malloc(fragmentSize);
 
     if(buffer == NULL) {  // Bail out if we can't allocate.
-	*write = -1; 
-	*read = -1;
-	return;
+        *write = -1; 
+        *read = -1;
+        return;
     }
 
     int localFileDesc = open(filename, 
-			     O_CREAT|O_WRONLY|O_TRUNC,
-			     S_IRUSR|S_IWUSR);
+                             O_CREAT|O_WRONLY|O_TRUNC,
+                             S_IRUSR|S_IWUSR);
     if(localFileDesc == -1) {
         while(errno == -EMFILE) {
             std::cout << "EMFILE while trying to write locally." << std::endl;
@@ -276,19 +276,18 @@ void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize,
                                  O_CREAT|O_WRONLY|O_TRUNC,
                                  S_IRUSR|S_IWUSR);
         }
-	writeRes = -errno;
+        writeRes = -errno;
     }
     while(1) {
         if(abortFlag && (*abortFlag)) break;
-	readRes = xrdRead(fildes, buffer, 
-			      static_cast<unsigned long long>(fragmentSize));
-	if(readRes <= 0) { // Done, or error.
-	    readRes = -errno;
-	    
-	    break;
-	}                                       
+        readRes = xrdRead(fildes, buffer, 
+                          static_cast<unsigned long long>(fragmentSize));
+        if(readRes <= 0) { // Done, or error.
+            readRes = -errno;
+            break;
+        }                                       
         bytesRead += readRes;
-	if(writeRes >= 0) { // No error yet?
+        if(writeRes >= 0) { // No error yet?
             while(1) {
                 writeRes = pwrite(localFileDesc, buffer, 
                                   readRes, bytesWritten);
@@ -303,24 +302,24 @@ void qMaster::xrdReadToLocalFile(int fildes, int fragmentSize,
                 }
                 break;
             }
-	}
-	if(readRes < fragmentSize) {
-	    break;
-	}
+        }
+        if(readRes < fragmentSize) {
+            break;
+        }
     }
     // Close the writing file.
     if(localFileDesc != -1) {
-	int res = close(localFileDesc);
-	if((res == -1) && (writeRes >= 0)) {
+        int res = close(localFileDesc);
+        if((res == -1) && (writeRes >= 0)) {
             std::cout << "Bad local close for descriptor " << localFileDesc
                       << std::endl;
-	    writeRes = -errno;
-	} else {
-	    writeRes = bytesWritten; // Update successful result.
-	    if(readRes >= 0) {
-		readRes = bytesRead;
-	    }
-	}
+            writeRes = -errno;
+        } else {
+            writeRes = bytesWritten; // Update successful result.
+            if(readRes >= 0) {
+                readRes = bytesRead;
+            }
+        }
     }
     free(buffer);
     *write = writeRes;
@@ -340,20 +339,20 @@ qMaster::XrdTransResult qMaster::xrdOpenWriteReadSaveClose(
 
     int fh = xrdOpen(path, O_RDWR);
     if(fh == -1) {
-	r.open = -errno;
-	return r;
+        r.open = -errno;
+        return r;
     } else {
-	r.open = fh;
+        r.open = fh;
     }
 
     int writeCount = xrdWrite(fh, buf, len);
     if(writeCount != len) {
-	r.queryWrite = -errno;
+        r.queryWrite = -errno;
     } else {
-	r.queryWrite = writeCount;
-	xrdLseekSet(fh, 0);
-	xrdReadToLocalFile(fh, fragmentSize, outfile, 0,
-			   &(r.localWrite), &(r.read));
+        r.queryWrite = writeCount;
+        xrdLseekSet(fh, 0);
+        xrdReadToLocalFile(fh, fragmentSize, outfile, 0,
+                           &(r.localWrite), &(r.read));
     }
     xrdClose(fh);
     return r;
@@ -371,24 +370,23 @@ qMaster::XrdTransResult qMaster::xrdOpenWriteReadSave(
 
     int fh = xrdOpen(path, O_RDWR);
     if(fh == -1) {
-	r.open = -errno;
-	return r;
+        r.open = -errno;
+        return r;
     } else {
-	r.open = fh;
+        r.open = fh;
     }
 
     int writeCount = xrdWrite(fh, buf, len);
     if(writeCount != len) {
-	r.queryWrite = -errno;
+        r.queryWrite = -errno;
     } else {
-	r.queryWrite = writeCount;
-	xrdLseekSet(fh, 0);
-	xrdReadToLocalFile(fh, fragmentSize, outfile, 0,
-			   &(r.localWrite), &(r.read));
+        r.queryWrite = writeCount;
+        xrdLseekSet(fh, 0);
+        xrdReadToLocalFile(fh, fragmentSize, outfile, 0,
+                           &(r.localWrite), &(r.read));
     }
     return r;
 }
-
 
 #endif
 

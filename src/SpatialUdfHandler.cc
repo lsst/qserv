@@ -80,7 +80,6 @@ private:
             : paramStrs(begin, end) {
         }
 
-
         virtual std::string operator()(std::string const& tName, 
                                        StringMap const& tableConfig) {
             std::stringstream s;
@@ -107,11 +106,11 @@ private:
                                        StringMap const& tableConfig) {
             std::stringstream s;
             std::string raStr(getFromMap<StringMap>(tableConfig,
-                                                         "raCol", 
-                                                         "ra"));
+                                                    "raCol", 
+                                                    "ra"));
             std::string declStr(getFromMap<StringMap>(tableConfig,
-                                                         "declCol", 
-                                                         "decl"));
+                                                      "declCol", 
+                                                      "decl"));
             
             s << "(qserv_" << fName << "(" << tName << "." << raStr 
               << "," << tName << "." << declStr << ",";
@@ -294,9 +293,10 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler
 ////////////////////////////////////////////////////////////////////////
-qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory, 
-                                              StringMapMap const& tableConfigMap,
-                                              StringPairList const& spatialTables)
+qMaster::SpatialUdfHandler::SpatialUdfHandler(
+                                           antlr::ASTFactory* factory, 
+                                           StringMapMap const& tableConfigMap,
+                                           StringPairList const& spatialTables)
     : _fromWhere(new FromWhereHandler(*this)),
       _whereCond(new WhereCondHandler(*this)),
       _restrictor(new RestrictorHandler(*this)),
@@ -325,7 +325,8 @@ qMaster::SpatialUdfHandler::SpatialUdfHandler(antlr::ASTFactory* factory,
     //    setExpression("box",dummy, 4);
 }
 
-void qMaster::SpatialUdfHandler::addExpression(std::vector<std::string> const& v) {
+void 
+qMaster::SpatialUdfHandler::addExpression(std::vector<std::string> const& v) {
     std::stringstream ss;
     boost::shared_ptr<Restriction> r(new Restriction(_specName[v[0]], v));
     //std::cout << "adding restriction: " << funcName << std::endl;
@@ -333,7 +334,8 @@ void qMaster::SpatialUdfHandler::addExpression(std::vector<std::string> const& v
     _hasProcessedOutBand = false;
 }
 
-qMaster::StringMap const& qMaster::SpatialUdfHandler::getTableConfig(std::string const& tName) const {
+qMaster::StringMap const& 
+qMaster::SpatialUdfHandler::getTableConfig(std::string const& tName) const {
     StringMap sm;
     return getFromMap(_tableConfigMap, tName, sm);
 }
@@ -354,7 +356,9 @@ public:
 };
 
 
-std::ostream& qMaster::SpatialUdfHandler::_expandRestriction(Restriction const& r, std::ostream& o) {
+std::ostream& 
+qMaster::SpatialUdfHandler::_expandRestriction(Restriction const& r, 
+                                               std::ostream& o) {
     // Debug printout:
     // std::cout << "Got new restrictor spec " 
     //    << name->getText() << "--";

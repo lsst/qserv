@@ -46,7 +46,6 @@ void alternative() {
     char* envStopCount = ::getenv("QS_STOPCOUNT");
     if(envStopCount != (char*)0) { stopCount = atoi(envStopCount); }
 
-
     // alternate harness.
     using qMaster::QueryState;
     qMaster::initDispatcher();
@@ -54,14 +53,15 @@ void alternative() {
     qMaster::TransactionSpec::Reader r("xrdTransaction.trace");
     int i = 0;
     for(qMaster::TransactionSpec s = r.getSpec(); !s.isNull();
-	s = r.getSpec()) {
-	submitQuery(session, s);
-	++i;
-	if(stopCount && (i > stopCount)) break; // Stop early for debugging.
+        s = r.getSpec()) {
+        submitQuery(session, s);
+        ++i;
+        if(stopCount && (i > stopCount)) break; // Stop early for debugging.
     }
     QueryState s = qMaster::joinSession(session);
     qMaster::discardSession(session);
 }
+
 void original() {
     qMaster::Manager m;
     std::cout << "Setting up file\n";

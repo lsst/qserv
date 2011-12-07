@@ -36,17 +36,17 @@ using lsst::qserv::master::Templater;
 ////////////////////////////////////////////////////////////////////////
 void Templater::JoinVisitor::operator()(antlr::RefAST& a) {
     if(_isDelimited(a->getText())) {
-	_addRef(a);
-	_hasChunks = true;
+        _addRef(a);
+        _hasChunks = true;
     }
 }
 void Templater::JoinVisitor::applySubChunkRule() {
     RefMapIter e = _map.end();
     for(RefMapIter i = _map.begin(); i != e; ++i) {
-	if(i->second.size() > 1) {
-	    _reassignRefs(i->second);
-	    _hasSubChunks = true;
-	}
+        if(i->second.size() > 1) {
+            _reassignRefs(i->second);
+            _hasSubChunks = true;
+        }
     }
 }
 Templater::IntMap Templater::JoinVisitor::getUsageCount() const{
@@ -55,10 +55,10 @@ Templater::IntMap Templater::JoinVisitor::getUsageCount() const{
     register int delimLength = _delim.length();
     register int delimLength2 = delimLength + delimLength;
     for(RefMapConstIter i = _map.begin(); i != e; ++i) {
-	RefMapValue const& v = *i;
-	std::string key = v.first.substr(delimLength, 
-					 v.first.length()-delimLength2);
-	im[key] = v.second.size();
+        RefMapValue const& v = *i;
+        std::string key = v.first.substr(delimLength, 
+                                         v.first.length()-delimLength2);
+        im[key] = v.second.size();
     }
     return im;
 }
@@ -66,18 +66,18 @@ Templater::IntMap Templater::JoinVisitor::getUsageCount() const{
 void Templater::JoinVisitor::_addRef(antlr::RefAST& a) {
     std::string key(a->getText());
     if(_map.find(key) == _map.end()) {
-	_map.insert(RefMap::value_type(key,RefList()));
+        _map.insert(RefMap::value_type(key,RefList()));
     }
     _map[key].push_back(a);
 }
 bool Templater::JoinVisitor::_isDelimited(std::string const& s) {
     std::string::size_type lpos = s.find(_delim);
     if(std::string::npos != lpos && lpos == 0) {
-	std::string::size_type rpos = s.rfind(_delim);
-	if((std::string::npos != rpos) 
-	   && (rpos == s.size()-_delim.size())) {
-	    return true;
-	}
+        std::string::size_type rpos = s.rfind(_delim);
+        if((std::string::npos != rpos) 
+           && (rpos == s.size()-_delim.size())) {
+            return true;
+        }
     }
     return false;
 }
@@ -85,12 +85,12 @@ void Templater::JoinVisitor::_reassignRefs(RefList& l) {
     RefListIter e = l.end();
     int num=1;
     for(RefListIter i = l.begin(); i != e; ++i) {
-	antlr::RefAST& r = *i;
-	std::string orig = r->getText();
-	std::stringstream specss; 
-	specss << _subPrefix << num++;
-	orig.insert(orig.rfind(_delim), specss.str());
-	r->setText(orig);
+        antlr::RefAST& r = *i;
+        std::string orig = r->getText();
+        std::stringstream specss; 
+        specss << _subPrefix << num++;
+        orig.insert(orig.rfind(_delim), specss.str());
+        r->setText(orig);
     }
 }
 
@@ -99,7 +99,7 @@ class ImplicitDbVisitor {
     public:
     ImplicitDbVisitor() {
         std::cout << "newVisit" << std::endl;
-}
+    }
     void operator()(antlr::RefAST& a) {
         std::cout << "dbVisit: " << a->getText() << std::endl;
         lastRefs.push_back(a);
@@ -108,8 +108,7 @@ class ImplicitDbVisitor {
         }
         std::cout << "table name!" << std::endl;
         // check for db . table
-        RefList::reverse_iterator i = lastRefs.rbegin();
-        
+        RefList::reverse_iterator i = lastRefs.rbegin();   
     }
 
     inline bool isAlpha(char c) {
@@ -146,13 +145,11 @@ class ImplicitDbVisitor {
     RefList lastRefs;
 };
 
-
-
 ////////////////////////////////////////////////////////////////////////
 // Templater::TableListHandler
 ////////////////////////////////////////////////////////////////////////
 void Templater::TableListHandler::operator()(antlr::RefAST a, 
-					     antlr::RefAST b) {
+                                             antlr::RefAST b) {
     JoinVisitor j(_templater.getDelimiter(), "_sc");
     //ImplicitDbVisitor v;
     //walkTreeVisit(a,v);

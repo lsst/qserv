@@ -75,7 +75,6 @@ public:
     std::ostream& os;
 };
 
-
 class qMaster::AsyncQueryManager::squashQuery {
 public:
     squashQuery(boost::mutex& mutex_, QueryMap& queries_) 
@@ -102,7 +101,6 @@ public:
         cq->requestSquash();
         t.stop();
         std::cout << "qSquash " << t << std::endl;
-
     }
     boost::mutex& mutex;
     QueryMap& queries;
@@ -112,7 +110,7 @@ public:
 // AsyncQueryManager
 ////////////////////////////////////////////////////////////
 int qMaster::AsyncQueryManager::add(TransactionSpec const& t, 
-				    std::string const& resultName) {
+                                    std::string const& resultName) {
     int id = t.chunkId;
     // Use chunkId as id, and assume that it will be unique for the 
     // AsyncQueryManager instance.
@@ -125,23 +123,22 @@ int qMaster::AsyncQueryManager::add(TransactionSpec const& t,
     }
     TransactionSpec ts(t);
 
-
     doctorQueryPath(ts.path);
     QuerySpec qs(boost::make_shared<ChunkQuery>(ts, id, this),
-		 resultName);
+                 resultName);
     {
-	boost::lock_guard<boost::mutex> lock(_queriesMutex);
-	_queries[id] = qs;
+        boost::lock_guard<boost::mutex> lock(_queriesMutex);
+        _queries[id] = qs;
         ++_queryCount;
     }
     std::cout << "Added query id=" << id << " url=" << ts.path 
-	      << " with save " << ts.savePath << "\n";
+              << " with save " << ts.savePath << "\n";
     qs.first->run();
     return id;
 }
 
 void qMaster::AsyncQueryManager::finalizeQuery(int id, 
-					       XrdTransResult r,
+                                               XrdTransResult r,
                                                bool aborted) {
     std::stringstream ss;
     Timer t1;
@@ -160,8 +157,8 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
         Timer t2;
         t2.start();
         boost::shared_ptr<PacketIter> resIter;
-	{ // Lock scope for reading
-	    boost::lock_guard<boost::mutex> lock(_queriesMutex);
+        { // Lock scope for reading
+            boost::lock_guard<boost::mutex> lock(_queriesMutex);
             QuerySpec& s = _queries[id];
             resIter = s.first->getResultIter();	
             dumpFile = s.first->getSavePath();
@@ -179,7 +176,6 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
         // Erase right before notifying.
         t2.stop();
         ss << id << " QmFinalizeMerge " << t2 << std::endl;
-
     } // end if 
     else { 
         Timer t2e;
@@ -200,8 +196,8 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
     Timer t3;
     t3.start();
     {
-	boost::lock_guard<boost::mutex> lock(_resultsMutex);
-	_results.push_back(Result(id,r));
+        boost::lock_guard<boost::mutex> lock(_resultsMutex);
+        _results.push_back(Result(id,r));
         if(aborted) ++_squashCount; // Borrow result mutex to protect counter.
         { // Lock again to erase.
             Timer t2e1;
@@ -211,7 +207,7 @@ void qMaster::AsyncQueryManager::finalizeQuery(int id,
             if(_queries.empty()) _queriesEmpty.notify_all();
             t2e1.stop();
             ss << id << " QmFinalizeErase " << t2e1 << std::endl;
-	} 
+        } 
     }
     t3.stop();
     ss << id << " QmFinalizeResult " << t3 << std::endl;
@@ -250,7 +246,6 @@ void qMaster::AsyncQueryManager::joinEverything() {
     _merger->finalize();
     std::cout << "Query finish. " << _queryCount << " dispatched." 
               << std::endl;
-
 }
 
 void qMaster::AsyncQueryManager::configureMerger(TableMergerConfig const& c) {
@@ -259,7 +254,7 @@ void qMaster::AsyncQueryManager::configureMerger(TableMergerConfig const& c) {
 
 std::string qMaster::AsyncQueryManager::getMergeResultName() const {
     if(_merger.get()) {
-	return _merger->getTargetTable();
+        return _merger->getTargetTable();
     }
     return std::string();
 }
@@ -274,8 +269,8 @@ void qMaster::AsyncQueryManager::getReadPermission() {
                 break; // Allow "relief" from too many open files
         }
     }
-    
 }
+
 void qMaster::AsyncQueryManager::getWritePermission() {
     boost::unique_lock<boost::mutex> lock(_canReadMutex);
     while(!_canRead) { // only wait up to 5 seconds before continuing.
@@ -283,6 +278,7 @@ void qMaster::AsyncQueryManager::getWritePermission() {
                                      boost::posix_time::seconds(5));
     }
 }
+
 void qMaster::AsyncQueryManager::signalTooManyFiles() {
     boost::unique_lock<boost::mutex> lock(_canReadMutex);
     std::cout << "Too many files! relieving." << std::endl;
@@ -313,7 +309,8 @@ void qMaster::AsyncQueryManager::_initPool() {
     _writeQueue = boost::make_shared<lsst::qserv::common::WorkQueue>(writeThreads);
 }
 
-void qMaster::AsyncQueryManager::_readConfig(std::map<std::string,std::string> const& cfg) {
+void qMaster::AsyncQueryManager::_readConfig(std::map<std::string,
+                                                      std::string> const& cfg) {
     StringMap::const_iterator i = cfg.find("frontend.xrootd");
     if(i != cfg.end()) {
         _xrootdHostPort = i->second;
@@ -323,7 +320,6 @@ void qMaster::AsyncQueryManager::_readConfig(std::map<std::string,std::string> c
         _xrootdHostPort = "lsst-dev01:1094";
     }
 }
-
 
 void qMaster::AsyncQueryManager::_addNewResult(PacIterPtr pacIter,
                                                std::string const& tableName) {
@@ -402,11 +398,11 @@ void qMaster::AsyncQueryManager::_squashExecution() {
     std::cout << "AsyncQM squashQueued" << std::endl;
     _writeQueue->cancelQueued();
     std::cout << "AsyncQM squashExec iteration " <<  std::endl;
-    std::for_each(myQueries.begin(), myQueries.end(), squashQuery(_queriesMutex, _queries));
+    std::for_each(myQueries.begin(), myQueries.end(), 
+                  squashQuery(_queriesMutex, _queries));
     t.stop();
     std::cout << "AsyncQM squashExec " << t << std::endl;
     _isSquashed = true; // Ensure that flag wasn't trampled.
-     
 }
 
 void qMaster::AsyncQueryManager::_squashRemaining() {

@@ -38,30 +38,28 @@ typedef boost::shared_ptr<SessionMgr> SessionMgrPtr;
 namespace {
 
     SessionMgr& getSessionManager() {
-	// Singleton for now.
-	static SessionMgrPtr sm;
-	if(sm.get() == NULL) {
-	    sm = boost::make_shared<SessionMgr>();
-	}
-	assert(sm.get() != NULL);
-	return *sm;
+        // Singleton for now.
+        static SessionMgrPtr sm;
+        if(sm.get() == NULL) {
+            sm = boost::make_shared<SessionMgr>();
+        }
+        assert(sm.get() != NULL);
+        return *sm;
     }
 
     // Deprecated
     qMaster::QueryManager& getManager(int session) {
-	// Singleton for now. //
-	static boost::shared_ptr<qMaster::QueryManager> qm;
-	if(qm.get() == NULL) {
-	    qm = boost::make_shared<qMaster::QueryManager>();
-	}
-	return *qm;
+        // Singleton for now. //
+        static boost::shared_ptr<qMaster::QueryManager> qm;
+        if(qm.get() == NULL) {
+            qm = boost::make_shared<qMaster::QueryManager>();
+        }
+        return *qm;
     }
 
     qMaster::AsyncQueryManager& getAsyncManager(int session) {
-	return *(getSessionManager().getSession(session));
+        return *(getSessionManager().getSession(session));
     }
-
-    
 }
 
 void qMaster::initDispatcher() {
@@ -74,7 +72,8 @@ void qMaster::initDispatcher() {
 /// @param len Query string length
 /// @param savePath File path (with name) which will store the result (file, not dir)
 /// @return a token identifying the session
-int qMaster::submitQuery(int session, int chunk, char* str, int len, char* savePath, std::string const& resultName) {
+int qMaster::submitQuery(int session, int chunk, char* str, int len, 
+                         char* savePath, std::string const& resultName) {
     TransactionSpec t;
     AsyncQueryManager& qm = getAsyncManager(session);
     std::string const hp = qm.getXrootdHostPort();
@@ -86,13 +85,13 @@ int qMaster::submitQuery(int session, int chunk, char* str, int len, char* saveP
     return submitQuery(session, TransactionSpec(t), resultName);
 }
 
-int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s, std::string const& resultName) {
+int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s, 
+                         std::string const& resultName) {
     int queryId = 0;
 #if 1
     AsyncQueryManager& qm = getAsyncManager(session);
     qm.add(s, resultName); 
     //std::cout << "Dispatcher added  " << s.chunkId << std::endl;
-
 #else
     QueryManager& qm = getManager(session);
     qm.add(s); 
@@ -117,16 +116,15 @@ qMaster::QueryState qMaster::joinQuery(int session, int id) {
 qMaster::QueryState qMaster::tryJoinQuery(int session, int id) {
 #if 0 // Not implemented yet
     // Just get the status and return it.
-
 #if 1
     AsyncQueryManager& qm = getAsyncManager(session);
 #else
     QueryManager& qm = getManager(session);
 #endif
     if(qm.tryJoin(id)) {
-	return SUCCESS; 
+        return SUCCESS; 
     } else {
-	return ERROR;
+        return ERROR;
     }   
 #endif
     // FIXME...consider dropping this.
@@ -141,7 +139,7 @@ struct mergeStatus {
         isSuccessful = true;
     }
     void operator() (qMaster::AsyncQueryManager::Result const& x) { 
-	if(!x.second.isSuccessful()) {
+        if(!x.second.isSuccessful()) {
             if(shouldPrint || (firstN > 0)) {
                 std::cout << "Chunk " << x.first << " error " << std::endl
                           << "open: " << x.second.open 
@@ -150,13 +148,13 @@ struct mergeStatus {
                           << " lWrite: " << x.second.localWrite << std::endl;
                 --firstN;
             }
-	    isSuccessful = false;
-	} else {
+            isSuccessful = false;
+        } else {
             if(shouldPrint) {
                 std::cout << "Chunk " << x.first << " OK ("
                           << x.second.localWrite << ")\t";
             }
-	}
+        }
     }
     bool& isSuccessful;
     bool shouldPrint;
@@ -183,11 +181,11 @@ qMaster::QueryState qMaster::joinSession(int session) {
     
     std::cout << "Joined everything" << std::endl;
     if(successful) {
-	std::cout << "Successful!" << std::endl;
-	return SUCCESS;
+        std::cout << "Successful!" << std::endl;
+        return SUCCESS;
     } else {
-	std::cout << "Failure!" << std::endl;
-	return ERROR;
+        std::cout << "Failure!" << std::endl;
+        return ERROR;
     }
 }
 
@@ -199,24 +197,23 @@ std::string const& qMaster::getQueryStateString(QueryState const& qs) {
     static const std::string error("error");
     switch(qs) {
     case UNKNOWN:
-	return unknown;
+        return unknown;
     case WAITING:
-	return waiting;
+        return waiting;
     case DISPATCHED:
-	return dispatched;
+        return dispatched;
     case SUCCESS:
-	return success;
+        return success;
     case ERROR:
-	return error;
+        return error;
     default:
-	return unknown;
+        return unknown;
     }
-    
-
 }
 
 int qMaster::newSession(std::map<std::string,std::string> const& config) {
-    AsyncQueryManager::Ptr m = boost::make_shared<qMaster::AsyncQueryManager>(config);
+    AsyncQueryManager::Ptr m = 
+        boost::make_shared<qMaster::AsyncQueryManager>(config);
     int id = getSessionManager().newSession(m);
     return id;
 }

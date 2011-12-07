@@ -64,7 +64,6 @@ void printInserts(char const* buf, off_t bufSize,
     }
 }
 
-
 } // anonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
@@ -127,10 +126,10 @@ qMaster::SqlInsertIter::SqlInsertIter(PacketIter::Ptr p,
     // Might try _blockMatch[3].first, _blockMatch[3].second
     _setupIter();
 }
+
 qMaster::SqlInsertIter::~SqlInsertIter() {
     if(_pBuffer) free(_pBuffer);
 }
-
 
 void qMaster::SqlInsertIter::_setupIter() {
     _iter = Iter(_pBuffer + _pBufStart, _pBuffer + _pBufEnd, _insExpr);

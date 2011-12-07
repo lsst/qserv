@@ -92,6 +92,4 @@ void qMaster::MmapFile::_init(std::string const& filename,
         _buf = 0; // reset buffer.
     }
     // _fd and _buf will get closed/munmapped as necessary in destructor.
-} 
-
-
+}

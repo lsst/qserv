@@ -64,7 +64,6 @@ qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement,
       _config(config) {
     // Note: makes copy of chunkmapping.
     _build(sqlStatement);
-    //
 }
 
 void qMaster::SqlSubstitution::importSubChunkTables(char** cStringArr) {
@@ -89,7 +88,8 @@ std::string qMaster::SqlSubstitution::transform(int chunk, int subChunk) {
     return _fixDbRef(_substitution->transform(m), chunk, subChunk);
 }
 
-std::string qMaster::SqlSubstitution::substituteOnly(qMaster::StringMap const& m) {
+std::string 
+qMaster::SqlSubstitution::substituteOnly(qMaster::StringMap const& m) {
     if(!_substitution.get()) return std::string();
     return _substitution->transform(m);
 }
@@ -109,13 +109,13 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement) {
     spr = SqlParseRunner::newInstance(sqlStatement, _delimiter, _config);
     spr->setup(names);
     if(spr->getHasAggregate()) {
-	template_ = spr->getAggParseResult();
+        template_ = spr->getAggParseResult();
     } else {
-	template_ = spr->getParseResult();
+        template_ = spr->getParseResult();
     } 
     _computeChunkLevel(spr->getHasChunks(), spr->getHasSubChunks());
     if(template_.empty() || !spr->getError().empty()) {
-	_errorMsg = spr->getError();
+        _errorMsg = spr->getError();
     } else {
         _substitution = SubstPtr(new Substitution(template_, _delimiter, true));
         _hasAggregate = spr->getHasAggregate();
@@ -152,21 +152,20 @@ std::string qMaster::SqlSubstitution::_fixDbRef(std::string const& s,
     //     sub = "Subchunks_%d.%s" % (chunk, sName)
     //     res = re.sub(patStr, sub, res)
     // return res
-
 }
 
-void qMaster::SqlSubstitution::_computeChunkLevel(bool hasChunks, bool hasSubChunks) {
+void 
+qMaster::SqlSubstitution::_computeChunkLevel(bool hasChunks, bool hasSubChunks){
     // SqlParseRunner's TableList handler will know if it applied 
     // any subchunk rules, or if it detected any chunked tables.
 
     if(hasChunks) {
-	if(hasSubChunks) {
-	    _chunkLevel = 2;
-	} else {
-	    _chunkLevel = 1;
-	}
+        if(hasSubChunks) {
+            _chunkLevel = 2;
+        } else {
+            _chunkLevel = 1;
+        }
     } else {
-	_chunkLevel = 0;
+        _chunkLevel = 0;
     }
 }
-
