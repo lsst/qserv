@@ -139,6 +139,9 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
     updateResultPath();
     clearResultPath();
     _localroot = ::getenv("XRDLCLROOT");
+    if (!_localroot) {
+        _localroot = "";
+    }
 }
 
 qWorker::MySqlFs::~MySqlFs(void) {
