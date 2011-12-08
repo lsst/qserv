@@ -96,15 +96,15 @@ std::string qWorker::CLEANUP_SUBCHUNK_SCRIPT =
 #ifdef __SUNPRO_CC // MD5(...) not defined on Solaris's ssl impl.
 namespace {
     inline unsigned char* MD5(unsigned char const* d,
-			      unsigned long n,
-			      unsigned char* md) {
-	// Defined with RFC 1321 MD5 functions.
-	MD5_CTX ctx;
-	assert(md != NULL); // Don't support null input.
-	MD5Init(&ctx);
-	MD5Update(&ctx, d, n);
-	MD5Final(md, &ctx);
-	return md;
+                              unsigned long n,
+                              unsigned char* md) {
+        // Defined with RFC 1321 MD5 functions.
+        MD5_CTX ctx;
+        assert(md != NULL); // Don't support null input.
+        MD5Init(&ctx);
+        MD5Update(&ctx, d, n);
+        MD5Final(md, &ctx);
+        return md;
     }
 }
 #endif
@@ -122,7 +122,6 @@ std::string qWorker::hashQuery(char const* buffer, int bufferSize) {
     return result;
 #endif
 }
-
 
 void qWorker::updateResultPath(char const* resultPath) {
     if(resultPath && checkWritablePath(resultPath)) {
@@ -147,10 +146,8 @@ void qWorker::clearResultPath() {
             unlink(*s++); // delete file, ignore errors.
         }
         globfree(&globbuf);
-    }
-    
+    }   
 }
-
 
 std::string qWorker::hashToPath(std::string const& hash) {
     return DUMP_BASE +
@@ -165,7 +162,6 @@ std::string qWorker::hashToResultPath(std::string const& hash) {
     // And drop the two-level directory to keep client complexity down since
     // xrootd seems to check raw paths.
     return DUMP_BASE + "/" + hash;
-
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -200,19 +196,18 @@ void qWorker::StringBuffer::addBuffer(
 #  endif
     _ss << std::string(buffer,bufferSize);
     _totalSize += bufferSize;
-
 #else
     char* newItem = new char[bufferSize];
     assert(newItem != (char*)0);
     memcpy(newItem, buffer, bufferSize);
     { // Assume(!) that there are no overlapping writes.
 #  if DO_NOT_USE_BOOST
-	UniqueLock lock(_mutex);
+        UniqueLock lock(_mutex);
 #  else
-	boost::unique_lock<boost::mutex> lock(_mutex);
+        boost::unique_lock<boost::mutex> lock(_mutex);
 #  endif
-	_buffers.push_back(Fragment(offset, newItem, bufferSize));
-	_totalSize += bufferSize;
+        _buffers.push_back(Fragment(offset, newItem, bufferSize));
+        _totalSize += bufferSize;
     }
 #endif
 }
@@ -233,22 +228,22 @@ std::string qWorker::StringBuffer::getStr() const {
     assert(accStr);
     int cursor=0;
     if(false) {
-    // Cast away const to perform a sort (which doesn't logically change state)
-    FragmentDeque& nonConst = const_cast<FragmentDeque&>(_buffers);
-    std::sort(nonConst.begin(), nonConst.end(), offsetLess<Fragment>());
+        // Cast away const to perform a sort (doesn't logically change state)
+        FragmentDeque& nonConst = const_cast<FragmentDeque&>(_buffers);
+        std::sort(nonConst.begin(), nonConst.end(), offsetLess<Fragment>());
     }
     FragmentDeque::const_iterator bi; 
     FragmentDeque::const_iterator bend = _buffers.end(); 
 
     //    accumulated.assign(getLength(), '\0'); // 
     for(bi = _buffers.begin(); bi != bend; ++bi) {
-	Fragment const& p = *bi;
-	//accumulated += std::string(p.buffer, p.bufferSize);
-	memcpy(accStr+cursor, p.buffer, p.bufferSize);
-	cursor += p.bufferSize;
-	// Perform "writes" of the buffers into the string
-	// Assume that we end up with a contiguous string.
-	//accumulated.replace(p.offset, p.bufferSize, p.buffer, p.bufferSize);
+        Fragment const& p = *bi;
+        //accumulated += std::string(p.buffer, p.bufferSize);
+        memcpy(accStr+cursor, p.buffer, p.bufferSize);
+        cursor += p.bufferSize;
+        // Perform "writes" of the buffers into the string
+        // Assume that we end up with a contiguous string.
+        //accumulated.replace(p.offset, p.bufferSize, p.buffer, p.bufferSize);
     }
     assert(cursor == _totalSize);
     accumulated.assign(accStr, cursor);
@@ -268,7 +263,7 @@ std::string qWorker::StringBuffer::getDigest() const {
 #endif
     int length = 200;
     if(length > _totalSize) 
-	length = _totalSize;
+        length = _totalSize;
     
     return std::string(_ss.str().data(), length); 
 #else
@@ -277,43 +272,42 @@ std::string qWorker::StringBuffer::getDigest() const {
 
     std::stringstream ss;
     for(bi = _buffers.begin(); bi != bend; ++bi) {
-	Fragment const& p = *bi;
-	ss << "Offset=" << p.offset << "\n";
-	int fragsize = 100;
-	if(fragsize > p.bufferSize) fragsize = p.bufferSize;
-	ss << std::string(p.buffer, fragsize) << "\n";
+        Fragment const& p = *bi;
+        ss << "Offset=" << p.offset << "\n";
+        int fragsize = 100;
+        if(fragsize > p.bufferSize) fragsize = p.bufferSize;
+        ss << std::string(p.buffer, fragsize) << "\n";
     }
     return ss.str();
 #endif
 }
-
 
 XrdSfsFileOffset qWorker::StringBuffer::getLength() const {
     return _totalSize;
     // Might be wise to do a sanity check sometime (overlapping writes!)
 #if 0
     struct accumulateSize {    
-	XrdSfsXferSize operator() (XrdSfsFileOffset x, Fragment const& p) { 
-	    return x + p.bufferSize; 
-	}
+        XrdSfsXferSize operator() (XrdSfsFileOffset x, Fragment const& p) { 
+            return x + p.bufferSize; 
+        }
     };
     return std::accumulate(_buffers.begin(), _buffers.end(), 
-			   0, accumulateSize());
+                           0, accumulateSize());
 #endif
 }
-
 
 void qWorker::StringBuffer::reset() {
     {
 #if DO_NOT_USE_BOOST
-	UniqueLock lock(_mutex);
+        UniqueLock lock(_mutex);
 #else
-	boost::unique_lock<boost::mutex> lock(_mutex);
+        boost::unique_lock<boost::mutex> lock(_mutex);
 #endif
-	std::for_each(_buffers.begin(), _buffers.end(), ptrDestroy<Fragment>());
-	_buffers.clear();
+        std::for_each(_buffers.begin(), _buffers.end(), ptrDestroy<Fragment>());
+        _buffers.clear();
     }
 }
+
 //////////////////////////////////////////////////////////////////////
 // StringBuffer2 
 // A mutex-protected string buffer that uses a raw c-string.
@@ -327,7 +321,7 @@ void qWorker::StringBuffer2::addBuffer(
     boost::unique_lock<boost::mutex> lock(_mutex);
 #  endif
     if(_bufferSize < offset+bufferSize) {
-	_setSize(offset+bufferSize);
+        _setSize(offset+bufferSize);
     }
      memcpy(_buffer+offset, buffer, bufferSize);
     _bytesWritten += bufferSize;
@@ -358,16 +352,14 @@ std::string qWorker::StringBuffer2::getDigest() const {
     assert(_bytesWritten == _bufferSize); //no holes.
     int length = 200;
     if(length > _bytesWritten) 
-	length = _bytesWritten;
+        length = _bytesWritten;
     
     return std::string(_buffer, length); 
 }
 
-
 XrdSfsFileOffset qWorker::StringBuffer2::getLength() const {
     return _bytesWritten;
 }
-
 
 void qWorker::StringBuffer2::reset() {
 #if DO_NOT_USE_BOOST
@@ -376,28 +368,27 @@ void qWorker::StringBuffer2::reset() {
     boost::unique_lock<boost::mutex> lock(_mutex);
 #endif
     if(_buffer) {
-	delete[] _buffer;
-	_buffer = 0;
-	_bufferSize = 0;
+        delete[] _buffer;
+        _buffer = 0;
+        _bufferSize = 0;
     }
     _bytesWritten = 0;
 }
 
 void qWorker::StringBuffer2::_setSize(unsigned size) {
     if(size==0) {
-	if(_buffer) {
-	    delete[] _buffer;
-	    _buffer = 0;
-	    _bufferSize = 0;
-	}
-	return;
+        if(_buffer) {
+            delete[] _buffer;
+            _buffer = 0;
+            _bufferSize = 0;
+        }
+        return;
     }
     char* newBuffer = new char[size];
     if(_buffer) {
-	memcpy(newBuffer, _buffer, _bufferSize);
-	delete[] _buffer;
+        memcpy(newBuffer, _buffer, _bufferSize);
+        delete[] _buffer;
     }
     _buffer = newBuffer;
     _bufferSize = size;
 }
-

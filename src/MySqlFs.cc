@@ -35,7 +35,7 @@
 
 // Externally declare XrdSfs loader to cheat on Andy's suggestion.
 extern XrdSfsFileSystem *XrdXrootdloadFileSystem(XrdSysError *, char *, 
-						 const char *);
+                                                 const char *);
 namespace qWorker = lsst::qserv::worker;
 
 namespace { 
@@ -65,16 +65,16 @@ class FinishListener {
 public:
     FinishListener(Callback* cb) : _callback(cb) {}
     virtual void operator()(qWorker::ResultError const& p) {
-	if(p.first == 0) {
-	    // std::cerr << "Callback=OK!\t" << (void*)_callback << std::endl;
-	    _callback->Reply_OK();
-	} else {
-	    //std::cerr << "Callback error! " << p.first 
-	    //	      << " desc=" << p.second << std::endl;
-	    _callback->Reply_Error(p.first, p.second.c_str());
-	}
-	_callback = 0;
-	// _callback will be auto-destructed after any Reply_* call.
+        if(p.first == 0) {
+            // std::cerr << "Callback=OK!\t" << (void*)_callback << std::endl;
+            _callback->Reply_OK();
+        } else {
+            //std::cerr << "Callback error! " << p.first 
+            //	      << " desc=" << p.second << std::endl;
+            _callback->Reply_Error(p.first, p.second.c_str());
+        }
+        _callback = 0;
+        // _callback will be auto-destructed after any Reply_* call.
     }
 private:
     Callback* _callback;
@@ -85,14 +85,15 @@ public:
     typedef boost::shared_ptr<AddCallbackFunc> Ptr;
     virtual ~AddCallbackFunc() {}
     virtual void operator()(XrdSfsFile& caller, std::string const& filename) {
-	XrdSfsCallBack * callback = XrdSfsCallBack::Create(&(caller.error));
-	// Register callback with opener.
-	//std::cerr << "Callback reg!\t" << (void*)callback << std::endl;	
-	qWorker::QueryRunner::getTracker().listenOnce(
-            filename, FinishListener<XrdSfsCallBack>(callback));
+        XrdSfsCallBack * callback = XrdSfsCallBack::Create(&(caller.error));
+        // Register callback with opener.
+        //std::cerr << "Callback reg!\t" << (void*)callback << std::endl;
+        qWorker::QueryRunner::getTracker().listenOnce(
+                           filename, FinishListener<XrdSfsCallBack>(callback));
     }
 };
 #endif // ifndef NO_XROOTD_FS
+
 class FileValidator : public qWorker::fs::FileValidator {
 public:
     typedef boost::shared_ptr<FileValidator> Ptr;
@@ -105,7 +106,6 @@ public:
         return ::stat(expanded.c_str(), &statbuf) == 0 &&
             S_ISREG(statbuf.st_mode) && 
             (statbuf.st_mode & S_IRUSR) == S_IRUSR;
-
     }
 private:
     char const* _localroot;
@@ -120,20 +120,20 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
     _eDest->Say("MySqlFs initializing mysql library.");
     _isMysqlFail = mysql_library_init(0, NULL, NULL);
     if(_isMysqlFail) {
-	_eDest->Say("Problem initializing MySQL library. Behavior undefined.");
+        _eDest->Say("Problem initializing MySQL library. Behavior undefined.");
     }
     if(!getConfig().getIsValid()) {
         _eDest->Say(("Configration invalid: " + getConfig().getError() 
                      + " -- Behavior undefined.").c_str());
     }
 #ifdef NO_XROOTD_FS
-	_eDest->Say("Skipping load of libXrdOfs.so (non xrootd build).");
+    _eDest->Say("Skipping load of libXrdOfs.so (non xrootd build).");
 #else
     XrdSfsFileSystem* fs;
     fs = XrdXrootdloadFileSystem(_eDest, 
                                  const_cast<char*>("libXrdOfs.so"), cFileName);
     if(fs == 0) {
-	_eDest->Say("Problem loading libXrdOfs.so. Clustering won't work.");
+        _eDest->Say("Problem loading libXrdOfs.so. Clustering won't work.");
     }
 #endif
     updateResultPath();
@@ -146,7 +146,7 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
 
 qWorker::MySqlFs::~MySqlFs(void) {
     if(!_isMysqlFail) {
-	mysql_library_end();
+        mysql_library_end();
     }
 }
 
@@ -158,13 +158,15 @@ XrdSfsDirectory* qWorker::MySqlFs::newDir(char* user) {
 
 XrdSfsFile* qWorker::MySqlFs::newFile(char* user) {
 #ifdef NO_XROOTD_FS
-    return new qWorker::MySqlFsFile(_eDest, user, 
-				    boost::make_shared<FakeAddCallback>(),
-                                    boost::make_shared<FakeFileValidator>());
+    return new qWorker::MySqlFsFile(
+                                _eDest, user, 
+                                boost::make_shared<FakeAddCallback>(),
+                                boost::make_shared<FakeFileValidator>());
 #else
-    return new qWorker::MySqlFsFile(_eDest, user, 
-				    boost::make_shared<AddCallbackFunc>(),
-                                    boost::make_shared<FileValidator>(_localroot));
+    return new qWorker::MySqlFsFile(
+                                _eDest, user, 
+                                boost::make_shared<AddCallbackFunc>(),
+                                boost::make_shared<FileValidator>(_localroot));
 #endif
 }
 
@@ -216,7 +218,7 @@ int qWorker::MySqlFs::prepare(XrdSfsPrep& pargs, XrdOucErrInfo& outError,
 /// rem() : discard/squash a query result and the running/queued query
 ///  that would-have/has-had produced it.
 int qWorker::MySqlFs::rem(char const* path, XrdOucErrInfo& outError,
-                     XrdSecEntity const* client, char const* opaque) {
+                          XrdSecEntity const* client, char const* opaque) {
     // Check for qserv result path
     fs::FileClass c = fs::computeFileClass(path);
     if(c != fs::TWO_READ) { // Only support removal of result files.
@@ -231,7 +233,7 @@ int qWorker::MySqlFs::rem(char const* path, XrdOucErrInfo& outError,
 }
 
 int qWorker::MySqlFs::remdir(char const* dirName, XrdOucErrInfo& outError,
-                        XrdSecEntity const* client, char const* opaque) {
+                             XrdSecEntity const* client, char const* opaque) {
     outError.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
@@ -250,8 +252,9 @@ int qWorker::MySqlFs::stat(
     return SFS_ERROR;
 }
 
-int qWorker::MySqlFs::stat(char const* Name, mode_t& mode, XrdOucErrInfo& outError,
-                      XrdSecEntity const* client, char const* opaque) {
+int qWorker::MySqlFs::stat(char const* Name, mode_t& mode, 
+                           XrdOucErrInfo& outError,
+                           XrdSecEntity const* client, char const* opaque) {
     outError.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
@@ -278,4 +281,3 @@ XrdSfsFileSystem* XrdSfsGetFileSystem(
 }
 
 } // extern "C"
-

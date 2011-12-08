@@ -27,17 +27,17 @@
 namespace qWorker = lsst::qserv::worker;
 
 
-qWorker::fs::FileClass qWorker::fs::computeFileClass(std::string const& filename) {
+qWorker::fs::FileClass 
+qWorker::fs::computeFileClass(std::string const& filename) {
     if(std::string::npos != filename.find("/query2/")) {
-	return TWO_WRITE;
+        return TWO_WRITE;
     } else if(std::string::npos != filename.find("/result/")) {
-	return TWO_READ;
+        return TWO_READ;
     } else if(std::string::npos != filename.find("/query/")) {
-	return COMBO;
+        return COMBO;
     } else {
-	return UNKNOWN;
+        return UNKNOWN;
     }
-
 }
 
 std::string qWorker::fs::stripPath(std::string const& filename) {
@@ -45,8 +45,7 @@ std::string qWorker::fs::stripPath(std::string const& filename) {
     // Strip out everything before and including the last /
     std::string::size_type pos = filename.rfind("/");
     if(pos == std::string::npos) {
-	return filename;
+        return filename;
     }
     return filename.substr(1+pos, std::string::npos);
-	
 }

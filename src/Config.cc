@@ -63,11 +63,10 @@ namespace {
 
     bool validateMysql(qWorker::Config const& c) {
         // Can't do dump w/o an executable.
-	// Shell exec will crash a boost test case badly if this fails.
+        // Shell exec will crash a boost test case badly if this fails.
         return isExecutable(c.getString("mysqlDump"));
         // In the future, could try connecting to mysql instance here.
     }
-
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -98,7 +97,7 @@ std::string const& qWorker::Config::getString(std::string const& key) const {
 }
 
 char const* qWorker::Config::_getEnvDefault(char const* varName, 
-                                             char const* defVal) {
+                                            char const* defVal) {
     char const* s = ::getenv(varName);
     if(s != (char const*)0) { 
         return s; 
@@ -106,7 +105,6 @@ char const* qWorker::Config::_getEnvDefault(char const* varName,
         return defVal; 
     }
 }
-
 
 void qWorker::Config::_load() {
     // assume we're thread-protected.

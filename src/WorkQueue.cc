@@ -62,17 +62,22 @@ qWorker::WorkQueue::~WorkQueue() {
 
     while(_runners.size() > 0) {
         _runnersEmpty.wait(lock);
-        std::cout << "signalled... " << _runners.size() << " remain" << std::endl;
+        std::cout << "signalled... " << _runners.size() 
+                  << " remain" << std::endl;
     }
         
 }
-void qWorker::WorkQueue::add(boost::shared_ptr<qWorker::WorkQueue::Callable> c) {
+
+void 
+qWorker::WorkQueue::add(boost::shared_ptr<qWorker::WorkQueue::Callable> c) {
     boost::lock_guard<boost::mutex> lock(_mutex);
     std::cout << "Added one" << std::endl;
     _queue.push_back(c);
     _queueNonEmpty.notify_one();
 }
-boost::shared_ptr<qWorker::WorkQueue::Callable> qWorker::WorkQueue::getNextCallable() {
+
+boost::shared_ptr<qWorker::WorkQueue::Callable> 
+qWorker::WorkQueue::getNextCallable() {
     boost::unique_lock<boost::mutex> lock(_mutex);
     while(_queue.empty()) {
         _queueNonEmpty.wait(lock);
@@ -82,6 +87,7 @@ boost::shared_ptr<qWorker::WorkQueue::Callable> qWorker::WorkQueue::getNextCalla
     std::cout << "got work." << std::endl;
     return c;
 }
+
 void qWorker::WorkQueue::registerRunner(Runner* r) {
     boost::lock_guard<boost::mutex> lock(_runnersMutex); 
     _runners.push_back(r);
@@ -101,6 +107,7 @@ void qWorker::WorkQueue::signalDeath(Runner* r) {
     }
     std::cout << "couldn't find self to remove" << std::endl;
 }
+
 void qWorker::WorkQueue::_addRunner() {
     boost::unique_lock<boost::mutex> lock(_runnersMutex); 
     boost::thread(Runner(*this));
@@ -123,7 +130,6 @@ public:
         struct timespec ts;
         struct timespec rem;
 
-
         ss << "MyCallable " << _myId << " (" << _spinTime
            << ") STARTED spinning" << std::endl;
         std::cout << ss.str();
@@ -133,17 +139,13 @@ public:
         if(-1 == nanosleep(&ts, &rem)) {
             ss << "Interrupted " ;
         }
-        
 
         ss << "MyCallable " << _myId << " (" << _spinTime
            << ") STOPPED spinning" << std::endl;
         std::cout << ss.str();
-
-        
     }
     int _myId;
     float _spinTime;
-    
 };
 
 void test() {
