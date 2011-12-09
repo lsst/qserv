@@ -155,7 +155,8 @@ sfsObjs = map(lambda f: env.SharedObject(os.path.join(xrd_dir, "src",
               ["XrdSfsCallBack.cc","XrdSfsNative.cc"])
 env.Append(sfsObjs=sfsObjs)
 envNoXrd.Append(sfsObjs=sfsObjs)
-for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
+#for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
+for bldDir, expEnv in [['bld',env]]:
     try:
         VariantDir(bldDir, 'src')               
         SConscript("src/SConscript.lib", variant_dir=bldDir,
