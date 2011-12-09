@@ -186,10 +186,10 @@ public:
 
 void test() {
     using namespace std;
-    struct timespec ts;
-    struct timespec rem;
-    ts.tv_sec = 10;
-    ts.tv_nsec=0;
+    //struct timespec ts;
+    //struct timespec rem;
+    //ts.tv_sec = 10;
+    //ts.tv_nsec=0;
     cout << "main started" << endl;
     qCommon::WorkQueue wq(10);
     cout << "wq started " << endl;
