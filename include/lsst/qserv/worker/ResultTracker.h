@@ -47,18 +47,17 @@ public:
     typedef boost::signal<void (Item)> Signal;
     struct LockableSignal {
     public:
-	typedef std::deque<boost::signals::connection> CDeque;
-	boost::mutex mutex;
-	Signal signal;
-	CDeque connections; // Remember connections so we can disconnect.
-	void clearListeners() {
-	    CDeque::iterator i, end;
-	    for(i=connections.begin(), end=connections.end();
-		i != end; ++i) {
-		i->disconnect();
-	    }
-	    
-	}
+        typedef std::deque<boost::signals::connection> CDeque;
+        boost::mutex mutex;
+        Signal signal;
+        CDeque connections; // Remember connections so we can disconnect.
+        void clearListeners() {
+            CDeque::iterator i, end;
+            for(i=connections.begin(), end=connections.end();
+                i != end; ++i) {
+                i->disconnect();
+            }
+        }
     };
     // Wrap up a notification into a no-argument functor that can be queued.
     template <class C>
@@ -80,86 +79,86 @@ public:
     //////////////////////////////////////////////////
     ResultTracker() : _workQueue(3) {} // Callback pool w/ 3 threads
     void notify(Key const& k, Item const& i) {
-	_verifyKey(k); // Force k to exist in _signals
-	LSPtr s = _signals[k];
-	{	
-	    boost::unique_lock<boost::mutex> slock(s->mutex);
-	    //std::cerr << "Callback (tracker) signalling " 
-	    //	      << k << " ---- " << std::endl;
-	    s->signal(i); // Notify listeners
-	    s->clearListeners();
-	    // Save news item
-	    boost::unique_lock<boost::mutex> nlock(_newsMutex);
-	    _news[k] = i;
-	}
-    } 
+        _verifyKey(k); // Force k to exist in _signals
+        LSPtr s = _signals[k];
+        {	
+            boost::unique_lock<boost::mutex> slock(s->mutex);
+            //std::cerr << "Callback (tracker) signalling " 
+            //	      << k << " ---- " << std::endl;
+            s->signal(i); // Notify listeners
+            s->clearListeners();
+            // Save news item
+            boost::unique_lock<boost::mutex> nlock(_newsMutex);
+            _news[k] = i;
+        }
+    }
     void clearNews(Key const& k) {
-	boost::unique_lock<boost::mutex> lock(_newsMutex);
-	typename NewsMap::iterator i = _news.find(k);
-	    if(i != _news.end()) {
-		_news.erase(i);
-	    }
+        boost::unique_lock<boost::mutex> lock(_newsMutex);
+        typename NewsMap::iterator i = _news.find(k);
+        if(i != _news.end()) {
+            _news.erase(i);
+        }
     }
     template <typename Callable>
     void listenOnce(Key const& k, Callable const& c) {
-	{ // This block is an optional optimization.
-	    boost::unique_lock<boost::mutex> lock(_newsMutex);
-	    typename NewsMap::iterator i = _news.find(k);
-	    if(i != _news.end()) { // If already reported, reuse.
+        { // This block is an optional optimization.
+            boost::unique_lock<boost::mutex> lock(_newsMutex);
+            typename NewsMap::iterator i = _news.find(k);
+            if(i != _news.end()) { // If already reported, reuse.
                 boost::shared_ptr<ResultCallable<Callable> > rc;
                 rc.reset(new ResultCallable<Callable>(c,i->second));
                 _workQueue.add(rc);
                 return;
-	    }
-	}
-	_verifyKey(k);
-	LSPtr s = _signals[k];
-	{	
-	    boost::unique_lock<boost::mutex> lock(s->mutex);
-	    // Check again, in case there was a notification.
-	    typename NewsMap::iterator i = _news.find(k);
-	    if(i != _news.end()) { 
+            }
+        }
+        _verifyKey(k);
+        LSPtr s = _signals[k];
+        {	
+            boost::unique_lock<boost::mutex> lock(s->mutex);
+            // Check again, in case there was a notification.
+            typename NewsMap::iterator i = _news.find(k);
+            if(i != _news.end()) { 
                 boost::shared_ptr<ResultCallable<Callable> > rc;
                 rc.reset(new ResultCallable<Callable>(c,i->second));
                 _workQueue.add(rc);
                 return;
-	    } else {
-		// No news, so subscribe.
-		s->connections.push_back(s->signal.connect(c)); 
-	    }
-	}
+            } else {
+                // No news, so subscribe.
+                s->connections.push_back(s->signal.connect(c)); 
+            }
+        }
     }
     ItemPtr getNews(Key const& k) {
-	ItemPtr p;
-	typename NewsMap::iterator i = _news.find(k);
-	if(i != _news.end()) { 
-	    p = boost::make_shared<Item>(i->second);
-	}
-	return p;
+        ItemPtr p;
+        typename NewsMap::iterator i = _news.find(k);
+        if(i != _news.end()) { 
+            p = boost::make_shared<Item>(i->second);
+        }
+        return p;
     }
 
     int getNewsCount() const {
-	return _news.size(); // 
+        return _news.size(); // 
     }
     int getSignalCount() const {
-	return _signals.size();
+        return _signals.size();
     }
     // Debug methods
     NewsMap& debugGetNews() { return _news; }
     SignalMap& debugGetSignals() { return _signals; }
     void debugReset() {
-	_signals.clear();
-	_news.clear();
+        _signals.clear();
+        _news.clear();
     }
 private:
     void _verifyKey(Key const& k) {
-	if(_signals.find(k) == _signals.end()) {
-	    boost::unique_lock<boost::mutex> lock(_signalsMutex);
-	    // Double-check within the mutex.
-	    if(_signals.find(k) == _signals.end()) {
-		_signals[k] = boost::make_shared<LockableSignal>();
-	    }
-	}	
+        if(_signals.find(k) == _signals.end()) {
+            boost::unique_lock<boost::mutex> lock(_signalsMutex);
+            // Double-check within the mutex.
+            if(_signals.find(k) == _signals.end()) {
+                _signals[k] = boost::make_shared<LockableSignal>();
+            }
+        }	
     }
 
     SignalMap _signals;

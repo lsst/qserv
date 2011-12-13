@@ -48,9 +48,9 @@ class QueryRunner;
 class QueryRunnerArg {
 public:
     QueryRunnerArg(XrdSysError* e_, 
-		   std::string const& user_, ScriptMeta const& s_,
-		   std::string overrideDump_=std::string()) 
-	: e(e_), user(user_), s(s_), overrideDump(overrideDump_) { }
+                   std::string const& user_, ScriptMeta const& s_,
+                   std::string overrideDump_=std::string()) 
+        : e(e_), user(user_), s(s_), overrideDump(overrideDump_) { }
 
     XrdSysError* e; // must be assignable
     std::string user;
@@ -113,8 +113,8 @@ public:
     typedef ResultTracker<std::string, ResultError> Tracker;
     typedef QueryRunnerManager Manager;
     QueryRunner(XrdSysError& e, 
-		std::string const& user, ScriptMeta const& s,
-		std::string overrideDump=std::string());
+                std::string const& user, ScriptMeta const& s,
+                std::string overrideDump=std::string());
     explicit QueryRunner(QueryRunnerArg const& a);
     ~QueryRunner();
     bool operator()();
@@ -140,13 +140,13 @@ private:
                         std::string const& tableList);
 
     void _buildSubchunkScripts(std::string const& script,
-			       std::string& build, std::string& cleanup);
+                               std::string& build, std::string& cleanup);
     bool _prepareAndSelectResultDb(MYSQL* db, 
-				   std::string const& dbName);
+                                   std::string const& dbName);
     bool _prepareScratchDb(MYSQL* db);
     bool _performMysqldump(std::string const& dbName, 
-			   std::string const& dumpFile,
-			   std::string const& tables);
+                           std::string const& dumpFile,
+                           std::string const& tables);
     bool _isExecutable(std::string const& execName);
     void _setNewQuery(QueryRunnerArg const& a);
     std::string _getErrorString() const;
@@ -167,7 +167,6 @@ private:
 
  int dumpFileOpen(std::string const& dbName);
  bool dumpFileExists(std::string const& dumpFilename);
-
 
 }}}
 #endif // LSST_QSERV_WORKER_QUERYRUNNER_H

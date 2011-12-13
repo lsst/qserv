@@ -65,30 +65,29 @@ private:
 class Semaphore {
 public:
     explicit Semaphore(int count=1) : _count(count) {
-	assert(count > 0);
+        assert(count > 0);
     }
 
     void proberen() {
-	// Lock the count variable
-	boost::unique_lock<boost::mutex> lock(_countLock);
-	while(_count <= 0) {
-	//     sleep (release lock) until wakeup
-	    _countCondition.wait(lock);
-	}
-	assert(_count > 0);
-	--_count;
-	// Lock is unlocked when we leave scope.
+        // Lock the count variable
+        boost::unique_lock<boost::mutex> lock(_countLock);
+        while(_count <= 0) {
+            //     sleep (release lock) until wakeup
+            _countCondition.wait(lock);
+        }
+        assert(_count > 0);
+        --_count;
+        // Lock is unlocked when we leave scope.
     }
 
     void verhogen() {
-	{
-	    // Lock the count variable.
-	    boost::lock_guard<boost::mutex> lock(_countLock);
-	    ++_count;
-	}
-	// Wake up one of the waiters.
-	_countCondition.notify_one();
-	
+        {
+            // Lock the count variable.
+            boost::lock_guard<boost::mutex> lock(_countLock);
+            ++_count;
+        }
+        // Wake up one of the waiters.
+        _countCondition.notify_one();	
     }
 
     inline void get() { proberen(); }
@@ -110,7 +109,7 @@ public:
     virtual void * (*function())(void *) = 0;
 
     void setTid(pthread_t t) {
-	_tid = t;
+        _tid = t;
     }
 protected:
     pthread_t _tid;
@@ -123,24 +122,24 @@ public:
 #if 0
     template <typename Callable>
     static ThreadDetail* newTrackedDetail(Callable& c) {
-	ThreadDetail* td = new ThreadDetailSpecific<Callable>(c);
-	_detailMutex.Lock();
-	_details.insert(td);
-	_detailMutex.UnLock();
-	return td;
+        ThreadDetail* td = new ThreadDetailSpecific<Callable>(c);
+        _detailMutex.Lock();
+        _details.insert(td);
+        _detailMutex.UnLock();
+        return td;
     }
 #endif
     static void takeControl(ThreadDetail* td) {
-	_detailMutex.Lock();
-	_details.insert(td);
-	_detailMutex.UnLock();
+        _detailMutex.Lock();
+        _details.insert(td);
+        _detailMutex.UnLock();
     }
     
     static void forgetDetail(ThreadDetail* td) {
-	_detailMutex.Lock();
-	_details.erase(td);
-	delete td;
-	_detailMutex.UnLock();
+        _detailMutex.Lock();
+        _details.erase(td);
+        delete td;
+        _detailMutex.UnLock();
     }
 private:
     static XrdSysMutex _detailMutex;
@@ -159,13 +158,13 @@ class ThreadDetailSpecific : public ThreadDetail {
 public:
     ThreadDetailSpecific(Callable const& c) : _c(new Callable(c)) {}
     virtual ~ThreadDetailSpecific() {
-	delete _c;
+        delete _c;
     }
     virtual void run() {
-	(*_c)();
+        (*_c)();
     }
     virtual void * (*function())(void *) {
-	return invokeCallableDetail<Callable>;
+        return invokeCallableDetail<Callable>;
     }
 private:
     Callable* _c;
@@ -179,10 +178,10 @@ ThreadDetail* newDetail(Callable const& c) {
 class Thread { 
 public:
     explicit Thread(ThreadDetail* td) {
-	_detail = td; //ThreadManager::newTrackedDetail<Callable>(c);
-	pthread_t newTid;
-	XrdSysThread::Run(&newTid, _detail->function(), _detail);
-	_detail->setTid(newTid);
+        _detail = td; //ThreadManager::newTrackedDetail<Callable>(c);
+        pthread_t newTid;
+        XrdSysThread::Run(&newTid, _detail->function(), _detail);
+        _detail->setTid(newTid);
     }
 
 private:

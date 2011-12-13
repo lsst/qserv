@@ -79,44 +79,44 @@ public:
 };
  
 class StringBuffer {
-    public:
-        StringBuffer() : _totalSize(0) {}
-	~StringBuffer() { reset(); }
-	void addBuffer(XrdSfsFileOffset offset, char const* buffer, 
-		       XrdSfsXferSize bufferSize);
-	std::string getStr() const;
-	XrdSfsFileOffset getLength() const;
-	std::string getDigest() const;
-	void reset();
-    private:
-	struct Fragment {
-	    Fragment(XrdSfsFileOffset offset_, char const* buffer_, 
-		     XrdSfsXferSize bufferSize_) 
-	    : offset(offset_), buffer(buffer_), bufferSize(bufferSize_) {}
+public:
+    StringBuffer() : _totalSize(0) {}
+    ~StringBuffer() { reset(); }
+    void addBuffer(XrdSfsFileOffset offset, char const* buffer, 
+                   XrdSfsXferSize bufferSize);
+    std::string getStr() const;
+    XrdSfsFileOffset getLength() const;
+    std::string getDigest() const;
+    void reset();
+private:
+    struct Fragment {
+        Fragment(XrdSfsFileOffset offset_, char const* buffer_, 
+                 XrdSfsXferSize bufferSize_) 
+            : offset(offset_), buffer(buffer_), bufferSize(bufferSize_) {}
 
-	    XrdSfsFileOffset offset; 
-	    char const* buffer;
-	    XrdSfsXferSize bufferSize;
-	};
+        XrdSfsFileOffset offset; 
+        char const* buffer;
+        XrdSfsXferSize bufferSize;
+    };
 
-	typedef std::deque<Fragment> FragmentDeque;
-	FragmentDeque _buffers;
-	XrdSfsFileOffset _totalSize;
+    typedef std::deque<Fragment> FragmentDeque;
+    FragmentDeque _buffers;
+    XrdSfsFileOffset _totalSize;
 #if DO_NOT_USE_BOOST
-	XrdSysMutex _mutex;
+    XrdSysMutex _mutex;
 #else
-	boost::mutex _mutex;
+    boost::mutex _mutex;
 #endif
-	std::stringstream _ss;
+    std::stringstream _ss;
     };
 
 class StringBuffer2 {
 public:
     StringBuffer2() : _buffer(0), 
-		      _bufferSize(0),_bytesWritten(0) {}
+                      _bufferSize(0),_bytesWritten(0) {}
     ~StringBuffer2() { reset(); }
     void addBuffer(XrdSfsFileOffset offset, char const* buffer, 
-		   XrdSfsXferSize bufferSize);
+                   XrdSfsXferSize bufferSize);
     std::string getStr() const;
     XrdSfsFileOffset getLength() const;
     std::string getDigest() const;
