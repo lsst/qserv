@@ -213,7 +213,7 @@ class Master:
         root.putChild(defaultPath, ClientResource(c))
         root.putChild(defaultXmlPath, xml)
 
-        # publish the the client functions
+        # publish the client functions
         for x in c.publishable:
             root.putChild(x, FunctionResource(getattr(c, x)))
 
