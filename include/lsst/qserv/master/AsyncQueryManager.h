@@ -108,6 +108,7 @@ private:
 	return ++_lastId;
     }
     void _initPool();
+    void _destroyPool();
     void _readConfig(std::map<std::string,std::string> const& cfg);
     void _printState(std::ostream& os);
     void _addNewResult(ssize_t dumpSize, std::string const& dumpFile, 
