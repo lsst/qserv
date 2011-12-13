@@ -54,13 +54,13 @@ public:
 class MySqlFsFile : public XrdSfsFile {
 public:
     MySqlFsFile(XrdSysError* lp, char const* user = 0, 
-		AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr(),
+                AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr(),
                 fs::FileValidator::Ptr fv = fs::FileValidator::Ptr());
     virtual ~MySqlFsFile(void);
 
     int open(char const* fileName, XrdSfsFileOpenMode openMode,
              mode_t createMode, XrdSecEntity const* client = 0,
-	     char const* opaque = 0);
+             char const* opaque = 0);
     int close(void);
     int fctl(int const cmd, char const* args, XrdOucErrInfo& outError);
     char const* FName(void);
@@ -88,7 +88,7 @@ public:
 
 private:
     bool _addWritePacket(XrdSfsFileOffset offset, char const* buffer, 
-			 XrdSfsXferSize bufferSize);
+                         XrdSfsXferSize bufferSize);
     void _addCallback(std::string const& filename);
     bool _flushWrite();
     bool _flushWriteDetach();
@@ -111,7 +111,6 @@ private:
     bool _hasRead;
     std::string _script;
     StringBuffer2 _queryBuffer;
-
 };
 
 }}} // namespace lsst::qserv::worker
