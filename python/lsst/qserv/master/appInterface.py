@@ -67,7 +67,6 @@ class AppInterface:
         else:
             return lambda f: thread.start_new_thread(f, tuple())
         pass
-        
 
     def queryNow(self, q, hints):
         """Issue a query. q=querystring, h=hint list
@@ -152,7 +151,6 @@ class AppInterface:
         r += "</pre>\n"
         return r
 
-
     def check(self, taskId):
         "Check status of query or task. Params: "
         a = app.CheckAction(self.tracker, taskId)
@@ -166,7 +164,6 @@ class AppInterface:
     def resultTableString(self, table):
         """Get contents of a result table."""
         return app.getResultTable(table)
-
 
     def reset(self):
         "Resets/restarts server uncleanly. No params."
