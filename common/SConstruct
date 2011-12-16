@@ -31,12 +31,8 @@ Qserv common code
 # Build/install things
 #
 
-## Build worker protocol
-SConscript("proto/SConscript", exports={'env' : env})
-
-
 ######################################################################
-for d in Split("tests doc"): 
+for d in Split("proto src tests doc"): 
     if os.path.isdir(d):
         try:
             SConscript(os.path.join(d, "SConscript"), 
