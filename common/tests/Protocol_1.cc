@@ -31,34 +31,62 @@
 namespace test = boost::test_tools;
 
 struct ProtocolFixture {
-    ProtocolFixture(void) {}
+    ProtocolFixture(void) : counter(0){}
     ~ProtocolFixture(void) { };
+    Qserv::Task* makeTask() {
+        Qserv::Task* t;
+        t = new Qserv::Task();
+        t->set_session(123456);
+        t->set_chunkid(20);
+        for(int i=0; i < 3; ++i) {
+            Qserv::Task::Fragment* f = t->add_fragment();
+            f->set_query("Hello, this is a query.");
+            f->add_subchunk(100+i); 
+        }
+        return t;
+    }
+    bool compareTasks(Qserv::Task& t1, Qserv::Task& t2) {
+        bool sessionAndChunk = (t1.session() == t2.session()) 
+            && (t1.chunkid() == t2.chunkid());
+        
+        bool fEqual = (t1.fragment_size() == t2.fragment_size());
+        for(int i=0; i < t1.fragment_size(); ++i) {
+            fEqual = fEqual && compareFragment(t1.fragment(i), 
+                                               t2.fragment(i));
+        }
+        return sessionAndChunk && fEqual;            
+    }
+
+    bool compareFragment(Qserv::Task_Fragment const& f1, 
+                         Qserv::Task_Fragment const& f2) {
+        bool qEqual = (f1.query() == f2.query());
+        bool sEqual = (f1.subchunk_size() == f2.subchunk_size());
+        for(int i=0; i < f1.subchunk_size(); ++i) {
+            sEqual = sEqual && (f1.subchunk(i) == f2.subchunk(i));
+        }
+        return qEqual && sEqual;
+    }
+    int counter;
 };
 
 BOOST_FIXTURE_TEST_SUITE(ProtocolTestSuite, ProtocolFixture)
 
-BOOST_AUTO_TEST_CASE(Sanity) {
+BOOST_AUTO_TEST_CASE(QueryMsgSanity) {
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
     std::stringstream ss;
-    std::ostream& output(ss);
-    Qserv::Task* t;
-    t = new Qserv::Task();
-    t->set_session(123456);
-    t->set_chunkid(20);
-    for(int i=0; i < 3; ++i) {
-        Qserv::Task::Fragment* f = t->add_fragment();
-        f->set_query("Hello, this is a query.");
-        f->add_subchunk(100+i); 
-    }
-    t->SerializeToOstream(&output);
+    boost::scoped_ptr<Qserv::Task> t1(makeTask());
+    BOOST_CHECK(t1.get());
+    t1->SerializeToOstream(&ss);
+
+    std::string blah = ss.str();
+    std::stringstream ss2(blah);
+    boost::scoped_ptr<Qserv::Task> t2(new Qserv::Task());
+    BOOST_CHECK(t1.get());
+    t2->ParseFromIstream(&ss2);
+    BOOST_CHECK(compareTasks(*t1, *t2));
 }
 
-#if 0
-int main(int,char**) {
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-    using std::ios;
-    std::fstream outFile("testtaskproto", ios::out | ios::trunc | ios::binary);
-    makeTest(outFile);
-    return 0;
+BOOST_AUTO_TEST_CASE(ResultMsgSanity) {
 }
-#endif
+
 BOOST_AUTO_TEST_SUITE_END()
