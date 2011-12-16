@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2011, 2012 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,7 +28,7 @@ namespace qserv {
 
 class QservPath {
 public:
-    enum RequestType {GARBAGE, CQUERY, UNKNOWN, };
+    enum RequestType {GARBAGE, CQUERY, UNKNOWN, OLDQ1, OLDQ2, RESULT};
 
     QservPath() {}
 
@@ -41,12 +41,15 @@ public:
     RequestType requestType() const {return _requestType;}
     std::string db() const {return _db;}
     int chunk() const {return _chunk;}
-    
+    std::string hashName() const { return _hashName; }
+
+
     /// @return the path prefix element for a given request type.
     std::string prefix(RequestType const& r) const;
         
     // Setup a path of a certain type.
-    void setAsCquery(std::string const& db, int chunk);
+    void setAsCquery(std::string const& db, int chunk);    
+    void setAsResult(std::string const& hashName);
 
 private:
     class Tokenizer;
@@ -55,6 +58,7 @@ private:
     RequestType _requestType;
     std::string _db;
     int _chunk;
+    std::string _hashName;
     static char const _pathSep = '/';    
 };
 

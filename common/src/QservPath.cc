@@ -36,6 +36,12 @@ public:
         _seek();
     }
     std::string token() { return _s.substr(_cursor, _next-_cursor); }
+    int tokenAsInt() {
+        int num;
+        std::stringstream csm(token());
+        csm >> num;        
+        return num;
+    }
     void next() { _cursor = _next + 1; _seek(); }
 private:
     void _seek() { _next = _s.find_first_of(_sep, _cursor); }
@@ -67,6 +73,12 @@ std::string qsrv::QservPath::prefix(RequestType const& r) const {
         return "q";
     case UNKNOWN:
         return "UNKNOWN";
+    case OLDQ1:
+        return "query";
+    case OLDQ2:
+        return "query2";
+    case RESULT:
+        return "result";
     case GARBAGE:
     default:
         return "GARBAGE";
@@ -99,7 +111,21 @@ void qsrv::QservPath::_setFromPath(std::string const& path) {
             return;
         }
         t.next();
-        std::stringstream csm(t.token());
-        csm >> _chunk;        
+        _chunk = t.tokenAsInt();
+    } else if(rTypeString == prefix(RESULT)) {
+        _requestType = RESULT;
+        t.next();
+        _hashName = t.token();
+    } else if(rTypeString == prefix(OLDQ1)) {
+        _requestType = OLDQ1;
+        t.next();
+        _chunk = t.tokenAsInt();
+    } else if(rTypeString == prefix(OLDQ2)) {
+        _requestType = OLDQ2;
+        t.next();
+        _chunk = t.tokenAsInt();
+    } else {
+        _requestType = GARBAGE;
     }
+    
 }
