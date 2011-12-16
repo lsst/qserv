@@ -9,11 +9,19 @@ except ImportError:
 
 Import("env")
 testEnv = env.Clone()
+testEnv.Append(CPPPATH = ["../src"])
+testEnv.Append(LIBPATH = ["../lib"])
+testEnv.Append(LIBS = "stdc++ qserv_common".split())
+
+
+
 protoEnv = env.Clone()
 protoEnv.Append(LIBPATH = ["../lib", 
                           os.environ["PROTOC_LIB"]])
 protoEnv.Append(CPPPATH = ["../proto", os.environ["PROTOC_INC"]])
 protoEnv.Replace(LIBS = ["stdc++", "qserv_proto", "protobuf"])
+
+
 
 def patch_environ(environ, libpaths):
     if not libpaths: return environ

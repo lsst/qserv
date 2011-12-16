@@ -25,9 +25,32 @@
 #include <sstream>
 namespace qsrv = lsst::qserv;
 
+//////////////////////////////////////////////////////////////////////
+// qsrv::QservPath::Tokenizer
+// A simple class to tokenize paths.
+//////////////////////////////////////////////////////////////////////
+class qsrv::QservPath::Tokenizer {
+public:
+    Tokenizer(std::string s, char sep) 
+        : _cursor(0), _next(0), _s(s), _sep(sep) {
+        _seek();
+    }
+    std::string token() { return _s.substr(_cursor, _next-_cursor); }
+    void next() { _cursor = _next + 1; _seek(); }
+private:
+    void _seek() { _next = _s.find_first_of(_sep, _cursor); }
+
+    std::string::size_type _cursor;
+    std::string::size_type _next;
+    std::string const _s;
+    char _sep;
+};
+
+//////////////////////////////////////////////////////////////////////
 qsrv::QservPath::QservPath(std::string const& path) {
     _setFromPath(path);
 }
+
 std::string qsrv::QservPath::path() const {
     std::stringstream ss;
     ss << _pathSep << prefix(_requestType);
@@ -40,27 +63,43 @@ std::string qsrv::QservPath::path() const {
     
 std::string qsrv::QservPath::prefix(RequestType const& r) const {
     switch(r) {
-    case UNKNOWN:
-        return "UNKNOWN";
     case CQUERY:
         return "q";
+    case UNKNOWN:
+        return "UNKNOWN";
+    case GARBAGE:
     default:
         return "GARBAGE";
     }
 }
 
-    void qsrv::QservPath::_setFromPath(std::string const& path) {
-        std::string::size_type cursor = 0;
-        std::string::size_type next = 0;
-        next = path.find_first_of(_pathSep, cursor);
-        std::cout << "token 1:" << path.substr(cursor, next-cursor)
-                  << std::endl;
-        cursor = next + 1;
-        next = path.find_first_of(_pathSep, cursor);
-        std::cout << "token 2:" << path.substr(cursor, next-cursor)
-                  << std::endl;
-        cursor = next + 1;
-        next = path.find_first_of(_pathSep, cursor);
-        std::cout << "token 3:" << path.substr(cursor, next-cursor)
-                  << std::endl;        
+void qsrv::QservPath::setAsCquery(std::string const& db, int chunk) {
+    _requestType = CQUERY;
+    _db = db;
+    _chunk = chunk;
+}
+
+
+void qsrv::QservPath::_setFromPath(std::string const& path) {
+    std::string rTypeString;
+    Tokenizer t(path, _pathSep);
+    if(!t.token().empty()) { // Expect leading separator (should start with /)
+        _requestType = UNKNOWN;
+        return;
     }
+    t.next();
+    rTypeString = t.token();
+    if(rTypeString == prefix(CQUERY)) {
+        // Import as chunk query
+        _requestType = CQUERY;
+        t.next();
+        _db = t.token();
+        if(_db.empty()) {
+            _requestType = GARBAGE;
+            return;
+        }
+        t.next();
+        std::stringstream csm(t.token());
+        csm >> _chunk;        
+    }
+}

@@ -28,16 +28,28 @@ namespace qserv {
 
 class QservPath {
 public:
-    enum RequestType {UNKNOWN, CQUERY};
+    enum RequestType {GARBAGE, CQUERY, UNKNOWN, };
 
     QservPath() {}
 
     explicit QservPath(std::string const& path);
 
+    /// @return the constructed path.
     std::string path() const;
+
+    // Retrieve elements of the path.
+    RequestType requestType() const {return _requestType;}
+    std::string db() const {return _db;}
+    int chunk() const {return _chunk;}
+    
+    /// @return the path prefix element for a given request type.
     std::string prefix(RequestType const& r) const;
+        
+    // Setup a path of a certain type.
+    void setAsCquery(std::string const& db, int chunk);
 
 private:
+    class Tokenizer;
     void _setFromPath(std::string const& path);
 
     RequestType _requestType;
