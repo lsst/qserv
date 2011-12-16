@@ -1,0 +1,20 @@
+package Qserv;
+
+message Task {
+    optional int64 session = 1;
+    optional int32 chunkid = 2;
+    optional string resulttable = 3;
+
+    message Fragment {
+        // A query fragment without "CREATE or INSERT". 
+        // Worker should synthesize.
+        required string query = 1; 
+        repeated int32 subchunk = 2;
+    }
+    repeated Fragment fragment = 4;
+}
+
+message ResultHeader {
+    optional int64 session = 1;
+    repeated int32 chunkid = 2;
+}

@@ -1,0 +1,45 @@
+# -*- python -*-
+#
+# Setup our environment
+#
+# Do not change these
+import glob, os, re, sys
+
+env = Environment()
+## Check for protobufs support
+if (os.environ["PROTOC"] 
+    and os.environ["PROTOC_INC"] 
+    and os.environ["PROTOC_LIB"]):
+    print "Protocol buffers using protoc=%s with lib=%s and include=%s" %(
+        os.environ["PROTOC"], os.environ["PROTOC_INC"], 
+        os.environ["PROTOC_LIB"])
+else:
+    print """
+Can't continue without Google Protocol Buffers.
+Make sure PROTOC, PROTOC_INC, and PROTOC_LIB env vars are set.
+e.g., PROTOC=/usr/local/bin/protoc 
+      PROTOC_INC=/usr/local/include 
+      PROTOC_LIB=/usr/local/lib"""
+        
+
+# Describe what your package contains here.
+env.Help("""
+Qserv common code
+""")
+
+#
+# Build/install things
+#
+
+## Build worker protocol
+SConscript("proto/SConscript", exports={'env' : env})
+
+
+######################################################################
+for d in Split("tests doc"): 
+    if os.path.isdir(d):
+        try:
+            SConscript(os.path.join(d, "SConscript"), 
+                       exports={'env' : env})
+        except Exception, e:
+            print >> sys.stderr, "%s: %s" % (os.path.join(d, "SConscript"), e)
