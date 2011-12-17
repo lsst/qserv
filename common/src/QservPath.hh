@@ -23,6 +23,8 @@
 #ifndef LSST_QSERV_WORKER_QSERVPATH_H
 #define LSST_QSERV_WORKER_QSERVPATH_H
 #include <string>
+#include <map>
+
 namespace lsst {
 namespace qserv {
 
@@ -43,6 +45,7 @@ public:
     int chunk() const {return _chunk;}
     std::string hashName() const { return _hashName; }
 
+    std::string var(std::string const& key) const;
 
     /// @return the path prefix element for a given request type.
     std::string prefix(RequestType const& r) const;
@@ -50,16 +53,27 @@ public:
     // Setup a path of a certain type.
     void setAsCquery(std::string const& db, int chunk);    
     void setAsResult(std::string const& hashName);
+    
+    // Add optional specifiers ?foo&bar=1&bar2=2
+    void addKey(std::string const& key);
+    void addKey(std::string const& key, int val);
 
 private:
     class Tokenizer;
     void _setFromPath(std::string const& path);
+    std::string _ingestKeys(std::string const& leafPlusKeys);
+    std::string _ingestKeyStr(std::string const& keyStr);
 
     RequestType _requestType;
     std::string _db;
     int _chunk;
     std::string _hashName;
-    static char const _pathSep = '/';    
+    typedef std::map<std::string, std::string> VarMap;
+    VarMap _vars;
+    static char const _pathSep = '/';
+    static char const _varSep = '?';
+    static char const _varDelim = '&';
+    
 };
 
 }} // namespace lsst::qserv

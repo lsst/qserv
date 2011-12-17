@@ -66,6 +66,14 @@ std::string qsrv::QservPath::path() const {
     }
     return ss.str();
 }
+
+std::string qsrv::QservPath::var(std::string const& key) const {
+    VarMap::const_iterator ci = _vars.find(key);
+    if(ci != _vars.end()) {
+        return ci->second;
+    }
+    return std::string();
+}
     
 std::string qsrv::QservPath::prefix(RequestType const& r) const {
     switch(r) {
@@ -90,7 +98,6 @@ void qsrv::QservPath::setAsCquery(std::string const& db, int chunk) {
     _db = db;
     _chunk = chunk;
 }
-
 
 void qsrv::QservPath::_setFromPath(std::string const& path) {
     std::string rTypeString;
@@ -126,6 +133,30 @@ void qsrv::QservPath::_setFromPath(std::string const& path) {
         _chunk = t.tokenAsInt();
     } else {
         _requestType = GARBAGE;
+    }    
+}
+
+std::string qsrv::QservPath::_ingestKeys(std::string const& leafPlusKeys) {
+    std::string::size_type start;
+    start = leafPlusKeys.find_first_of(_varSep, 0);
+    _vars.clear();
+
+    if(start == std::string::npos) { // No keys found        
+        return leafPlusKeys;
     }
-    
+    ++start;
+    Tokenizer t(leafPlusKeys.substr(start), _varDelim);
+    for(std::string defn = t.token(); !defn.empty(); t.next()) {
+        _ingestKeyStr(defn);
+    }
+}
+
+std::string qsrv::QservPath::_ingestKeyStr(std::string const& keyStr) {
+    std::string::size_type equalsPos;
+    equalsPos = keyStr.find_first_of('=');
+    if(equalsPos == std::string::npos) { // No = clause, value-less key.
+        _vars[keyStr] = std::string(); // empty insert.
+    } else {
+        _vars[keyStr.substr(0,equalsPos)] = keyStr.substr(equalsPos+1);
+    }    
 }
