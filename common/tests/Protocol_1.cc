@@ -37,14 +37,16 @@ struct ProtocolFixture {
         Qserv::Task* t;
         t = new Qserv::Task();
         t->set_session(123456);
-        t->set_chunkid(20);
+        t->set_chunkid(20 + counter);
         for(int i=0; i < 3; ++i) {
             Qserv::Task::Fragment* f = t->add_fragment();
             f->set_query("Hello, this is a query.");
             f->add_subchunk(100+i); 
         }
+        ++counter;
         return t;
     }
+
     bool compareTasks(Qserv::Task& t1, Qserv::Task& t2) {
         bool sessionAndChunk = (t1.session() == t2.session()) 
             && (t1.chunkid() == t2.chunkid());
@@ -57,6 +59,21 @@ struct ProtocolFixture {
         return sessionAndChunk && fEqual;            
     }
 
+    Qserv::ResultHeader* makeResultHeader() {
+        Qserv::ResultHeader* r(new Qserv::ResultHeader());
+        r->set_session(256+counter);
+        for(int i=0; i < 4; ++i) {
+            Qserv::ResultHeader::Result* res = r->add_result();
+            std::stringstream hash;
+            while(hash.tellp() < 16) { hash << counter; }            
+            res->set_hash(hash.str().substr(0,16));
+            res->set_resultsize(65536+counter);
+            res->set_chunkid(100+i+counter); 
+        }
+        ++counter;
+        return r;
+    }    
+
     bool compareFragment(Qserv::Task_Fragment const& f1, 
                          Qserv::Task_Fragment const& f2) {
         bool qEqual = (f1.query() == f2.query());
@@ -66,12 +83,32 @@ struct ProtocolFixture {
         }
         return qEqual && sEqual;
     }
+
+    bool compareResultHeaders(Qserv::ResultHeader const& r1, 
+                              Qserv::ResultHeader const& r2) {
+        bool same = r1.session() == r2.session();
+        same = same && (r1.result_size() == r2.result_size());
+        for(int i=0; i < r1.result_size(); ++i) {
+            same = same && compareResults(r1.result(i), 
+                                         r2.result(i));
+        }
+        return same;
+    } 
+
+    bool compareResults(Qserv::ResultHeader_Result const& r1, 
+                        Qserv::ResultHeader_Result const& r2) {
+        return (r1.hash() == r2.hash()) 
+            && (r1.resultsize() == r2.resultsize()) 
+            && (r1.chunkid() == r2.chunkid());
+    } 
+
+
     int counter;
 };
 
 BOOST_FIXTURE_TEST_SUITE(ProtocolTestSuite, ProtocolFixture)
 
-BOOST_AUTO_TEST_CASE(QueryMsgSanity) {
+BOOST_AUTO_TEST_CASE(TaskMsgSanity) {
     GOOGLE_PROTOBUF_VERIFY_VERSION;
     std::stringstream ss;
     boost::scoped_ptr<Qserv::Task> t1(makeTask());
@@ -87,6 +124,19 @@ BOOST_AUTO_TEST_CASE(QueryMsgSanity) {
 }
 
 BOOST_AUTO_TEST_CASE(ResultMsgSanity) {
+    std::stringstream ss;
+    boost::scoped_ptr<Qserv::ResultHeader> r1(makeResultHeader());
+    BOOST_CHECK(r1.get());
+    r1->SerializeToOstream(&ss);
+
+    std::string blah = ss.str();
+    std::stringstream ss2(blah);
+    boost::scoped_ptr<Qserv::ResultHeader> r2(new Qserv::ResultHeader());
+    BOOST_CHECK(r1.get());
+    r2->ParseFromIstream(&ss2);
+    BOOST_CHECK(compareResultHeaders(*r1, *r2));
+    
+    
 }
 
 BOOST_AUTO_TEST_SUITE_END()
