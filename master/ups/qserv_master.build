@@ -1,5 +1,0 @@
-svn co @SVNROOT@/DMS/qserv/master/tags/@VERSION@ @PRODUCT@-@VERSION@ &&
-cd @PRODUCT@-@VERSION@ &&
-setup -r . &&
-scons opt=3 &&
-scons opt=3 install
