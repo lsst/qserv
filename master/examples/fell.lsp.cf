@@ -1,0 +1,27 @@
+# no nested if-conditionals
+# names cannot have wildcards--> 5 supervisors -> 320+ workers.
+if lsst-db2* named supervisor1 supervisor2 supervisor3 supervisor4 supervisor5
+    all.role supervisor
+    xrd.port any
+else if lsst-db2*  
+      all.role manager
+fi
+
+if lsst-db2*
+   xrootd.fslib libXrdOfs.so
+else
+   all.role server
+   xrootd.fslib libqserv_worker.so
+   oss.localroot /scratch/lsst/qserv-worker/export
+   olb.space linger 0 recalc 15 min 10m 11m
+   xrootd.async force 
+fi
+
+cms.pidpath /scratch/lsst/qserv-worker
+all.adminpath /scratch/lsst/qserv-worker
+all.manager lsst-db2:2131
+all.export /query2/ nolock
+all.export /query/ nolock
+all.export /result/ nolock
+xrd.network nodnr
+cms.trace redirect 

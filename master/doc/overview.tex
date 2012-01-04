@@ -1,0 +1,104 @@
+\documentclass{article}
+\usepackage[left=1in,top=0.5in,right=1in,nohead,nofoot]{geometry} 
+%% For rapid editing, this document will live on LSST DM's Trac: 
+%% http://dev.lsstcorp.org/trac
+%% The initial version is archived here.
+\title{A Brief Introduction to qserv}
+\author{Daniel L. Wang (\texttt{danielw@slac.stanford.edu})}
+\date{\today}
+\begin{document}
+\maketitle
+
+The qserv system is LSST's R\&D database system for answering queries
+over its projected multi-petabyte database.  It must support support
+both simple and complex queries, and both light indexed-lookups and
+heavy petabyte table scans, with end-to-end latencies of a few seconds
+up to a few days.  It must scale up to many nodes (hundreds), but also
+scale down to be practical on a laptop.  qserv is being developed
+because there is no free, 
+open-source system capable of meeting these needs.
+
+The qserv system builds scalability, fault-tolerance, and
+distributed, parallel execution on top of existing free, open-source
+software.  MySQL performs basic SQL execution.  Scalla (xrootd/cmsd)
+provides a distributed, fault-tolerant communication layer.
+mysqlproxy is used so that any MySQL client may access the system.
+qserv-specific software consists of an a custom XML-RPC qserv
+front-end, Lua scripting code plugged in mysqlproxy, some
+customization in Scalla, and a custom qserv worker implemented as an
+xrootd filesystem plugin.  It is designed to be implemented on a
+cluster of computers, each with computing and data resources.  qserv
+is designed as a single-master, multi-worker system, and multi-master
+operation\footnote{Multi-master refers to multiple qserv front-ends on
+  a single cluster for performance or fault-tolerance purposes.} is
+possible, but untested\footnote{At the time of writing, qserv's
+  largest tested configuration utilized a billion row table, on a
+  cluster of 22 dual-core Xeon nodes at LLNL.  Simple
+  spatially-restricted near-neighbor queries were run in this
+  configuration.  However, work has shifted towards
+  user-functionality, rather than scalability, in order to meet
+  current data challenge requirements. }.
+
+qserv data is horizontally partitioned with overlapping partitions.
+All partitioned data must be partitioned according to the same
+dimensions, and must be aligned to allow joining between tables.
+These overlaps seek to provide enough data duplication to allow worker
+nodes to compute results independently without inter-worker
+communication.  In the LSST catalog, partitioning is spatial over
+right-ascension and declination, and a certain amount of overlap is
+provided to allow arbitrary self-join queries up to a pre-defined
+spatial search distance.  Overlapping partitions are crucial to
+achieving performance for near-neighbor Object queries, with only a
+minor disk space expense.\footnote{Disk space should be plentiful
+  since disks are purchased to meet bandwidth, rather than capacity
+  requirements.} Tables in qserv can be non-partitioned (in which case
+they are replicated or shared), one-level partitioned, or two-level
+partitioned.  Partitioning breaks up data into 2D spatial chunks,
+which can be arbitrarily distributed among worker nodes, with or
+without replication.  In two-level partitioning, data is still
+physically stored in chunks, but second-level subchunks are built
+on-the-fly as needed.  Subchunks are used in self-join queries, where
+their reduced size controls the O($n^2$) execution cost.
+
+A basic qserv installation includes the following.  A front-end node
+containing: (1) a mysqlproxy instance with custom Lua script that
+accepts user client queries, (2) a MySQL instance for results merging
+and serving, (3) a qserv front-end instance, and (4) an xrootd/cmsd
+manager pair. Worker nodes contain: (1) an xrootd/cmsd server pair,
+(2) qserv-worker xrootd filesystem plugin, and (3) a MySQL instance
+loaded with node-local data for sub-query execution.  In a single-node
+configuration, the xrootd/cmsd manager pair can be omitted and a
+single MySQL instance can be used for results and for
+subquery-execution.
+
+The basic steps in executing an SQL query are as follows.  First, a
+client connects to the mysqlproxy and issues a ``SELECT'' query.  The
+query is intercepted by the Lua script, which extracts spatial
+restriction hints from the query and submits the lightly-modified
+pure SQL query to the qserv front-end\footnote{Keeping the spatial
+  restrictions separate from the SQL query keeps the SQL parsing
+  grammar simple, as it does not need to extract those restriction
+  from an arbitrary SQL WHERE clause.}  The front-end parses the query and
+rewrites subqueries, replacing table and database names, altering
+parts of the query, detecting the need for subchunking and/or
+aggregation, and creating new predicates for eventual result merging.
+Using the hints, it computes the set of partitions involved, and
+submits subqueries by opening virtual partition-named files on xrootd
+and writing generated subqueries into them.  Then, for each subquery,
+it computes the query hash and requests reading of the hash-named
+result file. Workers, via the filesystem plugin, receive subqueries,
+compute subchunks as needed\footnote{Workers generate subchunks on
+  their own, since they may decide to reuse the generated tables for
+  other subqueries}, execute the queries on their local MySQL
+instance, dump the results using mysqldump, and publish the
+availability of results for the query hash.  When the result file is
+requested, workers check their own records for results availability,
+subscribing to the appropriate notification if necessary.  On the
+master front-end, the result file is read, saved, and loaded into the
+result database (a MySQL instance).  If the query involved
+aggregation, the front-end performs the aggregation query at this time.
+Otherwise, the results are simply concatenated.  Once this is done,
+the mysqlproxy performs a ``SELECT *'' on the result table and returns
+results to the client.
+
+\end{document}
