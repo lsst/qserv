@@ -1,0 +1,14 @@
+# For each dependency except python, list it here along with its minimum
+# version number.
+setupRequired(boost >= 1.37.0)
+setupRequired(mysqlclient >= 5.0.45)
+setupOptional(mysqlpython >= 1.2.2)
+
+# The following is boilerplate for all packages.
+setupRequired(base >= 3.1)
+setupOptional(doxygen >= 1.5.4)
+setupOptional(swig >= 1.3.36+2)
+
+envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
+envPrepend(DYLD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
+envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)

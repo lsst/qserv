@@ -1,0 +1,53 @@
+# -*- python -*-
+import subprocess, os, sys
+
+skipUdfTest = False
+try:
+    import MySQLdb
+except ImportError:
+    skipUdfTest = True
+
+Import("env")
+Import("envNoXrd")
+
+testEnv = envNoXrd.Clone()
+testEnv.Append(LIBPATH = ["../bldNoXrd"])
+testEnv.Append(LIBS = ["qserv_worker", "stdc++"])
+
+def patch_environ(environ, libpaths):
+    if not libpaths: return environ
+    def replace_rel(p):
+        if p.startswith(".."): return os.environ["PWD"] + p[2:]
+        return p
+    libpaths = map(replace_rel, libpaths)
+    ldpath = {}
+    if environ.has_key("LD_LIBRARY_PATH"):
+        ldpath = ":".join([environ["LD_LIBRARY_PATH"]] + libpaths)
+    else: ldpath = ":".join(libpaths)
+    newenv  = dict(environ)
+    newenv["LD_LIBRARY_PATH"] = ldpath
+    return newenv
+ 
+def run_test(target, source, env):
+    log = file(str(target[0]) + ".failed", "w")
+    pe = patch_environ(os.environ, env.Dictionary()["LIBPATH"])
+    ret = subprocess.call(str(source[0]), stdout=log, stderr=log, env=pe)
+    log.close()
+    if ret == 0:
+        os.rename(str(target[0]) + ".failed", str(target[0]))
+    else:
+        print >> sys.stderr, "*** TEST FAILED ***", source[0], ret
+    return ret
+
+bld = Builder(action = run_test, prefix = ".tests/")
+testEnv.Append(BUILDERS = {'Test': bld})
+
+for src in Glob("*.cc"):
+    prog = testEnv.Program(src)
+    test = testEnv.Test(prog)
+    pass
+
+if skipUdfTest:
+    print "WARNING: skipping UDF unit test - unable to import MySQLdb"
+else:
+    testEnv.Test("MySqlUdf.py")
