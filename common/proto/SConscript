@@ -1,0 +1,33 @@
+# -*- python -*-
+Import('env')
+import os
+
+# Construct proto env (add protoc Builder)
+pEnv = env.Clone(tools=['default', 'protoc'], PROTOC=os.environ["PROTOC"])
+pFiles = pEnv.Protoc(
+    [],
+    "worker.proto",
+    PROTOCPROTOPATH=['.',],
+    PROTOCPYTHONOUTDIR=None,
+    PROTOCOUTDIR = ".",
+    #PROTOCOUTDIR = 'build', # defaults to same directory as .proto
+    # PROTOCCPPOUTFLAGS = "dllexport_decl=PROTOCONFIG_EXPORT:", too 
+)
+
+sources = ["worker.pb.cc"]
+pEnv.Append(CPPPATH=[os.environ["PROTOC_INC"], ".."],
+            LIBPATH=os.environ["PROTOC_LIB"])
+lib = pEnv.Library("qserv_proto", sources)
+installedLib = env.Install('../lib', lib)
+env.Append(built_libs=[installedLib])
+
+
+
+# Build dispatch protocol
+protoBin = "/u1/local/bin/protoc"
+if False and os.access(protoBin, os.X_OK):
+    protoBuild = Builder(action=protoBin+" $SOURCE --cpp_out=.")
+
+    protoEnv = env.Clone(BUILDERS = {"Protoc" : protoBuild})
+    protoEnv.Protoc("dummy", "worker.proto")
+

@@ -1,0 +1,62 @@
+/* 
+ * LSST Data Management System
+ * Copyright 2011, 2012 LSST Corporation.
+ * 
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the LSST License Statement and 
+ * the GNU General Public License along with this program.  If not, 
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+/// worker.proto
+/// This defines the wire-messages sent between master and worker.
+
+package lsst.qserv;
+
+// Query message sent to worker
+// One of these Task objects should be sent.
+message Task {
+    optional int64 session = 1;
+    optional int32 chunkid = 2;
+    optional string resulttable = 3;
+
+    message Fragment {
+        // A query fragment without "CREATE or INSERT". 
+        // Worker should synthesize.
+        required string query = 1; 
+        repeated int32 subchunk = 2;
+    }
+    repeated Fragment fragment = 4;
+}
+
+// Result message received from worker
+// One of these headers is sent, if the master requests result bundling.
+// If sent, an int64 size (network-byte-ordered) is always sent before
+// the ResultHeader message, indicating the size of the ResultHeader
+// object.
+// The Header message contains size information so each result can be
+// distinguished. 
+message ResultHeader {
+    optional int64 session = 1;
+    message Result {
+        // Meta-info of an upcoming result
+        required string hash = 1; // 
+        required int64 resultsize = 3;
+        optional int32 chunkid = 2;
+    }
+    repeated Result result = 2;
+}
+
+/// Future: Serialize MySQL output into protobuf instead of using
+/// mysqldump.

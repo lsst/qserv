@@ -1,0 +1,20 @@
+# -*- python -*-
+Import('env')
+import os, fnmatch
+
+# This seems not to work if placed in lib/
+# The path to ../src seems to prevent scons from building .os files in
+# the build dir.
+sources=[]
+#print os.getcwd(), os.listdir('../src')
+for root, dirs, files in os.walk('../src'):
+    sources += fnmatch.filter(files, "*.cc")
+    # Filter out dotfiles?
+    dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
+
+env.Append(CPPPATH = ['../include'])
+
+lib = env.Library("qserv_common", sources)
+installedLib = env.Install('../lib', lib)
+env.Append(built_libs=[installedLib])
+
