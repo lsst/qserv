@@ -77,7 +77,7 @@ from lsst.qserv.master import charArray_frompointer, charArray
 from lsst.qserv.master import TransactionSpec
 
 # Dispatcher 
-from lsst.qserv.master import newSession, submitQuery, initDispatcher
+from lsst.qserv.master import newSession, discardSession, submitQuery, initDispatcher
 from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
