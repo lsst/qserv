@@ -75,6 +75,9 @@ public:
         _canRead(true), _reliefFiles(0)
     { _readConfig(cfg); _initPool();}
 
+    ~AsyncQueryManager()
+    { _destroyPool(); }
+
     void configureMerger(TableMergerConfig const& c);
 
     int add(TransactionSpec const& t, std::string const& resultName);

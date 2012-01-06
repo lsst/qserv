@@ -772,6 +772,7 @@ class HintedQueryAction:
             self._isValid = False
 
         if not self._isValid:
+            discardSession(self._sessionId)
             return
         # Query babysitter.
         self._babysitter = QueryBabysitter(self._sessionId, self.queryHash,
