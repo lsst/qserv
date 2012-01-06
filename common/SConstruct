@@ -5,27 +5,17 @@
 # Do not change these
 import glob, os, re, sys
 
+import detect_deps
 env = Environment()
-## Check for protobufs support
-if (os.environ["PROTOC"] 
-    and os.environ["PROTOC_INC"] 
-    and os.environ["PROTOC_LIB"]):
-    print "Protocol buffers using protoc=%s with lib=%s and include=%s" %(
-        os.environ["PROTOC"], os.environ["PROTOC_INC"], 
-        os.environ["PROTOC_LIB"])
-else:
-    print """
-Can't continue without Google Protocol Buffers.
-Make sure PROTOC, PROTOC_INC, and PROTOC_LIB env vars are set.
-e.g., PROTOC=/usr/local/bin/protoc 
-      PROTOC_INC=/usr/local/include 
-      PROTOC_LIB=/usr/local/lib"""
-        
 
 # Describe what your package contains here.
 env.Help("""
 Qserv common code
 """)
+
+
+# Detect protobufs
+detect_deps.detectProtobufs()
 
 #
 # Build/install things
