@@ -14,10 +14,14 @@ for root, dirs, files in os.walk('../src'):
     dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
 
 env.Append(CPPPATH = ['../include'])
+env.Append(CPPPATH = ['../../common/include', "/u1/local/include"]) # Add includes for common
 
 # Hack to workaround missing XrdSfs library in xrootd.
 if env.has_key('sfsObjs'):
     sources += env["sfsObjs"]
+
+env.Append(LIBPATH = ['../../common/lib']) 
+env.Append(LIBS = ["qserv_common"])
 
 lib = env.SharedLibrary("qserv_worker", sources)
 installedLib = env.Install('lib', lib)
