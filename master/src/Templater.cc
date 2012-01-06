@@ -40,6 +40,7 @@ void Templater::JoinVisitor::operator()(antlr::RefAST& a) {
         _hasChunks = true;
     }
 }
+
 void Templater::JoinVisitor::applySubChunkRule() {
     RefMapIter e = _map.end();
     for(RefMapIter i = _map.begin(); i != e; ++i) {
@@ -49,6 +50,7 @@ void Templater::JoinVisitor::applySubChunkRule() {
         }
     }
 }
+
 Templater::IntMap Templater::JoinVisitor::getUsageCount() const{
     IntMap im;
     RefMapConstIter e = _map.end();
@@ -70,6 +72,7 @@ void Templater::JoinVisitor::_addRef(antlr::RefAST& a) {
     }
     _map[key].push_back(a);
 }
+
 bool Templater::JoinVisitor::_isDelimited(std::string const& s) {
     std::string::size_type lpos = s.find(_delim);
     if(std::string::npos != lpos && lpos == 0) {
@@ -81,6 +84,7 @@ bool Templater::JoinVisitor::_isDelimited(std::string const& s) {
     }
     return false;
 }
+
 void Templater::JoinVisitor::_reassignRefs(RefList& l) {
     RefListIter e = l.end();
     int num=1;
@@ -140,7 +144,6 @@ class ImplicitDbVisitor {
         return hasAlpha;
         // 
     }
-
     typedef std::list<antlr::RefAST> RefList;
     RefList lastRefs;
 };
@@ -172,6 +175,7 @@ Templater::Templater(std::string const& delimiter,
       _factory(factory),
       _spatialTableNameNotifier(spatialTableNameNotifier_) {
 }
+
 void Templater::setup(Templater::IntMap const& dbWhiteList,
                       std::string const& defaultDb) {
     _dbWhiteList = dbWhiteList;
