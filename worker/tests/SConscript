@@ -1,7 +1,7 @@
 # -*- python -*-
 import subprocess, os, sys
 
-skipUdfTest = False
+skipUdfTest = True # Udf code has been moved to the scisql project.
 try:
     import MySQLdb
 except ImportError:
