@@ -112,7 +112,7 @@ private:
                                                       "declCol", 
                                                       "decl"));
             
-            s << "(qserv_" << fName << "(" << tName << "." << raStr 
+            s << "(scisql_" << fName << "(" << tName << "." << raStr 
               << "," << tName << "." << declStr << ",";
             if(paramCount == USE_STRING) {
                 s << '"'; // Place params inside a string.
@@ -141,22 +141,22 @@ private:
         if(_name == "qserv_areaspec_box") {
             _importParams(v.begin() + 1, v.end(), v.size()-1);
             _generator.reset(dynamic_cast<Generator*>
-                             (new AreaGenerator("ptInSphBox", 
+                             (new AreaGenerator("s2PtInBox", 
                                                 4, _params)));
         } else if(_name == "qserv_areaspec_circle") {
             _importParams(v.begin() + 1, v.end(), v.size()-1);
             _generator.reset(dynamic_cast<Generator*>
-                             (new AreaGenerator("ptInSphCircle", 
+                             (new AreaGenerator("s2PtInCircle", 
                                                 3, _params)));
         } else if(_name == "qserv_areaspec_ellipse") {
             _importParams(v.begin() + 1, v.end(), v.size()-1);
             _generator.reset(dynamic_cast<Generator*>
-                             (new AreaGenerator("ptInSphEllipse", 
+                             (new AreaGenerator("s2PtInEllipse", 
                                                 5, _params)));
         } else if(_name == "qserv_areaspec_poly") {
             _importParams(v.begin() + 1, v.end(), v.size()-1);
             _generator.reset(dynamic_cast<Generator*>
-                             (new AreaGenerator("ptInSphPoly", 
+                             (new AreaGenerator("s2PtInPoly", 
                                                 AreaGenerator::USE_STRING,
                                                 _params)));
         } else if(_name == "qserv_objectId") {
@@ -311,10 +311,10 @@ qMaster::SpatialUdfHandler::SpatialUdfHandler(
                   << std::endl;
     }
 
-    _udfName["box"] = "qserv_ptInSphBox";
-    _udfName["circle"] = "qserv_ptInSphCircle";
-    _udfName["ellipse"] = "qserv_ptInSphEllipse";
-    _udfName["poly"] = "ptInSphPoly";
+    _udfName["box"] = "scisql_s2PtInBox";
+    _udfName["circle"] = "scisql_s2PtInCircle";
+    _udfName["ellipse"] = "scisql_s2PtInEllipse";
+    _udfName["poly"] = "scisql_s2PtInCPoly";
     _specName["box"] = "qserv_areaspec_box";
     _specName["circle"] = "qserv_areaspec_circle";
     _specName["ellipse"] = "qserv_areaspec_ellipse";
@@ -394,15 +394,3 @@ void qMaster::SpatialUdfHandler::_finalizeOutBand() {
         _whereIntruder = o.str();
     }
 }
-
-#if 0
-// MySQL UDF signatures.  see udf/MySqlSpatialUdf.c in qserv/worker
-    double qserv_angSep (ra1, dec1, ra2, dec2);
-    int qserv_ptInSphBox (ra, dec, ramin, decmin, ramax,decmax);
-    int qserv_ptInSphCircle (ra, dec, racenter, deccenter, radius);
-    int qserv_ptInSphEllipse (ra, dec, racenter,deccenter, smaa,smia,ang);
-    int qserv_ptInSphPoly (ra, dec, ra0, poly);
-    // poly = string.  "ra0 dec0 ra1 dec1 ra2 dec2 ..." 
-    // space separated ra/dec pairs.
-// Functions return 1 if true, 0 if false, NULL on error
-#endif

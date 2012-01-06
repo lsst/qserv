@@ -49,7 +49,7 @@ void doctorQueryPath(std::string& path) {
 
     pos = path.find(before);
     if(pos != std::string::npos) {
-	path.replace(pos, before.size(), after);
+        path.replace(pos, before.size(), after);
     } // Otherwise, don't doctor.
 }
 
@@ -296,7 +296,6 @@ void qMaster::AsyncQueryManager::resumeReadTrans() {
     boost::unique_lock<boost::mutex> lock(_canReadMutex);
     _canRead = true;
     _canReadCondition.notify_all();
-
 }
 
 
@@ -374,12 +373,11 @@ void qMaster::AsyncQueryManager::_addNewResult(ssize_t dumpSize,
         //           << (mergeResult ? " OK----" : " FAIL====") 
         //           << std::endl;
     }
-
 }
+
 void qMaster::AsyncQueryManager::_printState(std::ostream& os) {
     typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
     std::for_each(_queries.begin(), _queries.end(), printQueryMapValue(os));
-
 }
 
 void qMaster::AsyncQueryManager::_squashExecution() {

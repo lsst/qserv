@@ -119,22 +119,6 @@ def CheckSinCos(context):
     context.Result(result)
     return result
 
-udfEnv = Environment()
-if os.environ.has_key('MYSQL_SERVER_DIR'):
-    mysql_server_dir = os.environ['MYSQL_SERVER_DIR']
-    if os.path.isdir(mysql_server_dir):
-        udfEnv.Prepend(CPPPATH=[os.path.join(mysql_server_dir,"include")])
-udfEnv.Append(CPPDEFINES=["-D_GNU_SOURCE"])
-conf = Configure(udfEnv, custom_tests = {'CheckSinCos' : CheckSinCos})
-if not conf.CheckLibWithHeader("m", "math.h", "c"):
-    print >> sys.stderr, "Could not locate libm"
-    Exit(1)
-if conf.CheckSinCos():
-    conf.env.Append(CPPDEFINES=["-DQSERV_HAVE_SINCOS=1"])
-if not conf.CheckHeader("mysql/mysql.h"):
-    print >> sys.stderr, "Could not locate mysql"
-    Exit(1)
-udfEnv = conf.Finish()
 
 # Describe what your package contains here.
 env.Help("""
@@ -164,12 +148,6 @@ for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
     except Exception, e:
         print >> sys.stderr, "%s: %s" % (os.path.join("src", "SConscript.lib"), e)
 
-# Build UDFs
-try:
-    #raise Warning("Udf building DISABLED. Comment-out line in SConstruct to enable")
-    SConscript("SConscript.udf", variant_dir='bldUdf', exports={'env': udfEnv})
-except Exception, e:
-    print >> sys.stderr, "%s: %s" % (os.path.join("udf", "SConscript"), e)
 
 for d in Split("tests doc"): 
     if os.path.isdir(d):
