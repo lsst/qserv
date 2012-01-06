@@ -87,7 +87,7 @@ public:
             QueryMap::iterator i = queries.find(qv.first);
             if(i != queries.end()) {
                 cq = i->second.first; // Get the shared version.
-                if(!cq.get())   {
+                if(!cq.get()) {
                     //qv.second.first.reset(); // Erase ours too.
                     return;
                 }
@@ -354,7 +354,7 @@ void qMaster::AsyncQueryManager::_addNewResult(ssize_t dumpSize,
     if(_shouldLimitResult && (_totalSize > _resultLimit)) {
         _squashRemaining();
     }
-            
+
     if(dumpSize > 0) {
         bool mergeResult = _merger->merge(dumpFile, tableName);
         int res = unlink(dumpFile.c_str()); // Hurry and delete dump file.
