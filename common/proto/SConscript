@@ -18,16 +18,30 @@ sources = ["worker.pb.cc"]
 pEnv.Append(CPPPATH=[os.environ["PROTOC_INC"], ".."],
             LIBPATH=os.environ["PROTOC_LIB"])
 lib = pEnv.Library("qserv_proto", sources)
-installedLib = env.Install('../lib', lib)
+installedLib = env.Install("../lib", lib)
 env.Append(built_libs=[installedLib])
 
+# Make a dependency file to "install" so that clients can use it properly.
+def makeLibDepFile(target, source, env):
+    deps = {'LIBPATH' : [os.path.abspath(os.environ["PROTOC_LIB"])],
+            'LIBS' : ['protobuf']}
+    dContents = str(deps)
+    open(str(target[0]),"w").write(dContents)
+
+libDep = env.Command("qserv_proto.deps", lib, makeLibDepFile)
+env.Install("../lib", libDep)
+
+def makeIncDepFile(target, source, env):
+    deps = {'CPPPATH' : [os.path.abspath(os.environ["PROTOC_INC"])]}
+    dContents = str(deps)
+    open(str(target[0]), "w").write(dContents)
+
+relPath = "../include/lsst/qserv"
+fName = "worker.pb.h"
+env.Install(relPath, fName)
+
+incDep = env.Command("worker.pb.h.deps", "worker.pb.h", makeIncDepFile)
+env.Install(relPath, incDep)
 
 
-# Build dispatch protocol
-protoBin = "/u1/local/bin/protoc"
-if False and os.access(protoBin, os.X_OK):
-    protoBuild = Builder(action=protoBin+" $SOURCE --cpp_out=.")
-
-    protoEnv = env.Clone(BUILDERS = {"Protoc" : protoBuild})
-    protoEnv.Protoc("dummy", "worker.proto")
 
