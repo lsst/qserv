@@ -14,7 +14,16 @@ for root, dirs, files in os.walk('../src'):
     dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
 
 env.Append(CPPPATH = ['../include'])
-env.Append(CPPPATH = ['../../common/include', "/u1/local/include"]) # Add includes for common
+env.Append(CPPPATH = ['../../common/include']) 
+
+def importDeps(env, f):
+    fName = f+".deps"
+    if os.access(fName, os.R_OK):
+        deps = eval(open(fName).read()) # import dep file directly
+        print "deps", deps
+        env.Append(**deps)
+
+importDeps(env, "../../common/include/lsst/qserv/worker.pb.h")
 
 # Hack to workaround missing XrdSfs library in xrootd.
 if env.has_key('sfsObjs'):
