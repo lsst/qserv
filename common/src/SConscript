@@ -13,6 +13,7 @@ for root, dirs, files in os.walk('../src'):
     dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
 
 env.Append(CPPPATH = ['../include'])
+env.Append(CPPFLAGS = ["-fPIC"])
 
 lib = env.Library("qserv_common", sources)
 installedLib = env.Install('../lib', lib)
