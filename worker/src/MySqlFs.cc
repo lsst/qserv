@@ -30,6 +30,9 @@
 #include "lsst/qserv/worker/MySqlFsFile.h"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/Config.h"
+
+#include "lsst/qserv/QservPath.hh"
+
 #include <cerrno>
 #include <iostream>
 

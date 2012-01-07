@@ -35,6 +35,9 @@
 #include "lsst/qserv/worker/ResultTracker.h"
 #include "lsst/qserv/worker/MySqlFsCommon.h"
 
+// common
+#include "lsst/qserv/QservPath.hh"
+
 // Forward
 class XrdSysError;
 class XrdSysLogger;
@@ -87,6 +90,7 @@ public:
     int getCXinfo(char cxtype[4], int& cxrsz);
 
 private:
+    int _acceptFile(char const* fileName); // New path handling code
     bool _addWritePacket(XrdSfsFileOffset offset, char const* buffer, 
                          XrdSfsXferSize bufferSize);
     void _addCallback(std::string const& filename);
@@ -96,6 +100,7 @@ private:
     bool _hasPacketEof(char const* buffer, XrdSfsXferSize bufferSize) const;
 
     int _handleTwoReadOpen(char const* fileName);
+    int _checkForHash(std::string const& hash);
 
     ResultErrorPtr _getResultState(std::string const& physFilename);
 
@@ -111,6 +116,7 @@ private:
     bool _hasRead;
     std::string _script;
     StringBuffer2 _queryBuffer;
+    boost::shared_ptr<QservPath> _path;
 };
 
 }}} // namespace lsst::qserv::worker
