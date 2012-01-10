@@ -39,6 +39,8 @@
 #include "lsst/qserv/worker/Thread.h"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/MySqlFsCommon.h"
+#include "lsst/qserv/worker/RequestTaker.h"
+#include "lsst/qserv/QservPath.hh"
 
 #include <algorithm>
 #include <cstdlib>
@@ -177,8 +179,13 @@ std::ostream& operator<<(std::ostream& os, Timer const& tm) {
 //////////////////////////////////////////////////////////////////////////////
 qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char const* user, 
                                   AddCallbackFunction::Ptr acf,
-                                  qWorker::fs::FileValidator::Ptr fv) :
-    XrdSfsFile(user), _eDest(lp), _addCallbackF(acf), _validator(fv) {
+                                  qWorker::fs::FileValidator::Ptr fv,
+                                  boost::shared_ptr<Service> service) 
+    : XrdSfsFile(user), 
+      _eDest(lp), 
+      _addCallbackF(acf),
+      _validator(fv),
+      _service(service) {
 
     // Capture userName at this point.
     // Param user is: user.pid:fd@host
@@ -217,6 +224,8 @@ int qWorker::MySqlFsFile::_acceptFile(char const* fileName) {
                          % fileName % _chunkId ).str().c_str());
             return SFS_ERROR;        
         }
+        _requestTaker.reset(new RequestTaker(_service->getAcceptor(),
+                                             *_path));
         return SFS_OK; // No other action is needed.
 
     case QservPath::RESULT:
@@ -384,6 +393,11 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     if (bufferSize <= 0) {
         error.setErrInfo(EINVAL, "No query provided");
         return -EINVAL;
+    }
+    if(_path->requestType() == QservPath::CQUERY) {
+        if(_requestTaker->receive(fileOffset, buffer, bufferSize)) {
+            return bufferSize;
+        } else return -EIO;
     }
     _addWritePacket(fileOffset, buffer, bufferSize);
     _eDest->Say((Pformat("File write(%1%) Added.") % _chunkId).str().c_str());

@@ -30,9 +30,10 @@
 #include "lsst/qserv/worker/MySqlFsFile.h"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/Config.h"
+#include "lsst/qserv/worker/Service.h"
+
 
 #include "lsst/qserv/QservPath.hh"
-
 #include <cerrno>
 #include <iostream>
 
@@ -117,7 +118,7 @@ private:
 } // anonymous namespace
 
 qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName) 
-  : XrdSfsFileSystem(), _eDest(lp) {
+    : XrdSfsFileSystem(), _eDest(lp) {
     static boost::mutex m;
     boost::lock_guard<boost::mutex> l(m);
     _eDest->Say("MySqlFs initializing mysql library.");
@@ -145,6 +146,7 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
     if (!_localroot) {
         _localroot = "";
     }
+    _service.reset(new Service()); 
 }
 
 qWorker::MySqlFs::~MySqlFs(void) {
@@ -162,14 +164,16 @@ XrdSfsDirectory* qWorker::MySqlFs::newDir(char* user) {
 XrdSfsFile* qWorker::MySqlFs::newFile(char* user) {
 #ifdef NO_XROOTD_FS
     return new qWorker::MySqlFsFile(
-                                _eDest, user, 
-                                boost::make_shared<FakeAddCallback>(),
-                                boost::make_shared<FakeFileValidator>());
+                                    _eDest, user, 
+                                    boost::make_shared<FakeAddCallback>(),
+                                    boost::make_shared<FakeFileValidator>(),
+                                    _service);
 #else
     return new qWorker::MySqlFsFile(
-                                _eDest, user, 
-                                boost::make_shared<AddCallbackFunc>(),
-                                boost::make_shared<FileValidator>(_localroot));
+                                    _eDest, user, 
+                                    boost::make_shared<AddCallbackFunc>(),
+                                    boost::make_shared<FileValidator>(_localroot),
+                                    _service);
 #endif
 }
 

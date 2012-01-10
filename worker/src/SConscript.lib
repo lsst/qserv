@@ -20,7 +20,7 @@ def importDeps(env, f):
     fName = f+".deps"
     if os.access(fName, os.R_OK):
         deps = eval(open(fName).read()) # import dep file directly
-        print "deps", deps
+        #print "deps", deps
         env.Append(**deps)
 
 importDeps(env, "../../common/include/lsst/qserv/worker.pb.h")
@@ -30,7 +30,8 @@ if env.has_key('sfsObjs'):
     sources += env["sfsObjs"]
 
 env.Append(LIBPATH = ['../../common/lib']) 
-env.Append(LIBS = ["qserv_common"])
+env.Append(LIBS = ["qserv_common", "protobuf", "qserv_proto"])
+importDeps(env, "../../common/lib/qserv_proto")
 
 lib = env.SharedLibrary("qserv_worker", sources)
 installedLib = env.Install('lib', lib)

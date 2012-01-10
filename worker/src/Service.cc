@@ -19,12 +19,14 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
 #include "lsst/qserv/worker/TodoList.h"
+#include "lsst/qserv/worker/Service.h"
 
 namespace qWorker = lsst::qserv::worker;
 
-bool qWorker::TodoList::accept(boost::shared_ptr<TaskMsg> task) {
-    _tasks.push_back(task);
+qWorker::Service::Service() :_todo(new TodoList()) {
+}
 
+qWorker::TaskAcceptor::Ptr qWorker::Service::getAcceptor() {
+    return _todo;
 }

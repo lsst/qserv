@@ -34,6 +34,7 @@
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/ResultTracker.h"
 #include "lsst/qserv/worker/MySqlFsCommon.h"
+#include "lsst/qserv/worker/Service.h"
 
 // common
 #include "lsst/qserv/QservPath.hh"
@@ -46,6 +47,8 @@ class XrdSfsAio;
 namespace lsst {
 namespace qserv {
 namespace worker {
+class RequestTaker; // Forward
+
 
 class AddCallbackFunction {
 public:
@@ -58,7 +61,8 @@ class MySqlFsFile : public XrdSfsFile {
 public:
     MySqlFsFile(XrdSysError* lp, char const* user = 0, 
                 AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr(),
-                fs::FileValidator::Ptr fv = fs::FileValidator::Ptr());
+                fs::FileValidator::Ptr fv = fs::FileValidator::Ptr(),
+                boost::shared_ptr<Service> service = Service::Ptr());
     virtual ~MySqlFsFile(void);
 
     int open(char const* fileName, XrdSfsFileOpenMode openMode,
@@ -117,6 +121,9 @@ private:
     std::string _script;
     StringBuffer2 _queryBuffer;
     boost::shared_ptr<QservPath> _path;
+    boost::shared_ptr<RequestTaker> _requestTaker;
+    boost::shared_ptr<Service> _service;
+
 };
 
 }}} // namespace lsst::qserv::worker

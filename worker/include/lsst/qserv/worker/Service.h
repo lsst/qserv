@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2012 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,12 +19,23 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-#include "lsst/qserv/worker/TodoList.h"
+#ifndef LSST_QSERV_WORKER_SERVICE_H
+#define LSST_QSERV_WORKER_SERVICE_H
+#include "lsst/qserv/worker/Base.h"
+namespace lsst {
+namespace qserv {
+namespace worker {
+class TodoList; // Forward
 
-namespace qWorker = lsst::qserv::worker;
+class Service {
+public:
+    typedef boost::shared_ptr<Service> Ptr;
+    explicit Service();
+    TaskAcceptor::Ptr getAcceptor();
+private:
+    boost::shared_ptr<TodoList> _todo;
+};
 
-bool qWorker::TodoList::accept(boost::shared_ptr<TaskMsg> task) {
-    _tasks.push_back(task);
+}}} // lsst::qserv:worker
+#endif // LSST_QSERV_WORKER_SERVICE_H
 
-}

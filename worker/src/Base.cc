@@ -340,7 +340,7 @@ std::string qWorker::StringBuffer2::getStr() const {
     return std::string(_buffer, _bytesWritten);
 }
 
-std::string qWorker::StringBuffer2::getDigest() const {  
+char const* qWorker::StringBuffer2::getData() const {  
     // Don't call this unless the buffer has no holes.
     // Cast away const in order to lock.
 #if DO_NOT_USE_BOOST
@@ -349,12 +349,8 @@ std::string qWorker::StringBuffer2::getDigest() const {
     boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
     boost::unique_lock<boost::mutex> lock(mutex);
 #endif
-    assert(_bytesWritten == _bufferSize); //no holes.
-    int length = 200;
-    if(length > _bytesWritten) 
-        length = _bytesWritten;
-    
-    return std::string(_buffer, length); 
+    assert(_bytesWritten == _bufferSize); //no holes.    
+    return _buffer; 
 }
 
 XrdSfsFileOffset qWorker::StringBuffer2::getLength() const {

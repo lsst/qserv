@@ -19,45 +19,33 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// TodoList.h
-/// A class that contains a collection of tasks to be executed by the
-/// Qserv-worker.  Allows selection and prioritization on top of a 
-/// generic container.
+/// RequestTaker.h
+/// A class that handles incoming request streams. Migrates some
+/// functionality out of MySqlFsFile so that qserv request handling
+/// is less dependent on Xrootd. (some dependencies still exist in
+/// MySqlFs.)
 /// @author Daniel L. Wang (danielw)
-#ifndef LSST_QSERV_WORKER_TODOLIST_H
-#define LSST_QSERV_WORKER_TODOLIST_H
-#include <boost/thread.hpp>
-#include <boost/shared_ptr.hpp>
-
-#include <deque>
-#include "lsst/qserv/worker.pb.h"
-
-#include "lsst/qserv/worker/Base.h"
-
+#ifndef LSST_QSERV_WORKER_ORDERTAKER_H
+#define LSST_QSERV_WORKER_ORDERTAKER_H
+#include "lsst/qserv/worker/Base.h" // StringBuffer2
 namespace lsst {
 namespace qserv {
+class QservPath; // Forward
 namespace worker {
 
-class TodoList : public TaskAcceptor {
-public:
-    typedef boost::shared_ptr<TodoList> Ptr;
+class RequestTaker {
+public: 
+    typedef int64_t Size;
 
-    typedef lsst::qserv::TaskMsg_Fragment Fragment;
-    typedef boost::shared_ptr<Fragment> FragmentPtr;
-
-    typedef lsst::qserv::TaskMsg TaskMsg;
-    typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
-    typedef std::deque<TaskMsgPtr> TaskMsgQueue;
-
-    TodoList() {
-    }
-
-    virtual bool accept(boost::shared_ptr<TaskMsg> task);
-
-    virtual ~TodoList() {}
-
+    explicit RequestTaker(TaskAcceptor::Ptr acceptor, QservPath const& path);
+    bool receive(Size offset, char const* buffer, Size bufferSize);
+    bool complete();
 private:
-    TaskMsgQueue _tasks;
+    TaskAcceptor::Ptr _acceptor;
+    StringBuffer2 _queryBuffer;
+    std::string _db;
+    int _chunk;
 };
+
 }}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_TODOLIST_H
+#endif // LSST_QSERV_WORKER_ORDERTAKER_H
