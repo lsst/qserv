@@ -16,7 +16,8 @@ pFiles = pEnv.Protoc(
 
 sources = ["worker.pb.cc"]
 pEnv.Append(CPPPATH=[os.environ["PROTOC_INC"], ".."],
-            LIBPATH=os.environ["PROTOC_LIB"])
+            LIBPATH=os.environ["PROTOC_LIB"],
+            CPPFLAGS=['-fPIC'])
 lib = pEnv.Library("qserv_proto", sources)
 installedLib = env.Install("../lib", lib)
 env.Append(built_libs=[installedLib])

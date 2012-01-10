@@ -26,7 +26,7 @@ package lsst.qserv;
 
 // Query message sent to worker
 // One of these Task objects should be sent.
-message Task {
+message TaskMsg {
     optional int64 session = 1;
     optional int32 chunkid = 2;
     optional string resulttable = 3;
