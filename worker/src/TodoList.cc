@@ -21,10 +21,35 @@
  */
  
 #include "lsst/qserv/worker/TodoList.h"
+#include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/TaskMsgDigest.h"
 
 namespace qWorker = lsst::qserv::worker;
 
-bool qWorker::TodoList::accept(boost::shared_ptr<TaskMsg> task) {
-    _tasks.push_back(task);
+////////////////////////////////////////////////////////////////////////
+// anonymous helpers
+////////////////////////////////////////////////////////////////////////
+namespace {
+}
+////////////////////////////////////////////////////////////////////////
+// class TodoList::Task
+////////////////////////////////////////////////////////////////////////
+struct qWorker::TodoList::Task {
+public:
+    TaskMsgPtr msg;
+    std::string hash;
+    std::string dbName;
+    std::string resultPath;
+};
+
+////////////////////////////////////////////////////////////////////////
+// TodoList implementation
+////////////////////////////////////////////////////////////////////////
+bool qWorker::TodoList::accept(boost::shared_ptr<TaskMsg> msg) {
+    TaskPtr t(new Task());
+    t->hash = hashTaskMsg(*msg);
+    t->dbName = "q_" + t->hash;
+    t->resultPath = hashToResultPath(t->hash);
+    _tasks.push_back(t);
 
 }

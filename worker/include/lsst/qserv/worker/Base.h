@@ -139,12 +139,13 @@ public:
     typedef boost::shared_ptr<TaskAcceptor> Ptr;
 
     TaskAcceptor() {}
-    virtual bool accept(boost::shared_ptr<TaskMsg> task) = 0;
+    virtual bool accept(boost::shared_ptr<TaskMsg> msg) = 0;
 };
 
 }}}
 
-#if DO_NOT_USE_BOOST
+#if DO_
+NOT_USE_BOOST
 typedef lsst::qserv::worker::PosFormat Pformat;
 #else  
 typedef boost::format Pformat;

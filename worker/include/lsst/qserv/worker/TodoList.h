@@ -47,17 +47,19 @@ public:
 
     typedef lsst::qserv::TaskMsg TaskMsg;
     typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
-    typedef std::deque<TaskMsgPtr> TaskMsgQueue;
+    struct Task;
+    typedef boost::shared_ptr<Task> TaskPtr;
+    typedef std::deque<TaskPtr> TaskQueue;
 
     TodoList() {
     }
 
-    virtual bool accept(boost::shared_ptr<TaskMsg> task);
+    virtual bool accept(boost::shared_ptr<TaskMsg> msg);
 
     virtual ~TodoList() {}
 
 private:
-    TaskMsgQueue _tasks;
+    TaskQueue _tasks;
 };
 }}} // lsst::qserv::worker
 #endif // LSST_QSERV_WORKER_TODOLIST_H
