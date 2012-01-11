@@ -51,32 +51,45 @@ public:
     std::string socket;
 };
 
+class ErrorObject {
+    int errNo;           // mysql error number
+    std::string errMsg;  // mysql error message
+    std::string details; // further details
+
+    std::string printErrMsg() const;
+};
+      
 /// class SqlConnection : Class for interacting with a MySQL database.
 class SqlConnection {
 public:
     SqlConnection(SqlConfig const& sc, bool useThreadMgmt=false); 
     ~SqlConnection(); 
-    bool connectToDb();
-    bool selectDb(std::string const& dbName);
-    bool apply(std::string const& sql);
+    bool connectToDb(ErrorObject&);
+    bool selectDb(std::string const& dbName, ErrorObject&);
+    bool apply(std::string const& sql, ErrorObject&);
 
-    bool dbExists(std::string const& dbName);
-    bool createDb(std::string const& dbName, bool failIfExists=true);
-    bool dropDb(std::string const& dbName);
+    bool dbExists(std::string const& dbName, ErrorObject&);
+    bool createDb(std::string const& dbName, ErrorObject&, bool failIfExists=true);
+    bool dropDb(std::string const& dbName, ErrorObject&);
     bool tableExists(std::string const& tableName, 
-                     std::string const& dbName=getActiveDbName());
+                     std::string const& dbName=getActiveDbName(),
+                     ErrorObject&);
     std::vector<std::string> listTables(
                                    std::string const& prefixed="",
-                                   std::string const& dbName=getActiveDbName());
+                                   std::string const& dbName=getActiveDbName(),
+                                   ErrorObject&);
 
     std::string getActiveDbName() const { return _config.dbName; }
+
+    // FIXME: remove, not thread safe, use ErrorObject instead
     char const* getMySqlError() const { return _mysqlError; }
     int getMySqlErrno() const { return _mysqlErrno; }
+
 private:
-    bool _init();
-    bool _connect();
-    void _discardResults(MYSQL* mysql);
-    void _storeMysqlError(MYSQL* c);
+    bool _init(ErrorObject&);
+    bool _connect(ErrorObject&);
+    void _discardResults(ErrorObject&);
+    bool _setErrorObject(ErrorObject&);
 
     MYSQL* _conn;
     std::string _error;
