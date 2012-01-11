@@ -63,6 +63,48 @@ bool SqlConnection::connectToDb() {
     return _init() && _connect();
 }
 
+bool SqlConnection::dbExists(std::string const& dbName) {
+    assert(_conn);
+    std::string sql = "SELECT COUNT(*) FROM information_schema.schemata "
+        + "WHERE schema_name = '" + dbName + "'";
+    
+    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+        _storeMysqlError(_conn);
+        return false;
+    }
+    MYSQL_RES *result = mysql_store_result(_conn);
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (!row) {
+        mysql_free_result(result);
+        return false;
+    }
+    int n = row[0];
+    mysql_free_result(result);
+    return n == 1;
+}
+
+bool SqlConnection::selectDb(std::string const& dbName) {
+    if (_conn) {
+        if (_config.dbName == dbName) {
+            return true; // nothing to do
+        } else {
+            // change mysql db, (disconnect and reconnect?)
+            _config.dbName = dbName;
+            return theResult;
+        }
+    }
+    if (!dbExists(dbName)) {
+        _error = "Can't switch to database " + dbName + " (does not exist)\n";
+        return false;
+    }
+    if (mysql_select_db(_conn, dbName)) {
+        _error = "Failed to switch to database " + dbName + "\n";
+        return false;
+    }
+    _config.dbName = dbName;
+    return true;
+}
+
 bool SqlConnection::apply(std::string const& sql) {
     assert(_conn);
 

@@ -55,7 +55,9 @@ class SqlConnection {
 public:
     SqlConnection(SqlConfig const& sc, bool useThreadMgmt=false); 
     ~SqlConnection(); 
+    bool dbExists(std::string const& dbName);
     bool connectToDb();
+    bool selectDb(std::string const& dbName);
     bool apply(std::string const& sql);
 
     char const* getMySqlError() const { return _mysqlError; }
