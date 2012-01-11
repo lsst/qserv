@@ -30,6 +30,9 @@ namespace qWorker = lsst::qserv::worker;
 // anonymous helpers
 ////////////////////////////////////////////////////////////////////////
 namespace {
+    boost::shared_ptr<qWorker::QueryRunnerArg> 
+    convertToArg(qWorker::TodoList::TaskMsgPtr const m) {
+    }
 }
 ////////////////////////////////////////////////////////////////////////
 // class TodoList::Task
@@ -50,6 +53,49 @@ bool qWorker::TodoList::accept(boost::shared_ptr<TaskMsg> msg) {
     t->hash = hashTaskMsg(*msg);
     t->dbName = "q_" + t->hash;
     t->resultPath = hashToResultPath(t->hash);
-    _tasks.push_back(t);
+    {
+        boost::lock_guard<boost::mutex> m(_tasksMutex);
+        _tasks.push_back(t);
+    }
+    _notifyWatchers();    
+}
 
+boost::shared_ptr<qWorker::QueryRunnerArg> qWorker::TodoList::popTask() {
+    
+}
+
+boost::shared_ptr<qWorker::QueryRunnerArg> 
+qWorker::TodoList::popTask(qWorker::TodoList::MatchF& m) {
+    boost::lock_guard<boost::mutex> mutex(_tasksMutex);
+#if 0 
+    if((!isOverloaded()) && (!_args.empty())) {
+    if(true) { // Simple version
+            (*af)(_getQueueHead()); // Switch to new query
+            _popQueueHead();
+        } else { // Prefer same chunk, if possible. 
+            // For now, don't worry about starving other chunks.
+            ArgQueue::iterator i;
+            i = std::find_if(_args.begin(), _args.end(), argMatch(lastChunkId));
+            if(i != _args.end()) {
+                (*af)(*i);
+                _args.erase(i);
+            } else {
+                (*af)(_getQueueHead()); // Switch to new query
+                _popQueueHead();            
+            }
+    }
+    return true;
+    
+#endif
+    return boost::shared_ptr<qWorker::QueryRunnerArg>(); //FIXME
+    
+
+}
+
+void qWorker::TodoList::_notifyWatchers() {
+    boost::lock_guard<boost::mutex> m(_watchersMutex);
+    for(WatcherQueue::iterator i = _watchers.begin();
+        i != _watchers.end(); ++i) {
+        (**i).handleAccept(*this);
+    }
 }

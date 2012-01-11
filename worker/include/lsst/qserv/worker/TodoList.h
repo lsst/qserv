@@ -37,6 +37,7 @@
 namespace lsst {
 namespace qserv {
 namespace worker {
+class QueryRunnerArg;    // forward
 
 class TodoList : public TaskAcceptor {
 public:
@@ -51,15 +52,39 @@ public:
     typedef boost::shared_ptr<Task> TaskPtr;
     typedef std::deque<TaskPtr> TaskQueue;
 
+    class Watcher {
+    public:
+        typedef boost::shared_ptr<Watcher> Ptr;
+        virtual ~Watcher() {}
+        virtual void handleAccept(TodoList& t) = 0; // Must not block.
+    };
+
     TodoList() {
     }
-
+    
+    virtual ~TodoList() {}
     virtual bool accept(boost::shared_ptr<TaskMsg> msg);
 
-    virtual ~TodoList() {}
+    // Reusing existing QueryRunnerArg for now.
+    boost::shared_ptr<QueryRunnerArg> popTask();
+    
+    class MatchF {
+    public: 
+        virtual ~MatchF();
+        virtual bool operator()(TaskMsg const& tm) = 0;
+    };
+    boost::shared_ptr<QueryRunnerArg> popTask(MatchF& m);
 
-private:
+private:    
+    typedef std::deque<Watcher::Ptr> WatcherQueue;
+    
+    void _notifyWatchers();
+
     TaskQueue _tasks;
+    WatcherQueue _watchers;
+    boost::mutex _watchersMutex;
+    boost::mutex _tasksMutex;
+    
 };
 }}} // lsst::qserv::worker
 #endif // LSST_QSERV_WORKER_TODOLIST_H
