@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  
-#ifndef LSST_QSERV_WORKER_QSERVPATH_H
-#define LSST_QSERV_WORKER_QSERVPATH_H
+#ifndef LSST_QSERV_QSERVPATH_H
+#define LSST_QSERV_QSERVPATH_H
 #include <string>
 #include <map>
 
@@ -77,4 +77,4 @@ private:
 };
 
 }} // namespace lsst::qserv
-#endif // LSST_QSERV_WORKER_QSERVPATH_H
+#endif // LSST_QSERV_QSERVPATH_H
