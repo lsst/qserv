@@ -29,7 +29,7 @@
 
 #include "lsst/qserv/master/sql.h"
 
-using lsst::qserv::master::SqlConnection;
+using lsst::qserv::SqlConnection;
 
 bool SqlConnection::_isReady = false;
 boost::mutex SqlConnection::_sharedMutex;

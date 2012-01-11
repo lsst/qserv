@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  
-#ifndef LSST_QSERV_MASTER_SQL_H
-#define LSST_QSERV_MASTER_SQL_H
+#ifndef LSST_QSERV_SQL_H
+#define LSST_QSERV_SQL_H
 // sql.h - SQL interface module.  Convenience code/abstraction layer
 // fro calling into MySQL.  Uncertain of how this usage conflicts with
 // db usage via the python MySQLdb api. 
@@ -37,7 +37,6 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
 
 /// class SqlConfig : Value class for configuring the MySQL connection
 class SqlConfig {
@@ -85,4 +84,4 @@ private:
 // comment-column:0 
 // End:             
 
-#endif // LSST_QSERV_MASTER_SQL_H
+#endif // LSST_QSERV_SQL_H
