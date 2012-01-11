@@ -78,7 +78,7 @@ private:
 }; // class SqlConnection
 
 
-}}} // namespace lsst::qserv::master
+}} // namespace lsst::qserv
 // Local Variables: 
 // mode:c++
 // comment-column:0 

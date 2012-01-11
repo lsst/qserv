@@ -36,10 +36,15 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
 // Forward
 class SqlConfig;
 class SqlConnection;
+}}
+
+namespace lsst {
+namespace qserv {
+namespace master {
+// Forward
 class SqlInsertIter;
 class PacketIter;
 

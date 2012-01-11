@@ -26,11 +26,11 @@
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
 #include "lsst/qserv/master/TableMerger.h"
-#include "lsst/qserv/master/sql.h"
+#include "../../common/src/SqlConnection.hh"
 #include "lsst/qserv/master/SqlInsertIter.h"
 #include "lsst/qserv/master/MmapFile.h"
-using lsst::qserv::master::SqlConfig;
-using lsst::qserv::master::SqlConnection;
+using lsst::qserv::SqlConfig;
+using lsst::qserv::SqlConnection;
 using lsst::qserv::master::TableMerger;
 using lsst::qserv::master::TableMergerError;
 using lsst::qserv::master::TableMergerConfig;
