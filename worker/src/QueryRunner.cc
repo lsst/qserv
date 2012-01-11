@@ -25,10 +25,13 @@
 #include "mysql/mysql.h"
 #include <boost/regex.hpp>
 #include "XrdSys/XrdSysError.hh"
+#include "../../common/src/SqlConnection.hh"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/Config.h"
 #include "lsst/qserv/worker/SqlFragmenter.h"
+using lsst::qserv::SqlConfig;
+using lsst::qserv::SqlConnection;
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -44,23 +47,6 @@ public:
         return r->getHash() == hash;
     }
     std::string hash;
-};
-
-class DbHandle {
-public:
-    DbHandle(void) : _db((MYSQL*)malloc(sizeof(MYSQL))) { 
-        if(_db) mysql_init(_db);	
-    };
-    ~DbHandle(void) {
-        if (_db) {
-            mysql_close(_db);
-            free(_db);
-            _db = 0;
-        }
-    };
-    MYSQL* get(void) const { return _db; };
-private:
-    MYSQL* _db;
 };
 
 std::string runQuery(MYSQL* db, char const*  query, int qSize,
@@ -468,21 +454,6 @@ qWorker::QueryRunner::_appendError(int errorNo, std::string const& desc) {
     _errorDesc += desc;
 }
 
-bool qWorker::QueryRunner::_connectDbServer(MYSQL* db) {
-    if(mysql_real_connect(db, 
-                          0,  // host
-                          _user.c_str(), // user
-                          0, 0, 0, //passwd, db, port
-                          getConfig().getString("mysqlSocket").c_str(), 
-                          CLIENT_MULTI_STATEMENTS) == 0) {
-        _appendError(EIO, "Unable to connect to MySQL as " + _user);
-        _e.Say((Pformat("Cfg error! connect Mysql as %1% using %2%") 
-                % getConfig().getString("mysqlSocket") % _user).str().c_str());
-        return false;
-    }
-    return true;
-}
-
 bool qWorker::QueryRunner::_dropDb(MYSQL* db, std::string const& name) {
     std::string result = runQuery(db, "DROP DATABASE IF EXISTS " + name);
     if(!result.empty()) { 
@@ -599,10 +570,18 @@ bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
   }
 */
 
-bool qWorker::QueryRunner::_runScript(
-    std::string const& script, std::string const& dbName) {
+bool qWorker::QueryRunner::_runScript(std::string const& script, 
+                                      std::string const& dbName) {
     
-    DbHandle db;
+    SqlConfig sc;
+    sc.hostname = 0;
+    sc.username = _user.c_str();
+    sc.password = 0;
+    sc.dbName = 0;
+    sc.port = 0;
+    sc.socket = getConfig().getString("mysqlSocket").c_str();
+    
+    SqlConnection _sqlConn(sc);
     std::string result;
     std::string tables; 
     bool scriptSuccess = false;
@@ -610,7 +589,10 @@ bool qWorker::QueryRunner::_runScript(
     _scriptId = dbName.substr(0, 6);
     _e.Say((Pformat("TIMING,%1%ScriptStart,%2%")
                  % _scriptId % ::time(NULL)).str().c_str());
-    if(!_connectDbServer(db.get())) {
+    if(!_sqlConn.connectToDb()) {
+        _appendError(EIO, "Unable to connect to MySQL as " + _user);
+        _e.Say((Pformat("Cfg error! connect MySQL as %1% using %2%") 
+                % getConfig().getString("mysqlSocket") % _user).str().c_str());
         return false;
     }
     tables = _getDumpTableList(script);
