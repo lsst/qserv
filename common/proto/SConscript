@@ -14,7 +14,7 @@ pFiles = pEnv.Protoc(
     # PROTOCCPPOUTFLAGS = "dllexport_decl=PROTOCONFIG_EXPORT:", too 
 )
 
-sources = ["worker.pb.cc"]
+sources = ["worker.pb.cc", "TaskMsgDigest.cc"]
 pEnv.Append(CPPPATH=[os.environ["PROTOC_INC"], ".."],
             LIBPATH=os.environ["PROTOC_LIB"],
             CPPFLAGS=['-fPIC'])
@@ -25,7 +25,7 @@ env.Append(built_libs=[installedLib])
 # Make a dependency file to "install" so that clients can use it properly.
 def makeLibDepFile(target, source, env):
     deps = {'LIBPATH' : [os.path.abspath(os.environ["PROTOC_LIB"])],
-            'LIBS' : ['protobuf']}
+            'LIBS' : ['protobuf','ssl']}
     dContents = str(deps)
     open(str(target[0]),"w").write(dContents)
 
@@ -43,6 +43,7 @@ env.Install(relPath, fName)
 
 incDep = env.Command("worker.pb.h.deps", "worker.pb.h", makeIncDepFile)
 env.Install(relPath, incDep)
+env.Install(relPath, "TaskMsgDigest.h")
 
 
 

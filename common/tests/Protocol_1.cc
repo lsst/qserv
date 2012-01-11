@@ -27,6 +27,7 @@
 #include <iostream>
 #include "boost/scoped_ptr.hpp"
 #include "worker.pb.h"
+#include "TaskMsgDigest.h"
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 namespace test = boost::test_tools;
@@ -156,6 +157,13 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
     BOOST_CHECK(r1.get());
     r2->MergePartialFromCodedStream(&coded);
     BOOST_CHECK(compareResultHeaders(*r1, *r2));
+}
+
+BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
+    boost::scoped_ptr<lsst::qserv::TaskMsg> t1(makeTaskMsg());
+    std::string hash = hashTaskMsg(*t1);
+    std::string expected = "92556274bbd6ef756287b41beae35ac5";
+    BOOST_CHECK_EQUAL(hash, expected);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
