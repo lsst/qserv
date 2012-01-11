@@ -29,6 +29,7 @@
 
 // Standard
 #include <string>
+#include <vector>
 
 // Boost
 #include <boost/thread.hpp>
@@ -55,11 +56,20 @@ class SqlConnection {
 public:
     SqlConnection(SqlConfig const& sc, bool useThreadMgmt=false); 
     ~SqlConnection(); 
-    bool dbExists(std::string const& dbName);
     bool connectToDb();
     bool selectDb(std::string const& dbName);
     bool apply(std::string const& sql);
 
+    bool dbExists(std::string const& dbName);
+    bool createDb(std::string const& dbName, bool failIfExists=true);
+    bool dropDb(std::string const& dbName);
+    bool tableExists(std::string const& tableName, 
+                     std::string const& dbName=getActiveDbName());
+    std::vector<std::string> listTables(
+                                   std::string const& prefixed="",
+                                   std::string const& dbName=getActiveDbName());
+
+    std::string getActiveDbName() const { return _config.dbName; }
     char const* getMySqlError() const { return _mysqlError; }
     int getMySqlErrno() const { return _mysqlErrno; }
 private:

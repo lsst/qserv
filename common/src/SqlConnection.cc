@@ -63,26 +63,6 @@ bool SqlConnection::connectToDb() {
     return _init() && _connect();
 }
 
-bool SqlConnection::dbExists(std::string const& dbName) {
-    assert(_conn);
-    std::string sql = "SELECT COUNT(*) FROM information_schema.schemata "
-        + "WHERE schema_name = '" + dbName + "'";
-    
-    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        _storeMysqlError(_conn);
-        return false;
-    }
-    MYSQL_RES *result = mysql_store_result(_conn);
-    MYSQL_ROW row = mysql_fetch_row(result);
-    if (!row) {
-        mysql_free_result(result);
-        return false;
-    }
-    int n = row[0];
-    mysql_free_result(result);
-    return n == 1;
-}
-
 bool SqlConnection::selectDb(std::string const& dbName) {
     if (_conn) {
         if (_config.dbName == dbName) {
@@ -116,6 +96,107 @@ bool SqlConnection::apply(std::string const& sql) {
         _discardResults(_conn);
     }
     return _error.empty();
+}
+
+bool SqlConnection::dbExists(std::string const& dbName) {
+    assert(_conn);
+    std::string sql = "SELECT COUNT(*) FROM information_schema.schemata "
+        + "WHERE schema_name = '" + dbName + "'";
+    
+    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+        _storeMysqlError(_conn);
+        return false;
+    }
+    MYSQL_RES *result = mysql_store_result(_conn);
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (!row) {
+        mysql_free_result(result);
+        return false;
+    }
+    int n = row[0];
+    mysql_free_result(result);
+    return n == 1;
+}
+
+bool SqlConnection::createDb(std::string const& dbName, bool failIfExists) {
+    assert(_conn);
+    if (dbExists(dbName)) {
+        if (failIfExists) {
+            _error = "Can't create db " + dbName + ", it already exists\n";
+            return false;
+        }
+        return true;
+    }
+    std::string sql = "CREATE DATABASE" + dbName + "'";
+    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+        _storeMysqlError(_conn);
+        return false;
+    }
+    return true;
+}
+
+bool SqlConnection::dropDb(std::string const& dbName) {
+    assert(_conn);
+    if (!dbExists(dbName)) {
+        _error = "Can't drop db " + dbName + ", it does not exist\n";
+        return false;
+    }
+    std::string sql = "DROP DATABASE" + dbName + "'";
+    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+        _storeMysqlError(_conn);
+        return false;
+    }
+    return true;
+}
+
+bool SqlConnection::tableExists(std::string const& tableName, 
+                                std::string const& dbName) {
+    assert(_conn);
+    if (!dbExists(dbName)) {
+        _error = "Db " + dbName + " does not exist\n";
+        return false;
+    }
+    std::string sql = "SELECT COUNT(*) FROM information_schema.tables "
+        + "WHERE table_schema = '" + dbName 
+        + "' AND table_name = '" + tableName + "'";
+    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+        _storeMysqlError(_conn);
+        return false;
+    }
+    MYSQL_RES *result = mysql_store_result(_conn);
+    MYSQL_ROW row = mysql_fetch_row(result);
+    if (!row) {
+        mysql_free_result(result);
+        return false;
+    }
+    int n = row[0];
+    mysql_free_result(result);
+    return n == 1;
+}
+
+std::vector<std::string> 
+SqlConnection::listTables(std::string const& prefixed="",
+                          std::string const& dbName) {
+    assert(_conn);
+    if (!dbExists(dbName)) {
+        _error = "Db " + dbName + " does not exist\n";
+        return false;
+    }
+    std::string sql = "SELECT table_name FROM information_schema.tables "
+        + "WHERE table_schema = '" + dbName + "'";
+    if (prefixed != "") {
+        sql += " AND table_name LIKE '" + prefixed + "%";
+    }
+    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+        _storeMysqlError(_conn);
+        return false;
+    }
+    MYSQL_RES *result = mysql_store_result(_conn);
+    std::vector<std::string> v;
+    while (row = mysql_fetch_row(result)) {
+        v.push_back(row[0]);
+    }
+    return v;
 }
 
 ////////////////////////////////////////////////////////////////////////
