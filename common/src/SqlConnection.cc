@@ -161,15 +161,16 @@ SqlConnection::dropDb(std::string const& dbName, ErrorObject& errObj) {
 
 bool 
 SqlConnection::tableExists(std::string const& tableName, 
-                           std::string const& dbName, 
-                           ErrorObject& errObj) {
+                           ErrorObject& errObj,
+                           std::string const& dbName) {
     assert(_conn);
-    if (!dbExists(dbName, errObj)) {
-        errObj.details = "Db " + dbName + " does not exist\n";
+    std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
+    if (!dbExists(_dbName, errObj)) {
+        errObj.details = "Db " + _dbName + " does not exist\n";
         return false;
     }
     std::string sql = "SELECT COUNT(*) FROM information_schema.tables "
-        + "WHERE table_schema = '" + dbName 
+        + "WHERE table_schema = '" + _dbName 
         + "' AND table_name = '" + tableName + "'";
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
         return_setErrorObject(errObj);
@@ -188,14 +189,15 @@ SqlConnection::tableExists(std::string const& tableName,
 
 std::vector<std::string> 
 SqlConnection::listTables(std::string const& prefixed="",
-                          std::string const& dbName,
-                          ErrorObject& errObj) {
+                          ErrorObject& errObj,
+                          std::string const& dbName) {
     assert(_conn);
-    if (!dbExists(dbName, errObj)) {
+    std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
+    if (!dbExists(_dbName, errObj)) {
         return false;
     }
     std::string sql = "SELECT table_name FROM information_schema.tables "
-        + "WHERE table_schema = '" + dbName + "'";
+        + "WHERE table_schema = '" + _dbName + "'";
     if (prefixed != "") {
         sql += " AND table_name LIKE '" + prefixed + "%";
     }

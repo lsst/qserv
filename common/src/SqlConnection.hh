@@ -72,12 +72,11 @@ public:
     bool createDb(std::string const& dbName, ErrorObject&, bool failIfExists=true);
     bool dropDb(std::string const& dbName, ErrorObject&);
     bool tableExists(std::string const& tableName, 
-                     std::string const& dbName=getActiveDbName(),
-                     ErrorObject&);
-    std::vector<std::string> listTables(
-                                   std::string const& prefixed="",
-                                   std::string const& dbName=getActiveDbName(),
-                                   ErrorObject&);
+                     ErrorObject&,
+                     std::string const& dbName="");
+    std::vector<std::string> listTables(std::string const& prefixed="",
+                                        std::string const& dbName="",
+                                        ErrorObject&);
 
     std::string getActiveDbName() const { return _config.dbName; }
 
