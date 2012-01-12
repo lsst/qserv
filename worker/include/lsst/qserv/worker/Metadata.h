@@ -24,6 +24,15 @@
 #define LSST_QSERV_WORKER_METADATA_H
 
 #include <string>
+#include <boost/shared_ptr.hpp>
+#include "../../common/src/SqlErrorObject.hh"
+#include "../../common/src/SqlConnection.hh"
+
+namespace lsst {
+namespace qserv {
+// Forward
+class SqlConnection;
+}}
 
 namespace lsst {
 namespace qserv {
@@ -32,17 +41,20 @@ namespace worker {
 class Metadata {
 public:
     Metadata(int workerId);
-    int registerQservedDb(std::string const& dbName,
-                          std::string const& partitionedTables) const;
-    int createExportDirs(std::string const& baseDir) const;
-
+    bool registerQservedDb(std::string const& dbName,
+                           std::string const& partitionedTables);
+    bool createExportDirs(std::string const& baseDir);
+    
 private:
-    int createExportDirsForDb(std::string const& baseDir,
-                              std::string const& dbName,
-                              std::string const& partitionedTables) const;
+    bool createExportDirsForDb(std::string const& baseDir,
+                               std::string const& dbName,
+                               std::string const& partitionedTables);
 
 private:
     const std::string _metadataDbName;
+
+    boost::shared_ptr<SqlConnection> _sqlConn;
+    SqlErrorObject _errObj;
 };
 
 }}} // namespace lsst.qserv.worker

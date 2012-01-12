@@ -574,10 +574,10 @@ bool qWorker::QueryRunner::_runScript(std::string const& script,
                                       std::string const& dbName) {
     
     SqlConfig sc;
-    sc.hostname = 0;
+    sc.hostname = "";
     sc.username = _user.c_str();
-    sc.password = 0;
-    sc.dbName = 0;
+    sc.password = "";
+    sc.dbName = "";
     sc.port = 0;
     sc.socket = getConfig().getString("mysqlSocket").c_str();
     

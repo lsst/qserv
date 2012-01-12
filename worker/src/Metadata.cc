@@ -20,9 +20,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "../../common/src/SqlConnection.hh"
 #include "lsst/qserv/worker/Metadata.h"
 
 #include "mysql/mysql.h"
+
+using lsst::qserv::SqlConfig;
+using lsst::qserv::SqlConnection;
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -31,59 +35,63 @@ namespace qWorker = lsst::qserv::worker;
 // WHERE table_schema = 'dbName' AND table_name = 'tableName'"
 
 
-qWorker::Metadata::Metadata(int workerId) :
-    _metadataDbName("qserv_worker_meta_" + _workerId) {
-};
+qWorker::Metadata::Metadata(int workerId) 
+    : _metadataDbName("qserv_worker_meta_" + workerId) {
+
+    SqlConfig sc;
+    sc.hostname = "";
+    sc.username = "dummy";
+    sc.password = "";
+    sc.dbName = "";
+    sc.port = 0;
+    sc.socket = "dummy";
+
+    _sqlConn.reset(new SqlConnection(sc, false));
+}
 
 /// called ones for each new database that this worker should serve
 /// partitionedTables is a comma separated list of tables that are
 /// partitioned.
-/// Returns 0 on success
-int
+bool
 qWorker::Metadata::registerQservedDb(std::string const& dbName,
                                      std::string const& partitionedTables) {
-    int status = 0;
-    if ( !dbExists(_metadataDbName) ) {
-        status = createDb(_metadataDbName);
-        if ( 0 != status ) {
-            return status;
+
+    if ( !_sqlConn->dbExists(_metadataDbName, _errObj) ) {
+        if ( !_sqlConn->createDb(_metadataDbName, _errObj) ) {
+            return false;
         }
     }
-    status = connectToDb(_metadataDbName);
-    if ( 0 != status ) {
-        return status;
+    if ( !_sqlConn->selectDb(_metadataDbName, _errObj) ) {
+        return false;
     }
     // check if table "Dbs" exists, create if it does not
-    if ( !tableExists("Dbs")) {
-        runQuery("CREATE TABLE Dbs (hash INT, dbName VARCHAR, partitionedTables VARCHAR)");
+    if ( !_sqlConn->tableExists("Dbs", _errObj)) {
+        //runQuery("CREATE TABLE Dbs (hash INT, dbName VARCHAR, partitionedTables VARCHAR)");
     } else {
         // check if db is not already registered
-        runQuery("SELECT COUNT(*) FROM 'Dbs' WHERE dbName='" + dbName + "'");
+        //runQuery("SELECT COUNT(*) FROM 'Dbs' WHERE dbName='" + dbName + "'");
         // fail if the result is not equal 1
     }
     
     // register the new database this worker should serve
-    int hash = computeHash(dbName);
-    runQuery("INSERT INTO Dbs(hash,dbName) VALUES("+hash+","
-             +dbName+","+partitionedTables+")");
+    int hash = 123; //computeHash(dbName);
+    //runQuery("INSERT INTO Dbs(hash,dbName) VALUES("+hash+","
+    //         +dbName+","+partitionedTables+")");
 
-    return 0; // success
-};
+    return true; // success
+}
 
 /// creates directories: <baseDir>/<dbName><chunkNumber>
 /// for every chunk in every database served
-int 
+bool 
 qWorker::Metadata::createExportDirs(std::string const& baseDir) {
-    if ( !dbExists(_metadataDbName) ) {
-        // print error here
-        return -1;
+    if ( !_sqlConn->dbExists(_metadataDbName, _errObj) ) {
+        return false;
     }
-    int status = connectToDb(_metadataDbName);
-    if ( 0 != status ) {
-        // print error here
-        return status;
+    if (! _sqlConn->selectDb(_metadataDbName, _errObj) ) {
+        return false;
     }
-    dbsArray = runQuery("SELECT dbName FROM Dbs");
+    /*dbsArray = runQuery("SELECT dbName FROM Dbs");
     for (dInfo in dbsArray) {
         dbName = dInfo[0];
         partitionedTables = dInfo[1];
@@ -91,20 +99,18 @@ qWorker::Metadata::createExportDirs(std::string const& baseDir) {
         if ( 0 != status ) {
             return status;
         }
-    }
-    return 0; // success
+        }*/
+    return true; // success
 }
 
-int 
+bool
 qWorker::Metadata::createExportDirsForDb(std::string const& baseDir,
                                          std::string const& dbName,
                                          std::string const& partitionedTables){
-    int status = connectToDb(dbName);
-    if (0 != status) {
-        // fail, served db should exist
-        return -2;
+    if ( ! _sqlConn->selectDb(dbName, _errObj) ) {
+        return false;
     }
-    for (each tableName in partitionedTables) {
+    /*for (each tableName in partitionedTables) {
         chunkIds = runQuery("SELECT table_name " 
                             + "FROM information_schema.tables " 
                             + "WHERE table_schema = '" + d 
@@ -112,6 +118,6 @@ qWorker::Metadata::createExportDirsForDb(std::string const& baseDir,
         for ( each chunkId in chunkIds) {
             buildPath(baseDir, dbName, chunkId);
         }
-    }
-    return 0; // success
+    }*/
+    return true; // success
 }
