@@ -28,8 +28,7 @@
 
 // boost
 #include "boost/thread.hpp" // for mutex support
-// xrootd
-#include "XrdSfs/XrdSfsInterface.hh"
+
 #include "mysql/mysql.h"
 
 // package
@@ -41,13 +40,12 @@ namespace lsst {
 namespace qserv {
 namespace worker {
 
-
 ////////////////////////////////////////////////////////////////////////
 class QueryRunner {
 public:
     typedef ResultTracker<std::string, ResultError> Tracker;
     typedef QueryRunnerManager Manager;
-    QueryRunner(XrdSysError& e, 
+    QueryRunner(boost::shared_ptr<Logger> log, 
                 std::string const& user, ScriptMeta const& s,
                 std::string overrideDump=std::string());
     explicit QueryRunner(QueryRunnerArg const& a);
@@ -90,7 +88,7 @@ private:
     boost::shared_ptr<CheckFlag> _makeAbort();
     bool _poisonCleanup();
 
-    XrdSysError& _e;
+    boost::shared_ptr<Logger> _log;
     std::string _user;
     ScriptMeta _meta;
     std::string _scriptId;

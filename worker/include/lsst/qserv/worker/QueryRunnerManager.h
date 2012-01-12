@@ -34,12 +34,11 @@ class QueryRunner;
 ////////////////////////////////////////////////////////////////////////
 class QueryRunnerArg {
 public:
-    QueryRunnerArg(XrdSysError* e_, 
+    QueryRunnerArg(boost::shared_ptr<Logger> log_,
                    std::string const& user_, ScriptMeta const& s_,
                    std::string overrideDump_=std::string()) 
-        : e(e_), user(user_), s(s_), overrideDump(overrideDump_) { }
-
-    XrdSysError* e; // must be assignable
+        : log(log_), user(user_), s(s_), overrideDump(overrideDump_) { }
+    boost::shared_ptr<Logger> log;
     std::string user;
     ScriptMeta s;
     std::string overrideDump;

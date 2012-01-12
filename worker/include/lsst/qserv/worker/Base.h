@@ -142,6 +142,13 @@ public:
     virtual bool accept(boost::shared_ptr<TaskMsg> msg) = 0;
 };
 
+class Logger {
+public:
+    virtual ~Logger() {}
+    virtual void operator()(std::string const& s) = 0;
+    virtual void operator()(char const* s) = 0;
+};
+
 }}}
 
 #if DO_

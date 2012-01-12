@@ -39,6 +39,7 @@
 #include "lsst/qserv/worker/Thread.h"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/MySqlFsCommon.h"
+#include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/RequestTaker.h"
 #include "lsst/qserv/QservPath.hh"
 
@@ -126,6 +127,19 @@ private:
 // for now, two simultaneous writes (queries)
 qWorker::Semaphore WriteCallable::_sema(2);
 
+class XrdLogger : public qWorker::Logger {
+public:
+    explicit XrdLogger(XrdSysError& e) : _e(e) {}
+    virtual void operator()(std::string const& s) {
+        _e.Say(s.c_str());
+    }
+    virtual void operator()(char const* s) {
+        _e.Say(s);
+    }
+
+private:
+    XrdSysError& _e;
+};
 
 bool flushOrQueue(qWorker::QueryRunnerArg const& a)  {
     qWorker::QueryRunner::Manager& mgr = qWorker::QueryRunner::getMgr();
@@ -501,17 +515,19 @@ bool qWorker::MySqlFsFile::_flushWrite() {
 }
 
 bool qWorker::MySqlFsFile::_flushWriteDetach() {
-    qWorker::QueryRunnerArg a(_eDest, _userName, 
+    boost::shared_ptr<XrdLogger> x(new XrdLogger(*_eDest));
+    qWorker::QueryRunnerArg a(x, _userName, 
                               ScriptMeta(_queryBuffer, _chunkId));
     return flushOrQueue(a);
 }
 
 bool qWorker::MySqlFsFile::_flushWriteSync() {
+    boost::shared_ptr<XrdLogger> x(new XrdLogger(*_eDest));
     ScriptMeta s(_queryBuffer, _chunkId);
     _script = s.script;
     _setDumpNameAsChunkId(); // Because reads may get detached from writes.
     //_eDest->Say((Pformat("db=%1%.") % s.dbName).str().c_str());
-    QueryRunner runner(*_eDest, _userName, s, _dumpName);
+    QueryRunner runner(x, _userName, s, _dumpName);
     return runner();
 }
 
