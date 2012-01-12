@@ -69,11 +69,16 @@ public:
     bool apply(std::string const& sql, ErrorObject&);
 
     bool dbExists(std::string const& dbName, ErrorObject&);
-    bool createDb(std::string const& dbName, ErrorObject&, bool failIfExists=true);
+    bool createDb(std::string const& dbName, ErrorObject&, 
+                  bool failIfExists=true);
     bool dropDb(std::string const& dbName, ErrorObject&);
     bool tableExists(std::string const& tableName, 
                      ErrorObject&,
                      std::string const& dbName="");
+    bool dropTable(std::string const& tableName,
+                   ErrorObject&,
+                   bool failIfDoesNotExist=true,
+                   std::string const& dbName="");
     std::vector<std::string> listTables(std::string const& prefixed="",
                                         std::string const& dbName="",
                                         ErrorObject&);

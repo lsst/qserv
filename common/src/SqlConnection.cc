@@ -187,6 +187,28 @@ SqlConnection::tableExists(std::string const& tableName,
     return n == 1;
 }
 
+bool 
+SqlConnection::dropTable(std::string const& tableName,
+                         ErrorObject& errObj,
+                         bool failIfDoesNotExist,
+                         std::string const& dbName) {
+    assert(_conn);
+    std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
+    if (!tableExists(tableName, errObj, _dbName)) {
+        if (failIfDoesNotExist) {
+            errObj.details = "Can't drop table " + tableName 
+                + " (does not exist)";
+            return false;
+        }
+        return true;
+    }
+    std::string sql = "DROP TABLE " + _dbName + "." + tableName;
+    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+        return_setErrorObject(errObj);
+    }
+    return true;
+}
+
 std::vector<std::string> 
 SqlConnection::listTables(std::string const& prefixed="",
                           ErrorObject& errObj,
