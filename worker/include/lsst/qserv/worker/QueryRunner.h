@@ -35,77 +35,12 @@
 // package
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/ResultTracker.h"
-
+#include "lsst/qserv/worker/QueryRunnerManager.h"
 
 namespace lsst {
 namespace qserv {
 namespace worker {
 
-// Forward
-class QueryRunner;
-
-////////////////////////////////////////////////////////////////////////
-class QueryRunnerArg {
-public:
-    QueryRunnerArg(XrdSysError* e_, 
-                   std::string const& user_, ScriptMeta const& s_,
-                   std::string overrideDump_=std::string()) 
-        : e(e_), user(user_), s(s_), overrideDump(overrideDump_) { }
-
-    XrdSysError* e; // must be assignable
-    std::string user;
-    ScriptMeta s;
-    std::string overrideDump;
-};
-
-class ArgFunc {
-public:
-    virtual ~ArgFunc() {}
-    virtual void operator()(QueryRunnerArg const& )=0;
-};
-
-////////////////////////////////////////////////////////////////////////
-class QueryRunnerManager {
-public:
-    QueryRunnerManager() : _limit(8), _jobTotal(0) { _init(); }
-    ~QueryRunnerManager() {}
-
-    // const
-    bool hasSpace() const { return _runners.size() < _limit; }
-    bool isOverloaded() const { return _runners.size() > _limit; }
-    int getQueueLength() const { return _args.size();}
-    int getRunnerCount() const { return _runners.size();}
-
-    // non-const
-    void runOrEnqueue(QueryRunnerArg const& a);
-    void setSpaceLimit(int limit) { _limit = limit; }
-    bool squashByHash(std::string const& hash);
-    void addRunner(QueryRunner* q); 
-    void dropRunner(QueryRunner* q);
-    bool recycleRunner(ArgFunc* r, int lastChunkId);
-
-    // Mutex
-    boost::mutex& getMutex() { return _mutex; }
-
-private:
-    typedef std::deque<QueryRunnerArg> ArgQueue;
-    typedef std::deque<QueryRunner*> QueryQueue;
-    class argMatch;
-
-    void _init();
-    QueryRunnerArg const& _getQueueHead() const;
-    void _popQueueHead();
-    bool _cancelQueued(std::string const& hash);
-    bool _cancelRunning(std::string const& hash);
-    void _enqueue(QueryRunnerArg const& a);
-    
-    ArgQueue _args;
-    QueryQueue _runners;
-    int _jobTotal;
-    
-    int _limit;
-    boost::mutex _mutex;    
-};
 
 ////////////////////////////////////////////////////////////////////////
 class QueryRunner {
