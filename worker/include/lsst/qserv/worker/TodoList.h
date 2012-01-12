@@ -48,7 +48,14 @@ public:
 
     typedef lsst::qserv::TaskMsg TaskMsg;
     typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
-    struct Task;
+
+    struct Task {
+    public:
+        TaskMsgPtr msg;
+        std::string hash;
+        std::string dbName;
+        std::string resultPath;
+    };
     typedef boost::shared_ptr<Task> TaskPtr;
     typedef std::deque<TaskPtr> TaskQueue;
 
@@ -66,14 +73,18 @@ public:
     virtual bool accept(boost::shared_ptr<TaskMsg> msg);
 
     // Reusing existing QueryRunnerArg for now.
-    boost::shared_ptr<QueryRunnerArg> popTask();
+    boost::shared_ptr<Task> popTask();
     
     class MatchF {
     public: 
         virtual ~MatchF();
+        // must not block or call any TodoList functions.
         virtual bool operator()(TaskMsg const& tm) = 0;
     };
-    boost::shared_ptr<QueryRunnerArg> popTask(MatchF& m);
+    // O(n) search right now: n is small
+    boost::shared_ptr<Task> popTask(MatchF& m);
+    boost::shared_ptr<Task> popByHash(std::string const& hash);
+    boost::shared_ptr<Task> popByChunk(int chunkId);
 
 private:    
     typedef std::deque<Watcher::Ptr> WatcherQueue;

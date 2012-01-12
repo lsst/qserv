@@ -37,14 +37,55 @@ namespace {
 ////////////////////////////////////////////////////////////////////////
 // class TodoList::Task
 ////////////////////////////////////////////////////////////////////////
-struct qWorker::TodoList::Task {
-public:
-    TaskMsgPtr msg;
-    std::string hash;
-    std::string dbName;
-    std::string resultPath;
-};
 
+////////////////////////////////////////////////////////////////////////
+// Helpers for TodoList
+////////////////////////////////////////////////////////////////////////
+namespace {
+    struct taskMatch {
+        taskMatch(qWorker::TodoList::MatchF& f_) : f(f_) {}
+        inline bool operator()(boost::shared_ptr<qWorker::TodoList::Task>& t) {
+            if(t.get() && t->msg.get()) {
+                return f(*(t->msg));
+            } else { return false; }
+        }
+        qWorker::TodoList::MatchF& f;
+    };
+    
+    struct hashMatch {
+        hashMatch(std::string const& hash_) : hash(hash_) {}
+        inline bool operator()(boost::shared_ptr<qWorker::TodoList::Task>& t) {
+            if(t.get()) {
+                return t->hash == hash;
+            } else { return false; }
+        }
+        std::string const hash;
+    };
+    struct chunkMatch {
+        chunkMatch(int chunk_) : chunk(chunk_) {}
+        inline bool operator()(boost::shared_ptr<qWorker::TodoList::Task>& t) {
+            if(t.get() && t->msg.get() && t->msg->has_chunkid()) {
+                return t->msg->chunkid() == chunk;
+            } else { return false; }
+        }
+        int chunk;
+    };
+
+    // queue type and condition functor
+    template <typename Q, typename C> 
+    boost::shared_ptr<qWorker::TodoList::Task> 
+    popAndReturn(boost::mutex& m, Q& q, C c) {
+        boost::lock_guard<boost::mutex> mutex(m);
+        typename Q::iterator i;
+        i = std::find_if(q.begin(), q.end(), c);
+        if(i != q.end()) {
+            typename Q::value_type v = *i;
+            q.erase(i);
+            return v;
+        }
+        return typename Q::value_type();
+    }
+}
 ////////////////////////////////////////////////////////////////////////
 // TodoList implementation
 ////////////////////////////////////////////////////////////////////////
@@ -60,37 +101,31 @@ bool qWorker::TodoList::accept(boost::shared_ptr<TaskMsg> msg) {
     _notifyWatchers();    
 }
 
-boost::shared_ptr<qWorker::QueryRunnerArg> qWorker::TodoList::popTask() {
-    
-}
-
-boost::shared_ptr<qWorker::QueryRunnerArg> 
-qWorker::TodoList::popTask(qWorker::TodoList::MatchF& m) {
+boost::shared_ptr<qWorker::TodoList::Task> qWorker::TodoList::popTask() {
     boost::lock_guard<boost::mutex> mutex(_tasksMutex);
-#if 0 
-    if((!isOverloaded()) && (!_args.empty())) {
-    if(true) { // Simple version
-            (*af)(_getQueueHead()); // Switch to new query
-            _popQueueHead();
-        } else { // Prefer same chunk, if possible. 
-            // For now, don't worry about starving other chunks.
-            ArgQueue::iterator i;
-            i = std::find_if(_args.begin(), _args.end(), argMatch(lastChunkId));
-            if(i != _args.end()) {
-                (*af)(*i);
-                _args.erase(i);
-            } else {
-                (*af)(_getQueueHead()); // Switch to new query
-                _popQueueHead();            
-            }
-    }
-    return true;
-    
-#endif
-    return boost::shared_ptr<qWorker::QueryRunnerArg>(); //FIXME
-    
-
+    if(!_tasks.empty()) {
+        boost::shared_ptr<qWorker::TodoList::Task> t = _tasks.front();
+        _tasks.pop_front();
+        return t;
+    } else { return boost::shared_ptr<qWorker::TodoList::Task>(); }
 }
+
+
+boost::shared_ptr<qWorker::TodoList::Task> 
+qWorker::TodoList::popTask(qWorker::TodoList::MatchF& m) {
+    return popAndReturn(_tasksMutex, _tasks, taskMatch(m));
+}
+
+boost::shared_ptr<qWorker::TodoList::Task>
+qWorker::TodoList::popByHash(std::string const& hash) {
+    return popAndReturn(_tasksMutex, _tasks, hashMatch(hash));
+}
+
+boost::shared_ptr<qWorker::TodoList::Task>
+qWorker::TodoList::popByChunk(int chunkId) {
+    return popAndReturn(_tasksMutex, _tasks, chunkMatch(chunkId));
+}
+
 
 void qWorker::TodoList::_notifyWatchers() {
     boost::lock_guard<boost::mutex> m(_watchersMutex);
