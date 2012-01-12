@@ -36,6 +36,8 @@
 // MySQL
 #include <mysql/mysql.h> // MYSQL is typedef, so we can't forward declare it.
 
+#include "SqlErrorObject.hh"
+
 namespace lsst {
 namespace qserv {
 
@@ -51,49 +53,41 @@ public:
     std::string socket;
 };
 
-class ErrorObject {
-    int errNo;           // mysql error number
-    std::string errMsg;  // mysql error message
-    std::string details; // further details
-
-    std::string printErrMsg() const;
-};
-      
 /// class SqlConnection : Class for interacting with a MySQL database.
 class SqlConnection {
 public:
     SqlConnection(SqlConfig const& sc, bool useThreadMgmt=false); 
     ~SqlConnection(); 
-    bool connectToDb(ErrorObject&);
-    bool selectDb(std::string const& dbName, ErrorObject&);
-    bool apply(std::string const& sql, ErrorObject&);
+    bool connectToDb(SqlErrorObject&);
+    bool selectDb(std::string const& dbName, SqlErrorObject&);
+    bool apply(std::string const& sql, SqlErrorObject&);
 
-    bool dbExists(std::string const& dbName, ErrorObject&);
-    bool createDb(std::string const& dbName, ErrorObject&, 
+    bool dbExists(std::string const& dbName, SqlErrorObject&);
+    bool createDb(std::string const& dbName, SqlErrorObject&, 
                   bool failIfExists=true);
-    bool dropDb(std::string const& dbName, ErrorObject&);
+    bool dropDb(std::string const& dbName, SqlErrorObject&);
     bool tableExists(std::string const& tableName, 
-                     ErrorObject&,
+                     SqlErrorObject&,
                      std::string const& dbName="");
     bool dropTable(std::string const& tableName,
-                   ErrorObject&,
+                   SqlErrorObject&,
                    bool failIfDoesNotExist=true,
                    std::string const& dbName="");
-    std::vector<std::string> listTables(std::string const& prefixed="",
-                                        std::string const& dbName="",
-                                        ErrorObject&);
+    std::vector<std::string> listTables(SqlErrorObject&,
+                                        std::string const& prefixed="",
+                                        std::string const& dbName="");
 
     std::string getActiveDbName() const { return _config.dbName; }
 
-    // FIXME: remove, not thread safe, use ErrorObject instead
+    // FIXME: remove, not thread safe, use SqlErrorObject instead
     char const* getMySqlError() const { return _mysqlError; }
     int getMySqlErrno() const { return _mysqlErrno; }
 
 private:
-    bool _init(ErrorObject&);
-    bool _connect(ErrorObject&);
-    void _discardResults(ErrorObject&);
-    bool _setErrorObject(ErrorObject&);
+    bool _init(SqlErrorObject&);
+    bool _connect(SqlErrorObject&);
+    void _discardResults(SqlErrorObject&);
+    bool _setErrorObject(SqlErrorObject&);
 
     MYSQL* _conn;
     std::string _error;

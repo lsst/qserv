@@ -35,13 +35,6 @@ bool SqlConnection::_isReady = false;
 boost::mutex SqlConnection::_sharedMutex;
 
 
-std::string 
-ErrorObject::printErrorMsg() {
-    std::stringstream ss;
-    ss << "Error " << errNo << ": " << errMsg << " (" << details << ")" << std::endl;
-    return ss.str();
-}
-
 SqlConnection::SqlConnection(SqlConfig const& sc, bool useThreadMgmt) 
     : _conn(NULL), _config(sc), 
       _connected(false), _useThreadMgmt(useThreadMgmt) { 
@@ -67,13 +60,13 @@ SqlConnection::~SqlConnection() {
 }
 
 bool 
-SqlConnection::connectToDb(ErrorObject& errObj) {
+SqlConnection::connectToDb(SqlErrorObject& errObj) {
     if(_connected) return true;
     return _init(errObj) && _connect(errObj);
 }
 
 bool 
-SqlConnection::selectDb(std::string const& dbName, ErrorObject& errObj) {
+SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
     assert(_conn);
     if (_config.dbName == dbName) {
         return true; // nothing to do
@@ -94,7 +87,7 @@ SqlConnection::selectDb(std::string const& dbName, ErrorObject& errObj) {
 }
 
 bool 
-SqlConnection::apply(std::string const& sql, ErrorObject& errObj) {
+SqlConnection::apply(std::string const& sql, SqlErrorObject& errObj) {
     assert(_conn);
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
         return _setErrorObject(errObj);
@@ -108,7 +101,7 @@ SqlConnection::apply(std::string const& sql, ErrorObject& errObj) {
 }
 
 bool 
-SqlConnection::dbExists(std::string const& dbName, ErrorObject& errObj) {
+SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
     assert(_conn);
     std::string sql = "SELECT COUNT(*) FROM information_schema.schemata "
         + "WHERE schema_name = '" + dbName + "'";
@@ -129,11 +122,14 @@ SqlConnection::dbExists(std::string const& dbName, ErrorObject& errObj) {
 }
 
 bool 
-SqlConnection::createDb(std::string const& dbName, ErrorObject& errObj, bool failIfExists) {
+SqlConnection::createDb(std::string const& dbName, 
+                        SqlErrorObject& errObj, 
+                        bool failIfExists) {
     assert(_conn);
     if (dbExists(dbName, errObj)) {
         if (failIfExists) {
-            errObj.details = "Can't create db " + dbName + ", it already exists\n";
+            errObj.details = "Can't create db " + dbName 
+                + ", it already exists\n";
             return false;
         }
         return true;
@@ -146,7 +142,7 @@ SqlConnection::createDb(std::string const& dbName, ErrorObject& errObj, bool fai
 }
 
 bool 
-SqlConnection::dropDb(std::string const& dbName, ErrorObject& errObj) {
+SqlConnection::dropDb(std::string const& dbName, SqlErrorObject& errObj) {
     assert(_conn);
     if (!dbExists(dbName, errObj)) {
         errObj.details = "Can't drop db " + dbName + ", it does not exist\n";
@@ -161,7 +157,7 @@ SqlConnection::dropDb(std::string const& dbName, ErrorObject& errObj) {
 
 bool 
 SqlConnection::tableExists(std::string const& tableName, 
-                           ErrorObject& errObj,
+                           SqlErrorObject& errObj,
                            std::string const& dbName) {
     assert(_conn);
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
@@ -189,7 +185,7 @@ SqlConnection::tableExists(std::string const& tableName,
 
 bool 
 SqlConnection::dropTable(std::string const& tableName,
-                         ErrorObject& errObj,
+                         SqlErrorObject& errObj,
                          bool failIfDoesNotExist,
                          std::string const& dbName) {
     assert(_conn);
@@ -210,8 +206,8 @@ SqlConnection::dropTable(std::string const& tableName,
 }
 
 std::vector<std::string> 
-SqlConnection::listTables(std::string const& prefixed="",
-                          ErrorObject& errObj,
+SqlConnection::listTables(SqlErrorObject& errObj,
+                          std::string const& prefixed="",
                           std::string const& dbName) {
     assert(_conn);
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
@@ -239,17 +235,17 @@ SqlConnection::listTables(std::string const& prefixed="",
 ////////////////////////////////////////////////////////////////////////
 
 bool 
-SqlConnection::_init(ErrorObject& errObj) {
+SqlConnection::_init(SqlErrorObject& errObj) {
     assert(_conn == NULL);
     _conn = mysql_init(NULL);
     if (_conn == NULL) {
-        return _setErrorObject(ErrorObject);
+        return _setErrorObject(errObj);
     }
     return true;
 }
 
 bool 
-SqlConnection::_connect(ErrorObject& errObj) {
+SqlConnection::_connect(SqlErrorObject& errObj) {
     assert(_conn != NULL);
     unsigned long clientFlag = CLIENT_MULTI_STATEMENTS;
     MYSQL* c = mysql_real_connect
@@ -269,7 +265,7 @@ SqlConnection::_connect(ErrorObject& errObj) {
 }
 
 bool
-SqlConnection::_discardResults(ErrorObject& errObj) {
+SqlConnection::_discardResults(SqlErrorObject& errObj) {
     int status;
     MYSQL_RES* result;
 
@@ -292,7 +288,7 @@ SqlConnection::_discardResults(ErrorObject& errObj) {
 }
 
 bool 
-SqlConnection::_setErrorObject(ErrorObject& errObj) {
+SqlConnection::_setErrorObject(SqlErrorObject& errObj) {
     errObj.errNo = mysql_errno(c);
     errObj.errMsg = mysql_error(c);
     std::stringstream ss;

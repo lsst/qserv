@@ -232,7 +232,8 @@ bool TableMerger::_applySqlLocal(std::string const& sql) {
     boost::lock_guard<boost::mutex> m(_sqlMutex);
     if(!_sqlConn.get()) {
         _sqlConn.reset(new SqlConnection(*_sqlConfig, true));
-        if(!_sqlConn->connectToDb()) {
+        if(!_sqlConn->connectToDb(_error.errObj)) {
+          /// FIXME: merge this error object with ErrorObject from SqlConnection
             std::stringstream ss;
             _error.status = TableMergerError::MYSQLCONNECT;
             _error.errorCode = _sqlConn->getMySqlErrno();
@@ -246,7 +247,7 @@ bool TableMerger::_applySqlLocal(std::string const& sql) {
                       << " connected to db." << std::endl;
         }
     }
-    if(!_sqlConn->apply(sql)) {
+    if(!_sqlConn->apply(sql, _error.errObj)) {
         std::stringstream ss;
         _error.status = TableMergerError::MYSQLEXEC;
         _error.errorCode = _sqlConn->getMySqlErrno();
