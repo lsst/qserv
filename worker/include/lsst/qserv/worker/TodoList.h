@@ -51,10 +51,14 @@ public:
 
     struct Task {
     public:
+        explicit Task() {}
+        explicit Task(ScriptMeta const& s);
+        explicit Task(TaskMsgPtr t);
         TaskMsgPtr msg;
         std::string hash;
         std::string dbName;
         std::string resultPath;
+        
     };
     typedef boost::shared_ptr<Task> TaskPtr;
     typedef std::deque<TaskPtr> TaskQueue;
@@ -97,5 +101,6 @@ private:
     boost::mutex _tasksMutex;
     
 };
+
 }}} // lsst::qserv::worker
 #endif // LSST_QSERV_WORKER_TODOLIST_H

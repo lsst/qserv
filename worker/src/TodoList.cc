@@ -23,6 +23,7 @@
 #include "lsst/qserv/worker/TodoList.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/TaskMsgDigest.h"
+#include <boost/regex.hpp>
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -33,10 +34,49 @@ namespace {
     boost::shared_ptr<qWorker::QueryRunnerArg> 
     convertToArg(qWorker::TodoList::TaskMsgPtr const m) {
     }
+
+    typedef std::vector<int> IntVector;
+    typedef boost::shared_ptr<IntVector> IntVectorPtr;
+
+    IntVectorPtr extractSubchunks(std::string const& s) {
+        IntVectorPtr v(new IntVector());
+        std::stringstream ss;
+        int sc;
+        std::string firstLine = s.substr(0, s.find('\n'));
+        int subChunkCount = 0;
+        boost::regex re("\\d+");
+        for(boost::sregex_iterator i = boost::make_regex_iterator(firstLine, 
+                                                                  re);
+             i != boost::sregex_iterator(); ++i) {
+            ss.str((*i).str(0));
+            ss >> sc;
+            v->push_back(sc);
+        }
+        return v;
+
+    }
 }
 ////////////////////////////////////////////////////////////////////////
 // class TodoList::Task
 ////////////////////////////////////////////////////////////////////////
+qWorker::TodoList::Task::Task(qWorker::ScriptMeta const& s) {
+    TaskMsgPtr t(new TaskMsg());
+    hash = s.hash;
+    dbName = s.dbName;
+    resultPath = s.resultPath;
+    msg->set_chunkid(s.chunkId);
+    lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
+    IntVectorPtr v = extractSubchunks(s.script);
+    f->set_query(s.script);
+    for(IntVector::const_iterator i=v->begin(); i != v->end(); ++i) {
+        f->add_subchunk(*i); 
+    }
+
+}
+
+qWorker::TodoList::Task::Task(qWorker::TodoList::TaskMsgPtr t) {
+
+}
 
 ////////////////////////////////////////////////////////////////////////
 // Helpers for TodoList

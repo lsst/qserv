@@ -220,7 +220,7 @@ bool qWorker::QueryRunner::operator()() {
     boost::shared_ptr<ArgFunc> afPtr(getResetFunc());
     mgr.addRunner(this);
     (*_log)((Pformat("(Queued: %1%, running: %2%)")
-            % mgr.getQueueLength() % mgr.getRunnerCount()).str().c_str());
+             % mgr.getQueueLength() % mgr.getRunnerCount()).str().c_str());
     while(haveWork) {
         if(_checkPoisoned()) {
             _poisonCleanup();
@@ -241,11 +241,41 @@ bool qWorker::QueryRunner::operator()() {
     return true;
 }
 
+#if 0
+bool qWorker::QueryRunner::operate2()() {
+    
+    bool haveWork = true;
+    Manager& mgr = getMgr();
+    boost::shared_ptr<ArgFunc> afPtr(getResetFunc());
+    mgr.addRunner(this);
+    (*_log)((Pformat("(Queued: %1%, running: %2%)")
+            % mgr.getQueueLength() % mgr.getRunnerCount()).str().c_str());
+    while(haveWork) {
+        if(_checkPoisoned()) {
+            _poisonCleanup();
+        } else {
+            _act(); 
+            // Might be wise to clean up poison for the current hash anyway.
+        }
+        (*_log)((Pformat("(Looking for work... Queued: %1%, running: %2%)")
+                % mgr.getQueueLength() 
+                % mgr.getRunnerCount()).str().c_str());
+        bool reused = mgr.recycleRunner(afPtr.get(), _meta.chunkId);
+        if(!reused) {
+            mgr.dropRunner(this);
+            haveWork = false;
+        }
+    } // finished with work.
+
+    return true;
+
+}
+#endif
+
 void qWorker::QueryRunner::poison(std::string const& hash) {
     boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
     _poisoned.push_back(hash);
 }
-
 ////////////////////////////////////////////////////////////////////////
 // private:
 ////////////////////////////////////////////////////////////////////////
