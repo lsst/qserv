@@ -56,8 +56,10 @@ for src in Glob("*.cc"):
     if "Protocol_" in src.name:
         prog = protoEnv.Program(src)
         test = protoEnv.Test(prog)
+    elif "SqlConnection_" in src.name:
+        prog = testEnv.Program(src)
+        #test = testEnv.Test(prog)
     else:
         prog = testEnv.Program(src)
         test = testEnv.Test(prog)
-
     pass

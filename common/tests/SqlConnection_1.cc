@@ -31,10 +31,10 @@
 namespace test = boost::test_tools;
 namespace qsrv = lsst::qserv;
 
-lsst::qserv::SqlConnection *_sqlConn = 0;
 
 struct SqlConnectionFixture {
     SqlConnectionFixture() {
+        static lsst::qserv::SqlConnection *_sqlConn = 0;
         if (_sqlConn == 0 ) {
             lsst::qserv::SqlConfig sc;
             sc.hostname = "";
@@ -43,7 +43,7 @@ struct SqlConnectionFixture {
             std::cout << "Enter username: ";
             std::cin >> sc.username;
             sc.password = getpass("Enter password: ");
-            std::cout << "Enter mysql sockete: ";
+            std::cout << "Enter mysql socket: ";
             std::cin >> sc.socket;
             _sqlConn = new lsst::qserv::SqlConnection(sc);
         }
@@ -53,6 +53,8 @@ struct SqlConnectionFixture {
         delete _sqlConn;
     }
 };
+
+BOOST_FIXTURE_TEST_SUITE(SqlConnectionTestSuite, SqlConnectionFixture)
 
 BOOST_AUTO_TEST_CASE(CreateAndDropDb) {
     std::string dbN = "one_xysdfed34d";
