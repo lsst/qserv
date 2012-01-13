@@ -29,6 +29,7 @@
 #include "lsst/qserv/master/TableMerger.h"
 #include "lsst/qserv/master/SqlInsertIter.h"
 #include "lsst/qserv/master/MmapFile.h"
+using lsst::qserv::SqlErrorObject;
 using lsst::qserv::SqlConfig;
 using lsst::qserv::SqlConnection;
 using lsst::qserv::master::TableMerger;
@@ -230,16 +231,16 @@ bool TableMerger::_applySql(std::string const& sql) {
 
 bool TableMerger::_applySqlLocal(std::string const& sql) {
     boost::lock_guard<boost::mutex> m(_sqlMutex);
+    SqlErrorObject errObj;
     if(!_sqlConn.get()) {
         _sqlConn.reset(new SqlConnection(*_sqlConfig, true));
-        if(!_sqlConn->connectToDb(_error.errObj)) {
-          /// FIXME: merge this error object with ErrorObject from SqlConnection
+        if(!_sqlConn->connectToDb(errObj)) {
             std::stringstream ss;
             _error.status = TableMergerError::MYSQLCONNECT;
-            _error.errorCode = _sqlConn->getMySqlErrno();
+            _error.errorCode = errObj.errNo;
             ss << "Code:" << _error.errorCode << " "
-               << _sqlConn->getMySqlError();
-            _error.description = "Error connecting to db." + ss.str();
+               << errObj.errMsg << " (" << errObj.details << ")";
+            _error.description = "Error connecting to db. " + ss.str();
             _sqlConn.reset();
             return false;
         } else {
@@ -247,16 +248,15 @@ bool TableMerger::_applySqlLocal(std::string const& sql) {
                       << " connected to db." << std::endl;
         }
     }
-    if(!_sqlConn->apply(sql, _error.errObj)) {
+    if(!_sqlConn->apply(sql, errObj)) {
         std::stringstream ss;
         _error.status = TableMergerError::MYSQLEXEC;
-        _error.errorCode = _sqlConn->getMySqlErrno();
+        _error.errorCode = errObj.errNo;
         ss << "Code:" << _error.errorCode << " "
-           << _sqlConn->getMySqlError();
-        _error.description = "Error applying sql." + ss.str();
+           << errObj.errMsg << " (" << errObj.details << ")";
+        _error.description = "Error applying sql. " + ss.str();
         return false;
     }
-
     return true;
 }
 
