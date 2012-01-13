@@ -23,8 +23,6 @@
 #include <sstream>
 #include "SqlErrorObject.hh"
 
-#include "lsst/qserv/SqlErrorObject.hh"
-
 std::string 
 lsst::qserv::SqlErrorObject::printErrMsg() const {
     std::stringstream ss;

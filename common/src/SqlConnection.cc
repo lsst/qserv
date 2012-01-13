@@ -27,7 +27,7 @@
 #include <boost/thread.hpp> // for mutex. 
 #include <boost/format.hpp> // for mutex. 
 
-#include "lsst/qserv/SqlConnection.hh"
+#include "SqlConnection.hh"
 
 using lsst::qserv::SqlConnection;
 

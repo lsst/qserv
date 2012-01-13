@@ -12,7 +12,8 @@ for root, dirs, files in os.walk('../src'):
     # Filter out dotfiles?
     dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
 
-env.Append(CPPPATH = ['../include'])
+# Files in ../include are install targets right now. Should we change?
+#env.Append(CPPPATH = ['../include']) 
 
 lib = env.Library("qserv_common", sources)
 installedLib = env.Install('../lib', lib)

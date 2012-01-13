@@ -22,7 +22,7 @@
 #define BOOST_TEST_MODULE SqlConnection_1
 #include "boost/test/included/unit_test.hpp"
 
-#include "lsst/qserv/SqlConnection.hh"
+#include "SqlConnection.hh"
 
 #include <iostream>
 #include <string>
