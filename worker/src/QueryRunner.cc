@@ -189,24 +189,24 @@ std::string commasToSpaces(std::string const& s) {
 ////////////////////////////////////////////////////////////////////////
 qWorker::QueryRunner::QueryRunner(boost::shared_ptr<qWorker::Logger> log, 
                                   std::string const& user,
-                                  qWorker::ScriptMeta const& s, 
+                                  qWorker::Task::Ptr task, 
                                   std::string overrideDump) 
-    : _log(log), _user(user.c_str()), _meta(s), 
+    : _log(log), _user(user.c_str()), _task(task), 
       _poisonedMutex(new boost::mutex()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     if(!overrideDump.empty()) {
-        _meta.resultPath = overrideDump;   
+        _task->resultPath = overrideDump;   
     }
 }
 
 qWorker::QueryRunner::QueryRunner(QueryRunnerArg const& a) 
-    : _log(a.log), _user(a.user), _meta(a.s),
+    : _log(a.log), _user(a.user), _task(a.task),
       _poisonedMutex(new boost::mutex()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     if(!a.overrideDump.empty()) {
-        _meta.resultPath = a.overrideDump;   
+        _task->resultPath = a.overrideDump;   
     }
 }
 
@@ -231,7 +231,7 @@ bool qWorker::QueryRunner::operator()() {
         (*_log)((Pformat("(Looking for work... Queued: %1%, running: %2%)")
                 % mgr.getQueueLength() 
                 % mgr.getRunnerCount()).str().c_str());
-        bool reused = mgr.recycleRunner(afPtr.get(), _meta.chunkId);
+        bool reused = mgr.recycleRunner(afPtr.get(), _task->msg->chunkid());
         if(!reused) {
             mgr.dropRunner(this);
             haveWork = false;
@@ -260,15 +260,15 @@ bool qWorker::QueryRunner::operate2()() {
         (*_log)((Pformat("(Looking for work... Queued: %1%, running: %2%)")
                 % mgr.getQueueLength() 
                 % mgr.getRunnerCount()).str().c_str());
-        bool reused = mgr.recycleRunner(afPtr.get(), _meta.chunkId);
+        assert(_task.get()); 
+        assert(_task->msg.get());
+        bool reused = mgr.recycleRunner(afPtr.get(), _task->msg->chunkid());
         if(!reused) {
             mgr.dropRunner(this);
             haveWork = false;
         }
     } // finished with work.
-
     return true;
-
 }
 #endif
 
@@ -282,28 +282,28 @@ void qWorker::QueryRunner::poison(std::string const& hash) {
 bool qWorker::QueryRunner::_checkPoisoned() {
     boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
     StringDeque::const_iterator i = find(_poisoned.begin(), 
-                                         _poisoned.end(), _meta.hash);
+                                         _poisoned.end(), _task->hash);
     return i != _poisoned.end();
 }
 
 void qWorker::QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
     //_e should be tied to the MySqlFs instance and constant(?)
     _user = a.user;
-    _meta = a.s;
+    _task = a.task;
     _errorDesc.clear();
     _errorNo = 0;
     if(!a.overrideDump.empty()) {
-        _meta.resultPath = a.overrideDump;   
+        _task->resultPath = a.overrideDump;   
     }
 }
 
 bool qWorker::QueryRunner::_act() {
     char msg[] = "Exec in flight for Db = %1%, dump = %2%";
-    (*_log)((Pformat(msg) % _meta.dbName % _meta.resultPath).str().c_str());
+    (*_log)((Pformat(msg) % _task->dbName % _task->resultPath).str().c_str());
 
     // Do not print query-- could be multi-megabytes.
     std::string dbDump = (Pformat("Db = %1%, dump = %2%")
-                          % _meta.dbName % _meta.resultPath).str();
+                          % _task->dbName % _task->resultPath).str();
     (*_log)((Pformat("(fileobj:%1%) %2%")
             % (void*)(this) % dbDump).str().c_str());
 
@@ -312,16 +312,16 @@ bool qWorker::QueryRunner::_act() {
 #if 0 
     if (qWorker::dumpFileExists(_meta.resultPath)) {
         (*_log)((Pformat("Reusing pre-existing dump = %1% (chk=%2%)")
-                % _meta.resultPath % _meta.chunkId).str().c_str());
+                % _task->resultPath % _task->chunkId).str().c_str());
         // The system should probably catch this earlier.
-        getTracker().notify(_meta.hash, ResultError(0,""));
+        getTracker().notify(_task->hash, ResultError(0,""));
         return true;
     }
 #endif	
-    if (!_runScript(_meta.script, _meta.dbName)) {
+    if (!_runTask(_task)) {
         (*_log)((Pformat("(FinishFail:%1%) %2% hash=%3%")
-                % (void*)(this) % dbDump % _meta.hash).str().c_str());
-        getTracker().notify(_meta.hash,
+                % (void*)(this) % dbDump % _task->hash).str().c_str());
+        getTracker().notify(_task->hash,
                             ResultError(-1,"Script exec failure" 
                                         + _getErrorString()));
         return false;
@@ -329,14 +329,14 @@ bool qWorker::QueryRunner::_act() {
 
     (*_log)((Pformat("(FinishOK:%1%) %2%")
             % (void*)(this) % dbDump).str().c_str());    
-    getTracker().notify(_meta.hash, ResultError(0,""));
+    getTracker().notify(_task->hash, ResultError(0,""));
     return true;
 }
 
 bool qWorker::QueryRunner::_poisonCleanup() {
     StringDeque::iterator i;
     boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
-    i = find(_poisoned.begin(), _poisoned.end(), _meta.hash);
+    i = find(_poisoned.begin(), _poisoned.end(), _task->hash);
     if(i == _poisoned.end()) {
         return false;
     }
@@ -456,7 +456,7 @@ bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
         _appendError(EIO, result); 
         return false;
     }
-    else if(!_performMysqldump(realDbName, _meta.resultPath, tableList)) {
+    else if(!_performMysqldump(realDbName, _task->resultPath, tableList)) {
         _appendError(EIO, "mysqldump failure");
         return false;
     }
@@ -471,7 +471,7 @@ bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
   "VALUES (NOW(), ?, "
   "'" + dbName + "'"
   ", "
-  "'" + _meta.resultPath + "'"
+  "'" + _task->resultPath + "'"
   ")",
   script);
   if (result.size() != 0) {
@@ -480,6 +480,31 @@ bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
   return false;
   }
 */
+bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
+    _scriptId = t->dbName.substr(0, 6);
+    (*_log)((Pformat("TIMING,%1%ScriptStart,%2%")
+                 % _scriptId % ::time(NULL)).str().c_str());
+    // For now, coalesce all fragments.
+    std::stringstream ss;
+    IntVector sc;
+    assert(t.get());
+    assert(t->msg.get());
+    TaskMsg& m(*t->msg);
+    for(int i=0; i < m.fragment_size(); ++i) {
+        Task::Fragment const& f(m.fragment(i));
+        ss << f.query();
+        for(int j=0; j < f.subchunk_size(); ++j) {
+            sc.push_back(f.subchunk(j));
+        }
+    }
+    return _runFragment(ss.str(), sc, t->dbName);
+
+}
+bool qWorker::QueryRunner::_runFragment(std::string const& fscr,
+                                        IntVector const& sc,
+                                        std::string const& dbName) {
+    
+}
 
 bool qWorker::QueryRunner::_runScript(
     std::string const& script, std::string const& dbName) {
@@ -543,10 +568,10 @@ void qWorker::QueryRunner::_buildSubchunkScripts(std::string const& script,
         std::string subChunk = (*i).str(0);
         build +=
             (Pformat(CREATE_SUBCHUNK_SCRIPT)
-             % _meta.chunkId % subChunk).str() + "\n";
+             % _task->msg->chunkid() % subChunk).str() + "\n";
         cleanup +=
             (Pformat(CLEANUP_SUBCHUNK_SCRIPT)
-             % _meta.chunkId % subChunk).str() + "\n";
+             % _task->msg->chunkid() % subChunk).str() + "\n";
 	++subChunkCount;
 #ifdef DO_NOT_USE_BOOST // workaround emacs indent rules.
     }

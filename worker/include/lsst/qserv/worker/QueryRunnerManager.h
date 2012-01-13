@@ -22,6 +22,7 @@
 #ifndef LSST_QSERV_WORKER_QUERYRUNNERMANAGER_H
 #define LSST_QSERV_WORKER_QUERYRUNNERMANAGER_H
 #include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/worker/Task.h"
 
 namespace lsst {
 namespace qserv {
@@ -30,17 +31,17 @@ namespace worker {
 // Forward
 class QueryRunner;
 
-
 ////////////////////////////////////////////////////////////////////////
 class QueryRunnerArg {
 public:
     QueryRunnerArg(boost::shared_ptr<Logger> log_,
-                   std::string const& user_, ScriptMeta const& s_,
+                   std::string const& user_, 
+                   Task::Ptr task_,
                    std::string overrideDump_=std::string()) 
-        : log(log_), user(user_), s(s_), overrideDump(overrideDump_) { }
+        : log(log_), user(user_), task(task_), overrideDump(overrideDump_) { }
     boost::shared_ptr<Logger> log;
     std::string user;
-    ScriptMeta s;
+    Task::Ptr task;
     std::string overrideDump;
 };
 

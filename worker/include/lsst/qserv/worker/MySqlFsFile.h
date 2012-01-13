@@ -118,7 +118,6 @@ private:
     std::string _userName;
     std::string _dumpName;
     bool _hasRead;
-    std::string _script;
     StringBuffer2 _queryBuffer;
     boost::shared_ptr<QservPath> _path;
     boost::shared_ptr<RequestTaker> _requestTaker;

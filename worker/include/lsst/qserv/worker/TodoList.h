@@ -31,8 +31,8 @@
 
 #include <deque>
 #include "lsst/qserv/worker.pb.h"
-
 #include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/worker/Task.h"
 
 namespace lsst {
 namespace qserv {
@@ -43,25 +43,7 @@ class TodoList : public TaskAcceptor {
 public:
     typedef boost::shared_ptr<TodoList> Ptr;
 
-    typedef lsst::qserv::TaskMsg_Fragment Fragment;
-    typedef boost::shared_ptr<Fragment> FragmentPtr;
-
-    typedef lsst::qserv::TaskMsg TaskMsg;
-    typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
-
-    struct Task {
-    public:
-        explicit Task() {}
-        explicit Task(ScriptMeta const& s);
-        explicit Task(TaskMsgPtr t);
-        TaskMsgPtr msg;
-        std::string hash;
-        std::string dbName;
-        std::string resultPath;
-        
-    };
-    typedef boost::shared_ptr<Task> TaskPtr;
-    typedef std::deque<TaskPtr> TaskQueue;
+    typedef std::deque<Task::Ptr> TaskQueue;
 
     class Watcher {
     public:

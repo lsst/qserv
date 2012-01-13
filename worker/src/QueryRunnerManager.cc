@@ -33,7 +33,7 @@ class matchHash {
 public:
     matchHash(std::string const& hash_) : hash(hash_) {}
     inline bool operator()(qWorker::QueryRunnerArg const& a) {
-        return a.s.hash == hash;
+        return a.task->hash == hash;
     }
     inline bool operator()(qWorker::QueryRunner const* r) {
         return r->getHash() == hash;
@@ -56,7 +56,7 @@ class qWorker::QueryRunnerManager::argMatch {
 public:
     argMatch(int chunkId_) : chunkId(chunkId_) {}
     bool operator()(ArgQueue::value_type const& v) {
-        return chunkId == v.s.chunkId;
+        return chunkId == v.task->msg->chunkid();
     }
     int chunkId;
 };

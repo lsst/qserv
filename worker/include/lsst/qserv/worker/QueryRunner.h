@@ -46,12 +46,12 @@ public:
     typedef ResultTracker<std::string, ResultError> Tracker;
     typedef QueryRunnerManager Manager;
     QueryRunner(boost::shared_ptr<Logger> log, 
-                std::string const& user, ScriptMeta const& s,
+                std::string const& user, Task::Ptr task,
                 std::string overrideDump=std::string());
     explicit QueryRunner(QueryRunnerArg const& a);
     ~QueryRunner();
     bool operator()();
-    std::string const& getHash() const { return _meta.hash; }
+    std::string const& getHash() const { return _task->hash; }
     void poison(std::string const& hash);
 
     // Static: 
@@ -60,6 +60,10 @@ public:
 
 private:
     typedef std::deque<std::string> StringDeque;
+    typedef std::vector<int> IntVector;
+    typedef IntVector::iterator IntVectorIter;
+    typedef boost::shared_ptr<IntVector> IntVectorPtr;
+
     bool _act();
     void _appendError(int errorNo, std::string const& desc);
     bool _connectDbServer(MYSQL* db);
@@ -68,6 +72,11 @@ private:
     std::string _getDumpTableList(std::string const& script);
     void _mkdirP(std::string const& filePath);
     bool _runScript(std::string const& script, std::string const& dbName);
+    bool _runTask(Task::Ptr t);
+    bool _runFragment(std::string const& fscr,
+                      IntVector const& sc,
+                      std::string const& dbName);
+
     bool _runScriptCore(MYSQL* db, std::string const& script,
                         std::string const& dbName,
                         std::string const& tableList);
@@ -90,7 +99,7 @@ private:
 
     boost::shared_ptr<Logger> _log;
     std::string _user;
-    ScriptMeta _meta;
+    Task::Ptr _task;
     std::string _scriptId;
     int _errorNo;
     std::string _errorDesc;

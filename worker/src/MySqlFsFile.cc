@@ -516,18 +516,18 @@ bool qWorker::MySqlFsFile::_flushWrite() {
 
 bool qWorker::MySqlFsFile::_flushWriteDetach() {
     boost::shared_ptr<XrdLogger> x(new XrdLogger(*_eDest));
-    qWorker::QueryRunnerArg a(x, _userName, 
-                              ScriptMeta(_queryBuffer, _chunkId));
+    Task::Ptr t(new Task(ScriptMeta(_queryBuffer, _chunkId)));
+
+    qWorker::QueryRunnerArg a(x, _userName, t);
     return flushOrQueue(a);
 }
 
 bool qWorker::MySqlFsFile::_flushWriteSync() {
     boost::shared_ptr<XrdLogger> x(new XrdLogger(*_eDest));
-    ScriptMeta s(_queryBuffer, _chunkId);
-    _script = s.script;
+    Task::Ptr t(new Task(ScriptMeta(_queryBuffer, _chunkId)));
     _setDumpNameAsChunkId(); // Because reads may get detached from writes.
     //_eDest->Say((Pformat("db=%1%.") % s.dbName).str().c_str());
-    QueryRunner runner(x, _userName, s, _dumpName);
+    QueryRunner runner(x, _userName, t, _dumpName);
     return runner();
 }
 
