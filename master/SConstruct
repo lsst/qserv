@@ -120,9 +120,9 @@ env.Tool('swig')
 env['SWIGFLAGS'] = ['-python', '-c++', '-Iinclude'],
 env['CPPPATH'] = [distutils.sysconfig.get_python_inc(), 'include'],
 env['SHLIBPREFIX'] = ""
-env.Append(CPPPATH = ['../../common/include'])
-env.Append(LIBPATH = ['../../common/lib']) 
-env.Append(LIBS = ["qserv_common", "protobuf", "qserv_proto"])
+env.Append(CPPPATH = ['../common/include'])
+env.Append(LIBPATH = ['../common/lib']) 
+#env.Append(LIBS = ["qserv_common", "protobuf", "qserv_proto"])
 
 
 def importDeps(env, f):
@@ -131,10 +131,10 @@ def importDeps(env, f):
         deps = eval(open(fName).read()) # import dep file directly
         #print "deps", deps
         env.Append(**deps)
-importDeps(env, "../../common/include/lsst/qserv/worker.pb.h")
-importDeps(env, "../../common/include/lsst/qserv/SqlErrorObject.hh")
-importDeps(env, "../../common/include/lsst/qserv/SqlConnection.hh")
-importDeps(env, "../../common/lib/qserv_proto")
+importDeps(env, "../common/include/lsst/qserv/worker.pb.h")
+importDeps(env, "../common/include/lsst/qserv/SqlErrorObject.hh")
+importDeps(env, "../common/include/lsst/qserv/SqlConnection.hh")
+importDeps(env, "../common/lib/qserv_proto")
 
 ## Allow user-specified swig tool
 ## SWIG 1.3.29 has bugs which cause the build to fail.
