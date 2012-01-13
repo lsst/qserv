@@ -29,13 +29,17 @@ package lsst.qserv;
 message TaskMsg {
     optional int64 session = 1;
     optional int32 chunkid = 2;
-    optional string resulttable = 3;
-
+    
     message Fragment {
         // A query fragment without "CREATE or INSERT". 
         // Worker should synthesize.
         required string query = 1; 
         repeated int32 subchunk = 2;
+        optional string resulttable = 3;
+        // Each fragment may only write results to one table,
+        // but multiple fragments may write to the same table, 
+        // in which case the table contains a concatenation of the 
+        // contributing fragments' rows.
     }
     repeated Fragment fragment = 4;
 }

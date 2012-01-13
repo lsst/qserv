@@ -46,6 +46,7 @@ struct ProtocolFixture {
             lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
             f->set_query("Hello, this is a query.");
             f->add_subchunk(100+i); 
+            f->set_resulttable("r_341");
         }
         ++counter;
         return t;
@@ -138,9 +139,7 @@ BOOST_AUTO_TEST_CASE(ResultMsgSanity) {
     boost::scoped_ptr<lsst::qserv::ResultHeader> r2(new lsst::qserv::ResultHeader());
     BOOST_CHECK(r1.get());
     r2->ParseFromIstream(&ss2);
-    BOOST_CHECK(compareResultHeaders(*r1, *r2));
-    
-    
+    BOOST_CHECK(compareResultHeaders(*r1, *r2));    
 }
 
 BOOST_AUTO_TEST_CASE(MsgBuffer) {
@@ -162,7 +161,7 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
 BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
     boost::scoped_ptr<lsst::qserv::TaskMsg> t1(makeTaskMsg());
     std::string hash = hashTaskMsg(*t1);
-    std::string expected = "92556274bbd6ef756287b41beae35ac5";
+    std::string expected = "ac6e91da94a922036a2e968d42209f36";
     BOOST_CHECK_EQUAL(hash, expected);
 }
 
