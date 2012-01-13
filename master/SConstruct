@@ -122,7 +122,7 @@ env['CPPPATH'] = [distutils.sysconfig.get_python_inc(), 'include'],
 env['SHLIBPREFIX'] = ""
 env.Append(CPPPATH = ['../common/include'])
 env.Append(LIBPATH = ['../common/lib']) 
-#env.Append(LIBS = ["qserv_common", "protobuf", "qserv_proto"])
+env.Append(LIBS = ["qserv_common"])
 
 
 def importDeps(env, f):
