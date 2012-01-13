@@ -32,7 +32,7 @@
 #include <boost/thread.hpp> // for mutex. 
 #include <boost/shared_ptr.hpp> // for mutex. 
 
-#include "../../common/src/SqlErrorObject.hh"
+#include "lsst/qserv/SqlErrorObject.hh"
 #include "lsst/qserv/master/mergeTypes.h"
 
 namespace lsst {

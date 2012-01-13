@@ -25,8 +25,8 @@
 #include <iostream>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
+#include "lsst/qserv/SqlConnection.hh"
 #include "lsst/qserv/master/TableMerger.h"
-#include "../../common/src/SqlConnection.hh"
 #include "lsst/qserv/master/SqlInsertIter.h"
 #include "lsst/qserv/master/MmapFile.h"
 using lsst::qserv::SqlConfig;

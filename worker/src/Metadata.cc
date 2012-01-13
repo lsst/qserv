@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "../../common/src/SqlConnection.hh"
+#include "lsst/qserv/SqlConnection.hh"
 #include "lsst/qserv/worker/Metadata.h"
 
 #include "mysql/mysql.h"

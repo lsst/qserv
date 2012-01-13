@@ -17,4 +17,6 @@ env.Append(CPPPATH = ['../include'])
 lib = env.Library("qserv_common", sources)
 installedLib = env.Install('../lib', lib)
 env.Append(built_libs=[installedLib])
-
+env.Install('../include/lsst/qserv', 'QservPath.hh')
+env.Install('../include/lsst/qserv', 'SqlConnection.hh')
+env.Install('../include/lsst/qserv', 'SqlErrorObject.hh')

@@ -25,7 +25,7 @@
 #include "mysql/mysql.h"
 #include <boost/regex.hpp>
 #include "XrdSys/XrdSysError.hh"
-#include "../../common/src/SqlConnection.hh"
+#include "lsst/qserv/SqlConnection.hh"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/Config.h"

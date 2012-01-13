@@ -25,8 +25,8 @@
 
 #include <string>
 #include <boost/shared_ptr.hpp>
-#include "../../common/src/SqlErrorObject.hh"
-#include "../../common/src/SqlConnection.hh"
+#include "lsst/qserv/SqlErrorObject.hh"
+#include "lsst/qserv/SqlConnection.hh"
 
 namespace lsst {
 namespace qserv {
