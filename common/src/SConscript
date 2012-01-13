@@ -1,6 +1,7 @@
 # -*- python -*-
 Import('env')
 import os, fnmatch
+import detect_deps
 
 # This seems not to work if placed in lib/
 # The path to ../src seems to prevent scons from building .os files in
@@ -14,6 +15,11 @@ for root, dirs, files in os.walk('../src'):
 
 # Files in ../include are install targets right now. Should we change?
 #env.Append(CPPPATH = ['../include']) 
+
+e = detect_deps.checkMySql(env, Configure)
+if not e:
+    print "*** Cannot build ***"
+    Exit(1)
 
 lib = env.Library("qserv_common", sources)
 installedLib = env.Install('../lib', lib)

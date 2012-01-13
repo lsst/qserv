@@ -15,10 +15,6 @@ Qserv common code
 
 # Detect protobufs
 detect_deps.detectProtobufs()
-e = detect_deps.checkMySql(env, Configure)
-if not e:
-    print "*** Cannot build ***"
-    Exit(1)
 
 #
 # Build/install things
