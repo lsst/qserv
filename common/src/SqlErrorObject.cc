@@ -21,6 +21,7 @@
  */
  
 #include <sstream>
+#include "SqlErrorObject.hh"
 
 #include "lsst/qserv/SqlErrorObject.hh"
 
