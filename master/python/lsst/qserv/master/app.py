@@ -792,7 +792,8 @@ class HintedQueryAction:
         self._invokeLock = threading.Semaphore()
         self._invokeLock.acquire() # Prevent result retrieval before invoke
         pass
-
+    
+    # In transition to new protocol: only 1 result table allowed.
     def _headerFunc(self, tableNames, subc=[]):
         return ['-- SUBCHUNKS:' + ", ".join(imap(str,subc)),
                 '-- RESULTTABLES:' + ",".join(tableNames)]
