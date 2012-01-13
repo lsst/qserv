@@ -22,9 +22,12 @@
  
 #include <sstream>
 
+#include "lsst/qserv/SqlErrorObject.hh"
+
 std::string 
-ErrorObject::printErrorMsg() {
+lsst::qserv::SqlErrorObject::printErrMsg() const {
     std::stringstream ss;
-    ss << "Error " << errNo << ": " << errMsg << " (" << details << ")" << std::endl;
+    ss << "Error " << errNo << ": " << errMsg << " (" 
+       << details << ")" << std::endl;
     return ss.str();
 }

@@ -27,7 +27,7 @@
 #include <boost/thread.hpp> // for mutex. 
 #include <boost/format.hpp> // for mutex. 
 
-#include "lsst/qserv/master/sql.h"
+#include "lsst/qserv/SqlConnection.hh"
 
 using lsst::qserv::SqlConnection;
 
@@ -73,13 +73,13 @@ SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
     } else {
         // change mysql db, (disconnect and reconnect?)
         _config.dbName = dbName;
-        return theResult;
+        return true;
     }
     if (!dbExists(dbName, errObj)) {
         errObj.details = "Can't switch to db " + dbName + " (does not exist)\n";
         return false;
     }
-    if (mysql_select_db(_conn, dbName)) {
+    if (mysql_select_db(_conn, dbName.c_str())) {
         return _setErrorObject(errObj);
     }
     _config.dbName = dbName;
@@ -103,8 +103,9 @@ SqlConnection::apply(std::string const& sql, SqlErrorObject& errObj) {
 bool 
 SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
     assert(_conn);
-    std::string sql = "SELECT COUNT(*) FROM information_schema.schemata "
-        + "WHERE schema_name = '" + dbName + "'";
+    std::string sql = "SELECT COUNT(*) FROM information_schema.schemata ";
+    sql += "WHERE schema_name = '";
+    sql += dbName + "'";
     
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
         return _setErrorObject(errObj);
@@ -116,9 +117,9 @@ SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
         errObj.details = sql + " returned no rows";
         return false;
     }
-    int n = row[0];
+    char n = *(row[0]);
     mysql_free_result(result);
-    return n == 1;
+    return n == '1';
 }
 
 bool 
@@ -136,7 +137,7 @@ SqlConnection::createDb(std::string const& dbName,
     }
     std::string sql = "CREATE DATABASE" + dbName + "'";
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return_setErrorObject(errObj);
+        return _setErrorObject(errObj);
     }
     return true;
 }
@@ -150,7 +151,7 @@ SqlConnection::dropDb(std::string const& dbName, SqlErrorObject& errObj) {
     }
     std::string sql = "DROP DATABASE" + dbName + "'";
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return_setErrorObject(errObj);
+        return _setErrorObject(errObj);
     }
     return true;
 }
@@ -165,11 +166,11 @@ SqlConnection::tableExists(std::string const& tableName,
         errObj.details = "Db " + _dbName + " does not exist\n";
         return false;
     }
-    std::string sql = "SELECT COUNT(*) FROM information_schema.tables "
-        + "WHERE table_schema = '" + _dbName 
-        + "' AND table_name = '" + tableName + "'";
+    std::string sql = "SELECT COUNT(*) FROM information_schema.tables ";
+    sql += "WHERE table_schema = '";
+    sql += _dbName + "' AND table_name = '" + tableName + "'";
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return_setErrorObject(errObj);
+        return _setErrorObject(errObj);
     }
     MYSQL_RES *result = mysql_store_result(_conn);
     MYSQL_ROW row = mysql_fetch_row(result);
@@ -178,9 +179,9 @@ SqlConnection::tableExists(std::string const& tableName,
         errObj.details = sql + " returned no rows";
         return false;
     }
-    int n = row[0];
+    char n = *(row[0]);
     mysql_free_result(result);
-    return n == 1;
+    return n == '1';
 }
 
 bool 
@@ -200,34 +201,35 @@ SqlConnection::dropTable(std::string const& tableName,
     }
     std::string sql = "DROP TABLE " + _dbName + "." + tableName;
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return_setErrorObject(errObj);
+        return _setErrorObject(errObj);
     }
     return true;
 }
 
-std::vector<std::string> 
-SqlConnection::listTables(SqlErrorObject& errObj,
-                          std::string const& prefixed="",
+bool
+SqlConnection::listTables(std::vector<std::string>& v, 
+                          SqlErrorObject& errObj,
+                          std::string const& prefixed,
                           std::string const& dbName) {
     assert(_conn);
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
     if (!dbExists(_dbName, errObj)) {
         return false;
     }
-    std::string sql = "SELECT table_name FROM information_schema.tables "
-        + "WHERE table_schema = '" + _dbName + "'";
+    std::string sql = "SELECT table_name FROM information_schema.tables ";
+    sql += "WHERE table_schema = '" + _dbName + "'";
     if (prefixed != "") {
         sql += " AND table_name LIKE '" + prefixed + "%";
     }
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return_setErrorObject(errObj);
+        return _setErrorObject(errObj);
     }
     MYSQL_RES *result = mysql_store_result(_conn);
-    std::vector<std::string> v;
+    MYSQL_ROW row;
     while (row = mysql_fetch_row(result)) {
         v.push_back(row[0]);
     }
-    return v;
+    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -275,12 +277,12 @@ SqlConnection::_discardResults(SqlErrorObject& errObj) {
         result = mysql_store_result(_conn);
         if (result) {
             mysql_free_result(result);
-        } else if (mysql_field_count(mysql) != 0) {
+        } else if (mysql_field_count(_conn) != 0) {
             errObj.details = "Could not retrieve result set\n";
             return false;
         }
         /* more results? -1 = no, >0 = error, 0 = yes (keep looping) */
-        if ((status = mysql_next_result(mysql)) > 0) {
+        if ((status = mysql_next_result(_conn)) > 0) {
             return _setErrorObject(errObj);
         }
     } while (status == 0);
@@ -289,8 +291,8 @@ SqlConnection::_discardResults(SqlErrorObject& errObj) {
 
 bool 
 SqlConnection::_setErrorObject(SqlErrorObject& errObj) {
-    errObj.errNo = mysql_errno(c);
-    errObj.errMsg = mysql_error(c);
+    errObj.errNo = mysql_errno(_conn);
+    errObj.errMsg = mysql_error(_conn);
     std::stringstream ss;
     ss << "Error " << errObj.errNo << ": " << errObj.errMsg << std::endl;
     _error = ss.str();

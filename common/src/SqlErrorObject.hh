@@ -30,6 +30,7 @@ namespace lsst {
 namespace qserv {
 
 class SqlErrorObject {
+public:
     int errNo;           // mysql error number
     std::string errMsg;  // mysql error message
     std::string details; // further details

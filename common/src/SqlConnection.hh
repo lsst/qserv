@@ -73,9 +73,10 @@ public:
                    SqlErrorObject&,
                    bool failIfDoesNotExist=true,
                    std::string const& dbName="");
-    std::vector<std::string> listTables(SqlErrorObject&,
-                                        std::string const& prefixed="",
-                                        std::string const& dbName="");
+    bool listTables(std::vector<std::string>&, 
+                    SqlErrorObject&,
+                    std::string const& prefixed="",
+                    std::string const& dbName="");
 
     std::string getActiveDbName() const { return _config.dbName; }
 
@@ -86,7 +87,7 @@ public:
 private:
     bool _init(SqlErrorObject&);
     bool _connect(SqlErrorObject&);
-    void _discardResults(SqlErrorObject&);
+    bool _discardResults(SqlErrorObject&);
     bool _setErrorObject(SqlErrorObject&);
 
     MYSQL* _conn;
