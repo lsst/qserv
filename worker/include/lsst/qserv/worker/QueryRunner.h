@@ -30,12 +30,18 @@
 #include "boost/thread.hpp" // for mutex support
 // xrootd
 #include "XrdSfs/XrdSfsInterface.hh"
-#include "mysql/mysql.h"
 
 // package
+#include "lsst/qserv/SqlErrorObject.hh"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/ResultTracker.h"
 
+
+namespace lsst {
+namespace qserv {
+    // Forward
+    class SqlConnection;
+}}
 
 namespace lsst {
 namespace qserv {
@@ -128,22 +134,18 @@ public:
 private:
     typedef std::deque<std::string> StringDeque;
     bool _act();
-    void _appendError(int errorNo, std::string const& desc);
-    bool _connectDbServer(MYSQL* db);
-    bool _dropDb(MYSQL* db, std::string const& name);
-    bool _dropTables(MYSQL* db, std::string const& tables);
     std::string _getDumpTableList(std::string const& script);
     void _mkdirP(std::string const& filePath);
     bool _runScript(std::string const& script, std::string const& dbName);
-    bool _runScriptCore(MYSQL* db, std::string const& script,
+    bool _runScriptCore(SqlConnection& sqlConn, 
+                        std::string const& script,
                         std::string const& dbName,
                         std::string const& tableList);
-
     void _buildSubchunkScripts(std::string const& script,
                                std::string& build, std::string& cleanup);
-    bool _prepareAndSelectResultDb(MYSQL* db, 
+    bool _prepareAndSelectResultDb(SqlConnection& sqlConn, 
                                    std::string const& dbName);
-    bool _prepareScratchDb(MYSQL* db);
+    bool _prepareScratchDb(SqlConnection& sqlConn);
     bool _performMysqldump(std::string const& dbName, 
                            std::string const& dumpFile,
                            std::string const& tables);
@@ -156,11 +158,10 @@ private:
     bool _poisonCleanup();
 
     XrdSysError& _e;
+    SqlErrorObject _errObj;
     std::string _user;
     ScriptMeta _meta;
     std::string _scriptId;
-    int _errorNo;
-    std::string _errorDesc;
     boost::shared_ptr<boost::mutex> _poisonedMutex;
     StringDeque _poisoned;
 };

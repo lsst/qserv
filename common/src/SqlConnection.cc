@@ -76,8 +76,8 @@ SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
         return true;
     }
     if (!dbExists(dbName, errObj)) {
-        errObj.details = "Can't switch to db " + dbName + " (does not exist)\n";
-        return false;
+        return errObj.addErrMsg (
+            std::string("Can't switch to db ") + dbName + " (does not exist)");
     }
     if (mysql_select_db(_conn, dbName.c_str())) {
         return _setErrorObject(errObj);
@@ -101,6 +101,49 @@ SqlConnection::apply(std::string const& sql, SqlErrorObject& errObj) {
 }
 
 bool 
+SqlConnection::runQuery(char const* query, 
+                        int qSize,
+                        SqlErrorObject& errObj,
+                        std::string arg) {
+    if (arg.size() != 0) {
+        // TODO -- bind arg
+    }
+    if (mysql_real_query(_conn, query, qSize) != 0) {
+        MYSQL_RES* result = mysql_store_result(_conn);
+        if (result) mysql_free_result(result);
+        std::string msg = std::string("Unable to execute query: ") + query;
+        //    + "\nQuery = " + std::string(query, qSize);
+        return _setErrorObject(errObj, msg);
+    }
+    int status = 0;
+    do {
+        MYSQL_RES* result = mysql_store_result(_conn);
+        if (result) {
+            // TODO -- Do something with it?
+            mysql_free_result(result);
+        }
+        else if (mysql_field_count(_conn) != 0) {
+            return _setErrorObject(errObj, 
+                      std::string("Unable to store result for query: ")
+                                  + std::string(query,qSize));
+        }
+        status = mysql_next_result(_conn);
+        if (status > 0) {
+            return _setErrorObject(errObj, 
+                  std::string("Error retrieving results for query: ") + query);
+        }
+    } while (status == 0);
+    return true;
+}
+
+bool 
+SqlConnection::runQuery(std::string const query, 
+                        std::string arg, 
+                        SqlErrorObject& errObj) {
+    return runQuery(query.data(), query.size(), errObj, arg);
+}
+
+bool 
 SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
     assert(_conn);
     std::string sql = "SELECT COUNT(*) FROM information_schema.schemata ";
@@ -114,8 +157,7 @@ SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
     MYSQL_ROW row = mysql_fetch_row(result);
     if (!row) {
         mysql_free_result(result);
-        errObj.details = sql + " returned no rows";
-        return false;
+        return errObj.addErrMsg(sql + " returned no rows");
     }
     char n = *(row[0]);
     mysql_free_result(result);
@@ -129,9 +171,8 @@ SqlConnection::createDb(std::string const& dbName,
     assert(_conn);
     if (dbExists(dbName, errObj)) {
         if (failIfExists) {
-            errObj.details = "Can't create db " + dbName 
-                + ", it already exists\n";
-            return false;
+            return errObj.addErrMsg(std::string("Can't create db ") 
+                                    + dbName + ", it already exists");
         }
         return true;
     }
@@ -143,11 +184,16 @@ SqlConnection::createDb(std::string const& dbName,
 }
 
 bool 
-SqlConnection::dropDb(std::string const& dbName, SqlErrorObject& errObj) {
+SqlConnection::dropDb(std::string const& dbName, 
+                      SqlErrorObject& errObj,
+                      bool failIfExists) {
     assert(_conn);
     if (!dbExists(dbName, errObj)) {
-        errObj.details = "Can't drop db " + dbName + ", it does not exist\n";
-        return false;
+        if ( failIfExists ) {
+            return errObj.addErrMsg(std::string("Can't drop db ")
+                                    + dbName + ", it does not exist");
+        }
+        return true;
     }
     std::string sql = "DROP DATABASE" + dbName + "'";
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
@@ -163,8 +209,7 @@ SqlConnection::tableExists(std::string const& tableName,
     assert(_conn);
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
     if (!dbExists(_dbName, errObj)) {
-        errObj.details = "Db " + _dbName + " does not exist\n";
-        return false;
+        return errObj.addErrMsg(std::string("Db ")+_dbName+" does not exist");
     }
     std::string sql = "SELECT COUNT(*) FROM information_schema.tables ";
     sql += "WHERE table_schema = '";
@@ -176,8 +221,7 @@ SqlConnection::tableExists(std::string const& tableName,
     MYSQL_ROW row = mysql_fetch_row(result);
     if (!row) {
         mysql_free_result(result);
-        errObj.details = sql + " returned no rows";
-        return false;
+        return errObj.addErrMsg(sql + " returned no rows");
     }
     char n = *(row[0]);
     mysql_free_result(result);
@@ -193,9 +237,8 @@ SqlConnection::dropTable(std::string const& tableName,
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
     if (!tableExists(tableName, errObj, _dbName)) {
         if (failIfDoesNotExist) {
-            errObj.details = "Can't drop table " + tableName 
-                + " (does not exist)";
-            return false;
+            return errObj.addErrMsg(std::string("Can't drop table ")
+                                    + tableName + " (does not exist)");
         }
         return true;
     }
@@ -278,8 +321,7 @@ SqlConnection::_discardResults(SqlErrorObject& errObj) {
         if (result) {
             mysql_free_result(result);
         } else if (mysql_field_count(_conn) != 0) {
-            errObj.details = "Could not retrieve result set\n";
-            return false;
+            return errObj.addErrMsg("Could not retrieve result set");
         }
         /* more results? -1 = no, >0 = error, 0 = yes (keep looping) */
         if ((status = mysql_next_result(_conn)) > 0) {
@@ -290,10 +332,11 @@ SqlConnection::_discardResults(SqlErrorObject& errObj) {
 }
 
 bool 
-SqlConnection::_setErrorObject(SqlErrorObject& errObj) {
-    errObj.errNo = mysql_errno(_conn);
-    errObj.errMsg = mysql_error(_conn);
-    std::stringstream ss;
-    ss << "Error " << errObj.errNo << ": " << errObj.errMsg << std::endl;
-    _error = ss.str();
+SqlConnection::_setErrorObject(SqlErrorObject& errObj, 
+                               std::string const& extraMsg) {
+    errObj.setErrNo( mysql_errno(_conn) );
+    errObj.addErrMsg( mysql_error(_conn) );
+    if ( ! extraMsg.empty() ) {
+        errObj.addErrMsg(extraMsg);
+    }
 }

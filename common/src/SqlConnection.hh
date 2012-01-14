@@ -61,11 +61,18 @@ public:
     bool connectToDb(SqlErrorObject&);
     bool selectDb(std::string const& dbName, SqlErrorObject&);
     bool apply(std::string const& sql, SqlErrorObject&);
-
+    bool runQuery(char const* query, 
+                  int qSize,
+                  SqlErrorObject& errObj, 
+                  std::string arg=std::string());
+    bool runQuery(std::string const query, 
+                  std::string arg, 
+                  SqlErrorObject&);
     bool dbExists(std::string const& dbName, SqlErrorObject&);
     bool createDb(std::string const& dbName, SqlErrorObject&, 
                   bool failIfExists=true);
-    bool dropDb(std::string const& dbName, SqlErrorObject&);
+    bool dropDb(std::string const& dbName, SqlErrorObject&,
+                bool failIfExists=true);
     bool tableExists(std::string const& tableName, 
                      SqlErrorObject&,
                      std::string const& dbName="");
@@ -88,7 +95,8 @@ private:
     bool _init(SqlErrorObject&);
     bool _connect(SqlErrorObject&);
     bool _discardResults(SqlErrorObject&);
-    bool _setErrorObject(SqlErrorObject&);
+    bool _setErrorObject(SqlErrorObject&, 
+                         std::string const& details=std::string(""));
 
     MYSQL* _conn;
     std::string _error;

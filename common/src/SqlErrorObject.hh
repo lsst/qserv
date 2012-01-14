@@ -31,9 +31,23 @@ namespace qserv {
 
 class SqlErrorObject {
 public:
-    int errNo;           // mysql error number
-    std::string errMsg;  // mysql error message
-    std::string details; // further details
+    SqlErrorObject() : _errNo(0) {}
+    
+    int errNo() const { return _errNo; }
+    std::string errMsg() const { return _errMsg; }
+    bool isSet() { return _errNo != 0 || !_errMsg.empty(); }
+
+    int setErrNo(int e) { _errNo = e; return e; }
+    int addErrMsg(std::string const& s) { 
+        if (_errMsg.empty()) _errMsg = s;
+        else _errMsg += ' '; _errMsg += s;
+        return _errNo;
+    };
+    void reset() { _errNo = 0; _errMsg.clear(); }
+
+private:    
+    int _errNo;           // error number
+    std::string _errMsg;  // error message
 
     std::string printErrMsg() const;
 };
