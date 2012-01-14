@@ -31,7 +31,8 @@ env.Append(built_libs=[tup[0]])
 deps = {'CPPPATH' : [os.path.abspath(os.environ["PROTOC_INC"])]}
 tup = export_deps.installWithDeps(env, "worker.pb.h", "worker.pb.h",
                                   "../include/lsst/qserv", deps)
-
+# Export msg digest header + dependency 
+env.Install("../include/lsst/qserv", "TaskMsgDigest.h")
 
 
 
