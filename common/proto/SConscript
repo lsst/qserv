@@ -1,6 +1,7 @@
 # -*- python -*-
 Import('env')
 import os
+import export_deps
 
 # Construct proto env (add protoc Builder)
 pEnv = env.Clone(tools=['default', 'protoc'], PROTOC=os.environ["PROTOC"])
@@ -19,31 +20,18 @@ pEnv.Append(CPPPATH=[os.environ["PROTOC_INC"], ".."],
             LIBPATH=os.environ["PROTOC_LIB"],
             CPPFLAGS=['-fPIC'])
 lib = pEnv.Library("qserv_proto", sources)
-installedLib = env.Install("../lib", lib)
-env.Append(built_libs=[installedLib])
 
-# Make a dependency file to "install" so that clients can use it properly.
-def makeLibDepFile(target, source, env):
-    deps = {'LIBPATH' : [os.path.abspath(os.environ["PROTOC_LIB"])],
-            'LIBS' : ['protobuf','ssl']}
-    dContents = str(deps)
-    open(str(target[0]),"w").write(dContents)
+# Export proto lib + dependency 
+deps = {'LIBPATH' : [os.path.abspath(os.environ["PROTOC_LIB"])],
+        'LIBS' : ['protobuf','ssl']}
+tup = export_deps.installWithDeps(env, lib, "qserv_proto", "../lib", deps)
+env.Append(built_libs=[tup[0]])
 
-libDep = env.Command("qserv_proto.deps", lib, makeLibDepFile)
-env.Install("../lib", libDep)
+# Export proto header + dependency 
+deps = {'CPPPATH' : [os.path.abspath(os.environ["PROTOC_INC"])]}
+tup = export_deps.installWithDeps(env, "worker.pb.h", "worker.pb.h",
+                                  "../include/lsst/qserv", deps)
 
-def makeIncDepFile(target, source, env):
-    deps = {'CPPPATH' : [os.path.abspath(os.environ["PROTOC_INC"])]}
-    dContents = str(deps)
-    open(str(target[0]), "w").write(dContents)
-
-relPath = "../include/lsst/qserv"
-fName = "worker.pb.h"
-env.Install(relPath, fName)
-
-incDep = env.Command("worker.pb.h.deps", "worker.pb.h", makeIncDepFile)
-env.Install(relPath, incDep)
-env.Install(relPath, "TaskMsgDigest.h")
 
 
 
