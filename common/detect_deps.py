@@ -96,4 +96,22 @@ def checkMySql(env, Configure):
     # MySQL support not found or inadequate.
     return None
 
+def guessMySQL(env):
+    """Guesses the detected mysql dependencies based on the environment.
+    Would be nice to reuse conf.CheckLib, but that doesn't report what 
+    actually got detected, just that it was available. This solution 
+    doesn't actually check beyond simple file existence.
+    Returns (includepath, libpath, libname) """
+    libName = "mysqlclient_r"
+    libp = env["LIBPREFIX"]
+    libs = env["SHLIBSUFFIX"]
+    foundLibs = filter(os.path.exists, 
+                       [os.path.join(p, libp + libName + libs) 
+                         for p in env["LIBPATH"]])
+    assert foundLibs
+    foundIncs = filter(os.path.exists, 
+                       [os.path.join(p, "mysql/mysql.h") 
+                        for p in env["CPPPATH"]])
+    assert foundIncs
+    return (foundIncs[0], foundLibs[0], libName)
     
