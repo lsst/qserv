@@ -17,23 +17,43 @@ env.Append(CPPPATH = ['../include'])
 env.Append(CPPPATH = ['../../common/include']) 
 
 def importDeps(env, f):
+    post = {}
     fName = f+".deps"
     if os.access(fName, os.R_OK):
         deps = eval(open(fName).read()) # import dep file directly
+        if "LIBS" in deps:
+            post["LIBS"] = deps.pop("LIBS")
         #print "deps", deps
         env.Append(**deps)
+    return post
 
-importDeps(env, "../../common/include/lsst/qserv/worker.pb.h")
+def mergeDict(d1, d2):
+    """Merge list values from d2 to d1"""
+    for k in d2:
+        if k in d1:
+            d1[k].extend(d2[k])
+    return d1
+    
+post = importDeps(env, "../../common/include/lsst/qserv/worker.pb.h")
 
 # Hack to workaround missing XrdSfs library in xrootd.
 if env.has_key('sfsObjs'):
     sources += env["sfsObjs"]
 
 env.Append(LIBPATH = ['../../common/lib']) 
-env.Append(LIBS = ["qserv_common", "protobuf", "qserv_proto"])
-importDeps(env, "../../common/lib/qserv_proto")
+post2 = importDeps(env, "../../common/lib/qserv_proto")
+post = mergeDict(post, post2)
+
+# Apply lib dependencies.
+conf = Configure(env)
+if "LIBS" in post:
+    for lib in post["LIBS"]:
+        conf.CheckLib(lib, language="C++")
+conf.CheckLib("qserv_common")
+conf.CheckLib("qserv_proto")
+env = conf.Finish()
 
 lib = env.SharedLibrary("qserv_worker", sources)
 installedLib = env.Install('lib', lib)
-env.Append(built_libs=[installedLib])
+env.Append(built_libs=[installedLib[0]])
 
