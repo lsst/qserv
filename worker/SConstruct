@@ -101,6 +101,11 @@ if not conf.CheckLib("boost_signals-gcc34-mt", language="C++") \
         and not conf.CheckLib("boost_signals", language="C++"):
     print >> sys.stderr, "Could not locate boost_signals library"
     Exit(1)
+
+env.Append(LIBPATH = ["../common/lib"])
+if not conf.CheckLib("qserv_common", language="C++"):
+    print >> sys.stderr, "Could not locate qserv_common library"
+    Exit(1)
 env = conf.Finish()
 
 checkSinCosSource = """

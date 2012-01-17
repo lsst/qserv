@@ -15,6 +15,7 @@ for root, dirs, files in os.walk('../src'):
 
 env.Append(CPPPATH = ['../include'])
 env.Append(CPPPATH = ['../../common/include'])
+env.Append(LIBPATH = ['../../common/lib'])
 
 # Hack to workaround missing XrdSfs library in xrootd.
 if env.has_key('sfsObjs'):

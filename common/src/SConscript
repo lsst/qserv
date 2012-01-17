@@ -16,6 +16,7 @@ for root, dirs, files in os.walk('../src'):
 
 # Files in ../include are install targets right now. Should we change?
 #env.Append(CPPPATH = ['../include']) 
+env.Append(CPPFLAGS = ["-fPIC"])
 
 e = detect_deps.checkMySql(env, Configure)
 if not e:
