@@ -96,7 +96,6 @@ runScriptPiece(XrdSysError& e,
                std::string const& pieceName,
                std::string const& piece, 
                qWorker::CheckFlag* checkAbort) {
-    std::string result;
     e.Say((Pformat("TIMING,%1%%2%Start,%3%")
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     //e.Say(("Hi. my piece is++"+piece+"++").c_str());
