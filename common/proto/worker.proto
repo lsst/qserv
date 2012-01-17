@@ -28,7 +28,9 @@ package lsst.qserv;
 // One of these Task objects should be sent.
 message TaskMsg {
     optional int64 session = 1;
-    optional int32 chunkid = 2;
+    // Future: might have multiple db/chunk dependencies.
+    optional string db = 2; 
+    optional int32 chunkid = 3;
     
     message Fragment {
         // A query fragment without "CREATE or INSERT". 

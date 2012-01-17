@@ -42,6 +42,7 @@ struct ProtocolFixture {
         t = new lsst::qserv::TaskMsg();
         t->set_session(123456);
         t->set_chunkid(20 + counter);
+        t->set_db("elephant");
         for(int i=0; i < 3; ++i) {
             lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
             f->set_query("Hello, this is a query.");
@@ -53,15 +54,16 @@ struct ProtocolFixture {
     }
 
     bool compareTaskMsgs(lsst::qserv::TaskMsg& t1, lsst::qserv::TaskMsg& t2) {
-        bool sessionAndChunk = (t1.session() == t2.session()) 
-            && (t1.chunkid() == t2.chunkid());
+        bool nonFragEq = (t1.session() == t2.session()) 
+            && (t1.chunkid() == t2.chunkid())
+            && (t1.db() == t2.db());
         
         bool fEqual = (t1.fragment_size() == t2.fragment_size());
         for(int i=0; i < t1.fragment_size(); ++i) {
             fEqual = fEqual && compareFragment(t1.fragment(i), 
                                                t2.fragment(i));
         }
-        return sessionAndChunk && fEqual;            
+        return nonFragEq && fEqual;            
     }
 
     lsst::qserv::ResultHeader* makeResultHeader() {
@@ -161,7 +163,7 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
 BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
     boost::scoped_ptr<lsst::qserv::TaskMsg> t1(makeTaskMsg());
     std::string hash = hashTaskMsg(*t1);
-    std::string expected = "ac6e91da94a922036a2e968d42209f36";
+    std::string expected = "9f6fecff39ce2a96f2eedff451fe86e4";
     BOOST_CHECK_EQUAL(hash, expected);
 }
 
