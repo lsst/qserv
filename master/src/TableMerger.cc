@@ -235,12 +235,9 @@ bool TableMerger::_applySqlLocal(std::string const& sql) {
     if(!_sqlConn.get()) {
         _sqlConn.reset(new SqlConnection(*_sqlConfig, true));
         if(!_sqlConn->connectToDb(errObj)) {
-            std::stringstream ss;
             _error.status = TableMergerError::MYSQLCONNECT;
             _error.errorCode = errObj.errNo;
-            ss << "Code:" << _error.errorCode << " "
-               << errObj.errMsg << " (" << errObj.details << ")";
-            _error.description = "Error connecting to db. " + ss.str();
+            _error.description = "Error connecting to db. " + errObj.printErrMsg();
             _sqlConn.reset();
             return false;
         } else {
@@ -249,12 +246,9 @@ bool TableMerger::_applySqlLocal(std::string const& sql) {
         }
     }
     if(!_sqlConn->apply(sql, errObj)) {
-        std::stringstream ss;
         _error.status = TableMergerError::MYSQLEXEC;
         _error.errorCode = errObj.errNo;
-        ss << "Code:" << _error.errorCode << " "
-           << errObj.errMsg << " (" << errObj.details << ")";
-        _error.description = "Error applying sql. " + ss.str();
+        _error.description = "Error applying sql. " + errObj.printErrMsg();
         return false;
     }
     return true;
