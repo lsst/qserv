@@ -19,8 +19,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
- 
+
 #include <sstream>
 #include <cstdio>
 // Boost
@@ -67,20 +66,18 @@ SqlConnection::connectToDb(SqlErrorObject& errObj) {
 
 bool 
 SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
-    assert(_conn);
+    if (!_connected) if (!connectToDb(errObj)) return false;
+
     if (_config.dbName == dbName) {
         return true; // nothing to do
-    } else {
-        // change mysql db, (disconnect and reconnect?)
-        _config.dbName = dbName;
-        return true;
     }
     if (!dbExists(dbName, errObj)) {
-        return errObj.addErrMsg (
-            std::string("Can't switch to db ") + dbName + " (does not exist)");
+        return errObj.addErrMsg (std::string("Can't switch to db ") 
+                                 + dbName + " (does not exist)");
     }
+    
     if (mysql_select_db(_conn, dbName.c_str())) {
-        return _setErrorObject(errObj);
+        return _setErrorObject(errObj, "Problem selecting db " + dbName);
     }
     _config.dbName = dbName;
     return true;
@@ -88,9 +85,10 @@ SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
 
 bool 
 SqlConnection::apply(std::string const& sql, SqlErrorObject& errObj) {
-    assert(_conn);
+    if (!_connected) if (!connectToDb(errObj)) return false;
+
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return _setErrorObject(errObj);
+        return _setErrorObject(errObj, "Problem executing: " + sql);
     } else {
         // Get the result, but discard it.
         if (!_discardResults(errObj)) {
@@ -105,6 +103,8 @@ SqlConnection::runQuery(char const* query,
                         int qSize,
                         SqlErrorObject& errObj,
                         std::string arg) {
+    if (!_connected) if (!connectToDb(errObj)) return false;
+
     if (arg.size() != 0) {
         // TODO -- bind arg
     }
@@ -145,7 +145,8 @@ SqlConnection::runQuery(std::string const query,
 
 bool 
 SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
-    assert(_conn);
+    if (!_connected) if (!connectToDb(errObj)) return false;
+
     std::string sql = "SELECT COUNT(*) FROM information_schema.schemata ";
     sql += "WHERE schema_name = '";
     sql += dbName + "'";
@@ -168,7 +169,8 @@ bool
 SqlConnection::createDb(std::string const& dbName, 
                         SqlErrorObject& errObj, 
                         bool failIfExists) {
-    assert(_conn);
+    if (!_connected) if (!connectToDb(errObj)) return false;
+
     if (dbExists(dbName, errObj)) {
         if (failIfExists) {
             return errObj.addErrMsg(std::string("Can't create db ") 
@@ -176,18 +178,29 @@ SqlConnection::createDb(std::string const& dbName,
         }
         return true;
     }
-    std::string sql = "CREATE DATABASE" + dbName + "'";
+    std::string sql = "CREATE DATABASE " + dbName;
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return _setErrorObject(errObj);
+        return _setErrorObject(errObj, "Problem executing: " + sql);
     }
     return true;
+}
+
+bool 
+SqlConnection::createDbAndSelect(std::string const& dbName, 
+                                 SqlErrorObject& errObj, 
+                                 bool failIfExists) {
+    if ( ! createDb(dbName, errObj, failIfExists) ) {
+        return false;
+    }
+    return selectDb(dbName, errObj);
 }
 
 bool 
 SqlConnection::dropDb(std::string const& dbName, 
                       SqlErrorObject& errObj,
                       bool failIfExists) {
-    assert(_conn);
+    if (!_connected) if (!connectToDb(errObj)) return false;
+
     if (!dbExists(dbName, errObj)) {
         if ( failIfExists ) {
             return errObj.addErrMsg(std::string("Can't drop db ")
@@ -195,9 +208,12 @@ SqlConnection::dropDb(std::string const& dbName,
         }
         return true;
     }
-    std::string sql = "DROP DATABASE" + dbName + "'";
+    std::string sql = "DROP DATABASE " + dbName;
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return _setErrorObject(errObj);
+        return _setErrorObject(errObj, "Problem executing: " + sql);
+    }
+    if ( getActiveDbName() == dbName ) {
+        _config.dbName.clear();
     }
     return true;
 }
@@ -206,8 +222,17 @@ bool
 SqlConnection::tableExists(std::string const& tableName, 
                            SqlErrorObject& errObj,
                            std::string const& dbName) {
-    assert(_conn);
-    std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
+    if (!_connected) if (!connectToDb(errObj)) return false;
+
+    std::string _dbName;
+    if ( ! dbName.empty() ) {
+        _dbName = dbName;
+    } else {
+        _dbName = getActiveDbName();
+        if (_dbName.empty() ) {
+            return errObj.addErrMsg("Can't check if table exist, db not selected");
+        }        
+    }
     if (!dbExists(_dbName, errObj)) {
         return errObj.addErrMsg(std::string("Db ")+_dbName+" does not exist");
     }
@@ -215,13 +240,13 @@ SqlConnection::tableExists(std::string const& tableName,
     sql += "WHERE table_schema = '";
     sql += _dbName + "' AND table_name = '" + tableName + "'";
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return _setErrorObject(errObj);
+        return _setErrorObject(errObj, "Problem executing: " + sql);
     }
     MYSQL_RES *result = mysql_store_result(_conn);
     MYSQL_ROW row = mysql_fetch_row(result);
     if (!row) {
         mysql_free_result(result);
-        return errObj.addErrMsg(sql + " returned no rows");
+        return errObj.addErrMsg("Command: '" + sql + "' returned no rows");
     }
     char n = *(row[0]);
     mysql_free_result(result);
@@ -233,7 +258,11 @@ SqlConnection::dropTable(std::string const& tableName,
                          SqlErrorObject& errObj,
                          bool failIfDoesNotExist,
                          std::string const& dbName) {
-    assert(_conn);
+    if (!_connected) if (!connectToDb(errObj)) return false;
+    if ( getActiveDbName().empty() ) {
+        return errObj.addErrMsg("Can't drop table, db not selected");
+    }
+
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
     if (!tableExists(tableName, errObj, _dbName)) {
         if (failIfDoesNotExist) {
@@ -244,7 +273,7 @@ SqlConnection::dropTable(std::string const& tableName,
     }
     std::string sql = "DROP TABLE " + _dbName + "." + tableName;
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return _setErrorObject(errObj);
+        return _setErrorObject(errObj, "Problem executing: " + sql);
     }
     return true;
 }
@@ -254,7 +283,12 @@ SqlConnection::listTables(std::vector<std::string>& v,
                           SqlErrorObject& errObj,
                           std::string const& prefixed,
                           std::string const& dbName) {
-    assert(_conn);
+    v.clear();
+    if (!_connected) if (!connectToDb(errObj)) return false;
+    if ( getActiveDbName().empty() ) {
+        return errObj.addErrMsg("Can't list tables, db not selected");
+    }
+
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
     if (!dbExists(_dbName, errObj)) {
         return false;
@@ -262,10 +296,10 @@ SqlConnection::listTables(std::vector<std::string>& v,
     std::string sql = "SELECT table_name FROM information_schema.tables ";
     sql += "WHERE table_schema = '" + _dbName + "'";
     if (prefixed != "") {
-        sql += " AND table_name LIKE '" + prefixed + "%";
+        sql += " AND table_name LIKE '" + prefixed + "%'";
     }
     if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return _setErrorObject(errObj);
+        return _setErrorObject(errObj, "Problem executing: " + sql);
     }
     MYSQL_RES *result = mysql_store_result(_conn);
     MYSQL_ROW row;
@@ -339,4 +373,5 @@ SqlConnection::_setErrorObject(SqlErrorObject& errObj,
     if ( ! extraMsg.empty() ) {
         errObj.addErrMsg(extraMsg);
     }
+    return false;
 }

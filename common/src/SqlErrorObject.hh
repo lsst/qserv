@@ -32,15 +32,17 @@ namespace qserv {
 class SqlErrorObject {
 public:
     SqlErrorObject() : _errNo(0) {}
+
+    std::string printErrMsg() const;
     
     int errNo() const { return _errNo; }
     std::string errMsg() const { return _errMsg; }
-    bool isSet() { return _errNo != 0 || !_errMsg.empty(); }
+    bool isSet() const { return _errNo != 0 || !_errMsg.empty(); }
 
     int setErrNo(int e) { _errNo = e; return e; }
     int addErrMsg(std::string const& s) { 
         if (_errMsg.empty()) _errMsg = s;
-        else _errMsg += ' '; _errMsg += s;
+        else { _errMsg += ' '; _errMsg += s; }
         return _errNo;
     };
     void reset() { _errNo = 0; _errMsg.clear(); }
@@ -48,8 +50,6 @@ public:
 private:    
     int _errNo;           // error number
     std::string _errMsg;  // error message
-
-    std::string printErrMsg() const;
 };
 
 }} // namespace lsst::qserv

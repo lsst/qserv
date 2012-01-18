@@ -25,7 +25,10 @@
 
 std::string 
 lsst::qserv::SqlErrorObject::printErrMsg() const {
-    std::stringstream ss;
-    ss << "Error " << errNo() << ": " << errMsg() << std::endl;
-    return ss.str();
+    if ( isSet() ) {
+        std::stringstream ss;
+        ss << "Error " << errNo() << ": " << errMsg() << std::endl;
+        return ss.str();
+    }
+    return "";
 }

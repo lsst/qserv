@@ -31,28 +31,21 @@
 namespace test = boost::test_tools;
 namespace qsrv = lsst::qserv;
 
-struct GlobalFixture {
-    GlobalFixture() {
-        _sqlConfig.hostname = "";
-        _sqlConfig.dbName = "";
-        _sqlConfig.port = 0;
-        std::cout << "Enter username: ";
-        std::cin >> _sqlConfig.username;
-        _sqlConfig.password = getpass("Enter password: ");
-        std::cout << "Enter mysql socket: ";
-        std::cin >> _sqlConfig.socket;
-    }
-    ~GlobalFixture() {}
-
-    qsrv::SqlConfig _sqlConfig;
-};
-
-BOOST_GLOBAL_FIXTURE( GlobalFixture );
-
 struct PerTestFixture {
     PerTestFixture() {
-        GlobalFixture gf;
-        sqlConn = new qsrv::SqlConnection(gf._sqlConfig);
+        static qsrv::SqlConfig sqlConfig;
+
+        if ( sqlConfig.username.empty() ) {
+            sqlConfig.hostname = "";
+            sqlConfig.dbName = "";
+            sqlConfig.port = 0;
+            std::cout << "Enter mysql user name: ";
+            std::cin >> sqlConfig.username;
+            sqlConfig.password = getpass("Enter mysql password: ");
+            std::cout << "Enter mysql socket: ";
+            std::cin >> sqlConfig.socket;
+        }
+        sqlConn = new qsrv::SqlConnection(sqlConfig);
     }
     ~PerTestFixture () {
         delete sqlConn;
@@ -70,11 +63,17 @@ BOOST_AUTO_TEST_CASE(CreateAndDropDb) {
     // this database should not exist
     BOOST_CHECK_EQUAL(sqlConn->dbExists(dbN, errObj), false);
     // create it now
-    BOOST_CHECK_EQUAL(sqlConn->createDb(dbN, errObj), true);
+    if ( !sqlConn->createDb(dbN, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     // this database should exist now
-    BOOST_CHECK_EQUAL(sqlConn->dbExists(dbN, errObj), true);
+    if ( !sqlConn->dbExists(dbN, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }       
     // drop it
-    BOOST_CHECK_EQUAL(sqlConn->dropDb(dbN, errObj), true);
+    if ( !sqlConn->dropDb(dbN, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }            
     // this database should not exist now
     BOOST_CHECK_EQUAL(sqlConn->dbExists(dbN, errObj), false);
 }
@@ -88,28 +87,46 @@ BOOST_AUTO_TEST_CASE(TableExists) {
     qsrv::SqlErrorObject errObj;
 
     // create 2 dbs
-    BOOST_CHECK_EQUAL(sqlConn->createDb(dbN1, errObj), true);
-    BOOST_CHECK_EQUAL(sqlConn->createDb(dbN2, errObj), true);
+    if ( !sqlConn->createDb(dbN1, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+    if ( !sqlConn->createDb(dbN2, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+    // select db to use
+    if ( !sqlConn->selectDb(dbN1, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     // check if table exists in default db
     BOOST_CHECK_EQUAL(sqlConn->tableExists(tNa, errObj), false);
     // check if table exists in dbN1
     BOOST_CHECK_EQUAL(sqlConn->tableExists(tNa, errObj), false);
     // check if table exists in dbN2
     BOOST_CHECK_EQUAL(sqlConn->tableExists(tNa, errObj, dbN2), false);
-    // create table in dbN1
+    // create table (in dbN1)
     ss.str(""); ss <<  "CREATE TABLE " << tNa << " (i int)";
-    BOOST_CHECK_EQUAL(sqlConn->apply(ss.str(), errObj), true);
+    if ( !sqlConn->apply(ss.str(), errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     // check if table tN exists in default db (it should)
-    BOOST_CHECK_EQUAL(sqlConn->tableExists(tNa, errObj), true);
+    if ( !sqlConn->tableExists(tNa, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     // check if table tN exists in dbN1 (it should)
-    BOOST_CHECK_EQUAL(sqlConn->tableExists(tNa, errObj, dbN1), true);
+    if ( !sqlConn->tableExists(tNa, errObj, dbN1) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     // check if table tN exists in dbN2 (it should NOT)
     BOOST_CHECK_EQUAL(sqlConn->tableExists(tNa, errObj, dbN2), false);
     // drop dbs
-    BOOST_CHECK_EQUAL(sqlConn->dropDb(dbN1, errObj), true);
-    BOOST_CHECK_EQUAL(sqlConn->dropDb(dbN2, errObj), true);
+    if (!sqlConn->dropDb(dbN1, errObj)) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+    if (!sqlConn->dropDb(dbN2, errObj)) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     // check if table tN exists in dbN2 (it should not)
-    BOOST_CHECK_EQUAL(sqlConn->tableExists(tNa, errObj, dbN2), true);
+    BOOST_CHECK_EQUAL(sqlConn->tableExists(tNa, errObj, dbN2), false);
 }
 
 BOOST_AUTO_TEST_CASE(ListTables) {
@@ -123,33 +140,69 @@ BOOST_AUTO_TEST_CASE(ListTables) {
     qsrv::SqlErrorObject errObj;
     std::vector<std::string> v;
 
-    // create db
-    BOOST_CHECK_EQUAL(sqlConn->createDb(dbN, errObj), true);
+    // create db and select it as default
+    if ( !sqlConn->createDbAndSelect(dbN, errObj) ) { 
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+
     // create tables
     ss.str(""); ss <<  "CREATE TABLE " << tNo1 << " (o1 int)";
-    BOOST_CHECK_EQUAL(sqlConn->apply(ss.str(), errObj), true);
+    if ( !sqlConn->apply(ss.str(), errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     ss.str(""); ss <<  "CREATE TABLE " << tNo2 << " (o2 int)";
-    BOOST_CHECK_EQUAL(sqlConn->apply(ss.str(), errObj), true);
+    if ( !sqlConn->apply(ss.str(), errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     ss.str(""); ss <<  "CREATE TABLE " << tNo3 << " (o3 int)";
-    BOOST_CHECK_EQUAL(sqlConn->apply(ss.str(), errObj), true);
+    if ( !sqlConn->apply(ss.str(), errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     ss.str(""); ss <<  "CREATE TABLE " << tNs1 << " (s1 int)";
-    BOOST_CHECK_EQUAL(sqlConn->apply(ss.str(), errObj), true);
-    ss.str(""); ss <<  "CREATE TABLE " << tNs1 << " (s1 int)";
-    BOOST_CHECK_EQUAL(sqlConn->apply(ss.str(), errObj), true);
+    if ( !sqlConn->apply(ss.str(), errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());    if ( !sqlConn->apply(ss.str(), errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+
+    }
+    ss.str(""); ss <<  "CREATE TABLE " << tNs2 << " (s2 int)";
+    if ( !sqlConn->apply(ss.str(), errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+    // try creating exiting table, should fail
+    if ( sqlConn->apply(ss.str(), errObj) ) {
+        BOOST_FAIL("Creating table "+ss.str() 
+                   +" should fail, but it didn't. Received this: "
+                   + errObj.printErrMsg());
+    }
+
     // list all tables, should get 5
-    BOOST_CHECK_EQUAL(sqlConn->listTables(v, errObj), true);
+    if ( !sqlConn->listTables(v, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     BOOST_CHECK_EQUAL(v.size(), 5);
+
     // list "object" tables, should get 3
-    BOOST_CHECK_EQUAL(sqlConn->listTables(v, errObj, "object_"), true);
+    if ( !sqlConn->listTables(v, errObj, "object_") ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     BOOST_CHECK_EQUAL(v.size(), 3);
+
     // list "source" tables, should get 2
-    BOOST_CHECK_EQUAL(sqlConn->listTables(v, errObj, "source_"), true);
+    if ( !sqlConn->listTables(v, errObj, "source_") ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     BOOST_CHECK_EQUAL(v.size(), 2);
+
     // list nonExisting tables, should get 0
-    BOOST_CHECK_EQUAL(sqlConn->listTables(v, errObj, "whatever"), true);
+    if ( !sqlConn->listTables(v, errObj, "whatever") ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     BOOST_CHECK_EQUAL(v.size(), 0);
     // drop db
-    BOOST_CHECK_EQUAL(sqlConn->dropDb(dbN, errObj), true);
+    if ( !sqlConn->dropDb(dbN, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

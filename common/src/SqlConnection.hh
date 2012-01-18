@@ -71,6 +71,9 @@ public:
     bool dbExists(std::string const& dbName, SqlErrorObject&);
     bool createDb(std::string const& dbName, SqlErrorObject&, 
                   bool failIfExists=true);
+    bool createDbAndSelect(std::string const& dbName, 
+                           SqlErrorObject&, 
+                           bool failIfExists=true);
     bool dropDb(std::string const& dbName, SqlErrorObject&,
                 bool failIfExists=true);
     bool tableExists(std::string const& tableName, 
