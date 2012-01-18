@@ -200,7 +200,6 @@ if not conf.CheckLib("crypto"):
     print >> sys.stderr, "Could not locate libcrypto"
     canBuild = False
 
-
 # MySQL
 if not conf.CheckCXXHeader("mysql/mysql.h"):
     print >> sys.stderr, "Could not locate MySQL headers"
@@ -229,7 +228,6 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "ChunkMapping.cc",
                   "SpatialUdfHandler.cc",
                   "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"] )
-             
 
 pyPath = 'python/lsst/qserv/master'
 pyLib = os.path.join(pyPath, '_masterLib.so')
@@ -246,9 +244,7 @@ dispatchSrcs = map(lambda x: os.path.join('src', x),
                     "WorkQueue.cc",
                     "Timer.cc"])
 
-
 srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs
-
 
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
              'srcPaths' : dispatchSrcs + [os.path.join('src',
