@@ -106,7 +106,7 @@ runScriptPiece(XrdSysError& e,
     if ( ! result ) {
         e.Say((Pformat("Broken! ,%1%%2%---%3%")
                % scriptId % pieceName % errObj.errMsg()).str().c_str());
-        return errObj.addErrMsg(std::string("(during ") + pieceName 
+        return errObj.addErrMsg("(during " + pieceName 
                                 + ")\nQueryFragment: " + piece);
     }
     return true;
