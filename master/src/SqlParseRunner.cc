@@ -22,6 +22,8 @@
 
 // Standard
 #include <functional>
+#include <cstdio>
+#include <strings.h>
 
 // Boost
 #include <boost/make_shared.hpp>
