@@ -121,8 +121,8 @@ runScriptPieces(XrdSysError& e,
                 std::string const& run, 
                 std::string const& cleanup,
                 qWorker::CheckFlag* checkAbort) {
-    if ( ! runScriptPiece(e, sqlConn, errObj, scriptId, "QueryBuildSub", 
-                          build, checkAbort) ) {
+    if ( runScriptPiece(e, sqlConn, errObj, scriptId, "QueryBuildSub", 
+                        build, checkAbort) ) {
         if ( ! runScriptPiece(e, sqlConn, errObj, scriptId, "QueryExec", 
                               run, checkAbort) ) {
             e.Say((Pformat("Fail QueryExec phase for %1%: %2%") 
