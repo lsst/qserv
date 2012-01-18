@@ -122,7 +122,6 @@ env['CPPPATH'] = [distutils.sysconfig.get_python_inc(), 'include'],
 env['SHLIBPREFIX'] = ""
 env.Append(CPPPATH = ['../common/include'])
 env.Append(LIBPATH = ['../common/lib']) 
-env.Append(LIBS = ["qserv_common"])
 
 
 def importDeps(env, f):
@@ -135,6 +134,7 @@ importDeps(env, "../common/include/lsst/qserv/worker.pb.h")
 importDeps(env, "../common/include/lsst/qserv/SqlErrorObject.hh")
 importDeps(env, "../common/include/lsst/qserv/SqlConnection.hh")
 importDeps(env, "../common/lib/qserv_proto")
+importDeps(env, "../common/lib/qserv_common")
 
 ## Allow user-specified swig tool
 ## SWIG 1.3.29 has bugs which cause the build to fail.
@@ -168,6 +168,12 @@ env.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
 
 # Start configuration tests
 conf = Configure(env)
+
+env.Append(LIBPATH = ["../common/lib"])
+if not conf.CheckLib("qserv_common", language="C++"):
+    print >> sys.stderr, "Could not find qserv_common lib"
+    canBuild = False
+
 
 # boost library reqs
 checkBoost("boost_thread")
