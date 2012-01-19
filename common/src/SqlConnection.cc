@@ -19,6 +19,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #include <sstream>
 #include <cstdio>
 // Boost
@@ -51,9 +52,9 @@ SqlResults::addResult(MYSQL_RES* r) {
     }
 }
 
-std::vector<std::string>
-SqlResults::extractFirstColumn() {
-    std::vector<std::string> ret;
+bool
+SqlResults::extractFirstColumn(std::vector<std::string>& ret,
+                               SqlErrorObject& errObj) {
     int i, s = _results.size();
     for (i=0 ; i<s ; i++) {
         MYSQL_ROW row;
@@ -63,10 +64,25 @@ SqlResults::extractFirstColumn() {
         mysql_free_result(_results[i]);
     }
     _results.clear();
-    return ret;
+    return true;
 }
 
-
+bool
+SqlResults::extractFirstValue(char& ret, SqlErrorObject& errObj) {
+    if (_results.size() != 1) {
+        std::stringstream ss;
+        ss << "Expecting one row, found " << _results.size() << " results"
+           << std::endl;
+        return errObj.addErrMsg(ss.str());
+    }
+    MYSQL_ROW row = mysql_fetch_row(_results[0]);
+    if (!row) {
+        return errObj.addErrMsg("Expecting one row, found no rows");
+    }
+    ret = *(row[0]);
+    freeResults();
+    return true;
+}
 
 SqlConnection::SqlConnection(SqlConfig const& sc, bool useThreadMgmt) 
     : _conn(NULL), _config(sc), 
@@ -177,17 +193,14 @@ SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
     sql += "WHERE schema_name = '";
     sql += dbName + "'";
     
-    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return _setErrorObject(errObj);
+    SqlResults results;
+    if ( !runQuery(sql, results, errObj) ) {
+        return errObj.addErrMsg("Failed to run: " + sql);
     }
-    MYSQL_RES *result = mysql_store_result(_conn);
-    MYSQL_ROW row = mysql_fetch_row(result);
-    if (!row) {
-        mysql_free_result(result);
-        return errObj.addErrMsg(sql + " returned no rows");
+    char n;
+    if ( !results.extractFirstValue(n, errObj)) {
+        return false;
     }
-    char n = *(row[0]);
-    mysql_free_result(result);
     return n == '1';
 }
 
@@ -205,7 +218,7 @@ SqlConnection::createDb(std::string const& dbName,
         return true;
     }
     std::string sql = "CREATE DATABASE " + dbName;
-    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+    if (!runQuery(sql, errObj)) {
         return _setErrorObject(errObj, "Problem executing: " + sql);
     }
     return true;
@@ -235,7 +248,7 @@ SqlConnection::dropDb(std::string const& dbName,
         return true;
     }
     std::string sql = "DROP DATABASE " + dbName;
-    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+    if (!runQuery(sql, errObj)) {
         return _setErrorObject(errObj, "Problem executing: " + sql);
     }
     if ( getActiveDbName() == dbName ) {
@@ -265,17 +278,14 @@ SqlConnection::tableExists(std::string const& tableName,
     std::string sql = "SELECT COUNT(*) FROM information_schema.tables ";
     sql += "WHERE table_schema = '";
     sql += _dbName + "' AND table_name = '" + tableName + "'";
-    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+    SqlResults results;
+    if (!runQuery(sql, results, errObj)) {
         return _setErrorObject(errObj, "Problem executing: " + sql);
     }
-    MYSQL_RES *result = mysql_store_result(_conn);
-    MYSQL_ROW row = mysql_fetch_row(result);
-    if (!row) {
-        mysql_free_result(result);
-        return errObj.addErrMsg("Command: '" + sql + "' returned no rows");
+    char n;
+    if ( !results.extractFirstValue(n, errObj) ) {
+        return errObj.addErrMsg("Query " + sql + " did not return result");
     }
-    char n = *(row[0]);
-    mysql_free_result(result);
     return n == '1';
 }
 
@@ -298,7 +308,7 @@ SqlConnection::dropTable(std::string const& tableName,
         return true;
     }
     std::string sql = "DROP TABLE " + _dbName + "." + tableName;
-    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+    if (!runQuery(sql, errObj)) {
         return _setErrorObject(errObj, "Problem executing: " + sql);
     }
     return true;
@@ -328,9 +338,7 @@ SqlConnection::listTables(std::vector<std::string>& v,
     if (!runQuery(sql, results, errObj)) {
         return _setErrorObject(errObj, "Problem executing: " + sql);
     }
-    v = results.extractFirstColumn();
-    results.freeResults();
-    return true;
+    return results.extractFirstColumn(v, errObj);
 }
 
 ////////////////////////////////////////////////////////////////////////

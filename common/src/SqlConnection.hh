@@ -60,7 +60,8 @@ public:
     ~SqlResults() {freeResults();};
 
     void addResult(MYSQL_RES* r);
-    std::vector<std::string> extractFirstColumn();
+    bool extractFirstColumn(std::vector<std::string>&, SqlErrorObject&);
+    bool extractFirstValue(char&, SqlErrorObject&);
     void freeResults();
 
 private:
