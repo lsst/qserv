@@ -53,6 +53,22 @@ public:
     std::string socket;
 };
 
+class SqlResults {
+public:
+    SqlResults(bool discardImmediately=false) 
+        :_discardImmediately(discardImmediately) {};
+    ~SqlResults() {freeResults();};
+
+    void addResult(MYSQL_RES* r);
+    std::vector<std::string> extractFirstColumn();
+    void freeResults();
+
+private:
+    std::vector<MYSQL_RES*> _results;
+    bool _discardImmediately;
+};
+
+        
 /// class SqlConnection : Class for interacting with a MySQL database.
 class SqlConnection {
 public:
@@ -60,16 +76,11 @@ public:
     ~SqlConnection(); 
     bool connectToDb(SqlErrorObject&);
     bool selectDb(std::string const& dbName, SqlErrorObject&);
-    bool runQuery(char const* query, int qSize,
-                  std::vector<MYSQL_ROW>& rowsReturned,
-                  SqlErrorObject& errObj);
-    bool runQuery(char const* query, int qSize,
-                  SqlErrorObject& errObj);
-    bool runQuery(std::string const query, 
-                  std::vector<MYSQL_ROW>& rowsReturned,
-                  SqlErrorObject&);
-    bool runQuery(std::string const query, 
-                  SqlErrorObject&);
+    bool runQuery(char const* query, int qSize, 
+                  SqlResults& results, SqlErrorObject&);
+    bool runQuery(char const* query, int qSize, SqlErrorObject&);
+    bool runQuery(std::string const query, SqlResults&, SqlErrorObject&);
+    bool runQuery(std::string const query, SqlErrorObject&);
     bool dbExists(std::string const& dbName, SqlErrorObject&);
     bool createDb(std::string const& dbName, SqlErrorObject&, 
                   bool failIfExists=true);

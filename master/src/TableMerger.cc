@@ -245,7 +245,7 @@ bool TableMerger::_applySqlLocal(std::string const& sql) {
                       << " connected to db." << std::endl;
         }
     }
-    if(!_sqlConn->apply(sql, errObj)) {
+    if(!_sqlConn->runQuery(sql, errObj)) {
         _error.status = TableMergerError::MYSQLEXEC;
         _error.errorCode = errObj.errNo();
         _error.description = "Error applying sql. " + errObj.printErrMsg();

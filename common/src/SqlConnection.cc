@@ -28,9 +28,44 @@
 #include "SqlConnection.hh"
 
 using lsst::qserv::SqlConnection;
+using lsst::qserv::SqlResults;
 
 bool SqlConnection::_isReady = false;
 boost::mutex SqlConnection::_sharedMutex;
+
+void
+SqlResults::freeResults() {
+    int i, s = _results.size();
+    for (i=0 ; i<s ; i++) {
+        mysql_free_result(_results[i]);
+    }
+    _results.clear();
+}
+
+void 
+SqlResults::addResult(MYSQL_RES* r) {
+    if ( _discardImmediately ) {
+        mysql_free_result(r);
+    } else {
+        _results.push_back(r);
+    }
+}
+
+std::vector<std::string>
+SqlResults::extractFirstColumn() {
+    std::vector<std::string> ret;
+    int i, s = _results.size();
+    for (i=0 ; i<s ; i++) {
+        MYSQL_ROW row;
+        while (row = mysql_fetch_row(_results[i])) {
+            ret.push_back(row[0]);
+        }
+        mysql_free_result(_results[i]);
+    }
+    _results.clear();
+    return ret;
+}
+
 
 
 SqlConnection::SqlConnection(SqlConfig const& sc, bool useThreadMgmt) 
@@ -85,7 +120,7 @@ SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
 bool 
 SqlConnection::runQuery(char const* query, 
                         int qSize,
-                        std::vector<MYSQL_ROW>& rowsReturned,
+                        SqlResults& results,
                         SqlErrorObject& errObj) {
     if (!_connected) if (!connectToDb(errObj)) return false;
 
@@ -100,11 +135,7 @@ SqlConnection::runQuery(char const* query,
     do {
         MYSQL_RES* result = mysql_store_result(_conn);
         if (result) {
-            MYSQL_ROW row;
-            while (row = mysql_fetch_row(result)) {
-                rowsReturned.push_back(row);
-            }
-            mysql_free_result(result);// FIXME: check if ok to free here
+            results.addResult(result);
         } else if (mysql_field_count(_conn) != 0) {
             return _setErrorObject(errObj, 
                     std::string("Unable to store result for query: ") + query);
@@ -120,22 +151,22 @@ SqlConnection::runQuery(char const* query,
 
 bool 
 SqlConnection::runQuery(char const* query, int qSize, SqlErrorObject& errObj) {
-    std::vector<MYSQL_ROW> rowsReturned;
-    return runQuery(query, qSize, rowsReturned, errObj);
+    SqlResults results(true); // true - discard results immediately
+    return runQuery(query, qSize, results, errObj);
 }
 
 bool 
 SqlConnection::runQuery(std::string const query,
-                        std::vector<MYSQL_ROW>& rowsReturned,
+                        SqlResults& results,
                         SqlErrorObject& errObj) {
-    return runQuery(query.data(), query.size(), rowsReturned, errObj);
+    return runQuery(query.data(), query.size(), results, errObj);
 }
 
 bool 
 SqlConnection::runQuery(std::string const query,
                         SqlErrorObject& errObj) {
-    std::vector<MYSQL_ROW> rowsReturned;
-    return runQuery(query.data(), query.size(), rowsReturned, errObj);
+    SqlResults results(true); // true - discard results immediately
+    return runQuery(query.data(), query.size(), results, errObj);
 }
 
 bool 
@@ -293,14 +324,12 @@ SqlConnection::listTables(std::vector<std::string>& v,
     if (prefixed != "") {
         sql += " AND table_name LIKE '" + prefixed + "%'";
     }
-    std::vector<MYSQL_ROW> rowsReturned;
-    if (!runQuery(sql, rowsReturned, errObj)) {
+    SqlResults results;
+    if (!runQuery(sql, results, errObj)) {
         return _setErrorObject(errObj, "Problem executing: " + sql);
     }
-    int i, s = rowsReturned.size();
-    for (i=0 ; i<s ; i++) {
-        v.push_back(rowsReturned[i][0]);
-    }
+    v = results.extractFirstColumn();
+    results.freeResults();
     return true;
 }
 
