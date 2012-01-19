@@ -60,13 +60,15 @@ public:
     ~SqlConnection(); 
     bool connectToDb(SqlErrorObject&);
     bool selectDb(std::string const& dbName, SqlErrorObject&);
-    bool apply(std::string const& sql, SqlErrorObject&);
-    bool runQuery(char const* query, 
-                  int qSize,
-                  SqlErrorObject& errObj, 
-                  std::string arg=std::string());
+    bool runQuery(char const* query, int qSize,
+                  std::vector<MYSQL_ROW>& rowsReturned,
+                  SqlErrorObject& errObj);
+    bool runQuery(char const* query, int qSize,
+                  SqlErrorObject& errObj);
     bool runQuery(std::string const query, 
-                  std::string arg, 
+                  std::vector<MYSQL_ROW>& rowsReturned,
+                  SqlErrorObject&);
+    bool runQuery(std::string const query, 
                   SqlErrorObject&);
     bool dbExists(std::string const& dbName, SqlErrorObject&);
     bool createDb(std::string const& dbName, SqlErrorObject&, 
@@ -97,7 +99,6 @@ public:
 private:
     bool _init(SqlErrorObject&);
     bool _connect(SqlErrorObject&);
-    bool _discardResults(SqlErrorObject&);
     bool _setErrorObject(SqlErrorObject&, 
                          std::string const& details=std::string(""));
 

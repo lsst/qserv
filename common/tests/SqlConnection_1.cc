@@ -105,7 +105,7 @@ BOOST_AUTO_TEST_CASE(TableExists) {
     BOOST_CHECK_EQUAL(sqlConn->tableExists(tNa, errObj, dbN2), false);
     // create table (in dbN1)
     ss.str(""); ss <<  "CREATE TABLE " << tNa << " (i int)";
-    if ( !sqlConn->apply(ss.str(), errObj) ) {
+    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // check if table tN exists in default db (it should)
@@ -147,30 +147,27 @@ BOOST_AUTO_TEST_CASE(ListTables) {
 
     // create tables
     ss.str(""); ss <<  "CREATE TABLE " << tNo1 << " (o1 int)";
-    if ( !sqlConn->apply(ss.str(), errObj) ) {
+    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     ss.str(""); ss <<  "CREATE TABLE " << tNo2 << " (o2 int)";
-    if ( !sqlConn->apply(ss.str(), errObj) ) {
+    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     ss.str(""); ss <<  "CREATE TABLE " << tNo3 << " (o3 int)";
-    if ( !sqlConn->apply(ss.str(), errObj) ) {
+    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     ss.str(""); ss <<  "CREATE TABLE " << tNs1 << " (s1 int)";
-    if ( !sqlConn->apply(ss.str(), errObj) ) {
-        BOOST_FAIL(errObj.printErrMsg());    if ( !sqlConn->apply(ss.str(), errObj) ) {
+    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
-
-    }
     ss.str(""); ss <<  "CREATE TABLE " << tNs2 << " (s2 int)";
-    if ( !sqlConn->apply(ss.str(), errObj) ) {
+    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // try creating exiting table, should fail
-    if ( sqlConn->apply(ss.str(), errObj) ) {
+    if ( sqlConn->runQuery(ss.str(), errObj) ) {
         BOOST_FAIL("Creating table "+ss.str() 
                    +" should fail, but it didn't. Received this: "
                    + errObj.printErrMsg());

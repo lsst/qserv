@@ -20,32 +20,16 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "lsst/qserv/SqlConnection.hh"
 #include "lsst/qserv/worker/Metadata.h"
-
-#include "mysql/mysql.h"
 
 using lsst::qserv::SqlConfig;
 using lsst::qserv::SqlConnection;
 
 namespace qWorker = lsst::qserv::worker;
 
-// to check if table exists:
-// SELECT COUNT(*) FROM information_schema.tables 
-// WHERE table_schema = 'dbName' AND table_name = 'tableName'"
-
-
-qWorker::Metadata::Metadata(int workerId) 
+qWorker::Metadata::Metadata(SqlConfig const& sc, 
+                            std::string const& workerId) 
     : _metadataDbName("qserv_worker_meta_" + workerId) {
-
-    SqlConfig sc;
-    sc.hostname = "";
-    sc.username = "dummy";
-    sc.password = "";
-    sc.dbName = "";
-    sc.port = 0;
-    sc.socket = "dummy";
-
     _sqlConn.reset(new SqlConnection(sc, false));
 }
 
@@ -55,21 +39,25 @@ qWorker::Metadata::Metadata(int workerId)
 bool
 qWorker::Metadata::registerQservedDb(std::string const& dbName,
                                      std::string const& partitionedTables) {
-
-    if ( !_sqlConn->dbExists(_metadataDbName, _errObj) ) {
-        if ( !_sqlConn->createDb(_metadataDbName, _errObj) ) {
-            return false;
-        }
-    }
-    if ( !_sqlConn->selectDb(_metadataDbName, _errObj) ) {
-        return false;
+    // create the metadata db if it does not exist and select it
+    if ( !_sqlConn->createDbAndSelect(_metadataDbName, _errObj, false) ) {
+        return _errObj.addErrMsg("Failed to register qserved db " + dbName);
     }
     // check if table "Dbs" exists, create if it does not
     if ( !_sqlConn->tableExists("Dbs", _errObj)) {
-        //runQuery("CREATE TABLE Dbs (hash INT, dbName VARCHAR, partitionedTables VARCHAR)");
+        std::string sql = 
+            "CREATE TABLE Dbs (hash INT, "
+            "                  dbName VARCHAR, "
+            "                  partitionedTables VARCHAR)";
+        if ( !_sqlConn->runQuery(sql, _errObj) ) {
+            return _errObj.addErrMsg(
+                       std::string("Failed to register qserved db. ")
+                       + "Sql command was: " + sql);
+        }
     } else {
         // check if db is not already registered
-        //runQuery("SELECT COUNT(*) FROM 'Dbs' WHERE dbName='" + dbName + "'");
+        std::string sql = "SELECT COUNT(*) FROM 'Dbs' WHERE dbName='" 
+                          + dbName + "'";
         // fail if the result is not equal 1
     }
     

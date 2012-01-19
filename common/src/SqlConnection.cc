@@ -19,7 +19,6 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
 #include <sstream>
 #include <cstdio>
 // Boost
@@ -84,30 +83,12 @@ SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
 }
 
 bool 
-SqlConnection::apply(std::string const& sql, SqlErrorObject& errObj) {
-    if (!_connected) if (!connectToDb(errObj)) return false;
-
-    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
-        return _setErrorObject(errObj, "Problem executing: " + sql);
-    } else {
-        // Get the result, but discard it.
-        if (!_discardResults(errObj)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool 
 SqlConnection::runQuery(char const* query, 
                         int qSize,
-                        SqlErrorObject& errObj,
-                        std::string arg) {
+                        std::vector<MYSQL_ROW>& rowsReturned,
+                        SqlErrorObject& errObj) {
     if (!_connected) if (!connectToDb(errObj)) return false;
 
-    if (arg.size() != 0) {
-        // TODO -- bind arg
-    }
     if (mysql_real_query(_conn, query, qSize) != 0) {
         MYSQL_RES* result = mysql_store_result(_conn);
         if (result) mysql_free_result(result);
@@ -119,17 +100,18 @@ SqlConnection::runQuery(char const* query,
     do {
         MYSQL_RES* result = mysql_store_result(_conn);
         if (result) {
-            // TODO -- Do something with it?
-            mysql_free_result(result);
-        }
-        else if (mysql_field_count(_conn) != 0) {
+            MYSQL_ROW row;
+            while (row = mysql_fetch_row(result)) {
+                rowsReturned.push_back(row);
+            }
+            mysql_free_result(result);// FIXME: check if ok to free here
+        } else if (mysql_field_count(_conn) != 0) {
             return _setErrorObject(errObj, 
-                      std::string("Unable to store result for query: ")
-                                  + std::string(query,qSize));
+                    std::string("Unable to store result for query: ") + query);
         }
         status = mysql_next_result(_conn);
         if (status > 0) {
-            return _setErrorObject(errObj, 
+            return _setErrorObject(errObj,
                   std::string("Error retrieving results for query: ") + query);
         }
     } while (status == 0);
@@ -137,10 +119,23 @@ SqlConnection::runQuery(char const* query,
 }
 
 bool 
-SqlConnection::runQuery(std::string const query, 
-                        std::string arg, 
+SqlConnection::runQuery(char const* query, int qSize, SqlErrorObject& errObj) {
+    std::vector<MYSQL_ROW> rowsReturned;
+    return runQuery(query, qSize, rowsReturned, errObj);
+}
+
+bool 
+SqlConnection::runQuery(std::string const query,
+                        std::vector<MYSQL_ROW>& rowsReturned,
                         SqlErrorObject& errObj) {
-    return runQuery(query.data(), query.size(), errObj, arg);
+    return runQuery(query.data(), query.size(), rowsReturned, errObj);
+}
+
+bool 
+SqlConnection::runQuery(std::string const query,
+                        SqlErrorObject& errObj) {
+    std::vector<MYSQL_ROW> rowsReturned;
+    return runQuery(query.data(), query.size(), rowsReturned, errObj);
 }
 
 bool 
@@ -298,13 +293,13 @@ SqlConnection::listTables(std::vector<std::string>& v,
     if (prefixed != "") {
         sql += " AND table_name LIKE '" + prefixed + "%'";
     }
-    if (mysql_real_query(_conn, sql.c_str(), sql.size())) {
+    std::vector<MYSQL_ROW> rowsReturned;
+    if (!runQuery(sql, rowsReturned, errObj)) {
         return _setErrorObject(errObj, "Problem executing: " + sql);
     }
-    MYSQL_RES *result = mysql_store_result(_conn);
-    MYSQL_ROW row;
-    while (row = mysql_fetch_row(result)) {
-        v.push_back(row[0]);
+    int i, s = rowsReturned.size();
+    for (i=0 ; i<s ; i++) {
+        v.push_back(rowsReturned[i][0]);
     }
     return true;
 }
@@ -340,28 +335,6 @@ SqlConnection::_connect(SqlErrorObject& errObj) {
         return _setErrorObject(errObj);
     }
     _connected = true;
-    return true;
-}
-
-bool
-SqlConnection::_discardResults(SqlErrorObject& errObj) {
-    int status;
-    MYSQL_RES* result;
-
-    /* process each statement result */
-    do {
-        /* did current statement return data? */
-        result = mysql_store_result(_conn);
-        if (result) {
-            mysql_free_result(result);
-        } else if (mysql_field_count(_conn) != 0) {
-            return errObj.addErrMsg("Could not retrieve result set");
-        }
-        /* more results? -1 = no, >0 = error, 0 = yes (keep looping) */
-        if ((status = mysql_next_result(_conn)) > 0) {
-            return _setErrorObject(errObj);
-        }
-    } while (status == 0);
     return true;
 }
 

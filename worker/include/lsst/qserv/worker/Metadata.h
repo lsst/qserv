@@ -30,8 +30,9 @@
 
 namespace lsst {
 namespace qserv {
-// Forward
-class SqlConnection;
+    // Forward
+    class SqlConnection;
+    class SqlConfig;
 }}
 
 namespace lsst {
@@ -40,7 +41,7 @@ namespace worker {
 
 class Metadata {
 public:
-    Metadata(int workerId);
+    Metadata(SqlConfig const& sc, std::string const& workerId);
     bool registerQservedDb(std::string const& dbName,
                            std::string const& partitionedTables);
     bool createExportDirs(std::string const& baseDir);
