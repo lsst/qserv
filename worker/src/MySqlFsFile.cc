@@ -410,7 +410,9 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     }
     if(_path->requestType() == QservPath::CQUERY) {
         if(_requestTaker->receive(fileOffset, buffer, bufferSize)) {
-            return bufferSize;
+            if (_hasPacketEof(buffer, bufferSize)) {
+                _requestTaker->complete();
+            } else return bufferSize;
         } else return -EIO;
     }
     _addWritePacket(fileOffset, buffer, bufferSize);
