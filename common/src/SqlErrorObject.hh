@@ -39,11 +39,11 @@ public:
     std::string errMsg() const { return _errMsg; }
     bool isSet() const { return _errNo != 0 || !_errMsg.empty(); }
 
-    int setErrNo(int e) { _errNo = e; return e; }
-    int addErrMsg(std::string const& s) { 
+    void setErrNo(int e) { _errNo = e; }
+    bool addErrMsg(std::string const& s) { 
         if (_errMsg.empty()) _errMsg = s;
         else { _errMsg += ' '; _errMsg += s; }
-        return _errNo;
+        return false;
     };
     void reset() { _errNo = 0; _errMsg.clear(); }
 

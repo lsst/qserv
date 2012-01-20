@@ -68,6 +68,23 @@ SqlResults::extractFirstColumn(std::vector<std::string>& ret,
 }
 
 bool
+SqlResults::extractFirst2Columns(std::vector<std::string>& col1,
+                                 std::vector<std::string>& col2,
+                                 SqlErrorObject& errObj) {
+    int i, s = _results.size();
+    for (i=0 ; i<s ; i++) {
+        MYSQL_ROW row;
+        while (row = mysql_fetch_row(_results[i])) {
+            col1.push_back(row[0]);
+            col2.push_back(row[1]);
+        }
+        mysql_free_result(_results[i]);
+    }
+    _results.clear();
+    return true;
+}
+
+bool
 SqlResults::extractFirstValue(char& ret, SqlErrorObject& errObj) {
     if (_results.size() != 1) {
         std::stringstream ss;
@@ -229,7 +246,7 @@ SqlConnection::createDbAndSelect(std::string const& dbName,
                                  SqlErrorObject& errObj, 
                                  bool failIfExists) {
     if ( ! createDb(dbName, errObj, failIfExists) ) {
-        return false;
+        return errObj.addErrMsg("Failed to create db " + dbName);
     }
     return selectDb(dbName, errObj);
 }
@@ -237,11 +254,11 @@ SqlConnection::createDbAndSelect(std::string const& dbName,
 bool 
 SqlConnection::dropDb(std::string const& dbName, 
                       SqlErrorObject& errObj,
-                      bool failIfExists) {
+                      bool failIfDoesNotExist) {
     if (!_connected) if (!connectToDb(errObj)) return false;
 
     if (!dbExists(dbName, errObj)) {
-        if ( failIfExists ) {
+        if ( failIfDoesNotExist ) {
             return errObj.addErrMsg(std::string("Can't drop db ")
                                     + dbName + ", it does not exist");
         }
@@ -327,7 +344,8 @@ SqlConnection::listTables(std::vector<std::string>& v,
 
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
     if (!dbExists(_dbName, errObj)) {
-        return false;
+        return errObj.addErrMsg("Can't list tables for db " + _dbName
+                                + " because it does not exist");
     }
     std::string sql = "SELECT table_name FROM information_schema.tables ";
     sql += "WHERE table_schema = '" + _dbName + "'";
@@ -369,7 +387,7 @@ SqlConnection::_connect(SqlErrorObject& errObj) {
          _config.socket.empty() ? 0 : _config.socket.c_str(), 
          clientFlag);
     if(c == NULL) {
-        return _setErrorObject(errObj);
+        return _setErrorObject(errObj, "Failed to connect");
     }
     _connected = true;
     return true;

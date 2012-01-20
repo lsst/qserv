@@ -60,8 +60,12 @@ public:
     ~SqlResults() {freeResults();};
 
     void addResult(MYSQL_RES* r);
-    bool extractFirstColumn(std::vector<std::string>&, SqlErrorObject&);
     bool extractFirstValue(char&, SqlErrorObject&);
+    bool extractFirstColumn(std::vector<std::string>&, 
+                            SqlErrorObject&);
+    bool extractFirst2Columns(std::vector<std::string>&, //FIXME: generalize
+                              std::vector<std::string>&, 
+                              SqlErrorObject&);
     void freeResults();
 
 private:
@@ -89,7 +93,7 @@ public:
                            SqlErrorObject&, 
                            bool failIfExists=true);
     bool dropDb(std::string const& dbName, SqlErrorObject&,
-                bool failIfExists=true);
+                bool failIfDoesNotExist=true);
     bool tableExists(std::string const& tableName, 
                      SqlErrorObject&,
                      std::string const& dbName="");

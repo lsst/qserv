@@ -24,15 +24,13 @@
 #define LSST_QSERV_WORKER_METADATA_H
 
 #include <string>
-#include <boost/shared_ptr.hpp>
-#include "lsst/qserv/SqlErrorObject.hh"
-#include "lsst/qserv/SqlConnection.hh"
+#include <vector>
 
 namespace lsst {
 namespace qserv {
     // Forward
     class SqlConnection;
-    class SqlConfig;
+    class SqlErrorObject;
 }}
 
 namespace lsst {
@@ -41,21 +39,28 @@ namespace worker {
 
 class Metadata {
 public:
-    Metadata(SqlConfig const& sc, std::string const& workerId);
+    Metadata(std::string const& workerId);
     bool registerQservedDb(std::string const& dbName,
-                           std::string const& partitionedTables);
-    bool createExportDirs(std::string const& baseDir);
+                           std::string const& partitionedTables,
+                           SqlConnection&,
+                           SqlErrorObject&);
+    bool createExportDirs(std::string const& baseDir,
+                          SqlConnection&,
+                          SqlErrorObject&);
     
 private:
     bool createExportDirsForDb(std::string const& baseDir,
                                std::string const& dbName,
-                               std::string const& partitionedTables);
+                               std::string const& tableList,
+                               SqlConnection&,
+                               SqlErrorObject&);
+
+    static bool prepPartitionedTables(std::string&, SqlErrorObject&);
+    static std::vector<std::string> tokenizeString(std::string const&);
+    static int extractChunkNo(std::string const&);
 
 private:
     const std::string _metadataDbName;
-
-    boost::shared_ptr<SqlConnection> _sqlConn;
-    SqlErrorObject _errObj;
 };
 
 }}} // namespace lsst.qserv.worker
