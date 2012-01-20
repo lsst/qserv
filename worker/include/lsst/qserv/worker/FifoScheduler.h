@@ -28,6 +28,8 @@
 //
 #ifndef LSST_QSERV_WORKER_FIFOSCHEDULER_H
 #define LSST_QSERV_WORKER_FIFOSCHEDULER_H
+
+#include <boost/thread/mutex.hpp>
 #include "lsst/qserv/worker/Foreman.h"
 
 namespace lsst {
@@ -49,7 +51,10 @@ public:
                                     TaskQueuePtr running);
     virtual TaskQueuePtr taskFinishAct(Task::Ptr finished,
                                        TodoList::Ptr todo, 
-                                       TaskQueuePtr running);    
+                                       TaskQueuePtr running);
+private:
+    boost::mutex _mutex;
+    int _maxRunning;
 };
 }}} // lsst::qserv::worker
 #endif // LSST_QSERV_WORKER_FIFOSCHEDULER_H

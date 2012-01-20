@@ -49,14 +49,15 @@ public:
     public:
         typedef boost::shared_ptr<Watcher> Ptr;
         virtual ~Watcher() {}
-        virtual void handleAccept(TodoList& t) = 0; // Must not block.
+        virtual void handleAccept(Task::Ptr t) = 0; // Must not block.
     };
 
-    TodoList() {
-    }
+    TodoList() {}
     
     virtual ~TodoList() {}
     virtual bool accept(boost::shared_ptr<TaskMsg> msg);
+    void addWatcher(Watcher::Ptr w);
+    void removeWatcher(Watcher::Ptr w);
 
     // Reusing existing QueryRunnerArg for now.
     boost::shared_ptr<Task> popTask();
@@ -69,13 +70,16 @@ public:
     };
     // O(n) search right now: n is small
     boost::shared_ptr<Task> popTask(MatchF& m);
+    boost::shared_ptr<Task> popTask(Task::Ptr t);
     boost::shared_ptr<Task> popByHash(std::string const& hash);
     boost::shared_ptr<Task> popByChunk(int chunkId);
+
+    int size() const { return _tasks.size(); }
 
 private:    
     typedef std::deque<Watcher::Ptr> WatcherQueue;
     
-    void _notifyWatchers();
+    void _notifyWatchers(Task::Ptr t);
 
     TaskQueue _tasks;
     WatcherQueue _watchers;

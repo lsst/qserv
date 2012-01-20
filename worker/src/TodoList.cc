@@ -62,6 +62,16 @@ namespace {
         }
         std::string const hash;
     };
+    struct eqMatch {
+        eqMatch(qWorker::Task::Ptr const& task_) : task(task_) {}
+        inline bool operator()(boost::shared_ptr<qWorker::Task>& t) {
+            if(t.get()) {
+                return t == task;
+            } else { return false; }
+        }
+        qWorker::Task::Ptr const& task;
+    };
+
     struct chunkMatch {
         chunkMatch(int chunk_) : chunk(chunk_) {}
         inline bool operator()(boost::shared_ptr<qWorker::Task>& t) {
@@ -97,7 +107,22 @@ bool qWorker::TodoList::accept(boost::shared_ptr<TaskMsg> msg) {
         boost::lock_guard<boost::mutex> m(_tasksMutex);
         _tasks.push_back(t);
     }
-    _notifyWatchers();    
+    _notifyWatchers(t); 
+}
+void qWorker::TodoList::addWatcher(Watcher::Ptr w) {
+    boost::lock_guard<boost::mutex> m(_watchersMutex);
+    _watchers.push_back(w);
+}
+void qWorker::TodoList::removeWatcher(Watcher::Ptr w) {
+    boost::lock_guard<boost::mutex> m(_watchersMutex);
+    WatcherQueue::iterator i = _watchers.begin();
+    for(; i != _watchers.end(); ++i) {
+        if(*i == w) {
+            _watchers.erase(i);
+            break;
+        }
+    }
+    assert(false); // FIXME: prefer a meaningful error.
 }
 
 boost::shared_ptr<qWorker::Task> qWorker::TodoList::popTask() {
@@ -115,6 +140,11 @@ qWorker::TodoList::popTask(qWorker::TodoList::MatchF& m) {
     return popAndReturn(_tasksMutex, _tasks, taskMatch(m));
 }
 
+boost::shared_ptr<qWorker::Task> 
+qWorker::TodoList::popTask(qWorker::Task::Ptr t) {
+    return popAndReturn(_tasksMutex, _tasks, eqMatch(t));
+}
+
 boost::shared_ptr<qWorker::Task>
 qWorker::TodoList::popByHash(std::string const& hash) {
     return popAndReturn(_tasksMutex, _tasks, hashMatch(hash));
@@ -126,10 +156,10 @@ qWorker::TodoList::popByChunk(int chunkId) {
 }
 
 
-void qWorker::TodoList::_notifyWatchers() {
+void qWorker::TodoList::_notifyWatchers(Task::Ptr t) {
     boost::lock_guard<boost::mutex> m(_watchersMutex);
     for(WatcherQueue::iterator i = _watchers.begin();
         i != _watchers.end(); ++i) {
-        (**i).handleAccept(*this);
+        (**i).handleAccept(t);
     }
 }

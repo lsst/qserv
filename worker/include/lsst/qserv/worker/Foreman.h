@@ -64,12 +64,11 @@ public:
 
     virtual ~Foreman() {}
 
-    void add(boost::shared_ptr<Task> c) = 0;
 protected:
     explicit Foreman() {}
 };
 
-Foreman::Ptr newForeman();
+Foreman::Ptr newForeman(TodoList::Ptr tl);
 
 }}}  // namespace lsst::qserv::worker
 
