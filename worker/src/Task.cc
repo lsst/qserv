@@ -66,7 +66,11 @@ namespace {
 }
 
 ////////////////////////////////////////////////////////////////////////
-qWorker::Task::Task(qWorker::ScriptMeta const& s) {
+// Task
+////////////////////////////////////////////////////////////////////////
+std::string const qWorker::Task::defaultUser = "qsmaster";
+
+qWorker::Task::Task(qWorker::ScriptMeta const& s, std::string const& user_) {
     TaskMsgPtr t(new TaskMsg());
     hash = s.hash;
     dbName = s.dbName;
@@ -78,9 +82,10 @@ qWorker::Task::Task(qWorker::ScriptMeta const& s) {
     f->set_query(s.script);
 }
 
-qWorker::Task::Task(qWorker::Task::TaskMsgPtr t) {
+qWorker::Task::Task(qWorker::Task::TaskMsgPtr t, std::string const& user_) {
     hash = hashTaskMsg(*t);
     dbName = "q_" + hash;
     resultPath = hashToResultPath(hash);
     msg = t;
+    user = user_;
 }

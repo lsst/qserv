@@ -46,11 +46,14 @@ public:
     typedef ResultTracker<std::string, ResultError> Tracker;
     typedef QueryRunnerManager Manager;
     QueryRunner(boost::shared_ptr<Logger> log, 
-                std::string const& user, Task::Ptr task,
+                Task::Ptr task,
                 std::string overrideDump=std::string());
     explicit QueryRunner(QueryRunnerArg const& a);
     ~QueryRunner();
-    bool operator()();
+    bool operator()(); // exec and loop as long as there are queries
+                       // to run.
+    bool actOnce();
+
     std::string const& getHash() const { return _task->hash; }
     void poison(std::string const& hash);
 

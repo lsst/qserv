@@ -68,7 +68,7 @@ protected:
     explicit Foreman() {}
 };
 
-Foreman::Ptr newForeman(TodoList::Ptr tl);
+Foreman::Ptr newForeman(TodoList::Ptr tl, Logger::Ptr log);
 
 }}}  // namespace lsst::qserv::worker
 

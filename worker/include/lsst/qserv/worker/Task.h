@@ -37,19 +37,22 @@ namespace worker {
 
 struct Task {
 public:
+    static std::string const defaultUser; 
+
     typedef boost::shared_ptr<Task> Ptr;
     typedef lsst::qserv::TaskMsg_Fragment Fragment;
     typedef boost::shared_ptr<Fragment> FragmentPtr;
     typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
 
     explicit Task() {}
-    explicit Task(ScriptMeta const& s);
-    explicit Task(TaskMsgPtr t);
+    explicit Task(ScriptMeta const& s, std::string const& user_=defaultUser);
+    explicit Task(TaskMsgPtr t, std::string const& user_=defaultUser);
 
     TaskMsgPtr msg;
     std::string hash;
     std::string dbName;
     std::string resultPath;
+    std::string user;
 };
 }}} // lsst::qserv::worker
 

@@ -11,13 +11,31 @@
 // Pkg: lsst::qserv::worker
 #include "lsst/qserv/worker/TodoList.h"
 #include "lsst/qserv/worker/FifoScheduler.h"
+#include "lsst/qserv/worker/QueryRunner.h"
+#include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/worker/StderrLogger.h"
 
 namespace qWorker = lsst::qserv::worker;
+////////////////////////////////////////////////////////////////////////
+// anonymous helpers
+////////////////////////////////////////////////////////////////////////
+namespace { 
+    template <typename Q> 
+    bool popFrom(Q& q, typename Q::value_type const& v) {
+        typename Q::iterator i = std::find(q.begin(), q.end(), v);
+        if(i == q.end()) return false;
+        q.erase(i);
+        return true;
+    }
+}
 
-// ForemanImpl
+////////////////////////////////////////////////////////////////////////
+// ForemanImpl declaration
+////////////////////////////////////////////////////////////////////////
 class ForemanImpl : public lsst::qserv::worker::Foreman {
 public:
-    ForemanImpl(Scheduler::Ptr s, qWorker::TodoList::Ptr t);
+    ForemanImpl(Scheduler::Ptr s, qWorker::TodoList::Ptr t, 
+                qWorker::Logger::Ptr log);
     virtual ~ForemanImpl() {}
     
     //boost::shared_ptr<Callable> getNextCallable();
@@ -27,9 +45,13 @@ public:
     class RunnerMgr {
     public:
         RunnerMgr(ForemanImpl& f) : _f(f) {}
-        void registerRunner(Runner* r);
+        void registerRunner(Runner* r, qWorker::Task::Ptr t);
         void signalDeath(Runner* r);
+        qWorker::Task::Ptr getNextTask(Runner* r, qWorker::Task::Ptr previous);
+        qWorker::Logger::Ptr getLog();
+        
     private:
+        class StartTaskF;
         ForemanImpl& _f;
     };
 
@@ -47,19 +69,22 @@ private:
     boost::condition_variable _queueNonEmpty;
     boost::condition_variable _runnersEmpty;
     boost::condition_variable _runnerRegistered;
-    //    WorkDeque _queue;
-    RunnerDeque _runners;
-    RunnerMgr _rManager;
+
     Scheduler::Ptr _scheduler;
     qWorker::TodoList::Ptr _todo;
+    RunnerDeque _runners;
+    RunnerMgr _rManager;
+    qWorker::Logger::Ptr _log;
+                         
     TaskQueuePtr  _running;
 };
 ////////////////////////////////////////////////////////////////////////
 // Foreman factory function
 ////////////////////////////////////////////////////////////////////////
-qWorker::Foreman::Ptr newForeman(qWorker::TodoList::Ptr tl) {
+qWorker::Foreman::Ptr 
+newForeman(qWorker::TodoList::Ptr tl, qWorker::Logger::Ptr log) {
     qWorker::FifoScheduler::Ptr fsch(new qWorker::FifoScheduler());
-    ForemanImpl::Ptr fmi(new ForemanImpl(fsch, tl));
+    ForemanImpl::Ptr fmi(new ForemanImpl(fsch, tl, log));
     return fmi;;
 }
 
@@ -96,9 +121,20 @@ void ForemanImpl::Watcher::handleAccept(qWorker::Task::Ptr t) {
 ////////////////////////////////////////////////////////////////////////
 // class ForemanImpl::RunnerMgr
 ////////////////////////////////////////////////////////////////////////
-void ForemanImpl::RunnerMgr::registerRunner(Runner* r) {
+class ForemanImpl::RunnerMgr::StartTaskF {
+public:
+    StartTaskF(ForemanImpl& f) : _f(f) {}
+    void operator()(qWorker::Task::Ptr t) {
+        _f._startRunner(t);
+    }
+private:
+    ForemanImpl& _f;
+};
+
+void ForemanImpl::RunnerMgr::registerRunner(Runner* r, qWorker::Task::Ptr t) {
    boost::lock_guard<boost::mutex> lock(_f._runnersMutex); 
     _f._runners.push_back(r);
+    _f._running->push_back(t);
 }
 void ForemanImpl::RunnerMgr::signalDeath(Runner* r) {
    boost::lock_guard<boost::mutex> lock(_f._runnersMutex); 
@@ -112,19 +148,47 @@ void ForemanImpl::RunnerMgr::signalDeath(Runner* r) {
         }
     }
 }
+
+qWorker::Task::Ptr 
+ForemanImpl::RunnerMgr::getNextTask(Runner* r, qWorker::Task::Ptr previous) {
+    bool popped = popFrom(*_f._running, previous);
+    assert(popped);
+    TaskQueuePtr tq;
+    tq = _f._scheduler->taskFinishAct(previous, _f._todo, _f._running);
+    if(!tq.get()) {
+        return qWorker::Task::Ptr();
+    }
+    if(tq->size() > 1) {
+        std::for_each(tq->begin()+1, tq->end(), StartTaskF(_f));
+    }
+    return tq->front();    
+}
+
+qWorker::Logger::Ptr ForemanImpl::RunnerMgr::getLog() {
+    return _f._log;
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // class ForemanImpl::Runner
 ////////////////////////////////////////////////////////////////////////
 class ForemanImpl::Runner  {
 public:
     Runner(RunnerMgr& rm, qWorker::Task::Ptr firstTask)
-        : _rm(rm), _task(firstTask), _isPoisoned(false) { 
+        : _rm(rm), 
+          _task(firstTask),
+          _isPoisoned(false),
+          _log(rm.getLog()) { 
+        // nothing to do.
     }
     void poison() { _isPoisoned = true; }
     void operator()() {
-        _rm.registerRunner(this);
+        _rm.registerRunner(this, _task);
         while(!_isPoisoned) { 
             // TODO: run first task.
+            qWorker::QueryRunnerArg a(_log, _task);
+            qWorker::QueryRunner qr(a);
+            qr.actOnce();
             // TODO: request new work.
             //(*c)();
             //c = _w.getNextCallable();
@@ -134,7 +198,8 @@ public:
     }
 private:
     RunnerMgr& _rm;
-    qWorker::Task::Ptr _task;    
+    qWorker::Task::Ptr _task;
+    qWorker::Logger::Ptr _log;
     bool _isPoisoned;
 };
 
@@ -142,10 +207,16 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // ForemanImpl
 ////////////////////////////////////////////////////////////////////////
-ForemanImpl::ForemanImpl(Scheduler::Ptr s, qWorker::TodoList::Ptr t)
-    : _scheduler(s), _todo(t), _rManager(*this) {
+ForemanImpl::ForemanImpl(Scheduler::Ptr s,
+                         qWorker::TodoList::Ptr t,
+                         qWorker::Logger::Ptr log)
+    : _scheduler(s), _todo(t), _rManager(*this), _log(log) {
+    if(!_log.get()) {
+        // Make basic logger.
+        _log.reset(new qWorker::StderrLogger());
+    }
     Watcher::Ptr w(new Watcher(*this));
-    _todo->addWatcher(w);
+    _todo->addWatcher(w); // Callbacks are now possible.
     // ...
     
 }
@@ -155,17 +226,3 @@ void ForemanImpl::_startRunner(qWorker::Task::Ptr t) {
     boost::thread(Runner(_rManager, t));
 }
 
-#if 0
-Runner::run() {
-    while(1) {
-        performTask();
-        if(shouldDie) break;
-        t = _getNewTask();
-        if(t) reset(t);
-        else break; // stop running
-    }
-}
-Runner::poison() {
-    shouldDie = true;
-}
-#endif

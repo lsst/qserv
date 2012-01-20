@@ -188,10 +188,9 @@ std::string commasToSpaces(std::string const& s) {
 // lsst::qserv::worker::QueryRunner
 ////////////////////////////////////////////////////////////////////////
 qWorker::QueryRunner::QueryRunner(boost::shared_ptr<qWorker::Logger> log, 
-                                  std::string const& user,
                                   qWorker::Task::Ptr task, 
                                   std::string overrideDump) 
-    : _log(log), _user(user.c_str()), _task(task), 
+    : _log(log), _user(task->user.c_str()), _task(task), 
       _poisonedMutex(new boost::mutex()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
@@ -201,7 +200,7 @@ qWorker::QueryRunner::QueryRunner(boost::shared_ptr<qWorker::Logger> log,
 }
 
 qWorker::QueryRunner::QueryRunner(QueryRunnerArg const& a) 
-    : _log(a.log), _user(a.user), _task(a.task),
+    : _log(a.log), _user(a.task->user), _task(a.task),
       _poisonedMutex(new boost::mutex()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
@@ -288,7 +287,7 @@ bool qWorker::QueryRunner::_checkPoisoned() {
 
 void qWorker::QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
     //_e should be tied to the MySqlFs instance and constant(?)
-    _user = a.user;
+    _user = a.task->user;
     _task = a.task;
     _errorDesc.clear();
     _errorNo = 0;
@@ -297,6 +296,10 @@ void qWorker::QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
     }
 }
 
+bool qWorker::QueryRunner::actOnce() {
+    return _act();
+
+}
 bool qWorker::QueryRunner::_act() {
     char msg[] = "Exec in flight for Db = %1%, dump = %2%";
     (*_log)((Pformat(msg) % _task->dbName % _task->resultPath).str().c_str());
