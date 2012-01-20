@@ -45,11 +45,14 @@ bool qWorker::RequestTaker::receive(Size offset, char const* buffer,
 }
 
 bool qWorker::RequestTaker::complete() {
-    boost::shared_ptr<TaskMsg> task(new TaskMsg());
+    boost::shared_ptr<TaskMsg> tm(new TaskMsg());
     gio::ArrayInputStream input(_queryBuffer.getData(), 
                                 _queryBuffer.getLength());
     gio::CodedInputStream coded(&input);
-    task->MergePartialFromCodedStream(&coded);
-    // TODO: Verify chunk and db.
-    _acceptor->accept(task);
+    tm->MergePartialFromCodedStream(&coded);
+    if((tm->has_chunkid() && tm->has_db()) 
+       && (_chunk == tm->chunkid()) && (_db == tm->db())) {
+        // Note: db is only available via path. 
+        _acceptor->accept(tm);
+    } else return false;
 }
