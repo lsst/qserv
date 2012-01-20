@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2011, 2012 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -84,6 +84,7 @@ namespace {
             q.erase(i);
             return v;
         }
+        // Consider moving task to a "running" list for tracking.
         return typename Q::value_type();
     }
 }

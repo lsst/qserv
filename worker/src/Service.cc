@@ -25,6 +25,8 @@
 namespace qWorker = lsst::qserv::worker;
 
 qWorker::Service::Service() :_todo(new TodoList()) {
+    // Init threads and add them as watchers to the todo list.
+    
 }
 
 qWorker::TaskAcceptor::Ptr qWorker::Service::getAcceptor() {

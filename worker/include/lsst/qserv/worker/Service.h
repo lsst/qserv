@@ -25,11 +25,14 @@
 namespace lsst {
 namespace qserv {
 namespace worker {
+
 class TodoList; // Forward
+class Foreman; // Forward
 
 class Service {
 public:
     typedef boost::shared_ptr<Service> Ptr;
+
     explicit Service();
     TaskAcceptor::Ptr getAcceptor();
 private:
