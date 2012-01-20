@@ -46,14 +46,11 @@ struct PerTestFixture {
             sqlConfig.hostname = "";
             sqlConfig.dbName = "";
             sqlConfig.port = 0;
-            //std::cout << "Enter mysql user name: ";
-            //std::cin >> sqlConfig.username;
-            //sqlConfig.password = getpass("Enter mysql password: ");
-            //std::cout << "Enter mysql socket: ";
-            //std::cin >> sqlConfig.socket;
-            sqlConfig.username = "adm_becla";
-            sqlConfig.password = "30MySQL30";
-            sqlConfig.socket = "/var/lib/mysql/mysql.sock";
+            std::cout << "Enter mysql user name: ";
+            std::cin >> sqlConfig.username;
+            sqlConfig.password = getpass("Enter mysql password: ");
+            std::cout << "Enter mysql socket: ";
+            std::cin >> sqlConfig.socket;
         }
         sqlConn = new qsrv::SqlConnection(sqlConfig);
     }
