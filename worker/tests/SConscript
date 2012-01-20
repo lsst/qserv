@@ -1,12 +1,6 @@
 # -*- python -*-
 import subprocess, os, sys
 
-skipUdfTest = True # Udf code has been moved to the scisql project.
-try:
-    import MySQLdb
-except ImportError:
-    skipUdfTest = True
-
 Import("env")
 Import("envNoXrd")
 
@@ -44,10 +38,10 @@ testEnv.Append(BUILDERS = {'Test': bld})
 
 for src in Glob("*.cc"):
     prog = testEnv.Program(src)
-    test = testEnv.Test(prog)
+
+    # don't run Metadata tests by default, they are
+    # interractive because of mysql credentials
+    if not "Metadata_" in src.name:
+        test = testEnv.Test(prog)
     pass
 
-if skipUdfTest:
-    print "WARNING: skipping UDF unit test - unable to import MySQLdb"
-else:
-    testEnv.Test("MySqlUdf.py")
