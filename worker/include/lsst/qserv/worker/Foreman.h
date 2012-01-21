@@ -31,7 +31,21 @@
 //  include a pluggable scheduler API and fill in the plumbing to make
 //  sure the scheduler can see queued and running tasks. 
 // 
-//  The scheduler must be defined to handle multiple scheduling events
+//  The scheduler must be defined to handle multiple scheduling events:
+//  nop: nothing has happened (no-operation) in terms of new tasks or
+//  task completions, but the scheduler may decide that additional
+//  execution is appropriate according to its own metrics.
+//  newTask: a new task has arrived
+//  taskFinish: a task has completed. The first Task returned by the
+//  scheduler (if any) should be executed by the finishing thread.
+//
+//  The Foreman was originally intended to be as generic as WorkQueue,
+//  but its dependencies mean that much of its work would become
+//  templated or polymorphic, with little obvious value at this point
+//  in development, aside from increased testability.  The affected
+//  classes include at least: Task, TodoList, QueryRunner. Those that
+//  depend on them would need tweaks, but should be able to escape
+//  templating or polymorphism.
 #ifndef LSST_QSERV_WORKER_FOREMAN_H
 #define LSST_QSERV_WORKER_FOREMAN_H
 #include <boost/shared_ptr.hpp>

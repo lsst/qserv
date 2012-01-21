@@ -66,10 +66,11 @@ private:
     
     boost::mutex _mutex;
     boost::mutex _runnersMutex;
+#if 0
     boost::condition_variable _queueNonEmpty;
     boost::condition_variable _runnersEmpty;
     boost::condition_variable _runnerRegistered;
-
+#endif
     Scheduler::Ptr _scheduler;
     qWorker::TodoList::Ptr _todo;
     RunnerDeque _runners;
@@ -143,7 +144,7 @@ void ForemanImpl::RunnerMgr::signalDeath(Runner* r) {
     for(RunnerDeque::iterator i = _f._runners.begin(); i != end; ++i) {
         if(*i == r) {
             _f._runners.erase(i);
-            _f._runnersEmpty.notify_all();
+            //_f._runnersEmpty.notify_all(); // Still needed?
             return;
         }
     }
@@ -185,14 +186,18 @@ public:
     void operator()() {
         _rm.registerRunner(this, _task);
         while(!_isPoisoned) { 
-            // TODO: run first task.
+            // Run my task.
             qWorker::QueryRunnerArg a(_log, _task);
             qWorker::QueryRunner qr(a);
+            (*_log)("Runner running job");
             qr.actOnce();
-            // TODO: request new work.
-            //(*c)();
-            //c = _w.getNextCallable();
-            std::cerr << "Runner running job" << std::endl;
+            if(_isPoisoned) break;
+            // Request new work from the manager
+            // (mgr is a role of the foreman, who will check with the
+            // scheduler for the next assignment) 
+            _task = _rm.getNextTask(this, _task);
+
+            if(!_task.get()) break; // No more work?
         } // Keep running until we get poisoned.
         _rm.signalDeath(this);
     }
