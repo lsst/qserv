@@ -80,6 +80,7 @@ qWorker::Task::Task(qWorker::ScriptMeta const& s, std::string const& user_) {
     updateSubchunks(s.script, *f);
     updateResultTables(s.script, *f);
     f->set_query(s.script);
+    needsCreate = false;
 }
 
 qWorker::Task::Task(qWorker::Task::TaskMsgPtr t, std::string const& user_) {
@@ -88,4 +89,5 @@ qWorker::Task::Task(qWorker::Task::TaskMsgPtr t, std::string const& user_) {
     resultPath = hashToResultPath(hash);
     msg = t;
     user = user_;
+    needsCreate = true;
 }

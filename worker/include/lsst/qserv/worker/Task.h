@@ -53,6 +53,7 @@ public:
     std::string dbName;
     std::string resultPath;
     std::string user;
+    bool needsCreate;
 };
 }}} // lsst::qserv::worker
 

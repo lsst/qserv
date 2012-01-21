@@ -495,6 +495,10 @@ bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
     TaskMsg& m(*t->msg);
     for(int i=0; i < m.fragment_size(); ++i) {
         Task::Fragment const& f(m.fragment(i));
+        if(t->needsCreate) {
+            if(i==0) ss << "CREATE TABLE " << ff.resulttable() << " ";
+            else ss << "INSERT INTO " << ff.resulttable() << " ";
+        }
         ss << f.query();
         for(int j=0; j < f.subchunk_size(); ++j) {
             sc.push_back(f.subchunk(j));
