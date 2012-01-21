@@ -9,11 +9,19 @@ pFiles = pEnv.Protoc(
     [],
     "worker.proto",
     PROTOCPROTOPATH=['.',],
-    PROTOCPYTHONOUTDIR=None,
+    PROTOCPYTHONOUTDIR=".",
     PROTOCOUTDIR = ".",
     #PROTOCOUTDIR = 'build', # defaults to same directory as .proto
     # PROTOCCPPOUTFLAGS = "dllexport_decl=PROTOCONFIG_EXPORT:", too 
 )
+
+pyFiles = filter(lambda s: str(s).endswith(".py"), pFiles)
+if pFiles:
+    env.Install("../python", pyFiles[0])
+    ## This feels icky, but it's the simplest solution for now.
+    env.Install("../../master/python/lsst/qserv/master", pyFiles[0])
+else:
+    print "WARNING: No python generated for protocol."
 
 sources = ["worker.pb.cc", "TaskMsgDigest.cc"]
 pEnv.Append(CPPPATH=[os.environ["PROTOC_INC"], ".."],
