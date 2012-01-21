@@ -57,3 +57,8 @@ lib = env.SharedLibrary("qserv_worker", sources)
 installedLib = env.Install('lib', lib)
 env.Append(built_libs=[installedLib[0]])
 
+schLib = env.Library("qserv_schedtest", 
+                     ("Base.cc FifoScheduler.cc TodoList.cc Task.cc"
+                      + "").split())
+installedSchLib = env.Install('lib', schLib)
+env.Append(sched_libs=[installedSchLib[0]])
