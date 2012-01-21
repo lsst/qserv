@@ -31,6 +31,7 @@
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/Config.h"
 #include "lsst/qserv/worker/Service.h"
+#include "lsst/qserv/worker/XrdLogger.h"
 
 
 #include "lsst/qserv/QservPath.hh"
@@ -145,8 +146,9 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
     _localroot = ::getenv("XRDLCLROOT");
     if (!_localroot) {
         _localroot = "";
-    }
-    _service.reset(new Service()); 
+    }   
+    boost::shared_ptr<XrdLogger> x(new XrdLogger(*_eDest));
+    _service.reset(new Service(x)); 
 }
 
 qWorker::MySqlFs::~MySqlFs(void) {

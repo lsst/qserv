@@ -20,13 +20,18 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #include "lsst/qserv/worker/TodoList.h"
+#include "lsst/qserv/worker/Foreman.h"
 #include "lsst/qserv/worker/Service.h"
+#include "lsst/qserv/worker/StderrLogger.h"
 
 namespace qWorker = lsst::qserv::worker;
 
-qWorker::Service::Service() :_todo(new TodoList()) {
-    // Init threads and add them as watchers to the todo list.
-    
+qWorker::Service::Service(qWorker::Logger::Ptr log) 
+    : _todo(new TodoList()) {
+    if(!log.get()) {
+        log.reset(new StderrLogger());
+    }
+    _foreman = newForeman(_todo, log);
 }
 
 qWorker::TaskAcceptor::Ptr qWorker::Service::getAcceptor() {

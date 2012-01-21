@@ -41,6 +41,7 @@
 #include "lsst/qserv/worker/MySqlFsCommon.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/RequestTaker.h"
+#include "lsst/qserv/worker/XrdLogger.h"
 #include "lsst/qserv/QservPath.hh"
 
 #include <algorithm>
@@ -126,20 +127,6 @@ private:
 };
 // for now, two simultaneous writes (queries)
 qWorker::Semaphore WriteCallable::_sema(2);
-
-class XrdLogger : public qWorker::Logger {
-public:
-    explicit XrdLogger(XrdSysError& e) : _e(e) {}
-    virtual void operator()(std::string const& s) {
-        _e.Say(s.c_str());
-    }
-    virtual void operator()(char const* s) {
-        _e.Say(s);
-    }
-
-private:
-    XrdSysError& _e;
-};
 
 bool flushOrQueue(qWorker::QueryRunnerArg const& a)  {
     qWorker::QueryRunner::Manager& mgr = qWorker::QueryRunner::getMgr();

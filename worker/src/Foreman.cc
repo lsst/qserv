@@ -36,7 +36,7 @@ class ForemanImpl : public lsst::qserv::worker::Foreman {
 public:
     ForemanImpl(Scheduler::Ptr s, qWorker::TodoList::Ptr t, 
                 qWorker::Logger::Ptr log);
-    virtual ~ForemanImpl() {}
+    virtual ~ForemanImpl();
     
     //boost::shared_ptr<Callable> getNextCallable();
     // For use by runners.
@@ -78,12 +78,14 @@ private:
     qWorker::Logger::Ptr _log;
                          
     TaskQueuePtr  _running;
+    boost::shared_ptr<Watcher> _watcher;
+
 };
 ////////////////////////////////////////////////////////////////////////
 // Foreman factory function
 ////////////////////////////////////////////////////////////////////////
 qWorker::Foreman::Ptr 
-newForeman(qWorker::TodoList::Ptr tl, qWorker::Logger::Ptr log) {
+qWorker::newForeman(qWorker::TodoList::Ptr tl, qWorker::Logger::Ptr log) {
     qWorker::FifoScheduler::Ptr fsch(new qWorker::FifoScheduler());
     ForemanImpl::Ptr fmi(new ForemanImpl(fsch, tl, log));
     return fmi;;
@@ -220,14 +222,19 @@ ForemanImpl::ForemanImpl(Scheduler::Ptr s,
         // Make basic logger.
         _log.reset(new qWorker::StderrLogger());
     }
-    Watcher::Ptr w(new Watcher(*this));
-    _todo->addWatcher(w); // Callbacks are now possible.
+    _watcher.reset(new Watcher(*this));
+    _todo->addWatcher(_watcher); // Callbacks are now possible.
     // ...
     
 }
+ForemanImpl::~ForemanImpl() {
+    _todo->removeWatcher(_watcher);
+    _watcher.reset();
+    // FIXME: Poison and drain runners.
+}
 
 void ForemanImpl::_startRunner(qWorker::Task::Ptr t) {
-    // FIXME: start the runner.
+    // FIXME: Is this all that is needed?
     boost::thread(Runner(_rManager, t));
 }
 

@@ -19,27 +19,29 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_SERVICE_H
-#define LSST_QSERV_WORKER_SERVICE_H
+#ifndef LSST_QSERV_WORKER_XRDLOGGER_H
+#define LSST_QSERV_WORKER_XRDLOGGER_H
 #include "lsst/qserv/worker/Base.h"
+#include "XrdSys/XrdSysError.hh"
+
 namespace lsst {
 namespace qserv {
 namespace worker {
 
-class TodoList; // Forward
-class Foreman; // Forward
-
-class Service {
+class XrdLogger : public Logger {
 public:
-    typedef boost::shared_ptr<Service> Ptr;
+    explicit XrdLogger(XrdSysError& e) : _e(e) {}
+    virtual void operator()(std::string const& s) {
+        _e.Say(s.c_str());
+    }
+    virtual void operator()(char const* s) {
+        _e.Say(s);
+    }
 
-    explicit Service(Logger::Ptr log=Logger::Ptr());
-    TaskAcceptor::Ptr getAcceptor();
 private:
-    boost::shared_ptr<TodoList> _todo;
-    boost::shared_ptr<Foreman> _foreman;
+    XrdSysError& _e;
 };
 
 }}} // lsst::qserv:worker
-#endif // LSST_QSERV_WORKER_SERVICE_H
+#endif // LSST_QSERV_WORKER_XRDLOGGER_H
 
