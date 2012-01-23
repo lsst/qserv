@@ -80,8 +80,12 @@ public:
     ResultTracker() : _workQueue(3) {} // Callback pool w/ 3 threads
     void notify(Key const& k, Item const& i) {
         _verifyKey(k); // Force k to exist in _signals
-        LSPtr s = _signals[k];
-        {	
+        LSPtr s;
+        {
+            boost::unique_lock<boost::mutex> lock(_signalsMutex);
+            s = _signals[k];
+        }
+        {
             boost::unique_lock<boost::mutex> slock(s->mutex);
             //std::cerr << "Callback (tracker) signalling " 
             //	      << k << " ---- " << std::endl;
@@ -101,7 +105,7 @@ public:
     }
     template <typename Callable>
     void listenOnce(Key const& k, Callable const& c) {
-        { // This block is an optional optimization.
+        {
             boost::unique_lock<boost::mutex> lock(_newsMutex);
             typename NewsMap::iterator i = _news.find(k);
             if(i != _news.end()) { // If already reported, reuse.
@@ -112,10 +116,15 @@ public:
             }
         }
         _verifyKey(k);
-        LSPtr s = _signals[k];
-        {	
+        LSPtr s;
+        {
+            boost::unique_lock<boost::mutex> slock(_signalsMutex);
+            s = _signals[k];
+        }
+        {
             boost::unique_lock<boost::mutex> lock(s->mutex);
             // Check again, in case there was a notification.
+            boost::unique_lock<boost::mutex> nlock(_newsMutex);
             typename NewsMap::iterator i = _news.find(k);
             if(i != _news.end()) { 
                 boost::shared_ptr<ResultCallable<Callable> > rc;
@@ -130,6 +139,7 @@ public:
     }
     ItemPtr getNews(Key const& k) {
         ItemPtr p;
+        boost::unique_lock<boost::mutex> lock(_newsMutex);
         typename NewsMap::iterator i = _news.find(k);
         if(i != _news.end()) { 
             p = boost::make_shared<Item>(i->second);
@@ -137,10 +147,12 @@ public:
         return p;
     }
 
-    int getNewsCount() const {
+    int getNewsCount() {
+        boost::unique_lock<boost::mutex> lock(_newsMutex);
         return _news.size(); // 
     }
-    int getSignalCount() const {
+    int getSignalCount() {
+        boost::unique_lock<boost::mutex> lock(_signalsMutex);
         return _signals.size();
     }
     // Debug methods
@@ -152,13 +164,10 @@ public:
     }
 private:
     void _verifyKey(Key const& k) {
+        boost::unique_lock<boost::mutex> lock(_signalsMutex);
         if(_signals.find(k) == _signals.end()) {
-            boost::unique_lock<boost::mutex> lock(_signalsMutex);
-            // Double-check within the mutex.
-            if(_signals.find(k) == _signals.end()) {
-                _signals[k] = boost::make_shared<LockableSignal>();
-            }
-        }	
+            _signals[k] = boost::make_shared<LockableSignal>();
+        }
     }
 
     SignalMap _signals;
