@@ -394,9 +394,8 @@ bool qWorker::QueryRunner::_act() {
                                         + _getErrorString()));
         return false;
     }
-
     _e.Say((Pformat("(FinishOK:%1%) %2%")
-            % (void*)(this) % dbDump).str().c_str());    
+            % (void*)(this) % dbDump).str().c_str());
     getTracker().notify(_meta.hash, ResultError(0,""));
     return true;
 }
