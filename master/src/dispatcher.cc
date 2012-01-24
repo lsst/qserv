@@ -29,6 +29,7 @@
 #include "lsst/qserv/master/xrootd.h"
 #include "lsst/qserv/master/SessionManager.h"
 #include "lsst/qserv/master/AsyncQueryManager.h"
+#include "lsst/qserv/QservPath.hh"
 
 namespace qMaster = lsst::qserv::master;
 
@@ -83,6 +84,32 @@ int qMaster::submitQuery(int session, int chunk, char* str, int len,
     t.path = qMaster::makeUrl(hp.c_str(), "query", chunk);
     t.savePath = savePath;
     return submitQuery(session, TransactionSpec(t), resultName);
+}
+
+/// @param session Int for the session (the top-level query)
+/// @param chunk Chunk number within this session (query)
+/// @param str Query string (c-string)
+/// @param len Query string length
+/// @param savePath File path (with name) which will store the result (file, not dir)
+/// @return a token identifying the session
+int qMaster::submitQueryMsg(int session, char* dbName, int chunk,
+                            char* str, int len, 
+                            char* savePath, std::string const& resultName) {
+    // Most dbName, chunk, resultName can be derived from msg, 
+    // but we avoid unpacking it here.  Not sure how safe it is to
+    // pass a python Protobuf msg through SWIG for use in c++.
+    TransactionSpec t;
+    AsyncQueryManager& qm = getAsyncManager(session);
+    std::string const hp = qm.getXrootdHostPort();
+    QservPath qp;
+    qp.setAsCquery(dbName, chunk);
+    std::string path=qp.path();
+    t.chunkId = chunk;
+    t.query = std::string(str, len);
+    t.bufferSize = 8192000;
+    t.path = qMaster::makeUrl(hp.c_str(), qp.path());
+    t.savePath = savePath;
+    return submitQuery(session, TransactionSpec(t), resultName);    
 }
 
 int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s, 

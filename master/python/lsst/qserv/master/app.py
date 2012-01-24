@@ -655,8 +655,13 @@ class QueryBabysitter:
     def submit(self, chunk, table, q):
         saveName = self._saveName(chunk)
         handle = submitQuery(self._sessionId, chunk, q, saveName, table)
-        self._inFlight[chunk] = (handle, table)
         #print "Chunk %d to %s    (%s)" % (chunk, saveName, table)
+
+    def submitMsg(self, db, chunk, msg, saveName, table):
+        saveName = self._saveName(chunk)
+        handle = submitQueryMsg(self._sessionId, db, chunk, msg, 
+                                saveName, table)
+        self._inFlight[chunk] = (handle, table)
 
     def finish(self):
         for (k,v) in self._inFlight.items():
@@ -787,6 +792,9 @@ class HintedQueryAction:
         self._insertTableTmpl = "INSERT INTO %s " ;
         self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
                                              self.queryHash) + "_%s"
+        self._factory = protocol.TaskMsgFactory(self._sessionId, 
+                                                self._dbContext)
+
         # We want result table names longer than result-merging table names.
         self._isValid = True
         self._invokeLock = threading.Semaphore()
@@ -875,6 +883,42 @@ class HintedQueryAction:
         cids = map(lambda t: t[0], cids)
         del db
         return cids
+
+    def _prepareMsg(self, chunkId, subIter, table):
+        table = self._resultTableTmpl % str(chunkId)
+        self._factory.newChunk(table, chunkId);
+        x =  self._substitution.getChunkLevel()
+        if x > 1:
+            for (sub, regions) in subIter:
+                q = self._substitution.transform(chunkId, subChunkId)
+                self._factory.fillFragment(q, [sub])
+        else:
+            query = self._substitution.transform(chunkId, 0)
+            self._factory.fillFragment(query, None)
+        return _factory.getBytes()
+
+    def invokeProtocol2(self):
+        count = 0
+        self._babysitter.pauseReadback();
+        lastTime = time.time()
+        chunkLimit = self.chunkLimit
+        for chunkId, subIter in self._intersectIter:
+            if chunkId in self._emptyChunks:
+                continue # FIXME: What if all chunks are empty?
+            print "Dispatch iter: ", time.time() - lastTime
+            msg = self._prepareMsg(chunkId, subIter)
+            prepTime = time.time()
+            print "DISPATCH: ", q[:500] # Limit printout spew
+            self._babysitter.submitMsg(chunkId, msg)
+            print "Chunk %d dispatch took %f seconds (prep: %f )" % (
+                chunkId, time.time() - lastTime, prepTime - lastTime)
+            lastTime = time.time()
+            count += 1
+            if count >= chunkLimit: break
+            ##print >>sys.stderr, q, "submitted"
+        self._babysitter.resumeReadback()
+        self._invokeLock.release()
+        return
 
     def invoke(self):
         count=0

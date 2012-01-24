@@ -37,6 +37,10 @@ std::string qMaster::makeUrl(char const* hostport, char const* typeStr,
     //std::string s = (boost::format("%d") % chunk).str();
     return makeUrl(hostport, typeStr, s.str());
 }
+std::string qMaster::makeUrl(char const* hostport, 
+                             std::string const& path) {
+    return makeUrl(hostport, NULL, path);
+}
 
 std::string qMaster::makeUrl(char const* hostport, 
                              char const* typeStr, std::string const& s,
@@ -70,8 +74,10 @@ std::string qMaster::makeUrl(char const* hostport,
     ret += "@";
     ret += hostport;
     ret += "//";
-    ret += typeStr;
-    ret += "/";
+    if(typeStr != NULL) {
+        ret += typeStr;
+        ret += "/";
+    }
     ret += s;
     return ret;
 #endif

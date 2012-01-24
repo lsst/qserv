@@ -95,6 +95,9 @@ detect_deps.composeEnv(env,
                        roots=searchRoots, 
                        includes=[xrd_inc], 
                        libs=searchLibs)
+env.Append(CPPPATH = ["../common/include"])
+env.Append(LIBPATH = ["../common/lib"])
+
 if hasXrootd:
     env.Append(CPPPATH = [xrd_inc])
     env.Append(LIBPATH = [xrd_lib])
@@ -104,6 +107,7 @@ env.Append(CPPFLAGS = detect_deps.XRDFLAGS +
 # Start configuration tests
 conf = Configure(env)
 
+conf.CheckLib("qserv_common")
 # boost library reqs
 if not (detect_deps.checkAddBoost(conf, "boost_thread")
         and detect_deps.checkAddBoost(conf, "boost_regex")):
