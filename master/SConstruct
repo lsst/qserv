@@ -112,7 +112,9 @@ if not (detect_deps.checkAddBoost(conf, "boost_thread")
 
 
 # ANTLR
-if not detect_deps.checkAddAntlr(conf): canBuild = False
+foundAntlr = detect_deps.checkAddAntlr(conf)
+if not foundAntlr: canBuild = False
+
 
 # Close out configuration for no parse test env
 parseEnv = conf.Finish()
@@ -131,6 +133,9 @@ if not detect_deps.checkAddXrdPosix(conf):
 env = conf.Finish()    
 canBuild = canBuild and hasXrootd
 
+if foundAntlr:
+    SConscript("SConscript.antlr", exports={'env' : env})
+
 parserSrcs = map(lambda x: os.path.join('src', x), 
                  ["AggregateMgr.cc", 
                   "SqlParseRunner.cc",
@@ -142,11 +147,12 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "Substitution.cc",
                   "ChunkMapping.cc",
                   "SpatialUdfHandler.cc",
-                  "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"] )
+                  "SqlSQL2Lexer.cpp", 
+                  "SqlSQL2Parser.cpp"])
              
 
 pyPath = 'python/lsst/qserv/master'
-pyLib = os.path.join(pyPath, '_masterLib.so')
+pyLibName = os.path.join(pyPath, '_masterLib.so')
 dispatchSrcs = map(lambda x: os.path.join('src', x), 
                    ["xrdfile.cc", 
                     "thread.cc", 
@@ -193,20 +199,9 @@ xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
                
 
 if canBuild:
-    env.SharedLibrary(pyLib, srcPaths)
+    pylib = env.SharedLibrary(pyLibName, srcPaths)
+    Depends(pylib, env["antlrdeps"])
     env.Program(runTrans['bin'], runTrans["srcPaths"])
-#    env.Program(target=testIter['bin'], 
- #               source=testIter["srcPaths"],
-                #                LINKFLAGS='--static',
-  #              LIBS=["XrdPosix", "XrdClient", "XrdSys", 
-   #                   "XrdNet", "XrdOuc", "XrdOss", "crypto", "dl",
-    #                  "boost_thread", "boost_regex", "pthread"])
-#    parseEnv.Program(testParser['bin'], testParser["srcPaths"])
-#    env.Program(target=xrdPrecache['bin'], source=xrdPrecache["srcPaths"],
-#                LINKFLAGS='--static', 
-#                LIBS=["XrdPosix", "XrdClient", "XrdSys", 
-#                      "XrdNet", "XrdOuc", "XrdOss", "ssl", "crypto", "dl",
-#                      "boost_thread", "pthread"])
 
 # Describe what your package contains here.
 env.Help("""
