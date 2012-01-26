@@ -201,11 +201,30 @@ xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
                                   "WorkQueue.cc",
                                   "xrdPrecache.cc"])}
                
-
+def installTo(env, targetDir, pyLib):
+    pathList = ["lsst","qserv","master"]
+    pyDir = os.path.join(targetDir, *pathList)
+    srcPyDir = os.path.join("python" , *pathList)
+    
+    #install py files
+    for s in env.Glob(os.path.join(srcPyDir,"*.py")):
+        if s.name == "argv.py": continue # workaround Scons missing argv.py
+        env.Alias("install", env.Install(pyDir, s))
+    # install pylib.    
+    env.Alias("install", env.Install(pyDir, pyLib))
+    for p in range(1,len(pathList)): # touch init files
+        plist = [targetDir] + pathList[:p] + ["__init__.py"]
+        fname = os.path.join(*plist)
+        open(fname, "w").close()
+    #install bins
+    env.Alias("install", 
+              env.Install(targetDir, env.Glob(os.path.join("bin","*.py"))))
+    
 if canBuild:
     pylib = env.SharedLibrary(pyLibName, srcPaths)
     Depends(pylib, env["antlrdeps"])
     env.Program(runTrans['bin'], runTrans["srcPaths"])
+    installTo(env, "dist", pylib)
 
 # Describe what your package contains here.
 env.Help("""
