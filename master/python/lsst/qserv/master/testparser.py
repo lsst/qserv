@@ -33,7 +33,7 @@ import time
 # Package imports
 import app
 import server
-import sqlparser
+#import sqlparser
 
 nearNeighborQueryAlias = """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
   AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;"""
@@ -84,21 +84,21 @@ class TestAppFunctions(unittest.TestCase):
     def setUp(self):
         pass
     
-    def testGrammarSelectPart(self):
-        """Test select-portion parsing"""
-        g = sqlparser.Grammar()
-        res = g.selectPart.parseString(nnSelectPart)
-        self.assert_("spdist" in res[:])
-        res = g.identExpr.parseString("spdist(a.b, c.d)")
-        self.assert_("spdist" in res[:])
-        res = g.functionExpr.parseString("spdist(a.b, c.d)")
+    # def testGrammarSelectPart(self):
+    #     """Test select-portion parsing"""
+    #     g = sqlparser.Grammar()
+    #     res = g.selectPart.parseString(nnSelectPart)
+    #     self.assert_("spdist" in res[:])
+    #     res = g.identExpr.parseString("spdist(a.b, c.d)")
+    #     self.assert_("spdist" in res[:])
+    #     res = g.functionExpr.parseString("spdist(a.b, c.d)")
         
-    def testGrammarParseNearNeighbor(self):
-        """Tries to parse a near neighbor query."""
-        g = sqlparser.Grammar()
-        res = g.simpleSQL.parseString(nearNeighborQuery)
+    # def testGrammarParseNearNeighbor(self):
+    #     """Tries to parse a near neighbor query."""
+    #     g = sqlparser.Grammar()
+    #     res = g.simpleSQL.parseString(nearNeighborQuery)
         
-        pass
+    #     pass
 
     def testQueryInsert(self):
         """Insert a query task into the tracker.
