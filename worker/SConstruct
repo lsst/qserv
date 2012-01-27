@@ -164,6 +164,10 @@ for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
     except Exception, e:
         print >> sys.stderr, "%s: %s" % (os.path.join("src", "SConscript.lib"), e)
 
+# Install lib
+env.Alias("install", env.Install("dist", env["built_libs"]))
+
+
 # Build UDFs
 try:
     #raise Warning("Udf building DISABLED. Comment-out line in SConstruct to enable")

@@ -490,14 +490,17 @@ bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
     // For now, coalesce all fragments.
     std::stringstream ss;
     IntVector sc;
+    std::string resultTable;
     assert(t.get());
     assert(t->msg.get());
     TaskMsg& m(*t->msg);
     for(int i=0; i < m.fragment_size(); ++i) {
         Task::Fragment const& f(m.fragment(i));
+        if(f.has_resulttable()) { resultTable = f.resulttable(); }
+        assert(!resultTable.empty());
         if(t->needsCreate) {
-            if(i==0) ss << "CREATE TABLE " << ff.resulttable() << " ";
-            else ss << "INSERT INTO " << ff.resulttable() << " ";
+            if(i==0) ss << "CREATE TABLE " << resultTable << " ";
+            else ss << "INSERT INTO " << resultTable << " ";
         }
         ss << f.query();
         for(int j=0; j < f.subchunk_size(); ++j) {
