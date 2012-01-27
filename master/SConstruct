@@ -200,6 +200,9 @@ xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
                                   "xrootd.cc", 
                                   "WorkQueue.cc",
                                   "xrdPrecache.cc"])}
+
+## FIXME: need to detect Lua so we can generate a "startMysqlProxy"
+## script in the installation.
                
 def installTo(env, targetDir, pyLib):
     pathList = ["lsst","qserv","master"]
@@ -219,6 +222,9 @@ def installTo(env, targetDir, pyLib):
     #install bins
     env.Alias("install", 
               env.Install(targetDir, env.Glob(os.path.join("bin","*.py"))))
+    #install proxy
+    for f in ["mysqlProxy.lua", "startMySQLProxy"]:
+        env.Alias("install", env.Install(targetDir, os.path.join("proxy",f)))
     
 if canBuild:
     pylib = env.SharedLibrary(pyLibName, srcPaths)

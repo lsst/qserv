@@ -5,8 +5,21 @@
 # we need access to xmlrpc packages, and mysqlproxy
 # overwrites pre-installed lua modules
 
-# of course all these path are here temporarily
-/home/becla/work/mysql-proxy-0.8.0/bin/mysql-proxy \
---proxy-lua-script=/home/becla/work/lsst/qservMaster/proxy/mysqlProxy.lua \
---lua-path='/usr/share/lua/5.1/?.lua;/usr/share/lua/5.1/?/?.lua' \
---lua-cpath='/usr/lib/lua/5.1/?.so;/usr/lib/lua/5.1/?/?.so'
+## Modify these to your local conditions
+## LUAROOT: --prefix when you installed lua and accompanying libraries
+LUAROOT=/u1/local
+MYSQLPROXY=/u1/bin/mysql-proxy
+## QSERVDIST: path to your qserv master dist directory
+QSERVDIST=/u1/lsst/newrun/master
+
+## Probably shouldn't change below here.
+
+LUASHARE=$LUAROOT/share/lua/5.1
+LUALIB=$LUAROOT/lib/lua/5.1
+
+LUAPATH="$LUASHARE/?.lua;$LUASHARE/?/init.lua;$LUASHARE/?/?.lua"
+LUACPATH="$LUALIB/?.so;$LUALIB/?/?.so"
+
+# Start the proxy.
+$MYSQLPROXY  --proxy-lua-script=$QSERVDIST/mysqlProxy.lua \
+             --lua-path=$LUAPATH --lua-cpath=$LUACPATH
