@@ -856,6 +856,9 @@ class HintedQueryAction:
         return
 
     def invoke(self):
+        self.invokeProtocol2()
+
+    def invokeOldProtocol(self):
         count=0
         self._babysitter.pauseReadback();
         lastTime = time.time()
