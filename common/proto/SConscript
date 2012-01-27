@@ -17,9 +17,10 @@ pFiles = pEnv.Protoc(
 
 pyFiles = filter(lambda s: str(s).endswith(".py"), pFiles)
 if pFiles:
-    env.Install("../python", pyFiles[0])
+    pf = env.Install("../python", pyFiles[0])
     ## This feels icky, but it's the simplest solution for now.
-    env.Install("../../master/python/lsst/qserv/master", pyFiles[0])
+    masterPython = "../../master/python/lsst/qserv/master"
+    env.Alias("master", env.Install(masterPython, pyFiles[0]))
 else:
     print "WARNING: No python generated for protocol."
 
