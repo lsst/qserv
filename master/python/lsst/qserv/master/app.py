@@ -77,7 +77,8 @@ from lsst.qserv.master import charArray_frompointer, charArray
 from lsst.qserv.master import TransactionSpec
 
 # Dispatcher 
-from lsst.qserv.master import newSession, submitQuery, initDispatcher
+from lsst.qserv.master import newSession, submitQuery, submitQueryMsg
+from lsst.qserv.master import initDispatcher
 from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
@@ -592,7 +593,7 @@ class QueryBabysitter:
         handle = submitQuery(self._sessionId, chunk, q, saveName, table)
         #print "Chunk %d to %s    (%s)" % (chunk, saveName, table)
 
-    def submitMsg(self, db, chunk, msg, saveName, table):
+    def submitMsg(self, db, chunk, msg, table):
         saveName = self._saveName(chunk)
         handle = submitQueryMsg(self._sessionId, db, chunk, msg, 
                                 saveName, table)
@@ -727,6 +728,7 @@ class HintedQueryAction:
         self._insertTableTmpl = "INSERT INTO %s " ;
         self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
                                              self.queryHash) + "_%s"
+        # Should use db from query, not necessarily context.
         self._factory = protocol.TaskMsgFactory(self._sessionId, 
                                                 self._dbContext)
 
@@ -819,7 +821,7 @@ class HintedQueryAction:
         del db
         return cids
 
-    def _prepareMsg(self, chunkId, subIter, table):
+    def _prepareMsg(self, chunkId, subIter):
         table = self._resultTableTmpl % str(chunkId)
         self._factory.newChunk(table, chunkId);
         x =  self._substitution.getChunkLevel()
@@ -830,7 +832,7 @@ class HintedQueryAction:
         else:
             query = self._substitution.transform(chunkId, 0)
             self._factory.fillFragment(query, None)
-        return _factory.getBytes()
+        return self._factory.getBytes()
 
     def invokeProtocol2(self):
         count = 0
@@ -843,8 +845,11 @@ class HintedQueryAction:
             print "Dispatch iter: ", time.time() - lastTime
             msg = self._prepareMsg(chunkId, subIter)
             prepTime = time.time()
-            print "DISPATCH: ", q[:500] # Limit printout spew
-            self._babysitter.submitMsg(chunkId, msg)
+            print "DISPATCH: ", chunkId, self.queryStr # Limit printout spew
+            self._babysitter.submitMsg(self._factory.msg.db,
+                                       chunkId, msg, 
+                                       self._factory.resulttable)
+
             print "Chunk %d dispatch took %f seconds (prep: %f )" % (
                 chunkId, time.time() - lastTime, prepTime - lastTime)
             lastTime = time.time()
