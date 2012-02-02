@@ -1,5 +1,5 @@
 
--- For questions, contact Jacek Becla
+-- For questions, contact Jacek Becla or Daniel Wang
 
 
 require ("xmlrpc.http")
@@ -479,10 +479,16 @@ function queryProcessing()
         print ("Passing query: " .. queryToPassStr)
         print ("Passing hints: " .. hintsToPassStr)
         local queryToPassProtect = "<![CDATA[" .. queryToPassStr .. "]]>"
-        local ok, res = 
-           xmlrpc.http.call (rpcHP, "submitQuery", 
-                             queryToPassProtect, hintsToPassArr)
-        if (not ok) then
+        -- Wrap this in a pcall so that a meaningful error can 
+        -- be returned to the caller
+        -- xmlrpc.http.call(rpcHP, "submitQuery", 
+        --                 queryToPassProtect, hintsToPassArr)
+        local callError, ok, res = 
+           pcall(xmlrpc.http.call, 
+                 rpcHP, "submitQuery", queryToPassProtect, hintsToPassArr)
+        if (not callError) then
+           return err.set(ERR_RPC_CALL, "Exception in RPC call: " .. ok)
+        elseif (not ok) then
            return err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
         end
 
@@ -621,7 +627,12 @@ function read_query_result(inj)
         return proxy.PROXY_IGNORE_RESULT
      elseif (queryErrorCount > 0) then
         print("q2 - already have errors, ignoring")
-        return proxy.PROXY_IGNORE_RESULT
+        return err.setAndSend(ERR_QSERV_RUNTIME,
+                              "No results: too many errors.")
+     elseif (inj.resultset == nil) then
+        print("q2 - no resultset.")
+        return err.setAndSend(ERR_QSERV_RUNTIME,
+                              "Error executing query using qserv.")
      else
         print("q2 - passing")
         for row in inj.resultset.rows do
