@@ -61,8 +61,10 @@ std::string qMaster::makeUrl(char const* hostport,
     // This is ~8.5x faster than the boost::format version.
     std::string pfx = "xroot://";
     std::string user("qsmaster");
-    std::string tstr(typeStr);
+    std::string tstr;
     std::string ret;
+    if(typeStr != NULL) tstr = typeStr;
+
     if(mode != '\0') {
         user += "."; 
         user += mode;
@@ -73,11 +75,12 @@ std::string qMaster::makeUrl(char const* hostport,
     ret += user;
     ret += "@";
     ret += hostport;
-    ret += "//";
+    ret += "/";
     if(typeStr != NULL) {
+        ret += "/"; 
         ret += typeStr;
         ret += "/";
-    }
+    } // else: assume s contains leading "/"
     ret += s;
     return ret;
 #endif
