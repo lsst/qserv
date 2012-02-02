@@ -627,9 +627,8 @@ function read_query_result(inj)
         return proxy.PROXY_IGNORE_RESULT
      elseif (queryErrorCount > 0) then
         print("q2 - already have errors, ignoring")
-        return err.setAndSend(ERR_QSERV_RUNTIME,
-                              "No results: too many errors.")
-     elseif (inj.resultset == nil) then
+        return proxy.PROXY_IGNORE_RESULT
+     elseif (inj.resultset.rows == nil) then
         print("q2 - no resultset.")
         return err.setAndSend(ERR_QSERV_RUNTIME,
                               "Error executing query using qserv.")
