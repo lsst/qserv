@@ -52,6 +52,7 @@ if "LIBS" in post:
 conf.CheckLib("qserv_common")
 conf.CheckLib("qserv_proto")
 conf.CheckLib("protobuf")
+conf.CheckLib("XrdOfs")
 env = conf.Finish()
 
 lib = env.SharedLibrary("qserv_worker", sources)
