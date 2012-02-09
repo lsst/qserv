@@ -191,7 +191,9 @@ public:
             // Run my task.
             qWorker::QueryRunnerArg a(_log, _task);
             qWorker::QueryRunner qr(a);
-            (*_log)("Runner running job");
+            std::stringstream ss;
+            ss << "Runner running " << *_task;
+            (*_log)(ss.str().c_str());
             qr.actOnce();
             if(_isPoisoned) break;
             // Request new work from the manager
@@ -217,7 +219,8 @@ private:
 ForemanImpl::ForemanImpl(Scheduler::Ptr s,
                          qWorker::TodoList::Ptr t,
                          qWorker::Logger::Ptr log)
-    : _scheduler(s), _todo(t), _rManager(*this), _log(log) {
+    : _scheduler(s), _todo(t), _rManager(*this), _log(log),
+      _running(new qWorker::TodoList::TaskQueue()) {
     if(!_log.get()) {
         // Make basic logger.
         _log.reset(new qWorker::StderrLogger());
