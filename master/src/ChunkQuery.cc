@@ -252,6 +252,8 @@ qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id,
     _result.queryWrite = 0;
     _result.read = 0;
     _result.localWrite = 0;
+    _hash = qMaster::hashQuery(_spec.query.c_str(), 
+                               _spec.query.size());
     // Patch the spec to include the magic query terminator.
     _spec.query.append(4,0); // four null bytes.
     _completeMutexP.reset(new boost::mutex);
@@ -268,8 +270,6 @@ void qMaster::ChunkQuery::run() {
     boost::unique_lock<boost::mutex> lock(_mutex);
     std::cout << "Opening " << _spec.path << "\n";
     _writeOpenTimer.start();
-    _hash = qMaster::hashQuery(_spec.query.c_str(), 
-                               _spec.query.size());
 #if 0
     int result = 0;
     while(true) {
