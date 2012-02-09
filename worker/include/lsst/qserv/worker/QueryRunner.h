@@ -39,7 +39,7 @@
 namespace lsst {
 namespace qserv {
 namespace worker {
-
+class QueryPhyResult; // Forward
 ////////////////////////////////////////////////////////////////////////
 class QueryRunner {
 public:
@@ -63,6 +63,7 @@ public:
 
 private:
     typedef std::deque<std::string> StringDeque;
+
     typedef std::vector<int> IntVector;
     typedef IntVector::iterator IntVectorIter;
     typedef boost::shared_ptr<IntVector> IntVectorPtr;
@@ -73,12 +74,13 @@ private:
     bool _dropDb(MYSQL* db, std::string const& name);
     bool _dropTables(MYSQL* db, std::string const& tables);
     std::string _getDumpTableList(std::string const& script);
-    void _mkdirP(std::string const& filePath);
     bool _runScript(std::string const& script, std::string const& dbName);
     bool _runTask(Task::Ptr t);
-    bool _runFragment(std::string const& fscr,
-                      IntVector const& sc,
-                      std::string const& dbName);
+    bool _runFragment(MYSQL* dbMy,
+                      std::string const& scr,
+                      std::string const& buildSc,
+                      std::string const& cleanSc,
+                      std::string const& resultTable);
 
     bool _runScriptCore(MYSQL* db, std::string const& script,
                         std::string const& dbName,
@@ -87,7 +89,7 @@ private:
     void _buildSubchunkScripts(std::string const& script,
                                std::string& build, std::string& cleanup);
     bool _prepareAndSelectResultDb(MYSQL* db, 
-                                   std::string const& dbName);
+                                   std::string const& dbName=std::string());
     bool _prepareScratchDb(MYSQL* db);
     bool _performMysqldump(std::string const& dbName, 
                            std::string const& dumpFile,
@@ -102,6 +104,7 @@ private:
 
     boost::shared_ptr<Logger> _log;
     std::string _user;
+    boost::shared_ptr<QueryPhyResult> _pResult;
     Task::Ptr _task;
     std::string _scriptId;
     int _errorNo;

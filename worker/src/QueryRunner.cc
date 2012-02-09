@@ -20,12 +20,14 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  
-#include <fcntl.h>
 #include <iostream>
+#include <fcntl.h>
+
 #include "mysql/mysql.h"
 #include <boost/regex.hpp>
 #include "XrdSys/XrdSysError.hh"
 #include "lsst/qserv/worker/QueryRunner.h"
+#include "lsst/qserv/worker/QueryPhyResult.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/Config.h"
 #include "lsst/qserv/worker/SqlFragmenter.h"
@@ -182,6 +184,43 @@ std::string commasToSpaces(std::string const& s) {
     return r;
 }
     
+template <typename F>
+void forEachSubChunk(std::string const& script, F& func) {
+    std::string firstLine = script.substr(0, script.find('\n'));
+    int subChunkCount = 0;
+
+    boost::regex re("\\d+");
+    for (boost::sregex_iterator i = boost::make_regex_iterator(firstLine, re);
+         i != boost::sregex_iterator(); ++i) {
+
+        std::string subChunk = (*i).str(0);
+        func(subChunk);
+        ++subChunkCount;
+    }
+}
+
+template <typename T>
+class ScScriptBuilder {
+public:
+    ScScriptBuilder(int chunkId_) : chunkId(chunkId_) {}
+    void operator()(T const& subc) {
+        build << (Pformat(qWorker::CREATE_SUBCHUNK_SCRIPT)
+                  % chunkId % subc).str() 
+              << "\n";
+        clean << (Pformat(qWorker::CLEANUP_SUBCHUNK_SCRIPT)
+                    % chunkId % subc).str()
+                << "\n";
+    }
+    void reset(int chunkId_) {
+        chunkId = chunkId_;
+        build.str(std::string());
+        clean.str(std::string());
+    }
+    int chunkId;
+    std::stringstream build;
+    std::stringstream clean;
+};
+
 } // anonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
@@ -190,7 +229,8 @@ std::string commasToSpaces(std::string const& s) {
 qWorker::QueryRunner::QueryRunner(boost::shared_ptr<qWorker::Logger> log, 
                                   qWorker::Task::Ptr task, 
                                   std::string overrideDump) 
-    : _log(log), _user(task->user.c_str()), _task(task), 
+    : _log(log), _pResult(new QueryPhyResult()),
+      _user(task->user.c_str()), _task(task), 
       _poisonedMutex(new boost::mutex()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
@@ -200,7 +240,8 @@ qWorker::QueryRunner::QueryRunner(boost::shared_ptr<qWorker::Logger> log,
 }
 
 qWorker::QueryRunner::QueryRunner(QueryRunnerArg const& a) 
-    : _log(a.log), _user(a.task->user), _task(a.task),
+    : _log(a.log), _pResult(new QueryPhyResult()),
+      _user(a.task->user), _task(a.task),
       _poisonedMutex(new boost::mutex()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
@@ -391,55 +432,6 @@ std::string qWorker::QueryRunner::_getErrorString() const {
     return (Pformat("%1%: %2%") % _errorNo % _errorDesc).str();
 }
 
-void qWorker::QueryRunner::_mkdirP(std::string const& filePath) {
-    // Quick and dirty mkdir -p functionality.  No error checking.
-    std::string::size_type pos = 0;
-    struct stat statbuf;
-    while ((pos = filePath.find('/', pos + 1)) != std::string::npos) {
-        std::string dir(filePath, 0, pos);
-        if (::stat(dir.c_str(), &statbuf) == -1) {
-            if (errno == ENOENT) {
-                mkdir(dir.c_str(), 0777);
-            }
-        }
-    }
-}
-
-bool qWorker::QueryRunner::_performMysqldump(std::string const& dbName, 
-                                             std::string const& dumpFile,
-                                             std::string const& tables) {
-    
-    // Dump a database to a dumpfile.
-    
-    // Make sure the path exists
-    _mkdirP(dumpFile);
-
-    std::string cmd = getConfig().getString("mysqlDump") + 
-        (Pformat(
-            " --compact --add-locks --create-options --skip-lock-tables"
-	    " --socket=%1%"
-            " -u %2%"
-            " --result-file=%3% %4% %5%")
-         % getConfig().getString("mysqlSocket") 
-         % _user
-         % dumpFile % dbName % tables).str();
-    (*_log)((Pformat("dump cmdline: %1%") % cmd).str().c_str());
-
-    (*_log)((Pformat("TIMING,%1%QueryDumpStart,%2%")
-            % _scriptId % ::time(NULL)).str().c_str());
-    int cmdResult = system(cmd.c_str());
-
-    (*_log)((Pformat("TIMING,%1%QueryDumpFinish,%2%")
-            % _scriptId % ::time(NULL)).str().c_str());
-
-    if (cmdResult != 0) {
-        _errorNo = errno;
-        _errorDesc += "Unable to dump database " + dbName 
-            + " to " + dumpFile;
-        return false;
-    }
-    return true;
-}
 
 bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
                                           std::string const& dbName,
@@ -484,36 +476,80 @@ bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
   }
 */
 bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
+    DbHandle db;
+    bool success = true;
     _scriptId = t->dbName.substr(0, 6);
     (*_log)((Pformat("TIMING,%1%ScriptStart,%2%")
                  % _scriptId % ::time(NULL)).str().c_str());
     // For now, coalesce all fragments.
-    std::stringstream ss;
-    IntVector sc;
     std::string resultTable;
+    _pResult->reset();
     assert(t.get());
     assert(t->msg.get());
     TaskMsg& m(*t->msg);
     for(int i=0; i < m.fragment_size(); ++i) {
         Task::Fragment const& f(m.fragment(i));
+        ScScriptBuilder<int> scb(t->msg->chunkid());
+        std::stringstream ss;
+
+        for(int j=0; j < f.subchunk_size(); ++j) {
+            scb(f.subchunk(j));
+        }
         if(f.has_resulttable()) { resultTable = f.resulttable(); }
         assert(!resultTable.empty());
+
         if(t->needsCreate) {
-            if(i==0) ss << "CREATE TABLE " << resultTable << " ";
+            if(_pResult->hasResultTable(resultTable)) 
+                ss << "CREATE TABLE " << resultTable << " ";
             else ss << "INSERT INTO " << resultTable << " ";
         }
         ss << f.query();
-        for(int j=0; j < f.subchunk_size(); ++j) {
-            sc.push_back(f.subchunk(j));
+        success = _runFragment(db.get(), ss.str(), 
+                               scb.build.str(), scb.clean.str(), 
+                               resultTable);
+        if(!success) return false;
+        _pResult->addResultTable(resultTable);
+    }
+    if(success) {
+        if(!_pResult->performMysqldump(*_log, _user, _task->resultPath,
+                                       _errorNo, _errorDesc)) {
+            _appendError(EIO, "mysqldump failure");
+            return false;
         }
     }
-    return _runFragment(ss.str(), sc, t->dbName);
-
+    _dropTables(db.get(), _pResult->getCommaResultTables());
+    return true;
 }
-bool qWorker::QueryRunner::_runFragment(std::string const& fscr,
-                                        IntVector const& sc,
-                                        std::string const& dbName) {
+
+bool qWorker::QueryRunner::_runFragment(MYSQL* dbMy,
+                                        std::string const& scr,
+                                        std::string const& buildSc,
+                                        std::string const& cleanSc,
+                                        std::string const& resultTable) {
+    boost::shared_ptr<CheckFlag> check(_makeAbort());
+    if(!_connectDbServer(dbMy)) {
+        return false;
+    }
     
+    if(!_prepareAndSelectResultDb(dbMy)) {
+        return false;
+    }
+    if(_checkPoisoned()) { // Check for poison
+        _poisonCleanup(); // Clean it up.
+        return false; 
+    }
+    std::string result = runScriptPieces(_log, dbMy, _scriptId, buildSc, 
+                                         scr, cleanSc, check.get());
+    if(!result.empty()) { 
+        _appendError(EIO, result); 
+        return false;
+    } 
+
+    (*_log)((Pformat("TIMING,%1%ScriptFinish,%2%")
+                 % _scriptId % ::time(NULL)).str().c_str());
+    return _errorDesc.empty();
+
+    return false;
 }
 
 bool qWorker::QueryRunner::_runScript(
@@ -527,9 +563,6 @@ bool qWorker::QueryRunner::_runScript(
     _scriptId = dbName.substr(0, 6);
     (*_log)((Pformat("TIMING,%1%ScriptStart,%2%")
                  % _scriptId % ::time(NULL)).str().c_str());
-    if(!_connectDbServer(db.get())) {
-        return false;
-    }
     tables = _getDumpTableList(script);
     // (*_log)((Pformat("Dump tables for %1%: %2%") 
     //         % _scriptId % tables).str().c_str());
@@ -561,48 +594,34 @@ bool qWorker::QueryRunner::_runScript(
 void qWorker::QueryRunner::_buildSubchunkScripts(std::string const& script,
                                                  std::string& build, 
                                                  std::string& cleanup) {
-    std::string firstLine = script.substr(0, script.find('\n'));
-    int subChunkCount = 0;
+    ScScriptBuilder<std::string> scb(_task->msg->chunkid());
     (*_log)((Pformat("TIMING,%1%QueryFormatStart,%2%")
             % _scriptId % ::time(NULL)).str().c_str());
     
-#ifdef DO_NOT_USE_BOOST
-    Regex re("[0-9][0-9]*");
-    for(Regex::Iterator i = re.newIterator(firstLine);
-	i != Regex::Iterator::end(); ++i) {
-#else
-    boost::regex re("\\d+");
-    for (boost::sregex_iterator i = boost::make_regex_iterator(firstLine, re);
-         i != boost::sregex_iterator(); ++i) {
-#endif
-        std::string subChunk = (*i).str(0);
-        build +=
-            (Pformat(CREATE_SUBCHUNK_SCRIPT)
-             % _task->msg->chunkid() % subChunk).str() + "\n";
-        cleanup +=
-            (Pformat(CLEANUP_SUBCHUNK_SCRIPT)
-             % _task->msg->chunkid() % subChunk).str() + "\n";
-	++subChunkCount;
-#ifdef DO_NOT_USE_BOOST // workaround emacs indent rules.
-    }
-#else
-    }
-#endif
+    forEachSubChunk(script, scb);
+    build.assign(scb.build.str());
+    cleanup.assign(scb.clean.str());
+
     (*_log)((Pformat("TIMING,%1%QueryFormatFinish,%2%")
             % _scriptId % ::time(NULL)).str().c_str());
 }
 
+
 bool 
 qWorker::QueryRunner::_prepareAndSelectResultDb(MYSQL* db, 
-                                                std::string const& dbName) {
+                                                std::string const& resultDb) {
     std::string result;
-    if(!_dropDb(db, dbName)) {
+    std::string dbName(resultDb);
+    
+    if(dbName.empty()) {
+         dbName = getConfig().getString("scratchDb");
+    } else if(!_dropDb(db, dbName)) {
         (*_log)((Pformat("Cfg error! couldn't drop resultdb. %1%.")
                 % result).str().c_str());
         return false;
     }
 
-    result = runQuery(db, "CREATE DATABASE " + dbName);
+    result = runQuery(db, "CREATE DATABASE IF NOT EXISTS " + dbName);
     if (!result.empty()) {
         _errorNo = EIO;
         _errorDesc += result;
@@ -617,6 +636,7 @@ qWorker::QueryRunner::_prepareAndSelectResultDb(MYSQL* db,
                 % result).str().c_str());
         return false;
     }
+    _pResult->setDb(dbName);
     return true;
 }
 
