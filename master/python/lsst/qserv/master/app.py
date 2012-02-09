@@ -667,7 +667,8 @@ class HintedQueryAction:
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
-        self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:18] 
+        # queryHash identifies the top-level query.
+        self.queryHash = self._computeHash(self.queryStr)[:18]
         self.chunkLimit = 2**32 # something big
         self._dbContext = "LSST" # Later adjusted by hints.        
 
@@ -968,7 +969,9 @@ class HintedQueryAction:
             sub = "Subchunks_%d.%s" % (chunk, sName)
             res = re.sub(patStr, sub, res)
         return res
-          
+
+    def _computeHash(self, bytes):
+        return hashlib.md5(bytes).hexdigest()
 
 class CheckAction:
     def __init__(self, tracker, handle):
