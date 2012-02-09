@@ -63,6 +63,18 @@ namespace {
         // FIXME: consider verifying this.
         f.set_resulttable(tables); 
     }
+
+    std::ostream& dump(std::ostream& os, 
+                       lsst::qserv::TaskMsg_Fragment const& f) {
+        os << "frag: " 
+           << "q=" << f.query()
+           << " sc=";
+        for(int i=0; i < f.subchunk_size(); ++i) {
+            os << f.subchunk(i) << ",";
+        }
+        os << " rt=" << f.resulttable();
+        return os;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -75,12 +87,13 @@ qWorker::Task::Task(qWorker::ScriptMeta const& s, std::string const& user_) {
     hash = s.hash;
     dbName = s.dbName;
     resultPath = s.resultPath;
-    msg->set_chunkid(s.chunkId);
+    t->set_chunkid(s.chunkId);
     lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
     updateSubchunks(s.script, *f);
     updateResultTables(s.script, *f);
     f->set_query(s.script);
     needsCreate = false;
+    msg = t;
 }
 
 qWorker::Task::Task(qWorker::Task::TaskMsgPtr t, std::string const& user_) {
@@ -91,3 +104,20 @@ qWorker::Task::Task(qWorker::Task::TaskMsgPtr t, std::string const& user_) {
     user = user_;
     needsCreate = true;
 }
+
+namespace lsst {
+namespace qserv {
+namespace worker {
+std::ostream& operator<<(std::ostream& os, qWorker::Task const& t) {
+    lsst::qserv::TaskMsg& m = *t.msg;
+    os << "Task: " 
+       << "msg: session=" << m.session() 
+       << " chunk=" << m.chunkid()
+       << " db=" << m.db() << " ";
+    for(int i=0; i < m.fragment_size(); ++i) {
+        dump(os, m.fragment(i));
+        os << " ";
+    }
+    return os;
+}
+}}} // lsst::qserv::worker

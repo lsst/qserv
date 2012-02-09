@@ -54,6 +54,8 @@ public:
     std::string resultPath;
     std::string user;
     bool needsCreate;
+
+    friend std::ostream& operator<<(std::ostream& os, Task const& t);
 };
 }}} // lsst::qserv::worker
 
