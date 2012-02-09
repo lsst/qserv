@@ -35,17 +35,18 @@ class TaskMsgFactory:
         msg = self.msg
         msg.chunkid = chunkid
         self.resulttable = resulttable
-        frag = msg.fragment.add()
-        self.frag = frag
-
+        del msg.fragment[:] # clear out fragments
+        
     def fillFragment(self, query, subchunks):
-        self.frag.query = query
-        self.frag.resulttable = self.resulttable
+        frag = self.msg.fragment.add()
+        frag.query = query
+        frag.resulttable = self.resulttable
         if subchunks:
             for s in subchunks:
-                self.frag.subchunk.add(s)
+                frag.subchunk.add(s)
         pass
 
     def getBytes(self):
-        return self.msg.SerializeToString()
+        s = self.msg.SerializeToString()
+        return s
 
