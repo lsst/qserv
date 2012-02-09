@@ -21,9 +21,10 @@
  */
  
 #include "lsst/qserv/worker/TodoList.h"
+#include <boost/regex.hpp>
+
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/TaskMsgDigest.h"
-#include <boost/regex.hpp>
 
 namespace qWorker = lsst::qserv::worker;
 
