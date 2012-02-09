@@ -46,6 +46,8 @@ public:
     public:
         RunnerMgr(ForemanImpl& f) : _f(f) {}
         void registerRunner(Runner* r, qWorker::Task::Ptr t);
+        void reportComplete(qWorker::Task::Ptr t);
+        void reportStart(qWorker::Task::Ptr t);
         void signalDeath(Runner* r);
         qWorker::Task::Ptr getNextTask(Runner* r, qWorker::Task::Ptr previous);
         qWorker::Logger::Ptr getLog();
@@ -139,6 +141,18 @@ void ForemanImpl::RunnerMgr::registerRunner(Runner* r, qWorker::Task::Ptr t) {
     _f._runners.push_back(r);
     _f._running->push_back(t);
 }
+
+void ForemanImpl::RunnerMgr::reportComplete(qWorker::Task::Ptr t) {
+    boost::lock_guard<boost::mutex> lock(_f._runnersMutex); 
+    bool popped = popFrom(*_f._running, t);
+    assert(popped);
+}
+
+void ForemanImpl::RunnerMgr::reportStart(qWorker::Task::Ptr t) {
+   boost::lock_guard<boost::mutex> lock(_f._runnersMutex); 
+    _f._running->push_back(t);
+}
+
 void ForemanImpl::RunnerMgr::signalDeath(Runner* r) {
    boost::lock_guard<boost::mutex> lock(_f._runnersMutex); 
    RunnerDeque::iterator end = _f._runners.end();
@@ -154,8 +168,6 @@ void ForemanImpl::RunnerMgr::signalDeath(Runner* r) {
 
 qWorker::Task::Ptr 
 ForemanImpl::RunnerMgr::getNextTask(Runner* r, qWorker::Task::Ptr previous) {
-    bool popped = popFrom(*_f._running, previous);
-    assert(popped);
     TaskQueuePtr tq;
     tq = _f._scheduler->taskFinishAct(previous, _f._todo, _f._running);
     if(!tq.get()) {
@@ -199,9 +211,10 @@ public:
             // Request new work from the manager
             // (mgr is a role of the foreman, who will check with the
             // scheduler for the next assignment) 
+            _rm.reportComplete(_task);
             _task = _rm.getNextTask(this, _task);
-
             if(!_task.get()) break; // No more work?
+            _rm.reportStart(_task);
         } // Keep running until we get poisoned.
         _rm.signalDeath(this);
     }
