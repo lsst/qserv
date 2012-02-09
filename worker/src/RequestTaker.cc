@@ -42,6 +42,7 @@ qWorker::RequestTaker::RequestTaker(TaskAcceptor::Ptr acceptor, QservPath const&
 bool qWorker::RequestTaker::receive(Size offset, char const* buffer, 
                                     Size bufferSize) {
     _queryBuffer.addBuffer(offset, buffer, bufferSize);
+    return true;
 }
 
 bool qWorker::RequestTaker::complete() {
@@ -54,5 +55,6 @@ bool qWorker::RequestTaker::complete() {
        && (_chunk == tm->chunkid()) && (_db == tm->db())) {
         // Note: db is only available via path. 
         _acceptor->accept(tm);
+        return true;
     } else return false;
 }
