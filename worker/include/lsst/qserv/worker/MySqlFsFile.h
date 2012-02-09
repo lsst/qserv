@@ -114,7 +114,6 @@ private:
     AddCallbackFunction::Ptr _addCallbackF;
     fs::FileValidator::Ptr _validator;
     int _chunkId;
-    fs::FileClass _fileClass;
     std::string _userName;
     std::string _dumpName;
     bool _hasRead;
