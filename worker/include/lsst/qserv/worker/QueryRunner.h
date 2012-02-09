@@ -74,18 +74,12 @@ private:
     bool _dropDb(MYSQL* db, std::string const& name);
     bool _dropTables(MYSQL* db, std::string const& tables);
     std::string _getDumpTableList(std::string const& script);
-    bool _runScript(std::string const& script, std::string const& dbName);
     bool _runTask(Task::Ptr t);
     bool _runFragment(MYSQL* dbMy,
                       std::string const& scr,
                       std::string const& buildSc,
                       std::string const& cleanSc,
                       std::string const& resultTable);
-
-    bool _runScriptCore(MYSQL* db, std::string const& script,
-                        std::string const& dbName,
-                        std::string const& tableList);
-
     void _buildSubchunkScripts(std::string const& script,
                                std::string& build, std::string& cleanup);
     bool _prepareAndSelectResultDb(MYSQL* db, 

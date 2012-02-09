@@ -432,32 +432,6 @@ std::string qWorker::QueryRunner::_getErrorString() const {
     return (Pformat("%1%: %2%") % _errorNo % _errorDesc).str();
 }
 
-
-bool qWorker::QueryRunner::_runScriptCore(MYSQL* db, std::string const& script,
-                                          std::string const& dbName,
-                                          std::string const& tableList) {
-    std::string buildScript;
-    std::string cleanupScript;
-    std::string realDbName(dbName);
-
-    if(!tableList.empty()) {
-        realDbName = getConfig().getString("scratchDb");
-    }
-    boost::shared_ptr<CheckFlag> check(_makeAbort());
-    _buildSubchunkScripts(script, buildScript, cleanupScript);
-    std::string result = runScriptPieces(_log, db, _scriptId, buildScript, 
-                                         script, cleanupScript, check.get());
-    if(!result.empty()) { 
-        _appendError(EIO, result); 
-        return false;
-    }
-    else if(!_performMysqldump(realDbName, _task->resultPath, tableList)) {
-        _appendError(EIO, "mysqldump failure");
-        return false;
-    }
-    return true;
-}
-
 // Record query in query cache table
 /*
   result = runQuery(db.get(),
@@ -499,7 +473,7 @@ bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
         assert(!resultTable.empty());
 
         if(t->needsCreate) {
-            if(_pResult->hasResultTable(resultTable)) 
+            if(!_pResult->hasResultTable(resultTable)) 
                 ss << "CREATE TABLE " << resultTable << " ";
             else ss << "INSERT INTO " << resultTable << " ";
         }
@@ -551,46 +525,6 @@ bool qWorker::QueryRunner::_runFragment(MYSQL* dbMy,
 
     return false;
 }
-
-bool qWorker::QueryRunner::_runScript(
-    std::string const& script, std::string const& dbName) {
-    
-    DbHandle db;
-    std::string result;
-    std::string tables; 
-    bool scriptSuccess = false;
-
-    _scriptId = dbName.substr(0, 6);
-    (*_log)((Pformat("TIMING,%1%ScriptStart,%2%")
-                 % _scriptId % ::time(NULL)).str().c_str());
-    tables = _getDumpTableList(script);
-    // (*_log)((Pformat("Dump tables for %1%: %2%") 
-    //         % _scriptId % tables).str().c_str());
-    if(tables.empty()) {
-        if(!_prepareAndSelectResultDb(db.get(), dbName)) {
-            return false;
-        }
-    } else if(!_prepareScratchDb(db.get())) {
-        return false;
-    }
-    if(_checkPoisoned()) { // Check for poison
-        _poisonCleanup(); // Clean it up.
-        return false; 
-    }
-    scriptSuccess = _runScriptCore(db.get(), script, dbName, 
-                                   commasToSpaces(tables));
-
-    if(!tables.empty()) {
-        _dropTables(db.get(), tables);
-    } else {
-        _dropDb(db.get(), dbName);
-    }
-
-    (*_log)((Pformat("TIMING,%1%ScriptFinish,%2%")
-                 % _scriptId % ::time(NULL)).str().c_str());
-    return _errorDesc.empty();
-}
-
 void qWorker::QueryRunner::_buildSubchunkScripts(std::string const& script,
                                                  std::string& build, 
                                                  std::string& cleanup) {
