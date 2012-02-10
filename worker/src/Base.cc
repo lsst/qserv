@@ -64,21 +64,33 @@ bool checkWritablePath(char const* path) {
 // Must end in a slash.
 std::string qWorker::DUMP_BASE = "/tmp/qserv/";
 
+// Parameters:
+// %1% database (e.g., LSST)
+// %2% table (e.g., Object)
+// %3% subchunk column name (e.g. x_subChunkId)
+// %4% chunkId (e.g. 2523)
+// %5% subChunkId (e.g., 34)
 std::string qWorker::CREATE_SUBCHUNK_SCRIPT =
-    "CREATE DATABASE IF NOT EXISTS Subchunks_%1%;"
-    "CREATE TABLE IF NOT EXISTS Subchunks_%1%.Object_%1%_%2% ENGINE = MEMORY "
-    "AS SELECT * FROM LSST.Object_%1% WHERE x_subChunkId = %2%;"
-    "CREATE TABLE IF NOT EXISTS Subchunks_%1%.ObjectSelfOverlap_%1%_%2% "
+    "CREATE DATABASE IF NOT EXISTS Subchunks_%1%_%4%;"
+    "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%_%4%_%5% ENGINE = MEMORY "
+    "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
+    "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%SelfOverlap_%4%_%5% "
     "ENGINE = MEMORY "
-    "AS SELECT * FROM LSST.ObjectSelfOverlap_%1% WHERE x_subChunkId = %2%;"
-    "CREATE TABLE IF NOT EXISTS Subchunks_%1%.ObjectFullOverlap_%1%_%2% "
+    "AS SELECT * FROM %1%.%2%SelfOverlap_%4% WHERE %3% = %5%;"
+    "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%FullOverlap_%4%_%5% "
     "ENGINE = MEMORY "
-    "AS SELECT * FROM LSST.ObjectFullOverlap_%1% WHERE x_subChunkId = %2%;"
+    "AS SELECT * FROM %1%.%2%FullOverlap_%4% WHERE %3% = %5%;"
     ;
+
+// Parameters:
+// %1% database (e.g., LSST)
+// %2% table (e.g., Object)
+// %3% chunkId (e.g. 2523)
+// %4% subChunkId (e.g., 34)
 std::string qWorker::CLEANUP_SUBCHUNK_SCRIPT =
-    "DROP TABLE IF EXISTS Subchunks_%1%.Object_%1%_%2%;"
-    "DROP TABLE IF EXISTS Subchunks_%1%.ObjectSelfOverlap_%1%_%2%;"
-    "DROP TABLE IF EXISTS Subchunks_%1%.ObjectFullOverlap_%1%_%2%;"
+    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%_%3%_%4%;"
+    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%SelfOverlap_%3%_%4%;"
+    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%FullOverlap_%3%_%4%;"
     ;
 
 // Note:

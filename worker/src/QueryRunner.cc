@@ -199,23 +199,36 @@ void forEachSubChunk(std::string const& script, F& func) {
     }
 }
 
+// FIXME: should be metadata or constant somewhere else.
+const char SUB_CHUNK_COLUMN[] = "subChunkId";
+
 template <typename T>
 class ScScriptBuilder {
 public:
-    ScScriptBuilder(int chunkId_) : chunkId(chunkId_) {}
+    ScScriptBuilder(std::string const& db, std::string const& table, 
+                    std::string const& scColumn, 
+                    int chunkId_) : chunkId(chunkId_) {
+        buildTemplate.assign((Pformat(qWorker::CREATE_SUBCHUNK_SCRIPT)
+                              % db % table % scColumn
+                              % chunkId % "%1%").str()); 
+        cleanTemplate.assign((Pformat(qWorker::CLEANUP_SUBCHUNK_SCRIPT)
+                              % db % table 
+                              % chunkId % "%1%").str()); 
+
+    }
     void operator()(T const& subc) {
-        build << (Pformat(qWorker::CREATE_SUBCHUNK_SCRIPT)
-                  % chunkId % subc).str() 
+        build << (Pformat(buildTemplate) % subc).str() 
               << "\n";
-        clean << (Pformat(qWorker::CLEANUP_SUBCHUNK_SCRIPT)
-                    % chunkId % subc).str()
-                << "\n";
+        clean << (Pformat(cleanTemplate) % subc).str()
+              << "\n";
     }
     void reset(int chunkId_) {
         chunkId = chunkId_;
         build.str(std::string());
         clean.str(std::string());
     }
+    std::string buildTemplate;
+    std::string cleanTemplate;
     int chunkId;
     std::stringstream build;
     std::stringstream clean;
@@ -463,7 +476,8 @@ bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
     TaskMsg& m(*t->msg);
     for(int i=0; i < m.fragment_size(); ++i) {
         Task::Fragment const& f(m.fragment(i));
-        ScScriptBuilder<int> scb(t->msg->chunkid());
+        ScScriptBuilder<int> scb("LSST", "Object", // FIXME: get from message
+                                 SUB_CHUNK_COLUMN, t->msg->chunkid());
         std::stringstream ss;
 
         for(int j=0; j < f.subchunk_size(); ++j) {
@@ -528,7 +542,8 @@ bool qWorker::QueryRunner::_runFragment(MYSQL* dbMy,
 void qWorker::QueryRunner::_buildSubchunkScripts(std::string const& script,
                                                  std::string& build, 
                                                  std::string& cleanup) {
-    ScScriptBuilder<std::string> scb(_task->msg->chunkid());
+    ScScriptBuilder<std::string> scb("LSST", "Object", SUB_CHUNK_COLUMN,
+                                     _task->msg->chunkid());
     (*_log)((Pformat("TIMING,%1%QueryFormatStart,%2%")
             % _scriptId % ::time(NULL)).str().c_str());
     
