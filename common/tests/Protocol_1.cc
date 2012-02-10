@@ -46,11 +46,15 @@ struct ProtocolFixture {
         for(int i=0; i < 3; ++i) {
             lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
             f->set_query("Hello, this is a query.");
-            f->add_subchunk(100+i); 
+            addSubChunk(*f, 100+i); 
             f->set_resulttable("r_341");
         }
         ++counter;
         return t;
+    }
+
+    void addSubChunk(lsst::qserv::TaskMsg_Fragment& f, int scId) {
+        f.add_subchunk(scId);  // Update to do fancy db+table+list ops
     }
 
     bool compareTaskMsgs(lsst::qserv::TaskMsg& t1, lsst::qserv::TaskMsg& t2) {

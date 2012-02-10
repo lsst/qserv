@@ -31,13 +31,19 @@ message TaskMsg {
     // Future: might have multiple db/chunk dependencies.
     optional string db = 2; 
     optional int32 chunkid = 3;
-    
+    message Subchunk {
+        required string database = 1;
+        required string table = 2;
+        repeated int32 id = 3;
+    }
     message Fragment {
         // A query fragment without "CREATE or INSERT". 
         // Worker should synthesize.
         required string query = 1; 
-        repeated int32 subchunk = 2;
+        repeated int32 subchunk = 2; // deprecated
         optional string resulttable = 3;
+        optional Subchunk scgroup = 4;
+
         // Each fragment may only write results to one table,
         // but multiple fragments may write to the same table, 
         // in which case the table contains a concatenation of the 
