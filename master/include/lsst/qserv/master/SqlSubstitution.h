@@ -79,10 +79,10 @@ private:
     bool _hasAggregate;
     MergeFixup _mFixup;
     Deque _subChunked;
+    std::string _defaultDb;
     ChunkMapping _mapping;
     boost::mutex _mappingMutex;
     StringMap _config;
-
 };
 
 }}} // namespace lsst::qserv::master

@@ -42,8 +42,7 @@ class TaskMsgFactory:
         frag.query = query
         frag.resulttable = self.resulttable
         if subchunks:
-            for s in subchunks:
-                frag.subchunk.add(s)
+            frag.subchunk.extend(subchunks)
         pass
 
     def getBytes(self):

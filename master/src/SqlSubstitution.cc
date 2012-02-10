@@ -62,6 +62,9 @@ qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement,
     : _delimiter("*?*"), _hasAggregate(false), 
       _mapping(mapping), 
       _config(config) {
+    // client DB context
+    _defaultDb = getFromMap(config, "table.defaultdb", "LSST"); 
+
     // Note: makes copy of chunkmapping.
     _build(sqlStatement);
 }
@@ -125,7 +128,7 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement) {
 
 
 std::string qMaster::SqlSubstitution::_fixDbRef(std::string const& s, 
-                                       int chunk, int subChunk) {
+                                                int chunk, int subChunk) {
 
     // # Replace sometable_CC_SS or anything.sometable_CC_SS 
     // # with Subchunks_CC, 
@@ -138,8 +141,11 @@ std::string qMaster::SqlSubstitution::_fixDbRef(std::string const& s,
                              % *i % chunk % subChunk).str();
         std::string pat = (boost::format("(\\w+\\.)?%s") % sName).str();        
         boost::regex r(pat);
-        std::string sub = (boost::format("Subchunks_%d.%s") 
-                           % chunk % sName).str();
+        // FIXME: Forces default DB right now.
+        // Ideally, if a db is available, use it,
+        // but if not, use the default db.
+        std::string sub = (boost::format("Subchunks_%s_%d.%s") 
+                           % _defaultDb % chunk % sName).str();
         //std::cout << "sName=" << sName << "  pat=" << pat << std::endl;
         result =  boost::regex_replace(result, r, sub);
         //std::cout << "out=" << result << std::endl;
