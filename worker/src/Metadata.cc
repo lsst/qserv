@@ -88,12 +88,12 @@ qWorker::Metadata::registerQservedDb(std::string const& dbName,
     return sqlConn.runQuery(sql.str(), errObj);
 }
 
-/// creates directories: <baseDir>/<dbName><chunkNumber>
-/// for every chunk in every database served
+/// generates export directory paths for every chunk in every database served
 bool 
-qWorker::Metadata::createExportDirs(std::string const& baseDir,
-                                    SqlConnection& sqlConn,
-                                    SqlErrorObject& errObj) {
+qWorker::Metadata::generateExportDirs(std::string const& baseDir,
+                                      SqlConnection& sqlConn,
+                                      SqlErrorObject& errObj,
+                                      std::vector<std::string>& exportDirs) {
     if (!sqlConn.selectDb(_metadataDbName, errObj)) {
         return false;
     }
@@ -111,7 +111,8 @@ qWorker::Metadata::createExportDirs(std::string const& baseDir,
     for (i=0; i<s ; i++) {
         std::string dbName = dbs[i];
         std::string tableList = pts[i];
-        if (!createExportDirsForDb(baseDir,dbName,tableList,sqlConn,errObj)) {
+        if (!generateExportDirsForDb(baseDir, dbName, tableList, 
+                                     sqlConn, errObj, exportDirs)) {
             std::stringstream ss;
             ss << "Failed to create export dir for baseDir="
                << baseDir << ", dbName=" << dbName << ", tableList=" 
@@ -123,11 +124,13 @@ qWorker::Metadata::createExportDirs(std::string const& baseDir,
 }
 
 bool
-qWorker::Metadata::createExportDirsForDb(std::string const& baseDir,
-                                         std::string const& dbName,
-                                         std::string const& tableList,
-                                         SqlConnection& sqlConn,
-                                         SqlErrorObject& errObj) {
+qWorker::Metadata::generateExportDirsForDb(
+                                   std::string const& baseDir,
+                                   std::string const& dbName,
+                                   std::string const& tableList,
+                                   SqlConnection& sqlConn,
+                                   SqlErrorObject& errObj,
+                                   std::vector<std::string>& exportDirs) {
     std::vector<std::string> pTables = tokenizeString(tableList);
 
     int i, s = pTables.size();
@@ -142,11 +145,11 @@ qWorker::Metadata::createExportDirsForDb(std::string const& baseDir,
         int j, s2 = t.size();
         for (j=0; j<s2 ; j++) {
             int chunkNo = extractChunkNo(t[j]);
-            //QServPath p;
-            //p.setAsCquery(dbName, chunkNo);
+            QServPath p;
+            p.setAsCquery(dbName, chunkNo);
             std::stringstream ss;
-            ss << baseDir << "/" << dbName << "/" << chunkNo << std::endl;
-            std::cout << ss.str() << std::endl;
+            ss << baseDir << "/" << p.path() << std::ends;
+            exportDirs.push_back(ss.str());
         }
     }
     return true;
@@ -180,7 +183,6 @@ qWorker::Metadata::prepPartitionedTables(std::string& strIn,
     strIn = strOut;
     return true;
 }
-
 
 std::vector<std::string>
 qWorker::Metadata::tokenizeString(std::string const& str) {
