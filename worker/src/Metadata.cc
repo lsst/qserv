@@ -145,7 +145,7 @@ qWorker::Metadata::generateExportDirsForDb(
         int j, s2 = t.size();
         for (j=0; j<s2 ; j++) {
             int chunkNo = extractChunkNo(t[j]);
-            QServPath p;
+            QservPath p;
             p.setAsCquery(dbName, chunkNo);
             std::stringstream ss;
             ss << baseDir << "/" << p.path() << std::ends;
