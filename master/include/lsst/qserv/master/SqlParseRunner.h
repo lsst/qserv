@@ -64,12 +64,9 @@ public:
     std::string const& getStatement() const { return _statement; }
     std::string getParseResult();
     std::string getAggParseResult();
-    bool getHasChunks() const { 
-	return _tableListHandler->getHasChunks();
-    }
-    bool getHasSubChunks() const { 
-	return _tableListHandler->getHasSubChunks();
-    }
+    bool getHasChunks() const;
+    bool getHasSubChunks() const;
+
     std::string getFixupSelect() {
 	return _aggMgr.getFixupSelect();
     }

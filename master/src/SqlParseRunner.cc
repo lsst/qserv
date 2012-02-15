@@ -35,6 +35,7 @@
 #include "lsst/qserv/master/Substitution.h"
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/stringUtil.h"
+#include "lsst/qserv/master/TableRefChecker.h"
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
@@ -136,6 +137,9 @@ public:
                  addToRewrite(_spr._spatialTables, _spr._mungeMap));
         Templater::addAliasFunc f(_spr._templater);
         forEachFirst(_spr._aliasMgr.getTableAliasMap(), f);
+        // Handle names, now that aliases are known.
+        _spr._templater.processNames(); 
+        _spr._tableListHandler->processJoin();
 
         // std::for_each(tableAliasMap.begin(), tableAliasMap.end(), 
         //               boost::bind(Templater::addAliasFunc(_spr._templater),
@@ -275,6 +279,17 @@ std::string qMaster::SqlParseRunner::getAggParseResult() {
     }
     return _aggParseResult;
 }
+
+bool qMaster::SqlParseRunner::getHasChunks() const { 
+    return _templater.getTableRefChecker().getHasChunks();
+    return _tableListHandler->getHasChunks();
+}
+
+bool qMaster::SqlParseRunner::getHasSubChunks() const { 
+    return _templater.getTableRefChecker().getHasSubChunks();
+    return _tableListHandler->getHasSubChunks();
+}
+
 void qMaster::SqlParseRunner::_computeParseResult() {
     bool hasBadDbs = false;
     try {

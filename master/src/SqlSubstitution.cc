@@ -69,7 +69,7 @@ qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement,
     _build(sqlStatement);
 }
 
-void qMaster::SqlSubstitution::importSubChunkTables(char** cStringArr) {
+void qMaster::SqlSubstitution::importSubChunkTables(char const** cStringArr) {
     _subChunked.clear();
     for(int i=0; cStringArr[i]; ++i) {
         std::string s = cStringArr[i];
@@ -116,6 +116,7 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement) {
     } else {
         template_ = spr->getParseResult();
     } 
+    std::cout << "Substitution template:: " << template_ << std::endl;
     _computeChunkLevel(spr->getHasChunks(), spr->getHasSubChunks());
     if(template_.empty() || !spr->getError().empty()) {
         _errorMsg = spr->getError();

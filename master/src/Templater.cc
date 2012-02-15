@@ -27,9 +27,11 @@
 
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/Templater.h"
+#include "lsst/qserv/master/TableRefChecker.h"
 #include "lsst/qserv/master/common.h"
 
 using lsst::qserv::master::Templater;
+using lsst::qserv::master::TableRefChecker;
 
 ////////////////////////////////////////////////////////////////////////
 // Templater::JoinVisitor
@@ -150,14 +152,25 @@ class ImplicitDbVisitor {
 ////////////////////////////////////////////////////////////////////////
 void Templater::TableListHandler::operator()(antlr::RefAST a, 
                                              antlr::RefAST b) {
+    //    walkTreeVisit(a, _deferred); // Defer so that the alias processing
+                                 // can happen first.
+}
+
+void Templater::TableListHandler::processJoin() {
     JoinVisitor j(_templater.getDelimiter(), "_sc");
-    //ImplicitDbVisitor v;
-    //walkTreeVisit(a,v);
-    walkTreeVisit(a,j);
+    _deferred.visit(j);
     j.applySubChunkRule();
     _hasChunks = j.getHasChunks();
     _hasSubChunks = j.getHasSubChunks();
     _usageCount = j.getUsageCount();
+}
+
+////////////////////////////////////////////////////////////////////////
+// Templater::addAliasFunc
+////////////////////////////////////////////////////////////////////////
+void Templater::addAliasFunc::operator()(std::string const& aName) {
+    std::cout << "Accepting alias: " << aName << std::endl;
+    _t._tableAliases[aName] = 1;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -169,8 +182,9 @@ Templater::Templater(std::string const& delimiter,
                      antlr::ASTFactory* factory,
                      Notifier& spatialTableNameNotifier_) 
     :  _delimiter(delimiter),
-      _factory(factory),
-      _spatialTableNameNotifier(spatialTableNameNotifier_) {
+       _factory(factory),
+       _spatialTableNameNotifier(spatialTableNameNotifier_),
+       _refChecker(new TableRefChecker()) {
 }
 void Templater::setup(Templater::IntMap const& dbWhiteList,
                       std::string const& defaultDb) {
@@ -178,21 +192,46 @@ void Templater::setup(Templater::IntMap const& dbWhiteList,
     _defaultDb = defaultDb;
 }
 
+void Templater::processNames() {
+    for(RefPairQueue::iterator i=_processQueue.begin();
+        i != _processQueue.end(); ++i) {
+        _processName(*i);
+    }
+#if 0
+    JoinVisitor j(_templater.getDelimiter(), "_sc");
+    _deferred.visit(j);
+    j.applySubChunkRule();
+    _hasChunks = j.getHasChunks();
+    _hasSubChunks = j.getHasSubChunks();
+    _usageCount = j.getUsageCount();
+#endif
+    _processQueue.clear();
+}
+TableRefChecker const& Templater::getTableRefChecker() const {
+    return *_refChecker;
+}
+
+
 bool Templater::_isAlias(std::string const& alias) {
     return 1 == getFromMap(_tableAliases, alias, 0);
 }
 
-void Templater::addAliasFunc::operator()(std::string const& aName) {
-    _t._tableAliases[aName] = 1;
+void Templater::_processLater(antlr::RefAST db, antlr::RefAST n) {
+    _processQueue.push_back(RefAstPair(db,n));
 }
 
-void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
+void Templater::_processName(Templater::RefAstPair& dbn) {
+    // n: first= db name node
+    // second=table name node
+    antlr::RefAST db = dbn.first;
+    antlr::RefAST n = dbn.second;
     std::string dbName;
     std::string tableName = n->getText();
     if(!db.get()) {
         // Check if alias.  If so, do not touch.
-        //std::cout << "PROCESS: " << tableName << std::endl;
+        std::cout << "PROCESS: " << tableName << std::endl;
         if(_isAlias(tableName)) return; // Do not process.
+        else std::cout << "non-alias: " << tableName << std::endl;
         if(!_defaultDb.empty() && _isDbOk(_defaultDb)) {
             // no explicit Db?  Create one, and link it in.
             n = insertTextNodeBefore(_factory, _defaultDb + _nameSep, n);
@@ -207,12 +246,21 @@ void Templater::_processName(antlr::RefAST db, antlr::RefAST n) {
             _markBadDb(dbName);
         }
     }
-    if(isSpecial(tableName)) {
+    _refChecker->markTableRef(dbName, tableName);
+    if(isSpecial(tableName)) { // FIXME: need db qualifier too.
+        //_markSpecial(dbName, tableName);
         std::string mungedName = mungeName(tableName);
+        
         _spatialTableNameNotifier(tableName, dbName + "." + mungedName);
         n->setText(mungedName);
     }
 }
+////////////////////////////////////////////////////////////////////////
+// void Templater::_markSpecial(std::string const& db, 
+//                              std::string const& table) {
+//     StringSet& dbEntry = _special[db];
+//     dbEntry.insert(table);
+// }
 
 ////////////////////////////////////////////////////////////////////////
 bool Templater::_isDbOk(std::string const& db) {

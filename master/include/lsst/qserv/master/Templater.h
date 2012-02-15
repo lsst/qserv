@@ -40,6 +40,7 @@ namespace antlr {
 namespace lsst {
 namespace qserv {
 namespace master {
+class TableRefChecker; // Forward
 
 /// class Templater : A templating module that helps produce string
 /// templates for substitution for making SQL subqueries.  Manages db
@@ -47,6 +48,8 @@ namespace master {
 class Templater {
 public:
     typedef std::map<std::string, int> IntMap;
+    //typedef std::set<std::string> StringSet;
+    //typedef std::map<StringSet> StrStrSet;
 
     // ColumnHandler: hooks into parser's production for column name references.
     class ColumnHandler : public VoidFourRefFunc {
@@ -56,11 +59,11 @@ public:
 	virtual void operator()(antlr::RefAST a, antlr::RefAST b, 
 				antlr::RefAST c, antlr::RefAST d) {
 	    if(d.get()) {
-		_templater._processName(b, c);
+		_templater._processLater(b, c);
 	    } else if(c.get()) {
-		_templater._processName(a, b);
+		_templater._processLater(a, b);
 	    } else if(b.get()) {
-		_templater._processName(antlr::RefAST(), a);
+		_templater._processLater(antlr::RefAST(), a);
 	    }
 	    // std::cout << "col _" << tokenText(a) 
 	    // 	      << "_ _" << tokenText(b) 
@@ -81,11 +84,11 @@ public:
 	virtual void operator()(antlr::RefAST a, antlr::RefAST b, antlr::RefAST c)  {
 	    // right-most is the table name.
 	    if(c.get()) {
-		_templater._processName(b, c);
+		_templater._processLater(b, c);
 	    } else if(b.get()) {
-		_templater._processName(a, b);
+		_templater._processLater(a, b);
 	    } else if(a.get()) {
-		_templater._processName(antlr::RefAST(), a);
+		_templater._processLater(antlr::RefAST(), a);
 	    }
 	    // std::cout << "qualname " << tokenText(a) 
 	    // 	      << " " << tokenText(b) << " " 
@@ -102,6 +105,21 @@ public:
 		      << a->typeName()
 		      << ") " << std::endl;
 	}
+    };
+    /// Defers a visit to nodes so it can be done later.
+    /// This is useful for delaying processing for a set of nodes until 
+    /// other conditions are satisfied.
+    class DeferredVisitor {
+    public:
+	DeferredVisitor() {}
+	void operator()(antlr::RefAST& a) { _q.push_back(a); }
+        template <class Action>
+        void visit(Action& a) {
+            std::for_each(_q.begin(), _q.end(), a);
+            _q.clear();
+        }
+    private:
+        std::deque<antlr::RefAST> _q;
     };
     class JoinVisitor {
     public:
@@ -139,6 +157,7 @@ public:
 	TableListHandler(Templater& t) : _templater(t) {}
 	virtual ~TableListHandler() {}
 	virtual void operator()(antlr::RefAST a, antlr::RefAST b);
+        void processJoin();
 	bool getHasChunks() const { return _hasChunks; }
 	bool getHasSubChunks() const { return _hasSubChunks; }
 	IntMap const& getUsageCount() const { return _usageCount; }
@@ -147,6 +166,7 @@ public:
 	bool _hasChunks;
 	bool _hasSubChunks;
 	IntMap _usageCount;
+        DeferredVisitor _deferred;
     };
     // SpatialTableNameNotifier
     class Notifier {
@@ -180,6 +200,7 @@ public:
     std::string mungeName(std::string const& name) {
 	return _delimiter + name + _delimiter;
     }
+    void processNames();
 
     bool isSpecial(std::string const& s) {
 	return _map.find(s) != _map.end();
@@ -197,6 +218,8 @@ public:
     std::string const& getDelimiter() const { return _delimiter; 
     }
 
+    TableRefChecker const& getTableRefChecker() const;
+
     StringList const& getBadDbs() const { return _badDbs; }
     void addGoodDb(std::string const& db) { _dbWhiteList[db] = 1; }
     class addAliasFunc {
@@ -207,19 +230,27 @@ public:
     };
     friend class addAliasFunc;
 private:
+    typedef std::pair<antlr::RefAST, antlr::RefAST> RefAstPair ; 
+    typedef std::deque<RefAstPair> RefPairQueue;
+
     bool _isAlias(std::string const& alias);
     bool _isDbOk(std::string const& db);
     void _markBadDb(std::string const& db);
-    void _processName(antlr::RefAST db, antlr::RefAST n); 
-    
+    void _processLater(antlr::RefAST db, antlr::RefAST n);
+    void _processName(RefAstPair& n);
+    //void _markSpecial(std::string const& db, std::string const& table);
+
+    RefPairQueue _processQueue;
     ReMap _map;
     IntMap _dbWhiteList;
     IntMap _tableAliases;
+    //StrStrSet _special;
     std::string _delimiter;
     antlr::ASTFactory* _factory;
     std::string _defaultDb;
     StringList _badDbs;
     Notifier& _spatialTableNameNotifier;
+    boost::shared_ptr<TableRefChecker> _refChecker;
     
     // static const
     static std::string const _nameSep;

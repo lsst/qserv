@@ -152,7 +152,8 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "ChunkMapping.cc",
                   "SpatialUdfHandler.cc",
                   "SqlSQL2Lexer.cpp", 
-                  "SqlSQL2Parser.cpp"])
+                  "SqlSQL2Parser.cpp",
+                  "TableRefChecker.cc"])
              
 
 pyPath = 'python/lsst/qserv/master'
@@ -230,6 +231,7 @@ if canBuild:
     pylib = env.SharedLibrary(pyLibName, srcPaths)
     Depends(pylib, env["antlrdeps"])
     env.Program(runTrans['bin'], runTrans["srcPaths"])
+    parseEnv.Program(testParser['bin'], testParser["srcPaths"])
     installTo(env, "dist", pylib)
 
 # Describe what your package contains here.
