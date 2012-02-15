@@ -86,7 +86,7 @@ struct ParserFixture {
 //BOOST_AUTO_TEST_CASE(SqlSubstitution) {
 void tryStmt(std::string const& s, bool withSubchunks=false) {
     std::map<std::string,std::string> cfg; // dummy config
-    char* imported[] = {"Source","Object"};
+    char const* imported[] = {"Source","Object"};
     ChunkMapping c;
     c.addChunkKey(imported[0]);
     c.addSubChunkKey(imported[1]);
@@ -356,6 +356,19 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     BOOST_CHECK(spr->getHasAggregate());
     BOOST_CHECK(spr->getParseResult() == expected);
 }
+
+BOOST_AUTO_TEST_CASE(ObjectSelfJoinCol) {
+    std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, o2.ra_PS, o2.ra_PS_Sigma from Object o1, Object o2 where o1.ra_PS_Sigma < 4e-7 and o2.ra_PS_Sigma < 4e-7;";
+    std::string expected = "select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sc2%$# as o2 UNION select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sfo%$# as o2;";
+
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+}
+
 
 BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
     std::string stmt = " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;";
