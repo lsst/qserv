@@ -201,6 +201,8 @@ public:
 	return _delimiter + name + _delimiter;
     }
     void processNames();
+    void signalFromStmtBegin();
+    void signalFromStmtEnd();
 
     bool isSpecial(std::string const& s) {
 	return _map.find(s) != _map.end();
@@ -240,17 +242,19 @@ private:
     void _processName(RefAstPair& n);
     //void _markSpecial(std::string const& db, std::string const& table);
 
-    RefPairQueue _processQueue;
+    RefPairQueue _columnProcessQueue;
+    RefPairQueue _tableProcessQueue;
     ReMap _map;
     IntMap _dbWhiteList;
     IntMap _tableAliases;
-    //StrStrSet _special;
     std::string _delimiter;
     antlr::ASTFactory* _factory;
     std::string _defaultDb;
     StringList _badDbs;
     Notifier& _spatialTableNameNotifier;
     boost::shared_ptr<TableRefChecker> _refChecker;
+    bool _fromStmtActive;
+    bool _shouldDefer;
     
     // static const
     static std::string const _nameSep;

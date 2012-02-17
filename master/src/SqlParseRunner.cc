@@ -31,6 +31,7 @@
 #include "SqlSQL2Parser.hpp" 
 #include "SqlSQL2Lexer.hpp"
 
+#include "lsst/qserv/master/Callback.h"
 #include "lsst/qserv/master/SqlParseRunner.h"
 #include "lsst/qserv/master/Substitution.h"
 #include "lsst/qserv/master/parseTreeUtil.h"
@@ -43,6 +44,16 @@ using std::stringstream;
 
 // Anonymous helpers
 namespace {
+    class SelectCallback : public qMaster::Callback {
+    public:
+        typedef boost::shared_ptr<SelectCallback> Ptr;
+        SelectCallback(qMaster::Templater& t) :_t(t) { }
+        void operator()() {
+            _t.signalFromStmtBegin();
+        }
+    private:
+        qMaster::Templater& _t;
+    };
 } // anonymous namespace
 
 // Helpers
@@ -125,6 +136,15 @@ public:
         StringPairList& _stm;
         StringMap const& _tableMungeMap;
     };
+    // A functor to filter out nop mappings (key==value)
+    class isNonTrivialMapping {
+    public: 
+        bool operator()(StringMap::value_type const& v) const { 
+            return v.first != v.second; 
+        }
+        static isNonTrivialMapping const& getStatic() { 
+            static isNonTrivialMapping s; return s; }
+    };
 
     // FromHandler
     FromHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
@@ -133,14 +153,18 @@ public:
         // For each table alias, rewrite the spatial name mapping,
         _spr._spatialTables.clear();
         StringPairList const& tableAliases = _spr._aliasMgr.getTableAliases();
-        for_each(tableAliases.begin(), tableAliases.end(), 
-                 addToRewrite(_spr._spatialTables, _spr._mungeMap));
+        // for_each(tableAliases.begin(), tableAliases.end(), 
+        //          addToRewrite(_spr._spatialTables, _spr._mungeMap));
         Templater::addAliasFunc f(_spr._templater);
-        forEachFirst(_spr._aliasMgr.getTableAliasMap(), f);
+
+        forEachFirst(_spr._aliasMgr.getTableAliasMap(), f, 
+                     isNonTrivialMapping::getStatic());
         // Handle names, now that aliases are known.
         _spr._templater.processNames(); 
         _spr._tableListHandler->processJoin();
-
+        for_each(tableAliases.begin(), tableAliases.end(), 
+                 addToRewrite(_spr._spatialTables, _spr._mungeMap));
+        _spr._templater.signalFromStmtEnd();
         // std::for_each(tableAliasMap.begin(), tableAliasMap.end(), 
         //               boost::bind(Templater::addAliasFunc(_spr._templater),
         //                           boost::bind(&StringMap::value_type::second,_1)
@@ -247,6 +271,7 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
 
 void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
     _templater.setKeynames(names.begin(), names.end());
+    // Setup parser
     _parser->_columnRefHandler = _templater.newColumnHandler();
     _parser->_qualifiedNameHandler = _templater.newTableHandler();
     _tableListHandler = _templater.newTableListHandler();
@@ -265,6 +290,11 @@ void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
     _parser->_whereCondHandler= _spatialUdfHandler.getWhereCondHandler();
     _parser->_qservRestrictorHandler = _spatialUdfHandler.getRestrictorHandler();
     _parser->_qservFctSpecHandler= _spatialUdfHandler.getFctSpecHandler();
+
+    // Listen for select* or select <col_list> parse
+    SelectCallback::Ptr sCallback(new SelectCallback(_templater));
+    _aggMgr.listenSelectReceived(sCallback);
+
 }
 
 std::string qMaster::SqlParseRunner::getParseResult() {

@@ -152,6 +152,11 @@ class ImplicitDbVisitor {
 ////////////////////////////////////////////////////////////////////////
 void Templater::TableListHandler::operator()(antlr::RefAST a, 
                                              antlr::RefAST b) {
+    std::string one; 
+    std::string two;
+    if(a.get()) one = a->getText();
+    if(b.get()) two = b->getText();
+    std::cout << "list1: " << one << "  list2: " << two << std::endl;
     //    walkTreeVisit(a, _deferred); // Defer so that the alias processing
                                  // can happen first.
 }
@@ -184,7 +189,8 @@ Templater::Templater(std::string const& delimiter,
     :  _delimiter(delimiter),
        _factory(factory),
        _spatialTableNameNotifier(spatialTableNameNotifier_),
-       _refChecker(new TableRefChecker()) {
+       _refChecker(new TableRefChecker()),
+       _fromStmtActive(false), _shouldDefer(true) {
 }
 void Templater::setup(Templater::IntMap const& dbWhiteList,
                       std::string const& defaultDb) {
@@ -193,10 +199,17 @@ void Templater::setup(Templater::IntMap const& dbWhiteList,
 }
 
 void Templater::processNames() {
-    for(RefPairQueue::iterator i=_processQueue.begin();
-        i != _processQueue.end(); ++i) {
+    for(RefPairQueue::iterator i=_tableProcessQueue.begin();
+        i != _tableProcessQueue.end(); ++i) {
         _processName(*i);
     }
+    for(RefPairQueue::iterator i=_columnProcessQueue.begin();
+        i != _columnProcessQueue.end(); ++i) {
+        _processName(*i);
+    }
+
+    _tableProcessQueue.clear();
+    _columnProcessQueue.clear();
 #if 0
     JoinVisitor j(_templater.getDelimiter(), "_sc");
     _deferred.visit(j);
@@ -205,7 +218,6 @@ void Templater::processNames() {
     _hasSubChunks = j.getHasSubChunks();
     _usageCount = j.getUsageCount();
 #endif
-    _processQueue.clear();
 }
 TableRefChecker const& Templater::getTableRefChecker() const {
     return *_refChecker;
@@ -217,7 +229,16 @@ bool Templater::_isAlias(std::string const& alias) {
 }
 
 void Templater::_processLater(antlr::RefAST db, antlr::RefAST n) {
-    _processQueue.push_back(RefAstPair(db,n));
+    RefAstPair p(db, n);
+    if(_shouldDefer) {
+        if(_fromStmtActive) {
+            _tableProcessQueue.push_back(p);
+        } else { 
+            _columnProcessQueue.push_back(p);
+        }
+    } else {
+        _processName(p);
+    }
 }
 
 void Templater::_processName(Templater::RefAstPair& dbn) {
@@ -247,14 +268,23 @@ void Templater::_processName(Templater::RefAstPair& dbn) {
         }
     }
     _refChecker->markTableRef(dbName, tableName);
-    if(isSpecial(tableName)) { // FIXME: need db qualifier too.
-        //_markSpecial(dbName, tableName);
-        std::string mungedName = mungeName(tableName);
-        
+    if(_refChecker->isChunked(dbName, tableName)) {
+        std::string mungedName = mungeName(tableName);        
         _spatialTableNameNotifier(tableName, dbName + "." + mungedName);
         n->setText(mungedName);
     }
 }
+
+void Templater::signalFromStmtBegin() {
+    _fromStmtActive = true;
+}
+void Templater::signalFromStmtEnd() {
+    _fromStmtActive = false;
+    _shouldDefer = false;
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////
 // void Templater::_markSpecial(std::string const& db, 
 //                              std::string const& table) {

@@ -31,6 +31,17 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
+    class TableRef {
+    public:
+        TableRef(std::string const& db_, 
+                 std::string const& table_, 
+                 std::string const& alias_);
+        
+        std::string db;
+        std::string table;
+        std::string alias;
+    };
+
 class TableRefChecker {
 public:
     class DbInfo;
@@ -52,8 +63,11 @@ public:
     
     bool getHasChunks() const;
     bool getHasSubChunks() const;
-    
+    RefPairDeque getSpatialTableRefs() const;
 
+    bool isChunked(std::string const& db, std::string const& table) const;
+    bool isSubChunked(std::string const& db, std::string const& table) const;
+    
 private:
     void _setDefaultInfo();
     void _computeChunking() const;

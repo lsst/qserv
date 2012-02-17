@@ -66,6 +66,20 @@ void qMaster::TableRefChecker::markTableRef(std::string const& db,
     _refs.push_back(RefPair(db, table));
 }
 
+bool qMaster::TableRefChecker::isChunked(std::string const& db, 
+                                         std::string const& table) const {
+    bool isSc;
+    return infoHasEntry(*_info, RefPair(db, table), isSc);
+}
+
+bool qMaster::TableRefChecker::isSubChunked(std::string const& db, 
+                                            std::string const& table) const {
+    bool isSc;
+    if(infoHasEntry(*_info, RefPair(db, table), isSc)) {
+        return isSc;
+    } else return false;
+}
+
 void qMaster::TableRefChecker::resetTransient() {
     _computed = false;
     _refs.clear(); 
@@ -79,6 +93,20 @@ bool qMaster::TableRefChecker::getHasChunks() const {
 bool qMaster::TableRefChecker::getHasSubChunks() const {
     if(!_computed) _computeChunking();
     return _hasSubChunks;
+}
+
+qMaster::TableRefChecker::RefPairDeque 
+qMaster::TableRefChecker::getSpatialTableRefs() const {
+    RefPairDeque spatials;
+    for(RefPairDeque::const_iterator i=_refs.begin();
+        i != _refs.end();
+        ++i) {
+        bool isSc;
+        if(infoHasEntry(*_info, *i, isSc)) {
+            spatials.push_back(*i);
+        }
+    }
+    return spatials;
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -113,6 +141,10 @@ void qMaster::TableRefChecker::_computeChunking() const {
     // add subchunk qualifier?
     // FIXME: Better to return ref table list with annotations that
     // can be modified more intelligently based on the query type?
+    //
+    // Some efficiency can be gained by performing this computation in-place as
+    // db/table pairs are marked, but batching up the check allows for multiple
+    // passes in case they are necessary.
 
     // If any chunked/subchunked table is involved, 
     for(RefPairDeque::const_iterator i=_refs.begin();

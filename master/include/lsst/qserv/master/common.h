@@ -56,6 +56,7 @@ void forEachMapped(Map const& m, Func& f) {
     }
 }
 
+
 template <class Map, class Func>
 void forEachFirst(Map const& m, Func& f) {
     typename Map::const_iterator b = m.begin();
@@ -63,6 +64,18 @@ void forEachFirst(Map const& m, Func& f) {
     typename Map::const_iterator i;
     for(i = b; i != e; ++i) {
         f(i->first);
+    }
+}
+
+template <class Map, class Func, class Filter>
+void forEachFirst(Map const& m, Func& f, Filter& filter) {
+    typename Map::const_iterator b = m.begin();
+    typename Map::const_iterator e = m.end();
+    typename Map::const_iterator i;
+    for(i = b; i != e; ++i) {
+        if(filter(*i)) {
+            f(i->first);
+        }
     }
 }
 

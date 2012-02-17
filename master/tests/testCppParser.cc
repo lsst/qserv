@@ -291,7 +291,7 @@ BOOST_AUTO_TEST_CASE(BadDbAccess) {
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
-    std::string stmt = "select * from LSST.Object o, LSST.Source s WHERE "
+    std::string stmt = "select * from LSST.Object o, Source s WHERE "
         "qserv_areaspec_box(2,2,3,3) AND o.objectId = s.objectId;";
     std::string expected = "select * from LSST.%$#Object%$# o,LSST.%$#Source%$# s WHERE (qserv_ptInSphBox(o.ra_Test,o.decl_Test,2,2,3,3) = 1) AND (qserv_ptInSphBox(s.raObjectTest,s.declObjectTest,2,2,3,3) = 1) AND o.objectId=s.objectId;";
     SqlParseRunner::Ptr spr = getRunner(stmt);
@@ -300,7 +300,7 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(!spr->getHasAggregate());
-    BOOST_CHECK(spr->getParseResult() == expected);
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
-    BOOST_CHECK(spr->getParseResult() == expected);
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinOutBand) {
@@ -339,7 +339,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinOutBand) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
-    BOOST_CHECK(spr->getParseResult() == expected);
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
@@ -354,12 +354,12 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
-    BOOST_CHECK(spr->getParseResult() == expected);
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinCol) {
     std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, o2.ra_PS, o2.ra_PS_Sigma from Object o1, Object o2 where o1.ra_PS_Sigma < 4e-7 and o2.ra_PS_Sigma < 4e-7;";
-    std::string expected = "select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sc2%$# as o2 UNION select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sfo%$# as o2;";
+    std::string expected = "select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object%$# o1,LSST.%$#Object%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7;";
 
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
@@ -367,6 +367,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinCol) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(!spr->getHasAggregate());
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
 
