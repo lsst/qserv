@@ -37,6 +37,8 @@
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/stringUtil.h"
 #include "lsst/qserv/master/TableRefChecker.h"
+#include "lsst/qserv/master/TableNamer.h"
+#include "lsst/qserv/master/SpatialUdfHandler.h"
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
@@ -160,10 +162,17 @@ public:
         forEachFirst(_spr._aliasMgr.getTableAliasMap(), f, 
                      isNonTrivialMapping::getStatic());
         // Handle names, now that aliases are known.
+        // Instead of mungemap, use tablerefchecker.
+        _spr._tableNamer->acceptAliases(tableAliases);
+
         _spr._templater.processNames(); 
         _spr._tableListHandler->processJoin();
+        // tableAliases: from aliasmgr
+        // spatialTables: output of for_each
+        // mungeMap: from spatialtablenotifier
         for_each(tableAliases.begin(), tableAliases.end(), 
                  addToRewrite(_spr._spatialTables, _spr._mungeMap));
+
         _spr._templater.signalFromStmtEnd();
         // std::for_each(tableAliasMap.begin(), tableAliasMap.end(), 
         //               boost::bind(Templater::addAliasFunc(_spr._templater),
@@ -261,10 +270,15 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
     _delimiter(delimiter),
     _spatialTableNotifier(new SpatialTableNotifier(*this)),
     _templater(delimiter, _factory.get(), *_spatialTableNotifier),
-    _spatialUdfHandler(_factory.get(), _tableConfigMap, _spatialTables),
     _aliasMgr(),
-    _aggMgr(_aliasMgr)
+    _aggMgr(_aliasMgr),
+    _refChecker(new TableRefChecker()),
+    _tableNamer(new TableNamer(*_refChecker)),
+    _spatialUdfHandler(new SpatialUdfHandler(_factory.get(),
+                                             _tableConfigMap, 
+                                             *_tableNamer))
 { 
+
     _readConfig(config);
     //std::cout << "(int)PARSING:"<< statement << std::endl;
 }
@@ -286,10 +300,10 @@ void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
     _parser->_limitHandler.reset(new LimitHandler(*this));
     _parser->_orderByHandler.reset(new OrderByHandler(*this));
     _parser->_fromHandler.reset(new FromHandler(*this));
-    _parser->_fromWhereHandler = _spatialUdfHandler.getFromWhereHandler();
-    _parser->_whereCondHandler= _spatialUdfHandler.getWhereCondHandler();
-    _parser->_qservRestrictorHandler = _spatialUdfHandler.getRestrictorHandler();
-    _parser->_qservFctSpecHandler= _spatialUdfHandler.getFctSpecHandler();
+    _parser->_fromWhereHandler = _spatialUdfHandler->getFromWhereHandler();
+    _parser->_whereCondHandler= _spatialUdfHandler->getWhereCondHandler();
+    _parser->_qservRestrictorHandler = _spatialUdfHandler->getRestrictorHandler();
+    _parser->_qservFctSpecHandler= _spatialUdfHandler->getFctSpecHandler();
 
     // Listen for select* or select <col_list> parse
     SelectCallback::Ptr sCallback(new SelectCallback(_templater));
@@ -311,13 +325,11 @@ std::string qMaster::SqlParseRunner::getAggParseResult() {
 }
 
 bool qMaster::SqlParseRunner::getHasChunks() const { 
-    return _templater.getTableRefChecker().getHasChunks();
-    return _tableListHandler->getHasChunks();
+    return _tableNamer->getHasChunks();
 }
 
 bool qMaster::SqlParseRunner::getHasSubChunks() const { 
-    return _templater.getTableRefChecker().getHasSubChunks();
-    return _tableListHandler->getHasSubChunks();
+    return _tableNamer->getHasSubChunks();
 }
 
 void qMaster::SqlParseRunner::_computeParseResult() {
@@ -430,7 +442,7 @@ void qMaster::SqlParseRunner::updateTableConfig(std::string const& tName,
 }
 
 void qMaster::SqlParseRunner::addHintExpr(std::vector<std::string> const& vec) {
-    _spatialUdfHandler.addExpression(vec);
+    _spatialUdfHandler->addExpression(vec);
 }
 
 
@@ -456,7 +468,8 @@ void qMaster::SqlParseRunner::_readConfig(qMaster::StringMap const& m) {
         std::cout << "WARNING!  No dbs in whitelist. Using LSST." << std::endl;
         whiteList["LSST"] = 1;
     }    
-    _templater.setup(whiteList, defaultDb);
+    _templater.setup(whiteList, _refChecker, defaultDb);
+    _tableNamer->setDefaultDb(defaultDb);
     tokens.clear();
     tokenizeInto(getFromMap(m,"table.partitioncols", blank), ";", tokens,
                  passFunc<std::string>());

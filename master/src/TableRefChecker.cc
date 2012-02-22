@@ -22,6 +22,7 @@
  */
 #include "lsst/qserv/master/TableRefChecker.h"
 #include <string>
+#include <iostream> // debugging
 namespace qMaster =  lsst::qserv::master;
 
 
@@ -56,14 +57,9 @@ namespace {
 ////////////////////////////////////////////////////////////////////////
 qMaster::TableRefChecker::TableRefChecker(InfoConstPtr info) 
     : _info(info) {
-    resetTransient();
     if(!_info.get()) {
         _setDefaultInfo();
     }
-}
-void qMaster::TableRefChecker::markTableRef(std::string const& db, 
-                                            std::string const& table) {
-    _refs.push_back(RefPair(db, table));
 }
 
 bool qMaster::TableRefChecker::isChunked(std::string const& db, 
@@ -80,35 +76,6 @@ bool qMaster::TableRefChecker::isSubChunked(std::string const& db,
     } else return false;
 }
 
-void qMaster::TableRefChecker::resetTransient() {
-    _computed = false;
-    _refs.clear(); 
-}
-    
-bool qMaster::TableRefChecker::getHasChunks() const {
-    if(!_computed) _computeChunking();
-    return _hasChunks;
-}
-
-bool qMaster::TableRefChecker::getHasSubChunks() const {
-    if(!_computed) _computeChunking();
-    return _hasSubChunks;
-}
-
-qMaster::TableRefChecker::RefPairDeque 
-qMaster::TableRefChecker::getSpatialTableRefs() const {
-    RefPairDeque spatials;
-    for(RefPairDeque::const_iterator i=_refs.begin();
-        i != _refs.end();
-        ++i) {
-        bool isSc;
-        if(infoHasEntry(*_info, *i, isSc)) {
-            spatials.push_back(*i);
-        }
-    }
-    return spatials;
-}
-
 /////////////////////////////////////////////////////////////////////////
 // class TableRefChecker (private)
 ////////////////////////////////////////////////////////////////////////
@@ -123,6 +90,7 @@ void qMaster::TableRefChecker::_setDefaultInfo() {
     _info = info;
 }
 
+#if 0
 void qMaster::TableRefChecker::_computeChunking() const {
     _hasChunks = false;
     _hasSubChunks = false;
@@ -159,3 +127,18 @@ void qMaster::TableRefChecker::_computeChunking() const {
     _computed = true;
 }
 
+
+qMaster::TableRefChecker::RefPairDeque 
+qMaster::TableRefChecker::getSpatialTableRefs() const {
+    RefPairDeque spatials;
+    for(RefPairDeque::const_iterator i=_refs.begin();
+        i != _refs.end();
+        ++i) {
+        bool isSc;
+        if(infoHasEntry(*_info, *i, isSc)) {
+            spatials.push_back(*i);
+        }
+    }
+    return spatials;
+}
+#endif

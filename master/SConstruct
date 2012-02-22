@@ -153,6 +153,7 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "SpatialUdfHandler.cc",
                   "SqlSQL2Lexer.cpp", 
                   "SqlSQL2Parser.cpp",
+                  "TableNamer.cc",
                   "TableRefChecker.cc"])
              
 

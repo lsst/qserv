@@ -35,7 +35,7 @@ class ASTFactory;
 namespace lsst {
 namespace qserv {
 namespace master {
-// Forward
+class TableNamer; // Forward
 
 class SpatialUdfHandler {
 public:
@@ -47,7 +47,7 @@ public:
     /// (and probably change) over the life of this instance.
     SpatialUdfHandler(antlr::ASTFactory* factory, 
                       StringMapMap const& tableConfigMap,
-                      StringPairList const& spatialTables);
+                      TableNamer const& tableNamer);
     boost::shared_ptr<VoidOneRefFunc> getFromWhereHandler() { 
         return _fromWhere; 
     }
@@ -89,7 +89,7 @@ public:
     void _setHasRestriction() { _hasRestriction = true; }
     bool _getHasRestriction() const { return _hasRestriction; } 
     StringMap const& getTableConfig(std::string const& tName) const;
-    StringPairList const& getSpatialTables() const { return _spatialTables; }
+    //StringPairList const& getSpatialTables() const { return _spatialTables; }
     
     void _finalizeOutBand();
     std::ostream& _expandRestriction(Restriction const& r, std::ostream& o);
@@ -110,7 +110,7 @@ public:
     bool _hasRestriction;
     bool _hasProcessedOutBand;
     StringMapMap const& _tableConfigMap;
-    StringPairList const& _spatialTables;
+    TableNamer const& _tableNamer;
     antlr::RefAST _recentWhere;
 };
 

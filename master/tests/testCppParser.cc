@@ -370,6 +370,19 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinCol) {
     BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
+BOOST_AUTO_TEST_CASE(AliasHandling) {
+    std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, s.dummy, Exposure.exposureTime from LSST.Object o1,  Source s, Exposure WHERE o1.id = s.objectId AND Exposure.id = o1.exposureId;";
+    //std::string expected = "select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object%$# o1,LSST.%$#Object%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7;";
+
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+    //BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
+}
+
 
 BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
     std::string stmt = " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;";

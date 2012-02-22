@@ -25,59 +25,35 @@
 #include <set>
 #include <map>
 #include <deque>
+#include <string>
 #include <boost/shared_ptr.hpp>
 
 namespace lsst {
 namespace qserv {
 namespace master {
 
-    class TableRef {
-    public:
-        TableRef(std::string const& db_, 
-                 std::string const& table_, 
-                 std::string const& alias_);
-        
-        std::string db;
-        std::string table;
-        std::string alias;
-    };
-
 class TableRefChecker {
 public:
+    typedef boost::shared_ptr<TableRefChecker> Ptr;
+    typedef boost::shared_ptr<TableRefChecker const> ConstPtr;
+
     class DbInfo;
     typedef boost::shared_ptr<DbInfo> DbInfoPtr;
 
+    typedef std::pair<std::string, std::string> RefPair;
     typedef std::map<std::string, boost::shared_ptr<DbInfo const> > Info;
     typedef boost::shared_ptr<Info> InfoPtr;
     typedef boost::shared_ptr<Info const> InfoConstPtr;
 
-    typedef std::pair<std::string, std::string> RefPair;
-    typedef std::deque<RefPair> RefPairDeque;
-
     // Should be able to construct info from qserv metadata
     explicit TableRefChecker(InfoConstPtr info=InfoPtr());
-    
-    void markTableRef(std::string const& db, std::string const& table);
-
-    void resetTransient();
-    
-    bool getHasChunks() const;
-    bool getHasSubChunks() const;
-    RefPairDeque getSpatialTableRefs() const;
-
     bool isChunked(std::string const& db, std::string const& table) const;
     bool isSubChunked(std::string const& db, std::string const& table) const;
-    
+
 private:
     void _setDefaultInfo();
-    void _computeChunking() const;
 
     boost::shared_ptr<Info const> _info;
-
-    RefPairDeque _refs;
-    mutable bool _computed;
-    mutable bool _hasChunks;
-    mutable bool _hasSubChunks;        
 };
 
 

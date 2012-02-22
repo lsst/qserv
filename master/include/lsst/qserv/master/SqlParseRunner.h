@@ -32,7 +32,6 @@
 #include "lsst/qserv/master/AggregateMgr.h"
 #include "lsst/qserv/master/ChunkMapping.h"
 #include "lsst/qserv/master/Templater.h"
-#include "lsst/qserv/master/SpatialUdfHandler.h"
 #include "lsst/qserv/master/parseHandlers.h"
 
 // Forward
@@ -47,6 +46,9 @@ namespace master {
 // Forward
 class LimitHandler; // Parse handler
 class OrderByHandler; // Parse handler
+class SpatialUdfHandler; // 
+class TableRefChecker; // alias/ref checker.
+class TableNamer; // alias/ref namespace mgr
 
 /// class SqlParseRunner - drives the ANTLR-generated SQL parser.
 /// Attaches a set of handlers to the grammar and triggers the parsing
@@ -134,10 +136,12 @@ private:
     StringPairList _spatialTables; // reference(name/alias) -> referent spatial table
     StringMap _mungeMap;
     Templater _templater;
-    SpatialUdfHandler _spatialUdfHandler;
     AliasMgr _aliasMgr;
     AggregateMgr _aggMgr;
     boost::shared_ptr<Templater::TableListHandler>  _tableListHandler;
+    boost::shared_ptr<TableRefChecker> _refChecker;
+    boost::shared_ptr<TableNamer> _tableNamer;
+    boost::shared_ptr<SpatialUdfHandler> _spatialUdfHandler;
     
     std::string _parseResult;
     std::string _aggParseResult;

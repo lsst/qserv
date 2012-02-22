@@ -41,6 +41,7 @@ namespace lsst {
 namespace qserv {
 namespace master {
 class TableRefChecker; // Forward
+typedef boost::shared_ptr<TableRefChecker const> RefCheckerConstPtr;
 
 /// class Templater : A templating module that helps produce string
 /// templates for substitution for making SQL subqueries.  Manages db
@@ -185,6 +186,7 @@ public:
               Notifier& spatialTableNotifier=Notifier::nullInstance);
     ~Templater() { }
     void setup(IntMap const& dbWhiteList=IntMap(),
+               RefCheckerConstPtr refChecker=RefCheckerConstPtr(),
                std::string const& defaultDb=std::string());
 
 
@@ -220,7 +222,7 @@ public:
     std::string const& getDelimiter() const { return _delimiter; 
     }
 
-    TableRefChecker const& getTableRefChecker() const;
+//    TableRefChecker const& getTableRefChecker() const;
 
     StringList const& getBadDbs() const { return _badDbs; }
     void addGoodDb(std::string const& db) { _dbWhiteList[db] = 1; }
@@ -252,7 +254,8 @@ private:
     std::string _defaultDb;
     StringList _badDbs;
     Notifier& _spatialTableNameNotifier;
-    boost::shared_ptr<TableRefChecker> _refChecker;
+    boost::shared_ptr<TableRefChecker const> _refChecker;
+//    boost::shared_ptr<TableRefChecker> _refChecker;
     bool _fromStmtActive;
     bool _shouldDefer;
     

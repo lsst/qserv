@@ -189,13 +189,16 @@ Templater::Templater(std::string const& delimiter,
     :  _delimiter(delimiter),
        _factory(factory),
        _spatialTableNameNotifier(spatialTableNameNotifier_),
-       _refChecker(new TableRefChecker()),
+       //_refChecker(new TableRefChecker()),
        _fromStmtActive(false), _shouldDefer(true) {
 }
 void Templater::setup(Templater::IntMap const& dbWhiteList,
+                      boost::shared_ptr<TableRefChecker const> refChecker,
                       std::string const& defaultDb) {
     _dbWhiteList = dbWhiteList;
-    _defaultDb = defaultDb;
+    _refChecker = refChecker;
+    _defaultDb = defaultDb;    
+    //_refChecker->setDefaultDb(defaultDb);
 }
 
 void Templater::processNames() {
@@ -219,10 +222,11 @@ void Templater::processNames() {
     _usageCount = j.getUsageCount();
 #endif
 }
+#if 0
 TableRefChecker const& Templater::getTableRefChecker() const {
     return *_refChecker;
 }
-
+#endif
 
 bool Templater::_isAlias(std::string const& alias) {
     return 1 == getFromMap(_tableAliases, alias, 0);
@@ -251,7 +255,7 @@ void Templater::_processName(Templater::RefAstPair& dbn) {
     if(!db.get()) {
         // Check if alias.  If so, do not touch.
         std::cout << "PROCESS: " << tableName << std::endl;
-        if(_isAlias(tableName)) return; // Do not process.
+        if(_isAlias(tableName)) return; // Don't process aliases.
         else std::cout << "non-alias: " << tableName << std::endl;
         if(!_defaultDb.empty() && _isDbOk(_defaultDb)) {
             // no explicit Db?  Create one, and link it in.
@@ -267,7 +271,7 @@ void Templater::_processName(Templater::RefAstPair& dbn) {
             _markBadDb(dbName);
         }
     }
-    _refChecker->markTableRef(dbName, tableName);
+    //_refChecker->markTableRef(dbName, tableName);
     if(_refChecker->isChunked(dbName, tableName)) {
         std::string mungedName = mungeName(tableName);        
         _spatialTableNameNotifier(tableName, dbName + "." + mungedName);
