@@ -129,11 +129,9 @@ private:
     boost::shared_ptr<SqlSQL2Lexer> _lexer;
     boost::shared_ptr<SqlSQL2Parser> _parser;
     std::string _delimiter;
-    boost::shared_ptr<SpatialTableNotifier> _spatialTableNotifier;
 
     std::map<std::string, StringMap> _tableConfigMap;
 
-    StringPairList _spatialTables; // reference(name/alias) -> referent spatial table
     StringMap _mungeMap;
     Templater _templater;
     AliasMgr _aliasMgr;

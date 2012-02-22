@@ -152,31 +152,19 @@ public:
     FromHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
     virtual ~FromHandler() {}
     virtual void operator()() {
-        // For each table alias, rewrite the spatial name mapping,
-        _spr._spatialTables.clear();
         StringPairList const& tableAliases = _spr._aliasMgr.getTableAliases();
-        // for_each(tableAliases.begin(), tableAliases.end(), 
-        //          addToRewrite(_spr._spatialTables, _spr._mungeMap));
         Templater::addAliasFunc f(_spr._templater);
 
         forEachFirst(_spr._aliasMgr.getTableAliasMap(), f, 
                      isNonTrivialMapping::getStatic());
         // Handle names, now that aliases are known.
-        // Instead of mungemap, use tablerefchecker.
+        // Instead of mungemap, use tablenamer.
         _spr._tableNamer->acceptAliases(tableAliases);
+        // SpatialUdfHandler reads from tableNamer
 
         _spr._templater.processNames(); 
         _spr._tableListHandler->processJoin();
-        // tableAliases: from aliasmgr
-        // spatialTables: output of for_each
-        // mungeMap: from spatialtablenotifier
-        for_each(tableAliases.begin(), tableAliases.end(), 
-                 addToRewrite(_spr._spatialTables, _spr._mungeMap));
-
         _spr._templater.signalFromStmtEnd();
-        // std::for_each(tableAliasMap.begin(), tableAliasMap.end(), 
-        //               boost::bind(Templater::addAliasFunc(_spr._templater),
-        //                           boost::bind(&StringMap::value_type::second,_1)
     }
 private:
     qMaster::SqlParseRunner& _spr;
@@ -268,8 +256,7 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
     _lexer(new SqlSQL2Lexer(_stream)),
     _parser(new SqlSQL2Parser(*_lexer)),
     _delimiter(delimiter),
-    _spatialTableNotifier(new SpatialTableNotifier(*this)),
-    _templater(delimiter, _factory.get(), *_spatialTableNotifier),
+    _templater(delimiter, _factory.get()),
     _aliasMgr(),
     _aggMgr(_aliasMgr),
     _refChecker(new TableRefChecker()),

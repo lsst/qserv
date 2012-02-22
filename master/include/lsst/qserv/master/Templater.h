@@ -182,8 +182,7 @@ public:
     typedef std::deque<std::string> StringList;
     
     Templater(std::string const& delimiter="*?*", 
-              antlr::ASTFactory* factory=0, 
-              Notifier& spatialTableNotifier=Notifier::nullInstance);
+              antlr::ASTFactory* factory=0);
     ~Templater() { }
     void setup(IntMap const& dbWhiteList=IntMap(),
                RefCheckerConstPtr refChecker=RefCheckerConstPtr(),
@@ -253,9 +252,7 @@ private:
     antlr::ASTFactory* _factory;
     std::string _defaultDb;
     StringList _badDbs;
-    Notifier& _spatialTableNameNotifier;
     boost::shared_ptr<TableRefChecker const> _refChecker;
-//    boost::shared_ptr<TableRefChecker> _refChecker;
     bool _fromStmtActive;
     bool _shouldDefer;
     
