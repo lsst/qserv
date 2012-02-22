@@ -53,7 +53,7 @@ void qMaster::TableNamer::_acceptAlias(std::string const& logical,
         _refs.push_back(AliasedRef(logical, physical.substr(0,split),
                                    physical.substr(split + 1)));
     }
-    std::cout << "Marking alias: " << logical << std::endl;
+    //std::cout << "Marking alias: " << logical << std::endl;
 }
 
 
@@ -72,21 +72,6 @@ bool qMaster::TableNamer::getHasSubChunks() const {
     if(!_computed) _computeChunking();
     return _hasSubChunks;
 }
-#if 0
-qMaster::TableNamer::RefPairDeque 
-qMaster::TableNamer::getSpatialTableRefs() const {
-    RefPairDeque spatials;
-    for(RefPairDeque::const_iterator i=_refs.begin();
-        i != _refs.end();
-        ++i) {
-        bool isSc;
-        if(infoHasEntry(*_info, *i, isSc)) {
-            spatials.push_back(*i);
-        }
-    }
-    return spatials;
-}
-#endif
 /////////////////////////////////////////////////////////////////////////
 // class TableNamer (private)
 ////////////////////////////////////////////////////////////////////////
@@ -101,7 +86,7 @@ void qMaster::TableNamer::_computeChunking() const {
     // C               | yes  | no
     // SC              | yes  | no
     // C1 C2           | yes  | no
-    // C SC            | yes  | yes
+    // C SC            | yes  | no*
     // SC SC           | yes  | yes
     // SC T            | yes  | no*
     //
@@ -120,11 +105,11 @@ void qMaster::TableNamer::_computeChunking() const {
         i != _refs.end();
         ++i) {
         if(_checker.isChunked(i->db, i->table)) {
-            if(canSubChunk) {
-                _hasSubChunks = true;
-            }
+            // if(canSubChunk) {
+            //     _hasSubChunks = true;
+            // }
             bool subC = _checker.isSubChunked(i->db, i->table);
-            if(_hasChunks && subC) {
+            if(canSubChunk && subC) {
                 _hasSubChunks = true;
             }
             _hasChunks = true;
