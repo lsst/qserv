@@ -112,11 +112,20 @@ public:
     /// other conditions are satisfied.
     class DeferredVisitor {
     public:
+        // Wrap up an action so its state can be maintained.
+        template <class A>
+        class Wrapper { 
+        public:
+            Wrapper(A& a_) : a(a_) {}
+            template <typename T>
+            void operator()(T& t) { a(t); }
+            A& a;
+        };
 	DeferredVisitor() {}
 	void operator()(antlr::RefAST& a) { _q.push_back(a); }
         template <class Action>
         void visit(Action& a) {
-            std::for_each(_q.begin(), _q.end(), a);
+            std::for_each(_q.begin(), _q.end(), Wrapper<Action>(a));
             _q.clear();
         }
     private:
