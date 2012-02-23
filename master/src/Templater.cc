@@ -28,16 +28,90 @@
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/Templater.h"
 #include "lsst/qserv/master/TableRefChecker.h"
+#include "lsst/qserv/master/parseHandlers.h"
 #include "lsst/qserv/master/common.h"
 
 using lsst::qserv::master::Templater;
 using lsst::qserv::master::TableRefChecker;
 
+// anonymous
+namespace {
+class ImplicitDbVisitor {
+    public:
+    ImplicitDbVisitor() {
+        std::cout << "newVisit" << std::endl;
+    }
+    void operator()(antlr::RefAST& a) {
+        std::cout << "dbVisit: " << a->getText() << std::endl;
+        lastRefs.push_back(a);
+        if(!isName(a)) {
+            return;
+        }
+        std::cout << "table name!" << std::endl;
+        // check for db . table
+        RefList::reverse_iterator i = lastRefs.rbegin();   
+    }
+
+    inline bool isAlpha(char c) {
+        return (('a' <= c) && (c <= 'z')) // lower case
+            || (('A' <= c) && (c <= 'Z')); // upper case
+    }
+
+    inline bool isValidChar(char c) {
+        return ((('a' <= c) && (c <= 'z')) // lower case
+                || (('A' <= c) && (c <= 'Z')) // upper case
+                || (('0' <= c) && (c <= '9')) // digit
+                || (c == '_') // underscore
+                || (c == '$')); // dollar sign
+    }
+
+    bool isName(antlr::RefAST const& a) {
+        std::string t = a->getText();
+        char const* p;
+        bool charsOk = true;
+        bool hasAlpha = false;
+        for(p = t.c_str(); charsOk && *p; ++p) {
+            //std::cout << "->" << *p << std::endl;
+            charsOk &= isValidChar(*p);
+        } 
+        if(!charsOk) return false;
+        for(p = t.c_str(); *p && !hasAlpha; ++p) {
+            hasAlpha |= isAlpha(*p);
+        }
+        return hasAlpha;
+        // 
+    }
+
+    typedef std::list<antlr::RefAST> RefList;
+    RefList lastRefs;
+};
+}
+
 ////////////////////////////////////////////////////////////////////////
 // Templater::JoinVisitor
 ////////////////////////////////////////////////////////////////////////
+// The Join Visitor wants to get fed a sequence of table
+// references. From this sequence, if it notices that a subchunked
+// table is referenced more than once, it assumes that a subchunks
+// can/should be built, and marks them so that their names will be
+// replaced by ones that call for subchunking.
+// The first implementation relied on textual tagging of the table
+// names that indicated they were chunked--they were assumed to be
+// subchunkable, since no test involved self-joining non-subchunked
+// tables. Unfortinately, this fails when the database context is
+// added after the deferred visit but before the deferred
+// computation. 
+//
+// A better way is to tag each table reference with a unique string,
+// perform computations and modifications in an outside data
+// structure, and then re-substitute away the unique strings with the
+// final substitutions.  That way, most of the code can work with the
+// names in a more meaningful data structure with less reliance on
+// query string manipulation. 
 void Templater::JoinVisitor::operator()(antlr::RefAST& a) {
+    std::cout << "JoinCheck: " << a->getText() << std::endl;
     if(_isDelimited(a->getText())) {
+    std::cout << "JoinCheck: [OK!] " << a->getText() << std::endl;
         _addRef(a);
         _hasChunks = true;
     }
@@ -95,58 +169,20 @@ void Templater::JoinVisitor::_reassignRefs(RefList& l) {
         r->setText(orig);
     }
 }
-
-//
-class ImplicitDbVisitor {
-    public:
-    ImplicitDbVisitor() {
-        std::cout << "newVisit" << std::endl;
-    }
-    void operator()(antlr::RefAST& a) {
-        std::cout << "dbVisit: " << a->getText() << std::endl;
-        lastRefs.push_back(a);
-        if(!isName(a)) {
-            return;
-        }
-        std::cout << "table name!" << std::endl;
-        // check for db . table
-        RefList::reverse_iterator i = lastRefs.rbegin();   
+#if 0 // Better placed in tablenamer
+////////////////////////////////////////////////////////////////////////
+// Templater::AliasTemplater
+////////////////////////////////////////////////////////////////////////
+class Templater::AliasTemplater : public qMaster::TableAliasFunc {
+    typedef boost::shared_ptr<AliasTemplater> Ptr;
+    AliasTemplater() {}
+    virtual void operator()(TableAliasInfo& i) {
+        // Replace physical table with munged name
+        // Alias
     }
 
-    inline bool isAlpha(char c) {
-        return (('a' <= c) && (c <= 'z')) // lower case
-            || (('A' <= c) && (c <= 'Z')); // upper case
-    }
-
-    inline bool isValidChar(char c) {
-        return ((('a' <= c) && (c <= 'z')) // lower case
-                || (('A' <= c) && (c <= 'Z')) // upper case
-                || (('0' <= c) && (c <= '9')) // digit
-                || (c == '_') // underscore
-                || (c == '$')); // dollar sign
-    }
-
-    bool isName(antlr::RefAST const& a) {
-        std::string t = a->getText();
-        char const* p;
-        bool charsOk = true;
-        bool hasAlpha = false;
-        for(p = t.c_str(); charsOk && *p; ++p) {
-            //std::cout << "->" << *p << std::endl;
-            charsOk &= isValidChar(*p);
-        } 
-        if(!charsOk) return false;
-        for(p = t.c_str(); *p && !hasAlpha; ++p) {
-            hasAlpha |= isAlpha(*p);
-        }
-        return hasAlpha;
-        // 
-    }
-
-    typedef std::list<antlr::RefAST> RefList;
-    RefList lastRefs;
 };
-
+#endif
 ////////////////////////////////////////////////////////////////////////
 // Templater::TableListHandler
 ////////////////////////////////////////////////////////////////////////
@@ -238,6 +274,7 @@ void Templater::_processName(Templater::RefAstPair& dbn) {
     antlr::RefAST n = dbn.second;
     std::string dbName;
     std::string tableName = n->getText();
+#if 0 // For now. Not needed when TableNamer::AliasFunc in operation
     if(!db.get()) {
         // Check if alias.  If so, do not touch.
         //std::cout << "PROCESS: " << tableName << std::endl;
@@ -261,6 +298,7 @@ void Templater::_processName(Templater::RefAstPair& dbn) {
         std::string mungedName = mungeName(tableName);        
         n->setText(mungedName);
     }
+#endif
 }
 
 void Templater::signalFromStmtBegin() {

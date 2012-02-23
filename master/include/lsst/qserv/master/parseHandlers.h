@@ -50,6 +50,29 @@
 namespace lsst {
 namespace qserv {
 namespace master {
+class TableAliasInfo {
+public:
+    TableAliasInfo(std::string const& alias_, std::string const& table_, 
+                   antlr::RefAST tableN_, 
+                   antlr::RefAST subQueryN_,
+                   antlr::RefAST asN_,
+                   antlr::RefAST aliasN_) 
+        : alias(alias_), table(table_),
+          tableN(tableN_), subQueryN(subQueryN_), 
+          asN(asN_), aliasN(aliasN_)  {}
+    std::string const alias;
+    std::string const table;
+    antlr::RefAST tableN;
+    antlr::RefAST subQueryN;
+    antlr::RefAST asN;
+    antlr::RefAST aliasN;
+};
+    
+class TableAliasFunc {
+public:
+    typedef boost::shared_ptr<TableAliasFunc> Ptr;
+    virtual void operator()(TableAliasInfo& i) = 0;
+};
 
 typedef std::pair<antlr::RefAST, antlr::RefAST> NodeBound;
 typedef std::deque<NodeBound> NodeList;
@@ -60,6 +83,7 @@ public:
     typedef std::map<antlr::RefAST, NodeBound> NodeMap;
     typedef NodeMap::const_iterator MapConstIter;
     typedef NodeMap::iterator MapIter;
+    typedef std::deque<boost::shared_ptr<TableAliasFunc> > TableAliasFuncDeque;
 
     class ColumnAliasHandler;
     friend class ColumnAliasHandler;
@@ -79,15 +103,20 @@ public:
     StringMap const& getTableAliasMap() const { return _tableMap; }
     StringPairList const& getTableAliases() const { return _tableAliases; }
 
+    void addTableAliasFunction(TableAliasFunc::Ptr f);
 
 private:
     // Invoked by child handlers.
-    void addTableAlias(std::string const& alias, std::string const& tName);
+    // aNodes allows the TableAliasHandler to pass on the AST nodes so
+    // that they may be manipulated and modified. 
+    void addTableAlias(TableAliasInfo& i);
 
     NodeMap _columnAliasNodeMap;
     NodeList _columnAliasNodes;
     StringMap _tableMap; // Map aliases to their targets.
-    StringPairList _tableAliases; // List of (aliased) tables in order of appearance.
+    StringPairList _tableAliases; // List of (aliased) tables in order
+                                  // of appearance.
+    TableAliasFuncDeque _tableAliasFuncs;
 };
 
 }}} // lsst::qserv::master

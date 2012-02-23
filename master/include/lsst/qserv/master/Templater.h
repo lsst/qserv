@@ -41,6 +41,8 @@ namespace lsst {
 namespace qserv {
 namespace master {
 class TableRefChecker; // Forward
+class TableAliasFunc; // Forward
+
 typedef boost::shared_ptr<TableRefChecker const> RefCheckerConstPtr;
 
 /// class Templater : A templating module that helps produce string
@@ -244,6 +246,8 @@ public:
 private:
     typedef std::pair<antlr::RefAST, antlr::RefAST> RefAstPair ; 
     typedef std::deque<RefAstPair> RefPairQueue;
+    class AliasTemplater; // A TableAliasFunc
+    friend class AliasTemplater;
 
     bool _isAlias(std::string const& alias);
     bool _isDbOk(std::string const& db);

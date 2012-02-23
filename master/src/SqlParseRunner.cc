@@ -154,9 +154,11 @@ public:
     virtual void operator()() {
         StringPairList const& tableAliases = _spr._aliasMgr.getTableAliases();
         Templater::addAliasFunc f(_spr._templater);
-
+        // Pass aliases over to templater.
         forEachFirst(_spr._aliasMgr.getTableAliasMap(), f, 
                      isNonTrivialMapping::getStatic());
+
+
         // Handle names, now that aliases are known.
         // Instead of mungemap, use tablenamer.
         _spr._tableNamer->acceptAliases(tableAliases);
@@ -295,7 +297,7 @@ void qMaster::SqlParseRunner::setup(std::list<std::string> const& names) {
     // Listen for select* or select <col_list> parse
     SelectCallback::Ptr sCallback(new SelectCallback(_templater));
     _aggMgr.listenSelectReceived(sCallback);
-
+    _aliasMgr.addTableAliasFunction(_tableNamer->getTableAliasFunc());
 }
 
 std::string qMaster::SqlParseRunner::getParseResult() {

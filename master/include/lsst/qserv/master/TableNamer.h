@@ -32,6 +32,7 @@ namespace lsst {
 namespace qserv {
 namespace master {
 class TableRefChecker; // Forward
+class TableAliasFunc;
 
 class TableNamer {
 public:
@@ -44,7 +45,9 @@ public:
         std::string alias;
         std::string db;
         std::string table;
+        std::string magic;
     };
+    friend std::ostream& operator<<(std::ostream& os, AliasedRef const& ar);
     typedef std::deque<AliasedRef> RefDeque;
 
     explicit TableNamer(TableRefChecker const& checker);
@@ -59,15 +62,21 @@ public:
         }
     }
     void resetTransient();
-    
+
+    boost::shared_ptr<TableAliasFunc> getTableAliasFunc();
     bool getHasChunks() const;
     bool getHasSubChunks() const;
     RefDeque const& getRefs() const { return _refs; }
     
 private:
+    class AliasFunc;
+    friend class AliasFunc;
+
     void _acceptAlias(std::string const& logical, 
                       std::string const& physical);
-    void _computeChunking() const;
+    AliasedRef _computeAliasedRef(std::string const& logical,
+                                  std::string const& physical); 
+   void _computeChunking() const;
 
     TableRefChecker const& _checker;
     RefDeque _refs;
