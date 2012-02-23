@@ -25,6 +25,7 @@
 
 #include <list>
 #include <map>
+#include <string>
 
 namespace lsst {
 namespace qserv {

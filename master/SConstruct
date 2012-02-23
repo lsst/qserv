@@ -154,7 +154,8 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "SqlSQL2Lexer.cpp", 
                   "SqlSQL2Parser.cpp",
                   "TableNamer.cc",
-                  "TableRefChecker.cc"])
+                  "TableRefChecker.cc",
+                  "TableRemapper.cc"])
              
 
 pyPath = 'python/lsst/qserv/master'
