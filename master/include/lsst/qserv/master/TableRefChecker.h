@@ -49,7 +49,7 @@ public:
     explicit TableRefChecker(InfoConstPtr info=InfoPtr());
     bool isChunked(std::string const& db, std::string const& table) const;
     bool isSubChunked(std::string const& db, std::string const& table) const;
-
+    bool isDbAllowed(std::string const& db) const;
 private:
     void _setDefaultInfo();
 

@@ -76,6 +76,10 @@ bool qMaster::TableRefChecker::isSubChunked(std::string const& db,
     } else return false;
 }
 
+bool qMaster::TableRefChecker::isDbAllowed(std::string const& db) const {
+    return _info->find(db) != _info->end();
+}
+
 /////////////////////////////////////////////////////////////////////////
 // class TableRefChecker (private)
 ////////////////////////////////////////////////////////////////////////

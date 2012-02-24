@@ -140,6 +140,20 @@ bool qMaster::TableNamer::getHasSubChunks() const {
     if(!_computed) _computeChunking();
     return _hasSubChunks;
 }
+
+qMaster::StringList qMaster::TableNamer::getBadDbs() const {
+    StringList result;
+    // Filter my dbs from table refs through refchecker.
+    for(RefDeque::const_iterator i=_refs.begin();
+        i != _refs.end();
+        ++i) {
+        if(!_checker.isDbAllowed(i->db)) {
+            result.push_back(i->db);
+        }
+    }
+    return result;
+}
+
 /////////////////////////////////////////////////////////////////////////
 // class TableNamer (private)
 ////////////////////////////////////////////////////////////////////////

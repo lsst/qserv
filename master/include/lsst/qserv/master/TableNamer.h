@@ -27,6 +27,7 @@
 #include <deque>
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include "lsst/qserv/master/common.h"
 
 namespace lsst {
 namespace qserv {
@@ -68,6 +69,8 @@ public:
     bool getHasSubChunks() const;
     RefDeque const& getRefs() const { return _refs; }
     
+    StringList getBadDbs() const;
+
 private:
     class AliasFunc;
     friend class AliasFunc;

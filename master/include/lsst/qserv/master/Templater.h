@@ -31,6 +31,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "lsst/qserv/master/parserBase.h"
+#include "lsst/qserv/master/common.h"
 
 // Forward
 namespace antlr {
@@ -48,6 +49,10 @@ typedef boost::shared_ptr<TableRefChecker const> RefCheckerConstPtr;
 /// class Templater : A templating module that helps produce string
 /// templates for substitution for making SQL subqueries.  Manages db
 /// whitelist for access control.
+///
+/// However, a class called "Templater" shouldn't be thinking about db
+/// whitelisting or access control, so this functionality is
+/// deprecated. 
 class Templater {
 public:
     typedef std::map<std::string, int> IntMap;
@@ -190,7 +195,6 @@ public:
     };
     // Templater 
     typedef std::map<std::string, char> ReMap;
-    typedef std::deque<std::string> StringList;
     
     Templater(std::string const& delimiter="*?*", 
               antlr::ASTFactory* factory=0);

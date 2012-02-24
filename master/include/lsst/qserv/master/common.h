@@ -34,6 +34,8 @@ namespace master {
 typedef std::map<std::string, std::string> StringMap;
 typedef std::map<std::string, StringMap> StringMapMap;
 typedef std::list<std::pair<std::string, std::string> > StringPairList;
+typedef std::list<std::string> StringList;
+
 
 template <class Map>
 typename Map::mapped_type const& getFromMap(Map const& m, 

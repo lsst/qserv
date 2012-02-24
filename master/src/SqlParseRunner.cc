@@ -331,13 +331,13 @@ bool qMaster::SqlParseRunner::getHasSubChunks() const {
 }
 
 void qMaster::SqlParseRunner::_computeParseResult() {
-    bool hasBadDbs = false;
+    StringList badDbs;
     try {
         _parser->initializeASTFactory(*_factory);
         _parser->setASTFactory(_factory.get());
         _parser->sql_stmt();
         _aggMgr.postprocess(_aliasMgr.getInvAliases());
-        hasBadDbs = 0 < _templater.getBadDbs().size();
+        badDbs = _tableNamer->getBadDbs();
         RefAST ast = _parser->getAST();
         if (ast) {
             //std::cout << "fixupSelect " << getFixupSelect();
@@ -377,16 +377,16 @@ void qMaster::SqlParseRunner::_computeParseResult() {
     } catch( std::exception& e ) {
         _errorMsg = std::string("General exception: ") + e.what();
     }
-    if(hasBadDbs) {
-        _errorMsg += _interpretBadDbs(_templater.getBadDbs());
+    if(badDbs.size() > 0) {
+        _errorMsg += _interpretBadDbs(badDbs);
     }
     return; 
 }
 
 // Interprets a list of bad dbs and computes an appropriate error message.
-std::string qMaster::SqlParseRunner::_interpretBadDbs(qMaster::Templater::StringList const& bd) {
+std::string qMaster::SqlParseRunner::_interpretBadDbs(qMaster::StringList const& bd) {
     std::stringstream ss;
-    typedef qMaster::Templater::StringList::const_iterator ConstIter;
+    typedef qMaster::StringList::const_iterator ConstIter;
     ConstIter end = bd.end();
     bool hasDefBad = false;  // default db is bad.
     bool hasRealBad = false; // specified db is bad.
