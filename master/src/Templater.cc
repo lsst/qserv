@@ -109,9 +109,9 @@ class ImplicitDbVisitor {
 // names in a more meaningful data structure with less reliance on
 // query string manipulation. 
 void Templater::JoinVisitor::operator()(antlr::RefAST& a) {
-    std::cout << "JoinCheck: " << a->getText() << std::endl;
+    //std::cout << "JoinCheck: " << a->getText() << std::endl;
     if(_isDelimited(a->getText())) {
-    std::cout << "JoinCheck: [OK!] " << a->getText() << std::endl;
+        //std::cout << "JoinCheck: [OK!] " << a->getText() << std::endl;
         _addRef(a);
         _hasChunks = true;
     }

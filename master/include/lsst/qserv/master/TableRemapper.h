@@ -34,8 +34,9 @@ class TableRemapper {
 public:
     TableRemapper(TableNamer const& tn, TableRefChecker const& checker, 
                   std::string const& delim);
-    StringMap getOverlapMap();
-    StringMap getBaseMap();
+
+    StringMap getMap(bool overlap=false);
+    StringMap getPatchMap();
 private:
     TableNamer const& _tableNamer;
     TableRefChecker const& _checker;

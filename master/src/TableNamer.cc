@@ -63,6 +63,11 @@ public:
 #ifdef TRYFUNC
         _updateMagic(ar);
         // Replace physical table with munged name
+        // Set bounds to "AS" or <alias> if they exist.
+        if(i.asN.get()) i.tableN->setNextSibling(i.asN);
+        else if(i.aliasN.get()) i.tableN->setNextSibling(i.aliasN);
+        else collapseToSingle(i.tableN);
+
         i.tableN->setText(ar.magic);
         // Add ref.
         _tn._refs.push_back(ar);

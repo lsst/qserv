@@ -38,6 +38,7 @@
 #include "lsst/qserv/master/stringUtil.h"
 #include "lsst/qserv/master/TableRefChecker.h"
 #include "lsst/qserv/master/TableNamer.h"
+#include "lsst/qserv/master/TableRemapper.h"
 #include "lsst/qserv/master/SpatialUdfHandler.h"
 
 // namespace modifiers
@@ -56,6 +57,14 @@ namespace {
     private:
         qMaster::Templater& _t;
     };
+
+    std::string writeAsUnion(std::string const& query, 
+                             qMaster::StringMap const& xMap, 
+                             std::string const& delimiter) {
+        qMaster::Substitution s(query, delimiter, false);
+        return query + " UNION " + s.transform(xMap);
+    }
+
 } // anonymous namespace
 
 // Helpers
@@ -334,13 +343,24 @@ void qMaster::SqlParseRunner::_computeParseResult() {
             //std::cout << "fixupSelect " << getFixupSelect();
             //std::cout << "passSelect " << getPassSelect();
             // ";" is not in the AST, so add it back.
+            // Apply substitution.
+            TableRemapper tr(*_tableNamer, *_refChecker, _delimiter);
+            //std::cout << "PRE:: " << walkTreeString(ast) << std::endl;
+            walkTreeSubstitute(ast, tr.getMap());
+            //std::cout << "POST:: " << walkTreeString(ast) << std::endl;;
             _parseResult = walkTreeString(ast);
             _aggMgr.applyAggPass();
             _aggParseResult = walkTreeString(ast);
-            if(_tableListHandler->getHasSubChunks()) {
+            if(_tableNamer->getHasSubChunks()) {
+#if 0 // earlier
                 _makeOverlapMap();
-                _aggParseResult = _composeOverlap(_aggParseResult);
-                _parseResult = _composeOverlap(_parseResult);
+#else // remapper
+                _overlapMap = tr.getPatchMap();
+#endif
+                _aggParseResult = writeAsUnion(_aggParseResult, 
+                                               _overlapMap, _delimiter);
+                _parseResult = writeAsUnion(_parseResult,
+                                            _overlapMap, _delimiter);
             }
             _aggParseResult += ";";
             _parseResult += ";";

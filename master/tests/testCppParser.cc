@@ -360,8 +360,10 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
 BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
     // This is actually invalid for Qserv right now because it produces
     // a result that can't be stored in a table as-is.
+    // It's also a non-distance-bound spatially-unlimited query. Qserv should
+    // reject this. But the parser should still handle it. 
     std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, o2.ra_PS, o2.ra_PS_Sigma from Object o1, Object o2 where o1.ra_PS_Sigma < 4e-7 and o2.ra_PS_Sigma < 4e-7;";
-    std::string expected = "select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object%$# o1,LSST.%$#Object%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7;"; // FIXME: needs subchunking.
+    std::string expected = "select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object_sc1%$# o1,LSST.%$#Object_sc2%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7 UNION select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object_sc1%$# o1,LSST.%$#Object_sfo%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7;"; 
 
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
@@ -374,7 +376,7 @@ BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
 
 BOOST_AUTO_TEST_CASE(AliasHandling) {
     std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, s.dummy, Exposure.exposureTime from LSST.Object o1,  Source s, Exposure WHERE o1.id = s.objectId AND Exposure.id = o1.exposureId;";
-    std::string expected = "select o1.ra_PS,o1.ra_PS_Sigma,s.dummy,LSST.Exposure.exposureTime from LSST.%$#Object%$# o1,LSST.%$#Source%$# s,LSST.Exposure WHERE o1.id=s.objectId AND LSST.Exposure.id=o1.exposureId;";
+    std::string expected = "select o1.ra_PS,o1.ra_PS_Sigma,s.dummy,Exposure.exposureTime from LSST.%$#Object%$# o1,LSST.%$#Source%$# s,LSST.Exposure WHERE o1.id=s.objectId AND Exposure.id=o1.exposureId;";
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
     std::cout << "Parse result: " << spr->getParseResult() << std::endl;
