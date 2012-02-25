@@ -477,7 +477,9 @@ void qMaster::SqlParseRunner::_readConfig(qMaster::StringMap const& m) {
         std::cout << "WARNING!  No dbs in whitelist. Using LSST." << std::endl;
         whiteList["LSST"] = 1;
     }    
+
     _templater.setup(whiteList, _refChecker, defaultDb);
+    _refChecker->importDbWhitelist(tokens);
     _tableNamer->setDefaultDb(defaultDb);
     tokens.clear();
     tokenizeInto(getFromMap(m,"table.partitioncols", blank), ";", tokens,

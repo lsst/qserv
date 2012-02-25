@@ -49,16 +49,34 @@ namespace {
         }
         return false;
     }
+    inline void addDefaultTables(qMaster::TableRefChecker::DbInfo& dbinfo) {
+        dbinfo.chunked.insert("Source");
+        dbinfo.subchunked.insert("Object");
+    }
 
 } // anonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
 // class TableRefChecker (public)
 ////////////////////////////////////////////////////////////////////////
-qMaster::TableRefChecker::TableRefChecker(InfoConstPtr info) 
+qMaster::TableRefChecker::TableRefChecker(InfoPtr info) 
     : _info(info) {
     if(!_info.get()) {
         _setDefaultInfo();
+    }
+}
+
+void 
+qMaster::TableRefChecker::importDbWhitelist(qMaster::StringList const& wlist) {
+    // replace existing db list. 
+    StringList::const_iterator i;
+    for(i=wlist.begin(); i != wlist.end(); ++i) {
+        DbInfoPtr dbi = (*_info)[*i];
+        if(!dbi.get()) { 
+            dbi.reset(new DbInfo());
+            (*_info)[*i] = dbi;
+        }
+        addDefaultTables(*dbi);
     }
 }
 
@@ -87,8 +105,7 @@ void qMaster::TableRefChecker::_setDefaultInfo() {
     InfoPtr info(new Info());
     DbInfoPtr lsstDefault(new DbInfo());
     std::string lsst("LSST");
-    lsstDefault->chunked.insert("Source");
-    lsstDefault->subchunked.insert("Object");
+    addDefaultTables(*lsstDefault);
     
     (*info)[lsst] = lsstDefault;
     _info = info;

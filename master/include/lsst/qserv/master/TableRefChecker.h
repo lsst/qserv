@@ -27,6 +27,7 @@
 #include <deque>
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include "lsst/qserv/master/common.h"
 
 namespace lsst {
 namespace qserv {
@@ -41,19 +42,21 @@ public:
     typedef boost::shared_ptr<DbInfo> DbInfoPtr;
 
     typedef std::pair<std::string, std::string> RefPair;
-    typedef std::map<std::string, boost::shared_ptr<DbInfo const> > Info;
+    typedef std::map<std::string, boost::shared_ptr<DbInfo> > Info;
     typedef boost::shared_ptr<Info> InfoPtr;
     typedef boost::shared_ptr<Info const> InfoConstPtr;
 
     // Should be able to construct info from qserv metadata
-    explicit TableRefChecker(InfoConstPtr info=InfoPtr());
+    explicit TableRefChecker(InfoPtr info=InfoPtr());
+    void importDbWhitelist(StringList const& wlist);
+
     bool isChunked(std::string const& db, std::string const& table) const;
     bool isSubChunked(std::string const& db, std::string const& table) const;
     bool isDbAllowed(std::string const& db) const;
 private:
     void _setDefaultInfo();
 
-    boost::shared_ptr<Info const> _info;
+    boost::shared_ptr<Info> _info;
 };
 
 
