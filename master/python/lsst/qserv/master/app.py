@@ -77,7 +77,8 @@ from lsst.qserv.master import charArray_frompointer, charArray
 from lsst.qserv.master import TransactionSpec
 
 # Dispatcher 
-from lsst.qserv.master import newSession, submitQuery, submitQueryMsg
+from lsst.qserv.master import newSession, discardSession
+from lsst.qserv.master import submitQuery, submitQueryMsg
 from lsst.qserv.master import initDispatcher
 from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
@@ -714,6 +715,7 @@ class HintedQueryAction:
             self._isValid = False
 
         if not self._isValid:
+            discardSession(self._sessionId)
             return
         # Query babysitter.
         self._babysitter = QueryBabysitter(self._sessionId, self.queryHash,
