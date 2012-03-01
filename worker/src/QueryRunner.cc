@@ -474,6 +474,9 @@ bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
     assert(t.get());
     assert(t->msg.get());
     TaskMsg& m(*t->msg);
+    if(!_connectDbServer(db.get())) {
+        return false;
+    }
     for(int i=0; i < m.fragment_size(); ++i) {
         Task::Fragment const& f(m.fragment(i));
         ScScriptBuilder<int> scb("LSST", "Object", // FIXME: get from message
@@ -515,9 +518,6 @@ bool qWorker::QueryRunner::_runFragment(MYSQL* dbMy,
                                         std::string const& cleanSc,
                                         std::string const& resultTable) {
     boost::shared_ptr<CheckFlag> check(_makeAbort());
-    if(!_connectDbServer(dbMy)) {
-        return false;
-    }
     
     if(!_prepareAndSelectResultDb(dbMy)) {
         return false;
