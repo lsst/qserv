@@ -154,9 +154,9 @@ void ForemanImpl::RunnerMgr::reportStart(qWorker::Task::Ptr t) {
 }
 
 void ForemanImpl::RunnerMgr::signalDeath(Runner* r) {
-   boost::lock_guard<boost::mutex> lock(_f._runnersMutex); 
-   RunnerDeque::iterator end = _f._runners.end();
-    std::cout << (void*) r << " dying" << std::endl;
+    boost::lock_guard<boost::mutex> lock(_f._runnersMutex); 
+    RunnerDeque::iterator end = _f._runners.end();
+    // std::cout << (void*) r << " dying" << std::endl;
     for(RunnerDeque::iterator i = _f._runners.begin(); i != end; ++i) {
         if(*i == r) {
             _f._runners.erase(i);
