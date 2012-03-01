@@ -178,8 +178,9 @@ void AggregateMgr::SetFuncHandler::operator()(antlr::RefAST a) {
 ////////////////////////////////////////////////////////////////////////
 // AggregateMgr::SelectListHandler
 ////////////////////////////////////////////////////////////////////////
-AggregateMgr::SelectListHandler::SelectListHandler(AliasMgr& h) 
-    : _aMgr(h), isStarFirst(false) {
+AggregateMgr::SelectListHandler::SelectListHandler(AliasMgr& am, 
+                                                   AggregateMgr& agm) 
+    : _aMgr(am), _aggMgr(agm), isStarFirst(false) {
 } 
 
 void AggregateMgr::SelectListHandler::operator()(antlr::RefAST a)  {
@@ -190,6 +191,7 @@ void AggregateMgr::SelectListHandler::operator()(antlr::RefAST a)  {
     }
     selectLists.push_back(_aMgr.getColumnNodeListCopy());
     _aMgr.resetColumnNodeList();
+    _aggMgr.signalSelectReceived();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -238,7 +240,7 @@ void AggregateMgr::GroupColumnHandler::operator()(antlr::RefAST a) {
 ////////////////////////////////////////////////////////////////////////
 AggregateMgr::AggregateMgr(AliasMgr& am) 
     : _setFuncer(new SetFuncHandler()),
-      _selectLister(new SelectListHandler(am)),
+      _selectLister(new SelectListHandler(am, *this)),
       _groupByer(new GroupByHandler()),
       _groupColumner(new GroupColumnHandler(*_groupByer)),
       _hasAggregate(false), _isMissingSelect(false) {
@@ -281,6 +283,17 @@ void AggregateMgr::applyAggPass() {
     antlr::RefAST orphans = collapseNodeRange(nb.first, nb.second);
     nb.first->setText(passText); // Reassign text.
     nb.first->setFirstChild(antlr::RefAST()); // Set as childless.
+}
+
+void AggregateMgr::listenSelectReceived(Callback::Ptr c) {
+    _selectCallbacks.push_back(c);
+}
+
+void AggregateMgr::signalSelectReceived() {
+    CallbackDeque::iterator i;
+    for(i=_selectCallbacks.begin(); i != _selectCallbacks.end(); ++i) {
+        (**i)();
+    }
 }
 
 std::string AggregateMgr::getPassSelect() {

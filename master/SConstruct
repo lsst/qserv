@@ -31,6 +31,8 @@
 import glob, os.path, re, sys
 import distutils.sysconfig
 
+sys.path.append("../common")
+import detect_deps
 
 ### Distribution creation
 def makePythonDist():
@@ -38,57 +40,6 @@ def makePythonDist():
     
 if 'install' in COMMAND_LINE_TARGETS:
     makePythonDist()
-
-# Xrootd/Scalla search helper
-class XrdHelper:
-    def __init__(self, roots):
-        self.cands = roots
-        if os.environ.has_key('XRD_DIR'):
-            self.cands.insert(0, os.environ['XRD_DIR'])
-
-        self.platforms = ["x86_64_linux_26","i386_linux26","i386_linux26_dbg"]
-        if os.environ.has_key('XRD_PLATFORM'):
-            self.platforms.insert(0, os.environ['XRD_PLATFORM'])
-        pass
-
-    def getXrdLibInc(self):
-        for c in self.cands:
-            (inc, lib) = (self._findXrdInc(c), self._findXrdLib(c))
-            if inc and lib:
-                return (inc, lib)
-        return (None, None)
-
-    def _findXrdLib(self, path):
-        for p in self.platforms:
-            libpath = os.path.join(path, "lib", p)
-            if os.path.exists(libpath):
-                return libpath
-        return None
-
-    def _findXrdInc(self, path):
-        paths = map(lambda p: os.path.join(path, p), ["include/xrootd", "src"])
-        for p in paths:
-            neededFile = os.path.join(p, "XrdPosix/XrdPosix.hh")
-            if os.path.exists(neededFile):
-                return p
-        return None
-    pass
-
-## Boost checker
-def checkBoost(lib):
-    if not conf.CheckLib(lib + "-gcc34-mt", language="C++") \
-            and not conf.CheckLib(lib + "-gcc41-mt", language="C++") \
-            and not conf.CheckLib(lib, language="C++") \
-            and not conf.CheckLib(lib + "-mt", language="C++"):
-        print >>sys.stderr, "Can't find " + lib
-        canBuild = False
-
-def composeEnv(env, roots=[], includes=[], libs=[]):
-    env.Append(CPPPATH=[os.path.join(x, "include") for x in roots])
-    env.Append(CPPPATH=includes)
-    env.Append(LIBPATH=[os.path.join(x, "lib") for x in roots])
-    env.Append(LIBPATH=libs)
-    return env
 
 
 ##############################
@@ -106,7 +57,7 @@ hasXrootd = True
 canBuild = True
 
 # Find Scalla/xrootd directories
-x = XrdHelper(searchRoots)
+x = detect_deps.XrdHelper(searchRoots)
 (xrd_inc, xrd_lib) = x.getXrdLibInc()
 if (not xrd_inc) or (not xrd_lib):
     print >>sys.stderr, "Can't find xrootd headers or libraries"
@@ -140,31 +91,34 @@ searchLibs += filter(os.path.exists,
                      [os.path.join(r, lb, "mysql") 
                       for r in mysqlRoots for lb in ["lib","lib64"]])
 
-composeEnv(env, roots=searchRoots, includes=[xrd_inc], libs=searchLibs)
+detect_deps.composeEnv(env, 
+                       roots=searchRoots, 
+                       includes=[xrd_inc], 
+                       libs=searchLibs)
+env.Append(CPPPATH = ["../common/include"])
+env.Append(LIBPATH = ["../common/lib"])
+
 if hasXrootd:
     env.Append(CPPPATH = [xrd_inc])
     env.Append(LIBPATH = [xrd_lib])
-env.Append(CPPFLAGS = ["-D_LARGEFILE_SOURCE",
-                       "-D_LARGEFILE64_SOURCE",
-                       "-D_FILE_OFFSET_BITS=64",
-                       "-D_REENTRANT",
-                       "-g",
-                       "-pedantic", "-Wno-long-long", "-Wall"])
+env.Append(CPPFLAGS = detect_deps.XRDFLAGS + 
+           [ "-g", "-pedantic", "-Wno-long-long", "-Wall"])
 
 # Start configuration tests
 conf = Configure(env)
 
+conf.CheckLib("qserv_common")
 # boost library reqs
-checkBoost("boost_thread")
-checkBoost("boost_regex")
+if not (detect_deps.checkAddBoost(conf, "boost_thread")
+        and detect_deps.checkAddBoost(conf, "boost_regex")):
+    print >>sys.stderr, "FATAL: Missing boost libs (thread and regex) "
+    canBuild = False
+
 
 # ANTLR
-if not conf.CheckCXXHeader("antlr/AST.hpp"):
-    print >> sys.stderr, "Could not locate ANTLR headers"
-    canBuild = False
-if not conf.CheckLib("antlr", language="C++"):
-    print >> sys.stderr, "Could not find ANTLR lib"
-    canBuild = False
+foundAntlr = detect_deps.checkAddAntlr(conf)
+if not foundAntlr: canBuild = False
+
 
 # Close out configuration for no parse test env
 parseEnv = conf.Finish()
@@ -173,29 +127,18 @@ env = parseEnv.Clone()
 conf = Configure(env)
 
 # libssl
-if not conf.CheckLib("ssl"):
-    print >> sys.stderr, "Could not locate ssl"
-    canBuild = False
-if not conf.CheckLib("crypto"):
-    print >> sys.stderr, "Could not locate libcrypto"
-    canBuild = False
-
-
+if not detect_deps.checkAddSslCrypto(conf): canBuild = False
 # MySQL
-if not conf.CheckCXXHeader("mysql/mysql.h"):
-    print >> sys.stderr, "Could not locate MySQL headers"
-    canBuild = False
-if not conf.CheckLib("mysqlclient_r", language="C++"):
-    print >> sys.stderr, "Could not find multithreaded mysql(mysqlclient_r)"
-    canBuild = False
-
-# XrdPosix library
-if not conf.CheckLib("XrdPosix", language="C++"):
-    print >>sys.stderr, "Can't use XrdPosix lib"
+if not detect_deps.checkAddMySql(conf): canBuild = False
+# XrdPosix
+if not detect_deps.checkAddXrdPosix(conf):
     hasXrootd = False
 
 env = conf.Finish()    
 canBuild = canBuild and hasXrootd
+
+if foundAntlr:
+    SConscript("SConscript.antlr", exports={'env' : env})
 
 parserSrcs = map(lambda x: os.path.join('src', x), 
                  ["AggregateMgr.cc", 
@@ -208,11 +151,15 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "Substitution.cc",
                   "ChunkMapping.cc",
                   "SpatialUdfHandler.cc",
-                  "SqlSQL2Lexer.cpp", "SqlSQL2Parser.cpp"] )
+                  "SqlSQL2Lexer.cpp", 
+                  "SqlSQL2Parser.cpp",
+                  "TableNamer.cc",
+                  "TableRefChecker.cc",
+                  "TableRemapper.cc"])
              
 
 pyPath = 'python/lsst/qserv/master'
-pyLib = os.path.join(pyPath, '_masterLib.so')
+pyLibName = os.path.join(pyPath, '_masterLib.so')
 dispatchSrcs = map(lambda x: os.path.join('src', x), 
                    ["xrdfile.cc", 
                     "thread.cc", 
@@ -256,23 +203,38 @@ xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
                                   "xrootd.cc", 
                                   "WorkQueue.cc",
                                   "xrdPrecache.cc"])}
-               
 
+## FIXME: need to detect Lua so we can generate a "startMysqlProxy"
+## script in the installation.
+               
+def installTo(env, targetDir, pyLib):
+    pathList = ["lsst","qserv","master"]
+    pyDir = os.path.join(targetDir, *pathList)
+    srcPyDir = os.path.join("python" , *pathList)
+    
+    #install py files
+    for s in env.Glob(os.path.join(srcPyDir,"*.py")):
+        if s.name == "argv.py": continue # workaround Scons missing argv.py
+        env.Alias("install", env.Install(pyDir, s))
+    # install pylib.    
+    env.Alias("install", env.Install(pyDir, pyLib))
+    for p in range(1,len(pathList)): # touch init files
+        plist = [targetDir] + pathList[:p] + ["__init__.py"]
+        fname = os.path.join(*plist)
+        open(fname, "w").close()
+    #install bins
+    env.Alias("install", 
+              env.Install(targetDir, env.Glob(os.path.join("bin","*.py"))))
+    #install proxy
+    for f in ["mysqlProxy.lua", "startMySQLProxy"]:
+        env.Alias("install", env.Install(targetDir, os.path.join("proxy",f)))
+    
 if canBuild:
-    env.SharedLibrary(pyLib, srcPaths)
+    pylib = env.SharedLibrary(pyLibName, srcPaths)
+    Depends(pylib, env["antlrdeps"])
     env.Program(runTrans['bin'], runTrans["srcPaths"])
-#    env.Program(target=testIter['bin'], 
- #               source=testIter["srcPaths"],
-                #                LINKFLAGS='--static',
-  #              LIBS=["XrdPosix", "XrdClient", "XrdSys", 
-   #                   "XrdNet", "XrdOuc", "XrdOss", "crypto", "dl",
-    #                  "boost_thread", "boost_regex", "pthread"])
-#    parseEnv.Program(testParser['bin'], testParser["srcPaths"])
-#    env.Program(target=xrdPrecache['bin'], source=xrdPrecache["srcPaths"],
-#                LINKFLAGS='--static', 
-#                LIBS=["XrdPosix", "XrdClient", "XrdSys", 
-#                      "XrdNet", "XrdOuc", "XrdOss", "ssl", "crypto", "dl",
-#                      "boost_thread", "pthread"])
+    parseEnv.Program(testParser['bin'], testParser["srcPaths"])
+    installTo(env, "dist", pylib)
 
 # Describe what your package contains here.
 env.Help("""

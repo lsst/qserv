@@ -30,6 +30,8 @@ class XrdSysError;
 
 namespace lsst {
 namespace qserv {
+class QservPath; // Forward
+
 namespace worker {
 namespace fs {
 
@@ -44,6 +46,13 @@ public:
     typedef boost::shared_ptr<FileValidator> Ptr;
     virtual ~FileValidator() {}
     virtual bool operator()(std::string const& filename) = 0;
+};
+
+class PathValidator {
+public:
+    typedef boost::shared_ptr<PathValidator> Ptr;
+    virtual ~PathValidator() {}
+    virtual bool operator()(QservPath const& qp) = 0;
 };
 
 }}}} // lsst::qserv:worker::fs

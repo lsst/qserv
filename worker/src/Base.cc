@@ -64,21 +64,33 @@ bool checkWritablePath(char const* path) {
 // Must end in a slash.
 std::string qWorker::DUMP_BASE = "/tmp/qserv/";
 
+// Parameters:
+// %1% database (e.g., LSST)
+// %2% table (e.g., Object)
+// %3% subchunk column name (e.g. x_subChunkId)
+// %4% chunkId (e.g. 2523)
+// %5% subChunkId (e.g., 34)
 std::string qWorker::CREATE_SUBCHUNK_SCRIPT =
-    "CREATE DATABASE IF NOT EXISTS Subchunks_%1%;"
-    "CREATE TABLE IF NOT EXISTS Subchunks_%1%.Object_%1%_%2% ENGINE = MEMORY "
-    "AS SELECT * FROM LSST.Object_%1% WHERE x_subChunkId = %2%;"
-    "CREATE TABLE IF NOT EXISTS Subchunks_%1%.ObjectSelfOverlap_%1%_%2% "
+    "CREATE DATABASE IF NOT EXISTS Subchunks_%1%_%4%;"
+    "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%_%4%_%5% ENGINE = MEMORY "
+    "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
+    "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%SelfOverlap_%4%_%5% "
     "ENGINE = MEMORY "
-    "AS SELECT * FROM LSST.ObjectSelfOverlap_%1% WHERE x_subChunkId = %2%;"
-    "CREATE TABLE IF NOT EXISTS Subchunks_%1%.ObjectFullOverlap_%1%_%2% "
+    "AS SELECT * FROM %1%.%2%SelfOverlap_%4% WHERE %3% = %5%;"
+    "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%FullOverlap_%4%_%5% "
     "ENGINE = MEMORY "
-    "AS SELECT * FROM LSST.ObjectFullOverlap_%1% WHERE x_subChunkId = %2%;"
+    "AS SELECT * FROM %1%.%2%FullOverlap_%4% WHERE %3% = %5%;"
     ;
+
+// Parameters:
+// %1% database (e.g., LSST)
+// %2% table (e.g., Object)
+// %3% chunkId (e.g. 2523)
+// %4% subChunkId (e.g., 34)
 std::string qWorker::CLEANUP_SUBCHUNK_SCRIPT =
-    "DROP TABLE IF EXISTS Subchunks_%1%.Object_%1%_%2%;"
-    "DROP TABLE IF EXISTS Subchunks_%1%.ObjectSelfOverlap_%1%_%2%;"
-    "DROP TABLE IF EXISTS Subchunks_%1%.ObjectFullOverlap_%1%_%2%;"
+    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%_%3%_%4%;"
+    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%SelfOverlap_%3%_%4%;"
+    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%FullOverlap_%3%_%4%;"
     ;
 
 // Note:
@@ -340,7 +352,7 @@ std::string qWorker::StringBuffer2::getStr() const {
     return std::string(_buffer, _bytesWritten);
 }
 
-std::string qWorker::StringBuffer2::getDigest() const {  
+char const* qWorker::StringBuffer2::getData() const {  
     // Don't call this unless the buffer has no holes.
     // Cast away const in order to lock.
 #if DO_NOT_USE_BOOST
@@ -349,12 +361,8 @@ std::string qWorker::StringBuffer2::getDigest() const {
     boost::mutex& mutex = const_cast<boost::mutex&>(_mutex);
     boost::unique_lock<boost::mutex> lock(mutex);
 #endif
-    assert(_bytesWritten == _bufferSize); //no holes.
-    int length = 200;
-    if(length > _bytesWritten) 
-        length = _bytesWritten;
-    
-    return std::string(_buffer, length); 
+    assert(_bytesWritten == _bufferSize); //no holes.    
+    return _buffer; 
 }
 
 XrdSfsFileOffset qWorker::StringBuffer2::getLength() const {

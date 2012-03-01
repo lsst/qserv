@@ -62,6 +62,7 @@ from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap
 from lsst.qserv.master.geometry import SphericalConvexPolygon, convexHull
 from lsst.qserv.master.db import TaskDb as Persistence
 from lsst.qserv.master.db import Db
+from lsst.qserv.master import protocol
 
 # SWIG'd functions
 
@@ -76,7 +77,9 @@ from lsst.qserv.master import charArray_frompointer, charArray
 from lsst.qserv.master import TransactionSpec
 
 # Dispatcher 
-from lsst.qserv.master import newSession, discardSession, submitQuery, initDispatcher
+from lsst.qserv.master import newSession, discardSession
+from lsst.qserv.master import submitQuery, submitQueryMsg
+from lsst.qserv.master import initDispatcher
 from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
@@ -589,8 +592,13 @@ class QueryBabysitter:
     def submit(self, chunk, table, q):
         saveName = self._saveName(chunk)
         handle = submitQuery(self._sessionId, chunk, q, saveName, table)
-        self._inFlight[chunk] = (handle, table)
         #print "Chunk %d to %s    (%s)" % (chunk, saveName, table)
+
+    def submitMsg(self, db, chunk, msg, table):
+        saveName = self._saveName(chunk)
+        handle = submitQueryMsg(self._sessionId, db, chunk, msg, 
+                                saveName, table)
+        self._inFlight[chunk] = (handle, table)
 
     def finish(self):
         for (k,v) in self._inFlight.items():
@@ -660,7 +668,8 @@ class HintedQueryAction:
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
-        self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:18] 
+        # queryHash identifies the top-level query.
+        self.queryHash = self._computeHash(self.queryStr)[:18]
         self.chunkLimit = 2**32 # something big
         self._dbContext = "LSST" # Later adjusted by hints.        
 
@@ -722,12 +731,17 @@ class HintedQueryAction:
         self._insertTableTmpl = "INSERT INTO %s " ;
         self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
                                              self.queryHash) + "_%s"
+        # Should use db from query, not necessarily context.
+        self._factory = protocol.TaskMsgFactory(self._sessionId, 
+                                                self._dbContext)
+
         # We want result table names longer than result-merging table names.
         self._isValid = True
         self._invokeLock = threading.Semaphore()
         self._invokeLock.acquire() # Prevent result retrieval before invoke
         pass
-
+    
+    # In transition to new protocol: only 1 result table allowed.
     def _headerFunc(self, tableNames, subc=[]):
         return ['-- SUBCHUNKS:' + ", ".join(imap(str,subc)),
                 '-- RESULTTABLES:' + ",".join(tableNames)]
@@ -810,7 +824,50 @@ class HintedQueryAction:
         del db
         return cids
 
+    def _prepareMsg(self, chunkId, subIter):
+        table = self._resultTableTmpl % str(chunkId)
+        self._factory.newChunk(table, chunkId);
+        x =  self._substitution.getChunkLevel()
+        if x > 1:
+            sclist =  self._getSubChunkList(subIter)
+            for subChunkId in sclist:
+                q = self._substitution.transform(chunkId, subChunkId)
+                self._factory.fillFragment(q, [subChunkId])
+        else:
+            query = self._substitution.transform(chunkId, 0)
+            self._factory.fillFragment(query, None)
+        return self._factory.getBytes()
+
+    def invokeProtocol2(self):
+        count = 0
+        self._babysitter.pauseReadback();
+        lastTime = time.time()
+        chunkLimit = self.chunkLimit
+        for chunkId, subIter in self._intersectIter:
+            if chunkId in self._emptyChunks:
+                continue # FIXME: What if all chunks are empty?
+            print "Dispatch iter: ", time.time() - lastTime
+            msg = self._prepareMsg(chunkId, subIter)
+            prepTime = time.time()
+            print "DISPATCH: ", chunkId, self.queryStr # Limit printout spew
+            self._babysitter.submitMsg(self._factory.msg.db,
+                                       chunkId, msg, 
+                                       self._factory.resulttable)
+
+            print "Chunk %d dispatch took %f seconds (prep: %f )" % (
+                chunkId, time.time() - lastTime, prepTime - lastTime)
+            lastTime = time.time()
+            count += 1
+            if count >= chunkLimit: break
+            ##print >>sys.stderr, q, "submitted"
+        self._babysitter.resumeReadback()
+        self._invokeLock.release()
+        return
+
     def invoke(self):
+        self.invokeProtocol2()
+
+    def invokeOldProtocol(self):
         count=0
         self._babysitter.pauseReadback();
         lastTime = time.time()
@@ -873,14 +930,17 @@ class HintedQueryAction:
         query += self._substitution.transform(chunkId, 0)
         return query
 
-    def _makeSubChunkQuery(self, chunkId, subIter, table):
-        qList = [None] # Include placeholder for header
-        scList = None
+    def _getSubChunkList(self, subIter):
         # Extract list first.
         if self._isFullSky:
             scList = [x for x in subIter]
         else:
             scList = [sub for (sub, regions) in subIter]
+        return scList
+
+    def _makeSubChunkQuery(self, chunkId, subIter, table):
+        qList = [None] # Include placeholder for header
+        scList = self._getSubChunkList(subIter)
 
         pfx = None
         qList = self._headerFunc([table], scList)
@@ -893,29 +953,8 @@ class HintedQueryAction:
                 pfx = self._insertTableTmpl % table
         return "\n".join(qList)
 
-    def _fixSubChunkDb(self, q, chunk, subChunk):
-        # Replace sometable_CC_SS or anything.sometable_CC_SS 
-        # with Subchunks_CC.sometable_CC_SS, 
-        # where CC and SS are chunk and subchunk numbers, respectively.
-        # Note that "sometable" is any subchunked table.
-
-        subchunked = self._pConfig.subchunked
-        res = q
-        slist = []
-        for s in subchunked:
-            slist.append(s)
-            if "FullOverlap" not in s:
-                slist.append(s+"FullOverlap")
-            if "SelfOverlap" not in s:
-                slist.append(s+"SelfOverlap")
-        
-        for s in slist:
-            sName = "%s_%d_%d" % (s, chunk, subChunk)
-            patStr = "(\w+[.])?%s" % sName
-            sub = "Subchunks_%d.%s" % (chunk, sName)
-            res = re.sub(patStr, sub, res)
-        return res
-          
+    def _computeHash(self, bytes):
+        return hashlib.md5(bytes).hexdigest()
 
 class CheckAction:
     def __init__(self, tracker, handle):

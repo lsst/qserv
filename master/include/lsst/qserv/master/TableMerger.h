@@ -63,7 +63,8 @@ public:
 		      std::string mySqlCmd_, std::string dropMem_) 
 	:  targetDb(targetDb_),  targetTable(targetTable_),
            mFixup(mFixup_),
-	   user(user_),  socket(socket_), mySqlCmd(mySqlCmd_)
+	   user(user_),  socket(socket_), mySqlCmd(mySqlCmd_),
+           dropMem()
     {
         if(dropMem_.size() > 0) {
             dropMem = true;

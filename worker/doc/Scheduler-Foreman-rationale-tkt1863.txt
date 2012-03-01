@@ -1,0 +1,66 @@
+== Introduction and rationale ==
+As of January 2012, the Qserv worker makes use of a work queue
+(WorkQueue: a thread pool with a queue of waiting tasks) to return
+results and to do miscellaneous things that a caller wishes to offload
+from its own thread.  It also makes use of a specialized set of
+threads, each maintaining a QueryRunner instance to perform real query
+work.
+
+In the switch to the new wire-protocol for transmitting query tasks,
+there is some motivation to clean up the existing QueryRunner thread
+management, so that it may be clearer and easier to understand.  Its
+current implementation mixes query execution, results gathering,
+scheduling, and thread management code.  It should be possible to make
+its implementation more modular and organized, much as WorkQueue is
+focused on using a limited number of threads to complete work from a
+potentially long list of needed work.  The WorkQueue operates in
+simple FIFO order and has a simple, lightly-dependent implementation
+that can be more simply tested and debugged.
+
+In contrast, the QueryRunner architecture is more complex and messy
+from a threading standpoint.  Yet it also uses a largely fixed number
+of threads, that execute from a list of work to do.  The primary
+difference is that its work is not executed in FIFO order. Each Runner
+looks for new work with a preference for work matching the chunkId it
+recently completed.  However, a more complex scheduling algorithm is
+desired and planned.  The scheduling algorithm should consider not
+only the last chunkId executed by the seeking Runner, but also the
+disk and memory resources in use by other threads, state of a
+shared-scanning process, the nature of waiting tasks, and other
+information.  The scheduler may decide to vary the number of threads,
+perhaps allowing NCPU+1 threads to operate when they are disk-bound
+but dependent on the same chunk, but only allowing 1 thread to operate
+if it is disk-bound and no other work exists for the same chunk.  Thus
+the management of threads is qualitatively different and more complex
+than the WorkQueue implementation.  Not only must the next task be
+chosen, the algorithm should decide whether threads should be idled or
+new threads should be recruited.  Thus there is a basis for a new
+implementation, even if some functionality, for example, thread state
+tracking and run/poisoning logic, would be duplicated.  Once the new
+implementation is complete, it may be generalizable for reuse for
+existing WorkQueue applications.  The two pooling mechanisms may also
+be integrated in other ways.  In any case, there is a clear rationale
+to support implementing a more flexible pooling mechanism that can
+support planned work on shared scanning.
+
+== Designing the "new QueryRunner" ==
+There is a clear advantage to the simple, work-agnostic approach of
+the WorkQueue implementation.  Threaded code is inherently complex to
+understand, troubleshoot, and maintain, so the code must be
+sufficiently modular to support isolated component testing.  Thus the
+new implementation will also separate the *work*, e.g., query
+execution, from thread management.  
+
+The new scheduler will require collective state (state of other
+running threads, inc. system usage), overall system state (memory and
+disk availability and performance metrics), local state (state of
+thread seeking work), and the offered load (tasks available to run).
+The logical place for these decisions is a collective object (like the
+QueryRunnerManager) that manages running state.  However, we wish to
+decouple this from the actual thread management.  Thus the scheduler
+is separate from the thread management, but linked with a narrow
+interface.  The collective thread object (e.g. Thread Manager) should
+be parameterized with the scheduler, and needs to pass the thread
+context along with other running thread contexts to the scheduler.
+The scheduler itself can maintain the waiting queue and system state
+information.  

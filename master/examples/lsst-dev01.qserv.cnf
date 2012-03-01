@@ -1,16 +1,19 @@
 
 [partitioner]
-substripes = 2
-stripes = 10
-
-[table]
-chunked=Source,FaintSource
-subchunked=Object
+substripes = 60
+stripes = 18
+emptyChunkListFile=emptyChunks.txt
 
 [frontend]
 xrootd = lsst-dev01:1094
 scratch_path = /dev/shm/qserv
 xrootd_user = qsmaster
+
+[table]
+chunked=Source,FaintSource
+subchunked=Object
+alloweddbs=LSST,Test1
+partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
 
 [resultdb]
 passwd = 

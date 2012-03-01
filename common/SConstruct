@@ -17,6 +17,13 @@ Qserv common code
 # Detect protobufs
 detect_deps.detectProtobufs()
 
+# Handle debug
+debug = ARGUMENTS.get('debug', 0) 
+print "debug is", debug
+if int(debug):
+    print "Debug build requested."
+    env.Append(CCFLAGS = '-g')
+
 #
 # Build/install things
 #

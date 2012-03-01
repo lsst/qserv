@@ -54,6 +54,16 @@ BOOST_AUTO_TEST_CASE(QueryPathRead) {
     BOOST_CHECK_EQUAL(qp.path(), testPath);
 }
 
+BOOST_AUTO_TEST_CASE(QueryPathRead2) {
+    std::string testPath("/q/LSST/185");
+    qsrv::QservPath qp(testPath);
+    BOOST_CHECK_EQUAL(qp.requestType(), qsrv::QservPath::CQUERY);
+    BOOST_CHECK_EQUAL(qp.db(), "LSST");
+    BOOST_CHECK_EQUAL(qp.chunk(), 185);
+    BOOST_CHECK_EQUAL(qp.path(), testPath);
+}
+
+
 BOOST_AUTO_TEST_CASE(QueryPathOld) {
     std::string testPath1("/query/32767");
     qsrv::QservPath qp1(testPath1);
