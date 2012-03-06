@@ -29,6 +29,7 @@
 
 
 import glob, os.path, re, sys
+import errno
 import distutils.sysconfig
 
 sys.path.append("../common")
@@ -235,7 +236,7 @@ def installTo(env, targetDir, pyLib):
     env.Alias("install", env.Install(pyDir, pyLib))
     # Make sure path exists.
     try: os.makedirs(pyDir)
-    except OSError as exc: # Python >2.5
+    except OSError, exc: # "as" syntax not available in Python <=2.5 
         if exc.errno == errno.EEXIST:
             pass
         else: raise
