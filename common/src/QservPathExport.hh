@@ -38,7 +38,7 @@ public:
     QservPathExport() {}
 
     /// extracts a list of unique directory names
-    /// from the exportPaths
+    /// from the exportPaths including parent directories,
     /// and stores them in the uniqueDirs vector
     bool extractUniqueDirs(const vector<string>& exportPaths,
                            vector<string>& uniqueDirs);
@@ -47,6 +47,7 @@ public:
     bool mkDirs(const vector<string>& dirs);
     
 private:
+    bool processOneDir(const string, vector<string>&);
 };
 
 }} // namespace lsst::qserv

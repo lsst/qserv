@@ -40,14 +40,14 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
     qsrv::QservPathExport p;
 
     std::vector<std::string> pV;
-    pV.push_back("/u1/lsst/export/dir1/fileA");
-    pV.push_back("/u1/lsst/export/dir1/fileB");
-    pV.push_back("/u1/lsst/export/dir2/fileC");
-    pV.push_back("/u1/lsst/export/dir3/fileD");
+    pV.push_back("/u1/qserv/export/dir1/fileA");
+    pV.push_back("/u1/qserv/export/dir1/fileB");
+    pV.push_back("/u1/qserv/export/dir2/fileC");
+    pV.push_back("/u1/qserv/export/dir3/fileD");
 
     std::vector<std::string> dV;
     BOOST_CHECK_EQUAL(p.extractUniqueDirs(pV, dV), true);
-    BOOST_CHECK_EQUAL(dV.size(), 3);
+    BOOST_CHECK_EQUAL(dV.size(), 6);
     vector<string>::iterator dItr;
     for ( dItr=dV.begin(); dItr!=dV.end(); ++dItr) {
         std::cout << "found unique path: " << *dItr << std::endl;
