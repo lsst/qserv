@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
     std::vector<std::string> dV;
     BOOST_CHECK_EQUAL(p.extractUniqueDirs(pV, dV), true);
     BOOST_CHECK_EQUAL(dV.size(), 6);
-    vector<string>::iterator dItr;
+    std::vector<std::string>::iterator dItr;
     for ( dItr=dV.begin(); dItr!=dV.end(); ++dItr) {
         std::cout << "found unique path: " << *dItr << std::endl;
     }

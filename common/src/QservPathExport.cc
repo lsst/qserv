@@ -26,6 +26,9 @@
 
 namespace qsrv = lsst::qserv;
 
+using std::string;
+using std::vector;
+
 bool
 qsrv::QservPathExport::extractUniqueDirs(const vector<string>& exportPaths,
                                          vector<string>& uniqueDirs) {
