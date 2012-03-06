@@ -231,8 +231,15 @@ def installTo(env, targetDir, pyLib):
     for s in env.Glob(os.path.join(srcPyDir,"*.py")):
         if s.name == "argv.py": continue # workaround Scons missing argv.py
         env.Alias("install", env.Install(pyDir, s))
-    # install pylib.    
+    # install pylib. 
     env.Alias("install", env.Install(pyDir, pyLib))
+    # Make sure path exists.
+    try: os.makedirs(pyDir)
+    except OSError as exc: # Python >2.5
+        if exc.errno == errno.EEXIST:
+            pass
+        else: raise
+
     for p in range(1,len(pathList)): # touch init files
         plist = [targetDir] + pathList[:p] + ["__init__.py"]
         fname = os.path.join(*plist)
