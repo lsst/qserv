@@ -56,13 +56,13 @@ from string import Template
 
 # Package imports
 import metadata
-import sqlparser
 import lsst.qserv.master.config
 from lsst.qserv.master import geometry
 from lsst.qserv.master.geometry import SphericalBox, SphericalBoxPartitionMap
 from lsst.qserv.master.geometry import SphericalConvexPolygon, convexHull
 from lsst.qserv.master.db import TaskDb as Persistence
 from lsst.qserv.master.db import Db
+from lsst.qserv.master import protocol
 
 # SWIG'd functions
 
@@ -77,7 +77,9 @@ from lsst.qserv.master import charArray_frompointer, charArray
 from lsst.qserv.master import TransactionSpec
 
 # Dispatcher 
-from lsst.qserv.master import newSession, discardSession, submitQuery, initDispatcher
+from lsst.qserv.master import newSession, discardSession
+from lsst.qserv.master import submitQuery, submitQueryMsg
+from lsst.qserv.master import initDispatcher
 from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
@@ -329,71 +331,6 @@ class XrdOperation(threading.Thread):
             stats[taskName+"Finish"] = time.time()
             return self.successful
         pass
-
-########################################################################
-
-class QueryPreparer:
-    def __init__(self, queryStr):
-        self.queryMunger = sqlparser.QueryMunger(queryStr)
-        self.queryHash = hashlib.md5(queryStr).hexdigest()
-        self.resultPath = self.setupDumpSaver(self.queryHash)
-        self.createTemplate = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY ";
-        self.insertTemplate = "INSERT INTO %s ";
-        self.tableTemplate = "result_%s";
-        self.db = Persistence()
-        pass
-
-
-
-    def computePartSet(self):
-        """compute the set of chunks,subchunks needed for the query.
-        Results are saved internally for later usage."""
-        query = self.queryMunger.computePartMapQuery()
-        print "partmapquery is", query
-        self.db.activate()
-        stats["partMapPrepStart"] = time.time()
-        chunktuples = self.db.issueQuery(query)
-        stats["partMapCollectStart"] = time.time()
-        self.collectedSet = self.queryMunger.collectSubChunkTuples(chunktuples)
-        del chunktuples # Free chunktuples memory
-        stats["partMapCollectFinish"] = time.time()
-        #collected = dict(collected.items()[:5]) ## DEBUG: Force only 3 chunks
-        self.chunkNums = self.collectedSet.keys()
-        random.shuffle(self.chunkNums) # Try to balance among workers.
-        #chunkNums = chunkNums[:200]
-        stats["partMapPrepFinish"] = time.time()
-
-    def clearDb(self):
-        self.db.activate()
-        # Drop result table to make room.
-        r = self.db.issueQuery("USE test; DROP TABLE IF EXISTS result;")
-        pass
-
-    def getQueryIterable(self):
-        return imap(lambda c: [c] + self.computeQuery(c), self.chunkNums)
-
-    def computeQuery(self, chunk):
-        tableName = self.tableTemplate % str(chunk)
-        createPrep = self.createTemplate % tableName
-        insertPrep = self.insertTemplate % tableName
-
-        subc = self.collected[chunk][:2000] # DEBUG: force less subchunks
-        # MySQL will probably run out of memory with >2k subchunks.
-        header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))                
-        cq = self.queryMunger.expandSubQueries(chunk, subc)
-        qlist = []
-        if cq:
-            qlist.append(createPrep + cq[0])
-            remain = cq[1:]
-            if remain:
-                qlist.extend(imap(lambda s: insertPrep + s, remain))
-                del remain
-        del createPrep
-        q = "\n".join([header] + qlist + ["\0\0\0\0"])  
-        del qlist
-        #del insertPrep #Python thinks insertPrep is still bound.
-        
-        return [tableName,q]
 
 ########################################################################
 
@@ -655,8 +592,13 @@ class QueryBabysitter:
     def submit(self, chunk, table, q):
         saveName = self._saveName(chunk)
         handle = submitQuery(self._sessionId, chunk, q, saveName, table)
-        self._inFlight[chunk] = (handle, table)
         #print "Chunk %d to %s    (%s)" % (chunk, saveName, table)
+
+    def submitMsg(self, db, chunk, msg, table):
+        saveName = self._saveName(chunk)
+        handle = submitQueryMsg(self._sessionId, db, chunk, msg, 
+                                saveName, table)
+        self._inFlight[chunk] = (handle, table)
 
     def finish(self):
         for (k,v) in self._inFlight.items():
@@ -726,7 +668,8 @@ class HintedQueryAction:
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
-        self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:18] 
+        # queryHash identifies the top-level query.
+        self.queryHash = self._computeHash(self.queryStr)[:18]
         self.chunkLimit = 2**32 # something big
         self._dbContext = "LSST" # Later adjusted by hints.        
 
@@ -788,12 +731,17 @@ class HintedQueryAction:
         self._insertTableTmpl = "INSERT INTO %s " ;
         self._resultTableTmpl = "r_%s_%s" % (self._sessionId,
                                              self.queryHash) + "_%s"
+        # Should use db from query, not necessarily context.
+        self._factory = protocol.TaskMsgFactory(self._sessionId, 
+                                                self._dbContext)
+
         # We want result table names longer than result-merging table names.
         self._isValid = True
         self._invokeLock = threading.Semaphore()
         self._invokeLock.acquire() # Prevent result retrieval before invoke
         pass
-
+    
+    # In transition to new protocol: only 1 result table allowed.
     def _headerFunc(self, tableNames, subc=[]):
         return ['-- SUBCHUNKS:' + ", ".join(imap(str,subc)),
                 '-- RESULTTABLES:' + ",".join(tableNames)]
@@ -876,7 +824,50 @@ class HintedQueryAction:
         del db
         return cids
 
+    def _prepareMsg(self, chunkId, subIter):
+        table = self._resultTableTmpl % str(chunkId)
+        self._factory.newChunk(table, chunkId);
+        x =  self._substitution.getChunkLevel()
+        if x > 1:
+            sclist =  self._getSubChunkList(subIter)
+            for subChunkId in sclist:
+                q = self._substitution.transform(chunkId, subChunkId)
+                self._factory.fillFragment(q, [subChunkId])
+        else:
+            query = self._substitution.transform(chunkId, 0)
+            self._factory.fillFragment(query, None)
+        return self._factory.getBytes()
+
+    def invokeProtocol2(self):
+        count = 0
+        self._babysitter.pauseReadback();
+        lastTime = time.time()
+        chunkLimit = self.chunkLimit
+        for chunkId, subIter in self._intersectIter:
+            if chunkId in self._emptyChunks:
+                continue # FIXME: What if all chunks are empty?
+            print "Dispatch iter: ", time.time() - lastTime
+            msg = self._prepareMsg(chunkId, subIter)
+            prepTime = time.time()
+            print "DISPATCH: ", chunkId, self.queryStr # Limit printout spew
+            self._babysitter.submitMsg(self._factory.msg.db,
+                                       chunkId, msg, 
+                                       self._factory.resulttable)
+
+            print "Chunk %d dispatch took %f seconds (prep: %f )" % (
+                chunkId, time.time() - lastTime, prepTime - lastTime)
+            lastTime = time.time()
+            count += 1
+            if count >= chunkLimit: break
+            ##print >>sys.stderr, q, "submitted"
+        self._babysitter.resumeReadback()
+        self._invokeLock.release()
+        return
+
     def invoke(self):
+        self.invokeProtocol2()
+
+    def invokeOldProtocol(self):
         count=0
         self._babysitter.pauseReadback();
         lastTime = time.time()
@@ -939,14 +930,17 @@ class HintedQueryAction:
         query += self._substitution.transform(chunkId, 0)
         return query
 
-    def _makeSubChunkQuery(self, chunkId, subIter, table):
-        qList = [None] # Include placeholder for header
-        scList = None
+    def _getSubChunkList(self, subIter):
         # Extract list first.
         if self._isFullSky:
             scList = [x for x in subIter]
         else:
             scList = [sub for (sub, regions) in subIter]
+        return scList
+
+    def _makeSubChunkQuery(self, chunkId, subIter, table):
+        qList = [None] # Include placeholder for header
+        scList = self._getSubChunkList(subIter)
 
         pfx = None
         qList = self._headerFunc([table], scList)
@@ -959,316 +953,8 @@ class HintedQueryAction:
                 pfx = self._insertTableTmpl % table
         return "\n".join(qList)
 
-    def _fixSubChunkDb(self, q, chunk, subChunk):
-        # Replace sometable_CC_SS or anything.sometable_CC_SS 
-        # with Subchunks_CC.sometable_CC_SS, 
-        # where CC and SS are chunk and subchunk numbers, respectively.
-        # Note that "sometable" is any subchunked table.
-
-        subchunked = self._pConfig.subchunked
-        res = q
-        slist = []
-        for s in subchunked:
-            slist.append(s)
-            if "FullOverlap" not in s:
-                slist.append(s+"FullOverlap")
-            if "SelfOverlap" not in s:
-                slist.append(s+"SelfOverlap")
-        
-        for s in slist:
-            sName = "%s_%d_%d" % (s, chunk, subChunk)
-            patStr = "(\w+[.])?%s" % sName
-            sub = "Subchunks_%d.%s" % (chunk, sName)
-            res = re.sub(patStr, sub, res)
-        return res
-  
-
-
-class QueryAction:
-    def __init__(self, query):
-        self.queryStr = query.strip()# Pull trailing whitespace
-        # Force semicolon to facilitate worker-side splitting
-        if self.queryStr[-1] != ";":  # Add terminal semicolon
-            self.queryStr += ";" 
-            
-        self.queryMunger = None ## sqlparser.QueryMunger()
-        self.db = Persistence()
-        self.running = {}
-        self.resultLock = threading.Lock()
-        self.finished = {}
-        self.threadHighWater = 130 # Python can't make more than 159??
-        self._slowDispatchTime = 0.5
-        self._brokenChunks = []
-        self._coolDownTime = 10
-        self._preparer = QueryPreparer(query)
-        pass
-
-    def _joinAny(self, jostle=False, printProfile=False):
-        # Should delete jostling code
-        poppable = []
-        while (not poppable) and (self.running):  # keep waiting 
-            for (chunk, thread) in self.running.items():
-                if not thread.isAlive(): 
-                    poppable.append(chunk)
-            if not poppable: 
-                if jostle:
-                    sys.stderr.write("poke! " + str(len(self.running)))
-                    j = SleepingThread(0.4)
-                    j.start()
-                    j.join()
-                else:
-                    time.sleep(0.5) # Don't spin-check too fast.
-                                        
-        for p in poppable: # Move the threads out.
-            t = self.running.pop(p)
-            t.join()
-            self.finished[p] = t.successful
-            if not t.successful:
-                print "Unsuccessful with %s on chunk %d" % (self.queryStr, p)
-                self._brokenChunks.append(p)
-            if printProfile:
-                p = pstats.Stats(t.profileName)
-                p.strip_dirs().sort_stats(-1).print_stats()
-
-                
-            # Don't save existing thread object.
-        pass
-
-    def _joinAll(self):
-        for (c,xo) in self.running.items():
-            xo.join()
-            t = self.running.pop(c)
-            self.finished[c] = t.successful
-            if not xo.successful:
-                print "Unsuccessful with %s on chunk %d" % (self.queryStr, c)
-                self._brokenChunks.append(c)
-            # discard thread object.
-
-    def _progressiveJoinAll(self, **kwargs):
-        self._joinAny()
-        while len(self.running) > 4:
-            time.sleep(1)
-            joinTime = time.time()
-            self._joinAny(**kwargs)
-            joinTime -= time.time()
-            sys.stderr.write("(%d) " % len(self.running))
-            
-        print "Almost done..."
-        self._joinAll()
-        
-    def invoke2(self):
-        self._preparer.computePartSet()
-        self._preparer.clearDb()
-        for chunk,table,q in self._preparer.getQueryIterable():
-            xo = XrdOperation(chunk, q, lambda x:x, table, 
-                              self.setupDumpSaver(self._preparer.queryHash))
-        return
-
-    def invoke3(self):
-        self._preparer.computePartSet()
-        self._preparer.clearDb()
-        sessionId = newSession()
-        for chunk,table,q in self._preparer.getQueryIterable():
-            i = submitQuery(sessionId, chunk, q, saveName)
-            inFlight[chunk] = i
-        state = joinSession(sessionId)
-        return
-    
-    def invoke(self):
-        print "Query invoking..."
-        stats = time.qServQueryTimer[time.qServRunningName]
-        stats["queryActionStart"] = time.time()
-        self.queryMunger = sqlparser.QueryMunger(self.queryStr)
-        # 64bit hash is enough for now(testing).
-        self.queryHash = hashlib.md5(self.queryStr).hexdigest()[:16] 
-        self.resultPath = self.setupDumpSaver(self.queryHash)
-        
-        query = self.queryMunger.computePartMapQuery()
-        print "partmapquery is", query
-        p = Persistence()
-        p.activate()
-        stats["partMapPrepStart"] = time.time()
-        chunktuples = p.issueQuery(query)
-        stats["partMapCollectStart"] = time.time()
-        collected = self.queryMunger.collectSubChunkTuples(chunktuples)
-        del chunktuples # Free chunktuples memory
-        stats["partMapCollectFinish"] = time.time()
-        #collected = dict(collected.items()[:5]) ## DEBUG: Force only 3 chunks
-        chunkNums = collected.keys()
-        random.shuffle(chunkNums) # Try to balance among workers.
-        #chunkNums = chunkNums[:200]
-        stats["partMapPrepFinish"] = time.time()
-        self.initQueryPreparer()
-        q = ""
-        self.db.activate()
-        # Drop result table to make room.
-        self.applySql("test", "DROP TABLE IF EXISTS result;")
-        triedAgain = False
-        for chunk in chunkNums:
-                dispatchStart = time.time()
-                (tableName, q) = self.prepareChunkQuery(collected, chunk)
-                print "dispatch chunk=", chunk, 
-                print "run=%d fin=%d tot=%d" %(len(self.running), 
-                                               len(self.finished), 
-                                               len(chunkNums))
-                #print "header=", header[:70],"..."
-                #print "create=", qlist[0]
-                #xrdSubmitTransaction(chunk, q, 
-                #                     os.path.join(self.resultPath, tableName))
-                xo = XrdOperation(chunk, q, self.saveTableDump, tableName, self.resultPath) 
-                del q
-                xo.start()
-                self.running[chunk] = xo
-                dispatchTime = time.time() - dispatchStart
-                if dispatchTime > self._slowDispatchTime: 
-                    if triedAgain:
-                        print "Slow dispatch detected. Draining all queries,"
-                        # Drain *everyone*
-                        self._progressiveJoinAll()
-                        print "Cooling down for %d seconds." % self._coolDownTime 
-                        time.sleep(self._coolDownTime)
-                        print "Back to work!"
-                        triedAgain = False
-                    triedAgain = True
-                elif len(self.running) > self.threadHighWater:
-                    print "Reaping"
-                    self._joinAny()
-                    print "Reap done"
-                else:
-                    triedAgain = False
-
-        # Try reaping until there's not much left
-        remaining = self.running.keys()
-        remaining.sort()
-        print "All dispatched, periodic ", remaining
-        self._progressiveJoinAll()
-        
-        print "results available at fs path,", self.resultPath
-        stats["queryActionFinish"] = time.time()
-        #print self.queryStr, "resulted in", query
-        ## sqlparser.test(self.queryStr)
-        
-        # Want parser to:
-        # a) help me munge the query for the partmap DB
-        # b) help me re-form the original query for the chunk/subchunk pairs.
-        
-        #  tokens = sqlparser.getTokens(self.queryStr)
-        
-        # Then, for each chunk/subchunk, dispatch the cmd via xrd.
-        # Later, we will fork for parallelism.  Test serially first.
-         
-        pass
-
-    def initQueryPreparer(self):
-        self.createTemplate = "CREATE TABLE IF NOT EXISTS %s ENGINE=MEMORY ";
-        self.insertTemplate = "INSERT INTO %s ";
-        self.tableTemplate = "result_%s";
-
-        pass
-    def prepareChunkQuery(self, subchunks, chunk ):
-        subc = subchunks[chunk][:2000] # DEBUG: force less subchunks
-        # MySQL will probably run out of memory with >2k subchunks.
-        header = '-- SUBCHUNKS:' + ", ".join(imap(str,subc))
-
-        cq = self.queryMunger.expandSubQueries(chunk, subc)
-        tableName = self.tableTemplate % str(chunk)
-        createPrep = self.createTemplate % tableName
-        insertPrep = self.insertTemplate % tableName
-        qlist = []
-        if cq:
-            qlist.append(createPrep + cq[0])
-            remain = cq[1:]
-            if remain:
-                qlist.extend(imap(lambda s: insertPrep + s, remain))
-                del remain
-        q = "\n".join([header] + qlist + ["\0\0\0\0"])  
-        # \0\0\0\0 is the magic query terminator for the 
-        # worker to detect.
-        return (tableName, q)
-    
-    def setupDumpSaver(self, hashkey):
-        path = "/tmp/qserv_"+hashkey
-        # Make room, recursive delete.
-        try:
-            os.rmdir(path)
-        except OSError, e: 
-            if e.errno == 39:
-                # If not empty, make it empty
-                for f in os.listdir(path):
-                    os.remove(os.path.join(path, f))
-                    # Do not recurse.  qserv-managed dir will not require it.
-                os.rmdir(path)
-            pass
-        # Now make a nice, new directory
-        os.mkdir(path)
-        return path
-    
-    def saveTableDump(self, tableName, dumpPieces):
-        """Write dumpPieces into a file, named after the table name.
-        This shouldn't get called when xrdReadToLocalFile is in use."""
-        name = os.path.join(self.resultPath, tableName)
-        dumpfile = open(name, "wb")
-        bytes = 0
-        for f in dumpPieces:
-            dumpfile.write(f)
-            bytes += len(f)
-        dumpfile.close()
-        print "Wrote to %s, %d bytes" % (name, bytes)
-        pass
-
-        
-    def mergeTableDump(self, tableName, dumpPieces):
-        db = "test"
-        targetTable = "result"
-
-        self.resultLock.acquire()
-
-        # Apply dump.  This ingests the dump into a table named tableName
-        # The dump should be newline-separated.
-        if False:
-            self.applySqlSep(db, dumpPieces, ";\n")
-        else:
-            from subprocess import Popen, PIPE
-            p = Popen(["/home/wang55/bin/mysql","test"], bufsize=0, 
-                      stdin=PIPE, close_fds=True)
-            if False:
-                p.communicate("".join(dumpPieces))
-            else:
-                for f in dumpPieces:
-                    p.stdin.write(f)
-                p.communicate()
-
-
-        ## Might need to specially handle null results.
-        # Merge table results into the real results table.
-        destSrc = (targetTable, tableName)
-        mergeSql = [
-            "CREATE TABLE IF NOT EXISTS %s like %s;" % destSrc,
-            "INSERT INTO %s SELECT * FROM %s;" % destSrc]
-            
-        try:
-            for s in mergeSql:
-                self.applySql(db, s) 
-        except:
-            print "Problem merging after ", dump[:100]
-            pass
-        # Get rid of the table we ingested, since we've used it.
-        self.applySql(db, "DROP TABLE %s;" % tableName)
-        self.resultLock.release()
-        pass
-
-    def applySql(self, dbName, qtext):
-        r = self.db.issueQuery(("USE %s;" % dbName) + qtext)
-        pass
-
-    def applySqlSep(self, dbName, qtext, sep):
-        if sep in qtext:
-            for l in qtext.split(sep):
-                self.applySql(dbName, l + sep)
-        else:
-            self.applySql(dbName, qtext)
-        pass
-        
+    def _computeHash(self, bytes):
+        return hashlib.md5(bytes).hexdigest()
 
 class CheckAction:
     def __init__(self, tracker, handle):

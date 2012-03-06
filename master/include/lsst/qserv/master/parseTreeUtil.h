@@ -118,6 +118,25 @@ public:
 };
 
 template <typename AnAst>
+struct SubstituteVisitor {
+public:
+    typedef std::map<std::string, std::string> StringMap;
+    SubstituteVisitor(StringMap const& m_) : m(m_) {}
+    
+    void operator()(AnAst a) {
+	std::string s = a->getText();
+	if(!s.empty()) {
+            StringMap::const_iterator i = m.find(s);
+            if(i != m.end()) {
+                a->setText(i->second);
+            }
+	}
+    }
+    StringMap const& m;
+};
+
+
+template <typename AnAst>
 std::string walkTree(AnAst r) {
     //DFS walk
     // Print child (child will print siblings)
@@ -180,6 +199,14 @@ std::string walkBoundedTreeString(AnAst r, AnAst lastSib) {
     return p.result;
 }
 
+template <typename AnAst>
+void walkTreeSubstitute(AnAst r, 
+                        std::map<std::string, std::string> const& m) {
+    SubstituteVisitor<AnAst> s(m);
+    walkTreeVisit(r, s);
+}
+
+
 
 template <typename AnAst>
 std::string getFuncString(AnAst r) {
@@ -217,6 +244,13 @@ AnAst collapseNodeRange(AnAst start, AnAst bound) {
     assert(bound.get());
     AnAst dead = start->getNextSibling();
     start->setNextSibling(bound->getNextSibling());
+    return dead;
+}
+
+template <typename AnAst>
+AnAst collapseToSingle(AnAst start) {
+    AnAst listBound = getLastSibling(start);
+    AnAst dead = collapseNodeRange(start, listBound);
     return dead;
 }
 

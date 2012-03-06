@@ -34,6 +34,10 @@
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/ResultTracker.h"
 #include "lsst/qserv/worker/MySqlFsCommon.h"
+#include "lsst/qserv/worker/Service.h"
+
+// common
+#include "lsst/qserv/QservPath.hh"
 
 // Forward
 class XrdSysError;
@@ -43,6 +47,8 @@ class XrdSfsAio;
 namespace lsst {
 namespace qserv {
 namespace worker {
+class RequestTaker; // Forward
+
 
 class AddCallbackFunction {
 public:
@@ -55,7 +61,8 @@ class MySqlFsFile : public XrdSfsFile {
 public:
     MySqlFsFile(XrdSysError* lp, char const* user = 0, 
                 AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr(),
-                fs::FileValidator::Ptr fv = fs::FileValidator::Ptr());
+                fs::FileValidator::Ptr fv = fs::FileValidator::Ptr(),
+                boost::shared_ptr<Service> service = Service::Ptr());
     virtual ~MySqlFsFile(void);
 
     int open(char const* fileName, XrdSfsFileOpenMode openMode,
@@ -87,6 +94,7 @@ public:
     int getCXinfo(char cxtype[4], int& cxrsz);
 
 private:
+    int _acceptFile(char const* fileName); // New path handling code
     bool _addWritePacket(XrdSfsFileOffset offset, char const* buffer, 
                          XrdSfsXferSize bufferSize);
     void _addCallback(std::string const& filename);
@@ -96,6 +104,7 @@ private:
     bool _hasPacketEof(char const* buffer, XrdSfsXferSize bufferSize) const;
 
     int _handleTwoReadOpen(char const* fileName);
+    int _checkForHash(std::string const& hash);
 
     ResultErrorPtr _getResultState(std::string const& physFilename);
 
@@ -105,12 +114,14 @@ private:
     AddCallbackFunction::Ptr _addCallbackF;
     fs::FileValidator::Ptr _validator;
     int _chunkId;
-    fs::FileClass _fileClass;
     std::string _userName;
     std::string _dumpName;
     bool _hasRead;
-    std::string _script;
     StringBuffer2 _queryBuffer;
+    boost::shared_ptr<QservPath> _path;
+    boost::shared_ptr<RequestTaker> _requestTaker;
+    boost::shared_ptr<Service> _service;
+
 };
 
 }}} // namespace lsst::qserv::worker

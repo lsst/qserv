@@ -83,7 +83,11 @@ public:
             physicalName = walkTreeString(table);
             logicalName = physicalName;
         }
-        _am.addTableAlias(logicalName, physicalName);
+        // std::cout <<"TableAlias: (l->p) " << logicalName
+        //           << " " << physicalName << std::endl;
+        TableAliasInfo info(logicalName, physicalName,
+                            table, subQuery, as, alias);
+        _am.addTableAlias(info);
     }
 private:
     AliasMgr& _am;
@@ -96,12 +100,21 @@ private:
 boost::shared_ptr<VoidTwoRefFunc> qMaster::AliasMgr::getColumnAliasHandler() {
     return boost::shared_ptr<VoidTwoRefFunc>(new ColumnAliasHandler(*this));
 }
+
 boost::shared_ptr<VoidFourRefFunc> qMaster::AliasMgr::getTableAliasHandler() {
     return boost::shared_ptr<VoidFourRefFunc>(new TableAliasHandler(*this));
 }
 
-void qMaster::AliasMgr::addTableAlias(std::string const& alias, 
-                                      std::string const& tName) {
-    _tableMap[alias] = tName;
-    _tableAliases.push_back(StringMap::value_type(alias,tName));
+void qMaster::AliasMgr::addTableAliasFunction(TableAliasFunc::Ptr f) {
+    _tableAliasFuncs.push_back(f);
+}
+
+void qMaster::AliasMgr::addTableAlias(TableAliasInfo& i) {
+    // Should the default functionality get pushed into a function as well?
+    _tableMap[i.alias] = i.table;
+    _tableAliases.push_back(StringMap::value_type(i.alias,i.table));
+    TableAliasFuncDeque::iterator j;
+    for(j=_tableAliasFuncs.begin(); j != _tableAliasFuncs.end(); ++j) {
+        (**j)(i);
+    }    
 }

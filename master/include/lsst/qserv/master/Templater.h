@@ -31,6 +31,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "lsst/qserv/master/parserBase.h"
+#include "lsst/qserv/master/common.h"
 
 // Forward
 namespace antlr {
@@ -40,58 +41,66 @@ namespace antlr {
 namespace lsst {
 namespace qserv {
 namespace master {
+class TableRefChecker; // Forward
+class TableAliasFunc; // Forward
+
+typedef boost::shared_ptr<TableRefChecker const> RefCheckerConstPtr;
 
 /// class Templater : A templating module that helps produce string
 /// templates for substitution for making SQL subqueries.  Manages db
 /// whitelist for access control.
+///
+/// However, a class called "Templater" shouldn't be thinking about db
+/// whitelisting or access control, so this functionality is
+/// deprecated. 
 class Templater {
 public:
     typedef std::map<std::string, int> IntMap;
+    //typedef std::set<std::string> StringSet;
+    //typedef std::map<StringSet> StrStrSet;
 
     // ColumnHandler: hooks into parser's production for column name references.
     class ColumnHandler : public VoidFourRefFunc {
     public:    
-        ColumnHandler(Templater& t) : _templater(t) {}
+    ColumnHandler(Templater& t) : _templater(t) {}
         virtual ~ColumnHandler() {}
         virtual void operator()(antlr::RefAST a, antlr::RefAST b, 
                                 antlr::RefAST c, antlr::RefAST d) {
             if(d.get()) {
-                _templater._processName(b, c);
+                _templater._processLater(b, c);
             } else if(c.get()) {
-                _templater._processName(a, b);
+                _templater._processLater(a, b);
             } else if(b.get()) {
-                _templater._processName(antlr::RefAST(), a);
+                _templater._processLater(antlr::RefAST(), a);
             }
             // std::cout << "col _" << tokenText(a) 
-            // 	      << "_ _" << tokenText(b) 
-            // 	      << "_ _" << tokenText(c) 
-            // 	      << "_ _" << tokenText(d) 
-            // 	      << "_ "; 
+            //        << "_ _" << tokenText(b) 
+            //        << "_ _" << tokenText(c) 
+            //        << "_ _" << tokenText(d) 
+            //        << "_ "; 
             // a->setText("AWESOMECOLUMN");
         }
     private:
         Templater& _templater;
-	
+        
     };
     // TableHandler: hooks into parser's production for table name references.
     class TableHandler : public VoidThreeRefFunc {
     public: 
         TableHandler(Templater& t) : _templater(t) {}
         virtual ~TableHandler() {}
-        virtual void operator()(antlr::RefAST a, 
-                                antlr::RefAST b, 
-                                antlr::RefAST c)  {
+        virtual void operator()(antlr::RefAST a, antlr::RefAST b, antlr::RefAST c)  {
             // right-most is the table name.
             if(c.get()) {
-                _templater._processName(b, c);
+                _templater._processLater(b, c);
             } else if(b.get()) {
-                _templater._processName(a, b);
+                _templater._processLater(a, b);
             } else if(a.get()) {
-                _templater._processName(antlr::RefAST(), a);
+                _templater._processLater(antlr::RefAST(), a);
             }
             // std::cout << "qualname " << tokenText(a) 
-            // 	      << " " << tokenText(b) << " " 
-            // 	      << tokenText(c) << " "; 
+            //        << " " << tokenText(b) << " " 
+            //        << tokenText(c) << " "; 
         }
     private:
         Templater& _templater;
@@ -104,6 +113,30 @@ public:
                       << a->typeName()
                       << ") " << std::endl;
         }
+    };
+    /// Defers a visit to nodes so it can be done later.
+    /// This is useful for delaying processing for a set of nodes until 
+    /// other conditions are satisfied.
+    class DeferredVisitor {
+    public:
+        // Wrap up an action so its state can be maintained.
+        template <class A>
+        class Wrapper { 
+        public:
+            Wrapper(A& a_) : a(a_) {}
+            template <typename T>
+            void operator()(T& t) { a(t); }
+            A& a;
+        };
+        DeferredVisitor() {}
+        void operator()(antlr::RefAST& a) { _q.push_back(a); }
+        template <class Action>
+        void visit(Action& a) {
+            std::for_each(_q.begin(), _q.end(), Wrapper<Action>(a));
+            _q.clear();
+        }
+    private:
+        std::deque<antlr::RefAST> _q;
     };
     class JoinVisitor {
     public:
@@ -141,6 +174,7 @@ public:
         TableListHandler(Templater& t) : _templater(t) {}
         virtual ~TableListHandler() {}
         virtual void operator()(antlr::RefAST a, antlr::RefAST b);
+        void processJoin();
         bool getHasChunks() const { return _hasChunks; }
         bool getHasSubChunks() const { return _hasSubChunks; }
         IntMap const& getUsageCount() const { return _usageCount; }
@@ -149,6 +183,7 @@ public:
         bool _hasChunks;
         bool _hasSubChunks;
         IntMap _usageCount;
+        DeferredVisitor _deferred;
     };
     // SpatialTableNameNotifier
     class Notifier {
@@ -160,13 +195,12 @@ public:
     };
     // Templater 
     typedef std::map<std::string, char> ReMap;
-    typedef std::deque<std::string> StringList;
     
     Templater(std::string const& delimiter="*?*", 
-              antlr::ASTFactory* factory=0, 
-              Notifier& spatialTableNotifier=Notifier::nullInstance);
+              antlr::ASTFactory* factory=0);
     ~Templater() { }
     void setup(IntMap const& dbWhiteList=IntMap(),
+               RefCheckerConstPtr refChecker=RefCheckerConstPtr(),
                std::string const& defaultDb=std::string());
 
     template <typename Iter>
@@ -181,6 +215,9 @@ public:
     std::string mungeName(std::string const& name) {
         return _delimiter + name + _delimiter;
     }
+    void processNames();
+    void signalFromStmtBegin();
+    void signalFromStmtEnd();
 
     bool isSpecial(std::string const& s) {
         return _map.find(s) != _map.end();
@@ -198,6 +235,8 @@ public:
     std::string const& getDelimiter() const { return _delimiter; 
     }
 
+//    TableRefChecker const& getTableRefChecker() const;
+
     StringList const& getBadDbs() const { return _badDbs; }
     void addGoodDb(std::string const& db) { _dbWhiteList[db] = 1; }
     class addAliasFunc {
@@ -208,11 +247,20 @@ public:
     };
     friend class addAliasFunc;
 private:
+    typedef std::pair<antlr::RefAST, antlr::RefAST> RefAstPair ; 
+    typedef std::deque<RefAstPair> RefPairQueue;
+    class AliasTemplater; // A TableAliasFunc
+    friend class AliasTemplater;
+
     bool _isAlias(std::string const& alias);
     bool _isDbOk(std::string const& db);
     void _markBadDb(std::string const& db);
-    void _processName(antlr::RefAST db, antlr::RefAST n); 
-    
+    void _processLater(antlr::RefAST db, antlr::RefAST n);
+    void _processName(RefAstPair& n);
+    //void _markSpecial(std::string const& db, std::string const& table);
+
+    RefPairQueue _columnProcessQueue;
+    RefPairQueue _tableProcessQueue;
     ReMap _map;
     IntMap _dbWhiteList;
     IntMap _tableAliases;
@@ -220,7 +268,9 @@ private:
     antlr::ASTFactory* _factory;
     std::string _defaultDb;
     StringList _badDbs;
-    Notifier& _spatialTableNameNotifier;
+    boost::shared_ptr<TableRefChecker const> _refChecker;
+    bool _fromStmtActive;
+    bool _shouldDefer;
     
     // static const
     static std::string const _nameSep;

@@ -54,8 +54,8 @@
 // Package:
 #include "lsst/qserv/master/parserBase.h" 
 #include "lsst/qserv/master/parseTreeUtil.h"
-
 #include "lsst/qserv/master/parseHandlers.h"
+#include "lsst/qserv/master/Callback.h"
 
 namespace lsst {
 namespace qserv {
@@ -84,6 +84,7 @@ public:
 class AggregateMgr {
 public:
     typedef std::map<antlr::RefAST, AggregateRecord> AggMap;
+    typedef std::deque<Callback::Ptr> CallbackDeque;
     class AliasVal;
     class AggBuilderIf;
     class EasyAggBuilder;
@@ -100,6 +101,8 @@ public:
     
     void postprocess(AliasMgr::NodeMap const& aMap);
     void applyAggPass();
+    void listenSelectReceived(Callback::Ptr c);
+    void signalSelectReceived();
 
     std::string getPassSelect();
     std::string getFixupSelect();
@@ -125,6 +128,7 @@ private:
     std::string _fixupPost;
     bool _hasAggregate;
     bool _isMissingSelect;
+    CallbackDeque _selectCallbacks;
 
 }; // class AggregateMgr
 
@@ -204,26 +208,28 @@ class AggregateMgr::SelectListHandler : public VoidOneRefFunc {
 public: 
     class SelectStarHandler : public VoidVoidFunc {
     public: 
-        SelectStarHandler(SelectListHandler& h) : handler(h) {}
+        explicit SelectStarHandler(SelectListHandler& h) : handler(h) {}
         virtual ~SelectStarHandler() {}
         virtual void operator()() { handler.handleSelectStar(); }
         SelectListHandler& handler;
     };
 
     typedef std::deque<NodeList> Deque;
-    SelectListHandler(AliasMgr& h);
+    SelectListHandler(AliasMgr& am, AggregateMgr& agm);
     virtual ~SelectListHandler() {}
     virtual void operator()(antlr::RefAST a);
     void handleSelectStar() { 
         if(selectLists.empty()) { 
             isStarFirst = true; 
         } 
+        _aggMgr.signalSelectReceived();
     }
     boost::shared_ptr<SelectStarHandler> newSelectStarHandler() {
         typedef boost::shared_ptr<SelectStarHandler> Ptr;
         return Ptr(new SelectStarHandler(*this));
     }
     AliasMgr& _aMgr; // Get help from AliasHandler
+    AggregateMgr& _aggMgr; // For signaling AggregateMgr
     Deque selectLists;
     NodeBound firstSelectBound;
     bool isStarFirst;

@@ -29,6 +29,7 @@
 // Pkg
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/stringUtil.h"
+#include "lsst/qserv/master/TableNamer.h"
 
 // Boost
 #include <boost/make_shared.hpp>
@@ -280,8 +281,8 @@ public:
                                                          paramStrs));
         _suh._inbandRestrictions.push_back(r); // Track separately.
         _suh._expandRestriction(*r, ss);
-        // std::cout << "Spec yielded " 
-        //           << ss.str() <<std::endl;
+        std::cout << "Spec yielded " 
+                   << ss.str() <<std::endl;
         // Edit the parse tree
         collapseNodeRange(name, getLastSibling(params));
         name->setText(ss.str());
@@ -296,7 +297,7 @@ private:
 qMaster::SpatialUdfHandler::SpatialUdfHandler(
                                            antlr::ASTFactory* factory, 
                                            StringMapMap const& tableConfigMap,
-                                           StringPairList const& spatialTables)
+                                           qMaster::TableNamer const& tableNamer)
     : _fromWhere(new FromWhereHandler(*this)),
       _whereCond(new WhereCondHandler(*this)),
       _restrictor(new RestrictorHandler(*this)),
@@ -305,7 +306,7 @@ qMaster::SpatialUdfHandler::SpatialUdfHandler(
       _factory(factory),
       _hasRestriction(false),
       _tableConfigMap(tableConfigMap),
-      _spatialTables(spatialTables) {
+      _tableNamer(tableNamer) {
     if(!_factory) {
         std::cerr << "WARNING: SpatialUdfHandler non-functional (null factory)"
                   << std::endl;
@@ -364,18 +365,21 @@ qMaster::SpatialUdfHandler::_expandRestriction(Restriction const& r,
     //    << name->getText() << "--";
     // std::copy(paramNums.begin(), paramNums.end(), 
     //           std::ostream_iterator<double>(std::cout, ","));
-    StringPairList const& sp = getSpatialTables();
-    StringPairList::const_iterator spi;
-    StringPairList::const_iterator spe = sp.end();
+//first: alias
+//second: phy
+    typedef qMaster::TableNamer::RefDeque RefDeque;
+    RefDeque const& rd = _tableNamer.getRefs();
+    RefDeque::const_iterator rdi;
+    RefDeque::const_iterator rde = rd.end();
     bool first = true;
-    for(spi = sp.begin(); spi != spe; ++spi) {
+    for(rdi = rd.begin(); rdi != rde; ++rdi) {
         if(!first) o << " AND ";
         else first = false;
         // std::cout << "Expanding restr for table: " 
         //           << spi->first << "--second--" 
         //           << spi->second << std::endl;
-        o << r.getUdfCallString(spi->first, 
-                                getTableConfig(spi->second));
+        o << r.getUdfCallString(rdi->alias, 
+                                getTableConfig(rdi->table));
     }
     return o;
 }

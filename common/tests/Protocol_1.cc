@@ -27,36 +27,47 @@
 #include <iostream>
 #include "boost/scoped_ptr.hpp"
 #include "worker.pb.h"
+#include "TaskMsgDigest.h"
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 namespace test = boost::test_tools;
+namespace gio = google::protobuf::io;
+
 
 struct ProtocolFixture {
     ProtocolFixture(void) : counter(0){}
     ~ProtocolFixture(void) { };
-    lsst::qserv::Task* makeTask() {
-        lsst::qserv::Task* t;
-        t = new lsst::qserv::Task();
+    lsst::qserv::TaskMsg* makeTaskMsg() {
+        lsst::qserv::TaskMsg* t;
+        t = new lsst::qserv::TaskMsg();
         t->set_session(123456);
         t->set_chunkid(20 + counter);
+        t->set_db("elephant");
         for(int i=0; i < 3; ++i) {
-            lsst::qserv::Task::Fragment* f = t->add_fragment();
+            lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
             f->set_query("Hello, this is a query.");
-            f->add_subchunk(100+i); 
+            addSubChunk(*f, 100+i); 
+            f->set_resulttable("r_341");
         }
         ++counter;
         return t;
     }
 
-    bool compareTasks(lsst::qserv::Task& t1, lsst::qserv::Task& t2) {
-        bool sessionAndChunk = (t1.session() == t2.session()) 
-            && (t1.chunkid() == t2.chunkid());
+    void addSubChunk(lsst::qserv::TaskMsg_Fragment& f, int scId) {
+        f.add_subchunk(scId);  // Update to do fancy db+table+list ops
+    }
+
+    bool compareTaskMsgs(lsst::qserv::TaskMsg& t1, lsst::qserv::TaskMsg& t2) {
+        bool nonFragEq = (t1.session() == t2.session()) 
+            && (t1.chunkid() == t2.chunkid())
+            && (t1.db() == t2.db());
         
         bool fEqual = (t1.fragment_size() == t2.fragment_size());
         for(int i=0; i < t1.fragment_size(); ++i) {
             fEqual = fEqual && compareFragment(t1.fragment(i), 
                                                t2.fragment(i));
         }
-        return sessionAndChunk && fEqual;            
+        return nonFragEq && fEqual;            
     }
 
     lsst::qserv::ResultHeader* makeResultHeader() {
@@ -74,8 +85,8 @@ struct ProtocolFixture {
         return r;
     }    
 
-    bool compareFragment(lsst::qserv::Task_Fragment const& f1, 
-                         lsst::qserv::Task_Fragment const& f2) {
+    bool compareFragment(lsst::qserv::TaskMsg_Fragment const& f1, 
+                         lsst::qserv::TaskMsg_Fragment const& f2) {
         bool qEqual = (f1.query() == f2.query());
         bool sEqual = (f1.subchunk_size() == f2.subchunk_size());
         for(int i=0; i < f1.subchunk_size(); ++i) {
@@ -108,19 +119,19 @@ struct ProtocolFixture {
 
 BOOST_FIXTURE_TEST_SUITE(ProtocolTestSuite, ProtocolFixture)
 
-BOOST_AUTO_TEST_CASE(TaskMsgSanity) {
+BOOST_AUTO_TEST_CASE(TaskMsgMsgSanity) {
     GOOGLE_PROTOBUF_VERIFY_VERSION;
     std::stringstream ss;
-    boost::scoped_ptr<lsst::qserv::Task> t1(makeTask());
+    boost::scoped_ptr<lsst::qserv::TaskMsg> t1(makeTaskMsg());
     BOOST_CHECK(t1.get());
     t1->SerializeToOstream(&ss);
 
     std::string blah = ss.str();
     std::stringstream ss2(blah);
-    boost::scoped_ptr<lsst::qserv::Task> t2(new lsst::qserv::Task());
+    boost::scoped_ptr<lsst::qserv::TaskMsg> t2(new lsst::qserv::TaskMsg());
     BOOST_CHECK(t1.get());
     t2->ParseFromIstream(&ss2);
-    BOOST_CHECK(compareTasks(*t1, *t2));
+    BOOST_CHECK(compareTaskMsgs(*t1, *t2));
 }
 
 BOOST_AUTO_TEST_CASE(ResultMsgSanity) {
@@ -134,9 +145,30 @@ BOOST_AUTO_TEST_CASE(ResultMsgSanity) {
     boost::scoped_ptr<lsst::qserv::ResultHeader> r2(new lsst::qserv::ResultHeader());
     BOOST_CHECK(r1.get());
     r2->ParseFromIstream(&ss2);
+    BOOST_CHECK(compareResultHeaders(*r1, *r2));    
+}
+
+BOOST_AUTO_TEST_CASE(MsgBuffer) {
+    std::stringstream ss;
+    boost::scoped_ptr<lsst::qserv::ResultHeader> r1(makeResultHeader());
+    BOOST_CHECK(r1.get());
+    r1->SerializeToOstream(&ss);
+    
+    std::string raw(ss.str());
+    gio::ArrayInputStream input(raw.data(), 
+                                raw.size());
+    gio::CodedInputStream coded(&input);
+    boost::scoped_ptr<lsst::qserv::ResultHeader> r2(new lsst::qserv::ResultHeader());
+    BOOST_CHECK(r1.get());
+    r2->MergePartialFromCodedStream(&coded);
     BOOST_CHECK(compareResultHeaders(*r1, *r2));
-    
-    
+}
+
+BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
+    boost::scoped_ptr<lsst::qserv::TaskMsg> t1(makeTaskMsg());
+    std::string hash = hashTaskMsg(*t1);
+    std::string expected = "9f6fecff39ce2a96f2eedff451fe86e4";
+    BOOST_CHECK_EQUAL(hash, expected);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -39,6 +39,10 @@
 #include "lsst/qserv/worker/Thread.h"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/MySqlFsCommon.h"
+#include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/worker/RequestTaker.h"
+#include "lsst/qserv/worker/XrdLogger.h"
+#include "lsst/qserv/QservPath.hh"
 
 #include <algorithm>
 #include <cstdlib>
@@ -124,7 +128,6 @@ private:
 // for now, two simultaneous writes (queries)
 qWorker::Semaphore WriteCallable::_sema(2);
 
-
 bool flushOrQueue(qWorker::QueryRunnerArg const& a)  {
     qWorker::QueryRunner::Manager& mgr = qWorker::QueryRunner::getMgr();
     mgr.runOrEnqueue(a);
@@ -177,8 +180,13 @@ std::ostream& operator<<(std::ostream& os, Timer const& tm) {
 //////////////////////////////////////////////////////////////////////////////
 qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char const* user, 
                                   AddCallbackFunction::Ptr acf,
-                                  qWorker::fs::FileValidator::Ptr fv) :
-    XrdSfsFile(user), _eDest(lp), _addCallbackF(acf), _validator(fv) {
+                                  qWorker::fs::FileValidator::Ptr fv,
+                                  boost::shared_ptr<Service> service) 
+    : XrdSfsFile(user), 
+      _eDest(lp), 
+      _addCallbackF(acf),
+      _validator(fv),
+      _service(service) {
 
     // Capture userName at this point.
     // Param user is: user.pid:fd@host
@@ -193,26 +201,49 @@ qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char const* user,
 qWorker::MySqlFsFile::~MySqlFsFile(void) {
 }
 
-int qWorker::MySqlFsFile::open(char const* fileName, 
-                               XrdSfsFileOpenMode openMode, 
-                               mode_t createMode,
-                               XrdSecEntity const* client, 
-                               char const* opaque) {
+int qWorker::MySqlFsFile::_acceptFile(char const* fileName) {
     int rc;
-
-    if (fileName == 0) {
-        error.setErrInfo(EINVAL, "Null filename");
+    _path.reset(new QservPath(fileName));
+    QservPath::RequestType rt = _path->requestType();
+    switch(rt) {
+    case QservPath::GARBAGE:
+    case QservPath::UNKNOWN:
+        _eDest->Say((Pformat("Unrecognized file open %1% by %2%")
+                     % fileName % _userName).str().c_str());
         return SFS_ERROR;
-    }
-    _fileClass = fs::computeFileClass(fileName);
-    switch(_fileClass) {
-    case fs::COMBO:
-        _chunkId = findChunkNumber(fileName);
-        _eDest->Say((Pformat("File open %1%(%2%) by %3%")
-                     % fileName % _chunkId % _userName).str().c_str());
-        break;
-    case fs::TWO_WRITE:
-        _chunkId = findChunkNumber(fileName);
+
+    case QservPath::OLDQ1:
+        _eDest->Say((Pformat("Unrecognized file open %1% by %2%")
+                     % fileName % _userName).str().c_str());
+
+        return SFS_ERROR; // Unimplemented
+    case QservPath::CQUERY:
+        // For now, use old validator.
+        // _eDest->Say((Pformat("Newstyle open: %1% for chunk %2%")
+        //              % fileName % _path->chunk()).str().c_str());
+        if(!(*_validator)(fileName)) {
+            error.setErrInfo(ENOENT, "File does not exist");
+            _eDest->Say((Pformat("WARNING: unowned chunk query detected: %1%(%2%)")
+                         % fileName % _chunkId ).str().c_str());
+            return SFS_ERROR;        
+        }
+        _requestTaker.reset(new RequestTaker(_service->getAcceptor(),
+                                             *_path));
+        
+        return SFS_OK; // No other action is needed.
+
+    case QservPath::RESULT:
+        rc = _checkForHash(_path->hashName());
+        if(rc == SFS_ERROR) {
+            _eDest->Say((Pformat("File open %1% fail. Query error: %2%.")
+                         % fileName % error.getErrText()).str().c_str());
+        } else if (rc == SFS_OK) {
+            _eDest->Say((Pformat("File open %1% for result reading by %2%")
+                         % fileName % _userName).str().c_str());
+        }
+        return rc;
+    case QservPath::OLDQ2:
+        _chunkId = _path->chunk();
         _eDest->Say((Pformat("File open %1% for query invocation by %2%")
                      % fileName % _userName).str().c_str());
         if(!(*_validator)(fileName)) {
@@ -221,26 +252,31 @@ int qWorker::MySqlFsFile::open(char const* fileName,
                          % fileName % _chunkId ).str().c_str());
             return SFS_ERROR;        
         }
-        break;
-    case fs::TWO_READ:
-        rc = _handleTwoReadOpen(fileName);
-        if(rc != SFS_OK) {
-            return rc;
-        }
-        break;
+        return SFS_OK;
     default:
         _eDest->Say((Pformat("Unrecognized file open %1% by %2%")
                      % fileName % _userName).str().c_str());
         return SFS_ERROR;
     }
-    return SFS_OK;
+
+}
+
+int qWorker::MySqlFsFile::open(char const* fileName, 
+                               XrdSfsFileOpenMode openMode, 
+                               mode_t createMode,
+                               XrdSecEntity const* client, 
+                               char const* opaque) {
+    if (fileName == 0) {
+        error.setErrInfo(EINVAL, "Null filename");
+        return SFS_ERROR;
+    }
+    return _acceptFile(fileName);
 }
 
 int qWorker::MySqlFsFile::close(void) {
     _eDest->Say((Pformat("File close(%1%) by %2%")
-                 % _chunkId % _userName).str().c_str());
-    if((_fileClass == fs::COMBO)  ||
-       ((_fileClass == fs::TWO_READ) && _hasRead) ) {
+                 % _path->chunk() % _userName).str().c_str());
+    if(_path->requestType() == QservPath::RESULT) {
         // Get rid of the news.
         std::string hash = fs::stripPath(_dumpName);
         QueryRunner::getTracker().clearNews(hash);
@@ -268,7 +304,7 @@ int qWorker::MySqlFsFile::fctl(
 
 char const* qWorker::MySqlFsFile::FName(void) {
     _eDest->Say((Pformat("File FName(%1%) by %2%")
-                 % _chunkId % _userName).str().c_str());
+                 % _path->chunk() % _userName).str().c_str());
     return 0;
 }
 
@@ -278,10 +314,10 @@ int qWorker::MySqlFsFile::getMmap(void** Addr, off_t &Size) {
 }
 
 int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
-                          XrdSfsXferSize prereadSz) {
+                               XrdSfsXferSize prereadSz) {
     _hasRead = true;
     _eDest->Say((Pformat("File read(%1%) at %2% by %3%")
-                 % _chunkId % fileOffset % _userName).str().c_str());
+                 % _path->chunk() % fileOffset % _userName).str().c_str());
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
     if (!qWorker::dumpFileExists(_dumpName)) {
         std::string s = "Can't find dumpfile: " + _dumpName;
@@ -304,7 +340,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
     }
             
     msg = (Pformat("File read(%1%) at %2% for %3% by %4% [actual=%5% %6%]")
-           % _chunkId % fileOffset % bufferSize % _userName 
+           % _path->chunk() % fileOffset % bufferSize % _userName 
            % _dumpName % statbuf.st_size).str();
     _eDest->Say(msg.c_str());
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
@@ -362,6 +398,13 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     if (bufferSize <= 0) {
         error.setErrInfo(EINVAL, "No query provided");
         return -EINVAL;
+    }
+    if(_path->requestType() == QservPath::CQUERY) {
+        if(_requestTaker->receive(fileOffset, buffer, bufferSize)) {
+            if (_hasPacketEof(buffer, bufferSize)) {
+                _requestTaker->complete();
+            } else return bufferSize;
+        } else return -EIO;
     }
     _addWritePacket(fileOffset, buffer, bufferSize);
     _eDest->Say((Pformat("File write(%1%) Added.") % _chunkId).str().c_str());
@@ -432,14 +475,14 @@ bool qWorker::MySqlFsFile::_addWritePacket(XrdSfsFileOffset offset,
 }
 
 void qWorker::MySqlFsFile::_addCallback(std::string const& filename) {
-    assert(_fileClass == fs::TWO_READ);
+    assert(_path->requestType() == QservPath::RESULT);
     assert(_addCallbackF.get() != 0);
     (*_addCallbackF)(*this, filename);
 }
 
 qWorker::ResultErrorPtr 
 qWorker::MySqlFsFile::_getResultState(std::string const& physFilename) {
-    assert(_fileClass == fs::TWO_READ);
+    assert(_path->requestType() == QservPath::RESULT);
     // Lookup result hash.
     std::string hash = fs::stripPath(physFilename);
     //_eDest->Say(("Getting news for hash=" +hash).c_str());
@@ -448,10 +491,13 @@ qWorker::MySqlFsFile::_getResultState(std::string const& physFilename) {
 }
 
 bool qWorker::MySqlFsFile::_flushWrite() {
-    switch(_fileClass) {
-    case fs::TWO_WRITE:
+    switch(_path->requestType()) {
+    case QservPath::CQUERY:
+        //return _fs.addQuery(_queryBuffer);
+        return true;
+    case QservPath::OLDQ2:
         return _flushWriteDetach();
-    case fs::COMBO:
+    case QservPath::OLDQ1:
         return _flushWriteSync();
     default:
         _eDest->Say("Wrong filestate for writing. FIX THIS BUG.");
@@ -462,17 +508,19 @@ bool qWorker::MySqlFsFile::_flushWrite() {
 }
 
 bool qWorker::MySqlFsFile::_flushWriteDetach() {
-    qWorker::QueryRunnerArg a(_eDest, _userName, 
-                              ScriptMeta(_queryBuffer, _chunkId));
+    boost::shared_ptr<XrdLogger> x(new XrdLogger(*_eDest));
+    Task::Ptr t(new Task(ScriptMeta(_queryBuffer, _chunkId), _userName));
+
+    qWorker::QueryRunnerArg a(x, t);
     return flushOrQueue(a);
 }
 
 bool qWorker::MySqlFsFile::_flushWriteSync() {
-    ScriptMeta s(_queryBuffer, _chunkId);
-    _script = s.script;
+    boost::shared_ptr<XrdLogger> x(new XrdLogger(*_eDest));
+    Task::Ptr t(new Task(ScriptMeta(_queryBuffer, _chunkId), _userName));
     _setDumpNameAsChunkId(); // Because reads may get detached from writes.
     //_eDest->Say((Pformat("db=%1%.") % s.dbName).str().c_str());
-    QueryRunner runner(*_eDest, _userName, s, _dumpName);
+    QueryRunner runner(x, t, _dumpName);
     return runner();
 }
 
@@ -497,16 +545,15 @@ void qWorker::MySqlFsFile::_setDumpNameAsChunkId() {
 
 int qWorker::MySqlFsFile::_handleTwoReadOpen(char const* fileName) {
     std::string hash = fs::stripPath(fileName);
+    return _checkForHash(hash);
+}
+
+int qWorker::MySqlFsFile::_checkForHash(std::string const& hash) {
     _dumpName = hashToResultPath(hash); 
     _hasRead = false;
     ResultErrorPtr p = _getResultState(_dumpName);
     if(p.get()) {
-        if(p->first == 0) {
-            _eDest->Say((Pformat("File open %1% for result reading by %2%")
-                         % fileName % _userName).str().c_str());
-        } else { // Error, so report it.
-            _eDest->Say((Pformat("File open %1% fail. Query error: %2%.")
-                         % fileName % p->second).str().c_str());
+        if(p->first != 0) { // Error, so report it.
             error.setErrInfo(EINVAL, p->second.c_str());
             return SFS_ERROR;
         }
