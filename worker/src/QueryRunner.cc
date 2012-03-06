@@ -91,7 +91,7 @@ runScriptPiece(boost::shared_ptr<qWorker::Logger> log,
                  % scriptId % pieceName % ::time(NULL)).str().c_str());
     //(*log)(("Hi. my piece is++"+piece+"++").c_str());
 	
-    bool result = runQueryInPieces(log, e, sqlConn, errObj, piece, checkAbort);
+    bool result = runQueryInPieces(log, sqlConn, errObj, piece, checkAbort);
     (*log)((Pformat("TIMING,%1%%2%Finish,%3%")
            % scriptId % pieceName % ::time(NULL)).str().c_str());
     if ( ! result ) {
@@ -101,7 +101,7 @@ runScriptPiece(boost::shared_ptr<qWorker::Logger> log,
         return false;
     }
     return true;
-}	   
+}
 
 bool
 runScriptPieces(boost::shared_ptr<qWorker::Logger> log,
@@ -112,16 +112,16 @@ runScriptPieces(boost::shared_ptr<qWorker::Logger> log,
                 std::string const& run, 
                 std::string const& cleanup,
                 qWorker::CheckFlag* checkAbort) {
-    if ( runScriptPiece(e, sqlConn, errObj, scriptId, "QueryBuildSub", 
+    if ( runScriptPiece(log, sqlConn, errObj, scriptId, "QueryBuildSub", 
                         build, checkAbort) ) {
-        if ( ! runScriptPiece(e, sqlConn, errObj, scriptId, "QueryExec", 
+        if ( ! runScriptPiece(log, sqlConn, errObj, scriptId, "QueryExec", 
                               run, checkAbort) ) {
             (*log)((Pformat("Fail QueryExec phase for %1%: %2%") 
                    % scriptId % errObj.errMsg()).str().c_str());
         }
     }
     // Always destroy subchunks, no aborting.
-    return runScriptPiece(e, sqlConn, errObj, scriptId, 
+    return runScriptPiece(log, sqlConn, errObj, scriptId, 
                           "QueryDestroySub", cleanup, 0);
 }
 
@@ -373,7 +373,16 @@ std::string qWorker::QueryRunner::_getErrorString() const {
   }
 */
 bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
-    DbHandle db;
+    SqlConfig sc;
+    sc.hostname = "";
+    sc.username = _user.c_str();
+    sc.password = "";
+    sc.dbName = "";
+    sc.port = 0;
+    sc.socket = getConfig().getString("mysqlSocket").c_str();
+    
+    SqlConnection _sqlConn(sc);
+
     bool success = true;
     _scriptId = t->dbName.substr(0, 6);
     (*_log)((Pformat("TIMING,%1%ScriptStart,%2%")
@@ -384,8 +393,10 @@ bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
     assert(t.get());
     assert(t->msg.get());
     TaskMsg& m(*t->msg);
-    if(!_connectDbServer(db.get())) {
-        return false;
+    if(!_sqlConn.connectToDb(_errObj)) {
+        (*_log)((Pformat("Cfg error! connect MySQL as %1% using %2%") 
+                % getConfig().getString("mysqlSocket") % _user).str().c_str());
+        return _errObj.addErrMsg("Unable to connect to MySQL as " + _user);
     }
     for(int i=0; i < m.fragment_size(); ++i) {
         Task::Fragment const& f(m.fragment(i));
@@ -405,48 +416,45 @@ bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
             else ss << "INSERT INTO " << resultTable << " ";
         }
         ss << f.query();
-        success = _runFragment(db.get(), ss.str(), 
+        success = _runFragment(_sqlConn, ss.str(), 
                                scb.build.str(), scb.clean.str(), 
                                resultTable);
         if(!success) return false;
         _pResult->addResultTable(resultTable);
     }
     if(success) {
-        if(!_pResult->performMysqldump(*_log, _user, _task->resultPath,
-                                       _errorNo, _errorDesc)) {
-            _appendError(EIO, "mysqldump failure");
+        if(!_pResult->performMysqldump(*_log,_user,_task->resultPath,_errObj)) {
             return false;
         }
     }
-    _dropTables(db.get(), _pResult->getCommaResultTables());
+    if (!_sqlConn.dropTable(_pResult->getCommaResultTables(), _errObj, false)) {
+        return false;
+    }
     return true;
 }
 
 // FIXME rework this function!!! Jacek
-bool qWorker::QueryRunner::_runFragment(MYSQL* dbMy,
+bool qWorker::QueryRunner::_runFragment(SqlConnection& sqlConn,
                                         std::string const& scr,
                                         std::string const& buildSc,
                                         std::string const& cleanSc,
                                         std::string const& resultTable) {
     boost::shared_ptr<CheckFlag> check(_makeAbort());
     
-    if(!_prepareAndSelectResultDb(_sqlConn)) {
+    if(!_prepareAndSelectResultDb(sqlConn)) {
         return false;
     }
     if(_checkPoisoned()) { // Check for poison
         _poisonCleanup(); // Clean it up.
         return false; 
     }
-    std::string result = runScriptPieces(_log, dbMy, _scriptId, buildSc, 
-                                         scr, cleanSc, check.get());
-    if(!result.empty()) { 
-        _appendError(EIO, result); 
+    if ( !runScriptPieces(_log, sqlConn, _errObj, _scriptId, buildSc, 
+                          scr, cleanSc, check.get()) ) {
         return false;
-    } 
-
+    }
     (*_log)((Pformat("TIMING,%1%ScriptFinish,%2%")
-                 % _scriptId % ::time(NULL)).str().c_str());
-    return _errorDesc.empty();
+             % _scriptId % ::time(NULL)).str().c_str());
+    return true;
 }
 
 void qWorker::QueryRunner::_buildSubchunkScripts(std::string const& script,

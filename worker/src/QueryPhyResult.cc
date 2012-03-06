@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <iterator>
 
+#include "lsst/qserv/SqlErrorObject.hh"
 #include "lsst/qserv/worker/Config.h"
 #include "lsst/qserv/worker/Base.h"
  
@@ -64,8 +65,7 @@ std::string qWorker::QueryPhyResult::_getSpaceResultTables() const {
 bool qWorker::QueryPhyResult::performMysqldump(qWorker::Logger& log,
                                                std::string const& user,
                                                std::string const& dumpFile,
-                                               int& errorNo,
-                                               std::string& errorDesc) {
+                                               SqlErrorObject& errObj) {
     // Dump a database to a dumpfile.
     
     // Make sure the path exists
@@ -91,10 +91,9 @@ bool qWorker::QueryPhyResult::performMysqldump(qWorker::Logger& log,
             % ::time(NULL)).str().c_str());
 
     if (cmdResult != 0) {
-        errorNo = errno;
-        errorDesc += "Unable to dump database " + _outDb
-            + " to " + dumpFile;
-        return false;
+        errObj.setErrNo(errno);
+        return errObj.addErrMsg("Unable to dump database " + _outDb
+                                + " to " + dumpFile);
     }
     return true;
 }
