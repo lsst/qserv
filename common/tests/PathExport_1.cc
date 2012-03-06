@@ -37,14 +37,26 @@ struct PerTestFixture {
 BOOST_FIXTURE_TEST_SUITE(PathExportTestSuite, PerTestFixture)
 
 BOOST_AUTO_TEST_CASE(PathCreate) {
-    std::vector<std::string> v;
-    v.push_back("/u1/lsst/export/dir1/fileA");
-    v.push_back("/u1/lsst/export/dir1/fileB");
-    v.push_back("/u1/lsst/export/dir2/fileC");
-    v.push_back("/u1/lsst/export/dir3/fileD");
-    
     qsrv::QservPathExport p;
-    BOOST_CHECK_EQUAL(p.createPaths(v), 0);
+
+    std::vector<std::string> pV;
+    pV.push_back("/u1/lsst/export/dir1/fileA");
+    pV.push_back("/u1/lsst/export/dir1/fileB");
+    pV.push_back("/u1/lsst/export/dir2/fileC");
+    pV.push_back("/u1/lsst/export/dir3/fileD");
+
+    std::vector<std::string> dV;
+    BOOST_CHECK_EQUAL(p.extractUniqueDirs(pV, dV), true);
+    BOOST_CHECK_EQUAL(dV.size(), 3);
+    vector<string>::iterator dItr;
+    for ( dItr=dV.begin(); dItr!=dV.end(); ++dItr) {
+        std::cout << "found unique path: " << *dItr << std::endl;
+    }
+    BOOST_CHECK_EQUAL(p.mkDirs(dV), true);
+    
+    dV.clear();    
+    pV.push_back("fileD");
+    BOOST_CHECK_EQUAL(p.extractUniqueDirs(pV, dV), false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

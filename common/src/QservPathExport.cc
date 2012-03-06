@@ -21,36 +21,50 @@
  */
 
 #include "QservPathExport.hh"
-#include <assert.h>
+#include <sys/stat.h>
 #include <iostream>
 
 namespace qsrv = lsst::qserv;
 
 bool
-qsrv::QservPathExport::createPaths(const std::vector<std::string>& exportDirs) {
-    // find unique directories
-    std::vector<std::string> uDirs;
-    std::vector<std::string>::iterator uDirItr;
+qsrv::QservPathExport::extractUniqueDirs(const vector<string>& exportPaths,
+                                         vector<string>& uniqueDirs) {
+    uniqueDirs.clear();
 
-    std::vector<std::string>::const_iterator itr;
-    for ( itr=exportDirs.begin(); itr!=exportDirs.end(); ++itr) {
-        int pos = itr->find_last_of('/');
-        return -1;
-        std::string s = itr->substr(0, pos);
+    vector<string>::const_iterator pItr;
+    for ( pItr=exportPaths.begin(); pItr!=exportPaths.end(); ++pItr) {
+        int pos = pItr->find_last_of('/');
+        if ( pos == -1 ) {
+            std::cerr << "Problems with path: " << *pItr << std::endl;
+            return false;
+        }
+        string s = pItr->substr(0, pos);
 
         bool found = false;
-        for (uDirItr=uDirs.begin() ; uDirItr!=uDirs.end(); ++uDirItr) {
-            if (*itr == s) {
+        vector<string>::iterator dItr;
+        for (dItr=uniqueDirs.begin() ; dItr!=uniqueDirs.end(); ++dItr) {
+            if (*dItr == s) {
                 found = true;
                 break;
             }
         }
         if ( ! found ) {
-            uDirs.push_back(s);
+            uniqueDirs.push_back(s);
         }
     }
-    for ( uDirItr=uDirs.begin(); uDirItr!=uDirs.end(); ++uDirItr) {
-        std::cout << "found unique path: " << *uDirItr << std::endl;
+    return true;
+}
+
+bool
+qsrv::QservPathExport::mkDirs(const vector<string>& dirs) {
+    vector<string>::const_iterator dItr;
+    for ( dItr=dirs.begin(); dItr!=dirs.end(); ++dItr) {
+        int n = mkdir(dItr->c_str(), 0x755);
+        if ( n != 0 ) {
+            std::cerr << "Failed to mkdir(" << *dItr << "), err: " 
+                      << n << std::endl;
+            return false;
+        }
     }
-    return 0;
+    return true;
 }

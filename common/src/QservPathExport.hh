@@ -26,17 +26,26 @@
 #include <string>
 #include <vector>
 
+using std::string;
+using std::vector;
+
 namespace lsst {
 namespace qserv {
 
 class QservPathExport {
+
 public:
     QservPathExport() {}
-/// creates directories: <baseDir>/<dbName>/<chunkNumber>
-/// for every chunk in every database served
 
-    bool createPaths(const std::vector<std::string>& exportDirs);
+    /// extracts a list of unique directory names
+    /// from the exportPaths
+    /// and stores them in the uniqueDirs vector
+    bool extractUniqueDirs(const vector<string>& exportPaths,
+                           vector<string>& uniqueDirs);
 
+    /// calls mkdir for each directory in the passed vector
+    bool mkDirs(const vector<string>& dirs);
+    
 private:
 };
 
