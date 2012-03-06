@@ -21,6 +21,7 @@
  */
 
 #include "QservPathExport.hh"
+#include <assert.h>
 #include <iostream>
 
 namespace qsrv = lsst::qserv;
@@ -29,17 +30,27 @@ bool
 qsrv::QservPathExport::createPaths(const std::vector<std::string>& exportDirs) {
     // find unique directories
     std::vector<std::string> uDirs;
+    std::vector<std::string>::iterator uDirItr;
 
-    std::vector<std::string>::iterator itr;
+    std::vector<std::string>::const_iterator itr;
     for ( itr=exportDirs.begin(); itr!=exportDirs.end(); ++itr) {
-        int pos = itr.find_last_of('/');
-        assert(pos>0);
-        std::string s = itr.substr(0, pos);
-        if(std::find(uDirs.begin(), uDirs.end(), s) == uDirs.end()) {
+        int pos = itr->find_last_of('/');
+        return -1;
+        std::string s = itr->substr(0, pos);
+
+        bool found = false;
+        for (uDirItr=uDirs.begin() ; uDirItr!=uDirs.end(); ++uDirItr) {
+            if (*itr == s) {
+                found = true;
+                break;
+            }
+        }
+        if ( ! found ) {
             uDirs.push_back(s);
         }
     }
-    for ( itr=uDirs.begin(); itr!=uDirs.end(); ++itr) {
-        std::cout << "found unique path: " << itr << std::endl;
+    for ( uDirItr=uDirs.begin(); uDirItr!=uDirs.end(); ++uDirItr) {
+        std::cout << "found unique path: " << *uDirItr << std::endl;
     }
+    return 0;
 }
