@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "QservPathExport.hh"
+#include "QservPathStructure.hh"
 #include <sys/stat.h>
 #include <iostream>
 
@@ -30,18 +30,17 @@ using std::string;
 using std::vector;
 
 bool
-qsrv::QservPathExport::extractUniqueDirs(const vector<string>& exportPaths,
-                                         vector<string>& uniqueDirs) {
-    uniqueDirs.clear();
+qsrv::QservPathStructure::insert(const vector<string>& paths) {
+    _uniqueDirs.clear();
 
     vector<string>::const_iterator pItr;
-    for ( pItr=exportPaths.begin(); pItr!=exportPaths.end(); ++pItr) {
+    for ( pItr=paths.begin(); pItr!=paths.end(); ++pItr) {
         int pos = pItr->find_last_of('/');
         if ( pos == -1 ) {
             std::cerr << "Problems with path: " << *pItr << std::endl;
             return false;
         }
-        if ( ! processOneDir(pItr->substr(0, pos), uniqueDirs) ) {
+        if ( ! processOneDir(pItr->substr(0, pos)) ) {
             return false;
         }
     }
@@ -49,36 +48,9 @@ qsrv::QservPathExport::extractUniqueDirs(const vector<string>& exportPaths,
 }
 
 bool
-qsrv::QservPathExport::processOneDir(const string s,
-                                     vector<string>& uniqueDirs)
-{
-    int pos = s.find_last_of('/');
-    if ( pos == -1 ) {
-        std::cerr << "Problems with path: " << s << std::endl;
-        return false;
-    } else if ( pos > 2 ) { // there is at least one more parent dir
-        if ( !processOneDir(s.substr(0, pos), uniqueDirs) ) {
-            return false;
-        }
-    }
-    bool found = false;
-    vector<string>::iterator dItr;
-    for (dItr=uniqueDirs.begin() ; dItr!=uniqueDirs.end(); ++dItr) {
-        if (*dItr == s) {
-            found = true;
-            break;
-        }
-    }
-    if ( ! found ) {
-        uniqueDirs.push_back(s);
-    }
-    return true;
-}
-
-bool
-qsrv::QservPathExport::mkDirs(const vector<string>& dirs) {
+qsrv::QservPathStructure::persist() {
     vector<string>::const_iterator dItr;
-    for ( dItr=dirs.begin(); dItr!=dirs.end(); ++dItr) {
+    for ( dItr=_uniqueDirs.begin(); dItr!=_uniqueDirs.end(); ++dItr) {
         const char* theDir = dItr->c_str();
 
         struct stat st;
@@ -95,4 +67,46 @@ qsrv::QservPathExport::mkDirs(const vector<string>& dirs) {
         }
     }
     return true;
+}
+
+const std::vector<std::string>
+qsrv::QservPathStructure::uniqueDirs() const {
+    return _uniqueDirs;
+}
+
+void
+qsrv::QservPathStructure::printUniquePaths() const {
+    std::vector<std::string>::const_iterator dItr;
+    for ( dItr=_uniqueDirs.begin(); dItr!=_uniqueDirs.end(); ++dItr) {
+        std::cout << "Unique dir: " << *dItr << std::endl;
+    }
+}
+
+bool
+qsrv::QservPathStructure::processOneDir(const string& s)
+{
+    int pos = s.find_last_of('/');
+    if ( pos == -1 ) {
+        std::cerr << "Problems with path: " << s << std::endl;
+        return false;
+    } else if ( pos > 2 ) { // there is at least one more parent dir
+        if ( !processOneDir(s.substr(0, pos)) ) {
+            return false;
+        }
+    }
+    if ( !isStored(s) ) {
+        _uniqueDirs.push_back(s);
+    }
+    return true;
+}
+
+bool
+qsrv::QservPathStructure::isStored(const std::string& s) const {
+    vector<string>::const_iterator dItr;
+    for (dItr=_uniqueDirs.begin() ; dItr!=_uniqueDirs.end(); ++dItr) {
+        if (*dItr == s) {
+            return true;
+        }
+    }
+    return false;
 }

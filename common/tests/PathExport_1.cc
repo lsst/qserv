@@ -19,12 +19,12 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */ 
-#define BOOST_TEST_MODULE PathExport_1
+#define BOOST_TEST_MODULE PathStructure_1
 #include "boost/test/included/unit_test.hpp"
 
 #include <iostream>
 
-#include "QservPathExport.hh"
+#include "QservPathStructure.hh"
 
 namespace test = boost::test_tools;
 namespace qsrv = lsst::qserv;
@@ -34,10 +34,10 @@ struct PerTestFixture {
     ~PerTestFixture(void) { };
 };
 
-BOOST_FIXTURE_TEST_SUITE(PathExportTestSuite, PerTestFixture)
+BOOST_FIXTURE_TEST_SUITE(PathStructureTestSuite, PerTestFixture)
 
 BOOST_AUTO_TEST_CASE(PathCreate) {
-    qsrv::QservPathExport p;
+    qsrv::QservPathStructure p;
 
     std::vector<std::string> pV;
     pV.push_back("/u1/qserv/export/dir1/fileA");
@@ -45,18 +45,16 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
     pV.push_back("/u1/qserv/export/dir2/fileC");
     pV.push_back("/u1/qserv/export/dir3/fileD");
 
-    std::vector<std::string> dV;
-    BOOST_CHECK_EQUAL(p.extractUniqueDirs(pV, dV), true);
+    BOOST_CHECK_EQUAL(p.insert(pV), true);
+
+    std::vector<std::string> dV = p.uniqueDirs();
     BOOST_CHECK_EQUAL(dV.size(), 6);
-    std::vector<std::string>::iterator dItr;
-    for ( dItr=dV.begin(); dItr!=dV.end(); ++dItr) {
-        std::cout << "found unique path: " << *dItr << std::endl;
-    }
-    BOOST_CHECK_EQUAL(p.mkDirs(dV), true);
+    p.printUniquePaths();
+
+    BOOST_CHECK_EQUAL(p.persist(), true);
     
-    dV.clear();    
     pV.push_back("fileD");
-    BOOST_CHECK_EQUAL(p.extractUniqueDirs(pV, dV), false);
+    BOOST_CHECK_EQUAL(p.insert(pV), false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

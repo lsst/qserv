@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  
-#ifndef LSST_QSERV_QSERVPATHEXPORT_H
-#define LSST_QSERV_QSERVPATHEXPORT_H
+#ifndef LSST_QSERV_QSERVPATHSTRUCTURE_H
+#define LSST_QSERV_QSERVPATHSTRUCTURE_H
 
 #include <string>
 #include <vector>
@@ -29,22 +29,26 @@
 namespace lsst {
 namespace qserv {
 
-class QservPathExport {
+class QservPathStructure {
 
 public:
-    QservPathExport() {}
+    QservPathStructure() {}
 
-    /// extracts a list of unique directory names
-    /// from the exportPaths including parent directories,
-    /// and stores them in the uniqueDirs vector
-    bool extractUniqueDirs(const std::vector<std::string>& exportPaths,
-                           std::vector<std::string>& uniqueDirs);
+    bool insert(const std::vector<std::string>& paths);
 
-    /// calls mkdir for each directory in the passed vector
-    bool mkDirs(const std::vector<std::string>& dirs);
-    
+    /// calls mkdir for each directory, including parent
+    /// directories from the inserted paths
+    bool persist();
+
+    // for testing/debugging
+    const std::vector<std::string> uniqueDirs() const;
+    void printUniquePaths() const;
+
 private:
-    bool processOneDir(const std::string, std::vector<std::string>&);
+    bool processOneDir(const std::string&);
+    bool isStored(const std::string&) const;
+
+    std::vector<std::string> _uniqueDirs;
 };
 
 }} // namespace lsst::qserv
