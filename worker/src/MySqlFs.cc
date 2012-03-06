@@ -30,12 +30,21 @@
 #include "lsst/qserv/worker/MySqlFsFile.h"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/Config.h"
+#include "lsst/qserv/worker/Service.h"
+#include "lsst/qserv/worker/XrdLogger.h"
+
+
+#include "lsst/qserv/QservPath.hh"
 #include <cerrno>
 #include <iostream>
 
 // Externally declare XrdSfs loader to cheat on Andy's suggestion.
-extern XrdSfsFileSystem *XrdXrootdloadFileSystem(XrdSysError *, char *, 
-                                                 const char *);
+extern XrdSfsFileSystem*
+XrdSfsGetDefaultFileSystem(XrdSfsFileSystem* nativeFS,
+                           XrdSysLogger* Logger,
+                           const char* configFn);
+
+
 namespace qWorker = lsst::qserv::worker;
 
 namespace { 
@@ -114,7 +123,7 @@ private:
 } // anonymous namespace
 
 qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName) 
-  : XrdSfsFileSystem(), _eDest(lp) {
+    : XrdSfsFileSystem(), _eDest(lp) {
     static boost::mutex m;
     boost::lock_guard<boost::mutex> l(m);
     _eDest->Say("MySqlFs initializing mysql library.");
@@ -130,18 +139,20 @@ qWorker::MySqlFs::MySqlFs(XrdSysError* lp, char const* cFileName)
     _eDest->Say("Skipping load of libXrdOfs.so (non xrootd build).");
 #else
     XrdSfsFileSystem* fs;
-    fs = XrdXrootdloadFileSystem(_eDest, 
-                                 const_cast<char*>("libXrdOfs.so"), cFileName);
+    fs = XrdSfsGetDefaultFileSystem(0, _eDest->logger(), cFileName);
     if(fs == 0) {
-        _eDest->Say("Problem loading libXrdOfs.so. Clustering won't work.");
+        _eDest->Say("Problem loading XrdSfsDefaultFileSystem. Clustering won't work.");
     }
 #endif
     updateResultPath();
     clearResultPath();
     _localroot = ::getenv("XRDLCLROOT");
     if (!_localroot) {
+        _eDest->Say("No XRDLCLROOT set. Bug in xrootd?");
         _localroot = "";
-    }
+    }   
+    boost::shared_ptr<XrdLogger> x(new XrdLogger(*_eDest));
+    _service.reset(new Service(x)); 
 }
 
 qWorker::MySqlFs::~MySqlFs(void) {
@@ -159,14 +170,16 @@ XrdSfsDirectory* qWorker::MySqlFs::newDir(char* user) {
 XrdSfsFile* qWorker::MySqlFs::newFile(char* user) {
 #ifdef NO_XROOTD_FS
     return new qWorker::MySqlFsFile(
-                                _eDest, user, 
-                                boost::make_shared<FakeAddCallback>(),
-                                boost::make_shared<FakeFileValidator>());
+                                    _eDest, user, 
+                                    boost::make_shared<FakeAddCallback>(),
+                                    boost::make_shared<FakeFileValidator>(),
+                                    _service);
 #else
     return new qWorker::MySqlFsFile(
-                                _eDest, user, 
-                                boost::make_shared<AddCallbackFunc>(),
-                                boost::make_shared<FileValidator>(_localroot));
+                                    _eDest, user, 
+                                    boost::make_shared<AddCallbackFunc>(),
+                                    boost::make_shared<FileValidator>(_localroot),
+                                    _service);
 #endif
 }
 

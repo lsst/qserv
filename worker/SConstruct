@@ -153,6 +153,8 @@ for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
     except Exception, e:
         print >> sys.stderr, "%s: %s" % (os.path.join("src", "SConscript.lib"), e)
 
+# Install lib
+env.Alias("install", env.Install("dist", env["built_libs"]))
 
 for d in Split("tests doc"): 
     if os.path.isdir(d):

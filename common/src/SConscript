@@ -14,8 +14,7 @@ for root, dirs, files in os.walk('../src'):
     # Filter out dotfiles?
     dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
 
-# Files in ../include are install targets right now. Should we change?
-#env.Append(CPPPATH = ['../include']) 
+env.Append(CPPPATH = ['../include'])
 env.Append(CPPFLAGS = ["-fPIC"])
 
 e = detect_deps.checkMySql(env, Configure)
@@ -24,6 +23,9 @@ if not e:
     Exit(1)
 
 lib = env.Library("qserv_common", sources)
+installedLib = env.Install('../lib', lib)
+env.Append(built_libs=[installedLib])
+env.Install('../include/lsst/qserv', 'QservPath.hh')
 
 # Export mysql deps
 detection =  detect_deps.guessMySQL(env)

@@ -22,9 +22,14 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# testparser - A somewhat out-of-date test driver program that invokes
-# non-hinted queries and expects the original python-based SQL parser.
-# This module should probably be removed soon.
+# appTest - Test functions that operate on the appInterface level.
+#           Queries need to get updated so that they can be applied 
+#           on well-known well-defined datasets. 2012 Summer release 
+#           may be a good target.
+#            
+#           FIXME: query update and grouping
+#           FIXME: Needs to be re-organized with TestHintedParser so that
+#                  they perform orthogonal duties.
 
 # Standard Python imports
 import unittest
@@ -33,16 +38,39 @@ import time
 # Package imports
 import app
 import server
-import sqlparser
 
-nearNeighborQueryAlias = """SELECT o1.id,o2.id,spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
-  AS dist FROM Object AS o1, Object AS o2 WHERE dist < 25 AND o1.id != o2.id;"""
-## tuson124 is down. :( and this version selects chunks on it.
+distFuncStr = "scisql_angSep(%s,%s,%s,%s)"
+def nnDist(t1, t2, ra, decl):
+    return ["%s.%s" % (t1, ra),
+            "%s.%s" % (t1, decl),
+            "%s.%s" % (t2, ra),
+            "%s.%s" % (t2.decl)]
+def betweenBound(raref, declref, ramin, ramax, declmin,declmax):
+    return "%s BETWEEN %f AND %f AND %s BETWEEN %f AND %f" % (
+        raref, ramin, ramax, declref, declmin,declmax)
+
+def qservBound(raref, declref, ramin, ramax, declmin,declmax):
+    return "qserv_areaspec_box(%f,%f,%f,%f)" % (
+        ramin, declmin, ramax, declmax)
+
+### Queries need to get grouped according to test data.
+nearNeighborQueryAlias = """SELECT o1.id,o2.id,%s AS dist 
+FROM Object AS o1, Object AS o2 
+WHERE dist < 25 AND o1.id != o2.id;""" % (distFuncStr % 
+                                          nnDist("o1", "o2", "ra_PS", "decl_PS")
+
+
 ##nearNeighborQueryMySql = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
 ###  AS dist FROM Object AS o1, Object AS o2 WHERE o1.ra between 10.5 and 11.5 and o2.decl between 9.7 and 10 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id;"""
-nearNeighborQueryMySql = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
-  AS dist FROM Object AS o1, Object AS o2 WHERE o1.ra between 30.5 and 31.5 and o2.decl between -20 and -19.2 AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 1 AND o1.id != o2.id;"""
-nearNeighborQueryMySqlTemplate = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
+nearNeighborQueryMySql = """SELECT o1.id as o1id,o2.id as o2id,%s AS dist 
+  FROM Object AS o1, Object AS o2 
+  WHERE o1.ra between 30.5 and 31.5 and o2.decl between -20 and -19.2 
+  AND %s < 1 AND o1.id != o2.id;""" % (distFuncStr 
+                                       % nnDist("o1", "o2", "ra_PS", "decl_PS"),
+                                       distFuncStr 
+                                       % nnDist("o1", "o2", "ra_PS", "decl_PS"))
+ 
+nearNeighborQueryMySqlTemplate = """SELECT o1.id as o1id,o2.id as o2id,%s
   AS dist FROM Object AS o1, Object AS o2 
   WHERE o1.ra between ${ramin} and ${ramax} 
     AND o2.decl between ${declmin} and ${-19.2}
@@ -84,22 +112,6 @@ class TestAppFunctions(unittest.TestCase):
     def setUp(self):
         pass
     
-    def testGrammarSelectPart(self):
-        """Test select-portion parsing"""
-        g = sqlparser.Grammar()
-        res = g.selectPart.parseString(nnSelectPart)
-        self.assert_("spdist" in res[:])
-        res = g.identExpr.parseString("spdist(a.b, c.d)")
-        self.assert_("spdist" in res[:])
-        res = g.functionExpr.parseString("spdist(a.b, c.d)")
-        
-    def testGrammarParseNearNeighbor(self):
-        """Tries to parse a near neighbor query."""
-        g = sqlparser.Grammar()
-        res = g.simpleSQL.parseString(nearNeighborQuery)
-        
-        pass
-
     def testQueryInsert(self):
         """Insert a query task into the tracker.
         """

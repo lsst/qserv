@@ -32,7 +32,6 @@
 #include "lsst/qserv/master/AggregateMgr.h"
 #include "lsst/qserv/master/ChunkMapping.h"
 #include "lsst/qserv/master/Templater.h"
-#include "lsst/qserv/master/SpatialUdfHandler.h"
 #include "lsst/qserv/master/parseHandlers.h"
 
 // Forward
@@ -47,6 +46,9 @@ namespace master {
 // Forward
 class LimitHandler; // Parse handler
 class OrderByHandler; // Parse handler
+class SpatialUdfHandler; // 
+class TableRefChecker; // alias/ref checker.
+class TableNamer; // alias/ref namespace mgr
 
 /// class SqlParseRunner - drives the ANTLR-generated SQL parser.
 /// Attaches a set of handlers to the grammar and triggers the parsing
@@ -64,12 +66,9 @@ public:
     std::string const& getStatement() const { return _statement; }
     std::string getParseResult();
     std::string getAggParseResult();
-    bool getHasChunks() const { 
-	return _tableListHandler->getHasChunks();
-    }
-    bool getHasSubChunks() const { 
-	return _tableListHandler->getHasSubChunks();
-    }
+    bool getHasChunks() const;
+    bool getHasSubChunks() const;
+
     std::string getFixupSelect() {
 	return _aggMgr.getFixupSelect();
     }
@@ -106,7 +105,7 @@ private:
     void _computeParseResult();
     void _makeOverlapMap();
     std::string _composeOverlap(std::string const& query);
-    std::string _interpretBadDbs(Templater::StringList const& bd);
+    std::string _interpretBadDbs(StringList const& bd);
 
     // Parse handlers
     friend class LimitHandler;
@@ -130,17 +129,17 @@ private:
     boost::shared_ptr<SqlSQL2Lexer> _lexer;
     boost::shared_ptr<SqlSQL2Parser> _parser;
     std::string _delimiter;
-    boost::shared_ptr<SpatialTableNotifier> _spatialTableNotifier;
 
     std::map<std::string, StringMap> _tableConfigMap;
 
-    StringPairList _spatialTables; // reference(name/alias) -> referent spatial table
     StringMap _mungeMap;
     Templater _templater;
-    SpatialUdfHandler _spatialUdfHandler;
     AliasMgr _aliasMgr;
     AggregateMgr _aggMgr;
     boost::shared_ptr<Templater::TableListHandler>  _tableListHandler;
+    boost::shared_ptr<TableRefChecker> _refChecker;
+    boost::shared_ptr<TableNamer> _tableNamer;
+    boost::shared_ptr<SpatialUdfHandler> _spatialUdfHandler;
     
     std::string _parseResult;
     std::string _aggParseResult;

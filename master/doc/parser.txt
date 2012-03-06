@@ -1,0 +1,91 @@
+This document captures the thoughts on the SQL parser.
+
+1. Parsing queries for rewriting
+
+1.1. Pre-requisites for generating spatial calls
+In order to handle spatial restrictions, the parser needs to
+understand:
+-- list of logical tables involved.  It needs to know their logical
+names.  A name is an alias, a real table name, or a real table name
+qualified by a database.
+Knowing this allows the parser to understand whether there are joins
+in play.  When an alias is available, it needs to use it so that it
+can refer appropriately when a query references the same table
+multiple times.
+-- For each spatial table, the spatial columns and chunk columns must
+be known. For example, if the query references the Object table, we
+must be able to generate Object.ra_PS and Object.decl_PS.  Also, if
+we have "FROM Object o1, Object o2", we must use references to
+o1.ra_PS and o2.ra_PS, etc.
+-- Database context must be known, so that table names that are
+unqualified can be qualified and subsequently used to lookup
+chunking/partitioning information. 
+
+1.2. Tracking query namespaces
+1.2.1 FROM clause handling.
+After FROM has been parsed, the system should know:
+--all table aliases
+--all table references, in sequence
+--real db accesses
+--whether access permission are valid
+The system should have munged/corrupted/delimited the table names so
+that they can be replaced by post-parse chunk substitution.
+
+An AliasMgr class remembers logical-physical name mapping
+A TableList handler knows a sequence of logical names.
+
+
+2. Corrupt/delimited names?
+2.1. Why corrupt/munge?
+The system corrupts/delimits names to facilitate name substitution
+when generating queries for each chunk number.  This is done so that
+the query does not need to be re-parsed for each chunk id.  All
+references to chunked/partitioned tables must be corrupted/delimited.
+
+2.2 Forms of corruption
+For simple chunking, a table name is replaced with the name of its table
+for the specific chunkId.  When subchunking is required, the table
+name is further corrupted to indicate this by _sc1 and
+_sc2. Subchunking is only used when joins are involved.
+Simple: LSST.Object --> LSST.#$%Object#$%
+Subchunked: LSST.Object --> LSST.#$%Object_sc1#$%
+
+2.3 Future use
+It seems like a more efficient approach to substituting names might be
+to simply adjust the names in a namespace manager and repeatedly apply
+those names to the parse tree.  Right now, the namespace manager
+doesn't keep track of the particular containing tree nodes for table
+names, so it's hard to go back and repeat the substitution. Also,
+table name modifications are substituted in-place, and there isn't a
+built-in way to duplicate the parse tree (is it safe to duplicate an
+ANTLR tree?).  String substitution doesn't seem to be a performance
+bottleneck right now--it just seems ugly.
+
+3. When is information available?
+Generally, information is not available in the order that it is
+needed.
+Ideally, we would like FROM->SELECT->WHERE, but we have
+SELECT->FROM->WHERE
+
+This means that we cannot tell an alias from a table name during
+SELECT processing.  Thus we should defer processing SELECT until after
+FROM. 
+3.1 Table aliases
+All table aliases must be determined during FROM processing.
+3.2 Column aliases
+All column aliases should be determined during SELECT processing. Of
+course, column aliases are not fully resolvable until table aliases
+are known.
+
+4. The Table namespace
+4.1 Notes
+    Since all tables and table aliases become known once a FROM
+    statement is parsed with its table list, this is when all table
+    name resolution should occur.  Ticket #1863 attempts this approach.
+4.2 TableNamer class
+   In ticket#1863, the parsing system was modified to centralize table
+   name management in the TableNamer class.  Although some operations
+   have not been centralized, particularly some subchunking
+   modifications for joins, the net result should be more clear.
+
+-----------------------------

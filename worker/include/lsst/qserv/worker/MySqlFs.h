@@ -24,12 +24,14 @@
 #define LSST_LSPEED_MYSQLFS_H
 
 #include "XrdSfs/XrdSfsInterface.hh"
+#include <boost/shared_ptr.hpp>
 
 class XrdSysError;
 
 namespace lsst {
 namespace qserv {
 namespace worker {
+class Service; // Forward
 
 class MySqlFs : public XrdSfsFileSystem {
 public:
@@ -87,6 +89,7 @@ private:
     XrdSysError* _eDest;
     int _isMysqlFail;
     char const* _localroot;
+    boost::shared_ptr<Service> _service;
 };
 
 }}} // namespace lsst::qserv::worker

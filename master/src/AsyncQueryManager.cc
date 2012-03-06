@@ -229,7 +229,7 @@ void qMaster::AsyncQueryManager::joinEverything() {
     int moreDetailThreshold = 5;
     int complainCount = 0;
     //_printState(std::cout);
-   while(!_queries.empty()) { 
+    while(!_queries.empty()) { 
         count = _queries.size();
         if(count != lastCount) {
             std::cout << "Still " << count
@@ -243,8 +243,9 @@ void qMaster::AsyncQueryManager::joinEverything() {
         }
         _queriesEmpty.timed_wait(lock, boost::posix_time::seconds(5));
     }
-   _destroyPool();
+    _destroyPool();
     _merger->finalize();
+    _merger.reset();
     std::cout << "Query finish. " << _queryCount << " dispatched." 
               << std::endl;
 }
@@ -304,7 +305,7 @@ void qMaster::AsyncQueryManager::resumeReadTrans() {
 ////////////////////////////////////////////////////////////////////////
 void qMaster::AsyncQueryManager::_initPool() {
     const int readThreads = 20;
-    const int writeThreads = 500;
+    const int writeThreads = 500; // Should grow/shrink more dynamically
     _readQueue = boost::make_shared<lsst::qserv::common::WorkQueue>(readThreads);
     _writeQueue = boost::make_shared<lsst::qserv::common::WorkQueue>(writeThreads);
 }

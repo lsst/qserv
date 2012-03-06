@@ -6,7 +6,12 @@ Import("envNoXrd")
 
 testEnv = envNoXrd.Clone()
 testEnv.Append(LIBPATH = ["../bldNoXrd"])
-testEnv.Append(LIBS = ["qserv_worker", "stdc++"])
+
+conf = Configure(testEnv)
+conf.CheckLib("stdc++", language="c++")
+# Ideally, should propagate from qserv_worker deps
+conf.CheckLib("protobuf", language="c++") 
+testEnv = conf.Finish()
 
 def patch_environ(environ, libpaths):
     if not libpaths: return environ
@@ -35,8 +40,11 @@ def run_test(target, source, env):
 
 bld = Builder(action = run_test, prefix = ".tests/")
 testEnv.Append(BUILDERS = {'Test': bld})
-
 for src in Glob("*.cc"):
+    if "MySqlFs_" in src.name:
+        src = [src] + testEnv["built_libs"]
+    elif "FifoScheduler_" in src.name:
+        src = [src] + testEnv["sched_libs"]
     prog = testEnv.Program(src)
 
     # don't run Metadata tests by default, they are

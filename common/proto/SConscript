@@ -9,15 +9,25 @@ pFiles = pEnv.Protoc(
     [],
     "worker.proto",
     PROTOCPROTOPATH=['.',],
-    PROTOCPYTHONOUTDIR=None,
+    PROTOCPYTHONOUTDIR=".",
     PROTOCOUTDIR = ".",
     #PROTOCOUTDIR = 'build', # defaults to same directory as .proto
     # PROTOCCPPOUTFLAGS = "dllexport_decl=PROTOCONFIG_EXPORT:", too 
 )
 
-sources = ["worker.pb.cc"]
+pyFiles = filter(lambda s: str(s).endswith(".py"), pFiles)
+if pFiles:
+    pf = env.Install("../python", pyFiles[0])
+    ## This feels icky, but it's the simplest solution for now.
+    masterPython = "../../master/python/lsst/qserv/master"
+    env.Alias("master", env.Install(masterPython, pyFiles[0]))
+else:
+    print "WARNING: No python generated for protocol."
+
+sources = ["worker.pb.cc", "TaskMsgDigest.cc"]
 pEnv.Append(CPPPATH=[os.environ["PROTOC_INC"], ".."],
-            LIBPATH=os.environ["PROTOC_LIB"])
+            LIBPATH=os.environ["PROTOC_LIB"],
+            CPPFLAGS=['-fPIC'])
 lib = pEnv.Library("qserv_proto", sources)
 
 # Export proto lib + dependency 
@@ -30,6 +40,8 @@ env.Append(built_libs=[tup[0]])
 deps = {'CPPPATH' : [os.path.abspath(os.environ["PROTOC_INC"])]}
 tup = export_deps.installWithDeps(env, "worker.pb.h", "worker.pb.h",
                                   "../include/lsst/qserv", deps)
+# Export msg digest header + dependency 
+env.Install("../include/lsst/qserv", "TaskMsgDigest.h")
 
 
 

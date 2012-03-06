@@ -820,11 +820,12 @@ class SpatialChunkMapper(object):
         self.coords = np.array([0, 0, 0, 0], dtype=np.int32)
         self.bounds = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
         self.chunks = {}
+        self._initRowCombiner(conf) # Init flexible row writer.
         if hasattr(conf, "chunkAcceptor"): # allow client to select chunks
             self.chunkAcceptor = pickleWorkaround[conf.chunkAcceptor]
         else: 
             self.chunkAcceptor = None
-            
+
         # Build chunk writer arrays
         ns = self.chunker.getNumStripes()
         self.writers = []
@@ -857,7 +858,8 @@ class SpatialChunkMapper(object):
         # write row plus the chunkId and subChunkId to the appropriate file
         writer = self.writers[self.coords[0]][self.coords[2]]
         self.cache.update(writer)
-        writer.writerow(row + [chunkId, subChunkId], ChunkWriter.CHUNK)
+        r = self._combineChunkWithRow(row, [chunkId, subChunkId])
+        writer.writerow(r, ChunkWriter.CHUNK)
         # write to overlap files
         overlap = self.chunker.getOverlap(theta, phi, self.coords,
                                           self.bounds)
@@ -865,7 +867,7 @@ class SpatialChunkMapper(object):
             w = self.writers[coords[0]][coords[1]]
             if not w: continue
             self.cache.update(w)
-            r = row + ids
+            r = self._combineChunkWithRow(row, ids)
             if both:
                 w.writerow(r, ChunkWriter.SELF_OVERLAP)
             w.writerow(r, ChunkWriter.FULL_OVERLAP)
@@ -884,6 +886,27 @@ class SpatialChunkMapper(object):
         """
         self.cache.close()
         return self.chunks.items()
+
+    def _initRowCombiner(self, conf):
+        if conf.chunkColumn and conf.chunkColumn >= 0:
+            self.cIdx = conf.chunkColumn
+            self._combineChunkWithRow = self._insertChunkInRow
+        else:
+            self._combineChunkWithRow = self._concatenateChunkToRow
+
+    def _combineChunkWithRow(self, row, chunkAndSubChunkId):
+        """Add chunkId and subChunkId to a row. Defaults to 
+        _concatChunkToRow(self, row, chunkAndSubChunkId)"""
+        return self._concatenateChunkToRow(row, chunkAndSubChunkId)
+
+    def _concatenateChunkToRow(self, row, chunkAndSubChunkId):
+        """Add chunkId and subChunkId to a row by concatenating."""
+        return row + chunkAndSubChunkId
+
+    def _insertChunkInRow(self, row, chunkAndSubChunkId):
+        """Add chunkId and subChunkId to a row by replacing existing
+        columns in the row."""
+        return row[:self.cIdx] + chunkAndSubChunkId + row[self.cIdx+2:]
 
 def _dictMerge(d1, d2):
     for k in d2:
@@ -1710,6 +1733,15 @@ def main():
         Full and self overlap files are named similarly, but contain the
         'FullOverlap' / 'SelfOverlap' strings between the prefix and
         chunkId."""))
+    general.add_option(
+        "--chunk-column", type="int", dest="chunkColumn", default=None,
+        help=dedent("""\
+        0-based index of existing chunkId and subChunkId columns in the 
+        input data. If unspecified (default), concatenate chunkId and 
+        subChunkId columns at the end of the existing set. If specified, 
+        the column and the next adjacent column are assumed to be chunkId
+        and subChunkId columns that the partitioner should overwrite.
+        (PT1.1: 225)."""))
     general.add_option(
         "-l", "--skip-lines", type="int", dest="skipLines", default=0,
         help=dedent("""\

@@ -28,14 +28,14 @@
 
 // boost
 #include "boost/thread.hpp" // for mutex support
-// xrootd
-#include "XrdSfs/XrdSfsInterface.hh"
+
+#include "mysql/mysql.h"
 
 // package
 #include "lsst/qserv/SqlErrorObject.hh"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/ResultTracker.h"
-
+#include "lsst/qserv/worker/QueryRunnerManager.h"
 
 namespace lsst {
 namespace qserv {
@@ -46,85 +46,22 @@ namespace qserv {
 namespace lsst {
 namespace qserv {
 namespace worker {
-
-// Forward
-class QueryRunner;
-
-////////////////////////////////////////////////////////////////////////
-class QueryRunnerArg {
-public:
-    QueryRunnerArg(XrdSysError* e_, 
-                   std::string const& user_, ScriptMeta const& s_,
-                   std::string overrideDump_=std::string()) 
-        : e(e_), user(user_), s(s_), overrideDump(overrideDump_) { }
-
-    XrdSysError* e; // must be assignable
-    std::string user;
-    ScriptMeta s;
-    std::string overrideDump;
-};
-
-class ArgFunc {
-public:
-    virtual ~ArgFunc() {}
-    virtual void operator()(QueryRunnerArg const& )=0;
-};
-
-////////////////////////////////////////////////////////////////////////
-class QueryRunnerManager {
-public:
-    QueryRunnerManager() : _limit(8), _jobTotal(0) { _init(); }
-    ~QueryRunnerManager() {}
-
-    // const
-    bool hasSpace() const { return _runners.size() < _limit; }
-    bool isOverloaded() const { return _runners.size() > _limit; }
-    int getQueueLength() const { return _args.size();}
-    int getRunnerCount() const { return _runners.size();}
-
-    // non-const
-    void runOrEnqueue(QueryRunnerArg const& a);
-    void setSpaceLimit(int limit) { _limit = limit; }
-    bool squashByHash(std::string const& hash);
-    void addRunner(QueryRunner* q); 
-    void dropRunner(QueryRunner* q);
-    bool recycleRunner(ArgFunc* r, int lastChunkId);
-
-    // Mutex
-    boost::mutex& getMutex() { return _mutex; }
-
-private:
-    typedef std::deque<QueryRunnerArg> ArgQueue;
-    typedef std::deque<QueryRunner*> QueryQueue;
-    class argMatch;
-
-    void _init();
-    QueryRunnerArg const& _getQueueHead() const;
-    void _popQueueHead();
-    bool _cancelQueued(std::string const& hash);
-    bool _cancelRunning(std::string const& hash);
-    void _enqueue(QueryRunnerArg const& a);
-    
-    ArgQueue _args;
-    QueryQueue _runners;
-    int _jobTotal;
-    
-    int _limit;
-    boost::mutex _mutex;    
-};
-
+class QueryPhyResult; // Forward
 ////////////////////////////////////////////////////////////////////////
 class QueryRunner {
 public:
     typedef ResultTracker<std::string, ResultError> Tracker;
     typedef QueryRunnerManager Manager;
-    QueryRunner(XrdSysError& e, 
-                std::string const& user, ScriptMeta const& s,
+    QueryRunner(boost::shared_ptr<Logger> log, 
+                Task::Ptr task,
                 std::string overrideDump=std::string());
     explicit QueryRunner(QueryRunnerArg const& a);
     ~QueryRunner();
-    bool operator()();
-    std::string const& getHash() const { return _meta.hash; }
+    bool operator()(); // exec and loop as long as there are queries
+                       // to run.
+    bool actOnce();
+
+    std::string const& getHash() const { return _task->hash; }
     void poison(std::string const& hash);
 
     // Static: 
@@ -133,18 +70,23 @@ public:
 
 private:
     typedef std::deque<std::string> StringDeque;
+
+    typedef std::vector<int> IntVector;
+    typedef IntVector::iterator IntVectorIter;
+    typedef boost::shared_ptr<IntVector> IntVectorPtr;
+
     bool _act();
     std::string _getDumpTableList(std::string const& script);
-    void _mkdirP(std::string const& filePath);
-    bool _runScript(std::string const& script, std::string const& dbName);
-    bool _runScriptCore(SqlConnection& sqlConn, 
-                        std::string const& script,
-                        std::string const& dbName,
-                        std::string const& tableList);
+    bool _runTask(Task::Ptr t);
+    bool _runFragment(SqlConnection& sqlConn,
+                      std::string const& scr,
+                      std::string const& buildSc,
+                      std::string const& cleanSc,
+                      std::string const& resultTable);
     void _buildSubchunkScripts(std::string const& script,
                                std::string& build, std::string& cleanup);
-    bool _prepareAndSelectResultDb(SqlConnection& sqlConn, 
-                                   std::string const& dbName);
+    bool _prepareAndSelectResultDb(SqlConnection& sqlConn,
+                                   std::string const& dbName=std::string());
     bool _prepareScratchDb(SqlConnection& sqlConn);
     bool _performMysqldump(std::string const& dbName, 
                            std::string const& dumpFile,
@@ -157,10 +99,11 @@ private:
     boost::shared_ptr<CheckFlag> _makeAbort();
     bool _poisonCleanup();
 
-    XrdSysError& _e;
+    boost::shared_ptr<Logger> _log;
     SqlErrorObject _errObj;
     std::string _user;
-    ScriptMeta _meta;
+    boost::shared_ptr<QueryPhyResult> _pResult;
+    Task::Ptr _task;
     std::string _scriptId;
     boost::shared_ptr<boost::mutex> _poisonedMutex;
     StringDeque _poisoned;

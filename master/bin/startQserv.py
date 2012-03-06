@@ -33,7 +33,7 @@ import unittest
 from optparse import OptionParser
 import sys
 
-from lsst.qserv.master.testparser import TestAppFunctions
+from lsst.qserv.master.appTest import TestFunctions
 from lsst.qserv.master import server
 from lsst.qserv.master import app
 from lsst.qserv.master import client
@@ -49,7 +49,7 @@ def runParserTest():
 
 def runNamedTest(name):
     suite = unittest.TestSuite()
-    suite.addTest(TestAppFunctions('test'+name))
+    suite.addTest(TestFunctions('test'+name))
     unittest.TextTestRunner(verbosity=2).run(suite)
     pass
                   

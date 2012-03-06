@@ -53,7 +53,7 @@ public:
     /// config should include qserv master config + current session context
     /// i.e., defaultDb=LSST (or defaultDb=TestDb)
 
-    void importSubChunkTables(char** cStringArr);
+    void importSubChunkTables(char const** cStringArr);
     std::string transform(int chunk, int subChunk);
     std::string substituteOnly(std::map<std::string, std::string> const& m);
     
@@ -79,10 +79,10 @@ private:
     bool _hasAggregate;
     MergeFixup _mFixup;
     Deque _subChunked;
+    std::string _defaultDb;
     ChunkMapping _mapping;
     boost::mutex _mappingMutex;
     StringMap _config;
-
 };
 
 }}} // namespace lsst::qserv::master

@@ -86,7 +86,7 @@ struct ParserFixture {
 //BOOST_AUTO_TEST_CASE(SqlSubstitution) {
 void tryStmt(std::string const& s, bool withSubchunks=false) {
     std::map<std::string,std::string> cfg; // dummy config
-    char* imported[] = {"Source","Object"};
+    char const* imported[] = {"Source","Object"};
     ChunkMapping c;
     c.addChunkKey(imported[0]);
     c.addSubChunkKey(imported[1]);
@@ -291,7 +291,7 @@ BOOST_AUTO_TEST_CASE(BadDbAccess) {
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
-    std::string stmt = "select * from LSST.Object o, LSST.Source s WHERE "
+    std::string stmt = "select * from LSST.Object o, Source s WHERE "
         "qserv_areaspec_box(2,2,3,3) AND o.objectId = s.objectId;";
     std::string expected = "select * from LSST.%$#Object%$# o,LSST.%$#Source%$# s WHERE (qserv_ptInSphBox(o.ra_Test,o.decl_Test,2,2,3,3) = 1) AND (qserv_ptInSphBox(s.raObjectTest,s.declObjectTest,2,2,3,3) = 1) AND o.objectId=s.objectId;";
     SqlParseRunner::Ptr spr = getRunner(stmt);
@@ -300,7 +300,7 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(!spr->getHasAggregate());
-    BOOST_CHECK(spr->getParseResult() == expected);
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
-    BOOST_CHECK(spr->getParseResult() == expected);
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinOutBand) {
@@ -339,7 +339,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinOutBand) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
-    BOOST_CHECK(spr->getParseResult() == expected);
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
@@ -354,8 +354,38 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
-    BOOST_CHECK(spr->getParseResult() == expected);
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
+
+BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
+    // This is actually invalid for Qserv right now because it produces
+    // a result that can't be stored in a table as-is.
+    // It's also a non-distance-bound spatially-unlimited query. Qserv should
+    // reject this. But the parser should still handle it. 
+    std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, o2.ra_PS, o2.ra_PS_Sigma from Object o1, Object o2 where o1.ra_PS_Sigma < 4e-7 and o2.ra_PS_Sigma < 4e-7;";
+    std::string expected = "select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object_sc1%$# o1,LSST.%$#Object_sc2%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7 UNION select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object_sc1%$# o1,LSST.%$#Object_sfo%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7;"; 
+
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
+}
+
+BOOST_AUTO_TEST_CASE(AliasHandling) {
+    std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, s.dummy, Exposure.exposureTime from LSST.Object o1,  Source s, Exposure WHERE o1.id = s.objectId AND Exposure.id = o1.exposureId;";
+    std::string expected = "select o1.ra_PS,o1.ra_PS_Sigma,s.dummy,Exposure.exposureTime from LSST.%$#Object%$# o1,LSST.%$#Source%$# s,LSST.Exposure WHERE o1.id=s.objectId AND Exposure.id=o1.exposureId;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
+}
+
 
 BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
     std::string stmt = " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;";
