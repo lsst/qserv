@@ -11,6 +11,7 @@ conf = Configure(testEnv)
 conf.CheckLib("stdc++", language="c++")
 # Ideally, should propagate from qserv_worker deps
 conf.CheckLib("protobuf", language="c++") 
+conf.CheckLib("qserv_worker", language="c++")
 testEnv = conf.Finish()
 
 def patch_environ(environ, libpaths):
@@ -45,6 +46,8 @@ for src in Glob("*.cc"):
         src = [src] + testEnv["built_libs"]
     elif "FifoScheduler_" in src.name:
         src = [src] + testEnv["sched_libs"]
+    pass
+
     prog = testEnv.Program(src)
 
     # don't run Metadata tests by default, they are
