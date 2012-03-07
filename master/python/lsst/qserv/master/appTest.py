@@ -57,7 +57,7 @@ def qservBound(raref, declref, ramin, ramax, declmin,declmax):
 nearNeighborQueryAlias = """SELECT o1.id,o2.id,%s AS dist 
 FROM Object AS o1, Object AS o2 
 WHERE dist < 25 AND o1.id != o2.id;""" % (distFuncStr % 
-                                          nnDist("o1", "o2", "ra_PS", "decl_PS")
+                                          nnDist("o1", "o2", "ra_PS", "decl_PS"))
 
 
 ##nearNeighborQueryMySql = """SELECT o1.id as o1id,o2.id as o2id,LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
