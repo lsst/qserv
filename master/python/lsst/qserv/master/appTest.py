@@ -41,10 +41,10 @@ import server
 
 distFuncStr = "scisql_angSep(%s,%s,%s,%s)"
 def nnDist(t1, t2, ra, decl):
-    return ["%s.%s" % (t1, ra),
+    return ("%s.%s" % (t1, ra),
             "%s.%s" % (t1, decl),
             "%s.%s" % (t2, ra),
-            "%s.%s" % (t2.decl)]
+            "%s.%s" % (t2, decl))
 def betweenBound(raref, declref, ramin, ramax, declmin,declmax):
     return "%s BETWEEN %f AND %f AND %s BETWEEN %f AND %f" % (
         raref, ramin, ramax, declref, declmin,declmax)
@@ -54,6 +54,7 @@ def qservBound(raref, declref, ramin, ramax, declmin,declmax):
         ramin, declmin, ramax, declmax)
 
 ### Queries need to get grouped according to test data.
+
 nearNeighborQueryAlias = """SELECT o1.id,o2.id,%s AS dist 
 FROM Object AS o1, Object AS o2 
 WHERE dist < 25 AND o1.id != o2.id;""" % (distFuncStr % 
