@@ -330,7 +330,7 @@ bool qWorker::QueryRunner::_act() {
         (*_log)((Pformat("(FinishFail:%1%) %2% hash=%3%")
                 % (void*)(this) % dbDump % _task->hash).str().c_str());
         getTracker().notify(_task->hash,
-                            ResultError(-1,"Script exec failure" 
+                            ResultError(-1,"Script exec failure "
                                         + _getErrorString()));
         return false;
     }
@@ -411,9 +411,11 @@ bool qWorker::QueryRunner::_runTask(qWorker::Task::Ptr t) {
         assert(!resultTable.empty());
 
         if(t->needsCreate) {
-            if(!_pResult->hasResultTable(resultTable)) 
+            if(!_pResult->hasResultTable(resultTable)) {
                 ss << "CREATE TABLE " << resultTable << " ";
-            else ss << "INSERT INTO " << resultTable << " ";
+            } else {
+                ss << "INSERT INTO " << resultTable << " ";
+            }
         }
         ss << f.query();
         success = _runFragment(_sqlConn, ss.str(), 
@@ -479,12 +481,14 @@ qWorker::QueryRunner::_prepareAndSelectResultDb(SqlConnection& sqlConn,
     std::string result;
     std::string dbName(resultDb);
 
-    if(sqlConn.dropDb(dbName, _errObj, false)) {
+    if(dbName.empty()) {
+        dbName = getConfig().getString("scratchDb");
+    } else if(sqlConn.dropDb(dbName, _errObj, false)) {
         (*_log)((Pformat("Cfg error! couldn't drop resultdb. %1%.")
                 % result).str().c_str());
         return false;
     }
-    if(!sqlConn.createDb(dbName, _errObj)) {
+    if(!sqlConn.createDb(dbName, _errObj, false)) {
         (*_log)((Pformat("Cfg error! couldn't create resultdb. %1%.") 
                 % result).str().c_str());
         return false;
