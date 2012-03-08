@@ -120,7 +120,7 @@ void qWorker::TodoList::removeWatcher(Watcher::Ptr w) {
     for(; i != _watchers.end(); ++i) {
         if(*i == w) {
             _watchers.erase(i);
-            break;
+            return;
         }
     }
     assert(false); // FIXME: prefer a meaningful error.
