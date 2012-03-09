@@ -107,7 +107,7 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement) {
     for(StringMap::const_iterator i=m.begin(); i != end; ++i) {
 	names.push_back(i->first);
     }
-    std::cout << "PARSING: " << sqlStatement << std::endl;
+    //std::cout << "PARSING: " << sqlStatement << std::endl;
     boost::shared_ptr<SqlParseRunner> spr;
     spr = SqlParseRunner::newInstance(sqlStatement, _delimiter, _config);
     spr->setup(names);
@@ -116,7 +116,7 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement) {
     } else {
         template_ = spr->getParseResult();
     } 
-    std::cout << "Substitution template:: " << template_ << std::endl;
+    //std::cout << "Substitution template:: " << template_ << std::endl;
     _computeChunkLevel(spr->getHasChunks(), spr->getHasSubChunks());
     if(template_.empty() || !spr->getError().empty()) {
         _errorMsg = spr->getError();
