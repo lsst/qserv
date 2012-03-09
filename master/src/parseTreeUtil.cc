@@ -56,3 +56,29 @@ antlr::RefAST qMaster::insertTextNodeBefore(antlr::ASTFactory* factory,
    return n;
 }
 
+bool
+qMaster::substituteWithMap(std::string& s, 
+                           std::map<std::string, std::string>  const& m,
+                           int minMatch) {
+    if(s.empty()) return false;
+
+    bool did = false;
+    std::map<std::string, std::string>::const_iterator i = m.find(s);
+    if(i != m.end()) {
+        s = i->second;
+        did = true;
+    } else if(s.size() >= minMatch) { // more aggressively for larger tokens.
+        for(i=m.begin(); i != m.end(); ++i) {
+            std::string orig = i->first;
+            std::string repl = i->second;
+            for(std::string::size_type j=0; j < s.size(); ++j) {
+                std::string::size_type f = s.find(orig, j);
+                if(f == std::string::npos) break;
+                s.replace(f, orig.size(), repl);
+                j += repl.size() - 1;
+                did = true;
+            }  // for all matches
+        } // for substitutions in map
+    } // if original substitute failed.
+    return did;
+}
