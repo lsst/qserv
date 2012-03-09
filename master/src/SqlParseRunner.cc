@@ -67,6 +67,13 @@ namespace {
         return query + " UNION " + s.transform(xMap);
     }
 
+    std::string writeSub(std::string const& query, 
+                         qMaster::StringMap const& xMap, 
+                         std::string const& delimiter) {
+        qMaster::Substitution s(query, delimiter, false);
+        return  s.transform(xMap);
+    }
+
 } // anonymous namespace
 
 // Helpers
@@ -354,16 +361,12 @@ void qMaster::SqlParseRunner::_computeParseResult() {
             _aggMgr.applyAggPass();
             _aggParseResult = walkTreeString(ast);
             if(_tableNamer->getHasSubChunks()) {
-#if 0 // earlier
-                _makeOverlapMap();
-#else // remapper
-                _overlapMap = tr.getPatchMap();
-#endif
+                StringMap overlapMap = tr.getPatchMap();
                 _aggParseResult = writeAsUnion(_aggParseResult, 
-                                               _overlapMap, _delimiter);
+                                               overlapMap, _delimiter);
                 _parseResult = writeAsUnion(_parseResult,
-                                            _overlapMap, _delimiter);
-            }
+                                            overlapMap, _delimiter);
+            } 
             _aggParseResult += ";";
             _parseResult += ";";
             _mFixup.select = _aggMgr.getFixupSelect();
@@ -418,11 +421,6 @@ void qMaster::SqlParseRunner::_makeOverlapMap() {
         _overlapMap[i->first+"_sc2"] = i->first + "_sfo";
     }
 
-}
-
-std::string qMaster::SqlParseRunner::_composeOverlap(std::string const& query) {
-    Substitution s(query, _delimiter, false);
-    return query + " UNION " + s.transform(_overlapMap);
 }
 
 bool qMaster::SqlParseRunner::getHasAggregate() {
