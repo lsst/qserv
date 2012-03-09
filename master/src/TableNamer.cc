@@ -44,7 +44,9 @@ namespace {
 ////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, 
                          qMaster::TableNamer::AliasedRef const& ar) {
-    os << ar.alias << "->\"" << ar.magic << '"' 
+    os << ar.logical;
+    if(ar.isAlias) os << "(alias)";
+    os << "->\"" << ar.magic << '"' 
        << ar.db << '.' << ar.table;
     return os;
 }
@@ -59,7 +61,8 @@ public:
     AliasFunc(TableNamer& tn) :_tn(tn) {}
     virtual void operator()(TableAliasInfo& i) {
         // First, compute info.
-        TableNamer::AliasedRef ar(_tn._computeAliasedRef(i.alias, i.table));
+        TableNamer::AliasedRef ar(_tn._computeAliasedRef(i.logical, i.table,
+                                                         i.aliasN.get()));
 #ifdef TRYFUNC
         _updateMagic(ar);
         // Replace physical table with munged name
@@ -109,15 +112,16 @@ void qMaster::TableNamer::_acceptAlias(std::string const& logical,
 
 qMaster::TableNamer::AliasedRef
 qMaster::TableNamer::_computeAliasedRef(std::string const& logical,
-                                        std::string const& physical) {
+                                        std::string const& physical, 
+                                        bool isAlias) {
     char const nameSep = '.';
     std::string::size_type split = physical.find(nameSep);
     if(split == std::string::npos) {
         // No db specified, use default.
-        return AliasedRef(logical, _defaultDb, physical);
+        return AliasedRef(logical, _defaultDb, physical, isAlias);
     } else {
         return AliasedRef(logical, physical.substr(0,split),
-                          physical.substr(split + 1));
+                          physical.substr(split + 1), isAlias);
     }
 }
 
