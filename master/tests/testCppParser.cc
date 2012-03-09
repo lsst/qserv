@@ -428,7 +428,19 @@ BOOST_AUTO_TEST_CASE(ChunkDensity) {
     BOOST_CHECK(spr->getHasAggregate());
 }
 
+BOOST_AUTO_TEST_CASE(AltDbName) {
+    std::string stmt = "select count(*) from Object where qserv_areaspec_box(359.1, 3.16, 359.2, 3.17);";
+    std::string expected = "select count(*) from rplante_PT1_2_u_pt12prod_im3000_qserv.%$#Object%$# where (scisql_s2PtInBox(rplante_PT1_2_u_pt12prod_im3000_qserv.%$#Object%$#.ra_Test,rplante_PT1_2_u_pt12prod_im3000_qserv.%$#Object%$#.decl_Test,359.1,3.16,359.2,3.17) = 1);";
 
+    config["table.defaultdb"] ="rplante_PT1_2_u_pt12prod_im3000_qserv";
+    config["table.alloweddbs"] = "LSST,rplante_PT1_2_u_pt12prod_im3000_qserv";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
