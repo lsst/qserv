@@ -31,8 +31,8 @@ def importDeps(env, f):
 def mergeDict(d1, d2):
     """Merge list values from d2 to d1"""
     for k in d2:
-        if k in d1:
-            d1[k].extend(d2[k])
+        if k in d1: d1[k].extend(d2[k])
+        else: d1[k] = d2[k]
     return d1
     
 post = importDeps(env, "../../common/include/lsst/qserv/worker.pb.h")
@@ -43,6 +43,8 @@ if env.has_key('sfsObjs'):
 
 env.Append(LIBPATH = ['../../common/lib']) 
 post2 = importDeps(env, "../../common/lib/qserv_proto")
+post = mergeDict(post, post2)
+post2 = importDeps(env, "../../common/lib/qserv_common")
 post = mergeDict(post, post2)
 
 # Apply lib dependencies.
