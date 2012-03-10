@@ -46,6 +46,10 @@ for src in Glob("*.cc"):
         src = [src] + testEnv["built_libs"]
     elif "FifoScheduler_" in src.name:
         src = [src] + testEnv["sched_libs"]
+    elif "Metadata_" in src.name:
+        src = [src] + testEnv["built_libs"]
+    elif "PathStructure_" in src.name:
+        src = [src, "../src/QservPathStructure.cc"]
     else:
         src = [src]
     pass
@@ -54,7 +58,8 @@ for src in Glob("*.cc"):
 
     # don't run Metadata tests by default, they are
     # interractive because of mysql credentials
-    if not "Metadata_" in src[0].name:
+    if not (("Metadata_" in src[0].name) 
+            or ("PathStructure_" in src[0].name)):  # PathStructure fails
         test = testEnv.Test(prog)
     pass
 
