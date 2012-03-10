@@ -106,15 +106,15 @@ def guessMySQL(env):
     libName = "mysqlclient_r"
     libp = env["LIBPREFIX"]
     libs = env["SHLIBSUFFIX"]
-    foundLibs = filter(os.path.exists, 
-                       [os.path.join(p, libp + libName + libs) 
+    foundLibs = filter(lambda (p,f): os.path.exists(f),
+                       [(p, os.path.join(p, libp + libName + libs))
                          for p in env["LIBPATH"]])
     assert foundLibs
     foundIncs = filter(os.path.exists, 
                        [os.path.join(p, "mysql/mysql.h") 
                         for p in env["CPPPATH"]])
     assert foundIncs
-    return (foundIncs[0], foundLibs[0], libName)
+    return (foundIncs[0], foundLibs[0][0], libName)
     
 # Xrootd/Scalla search helper
 class XrdHelper:

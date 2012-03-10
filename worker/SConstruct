@@ -48,17 +48,6 @@ if os.environ.has_key('SSL_DIR'):
     if os.path.exists(ssl_dir):
         env.Append(LIBPATH=[ssl_dir])
 
-if os.environ.has_key('MYSQL_DIR'):
-    mysql_dir = os.environ['MYSQL_DIR']
-    if os.path.exists(mysql_dir):
-        env.Prepend(LIBPATH=[os.path.join(mysql_dir,"lib","mysql")])
-        env.Prepend(CPPPATH=[os.path.join(mysql_dir,"include")])
-        path64 = os.path.join(mysql_dir,"lib64","mysql")
-        if os.path.exists(path64): env.Prepend(LIBPATH=[path64])
-else:
-    path64 = os.path.join("/usr","lib64","mysql")
-    if os.path.exists(path64): env.Prepend(LIBPATH=[path64])
-
 # Add lib64 for Redhat/Fedora
 if os.path.exists("/usr/lib64"): env.Append(LIBPATH=["/usr/lib64"])
 conf = Configure(env)
@@ -70,12 +59,6 @@ if not conf.CheckLib("crypto"):
     print >> sys.stderr, "Could not locate crypto"
     Exit(1)
 
-if not conf.CheckLibWithHeader("mysqlclient_r", "mysql/mysql.h", "c"):
-    print >> sys.stderr, "Could not locate mysqlclient"
-    Exit(1)
-if not conf.CheckDeclaration("mysql_next_result", "#include <mysql/mysql.h>","c++" ):
-    print >> sys.stderr, "mysqlclient too old. (check MYSQL_DIR)."
-    Exit(1)
 if not conf.CheckLibWithHeader("XrdSys", "XrdSfs/XrdSfsInterface.hh", "C++"):
     print >> sys.stderr, "Could not locate XrdSys"
     Exit(1)
