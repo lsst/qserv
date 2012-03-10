@@ -156,7 +156,7 @@ for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
 # Install lib
 env.Alias("install", env.Install("dist", env["built_libs"]))
 
-for d in Split("tests doc"): 
+for d in Split("tests tools doc"): 
     if os.path.isdir(d):
         try:
             SConscript(os.path.join(d, "SConscript"), 

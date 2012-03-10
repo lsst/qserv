@@ -1,0 +1,6 @@
+# -*- python -*-
+Import('env')
+Import('envNoXrd')
+
+pathSrcs = "nulltool.cc ../src/QservPathStructure.cc".split()
+envNoXrd.Program("nulltool", pathSrcs)
