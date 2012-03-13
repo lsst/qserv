@@ -123,7 +123,8 @@ class XrdHelper:
         if os.environ.has_key('XRD_DIR'):
             self.cands.insert(0, os.environ['XRD_DIR'])
 
-        self.platforms = ["x86_64_linux_26","i386_linux26","i386_linux26_dbg"]
+        self.platforms = ["x86_64_linux_26", "x86_64_linux_26_dbg",
+                          "i386_linux26", "i386_linux26_dbg"]
         if os.environ.has_key('XRD_PLATFORM'):
             self.platforms.insert(0, os.environ['XRD_PLATFORM'])
         pass
