@@ -5,6 +5,8 @@ import os, fnmatch
 # This seems not to work if placed in lib/
 # The path to ../src seems to prevent scons from building .os files in
 # the build dir.
+
+# Build up list of sources for lib.
 sources=[]
 #print os.getcwd(), os.listdir('../src')
 for root, dirs, files in os.walk('../src'):
