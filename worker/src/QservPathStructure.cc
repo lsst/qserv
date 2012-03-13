@@ -33,11 +33,14 @@ using std::vector;
 bool
 qWorker::QservPathStructure::insert(const vector<string>& paths) {
     _paths.clear();
-    _paths = paths;
-
     _uniqueDirs.clear();
+
     vector<string>::const_iterator pItr;
     for ( pItr=paths.begin(); pItr!=paths.end(); ++pItr) {
+        if ( pathsContains(*pItr) ) { // don't store duplicates
+            continue;
+        }
+        _paths.push_back(*pItr);
         int pos = pItr->find_last_of('/');
         if ( pos == -1 ) {
             std::cerr << "Problems with path: " << *pItr << std::endl;
@@ -91,7 +94,6 @@ qWorker::QservPathStructure::createPaths() const {
         const char* path = itr->c_str();
         std::cout << "creating file: " << path << std::endl;
         std::ofstream f(path, std::ios::out);
-        f << "this is a test :)" << std::endl;
         f.close();
     }
     return true;
@@ -122,19 +124,31 @@ qWorker::QservPathStructure::processOneDir(const string& s)
             return false;
         }
     }
-    if ( !isStored(s) ) {
+    if ( !uniqueDirsContains(s) ) {
         _uniqueDirs.push_back(s);
     }
     return true;
 }
 
 bool
-qWorker::QservPathStructure::isStored(const std::string& s) const {
-    vector<string>::const_iterator dItr;
-    for (dItr=_uniqueDirs.begin() ; dItr!=_uniqueDirs.end(); ++dItr) {
-        if (*dItr == s) {
+qWorker::QservPathStructure::pathsContains(const std::string& s) const {
+    vector<string>::const_iterator itr;
+    for (itr=_paths.begin() ; itr!=_paths.end(); ++itr) {
+        if (*itr == s) {
             return true;
         }
     }
     return false;
 }
+
+bool
+qWorker::QservPathStructure::uniqueDirsContains(const std::string& s) const {
+    vector<string>::const_iterator itr;
+    for (itr=_uniqueDirs.begin() ; itr!=_uniqueDirs.end(); ++itr) {
+        if (*itr == s) {
+            return true;
+        }
+    }
+    return false;
+}
+

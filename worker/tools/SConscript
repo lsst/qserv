@@ -4,3 +4,6 @@ Import('envNoXrd')
 
 pathSrcs = "nulltool.cc ../src/QservPathStructure.cc".split()
 envNoXrd.Program("nulltool", pathSrcs)
+
+pathSrcs = "registerDb.cc ../src/QservPathStructure.cc ../src/Config.cc ../src/Metadata.cc".split()
+envNoXrd.Program("registerDb", pathSrcs)

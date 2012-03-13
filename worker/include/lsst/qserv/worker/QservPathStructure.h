@@ -47,7 +47,8 @@ public:
 
 private:
     bool processOneDir(const std::string&);
-    bool isStored(const std::string&) const;
+    bool pathsContains(const std::string&) const;
+    bool uniqueDirsContains(const std::string&) const;
 
     bool createDirectories() const;
     bool createPaths() const;
