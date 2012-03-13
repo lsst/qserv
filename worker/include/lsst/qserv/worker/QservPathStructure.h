@@ -28,6 +28,7 @@
 
 namespace lsst {
 namespace qserv {
+namespace worker {
 
 class QservPathStructure {
 
@@ -48,8 +49,12 @@ private:
     bool processOneDir(const std::string&);
     bool isStored(const std::string&) const;
 
+    bool createDirectories() const;
+    bool createPaths() const;
+
+    std::vector<std::string> _paths;
     std::vector<std::string> _uniqueDirs;
 };
 
-}} // namespace lsst::qserv
+}}} // namespace lsst::qserv::worker
 #endif // LSST_QSERV_QSERVPATHEXPORT_H

@@ -22,17 +22,20 @@
 
 #include "lsst/qserv/worker/QservPathStructure.h"
 #include <sys/stat.h>
+#include <fstream>
 #include <iostream>
 
-namespace qsrv = lsst::qserv;
+namespace qWorker = lsst::qserv::worker;
 
 using std::string;
 using std::vector;
 
 bool
-qsrv::QservPathStructure::insert(const vector<string>& paths) {
-    _uniqueDirs.clear();
+qWorker::QservPathStructure::insert(const vector<string>& paths) {
+    _paths.clear();
+    _paths = paths;
 
+    _uniqueDirs.clear();
     vector<string>::const_iterator pItr;
     for ( pItr=paths.begin(); pItr!=paths.end(); ++pItr) {
         int pos = pItr->find_last_of('/');
@@ -48,14 +51,26 @@ qsrv::QservPathStructure::insert(const vector<string>& paths) {
 }
 
 bool
-qsrv::QservPathStructure::persist() {
+qWorker::QservPathStructure::persist() {
+    if ( ! createDirectories() ) {
+        return false;
+    }
+    if ( !createPaths() ) {
+        return false;
+    }
+    return true;
+}
+
+
+bool
+qWorker::QservPathStructure::createDirectories() const {
     vector<string>::const_iterator dItr;
     for ( dItr=_uniqueDirs.begin(); dItr!=_uniqueDirs.end(); ++dItr) {
         const char* theDir = dItr->c_str();
 
         struct stat st;
         if ( stat(theDir, &st) != 0 ) {
-            std::cout << "creating: " << theDir << std::endl;
+            std::cout << "mkdir: " << theDir << std::endl;
             int n = mkdir(theDir, 0755);
             if ( n != 0 ) {
                 std::cerr << "Failed to mkdir(" << *dItr << "), err: " 
@@ -69,13 +84,26 @@ qsrv::QservPathStructure::persist() {
     return true;
 }
 
+bool
+qWorker::QservPathStructure::createPaths() const {
+    vector<string>::const_iterator itr;
+    for ( itr=_paths.begin(); itr!=_paths.end(); ++itr) {
+        const char* path = itr->c_str();
+        std::cout << "creating file: " << path << std::endl;
+        std::ofstream f(path, std::ios::out);
+        f << "this is a test :)" << std::endl;
+        f.close();
+    }
+    return true;
+}
+
 const std::vector<std::string>
-qsrv::QservPathStructure::uniqueDirs() const {
+qWorker::QservPathStructure::uniqueDirs() const {
     return _uniqueDirs;
 }
 
 void
-qsrv::QservPathStructure::printUniquePaths() const {
+qWorker::QservPathStructure::printUniquePaths() const {
     std::vector<std::string>::const_iterator dItr;
     for ( dItr=_uniqueDirs.begin(); dItr!=_uniqueDirs.end(); ++dItr) {
         std::cout << "Unique dir: " << *dItr << std::endl;
@@ -83,7 +111,7 @@ qsrv::QservPathStructure::printUniquePaths() const {
 }
 
 bool
-qsrv::QservPathStructure::processOneDir(const string& s)
+qWorker::QservPathStructure::processOneDir(const string& s)
 {
     int pos = s.find_last_of('/');
     if ( pos == -1 ) {
@@ -101,7 +129,7 @@ qsrv::QservPathStructure::processOneDir(const string& s)
 }
 
 bool
-qsrv::QservPathStructure::isStored(const std::string& s) const {
+qWorker::QservPathStructure::isStored(const std::string& s) const {
     vector<string>::const_iterator dItr;
     for (dItr=_uniqueDirs.begin() ; dItr!=_uniqueDirs.end(); ++dItr) {
         if (*dItr == s) {

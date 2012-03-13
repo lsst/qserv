@@ -27,7 +27,7 @@
 #include "lsst/qserv/worker/QservPathStructure.h"
 
 namespace test = boost::test_tools;
-namespace qsrv = lsst::qserv;
+namespace qWorker = lsst::qserv::worker;
 
 struct PerTestFixture {
     PerTestFixture(void) {}
@@ -37,7 +37,7 @@ struct PerTestFixture {
 BOOST_FIXTURE_TEST_SUITE(PathStructureTestSuite, PerTestFixture)
 
 BOOST_AUTO_TEST_CASE(PathCreate) {
-    qsrv::QservPathStructure p;
+    qWorker::QservPathStructure p;
 
     std::vector<std::string> pV;
     pV.push_back("/u1/qserv/export/dir1/fileA");
