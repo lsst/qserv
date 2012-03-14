@@ -122,8 +122,8 @@ LSST Query Services worker package
 envNoXrd = env.Clone(CCFLAGS=["-g","-DNO_XROOTD_FS"])
 env.Append(CCFLAGS=['-g','-pedantic','-Wno-long-long'])
 # Hack to workaround missing XrdSfs library in xrootd.
-sfsObjs = map(lambda f: env.SharedObject(os.path.join(xrd_dir, "src", 
-                                                      "XrdSfs", f)),
+sfsObjs = map(lambda f: env.SharedObject(f+".os", os.path.join(xrd_dir, "src", 
+                                                               "XrdSfs", f)),
               ["XrdSfsCallBack.cc","XrdSfsNative.cc"])
 env.Append(sfsObjs=sfsObjs)
 envNoXrd.Append(sfsObjs=sfsObjs)
