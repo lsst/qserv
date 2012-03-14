@@ -2,7 +2,10 @@
 Import('env')
 Import('envNoXrd')
 
+pEnv = envNoXrd.Clone()
+pEnv.Append(CPPPATH=envNoXrd["built_cpppath"])
+
 pathSrcs = ["nulltool.cc", 
-            envNoXrd.Object(target="QservPathStructure.o", 
+            pEnv.Object(target="QservPathStructure.o", 
                             source="../src/QservPathStructure.cc")]
-envNoXrd.Program("nulltool", pathSrcs)
+pEnv.Program("nulltool", pathSrcs)

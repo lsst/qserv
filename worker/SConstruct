@@ -8,7 +8,6 @@ import glob, os, re, sys
 # Note: This uses the build-variant feature in Scons, which is known to be 
 # troublesome in Scons 0.98.5.  Scons 1.2.0 and 2.0.1 are known to work.
 
-
 sys.path.append("../common")
 import detect_deps
 
@@ -60,11 +59,6 @@ if not conf.CheckCXXHeader("boost/regex.hpp"):
 
 if missingBoost: Exit(1)
     
-
-env.Append(LIBPATH = ["../common/lib"])
-if not conf.CheckLib("qserv_common", language="C++"):
-    print >> sys.stderr, "Could not locate qserv_common library"
-    Exit(1)
 env = conf.Finish()
 
 # Describe what your package contains here.
@@ -81,8 +75,8 @@ LSST Query Services worker package
 envNoXrd = env.Clone(CCFLAGS=["-g","-DNO_XROOTD_FS"])
 env.Append(CCFLAGS=['-g','-pedantic','-Wno-long-long'])
 # Hack to workaround missing XrdSfs library in xrootd.
-sfsObjs = map(lambda f: env.SharedObject(os.path.join(xrd_inc, 
-                                                      "XrdSfs", f)),
+sfsObjs = map(lambda f: env.SharedObject(os.path.join("bld",f+".os"),
+                                         os.path.join(xrd_inc, "XrdSfs", f)),
               ["XrdSfsCallBack.cc","XrdSfsNative.cc"])
 env.Append(sfsObjs=sfsObjs)
 envNoXrd.Append(sfsObjs=sfsObjs)
