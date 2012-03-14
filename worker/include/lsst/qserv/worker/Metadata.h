@@ -44,20 +44,18 @@ public:
                            std::string const& partitionedTables,
                            SqlConnection&,
                            SqlErrorObject&);
+    bool generateExportPaths(std::string const& baseDir,
+                             SqlConnection&,
+                             SqlErrorObject&,
+                             std::vector<std::string>& exportPaths);
+    bool generateExportPathsForDb(std::string const& baseDir,
+                                  std::string const& dbName,
+                                  std::string const& tableList,
+                                  SqlConnection&,
+                                  SqlErrorObject&,
+                                  std::vector<std::string>& exportPaths);
 
-    bool generateExportDirs(std::string const& baseDir,
-                            SqlConnection&,
-                            SqlErrorObject&,
-                            std::vector<std::string>& exportDirs);
-    
 private:
-    bool generateExportDirsForDb(std::string const& baseDir,
-                                 std::string const& dbName,
-                                 std::string const& tableList,
-                                 SqlConnection&,
-                                 SqlErrorObject&,
-                                 std::vector<std::string>& exportDirs);
-
     static bool prepPartitionedTables(std::string&, SqlErrorObject&);
     static std::vector<std::string> tokenizeString(std::string const&);
     static int extractChunkNo(std::string const&);

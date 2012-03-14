@@ -1,11 +1,17 @@
 # -*- python -*-
 Import('env')
 Import('envNoXrd')
+import os
 
 pEnv = envNoXrd.Clone()
 pEnv.Append(CPPPATH=envNoXrd["built_cpppath"])
-
+print "cpppath",pEnv["CPPPATH"]
 pathSrcs = ["nulltool.cc", 
             pEnv.Object(target="QservPathStructure.o", 
                             source="../src/QservPathStructure.cc")]
 pEnv.Program("nulltool", pathSrcs)
+
+compiled = map(lambda f: pEnv.Object(os.path.basename(f)+".o", f), 
+               "../src/QservPathStructure.cc ../src/Config.cc ../src/Metadata.cc".split())
+pathSrcs = ["registerDb.cc"] + compiled
+pEnv.Program("registerDb", pathSrcs)

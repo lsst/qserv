@@ -115,16 +115,16 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
         sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
         BOOST_FAIL(errObj.printErrMsg());
     }
-    std::vector<std::string> exportDirs;
-    if ( !m.generateExportDirs("/u1/lsst/qserv/worker/exportDir", 
-                               *sqlConn, errObj, exportDirs)) {
+    std::vector<std::string> exportPaths;
+    if ( !m.generateExportPaths("/u1/lsst/qserv/worker/exportDir", 
+                                *sqlConn, errObj, exportPaths)) {
         sqlConn->dropDb(dbN1, errObjDummy);
         sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
         BOOST_FAIL(errObj.printErrMsg());
     }
-    int i, s = exportDirs.size();
+    int i, s = exportPaths.size();
     for (i=0; i<s ; i++) {
-        std::cout << "got: " << exportDirs[i] << std::endl;
+        std::cout << "got: " << exportPaths[i] << std::endl;
     }
     sqlConn->dropDb(dbN1, errObjDummy);
     sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);

@@ -48,6 +48,8 @@ post2 = importDeps(libEnv, "../../common/lib/qserv_proto")
 post = mergeDict(post, post2)
 post2 = importDeps(libEnv, "../../common/lib/qserv_common")
 post = mergeDict(post, post2)
+post2 = importDeps(env, "../../common/lib/qserv_common")
+post = mergeDict(post, post2)
 
 # Apply lib dependencies.
 conf = Configure(libEnv)

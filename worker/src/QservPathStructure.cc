@@ -20,21 +20,27 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "lsst/qserv/worker/QservPathStructure.hh"
+#include "lsst/qserv/worker/QservPathStructure.h"
 #include <sys/stat.h>
+#include <fstream>
 #include <iostream>
 
-namespace qsrv = lsst::qserv;
+namespace qWorker = lsst::qserv::worker;
 
 using std::string;
 using std::vector;
 
 bool
-qsrv::QservPathStructure::insert(const vector<string>& paths) {
+qWorker::QservPathStructure::insert(const vector<string>& paths) {
+    _paths.clear();
     _uniqueDirs.clear();
 
     vector<string>::const_iterator pItr;
     for ( pItr=paths.begin(); pItr!=paths.end(); ++pItr) {
+        if ( pathsContains(*pItr) ) { // don't store duplicates
+            continue;
+        }
+        _paths.push_back(*pItr);
         int pos = pItr->find_last_of('/');
         if ( pos == -1 ) {
             std::cerr << "Problems with path: " << *pItr << std::endl;
@@ -48,14 +54,26 @@ qsrv::QservPathStructure::insert(const vector<string>& paths) {
 }
 
 bool
-qsrv::QservPathStructure::persist() {
+qWorker::QservPathStructure::persist() {
+    if ( ! createDirectories() ) {
+        return false;
+    }
+    if ( !createPaths() ) {
+        return false;
+    }
+    return true;
+}
+
+
+bool
+qWorker::QservPathStructure::createDirectories() const {
     vector<string>::const_iterator dItr;
     for ( dItr=_uniqueDirs.begin(); dItr!=_uniqueDirs.end(); ++dItr) {
         const char* theDir = dItr->c_str();
 
         struct stat st;
         if ( stat(theDir, &st) != 0 ) {
-            std::cout << "creating: " << theDir << std::endl;
+            std::cout << "mkdir: " << theDir << std::endl;
             int n = mkdir(theDir, 0755);
             if ( n != 0 ) {
                 std::cerr << "Failed to mkdir(" << *dItr << "), err: " 
@@ -69,13 +87,25 @@ qsrv::QservPathStructure::persist() {
     return true;
 }
 
+bool
+qWorker::QservPathStructure::createPaths() const {
+    vector<string>::const_iterator itr;
+    for ( itr=_paths.begin(); itr!=_paths.end(); ++itr) {
+        const char* path = itr->c_str();
+        std::cout << "creating file: " << path << std::endl;
+        std::ofstream f(path, std::ios::out);
+        f.close();
+    }
+    return true;
+}
+
 const std::vector<std::string>
-qsrv::QservPathStructure::uniqueDirs() const {
+qWorker::QservPathStructure::uniqueDirs() const {
     return _uniqueDirs;
 }
 
 void
-qsrv::QservPathStructure::printUniquePaths() const {
+qWorker::QservPathStructure::printUniquePaths() const {
     std::vector<std::string>::const_iterator dItr;
     for ( dItr=_uniqueDirs.begin(); dItr!=_uniqueDirs.end(); ++dItr) {
         std::cout << "Unique dir: " << *dItr << std::endl;
@@ -83,7 +113,7 @@ qsrv::QservPathStructure::printUniquePaths() const {
 }
 
 bool
-qsrv::QservPathStructure::processOneDir(const string& s)
+qWorker::QservPathStructure::processOneDir(const string& s)
 {
     int pos = s.find_last_of('/');
     if ( pos == -1 ) {
@@ -94,19 +124,31 @@ qsrv::QservPathStructure::processOneDir(const string& s)
             return false;
         }
     }
-    if ( !isStored(s) ) {
+    if ( !uniqueDirsContains(s) ) {
         _uniqueDirs.push_back(s);
     }
     return true;
 }
 
 bool
-qsrv::QservPathStructure::isStored(const std::string& s) const {
-    vector<string>::const_iterator dItr;
-    for (dItr=_uniqueDirs.begin() ; dItr!=_uniqueDirs.end(); ++dItr) {
-        if (*dItr == s) {
+qWorker::QservPathStructure::pathsContains(const std::string& s) const {
+    vector<string>::const_iterator itr;
+    for (itr=_paths.begin() ; itr!=_paths.end(); ++itr) {
+        if (*itr == s) {
             return true;
         }
     }
     return false;
 }
+
+bool
+qWorker::QservPathStructure::uniqueDirsContains(const std::string& s) const {
+    vector<string>::const_iterator itr;
+    for (itr=_uniqueDirs.begin() ; itr!=_uniqueDirs.end(); ++itr) {
+        if (*itr == s) {
+            return true;
+        }
+    }
+    return false;
+}
+
