@@ -1,9 +1,12 @@
 # -*- python -*-
 Import('env')
 Import('envNoXrd')
+import os
 
 pathSrcs = "nulltool.cc ../src/QservPathStructure.cc".split()
 envNoXrd.Program("nulltool", pathSrcs)
 
-pathSrcs = "registerDb.cc ../src/QservPathStructure.cc ../src/Config.cc ../src/Metadata.cc".split()
+compiled = map(lambda f: envNoXrd.Object(os.path.basename(f)+".o", f), 
+               "../src/QservPathStructure.cc ../src/Config.cc ../src/Metadata.cc".split())
+pathSrcs = ["registerDb.cc"] + compiled
 envNoXrd.Program("registerDb", pathSrcs)
