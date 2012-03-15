@@ -1,5 +1,6 @@
 # -*- python -*-
 Import('env')
+Import('detect_deps')
 import os, fnmatch
 
 # This seems not to work if placed in lib/
@@ -18,44 +19,24 @@ for root, dirs, files in os.walk('../src'):
 libEnv.Append(CPPPATH = ['../include'])
 libEnv.Append(CPPPATH = ['../../common/include']) 
 libEnv.Append(LIBPATH = ['../../common/lib'])
-
-def importDeps(env, f):
-    post = {}
-    fName = f+".deps"
-    if os.access(fName, os.R_OK):
-        deps = eval(open(fName).read()) # import dep file directly
-        if "LIBS" in deps:
-            post["LIBS"] = deps.pop("LIBS")
-        #print "imported deps", deps
-        env.Append(**deps)
-    return post
-
-def mergeDict(d1, d2):
-    """Merge list values from d2 to d1"""
-    for k in d2:
-        if k in d1: d1[k].extend(d2[k])
-        else: d1[k] = d2[k]
-    return d1
     
-post = importDeps(libEnv, "../../common/include/lsst/qserv/worker.pb.h")
+post = detect_deps.importDeps(libEnv, "../../common/include/lsst/qserv/worker.pb.h")
 
 # Hack to workaround missing XrdSfs library in xrootd.
 if libEnv.has_key('sfsObjs'):
     sources += libEnv["sfsObjs"]
 
 libEnv.Append(LIBPATH = ['../../common/lib']) 
-post2 = importDeps(libEnv, "../../common/lib/qserv_proto")
-post = mergeDict(post, post2)
-post2 = importDeps(libEnv, "../../common/lib/qserv_common")
-post = mergeDict(post, post2)
-post2 = importDeps(env, "../../common/lib/qserv_common")
-post = mergeDict(post, post2)
+post2 = detect_deps.importDeps(libEnv, "../../common/lib/qserv_proto")
+post = detect_deps.mergeDict(post, post2)
+post2 = detect_deps.importDeps(libEnv, "../../common/lib/qserv_common")
+post = detect_deps.mergeDict(post, post2)
+post2 = detect_deps.importDeps(env, "../../common/lib/qserv_common")
+post = detect_deps.mergeDict(post, post2)
 
 # Apply lib dependencies.
 conf = Configure(libEnv)
-if "LIBS" in post:
-    for lib in post["LIBS"]:
-        conf.CheckLib(lib, language="C++")
+detect_deps.checkLibsFromDict(conf, post)
 conf.CheckLib("qserv_common")
 conf.CheckLib("qserv_proto")
 conf.CheckLib("protobuf")

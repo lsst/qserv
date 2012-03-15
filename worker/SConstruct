@@ -85,7 +85,7 @@ for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
     try:
         VariantDir(bldDir, 'src')               
         SConscript("src/SConscript.lib", variant_dir=bldDir,
-                   exports={'env' : expEnv})
+                   exports={'env' : expEnv, 'detect_deps' : detect_deps})
     except Exception, e:
         print >> sys.stderr, "%s: %s" % (os.path.join("src", "SConscript.lib"), e)
 
@@ -96,6 +96,7 @@ for d in Split("tests tools doc"):
     if os.path.isdir(d):
         try:
             SConscript(os.path.join(d, "SConscript"), 
-                       exports={'env' : env, 'envNoXrd' : envNoXrd})
+                       exports={'env' : env, 'envNoXrd' : envNoXrd,
+                                'detect_deps' : detect_deps})
         except Exception, e:
             print >> sys.stderr, "%s: %s" % (os.path.join(d, "SConscript"), e)
