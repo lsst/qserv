@@ -49,9 +49,9 @@ main (int argc, char **argv) {
                 optopt=='t'||optopt== 'b') {
                 cerr << "Option -" << optopt << " requires an argument." << endl;
             } else if (isprint (optopt)) {
-                cerr << "Unknown option `-" << optopt << "'" << endl;
+                cerr << "Unknown option `-" << char(optopt) << "'" << endl;
             } else {
-                cerr << "Unknown option character " << optopt << endl;
+                cerr << "Unknown option character " << char(optopt) << endl;
             }
             return -1;
         default: {
