@@ -198,3 +198,28 @@ def checkAddXrdPosix(conf):
     if not found:
         print >> sys.stderr, "Could not find XrdPosix lib/header"
     return found
+########################################################################
+# dependency propagation tools
+def importDeps(env, f):
+    post = {}
+    fName = f+".deps"
+    if os.access(fName, os.R_OK):
+        deps = eval(open(fName).read()) # import dep file directly
+        if "LIBS" in deps:
+            post["LIBS"] = deps.pop("LIBS")
+        #print "imported deps", deps
+        env.Append(**deps)
+    return post
+
+def mergeDict(d1, d2):
+    """Merge list values from d2 to d1"""
+    for k in d2:
+        if k in d1: d1[k].extend(d2[k])
+        else: d1[k] = d2[k]
+    return d1
+
+def checkLibsFromDict(conf, depDict, autoadd=1):
+    if "LIBS" in depDict:
+        for lib in depDict["LIBS"]:
+            conf.CheckLib(lib, language="C++", autoadd=autoadd)
+    return conf
