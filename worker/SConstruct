@@ -8,40 +8,26 @@ import glob, os, re, sys
 # Note: This uses the build-variant feature in Scons, which is known to be 
 # troublesome in Scons 0.98.5.  Scons 1.2.0 and 2.0.1 are known to work.
 
+sys.path.append("../common")
+import detect_deps
+
 env = Environment()
+searchRoots = ['/usr', '/usr/local/'] # search in /usr/local by default.
+if os.environ.has_key('SEARCH_ROOTS'):
+    searchRoots = os.environ['SEARCH_ROOTS'].split(":")
 
-xrd_dir = "/scratch/xrd/xrootd";
-if os.environ.has_key('XRD_DIR'):
-    xrd_dir = os.environ['XRD_DIR']
-if not os.path.exists(xrd_dir):
-    xrd_dir = "/home/ktl/xrootd"
-if not os.path.exists(xrd_dir):
-    print >> sys.stderr, "Could not locate xrootd base directory"
-    Exit(1)
-xrd_platform = None
-platforms = ["x86_64_linux_26", "x86_64_linux_26_dbg", 
-             "i386_linux26","i386_linux26_dbg"]
-if os.environ.has_key('XRD_PLATFORM'):
-    platforms.insert(0, os.environ['XRD_PLATFORM'])
-for p in platforms:
-    if os.path.exists(os.path.join(xrd_dir, "lib", p)):
-        print "Using platform=", p
-        xrd_platform = p
-        break
-if not xrd_platform:
-    print >> sys.stderr, "Could not locate xrootd libraries"
-    Exit(1)
-env.Append(CPPPATH = [os.path.join(xrd_dir, "src")])
-env.Append(LIBPATH = [os.path.join(xrd_dir, "lib", xrd_platform)])
-print "xrd lib path is", os.path.join(xrd_dir,"lib",xrd_platform)
+# Find Scalla/xrootd directories
+x = detect_deps.XrdHelper(searchRoots)
+(xrd_inc, xrd_lib) = x.getXrdLibInc()
+hasXrootd = not ((not xrd_inc) or (not xrd_lib))
+if not hasXrootd:
+     print >>sys.stderr, "Can't find xrootd headers or libraries"
+     Exit(1)
+else:
+    print >> sys.stderr, "Using xrootd inc/lib: ", xrd_inc, xrd_lib
 
-if os.environ.has_key('BOOST_DIR'):
-    boost_dir = os.environ['BOOST_DIR']
-    if not os.path.exists(boost_dir):
-        print >> sys.stderr, "Could not locate Boost base directory (BOOST_DIR)"
-        Exit(1)
-    env.Append(CPPPATH = [os.path.join(boost_dir, "include")])
-    env.Append(LIBPATH = [os.path.join(boost_dir, "lib")])
+env.Append(CPPPATH = [xrd_inc])
+env.Append(LIBPATH = [xrd_lib])
 
 if os.environ.has_key('SSL_DIR'):
     ssl_dir = os.environ['SSL_DIR']
@@ -63,50 +49,17 @@ if not conf.CheckLibWithHeader("XrdSys", "XrdSfs/XrdSfsInterface.hh", "C++"):
     print >> sys.stderr, "Could not locate XrdSys"
     Exit(1)
 
-if not conf.CheckLib("boost_regex-gcc34-mt", language="C++") \
-        and not conf.CheckCXXHeader("boost/regex.hpp"):
-    print >> sys.stderr, "Could not locate Boost headers"
-    Exit(1)
-if not (conf.CheckLib("boost_regex-gcc43-mt", language="C++") 
-        or conf.CheckLib("boost_regex-gcc41-mt", language="C++") 
-        or conf.CheckLib("boost_regex-gcc34-mt", language="C++") 
-        ) and not conf.CheckLib("boost_regex", language="C++"):
-    print >> sys.stderr, "Could not locate boost_regex library"
-    Exit(1)
-if not conf.CheckLib("boost_thread-gcc34-mt", language="C++") \
-        and not conf.CheckLib("boost_thread-gcc41-mt", language="C++") \
-        and not conf.CheckLib("boost_thread-mt", language="C++") \
-        and not conf.CheckLib("boost_thread", language="C++"):
-    print >> sys.stderr, "Could not locate boost_thread library"
-    Exit(1)
-if not conf.CheckLib("boost_signals-gcc34-mt", language="C++") \
-        and not conf.CheckLib("boost_signals-gcc41-mt", language="C++") \
-        and not conf.CheckLib("boost_signals", language="C++"):
-    print >> sys.stderr, "Could not locate boost_signals library"
-    Exit(1)
+missingBoost = []
+for pkg in ["regex", "thread", "signals"]:
+    if not detect_deps.checkAddBoost(conf, "boost_" + pkg):
+        print >> sys.stderr, "Missing boost_" + pkg
+        missingBoost.append(pkg)
+if not conf.CheckCXXHeader("boost/regex.hpp"):
+    missingBoost.append("boost/regex.hpp")
 
-env.Append(LIBPATH = ["../common/lib"])
-if not conf.CheckLib("qserv_common", language="C++"):
-    print >> sys.stderr, "Could not locate qserv_common library"
-    Exit(1)
+if missingBoost: Exit(1)
+    
 env = conf.Finish()
-
-checkSinCosSource = """
-    #include <math.h>
-    int main(int argc, char **argv)
-    {
-        double s, c;
-        sincos(0.5, &s, &c);
-        return 0;
-    }
-    """
-
-def CheckSinCos(context):
-    context.Message('Checking for sincos()...')
-    result = context.TryLink(checkSinCosSource, '.c')
-    context.Result(result)
-    return result
-
 
 # Describe what your package contains here.
 env.Help("""
@@ -122,8 +75,8 @@ LSST Query Services worker package
 envNoXrd = env.Clone(CCFLAGS=["-g","-DNO_XROOTD_FS"])
 env.Append(CCFLAGS=['-g','-pedantic','-Wno-long-long'])
 # Hack to workaround missing XrdSfs library in xrootd.
-sfsObjs = map(lambda f: env.SharedObject(f+".os", os.path.join(xrd_dir, "src", 
-                                                               "XrdSfs", f)),
+sfsObjs = map(lambda f: env.SharedObject(os.path.join("bld",f+".os"),
+                                         os.path.join(xrd_inc, "XrdSfs", f)),
               ["XrdSfsCallBack.cc","XrdSfsNative.cc"])
 env.Append(sfsObjs=sfsObjs)
 envNoXrd.Append(sfsObjs=sfsObjs)
@@ -132,7 +85,7 @@ for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
     try:
         VariantDir(bldDir, 'src')               
         SConscript("src/SConscript.lib", variant_dir=bldDir,
-                   exports={'env' : expEnv, 'xrd_dir' : xrd_dir})
+                   exports={'env' : expEnv, 'detect_deps' : detect_deps})
     except Exception, e:
         print >> sys.stderr, "%s: %s" % (os.path.join("src", "SConscript.lib"), e)
 
@@ -143,6 +96,7 @@ for d in Split("tests tools doc"):
     if os.path.isdir(d):
         try:
             SConscript(os.path.join(d, "SConscript"), 
-                       exports={'env' : env, 'envNoXrd' : envNoXrd})
+                       exports={'env' : env, 'envNoXrd' : envNoXrd,
+                                'detect_deps' : detect_deps})
         except Exception, e:
             print >> sys.stderr, "%s: %s" % (os.path.join(d, "SConscript"), e)

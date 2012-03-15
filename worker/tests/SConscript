@@ -5,13 +5,18 @@ Import("env")
 Import("envNoXrd")
 
 testEnv = envNoXrd.Clone()
+testEnv.Append(CPPPATH = env["built_cpppath"])
+testEnv.Append(LIBPATH = env["built_libpath"])
+##CPPPATH = ['../include', '../../common/include'])
+#print "env cpp path:", testEnv["CPPPATH"]
 testEnv.Append(LIBPATH = ["../bldNoXrd"])
 
 conf = Configure(testEnv)
 conf.CheckLib("stdc++", language="c++")
+conf.CheckHeader("lsst/qserv/worker.pb.h", language="C++")
 # Ideally, should propagate from qserv_worker deps
-conf.CheckLib("protobuf", language="c++") 
-conf.CheckLib("qserv_worker", language="c++")
+#conf.CheckLib("protobuf", language="c++") 
+#conf.CheckLib("qserv_worker", language="c++")
 testEnv = conf.Finish()
 
 def patch_environ(environ, libpaths):
@@ -42,19 +47,20 @@ def run_test(target, source, env):
 bld = Builder(action = run_test, prefix = ".tests/")
 testEnv.Append(BUILDERS = {'Test': bld})
 for src in Glob("*.cc"):
-    if "MySqlFs_" in src.name:
-        src = [src] + testEnv["built_libs"]
-    elif "FifoScheduler_" in src.name:
-        src = [src] + testEnv["sched_libs"]
-    elif "Metadata_" in src.name:
-        src = [src] + testEnv["built_libs"]
+    libs = []
+    if(filter(lambda s: s in src.name, 
+              ["MySqlFs_", "FifoScheduler_", "Metadata_"])):
+        src = [src] + testEnv["built_libs"] 
+        libs = testEnv["built_elibs"] + ["mysqlclient_r"]
     elif "PathStructure_" in src.name:
+        # src = [src, testEnv.Object("QservPathStructure.o", 
+        #                            "../src/QservPathStructure.cc")]
         src = [src, "../src/QservPathStructure.cc"]
     else:
         src = [src]
     pass
 
-    prog = testEnv.Program(src)
+    prog = testEnv.Program(src, LIBS=libs)
 
     # don't run Metadata tests by default, they are
     # interractive because of mysql credentials
