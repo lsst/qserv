@@ -47,6 +47,8 @@ public:
     bool unregisterQservedDb(std::string const& dbName,
                              SqlConnection&,
                              SqlErrorObject&);
+    bool showMetadata(SqlConnection&,
+                      SqlErrorObject&);
     bool generateExportPaths(std::string const& baseDir,
                              SqlConnection&,
                              SqlErrorObject&,

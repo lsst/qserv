@@ -35,6 +35,9 @@ using lsst::qserv::SqlErrorObject;
 using lsst::qserv::SqlResults;
 using qWorker::hashQuery;
 
+using std::cout;
+using std::endl;
+
 qWorker::Metadata::Metadata(std::string const& workerId) 
     : _metadataDbName("qserv_worker_meta_" + workerId) {
 }
@@ -89,6 +92,34 @@ qWorker::Metadata::unregisterQservedDb(std::string const& dbName,
     std::stringstream sql;
     sql << "DELETE FROM Dbs WHERE dbName='" << dbName << "'";
     return sqlConn.runQuery(sql.str(), errObj);
+}
+
+bool
+qWorker::Metadata::showMetadata(SqlConnection& sqlConn,
+                                SqlErrorObject& errObj) {
+    if (!sqlConn.selectDb(_metadataDbName, errObj)) {
+        cout << "No metadata found." << endl;
+        return true;
+    }
+    std::string sql = "SELECT dbName, partitionedTables FROM Dbs";
+    SqlResults results;
+    if (!sqlConn.runQuery(sql, results, errObj)) {
+        return errObj.addErrMsg("Failed to execute: " + sql);
+    }
+    std::vector<std::string> dbs;
+    std::vector<std::string> pts; // each string = comma separated list
+    if (!results.extractFirst2Columns(dbs, pts, errObj)) {
+        return errObj.addErrMsg("Failed to receive results from: " + sql);
+    }
+    cout << "Databases registered in qserv metadata:" << endl;
+    int i, s = dbs.size();
+    for (i=0; i<s ; i++) {
+        std::string db = dbs[i];
+        std::string tl = pts[i];
+        cout << "  db: '" << db << "', partitionedTables: '" 
+             << tl << "'" << endl;
+    }
+    return true;
 }
 
 /// generates export directory paths for every chunk in every database served

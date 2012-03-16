@@ -23,12 +23,14 @@ printHelp(const char* execName) {
      << "\nUsage:\n"
      << "   " << execName << " -r -c <mysqlAuth> -d <dbName> -t <tables>\n"
      << "   " << execName << " -u -c <mysqlAuth> -d <dbName>\n"
+     << "   " << execName << " -s -c <mysqlAuth>\n"
      << "   " << execName << " -g -c <mysqlAuth> -a -b <baseDir>\n"
      << "   " << execName << " -g -c <mysqlAuth> -d <dbName> -b <baseDir>\n"
      << "   " << execName << " -h\n"
      << "\nWhere:\n"
      << "  -r             - register database in qserv metadata\n"
      << "  -u             - unregister database from qserv metadata\n"
+     << "  -s             - show qserv metadata\n"
      << "  -g             - generate export paths\n"
      << "  -c <mysqlAuth> - path to mysql auth file, see below for details\n"
      << "  -a             - for all databases registered in qserv metadata\n"
@@ -131,6 +133,19 @@ unregisterDb(SqlConfig& sc,
 }
 
 bool
+showMetadata(SqlConfig& sc,
+             string const& workerId) {
+    lsst::qserv::SqlConnection sqlConn(sc);
+    lsst::qserv::SqlErrorObject errObj;
+    lsst::qserv::worker::Metadata m(workerId);
+    if ( !m.showMetadata(sqlConn, errObj) ) {
+        cerr << "Failed to print metadata. " << errObj.printErrMsg() << endl;
+        return errObj.errNo();
+    }
+    return 0;
+}
+
+bool
 generateExportPathsForDb(SqlConfig& sc,
                          string const& workerId,
                          string const& dbName, 
@@ -203,17 +218,19 @@ main(int argc, char* argv[]) {
     string baseDir;
     string authFile;
     
-    bool flag_regDb = false;
-    bool flag_unrDb = false;
-    bool flag_genEp = false;
+    bool flag_regDb = false; // register database
+    bool flag_unrDb = false; // unregister database
+    bool flag_genEp = false; // generated export paths
+    bool flag_showM = false; // show metadata
     bool flag_allDb = false;
 
     int c;
     opterr = 0;
-    while ((c = getopt (argc, argv, "rugac:d:t:b:h")) != -1) {
+    while ((c = getopt (argc, argv, "rusgac:d:t:b:h")) != -1) {
         switch (c) {
         case 'r': { flag_regDb = true; break;}
         case 'u': { flag_unrDb = true; break;}
+        case 's': { flag_showM = true; break;}
         case 'g': { flag_genEp = true; break;}
         case 'a': { flag_allDb = true; break;}
         case 'c': { authFile = optarg; break;}
@@ -261,6 +278,8 @@ main(int argc, char* argv[]) {
             return -6;
         }
         return unregisterDb(sc, workerId, dbName);
+    } else if ( flag_showM ) {
+        return showMetadata(sc, workerId);
     } else if ( flag_genEp ) {
         if ( baseDir.empty() ) {
             cerr << "base dir not specified "
@@ -286,7 +305,7 @@ main(int argc, char* argv[]) {
         }
         return 0;
     }
-    cerr << "No option specified. (hint: use -r or -u or -g)" << endl;
+    cerr << "No option specified. (hint: use -r or -u or -g or -s)" << endl;
     printHelp(execName);
     return 0;
 }
