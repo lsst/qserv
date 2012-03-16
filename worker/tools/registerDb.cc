@@ -14,13 +14,13 @@ using std::cerr;
 using std::endl;
 
 void
-printHelp() {
+printHelp(const char* execName) {
     std::cout
         << "\nUsage:\n"
-        << "   registerDb -r -d <dbName> -t <tables>\n"
-        << "   registerDb -g -a -b <baseDir>\n"
-        << "   registerDb -g -d <dbName> -b <baseDir>\n"
-        << "   registerDb -h\n"
+        << "   " << execName << " -rrr -d <dbName> -t <tables>\n"
+        << "   " << execName << " -g -a -b <baseDir>\n"
+        << "   " << execName << " -g -d <dbName> -b <baseDir>\n"
+        << "   " << execName << " -h\n"
         << "\nWhere:\n"
         << "  -r           - register database in qserv metadata\n"
         << "  -g           - generate export paths\n"
@@ -113,6 +113,8 @@ generateExportPaths(SqlConfig& sc,
 
 int 
 main(int argc, char* argv[]) {
+    const char* execName = argv[0];
+
     // TODO: get this from xrootd
     std::string const workerId = "theId";
 
@@ -143,7 +145,7 @@ main(int argc, char* argv[]) {
         case 'd': { dbName  = optarg; break;} 
         case 't': { pTables = optarg; break;}
         case 'b': { baseDir = optarg; break;}
-        case 'h': { printHelp(); return 0;}
+        case 'h': { printHelp(execName); return 0;}
         case '?':
             if (optopt=='r'||optopt=='d'||
                 optopt=='t'||optopt== 'b') {
@@ -190,12 +192,12 @@ main(int argc, char* argv[]) {
             cerr << "\nDo you want to generate export paths for one "
                  << "database, or all? (hint: use -d <dbName or -a flag)" 
                  << endl;
-            printHelp();
+            printHelp(execName);
             return -6;
         }
         // ...
         return 0;
     }
-    printHelp();
+    printHelp(execName);
     return 0;
 }
