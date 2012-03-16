@@ -111,6 +111,10 @@ qWorker::Metadata::showMetadata(SqlConnection& sqlConn,
     if (!results.extractFirst2Columns(dbs, pts, errObj)) {
         return errObj.addErrMsg("Failed to receive results from: " + sql);
     }
+    if (dbs.size() == 0 ) {
+        cout << "No databases registered in qserv metadata" << endl;
+        return true;
+    }
     cout << "Databases registered in qserv metadata:" << endl;
     int i, s = dbs.size();
     for (i=0; i<s ; i++) {
