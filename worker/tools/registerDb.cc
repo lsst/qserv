@@ -9,16 +9,19 @@
 namespace qWorker = lsst::qserv::worker;
 
 using lsst::qserv::SqlConfig;
+using std::cout;
+using std::cerr;
+using std::endl;
 
 void
 printHelp() {
     std::cout
-        << "\nUsage:\n\n"
+        << "\nUsage:\n"
         << "   registerDb -r -d <dbName> -t <tables>\n"
         << "   registerDb -g -a -b <baseDir>\n"
         << "   registerDb -g -d <dbName> -b <baseDir>\n"
         << "   registerDb -h\n"
-        << "\nWhere:\n\n"
+        << "\nWhere:\n"
         << "  -r           - register database in qserv metadata\n"
         << "  -g           - generate export paths\n"
         << "  -a           - for all databases registered in qserv metadata\n"
@@ -30,7 +33,8 @@ printHelp() {
 }
 
 bool
-registerDb(std::string const& workerId,
+registerDb(SqlConfig& sc,
+           std::string const& workerId,
            std::string const& dbName,
            std::string const& pTables) {
     cout << "Registering db: " << dbName << ", partTables: " << pTables << endl;
@@ -46,8 +50,10 @@ registerDb(std::string const& workerId,
 }
 
 bool
-generateExportPathsForDb(std::string const& workerId,
+generateExportPathsForDb(SqlConfig& sc,
+                         std::string const& workerId,
                          std::string const& dbName, 
+                         std::string const& pTables,
                          std::string const& baseDir) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
@@ -55,7 +61,7 @@ generateExportPathsForDb(std::string const& workerId,
     lsst::qserv::worker::Metadata m(workerId);
     
     std::vector<std::string> exportPaths;
-    if ( ! m.generateExportPathsForDb(baseDir, dbName, partitionedTables,
+    if ( ! m.generateExportPathsForDb(baseDir, dbName, pTables,
                                       sqlConn, errObj, exportPaths) ) {
         std::cerr << "Failed to generate export directories. " 
                   << errObj.printErrMsg() << std::endl;
@@ -76,7 +82,8 @@ generateExportPathsForDb(std::string const& workerId,
 }
 
 bool
-generateExportPaths(std::string const& workerId,
+generateExportPaths(SqlConfig& sc,
+                    std::string const& workerId,
                     std::string const& baseDir) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
@@ -105,7 +112,7 @@ generateExportPaths(std::string const& workerId,
 
 
 int 
-main(int, char**) {
+main(int argc, char* argv[]) {
     // TODO: get this from xrootd
     std::string const workerId = "theId";
 
@@ -162,7 +169,7 @@ main(int, char**) {
                  << "(must use -t <tables> with -r option)" << endl;
             return -4;
         }
-        return registerDb(workerId, dbName, pTables);        
+        return registerDb(sc, workerId, dbName, pTables);        
     } else if ( flag_genEp ) {
         if ( baseDir.empty() ) {
             cerr << "base dir not specified "
@@ -172,12 +179,13 @@ main(int, char**) {
         if ( !dbName.empty() ) {
             cout << "Generating export paths for database: "
                  << dbName << ", baseDir is: " << baseDir << endl;
-            return generateExportPaths(workerId, dbName, baseDir);
+            return generateExportPathsForDb(sc, workerId, dbName, 
+                                            pTables, baseDir);
         } else if ( flag_allDb ) {
             cout << "generating export paths for all databases "
                  << "registered in the qserv metadata, baseDir is: " 
                  << baseDir << endl;
-            return generateAllExportPaths(workerId, baseDir);
+            return generateExportPaths(sc, workerId, baseDir);
         } else {
             cerr << "\nDo you want to generate export paths for one "
                  << "database, or all? (hint: use -d <dbName or -a flag)" 
