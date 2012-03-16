@@ -17,7 +17,7 @@ void
 printHelp(const char* execName) {
     std::cout
         << "\nUsage:\n"
-        << "   " << execName << " -rrr -d <dbName> -t <tables>\n"
+        << "   " << execName << " -r -d <dbName> -t <tables>\n"
         << "   " << execName << " -g -a -b <baseDir>\n"
         << "   " << execName << " -g -d <dbName> -b <baseDir>\n"
         << "   " << execName << " -h\n"
