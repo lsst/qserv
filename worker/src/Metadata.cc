@@ -66,25 +66,28 @@ qWorker::Metadata::registerQservedDb(std::string const& dbName,
                        std::string("Failed to register qserved db. ")
                        + "Sql command was: " + sql);
         }
-    } else {
-        // check if db is not already registered
-        std::string sql = "SELECT COUNT(*) FROM Dbs WHERE dbName='"+dbName+"'";
-        SqlResults results;
-        if (!sqlConn.runQuery(sql, results, errObj)) {
-            return false;
-        }
-        char n;
-        if (!results.extractFirstValue(n, errObj)) {
-            return errObj.addErrMsg("Failed to receive results from: " + sql);
-        }
-        if (n == '1') {
-            return errObj.addErrMsg("Db " + dbName + " is already registered");
-        }
+    } else if ( isRegistered(dbName, sqlConn, errObj) ) {
+        return errObj.addErrMsg("Db " + dbName + " is already registered.");
     }
     std::stringstream sql;
     sql << "INSERT INTO Dbs(dbName, partitionedTables) "
         << "VALUES ('" << dbName << "', " 
-        << "'" << _partitionedTables << "'" << ")" << std::endl;
+        << "'" << _partitionedTables << "'" << ")";
+    return sqlConn.runQuery(sql.str(), errObj);
+}
+
+bool
+qWorker::Metadata::unregisterQservedDb(std::string const& dbName,
+                                       SqlConnection& sqlConn,
+                                       SqlErrorObject& errObj) {
+    if (!sqlConn.selectDb(_metadataDbName, errObj)) {
+        return errObj.addErrMsg("Failed to connect to metadata db");
+    }
+    if ( !isRegistered(dbName, sqlConn, errObj) ) {
+        return errObj.addErrMsg("Db " + dbName + " does not seem to be registered.");
+    }
+    std::stringstream sql;
+    sql << "DELETE FROM Dbs WHERE dbName='" << dbName << "'";
     return sqlConn.runQuery(sql.str(), errObj);
 }
 
@@ -215,4 +218,21 @@ qWorker::Metadata::extractChunkNo(std::string const& str) {
     std::stringstream csm(str.substr(cursor+1, s));
     csm >> num;
     return num;
+}
+
+bool
+qWorker::Metadata::isRegistered(std::string const& dbName,
+                                SqlConnection& sqlConn,
+                                SqlErrorObject& errObj) {
+    std::string sql = "SELECT COUNT(*) FROM Dbs WHERE dbName='"+dbName+"'";
+    
+    SqlResults results;
+    if (!sqlConn.runQuery(sql, results, errObj)) {
+        return false;
+    }
+    char n;
+    if (!results.extractFirstValue(n, errObj)) {
+        return errObj.addErrMsg("Failed to receive results from: " + sql);
+    }
+    return n == '1';
 }

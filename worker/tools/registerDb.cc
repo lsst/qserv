@@ -14,38 +14,42 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::ifstream;
+using std::string;
+using std::vector;
 
 void
 printHelp(const char* execName) {
-    std::cout
-        << "\nUsage:\n"
-        << "   " << execName << " -r -c <mysqlAuth> -d <dbName> -t <tables>\n"
-        << "   " << execName << " -g -c <mysqlAuth> -a -b <baseDir>\n"
-        << "   " << execName << " -g -c <mysqlAuth> -d <dbName> -b <baseDir>\n"
-        << "   " << execName << " -h\n"
-        << "\nWhere:\n"
-        << "  -r             - register database in qserv metadata\n"
-        << "  -g             - generate export paths\n"
-        << "  -c <mysqlAuth> - path to mysql auth file, see below for details\n"
-        << "  -a             - for all databases registered in qserv metadata\n"
-        << "  -d <dbName>    - database name\n"
-        << "  -t <tables>    - comma-separated list of partitioned tables\n"
-        << "  -b <baseDir>   - base directory\n"
-        << "  -h             - prints help and exits\n"
-        << "\n"
-        << "Format of the mysqlAuthFile: <token>:<value>\n"
-        << "Supported tokens: host, port, user, pass, sock\n"
-        << "Example contents:\n"
-        << "host:localhost\n"
-        << "port:3306\n"
-        << "user:theMySqlUser\n"
-        << "pass:thePassword\n"
-        << "sock:/the/mysql/socket/file.sock\n"
-        << endl;
+    cout
+     << "\nUsage:\n"
+     << "   " << execName << " -r -c <mysqlAuth> -d <dbName> -t <tables>\n"
+     << "   " << execName << " -u -c <mysqlAuth> -d <dbName>\n"
+     << "   " << execName << " -g -c <mysqlAuth> -a -b <baseDir>\n"
+     << "   " << execName << " -g -c <mysqlAuth> -d <dbName> -b <baseDir>\n"
+     << "   " << execName << " -h\n"
+     << "\nWhere:\n"
+     << "  -r             - register database in qserv metadata\n"
+     << "  -u             - unregister database from qserv metadata\n"
+     << "  -g             - generate export paths\n"
+     << "  -c <mysqlAuth> - path to mysql auth file, see below for details\n"
+     << "  -a             - for all databases registered in qserv metadata\n"
+     << "  -d <dbName>    - database name\n"
+     << "  -t <tables>    - comma-separated list of partitioned tables\n"
+     << "  -b <baseDir>   - base directory\n"
+     << "  -h             - prints help and exits\n"
+     << "\n"
+     << "Format of the mysqlAuthFile: <token>:<value>\n"
+     << "Supported tokens: host, port, user, pass, sock\n"
+     << "Example contents:\n"
+     << "host:localhost\n"
+     << "port:3306\n"
+     << "user:theMySqlUser\n"
+     << "pass:thePassword\n"
+     << "sock:/the/mysql/socket/file.sock\n"
+     << endl;
 }
 
 SqlConfig
-assembleSqlConfig(std::string const& authFile) {
+assembleSqlConfig(string const& authFile) {
 
     SqlConfig sc;
     //sc.socket = qWorker::getConfig().getString("mysqlSocket").c_str();
@@ -56,7 +60,7 @@ assembleSqlConfig(std::string const& authFile) {
         cerr << "Failed to open '" << authFile << "'" << endl;
         assert(f);
     }
-    std::string line;
+    string line;
     f >> line;
     while ( !f.eof() ) {
         int pos = line.find_first_of(':');
@@ -66,8 +70,8 @@ assembleSqlConfig(std::string const& authFile) {
                  << "', line: '" << line << "'" << endl;
             assert(pos != -1);
         }
-        std::string token = line.substr(0,pos);
-        std::string value = line.substr(pos+1, line.size());
+        string token = line.substr(0,pos);
+        string value = line.substr(pos+1, line.size());
         if (token == "host") { 
             sc.hostname = value;
         } else if (token == "port") {
@@ -96,48 +100,63 @@ assembleSqlConfig(std::string const& authFile) {
 
 bool
 registerDb(SqlConfig& sc,
-           std::string const& workerId,
-           std::string const& dbName,
-           std::string const& pTables) {
-    cout << "Registering db: " << dbName << ", partTables: " << pTables << endl;
+           string const& workerId,
+           string const& dbName,
+           string const& pTables) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
     lsst::qserv::worker::Metadata m(workerId);
     if ( !m.registerQservedDb(dbName, pTables, sqlConn, errObj) ) {
-        std::cerr << "Failed to register the db. " 
-                  << errObj.printErrMsg() << std::endl;
+        cerr << "Failed to register db. " << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
+    cout << "Database " << dbName << " successfully registered." << endl;
+    return 0;
+}
+
+bool
+unregisterDb(SqlConfig& sc,
+           string const& workerId,
+           string const& dbName) {
+    lsst::qserv::SqlConnection sqlConn(sc);
+    lsst::qserv::SqlErrorObject errObj;
+    lsst::qserv::worker::Metadata m(workerId);
+    if ( !m.unregisterQservedDb(dbName, sqlConn, errObj) ) {
+        cerr << "Failed to unregister db. " 
+             << errObj.printErrMsg() << endl;
+        return errObj.errNo();
+    }
+    cout << "Database " << dbName << " successfully unregistered." << endl;
     return 0;
 }
 
 bool
 generateExportPathsForDb(SqlConfig& sc,
-                         std::string const& workerId,
-                         std::string const& dbName, 
-                         std::string const& pTables,
-                         std::string const& baseDir) {
+                         string const& workerId,
+                         string const& dbName, 
+                         string const& pTables,
+                         string const& baseDir) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
 
     lsst::qserv::worker::Metadata m(workerId);
     
-    std::vector<std::string> exportPaths;
+    vector<string> exportPaths;
     if ( ! m.generateExportPathsForDb(baseDir, dbName, pTables,
                                       sqlConn, errObj, exportPaths) ) {
-        std::cerr << "Failed to generate export directories. " 
-                  << errObj.printErrMsg() << std::endl;
+        cerr << "Failed to generate export directories. " 
+             << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
     lsst::qserv::worker::QservPathStructure p;
     if ( !p.insert(exportPaths) ) {
-        std::cerr << "Failed to insert export paths. "
-                  << errObj.printErrMsg() << std::endl;
+        cerr << "Failed to insert export paths. "
+             << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
     if ( !p.persist() ) {
-        std::cerr << "Failed to persist export paths. " 
-                  << errObj.printErrMsg() << std::endl;
+        cerr << "Failed to persist export paths. " 
+             << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
     return 0;
@@ -145,28 +164,28 @@ generateExportPathsForDb(SqlConfig& sc,
 
 bool
 generateExportPaths(SqlConfig& sc,
-                    std::string const& workerId,
-                    std::string const& baseDir) {
+                    string const& workerId,
+                    string const& baseDir) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
 
     lsst::qserv::worker::Metadata m(workerId);
     
-    std::vector<std::string> exportPaths;
+    vector<string> exportPaths;
     if ( ! m.generateExportPaths(baseDir, sqlConn, errObj, exportPaths) ) {
-        std::cerr << "Failed to generate export directories. " 
-                  << errObj.printErrMsg() << std::endl;
+        cerr << "Failed to generate export directories. " 
+             << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
     lsst::qserv::worker::QservPathStructure p;
     if ( !p.insert(exportPaths) ) {
-        std::cerr << "Failed to insert export paths. "
-                  << errObj.printErrMsg() << std::endl;
+        cerr << "Failed to insert export paths. "
+             << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
     if ( !p.persist() ) {
-        std::cerr << "Failed to persist export paths. " 
-                  << errObj.printErrMsg() << std::endl;
+        cerr << "Failed to persist export paths. " 
+             << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
     return 0;
@@ -177,22 +196,24 @@ main(int argc, char* argv[]) {
     const char* execName = argv[0];
 
     // TODO: get this from xrootd
-    std::string const workerId = "theId";
+    string const workerId = "theId";
 
-    std::string dbName;
-    std::string pTables;
-    std::string baseDir;
-    std::string authFile;
+    string dbName;
+    string pTables;
+    string baseDir;
+    string authFile;
     
     bool flag_regDb = false;
+    bool flag_unrDb = false;
     bool flag_genEp = false;
     bool flag_allDb = false;
 
     int c;
     opterr = 0;
-    while ((c = getopt (argc, argv, "rgac:d:t:b:h")) != -1) {
+    while ((c = getopt (argc, argv, "rugac:d:t:b:h")) != -1) {
         switch (c) {
         case 'r': { flag_regDb = true; break;}
+        case 'u': { flag_unrDb = true; break;}
         case 'g': { flag_genEp = true; break;}
         case 'a': { flag_allDb = true; break;}
         case 'c': { authFile = optarg; break;}
@@ -201,9 +222,8 @@ main(int argc, char* argv[]) {
         case 'b': { baseDir  = optarg; break;}
         case 'h': { printHelp(execName); return 0;}
         case '?':
-            if (optopt=='c'||optopt=='d'||
-                optopt=='t'||optopt=='b') {
-                cerr << "Option -" << optopt << " requires an argument." << endl;
+            if (optopt=='c'||optopt=='d'||optopt=='t'||optopt=='b') {
+                cerr << "Option -" << char(optopt) << " requires an argument." << endl;
             } else if (isprint (optopt)) {
                 cerr << "Unknown option `-" << char(optopt) << "'" << endl;
             } else {
@@ -234,11 +254,18 @@ main(int argc, char* argv[]) {
             return -5;
         }
         return registerDb(sc, workerId, dbName, pTables);        
+    } else if ( flag_unrDb ) {
+        if ( dbName.empty() ) {
+            cerr << "database name not specified "
+                 << "(must use -d <dbName> with -u option)" << endl;
+            return -6;
+        }
+        return unregisterDb(sc, workerId, dbName);
     } else if ( flag_genEp ) {
         if ( baseDir.empty() ) {
             cerr << "base dir not specified "
                  << "(must use -b <baseDir> with -g option)" << endl;
-            return -6;
+            return -7;
         }       
         if ( !dbName.empty() ) {
             cout << "Generating export paths for database: "
@@ -255,11 +282,11 @@ main(int argc, char* argv[]) {
                  << "database, or all? (hint: use -d <dbName or -a flag)" 
                  << endl;
             printHelp(execName);
-            return -7;
+            return -8;
         }
         return 0;
     }
-    cerr << "No option specified. (hint: use -r or -g)" << endl;
+    cerr << "No option specified. (hint: use -r or -u or -g)" << endl;
     printHelp(execName);
     return 0;
 }
