@@ -258,13 +258,17 @@ main(int argc, char* argv[]) {
         }
     }
     if ( authFile.empty() ) {
-        cerr << "MySql authorization file not specified "
-             << "(must use -c <mysqlAuth> option)" << endl;
-        return -3;
+        if ( flag_regDb||flag_unrDb||flag_showM||flag_genEp) {
+            cerr << "MySql authorization file not specified "
+                 << "(must use -c <mysqlAuth> option)" << endl;
+            return -3;
+        } else {
+            printHelp(execName);
+            return 0;
+        }
     }
-            
     SqlConfig sc = assembleSqlConfig(authFile);
-
+    
     if ( flag_regDb ) {
         if ( dbName.empty() ) {
             cerr << "database name not specified "
