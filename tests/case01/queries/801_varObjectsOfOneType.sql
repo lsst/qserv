@@ -1,6 +1,9 @@
 -- Select all variable objects of a specific type
 -- See http://dev.lsstcorp.org/trac/wiki/dbQuery002
 
+
+-- missing in current schema: variability, probability
+
 SELECT objectId
 FROM   Object
 JOIN   _ObjectToType USING(objectId)
