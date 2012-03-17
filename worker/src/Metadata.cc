@@ -212,8 +212,9 @@ qWorker::Metadata::generateExportPathsForDb(
         int j, s2 = t.size();
         if ( s2 == 0 ) {
             std::stringstream ss;
-            ss << "WARNING: no partitioned tables found in the database "
-               << dbName << ". Did you forget to load the data?\n";
+            ss << "WARNING: no partitioned tables with prefix '"
+               << pTables[i] << "_' found in the database '"
+               << dbName << "'. Did you forget to load the data?\n";
             std::cout << ss.str() << std::endl;
             // FIXME: is this an error?
             //return errObj.addErrMsg(ss.str());
