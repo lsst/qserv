@@ -41,7 +41,7 @@ class Metadata {
 public:
     Metadata(std::string const& workerId);
     bool registerQservedDb(std::string const& dbName,
-                           std::string const& partitionedTables,
+                           std::string const& pTables,
                            SqlConnection&,
                            SqlErrorObject&);
     bool unregisterQservedDb(std::string const& dbName,
@@ -55,12 +55,18 @@ public:
                              std::vector<std::string>& exportPaths);
     bool generateExportPathsForDb(std::string const& baseDir,
                                   std::string const& dbName,
-                                  std::string const& tableList,
                                   SqlConnection&,
                                   SqlErrorObject&,
                                   std::vector<std::string>& exportPaths);
 
 private:
+    bool generateExportPathsForDb(std::string const& baseDir,
+                                  std::string const& dbName,
+                                  std::string const& pTables,
+                                  SqlConnection&,
+                                  SqlErrorObject&,
+                                  std::vector<std::string>& exportPaths);
+
     static bool prepPartitionedTables(std::string&, SqlErrorObject&);
     static std::vector<std::string> tokenizeString(std::string const&);
     static int extractChunkNo(std::string const&);

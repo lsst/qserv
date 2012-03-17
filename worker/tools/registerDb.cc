@@ -91,7 +91,9 @@ assembleSqlConfig(string const& authFile) {
         } else if (token == "sock") {
             sc.socket = value;
         } else {
-            cerr << "Unexpected token: '" << value << "'" << endl;
+            cerr << "Unexpected token: '" << token << "'" 
+                 << " (supported tokens are: host, port, user, pass, sock)" 
+                 << endl;
             assert(0);
         }
         f >> line;
@@ -149,7 +151,6 @@ bool
 generateExportPathsForDb(SqlConfig& sc,
                          string const& workerId,
                          string const& dbName, 
-                         string const& pTables,
                          string const& baseDir) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
@@ -157,8 +158,8 @@ generateExportPathsForDb(SqlConfig& sc,
     lsst::qserv::worker::Metadata m(workerId);
     
     vector<string> exportPaths;
-    if ( ! m.generateExportPathsForDb(baseDir, dbName, pTables,
-                                      sqlConn, errObj, exportPaths) ) {
+    if ( !m.generateExportPathsForDb(baseDir, dbName,
+                                     sqlConn, errObj, exportPaths) ) {
         cerr << "Failed to generate export directories. " 
              << errObj.printErrMsg() << endl;
         return errObj.errNo();
@@ -174,6 +175,8 @@ generateExportPathsForDb(SqlConfig& sc,
              << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
+    cout << "Export paths successfully created for db " 
+         << dbName << "." << endl;
     return 0;
 }
 
@@ -203,6 +206,8 @@ generateExportPaths(SqlConfig& sc,
              << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
+    cout << "Export paths successfully created for all " 
+         << "databases registered in qserv metadata." << endl;
     return 0;
 }
 
@@ -289,8 +294,7 @@ main(int argc, char* argv[]) {
         if ( !dbName.empty() ) {
             cout << "Generating export paths for database: "
                  << dbName << ", baseDir is: " << baseDir << endl;
-            return generateExportPathsForDb(sc, workerId, dbName, 
-                                            pTables, baseDir);
+            return generateExportPathsForDb(sc, workerId, dbName, baseDir);
         } else if ( flag_allDb ) {
             cout << "generating export paths for all databases "
                  << "registered in the qserv metadata, baseDir is: " 

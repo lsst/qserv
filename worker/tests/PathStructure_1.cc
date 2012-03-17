@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
 
     std::vector<std::string> dV = p.uniqueDirs();
     BOOST_CHECK_EQUAL(dV.size(), 6);
-    p.printUniquePaths();
+    p.printUniqueDirs();
 
     BOOST_CHECK_EQUAL(p.persist(), true);
     

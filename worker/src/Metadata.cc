@@ -165,6 +165,35 @@ bool
 qWorker::Metadata::generateExportPathsForDb(
                                    std::string const& baseDir,
                                    std::string const& dbName,
+                                   SqlConnection& sqlConn,
+                                   SqlErrorObject& errObj,
+                                   std::vector<std::string>& exportPaths) {
+    if (!sqlConn.selectDb(_metadataDbName, errObj)) {
+        return false;
+    }
+    if ( !isRegistered(dbName, sqlConn, errObj) ) {
+        return errObj.addErrMsg("Database : " + dbName + 
+                                " is not registered in qserv metadata.");
+    }            
+    std::string sql = "SELECT partitionedTables FROM Dbs WHERE dbName='"
+                      + dbName + "'";
+    SqlResults results;
+    if (!sqlConn.runQuery(sql, results, errObj)) {
+        return errObj.addErrMsg("Database : " + dbName + 
+                                " not registered in qserv metadata.");
+    }
+    std::string pTables;
+    if (!results.extractFirstValue(pTables, errObj)) {
+        return errObj.addErrMsg("Failed to receive results from: " + sql);
+    }
+    return generateExportPathsForDb(baseDir, dbName, pTables, 
+                                    sqlConn, errObj, exportPaths);
+}
+
+bool
+qWorker::Metadata::generateExportPathsForDb(
+                                   std::string const& baseDir,
+                                   std::string const& dbName,
                                    std::string const& tableList,
                                    SqlConnection& sqlConn,
                                    SqlErrorObject& errObj,
@@ -177,10 +206,18 @@ qWorker::Metadata::generateExportPathsForDb(
         if (!sqlConn.listTables(t, errObj, pTables[i]+"_", dbName)) {
             std::stringstream ss;
             ss << "Failed to list tables for db=" << dbName
-               << ", prefix=" << pTables[i] << std::endl;
+               << ", prefix=" << pTables[i] << "\n";
             return errObj.addErrMsg(ss.str());
         }
         int j, s2 = t.size();
+        if ( s2 == 0 ) {
+            std::stringstream ss;
+            ss << "WARNING: no partitioned tables found in the database "
+               << dbName << ". Did you forget to load the data?\n";
+            std::cout << ss.str() << std::endl;
+            // FIXME: is this an error?
+            //return errObj.addErrMsg(ss.str());
+        }        
         for (j=0; j<s2 ; j++) {
             int chunkNo = extractChunkNo(t[j]);
             QservPath p;
@@ -265,9 +302,9 @@ qWorker::Metadata::isRegistered(std::string const& dbName,
     if (!sqlConn.runQuery(sql, results, errObj)) {
         return false;
     }
-    char n;
-    if (!results.extractFirstValue(n, errObj)) {
+    std::string s;
+    if (!results.extractFirstValue(s, errObj)) {
         return errObj.addErrMsg("Failed to receive results from: " + sql);
     }
-    return n == '1';
+    return s[0] == '1';
 }

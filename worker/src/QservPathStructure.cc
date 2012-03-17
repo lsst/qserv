@@ -46,7 +46,8 @@ qWorker::QservPathStructure::insert(const vector<string>& paths) {
             std::cerr << "Problems with path: " << *pItr << std::endl;
             return false;
         }
-        if ( ! processOneDir(pItr->substr(0, pos)) ) {
+        bool isDbDir = true;
+        if ( ! processOneDir(pItr->substr(0, pos), isDbDir) ) {
             return false;
         }
     }
@@ -55,7 +56,10 @@ qWorker::QservPathStructure::insert(const vector<string>& paths) {
 
 bool
 qWorker::QservPathStructure::persist() {
-    if ( ! createDirectories() ) {
+    if ( isRegistered() ) {
+        return false;
+    }
+    if ( !createDirectories() ) {
         return false;
     }
     if ( !createPaths() ) {
@@ -63,7 +67,6 @@ qWorker::QservPathStructure::persist() {
     }
     return true;
 }
-
 
 bool
 qWorker::QservPathStructure::createDirectories() const {
@@ -87,6 +90,29 @@ qWorker::QservPathStructure::createDirectories() const {
     return true;
 }
 
+// returns true if at least one db is already registered
+bool
+qWorker::QservPathStructure::isRegistered() const {
+    std::vector<std::string>::const_iterator i;
+    for ( i=_uniqueDbDirs.begin(); i!=_uniqueDbDirs.end(); ++i) {
+        if ( isRegistered(i->c_str()) ) {
+            std::cerr << "Database already registered ("
+                      << *i << ")" << std::endl;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool
+qWorker::QservPathStructure::isRegistered(const char* dbPath) const {
+    struct stat statbuf;
+    if (stat(dbPath, &statbuf) != -1) {
+        return S_ISDIR(statbuf.st_mode);
+    }
+    return false;
+}
+
 bool
 qWorker::QservPathStructure::createPaths() const {
     vector<string>::const_iterator itr;
@@ -104,37 +130,55 @@ qWorker::QservPathStructure::uniqueDirs() const {
     return _uniqueDirs;
 }
 
+const std::vector<std::string>
+qWorker::QservPathStructure::uniqueDbDirs() const {
+    return _uniqueDbDirs;
+}
+
 void
-qWorker::QservPathStructure::printUniquePaths() const {
-    std::vector<std::string>::const_iterator dItr;
-    for ( dItr=_uniqueDirs.begin(); dItr!=_uniqueDirs.end(); ++dItr) {
-        std::cout << "Unique dir: " << *dItr << std::endl;
+qWorker::QservPathStructure::printUniqueDirs() const {
+    std::vector<std::string>::const_iterator i;
+    for ( i=_uniqueDirs.begin(); i!=_uniqueDirs.end(); ++i) {
+        std::cout << "Unique dir: " << *i << std::endl;
+    }
+}
+
+void
+qWorker::QservPathStructure::printUniqueDbDirs() const {
+    std::vector<std::string>::const_iterator i;
+    for ( i=_uniqueDbDirs.begin(); i!=_uniqueDbDirs.end(); ++i) {
+        std::cout << "Unique db dir: " << *i << std::endl;
     }
 }
 
 bool
-qWorker::QservPathStructure::processOneDir(const string& s)
+qWorker::QservPathStructure::processOneDir(const string& s, 
+                                           bool isDbDir)
 {
     int pos = s.find_last_of('/');
     if ( pos == -1 ) {
         std::cerr << "Problems with path: " << s << std::endl;
         return false;
     } else if ( pos > 2 ) { // there is at least one more parent dir
-        if ( !processOneDir(s.substr(0, pos)) ) {
+        bool isDbDir = false;
+        if ( !processOneDir(s.substr(0, pos), isDbDir) ) {
             return false;
         }
     }
     if ( !uniqueDirsContains(s) ) {
         _uniqueDirs.push_back(s);
     }
+    if ( isDbDir && !uniqueDbDirsContains(s) ) {
+        _uniqueDbDirs.push_back(s);
+    }        
     return true;
 }
 
 bool
 qWorker::QservPathStructure::pathsContains(const std::string& s) const {
-    vector<string>::const_iterator itr;
-    for (itr=_paths.begin() ; itr!=_paths.end(); ++itr) {
-        if (*itr == s) {
+    vector<string>::const_iterator i;
+    for (i=_paths.begin() ; i!=_paths.end(); ++i) {
+        if (*i == s) {
             return true;
         }
     }
@@ -143,12 +187,22 @@ qWorker::QservPathStructure::pathsContains(const std::string& s) const {
 
 bool
 qWorker::QservPathStructure::uniqueDirsContains(const std::string& s) const {
-    vector<string>::const_iterator itr;
-    for (itr=_uniqueDirs.begin() ; itr!=_uniqueDirs.end(); ++itr) {
-        if (*itr == s) {
+    vector<string>::const_iterator i;
+    for (i=_uniqueDirs.begin() ; i!=_uniqueDirs.end(); ++i) {
+        if (*i == s) {
             return true;
         }
     }
     return false;
 }
 
+bool
+qWorker::QservPathStructure::uniqueDbDirsContains(const std::string& s) const {
+    vector<string>::const_iterator i;
+    for (i=_uniqueDbDirs.begin() ; i!=_uniqueDbDirs.end(); ++i) {
+        if (*i == s) {
+            return true;
+        }
+    }
+    return false;
+}
