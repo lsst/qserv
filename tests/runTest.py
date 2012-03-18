@@ -28,24 +28,20 @@
 
 import MySQLdb as sql
 import optparse
-import unittest
 
-# pass these through arguments
-caseNo = "caseO1"
-mysqlAuth = "/home/becla/.lsst/dbAuth.txt"
-
-
-class TestQueries(unittest.TestCase):
+class TestQueries():
     def setUp(self):
         global _caseNo
         global _mysqlUser
         global _mysqlPass
         global _mysqlSocket
 
+        print "connecting, s=", _mysqlSocket, ", u=", _mysqlUser, \
+              ",p=", _mysqlPass
         self._conn = sql.connect(unix_socket=_mysqlSocket,
                                  user=_mysqlUser,
                                  passwd=_mysqlPass)
-        self_cursor = self._conn.cursor()
+        self._cursor = self._conn.cursor()
 
     def tearDown(self):
         self._cursor.close()
@@ -64,7 +60,7 @@ class TestQueries(unittest.TestCase):
         # compare with expected checksum
 
     def test_0xxxSeries(self):
-        return oneSeries(self, "0")
+        return self.oneSeries("0")
 
     def test_1xxxSeries(self):
         return oneSeries(self, "1")
@@ -84,11 +80,6 @@ class TestQueries(unittest.TestCase):
 
 
 def main():
-    global _caseNo
-    global _mysqlUser
-    global _mysqlPass
-    global _mysqlSocket
-
     parser = optparse.OptionParser()
     parser.add_option("-c", "--caseNo", dest="caseNo",
                       default="case01",
@@ -98,7 +89,12 @@ def main():
     (_options, args) = parser.parse_args()
 
     _caseNo = _options.caseNo
+    if _options.authFile is None:
+        print "--authFile flag not set"
+        return -1
+
     authFile = _options.authFile
+
     f = open(authFile)
     for line in f:
         line = line.rstrip()
@@ -111,7 +107,18 @@ def main():
             _mysqlSocket = value
     f.close()
 
-    unittest.main()
+    t = TestQueries()
+    t.setUp()
+
+    # list files in "%s/queries/%sxxx_*.*" % (_caseNo, seriesNo)
+    # distinguish two types: select count(*) and select <columns>
+    # for each item
+    #   1) read .sql
+    #   2) run query
+    #   3) read .result
+    #   4) compare
+
+    t.tearDown()
 
 if __name__ == '__main__':
     main()
