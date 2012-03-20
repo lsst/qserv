@@ -1,0 +1,2 @@
+this data was produced based on rplante_PT1_2_u_pt12prod_im3000
+by selecting objects and sources "where objectId % 50000 = 0"
