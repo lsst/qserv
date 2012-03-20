@@ -6,5 +6,5 @@
 SELECT objectId
 FROM   Object
 WHERE  areaSpec_box(:raMin, :declMin, :raMax, :declMax)
-AND    extendedParameter > 0.8;
+AND    extendedParameter > 0.8
 

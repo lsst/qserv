@@ -3,4 +3,4 @@
 
 SELECT *
 FROM   Object
-WHERE  objectId = :objectId
+WHERE  objectId = 430252643850000

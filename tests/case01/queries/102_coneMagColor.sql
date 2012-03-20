@@ -3,7 +3,8 @@
 
 SELECT COUNT(*)
 FROM   Object
-WHERE  areaSpec_box(1, 2, 1.1, 2.1)
-   AND zMag      BETWEEN 1 AND 1.1
-   AND gMag-rMag BETWEEN 2 AND 2.1
-   AND iMag-zMag BETWEEN 3 AND 3.1;
+-- WHERE  areaSpec_box(1, 2, 1.1, 2.1)
+ WHERE ra_PS between -10 and 4 and decl_PS between -6 and -6
+   AND scisql_fluxToAbMag(zFlux_PS) BETWEEN 20 AND 24
+   AND scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) BETWEEN 0.1 AND 0.9
+   AND scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) BETWEEN 0.1 AND 1.0

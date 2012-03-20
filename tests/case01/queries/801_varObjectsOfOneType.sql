@@ -10,4 +10,5 @@ JOIN   _ObjectToType USING(objectId)
 JOIN   ObjectType USING (typeId)
 WHERE  description = 'Supernova'
   AND  variability > 0.8
-  AND  probability > 0.8;
+  AND  probability > 0.8
+

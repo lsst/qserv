@@ -19,4 +19,4 @@ WHERE   extendedParameter > 0.8 -- a star
       OR rAmplitude > .1 + ABS(rMagSigma)
       OR iAmplitude > .1 + ABS(iMagSigma)
       OR zAmplitude > .1 + ABS(zMagSigma)
-      OR yAmplitude > .1 + ABS(yMagSigma));
+      OR yAmplitude > .1 + ABS(yMagSigma))

@@ -4,5 +4,5 @@
 SELECT taiMidPoint, psfFlux, psfFluxSigma, ra, decl
 FROM   Source
 JOIN   Filter USING (filterId)
-WHERE  objectId = 12345
-   AND filterName = 'r';
+WHERE  objectId = 430235464000000
+   AND filterName = 'r'

@@ -16,19 +16,18 @@
 
 
 SELECT objectId,
-       fluxToAbMag(uFlux_PS),
-       fluxToAbMag(gFlux_PS),
-       fluxToAbMag(rFlux_PS),
-       fluxToAbMag(iFlux_PS),
-       fluxToAbMag(zFlux_PS),
-       fluxToAbMag(yFlux_PS),
+       scisql_fluxToAbMag(uFlux_PS),
+       scisql_fluxToAbMag(gFlux_PS),
+       scisql_fluxToAbMag(rFlux_PS),
+       scisql_fluxToAbMag(iFlux_PS),
+       scisql_fluxToAbMag(zFlux_PS),
+       scisql_fluxToAbMag(yFlux_PS),
        ra_PS, decl_PS
 FROM   Object
-WHERE  ( fluxToAbMag(uFlux_PS)-fluxToAbMag(gFlux_PS) > 2.0 OR 
-         fluxToAbMag(uFlux_PS) > 22.3 )
-AND    fluxToAbMag(uFlux_PS) BETWEEN 0 AND 19 
-AND    fluxToAbMag(gFlux_PS)-fluxToAbMag(rFlux_PS) > 1.0 
-AND    ( fluxToAbMag(rFlux_PS)-fluxToAbMag(iFlux_PS) < 
-         (0.08 + 0.42 * (fluxToAbMag(gFlux_PS)-fluxToAbMag(rFlux_PS) - 0.96)) 
-        OR fluxToAbMag(gFlux_PS)-fluxToAbMag(rFlux_PS) > 2.26 )
-AND    fluxToAbMag(iFlux_PS)-fluxToAbMag(zFlux_PS) < 0.25 ;
+WHERE  ( scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 0.7 OR 
+         scisql_fluxToAbMag(gFlux_PS) > 22.3 )
+AND    scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 0.1
+AND    ( scisql_fluxToAbMag(rFlux_PS)-scisql_fluxToAbMag(iFlux_PS) < 
+         (0.08 + 0.42 * (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) - 0.96)) 
+        OR scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 1.26 )
+AND    scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) < 0.8

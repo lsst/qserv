@@ -28,95 +28,96 @@
 
 import MySQLdb as sql
 import optparse
+import os
+import re
 
 class TestQueries():
-    def setUp(self):
-        global _caseNo
-        global _mysqlUser
-        global _mysqlPass
-        global _mysqlSocket
-
-        print "connecting, s=", _mysqlSocket, ", u=", _mysqlUser, \
-              ",p=", _mysqlPass
-        self._conn = sql.connect(unix_socket=_mysqlSocket,
-                                 user=_mysqlUser,
-                                 passwd=_mysqlPass)
+    def setUp(self, socket, user, password, db):
+        print "connecting via ", socket, " as ", user, "/", password
+        self._conn = sql.connect(unix_socket=socket,
+                                 user=user,
+                                 passwd=password,
+                                 db=db)
         self._cursor = self._conn.cursor()
 
     def tearDown(self):
         self._cursor.close()
         self._conn.close()
 
-    def countQuery(self, query, retNo):
-        self._cursor.execute(query)
-        rows = self._cursor.fetchone()
-        self.assertEqual(rows[0][0], retNo, 
-              query + " returned %s, expected %s." % (rows[0][0], retNo))
-
-    def checksumQuery(self, query, retChecksum):
+    def runQuery(self, query, printResults):
         self._cursor.execute(query)
         rows = self._cursor.fetchall()
-        # calculate checksum of rows
-        # compare with expected checksum
-
-    def test_0xxxSeries(self):
-        return self.oneSeries("0")
-
-    def test_1xxxSeries(self):
-        return oneSeries(self, "1")
-
-    def test_2xxxSeries(self):
-        return oneSeries(self, "2")
-
-    def test_3xxxSeries(self):
-        return oneSeries(self, "3")
-
-    def test_4xxxSeries(self):
-        return oneSeries(self, "4")
-
-    def oneSeries(self, seriesNo):
-        global _caseNo
-        print "Processing %s/queries/%sxxx_*.sql" % (_caseNo, seriesNo)
+        if printResults:
+            for r in rows:
+                print r
 
 
 def main():
     parser = optparse.OptionParser()
     parser.add_option("-c", "--caseNo", dest="caseNo",
-                      default="case01",
-                      help="test case")
+                      default="01",
+                      help="test case number")
     parser.add_option("-a", "--authFile", dest="authFile",
                       help="File with mysql connection info")
+    parser.add_option("-s", "--stopAt", dest="stopAt",
+                      default = 799,
+                      help="Stop at query with given number")
+    parser.add_option("-o", "--resultDir", dest="resultDir",
+                      default = "/tmp",
+                      help="Directory for storing results (full path)")
+    parser.add_option("-v", "--verbose", dest="verboseMode",
+                      default = 'n',
+                      help="Run in verbose mode (y/n)")
     (_options, args) = parser.parse_args()
 
-    _caseNo = _options.caseNo
     if _options.authFile is None:
         print "--authFile flag not set"
         return -1
 
     authFile = _options.authFile
+    stopAt = int(_options.stopAt)
+    if _options.verboseMode == 'y' or \
+       _options.verboseMode == 'Y' or \
+       _options.verboseMode == '1':
+        verboseMode = True
+    else:
+        verboseMode = False
 
     f = open(authFile)
     for line in f:
         line = line.rstrip()
         (key, value) = line.split(':')
         if key == 'user':
-            _mysqlUser = value
+            mysqlUser = value
         elif key == 'pass':
-            _mysqlPass = value
+            mysqlPass = value
         elif key == 'sock':
-            _mysqlSocket = value
+            mysqlSock = value
     f.close()
 
-    t = TestQueries()
-    t.setUp()
+    mysqlDb = "qservTest_case%s" % _options.caseNo
 
-    # list files in "%s/queries/%sxxx_*.*" % (_caseNo, seriesNo)
-    # distinguish two types: select count(*) and select <columns>
-    # for each item
-    #   1) read .sql
-    #   2) run query
-    #   3) read .result
-    #   4) compare
+    t = TestQueries()
+    t.setUp(mysqlSock, mysqlUser, mysqlPass, mysqlDb)
+
+    qDir = "case%s/queries/" % _options.caseNo
+    print "Testing queries from %s" % qDir
+    queries = sorted(os.listdir(qDir))
+    for qFN in queries:
+        if qFN.endswith(".sql"):
+            if int(qFN[:3]) <= stopAt:
+                qF = open(qDir+qFN, 'r')
+                qText = ""
+                for line in qF:
+                    line = line.rstrip().lstrip()
+                    line = re.sub(' +', ' ', line)
+                    if not line.startswith("--") and line != "":
+                        qText += line
+                        qText += ' '
+                qText += " INTO OUTFILE '%s/%s'" % \
+                    (_options.resultDir, qFN.replace('.sql', '.txt'))
+                print "running %s: %s\n" % (qFN, qText)
+                t.runQuery(qText, verboseMode)
 
     t.tearDown()
 

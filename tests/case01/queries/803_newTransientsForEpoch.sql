@@ -8,4 +8,4 @@ FROM   Alert
 JOIN   _Alert2Type USING (alertId) 
 JOIN   AlertType USING (alertTypeId)
 WHERE  alertTypeDescr = 'newTransients'
-  AND  Alert.timeGenerated BETWEEN :timeMin AND :timeMax;
+  AND  Alert.timeGenerated BETWEEN :timeMin AND :timeMax

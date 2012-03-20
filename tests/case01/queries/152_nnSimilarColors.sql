@@ -11,13 +11,11 @@
 SELECT DISTINCT o1.objectId, o2.objectId
 FROM   Object o1, 
        Object o2
-WHERE  spDist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.1
+WHERE  scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) < 1
   AND  o1.objectId <> o2.objectId
-  AND  ABS( (o1.fluxToAbMag(uFlux_PS)-o1.fluxToAbMag(gFlux_PS)) - 
-            (o2.fluxToAbMag(uFlux_PS)-o2.fluxToAbMag(gFlux_PS)) ) < 0.1
-  AND  ABS( (o1.fluxToAbMag(gFlux_PS)-o1.fluxToAbMag(rFlux_PS)) - 
-            (o2.fluxToAbMag(gFlux_PS)-o2.fluxToAbMag(rFlux_PS)) ) < 0.1
-  AND  ABS( (o1.fluxToAbMag(rFlux_PS)-o1.fluxToAbMag(iFlux_PS)) - 
-            (o2.fluxToAbMag(rFlux_PS)-o2.fluxToAbMag(iFlux_PS)) ) < 0.1
-  AND  ABS( (o1.fluxToAbMag(iFlux_PS)-o1.fluxToAbMag(zFlux_PS)) - 
-            (o2.fluxToAbMag(iFlux_PS)-o2.fluxToAbMag(zFlux_PS)) ) < 0.1
+  AND  ABS( (scisql_fluxToAbMag(o1.gFlux_PS)-scisql_fluxToAbMag(o1.rFlux_PS)) - 
+            (scisql_fluxToAbMag(o2.gFlux_PS)-scisql_fluxToAbMag(o2.rFlux_PS)) ) < 1
+  AND  ABS( (scisql_fluxToAbMag(o1.rFlux_PS)-scisql_fluxToAbMag(o1.iFlux_PS)) - 
+            (scisql_fluxToAbMag(o2.rFlux_PS)-scisql_fluxToAbMag(o2.iFlux_PS)) ) < 1
+  AND  ABS( (scisql_fluxToAbMag(o1.iFlux_PS)-scisql_fluxToAbMag(o1.zFlux_PS)) - 
+            (scisql_fluxToAbMag(o2.iFlux_PS)-scisql_fluxToAbMag(o2.zFlux_PS)) ) < 1

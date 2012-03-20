@@ -9,4 +9,4 @@ SELECT fluxToAbMag(uFlux_PS),
        fluxToAbMag(zFlux_PS), 
        fluxToAbMag(yFlux_PS)
 FROM   Object 
-WHERE  (objectId % 100 ) = :percentage;
+WHERE  (objectId % 100 ) = :percentage
