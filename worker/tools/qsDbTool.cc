@@ -37,7 +37,7 @@ printHelp(const char* execName) {
      << "  flags:\n"
      << "  -c <mysqlAuth> - path to mysql auth file, see below for details\n"
      << "  -a             - for all databases registered in qserv metadata\n"
-     << "  -d <dbName>    - database name\n"
+     << "  -d <dbName>    - for the database <dbName> only\n"
      << "  -t <tables>    - comma-separated list of partitioned tables\n"
      << "  -b <baseDir>   - base directory\n"
      << "\n"
