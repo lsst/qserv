@@ -3,6 +3,7 @@
 
 SELECT objectId
 FROM   Object
--- WHERE  areaSpec(-1, 0, 3, 10)
- WHERE ra_PS between -1 and 3 and decl_PS between 0 and 10
+WHERE  ra_PS BETWEEN -1 AND 3   -- noQserv
+  AND  decl_PS BETWEEN 0 AND 10 -- noQserv
+-- withQserv WHERE areaSpec(-1, 0, 3, 10)
 --   AND variability > 0.8

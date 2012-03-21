@@ -5,6 +5,7 @@
 
 SELECT objectId
 FROM   Object
-WHERE  areaSpec_box(:raMin, :declMin, :raMax, :declMax)
+WHERE  ra_PS BETWEEN :raMin AND :raMax       -- noQserv
+   AND decl_PS BETWEEN :declMin AND :declMax -- noQserv
+-- withQserv WHERE areaSpec_box(:raMin, :declMin, :raMax, :declMax)
 AND    extendedParameter > 0.8
-

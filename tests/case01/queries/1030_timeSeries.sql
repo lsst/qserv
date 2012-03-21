@@ -7,7 +7,8 @@ SELECT objectId, taiMidPoint, scisql_fluxToAbMag(psfFlux)
 FROM   Source
 JOIN   Object USING(objectId)
 JOIN   Filter USING(filterId)
--- WHERE  areaSpec_box(355, 0, 360, 20)
- WHERE ra_PS between 355 and 360 and decl_PS between 0 and 20
+ WHERE ra_PS BETWEEN 355 AND 360 -- noQserv
+   and decl_PS BETWEEN 0 AND 20  -- noQserv
+-- withQserv WHERE areaSpec_box(355, 0, 360, 20)
    AND filterName = 'u'
 ORDER BY objectId, taiMidPoint ASC

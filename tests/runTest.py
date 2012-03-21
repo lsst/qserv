@@ -65,6 +65,9 @@ def main():
     parser.add_option("-o", "--resultDir", dest="resultDir",
                       default = "/tmp",
                       help="Directory for storing results (full path)")
+    parser.add_option("-q", "--withQserv", dest="withQserv",
+                      default = False,
+                      help="Flag indicating if the test is with qserv or not")
     parser.add_option("-v", "--verbose", dest="verboseMode",
                       default = 'n',
                       help="Run in verbose mode (y/n)")
@@ -82,6 +85,13 @@ def main():
         verboseMode = True
     else:
         verboseMode = False
+
+    if _options.withQserv == 'y' or \
+       _options.withQserv == 'Y' or \
+       _options.withQserv == '1':
+        withQserv = True
+    else:
+        withQserv = False
 
     f = open(authFile)
     for line in f:
@@ -103,6 +113,7 @@ def main():
     qDir = "case%s/queries/" % _options.caseNo
     print "Testing queries from %s" % qDir
     queries = sorted(os.listdir(qDir))
+    noQservLine = re.compile('[\w\-"%% ]*-- noQserv')
     for qFN in queries:
         if qFN.endswith(".sql"):
             if int(qFN[:3]) <= stopAt:
@@ -111,13 +122,24 @@ def main():
                 for line in qF:
                     line = line.rstrip().lstrip()
                     line = re.sub(' +', ' ', line)
-                    if not line.startswith("--") and line != "":
-                        qText += line
-                        qText += ' '
+                    if withQserv and line.startswith("-- withQserv"):
+                        qText += line[13:] # skip the "-- withQserv " text
+                    elif line.startswith("--") or line == "":
+                        pass # do nothing with comment lines and empty lines
+                    else:
+                        qData = noQservLine.search(line)
+                        if not withQserv:
+                            if qData:
+                                qText += qData.group(0)[:-10]
+                            else:
+                                qText += line
+                        elif not qData:
+                            qText += line
+                    qText += ' '
                 qText += " INTO OUTFILE '%s/%s'" % \
                     (_options.resultDir, qFN.replace('.sql', '.txt'))
                 print "running %s: %s\n" % (qFN, qText)
-                t.runQuery(qText, verboseMode)
+                #t.runQuery(qText, verboseMode)
 
     t.tearDown()
 
