@@ -139,7 +139,7 @@ def main():
                 qText += " INTO OUTFILE '%s/%s'" % \
                     (_options.resultDir, qFN.replace('.sql', '.txt'))
                 print "running %s: %s\n" % (qFN, qText)
-                #t.runQuery(qText, verboseMode)
+                t.runQuery(qText, verboseMode)
 
     t.tearDown()
 
