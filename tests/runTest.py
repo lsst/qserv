@@ -113,7 +113,7 @@ def main():
     qDir = "case%s/queries/" % _options.caseNo
     print "Testing queries from %s" % qDir
     queries = sorted(os.listdir(qDir))
-    noQservLine = re.compile('[\w\-"%% ]*-- noQserv')
+    noQservLine = re.compile('[\w\-\."%% ]*-- noQserv')
     for qFN in queries:
         if qFN.endswith(".sql"):
             if int(qFN[:3]) <= stopAt:
