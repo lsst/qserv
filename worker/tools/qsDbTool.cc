@@ -6,8 +6,7 @@
 
 #include <iostream>
 #include <fstream>
-
-namespace qWorker = lsst::qserv::worker;
+#include <vector>
 
 using lsst::qserv::SqlConfig;
 using std::cout;
@@ -17,31 +16,31 @@ using std::ifstream;
 using std::string;
 using std::vector;
 
-void
-printHelp(const char* execName) {
+int
+printHelp(const char* execName, const char* extraMsg) {
+    if ( extraMsg != "" ) {
+        cout << "\n" << extraMsg << "\n";
+    }
     cout
      << "\nUsage:\n"
-     << "   " << execName << " -r -c <mysqlAuth> -d <dbName> -t <tables>\n"
-     << "   " << execName << " -u -c <mysqlAuth> -d <dbName>\n"
-     << "   " << execName << " -s -c <mysqlAuth>\n"
-     << "   " << execName << " -g -c <mysqlAuth> -b <baseDir> -a\n"
-     << "   " << execName << " -g -c <mysqlAuth> -b <baseDir> -d <dbName> \n"
+     << "   " << execName << " -r <mysqlAuth> <uniqueId> <dbName> [<table1>] "
+                          << "[<table2>] ...\n"
+     << "   " << execName << " -u <mysqlAuth> <uniqueId> <dbName>\n"
+     << "   " << execName << " -s <mysqlAuth> <uniqueId>\n"
+     << "   " << execName << " -e <mysqlAuth> <uniqueId> <baseDir> [<dbName>] "
+                          << "[<dbName2>] ...\n"
      << "   " << execName << " -h\n"
-     << "\nWhere:\n"
-     << "  actions:\n"
-     << "  -r             - register database in qserv metadata\n"
-     << "  -u             - unregister database from qserv metadata\n"
-     << "  -s             - show qserv metadata\n"
-     << "  -g             - generate export paths\n"
-     << "  -h             - print help message (this is a default action)\n"
-     << "  flags:\n"
-     << "  -c <mysqlAuth> - path to mysql auth file, see below for details\n"
-     << "  -a             - for all databases registered in qserv metadata\n"
-     << "  -d <dbName>    - for the database <dbName> only\n"
-     << "  -t <tables>    - comma-separated list of partitioned tables\n"
-     << "  -b <baseDir>   - base directory\n"
-     << "\n"
-     << "About the mysqlAuth file:\n"
+     << "\nNotes:\n"
+     << "   -r - registers database in qserv metadata\n"
+     << "   -u - unregisters database from qserv metadata\n"
+     << "   -s - prints qserv metadata\n"
+     << "   -e - generates export paths. If no dbName given it will\n"
+     << "        run for all databases registered in qserv metadata.\n"
+     << "\nAbout <uniqueId>:\n"
+     << "   The uniqueId was introduced to allow running multiple masters\n"
+     << "   and/or workers on the same machine. It uniquely identifies\n"
+     << "   a master / a worker.\n"
+     << "\nAbout the mysqlAuth file:\n"
      << " * Format of one line: <token>:<value>\n"
      << " * Supported tokens: host, port, user, pass, sock\n"
      << " * Example contents:\n"
@@ -51,6 +50,7 @@ printHelp(const char* execName) {
      << "pass:thePassword\n"
      << "sock:/the/mysql/socket/file.sock\n"
      << endl;
+    return 0;
 }
 
 SqlConfig
@@ -107,12 +107,12 @@ assembleSqlConfig(string const& authFile) {
 
 bool
 registerDb(SqlConfig& sc,
-           string const& workerId,
+           string const& uniqueId,
            string const& dbName,
            string const& pTables) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
-    lsst::qserv::worker::Metadata m(workerId);
+    lsst::qserv::worker::Metadata m(uniqueId);
     if ( !m.registerQservedDb(dbName, pTables, sqlConn, errObj) ) {
         cerr << "Failed to register db. " << errObj.printErrMsg() << endl;
         return errObj.errNo();
@@ -123,11 +123,11 @@ registerDb(SqlConfig& sc,
 
 bool
 unregisterDb(SqlConfig& sc,
-           string const& workerId,
+           string const& uniqueId,
            string const& dbName) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
-    lsst::qserv::worker::Metadata m(workerId);
+    lsst::qserv::worker::Metadata m(uniqueId);
     if ( !m.unregisterQservedDb(dbName, sqlConn, errObj) ) {
         cerr << "Failed to unregister db. " 
              << errObj.printErrMsg() << endl;
@@ -139,10 +139,10 @@ unregisterDb(SqlConfig& sc,
 
 bool
 showMetadata(SqlConfig& sc,
-             string const& workerId) {
+             string const& uniqueId) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
-    lsst::qserv::worker::Metadata m(workerId);
+    lsst::qserv::worker::Metadata m(uniqueId);
     if ( !m.showMetadata(sqlConn, errObj) ) {
         cerr << "Failed to print metadata. " << errObj.printErrMsg() << endl;
         return errObj.errNo();
@@ -152,13 +152,13 @@ showMetadata(SqlConfig& sc,
 
 bool
 generateExportPathsForDb(SqlConfig& sc,
-                         string const& workerId,
+                         string const& uniqueId,
                          string const& dbName, 
                          string const& baseDir) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
 
-    lsst::qserv::worker::Metadata m(workerId);
+    lsst::qserv::worker::Metadata m(uniqueId);
     
     vector<string> exportPaths;
     if ( !m.generateExportPathsForDb(baseDir, dbName,
@@ -185,12 +185,12 @@ generateExportPathsForDb(SqlConfig& sc,
 
 bool
 generateExportPaths(SqlConfig& sc,
-                    string const& workerId,
+                    string const& uniqueId,
                     string const& baseDir) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
 
-    lsst::qserv::worker::Metadata m(workerId);
+    lsst::qserv::worker::Metadata m(uniqueId);
     
     vector<string> exportPaths;
     if ( ! m.generateExportPaths(baseDir, sqlConn, errObj, exportPaths) ) {
@@ -214,109 +214,61 @@ generateExportPaths(SqlConfig& sc,
     return 0;
 }
 
+
 int 
 main(int argc, char* argv[]) {
     const char* execName = argv[0];
-
-    // TODO: get this from xrootd
-    string const workerId = "theId";
-
-    string dbName;
-    string pTables;
-    string baseDir;
-    string authFile;
-    
-    bool flag_regDb = false; // register database
-    bool flag_unrDb = false; // unregister database
-    bool flag_genEp = false; // generated export paths
-    bool flag_showM = false; // show metadata
-    bool flag_allDb = false;
-
-    int c;
-    opterr = 0;
-    while ((c = getopt (argc, argv, "rusgac:d:t:b:h")) != -1) {
-        switch (c) {
-        case 'r': { flag_regDb = true; break;}
-        case 'u': { flag_unrDb = true; break;}
-        case 's': { flag_showM = true; break;}
-        case 'g': { flag_genEp = true; break;}
-        case 'a': { flag_allDb = true; break;}
-        case 'c': { authFile = optarg; break;}
-        case 'd': { dbName   = optarg; break;} 
-        case 't': { pTables  = optarg; break;}
-        case 'b': { baseDir  = optarg; break;}
-        case 'h': { printHelp(execName); return 0;}
-        case '?':
-            if (optopt=='c'||optopt=='d'||optopt=='t'||optopt=='b') {
-                cerr << "Option -" << char(optopt) << " requires an argument." << endl;
-            } else if (isprint (optopt)) {
-                cerr << "Unknown option `-" << char(optopt) << "'" << endl;
-            } else {
-                cerr << "Unknown option character " << char(optopt) << endl;
-            }
-            return -1;
-        default: {
-            return -2;
-        }
-        }
+    if ( argc < 2 ) {
+        return printHelp(execName, "");
     }
-    if ( authFile.empty() ) {
-        if ( flag_regDb||flag_unrDb||flag_showM||flag_genEp) {
-            cerr << "MySql authorization file not specified "
-                 << "(must use -c <mysqlAuth> option)" << endl;
-            return -3;
+    string firstArg = argv[1];
+    if ( firstArg == "-h" ) {
+        return printHelp(execName, "");
+    } else if ( argc < 4 ) {
+        return printHelp(execName, "Insufficient number of arguments.");
+    }
+    SqlConfig sc = assembleSqlConfig(argv[2]);
+    string uniqueId = argv[3];
+
+    if ( firstArg == "-r" ) {
+        if ( argc < 5 ) {
+            return printHelp(execName, "Insufficient number of arguments.");
+        }
+        string pTables;
+        if ( argc > 5 ) {
+            for (int i=5 ; i<argc ; i++) {
+                pTables += argv[i];
+                if (i != argc-1) {
+                    pTables += ',';
+                }
+            }
+        }
+        return registerDb(sc, uniqueId, argv[4]/*dbName*/, pTables);        
+    } else if ( firstArg == "-u" ) {
+        if ( argc != 5 ) {
+            return printHelp(execName, "Insufficient number of arguments.");
+        }
+        return unregisterDb(sc, uniqueId, argv[4]/*dbName*/);
+    } else if ( firstArg == "-s" ) {
+        if ( argc != 4 ) {
+            return printHelp(execName, "Insufficient number of arguments.");
+        }
+        return showMetadata(sc, uniqueId);
+    } else if ( firstArg == "-e" ) {
+        if ( argc < 5 ) {
+            return printHelp(execName, "Insufficient number of arguments.");
+        } else if ( argc == 5 ) {
+            return generateExportPaths(sc, uniqueId, argv[4]/*baseDir*/);
         } else {
-            printHelp(execName);
+            for (int i=5 ; i<argc ; i++) {
+                generateExportPathsForDb(sc, uniqueId, 
+                                         argv[5]/*dbName*/, argv[4]/*baseDir*/);
+            }
             return 0;
         }
+    } else {
+        return printHelp(execName, "Argument not recognized.");
     }
-    SqlConfig sc = assembleSqlConfig(authFile);
-    
-    if ( flag_regDb ) {
-        if ( dbName.empty() ) {
-            cerr << "database name not specified "
-                 << "(must use -d <dbName> with -r option)" << endl;
-            return -4;
-        } else if ( pTables.empty() ) {
-            cerr << "partitioned tables not specified "
-                 << "(must use -t <tables> with -r option)" << endl;
-            return -5;
-        }
-        return registerDb(sc, workerId, dbName, pTables);        
-    } else if ( flag_unrDb ) {
-        if ( dbName.empty() ) {
-            cerr << "database name not specified "
-                 << "(must use -d <dbName> with -u option)" << endl;
-            return -6;
-        }
-        return unregisterDb(sc, workerId, dbName);
-    } else if ( flag_showM ) {
-        return showMetadata(sc, workerId);
-    } else if ( flag_genEp ) {
-        if ( baseDir.empty() ) {
-            cerr << "base dir not specified "
-                 << "(must use -b <baseDir> with -g option)" << endl;
-            return -7;
-        }       
-        if ( !dbName.empty() ) {
-            cout << "Generating export paths for database: "
-                 << dbName << ", baseDir is: " << baseDir << endl;
-            return generateExportPathsForDb(sc, workerId, dbName, baseDir);
-        } else if ( flag_allDb ) {
-            cout << "generating export paths for all databases "
-                 << "registered in the qserv metadata, baseDir is: " 
-                 << baseDir << endl;
-            return generateExportPaths(sc, workerId, baseDir);
-        } else {
-            cerr << "\nDo you want to generate export paths for one "
-                 << "database, or all? (hint: use -d <dbName or -a flag)" 
-                 << endl;
-            printHelp(execName);
-            return -8;
-        }
-        return 0;
-    }
-    cerr << "No option specified. (hint: use -r or -u or -g or -s)" << endl;
-    printHelp(execName);
+    printHelp(execName, "");
     return 0;
 }
