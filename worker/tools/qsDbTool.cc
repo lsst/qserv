@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 
 using lsst::qserv::SqlConfig;
@@ -14,42 +15,58 @@ using std::cerr;
 using std::endl;
 using std::ifstream;
 using std::string;
+using std::stringstream;
 using std::vector;
 
+const char* execName = "qsDbTool";
+
 int
-printHelp(const char* execName, const char* extraMsg) {
-    if ( extraMsg != "" ) {
-        cout << "\n" << extraMsg << "\n";
-    }
+printHelp() {
     cout
-     << "\nUsage:\n"
-     << "   " << execName << " -r <mysqlAuth> <uniqueId> <dbName> [<table1>] "
-                          << "[<table2>] ...\n"
-     << "   " << execName << " -u <mysqlAuth> <uniqueId> <dbName>\n"
-     << "   " << execName << " -s <mysqlAuth> <uniqueId>\n"
-     << "   " << execName << " -e <mysqlAuth> <uniqueId> <baseDir> [<dbName>] "
-                          << "[<dbName2>] ...\n"
-     << "   " << execName << " -h\n"
-     << "\nNotes:\n"
-     << "   -r - registers database in qserv metadata\n"
-     << "   -u - unregisters database from qserv metadata\n"
-     << "   -s - prints qserv metadata\n"
-     << "   -e - generates export paths. If no dbName given it will\n"
-     << "        run for all databases registered in qserv metadata.\n"
-     << "\nAbout <uniqueId>:\n"
-     << "   The uniqueId was introduced to allow running multiple masters\n"
-     << "   and/or workers on the same machine. It uniquely identifies\n"
-     << "   a master / a worker.\n"
-     << "\nAbout the mysqlAuth file:\n"
-     << " * Format of one line: <token>:<value>\n"
-     << " * Supported tokens: host, port, user, pass, sock\n"
-     << " * Example contents:\n"
-     << "host:localhost\n"
-     << "port:3306\n"
-     << "user:theMySqlUser\n"
-     << "pass:thePassword\n"
-     << "sock:/the/mysql/socket/file.sock\n"
+     << "\nNAME:\n"
+     << "  " << execName << "\n\n"
+     << "DESCRIPTION:\n"
+     << "  Manages qserv metadata\n\n"
+     << "EXAMPLES:\n"
+     << "  " << execName << " -r <mysqlAuth> <uniqueId> <dbName> [<table1>] "
+                         << "[<table2>] ...\n"
+     << "  " << execName << " -u <mysqlAuth> <uniqueId> <dbName>\n"
+     << "  " << execName << " -s <mysqlAuth> <uniqueId>\n"
+     << "  " << execName << " -e <mysqlAuth> <uniqueId> <baseDir> [<dbName>] "
+                         << "[<dbName2>] ...\n"
+     << "  " << execName << " -h\n\n"
+     << "ARGUMENTS:\n"
+     << "  -r, --register\n"
+     << "         registers database in qserv metadata\n\n"
+     << "  -u, --unregister\n"
+     << "         unregisters database from qserv metadata\n\n"
+     << "  -s, --show\n"
+     << "         prints qserv metadata\n\n"
+     << "  -e, --export\n"
+     << "         generates export paths. If no dbName is given, it will\n"
+     << "         run for all databases registered in qserv metadata.\n"
+     << "\nABOUT <uniqueId>:\n"
+     << "  The uniqueId was introduced to allow running multiple masters\n"
+     << "  and/or workers on the same machine. It uniquely identifies\n"
+     << "  a master / a worker.\n"
+     << "\nABOUT <mysqlAuth>:\n"
+     << "  <mysqlAuth> should point to a config file. Format of one line \n"
+     << "  of config file: <token>:<value>. (Parsing is very basic,\n"
+     << "  so no extra spaces please.) Supported tokens: \n"
+     << "  host, port, user, pass, sock. Example contents:\n"
+     << "      host:localhost\n"
+     << "      port:3306\n"
+     << "      user:theMySqlUser\n"
+     << "      pass:thePassword\n"
+     << "      sock:/the/mysql/socket/file.sock\n"
      << endl;
+    return 0;
+}
+
+int
+printHelpMsg(string const& msg) {
+    cout << execName << ": " << msg << "\n" 
+         << "Try `" << execName << " -h` for more information.\n";
     return 0;
 }
 
@@ -217,22 +234,29 @@ generateExportPaths(SqlConfig& sc,
 
 int 
 main(int argc, char* argv[]) {
-    const char* execName = argv[0];
+    const char* execName = "qsDbTool";//argv[0];
     if ( argc < 2 ) {
-        return printHelp(execName, "");
+        return printHelp();
     }
     string firstArg = argv[1];
     if ( firstArg == "-h" ) {
-        return printHelp(execName, "");
+        return printHelp();
+    } else if (firstArg != "-r" && firstArg != "--register" &&
+               firstArg != "-u" && firstArg != "--unregister" &&
+               firstArg != "-s" && firstArg != "--show" &&
+               firstArg != "-e" && firstArg != "--export") {
+        stringstream s;
+        s << "unrecognized option '" << firstArg << "'";
+        return printHelpMsg(s.str());
     } else if ( argc < 4 ) {
-        return printHelp(execName, "Insufficient number of arguments.");
+        return printHelpMsg("insufficient number of arguments.");
     }
     SqlConfig sc = assembleSqlConfig(argv[2]);
     string uniqueId = argv[3];
 
-    if ( firstArg == "-r" ) {
+    if ( firstArg == "-r" || firstArg == "--register" ) {
         if ( argc < 5 ) {
-            return printHelp(execName, "Insufficient number of arguments.");
+            return printHelpMsg("insufficient number of arguments.");
         }
         string pTables;
         if ( argc > 5 ) {
@@ -244,19 +268,19 @@ main(int argc, char* argv[]) {
             }
         }
         return registerDb(sc, uniqueId, argv[4]/*dbName*/, pTables);        
-    } else if ( firstArg == "-u" ) {
+    } else if ( firstArg == "-u" || firstArg == "--unregister" ) {
         if ( argc != 5 ) {
-            return printHelp(execName, "Insufficient number of arguments.");
+            return printHelpMsg("insufficient number of arguments.");
         }
         return unregisterDb(sc, uniqueId, argv[4]/*dbName*/);
-    } else if ( firstArg == "-s" ) {
+    } else if ( firstArg == "-s" || firstArg == "--show" ) {
         if ( argc != 4 ) {
-            return printHelp(execName, "Insufficient number of arguments.");
+            return printHelpMsg("insufficient number of arguments.");
         }
         return showMetadata(sc, uniqueId);
-    } else if ( firstArg == "-e" ) {
+    } else if ( firstArg == "-e" || firstArg == "--export" ) {
         if ( argc < 5 ) {
-            return printHelp(execName, "Insufficient number of arguments.");
+            return printHelpMsg("insufficient number of arguments.");
         } else if ( argc == 5 ) {
             return generateExportPaths(sc, uniqueId, argv[4]/*baseDir*/);
         } else {
@@ -267,8 +291,10 @@ main(int argc, char* argv[]) {
             return 0;
         }
     } else {
-        return printHelp(execName, "Argument not recognized.");
+        stringstream s;
+        s << "unrecognized option '" << firstArg << "'";
+        return printHelpMsg(s.str());
     }
-    printHelp(execName, "");
+    printHelp();
     return 0;
 }
