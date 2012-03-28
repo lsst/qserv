@@ -29,8 +29,9 @@
 import MySQLdb as sql
 import optparse
 import os
-import stat
 import re
+import stat
+import tempfile
 
 
 class RunTests():
@@ -115,18 +116,54 @@ class RunTests():
             for r in rows:
                 print r
 
-    # creates database and load data from caseXX/data.sql.gz
+    # creates database and load all tables caseXX/data/
+    # schema should be in <table>.schema
+    # data should be in <table>.tsv.gz
     def loadData(self):
-        inF = "case%s/data.sql.gz" % self._caseNo
-        print "Loading data from %s" % inF
-        cmd = "mysql -u%s -p%s -e 'CREATE DATABASE %s'" % \
-            (self._user, self._password, self._dbName)
-        print "Executing: ", cmd
-        os.system(cmd)
-        cmd = "gunzip -c %s | mysql -u %s -p%s %s" % \
-            (inF, self._user, self._password, self._dbName)
-        print "Executing: ", cmd
-        os.system(cmd)
+        print "Creating database %s" % self._dbName
+        conn = sql.connect(unix_socket=self._socket,
+                           user=self._user,
+                           passwd=self._password)
+        cursor = conn.cursor()
+        cursor.execute("CREATE DATABASE %s" % self._dbName)
+        cursor.close()
+        conn.close()
+        conn = sql.connect(unix_socket=self._socket,
+                           user=self._user,
+                           passwd=self._password,
+                           db=self._dbName)
+        cursor = conn.cursor()
+        inputDir = "case%s/data" % self._caseNo
+        print "Loading data from %s" % inputDir
+        files = os.listdir(inputDir)
+        for f in files:
+            if f.endswith('.schema'):
+                tableN = f[:-7]
+                sF = "%s/%s" % (inputDir, f)
+                dF = "%s/%s.data" % (inputDir, tableN)
+                dG = "%s/%s.tsv.gz" % (inputDir, tableN)
+                # check if the corresponding data file exists
+                if not os.path.exists(dG):
+                    raise Exception, "File: '%s' not found" % dG
+                # uncompress data file into temp location
+                tmpF = "%s.%s.tsv" % (tempfile.mktemp(), tableN)
+                cmd = "gunzip -c %s > %s" % (dG, tmpF)
+                print "  Uncompressing: ", cmd
+                os.system(cmd)
+                # load schema
+                cmd = "mysql -u%s -p%s %s < %s" % \
+                    (self._user, self._password, self._dbName, sF)
+                print "  Loading schema:", cmd
+                os.system(cmd)
+                # load data
+                q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % \
+                    (tmpF, tableN)
+                print "  Loading data:  ", q
+                cursor.execute(q)
+                # remove temporary file
+                os.unlink(tmpF)
+        cursor.close()
+        conn.close()
 
 
 def runIt(sock, user, pwd, caseNo, outDir, stopAt, mode, verboseMode):
@@ -211,32 +248,7 @@ def main():
     if modeQserv:
         print "\n***** running qserv test *****\n"
         runIt(mysqlSock, mysqlUser, mysqlPass, _options.caseNo, 
-              _options.outDir, stopAt, "q", verboseMode)
+              outDir, stopAt, "q", verboseMode)
 
 if __name__ == '__main__':
     main()
-
-
-
-## not used
-def loadDataPerTable(self):
-    conn = sql.connect(unix_socket=self._socket,
-                       user=self._user,
-                       passwd=self._password)
-    cursor = conn.cursor()
-    inputDir = "case%s/data" % self._caseNo
-    print "loading data from %s" % inputDir
-    files = os.listdir(inputDir)
-    for f in files:
-        if f.endswith('.gz'):
-            tableN = f[:-7]
-            destF = "/tmp/%s" % f[:-3]
-            cmd = "gunzip -c %s/%s > %s" % (inputDir, f, destF)
-            print cmd
-            #os.system(cmd)
-            q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % \
-                (destF, tableN)
-            print q
-            #cursor.execute(q)
-    cursor.close()
-    conn.close()

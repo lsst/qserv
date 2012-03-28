@@ -1,8 +1,18 @@
 
 directory structure:
-  case<number>
-    queries
-    data.sql.gz
+  case<number>/
+    queries/
+    data/
+     readme.txt - contains info about data
+     <table>.schema - contains schema info per table
+     <table>.csv.gz - contains data
+
+
+To generate .schema and data files use:
+
+mysqldump -u<user> -p<pass> <db> <table> -T/tmp/
+then copy <table>.sql and <table>.txt
+
 
 data from case<number> will be loaded into databases called 
  - qservTest_case<number>_m
