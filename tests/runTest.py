@@ -29,6 +29,7 @@
 import MySQLdb as sql
 import optparse
 import os
+import stat
 import re
 
 
@@ -40,7 +41,7 @@ class RunTests():
         self._password = password
         self._dbName = "qservTest_case%s_%s" % (caseNo, mode)
         self._caseNo = caseNo
-        self._outDir = "%s/%s" % (outDir, mode)
+        self._outDir = outDir
         self._mode = mode
         self._verboseMode = verboseMode
 
@@ -64,8 +65,13 @@ class RunTests():
     def runQueries(self, stopAt):
         if self._mode == 'q':
             withQserv = True
+            myOutDir = "%s/q" % self._outDir
         else:
             withQserv = False
+            myOutDir = "%s/m" % self._outDir
+        os.makedirs(myOutDir)
+        # because mysqld will write there
+        os.chmod(myOutDir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
         qDir = "case%s/queries/" % self._caseNo
         print "Testing queries from %s" % qDir
@@ -94,7 +100,7 @@ class RunTests():
                                 qText += line
                         qText += ' '
                     qText += " INTO OUTFILE '%s/%s'" % \
-                        (self._outDir, qFN.replace('.sql', '.txt'))
+                        (myOutDir, qFN.replace('.sql', '.txt'))
                     print "Running %s: %s\n" % (qFN, qText)
                     self.runQuery(qText)
 
@@ -144,7 +150,7 @@ def main():
                   help="Stop at query with given number")
     op.add_option("-o", "--outDir", dest="outDir",
                   default = "/tmp",
-                  help="Full path to directory for storing temporary results")
+                  help="Full path to directory for storing temporary results. The results will be stored in <OUTDIR>/qservTest_case<CASENO>/")
     op.add_option("-m", "--mode", dest="mode",
                   default = False,
                   help="Mode: 'm' - plain mysql, 'q' - qserv, 'b' - both")
@@ -154,7 +160,8 @@ def main():
     (_options, args) = op.parse_args()
 
     if _options.authFile is None:
-        print "--authFile flag not set"
+        print "runTest.py: --authFile flag not set"
+        print "Try `runTest.py --help` for more information."
         return -1
 
     authFile = _options.authFile
@@ -194,10 +201,13 @@ def main():
             mysqlSock = value
     f.close()
 
+    outDir = "%s/qservTest_case%s" % (_options.outDir, _options.caseNo)
+    os.makedirs(outDir)
+
     if modePlainMySql:
         print "\n***** running plain mysql test *****\n"
         runIt(mysqlSock, mysqlUser, mysqlPass, _options.caseNo, 
-              _options.outDir, stopAt, "m", verboseMode)
+              outDir, stopAt, "m", verboseMode)
     if modeQserv:
         print "\n***** running qserv test *****\n"
         runIt(mysqlSock, mysqlUser, mysqlPass, _options.caseNo, 

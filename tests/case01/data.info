@@ -7,3 +7,4 @@ create table Science_Ccd_Exposure
     select * 
     from rplante_PT1_2_u_pt12prod_im3000.Science_Ccd_Exposure 
     where scienceCcdExposureId in (select scienceCcdExposureId FROM Source);
+
