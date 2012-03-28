@@ -138,38 +138,80 @@ class RunTests():
         files = os.listdir(inputDir)
         for f in files:
             if f.endswith('.schema'):
-                tableN = f[:-7]
-                sF = "%s/%s" % (inputDir, f)
-                dF = "%s/%s.data" % (inputDir, tableN)
-                dG = "%s/%s.tsv.gz" % (inputDir, tableN)
+                tableName = f[:-7]
+                schemaFile = "%s/%s" % (inputDir, f)
+                dF = "%s/%s.tsv.gz" % (inputDir, tableName)
                 # check if the corresponding data file exists
-                if not os.path.exists(dG):
-                    raise Exception, "File: '%s' not found" % dG
+                if not os.path.exists(dF):
+                    raise Exception, "File: '%s' not found" % dF
                 # uncompress data file into temp location
-                tmpF = "%s.%s.tsv" % (tempfile.mktemp(), tableN)
-                cmd = "gunzip -c %s > %s" % (dG, tmpF)
+                dataFile = "%s.%s.tsv" % (tempfile.mktemp(), tableName)
+                cmd = "gunzip -c %s > %s" % (dF, dataFile)
                 print "  Uncompressing: ", cmd
                 os.system(cmd)
-                # load schema
-                cmd = "mysql -u%s -p%s %s < %s" % \
-                    (self._user, self._password, self._dbName, sF)
-                print "  Loading schema:", cmd
-                os.system(cmd)
-                # load data
-                q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % \
-                    (tmpF, tableN)
-                print "  Loading data:  ", q
-                cursor.execute(q)
+                # load the table. Note, how we do it depends
+                # whether we load to plain mysql or qserv
+                self.loadTable(tableName, schemaFile, dataFile, cursor)
                 # remove temporary file
-                os.unlink(tmpF)
+                os.unlink(dataFile)
         cursor.close()
         conn.close()
+
+    def loadTable(self, tableName, schemaFile, dataFile, cursor):
+        if self._mode == 'm':
+            self.loadTableToMySql(tableName, schemaFile, dataFile, cursor)
+        elif self._mode == 'q':
+            self.loadTableToQserv(tableName, schemaFile, dataFile, cursor)
+        else:
+            raise Exception, "Invalid mode: ", self._mode
+
+    def loadTableToMySql(self, tableName, schemaFile, dataFile, cursor):
+        # load schema
+        cmd = "mysql -u%s -p%s %s < %s" % \
+            (self._user, self._password, self._dbName, schemaFile)
+        print "  Loading schema:", cmd
+        os.system(cmd)
+        # load data
+        q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % \
+            (dataFile, tableName)
+        print "  Loading data:  ", q
+        cursor.execute(q)
+
+    def loadTableToQserv(self, tableName, schemaFile, dataFile, cursor):
+        raise Exception, "Loading qserv data not implemented"
+        tmpDir = tempfile.mktemp()
+        partExec = "python ../master/examples/partition.py"
+        os.mkdir(tmpDir)
+        os.cd(tmpDir)
+        cmd = "%s -P%s -t 2 -p 4 %s -S 10 -s 2" % \
+            (partExec, tableName, tmpDir)
+        os.system(cmd)
+        # then load each generated file from tmpDir/stripe_*/* 
+
+        # this will work for tables with overlap only
+        # e.g., it works for Object table:
+        templTable = 'rplante_PT1_2_u_pt12prod_im3000.Object' # FIXME
+        for f1 in os.listdir(tmpDir):
+            if f1.startswith('stripe_'):
+                for f2 in os.listdir('%s/%s' % (tmpDir, f1)):
+                    if f2.endswith('.csv'):
+                        t = f2[:-4]
+                        print 'CREATE TABLE %s LIKE %s;' % (t, templTable)
+                        print 'ALTER TABLE %s CHANGE chunkId deleteMe1 INT, CHANGE subChunkId deleteMe2 INT, ADD COLUMN chunkId INT, ADD COLUMN subChunkId INT;' % t
+                        if f2.rfind('Overlap') >0:
+                            print 'ALTER TABLE %s DROP PRIMARY KEY, ADD PRIMARY KEY(objectId, subChunkId);' % t
+                        print "LOAD DATA LOCAL INFILE '%s/%s/%s' INTO TABLE %s FIELDS TERMINATED BY ',';" % (baseDir, f1, f2, t)
+                        print 'ALTER TABLE %s DROP COLUMN deleteMe1, DROP COLUMN deleteMe2;\n' % t
 
 
 def runIt(sock, user, pwd, caseNo, outDir, stopAt, mode, verboseMode):
     x = RunTests()
     x.init(sock, user, pwd, caseNo, outDir, mode, verboseMode)
     x.loadData()
+    if mode == 'q':
+        # register the test db in qserv
+        # make sure all services are started etc
+        pass
     x.connect2Db()
     x.runQueries(stopAt)
     x.tearDown()
