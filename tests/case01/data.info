@@ -1,0 +1,9 @@
+
+create table Object select * from rplante_PT1_2_u_pt12prod_im3000.Object where objectId % 49999=1;
+create table Source select * from rplante_PT1_2_u_pt12prod_im3000.Source where objectId % 49999=1;
+create table Filter select * from rplante_PT1_2_u_pt12prod_im3000.Filter;
+
+create table Science_Ccd_Exposure 
+    select * 
+    from rplante_PT1_2_u_pt12prod_im3000.Science_Ccd_Exposure 
+    where scienceCcdExposureId in (select scienceCcdExposureId FROM Source);

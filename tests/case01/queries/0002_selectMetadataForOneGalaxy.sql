@@ -4,5 +4,5 @@
 SELECT s.ra, s.decl, o.raRange, o.declRange
 FROM   Object o
 JOIN   Source s USING (objectId)
-WHERE  o.objectId = 436407332000000
+WHERE  o.objectId = 390034570102582
 AND    o.latestObsTime = s.taiMidPoint

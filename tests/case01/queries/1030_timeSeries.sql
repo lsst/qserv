@@ -10,5 +10,5 @@ JOIN   Filter USING(filterId)
  WHERE ra_PS BETWEEN 355 AND 360 -- noQserv
    and decl_PS BETWEEN 0 AND 20  -- noQserv
 -- withQserv WHERE areaSpec_box(355, 0, 360, 20)
-   AND filterName = 'u'
+   AND filterName = 'g'
 ORDER BY objectId, taiMidPoint ASC

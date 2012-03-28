@@ -31,47 +31,127 @@ import optparse
 import os
 import re
 
-class TestQueries():
-    def setUp(self, socket, user, password, db):
-        print "connecting via ", socket, " as ", user, "/", password
-        self._conn = sql.connect(unix_socket=socket,
-                                 user=user,
-                                 passwd=password,
-                                 db=db)
+
+class RunTests():
+
+    def init(self, socket, user, password, caseNo, outDir, mode, verboseMode):
+        self._socket = socket
+        self._user = user
+        self._password = password
+        self._dbName = "qservTest_case%s_%s" % (caseNo, mode)
+        self._caseNo = caseNo
+        self._outDir = "%s/%s" % (outDir, mode)
+        self._mode = mode
+        self._verboseMode = verboseMode
+
+    def connectNoDb(self):
+        print "Connecting via", self._socket, "as", self._user, \
+              "/", self._password
+        self._conn = sql.connect(unix_socket=self._socket,
+                                 user=self._user,
+                                 passwd=self._password)
         self._cursor = self._conn.cursor()
+
+    def connect2Db(self):
+        print "Connecting via", self._socket, "as", self._user, \
+              "/", self._password, "to db", self._dbName
+        self._conn = sql.connect(unix_socket=self._socket,
+                                 user=self._user,
+                                 passwd=self._password,
+                                 db=self._dbName)
+        self._cursor = self._conn.cursor()
+
+    def runQueries(self, stopAt):
+        if self._mode == 'q':
+            withQserv = True
+        else:
+            withQserv = False
+
+        qDir = "case%s/queries/" % self._caseNo
+        print "Testing queries from %s" % qDir
+        queries = sorted(os.listdir(qDir))
+        noQservLine = re.compile('[\w\-\."%% ]*-- noQserv')
+        for qFN in queries:
+            if qFN.endswith(".sql"):
+                if int(qFN[:4]) <= stopAt:
+                    qF = open(qDir+qFN, 'r')
+                    qText = ""
+                    for line in qF:
+                        line = line.rstrip().lstrip()
+                        line = re.sub(' +', ' ', line)
+                        if withQserv and line.startswith("-- withQserv"):
+                            qText += line[13:] # skip the "-- withQserv" text
+                        elif line.startswith("--") or line == "":
+                            pass # do nothing with commented or empty lines
+                        else:
+                            qData = noQservLine.search(line)
+                            if not withQserv:
+                                if qData:
+                                    qText += qData.group(0)[:-10]
+                                else:
+                                    qText += line
+                            elif not qData:
+                                qText += line
+                        qText += ' '
+                    qText += " INTO OUTFILE '%s/%s'" % \
+                        (self._outDir, qFN.replace('.sql', '.txt'))
+                    print "Running %s: %s\n" % (qFN, qText)
+                    self.runQuery(qText)
 
     def tearDown(self):
         self._cursor.close()
         self._conn.close()
 
-    def runQuery(self, query, printResults):
+    def runQuery(self, query):
         self._cursor.execute(query)
         rows = self._cursor.fetchall()
-        if printResults:
+        if self._verboseMode:
             for r in rows:
                 print r
 
+    # creates database and load data from caseXX/data.sql.gz
+    def loadData(self):
+        inF = "case%s/data.sql.gz" % self._caseNo
+        print "Loading data from %s" % inF
+        cmd = "mysql -u%s -p%s -e 'CREATE DATABASE %s'" % \
+            (self._user, self._password, self._dbName)
+        print "Executing: ", cmd
+        os.system(cmd)
+        cmd = "gunzip -c %s | mysql -u %s -p%s %s" % \
+            (inF, self._user, self._password, self._dbName)
+        print "Executing: ", cmd
+        os.system(cmd)
+
+
+def runIt(sock, user, pwd, caseNo, outDir, stopAt, mode, verboseMode):
+    x = RunTests()
+    x.init(sock, user, pwd, caseNo, outDir, mode, verboseMode)
+    x.loadData()
+    x.connect2Db()
+    x.runQueries(stopAt)
+    x.tearDown()
+
 
 def main():
-    parser = optparse.OptionParser()
-    parser.add_option("-c", "--caseNo", dest="caseNo",
-                      default="01",
-                      help="test case number")
-    parser.add_option("-a", "--authFile", dest="authFile",
-                      help="File with mysql connection info")
-    parser.add_option("-s", "--stopAt", dest="stopAt",
-                      default = 799,
-                      help="Stop at query with given number")
-    parser.add_option("-o", "--resultDir", dest="resultDir",
-                      default = "/tmp",
-                      help="Directory for storing results (full path)")
-    parser.add_option("-q", "--withQserv", dest="withQserv",
-                      default = False,
-                      help="Flag indicating if the test is with qserv or not")
-    parser.add_option("-v", "--verbose", dest="verboseMode",
-                      default = 'n',
-                      help="Run in verbose mode (y/n)")
-    (_options, args) = parser.parse_args()
+    op = optparse.OptionParser()
+    op.add_option("-c", "--caseNo", dest="caseNo",
+                  default="01",
+                  help="test case number")
+    op.add_option("-a", "--authFile", dest="authFile",
+                  help="File with mysql connection info")
+    op.add_option("-s", "--stopAt", dest="stopAt",
+                  default = 799,
+                  help="Stop at query with given number")
+    op.add_option("-o", "--outDir", dest="outDir",
+                  default = "/tmp",
+                  help="Full path to directory for storing temporary results")
+    op.add_option("-m", "--mode", dest="mode",
+                  default = False,
+                  help="Mode: 'm' - plain mysql, 'q' - qserv, 'b' - both")
+    op.add_option("-v", "--verbose", dest="verboseMode",
+                  default = 'n',
+                  help="Run in verbose mode (y/n)")
+    (_options, args) = op.parse_args()
 
     if _options.authFile is None:
         print "--authFile flag not set"
@@ -86,13 +166,22 @@ def main():
     else:
         verboseMode = False
 
-    if _options.withQserv == 'y' or \
-       _options.withQserv == 'Y' or \
-       _options.withQserv == '1':
-        withQserv = True
+    if not _options.mode:
+        modePlainMySql = True
+        modeQserv = True
     else:
-        withQserv = False
+        if _options.mode == 'm':
+            modePlainMySql = True
+        elif _options.mode == 'q':
+            modeQserv = True
+        elif _options.mode == 'b':
+            modePlainMySql = True
+            modeQserv = True
+        else:
+            print "Invalid value for option 'mode'"
+            return -1
 
+    ## read auth file
     f = open(authFile)
     for line in f:
         line = line.rstrip()
@@ -105,43 +194,39 @@ def main():
             mysqlSock = value
     f.close()
 
-    mysqlDb = "qservTest_case%s" % _options.caseNo
-
-    t = TestQueries()
-    t.setUp(mysqlSock, mysqlUser, mysqlPass, mysqlDb)
-
-    qDir = "case%s/queries/" % _options.caseNo
-    print "Testing queries from %s" % qDir
-    queries = sorted(os.listdir(qDir))
-    noQservLine = re.compile('[\w\-\."%% ]*-- noQserv')
-    for qFN in queries:
-        if qFN.endswith(".sql"):
-            if int(qFN[:3]) <= stopAt:
-                qF = open(qDir+qFN, 'r')
-                qText = ""
-                for line in qF:
-                    line = line.rstrip().lstrip()
-                    line = re.sub(' +', ' ', line)
-                    if withQserv and line.startswith("-- withQserv"):
-                        qText += line[13:] # skip the "-- withQserv " text
-                    elif line.startswith("--") or line == "":
-                        pass # do nothing with comment lines and empty lines
-                    else:
-                        qData = noQservLine.search(line)
-                        if not withQserv:
-                            if qData:
-                                qText += qData.group(0)[:-10]
-                            else:
-                                qText += line
-                        elif not qData:
-                            qText += line
-                    qText += ' '
-                qText += " INTO OUTFILE '%s/%s'" % \
-                    (_options.resultDir, qFN.replace('.sql', '.txt'))
-                print "running %s: %s\n" % (qFN, qText)
-                t.runQuery(qText, verboseMode)
-
-    t.tearDown()
+    if modePlainMySql:
+        print "\n***** running plain mysql test *****\n"
+        runIt(mysqlSock, mysqlUser, mysqlPass, _options.caseNo, 
+              _options.outDir, stopAt, "m", verboseMode)
+    if modeQserv:
+        print "\n***** running qserv test *****\n"
+        runIt(mysqlSock, mysqlUser, mysqlPass, _options.caseNo, 
+              _options.outDir, stopAt, "q", verboseMode)
 
 if __name__ == '__main__':
     main()
+
+
+
+## not used
+def loadDataPerTable(self):
+    conn = sql.connect(unix_socket=self._socket,
+                       user=self._user,
+                       passwd=self._password)
+    cursor = conn.cursor()
+    inputDir = "case%s/data" % self._caseNo
+    print "loading data from %s" % inputDir
+    files = os.listdir(inputDir)
+    for f in files:
+        if f.endswith('.gz'):
+            tableN = f[:-7]
+            destF = "/tmp/%s" % f[:-3]
+            cmd = "gunzip -c %s/%s > %s" % (inputDir, f, destF)
+            print cmd
+            #os.system(cmd)
+            q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % \
+                (destF, tableN)
+            print q
+            #cursor.execute(q)
+    cursor.close()
+    conn.close()
