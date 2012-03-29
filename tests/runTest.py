@@ -178,6 +178,17 @@ class RunTests():
         cursor.execute(q)
 
     def loadTableToQserv(self, tableName, schemaFile, dataFile, cursor):
+        #mkdir tmpDir; cd tmpDir; mkdir object; cd object
+        #python partition.py -PObject -t 2  -p  4      /tmp/Object.csv -S 10 -s 2 > loadO
+        #mysql -u<u> -p<p> qservTest_case01_q < loadO
+
+        #cd ../; mkdir source; cd source
+        #python partition.py -PSource -t 33 -p 34 -o 0 /tmp/Source.csv -S 10 -s 2 > loadS
+        #mysql -u<u> -p<p> qservTest_case01_q < loadS
+
+        # ../qserv-git-master/worker/tools/qsDbTool -r /u/sf/becla/.lsst/dbAuth.txt xx qservTest_case01_q Object Source
+        #../qserv-git-master/worker/tools/qsDbTool -e /u/sf/becla/.lsst/dbAuth.txt xx /u1/qserv/xrootd-run    qservTest_case01_q
+
         raise Exception, "Loading qserv data not implemented"
         tmpDir = tempfile.mktemp()
         partExec = "python ../master/examples/partition.py"
