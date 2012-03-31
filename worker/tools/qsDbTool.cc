@@ -99,7 +99,7 @@ assembleSqlConfig(string const& authFile, SqlConfig& config) {
     if (!f) {
         stringstream s;
         s << "Failed to open '" << authFile << "'";
-        return printErrMsg(s.str(), -20);
+        return printErrMsg(s.str(), -100);
     }
     string line;
     f >> line;
@@ -109,7 +109,7 @@ assembleSqlConfig(string const& authFile, SqlConfig& config) {
             stringstream s;
             s << "Invalid format, expecting <token>:<value>. "
               << "File '" << authFile << "', line: '" << line << "'";
-            return printErrMsg(s.str(), -21);
+            return printErrMsg(s.str(), -101);
         }
         string token = line.substr(0,pos);
         string value = line.substr(pos+1, line.size());
@@ -121,7 +121,7 @@ assembleSqlConfig(string const& authFile, SqlConfig& config) {
                 stringstream s;
                 s << "Invalid port number " << config.port << ". "
                   << "File '" << authFile << "', line: '" << line << "'";
-                return printErrMsg(s.str(), -22);
+                return printErrMsg(s.str(), -102);
             }        
         } else if (token == "user") {
             config.username = value;
@@ -133,7 +133,7 @@ assembleSqlConfig(string const& authFile, SqlConfig& config) {
             stringstream s;
             s << "Unexpected token: '" << token << "'" 
               << " (supported tokens are: host, port, user, pass, sock)";
-            return printErrMsg(s.str(), -23);
+            return printErrMsg(s.str(), -103);
         }
         f >> line;
    }
@@ -258,20 +258,26 @@ runAction(int argc, int curArgc, char* argv[], SqlConfig& sc,
     if ( !sc.isValid() ) {
         stringstream s;
         s << "-a <mysqlAuth> is required for action: '" << theAction << "'.";
-        return printErrMsg(s.str(), -3);
+        return printErrMsg(s.str(), -201);
     }
     if (uniqueId.empty()) {
         stringstream s;
         s << "-i <uniqueId> is required for action: '" << theAction << "'.";
-        return printErrMsg(s.str(), -4);
+        return printErrMsg(s.str(), -202);
     }
+    if (theAction != "export" && !baseDir.empty() ) {
+        stringstream s;
+        s << "Option -b <baseDir> not needed for action '" << theAction << "'";
+        return printErrMsg(s.str(), -203);
+    }
+    
     // get the dbName for "register and "unregister"
     string dbName;
     if (theAction == "register" || theAction == "unregister" ) {
         if (argc<curArgc+2) {
             stringstream s;
             s << "Argument(s) expected after action '"  << theAction << "'";
-            return printErrMsg(s.str(), -3);
+            return printErrMsg(s.str(), -204);
         }
         if ( ! isValidName(argv[curArgc+1], "database") ) {
             return -4;
@@ -284,7 +290,7 @@ runAction(int argc, int curArgc, char* argv[], SqlConfig& sc,
         if ( curArgc<argc-1 ) {
             stringstream s;
             s << "Unexpected argument '" << argv[curArgc] << "' found.";
-            return printErrMsg(s.str(), -4);
+            return printErrMsg(s.str(), -205);
         }
     }
     if (theAction == "register") {
@@ -307,12 +313,16 @@ runAction(int argc, int curArgc, char* argv[], SqlConfig& sc,
         if ( baseDir.empty() ) {
             stringstream s;
             s << "-b <baseDir> is required for action: '" << theAction << "'.";
-            return printErrMsg(s.str(), -4);
+            return printErrMsg(s.str(), -206);
         }
-        if ( curArgc == argc ) {
+        if ( curArgc == argc-1 ) {
             return generateExportPaths(sc, uniqueId, baseDir);
         }
-        for ( ; curArgc<argc ; curArgc++ ) {
+        for ( curArgc++ ; curArgc<argc ; curArgc++ ) {
+            string dbName = argv[curArgc];
+            if ( ! isValidName(dbName, "database") ) {
+                return -5;
+            }        
             generateExportPathsForDb(sc, uniqueId, dbName, baseDir);
         }
         return 0;
@@ -340,7 +350,7 @@ main(int argc, char* argv[]) {
             if (argc<i+2) {
                 stringstream s;
                 s << "Missing argument after " << theArg;
-                return printErrMsg(s.str(), -2);
+                return printErrMsg(s.str(), -301);
             }
             if (theArg == "-a") {
                 int ret = assembleSqlConfig(argv[i+1], sc);
@@ -360,15 +370,15 @@ main(int argc, char* argv[]) {
                  theArg != "export" ) {                    
                 stringstream s;
                 s << "Unrecognized action: '" << theArg << "'";
-                return printErrMsg(s.str(), -3);
+                return printErrMsg(s.str(), -302);
             }
             for (int k=i; k<argc ; k++) {
                 if (argv[k][0] == '-') {
-                    return printErrMsg("Unexpected argument order (hint: specify options first)", -1);
+                    return printErrMsg("Unexpected argument order (hint: specify options first)", -303);
                 }
             }
             return runAction(argc, i, argv, sc, uniqueId, baseDir);
         }
     }
-    return printErrMsg("No action specified", -30);
+    return printErrMsg("No action specified", -304);
 }

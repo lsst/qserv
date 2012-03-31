@@ -172,14 +172,14 @@ qWorker::Metadata::generateExportPathsForDb(
         return false;
     }
     if ( !isRegistered(dbName, sqlConn, errObj) ) {
-        return errObj.addErrMsg("Database : " + dbName + 
+        return errObj.addErrMsg("Database: " + dbName + 
                                 " is not registered in qserv metadata.");
     }            
     std::string sql = "SELECT partitionedTables FROM Dbs WHERE dbName='"
                       + dbName + "'";
     SqlResults results;
     if (!sqlConn.runQuery(sql, results, errObj)) {
-        return errObj.addErrMsg("Database : " + dbName + 
+        return errObj.addErrMsg("Database: " + dbName + 
                                 " not registered in qserv metadata.");
     }
     std::string pTables;
