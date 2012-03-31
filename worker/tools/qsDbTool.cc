@@ -24,27 +24,34 @@ int
 printHelp() {
     cout
      << "\nNAME:\n"
-     << "  " << execName << "\n\n"
+     << "  " << execName << " [OPTION...] [ACTION] [ARGUMENTS]\n\n"
      << "DESCRIPTION:\n"
      << "  Manages qserv metadata\n\n"
+
      << "EXAMPLES:\n"
-     << "  " << execName << " -r <mysqlAuth> <uniqueId> <dbName> [<table1>] "
-                         << "[<table2>] ...\n"
-     << "  " << execName << " -u <mysqlAuth> <uniqueId> <dbName>\n"
-     << "  " << execName << " -s <mysqlAuth> <uniqueId>\n"
-     << "  " << execName << " -e <mysqlAuth> <uniqueId> <baseDir> [<dbName>] "
-                         << "[<dbName2>] ...\n"
-     << "  " << execName << " -h\n\n"
-     << "ARGUMENTS:\n"
-     << "  -r, --register\n"
-     << "         registers database in qserv metadata\n\n"
-     << "  -u, --unregister\n"
-     << "         unregisters database from qserv metadata\n\n"
-     << "  -s, --show\n"
-     << "         prints qserv metadata\n\n"
-     << "  -e, --export\n"
-     << "         generates export paths. If no dbName is given, it will\n"
-     << "         run for all databases registered in qserv metadata.\n"
+     << "  "<<execName<<" -a <mysqlAuth> -i <uniqueId> register "
+                      << "<dbName> [<table1>] [<table2>] ...\n"
+     << "  "<<execName<<" -a <mysqlAuth> -i <uniqueId> unregister <dbName>\n"
+     << "  "<<execName<<" -a <mysqlAuth> -i <uniqueId> show\n"
+     << "  "<<execName<<" -a <mysqlAuth> -i <uniqueId> -b <baseDir> export "
+                      <<"[<dbName>] [<dbName2>] ...\n"
+     << "  "<<execName<<" help\n\n"
+     << "OPTIONS:\n"
+     << "  -a <mysqlAuth>\n"
+     << "  -i <uniqueId>\n"
+     << "  -b <baseDir>\n"
+     << "\nACTIONS:\n"
+     << "  register\n"
+     << "      registers database in qserv metadata\n\n"
+     << "  unregister\n"
+     << "      unregisters database from qserv metadata\n\n"
+     << "  show\n"
+     << "      prints qserv metadata\n\n"
+     << "  export\n"
+     << "      generates export paths. If no dbName is given, it will\n"
+     << "      run for all databases registered in qserv metadata.\n\n"
+     << "  help\n"
+     << "      prints help screen and exits.\n"
      << "\nABOUT <uniqueId>:\n"
      << "  The uniqueId was introduced to allow running multiple masters\n"
      << "  and/or workers on the same machine. It uniquely identifies\n"
@@ -64,62 +71,74 @@ printHelp() {
 }
 
 int
-printHelpMsg(string const& msg) {
+printErrMsg(string const& msg, int err) {
     cout << execName << ": " << msg << "\n" 
          << "Try `" << execName << " -h` for more information.\n";
-    return 0;
+    return err;
 }
 
-SqlConfig
-assembleSqlConfig(string const& authFile) {
+// validates database and table names. Only a-z, A-Z, 0-9 and _ are allowed
+bool
+isValidName(string const& name, string const& x) {
+    const string validChars = 
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+    size_t found = name.find_first_not_of(validChars);
+    if (found != string::npos) {
+        cerr << "Invalid " << x << " name '" << name << "'. "
+             << "Offending character: " << name[found] << endl;
+        return false;
+    }
+    return true;
+}
 
-    SqlConfig sc;
+int
+assembleSqlConfig(string const& authFile, SqlConfig& config) {
     //sc.socket = qWorker::getConfig().getString("mysqlSocket").c_str();
-
     ifstream f;
     f.open(authFile.c_str());
     if (!f) {
-        cerr << "Failed to open '" << authFile << "'" << endl;
-        assert(f);
+        stringstream s;
+        s << "Failed to open '" << authFile << "'";
+        return printErrMsg(s.str(), -20);
     }
     string line;
     f >> line;
     while ( !f.eof() ) {
         int pos = line.find_first_of(':');
         if ( pos == -1 ) {
-            cerr << "Invalid format, expecting <token>:<value>. "
-                 << "File '" << authFile 
-                 << "', line: '" << line << "'" << endl;
-            assert(pos != -1);
+            stringstream s;
+            s << "Invalid format, expecting <token>:<value>. "
+              << "File '" << authFile << "', line: '" << line << "'";
+            return printErrMsg(s.str(), -21);
         }
         string token = line.substr(0,pos);
         string value = line.substr(pos+1, line.size());
         if (token == "host") { 
-            sc.hostname = value;
+            config.hostname = value;
         } else if (token == "port") {
-            sc.port = atoi(value.c_str());
-            if ( sc.port <= 0 ) {
-                cerr << "Invalid port number " << sc.port << ". "
-                 << "File '" << authFile 
-                 << "', line: '" << line << "'" << endl;
-                assert (sc.port != 0);
+            config.port = atoi(value.c_str());
+            if ( config.port <= 0 ) {
+                stringstream s;
+                s << "Invalid port number " << config.port << ". "
+                  << "File '" << authFile << "', line: '" << line << "'";
+                return printErrMsg(s.str(), -22);
             }        
         } else if (token == "user") {
-            sc.username = value;
+            config.username = value;
         } else if (token == "pass") {
-            sc.password = value;
+            config.password = value;
         } else if (token == "sock") {
-            sc.socket = value;
+            config.socket = value;
         } else {
-            cerr << "Unexpected token: '" << token << "'" 
-                 << " (supported tokens are: host, port, user, pass, sock)" 
-                 << endl;
-            assert(0);
+            stringstream s;
+            s << "Unexpected token: '" << token << "'" 
+              << " (supported tokens are: host, port, user, pass, sock)";
+            return printErrMsg(s.str(), -23);
         }
         f >> line;
    }
    f.close();
-   return sc;
+   return 0;
 }
 
 bool
@@ -231,70 +250,125 @@ generateExportPaths(SqlConfig& sc,
     return 0;
 }
 
+// parses arguments for all actions, and triggers the action
+int
+runAction(int argc, int curArgc, char* argv[], SqlConfig& sc, 
+          string const& uniqueId, string const& baseDir) {
+    string theAction = argv[curArgc];
+    if ( !sc.isValid() ) {
+        stringstream s;
+        s << "-a <mysqlAuth> is required for action: '" << theAction << "'.";
+        return printErrMsg(s.str(), -3);
+    }
+    if (uniqueId.empty()) {
+        stringstream s;
+        s << "-i <uniqueId> is required for action: '" << theAction << "'.";
+        return printErrMsg(s.str(), -4);
+    }
+    // get the dbName for "register and "unregister"
+    string dbName;
+    if (theAction == "register" || theAction == "unregister" ) {
+        if (argc<curArgc+2) {
+            stringstream s;
+            s << "Argument(s) expected after action '"  << theAction << "'";
+            return printErrMsg(s.str(), -3);
+        }
+        if ( ! isValidName(argv[curArgc+1], "database") ) {
+            return -4;
+        }
+        dbName = argv[curArgc+1];
+        curArgc += 2;
+    }
+    // no more arguments expected for "unregister" and "show"
+    if (theAction == "unregister" || theAction == "show") {
+        if ( curArgc<argc-1 ) {
+            stringstream s;
+            s << "Unexpected argument '" << argv[curArgc] << "' found.";
+            return printErrMsg(s.str(), -4);
+        }
+    }
+    if (theAction == "register") {
+        string pTables;
+        for ( ; curArgc<argc; curArgc++) {
+            if ( ! isValidName(argv[curArgc], "table") ) {
+                return -5;
+            }
+            pTables += argv[curArgc];
+            if (curArgc != argc-1) {
+                pTables += ',';
+            }
+        }
+        return registerDb(sc, uniqueId, dbName, pTables);
+    } else if (theAction == "unregister") {
+        return unregisterDb(sc, uniqueId, dbName);
+    } else if (theAction == "show") {
+        return showMetadata(sc, uniqueId);
+    } else if (theAction == "export") {
+        if ( baseDir.empty() ) {
+            stringstream s;
+            s << "-b <baseDir> is required for action: '" << theAction << "'.";
+            return printErrMsg(s.str(), -4);
+        }
+        if ( curArgc == argc ) {
+            return generateExportPaths(sc, uniqueId, baseDir);
+        }
+        for ( ; curArgc<argc ; curArgc++ ) {
+            generateExportPathsForDb(sc, uniqueId, dbName, baseDir);
+        }
+        return 0;
+    }
+    return -1;
+}
 
-int 
+int
 main(int argc, char* argv[]) {
     const char* execName = "qsDbTool";//argv[0];
     if ( argc < 2 ) {
         return printHelp();
     }
-    string firstArg = argv[1];
-    if ( firstArg == "-h" ) {
-        return printHelp();
-    } else if (firstArg != "-r" && firstArg != "--register" &&
-               firstArg != "-u" && firstArg != "--unregister" &&
-               firstArg != "-s" && firstArg != "--show" &&
-               firstArg != "-e" && firstArg != "--export") {
-        stringstream s;
-        s << "unrecognized option '" << firstArg << "'";
-        return printHelpMsg(s.str());
-    } else if ( argc < 4 ) {
-        return printHelpMsg("insufficient number of arguments.");
-    }
-    SqlConfig sc = assembleSqlConfig(argv[2]);
-    string uniqueId = argv[3];
-
-    if ( firstArg == "-r" || firstArg == "--register" ) {
-        if ( argc < 5 ) {
-            return printHelpMsg("insufficient number of arguments.");
+    SqlConfig sc;
+    string uniqueId, baseDir;
+    int i;
+    for (i=1 ; i<argc ; i++) {
+        if (argv[i][0] == '-' && argv[i][1] == 'h') {
+            return printHelp();
         }
-        string pTables;
-        if ( argc > 5 ) {
-            for (int i=5 ; i<argc ; i++) {
-                pTables += argv[i];
-                if (i != argc-1) {
-                    pTables += ',';
+    }
+    for (i=1 ; i<argc ; i++) {
+        string theArg = argv[i];
+        if (theArg == "-a" || theArg == "-i" || theArg == "-b") {
+            if (argc<i+2) {
+                stringstream s;
+                s << "Missing argument after " << theArg;
+                return printErrMsg(s.str(), -2);
+            }
+            if (theArg == "-a") {
+                int ret = assembleSqlConfig(argv[i+1], sc);
+                if ( ret != 0 ) {
+                    return ret;
+                }
+            } else if (theArg == "-i") {
+                uniqueId = argv[i+1];
+            } else if (theArg == "-b") {
+                baseDir = argv[i+1];
+            }
+            i++;
+        } else {
+            if ( theArg != "register" &&
+                 theArg != "unregister" &&
+                 theArg != "show" &&
+                 theArg != "export" ) {                    
+                stringstream s;
+                s << "Unrecognized action: '" << theArg << "'";
+                return printErrMsg(s.str(), -3);
+            }
+            for (int k=i; k<argc ; k++) {
+                if (argv[k][0] == '-') {
+                    return printErrMsg("Unexpected argument order (hint: specify options first)", -1);
                 }
             }
+            return runAction(argc, i, argv, sc, uniqueId, baseDir);
         }
-        return registerDb(sc, uniqueId, argv[4]/*dbName*/, pTables);        
-    } else if ( firstArg == "-u" || firstArg == "--unregister" ) {
-        if ( argc != 5 ) {
-            return printHelpMsg("insufficient number of arguments.");
-        }
-        return unregisterDb(sc, uniqueId, argv[4]/*dbName*/);
-    } else if ( firstArg == "-s" || firstArg == "--show" ) {
-        if ( argc != 4 ) {
-            return printHelpMsg("insufficient number of arguments.");
-        }
-        return showMetadata(sc, uniqueId);
-    } else if ( firstArg == "-e" || firstArg == "--export" ) {
-        if ( argc < 5 ) {
-            return printHelpMsg("insufficient number of arguments.");
-        } else if ( argc == 5 ) {
-            return generateExportPaths(sc, uniqueId, argv[4]/*baseDir*/);
-        } else {
-            for (int i=5 ; i<argc ; i++) {
-                generateExportPathsForDb(sc, uniqueId, 
-                                         argv[5]/*dbName*/, argv[4]/*baseDir*/);
-            }
-            return 0;
-        }
-    } else {
-        stringstream s;
-        s << "unrecognized option '" << firstArg << "'";
-        return printHelpMsg(s.str());
     }
-    printHelp();
-    return 0;
+    return printErrMsg("No action specified", -30);
 }

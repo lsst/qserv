@@ -51,6 +51,9 @@ public:
     std::string dbName;
     unsigned int port;
     std::string socket;
+    bool isValid() const {
+        return !username.empty();
+    }
 };
 
 class SqlResults {
