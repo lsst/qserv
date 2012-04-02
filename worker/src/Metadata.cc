@@ -81,6 +81,8 @@ qWorker::Metadata::registerQservedDb(std::string const& dbName,
 
 bool
 qWorker::Metadata::unregisterQservedDb(std::string const& dbName,
+                                       std::string const& baseDir,
+                                       std::string& dbPathToDestroy,
                                        SqlConnection& sqlConn,
                                        SqlErrorObject& errObj) {
     if (!sqlConn.selectDb(_metadataDbName, errObj)) {
@@ -91,7 +93,15 @@ qWorker::Metadata::unregisterQservedDb(std::string const& dbName,
     }
     std::stringstream sql;
     sql << "DELETE FROM Dbs WHERE dbName='" << dbName << "'";
-    return sqlConn.runQuery(sql.str(), errObj);
+    if ( !sqlConn.runQuery(sql.str(), errObj) ) {
+        return false;
+    }
+    QservPath p;
+    p.setAsCquery(dbName);
+    std::stringstream ss;
+    ss << baseDir << "/" << p.path();
+    dbPathToDestroy = ss.str();
+    return true;
 }
 
 bool

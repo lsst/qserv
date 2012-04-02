@@ -45,6 +45,8 @@ public:
                            SqlConnection&,
                            SqlErrorObject&);
     bool unregisterQservedDb(std::string const& dbName,
+                             std::string const& baseDir,
+                             std::string& dbPathToDestroy,
                              SqlConnection&,
                              SqlErrorObject&);
     bool showMetadata(SqlConnection&,
@@ -66,7 +68,6 @@ private:
                                   SqlConnection&,
                                   SqlErrorObject&,
                                   std::vector<std::string>& exportPaths);
-
     static bool prepPartitionedTables(std::string&, SqlErrorObject&);
     static std::vector<std::string> tokenizeString(std::string const&);
     static int extractChunkNo(std::string const&);

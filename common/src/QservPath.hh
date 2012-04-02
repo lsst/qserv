@@ -32,7 +32,7 @@ class QservPath {
 public:
     enum RequestType {GARBAGE, CQUERY, UNKNOWN, OLDQ1, OLDQ2, RESULT};
 
-    QservPath() {}
+    QservPath() : _chunk(-1) {}
 
     explicit QservPath(std::string const& path);
 
@@ -53,6 +53,7 @@ public:
     // Setup a path of a certain type.
     void setAsCquery(std::string const& db, int chunk);    
     void setAsResult(std::string const& hashName);
+    void setAsCquery(std::string const& db);    
     
     // Add optional specifiers ?foo&bar=1&bar2=2
     void addKey(std::string const& key);

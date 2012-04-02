@@ -53,7 +53,8 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////
-qsrv::QservPath::QservPath(std::string const& path) {
+qsrv::QservPath::QservPath(std::string const& path)
+    : _chunk(-1) {
     _setFromPath(path);
 }
 
@@ -61,8 +62,10 @@ std::string qsrv::QservPath::path() const {
     std::stringstream ss;
     ss << _pathSep << prefix(_requestType);
     if(_requestType == CQUERY) {
-        ss << _pathSep << _db << _pathSep << _chunk;
-    } else {
+        ss << _pathSep << _db;
+        if(_chunk != -1) {
+            ss << _pathSep << _chunk;
+        }
     }
     return ss.str();
 }
@@ -97,6 +100,11 @@ void qsrv::QservPath::setAsCquery(std::string const& db, int chunk) {
     _requestType = CQUERY;
     _db = db;
     _chunk = chunk;
+}
+
+void qsrv::QservPath::setAsCquery(std::string const& db) {
+    _requestType = CQUERY;
+    _db = db;
 }
 
 void qsrv::QservPath::_setFromPath(std::string const& path) {

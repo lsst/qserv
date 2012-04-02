@@ -21,9 +21,14 @@
  */
 
 #include "lsst/qserv/worker/QservPathStructure.h"
-#include <sys/stat.h>
+#include <dirent.h>
+#include <errno.h>
 #include <fstream>
 #include <iostream>
+#include <sstream>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -68,6 +73,31 @@ qWorker::QservPathStructure::persist() {
     return true;
 }
 
+bool 
+qWorker::QservPathStructure::destroy(const std::string& thePath) {
+    std::cout << "Destroying: " << thePath << std::endl;
+    vector<string> files;
+    if ( !listDir(thePath, files) ) {
+        return false;
+    }
+    vector<string>::const_iterator itr;
+    for ( itr=files.begin(); itr!=files.end(); ++itr) {
+        std::stringstream ss;
+        ss << thePath << "/" << *itr;
+        std::cout << "   rm file: " << ss.str() << std::endl;
+        if ( 0 != unlink(ss.str().c_str()) ) {
+            std::cerr << "failed to rm " << ss.str()
+                      << ", err=" << strerror(errno) << std::endl;
+        }
+    }
+    std::cout << "   rmdir: " << thePath << std::endl;
+    if ( 0 != rmdir(thePath.c_str()) ) {
+            std::cerr << "failed to rmdir " << thePath
+                      << ", err=" << strerror(errno) << std::endl;
+    }
+    return true;
+}
+
 bool
 qWorker::QservPathStructure::createDirectories() const {
     vector<string>::const_iterator dItr;
@@ -96,7 +126,7 @@ qWorker::QservPathStructure::isRegistered() const {
     std::vector<std::string>::const_iterator i;
     for ( i=_uniqueDbDirs.begin(); i!=_uniqueDbDirs.end(); ++i) {
         if ( isRegistered(i->c_str()) ) {
-            std::cerr << "Database already registered ("
+            std::cerr << "Path already persisted ("
                       << *i << ")" << std::endl;
             return true;
         }
@@ -118,7 +148,7 @@ qWorker::QservPathStructure::createPaths() const {
     vector<string>::const_iterator itr;
     for ( itr=_paths.begin(); itr!=_paths.end(); ++itr) {
         const char* path = itr->c_str();
-        std::cout << "creating file: " << path << std::endl;
+        std::cout << "Creating file: " << path << std::endl;
         std::ofstream f(path, std::ios::out);
         f.close();
     }
@@ -205,4 +235,22 @@ qWorker::QservPathStructure::uniqueDbDirsContains(const std::string& s) const {
         }
     }
     return false;
+}
+
+bool
+qWorker::QservPathStructure::listDir(const std::string& dir, 
+                                     std::vector<std::string>& files) {
+    DIR *dp;
+    struct dirent *dirp;
+    if((dp = opendir(dir.c_str())) == NULL) {
+        std::cout << "Error(" << errno << ") opening " << dir << std::endl;
+        return false;
+    }
+    while ((dirp = readdir(dp)) != NULL) {
+        if (0!=strcmp(dirp->d_name, ".") && 0!=strcmp(dirp->d_name, "..") ) {
+            files.push_back(string(dirp->d_name));
+        }
+    }
+    closedir(dp);
+    return true;
 }

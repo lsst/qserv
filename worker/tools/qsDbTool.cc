@@ -31,7 +31,8 @@ printHelp() {
      << "EXAMPLES:\n"
      << "  "<<execName<<" -a <mysqlAuth> -i <uniqueId> register "
                       << "<dbName> [<table1>] [<table2>] ...\n"
-     << "  "<<execName<<" -a <mysqlAuth> -i <uniqueId> unregister <dbName>\n"
+     << "  "<<execName<<" -a <mysqlAuth> -i <uniqueId> -b <baseDir> "
+                      << "unregister <dbName>\n"
      << "  "<<execName<<" -a <mysqlAuth> -i <uniqueId> show\n"
      << "  "<<execName<<" -a <mysqlAuth> -i <uniqueId> -b <baseDir> export "
                       <<"[<dbName>] [<dbName2>] ...\n"
@@ -44,7 +45,8 @@ printHelp() {
      << "  register\n"
      << "      registers database in qserv metadata\n\n"
      << "  unregister\n"
-     << "      unregisters database from qserv metadata\n\n"
+     << "      unregisters database from qserv metadata and destroys\n"
+     << "      corresponding export structures for that database\n\n"
      << "  show\n"
      << "      prints qserv metadata\n\n"
      << "  export\n"
@@ -159,16 +161,20 @@ registerDb(SqlConfig& sc,
 
 bool
 unregisterDb(SqlConfig& sc,
-           string const& uniqueId,
-           string const& dbName) {
+             string const& uniqueId,
+             string const& dbName,
+             string const& baseDir) {
     lsst::qserv::SqlConnection sqlConn(sc);
     lsst::qserv::SqlErrorObject errObj;
     lsst::qserv::worker::Metadata m(uniqueId);
-    if ( !m.unregisterQservedDb(dbName, sqlConn, errObj) ) {
+    std::string dbPathToDestroy;
+    if ( !m.unregisterQservedDb(dbName, baseDir, dbPathToDestroy,
+                                sqlConn, errObj) ) {
         cerr << "Failed to unregister db. " 
              << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
+    lsst::qserv::worker::QservPathStructure::destroy(dbPathToDestroy);
     cout << "Database " << dbName << " successfully unregistered." << endl;
     return 0;
 }
@@ -265,7 +271,8 @@ runAction(int argc, int curArgc, char* argv[], SqlConfig& sc,
         s << "-i <uniqueId> is required for action: '" << theAction << "'.";
         return printErrMsg(s.str(), -202);
     }
-    if (theAction != "export" && !baseDir.empty() ) {
+    if ((theAction == "register" || theAction == "show") && 
+        !baseDir.empty() ) {
         stringstream s;
         s << "Option -b <baseDir> not needed for action '" << theAction << "'";
         return printErrMsg(s.str(), -203);
@@ -293,6 +300,14 @@ runAction(int argc, int curArgc, char* argv[], SqlConfig& sc,
             return printErrMsg(s.str(), -205);
         }
     }
+    // baseDir required for "export" and "unregister"
+    if (theAction == "export" || theAction == "unregister") {
+        if ( baseDir.empty() ) {
+            stringstream s;
+            s << "-b <baseDir> is required for action: '" << theAction << "'.";
+            return printErrMsg(s.str(), -206);
+        }
+    }
     if (theAction == "register") {
         string pTables;
         for ( ; curArgc<argc; curArgc++) {
@@ -306,15 +321,10 @@ runAction(int argc, int curArgc, char* argv[], SqlConfig& sc,
         }
         return registerDb(sc, uniqueId, dbName, pTables);
     } else if (theAction == "unregister") {
-        return unregisterDb(sc, uniqueId, dbName);
+        return unregisterDb(sc, uniqueId, dbName, baseDir);
     } else if (theAction == "show") {
         return showMetadata(sc, uniqueId);
     } else if (theAction == "export") {
-        if ( baseDir.empty() ) {
-            stringstream s;
-            s << "-b <baseDir> is required for action: '" << theAction << "'.";
-            return printErrMsg(s.str(), -206);
-        }
         if ( curArgc == argc-1 ) {
             return generateExportPaths(sc, uniqueId, baseDir);
         }
