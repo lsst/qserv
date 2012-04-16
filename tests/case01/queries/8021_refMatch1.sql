@@ -15,6 +15,6 @@ FROM Source AS s,
 WHERE (s.scienceCcdExposureId = sce.scienceCcdExposureId)
   AND (s.sourceId = rom.sourceId)
   AND (rom.refObjectId = sro.refObjectId)
-  AND (sce.visit = 885722801)
+  AND (sce.visit = 888241840)
   AND (sce.raftName = '1,0') 
   AND (sce.ccdName like '%')
