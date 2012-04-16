@@ -178,41 +178,43 @@ class RunTests():
         cursor.execute(q)
 
     def loadTableToQserv(self, tableName, schemaFile, dataFile, cursor):
-        #mkdir tmpDir; cd tmpDir; mkdir object; cd object
-        #python partition.py -PObject -t 2  -p  4      /tmp/Object.csv -S 10 -s 2 > loadO
-        #mysql -u<u> -p<p> qservTest_case01_q < loadO
+        print '''
+mkdir tmpDir; cd tmpDir; mkdir object; cd object
+python partition.py -PObject -t 2  -p  4      /tmp/Object.csv -S 10 -s 2 > loadO
+mysql -u<u> -p<p> qservTest_case01_q < loadO
 
-        #cd ../; mkdir source; cd source
-        #python partition.py -PSource -t 33 -p 34 -o 0 /tmp/Source.csv -S 10 -s 2 > loadS
-        #mysql -u<u> -p<p> qservTest_case01_q < loadS
+cd ../; mkdir source; cd source
+python partition.py -PSource -t 33 -p 34 -o 0 /tmp/Source.csv -S 10 -s 2 > loadS
+mysql -u<u> -p<p> qservTest_case01_q < loadS
 
-        # ../qserv-git-master/worker/tools/qsDbTool -r /u/sf/becla/.lsst/dbAuth.txt xx qservTest_case01_q Object Source
-        #../qserv-git-master/worker/tools/qsDbTool -e /u/sf/becla/.lsst/dbAuth.txt xx /u1/qserv/xrootd-run    qservTest_case01_q
+../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test register qservTest_case01_q Object Source
+../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test -b /u1/qserv/xrootd-run export qservTest_case01_q
+        '''
+        raw_input("Press Enter to continue...")
 
-        raise Exception, "Loading qserv data not implemented"
-        tmpDir = tempfile.mktemp()
-        partExec = "python ../master/examples/partition.py"
-        os.mkdir(tmpDir)
-        os.cd(tmpDir)
-        cmd = "%s -P%s -t 2 -p 4 %s -S 10 -s 2" % \
-            (partExec, tableName, tmpDir)
-        os.system(cmd)
+        #tmpDir = tempfile.mktemp()
+        #partExec = "python ../master/examples/partition.py"
+        #os.mkdir(tmpDir)
+        #os.cd(tmpDir)
+        #cmd = "%s -P%s -t 2 -p 4 %s -S 10 -s 2" % \
+        #    (partExec, tableName, tmpDir)
+        #os.system(cmd)
         # then load each generated file from tmpDir/stripe_*/* 
 
         # this will work for tables with overlap only
         # e.g., it works for Object table:
-        templTable = 'rplante_PT1_2_u_pt12prod_im3000.Object' # FIXME
-        for f1 in os.listdir(tmpDir):
-            if f1.startswith('stripe_'):
-                for f2 in os.listdir('%s/%s' % (tmpDir, f1)):
-                    if f2.endswith('.csv'):
-                        t = f2[:-4]
-                        print 'CREATE TABLE %s LIKE %s;' % (t, templTable)
-                        print 'ALTER TABLE %s CHANGE chunkId deleteMe1 INT, CHANGE subChunkId deleteMe2 INT, ADD COLUMN chunkId INT, ADD COLUMN subChunkId INT;' % t
-                        if f2.rfind('Overlap') >0:
-                            print 'ALTER TABLE %s DROP PRIMARY KEY, ADD PRIMARY KEY(objectId, subChunkId);' % t
-                        print "LOAD DATA LOCAL INFILE '%s/%s/%s' INTO TABLE %s FIELDS TERMINATED BY ',';" % (baseDir, f1, f2, t)
-                        print 'ALTER TABLE %s DROP COLUMN deleteMe1, DROP COLUMN deleteMe2;\n' % t
+        #templTable = 'rplante_PT1_2_u_pt12prod_im3000.Object' # FIXME
+        #for f1 in os.listdir(tmpDir):
+        #    if f1.startswith('stripe_'):
+        #        for f2 in os.listdir('%s/%s' % (tmpDir, f1)):
+        #            if f2.endswith('.csv'):
+        #                t = f2[:-4]
+        #                print 'CREATE TABLE %s LIKE %s;' % (t, templTable)
+        #                print 'ALTER TABLE %s CHANGE chunkId deleteMe1 INT, CHANGE subChunkId deleteMe2 INT, ADD COLUMN chunkId INT, ADD COLUMN subChunkId INT;' % t
+        #                if f2.rfind('Overlap') >0:
+        #                    print 'ALTER TABLE %s DROP PRIMARY KEY, ADD PRIMARY KEY(objectId, subChunkId);' % t
+        #                print "LOAD DATA LOCAL INFILE '%s/%s/%s' INTO TABLE %s FIELDS TERMINATED BY ',';" % (baseDir, f1, f2, t)
+        #                print 'ALTER TABLE %s DROP COLUMN deleteMe1, DROP COLUMN deleteMe2;\n' % t
 
 
 def runIt(sock, user, pwd, caseNo, outDir, stopAt, mode, verboseMode):
