@@ -36,10 +36,12 @@ import tempfile
 
 class RunTests():
 
-    def init(self, socket, user, password, caseNo, outDir, mode, verboseMode):
-        self._socket = socket
+    def init(self, user, password, socket, qservHost, qservPort, caseNo, outDir, mode, verboseMode):
         self._user = user
         self._password = password
+        self._socket = socket
+        self._qservHost = qservHost
+        self._qservPort = qservPort
         self._dbName = "qservTest_case%s_%s" % (caseNo, mode)
         self._caseNo = caseNo
         self._outDir = outDir
@@ -47,20 +49,30 @@ class RunTests():
         self._verboseMode = verboseMode
 
     def connectNoDb(self):
-        print "Connecting via", self._socket, "as", self._user, \
-              "/", self._password
-        self._conn = sql.connect(unix_socket=self._socket,
-                                 user=self._user,
-                                 passwd=self._password)
+        print "Connecting via socket", self._socket, "as", self._user
+        self._conn = sql.connect(user=self._user,
+                                 passwd=self._password,
+                                 unix_socket=self._socket)
         self._cursor = self._conn.cursor()
 
     def connect2Db(self):
-        print "Connecting via", self._socket, "as", self._user, \
-              "/", self._password, "to db", self._dbName
-        self._conn = sql.connect(unix_socket=self._socket,
-                                 user=self._user,
-                                 passwd=self._password,
-                                 db=self._dbName)
+        if self._mode == 'q':
+            if self._qservHost == "" or self._qservPort == 0:
+                raise Exception, "Need a valid host and port for qserv mode"
+            print "Connecting to %s:%i as %s to db %s" % \
+                (self._qservHost, self._qservPort, self._user, self._dbName)
+            self._conn = sql.connect(user=self._user,
+                                     passwd=self._password,
+                                     host=self._qservHost,
+                                     port=self._qservPort,
+                                     db=self._dbName)
+        else:
+            print "Connecting via socket", self._socket, "as", self._user, \
+                "to db", self._dbName
+            self._conn = sql.connect(user=self._user,
+                                     passwd=self._password,
+                                     unix_socket=self._socket,
+                                     db=self._dbName)
         self._cursor = self._conn.cursor()
 
     def runQueries(self, stopAt):
@@ -105,7 +117,8 @@ class RunTests():
                     print "Running %s: %s\n" % (qFN, qText)
                     self.runQuery(qText)
 
-    def tearDown(self):
+    def disconnect(self):
+        print "Disconnecting"
         self._cursor.close()
         self._conn.close()
 
@@ -121,19 +134,12 @@ class RunTests():
     # data should be in <table>.tsv.gz
     def loadData(self):
         print "Creating database %s" % self._dbName
-        conn = sql.connect(unix_socket=self._socket,
-                           user=self._user,
-                           passwd=self._password)
-        cursor = conn.cursor()
-        cursor.execute("DROP DATABASE %s" % self._dbName)
-        cursor.execute("CREATE DATABASE %s" % self._dbName)
-        cursor.close()
-        conn.close()
-        conn = sql.connect(unix_socket=self._socket,
-                           user=self._user,
-                           passwd=self._password,
-                           db=self._dbName)
-        cursor = conn.cursor()
+        self.connectNoDb()
+        self._cursor.execute("DROP DATABASE %s" % self._dbName)
+        self._cursor.execute("CREATE DATABASE %s" % self._dbName)
+        self.disconnect()
+
+        self.connect2Db()
         inputDir = "case%s/data" % self._caseNo
         print "Loading data from %s" % inputDir
         files = os.listdir(inputDir)
@@ -152,20 +158,19 @@ class RunTests():
                 os.system(cmd)
                 # load the table. Note, how we do it depends
                 # whether we load to plain mysql or qserv
-                self.loadTable(tableName, schemaFile, dataFile, cursor)
+                self.loadTable(tableName, schemaFile, dataFile)
                 # remove temporary file
                 os.unlink(dataFile)
-        cursor.close()
-        conn.close()
+        self.disconnect()
 
-    def loadTable(self, tableName, schemaFile, dataFile, cursor):
+    def loadTable(self, tableName, schemaFile, dataFile):
         # treat Object and Source differently, they need to be partitioned
         if self._mode == 'q' and (tableName == 'Object' or tableName == 'Source'):
-            self.loadPartitionedTable(tableName, schemaFile, dataFile, cursor)
+            self.loadPartitionedTable(tableName, schemaFile, dataFile)
         else:
-            self.loadRegularTable(tableName, schemaFile, dataFile, cursor)
+            self.loadRegularTable(tableName, schemaFile, dataFile)
 
-    def loadRegularTable(self, tableName, schemaFile, dataFile, cursor):
+    def loadRegularTable(self, tableName, schemaFile, dataFile):
         # load schema
         cmd = "mysql -u%s -p%s %s < %s" % \
             (self._user, self._password, self._dbName, schemaFile)
@@ -175,9 +180,9 @@ class RunTests():
         q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % \
             (dataFile, tableName)
         print "  Loading data:  ", q
-        cursor.execute(q)
+        self._cursor.execute(q)
 
-    def loadPartitionedTable(self, tableName, schemaFile, dataFile, cursor):
+    def loadPartitionedTable(self, tableName, schemaFile, dataFile):
         print '''
 mkdir tmpDir; cd tmpDir; mkdir object; cd object
 python partition.py -PObject -t 2  -p  4      /tmp/Object.csv -S 10 -s 2 > loadO
@@ -217,17 +222,13 @@ mysql -u<u> -p<p> qservTest_case01_q < loadS
         #                print 'ALTER TABLE %s DROP COLUMN deleteMe1, DROP COLUMN deleteMe2;\n' % t
 
 
-def runIt(sock, user, pwd, caseNo, outDir, stopAt, mode, verboseMode):
+def runIt(user, pwd, theSocket, qservHost, qservPort, caseNo, outDir, stopAt, mode, verboseMode):
     x = RunTests()
-    x.init(sock, user, pwd, caseNo, outDir, mode, verboseMode)
+    x.init(user, pwd, theSocket, qservHost, qservPort, caseNo, outDir, mode, verboseMode)
     x.loadData()
-    if mode == 'q':
-        # register the test db in qserv
-        # make sure all services are started etc
-        pass
     x.connect2Db()
     x.runQueries(stopAt)
-    x.tearDown()
+    x.disconnect()
 
 
 def main():
@@ -289,8 +290,12 @@ def main():
             mysqlUser = value
         elif key == 'pass':
             mysqlPass = value
-        elif key == 'sock':
+        elif key == 'mysqlSock':
             mysqlSock = value
+        elif key == 'qservHost':
+            qservHost = value
+        elif key == 'qservPort':
+            qservPort = int(value)
     f.close()
 
     outDir = "%s/qservTest_case%s" % (_options.outDir, _options.caseNo)
@@ -298,12 +303,12 @@ def main():
 
     if modePlainMySql:
         print "\n***** running plain mysql test *****\n"
-        runIt(mysqlSock, mysqlUser, mysqlPass, _options.caseNo, 
-              outDir, stopAt, "m", verboseMode)
+        runIt(mysqlUser, mysqlPass, mysqlSock, qservHost, qservPort, 
+             _options.caseNo, outDir, stopAt, "m", verboseMode)
     if modeQserv:
         print "\n***** running qserv test *****\n"
-        runIt(mysqlSock, mysqlUser, mysqlPass, _options.caseNo, 
-              outDir, stopAt, "q", verboseMode)
+        runIt(mysqlUser, mysqlPass, mysqlSock, qservHost, qservPort,
+              _options.caseNo, outDir, stopAt, "q", verboseMode)
 
 if __name__ == '__main__':
     main()
