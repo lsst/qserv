@@ -125,6 +125,7 @@ class RunTests():
                            user=self._user,
                            passwd=self._password)
         cursor = conn.cursor()
+        cursor.execute("DROP DATABASE %s" % self._dbName)
         cursor.execute("CREATE DATABASE %s" % self._dbName)
         cursor.close()
         conn.close()
@@ -158,14 +159,13 @@ class RunTests():
         conn.close()
 
     def loadTable(self, tableName, schemaFile, dataFile, cursor):
-        if self._mode == 'm':
-            self.loadTableToMySql(tableName, schemaFile, dataFile, cursor)
-        elif self._mode == 'q':
-            self.loadTableToQserv(tableName, schemaFile, dataFile, cursor)
+        # treat Object and Source differently, they need to be partitioned
+        if self._mode == 'q' and (tableName == 'Object' or tableName == 'Source'):
+            self.loadPartitionedTable(tableName, schemaFile, dataFile, cursor)
         else:
-            raise Exception, "Invalid mode: ", self._mode
+            self.loadRegularTable(tableName, schemaFile, dataFile, cursor)
 
-    def loadTableToMySql(self, tableName, schemaFile, dataFile, cursor):
+    def loadRegularTable(self, tableName, schemaFile, dataFile, cursor):
         # load schema
         cmd = "mysql -u%s -p%s %s < %s" % \
             (self._user, self._password, self._dbName, schemaFile)
@@ -177,7 +177,7 @@ class RunTests():
         print "  Loading data:  ", q
         cursor.execute(q)
 
-    def loadTableToQserv(self, tableName, schemaFile, dataFile, cursor):
+    def loadPartitionedTable(self, tableName, schemaFile, dataFile, cursor):
         print '''
 mkdir tmpDir; cd tmpDir; mkdir object; cd object
 python partition.py -PObject -t 2  -p  4      /tmp/Object.csv -S 10 -s 2 > loadO
