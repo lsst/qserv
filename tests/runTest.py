@@ -194,6 +194,8 @@ mysql -u<u> -p<p> qservTest_case01_q < loadS
 
 ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test register qservTest_case01_q Object Source
 ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test -b /u1/qserv/xrootd-run export qservTest_case01_q
+
+/u/sf/danielw/ctools/bin/makeEmptyChunks.py -o /u1/qserv/qserv-run/emptyChunks_test.txt 0 7200 /u1/qserv/qserv-git-ticket1934/tmp/object/stripe_*
         '''
         raw_input("Press Enter to continue...")
 
