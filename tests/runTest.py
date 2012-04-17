@@ -56,23 +56,12 @@ class RunTests():
         self._cursor = self._conn.cursor()
 
     def connect2Db(self):
-        if self._mode == 'q':
-            if self._qservHost == "" or self._qservPort == 0:
-                raise Exception, "Need a valid host and port for qserv mode"
-            print "Connecting to %s:%i as %s to db %s" % \
-                (self._qservHost, self._qservPort, self._user, self._dbName)
-            self._conn = sql.connect(user=self._user,
-                                     passwd=self._password,
-                                     host=self._qservHost,
-                                     port=self._qservPort,
-                                     db=self._dbName)
-        else:
-            print "Connecting via socket", self._socket, "as", self._user, \
-                "to db", self._dbName
-            self._conn = sql.connect(user=self._user,
-                                     passwd=self._password,
-                                     unix_socket=self._socket,
-                                     db=self._dbName)
+        print "Connecting via socket", self._socket, "as", self._user, \
+            "to db", self._dbName
+        self._conn = sql.connect(user=self._user,
+                                 passwd=self._password,
+                                 unix_socket=self._socket,
+                                 db=self._dbName)
         self._cursor = self._conn.cursor()
 
     def runQueries(self, stopAt):
@@ -112,22 +101,25 @@ class RunTests():
                             elif not qData:
                                 qText += line
                         qText += ' '
-                    qText += " INTO OUTFILE '%s/%s'" % \
-                        (myOutDir, qFN.replace('.sql', '.txt'))
+                    outFile = "%s/%s" % (myOutDir, qFN.replace('.sql', '.txt'))
+                    #qText += " INTO OUTFILE '%s'" % outFile
                     print "Running %s: %s\n" % (qFN, qText)
-                    self.runQuery(qText)
+                    self.runQueryInShell(qText, outFile)
 
     def disconnect(self):
         print "Disconnecting"
         self._cursor.close()
         self._conn.close()
 
-    def runQuery(self, query):
-        self._cursor.execute(query)
-        rows = self._cursor.fetchall()
-        if self._verboseMode:
-            for r in rows:
-                print r
+    def runQueryInShell(self, qText, outFile):
+        if self._mode == 'q':
+            cmd = "mysql --port %i --host %s --batch -u%s -p%s %s -e \"%s\" > %s" % \
+                (self._qservPort, self._qservHost, self._user, self._password, self._dbName, qText, outFile)
+        else:
+            cmd = "mysql --batch -u%s -p%s %s -e \"%s\" > %s" % \
+                (self._user, self._password, self._dbName, qText, outFile)
+        #print cmd
+        os.system(cmd)
 
     # creates database and load all tables caseXX/data/
     # schema should be in <table>.schema
@@ -228,9 +220,7 @@ def runIt(user, pwd, theSocket, qservHost, qservPort, caseNo, outDir, stopAt, mo
     x = RunTests()
     x.init(user, pwd, theSocket, qservHost, qservPort, caseNo, outDir, mode, verboseMode)
     x.loadData()
-    x.connect2Db()
     x.runQueries(stopAt)
-    x.disconnect()
 
 
 def main():
