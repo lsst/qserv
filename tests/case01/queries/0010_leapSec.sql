@@ -1,5 +1,7 @@
 -- This query is frequently executed by buildbot
 
+-- See ticket #2048
+
 SELECT offset, mjdRef, drift
 FROM LeapSeconds 
 WHERE whenUtc = (

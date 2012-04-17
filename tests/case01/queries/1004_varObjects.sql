@@ -5,5 +5,5 @@ SELECT objectId
 FROM   Object
 WHERE  ra_PS BETWEEN -1 AND 3   -- noQserv
   AND  decl_PS BETWEEN 0 AND 10 -- noQserv
--- withQserv WHERE areaSpec(-1, 0, 3, 10)
+-- withQserv WHERE qserv_areaspec_box(-1, 0, 3, 10)
 --   AND variability > 0.8
