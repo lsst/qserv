@@ -1,0 +1,612 @@
+------------------------------------------------------------------------
+Preliminaries
+
+First, collect all the software you will be needing:
+
+    Scons
+    Swig
+    Python 2.5+
+    Twisted networking libraries for python (python-twisted)
+    antlr, antlr-dev and libantlr-dev
+    on Ubuntu 11.10: libboost-dev, libevent1-dev, libtool, 
+	    libglib2.0-dev
+    MySQL 5.1+
+    xrootd/Scalla qserv-customized fork
+    qserv master source
+    qserv worker source 
+
+Terminology
+
+    qserv consists of one front-end node ("master") which dispatches 
+    work/queries to one or more "worker" nodes. Multi-master operation 
+	should be possible, but is untested. This section introduces the 
+	parts of qserv and how they interact with each other.
+
+    mysqlproxy: Receives MySQL queries from any MySQL client, performs 
+	basic query checks and forwards XML-RPC calls to the qserv-master 
+	for processing. 
+
+    qserv-master: High-level query management daemon that accepts 
+	XML-RPC queries from the mysqlproxy instance, and performs 
+	processing to generate and dispatch sub-queries to compute query 
+	results. Acts as an xrootd client to the xrootd/Scalla system while 
+	performing subquery dispatch and execution. 
+
+    xrootd/Scalla system: Acts to insulate the master from data layout 
+	topology changes, allowing continuous operation despite worker 
+	joining/leaving, data replication, or crashing. A pair of daemons 
+	xrootd and cmsd collaborate on each master or worker node to manage 
+	cluster state and perform query service. 
+
+    qserv-worker: Implemented as a filesystem plugin to an xrootd daemon 
+	in "server" mode. On a worker node, an xrootd will be running with a 
+	qserv-worker plugin. This plugin receives subqueries addressed with 
+	a file (named by partition number), executes them against a local 
+	MySQL instance, and furnishes results addressed by another file 
+	(named according to the hash of the subquery). 
+
+    MySQL: Provides metadata and results processing as well as backend 
+	subquery execution. MySQL was chosen because of its relatively high 
+	performing queries on our targeted read-only dataset. 
+
+Software checkout
+
+    mkdir <base_dir>
+    Obtain xrootd software (with lsst-specific patches, contact us for 
+	    details). Save in <base_dir>/xrootd.
+        Working version on slac machine: 
+		lsst-db2.slac.stanford.edu:/u1/qserv/xrootd.tar.gz 
+    
+	Check out qserv from the LSST git repository, and add the 
+	geometry.py from the geom package: 
+
+    git clone git@git.lsstcorp.org:LSST/DMS/qserv.git qserv
+	git clone git@git.lsstcorp.org:LSST/DMS/geom.git geom
+	cp geom/python/lsst/geom/geometry.py qserv/master/python/lsst/qserv/master/
+
+Software Compilation
+
+Setup of Pyhton and Local Env.
+
+    If you compile on an old OS (such as RedHat Enterprise 5), you will 
+	likely need to bring some extra packages up-to-date (boost, python 
+	and multiprocessing patch, glib, ...)
+
+    If you need scons, download virtualenv and scons packages into e.g. 
+	build directory, then:
+
+    python build/virtualenv-1.6.4/virtualenv.py <base_dir>
+    cd <base_dir>/build/scons-2.0.1
+	<base_dir>/bin/python setup.py install
+
+    Please for additional Qserv compiling notes more help.
+	
+Building xrootd
+
+    cd <base_dir>/xrootd
+
+    ### on ubuntu 11.10:
+    # patch src/XrdFrm/GNUmakefile: add -ldl to the end of BINLIBS,
+    # then do the configure:
+    ./configure.classic --prefix=<base_dir> --disable-afs --disable-gsi \
+    --enable-trace --disable-krb4 --disable-krb5 --disable-ssl --disable-secssl \
+    --build=debug --syslibs=/usr/lib/i386-linux-gnu --disable-mon
+
+    ### on RHEL 6:
+    ./configure.classic --prefix=<base_dir> --disable-afs --disable-gsi \
+    --enable-trace --disable-krb4 --disable-krb5 --disable-ssl --disable-secssl \
+    --build=debug
+
+    make
+    make install
+
+Building qserv
+
+Prerequisites for building
+
+    xrootd source tree (unofficially provided, please ask), compiled and 
+	built.
+    Google Protobufs
+    MySQL libraries and development headers 
+
+    qserv/common
+
+    Please build qserv/common first. Build it with 'master' as the 
+	build argument, which should insert the appropriate python protobuf 
+	code into the qserv/master.
+	
+	export PROTOC <base_dir>/bin/protoc
+	export PROTOC_INC <base_dir>/include
+	export PROTOC_LIB <base_dir>/lib
+	export MYSQL_ROOT <base_dir>
+	scons master
+
+    qserv/master
+
+    qserv/master may be built after qserv/common. Please build the 
+	'install' target, which should populate qserv/master/dist with the 
+	python files and shared library necessary to start qserv. Please 
+	set XRD_PLATFORM and XRD_DIR so that your xrootd build tree may be 
+	detected with the appropriate headers and binaries.
+	
+    qserv/worker
+
+    qserv/worker may be built after qserv/common. Its SConstruct is 
+	designed to import code from qserv/common and reuse detected 
+	dependencies from there. Please set XRD_PLATFORM and XRD_DIR so 
+	that your xrootd build tree may be detected with the appropriate 
+	headers and binaries. 
+	
+    Run the following in the "<base_dir>/qserv/worker" directory:
+
+    #!/bin/sh
+    export XRD_DIR=<base_dir>/xrootd
+    export XRD_PLATFORM=<platform>
+    scons
+
+    We tested with <platform> set as:
+
+    x86_64_linux_26_dbg (on lsst-db)
+    i386_linux_dbg (on laptop running 32-bit ubuntu 11.10) 
+
+    Note that it is ok for the test program to fail compile.
+
+    We only need:
+
+    bld/libqserv_worker.so, which goes to <base_dir>/xrootd-run/ (for a 
+	single node setup, where master and worker are together, use 
+	bldNoXrd library!) bldUdf/udf/libqserv_udf.so, which goes to mysql 
+	plugin dir on the master and each worker 
+
+    Re-copy each time you rebuild!
+
+    Building qserv master
+
+    1. Run:
+
+    cd <base_dir>/qserv/master/src
+    antlr -glib DmlSQL2.g SqlSQL2.g
+    cd ..
+
+    (on ubuntu, the command is runantlr)
+
+    2. For a smaller, non-production machine, you might want to change 
+	writeThreads in master/src/AsyncQueryManager.cc (reduce it to eg 
+	200). If you use the default 500, you might run out of threads 
+	during run time master initialization
+
+    3. Then run a script like:
+
+    #!/bin/sh
+    export TOP=<base_dir>
+    export XRD_DIR=$TOP/xrootd
+    export XRD_PLATFORM=<platform>
+    export SEARCH_ROOTS=$TOP:/usr
+    scons
+
+Building mysql proxy, lua, and lua extensions:
+
+    Our experience is that it is better to not depend on any lua from 
+	the system.
+
+    1) install lua (we used lua-5.1.4)
+
+    change Makefile:
+        PLAT=linux
+        INSTALL_TOP should point to the <base_dir> 
+    change src/Makefile: add -fPIC to CFLAGS
+    make
+    make install 
+
+    2) install luasocket (luasocket-2.0.2)
+
+    edit config: add
+        LUAINC=-I<base_dir>/include
+        INSTALL_TOP_SHARE=<base_dir>/share/lua/5.1
+        INSTALL_TOP_LIB=<base_dir>/lib/lua/5.1 
+    make
+    make install 
+
+    3) install luaxmlrpc (we used 
+	https://github.com/timn/lua-xmlrpc/zipball/v1.2.1 and 
+	luaxmlrpc-1.0b)
+
+    unzip the v1.2.1, edit Makefile, 
+	  change LUA_DIR to <base_dir>/share/lua/5.1
+    make
+    make install
+    get copy xmlrpc.lua from luaxmlrpc-1.0b to 
+	  <base_dir>/share/lua/5.1, 
+	  edit it and add one line: _PKGNAME = "LuaXMLRPC" 
+
+    4) install luaexpat (we used luaexpat-1.1)
+
+    edit config:
+        LUA_LIBDIR= <base_dir>/lib/lua/5.1
+        LUA_DIR= <base_dir>/share/lua/5.1
+        LUA_INC= <base_dir>/include
+        EXPAT_INC= <base_dir>/include
+        LUA_VERSION_NUM= 514
+        add -fPIC to CFLAGS 
+    make
+    make install 
+
+    5) install mysql proxy (we used 0.8.0, the newer: 0.8.2 failed to 
+	compile)
+
+    ./autogen.sh
+    
+	then run a command:
+
+    LD_LIBRARY_PATH=<base_dir>/lib \
+    CFLAGS="-I<base_dir>/include" \
+    LIBS="-L<base_dir>/lib -L/opt/local/lib -levent -llua -lm" \
+    LUA_LIBS="-llua" \
+    LUA_CFLAGS="-I<base_dir>/include -L<base_dir>/lib" \
+    ./configure --prefix=<base_dir>
+
+    make
+    make install 
+
+Software Assembly: Master
+
+    The front-end consists of three components:
+
+    MySQL server version 5 (for results and query aggregation)
+    xrootd/cmsd in manager mode
+    qserv master daemon
+    mysqlproxy 
+
+MySQL Server
+
+On the master and each worker
+
+    Start the MySQL server.
+    Install the udf:
+        run: mysql -e "show variables like 'plugin_dir' " to find where 
+		  to install it
+        sudo cp -p <base_dir>/qserv/worker/bldUdf/udf/libqserv_udf.so 
+		  <mysql plugin dir>
+        mysql mysql < <base_dir>/qserv/worker/udf/createMySqlUdfs.sql
+        restart mysqld 
+
+On the master only:
+
+    Create a database to hold results and user used by the qserv 
+	front-end:
+        CREATE DATABASE qservResult;
+        GRANT ALL ON qservResult.* TO 'qsmaster'@'localhost';
+        plus, run qserv/master/examples/qserv-master-perms.sql 
+
+On each worker only:
+
+    Start the MySQL server
+    Create scratch space:
+        CREATE DATABASE qservScratch; 
+
+xrootd/cmsd
+
+    Create a working directory for xrootd/cmsd: 
+	  mkdir <base_dir>/xrootd-run
+    copy the qserv/worker/bld/libqserv_worker.so into 
+	  <base_dir>/xrootd-run. 
+	  Each time you recompile qserv-worker code, you will need to 
+	  recopy this file.
+    mkdir result query2
+    create configuration file, see appendix below for details
+    Start xrootd/cmsd on the master node (in manager mode) and then on 
+	  your worker nodes (in server mode), we used the command: 
+
+    #!/bin/sh
+
+    export QSW_XRDQUERYPATH="/query2"
+    export QSW_DBSOCK="/var/run/mysqld/mysqld.sock"
+    export QSW_MYSQLDUMP="/usr/bin/mysqldump"
+    export QSW_SCRATCHPATH="<base_dir>/tmp"
+    export QSW_SCRATCHDB="qservScratch"
+    export QSW_RESULTPATH="<base_dir>/xrootd-run/result"
+
+    export LD_LIBRARY_PATH="<base_dir>/xrootd-run;
+	  <base_dir>/lib;<base_dir>/xrootd/lib/<platform>"
+
+    <base_dir>/xrootd/bin/<platform>/xrootd -c \
+	  <base_dir>/xrootd-run/<theconfig>.cf -l \
+	  <base_dir>/xrootd-run/xrootd.log
+
+    ###gdb --args <base_dir>/xrootd/bin/<platform>/xrootd \
+	###  -c <base_dir>/xrootd-run/<theconfig>.cf \
+	###  -l <base_dir>/xrootd-run/xrootd.log
+
+    Check the log files for error messages. In the master node, you 
+	should see events for workers registering. In the worker nodes, 
+	you should see events for successfully registering with the master.
+
+        List of environment variables affecting the qserv worker: 
+
+        Variable 	Default 	Description
+        QSW_XRDQUERYPATH 	"/query2" 	xrootd path for query
+        QSW_DBSOCK 	"/var/lib/mysql/mysql.sock" 	MySQL socket file path for db connections"
+        QSW_MYSQLDUMP 	"/usr/bin/mysqldump" 	path to mysqldump program binary
+        QSW_SCRATCHPATH 	"/tmp/qserv" 	path to store (temporary) dump files
+        QSW_SCRATCHDB 	"qservScratch" 	MySQL db for creating temporary result tables.
+
+        We do not recommend changing QSW_XRDQUERYPATH.
+
+qserv master/front-end
+
+    mkdir -p qserv-run/lsst/qserv
+    touch qserv-run/lsst/__init__.py
+    touch qserv-run/lsst/qserv/__init__.py
+    cd qserv-run/lsst/qserv/; 
+	ln -s <base_dir>/qserv/master/python/lsst/qserv/master/
+
+    cd qserv-run
+    mkdir tmp
+    cp -p <base_dir>/qserv/master/bin/startQserv.py .
+
+    and copy pyparsing.py (from lsst)
+    Create config file, (see example at 
+	qserv/master/examples/lsst-dev01.qserv.cnf. Pay attention to 
+	"unix_socket", "scratch_path" and the partitioning information 
+	(more on partitioning below)
+    generate list of empty chunks (emptyChunks.txt), see below for 
+	details
+    start qserv, we used script: 
+
+    #!/bin/sh
+    XRD_DIR=<base_dir>/xrootd
+    PLATFORM=<platform>
+    PYTHON=/usr/bin/python
+    export LD_LIBRARY_PATH=$XRD_DIR/lib/$PLATFORM
+    export QSW_RESULTDIR=<base_dir>/qserv-run/tmp
+    $PYTHON <base_dir>/qserv/master/bin/startQserv.py \
+	  -c <base_dir>/qserv-run/lsst-db2.qserv.cnf &
+
+mysql proxy
+
+    Command to start:
+
+    <base_dir>/bin/mysql-proxy \
+    --proxy-lua-script=<base_dir>/master/proxy/mysqlProxy.lua \
+    --lua-path='<base_dir>/share/lua/5.1/?.lua;/u1/qserv/share/lua/5.1/?/?.lua' \
+    --lua-cpath='<base_dir>/lib/lua/5.1/?.so;/u1/qserv/lib/lua/5.1/?/?.so' &
+
+    Check if it works ok, (mysql --port=4040 --protocol=TCP)
+
+Software Assembly: Worker
+
+    Run:
+
+    CREATE DATABASE IF NOT EXISTS qservScratch;
+    GRANT ALL ON `qservScratch`.* TO 'qsmaster'@'localhost';
+
+    Plus:
+
+    mkdir <base_dir>/xrootd-run/result
+    mkdir <base_dir>/xrootd-run/query2
+    plus, see below how to initialize query2 directory 
+
+    Install the udf, see above for the instructions how.
+    
+Loading Data :
+
+Preliminaries
+
+    You will need:
+
+    Object or Source data in csv (and the corresponding schema)
+    partition.py from qserv/master/examples/ 
+
+    We have tested loading DC3b PT1 Object and Source data, and USNO-B 
+	Object data.
+
+    Command to dump data from mysql to csv file:
+
+    SELECT * INTO outfile '<path>/<tableName>.csv' 
+    FIELDS TERMINATED BY ','
+    OPTIONALLY ENCLOSED BY '"' LINES TERMINATED BY '\n' 
+    FROM <tableName>;
+
+    Running the partitioner
+
+    For the PT1 data, we have used:
+
+    python partition.py -PSource -t 32 -p 33 -o 0 ../source.csv \
+	  -S 10 -s 2
+    python partition.py -PObject -t 2 -p 4 ../object.csv -S 10 -s 2
+
+    "-t" and "-p" is a 0-based index of the longitude angle (e.g. right 
+	ascension) and latitude (e.g declination) columns in the input CSV 
+	files.
+    The parameters "-S 10" and "-s 2" specify the spatial chunk sizes. 
+	Since qserv assumes that all partitioned data is partitioned 
+	identically (i.e., according to the same spatial boundaries), these 
+	parameters must be the same for all data you load into a particular 
+	qserv cluster.
+    The parameter "-o 0" turns off overlap (for source) 
+
+    For USNO it's a little tricky. We have a reduced (1/100,000th the 
+	size) data set for testing functionality, and we are using rather 
+	large (spatially) chunks for it.
+
+    python partition.py -t 1 -p 2 obj_div100k_lineno.csv -S 10 -s 2
+
+    The full USNO-B set has 1 billion objects, and needs increased 
+	chunking to provide reasonable performance in O(n2) join queries. 
+	See the built-in help for partition.py for more information. 
+
+    For PT1.1, we used a duplicating partitioner, which is designed to 
+	be run on the target set of shared-nothing nodes, allowing both the 
+	duplication and partitioning to be done in parallel to synthesize a 
+	full-scale data set from a spatially-limited input set. Contact us 
+	if you would like to try it. 
+
+    The chunking parameters used for our duplicated PT1.1 set were: 60 
+	stripes, and 18 substripes.
+
+Loading the data
+
+    The partitioner should result in a set of directories named 
+	"stripe_N". Within each stripe_N directory, there are csv files for 
+	the partitioned tables and overlap tables (for joins). Each is 
+	numbered according to chunk number. e.g., stripe_1 may contain 
+	chunks 36,37,38,39,40:
+
+     ObjectFullOverlap_36.csv  ObjectSelfOverlap_36.csv  Object_36.csv
+     ObjectFullOverlap_37.csv  ObjectSelfOverlap_37.csv  Object_37.csv
+     ObjectFullOverlap_38.csv  ObjectSelfOverlap_38.csv  Object_38.csv
+     ObjectFullOverlap_39.csv  ObjectSelfOverlap_39.csv  Object_39.csv
+     ObjectFullOverlap_40.csv  ObjectSelfOverlap_40.csv  Object_40.csv
+
+    These chunks are spatially adjacent, but qserv does not require 
+	adjacent chunks to be loaded into the same server. In this example, 
+	chunks 36, 37, 38, 39, and 40 could go into five different servers.
+
+    Distribute these chunks among the workers and load them into the 
+	workers' MySQL instances, in a database named "LSST." Use the 
+	appropriate schema according to your input data, noting that the 
+	partitioner has added two columns, chunkId and subChunkId at the 
+	end of each row in the csv files (type INT). Note the the overlap 
+	tables will have multiple rows that are alike except subChunkId, so 
+	if you are enforcing uniqueness (e.g. through primary keys), you 
+	will need to add subChunkId to that, e.g. we ended up replacing 
+	primary key on objecId with a primary key on (objectId, subChunkId). 
+	In our case, we already had columns chunkId and subChunkId. The csv 
+	files are named according to their table name, e.g., 
+	ObjectFullOverlap_36.csv should be loaded into 
+	LSST.ObjectFullOverlap_36.
+    Continue until all chunks for all tables are loaded.
+    On each worker, create dummy files in the xrootd exported path so 
+	that the xrootd daemon will report ownership of the worker's chunks. 
+	For example, if your export directory is /data/lsst/lspexport, and 
+	the worker carries chunks 5, 23, and 132, create dummy files in a 
+	query2/ subdirectory in that path. i.e.
+
+     mkdir -p /data/lsst/lspexport/query2
+     touch /data/lsst/lspexport/query2/{5,23,132}
+
+    (Alternative: Try the qserv/master/examples/loader.py . It requires 
+	TCP socket connectable MySQL instances, but handles much of the 
+	grunt work.) 
+
+    Now the worker databases should be loaded with data, and the Scalla 
+	system should be primed with chunk locality information.
+
+Adding the ObjectId index
+
+    Use qserv/master/bin/createObjectIdIndex.py to create the objectId 
+	index table for speeding up queries for particular objectIds. The 
+	script queries a MySQL instance for tables matching "LSST.Object*" 
+	and creates a table ObjectChunkIndex.
+    The ObjectChunkIndex table should ultimately reside on the 
+	master/frontend node and contain all objectIds from all chunks. 
+	Note that the script only works for a single node, so you will need 
+	to manually merge rows if you have multiple workers. 
+
+    The objectId index feature is relatively new to qserv, so please 
+	suggest/implement changes to improve its robustness, usability, 
+	configurability, etc.
+
+Appendix
+
+    OS configuration notes
+
+    The current qserv is somewhat wasteful with thread resources. Some 
+	of the waste is due to qserv, but a large factor is the current 
+	xrootd client implementation, which uses thread-blocking rather 
+	than asynchronous I/O when dealing waiting on network calls. In 
+	light of this, it may be helpful to alter Linux kernel threading 
+	limits to workaround this. To check the system thread limit:
+
+    cat /proc/sys/kernel/threads-max 
+
+    On smaller systems this is sometimes a low 30K, whereas on larger 
+	systems the number is more like 2M. Somewhere in-between is probably 
+	reasonable for Qserv, until the problem is fixed. Set the thread 
+	limit by writing into proc.
+
+    echo 100000 > /proc/sys/kernel/threads-max
+
+    as root, sets the limit to 100K. Using sudo, try: 
+	
+	echo 100000 | tee /proc/sys/kernel/threads-max
+
+    Notes on xrootd/Scalla
+
+    The xrootd/Scalla system was originally written as a distributed 
+	high-performance filesystem for serving particle physics data. Its 
+	design tradeoffs reflect its heritage in supporting high volume 
+	particle physics data access by a dispersed set of users worldwide 
+	with little downtime and a shoestring staff.
+
+    Typically, each node in the system runs one xrootd instance and one 
+	cmsd instance, and the pair operate in either "manager" or "server" 
+	modes. For clusters up to 63 worker nodes, one manager is needed. 
+	(For larger clusters, a "supervisor" node is used. Its use has not 
+	been tested in qserv development so far.) Manager nodes operate as 
+	*redirectors* and cluster managers. Server nodes register themselves 
+	with their manager node when they are alive and able to service 
+	requests.
+
+    Qserv subqueries are dispatched to workers in a two-file model. 
+	First, a file named according to a partition number is opened, and 
+	the subquery is written into the resulting file descriptor. Another 
+	file, named as the hash of the subquery, is opened and subquery 
+	results are read from its file descriptor. When an xrootd client 
+	opens a file, it contacts the manager pair (whose host name is in 
+	the file's URL), which redirects the client to open a connection to 
+	the server pair which hosts the data of interest. After it writes 
+	the subquery into the server, the client memoizes the particular 
+	server's URL so that it may be contacted directly for the query 
+	results. (Remembering the server URL is an optimization which avoids 
+	contacting the manager to resolve the result file's server.)
+
+    In each xrootd/cmsd pair, the xrootd instance handles external 
+	client requests, and the cmsd instance handles file location and 
+	node registration. xrootd instances delegate file location 
+	resolution and registration to their associated cmsd. At startup, 
+	xrootd instances register with their cmsd instances, and server 
+	cmsd instances register with the manager cmsd. To lookup a file 
+	location, a manager cmsd broadcasts a poll to all of its registered 
+	cmsd servers for the particular file and accepts the first 
+	(positive) response. Negative answers are communicated by not 
+	responding to the broadcast. Once the manager cmsd receives the 
+	answer, it relays the server's connection information to its xrootd, 
+	which relays it back to the client. File-to-server mappings are 
+	cached by the manager cmsd. Note that the xrootd/cmsd pairs are 
+	stateless, except for server registration and lookup caching in the 
+	manager.
+
+    xrootd configuration file
+
+    Copy the sample xrootd configuration file from examples/lsp.cf in 
+	your qserv master source distribution to this new working directory 
+	and modify it to your needs. A single configuration file can be 
+	shared among all xrootd/cmsd pairs for both master and worker nodes.
+ 
+    Edit the configuration file.
+        Change the hostname of the manager in the if-block and later 
+		where the manager's host:port is specified. Server hostnames do 
+		not need to be specified since they will determine their 
+		hostnames by introspection and register these with the manager.
+		
+        Inspect and change paths as appropriate: 
+
+        oss.localroot /data/lsst/lspexport
+
+    This is a writable path that is used by the cmsd to determine which 
+	files (for qserv, partitions) are available and publishable by that 
+	instance. This is not your working directory, but may be a 
+	subdirectory of it. 
+
+        cms.pidpath /data/lsst
+        all.adminpath /data/lsst
+
+    These writable paths will be used to save logging and other 
+	run-time xrootd/cmsd information. These should probably point at 
+	your working directory. 
+
+        all.export /query2/ nolock
+        all.export /result/ nolock
+
+    Do not change these paths. 

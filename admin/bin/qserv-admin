@@ -1,0 +1,206 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+use Getopt::Long;
+
+Getopt::Long::config('bundling_override');
+my %opts = ();
+GetOptions( \%opts, 
+	"debug",
+	"help|h",
+	"status|s",
+	"stop",
+	"start",
+	"test"
+);
+usage(1) if ($Getopt::Long::error); 
+usage(0) if ($opts{'help'});
+
+my $debug = $opts{'debug'} || 0;
+
+my $install_dir = "/u1/douglas/testing/first/qserv";
+
+#mysql variables
+my $mysqld_sock = "$install_dir/var/lib/mysql/mysql.sock";
+
+if( $opts{'status'} ) {
+	if( check_mysqld() ) {
+		print "Mysql server up and running.\n";
+	} else {
+		print "Mysql server not running.\n";
+	}
+
+	if( check_proxy() ) {
+		print "Mysql proxy up and running.\n";
+	} else {
+		print "Mysql proxy not running.\n";
+	}
+
+	if( check_xrootd() ) {
+		print "Xrootd server up and running.\n";
+	} else {
+		print "Xrootd server not running.\n";
+	}
+
+} elsif( $opts{'stop'} ) {
+	
+	stop_proxy();
+	stop_xrootd();
+	stop_mysql();
+	
+} elsif( $opts{'start'} ) {
+
+	start_proxy();
+	start_xrootd();
+	start_mysql();
+	
+}
+	
+
+#############################################################
+
+sub check_sql_server {
+	my( $command ) = @_;
+
+	print "Testing sql with command $command\n" if( $debug );
+	
+	my $testsql = "/tmp/tmp.sql";
+	create_test_sql( $testsql );
+	
+	#try through the proxy to see if it can talk to mysql server.
+	my @reply = `$command < $testsql`;
+	
+	print "@reply\n" if( $debug );
+	
+	if( $reply[0] =~ /Database/ ) {
+		return 1;
+	} else {
+		return 0;
+	}
+	
+	unlink "$testsql";
+	
+}
+
+sub create_test_sql {
+	my( $testsql ) = @_;
+	
+	#create tmp sql file
+	open TMPFILE, ">$testsql";
+	print TMPFILE "show databases;\n";
+	close TMPFILE;
+	
+}
+
+sub check_proxy {
+
+	return check_sql_server( "mysql --port=4040 --protocol=TCP" );
+
+}
+
+sub check_mysqld {
+
+	return check_sql_server( "mysql -S $mysqld_sock" );
+
+}
+
+sub check_xrootd {
+	
+	return check_ps( "xrootd -c" );
+
+}
+
+sub check_ps {
+	my( $test_string ) = @_;
+	
+	my @reply = `ps x`;
+	
+	if( my @stuff = grep $test_string, @reply ) {
+		my( $pid ) = $stuff[0] =~ /^(\d+) /;
+		return $pid;
+	} else {
+		return 0;
+	}
+}
+
+sub stop_xrootd {
+
+	stop_ps( "xrootd -c" );
+
+}
+
+sub stop_mysql {
+
+	stop_ps( "mysqld" );
+
+}
+
+sub stop_proxy {
+
+	stop_ps( "mysql-proxy" );
+
+}
+
+sub stop_ps {
+	my( $test_string ) = @_;
+	
+	my $pid = check_ps( $test_string );
+	if( $opts{'test'} ) {
+		print "I would now kill process $pid.\n";
+	} else {
+		kill 1, $pid;
+	}
+
+}
+
+sub start_proxy {
+
+	`$install_dir/start_mysqlproxy.sh`;
+
+}
+
+sub start_mysqld {
+
+	`$install_dir/libexec/mysqld`;
+
+}
+
+sub start_qserv {
+
+	`$install_dir/start_qserv.sh`;
+
+}
+
+sub start_xrootd {
+
+	`$install_dir/start_xrootd.sh`;
+	
+}
+
+
+#help report for the --help option
+sub usage {
+  my($exit, $message) = @_;
+
+        my($bin) = ($0 =~ m!([^/]+)$!);
+        print STDERR $message if defined $message;
+        print STDERR <<INLINE_LITERAL_TEXT;     
+usage: $bin [options]
+  Export merged collections to SLAC.
+
+Options are:
+      --debug     Print out debug messages.
+  -h, --help      Print out this help message.
+  -s, --status    Print out the status of the server processes.
+      --stop      Stop the servers.
+	  --start     Start the servers.
+
+Examples: $bin --status
+
+Comments to Douglas Smith <douglas\@slac.stanford.edu>.
+INLINE_LITERAL_TEXT
+
+	       exit($exit) if defined $exit;
+
+}
+
