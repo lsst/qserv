@@ -148,6 +148,8 @@ sub check_and_install_qserv {
 		} else {
 			print "Untarring qserv...\n";
 			`tar zxf $build_dir/$qserv_tar`;
+			my( $tmp_qserv ) = $qserv_tar =~ /^(\S+).tar.gz/;
+			rename "$tmp_qserv", "qserv";
 		}
 	} else {
 		print "Sorry - I can't find the qserv.tar.gz in the build dir.\n";
@@ -177,11 +179,17 @@ sub check_and_install_qserv {
 	
 	#start mysql server and install init database
 	chdir "$install_dir";
-	#`./bin/mysqld_safe &`;
-	#`mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE qservResult;"`;
-	#`mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE qservScratch;"`;
-	#`mysql -S var/lib/mysql/mysql.sock -u root -e "GRANT ALL ON qservResult.* TO \\'qsmaster\\'\\\@\\'localhost\\';"`;
-	#`mysql -S var/lib/mysql/mysql.sock -u root < qserv/master/examples/qserv-master-perms.sql`;
+	print "Starting mysql server.\n";
+	system("./bin/mysqld_safe &");
+	sleep 5;
+	print "Setting up init databases.\n";
+	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE qservResult;"`;
+	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE qservScratch;"`;
+	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "GRANT ALL ON qservResult.* TO \\'qsmaster\\'\\\@\\'localhost\\';"`;
+	`./bin/mysql -S var/lib/mysql/mysql.sock -u root < qserv/master/examples/qserv-master-perms.sql`;
+	
+	#shutdown mysql
+	`./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root`;
 	
 	#copy in xrootd config and configure
 	`cp qserv/master/examples/lsp.cf xrootd-run`;
