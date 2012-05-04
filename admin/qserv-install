@@ -185,7 +185,7 @@ sub check_and_install_qserv {
 	print "Setting up init databases.\n";
 	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE qservResult;"`;
 	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE qservScratch;"`;
-	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "GRANT ALL ON qservResult.* TO \\'qsmaster\\'\\\@\\'localhost\\';"`;
+	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';"`;
 	`./bin/mysql -S var/lib/mysql/mysql.sock -u root < qserv/master/examples/qserv-master-perms.sql`;
 	
 	#shutdown mysql
@@ -212,6 +212,9 @@ sub check_and_setup_protobuf {
 	`./configure --prefix="$install_dir"`;
 	`make`;
 	`make install`;
+	
+	chdir "$build_dir/$protobuf_dir/python";
+	`$install_dir/bin/python setup.py install`;
 	
 	chdir "$install_dir";
 
@@ -426,13 +429,14 @@ sub create_qserv_startup {
 	print QSERV "#!/bin/bash\n";
 	print QSERV "\n";
 	print QSERV "#start_qserv\n";
+	print QSERV "export PATH=$install_dir/bin:$PATH\n";
 	print QSERV "XRD_DIR=$install_dir/xrootd\n";
 	print QSERV "PLATFORM=x86_64_linux_26_dbg\n";
-	print QSERV "PYTHON=/usr/bin/python\n";
-	print QSERV "export PYTHONPATH=$install_dir/qserv/master/python:$install_dir/qserv-run\n";
-	print QSERV "export LD_LIBRARY_PATH=\$XRD_DIR/lib/\$PLATFORM\n";
+	print QSERV "PYTHON=$install_dir/bin/python\n";
+	print QSERV "export PYTHONPATH=$install_dir/qserv/master/dist:$install_dir/qserv-run\n";
+	print QSERV "export LD_LIBRARY_PATH=$install_dir/lib:\$XRD_DIR/lib/\$PLATFORM\n";
 	print QSERV "export QSW_RESULTDIR=$install_dir/qserv-run/tmp\n";
-	print QSERV "\$PYTHON $install_dir/qserv/master/bin/startQserv.py -c ";
+	print QSERV "\$PYTHON $install_dir/qserv/master/dist/startQserv.py -c ";
 	print QSERV "$install_dir/qserv-run/lsst-first.qserv.cnf &\n";
 
 	close QSERV;
