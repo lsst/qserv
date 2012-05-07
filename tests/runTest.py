@@ -127,7 +127,7 @@ class RunTests():
     def loadData(self):
         print "Creating database %s" % self._dbName
         self.connectNoDb()
-        self._cursor.execute("DROP DATABASE %s" % self._dbName)
+        self._cursor.execute("DROP DATABASE IF EXISTS %s" % self._dbName)
         self._cursor.execute("CREATE DATABASE %s" % self._dbName)
         self.disconnect()
 
@@ -176,44 +176,35 @@ class RunTests():
 
     def loadPartitionedTable(self, tableName, schemaFile, dataFile):
         print '''
-mkdir tmpDir; cd tmpDir; mkdir object; cd object
-python partition.py -PObject -t 2  -p  4      /tmp/Object.csv -S 10 -s 2 > loadO
+mkdir tmp1; cd tmp1; 
+
+mkdir object; cd object
+mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Object.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM Object"
+python ../../master/examples/partition.py -PObject -t 2  -p  4 /tmp/Object.csv -S 10 -s 2 
+sudo rm /tmp/Object.csv
+#use the loadPartitionedObjectTables.py script to generate loadO
 mysql -u<u> -p<p> qservTest_case01_q < loadO
 
 cd ../; mkdir source; cd source
-python partition.py -PSource -t 33 -p 34 -o 0 /tmp/Source.csv -S 10 -s 2 > loadS
+mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Source.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM Source"
+python ../../master/examples/partition.py -PSource -t 33 -p 34 -o 0 /tmp/Source.csv -S 10 -s 2
+#use the loadPartitionedSourceTables.py script to generate loadS
 mysql -u<u> -p<p> qservTest_case01_q < loadS
+
+# this creates the objectId index
+mysql -u<u> -p<p> -e "create database qservMeta"
+mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "create table LSST__Object (objectId BIGINT NOT NULL PRIMARY KEY, x_chunkId INT, x_subChunkId INT)"
+mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_100"
+mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_118"
+mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_80"
+mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_98"
 
 ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test register qservTest_case01_q Object Source
 ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test -b /u1/qserv/xrootd-run export qservTest_case01_q
 
-/u/sf/danielw/ctools/bin/makeEmptyChunks.py -o /u1/qserv/qserv-run/emptyChunks_test.txt 0 7200 /u1/qserv/qserv-git-ticket1934/tmp/object/stripe_*
+/u/sf/danielw/ctools/bin/makeEmptyChunks.py -o /u1/qserv/qserv-run/emptyChunks_qservTest_case01_q.txt 0 7200 /u1/qserv/qserv-git-ticket1934/tmp1/object/stripe_*
         '''
         raw_input("Press Enter to continue...")
-
-        #tmpDir = tempfile.mktemp()
-        #partExec = "python ../master/examples/partition.py"
-        #os.mkdir(tmpDir)
-        #os.cd(tmpDir)
-        #cmd = "%s -P%s -t 2 -p 4 %s -S 10 -s 2" % \
-        #    (partExec, tableName, tmpDir)
-        #os.system(cmd)
-        # then load each generated file from tmpDir/stripe_*/* 
-
-        # this will work for tables with overlap only
-        # e.g., it works for Object table:
-        #templTable = 'rplante_PT1_2_u_pt12prod_im3000.Object' # FIXME
-        #for f1 in os.listdir(tmpDir):
-        #    if f1.startswith('stripe_'):
-        #        for f2 in os.listdir('%s/%s' % (tmpDir, f1)):
-        #            if f2.endswith('.csv'):
-        #                t = f2[:-4]
-        #                print 'CREATE TABLE %s LIKE %s;' % (t, templTable)
-        #                print 'ALTER TABLE %s CHANGE chunkId deleteMe1 INT, CHANGE subChunkId deleteMe2 INT, ADD COLUMN chunkId INT, ADD COLUMN subChunkId INT;' % t
-        #                if f2.rfind('Overlap') >0:
-        #                    print 'ALTER TABLE %s DROP PRIMARY KEY, ADD PRIMARY KEY(objectId, subChunkId);' % t
-        #                print "LOAD DATA LOCAL INFILE '%s/%s/%s' INTO TABLE %s FIELDS TERMINATED BY ',';" % (baseDir, f1, f2, t)
-        #                print 'ALTER TABLE %s DROP COLUMN deleteMe1, DROP COLUMN deleteMe2;\n' % t
 
 
 def runIt(user, pwd, theSocket, qservHost, qservPort, caseNo, outDir, stopAt, mode, verboseMode):
