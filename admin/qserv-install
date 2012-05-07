@@ -12,6 +12,7 @@ GetOptions( \%opts,
 	"dir|d=s",
 	"builddir=s",
 	"clean-all",
+	"extras",
 	"lua",
 	"mysql",
 	"mysqlproxy",
@@ -36,6 +37,7 @@ $build_opt = "mysql" if( $opts{'mysql'} );
 $build_opt = "xrootd" if( $opts{'xrootd'} );
 $build_opt = "qserv" if( $opts{'qserv'} );
 $build_opt = "mysqlproxy" if( $opts{'mysqlproxy'} );
+$build_opt = "extras" if( $opts{'extras'} );
 
 #set python path for use
 my $python_path = $opts{'python'} || '/usr/bin/python';
@@ -55,14 +57,14 @@ check_and_setup_python();
 
 $ENV{"PATH"} = "$install_dir/bin:".$ENV{"PATH"};
 
-#setup and install protobuf.
-check_and_setup_protobuf() if( $build_opt eq "all" );
-
 #step one, setup xrootd software
 check_and_install_xrootd() if( $build_opt eq "all" or $build_opt eq "xrootd" );
 
 #setup mysql
 check_and_install_mysql() if( $build_opt eq "all" or $build_opt eq "mysql" );
+
+#setup and install python extras.
+check_and_setup_extras() if( $build_opt eq "all" or $build_opt eq "extras" );
 
 #setup the qserv code
 check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
@@ -203,7 +205,7 @@ sub check_and_install_qserv {
 	
 }
 
-sub check_and_setup_protobuf {
+sub check_and_setup_extras {
 
 	print "Installing Protobuf from source.\n";
 	
@@ -219,6 +221,32 @@ sub check_and_setup_protobuf {
 	
 	chdir "$build_dir/$protobuf_dir/python";
 	`$install_dir/bin/python setup.py install`;
+	
+	print "Installing MySQL py interface.\n";
+	
+	chdir "$build_dir";
+	my $mysqldb_dir = check_and_untar( "MySQL-python" );
+	
+	chdir "$build_dir/$mysqldb_dir";
+	`python setup.py build`;
+	`python setup.py install`;
+
+	print "Installing zope 3 interface.\n";
+	
+	chdir "$build_dir";
+	my $zope3_dir = check_and_untar( "zope.interface" );
+	
+	chdir "$build_dir/$zope3_dir";
+	`python setup.py build`;
+	`python setup.py install`;
+
+	print "Installing Twisted interface.\n";
+	
+	chdir "$build_dir";
+	my $twisted_dir = check_and_untar( "Twisted" );
+	
+	chdir "$build_dir/$twisted_dir";
+	`python setup.py install`;
 	
 	chdir "$install_dir";
 
@@ -373,6 +401,12 @@ sub check_and_untar {
 		chdir "$build_dir";
 		`tar zxf $tmplist[0]`;
 		( $tmp_dir ) = $tmplist[0] =~ /^(\S+).tar.gz/;
+	}  elsif( $tmplist[0] =~ /tar.bz/  ) {
+		#need to first untar the 
+		print "Untarring $tmplist[0].\n";
+		chdir "$build_dir";
+		`tar jxf $tmplist[0]`;
+		( $tmp_dir ) = $tmplist[0] =~ /^(\S+).tar.bz/;
 	} elsif( $tmplist[0] =~ /zip/  ) {
 		#need to first untar the 
 		print "Unzipping $tmplist[0].\n";
