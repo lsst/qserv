@@ -9,12 +9,13 @@ my %opts = ();
 GetOptions( \%opts, 
 	"debug",
 	"help|h",
-	"dir|d",
-	"builddir",
+	"dir|d=s",
+	"builddir=s",
 	"clean-all",
 	"lua",
 	"mysql",
 	"mysqlproxy",
+	"python=s",
 	"xrootd",
 	"qserv",
 	"user",
@@ -36,6 +37,9 @@ $build_opt = "xrootd" if( $opts{'xrootd'} );
 $build_opt = "qserv" if( $opts{'qserv'} );
 $build_opt = "mysqlproxy" if( $opts{'mysqlproxy'} );
 
+#set python path for use
+my $python_path = $opts{'python'} || '/usr/bin/python';
+
 chdir( $install_dir );
 
 my @buildfiles;
@@ -46,10 +50,10 @@ if( $opts{'clean-all'} ) {
 	exit(0);
 }
 
-$ENV{"PATH"} = "$install_dir/bin:".$ENV{"PATH"};
-
 #setup the python env.
 check_and_setup_python();
+
+$ENV{"PATH"} = "$install_dir/bin:".$ENV{"PATH"};
 
 #setup and install protobuf.
 check_and_setup_protobuf() if( $build_opt eq "all" );
@@ -262,7 +266,7 @@ sub check_and_setup_python {
 	my $virtualenv_dir = check_and_untar( "virtualenv" );
 	
 	chdir "$build_dir/$virtualenv_dir";
-	`python virtualenv.py $install_dir`;
+	`$python_path virtualenv.py $install_dir`;
 	
 	chdir "$build_dir";
 	my $scons_dir = check_and_untar( "scons" );
@@ -429,7 +433,7 @@ sub create_qserv_startup {
 	print QSERV "#!/bin/bash\n";
 	print QSERV "\n";
 	print QSERV "#start_qserv\n";
-	print QSERV "export PATH=$install_dir/bin:$PATH\n";
+	print QSERV "export PATH=$install_dir/bin:\$PATH\n";
 	print QSERV "XRD_DIR=$install_dir/xrootd\n";
 	print QSERV "PLATFORM=x86_64_linux_26_dbg\n";
 	print QSERV "PYTHON=$install_dir/bin/python\n";
