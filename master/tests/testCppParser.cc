@@ -327,6 +327,20 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
+BOOST_AUTO_TEST_CASE(ObjectSelfJoinWithAs) {
+    // AS alias in column select, <> operator
+    std::string stmt = "select o1.objectId, o2.objectI2, scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS distance " 
+        "from LSST.Object as o1, LSST.Object as o2 "
+        "where o1.objectId <> o2.objectId;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    //std::cout << "Parse result: " << spr->getParseResult() << std::endl;
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+
+}
+
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinOutBand) {
     std::string stmt = "select count(*) from LSST.Object as o1, LSST.Object as o2;";
     std::string expected ="select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sc2%$# as o2 WHERE (scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,1,1,1.3) = 1) AND (scisql_s2PtInCircle(o2.ra_Test,o2.decl_Test,1,1,1.3) = 1) AND (scisql_s2PtInBox(o1.ra_Test,o1.decl_Test,5,2,6,3) = 1) AND (scisql_s2PtInBox(o2.ra_Test,o2.decl_Test,5,2,6,3) = 1) UNION select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sfo%$# as o2 WHERE (scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,1,1,1.3) = 1) AND (scisql_s2PtInCircle(o2.ra_Test,o2.decl_Test,1,1,1.3) = 1) AND (scisql_s2PtInBox(o1.ra_Test,o1.decl_Test,5,2,6,3) = 1) AND (scisql_s2PtInBox(o2.ra_Test,o2.decl_Test,5,2,6,3) = 1);";
@@ -440,6 +454,100 @@ BOOST_AUTO_TEST_CASE(AltDbName) {
     BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
     BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
+}
+
+BOOST_AUTO_TEST_CASE(Case01_0002) {
+    std::string stmt = "SELECT * FROM Object WHERE objectId = 430213989000;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    // FIXME: Impl something in spr to inspect for objectid
+    //  (or other indexing!)
+}
+
+BOOST_AUTO_TEST_CASE(Case01_0012) {
+    std::string stmt = "SELECT sce.filterId, sce.filterName "
+        "FROM   Science_Ccd_Exposure AS sce WHERE  (sce.visit = 887404831) "
+        "AND (sce.raftName = '3,3') AND (sce.ccdName LIKE '%');";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    // should parse okay as a full-scan of sce, non-partitioned.
+    // Optional parens may be confusing the parser.
+}
+BOOST_AUTO_TEST_CASE(Case01_1030) {
+    std::string stmt = "SELECT objectId, taiMidPoint, scisql_fluxToAbMag(psfFlux) "
+        "FROM   Source "
+        "JOIN   Object USING(objectId) JOIN   Filter USING(filterId) "
+        "WHERE qserv_areaspec_box(355, 0, 360, 20) AND filterName = 'g' "
+        "ORDER BY objectId, taiMidPoint ASC;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
+    // "JOIN" syntax, "ORDER BY" with "ASC"
+}
+BOOST_AUTO_TEST_CASE(Case01_1052) {
+    std::string stmt = "SELECT DISTINCT rFlux_PS FROM Object;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    // DISTINCT syntax (simplified from 1052)
+    // not currently supported? (parser or aggregator)
+}
+
+BOOST_AUTO_TEST_CASE(Case01_1081) {
+    std::string stmt = "SELECT count(*) FROM   Object o "
+        "INNER JOIN RefObjMatch o2t ON (o.objectId = o2t.objectId) "
+        "LEFT  JOIN SimRefObject t ON (o2t.refObjectId = t.refObjectId) "
+        "WHERE  closestToObj = 1 OR closestToObj is NULL;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    // JOIN syntax, "is NULL" syntax
+}
+
+BOOST_AUTO_TEST_CASE(Case01_1083) {
+    std::string stmt = "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10) typeId "
+        "from Source s join RefObjMatch rom using (objectId) "
+        "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;";
+
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    // arith expr in column spec, JOIN ..USING() syntax
+}
+
+BOOST_AUTO_TEST_CASE(Case01_2001) {
+    std::string stmt = "SELECT objectId, "
+        "scisql_fluxToAbMag(uFlux_PS), scisql_fluxToAbMag(gFlux_PS), "
+        "scisql_fluxToAbMag(rFlux_PS), scisql_fluxToAbMag(iFlux_PS), "
+        "scisql_fluxToAbMag(zFlux_PS), scisql_fluxToAbMag(yFlux_PS), "
+        "ra_PS, decl_PS FROM   Object "
+        "WHERE  ( scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 0.7 OR scisql_fluxToAbMag(gFlux_PS) > 22.3 ) "
+"AND    scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 0.1 "
+"AND    ( scisql_fluxToAbMag(rFlux_PS)-scisql_fluxToAbMag(iFlux_PS) "
+"< (0.08 + 0.42 * (scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) - 0.96)) "
+        " OR scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) > 1.26 ) "
+        "AND    scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) < 0.8;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    // complex.
+}
+
+BOOST_AUTO_TEST_CASE(Case01_2004) {
+    // simplified to test only:
+    // 1) aggregation with aliasing in column spec,
+    // 2) case statement in column spec
+    std::string stmt = "SELECT  COUNT(*) AS totalCount, "
+        "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
+        "FROM Object WHERE rFlux_PS > 10;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+}
+
+BOOST_AUTO_TEST_CASE(Case01_) {
+    std::string stmt = "SELECT scisql_fluxToAbMag(uFlux_PS), "
+        "FROM   Object WHERE  (objectId % 100 ) = 40;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    // % op in WHERE clause
 }
 
 BOOST_AUTO_TEST_SUITE_END()
