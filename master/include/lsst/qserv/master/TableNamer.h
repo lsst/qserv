@@ -39,14 +39,16 @@ class TableNamer {
 public:
     class AliasedRef {
     public:
-        AliasedRef(std::string const& alias_,
+        AliasedRef(std::string const& logical_,
                    std::string const& db_,
-                   std::string const& table_) 
-            : alias(alias_), db(db_), table(table_) {}
-        std::string alias;
+                   std::string const& table_,
+                   bool isAlias_ = false)
+            : logical(logical_), db(db_), table(table_), isAlias(isAlias_) {}
+        std::string logical;
         std::string db;
         std::string table;
         std::string magic;
+        bool isAlias;
     };
     friend std::ostream& operator<<(std::ostream& os, AliasedRef const& ar);
     typedef std::deque<AliasedRef> RefDeque;
@@ -78,7 +80,8 @@ private:
     void _acceptAlias(std::string const& logical, 
                       std::string const& physical);
     AliasedRef _computeAliasedRef(std::string const& logical,
-                                  std::string const& physical); 
+                                  std::string const& physical,
+                                  bool isAlias); 
    void _computeChunking() const;
 
     TableRefChecker const& _checker;

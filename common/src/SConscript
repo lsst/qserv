@@ -1,6 +1,8 @@
 # -*- python -*-
 Import('env')
 import os, fnmatch
+import detect_deps
+import export_deps
 
 # This seems not to work if placed in lib/
 # The path to ../src seems to prevent scons from building .os files in
@@ -15,8 +17,28 @@ for root, dirs, files in os.walk('../src'):
 env.Append(CPPPATH = ['../include'])
 env.Append(CPPFLAGS = ["-fPIC"])
 
+e = detect_deps.checkMySql(env, Configure)
+if not e:
+    print "*** Cannot build ***"
+    Exit(1)
+
 lib = env.Library("qserv_common", sources)
 installedLib = env.Install('../lib', lib)
 env.Append(built_libs=[installedLib])
 env.Install('../include/lsst/qserv', 'QservPath.hh')
 
+# Export mysql deps
+detection =  detect_deps.guessMySQL(env)
+if detection:
+    (linc, lpath, lname) = detection
+deps = {'LIBPATH' : [lpath],
+        'LIBS' : [lname]}
+tup = export_deps.installWithDeps(env, lib, "qserv_common", "../lib", deps)
+env.Append(built_libs=[tup[0]])
+
+env.Install('../include/lsst/qserv', 'QservPath.hh')
+env.Install('../include/lsst/qserv', 'SqlConnection.hh')
+deps = {'CPPPATH' : [linc]}
+tup = export_deps.installWithDeps(env, "SqlConnection.hh", "SqlConnection.hh",
+                                  "../include/lsst/qserv", deps)
+env.Install('../include/lsst/qserv', 'SqlErrorObject.hh')

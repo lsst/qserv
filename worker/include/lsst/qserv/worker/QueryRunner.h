@@ -32,9 +32,16 @@
 #include "mysql/mysql.h"
 
 // package
+#include "lsst/qserv/SqlErrorObject.hh"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/ResultTracker.h"
 #include "lsst/qserv/worker/QueryRunnerManager.h"
+
+namespace lsst {
+namespace qserv {
+    // Forward
+    class SqlConnection;
+}}
 
 namespace lsst {
 namespace qserv {
@@ -69,22 +76,18 @@ private:
     typedef boost::shared_ptr<IntVector> IntVectorPtr;
 
     bool _act();
-    void _appendError(int errorNo, std::string const& desc);
-    bool _connectDbServer(MYSQL* db);
-    bool _dropDb(MYSQL* db, std::string const& name);
-    bool _dropTables(MYSQL* db, std::string const& tables);
     std::string _getDumpTableList(std::string const& script);
     bool _runTask(Task::Ptr t);
-    bool _runFragment(MYSQL* dbMy,
+    bool _runFragment(SqlConnection& sqlConn,
                       std::string const& scr,
                       std::string const& buildSc,
                       std::string const& cleanSc,
                       std::string const& resultTable);
     void _buildSubchunkScripts(std::string const& script,
                                std::string& build, std::string& cleanup);
-    bool _prepareAndSelectResultDb(MYSQL* db, 
+    bool _prepareAndSelectResultDb(SqlConnection& sqlConn,
                                    std::string const& dbName=std::string());
-    bool _prepareScratchDb(MYSQL* db);
+    bool _prepareScratchDb(SqlConnection& sqlConn);
     bool _performMysqldump(std::string const& dbName, 
                            std::string const& dumpFile,
                            std::string const& tables);
@@ -97,12 +100,11 @@ private:
     bool _poisonCleanup();
 
     boost::shared_ptr<Logger> _log;
+    SqlErrorObject _errObj;
     std::string _user;
     boost::shared_ptr<QueryPhyResult> _pResult;
     Task::Ptr _task;
     std::string _scriptId;
-    int _errorNo;
-    std::string _errorDesc;
     boost::shared_ptr<boost::mutex> _poisonedMutex;
     StringDeque _poisoned;
 };

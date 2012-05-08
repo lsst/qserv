@@ -419,7 +419,6 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
             return -EIO;
         }
         _eDest->Say("Flush ok, ready to return good.");
-
     }
     _eDest->Say((descr + " --FINISH--").c_str());
     t.stop();

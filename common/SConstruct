@@ -13,7 +13,6 @@ env.Help("""
 Qserv common code
 """)
 
-
 # Detect protobufs
 detect_deps.detectProtobufs()
 

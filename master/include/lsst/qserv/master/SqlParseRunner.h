@@ -104,7 +104,6 @@ private:
     // Helpers for operation
     void _computeParseResult();
     void _makeOverlapMap();
-    std::string _composeOverlap(std::string const& query);
     std::string _interpretBadDbs(StringList const& bd);
 
     // Parse handlers

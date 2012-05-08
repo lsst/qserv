@@ -111,8 +111,8 @@ void qMaster::AliasMgr::addTableAliasFunction(TableAliasFunc::Ptr f) {
 
 void qMaster::AliasMgr::addTableAlias(TableAliasInfo& i) {
     // Should the default functionality get pushed into a function as well?
-    _tableMap[i.alias] = i.table;
-    _tableAliases.push_back(StringMap::value_type(i.alias,i.table));
+    _tableMap[i.logical] = i.table;
+    _tableAliases.push_back(StringMap::value_type(i.logical,i.table));
     TableAliasFuncDeque::iterator j;
     for(j=_tableAliasFuncs.begin(); j != _tableAliasFuncs.end(); ++j) {
         (**j)(i);

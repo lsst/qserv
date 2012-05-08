@@ -52,15 +52,15 @@ namespace qserv {
 namespace master {
 class TableAliasInfo {
 public:
-    TableAliasInfo(std::string const& alias_, std::string const& table_, 
+    TableAliasInfo(std::string const& logical_, std::string const& table_, 
                    antlr::RefAST tableN_, 
                    antlr::RefAST subQueryN_,
                    antlr::RefAST asN_,
                    antlr::RefAST aliasN_) 
-        : alias(alias_), table(table_),
+        : logical(logical_), table(table_),
           tableN(tableN_), subQueryN(subQueryN_), 
           asN(asN_), aliasN(aliasN_)  {}
-    std::string const alias;
+    std::string const logical;
     std::string const table;
     antlr::RefAST tableN;
     antlr::RefAST subQueryN;

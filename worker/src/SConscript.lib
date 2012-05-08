@@ -1,11 +1,14 @@
 # -*- python -*-
 Import('env')
-Import('xrd_dir')
+Import('detect_deps')
 import os, fnmatch
 
 # This seems not to work if placed in lib/
 # The path to ../src seems to prevent scons from building .os files in
 # the build dir.
+libEnv = env.Clone()
+ 
+# Build up list of sources for lib.
 sources=[]
 #print os.getcwd(), os.listdir('../src')
 for root, dirs, files in os.walk('../src'):
@@ -13,54 +16,43 @@ for root, dirs, files in os.walk('../src'):
     # Filter out dotfiles?
     dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
 
-env.Append(CPPPATH = ['../include'])
-env.Append(CPPPATH = ['../../common/include']) 
-
-def importDeps(env, f):
-    post = {}
-    fName = f+".deps"
-    if os.access(fName, os.R_OK):
-        deps = eval(open(fName).read()) # import dep file directly
-        if "LIBS" in deps:
-            post["LIBS"] = deps.pop("LIBS")
-        #print "deps", deps
-        env.Append(**deps)
-    return post
-
-def mergeDict(d1, d2):
-    """Merge list values from d2 to d1"""
-    for k in d2:
-        if k in d1:
-            d1[k].extend(d2[k])
-    return d1
+libEnv.Append(CPPPATH = ['../include'])
+libEnv.Append(CPPPATH = ['../../common/include']) 
+libEnv.Append(LIBPATH = ['../../common/lib'])
     
-post = importDeps(env, "../../common/include/lsst/qserv/worker.pb.h")
+post = detect_deps.importDeps(libEnv, "../../common/include/lsst/qserv/worker.pb.h")
 
 # Hack to workaround missing XrdSfs library in xrootd.
-if env.has_key('sfsObjs'):
-    sources += env["sfsObjs"]
+if libEnv.has_key('sfsObjs'):
+    sources += libEnv["sfsObjs"]
 
-env.Append(LIBPATH = ['../../common/lib']) 
-post2 = importDeps(env, "../../common/lib/qserv_proto")
-post = mergeDict(post, post2)
+libEnv.Append(LIBPATH = ['../../common/lib']) 
+post2 = detect_deps.importDeps(libEnv, "../../common/lib/qserv_proto")
+post = detect_deps.mergeDict(post, post2)
+post2 = detect_deps.importDeps(libEnv, "../../common/lib/qserv_common")
+post = detect_deps.mergeDict(post, post2)
+post2 = detect_deps.importDeps(env, "../../common/lib/qserv_common")
+post = detect_deps.mergeDict(post, post2)
 
 # Apply lib dependencies.
-conf = Configure(env)
-if "LIBS" in post:
-    for lib in post["LIBS"]:
-        conf.CheckLib(lib, language="C++")
+conf = Configure(libEnv)
+detect_deps.checkLibsFromDict(conf, post)
 conf.CheckLib("qserv_common")
 conf.CheckLib("qserv_proto")
-conf.CheckLib("protobuf")
 conf.CheckLib("XrdOfs")
-env = conf.Finish()
+libEnv = conf.Finish()
 
-lib = env.SharedLibrary("qserv_worker", sources)
-installedLib = env.Install('lib', lib)
+lib = libEnv.SharedLibrary("qserv_worker", sources)
+installedLib = libEnv.Install('lib', lib)
+#export
 env.Append(built_libs=[installedLib[0]])
+env.Append(built_cpppath=libEnv["CPPPATH"])
+env.Append(built_libpath=libEnv["LIBPATH"])
+env.Append(built_elibs=libEnv["LIBS"])
 
-schLib = env.Library("qserv_schedtest", 
-                     ("Base.cc FifoScheduler.cc TodoList.cc Task.cc"
-                      + "").split())
-installedSchLib = env.Install('lib', schLib)
+schLib = libEnv.Library("qserv_schedtest", 
+                        ("Base.cc FifoScheduler.cc TodoList.cc Task.cc"
+                         + "").split())
+installedSchLib = libEnv.Install('lib', schLib)
+#export
 env.Append(sched_libs=[installedSchLib[0]])

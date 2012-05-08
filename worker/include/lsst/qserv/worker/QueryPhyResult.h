@@ -27,6 +27,11 @@
 #include <string>
 #include <set>
 
+namespace lsst {
+namespace qserv {
+    // Forward
+    class SqlErrorObject;
+}}
 
 namespace lsst {
 namespace qserv {
@@ -49,8 +54,7 @@ public:
     bool performMysqldump(Logger& log,
                           std::string const& user,
                           std::string const& dumpFile,
-                          int& errorNo,
-                          std::string& errorDesc);
+                          SqlErrorObject&);
 
 private:
     void _mkdirP(std::string const& filePath);

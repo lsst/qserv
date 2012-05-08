@@ -36,10 +36,15 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
 // Forward
 class SqlConfig;
 class SqlConnection;
+}}
+
+namespace lsst {
+namespace qserv {
+namespace master {
+// Forward
 class SqlInsertIter;
 class PacketIter;
 
@@ -47,10 +52,9 @@ class PacketIter;
 struct TableMergerError {
 public:
     enum {NONE, IMPORT, MYSQLOPEN, MERGEWRITE, TERMINATE, 
-	  MYSQLCONNECT, MYSQLEXEC} status;
+          MYSQLCONNECT, MYSQLEXEC} status;
     int errorCode;
     std::string description;
-    
     bool resultTooBig() const;
 };
 
@@ -59,11 +63,10 @@ class TableMergerConfig {
 public:
     TableMergerConfig(std::string targetDb_, std::string targetTable_,
                       MergeFixup const& mFixup_,
-		      std::string user_, std::string socket_,
-		      std::string mySqlCmd_, std::string dropMem_) 
-	:  targetDb(targetDb_),  targetTable(targetTable_),
-           mFixup(mFixup_),
-	   user(user_),  socket(socket_), mySqlCmd(mySqlCmd_),
+                      std::string user_, std::string socket_,
+                      std::string mySqlCmd_, std::string dropMem_) 
+        :  targetDb(targetDb_),  targetTable(targetTable_),
+           mFixup(mFixup_), user(user_),  socket(socket_), mySqlCmd(mySqlCmd_),
            dropMem()
     {
         if(dropMem_.size() > 0) {
@@ -107,14 +110,13 @@ private:
     void _fixupTargetName();
     bool _importResult(std::string const& dumpFile);
     bool _slowImport(std::string const& dumpFile, 
-                    std::string const& tableName);
+                     std::string const& tableName);
     bool _importFromBuffer(char const* buf, std::size_t size, 
-                          std::string const& tableName);
+                           std::string const& tableName);
     bool _importBufferCreate(char const* buf, std::size_t size, 
-                            std::string const& tableName);
+                             std::string const& tableName);
     bool _importBufferInsert(char const* buf, std::size_t size,
                              std::string const& tableName, bool allowNull);
-
     bool _importBufferCreate(PacketIterPtr pacIter, 
                              std::string const& tableName);
     std::string _makeCreateStmt(PacketIterPtr pacIterP, 
@@ -141,7 +143,6 @@ private:
     boost::mutex _countMutex;
     boost::mutex _popenMutex;
     boost::mutex _sqlMutex;
-    
 };
 
 }}} // namespace lsst::qserv::master

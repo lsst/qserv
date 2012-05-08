@@ -117,24 +117,30 @@ public:
     std::string result;
 };
 
+bool substituteWithMap(std::string& s, 
+                       std::map<std::string, std::string> const& m,
+                       int minMatch);
+
 template <typename AnAst>
 struct SubstituteVisitor {
 public:
     typedef std::map<std::string, std::string> StringMap;
-    SubstituteVisitor(StringMap const& m_) : m(m_) {}
+    SubstituteVisitor(StringMap const& m_) : m(m_) {
+        std::string::size_type min = std::string::npos;
+        StringMap::const_iterator i;
+        for(i=m.begin(); i != m.end(); ++i) {
+            if(i->first.size() < min) min = i->first.size();
+        }
+        minMatch = min;
+    }
     
     void operator()(AnAst a) {
 	std::string s = a->getText();
-	if(!s.empty()) {
-            StringMap::const_iterator i = m.find(s);
-            if(i != m.end()) {
-                a->setText(i->second);
-            }
-	}
+        if(substituteWithMap(s, m, minMatch)) a->setText(s);
     }
     StringMap const& m;
+    int minMatch;
 };
-
 
 template <typename AnAst>
 std::string walkTree(AnAst r) {

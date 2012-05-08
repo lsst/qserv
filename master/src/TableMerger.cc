@@ -25,12 +25,13 @@
 #include <iostream>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
+#include "lsst/qserv/SqlConnection.hh"
 #include "lsst/qserv/master/TableMerger.h"
-#include "lsst/qserv/master/sql.h"
 #include "lsst/qserv/master/SqlInsertIter.h"
 #include "lsst/qserv/master/MmapFile.h"
-using lsst::qserv::master::SqlConfig;
-using lsst::qserv::master::SqlConnection;
+using lsst::qserv::SqlErrorObject;
+using lsst::qserv::SqlConfig;
+using lsst::qserv::SqlConnection;
 using lsst::qserv::master::TableMerger;
 using lsst::qserv::master::TableMergerError;
 using lsst::qserv::master::TableMergerConfig;
@@ -230,15 +231,13 @@ bool TableMerger::_applySql(std::string const& sql) {
 
 bool TableMerger::_applySqlLocal(std::string const& sql) {
     boost::lock_guard<boost::mutex> m(_sqlMutex);
+    SqlErrorObject errObj;
     if(!_sqlConn.get()) {
         _sqlConn.reset(new SqlConnection(*_sqlConfig, true));
-        if(!_sqlConn->connectToDb()) {
-            std::stringstream ss;
+        if(!_sqlConn->connectToDb(errObj)) {
             _error.status = TableMergerError::MYSQLCONNECT;
-            _error.errorCode = _sqlConn->getMySqlErrno();
-            ss << "Code:" << _error.errorCode << " "
-               << _sqlConn->getMySqlError();
-            _error.description = "Error connecting to db." + ss.str();
+            _error.errorCode = errObj.errNo();
+            _error.description = "Error connecting to db. " + errObj.printErrMsg();
             _sqlConn.reset();
             return false;
         } else {
@@ -246,16 +245,12 @@ bool TableMerger::_applySqlLocal(std::string const& sql) {
                       << " connected to db." << std::endl;
         }
     }
-    if(!_sqlConn->apply(sql)) {
-        std::stringstream ss;
+    if(!_sqlConn->runQuery(sql, errObj)) {
         _error.status = TableMergerError::MYSQLEXEC;
-        _error.errorCode = _sqlConn->getMySqlErrno();
-        ss << "Code:" << _error.errorCode << " "
-           << _sqlConn->getMySqlError();
-        _error.description = "Error applying sql." + ss.str();
+        _error.errorCode = errObj.errNo();
+        _error.description = "Error applying sql. " + errObj.printErrMsg();
         return false;
     }
-
     return true;
 }
 

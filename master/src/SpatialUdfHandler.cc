@@ -193,7 +193,7 @@ public:
         if(!_suh._getIsPatched()) {
             _suh._finalizeOutBand();
             if(_suh.getASTFactory() && !_suh.getWhereIntruder().empty()) {
-                std::cout << "patching via FromWhere" << std::endl;
+                //std::cout << "patching via FromWhere" << std::endl;
                 if(_suh._recentWhere.get()) {
                     std::string intruder = _suh.getWhereIntruder() + " AND ";
                     insertTextNodeAfter(_suh.getASTFactory(), intruder, 
@@ -281,8 +281,8 @@ public:
                                                          paramStrs));
         _suh._inbandRestrictions.push_back(r); // Track separately.
         _suh._expandRestriction(*r, ss);
-        std::cout << "Spec yielded " 
-                   << ss.str() <<std::endl;
+        // std::cout << "Spec yielded " 
+        //            << ss.str() <<std::endl;
         // Edit the parse tree
         collapseNodeRange(name, getLastSibling(params));
         name->setText(ss.str());
@@ -378,7 +378,10 @@ qMaster::SpatialUdfHandler::_expandRestriction(Restriction const& r,
         // std::cout << "Expanding restr for table: " 
         //           << spi->first << "--second--" 
         //           << spi->second << std::endl;
-        o << r.getUdfCallString(rdi->alias, 
+        std::string tname;
+        if(rdi->isAlias) tname = rdi->logical;
+        else tname = rdi->magic; 
+        o << r.getUdfCallString(tname, 
                                 getTableConfig(rdi->table));
     }
     return o;

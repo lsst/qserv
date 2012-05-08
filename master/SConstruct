@@ -29,6 +29,7 @@
 
 
 import glob, os.path, re, sys
+import errno
 import distutils.sysconfig
 
 sys.path.append("../common")
@@ -66,11 +67,23 @@ else:
     print >> sys.stderr, "Using xrootd inc/lib: ", xrd_inc, xrd_lib
 
 # Build the environment
-env = Environment()
 env.Tool('swig')
 env['SWIGFLAGS'] = ['-python', '-c++', '-Iinclude'],
 env['CPPPATH'] = [distutils.sysconfig.get_python_inc(), 'include'],
 env['SHLIBPREFIX'] = ""
+env.Append(CPPPATH = ['../common/include'])
+env.Append(LIBPATH = ['../common/lib']) 
+
+
+def importDeps(env, f):
+    fName = f+".deps"
+    if os.access(fName, os.R_OK):
+        deps = eval(open(fName).read()) # import dep file directly
+        #print "deps", deps
+        env.Append(**deps)
+importDeps(env, "../common/include/lsst/qserv/worker.pb.h")
+importDeps(env, "../common/include/lsst/qserv/SqlErrorObject.hh")
+importDeps(env, "../common/lib/qserv_proto")
 
 ## Allow user-specified swig tool
 ## SWIG 1.3.29 has bugs which cause the build to fail.
@@ -107,7 +120,11 @@ env.Append(CPPFLAGS = detect_deps.XRDFLAGS +
 # Start configuration tests
 conf = Configure(env)
 
-conf.CheckLib("qserv_common")
+env.Append(LIBPATH = ["../common/lib"])
+if not conf.CheckLib("qserv_common", language="C++"):
+    print >> sys.stderr, "Could not find qserv_common lib"
+    canBuild = False
+
 # boost library reqs
 if not (detect_deps.checkAddBoost(conf, "boost_thread")
         and detect_deps.checkAddBoost(conf, "boost_regex")):
@@ -128,6 +145,7 @@ conf = Configure(env)
 
 # libssl
 if not detect_deps.checkAddSslCrypto(conf): canBuild = False
+
 # MySQL
 if not detect_deps.checkAddMySql(conf): canBuild = False
 # XrdPosix
@@ -156,7 +174,6 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "TableNamer.cc",
                   "TableRefChecker.cc",
                   "TableRemapper.cc"])
-             
 
 pyPath = 'python/lsst/qserv/master'
 pyLibName = os.path.join(pyPath, '_masterLib.so')
@@ -167,16 +184,13 @@ dispatchSrcs = map(lambda x: os.path.join('src', x),
                     "TableMerger.cc",
                     "SqlInsertIter.cc",
                     "PacketIter.cc",
-                    "sql.cc",
                     "dispatcher.cc", "xrootd.cc",
                     "AsyncQueryManager.cc",
                     "ChunkQuery.cc",
                     "WorkQueue.cc",
                     "Timer.cc"])
 
-
 srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs
-
 
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
              'srcPaths' : dispatchSrcs + [os.path.join('src',
@@ -216,8 +230,15 @@ def installTo(env, targetDir, pyLib):
     for s in env.Glob(os.path.join(srcPyDir,"*.py")):
         if s.name == "argv.py": continue # workaround Scons missing argv.py
         env.Alias("install", env.Install(pyDir, s))
-    # install pylib.    
+    # install pylib. 
     env.Alias("install", env.Install(pyDir, pyLib))
+    # Make sure path exists.
+    try: os.makedirs(pyDir)
+    except OSError, exc: # "as" syntax not available in Python <=2.5 
+        if exc.errno == errno.EEXIST:
+            pass
+        else: raise
+
     for p in range(1,len(pathList)): # touch init files
         plist = [targetDir] + pathList[:p] + ["__init__.py"]
         fname = os.path.join(*plist)

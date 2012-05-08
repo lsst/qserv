@@ -415,6 +415,15 @@ function queryType()
 
     ---------------------------------------------------------------------------
 
+    local isIgnored = function(qU)
+        if string.find(qU, "^SET ")  then 
+            return true
+        end
+        return false
+    end
+
+    ---------------------------------------------------------------------------
+
     local isNotSupported = function(qU)
         if string.find(qU, "^EXPLAIN ") or
            string.find(qU, "^GRANT ") or
@@ -432,6 +441,7 @@ function queryType()
         isLocal = isLocal,
         shouldPassToResultDb = shouldPassToResultDb,
         isDisallowed = isDisallowed,
+        isIgnored = isIgnored,
         isNotSupported = isNotSupported
     }
 end
@@ -487,7 +497,8 @@ function queryProcessing()
            pcall(xmlrpc.http.call, 
                  rpcHP, "submitQuery", queryToPassProtect, hintsToPassArr)
         if (not callError) then
-           return err.set(ERR_RPC_CALL, "Exception in RPC call: " .. ok)
+           return err.set(ERR_RPC_CALL, "Cannot connect to Qserv master; "
+                          .. "Exception in RPC call: " .. ok)
         elseif (not ok) then
            return err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
         end
@@ -499,16 +510,33 @@ function queryProcessing()
         if resultTableName == "error" then
            return err.set(ERR_QSERV_PARSE, "Qserv error: " .. qservError)
         end
-           
+        
 
         return SUCCESS
-    end
-
+     end
+    
     ---------------------------------------------------------------------------
 
     local processLocally = function(q)
         print ("Processing locally")
         return SUCCESS
+    end
+
+    ---------------------------------------------------------------------------
+
+    local processIgnored = function(q)
+        proxy.response.type = proxy.MYSQLD_PACKET_OK
+        -- Assemble result
+        proxy.response.resultset = {
+           fields = {
+              {
+                 type = proxy.MYSQL_TYPE_STRING,
+                 name = command,
+              },
+           },
+           rows = {{"Ignoring meaningless command (in Qserv)."}}
+        }
+        return proxy.PROXY_SEND_RESULT
     end
 
     ---------------------------------------------------------------------------
@@ -543,6 +571,7 @@ function queryProcessing()
     return {
         sendToQserv = sendToQserv,
         processLocally = processLocally,
+        processIgnored = processIgnored,
         prepForFetchingResults = prepForFetchingResults
     }
 
@@ -569,7 +598,9 @@ function read_query(packet)
         -- note we make no modifications to proxy.queries, 
         -- so the packet will be sent as-is
         if qType.isLocal(qU) then
-            return qProc.processLocally(qU)
+           return qProc.processLocally(qU)
+        elseif qType.isIgnored(qU) then
+           return qProc.processIgnored(qU)
         elseif qType.shouldPassToResultDb(qU) then
             return -- Return nothing to indicate passthrough.
         end

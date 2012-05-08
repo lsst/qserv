@@ -1,0 +1,26 @@
+# -*- python -*-
+Import('env')
+Import('envNoXrd')
+Import('detect_deps')
+import os
+
+pEnv = envNoXrd.Clone()
+pEnv.Append(CPPPATH=envNoXrd["built_cpppath"])
+pEnv.Append(LIBPATH="../../common/lib")
+pathSrcs = ["nulltool.cc", 
+            pEnv.Object(target="QservPathStructure.o", 
+                            source="../src/QservPathStructure.cc")]
+pEnv.Program("nulltool", pathSrcs)
+
+
+conf = pEnv.Configure()
+depDict = detect_deps.importDeps(env, "../../common/lib/qserv_common")
+detect_deps.checkLibsFromDict(conf, depDict)
+conf.CheckLib('qserv_common', language="C++")
+cEnv = conf.Finish()
+
+compiled = map(lambda f: cEnv.Object(os.path.basename(f)+".o", f), 
+               "../src/QservPathStructure.cc ../src/Config.cc ../src/Metadata.cc".split())
+pathSrcs = ["qsDbTool.cc"] + compiled
+
+cEnv.Program("qsDbTool", pathSrcs)
