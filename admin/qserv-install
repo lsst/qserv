@@ -203,6 +203,11 @@ sub check_and_install_qserv {
 	`perl -pi -e "s,/data/lsst/lspexport,$install_dir/xrootd-run," xrootd-run/lsp.cf`;
 	`perl -pi -e "s,/data/lsst,$install_dir/tmp," xrootd-run/lsp.cf`;
 	
+	#copy in and edit qserv config
+	`cp qserv/master/examples/lsst-dev01.qserv.cnf etc/local.qserv.cnf`;
+	`perl -pi -e "s,xrootd\\s*=\\s*\\S+,xrootd = $ENV{'HOST'}:1094," etc/local.qserv.cnf`;
+	`perl -pi -e "s,unix_socket\\s*=\\s*\\S+,unix_socket = $install_dir/var/lib/mysql/mysql.sock," etc/local.qserv.cnf`;
+	
 }
 
 sub check_and_setup_extras {
@@ -475,7 +480,7 @@ sub create_qserv_startup {
 	print QSERV "export LD_LIBRARY_PATH=$install_dir/lib:\$XRD_DIR/lib/\$PLATFORM\n";
 	print QSERV "export QSW_RESULTDIR=$install_dir/qserv-run/tmp\n";
 	print QSERV "\$PYTHON $install_dir/qserv/master/dist/startQserv.py -c ";
-	print QSERV "$install_dir/qserv-run/lsst-first.qserv.cnf &\n";
+	print QSERV "$install_dir/etc/local.qserv.cnf &\n";
 
 	close QSERV;
 	chmod 0755, "start_qserv";
