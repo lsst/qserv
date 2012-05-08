@@ -1,5 +1,7 @@
 -- interesting syntax
 
+-- subquery - not implemented
+
 SELECT CASE gid WHEN 1 THEN 'pipeline shutdowns seen'
                 WHEN 2 THEN 'CCDs attempted'
                 WHEN 3 THEN 'src writes'

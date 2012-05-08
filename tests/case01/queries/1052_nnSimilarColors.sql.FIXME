@@ -8,6 +8,8 @@
 --   certain distance of a given point
 --   http://dev.lsstcorp.org/trac/wiki/dbQuery023
 
+-- see ticket #2050
+
 SELECT DISTINCT o1.objectId, o2.objectId
 FROM   Object o1, 
        Object o2
