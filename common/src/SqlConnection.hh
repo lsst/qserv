@@ -51,6 +51,9 @@ public:
     std::string dbName;
     unsigned int port;
     std::string socket;
+    bool isValid() const {
+        return !username.empty();
+    }
 };
 
 class SqlResults {
@@ -60,7 +63,7 @@ public:
     ~SqlResults() {freeResults();};
 
     void addResult(MYSQL_RES* r);
-    bool extractFirstValue(char&, SqlErrorObject&);
+    bool extractFirstValue(std::string&, SqlErrorObject&);
     bool extractFirstColumn(std::vector<std::string>&, 
                             SqlErrorObject&);
     bool extractFirst2Columns(std::vector<std::string>&, //FIXME: generalize

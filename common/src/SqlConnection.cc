@@ -85,7 +85,7 @@ SqlResults::extractFirst2Columns(std::vector<std::string>& col1,
 }
 
 bool
-SqlResults::extractFirstValue(char& ret, SqlErrorObject& errObj) {
+SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     if (_results.size() != 1) {
         std::stringstream ss;
         ss << "Expecting one row, found " << _results.size() << " results"
@@ -214,11 +214,11 @@ SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
     if ( !runQuery(sql, results, errObj) ) {
         return errObj.addErrMsg("Failed to run: " + sql);
     }
-    char n;
-    if ( !results.extractFirstValue(n, errObj)) {
+    std::string s;
+    if ( !results.extractFirstValue(s, errObj)) {
         return false;
     }
-    return n == '1';
+    return s[0] == '1';
 }
 
 bool 
@@ -299,11 +299,11 @@ SqlConnection::tableExists(std::string const& tableName,
     if (!runQuery(sql, results, errObj)) {
         return _setErrorObject(errObj, "Problem executing: " + sql);
     }
-    char n;
-    if ( !results.extractFirstValue(n, errObj) ) {
+    std::string s;
+    if ( !results.extractFirstValue(s, errObj) ) {
         return errObj.addErrMsg("Query " + sql + " did not return result");
     }
-    return n == '1';
+    return s[0] == '1';
 }
 
 bool 
@@ -339,13 +339,13 @@ SqlConnection::listTables(std::vector<std::string>& v,
     v.clear();
     if (!_connected) if (!connectToDb(errObj)) return false;
     if ( getActiveDbName().empty() ) {
-        return errObj.addErrMsg("Can't list tables, db not selected");
+        return errObj.addErrMsg("Can't list tables, db not selected. ");
     }
 
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
     if (!dbExists(_dbName, errObj)) {
         return errObj.addErrMsg("Can't list tables for db " + _dbName
-                                + " because it does not exist");
+                                + " because the database does not exist. ");
     }
     std::string sql = "SELECT table_name FROM information_schema.tables ";
     sql += "WHERE table_schema = '" + _dbName + "'";

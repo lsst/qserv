@@ -35,6 +35,9 @@ using lsst::qserv::SqlErrorObject;
 using lsst::qserv::SqlResults;
 using qWorker::hashQuery;
 
+using std::cout;
+using std::endl;
+
 qWorker::Metadata::Metadata(std::string const& workerId) 
     : _metadataDbName("qserv_worker_meta_" + workerId) {
 }
@@ -66,26 +69,71 @@ qWorker::Metadata::registerQservedDb(std::string const& dbName,
                        std::string("Failed to register qserved db. ")
                        + "Sql command was: " + sql);
         }
-    } else {
-        // check if db is not already registered
-        std::string sql = "SELECT COUNT(*) FROM Dbs WHERE dbName='"+dbName+"'";
-        SqlResults results;
-        if (!sqlConn.runQuery(sql, results, errObj)) {
-            return false;
-        }
-        char n;
-        if (!results.extractFirstValue(n, errObj)) {
-            return errObj.addErrMsg("Failed to receive results from: " + sql);
-        }
-        if (n == '1') {
-            return errObj.addErrMsg("Db " + dbName + " is already registered");
-        }
+    } else if ( isRegistered(dbName, sqlConn, errObj) ) {
+        return errObj.addErrMsg("Db " + dbName + " is already registered.");
     }
     std::stringstream sql;
     sql << "INSERT INTO Dbs(dbName, partitionedTables) "
         << "VALUES ('" << dbName << "', " 
-        << "'" << _partitionedTables << "'" << ")" << std::endl;
+        << "'" << _partitionedTables << "'" << ")";
     return sqlConn.runQuery(sql.str(), errObj);
+}
+
+bool
+qWorker::Metadata::unregisterQservedDb(std::string const& dbName,
+                                       std::string const& baseDir,
+                                       std::string& dbPathToDestroy,
+                                       SqlConnection& sqlConn,
+                                       SqlErrorObject& errObj) {
+    if (!sqlConn.selectDb(_metadataDbName, errObj)) {
+        return errObj.addErrMsg("Failed to connect to metadata db");
+    }
+    if ( !isRegistered(dbName, sqlConn, errObj) ) {
+        return errObj.addErrMsg("Db " + dbName + " does not seem to be registered.");
+    }
+    std::stringstream sql;
+    sql << "DELETE FROM Dbs WHERE dbName='" << dbName << "'";
+    if ( !sqlConn.runQuery(sql.str(), errObj) ) {
+        return false;
+    }
+    QservPath p;
+    p.setAsCquery(dbName);
+    std::stringstream ss;
+    ss << baseDir << "/" << p.path();
+    dbPathToDestroy = ss.str();
+    return true;
+}
+
+bool
+qWorker::Metadata::showMetadata(SqlConnection& sqlConn,
+                                SqlErrorObject& errObj) {
+    if (!sqlConn.selectDb(_metadataDbName, errObj)) {
+        cout << "No metadata found." << endl;
+        return true;
+    }
+    std::string sql = "SELECT dbName, partitionedTables FROM Dbs";
+    SqlResults results;
+    if (!sqlConn.runQuery(sql, results, errObj)) {
+        return errObj.addErrMsg("Failed to execute: " + sql);
+    }
+    std::vector<std::string> dbs;
+    std::vector<std::string> pts; // each string = comma separated list
+    if (!results.extractFirst2Columns(dbs, pts, errObj)) {
+        return errObj.addErrMsg("Failed to receive results from: " + sql);
+    }
+    if (dbs.size() == 0 ) {
+        cout << "No databases registered in qserv metadata" << endl;
+        return true;
+    }
+    cout << "Databases registered in qserv metadata:" << endl;
+    int i, s = dbs.size();
+    for (i=0; i<s ; i++) {
+        std::string db = dbs[i];
+        std::string tl = pts[i];
+        cout << "  db: '" << db << "', partitionedTables: '" 
+             << tl << "'" << endl;
+    }
+    return true;
 }
 
 /// generates export directory paths for every chunk in every database served
@@ -127,6 +175,35 @@ bool
 qWorker::Metadata::generateExportPathsForDb(
                                    std::string const& baseDir,
                                    std::string const& dbName,
+                                   SqlConnection& sqlConn,
+                                   SqlErrorObject& errObj,
+                                   std::vector<std::string>& exportPaths) {
+    if (!sqlConn.selectDb(_metadataDbName, errObj)) {
+        return false;
+    }
+    if ( !isRegistered(dbName, sqlConn, errObj) ) {
+        return errObj.addErrMsg("Database: " + dbName + 
+                                " is not registered in qserv metadata.");
+    }            
+    std::string sql = "SELECT partitionedTables FROM Dbs WHERE dbName='"
+                      + dbName + "'";
+    SqlResults results;
+    if (!sqlConn.runQuery(sql, results, errObj)) {
+        return errObj.addErrMsg("Database: " + dbName + 
+                                " not registered in qserv metadata.");
+    }
+    std::string pTables;
+    if (!results.extractFirstValue(pTables, errObj)) {
+        return errObj.addErrMsg("Failed to receive results from: " + sql);
+    }
+    return generateExportPathsForDb(baseDir, dbName, pTables, 
+                                    sqlConn, errObj, exportPaths);
+}
+
+bool
+qWorker::Metadata::generateExportPathsForDb(
+                                   std::string const& baseDir,
+                                   std::string const& dbName,
                                    std::string const& tableList,
                                    SqlConnection& sqlConn,
                                    SqlErrorObject& errObj,
@@ -139,10 +216,19 @@ qWorker::Metadata::generateExportPathsForDb(
         if (!sqlConn.listTables(t, errObj, pTables[i]+"_", dbName)) {
             std::stringstream ss;
             ss << "Failed to list tables for db=" << dbName
-               << ", prefix=" << pTables[i] << std::endl;
+               << ", prefix=" << pTables[i] << "\n";
             return errObj.addErrMsg(ss.str());
         }
         int j, s2 = t.size();
+        if ( s2 == 0 ) {
+            std::stringstream ss;
+            ss << "WARNING: no partitioned tables with prefix '"
+               << pTables[i] << "_' found in the database '"
+               << dbName << "'. Did you forget to load the data?\n";
+            std::cout << ss.str() << std::endl;
+            // FIXME: is this an error?
+            //return errObj.addErrMsg(ss.str());
+        }        
         for (j=0; j<s2 ; j++) {
             int chunkNo = extractChunkNo(t[j]);
             QservPath p;
@@ -215,4 +301,21 @@ qWorker::Metadata::extractChunkNo(std::string const& str) {
     std::stringstream csm(str.substr(cursor+1, s));
     csm >> num;
     return num;
+}
+
+bool
+qWorker::Metadata::isRegistered(std::string const& dbName,
+                                SqlConnection& sqlConn,
+                                SqlErrorObject& errObj) {
+    std::string sql = "SELECT COUNT(*) FROM Dbs WHERE dbName='"+dbName+"'";
+    
+    SqlResults results;
+    if (!sqlConn.runQuery(sql, results, errObj)) {
+        return false;
+    }
+    std::string s;
+    if (!results.extractFirstValue(s, errObj)) {
+        return errObj.addErrMsg("Failed to receive results from: " + sql);
+    }
+    return s[0] == '1';
 }

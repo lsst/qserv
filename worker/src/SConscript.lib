@@ -39,7 +39,6 @@ conf = Configure(libEnv)
 detect_deps.checkLibsFromDict(conf, post)
 conf.CheckLib("qserv_common")
 conf.CheckLib("qserv_proto")
-conf.CheckLib("protobuf")
 conf.CheckLib("XrdOfs")
 libEnv = conf.Finish()
 

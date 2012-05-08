@@ -21,6 +21,6 @@ cEnv = conf.Finish()
 
 compiled = map(lambda f: cEnv.Object(os.path.basename(f)+".o", f), 
                "../src/QservPathStructure.cc ../src/Config.cc ../src/Metadata.cc".split())
-pathSrcs = ["registerDb.cc"] + compiled
+pathSrcs = ["qsDbTool.cc"] + compiled
 
-cEnv.Program("registerDb", pathSrcs)
+cEnv.Program("qsDbTool", pathSrcs)

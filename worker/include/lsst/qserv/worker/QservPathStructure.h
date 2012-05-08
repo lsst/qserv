@@ -41,20 +41,30 @@ public:
     /// directories from the inserted paths
     bool persist();
 
+    /// calls rmdir for the passed directory including subdirs
+    static bool destroy(const std::string&);
+
     // for testing/debugging
     const std::vector<std::string> uniqueDirs() const;
-    void printUniquePaths() const;
+    const std::vector<std::string> uniqueDbDirs() const;
+    void printUniqueDirs() const;
+    void printUniqueDbDirs() const;
 
 private:
-    bool processOneDir(const std::string&);
+    bool processOneDir(const std::string&, bool);
     bool pathsContains(const std::string&) const;
     bool uniqueDirsContains(const std::string&) const;
-
+    bool uniqueDbDirsContains(const std::string&) const;
+    static bool listDir(const std::string& dir, 
+                        std::vector<std::string>&);
     bool createDirectories() const;
+    bool isRegistered() const;
+    bool isRegistered(const char*) const;
     bool createPaths() const;
 
     std::vector<std::string> _paths;
     std::vector<std::string> _uniqueDirs;
+    std::vector<std::string> _uniqueDbDirs;
 };
 
 }}} // namespace lsst::qserv::worker
