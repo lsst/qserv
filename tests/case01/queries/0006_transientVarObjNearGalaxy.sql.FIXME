@@ -1,6 +1,8 @@
 -- Select transient variable objects near a known galaxy
 -- http://dev.lsstcorp.org/trac/wiki/dbQuery015
 
+-- we don't have variability and extendedParamer columns
+
 SELECT v.objectId, v.ra, v.decl
 FROM   Object v, Object o
 WHERE  o.objectId = :objectId
