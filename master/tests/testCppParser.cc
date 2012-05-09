@@ -594,7 +594,7 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
 }
 
 BOOST_AUTO_TEST_CASE(Case01_2006) {
-    std::string stmt = "SELECT scisql_fluxToAbMag(uFlux_PS), "
+    std::string stmt = "SELECT scisql_fluxToAbMag(uFlux_PS) "
         "FROM   Object WHERE  (objectId % 100 ) = 40;";
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
