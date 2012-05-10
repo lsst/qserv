@@ -49,10 +49,10 @@ def tryCountQuery():
     pmap = makePmap()
     q = "SELECT %s FROM %s %s;" % ("count(*)", "LSST.Object", "LIMIT 10")
     a = HintedQueryAction(q, 
-                              {"db" : "test"},  # Use test db.
-                              pmap, 
-                              lambda e: None, tableName)
-        
+                          {"db" : "test"},  # Use test db.
+                          pmap, 
+                          lambda e: None, tableName)
+
     assert a.getIsValid()
     a.chunkLimit = 6
     print "Trying q=",q
@@ -64,9 +64,7 @@ def tryCountQuery():
     db.applySql("select * from %s;" % tableName) #could print this
 
     clear(tableName)
-            
-    
-    
+
 
 class TestAppInterface(unittest.TestCase):
     def setUp(self):
@@ -108,4 +106,3 @@ class TestAppInterface(unittest.TestCase):
             return x
         except:
             return None
-    
