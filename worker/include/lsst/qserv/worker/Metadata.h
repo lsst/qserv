@@ -74,6 +74,10 @@ private:
     bool isRegistered(std::string const& dbName,
                       SqlConnection& sqlConn,
                       SqlErrorObject& errObj);
+    void addChunk(int chunkNo,
+                  std::string const& baseDir,
+                  std::string const& dbName,
+                  std::vector<std::string>& exportPaths);
 
 private:
     const std::string _metadataDbName;
