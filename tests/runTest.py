@@ -184,12 +184,14 @@ python ../../master/examples/partition.py -PObject -t 2  -p  4 /tmp/Object.csv -
 sudo rm /tmp/Object.csv
 #use the loadPartitionedObjectTables.py script to generate loadO
 mysql -u<u> -p<p> qservTest_case01_q < loadO
+mysql -u<u> -p<p> qservTest_case01_q -e "create table Object_1234567890 like Object_100"
 
 cd ../; mkdir source; cd source
 mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Source.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM Source"
 python ../../master/examples/partition.py -PSource -t 33 -p 34 -o 0 /tmp/Source.csv -S 10 -s 2
 #use the loadPartitionedSourceTables.py script to generate loadS
 mysql -u<u> -p<p> qservTest_case01_q < loadS
+mysql -u<u> -p<p> qservTest_case01_q -e "create table Source_1234567890 like Source_100"
 
 # this creates the objectId index
 mysql -u<u> -p<p> -e "create database qservMeta"

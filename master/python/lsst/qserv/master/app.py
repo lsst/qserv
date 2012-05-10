@@ -91,6 +91,11 @@ from lsst.qserv.master import configureSessionMerger, getSessionResultName
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
 
+
+# Constant, long-term, this should be defined differently
+dummyEmptyChunk = 1234567890
+
+
 def debug(sig, frame):
     """Interrupt running process, and provide a python prompt for
     interactive debugging."""
@@ -796,6 +801,9 @@ class HintedQueryAction:
                 else:
                     self._intersectIter = map(lambda i: (i,[]), chunkIds)
                 self._isFullSky = False
+                if not self._intersectIter:
+                    self._intersectIter = [(dummyEmptyChunk, [])]
+
         # If hints only apply when partitioned tables are in play.
         # FIXME: we should check if partitionined tables are being accessed,
         # and then act to support the heaviest need (e.g., if a chunked table
@@ -838,6 +846,18 @@ class HintedQueryAction:
             self._factory.fillFragment(query, None)
         return self._factory.getBytes()
 
+    def dispatchChunk(self, chunkId, subIter, lastTime):
+        print "Dispatch iter: ", time.time() - lastTime
+        msg = self._prepareMsg(chunkId, subIter)
+        prepTime = time.time()
+        print "DISPATCH: ", chunkId, self.queryStr # Limit printout spew
+        self._babysitter.submitMsg(self._factory.msg.db,
+                                   chunkId, msg, 
+                                   self._factory.resulttable)
+
+        print "Chunk %d dispatch took %f seconds (prep: %f )" % (
+            chunkId, time.time() - lastTime, prepTime - lastTime)
+
     def invokeProtocol2(self):
         count = 0
         self._babysitter.pauseReadback();
@@ -845,21 +865,15 @@ class HintedQueryAction:
         chunkLimit = self.chunkLimit
         for chunkId, subIter in self._intersectIter:
             if chunkId in self._emptyChunks:
-                continue # FIXME: What if all chunks are empty?
-            print "Dispatch iter: ", time.time() - lastTime
-            msg = self._prepareMsg(chunkId, subIter)
-            prepTime = time.time()
-            print "DISPATCH: ", chunkId, self.queryStr # Limit printout spew
-            self._babysitter.submitMsg(self._factory.msg.db,
-                                       chunkId, msg, 
-                                       self._factory.resulttable)
-
-            print "Chunk %d dispatch took %f seconds (prep: %f )" % (
-                chunkId, time.time() - lastTime, prepTime - lastTime)
+                continue
+            self.dispatchChunk(chunkId, subIter, lastTime)
             lastTime = time.time()
             count += 1
             if count >= chunkLimit: break
             ##print >>sys.stderr, q, "submitted"
+        if count == 0:
+            self.dispatchChunk(dummyEmptyChunk, [], lastTime)
+
         self._babysitter.resumeReadback()
         self._invokeLock.release()
         return

@@ -28,6 +28,7 @@ where <idA>:
   2xxx - supported, medium difficulty (full scan)
   3xxx - supported, difficult /expensive (e.g. full sky joins)
   4xxx - supported, very difficult (eg near neighbor for large area)
+  8xxx - queries with bad syntax. They can fail, but should not crash the server
   9xxx - unknown support
 
 files that are not yet supported should have extension .FIXME
