@@ -20,6 +20,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// Callback: generic callback interface class.
 #ifndef LSST_QSERV_MASTER_CALLBACK_H
 #define LSST_QSERV_MASTER_CALLBACK_H
 #include <boost/shared_ptr.hpp>

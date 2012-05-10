@@ -19,6 +19,12 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// PacketIter: a fragment-iterated interface to a local file or an
+// xrootd file descriptor. Facilitates transferring bytes directly
+// from the xrootd realm to a fragment consumer (probably the table
+// merger). Allowing both types input sources makes it easier to
+// reduce buffering and disk usage, theoretically improving overall
+// latency. 
 
 #include "lsst/qserv/master/PacketIter.h"
 #include "lsst/qserv/master/xrdfile.h"

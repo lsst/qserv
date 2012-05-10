@@ -20,6 +20,11 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  
+// AsyncQueryManager: Manages/dispatches individual chunk queries,
+// waits for their completions, collects results, and invokes result
+// merging. Initiates query squashing when faults are detected. 
+// "Async" refers to the use of asynchronous xrootd client API, which
+// required some state management and liberal use of callbacks.
 #include <iostream>
 
 #include <boost/make_shared.hpp>

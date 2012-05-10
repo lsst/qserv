@@ -19,6 +19,10 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+// AggregateMgr records aggregation needs detected in a top-level
+// query and generates appropriate clauses for use in chunk queries
+// and merge queries. 
  
 #include <functional>
 #include <algorithm>

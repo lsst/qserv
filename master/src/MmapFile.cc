@@ -19,6 +19,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// MmapFile is a lightweight wrapper for a mmap'd file.
 
 #include "lsst/qserv/master/MmapFile.h"
 #include <iostream>

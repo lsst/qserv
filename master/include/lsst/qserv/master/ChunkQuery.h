@@ -1,5 +1,4 @@
 // -*- LSST-C++ -*-
-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -21,7 +20,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+// class ChunkQuery represents a query regarding a single chunk.
 #ifndef LSST_QSERV_MASTER_CHUNKQUERY_H
 #define LSST_QSERV_MASTER_CHUNKQUERY_H
 

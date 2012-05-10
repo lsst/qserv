@@ -1,0 +1,31 @@
+This file provides brief descriptions of the source in qserv/master. 
+AggregateMgr.cc -- AggregateMgr (+nested) impl: handle aggregation
+info and query clause generation
+AggregateMgr.h -- AggregateMgr header
+AsyncQueryManager.cc -- AsyncQueryManager impl: per-session
+chunk query management.
+AsyncQueryManager.h -- AsyncQueryManager header
+ChunkMapping.cc -- class ChunkMapping impl:  generates mappings from placeholder table references to physical table names. 
+ChunkMapping.h -- ChunkMapping header
+ChunkQuery.cc -- ChunkQuery (+internals) impl: single-chunk query 
+ChunkQuery.h -- ChunkQuery header
+MmapFile.cc -- MmapFile impl: light C++ wrapper for mmap'ed files.  
+MmapFile.h -- MmapFile header
+PacketIter.cc -- class PacketIter impl: fragment-iteration over a file
+or xrootd file descriptor.
+PacketIter.h -- PacketIter header
+SessionManager.h -- SessionManager (template): simple mgr of
+integer-indexed sessions (usually AsyncQueryManager)
+SpatialUdfHandler.cc -- deals with in-band spatial udf specs and
+patches WHERE clauses. Also treats out-band specs.
+SqlInsertIter.cc -- SqlInsertIter impl: iterates over INSERTs in 
+mysqldump output.
+SqlInsertIter.h -- SqlInsertIter header
+SqlParseRunner.cc -- SqlParseRunner (+parsehandlers +nested +internal)
+impl: Top-level parsing orchestrator.
+SqlParseRunner.h -- SqlParseRunner header
+SqlSubstitution.cc -- SqlSubstitution impl: Uses SqlParseRunner to parse
+query and insert placeholder names.
+SqlSubstution.h -- SqlSubstitution header
+
+
