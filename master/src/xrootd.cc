@@ -21,6 +21,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// xrootd.h -- Helper funcitons for xrootd-based dispatch
  
 #include <openssl/md5.h>
 #include <sstream>

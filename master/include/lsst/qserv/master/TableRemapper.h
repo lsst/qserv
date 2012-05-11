@@ -20,6 +20,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// TableRemapper computes substitution mappings for table refs in query parser.
 #ifndef LSST_QSERV_MASTER_TABLEREMAPPER_H
 #define LSST_QSERV_MASTER_TABLEREMAPPER_H
 #include "lsst/qserv/master/common.h"
@@ -30,6 +31,8 @@ namespace master {
 class TableNamer; // Forward
 class TableRefChecker;
 
+/// Computes substitution maps using the TableNamer namespace and the
+/// TableRefChecker for chunk/subchunk information. 
 class TableRemapper {
 public:
     TableRemapper(TableNamer const& tn, TableRefChecker const& checker, 

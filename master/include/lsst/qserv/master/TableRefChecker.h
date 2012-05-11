@@ -33,6 +33,8 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
+/// TableRefChecker Validation logic for table references. Checks whether access
+/// is allowed to the db, and whether tables are chunked or subchuned. 
 class TableRefChecker {
 public:
     typedef boost::shared_ptr<TableRefChecker> Ptr;

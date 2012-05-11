@@ -20,6 +20,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// Please see TableNamer.h
 #include "lsst/qserv/master/TableNamer.h"
 #include "lsst/qserv/master/TableRefChecker.h"
 #include "lsst/qserv/master/parseHandlers.h"

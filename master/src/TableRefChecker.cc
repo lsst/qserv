@@ -20,6 +20,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// See TableRefChecker.h
 #include "lsst/qserv/master/TableRefChecker.h"
 #include <string>
 #include <iostream> // debugging

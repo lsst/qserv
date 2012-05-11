@@ -19,6 +19,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// xrdfile.h -- Wrapper for xrootd client API functions
  
 //#define FAKE_XRD 1
 #include <iostream>

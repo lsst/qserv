@@ -27,5 +27,48 @@ SqlParseRunner.h -- SqlParseRunner header
 SqlSubstitution.cc -- SqlSubstitution impl: Uses SqlParseRunner to parse
 query and insert placeholder names.
 SqlSubstution.h -- SqlSubstitution header
-
+Substitution.cc -- Substitution impl:  Simply performs substitution on
+a template string using a supplied string-to-string mapping.  
+Substitution.h -- Substitution header
+TableMerger.cc -- TableMerger impl: feeds in chunkquery results into a
+mysql instance and performs fixup.
+TableMerger.h -- TableMerger header
+TableNamer.cc -- TableNamer (+nested) maintains a namespace for tables
+referenced in a query.
+TableNamer.h -- TableNamer header
+TableRef.cc -- TableRef impl: container for a SQL table specification.
+TableRef.h -- TableRef header
+TableRefChecker.cc -- TableRefChecker impl: Validation logic for table
+references.
+TableRefChecker.h -- TableRefChecker header
+TableRemapper.cc -- TableRemapper impl:  computes substitution
+mappings for table refs in query parser.
+TableRemapper.h -- TableRemapper header
+Templater.cc -- Templater (ColumnHandler, TableHandler,
+TableListHandler) impl
+Templater.hh -- Templater header
+Timer.cc -- Timer class
+Timer.h -- Timer header
+common.h -- declarations (consts, templated helpers) common to qserv master
+dispatcher.cc -- class-less functions for submitting queries, exported
+by SWIG
+dispatcher.h -- impl for dispatching logic. 
+mergeTypes.h -- data types for use by table merger (MergeFixup)
+parseHandlers.cc -- assorted parse handlers (and helpers) to plugin to
+parser (TableAliasInfo, TableAliasFunc,
+AliasMgr[ColumnAliasHandler,TableAliasHandler])
+parseHandlers.h -- declarations of parse handlers
+parseTreeUtil.h -- templated parse tree manipulators
+parseTreeUtil.cc -- non-templated impl of parse tree manipulators
+parserBase.h -- Base declarations shared among parser code
+stringUtil.h -- Various string manipulation tools
+thread.h -- semaphore, datatypes for synchronous query
+dispatch. (sync)QueryManager
+thread.cc -- impl for threaded query mgr.
+transaction.h -- datatypes for SWIG'd dispatch interface.
+xrdfile.h -- Wrapper for xrootd client API functions
+xrdfile.cc -- xrootd wrapper impl
+xrootd.h -- Helper functions for dealing with specifics of
+xrootd-based dispatch.
+xrootd.cc -- impl of helper functions with xrootd.
 
