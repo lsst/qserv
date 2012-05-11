@@ -38,6 +38,11 @@ using qWorker::hashQuery;
 using std::cout;
 using std::endl;
 
+
+// Constant. Long term, this should be defined differently
+const int DUMMYEMPTYCHUNKID = 1234567890;
+
+
 qWorker::Metadata::Metadata(std::string const& workerId) 
     : _metadataDbName("qserv_worker_meta_" + workerId) {
 }
@@ -230,16 +235,25 @@ qWorker::Metadata::generateExportPathsForDb(
             //return errObj.addErrMsg(ss.str());
         }        
         for (j=0; j<s2 ; j++) {
-            int chunkNo = extractChunkNo(t[j]);
-            QservPath p;
-            p.setAsCquery(dbName, chunkNo);
-            std::stringstream ss;
-            ss << baseDir << "/" << p.path() << std::ends;
-            exportPaths.push_back(ss.str());
+            addChunk(extractChunkNo(t[j]), baseDir, dbName, exportPaths);
         }
+        addChunk(DUMMYEMPTYCHUNKID, baseDir, dbName, exportPaths);
     }
     return true;
 }
+
+void
+qWorker::Metadata::addChunk(int chunkNo, 
+                            std::string const& baseDir,
+                            std::string const& dbName,
+                            std::vector<std::string>& exportPaths) {
+    QservPath p;
+    p.setAsCquery(dbName, chunkNo);
+    std::stringstream ss;
+    ss << baseDir << "/" << p.path() << std::ends;
+    exportPaths.push_back(ss.str());
+}
+
 
 bool
 qWorker::Metadata::prepPartitionedTables(std::string& strIn,

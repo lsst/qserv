@@ -494,6 +494,18 @@ BOOST_AUTO_TEST_CASE(Case01_0012) {
     // Optional parens may be confusing the parser.
 }
 
+BOOST_AUTO_TEST_CASE(Case01_1012) {
+    std::string stmt = "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ABS(iE1_SG);";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+}
+
+BOOST_AUTO_TEST_CASE(Case01_1013) {
+    std::string stmt = "SELECT objectId, ROUND(iE1_SG, 3), ROUND(ABS(iE1_SG), 3) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ROUND(ABS(iE1_SG), 3);";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+}
+
 // Syntax not supported currently.
 BOOST_AUTO_TEST_CASE(Case01_1030) {
     std::string stmt = "SELECT objectId, taiMidPoint, scisql_fluxToAbMag(psfFlux) "

@@ -91,6 +91,11 @@ from lsst.qserv.master import configureSessionMerger, getSessionResultName
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
 
+
+# Constant, long-term, this should be defined differently
+dummyEmptyChunk = 1234567890
+
+
 def debug(sig, frame):
     """Interrupt running process, and provide a python prompt for
     interactive debugging."""
@@ -213,6 +218,7 @@ class XrdOperation(threading.Thread):
             hostport = os.getenv("QSERV_XRD","lsst-dev01:1094")
             user = "qsmaster"
             self._url = "xroot://%s@%s//query/%d" % (user, hostport, self._chunk)
+
         def _doRead(self):
             xrdLseekSet(self._handle, 0L); ## Seek to beginning to read from beginning.
             while True:
@@ -359,14 +365,17 @@ class RegionFactory:
         # ramin, declmin, ramax, declmax
         return map(lambda t: SphericalBox(t[:2], t[2:]),
                    self._splitParams("box", 4, param))
+
     def _handleCircle(self, param):
         # ra,decl, radius
         return map(lambda t: SphericalBox(t[:2], t[2:]),
                    self._splitParams("circle", 3, param))
+
     def _handleEllipse(self, param):
         # ra,decl, majorlen,minorlen,majorangle
         return map(lambda t: SphericalBox(t[:2], t[2], t[3], t[4]),
                    self._splitParams("ellipse", 5, param))
+
     def _handleConvexPolygon(self, param):
         # For now, list of vertices only, in counter-clockwise order
         # vertex count, ra1,decl1, ra2,decl2, ra3,decl3, ... raN,declN
@@ -459,7 +468,6 @@ class QueryCollater:
             self._merger.merge(self._saveName(k), v[1])
             #self._mergeTable(self._saveName(k), v[1])
 
-
     def getResultTableName(self):
         ## Should do sanity checking to make sure that the name has been
         ## computed.
@@ -496,10 +504,9 @@ class QueryCollater:
         createSql = "CREATE TABLE %s SELECT * FROM %s;" % (self._finalQname,
                                                            tableName)
         insertSql = "INSERT INTO %s SELECT * FROM %s;" % (self._finalQname,
-                                                           tableName)
+                                                          tableName)
         cleanupSql = "DROP TABLE %s;" % tableName
         
-            
         cmdBase = "%s --socket=%s -u %s %s " % (self._mysqlBin, self._dbSock, 
                                                 self._dbUser,
                                                 self._dbName)
@@ -529,7 +536,9 @@ class QueryCollater:
     def _saveName(self, chunk):
         dumpName = "%s_%s.dump" % (str(self.sessionId), str(chunk))
         return os.path.join(self.scratchPath, dumpName)
+
 ########################################################################
+
 def setupResultScratch():
     # Make sure scratch directory exists.
     cm = lsst.qserv.master.config
@@ -549,6 +558,7 @@ def setupResultScratch():
     return scratchPath
 
 ########################################################################    
+
 class QueryBabysitter:
     """Watches over queries in-flight.  An instrument of query care that 
     can be used by a client.  Unlike the collater, it doesn't do merging.
@@ -622,6 +632,7 @@ class QueryBabysitter:
         return os.path.join(self._scratchPath, dumpName)
 
 ########################################################################
+
 class PartitioningConfig: 
     """ An object that stores information about the partitioning setup.
     """
@@ -656,10 +667,10 @@ class PartitioningConfig:
     def _updateMap(self):
         map(self.chunkMapping.addChunkKey, self.chunked)
         map(self.chunkMapping.addSubChunkKey, self.subchunked)
-
-    pass
+        pass
 
 ########################################################################
+
 class HintedQueryAction:
     """A HintedQueryAction encapsulates logic to prepare, execute, and 
     retrieve results of a query that has a hint string."""
@@ -773,7 +784,6 @@ class HintedQueryAction:
                 empty = set(map(tolerantInt, s.split("\n")))
         except:
             print "ERROR: partitioner.emptyChunkListFile specified bad or missing chunk file"
-
         return empty
 
     def _evaluateHints(self, hints, pmap):
@@ -796,6 +806,9 @@ class HintedQueryAction:
                 else:
                     self._intersectIter = map(lambda i: (i,[]), chunkIds)
                 self._isFullSky = False
+                if not self._intersectIter:
+                    self._intersectIter = [(dummyEmptyChunk, [])]
+
         # If hints only apply when partitioned tables are in play.
         # FIXME: we should check if partitionined tables are being accessed,
         # and then act to support the heaviest need (e.g., if a chunked table
@@ -838,6 +851,17 @@ class HintedQueryAction:
             self._factory.fillFragment(query, None)
         return self._factory.getBytes()
 
+    def dispatchChunk(self, chunkId, subIter, lastTime):
+        print "Dispatch iter: ", time.time() - lastTime
+        msg = self._prepareMsg(chunkId, subIter)
+        prepTime = time.time()
+        print "DISPATCH: ", chunkId, self.queryStr # Limit printout spew
+        self._babysitter.submitMsg(self._factory.msg.db,
+                                   chunkId, msg, 
+                                   self._factory.resulttable)
+        print "Chunk %d dispatch took %f seconds (prep: %f )" % (
+            chunkId, time.time() - lastTime, prepTime - lastTime)
+
     def invokeProtocol2(self):
         count = 0
         self._babysitter.pauseReadback();
@@ -845,21 +869,15 @@ class HintedQueryAction:
         chunkLimit = self.chunkLimit
         for chunkId, subIter in self._intersectIter:
             if chunkId in self._emptyChunks:
-                continue # FIXME: What if all chunks are empty?
-            print "Dispatch iter: ", time.time() - lastTime
-            msg = self._prepareMsg(chunkId, subIter)
-            prepTime = time.time()
-            print "DISPATCH: ", chunkId, self.queryStr # Limit printout spew
-            self._babysitter.submitMsg(self._factory.msg.db,
-                                       chunkId, msg, 
-                                       self._factory.resulttable)
-
-            print "Chunk %d dispatch took %f seconds (prep: %f )" % (
-                chunkId, time.time() - lastTime, prepTime - lastTime)
+                continue
+            self.dispatchChunk(chunkId, subIter, lastTime)
             lastTime = time.time()
             count += 1
             if count >= chunkLimit: break
             ##print >>sys.stderr, q, "submitted"
+        if count == 0:
+            self.dispatchChunk(dummyEmptyChunk, [], lastTime)
+
         self._babysitter.resumeReadback()
         self._invokeLock.release()
         return
@@ -976,8 +994,6 @@ def results(tracker, handle):
             return "Some host with some port with some db"
         return None
 
-        
-
 tokens_where = [ ['where', 
                   [ ['RA', 'between', '2', 'and', '5'] ], 
                   'and', 
@@ -1013,4 +1029,3 @@ def clauses(col, cmin, cmax):
 #   File "/home/wang55/5node/m121/lsst/qserv/master/app.py", line 192, in run
 #     buf = "".center(bufSize) # Fill buffer
 # MemoryError
-
