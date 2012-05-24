@@ -1,0 +1,58 @@
+
+Install notes for Qserv:
+
+	There are a number of required software packages for the use of Qserv.  Notes on
+	the current software requirements and download of source codes for use can be
+	found at:
+
+	http://www.slac.stanford.edu/exp/lsst/qserv/download
+
+	Please see the web page there, and get all the software that you require for
+	your system.
+
+
+Server setup for Qserv:
+
+	You will need to define which production user qserv will run under, it is
+	not suggested to run qserv as root.  Login to your production user, and 
+	define the install dir which will be used.  The initial default is to put
+	all data in use for the database in this same dir, so make sure there will
+	be enough space for the data to be served.  
+	
+	In this install dir, download all source packages from the qserv download
+	page.  These should be put into a subdir call "build".
+	
+	Once all package files are there, untar the qserv tar into the install dir,
+	this will give you a subdir named like "qserv-0.3.0".  Then rename this
+	subdir to just "qserv".
+	
+	Using the install dir as your current working dir, then run the
+	"qserv-install" script from the qserv admin dir.  This will unpackage all
+	the source code, compile it for your machine, and setup and configure it for
+	use.  This will take 20 mins or so, but will finish with an installed and
+	configured qserv server for use.
+	
+	Example inital setup:
+	
+	cd <install dir>
+	mkdir build
+	<copy all download package from qserver download page to build>
+	tar zxf build/qserv-0.3.0rc1.tar.gz
+	mv qserv-0.3.0 qserv
+	./qserv/admin/qserv-install
+	
+
+Further Info:
+
+	For further and more detailed notes please see the qserv_install_long.txt
+	docs.  This should explain in more detail what the install proceedure is
+	doing.
+	
+More questions:
+
+	For more questions please contact the qserv dev. team:
+	
+	Jacek Becla - becla@slac.stanford.edu
+	Daniel Wang - danielw@slac.stanford.edu
+	Douglas Smith - douglas@slac.stanford.edu
+	
