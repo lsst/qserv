@@ -26,6 +26,11 @@
 /// class TableMergerConfig 
 /// class TableMerger 
 
+/// The TableMerger classes are responsible for properly feeding in
+/// chunkquery results into a mysql instance. When all results are
+/// collected, a fixup step may be needed, as specified when
+/// configuring the TableMerger. 
+
 #ifndef LSST_QSERV_MASTER_TABLE_MERGER_H
 #define LSST_QSERV_MASTER_TABLE_MERGER_H
 #include <string>

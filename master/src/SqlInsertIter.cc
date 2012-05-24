@@ -20,6 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// class SqlInsertIter -- A class that finds INSERT statements in 
+// mysqldump output and iterates over them.
 #include "lsst/qserv/master/SqlInsertIter.h"
 #include <iostream>
 

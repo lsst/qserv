@@ -19,7 +19,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
+// Generic timer class
 #include "lsst/qserv/master/Timer.h"
 
 namespace lsst {

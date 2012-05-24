@@ -19,7 +19,12 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+// Declares:
+// Templater higher-level templating management for queries
+// ::ColumnHandler -- column ref parse handler
+// ::TableHandler -- table ref parse handler
+// ::TableListHandler -- table list parse handler
+
 #ifndef LSST_QSERV_MASTER_TEMPLATER_H
 #define LSST_QSERV_MASTER_TEMPLATER_H
 

@@ -20,6 +20,9 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// TableRef is an abstract value class containing a specification of a table
+// whose only behavior is the ability to generate a munged table name, generally
+// for use with substitution logic.
 #ifndef LSST_QSERV_MASTER_TABLEREF_H
 #define LSST_QSERV_MASTER_TABLEREF_H
 #include <string>

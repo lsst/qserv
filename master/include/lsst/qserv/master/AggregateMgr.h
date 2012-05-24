@@ -35,6 +35,9 @@
 // class AggregateRecord
 // NodeBound, NodeList typedefs
 //
+// AggregateMgr records aggregation needs detected in a top-level
+// query and generates appropriate clauses for use in chunk queries
+// and merge queries. 
  
 #ifndef LSST_QSERV_MASTER_AGGREGATEMGR_H
 #define LSST_QSERV_MASTER_AGGREGATEMGR_H

@@ -20,6 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// TableNamer maintains a namespace for tables referenced in a query.
+// Using the FROM clause, it tracks how the table was named in the query, what
+// database qualifier was used (if any), what the alias is, and what physical
+// table is referred to. Tracking aliasing is important in generating spatial
+// restriction expressions.  Sometimes the database name is not available in the
+// clause, in which case, the namer must apply the proper database context. 
+//
+// Other classes defined:
+// AliasedRef 
+// AliasFunc
+
 #ifndef LSST_QSERV_MASTER_TABLENAMER_H
 #define LSST_QSERV_MASTER_TABLENAMER_H
 #include <set>

@@ -19,7 +19,12 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+
+// ChunkMapping is a helper class that generates mappings from
+// placeholder table references to physical table names.  This
+// facilitates substituting physical chunk numbers into a generated
+// query without requiring another walk through the original parse
+// tree.
 
 #include "lsst/qserv/master/ChunkMapping.h"
 namespace qMaster = lsst::qserv::master;

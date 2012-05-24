@@ -19,6 +19,10 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// SqlParseRunner is the top-level manager for everything attached to
+// parsing the top-level SQL query. Much work (handling parse events)
+// is delegated to other classes that are connected to the parser in
+// this class. 
  
 #ifndef LSST_QSERV_MASTER_SQLPARSERUNNER_H
 #define LSST_QSERV_MASTER_SQLPARSERUNNER_H

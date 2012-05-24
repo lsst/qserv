@@ -19,6 +19,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// See TableRemapper.h
 #include "lsst/qserv/master/TableRemapper.h"
 
 // Std
@@ -34,76 +35,79 @@ namespace qMaster = lsst::qserv::master;
 typedef std::map<std::string, int> IntMap;
 
 namespace { // anonymous 
-    const char sep='#';
+const char sep='#';
 
-    std::string stripDelim(std::string const& src,std::string const& delim) {
-        std::string::size_type p1 = src.find(delim);
-        assert(p1 != std::string::npos);
-        p1 += delim.size();
-        std::string::size_type p2 = src.find(delim, p1);
-        assert(p2 != std::string::npos);
-        return src.substr(p1, p2-p1);
-    }
-
-    template <class M>
-    int mergeGet(M const& m, 
-                 std::string const& one, std::string const& two, 
-                 int def) {
-        return qMaster::getFromMap(m, one + sep + two, def);
-    }
-    template <class M>
-    void mergeSet(M& m, 
-                  std::string const& one, std::string const& two, 
-                  int val) {
-        m[one + sep + two] = val;
-    }
-    class BaseGenerator {
-    public:
-        BaseGenerator(std::string const& delim) : _delim(delim) {}
-
-        virtual std::ostream& writeSubChunkName(std::ostream& os, 
-                                                std::string const& db,
-                                                std::string const& table) {
-            int num = mergeGet(_m, db, table, 0);
-            mergeSet(_m, db, table, ++num);
-            os << db << "." << _delim << table << "_sc" << num
-               << _delim;
-            return os;
-        }
-
-        std::ostream& writeChunkName(std::ostream& os, 
-                                     std::string const& db,
-                                     std::string const& table) {
-            return os << db << "." << _delim << table << _delim;
-        } 
-
-        std::ostream& writePlainName(std::ostream& os, 
-                                     std::string const& db,
-                                     std::string const& table) {
-            return os << db << "." << table;
-        }
-        std::string const _delim;
-        IntMap _m;
-    };
-
-    class OverlapGenerator : public BaseGenerator {
-    public:
-        OverlapGenerator(std::string const& delim) 
-            : BaseGenerator(delim) {}
-
-        virtual std::ostream& writeSubChunkName(std::ostream& os, 
-                                                std::string const& db,
-                                                std::string const& table) {
-            int num = mergeGet(_m, db, table, 0);
-            mergeSet(_m, db, table, ++num);
-            os << db << "." << _delim << table;
-            if(num == 1) os << "_sc" << num;
-            else os << "_sfo";
-            os << _delim;
-            return os;
-        }
-    };
+std::string stripDelim(std::string const& src,std::string const& delim) {
+    std::string::size_type p1 = src.find(delim);
+    assert(p1 != std::string::npos);
+    p1 += delim.size();
+    std::string::size_type p2 = src.find(delim, p1);
+    assert(p2 != std::string::npos);
+    return src.substr(p1, p2-p1);
 }
+
+template <class M>
+int mergeGet(M const& m, 
+             std::string const& one, std::string const& two, 
+             int def) {
+    return qMaster::getFromMap(m, one + sep + two, def);
+}
+template <class M>
+void mergeSet(M& m, 
+              std::string const& one, std::string const& two, 
+              int val) {
+    m[one + sep + two] = val;
+}
+
+// Generate substitution names for basic tables 
+class BaseGenerator {
+public:
+    BaseGenerator(std::string const& delim) : _delim(delim) {}
+    
+    virtual std::ostream& writeSubChunkName(std::ostream& os, 
+                                            std::string const& db,
+                                            std::string const& table) {
+        int num = mergeGet(_m, db, table, 0);
+        mergeSet(_m, db, table, ++num);
+        os << db << "." << _delim << table << "_sc" << num
+           << _delim;
+        return os;
+    }
+
+    std::ostream& writeChunkName(std::ostream& os, 
+                                 std::string const& db,
+                                 std::string const& table) {
+        return os << db << "." << _delim << table << _delim;
+    } 
+
+    std::ostream& writePlainName(std::ostream& os, 
+                                 std::string const& db,
+                                 std::string const& table) {
+        return os << db << "." << table;
+    }
+    std::string const _delim;
+    IntMap _m;
+};
+
+// Generate substitution names for tables with overlap
+class OverlapGenerator : public BaseGenerator {
+public:
+    OverlapGenerator(std::string const& delim) 
+        : BaseGenerator(delim) {}
+
+    virtual std::ostream& writeSubChunkName(std::ostream& os, 
+                                            std::string const& db,
+                                            std::string const& table) {
+        int num = mergeGet(_m, db, table, 0);
+        mergeSet(_m, db, table, ++num);
+        os << db << "." << _delim << table;
+        if(num == 1) os << "_sc" << num;
+        else os << "_sfo";
+        os << _delim;
+        return os;
+    }
+};
+} // anonymous namespace
 
 
 qMaster::TableRemapper::TableRemapper(TableNamer const& tn,

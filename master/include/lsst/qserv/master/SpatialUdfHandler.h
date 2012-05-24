@@ -19,6 +19,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// class SpatialUdfHandler handles parse events regarding spatial UDF call sites in the query and generates counterparts for use in chunk queries.
 #ifndef LSST_QSERV_MASTER_SPATIALUDFHANDLER_H
 #define LSST_QSERV_MASTER_SPATIALUDFHANDLER_H
 #include <list> 

@@ -19,7 +19,12 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+// class ChunkQuery represents a query regarding a single
+// chunk. Operates using a state-machine approach and transitions upon
+// events/callbacks.  See ChunkQuery.h
+
+// ReadCallable and WriteCallable are workqueue object callbacks that
+// allow chunkQuery work to be done in a workqueue(thread pool).
 
 // Standard
 #include <iostream>

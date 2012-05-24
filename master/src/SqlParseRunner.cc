@@ -20,6 +20,19 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// SqlParseRunner is the top-level manager for everything attached to
+// parsing the top-level SQL query. Much work (handling parse events)
+// is delegated to other classes that are connected to the parser in
+// this class. 
+// Parse handlers implemented here: 
+// LimitHandler 
+// OrderByHandler
+// FromHandler 
+// SpatialTableNotifier
+// PartitionTupleProcessor
+// HintTupleProcessor
+
+
 // Standard
 #include <functional>
 #include <cstdio>
@@ -258,6 +271,9 @@ private:
     SqlParseRunner& _spr;
 };
 
+////////////////////////////////////////////////////////////////////////
+// class SqlParseRunner
+////////////////////////////////////////////////////////////////////////
 boost::shared_ptr<qMaster::SqlParseRunner> 
 qMaster::SqlParseRunner::newInstance(std::string const& statement, 
                                      std::string const& delimiter,

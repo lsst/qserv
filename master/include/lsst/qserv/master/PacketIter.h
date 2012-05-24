@@ -21,8 +21,12 @@
  */
 
 // PacketIter.h: 
-// An iterator that provides iteration over arbitrarily-sized pieces of a 
-// stream.
+// An iterator that provides iteration over arbitrarily-sized pieces
+// of a stream. Access either a local file or an xrootd file
+// descriptor. Facilitates transferring bytes directly from the xrootd
+// realm to a fragment consumer (probably the table merger). Allowing
+// both types input sources makes it easier to reduce buffering and
+// disk usage, theoretically improving overall latency.
 //
 #ifndef LSST_QSERV_MASTER_PACKETITER_H
 #define LSST_QSERV_MASTER_PACKETITER_H
