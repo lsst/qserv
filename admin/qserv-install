@@ -125,7 +125,7 @@ sub check_and_install_xrootd {
 	chdir "$install_dir";
 	mkdir "xrootd-run";
 	mkdir "xrootd-run/result";
-	mkdir "xrootd-run/query2";
+	mkdir "xrootd-run/q";
 	
 }
 
@@ -192,16 +192,18 @@ sub check_and_install_qserv {
 	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE qservResult;"`;
 	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE qservScratch;"`;
 	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';"`;
+	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';"`;
 	`./bin/mysql -S var/lib/mysql/mysql.sock -u root < qserv/master/examples/qserv-master-perms.sql`;
 	
 	#shutdown mysql
 	`./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root`;
 	
 	#copy in xrootd config and configure
-	`cp qserv/master/examples/lsp.cf xrootd-run`;
+	`cp qserv/master/examples/lsp.cf etc`;
 	mkdir "tmp";
-	`perl -pi -e "s,/data/lsst/lspexport,$install_dir/xrootd-run," xrootd-run/lsp.cf`;
-	`perl -pi -e "s,/data/lsst,$install_dir/tmp," xrootd-run/lsp.cf`;
+	`perl -pi -e "s,/data/lsst/lspexport,$install_dir/xrootd-run," etc/lsp.cf`;
+	`perl -pi -e "s,/data/lsst,$install_dir/tmp," etc/lsp.cf`;
+	`perl -pi -e "s,query2,q," etc/lsp.cf`;
 	
 	#copy in and edit qserv config
 	`cp qserv/master/examples/lsst-dev01.qserv.cnf etc/local.qserv.cnf`;
@@ -446,8 +448,8 @@ sub create_xrootd_startup {
 	print XROOTD "#!/bin/bash\n";
 	print XROOTD "\n";
 	print XROOTD "#start_xrootd\n";
-	print XROOTD "export QSW_XRDQUERYPATH=\"/query2\"\n";
-	print XROOTD "export QSW_DBSOCK=\"$install_dir/var/lib/mysql/mysqld.sock\"\n";
+	print XROOTD "export QSW_XRDQUERYPATH=\"/q\"\n";
+	print XROOTD "export QSW_DBSOCK=\"$install_dir/var/lib/mysql/mysql.sock\"\n";
 	print XROOTD "QSW_MYSQLDUMP=\"$install_dir/bin/mysqldump\"\n";
 	print XROOTD "QSW_SCRATCHPATH=\"$install_dir/tmp\"\n";
 	print XROOTD "QSW_SCRATCHDB=\"qservScratch\"\n";
@@ -457,7 +459,7 @@ sub create_xrootd_startup {
 	print XROOTD "$install_dir/xrootd/lib/x86_64_linux_26_dbg\"\n";
 	print XROOTD "\n";
 	print XROOTD "$install_dir/xrootd/bin/x86_64_linux_26_dbg/xrootd -c ";
-	print XROOTD "$install_dir/xrootd-run/lsp.cf -l $install_dir/xrootd-run/xrootd.log &\n";
+	print XROOTD "$install_dir/etc/lsp.cf -l $install_dir/xrootd-run/xrootd.log &\n";
 	
 	close XROOTD;
 	chmod 0755, "start_xrootd";
@@ -480,7 +482,8 @@ sub create_qserv_startup {
 	print QSERV "export LD_LIBRARY_PATH=$install_dir/lib:\$XRD_DIR/lib/\$PLATFORM\n";
 	print QSERV "export QSW_RESULTDIR=$install_dir/qserv-run/tmp\n";
 	print QSERV "\$PYTHON $install_dir/qserv/master/dist/startQserv.py -c ";
-	print QSERV "$install_dir/etc/local.qserv.cnf &\n";
+	print QSERV "$install_dir/etc/local.qserv.cnf > ";
+	print QSERV "$install_dir/xrootd-run/qserv.log &\n";
 
 	close QSERV;
 	chmod 0755, "start_qserv";
