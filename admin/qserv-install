@@ -133,33 +133,37 @@ sub check_and_install_qserv {
 	
 	chdir "$install_dir";
 	
-	#check if things are already installed
-	if( -e "$install_dir/qserv" ) {
-		return;
-	}
+	#check if things are already untarred
+	unless( -e "$install_dir/qserv" ) { 
 	
-	#check on version of qserv
-	my @tmplist = sort grep /qserv/, @buildfiles;
-	my $qserv_tar = '';
-	foreach my $file ( sort @tmplist ) {
-		if( $file =~ /tar.gz/ ) {
-			$qserv_tar = $file;
+		#check on version of qserv
+		my @tmplist = sort grep /qserv/, @buildfiles;
+		my $qserv_tar = '';
+		foreach my $file ( sort @tmplist ) {
+			if( $file =~ /tar.gz/ ) {
+				$qserv_tar = $file;
+			}
 		}
-	}
-	
-	#untar the qserv code
-	if( -e "$build_dir/$qserv_tar" ) {
-		if( $opts{'test'} ) {
-			print "I would untar $qserv_tar here.\n";
+
+		#untar the qserv code
+		if( -e "$build_dir/$qserv_tar" ) {
+			if( $opts{'test'} ) {
+				print "I would untar $qserv_tar here.\n";
+			} else {
+				print "Untarring qserv...\n";
+				`tar zxf $build_dir/$qserv_tar`;
+				my( $tmp_qserv ) = $qserv_tar =~ /^(\S+).tar.gz/;
+				rename "$tmp_qserv", "qserv";
+			}
 		} else {
-			print "Untarring qserv...\n";
-			`tar zxf $build_dir/$qserv_tar`;
-			my( $tmp_qserv ) = $qserv_tar =~ /^(\S+).tar.gz/;
-			rename "$tmp_qserv", "qserv";
+			print "Sorry - I can't find the qserv####.tar.gz in the build dir.\n";
+			exit(0);
 		}
-	} else {
-		print "Sorry - I can't find the qserv.tar.gz in the build dir.\n";
-		exit(0);
+	}
+	
+	if( -e "$install_dir/qserv/master/dist" ) {	
+		#looks like qserv is already installed so, move on
+		return;
 	}
 	
 	chdir "$install_dir/qserv/common";
@@ -336,7 +340,7 @@ sub check_and_install_lua {
 	
 	#install lua xmlrpc
 	chdir "$build_dir";
-	my $luaxmlrpc_dir = check_and_untar( "timn-lua-xmlrpc" );
+	my $luaxmlrpc_dir = check_and_untar( "lua-xmlrpc" );
 	chdir "$build_dir/$luaxmlrpc_dir";
 	`perl -pi -e "s,LUA_DIR= /usr/local,LUA_DIR= $install_dir," Makefile`;
 	`make`;
