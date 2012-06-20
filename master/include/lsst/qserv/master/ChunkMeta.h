@@ -38,22 +38,22 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
+struct ChunkMetaEntry {
+    ChunkMetaEntry(std::string const& db_, 
+                   std::string const& table_, 
+                   int chunkLevel_) 
+        : db(db_), table(table_), chunkLevel(chunkLevel_) 
+        { }
+    std::string const db;
+    std::string const table;
+    int chunkLevel;
+};
 // class ChunkMeta is a value class that is used to transfer db/table
 // information from the python layer into the C++ layer
 // 
 class ChunkMeta { 
 public:
-    struct Entry {
-        Entry(std::string const& db_, 
-              std::string const& table_, 
-              int chunkLevel_) 
-            : db(db_), table(table_), chunkLevel(chunkLevel_) 
-            { }
-        std::string const& db;
-        std::string const& table;
-        int chunkLevel;
-    };
-    typedef std::list<Entry> EntryList;
+    typedef std::list<ChunkMetaEntry> EntryList;
 
     // Mutators:
 
@@ -61,9 +61,9 @@ public:
     // Database db, Table table, chunkLevel as 
     // 0: not partitioned, 1: chunked, 2: subchunked.
     void add(std::string const& db, std::string const& table, int chunkLevel) {
-        _entries.push_back(Entry(db, table, chunkLevel)); 
+        _entries.push_back(ChunkMetaEntry(db, table, chunkLevel)); 
     }
-    void add(Entry const& e) { _entries.push_back(e); }
+    void add(ChunkMetaEntry const& e) { _entries.push_back(e); }
 
     // Const access (to create chunk mapping setup TableNamer)
     EntryList const& getEntries() const { return _entries; }

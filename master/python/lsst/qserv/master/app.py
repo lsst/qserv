@@ -83,6 +83,7 @@ from lsst.qserv.master import initDispatcher
 from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
+from lsst.qserv.master import ChunkMeta
 from lsst.qserv.master import ChunkMapping, SqlSubstitution
 # Merger
 from lsst.qserv.master import TableMerger, TableMergerError, TableMergerConfig
@@ -643,6 +644,7 @@ class PartitioningConfig:
         ## public
         self.chunked = set([])
         self.subchunked = set([])
+        self.allowedDbs = set([])
         self.chunkMapping = ChunkMapping()
         self.chunkMeta = ChunkMeta()
         pass
@@ -652,8 +654,10 @@ class PartitioningConfig:
         try:
             chk = c.get("table", "chunked")
             subchk = c.get("table", "subchunked")
+            adb = c.get("table", "alloweddbs")
             self.chunked.update(chk.split(","))
             self.subchunked.update(subchk.split(","))    
+            self.allowedDbs.update(adb.split(","))
         except:
             print "Error: Bad or missing chunked/subchunked spec."
         self._updateMap()
@@ -667,10 +671,11 @@ class PartitioningConfig:
         return self.chunkMapping.getMapReference(chunk, subchunk)
 
     def _updateMeta(self):
-        for db in allowedDbs:
+        for db in self.allowedDbs:
             map(lambda t: self.chunkMeta.add(db, t, 1), self.chunked)
             map(lambda t: self.chunkMeta.add(db, t, 2), self.subchunked)
         pass
+
     def _updateMap(self):
         map(self.chunkMapping.addChunkKey, self.chunked)
         map(self.chunkMapping.addSubChunkKey, self.subchunked)
@@ -697,21 +702,15 @@ class HintedQueryAction:
         self._evaluateHints(hints, pmap) # Also gets new dbContext
 
         # Config preparation
-        configModule = lsst.qserv.master.config
-        qConfig = configModule.getStringMap()
-        qConfig["table.defaultdb"] = self._dbContext
-        # e.g., hints["box"] = "2.3,2.1,5.0,4.2"
-        hintCopy = hints.copy()
-        hintCopy.pop("db") # Remove db hint--only pass spatial hints now.
-        qConfig["query.hints"] = ";".join(
-            map(lambda (k,v): k + "," + v, hintCopy.items()))
+        qConfig = self._prepareCppConfig(self._dbContext, hints)
         self._sessionId = newSession(qConfig)
-        cf = configModule.config.get("partitioner", "emptyChunkListFile")
-        cfgLimit = int(configModule.config.get("debug", "chunkLimit"))
+        cModule = lsst.qserv.master.config
+        cf = cModule.config.get("partitioner", "emptyChunkListFile")
+        cfgLimit = int(cModule.config.get("debug", "chunkLimit"))
         if cfgLimit > 0:
             self.chunkLimit = cfgLimit
             print "Using debugging chunklimit:",cfgLimit
-        useMemory = configModule.config.get("tuning", "memoryEngine")
+        useMemory = cModule.config.get("tuning", "memoryEngine")
 
         self._emptyChunks = self._loadEmptyChunks(cf)        
 
@@ -719,12 +718,10 @@ class HintedQueryAction:
         try:
             self._pConfig = PartitioningConfig() # Should be shared.
             self._pConfig.applyConfig()
-            self._substitution = SqlSubstitution(query, 
-                                                 self._pConfig.chunkMapping,
-                                                 qConfig)
+            cfg = self._prepareCppConfig(self._dbContext, hints)
             self._substitution = SqlSubstitution(query, 
                                                  self._pConfig.chunkMeta,
-                                                 qConfig)
+                                                 cfg)
 
             if self._substitution.getError():
                 self._error = self._substitution.getError()
@@ -740,6 +737,7 @@ class HintedQueryAction:
         if not self._isValid:
             discardSession(self._sessionId)
             return
+
         # Query babysitter.
         self._babysitter = QueryBabysitter(self._sessionId, self.queryHash,
                                            self._substitution.getMergeFixup(),
@@ -763,11 +761,20 @@ class HintedQueryAction:
         self._invokeLock = threading.Semaphore()
         self._invokeLock.acquire() # Prevent result retrieval before invoke
         pass
-    
+
     # In transition to new protocol: only 1 result table allowed.
     def _headerFunc(self, tableNames, subc=[]):
         return ['-- SUBCHUNKS:' + ", ".join(imap(str,subc)),
                 '-- RESULTTABLES:' + ",".join(tableNames)]
+
+    def _prepareCppConfig(self, dbContext, hints):
+        hintCopy = hints.copy()        
+        hintCopy.pop("db") # Remove db hint--only pass spatial hints now.
+        cfg = lsst.qserv.master.config.getStringMap()
+        cfg["table.defaultdb"] = dbContext
+        cfg["query.hints"] = ";".join(
+            map(lambda (k,v): k + "," + v, hintCopy.items()))
+        return cfg
 
     def _parseRegions(self, hints):
         r = RegionFactory()
