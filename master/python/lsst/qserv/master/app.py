@@ -644,6 +644,7 @@ class PartitioningConfig:
         self.chunked = set([])
         self.subchunked = set([])
         self.chunkMapping = ChunkMapping()
+        self.chunkMeta = ChunkMeta()
         pass
 
     def applyConfig(self):
@@ -656,6 +657,7 @@ class PartitioningConfig:
         except:
             print "Error: Bad or missing chunked/subchunked spec."
         self._updateMap()
+        self._updateMeta()
         pass
 
     def getMapRef(self, chunk, subchunk):
@@ -664,6 +666,11 @@ class PartitioningConfig:
         """
         return self.chunkMapping.getMapReference(chunk, subchunk)
 
+    def _updateMeta(self):
+        for db in allowedDbs:
+            map(lambda t: self.chunkMeta.add(db, t, 1), self.chunked)
+            map(lambda t: self.chunkMeta.add(db, t, 2), self.subchunked)
+        pass
     def _updateMap(self):
         map(self.chunkMapping.addChunkKey, self.chunked)
         map(self.chunkMapping.addSubChunkKey, self.subchunked)
@@ -715,11 +722,16 @@ class HintedQueryAction:
             self._substitution = SqlSubstitution(query, 
                                                  self._pConfig.chunkMapping,
                                                  qConfig)
+            self._substitution = SqlSubstitution(query, 
+                                                 self._pConfig.chunkMeta,
+                                                 qConfig)
+
             if self._substitution.getError():
                 self._error = self._substitution.getError()
                 self._isValid = False
             else:
-                self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
+                # Skip when using chunkMeta
+                #self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
                 self._isValid = True
         except Exception, e:
             print "Exception!",e
@@ -796,6 +808,7 @@ class HintedQueryAction:
             regions = self._parseRegions(hints)
             self._dbContext = hints.get("db", "")
             ids = hints.get("objectId", "")
+            print "QSM: Got Hints.", "regions",regions,"ids",ids
             if regions != []:
                 self._intersectIter = pmap.intersect(regions)
                 self._isFullSky = False
@@ -808,7 +821,11 @@ class HintedQueryAction:
                 self._isFullSky = False
                 if not self._intersectIter:
                     self._intersectIter = [(dummyEmptyChunk, [])]
-
+        # _isFullSky indicates that no spatial hints were found.
+        # However, if spatial tables are not found in the query, then
+        # we should use the dummy chunk so the query can be dispatched
+        # once to a node of the balancer's choosing.
+                    
         # If hints only apply when partitioned tables are in play.
         # FIXME: we should check if partitionined tables are being accessed,
         # and then act to support the heaviest need (e.g., if a chunked table

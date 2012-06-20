@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -47,8 +48,11 @@ public:
     typedef lsst::qserv::master::MergeFixup MergeFixup;
 
     // Non-typedef'd map is necessary for SWIG.
+    /* SqlSubstitution(std::string const& sqlStatement,  */
+    /*                 ChunkMapping const& mapping,  */
+    /*                 std::map<std::string,std::string> const& config); */
     SqlSubstitution(std::string const& sqlStatement, 
-                    ChunkMapping const& mapping, 
+                    ChunkMeta const& cMeta,
                     std::map<std::string,std::string> const& config);
     /// config should include qserv master config + current session context
     /// i.e., defaultDb=LSST (or defaultDb=TestDb)
@@ -67,10 +71,12 @@ public:
 
 private:
     typedef boost::shared_ptr<Substitution> SubstPtr;
+    typedef boost::shared_ptr<ChunkMeta> CmetaPtr;
 
     void _build(std::string const& sqlStatement);
     void _computeChunkLevel(bool hasChunks, bool hasSubChunks);
     std::string _fixDbRef(std::string const& s, int chunk, int subChunk);
+    void _setupOverlap();
 
     std::string _delimiter;
     std::string _errorMsg;
@@ -81,6 +87,7 @@ private:
     Deque _subChunked;
     std::string _defaultDb;
     ChunkMapping _mapping;
+    CmetaPtr _cMeta;
     boost::mutex _mappingMutex;
     StringMap _config;
 };

@@ -27,6 +27,7 @@
 // tree.
 
 #include "lsst/qserv/master/ChunkMapping.h"
+#include "lsst/qserv/master/ChunkMeta.h"
 namespace qMaster = lsst::qserv::master;
 
 qMaster::ChunkMapping::Map 
@@ -70,8 +71,23 @@ qMaster::ChunkMapping::getMapping(int chunk, int subChunk) {
     return m;
 }
 
-qMaster::ChunkMapping::Map 
-const& qMaster::ChunkMapping::getMapReference(int chunk, int subChunk) {
+qMaster::ChunkMapping::Map const& 
+qMaster::ChunkMapping::getMapReference(int chunk, int subChunk) {
     _instanceMap = getMapping(chunk, subChunk);
     return _instanceMap;
+}
+
+void
+qMaster::ChunkMapping::setFromMeta(qMaster::ChunkMeta const& m) {
+    ChunkMeta::EntryList const& elist = m.getEntries();
+    typedef ChunkMeta::EntryList::const_iterator Citer;
+    Citer begin = elist.begin();
+    Citer end = elist.end();
+    for(Citer i = begin; i != end; ++i) {
+        // Discard i->db since it's not in the mapping.
+        // Ignore collisions if tables (of different dbs) 
+        // have different partitioning.
+        if(i->chunkLevel == 1) addChunkKey(i->table);
+        else if(i->chunkLevel == 2) addChunkKey(i->table);
+    } 
 }

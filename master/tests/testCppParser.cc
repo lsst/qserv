@@ -26,9 +26,11 @@
 #include <map>
 #include <string>
 #include "lsst/qserv/master/SqlSubstitution.h"
+#include "lsst/qserv/master/ChunkMeta.h"
 #include "lsst/qserv/master/SqlParseRunner.h"
 
 using lsst::qserv::master::ChunkMapping;
+using lsst::qserv::master::ChunkMeta;
 using lsst::qserv::master::SqlSubstitution;
 using lsst::qserv::master::SqlParseRunner;
 namespace test = boost::test_tools;
@@ -43,16 +45,17 @@ std::auto_ptr<ChunkMapping> newTestMapping() {
     return cm;
 }
 
+ChunkMeta newTestCmeta(bool withSubchunks=true) {
+    ChunkMeta m;
+    m.add("LSST","Object",2);
+    m.add("LSST","Source",1);
+    return m;
+}
+
+
 void tryStmt(std::string const& s, bool withSubchunks=false) {
     std::map<std::string,std::string> cfg; // dummy config
-    char const* imported[] = {"Source","Object"};
-    ChunkMapping c;
-    c.addChunkKey(imported[0]);
-    c.addSubChunkKey(imported[1]);
-    SqlSubstitution ss(s, c, cfg);
-    if(withSubchunks) {
-        ss.importSubChunkTables(imported);
-    }
+    SqlSubstitution ss(s, newTestCmeta(withSubchunks), cfg);
     if(!ss.getError().empty()) {
 	std::cout << "ERROR constructing substitution: " 
 		  << ss.getError() << std::endl;
@@ -87,6 +90,8 @@ void testStmt2(SqlParseRunner::Ptr spr, bool shouldFail=false) {
 struct ParserFixture {
     ParserFixture(void) 
         : delimiter("%$#") {
+        cMeta.add("LSST", "Source", 1);
+        cMeta.add("LSST", "Object", 2);
 	cMapping.addChunkKey("Source");
 	cMapping.addSubChunkKey("Object");
         tableNames.push_back("Object");
@@ -112,6 +117,7 @@ struct ParserFixture {
         return p;
     }
     ChunkMapping cMapping;
+    ChunkMeta cMeta;
     std::list<std::string> tableNames;
     std::string delimiter;
     std::map<std::string, std::string> config;
@@ -140,10 +146,8 @@ void tryNnSubstitute() {
 void tryTriple() {
     std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2, LSST.Source where o1.id != o2.id and dista(o1.ra,o1.decl,o2.ra,o2.decl) < 1 and Source.oid=o1.id;";
     std::map<std::string,std::string> cfg; // dummy config
-    ChunkMapping c;
-    c.addChunkKey("Source");
-    c.addSubChunkKey("Object");
-    c.addSubChunkKey("ObjectSub");
+    ChunkMeta c = newTestCmeta();
+    c.add("LSST", "ObjectSub", 2);
     SqlSubstitution ss(stmt, c, cfg);
     for(int i = 4; i < 6; ++i) {
 	std::cout << "--" << ss.transform(i,3) << std::endl;
@@ -155,12 +159,12 @@ void tryAggregate() {
     std::string stmt2 = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
     std::map<std::string,std::string> cfg; // dummy config
 
-    std::auto_ptr<ChunkMapping> c = newTestMapping();
-    SqlSubstitution ss(stmt, *c, cfg);
+    ChunkMeta c = newTestCmeta();
+    SqlSubstitution ss(stmt, c, cfg);
     for(int i = 4; i < 6; ++i) {
 	std::cout << "--" << ss.transform(i,3) << std::endl;
     }
-    SqlSubstitution ss2(stmt2, *c, cfg);
+    SqlSubstitution ss2(stmt2, c, cfg);
     std::cout << "--" << ss2.transform(24,3) << std::endl;
     
 }
@@ -207,9 +211,9 @@ BOOST_AUTO_TEST_CASE(NoSub) {
 BOOST_AUTO_TEST_CASE(Aggregate) {
     std::string stmt = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
 
-    SqlSubstitution ss(stmt, cMapping, config);
+    SqlSubstitution ss(stmt, cMeta, config);
     for(int i = 4; i < 6; ++i) {
-	// std::cout << "--" << ss.transform(cMapping.getMapping(i,3),i,3) 
+	// std::cout << "--" << ss.transform(cMeta.getMapping(i,3),i,3) 
         //           << std::endl;
         BOOST_CHECK_EQUAL(ss.getChunkLevel(), 1);
         BOOST_CHECK(ss.getHasAggregate());
@@ -225,9 +229,9 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
 BOOST_AUTO_TEST_CASE(Limit) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 limit 2;";
     
-    SqlSubstitution ss(stmt, cMapping, config);
+    SqlSubstitution ss(stmt, cMeta, config);
     for(int i = 4; i < 6; ++i) {
-	//std::cout << "--" << ss.transform(cMapping.getMapping(i,3),i,3) 
+	//std::cout << "--" << ss.transform(cMeta.getMapping(i,3),i,3) 
         //           << std::endl;
         BOOST_CHECK_EQUAL(ss.getChunkLevel(), 1);
         BOOST_CHECK(!ss.getHasAggregate());
@@ -242,9 +246,9 @@ BOOST_AUTO_TEST_CASE(Limit) {
 BOOST_AUTO_TEST_CASE(OrderBy) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;";
     
-    SqlSubstitution ss(stmt, cMapping, config);
+    SqlSubstitution ss(stmt, cMeta, config);
     for(int i = 4; i < 6; ++i) {
-	//std::cout << "--" << ss.transform(cMapping.getMapping(i,3),i,3) 
+	//std::cout << "--" << ss.transform(cMeta.getMapping(i,3),i,3) 
         //           << std::endl;
         BOOST_CHECK_EQUAL(ss.getChunkLevel(), 1);
         BOOST_CHECK(!ss.getHasAggregate());
@@ -462,6 +466,18 @@ BOOST_AUTO_TEST_CASE(AltDbName) {
     BOOST_CHECK(spr->getHasAggregate());
     BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
+
+// Ticket 2048
+BOOST_AUTO_TEST_CASE(NonpartitionedTable) {
+    std::string stmt = "SELECT offset, mjdRef, drift FROM LeapSeconds where offset = 10";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    std::cout << "Parse output:" << spr->getParseResult() << std::endl;
+    BOOST_CHECK(!spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
