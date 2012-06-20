@@ -737,6 +737,7 @@ class HintedQueryAction:
         if not self._isValid:
             discardSession(self._sessionId)
             return
+        self._postFixChunkScope(self._substitution.getChunkLevel())
 
         # Query babysitter.
         self._babysitter = QueryBabysitter(self._sessionId, self.queryHash,
@@ -804,6 +805,14 @@ class HintedQueryAction:
         except:
             print "ERROR: partitioner.emptyChunkListFile specified bad or missing chunk file"
         return empty
+
+    def _postFixChunkScope(self, chunkLevel):
+        if chunkLevel == 0:
+            # In this case, non-chunked, so dummy chunk is good enough
+            # for dispatch.
+            self._intersectIter = [(dummyEmptyChunk, [])]
+            return
+        return
 
     def _evaluateHints(self, hints, pmap):
         """Modify self.fullSky and self.partitionCoverage according to 

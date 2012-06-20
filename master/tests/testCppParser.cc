@@ -478,6 +478,24 @@ BOOST_AUTO_TEST_CASE(NonpartitionedTable) {
     BOOST_CHECK(!spr->getHasAggregate());
 }
 
+BOOST_AUTO_TEST_CASE(CountQuery) {
+    std::string stmt = "SELECT count(*) from Object;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
+}
+
+BOOST_AUTO_TEST_CASE(CountQuery2) {
+    std::string stmt = "SELECT count(*) from Source;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
