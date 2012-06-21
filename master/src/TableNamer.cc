@@ -176,6 +176,8 @@ void qMaster::TableNamer::_computeChunking() const {
     // C SC            | yes  | no*
     // SC SC           | yes  | yes
     // SC T            | yes  | no*
+    // T               | no   | no
+    // T T             | no   | no
     //
     // * : For now. Optimization may be possible.  May rewrite query to 
     // add subchunk qualifier?
