@@ -496,6 +496,20 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     BOOST_CHECK(spr->getHasAggregate());
 }
 
+BOOST_AUTO_TEST_CASE(ParenTicket2050) {
+    std::string stmt = "SELECT sce.filterId, sce.filterName "
+        "FROM Science_Ccd_Exposure AS sce "
+        "WHERE (sce.visit = 887404831) "
+        "AND (sce.raftName = '3,3') "
+        "AND (sce.ccdName LIKE '%');";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(!spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+    // Not sure what other tests
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
