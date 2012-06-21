@@ -492,7 +492,7 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
     BOOST_CHECK(spr->getHasChunks());
-    BOOST_CHECK(spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
 }
 
