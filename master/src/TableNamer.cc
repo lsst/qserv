@@ -159,6 +159,11 @@ qMaster::StringList qMaster::TableNamer::getBadDbs() const {
     return result;
 }
 
+/// @return true if the ref refers to a chunked table.
+bool qMaster::TableNamer::isChunked(AliasedRef const& r) const{
+    return _checker.isChunked(r.db, r.table);
+}
+
 /////////////////////////////////////////////////////////////////////////
 // class TableNamer (private)
 ////////////////////////////////////////////////////////////////////////

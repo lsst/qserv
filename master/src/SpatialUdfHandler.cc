@@ -373,11 +373,15 @@ qMaster::SpatialUdfHandler::_expandRestriction(Restriction const& r,
     RefDeque::const_iterator rde = rd.end();
     bool first = true;
     for(rdi = rd.begin(); rdi != rde; ++rdi) {
+        if(!_tableNamer.isChunked(*rdi)) continue;
         if(!first) o << " AND ";
         else first = false;
-        // std::cout << "Expanding restr for table: " 
-        //           << spi->first << "--second--" 
-        //           << spi->second << std::endl;
+        // std::cout << "Expanding restr for table: log:" << rdi->logical 
+        //           << "  db:" << rdi->db 
+        //           << "  table:" << rdi->table
+        //           << "  magic:" << rdi->magic
+        //           << "  alias:" << (rdi->isAlias ? "yes" : "no") 
+        //           << std::endl;
         std::string tname;
         if(rdi->isAlias) tname = rdi->logical;
         else tname = rdi->magic; 
