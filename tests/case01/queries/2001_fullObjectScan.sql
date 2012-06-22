@@ -14,7 +14,6 @@
 -- * Find extremely red galaxies
 --   http://dev.lsstcorp.org/trac/wiki/dbQuery037
 
--- see ticket #2050
 
 SELECT objectId,
        scisql_fluxToAbMag(uFlux_PS),
