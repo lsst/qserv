@@ -237,8 +237,9 @@ qWorker::Metadata::generateExportPathsForDb(
         for (j=0; j<s2 ; j++) {
             addChunk(extractChunkNo(t[j]), baseDir, dbName, exportPaths);
         }
-        addChunk(DUMMYEMPTYCHUNKID, baseDir, dbName, exportPaths);
-    }
+    } // end foreach t in pTables
+    // Always create dummy chunk export regardless of tables. (#2048)
+    addChunk(DUMMYEMPTYCHUNKID, baseDir, dbName, exportPaths);
     return true;
 }
 
