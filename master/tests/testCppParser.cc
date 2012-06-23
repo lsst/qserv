@@ -496,6 +496,15 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     BOOST_CHECK(spr->getHasAggregate());
 }
 
+BOOST_AUTO_TEST_CASE(UnpartLimit) {
+    std::string stmt = "SELECT * from Science_Ccd_Exposure limit 3;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(!spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
@@ -554,7 +563,9 @@ BOOST_AUTO_TEST_CASE(Case01_1030) {
     testStmt2(spr);
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(!spr->getHasAggregate()); // Not really "aggregation"
+    // Aggregation for qserv means a different chunk query 
+    // and some form of post-fixup query.
+    BOOST_CHECK(spr->getHasAggregate()); 
     BOOST_CHECK_EQUAL(spr->getParseResult(), expected); 
     // std::cout << "Parse output:" << spr->getParseResult() << std::endl;
     // But should have a check for ordering-type fixups.
