@@ -130,9 +130,9 @@ int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s,
 qMaster::QueryState qMaster::joinQuery(int session, int id) {
     // Block until specific query id completes.
 #if 1
-    AsyncQueryManager& qm = getAsyncManager(session);
+    //AsyncQueryManager& qm = getAsyncManager(session);
 #else
-    QueryManager& qm = getManager(session);
+    //QueryManager& qm = getManager(session);
 #endif
     //qm.join(id);
     //qm.status(id); // get status
@@ -196,7 +196,6 @@ void qMaster::pauseReadTrans(int session) {
 void qMaster::resumeReadTrans(int session) {
     AsyncQueryManager& qm = getAsyncManager(session);
     qm.resumeReadTrans();
-    
 }
 
 qMaster::QueryState qMaster::joinSession(int session) {
@@ -206,17 +205,17 @@ qMaster::QueryState qMaster::joinSession(int session) {
     bool successful;
     std::for_each(d.begin(), d.end(), mergeStatus(successful));
     
-    std::cout << "Joined everything" << std::endl;
     if(successful) {
-        std::cout << "Successful!" << std::endl;
+        std::cout << "Joined everything (success)" << std::endl;
         return SUCCESS;
     } else {
-        std::cout << "Failure!" << std::endl;
+        std::cout << "Joined everything (failure!)" << std::endl;
         return ERROR;
     }
 }
 
-std::string const& qMaster::getQueryStateString(QueryState const& qs) {
+std::string 
+const& qMaster::getQueryStateString(QueryState const& qs) {
     static const std::string unknown("unknown");
     static const std::string waiting("waiting");
     static const std::string dispatched("dispatched");
@@ -236,6 +235,72 @@ std::string const& qMaster::getQueryStateString(QueryState const& qs) {
     default:
         return unknown;
     }
+}
+
+std::string
+qMaster::getErrorDescr(int session) {
+
+    class _OneVector_ {
+    public:
+        _OneVector_(const std::string& name): _name(name) {}
+            
+        void add(int x) { _v.push_back(x); }
+
+        std::string toString() {
+            int size = _v.size();
+            if (size == 0) {
+                return "";
+            }
+            std::stringstream ss;
+            ss << _name << " failed for chunk";
+            if (size > 1) ss << "s";
+            ss << ": ";
+            std::vector<int>::iterator itrV;
+            for (int i=0 ; i<size ; i++) {
+                ss << _v[i];
+                if (i < size-2) {
+                    ss << " ";
+                }
+            }
+            ss << ". ";
+            return ss.str();
+        }
+    private:
+        std::vector<int> _v; // vector of chunk ids
+        std::string _name;
+    };    
+    
+    std::stringstream ss;
+    AsyncQueryManager& qm = getAsyncManager(session);
+    AsyncQueryManager::ResultDeque const& d = qm.getFinalState();
+    AsyncQueryManager::ResultDequeCItr itr;
+    _OneVector_ openV("open");
+    _OneVector_ qwrtV("queryWrite");
+    _OneVector_ readV("read");
+    _OneVector_ lwrtV("localWrite");
+
+    for (itr=d.begin() ; itr!=d.end(); ++itr) {
+        if (itr->second.open <= 0) {
+            openV.add(itr->first);
+        } else if (itr->second.queryWrite <= 0) {
+            qwrtV.add(itr->first);
+        } else if (itr->second.read < 0) {
+            readV.add(itr->first);
+        } else if (itr->second.localWrite <= 0) {
+            lwrtV.add(itr->first);
+        }
+    }
+    // Handle open, write, read errors first. If we have 
+    // any of these errors, we will get localWrite errors 
+    // for every chunk, because we are not writing result, 
+    // so don't bother reporting them.
+    ss << openV.toString();
+    ss << qwrtV.toString();
+    ss << readV.toString();
+    if (ss.str().empty()) {
+        ss << lwrtV.toString();
+    }
+    return ss.str();
 }
 
 int qMaster::newSession(std::map<std::string,std::string> const& config) {
