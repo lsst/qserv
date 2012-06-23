@@ -259,7 +259,7 @@ qMaster::getErrorDescr(int session) {
             for (int i=0 ; i<size ; i++) {
                 ss << _v[i];
                 if (i < size-2) {
-                    ss << " ";
+                    ss << ", ";
                 }
             }
             ss << ". ";
