@@ -301,8 +301,11 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
                                              _tableConfigMap, 
                                              *_tableNamer))
 { 
-
-    _readConfig(config);
+    try {
+        _readConfig(config);
+    } catch (std::string msg) {
+        _errorMsg = "Parser: " + msg;
+    }
     //std::cout << "(int)PARSING:"<< statement << std::endl;
 }
 
