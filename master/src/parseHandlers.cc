@@ -24,7 +24,19 @@
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
 
+////////////////////////////////////////////////////////////////////////
+// Exception classes
+class UnsupportedSyntaxError : public std::exception {
+public:
+    UnsupportedSyntaxError(std::string const& d) throw() 
+        : desc("UnsupportedSyntaxError(" + d + ")") {}
+    virtual ~UnsupportedSyntaxError() throw() {}
+    virtual const char* what() const throw() { return desc.c_str(); }
 
+    std::string desc;
+};
+
+////////////////////////////////////////////////////////////////////////
 // ColumnAliasHandler is bolted to the SQL parser, where it gets called for
 // each aliasing instance.
 class qMaster::AliasMgr::ColumnAliasHandler : public VoidTwoRefFunc {
@@ -55,16 +67,15 @@ public:
     virtual void operator()(antlr::RefAST table, 
                             antlr::RefAST subQuery,
                             antlr::RefAST as,
-                            antlr::RefAST alias)  {
+                            antlr::RefAST alias) throw() {
         using lsst::qserv::master::getLastSibling;
         std::string logicalName;
         std::string physicalName;
         antlr::RefAST tableBound;
 
         if(subQuery.get()) {
-            std::cout << "ERROR!! Unexpected subquery alias in query. " 
-                      << subQuery->getText();
-            return; // Refuse to process.
+            // Refuse to process (cannot continue).
+            throw UnsupportedSyntaxError("Subquery");
         }
         assert(table.get());
         if(alias.get()) {
