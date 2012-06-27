@@ -472,7 +472,7 @@ BOOST_AUTO_TEST_CASE(NonpartitionedTable) {
     std::string stmt = "SELECT offset, mjdRef, drift FROM LeapSeconds where offset = 10";
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
-    std::cout << "Parse output:" << spr->getParseResult() << std::endl;
+    //std::cout << "Parse output:" << spr->getParseResult() << std::endl;
     BOOST_CHECK(!spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(!spr->getHasAggregate());
@@ -526,13 +526,22 @@ BOOST_AUTO_TEST_CASE(Case01_0002) {
 }
 
 BOOST_AUTO_TEST_CASE(Case01_0012) {
+    // This is ticket #2048, actually a proxy problem.
+    // Missing paren "(" after WHERE was what the parser received.
     std::string stmt = "SELECT sce.filterId, sce.filterName "
-        "FROM   Science_Ccd_Exposure AS sce WHERE  (sce.visit = 887404831) "
-        "AND (sce.raftName = '3,3') AND (sce.ccdName LIKE '%');";
+        "FROM Science_Ccd_Exposure AS sce "
+        "WHERE (sce.visit = 887404831) "
+        "AND (sce.raftName = '3,3') "
+        "AND (sce.ccdName LIKE '%')";
+
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
     BOOST_CHECK(!spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+    BOOST_CHECK(spr->getError() == "");
+    //std::cout << "Parse output:" << spr->getParseResult() << std::endl;
+    //std::cout << "Error:" << spr->getError() << std::endl;
     // should parse okay as a full-scan of sce, non-partitioned.
     // Optional parens may be confusing the parser.
 }

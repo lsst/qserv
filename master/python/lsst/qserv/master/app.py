@@ -691,6 +691,7 @@ class HintedQueryAction:
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
+
         # queryHash identifies the top-level query.
         self.queryHash = self._computeHash(self.queryStr)[:18]
         self.chunkLimit = 2**32 # something big
@@ -824,7 +825,6 @@ class HintedQueryAction:
             regions = self._parseRegions(hints)
             self._dbContext = hints.get("db", "")
             ids = hints.get("objectId", "")
-            print "QSM: Got Hints.", "regions",regions,"ids",ids
             if regions != []:
                 self._intersectIter = pmap.intersect(regions)
                 self._isFullSky = False
