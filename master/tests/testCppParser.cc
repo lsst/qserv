@@ -505,6 +505,11 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
     BOOST_CHECK(!spr->getHasAggregate());
 }
 
+BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
+    std::string stmt = "SELECT * FROM (SELECT * FROM Object WHERE filterId=4) WHERE rFlux_PS > 0.3;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr, true);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
