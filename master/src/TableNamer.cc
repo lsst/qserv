@@ -56,7 +56,7 @@ std::ostream& operator<<(std::ostream& os,
 // class TableNamer::AliasFunc
 ////////////////////////////////////////////////////////////////////////
 
-class qMaster::TableNamer::AliasFunc : public qMaster::TableAliasFunc {
+class lsst::qserv::master::TableNamer::AliasFunc : public qMaster::TableAliasFunc {
 public:
     typedef boost::shared_ptr<AliasFunc> Ptr;
     AliasFunc(TableNamer& tn) :_tn(tn) {}

@@ -32,7 +32,7 @@ namespace qCommon = lsst::qserv::common;
 ////////////////////////////////////////////////////////////////////////
 // class WorkQueue::Runner
 ////////////////////////////////////////////////////////////////////////
-class qCommon::WorkQueue::Runner {
+class lsst::qserv::common::WorkQueue::Runner {
 public:
     Runner(WorkQueue& w) : _w(w) { 
     }
