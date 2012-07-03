@@ -38,7 +38,7 @@ public:
                int limit_, 
                bool needsFixup_) 
         : select(select_), post(post_),
-          orderBy(orderBy_), limit(-1), 
+          orderBy(orderBy_), limit(limit_), 
           needsFixup(needsFixup_)
     {}
     MergeFixup() : limit(-1), needsFixup(false) {}

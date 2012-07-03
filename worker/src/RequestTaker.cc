@@ -47,6 +47,7 @@ bool qWorker::RequestTaker::receive(Size offset, char const* buffer,
 
 bool qWorker::RequestTaker::complete() {
     boost::shared_ptr<TaskMsg> tm(new TaskMsg());
+    assert(tm.get());
     gio::ArrayInputStream input(_queryBuffer.getData(), 
                                 _queryBuffer.getLength());
     gio::CodedInputStream coded(&input);

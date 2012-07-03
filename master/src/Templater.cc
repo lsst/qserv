@@ -181,25 +181,12 @@ void Templater::JoinVisitor::_reassignRefs(RefList& l) {
         r->setText(orig);
     }
 }
-#if 0 // Better placed in tablenamer
-////////////////////////////////////////////////////////////////////////
-// Templater::AliasTemplater
-////////////////////////////////////////////////////////////////////////
-class Templater::AliasTemplater : public qMaster::TableAliasFunc {
-    typedef boost::shared_ptr<AliasTemplater> Ptr;
-    AliasTemplater() {}
-    virtual void operator()(TableAliasInfo& i) {
-        // Replace physical table with munged name
-        // Alias
-    }
-};
-#endif
 ////////////////////////////////////////////////////////////////////////
 // Templater::TableListHandler
 ////////////////////////////////////////////////////////////////////////
 void Templater::TableListHandler::operator()(antlr::RefAST a, 
                                              antlr::RefAST b) {
-    walkTreeVisit(a, _deferred); // Defer so that the alias processing
+    //walkTreeVisit(a, _deferred); // Defer so that the alias processing
                                  // can happen first.
 }
 

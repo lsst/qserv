@@ -23,6 +23,9 @@
 #ifndef LSST_QSERV_MASTER_TRANSACTION_H
 #define LSST_QSERV_MASTER_TRANSACTION_H
 #include <string>
+#include <vector>
+#include <list>
+#include <boost/shared_ptr.hpp>
 
 namespace lsst {
 namespace qserv {
@@ -32,7 +35,6 @@ namespace master {
 /// specification of a subquery, as far as the xrootd layer is
 /// concerned.
 class TransactionSpec {
-
 public:
  TransactionSpec() : chunkId(-1) {}
     int chunkId;
@@ -44,6 +46,33 @@ public:
     bool isNull() const { return path.length() == 0; }
     
     class Reader;  // defined in thread.h
+};
+
+class Constraint {
+public:
+    std::string name;
+    std::vector<std::string> params;
+    std::string paramsGet(int i) const {
+        return params[i];
+    }
+    int paramsSize() const {
+        return params.size();
+    }
+};
+typedef std::vector<Constraint> ConstraintVector;
+class ConstraintVec { // Wrapper for SWIG.
+public:
+    ConstraintVec(boost::shared_ptr<ConstraintVector > v)
+        : _vec(v) {}
+    Constraint const& get(int i) const {
+        return (*_vec)[i];
+    }
+    int size() const {
+        if(!_vec.get()) return 0; // NULL vector -> 0 size
+        return _vec->size();
+    }
+private:
+    boost::shared_ptr<ConstraintVector> _vec;
 };
 
 }}} // namespace lsst::qserv::master

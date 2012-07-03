@@ -58,8 +58,8 @@ struct SchedulerFixture {
         t->set_db("elephant");
         for(int i=0; i < 3; ++i) {
             lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
-            f->set_query("Hello, this is a query.");
-            f->add_subchunk(100+i); 
+            f->add_query("Hello, this is a query.");
+            f->mutable_subchunks()->add_id(100+i); 
             f->set_resulttable("r_341");
         }
         ++counter;

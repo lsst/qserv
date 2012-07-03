@@ -72,6 +72,9 @@ void qWorker::SqlFragmenter::_advance() {
     char c = _query[pos];
     while((c == '\0') || (c == '\n') 
           || (c == ' ') || (c == '\t')) { c = _query[--pos];}
+    // Watch out for queries not terminated by semicolon.
+    if(c!= ';') {++pos;} // A non-semicolon, non-whitespace-->valuable.
+
     if (pos > (int)begin) {
         // create piece:
         _current.first = _query.data() + begin;

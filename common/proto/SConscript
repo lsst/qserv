@@ -32,7 +32,7 @@ lib = pEnv.Library("qserv_proto", sources)
 
 # Export proto lib + dependency 
 deps = {'LIBPATH' : [os.path.abspath(os.environ["PROTOC_LIB"])],
-        'LIBS' : ['protobuf','ssl']}
+        'LIBS' : ['protobuf','ssl', 'crypto']}
 tup = export_deps.installWithDeps(env, lib, "qserv_proto", "../lib", deps)
 env.Append(built_libs=[tup[0]])
 

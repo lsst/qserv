@@ -29,9 +29,20 @@
 #include "lsst/qserv/master/MetadataCache.h"
 #include "lsst/qserv/master/SqlParseRunner.h"
 #include "lsst/qserv/master/ifaceMeta.h"
+#include "lsst/qserv/master/SelectParser.h"
+#include "lsst/qserv/master/transaction.h"
+#include "lsst/qserv/master/QuerySession.h"
 
+using lsst::qserv::master::ChunkMapping;
+using lsst::qserv::master::ChunkMeta;
+using lsst::qserv::master::ChunkSpec;
+using lsst::qserv::master::QuerySession;
 using lsst::qserv::master::SqlSubstitution;
 using lsst::qserv::master::SqlParseRunner;
+using lsst::qserv::master::SelectParser;
+using lsst::qserv::master::SelectStmt;
+namespace qMaster = lsst::qserv::master;
+
 namespace test = boost::test_tools;
 
 // Forward declarations
@@ -45,6 +56,17 @@ namespace master {
 namespace {
 
 int metaCacheSessionId = -1;
+ChunkSpec makeChunkSpec(int chunkNum, bool withSubChunks=false) {
+    ChunkSpec cs;
+    cs.chunkId = chunkNum;
+    if(withSubChunks) {
+        int base = 1000 * chunkNum;
+        cs.subChunks.push_back(base);
+        cs.subChunks.push_back(base+10);
+        cs.subChunks.push_back(base+20);
+    }
+    return cs;
+}
 
 void tryStmt(std::string const& s) {
     std::map<std::string,std::string> cfg; // dummy config
@@ -75,8 +97,33 @@ void testStmt2(SqlParseRunner::Ptr spr, bool shouldFail=false) {
         BOOST_CHECK(!parseResult.empty());
     }
 }
-    
+void testParse2(SelectParser::Ptr p) {
+}
+
+void testStmt3(QuerySession::Test& t,  std::string const& stmt) {
+    QuerySession qs(t);
+    qs.setQuery(stmt);
+    qs.getConstraints();    
+    // SelectStmt const& stmt2 = 
+    qs.getStmt();
+    qs.addChunk(makeChunkSpec(100));
+    qs.addChunk(makeChunkSpec(101));
+    QuerySession::Iter i;
+    QuerySession::Iter e = qs.cQueryEnd();
+    for(i = qs.cQueryBegin(); i != e; ++i) {
+        qMaster::ChunkQuerySpec& cs = *i;
+        std::cout << "Spec: " << cs << std::endl;
+        //std::cout << *i << std::endl;
+    }    
+}
+ 
+
 } // anonymous namespace
+
+struct StaticFixture {
+    StaticFixture() { qMaster::initQuerySession(); }
+    ~StaticFixture() {}
+};
 
 struct ParserFixture {
     ParserFixture(void) 
@@ -86,6 +133,7 @@ struct ParserFixture {
         config["table.defaultdb"] ="LSST";
         config["table.partitioncols"] = "Object:ra_Test,decl_Test,objectIdObjTest;"
             "Source:raObjectTest,declObjectTest,objectIdSourceTest";
+        qsTest.cfgNum = 0;
 
         metaCacheSessionId = lsst::qserv::master::newMetadataSession();
         boost::shared_ptr<lsst::qserv::master::MetadataCache> mc =
@@ -142,11 +190,26 @@ struct ParserFixture {
         p->setup(tableNames);
         return p;
     }
+    SelectParser::Ptr getParser(std::string const& stmt) {
+        return getParser(stmt, config);
+    }
+    SelectParser::Ptr getParser(std::string const& stmt, 
+                                std::map<std::string,std::string> const& cfg) {
+        SelectParser::Ptr p;
+        p = SelectParser::newInstance(stmt);
+        p->setup();
+        return p;
+    }
+
+    ChunkMapping cMapping;
+    ChunkMeta cMeta;
     std::list<std::string> tableNames;
     std::string delimiter;
     std::map<std::string, std::string> config;
     std::map<std::string, int> whiteList;
     std::string defaultDb;
+
+    QuerySession::Test qsTest;
 };
 
 
@@ -201,6 +264,7 @@ void tryAggregate() {
 ////////////////////////////////////////////////////////////////////////
 // CppParser basic tests
 ////////////////////////////////////////////////////////////////////////
+BOOST_GLOBAL_FIXTURE(StaticFixture)
 BOOST_FIXTURE_TEST_SUITE(CppParser, ParserFixture)
 
 BOOST_AUTO_TEST_CASE(TrivialSub) {
@@ -530,6 +594,51 @@ BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr, true);
 }
+
+BOOST_AUTO_TEST_CASE(NewParser) {
+    char stmts[][128] = {
+        "SELECT table1.* from Science_Ccd_Exposure limit 3;",
+        "SELECT * from Science_Ccd_Exposure limit 1;",
+        "select ra_PS ra1,decl_PS as dec1 from Object order by dec1;",
+        "select o1.iflux_PS o1ps, o2.iFlux_PS o2ps, computeX(o1.one, o2.one) from Object o1, Object o2 order by o1.objectId;",
+
+        "select ra_PS from LSST.Object where ra_PS between 3 and 4;",
+        // Test column ref stuff.
+        "select count(*) from LSST.Object_3840, usnob.Object_3840 where LSST.Object_3840.objectId > usnob.Object_3840.objectId;",
+        "select count(*), max(iFlux_PS) from LSST.Object where iFlux_PS > 100 and col1=col2;",
+        "select count(*), max(iFlux_PS) from LSST.Object where qserv_areaspec_box(0,0,1,1) and iFlux_PS > 100 and col1=col2 and col3=4;"
+    };
+    for(int i=0; i < 8; ++i) {
+        std::string stmt = stmts[i];
+        std::cout << "----" << stmt << "----" << std::endl;
+        SelectParser::Ptr p = getParser(stmt);
+        testParse2(p);
+    }
+ }
+BOOST_AUTO_TEST_CASE(Mods) {
+    char stmts[][128] = {
+        "SELECT * from Object order by ra_PS limit 3;",
+        "SELECT count(*) from Science_Ccd_Exposure group by visit;",
+        "select count(*) from Object group by flags having count(*) > 3;"
+    };
+    for(int i=0; i < 3; ++i) {
+        std::string stmt = stmts[i];
+        testStmt3(qsTest, stmt);        
+    }
+ }
+
+BOOST_AUTO_TEST_CASE(CountNew) {
+    std::string stmt = "SELECT count(*), sum(Source.flux), flux2, Source.flux3 from Source where qserv_areaspec_box(0,0,1,1) and flux4=2 and Source.flux5=3;";
+    testStmt3(qsTest, stmt);
+} 
+BOOST_AUTO_TEST_CASE(ArithTwoOp) {
+    std::string stmt = "SELECT f(one)/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
+    testStmt3(qsTest, stmt);
+} 
+BOOST_AUTO_TEST_CASE(FancyArith) {
+    std::string stmt = "SELECT (1+f(one))/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
+    testStmt3(qsTest, stmt);
+} 
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////

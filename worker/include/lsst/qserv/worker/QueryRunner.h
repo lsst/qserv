@@ -46,6 +46,7 @@ namespace qserv {
 namespace lsst {
 namespace qserv {
 namespace worker {
+class QuerySql;
 class QueryPhyResult; // Forward
 ////////////////////////////////////////////////////////////////////////
 class QueryRunner {
@@ -79,10 +80,7 @@ private:
     std::string _getDumpTableList(std::string const& script);
     bool _runTask(Task::Ptr t);
     bool _runFragment(SqlConnection& sqlConn,
-                      std::string const& scr,
-                      std::string const& buildSc,
-                      std::string const& cleanSc,
-                      std::string const& resultTable);
+                      QuerySql const& qSql);
     void _buildSubchunkScripts(std::string const& script,
                                std::string& build, std::string& cleanup);
     bool _prepareAndSelectResultDb(SqlConnection& sqlConn,

@@ -139,7 +139,7 @@ TableMerger::TableMerger(TableMergerConfig const& c)
       _tableCount(0) {
     _fixupTargetName();
     _loadCmd = (boost::format(_cmdBase)
-		% c.mySqlCmd % c.socket % c.user % c.targetDb).str();    
+		% c.mySqlCmd % c.socket % c.user % c.targetDb).str();
 }
 
 bool TableMerger::merge(std::string const& dumpFile, 

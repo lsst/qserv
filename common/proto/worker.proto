@@ -32,17 +32,16 @@ message TaskMsg {
     optional string db = 2; 
     optional int32 chunkid = 3;
     message Subchunk {
-        required string database = 1;
-        required string table = 2;
-        repeated int32 id = 3;
+        required string database = 1; // database
+        repeated string table = 2; // subchunked tables
+        repeated int32 id = 3; // subchunk ids
     }
     message Fragment {
         // A query fragment without "CREATE or INSERT". 
         // Worker should synthesize.
-        required string query = 1; 
-        repeated int32 subchunk = 2; // deprecated
+        repeated string query = 1; 
         optional string resulttable = 3;
-        optional Subchunk scgroup = 4;
+        optional Subchunk subchunks = 4; // Only needed with subchunk-ed queries
 
         // Each fragment may only write results to one table,
         // but multiple fragments may write to the same table, 

@@ -327,3 +327,31 @@ SQL2RW_qserv_areaspec_ellipse="qserv_areaspec_ellipse"=412
 SQL2RW_qserv_areaspec_poly="qserv_areaspec_poly"=413
 SQL2RW_qserv_areaspec_hull="qserv_areaspec_hull"=414
 SQL2RW_qserv_objectId="qserv_objectId"=415
+// imaginary for qserv parsing
+// IMPORT
+SELECT_LIST("select_list")=1001
+SELECT_SUBLIST("select_sublist")=1002
+SELECT_COLUMN("select_column")=1003
+SELECT_TABLESTAR("select_tablestar")=1004
+FUNCTION_SPEC("function_spec")=1005
+VALUE_EXP("value_exp")=1006
+QUALIFIED_NAME("qualified_name")=1007
+TABLE_REF("table_ref")=1008
+TABLE_REF_AUX("table_ref_aux")=1009
+COLUMN_ALIAS_NAME("column_alias_name")=1010
+SET_FCT_SPEC("set_fct_spec")=1011
+FROM_CLAUSE("from_clause")=1012
+WHERE_CLAUSE("where_clause")=1013
+QSERV_FCT_SPEC("qserv_fct_spec")=1014
+OR_OP("or_op")=1015
+AND_OP("and_op")=1016
+BOOLEAN_FACTOR("boolean_factor")=1017
+JOINED_TABLE("joined_table")=1018
+SORT_SPEC("sort_spec")=1019
+SORT_KEY("sort_key")=1020
+COLLATE_CLAUSE("collate_clause")=1021
+GROUPING_COLUMN_REF("grouping_column_ref")=1022
+COLUMN_REF("column_ref")=1023
+HAVING_CLAUSE("HAVING_CLAUSE")=1024
+FACTOR("FACTOR")=1025
+// END_IMPORT

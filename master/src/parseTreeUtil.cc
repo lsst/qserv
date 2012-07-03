@@ -29,6 +29,38 @@
 
 namespace qMaster=lsst::qserv::master;
 
+namespace {
+template <typename AnAst, typename C>
+class DigraphVisitor {
+public:
+    typedef std::map<AnAst, std::string> AstMap;
+
+    DigraphVisitor() : i(0) {}
+    void operator()(AnAst a, C& p) {
+        std::string parent = stringify(p.back());
+        s << "\"" << parent << "\"" << " -> " 
+          << "\"" << stringify(a) << "\"" << "\n";
+    }
+    std::string stringify(AnAst a) {
+        typename AstMap::const_iterator e(ids.end());
+        if(ids.find(a) == e) {
+            std::stringstream t;
+            t << qMaster::tokenText(a) << "[" << ++i << "]";
+            ids[a] = t.str();
+        }
+        return ids[a];
+    }
+    void output(std::string label, std::ostream& o) {
+        o << "digraph tree_" << label << " {\n"
+          << s.str()
+          << "}\n";
+    }
+    int i;
+    AstMap ids;
+    std::stringstream s;
+
+};
+}
 // Creates a new text node and and puts it into the tree
 // after the specified node, but before the node's next sibling.
 antlr::RefAST qMaster::insertTextNodeAfter(antlr::ASTFactory* factory, 
@@ -56,18 +88,26 @@ antlr::RefAST qMaster::insertTextNodeBefore(antlr::ASTFactory* factory,
    return n;
 }
 
+void qMaster::printDigraph(std::string lbl, std::ostream& o, antlr::RefAST n) {
+    DigraphVisitor<antlr::RefAST, std::list<antlr::RefAST> > dv;
+    std::list<antlr::RefAST> c;
+    visitTreeRooted(n, dv, c);
+    dv.output(lbl, o);
+}
+
 bool
 qMaster::substituteWithMap(std::string& s, 
                            std::map<std::string, std::string>  const& m,
                            int minMatch) {
     if(s.empty()) return false;
-
+    assert(minMatch >= 0);
     bool did = false;
     std::map<std::string, std::string>::const_iterator i = m.find(s);
     if(i != m.end()) {
         s = i->second;
         did = true;
-    } else if(s.size() >= minMatch) { // more aggressively for larger tokens.
+    } else if(s.size() >= static_cast<unsigned>(minMatch)) { 
+        // more aggressively for larger tokens.
         for(i=m.begin(); i != m.end(); ++i) {
             std::string orig = i->first;
             std::string repl = i->second;

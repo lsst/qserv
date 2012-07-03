@@ -28,6 +28,7 @@ import time
 import app
 import proxy
 import lsst.qserv.master.config as config
+import lsst.qserv.master.spatial as spatial
 
 # Main AppInterface class
 #
@@ -47,7 +48,7 @@ class AppInterface:
                                                     'func_doc'), 
                                   okname)
         self.reactor = reactor
-        self.pmap = app.makePmap()
+        self.pmap = spatial.makePmap()
         self.actions = {} 
         # set id counter to seconds since the epoch, mod 1 year.
         self._idCounter = int(time.time() % (60*60*24*365))
@@ -112,7 +113,9 @@ class AppInterface:
         if not lock.lock():
             return ("error", "error",
                     "error locking result, check qserv/db config.")
-        a = app.HintedQueryAction(query, conditions, self.pmap, 
+        # a = app.HintedQueryAction(query, conditions, self.pmap, 
+        #                           lambda e: lock.addError(e), resultName)
+        a = app.InbandQueryAction(query, conditions, self.pmap, 
                                   lambda e: lock.addError(e), resultName)
         if a.getIsValid():
             self._callWithThread(a.invoke)

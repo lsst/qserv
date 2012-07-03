@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -26,9 +27,12 @@
 #define LSST_QSERV_MASTER_PARSETREEUTIL_H
 #include <cassert>
 #include <iostream>
+#include <sstream>
 #include <map>
+#include <list>
 
 #include "antlr/AST.hpp"
+#include "lsst/qserv/master/sqltoken.h"
 
 // Forward
 namespace antlr {
@@ -88,30 +92,12 @@ public:
 	if(!s.empty() && !result.empty()) {
 	    int last = result[result.size()-1];
 	    int next = s[0];
-	    if(shouldSeparate(lastToken, last,next)) {
+	    if(sqlShouldSeparate(lastToken, last,next)) {
 		result += " ";
 	    } 
 	}
         lastToken = s;
 	result += s;
-    }
-    bool iequal(std::string const& a, std::string const& b) {
-        if(a.size() != b.size()) return false;
-        int i;
-        int sz = a.size();
-        for(i=0; i != sz; ++i) {
-            if(std::tolower(a[i]) != std::tolower(b[i])) return false; 
-        }
-        return true;
-    }
-    bool shouldSeparate(std::string const& s, int last, int next) {
-        if(iequal(s, "where")) return true;
-	return (isalnum(last) && isalnum(next)) // adjoining alnums
-	    || ((last == '*') && isalnum(next)) // *saf
-	    || ((next == '*') && isalnum(last)) // saf*
-	    || ((last == ')') && isalnum(next)) // )asdf
-	    || ((last == '#') && isalnum(next)) // #asdf
-	    ;
     }
     std::string lastToken;
     std::string result;
@@ -164,24 +150,71 @@ std::string walkTree(AnAst r) {
 
 template <typename AnAst, typename Visitor, typename CheckTerm>
 void walkTreeVisit(AnAst r, Visitor& v, CheckTerm& ct, int depth=0) {
-    //DFS walk?
-    v(r);
-    //if(ct(r,depth)) return; // On terminal, visit only.
-    antlr::RefAST c = r->getFirstChild();
-    if(c.get()) {
-	std::cout << "Child: " << tokenText(r) << "----" << tokenText(c) 
-		  << std::endl;
-	walkTreeVisit(c, v, ct, depth+1);
-    }
-    // Now print sibling(s)
-    antlr::RefAST s = r->getNextSibling();
-    if(s.get() && !ct(r,depth)) {
-	//	std::cout << "Sib: " << tokenText(r) << "----" << tokenText(s) 
-	//		  << std::endl;
-	walkTreeVisit(s, v, ct, depth);
-    }
-	
+    AnAst first = r;
+    do {
+        // if(r != first) {
+        //     std::cout << "(Sib) ";
+        // }
+        //DFS walk?
+        v(r);
+        //if(ct(r,depth)) return; // On terminal, visit only.
+        antlr::RefAST c = r->getFirstChild();
+        if(c.get()) {
+            // std::cout << "Child: " << tokenText(r) << "----" << tokenText(c) 
+            //           << std::endl;
+            walkTreeVisit(c, v, ct, depth+1);
+        } 
+        r = r->getNextSibling();
+    } while(r.get() && !ct(r,depth));
 }
+template <typename AnAst, typename C>
+class IndentPrinter {
+public:
+    IndentPrinter(std::ostream& o_) : o(o_) {}
+    void operator()(AnAst a, C& p) {
+        o << p.size() << std::string(p.size(), ' ') << tokenText(a) << std::endl;
+    }
+    std::ostream& o;
+};
+
+// AnAST: e.g. RefAST
+// V: Visitor: implements void operator()(AnAST, C const&)
+// C: Container of AnAst, e.g. std::list<RefAST>
+template <typename AnAst, typename V, typename C>
+void visitTreeRooted(AnAst r, V& v, C& p) {
+    //DFS walk
+    antlr::RefAST s = r;
+    while(s.get()) {
+        //--- (visit self)---
+        v(s, p);
+        antlr::RefAST c = s->getFirstChild();
+        if(c.get()) {
+            p.push_back(s);
+            visitTreeRooted(c, v, p);
+            p.pop_back();
+        }
+        s = s->getNextSibling();
+    }
+}
+
+template <typename AnAst>
+void printIndented(AnAst r) {
+    std::list<AnAst> mylist;
+    IndentPrinter<AnAst, std::list<AnAst> > p(std::cout);
+    //visitTreeRooted<AnAst, IndentPrinter, std::list<AnAst> >(r, p, mylist);
+    visitTreeRooted(r, p, mylist);
+}
+
+template <typename AnAst>
+std::string walkIndentedString(AnAst r) {
+    std::list<AnAst> mylist;
+    std::stringstream ss;
+    IndentPrinter<AnAst, std::list<AnAst> > p(ss);
+    //visitTreeRooted<AnAst, IndentPrinter, std::list<AnAst> >(r, p, mylist);
+    visitTreeRooted(r, p, mylist);
+    return ss.str();
+}
+
 
 template <typename AnAst, typename Visitor>
 void walkTreeVisit(AnAst r, Visitor& v) {
@@ -206,12 +239,32 @@ std::string walkBoundedTreeString(AnAst r, AnAst lastSib) {
 }
 
 template <typename AnAst>
+std::string walkSiblingString(AnAst r) {
+    CompactPrintVisitor<AnAst> p;
+    while(r.get()) {
+        p(r);
+        r = r->getNextSibling();
+    }
+    return p.result;
+}
+
+
+template <typename AnAst>
 void walkTreeSubstitute(AnAst r, 
                         std::map<std::string, std::string> const& m) {
     SubstituteVisitor<AnAst> s(m);
     walkTreeVisit(r, s);
 }
 
+
+template <typename AnAst, typename Check>
+AnAst findSibling(AnAst r, Check& c) {
+    while(r.get()) {
+        if(c(r)) { break; }
+        r = r->getNextSibling();
+    }
+    return r;
+}
 
 
 template <typename AnAst>
@@ -231,6 +284,30 @@ AnAst getLastSibling(AnAst r) {
     } while(r.get());
     return last;
 }
+
+template <typename AnAst>
+AnAst getSiblingBefore(AnAst r, AnAst b) {
+    AnAst last;
+    do {
+
+	last = r;
+	r = r->getNextSibling();
+        
+    } while(r != b);
+    return last;
+}
+
+
+template <typename AnAst>
+int countLength(AnAst r, AnAst b) {
+    int i = 0;
+    while(r.get() && (r != b)) {
+        ++i;
+	r = r->getNextSibling();
+    }
+    return i;
+}
+
 
 template <typename AnAst>
 AnAst collapseNodeRange(AnAst start, AnAst bound) {
@@ -273,6 +350,7 @@ antlr::RefAST insertTextNodeBefore(antlr::ASTFactory* factory,
                                   std::string const& s, 
                                    antlr::RefAST n);
 
+void printDigraph(std::string lbl, std::ostream& o, antlr::RefAST n);
 
 }}} // lsst::qserv::master
 

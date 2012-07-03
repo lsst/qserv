@@ -157,7 +157,7 @@ private:
         } else if(_name == "qserv_areaspec_poly") {
             _importParams(v.begin() + 1, v.end(), v.size()-1);
             _generator.reset(dynamic_cast<Generator*>
-                             (new AreaGenerator("s2PtInPoly", 
+                             (new AreaGenerator("s2PtInCPoly", 
                                                 AreaGenerator::USE_STRING,
                                                 _params)));
         } else if(_name == "qserv_objectId") {

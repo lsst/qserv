@@ -54,7 +54,7 @@ e.g., PROTOC=/usr/local/bin/protoc
             raise StandardError("FATAL ERROR: Can't build protocol without ProtoBufs")
         pass
     # Print what we're using.
-    print "Protocol buffers using protoc=%s with lib=%s and include=%s" %(
+    print "Protocol buffers using protoc=%s with include=%s and lib=%s" %(
         os.environ["PROTOC"], os.environ["PROTOC_INC"], 
         os.environ["PROTOC_LIB"])
 
@@ -173,7 +173,7 @@ def checkAddAntlr(conf):
     found = conf.CheckLibWithHeader("antlr", "antlr/AST.hpp", 
                                     language="C++")
     if not found:
-        print >> sys.stderr, "Could not locate libantlr or antler/AST.hpp"
+        print >> sys.stderr, "Could not locate libantlr or antlr/AST.hpp"
     return found
 
 def composeEnv(env, roots=[], includes=[], libs=[]):

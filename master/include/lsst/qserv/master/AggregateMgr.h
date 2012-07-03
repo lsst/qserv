@@ -114,7 +114,7 @@ public:
     bool getHasAggregate() const { return _hasAggregate; }
     boost::shared_ptr<VoidOneRefFunc> getSetFuncHandler();
     boost::shared_ptr<VoidOneRefFunc> getSelectListHandler();
-    boost::shared_ptr<VoidVoidFunc> newSelectStarHandler();
+    boost::shared_ptr<VoidOneRefFunc> newSelectStarHandler();
     boost::shared_ptr<VoidOneRefFunc> getGroupByHandler();
     boost::shared_ptr<VoidOneRefFunc> getGroupColumnHandler();
 
@@ -209,11 +209,11 @@ private:
 //  the column/reference list is detected.
 class AggregateMgr::SelectListHandler : public VoidOneRefFunc {
 public: 
-    class SelectStarHandler : public VoidVoidFunc {
+    class SelectStarHandler : public VoidOneRefFunc {
     public: 
         explicit SelectStarHandler(SelectListHandler& h) : handler(h) {}
         virtual ~SelectStarHandler() {}
-        virtual void operator()() { handler.handleSelectStar(); }
+        virtual void operator()(antlr::RefAST a) { handler.handleSelectStar(); }
         SelectListHandler& handler;
     };
 
@@ -274,7 +274,7 @@ boost::shared_ptr<VoidOneRefFunc> AggregateMgr::getSelectListHandler() {
 }
 
 inline
-boost::shared_ptr<VoidVoidFunc> AggregateMgr::newSelectStarHandler() {
+boost::shared_ptr<VoidOneRefFunc> AggregateMgr::newSelectStarHandler() {
     return _selectLister->newSelectStarHandler();
 }
 

@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -26,6 +27,7 @@
 #ifndef LSST_QSERV_MASTER_DISPATCHER_H
 #define LSST_QSERV_MASTER_DISPATCHER_H
 
+#include "lsst/qserv/master/common.h"
 #include "lsst/qserv/master/transaction.h" 
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/TableMerger.h"
@@ -33,7 +35,8 @@
 namespace lsst {
 namespace qserv {
 namespace master {
-    
+class ChunkSpec; // Forward    
+
 enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};
 
 void initDispatcher();
@@ -46,6 +49,18 @@ int submitQuery(int session, lsst::qserv::master::TransactionSpec const& s,
                 std::string const& resultName=std::string());
 void pauseReadTrans(int session);
 void resumeReadTrans(int session);
+
+// Parser model 3:
+void setupQuery(int session, std::string const& query,
+                std::string const& resultTable); // new model.
+std::string const& getSessionError(int session);
+lsst::qserv::master::ConstraintVec getConstraints(int session);
+std::string const& getDominantDb(int session);
+
+void addChunk(int session, lsst::qserv::master::ChunkSpec const& cs );
+void submitQuery3(int session);
+// TODO: need pokes into running state for debugging.
+
 QueryState joinQuery(int session, int id);
 QueryState tryJoinQuery(int session, int id);
 QueryState joinSession(int session);
@@ -54,6 +69,7 @@ std::string getErrorDesc(int session);
 int newSession(std::map<std::string,std::string> const& cfg);
 void configureSessionMerger(int session, 
                             lsst::qserv::master::TableMergerConfig const& c);
+void configureSessionMerger3(int session);
 std::string getSessionResultName(int session);
 void discardSession(int session);
 lsst::qserv::master::XrdTransResult getQueryResult(int session, int chunk);
