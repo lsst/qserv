@@ -37,10 +37,45 @@ Server setup for Qserv:
 	cd <install dir>
 	mkdir build
 	<copy all download package from qserver download page to build>
-	tar zxf build/qserv-0.3.0rc1.tar.gz
+	tar zxf build/qserv-0.3.0rc3.tar.gz
 	mv qserv-0.3.0 qserv
 	./qserv/admin/qserv-install
 	
+Control of Server:
+
+	One the software compiles, the control of the server is managed by the
+	qserv-admin script.  This is an executable binary in the bin dir in the
+	install dir, it would be good to make sure this is in the path for your
+	executing shell.
+	
+	You can start the components of the qserv server with:
+	
+	qserv-admin --start
+	
+	And shut down the server with
+	
+	qserv-admin --stop
+	
+Loading of data:
+
+	The setup scripts at this time are setup to make the loading of "pt11" test
+	data easy.  If you have other data you want qserv to handle, please contact
+	the developers, and the management scripts can be extended.
+	
+	To load data, you start with the raw dump of the data from a bare mysql
+	database.  This first needs to be partitioned into "chunks", based on
+	positions in the sky.  The paritioning of the pt11 data can be done with:
+	
+	qserv-admin --partition --source <path to pt11 data) --output <path to partioned data> --table <table name>
+
+	For now the tables in the dataset are 'Object' or 'Source'.
+	
+	To then load this data into the load mysql database for use in qserv you
+	can do with:
+	
+	qserv-admin --load --source <path to pt11 data) --output <path to partioned data> --table <table name>
+
+	This will setup the local qserv server to host this data for testing.
 
 Further Info:
 

@@ -213,6 +213,11 @@ sub check_and_install_qserv {
 	`cp qserv/master/examples/lsst-dev01.qserv.cnf etc/local.qserv.cnf`;
 	`perl -pi -e "s,xrootd\\s*=\\s*\\S+,xrootd = $ENV{'HOST'}:1094," etc/local.qserv.cnf`;
 	`perl -pi -e "s,unix_socket\\s*=\\s*\\S+,unix_socket = $install_dir/var/lib/mysql/mysql.sock," etc/local.qserv.cnf`;
+	`perl -pi -e "s,emptyChunkListFile=emptyChunks.txt,emptyChunkListFile=$install_dir/etc/emptyChunks.txt," etc/local.qserv.cnf`;
+	
+	#install the qserv-admin
+	`cp qserv/admin/qserv-admin bin`;
+	`perl -pi -e "s,INSTALLDIR,$install_dir," bin/qserv-admin`;
 	
 }
 
@@ -251,6 +256,16 @@ sub check_and_setup_extras {
 	`python setup.py build`;
 	`python setup.py install`;
 
+        print "Installing numpy interface.\n";
+
+        chdir "$build_dir";
+        my $numpy_dir = check_and_untar( "numpy" );
+	if( $numpy_dir ) {
+	        chdir "$build_dir/$numpy_dir";
+        	`python setup.py build`;
+        	`python setup.py install`;
+	}
+
 	print "Installing Twisted interface.\n";
 	
 	chdir "$build_dir";
@@ -270,6 +285,18 @@ sub check_and_install_mysql {
 	print "chdir to $build_dir\n" if( $debug );
 	
 	chdir "$build_dir";
+
+	#install curses lib if it is in place
+	my $ncurses_dir = check_and_untar( "ncurses" );
+	if( $ncurses_dir ) {
+		chdir "$build_dir/$ncurses_dir";
+		`./configure --prefix="$install_dir"`;
+	        `make`;
+       		`make install`;
+	}
+
+	$ENV{'LDFLAGS'} = "-L$install_dir/lib";
+
 	my $mysql_dir = check_and_untar( "mysql-5" );
 
 	chdir "$build_dir/$mysql_dir";
@@ -319,13 +346,24 @@ sub check_and_setup_python {
 
 sub check_and_install_lua {
 	
+	#install readline if it is there
+        chdir "$build_dir";
+	my $readline_dir = check_and_untar( "readline" );
+        if( $readline_dir ) {
+		chdir "$build_dir/$readline_dir";
+       		`./configure --prefix="$install_dir"`;
+        	`make`;
+        	`make install`;
+	}
+
 	#install lua
 	chdir "$build_dir";
 	my $lua_dir = check_and_untar( "lua-5.1.4" );
 	chdir "$build_dir/$lua_dir";
 	`perl -pi -e "s/PLAT= none/PLAT= linux/" Makefile`;
 	`perl -pi -e "s,INSTALL_TOP= /usr/local,INSTALL_TOP= $install_dir," Makefile`;
-	`perl -pi -e "s/CFLAGS= -O2/CFLAGS= -fPIC -O2/" src/Makefile`;
+	`perl -pi -e "s,CFLAGS= -O2,CFLAGS= -I$install_dir/include -fPIC -O2," src/Makefile`;
+	`perl -pi -e "s,LIBS= -lm,LIBS= -L$install_dir/lib -lm," src/Makefile`;
 	`make`;
 	`make install`;
 	
