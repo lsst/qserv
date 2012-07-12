@@ -64,7 +64,7 @@ void doctorQueryPath(std::string& path) {
 // AsyncQueryManager nested classes
 ////////////////////////////////////////////////////////////
 
-class qMaster::AsyncQueryManager::printQueryMapValue {
+class lsst::qserv::master::AsyncQueryManager::printQueryMapValue {
 public:
     printQueryMapValue(std::ostream& os_) : os(os_) {}
     void operator()(QueryMap::value_type const& qv) {
@@ -80,7 +80,7 @@ public:
     std::ostream& os;
 };
 
-class qMaster::AsyncQueryManager::squashQuery {
+class lsst::qserv::master::AsyncQueryManager::squashQuery {
 public:
     squashQuery(boost::mutex& mutex_, QueryMap& queries_) 
         :mutex(mutex_), queries(queries_) {}

@@ -32,6 +32,7 @@
 // Package
 #include "lsst/qserv/master/SqlSubstitution.h"
 #include "lsst/qserv/master/SqlParseRunner.h"
+#include "lsst/qserv/master/ChunkMeta.h"
 
 
 namespace qMaster = lsst::qserv::master;
@@ -57,6 +58,7 @@ void printMap(Map const& m) {
 
 } // Anonymous namespace
 
+#if 0 // Commented out.
 qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
                                           ChunkMapping const& mapping,
                                           qMaster::StringMap const& config)
@@ -69,7 +71,24 @@ qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement,
     // Note: makes copy of chunkmapping.
     _build(sqlStatement);
 }
+#endif
 
+qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
+                                          ChunkMeta const& cMeta,
+                                          qMaster::StringMap const& config)
+    : _delimiter("*?*"), _hasAggregate(false), 
+      _cMeta(new ChunkMeta(cMeta)), 
+      _config(config) {
+    // client DB context
+    _defaultDb = getFromMap(config, "table.defaultdb", "LSST"); 
+    _mapping.setFromMeta(cMeta);
+    _setupOverlap(); // Don't use importSubChunkTables()
+
+    // Note: makes copy of chunkmapping.
+    _build(sqlStatement);
+}
+
+// Deprecated in favor of a ChunkMeta-based code path
 void qMaster::SqlSubstitution::importSubChunkTables(char const** cStringArr) {
     _subChunked.clear();
     for(int i=0; cStringArr[i]; ++i) {
@@ -82,6 +101,30 @@ void qMaster::SqlSubstitution::importSubChunkTables(char const** cStringArr) {
             _subChunked.push_back(s + "FullOverlap");
         }        
     }
+}
+
+void qMaster::SqlSubstitution::_setupOverlap() {
+    _subChunked.clear();
+    ChunkMeta::EntryList const& elist = _cMeta->getEntries();
+    typedef ChunkMeta::EntryList::const_iterator Citer;
+    Citer begin = elist.begin();
+    Citer end = elist.end();
+    for(Citer i = begin; i != end; ++i) {
+        // Discard i->db since it's not in the mapping.
+        // Ignore collisions if tables (of different dbs) 
+        // have different partitioning.
+        if(i->chunkLevel == 2) {
+            // Add table, tableSelfOverlap and tableFullOverlap
+            std::string s = i->table;
+            _subChunked.push_back(s);
+            if(!endsWith(s, "SelfOverlap")) {
+                _subChunked.push_back(s + "SelfOverlap");
+            }
+            if(!endsWith(s, "FullOverlap")) {
+                _subChunked.push_back(s + "FullOverlap");
+            }
+        }
+    } // end for
 }
     
 std::string qMaster::SqlSubstitution::transform(int chunk, int subChunk) {

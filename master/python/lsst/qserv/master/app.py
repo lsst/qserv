@@ -83,6 +83,7 @@ from lsst.qserv.master import initDispatcher
 from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
+from lsst.qserv.master import ChunkMeta
 from lsst.qserv.master import ChunkMapping, SqlSubstitution
 # Merger
 from lsst.qserv.master import TableMerger, TableMergerError, TableMergerConfig
@@ -643,7 +644,9 @@ class PartitioningConfig:
         ## public
         self.chunked = set([])
         self.subchunked = set([])
+        self.allowedDbs = set([])
         self.chunkMapping = ChunkMapping()
+        self.chunkMeta = ChunkMeta()
         pass
 
     def applyConfig(self):
@@ -651,11 +654,14 @@ class PartitioningConfig:
         try:
             chk = c.get("table", "chunked")
             subchk = c.get("table", "subchunked")
+            adb = c.get("table", "alloweddbs")
             self.chunked.update(chk.split(","))
             self.subchunked.update(subchk.split(","))    
+            self.allowedDbs.update(adb.split(","))
         except:
             print "Error: Bad or missing chunked/subchunked spec."
         self._updateMap()
+        self._updateMeta()
         pass
 
     def getMapRef(self, chunk, subchunk):
@@ -663,6 +669,12 @@ class PartitioningConfig:
         For convenience.
         """
         return self.chunkMapping.getMapReference(chunk, subchunk)
+
+    def _updateMeta(self):
+        for db in self.allowedDbs:
+            map(lambda t: self.chunkMeta.add(db, t, 1), self.chunked)
+            map(lambda t: self.chunkMeta.add(db, t, 2), self.subchunked)
+        pass
 
     def _updateMap(self):
         map(self.chunkMapping.addChunkKey, self.chunked)
@@ -679,6 +691,7 @@ class HintedQueryAction:
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
+
         # queryHash identifies the top-level query.
         self.queryHash = self._computeHash(self.queryStr)[:18]
         self.chunkLimit = 2**32 # something big
@@ -690,21 +703,15 @@ class HintedQueryAction:
         self._evaluateHints(hints, pmap) # Also gets new dbContext
 
         # Config preparation
-        configModule = lsst.qserv.master.config
-        qConfig = configModule.getStringMap()
-        qConfig["table.defaultdb"] = self._dbContext
-        # e.g., hints["box"] = "2.3,2.1,5.0,4.2"
-        hintCopy = hints.copy()
-        hintCopy.pop("db") # Remove db hint--only pass spatial hints now.
-        qConfig["query.hints"] = ";".join(
-            map(lambda (k,v): k + "," + v, hintCopy.items()))
+        qConfig = self._prepareCppConfig(self._dbContext, hints)
         self._sessionId = newSession(qConfig)
-        cf = configModule.config.get("partitioner", "emptyChunkListFile")
-        cfgLimit = int(configModule.config.get("debug", "chunkLimit"))
+        cModule = lsst.qserv.master.config
+        cf = cModule.config.get("partitioner", "emptyChunkListFile")
+        cfgLimit = int(cModule.config.get("debug", "chunkLimit"))
         if cfgLimit > 0:
             self.chunkLimit = cfgLimit
             print "Using debugging chunklimit:",cfgLimit
-        useMemory = configModule.config.get("tuning", "memoryEngine")
+        useMemory = cModule.config.get("tuning", "memoryEngine")
 
         self._emptyChunks = self._loadEmptyChunks(cf)        
 
@@ -712,14 +719,17 @@ class HintedQueryAction:
         try:
             self._pConfig = PartitioningConfig() # Should be shared.
             self._pConfig.applyConfig()
+            cfg = self._prepareCppConfig(self._dbContext, hints)
             self._substitution = SqlSubstitution(query, 
-                                                 self._pConfig.chunkMapping,
-                                                 qConfig)
+                                                 self._pConfig.chunkMeta,
+                                                 cfg)
+
             if self._substitution.getError():
                 self._error = self._substitution.getError()
                 self._isValid = False
             else:
-                self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
+                # Skip when using chunkMeta
+                #self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
                 self._isValid = True
         except Exception, e:
             print "Exception!",e
@@ -728,6 +738,8 @@ class HintedQueryAction:
         if not self._isValid:
             discardSession(self._sessionId)
             return
+        self._postFixChunkScope(self._substitution.getChunkLevel())
+
         # Query babysitter.
         self._babysitter = QueryBabysitter(self._sessionId, self.queryHash,
                                            self._substitution.getMergeFixup(),
@@ -751,11 +763,20 @@ class HintedQueryAction:
         self._invokeLock = threading.Semaphore()
         self._invokeLock.acquire() # Prevent result retrieval before invoke
         pass
-    
+
     # In transition to new protocol: only 1 result table allowed.
     def _headerFunc(self, tableNames, subc=[]):
         return ['-- SUBCHUNKS:' + ", ".join(imap(str,subc)),
                 '-- RESULTTABLES:' + ",".join(tableNames)]
+
+    def _prepareCppConfig(self, dbContext, hints):
+        hintCopy = hints.copy()        
+        hintCopy.pop("db") # Remove db hint--only pass spatial hints now.
+        cfg = lsst.qserv.master.config.getStringMap()
+        cfg["table.defaultdb"] = dbContext
+        cfg["query.hints"] = ";".join(
+            map(lambda (k,v): k + "," + v, hintCopy.items()))
+        return cfg
 
     def _parseRegions(self, hints):
         r = RegionFactory()
@@ -786,6 +807,14 @@ class HintedQueryAction:
             print "ERROR: partitioner.emptyChunkListFile specified bad or missing chunk file"
         return empty
 
+    def _postFixChunkScope(self, chunkLevel):
+        if chunkLevel == 0:
+            # In this case, non-chunked, so dummy chunk is good enough
+            # for dispatch.
+            self._intersectIter = [(dummyEmptyChunk, [])]
+            return
+        return
+
     def _evaluateHints(self, hints, pmap):
         """Modify self.fullSky and self.partitionCoverage according to 
         spatial hints"""
@@ -808,7 +837,11 @@ class HintedQueryAction:
                 self._isFullSky = False
                 if not self._intersectIter:
                     self._intersectIter = [(dummyEmptyChunk, [])]
-
+        # _isFullSky indicates that no spatial hints were found.
+        # However, if spatial tables are not found in the query, then
+        # we should use the dummy chunk so the query can be dispatched
+        # once to a node of the balancer's choosing.
+                    
         # If hints only apply when partitioned tables are in play.
         # FIXME: we should check if partitionined tables are being accessed,
         # and then act to support the heaviest need (e.g., if a chunked table

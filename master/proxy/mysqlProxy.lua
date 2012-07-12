@@ -468,10 +468,14 @@ function queryProcessing()
         parser.reset()
         hintsToPassArr = {} -- Reset hints (it's global)
         if p1 then
+            local afterWhere = p1 + 5 -- 5=length of 'where'
+            if string.find(string.sub(q, p1+5), "^ ") then
+                afterWhere = p1 + 6 -- Clip when there is space
+            end
             queryToPassStr = string.sub(q, 0, p1-1)
 
             -- Handle special predicates, modify queryToPassStr as necessary
-            local p2 = parser.parseIt(qU, p1+6) -- 6=length of 'where '
+            local p2 = parser.parseIt(qU, afterWhere) 
             -- Add client db context
             hintsToPassStr = utils.tableToString(hintsToPassArr)
             -- Add all remaining predicates

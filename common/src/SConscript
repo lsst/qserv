@@ -17,6 +17,12 @@ for root, dirs, files in os.walk('../src'):
 env.Append(CPPPATH = ['../include'])
 env.Append(CPPFLAGS = ["-fPIC"])
 
+c = Configure(env)
+if not detect_deps.checkBoostHeader(c, ['format', 'thread']):
+    print "Missing boost headers: boost/{format,thread}.hpp"
+    print "*** Cannot build ***"
+    Exit(1)
+env = c.Finish()
 e = detect_deps.checkMySql(env, Configure)
 if not e:
     print "*** Cannot build ***"
