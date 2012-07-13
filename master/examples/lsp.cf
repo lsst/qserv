@@ -11,8 +11,10 @@
 if tuson121*
 # Use manager mode
 all.role manager
+
 # Use standard filesystem plugin
-xrootd.fslib libXrdOfs.so
+# Newer xrootd uses embedded plugin by default, uncomment for older xrootd
+# xrootd.fslib libXrdOfs.so
 
 ##########################
 # else: non-manager nodes
