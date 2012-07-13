@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/perl -w
 
 use strict;
 use Getopt::Long;
@@ -112,6 +112,8 @@ if( $opts{'status'} ) {
 
 #############################################################
 
+#Check the sql server status, if it is up or down by using 
+#an sql command for input.
 sub check_sql_server {
 	my( $command ) = @_;
 
@@ -135,6 +137,7 @@ sub check_sql_server {
 	
 }
 
+#Create a test sql command to test the sql server.
 sub create_test_sql {
 	my( $testsql ) = @_;
 	
@@ -145,12 +148,14 @@ sub create_test_sql {
 	
 }
 
+#check the mysql proxy use.
 sub check_proxy {
 
 	return check_sql_server( "mysql --port=4040 --protocol=TCP" );
 
 }
 
+#check the mysql server status.
 sub check_mysqld {
 
 	if( -e "$mysqld_sock" ) {
@@ -160,18 +165,22 @@ sub check_mysqld {
 	}
 }
 
+#check the xrootd process.
 sub check_xrootd {
 	
 	return check_ps( "xrootd -c" );
 
 }
 
+#check the qserv process.
 sub check_qserv {
 	
 	return check_ps( "startQserv" );
 
 }
 
+#Check the existence of a process in the process table by a test 
+#string in the command line used.
 sub check_ps {
 	my( $test_string ) = @_;
 	#print "$test_string\n";
@@ -189,30 +198,37 @@ sub check_ps {
 	}
 }
 
+#Stop the qserv process
 sub stop_qserv {
 
 	stop_ps( "startQserv" );
 
 }
 
+#stop the xrootd process
 sub stop_xrootd {
 
 	stop_ps( "xrootd -c" );
 
 }
 
+#stop the mysql server
 sub stop_mysqld {
 
 	stop_ps( "mysqld --basedir" );
 
 }
 
+#stop the mysql proxy
 sub stop_proxy {
 
 	stop_ps( "mysql-proxy" );
 
 }
 
+
+#Stop a process based on the exsitence of a string in the command line
+#used to start the process.
 sub stop_ps {
 	my( $test_string ) = @_;
 	#print "$test_string\n";
@@ -253,6 +269,9 @@ sub start_xrootd {
 	
 }
 
+#Partition the pt11 example data for use into chunks.  This is the example
+#use of partitioning, and this should be more flexible to create different
+#amounts of chunks, but works for now.
 sub partition_data {
 	my( $source_dir, $output_dir, $tablename ) = @_;
 	
@@ -274,6 +293,10 @@ sub partition_data {
 	}
 }
 
+
+
+#load the partitioned pt11 data into qserv for use.  This does a number of
+#steps all in one command.
 sub load_data {
 	my( $source_dir, $location, $tablename ) = @_;
 	
@@ -298,6 +321,7 @@ sub load_data {
 	my @dirslist = readdir DIR;
 	closedir DIR;
 	
+	#look for paritioned table chunks, and create the load data sqls.
 	foreach my $dir ( @dirslist ) {
 		next if( $dir =~ /^\./ );
 		
@@ -355,6 +379,8 @@ sub load_data {
 	
 }
 
+#Create the empty chucks list up to 1000, and print this into the
+#empty chunks file in etc.
 sub create_emptychunks {
 	my( $chunkslist ) = @_;
 		
@@ -368,7 +394,6 @@ sub create_emptychunks {
 	
 }
 
-
 #help report for the --help option
 sub usage {
   my($exit, $message) = @_;
@@ -377,7 +402,8 @@ sub usage {
         print STDERR $message if defined $message;
         print STDERR <<INLINE_LITERAL_TEXT;     
 usage: $bin [options]
-  Export merged collections to SLAC.
+  Help admin the qserv server install, starting, stopping, and checking of status
+  Also supports the loading of pt11 example data into the server for use.
 
 Options are:
       --debug     Print out debug messages.
@@ -385,6 +411,12 @@ Options are:
   -s, --status    Print out the status of the server processes.
       --stop      Stop the servers.
 	  --start     Start the servers.
+	  --load      Load data into qserv, requires options source, output, table
+	  --source    Path to the pt11 exmple data
+	  --output    Path to the paritioned data
+	  --table     Table name for partitioning and loading
+	  --parition  Partition the example pt11 data into chunks, requires source, output, table
+	  --test      test the use of the util, without performing the actions.
 
 Examples: $bin --status
 

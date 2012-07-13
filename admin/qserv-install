@@ -1,4 +1,4 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/perl -w
 
 use strict;
 use Getopt::Long;
@@ -87,6 +87,7 @@ sub list_build_dir {
 	closedir BUILDIR;
 }
 
+#check on the xrootd source tar, untar, compile, configure for use.
 sub check_and_install_xrootd {
 	
 	#check if it is already installed
@@ -129,6 +130,7 @@ sub check_and_install_xrootd {
 	
 }
 
+#check on qserv source tar, compile, install, and configure for use.
 sub check_and_install_qserv {
 	
 	chdir "$install_dir";
@@ -221,6 +223,7 @@ sub check_and_install_qserv {
 	
 }
 
+#check on extra source tar, compile, install, and configure for use.
 sub check_and_setup_extras {
 
 	print "Installing Protobuf from source.\n";
@@ -278,6 +281,7 @@ sub check_and_setup_extras {
 
 }
 
+#check on mysql source tar, compile, install, and configure for use.
 sub check_and_install_mysql {
 
 	print "Installing MySQL from source.\n";
@@ -326,6 +330,7 @@ sub check_and_install_mysql {
 
 }
 
+#setup a local python with virtual env. for install of extra python libs
 sub check_and_setup_python {
 
 	chdir "$build_dir";
@@ -344,6 +349,7 @@ sub check_and_setup_python {
 
 }
 
+#check on lua source tars, compile, install, and configure for use.
 sub check_and_install_lua {
 	
 	#install readline if it is there
@@ -407,6 +413,7 @@ sub check_and_install_lua {
 
 }
 
+#check on source tar for mysql proxy, compile, install, and configure for use
 sub check_and_install_myproxy {
 
 	#need to install lib event first.
@@ -433,6 +440,8 @@ sub check_and_install_myproxy {
 
 }
 
+#A routine to check on the existence of a tar or zip file, and untar the
+#file and return the created sub dir.  Based on substring in tar file name.
 sub check_and_untar {
 	my( $check_string ) = @_;
 	
@@ -474,6 +483,7 @@ sub check_and_untar {
 	return $tmp_dir;
 }
 
+#create the startup scripts for server components.
 sub create_statups {
 
 	create_xrootd_startup();
@@ -482,6 +492,7 @@ sub create_statups {
 	
 }
 
+#create the xrootd startup script.
 sub create_xrootd_startup {
 
 	chdir $install_dir;
@@ -508,6 +519,7 @@ sub create_xrootd_startup {
 
 }
 
+#create the qserv startup script.
 sub create_qserv_startup {
 
 	chdir $install_dir;
@@ -532,6 +544,7 @@ sub create_qserv_startup {
 
 }
 
+#create the mysql proxy startup script.
 sub create_mysqlproxy_startup {
 
 	chdir $install_dir;
@@ -554,6 +567,9 @@ sub create_mysqlproxy_startup {
 	
 }
 
+
+#remove all sub dir created, and revert back to before install with only
+#source tar files in the build dir.  Will remove all loaded data also.
 sub clean_all {
 
 	chdir "$install_dir";
@@ -609,6 +625,18 @@ OPTIONS:
       --debug     Print out debug messages.
   -h, --help      Print out this help message.
       --test      Test install proceedure.
+  -d, --dir       Install dir, default is use the current working dir.
+      --builddir  Path the source tar files, default to use "build"
+	  --clean-all Remove all produced software and data, revert to start before install
+	  --extras    Install only the extra modules needed for qserv
+	  --lua       Install only lua and needed lua modules
+	  --mysql     Install only the mysql server
+	  --mysqlproxy Install only the mysql proxy software.
+	  --python    Path the python install for use, default is /usr/bin/python
+	  --xrootd    Install only xrootd
+	  --qserv     Install only qserv
+	  --user      Username to use in qserv use, default it to use current username.
+	  --test      Test the install, don't perform any commands.
 
 Examples: $bin
 
