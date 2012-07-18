@@ -46,8 +46,8 @@ fi
 ########################################
 
 # Writable paths for administration
-# cmsd path for pid
-cms.pidpath /data/lsst
+# cmsd and xrootd paths for pid
+all.pidpath /data/lsst
 # path to write logging and other information
 all.adminpath /data/lsst
 
