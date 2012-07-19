@@ -14,6 +14,7 @@ GetOptions( \%opts,
 	"clean-all",
 	"extras",
 	"lua",
+	"master=s",
 	"mysql",
 	"mysqlproxy",
 	"python=s",
@@ -30,6 +31,7 @@ my $debug = $opts{'debug'} || 1;
 my $install_dir = $opts{'dir'} || cwd();
 my $build_dir   = $opts{'builddir'} || "$install_dir/build";
 my $prod_user   = $opts{'user'} || $ENV{'USER'};
+my $qserv_master = $opts{'master'} || $ENV{'HOST'};
 
 my $build_opt = "all";
 $build_opt = "lua" if( $opts{'lua'} );
@@ -211,7 +213,7 @@ sub check_and_install_qserv {
 	`perl -pi -e "s,/data/lsst/lspexport,$install_dir/xrootd-run," etc/lsp.cf`;
 	`perl -pi -e "s,/data/lsst,$install_dir/tmp," etc/lsp.cf`;
 	#`perl -pi -e "s,query2,q," etc/lsp.cf`;
-	`perl -pi -e "s,tuson121,$ENV{'HOST'}," etc/lsp.cf`;
+	`perl -pi -e "s,tuson121,$qserv_master," etc/lsp.cf`;
 	
 	#copy in and edit qserv config
 	`cp qserv/master/examples/lsst-dev01.qserv.cnf etc/local.qserv.cnf`;
