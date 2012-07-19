@@ -92,7 +92,7 @@ sub check_and_install_xrootd {
 	
 	#check if it is already installed
 	if( -e "$install_dir/xrootd" ) {
-		print "Xrootd already installed...\n";
+		print "Warning: Xrootd already installed...\n";
 		return;
 	}
 	
@@ -165,6 +165,7 @@ sub check_and_install_qserv {
 	
 	if( -e "$install_dir/qserv/master/dist" ) {	
 		#looks like qserv is already installed so, move on
+		print "Warning: Looks like qserv is already installed in $install_dir/qserv\n";
 		return;
 	}
 	
@@ -195,8 +196,8 @@ sub check_and_install_qserv {
 	system("./bin/mysqld_safe &");
 	sleep 5;
 	print "Setting up init databases.\n";
-	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE qservResult;"`;
-	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE qservScratch;"`;
+	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE IF NOT EXISTS qservResult;"`;
+	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE IF NOT EXISTS qservScratch;"`;
 	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';"`;
 	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';"`;
 	`./bin/mysql -S var/lib/mysql/mysql.sock -u root < qserv/master/examples/qserv-master-perms.sql`;
@@ -209,7 +210,8 @@ sub check_and_install_qserv {
 	mkdir "tmp";
 	`perl -pi -e "s,/data/lsst/lspexport,$install_dir/xrootd-run," etc/lsp.cf`;
 	`perl -pi -e "s,/data/lsst,$install_dir/tmp," etc/lsp.cf`;
-	`perl -pi -e "s,query2,q," etc/lsp.cf`;
+	#`perl -pi -e "s,query2,q," etc/lsp.cf`;
+	`perl -pi -e "s,tuson121,$ENV{'HOST'}," etc/lsp.cf`;
 	
 	#copy in and edit qserv config
 	`cp qserv/master/examples/lsst-dev01.qserv.cnf etc/local.qserv.cnf`;
@@ -319,9 +321,9 @@ sub check_and_install_mysql {
 	
 	`cp /etc/my.cnf etc`;
 	`perl -pi -e "s,/var,$install_dir/var," etc/my.cnf`;
-	`perl -pi -e "s,user=mysql,user=$prod_user," etc/my.cnf`;
+	`perl -pi -e "s,user=mysql,," etc/my.cnf`;
 	
-	`mysql_install_db --user=douglas`;
+	`mysql_install_db --user=$prod_user`;
 	
 	print "Please set the mysql root user password with: ";
 	print "mysqladmin -S var/lib/mysql/mysql.sock -u root password <password>\n";
@@ -353,7 +355,7 @@ sub check_and_setup_python {
 sub check_and_install_lua {
 	
 	#install readline if it is there
-        chdir "$build_dir";
+	chdir "$build_dir";
 	my $readline_dir = check_and_untar( "readline" );
         if( $readline_dir ) {
 		chdir "$build_dir/$readline_dir";
@@ -361,7 +363,9 @@ sub check_and_install_lua {
         	`make`;
         	`make install`;
 	}
-
+	
+	print "Installing lua from source.\n";
+	
 	#install lua
 	chdir "$build_dir";
 	my $lua_dir = check_and_untar( "lua-5.1.4" );
@@ -415,6 +419,8 @@ sub check_and_install_lua {
 
 #check on source tar for mysql proxy, compile, install, and configure for use
 sub check_and_install_myproxy {
+
+	print "Installing mysql-proxy from source.\n";
 
 	#need to install lib event first.
 	chdir "$build_dir";
@@ -503,16 +509,17 @@ sub create_xrootd_startup {
 	print XROOTD "#start_xrootd\n";
 	print XROOTD "export QSW_XRDQUERYPATH=\"/q\"\n";
 	print XROOTD "export QSW_DBSOCK=\"$install_dir/var/lib/mysql/mysql.sock\"\n";
-	print XROOTD "QSW_MYSQLDUMP=\"$install_dir/bin/mysqldump\"\n";
+	print XROOTD "export QSW_MYSQLDUMP=\"$install_dir/bin/mysqldump\"\n";
 	print XROOTD "QSW_SCRATCHPATH=\"$install_dir/tmp\"\n";
 	print XROOTD "QSW_SCRATCHDB=\"qservScratch\"\n";
-	print XROOTD "QSW_RESULTPATH=\"$install_dir/xrootd-run/result\"\n";
+	print XROOTD "export QSW_RESULTPATH=\"$install_dir/xrootd-run/result\"\n";
 	print XROOTD "\n";
-	print XROOTD "export LD_LIBRARY_PATH=\"$install_dir/xrootd-run;$install_dir/lib;";
-	print XROOTD "$install_dir/xrootd/lib/x86_64_linux_26_dbg\"\n";
+	print XROOTD "export LD_LIBRARY_PATH=\"$install_dir/xrootd-run;$install_dir/lib\"\n";
 	print XROOTD "\n";
-	print XROOTD "$install_dir/xrootd/bin/x86_64_linux_26_dbg/xrootd -c ";
+	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/xrootd -c ";
 	print XROOTD "$install_dir/etc/lsp.cf -l $install_dir/xrootd-run/xrootd.log &\n";
+	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/cmsd -c ";
+	print XROOTD "$install_dir/etc/lsp.cf -l $install_dir/xrootd-run/cmsd.log &\n";
 	
 	close XROOTD;
 	chmod 0755, "start_xrootd";
