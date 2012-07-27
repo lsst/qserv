@@ -588,7 +588,10 @@ class CsvSchema:
                 self.clipChunkCols = True
 
     def _findChunkCols(self):
-        cColumnsPatterns = [("chunkId","subChunkId"), ["chunk", "subChunk"]]
+        cColumnsPatterns = [("chunkId","subChunkId"), 
+                            ("chunk", "subChunk"),
+                            ("x_chunkId", "x_subChunkId"),
+                            ("_chunkId", "_subChunkId")]
         match = None
         for p in cColumnsPatterns:
             if p[1] in self.headerColumns:
