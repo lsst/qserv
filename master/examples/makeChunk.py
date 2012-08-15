@@ -83,10 +83,19 @@ class DuplicatingIter:
         pass
 
 class Alloc:
+    """Alloc is a class that determines the allocation of nodes to chunks.
+    Chunks are provided as a numbered list of chunk bounds. Each chunk is 
+    distributed to nodes in round-robin fashion."""
     def __init__(self, totalNodes, items, numGetter, conf):
+        dedent("""totalNodes: number of nodes onto which chunks will be
+        distributed. 
+        items: list of items to be distributed.
+        numGetter: a unary function that returns a scalar identifier when applied on an item.
+        conf: a config object for misc tuning.""")
         self.total = totalNodes
         self.numGetter = numGetter
         self.items = items
+        #print "chunks available:", map(numGetter, items)
         self.conf = conf
         self.mapping = self._compute(self.total, self.items)
         self.invalid = self._computeInvalid(items)
@@ -94,6 +103,7 @@ class Alloc:
         pass
     
     def getForNode(self, chosen):
+        """For the specified node number, return a list of items needed"""
         items = self.items
         # round robin selection
         cLen = len(items)
