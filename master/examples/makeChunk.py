@@ -112,8 +112,7 @@ class Alloc:
         cList = []
         stride = self.total
         if stride == 1: return items[:]
-        #FIXME: perhaps range(cLen/total)?
-        for i in range(cLen/(stride-1)):
+        for i in range(1+(cLen/stride)):
             if c >= cLen: break
             cList.append(items[c])
             c += stride
