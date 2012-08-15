@@ -696,6 +696,7 @@ class Transformer:
         return outRows
     
     def transform(self, row, dupeInfo):
+        if not row: return
         thetaPhi = (float(row[self.thetaCol]), float(row[self.phiCol]))
         if self.prepTheta:
             thetaPhi = (self.prepTheta(thetaPhi[0]), thetaPhi[1])
