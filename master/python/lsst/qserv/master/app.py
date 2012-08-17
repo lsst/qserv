@@ -711,7 +711,7 @@ class HintedQueryAction:
         if not self._isValid:
             discardSession(self._sessionId)
             return
-        self._prepForExec( useMemory, reportError, resultName)
+        self._prepForExec(self._useMemory, reportError, resultName)
 
     def _importQconfig(self, pmap, hints):
         self._dbContext = "LSST" # Later adjusted by hints.        
