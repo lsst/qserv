@@ -155,6 +155,12 @@ XRDFLAGS = ["-D_LARGEFILE_SOURCE", "-D_LARGEFILE64_SOURCE",
             "-D_FILE_OFFSET_BITS=64", "-D_REENTRANT",]
 
 ## Boost checker
+def checkBoostHeader(conf, pkgList=[]):
+    for p in pkgList:
+        if not conf.CheckCXXHeader('boost/' + p + '.hpp'):
+            return False
+    return True
+    
 def checkAddBoost(conf, lib):
     """Check for a boost lib with various suffixes and add it to a Configure
     if found. (e.g. 'boost_regex' or 'boost_thread')"""

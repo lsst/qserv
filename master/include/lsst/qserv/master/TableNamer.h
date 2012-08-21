@@ -61,6 +61,7 @@ public:
         std::string magic;
         bool isAlias;
     };
+
     friend std::ostream& operator<<(std::ostream& os, AliasedRef const& ar);
     typedef std::deque<AliasedRef> RefDeque;
 
@@ -68,6 +69,7 @@ public:
     
     void setDefaultDb(std::string const& db) {
         _defaultDb = db; }
+
     template <class C>
     void acceptAliases(C const& a) {
         typedef typename C::const_iterator I;
@@ -83,6 +85,9 @@ public:
     RefDeque const& getRefs() const { return _refs; }
     
     StringList getBadDbs() const;
+
+    /// @return true if the ref refers to a chunked table.
+    bool isChunked(AliasedRef const& r) const;
 
 private:
     class AliasFunc;

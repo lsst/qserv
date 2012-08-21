@@ -496,6 +496,15 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     BOOST_CHECK(spr->getHasAggregate());
 }
 
+BOOST_AUTO_TEST_CASE(UnpartLimit) {
+    std::string stmt = "SELECT * from Science_Ccd_Exposure limit 3;";
+    SqlParseRunner::Ptr spr = getRunner(stmt);
+    testStmt2(spr);
+    BOOST_CHECK(!spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
@@ -549,18 +558,25 @@ BOOST_AUTO_TEST_CASE(Case01_1013) {
     testStmt2(spr);
 }
 
-// Syntax not supported currently.
+// ASC and maybe USING(...) syntax not supported currently.
+// Bug applying spatial restrictor to Filter (non-partitioned) is #2052
 BOOST_AUTO_TEST_CASE(Case01_1030) {
     std::string stmt = "SELECT objectId, taiMidPoint, scisql_fluxToAbMag(psfFlux) "
         "FROM   Source "
         "JOIN   Object USING(objectId) JOIN   Filter USING(filterId) "
         "WHERE qserv_areaspec_box(355, 0, 360, 20) AND filterName = 'g' "
         "ORDER BY objectId, taiMidPoint ASC;";
+    std::string expected = "SELECT objectId,taiMidPoint,scisql_fluxToAbMag(psfFlux) FROM LSST.%$#Source%$# JOIN LSST.%$#Object%$# USING(objectId) JOIN LSST.Filter USING(filterId) WHERE (scisql_s2PtInBox(LSST.%$#Source%$#.raObjectTest,LSST.%$#Source%$#.declObjectTest,355,0,360,20) = 1) AND (scisql_s2PtInBox(LSST.%$#Object%$#.ra_Test,LSST.%$#Object%$#.decl_Test,355,0,360,20) = 1) AND filterName='g' ORDER BY objectId,taiMidPoint ASC;";
+
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(!spr->getHasAggregate()); // Not really "aggregation"
+    // Aggregation for qserv means a different chunk query 
+    // and some form of post-fixup query.
+    BOOST_CHECK(spr->getHasAggregate()); 
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected); 
+    // std::cout << "Parse output:" << spr->getParseResult() << std::endl;
     // But should have a check for ordering-type fixups.
     // "JOIN" syntax, "ORDER BY" with "ASC"
 }
