@@ -168,7 +168,11 @@ sub check_mysqld {
 #check the xrootd process.
 sub check_xrootd {
 	
-	return check_ps( "xrootd -c" );
+	if( check_ps( "xrootd -c" ) && check_ps( "cmsd -c" ) ) {
+		return 1;
+	} else {
+		return 0;
+	}
 
 }
 
@@ -209,6 +213,7 @@ sub stop_qserv {
 sub stop_xrootd {
 
 	stop_ps( "xrootd -c" );
+	stop_ps( "cmsd -c" );
 
 }
 
