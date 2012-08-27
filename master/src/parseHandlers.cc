@@ -28,7 +28,7 @@ namespace qMaster = lsst::qserv::master;
 // Exception classes
 class UnsupportedSyntaxError : public std::exception {
 public:
-    UnsupportedSyntaxError(std::string const& d) throw() 
+    UnsupportedSyntaxError(std::string const& d) 
         : desc("UnsupportedSyntaxError(" + d + ")") {}
     virtual ~UnsupportedSyntaxError() throw() {}
     virtual const char* what() const throw() { return desc.c_str(); }
@@ -67,7 +67,7 @@ public:
     virtual void operator()(antlr::RefAST table, 
                             antlr::RefAST subQuery,
                             antlr::RefAST as,
-                            antlr::RefAST alias) throw() {
+                            antlr::RefAST alias) {
         using lsst::qserv::master::getLastSibling;
         std::string logicalName;
         std::string physicalName;
