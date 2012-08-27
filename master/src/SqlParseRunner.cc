@@ -396,7 +396,9 @@ void qMaster::SqlParseRunner::_computeParseResult() {
     } catch( antlr::ANTLRException& e ) {
         _errorMsg =  "Parse exception: " + e.toString();
     } catch( std::exception& e ) {
-        _errorMsg = std::string("General exception: ") + e.what();
+        _errorMsg = std::string("Exception: ") + e.what();
+    } catch(...) {
+        _errorMsg = std::string("Unknown exception. System not stable.");
     }
     if(badDbs.size() > 0) {
         _errorMsg += _interpretBadDbs(badDbs);
