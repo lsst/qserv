@@ -258,7 +258,7 @@ qMaster::getErrorDescr(int session) {
             std::vector<int>::iterator itrV;
             for (int i=0 ; i<size ; i++) {
                 ss << _v[i];
-                if (i < size-2) {
+                if (i < size-1) {
                     ss << ", ";
                 }
             }
