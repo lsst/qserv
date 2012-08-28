@@ -50,7 +50,7 @@ QueryState joinQuery(int session, int id);
 QueryState tryJoinQuery(int session, int id);
 QueryState joinSession(int session);
 std::string const& getQueryStateString(QueryState const& qs);
-std::string getErrorDescr(int session);
+std::string getErrorDesc(int session);
 int newSession(std::map<std::string,std::string> const& cfg);
 void configureSessionMerger(int session, 
                             lsst::qserv::master::TableMergerConfig const& c);
