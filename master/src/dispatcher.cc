@@ -214,8 +214,8 @@ qMaster::QueryState qMaster::joinSession(int session) {
     }
 }
 
-std::string 
-const& qMaster::getQueryStateString(QueryState const& qs) {
+std::string const& 
+qMaster::getQueryStateString(QueryState const& qs) {
     static const std::string unknown("unknown");
     static const std::string waiting("waiting");
     static const std::string dispatched("dispatched");
@@ -240,44 +240,32 @@ const& qMaster::getQueryStateString(QueryState const& qs) {
 std::string
 qMaster::getErrorDesc(int session) {
 
-    class _OneVector_ {
+    class _ErrMsgStr_ {
     public:
-        _OneVector_(const std::string& name): _name(name) {}
+        _ErrMsgStr_(const std::string& name): _name(name) {}
             
-        void add(int x) { _v.push_back(x); }
-
+        void add(int x) { 
+            if (_ss.str().length() == 0) {
+                _ss << _name << " failed for chunk(s):";
+            }
+            _ss << ' ' << x;
+        }
         std::string toString() {
-            int size = _v.size();
-            if (size == 0) {
-                return "";
-            }
-            std::stringstream ss;
-            ss << _name << " failed for chunk";
-            if (size > 1) ss << "s";
-            ss << ": ";
-            std::vector<int>::iterator itrV;
-            for (int i=0 ; i<size ; i++) {
-                ss << _v[i];
-                if (i < size-1) {
-                    ss << ", ";
-                }
-            }
-            ss << ". ";
-            return ss.str();
+            return _ss.str();
         }
     private:
-        std::vector<int> _v; // vector of chunk ids
-        std::string _name;
+        const std::string _name;
+        std::stringstream _ss;
     };    
     
     std::stringstream ss;
     AsyncQueryManager& qm = getAsyncManager(session);
     AsyncQueryManager::ResultDeque const& d = qm.getFinalState();
     AsyncQueryManager::ResultDequeCItr itr;
-    _OneVector_ openV("open");
-    _OneVector_ qwrtV("queryWrite");
-    _OneVector_ readV("read");
-    _OneVector_ lwrtV("localWrite");
+    _ErrMsgStr_ openV("open");
+    _ErrMsgStr_ qwrtV("queryWrite");
+    _ErrMsgStr_ readV("read");
+    _ErrMsgStr_ lwrtV("localWrite");
 
     for (itr=d.begin() ; itr!=d.end(); ++itr) {
         if (itr->second.open <= 0) {
