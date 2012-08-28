@@ -238,7 +238,7 @@ const& qMaster::getQueryStateString(QueryState const& qs) {
 }
 
 std::string
-qMaster::getErrorDescr(int session) {
+qMaster::getErrorDesc(int session) {
 
     class _OneVector_ {
     public:

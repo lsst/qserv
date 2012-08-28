@@ -81,7 +81,7 @@ from lsst.qserv.master import newSession, discardSession
 from lsst.qserv.master import submitQuery, submitQueryMsg
 from lsst.qserv.master import initDispatcher
 from lsst.qserv.master import tryJoinQuery, joinSession
-from lsst.qserv.master import getQueryStateString, getErrorDescr
+from lsst.qserv.master import getQueryStateString, getErrorDesc
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
 from lsst.qserv.master import ChunkMeta
@@ -620,7 +620,7 @@ class QueryBabysitter:
         s = joinSession(self._sessionId)
         resStr = getQueryStateString(s)
         if resStr != "success":
-            self._reportError(getErrorDescr(self._sessionId))
+            self._reportError(getErrorDesc(self._sessionId))
         print "Final state of all queries", resStr
         
     def getResultTableName(self):
