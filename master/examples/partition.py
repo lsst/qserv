@@ -1687,24 +1687,7 @@ def chunkAdaptively(conf, inputFiles):
 
 
 # -- Command line interface --------
-
-
-def main():
-    # Command line parsing/usage
-    t = time.time()
-    usage = "usage: %prog [options] input_1 input_2 ..."
-    parser = optparse.OptionParser(usage)
-
-    def explainArgs(option,opt,value,parser):
-        conf = parser.values
-        if conf.numChunks:
-            print "Adaptive chunking with", conf.numChunks, "chunks."
-        else:
-            print "Fixed spatial chunking:"
-            c = Chunker(conf)
-            c.printConfig()
-        print "Overlap:", conf.overlap, "deg (%d min)" %(conf.overlap * 60)
-        pass
+def makeGeneralOptGroup(parser):
     # General options
     general = optparse.OptionGroup(parser, "General options")
     general.add_option(
@@ -1759,11 +1742,10 @@ def main():
     general.add_option(
         "-d", "--debug", dest="debug", action="store_true",
         help="Print debug messages")
-    general.add_option(
-        "--explain", action="callback", callback=explainArgs,
-        help="Print current understanding of options and parameters")
-    parser.add_option_group(general)
+    return general
 
+
+def makeChunkingOptGroup(parser):
     # Standard chunking options
     chunking = optparse.OptionGroup(parser, "Standard chunking options")
     chunking.add_option(
@@ -1776,8 +1758,13 @@ def main():
         default=100, help=dedent("""\
         Number of sub-stripes to divide each stripe into. The default is
         %default."""))
+    return chunking
+
+def addChunkingOpts(parser):
+    chunking = makeChunkingOptGroup(parser)
     parser.add_option_group(chunking)
 
+def addAdaptiveOpts(parser):
     # Adaptive chunking options
     adaptive = optparse.OptionGroup(parser, "Adaptive chunking options")
     adaptive.add_option(
@@ -1798,6 +1785,7 @@ def main():
         chunking is being used."""))
     parser.add_option_group(adaptive)
 
+def addCsvOpts(parser):
     # CSV format options
     fmt = optparse.OptionGroup(
         parser, "CSV format options", dedent("""\
@@ -1834,6 +1822,7 @@ def main():
         Ignore whitespace immediately following delimiters."""))
     parser.add_option_group(fmt)
 
+def addTuningOpts(parser):
     # Tuning options
     tuning = optparse.OptionGroup(parser, "Tuning options")
     tuning.add_option(
@@ -1853,6 +1842,34 @@ def main():
         Approximate size in MiB of input file splits; defaults to %default.
         Fractional values are allowed."""))
     parser.add_option_group(tuning)
+
+
+def main():
+    # Command line parsing/usage
+    t = time.time()
+    usage = "usage: %prog [options] input_1 input_2 ..."
+    parser = optparse.OptionParser(usage)
+
+    def explainArgs(option,opt,value,parser):
+        conf = parser.values
+        if conf.numChunks:
+            print "Adaptive chunking with", conf.numChunks, "chunks."
+        else:
+            print "Fixed spatial chunking:"
+            c = Chunker(conf)
+            c.printConfig()
+        print "Overlap:", conf.overlap, "deg (%d min)" %(conf.overlap * 60)
+        pass
+
+    general = makeGeneralOptGroup(parser)
+    general.add_option(
+        "--explain", action="callback", callback=explainArgs,
+        help="Print current understanding of options and parameters")
+    addChunkingOpts(parser)
+    addAdaptiveOpts(parser)
+    addCsvOpts(parser)
+    addTuningOpts(parser)
+
 
     (conf, inputs) = parser.parse_args()
 

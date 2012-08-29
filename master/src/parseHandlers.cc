@@ -29,7 +29,7 @@ namespace qMaster = lsst::qserv::master;
 ////////////////////////////////////////////////////////////////////////
 // ColumnAliasHandler is bolted to the SQL parser, where it gets called for
 // each aliasing instance.
-class qMaster::AliasMgr::ColumnAliasHandler : public VoidTwoRefFunc {
+class lsst::qserv::master::AliasMgr::ColumnAliasHandler : public VoidTwoRefFunc {
 public: 
     
     ColumnAliasHandler(AliasMgr& am) : _am(am) {}
@@ -49,7 +49,7 @@ private:
 
 // TableAliasHandler is bolted to the SQL parser, where it gets called for
 // each table aliasing instance.
-class qMaster::AliasMgr::TableAliasHandler : public VoidFourRefFunc {
+class lsst::qserv::master::AliasMgr::TableAliasHandler : public VoidFourRefFunc {
 public: 
     
     TableAliasHandler(AliasMgr& am) : _am(am) {}

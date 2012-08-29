@@ -63,7 +63,7 @@ using std::stringstream;
 
 // Anonymous helpers
 namespace {
-    class SelectCallback : public qMaster::Callback {
+class SelectCallback : public lsst::qserv::master::Callback {
     public:
         typedef boost::shared_ptr<SelectCallback> Ptr;
         SelectCallback(qMaster::Templater& t) :_t(t) { }
@@ -94,7 +94,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////
 // LimitHandler : Handle "LIMIT n" parse events
 ////////////////////////////////////////////////////////////////////////
-class qMaster::LimitHandler : public VoidOneRefFunc {
+class lsst::qserv::master::LimitHandler : public VoidOneRefFunc {
 public: 
     LimitHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
     virtual ~LimitHandler() {}
@@ -111,7 +111,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // OrderByHandler : Handle "ORDER BY colname" events
 ////////////////////////////////////////////////////////////////////////
-class qMaster::OrderByHandler : public VoidOneRefFunc {
+class lsst::qserv::master::OrderByHandler : public VoidOneRefFunc {
 public: 
     OrderByHandler(qMaster::SqlParseRunner& spr) : _spr(spr) {}
     virtual ~OrderByHandler() {}
@@ -132,8 +132,8 @@ private:
 // provide the context for the where-clause manipulator to rewrite 
 // appropriately. 
 ////////////////////////////////////////////////////////////////////////
-class qMaster::SqlParseRunner::SpatialTableNotifier
-    : public qMaster::Templater::Notifier {
+class lsst::qserv::master::SqlParseRunner::SpatialTableNotifier
+    : public lsst::qserv::master::Templater::Notifier {
 public:
     SpatialTableNotifier(SqlParseRunner& spr) : _spr(spr) {}
     virtual void operator()(std::string const& refName, 
@@ -151,7 +151,7 @@ private:
 // spatial tables with aliases so that WHERE clause manipulation can
 // utilize aliases if available.
 ////////////////////////////////////////////////////////////////////////
-class qMaster::SqlParseRunner::FromHandler : public VoidVoidFunc {
+class lsst::qserv::master::SqlParseRunner::FromHandler : public VoidVoidFunc {
 public: 
     // A functor to perform the rewrite
     class addToRewrite {
@@ -209,7 +209,7 @@ private:
 /// e.g. table.partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
 /// First, split by ";", and then this object imports the resulting entries.
 /// 
-class qMaster::SqlParseRunner::PartitionTupleProcessor {
+class lsst::qserv::master::SqlParseRunner::PartitionTupleProcessor {
 public:
     PartitionTupleProcessor(SqlParseRunner& spr) : _spr(spr) {}
     void operator()(std::string const& s) {
@@ -245,7 +245,7 @@ public:
 /// e.g. query.hints=box,0,0,5,1;circle,1,1,1;
 /// Split by ',' and then add the directives to the spatial handler.
 /// 
-class qMaster::SqlParseRunner::HintTupleProcessor {
+class lsst::qserv::master::SqlParseRunner::HintTupleProcessor {
 public:
     HintTupleProcessor(SqlParseRunner& spr) : _spr(spr) {}
     void operator()(std::string const& s) {
@@ -302,8 +302,11 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
                                              _tableConfigMap, 
                                              *_tableNamer))
 { 
-
-    _readConfig(config);
+    try {
+        _readConfig(config);
+    } catch (std::string msg) {
+        _errorMsg = "Parser: " + msg;
+    }
     //std::cout << "(int)PARSING:"<< statement << std::endl;
 }
 

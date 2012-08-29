@@ -83,7 +83,7 @@ namespace {
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery::ReadCallable
 //////////////////////////////////////////////////////////////////////
-class qMaster::ChunkQuery::ReadCallable : public WorkQueue::Callable {
+class lsst::qserv::master::ChunkQuery::ReadCallable : public WorkQueue::Callable {
 public:
     typedef boost::shared_ptr<WorkQueue::Callable> CPtr;
     explicit ReadCallable(qMaster::ChunkQuery& cq) : 
@@ -128,7 +128,7 @@ private:
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery::WriteCallable
 //////////////////////////////////////////////////////////////////////
-class qMaster::ChunkQuery::WriteCallable : public WorkQueue::Callable {
+class lsst::qserv::master::ChunkQuery::WriteCallable : public WorkQueue::Callable {
 public:
     typedef boost::shared_ptr<WorkQueue::Callable> CPtr;
     explicit WriteCallable(qMaster::ChunkQuery& cq) : 
@@ -151,6 +151,8 @@ public:
                               << tries << " tries left " << std::endl;
                     continue;
                 }
+            }
+            if ( result == -1 ) {
                 result = -errno;
             }
             break;

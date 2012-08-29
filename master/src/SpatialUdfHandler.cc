@@ -51,7 +51,7 @@ using boost::make_shared;
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler::Restriction
 ////////////////////////////////////////////////////////////////////////
-class qMaster::SpatialUdfHandler::Restriction {
+class lsst::qserv::master::SpatialUdfHandler::Restriction {
 public:
     template <typename StrContainer>
     Restriction(std::string const& specName, StrContainer const& nameAndParams) 
@@ -185,7 +185,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler::FromWhereHandler
 ////////////////////////////////////////////////////////////////////////
-class qMaster::SpatialUdfHandler::FromWhereHandler : public VoidOneRefFunc {
+class lsst::qserv::master::SpatialUdfHandler::FromWhereHandler : public VoidOneRefFunc {
 public:
     FromWhereHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
     virtual ~FromWhereHandler() {}
@@ -217,7 +217,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler::WhereCondHandler
 ////////////////////////////////////////////////////////////////////////
-class qMaster::SpatialUdfHandler::WhereCondHandler : public VoidOneRefFunc {
+class lsst::qserv::master::SpatialUdfHandler::WhereCondHandler : public VoidOneRefFunc {
 public:
     WhereCondHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
     virtual ~WhereCondHandler() {}
@@ -243,7 +243,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler::RestrictorHandler
 ////////////////////////////////////////////////////////////////////////
-class qMaster::SpatialUdfHandler::RestrictorHandler : public VoidVoidFunc {
+class lsst::qserv::master::SpatialUdfHandler::RestrictorHandler : public VoidVoidFunc {
 public:
     RestrictorHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
     virtual ~RestrictorHandler() {}
@@ -259,7 +259,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler::FctSpecHandler
 ////////////////////////////////////////////////////////////////////////
-class qMaster::SpatialUdfHandler::FctSpecHandler : public VoidTwoRefFunc {
+class lsst::qserv::master::SpatialUdfHandler::FctSpecHandler : public VoidTwoRefFunc {
 public:
     FctSpecHandler(qMaster::SpatialUdfHandler& suh) : _suh(suh) {}
     virtual ~FctSpecHandler() {}
@@ -290,6 +290,26 @@ public:
 private:
     qMaster::SpatialUdfHandler& _suh;
 };
+
+////////////////////////////////////////////////////////////////////////
+// SpatialUdfHandler::processWrapper
+// A func object for expanding restrictors when finalizing.
+////////////////////////////////////////////////////////////////////////
+class lsst::qserv::master::SpatialUdfHandler::processWrapper {
+public:
+    processWrapper(SpatialUdfHandler& suh, std::ostream& o) 
+        : _suh(suh), _o(o), _first(true) {}
+
+    void operator()(boost::shared_ptr<Restriction> const& r) {
+        if(!_first) _o << " AND ";
+        _suh._expandRestriction(*r, _o);
+        _first = false;
+    }
+    SpatialUdfHandler& _suh;
+    std::ostream& _o;
+    bool _first;
+};
+
 
 ////////////////////////////////////////////////////////////////////////
 // SpatialUdfHandler
@@ -328,7 +348,6 @@ qMaster::SpatialUdfHandler::SpatialUdfHandler(
 
 void 
 qMaster::SpatialUdfHandler::addExpression(std::vector<std::string> const& v) {
-    std::stringstream ss;
     boost::shared_ptr<Restriction> r(new Restriction(_specName[v[0]], v));
     //std::cout << "adding restriction: " << funcName << std::endl;
     _restrictions.push_back(r);
@@ -340,22 +359,6 @@ qMaster::SpatialUdfHandler::getTableConfig(std::string const& tName) const {
     StringMap sm;
     return getFromMap(_tableConfigMap, tName, sm);
 }
-
-class qMaster::SpatialUdfHandler::processWrapper {
-public:
-    processWrapper(SpatialUdfHandler& suh, std::ostream& o) 
-        : _suh(suh), _o(o), _first(true) {}
-
-    void operator()(boost::shared_ptr<Restriction> const& r) {
-        if(!_first) _o << " AND ";
-        _suh._expandRestriction(*r, _o);
-        _first = false;
-    }
-    SpatialUdfHandler& _suh;
-    std::ostream& _o;
-    bool _first;
-};
-
 
 std::ostream& 
 qMaster::SpatialUdfHandler::_expandRestriction(Restriction const& r, 
