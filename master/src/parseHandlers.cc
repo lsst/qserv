@@ -21,20 +21,10 @@
  */
 
 #include "lsst/qserv/master/parseHandlers.h"
+#include "lsst/qserv/master/parseExceptions.h"
+
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
-
-////////////////////////////////////////////////////////////////////////
-// Exception classes
-class UnsupportedSyntaxError : public std::exception {
-public:
-    UnsupportedSyntaxError(std::string const& d) 
-        : desc("UnsupportedSyntaxError(" + d + ")") {}
-    virtual ~UnsupportedSyntaxError() throw() {}
-    virtual const char* what() const throw() { return desc.c_str(); }
-
-    std::string desc;
-};
 
 ////////////////////////////////////////////////////////////////////////
 // ColumnAliasHandler is bolted to the SQL parser, where it gets called for
