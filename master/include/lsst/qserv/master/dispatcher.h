@@ -38,7 +38,7 @@ enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};
 
 void initDispatcher();
 int submitQuery(int session, int chunk, char* str, int len, char* savePath,
-		std::string const& resultName=std::string());
+                std::string const& resultName=std::string());
 int submitQueryMsg(int session, char* dbName, int chunk,
                    char* str, int len, char* savePath,
                    std::string const& resultName=std::string());
