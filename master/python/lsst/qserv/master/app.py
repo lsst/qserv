@@ -80,7 +80,9 @@ from lsst.qserv.master import TransactionSpec
 from lsst.qserv.master import newSession, discardSession
 from lsst.qserv.master import submitQuery, submitQueryMsg
 from lsst.qserv.master import initDispatcher
-from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
+from lsst.qserv.master import tryJoinQuery, joinSession
+from lsst.qserv.master import getQueryStateString, getErrorDesc
+from lsst.qserv.master import SUCCESS as QueryState_SUCCESS
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
 from lsst.qserv.master import ChunkMeta
@@ -617,10 +619,9 @@ class QueryBabysitter:
             #print "State of", k, "is", getQueryStateString(s)
 
         s = joinSession(self._sessionId)
-        resStr = getQueryStateString(s)
-        if resStr != "success":
-            self._reportError("Error during execution")
-        print "Final state of all queries", resStr
+        if s != QueryState_SUCCESS:
+            self._reportError(getErrorDesc(self._sessionId))
+        print "Final state of all queries", getQueryStateString(s)
         
     def getResultTableName(self):
         ## Should do sanity checking to make sure that the name has been

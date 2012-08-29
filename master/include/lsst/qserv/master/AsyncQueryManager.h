@@ -62,6 +62,7 @@ class AsyncQueryManager {
 public:
     typedef std::pair<int, XrdTransResult> Result;
     typedef std::deque<Result> ResultDeque;
+    typedef std::deque<Result>::const_iterator ResultDequeCItr;
     typedef boost::shared_ptr<AsyncQueryManager> Ptr;
     typedef std::map<std::string, std::string> StringMap;
     typedef boost::shared_ptr<PacketIter> PacIterPtr;

@@ -151,6 +151,8 @@ public:
                               << tries << " tries left " << std::endl;
                     continue;
                 }
+            }
+            if ( result == -1 ) {
                 result = -errno;
             }
             break;
