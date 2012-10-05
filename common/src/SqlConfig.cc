@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
- * 
+ * Copyright 2010-2013 LSST Corporation.
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
@@ -29,7 +29,7 @@
 
 using lsst::qserv::SqlConfig;
 
-SqlConfig::SqlConfig(const SqlConfig& c) 
+SqlConfig::SqlConfig(const SqlConfig& c)
     : hostname(c.hostname),
       username(c.username),
       password(c.password),
@@ -38,7 +38,7 @@ SqlConfig::SqlConfig(const SqlConfig& c)
       socket(c.socket) {
 }
 
-void 
+void
 SqlConfig::throwIfNotSet(std::string const& fName) const {
     bool allSet = true;
     std::stringstream s;
@@ -56,10 +56,10 @@ SqlConfig::throwIfNotSet(std::string const& fName) const {
 }
 
 /// Initializes self from a file. File format: <key>:<value>
-/// To ignore given token, pass "". 
+/// To ignore given token, pass "".
 /// To ignore unrecognized tokens, set the flag to false.
-/// This is handy for reading a subset of a file. 
-void 
+/// This is handy for reading a subset of a file.
+void
 SqlConfig::initFromFile(std::string const& fName,
                         std::string const& hostToken,
                         std::string const& portToken,
@@ -87,7 +87,7 @@ SqlConfig::initFromFile(std::string const& fName,
         }
         std::string token = line.substr(0,pos);
         std::string value = line.substr(pos+1, line.size());
-        if (hostToken != "" and token == hostToken) { 
+        if (hostToken != "" and token == hostToken) {
             this->hostname = value;
         } else if (portToken != "" and token == portToken) {
             this->port = atoi(value.c_str());
@@ -96,7 +96,7 @@ SqlConfig::initFromFile(std::string const& fName,
                 s << "Invalid port number " << this->port << ". "
                   << "File '" << fName << "', line: '" << line << "'";
                 throw s.str();
-            }        
+            }
         } else if (userToken != "" and token == userToken) {
             this->username = value;
         } else if (passToken != "" and token == passToken) {
@@ -107,7 +107,7 @@ SqlConfig::initFromFile(std::string const& fName,
             this->socket = value;
         } else if (!ignoreUnrecognizedTokens) {
             std::stringstream s;
-            s << "Unexpected token: '" << token << "' (supported tokens " 
+            s << "Unexpected token: '" << token << "' (supported tokens "
               << "are: " << hostToken << ", " << portToken << ", "
               << userToken << ", " << passToken << ", " << dbNmToken << ", "
               << sockToken << ").";
@@ -117,11 +117,19 @@ SqlConfig::initFromFile(std::string const& fName,
     }
     f.close();
     //throwIfNotSet(fName);
-}   
+}
 
-void 
-SqlConfig::printSelf(std::string const& extras) const {
-    std::cout << "(" << extras << ") host=" << hostname << ", port=" << port 
-              << ", usr=" << username << ", pass=" << password << ", dbName=" 
-              << dbName << ", socket=" << socket << std::endl;
+std::string
+SqlConfig::asString() const {
+    std::string result(500, 0);
+    std::ostringstream os;
+    os << port;
+    result += "[host="; result += hostname;
+    result +=", port="; result += os.str();
+    result += ", usr="; result += username;
+    result += ", pass="; result += password;
+    result += ", dbName="; result += dbName;
+    result += ", socket="; result += socket;
+    result += "]";
+    return result;
 }

@@ -49,7 +49,7 @@ testEnv.Append(BUILDERS = {'Test': bld})
 for src in Glob("*.cc"):
     libs = []
     if(filter(lambda s: s in src.name, 
-              ["MySqlFs_", "FifoScheduler_", "QuerySql_"])):
+              ["MySqlFs_", "FifoScheduler_", "QuerySql_", "SanityCheck"])):
         src = [src] + testEnv["built_libs"] 
         libs = testEnv["built_elibs"] + ["mysqlclient_r", "XrdSys", "XrdClient", "XrdUtils"]
     elif "PathStructure_" in src.name:
@@ -64,6 +64,9 @@ for src in Glob("*.cc"):
                                                     "MySqlExportMgr.cc"])
         libs = testEnv["built_elibs"] + ["mysqlclient_r", "XrdOuc",
                                          "XrdClient", "XrdUtils", "XrdSys"]
+    elif "SanityCheck" in src.name:
+        src = [src, "../src/Config.cc"]
+
     else:
         src = [src]
     pass
