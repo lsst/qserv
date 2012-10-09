@@ -1,15 +1,43 @@
 #!/usr/bin/env python
 
-import MySQLdb
+# 
+# LSST Data Management System
+# Copyright 2008, 2009, 2010 LSST Corporation.
+# 
+# This product includes software developed by the
+# LSST Project (http://www.lsst.org/).
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the LSST License Statement and 
+# the GNU General Public License along with this program.  If not, 
+# see <http://www.lsstcorp.org/LegalNotices/>.
+#
 
-# Class used for initializing Qserv Metadata structure
-# in the internal qserv metadata database
-class QsMetaInit:
+import logging
+from lsst.qserv.master.metaDb import MetaDb
+
+class Meta():
     def __init__(self):
+        config = lsst.qserv.master.config.config
+        loggingOutF = config.get("logging", "outFile")
+        loggingLevel = config.get("loging", "level")
+
+        # todo deal with logging output file
+        logging.basicConfig(format='%(asctime)s %(message)s', loggingLevel)
+
         self.internalTables = [
-            # This table keeps the list of databases managed through qserv. 
-            # Shown when user calls "show databases". Databases not listed
-            # here will be ignored by qserv.
+            # The DbMeta table keeps the list of databases managed through 
+            # qserv. Databases not entered into that table will be ignored 
+            # by qserv.
             ['DbMeta', '''(
    dbId INT NOT NULL PRIMARY KEY,
    dbName VARCHAR(255) NOT NULL,
@@ -25,8 +53,8 @@ class QsMetaInit:
                         -- and PartitioningStrategy_TbLevel_* tables 
 )'''],
 
-            # metadata that defines table-specific metadata.
-            # this metadata is data-independent
+            # TableMeta table defines table-specific metadata.
+            # This metadata is data-independent
             ["TableMeta", '''(
    tableId INT NOT NULL PRIMARY KEY,
    tableName VARCHAR(255) NOT NULL,
@@ -37,7 +65,7 @@ class QsMetaInit:
                               -- Null if no clustered index.
 )'''],
 
-            # partitioning strategy, database-specific parameters 
+            # Partitioning strategy, database-specific parameters 
             # for sphBox partitioning
             ["PS_Db_sphBox", '''(
    psId INT NOT NULL PRIMARY KEY,
@@ -51,7 +79,7 @@ class QsMetaInit:
    defaultOverlap_nearNeigh FLOAT  -- in degrees, for real neighbor query
 )'''],
 
-            # partitioning strategy, table-specific parameters 
+            # Partitioning strategy, table-specific parameters 
             # for sphBox partitioning
             ["PS_Tb_sphBox", '''(
    psId INT NOT NULL PRIMARY KEY,
@@ -111,21 +139,9 @@ class QsMetaInit:
                                -- to attach to this lock 
 )''']]
 
-    def tableExists(self, tName):
-        print "checking if table %s exists" % tName
-
-    def createTable(self, tName, tSchema):
-        cmd = "CREATE TABLE %s %s" % (tName, tSchema)
-        print cmd
-
-    def initMeta(self):
-        # make sure none of the internal tables exists
-        for tt in self.internalTables:
-            if self.tableExists(tt[0]):
-                raise RuntimeError, ("Table %s exists" % tt[0])
-        # create all internal tables
-        for tt in self.internalTables:
-            self.createTable(tt[0], tt[1])
-
-m = QsMetaInit()
-m.initMeta()
+    def persistentInit(self):
+        MetaDb mdb
+        mdb.connectAndCreateDb()
+        for t in self.internalTables:
+            mdb.createTable(t[0], t[1])
+        mdb.disconnect()
