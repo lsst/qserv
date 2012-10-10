@@ -157,6 +157,8 @@ class ConfigError(Exception):
 ######################################################################
 def _initialize():
     "Perform some static initialization upon loading"
+    global envFilenameVar
+    global envFilename
     if os.environ.has_key(envFilenameVar):
         envFilename = os.environ[envFilenameVar]
     pass
@@ -167,7 +169,7 @@ def _loadFile(filename):
     loadedFile = None
     config = ConfigParser.ConfigParser()
     config.readfp(defaultMasterConfig) # Read built-in defaults first
-    config.readfp(defaultMetadataConfig) # Read built-in defaults first
+    config.readfp(defaultQmsConfig)    # Read built-in defaults first
     if getattr(filename, '__iter__', False):
         if not os.access(filename, os.R_OK):
             print "Unable to load %s" % filename
