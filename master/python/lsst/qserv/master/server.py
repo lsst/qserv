@@ -97,6 +97,7 @@ class XmlRpcInterface(xmlrpc.XMLRPC):
         self.appInterface = appInterface
         self._bindAppInterface()
         pass
+
     def _bindAppInterface(self):
         """Import the appInterface functions for publishing."""
         prefix = 'xmlrpc'
