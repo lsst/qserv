@@ -84,7 +84,7 @@ class Meta():
             # for sphBox partitioning
             ["PS_Tb_sphBox", '''(
    psId INT NOT NULL PRIMARY KEY,
-   overlap FLOAT          -- in degrees, 0 if not set
+   overlap FLOAT,         -- in degrees, 0 if not set
    phiCol VARCHAR(255),   -- Null if table not partitioned
    thetaCol VARCHAR(255), -- Null if table not partitioned
    phiColNo INT,          -- Position of the phiColumn in the table, 

@@ -23,6 +23,8 @@
 #
 
 from __future__ import with_statement
+import MySQLdb as sql
+import _mysql_exceptions
 import logging
 import MySQLdb
 import os
@@ -43,7 +45,7 @@ class MetaMySQLDb():
         self._logger = logging.getLogger(loggerName)
 
     def __del__(self):
-        self._disconnect()
+        self.disconnect()
 
     def _checkIsConnected(self):
         return self._conn != None
@@ -62,20 +64,30 @@ class MetaMySQLDb():
         host = config.get("metadb", "host")
         port = config.getint("metadb", "port")
         self.dbName = config.get("metadb", "db")
-        db4connect = None if createDb else self.dbName
 
         try: # Socket file first
-            self._conn = sql.connect(user=user,
-                                     passwd=passwd,
-                                     unix_socket=socket,
-                                     db=db4connect)
-        except Exception, e:
-            try:
+            if createDb:
                 self._conn = sql.connect(user=user,
                                          passwd=passwd,
-                                         host=host,
-                                         port=port,
-                                         db=db4connect)
+                                         unix_socket=socket)
+            else:
+                self._conn = sql.connect(user=user,
+                                         passwd=passwd,
+                                         unix_socket=socket,
+                                         db=self.dbName)
+        except Exception, e:
+            try:
+                if createDb:
+                    self._conn = sql.connect(user=user,
+                                             passwd=passwd,
+                                             host=host,
+                                             port=port)
+                else:
+                    self._conn = sql.connect(user=user,
+                                             passwd=passwd,
+                                             host=host,
+                                             port=port,
+                                             db=self.dbName)
             except Exception, e2:
                 msg1 = "Couldn't connect using file %s" % socket
                 self._logger.error(msg1)
@@ -87,12 +99,15 @@ class MetaMySQLDb():
                 return
         c = self._conn.cursor()
         if createDb:
-            self.checkDbExists(self, self.dbName, True) # throw exception on failure
-            self.execCommand0("CREATE DATABASE %s" % self.dbName)
+            if self.checkDbExists():
+                self._logger.error("Can't created db '%s', it exists." % \
+                                       self.dbName)
+            else:
+                self.execCommand0("CREATE DATABASE %s" % self.dbName)
             self._conn.select_db(self.dbName)
         self._logger.debug("Connected to db %s" % self.dbName)
 
-    def _disconnect(self):
+    def disconnect(self):
         if self._conn == None:
             return
         try:
@@ -110,22 +125,20 @@ class MetaMySQLDb():
         if self.checkDbExists(self.dbName):
             self.execCommand0("DROP DATABASE %s" % self.dbName)
 
-    def checkDbExist(self, throwOnFailure=False):
+    def checkDbExists(self):
         if self.dbName is None:
             raise RuntimeError("Invalid dbName")
         cmd = "SELECT COUNT(*) FROM information_schema.schemata "
         cmd += "WHERE schema_name = '%s'" % self.dbName
         count = self.execCommand1(cmd)
         if count[0] == 1:
-                return True
-        if throwOnFailure:
-            raise RuntimeError("Database '%s' does not exist." % self.dbName)
+            return True
         return False
 
     def createTable(self, tableName, tableSchema):
         self.execCommand0("CREATE TABLE %s %s" % (tableName, tableSchema))
 
-    def checkTableExist(self, tableName, throwOnFailure=False):
+    def checkTableExists(self, tableName, throwOnFailure=False):
         if not self._checkIsConnected():
             raise RuntimeError("Not connected")
         cmd = "SELECT COUNT(*) FROM information_schema.tables "
