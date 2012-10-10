@@ -20,11 +20,12 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# server.py : This module implements the HTTP and XML-RPC interfacing
+# metaServer.py : This module implements the HTTP and XML-RPC interfacing
 # logic using the Twisted networking library.  It exposes the 
 # functionality from the MetaInterface class.
 
 # Standard Python imports
+from itertools import ifilter
 import logging 
 import os
 import sys
@@ -40,7 +41,7 @@ from twisted.web import xmlrpc
 
 # Package imports
 from metaInterface import MetaInterface
-import config
+from lsst.qserv.master import config
 
 # Module settings
 defaultPort = 8001
@@ -90,13 +91,13 @@ class FunctionResource(twisted.web.resource.Resource):
             self, name, request)
 
 class XmlRpcInterface(xmlrpc.XMLRPC):
-    def __init__(self, appInterface):
+    def __init__(self, metaInterface):
         xmlrpc.XMLRPC.__init__(self)
-        self.appInterface = appInterface
-        self._bindAppInterface()
+        self.metaInterface = metaInterface
+        self._bindMetaInterface()
 
-    def _bindAppInterface(self):
-        """Import the appInterface functions for publishing."""
+    def _bindMetaInterface(self):
+        """Import the metaInterface functions for publishing."""
         prefix = 'xmlrpc'
         map(lambda x: setattr(self, "_".join([prefix,x]), 
                               getattr(self.metaInterface, x)), 
@@ -110,7 +111,7 @@ class XmlRpcInterface(xmlrpc.XMLRPC):
 
 
 class HttpInterface:
-    def __init__(self, appInterface):
+    def __init__(self, metaInterface):
         self.metaInterface = metaInterface
         okname = ifilter(lambda x: "_" not in x, dir(self))
         self.publishable = filter(lambda x: hasattr(getattr(self,x), 'func_doc'), 
@@ -142,7 +143,7 @@ class Master:
         root = twisted.web.resource.Resource()
         twisted.web.static.loadMimeTypes() # load from /etc/mime.types
         
-        mi = metaInterface()
+        mi = MetaInterface()
         c = HttpInterface(mi)
         xml = XmlRpcInterface(mi)
         # not sure I need the sub-pat http interface
@@ -159,7 +160,9 @@ class Master:
         print "Starting Qserv metadata server on port: %d" % self.port
         reactor.run()
    
-
-if __name__ == "__main__":
+def runServer():
     m = Master()
     m.listen()
+
+if __name__ == "__main__":
+    runServer()

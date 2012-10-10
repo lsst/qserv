@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
@@ -20,25 +22,32 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# Standard
-from itertools import ifilter
+# startMetadataServer.py -- This is a "driver" program that provides a
+# command-line interface to start qserv metadata server or its tests.
 
-# Package imports
-import meta
+from optparse import OptionParser
+import sys
 
-# Interface for qserv metadata
-#
-# MetaInterface instances can underlie an HTTP or XML-RPC server 
-# (via metaServer.py), or be used directly by test programs or
-# development/administrative code. 
-class MetaInterface:
-    def __init__(self):
-        okname = ifilter(lambda x: "_" not in x, dir(self))
-        self.publishable = filter(lambda x: hasattr(getattr(self,x), 
-                                                    'func_doc'), 
-                                  okname)
+from lsst.qserv.metadata import metaServer
+from lsst.qserv.master import config
 
-    def persistentInit(self):
-        """Initializes qserv metadata. It creates persistent structures,
-        therefore it should be called only once."""
-        return meta.persistentInit()
+
+def main():    
+    parser = OptionParser()
+
+    parser.add_option("-c", "--config", dest="configFile", default=None,
+                      help="Use config file. Can also be specified with\n" +
+                      "%s as an environment variable." % config.envFilenameVar)
+    (options, args) = parser.parse_args()
+
+    if options.configFile:
+        config.load(options.configFile)
+    else:
+        config.load()
+    print "Configuration:"
+    config.printTo(sys.stdout)
+
+    metaServer.runServer()
+
+if __name__ == '__main__':
+    main()

@@ -1,4 +1,7 @@
 
+[metaFrontend]
+port=7082
+
 [metadb]
 passwd = 
 db = qservMetadata
