@@ -52,7 +52,7 @@ envFilenameVar = "QSERV_CONFIG"
 
 # qserv built-in defaults:
 # Note that section names and key names are lower-cased by python.
-defaultConfig = StringIO("""\
+defaultMasterConfig = StringIO("""\
 [frontend]
 xrootd=lsst-dev01:1094
 xrootd_user=qsmaster
@@ -90,6 +90,24 @@ chunkLimit=-1
 
 [mysql]
 mysqlclient=
+
+""")
+
+defaultMetadataConfig = StringIO("""\
+[metaFrontend]
+port=7082
+
+[metadb]
+host=
+port=0
+unix_socket=/u1/local/mysql.sock
+db=qservMeta
+user=qsmaster
+passwd=
+
+[logging]
+outFile=/tmp/qsmeta.log
+level=warning
 
 """)
 
@@ -141,7 +159,6 @@ def _initialize():
     "Perform some static initialization upon loading"
     if os.environ.has_key(envFilenameVar):
         envFilename = os.environ[envFilenameVar]
-    
     pass
 
 def _loadFile(filename):
@@ -149,11 +166,16 @@ def _loadFile(filename):
     global config
     loadedFile = None
     config = ConfigParser.ConfigParser()
-    config.readfp(defaultConfig) # Read built-in defaults first
+    config.readfp(defaultMasterConfig) # Read built-in defaults first
+    config.readfp(defaultMetadataConfig) # Read built-in defaults first
     if getattr(filename, '__iter__', False):
+        if not os.access(filename, os.R_OK):
+            print "Unable to load %s" % filename
         map(config.read, filename) # Load a list of filenames
         loadedFile = filename[-1] # Remember the last loaded
     else:
+        if not os.access(filename, os.R_OK):
+            print "Unable to load %s" % filename
         config.read(filename)
         loadedFile = filename
     pass
