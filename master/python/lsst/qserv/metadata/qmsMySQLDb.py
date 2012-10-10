@@ -33,9 +33,9 @@ import sys
 
 import lsst.qserv.master.config
 
-class MetaMySQLDb():
+class QmsMySQLDb():
     """
-    MetaMySQLDb class is a wrapper around MySQLdb for qserv metadata. 
+    QmsMySQLDb class is a wrapper around MySQLdb for qserv metadata server. 
     It contains a set of low level basic database utilities such 
     as connecting to database. It caches  connections, and handles 
     database errors.
@@ -58,12 +58,12 @@ class MetaMySQLDb():
         if self._checkIsConnected():
             return
         config = lsst.qserv.master.config.config
-        socket = config.get("metadb", "unix_socket")
-        user = config.get("metadb", "user")
-        passwd = config.get("metadb", "passwd")
-        host = config.get("metadb", "host")
-        port = config.getint("metadb", "port")
-        self.dbName = config.get("metadb", "db")
+        socket = config.get("qmsdb", "unix_socket")
+        user = config.get("qmsdb", "user")
+        passwd = config.get("qmsdb", "passwd")
+        host = config.get("qmsdb", "host")
+        port = config.getint("qmsdb", "port")
+        self.dbName = config.get("qmsdb", "db")
 
         try: # Socket file first
             if createDb:

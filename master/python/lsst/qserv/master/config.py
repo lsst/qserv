@@ -93,15 +93,15 @@ mysqlclient=
 
 """)
 
-defaultMetadataConfig = StringIO("""\
-[metaFrontend]
+defaultQmsConfig = StringIO("""\
+[qmsFrontend]
 port=7082
 
-[metadb]
+[qmsdb]
 host=
 port=0
 unix_socket=/u1/local/mysql.sock
-db=qservMeta
+db=qservMetadata
 user=qsmaster
 passwd=
 

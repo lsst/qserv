@@ -24,14 +24,14 @@
 
 import logging
 
-from metaMySQLDb import MetaMySQLDb
+from qmsMySQLDb import QmsMySQLDb
 
 import lsst.qserv.master.config
 
 
-class Meta():
+class QmsImpl():
     def __init__(self):
-        self._loggerName = "qsMetaLogger"
+        self._loggerName = "qmsLogger"
 
         self._initLogging()
 
@@ -141,7 +141,7 @@ class Meta():
 )''']]
 
     def persistentInit(self):
-        mdb = MetaMySQLDb(self._loggerName)
+        mdb = QmsMySQLDb(self._loggerName)
         mdb.connectAndCreateDb()
         for t in self.internalTables:
             mdb.createTable(t[0], t[1])

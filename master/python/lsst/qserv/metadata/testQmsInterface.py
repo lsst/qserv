@@ -22,8 +22,8 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# testMetaInterface.py : A module with Python unittest code for testing
-# functionality available through the metaInterface module.
+# testQmsInterface.py : A module with Python unittest code for testing
+# functionality available through the qmsInterface module.
 
 
 # Standard Python imports
@@ -31,16 +31,16 @@ import sys
 import unittest
 
 # Package imports
-from meta import Meta
+from qmsImpl import QmsImpl
 from lsst.qserv.master import config
 
-class TestMetaInterface(unittest.TestCase):
+class TestQmsInterface(unittest.TestCase):
     def setUp(self):
         config.load("/u1/qserv/qserv/master/examples/qmsConfig.cnf")
         pass
 
     def testPersistentInit(self):
-        m = Meta()
+        m = QmsImpl()
         m.persistentInit()
 
 

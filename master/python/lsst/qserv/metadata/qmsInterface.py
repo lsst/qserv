@@ -24,14 +24,10 @@
 from itertools import ifilter
 
 # Package imports
-import meta
+import qmsImpl
 
-# Interface for qserv metadata
-#
-# MetaInterface instances can underlie an HTTP or XML-RPC server 
-# (via metaServer.py), or be used directly by test programs or
-# development/administrative code. 
-class MetaInterface:
+# Interface for qserv metadata server
+class QmsInterface:
     def __init__(self):
         okname = ifilter(lambda x: "_" not in x, dir(self))
         self.publishable = filter(lambda x: hasattr(getattr(self,x), 
@@ -41,4 +37,4 @@ class MetaInterface:
     def persistentInit(self):
         """Initializes qserv metadata. It creates persistent structures,
         therefore it should be called only once."""
-        return meta.persistentInit()
+        return qmsImpl.persistentInit()
