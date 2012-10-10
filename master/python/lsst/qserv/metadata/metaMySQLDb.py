@@ -29,6 +29,8 @@ import os
 import subprocess
 import sys
 
+import lsst.qserv.master.config
+
 class MetaMySQLDb():
     """
     MetaMySQLDb class is a wrapper around MySQLdb for qserv metadata. 
@@ -51,7 +53,7 @@ class MetaMySQLDb():
         It connects to a server. If createDb flag is set, it will connect to
         the server, create the database, then connect to that database.
         """
-        if self.isConnected():
+        if self._checkIsConnected():
             return
         config = lsst.qserv.master.config.config
         socket = config.get("metadb", "unix_socket")
@@ -75,12 +77,12 @@ class MetaMySQLDb():
                                          port=port,
                                          db=db4connect)
             except Exception, e2:
-                msg1 = "Couldn't connect using file" . socket . e
-                logger.error(msg1)
-                print >> sys.stderr, msg1
-                msg2 = "Couldn't connect using %s:%s %s" % (host, port, e2)
-                logger.error(msg2)
-                print >> sys.stderr, msg2
+                msg1 = "Couldn't connect using file %s" % socket
+                self._logger.error(msg1)
+                print >> sys.stderr, msg1, e
+                msg2 = "Couldn't connect using %s:%s" % (host, port)
+                self._logger.error(msg2)
+                print >> sys.stderr, msg2, e2
                 self._conn = None
                 return
         c = self._conn.cursor()
@@ -88,7 +90,7 @@ class MetaMySQLDb():
             self.checkDbExists(self, self.dbName, True) # throw exception on failure
             self.execCommand0("CREATE DATABASE %s" % self.dbName)
             self._conn.select_db(self.dbName)
-        logger.debug("Connected to db %s" % self.dbName)
+        self._logger.debug("Connected to db %s" % self.dbName)
 
     def _disconnect(self):
         if self._conn == None:
@@ -98,11 +100,11 @@ class MetaMySQLDb():
             self._conn.close()
         except MySQLdb.Error, e:
             raise RuntimeError("DB Error %d: %s" % (e.args[0], e.args[1]))
-        logger.debug("MySQL connection closed")
+        self._logger.debug("MySQL connection closed")
         self._conn = None
 
     def connectAndCreateDb(self):
-        return self.connect(True)
+        return self._connect(True)
 
     def dropDb(self):
         if self.checkDbExists(self.dbName):
@@ -124,7 +126,7 @@ class MetaMySQLDb():
         self.execCommand0("CREATE TABLE %s %s" % (tableName, tableSchema))
 
     def checkTableExist(self, tableName, throwOnFailure=False):
-        if not checkIsConnected():
+        if not self._checkIsConnected():
             raise RuntimeError("Not connected")
         cmd = "SELECT COUNT(*) FROM information_schema.tables "
         cmd += "WHERE table_schema = '%s' AND table_name = '%s'" % \
@@ -160,19 +162,19 @@ class MetaMySQLDb():
         Executes mysql commands which return any number of rows.
         Expected number of returned rows should be given in nRowSet
         """
-        if not self.checkIsConnected():
+        if not self._checkIsConnected():
             raise RuntimeError("No connection (command: '%s')" % command)
 
         cursor = self._conn.cursor()
-        logger.debug("Executing %s" % command)
+        self._logger.debug("Executing %s" % command)
         cursor.execute(command)
         if nRowsRet == 0:
             ret = ""
         elif nRowsRet == 1:
             ret = cursor.fetchone()
-            logger.debug("Got: %s" % str(ret))
+            self._logger.debug("Got: %s" % str(ret))
         else:
             ret = cursor.fetchall()
-            logger.debug("Got: %s" % str(ret))
+            self._logger.debug("Got: %s" % str(ret))
         cursor.close()
         return ret

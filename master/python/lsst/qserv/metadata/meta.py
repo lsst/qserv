@@ -26,7 +26,7 @@ import logging
 
 from metaMySQLDb import MetaMySQLDb
 
-from lsst.qserv.master import config
+import lsst.qserv.master.config
 
 
 class Meta():
@@ -149,20 +149,20 @@ class Meta():
 
     def _initLogging(self):
         config = lsst.qserv.master.config.config
-        outF = config.get("logging", "outFile")
+        outFile = config.get("logging", "outFile")
         levelName = config.get("logging", "level")
         if levelName is None:
-            loggingLevel = logging.ERROR # default
+            level = logging.ERROR # default
         else:
             ll = {"debug":logging.DEBUG,
                   "info":logging.INFO,
                   "warning":logging.WARNING,
                   "error":logging.ERROR,
                   "critical":logging.CRITICAL}
-            loggingLevel = ll(levelName)
+            level = ll[levelName]
         self.logger = logging.getLogger(self._loggerName)
         hdlr = logging.FileHandler(outFile)
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         hdlr.setFormatter(formatter)
         self.logger.addHandler(hdlr) 
-        self.logger.setLevel(loggingLevels[loggingLevelName])
+        self.logger.setLevel(level)

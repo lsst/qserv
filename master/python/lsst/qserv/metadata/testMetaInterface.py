@@ -27,18 +27,22 @@
 
 
 # Standard Python imports
-import unittest
 import sys
-import time
+import unittest
 
 # Package imports
 from meta import Meta
-
+from lsst.qserv.master import config
 
 class TestMetaInterface(unittest.TestCase):
     def setUp(self):
+        config.load("/u1/qserv/qserv/master/python/lsst/qserv/metadata/testConfig.cnf")
         pass
 
-    def testPersistentInit(sel):
+    def testPersistentInit(self):
         m = Meta()
         m.persistentInit()
+
+
+if __name__ == '__main__':
+    unittest.main()
