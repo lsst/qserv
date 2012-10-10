@@ -23,16 +23,17 @@
 #
 
 import logging
-from lsst.qserv.master.metaDb import MetaDb
+
+from metaMySQLDb import MetaMySQLDb
+
+from lsst.qserv.master import config
+
 
 class Meta():
     def __init__(self):
-        config = lsst.qserv.master.config.config
-        loggingOutF = config.get("logging", "outFile")
-        loggingLevel = config.get("loging", "level")
+        self._loggerName = "qsMetaLogger"
 
-        # todo deal with logging output file
-        logging.basicConfig(format='%(asctime)s %(message)s', loggingLevel)
+        self._initLogging()
 
         self.internalTables = [
             # The DbMeta table keeps the list of databases managed through 
@@ -140,8 +141,28 @@ class Meta():
 )''']]
 
     def persistentInit(self):
-        MetaDb mdb
+        mdb = MetaMySQLDb(self._loggerName)
         mdb.connectAndCreateDb()
         for t in self.internalTables:
             mdb.createTable(t[0], t[1])
         mdb.disconnect()
+
+    def _initLogging(self):
+        config = lsst.qserv.master.config.config
+        outF = config.get("logging", "outFile")
+        levelName = config.get("logging", "level")
+        if levelName is None:
+            loggingLevel = logging.ERROR # default
+        else:
+            ll = {"debug":logging.DEBUG,
+                  "info":logging.INFO,
+                  "warning":logging.WARNING,
+                  "error":logging.ERROR,
+                  "critical":logging.CRITICAL}
+            loggingLevel = ll(levelName)
+        self.logger = logging.getLogger(self._loggerName)
+        hdlr = logging.FileHandler(outFile)
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        hdlr.setFormatter(formatter)
+        self.logger.addHandler(hdlr) 
+        self.logger.setLevel(loggingLevels[loggingLevelName])

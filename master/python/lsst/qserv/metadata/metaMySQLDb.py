@@ -29,23 +29,24 @@ import os
 import subprocess
 import sys
 
-class MetaMySQLDb(object):
+class MetaMySQLDb():
     """
     MetaMySQLDb class is a wrapper around MySQLdb for qserv metadata. 
     It contains a set of low level basic database utilities such 
     as connecting to database. It caches  connections, and handles 
     database errors.
     """
-    def __init__(self):
+    def __init__(self, loggerName):
         self._conn = None
+        self._logger = logging.getLogger(loggerName)
 
     def __del__(self):
-        self.disconnect()
+        self._disconnect()
 
-    def isConnected(self):
+    def _checkIsConnected(self):
         return self._conn != None
 
-    def connect(self, createDb=False):
+    def _connect(self, createDb=False):
         """
         It connects to a server. If createDb flag is set, it will connect to
         the server, create the database, then connect to that database.
@@ -74,22 +75,22 @@ class MetaMySQLDb(object):
                                          port=port,
                                          db=db4connect)
             except Exception, e2:
-                print >>sys.stderr, "Couldn't connect using file", socket, e
-                msg = "Couldn't connect using %s:%s" % (host, port)
-                print >> sys.stderr, msg, e2
+                msg1 = "Couldn't connect using file" . socket . e
+                logger.error(msg1)
+                print >> sys.stderr, msg1
+                msg2 = "Couldn't connect using %s:%s %s" % (host, port, e2)
+                logger.error(msg2)
+                print >> sys.stderr, msg2
                 self._conn = None
                 return
         c = self._conn.cursor()
         if createDb:
-            self.dbExists(self, self.dbName, True) # throw exception on failure
+            self.checkDbExists(self, self.dbName, True) # throw exception on failure
             self.execCommand0("CREATE DATABASE %s" % self.dbName)
             self._conn.select_db(self.dbName)
-        logging.debug("Connected to db %s" % self.dbName)
+        logger.debug("Connected to db %s" % self.dbName)
 
-    def connectAndCreateDb(self):
-        return connect(self, True):
-
-    def disconnect(self):
+    def _disconnect(self):
         if self._conn == None:
             return
         try:
@@ -97,11 +98,14 @@ class MetaMySQLDb(object):
             self._conn.close()
         except MySQLdb.Error, e:
             raise RuntimeError("DB Error %d: %s" % (e.args[0], e.args[1]))
-        logging.debug("MySQL connection closed")
+        logger.debug("MySQL connection closed")
         self._conn = None
 
+    def connectAndCreateDb(self):
+        return self.connect(True)
+
     def dropDb(self):
-        if self.dbExists(self.dbName):
+        if self.checkDbExists(self.dbName):
             self.execCommand0("DROP DATABASE %s" % self.dbName)
 
     def checkDbExist(self, throwOnFailure=False):
@@ -120,7 +124,7 @@ class MetaMySQLDb(object):
         self.execCommand0("CREATE TABLE %s %s" % (tableName, tableSchema))
 
     def checkTableExist(self, tableName, throwOnFailure=False):
-        if ! isConnected():
+        if not checkIsConnected():
             raise RuntimeError("Not connected")
         cmd = "SELECT COUNT(*) FROM information_schema.tables "
         cmd += "WHERE table_schema = '%s' AND table_name = '%s'" % \
@@ -156,19 +160,19 @@ class MetaMySQLDb(object):
         Executes mysql commands which return any number of rows.
         Expected number of returned rows should be given in nRowSet
         """
-        if not self.isConnected():
+        if not self.checkIsConnected():
             raise RuntimeError("No connection (command: '%s')" % command)
 
         cursor = self._conn.cursor()
-        logging.debug("Executing %s" % command)
+        logger.debug("Executing %s" % command)
         cursor.execute(command)
         if nRowsRet == 0:
             ret = ""
         elif nRowsRet == 1:
             ret = cursor.fetchone()
-            logging.debug("Got: %s" % str(ret))
+            logger.debug("Got: %s" % str(ret))
         else:
             ret = cursor.fetchall()
-            logging.debug("Got: %s" % str(ret))
+            logger.debug("Got: %s" % str(ret))
         cursor.close()
         return ret

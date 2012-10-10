@@ -32,7 +32,7 @@ import sys
 import time
 
 # Package imports
-from lsst.qserv.metadata.meta import Meta
+from meta import Meta
 
 
 class TestMetaInterface(unittest.TestCase):
