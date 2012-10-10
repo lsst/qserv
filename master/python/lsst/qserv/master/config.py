@@ -150,12 +150,16 @@ def _loadFile(filename):
     loadedFile = None
     config = ConfigParser.ConfigParser()
     config.readfp(defaultConfig) # Read built-in defaults first
+    def readOrDie(fn):
+        assert os.access(fn, os.R_OK)
+        config.read(fn)
     if getattr(filename, '__iter__', False):
-        map(config.read, filename) # Load a list of filenames
+        map(readOrDie, filename) # Load a list of filenames
         loadedFile = filename[-1] # Remember the last loaded
-    else:
-        config.read(filename)
+    elif filename:
+        readOrDie(filename)
         loadedFile = filename
+    # For null/false filenames, skip reading and use defaults
     pass
 
 # Static initialization
