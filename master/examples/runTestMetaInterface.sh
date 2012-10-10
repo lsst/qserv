@@ -6,7 +6,7 @@ BASEPATH=/u1/qserv/qserv
 
 export PYTHONPATH=/u1/lsst/lib/python2.5/site-packages:$BASEPATH/master/python
 
-# export QSERV_CONFIG=$BASEPATH/master/examples/metadataTestConfig.cnf
+# export QSERV_CONFIG=$BASEPATH/master/examples/qmsConfig.cnf
 
 # dont forget to grant access for the qservMetadata database
 # GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE ON qservMetadata.* TO 'qsmaster'@'localhost' WITH GRANT OPTION;

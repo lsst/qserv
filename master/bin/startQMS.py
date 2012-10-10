@@ -22,8 +22,8 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# startMetadataServer.py -- This is a "driver" program that provides a
-# command-line interface to start qserv metadata server or its tests.
+# startQMS.py -- This is a "driver" program that provides a
+# command-line interface to start qserv metadata server.
 
 from optparse import OptionParser
 import sys

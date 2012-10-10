@@ -36,7 +36,7 @@ from lsst.qserv.master import config
 
 class TestMetaInterface(unittest.TestCase):
     def setUp(self):
-        config.load("/u1/qserv/qserv/master/examples/metadataTestConfig.cnf")
+        config.load("/u1/qserv/qserv/master/examples/qmsConfig.cnf")
         pass
 
     def testPersistentInit(self):
