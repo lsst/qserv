@@ -20,26 +20,20 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
 
-import logging
 
 from qmsMySQLDb import QmsMySQLDb
 
-import lsst.qserv.master.config
 
-
-class QmsImpl():
-    def __init__(self):
-        self._loggerName = "qmsLogger"
-
-        self._initLogging()
-
-        self.internalTables = [
-            # The DbMeta table keeps the list of databases managed through 
-            # qserv. Databases not entered into that table will be ignored 
-            # by qserv.
-            ['DbMeta', '''(
+def persistentInit(loggerName):
+    """Initializes persistent qserv metadata structures.
+    This method should be called only once ever for a given
+    qms installation."""
+    internalTables = [
+        # The DbMeta table keeps the list of databases managed through 
+        # qserv. Databases not entered into that table will be ignored 
+        # by qserv.
+        ['DbMeta', '''(
    dbId INT NOT NULL PRIMARY KEY,
    dbName VARCHAR(255) NOT NULL,
    dbUuid VARCHAR(255) NOT NULL, -- note: this has to be the same across 
@@ -53,10 +47,10 @@ class QmsImpl():
    psId INT             -- foreign key to the PartitioningStrategy_DbLevel_*
                         -- and PartitioningStrategy_TbLevel_* tables 
 )'''],
-
-            # TableMeta table defines table-specific metadata.
-            # This metadata is data-independent
-            ["TableMeta", '''(
+        # ---------------------------------------------------------------------
+        # TableMeta table defines table-specific metadata.
+        # This metadata is data-independent
+        ["TableMeta", '''(
    tableId INT NOT NULL PRIMARY KEY,
    tableName VARCHAR(255) NOT NULL,
    tbUuid VARCHAR(255),       -- uuid of this table
@@ -65,9 +59,9 @@ class QmsImpl():
    clusteredIdx VARCHAR(255)  -- name of the clustered index, 
                               -- Null if no clustered index.
 )'''],
-
-            # Partitioning strategy, database-specific parameters 
-            # for sphBox partitioning
+        # ---------------------------------------------------------------------
+        # Partitioning strategy, database-specific parameters 
+        # for sphBox partitioning
             ["PS_Db_sphBox", '''(
    psId INT NOT NULL PRIMARY KEY,
    stripes INT,    -- base number of stripes. 
@@ -79,10 +73,10 @@ class QmsImpl():
    defaultOverlap_fuzzyness FLOAT, -- in degrees, for fuzziness
    defaultOverlap_nearNeigh FLOAT  -- in degrees, for real neighbor query
 )'''],
-
-            # Partitioning strategy, table-specific parameters 
-            # for sphBox partitioning
-            ["PS_Tb_sphBox", '''(
+        # ---------------------------------------------------------------------
+        # Partitioning strategy, table-specific parameters 
+        # for sphBox partitioning
+        ["PS_Tb_sphBox", '''(
    psId INT NOT NULL PRIMARY KEY,
    overlap FLOAT,         -- in degrees, 0 if not set
    phiCol VARCHAR(255),   -- Null if table not partitioned
@@ -105,11 +99,13 @@ class QmsImpl():
                           -- 0x3000 - for 2nd level chunking: not persisted
                           -- 0x3001 - for 2nd level chunking: db rows/columns
 )'''],
-            ["EmptyChunks", '''(
+        # ---------------------------------------------------------------------
+        ["EmptyChunks", '''(
    dbId INT,
    chunkId INT
 )'''], 
-            ["TableStats", '''(
+        # ---------------------------------------------------------------------
+        ["TableStats", '''(
    tableId INT NOT NULL PRIMARY KEY,
    rowCount BIGINT,        -- row count. Doesn't have to be precise.
                            -- used for query cost estimates
@@ -117,7 +113,8 @@ class QmsImpl():
    subChunkCount INT,      -- count of all subchunks
    avgSubChunkCount FLOAT  -- average sub chunk count (per chunk)
 )'''],
-            ["LockDb", '''(
+        # ---------------------------------------------------------------------
+        ["LockDb", '''(
    dbId INT NOT NULL,
    locked INT,                 -- 1: locked, 0: unlocked for now
    lockKey BIGINT,             -- key required to bypass the lock
@@ -128,7 +125,8 @@ class QmsImpl():
    comments TEXT DEFAULT NULL  -- any comments the lock creator wants 
                                -- to attach to this lock 
 )'''],
-            ["LockTable", '''(
+        # ---------------------------------------------------------------------
+        ["LockTable", '''(
    tableId INT NOT NULL,
    locked INT,                 -- 1: locked, 0: unlocked for now
    lockKey BIGINT,             -- key required to bypass the lock
@@ -139,30 +137,9 @@ class QmsImpl():
    comments TEXT DEFAULT NULL  -- any comments the lock creator wants 
                                -- to attach to this lock 
 )''']]
-
-    def persistentInit(self):
-        mdb = QmsMySQLDb(self._loggerName)
-        mdb.connectAndCreateDb()
-        for t in self.internalTables:
-            mdb.createTable(t[0], t[1])
-        mdb.disconnect()
-
-    def _initLogging(self):
-        config = lsst.qserv.master.config.config
-        outFile = config.get("logging", "outFile")
-        levelName = config.get("logging", "level")
-        if levelName is None:
-            level = logging.ERROR # default
-        else:
-            ll = {"debug":logging.DEBUG,
-                  "info":logging.INFO,
-                  "warning":logging.WARNING,
-                  "error":logging.ERROR,
-                  "critical":logging.CRITICAL}
-            level = ll[levelName]
-        self.logger = logging.getLogger(self._loggerName)
-        hdlr = logging.FileHandler(outFile)
-        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-        hdlr.setFormatter(formatter)
-        self.logger.addHandler(hdlr) 
-        self.logger.setLevel(level)
+    mdb = QmsMySQLDb(loggerName)
+    mdb.connectAndCreateDb()
+    for t in internalTables:
+        mdb.createTable(t[0], t[1])
+    mdb.disconnect()
+    return 0 # success

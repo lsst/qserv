@@ -31,7 +31,7 @@ import sys
 import unittest
 
 # Package imports
-from qmsImpl import QmsImpl
+from lsst.qserv.metadata import qmsImpl
 from lsst.qserv.master import config
 
 class TestQmsInterface(unittest.TestCase):
@@ -40,8 +40,7 @@ class TestQmsInterface(unittest.TestCase):
         pass
 
     def testPersistentInit(self):
-        m = QmsImpl()
-        m.persistentInit()
+        qmsImpl.persistentInit("qmsLogger")
 
 
 if __name__ == '__main__':

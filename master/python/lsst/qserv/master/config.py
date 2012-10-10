@@ -106,7 +106,7 @@ user=qsmaster
 passwd=
 
 [logging]
-outFile=/tmp/qsmeta.log
+outFile=/tmp/qms.log
 level=warning
 
 """)

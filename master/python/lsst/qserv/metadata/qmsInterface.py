@@ -22,13 +22,18 @@
 
 # Standard
 from itertools import ifilter
+import logging
 
 # Package imports
 import qmsImpl
+import lsst.qserv.master.config
 
 # Interface for qserv metadata server
 class QmsInterface:
     def __init__(self):
+        self._loggerName = "qmsLogger"
+        self._initLogging()
+
         okname = ifilter(lambda x: "_" not in x, dir(self))
         self.publishable = filter(lambda x: hasattr(getattr(self,x), 
                                                     'func_doc'), 
@@ -36,5 +41,36 @@ class QmsInterface:
 
     def persistentInit(self):
         """Initializes qserv metadata. It creates persistent structures,
-        therefore it should be called only once."""
-        return qmsImpl.persistentInit()
+        (it should be called only once)."""
+        return qmsImpl.persistentInit(self._loggerName)
+
+    def help(self):
+        """A brief help message showing available commands"""
+        r = "" ## self._handyHeader()
+        r += "\n<pre>Available qms commands:\n"
+        sorted =  map(lambda x: (x, getattr(self, x)), self.publishable)
+        sorted.sort()
+        for (k,v) in sorted:
+            r += "%-20s : %s\n" %(k, v.func_doc)
+        r += "</pre>\n"
+        return r
+
+    def _initLogging(self):
+        config = lsst.qserv.master.config.config
+        outFile = config.get("logging", "outFile")
+        levelName = config.get("logging", "level")
+        if levelName is None:
+            level = logging.ERROR # default
+        else:
+            ll = {"debug":logging.DEBUG,
+                  "info":logging.INFO,
+                  "warning":logging.WARNING,
+                  "error":logging.ERROR,
+                  "critical":logging.CRITICAL}
+            level = ll[levelName]
+        self.logger = logging.getLogger(self._loggerName)
+        hdlr = logging.FileHandler(outFile)
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        hdlr.setFormatter(formatter)
+        self.logger.addHandler(hdlr) 
+        self.logger.setLevel(level)
