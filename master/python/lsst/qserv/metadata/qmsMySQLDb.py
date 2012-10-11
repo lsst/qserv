@@ -32,6 +32,7 @@ import subprocess
 import sys
 
 import lsst.qserv.master.config
+from lsst.qserv.metadata.qmsStatus import QmsStatus
 
 class QmsMySQLDb():
     """
@@ -102,10 +103,12 @@ class QmsMySQLDb():
             if self.checkDbExists():
                 self._logger.error("Can't created db '%s', it exists." % \
                                        self.dbName)
+                return QmsStatus.ERR_IS_INIT
             else:
                 self.execCommand0("CREATE DATABASE %s" % self.dbName)
             self._conn.select_db(self.dbName)
         self._logger.debug("Connected to db %s" % self.dbName)
+        return QmsStatus.SUCCESS
 
     def disconnect(self):
         if self._conn == None:

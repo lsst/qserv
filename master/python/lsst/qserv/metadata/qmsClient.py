@@ -31,7 +31,8 @@ import xmlrpclib
 
 # Local package imports
 from lsst.qserv.metadata import qmsInterface
-
+from lsst.qserv.metadata.qmsStatus import QmsStatus
+from lsst.qserv.metadata.qmsStatus import getErrMsg
 
 qmsHost = "localhost"
 qmsPort = 7082
@@ -70,7 +71,10 @@ def main():
         runEchoTest()
         return
     if options.persInit:
-        qms.persistentInit()
+        ret = qms.persistentInit()
+        if ret != QmsStatus.SUCCESS:
+            print getErrMsg(ret)
+
         return
 
 if __name__ == '__main__':

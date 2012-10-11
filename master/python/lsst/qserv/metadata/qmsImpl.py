@@ -23,7 +23,7 @@
 
 
 from qmsMySQLDb import QmsMySQLDb
-
+from qmsStatus import QmsStatus
 
 def persistentInit(loggerName):
     """Initializes persistent qserv metadata structures.
@@ -138,8 +138,9 @@ def persistentInit(loggerName):
                                -- to attach to this lock 
 )''']]
     mdb = QmsMySQLDb(loggerName)
-    mdb.connectAndCreateDb()
+    ret = mdb.connectAndCreateDb()
+    if ret != QmsStatus.SUCCESS: return ret
     for t in internalTables:
         mdb.createTable(t[0], t[1])
     mdb.disconnect()
-    return 0 # success
+    return QmsStatus.SUCCESS
