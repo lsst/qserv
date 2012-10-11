@@ -142,5 +142,5 @@ def persistentInit(loggerName):
     if ret != QmsStatus.SUCCESS: return ret
     for t in internalTables:
         mdb.createTable(t[0], t[1])
-    mdb.disconnect()
-    return QmsStatus.SUCCESS
+    return mdb.disconnect()
+

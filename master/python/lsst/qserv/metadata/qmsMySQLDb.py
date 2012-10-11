@@ -97,7 +97,8 @@ class QmsMySQLDb():
                 self._logger.error(msg2)
                 print >> sys.stderr, msg2, e2
                 self._conn = None
-                return
+                return QmsStatus.ERR_MYSQL_CONNECT
+
         c = self._conn.cursor()
         if createDb:
             if self.checkDbExists():
@@ -112,14 +113,17 @@ class QmsMySQLDb():
 
     def disconnect(self):
         if self._conn == None:
-            return
+            return QmsStatus.SUCCESS
         try:
             self._conn.commit()
             self._conn.close()
         except MySQLdb.Error, e:
-            raise RuntimeError("DB Error %d: %s" % (e.args[0], e.args[1]))
+            self._logger.error("QmsMySQLDb::disconnect: DB Error %d: %s" % \
+                                   (e.args[0], e.args[1]))
+            return QmsStatus.ERR_MYSQL_DISCONN
         self._logger.debug("MySQL connection closed")
         self._conn = None
+        return QmsStatus.SUCCESS
 
     def connectAndCreateDb(self):
         return self._connect(True)
@@ -141,46 +145,32 @@ class QmsMySQLDb():
     def createTable(self, tableName, tableSchema):
         self.execCommand0("CREATE TABLE %s %s" % (tableName, tableSchema))
 
-    def checkTableExists(self, tableName, throwOnFailure=False):
+    def checkTableExists(self, tableName):
         if not self._checkIsConnected():
             raise RuntimeError("Not connected")
         cmd = "SELECT COUNT(*) FROM information_schema.tables "
         cmd += "WHERE table_schema = '%s' AND table_name = '%s'" % \
                (self.dbName, tableName)
         count = self.execCommand1(cmd)
-        if count[0] == 1:
-            return True
-        if throwOnFailure:
-            raise RuntimeError("Table '%s' does not exist in db '%s'." % \
-                               (tableName, self.dbName))
-        return False
+        return  count[0] == 1
 
     def execCommand0(self, command):
-        """
-        Executes mysql commands which return no rows
-        """
+        """Executes mysql commands which return no rows"""
         return self._execCommand(command, 0)
 
     def execCommand1(self, command):
-        """
-        Executes mysql commands which return one rows
-        """
+        """Executes mysql commands which return one rows"""
         return self._execCommand(command, 1)
 
     def execCommandN(self, command):
-        """
-        Executes mysql commands which return multiple rows
-        """
+        """Executes mysql commands which return multiple rows"""
         return self._execCommand(command, 'n')
 
     def _execCommand(self, command, nRowsRet):
-        """
-        Executes mysql commands which return any number of rows.
-        Expected number of returned rows should be given in nRowSet
-        """
+        """Executes mysql commands which return any number of rows.
+        Expected number of returned rows should be given in nRowSet"""
         if not self._checkIsConnected():
-            raise RuntimeError("No connection (command: '%s')" % command)
-
+            raise self._connect()
         cursor = self._conn.cursor()
         self._logger.debug("Executing %s" % command)
         cursor.execute(command)
