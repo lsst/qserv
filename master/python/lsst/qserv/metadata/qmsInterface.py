@@ -39,10 +39,14 @@ class QmsInterface:
                                                     'func_doc'), 
                                   okname)
 
-    def persistentInit(self):
+    def installMeta(self):
         """Initializes qserv metadata. It creates persistent structures,
         (it should be called only once)."""
-        return qmsImpl.persistentInit(self._loggerName)
+        return qmsImpl.installMeta(self._loggerName)
+
+    def destroyMeta(self):
+        """Permanently destroyp qserv metadata."""
+        return qmsImpl.destroyMeta(self._loggerName)
 
     def help(self):
         """A brief help message showing available commands"""

@@ -25,7 +25,7 @@
 from qmsMySQLDb import QmsMySQLDb
 from qmsStatus import QmsStatus
 
-def persistentInit(loggerName):
+def installMeta(loggerName):
     """Initializes persistent qserv metadata structures.
     This method should be called only once ever for a given
     qms installation."""
@@ -144,3 +144,10 @@ def persistentInit(loggerName):
         mdb.createTable(t[0], t[1])
     return mdb.disconnect()
 
+def destroyMeta(loggerName):
+    """This method permanently destroys qserv metadata"""
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: return ret
+    mdb.dropDb()
+    return mdb.disconnect()

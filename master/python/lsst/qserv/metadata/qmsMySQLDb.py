@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-# 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
 # 
@@ -20,7 +19,6 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
 
 from __future__ import with_statement
 import MySQLdb as sql
@@ -51,7 +49,7 @@ class QmsMySQLDb():
     def _checkIsConnected(self):
         return self._conn != None
 
-    def _connect(self, createDb=False):
+    def connect(self, createDb=False):
         """
         It connects to a server. If createDb flag is set, it will connect to
         the server, create the database, then connect to that database.
@@ -97,6 +95,8 @@ class QmsMySQLDb():
                 self._logger.error(msg2)
                 print >> sys.stderr, msg2, e2
                 self._conn = None
+                if e[1].startswith("Unknown database"):
+                    return QmsStatus.ERR_NO_META
                 return QmsStatus.ERR_MYSQL_CONNECT
 
         c = self._conn.cursor()
@@ -126,10 +126,10 @@ class QmsMySQLDb():
         return QmsStatus.SUCCESS
 
     def connectAndCreateDb(self):
-        return self._connect(True)
+        return self.connect(True)
 
     def dropDb(self):
-        if self.checkDbExists(self.dbName):
+        if self.checkDbExists():
             self.execCommand0("DROP DATABASE %s" % self.dbName)
 
     def checkDbExists(self):
@@ -170,7 +170,7 @@ class QmsMySQLDb():
         """Executes mysql commands which return any number of rows.
         Expected number of returned rows should be given in nRowSet"""
         if not self._checkIsConnected():
-            raise self._connect()
+            self.connect()
         cursor = self._conn.cursor()
         self._logger.debug("Executing %s" % command)
         cursor.execute(command)

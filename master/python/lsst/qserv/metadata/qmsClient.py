@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-# 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
 # 
@@ -55,12 +54,15 @@ def main():
     parser.add_option("--qhelp", action="store_true", 
                       dest="qmsHelp", default=False, 
                       help="Get qms frontend help.")
-    parser.add_option("--echoTest",
+    parser.add_option("--echoTest", action="store_true", 
                       dest="echoTest", default=False,
                       help="Run echo test.")
-    parser.add_option("--persInit",
-                      dest="persInit", default=False,
-                      help="Persistent initialization.")
+    parser.add_option("--installMeta", action="store_true", 
+                      dest="installMeta", default=False,
+                      help="Installs (initializes) qserv metadata.")
+    parser.add_option("--destroyMeta", action="store_true", 
+                      dest="destroyMeta", default=False,
+                      help="Permanently destroys qserv metadata.")
 
     (options, args) = parser.parse_args()
 
@@ -70,12 +72,14 @@ def main():
     if options.echoTest:
         runEchoTest()
         return
-    if options.persInit:
-        ret = qms.persistentInit()
+    if options.installMeta:
+        ret = qms.installMeta()
         if ret != QmsStatus.SUCCESS:
             print getErrMsg(ret)
-
-        return
+    if options.destroyMeta:
+        ret = qms.destroyMeta()
+        if ret != QmsStatus.SUCCESS:
+            print getErrMsg(ret)
 
 if __name__ == '__main__':
     main()

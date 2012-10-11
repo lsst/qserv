@@ -26,13 +26,17 @@
 class QmsStatus():
     SUCCESS  = 0
 
-    ERR_IS_INIT       = 1001
-    ERR_MYSQL_CONNECT = 1002
-    ERR_MYSQL_DISCONN = 1003
+    # note: error numbered 1000 - 1200 are used by mysql,
+    # see mysqld_ername.h in mysql source code
+    ERR_IS_INIT       = 2001
+    ERR_MYSQL_CONNECT = 2002
+    ERR_MYSQL_DISCONN = 2003
+    ERR_NO_META       = 2004
     ERR_UNDEFINED     = 9999
 
     errors = { ERR_IS_INIT: "Qserv metadata already initialized.",
                ERR_MYSQL_CONNECT: "Unable to connect to mysql server.",
+               ERR_NO_META: "No metadata found.",
                ERR_MYSQL_DISCONN: "Failed to commit transaction and " + \
                    "disconnect from mysql server.",
                ERR_UNDEFINED: "Undefined error."
