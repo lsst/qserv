@@ -32,6 +32,10 @@ import random
 import string
 import time
 
+# For debugging
+import traceback
+import sys
+
 ## Local
 import partition
 
@@ -745,11 +749,20 @@ class Transformer:
             thetaphiNew = translateThetaPhiCorrectedOpt(
                 thetaphi, dupeInfo[3], self.thetaMid, dupeInfo[5])
             (newRow[thetaC], newRow[phiC]) = map(str, thetaphiNew)
-
-        for col,f in self.transformMap.items():
-            old = row[col]
-            if old != "\\N":  # skip SQL null columns
-                newRow[col] = f(old, dupeInfo[1])
+        try:
+            for col,f in self.transformMap.items():
+                old = row[col]
+                if old not in ["\\N", "NULL"]:  # skip SQL null columns
+                    newRow[col] = f(old, dupeInfo[1])
+        except:
+            traceback.print_exc(file=sys.stdout)
+            print "Failing row:", row
+            orig = {}
+            for col,f in self.transformMap.items():
+                orig[(self.columnNames[col],col)] = row[col]
+            print "Suspect columns:", str(orig)
+            print "Bailing out...:"
+            raise
         return newRow
 
     def transformOnly(self, row, colList):
