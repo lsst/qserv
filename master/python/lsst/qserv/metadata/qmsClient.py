@@ -26,6 +26,7 @@
 from __future__ import with_statement
 import ConfigParser
 import getpass
+import logging
 from optparse import OptionParser
 import os
 import re
@@ -42,6 +43,7 @@ class Client(object):
     def __init__(self):
         self._dotFileName = os.path.expanduser("~/.qmsadm")
         self._defaultXmlPath = "qms"
+        self._initLogger()
 
     def parseOptions(self):
         usage = """
@@ -93,6 +95,9 @@ password: myPass
                           dest="verbose")
         (options, args) = parser.parse_args()
 
+        if options.verbose:
+            self._logger.setLevel(logging.DEBUG)
+
         if len(args) < 1:
             parser.error("No command given")
         cmd = "_cmd_" + args[0]
@@ -101,24 +106,40 @@ password: myPass
         del args[0]
         return getattr(self, cmd), options, args
 
+    def _initLogger(self):
+        self._logger = logging.getLogger("qmsClientLogger")
+        hdlr = logging.FileHandler("/tmp/qmsClient.log")
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        hdlr.setFormatter(formatter)
+        self._logger.addHandler(hdlr)
+        self._logger.setLevel(logging.ERROR)
+
     ############################################################################
     ##### user-facing commands
     ############################################################################
     def _cmd_installMeta(self, options, args):
+        self._logger.debug("installing meta")
         qms = self._connectToQMS()
         if qms is None:
             return
         ret = qms.installMeta()
-        if ret != QmsStatus.SUCCESS: print getErrMsg(ret)
-        else: print "Metadata successfully installed."
+        if ret != QmsStatus.SUCCESS: 
+            print getErrMsg(ret)
+        else: 
+            print "Metadata successfully installed."
+            self._logger.debug("Metadata successfully installed.")
 
     def _cmd_destroyMeta(self, options, args):
+        self._logger.debug("destroying meta")
         qms = self._connectToQMS()
         if qms is None:
             return
         ret = qms.destroyMeta()
-        if ret != QmsStatus.SUCCESS: print getErrMsg(ret)
-        else: print "All metadata destroyed!"
+        if ret != QmsStatus.SUCCESS: 
+            print getErrMsg(ret)
+        else: 
+            print "All metadata destroyed!"
+            self._logger.debug("All metadata destroyed")
 
     def _cmd_createDb(self, options, args):
         if len(args) != 2:
@@ -184,8 +205,10 @@ password: myPass
         (host, port, user, pwd) = self._getConnInfo()
         if host is None or port is None or user is None or pwd is None:
             return False
-        print "Using connection: %s:%s, %s,pwd=%s" % (host, port, user, pwd)
+        self._logger.debug("Using connection: %s:%s, %s,pwd=%s" % \
+                               (host, port, user, pwd))
         url = "http://%s:%d/%s" % (host, port, self._defaultXmlPath)
+        self._logger.debug("Url is %s" % url)
         qms = xmlrpclib.Server(url)
         if self._echoTest(qms):
             return qms
@@ -224,6 +247,7 @@ password: myPass
         return pass1
 
     def _getCachedConnInfo(self):
+        self._logger.debug("Getting cached connection info")
         config = ConfigParser.ConfigParser()
         config.read(self._dotFileName)
         s = "qmsConn"
