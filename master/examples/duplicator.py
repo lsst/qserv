@@ -766,7 +766,8 @@ class Transformer:
         try:
             for col,f in self.transformMap.items():
                 old = row[col]
-                if old not in ["\\N", "NULL"]:  # skip SQL null columns
+                # skip SQL null columns
+                if (old != "\\N") and old.upper() != "NULL":  
                     newRow[col] = f(old, dupeInfo[1])
         except:
             traceback.print_exc(file=sys.stdout)
