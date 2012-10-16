@@ -642,6 +642,20 @@ class CsvSchema:
         pass
             
 class Transformer:
+    """Transformer synthesizes new rows from input rows.
+    For some columns, the transformation is deterministic.
+    t : old, copynum -> new
+    The transformation functions work for PT1, PT1.1 and PT1.2. They may not
+    work for other input data due to differing ranges of values in the input
+    data. 
+
+    Potential problems for unknown data: out-of-range values for transformed
+    columns, which can cause MySQL to reject loading or integer overflowed 
+    values, which may cause aliased rows and silently corrupted rows.
+    
+    Notes: sourceId (47 bits PT12, 44 bits PT1.1)
+    objectId (48 bits (inc. skytile?)
+    """
     def _subtractIfBigger(self, theta):
         if theta >= self.normBounds[0]:
             return theta - 360
