@@ -21,6 +21,8 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
+import logging
+import uuid
 
 from qmsMySQLDb import QmsMySQLDb
 from qmsStatus import QmsStatus
@@ -34,7 +36,7 @@ def installMeta(loggerName):
         # qserv. Databases not entered into that table will be ignored 
         # by qserv.
         ['DbMeta', '''(
-   dbId INT NOT NULL PRIMARY KEY,
+   dbId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
    dbName VARCHAR(255) NOT NULL,
    dbUuid VARCHAR(255) NOT NULL, -- note: this has to be the same across 
                                  -- all worker nodes
@@ -63,7 +65,7 @@ def installMeta(loggerName):
         # Partitioning strategy, database-specific parameters 
         # for sphBox partitioning
             ["PS_Db_sphBox", '''(
-   psId INT NOT NULL PRIMARY KEY,
+   psId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
    stripes INT,    -- base number of stripes. 
                    -- Large tables might overwrite that and have 
                    -- finer-grain division.
@@ -166,3 +168,30 @@ def printMeta(loggerName):
         theOutput = ret
     mdb.disconnect()
     return theOutput
+
+def createDb(loggerName, dbName, crDbOptions):
+    """Creates metadata about new database to be managed by qserv."""
+    logger = logging.getLogger(loggerName)
+
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        logger.error("Failed to connect to qms")
+        return None
+
+    psName = crDbOptions["partitioningstrategy"]
+    if psName == "sphBox":
+        logger.debug("persisting for sphBox")
+        nS = crDbOptions["nstripes"]
+        nSS = crDbOptions["nsubstripes"]
+        dOvF = crDbOptions["defaultoverlap_fuzziness"]
+        dOvN = crDbOptions["defaultoverlap_nearneighbor"]
+        cmd = "INSERT INTO PS_Db_sphBox(stripes, subStripes, defaultOverlap_fuzzyness, defaultOverlap_nearNeigh) VALUES(%s, %s, %s, %s)" % (nS, nSS, dOvF, dOvN)
+        mdb.execCommand0(cmd)
+        psId = (mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
+        dbUuid = uuid.uuid4() # random UUID
+    elif psName == "None":
+        psId = "\N"
+    cmd = "INSERT INTO DbMeta(dbName, dbUuid, psName, psId) VALUES('%s', '%s', '%s', %s)" % (dbName, dbUuid, psName, psId)
+    mdb.execCommand0(cmd)
+    return mdb.disconnect()

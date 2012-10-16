@@ -153,21 +153,28 @@ password: myPass
         self._logger.debug("Done printing meta")
 
     def _cmd_createDb(self, options, args):
+        self._logger.debug("Creating db")
         if len(args) != 2:
-            print "'createDb' requires two arguments: <dbName> <configFile>"
+            msg = "'createDb' requires two arguments: <dbName> <configFile>"
+            self._logger.error(msg)
+            print msg
             return
         (dbName, confFile) = args
-        kvPairs = self._readCreateDbConfigFile(confFile)
-        if kvPairs is None:
+        crDbOptions = self._readCreateDbConfigFile(confFile)
+        if crDbOptions is None:
+            self._logger.debug("No options in config file")
             return
         qms = self._connectToQMS()
         if qms is None:
+            self._logger.error("Failed to connect to qms")
             return
-        print "createDb %s, options are: " % dbName
-        print kvPairs
-        ret = qms.createDb(dbName)
-        #if ret != QmsStatus.SUCCESS: print getErrMsg(ret)
-        print "not fully implemented yet"
+        self._logger.debug("createDb %s, options are: " % dbName)
+        self._logger.debug(crDbOptions)
+        ret = qms.createDb(dbName, crDbOptions)
+        if ret != QmsStatus.SUCCESS: 
+            print getErrMsg(ret)
+            self._logger.error("createDb failed")
+        self._logger.debug("createDb successfully finished")
 
     def _cmd_listDbs(self, options, args):
         print "listDbs, dburl is:", options, conn, " not implemented"
@@ -176,6 +183,8 @@ password: myPass
     ##### config file
     ############################################################################
     def _readCreateDbConfigFile(self, fName):
+        """It reads the config file for createDb command and returns dictionary
+        containing key-value pars"""
         errMsg = "Problems with config file '%s':" % fName
         if not os.access(fName, os.R_OK):
             print errMsg, "specified config file '%s' not found." % fName
@@ -207,7 +216,7 @@ password: myPass
                     return
         elif pStrategy == "None":
             pass # no options here yet
-        return config.items(section)
+        return dict(config.items(section))
 
     ############################################################################
     ##### connection to QMS

@@ -10,3 +10,6 @@ host =
 user = qsmaster
 port = 0
 
+[logging]
+outFile = /tmp/qmsServer.log
+level = debug

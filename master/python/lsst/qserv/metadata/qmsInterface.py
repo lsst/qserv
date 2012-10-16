@@ -52,6 +52,10 @@ class QmsInterface:
         """Returns string that contains all metadata."""
         return qmsImpl.printMeta(self._loggerName)
 
+    def createDb(self, dbName, crDbOptions):
+        """Creates metadata about new database to be managed by qserv."""
+        return qmsImpl.createDb(self._loggerName, dbName, crDbOptions)
+
     def help(self):
         """A brief help message showing available commands"""
         r = "" ## self._handyHeader()

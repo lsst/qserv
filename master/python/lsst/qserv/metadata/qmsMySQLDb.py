@@ -173,7 +173,15 @@ class QmsMySQLDb():
             self.connect()
         cursor = self._conn.cursor()
         self._logger.debug("Executing %s" % command)
-        cursor.execute(command)
+        try:
+            cursor.execute(command)
+        except MySQLdb.Error, e:
+            try:
+                self._logger.error("MySQL Error [%d]: %s" % (e.args[0], e.args[1]))
+                return None # fixme: throw exception, catch higher up!
+            except IndexError:
+                self._logger.error("MySQL Error: %s" % str(e))
+                return None # fixme: throw exception, catch higher up!
         if nRowsRet == 0:
             ret = ""
         elif nRowsRet == 1:
