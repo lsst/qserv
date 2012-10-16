@@ -1,0 +1,6 @@
+[partitioning]
+partitioningStrategy: sphBox
+nStripes: 10
+nSubStripes: 23
+defaultOverlap_fuzziness: 0.0001
+defaultOverlap_nearNeighbor: 0.25

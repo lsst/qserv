@@ -46,7 +46,7 @@ from lsst.qserv.master import config
 # Module settings
 defaultPort = 8001
 defaultPath = "c"
-defaultXmlPath = "x"
+defaultXmlPath = "qms"
 
 class ClientResource(twisted.web.resource.Resource):
     def __init__(self, interface):
