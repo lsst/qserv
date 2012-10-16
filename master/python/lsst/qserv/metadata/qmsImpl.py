@@ -179,6 +179,12 @@ def createDb(loggerName, dbName, crDbOptions):
         logger.error("Failed to connect to qms")
         return None
 
+    cmd = "SELECT COUNT(*) FROM DbMeta WHERE dbName = '%s'" % dbName
+    ret = mdb.execCommand1(cmd)
+    if ret[0] > 0:
+        logger.error("Database '%s' already registered" % dbName)
+        return QmsStatus.ERR_DB_EXISTS
+
     psName = crDbOptions["partitioningstrategy"]
     if psName == "sphBox":
         logger.debug("persisting for sphBox")
