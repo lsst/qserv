@@ -201,3 +201,29 @@ def createDb(loggerName, dbName, crDbOptions):
     cmd = "INSERT INTO DbMeta(dbName, dbUuid, psName, psId) VALUES('%s', '%s', '%s', %s)" % (dbName, dbUuid, psName, psId)
     mdb.execCommand0(cmd)
     return mdb.disconnect()
+
+def dropDb(loggerName, dbName):
+    """Drops metadata about a database managed by qserv."""
+    logger = logging.getLogger(loggerName)
+    # connect to mysql
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        logger.error("Failed to connect to qms")
+        return None
+    # check if db exists
+    cmd = "SELECT COUNT(*) FROM DbMeta WHERE dbName = '%s'" % dbName
+    ret = mdb.execCommand1(cmd)
+    if ret[0] != 1:
+        logger.error("Database '%s' not registered" % dbName)
+        return QmsStatus.ERR_DB_NOT_EXISTS
+    # get psId and drop the entry
+    cmd = "SELECT psId FROM DbMeta WHERE dbName = '%s'" % dbName
+    psId = mdb.execCommand1(cmd)[0]
+    cmd = "DELETE FROM PS_Db_sphBox WHERE psId = %s " % psId
+    mdb.execCommand0(cmd)
+    # remove the entry about the db
+    cmd = "DELETE FROM DbMeta WHERE dbName = '%s'" % dbName
+    mdb.execCommand0(cmd)
+
+    return mdb.disconnect()

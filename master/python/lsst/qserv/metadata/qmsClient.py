@@ -80,6 +80,10 @@ COMMANDS
         Creates metadata about new database to be managed 
         by qserv. Arguments: <dbName> <configFile>
 
+  dropDb
+        Removes metadata about a database that was managed
+        my qserv. Arguments: <dbName>
+
   listDbs
         Lists database names registered for qserv use.
 
@@ -175,6 +179,25 @@ password: myPass
             print getErrMsg(ret)
             self._logger.error("createDb failed")
         self._logger.debug("createDb successfully finished")
+
+    def _cmd_dropDb(self, options, args):
+        self._logger.debug("Dropping db")
+        if len(args) != 1:
+            msg = "'dropDb' requires one argument: <dbName>"
+            self._logger.error(msg)
+            print msg
+            return
+        dbName = args[0]
+        qms = self._connectToQMS()
+        if qms is None:
+            self._logger.error("Failed to connect to qms")
+            return
+        self._logger.debug("dropping %s" % dbName)
+        ret = qms.dropDb(dbName)
+        if ret != QmsStatus.SUCCESS: 
+            print getErrMsg(ret)
+            self._logger.error("dropDb failed")
+        self._logger.debug("dropDb successfully finished")
 
     def _cmd_listDbs(self, options, args):
         print "listDbs, dburl is:", options, conn, " not implemented"

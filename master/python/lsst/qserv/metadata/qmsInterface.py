@@ -56,6 +56,10 @@ class QmsInterface:
         """Creates metadata about new database to be managed by qserv."""
         return qmsImpl.createDb(self._loggerName, dbName, crDbOptions)
 
+    def dropDb(self, dbName):
+        """Removes  metadata about a database managed by qserv."""
+        return qmsImpl.dropDb(self._loggerName, dbName)
+
     def help(self):
         """A brief help message showing available commands"""
         r = "" ## self._handyHeader()
