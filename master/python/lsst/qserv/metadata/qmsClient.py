@@ -73,6 +73,9 @@ COMMANDS
   destroyMeta
         Destroys internal qserv metadata database.
 
+  printMeta
+        Prints all metadata.
+
   createDb
         Creates metadata about new database to be managed 
         by qserv. Arguments: <dbName> <configFile>
@@ -118,7 +121,7 @@ password: myPass
     ##### user-facing commands
     ############################################################################
     def _cmd_installMeta(self, options, args):
-        self._logger.debug("installing meta")
+        self._logger.debug("Installing meta")
         qms = self._connectToQMS()
         if qms is None:
             return
@@ -130,7 +133,7 @@ password: myPass
             self._logger.debug("Metadata successfully installed.")
 
     def _cmd_destroyMeta(self, options, args):
-        self._logger.debug("destroying meta")
+        self._logger.debug("Destroying meta")
         qms = self._connectToQMS()
         if qms is None:
             return
@@ -140,6 +143,14 @@ password: myPass
         else: 
             print "All metadata destroyed!"
             self._logger.debug("All metadata destroyed")
+
+    def _cmd_printMeta(self, options, args):
+        self._logger.debug("Printing meta")
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        print qms.printMeta()
+        self._logger.debug("Done printing meta")
 
     def _cmd_createDb(self, options, args):
         if len(args) != 2:

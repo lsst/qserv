@@ -48,6 +48,10 @@ class QmsInterface:
         """Permanently destroyp qserv metadata."""
         return qmsImpl.destroyMeta(self._loggerName)
 
+    def printMeta(self):
+        """Returns string that contains all metadata."""
+        return qmsImpl.printMeta(self._loggerName)
+
     def help(self):
         """A brief help message showing available commands"""
         r = "" ## self._handyHeader()

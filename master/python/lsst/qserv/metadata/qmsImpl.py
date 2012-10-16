@@ -151,3 +151,18 @@ def destroyMeta(loggerName):
     if ret != QmsStatus.SUCCESS: return ret
     mdb.dropDb()
     return mdb.disconnect()
+
+def printMeta(loggerName):
+    """This method prints all metadata into a string"""
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        return None
+    # DbMeta
+    ret = mdb.execCommandN("SELECT dbName, dbUuid, psName, psId FROM DbMeta")
+    if len(ret) == 0:
+        theOutput = "No databases registered yet"
+    else:
+        theOutput = ret
+    mdb.disconnect()
+    return theOutput
