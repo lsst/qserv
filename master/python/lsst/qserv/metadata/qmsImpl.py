@@ -218,6 +218,9 @@ def createDb(loggerName, dbName, crDbOptions):
     dbUuid = uuid.uuid4() # random UUID
     cmd = "INSERT INTO DbMeta(dbName, dbUuid, psName, psId) VALUES('%s', '%s', '%s', %s)" % (dbName, dbUuid, psName, psId)
     mdb.execCommand0(cmd)
+    # finally, create this table as template
+    mdb.execCommand0("CREATE DATABASE qms_%s" %dbName)
+
     return mdb.disconnect()
 
 ################################################################################
@@ -253,6 +256,8 @@ def dropDb(loggerName, dbName):
         mdb.execCommand0(cmd)
     cmd = "DELETE FROM TableMeta WHERE dbId = %s" % dbId
     mdb.execCommand0(cmd)
+    # drop the template database
+    mdb.execCommand0("DROP DATABASE qms_%s" % dbName)
     return mdb.disconnect()
 
 ################################################################################
