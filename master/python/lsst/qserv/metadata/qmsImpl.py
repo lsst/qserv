@@ -252,6 +252,35 @@ def dropDb(loggerName, dbName):
     return mdb.disconnect()
 
 ################################################################################
+#### retrieveDbInfo
+################################################################################
+def retrieveDbInfo(loggerName, dbName):
+    """Retrieves info about a database"""
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        return "Failed to connect to QMS."
+    if mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" % \
+                            dbName)[0] == 0:
+        return "Database '%s' does not exist." % dbName
+    ps = mdb.execCommand1("SELECT psName FROM DbMeta WHERE dbName='%s'" % \
+                              dbName)[0]
+    if ps == "sphBox":
+        ret = mdb.execCommand1("""
+          SELECT stripes, subStripes, defaultOverlap_fuzzyness, 
+                 defaultOverlap_nearNeigh
+          FROM DbMeta 
+          JOIN PS_Db_sphBox USING(psId) 
+          WHERE dbName='%s'""" % dbName)
+    mdb.disconnect()
+    return """
+stripes: %s
+subStripes: %s
+defaultOverlap_fuzziness: %s
+defaultOverlap_nearNeigh: %s
+""" % ret
+
+################################################################################
 #### listDbs
 ################################################################################
 def listDbs(loggerName):
@@ -279,7 +308,7 @@ def checkDbExists(loggerName, dbName):
     ret = mdb.connect()
     if ret != QmsStatus.SUCCESS: 
         return 0
-    ret = mdb.execCommandN("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" \
+    ret = mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" \
                                % dbName)
     mdb.disconnect()
     return ret[0][0]

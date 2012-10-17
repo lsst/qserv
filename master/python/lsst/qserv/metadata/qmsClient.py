@@ -84,6 +84,10 @@ COMMANDS
         Removes metadata about a database that was managed
         my qserv. Arguments: <dbName>
 
+  retrieveDbInfo
+        Retrieves information about a database.
+        Arguments: <dbName>
+
   checkDbExists
         Checks if the database exists, returns 0 or 1.
         Arguments: <dbName>
@@ -206,6 +210,19 @@ password: myPass
             print getErrMsg(ret)
             self._logger.error("dropDb failed")
         self._logger.debug("dropDb successfully finished")
+
+    def _cmd_retrieveDbInfo(self, options, args):
+        self._logger.debug("Retrieve db info")
+        if len(args) != 1:
+            msg = "'retrieveDbInfo' requires one argument: <dbName>"
+            self._logger.error(msg)
+            print msg
+            return
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        print qms.retrieveDbInfo(args[0])
+        self._logger.debug("Done retrieving db info")
 
     def _cmd_listDbs(self, options, args):
         self._logger.debug("List databases")

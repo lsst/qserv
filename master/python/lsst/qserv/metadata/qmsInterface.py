@@ -60,6 +60,10 @@ class QmsInterface:
         """Removes metadata about a database managed by qserv."""
         return qmsImpl.dropDb(self._loggerName, dbName)
 
+    def retrieveDbInfo(self, dbName):
+        """Retrieves information about a database managed by qserv."""
+        return qmsImpl.retrieveDbInfo(self._loggerName, dbName)
+
     def listDbs(self):
         """Returns string that contains list of databases managed by qserv."""
         return qmsImpl.listDbs(self._loggerName)
