@@ -265,6 +265,8 @@ def retrieveDbInfo(loggerName, dbName):
         return [QmsStatus.ERR_DB_NOT_EXISTS, {}]
     ps = mdb.execCommand1("SELECT psName FROM DbMeta WHERE dbName='%s'" % \
                               dbName)[0]
+    values = dict()
+    values["partitioningStrategy"] = ps
     if ps == "sphBox":
         ret = mdb.execCommand1("""
           SELECT stripes, subStripes, defaultOverlap_fuzzyness, 
@@ -272,12 +274,12 @@ def retrieveDbInfo(loggerName, dbName):
           FROM DbMeta 
           JOIN PS_Db_sphBox USING(psId) 
           WHERE dbName='%s'""" % dbName)
-        values = dict()
-        values["partitioningStrategy"] = "sphBox"
         values["stripes"] = ret[0]
         values["subStripes"] = ret[1]
         values["defaultOverlap_fuzziness"] = ret[2]
         values["defaultOverlap_nearNeigh"] = ret[3]
+    elif ps == "None":
+        pass
     mdb.disconnect()
     return [QmsStatus.SUCCESS, values]
 
