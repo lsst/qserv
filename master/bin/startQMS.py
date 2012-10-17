@@ -26,6 +26,7 @@
 # command-line interface to start qserv metadata server.
 
 from optparse import OptionParser
+import os
 import sys
 
 from lsst.qserv.metadata import qms
@@ -40,8 +41,11 @@ def main():
                       "%s as an environment variable." % config.envFilenameVar)
     (options, args) = parser.parse_args()
 
-    if options.configFile:
-        config.load(options.configFile)
+    confFile = options.configFile
+    if confFile:
+        if not os.access(confFile, os.R_OK):
+            raise Exception("Can't read config file %s" % confFile)
+        config.load(confFile)
     else:
         config.load()
     print "Configuration:"
