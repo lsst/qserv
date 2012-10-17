@@ -47,21 +47,19 @@ def installMeta(loggerName):
 
    psName VARCHAR(255), -- partition strategy used for tables
                         -- in this database. Must be the same for all tables
-                        -- supported so far: "sphBox". This name is used
-                        -- to determine which PartitioningStrategy_DbLevel_*
-                        -- and PartitioningStrategy_TbLevel_* tables to use
-   psId INT             -- foreign key to the PartitioningStrategy_DbLevel_*
-                        -- and PartitioningStrategy_TbLevel_* tables 
+                        -- supported so far: "sphBox". This name is used to
+                        -- determine which PS_Db_* and PS_Tb_* tables to use
+   psId INT             -- foreign key to the PS_Db_* table
 )'''],
         # ---------------------------------------------------------------------
         # TableMeta table defines table-specific metadata.
         # This metadata is data-independent
         ["TableMeta", '''(
-   tableId INT NOT NULL PRIMARY KEY,
+   tableId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
    tableName VARCHAR(255) NOT NULL,
    tbUuid VARCHAR(255),       -- uuid of this table
    dbId INT NOT NULL,         -- id of database this table belongs to
-
+   psId INT,                  -- foreign key to the PS_Tb_* table
    clusteredIdx VARCHAR(255)  -- name of the clustered index, 
                               -- Null if no clustered index.
 )'''],
@@ -83,7 +81,7 @@ def installMeta(loggerName):
         # Partitioning strategy, table-specific parameters 
         # for sphBox partitioning
         ["PS_Tb_sphBox", '''(
-   psId INT NOT NULL PRIMARY KEY,
+   psId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
    overlap FLOAT,         -- in degrees, 0 if not set
    phiCol VARCHAR(255),   -- Null if table not partitioned
    thetaCol VARCHAR(255), -- Null if table not partitioned
@@ -92,18 +90,16 @@ def installMeta(loggerName):
    thetaColNo INT,        -- Position of the thetaColumn in the table, 
                           -- counting from zero
    logicalPart SMALLINT,  -- logical partitioning flag:
-                          -- 0x1000 - no chunks
-                          -- 0x2000 - one-level chunking
-                          -- 0x3000 - two-level chunking (chunks and subchunks)
-
-   physChunking INT       -- physical storage flag:
-                          -- 0x1001 - for "no chunking": db rows/columns
-
-                          -- 0x2000 - for 1st level chunking: not persisted
-                          -- 0x2001 - for 1st level chunking: db rows/columns
-
-                          -- 0x3000 - for 2nd level chunking: not persisted
-                          -- 0x3001 - for 2nd level chunking: db rows/columns
+                          -- 0: no chunks
+                          -- 1: one-level chunking
+                          -- 2: two-level chunking (chunks and subchunks)
+   physChunking INT       -- physical storage flag:                        
+            -- least significant bit: 0-not persisted, 1-persisted in RDBMS
+            -- second-least significant bit indicates partitioning level,eg
+            -- 0x0010: 1st-level partitioning, not persistent
+            -- 0x0011: 1st-level partitioning, persisted in RDBMS
+            -- 0x0020: 2st-level partitioning, not persistent
+            -- 0x0021: 2st-level partitioning, persisted in RDBMS
 )'''],
         # ---------------------------------------------------------------------
         ["EmptyChunks", '''(
@@ -192,20 +188,19 @@ def printMeta(loggerName):
 def createDb(loggerName, dbName, crDbOptions):
     """Creates metadata about new database to be managed by qserv."""
     logger = logging.getLogger(loggerName)
-
+    # connect to QMS
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
     if ret != QmsStatus.SUCCESS: 
         logger.error("Failed to connect to qms")
         return None
-
+    # check if db does not exit
     cmd = "SELECT COUNT(*) FROM DbMeta WHERE dbName = '%s'" % dbName
     ret = mdb.execCommand1(cmd)
     if ret[0] > 0:
         logger.error("Database '%s' already registered" % dbName)
         return QmsStatus.ERR_DB_EXISTS
-
-    dbUuid = uuid.uuid4() # random UUID
+    # create entry in PS_Db_<partitioningStrategy> table
     psName = crDbOptions["partitioningstrategy"]
     psId = '0'
     if psName == "sphBox":
@@ -219,6 +214,8 @@ def createDb(loggerName, dbName, crDbOptions):
         psId = (mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
     elif psName == "None":
         pass
+    # create entry in DbMeta table
+    dbUuid = uuid.uuid4() # random UUID
     cmd = "INSERT INTO DbMeta(dbName, dbUuid, psName, psId) VALUES('%s', '%s', '%s', %s)" % (dbName, dbUuid, psName, psId)
     mdb.execCommand0(cmd)
     return mdb.disconnect()
@@ -319,14 +316,46 @@ def checkDbExists(loggerName, dbName):
 ################################################################################
 #### createTable
 ################################################################################
-def createTable(loggerName, dbName, crDbOptions):
+def createTable(loggerName, dbName, crTbOptions):
     """Creates metadata about new table in qserv-managed database."""
     logger = logging.getLogger(loggerName)
-
+    # connect to QMS
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
     if ret != QmsStatus.SUCCESS: 
         logger.error("Failed to connect to qms")
         return None
-    print "not implemented"
+    # get dbid
+    dbId = (mdb.execCommand1("SELECT dbId FROM DbMeta WHERE dbName = '%s'" % \
+                                 dbName))[0]
+    # check if the table already exists
+    tableName = crTbOptions["tableName"]
+    cmd = "SELECT COUNT(*) FROM TableMeta WHERE dbId=%s AND tableName='%s'" % \
+        (dbId, tableName)
+    ret = mdb.execCommand1(cmd)
+    if ret[0] > 0:
+        logger.error("Table '%s' already registred" % tableName)
+        return QmsStatus.ERR_TABLE_EXISTS
+    # create entry in PS_Tb_<partitioningStrategy>
+    psName = crTbOptions["partitioningStrategy"]
+    psId = '0'
+    if psName == "sphBox":
+        logger.debug("persisting for sphBox")
+        ov = crTbOptions["overlap"]
+        pCN = crTbOptions["phiColName"]
+        tCN = crTbOptions["thetaColName"]
+        pN = 123 # fixme
+        tN = 456 # fixme
+        lP = int(crTbOptions["logicalPart"])
+        pC = 99 # crTbOptions["physChunking"] fixme
+        cmd = "INSERT INTO PS_Tb_sphBox(overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking) VALUES(%s, '%s', '%s', %d, %d, %d, %d)" % (ov, pCN, tCN, pN, tN, lP, pC)
+        mdb.execCommand0(cmd)
+        psId = (mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
+    elif ps == "None":
+        pass
+    # create entry in TableMeta
+    tbUuid = uuid.uuid4() # random UUID
+    clusteredIdx = crTbOptions["clusteredIndex"]
+    cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx) VALUES ('%s', '%s', %s, %s, '%s')" % (tableName, tbUuid, dbId, psId, clusteredIdx)
+    mdb.execCommand0(cmd)
     return mdb.disconnect()

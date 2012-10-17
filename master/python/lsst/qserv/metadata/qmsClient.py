@@ -299,8 +299,9 @@ password: myPass
         if crTbOptions is None:
             self._logger.debug("No options in config file")
             return
+        crTbOptions["partitioningStrategy"] = ps
+
         # do it
-        print crTbOptions
         self._logger.debug("createTable %s.%s, options are: " % \
                                (dbName, crTbOptions["tableName"]))
         self._logger.debug(crTbOptions)

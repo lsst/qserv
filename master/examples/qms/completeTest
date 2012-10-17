@@ -7,10 +7,9 @@
 ./qms/runQmsClient.sh checkDbExists Summer2012xx
 ./qms/runQmsClient.sh retrieveDbInfo Summer2012
 ./qms/runQmsClient.sh retrieveDbInfo NonPart
+./qms/runQmsClient.sh createTable Summer2012 qms/tbCreateObj.cfg
+./qms/runQmsClient.sh createTable Summer2012 qms/tbCreateSource.cfg
 ./qms/runQmsClient.sh dropDb Summer2012
 ./qms/runQmsClient.sh checkDbExists Summer2012
 ./qms/runQmsClient.sh listDbs
 ./qms/runQmsClient.sh destroyMeta
-
-
-
