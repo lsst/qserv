@@ -28,6 +28,9 @@ import uuid
 from qmsMySQLDb import QmsMySQLDb
 from qmsStatus import QmsStatus
 
+################################################################################
+#### installMeta
+################################################################################
 def installMeta(loggerName):
     """Initializes persistent qserv metadata structures.
     This method should be called only once ever for a given
@@ -147,6 +150,9 @@ def installMeta(loggerName):
         mdb.createTable(t[0], t[1])
     return mdb.disconnect()
 
+################################################################################
+#### destroyMeta
+################################################################################
 def destroyMeta(loggerName):
     """This method permanently destroys qserv metadata"""
     mdb = QmsMySQLDb(loggerName)
@@ -155,6 +161,34 @@ def destroyMeta(loggerName):
     mdb.dropDb()
     return mdb.disconnect()
 
+################################################################################
+#### printMeta
+################################################################################
+def _printTable(s, mdb, tableName):
+    ret = mdb.execCommandN("SELECT * FROM %s" % tableName)
+    s.write(tableName)
+    if len(ret) == 0:
+        s.write(" is empty.\n")
+    else: 
+        s.write(':\n')
+        for r in ret: print >> s, "   ", r
+
+def printMeta(loggerName):
+    """This method prints all metadata into a string"""
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        return None
+    s = StringIO.StringIO()
+    for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox", 
+              "EmptyChunks", "TableStats", "LockDb"]:
+        _printTable(s, mdb, t)
+    mdb.disconnect()
+    return s.getvalue()
+
+################################################################################
+#### createDb
+################################################################################
 def createDb(loggerName, dbName, crDbOptions):
     """Creates metadata about new database to be managed by qserv."""
     logger = logging.getLogger(loggerName)
@@ -189,6 +223,9 @@ def createDb(loggerName, dbName, crDbOptions):
     mdb.execCommand0(cmd)
     return mdb.disconnect()
 
+################################################################################
+#### dropDb
+################################################################################
 def dropDb(loggerName, dbName):
     """Drops metadata about a database managed by qserv."""
     logger = logging.getLogger(loggerName)
@@ -214,40 +251,9 @@ def dropDb(loggerName, dbName):
     mdb.execCommand0(cmd)
     return mdb.disconnect()
 
-def createTable(loggerName, dbName, crDbOptions):
-    """Creates metadata about new table in qserv-managed database."""
-    logger = logging.getLogger(loggerName)
-
-    mdb = QmsMySQLDb(loggerName)
-    ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
-        logger.error("Failed to connect to qms")
-        return None
-    print "not implemented"
-    return mdb.disconnect()
-
-def _printTable(s, mdb, tableName):
-    ret = mdb.execCommandN("SELECT * FROM %s" % tableName)
-    s.write(tableName)
-    if len(ret) == 0:
-        s.write(" is empty.\n")
-    else: 
-        s.write(':\n')
-        for r in ret: print >> s, "   ", r
-
-def printMeta(loggerName):
-    """This method prints all metadata into a string"""
-    mdb = QmsMySQLDb(loggerName)
-    ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
-        return None
-    s = StringIO.StringIO()
-    for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox", 
-              "EmptyChunks", "TableStats", "LockDb"]:
-        _printTable(s, mdb, t)
-    mdb.disconnect()
-    return s.getvalue()
-
+################################################################################
+#### listDbs
+################################################################################
 def listDbs(loggerName):
     """Prints names of all databases managed by qserv into a string"""
     mdb = QmsMySQLDb(loggerName)
@@ -263,3 +269,18 @@ def listDbs(loggerName):
         s.write(' ')
     mdb.disconnect()
     return s.getvalue()
+
+################################################################################
+#### createTable
+################################################################################
+def createTable(loggerName, dbName, crDbOptions):
+    """Creates metadata about new table in qserv-managed database."""
+    logger = logging.getLogger(loggerName)
+
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        logger.error("Failed to connect to qms")
+        return None
+    print "not implemented"
+    return mdb.disconnect()

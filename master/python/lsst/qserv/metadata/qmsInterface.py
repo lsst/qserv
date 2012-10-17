@@ -48,6 +48,10 @@ class QmsInterface:
         """Permanently destroyp qserv metadata."""
         return qmsImpl.destroyMeta(self._loggerName)
 
+    def printMeta(self):
+        """Returns string that contains all metadata."""
+        return qmsImpl.printMeta(self._loggerName)
+
     def createDb(self, dbName, crDbOptions):
         """Creates metadata about new database to be managed by qserv."""
         return qmsImpl.createDb(self._loggerName, dbName, crDbOptions)
@@ -56,17 +60,13 @@ class QmsInterface:
         """Removes metadata about a database managed by qserv."""
         return qmsImpl.dropDb(self._loggerName, dbName)
 
-    def createTable(self, dbName, crTbOptions):
-        """Creates metadata about new table from qserv-managed database."""
-        return qmsImpl.createTable(self._loggerName, dbName, crTbOptions)
-
-    def printMeta(self):
-        """Returns string that contains all metadata."""
-        return qmsImpl.printMeta(self._loggerName)
-
     def listDbs(self):
         """Returns string that contains list of databases managed by qserv."""
         return qmsImpl.listDbs(self._loggerName)
+
+    def createTable(self, dbName, crTbOptions):
+        """Creates metadata about new table from qserv-managed database."""
+        return qmsImpl.createTable(self._loggerName, dbName, crTbOptions)
 
     def help(self):
         """A brief help message showing available commands"""

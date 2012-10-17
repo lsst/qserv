@@ -73,6 +73,9 @@ COMMANDS
   destroyMeta
         Destroys internal qserv metadata database.
 
+  printMeta
+        Prints all metadata.
+
   createDb
         Creates metadata about new database to be managed 
         by qserv. Arguments: <dbName> <configFile>
@@ -81,16 +84,13 @@ COMMANDS
         Removes metadata about a database that was managed
         my qserv. Arguments: <dbName>
 
+  listDbs
+        Lists database names registered for qserv use.
+
   createTable
         Creates metadata about new table in qserv-managed 
         database. Arguments: <dbName> <configFile>
      
-  printMeta
-        Prints all metadata.
-
-  listDbs
-        Lists database names registered for qserv use.
-
 EXAMPLES:
 Example contents of the .qmsadm file:
 
@@ -152,6 +152,14 @@ password: myPass
             print "All metadata destroyed!"
             self._logger.debug("All metadata destroyed")
 
+    def _cmd_printMeta(self, options, args):
+        self._logger.debug("Printing meta")
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        print qms.printMeta()
+        self._logger.debug("Done printing meta")
+
     def _cmd_createDb(self, options, args):
         self._logger.debug("Creating db")
         if len(args) != 2:
@@ -195,6 +203,14 @@ password: myPass
             self._logger.error("dropDb failed")
         self._logger.debug("dropDb successfully finished")
 
+    def _cmd_listDbs(self, options, args):
+        self._logger.debug("List databases")
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        print qms.listDbs()
+        self._logger.debug("Done listing databases")
+
     def _cmd_createTable(self, options, args):
         self._logger.debug("Create table")
         if len(args) != 3:
@@ -219,22 +235,6 @@ password: myPass
             print getErrMsg(ret)
             self._logger.error("createTable failed")
         self._logger.debug("createTable successfully finished")
-
-    def _cmd_printMeta(self, options, args):
-        self._logger.debug("Printing meta")
-        qms = self._connectToQMS()
-        if qms is None:
-            return
-        print qms.printMeta()
-        self._logger.debug("Done printing meta")
-
-    def _cmd_listDbs(self, options, args):
-        self._logger.debug("List databases")
-        qms = self._connectToQMS()
-        if qms is None:
-            return
-        print qms.listDbs()
-        self._logger.debug("Done listing databases")
 
     ############################################################################
     ##### config files
