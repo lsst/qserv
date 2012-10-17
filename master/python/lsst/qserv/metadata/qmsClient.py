@@ -233,7 +233,7 @@ password: myPass
 
     def _cmd_createTable(self, options, args):
         self._logger.debug("Create table")
-        if len(args) != 3:
+        if len(args) != 2:
             msg = "'createTable' requires two arguments: <dbName> <configFile>"
             self._logger.error(msg)
             print msg
@@ -247,6 +247,12 @@ password: myPass
         if qms is None:
             self._logger.error("Failed to connect to qms")
             return
+
+        if qms.checkDbExists(dbName) == 0:
+            print "Database '%s' does not exist" % dbName
+            self._logger.error("Database '%s' does not exist" % dbName)
+            return
+
         self._logger.debug("createTable %s.%s, options are: " % \
                                (dbName, crTbOptions["tableName"]))
         self._logger.debug(crTbOptions)
