@@ -22,6 +22,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 import logging
+import os
 import StringIO
 import uuid
 
@@ -331,12 +332,18 @@ def checkDbExists(loggerName, dbName):
 def createTable(loggerName, dbName, crTbOptions):
     """Creates metadata about new table in qserv-managed database."""
     logger = logging.getLogger(loggerName)
+
+    # check if schema file can be read
+    schemaFile = crTbOptions["schemaFile"]
+    if not os.access(schemaFile, os.R_OK):
+        logger.error("Failed to open schema file '%s'" % schemaFile)
+        return QmsStatus.ERR_SCHEMA_FILE
     # connect to QMS
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
     if ret != QmsStatus.SUCCESS: 
         logger.error("Failed to connect to qms")
-        return None
+        return ret
     # get dbid
     dbId = (mdb.execCommand1("SELECT dbId FROM DbMeta WHERE dbName = '%s'" % \
                                  dbName))[0]
@@ -348,6 +355,10 @@ def createTable(loggerName, dbName, crTbOptions):
     if ret[0] > 0:
         logger.error("Table '%s' already registred" % tableName)
         return QmsStatus.ERR_TABLE_EXISTS
+
+    # load the template schema
+    print "FIXME in createTable: need to load schema (file: %s)" % schemaFile
+
     # create entry in PS_Tb_<partitioningStrategy>
     psName = crTbOptions["partitioningStrategy"]
     psId = '0'
@@ -358,8 +369,9 @@ def createTable(loggerName, dbName, crTbOptions):
         tCN = crTbOptions["thetaColName"]
         pN = 123 # fixme
         tN = 456 # fixme
+        print "FIXME in createTable: need to calculate phiColNumber and thetaColNumber"
         lP = int(crTbOptions["logicalPart"])
-        pC = 99 # crTbOptions["physChunking"] fixme
+        pC = int(crTbOptions["physChunking"], 16)
         cmd = "INSERT INTO PS_Tb_sphBox(overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking) VALUES(%s, '%s', '%s', %d, %d, %d, %d)" % (ov, pCN, tCN, pN, tN, lP, pC)
         mdb.execCommand0(cmd)
         psId = (mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
