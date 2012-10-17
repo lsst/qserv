@@ -221,7 +221,12 @@ password: myPass
         qms = self._connectToQMS()
         if qms is None:
             return
-        print qms.retrieveDbInfo(args[0])
+        (retStat, values) = qms.retrieveDbInfo(args[0])
+        if retStat != QmsStatus.SUCCESS:
+            print getErrMsg(retStat)
+            return
+        for (k, v) in values.items():
+            print "%s: %s" % (k, v)
         self._logger.debug("Done retrieving db info")
 
     def _cmd_listDbs(self, options, args):

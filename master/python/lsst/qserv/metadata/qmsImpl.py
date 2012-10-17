@@ -259,10 +259,10 @@ def retrieveDbInfo(loggerName, dbName):
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
     if ret != QmsStatus.SUCCESS: 
-        return "Failed to connect to QMS."
+        return [ret, {}]
     if mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" % \
                             dbName)[0] == 0:
-        return "Database '%s' does not exist." % dbName
+        return [QmsStatus.ERR_DB_NOT_EXISTS, {}]
     ps = mdb.execCommand1("SELECT psName FROM DbMeta WHERE dbName='%s'" % \
                               dbName)[0]
     if ps == "sphBox":
@@ -272,13 +272,14 @@ def retrieveDbInfo(loggerName, dbName):
           FROM DbMeta 
           JOIN PS_Db_sphBox USING(psId) 
           WHERE dbName='%s'""" % dbName)
+        values = dict()
+        values["partitioningStrategy"] = "sphBox"
+        values["stripes"] = ret[0]
+        values["subStripes"] = ret[1]
+        values["defaultOverlap_fuzziness"] = ret[2]
+        values["defaultOverlap_nearNeigh"] = ret[3]
     mdb.disconnect()
-    return """
-stripes: %s
-subStripes: %s
-defaultOverlap_fuzziness: %s
-defaultOverlap_nearNeigh: %s
-""" % ret
+    return [QmsStatus.SUCCESS, values]
 
 ################################################################################
 #### listDbs
