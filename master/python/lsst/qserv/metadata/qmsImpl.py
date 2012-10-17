@@ -202,8 +202,11 @@ def createDb(loggerName, dbName, crDbOptions):
         logger.error("Database '%s' already registered" % dbName)
         return QmsStatus.ERR_DB_EXISTS
     # create entry in PS_Db_<partitioningStrategy> table
-    psName = crDbOptions["partitioningstrategy"]
-    psId = '0'
+    if crDbOptions["partitioning"] == "off":
+        psId = '0'
+        psName = None
+    else:
+        psName = crDbOptions["partitioningstrategy"]
     if psName == "sphBox":
         logger.debug("persisting for sphBox")
         nS = crDbOptions["nstripes"]
@@ -213,8 +216,6 @@ def createDb(loggerName, dbName, crDbOptions):
         cmd = "INSERT INTO PS_Db_sphBox(stripes, subStripes, defaultOverlap_fuzzyness, defaultOverlap_nearNeigh) VALUES(%s, %s, %s, %s)" % (nS, nSS, dOvF, dOvN)
         mdb.execCommand0(cmd)
         psId = (mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
-    elif psName == "None":
-        pass
     # create entry in DbMeta table
     dbUuid = uuid.uuid4() # random UUID
     cmd = "INSERT INTO DbMeta(dbName, dbUuid, psName, psId) VALUES('%s', '%s', '%s', %s)" % (dbName, dbUuid, psName, psId)
@@ -360,8 +361,11 @@ def createTable(loggerName, dbName, crTbOptions):
     print "FIXME in createTable: need to load schema (file: %s)" % schemaFile
 
     # create entry in PS_Tb_<partitioningStrategy>
-    psName = crTbOptions["partitioningStrategy"]
-    psId = '0'
+    if crTbOptions["partitioning"] == "off":
+        psId = '0'
+        psName = None
+    else:
+        psName = crTbOptions["partitioningStrategy"]
     if psName == "sphBox":
         logger.debug("persisting for sphBox")
         ov = crTbOptions["overlap"]
@@ -375,8 +379,6 @@ def createTable(loggerName, dbName, crTbOptions):
         cmd = "INSERT INTO PS_Tb_sphBox(overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking) VALUES(%s, '%s', '%s', %d, %d, %d, %d)" % (ov, pCN, tCN, pN, tN, lP, pC)
         mdb.execCommand0(cmd)
         psId = (mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
-    elif ps == "None":
-        pass
     # create entry in TableMeta
     tbUuid = uuid.uuid4() # random UUID
     clusteredIdx = crTbOptions["clusteredIndex"]

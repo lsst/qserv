@@ -1,10 +1,10 @@
 ./qms/runQmsClient.sh destroyMeta
 ./qms/runQmsClient.sh installMeta
 ./qms/runQmsClient.sh printMeta
-./qms/runQmsClient.sh createDb NonPartA ./qms/dbCreateN.cfg
-./qms/runQmsClient.sh createDb Summer2012 ./qms/dbCreateP.cfg
-./qms/runQmsClient.sh createDb NonPartB ./qms/dbCreateN.cfg
-./qms/runQmsClient.sh createDb Winter2013 ./qms/dbCreateP.cfg
+./qms/runQmsClient.sh createDb NonPartA ./qms/dbCreateNonPartitioned.cfg
+./qms/runQmsClient.sh createDb Summer2012 ./qms/dbCreatePartitioned.cfg
+./qms/runQmsClient.sh createDb NonPartB ./qms/dbCreateNonPartitioned.cfg
+./qms/runQmsClient.sh createDb Winter2013 ./qms/dbCreatePartitioned.cfg
 ./qms/runQmsClient.sh listDbs
 ./qms/runQmsClient.sh checkDbExists Summer2012
 ./qms/runQmsClient.sh checkDbExists Summer2012xx

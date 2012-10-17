@@ -178,17 +178,19 @@ password: myPass
         (dbName, confFile) = args
         crDbOptions = self._readCreateXXConfigFile(
             confFile,
-            {"db_info":("partitioningstrategy",)},
+            {"db_info":("partitioning", "partitioningstrategy")},
             {"sphBox":("nstripes", 
                        "nsubstripes", 
                        "defaultoverlap_fuzziness",
                        "defaultoverlap_nearneighbor")})
         if crDbOptions is None:
             self._logger.error("No options in config file")
+            print "Failed to parse config file"
             return
         qms = self._connectToQMS()
         if qms is None:
             self._logger.error("Failed to connect to qms")
+            print "Failed to connect to qms"
             return
         self._logger.debug("createDb %s, options are: " % dbName)
         self._logger.debug(crDbOptions)
@@ -288,6 +290,7 @@ password: myPass
         crTbOptions = self._readCreateXXConfigFile(
             confFile, 
             {"table_info":("tableName",
+                           "partitioning",
                            "schemaFile",
                            "clusteredIndex")},
             {"sphBox":("overlap",
@@ -300,7 +303,6 @@ password: myPass
             self._logger.debug("No options in config file")
             return
         crTbOptions["partitioningStrategy"] = ps
-
         # do it
         self._logger.debug("createTable %s.%s, options are: " % \
                                (dbName, crTbOptions["tableName"]))
@@ -325,26 +327,46 @@ password: myPass
         config = ConfigParser.ConfigParser()
         config.read(fName)
         finalDict = {}
+
+        for (section, values) in optRequired.items():
+            if config.has_option(section, "partitioning"):
+                partOff = config.get(section, "partitioning") == "off"
+
         # check if required non-partition specific options found
         for (section, values) in optRequired.items():
             if not config.has_section(section):
                 print errMsg, "required section '%s' not found" % section
                 return
             for o in values:
+                isException = False
                 if not config.has_option(section, o):
-                    print errMsg, "required option '%s' in section '%s' " % \
-                        (section, o), " not found"
-                    return
-                finalDict[o] = config.get(section, o)
-        # if partStrategy not passed, it better be in the config
-        if partStrategy is None:
-            for (section, values) in optRequired.items():
-                if config.has_option(section, "partitioningstrategy"):
-                    partStrategy = config.get(section, "partitioningstrategy")
+                    # "partitioning is an optional parameter
+                    if o == "partitioning":
+                        isException = True
+                    # if partitioning is "off", partitioningStrategy does not
+                    # need to be specified
+                    if o == "partitioningstrategy" and partOff:
+                        isException = True
+                    if not isException:
+                        print "exx = ", isException
+                        print errMsg, "required option '%s' in section '%s' " \
+                            % (section, o), " not found"
+                        return
+                if not isException:
+                    finalDict[o] = config.get(section, o)
+                if o == "partitioning":
+                    myPartStrategy = config.get(section, o)
+
+        if not partOff:
+            # if partStrategy not passed, it better be in the config
             if partStrategy is None:
-                print errMsg, "can't determine partitiong strategy"
-                return
-        if partStrategy != 'None':
+                for (section, values) in optRequired.items():
+                    if config.has_option(section, "partitioningstrategy"):
+                        partStrategy = config.get(section, 
+                                                  "partitioningstrategy")
+                if partStrategy is None:
+                    print errMsg, "can't determine partitiong strategy"
+                    return
             # check if partition-strategy specific options found
             for o in optPartSpec[partStrategy]:
                 if not config.has_option(partStrategy, o):
@@ -352,7 +374,7 @@ password: myPass
                         "not found" % (partStrategy, o)
                     return
                 finalDict[o] = config.get(partStrategy, o)
-            pass
+
         # FIXME: note, we are currently not detecting extra options
         # that user might have put in the file that we do not support
         return finalDict
