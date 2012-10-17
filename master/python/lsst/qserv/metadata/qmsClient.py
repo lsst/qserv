@@ -84,6 +84,10 @@ COMMANDS
         Removes metadata about a database that was managed
         my qserv. Arguments: <dbName>
 
+  checkDbExists
+        Checks if the database exists, returns 0 or 1.
+        Arguments: <dbName>
+
   listDbs
         Lists database names registered for qserv use.
 
@@ -209,6 +213,22 @@ password: myPass
         if qms is None:
             return
         print qms.listDbs()
+        self._logger.debug("Done listing databases")
+
+    def _cmd_checkDbExists(self, options, args):
+        self._logger.debug("Check if db exists")
+        if len(args) != 1:
+            msg = "'checkDbExists' requires one argument: <dbName>"
+            self._logger.error(msg)
+            print msg
+            return
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        if qms.checkDbExists(args[0]) == 1:
+            print "yes"
+        else:
+            print "no"
         self._logger.debug("Done listing databases")
 
     def _cmd_createTable(self, options, args):

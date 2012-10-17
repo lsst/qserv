@@ -88,6 +88,8 @@ class QmsMySQLDb():
                                              port=port,
                                              db=self.dbName)
             except Exception, e2:
+                if e[1].startswith("Unknown database"):
+                    return QmsStatus.ERR_NO_META
                 msg1 = "Couldn't connect using file %s" % socket
                 self._logger.error(msg1)
                 print >> sys.stderr, msg1, e
@@ -95,8 +97,6 @@ class QmsMySQLDb():
                 self._logger.error(msg2)
                 print >> sys.stderr, msg2, e2
                 self._conn = None
-                if e[1].startswith("Unknown database"):
-                    return QmsStatus.ERR_NO_META
                 return QmsStatus.ERR_MYSQL_CONNECT
 
         c = self._conn.cursor()

@@ -271,6 +271,20 @@ def listDbs(loggerName):
     return s.getvalue()
 
 ################################################################################
+#### checkDbExists
+################################################################################
+def checkDbExists(loggerName, dbName):
+    """Checks if db <dbName> exists, returns 0 or 1"""
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        return 0
+    ret = mdb.execCommandN("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" \
+                               % dbName)
+    mdb.disconnect()
+    return ret[0][0]
+
+################################################################################
 #### createTable
 ################################################################################
 def createTable(loggerName, dbName, crDbOptions):
