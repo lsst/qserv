@@ -237,7 +237,7 @@ password: myPass
                 else:
                     print errMsg, "unrecognized option '%s'." % option
                     return
-        elif pStrategy == "None":
+        elif partStrategy == "None":
             pass # no options here yet
         return dict(config.items(section))
 
