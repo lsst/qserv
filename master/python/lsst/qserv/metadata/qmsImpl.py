@@ -22,6 +22,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 import logging
+import StringIO
 import uuid
 
 from qmsMySQLDb import QmsMySQLDb
@@ -154,20 +155,27 @@ def destroyMeta(loggerName):
     mdb.dropDb()
     return mdb.disconnect()
 
+def _printTable(s, mdb, tableName):
+    ret = mdb.execCommandN("SELECT * FROM %s" % tableName)
+    s.write(tableName)
+    if len(ret) == 0:
+        s.write(" is empty.\n")
+    else: 
+        s.write(':\n')
+        for r in ret: print >> s, "   ", r
+
 def printMeta(loggerName):
     """This method prints all metadata into a string"""
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
     if ret != QmsStatus.SUCCESS: 
         return None
-    # DbMeta
-    ret = mdb.execCommandN("SELECT dbName, dbUuid, psName, psId FROM DbMeta")
-    if len(ret) == 0:
-        theOutput = "No databases registered yet"
-    else:
-        theOutput = ret
+    s = StringIO.StringIO()
+    for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox", 
+              "EmptyChunks", "TableStats", "LockDb"]:
+        _printTable(s, mdb, t)
     mdb.disconnect()
-    return theOutput
+    return s.getvalue()
 
 def createDb(loggerName, dbName, crDbOptions):
     """Creates metadata about new database to be managed by qserv."""
@@ -185,7 +193,9 @@ def createDb(loggerName, dbName, crDbOptions):
         logger.error("Database '%s' already registered" % dbName)
         return QmsStatus.ERR_DB_EXISTS
 
+    dbUuid = uuid.uuid4() # random UUID
     psName = crDbOptions["partitioningstrategy"]
+    psId = '0'
     if psName == "sphBox":
         logger.debug("persisting for sphBox")
         nS = crDbOptions["nstripes"]
@@ -195,9 +205,8 @@ def createDb(loggerName, dbName, crDbOptions):
         cmd = "INSERT INTO PS_Db_sphBox(stripes, subStripes, defaultOverlap_fuzzyness, defaultOverlap_nearNeigh) VALUES(%s, %s, %s, %s)" % (nS, nSS, dOvF, dOvN)
         mdb.execCommand0(cmd)
         psId = (mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
-        dbUuid = uuid.uuid4() # random UUID
     elif psName == "None":
-        psId = "\N"
+        pass
     cmd = "INSERT INTO DbMeta(dbName, dbUuid, psName, psId) VALUES('%s', '%s', '%s', %s)" % (dbName, dbUuid, psName, psId)
     mdb.execCommand0(cmd)
     return mdb.disconnect()
