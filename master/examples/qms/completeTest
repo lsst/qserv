@@ -1,7 +1,10 @@
+./qms/runQmsClient.sh destroyMeta
 ./qms/runQmsClient.sh installMeta
 ./qms/runQmsClient.sh printMeta
+./qms/runQmsClient.sh createDb NonPartA ./qms/dbCreateN.cfg
 ./qms/runQmsClient.sh createDb Summer2012 ./qms/dbCreateP.cfg
-./qms/runQmsClient.sh createDb NonPart ./qms/dbCreateN.cfg
+./qms/runQmsClient.sh createDb NonPartB ./qms/dbCreateN.cfg
+./qms/runQmsClient.sh createDb Winter2013 ./qms/dbCreateP.cfg
 ./qms/runQmsClient.sh listDbs
 ./qms/runQmsClient.sh checkDbExists Summer2012
 ./qms/runQmsClient.sh checkDbExists Summer2012xx
@@ -9,7 +12,12 @@
 ./qms/runQmsClient.sh retrieveDbInfo NonPart
 ./qms/runQmsClient.sh createTable Summer2012 qms/tbCreateObj.cfg
 ./qms/runQmsClient.sh createTable Summer2012 qms/tbCreateSource.cfg
+./qms/runQmsClient.sh createTable Summer2012 qms/tbCreateExposure.cfg
+./qms/runQmsClient.sh createTable Summer2012 qms/tbCreateExposure.cfg
+./qms/runQmsClient.sh createTable Winter2013 qms/tbCreateSource.cfg
 ./qms/runQmsClient.sh dropDb Summer2012
+./qms/runQmsClient.sh dropDb NonPartA
+./qms/runQmsClient.sh dropDb whatever
 ./qms/runQmsClient.sh checkDbExists Summer2012
 ./qms/runQmsClient.sh listDbs
-./qms/runQmsClient.sh destroyMeta
+#./qms/runQmsClient.sh destroyMeta

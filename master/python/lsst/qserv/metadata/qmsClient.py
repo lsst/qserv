@@ -344,13 +344,15 @@ password: myPass
             if partStrategy is None:
                 print errMsg, "can't determine partitiong strategy"
                 return
-        # check if partition-strategy specific options found
-        for o in optPartSpec[partStrategy]:
-            if not config.has_option(partStrategy, o):
-                print errMsg, "required option '%s' in section '%s " \
-                    "not found" % (partStrategy, o)
-                return
-            finalDict[o] = config.get(partStrategy, o)
+        if partStrategy != 'None':
+            # check if partition-strategy specific options found
+            for o in optPartSpec[partStrategy]:
+                if not config.has_option(partStrategy, o):
+                    print errMsg, "required option '%s' in section '%s " \
+                        "not found" % (partStrategy, o)
+                    return
+                finalDict[o] = config.get(partStrategy, o)
+            pass
         # FIXME: note, we are currently not detecting extra options
         # that user might have put in the file that we do not support
         return finalDict

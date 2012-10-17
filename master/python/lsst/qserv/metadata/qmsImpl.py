@@ -238,13 +238,20 @@ def dropDb(loggerName, dbName):
     if ret[0] != 1:
         logger.error("Database '%s' not registered" % dbName)
         return QmsStatus.ERR_DB_NOT_EXISTS
-    # get psId and drop the entry
-    cmd = "SELECT psId FROM DbMeta WHERE dbName = '%s'" % dbName
-    psId = mdb.execCommand1(cmd)[0]
-    cmd = "DELETE FROM PS_Db_sphBox WHERE psId = %s " % psId
-    mdb.execCommand0(cmd)
+    # get partitioningStrategy, psId and drop the entry
+    cmd = "SELECT dbId, psName, psId FROM DbMeta WHERE dbName = '%s'" % dbName
+    (dbId, psName, dbPsId) = mdb.execCommand1(cmd)
+    if psName == 'sphBox':
+        cmd = "DELETE FROM PS_Db_sphBox WHERE psId = %s " % dbPsId
+        mdb.execCommand0(cmd)
     # remove the entry about the db
-    cmd = "DELETE FROM DbMeta WHERE dbName = '%s'" % dbName
+    cmd = "DELETE FROM DbMeta WHERE dbId = %s" % dbId
+    mdb.execCommand0(cmd)
+    # remove related tables
+    if psName == 'sphBox':
+        cmd = "DELETE FROM PS_Tb_sphBox WHERE psId IN (SELECT psId FROM TableMeta WHERE dbId=%s)" % dbId
+        mdb.execCommand0(cmd)
+    cmd = "DELETE FROM TableMeta WHERE dbId = %s" % dbId
     mdb.execCommand0(cmd)
     return mdb.disconnect()
 
