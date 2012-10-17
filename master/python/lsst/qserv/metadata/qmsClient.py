@@ -73,9 +73,6 @@ COMMANDS
   destroyMeta
         Destroys internal qserv metadata database.
 
-  printMeta
-        Prints all metadata.
-
   createDb
         Creates metadata about new database to be managed 
         by qserv. Arguments: <dbName> <configFile>
@@ -83,6 +80,9 @@ COMMANDS
   dropDb
         Removes metadata about a database that was managed
         my qserv. Arguments: <dbName>
+
+  printMeta
+        Prints all metadata.
 
   listDbs
         Lists database names registered for qserv use.
@@ -148,14 +148,6 @@ password: myPass
             print "All metadata destroyed!"
             self._logger.debug("All metadata destroyed")
 
-    def _cmd_printMeta(self, options, args):
-        self._logger.debug("Printing meta")
-        qms = self._connectToQMS()
-        if qms is None:
-            return
-        print qms.printMeta()
-        self._logger.debug("Done printing meta")
-
     def _cmd_createDb(self, options, args):
         self._logger.debug("Creating db")
         if len(args) != 2:
@@ -199,8 +191,21 @@ password: myPass
             self._logger.error("dropDb failed")
         self._logger.debug("dropDb successfully finished")
 
+    def _cmd_printMeta(self, options, args):
+        self._logger.debug("Printing meta")
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        print qms.printMeta()
+        self._logger.debug("Done printing meta")
+
     def _cmd_listDbs(self, options, args):
-        print "listDbs, dburl is:", options, conn, " not implemented"
+        self._logger.debug("List databases")
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        print qms.listDbs()
+        self._logger.debug("Done listing databases")
 
     ############################################################################
     ##### config file

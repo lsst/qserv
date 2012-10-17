@@ -155,28 +155,6 @@ def destroyMeta(loggerName):
     mdb.dropDb()
     return mdb.disconnect()
 
-def _printTable(s, mdb, tableName):
-    ret = mdb.execCommandN("SELECT * FROM %s" % tableName)
-    s.write(tableName)
-    if len(ret) == 0:
-        s.write(" is empty.\n")
-    else: 
-        s.write(':\n')
-        for r in ret: print >> s, "   ", r
-
-def printMeta(loggerName):
-    """This method prints all metadata into a string"""
-    mdb = QmsMySQLDb(loggerName)
-    ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
-        return None
-    s = StringIO.StringIO()
-    for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox", 
-              "EmptyChunks", "TableStats", "LockDb"]:
-        _printTable(s, mdb, t)
-    mdb.disconnect()
-    return s.getvalue()
-
 def createDb(loggerName, dbName, crDbOptions):
     """Creates metadata about new database to be managed by qserv."""
     logger = logging.getLogger(loggerName)
@@ -236,3 +214,41 @@ def dropDb(loggerName, dbName):
     mdb.execCommand0(cmd)
 
     return mdb.disconnect()
+
+def _printTable(s, mdb, tableName):
+    ret = mdb.execCommandN("SELECT * FROM %s" % tableName)
+    s.write(tableName)
+    if len(ret) == 0:
+        s.write(" is empty.\n")
+    else: 
+        s.write(':\n')
+        for r in ret: print >> s, "   ", r
+
+def printMeta(loggerName):
+    """This method prints all metadata into a string"""
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        return None
+    s = StringIO.StringIO()
+    for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox", 
+              "EmptyChunks", "TableStats", "LockDb"]:
+        _printTable(s, mdb, t)
+    mdb.disconnect()
+    return s.getvalue()
+
+def listDbs(loggerName):
+    """Prints names of all databases managed by qserv into a string"""
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        return None
+    ret = mdb.execCommandN("SELECT dbName FROM DbMeta")
+    if ret is None:
+        return "No databases found"
+    s = StringIO.StringIO()
+    for r in ret:
+        s.write(r[0])
+        s.write(' ')
+    mdb.disconnect()
+    return s.getvalue()
