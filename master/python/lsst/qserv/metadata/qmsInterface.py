@@ -53,8 +53,12 @@ class QmsInterface:
         return qmsImpl.createDb(self._loggerName, dbName, crDbOptions)
 
     def dropDb(self, dbName):
-        """Removes  metadata about a database managed by qserv."""
+        """Removes metadata about a database managed by qserv."""
         return qmsImpl.dropDb(self._loggerName, dbName)
+
+    def createTable(self, dbName, crTbOptions):
+        """Creates metadata about new table from qserv-managed database."""
+        return qmsImpl.createTable(self._loggerName, dbName, crTbOptions)
 
     def printMeta(self):
         """Returns string that contains all metadata."""

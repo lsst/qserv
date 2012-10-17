@@ -212,7 +212,18 @@ def dropDb(loggerName, dbName):
     # remove the entry about the db
     cmd = "DELETE FROM DbMeta WHERE dbName = '%s'" % dbName
     mdb.execCommand0(cmd)
+    return mdb.disconnect()
 
+def createTable(loggerName, dbName, crDbOptions):
+    """Creates metadata about new table in qserv-managed database."""
+    logger = logging.getLogger(loggerName)
+
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        logger.error("Failed to connect to qms")
+        return None
+    print "not implemented"
     return mdb.disconnect()
 
 def _printTable(s, mdb, tableName):
@@ -244,7 +255,7 @@ def listDbs(loggerName):
     if ret != QmsStatus.SUCCESS: 
         return None
     ret = mdb.execCommandN("SELECT dbName FROM DbMeta")
-    if ret is None:
+    if not ret:
         return "No databases found"
     s = StringIO.StringIO()
     for r in ret:
