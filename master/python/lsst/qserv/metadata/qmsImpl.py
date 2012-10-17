@@ -314,7 +314,7 @@ def checkDbExists(loggerName, dbName):
     ret = mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" \
                                % dbName)
     mdb.disconnect()
-    return ret[0][0]
+    return ret[0]
 
 ################################################################################
 #### createTable
