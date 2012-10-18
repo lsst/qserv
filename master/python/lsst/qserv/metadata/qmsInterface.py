@@ -72,9 +72,10 @@ class QmsInterface:
         """Checks if db <dbName> exists, returns 0 (no) or 1 (yes)."""
         return qmsImpl.checkDbExists(self._loggerName, dbName)
 
-    def createTable(self, dbName, crTbOptions):
+    def createTable(self, dbName, crTbOptions, schemaStr):
         """Creates metadata about new table from qserv-managed database."""
-        return qmsImpl.createTable(self._loggerName, dbName, crTbOptions)
+        return qmsImpl.createTable(self._loggerName, dbName, 
+                                   crTbOptions, schemaStr)
 
     def help(self):
         """A brief help message showing available commands"""

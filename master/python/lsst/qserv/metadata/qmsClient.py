@@ -305,11 +305,18 @@ password: myPass
             self._logger.debug("No options in config file")
             return
         crTbOptions["partitioningStrategy"] = ps
+        # read schema file and pass it
+        schemaFile = crTbOptions["schemaFile"]
+        del crTbOptions["schemaFile"]
+        if not os.access(schemaFile, os.R_OK):
+            print getErrMsg(QmsStatus.ERR_SCHEMA_FILE)
+            return
+        schemaStr = open(schemaFile, 'r').read()
         # do it
         self._logger.debug("createTable %s.%s, options are: " % \
                                (dbName, crTbOptions["tableName"]))
         self._logger.debug(crTbOptions)
-        ret = qms.createTable(dbName, crTbOptions)
+        ret = qms.createTable(dbName, crTbOptions, schemaStr)
         if ret != QmsStatus.SUCCESS: 
             print getErrMsg(ret)
             self._logger.error("createTable failed")

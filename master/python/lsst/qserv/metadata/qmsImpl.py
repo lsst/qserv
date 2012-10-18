@@ -25,6 +25,7 @@ import logging
 import os
 import random
 import StringIO
+import tempfile
 import uuid
 
 from qmsMySQLDb import QmsMySQLDb
@@ -346,19 +347,21 @@ def checkDbExists(loggerName, dbName):
 ################################################################################
 #### createTable
 ################################################################################
-def createTable(loggerName, dbName, crTbOptions):
+def createTable(loggerName, dbName, crTbOptions, schemaStr):
     """Creates metadata about new table in qserv-managed database."""
     logger = logging.getLogger(loggerName)
 
-    # check if schema file can be read
-    schemaFile = crTbOptions["schemaFile"]
-    if not os.access(schemaFile, os.R_OK):
-        logger.error("Failed to open schema file '%s'" % schemaFile)
-        return QmsStatus.ERR_SCHEMA_FILE
+    # write schema to a temp file
+    schemaF = tempfile.NamedTemporaryFile(delete=False)
+    schemaF.write(schemaStr)
+    logger.debug("wrote schema to tempfile %s" % schemaF.name)
+    schemaF.close()
+
     # connect to QMS
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
     if ret != QmsStatus.SUCCESS: 
+        os.unlink(schemaF.name)
         logger.error("Failed to connect to qms")
         return ret
     # get dbid
@@ -370,11 +373,13 @@ def createTable(loggerName, dbName, crTbOptions):
         (dbId, tableName)
     ret = mdb.execCommand1(cmd)
     if ret[0] > 0:
+        os.unlink(schemaF.name)
         logger.error("Table '%s' already registred" % tableName)
         return QmsStatus.ERR_TABLE_EXISTS
 
     # load the template schema
-    mdb.loadSqlScript(schemaFile, "%s%s" % (_getUniqueQmsPrefix(mdb), dbName))
+    mdb.loadSqlScript(schemaF.name, "%s%s" % (_getUniqueQmsPrefix(mdb), dbName))
+    os.unlink(schemaF.name)
 
     # create entry in PS_Tb_<partitioningStrategy>
     if crTbOptions["partitioning"] == "off":
