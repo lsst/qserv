@@ -50,7 +50,7 @@ class Client(object):
 NAME
        qmsClient - the client program for Qserv Metadata Server (QMS)
 
-SYNOPSIS:
+SYNOPSIS
        qmsClient [-c CONN] [-v|--verbose] [-h|--help] COMMAND [ARGS]
 
 OPTIONS
