@@ -155,7 +155,10 @@ def destroyMeta(loggerName):
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
     if ret != QmsStatus.SUCCESS: return ret
-    print "fixme in destroyMeta: need to drop all qms_* databases!"
+
+    qmsDbs = mdb.execCommandN("SHOW DATABASES LIKE 'qms_%'")
+    for qmsDb in qmsDbs:
+        mdb.execCommand0("DROP DATABASE %s" % qmsDb)
     mdb.dropDb()
     return mdb.disconnect()
 
