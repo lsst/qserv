@@ -8,7 +8,7 @@ tableName:      Object
 partitioning: on
 
 # note that the file must be accessible on the qms server
-schemaFile:     qms/schema_Object.sql
+schemaFile:     /u1/qserv/qserv/master/examples/qms/schema_Object.sql
 
 # the cluster index name must be defined in the schemaFile.
 # Use the word None if not required
