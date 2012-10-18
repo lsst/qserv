@@ -42,6 +42,7 @@ class QmsMySQLDb():
     def __init__(self, loggerName):
         self._conn = None
         self._logger = logging.getLogger(loggerName)
+        self._connType = None
 
     def __del__(self):
         self.disconnect()
@@ -57,43 +58,46 @@ class QmsMySQLDb():
         if self._checkIsConnected():
             return
         config = lsst.qserv.master.config.config
-        socket = config.get("qmsdb", "unix_socket")
-        user = config.get("qmsdb", "user")
-        passwd = config.get("qmsdb", "passwd")
-        host = config.get("qmsdb", "host")
-        port = config.getint("qmsdb", "port")
-        self.dbName = config.get("qmsdb", "db")
+        self._socket = config.get("qmsdb", "unix_socket")
+        self._user = config.get("qmsdb", "user")
+        self._passwd = config.get("qmsdb", "passwd")
+        self._host = config.get("qmsdb", "host")
+        self._port = config.getint("qmsdb", "port")
+        self._dbName = config.get("qmsdb", "db")
 
         try: # Socket file first
+            self._connType = "socket"
             if createDb:
-                self._conn = sql.connect(user=user,
-                                         passwd=passwd,
-                                         unix_socket=socket)
+                self._conn = sql.connect(user=self._user,
+                                         passwd=self._passwd,
+                                         unix_socket=self._socket)
             else:
-                self._conn = sql.connect(user=user,
-                                         passwd=passwd,
-                                         unix_socket=socket,
-                                         db=self.dbName)
+                self._conn = sql.connect(user=self._user,
+                                         passwd=self._passwd,
+                                         unix_socket=self._socket,
+                                         db=self._dbName)
         except Exception, e:
+            self._connType = "port"
             try:
                 if createDb:
-                    self._conn = sql.connect(user=user,
-                                             passwd=passwd,
-                                             host=host,
-                                             port=port)
+                    self._conn = sql.connect(user=self._user,
+                                             passwd=self._passwd,
+                                             host=self._host,
+                                             port=self._port)
                 else:
-                    self._conn = sql.connect(user=user,
-                                             passwd=passwd,
-                                             host=host,
-                                             port=port,
-                                             db=self.dbName)
+                    self._conn = sql.connect(user=self._user,
+                                             passwd=self._passwd,
+                                             host=self._host,
+                                             port=self._port,
+                                             db=self._dbName)
             except Exception, e2:
+                self._connType = None
                 if e[1].startswith("Unknown database"):
                     return QmsStatus.ERR_NO_META
-                msg1 = "Couldn't connect using file %s" % socket
+                msg1 = "Couldn't connect using file %s" % self._socket
                 self._logger.error(msg1)
                 print >> sys.stderr, msg1, e
-                msg2 = "Couldn't connect using %s:%s" % (host, port)
+                msg2 = "Couldn't connect using %s:%s" % (self._host, self._port)
                 self._logger.error(msg2)
                 print >> sys.stderr, msg2, e2
                 self._conn = None
@@ -103,12 +107,12 @@ class QmsMySQLDb():
         if createDb:
             if self.checkDbExists():
                 self._logger.error("Can't created db '%s', it exists." % \
-                                       self.dbName)
+                                       self._dbName)
                 return QmsStatus.ERR_IS_INIT
             else:
-                self.execCommand0("CREATE DATABASE %s" % self.dbName)
-            self._conn.select_db(self.dbName)
-        self._logger.debug("Connected to db %s" % self.dbName)
+                self.execCommand0("CREATE DATABASE %s" % self._dbName)
+            self._conn.select_db(self._dbName)
+        self._logger.debug("Connected to db %s" % self._dbName)
         return QmsStatus.SUCCESS
 
     def disconnect(self):
@@ -130,13 +134,13 @@ class QmsMySQLDb():
 
     def dropDb(self):
         if self.checkDbExists():
-            self.execCommand0("DROP DATABASE %s" % self.dbName)
+            self.execCommand0("DROP DATABASE %s" % self._dbName)
 
     def checkDbExists(self):
-        if self.dbName is None:
+        if self._dbName is None:
             raise RuntimeError("Invalid dbName")
         cmd = "SELECT COUNT(*) FROM information_schema.schemata "
-        cmd += "WHERE schema_name = '%s'" % self.dbName
+        cmd += "WHERE schema_name = '%s'" % self._dbName
         count = self.execCommand1(cmd)
         if count[0] == 1:
             return True
@@ -150,9 +154,32 @@ class QmsMySQLDb():
             raise RuntimeError("Not connected")
         cmd = "SELECT COUNT(*) FROM information_schema.tables "
         cmd += "WHERE table_schema = '%s' AND table_name = '%s'" % \
-               (self.dbName, tableName)
+               (self._dbName, tableName)
         count = self.execCommand1(cmd)
         return  count[0] == 1
+
+    def loadSqlScript(self, scriptPath, dbName):
+        """Loads sql script into the database <dbName>."""
+        self._logger.debug("loading script %s into db %s" % (scriptPath,dbName))
+        if self._passwd:
+            if self._connType == "port":
+                cmd = 'mysql -h%s -P%s -u%s -p%s %s' % \
+                (self._host, self._port, self._user, self._passwd, dbName)
+            else:
+                cmd = 'mysql -S%s -u%s -p%s %s' % \
+                (self._socket, self._user,self._passwd, dbName)
+        else:
+            if self._connType == "port":
+                cmd = 'mysql -h%s -P%s -u%s %s' % \
+                (self._host, self._port, self._user, _dbName)
+            else:
+                cmd = 'mysql -S%s -u%s %s' % \
+                (self._socket, self._user, dbName)
+        self._logger.debug("cmd is %s" % cmd)
+        with file(scriptPath) as scriptFile:
+            if subprocess.call(cmd.split(), stdin=scriptFile) != 0:
+                raise RuntimeError("Failed to execute %s < %s" % \
+                                       (cmd,scriptPath))
 
     def execCommand0(self, command):
         """Executes mysql commands which return no rows"""

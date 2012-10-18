@@ -155,6 +155,7 @@ def destroyMeta(loggerName):
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
     if ret != QmsStatus.SUCCESS: return ret
+    print "fixme in destroyMeta: need to drop all qms_* databases!"
     mdb.dropDb()
     return mdb.disconnect()
 
@@ -358,7 +359,7 @@ def createTable(loggerName, dbName, crTbOptions):
         return QmsStatus.ERR_TABLE_EXISTS
 
     # load the template schema
-    print "FIXME in createTable: need to load schema (file: %s)" % schemaFile
+    mdb.loadSqlScript(schemaFile, "qms_%s" % dbName)
 
     # create entry in PS_Tb_<partitioningStrategy>
     if crTbOptions["partitioning"] == "off":
