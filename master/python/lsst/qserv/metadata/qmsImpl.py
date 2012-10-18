@@ -23,11 +23,16 @@
 
 import logging
 import os
+import random
 import StringIO
 import uuid
 
 from qmsMySQLDb import QmsMySQLDb
 from qmsStatus import QmsStatus
+
+
+def _getUniqueQmsPrefix(mdb):
+    return "qms_%d_" % mdb.execCommand1("SELECT id FROM UniqueQmsId")[0]
 
 ################################################################################
 #### installMeta
@@ -37,6 +42,10 @@ def installMeta(loggerName):
     This method should be called only once ever for a given
     qms installation."""
     internalTables = [
+        # This table keeps uniqueQmsId, which is used to avoid
+        # collisions for qms_<dbName> databases
+        ['UniqueQmsId', '''(
+   id INT)'''],
         # The DbMeta table keeps the list of databases managed through 
         # qserv. Databases not entered into that table will be ignored 
         # by qserv.
@@ -145,6 +154,8 @@ def installMeta(loggerName):
     if ret != QmsStatus.SUCCESS: return ret
     for t in internalTables:
         mdb.createTable(t[0], t[1])
+    mdb.execCommand0("INSERT INTO UniqueQmsId(id) VALUES(%d)" % \
+                         random.randint(1, 2**31-1))
     return mdb.disconnect()
 
 ################################################################################
@@ -154,9 +165,10 @@ def destroyMeta(loggerName):
     """This method permanently destroys qserv metadata"""
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: return ret
-
-    qmsDbs = mdb.execCommandN("SHOW DATABASES LIKE 'qms_%'")
+    if ret != QmsStatus.SUCCESS:
+        return ret
+    qmsDbs = mdb.execCommandN(
+        "SHOW DATABASES LIKE '%s%%'" % _getUniqueQmsPrefix(mdb))
     for qmsDb in qmsDbs:
         mdb.execCommand0("DROP DATABASE %s" % qmsDb)
     mdb.dropDb()
@@ -225,7 +237,7 @@ def createDb(loggerName, dbName, crDbOptions):
     cmd = "INSERT INTO DbMeta(dbName, dbUuid, psName, psId) VALUES('%s', '%s', '%s', %s)" % (dbName, dbUuid, psName, psId)
     mdb.execCommand0(cmd)
     # finally, create this table as template
-    mdb.execCommand0("CREATE DATABASE qms_%s" %dbName)
+    mdb.execCommand0("CREATE DATABASE %s%s"%(_getUniqueQmsPrefix(mdb), dbName))
 
     return mdb.disconnect()
 
@@ -263,7 +275,7 @@ def dropDb(loggerName, dbName):
     cmd = "DELETE FROM TableMeta WHERE dbId = %s" % dbId
     mdb.execCommand0(cmd)
     # drop the template database
-    mdb.execCommand0("DROP DATABASE qms_%s" % dbName)
+    mdb.execCommand0("DROP DATABASE %s%s" % (_getUniqueQmsPrefix(mdb), dbName))
     return mdb.disconnect()
 
 ################################################################################
@@ -362,7 +374,7 @@ def createTable(loggerName, dbName, crTbOptions):
         return QmsStatus.ERR_TABLE_EXISTS
 
     # load the template schema
-    mdb.loadSqlScript(schemaFile, "qms_%s" % dbName)
+    mdb.loadSqlScript(schemaFile, "%s%s" % (_getUniqueQmsPrefix(mdb), dbName))
 
     # create entry in PS_Tb_<partitioningStrategy>
     if crTbOptions["partitioning"] == "off":
@@ -389,3 +401,5 @@ def createTable(loggerName, dbName, crTbOptions):
     cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx) VALUES ('%s', '%s', %s, %s, '%s')" % (tableName, tbUuid, dbId, psId, clusteredIdx)
     mdb.execCommand0(cmd)
     return mdb.disconnect()
+
+    

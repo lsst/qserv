@@ -20,4 +20,6 @@
 ./qms/runQmsClient.sh dropDb whatever
 ./qms/runQmsClient.sh checkDbExists Summer2012
 ./qms/runQmsClient.sh listDbs
-#./qms/runQmsClient.sh destroyMeta
+
+
+./qms/runQmsClient.sh destroyMeta
