@@ -8,7 +8,7 @@ tableName:      Source
 partitioning: on
 
 # note that the file must be accessible on the qms server
-schemaFile:     /u1/qserv/qserv/master/examples/qms/schema_Source.sql
+schemaFile:     /u1/qserv/qserv/master/examples/qms/tbSchema_Source.sql
 
 # the cluster index name must be defined in the schemaFile.
 # Use the word None if not required
