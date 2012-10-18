@@ -219,7 +219,7 @@ def createDb(loggerName, dbName, crDbOptions):
         return QmsStatus.ERR_DB_EXISTS
     # create entry in PS_Db_<partitioningStrategy> table
     if crDbOptions["partitioning"] == "off":
-        psId = '0'
+        psId = '\N'
         psName = None
     else:
         psName = crDbOptions["partitioningstrategy"]
@@ -378,7 +378,7 @@ def createTable(loggerName, dbName, crTbOptions):
 
     # create entry in PS_Tb_<partitioningStrategy>
     if crTbOptions["partitioning"] == "off":
-        psId = '0'
+        psId = '\N'
         psName = None
     else:
         psName = crTbOptions["partitioningStrategy"]
@@ -398,7 +398,10 @@ def createTable(loggerName, dbName, crTbOptions):
     # create entry in TableMeta
     tbUuid = uuid.uuid4() # random UUID
     clusteredIdx = crTbOptions["clusteredIndex"]
-    cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx) VALUES ('%s', '%s', %s, %s, '%s')" % (tableName, tbUuid, dbId, psId, clusteredIdx)
+    if clusteredIdx == "None":
+        cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId) VALUES ('%s', '%s', %s, %s)" % (tableName, tbUuid, dbId, psId)
+    else:
+        cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx) VALUES ('%s', '%s', %s, %s, '%s')" % (tableName, tbUuid, dbId, psId, clusteredIdx)
     mdb.execCommand0(cmd)
     return mdb.disconnect()
 
