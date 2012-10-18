@@ -199,6 +199,7 @@ password: myPass
             print getErrMsg(ret)
             self._logger.error("createDb failed")
         self._logger.debug("createDb successfully finished")
+        print "Database successfully created."
 
     def _cmd_dropDb(self, options, args):
         self._logger.debug("Dropping db")
@@ -218,6 +219,7 @@ password: myPass
             print getErrMsg(ret)
             self._logger.error("dropDb failed")
         self._logger.debug("dropDb successfully finished")
+        print "Database dropped."
 
     def _cmd_retrieveDbInfo(self, options, args):
         self._logger.debug("Retrieve db info")
@@ -312,6 +314,7 @@ password: myPass
             print getErrMsg(ret)
             self._logger.error("createTable failed")
         self._logger.debug("createTable successfully finished")
+        print "Table successfully created."
 
     ############################################################################
     ##### config files
