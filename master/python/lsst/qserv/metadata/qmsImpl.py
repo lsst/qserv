@@ -223,16 +223,22 @@ def createDb(loggerName, dbName, crDbOptions):
         psId = '\N'
         psName = None
     else:
-        psName = crDbOptions["partitioningstrategy"]
-    if psName == "sphBox":
-        logger.debug("persisting for sphBox")
-        nS = crDbOptions["nstripes"]
-        nSS = crDbOptions["nsubstripes"]
-        dOvF = crDbOptions["defaultoverlap_fuzziness"]
-        dOvN = crDbOptions["defaultoverlap_nearneighbor"]
-        cmd = "INSERT INTO PS_Db_sphBox(stripes, subStripes, defaultOverlap_fuzzyness, defaultOverlap_nearNeigh) VALUES(%s, %s, %s, %s)" % (nS, nSS, dOvF, dOvN)
-        mdb.execCommand0(cmd)
-        psId = (mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
+        psName = crDbOptions["partitioningStrategy"]
+        if psName == "sphBox":
+            logger.debug("persisting for sphBox")
+            nS = crDbOptions["nStripes"]
+            nSS = crDbOptions["nSubStripes"]
+            dOvF = crDbOptions["defaultOverlap_fuzziness"]
+            dOvN = crDbOptions["defaultOverlap_nearNeighbor"]
+            cmd = "INSERT INTO PS_Db_sphBox(stripes, subStripes, defaultOverlap_fuzzyness, defaultOverlap_nearNeigh) VALUES(%s, %s, %s, %s)" % (nS, nSS, dOvF, dOvN)
+            mdb.execCommand0(cmd)
+            psId = (mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
+            if not psId:
+                logger.error("Failed to run '%s'" % cmd)
+                return QmsStatus.ERR_INTERNAL
+        else:
+            logger.error("Invalid psName: %s" % psName)
+            return QmsStatus.ERR_INTERNAL
     # create entry in DbMeta table
     dbUuid = uuid.uuid4() # random UUID
     cmd = "INSERT INTO DbMeta(dbName, dbUuid, psName, psId) VALUES('%s', '%s', '%s', %s)" % (dbName, dbUuid, psName, psId)
@@ -263,14 +269,14 @@ def dropDb(loggerName, dbName):
     # get partitioningStrategy, psId and drop the entry
     cmd = "SELECT dbId, psName, psId FROM DbMeta WHERE dbName = '%s'" % dbName
     (dbId, psName, dbPsId) = mdb.execCommand1(cmd)
-    if psName == 'sphBox':
+    if psName == 'sphbox':
         cmd = "DELETE FROM PS_Db_sphBox WHERE psId = %s " % dbPsId
         mdb.execCommand0(cmd)
     # remove the entry about the db
     cmd = "DELETE FROM DbMeta WHERE dbId = %s" % dbId
     mdb.execCommand0(cmd)
     # remove related tables
-    if psName == 'sphBox':
+    if psName == 'sphbox':
         cmd = "DELETE FROM PS_Tb_sphBox WHERE psId IN (SELECT psId FROM TableMeta WHERE dbId=%s)" % dbId
         mdb.execCommand0(cmd)
     cmd = "DELETE FROM TableMeta WHERE dbId = %s" % dbId
@@ -295,7 +301,7 @@ def retrieveDbInfo(loggerName, dbName):
                               dbName)[0]
     values = dict()
     values["partitioningStrategy"] = ps
-    if ps == "sphBox":
+    if ps == "sphbox":
         ret = mdb.execCommand1("""
           SELECT stripes, subStripes, defaultOverlap_fuzzyness, 
                  defaultOverlap_nearNeigh

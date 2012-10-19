@@ -45,6 +45,25 @@ class Client(object):
         self._defaultXmlPath = "qms"
         self._initLogger()
 
+        self._createDbOptions = {
+            "db_info":("partitioning", "partitioningStrategy")}
+        self._createDbPSOptions = {
+            "sphBox":("nStripes", 
+                      "nSubStripes", 
+                      "defaultOverlap_fuzziness",
+                      "defaultOverlap_nearNeighbor")}
+        self._createTbOptions = {
+            "table_info":("tableName",
+                          "partitioning",
+                          "schemaFile",
+                          "clusteredIndex")}
+        self._createTbPSOptions = {
+            "sphBox":("overlap",
+                      "phiColName", 
+                      "thetaColName", 
+                      "logicalPart",
+                      "physChunking")}
+
     def parseOptions(self):
         usage = """
 NAME
@@ -78,7 +97,11 @@ COMMANDS
 
   createDb
         Creates metadata about new database to be managed 
-        by qserv. Arguments: <dbName> <configFile>
+        by qserv. Arguments can come in one of two forms:
+        a) file-based version: 
+           <dbName> @<paramFile>
+        b) key/value-based version: 
+           <dbName> <param1>=<value1> <param2>=<value2> ...
 
   dropDb
         Removes metadata about a database that was managed
@@ -97,8 +120,12 @@ COMMANDS
 
   createTable
         Creates metadata about new table in qserv-managed 
-        database. Arguments: <dbName> <configFile>
-     
+        database. Arguments can come in one of two forms:
+        a) file-base version:
+           <dbName> @<paramFile>
+        b) key/value-based version:
+           <dbName> <param1>=<value1> <param2>=<value2> ...
+
 EXAMPLES:
 Example contents of the .qmsadm file:
 
@@ -144,7 +171,7 @@ password: myPass
         ret = qms.installMeta()
         if ret != QmsStatus.SUCCESS: 
             print getErrMsg(ret)
-        else: 
+        else:
             print "Metadata successfully installed."
             self._logger.debug("Metadata successfully installed.")
 
@@ -169,35 +196,34 @@ password: myPass
         self._logger.debug("Done printing meta")
 
     def _cmd_createDb(self, options, args):
-        self._logger.debug("Creating db")
-        if len(args) != 2:
-            msg = "'createDb' requires two arguments: <dbName> <configFile>"
+        self._logger.debug("createDb")
+        # parse arguments
+        if len(args) < 2:
+            msg = "Insufficient number of arguments"
             self._logger.error(msg)
             print msg
             return
-        (dbName, confFile) = args
-        crDbOptions = self._readCreateXXConfigFile(
-            confFile,
-            {"db_info":("partitioning", "partitioningstrategy")},
-            {"sphBox":("nstripes", 
-                       "nsubstripes", 
-                       "defaultoverlap_fuzziness",
-                       "defaultoverlap_nearneighbor")})
-        if crDbOptions is None:
-            self._logger.error("No options in config file")
-            print "Failed to parse config file"
+        dbName = args[0]
+        if len(args) == 2 and args[1][0] == '@':
+            theOptions = self._readCreateXXConfigFile(args[1][1:], "Db")
+        else:
+            theOptions = self._getCreateXXOptions_kv(args[1:], "Db")
+        if theOptions is None:
             return
+        # connect to qms
         qms = self._connectToQMS()
         if qms is None:
             self._logger.error("Failed to connect to qms")
             print "Failed to connect to qms"
             return
+        # do it
         self._logger.debug("createDb %s, options are: " % dbName)
-        self._logger.debug(crDbOptions)
-        ret = qms.createDb(dbName, crDbOptions)
+        self._logger.debug(theOptions)
+        ret = qms.createDb(dbName, theOptions)
         if ret != QmsStatus.SUCCESS: 
             print getErrMsg(ret)
             self._logger.error("createDb failed")
+            return
         self._logger.debug("createDb successfully finished")
         print "Database successfully created."
 
@@ -218,6 +244,7 @@ password: myPass
         if ret != QmsStatus.SUCCESS: 
             print getErrMsg(ret)
             self._logger.error("dropDb failed")
+            return
         self._logger.debug("dropDb successfully finished")
         print "Database dropped."
 
@@ -264,18 +291,17 @@ password: myPass
         self._logger.debug("Done listing databases")
 
     def _cmd_createTable(self, options, args):
-        self._logger.debug("Create table")
-        # check if arguments were passed
-        if len(args) != 2:
-            msg = "'createTable' requires two arguments: <dbName> <configFile>"
+        self._logger.debug("createTable")
+        # parse arguments
+        if len(args) < 2:
+            msg = "Insufficient number of arguments"
             self._logger.error(msg)
             print msg
             return
-        (dbName, confFile) = args
+        dbName = args[0]
         # connect to qms
         qms = self._connectToQMS()
         if qms is None:
-            self._logger.error("Failed to connect to qms")
             return
         # check if db exists
         if qms.checkDbExists(dbName) == 0:
@@ -288,46 +314,37 @@ password: myPass
             print getErrMsg(retStat)
             return
         ps = values["partitioningStrategy"]
-        # now that we know partitioning strategy, validate the config file
-        crTbOptions = self._readCreateXXConfigFile(
-            confFile, 
-            {"table_info":("tableName",
-                           "partitioning",
-                           "schemaFile",
-                           "clusteredIndex")},
-            {"sphBox":("overlap",
-                       "phiColName", 
-                       "thetaColName", 
-                       "logicalPart",
-                       "physChunking")},
-            ps)
-        if crTbOptions is None:
-            self._logger.debug("No options in config file")
+        # now that we know partitioning strategy, validate the parameters
+        if len(args) == 2 and args[1][0] == '@':
+            theOptions = self._readCreateXXConfigFile(args[1][1:], "Table", ps)
+        else:
+            theOptions = self._getCreateXXOptions_kv(args[1:], "Table", ps)
+        if theOptions is None:
             return
-        crTbOptions["partitioningStrategy"] = ps
         # read schema file and pass it
-        schemaFile = crTbOptions["schemaFile"]
-        del crTbOptions["schemaFile"]
+        schemaFile = theOptions["schemaFile"]
+        del theOptions["schemaFile"]
         if not os.access(schemaFile, os.R_OK):
             print getErrMsg(QmsStatus.ERR_SCHEMA_FILE)
+            print "the file was: ", schemaFile
             return
         schemaStr = open(schemaFile, 'r').read()
         # do it
         self._logger.debug("createTable %s.%s, options are: " % \
-                               (dbName, crTbOptions["tableName"]))
-        self._logger.debug(crTbOptions)
-        ret = qms.createTable(dbName, crTbOptions, schemaStr)
+                               (dbName, theOptions["tableName"]))
+        self._logger.debug(theOptions)
+        ret = qms.createTable(dbName, theOptions, schemaStr)
         if ret != QmsStatus.SUCCESS: 
             print getErrMsg(ret)
             self._logger.error("createTable failed")
+            return
         self._logger.debug("createTable successfully finished")
         print "Table successfully created."
 
     ############################################################################
     ##### config files
     ############################################################################
-    def _readCreateXXConfigFile(self, fName, optRequired, optPartSpec, 
-                                partStrategy=None):
+    def _readCreateXXConfigFile(self, fName, what, partStrategy=None):
         """It reads the config file for createDb or createTable command,
            validates it and returns dictionary containing key-value pars"""
         errMsg = "Problems with config file '%s':" % fName
@@ -335,15 +352,24 @@ password: myPass
             print errMsg, "specified config file '%s' not found." % fName
             return
         config = ConfigParser.ConfigParser()
+        config.optionxform = str # case sensitive
         config.read(fName)
-        finalDict = {}
+        if what == "Db":
+            xxOpts = self._createDbOptions
+            psOpts = self._createDbPSOptions
+        elif what == "Table":
+            xxOpts = self._createTbOptions
+            psOpts = self._createTbPSOptions
+        else:
+            assert(1)
 
-        for (section, values) in optRequired.items():
+        finalDict = {}
+        for (section, values) in xxOpts.items():
             if config.has_option(section, "partitioning"):
                 partOff = config.get(section, "partitioning") == "off"
 
         # check if required non-partition specific options found
-        for (section, values) in optRequired.items():
+        for (section, values) in xxOpts.items():
             if not config.has_section(section):
                 print errMsg, "required section '%s' not found" % section
                 return
@@ -355,39 +381,99 @@ password: myPass
                         isException = True
                     # if partitioning is "off", partitioningStrategy does not
                     # need to be specified
-                    if o == "partitioningstrategy" and partOff:
+                    if o == "partitioningStrategy" and partOff:
                         isException = True
                     if not isException:
-                        print "exx = ", isException
                         print errMsg, "required option '%s' in section '%s' " \
-                            % (section, o), " not found"
+                            % (o, section), " not found"
                         return
                 if not isException:
                     finalDict[o] = config.get(section, o)
                 if o == "partitioning":
                     myPartStrategy = config.get(section, o)
-
         if not partOff:
-            # if partStrategy not passed, it better be in the config
-            if partStrategy is None:
-                for (section, values) in optRequired.items():
-                    if config.has_option(section, "partitioningstrategy"):
+            if not partStrategy:
+                for (section, values) in xxOpts.items():
+                    if config.has_option(section, "partitioningStrategy"):
                         partStrategy = config.get(section, 
-                                                  "partitioningstrategy")
-                if partStrategy is None:
-                    print errMsg, "can't determine partitiong strategy"
-                    return
+                                                "partitioningStrategy")
+            if not partStrategy:
+                print errMsg, "can't determine partitiong strategy"
+                return
             # check if partition-strategy specific options found
-            for o in optPartSpec[partStrategy]:
+            for o in psOpts[partStrategy]:
                 if not config.has_option(partStrategy, o):
-                    print errMsg, "required option '%s' in section '%s " \
-                        "not found" % (partStrategy, o)
+                    print errMsg, "required option '%s' in section '%s' " \
+                        "not found" % (o, partStrategy)
                     return
                 finalDict[o] = config.get(partStrategy, o)
+
+        if what == "Table":
+            finalDict["partitioningStrategy"] = partStrategy
 
         # FIXME: note, we are currently not detecting extra options
         # that user might have put in the file that we do not support
         return finalDict
+
+    ############################################################################
+    #### option parsing for createDb and createTable
+    ############################################################################
+    def _getCreateXXOptions_kv(self, args, what, partStrategy=None):
+        if what == "Db":
+            psOpts = self._createDbPSOptions
+        elif what == "Table":
+            psOpts = self._createTbPSOptions
+        else:
+            assert(1)
+        xx = {}
+        for arg in args:
+            if not '=' in arg:
+                msg = ("Invalid param: '%s' expected one of the following "
+                       "formats:\n"
+                       "  a) create%s <dbName> @<paramFile>\n"
+                       "  b) create%s <dbName> <param1>=<value1> "
+                       "<param2>=<value2> ...") % (arg, what, what)
+                self._logger.error(msg)
+                print msg
+                return None
+            k, v = arg.split("=", 1)
+            xx[k] = v
+
+        if what == "Table":
+            xx["partitioningStrategy"] = partStrategy
+        if not self._validateKVOptions(xx, psOpts):
+            return None
+        return xx
+
+    def _validateKVOptions(self, x, psOpts):
+        if not x.has_key("partitioning"):
+            return False
+        if x["partitioning"] == "on":
+            pass
+        elif x["partitioning"] == "off":
+            return True
+        else:
+            print ("Unrecognized value for param 'partitioning' (%s), "
+                   "supported on/off") % x["partitioning"]
+            return False
+        if not x.has_key("partitioningStrategy"):
+            print ("partitioningStrategy option is required if partitioning "
+                   "is on")
+            return False
+        psFound = False
+        for (psName, theOpts) in psOpts.items():
+            if x["partitioningStrategy"] == psName:
+                psFound = True
+                for o in theOpts:
+                    if not x.has_key(o):
+                        print ("Can't find param '%s' required for partitioning"
+                               " strategy '%s'") % (o, psName)
+                        return False
+        if not psFound:
+            print "Unrecongnized partitioning strategy '%s', support: 'sphBox"%\
+                x["partitioningStrategy"]
+            return False
+        return True
 
     ############################################################################
     ##### connection to QMS

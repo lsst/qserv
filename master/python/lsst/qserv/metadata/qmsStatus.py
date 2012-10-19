@@ -36,7 +36,7 @@ class QmsStatus():
     ERR_DB_NOT_EXISTS = 2006
     ERR_TABLE_EXISTS  = 2007
     ERR_SCHEMA_FILE   = 2008
-    ERR_UNDEFINED     = 9999
+    ERR_INTERNAL      = 9999
 
     errors = { ERR_IS_INIT: "Qserv metadata already initialized.",
                ERR_MYSQL_CONNECT: "Unable to connect to mysql server.",
@@ -44,10 +44,10 @@ class QmsStatus():
                ERR_DB_EXISTS: "The database already exists.",
                ERR_DB_NOT_EXISTS: "The database does not exist.",
                ERR_TABLE_EXISTS: "The table already exists.",
-               ERR_SCHEMA_FILE: "The schema file specified in the config file can't be accessed from QMS.",
+               ERR_SCHEMA_FILE: "The schema file specified in the config file can't be access from the client.",
                ERR_MYSQL_DISCONN: "Failed to commit transaction and " + \
                    "disconnect from mysql server.",
-               ERR_UNDEFINED: "Undefined error."
+               ERR_INTERNAL: "Internal error."
                }
 
 def getErrMsg(errNo):
