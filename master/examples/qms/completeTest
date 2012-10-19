@@ -15,7 +15,10 @@
 ./qms/runQmsClient.sh createTable Summer2012 @qms/tb_Exposure.params
 ./qms/runQmsClient.sh createTable Summer2012 @qms/tb_Exposure.params
 ./qms/runQmsClient.sh createTable Winter2013 @qms/tb_Source.params
-#./qms/runQmsClient.sh dropDb Summer2012
+./qms/runQmsClient.sh dropTable weirdDb Object
+./qms/runQmsClient.sh dropTable Summer2012 Object
+./qms/runQmsClient.sh dropTable Summer2012 Exposure
+./qms/runQmsClient.sh dropDb Summer2012
 ./qms/runQmsClient.sh dropDb NonPartA
 ./qms/runQmsClient.sh dropDb whatever
 ./qms/runQmsClient.sh checkDbExists Summer2012
