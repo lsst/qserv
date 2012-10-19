@@ -77,6 +77,10 @@ class QmsInterface:
         return qmsImpl.createTable(self._loggerName, dbName, 
                                    crTbOptions, schemaStr)
 
+    def dropTable(self, dbName, tableName):
+        """Removes metadata about a table."""
+        return qmsImpl.dropTable(self._loggerName, dbName, tableName)
+
     def help(self):
         """A brief help message showing available commands"""
         r = "" ## self._handyHeader()

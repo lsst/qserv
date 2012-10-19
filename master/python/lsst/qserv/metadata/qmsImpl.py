@@ -269,14 +269,14 @@ def dropDb(loggerName, dbName):
     # get partitioningStrategy, psId and drop the entry
     cmd = "SELECT dbId, psName, psId FROM DbMeta WHERE dbName = '%s'" % dbName
     (dbId, psName, dbPsId) = mdb.execCommand1(cmd)
-    if psName == 'sphbox':
+    if psName == 'sphBox':
         cmd = "DELETE FROM PS_Db_sphBox WHERE psId = %s " % dbPsId
         mdb.execCommand0(cmd)
     # remove the entry about the db
     cmd = "DELETE FROM DbMeta WHERE dbId = %s" % dbId
     mdb.execCommand0(cmd)
     # remove related tables
-    if psName == 'sphbox':
+    if psName == 'sphBox':
         cmd = "DELETE FROM PS_Tb_sphBox WHERE psId IN (SELECT psId FROM TableMeta WHERE dbId=%s)" % dbId
         mdb.execCommand0(cmd)
     cmd = "DELETE FROM TableMeta WHERE dbId = %s" % dbId
@@ -301,7 +301,7 @@ def retrieveDbInfo(loggerName, dbName):
                               dbName)[0]
     values = dict()
     values["partitioningStrategy"] = ps
-    if ps == "sphbox":
+    if ps == "sphBox":
         ret = mdb.execCommand1("""
           SELECT stripes, subStripes, defaultOverlap_fuzzyness, 
                  defaultOverlap_nearNeigh
@@ -416,4 +416,44 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
     mdb.execCommand0(cmd)
     return mdb.disconnect()
 
-    
+################################################################################
+#### dropTable
+################################################################################
+def dropTable(loggerName, dbName, tableName):
+    """Drops metadata about a table.."""
+    logger = logging.getLogger(loggerName)
+    logger.debug("dropTable: started")
+    # connect to mysql
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        logger.error("dropTable: failed to connect to qms")
+        return None
+    # check if db exists
+    cmd = "SELECT COUNT(*) FROM DbMeta WHERE dbName = '%s'" % dbName
+    ret = mdb.execCommand1(cmd)
+    if ret[0] != 1:
+        logger.error("dropTable: database '%s' not registered" % dbName)
+        return QmsStatus.ERR_DB_NOT_EXISTS
+    # get dbId, psName, psId
+    cmd = "SELECT dbId, psName, psId FROM DbMeta WHERE dbName = '%s'" % dbName
+    (dbId, psName, dbPsId) = mdb.execCommand1(cmd)
+    # check if table exists
+    cmd = "SELECT tableId FROM TableMeta WHERE dbId=%s AND tableName='%s'" % \
+        (dbId, tableName)
+    tableId = mdb.execCommand1(cmd)
+    if not tableId:
+        logger.error("dropTable: table '%s' does not exist." % tableName)
+        return QmsStatus.ERR_TABLE_NOT_EXISTS
+    # remove the entry about the table
+    cmd = "DELETE FROM TableMeta WHERE tableId = %s" % tableId
+    mdb.execCommand0(cmd)
+    # remove related info
+    if psName == 'sphBox':
+        cmd = "DELETE FROM PS_Tb_sphBox WHERE psId IN (SELECT psId FROM TableMeta WHERE TableId=%s)" % tableId
+        mdb.execCommand0(cmd)
+    cmd = "DELETE FROM TableMeta WHERE tableId = %s" % tableId
+    mdb.execCommand0(cmd)
+    ret = mdb.disconnect()
+    logger.debug("dropTable: done")
+    return ret

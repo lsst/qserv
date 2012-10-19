@@ -126,6 +126,10 @@ COMMANDS
         b) key/value-based version:
            <dbName> <param1>=<value1> <param2>=<value2> ...
 
+  dropTable
+        Removes metadata about a table.
+        Arguments: <dbName> <tableName>
+
 EXAMPLES:
 Example contents of the .qmsadm file:
 
@@ -213,8 +217,6 @@ password: myPass
         # connect to qms
         qms = self._connectToQMS()
         if qms is None:
-            self._logger.error("Failed to connect to qms")
-            print "Failed to connect to qms"
             return
         # do it
         self._logger.debug("createDb %s, options are: " % dbName)
@@ -237,7 +239,6 @@ password: myPass
         dbName = args[0]
         qms = self._connectToQMS()
         if qms is None:
-            self._logger.error("Failed to connect to qms")
             return
         self._logger.debug("dropping %s" % dbName)
         ret = qms.dropDb(dbName)
@@ -340,6 +341,26 @@ password: myPass
             return
         self._logger.debug("createTable successfully finished")
         print "Table successfully created."
+
+    def _cmd_dropTable(self, options, args):
+        self._logger.debug("DropTable")
+        if len(args) != 2:
+            msg = "'dropTable' requires two arguments: <dbName> <tableName>"
+            self._logger.error(msg)
+            print msg
+            return
+        (dbName, tableName) = args
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        self._logger.debug("dropping table %s.%s" % (dbName, tableName))
+        ret = qms.dropTable(dbName, tableName)
+        if ret != QmsStatus.SUCCESS: 
+            print getErrMsg(ret)
+            self._logger.error("dropTable failed")
+            return
+        self._logger.debug("dropTable successfully finished")
+        print "Table dropped."
 
     ############################################################################
     ##### config files

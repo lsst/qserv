@@ -28,15 +28,16 @@ class QmsStatus():
 
     # note: error numbered 1000 - 1200 are used by mysql,
     # see mysqld_ername.h in mysql source code
-    ERR_IS_INIT       = 2001
-    ERR_MYSQL_CONNECT = 2002
-    ERR_MYSQL_DISCONN = 2003
-    ERR_NO_META       = 2004
-    ERR_DB_EXISTS     = 2005
-    ERR_DB_NOT_EXISTS = 2006
-    ERR_TABLE_EXISTS  = 2007
-    ERR_SCHEMA_FILE   = 2008
-    ERR_INTERNAL      = 9999
+    ERR_IS_INIT          = 2001
+    ERR_MYSQL_CONNECT    = 2002
+    ERR_MYSQL_DISCONN    = 2003
+    ERR_NO_META          = 2004
+    ERR_DB_EXISTS        = 2005
+    ERR_DB_NOT_EXISTS    = 2006
+    ERR_TABLE_EXISTS     = 2007
+    ERR_TABLE_NOT_EXISTS = 2008
+    ERR_SCHEMA_FILE      = 2009
+    ERR_INTERNAL         = 9999
 
     errors = { ERR_IS_INIT: "Qserv metadata already initialized.",
                ERR_MYSQL_CONNECT: "Unable to connect to mysql server.",
@@ -44,9 +45,11 @@ class QmsStatus():
                ERR_DB_EXISTS: "The database already exists.",
                ERR_DB_NOT_EXISTS: "The database does not exist.",
                ERR_TABLE_EXISTS: "The table already exists.",
-               ERR_SCHEMA_FILE: "The schema file specified in the config file can't be access from the client.",
-               ERR_MYSQL_DISCONN: "Failed to commit transaction and " + \
-                   "disconnect from mysql server.",
+               ERR_TABLE_NOT_EXISTS: "The table does not exist.",
+               ERR_SCHEMA_FILE: ("The schema file specified in the config file "
+                                 "can't be access from the client."),
+               ERR_MYSQL_DISCONN: ("Failed to commit transaction and "
+                                   "disconnect from mysql server."),
                ERR_INTERNAL: "Internal error."
                }
 
