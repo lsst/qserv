@@ -1,4 +1,6 @@
 
 create table Source (
- j int
+ sourceId bigint,
+ ra float,
+ decl float
 );

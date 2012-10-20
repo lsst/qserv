@@ -36,7 +36,8 @@ class QmsStatus():
     ERR_DB_NOT_EXISTS    = 2006
     ERR_TABLE_EXISTS     = 2007
     ERR_TABLE_NOT_EXISTS = 2008
-    ERR_SCHEMA_FILE      = 2009
+    ERR_COL_NOT_FOUND    = 2009
+    ERR_SCHEMA_FILE      = 2010
     ERR_INTERNAL         = 9999
 
     errors = { ERR_IS_INIT: "Qserv metadata already initialized.",
@@ -46,6 +47,7 @@ class QmsStatus():
                ERR_DB_NOT_EXISTS: "The database does not exist.",
                ERR_TABLE_EXISTS: "The table already exists.",
                ERR_TABLE_NOT_EXISTS: "The table does not exist.",
+               ERR_COL_NOT_FOUND: "Column not found in the table.",
                ERR_SCHEMA_FILE: ("The schema file specified in the config file "
                                  "can't be access from the client."),
                ERR_MYSQL_DISCONN: ("Failed to commit transaction and "

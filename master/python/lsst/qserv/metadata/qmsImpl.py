@@ -353,6 +353,20 @@ def checkDbExists(loggerName, dbName):
 ################################################################################
 #### createTable
 ################################################################################
+def _checkColumnExists(mdb, dbName, tableName, columnName, loggerName):
+    # note: this function is mysql-specific!
+    ret = mdb.execCommand1("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (_getUniqueQmsPrefix(mdb), dbName, tableName, columnName))
+    if ret[0] != 1:
+        logger = logging.getLogger(loggerName)
+        logger.error("column: '%s' not found in table '%s.%s'" % \
+                         (columnName, dbName, tableName))
+        return False
+    return True
+
+def _getColumnPos(mdb, dbName, tableName, columnName):
+    # note: this function is mysql-specific!
+    return mdb.execCommand1("SELECT ordinal_position FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (_getUniqueQmsPrefix(mdb), dbName, tableName, columnName))[0] -1 
+
 def createTable(loggerName, dbName, crTbOptions, schemaStr):
     """Creates metadata about new table in qserv-managed database."""
     logger = logging.getLogger(loggerName)
@@ -398,9 +412,11 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
         ov = crTbOptions["overlap"]
         pCN = crTbOptions["phiColName"]
         tCN = crTbOptions["thetaColName"]
-        pN = 123 # fixme
-        tN = 456 # fixme
-        print "FIXME in createTable: need to calculate phiColNumber and thetaColNumber"
+        if not _checkColumnExists(mdb, dbName, tableName, pCN, loggerName) or \
+           not _checkColumnExists(mdb, dbName, tableName, tCN, loggerName):
+            return QmsStatus.ERR_COL_NOT_FOUND
+        pN = _getColumnPos(mdb, dbName, tableName, pCN)
+        tN = _getColumnPos(mdb, dbName, tableName, tCN)
         lP = int(crTbOptions["logicalPart"])
         pC = int(crTbOptions["physChunking"], 16)
         cmd = "INSERT INTO PS_Tb_sphBox(overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking) VALUES(%s, '%s', '%s', %d, %d, %d, %d)" % (ov, pCN, tCN, pN, tN, lP, pC)
@@ -481,7 +497,6 @@ def retrieveTableInfo(loggerName, dbName, tableName):
     # check if table exists
     cmd = "SELECT tableId FROM TableMeta WHERE dbId=%s AND tableName='%s'" % \
         (dbId, tableName)
-    print cmd
     tableId = mdb.execCommand1(cmd)
     if not tableId:
         logger.error("retrieveTableInfo: table '%s' doesn't exist." % tableName)
