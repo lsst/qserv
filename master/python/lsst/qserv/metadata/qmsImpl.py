@@ -408,6 +408,10 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
     else:
         psName = crTbOptions["partitioningStrategy"]
     if psName == "sphBox":
+        # add two special columns
+        cmd = "ALTER TABLE %s%s.%s ADD COLUMN chunk BIGINT, ADD COLUMN subChunk BIGINT" % (_getUniqueQmsPrefix(mdb), dbName, tableName)
+        mdb.execCommand0(cmd)
+
         logger.debug("persisting for sphBox")
         ov = crTbOptions["overlap"]
         pCN = crTbOptions["phiColName"]
