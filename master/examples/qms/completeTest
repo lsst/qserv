@@ -1,28 +1,57 @@
+echo === destroyMeta ===
 ./qms/runQmsClient.sh destroyMeta
+
+echo === installMeta === 
 ./qms/runQmsClient.sh installMeta
+
+echo === printMeta ===
 ./qms/runQmsClient.sh printMeta
+
+echo === create 4 dbs ===
 ./qms/runQmsClient.sh createDb Summer2012 @./qms/dbPartitioned.params
 ./qms/runQmsClient.sh createDb NonPartA @./qms/dbNonPartitioned.params
 ./qms/runQmsClient.sh createDb NonPartB @./qms/dbNonPartitioned.params
 ./qms/runQmsClient.sh createDb Winter2013 defaultOverlap_nearNeighbor=0.25 partitioning=on defaultOverlap_fuzziness=0.0001 partitioningStrategy=sphBox nStripes=10 nSubStripes=23
+
+echo === list dbs===
 ./qms/runQmsClient.sh listDbs
+
+echo === checkingIf dbs exists. y, n ===
 ./qms/runQmsClient.sh checkDbExists Summer2012
 ./qms/runQmsClient.sh checkDbExists Summer2012xx
+
+echo === retrieve dbInfo for 2 dbs ===
 ./qms/runQmsClient.sh retrieveDbInfo Summer2012
 ./qms/runQmsClient.sh retrieveDbInfo NonPart
+
+echo === create 5 tables ===
 ./qms/runQmsClient.sh createTable Summer2012 tableName=Object partitioning=on schemaFile=/u1/qserv/qserv/master/examples/qms/tbSchema_Object.sql clusteredIndex=IDX_objectId overlap=0.025 phiColName=ra_PS thetaColName=decl_PS logicalPart=2 physChunking=0x0021
+./qms/runQmsClient.sh createTable Summer2012 partitioning=off tableName=Exposure schemaFile=/u1/qserv/qserv/master/examples/qms/tbSchema_Exposure.sql
 ./qms/runQmsClient.sh createTable Summer2012 @qms/tb_Source.params
 ./qms/runQmsClient.sh createTable Summer2012 @qms/tb_Exposure.params
-./qms/runQmsClient.sh createTable Summer2012 @qms/tb_Exposure.params
 ./qms/runQmsClient.sh createTable Winter2013 @qms/tb_Source.params
+
+echo === retrieve table info for 2 tables ===
 ./qms/runQmsClient.sh retrieveTableInfo Winter2013 Object
+./qms/runQmsClient.sh retrieveTableInfo Winter2013 Exposure
+
+echo === print meta ===
+./qms/runQmsClient.sh printMeta
+
+echo === drop 3 tables. Fail, ok, ok ===
 ./qms/runQmsClient.sh dropTable weirdDb Object
 ./qms/runQmsClient.sh dropTable Summer2012 Object
 ./qms/runQmsClient.sh dropTable Summer2012 Exposure
+
+echo === drop 3 dbs. Ok, ok, fail ===
 ./qms/runQmsClient.sh dropDb Summer2012
 ./qms/runQmsClient.sh dropDb NonPartA
 ./qms/runQmsClient.sh dropDb whatever
+
+echo === checkingIf db exist ===
 ./qms/runQmsClient.sh checkDbExists Summer2012
+
+echo === list dbs ===
 ./qms/runQmsClient.sh listDbs
 
 

@@ -466,11 +466,14 @@ password: myPass
     ############################################################################
     def _getCreateXXOptions_kv(self, args, what, partStrategy=None):
         if what == "Db":
+            xxOpts = self._createDbOptions
             psOpts = self._createDbPSOptions
         elif what == "Table":
+            xxOpts = self._createTbOptions
             psOpts = self._createTbPSOptions
         else:
             assert(1)
+
         xx = {}
         for arg in args:
             if not '=' in arg:
@@ -484,27 +487,37 @@ password: myPass
                 return None
             k, v = arg.split("=", 1)
             xx[k] = v
-
         if what == "Table":
             xx["partitioningStrategy"] = partStrategy
-        if not self._validateKVOptions(xx, psOpts):
+        # add default value for missing options
+        if not xx.has_key("clusteredIndex"):
+            print ("param 'clusteredIndex' not found using default: NULL")
+            xx["clusteredIndex"] = "NULL"
+        if not xx.has_key("partitioning"):
+            print ("param 'partitioning' not found using default: off")
+            xx["partitioning"] = "off"
+        # do final validation
+        if not self._validateKVOptions(xx, xxOpts, psOpts):
             return None
         return xx
 
-    def _validateKVOptions(self, x, psOpts):
-        if not x.has_key("partitioning"):
-            return False
+    def _validateKVOptions(self, x, xxOpts, psOpts):
+        for (theName, theOpts) in xxOpts.items():
+            for o in theOpts:
+                if not x.has_key(o):
+                    print ("Can't find required param '%s'") % o
+                    return False
+
         if x["partitioning"] == "on":
-            pass
+            if not x.has_key("partitioningStrategy"):
+                print ("partitioningStrategy option is required if "
+                       "partitioning is on")
+                return False
         elif x["partitioning"] == "off":
             return True
         else:
             print ("Unrecognized value for param 'partitioning' (%s), "
                    "supported on/off") % x["partitioning"]
-            return False
-        if not x.has_key("partitioningStrategy"):
-            print ("partitioningStrategy option is required if partitioning "
-                   "is on")
             return False
         psFound = False
         for (psName, theOpts) in psOpts.items():

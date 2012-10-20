@@ -502,10 +502,15 @@ def retrieveTableInfo(loggerName, dbName, tableName):
         logger.error("retrieveTableInfo: table '%s' doesn't exist." % tableName)
         return [QmsStatus.ERR_TABLE_NOT_EXISTS, {}]
     # get ps name
-    ps = mdb.execCommand1("SELECT psName FROM DbMeta WHERE dbId=%s" % dbId)[0]
-    values = dict()
+    cmd = "SELECT psName FROM DbMeta WHERE dbId=%s" % dbId
+    psName = mdb.execCommand1(cmd)[0]
+    # the partitioning might be turned off for this table, so check it
+    cmd = "SELECT psId FROM TableMeta WHERE tableId=%s" % tableId
+    ret = mdb.execCommand1(cmd)
+    if ret: psId = ret[0]
     # retrieve table info
-    if ps == "sphBox":
+    values = dict()
+    if psId and psName == "sphBox":
         ret = mdb.execCommand1("SELECT clusteredIdx, overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking FROM TableMeta JOIN PS_Tb_sphBox USING(psId) WHERE tableId=%s" % tableId)
         values["clusteredIdx"] = ret[0]
         values["overlap"]      = ret[1]
@@ -515,8 +520,8 @@ def retrieveTableInfo(loggerName, dbName, tableName):
         values["thetaColNo"]   = ret[5]
         values["logicalPart"]  = ret[6]
         values["physChunking"] = hex(ret[7])
-    elif ps == "None":
-        ret = cmd.execCommand1("SELECT clusteredIdx FROM TableMeta WHERE tableId=%s" % tableId)
+    else:
+        ret = mdb.execCommand1("SELECT clusteredIdx FROM TableMeta WHERE tableId=%s" % tableId)
         values["clusteredIdx"] = ret
     ret = mdb.disconnect()
     logger.debug("retrieveTableInfo: done")
