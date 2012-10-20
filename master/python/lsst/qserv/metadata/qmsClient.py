@@ -212,10 +212,7 @@ password: myPass
             print msg
             return
         dbName = args[0]
-        if len(args) == 2 and args[1][0] == '@':
-            theOptions = self._readCreateXXConfigFile(args[1][1:], "Db")
-        else:
-            theOptions = self._getCreateXXOptions_kv(args[1:], "Db")
+        theOptions = self._validateCrXXParams(args, "Db")
         if theOptions is None:
             return
         # connect to qms
@@ -320,20 +317,13 @@ password: myPass
             return
         ps = values["partitioningStrategy"]
         # now that we know partitioning strategy, validate the parameters
-        if len(args) == 2 and args[1][0] == '@':
-            theOptions = self._readCreateXXConfigFile(args[1][1:], "Table", ps)
-        else:
-            theOptions = self._getCreateXXOptions_kv(args[1:], "Table", ps)
+        theOptions = self._validateCrXXParams(args, "Table", ps)
         if theOptions is None:
             return
         # read schema file and pass it
-        schemaFile = theOptions["schemaFile"]
+        schemaFileName = theOptions["schemaFile"]
         del theOptions["schemaFile"]
-        if not os.access(schemaFile, os.R_OK):
-            print getErrMsg(QmsStatus.ERR_SCHEMA_FILE)
-            print "the file was: ", schemaFile
-            return
-        schemaStr = open(schemaFile, 'r').read()
+        schemaStr = open(schemaFileName, 'r').read()
         # do it
         self._logger.debug("createTable %s.%s, options are: " % \
                                (dbName, theOptions["tableName"]))
@@ -388,8 +378,32 @@ password: myPass
         self._logger.debug("Done retrieving table info")
 
     ############################################################################
-    ##### config files
+    ##### validating parameters for CreateTable and CreateDb
     ############################################################################
+    def _validateCrXXParams(self, args, what, ps=None):
+        """Validates parameters for createTable and createDb"""
+        if len(args) == 2 and args[1][0] == '@':
+            theOptions = self._readCreateXXConfigFile(args[1][1:], what, ps)
+        else:
+            theOptions = self._getCreateXXOptions_kv(args[1:], what, ps)
+        if what == "Table":
+            schemaFileName = theOptions["schemaFile"]
+            if not os.access(schemaFileName, os.R_OK):
+                print getErrMsg(QmsStatus.ERR_SCHEMA_FILE)
+                print "the file was: ", schemaFileName
+                return None
+            tNameFromSchema = self._extractTableName(schemaFileName)
+            if not tNameFromSchema:
+                print getErrMsg(QmsStatus.ERR_NO_TABLE_IN_SCHEMA)
+                print "the file was: ", schemaFileName
+                return None
+            if tNameFromSchema != theOptions["tableName"]:
+                print ("tableName from schema file does not match provided "
+                       "table name: '%s' != '%s'") % \
+                       (tNameFromSchema, theOptions["tableName"])
+                return None
+        return theOptions
+
     def _readCreateXXConfigFile(self, fName, what, partStrategy=None):
         """It reads the config file for createDb or createTable command,
            validates it and returns dictionary containing key-value pars"""
@@ -461,9 +475,18 @@ password: myPass
         # that user might have put in the file that we do not support
         return finalDict
 
-    ############################################################################
-    #### option parsing for createDb and createTable
-    ############################################################################
+    def _extractTableName(self, fName):
+        f = open(fName, 'r')
+        findIt = re.compile(r'CREATE TABLE *`?\'?\"?(\w+)', re.IGNORECASE)
+        theName = None
+        for line in f:
+            m = findIt.match(line)
+            if m:
+                theName = m.group(1)
+                break
+        f.close()
+        return theName
+
     def _getCreateXXOptions_kv(self, args, what, partStrategy=None):
         if what == "Db":
             xxOpts = self._createDbOptions
