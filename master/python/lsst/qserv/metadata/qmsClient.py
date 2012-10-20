@@ -130,6 +130,10 @@ COMMANDS
         Removes metadata about a table.
         Arguments: <dbName> <tableName>
 
+  retrieveTableInfo
+        Retrieves information about a table.
+        Arguments: <dbName> <tableName>
+
 EXAMPLES:
 Example contents of the .qmsadm file:
 
@@ -361,6 +365,27 @@ password: myPass
             return
         self._logger.debug("dropTable successfully finished")
         print "Table dropped."
+
+    def _cmd_retrieveTableInfo(self, options, args):
+        self._logger.debug("RetrieveTableInfo")
+        if len(args) != 2:
+            msg = ("'retrieveTableInfo' requires two arguments: <dbName> "
+                   "<tableName>")
+            self._logger.error(msg)
+            print msg
+            return
+        (dbName, tableName) = args
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        self._logger.debug("retrievTableInfo for %s.%s" % (dbName, tableName))
+        (retStat, values) = qms.retrieveTableInfo(dbName, tableName)
+        if retStat != QmsStatus.SUCCESS: 
+            print getErrMsg(retStat)
+            return
+        for (k, v) in values.items():
+            print "%s: %s" % (k, v)
+        self._logger.debug("Done retrieving table info")
 
     ############################################################################
     ##### config files

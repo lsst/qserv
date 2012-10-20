@@ -314,8 +314,8 @@ def retrieveDbInfo(loggerName, dbName):
         values["defaultOverlap_nearNeigh"] = ret[3]
     elif ps == "None":
         pass
-    mdb.disconnect()
-    return [QmsStatus.SUCCESS, values]
+    ret = mdb.disconnect()
+    return [ret, values]
 
 ################################################################################
 #### listDbs
@@ -457,3 +457,52 @@ def dropTable(loggerName, dbName, tableName):
     ret = mdb.disconnect()
     logger.debug("dropTable: done")
     return ret
+
+################################################################################
+#### retrieveTableInfo
+################################################################################
+def retrieveTableInfo(loggerName, dbName, tableName):
+    """Retrieves metadata about a table.."""
+    logger = logging.getLogger(loggerName)
+    logger.debug("retrieveTableInfo: started")
+    # connect to mysql
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        logger.error("retrieveTableInfo: failed to connect to qms")
+        return [ret, {}]
+    # check if db exists
+    cmd = "SELECT dbId FROM DbMeta WHERE dbName = '%s'" % dbName
+    ret = mdb.execCommand1(cmd)
+    if not ret:
+        logger.error("retrieveTableInfo: database '%s' not registered" % dbName)
+        return [QmsStatus.ERR_DB_NOT_EXISTS, {}]
+    dbId = ret[0]
+    # check if table exists
+    cmd = "SELECT tableId FROM TableMeta WHERE dbId=%s AND tableName='%s'" % \
+        (dbId, tableName)
+    print cmd
+    tableId = mdb.execCommand1(cmd)
+    if not tableId:
+        logger.error("retrieveTableInfo: table '%s' doesn't exist." % tableName)
+        return [QmsStatus.ERR_TABLE_NOT_EXISTS, {}]
+    # get ps name
+    ps = mdb.execCommand1("SELECT psName FROM DbMeta WHERE dbId=%s" % dbId)[0]
+    values = dict()
+    # retrieve table info
+    if ps == "sphBox":
+        ret = mdb.execCommand1("SELECT clusteredIdx, overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking FROM TableMeta JOIN PS_Tb_sphBox USING(psId) WHERE tableId=%s" % tableId)
+        values["clusteredIdx"] = ret[0]
+        values["overlap"]      = ret[1]
+        values["phiCol"]       = ret[2]
+        values["thetaCol"]     = ret[3]
+        values["phiColNo"]     = ret[4]
+        values["thetaColNo"]   = ret[5]
+        values["logicalPart"]  = ret[6]
+        values["physChunking"] = hex(ret[7])
+    elif ps == "None":
+        ret = cmd.execCommand1("SELECT clusteredIdx FROM TableMeta WHERE tableId=%s" % tableId)
+        values["clusteredIdx"] = ret
+    ret = mdb.disconnect()
+    logger.debug("retrieveTableInfo: done")
+    return [ret, values]

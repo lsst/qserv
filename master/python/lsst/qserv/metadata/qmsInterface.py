@@ -81,6 +81,10 @@ class QmsInterface:
         """Removes metadata about a table."""
         return qmsImpl.dropTable(self._loggerName, dbName, tableName)
 
+    def retrieveTableInfo(self, dbName, tableName):
+        """Retrieves information about a table."""
+        return qmsImpl.retrieveTableInfo(self._loggerName, dbName, tableName)
+
     def help(self):
         """A brief help message showing available commands"""
         r = "" ## self._handyHeader()
