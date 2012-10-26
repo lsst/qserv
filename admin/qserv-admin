@@ -472,7 +472,7 @@ sub run_command
         my $cwd = cwd();
 	my @return;
         print "-- Running: $command in $cwd\n";
-        open(OUT, "$command |") || die "ERROR : can't fork $command : $!";
+        open(OUT, "$command 2>&1 |") || die "ERROR : can't fork $command : $!";
         while (<OUT>) 
         {
                 print STDOUT $_; 

@@ -3,6 +3,7 @@
 use strict;
 use Getopt::Long;
 use Cwd;
+use Sys::Hostname;
 
 Getopt::Long::config('bundling_override');
 my %opts = ();
@@ -16,6 +17,7 @@ GetOptions( \%opts,
 	"lua",
 	"master=s",
 	"mysql",
+	"dbpass=s",
 	"mysqlproxy",
 	"python=s",
 	"xrootd",
@@ -31,7 +33,9 @@ my $debug = $opts{'debug'} || 1;
 my $install_dir = $opts{'dir'} || cwd();
 my $build_dir   = $opts{'builddir'} || "$install_dir/build";
 my $prod_user   = $opts{'user'} || $ENV{'USER'};
-my $qserv_master = $opts{'master'} || `hostname`;
+my $qserv_master = $opts{'master'} || hostname;
+
+print "qserv master :  $qserv_master\n" if( $debug );
 
 my $build_opt = "all";
 $build_opt = "lua" if( $opts{'lua'} );
@@ -69,7 +73,7 @@ check_and_install_mysql() if( $build_opt eq "all" or $build_opt eq "mysql" );
 check_and_setup_extras() if( $build_opt eq "all" or $build_opt eq "extras" );
 
 #setup the qserv code
-check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
+check_and_install_qserv($opts{'dbpass'}) if( $build_opt eq "all" or $build_opt eq "qserv" );
 
 #install lua
 check_and_install_lua() if( $build_opt eq "all" or $build_opt eq "lua" );
@@ -134,6 +138,12 @@ sub check_and_install_xrootd {
 
 #check on qserv source tar, compile, install, and configure for use.
 sub check_and_install_qserv {
+	my ($dbpass) = @_;
+	my $pass_opt;
+
+	if ( length($dbpass) > 0) {
+		$pass_opt = "-p$dbpass"
+	}
 
 	print "Installing Qserv from source.\n";
 		
@@ -200,14 +210,14 @@ sub check_and_install_qserv {
 	system("./bin/mysqld_safe &");
 	sleep 5;
 	print "Setting up init databases.\n";
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"CREATE DATABASE IF NOT EXISTS qservResult;\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"CREATE DATABASE IF NOT EXISTS qservScratch;\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root < qserv/master/examples/qserv-master-perms.sql");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservResult;\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservScratch;\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt < qserv/master/examples/qserv-master-perms.sql");
 	
 	#shutdown mysql
-	run_command("./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root");
+	run_command("./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root $pass_opt");
 	
 	#copy in xrootd config and configure
 	run_command("cp qserv/master/examples/lsp.cf etc/");
@@ -219,7 +229,7 @@ sub check_and_install_qserv {
 	
 	#copy in and edit qserv config
 	run_command("cp qserv/master/examples/lsst-dev01.qserv.cnf etc/local.qserv.cnf");
-	run_command("perl -pi -e \"s,xrootd\\s*=\\s*\\S+,xrootd = $ENV{'HOST'}:1094,\" etc/local.qserv.cnf");
+	run_command("perl -pi -e \"s,xrootd\\s*=\\s*\\S+,xrootd = $qserv_master:1094,\" etc/local.qserv.cnf");
 	run_command("perl -pi -e \"s,unix_socket\\s*=\\s*\\S+,unix_socket = $install_dir/var/lib/mysql/mysql.sock,\" etc/local.qserv.cnf");
 	run_command("perl -pi -e \"s,emptyChunkListFile=emptyChunks.txt,emptyChunkListFile=$install_dir/etc/emptyChunks.txt,\" etc/local.qserv.cnf");
 	
