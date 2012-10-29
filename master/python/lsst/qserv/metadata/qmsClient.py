@@ -625,21 +625,6 @@ password: myPass
                 config.get(s, "user"),
                 config.get(s, "password"))
 
-        if not os.access(self._dotFileName, os.R_OK):
-            return None
-        f = open(cFile, "r")
-        lines = f.readlines()
-        f.close()
-        if len(lines) < 1:
-            return None
-        if len(lines) != 2:
-            return None
-        cUrl = lines[0].strip()
-        cPwd = lines[1].strip('\n')
-        if cUrl != url:
-            return None
-        return cPwd
-
     def _echoTest(self, qms):
         echostring = "QMS test string echo back. 1234567890.()''?"
         try:
