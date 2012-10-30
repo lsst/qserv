@@ -57,7 +57,8 @@ class ClientResource(twisted.web.resource.Resource):
         print "rendering get"
         if "action" in request.args:
             action = request.args["action"][0]
-            flattenedargs = dict(map(lambda t:(t[0],t[1][0]), request.args.items()))
+            flattenedargs = dict(map(lambda t:(t[0],t[1][0]),\
+                                         request.args.items()))
             return self.interface.execute(action, flattenedargs, lambda x:None)
         return "Error, no action found"
     
@@ -114,8 +115,8 @@ class HttpInterface:
     def __init__(self, qmsInterface):
         self.qmsInterface = qmsInterface
         okname = ifilter(lambda x: "_" not in x, dir(self))
-        self.publishable = filter(lambda x: hasattr(getattr(self,x), 'func_doc'), 
-                                  okname)
+        self.publishable=filter(lambda x: hasattr(getattr(self,x),'func_doc'), 
+                                okname)
 
     def help(self, req):
         """A brief help message showing available commands"""

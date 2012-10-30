@@ -168,9 +168,9 @@ password: myPass
         self._logger.addHandler(hdlr)
         self._logger.setLevel(logging.ERROR)
 
-    ############################################################################
+    ###########################################################################
     ##### user-facing commands
-    ############################################################################
+    ###########################################################################
     def _cmd_installMeta(self, options, args):
         self._logger.debug("Installing meta")
         qms = self._connectToQMS()
@@ -377,9 +377,9 @@ password: myPass
             print "%s: %s" % (k, v)
         self._logger.debug("Done retrieving table info")
 
-    ############################################################################
+    ###########################################################################
     ##### validating parameters for CreateTable and CreateDb
-    ############################################################################
+    ###########################################################################
     def _validateCrXXParams(self, args, what, ps=None):
         """Validates parameters for createTable and createDb"""
         if len(args) == 2 and args[1][0] == '@':
@@ -548,18 +548,18 @@ password: myPass
                 psFound = True
                 for o in theOpts:
                     if not x.has_key(o):
-                        print ("Can't find param '%s' required for partitioning"
+                        print("Can't find param '%s' required for partitioning"
                                " strategy '%s'") % (o, psName)
                         return False
         if not psFound:
-            print "Unrecongnized partitioning strategy '%s', support: 'sphBox"%\
+            print "Unrecongnized partitioning strategy '%s', support:'sphBox"%\
                 x["partitioningStrategy"]
             return False
         return True
 
-    ############################################################################
+    ###########################################################################
     ##### connection to QMS
-    ############################################################################
+    ###########################################################################
     def _connectToQMS(self):
         (host, port, user, pwd) = self._getConnInfo()
         if host is None or port is None or user is None or pwd is None:
@@ -586,7 +586,7 @@ password: myPass
         # use what user provided via -c option
         m = re.match(r'([\w.]+)@([\w.-]+):([\d]+)', options.conn)
         if not m:
-            print "Failed to parse: %s, expected: user@host:port" % options.conn
+            print "Failed to parse: %s, expected: user@host:port"%options.conn
             return (None, None, None, None)
         # and ask for password
         pwd = self._getPasswordFromUser()
@@ -637,11 +637,10 @@ password: myPass
             return False
         return True
 
-################################################################################
+###############################################################################
 #### main
-################################################################################
+###############################################################################
 if __name__ == '__main__':
     c = Client()
     (cmd, options, args) = c.parseOptions()
     cmd(options, args)
-

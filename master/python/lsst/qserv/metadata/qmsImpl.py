@@ -35,9 +35,9 @@ from qmsStatus import QmsStatus
 def _getUniqueQmsPrefix(mdb):
     return "qms_%d_" % mdb.execCommand1("SELECT id FROM UniqueQmsId")[0]
 
-################################################################################
+###############################################################################
 #### installMeta
-################################################################################
+###############################################################################
 def installMeta(loggerName):
     """Initializes persistent qserv metadata structures.
     This method should be called only once ever for a given
@@ -159,9 +159,9 @@ def installMeta(loggerName):
                          random.randint(1, 2**31-1))
     return mdb.disconnect()
 
-################################################################################
+###############################################################################
 #### destroyMeta
-################################################################################
+###############################################################################
 def destroyMeta(loggerName):
     """This method permanently destroys qserv metadata"""
     mdb = QmsMySQLDb(loggerName)
@@ -175,9 +175,9 @@ def destroyMeta(loggerName):
     mdb.dropDb()
     return mdb.disconnect()
 
-################################################################################
+###############################################################################
 #### printMeta
-################################################################################
+###############################################################################
 def _printTable(s, mdb, tableName):
     ret = mdb.execCommandN("SELECT * FROM %s" % tableName)
     s.write(tableName)
@@ -200,9 +200,9 @@ def printMeta(loggerName):
     mdb.disconnect()
     return s.getvalue()
 
-################################################################################
+###############################################################################
 #### createDb
-################################################################################
+###############################################################################
 def createDb(loggerName, dbName, crDbOptions):
     """Creates metadata about new database to be managed by qserv."""
     logger = logging.getLogger(loggerName)
@@ -248,9 +248,9 @@ def createDb(loggerName, dbName, crDbOptions):
 
     return mdb.disconnect()
 
-################################################################################
+###############################################################################
 #### dropDb
-################################################################################
+###############################################################################
 def dropDb(loggerName, dbName):
     """Drops metadata about a database managed by qserv."""
     logger = logging.getLogger(loggerName)
@@ -285,9 +285,9 @@ def dropDb(loggerName, dbName):
     mdb.execCommand0("DROP DATABASE %s%s" % (_getUniqueQmsPrefix(mdb), dbName))
     return mdb.disconnect()
 
-################################################################################
+###############################################################################
 #### retrieveDbInfo
-################################################################################
+###############################################################################
 def retrieveDbInfo(loggerName, dbName):
     """Retrieves info about a database"""
     mdb = QmsMySQLDb(loggerName)
@@ -317,9 +317,9 @@ def retrieveDbInfo(loggerName, dbName):
     ret = mdb.disconnect()
     return [ret, values]
 
-################################################################################
+###############################################################################
 #### listDbs
-################################################################################
+###############################################################################
 def listDbs(loggerName):
     """Prints names of all databases managed by qserv into a string"""
     mdb = QmsMySQLDb(loggerName)
@@ -336,9 +336,9 @@ def listDbs(loggerName):
     mdb.disconnect()
     return s.getvalue()
 
-################################################################################
+###############################################################################
 #### checkDbExists
-################################################################################
+###############################################################################
 def checkDbExists(loggerName, dbName):
     """Checks if db <dbName> exists, returns 0 or 1"""
     mdb = QmsMySQLDb(loggerName)
@@ -350,9 +350,9 @@ def checkDbExists(loggerName, dbName):
     mdb.disconnect()
     return ret[0]
 
-################################################################################
+###############################################################################
 #### createTable
-################################################################################
+###############################################################################
 def _checkColumnExists(mdb, dbName, tableName, columnName, loggerName):
     # note: this function is mysql-specific!
     ret = mdb.execCommand1("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (_getUniqueQmsPrefix(mdb), dbName, tableName, columnName))
@@ -398,7 +398,7 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
         return QmsStatus.ERR_TABLE_EXISTS
 
     # load the template schema
-    mdb.loadSqlScript(schemaF.name, "%s%s" % (_getUniqueQmsPrefix(mdb), dbName))
+    mdb.loadSqlScript(schemaF.name, "%s%s" %(_getUniqueQmsPrefix(mdb), dbName))
     os.unlink(schemaF.name)
 
     # create entry in PS_Tb_<partitioningStrategy>
@@ -436,9 +436,9 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
     mdb.execCommand0(cmd)
     return mdb.disconnect()
 
-################################################################################
+###############################################################################
 #### dropTable
-################################################################################
+###############################################################################
 def dropTable(loggerName, dbName, tableName):
     """Drops metadata about a table.."""
     logger = logging.getLogger(loggerName)
@@ -478,9 +478,9 @@ def dropTable(loggerName, dbName, tableName):
     logger.debug("dropTable: done")
     return ret
 
-################################################################################
+###############################################################################
 #### retrieveTableInfo
-################################################################################
+###############################################################################
 def retrieveTableInfo(loggerName, dbName, tableName):
     """Retrieves metadata about a table.."""
     logger = logging.getLogger(loggerName)
@@ -495,7 +495,7 @@ def retrieveTableInfo(loggerName, dbName, tableName):
     cmd = "SELECT dbId FROM DbMeta WHERE dbName = '%s'" % dbName
     ret = mdb.execCommand1(cmd)
     if not ret:
-        logger.error("retrieveTableInfo: database '%s' not registered" % dbName)
+        logger.error("retrieveTableInfo: database '%s' not registered"% dbName)
         return [QmsStatus.ERR_DB_NOT_EXISTS, {}]
     dbId = ret[0]
     # check if table exists
@@ -503,7 +503,7 @@ def retrieveTableInfo(loggerName, dbName, tableName):
         (dbId, tableName)
     tableId = mdb.execCommand1(cmd)
     if not tableId:
-        logger.error("retrieveTableInfo: table '%s' doesn't exist." % tableName)
+        logger.error("retrieveTableInfo: table '%s' doesn't exist."% tableName)
         return [QmsStatus.ERR_TABLE_NOT_EXISTS, {}]
     # get ps name
     cmd = "SELECT psName FROM DbMeta WHERE dbId=%s" % dbId
@@ -525,7 +525,8 @@ def retrieveTableInfo(loggerName, dbName, tableName):
         values["logicalPart"]  = ret[6]
         values["physChunking"] = hex(ret[7])
     else:
-        ret = mdb.execCommand1("SELECT clusteredIdx FROM TableMeta WHERE tableId=%s" % tableId)
+        ret = mdb.execCommand1(
+            "SELECT clusteredIdx FROM TableMeta WHERE tableId=%s" % tableId)
         values["clusteredIdx"] = ret
     ret = mdb.disconnect()
     logger.debug("retrieveTableInfo: done")
