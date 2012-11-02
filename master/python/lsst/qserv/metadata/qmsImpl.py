@@ -33,7 +33,7 @@ from qmsStatus import QmsStatus
 
 
 def _getUniqueQmsPrefix(mdb):
-    return "qms_%d_" % mdb.execCommand1("SELECT id FROM UniqueQmsId")[0]
+    return "%s_%" % mdb.getQmsDbName()
 
 ###############################################################################
 #### installMeta

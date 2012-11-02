@@ -36,7 +36,7 @@ class QmsMySQLDb():
     """
     QmsMySQLDb class is a wrapper around MySQLdb for qserv metadata server. 
     It contains a set of low level basic database utilities such 
-    as connecting to database. It caches  connections, and handles 
+    as connecting to database. It caches connections, and handles 
     database errors.
     """
     def __init__(self, loggerName):
@@ -63,7 +63,7 @@ class QmsMySQLDb():
         self._passwd = config.get("qmsdb", "passwd")
         self._host = config.get("qmsdb", "host")
         self._port = config.getint("qmsdb", "port")
-        self._dbName = config.get("qmsdb", "db")
+        self._dbName = "qmss_%s" % config.get("qmsdb", "db")
 
         try: # Socket file first
             self._connType = "socket"
@@ -97,7 +97,7 @@ class QmsMySQLDb():
                 msg1 = "Couldn't connect using file %s" % self._socket
                 self._logger.error(msg1)
                 print >> sys.stderr, msg1, e
-                msg2 = "Couldn't connect using %s:%s" % (self._host, self._port)
+                msg2 = "Couldn't connect using %s:%s" % (self._host,self._port)
                 self._logger.error(msg2)
                 print >> sys.stderr, msg2, e2
                 self._conn = None
@@ -160,7 +160,7 @@ class QmsMySQLDb():
 
     def loadSqlScript(self, scriptPath, dbName):
         """Loads sql script into the database <dbName>."""
-        self._logger.debug("loading script %s into db %s" % (scriptPath,dbName))
+        self._logger.debug("loading script %s into db %s" %(scriptPath,dbName))
         if self._passwd:
             if self._connType == "port":
                 cmd = 'mysql -h%s -P%s -u%s -p%s %s' % \
@@ -204,7 +204,8 @@ class QmsMySQLDb():
             cursor.execute(command)
         except MySQLdb.Error, e:
             try:
-                self._logger.error("MySQL Error [%d]: %s" % (e.args[0], e.args[1]))
+                self._logger.error("MySQL Error [%d]: %s" % \
+                                       (e.args[0], e.args[1]))
                 return None # fixme: throw exception, catch higher up!
             except IndexError:
                 self._logger.error("MySQL Error: %s" % str(e))
