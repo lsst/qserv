@@ -32,9 +32,6 @@ from qmsMySQLDb import QmsMySQLDb
 from qmsStatus import QmsStatus
 
 
-def _getUniqueQmsPrefix(mdb):
-    return "%s_%" % mdb.getQmsDbName()
-
 ###############################################################################
 #### installMeta
 ###############################################################################
@@ -43,10 +40,6 @@ def installMeta(loggerName):
     This method should be called only once ever for a given
     qms installation."""
     internalTables = [
-        # This table keeps uniqueQmsId, which is used to avoid
-        # collisions for qms_<dbName> databases
-        ['UniqueQmsId', '''(
-   id INT)'''],
         # The DbMeta table keeps the list of databases managed through 
         # qserv. Databases not entered into that table will be ignored 
         # by qserv.
@@ -155,8 +148,6 @@ def installMeta(loggerName):
     if ret != QmsStatus.SUCCESS: return ret
     for t in internalTables:
         mdb.createTable(t[0], t[1])
-    mdb.execCommand0("INSERT INTO UniqueQmsId(id) VALUES(%d)" % \
-                         random.randint(1, 2**31-1))
     return mdb.disconnect()
 
 ###############################################################################
@@ -169,7 +160,7 @@ def destroyMeta(loggerName):
     if ret != QmsStatus.SUCCESS:
         return ret
     qmsDbs = mdb.execCommandN(
-        "SHOW DATABASES LIKE '%s%%'" % _getUniqueQmsPrefix(mdb))
+        "SHOW DATABASES LIKE '%s%%'" % mdb.getServerPrefix())
     for qmsDb in qmsDbs:
         mdb.execCommand0("DROP DATABASE %s" % qmsDb)
     mdb.dropDb()
@@ -244,7 +235,7 @@ def createDb(loggerName, dbName, crDbOptions):
     cmd = "INSERT INTO DbMeta(dbName, dbUuid, psName, psId) VALUES('%s', '%s', '%s', %s)" % (dbName, dbUuid, psName, psId)
     mdb.execCommand0(cmd)
     # finally, create this table as template
-    mdb.execCommand0("CREATE DATABASE %s%s"%(_getUniqueQmsPrefix(mdb), dbName))
+    mdb.execCommand0("CREATE DATABASE %s%s" % (mdb.getServerPrefix(), dbName))
 
     return mdb.disconnect()
 
@@ -282,7 +273,7 @@ def dropDb(loggerName, dbName):
     cmd = "DELETE FROM TableMeta WHERE dbId = %s" % dbId
     mdb.execCommand0(cmd)
     # drop the template database
-    mdb.execCommand0("DROP DATABASE %s%s" % (_getUniqueQmsPrefix(mdb), dbName))
+    mdb.execCommand0("DROP DATABASE %s%s" % (mdb.getServerPrefix(), dbName))
     return mdb.disconnect()
 
 ###############################################################################
@@ -355,7 +346,7 @@ def checkDbExists(loggerName, dbName):
 ###############################################################################
 def _checkColumnExists(mdb, dbName, tableName, columnName, loggerName):
     # note: this function is mysql-specific!
-    ret = mdb.execCommand1("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (_getUniqueQmsPrefix(mdb), dbName, tableName, columnName))
+    ret = mdb.execCommand1("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (mdb.getServerPrefix(), dbName, tableName, columnName))
     if ret[0] != 1:
         logger = logging.getLogger(loggerName)
         logger.error("column: '%s' not found in table '%s.%s'" % \
@@ -365,7 +356,7 @@ def _checkColumnExists(mdb, dbName, tableName, columnName, loggerName):
 
 def _getColumnPos(mdb, dbName, tableName, columnName):
     # note: this function is mysql-specific!
-    return mdb.execCommand1("SELECT ordinal_position FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (_getUniqueQmsPrefix(mdb), dbName, tableName, columnName))[0] -1 
+    return mdb.execCommand1("SELECT ordinal_position FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (mdb.getServerPrefix(), dbName, tableName, columnName))[0] -1 
 
 def createTable(loggerName, dbName, crTbOptions, schemaStr):
     """Creates metadata about new table in qserv-managed database."""
@@ -398,7 +389,7 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
         return QmsStatus.ERR_TABLE_EXISTS
 
     # load the template schema
-    mdb.loadSqlScript(schemaF.name, "%s%s" %(_getUniqueQmsPrefix(mdb), dbName))
+    mdb.loadSqlScript(schemaF.name, "%s%s" % (mdb.getServerPrefix(), dbName))
     os.unlink(schemaF.name)
 
     # create entry in PS_Tb_<partitioningStrategy>
@@ -409,7 +400,7 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
         psName = crTbOptions["partitioningStrategy"]
     if psName == "sphBox":
         # add two special columns
-        cmd = "ALTER TABLE %s%s.%s ADD COLUMN chunk BIGINT, ADD COLUMN subChunk BIGINT" % (_getUniqueQmsPrefix(mdb), dbName, tableName)
+        cmd = "ALTER TABLE %s%s.%s ADD COLUMN chunk BIGINT, ADD COLUMN subChunk BIGINT" % (mdb.getServerPrefix(), dbName, tableName)
         mdb.execCommand0(cmd)
 
         logger.debug("persisting for sphBox")

@@ -4,7 +4,7 @@ port=7082
 
 [qmsdb]
 passwd = 
-db = qservMetadata
+db = testX
 unix_socket = /var/lib/mysql/mysql.sock
 host = 
 user = qsmaster

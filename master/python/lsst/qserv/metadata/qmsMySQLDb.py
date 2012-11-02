@@ -63,7 +63,7 @@ class QmsMySQLDb():
         self._passwd = config.get("qmsdb", "passwd")
         self._host = config.get("qmsdb", "host")
         self._port = config.getint("qmsdb", "port")
-        self._dbName = "qmss_%s" % config.get("qmsdb", "db")
+        self._dbName = "qms_%s" % config.get("qmsdb", "db")
 
         try: # Socket file first
             self._connType = "socket"
@@ -145,6 +145,11 @@ class QmsMySQLDb():
         if count[0] == 1:
             return True
         return False
+
+    def getServerPrefix(self):
+        if not self._checkIsConnected():
+            raise RuntimeError("Not connected")
+        return "%s_" % self._dbName
 
     def createTable(self, tableName, tableSchema):
         self.execCommand0("CREATE TABLE %s %s" % (tableName, tableSchema))
