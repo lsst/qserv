@@ -522,3 +522,31 @@ def retrieveTableInfo(loggerName, dbName, tableName):
     ret = mdb.disconnect()
     logger.debug("retrieveTableInfo: done")
     return [ret, values]
+
+
+###############################################################################
+#### retrievePartTables
+###############################################################################
+def retrievePartTables(loggerName, dbName):
+    """Retrieves list of partitioned tables for a given database."""
+    logger = logging.getLogger(loggerName)
+    logger.debug("retrievePartTables: started")
+    # connect to mysql
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        logger.error("retrievePartTables: failed to connect to qms")
+        return [ret, None]
+    # check if db exists
+    cmd = "SELECT dbId FROM DbMeta WHERE dbName = '%s'" % dbName
+    ret = mdb.execCommand1(cmd)
+    if not ret:
+        logger.error("retrievePartTables: database '%s' not registered"%dbName)
+        return [QmsStatus.ERR_DB_NOT_EXISTS, None]
+    dbId = ret[0]
+    cmd = "SELECT tableName FROM TableMeta WHERE dbId=%s " % dbId + \
+           "AND psId IS NOT NULL"
+    tNames = mdb.execCommandN(cmd)
+    mdb.disconnect()
+    logger.debug("retrieveTableInfo: done")
+    return [QmsStatus.SUCCESS, tNames]

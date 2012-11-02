@@ -81,6 +81,10 @@ class QmsInterface:
         """Removes metadata about a table."""
         return qmsImpl.dropTable(self._loggerName, dbName, tableName)
 
+    def retrievePartTables(self, dbName):
+        """Retrieves list of partitioned tables for a given database."""
+        return qmsImpl.retrievePartTables(self._loggerName, dbName)
+
     def retrieveTableInfo(self, dbName, tableName):
         """Retrieves information about a table."""
         return qmsImpl.retrieveTableInfo(self._loggerName, dbName, tableName)

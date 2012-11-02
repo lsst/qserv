@@ -130,6 +130,11 @@ COMMANDS
         Removes metadata about a table.
         Arguments: <dbName> <tableName>
 
+  retrievePartitionedTables
+        Retrieves table names of all partitioned tables
+        in a given database.
+        Arguments: <dbName>
+
   retrieveTableInfo
         Retrieves information about a table.
         Arguments: <dbName> <tableName>
@@ -356,6 +361,25 @@ password: myPass
         self._logger.debug("dropTable successfully finished")
         print "Table dropped."
 
+    def _cmd_retrievePartitionedTables(self, options, args):
+        self._logger.debug("RetrievePartTables")
+        if len(args) != 1:
+            msg = "'retrievePartTables' requires one arguments: <dbName>"
+            self._logger.error(msg)
+            print msg
+            return
+        dbName = args[0]
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        self._logger.debug("retrievePartTables for %s" % dbName)
+        (retStat, tNames) = qms.retrievePartTables(dbName)
+        if retStat != QmsStatus.SUCCESS: 
+            print getErrMsg(retStat)
+            return
+        print tNames
+        self._logger.debug("RetrievePartTables done")
+
     def _cmd_retrieveTableInfo(self, options, args):
         self._logger.debug("RetrieveTableInfo")
         if len(args) != 2:
@@ -368,7 +392,7 @@ password: myPass
         qms = self._connectToQMS()
         if qms is None:
             return
-        self._logger.debug("retrievTableInfo for %s.%s" % (dbName, tableName))
+        self._logger.debug("retrieveTableInfo for %s.%s" % (dbName, tableName))
         (retStat, values) = qms.retrieveTableInfo(dbName, tableName)
         if retStat != QmsStatus.SUCCESS: 
             print getErrMsg(retStat)
