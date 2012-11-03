@@ -67,10 +67,10 @@ class Client(object):
     def parseOptions(self):
         usage = """
 NAME
-       qmsClient - the client program for Qserv Metadata Server (QMS)
+        qmsClient - the client program for Qserv Metadata Server (QMS)
 
 SYNOPSIS
-       qmsClient [-c CONN] [-v|--verbose] [-h|--help] COMMAND [ARGS]
+        qmsClient [-c CONN] [-v|--verbose] [-h|--help] COMMAND [ARGS]
 
 OPTIONS
    -c
@@ -139,7 +139,7 @@ COMMANDS
         Retrieves information about a table.
         Arguments: <dbName> <tableName>
 
-EXAMPLES:
+EXAMPLES
 Example contents of the .qmsadm file:
 
 [qmsConn]
