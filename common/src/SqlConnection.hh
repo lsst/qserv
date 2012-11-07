@@ -45,15 +45,20 @@ namespace qserv {
 class SqlConfig {
 public:
     SqlConfig() : port(0) {}
+    SqlConfig(const SqlConfig&);
     std::string hostname;
     std::string username;
     std::string password;
     std::string dbName;
     unsigned int port;
     std::string socket;
-    bool isValid() const {
-        return !username.empty();
-    }
+    bool isValid() const { return !username.empty(); }
+    void throwIfNotSet(std::string const&) const;
+    void initFromFile(std::string const&, std::string const&, 
+                      std::string const&, std::string const&, 
+                      std::string const&, std::string const&, 
+                      std::string const&, bool);
+    void printSelf(std::string const& extras) const;
 };
 
 class SqlResults {

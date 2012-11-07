@@ -30,6 +30,7 @@ namespace lsst {
 namespace qserv {
     // Forward
     class SqlConnection;
+    class SqlConfig;
     class SqlErrorObject;
 }}
 
@@ -39,26 +40,23 @@ namespace worker {
 
 class Metadata {
 public:
-    Metadata(std::string const& workerId);
-    bool registerQservedDb(std::string const& dbName,
-                           std::string const& pTables,
-                           SqlConnection&,
-                           SqlErrorObject&);
+    Metadata(SqlConfig const& qmsConnCfg);
+    ~Metadata();
+    bool registerQservedDb(std::string const& dbName, 
+                           std::string const& baseDir,
+                           SqlConnection&, SqlErrorObject&);
     bool unregisterQservedDb(std::string const& dbName,
                              std::string const& baseDir,
                              std::string& dbPathToDestroy,
-                             SqlConnection&,
-                             SqlErrorObject&);
-    bool showMetadata(SqlConnection&,
-                      SqlErrorObject&);
+                             SqlConnection&, SqlErrorObject&);
+    bool destroyWorkerMetadata(SqlConnection&, SqlErrorObject&);
+    bool showMetadata(SqlConnection&, SqlErrorObject&);
     bool generateExportPaths(std::string const& baseDir,
-                             SqlConnection&,
-                             SqlErrorObject&,
+                             SqlConnection&, SqlErrorObject&,
                              std::vector<std::string>& exportPaths);
     bool generateExportPathsForDb(std::string const& baseDir,
                                   std::string const& dbName,
-                                  SqlConnection&,
-                                  SqlErrorObject&,
+                                  SqlConnection&, SqlErrorObject&,
                                   std::vector<std::string>& exportPaths);
 
 private:
@@ -79,8 +77,11 @@ private:
                   std::string const& dbName,
                   std::vector<std::string>& exportPaths);
 
+    bool getDbInfoFromQms(int& dbId, std::string& dbUuid, SqlErrorObject& errObj);
+
 private:
-    const std::string _metadataDbName;
+    std::string _workerMetadataDbName;
+    SqlConfig* _qmsConnCfg; // host, port, user, pass for qms
 };
 
 }}} // namespace lsst.qserv.worker

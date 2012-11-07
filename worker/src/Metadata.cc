@@ -27,6 +27,8 @@
 #include "lsst/qserv/worker/Base.h"
 
 #include <iostream>
+#include <sstream>
+#include <string>
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -37,50 +39,59 @@ using qWorker::hashQuery;
 
 using std::cout;
 using std::endl;
-
+using std::string;
+using std::stringstream;
 
 // Constant. Long term, this should be defined differently
 const int DUMMYEMPTYCHUNKID = 1234567890;
 
 
-qWorker::Metadata::Metadata(std::string const& workerId) 
-    : _metadataDbName("qserv_worker_meta_" + workerId) {
+qWorker::Metadata::Metadata(SqlConfig const& qmsConnCfg) {
+    _qmsConnCfg = new SqlConfig(qmsConnCfg);
+    _workerMetadataDbName = qmsConnCfg.dbName;
+    if ( 0 != _workerMetadataDbName.compare(0, 4, "qms_")) {
+        stringstream s;
+        s << "Unexpected qms metadata database name: '"
+          << _workerMetadataDbName << "', should start with 'qms_'";
+        throw s.str();
+    }
+    _workerMetadataDbName[2] = 'w'; // 'qms_' --> 'qmw_'
+}
+
+qWorker::Metadata::~Metadata() {
+    delete _qmsConnCfg;
 }
 
 /// called ones for each new database that this worker should serve
-/// partitionedTables is a comma separated list of tables that are
-/// partitioned.
 bool
 qWorker::Metadata::registerQservedDb(std::string const& dbName,
-                                     std::string const& partitionedTables,
+                                     std::string const& baseDir,
                                      SqlConnection& sqlConn,
                                      SqlErrorObject& errObj) {
-    std::string _partitionedTables = partitionedTables;
-    if (!prepPartitionedTables(_partitionedTables, errObj)) {
-        return false;
-    }
-    
     // create the metadata db if it does not exist and select it
-    if (!sqlConn.createDbAndSelect(_metadataDbName, errObj, false)) {
-        return errObj.addErrMsg("Failed to register qserved db " + dbName);
+    if (!sqlConn.createDbAndSelect(_workerMetadataDbName, errObj, false)) {
+        return errObj.addErrMsg("Failed to create metadata db '"+dbName+"'.");
     }
     // check if table "Dbs" exists, create if it does not
     if (!sqlConn.tableExists("Dbs", errObj)) {
-        std::string sql = 
-            "CREATE TABLE Dbs (dbName VARCHAR(255), "
-            "                  partitionedTables TEXT)"; // comma separated list
+        std::string sql = "CREATE TABLE Dbs (dbId INT NOT NULL PRIMARY KEY, dbName VARCHAR(255) NOT NULL, dbUuid VARCHAR(255) NOT NULL, baseDir VARCHAR(255) NOT NULL)";
         if (!sqlConn.runQuery(sql, errObj)) {
-            return errObj.addErrMsg(
-                       std::string("Failed to register qserved db. ")
-                       + "Sql command was: " + sql);
+            return errObj.addErrMsg(string("Failed to register qserved db. ") +
+                                    "Sql command was: " + sql);
         }
     } else if ( isRegistered(dbName, sqlConn, errObj) ) {
-        return errObj.addErrMsg("Db " + dbName + " is already registered.");
+        return errObj.addErrMsg("Db " + dbName + 
+                                " is already registered on this worker.");
     }
+    int dbId = 123;
+    std::string dbUuid = "dummyuuid";
+    if (!getDbInfoFromQms(dbId, dbUuid, errObj)) {
+        return errObj.addErrMsg(std::string("Database '" + dbName + 
+                                            "' is not registered in qms"));
+    }       
     std::stringstream sql;
-    sql << "INSERT INTO Dbs(dbName, partitionedTables) "
-        << "VALUES ('" << dbName << "', " 
-        << "'" << _partitionedTables << "'" << ")";
+    sql << "INSERT INTO Dbs(dbId, dbName, dbUuid, baseDir) VALUES ('" << dbId 
+        << "," << dbName << "'," << dbUuid << ",'" << baseDir << "'" << ")";
     return sqlConn.runQuery(sql.str(), errObj);
 }
 
@@ -90,7 +101,7 @@ qWorker::Metadata::unregisterQservedDb(std::string const& dbName,
                                        std::string& dbPathToDestroy,
                                        SqlConnection& sqlConn,
                                        SqlErrorObject& errObj) {
-    if (!sqlConn.selectDb(_metadataDbName, errObj)) {
+    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         return errObj.addErrMsg("Failed to connect to metadata db");
     }
     if ( !isRegistered(dbName, sqlConn, errObj) ) {
@@ -110,9 +121,19 @@ qWorker::Metadata::unregisterQservedDb(std::string const& dbName,
 }
 
 bool
+qWorker::Metadata::destroyWorkerMetadata(SqlConnection& sqlConn,
+                                         SqlErrorObject& errObj) {
+    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+        errObj.addErrMsg("No metadata found.");
+        return false;
+    }
+    return sqlConn.dropDb(_workerMetadataDbName, errObj);
+}
+
+bool
 qWorker::Metadata::showMetadata(SqlConnection& sqlConn,
                                 SqlErrorObject& errObj) {
-    if (!sqlConn.selectDb(_metadataDbName, errObj)) {
+    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         cout << "No metadata found." << endl;
         return true;
     }
@@ -147,7 +168,7 @@ qWorker::Metadata::generateExportPaths(std::string const& baseDir,
                                        SqlConnection& sqlConn,
                                        SqlErrorObject& errObj,
                                        std::vector<std::string>& exportPaths) {
-    if (!sqlConn.selectDb(_metadataDbName, errObj)) {
+    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         return false;
     }
     std::string sql = "SELECT dbName, partitionedTables FROM Dbs";
@@ -183,7 +204,7 @@ qWorker::Metadata::generateExportPathsForDb(
                                    SqlConnection& sqlConn,
                                    SqlErrorObject& errObj,
                                    std::vector<std::string>& exportPaths) {
-    if (!sqlConn.selectDb(_metadataDbName, errObj)) {
+    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         return false;
     }
     if ( !isRegistered(dbName, sqlConn, errObj) ) {
@@ -334,3 +355,12 @@ qWorker::Metadata::isRegistered(std::string const& dbName,
     }
     return s[0] == '1';
 }
+
+bool
+qWorker::Metadata::getDbInfoFromQms(int& dbId, 
+                                    std::string& dbUuid, 
+                                    SqlErrorObject& errObj) {
+    return false;
+}
+
+    

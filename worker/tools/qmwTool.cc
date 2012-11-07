@@ -27,6 +27,10 @@
 #include <sstream>
 #include <stdlib.h> // atoi
 
+#include "lsst/qserv/SqlConnection.hh"
+#include "lsst/qserv/worker/Config.h"
+#include "lsst/qserv/worker/Metadata.h"
+#include "lsst/qserv/worker/QservPathStructure.h"
 
 using std::cout;
 using std::cerr;
@@ -34,6 +38,8 @@ using std::endl;
 using std::ifstream;
 using std::string;
 using std::stringstream;
+
+using lsst::qserv::SqlConfig;
 
 #include "qmwTool.h"
 
@@ -52,7 +58,7 @@ printHelp() {
      << "\nCOMMANDS\n"
      << "  registerDb\n"
      << "        Registers database for qserv use for given worker\n"
-     << "        Arguments: <dbName>\n\n"
+     << "        Arguments: <dbName> <baseDir>\n\n"
      << "  unregisterDb\n"
      << "        Unregisters database used by qserv and destroys\n"
      << "        corresponding export structures for that database.\n"
@@ -62,7 +68,7 @@ printHelp() {
      << "  createExportPaths\n"
      << "        Generates export paths. If no dbName is given, it will\n"
      << "        run for all databases registered in qserv metadata\n"
-     << "        for the given worker. Arguments <baseDir> [<dbName>]\n\n"
+     << "        for the given worker. Arguments [<dbName>]\n\n"
      << "EXAMPLES\n"
      << "Example contents of the (required) .qmw.auth file:\n"
      << "qmsHost:lsst-db3.slac.stanford.edu\n"
@@ -83,16 +89,30 @@ RunActions::RunActions()
 {
     string fName = getenv("HOME");
     fName += "/.qmw.auth";
-    _c.initFromFile(fName);
-    _c.printSelf();
+    _qmsConnCfg.initFromFile(fName, "qmsHost", "qmsPort", "qmsUser",
+                             "qmsPass", "qmsDb", "", true);
+    _qmwConnCfg.initFromFile(fName, "", "", "qmwUser", 
+                             "qmwPass", "", "qmwMySqlSocket", true);
+    _qmsConnCfg.dbName = "qms_" + _qmsConnCfg.dbName;
+    _qmsConnCfg.printSelf("qms");
+    _qmwConnCfg.printSelf("qmw");
 }
 
-void
-RunActions::registerDb(string const& dbName) {
+int
+RunActions::registerDb(string const& dbName, string const& baseDir) {
     cout << "registering db " << dbName << endl;
+    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
+    lsst::qserv::SqlErrorObject errObj;
+    lsst::qserv::worker::Metadata m(_qmsConnCfg);
+    if ( !m.registerQservedDb(dbName, baseDir, sqlConn, errObj) ) {
+        cerr << "Failed to register db. " << errObj.printErrMsg() << endl;
+        return errObj.errNo();
+    }
+    cout << "Database " << dbName << " successfully registered." << endl;
+    return 0;
 }
 
-void
+int
 RunActions::unregisterDb(string const& dbName) {
     cout << "unregistering db " << dbName << endl;
 }
@@ -108,86 +128,7 @@ RunActions::createExportPaths(string const& dbName,
     cout << "createExportP " << dbName << ", " << baseDir << endl;
 }
 
-void
-RunActions::ConnInfo::printSelf() const {
-    cout << "host=" << _qmsHost
-         << ", port=" << _qmsPort
-         << ", usr=" << _qmsUser
-         << ", pass=" << _qmsPass
-         << ", qmwDb=" << _qmwDb
-         << ", socket=" << _mSocket << endl;
-}
-
-void
-RunActions::ConnInfo::throwIfNotSet(string const& fName) const {
-    bool allSet = true;
-    stringstream s;
-    s << "Value for ";
-    if (this->_qmsHost == "") { allSet = false; s << "qmsHost "; }
-    if (this->_qmsPort == 0 ) { allSet = false; s << "qmsPort "; }
-    if (this->_qmsUser == "") { allSet = false; s << "qmsUser "; }
-    if (this->_qmsPass == "") { allSet = false; s << "qmsPass "; }
-    if (this->_qmwDb   == "") { allSet = false; s << "qmwDb ";   }
-    if (this->_mSocket == "") { allSet = false; s << "mSocket "; }
-    if (!allSet) {
-        s << "not set in the '" << fName << "' file.";
-        throw s.str();
-    }
-}
-
-void
-RunActions::ConnInfo::initFromFile(string const& fName) {
-    ifstream f;
-    f.open(fName.c_str());
-    if (!f) {
-        stringstream s;
-        s << "Failed to open '" << fName << "'";
-        throw s.str();
-    }
-    string line;
-    f >> line;
-    while ( !f.eof() ) {
-        int pos = line.find_first_of(':');
-        if ( pos == -1 ) {
-            stringstream s;
-            s << "Invalid format, expecting <token>:<value>. "
-              << "File '" << fName << "', line: '" << line << "'";
-            throw s.str();
-        }
-        string token = line.substr(0,pos);
-        string value = line.substr(pos+1, line.size());
-        if (token == "qmsHost") { 
-            this->_qmsHost = value;
-        } else if (token == "qmsPort") {
-            this->_qmsPort = atoi(value.c_str());
-            if ( this->_qmsPort <= 0 ) {
-                stringstream s;
-                s << "Invalid port number " << this->_qmsPort << ". "
-                  << "File '" << fName << "', line: '" << line << "'";
-                throw s.str();
-            }        
-        } else if (token == "qmsUser") {
-            this->_qmsUser = value;
-        } else if (token == "qmsPass") {
-            this->_qmsPass = value;
-        } else if (token == "qmwDb") {
-            this->_qmwDb = value;
-        } else if (token == "mysqlSocket") {
-            this->_mSocket = value;
-        } else {
-            stringstream s;
-            s << "Unexpected token: '" << token << "'" << " (supported tokens "
-              << "are: qmsHost, qmsPort, qmsUser, qmsPass, mysqlSocket)";
-            throw(s.str());
-        }
-        f >> line;
-   }
-   f.close();
-   throwIfNotSet(fName);
-}
-
-
-// validates database name. Only a-z, A-Z, 0-9 and _ are allowed
+// validates database name. Only a-z, A-Z, 0-9 and '_' are allowed
 void
 validateDbName(string const& name) {
     const string validChars = 
@@ -233,11 +174,12 @@ main(int argc, char* argv[]) {
         RunActions actions;
         string theAction = argv[1];
         if (theAction == "registerDb") {
-            if (argc != 3) {
-                throw "'registerDb' requires argument: <dbName>";
+            if (argc != 4) {
+                throw"'registerDb' requires two arguments: <dbName> <baseDir>";
             }
             validateDbName(argv[2]);
-            actions.registerDb(argv[2]);
+            validatePath(argv[3]);
+            actions.registerDb(argv[2], argv[3]);
         } else if (theAction == "unregisterDb") {
             if (argc != 3) {
                 throw "'unregisterDb' requires argument: <dbName>";
@@ -247,14 +189,12 @@ main(int argc, char* argv[]) {
         } else if (theAction == "listDbs") {
             actions.listDbs();
         } else if (theAction == "createExportPaths") {
-            if (argc != 4) {
+            if (argc != 3) {
                 stringstream s;
-                s << "'createExportPaths' requires two arguments: "
-                  << "<dbName> <basePath>";
+                s << "'createExportPaths' requires one argument: <dbName>";
                 throw s.str();
             }
             validateDbName(argv[2]);
-            validatePath(argv[3]);
             actions.createExportPaths(argv[2], argv[3]);
         } else {
             stringstream s;

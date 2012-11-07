@@ -40,59 +40,62 @@ using lsst::qserv::SqlResults;
 
 struct PerTestFixture {
     PerTestFixture() {
-        static qsrv::SqlConfig sqlConfig;
-
-        if ( sqlConfig.username.empty() ) {
-            sqlConfig.hostname = "";
-            sqlConfig.dbName = "";
-            sqlConfig.port = 0;
-            std::cout << "Enter mysql user name: ";
-            std::cin >> sqlConfig.username;
-            sqlConfig.password = getpass("Enter mysql password: ");
-            std::cout << "Enter mysql socket: ";
-            std::cin >> sqlConfig.socket;
-        }
-        sqlConn = new qsrv::SqlConnection(sqlConfig);
+        std::string fName = getenv("HOME");
+        fName += "/.qmwadm";
+        qmsConnCfg.initFromFile(fName, "qmsHost", "qmsPort", "qmsUser",
+                                "qmsPass", "qmsDb", "", true);
+        qmwConnCfg.initFromFile(fName, "", "", "qmwUser", 
+                                "qmwPass", "", "qmwMySqlSocket", true);
+        qmsConnCfg.dbName = "qms_" + qmsConnCfg.dbName;
+        qmwSqlConn = new qsrv::SqlConnection(qmwConnCfg);
+        qmsConnCfg.printSelf("qms");
+        qmwConnCfg.printSelf("qmw");
     }
     ~PerTestFixture () {
-        delete sqlConn;
-        sqlConn = 0;
+        delete qmwSqlConn;
+        qmwSqlConn = 0;
     }
-    qsrv::SqlConnection* sqlConn;
+    qsrv::SqlConnection* qmwSqlConn;
+    qsrv::SqlConfig qmsConnCfg;
+    qsrv::SqlConfig qmwConnCfg;
 };
 
 BOOST_FIXTURE_TEST_SUITE(MetadataTestSuite, PerTestFixture)
 
 BOOST_AUTO_TEST_CASE(Registrations) {
-    std::string workerId = "dummy123";
-    lsst::qserv::worker::Metadata m(workerId);
+    lsst::qserv::worker::Metadata m(qmsConnCfg);
     qsrv::SqlErrorObject errObj;
     qsrv::SqlErrorObject errObjDummy;
 
-    std::string dbN1 = "rplante_PT1_2_u_pt12prod_im2000_";
-    std::string pts1 = "Object, Source";
-    if ( !m.registerQservedDb(dbN1, pts1, *sqlConn, errObj) ) {
-        sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
+    // start clean
+    m.destroyWorkerMetadata(*qmwSqlConn, errObj);
+    errObj.reset();
+    
+    // register db, legitimate
+    std::string dbN1 = "rplante_PT1_2_u_pt12prod_im2000";
+    std::string baseDir1 = "/u1/lsst/qserv/worker/exportDir";
+    if ( !m.registerQservedDb(dbN1, baseDir1, *qmwSqlConn, errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
-    std::string dbN2 = "rplante_PT1_2_u_pt12prod_im3000_";
-    std::string pts2 = "Object, Source , ForcedSource";
-    std::string ptsBad = "Object, Source , ForcedSource, ";
-    if ( m.registerQservedDb(dbN2, ptsBad, *sqlConn, errObj) ) {
-        sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
-        BOOST_FAIL("This should fail because of extra ','");
+    /*
+    // try to register db, bad path
+    std::string dbN2 = "rplante_PT1_2_u_pt12prod_im3000";
+    std::string baseDir2 = "/u124/nonExist/exportDir";
+    if ( m.registerQservedDb(dbN2, baseDir2, *qmwSqlConn, errObj) ) {
+        BOOST_FAIL("This should fail because of bad baseDir");
     }
-    if ( !m.registerQservedDb(dbN2, pts2, *sqlConn, errObj) ) {
-        sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
-        BOOST_FAIL(errObj.printErrMsg());
-    }
-    if ( m.registerQservedDb(dbN2, pts2, *sqlConn, errObj) ) {
-        sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
+    // try to register already registered db
+    if ( m.registerQservedDb(dbN1, baseDir1, *qmwSqlConn, errObj) ) {
         BOOST_FAIL("This should fail (already registered)");
     }
-    sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
+    // clean up
+    if ( !m.destroyWorkerMetadata(*qmwSqlConn, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+    */
 }
 
+/*
 BOOST_AUTO_TEST_CASE(PathCreate) {
     std::string workerId = "dummy123";
     lsst::qserv::worker::Metadata m(workerId);
@@ -102,32 +105,33 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
     std::string pts1 = "Object, Source";
 
     qsrv::SqlErrorObject errObjDummy;
-    sqlConn->dropDb(dbN1, errObjDummy);
-    sqlConn->createDbAndSelect(dbN1, errObjDummy);
-    sqlConn->runQuery("create table Object_1234 (i int)", errObjDummy);
-    sqlConn->runQuery("create table Object_1235 (i int)", errObjDummy);
-    sqlConn->runQuery("create table Source_1234 (i int)", errObjDummy);
-    sqlConn->runQuery("create table Source_1235 (i int)", errObjDummy);
-    sqlConn->runQuery("create table Exposure_99 (i int)", errObjDummy);
+    qmwSqlConn->dropDb(dbN1, errObjDummy);
+    qmwSqlConn->createDbAndSelect(dbN1, errObjDummy);
+    qmwSqlConn->runQuery("create table Object_1234 (i int)", errObjDummy);
+    qmwSqlConn->runQuery("create table Object_1235 (i int)", errObjDummy);
+    qmwSqlConn->runQuery("create table Source_1234 (i int)", errObjDummy);
+    qmwSqlConn->runQuery("create table Source_1235 (i int)", errObjDummy);
+    qmwSqlConn->runQuery("create table Exposure_99 (i int)", errObjDummy);
     
-    if ( !m.registerQservedDb(dbN1, pts1, *sqlConn, errObj) ) {
-        sqlConn->dropDb(dbN1, errObjDummy);
-        sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
+    if ( !m.registerQservedDb(dbN1, pts1, *qmwSqlConn, errObj) ) {
+        qmwSqlConn->dropDb(dbN1, errObjDummy);
+        qmwSqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
         BOOST_FAIL(errObj.printErrMsg());
     }
     std::vector<std::string> exportPaths;
     if ( !m.generateExportPaths("/u1/lsst/qserv/worker/exportDir", 
-                                *sqlConn, errObj, exportPaths)) {
-        sqlConn->dropDb(dbN1, errObjDummy);
-        sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
+                                *qmwSqlConn, errObj, exportPaths)) {
+        qmwSqlConn->dropDb(dbN1, errObjDummy);
+        qmwSqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
         BOOST_FAIL(errObj.printErrMsg());
     }
     int i, s = exportPaths.size();
     for (i=0; i<s ; i++) {
         std::cout << "got: " << exportPaths[i] << std::endl;
     }
-    sqlConn->dropDb(dbN1, errObjDummy);
-    sqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
+    qmwSqlConn->dropDb(dbN1, errObjDummy);
+    qmwSqlConn->dropDb("qserv_worker_meta_"+workerId, errObjDummy);
 }
+*/
 
 BOOST_AUTO_TEST_SUITE_END()

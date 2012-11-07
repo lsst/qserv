@@ -25,34 +25,18 @@
 #ifndef LSST_QSERV_WORKER_QMWTOOL_H
 #define LSST_QSERV_WORKER_QMWTOOL_H
 
+#include "lsst/qserv/SqlConnection.hh"
+
 class RunActions {
 public:
     RunActions();
-    void registerDb(string const&);
-    void unregisterDb(string const&);
+    int registerDb(string const&, string const&);
+    int unregisterDb(string const&);
     void listDbs();
     void createExportPaths(string const&, string const&);
-
 private:
-    class ConnInfo {
-    public:
-        ConnInfo():_qmsHost(""), _qmsPort(0),
-                   _qmsUser(""), _mSocket("") {}
-        void initFromFile(string const& fName);
-        string getQmsHost() const { return _qmsHost; }
-        int getQmsPort() const { return _qmsPort; }
-        string getMySqlSocket() { return _mSocket; }
-        void printSelf() const;
-    private:
-        void throwIfNotSet(string const&) const;
-        string _qmsHost; // qms server connection info
-        int _qmsPort;    // qms server connection info
-        string _qmsUser; // qms server connection info
-        string _qmsPass; // qms server connection info
-        string _qmwDb;   // qms worker metadata db
-        string _mSocket; // qms worker mysql socket
-    };
-    ConnInfo _c;
+    SqlConfig _qmsConnCfg;
+    SqlConfig _qmwConnCfg;
 };
 
 #endif /* LSST_QSERV_WORKER_QMWTOOL_H */
