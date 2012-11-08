@@ -170,27 +170,25 @@ qWorker::Metadata::showMetadata(SqlConnection& sqlConn,
 
 /// generates export directory paths for every chunk in every database served
 bool 
-qWorker::Metadata::generateExportPaths(std::string const& baseDir,
-                                       SqlConnection& sqlConn,
+qWorker::Metadata::generateExportPaths(SqlConnection& sqlConn,
                                        SqlErrorObject& errObj,
                                        std::vector<std::string>& exportPaths) {
     if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         return false;
     }
-    /*
-    std::string sql = "SELECT dbName, partitionedTables FROM Dbs";
+    std::string sql = "SELECT dbName FROM Dbs";
     SqlResults results;
     if (!sqlConn.runQuery(sql, results, errObj)) {
         return errObj.addErrMsg("Failed to execute: " + sql);
     }
     std::vector<std::string> dbs;
-    std::vector<std::string> pts; // each string = comma separated list
-    if (!results.extractFirst2Columns(dbs, pts, errObj)) {
+    if (!results.extractFirstColumn(dbs, errObj)) {
         return errObj.addErrMsg("Failed to receive results from: " + sql);
     }
     int i, s = dbs.size();
     for (i=0; i<s ; i++) {
         std::string dbName = dbs[i];
+        /*
         std::string tableList = pts[i];
         if (!generateExportPathsForDb(baseDir, dbName, tableList, 
                                       sqlConn, errObj, exportPaths)) {
@@ -200,9 +198,9 @@ qWorker::Metadata::generateExportPaths(std::string const& baseDir,
                << tableList << std::endl;
             return errObj.addErrMsg(ss.str());
         }
+        */
     }
-    return true;
-    */
+    //return true;
     return false;
 }
 

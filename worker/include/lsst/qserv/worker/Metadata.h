@@ -50,8 +50,7 @@ public:
                              SqlConnection&, SqlErrorObject&);
     bool destroyWorkerMetadata(SqlConnection&, SqlErrorObject&);
     bool showMetadata(SqlConnection&, SqlErrorObject&);
-    bool generateExportPaths(std::string const& baseDir,
-                             SqlConnection&, SqlErrorObject&,
+    bool generateExportPaths(SqlConnection&, SqlErrorObject&,
                              std::vector<std::string>& exportPaths);
     bool generateExportPathsForDb(std::string const& baseDir,
                                   std::string const& dbName,
