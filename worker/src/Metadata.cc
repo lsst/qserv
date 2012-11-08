@@ -81,7 +81,8 @@ qWorker::Metadata::registerQservedDb(std::string const& dbName,
         }
     } else if ( isRegistered(dbName, sqlConn, errObj) ) {
         std::stringstream s;
-        s << "Database '" << dbName << "' is already registered on this worker.";
+        s << "Database '" << dbName 
+          << "' is already registered on this worker.";
         std::cout << s.str() << std::endl;
         return errObj.addErrMsg(s.str());
     }
@@ -99,7 +100,6 @@ qWorker::Metadata::registerQservedDb(std::string const& dbName,
 
 bool
 qWorker::Metadata::unregisterQservedDb(std::string const& dbName,
-                                       std::string const& baseDir,
                                        std::string& dbPathToDestroy,
                                        SqlConnection& sqlConn,
                                        SqlErrorObject& errObj) {
@@ -107,13 +107,15 @@ qWorker::Metadata::unregisterQservedDb(std::string const& dbName,
         return errObj.addErrMsg("Failed to connect to metadata db");
     }
     if ( !isRegistered(dbName, sqlConn, errObj) ) {
-        return errObj.addErrMsg("Db " + dbName + " does not seem to be registered.");
+        return errObj.addErrMsg("Db " + dbName + " is not registered.");
     }
     std::stringstream sql;
     sql << "DELETE FROM Dbs WHERE dbName='" << dbName << "'";
     if ( !sqlConn.runQuery(sql.str(), errObj) ) {
         return false;
     }
+    std::string baseDir = "dummy"; // FIXME: get from qms
+    
     QservPath p;
     p.setAsCquery(dbName);
     std::stringstream ss;
@@ -139,27 +141,29 @@ qWorker::Metadata::showMetadata(SqlConnection& sqlConn,
         cout << "No metadata found." << endl;
         return true;
     }
-    std::string sql = "SELECT dbName, partitionedTables FROM Dbs";
+    std::string sql = "SELECT dbId, dbName, dbUuid, baseDir FROM Dbs";
     SqlResults results;
     if (!sqlConn.runQuery(sql, results, errObj)) {
         return errObj.addErrMsg("Failed to execute: " + sql);
     }
-    std::vector<std::string> dbs;
-    std::vector<std::string> pts; // each string = comma separated list
-    if (!results.extractFirst2Columns(dbs, pts, errObj)) {
+    std::vector<std::string> col1;
+    std::vector<std::string> col2;
+    std::vector<std::string> col3;
+    std::vector<std::string> col4;
+    if (!results.extractFirst4Columns(col1, col2, col3, col4, errObj)) {
         return errObj.addErrMsg("Failed to receive results from: " + sql);
     }
-    if (dbs.size() == 0 ) {
-        cout << "No databases registered in qserv metadata" << endl;
+    if (col1.size() == 0 ) {
+        cout << "No databases registered in qserv metadata." << endl;
         return true;
     }
     cout << "Databases registered in qserv metadata:" << endl;
-    int i, s = dbs.size();
+    int i, s = col1.size();
     for (i=0; i<s ; i++) {
-        std::string db = dbs[i];
-        std::string tl = pts[i];
-        cout << "  db: '" << db << "', partitionedTables: '" 
-             << tl << "'" << endl;
+        cout << i+1 <<")  db:      " << col2[i] << "\n"
+             << "    id:      " << col1[i] << "\n"
+             << "    dbUuid:  " << col3[i] << "\n"
+             << "    baseDir: " << col4[i] << endl;
     }
     return true;
 }
@@ -173,6 +177,7 @@ qWorker::Metadata::generateExportPaths(std::string const& baseDir,
     if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         return false;
     }
+    /*
     std::string sql = "SELECT dbName, partitionedTables FROM Dbs";
     SqlResults results;
     if (!sqlConn.runQuery(sql, results, errObj)) {
@@ -197,6 +202,8 @@ qWorker::Metadata::generateExportPaths(std::string const& baseDir,
         }
     }
     return true;
+    */
+    return false;
 }
 
 bool
@@ -212,7 +219,8 @@ qWorker::Metadata::generateExportPathsForDb(
     if ( !isRegistered(dbName, sqlConn, errObj) ) {
         return errObj.addErrMsg("Database: " + dbName + 
                                 " is not registered in qserv metadata.");
-    }            
+    }
+    /*
     std::string sql = "SELECT partitionedTables FROM Dbs WHERE dbName='"
                       + dbName + "'";
     SqlResults results;
@@ -226,18 +234,19 @@ qWorker::Metadata::generateExportPathsForDb(
     }
     return generateExportPathsForDb(baseDir, dbName, pTables, 
                                     sqlConn, errObj, exportPaths);
+    */
+    return false;
 }
 
 bool
 qWorker::Metadata::generateExportPathsForDb(
-                                   std::string const& baseDir,
-                                   std::string const& dbName,
-                                   std::string const& tableList,
-                                   SqlConnection& sqlConn,
-                                   SqlErrorObject& errObj,
-                                   std::vector<std::string>& exportPaths) {
-    std::vector<std::string> pTables = tokenizeString(tableList);
-
+                             std::string const& baseDir,
+                             std::string const& dbName,
+                             std::vector<std::string const> const& pTables,
+                             SqlConnection& sqlConn,
+                             SqlErrorObject& errObj,
+                             std::vector<std::string>& exportPaths) {
+    /*
     int i, s = pTables.size();
     for (i=0 ; i<s ; i++) {
         std::vector<std::string> t;
@@ -264,6 +273,8 @@ qWorker::Metadata::generateExportPathsForDb(
     // Always create dummy chunk export regardless of tables. (#2048)
     addChunk(DUMMYEMPTYCHUNKID, baseDir, dbName, exportPaths);
     return true;
+    */
+    return false;
 }
 
 void
@@ -276,56 +287,6 @@ qWorker::Metadata::addChunk(int chunkNo,
     std::stringstream ss;
     ss << baseDir << "/" << p.path() << std::ends;
     exportPaths.push_back(ss.str());
-}
-
-
-bool
-qWorker::Metadata::prepPartitionedTables(std::string& strIn,
-                                         SqlErrorObject& errObj) {
-    std::string strOut;
-
-    // remove extra spaces
-    int i, s = strIn.size();
-    for (i=0; i<s; i++) {
-        char c = strIn[i];
-        if (c==' ' || c=='\t') {
-            continue;
-        } else {
-            strOut += c;
-        }
-    }
-    // check if does not end with ','
-    s = strOut.size();
-    if (s > 1) {
-        if ( strOut[strOut.size()-1] == ',' ) {
-            std::stringstream ss;
-            ss << "PartitionedTables list can't end with ','. "
-               << "Full string was: '" << strIn << "'" << std::endl;
-            return errObj.addErrMsg(ss.str());
-        }
-    }
-    strIn = strOut;
-    return true;
-}
-
-std::vector<std::string>
-qWorker::Metadata::tokenizeString(std::string const& str) {
-    std::vector<std::string> v;
-    std::string token;
-    int i, s = str.size();
-    for (i=0; i<s; i++) {
-        char c = str[i];
-        if (c==' ' || c=='\t') {
-            continue;
-        } else if (c== ',') {
-            v.push_back(token);
-            token.clear();
-        } else {
-            token += c;
-        }
-    }
-    v.push_back(token);
-    return v;
 }
 
 int
@@ -365,9 +326,8 @@ qWorker::Metadata::getDbInfoFromQms(std::string const& dbName,
                                     SqlErrorObject& errObj) {
     // FIXME: todo: contact qms and retrieve dbId and dbUuid for the
     // database called 'dbName'
-    dbId = 125;
+    static int nextId = 100;
+    dbId = ++nextId;
     dbUuid = "db-uuid-for-" + dbName;
     return true;
 }
-
-    

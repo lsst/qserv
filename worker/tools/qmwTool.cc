@@ -115,6 +115,17 @@ RunActions::registerDb(string const& dbName, string const& baseDir) {
 int
 RunActions::unregisterDb(string const& dbName) {
     cout << "unregistering db " << dbName << endl;
+    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
+    lsst::qserv::SqlErrorObject errObj;
+    lsst::qserv::worker::Metadata m(_qmsConnCfg);
+    std::string dbPathToDestroy;
+    if ( !m.unregisterQservedDb(dbName, dbPathToDestroy, sqlConn, errObj) ) {
+        cerr << "Failed to unregister db. " << errObj.printErrMsg() << endl;
+        return errObj.errNo();
+    }
+    lsst::qserv::worker::QservPathStructure::destroy(dbPathToDestroy);
+    cout << "Database " << dbName << " successfully unregistered." << endl;
+    return 0;
 }
 
 void

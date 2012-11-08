@@ -185,6 +185,46 @@ SqlResults::extractFirst2Columns(std::vector<std::string>& col1,
 }
 
 bool
+SqlResults::extractFirst3Columns(std::vector<std::string>& col1,
+                                 std::vector<std::string>& col2,
+                                 std::vector<std::string>& col3,
+                                 SqlErrorObject& errObj) {
+    int i, s = _results.size();
+    for (i=0 ; i<s ; i++) {
+        MYSQL_ROW row;
+        while (row = mysql_fetch_row(_results[i])) {
+            col1.push_back(row[0]);
+            col2.push_back(row[1]);
+            col3.push_back(row[2]);
+        }
+        mysql_free_result(_results[i]);
+    }
+    _results.clear();
+    return true;
+}
+
+bool
+SqlResults::extractFirst4Columns(std::vector<std::string>& col1,
+                                 std::vector<std::string>& col2,
+                                 std::vector<std::string>& col3,
+                                 std::vector<std::string>& col4,
+                                 SqlErrorObject& errObj) {
+    int i, s = _results.size();
+    for (i=0 ; i<s ; i++) {
+        MYSQL_ROW row;
+        while (row = mysql_fetch_row(_results[i])) {
+            col1.push_back(row[0]);
+            col2.push_back(row[1]);
+            col3.push_back(row[2]);
+            col4.push_back(row[3]);
+        }
+        mysql_free_result(_results[i]);
+    }
+    _results.clear();
+    return true;
+}
+
+bool
 SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     if (_results.size() != 1) {
         std::stringstream ss;

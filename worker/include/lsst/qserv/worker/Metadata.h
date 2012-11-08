@@ -46,7 +46,6 @@ public:
                            std::string const& baseDir,
                            SqlConnection&, SqlErrorObject&);
     bool unregisterQservedDb(std::string const& dbName,
-                             std::string const& baseDir,
                              std::string& dbPathToDestroy,
                              SqlConnection&, SqlErrorObject&);
     bool destroyWorkerMetadata(SqlConnection&, SqlErrorObject&);
@@ -60,14 +59,12 @@ public:
                                   std::vector<std::string>& exportPaths);
 
 private:
-    bool generateExportPathsForDb(std::string const& baseDir,
-                                  std::string const& dbName,
-                                  std::string const& pTables,
+    bool generateExportPathsForDb(std::string const&,
+                                  std::string const&,
+                                  std::vector<std::string const> const&,
                                   SqlConnection&,
                                   SqlErrorObject&,
-                                  std::vector<std::string>& exportPaths);
-    static bool prepPartitionedTables(std::string&, SqlErrorObject&);
-    static std::vector<std::string> tokenizeString(std::string const&);
+                                  std::vector<std::string>&);
     static int extractChunkNo(std::string const&);
     bool isRegistered(std::string const& dbName,
                       SqlConnection& sqlConn,

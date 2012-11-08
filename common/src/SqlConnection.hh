@@ -74,6 +74,15 @@ public:
     bool extractFirst2Columns(std::vector<std::string>&, //FIXME: generalize
                               std::vector<std::string>&, 
                               SqlErrorObject&);
+    bool extractFirst3Columns(std::vector<std::string>&, //FIXME: generalize
+                              std::vector<std::string>&, 
+                              std::vector<std::string>&, 
+                              SqlErrorObject&);
+    bool extractFirst4Columns(std::vector<std::string>&,
+                              std::vector<std::string>&, 
+                              std::vector<std::string>&, 
+                              std::vector<std::string>&, 
+                              SqlErrorObject&);
     void freeResults();
 
 private:
