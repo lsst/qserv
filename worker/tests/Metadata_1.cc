@@ -71,22 +71,30 @@ BOOST_AUTO_TEST_CASE(Registrations) {
     m.destroyWorkerMetadata(*qmwSqlConn, errObj);
     errObj.reset();
     
-    // register db, legitimate
+    // register db
     std::string dbN1 = "rplante_PT1_2_u_pt12prod_im2000";
     std::string baseDir1 = "/u1/lsst/qserv/worker/exportDir";
     if ( !m.registerQservedDb(dbN1, baseDir1, *qmwSqlConn, errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
+    // try to register already registered db (should return error)
+    if ( m.registerQservedDb(dbN1, baseDir1, *qmwSqlConn, errObj) ) {
+        BOOST_FAIL("This should fail (already registered)");
+    }
+    // unregister already registered db
+    if ( !m.unregisterQservedDb(dbN1, *qmwSqlConn, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+    // unregister non-existing db (should return error)
+    if ( m.unregisterQservedDb(dbN1, *qmwSqlConn, errObj) ) {
+        BOOST_FAIL("This should fail (nothing to unregister)");
+    }
     /*
-    // try to register db, bad path
+    // try to register db, bad path (should return error)
     std::string dbN2 = "rplante_PT1_2_u_pt12prod_im3000";
     std::string baseDir2 = "/u124/nonExist/exportDir";
     if ( m.registerQservedDb(dbN2, baseDir2, *qmwSqlConn, errObj) ) {
         BOOST_FAIL("This should fail because of bad baseDir");
-    }
-    // try to register already registered db
-    if ( m.registerQservedDb(dbN1, baseDir1, *qmwSqlConn, errObj) ) {
-        BOOST_FAIL("This should fail (already registered)");
     }
     // clean up
     if ( !m.destroyWorkerMetadata(*qmwSqlConn, errObj) ) {

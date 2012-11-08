@@ -80,18 +80,20 @@ qWorker::Metadata::registerQservedDb(std::string const& dbName,
                                     "Sql command was: " + sql);
         }
     } else if ( isRegistered(dbName, sqlConn, errObj) ) {
-        return errObj.addErrMsg("Db " + dbName + 
-                                " is already registered on this worker.");
+        std::stringstream s;
+        s << "Database '" << dbName << "' is already registered on this worker.";
+        std::cout << s.str() << std::endl;
+        return errObj.addErrMsg(s.str());
     }
-    int dbId = 123;
-    std::string dbUuid = "dummyuuid";
-    if (!getDbInfoFromQms(dbId, dbUuid, errObj)) {
+    int dbId = 0;
+    std::string dbUuid = "";
+    if (!getDbInfoFromQms(dbName, dbId, dbUuid, errObj)) {
         return errObj.addErrMsg(std::string("Database '" + dbName + 
                                             "' is not registered in qms"));
     }       
     std::stringstream sql;
-    sql << "INSERT INTO Dbs(dbId, dbName, dbUuid, baseDir) VALUES ('" << dbId 
-        << "," << dbName << "'," << dbUuid << ",'" << baseDir << "'" << ")";
+    sql << "INSERT INTO Dbs(dbId, dbName, dbUuid, baseDir) VALUES (" << dbId 
+        << ",'" << dbName << "','" << dbUuid << "','" << baseDir << "'" << ")";
     return sqlConn.runQuery(sql.str(), errObj);
 }
 
@@ -357,10 +359,15 @@ qWorker::Metadata::isRegistered(std::string const& dbName,
 }
 
 bool
-qWorker::Metadata::getDbInfoFromQms(int& dbId, 
+qWorker::Metadata::getDbInfoFromQms(std::string const& dbName,
+                                    int& dbId, 
                                     std::string& dbUuid, 
                                     SqlErrorObject& errObj) {
-    return false;
+    // FIXME: todo: contact qms and retrieve dbId and dbUuid for the
+    // database called 'dbName'
+    dbId = 125;
+    dbUuid = "db-uuid-for-" + dbName;
+    return true;
 }
 
     

@@ -77,7 +77,8 @@ private:
                   std::string const& dbName,
                   std::vector<std::string>& exportPaths);
 
-    bool getDbInfoFromQms(int& dbId, std::string& dbUuid, SqlErrorObject& errObj);
+    bool getDbInfoFromQms(std::string const&, int& dbId, 
+                          std::string& dbUuid, SqlErrorObject& errObj);
 
 private:
     std::string _workerMetadataDbName;
