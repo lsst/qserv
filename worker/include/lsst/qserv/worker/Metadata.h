@@ -40,42 +40,35 @@ namespace worker {
 
 class Metadata {
 public:
-    Metadata(SqlConfig const& qmsConnCfg);
+    Metadata(SqlConfig const&);
     ~Metadata();
-    bool installMeta(std::string const&,
-                     SqlConnection&, SqlErrorObject&);
+    bool installMeta(std::string const&, SqlConnection&, SqlErrorObject&);
     bool destroyMeta(SqlConnection&, SqlErrorObject&);
-    bool registerQservedDb(std::string const&, 
-                           SqlConnection&, SqlErrorObject&);
-    bool unregisterQservedDb(std::string const& dbName,
-                             std::string& dbPathToDestroy,
+    bool registerQservedDb(std::string const&, SqlConnection&,
+                           SqlErrorObject&);
+    bool unregisterQservedDb(std::string const&, std::string&,
                              SqlConnection&, SqlErrorObject&);
     bool showMetadata(SqlConnection&, SqlErrorObject&);
     bool generateExportPaths(SqlConnection&, SqlErrorObject&,
                              std::vector<std::string>& exportPaths);
-    bool generateExportPathsForDb(std::string const& baseDir,
-                                  std::string const& dbName,
+    bool generateExportPathsForDb(std::string const&, std::string const&,
                                   SqlConnection&, SqlErrorObject&,
-                                  std::vector<std::string>& exportPaths);
+                                  std::vector<std::string>&);
 
 private:
-    bool generateExportPathsForDb(std::string const&,
-                                  std::string const&,
+    bool generateExportPathsForDb(std::string const&, std::string const&,
                                   std::vector<std::string const> const&,
-                                  SqlConnection&,
-                                  SqlErrorObject&,
+                                  SqlConnection&, SqlErrorObject&,
                                   std::vector<std::string>&);
     static int extractChunkNo(std::string const&);
-    bool isRegistered(std::string const& dbName,
-                      SqlConnection& sqlConn,
-                      SqlErrorObject& errObj);
-    void addChunk(int chunkNo,
-                  std::string const& baseDir,
-                  std::string const& dbName,
-                  std::vector<std::string>& exportPaths);
-
-    bool getDbInfoFromQms(std::string const&, int& dbId, 
-                          std::string& dbUuid, SqlErrorObject& errObj);
+    bool isRegistered(std::string const&, SqlConnection&, SqlErrorObject&);
+    void addChunk(int, std::string const&, std::string const&,
+                  std::vector<std::string>&);
+    bool getExportBaseDir(std::string&, SqlConnection&, SqlErrorObject&);
+    bool getDbInfoFromQms(std::string const&, int&, 
+                          std::string&, SqlErrorObject&);
+    bool getPartTablesFromQms(std::string const&, std::vector<std::string>&,
+                              SqlErrorObject&);
 
 private:
     std::string _workerMetadataDbName;

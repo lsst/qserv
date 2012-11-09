@@ -122,32 +122,30 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // register db 1
-    std::string dbN = "Summer2012";
+    std::string dbN = "qmw_Summer2012"; // this user is not authorized
+    // to create any other db that is not starting with qmw_...
     if ( !m.registerQservedDb(dbN, *qmwSqlConn, errObj) ) {
-        m.destroyMeta(*qmwSqlConn, errObj);
         BOOST_FAIL(errObj.printErrMsg());
     }
-    qmwSqlConn->createDbAndSelect("qmw_"+dbN, errObj);
+    qmwSqlConn->createDbAndSelect(dbN, errObj);
     qmwSqlConn->runQuery("create table Object_1234 (i int)", errObj);
     qmwSqlConn->runQuery("create table Object_1235 (i int)", errObj);
     qmwSqlConn->runQuery("create table Source_1234 (i int)", errObj);
     qmwSqlConn->runQuery("create table Source_1235 (i int)", errObj);
     qmwSqlConn->runQuery("create table Exposure_99 (i int)", errObj);
 
-    /*std::vector<std::string> exportPaths;
+    std::vector<std::string> exportPaths;
     if ( !m.generateExportPaths(*qmwSqlConn, errObj, exportPaths)) {
-        qmwSqlConn->dropDb("qmw_"+dbN, errObj);
-        m.destroyMeta(*qmwSqlConn, errObj);
+        qmwSqlConn->dropDb(dbN, errObj);
         BOOST_FAIL(errObj.printErrMsg());
     }
     int i, s = exportPaths.size();
     for (i=0; i<s ; i++) {
         std::cout << "got: " << exportPaths[i] << std::endl;
     }
-    */
     // final cleanup
-    qmwSqlConn->dropDb("qmw_"+dbN, errObj);
-    m.destroyMeta(*qmwSqlConn, errObj);
+    //qmwSqlConn->dropDb(dbN, errObj);
+    //m.destroyMeta(*qmwSqlConn, errObj);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -35,7 +35,7 @@ public:
     int registerDb(string const&);
     int unregisterDb(string const&);
     void listDbs();
-    void createExportPaths(string const&, string const&);
+    int createExportPaths(string const&);
 private:
     SqlConfig _qmsConnCfg;
     SqlConfig _qmwConnCfg;
