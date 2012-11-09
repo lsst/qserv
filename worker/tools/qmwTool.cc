@@ -75,6 +75,10 @@ printHelp() {
      << "        Generates export paths. If no dbName is given, it will\n"
      << "        run for all databases registered in qserv metadata\n"
      << "        for the given worker. Arguments [<dbName>]\n\n"
+     << "  refreshExportPaths\n"
+     << "        Updates export paths. If no dbName is given, it will\n"
+     << "        run for all databases registered in qserv metadata\n"
+     << "        for the given worker. Arguments [<dbName>]\n\n"
      << "EXAMPLES\n"
      << "Example contents of the (required) .qmwadm file:\n"
      << "qmsHost:lsst-db3.slac.stanford.edu\n"
@@ -289,6 +293,13 @@ main(int argc, char* argv[]) {
                 validateDbName(dbName);
             }
             actions.createExportPaths(dbName);
+        } else if (theAction == "refreshExportPaths") {
+            string dbName = "";
+            if (argc == 3) {
+                dbName = argv[2];
+                validateDbName(dbName);
+            }
+            // FIXME actions.refreshExportPaths(dbName);        
         } else {
             stringstream s;
             s << "Unsupported command: '" << argv[1] << "'. " 
