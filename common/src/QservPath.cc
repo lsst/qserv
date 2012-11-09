@@ -78,7 +78,7 @@ std::string qsrv::QservPath::var(std::string const& key) const {
     return std::string();
 }
     
-std::string qsrv::QservPath::prefix(RequestType const& r) const {
+std::string qsrv::QservPath::prefix(RequestType const& r) {
     switch(r) {
     case CQUERY:
         return "q";

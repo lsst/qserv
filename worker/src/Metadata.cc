@@ -106,8 +106,10 @@ qWorker::Metadata::destroyMeta(SqlConnection& sqlConn,
         errObj.addErrMsg("No metadata found.");
         return false;
     }
+    if (!_destroyExportPathWithPrefix(sqlConn, errObj)) {
+        return false;
+    }       
     return sqlConn.dropDb(_workerMetadataDbName, errObj);
-    // FIXME: remove export paths
 }
 
 // ****************************************************************************
@@ -171,6 +173,25 @@ qWorker::Metadata::unregisterQservedDb(string const& dbName,
     dbPathToDestroy = ss.str();
     return true;
 }
+
+// ****************************************************************************
+// ***** _getExportPathWithPrefix
+// ****************************************************************************
+/// Sets the "thePath" to something like <exportBasePath>/q
+bool
+qWorker::Metadata::_getExportPathWithPrefix(string& thePath,
+                                            SqlConnection& sqlConn,
+                                            SqlErrorObject& errObj) {
+    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+        return errObj.addErrMsg("Failed to connect to metadata db");
+    }
+    string exportBaseDir;
+    if ( !_getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
+        return false;
+    }
+    thePath = exportBaseDir + "/" + QservPath::prefix(QservPath::CQUERY);
+    return true;
+}        
 
 // ****************************************************************************
 // ***** showMetadata
@@ -351,6 +372,22 @@ qWorker::Metadata::_addChunk(int chunkNo,
     stringstream ss;
     ss << exportBaseDir << "/" << p.path() << std::ends;
     exportPaths.push_back(ss.str());
+}
+
+// ****************************************************************************
+// ***** _destroyExportPathWithPrefix
+// ****************************************************************************
+/// Unconditionally destroys export path for given qms, without checking if it
+/// matches the chunks in the database
+bool
+qWorker::Metadata::_destroyExportPathWithPrefix(SqlConnection& sqlConn,
+                                                SqlErrorObject& errObj) {
+    string p2d;
+    if (!_getExportPathWithPrefix(p2d, sqlConn, errObj)) {
+        return false;
+    }
+    cout << "wanna destroy: " << p2d << endl;
+    return true;
 }
 
 // ****************************************************************************

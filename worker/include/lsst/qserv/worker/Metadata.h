@@ -61,6 +61,7 @@ public:
     };
 
 private:
+    bool _destroyExportPathWithPrefix(SqlConnection&, SqlErrorObject&);
     static int _extractChunkNo(std::string const&);
     bool _isRegistered(std::string const&, SqlConnection&, SqlErrorObject&);
     void _addChunk(int, std::string const&, std::string const&,
@@ -73,17 +74,19 @@ private:
                               SqlConnection&, SqlErrorObject&,
                               std::vector<TableChunks>&);
     bool _getExportBaseDir(std::string&, SqlConnection&, SqlErrorObject&);
-    bool _getInfoAboutAllDbs(std::vector<std::string>&,    // dbIds
-                             std::vector<std::string>&,    // dbNames
-                             std::vector<std::string>&,    // dbUuids
+    bool _getExportPathWithPrefix(std::string&,           // the path to be set
+                                  SqlConnection&, SqlErrorObject&);
+    bool _getInfoAboutAllDbs(std::vector<std::string>&,   // dbIds
+                             std::vector<std::string>&,   // dbNames
+                             std::vector<std::string>&,   // dbUuids
                              SqlConnection&,
                              SqlErrorObject&);
-    bool _getDbInfoFromQms(std::string const&,             // dbName
-                           int&,                           // dbId
-                           std::string&,                   // dbUuid
+    bool _getDbInfoFromQms(std::string const&,            // dbName
+                           int&,                          // dbId
+                           std::string&,                  // dbUuid
                            SqlErrorObject&);
-    bool _getPartTablesFromQms(std::string const&,         // dbName
-                               std::vector<std::string>&,  // partTables
+    bool _getPartTablesFromQms(std::string const&,        // dbName
+                               std::vector<std::string>&, // partTables
                                SqlErrorObject&);
 
 private:
