@@ -273,38 +273,24 @@ qWorker::Metadata::_generateExportPathsForDb(
                                    SqlConnection& sqlConn,
                                    SqlErrorObject& errObj,
                                    vector<string>& exportPaths) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+    vector<TableChunks> allChunks;
+    if (!_getTableChunksForDb(dbName, sqlConn, errObj, allChunks)) {
         return false;
     }
-    if ( !_isRegistered(dbName, sqlConn, errObj) ) {
-        return errObj.addErrMsg("Database: " + dbName + " is not registered "
-                                "in qserv worker metadata.");
-    }
-    vector<string> partTables;
-    if ( !_getPartTablesFromQms(dbName, partTables, errObj) ) {
-        return false;
-    }
-    int i, s = partTables.size();
-    for (i=0 ; i<s ; i++) {
-        vector<string> t;
-        if (!sqlConn.listTables(t, errObj, partTables[i]+"_", dbName)) {
-            stringstream ss;
-            ss << "Failed to list tables for db=" << dbName
-               << ", prefix=" << partTables[i] << "\n";
-            return errObj.addErrMsg(ss.str());
-        }
-        int j, s2 = t.size();
-        if ( s2 == 0 ) {
+    vector<TableChunks>::const_iterator oneT;
+    for (oneT=allChunks.begin(); oneT!=allChunks.end(); ++oneT) {
+        if (0 == oneT->_chunksInDb.size()) {
             stringstream ss;
             ss << "WARNING: no partitioned tables with prefix '"
-               << partTables[i] << "_' found in the database '"
+               << oneT->_tableName << "_' found in the database '"
                << dbName << "'. Did you forget to load the data?\n";
             cout << ss.str() << endl;
-            // FIXME: is this an error?
-            //return errObj.addErrMsg(ss.str());
         }
-        for (j=0; j<s2 ; j++) {
-            _addChunk(_extractChunkNo(t[j]), exportBaseDir, 
+        vector<string>::const_iterator cItr;
+        for (cItr=oneT->_chunksInDb.begin(); 
+             cItr!=oneT->_chunksInDb.end(); 
+             ++cItr) {
+            _addChunk(_extractChunkNo(*cItr), exportBaseDir, 
                       dbName, exportPaths);
         }
     } // end foreach t in partTables
@@ -317,6 +303,8 @@ qWorker::Metadata::_generateExportPathsForDb(
 // ***** _getTableChunksForDb
 // ****************************************************************************
 /// Retrieves from the database list of all chunks for a given table.
+/// The format of retrieved info: vector of tuples: 
+/// <tableName, <vector of chunk names> >
 bool
 qWorker::Metadata::_getTableChunksForDb(string const& dbName,
                                         SqlConnection& sqlConn,
