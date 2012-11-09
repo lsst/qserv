@@ -66,23 +66,27 @@ BOOST_AUTO_TEST_CASE(Registrations) {
     lsst::qserv::worker::Metadata m(qmsConnCfg);
     qsrv::SqlErrorObject errObj;
     // start clean
-    m.destroyWorkerMetadata(*qmwSqlConn, errObj);
-    errObj.reset();    
+    m.destroyMeta(*qmwSqlConn, errObj);
+    errObj.reset();
+    // install empty worker metadata
+    std::string exportDir = "/u1/lsst/qserv/worker/exportDir";
+    if ( !m.installMeta(exportDir, *qmwSqlConn, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     // register db 1
     std::string dbN1 = "Summer2012";
-    std::string baseDirGood = "/u1/lsst/qserv/worker/exportDir";
-    if ( !m.registerQservedDb(dbN1, baseDirGood, *qmwSqlConn, errObj) ) {
+    if ( !m.registerQservedDb(dbN1, *qmwSqlConn, errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // try to register already registered db (should return error)
-    if ( m.registerQservedDb(dbN1, baseDirGood, *qmwSqlConn, errObj) ) {
+    if ( m.registerQservedDb(dbN1, *qmwSqlConn, errObj) ) {
         BOOST_FAIL("This should fail (already registered)");
     } else {
         errObj.reset();
     }
     // register db 2
     std::string dbN2 = "Winter2013";
-    if ( !m.registerQservedDb(dbN2, baseDirGood, *qmwSqlConn, errObj) ) {
+    if ( !m.registerQservedDb(dbN2, *qmwSqlConn, errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
     // show metadata
@@ -101,23 +105,27 @@ BOOST_AUTO_TEST_CASE(Registrations) {
         errObj.reset();
     }
     // clean up
-    if ( !m.destroyWorkerMetadata(*qmwSqlConn, errObj) ) {
-        BOOST_FAIL(errObj.printErrMsg());
-    }
+    //if ( !m.destroyMeta(*qmwSqlConn, errObj) ) {
+    //    BOOST_FAIL(errObj.printErrMsg());
+    //}
 }
 
 BOOST_AUTO_TEST_CASE(PathCreate) {
+    /*
     lsst::qserv::worker::Metadata m(qmsConnCfg);
     qsrv::SqlErrorObject errObj;
     // start clean
-    m.destroyWorkerMetadata(*qmwSqlConn, errObj);
-    errObj.reset();    
-
+    m.destroyMeta(*qmwSqlConn, errObj);
+    errObj.reset();
+    // install empty worker metadata
+    std::string exportDir = "/u1/lsst/qserv/worker/exportDir";
+    if ( !m.installMeta(exportDir, *qmwSqlConn, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
     // register db 1
     std::string dbN = "Summer2012";
-    std::string baseDir = "/u1/lsst/qserv/worker/exportDir";
-    if ( !m.registerQservedDb(dbN, baseDir, *qmwSqlConn, errObj) ) {
-        m.destroyWorkerMetadata(*qmwSqlConn, errObj);
+    if ( !m.registerQservedDb(dbN, *qmwSqlConn, errObj) ) {
+        m.destroyMeta(*qmwSqlConn, errObj);
         BOOST_FAIL(errObj.printErrMsg());
     }
     qmwSqlConn->createDbAndSelect("qmw_"+dbN, errObj);
@@ -126,11 +134,11 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
     qmwSqlConn->runQuery("create table Source_1234 (i int)", errObj);
     qmwSqlConn->runQuery("create table Source_1235 (i int)", errObj);
     qmwSqlConn->runQuery("create table Exposure_99 (i int)", errObj);
-    
+    */
     /*std::vector<std::string> exportPaths;
     if ( !m.generateExportPaths(*qmwSqlConn, errObj, exportPaths)) {
         qmwSqlConn->dropDb("qmw_"+dbN, errObj);
-        m.destroyWorkerMetadata(*qmwSqlConn, errObj);
+        m.destroyMeta(*qmwSqlConn, errObj);
         BOOST_FAIL(errObj.printErrMsg());
     }
     int i, s = exportPaths.size();
@@ -139,8 +147,8 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
     }
     */
     // final cleanup
-    qmwSqlConn->dropDb("qmw_"+dbN, errObj);
-    m.destroyWorkerMetadata(*qmwSqlConn, errObj);
+    //qmwSqlConn->dropDb("qmw_"+dbN, errObj);
+    //m.destroyMeta(*qmwSqlConn, errObj);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

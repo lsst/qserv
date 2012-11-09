@@ -43,7 +43,7 @@ using lsst::qserv::SqlConfig;
 
 #include "qmwTool.h"
 
-// keep in schema: dbName, dbUuid, baseDir
+// keep in schema: dbName, dbUuid, exportDir
 
 int
 printHelp() {
@@ -56,9 +56,14 @@ printHelp() {
      << "   -h, --help\n"
      << "        Prints help information.\n"
      << "\nCOMMANDS\n"
+     << "  installMeta\n"
+     << "        Sets up internal qserv metadata database.\n"
+     << "        Arguments: <exportDir>\n\n"
+     << "  destroyMeta\n"
+     << "        Destroys internal qserv metadata database.\n\n"
      << "  registerDb\n"
      << "        Registers database for qserv use for given worker\n"
-     << "        Arguments: <dbName> <baseDir>\n\n"
+     << "        Arguments: <dbName>\n\n"
      << "  unregisterDb\n"
      << "        Unregisters database used by qserv and destroys\n"
      << "        corresponding export structures for that database.\n"
@@ -98,13 +103,39 @@ RunActions::RunActions()
     _qmwConnCfg.printSelf("qmw");
 }
 
+int RunActions::installMeta(string const& exportDir) {
+    cout << "installMeta, exportDir = " << exportDir << endl;
+    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
+    lsst::qserv::SqlErrorObject errObj;
+    lsst::qserv::worker::Metadata m(_qmsConnCfg);
+    if ( !m.installMeta(exportDir, sqlConn, errObj) ) {
+        cerr << "Failed to install metadata. " << errObj.printErrMsg() << endl;
+        return errObj.errNo();
+    }
+    cout << "Metadata successfully installed." << endl;
+    return 0;
+}
+
+int RunActions::destroyMeta() {
+    cout << "destroyMeta" << endl;
+    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
+    lsst::qserv::SqlErrorObject errObj;
+    lsst::qserv::worker::Metadata m(_qmsConnCfg);
+    if ( !m.destroyMeta(sqlConn, errObj) ) {
+        cerr << "Failed to destroy metadata. " << errObj.printErrMsg() << endl;
+        return errObj.errNo();
+    }
+    cout << "Metadata successfully destroyed." << endl;
+    return 0;
+}
+
 int
-RunActions::registerDb(string const& dbName, string const& baseDir) {
+RunActions::registerDb(string const& dbName) {
     cout << "registering db " << dbName << endl;
     lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
     lsst::qserv::SqlErrorObject errObj;
     lsst::qserv::worker::Metadata m(_qmsConnCfg);
-    if ( !m.registerQservedDb(dbName, baseDir, sqlConn, errObj) ) {
+    if ( !m.registerQservedDb(dbName, sqlConn, errObj) ) {
         cerr << "Failed to register db. " << errObj.printErrMsg() << endl;
         return errObj.errNo();
     }
@@ -135,8 +166,8 @@ RunActions::listDbs() {
 
 void
 RunActions::createExportPaths(string const& dbName, 
-                              string const& baseDir) {
-    cout << "createExportP " << dbName << ", " << baseDir << endl;
+                              string const& exportDir) {
+    cout << "createExportP " << dbName << ", " << exportDir << endl;
 }
 
 // validates database name. Only a-z, A-Z, 0-9 and '_' are allowed
@@ -184,13 +215,20 @@ main(int argc, char* argv[]) {
     try {    
         RunActions actions;
         string theAction = argv[1];
-        if (theAction == "registerDb") {
-            if (argc != 4) {
-                throw"'registerDb' requires two arguments: <dbName> <baseDir>";
+        if (theAction == "installMeta") {
+            if (argc != 3) {
+                throw "'installMeta' required one argument: <exportDir>";
+            }
+            validatePath(argv[3]);
+            actions.installMeta(argv[2]);
+        } else if (theAction == "destroyMeta") {
+            actions.destroyMeta();
+        } else if (theAction == "registerDb") {
+            if (argc != 3) {
+                throw "'registerDb' requires one argument: <dbName>";
             }
             validateDbName(argv[2]);
-            validatePath(argv[3]);
-            actions.registerDb(argv[2], argv[3]);
+            actions.registerDb(argv[2]);
         } else if (theAction == "unregisterDb") {
             if (argc != 3) {
                 throw "'unregisterDb' requires argument: <dbName>";

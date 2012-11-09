@@ -30,7 +30,9 @@
 class RunActions {
 public:
     RunActions();
-    int registerDb(string const&, string const&);
+    int installMeta(string const&);
+    int destroyMeta();
+    int registerDb(string const&);
     int unregisterDb(string const&);
     void listDbs();
     void createExportPaths(string const&, string const&);

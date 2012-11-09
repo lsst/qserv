@@ -42,13 +42,14 @@ class Metadata {
 public:
     Metadata(SqlConfig const& qmsConnCfg);
     ~Metadata();
-    bool registerQservedDb(std::string const& dbName, 
-                           std::string const& baseDir,
+    bool installMeta(std::string const&,
+                     SqlConnection&, SqlErrorObject&);
+    bool destroyMeta(SqlConnection&, SqlErrorObject&);
+    bool registerQservedDb(std::string const&, 
                            SqlConnection&, SqlErrorObject&);
     bool unregisterQservedDb(std::string const& dbName,
                              std::string& dbPathToDestroy,
                              SqlConnection&, SqlErrorObject&);
-    bool destroyWorkerMetadata(SqlConnection&, SqlErrorObject&);
     bool showMetadata(SqlConnection&, SqlErrorObject&);
     bool generateExportPaths(SqlConnection&, SqlErrorObject&,
                              std::vector<std::string>& exportPaths);

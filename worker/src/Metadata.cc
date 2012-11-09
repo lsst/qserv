@@ -62,24 +62,54 @@ qWorker::Metadata::~Metadata() {
     delete _qmsConnCfg;
 }
 
+bool
+qWorker::Metadata::installMeta(std::string const& exportDir,
+                               SqlConnection& sqlConn,
+                               SqlErrorObject& errObj) {
+    // create the metadata db and select it
+    if (!sqlConn.createDbAndSelect(_workerMetadataDbName, errObj, true)) {
+        return false;
+    }
+    // Create internal tables
+    std::string sql = "CREATE TABLE Dbs (dbId INT NOT NULL PRIMARY KEY, dbName VARCHAR(255) NOT NULL, dbUuid VARCHAR(255) NOT NULL)";
+    if (!sqlConn.runQuery(sql, errObj)) {
+        return errObj.addErrMsg(string("installMeta failed.") +
+                                "Sql command was: " + sql);
+    }
+    sql = "CREATE TABLE Internals (exportDir VARCHAR(255) NOT NULL)";
+    if (!sqlConn.runQuery(sql, errObj)) {
+        return errObj.addErrMsg(string("installMeta failed. ") +
+                                "Sql command was: " + sql);
+    }
+    sql = "INSERT INTO Internals(exportDir) VALUES('" + exportDir + "')";
+    if (!sqlConn.runQuery(sql, errObj)) {
+        return errObj.addErrMsg(string("installMeta failed. ") +
+                                "Sql command was: " + sql);
+    }
+    return true;
+}
+
+bool
+qWorker::Metadata::destroyMeta(SqlConnection& sqlConn, 
+                               SqlErrorObject& errObj) {
+    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+        errObj.addErrMsg("No metadata found.");
+        return false;
+    }
+    return sqlConn.dropDb(_workerMetadataDbName, errObj);
+    // FIXME: remove export paths
+}
+
 /// called ones for each new database that this worker should serve
 bool
 qWorker::Metadata::registerQservedDb(std::string const& dbName,
-                                     std::string const& baseDir,
                                      SqlConnection& sqlConn,
                                      SqlErrorObject& errObj) {
     // create the metadata db if it does not exist and select it
-    if (!sqlConn.createDbAndSelect(_workerMetadataDbName, errObj, false)) {
-        return errObj.addErrMsg("Failed to create metadata db '"+dbName+"'.");
+    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+        return errObj.addErrMsg("Metadata is not initialized.");
     }
-    // check if table "Dbs" exists, create if it does not
-    if (!sqlConn.tableExists("Dbs", errObj)) {
-        std::string sql = "CREATE TABLE Dbs (dbId INT NOT NULL PRIMARY KEY, dbName VARCHAR(255) NOT NULL, dbUuid VARCHAR(255) NOT NULL, baseDir VARCHAR(255) NOT NULL)";
-        if (!sqlConn.runQuery(sql, errObj)) {
-            return errObj.addErrMsg(string("Failed to register qserved db. ") +
-                                    "Sql command was: " + sql);
-        }
-    } else if ( isRegistered(dbName, sqlConn, errObj) ) {
+    if ( isRegistered(dbName, sqlConn, errObj) ) {
         std::stringstream s;
         s << "Database '" << dbName 
           << "' is already registered on this worker.";
@@ -93,8 +123,8 @@ qWorker::Metadata::registerQservedDb(std::string const& dbName,
                                             "' is not registered in qms"));
     }       
     std::stringstream sql;
-    sql << "INSERT INTO Dbs(dbId, dbName, dbUuid, baseDir) VALUES (" << dbId 
-        << ",'" << dbName << "','" << dbUuid << "','" << baseDir << "'" << ")";
+    sql << "INSERT INTO Dbs(dbId, dbName, dbUuid) VALUES (" << dbId 
+        << ",'" << dbName << "','" << dbUuid << "')";
     return sqlConn.runQuery(sql.str(), errObj);
 }
 
@@ -114,24 +144,14 @@ qWorker::Metadata::unregisterQservedDb(std::string const& dbName,
     if ( !sqlConn.runQuery(sql.str(), errObj) ) {
         return false;
     }
-    std::string baseDir = "dummy"; // FIXME: get from qms
+    std::string exportDir = "dummy"; // FIXME!!!
     
     QservPath p;
     p.setAsCquery(dbName);
     std::stringstream ss;
-    ss << baseDir << "/" << p.path();
+    ss << exportDir << "/" << p.path();
     dbPathToDestroy = ss.str();
     return true;
-}
-
-bool
-qWorker::Metadata::destroyWorkerMetadata(SqlConnection& sqlConn,
-                                         SqlErrorObject& errObj) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
-        errObj.addErrMsg("No metadata found.");
-        return false;
-    }
-    return sqlConn.dropDb(_workerMetadataDbName, errObj);
 }
 
 bool
@@ -141,29 +161,36 @@ qWorker::Metadata::showMetadata(SqlConnection& sqlConn,
         cout << "No metadata found." << endl;
         return true;
     }
-    std::string sql = "SELECT dbId, dbName, dbUuid, baseDir FROM Dbs";
+    std::string sql = "SELECT exportDir FROM Internals";
     SqlResults results;
+    if (!sqlConn.runQuery(sql, results, errObj)) {
+        return errObj.addErrMsg("Failed to execute: " + sql);
+    }
+    std::string exportDir;
+    if (!results.extractFirstValue(exportDir, errObj)) {
+        return errObj.addErrMsg("Failed to fetch exportDir from metadata.");
+    }
+    sql = "SELECT dbId, dbName, dbUuid FROM Dbs";
     if (!sqlConn.runQuery(sql, results, errObj)) {
         return errObj.addErrMsg("Failed to execute: " + sql);
     }
     std::vector<std::string> col1;
     std::vector<std::string> col2;
     std::vector<std::string> col3;
-    std::vector<std::string> col4;
-    if (!results.extractFirst4Columns(col1, col2, col3, col4, errObj)) {
+    if (!results.extractFirst3Columns(col1, col2, col3, errObj)) {
         return errObj.addErrMsg("Failed to receive results from: " + sql);
     }
     if (col1.size() == 0 ) {
         cout << "No databases registered in qserv metadata." << endl;
         return true;
     }
+    cout << "export directory is: " << exportDir << endl;
     cout << "Databases registered in qserv metadata:" << endl;
     int i, s = col1.size();
     for (i=0; i<s ; i++) {
         cout << i+1 <<")  db:      " << col2[i] << "\n"
              << "    id:      " << col1[i] << "\n"
-             << "    dbUuid:  " << col3[i] << "\n"
-             << "    baseDir: " << col4[i] << endl;
+             << "    dbUuid:  " << col3[i] << endl;
     }
     return true;
 }
@@ -190,11 +217,11 @@ qWorker::Metadata::generateExportPaths(SqlConnection& sqlConn,
         std::string dbName = dbs[i];
         /*
         std::string tableList = pts[i];
-        if (!generateExportPathsForDb(baseDir, dbName, tableList, 
+        if (!generateExportPathsForDb(exportDir, dbName, tableList, 
                                       sqlConn, errObj, exportPaths)) {
             std::stringstream ss;
-            ss << "Failed to create export dir for baseDir="
-               << baseDir << ", dbName=" << dbName << ", tableList=" 
+            ss << "Failed to create export dir for exportDir="
+               << exportDir << ", dbName=" << dbName << ", tableList=" 
                << tableList << std::endl;
             return errObj.addErrMsg(ss.str());
         }
@@ -206,7 +233,7 @@ qWorker::Metadata::generateExportPaths(SqlConnection& sqlConn,
 
 bool
 qWorker::Metadata::generateExportPathsForDb(
-                                   std::string const& baseDir,
+                                   std::string const& exportDir,
                                    std::string const& dbName,
                                    SqlConnection& sqlConn,
                                    SqlErrorObject& errObj,
@@ -230,7 +257,7 @@ qWorker::Metadata::generateExportPathsForDb(
     if (!results.extractFirstValue(pTables, errObj)) {
         return errObj.addErrMsg("Failed to receive results from: " + sql);
     }
-    return generateExportPathsForDb(baseDir, dbName, pTables, 
+    return generateExportPathsForDb(exportDir, dbName, pTables, 
                                     sqlConn, errObj, exportPaths);
     */
     return false;
@@ -238,7 +265,7 @@ qWorker::Metadata::generateExportPathsForDb(
 
 bool
 qWorker::Metadata::generateExportPathsForDb(
-                             std::string const& baseDir,
+                             std::string const& exportDir,
                              std::string const& dbName,
                              std::vector<std::string const> const& pTables,
                              SqlConnection& sqlConn,
@@ -265,11 +292,11 @@ qWorker::Metadata::generateExportPathsForDb(
             //return errObj.addErrMsg(ss.str());
         }        
         for (j=0; j<s2 ; j++) {
-            addChunk(extractChunkNo(t[j]), baseDir, dbName, exportPaths);
+            addChunk(extractChunkNo(t[j]), exportDir, dbName, exportPaths);
         }
     } // end foreach t in pTables
     // Always create dummy chunk export regardless of tables. (#2048)
-    addChunk(DUMMYEMPTYCHUNKID, baseDir, dbName, exportPaths);
+    addChunk(DUMMYEMPTYCHUNKID, exportDir, dbName, exportPaths);
     return true;
     */
     return false;
@@ -277,13 +304,13 @@ qWorker::Metadata::generateExportPathsForDb(
 
 void
 qWorker::Metadata::addChunk(int chunkNo, 
-                            std::string const& baseDir,
+                            std::string const& exportDir,
                             std::string const& dbName,
                             std::vector<std::string>& exportPaths) {
     QservPath p;
     p.setAsCquery(dbName, chunkNo);
     std::stringstream ss;
-    ss << baseDir << "/" << p.path() << std::ends;
+    ss << exportDir << "/" << p.path() << std::ends;
     exportPaths.push_back(ss.str());
 }
 
