@@ -105,13 +105,12 @@ BOOST_AUTO_TEST_CASE(Registrations) {
         errObj.reset();
     }
     // clean up
-    //if ( !m.destroyMeta(*qmwSqlConn, errObj) ) {
-    //    BOOST_FAIL(errObj.printErrMsg());
-    //}
+    if ( !m.destroyMeta(*qmwSqlConn, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
 }
 
 BOOST_AUTO_TEST_CASE(PathCreate) {
-    /*
     lsst::qserv::worker::Metadata m(qmsConnCfg);
     qsrv::SqlErrorObject errObj;
     // start clean
@@ -134,7 +133,7 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
     qmwSqlConn->runQuery("create table Source_1234 (i int)", errObj);
     qmwSqlConn->runQuery("create table Source_1235 (i int)", errObj);
     qmwSqlConn->runQuery("create table Exposure_99 (i int)", errObj);
-    */
+
     /*std::vector<std::string> exportPaths;
     if ( !m.generateExportPaths(*qmwSqlConn, errObj, exportPaths)) {
         qmwSqlConn->dropDb("qmw_"+dbN, errObj);
@@ -147,8 +146,8 @@ BOOST_AUTO_TEST_CASE(PathCreate) {
     }
     */
     // final cleanup
-    //qmwSqlConn->dropDb("qmw_"+dbN, errObj);
-    //m.destroyMeta(*qmwSqlConn, errObj);
+    qmwSqlConn->dropDb("qmw_"+dbN, errObj);
+    m.destroyMeta(*qmwSqlConn, errObj);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
