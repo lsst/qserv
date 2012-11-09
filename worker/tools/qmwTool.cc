@@ -162,22 +162,42 @@ RunActions::unregisterDb(string const& dbName) {
 
 void
 RunActions::listDbs() {
-    cout << "listDbs" << endl;
+    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
+    lsst::qserv::SqlErrorObject errObj;
+    lsst::qserv::worker::Metadata m(_qmsConnCfg);
+    vector<string> dbs;
+    if ( !m.getDbList(dbs, sqlConn, errObj) ) {
+        cerr << "Failed to fetch the list" << endl;
+        return;
+    }
+    cout << "Registered databases:\n";
+    vector<string>::const_iterator itr;
+    for ( itr=dbs.begin(); itr!=dbs.end(); ++itr) {
+        cout << "  " << *itr << "\n";
+    }
+    cout << endl;
 }
 
 int
 RunActions::createExportPaths(string const& dbName) {
-    cout << "createExportPaths " << dbName << endl;
     lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
     lsst::qserv::SqlErrorObject errObj;
 
     lsst::qserv::worker::Metadata m(_qmsConnCfg);
     
     vector<string> exportPaths;
-    if ( ! m.generateExportPaths(sqlConn, errObj, exportPaths) ) {
-        cerr << "Failed to generate export paths. " 
-             << errObj.printErrMsg() << endl;
-        return errObj.errNo();
+    if (dbName == "") {
+        if ( !m.generateExportPaths(sqlConn, errObj, exportPaths) ) {
+            cerr << "Failed to generate export paths. " 
+                 << errObj.printErrMsg() << endl;
+            return errObj.errNo();
+        }
+    } else {
+        if (!m.generateExportPathsForDb(dbName, sqlConn, errObj, exportPaths)){
+            cerr << "Failed to generate export paths for db " << dbName 
+                 << ". " << errObj.printErrMsg() << endl;
+            return errObj.errNo();
+        }
     }
     lsst::qserv::worker::QservPathStructure p;
     if ( !p.insert(exportPaths) ) {
@@ -263,11 +283,12 @@ main(int argc, char* argv[]) {
         } else if (theAction == "listDbs") {
             actions.listDbs();
         } else if (theAction == "createExportPaths") {
-            if (argc != 3) {
-                throw string("'createExportPaths' requires argument: <dbName>");                
+            string dbName = "";
+            if (argc == 3) {
+                dbName = argv[2];
+                validateDbName(dbName);
             }
-            validateDbName(argv[2]);
-            actions.createExportPaths(argv[2]);
+            actions.createExportPaths(dbName);
         } else {
             stringstream s;
             s << "Unsupported command: '" << argv[1] << "'. " 

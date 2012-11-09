@@ -236,7 +236,7 @@ SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     if (!row) {
         return errObj.addErrMsg("Expecting one row, found no rows");
     }
-    ret = *(row[0]);
+    ret = (row[0]);
     freeResults();
     return true;
 }

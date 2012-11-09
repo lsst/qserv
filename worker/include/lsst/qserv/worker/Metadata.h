@@ -48,25 +48,33 @@ public:
                            SqlErrorObject&);
     bool unregisterQservedDb(std::string const&, std::string&,
                              SqlConnection&, SqlErrorObject&);
+    bool getDbList(std::vector<std::string>&, SqlConnection&, SqlErrorObject&);
     bool showMetadata(SqlConnection&, SqlErrorObject&);
     bool generateExportPaths(SqlConnection&, SqlErrorObject&,
                              std::vector<std::string>& exportPaths);
-    bool generateExportPathsForDb(std::string const&, std::string const&,
+    bool generateExportPathsForDb(std::string const&, // dbName
                                   SqlConnection&, SqlErrorObject&,
                                   std::vector<std::string>&);
 
 private:
-    bool generateExportPathsForDb(std::string const&, std::string const&,
-                                  std::vector<std::string const> const&,
-                                  SqlConnection&, SqlErrorObject&,
-                                  std::vector<std::string>&);
     static int extractChunkNo(std::string const&);
     bool isRegistered(std::string const&, SqlConnection&, SqlErrorObject&);
     void addChunk(int, std::string const&, std::string const&,
                   std::vector<std::string>&);
+    bool generateExportPathsForDb(std::string const&,  // exportBaseDir
+                                  std::string const&,  // dbName
+                                  SqlConnection&, SqlErrorObject&,
+                                  std::vector<std::string>&);
     bool getExportBaseDir(std::string&, SqlConnection&, SqlErrorObject&);
-    bool getDbInfoFromQms(std::string const&, int&, 
-                          std::string&, SqlErrorObject&);
+    bool getInfoAboutAllDbs(std::vector<std::string>&, // dbIds
+                            std::vector<std::string>&, // dbNames
+                            std::vector<std::string>&, // dbUuids
+                            SqlConnection&,
+                            SqlErrorObject&);
+    bool getDbInfoFromQms(std::string const&,  // dbName
+                          int&,                // dbId
+                          std::string&,        // dbUuid
+                          SqlErrorObject&);
     bool getPartTablesFromQms(std::string const&, std::vector<std::string>&,
                               SqlErrorObject&);
 
