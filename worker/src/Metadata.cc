@@ -122,7 +122,7 @@ qWorker::Metadata::registerQservedDb(string const& dbName,
     if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         return errObj.addErrMsg("Metadata is not initialized.");
     }
-    if ( isRegistered(dbName, sqlConn, errObj) ) {
+    if ( _isRegistered(dbName, sqlConn, errObj) ) {
         stringstream s;
         s << "Database '" << dbName 
           << "' is already registered on this worker.";
@@ -131,9 +131,9 @@ qWorker::Metadata::registerQservedDb(string const& dbName,
     }
     int dbId = 0;
     string dbUuid = "";
-    if (!getDbInfoFromQms(dbName, dbId, dbUuid, errObj)) {
+    if (!_getDbInfoFromQms(dbName, dbId, dbUuid, errObj)) {
         return errObj.addErrMsg(string("Database '" + dbName + 
-                                            "' is not registered in qms"));
+                                       "' is not registered in qms"));
     }       
     stringstream sql;
     sql << "INSERT INTO Dbs(dbId, dbName, dbUuid) VALUES (" << dbId 
@@ -152,7 +152,7 @@ qWorker::Metadata::unregisterQservedDb(string const& dbName,
     if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         return errObj.addErrMsg("Failed to connect to metadata db");
     }
-    if ( !isRegistered(dbName, sqlConn, errObj) ) {
+    if ( !_isRegistered(dbName, sqlConn, errObj) ) {
         return errObj.addErrMsg("Db " + dbName + " is not registered.");
     }
     stringstream sql;
@@ -161,7 +161,7 @@ qWorker::Metadata::unregisterQservedDb(string const& dbName,
         return false;
     }
     string exportBaseDir;
-    if ( !getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
+    if ( !_getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
         return false;
     }
     QservPath p;
@@ -185,7 +185,7 @@ qWorker::Metadata::showMetadata(SqlConnection& sqlConn,
     }
     // get/print exportBaseDir
     string exportBaseDir;
-    if ( !getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
+    if ( !_getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
         return false;
     }
     cout << "Export base directory is: " << exportBaseDir << endl;
@@ -226,14 +226,14 @@ qWorker::Metadata::generateExportPaths(SqlConnection& sqlConn,
         return errObj.addErrMsg("Failed to receive results from: " + sql);
     }
     string exportBaseDir;
-    if ( !getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
+    if ( !_getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
         return false;
     }
     int i, s = dbs.size();
     for (i=0; i<s ; i++) {
         string dbName = dbs[i];
-        if (!generateExportPathsForDb(exportBaseDir, dbName, sqlConn, errObj,
-                                      exportPaths)) {
+        if (!_generateExportPathsForDb(exportBaseDir, dbName, sqlConn, errObj,
+                                       exportPaths)) {
             stringstream ss;
             ss << "Failed to create export paths. ExportBaseDir="
                << exportBaseDir << ", dbName=" << dbName << std::endl;
@@ -256,18 +256,18 @@ qWorker::Metadata::generateExportPathsForDb(
         return false;
     }
     string exportBaseDir;
-    if ( !getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
+    if ( !_getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
         return false;
     }
-    return generateExportPathsForDb(exportBaseDir, dbName, 
-                                    sqlConn, errObj, exportPaths);
+    return _generateExportPathsForDb(exportBaseDir, dbName, 
+                                     sqlConn, errObj, exportPaths);
 }
 
 // ****************************************************************************
-// ***** generateExportPathsForDb (private, exportBaseDir passed)
+// ***** _generateExportPathsForDb (private, exportBaseDir passed)
 // ****************************************************************************
 bool
-qWorker::Metadata::generateExportPathsForDb(
+qWorker::Metadata::_generateExportPathsForDb(
                                    string const& exportBaseDir,
                                    string const& dbName,
                                    SqlConnection& sqlConn,
@@ -276,12 +276,12 @@ qWorker::Metadata::generateExportPathsForDb(
     if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         return false;
     }
-    if ( !isRegistered(dbName, sqlConn, errObj) ) {
+    if ( !_isRegistered(dbName, sqlConn, errObj) ) {
         return errObj.addErrMsg("Database: " + dbName + " is not registered "
                                 "in qserv worker metadata.");
     }
     vector<string> partTables;
-    if ( !getPartTablesFromQms(dbName, partTables, errObj) ) {
+    if ( !_getPartTablesFromQms(dbName, partTables, errObj) ) {
         return false;
     }
     int i, s = partTables.size();
@@ -302,13 +302,51 @@ qWorker::Metadata::generateExportPathsForDb(
             cout << ss.str() << endl;
             // FIXME: is this an error?
             //return errObj.addErrMsg(ss.str());
-        }        
+        }
         for (j=0; j<s2 ; j++) {
-            addChunk(extractChunkNo(t[j]), exportBaseDir, dbName, exportPaths);
+            _addChunk(_extractChunkNo(t[j]), exportBaseDir, 
+                      dbName, exportPaths);
         }
     } // end foreach t in partTables
     // Always create dummy chunk export regardless of tables. (#2048)
-    addChunk(DUMMYEMPTYCHUNKID, exportBaseDir, dbName, exportPaths);
+    _addChunk(DUMMYEMPTYCHUNKID, exportBaseDir, dbName, exportPaths);
+    return true;
+}
+
+// ****************************************************************************
+// ***** _getTableChunksForDb
+// ****************************************************************************
+/// Retrieves from the database list of all chunks for a given table.
+bool
+qWorker::Metadata::_getTableChunksForDb(string const& dbName,
+                                        SqlConnection& sqlConn,
+                                        SqlErrorObject& errObj,
+                                        vector<TableChunks>& allChunks) {
+    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+        return false;
+    }
+    if ( !_isRegistered(dbName, sqlConn, errObj) ) {
+        return errObj.addErrMsg("Database: " + dbName + " is not registered "
+                                "in qserv worker metadata.");
+    }
+    vector<string> partTables;
+    if ( !_getPartTablesFromQms(dbName, partTables, errObj) ) {
+        return false;
+    }
+    vector<string>::const_iterator itr;
+    for (itr=partTables.begin(); itr!=partTables.end(); ++itr) {
+        TableChunks tc;
+        tc._tableName = *itr;
+        if (!sqlConn.listTables(tc._chunksInDb, errObj, 
+                                tc._tableName + "_", dbName)) {
+            stringstream ss;
+            ss << "Failed to list tables for db=" << dbName
+               << ", prefix=" << *itr << "\n";
+            allChunks.clear();
+            return errObj.addErrMsg(ss.str());
+        }
+        allChunks.push_back(tc);
+    }
     return true;
 }
 
@@ -316,10 +354,10 @@ qWorker::Metadata::generateExportPathsForDb(
 // ***** addChunk
 // ****************************************************************************
 void
-qWorker::Metadata::addChunk(int chunkNo, 
-                            string const& exportBaseDir,
-                            string const& dbName,
-                            vector<string>& exportPaths) {
+qWorker::Metadata::_addChunk(int chunkNo, 
+                             string const& exportBaseDir,
+                             string const& dbName,
+                             vector<string>& exportPaths) {
     QservPath p;
     p.setAsCquery(dbName, chunkNo);
     stringstream ss;
@@ -331,7 +369,7 @@ qWorker::Metadata::addChunk(int chunkNo,
 // ***** extractChunkNo
 // ****************************************************************************
 int
-qWorker::Metadata::extractChunkNo(string const& str) {
+qWorker::Metadata::_extractChunkNo(string const& str) {
     int s = str.size();
     string::size_type cursor = str.find_last_of('_', s);
     if ( cursor < 1 ) {
@@ -344,13 +382,13 @@ qWorker::Metadata::extractChunkNo(string const& str) {
 }
 
 // ****************************************************************************
-// ***** isRegistered
+// ***** _isRegistered
 // ****************************************************************************
 bool
-qWorker::Metadata::isRegistered(string const& dbName,
-                                SqlConnection& sqlConn,
-                                SqlErrorObject& errObj) {
-    string sql = "SELECT COUNT(*) FROM Dbs WHERE dbName='"+dbName+"'";
+qWorker::Metadata::_isRegistered(string const& dbName,
+                                 SqlConnection& sqlConn,
+                                 SqlErrorObject& errObj) {
+    string sql = "SELECT COUNT(*) FROM Dbs WHERE dbName='" + dbName + "'";
     
     SqlResults results;
     if (!sqlConn.runQuery(sql, results, errObj)) {
@@ -364,13 +402,13 @@ qWorker::Metadata::isRegistered(string const& dbName,
 }
 
 // ****************************************************************************
-// ***** getExportBaseDir
+// ***** _getExportBaseDir
 // ****************************************************************************
 /// Gets exportBaseDir for this worker.
 bool
-qWorker::Metadata::getExportBaseDir(string& exportBaseDir,
-                                    SqlConnection& sqlConn,
-                                    SqlErrorObject& errObj) {
+qWorker::Metadata::_getExportBaseDir(string& exportBaseDir,
+                                     SqlConnection& sqlConn,
+                                     SqlErrorObject& errObj) {
     if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         return false;
     }
@@ -386,15 +424,15 @@ qWorker::Metadata::getExportBaseDir(string& exportBaseDir,
 }
 
 // ****************************************************************************
-// ***** getInfoAboutAllDbs
+// ***** _getInfoAboutAllDbs
 // ****************************************************************************
 /// Gets all info about all qserved databases for this worker.
 bool
-qWorker::Metadata::getInfoAboutAllDbs(vector<string>& dbIds,
-                                      vector<string>& dbNames,
-                                      vector<string>& dbUuids,
-                                      SqlConnection& sqlConn,
-                                      SqlErrorObject& errObj) {
+qWorker::Metadata::_getInfoAboutAllDbs(vector<string>& dbIds,
+                                       vector<string>& dbNames,
+                                       vector<string>& dbUuids,
+                                       SqlConnection& sqlConn,
+                                       SqlErrorObject& errObj) {
     if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
         return false;
     }
@@ -419,17 +457,17 @@ qWorker::Metadata::getDbList(vector<string>& dbNames,
                              SqlConnection& sqlConn,
                              SqlErrorObject& errObj) {
     vector<string> v1, v2;
-    return getInfoAboutAllDbs(v1, dbNames, v2, sqlConn, errObj);
+    return _getInfoAboutAllDbs(v1, dbNames, v2, sqlConn, errObj);
 }
     
 // ****************************************************************************
-// ***** getDbInfoFromQms
+// ***** _getDbInfoFromQms
 // ****************************************************************************
 bool
-qWorker::Metadata::getDbInfoFromQms(string const& dbName,
-                                    int& dbId, 
-                                    string& dbUuid, 
-                                    SqlErrorObject& errObj) {
+qWorker::Metadata::_getDbInfoFromQms(string const& dbName,
+                                     int& dbId, 
+                                     string& dbUuid, 
+                                     SqlErrorObject& errObj) {
     // FIXME: todo: contact qms and retrieve dbId and dbUuid for the
     // database called 'dbName'
     static int nextId = 100;
@@ -439,12 +477,12 @@ qWorker::Metadata::getDbInfoFromQms(string const& dbName,
 }
 
 // ****************************************************************************
-// ***** getPartTablesFromQms
+// ***** _getPartTablesFromQms
 // ****************************************************************************
 bool 
-qWorker::Metadata::getPartTablesFromQms(string const& dbName,
-                                        vector<string>& partTables,
-                                        SqlErrorObject& errObj) {
+qWorker::Metadata::_getPartTablesFromQms(string const& dbName,
+                                         vector<string>& partTables,
+                                         SqlErrorObject& errObj) {
     // FIXME: todo: contact qms and retrieve partTables for dbName
     partTables.push_back("Object");
     return true;
