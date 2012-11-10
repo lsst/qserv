@@ -1,0 +1,7 @@
+./tools/qmwTool destroyMeta
+./tools/qmwTool installMeta /u1/
+./tools/qmwTool registerDb qmw_Summer2012
+./tools/qmwTool createExportPaths qmw_Summer2012
+./tools/qmwTool destroyMeta
+
+
