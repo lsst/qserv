@@ -19,18 +19,18 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  *
- * Qserv Metadata Worker tool
+ * Qserv Metadata Worker tool. 
+ * Parses arguments and does basic validation, fetches connection info
+ * from ascii file, instructs Metadata object what to do and prints
+ * success/failure status.
  */
  
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <stdlib.h> // atoi
+#include <vector>
 
-#include "lsst/qserv/SqlConnection.hh"
-#include "lsst/qserv/worker/Config.h"
-#include "lsst/qserv/worker/Metadata.h"
-#include "lsst/qserv/worker/QservPathStructure.h"
+#include "lsst/qserv/SqlConfig.hh"
 
 using std::cout;
 using std::cerr;
@@ -44,8 +44,9 @@ using lsst::qserv::SqlConfig;
 
 #include "qmwTool.h"
 
-// keep in schema: dbName, dbUuid, exportDir
-
+// ****************************************************************************
+// ***** help
+// ****************************************************************************
 int
 printHelp() {
     cout
@@ -88,91 +89,65 @@ printHelp() {
     return 0;
 }
 
-int
-printErrMsg(string const& msg, int err) {
-    cout << "qmwTool: " << msg << "\n" 
-         << "Try `qmwTool -h` for more information.\n";
-    return err;
-}
-
-RunActions::RunActions() 
-{
+// ****************************************************************************
+// ***** processing actions
+// ****************************************************************************
+RunActions::RunActions() {
     string fName = getenv("HOME");
     fName += "/.qmwadm";
-    _qmsConnCfg.initFromFile(fName, "qmsHost", "qmsPort", "qmsUser",
-                             "qmsPass", "qmsDb", "", true);
-    _qmwConnCfg.initFromFile(fName, "", "", "qmwUser", 
-                             "qmwPass", "", "qmwMySqlSocket", true);
-    _qmsConnCfg.dbName = "qms_" + _qmsConnCfg.dbName;
-    _qmsConnCfg.printSelf("qms");
-    _qmwConnCfg.printSelf("qmw");
+    SqlConfig sC, wC; // server and worker connection configs
+    sC.initFromFile(fName, "qmsHost", "qmsPort", "qmsUser", "qmsPass",
+                    "qmsDb", "", true);
+    wC.initFromFile(fName, "", "", "qmwUser", "qmwPass", "", 
+                    "qmwMySqlSocket", true);
+    sC.dbName = "qms_" + sC.dbName;
+    sC.printSelf("qms");
+    wC.printSelf("qmw");
+    if (!_m.init(sC, wC)) {
+        throw _m.getLastError();
+    }
 }
 
-int RunActions::installMeta(string const& exportDir) {
-    cout << "installMeta, exportDir = " << exportDir << endl;
-    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
-    lsst::qserv::SqlErrorObject errObj;
-    lsst::qserv::worker::Metadata m(_qmsConnCfg);
-    if ( !m.installMeta(exportDir, sqlConn, errObj) ) {
-        cerr << "Failed to install metadata. " << errObj.printErrMsg() << endl;
-        return errObj.errNo();
+void
+RunActions::installMeta(string const& exportDir) {
+    _validatePath(exportDir);
+    if ( !_m.installMeta(exportDir) ) {
+        throw _m.getLastError();
     }
     cout << "Metadata successfully installed." << endl;
-    return 0;
 }
 
-int RunActions::destroyMeta() {
-    cout << "destroyMeta" << endl;
-    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
-    lsst::qserv::SqlErrorObject errObj;
-    lsst::qserv::worker::Metadata m(_qmsConnCfg);
-    if ( !m.destroyMeta(sqlConn, errObj) ) {
-        cerr << "Failed to destroy metadata. " << errObj.printErrMsg() << endl;
-        return errObj.errNo();
+void
+RunActions::destroyMeta() {
+    if ( !_m.destroyMeta() ) {
+        throw _m.getLastError();
     }
     cout << "Metadata successfully destroyed." << endl;
-    return 0;
 }
 
-int
+void
 RunActions::registerDb(string const& dbName) {
-    cout << "registering db " << dbName << endl;
-    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
-    lsst::qserv::SqlErrorObject errObj;
-    lsst::qserv::worker::Metadata m(_qmsConnCfg);
-    if ( !m.registerQservedDb(dbName, sqlConn, errObj) ) {
-        cerr << "Failed to register db. " << errObj.printErrMsg() << endl;
-        return errObj.errNo();
+    _validateDbName(dbName);
+    if ( !_m.registerQservedDb(dbName) ) {
+        throw _m.getLastError();
     }
     cout << "Database " << dbName << " successfully registered." << endl;
-    return 0;
 }
 
-int
+void
 RunActions::unregisterDb(string const& dbName) {
-    cout << "unregistering db " << dbName << endl;
-    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
-    lsst::qserv::SqlErrorObject errObj;
-    lsst::qserv::worker::Metadata m(_qmsConnCfg);
-    std::string dbPathToDestroy;
-    if ( !m.unregisterQservedDb(dbName, dbPathToDestroy, sqlConn, errObj) ) {
-        cerr << "Failed to unregister db. " << errObj.printErrMsg() << endl;
-        return errObj.errNo();
+    _validateDbName(dbName);
+    if ( !_m.unregisterQservedDb(dbName) ) {
+        throw _m.getLastError();
     }
-    lsst::qserv::worker::QservPathStructure::destroy(dbPathToDestroy);
     cout << "Database " << dbName << " successfully unregistered." << endl;
-    return 0;
 }
 
 void
 RunActions::listDbs() {
-    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
-    lsst::qserv::SqlErrorObject errObj;
-    lsst::qserv::worker::Metadata m(_qmsConnCfg);
     vector<string> dbs;
-    if ( !m.getDbList(dbs, sqlConn, errObj) ) {
-        cerr << "Failed to fetch the list" << endl;
-        return;
+    if ( !_m.getDbList(dbs) ) {
+        throw _m.getLastError();
     }
     cout << "Registered databases:\n";
     vector<string>::const_iterator itr;
@@ -182,46 +157,24 @@ RunActions::listDbs() {
     cout << endl;
 }
 
-int
+void
 RunActions::createExportPaths(string const& dbName) {
-    lsst::qserv::SqlConnection sqlConn(_qmwConnCfg);
-    lsst::qserv::SqlErrorObject errObj;
-
-    lsst::qserv::worker::Metadata m(_qmsConnCfg);
-    
-    vector<string> exportPaths;
-    if (dbName == "") {
-        if ( !m.generateExportPaths(sqlConn, errObj, exportPaths) ) {
-            cerr << "Failed to generate export paths. " 
-                 << errObj.printErrMsg() << endl;
-            return errObj.errNo();
-        }
-    } else {
-        if (!m.generateExportPathsForDb(dbName, sqlConn, errObj, exportPaths)){
-            cerr << "Failed to generate export paths for db " << dbName 
-                 << ". " << errObj.printErrMsg() << endl;
-            return errObj.errNo();
-        }
+    if (dbName != "") {
+        _validateDbName(dbName);
     }
-    lsst::qserv::worker::QservPathStructure p;
-    if ( !p.insert(exportPaths) ) {
-        cerr << "Failed to insert export paths. "
-             << errObj.printErrMsg() << endl;
-        return errObj.errNo();
-    }
-    if ( !p.persist() ) {
-        cerr << "Failed to persist export paths. " 
-             << errObj.printErrMsg() << endl;
-        return errObj.errNo();
+    if (!_m.createExportPaths(dbName)) {
+        throw _m.getLastError();
     }
     cout << "Export paths successfully created for all " 
          << "databases registered in qserv metadata." << endl;
-    return 0;
 }
 
+// ****************************************************************************
+// ***** basic validation of arguments
+// ****************************************************************************
 // validates database name. Only a-z, A-Z, 0-9 and '_' are allowed
 void
-validateDbName(string const& name) {
+RunActions::_validateDbName(string const& name) {
     const string validChars = 
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
     size_t found = name.find_first_not_of(validChars);
@@ -234,7 +187,7 @@ validateDbName(string const& name) {
 }
 
 void
-validatePath(string const& path) {
+RunActions::_validatePath(string const& path) {
     const string validChars = 
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_/";
     size_t found = path.find_first_not_of(validChars);
@@ -246,10 +199,12 @@ validatePath(string const& path) {
     }
 }
 
+// ****************************************************************************
+// ***** main
+// ****************************************************************************
 int
 main(int argc, char* argv[]) {
     if ( argc < 2 ) {
-        cout << "argc is " << argc << endl;
         return printHelp();
     }
     int i;
@@ -268,7 +223,6 @@ main(int argc, char* argv[]) {
             if (argc != 3) {
                 throw string("'installMeta' requires argument: <exportDir>");
             }
-            validatePath(argv[2]);
             actions.installMeta(argv[2]);
         } else if (theAction == "destroyMeta") {
             actions.destroyMeta();
@@ -276,30 +230,20 @@ main(int argc, char* argv[]) {
             if (argc != 3) {
                 throw string("'registerDb' requires argument: <dbName>");
             }
-            validateDbName(argv[2]);
             actions.registerDb(argv[2]);
         } else if (theAction == "unregisterDb") {
             if (argc != 3) {
                 throw string("'unregisterDb' requires argument: <dbName>");
             }
-            validateDbName(argv[2]);
             actions.unregisterDb(argv[2]);
         } else if (theAction == "listDbs") {
             actions.listDbs();
         } else if (theAction == "createExportPaths") {
-            string dbName = "";
-            if (argc == 3) {
-                dbName = argv[2];
-                validateDbName(dbName);
-            }
-            actions.createExportPaths(dbName);
+            if (argc == 3) actions.createExportPaths(argv[2]);
+            else           actions.createExportPaths("");
         } else if (theAction == "refreshExportPaths") {
-            string dbName = "";
-            if (argc == 3) {
-                dbName = argv[2];
-                validateDbName(dbName);
-            }
-            // FIXME actions.refreshExportPaths(dbName);        
+            //if (argc == 3) actions.refreshExportPaths(argv[2]); FIXME
+            //else           actions.refreshExportPaths("");      FIXME
         } else {
             stringstream s;
             s << "Unsupported command: '" << argv[1] << "'. " 

@@ -26,12 +26,12 @@
 #include <string>
 #include <vector>
 
+#include "lsst/qserv/SqlConnection.hh"
+
 namespace lsst {
 namespace qserv {
     // Forward
-    class SqlConnection;
     class SqlConfig;
-    class SqlErrorObject;
 }}
 
 namespace lsst {
@@ -40,57 +40,53 @@ namespace worker {
 
 class Metadata {
 public:
-    Metadata(SqlConfig const&);
+    Metadata();
     ~Metadata();
-    bool installMeta(std::string const&, SqlConnection&, SqlErrorObject&);
-    bool destroyMeta(SqlConnection&, SqlErrorObject&);
-    bool registerQservedDb(std::string const&, SqlConnection&,
-                           SqlErrorObject&);
-    bool unregisterQservedDb(std::string const&, std::string&,
-                             SqlConnection&, SqlErrorObject&);
-    bool getDbList(std::vector<std::string>&, SqlConnection&, SqlErrorObject&);
-    bool showMetadata(SqlConnection&, SqlErrorObject&);
-    bool generateExportPaths(SqlConnection&, SqlErrorObject&,
-                             std::vector<std::string>& exportPaths);
-    bool generateExportPathsForDb(std::string const&, // dbName
-                                  SqlConnection&, SqlErrorObject&,
-                                  std::vector<std::string>&);
+    bool init(SqlConfig const&, // qmsConnCfg, 
+              SqlConfig const&); // qmwConnCfg
+    std::string getLastError() const;
+    bool installMeta(std::string const&);
+    bool destroyMeta();
+    bool registerQservedDb(std::string const&);
+    bool unregisterQservedDb(std::string const&);
+    bool createExportPaths(std::string const&);
+    bool getDbList(std::vector<std::string>&);
+    bool showMetadata();
+
     struct TableChunks {
         std::string _tableName;
         std::vector<std::string> _chunksInDb;
     };
 
 private:
-    bool _destroyExportPathWithPrefix(SqlConnection&, SqlErrorObject&);
+    bool _unregisterQservedDb(std::string const&);
+    bool _destroyExportPathWithPrefix();
+    bool _destroyExportPath4Db(std::string const&);
+    bool _generateExportPaths(std::vector<std::string>& exportPaths);
     static int _extractChunkNo(std::string const&);
-    bool _isRegistered(std::string const&, SqlConnection&, SqlErrorObject&);
+    bool _isRegistered(std::string const&);
     void _addChunk(int, std::string const&, std::string const&,
                    std::vector<std::string>&);
     bool _generateExportPathsForDb(std::string const&,    // exportBaseDir
                                    std::string const&,    // dbName
-                                   SqlConnection&, SqlErrorObject&,
                                    std::vector<std::string>&);
     bool _getTableChunksForDb(std::string const&,         // dbName
-                              SqlConnection&, SqlErrorObject&,
                               std::vector<TableChunks>&);
-    bool _getExportBaseDir(std::string&, SqlConnection&, SqlErrorObject&);
-    bool _getExportPathWithPrefix(std::string&,           // the path to be set
-                                  SqlConnection&, SqlErrorObject&);
+    bool _getExportBaseDir(std::string&);
+    bool _getExportPathWithPrefix(std::string&);          // the path to be set
     bool _getInfoAboutAllDbs(std::vector<std::string>&,   // dbIds
                              std::vector<std::string>&,   // dbNames
-                             std::vector<std::string>&,   // dbUuids
-                             SqlConnection&,
-                             SqlErrorObject&);
+                             std::vector<std::string>&);  // dbUuids
     bool _getDbInfoFromQms(std::string const&,            // dbName
                            int&,                          // dbId
-                           std::string&,                  // dbUuid
-                           SqlErrorObject&);
+                           std::string&);                 // dbUuid
     bool _getPartTablesFromQms(std::string const&,        // dbName
-                               std::vector<std::string>&, // partTables
-                               SqlErrorObject&);
+                               std::vector<std::string>&);// partTables
 
 private:
     std::string _workerMetadataDbName;
+    SqlConnection _sqlConn;
+    SqlErrorObject _errObj;
     SqlConfig* _qmsConnCfg; // host, port, user, pass for qms
 };
 

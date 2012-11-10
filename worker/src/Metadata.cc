@@ -21,21 +21,15 @@
  */
 
 #include "lsst/qserv/QservPath.hh"
-#include "lsst/qserv/SqlConnection.hh"
-#include "lsst/qserv/SqlErrorObject.hh"
-#include "lsst/qserv/worker/Metadata.h"
 #include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/worker/Metadata.h"
+#include "lsst/qserv/worker/QservPathStructure.h"
 
 #include <iostream>
 #include <sstream>
 #include <string>
 
 namespace qWorker = lsst::qserv::worker;
-
-using lsst::qserv::SqlConnection;
-using lsst::qserv::SqlErrorObject;
-using lsst::qserv::SqlResults;
-using qWorker::hashQuery;
 
 using std::cout;
 using std::endl;
@@ -47,49 +41,59 @@ using std::vector;
 const int DUMMYEMPTYCHUNKID = 1234567890;
 
 // ****************************************************************************
-// ***** Metadata constructor(s) and destructor
+// ***** Metadata constructor(s), init, destructor, getError
 // ****************************************************************************
-qWorker::Metadata::Metadata(SqlConfig const& qmsConnCfg) {
+qWorker::Metadata::Metadata() : _qmsConnCfg(0) {
+}
+
+bool
+qWorker::Metadata::init(SqlConfig const& qmsConnCfg, 
+                        SqlConfig const& qmwConnCfg) {
     _qmsConnCfg = new SqlConfig(qmsConnCfg);
     _workerMetadataDbName = qmsConnCfg.dbName;
     if ( 0 != _workerMetadataDbName.compare(0, 4, "qms_")) {
-        stringstream s;
-        s << "Unexpected qms metadata database name: '"
-          << _workerMetadataDbName << "', should start with 'qms_'";
-        throw s.str();
+        std::stringstream ss;
+        ss << "Unexpected qms metadata database name: '"
+           << _workerMetadataDbName << "', should start with 'qms_'";
+        return _errObj.addErrMsg(ss.str());
     }
     _workerMetadataDbName[2] = 'w'; // 'qms_' --> 'qmw_'
+    _sqlConn.init(qmwConnCfg);
+    return true;
 }
 
 qWorker::Metadata::~Metadata() {
     delete _qmsConnCfg;
 }
 
+string
+qWorker::Metadata::getLastError() const {
+    return _errObj.errMsg();
+}
+
 // ****************************************************************************
 // ***** installMeta
 // ****************************************************************************
 bool
-qWorker::Metadata::installMeta(string const& exportBaseDir,
-                               SqlConnection& sqlConn,
-                               SqlErrorObject& errObj) {
+qWorker::Metadata::installMeta(string const& exportBaseDir) {
     // create the metadata db and select it
-    if (!sqlConn.createDbAndSelect(_workerMetadataDbName, errObj, true)) {
+    if (!_sqlConn.createDbAndSelect(_workerMetadataDbName, _errObj, true)) {
         return false;
     }
     // Create internal tables
     string sql = "CREATE TABLE Dbs (dbId INT NOT NULL PRIMARY KEY, dbName VARCHAR(255) NOT NULL, dbUuid VARCHAR(255) NOT NULL)";
-    if (!sqlConn.runQuery(sql, errObj)) {
-        return errObj.addErrMsg(string("installMeta failed.") +
+    if (!_sqlConn.runQuery(sql, _errObj)) {
+        return _errObj.addErrMsg(string("installMeta failed.") +
                                 "Sql command was: " + sql);
     }
     sql = "CREATE TABLE Internals (exportBaseDir VARCHAR(255) NOT NULL)";
-    if (!sqlConn.runQuery(sql, errObj)) {
-        return errObj.addErrMsg(string("installMeta failed. ") +
+    if (!_sqlConn.runQuery(sql, _errObj)) {
+        return _errObj.addErrMsg(string("installMeta failed. ") +
                                 "Sql command was: " + sql);
     }
     sql = "INSERT INTO Internals(exportBaseDir) VALUES('"+exportBaseDir+"')";
-    if (!sqlConn.runQuery(sql, errObj)) {
-        return errObj.addErrMsg(string("installMeta failed. ") +
+    if (!_sqlConn.runQuery(sql, _errObj)) {
+        return _errObj.addErrMsg(string("installMeta failed. ") +
                                 "Sql command was: " + sql);
     }
     return true;
@@ -100,16 +104,15 @@ qWorker::Metadata::installMeta(string const& exportBaseDir,
 // ****************************************************************************
 /// Destroys all metadata for a given worker
 bool
-qWorker::Metadata::destroyMeta(SqlConnection& sqlConn, 
-                               SqlErrorObject& errObj) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
-        errObj.addErrMsg("No metadata found.");
+qWorker::Metadata::destroyMeta() {
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
+        _errObj.addErrMsg("No metadata found.");
         return false;
     }
-    if (!_destroyExportPathWithPrefix(sqlConn, errObj)) {
+    if (!_destroyExportPathWithPrefix()) {
         return false;
     }       
-    return sqlConn.dropDb(_workerMetadataDbName, errObj);
+    return _sqlConn.dropDb(_workerMetadataDbName, _errObj);
 }
 
 // ****************************************************************************
@@ -117,60 +120,70 @@ qWorker::Metadata::destroyMeta(SqlConnection& sqlConn,
 // ****************************************************************************
 /// called ones for each new database that this worker should serve
 bool
-qWorker::Metadata::registerQservedDb(string const& dbName,
-                                     SqlConnection& sqlConn,
-                                     SqlErrorObject& errObj) {
+qWorker::Metadata::registerQservedDb(string const& dbName) {
     // create the metadata db if it does not exist and select it
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
-        return errObj.addErrMsg("Metadata is not initialized.");
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
+        return _errObj.addErrMsg("Metadata is not initialized.");
     }
-    if ( _isRegistered(dbName, sqlConn, errObj) ) {
-        stringstream s;
-        s << "Database '" << dbName 
-          << "' is already registered on this worker.";
-        cout << s.str() << endl;
-        return errObj.addErrMsg(s.str());
+    if ( _isRegistered(dbName) ) {
+        stringstream ss;
+        ss << "Database '" << dbName 
+           << "' is already registered on this worker.";
+        return _errObj.addErrMsg(ss.str());
     }
     int dbId = 0;
     string dbUuid = "";
-    if (!_getDbInfoFromQms(dbName, dbId, dbUuid, errObj)) {
-        return errObj.addErrMsg(string("Database '" + dbName + 
+    if (!_getDbInfoFromQms(dbName, dbId, dbUuid)) {
+        return _errObj.addErrMsg(string("Database '" + dbName + 
                                        "' is not registered in qms"));
     }       
     stringstream sql;
     sql << "INSERT INTO Dbs(dbId, dbName, dbUuid) VALUES (" << dbId 
         << ",'" << dbName << "','" << dbUuid << "')";
-    return sqlConn.runQuery(sql.str(), errObj);
+    return _sqlConn.runQuery(sql.str(), _errObj);
 }
 
 // ****************************************************************************
 // ***** unregisterQservedDb
 // ****************************************************************************
 bool
-qWorker::Metadata::unregisterQservedDb(string const& dbName,
-                                       string& dbPathToDestroy,
-                                       SqlConnection& sqlConn,
-                                       SqlErrorObject& errObj) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
-        return errObj.addErrMsg("Failed to connect to metadata db");
-    }
-    if ( !_isRegistered(dbName, sqlConn, errObj) ) {
-        return errObj.addErrMsg("Db " + dbName + " is not registered.");
-    }
-    stringstream sql;
-    sql << "DELETE FROM Dbs WHERE dbName='" << dbName << "'";
-    if ( !sqlConn.runQuery(sql.str(), errObj) ) {
+qWorker::Metadata::unregisterQservedDb(string const& dbName) {
+    if (!_unregisterQservedDb(dbName)) {
         return false;
     }
-    string exportBaseDir;
-    if ( !_getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
-        return false;
+    return _destroyExportPath4Db(dbName);
+}
+
+// ****************************************************************************
+// ***** createExportPaths
+// ****************************************************************************
+/// If dbName is not set, it creates paths for all databases
+bool 
+qWorker::Metadata::createExportPaths(std::string const& dbName) {
+    vector<string> exportPaths;
+    if (dbName == "") {
+        if ( !_generateExportPaths(exportPaths) ) {
+            return false;
+        }
+    } else {
+        if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
+            return false;
+        }
+        string exportBaseDir;
+        if ( !_getExportBaseDir(exportBaseDir) ) {
+            return false;
+        }
+        if (!_generateExportPathsForDb(exportBaseDir, dbName, exportPaths)) {
+            return false;
+        }
     }
-    QservPath p;
-    p.setAsCquery(dbName);
-    stringstream ss;
-    ss << exportBaseDir << "/" << p.path();
-    dbPathToDestroy = ss.str();
+    QservPathStructure p;
+    if ( !p.insert(exportPaths) ) {
+        return _errObj.addErrMsg(string("Failed to insert export paths."));
+    }
+    if ( !p.persist() ) {
+        return _errObj.addErrMsg(string("Failed to persist export paths."));
+    }
     return true;
 }
 
@@ -179,14 +192,12 @@ qWorker::Metadata::unregisterQservedDb(string const& dbName,
 // ****************************************************************************
 /// Sets the "thePath" to something like <exportBasePath>/q
 bool
-qWorker::Metadata::_getExportPathWithPrefix(string& thePath,
-                                            SqlConnection& sqlConn,
-                                            SqlErrorObject& errObj) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
-        return errObj.addErrMsg("Failed to connect to metadata db");
+qWorker::Metadata::_getExportPathWithPrefix(string& thePath) {
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
+        return _errObj.addErrMsg("Failed to connect to metadata db");
     }
     string exportBaseDir;
-    if ( !_getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
+    if ( !_getExportBaseDir(exportBaseDir) ) {
         return false;
     }
     thePath = exportBaseDir + "/" + QservPath::prefix(QservPath::CQUERY);
@@ -198,15 +209,14 @@ qWorker::Metadata::_getExportPathWithPrefix(string& thePath,
 // ****************************************************************************
 /// Simply prints all metadata to cout, useful for debugging.
 bool
-qWorker::Metadata::showMetadata(SqlConnection& sqlConn,
-                                SqlErrorObject& errObj) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+qWorker::Metadata::showMetadata() {
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
         cout << "No metadata found." << endl;
         return true;
     }
     // get/print exportBaseDir
     string exportBaseDir;
-    if ( !_getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
+    if ( !_getExportBaseDir(exportBaseDir) ) {
         return false;
     }
     cout << "Export base directory is: " << exportBaseDir << endl;
@@ -227,75 +237,49 @@ qWorker::Metadata::showMetadata(SqlConnection& sqlConn,
 }
 
 // ****************************************************************************
-// ***** generateExportPaths
+// ***** _generateExportPaths
 // ****************************************************************************
 /// generates export paths for every chunk in every database served
 bool 
-qWorker::Metadata::generateExportPaths(SqlConnection& sqlConn,
-                                       SqlErrorObject& errObj,
-                                       vector<string>& exportPaths) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+qWorker::Metadata::_generateExportPaths(vector<string>& exportPaths) {
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
         return false;
     }
     string sql = "SELECT dbName FROM Dbs";
     SqlResults results;
-    if (!sqlConn.runQuery(sql, results, errObj)) {
-        return errObj.addErrMsg("Failed to execute: " + sql);
+    if (!_sqlConn.runQuery(sql, results, _errObj)) {
+        return _errObj.addErrMsg("Failed to execute: " + sql);
     }
     vector<string> dbs;
-    if (!results.extractFirstColumn(dbs, errObj)) {
-        return errObj.addErrMsg("Failed to receive results from: " + sql);
+    if (!results.extractFirstColumn(dbs, _errObj)) {
+        return _errObj.addErrMsg("Failed to receive results from: " + sql);
     }
     string exportBaseDir;
-    if ( !_getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
+    if ( !_getExportBaseDir(exportBaseDir) ) {
         return false;
     }
     int i, s = dbs.size();
     for (i=0; i<s ; i++) {
         string dbName = dbs[i];
-        if (!_generateExportPathsForDb(exportBaseDir, dbName, sqlConn, errObj,
-                                       exportPaths)) {
+        if (!_generateExportPathsForDb(exportBaseDir, dbName, exportPaths)) {
             stringstream ss;
             ss << "Failed to create export paths. ExportBaseDir="
                << exportBaseDir << ", dbName=" << dbName << std::endl;
-            return errObj.addErrMsg(ss.str());
+            return _errObj.addErrMsg(ss.str());
         }
     }
     return true;
 }
 
 // ****************************************************************************
-// ***** generateExportPathsForDb (public, exportBaseDir not passed)
+// ***** _generateExportPathsForDb
 // ****************************************************************************
 bool
-qWorker::Metadata::generateExportPathsForDb(
-                                   string const& dbName,
-                                   SqlConnection& sqlConn,
-                                   SqlErrorObject& errObj,
-                                   vector<string>& exportPaths) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
-        return false;
-    }
-    string exportBaseDir;
-    if ( !_getExportBaseDir(exportBaseDir, sqlConn, errObj) ) {
-        return false;
-    }
-    return _generateExportPathsForDb(exportBaseDir, dbName, 
-                                     sqlConn, errObj, exportPaths);
-}
-
-// ****************************************************************************
-// ***** _generateExportPathsForDb (private, exportBaseDir passed)
-// ****************************************************************************
-bool
-qWorker::Metadata::_generateExportPathsForDb(
-                                   string const& exportBaseDir,
-                                   string const& dbName,
-                                   SqlConnection& sqlConn,
-                                   SqlErrorObject& errObj,
-                                   vector<string>& exportPaths) {
+qWorker::Metadata::_generateExportPathsForDb(string const& exportBaseDir,
+                                             string const& dbName,
+                                             vector<string>& exportPaths) {
     vector<TableChunks> allChunks;
-    if (!_getTableChunksForDb(dbName, sqlConn, errObj, allChunks)) {
+    if (!_getTableChunksForDb(dbName, allChunks)) {
         return false;
     }
     vector<TableChunks>::const_iterator oneT;
@@ -311,8 +295,8 @@ qWorker::Metadata::_generateExportPathsForDb(
         for (cItr=oneT->_chunksInDb.begin(); 
              cItr!=oneT->_chunksInDb.end(); 
              ++cItr) {
-            _addChunk(_extractChunkNo(*cItr), exportBaseDir, 
-                      dbName, exportPaths);
+            _addChunk(_extractChunkNo(*cItr), exportBaseDir, dbName,
+                      exportPaths);
         }
     } // end foreach t in partTables
     // Always create dummy chunk export regardless of tables. (#2048)
@@ -328,31 +312,29 @@ qWorker::Metadata::_generateExportPathsForDb(
 /// <tableName, <vector of chunk names> >
 bool
 qWorker::Metadata::_getTableChunksForDb(string const& dbName,
-                                        SqlConnection& sqlConn,
-                                        SqlErrorObject& errObj,
                                         vector<TableChunks>& allChunks) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
         return false;
     }
-    if ( !_isRegistered(dbName, sqlConn, errObj) ) {
-        return errObj.addErrMsg("Database: " + dbName + " is not registered "
+    if ( !_isRegistered(dbName) ) {
+        return _errObj.addErrMsg("Database: " + dbName + " is not registered "
                                 "in qserv worker metadata.");
     }
     vector<string> partTables;
-    if ( !_getPartTablesFromQms(dbName, partTables, errObj) ) {
+    if ( !_getPartTablesFromQms(dbName, partTables) ) {
         return false;
     }
     vector<string>::const_iterator itr;
     for (itr=partTables.begin(); itr!=partTables.end(); ++itr) {
         TableChunks tc;
         tc._tableName = *itr;
-        if (!sqlConn.listTables(tc._chunksInDb, errObj, 
+        if (!_sqlConn.listTables(tc._chunksInDb, _errObj, 
                                 tc._tableName + "_", dbName)) {
             stringstream ss;
             ss << "Failed to list tables for db=" << dbName
                << ", prefix=" << *itr << "\n";
             allChunks.clear();
-            return errObj.addErrMsg(ss.str());
+            return _errObj.addErrMsg(ss.str());
         }
         allChunks.push_back(tc);
     }
@@ -375,18 +357,53 @@ qWorker::Metadata::_addChunk(int chunkNo,
 }
 
 // ****************************************************************************
+// ***** _unregisterQservedDb
+// ****************************************************************************
+bool
+qWorker::Metadata::_unregisterQservedDb(string const& dbName) {
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
+        return _errObj.addErrMsg("Failed to connect to metadata db");
+    }
+    if ( !_isRegistered(dbName) ) {
+        return _errObj.addErrMsg("Db " + dbName + " is not registered.");
+    }
+    stringstream sql;
+    sql << "DELETE FROM Dbs WHERE dbName='" << dbName << "'";
+    if ( !_sqlConn.runQuery(sql.str(), _errObj) ) {
+        return false;
+    }
+    return true;
+}
+
+// ****************************************************************************
 // ***** _destroyExportPathWithPrefix
 // ****************************************************************************
 /// Unconditionally destroys export path for given qms, without checking if it
 /// matches the chunks in the database
 bool
-qWorker::Metadata::_destroyExportPathWithPrefix(SqlConnection& sqlConn,
-                                                SqlErrorObject& errObj) {
+qWorker::Metadata::_destroyExportPathWithPrefix() {
     string p2d;
-    if (!_getExportPathWithPrefix(p2d, sqlConn, errObj)) {
+    if (!_getExportPathWithPrefix(p2d)) {
         return false;
     }
-    cout << "wanna destroy: " << p2d << endl;
+    QservPathStructure::destroy(p2d);
+    return true;
+}
+
+// ****************************************************************************
+// ***** _destroyExportPath4Db
+// ****************************************************************************
+bool
+qWorker::Metadata::_destroyExportPath4Db(string const& dbName) {
+    string exportBaseDir;
+    if ( !_getExportBaseDir(exportBaseDir) ) {
+        return false;
+    }
+    QservPath p;
+    p.setAsCquery(dbName);
+    stringstream ss;
+    ss << exportBaseDir << "/" << p.path();
+    QservPathStructure::destroy(ss.str());
     return true;
 }
 
@@ -410,18 +427,16 @@ qWorker::Metadata::_extractChunkNo(string const& str) {
 // ***** _isRegistered
 // ****************************************************************************
 bool
-qWorker::Metadata::_isRegistered(string const& dbName,
-                                 SqlConnection& sqlConn,
-                                 SqlErrorObject& errObj) {
+qWorker::Metadata::_isRegistered(string const& dbName) {
     string sql = "SELECT COUNT(*) FROM Dbs WHERE dbName='" + dbName + "'";
     
     SqlResults results;
-    if (!sqlConn.runQuery(sql, results, errObj)) {
+    if (!_sqlConn.runQuery(sql, results, _errObj)) {
         return false;
     }
     string s;
-    if (!results.extractFirstValue(s, errObj)) {
-        return errObj.addErrMsg("Failed to receive results from: " + sql);
+    if (!results.extractFirstValue(s, _errObj)) {
+        return _errObj.addErrMsg("Failed to receive results from: " + sql);
     }
     return s[0] == '1';
 }
@@ -431,19 +446,17 @@ qWorker::Metadata::_isRegistered(string const& dbName,
 // ****************************************************************************
 /// Gets exportBaseDir for this worker.
 bool
-qWorker::Metadata::_getExportBaseDir(string& exportBaseDir,
-                                     SqlConnection& sqlConn,
-                                     SqlErrorObject& errObj) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+qWorker::Metadata::_getExportBaseDir(string& exportBaseDir) {
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
         return false;
     }
     string sql = "SELECT exportBaseDir FROM Internals";
     SqlResults results;
-    if (!sqlConn.runQuery(sql, results, errObj)) {
-        return errObj.addErrMsg("Failed to fetch exportBasetDir.");
+    if (!_sqlConn.runQuery(sql, results, _errObj)) {
+        return _errObj.addErrMsg("Failed to fetch exportBasetDir.");
     }
-    if (!results.extractFirstValue(exportBaseDir, errObj)) {
-        return errObj.addErrMsg("Failed to fetch exportBaseDir.");
+    if (!results.extractFirstValue(exportBaseDir, _errObj)) {
+        return _errObj.addErrMsg("Failed to fetch exportBaseDir.");
     }
     return true;
 }
@@ -455,19 +468,17 @@ qWorker::Metadata::_getExportBaseDir(string& exportBaseDir,
 bool
 qWorker::Metadata::_getInfoAboutAllDbs(vector<string>& dbIds,
                                        vector<string>& dbNames,
-                                       vector<string>& dbUuids,
-                                       SqlConnection& sqlConn,
-                                       SqlErrorObject& errObj) {
-    if (!sqlConn.selectDb(_workerMetadataDbName, errObj)) {
+                                       vector<string>& dbUuids) {
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
         return false;
     }
     SqlResults results;
     string sql("SELECT dbId, dbName, dbUuid FROM Dbs");
-    if (!sqlConn.runQuery(sql, results, errObj)) {
-        return errObj.addErrMsg("Failed to execute: " + sql);
+    if (!_sqlConn.runQuery(sql, results, _errObj)) {
+        return _errObj.addErrMsg("Failed to execute: " + sql);
     }
-    if (!results.extractFirst3Columns(dbIds, dbNames, dbUuids, errObj)) {
-        return errObj.addErrMsg("Failed to receive results from: " + sql);
+    if (!results.extractFirst3Columns(dbIds, dbNames, dbUuids, _errObj)) {
+        return _errObj.addErrMsg("Failed to receive results from: " + sql);
     }
     return true;
 }
@@ -478,11 +489,9 @@ qWorker::Metadata::_getInfoAboutAllDbs(vector<string>& dbIds,
 /// Gets the list of all qserved databases for the current worker.
 /// Assumes that we are already connected to metadata db.
 bool
-qWorker::Metadata::getDbList(vector<string>& dbNames,
-                             SqlConnection& sqlConn,
-                             SqlErrorObject& errObj) {
+qWorker::Metadata::getDbList(vector<string>& dbNames) {
     vector<string> v1, v2;
-    return _getInfoAboutAllDbs(v1, dbNames, v2, sqlConn, errObj);
+    return _getInfoAboutAllDbs(v1, dbNames, v2);
 }
     
 // ****************************************************************************
@@ -491,8 +500,7 @@ qWorker::Metadata::getDbList(vector<string>& dbNames,
 bool
 qWorker::Metadata::_getDbInfoFromQms(string const& dbName,
                                      int& dbId, 
-                                     string& dbUuid, 
-                                     SqlErrorObject& errObj) {
+                                     string& dbUuid) {
     // FIXME: todo: contact qms and retrieve dbId and dbUuid for the
     // database called 'dbName'
     static int nextId = 100;
@@ -506,8 +514,7 @@ qWorker::Metadata::_getDbInfoFromQms(string const& dbName,
 // ****************************************************************************
 bool 
 qWorker::Metadata::_getPartTablesFromQms(string const& dbName,
-                                         vector<string>& partTables,
-                                         SqlErrorObject& errObj) {
+                                         vector<string>& partTables) {
     // FIXME: todo: contact qms and retrieve partTables for dbName
     partTables.push_back("Object");
     return true;

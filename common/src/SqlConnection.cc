@@ -241,9 +241,18 @@ SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     return true;
 }
 
+SqlConnection::SqlConnection() 
+    : _conn(NULL), _connected(false), _useThreadMgmt(false) {
+}
+
 SqlConnection::SqlConnection(SqlConfig const& sc, bool useThreadMgmt) 
-    : _conn(NULL), _config(sc), 
-      _connected(false), _useThreadMgmt(useThreadMgmt) { 
+    : _conn(NULL), _connected(false) {
+    init(sc, useThreadMgmt);
+}
+
+void
+SqlConnection::init(SqlConfig const& sc, bool useThreadMgmt) {
+    _config = sc;
     {
         boost::lock_guard<boost::mutex> g(_sharedMutex);
         if(!_isReady) {

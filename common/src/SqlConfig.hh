@@ -18,32 +18,36 @@
  * You should have received a copy of the LSST License Statement and 
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
- *
- * Qserv Metadata Worker tool
  */
  
-#ifndef LSST_QSERV_WORKER_QMWTOOL_H
-#define LSST_QSERV_WORKER_QMWTOOL_H
+#ifndef LSST_QSERV_SQL_CONFIG_H
+#define LSST_QSERV_SQL_CONFIG_H
 
-#include "lsst/qserv/worker/Metadata.h"
+#include <string>
 
-class RunActions {
+namespace lsst {
+namespace qserv {
+
+/// class SqlConfig : Value class for configuring the MySQL connection
+class SqlConfig {
 public:
-    RunActions();
-    void installMeta(string const&);
-    void destroyMeta();
-    void registerDb(string const&);
-    void unregisterDb(string const&);
-    void listDbs();
-    void createExportPaths(string const&);
-
-private:
-    void _validateDbName(string const&);
-    void _validatePath(string const&);
-
-private:
-    lsst::qserv::worker::Metadata _m;
+    SqlConfig() : port(0) {}
+    SqlConfig(const SqlConfig&);
+    std::string hostname;
+    std::string username;
+    std::string password;
+    std::string dbName;
+    unsigned int port;
+    std::string socket;
+    bool isValid() const { return !username.empty(); }
+    void throwIfNotSet(std::string const&) const;
+    void initFromFile(std::string const&, std::string const&, 
+                      std::string const&, std::string const&, 
+                      std::string const&, std::string const&, 
+                      std::string const&, bool);
+    void printSelf(std::string const&) const;
 };
 
-#endif /* LSST_QSERV_WORKER_QMWTOOL_H */
+}} // namespace lsst::qserv
 
+#endif // LSST_QSERV_SQL_CONFIG_H
