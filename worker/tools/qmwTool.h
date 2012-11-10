@@ -29,9 +29,10 @@
 
 class RunActions {
 public:
-    RunActions();
+    RunActions(bool verbose);
     void installMeta(string const&);
     void destroyMeta();
+    void printMeta();
     void registerDb(string const&);
     void unregisterDb(string const&);
     void listDbs();

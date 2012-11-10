@@ -43,16 +43,17 @@ public:
     Metadata();
     ~Metadata();
     bool init(SqlConfig const&, // qmsConnCfg, 
-              SqlConfig const&); // qmwConnCfg
+              SqlConfig const&, // qmwConnCfg
+              bool);
     std::string getLastError() const;
     bool installMeta(std::string const&);
     bool destroyMeta();
+    bool printMeta();
     bool registerQservedDb(std::string const&);
     bool unregisterQservedDb(std::string const&);
     bool createExportPaths(std::string const&);
     bool rebuildExportPaths(std::string const&);
     bool getDbList(std::vector<std::string>&);
-    bool showMetadata();
 
     struct TableChunks {
         std::string _tableName;
@@ -89,6 +90,7 @@ private:
     SqlConnection _sqlConn;
     SqlErrorObject _errObj;
     SqlConfig* _qmsConnCfg; // host, port, user, pass for qms
+    bool _verboseMode;
 };
 
 }}} // namespace lsst.qserv.worker

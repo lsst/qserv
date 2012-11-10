@@ -53,18 +53,22 @@ printHelp() {
      << "\nNAME\n"
      << "        qmwTool - program for managing qserv metadata on worker\n"
      << "\nSYNOPSIS\n"
-     << "        qmwTool [-h|--help] COMMAND [ARGS]\n"
+     << "        qmwTool [-h|--help] [-v|--verbose] COMMAND [ARGS]\n"
      << "\nOPTIONS\n"
      << "   -h, --help\n"
      << "        Prints help information.\n"
+     << "   -v, --verbose\n"
+     << "        Turns on verbose mode.\n"
      << "\nCOMMANDS\n"
      << "  installMeta\n"
      << "        Sets up internal qserv metadata database.\n"
      << "        Arguments: <exportDir>\n\n"
      << "  destroyMeta\n"
      << "        Destroys internal qserv metadata database.\n\n"
+     << "  printMeta\n"
+     << "        Prints all metadata for given worker.\n\n"
      << "  registerDb\n"
-     << "        Registers database for qserv use for given worker\n"
+     << "        Registers database for qserv use for given worker.\n"
      << "        Arguments: <dbName>\n\n"
      << "  unregisterDb\n"
      << "        Unregisters database used by qserv and destroys\n"
@@ -75,17 +79,22 @@ printHelp() {
      << "  createExportPaths\n"
      << "        Generates export paths. If no dbName is given, it will\n"
      << "        run for all databases registered in qserv metadata\n"
-     << "        for the given worker. Arguments: [<dbName>]\n\n"
+     << "        for given worker. Arguments: [<dbName>]\n\n"
      << "  rebuildExportPaths\n"
      << "        Removes existing export paths and recreates them.\n"
      << "        If no dbName is given, it will run for all databases\n"
-     << "        registered in qserv metadata for the given worker.\n"
+     << "        registered in qserv metadata for given worker.\n"
      << "        Arguments: [<dbName>]\n\n"
      << "EXAMPLES\n"
-     << "Example contents of the (required) .qmwadm file:\n"
-     << "qmsHost:lsst-db3.slac.stanford.edu\n"
-     << "qmsPort:4040\n"
-     << "mysqlSocket:/tmp/mysql.sock\n"
+     << "Example contents of the (required) '~/.qmwadm' file:\n"
+     << "qmsHost:localhost\n"
+     << "qmsPort:7082\n"
+     << "qmsUser:qms\n"
+     << "qmsPass:qmsPass\n"
+     << "qmsDb:testX\n"
+     << "qmwUser:qmw\n"
+     << "qmwPass:qmwPass\n"
+     << "qmwMySqlSocket:/var/lib/mysql/mysql.sock\n"
      << endl;
     return 0;
 }
@@ -93,7 +102,7 @@ printHelp() {
 // ****************************************************************************
 // ***** processing actions
 // ****************************************************************************
-RunActions::RunActions() {
+RunActions::RunActions(bool verboseMode) {
     string fName = getenv("HOME");
     fName += "/.qmwadm";
     SqlConfig sC, wC; // server and worker connection configs
@@ -102,9 +111,11 @@ RunActions::RunActions() {
     wC.initFromFile(fName, "", "", "qmwUser", "qmwPass", "", 
                     "qmwMySqlSocket", true);
     sC.dbName = "qms_" + sC.dbName;
-    sC.printSelf("qms");
-    wC.printSelf("qmw");
-    if (!_m.init(sC, wC)) {
+    if (verboseMode) {
+        sC.printSelf("qms");
+        wC.printSelf("qmw");
+    }
+    if (!_m.init(sC, wC, verboseMode)) {
         throw _m.getLastError();
     }
 }
@@ -124,6 +135,13 @@ RunActions::destroyMeta() {
         throw _m.getLastError();
     }
     cout << "Metadata successfully destroyed." << endl;
+}
+
+void
+RunActions::printMeta() {
+    if ( !_m.printMeta() ) {
+        throw _m.getLastError();
+    }
 }
 
 void
@@ -226,6 +244,7 @@ main(int argc, char* argv[]) {
     if ( argc < 2 ) {
         return printHelp();
     }
+    bool verboseMode = false;
     int i;
     string h1("-h");
     string h2("--help");
@@ -234,9 +253,13 @@ main(int argc, char* argv[]) {
             0 == string("--help").compare(argv[i]) ) {
             return printHelp();
         }
+        if (0 == string("-v").compare(argv[i]) || 
+            0 == string("--verbose").compare(argv[i]) ) {
+            verboseMode = true;
+        }
     }
-    try {    
-        RunActions actions;
+    try {
+        RunActions actions(verboseMode);
         string theAction = argv[1];
         if (theAction == "installMeta") {
             if (argc != 3) {
@@ -245,6 +268,10 @@ main(int argc, char* argv[]) {
             actions.installMeta(argv[2]);
         } else if (theAction == "destroyMeta") {
             actions.destroyMeta();
+        } else if (theAction == "destroyMeta") {
+            actions.destroyMeta();
+        } else if (theAction == "printMeta") {
+            actions.printMeta();
         } else if (theAction == "registerDb") {
             if (argc != 3) {
                 throw string("'registerDb' requires argument: <dbName>");
@@ -270,7 +297,7 @@ main(int argc, char* argv[]) {
             throw s.str();
         }
     } catch (std::string str) {
-      cout << "Exception raised: " << str << '\n';
+      cerr << str << endl;
       return -1;
     }
     return 0;

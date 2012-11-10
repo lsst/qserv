@@ -28,6 +28,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <stdio.h> // FIXME, used for random
 
 namespace qWorker = lsst::qserv::worker;
 
@@ -48,7 +49,9 @@ qWorker::Metadata::Metadata() : _qmsConnCfg(0) {
 
 bool
 qWorker::Metadata::init(SqlConfig const& qmsConnCfg, 
-                        SqlConfig const& qmwConnCfg) {
+                        SqlConfig const& qmwConnCfg,
+                        bool verboseMode) {
+    _verboseMode = verboseMode;
     _qmsConnCfg = new SqlConfig(qmsConnCfg);
     _workerMetadataDbName = qmsConnCfg.dbName;
     if ( 0 != _workerMetadataDbName.compare(0, 4, "qms_")) {
@@ -219,11 +222,11 @@ qWorker::Metadata::_getExportPathWithPrefix(string& thePath) {
 }        
 
 // ****************************************************************************
-// ***** showMetadata
+// ***** printMeta
 // ****************************************************************************
 /// Simply prints all metadata to cout, useful for debugging.
 bool
-qWorker::Metadata::showMetadata() {
+qWorker::Metadata::printMeta() {
     if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
         cout << "No metadata found." << endl;
         return true;
@@ -236,6 +239,9 @@ qWorker::Metadata::showMetadata() {
     cout << "Export base directory is: " << exportBaseDir << endl;
     // get/print info about all registered dbs
     vector<string> dbIds, dbNames, dbUuids;
+    if ( !_getInfoAboutAllDbs(dbIds, dbNames, dbUuids) ) {
+        return false;
+    }
     if (dbIds.size() == 0 ) {
         cout << "No databases registered in qserv metadata." << endl;
         return true;
@@ -344,11 +350,8 @@ qWorker::Metadata::_getTableChunksForDb(string const& dbName,
         tc._tableName = *itr;
         if (!_sqlConn.listTables(tc._chunksInDb, _errObj, 
                                 tc._tableName + "_", dbName)) {
-            stringstream ss;
-            ss << "Failed to list tables for db=" << dbName
-               << ", prefix=" << *itr << "\n";
             allChunks.clear();
-            return _errObj.addErrMsg(ss.str());
+            return false;
         }
         allChunks.push_back(tc);
     }
@@ -517,8 +520,15 @@ qWorker::Metadata::_getDbInfoFromQms(string const& dbName,
                                      string& dbUuid) {
     // FIXME: todo: contact qms and retrieve dbId and dbUuid for the
     // database called 'dbName'
-    static int nextId = 100;
-    dbId = ++nextId;
+
+    FILE *fp;
+    unsigned char c1;
+    if ((fp = fopen("/dev/urandom", "r")) == NULL) {
+        dbId = 100;
+    } else {
+        dbId = fgetc(fp);
+        fclose(fp);
+    }
     dbUuid = "db-uuid-for-" + dbName;
     return true;
 }
