@@ -51,9 +51,9 @@ public:
     bool printMeta();
     bool registerQservedDb(std::string const&);
     bool unregisterQservedDb(std::string const&);
+    bool getDbList(std::vector<std::string>&);
     bool createExportPaths(std::string const&);
     bool rebuildExportPaths(std::string const&);
-    bool getDbList(std::vector<std::string>&);
 
     struct TableChunks {
         std::string _tableName;

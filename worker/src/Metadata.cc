@@ -119,6 +119,41 @@ qWorker::Metadata::destroyMeta() {
 }
 
 // ****************************************************************************
+// ***** printMeta
+// ****************************************************************************
+/// Simply prints all metadata to cout, useful for debugging.
+bool
+qWorker::Metadata::printMeta() {
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
+        cout << "No metadata found." << endl;
+        return true;
+    }
+    // get/print exportBaseDir
+    string exportBaseDir;
+    if ( !_getExportBaseDir(exportBaseDir) ) {
+        return false;
+    }
+    cout << "Export base directory is: " << exportBaseDir << endl;
+    // get/print info about all registered dbs
+    vector<string> dbIds, dbNames, dbUuids;
+    if ( !_getInfoAboutAllDbs(dbIds, dbNames, dbUuids) ) {
+        return false;
+    }
+    if (dbIds.size() == 0 ) {
+        cout << "No databases registered in qserv metadata." << endl;
+        return true;
+    }
+    cout << "Databases registered in qserv metadata:" << endl;
+    int i, s = dbIds.size();
+    for (i=0; i<s ; i++) {
+        cout << i+1 <<")  db:      " << dbNames[i] << "\n"
+             << "    id:      " << dbIds[i] << "\n"
+             << "    dbUuid:  " << dbUuids[i] << endl;
+    }
+    return true;
+}
+
+// ****************************************************************************
 // ***** registerQservedDb
 // ****************************************************************************
 /// called ones for each new database that this worker should serve
@@ -157,6 +192,17 @@ qWorker::Metadata::unregisterQservedDb(string const& dbName) {
     return _destroyExportPath4Db(dbName);
 }
 
+// ****************************************************************************
+// ***** getDbList
+// ****************************************************************************
+/// Gets the list of all qserved databases for the current worker.
+/// Assumes that we are already connected to metadata db.
+bool
+qWorker::Metadata::getDbList(vector<string>& dbNames) {
+    vector<string> v1, v2;
+    return _getInfoAboutAllDbs(v1, dbNames, v2);
+}
+    
 // ****************************************************************************
 // ***** createExportPaths
 // ****************************************************************************
@@ -205,54 +251,87 @@ qWorker::Metadata::rebuildExportPaths(std::string const& dbName) {
 }
 
 // ****************************************************************************
-// ***** _getExportPathWithPrefix
+// ***** _isRegistered
 // ****************************************************************************
-/// Sets the "thePath" to something like <exportBasePath>/q
 bool
-qWorker::Metadata::_getExportPathWithPrefix(string& thePath) {
+qWorker::Metadata::_isRegistered(string const& dbName) {
+    string sql = "SELECT COUNT(*) FROM Dbs WHERE dbName='" + dbName + "'";
+    
+    SqlResults results;
+    if (!_sqlConn.runQuery(sql, results, _errObj)) {
+        return false;
+    }
+    string s;
+    if (!results.extractFirstValue(s, _errObj)) {
+        return _errObj.addErrMsg("Failed to receive results from: " + sql);
+    }
+    return s[0] == '1';
+}
+
+// ****************************************************************************
+// ***** _extractChunkNo
+// ****************************************************************************
+int
+qWorker::Metadata::_extractChunkNo(string const& str) {
+    int s = str.size();
+    string::size_type cursor = str.find_last_of('_', s);
+    if ( cursor < 1 ) {
+        return -1; // negative indicates an error    
+    }
+    int num;
+    stringstream csm(str.substr(cursor+1, s));
+    csm >> num;
+    return num;
+}
+
+// ****************************************************************************
+// ***** _unregisterQservedDb
+// ****************************************************************************
+bool
+qWorker::Metadata::_unregisterQservedDb(string const& dbName) {
     if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
         return _errObj.addErrMsg("Failed to connect to metadata db");
     }
-    string exportBaseDir;
-    if ( !_getExportBaseDir(exportBaseDir) ) {
+    if ( !_isRegistered(dbName) ) {
+        return _errObj.addErrMsg("Db " + dbName + " is not registered.");
+    }
+    stringstream sql;
+    sql << "DELETE FROM Dbs WHERE dbName='" << dbName << "'";
+    if ( !_sqlConn.runQuery(sql.str(), _errObj) ) {
         return false;
     }
-    thePath = exportBaseDir + "/" + QservPath::prefix(QservPath::CQUERY);
     return true;
-}        
+}
 
 // ****************************************************************************
-// ***** printMeta
+// ***** _destroyExportPathWithPrefix
 // ****************************************************************************
-/// Simply prints all metadata to cout, useful for debugging.
+/// Unconditionally destroys export path for given qms, without checking if it
+/// matches the chunks in the database
 bool
-qWorker::Metadata::printMeta() {
-    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
-        cout << "No metadata found." << endl;
-        return true;
+qWorker::Metadata::_destroyExportPathWithPrefix() {
+    string p2d;
+    if (!_getExportPathWithPrefix(p2d)) {
+        return false;
     }
-    // get/print exportBaseDir
+    QservPathStructure::destroy(p2d);
+    return true;
+}
+
+// ****************************************************************************
+// ***** _destroyExportPath4Db
+// ****************************************************************************
+bool
+qWorker::Metadata::_destroyExportPath4Db(string const& dbName) {
     string exportBaseDir;
     if ( !_getExportBaseDir(exportBaseDir) ) {
         return false;
     }
-    cout << "Export base directory is: " << exportBaseDir << endl;
-    // get/print info about all registered dbs
-    vector<string> dbIds, dbNames, dbUuids;
-    if ( !_getInfoAboutAllDbs(dbIds, dbNames, dbUuids) ) {
-        return false;
-    }
-    if (dbIds.size() == 0 ) {
-        cout << "No databases registered in qserv metadata." << endl;
-        return true;
-    }
-    cout << "Databases registered in qserv metadata:" << endl;
-    int i, s = dbIds.size();
-    for (i=0; i<s ; i++) {
-        cout << i+1 <<")  db:      " << dbNames[i] << "\n"
-             << "    id:      " << dbIds[i] << "\n"
-             << "    dbUuid:  " << dbUuids[i] << endl;
-    }
+    QservPath p;
+    p.setAsCquery(dbName);
+    stringstream ss;
+    ss << exportBaseDir << "/" << p.path();
+    QservPathStructure::destroy(ss.str());
     return true;
 }
 
@@ -325,6 +404,21 @@ qWorker::Metadata::_generateExportPathsForDb(string const& exportBaseDir,
 }
 
 // ****************************************************************************
+// ***** addChunk
+// ****************************************************************************
+void
+qWorker::Metadata::_addChunk(int chunkNo, 
+                             string const& exportBaseDir,
+                             string const& dbName,
+                             vector<string>& exportPaths) {
+    QservPath p;
+    p.setAsCquery(dbName, chunkNo);
+    stringstream ss;
+    ss << exportBaseDir << "/" << p.path() << std::ends;
+    exportPaths.push_back(ss.str());
+}
+
+// ****************************************************************************
 // ***** _getTableChunksForDb
 // ****************************************************************************
 /// Retrieves from the database list of all chunks for a given table.
@@ -358,105 +452,6 @@ qWorker::Metadata::_getTableChunksForDb(string const& dbName,
     return true;
 }
 
-// ****************************************************************************
-// ***** addChunk
-// ****************************************************************************
-void
-qWorker::Metadata::_addChunk(int chunkNo, 
-                             string const& exportBaseDir,
-                             string const& dbName,
-                             vector<string>& exportPaths) {
-    QservPath p;
-    p.setAsCquery(dbName, chunkNo);
-    stringstream ss;
-    ss << exportBaseDir << "/" << p.path() << std::ends;
-    exportPaths.push_back(ss.str());
-}
-
-// ****************************************************************************
-// ***** _unregisterQservedDb
-// ****************************************************************************
-bool
-qWorker::Metadata::_unregisterQservedDb(string const& dbName) {
-    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
-        return _errObj.addErrMsg("Failed to connect to metadata db");
-    }
-    if ( !_isRegistered(dbName) ) {
-        return _errObj.addErrMsg("Db " + dbName + " is not registered.");
-    }
-    stringstream sql;
-    sql << "DELETE FROM Dbs WHERE dbName='" << dbName << "'";
-    if ( !_sqlConn.runQuery(sql.str(), _errObj) ) {
-        return false;
-    }
-    return true;
-}
-
-// ****************************************************************************
-// ***** _destroyExportPathWithPrefix
-// ****************************************************************************
-/// Unconditionally destroys export path for given qms, without checking if it
-/// matches the chunks in the database
-bool
-qWorker::Metadata::_destroyExportPathWithPrefix() {
-    string p2d;
-    if (!_getExportPathWithPrefix(p2d)) {
-        return false;
-    }
-    QservPathStructure::destroy(p2d);
-    return true;
-}
-
-// ****************************************************************************
-// ***** _destroyExportPath4Db
-// ****************************************************************************
-bool
-qWorker::Metadata::_destroyExportPath4Db(string const& dbName) {
-    string exportBaseDir;
-    if ( !_getExportBaseDir(exportBaseDir) ) {
-        return false;
-    }
-    QservPath p;
-    p.setAsCquery(dbName);
-    stringstream ss;
-    ss << exportBaseDir << "/" << p.path();
-    QservPathStructure::destroy(ss.str());
-    return true;
-}
-
-// ****************************************************************************
-// ***** extractChunkNo
-// ****************************************************************************
-int
-qWorker::Metadata::_extractChunkNo(string const& str) {
-    int s = str.size();
-    string::size_type cursor = str.find_last_of('_', s);
-    if ( cursor < 1 ) {
-        return -1; // negative indicates an error    
-    }
-    int num;
-    stringstream csm(str.substr(cursor+1, s));
-    csm >> num;
-    return num;
-}
-
-// ****************************************************************************
-// ***** _isRegistered
-// ****************************************************************************
-bool
-qWorker::Metadata::_isRegistered(string const& dbName) {
-    string sql = "SELECT COUNT(*) FROM Dbs WHERE dbName='" + dbName + "'";
-    
-    SqlResults results;
-    if (!_sqlConn.runQuery(sql, results, _errObj)) {
-        return false;
-    }
-    string s;
-    if (!results.extractFirstValue(s, _errObj)) {
-        return _errObj.addErrMsg("Failed to receive results from: " + sql);
-    }
-    return s[0] == '1';
-}
 
 // ****************************************************************************
 // ***** _getExportBaseDir
@@ -477,6 +472,24 @@ qWorker::Metadata::_getExportBaseDir(string& exportBaseDir) {
     }
     return true;
 }
+
+
+// ****************************************************************************
+// ***** _getExportPathWithPrefix
+// ****************************************************************************
+/// Sets the "thePath" to something like <exportBasePath>/q
+bool
+qWorker::Metadata::_getExportPathWithPrefix(string& thePath) {
+    if (!_sqlConn.selectDb(_workerMetadataDbName, _errObj)) {
+        return _errObj.addErrMsg("Failed to connect to metadata db");
+    }
+    string exportBaseDir;
+    if ( !_getExportBaseDir(exportBaseDir) ) {
+        return false;
+    }
+    thePath = exportBaseDir + "/" + QservPath::prefix(QservPath::CQUERY);
+    return true;
+}        
 
 // ****************************************************************************
 // ***** _getInfoAboutAllDbs
@@ -500,17 +513,6 @@ qWorker::Metadata::_getInfoAboutAllDbs(vector<string>& dbIds,
     return true;
 }
 
-// ****************************************************************************
-// ***** getDbList
-// ****************************************************************************
-/// Gets the list of all qserved databases for the current worker.
-/// Assumes that we are already connected to metadata db.
-bool
-qWorker::Metadata::getDbList(vector<string>& dbNames) {
-    vector<string> v1, v2;
-    return _getInfoAboutAllDbs(v1, dbNames, v2);
-}
-    
 // ****************************************************************************
 // ***** _getDbInfoFromQms
 // ****************************************************************************
