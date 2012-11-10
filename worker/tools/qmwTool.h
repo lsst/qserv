@@ -36,6 +36,7 @@ public:
     void unregisterDb(string const&);
     void listDbs();
     void createExportPaths(string const&);
+    void rebuildExportPaths(string const&);
 
 private:
     void _validateDbName(string const&);

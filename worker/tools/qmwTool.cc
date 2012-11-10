@@ -75,11 +75,12 @@ printHelp() {
      << "  createExportPaths\n"
      << "        Generates export paths. If no dbName is given, it will\n"
      << "        run for all databases registered in qserv metadata\n"
-     << "        for the given worker. Arguments [<dbName>]\n\n"
-     << "  refreshExportPaths\n"
-     << "        Updates export paths. If no dbName is given, it will\n"
-     << "        run for all databases registered in qserv metadata\n"
-     << "        for the given worker. Arguments [<dbName>]\n\n"
+     << "        for the given worker. Arguments: [<dbName>]\n\n"
+     << "  rebuildExportPaths\n"
+     << "        Removes existing export paths and recreates them.\n"
+     << "        If no dbName is given, it will run for all databases\n"
+     << "        registered in qserv metadata for the given worker.\n"
+     << "        Arguments: [<dbName>]\n\n"
      << "EXAMPLES\n"
      << "Example contents of the (required) .qmwadm file:\n"
      << "qmsHost:lsst-db3.slac.stanford.edu\n"
@@ -159,14 +160,32 @@ RunActions::listDbs() {
 
 void
 RunActions::createExportPaths(string const& dbName) {
+    string where;
     if (dbName != "") {
         _validateDbName(dbName);
+        where = "database "; where += dbName;
+    } else {
+        where = "all databases";
     }
     if (!_m.createExportPaths(dbName)) {
         throw _m.getLastError();
     }
-    cout << "Export paths successfully created for all " 
-         << "databases registered in qserv metadata." << endl;
+    cout << "Export paths successfully created for " << where << "." << endl;
+}
+
+void
+RunActions::rebuildExportPaths(string const& dbName) {
+    string where;
+    if (dbName != "") {
+        _validateDbName(dbName);
+        where = "database "; where += dbName;
+    } else {
+        where = "all databases";
+    }
+    if (!_m.rebuildExportPaths(dbName)) {
+        throw _m.getLastError();
+    }
+    cout << "Export paths successfully rebuild for " << where << "." << endl;
 }
 
 // ****************************************************************************
@@ -241,9 +260,9 @@ main(int argc, char* argv[]) {
         } else if (theAction == "createExportPaths") {
             if (argc == 3) actions.createExportPaths(argv[2]);
             else           actions.createExportPaths("");
-        } else if (theAction == "refreshExportPaths") {
-            //if (argc == 3) actions.refreshExportPaths(argv[2]); FIXME
-            //else           actions.refreshExportPaths("");      FIXME
+        } else if (theAction == "rebuildExportPaths") {
+            if (argc == 3) actions.rebuildExportPaths(argv[2]);
+            else           actions.rebuildExportPaths("");
         } else {
             stringstream s;
             s << "Unsupported command: '" << argv[1] << "'. " 

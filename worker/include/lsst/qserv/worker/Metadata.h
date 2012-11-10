@@ -50,6 +50,7 @@ public:
     bool registerQservedDb(std::string const&);
     bool unregisterQservedDb(std::string const&);
     bool createExportPaths(std::string const&);
+    bool rebuildExportPaths(std::string const&);
     bool getDbList(std::vector<std::string>&);
     bool showMetadata();
 

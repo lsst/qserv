@@ -138,20 +138,10 @@ bool
 qWorker::QservPathStructure::isRegistered() const {
     std::vector<std::string>::const_iterator i;
     for ( i=_uniqueDbDirs.begin(); i!=_uniqueDbDirs.end(); ++i) {
-        if ( isRegistered(i->c_str()) ) {
-            std::cerr << "Path already persisted ("
-                      << *i << ")" << std::endl;
+        if ( isDirectory(i->c_str()) ) {
+            std::cerr << "Path already persisted (" << *i << ")" << std::endl;
             return true;
         }
-    }
-    return false;
-}
-
-bool
-qWorker::QservPathStructure::isRegistered(const char* dbPath) const {
-    struct stat statbuf;
-    if (stat(dbPath, &statbuf) != -1) {
-        return S_ISDIR(statbuf.st_mode);
     }
     return false;
 }
@@ -160,7 +150,7 @@ bool
 qWorker::QservPathStructure::isDirectory(const char* path) {
     struct stat statbuf;
     if (0 == stat(path, &statbuf))
-        if( statbuf.st_mode & S_IFDIR ) return true;
+        if (statbuf.st_mode & S_IFDIR) return true;
     return false;
 }
 

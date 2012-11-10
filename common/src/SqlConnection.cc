@@ -394,7 +394,7 @@ SqlConnection::createDbAndSelect(std::string const& dbName,
                                  SqlErrorObject& errObj, 
                                  bool failIfExists) {
     if ( ! createDb(dbName, errObj, failIfExists) ) {
-        return errObj.addErrMsg("Failed to create db " + dbName);
+        return false;
     }
     return selectDb(dbName, errObj);
 }

@@ -188,6 +188,20 @@ qWorker::Metadata::createExportPaths(std::string const& dbName) {
 }
 
 // ****************************************************************************
+// ***** rebuildExportPaths
+// ****************************************************************************
+/// If dbName is not set, it rebuilds paths for all databases
+bool 
+qWorker::Metadata::rebuildExportPaths(std::string const& dbName) {
+    if (dbName == "") {
+        if (!_destroyExportPathWithPrefix()) return false;
+    } else {
+        if (!_destroyExportPath4Db(dbName)) return false;
+    }
+    return createExportPaths(dbName);
+}
+
+// ****************************************************************************
 // ***** _getExportPathWithPrefix
 // ****************************************************************************
 /// Sets the "thePath" to something like <exportBasePath>/q

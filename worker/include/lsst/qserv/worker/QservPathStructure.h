@@ -61,7 +61,6 @@ private:
                         std::vector<std::string>&);
     bool createDirectories() const;
     bool isRegistered() const;
-    bool isRegistered(const char*) const;
     static bool isDirectory(const char*);
     bool createPaths() const;
 
