@@ -28,6 +28,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <ctype.h> // isdigit
 #include <stdio.h> // FIXME, used for random
 
 namespace qWorker = lsst::qserv::worker;
@@ -278,8 +279,21 @@ qWorker::Metadata::_extractChunkNo(string const& str) {
     if ( cursor < 1 ) {
         return -1; // negative indicates an error    
     }
+    // check if it is a number
+    string word = str.substr(cursor+1, s);
+    if ( word == "" ) {
+        _errObj.addErrMsg("Unexpected table name found: '" + str + "'.");
+        return -2; // negative indicates an error
+    }
+    for(string::const_iterator k = word.begin(); k != word.end(); ++k) {
+        if (!isdigit(*k)) {
+            _errObj.addErrMsg("Unexpected chunk number found.");
+            _errObj.addErrMsg("(table name: '" + str + "')");
+            return -3; // negative indicates an error
+        }
+    }
     int num;
-    stringstream csm(str.substr(cursor+1, s));
+    stringstream csm(word);
     csm >> num;
     return num;
 }
@@ -394,10 +408,14 @@ qWorker::Metadata::_generateExportPathsForDb(string const& exportBaseDir,
         for (cItr=oneT->_chunksInDb.begin(); 
              cItr!=oneT->_chunksInDb.end(); 
              ++cItr) {
-            _addChunk(_extractChunkNo(*cItr), exportBaseDir, dbName,
-                      exportPaths);
+            int chunkNo = _extractChunkNo(*cItr);
+            if ( chunkNo < 0 ) {
+                _errObj.addErrMsg("Db: '" + dbName + "'.");
+                return false;
+            }
+            _addChunk(chunkNo, exportBaseDir, dbName, exportPaths);
         }
-    } // end foreach t in partTables
+    }
     // Always create dummy chunk export regardless of tables. (#2048)
     _addChunk(DUMMYEMPTYCHUNKID, exportBaseDir, dbName, exportPaths);
     return true;

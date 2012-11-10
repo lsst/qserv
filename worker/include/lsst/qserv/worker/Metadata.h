@@ -61,17 +61,18 @@ public:
     };
 
 private:
+    int _extractChunkNo(std::string const&);
+    bool _isRegistered(std::string const&);
+
     bool _unregisterQservedDb(std::string const&);
     bool _destroyExportPathWithPrefix();
     bool _destroyExportPath4Db(std::string const&);
     bool _generateExportPaths(std::vector<std::string>& exportPaths);
-    static int _extractChunkNo(std::string const&);
-    bool _isRegistered(std::string const&);
-    void _addChunk(int, std::string const&, std::string const&,
-                   std::vector<std::string>&);
     bool _generateExportPathsForDb(std::string const&,    // exportBaseDir
                                    std::string const&,    // dbName
                                    std::vector<std::string>&);
+    void _addChunk(int, std::string const&, std::string const&,
+                   std::vector<std::string>&);
     bool _getTableChunksForDb(std::string const&,         // dbName
                               std::vector<TableChunks>&);
     bool _getExportBaseDir(std::string&);

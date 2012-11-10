@@ -150,7 +150,7 @@ RunActions::registerDb(string const& dbName) {
     if ( !_m.registerQservedDb(dbName) ) {
         throw _m.getLastError();
     }
-    cout << "Database " << dbName << " successfully registered." << endl;
+    cout << "Database '" << dbName << "' successfully registered." << endl;
 }
 
 void
@@ -159,7 +159,7 @@ RunActions::unregisterDb(string const& dbName) {
     if ( !_m.unregisterQservedDb(dbName) ) {
         throw _m.getLastError();
     }
-    cout << "Database " << dbName << " successfully unregistered." << endl;
+    cout << "Database '" << dbName << "' successfully unregistered." << endl;
 }
 
 void
@@ -181,7 +181,7 @@ RunActions::createExportPaths(string const& dbName) {
     string where;
     if (dbName != "") {
         _validateDbName(dbName);
-        where = "database "; where += dbName;
+        where = "database '" + dbName + "'";
     } else {
         where = "all databases";
     }
@@ -196,14 +196,14 @@ RunActions::rebuildExportPaths(string const& dbName) {
     string where;
     if (dbName != "") {
         _validateDbName(dbName);
-        where = "database "; where += dbName;
+        where = "database '" + dbName + "'";
     } else {
         where = "all databases";
     }
     if (!_m.rebuildExportPaths(dbName)) {
         throw _m.getLastError();
     }
-    cout << "Export paths successfully rebuild for " << where << "." << endl;
+    cout << "Export paths successfully rebuilt for " << where << "." << endl;
 }
 
 // ****************************************************************************
@@ -297,8 +297,8 @@ main(int argc, char* argv[]) {
             throw s.str();
         }
     } catch (std::string str) {
-      cerr << str << endl;
-      return -1;
+        cerr << "ERROR: " << str << endl;
+        return -1;
     }
     return 0;
 }
