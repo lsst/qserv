@@ -18,6 +18,7 @@ GetOptions( \%opts,
 	"table=s",
 	"output=s",
 	"dbpass=s",
+	"mysql-proxy-port=s",
 	"partition",
 	"test"
 );
@@ -26,7 +27,8 @@ usage(0) if ($opts{'help'});
 
 my $debug = $opts{'debug'} || 0;
 
-my $install_dir = "INSTALLDIR";
+my $install_dir = "<INSTALL_DIR>";
+my $mysql_proxy_port = "<MYSQL_PROXY_PORT>";
 
 #mysql variables
 my $mysqld_sock = "$install_dir/var/lib/mysql/mysql.sock";
@@ -178,7 +180,7 @@ sub create_test_sql {
 #check the mysql proxy use.
 sub check_proxy {
 
-	return check_sql_server( "mysql --port=4040 --protocol=TCP" );
+	return check_sql_server( "mysql --port=<XROOTD_PORT> --protocol=TCP" );
 
 }
 
@@ -395,7 +397,7 @@ sub load_data {
 	unless( -e "$install_dir/etc/setup.cnf" ) {
 		open SETUP, ">$install_dir/etc/setup.cnf";
 		print SETUP "host:localhost\n";
-		print SETUP "port:4040\n";
+		print SETUP "port:$mysql_proxy_port\n";
 		print SETUP "user:root\n";
 		print SETUP "pass:$dbpass\n";
 		print SETUP "sock:$install_dir/var/lib/mysql/mysql.sock\n";
