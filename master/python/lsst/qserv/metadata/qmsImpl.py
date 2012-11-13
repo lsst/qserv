@@ -288,9 +288,11 @@ def retrieveDbInfo(loggerName, dbName):
     if mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" % \
                             dbName)[0] == 0:
         return [QmsStatus.ERR_DB_NOT_EXISTS, {}]
-    ps = mdb.execCommand1("SELECT psName FROM DbMeta WHERE dbName='%s'" % \
-                              dbName)[0]
+    ret = mdb.execCommand1("SELECT dbId, dbUuid, psName FROM DbMeta WHERE dbName='%s'" % dbName)
     values = dict()
+    values["dbId"] = ret[0]
+    values["dbUuid"] = ret[1]
+    ps = ret[2]
     values["partitioningStrategy"] = ps
     if ps == "sphBox":
         ret = mdb.execCommand1("""
@@ -536,17 +538,21 @@ def retrievePartTables(loggerName, dbName):
     ret = mdb.connect()
     if ret != QmsStatus.SUCCESS: 
         logger.error("retrievePartTables: failed to connect to qms")
-        return [ret, None]
+        return [ret, []]
     # check if db exists
     cmd = "SELECT dbId FROM DbMeta WHERE dbName = '%s'" % dbName
     ret = mdb.execCommand1(cmd)
     if not ret:
         logger.error("retrievePartTables: database '%s' not registered"%dbName)
-        return [QmsStatus.ERR_DB_NOT_EXISTS, None]
+        return [QmsStatus.ERR_DB_NOT_EXISTS, []]
     dbId = ret[0]
     cmd = "SELECT tableName FROM TableMeta WHERE dbId=%s " % dbId + \
            "AND psId IS NOT NULL"
     tNames = mdb.execCommandN(cmd)
     mdb.disconnect()
     logger.debug("retrieveTableInfo: done")
-    return [QmsStatus.SUCCESS, tNames]
+    tNamesCleaned = []
+    for tn in tNames:
+        tNamesCleaned.append(tn[0])
+        print "returning: ", tNamesCleaned
+    return [QmsStatus.SUCCESS, tNamesCleaned]
