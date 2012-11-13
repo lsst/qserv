@@ -554,5 +554,4 @@ def retrievePartTables(loggerName, dbName):
     tNamesCleaned = []
     for tn in tNames:
         tNamesCleaned.append(tn[0])
-        print "returning: ", tNamesCleaned
     return [QmsStatus.SUCCESS, tNamesCleaned]
