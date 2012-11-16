@@ -18,7 +18,6 @@ master/bin/runTransactions
 master/bin/testCppParser
 master/python/lsst/qserv/master/_masterLib.so
 master/python/lsst/qserv/master/worker_pb2.py
-master/resources/my-proxy.cnf.tpl
 master/src/AggregateMgr.os
 master/src/AsyncQueryManager.os
 master/src/ChunkMapping.os
