@@ -169,15 +169,6 @@ def destroyMeta(loggerName):
 ###############################################################################
 #### printMeta
 ###############################################################################
-def _printTable(s, mdb, tableName):
-    ret = mdb.execCommandN("SELECT * FROM %s" % tableName)
-    s.write(tableName)
-    if len(ret) == 0:
-        s.write(" is empty.\n")
-    else: 
-        s.write(':\n')
-        for r in ret: print >> s, "   ", r
-
 def printMeta(loggerName):
     """This method prints all metadata into a string"""
     mdb = QmsMySQLDb(loggerName)
@@ -311,6 +302,20 @@ def retrieveDbInfo(loggerName, dbName):
     return [ret, values]
 
 ###############################################################################
+#### checkDbExists
+###############################################################################
+def checkDbExists(loggerName, dbName):
+    """Checks if db <dbName> exists, returns 0 or 1"""
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        return 0
+    ret = mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" \
+                               % dbName)
+    mdb.disconnect()
+    return ret[0]
+
+###############################################################################
 #### listDbs
 ###############################################################################
 def listDbs(loggerName):
@@ -330,36 +335,8 @@ def listDbs(loggerName):
     return s.getvalue()
 
 ###############################################################################
-#### checkDbExists
-###############################################################################
-def checkDbExists(loggerName, dbName):
-    """Checks if db <dbName> exists, returns 0 or 1"""
-    mdb = QmsMySQLDb(loggerName)
-    ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
-        return 0
-    ret = mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" \
-                               % dbName)
-    mdb.disconnect()
-    return ret[0]
-
-###############################################################################
 #### createTable
 ###############################################################################
-def _checkColumnExists(mdb, dbName, tableName, columnName, loggerName):
-    # note: this function is mysql-specific!
-    ret = mdb.execCommand1("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (mdb.getServerPrefix(), dbName, tableName, columnName))
-    if ret[0] != 1:
-        logger = logging.getLogger(loggerName)
-        logger.error("column: '%s' not found in table '%s.%s'" % \
-                         (columnName, dbName, tableName))
-        return False
-    return True
-
-def _getColumnPos(mdb, dbName, tableName, columnName):
-    # note: this function is mysql-specific!
-    return mdb.execCommand1("SELECT ordinal_position FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (mdb.getServerPrefix(), dbName, tableName, columnName))[0] -1 
-
 def createTable(loggerName, dbName, crTbOptions, schemaStr):
     """Creates metadata about new table in qserv-managed database."""
     logger = logging.getLogger(loggerName)
@@ -472,6 +449,36 @@ def dropTable(loggerName, dbName, tableName):
     return ret
 
 ###############################################################################
+#### retrievePartTables
+###############################################################################
+def retrievePartTables(loggerName, dbName):
+    """Retrieves list of partitioned tables for a given database."""
+    logger = logging.getLogger(loggerName)
+    logger.debug("retrievePartTables: started")
+    # connect to mysql
+    mdb = QmsMySQLDb(loggerName)
+    ret = mdb.connect()
+    if ret != QmsStatus.SUCCESS: 
+        logger.error("retrievePartTables: failed to connect to qms")
+        return [ret, []]
+    # check if db exists
+    cmd = "SELECT dbId FROM DbMeta WHERE dbName = '%s'" % dbName
+    ret = mdb.execCommand1(cmd)
+    if not ret:
+        logger.error("retrievePartTables: database '%s' not registered"%dbName)
+        return [QmsStatus.ERR_DB_NOT_EXISTS, []]
+    dbId = ret[0]
+    cmd = "SELECT tableName FROM TableMeta WHERE dbId=%s " % dbId + \
+           "AND psId IS NOT NULL"
+    tNames = mdb.execCommandN(cmd)
+    mdb.disconnect()
+    logger.debug("retrieveTableInfo: done")
+    tNamesCleaned = []
+    for tn in tNames:
+        tNamesCleaned.append(tn[0])
+    return [QmsStatus.SUCCESS, tNamesCleaned]
+
+###############################################################################
 #### retrieveTableInfo
 ###############################################################################
 def retrieveTableInfo(loggerName, dbName, tableName):
@@ -536,31 +543,39 @@ def getInternalQmsDbName(loggerName):
     return (dbName is not None, dbName)
 
 ###############################################################################
-#### retrievePartTables
+#### _checkColumnExists
 ###############################################################################
-def retrievePartTables(loggerName, dbName):
-    """Retrieves list of partitioned tables for a given database."""
-    logger = logging.getLogger(loggerName)
-    logger.debug("retrievePartTables: started")
-    # connect to mysql
-    mdb = QmsMySQLDb(loggerName)
-    ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
-        logger.error("retrievePartTables: failed to connect to qms")
-        return [ret, []]
-    # check if db exists
-    cmd = "SELECT dbId FROM DbMeta WHERE dbName = '%s'" % dbName
-    ret = mdb.execCommand1(cmd)
-    if not ret:
-        logger.error("retrievePartTables: database '%s' not registered"%dbName)
-        return [QmsStatus.ERR_DB_NOT_EXISTS, []]
-    dbId = ret[0]
-    cmd = "SELECT tableName FROM TableMeta WHERE dbId=%s " % dbId + \
-           "AND psId IS NOT NULL"
-    tNames = mdb.execCommandN(cmd)
-    mdb.disconnect()
-    logger.debug("retrieveTableInfo: done")
-    tNamesCleaned = []
-    for tn in tNames:
-        tNamesCleaned.append(tn[0])
-    return [QmsStatus.SUCCESS, tNamesCleaned]
+def _checkColumnExists(mdb, dbName, tableName, columnName, loggerName):
+    # note: this function is mysql-specific!
+    ret = mdb.execCommand1("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (mdb.getServerPrefix(), dbName, tableName, columnName))
+    if ret[0] != 1:
+        logger = logging.getLogger(loggerName)
+        logger.error("column: '%s' not found in table '%s.%s'" % \
+                         (columnName, dbName, tableName))
+        return False
+    return True
+
+###############################################################################
+#### _printTable
+###############################################################################
+def _printTable(s, mdb, tableName):
+    ret = mdb.execCommandN("SELECT * FROM %s" % tableName)
+    s.write(tableName)
+    if len(ret) == 0:
+        s.write(" is empty.\n")
+    else: 
+        s.write(':\n')
+        for r in ret: print >> s, "   ", r
+
+def _getColumnPos(mdb, dbName, tableName, columnName):
+    # note: this function is mysql-specific!
+    return mdb.execCommand1("SELECT ordinal_position FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (mdb.getServerPrefix(), dbName, tableName, columnName))[0] -1 
+
+
+
+
+
+
+
+
+

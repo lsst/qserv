@@ -64,13 +64,13 @@ class QmsInterface:
         """Retrieves information about a database managed by qserv."""
         return qmsImpl.retrieveDbInfo(self._loggerName, dbName)
 
-    def listDbs(self):
-        """Returns string that contains list of databases managed by qserv."""
-        return qmsImpl.listDbs(self._loggerName)
-
     def checkDbExists(self, dbName):
         """Checks if db <dbName> exists, returns 0 (no) or 1 (yes)."""
         return qmsImpl.checkDbExists(self._loggerName, dbName)
+
+    def listDbs(self):
+        """Returns string that contains list of databases managed by qserv."""
+        return qmsImpl.listDbs(self._loggerName)
 
     def createTable(self, dbName, crTbOptions, schemaStr):
         """Creates metadata about new table from qserv-managed database."""
