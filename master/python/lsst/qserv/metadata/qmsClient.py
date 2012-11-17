@@ -139,6 +139,9 @@ COMMANDS
         Retrieves information about a table.
         Arguments: <dbName> <tableName>
 
+  getInternalQmsDbName
+        Retrieves the name of internal qms database.
+
 EXAMPLES
 Example contents of the .qmsadm file:
 
@@ -400,6 +403,16 @@ password: myPass
         for (k, v) in values.items():
             print "%s: %s" % (k, v)
         self._logger.debug("Done retrieving table info")
+
+    def _cmd_getInternalQmsDbName(self, options, args):
+        self._logger.debug("getInternalQmsDbName")
+        qms = self._connectToQMS()
+        if qms is None:
+            return
+        (retStat, dbName) = qms.getInternalQmsDbName()
+        if retStat:
+            print dbName
+        self._logger.debug("getInternalQmsDbName done")
 
     ###########################################################################
     ##### validating parameters for CreateTable and CreateDb

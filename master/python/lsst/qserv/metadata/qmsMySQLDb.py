@@ -43,6 +43,13 @@ class QmsMySQLDb():
         self._conn = None
         self._logger = logging.getLogger(loggerName)
         self._connType = None
+        config = lsst.qserv.master.config.config
+        self._socket = config.get("qmsdb", "unix_socket")
+        self._user = config.get("qmsdb", "user")
+        self._passwd = config.get("qmsdb", "passwd")
+        self._host = config.get("qmsdb", "host")
+        self._port = config.getint("qmsdb", "port")
+        self._dbName = "qms_%s" % config.get("qmsdb", "db")
 
     def __del__(self):
         self.disconnect()
@@ -57,13 +64,6 @@ class QmsMySQLDb():
         """
         if self._checkIsConnected():
             return
-        config = lsst.qserv.master.config.config
-        self._socket = config.get("qmsdb", "unix_socket")
-        self._user = config.get("qmsdb", "user")
-        self._passwd = config.get("qmsdb", "passwd")
-        self._host = config.get("qmsdb", "host")
-        self._port = config.getint("qmsdb", "port")
-        self._dbName = "qms_%s" % config.get("qmsdb", "db")
 
         try: # Socket file first
             self._connType = "socket"
@@ -135,6 +135,9 @@ class QmsMySQLDb():
     def dropDb(self):
         if self.checkDbExists():
             self.execCommand0("DROP DATABASE %s" % self._dbName)
+
+    def getDbName(self):
+        return self._dbName[4:]
 
     def checkDbExists(self):
         if self._dbName is None:

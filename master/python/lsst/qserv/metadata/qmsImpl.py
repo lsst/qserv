@@ -527,6 +527,15 @@ def retrieveTableInfo(loggerName, dbName, tableName):
 
 
 ###############################################################################
+#### getInternalQmsDbName
+###############################################################################
+def getInternalQmsDbName(loggerName):
+    """Retrieves name of the internal qms database. """
+    mdb = QmsMySQLDb(loggerName)
+    dbName = mdb.getDbName()
+    return (dbName is not None, dbName)
+
+###############################################################################
 #### retrievePartTables
 ###############################################################################
 def retrievePartTables(loggerName, dbName):

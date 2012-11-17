@@ -89,6 +89,10 @@ class QmsInterface:
         """Retrieves information about a table."""
         return qmsImpl.retrieveTableInfo(self._loggerName, dbName, tableName)
 
+    def getInternalQmsDbName(self):
+        """Retrieves name of the internal qms database. """
+        return qmsImpl.getInternalQmsDbName(self._loggerName)
+
     def help(self):
         """A brief help message showing available commands"""
         r = "" ## self._handyHeader()
