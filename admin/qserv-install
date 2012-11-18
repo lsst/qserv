@@ -47,7 +47,7 @@ my $debug = $opts{'debug'} || 1;
 
 my $install_dir = $opts{'install-dir'} || cwd();
 my $log_dir = $opts{'log-dir'} || "$install_dir/var/log";
-my $mysql_data_dir = $opts{'mysql-data-dir'} || "$log_dir/var/lib/mysql";
+my $mysql_data_dir = $opts{'mysql-data-dir'} || "$install_dir/var/lib/mysql";
 my $mysql_port = $opts{'mysql-port'} || "3306";
 my $db_pass = $opts{'db-pass'};
 my $mysql_proxy_port = $opts{'mysql-proxy-port'} || "4040";
@@ -371,8 +371,14 @@ sub check_and_install_mysql {
 	
 	run_command("mysql_install_db --user=$prod_user");
 	
-	print "Please set the mysql root user password with: ";
-	print "mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password <password>\n";
+	if ( length($db_pass) > 0) {	
+		run_command("mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password '$db_pass'");
+		run_command("mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -h $qserv_master password '$db_pass'");
+	}
+	else {
+		print "Please set the mysql root user password with: ";
+		print "mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password <password>\n";
+	}
 
 	chdir "$install_dir";
 
@@ -558,13 +564,17 @@ sub check_and_deploy_qserv {
         mkdir "var/run/mysqld";
 
         if ($log_dir eq "$install_dir/var/log") {
-                mkdir $log_dir or die print "$!\n";
+		if (not -e "$log_dir") {
+                	mkdir $log_dir or die print "$!\n";
+		}
         }
         else {
                 create_symlink ($log_dir,"$install_dir/var/log");
         }
         if ($mysql_data_dir eq "$install_dir/var/lib/mysql") {
-                mkdir $mysql_data_dir or die print "$!\n";
+		if (not -e "$mysql_data_dir") {
+                	mkdir $mysql_data_dir or die print "$!\n";
+		}
         }
         else {
                 create_symlink ($mysql_data_dir,"$install_dir/var/lib/mysql");
@@ -699,8 +709,14 @@ sub create_mysqlproxy_startup {
 #source tar files in the build dir.  Will remove all loaded data also.
 sub clean_all {
 
+    
+	clean_dir($log_dir);
+	
+        clean_dir($mysql_data_dir);
+
 	chdir "$install_dir";
 		
+	print "Cleaning dir : $install_dir\n" if ($debug); 
 	opendir TMPDIR, "$install_dir";
 	my @listfiles = readdir TMPDIR;
 	closedir TMPDIR;
@@ -714,22 +730,36 @@ sub clean_all {
 		}
 	}
 	
-	chdir "$build_dir";
+	clean_dir($build_dir);
 	
-	opendir TMPDIR, "$build_dir";
-	@listfiles = readdir TMPDIR;
-	closedir TMPDIR;
-	
-	foreach my $file ( @listfiles ) {
-		next if( $file =~ /^\./ );
-		if( -d $file ) {
-			print "Removing $file\n";
-			run_command("rm -r $file");
-		}
-	}
-
 }
 
+# Remove file and directories, except *.tar.gz
+sub clean_dir {
+
+	my($dir) = @_;
+
+	print "Cleaning dir : $dir\n" if ($debug); 
+	chdir "$dir";
+
+	opendir TMPDIR, "$dir";
+	my @listfiles = readdir TMPDIR;
+	closedir TMPDIR;
+
+	foreach my $file ( @listfiles ) {
+		next if( $file =~ /^\./ );
+		next if( $file =~ /^.*\.tar\.gz$/ );
+		print " file : $file\n" if ($debug);
+		if( -d $file ) {
+			print "Removing directory : $file\n";
+			run_command("rm -r $file");
+		}
+		elsif( -e $file ) {
+			print "Removing $file\n";
+			run_command("rm $file");
+		}
+	}
+}
 
 #help report for the --help option
 sub usage {
@@ -758,19 +788,21 @@ OPTIONS:
       	--build-dir  		Path the source tar files, default to use "build"
 	--clean-all 		Remove all produced software and data, revert to start before install
 	--extras    		Install only the extra modules needed for qserv
-	--lua       		Install only lua and needed lua modules
-	--mysql     		Install only the mysql server
 	--mysql-port     	Specify mysql port (default to 3306)
 	--mysql-proxy 		Install only the mysql proxy software.
 	--mysql-proxy-port 	Specify mysql-proxy port (default to 4040)
 	--python    		Path the python install for use, default is /usr/bin/python
-	--xrootd    		Install only xrootd
 	--xrootd-port   	Specify xrootd manager port (default to 1094)
 	--cmsd-manager-port     Specify cmsd manager port (default to 2131)
-	--qserv     		Install only qserv
 	--geometry-dir		Specify path to geometry source directory (if not in $src_dir/master/python/)
 	--user      		Username to use in qserv use, default it to use current username.
 	--test      		Test the install, don't perform any commands.
+	
+One of these option may also be setted :
+	--lua       		Install only lua and needed lua modules
+	--mysql     		Install only the mysql server
+	--xrootd    		Install only xrootd
+	--qserv     		Install only qserv
 
 Examples: $bin
 
