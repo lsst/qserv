@@ -168,7 +168,7 @@ sub check_and_install_qserv {
 	my $pass_opt = '';
 
 	if ( length($db_pass) > 0) {
-		$pass_opt = "-p$db_pass"
+		$pass_opt = "-p'$db_pass'"
 	}
 
 	print "Installing Qserv from source.\n";
@@ -371,13 +371,19 @@ sub check_and_install_mysql {
 	
 	run_command("mysql_install_db --user=$prod_user");
 	
-	if ( length($db_pass) > 0) {	
-		run_command("mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password '$db_pass'");
-		run_command("mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -h $qserv_master password '$db_pass'");
+	if ( length($db_pass) > 0) {
+		print "Starting mysql server.\n";
+		system("$install_dir/bin/mysqld_safe &");
+		sleep 5;	
+		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password '$db_pass'");
+		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -h $qserv_master password '$db_pass' -p'$db_pass'");
+		# shutdown mysql
+		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock shutdown -u root -p'$db_pass'");
 	}
 	else {
 		print "Please set the mysql root user password with: ";
 		print "mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password <password>\n";
+		print "mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -h $qserv_master password <password>\n";
 	}
 
 	chdir "$install_dir";
@@ -749,6 +755,8 @@ sub clean_dir {
 	foreach my $file ( @listfiles ) {
 		next if( $file =~ /^\./ );
 		next if( $file =~ /^.*\.tar\.gz$/ );
+		next if( $file =~ /^.*\.tar\.bz2$/ );
+		next if( $file =~ /^.*\.tar\.zip$/ );
 		print " file : $file\n" if ($debug);
 		if( -d $file ) {
 			print "Removing directory : $file\n";

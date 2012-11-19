@@ -43,7 +43,7 @@ if [ -e "${LOG_FILE_PREFIX}" ]; then
         LOG_FILE_PREFIX="UNDEFINED"
 fi
 
-CMD="${QSERV_SRC}/admin/qserv-install ${INSTALL_OPTS} 2>&1 > ${QSERV_BASE}/${LOG_FILE_PREFIX}-$DATE.log"
+CMD="${QSERV_SRC}/admin/qserv-install ${INSTALL_OPTS} &> ${QSERV_BASE}/${LOG_FILE_PREFIX}-$DATE.log"
 echo "Running \"${CMD}\""
 eval ${CMD}
 # ${QSERV_SRC}/admin/qserv-install ${INSTALL_OPTS} 2&> ${QSERV_BASE}/INSTALL-$DATE.log
