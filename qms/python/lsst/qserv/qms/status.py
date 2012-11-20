@@ -23,7 +23,7 @@
 # qmsErrors.py : Defines error codes and their descriptions.
 # Used by both the qms server and client.
 
-class QmsStatus():
+class Status():
     SUCCESS  = 0
 
     # note: error numbered 1000 - 1200 are used by mysql,
@@ -59,7 +59,7 @@ class QmsStatus():
                }
 
 def getErrMsg(errNo):
-    s = QmsStatus()
+    s = Status()
     if errNo in s.errors:
         return "qms error #%s: %s" % (errNo, s.errors[errNo])
     return "qms error: undefined"

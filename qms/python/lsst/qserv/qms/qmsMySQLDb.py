@@ -30,7 +30,7 @@ import subprocess
 import sys
 
 import lsst.qserv.qms.config
-from lsst.qserv.qms.qmsStatus import QmsStatus
+from lsst.qserv.qms.status import Status
 
 class QmsMySQLDb():
     """
@@ -93,7 +93,7 @@ class QmsMySQLDb():
             except Exception, e2:
                 self._connType = None
                 if e[1].startswith("Unknown database"):
-                    return QmsStatus.ERR_NO_META
+                    return Status.ERR_NO_META
                 msg1 = "Couldn't connect using file %s" % self._socket
                 self._logger.error(msg1)
                 print >> sys.stderr, msg1, e
@@ -101,33 +101,33 @@ class QmsMySQLDb():
                 self._logger.error(msg2)
                 print >> sys.stderr, msg2, e2
                 self._conn = None
-                return QmsStatus.ERR_MYSQL_CONNECT
+                return Status.ERR_MYSQL_CONNECT
 
         c = self._conn.cursor()
         if createDb:
             if self.checkDbExists():
                 self._logger.error("Can't created db '%s', it exists." % \
                                        self._dbName)
-                return QmsStatus.ERR_IS_INIT
+                return Status.ERR_IS_INIT
             else:
                 self.execCommand0("CREATE DATABASE %s" % self._dbName)
             self._conn.select_db(self._dbName)
         self._logger.debug("Connected to db %s" % self._dbName)
-        return QmsStatus.SUCCESS
+        return Status.SUCCESS
 
     def disconnect(self):
         if self._conn == None:
-            return QmsStatus.SUCCESS
+            return Status.SUCCESS
         try:
             self._conn.commit()
             self._conn.close()
         except MySQLdb.Error, e:
             self._logger.error("QmsMySQLDb::disconnect: DB Error %d: %s" % \
                                    (e.args[0], e.args[1]))
-            return QmsStatus.ERR_MYSQL_DISCONN
+            return Status.ERR_MYSQL_DISCONN
         self._logger.debug("MySQL connection closed")
         self._conn = None
-        return QmsStatus.SUCCESS
+        return Status.SUCCESS
 
     def connectAndCreateDb(self):
         return self.connect(True)

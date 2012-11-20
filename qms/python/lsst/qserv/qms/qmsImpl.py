@@ -29,7 +29,7 @@ import tempfile
 import uuid
 
 from qmsMySQLDb import QmsMySQLDb
-from qmsStatus import QmsStatus
+from status import Status
 
 
 ###############################################################################
@@ -145,7 +145,7 @@ def installMeta(loggerName):
 )''']]
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connectAndCreateDb()
-    if ret != QmsStatus.SUCCESS: return ret
+    if ret != Status.SUCCESS: return ret
     for t in internalTables:
         mdb.createTable(t[0], t[1])
     return mdb.disconnect()
@@ -157,7 +157,7 @@ def destroyMeta(loggerName):
     """This method permanently destroys qserv metadata"""
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS:
+    if ret != Status.SUCCESS:
         return ret
     qmsDbs = mdb.execCommandN(
         "SHOW DATABASES LIKE '%s%%'" % mdb.getServerPrefix())
@@ -173,7 +173,7 @@ def printMeta(loggerName):
     """This method prints all metadata into a string"""
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
+    if ret != Status.SUCCESS: 
         return None
     s = StringIO.StringIO()
     for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox", 
@@ -191,7 +191,7 @@ def createDb(loggerName, dbName, crDbOptions):
     # connect to QMS
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
+    if ret != Status.SUCCESS: 
         logger.error("Failed to connect to qms")
         return None
     # check if db does not exit
@@ -199,7 +199,7 @@ def createDb(loggerName, dbName, crDbOptions):
     ret = mdb.execCommand1(cmd)
     if ret[0] > 0:
         logger.error("Database '%s' already registered" % dbName)
-        return QmsStatus.ERR_DB_EXISTS
+        return Status.ERR_DB_EXISTS
     # create entry in PS_Db_<partitioningStrategy> table
     if crDbOptions["partitioning"] == "off":
         psId = '\N'
@@ -217,10 +217,10 @@ def createDb(loggerName, dbName, crDbOptions):
             psId = (mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
             if not psId:
                 logger.error("Failed to run '%s'" % cmd)
-                return QmsStatus.ERR_INTERNAL
+                return Status.ERR_INTERNAL
         else:
             logger.error("Invalid psName: %s" % psName)
-            return QmsStatus.ERR_INTERNAL
+            return Status.ERR_INTERNAL
     # create entry in DbMeta table
     dbUuid = uuid.uuid4() # random UUID
     cmd = "INSERT INTO DbMeta(dbName, dbUuid, psName, psId) VALUES('%s', '%s', '%s', %s)" % (dbName, dbUuid, psName, psId)
@@ -239,7 +239,7 @@ def dropDb(loggerName, dbName):
     # connect to mysql
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
+    if ret != Status.SUCCESS: 
         logger.error("Failed to connect to qms")
         return None
     # check if db exists
@@ -247,7 +247,7 @@ def dropDb(loggerName, dbName):
     ret = mdb.execCommand1(cmd)
     if ret[0] != 1:
         logger.error("Database '%s' not registered" % dbName)
-        return QmsStatus.ERR_DB_NOT_EXISTS
+        return Status.ERR_DB_NOT_EXISTS
     # get partitioningStrategy, psId and drop the entry
     cmd = "SELECT dbId, psName, psId FROM DbMeta WHERE dbName = '%s'" % dbName
     (dbId, psName, dbPsId) = mdb.execCommand1(cmd)
@@ -274,11 +274,11 @@ def retrieveDbInfo(loggerName, dbName):
     """Retrieves info about a database"""
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
+    if ret != Status.SUCCESS: 
         return [ret, {}]
     if mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" % \
                             dbName)[0] == 0:
-        return [QmsStatus.ERR_DB_NOT_EXISTS, {}]
+        return [Status.ERR_DB_NOT_EXISTS, {}]
     ret = mdb.execCommand1("SELECT dbId, dbUuid, psName FROM DbMeta WHERE dbName='%s'" % dbName)
     values = dict()
     values["dbId"] = ret[0]
@@ -308,7 +308,7 @@ def checkDbExists(loggerName, dbName):
     """Checks if db <dbName> exists, returns 0 or 1"""
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
+    if ret != Status.SUCCESS: 
         return 0
     ret = mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" \
                                % dbName)
@@ -322,7 +322,7 @@ def listDbs(loggerName):
     """Prints names of all databases managed by qserv into a string"""
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
+    if ret != Status.SUCCESS: 
         return None
     ret = mdb.execCommandN("SELECT dbName FROM DbMeta")
     if not ret:
@@ -350,7 +350,7 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
     # connect to QMS
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
+    if ret != Status.SUCCESS: 
         os.unlink(schemaF.name)
         logger.error("Failed to connect to qms")
         return ret
@@ -365,7 +365,7 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
     if ret[0] > 0:
         os.unlink(schemaF.name)
         logger.error("Table '%s' already registred" % tableName)
-        return QmsStatus.ERR_TABLE_EXISTS
+        return Status.ERR_TABLE_EXISTS
 
     # load the template schema
     mdb.loadSqlScript(schemaF.name, "%s%s" % (mdb.getServerPrefix(), dbName))
@@ -388,7 +388,7 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
         tCN = crTbOptions["thetaColName"]
         if not _checkColumnExists(mdb, dbName, tableName, pCN, loggerName) or \
            not _checkColumnExists(mdb, dbName, tableName, tCN, loggerName):
-            return QmsStatus.ERR_COL_NOT_FOUND
+            return Status.ERR_COL_NOT_FOUND
         pN = _getColumnPos(mdb, dbName, tableName, pCN)
         tN = _getColumnPos(mdb, dbName, tableName, tCN)
         lP = int(crTbOptions["logicalPart"])
@@ -416,7 +416,7 @@ def dropTable(loggerName, dbName, tableName):
     # connect to mysql
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
+    if ret != Status.SUCCESS: 
         logger.error("dropTable: failed to connect to qms")
         return None
     # check if db exists
@@ -424,7 +424,7 @@ def dropTable(loggerName, dbName, tableName):
     ret = mdb.execCommand1(cmd)
     if ret[0] != 1:
         logger.error("dropTable: database '%s' not registered" % dbName)
-        return QmsStatus.ERR_DB_NOT_EXISTS
+        return Status.ERR_DB_NOT_EXISTS
     # get dbId, psName, psId
     cmd = "SELECT dbId, psName, psId FROM DbMeta WHERE dbName = '%s'" % dbName
     (dbId, psName, dbPsId) = mdb.execCommand1(cmd)
@@ -434,7 +434,7 @@ def dropTable(loggerName, dbName, tableName):
     tableId = mdb.execCommand1(cmd)
     if not tableId:
         logger.error("dropTable: table '%s' does not exist." % tableName)
-        return QmsStatus.ERR_TABLE_NOT_EXISTS
+        return Status.ERR_TABLE_NOT_EXISTS
     # remove the entry about the table
     cmd = "DELETE FROM TableMeta WHERE tableId = %s" % tableId
     mdb.execCommand0(cmd)
@@ -458,7 +458,7 @@ def retrievePartTables(loggerName, dbName):
     # connect to mysql
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
+    if ret != Status.SUCCESS: 
         logger.error("retrievePartTables: failed to connect to qms")
         return [ret, []]
     # check if db exists
@@ -466,7 +466,7 @@ def retrievePartTables(loggerName, dbName):
     ret = mdb.execCommand1(cmd)
     if not ret:
         logger.error("retrievePartTables: database '%s' not registered"%dbName)
-        return [QmsStatus.ERR_DB_NOT_EXISTS, []]
+        return [Status.ERR_DB_NOT_EXISTS, []]
     dbId = ret[0]
     cmd = "SELECT tableName FROM TableMeta WHERE dbId=%s " % dbId + \
            "AND psId IS NOT NULL"
@@ -476,7 +476,7 @@ def retrievePartTables(loggerName, dbName):
     tNamesCleaned = []
     for tn in tNames:
         tNamesCleaned.append(tn[0])
-    return [QmsStatus.SUCCESS, tNamesCleaned]
+    return [Status.SUCCESS, tNamesCleaned]
 
 ###############################################################################
 #### retrieveTableInfo
@@ -488,7 +488,7 @@ def retrieveTableInfo(loggerName, dbName, tableName):
     # connect to mysql
     mdb = QmsMySQLDb(loggerName)
     ret = mdb.connect()
-    if ret != QmsStatus.SUCCESS: 
+    if ret != Status.SUCCESS: 
         logger.error("retrieveTableInfo: failed to connect to qms")
         return [ret, {}]
     # check if db exists
@@ -496,7 +496,7 @@ def retrieveTableInfo(loggerName, dbName, tableName):
     ret = mdb.execCommand1(cmd)
     if not ret:
         logger.error("retrieveTableInfo: database '%s' not registered"% dbName)
-        return [QmsStatus.ERR_DB_NOT_EXISTS, {}]
+        return [Status.ERR_DB_NOT_EXISTS, {}]
     dbId = ret[0]
     # check if table exists
     cmd = "SELECT tableId FROM TableMeta WHERE dbId=%s AND tableName='%s'" % \
@@ -504,7 +504,7 @@ def retrieveTableInfo(loggerName, dbName, tableName):
     tableId = mdb.execCommand1(cmd)
     if not tableId:
         logger.error("retrieveTableInfo: table '%s' doesn't exist."% tableName)
-        return [QmsStatus.ERR_TABLE_NOT_EXISTS, {}]
+        return [Status.ERR_TABLE_NOT_EXISTS, {}]
     # get ps name
     cmd = "SELECT psName FROM DbMeta WHERE dbId=%s" % dbId
     psName = mdb.execCommand1(cmd)[0]

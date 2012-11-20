@@ -36,8 +36,8 @@ import xmlrpclib
 
 # Local package imports
 from lsst.qserv.qms import qmsInterface
-from lsst.qserv.qms.qmsStatus import QmsStatus
-from lsst.qserv.qms.qmsStatus import getErrMsg
+from lsst.qserv.qms.status import Status
+from lsst.qserv.qms.status import getErrMsg
 
 class Client(object):
     def __init__(self):
@@ -185,7 +185,7 @@ password: myPass
         if qms is None:
             return
         ret = qms.installMeta()
-        if ret != QmsStatus.SUCCESS: 
+        if ret != Status.SUCCESS: 
             print getErrMsg(ret)
         else:
             print "Metadata successfully installed."
@@ -197,7 +197,7 @@ password: myPass
         if qms is None:
             return
         ret = qms.destroyMeta()
-        if ret != QmsStatus.SUCCESS: 
+        if ret != Status.SUCCESS: 
             print getErrMsg(ret)
         else: 
             print "All metadata destroyed!"
@@ -231,7 +231,7 @@ password: myPass
         self._logger.debug("createDb %s, options are: " % dbName)
         self._logger.debug(theOptions)
         ret = qms.createDb(dbName, theOptions)
-        if ret != QmsStatus.SUCCESS: 
+        if ret != Status.SUCCESS: 
             print getErrMsg(ret)
             self._logger.error("createDb failed")
             return
@@ -251,7 +251,7 @@ password: myPass
             return
         self._logger.debug("dropping %s" % dbName)
         ret = qms.dropDb(dbName)
-        if ret != QmsStatus.SUCCESS: 
+        if ret != Status.SUCCESS: 
             print getErrMsg(ret)
             self._logger.error("dropDb failed")
             return
@@ -269,7 +269,7 @@ password: myPass
         if qms is None:
             return
         (retStat, values) = qms.retrieveDbInfo(args[0])
-        if retStat != QmsStatus.SUCCESS:
+        if retStat != Status.SUCCESS:
             print getErrMsg(retStat)
             return
         for (k, v) in values.items():
@@ -320,7 +320,7 @@ password: myPass
             return
         # check partitioning scheme
         (retStat, values) = qms.retrieveDbInfo(dbName)
-        if retStat != QmsStatus.SUCCESS:
+        if retStat != Status.SUCCESS:
             print getErrMsg(retStat)
             return
         ps = values["partitioningStrategy"]
@@ -337,7 +337,7 @@ password: myPass
                                (dbName, theOptions["tableName"]))
         self._logger.debug(theOptions)
         ret = qms.createTable(dbName, theOptions, schemaStr)
-        if ret != QmsStatus.SUCCESS: 
+        if ret != Status.SUCCESS: 
             print getErrMsg(ret)
             self._logger.error("createTable failed")
             return
@@ -357,7 +357,7 @@ password: myPass
             return
         self._logger.debug("dropping table %s.%s" % (dbName, tableName))
         ret = qms.dropTable(dbName, tableName)
-        if ret != QmsStatus.SUCCESS: 
+        if ret != Status.SUCCESS: 
             print getErrMsg(ret)
             self._logger.error("dropTable failed")
             return
@@ -377,7 +377,7 @@ password: myPass
             return
         self._logger.debug("retrievePartTables for %s" % dbName)
         (retStat, tNames) = qms.retrievePartTables(dbName)
-        if retStat != QmsStatus.SUCCESS: 
+        if retStat != Status.SUCCESS: 
             print getErrMsg(retStat)
             return
         print tNames
@@ -397,7 +397,7 @@ password: myPass
             return
         self._logger.debug("retrieveTableInfo for %s.%s" % (dbName, tableName))
         (retStat, values) = qms.retrieveTableInfo(dbName, tableName)
-        if retStat != QmsStatus.SUCCESS: 
+        if retStat != Status.SUCCESS: 
             print getErrMsg(retStat)
             return
         for (k, v) in values.items():
@@ -426,12 +426,12 @@ password: myPass
         if what == "Table":
             schemaFileName = theOptions["schemaFile"]
             if not os.access(schemaFileName, os.R_OK):
-                print getErrMsg(QmsStatus.ERR_SCHEMA_FILE)
+                print getErrMsg(Status.ERR_SCHEMA_FILE)
                 print "the file was: ", schemaFileName
                 return None
             tNameFromSchema = self._extractTableName(schemaFileName)
             if not tNameFromSchema:
-                print getErrMsg(QmsStatus.ERR_NO_TABLE_IN_SCHEMA)
+                print getErrMsg(Status.ERR_NO_TABLE_IN_SCHEMA)
                 print "the file was: ", schemaFileName
                 return None
             if tNameFromSchema != theOptions["tableName"]:
