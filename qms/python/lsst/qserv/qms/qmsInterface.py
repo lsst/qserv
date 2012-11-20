@@ -105,7 +105,7 @@ class QmsInterface:
         return r
 
     def _initLogging(self):
-        config = lsst.qserv.metadata.config.config
+        config = lsst.qserv.qms.config.config
         outFile = config.get("logging", "outFile")
         levelName = config.get("logging", "level")
         if levelName is None:
