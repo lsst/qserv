@@ -29,8 +29,8 @@ import os
 import subprocess
 import sys
 
-import lsst.qserv.qms.config
-from lsst.qserv.qms.status import Status
+import lsst.qserv.meta.config
+from lsst.qserv.meta.status import Status
 
 class QmsMySQLDb():
     """
@@ -43,7 +43,7 @@ class QmsMySQLDb():
         self._conn = None
         self._logger = logging.getLogger(loggerName)
         self._connType = None
-        config = lsst.qserv.qms.config.config
+        config = lsst.qserv.meta.config.config
         self._socket = config.get("qmsdb", "unix_socket")
         self._user = config.get("qmsdb", "user")
         self._passwd = config.get("qmsdb", "passwd")

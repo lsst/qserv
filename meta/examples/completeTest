@@ -16,7 +16,7 @@ echo === create 4 dbs ===
 echo === list dbs===
 ./runQmsClient.sh listDbs
 
-echo === checkingIf dbs exists. y, n ===
+echo === checking if dbs exists. y, n ===
 ./runQmsClient.sh checkDbExists Summer2012
 ./runQmsClient.sh checkDbExists Summer2012xx
 
@@ -48,7 +48,7 @@ echo === drop 3 dbs. Ok, ok, fail ===
 ./runQmsClient.sh dropDb NonPartA
 ./runQmsClient.sh dropDb whatever
 
-echo === checkingIf db exist ===
+echo === checking if db exist ===
 ./runQmsClient.sh checkDbExists Summer2012
 
 echo === list dbs ===

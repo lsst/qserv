@@ -26,7 +26,7 @@ import logging
 
 # Package imports
 import qmsImpl
-import lsst.qserv.qms.config
+import lsst.qserv.meta.config
 
 # Interface for qserv metadata server
 class QmsInterface:
@@ -105,7 +105,7 @@ class QmsInterface:
         return r
 
     def _initLogging(self):
-        config = lsst.qserv.qms.config.config
+        config = lsst.qserv.meta.config.config
         outFile = config.get("logging", "outFile")
         levelName = config.get("logging", "level")
         if levelName is None:
