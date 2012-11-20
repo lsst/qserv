@@ -140,7 +140,7 @@ qmwMySqlSocket:/var/lib/mysql/mysql.sock
 
     def _cmd_destroyMeta(self, options, args):
         self._logger.debug("Destroying meta")
-        ret = qmw.destroyMeta()
+        ret = self._qmw.destroyMeta()
         if ret != Status.SUCCESS: 
             print getErrMsg(ret)
         else:
@@ -149,7 +149,7 @@ qmwMySqlSocket:/var/lib/mysql/mysql.sock
 
     def _cmd_printMeta(self, options, args):
         self._logger.debug("Printing meta")
-        print qmw.printMeta()
+        print self._qmw.printMeta()
         self._logger.debug("Done printing meta")
 
     def _cmd_registerDb(self, options, args):
@@ -164,7 +164,7 @@ qmwMySqlSocket:/var/lib/mysql/mysql.sock
         if theOptions is None:
             return
         self._logger.debug("registerDb %s" % dbName)
-        ret = qmw.registerDb(dbName)
+        ret = self._qmw.registerDb(dbName)
         if ret != Status.SUCCESS: 
             print getErrMsg(ret)
             self._logger.error("registerDb failed")
@@ -181,7 +181,7 @@ qmwMySqlSocket:/var/lib/mysql/mysql.sock
             return
         dbName = args[0]
         self._logger.debug("unregistering %s" % dbName)
-        ret = qmw.unregisterDb(dbName)
+        ret = self._qmw.unregisterDb(dbName)
         if ret != Status.SUCCESS: 
             print getErrMsg(ret)
             self._logger.error("unregisterDb failed")
@@ -194,7 +194,7 @@ qmwMySqlSocket:/var/lib/mysql/mysql.sock
             msg = "'listDb does not take any arguments."
             print msg
             return
-        print qmw.listDbs()
+        print self._qmw.listDbs()
 
 ###############################################################################
 #### main
