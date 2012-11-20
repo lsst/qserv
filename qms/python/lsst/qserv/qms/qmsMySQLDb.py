@@ -29,8 +29,8 @@ import os
 import subprocess
 import sys
 
-import lsst.qserv.metadata.config
-from lsst.qserv.metadata.qmsStatus import QmsStatus
+import lsst.qserv.qms.config
+from lsst.qserv.qms.qmsStatus import QmsStatus
 
 class QmsMySQLDb():
     """

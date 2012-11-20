@@ -26,7 +26,7 @@ import logging
 
 # Package imports
 import qmsImpl
-import lsst.qserv.metadata.config
+import lsst.qserv.qms.config
 
 # Interface for qserv metadata server
 class QmsInterface:

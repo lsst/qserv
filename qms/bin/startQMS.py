@@ -22,26 +22,36 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# testQmsInterface.py : A module with Python unittest code for testing
-# functionality available through the qmsInterface module.
+# startQMS.py -- This is a "driver" program that provides a
+# command-line interface to start qserv metadata server.
 
-
-# Standard Python imports
+from optparse import OptionParser
+import os
 import sys
-import unittest
 
-# Package imports
-from lsst.qserv.metadata import qmsImpl
-from lsst.qserv.metadata import config
+from lsst.qserv.qms import qms
+from lsst.qserv.qms import config
 
-class TestQmsInterface(unittest.TestCase):
-    def setUp(self):
-        config.load("/u1/qserv/qserv/master/examples/qmsConfig.cnf")
-        pass
 
-    def testPersistentInit(self):
-        qmsImpl.persistentInit("qmsLogger")
+def main():    
+    parser = OptionParser()
 
+    parser.add_option("-c", "--config", dest="configFile", default=None,
+                      help="Use config file. Can also be specified with\n" +
+                      "%s as an environment variable." % config.envFilenameVar)
+    (options, args) = parser.parse_args()
+
+    confFile = options.configFile
+    if confFile:
+        if not os.access(confFile, os.R_OK):
+            raise Exception("Can't read config file %s" % confFile)
+        config.load(confFile)
+    else:
+        config.load()
+    print "Configuration:"
+    config.printTo(sys.stdout)
+
+    qms.runServer()
 
 if __name__ == '__main__':
-    unittest.main()
+    main()
