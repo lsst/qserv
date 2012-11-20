@@ -41,7 +41,7 @@ from twisted.web import xmlrpc
 
 # Package imports
 from qmsInterface import QmsInterface
-from lsst.qserv.master import config
+from lsst.qserv.metadata import config
 
 # Module settings
 defaultPort = 8001

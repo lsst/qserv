@@ -30,7 +30,7 @@ import os
 import sys
 
 from lsst.qserv.metadata import qms
-from lsst.qserv.master import config
+from lsst.qserv.metadata import config
 
 
 def main():    

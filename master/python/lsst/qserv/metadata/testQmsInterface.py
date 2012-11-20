@@ -32,7 +32,7 @@ import unittest
 
 # Package imports
 from lsst.qserv.metadata import qmsImpl
-from lsst.qserv.master import config
+from lsst.qserv.metadata import config
 
 class TestQmsInterface(unittest.TestCase):
     def setUp(self):

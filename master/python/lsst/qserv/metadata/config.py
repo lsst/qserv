@@ -41,58 +41,13 @@ from cStringIO import StringIO
 import os
 import sys
 
-# Package
-from lsst.qserv.master import StringMap # C++ STL map<string,string>
-
-
 # Defaults for the configuration itself
-defaultFilename = "/etc/qserv.cnf"
+defaultFilename = "/etc/qms.cnf"
 envFilename = None
-envFilenameVar = "QSERV_CONFIG"
+envFilenameVar = "QMS_CONFIG"
 
-# qserv built-in defaults:
+# qserv metadata server built-in defaults:
 # Note that section names and key names are lower-cased by python.
-defaultMasterConfig = StringIO("""\
-[frontend]
-xrootd=lsst-dev01:1094
-xrootd_user=qsmaster
-scratch_path=/dev/shm/qserv
-port=7080
-
-[mgmtdb]
-db=qservMeta
-# Steal resultdb settings for now.
-
-[resultdb]
-host=
-port=0
-unix_socket=/u1/local/mysql.sock
-db=qservResult
-user=qsmaster
-passwd=
-dropMem=
-
-[partitioner]
-stripes=18
-substripes=10
-emptyChunkListFile=
-
-[table]
-chunked=Source,ForcedSource
-subchunked=Object
-alloweddbs=LSST
-
-[tuning]
-memoryEngine=yes
-
-[debug]
-chunkLimit=-1
-
-[mysql]
-mysqlclient=
-
-""")
-
 defaultQmsConfig = StringIO("""\
 [qmsFrontend]
 port=7082
@@ -108,9 +63,7 @@ passwd=
 [logging]
 outFile=/tmp/qms.log
 level=warning
-
 """)
-
 
 # Module variables:
 config = None
@@ -134,13 +87,6 @@ def printTo(outHandle):
     config.write(outHandle)
     pass
 
-def getStringMap():
-    m = StringMap()
-    for s in config.sections():
-        for (k,v) in config.items(s):
-            m[s + "." + k] = v
-    return m
-
 ######################################################################
 ## Error classes
 ######################################################################
@@ -150,7 +96,6 @@ class ConfigError(Exception):
         self.reason = reason
     def __str__(self):
         return repr(self.reason)
-
 
 ######################################################################
 ## Local
@@ -168,7 +113,6 @@ def _loadFile(filename):
     global config
     loadedFile = None
     config = ConfigParser.ConfigParser()
-    config.readfp(defaultMasterConfig) # Read built-in defaults first
     config.readfp(defaultQmsConfig)    # Read built-in defaults first
     if getattr(filename, '__iter__', False):
         if not os.access(filename, os.R_OK):
