@@ -25,8 +25,8 @@ echo === retrieve dbInfo for 2 dbs ===
 ./runQmsClient.sh retrieveDbInfo NonPart
 
 echo === create 5 tables ===
-./runQmsClient.sh createTable Summer2012 tableName=Object partitioning=on schemaFile=/u1/qserv/ticket1944-qms/metadata/examples/tbSchema_Object.sql clusteredIndex=IDX_objectId overlap=0.025 phiColName=ra_PS thetaColName=decl_PS logicalPart=2 physChunking=0x0021
-./runQmsClient.sh createTable Summer2012 partitioning=off tableName=Exposure schemaFile=/u1/qserv/ticket1944-qms/metadata/examples/tbSchema_Exposure.sql
+./runQmsClient.sh createTable Summer2012 tableName=Object partitioning=on schemaFile=`pwd`/tbSchema_Object.sql clusteredIndex=IDX_objectId overlap=0.025 phiColName=ra_PS thetaColName=decl_PS logicalPart=2 physChunking=0x0021
+./runQmsClient.sh createTable Summer2012 partitioning=off tableName=Exposure schemaFile=`pwd`/tbSchema_Exposure.sql
 ./runQmsClient.sh createTable Summer2012 @./tb_Source.params
 ./runQmsClient.sh createTable Summer2012 @./tb_Exposure.params
 ./runQmsClient.sh createTable Winter2013 @./tb_Source.params

@@ -3,7 +3,7 @@
 XRD_DIR=/u1/qserv/xrootd
 PLATFORM=x86_64_linux_26_dbg
 
-BASEPATH=/u1/qserv/ticket1944-qms
+BASEPATH=/u1/qserv/ticket1944-qms_run
 
 export PYTHONPATH=/u1/lsst/lib/python2.5/site-packages:$BASEPATH/metadata/python
 
