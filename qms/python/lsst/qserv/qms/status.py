@@ -39,6 +39,7 @@ class Status():
     ERR_NO_TABLE_IN_SCHEMA = 2009
     ERR_COL_NOT_FOUND      = 2010
     ERR_SCHEMA_FILE        = 2011
+    ERR_NOT_IMPLEMENTED    = 9998
     ERR_INTERNAL           = 9999
 
     errors = { ERR_IS_INIT: "Qserv metadata already initialized.",
@@ -55,6 +56,7 @@ class Status():
                                  "can't be access from the client."),
                ERR_MYSQL_DISCONN: ("Failed to commit transaction and "
                                    "disconnect from mysql server."),
+               ERR_NOT_IMPLEMENTED: ("This feature is not implemented yet"),
                ERR_INTERNAL: "Internal error."
                }
 
