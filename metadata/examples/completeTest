@@ -1,0 +1,58 @@
+echo === destroyMeta ===
+./runQmsClient.sh destroyMeta
+
+echo === installMeta === 
+./runQmsClient.sh installMeta
+
+echo === printMeta ===
+./runQmsClient.sh printMeta
+
+echo === create 4 dbs ===
+./runQmsClient.sh createDb Summer2012 @./dbPartitioned.params
+./runQmsClient.sh createDb NonPartA @./dbNonPartitioned.params
+./runQmsClient.sh createDb NonPartB @./dbNonPartitioned.params
+./runQmsClient.sh createDb Winter2013 defaultOverlap_nearNeighbor=0.25 partitioning=on defaultOverlap_fuzziness=0.0001 partitioningStrategy=sphBox nStripes=10 nSubStripes=23
+
+echo === list dbs===
+./runQmsClient.sh listDbs
+
+echo === checkingIf dbs exists. y, n ===
+./runQmsClient.sh checkDbExists Summer2012
+./runQmsClient.sh checkDbExists Summer2012xx
+
+echo === retrieve dbInfo for 2 dbs ===
+./runQmsClient.sh retrieveDbInfo Summer2012
+./runQmsClient.sh retrieveDbInfo NonPart
+
+echo === create 5 tables ===
+./runQmsClient.sh createTable Summer2012 tableName=Object partitioning=on schemaFile=/u1/qserv/ticket1944-qms/metadata/examples/tbSchema_Object.sql clusteredIndex=IDX_objectId overlap=0.025 phiColName=ra_PS thetaColName=decl_PS logicalPart=2 physChunking=0x0021
+./runQmsClient.sh createTable Summer2012 partitioning=off tableName=Exposure schemaFile=/u1/qserv/ticket1944-qms/metadata/examples/tbSchema_Exposure.sql
+./runQmsClient.sh createTable Summer2012 @./tb_Source.params
+./runQmsClient.sh createTable Summer2012 @./tb_Exposure.params
+./runQmsClient.sh createTable Winter2013 @./tb_Source.params
+
+echo === retrieve table info for 2 tables ===
+./runQmsClient.sh retrieveTableInfo Winter2013 Object
+./runQmsClient.sh retrieveTableInfo Winter2013 Exposure
+
+echo === print meta ===
+./runQmsClient.sh printMeta
+
+echo === drop 3 tables. Fail, ok, ok ===
+./runQmsClient.sh dropTable weirdDb Object
+./runQmsClient.sh dropTable Summer2012 Object
+./runQmsClient.sh dropTable Summer2012 Exposure
+
+echo === drop 3 dbs. Ok, ok, fail ===
+./runQmsClient.sh dropDb Summer2012
+./runQmsClient.sh dropDb NonPartA
+./runQmsClient.sh dropDb whatever
+
+echo === checkingIf db exist ===
+./runQmsClient.sh checkDbExists Summer2012
+
+echo === list dbs ===
+./runQmsClient.sh listDbs
+
+
+#./runQmsClient.sh destroyMeta
