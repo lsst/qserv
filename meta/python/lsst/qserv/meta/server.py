@@ -20,9 +20,9 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# qms.py : This module implements Qserv Metadata Server (HTTP and 
+# server.py : This module implements Qserv Metadata Server (HTTP and 
 # XML-RPC interfacing logic using the Twisted networking library.
-# It exposes the functionality from the QmsInterface class.
+# It exposes the functionality from the MetaInterface class.
 
 # Standard Python imports
 from itertools import ifilter
@@ -40,7 +40,7 @@ import twisted.web.server
 from twisted.web import xmlrpc
 
 # Package imports
-from qmsInterface import QmsInterface
+from metaInterface import MetaInterface
 from lsst.qserv.meta import config
 
 # Module settings
@@ -92,17 +92,17 @@ class FunctionResource(twisted.web.resource.Resource):
             self, name, request)
 
 class XmlRpcInterface(xmlrpc.XMLRPC):
-    def __init__(self, qmsInterface):
+    def __init__(self, metaInterface):
         xmlrpc.XMLRPC.__init__(self)
-        self.qmsInterface = qmsInterface
+        self.metaInterface = metaInterface
         self._bindQmsInterface()
 
     def _bindQmsInterface(self):
         """Import the QmsInterface functions for publishing."""
         prefix = 'xmlrpc'
         map(lambda x: setattr(self, "_".join([prefix,x]), 
-                              getattr(self.qmsInterface, x)), 
-            self.qmsInterface.publishable)
+                              getattr(self.metaInterface, x)), 
+            self.metaInterface.publishable)
         print "contents:"," ".join(filter(lambda x:"xmlrpc_" in x, dir(self)))
 
     def xmlrpc_echo(self, echostr):
@@ -112,8 +112,8 @@ class XmlRpcInterface(xmlrpc.XMLRPC):
 
 
 class HttpInterface:
-    def __init__(self, qmsInterface):
-        self.qmsInterface = qmsInterface
+    def __init__(self, metaInterface):
+        self.metaInterface = metaInterface
         okname = ifilter(lambda x: "_" not in x, dir(self))
         self.publishable=filter(lambda x: hasattr(getattr(self,x),'func_doc'), 
                                 okname)
@@ -144,7 +144,7 @@ class Master:
         root = twisted.web.resource.Resource()
         twisted.web.static.loadMimeTypes() # load from /etc/mime.types
         
-        mi = QmsInterface()
+        mi = MetaInterface()
         c = HttpInterface(mi)
         xml = XmlRpcInterface(mi)
         # not sure I need the sub-pat http interface
@@ -161,9 +161,9 @@ class Master:
         print "Starting Qserv Metadata Server (QMS) on port: %d" % self.port
         reactor.run()
    
-def runServer():
+def run():
     m = Master()
     m.listen()
 
 if __name__ == "__main__":
-    runServer()
+    run()

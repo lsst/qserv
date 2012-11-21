@@ -29,12 +29,12 @@ import os
 import subprocess
 import sys
 
-import lsst.qserv.meta.config
-from lsst.qserv.meta.status import Status
+import config
+from status import Status
 
-class QmsMySQLDb():
+class Db():
     """
-    QmsMySQLDb class is a wrapper around MySQLdb for qserv metadata server. 
+    Db class is a wrapper around MySQLdb for qserv metadata server. 
     It contains a set of low level basic database utilities such 
     as connecting to database. It caches connections, and handles 
     database errors.
@@ -43,13 +43,13 @@ class QmsMySQLDb():
         self._conn = None
         self._logger = logging.getLogger(loggerName)
         self._connType = None
-        config = lsst.qserv.meta.config.config
-        self._socket = config.get("qmsdb", "unix_socket")
-        self._user = config.get("qmsdb", "user")
-        self._passwd = config.get("qmsdb", "passwd")
-        self._host = config.get("qmsdb", "host")
-        self._port = config.getint("qmsdb", "port")
-        self._dbName = "qms_%s" % config.get("qmsdb", "db")
+        c = config.config
+        self._socket = c.get("qmsdb", "unix_socket")
+        self._user = c.get("qmsdb", "user")
+        self._passwd = c.get("qmsdb", "passwd")
+        self._host = c.get("qmsdb", "host")
+        self._port = c.getint("qmsdb", "port")
+        self._dbName = "qms_%s" % c.get("qmsdb", "db")
 
     def __del__(self):
         self.disconnect()

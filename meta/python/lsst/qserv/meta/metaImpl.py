@@ -28,7 +28,7 @@ import StringIO
 import tempfile
 import uuid
 
-from qmsMySQLDb import QmsMySQLDb
+from db import Db
 from status import Status
 
 
@@ -143,7 +143,7 @@ def installMeta(loggerName):
    comments TEXT DEFAULT NULL  -- any comments the lock creator wants 
                                -- to attach to this lock 
 )''']]
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connectAndCreateDb()
     if ret != Status.SUCCESS: return ret
     for t in internalTables:
@@ -155,7 +155,7 @@ def installMeta(loggerName):
 ###############################################################################
 def destroyMeta(loggerName):
     """This method permanently destroys qserv metadata"""
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS:
         return ret
@@ -171,7 +171,7 @@ def destroyMeta(loggerName):
 ###############################################################################
 def printMeta(loggerName):
     """This method prints all metadata into a string"""
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         return None
@@ -189,7 +189,7 @@ def createDb(loggerName, dbName, crDbOptions):
     """Creates metadata about new database to be managed by qserv."""
     logger = logging.getLogger(loggerName)
     # connect to QMS
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         logger.error("Failed to connect to qms")
@@ -237,7 +237,7 @@ def dropDb(loggerName, dbName):
     """Drops metadata about a database managed by qserv."""
     logger = logging.getLogger(loggerName)
     # connect to mysql
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         logger.error("Failed to connect to qms")
@@ -272,7 +272,7 @@ def dropDb(loggerName, dbName):
 ###############################################################################
 def retrieveDbInfo(loggerName, dbName):
     """Retrieves info about a database"""
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         return [ret, {}]
@@ -306,7 +306,7 @@ def retrieveDbInfo(loggerName, dbName):
 ###############################################################################
 def checkDbExists(loggerName, dbName):
     """Checks if db <dbName> exists, returns 0 or 1"""
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         return 0
@@ -320,7 +320,7 @@ def checkDbExists(loggerName, dbName):
 ###############################################################################
 def listDbs(loggerName):
     """Prints names of all databases managed by qserv into a string"""
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         return None
@@ -348,7 +348,7 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
     schemaF.close()
 
     # connect to QMS
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         os.unlink(schemaF.name)
@@ -414,7 +414,7 @@ def dropTable(loggerName, dbName, tableName):
     logger = logging.getLogger(loggerName)
     logger.debug("dropTable: started")
     # connect to mysql
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         logger.error("dropTable: failed to connect to qms")
@@ -456,7 +456,7 @@ def retrievePartTables(loggerName, dbName):
     logger = logging.getLogger(loggerName)
     logger.debug("retrievePartTables: started")
     # connect to mysql
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         logger.error("retrievePartTables: failed to connect to qms")
@@ -486,7 +486,7 @@ def retrieveTableInfo(loggerName, dbName, tableName):
     logger = logging.getLogger(loggerName)
     logger.debug("retrieveTableInfo: started")
     # connect to mysql
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         logger.error("retrieveTableInfo: failed to connect to qms")
@@ -538,7 +538,7 @@ def retrieveTableInfo(loggerName, dbName, tableName):
 ###############################################################################
 def getInternalQmsDbName(loggerName):
     """Retrieves name of the internal qms database. """
-    mdb = QmsMySQLDb(loggerName)
+    mdb = Db(loggerName)
     dbName = mdb.getDbName()
     return (dbName is not None, dbName)
 

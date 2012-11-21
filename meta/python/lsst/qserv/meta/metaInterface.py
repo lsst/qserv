@@ -25,11 +25,11 @@ from itertools import ifilter
 import logging
 
 # Package imports
-import qmsImpl
-import lsst.qserv.meta.config
+import metaImpl
+import config
 
 # Interface for qserv metadata server
-class QmsInterface:
+class MetaInterface:
     def __init__(self):
         self._loggerName = "qmsLogger"
         self._initLogging()
@@ -42,56 +42,56 @@ class QmsInterface:
     def installMeta(self):
         """Initializes qserv metadata. It creates persistent structures,
         (it should be called only once)."""
-        return qmsImpl.installMeta(self._loggerName)
+        return metaImpl.installMeta(self._loggerName)
 
     def destroyMeta(self):
         """Permanently destroyp qserv metadata."""
-        return qmsImpl.destroyMeta(self._loggerName)
+        return metaImpl.destroyMeta(self._loggerName)
 
     def printMeta(self):
         """Returns string that contains all metadata."""
-        return qmsImpl.printMeta(self._loggerName)
+        return metaImpl.printMeta(self._loggerName)
 
     def createDb(self, dbName, crDbOptions):
         """Creates metadata about new database to be managed by qserv."""
-        return qmsImpl.createDb(self._loggerName, dbName, crDbOptions)
+        return metaImpl.createDb(self._loggerName, dbName, crDbOptions)
 
     def dropDb(self, dbName):
         """Removes metadata about a database managed by qserv."""
-        return qmsImpl.dropDb(self._loggerName, dbName)
+        return metaImpl.dropDb(self._loggerName, dbName)
 
     def retrieveDbInfo(self, dbName):
         """Retrieves information about a database managed by qserv."""
-        return qmsImpl.retrieveDbInfo(self._loggerName, dbName)
+        return metaImpl.retrieveDbInfo(self._loggerName, dbName)
 
     def checkDbExists(self, dbName):
         """Checks if db <dbName> exists, returns 0 (no) or 1 (yes)."""
-        return qmsImpl.checkDbExists(self._loggerName, dbName)
+        return metaImpl.checkDbExists(self._loggerName, dbName)
 
     def listDbs(self):
         """Returns string that contains list of databases managed by qserv."""
-        return qmsImpl.listDbs(self._loggerName)
+        return metaImpl.listDbs(self._loggerName)
 
     def createTable(self, dbName, crTbOptions, schemaStr):
         """Creates metadata about new table from qserv-managed database."""
-        return qmsImpl.createTable(self._loggerName, dbName, 
+        return metaImpl.createTable(self._loggerName, dbName, 
                                    crTbOptions, schemaStr)
 
     def dropTable(self, dbName, tableName):
         """Removes metadata about a table."""
-        return qmsImpl.dropTable(self._loggerName, dbName, tableName)
+        return metaImpl.dropTable(self._loggerName, dbName, tableName)
 
     def retrievePartTables(self, dbName):
         """Retrieves list of partitioned tables for a given database."""
-        return qmsImpl.retrievePartTables(self._loggerName, dbName)
+        return metaImpl.retrievePartTables(self._loggerName, dbName)
 
     def retrieveTableInfo(self, dbName, tableName):
         """Retrieves information about a table."""
-        return qmsImpl.retrieveTableInfo(self._loggerName, dbName, tableName)
+        return metaImpl.retrieveTableInfo(self._loggerName, dbName, tableName)
 
     def getInternalQmsDbName(self):
         """Retrieves name of the internal qms database. """
-        return qmsImpl.getInternalQmsDbName(self._loggerName)
+        return metaImpl.getInternalQmsDbName(self._loggerName)
 
     def help(self):
         """A brief help message showing available commands"""
@@ -105,9 +105,8 @@ class QmsInterface:
         return r
 
     def _initLogging(self):
-        config = lsst.qserv.meta.config.config
-        outFile = config.get("logging", "outFile")
-        levelName = config.get("logging", "level")
+        outFile = config.config.get("logging", "outFile")
+        levelName = config.config.get("logging", "level")
         if levelName is None:
             level = logging.ERROR # default
         else:

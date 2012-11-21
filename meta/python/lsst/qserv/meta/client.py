@@ -35,9 +35,7 @@ import stat
 import xmlrpclib
 
 # Local package imports
-from lsst.qserv.meta import qmsInterface
-from lsst.qserv.meta.status import Status
-from lsst.qserv.meta.status import getErrMsg
+from status import Status, getErrMsg
 
 class Client(object):
     def __init__(self):

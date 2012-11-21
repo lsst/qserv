@@ -29,7 +29,7 @@ from optparse import OptionParser
 import os
 import sys
 
-from lsst.qserv.meta import qms
+from lsst.qserv.meta import server
 from lsst.qserv.meta import config
 
 
@@ -51,7 +51,7 @@ def main():
     print "Configuration:"
     config.printTo(sys.stdout)
 
-    qms.runServer()
+    server.run()
 
 if __name__ == '__main__':
     main()
