@@ -168,21 +168,20 @@ password: myPass
             raise Exception("Insufficient number of arguments")
         dbName = args[0]
         theOptions = self._fetchCrXXOptions(args, "Db")
-        print "the options are: ", theOptions
         # do it
         self._client.createDb(dbName, theOptions)
         print "Database successfully created."
 
     def _cmd_dropDb(self, options, args):
         if len(args) != 1:
-            raise Exception("'dropDb' requires one argument: <dbName>")
+            raise Exception("'dropDb' takes one argument: <dbName>")
         dbName = args[0]
         self._client.dropDb(dbName)
         print "Database dropped."
 
     def _cmd_retrieveDbInfo(self, options, args):
         if len(args) != 1:
-            raise Exception("'retrieveDbInfo' requires one argument: <dbName>")
+            raise Exception("'retrieveDbInfo' takes one argument: <dbName>")
         values = self._client.retrieveDbInfo(args[0])
         for (k, v) in values.items():
             print "%s: %s" % (k, v)
@@ -194,7 +193,7 @@ password: myPass
 
     def _cmd_checkDbExists(self, options, args):
         if len(args) != 1:
-            raise Exception("'checkDbExists' requires one argument: <dbName>")
+            raise Exception("'checkDbExists' takes one argument: <dbName>")
         if self._client.checkDbExists(args[0]) == 1:
             print "yes"
         else:
@@ -211,7 +210,7 @@ password: myPass
 
     def _cmd_dropTable(self, options, args):
         if len(args) != 2:
-            raise Exception("'dropTable' requires two arguments: ",
+            raise Exception("'dropTable' takes two arguments: ",
                             "<dbName> <tableName>")
         (dbName, tableName) = args
         self._client.dropTable(dbName, tableName)
@@ -219,8 +218,7 @@ password: myPass
 
     def _cmd_retrievePartitionedTables(self, options, args):
         if len(args) != 1:
-            raise Exception("'retrievePartTables' requires one arguments: ",
-                            "<dbName>")
+            raise Exception("'retrievePartTables' takes one argument: <dbName>")
         dbName = args[0]
         tNames = self._client.retrievePartTables(dbName)
         print tNames
@@ -253,7 +251,7 @@ password: myPass
     def _fetchCrXXOptions_cf(self, fName):
         """It reads the config file for createDb or createTable command,
            and returns key-value pair dictionary (flat, e.g., sections
-           are ignored."""
+           are ignored.)"""
         if not os.access(fName, os.R_OK):
             raise Exception("Specified config file '%s' not found." % fName)
         config = ConfigParser.ConfigParser()

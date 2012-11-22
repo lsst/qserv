@@ -188,7 +188,7 @@ def printMeta(loggerName):
 #### createDb
 ###############################################################################
 
-def _validateKVOptions(x, xxOpts, psOpts, logger):
+def _validateKVOptions(x, xxOpts, psOpts, whichInfo, logger):
     if not x.has_key("partitioning"):
         logger.error("Can't find required param 'partitioning'")
         return Status.ERR_INVALID_OPTION
@@ -196,7 +196,7 @@ def _validateKVOptions(x, xxOpts, psOpts, logger):
     partOff = x["partitioning"] == "off" 
     for (theName, theOpts) in xxOpts.items():
         for o in theOpts:
-            # "partitioning" is an optional parameter 
+            # skip optional parameters
             if o == "partitioning":
                 continue
             # if partitioning is "off", partitioningStrategy does not 
@@ -228,8 +228,12 @@ def _validateKVOptions(x, xxOpts, psOpts, logger):
                     return Status.ERR_INVALID_OPTION
             # check if there are any unrecognized options
             for o in x:
-                if not ((o in xxOpts["db_info"]) or (o in theOpts)):
-                    if o == "clusteredIndex": continue # this is optional
+                if not ((o in xxOpts[whichInfo]) or (o in theOpts)):
+                    # skip non required, these are not in xxOpts/theOpts
+                    if whichInfo=="db_info" and o=="clusteredIndex":
+                        continue
+                    if whichInfo=="table_info" and o=="partitioningStrategy":
+                        continue
                     logger.error("Unrecognized param '%s' found" % o)
                     return Status.ERR_INVALID_OPTION
     if not psFound:
@@ -254,7 +258,7 @@ def _processDbOptions(opts, logger):
                   "defaultOverlap_fuzziness",
                   "defaultOverlap_nearNeighbor")}
     # validate the options
-    ret = _validateKVOptions(opts, _crDbOpts, _crDbPSOpts, logger)
+    ret = _validateKVOptions(opts, _crDbOpts, _crDbPSOpts, "db_info", logger)
     return [ret, opts]
 
 def createDb(loggerName, dbName, crDbOptions):
@@ -273,7 +277,7 @@ def createDb(loggerName, dbName, crDbOptions):
         logger.error("Database '%s' already registered" % dbName)
         return Status.ERR_DB_EXISTS
     # add default values for missing parameters and do final validation
-    #print "opts1:"
+    #print "Dopts1:"
     #for k in crDbOptions: print "  ", k, "  --> ",crDbOptions[k]
     (ret, crDbOptions) = _processDbOptions(crDbOptions, logger)
     if ret != Status.SUCCESS:
@@ -281,7 +285,7 @@ def createDb(loggerName, dbName, crDbOptions):
         for k in crDbOptions: s += " (%s-->%s)" % (k, crDbOptions[k])
         logger.error(s)
         return ret
-    #print "opts2:"
+    #print "Dopts2:"
     #for k in crDbOptions: print "  ", k, "  --> ", crDbOptions[k]
     # create entry in PS_Db_<partitioningStrategy> table
     if crDbOptions["partitioning"] == "off":
@@ -421,29 +425,53 @@ def listDbs(loggerName):
 #### createTable
 ###############################################################################
 
+def _processTbOptions(opts, logger):
+    if not opts.has_key("clusteredIndex"):
+        print("param 'clusteredIndex' not found, will use default: NULL")
+        opts["clusteredIndex"] = "NULL"
 
-
-### FIXME: see function _extraTableName!!!
-
-
-
-# expected options for createTable
-_createTbOptions = {
-    "table_info":("tableName",
-                  "partitioning",
-                  "schemaFile",
-                  "clusteredIndex")}
-
-_createTbPSOptions = {
-    "sphBox":("overlap",
-              "phiColName", 
-              "thetaColName", 
-              "logicalPart",
-              "physChunking")}
+    _crTbOpts = {
+        "table_info":("tableName",
+                      "partitioning",
+                      "schemaFile",
+                      "clusteredIndex")}
+    _crTbPSOpts = {
+        "sphBox":("overlap",
+                  "phiColName", 
+                  "thetaColName", 
+                  "logicalPart",
+                  "physChunking")}
+    # validate the options
+    ret = _validateKVOptions(opts, _crTbOpts, _crTbPSOpts, "table_info",logger)
+    return [ret, opts]
 
 def createTable(loggerName, dbName, crTbOptions, schemaStr):
     """Creates metadata about new table in qserv-managed database."""
     logger = logging.getLogger(loggerName)
+
+    # check if db exists
+    if checkDbExists(loggerName, dbName) == 0:
+        logger.error("Database '%s' does not exist." % dbName)
+        return Status.ERR_DB_NOT_EXISTS
+    # find out what the partitioning strategy is
+    (ret, values) = retrieveDbInfo(loggerName, dbName)
+    if ret != Status.SUCCESS:
+        return ret
+    #print "Topts1:"
+    #for k in crTbOptions: print "  ", k, "  --> ", crTbOptions[k]
+
+    # add default values for missing parameters and do final validation
+    crTbOptions["partitioningStrategy"] = values["partitioningStrategy"]
+    (ret, crTbOptions) = _processTbOptions(crTbOptions, logger)
+    if ret != Status.SUCCESS:
+        s = "Failed to validate table options for db '%s'" % dbName
+        s + ". Options were:"
+        for k in crTbOptions: s += " (%s-->%s)" % (k, crTbOptions[k])
+        logger.error(s)
+        return ret
+    s = "createTable in db '%s', options are: " % dbName
+    for k in crTbOptions: s+= " (%s-->%s)" % (k, crTbOptions[k])
+    logger.debug(s)
 
     # write schema to a temp file
     schemaF = tempfile.NamedTemporaryFile(delete=False)
@@ -451,12 +479,12 @@ def createTable(loggerName, dbName, crTbOptions, schemaStr):
     logger.debug("wrote schema to tempfile %s" % schemaF.name)
     schemaF.close()
 
-    # connect to QMS
+    # connect to mysql
     mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         os.unlink(schemaF.name)
-        logger.error("Failed to connect to qms")
+        logger.error("Failed to connect to mysql")
         return ret
     # get dbid
     dbId = (mdb.execCommand1("SELECT dbId FROM DbMeta WHERE dbName = '%s'" % \

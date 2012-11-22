@@ -77,19 +77,22 @@ class Client(object):
         return self._qms.checkDbExists(dbName)
 
     def createTable(self, dbName, theOptions):
-        # check if db exists
-        if self._qms.checkDbExists(dbName) == 0:
-            raise Exception("Database '%s' does not exist" % dbName)
-        # check partitioning scheme
-        (retStat, values) = self._qms.retrieveDbInfo(dbName)
-        if ret != Status.SUCCESS:
-            raise Exception(getErrMsg(ret))
-        ps = values["partitioningStrategy"]
-        # now that we know partitioning strategy, validate the parameters
-        #theOptions = self._processCrTbOptions(theOptions, ps)
-        # read schema file and pass it
+        # read schema file and pass it as a string
+        if not theOptions.has_key("schemaFile"):
+            raise Exception("Missing param 'schemaFile'")
         schemaFileName = theOptions["schemaFile"]
         del theOptions["schemaFile"]
+        if not os.access(schemaFileName, os.R_OK):
+            raise Exception("Schema file '%s' can't be opened"%schemaFileName)
+        tableNameFromSchema = self._extractTableName(schemaFileName)
+        if "tableName" in theOptions:
+            if theOptions["tableName"] != tableNameFromSchema:
+                raise Exception("Table name specified through param is '%s', but table name extracted from schema file is '%s' - they have to match" % (theOptions["tableName"], tableNameFromSchema))
+        else:
+            # it is ok to not specify table name - it can be retrieved 
+            # from schema file
+            theOptions["tableName"] = tableNameFromSchema
+
         schemaStr = open(schemaFileName, 'r').read()
         # do it
         ret = self._qms.createTable(dbName, theOptions, schemaStr)
@@ -134,3 +137,18 @@ class Client(object):
             raise Exception("Qms echo test failed (expected %s, got %s)" % \
                                 (echostring, ret))
         return qms
+
+    ###########################################################################
+    ##### extractTableName from schema file
+    ###########################################################################
+    def _extractTableName(self, fName):
+        f = open(fName, 'r')
+        findIt = re.compile(r'CREATE TABLE *`?\'?\"?(\w+)', re.IGNORECASE)
+        theName = None
+        for line in f:
+            m = findIt.match(line)
+            if m:
+                theName = m.group(1)
+                break
+        f.close()
+        return theName
