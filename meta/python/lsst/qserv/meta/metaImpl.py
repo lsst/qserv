@@ -29,7 +29,7 @@ import tempfile
 import uuid
 
 from db import Db
-from status import Status
+from status import Status, getErrMsg
 
 
 ###############################################################################
@@ -174,7 +174,9 @@ def printMeta(loggerName):
     mdb = Db(loggerName)
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
-        return None
+        if ret == Status.ERR_NO_META:
+            return "No metadata found"
+        return "Error: %s" % getErrMsg(ret)
     s = StringIO.StringIO()
     for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox", 
               "EmptyChunks", "TableStats", "LockDb"]:
@@ -185,6 +187,76 @@ def printMeta(loggerName):
 ###############################################################################
 #### createDb
 ###############################################################################
+
+def _validateKVOptions(x, xxOpts, psOpts, logger):
+    if not x.has_key("partitioning"):
+        logger.error("Can't find required param 'partitioning'")
+        return Status.ERR_INVALID_OPTION
+
+    partOff = x["partitioning"] == "off" 
+    for (theName, theOpts) in xxOpts.items():
+        for o in theOpts:
+            # "partitioning" is an optional parameter 
+            if o == "partitioning":
+                continue
+            # if partitioning is "off", partitioningStrategy does not 
+            # need to be specified 
+            if not (o == "partitiongStrategy" and partOff):
+                continue
+            if not x.has_key(o):
+                logger.error("Can't find required param '%s'" % o)
+                return Status.ERR_INVALID_OPTION
+    if partOff:
+        return Status.SUCCESS
+    if x["partitioning"] != "on":
+        logger.error("Unrecognized value for param 'partitioning' (%s), "
+                     "supported on/off" % x["partitioning"])
+        return Status.ERR_INVALID_OPTION
+    if not x.has_key("partitioningStrategy"):
+        logger.error("partitioningStrategy option is required if "
+                     "partitioning is on")
+        return Status.ERR_INVALID_OPTION
+
+    psFound = False
+    for (psName, theOpts) in psOpts.items():
+        if x["partitioningStrategy"] == psName:
+            psFound = True
+            # check if all required options are specified
+            for o in theOpts:
+                if not x.has_key(o):
+                    logger.error("Can't find param '%s' required for partitioning strategy '%s'" % (o, psName))
+                    return Status.ERR_INVALID_OPTION
+            # check if there are any unrecognized options
+            for o in x:
+                if not ((o in xxOpts["db_info"]) or (o in theOpts)):
+                    if o == "clusteredIndex": continue # this is optional
+                    logger.error("Unrecognized param '%s' found" % o)
+                    return Status.ERR_INVALID_OPTION
+    if not psFound:
+        logger.error("Unrecongnized partitioning strategy '%s', supported strategies: 'sphBox'"% x["partitioningStrategy"])
+        return Status.ERR_INVALID_OPTION
+    return Status.SUCCESS
+
+def _processDbOptions(opts, logger):
+    # add default values for missing parameters
+    if not opts.has_key("clusteredIndex"):
+        print("param 'clusteredIndex' not found, will use default: NULL")
+        opts["clusteredIndex"] = "NULL"
+    if not opts.has_key("partitioning"):
+        print ("param 'partitioning' not found, will use default: off")
+        opts["partitioning"] = "off"
+    # these are required options for createDb
+    _crDbOpts = {
+        "db_info":("partitioning", "partitioningStrategy")}
+    _crDbPSOpts = {
+        "sphBox":("nStripes", 
+                  "nSubStripes", 
+                  "defaultOverlap_fuzziness",
+                  "defaultOverlap_nearNeighbor")}
+    # validate the options
+    ret = _validateKVOptions(opts, _crDbOpts, _crDbPSOpts, logger)
+    return [ret, opts]
+
 def createDb(loggerName, dbName, crDbOptions):
     """Creates metadata about new database to be managed by qserv."""
     logger = logging.getLogger(loggerName)
@@ -193,13 +265,24 @@ def createDb(loggerName, dbName, crDbOptions):
     ret = mdb.connect()
     if ret != Status.SUCCESS: 
         logger.error("Failed to connect to qms")
-        return None
-    # check if db does not exit
+        return ret
+    # check if db exits
     cmd = "SELECT COUNT(*) FROM DbMeta WHERE dbName = '%s'" % dbName
     ret = mdb.execCommand1(cmd)
     if ret[0] > 0:
         logger.error("Database '%s' already registered" % dbName)
         return Status.ERR_DB_EXISTS
+    # add default values for missing parameters and do final validation
+    #print "opts1:"
+    #for k in crDbOptions: print "  ", k, "  --> ",crDbOptions[k]
+    (ret, crDbOptions) = _processDbOptions(crDbOptions, logger)
+    if ret != Status.SUCCESS:
+        s = "Failed to validate db options for db '%s', options were:" % dbName
+        for k in crDbOptions: s += " (%s-->%s)" % (k, crDbOptions[k])
+        logger.error(s)
+        return ret
+    #print "opts2:"
+    #for k in crDbOptions: print "  ", k, "  --> ", crDbOptions[k]
     # create entry in PS_Db_<partitioningStrategy> table
     if crDbOptions["partitioning"] == "off":
         psId = '\N'
@@ -337,6 +420,27 @@ def listDbs(loggerName):
 ###############################################################################
 #### createTable
 ###############################################################################
+
+
+
+### FIXME: see function _extraTableName!!!
+
+
+
+# expected options for createTable
+_createTbOptions = {
+    "table_info":("tableName",
+                  "partitioning",
+                  "schemaFile",
+                  "clusteredIndex")}
+
+_createTbPSOptions = {
+    "sphBox":("overlap",
+              "phiColName", 
+              "thetaColName", 
+              "logicalPart",
+              "physChunking")}
+
 def createTable(loggerName, dbName, crTbOptions, schemaStr):
     """Creates metadata about new table in qserv-managed database."""
     logger = logging.getLogger(loggerName)
