@@ -23,15 +23,9 @@
 # The "client" module was designed to implement a client for the
 # qserv metadata server.
 
-from __future__ import with_statement
-import ConfigParser
-import getpass
-import logging
-from optparse import OptionParser
 import os
 import re
 import socket
-import stat
 import xmlrpclib
 
 # Local package imports
@@ -110,7 +104,7 @@ class Client(object):
         return tNames
 
     def retrieveTableInfo(self, dbName, tableName):
-        (retStat, values) = self._qms.retrieveTableInfo(dbName, tableName)
+        (ret, values) = self._qms.retrieveTableInfo(dbName, tableName)
         if ret != Status.SUCCESS:
             raise Exception(getErrMsg(ret))
         return values
