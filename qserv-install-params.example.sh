@@ -5,7 +5,8 @@ QSERV_USER=$USER
 # Default log path is $QSERV_BASE/var/log/
 # export QSERV_LOG=/var/log/$QSERV_VERSION
 
-# Where to download PT1.1 data
+# Where to download LSST data
+# Example: PT1.1 data should be in ${QSERV_IMPORT_DATA}/pt11/ 
 QSERV_IMPORT_DATA=/space/data/lsst
 
 # Default mysql data path is $QSERV_MYSQL_DATA

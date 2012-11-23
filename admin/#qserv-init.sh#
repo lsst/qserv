@@ -16,6 +16,10 @@ fi
 
 mkdir -p $QSERV_BASE;
 chown -R $QSERV_USER:$QSERV_USER $QSERV_BASE;
+
+mkdir -p ${QSERV_DATA}
+chown $QSERV_USER:$QSERV_USER ${QSERV_DATA}
+
 if [ -n "${QSERV_LOG}" ]; then
 	mkdir -p $QSERV_LOG;
 	chown -R $QSERV_USER:$QSERV_USER $QSERV_LOG;

@@ -13,7 +13,7 @@ symbolic-links=0
 #
 # Both location gets rotated by the cronjob.
 # Be aware that this log type is a performance killer.
-general-log=<LOG_DIR>/mysql-queries.log
+# general-log=<LOG_DIR>/mysql-queries.log
 
 [mysqld_safe]
 

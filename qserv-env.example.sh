@@ -1,5 +1,4 @@
 export QSERV_VERSION=qserv-dev
-QSERV_SRC=/home/fjammes/dev/qserv/
 export QSERV_BASE=/opt/$QSERV_VERSION
 
 # qserv 

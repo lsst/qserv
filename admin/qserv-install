@@ -195,7 +195,7 @@ sub check_and_install_qserv {
 	if (not -e "$src_dir/master/python/lsst/qserv/master/geometry.py") {
 		if (not $geometry_dir) {
 			print "Downloading geometry file in geom master branch, Use --geometry-dir to specify a geometry source directory, get it with `git clone git://dev.lsstcorp.org/LSST/DMS/geom`"; 
-			chdir "$install_dir/qserv/master/python/lsst/qserv/master/geometry.py";
+			chdir "$install_dir/qserv/master/python/lsst/qserv/master/" or die print "$!\n";
 			run_command("wget http://dev.lsstcorp.org/cgit/LSST/DMS/geom.git/plain/python/lsst/geom/geometry.py");
 		}
 		else {
@@ -375,8 +375,8 @@ sub check_and_install_mysql {
 		print "Starting mysql server.\n";
 		system("$install_dir/bin/mysqld_safe &");
 		sleep 5;	
-		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password '$db_pass'");
-		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -h $qserv_master password '$db_pass' -p'$db_pass'");
+		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -p'$db_pass' password '$db_pass'");
+		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -h $qserv_master -p'$db_pass' password '$db_pass'");
 		# shutdown mysql
 		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock shutdown -u root -p'$db_pass'");
 	}
@@ -569,20 +569,23 @@ sub check_and_deploy_qserv {
         mkdir "var/run";
         mkdir "var/run/mysqld";
 
-        if ($log_dir eq "$install_dir/var/log") {
-		if (not -e "$log_dir") {
-                	mkdir $log_dir or die print "$!\n";
-		}
-        }
-        else {
-                create_symlink ($log_dir,"$install_dir/var/log");
-        }
-        if ($mysql_data_dir eq "$install_dir/var/lib/mysql") {
-		if (not -e "$mysql_data_dir") {
-                	mkdir $mysql_data_dir or die print "$!\n";
-		}
-        }
-        else {
+##        if ($log_dir eq "$install_dir/var/log") {
+##		if (not -e "$log_dir") {
+##                	mkdir $log_dir or die print "$!\n";
+##		}
+##        } else {
+##                create_symlink ($log_dir,"$install_dir/var/log");
+##        }
+
+	if (not -e "$log_dir") {
+	    mkdir $log_dir or die print "$!\n";
+	}
+	
+	if ($mysql_data_dir eq "$install_dir/var/lib/mysql") {
+	    if (not -e "$mysql_data_dir") {
+		mkdir $mysql_data_dir or die print "$!\n";
+	    }
+        } else {
                 create_symlink ($mysql_data_dir,"$install_dir/var/lib/mysql");
         }
 

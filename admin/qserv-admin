@@ -332,7 +332,7 @@ sub delete_data {
 	my( $source_dir, $location, $tablename, $dbpass ) = @_;
         
         #delete database
-        run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass -e 'Drop database if exists LSST;'");
+        run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock\' -u root -p'$dbpass' -e 'Drop database if exists LSST;'");
 }
 
 #load the partitioned pt11 data into qserv for use.  This does a number of
@@ -341,7 +341,7 @@ sub load_data {
 	my( $source_dir, $location, $tablename, $dbpass ) = @_;
 	
 	#create database if it doesn't exist
-	run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass -e 'Create database if not exists LSST;'");
+	run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' -e 'Create database if not exists LSST;'");
 	
 	#check on the table def, and add need columns
 	print "Copy and changing $source_dir/${tablename}.sql\n";
@@ -387,8 +387,8 @@ sub load_data {
 	
 	#load the data into the mysql instance
 	print "Loading data, this make take awhile...\n";
-	run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass LSST < $install_dir/tmp/${tablename}.sql");
-	run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass LSST < $install_dir/tmp/${tablename}_load.sql");
+	run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' LSST < '$install_dir/tmp/${tablename}.sql'");
+	run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' LSST < '$install_dir/tmp/${tablename}_load.sql'");
 		
 	#create the empty chunks file
 	create_emptychunks( \%chunkslist );
