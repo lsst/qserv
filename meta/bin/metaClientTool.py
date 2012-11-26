@@ -118,8 +118,8 @@ Example contents of the .qmsadm file:
 [qmsConn]
 host: lsst-db3.slac.stanford.edu
 port: 4040
-user: jacek
-password: myPass
+user: qms
+pass: qmsPass
 """
 
     def parseAndRun(self):
@@ -313,11 +313,11 @@ password: myPass
         if not config.has_option(s, "host") or \
            not config.has_option(s, "port") or \
            not config.has_option(s, "user") or \
-           not config.has_option(s, "password"):
-            raise Exception("Bad %s, can't find host, port, user or password" \
+           not config.has_option(s, "pass"):
+            raise Exception("Bad %s, can't find host, port, user or pass" \
                                 % self._dotFileName)
         return (config.get(s, "host"), config.getint(s, "port"),
-                config.get(s, "user"), config.get(s, "password"))
+                config.get(s, "user"), config.get(s, "pass"))
 
 ###############################################################################
 #### main
