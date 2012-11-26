@@ -1,8 +1,0 @@
-echo === destroyMeta ===
-./runQmwTool.sh destroyMeta
-
-echo === installMeta ===
-./runQmwTool.sh installMeta
-
-echo === printMeta ===
-./runQmwTool.sh printMeta

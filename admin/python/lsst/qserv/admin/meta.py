@@ -21,12 +21,11 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 # The guts of manipulating qserv metadata worker. 
-# It implements the functionality provided through the qmwTool.
 
 
 from status import Status
 
-class QmwImpl(object):
+class Meta(object):
     def __init__(self):
         pass
 
