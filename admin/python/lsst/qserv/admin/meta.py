@@ -26,26 +26,34 @@
 from status import Status
 
 class Meta(object):
-    def __init__(self):
-        pass
+    def __init__(self, qmsHost, qmsPort, qmsUser, qmsPass,
+                 qmwDb, qmwUser, qmwPass, qmwMySqlSocket):
+        self._qmsHost = qmsHost
+        self._qmsPort = qmsPort
+        self._qmsUser = qmsUser
+        self._qmsPass = qmsPass
+        self._qmwDb   = qmwDb
+        self._qmwUser = qmwUser
+        self._qmwPass = qmwPass
+        self._qmwMySqlSocket = qmwMySqlSocket
 
     def installMeta(self):
-        return Status.ERR_NOT_IMPLEMENTED
+        raise Exception("installMeta not implemented")
 
     def destroyMeta(self):
-        return Status.ERR_NOT_IMPLEMENTED
+        raise Exception("destroyMeta not implemented")
 
     def printMeta(self):
-        return Status.ERR_NOT_IMPLEMENTED
+        raise Exception("printMeta not implemented")
 
     def registerDb(self, dbName):
-        return Status.ERR_NOT_IMPLEMENTED
+        raise Exception("registerDb not implemented")
 
     def unregisterDb(self, dbName):
-        return Status.ERR_NOT_IMPLEMENTED
+        raise Exception("unregisterDb not implemented")
 
     def listDbs(self):
-        return Status.ERR_NOT_IMPLEMENTED
+        raise Exception("listDbs not implemented")
 
     ###########################################################################
     ##### connection to QMS

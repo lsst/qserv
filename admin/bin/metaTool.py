@@ -22,15 +22,13 @@
 #
 # The tool for manipulating qserv metadata worker.
 # TheTool class simply parses arguments and delegates the work 
-# down to the qmwImpl class.
+# down to the meta class.
 
 from __future__ import with_statement
 import ConfigParser
-import logging
 from optparse import OptionParser
 import os
 import socket
-import xmlrpclib
 
 # Local package imports
 from lsst.qserv.admin.status import Status, getErrMsg  # FIXME: when ticket1944 pushed
@@ -38,12 +36,7 @@ from lsst.qserv.admin.meta import Meta
 
 class TheTool(object):
     def __init__(self):
-        self._dotFileName = os.path.expanduser("~/.qmwadm")
-        self._meta = Meta()
-        self._initLogger()
-
-    def parseOptions(self):
-        usage = """
+        self._usage = """
 NAME
         qmwTool - the tool for manipulating qserv metadata on worker
 
@@ -92,113 +85,114 @@ COMMANDS
 
 EXAMPLES
 Example contents of the (required) '~/.qmwadm' file:
-qmsHost:localhost
-qmsPort:7082
-qmsUser:qms
-qmsPass:qmsPass
-qmsDb:testX
-qmwUser:qmw
-qmwPass:qmwPass
-qmwMySqlSocket:/var/lib/mysql/mysql.sock
+
+[qmsConn]
+host: lsst-db3.slac.stanford.edu
+port: 7082
+user: qmsUser
+pass: qmsPass
+
+[qmwConn]
+db: testX
+user: qmwUser
+pass: qmwPass
+mySqlSocket: /var/lib/mysql/mysql.sock
 """
-        parser = OptionParser(usage=usage)
-        parser.add_option("-v", "--verbose", action="store_true",
-                          dest="verbose")
+
+    def parseAndRun(self):
+        parser = OptionParser(usage=self._usage)
         (options, args) = parser.parse_args()
-
-        if options.verbose:
-            self._logger.setLevel(logging.DEBUG)
-
         if len(args) < 1:
             parser.error("No command given")
-        cmd = "_cmd_" + args[0]
-        if not hasattr(self, cmd):
+        cmdN = "_cmd_" + args[0]
+        if not hasattr(self, cmdN):
             parser.error("Unrecognized command: " + args[0])
         del args[0]
-        return getattr(self, cmd), options, args
 
-    def _initLogger(self):
-        self._logger = logging.getLogger("qmwClientLogger")
-        hdlr = logging.FileHandler("/tmp/qmwClient.log")
-        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-        hdlr.setFormatter(formatter)
-        self._logger.addHandler(hdlr)
-        self._logger.setLevel(logging.ERROR)
+        self._dotFileName = os.path.expanduser("~/.qmwadm")
+
+        (sh,sp,su,sp,wd,wu,wp,wm) = self._getConnInfo()
+        self._meta = Meta(sh,sp,su,sp,wd,wu,wp,wm)
+
+        cmd = getattr(self, cmdN)
+        cmd(options, args)
 
     ###########################################################################
     ##### user-facing commands
     ###########################################################################
     def _cmd_installMeta(self, options, args):
-        self._logger.debug("Installing meta")
-        ret = self._meta.installMeta()
-        if ret != Status.SUCCESS: 
-            print getErrMsg(ret)
-        else:
-            print "Metadata successfully installed."
-            self._logger.debug("Metadata successfully installed.")
+        if len(args) > 0:
+            raise Exception("installMeta takes no arguments.")
+        self._meta.installMeta()
+        print "Metadata successfully installed."
 
     def _cmd_destroyMeta(self, options, args):
-        self._logger.debug("Destroying meta")
-        ret = self._meta.destroyMeta()
-        if ret != Status.SUCCESS: 
-            print getErrMsg(ret)
-        else:
-            print "All metadata destroyed!"
-            self._logger.debug("All metadata destroyed")
+        if len(args) > 0:
+            raise Exception("destroyMeta takes no arguments.")
+        self._meta.destroyMeta()
+        print "All metadata destroyed!"
 
     def _cmd_printMeta(self, options, args):
-        self._logger.debug("Printing meta")
+        if len(args) > 0:
+            raise Exception("printMeta takes no arguments.")
         print self._meta.printMeta()
-        self._logger.debug("Done printing meta")
 
     def _cmd_registerDb(self, options, args):
-        self._logger.debug("registerDb")
         # parse arguments
         if len(args) != 1:
-            msg = "Incorrect number of arguments (expected <dbName>)"
-            self._logger.error(msg)
-            print msg
-            return
-        dbName = args[0]
-        if theOptions is None:
-            return
-        self._logger.debug("registerDb %s" % dbName)
-        ret = self._meta.registerDb(dbName)
-        if ret != Status.SUCCESS: 
-            print getErrMsg(ret)
-            self._logger.error("registerDb failed")
-            return
-        self._logger.debug("registerDb successfully finished")
+            raise Exception("'registerDb' takes one argument: <dbName>")
+        self._meta.registerDb(args[0])
         print "Database successfully registered."
 
     def _cmd_unregisterDb(self, options, args):
-        self._logger.debug("Unregistering db")
         if len(args) != 1:
-            msg = "'unregisterDb' requires one argument: <dbName>"
-            self._logger.error(msg)
-            print msg
-            return
-        dbName = args[0]
-        self._logger.debug("unregistering %s" % dbName)
-        ret = self._meta.unregisterDb(dbName)
-        if ret != Status.SUCCESS: 
-            print getErrMsg(ret)
-            self._logger.error("unregisterDb failed")
-            return
-        self._logger.debug("unregisterDb successfully finished")
+            raise Exception("'unregisterDb' takes one argument: <dbName>")
+        self._meta.unregisterDb(args[0])
         print "Database unregistered."
 
     def _cmd_listDbs(self, options, args):
         if len(args) != 0:
-            msg = "'listDb does not take any arguments."
-            print msg
-            return
+            raise Exception("'listDb takes no arguments.")
         print self._meta.listDbs()
+
+    ###########################################################################
+    ##### connection info
+    ###########################################################################
+    def _getConnInfo(self):
+        config = ConfigParser.ConfigParser()
+        config.read(self._dotFileName)
+        s = "qmsConn"
+        if not config.has_section(s):
+            raise Exception("Bad %s, can't find section '%s'" % \
+                                (self._dotFileName, s))
+        if not config.has_option(s, "host") or \
+           not config.has_option(s, "port") or \
+           not config.has_option(s, "user") or \
+           not config.has_option(s, "pass"):
+            raise Exception("Bad %s, can't find host, port, user or pass"%\
+                                self._dotFileName)
+        (h,p,u,p) = (config.get(s, "host"), config.getint(s, "port"),
+                     config.get(s, "user"), config.get(s, "pass"))
+
+        s = "qmwConn"
+        if not config.has_section(s):
+            raise Exception("Bad %s, can't find section '%s'" % \
+                                (self._dotFileName, s))
+        if not config.has_option(s, "db") or \
+           not config.has_option(s, "user") or \
+           not config.has_option(s, "pass") or \
+           not config.has_option(s, "mySqlSocket"):
+            raise Exception("Bad %s, can't find db, user, pass or mysqlSocket" % self._dotFileName)
+        return (h,p,u,p,
+                config.get(s, "db"), config.get(s, "user"),
+                config.get(s, "pass"), config.get(s, "mySqlSocket"))
 
 ###############################################################################
 #### main
 ###############################################################################
 if __name__ == '__main__':
-    c = TheTool()
-    (cmd, options, args) = c.parseOptions()
-    cmd(options, args)
+    try:
+        t = TheTool()
+        t.parseAndRun()
+    except Exception, e:
+        print "Error: ", str(e)
