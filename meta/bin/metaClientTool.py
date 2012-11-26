@@ -26,7 +26,6 @@
 from __future__ import with_statement
 import ConfigParser
 import getpass
-import logging
 from optparse import OptionParser
 import os
 import re
