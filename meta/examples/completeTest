@@ -1,0 +1,58 @@
+echo === destroyMeta ===
+./runMetaClientTool.sh destroyMeta
+
+echo === installMeta === 
+./runMetaClientTool.sh installMeta
+
+echo === printMeta ===
+./runMetaClientTool.sh printMeta
+
+echo === create 4 dbs ===
+./runMetaClientTool.sh createDb Summer2012 @./dbPartitioned.params
+./runMetaClientTool.sh createDb NonPartA @./dbNonPartitioned.params
+./runMetaClientTool.sh createDb NonPartB @./dbNonPartitioned.params
+./runMetaClientTool.sh createDb Winter2013 defaultOverlap_nearNeighbor=0.25 partitioning=on defaultOverlap_fuzziness=0.0001 partitioningStrategy=sphBox nStripes=10 nSubStripes=23
+
+echo === list dbs===
+./runMetaClientTool.sh listDbs
+
+echo === checking if dbs exists. y, n ===
+./runMetaClientTool.sh checkDbExists Summer2012
+./runMetaClientTool.sh checkDbExists Summer2012xx
+
+echo === retrieve dbInfo for 2 dbs ===
+./runMetaClientTool.sh retrieveDbInfo Summer2012
+./runMetaClientTool.sh retrieveDbInfo NonPart
+
+echo === create 5 tables ===
+./runMetaClientTool.sh createTable Summer2012 tableName=Object partitioning=on schemaFile=`pwd`/tbSchema_Object.sql clusteredIndex=IDX_objectId overlap=0.025 phiColName=ra_PS thetaColName=decl_PS logicalPart=2 physChunking=0x0021
+./runMetaClientTool.sh createTable Summer2012 partitioning=off tableName=Exposure schemaFile=`pwd`/tbSchema_Exposure.sql
+./runMetaClientTool.sh createTable Summer2012 @./tb_Source.params
+./runMetaClientTool.sh createTable Summer2012 @./tb_Exposure.params
+./runMetaClientTool.sh createTable Winter2013 @./tb_Source.params
+
+echo === retrieve table info for 2 tables ===
+./runMetaClientTool.sh retrieveTableInfo Winter2013 Object
+./runMetaClientTool.sh retrieveTableInfo Winter2013 Exposure
+
+echo === print meta ===
+./runMetaClientTool.sh printMeta
+
+echo === drop 3 tables. Fail, ok, ok ===
+./runMetaClientTool.sh dropTable weirdDb Object
+./runMetaClientTool.sh dropTable Summer2012 Object
+./runMetaClientTool.sh dropTable Summer2012 Exposure
+
+echo === drop 3 dbs. Ok, ok, fail ===
+./runMetaClientTool.sh dropDb Summer2012
+./runMetaClientTool.sh dropDb NonPartA
+./runMetaClientTool.sh dropDb whatever
+
+echo === checking if db exist ===
+./runMetaClientTool.sh checkDbExists Summer2012
+
+echo === list dbs ===
+./runMetaClientTool.sh listDbs
+
+
+#./runMetaClientTool.sh destroyMeta

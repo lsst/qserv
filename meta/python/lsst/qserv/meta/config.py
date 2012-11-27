@@ -41,58 +41,29 @@ from cStringIO import StringIO
 import os
 import sys
 
-# Package
-from lsst.qserv.master import StringMap # C++ STL map<string,string>
-
-
 # Defaults for the configuration itself
-defaultFilename = "/etc/qserv.cnf"
+defaultFilename = "/etc/qms.cnf"
 envFilename = None
-envFilenameVar = "QSERV_CONFIG"
+envFilenameVar = "QMS_CONFIG"
 
-# qserv built-in defaults:
+# qserv metadata server built-in defaults:
 # Note that section names and key names are lower-cased by python.
-defaultConfig = StringIO("""\
-[frontend]
-xrootd=lsst-dev01:1094
-xrootd_user=qsmaster
-scratch_path=/dev/shm/qserv
-port=7080
+defaultQmsConfig = StringIO("""\
+[qmsFrontend]
+port=7082
 
-[mgmtdb]
-db=qservMeta
-# Steal resultdb settings for now.
-
-[resultdb]
+[qmsdb]
 host=
 port=0
 unix_socket=/u1/local/mysql.sock
-db=qservResult
+db=qservMetadata
 user=qsmaster
 passwd=
-dropMem=
 
-[partitioner]
-stripes=18
-substripes=10
-emptyChunkListFile=
-
-[table]
-chunked=Source,ForcedSource
-subchunked=Object
-alloweddbs=LSST
-
-[tuning]
-memoryEngine=yes
-
-[debug]
-chunkLimit=-1
-
-[mysql]
-mysqlclient=
-
+[logging]
+outFile=/tmp/qms.log
+level=warning
 """)
-
 
 # Module variables:
 config = None
@@ -116,13 +87,6 @@ def printTo(outHandle):
     config.write(outHandle)
     pass
 
-def getStringMap():
-    m = StringMap()
-    for s in config.sections():
-        for (k,v) in config.items(s):
-            m[s + "." + k] = v
-    return m
-
 ######################################################################
 ## Error classes
 ######################################################################
@@ -133,15 +97,15 @@ class ConfigError(Exception):
     def __str__(self):
         return repr(self.reason)
 
-
 ######################################################################
 ## Local
 ######################################################################
 def _initialize():
     "Perform some static initialization upon loading"
+    global envFilenameVar
+    global envFilename
     if os.environ.has_key(envFilenameVar):
         envFilename = os.environ[envFilenameVar]
-    
     pass
 
 def _loadFile(filename):
@@ -149,11 +113,15 @@ def _loadFile(filename):
     global config
     loadedFile = None
     config = ConfigParser.ConfigParser()
-    config.readfp(defaultConfig) # Read built-in defaults first
+    config.readfp(defaultQmsConfig)    # Read built-in defaults first
     if getattr(filename, '__iter__', False):
+        if not os.access(filename, os.R_OK):
+            print "Unable to load %s" % filename
         map(config.read, filename) # Load a list of filenames
         loadedFile = filename[-1] # Remember the last loaded
     else:
+        if not os.access(filename, os.R_OK):
+            print "Unable to load %s" % filename
         config.read(filename)
         loadedFile = filename
     pass

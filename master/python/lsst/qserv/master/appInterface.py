@@ -175,9 +175,10 @@ class AppInterface:
             return # This will not return.  os.execv should overwrite us.
         else:
             print "<Not resetting: no reactor>"
+        pass
 
     def stop(self):
         "Unceremoniously stop the server."
         if self.reactor:
             self.reactor.stop()
-    pass
+        pass
