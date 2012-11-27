@@ -14,8 +14,3 @@ detect_deps.checkLibsFromDict(conf, depDict)
 conf.CheckLib('qserv_common', language="C++")
 cEnv = conf.Finish()
 
-compiled = map(lambda f: cEnv.Object(os.path.basename(f)+".o", f), 
-               "../src/QservPathStructure.cc ../src/Config.cc ../src/Metadata.cc".split())
-pathSrcs = ["qmwTool.cc"] + compiled
-
-cEnv.Program("qmwTool", pathSrcs)
