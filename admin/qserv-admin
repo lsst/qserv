@@ -2,6 +2,7 @@
 
 use strict;
 use Getopt::Long;
+use Cwd;
 
 Getopt::Long::config('bundling_override');
 my %opts = ();
@@ -12,9 +13,11 @@ GetOptions( \%opts,
 	"stop",
 	"start",
 	"load",
+	"delete-data",
 	"source=s",
 	"table=s",
 	"output=s",
+	"dbpass=s",
 	"partition",
 	"test"
 );
@@ -29,7 +32,13 @@ my $install_dir = "INSTALLDIR";
 my $mysqld_sock = "$install_dir/var/lib/mysql/mysql.sock";
 
 if( $opts{'status'} ) {
-	if( check_mysqld() ) {
+
+        unless( $opts{'dbpass'} ) {
+                print "Error: you need to specify the mysql root password with the --dbpass option.\n";
+                exit(1);
+        }
+
+	if( check_mysqld( $opts{'dbpass'}  ) ) {
 		print "Mysql server up and running.\n";
 	} else {
 		print "Mysql server not running.\n";
@@ -73,6 +82,8 @@ if( $opts{'status'} ) {
 	
 } elsif( $opts{'partition'} ) {
 
+	
+
 	#need to partition raw data for loading into qserv.
 	unless( $opts{'source'} ) {
 		print "Error: you need to set the path to the source data with the --source option.\n";
@@ -104,9 +115,25 @@ if( $opts{'status'} ) {
                 print "Error: you need to specify the output path with the --output option.\n";
                 exit(1);
         }
+       unless( $opts{'dbpass'} ) {
+                print "Error: you need to specify the mysql root password with the --dbpass option.\n";
+                exit(1);
+        }
 
 	#need to load data into qserv
-	load_data( $opts{'source'}, $opts{'output'}, $opts{'table'} );
+	## TODO performs some checking before starting mysqld (already started)
+	## and idem for stopping
+	load_data( $opts{'source'}, $opts{'output'}, $opts{'table'}, $opts{'dbpass'} );
+
+} elsif( $opts{'delete-data'} ) {
+
+       unless( $opts{'dbpass'} ) {
+                print "Error: you need to specify the mysql root password with the --dbpass option.\n";
+                exit(1);
+        }
+
+	# deleting data into qserv
+	delete_data( $opts{'source'}, $opts{'output'}, $opts{'table'}, $opts{'dbpass'} );
 }
 
 
@@ -123,7 +150,7 @@ sub check_sql_server {
 	create_test_sql( $testsql );
 	
 	#try through the proxy to see if it can talk to mysql server.
-	my @reply = `$command < $testsql 2>&1`;
+	my @reply = run_command("$command < $testsql 2>&1");
 	
 	print "@reply\n" if( $debug );
 	
@@ -158,8 +185,9 @@ sub check_proxy {
 #check the mysql server status.
 sub check_mysqld {
 
+	my( $dbpass ) = @_;
 	if( -e "$mysqld_sock" ) {
-		return check_sql_server( "mysql -S $mysqld_sock -u root" );
+		return check_sql_server( "mysql -S $mysqld_sock -u root -p$dbpass" );
 	} else {
 		return 0;
 	}
@@ -187,12 +215,12 @@ sub check_qserv {
 #string in the command line used.
 sub check_ps {
 	my( $test_string ) = @_;
-	#print "$test_string\n";
+	print "Check_ps : $test_string\n";
 	
-	my @reply = `ps x`;
-	#print @reply;
+	my @reply = run_command("ps x");
+	print "Reply : @reply\n";
 	my @stuff = grep /$test_string/, @reply;
-	#print @stuff;
+	print "Catched stuff : @stuff\n-----\n";
 	
 	if( @stuff ) {
 		my( $pid ) = $stuff[0] =~ /^\s*(\d+) /;
@@ -236,15 +264,15 @@ sub stop_proxy {
 #used to start the process.
 sub stop_ps {
 	my( $test_string ) = @_;
-	#print "$test_string\n";
+	print "Stopping $test_string\n";
 	
 	my $pid = check_ps( $test_string );
-	#print "pid to stop -- $pid\n";
+	print "pid to stop -- $pid\n";
 	if( $pid ) {
 		if( $opts{'test'} ) {
 			print "I would now kill process $pid.\n";
 		} else {
-			`kill $pid`;
+			run_command("kill $pid");
 		}
 	}
 
@@ -294,29 +322,34 @@ sub partition_data {
 	if( $opts{'test'} ) {
 		print "$command\n";
 	} else {
-		`$command`;
+		run_command("$command");
 	}
 }
 
-
+sub delete_data {
+	my( $source_dir, $location, $tablename, $dbpass ) = @_;
+        
+        #delete database
+        run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass -e 'Drop database if exists LSST;'");
+}
 
 #load the partitioned pt11 data into qserv for use.  This does a number of
 #steps all in one command.
 sub load_data {
-	my( $source_dir, $location, $tablename ) = @_;
+	my( $source_dir, $location, $tablename, $dbpass ) = @_;
 	
 	#create database if it doesn't exist
-	`$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -e 'Create database if not exists LSST;'`;
+	run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass -e 'Create database if not exists LSST;'");
 	
 	#check on the table def, and add need columns
 	print "Copy and changing $source_dir/${tablename}.sql\n";
 	my $tmptable = lc $tablename;
-	`cp $source_dir/${tablename}.sql $install_dir/tmp`;
-	`perl -pi -e 's,^.*_chunkId.*\n,,' $install_dir/tmp/${tablename}.sql`;
-	`perl -pi -e 's,^.*_subChunkId.*\n,,' $install_dir/tmp/${tablename}.sql`;
-	`perl -pi -e 's!^\(\\s*PRIMARY\)!  chunkId int\(11\) default NULL,\\n\\1!' $install_dir/tmp/${tablename}.sql`;
-	`perl -pi -e 's!^\(\\s*PRIMARY\)!  subChunkId int\(11\) default NULL,\\n\\1!' $install_dir/tmp/${tablename}.sql`;
-	`perl -pi -e 's!^\\s*PRIMARY KEY\\s+\\(.*\\)!  PRIMARY KEY \(${tmptable}Id, subChunkId\)!' $install_dir/tmp/${tablename}.sql`;
+	run_command("cp $source_dir/${tablename}.sql $install_dir/tmp");
+	run_command("perl -pi -e 's,^.*_chunkId.*\n,,' $install_dir/tmp/${tablename}.sql");
+	run_command("perl -pi -e 's,^.*_subChunkId.*\n,,' $install_dir/tmp/${tablename}.sql");
+	run_command("perl -pi -e 's!^\(\\s*PRIMARY\)!  chunkId int\(11\) default NULL,\\n\\1!' $install_dir/tmp/${tablename}.sql");
+	run_command("perl -pi -e 's!^\(\\s*PRIMARY\)!  subChunkId int\(11\) default NULL,\\n\\1!' $install_dir/tmp/${tablename}.sql");
+	run_command("perl -pi -e 's!^\\s*PRIMARY KEY\\s+\\(.*\\)!  PRIMARY KEY \(${tmptable}Id, subChunkId\)!' $install_dir/tmp/${tablename}.sql");
 
 	#regress through looking for partitioned data, create loading script
 	open LOAD, ">$install_dir/tmp/${tablename}_load.sql";
@@ -352,8 +385,8 @@ sub load_data {
 	
 	#load the data into the mysql instance
 	print "Loading data, this make take awhile...\n";
-	`$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root LSST < $install_dir/tmp/${tablename}.sql`;
-	`$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root LSST < $install_dir/tmp/${tablename}_load.sql`;
+	run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass LSST < $install_dir/tmp/${tablename}.sql");
+	run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass LSST < $install_dir/tmp/${tablename}_load.sql");
 		
 	#create the empty chunks file
 	create_emptychunks( \%chunkslist );
@@ -364,7 +397,7 @@ sub load_data {
 		print SETUP "host:localhost\n";
 		print SETUP "port:4040\n";
 		print SETUP "user:root\n";
-		print SETUP "pass:\n";
+		print SETUP "pass:$dbpass\n";
 		print SETUP "sock:$install_dir/var/lib/mysql/mysql.sock\n";
 		close SETUP;
 	}
@@ -374,13 +407,13 @@ sub load_data {
 	$command .= "-a $install_dir/etc/setup.cnf -i 1 ";
 	$command .= "register LSST Object";
 	print "Command: $command\n";
-	`$command`;
+	run_command("$command");
 	
 	$command = "$install_dir/qserv/worker/tools/qsDbTool ";
 	$command .= "-a $install_dir/etc/setup.cnf -i 1 -b $install_dir/xrootd-run ";
 	$command .= "export LSST";
         print "Command: $command\n";
-	`$command`;
+	run_command("$command");
 	
 }
 
@@ -411,17 +444,18 @@ usage: $bin [options]
   Also supports the loading of pt11 example data into the server for use.
 
 Options are:
-      --debug     Print out debug messages.
-  -h, --help      Print out this help message.
-  -s, --status    Print out the status of the server processes.
-      --stop      Stop the servers.
-	  --start     Start the servers.
-	  --load      Load data into qserv, requires options source, output, table
-	  --source    Path to the pt11 exmple data
-	  --output    Path to the paritioned data
-	  --table     Table name for partitioning and loading
-	  --parition  Partition the example pt11 data into chunks, requires source, output, table
-	  --test      test the use of the util, without performing the actions.
+      --debug        Print out debug messages.
+  -h, --help         Print out this help message.
+  -s, --status       Print out the status of the server processes.
+      --stop         Stop the servers.
+      --start        Start the servers.
+      --load         Load data into qserv, requires options source, output, table
+      --delete-data  Load data into qserv, requires options source, output, table
+      --source       Path to the pt11 exmple data
+      --output       Path to the paritioned data
+      --table        Table name for partitioning and loading
+      --partition    Partition the example pt11 data into chunks, requires source, output, table
+      --test         Test the use of the util, without performing the actions.
 
 Examples: $bin --status
 
@@ -430,4 +464,20 @@ INLINE_LITERAL_TEXT
 
 	       exit($exit) if defined $exit;
 
+}
+
+sub run_command 
+{
+        my( $command ) = @_;
+        my $cwd = cwd();
+	my @return;
+        print "-- Running: $command in $cwd\n";
+        open(OUT, "$command |") || die "ERROR : can't fork $command : $!";
+        while (<OUT>) 
+        {
+                print STDOUT $_; 
+                push (@return, $_); 
+        }
+        close(OUT) || die "ERROR : $command exits with error code ($?)";
+	return @return;
 }
