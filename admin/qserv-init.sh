@@ -14,13 +14,17 @@ elif [ -f /etc/debian_version ]
     perl -i.bak -pe 's/user=mysql//' /etc/mysql/my.cnf;
 fi
 
-mkdir -p $QSERV_BASE;
-chown -R $QSERV_USER:$QSERV_USER $QSERV_BASE;
+echo "Creating ${QSERV_BASE} directory"
+mkdir -p ${QSERV_BASE} || die "mkdir failed";
+chown -R ${QSERV_USER}:${QSERV_USER} ${QSERV_BASE} || die "chown failed"; 
+
 if [ -n "${QSERV_LOG}" ]; then
-	mkdir -p $QSERV_LOG;
-	chown -R $QSERV_USER:$QSERV_USER $QSERV_LOG;
+	echo "Creating ${QSERV_LOG} directory"
+	mkdir -p ${QSERV_LOG} || die "mkdir failed";
+	chown -R ${QSERV_USER}:${QSERV_USER} ${QSERV_LOG} || die "chown failed";
 fi
 if [ -n "${QSERV_MYSQL_DATA}" ]; then
-	mkdir -p $QSERV_MYSQL_DATA;
-	chown -R $QSERV_USER:$QSERV_USER $QSERV_MYSQL_DATA;
+	echo "Creating ${QSERV_MYSQL_DATA} directory"
+	mkdir -p ${QSERV_MYSQL_DATA} || die "mkdir failed";
+	chown -R ${QSERV_USER}:${QSERV_USER} ${QSERV_MYSQL_DATA} || die "chown failed";
 fi

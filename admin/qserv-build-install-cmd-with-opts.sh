@@ -3,14 +3,6 @@
 source ${QSERV_SRC}/qserv-env.sh
 source ${QSERV_SRC}/qserv-install-params.sh
 
-# Default values
-QSERV_LOG=${QSERV_LOG:-${QSERV_BASE}/var/log/}
-
-if [ ! -d ${QSERV_LOG} ]
-    then
-    mkdir -p ${QSERV_LOG}
-fi
-
 cd ${QSERV_BASE}
 
 INSTALL_OPTS="--install-dir=\"${QSERV_BASE}\""
@@ -42,11 +34,15 @@ fi
 if [ -n "${MONO_NODE}" ]; then
 	INSTALL_OPTS="${INSTALL_OPTS} --mono-node"
 fi
+
 if [ -n "${QSERV_ONLY}" ]; then
 	INSTALL_OPTS="${INSTALL_OPTS} --qserv"
 elif [ -n "${QSERV_CLEAN_ALL}" ]; then
 	INSTALL_OPTS="${INSTALL_OPTS} --clean-all"
+elif [ -n "${INIT_MYSQL_DB}" ]; then
+	INSTALL_OPTS="${INSTALL_OPTS} --init-mysql-db"
 fi
+
 if [ -e "${LOG_FILE_PREFIX}" ]; then
         LOG_FILE_PREFIX="UNDEFINED"
 fi

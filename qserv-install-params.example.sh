@@ -25,9 +25,34 @@ XROOTD_PORT=1094
 # - xrootd configuration file (lsp.cf) will disable xrootd manager 
 MONO_NODE=1
 
+# Tree possibles values :
+# mono-node
+# master
+# worker
+QSERV_NODE_TYPE=
+
+# Used for work
+# Qserv master DNS name 
+QSERV_MASTER=clrlsst-dbmaster.in2p3.fr
+
 # Geometry file will be downloaded by default
 # but a source directory may be specified 
 # it could be retrieved for exemple with : git clone git://dev.lsstcorp.org/LSST/DMS/geom
 # QSERV_GEOM=/home/user/geom
 
+############################
+#
+# DO NOT EDIT SECTION BELOW
+#
+############################
+
 DATE=`date +%Y%m%d`
+
+# Default values
+QSERV_LOG=${QSERV_LOG:-${QSERV_BASE}/var/log}
+
+# usefull functions
+die() {
+    echo "FATAL ERROR: $* (status $?)" 1>&2
+    exit 1
+}
