@@ -68,7 +68,7 @@ class Meta(object):
         ret = self._mdb.connect()
         if ret != Status.SUCCESS:
             if ret == Status.ERR_NO_META:
-                return "No metadata found"
+                return "No metadata found."
             raise Exception(getErrMsg(ret))
         s = self._mdb.printTable("Dbs")
         self._mdb.disconnect()

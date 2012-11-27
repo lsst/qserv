@@ -117,8 +117,8 @@ mySqlSocket: /var/lib/mysql/mysql.sock
 
         self._dotFileName = os.path.expanduser("~/.qmwadm")
 
-        (sh,sp,su,sp,wd,wu,wp,wm) = self._getConnInfo()
-        self._meta = Meta(self._loggerName, sh,sp,su,sp,wd,wu,wp,wm)
+        (sh,sp,su,sup,wd,wu,wp,wm) = self._getConnInfo()
+        self._meta = Meta(self._loggerName, sh,sp,su,sup,wd,wu,wp,wm)
 
         cmd = getattr(self, cmdN)
         cmd(options, args)
@@ -177,8 +177,8 @@ mySqlSocket: /var/lib/mysql/mysql.sock
            not config.has_option(s, "pass"):
             raise Exception("Bad %s, can't find host, port, user or pass"%\
                                 self._dotFileName)
-        (h,p,u,p) = (config.get(s, "host"), config.getint(s, "port"),
-                     config.get(s, "user"), config.get(s, "pass"))
+        (host,port,usr,pwd) = (config.get(s, "host"), config.getint(s, "port"),
+                               config.get(s, "user"), config.get(s, "pass"))
 
         s = "qmwConn"
         if not config.has_section(s):
@@ -189,7 +189,7 @@ mySqlSocket: /var/lib/mysql/mysql.sock
            not config.has_option(s, "pass") or \
            not config.has_option(s, "mySqlSocket"):
             raise Exception("Bad %s, can't find db, user, pass or mysqlSocket" % self._dotFileName)
-        return (h,p,u,p,
+        return (host,port,usr,pwd,
                 config.get(s, "db"), config.get(s, "user"),
                 config.get(s, "pass"), config.get(s, "mySqlSocket"))
 
