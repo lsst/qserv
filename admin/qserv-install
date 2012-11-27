@@ -20,6 +20,7 @@ GetOptions( \%opts,
 	"lua",
 	"master=s",
 	"mysql",
+	"init-mysql-db",
 	"mysql-port=s",
 	"mysql-data-dir|m=s",
 	"db-pass=s",
@@ -59,11 +60,18 @@ my $cmsd_manager_port = $opts{'cmsd-manager-port'} || "2131";
 my $geometry_dir = $opts{'geometry-dir'};
 my $cluster_type = "mono-node" if( $opts{'mono-node'} );
 
+$install_dir = remove_trailing_slash($install_dir);
+$log_dir = remove_trailing_slash($log_dir);
+$mysql_data_dir = remove_trailing_slash($mysql_data_dir);
+$build_dir = remove_trailing_slash($build_dir);
+$geometry_dir = remove_trailing_slash($geometry_dir);
+
 print "qserv master :  $qserv_master\n" if( $debug );
 
 my $build_opt = "all";
 $build_opt = "lua" if( $opts{'lua'} );
 $build_opt = "mysql" if( $opts{'mysql'} );
+$build_opt = "init-mysql-db" if( $opts{'init-mysql-db'} );
 $build_opt = "xrootd" if( $opts{'xrootd'} );
 $build_opt = "qserv" if( $opts{'qserv'} );
 $build_opt = "mysql-proxy" if( $opts{'mysql-proxy'} );
@@ -95,6 +103,8 @@ check_and_install_xrootd() if( $build_opt eq "all" or $build_opt eq "xrootd" );
 
 #setup mysql
 check_and_install_mysql() if( $build_opt eq "all" or $build_opt eq "mysql" );
+
+init_mysql_db() if( $build_opt eq "all" or $build_opt eq "mysql" or $build_opt eq "init-mysql-db");
 
 #setup and install python extras.
 check_and_setup_extras() if( $build_opt eq "all" or $build_opt eq "extras" );
@@ -335,7 +345,7 @@ sub check_and_setup_extras {
 
 }
 
-#check on mysql source tar, compile, install, and configure for use.
+#check on mysql source tar, compile, install
 sub check_and_install_mysql {
 
 	print "Installing MySQL from source.\n";
@@ -362,28 +372,43 @@ sub check_and_install_mysql {
 	run_command("make");
 	run_command("make install");
 	
+}
+
+# configure mysql for use
+sub init_mysql_db {
+
 	run_command("cp $src_dir/master/resources/my.cnf.tpl $install_dir/etc/my.cnf");
 	run_command("perl -pi -e \"s,<INSTALL_DIR>,$install_dir,\" $install_dir/etc/my.cnf");
 	run_command("perl -pi -e \"s,<LOG_DIR>,$log_dir,\" $install_dir/etc/my.cnf");
 	run_command("perl -pi -e \"s,<DATA_DIR>,$mysql_data_dir,\" $install_dir/etc/my.cnf");
 	run_command("perl -pi -e \"s,<MYSQL_PORT>,$mysql_port,\" $install_dir/etc/my.cnf");
 	run_command("perl -pi -e \"s,user=mysql,,\" $install_dir/etc/my.cnf");
+
+	system("killall mysqld mysqld_safe");	
+        run_command("rm -r $mysql_data_dir");
 	
 	run_command("mysql_install_db --user=$prod_user");
 	
 	if ( length($db_pass) > 0) {
 		print "Starting mysql server.\n";
 		system("$install_dir/bin/mysqld_safe &");
-		sleep 5;	
-		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -p'$db_pass' password '$db_pass'");
-		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -h $qserv_master -p'$db_pass' password '$db_pass'");
+		sleep 5;
+		my $quiet=1;	
+		print ("Changing mysql root password.");
+                # password for root@127.0.0.1 won't be updated with next command.
+		# run_command("mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password '$db_pass'", $quiet);
+		# run_command("mysqladmin -h $qserv_master -P$mysql_port -u root password '$db_pass'", $quiet);
+		run_command("cp $src_dir/master/resources/mysql-password.sql.tpl $install_dir/etc/mysql-password.sql");
+		run_command("perl -pi -e \"s,<MYSQL_PASSWORD>,$db_pass,\" $install_dir/etc/mysql-password.sql", $quiet);
+		run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root < $install_dir/etc/mysql-password.sql");
+		run_command("rm $install_dir/etc/mysql-password.sql");
 		# shutdown mysql
-		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock shutdown -u root -p'$db_pass'");
+		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock shutdown -u root -p'$db_pass'", $quiet);
 	}
 	else {
 		print "Please set the mysql root user password with: ";
 		print "mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password <password>\n";
-		print "mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -h $qserv_master password <password>\n";
+		print "mysqladmin -u root -h $qserv_master -P$mysql_port password <password>\n";
 	}
 
 	chdir "$install_dir";
@@ -569,23 +594,12 @@ sub check_and_deploy_qserv {
         mkdir "var/run";
         mkdir "var/run/mysqld";
 
-##        if ($log_dir eq "$install_dir/var/log") {
-##		if (not -e "$log_dir") {
-##                	mkdir $log_dir or die print "$!\n";
-##		}
-##        } else {
-##                create_symlink ($log_dir,"$install_dir/var/log");
-##        }
-
-	if (not -e "$log_dir") {
-	    mkdir $log_dir or die print "$!\n";
-	}
+	# $log_dir and mysql_data_dir are already created by qserv-init script
+        if ($log_dir ne "$install_dir/var/log") {
+                create_symlink ($log_dir,"$install_dir/var/log");
+        }
 	
-	if ($mysql_data_dir eq "$install_dir/var/lib/mysql") {
-	    if (not -e "$mysql_data_dir") {
-		mkdir $mysql_data_dir or die print "$!\n";
-	    }
-        } else {
+        if ($mysql_data_dir ne "$install_dir/var/lib/mysql") {
                 create_symlink ($mysql_data_dir,"$install_dir/var/lib/mysql");
         }
 
@@ -811,7 +825,8 @@ OPTIONS:
 	
 One of these option may also be setted :
 	--lua       		Install only lua and needed lua modules
-	--mysql     		Install only the mysql server
+	--mysql     		Install only the mysql server, Erase and reinstall mysql data
+	--init-mysql-db     	Erase and reinstall mysql data
 	--xrootd    		Install only xrootd
 	--qserv     		Install only qserv
 
@@ -824,18 +839,26 @@ INLINE_LITERAL_TEXT
 
 }
 
+sub remove_trailing_slash
+{
+	my( $string ) = @_;
+	$string = $1 if($string=~/(.*)\/$/);
+	return $string;
+}
+
 sub run_command 
 {
-        my( $command ) = @_;
+        my( $command, $quiet ) = @_;
         my $cwd = cwd();
 	my @return;
-        print "-- Running: $command in $cwd\n";
+        if (! $quiet) { print "-- Running: $command in $cwd\n" };
         open(OUT, "$command 2>&1 |") || die "ERROR : can't fork $command : $!";
         while (<OUT>) 
-        {
-                print STDOUT $_; 
-                push (@return, $_); 
+        {       
+               	print STDOUT $_; 
+               	push (@return, $_); 
         }
         close(OUT) || die "ERROR : $command exits with error code ($?)";
 	return @return;
 }
+

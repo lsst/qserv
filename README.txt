@@ -67,13 +67,16 @@ Assuming PT1.1 data are in ${QSERV_DATA}/pt11/, next command will partition PT1.
   Load the pt1.1 data :
   ---------------------
 
+Assuming you've sourced qserv-env.sh, next command will launch Qserv :
+  $ qserv-start
+
   $ ./admin/qserv-load-data-pt11.sh
 will load PT1.1 Object data.
 
   Launch Qserv and run a small test :
   -----------------------------------
 
-Assuming you've sourced qserv-env.sh, next command will launch Qserv :
+If not already done :
   $ qserv-start
 Then connect to MySQL proxy :
   $ ./admin/qserv-connect-mysql-proxy.sh
