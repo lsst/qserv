@@ -22,29 +22,67 @@
 #
 # The guts of manipulating qserv metadata worker. 
 
+import StringIO
 
-from status import Status
+from db import Db  # consider moving to common
+from status import Status, getErrMsg
 
 class Meta(object):
-    def __init__(self, qmsHost, qmsPort, qmsUser, qmsPass,
+    def __init__(self, loggerName,
+                 qmsHost, qmsPort, qmsUser, qmsPass,
                  qmwDb, qmwUser, qmwPass, qmwMySqlSocket):
+        self._loggerName = loggerName
         self._qmsHost = qmsHost
         self._qmsPort = qmsPort
         self._qmsUser = qmsUser
         self._qmsPass = qmsPass
-        self._qmwDb   = qmwDb
+        self._qmwDb   = "qmw_%s" % qmwDb
         self._qmwUser = qmwUser
         self._qmwPass = qmwPass
         self._qmwMySqlSocket = qmwMySqlSocket
 
     def installMeta(self):
-        raise Exception("installMeta not implemented")
+        """Initializes persistent qserv metadata structures on the worker.
+        This method should be called only once ever for a given qms
+        installation on a given worker."""
+        internalTables = [
+            # The DbMeta table keeps the list of databases managed through 
+            # qserv. Databases not entered into that table will be ignored 
+            # by qserv.
+            ['Dbs', '''(
+   dbId INT NOT NULL PRIMARY KEY, 
+   dbName VARCHAR(255) NOT NULL, 
+   dbUuid VARCHAR(255) NOT NULL
+   )''']]
+        mdb = Db(self._loggerName, None, None, self._qmwUser, self._qmwPass,
+                 self._qmwMySqlSocket, self._qmwDb)
+        ret = mdb.connectAndCreateDb()
+        if ret != Status.SUCCESS:
+            raise Exception(getErrMsg(ret))
+        for t in internalTables:
+            mdb.createTable(t[0], t[1])
+        return mdb.disconnect()
 
     def destroyMeta(self):
-        raise Exception("destroyMeta not implemented")
+        mdb = Db(self._loggerName, None, None, self._qmwUser, self._qmwPass,
+                 self._qmwMySqlSocket, self._qmwDb)
+        ret = mdb.connect()
+        if ret != Status.SUCCESS:
+            raise Exception(getErrMsg(ret))
+        mdb.dropDb()
+        return mdb.disconnect()
 
     def printMeta(self):
-        raise Exception("printMeta not implemented")
+        mdb = Db(self._loggerName, None, None, self._qmwUser, self._qmwPass,
+                 self._qmwMySqlSocket, self._qmwDb)
+        ret = mdb.connect()
+        if ret != Status.SUCCESS:
+            if ret == Status.ERR_NO_META:
+                return "No metadata found"
+            raise Exception(getErrMsg(ret))
+        s = mdb.printTable("Dbs")
+        mdb.disconnect()
+        return s
 
     def registerDb(self, dbName):
         raise Exception("registerDb not implemented")
@@ -112,4 +150,3 @@ class Meta(object):
             print "Expected %s, got %s" % (echostring, ret)
             return False
         return True
-

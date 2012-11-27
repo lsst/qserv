@@ -26,6 +26,7 @@
 
 from __future__ import with_statement
 import ConfigParser
+import logging
 from optparse import OptionParser
 import os
 import socket
@@ -98,6 +99,9 @@ user: qmwUser
 pass: qmwPass
 mySqlSocket: /var/lib/mysql/mysql.sock
 """
+        self._loggerName = "qmwLogger"
+        self._loggerOutFile = "/tmp/qmwLogger.log"
+        self._loggerLevelName = None
 
     def parseAndRun(self):
         parser = OptionParser(usage=self._usage)
@@ -109,10 +113,12 @@ mySqlSocket: /var/lib/mysql/mysql.sock
             parser.error("Unrecognized command: " + args[0])
         del args[0]
 
+        self._initLogging()
+
         self._dotFileName = os.path.expanduser("~/.qmwadm")
 
         (sh,sp,su,sp,wd,wu,wp,wm) = self._getConnInfo()
-        self._meta = Meta(sh,sp,su,sp,wd,wu,wp,wm)
+        self._meta = Meta(self._loggerName, sh,sp,su,sp,wd,wu,wp,wm)
 
         cmd = getattr(self, cmdN)
         cmd(options, args)
@@ -186,6 +192,26 @@ mySqlSocket: /var/lib/mysql/mysql.sock
         return (h,p,u,p,
                 config.get(s, "db"), config.get(s, "user"),
                 config.get(s, "pass"), config.get(s, "mySqlSocket"))
+
+    ###########################################################################
+    ##### logger
+    ###########################################################################
+    def _initLogging(self):
+        if self._loggerLevelName is None:
+            level = logging.ERROR # default
+        else:
+            ll = {"debug":logging.DEBUG,
+                  "info":logging.INFO,
+                  "warning":logging.WARNING,
+                  "error":logging.ERROR,
+                  "critical":logging.CRITICAL}
+            level = ll[self._loggerLevelName]
+        self.logger = logging.getLogger(self._loggerLevelName)
+        hdlr = logging.FileHandler(self._loggerOutFile)
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+        hdlr.setFormatter(formatter)
+        self.logger.addHandler(hdlr)
+        self.logger.setLevel(level)
 
 ###############################################################################
 #### main
