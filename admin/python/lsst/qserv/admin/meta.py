@@ -26,18 +26,16 @@ import StringIO
 
 from db import Db  # consider moving to common
 from status import Status, getErrMsg
+###from lsst.qserv.meta.client import Client FIXME
 
 class Meta(object):
     def __init__(self, loggerName,
                  qmsHost, qmsPort, qmsUser, qmsPass,
                  qmwDb, qmwUser, qmwPass, qmwMySqlSocket):
-        self._qmsHost = qmsHost
-        self._qmsPort = qmsPort
-        self._qmsUser = qmsUser
-        self._qmsPass = qmsPass
         self._qmwDb   = "qmw_%s" % qmwDb
         self._mdb = Db(loggerName, None, None, qmwUser, qmwPass,
                        qmwMySqlSocket, self._qmwDb)
+        ### self._qmsClient = Client(qmsHost, qmsPort, qmsUser, qmsPass) FIXME
 
     def installMeta(self):
         """Initializes persistent qserv metadata structures on the worker.
@@ -77,13 +75,55 @@ class Meta(object):
         return s
 
     def registerDb(self, dbName):
-        raise Exception("registerDb not implemented")
+        ret = self._mdb.connect()
+        if ret != Status.SUCCESS:
+            raise Exception(getErrMsg(ret))
+        # check if already registered, fail if it is
+        if self._checkDbIsRegistered(dbName):
+            raise Exception("Db '%s' is already registered." % dbName)
+        # get dbId and dbUuid from qms
+        ###values = self._qmsClient.retrieveDbInfo(dbName) FIXME
+        values = {"dbId": 123, "dbUuid":"faked-uuid"}
+        if not 'dbId' in values:
+            raise Exception("Invalid dbInfo from qms (dbId not found)")
+        if not 'dbUuid' in values:
+            raise Exception("Invalid dbInfo from qms (dbUuid not found)")
+        # register it
+        cmd = "INSERT INTO Dbs(dbId, dbName, dbUuid) VALUES (%s, '%s','%s')" %\
+            (values['dbId'], dbName, values['dbUuid'])
+        self._mdb.execCommand0(cmd)
+        self._mdb.disconnect()
 
     def unregisterDb(self, dbName):
-        raise Exception("unregisterDb not implemented")
+        ret = self._mdb.connect()
+        if ret != Status.SUCCESS:
+            raise Exception(getErrMsg(ret))
+        # check if already registered, fail if it is not
+        if not self._checkDbIsRegistered(dbName):
+            raise Exception("Db '%s' is not registered." % dbName)
+        # unregister it
+        cmd = "DELETE FROM Dbs WHERE dbName='%s'" % dbName;
+        self._mdb.execCommand0(cmd)
+        self._mdb.disconnect()
 
     def listDbs(self):
-        raise Exception("listDbs not implemented")
+        ret = self._mdb.connect()
+        if ret != Status.SUCCESS:
+            raise Exception(getErrMsg(ret))
+        cmd = "SELECT dbName FROM Dbs"
+        xx = self._mdb.execCommandN(cmd)
+        self._mdb.disconnect()
+        ret = []
+        for x in xx: ret.append(x[0])
+        return ret
+
+    ###########################################################################
+    ##### miscellaneous
+    ###########################################################################
+    def _checkDbIsRegistered(self, dbName):
+        cmd = "SELECT COUNT(*) FROM Dbs WHERE dbName = '%s'" % dbName
+        ret = self._mdb.execCommand1(cmd)
+        return ret[0] == 1
 
     ###########################################################################
     ##### connection to QMS
