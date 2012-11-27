@@ -31,15 +31,13 @@ class Meta(object):
     def __init__(self, loggerName,
                  qmsHost, qmsPort, qmsUser, qmsPass,
                  qmwDb, qmwUser, qmwPass, qmwMySqlSocket):
-        self._loggerName = loggerName
         self._qmsHost = qmsHost
         self._qmsPort = qmsPort
         self._qmsUser = qmsUser
         self._qmsPass = qmsPass
         self._qmwDb   = "qmw_%s" % qmwDb
-        self._qmwUser = qmwUser
-        self._qmwPass = qmwPass
-        self._qmwMySqlSocket = qmwMySqlSocket
+        self._mdb = Db(loggerName, None, None, qmwUser, qmwPass,
+                       qmwMySqlSocket, self._qmwDb)
 
     def installMeta(self):
         """Initializes persistent qserv metadata structures on the worker.
@@ -54,34 +52,28 @@ class Meta(object):
    dbName VARCHAR(255) NOT NULL, 
    dbUuid VARCHAR(255) NOT NULL
    )''']]
-        mdb = Db(self._loggerName, None, None, self._qmwUser, self._qmwPass,
-                 self._qmwMySqlSocket, self._qmwDb)
-        ret = mdb.connectAndCreateDb()
+        ret = self._mdb.connectAndCreateDb()
         if ret != Status.SUCCESS:
             raise Exception(getErrMsg(ret))
         for t in internalTables:
-            mdb.createTable(t[0], t[1])
-        return mdb.disconnect()
+            self._mdb.createTable(t[0], t[1])
+        return self._mdb.disconnect()
 
     def destroyMeta(self):
-        mdb = Db(self._loggerName, None, None, self._qmwUser, self._qmwPass,
-                 self._qmwMySqlSocket, self._qmwDb)
-        ret = mdb.connect()
+        ret = self._mdb.connect()
         if ret != Status.SUCCESS:
             raise Exception(getErrMsg(ret))
-        mdb.dropDb()
-        return mdb.disconnect()
+        self._mdb.dropDb()
+        return self._mdb.disconnect()
 
     def printMeta(self):
-        mdb = Db(self._loggerName, None, None, self._qmwUser, self._qmwPass,
-                 self._qmwMySqlSocket, self._qmwDb)
-        ret = mdb.connect()
+        ret = self._mdb.connect()
         if ret != Status.SUCCESS:
             if ret == Status.ERR_NO_META:
                 return "No metadata found"
             raise Exception(getErrMsg(ret))
-        s = mdb.printTable("Dbs")
-        mdb.disconnect()
+        s = self._mdb.printTable("Dbs")
+        self._mdb.disconnect()
         return s
 
     def registerDb(self, dbName):
