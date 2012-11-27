@@ -39,10 +39,10 @@ class TheTool(object):
     def __init__(self):
         self._usage = """
 NAME
-        qmwTool - the tool for manipulating qserv metadata on worker
+        metaTool - the tool for manipulating qserv metadata on worker
 
 SYNOPSIS
-        qmwTool [-h|--help] [-v|--verbose] COMMAND [ARGS]
+        metaTool [-h|--help] [-v|--verbose] COMMAND [ARGS]
 
 OPTIONS
    -h, --help
