@@ -52,7 +52,7 @@ class Status():
                ERR_DB_NOT_EXISTS: "The database does not exist.",
                ERR_TABLE_EXISTS: "The table already exists.",
                ERR_TABLE_NOT_EXISTS: "The table does not exist.",
-               ERR_NO_TABLE_IN_SCHEMA: ("Can't find 'CREATE TABLE<tableName>.",
+               ERR_NO_TABLE_IN_SCHEMA: ("Can't find 'CREATE TABLE <tableName>.",
                                         "in schema file"),
                ERR_COL_NOT_FOUND: "Column not found in the table.",
                ERR_SCHEMA_FILE: ("The schema file specified in the config file"
