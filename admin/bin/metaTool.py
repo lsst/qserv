@@ -32,7 +32,7 @@ import os
 import socket
 
 # Local package imports
-from lsst.qserv.admin.status import Status, getErrMsg  # FIXME: when ticket1944 pushed
+from lsst.qserv.meta.status import Status, getErrMsg
 from lsst.qserv.admin.meta import Meta
 
 class TheTool(object):

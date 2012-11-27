@@ -30,7 +30,7 @@ import StringIO
 import subprocess
 import sys
 
-from status import Status
+from lsst.qserv.meta.status import Status
 
 # FIXME: move to common, merge with Db from master/meta
 class Db():

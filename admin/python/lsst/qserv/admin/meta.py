@@ -25,8 +25,8 @@
 import StringIO
 
 from db import Db  # consider moving to common
-from status import Status, getErrMsg
-###from lsst.qserv.meta.client import Client FIXME
+from lsst.qserv.meta.status import Status, getErrMsg
+from lsst.qserv.meta.client import Client
 
 class Meta(object):
     def __init__(self, loggerName,
@@ -35,7 +35,7 @@ class Meta(object):
         self._qmwDb   = "qmw_%s" % qmwDb
         self._mdb = Db(loggerName, None, None, qmwUser, qmwPass,
                        qmwMySqlSocket, self._qmwDb)
-        ### self._qmsClient = Client(qmsHost, qmsPort, qmsUser, qmsPass) FIXME
+        self._qmsClient = Client(qmsHost, qmsPort, qmsUser, qmsPass)
 
     def installMeta(self):
         """Initializes persistent qserv metadata structures on the worker.
@@ -82,7 +82,7 @@ class Meta(object):
         if self._checkDbIsRegistered(dbName):
             raise Exception("Db '%s' is already registered." % dbName)
         # get dbId and dbUuid from qms
-        ###values = self._qmsClient.retrieveDbInfo(dbName) FIXME
+        values = self._qmsClient.retrieveDbInfo(dbName)
         values = {"dbId": 123, "dbUuid":"faked-uuid"}
         if not 'dbId' in values:
             raise Exception("Invalid dbInfo from qms (dbId not found)")
