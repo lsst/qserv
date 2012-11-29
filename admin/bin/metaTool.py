@@ -73,17 +73,6 @@ COMMANDS
   listDbs
         List database names registered for qserv use.
 
-  createExportPaths
-        Generates export paths. If no dbName is given, it will
-        run for all databases registered in qserv metadata
-        for given worker. Argument: [<dbName>]
-
-  rebuildExportPaths
-        Removes existing export paths and recreates them.
-        If no dbName is given, it will run for all databases
-        registered in qserv metadata for given worker.
-        Argument: [<dbName>]
-
 EXAMPLES
 Example contents of the (required) '~/.qmwadm' file:
 

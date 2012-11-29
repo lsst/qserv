@@ -82,8 +82,14 @@ class Meta(object):
         if self._checkDbIsRegistered(dbName):
             raise Exception("Db '%s' is already registered." % dbName)
         # get dbId and dbUuid from qms
-        values = self._qmsClient.retrieveDbInfo(dbName)
-        values = {"dbId": 123, "dbUuid":"faked-uuid"}
+        values = []
+        try:
+            values = self._qmsClient.retrieveDbInfo(dbName)
+        except Exception, e:
+            if "The database does not exist" in str(e):
+                raise Exception("Db '%s' is not registered in the metadata server." % dbName)
+            else:
+                raise Exception(str(e))
         if not 'dbId' in values:
             raise Exception("Invalid dbInfo from qms (dbId not found)")
         if not 'dbUuid' in values:
@@ -113,9 +119,7 @@ class Meta(object):
         cmd = "SELECT dbName FROM Dbs"
         xx = self._mdb.execCommandN(cmd)
         self._mdb.disconnect()
-        ret = []
-        for x in xx: ret.append(x[0])
-        return ret
+        return [x[0] for x in xx]
 
     ###########################################################################
     ##### miscellaneous
