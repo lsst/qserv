@@ -53,10 +53,10 @@ OPTIONS
 
 COMMANDS
   installMeta
-        Sets up internal qserv metadata database.
+        Sets up internal qserv metadata database for given worker.
 
   destroyMeta
-        Destroys internal qserv metadata database.
+        Destroys internal qserv metadata database for given worker.
 
   printMeta
         Prints all metadata for given worker.
@@ -67,11 +67,12 @@ COMMANDS
 
   unregisterDb
         Unregisters database used by qserv and destroys
-        corresponding export structures for that database.
-        Argument: <dbName>
+        corresponding export structures for that database
+        for given worker. Argument: <dbName>
 
   listDbs
-        List database names registered for qserv use.
+        List database names registered for qserv use for
+        given worker.
 
 EXAMPLES
 Example contents of the (required) '~/.qmwadm' file:
