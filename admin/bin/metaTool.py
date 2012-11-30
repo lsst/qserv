@@ -37,14 +37,21 @@ from lsst.qserv.admin.meta import Meta
 
 class TheTool(object):
     def __init__(self):
+        self._defaultAuthFile = "~/.qmwadm"
+        # start with default, can be overwritten through command line option
+        self._authFile = os.path.expanduser(self._defaultAuthFile)
+
         self._usage = """
 NAME
         metaTool - the tool for manipulating qserv metadata on worker
 
 SYNOPSIS
-        metaTool [-h|--help] [-v|--verbose] COMMAND [ARGS]
+        metaTool [OPTIONS] COMMAND [ARGS]
 
 OPTIONS
+   -a, --auth
+        Authorization file. Default: %s
+
    -h, --help
         Prints help information.
 
@@ -75,7 +82,8 @@ COMMANDS
         given worker.
 
 EXAMPLES
-Example contents of the (required) '~/.qmwadm' file:
+Example contents of the (required) authorization file 
+(e.g., '%s'):
 
 [qmsConn]
 host: lsst-db3.slac.stanford.edu
@@ -88,24 +96,29 @@ db: testX
 user: qmwUser
 pass: qmwPass
 mySqlSocket: /var/lib/mysql/mysql.sock
-"""
+""" % (self._defaultAuthFile, self._defaultAuthFile)
+
         self._loggerName = "qmwLogger"
         self._loggerOutFile = "/tmp/qmwLogger.log"
         self._loggerLevelName = None
 
     def parseAndRun(self):
         parser = OptionParser(usage=self._usage)
+        parser.add_option("-a", "--auth", dest="authFile")
         (options, args) = parser.parse_args()
         if len(args) < 1:
             parser.error("No command given")
+
+        if options.authFile:
+            self._authFile = options.authFile
+        if not os.path.exists(self._authFile):
+            raise Exception("%s does not exist." % self._authFile)
         cmdN = "_cmd_" + args[0]
         if not hasattr(self, cmdN):
             parser.error("Unrecognized command: " + args[0])
         del args[0]
 
         self._initLogging()
-
-        self._dotFileName = os.path.expanduser("~/.qmwadm")
 
         (sh,sp,su,sup,wd,wu,wp,wm) = self._getConnInfo()
         self._meta = Meta(self._loggerName, sh,sp,su,sup,wd,wu,wp,wm)
@@ -156,29 +169,30 @@ mySqlSocket: /var/lib/mysql/mysql.sock
     ###########################################################################
     def _getConnInfo(self):
         config = ConfigParser.ConfigParser()
-        config.read(self._dotFileName)
+        config.read(self._authFile)
         s = "qmsConn"
         if not config.has_section(s):
             raise Exception("Bad %s, can't find section '%s'" % \
-                                (self._dotFileName, s))
+                                (self._authFile, s))
         if not config.has_option(s, "host") or \
            not config.has_option(s, "port") or \
            not config.has_option(s, "user") or \
            not config.has_option(s, "pass"):
             raise Exception("Bad %s, can't find host, port, user or pass"%\
-                                self._dotFileName)
+                                self._authFile)
         (host,port,usr,pwd) = (config.get(s, "host"), config.getint(s, "port"),
                                config.get(s, "user"), config.get(s, "pass"))
 
         s = "qmwConn"
         if not config.has_section(s):
             raise Exception("Bad %s, can't find section '%s'" % \
-                                (self._dotFileName, s))
+                                (self._authFile,s))
         if not config.has_option(s, "db") or \
            not config.has_option(s, "user") or \
            not config.has_option(s, "pass") or \
            not config.has_option(s, "mySqlSocket"):
-            raise Exception("Bad %s, can't find db, user, pass or mysqlSocket" % self._dotFileName)
+            raise Exception("Bad %s, can't find db, user, pass or mysqlSocket"\
+                                % self._authFile)
         return (host,port,usr,pwd,
                 config.get(s, "db"), config.get(s, "user"),
                 config.get(s, "pass"), config.get(s, "mySqlSocket"))

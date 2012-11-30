@@ -38,18 +38,24 @@ from lsst.qserv.meta.client import Client
 
 class TheTool(object):
     def __init__(self):
+        self._defaultAuthFile = "~/.qmsadm"
+        # start with default, can be overwritten through command line option
+        self._authFile = os.path.expanduser(self._defaultAuthFile)
+
         self._usage = """
 NAME
         metaClientTool - the client program for Qserv Metadata Server (QMS)
 
 SYNOPSIS
-        metaClientTool [-c CONN] [-h|--help] COMMAND [ARGS]
+        metaClientTool [OPTIONS] COMMAND [ARGS]
 
 OPTIONS
+   -a, --auth
+        Authorization file. Default: %s
+
    -c
         Specifies connection. Format: user@host:port.
-        If not specified, it must be provided in a file
-        called ~/.qmsadm.
+        If not specified, it must be provided through auth file.
 
    -h, --help
         Prints help information. If COMMAND name is given,
@@ -113,27 +119,34 @@ COMMANDS
         Retrieves the name of internal qms database.
 
 EXAMPLES
-Example contents of the .qmsadm file:
+Example contents of the authorization file 
+(e.g., %s):
 
 [qmsConn]
 host: lsst-db3.slac.stanford.edu
-port: 4040
-user: qms
+port: 7082
+user: qmsUser
 pass: qmsPass
-"""
+""" % (self._defaultAuthFile, self._defaultAuthFile)
 
     def parseAndRun(self):
         parser = OptionParser(usage=self._usage)
         parser.add_option("-c", dest="conn")
+        parser.add_option("-a", "--auth", dest="authFile")
         (options, args) = parser.parse_args()
         if len(args) < 1:
             parser.error("No command given")
+
+        if options.authFile:
+            self._authFile = options.authFile
+        if not os.path.exists(self._authFile):
+            raise Exception("%s does not exist." % self._authFile)
+
         cmdN = "_cmd_" + args[0]
         if not hasattr(self, cmdN):
             parser.error("Unrecognized command: " + args[0])
         del args[0]
 
-        self._dotFileName = os.path.expanduser("~/.qmsadm")
         (host, port, user, pwd) = self._getConnInfo(options.conn)
 
         self._client = Client(host, port, user, pwd)
@@ -281,11 +294,11 @@ pass: qmsPass
     ###########################################################################
     def _getConnInfo(self, connInfoStr):
         if connInfoStr is None:
-            # get if from .qmsadm, or fail
+            # get if from the auth file, or fail
             (host, port, user, pwd) = self._getCachedConnInfo()
             if host is None or port is None or user is None or pwd is None:
-                raise Exception("Missing connection information ", \
-                    "(hint: use -c or use .qmsadm file)")
+                raise Exception("Missing connection information (hint: ", \
+                    "use -c or -a or create %s file)" % self._defaultAuthFile)
             return (host, port, user, pwd)
         # use what user provided via -c option
         m = re.match(r'([\w.]+)@([\w.-]+):([\d]+)', connInfoStr)
@@ -306,16 +319,16 @@ pass: qmsPass
 
     def _getCachedConnInfo(self):
         config = ConfigParser.ConfigParser()
-        config.read(self._dotFileName)
+        config.read(self._authFile)
         s = "qmsConn"
         if not config.has_section(s):
-            raise Exception("Can't find section '%s' in .qmsadm" % s)
+            raise Exception("Can't find section '%s' in %s" %(s,self._authFile))
         if not config.has_option(s, "host") or \
            not config.has_option(s, "port") or \
            not config.has_option(s, "user") or \
            not config.has_option(s, "pass"):
             raise Exception("Bad %s, can't find host, port, user or pass" \
-                                % self._dotFileName)
+                                % self._authFile)
         return (config.get(s, "host"), config.getint(s, "port"),
                 config.get(s, "user"), config.get(s, "pass"))
 
