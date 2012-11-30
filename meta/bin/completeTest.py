@@ -25,6 +25,7 @@
 
 import ConfigParser
 import os
+import sys
 
 from lsst.qserv.meta.status import Status, getErrMsg
 from lsst.qserv.meta.client import Client
@@ -294,22 +295,26 @@ class Tester(object):
         config.read(fName)
         s = "qmsConn"
         if not config.has_section(s):
-            raise Exception("Can't find section '%s' in .qmsadm" % s)
+            raise Exception("Can't find section '%s' in %s" % (s, fName))
         if not config.has_option(s, "host") or \
            not config.has_option(s, "port") or \
            not config.has_option(s, "user") or \
-           not config.has_option(s, "password"):
-            raise Exception("Bad %s, can't find host, port, user or password" \
-                                % self._dotFileName)
+           not config.has_option(s, "pass"):
+            raise Exception("Bad %s, can't find host, port, user or pass" \
+                                % fName)
         return (config.get(s, "host"), config.getint(s, "port"),
-                config.get(s, "user"), config.get(s, "password"))
+                config.get(s, "user"), config.get(s, "pass"))
 
 ###############################################################################
 ##### main
 ###############################################################################
 if __name__ == '__main__':
-    try:
-        t = Tester("/u1/qserv/ticket1944-qms_run/meta/examples")
-        t.doIt()
-    except Exception, e:
-        print "\n\n*****TEST FAILED***** : ", str(e)
+    if len(sys.argv) != 2:
+        print "Expecting one argument: base directory"
+    else:
+        baseDir = "%s/meta/examples" % sys.argv[1]
+        try:
+            t = Tester(baseDir)
+            t.doIt()
+        except Exception, e:
+            print "\n\n*****TEST FAILED***** : ", str(e)
