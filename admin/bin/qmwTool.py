@@ -43,10 +43,10 @@ class TheTool(object):
 
         self._usage = """
 NAME
-        metaTool - the tool for manipulating qserv metadata on worker
+        qmwTool - the tool for manipulating qserv metadata on worker
 
 SYNOPSIS
-        metaTool [OPTIONS] COMMAND [ARGS]
+        qmwTool [OPTIONS] COMMAND [ARGS]
 
 OPTIONS
    -a, --auth

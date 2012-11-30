@@ -1,0 +1,17 @@
+echo '=== destroyMeta ==='
+./admin/bin/qmwTool.sh destroyMeta
+
+echo '=== installMeta ==='
+./admin/bin/qmwTool.sh installMeta
+
+echo '=== printMeta ==='
+./admin/bin/qmwTool.sh printMeta
+
+echo '=== registerDb (missing arg) ==='
+./admin/bin/qmwTool.sh registerDb
+
+echo '=== registerDb (db not in qms) ==='
+./admin/bin/qmwTool.sh registerDb xyzdd
+
+echo '=== registerDb (all good) ==='
+./admin/bin/qmwTool.sh registerDb Summer2012
