@@ -21,7 +21,8 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 # The "metaClientTool" is a tool that sends commands to qserv metadata server
-# using the "client" module.
+# using the "client" module. It can be used to instruct qms what to do.
+
 
 from __future__ import with_statement
 import ConfigParser

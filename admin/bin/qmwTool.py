@@ -20,9 +20,10 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-# The tool for manipulating qserv metadata worker.
-# TheTool class simply parses arguments and delegates the work 
+# The tool for manipulating qserv metadata on the worker.
+# It is a thin shell that parses arguments and delegates the work 
 # down to the meta class.
+
 
 from __future__ import with_statement
 import ConfigParser

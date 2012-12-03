@@ -1,4 +1,5 @@
-# 
+#!/usr/bin/env python
+
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
 # 
@@ -19,10 +20,10 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-
 # server.py : This module implements Qserv Metadata Server (HTTP and 
 # XML-RPC interfacing logic using the Twisted networking library.
 # It exposes the functionality from the MetaInterface class.
+
 
 # Standard Python imports
 from itertools import ifilter

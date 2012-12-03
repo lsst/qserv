@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-# 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
 # 
@@ -21,9 +20,11 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-
 # startQMS.py -- This is a "driver" program that provides a
 # command-line interface to start qserv metadata server.
+# You might want to look at examples/startQMS.sh to see what 
+# env vars have to be set etc.
+
 
 from optparse import OptionParser
 import os

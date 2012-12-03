@@ -1,4 +1,5 @@
-# 
+#!/usr/bin/env python
+ 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
 # 
@@ -19,9 +20,9 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
+# A class that defines errors (codes and their descriptions) for 
+# qserv metadata. Used by both the qms server and client.
 
-# qmsErrors.py : Defines error codes and their descriptions.
-# Used by both the qms server and client.
 
 class Status():
     SUCCESS  = 0
@@ -43,24 +44,25 @@ class Status():
     ERR_NOT_IMPLEMENTED    = 9998
     ERR_INTERNAL           = 9999
 
-    errors = { ERR_IS_INIT: "Qserv metadata already initialized.",
-               ERR_MYSQL_CONNECT: "Unable to connect to mysql server.",
-               ERR_MYSQL_DISCONN: ("Failed to commit transaction and "
-                                   "disconnect from mysql server."),
-               ERR_NO_META: "No metadata found.",
-               ERR_DB_EXISTS: "The database already exists.",
-               ERR_DB_NOT_EXISTS: "The database does not exist.",
-               ERR_TABLE_EXISTS: "The table already exists.",
-               ERR_TABLE_NOT_EXISTS: "The table does not exist.",
-               ERR_NO_TABLE_IN_SCHEMA: ("Can't find 'CREATE TABLE <tableName>.",
-                                        "in schema file"),
-               ERR_COL_NOT_FOUND: "Column not found in the table.",
-               ERR_SCHEMA_FILE: ("The schema file specified in the config file"
-                                 " can't be access from the client."),
-               ERR_INVALID_OPTION: ("Invalid option passed."),
-               ERR_NOT_IMPLEMENTED: ("This feature is not implemented yet"),
-               ERR_INTERNAL: "Internal error."
-               }
+    errors = { 
+        ERR_IS_INIT: "Qserv metadata already initialized.",
+        ERR_MYSQL_CONNECT: "Unable to connect to mysql server.",
+        ERR_MYSQL_DISCONN: ("Failed to commit transaction and "
+                            "disconnect from mysql server."),
+        ERR_NO_META: "No metadata found.",
+        ERR_DB_EXISTS: "The database already exists.",
+        ERR_DB_NOT_EXISTS: "The database does not exist.",
+        ERR_TABLE_EXISTS: "The table already exists.",
+        ERR_TABLE_NOT_EXISTS: "The table does not exist.",
+        ERR_NO_TABLE_IN_SCHEMA: ("Can't find 'CREATE TABLE <tableName>.",
+                                 "in schema file"),
+        ERR_COL_NOT_FOUND: "Column not found in the table.",
+        ERR_SCHEMA_FILE: ("The schema file specified in the config file"
+                          " can't be access from the client."),
+        ERR_INVALID_OPTION: ("Invalid option passed."),
+        ERR_NOT_IMPLEMENTED: ("This feature is not implemented yet"),
+        ERR_INTERNAL: "Internal error."
+        }
 
 def getErrMsg(errNo):
     s = Status()

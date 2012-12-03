@@ -1,4 +1,5 @@
-# 
+#!/usr/bin/env python
+
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
 # 
@@ -19,6 +20,8 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
+# Interface that qserv metadata server presents/implements.
+
 
 # Standard
 from itertools import ifilter

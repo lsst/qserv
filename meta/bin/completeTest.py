@@ -20,8 +20,10 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-# The "metaClientTool" is a tool that sends commands to qserv metadata server
-# using the "client" module.
+# Tool for testing qserv metadata server and the client library.
+# It is a thin shell that parses arguments, reads auth file,
+# and tries to break qms in some expected and unexpected ways.
+
 
 import ConfigParser
 import os

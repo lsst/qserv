@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-# 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
 # 
@@ -20,6 +19,9 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
+#
+# Implementation of the qserv metadata server.
+
 
 import logging
 import os
