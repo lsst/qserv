@@ -1,6 +1,8 @@
 import os, sys, io
+import errno
 import logging
 import ConfigParser
+from SCons.Node import FS
 from SCons.Script import Mkdir,Chmod,Copy,WhereIs
 
 logger = logging.getLogger('scons-qserv')
@@ -24,14 +26,13 @@ config_file_name="qserv-build.conf"
 
 sample_config = """
 # WARNING : these variables mustn't be changed once the install process is started
-[default]
-version=qserv-dev
-basedir=/opt/$(version)
+[DEFAULT]
+version = qserv-dev
+basedir = /opt/%(version)s
+logdir = %(basedir)s/var/log
 
 [qserv]
 # Qserv rpc service port is 7080 but is hard-coded
-
-logdir=$(basedir)/var/log
 
 # Tree possibles values :
 # mono
@@ -57,17 +58,17 @@ port=4040
 
 [mysqld]
 
-port=3306
+port=13306
 
 pass='changeme'
 #datadir=/data/$(version)/mysql
-datadir=$(basedir)/var/lib/mysql
+datadir=%(basedir)s/var/lib/mysql
 
 [lsst]
-
+      
 # Where to download LSST data
 # Example: PT1.1 data should be in $(datadir)/pt11/
-datadir=/data/lsst
+datadir=/data/lsst 
 """
 
 env = Environment()
@@ -78,21 +79,83 @@ def read_config():
     config = ConfigParser.SafeConfigParser()
     config.readfp(io.BytesIO(sample_config))
     config.read(buildConfigFile)
-    logger.debug("MySQL port : "+config.get("mysqld", "port"))
 
-    
+    logger.debug("Build configuration : ")
+    for section in config.sections():
+       logger.debug("[%s]" % section)
+       for option in config.options(section):
+        logger.debug("'%s' = '%s'" % (option, config.get(section,option)))
+
+    return config 
+
+def is_readable_dir(dir):
+    """
+    Test is a directory is readable.
+    Return a couple (success,message), where success is a boolean and message a string
+    """
+    try:
+        os.listdir(dir)
+    except BaseException as e:
+        return (False,"No read access : %s" % (e));
+    return (True,"")
+
+def is_writeable_dir(dir):
+    """
+    Test is a directory exists, if no try to create it, if yes test if it is writeable.
+    Return a couple (success,message), where success is a boolean and message a string
+    """
+    try:
+	if (os.path.exists(dir)):
+            filename="%s/test.check" % dir
+            f = open(filename,'w')
+            f.close()
+            os.remove(filename)
+        else:
+            Execute(Mkdir(dir))
+    except IOError as e:
+        if (e.errno==errno.ENOENT) :
+            return (False,"No write access to directory : %s" % (dir));
+    except BaseException as e:
+        return (False,"No write access : %s" % (e));
+    return (True,"")
 
 def init_target(target, source, env):
-    env.Execute(Mkdir("testdir"))
-    print (os.path.abspath(str(target[0])))
-    print (os.path.abspath(str(target[1])))
-    # os.mkdir(os.path.abspath(str(source[0])))
-    # os.symlink(os.path.abspath(str(source[1])), os.path.abspath(str(target[0])))
+
+    check_success=True
+
+    ret =  is_writeable_dir(config.get("qserv","base_dir")) 
+    if (not ret[0]):
+    	logging.fatal("Checking Qserv base directory : %s" % ret[1])
+        check_success=False   
+ 
+    ret =  is_writeable_dir(config.get("qserv","log_dir")) 
+    if (not ret[0]):
+    	logging.fatal("Checking Qserv log directory : %s" % ret[1])
+        check_success=False    
+
+    ret =  is_writeable_dir(config.get("mysqld","data_dir")) 
+    if (not ret[0]):
+    	logging.fatal("Checking MySQL data directory : %s" % ret[1])
+        check_success=False    
+
+    ret =  is_readable_dir(config.get("lsst","data_dir")) 
+    if (not ret[0]):
+    	logging.fatal("Checking LSST data directory : %s" % ret[1])
+        check_success=False    
+    
+    if not check_success :
+        sys.exit(1)
+    else:
+        logger.info("Qserv initial directory structure analysis succeeded")    
 
 def symlink(target, source, env):
     os.symlink(os.path.abspath(str(source[0])), os.path.abspath(str(target[0])))
 
-read_config()
+config = read_config()
+
+log_dir         = config.get("qserv","log_dir")
+mysqld_data_dir = config.get("mysqld","data_dir")
+lsst_data_dir   = config.get("lsst","data_dir")
 
 #symlink_builder = Builder(action = "ln -s ${SOURCE.file} ${TARGET.file}", chdir = True)
 symlink_builder = Builder(action = symlink, chdir = True)
@@ -108,11 +171,8 @@ env.Alias('symlink', mylib_link)
 #        Exit(1)
 
 init_bld = env.Builder(action=init_target)
-
 env.Append(BUILDERS = {'Init' : init_bld})
-
-init = env.Init(["test-test","test-env.sh"], [])
-
+init = env.Init( ['always_do_it'], [])
 env.Alias('init', init)
 
 #Execute(Mkdir('tutu'))
