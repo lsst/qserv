@@ -1,19 +1,20 @@
-import os, sys, io
+import os, sys, io, re
 import errno
 import logging
-import ConfigParser
 from SCons.Node import FS
 from SCons.Script import Mkdir,Chmod,Copy,WhereIs
+
+import utils
 
 logger = logging.getLogger('scons-qserv')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 # this level can be reduce for each handler
 logger.setLevel(logging.DEBUG)
 
-#file_handler = logging.FileHandler('scons.log')
-#file_handler.setFormatter(formatter)
-#file_handler.setLevel(logging.DEBUG)
-#logger.addHandler(file_handler) 
+file_handler = logging.FileHandler('scons.log')
+file_handler.setFormatter(formatter)
+file_handler.setLevel(logging.DEBUG)
+logger.addHandler(file_handler) 
 
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
@@ -21,10 +22,9 @@ console_handler.setLevel(logging.DEBUG)
 logger.addHandler(console_handler) 
 
 # this file must be placed in main scons directory
-# TODO : see quattor to read a default file and overload it
-config_file_name="qserv-build.conf"
+config_file_name=Dir('.').srcnode().abspath+"/"+"qserv-build.conf"
 
-sample_config = """
+default_config = """
 # WARNING : these variables mustn't be changed once the install process is started
 [DEFAULT]
 version = qserv-dev
@@ -73,72 +73,31 @@ datadir=/data/lsst
 
 env = Environment()
 
-def read_config():
-    buildConfigFile=Dir('.').srcnode().abspath+"/"+config_file_name
-    logger.debug("Reading build config file : %s" % buildConfigFile)
-    config = ConfigParser.SafeConfigParser()
-    config.readfp(io.BytesIO(sample_config))
-    config.read(buildConfigFile)
+config = utils.read_config(config_file_name, default_config)
 
-    logger.debug("Build configuration : ")
-    for section in config.sections():
-       logger.debug("[%s]" % section)
-       for option in config.options(section):
-        logger.debug("'%s' = '%s'" % (option, config.get(section,option)))
-
-    return config 
-
-def is_readable_dir(dir):
-    """
-    Test is a directory is readable.
-    Return a couple (success,message), where success is a boolean and message a string
-    """
-    try:
-        os.listdir(dir)
-    except BaseException as e:
-        return (False,"No read access : %s" % (e));
-    return (True,"")
-
-def is_writeable_dir(dir):
-    """
-    Test is a directory exists, if no try to create it, if yes test if it is writeable.
-    Return a couple (success,message), where success is a boolean and message a string
-    """
-    try:
-	if (os.path.exists(dir)):
-            filename="%s/test.check" % dir
-            f = open(filename,'w')
-            f.close()
-            os.remove(filename)
-        else:
-            Execute(Mkdir(dir))
-    except IOError as e:
-        if (e.errno==errno.ENOENT) :
-            return (False,"No write access to directory : %s" % (dir));
-    except BaseException as e:
-        return (False,"No write access : %s" % (e));
-    return (True,"")
 
 def init_target(target, source, env):
 
     check_success=True
 
-    ret =  is_writeable_dir(config.get("qserv","base_dir")) 
+    ret =  utils.is_writeable_dir(config['base_dir']) 
     if (not ret[0]):
     	logging.fatal("Checking Qserv base directory : %s" % ret[1])
-        check_success=False   
+        check_success=False
+    else:
+        Execute(Mkdir(config['base_dir']+"/build"))   
  
-    ret =  is_writeable_dir(config.get("qserv","log_dir")) 
+    ret =  utils.is_writeable_dir(config['log_dir']) 
     if (not ret[0]):
     	logging.fatal("Checking Qserv log directory : %s" % ret[1])
         check_success=False    
 
-    ret =  is_writeable_dir(config.get("mysqld","data_dir")) 
+    ret =  utils.is_writeable_dir(config['mysqld_data_dir']) 
     if (not ret[0]):
     	logging.fatal("Checking MySQL data directory : %s" % ret[1])
         check_success=False    
 
-    ret =  is_readable_dir(config.get("lsst","data_dir")) 
+    ret =  utils.is_readable_dir(config['lsst_data_dir']) 
     if (not ret[0]):
     	logging.fatal("Checking LSST data directory : %s" % ret[1])
         check_success=False    
@@ -148,34 +107,27 @@ def init_target(target, source, env):
     else:
         logger.info("Qserv initial directory structure analysis succeeded")    
 
-def symlink(target, source, env):
-    os.symlink(os.path.abspath(str(source[0])), os.path.abspath(str(target[0])))
+def download_target(target, source, env):
+    for url in source:
+	logger.debug("URL : %s" % url)
+	
+        utils.download(str(url),config['base_dir']+"/build")
 
-config = read_config()
+init_cmd = env.Command(['init'], [], init_target)
+env.Alias('Init', init_cmd)
 
-log_dir         = config.get("qserv","log_dir")
-mysqld_data_dir = config.get("mysqld","data_dir")
-lsst_data_dir   = config.get("lsst","data_dir")
+source_urls = []
+target_files = []
+for app in config['dependencies']:
+    if re.match(".*_url",app) and not re.match("base_url",app):
+        app_url=config['dependencies'][app]
+        file_name = config['base_dir']+"/build/"+app_url.split(os.sep)[-1]
+        source_urls.append(Value(app_url))
+        target_files.append(file_name)
 
-#symlink_builder = Builder(action = "ln -s ${SOURCE.file} ${TARGET.file}", chdir = True)
-symlink_builder = Builder(action = symlink, chdir = True)
+logger.debug("Download target %s :" %target_files)
+#env.Command(Split(target_files), Split(source_urls), download_target)
+download_cmd = env.Command(target_files, source_urls, download_target)
+env.Depends( download_cmd, env.Alias('Init'))
 
-env.Append(BUILDERS = {"Symlink" : symlink_builder})
-
-mylib_link = env.Symlink("toto", "qserv-env.sh")
-
-env.Alias('symlink', mylib_link)
-
-#if Execute(action=init_action):
-#        # A problem occurred while making the temp directory.
-#        Exit(1)
-
-init_bld = env.Builder(action=init_target)
-env.Append(BUILDERS = {'Init' : init_bld})
-init = env.Init( ['always_do_it'], [])
-env.Alias('init', init)
-
-#Execute(Mkdir('tutu'))
-
-#qserv_init_alias = env.Alias('qserv_inYit', env.Qserv_init())
-#env.Alias('install', [qserv_init_alias])
+env.Default(download_cmd)
