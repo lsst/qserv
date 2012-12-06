@@ -1,3 +1,5 @@
+# -*- python -*-
+
 import os, sys, io, re
 import errno
 import logging
@@ -5,6 +7,7 @@ from SCons.Node import FS
 from SCons.Script import Mkdir,Chmod,Copy,WhereIs
 
 import utils
+import ConfigParser
 
 logger = logging.getLogger('scons-qserv')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
@@ -73,46 +76,61 @@ datadir=/data/lsst
 
 env = Environment()
 
-config = utils.read_config(config_file_name, default_config)
+if not os.path.exists(config_file_name):
+    logging.fatal("Your configuration file is missing: %s" % config_file_name)
+    sys.exit(1)
+
+try: config = utils.read_config(config_file_name, default_config)
+except ConfigParser.NoOptionError, exc:
+    logging.fatal("An option is missing in your configuration file: %s" % exc)
+    sys.exit(1)
 
 
 def init_target(target, source, env):
 
     check_success=True
 
-    ret =  utils.is_writeable_dir(config['base_dir']) 
-    if (not ret[0]):
-    	logging.fatal("Checking Qserv base directory : %s" % ret[1])
-        check_success=False
+    if os.access(config['base_dir'], os.W_OK):
+        Execute(Mkdir(config['base_dir']+"/build"))
     else:
-        Execute(Mkdir(config['base_dir']+"/build"))   
- 
-    ret =  utils.is_writeable_dir(config['log_dir']) 
-    if (not ret[0]):
-    	logging.fatal("Checking Qserv log directory : %s" % ret[1])
+       	logging.fatal("Qserv base directory (base_dir) is not writable : %s" % config['base_dir'])
+        check_success=False
+
+    if not os.access(config['log_dir'], os.W_OK):
+    	logging.fatal("Qserv log directory (log_dir) is not writable : %s" % config['log_dir'])
         check_success=False    
 
-    ret =  utils.is_writeable_dir(config['mysqld_data_dir']) 
-    if (not ret[0]):
-    	logging.fatal("Checking MySQL data directory : %s" % ret[1])
+    if not os.access(config['mysqld_data_dir'], os.W_OK):
+    	logging.fatal("MySQL data directory (mysqld_data_dir) is not writable : %s" % config['mysqld_data_dir'])
         check_success=False    
 
-    ret =  utils.is_readable_dir(config['lsst_data_dir']) 
-    if (not ret[0]):
-    	logging.fatal("Checking LSST data directory : %s" % ret[1])
+    if not os.access(config['lsst_data_dir'], os.R_OK):
+    	logging.fatal("LSST data directory (lsst_data_dir) is not writable : %s" % config['lsst_data_dir'])
         check_success=False    
     
-    if not check_success :
-        sys.exit(1)
+    if check_success :
+        logger.info("Qserv initial directory structure analysis succeeded")
     else:
-        logger.info("Qserv initial directory structure analysis succeeded")    
+        sys.exit(1)
 
+        
 def download_target(target, source, env):
+    output_dir = config['base_dir'] + os.sep +"build" + os.sep
+    
+    # download is a dependency target for all downloaded files
+    download = Object('Download target')
+    AlwaysBuild(download)
+    
+    # Add a dependency for each file to download
     for url in source:
-	logger.debug("URL : %s" % url)
-	
-        utils.download(str(url),config['base_dir']+"/build")
+        basefilename = os.path.basename(str(url))
+        outputfile = output_dir + basefilename
+        # Command to use in order to build outputfile
+        env.Command(outputfile, "", 'wget -P '+ output_dir + '$SOURCE')
+	logger.debug("Adding a dependency for %s with %s" % (download, outputfile))
+        Depends(download, outputfile)
 
+        
 init_cmd = env.Command(['init'], [], init_target)
 env.Alias('Init', init_cmd)
 
