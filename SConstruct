@@ -86,7 +86,7 @@ except ConfigParser.NoOptionError, exc:
     sys.exit(1)
 
 
-def init_target(target, source, env):
+def init_action(target, source, env):
 
     check_success=True
 
@@ -114,38 +114,28 @@ def init_target(target, source, env):
         sys.exit(1)
 
         
-def download_target(target, source, env):
-    output_dir = config['base_dir'] + os.sep +"build" + os.sep
-    
-    # download is a dependency target for all downloaded files
-    download = Object('Download target')
-    AlwaysBuild(download)
-    
-    # Add a dependency for each file to download
-    for url in source:
-        basefilename = os.path.basename(str(url))
-        outputfile = output_dir + basefilename
-        # Command to use in order to build outputfile
-        env.Command(outputfile, "", 'wget -P '+ output_dir + '$SOURCE')
-	logger.debug("Adding a dependency for %s with %s" % (download, outputfile))
-        Depends(download, outputfile)
 
         
-init_cmd = env.Command(['init'], [], init_target)
+init_cmd = env.Command(['init'], [], init_action)
 env.Alias('Init', init_cmd)
 
 source_urls = []
 target_files = []
+
+download_cmd_lst = []
+output_dir = config['base_dir'] + os.sep +"build" + os.sep
+# Add a command for each file to download
 for app in config['dependencies']:
     if re.match(".*_url",app) and not re.match("base_url",app):
         app_url=config['dependencies'][app]
-        file_name = config['base_dir']+"/build/"+app_url.split(os.sep)[-1]
-        source_urls.append(Value(app_url))
-        target_files.append(file_name)
+        base_file_name = os.path.basename(app_url)
+        output_file = output_dir + base_file_name
+        # Command to use in order to download outputfile
+        env.Command(output_file, Value(app_url), utils.download_action)
+	download_cmd_lst.append(output_file)
 
-logger.debug("Download target %s :" %target_files)
-#env.Command(Split(target_files), Split(source_urls), download_target)
-download_cmd = env.Command(target_files, source_urls, download_target)
-env.Depends( download_cmd, env.Alias('Init'))
+env.Alias('Download', download_cmd_lst)
 
-env.Default(download_cmd)
+env.Depends( env.Alias('Download'), env.Alias('Init'))
+
+env.Default(env.Alias('Download'))

@@ -62,14 +62,18 @@ def is_writeable_dir(dir):
 
 
 
-def download(url,dest_dir):
+def download_action(target, source, env):
     
     logger = logging.getLogger('scons-qserv')
 
-    file_name = url.split(os.sep)[-1]
+    logger.debug("Target %s :" % target[0])
+    logger.debug("Source %s :" % source[0])
+
+    url = str(source[0])
+    file_name = str(target[0])
     logger.debug("Opening %s :" % url)
     u = urllib2.urlopen(url)
-    f = open(dest_dir+os.sep+file_name, 'wb')
+    f = open(file_name, 'wb')
     meta = u.info()
     file_size = int(meta.getheaders("Content-Length")[0])
     logger.info("Downloading: %s Bytes: %s" % (file_name, file_size))
