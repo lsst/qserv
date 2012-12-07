@@ -108,7 +108,7 @@ class Db():
         c = self._conn.cursor()
         if createDb:
             if self.checkDbExists():
-                self._logger.error("Can't created db '%s', it exists." % \
+                self._logger.error("Can't create db '%s', it exists." % \
                                        self._dbName)
                 return Status.ERR_IS_INIT
             else:
@@ -167,6 +167,18 @@ class Db():
                (self._dbName, tableName)
         count = self.execCommand1(cmd)
         return  count[0] == 1
+
+    def printTable(self, tableName):
+        ret = self.execCommandN("SELECT * FROM %s" % tableName)
+        s = StringIO.StringIO()
+        s.write(tableName)
+        if len(ret) == 0:
+            s.write(" is empty.\n")
+        else: 
+            s.write(':\n')
+        for r in ret:
+            print >> s, "   ", r
+        return s.getvalue()
 
     def loadSqlScript(self, scriptPath, dbName):
         """Loads sql script into the database <dbName>."""
