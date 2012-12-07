@@ -3,8 +3,6 @@
   
 * TODO il faut faire un patch des makefile de xrootd pour debian.
 
-* TODO  est ce que 2>&1 fonctionne bien ???, 2&> semble meieux fonctionner ???
-
 * TODO tuer tous les process de qserv avant une nouvelle install
 
 * TODO améliorer le clean_all (spécifique pour build/ et suppr fichier dans QSERV_BASE)
@@ -190,5 +188,7 @@ to /var/log/qserv for example, same thing for mysql data
   + soumettre les modifs de qserv-admin (pour dbpass)
 
 * DONE modify  /opt/qserv/start_qserv to manage qserv log (path + unbuffered +
+
+* DONE est ce que 2>&1 fonctionne bien ???, 2&> semble meieux fonctionner ???
 * DONE in mono-node, share a different lsp.cf with no manager section
 

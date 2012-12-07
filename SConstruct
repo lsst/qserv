@@ -88,10 +88,6 @@ except ConfigParser.NoOptionError, exc:
     sys.exit(1)
 
 config['src_dir'] = src_dir
-config['node-type']     = ARGUMENTS.get('node-type','mono')
-config['qserv-only']    = ARGUMENTS.get('qserv-only',False)
-config['qserv-clean']   = ARGUMENTS.get('qserv-clean',False)
-config['init-mysql-db'] = ARGUMENTS.get('init-mysql-db',False)
 
 def init_action(target, source, env):
 
@@ -99,6 +95,8 @@ def init_action(target, source, env):
 
     if os.access(config['base_dir'], os.W_OK):
         Execute(Mkdir(config['base_dir']+"/build"))
+        Execute(Mkdir(config['base_dir']+"/var"))
+        Execute(Mkdir(config['base_dir']+"/var/lib"))
     else:
        	logging.fatal("Qserv base directory (base_dir) is not writable : %s" % config['base_dir'])
         check_success=False
@@ -120,17 +118,18 @@ def init_action(target, source, env):
     else:
         sys.exit(1)
 
-env.Requires(env.Alias('Download'), env.Alias('Init')) 
-env.Requires( env.Alias('Install'), env.Alias('Download'))
-env.Default(env.Alias('Install'))
+env.Requires(env.Alias('download'), env.Alias('init')) 
+env.Requires(env.Alias('install'), env.Alias('download'))
+
+env.Default(env.Alias('install'))
         
 ######################        
 #
 # Defining Init Alias
 #
 ######################        
-init_cmd = env.Command(['init'], [], init_action)
-env.Alias('Init', init_cmd)
+init_cmd = env.Command('dummy-target', [], init_action)
+env.Alias('init', init_cmd)
 
 ###########################        
 #
@@ -151,14 +150,14 @@ for app in config['dependencies']:
         # Command to use in order to download source tarball 
         env.Command(output_file, Value(app_url), utils.download_action)
 	download_cmd_lst.append(output_file)
-env.Alias('Download', download_cmd_lst)
+env.Alias('download', download_cmd_lst)
 
 #########################        
 #
 # Defining Install Alias
 #
-#########################        
-install_command_str = utils.build_cmd_with_opts(config)
-install_cmd = env.Command(['install'], [], install_command_str)
-env.Alias('Install', install_cmd)
+######################### 
+
+for target in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'): 
+    env.Alias(target, env.Command(target+'-dummy-target', [], utils.build_cmd_with_opts_action(config,target)))
 

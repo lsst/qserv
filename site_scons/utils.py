@@ -103,7 +103,9 @@ def download_action(target, source, env):
     f.close()
 
 
-def build_cmd_with_opts(config):
+def build_cmd_with_opts_action(config, action='install'):
+
+    logger = logging.getLogger('scons-qserv')
 
     install_opts="--install-dir=\"%s\"" % config['base_dir']
     install_opts="%s --log-dir=\"%s\"" % (install_opts, config['log_dir'])
@@ -117,28 +119,30 @@ def build_cmd_with_opts(config):
     if len(config['geometry_src_dir'])!=0 :
         install_opts="%s --geometry-dir=\"%s\"" % (install_opts,config['geometry_src_dir'])
     
-    if config['node-type']=='mono' :
+    if config['node_type']=='mono' :
         install_opts="%s --mono-node" % install_opts
-    elif config['node-type']=='master' :
+    elif config['node_type']=='master' :
         None
-    elif config['node-type']=='worker' :
+    elif config['node_type']=='worker' :
         None
 
     log_file_prefix = config['log_dir']
-    if config['qserv-only']==True :
+    if action=='qserv-only' :
         install_opts="%s --qserv" % install_opts
         log_file_prefix += "/QSERV-ONLY"
-    elif config['qserv-clean']==True :
+    elif action == 'clean-all' :
         install_opts="%s --clean-all" % install_opts
         log_file_prefix = "~/QSERV-CLEAN"
-    elif config['init-mysql-db']==True :
+    elif action == 'init-mysql-db' :
         install_opts="%s --init-mysql-db" % install_opts
         log_file_prefix += "/QSERV-INIT-MYSQL-DB"
     else :
         log_file_prefix += "/INSTALL"
     log_file_name = log_file_prefix + "-" + datetime.now().strftime("%Y-%m-%d-%H:%M:%S") + ".log" 
 
-    command_str = config['src_dir' ] + "/admin/qserv-install " + install_opts + " > " + log_file_name + " 2&>1"
+    command_str = config['src_dir' ] + "/admin/qserv-install " 
+    command_str += install_opts + " &> " + log_file_name
     
+    logger.debug("Launching perl install script with next command : %s" % command_str)
     return command_str
 
