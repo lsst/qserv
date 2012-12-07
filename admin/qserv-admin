@@ -28,10 +28,13 @@ my $debug = $opts{'debug'} || 0;
 
 my $install_dir = "INSTALLDIR";
 
+print "Using $install_dir install.\n" if( $debug );
+
 #mysql variables
 my $mysqld_sock = "$install_dir/var/lib/mysql/mysql.sock";
 
 if( $opts{'status'} ) {
+	print "Checking on the status.\n" if( $debug );
 	if( check_mysqld() ) {
 		print "Mysql server up and running.\n";
 	} else {
@@ -391,12 +394,17 @@ sub load_data {
 	`cp $source_dir/${tablename}.sql $install_dir/tmp`;
 	`perl -pi -e 's,^.*_chunkId.*\n,,' $install_dir/tmp/${tablename}.sql`;
 	`perl -pi -e 's,^.*_subChunkId.*\n,,' $install_dir/tmp/${tablename}.sql`;
+	`perl -pi -e 's,chunkId,dummy1,' $install_dir/tmp/${tablename}.sql`;
+	`perl -pi -e 's,subChunkId,dummy2,' $install_dir/tmp/${tablename}.sql`;
 	`perl -pi -e 's!^\(\\s*PRIMARY\)!  chunkId int\(11\) default NULL,\\n\\1!' $install_dir/tmp/${tablename}.sql`;
 	`perl -pi -e 's!^\(\\s*PRIMARY\)!  subChunkId int\(11\) default NULL,\\n\\1!' $install_dir/tmp/${tablename}.sql`;
 
-	open TMPFILE, ">>$install_dir/tmp/${tablename}.sql";
-	print TMPFILE "\nCREATE INDEX obj_subchunk_idx on Object ( subChunkId );\n";
-	close TMPFILE;
+	if( $tablename eq 'Object' ) {
+		`perl -pi -e 's,^.*PRIMARY.*\n,,' $install_dir/tmp/${tablename}.sql`;
+		open TMPFILE, ">>$install_dir/tmp/${tablename}.sql";
+		print TMPFILE "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
+		close TMPFILE;
+	}
 
 	#regress through looking for partitioned data, create loading script
 	open LOAD, ">$install_dir/tmp/${tablename}_load.sql";
@@ -419,8 +427,9 @@ sub load_data {
 				if( $file =~ /(\w+)_(\d+).csv/ ) {
 					my $loadname = "${1}_$2";
 					if( $1 eq $tablename ) {
+					print LOAD "DROP TABLE IF EXISTS $loadname;\n";
 					print LOAD "CREATE TABLE IF NOT EXISTS $loadname LIKE $tablename;\n";
-					print LOAD "LOAD DATA INFILE '$location/$dir/$file' INTO TABLE $loadname FIELDS TERMINATED BY ',';\n";
+					print LOAD "LOAD DATA INFILE '$location/$dir/$file' IGNORE INTO TABLE $loadname FIELDS TERMINATED BY ',';\n";
 
 					$chunkslist{$2} = 1;
 					}
@@ -456,21 +465,28 @@ sub load_data {
 		close SETUP;
 	}
 
-	#check if database is already registered
-	unless( -e "$install_dir/xrootd-run/q/LSST" ) {
-		#register the database, export
+	#check if database is already registered, if it is it needs to get unreg. first.
+	if( -e "$install_dir/xrootd-run/q/LSST" ) {
+		#unreg. the database
 		my $command = "$install_dir/qserv/worker/tools/qsDbTool ";
-		$command .= "-a $install_dir/etc/setup.cnf -i 1 ";
-		$command .= "register LSST $tablename";
-		print "Command: $command\n";
-		`$command`;
-		
-		$command = "$install_dir/qserv/worker/tools/qsDbTool ";
 		$command .= "-a $install_dir/etc/setup.cnf -i 1 -b $install_dir/xrootd-run ";
-		$command .= "export LSST";
+		$command .= "unregister LSST $tablename";
 		print "Command: $command\n";
 		`$command`;
 	}
+
+	#register the database, export
+	my $command = "$install_dir/qserv/worker/tools/qsDbTool ";
+	$command .= "-a $install_dir/etc/setup.cnf -i 1 ";
+	$command .= "register LSST $tablename";
+	print "Command: $command\n";
+	`$command`;
+		
+	$command = "$install_dir/qserv/worker/tools/qsDbTool ";
+	$command .= "-a $install_dir/etc/setup.cnf -i 1 -b $install_dir/xrootd-run ";
+	$command .= "export LSST";
+	print "Command: $command\n";
+	`$command`;
 
 }
 
