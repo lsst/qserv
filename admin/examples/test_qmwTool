@@ -1,17 +1,17 @@
 echo '=== destroyMeta ==='
-./admin/bin/qmwTool.sh destroyMeta
+./admin/examples/run_qmwTool destroyMeta
 
 echo '=== installMeta ==='
-./admin/bin/qmwTool.sh installMeta
+./admin/examples/run_qmwTool installMeta
 
 echo '=== printMeta ==='
-./admin/bin/qmwTool.sh printMeta
+./admin/examples/run_qmwTool printMeta
 
 echo '=== registerDb (missing arg) ==='
-./admin/bin/qmwTool.sh registerDb
+./admin/examples/run_qmwTool registerDb
 
 echo '=== registerDb (db not in qms) ==='
-./admin/bin/qmwTool.sh registerDb xyzdd
+./admin/examples/run_qmwTool registerDb xyzdd
 
 echo '=== registerDb (all good) ==='
-./admin/bin/qmwTool.sh registerDb Summer2012
+./admin/examples/run_qmwTool registerDb Summer2012

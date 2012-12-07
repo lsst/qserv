@@ -24,8 +24,8 @@
 
 import StringIO
 
-from db import Db  # consider moving to common
-from lsst.qserv.meta.status import Status, getErrMsg
+from lsst.qserv.meta.db import Db
+from lsst.qserv.meta.status import Status, getErrMsg, QmsException
 from lsst.qserv.meta.client import Client
 
 class Meta:
@@ -50,75 +50,75 @@ class Meta:
    dbName VARCHAR(255) NOT NULL, 
    dbUuid VARCHAR(255) NOT NULL
    )''']]
-        ret = self._mdb.connectAndCreateDb()
-        if ret != Status.SUCCESS:
-            raise Exception(getErrMsg(ret))
-        for t in internalTables:
-            self._mdb.createTable(t[0], t[1])
-        return self._mdb.disconnect()
+        try:
+            self._mdb.connectAndCreateDb()
+            for t in internalTables:
+                self._mdb.createTable(t[0], t[1])
+            self._mdb.disconnect()
+        except QmsException as qe: raise Exception(qe.getErrMsg())
 
     def destroyMeta(self):
-        ret = self._mdb.connect()
-        if ret != Status.SUCCESS:
-            raise Exception(getErrMsg(ret))
-        self._mdb.dropDb()
-        return self._mdb.disconnect()
+        try:
+            self._mdb.connect()
+            self._mdb.dropDb()
+            self._mdb.disconnect()
+        except QmsException as qe: raise Exception(qe.getErrMsg())
 
     def printMeta(self):
-        ret = self._mdb.connect()
-        if ret != Status.SUCCESS:
-            if ret == Status.ERR_NO_META:
-                return "No metadata found."
-            raise Exception(getErrMsg(ret))
-        s = self._mdb.printTable("Dbs")
-        self._mdb.disconnect()
+        try:
+            self._mdb.connect()
+            s = self._mdb.printTable("Dbs")
+            self._mdb.disconnect()
+        except QmsException as qe:
+            if qe.getErrNo() == Status.ERR_NO_META:
+                return "No metadata found."           
+            else:
+                raise Exception(qe.getErrMsg())
         return s
 
     def registerDb(self, dbName):
-        ret = self._mdb.connect()
-        if ret != Status.SUCCESS:
-            raise Exception(getErrMsg(ret))
-        # check if already registered, fail if it is
-        if self._checkDbIsRegistered(dbName):
-            raise Exception("Db '%s' is already registered." % dbName)
-        # get dbId and dbUuid from qms
-        values = []
         try:
-            values = self._qmsClient.retrieveDbInfo(dbName)
-        except Exception, e:
-            if "The database does not exist" in str(e):
-                raise Exception("Db '%s' is not registered in the metadata server." % dbName)
-            else:
-                raise Exception(str(e))
-        if not 'dbId' in values:
-            raise Exception("Invalid dbInfo from qms (dbId not found)")
-        if not 'dbUuid' in values:
-            raise Exception("Invalid dbInfo from qms (dbUuid not found)")
-        # register it
-        cmd = "INSERT INTO Dbs(dbId, dbName, dbUuid) VALUES (%s, '%s','%s')" %\
-            (values['dbId'], dbName, values['dbUuid'])
-        self._mdb.execCommand0(cmd)
-        self._mdb.disconnect()
+            self._mdb.connect()
+            # check if already registered, fail if it is
+            if self._checkDbIsRegistered(dbName):
+                raise Exception("Db '%s' is already registered." % dbName)
+            # get dbId and dbUuid from qms
+            try:
+                values = self._qmsClient.retrieveDbInfo(dbName)
+            except QmsException as qe:
+                if qe.getErrNo() == ERR_DB_NOT_EXISTS:
+                    raise Exception("Db '%s' is not registered in the metadata server." % dbName)
+                else:
+                    raise Exception(qe.getErrMsg())
+            if not 'dbId' in values:
+                raise Exception("Invalid dbInfo from qms (dbId not found)")
+            if not 'dbUuid' in values:
+                raise Exception("Invalid dbInfo from qms (dbUuid not found)")
+            # register it
+            cmd = "INSERT INTO Dbs(dbId, dbName, dbUuid) VALUES (%s, '%s','%s')" % (values['dbId'], dbName, values['dbUuid'])
+            self._mdb.execCommand0(cmd)
+            self._mdb.disconnect()
+        except QmsException as qe: raise Exception(qe.getErrMsg())
 
     def unregisterDb(self, dbName):
-        ret = self._mdb.connect()
-        if ret != Status.SUCCESS:
-            raise Exception(getErrMsg(ret))
-        # check if already registered, fail if it is not
-        if not self._checkDbIsRegistered(dbName):
-            raise Exception("Db '%s' is not registered." % dbName)
-        # unregister it
-        cmd = "DELETE FROM Dbs WHERE dbName='%s'" % dbName;
-        self._mdb.execCommand0(cmd)
-        self._mdb.disconnect()
+        try:
+            self._mdb.connect()
+            # check if already registered, fail if it is not
+            if not self._checkDbIsRegistered(dbName):
+                raise Exception("Db '%s' is not registered." % dbName)
+            # unregister it
+            cmd = "DELETE FROM Dbs WHERE dbName='%s'" % dbName;
+            self._mdb.execCommand0(cmd)
+            self._mdb.disconnect()
+        except QmsException as qe: raise Exception(qe.getErrMsg())
 
     def listDbs(self):
-        ret = self._mdb.connect()
-        if ret != Status.SUCCESS:
-            raise Exception(getErrMsg(ret))
-        cmd = "SELECT dbName FROM Dbs"
-        xx = self._mdb.execCommandN(cmd)
-        self._mdb.disconnect()
+        xx = []
+        try:
+            self._mdb.connect()
+            xx = self._mdb.execCommandN("SELECT dbName FROM Dbs")
+            self._mdb.disconnect()
+        except QmsException as qe: raise Exception(qe.getErrMsg())
         return [x[0] for x in xx]
 
     ###########################################################################
