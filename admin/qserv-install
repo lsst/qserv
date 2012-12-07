@@ -23,7 +23,7 @@ GetOptions( \%opts,
 	"init-mysql-db",
 	"mysql-port=s",
 	"mysql-data-dir|m=s",
-	"db-pass=s",
+	"mysql-pass=s",
 	"mysql-proxy",
 	"mysql-proxy-port=s",
 	"python=s",
@@ -44,13 +44,13 @@ my $src_dir=substr($script_path,0,$pos);
 usage(1) if ($Getopt::Long::error); 
 usage(0) if ($opts{'help'});
 
-my $debug = $opts{'debug'} || 1;
+my $debug = $opts{'debug'} || 0;
 
 my $install_dir = $opts{'install-dir'} || cwd();
 my $log_dir = $opts{'log-dir'} || "$install_dir/var/log";
 my $mysql_data_dir = $opts{'mysql-data-dir'} || "$install_dir/var/lib/mysql";
 my $mysql_port = $opts{'mysql-port'} || "3306";
-my $db_pass = $opts{'db-pass'};
+my $db_pass = $opts{'mysql-pass'};
 my $mysql_proxy_port = $opts{'mysql-proxy-port'} || "4040";
 my $build_dir   = $opts{'build-dir'} || "$install_dir/build";
 my $prod_user   = $opts{'user'} || $ENV{'USER'};
@@ -64,7 +64,10 @@ $install_dir = remove_trailing_slash($install_dir);
 $log_dir = remove_trailing_slash($log_dir);
 $mysql_data_dir = remove_trailing_slash($mysql_data_dir);
 $build_dir = remove_trailing_slash($build_dir);
-$geometry_dir = remove_trailing_slash($geometry_dir);
+
+if ($geometry_dir) {
+    $geometry_dir = remove_trailing_slash($geometry_dir);
+}
 
 print "qserv master :  $qserv_master\n" if( $debug );
 
@@ -424,12 +427,6 @@ sub check_and_setup_python {
 	chdir "$build_dir/$virtualenv_dir";
 	run_command("$python_path virtualenv.py $install_dir");
 	
-	chdir "$build_dir";
-	my $scons_dir = check_and_untar( "scons" );
-	
-	chdir "$build_dir/$scons_dir";
-	run_command("$install_dir/bin/python setup.py install");
-	
 	chdir "$install_dir";
 
 }
@@ -536,7 +533,7 @@ sub check_and_install_myproxy {
 sub check_and_untar {
 	my( $check_string ) = @_;
 	
-	print "Need to check and untar from build-dir $check_string.\n" if( $debug );
+	print "Need to check and untar next package from build-dir : $check_string.\n" if( $debug );
 	
 	#check on version of virtual env
 	my @tmplist = sort grep /$check_string/, @buildfiles;
@@ -809,12 +806,12 @@ OPTIONS:
       	--test			Test install proceedure.
      -d,--install-dir		Install dir, default is use the current working dir.
      -l,--log-dir       	Log dir, default is use the install dir suffixed with var/log
-     -m,--mysql-data-dir	Mysql data dir, default the install dir suffixed with var/lib/mysql
       	--build-dir  		Path the source tar files, default to use "build"
 	--clean-all 		Remove all produced software and data, revert to start before install
 	--extras    		Install only the extra modules needed for qserv
 	--mysql-port     	Specify mysql port (default to 3306)
-	--mysql-proxy 		Install only the mysql proxy software.
+	--mysql-pass 	        Specify mysql db root passwordd
+     -m,--mysql-data-dir	Mysql data dir, default the install dir suffixed with var/lib/mysql
 	--mysql-proxy-port 	Specify mysql-proxy port (default to 4040)
 	--python    		Path the python install for use, default is /usr/bin/python
 	--xrootd-port   	Specify xrootd manager port (default to 1094)
@@ -826,6 +823,7 @@ OPTIONS:
 One of these option may also be setted :
 	--lua       		Install only lua and needed lua modules
 	--mysql     		Install only the mysql server, Erase and reinstall mysql data
+	--mysql-proxy 		Install only the mysql proxy software.
 	--init-mysql-db     	Erase and reinstall mysql data
 	--xrootd    		Install only xrootd
 	--qserv     		Install only qserv

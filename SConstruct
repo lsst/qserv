@@ -25,7 +25,8 @@ console_handler.setLevel(logging.DEBUG)
 logger.addHandler(console_handler) 
 
 # this file must be placed in main scons directory
-config_file_name=Dir('.').srcnode().abspath+"/"+"qserv-build.conf"
+src_dir=Dir('.').srcnode().abspath+"/"
+config_file_name=src_dir+"qserv-build.conf"
 
 default_config = """
 # WARNING : these variables mustn't be changed once the install process is started
@@ -80,11 +81,17 @@ if not os.path.exists(config_file_name):
     logging.fatal("Your configuration file is missing: %s" % config_file_name)
     sys.exit(1)
 
-try: config = utils.read_config(config_file_name, default_config)
+try: 
+    config = utils.read_config(config_file_name, default_config)
 except ConfigParser.NoOptionError, exc:
     logging.fatal("An option is missing in your configuration file: %s" % exc)
     sys.exit(1)
 
+config['src_dir'] = src_dir
+config['node-type']     = ARGUMENTS.get('node-type','mono')
+config['qserv-only']    = ARGUMENTS.get('qserv-only',False)
+config['qserv-clean']   = ARGUMENTS.get('qserv-clean',False)
+config['init-mysql-db'] = ARGUMENTS.get('init-mysql-db',False)
 
 def init_action(target, source, env):
 
@@ -113,12 +120,23 @@ def init_action(target, source, env):
     else:
         sys.exit(1)
 
+env.Requires(env.Alias('Download'), env.Alias('Init')) 
+env.Requires( env.Alias('Install'), env.Alias('Download'))
+env.Default(env.Alias('Install'))
         
-
-        
+######################        
+#
+# Defining Init Alias
+#
+######################        
 init_cmd = env.Command(['init'], [], init_action)
 env.Alias('Init', init_cmd)
 
+###########################        
+#
+# Defining Download Alias
+#
+###########################        
 source_urls = []
 target_files = []
 
@@ -130,12 +148,17 @@ for app in config['dependencies']:
         app_url=config['dependencies'][app]
         base_file_name = os.path.basename(app_url)
         output_file = output_dir + base_file_name
-        # Command to use in order to download outputfile
+        # Command to use in order to download source tarball 
         env.Command(output_file, Value(app_url), utils.download_action)
 	download_cmd_lst.append(output_file)
-
 env.Alias('Download', download_cmd_lst)
 
-env.Depends( env.Alias('Download'), env.Alias('Init'))
+#########################        
+#
+# Defining Install Alias
+#
+#########################        
+install_command_str = utils.build_cmd_with_opts(config)
+install_cmd = env.Command(['install'], [], install_command_str)
+env.Alias('Install', install_cmd)
 
-env.Default(env.Alias('Download'))
