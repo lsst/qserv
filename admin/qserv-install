@@ -222,7 +222,7 @@ sub check_and_install_qserv {
 	`perl -pi -e "s,emptyChunkListFile=emptyChunks.txt,emptyChunkListFile=$install_dir/etc/emptyChunks.txt," etc/local.qserv.cnf`;
 	
 	#install the qserv-admin
-	`cp qserv/admin/qserv-admin bin`;
+	`cp qserv/admin/bin/qserv-admin bin`;
 	`perl -pi -e "s,INSTALLDIR,$install_dir," bin/qserv-admin`;
 	
 }
