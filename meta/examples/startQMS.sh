@@ -1,6 +1,6 @@
 #!/bin/sh
 
-BASEPATH=/u1/qserv/ticket1944-qms_run/meta
+BASEPATH=/u1/qserv/ticket1945-metaAll_run/meta
 
 export PYTHONPATH=/u1/lsst/lib/python2.5/site-packages:$BASEPATH/python
 

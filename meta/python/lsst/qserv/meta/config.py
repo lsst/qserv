@@ -19,19 +19,21 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-# config.py : a module for qserv metadata server configuration file 
-# parsing and defaults
+
+# config.py : a module for qserv configuration file parsing and defaults
 # 
 # The config module should contain all possible configuration options
-# and parameters for the qserv metadata server's operation.
+# and parameters for the qserv master's operation.  Currently, it does
+# not include configuration of the xrootd system, nor does it include
+# configuration of workers (which are configured via environment
+# variables). 
 # 
 # A sample configuration is included in this module, and should be
-# be similar to the sample configuration in examples/qmsConfig.cnf
+# be similar to the sample configuration in examples/lsst-dev01.qserv.cnf
 # 
-# It should be the "executable" python code's (e.g., startQMS.py's)
+# It should be the "executable" python code's (e.g., startQserv.py's)
 # responsibility to invoke loading, since it should be the one parsing
 # arguments.  
-
 
 # Standard Python
 import ConfigParser
@@ -65,6 +67,7 @@ level=warning
 
 # Module variables:
 config = None
+loadedFile = None
 
 ######################################################################
 ## Methods
@@ -99,24 +102,28 @@ class ConfigError(Exception):
 ######################################################################
 def _initialize():
     "Perform some static initialization upon loading"
-    global envFileNameVar
-    global envFileName
-    if os.environ.has_key(envFileNameVar):
-        envFileName = os.environ[envFileNameVar]
+    global envFilenameVar
+    global envFilename
+    if os.environ.has_key(envFilenameVar):
+        envFilename = os.environ[envFilenameVar]
     pass
 
-def _loadFile(fileName):
+def _loadFile(filename):
+    global loadedFile
     global config
+    loadedFile = None
     config = ConfigParser.ConfigParser()
     config.readfp(defaultQmsConfig)    # Read built-in defaults first
-    if getattr(fileName, '__iter__', False):
-        if not os.access(fileName, os.R_OK):
-            print "Unable to load %s" % fileName
-        map(config.read, fileName)
+    if getattr(filename, '__iter__', False):
+        if not os.access(filename, os.R_OK):
+            print "Unable to load %s" % filename
+        map(config.read, filename) # Load a list of filenames
+        loadedFile = filename[-1] # Remember the last loaded
     else:
-        if not os.access(fileName, os.R_OK):
-            print "Unable to load %s" % fileName
-        config.read(fileName)
+        if not os.access(filename, os.R_OK):
+            print "Unable to load %s" % filename
+        config.read(filename)
+        loadedFile = filename
     pass
 
 # Static initialization

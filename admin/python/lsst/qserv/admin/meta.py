@@ -28,7 +28,7 @@ from db import Db  # consider moving to common
 from lsst.qserv.meta.status import Status, getErrMsg
 from lsst.qserv.meta.client import Client
 
-class Meta(object):
+class Meta:
     def __init__(self, loggerName,
                  qmsHost, qmsPort, qmsUser, qmsPass,
                  qmwDb, qmwUser, qmwPass, qmwMySqlSocket):

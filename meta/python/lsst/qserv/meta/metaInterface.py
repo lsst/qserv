@@ -28,14 +28,16 @@ from itertools import ifilter
 import logging
 
 # Package imports
-import metaImpl
 import config
+from metaImpl import MetaImpl
+from status import Status, QmsException
 
 # Interface for qserv metadata server
 class MetaInterface:
     def __init__(self):
-        self._loggerName = "qmsLogger"
-        self._initLogging()
+        loggerName = "qmsLogger"
+        self._initLogging(loggerName)
+        self._metaImpl = MetaImpl(loggerName)
 
         okname = ifilter(lambda x: "_" not in x, dir(self))
         self.publishable = filter(lambda x: hasattr(getattr(self,x), 
@@ -45,56 +47,146 @@ class MetaInterface:
     def installMeta(self):
         """Initializes qserv metadata. It creates persistent structures,
         (it should be called only once)."""
-        return metaImpl.installMeta(self._loggerName)
+        try:
+            self._metaImpl.installMeta()
+        except QmsException as qe: 
+            return qe.getErrNo()
+        except Exception, e:
+            self._logger.error("Exception in installMeta: %s" % str(e))
+            return Status.ERR_INTERNAL
+        return Status.SUCCESS
 
     def destroyMeta(self):
         """Permanently destroyp qserv metadata."""
-        return metaImpl.destroyMeta(self._loggerName)
+        try:
+            self._metaImpl.destroyMeta()
+        except QmsException as qe:
+            return qe.getErrNo()
+        except Exception, e:
+            self._logger.error("Exception in destroyMeta: %s" % str(e))
+            return Status.ERR_INTERNAL
+        return Status.SUCCESS
 
     def printMeta(self):
         """Returns string that contains all metadata."""
-        return metaImpl.printMeta(self._loggerName)
+        try:
+            retV = self._metaImpl.printMeta()
+        except QmsException as qe:
+            return (qe.getErrNo(), "")
+        except Exception, e:
+            self._logger.error("Exception in printMeta: %s" % str(e))
+            return (Status.ERR_INTERNAL, "")
+        return (Status.SUCCESS, retV)
 
     def createDb(self, dbName, crDbOptions):
         """Creates metadata about new database to be managed by qserv."""
-        return metaImpl.createDb(self._loggerName, dbName, crDbOptions)
+        try:
+            self._metaImpl.createDb(dbName, crDbOptions)
+        except QmsException as qe:
+            return qe.getErrNo()
+        except Exception, e:
+            self._logger.error("Exception in createDb: %s" % str(e))
+            return Status.ERR_INTERNAL
+        return Status.SUCCESS
 
     def dropDb(self, dbName):
         """Removes metadata about a database managed by qserv."""
-        return metaImpl.dropDb(self._loggerName, dbName)
+        try:
+            self._metaImpl.dropDb(dbName)
+        except QmsException as qe: 
+            return qe.getErrNo()
+        except Exception, e:
+            self._logger.error("Exception in dropDb: %s" % str(e))
+            return Status.ERR_INTERNAL
+        return Status.SUCCESS
 
     def retrieveDbInfo(self, dbName):
         """Retrieves information about a database managed by qserv."""
-        return metaImpl.retrieveDbInfo(self._loggerName, dbName)
+        try:
+            values = self._metaImpl.retrieveDbInfo(dbName)
+        except QmsException as qe: 
+            return (qe.getErrNo(), {})
+        except Exception, e:
+            self._logger.error("Exception in retrieveDbInfo: %s" % str(e))
+            return (Status.ERR_INTERNAL, {})
+        return (Status.SUCCESS, values)
 
     def checkDbExists(self, dbName):
         """Checks if db <dbName> exists, returns 0 (no) or 1 (yes)."""
-        return metaImpl.checkDbExists(self._loggerName, dbName)
+        try:
+            existInfo = self._metaImpl.checkDbExists(dbName)
+        except QmsException as qe: 
+            return (qe.getErrNo(), False)
+        except Exception, e:
+            self._logger.error("Exception in checkDbExists: %s" % str(e))
+            return (Status.ERR_INTERNAL, False)
+        return (Status.SUCCESS, existInfo)
 
     def listDbs(self):
         """Returns string that contains list of databases managed by qserv."""
-        return metaImpl.listDbs(self._loggerName)
+        try:
+            theString = self._metaImpl.listDbs()
+        except QmsException as qe: 
+            return (qe.getErrNo(), "")
+        except Exception, e:
+            self._logger.error("Exception in listDbs: %s" % str(e))
+            return (Status.ERR_INTERNAL, "")
+        return (Status.SUCCESS, theString)
 
     def createTable(self, dbName, crTbOptions, schemaStr):
         """Creates metadata about new table from qserv-managed database."""
-        return metaImpl.createTable(self._loggerName, dbName, 
-                                   crTbOptions, schemaStr)
+        try:
+            self._metaImpl.createTable(dbName, crTbOptions, schemaStr)
+        except QmsException as qe: 
+            return qe.getErrNo()
+        except Exception, e:
+            self._logger.error("Exception in createTable: %s" % str(e))
+            Status.ERR_INTERNAL
+        return Status.SUCCESS
 
     def dropTable(self, dbName, tableName):
         """Removes metadata about a table."""
-        return metaImpl.dropTable(self._loggerName, dbName, tableName)
+        try:
+            self._metaImpl.dropTable(dbName, tableName)
+        except QmsException as qe: 
+            return qe.getErrNo()
+        except Exception, e:
+            self._logger.error("Exception in dropTable: %s" % str(e))
+            Status.ERR_INTERNAL
+        return Status.SUCCESS
 
     def retrievePartTables(self, dbName):
         """Retrieves list of partitioned tables for a given database."""
-        return metaImpl.retrievePartTables(self._loggerName, dbName)
+        try:
+            tNames = self._metaImpl.retrievePartTables(dbName)
+        except QmsException as qe:
+            return (qe.getErrNo(), [])
+        except Exception, e:
+            self._logger.error("Exception in retrievePartTables: %s" % str(e))
+            return (Status.ERR_INTERNAL, [])
+        return (Status.SUCCESS, tNames)
 
     def retrieveTableInfo(self, dbName, tableName):
         """Retrieves information about a table."""
-        return metaImpl.retrieveTableInfo(self._loggerName, dbName, tableName)
+        try:
+            tInfo = self._metaImpl.retrieveTableInfo(dbName, tableName)
+        except QmsException as qe: 
+            return (qe.getErrNo(), {})
+        except Exception, e:
+            self._logger.error("Exception in retrieveTableInfo: %s" % str(e))
+            return (Status.ERR_INTERNAL, {})
+        return (Status.SUCCESS, tInfo)
 
     def getInternalQmsDbName(self):
         """Retrieves name of the internal qms database. """
-        return metaImpl.getInternalQmsDbName(self._loggerName)
+        try:
+            dbName = self._metaImpl.getInternalQmsDbName()
+        except QmsException as qe: 
+            return (qe.getErrNo(), "")
+        except Exception, e:
+            self._logger.error("Exception in getInternalQmsDbName: %s"%str(e))
+            return (Status.ERR_INTERNAL, "")
+        return (Status.SUCCESS, dbName)
 
     def help(self):
         """A brief help message showing available commands"""
@@ -107,7 +199,7 @@ class MetaInterface:
         r += "</pre>\n"
         return r
 
-    def _initLogging(self):
+    def _initLogging(self, loggerName):
         outFile = config.config.get("logging", "outFile")
         levelName = config.config.get("logging", "level")
         if levelName is None:
@@ -119,9 +211,9 @@ class MetaInterface:
                   "error":logging.ERROR,
                   "critical":logging.CRITICAL}
             level = ll[levelName]
-        self.logger = logging.getLogger(self._loggerName)
+        self._logger = logging.getLogger(loggerName)
         hdlr = logging.FileHandler(outFile)
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         hdlr.setFormatter(formatter)
-        self.logger.addHandler(hdlr) 
-        self.logger.setLevel(level)
+        self._logger.addHandler(hdlr) 
+        self._logger.setLevel(level)

@@ -89,8 +89,8 @@ class FunctionResource(twisted.web.resource.Resource):
     def getChild(self, name, request):
         if name == '':
             return self
-        return twisted.web.resource.Resource.getChild(
-            self, name, request)
+        return twisted.web.resource.Resource.getChild(self, name, request)
+
 
 class XmlRpcInterface(xmlrpc.XMLRPC):
     def __init__(self, metaInterface):

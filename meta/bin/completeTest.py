@@ -29,7 +29,7 @@ import ConfigParser
 import os
 import sys
 
-from lsst.qserv.meta.status import Status, getErrMsg
+from lsst.qserv.meta.status import Status
 from lsst.qserv.meta.client import Client
 
 class Tester(object):
@@ -46,7 +46,10 @@ class Tester(object):
             pass
 
         print "=====>> print meta"
-        print self._client.printMeta()
+        try:
+            print self._client.printMeta()
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("printMeta should fail, no meta")
 
         print "=====>> install meta"
         self._client.installMeta()
@@ -72,8 +75,8 @@ class Tester(object):
         print "=====>> try create db (already exists)"
         try:
             self._client.createDb("Summer2012", dd)
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("create db that already exists should fail")
 
         print "=====>> try create db (missing parameters, 3 tries)"
         try:
@@ -85,7 +88,7 @@ class Tester(object):
                   "defaultOverlap_nearNeighbor": "0.25"}
             self._client.createDb("d1", dd)
         except Exception, e:
-            print "Caught as expected: ", str(e)
+            print "Caught as expected:", str(e)
         try:
             dd = {"partitioning": "on",
                   "partitioningStrategy": "sphBox",
@@ -94,8 +97,9 @@ class Tester(object):
                   "defaultOverlap_fuzziness": "0.0001",
                   "defaultOverlap_nearNeighbor": "0.25"}
             self._client.createDb("d1", dd)
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("createdb with missing param should fail")
+
         try:
             dd = {"partitioning": "on",
                   "partitioningStrategy": "sphBox",
@@ -105,7 +109,8 @@ class Tester(object):
                   "defaultOverlap_nearNeighbor": "0.25"}
             self._client.createDb("d1", dd)
         except Exception, e:
-            print "Caught as expected: ", str(e)
+            print "Caught as expected:", str(e)
+        else: raise Exception("createdb with missing param2 should fail")
 
         print "=====>> try create db (extra parameter)"
         try:
@@ -117,8 +122,8 @@ class Tester(object):
                   "defaultOverlap_nearNeighbor": "0.25",
                   "sthExtra": "abc"}
             self._client.createDb("d1", dd)
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("createdb with extra param should fail")
 
         print "=====>> create non-partitioned db"
         dd = {"partitioning": "off"}
@@ -129,11 +134,11 @@ class Tester(object):
 
         print "check if db exists"
         if not self._client.checkDbExists("Summer2012"):
-            raise "Db Summer2012 should exist!!!"
+            raise "Db 'Summer2012' should exist!!!"
 
         print "check if db exists"
         if self._client.checkDbExists("xerd"):
-            raise "Db xerd should not exist!!!"
+            raise "Db 'xer2d' should not exist!!!"
 
         print "=====>> retrieveDb info for partitioned db"
         print self._client.retrieveDbInfo("Summer2012")
@@ -144,8 +149,8 @@ class Tester(object):
         print "=====>> try retrieveDb info (non-existing db)"
         try:
             self._client.retrieveDbInfo("drer")
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("retrieveDb for non-existing db should fail")
 
         print "=====>> create table Object"
         s = "%s/tbSchema_Object.sql" % self._baseDir
@@ -163,8 +168,8 @@ class Tester(object):
         print "=====>> try create table (already exists)"
         try:
             self._client.createTable("Summer2012", dd)
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("createTable that already exists should fail")
             
         print "=====>> create table Exposure"
         s = "%s/tbSchema_Exposure.sql" % self._baseDir
@@ -198,8 +203,8 @@ class Tester(object):
         print "=====>> try dropping table (does not exist)"
         try:
             self._client.dropTable("Summer2012", "Object")
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("drop non-existing table should fail")
 
         print "=====>> try create table with invalid column"
         try:
@@ -214,10 +219,10 @@ class Tester(object):
                    "logicalPart": "2",
                    "physChunking": "0x0021" }
             self._client.createTable("Summer2012", dd)
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("createT with non-existing column should fail")
 
-        print "=====>> try create table in non existing db"
+        print "=====>> try create table in non-existing db"
         try:
             s = "%s/tbSchema_Object.sql" % self._baseDir
             dd = { "tableName": "Object",
@@ -230,10 +235,10 @@ class Tester(object):
                    "logicalPart": "2",
                    "physChunking": "0x0021" }
             self._client.createTable("Sudfdfd2", dd)
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("create table for non-existing db should fail")
 
-        print "=====>> try create table with nonexisting schema file"
+        print "=====>> try create table with non-existing schema file"
         try:
             s = "%s/tbScdfad fadsf.sql" % self._baseDir # this is wrong
             dd = { "tableName": "Object",
@@ -246,26 +251,28 @@ class Tester(object):
                    "logicalPart": "2",
                    "physChunking": "0x0021" }
             self._client.createTable("Summer2012", dd)
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("create table with non-existing schema should fail")
 
         print "=====>> retrieve table info (Source) "
-        print self._client.retrieveTableInfo("Summer2012", "Source")
+        self._client.retrieveTableInfo("Summer2012", "Source")
 
         print "=====>> retrieve table info (Exposure)"
-        print self._client.retrieveTableInfo("Summer2012", "Exposure")
+        v = self._client.retrieveTableInfo("Summer2012", "Exposure")
+        if v is None: print "NOOONE"
+        print "got in compltest: ", v
 
         print "=====>> try retrieve table info (db does not exist)"
         try:
             self._client.retrieveTableInfo("Sudfd2012", "Exposure")
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("retrieveTInfo for non-existing db should fail")
 
         print "=====>> try retrieve table info (table does not exist)"
         try:
             self._client.retrieveTableInfo("Summer2012", "Edfdfd")
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("retrieveTInfo for non-existing tb should fail")
 
         print "=====>> drop db"
         self._client.dropDb("Summer2012")
@@ -276,17 +283,17 @@ class Tester(object):
         print "=====>> try drop invalid db"
         try:
             self._client.dropDb("Sudfdmmer2012")
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("drop non-existing db should fail")
 
         print "=====>> destroy meta"
         self._client.destroyMeta()
 
-        print "=====>> try destroying non existing meta"
+        print "=====>> try destroying non-existing meta"
         try:
             self._client.destroyMeta()
-        except Exception, e:
-            print "Caught as expected: ", str(e)
+        except Exception, e: print "Caught as expected:", str(e)
+        else: raise Exception("destroy non-existing meta should fail")
 
         print "\n\n   Nice job! :)\n\n"
 
