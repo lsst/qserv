@@ -19,8 +19,7 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
-# 
+
 
 from __future__ import with_statement
 import MySQLdb as sql
@@ -32,7 +31,7 @@ import StringIO
 import subprocess
 import sys
 
-from status import Status, QmsException
+from lsst.qserv.meta.status import Status, QmsException
 
 class Db:
     """
@@ -61,7 +60,6 @@ class Db:
     def connect(self, createDb=False):
         """It connects to a server. If createDb flag is set, it will connect to
         the server, create the database, then connect to that database."""
-        self._logger.debug("attempted to connect")
         if self._checkIsConnected():
             return
 
