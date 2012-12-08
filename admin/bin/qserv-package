@@ -1,0 +1,85 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Getopt::Long;
+
+Getopt::Long::config('bundling_override');
+my %opts = ();
+GetOptions( \%opts, 
+        "debug",
+        "help|h",
+		"tag=s",
+		"clean"
+);
+usage(1) if ($Getopt::Long::error); 
+usage(0) if ($opts{'help'});
+
+if( $opts{'clean'} ) {
+	`rm qserv-*.tar.gz`;
+	exit(0);
+}
+
+my $tagname = $opts{'tag'} || '';
+
+if( $tagname eq '' ) {
+	print "Sorry - you need a tag name for this version of qserv.\n";
+	usage(1);
+} elsif( $tagname =~ /-/ ) {
+	print "Sorry - you can not use the character '-' in the tag name.\n";
+	usage(1);
+}
+
+unless( -d "qserv" ) {
+	print "Sorry - qserv dir not found.\n";
+	usage(1);
+}
+
+unless( -d "geom" ) {
+	print "Sorry - also need the geom package to create a usable tar ball.\n";
+	usage(1);
+}
+
+#get rid of the .git dirs and files
+`rm -rf qserv/.git`;
+`rm qserv/.gitignore`;
+`rm qserv/*/.gitignore`;
+`rm qserv/*/*/.gitignore`;
+
+#copy in the geom file
+`cp geom/python/lsst/geom/geometry.py qserv/master/python/lsst/qserv/master/`;
+
+#mv the dir, and tar it
+`mv qserv qserv-${tagname}`;
+`tar zcf qserv-${tagname}.tar.gz qserv-${tagname}`;
+
+######################################################################
+
+sub usage {
+	my($exit, $message) = @_;
+
+	my($bin) = ($0 =~ m!([^/]+)$!);
+	print STDERR $message if defined $message;
+
+	print STDERR <<INLINE_LITERAL_TEXT;     
+NAME: 
+        $bin [options]
+
+DESCRIPTION:
+        Take the working qserv package dir, and create a tar file for distribution
+
+EXAMPLES:
+        $bin --tag "v0.1.0"
+
+OPTIONS:
+      --debug     Print out debug messages.
+  -h, --help      Print out this help message.
+      --tag       Tag name value, to use in tar file name.  Can not contain '-'.
+      --clean     Remove the renamed qserv dirs, and tar files.
+
+Comments to Douglas Smith <douglas\@slac.stanford.edu>.
+INLINE_LITERAL_TEXT
+
+	exit($exit) if defined $exit;
+
+}
+
