@@ -1,3 +1,5 @@
+#!/bin/sh
+
 echo === destroyMeta ===
 ./meta/examples/runMetaClientTool.sh destroyMeta
 
