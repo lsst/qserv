@@ -83,11 +83,16 @@ class Client:
         schemaFileName = theOptions["schemaFile"]
         del theOptions["schemaFile"]
         if not os.access(schemaFileName, os.R_OK):
-            raise Exception("Schema file '%s' can't be opened"%schemaFileName)
+            msg = "Schema file '%s' can't be opened" % schemaFileName
+            raise Exception(msg)
         tableNameFromSchema = self._extractTableName(schemaFileName)
         if "tableName" in theOptions:
             if theOptions["tableName"] != tableNameFromSchema:
-                raise Exception("Table name specified through param is '%s', but table name extracted from schema file is '%s' - they have to match" % (theOptions["tableName"], tableNameFromSchema))
+                msg = "Table name specified through param is '"
+                msg += theOptions["tableName"]
+                msg +="', but table name extracted from schema file is "
+                msg += "'%s' - they have to match." % tableNameFromSchema
+                raise Exception(msg)
         else:
             # it is ok to not specify table name - it can be retrieved 
             # from schema file
@@ -128,7 +133,7 @@ class Client:
         try:
             status = qms.echo(echostring)
         except socket.error, err:
-            raise Exception("Unable to connect to qms (%s)" % err)
+            raise Exception(("Unable to connect to qms (%s)" % err))
         if status != echostring:
             raise Exception("Qms echo test failed (expected %s, got %s)" % \
                                 (echostring, status))
