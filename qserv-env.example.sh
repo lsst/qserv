@@ -15,5 +15,4 @@ alias qserv-start="qserv-admin --start"
 alias qserv-stop="qserv-admin --stop"
 # TODO : manage MySQL pass correctly
 alias qserv-status="qserv-admin --status --dbpass \"${QSERV_MYSQL_PASS}\""
-alias gitolite="ssh git@git.lsstcorp.org"
 
