@@ -80,7 +80,9 @@ from lsst.qserv.master import TransactionSpec
 from lsst.qserv.master import newSession, discardSession
 from lsst.qserv.master import submitQuery, submitQueryMsg
 from lsst.qserv.master import initDispatcher
-from lsst.qserv.master import tryJoinQuery, joinSession, getQueryStateString
+from lsst.qserv.master import tryJoinQuery, joinSession
+from lsst.qserv.master import getQueryStateString, getErrorDesc
+from lsst.qserv.master import SUCCESS as QueryState_SUCCESS
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
 from lsst.qserv.master import ChunkMeta
@@ -433,7 +435,7 @@ class RegionFactory:
                     self.errorDesc = "Bad Hint name found:"+name
                     return None
         except Exception, e:
-            self.errorDesc = e.message
+            self.errorDesc = str(e)
             return None
 
         return regions
@@ -617,10 +619,9 @@ class QueryBabysitter:
             #print "State of", k, "is", getQueryStateString(s)
 
         s = joinSession(self._sessionId)
-        resStr = getQueryStateString(s)
-        if resStr != "success":
-            self._reportError("Error during execution")
-        print "Final state of all queries", resStr
+        if s != QueryState_SUCCESS:
+            self._reportError(getErrorDesc(self._sessionId))
+        print "Final state of all queries", getQueryStateString(s)
         
     def getResultTableName(self):
         ## Should do sanity checking to make sure that the name has been
@@ -682,7 +683,14 @@ class PartitioningConfig:
         pass
 
 ########################################################################
+class QueryHintError(Exception):
+    """An error in query hinting (Bad/missing values)."""
+    def __init__(self, reason):
+        self.reason = reason
+    def __str__(self):
+        return repr(self.reason)
 
+########################################################################
 class HintedQueryAction:
     """A HintedQueryAction encapsulates logic to prepare, execute, and 
     retrieve results of a query that has a hint string."""
@@ -695,26 +703,43 @@ class HintedQueryAction:
         # queryHash identifies the top-level query.
         self.queryHash = self._computeHash(self.queryStr)[:18]
         self.chunkLimit = 2**32 # something big
-        self._dbContext = "LSST" # Later adjusted by hints.        
+        if not self._importQconfig(pmap, hints):
+            return
 
+        if not self._parseAndPrep(query, hints):
+            return
+
+        if not self._isValid:
+            discardSession(self._sessionId)
+            return
+        self._prepForExec(self._useMemory, reportError, resultName)
+
+    def _importQconfig(self, pmap, hints):
+        self._dbContext = "LSST" # Later adjusted by hints.        
         # Hint evaluation
         self._pmap = pmap            
         self._isFullSky = False # Does query involves whole sky
-        self._evaluateHints(hints, pmap) # Also gets new dbContext
+        try:
+            self._evaluateHints(hints, pmap) # Also gets new dbContext
+        except QueryHintError, e:
+            self._isValid = False
+            self._error = e.reason
+            return 
 
         # Config preparation
         qConfig = self._prepareCppConfig(self._dbContext, hints)
         self._sessionId = newSession(qConfig)
         cModule = lsst.qserv.master.config
         cf = cModule.config.get("partitioner", "emptyChunkListFile")
+        self._emptyChunks = self._loadEmptyChunks(cf)
         cfgLimit = int(cModule.config.get("debug", "chunkLimit"))
         if cfgLimit > 0:
             self.chunkLimit = cfgLimit
             print "Using debugging chunklimit:",cfgLimit
-        useMemory = cModule.config.get("tuning", "memoryEngine")
+        self._useMemory = cModule.config.get("tuning", "memoryEngine")
+        return True
 
-        self._emptyChunks = self._loadEmptyChunks(cf)        
-
+    def _parseAndPrep(self, query, hints):
         # Table mapping 
         try:
             self._pConfig = PartitioningConfig() # Should be shared.
@@ -728,16 +753,13 @@ class HintedQueryAction:
                 self._error = self._substitution.getError()
                 self._isValid = False
             else:
-                # Skip when using chunkMeta
-                #self._substitution.importSubChunkTables(list(self._pConfig.subchunked))
                 self._isValid = True
         except Exception, e:
             print "Exception!",e
             self._isValid = False
+        return True
 
-        if not self._isValid:
-            discardSession(self._sessionId)
-            return
+    def _prepForExec(self, useMemory, reportError, resultName):
         self._postFixChunkScope(self._substitution.getChunkLevel())
 
         # Query babysitter.
@@ -764,6 +786,7 @@ class HintedQueryAction:
         self._invokeLock.acquire() # Prevent result retrieval before invoke
         pass
 
+
     # In transition to new protocol: only 1 result table allowed.
     def _headerFunc(self, tableNames, subc=[]):
         return ['-- SUBCHUNKS:' + ", ".join(imap(str,subc)),
@@ -785,10 +808,9 @@ class HintedQueryAction:
             return regs
         else:
             if r.errorDesc:
-                s = "Error parsing hint string %s, using hardcoded [0,0]-[1,1]"
-                print s % r.errorDesc 
                 # How can we give a good error msg to the client?
-                return [SphericalBox([0,0],[1,1])] # Hardcode right now.
+                s = "Error parsing hint string %s"
+                raise QueryHintError(s % r.errorDesc)
             return []
         pass
 

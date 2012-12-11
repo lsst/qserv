@@ -88,6 +88,6 @@ qMaster::ChunkMapping::setFromMeta(qMaster::ChunkMeta const& m) {
         // Ignore collisions if tables (of different dbs) 
         // have different partitioning.
         if(i->chunkLevel == 1) addChunkKey(i->table);
-        else if(i->chunkLevel == 2) addChunkKey(i->table);
+        else if(i->chunkLevel == 2) addSubChunkKey(i->table);
     } 
 }

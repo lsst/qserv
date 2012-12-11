@@ -32,6 +32,10 @@ import random
 import string
 import time
 
+# For debugging
+import traceback
+import sys
+
 ## Local
 import partition
 
@@ -251,9 +255,13 @@ class PartitionDef:
 
 
 class DuplicationDef:
+    ## Known issue: when building the duplication map, the layout tool
+    ## always places the first stripe at phiOffset=-90, which leaves a
+    ## emptiness when the input data set starts at phi > 0
     def __init__(self, conf):
         self._importConf(conf)
         self._layoutDupeMap()
+        self.debugme=False
         pass
 
     def _importConf(self, conf):
@@ -265,6 +273,28 @@ class DuplicationDef:
                                 % bstr)
         self.bounds = bounds
         pass
+
+    def _checkThetaStart(self, thetaStart, phiMin, phiMax, 
+                         phiOffset, bounds):
+        compareMin = bounds[0] * stretchFactor(math.radians(bounds[2]), phiMin)
+        compareMax = bounds[0] * stretchFactor(math.radians(bounds[3]), phiMax)
+        pn = transformThetaPhi([bounds[0],bounds[2]], [0,phiOffset], False)
+        px = transformThetaPhi([bounds[0],bounds[3]], [0,phiOffset], False)
+        print "ThetaStart", thetaStart, compareMin, compareMax, pn, px
+
+    def _checkThetaN(self, j, thetaNext, thetaSize, phiMin, phiMax, 
+                     phiOffset, bounds):
+        thetaOff = (j+1) * thetaSize
+        thetaNextRaw = (bounds[0] + ((j+1)*thetaSize))
+        compareMin = thetaNextRaw * stretchFactor(
+            math.radians(bounds[2]), phiMin)
+        compareMax = thetaNextRaw * stretchFactor(
+            math.radians(bounds[3]), phiMax)
+        pn = transformThetaPhi([bounds[0],bounds[2]], 
+                               [thetaOff,phiOffset], False)
+        px = transformThetaPhi([bounds[0],bounds[3]], 
+                               [thetaOff,phiOffset], False)        
+        print "ThetaN", thetaNext, compareMin, compareMax, pn, px
 
     def _layoutDupeMap(self):        
         bounds = self.bounds
@@ -306,13 +336,8 @@ class DuplicationDef:
                 phiRef = bounds[3]
             thetaStart = stretch * bounds[0]
             if False: # Debug
-                compareMin = bounds[0] * stretchFactor(math.radians(bounds[2]), 
-                                                       phiMin)
-                compareMax = bounds[0] * stretchFactor(math.radians(bounds[3]), 
-                                                       phiMax)
-                pn = transformThetaPhi([bounds[0],bounds[2]], [0,phiOffset], False)
-                px = transformThetaPhi([bounds[0],bounds[3]], [0,phiOffset], False)        
-                print "ThetaStart", thetaStart, compareMin, compareMax, pn, px
+                self._checkThetaStart(thetaStart, phiMin, phiMax, 
+                                      phiOffset, bounds)
 
             thetaEnd = 360 + thetaStart 
             thetaLast = thetaStart
@@ -320,21 +345,12 @@ class DuplicationDef:
                 # Constant RA sides
                 thetaNext = thetaStart + ((j+1)  * thetaSize * stretch)
                 if False: # Debug
-                    thetaOff = (j+1) * thetaSize
-                    thetaNextRaw = (bounds[0] + ((j+1)*thetaSize))
-                    compareMin = thetaNextRaw * stretchFactor(
-                        math.radians(bounds[2]), phiMin)
-                    compareMax = thetaNextRaw * stretchFactor(
-                        math.radians(bounds[3]), phiMax)
-                    pn = transformThetaPhi([bounds[0],bounds[2]], 
-                                           [thetaOff,phiOffset], False)
-                    px = transformThetaPhi([bounds[0],bounds[3]], 
-                                           [thetaOff,phiOffset], False)        
-                    print "ThetaN", thetaNext, compareMin, compareMax, pn, px
+                    self._checkThetaN(j, thetaNext, thetaSize, 
+                                      phiMin, phiMax, phiOffset, bounds)
 
                 if thetaNext > thetaEnd:
                     thetaNext = thetaEnd
-                thetaIndex.append(thetaLast)
+                thetaIndex.append(thetaLast) 
                 #print "Copy (%d,%d) : theta (%f, %f), phi (%f, %f) " % (
                 #    j, i, thetaMin, thetaMax, phiMin, phiMax)
                 stripe.append([[j, i], # Offset in units
@@ -347,7 +363,6 @@ class DuplicationDef:
                 if thetaNext == thetaEnd: break
                 thetaLast = thetaNext
 
-            thetaIndex.append(thetaLast) 
             for x in range(1,len(thetaIndex)):
                 # Add entries for virtual duplicates in order to
                 # account for earlier indexes that are negative.
@@ -400,15 +415,20 @@ class DuplicationDef:
         print copyCount, "duplicates"
         
     def findEnclosing(self, index, lower, upper):
+        """Given the bounds of a continuous swath (lower,upper) and a 
+        list of points that should lie both inside and outside the 
+        range, return the indices into the list that lie within the 
+        swath. """
         first = -1
         last = -1
         for i in range(len(index)-1):
             if first == -1:
                 if (lower >= index[i]) and (lower < index[i+1]):
-                    #print "(", lower, index[i],index[i+1], ")"
+                    if self.debugme: print "F(", lower, index[i],index[i+1], ")"
                     first = i
             if last == -1:
                 if upper <= index[i+1]: 
+                    if self.debugme: print "L(", lower, index[i],index[i+1], ")"
                     last = i
             pass
         return range(first,last+1)
@@ -446,10 +466,17 @@ class DuplicationDef:
             phiOff = sList[i]
             #print "For phiOff=",phiOff, 
             #print self.thetaIndices[i]
+            if False and i == 0: 
+                self.debugme = True
+                print "theta:", thetaMin, thetaMax
+                print "theta Idx", self.thetaIndices[i]
+            else: self.debugme=False
             for j in self.findEnclosing(self.thetaIndices[i], 
                                         thetaMin, thetaMax):
+                if self.debugme:
+                    print "adding", [j,phiOff], "to dupeList for bounds", bounds
                 dupeList.append([j,phiOff])
-        #print bounds
+        #print "For bounds:", bounds
         #self.printDupeList(dupeList)
         return dupeList
  
@@ -615,6 +642,20 @@ class CsvSchema:
         pass
             
 class Transformer:
+    """Transformer synthesizes new rows from input rows.
+    For some columns, the transformation is deterministic.
+    t : old, copynum -> new
+    The transformation functions work for PT1, PT1.1 and PT1.2. They may not
+    work for other input data due to differing ranges of values in the input
+    data. 
+
+    Potential problems for unknown data: out-of-range values for transformed
+    columns, which can cause MySQL to reject loading or integer overflowed 
+    values, which may cause aliased rows and silently corrupted rows.
+    
+    Notes: sourceId (47 bits PT12, 44 bits PT1.1)
+    objectId (48 bits (inc. skytile?)
+    """
     def _subtractIfBigger(self, theta):
         if theta >= self.normBounds[0]:
             return theta - 360
@@ -696,6 +737,7 @@ class Transformer:
         return outRows
     
     def transform(self, row, dupeInfo):
+        if not row: return
         thetaPhi = (float(row[self.thetaCol]), float(row[self.phiCol]))
         if self.prepTheta:
             thetaPhi = (self.prepTheta(thetaPhi[0]), thetaPhi[1])
@@ -721,11 +763,21 @@ class Transformer:
             thetaphiNew = translateThetaPhiCorrectedOpt(
                 thetaphi, dupeInfo[3], self.thetaMid, dupeInfo[5])
             (newRow[thetaC], newRow[phiC]) = map(str, thetaphiNew)
-
-        for col,f in self.transformMap.items():
-            old = row[col]
-            if old != "\\N":  # skip SQL null columns
-                newRow[col] = f(old, dupeInfo[1])
+        try:
+            for col,f in self.transformMap.items():
+                old = row[col]
+                # skip SQL null columns
+                if (old != "\\N") and old.upper() != "NULL":  
+                    newRow[col] = f(old, dupeInfo[1])
+        except:
+            traceback.print_exc(file=sys.stdout)
+            print "Failing row:", row
+            orig = {}
+            for col,f in self.transformMap.items():
+                orig[(self.columnNames[col],col)] = row[col]
+            print "Suspect columns:", str(orig)
+            print "Bailing out...:"
+            raise
         return newRow
 
     def transformOnly(self, row, colList):

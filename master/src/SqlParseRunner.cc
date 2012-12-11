@@ -55,6 +55,7 @@
 #include "lsst/qserv/master/TableNamer.h"
 #include "lsst/qserv/master/TableRemapper.h"
 #include "lsst/qserv/master/SpatialUdfHandler.h"
+#include "lsst/qserv/master/parseExceptions.h"
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
@@ -301,8 +302,11 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
                                              _tableConfigMap, 
                                              *_tableNamer))
 { 
-
-    _readConfig(config);
+    try {
+        _readConfig(config);
+    } catch (std::string msg) {
+        _errorMsg = "Parser: " + msg;
+    }
     //std::cout << "(int)PARSING:"<< statement << std::endl;
 }
 
@@ -395,8 +399,13 @@ void qMaster::SqlParseRunner::_computeParseResult() {
         }
     } catch( antlr::ANTLRException& e ) {
         _errorMsg =  "Parse exception: " + e.toString();
+    } catch( UnsupportedSyntaxError& e ) {
+        _errorMsg = e.what();
+        
     } catch( std::exception& e ) {
-        _errorMsg = std::string("General exception: ") + e.what();
+        _errorMsg = std::string("Exception: ") + e.what();
+    } catch(...) {
+        _errorMsg = std::string("Unknown exception. System not stable.");
     }
     if(badDbs.size() > 0) {
         _errorMsg += _interpretBadDbs(badDbs);

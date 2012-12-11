@@ -348,7 +348,6 @@ qMaster::SpatialUdfHandler::SpatialUdfHandler(
 
 void 
 qMaster::SpatialUdfHandler::addExpression(std::vector<std::string> const& v) {
-    std::stringstream ss;
     boost::shared_ptr<Restriction> r(new Restriction(_specName[v[0]], v));
     //std::cout << "adding restriction: " << funcName << std::endl;
     _restrictions.push_back(r);
