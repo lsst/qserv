@@ -53,12 +53,12 @@ class Meta:
    dbUuid VARCHAR(255) NOT NULL
    )''']]
         try:
-            self._mdb.reconnectAndCreateDb()
+            self._mdb.createMetaDb()
+            self._mdb.selectMetaDb()
             for t in internalTables:
                 self._mdb.createTable(t[0], t[1])
-            self._mdb.disconnect()
+            self._mdb.commit()
         except QmsException as qe:
-            self._mdb.disconnect()
             if qe.getErrNo() == Status.ERR_DB_EXISTS:
                 raise Exception(getErrMsg(Status.ERR_META_EXISTS))
             else:
@@ -66,18 +66,16 @@ class Meta:
 
     def destroyMeta(self):
         try:
-            self._mdb.connect()
+            self._mdb.selectMetaDb()
             self._mdb.dropDb()
-
+            self._mdb.commit()
         except QmsException as qe:
-            self._mdb.disconnect()
             raise Exception(qe.getErrMsg())
 
     def printMeta(self):
         try:
-            self._mdb.connect()
+            self._mdb.selectMetaDb()
             s = self._mdb.printTable("Dbs")
-            self._mdb.disconnect()
         except QmsException as qe:
             # if qe.getErrNo()==Status.ERR_NO_META:
             #     return "No metadata found."           
@@ -86,7 +84,7 @@ class Meta:
 
     def registerDb(self, dbName):
         try:
-            self._mdb.connect()
+            self._mdb.selectMetaDb()
             # check if already registered, fail if it is
             if self._checkDbIsRegistered(dbName):
                 raise Exception("Db '%s' is already registered." % dbName)
@@ -105,27 +103,26 @@ class Meta:
             # register it
             cmd = "INSERT INTO Dbs(dbId, dbName, dbUuid) VALUES (%s, '%s','%s')" % (values['dbId'], dbName, values['dbUuid'])
             self._mdb.execCommand0(cmd)
-            self._mdb.disconnect()
+            self._mdb.commit()
         except QmsException as qe: raise Exception(qe.getErrMsg())
 
     def unregisterDb(self, dbName):
         try:
-            self._mdb.connect()
+            self._mdb.selectMetaDb()
             # check if already registered, fail if it is not
             if not self._checkDbIsRegistered(dbName):
                 raise Exception("Db '%s' is not registered." % dbName)
             # unregister it
             cmd = "DELETE FROM Dbs WHERE dbName='%s'" % dbName;
             self._mdb.execCommand0(cmd)
-            self._mdb.disconnect()
+            self._mdb.commit()
         except QmsException as qe: raise Exception(qe.getErrMsg())
 
     def listDbs(self):
         xx = []
         try:
-            self._mdb.connect()
+            self._mdb.selectMetaDb()
             xx = self._mdb.execCommandN("SELECT dbName FROM Dbs")
-            self._mdb.disconnect()
         except QmsException as qe: 
             raise Exception(qe.getErrMsg())
         return [x[0] for x in xx]

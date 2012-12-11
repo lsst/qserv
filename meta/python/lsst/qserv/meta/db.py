@@ -33,6 +33,7 @@ import sys
 
 from lsst.qserv.meta.status import Status, QmsException
 
+
 class Db:
     """
     Db class is a wrapper around MySQLdb for qserv metadata server. 
@@ -41,8 +42,9 @@ class Db:
     database errors.
     """
     def __init__(self, loggerName, host, port, user, passwd, socket, dbName):
-        self._conn = None
         self._logger = logging.getLogger(loggerName)
+        self._conn = None
+        self._isConnectedToDb = False
         self._connType = None
         self._host = host
         self._port = port
@@ -57,10 +59,8 @@ class Db:
     def _checkIsConnected(self):
         return self._conn != None
 
-    def connect(self, createDb=False):
-        """It connects to a server. If createDb flag is set, it will connect to
-        the server, create the database, then connect to that database."""
-
+    def connectToMySQLServer(self):
+        """It connects to MySQL server."""
         if self._checkIsConnected():
             return
 
@@ -90,25 +90,33 @@ class Db:
                 raise QmsException(Status.ERR_MYSQL_CONNECT, msg)
 
         self._logger.debug("connected to mysql (%s)" % self._connType)
-        if createDb:
-            if self.checkDbExists():
-                msg = "Can't create db '%s', it exists." % self._dbName
-                self._logger.error(msg)
-                raise QmsException(Status.ERR_DB_EXISTS, msg)
-            else:
-                self.execCommand0("CREATE DATABASE %s" % self._dbName)
-        # connect to db
+
+    def createMetaDb(self):
+        if self.checkMetaDbExists():
+            msg = "Can't create db '%s', it exists." % self._dbName
+            self._logger.error(msg)
+            raise QmsException(Status.ERR_DB_EXISTS, msg)
+        else:
+            self.execCommand0("CREATE DATABASE %s" % self._dbName)
+
+    def selectMetaDb(self):
+        if self._isConnectedToDb: return
+        self.connectToMySQLServer()
         try:
             self._conn.select_db(self._dbName)
         except MySQLdb.Error, e:
             self._logger.debug("Failed to select db '%s'" % self._dbName)
             raise QmsException(Status.ERR_NO_META)
+        self._isConnectedToDb = True
         self._logger.debug("Connected to db %s" % self._dbName)
+
+    def commit(self):
+        self._conn.commit()
 
     def disconnect(self):
         if self._conn == None: return
         try:
-            self._conn.commit()
+            self.commit()
             self._conn.close()
         except MySQLdb.Error, e:
             msg = "DB Error %d: %s" % \
@@ -117,19 +125,17 @@ class Db:
             raise QmsException(Status.ERR_MYSQL_DISCONN, msg)
         self._logger.debug("MySQL connection closed")
         self._conn = None
+        self._isConnectedToDb = False
 
-    def reconnectAndCreateDb(self):
-        self.disconnect()
-        self.connect(True)
-
-    def dropDb(self):
-        if self.checkDbExists():
+    def dropMetaDb(self):
+        if self.checkMetaDbExists():
             self.execCommand0("DROP DATABASE %s" % self._dbName)
+            self._isConnectedToDb = False
 
     def getDbName(self):
         return self._dbName[4:]
 
-    def checkDbExists(self):
+    def checkMetaDbExists(self):
         if self._dbName is None:
             raise QmsException(Status.ERR_INVALID_DB_NAME)
         cmd = "SELECT COUNT(*) FROM information_schema.schemata "
@@ -204,8 +210,6 @@ class Db:
     def _execCommand(self, command, nRowsRet):
         """Executes mysql commands which return any number of rows.
         Expected number of returned rows should be given in nRowSet"""
-        if not self._checkIsConnected():
-            self.connect()
         cursor = self._conn.cursor()
         self._logger.debug("Executing %s" % command)
         try:

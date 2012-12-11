@@ -50,25 +50,21 @@ class MetaInterface:
         try:
             self._metaImpl.installMeta()
         except QmsException as qe: 
-            self._metaImpl.disconnect()
             if qe.getErrNo() == Status.ERR_DB_EXISTS:
                 return Status.ERR_META_EXISTS
             return qe.getErrNo()
         except Exception, e:
-            self._metaImpl.disconnect()
             self._logger.error("Exception in installMeta: %s" % str(e))
             return Status.ERR_INTERNAL
         return Status.SUCCESS
 
     def destroyMeta(self):
-        """Permanently destroyp qserv metadata."""
+        """Permanently destroy qserv metadata."""
         try:
             self._metaImpl.destroyMeta()
         except QmsException as qe:
-            self._metaImpl.disconnect()
             return qe.getErrNo()
         except Exception, e:
-            self._metaImpl.disconnect()
             self._logger.error("Exception in destroyMeta: %s" % str(e))
             return Status.ERR_INTERNAL
         return Status.SUCCESS
