@@ -37,7 +37,11 @@ class Meta:
         self._qmwDb = "qmw_%s" % qmwDb
         self._mdb = Db(loggerName, None, None, qmwUser, qmwPass,
                        qmwMySqlSocket, self._qmwDb)
+        self._mdb.connectToMySQLServer()
         self._qmsClient = Client(qmsHost, qmsPort, qmsUser, qmsPass)
+
+    def __del__(self):
+        self._mdb.disconnect()
 
     def installMeta(self):
         """Initializes persistent qserv metadata structures on the worker.
@@ -67,7 +71,7 @@ class Meta:
     def destroyMeta(self):
         try:
             self._mdb.selectMetaDb()
-            self._mdb.dropDb()
+            self._mdb.dropMetaDb()
             self._mdb.commit()
         except QmsException as qe:
             raise Exception(qe.getErrMsg())

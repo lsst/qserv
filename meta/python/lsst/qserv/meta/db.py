@@ -59,6 +59,9 @@ class Db:
     def _checkIsConnected(self):
         return self._conn != None
 
+    def _checkIsConnectedToDb(self):
+        return self._isConnectedToDb
+
     def connectToMySQLServer(self):
         """It connects to MySQL server."""
         if self._checkIsConnected():
@@ -92,6 +95,8 @@ class Db:
         self._logger.debug("connected to mysql (%s)" % self._connType)
 
     def createMetaDb(self):
+        if not self._checkIsConnected():
+            raise QmsException(Status.ERR_NOT_CONNECTED)
         if self.checkMetaDbExists():
             msg = "Can't create db '%s', it exists." % self._dbName
             self._logger.error(msg)
@@ -100,8 +105,10 @@ class Db:
             self.execCommand0("CREATE DATABASE %s" % self._dbName)
 
     def selectMetaDb(self):
-        if self._isConnectedToDb: return
-        self.connectToMySQLServer()
+        if not self._checkIsConnected():
+            raise QmsException(Status.ERR_NOT_CONNECTED)
+        if self._checkIsConnectedToDb():
+            return
         try:
             self._conn.select_db(self._dbName)
         except MySQLdb.Error, e:
@@ -111,6 +118,8 @@ class Db:
         self._logger.debug("Connected to db %s" % self._dbName)
 
     def commit(self):
+        if not self._checkIsConnected():
+            raise QmsException(Status.ERR_NOT_CONNECTED)
         self._conn.commit()
 
     def disconnect(self):
@@ -128,6 +137,8 @@ class Db:
         self._isConnectedToDb = False
 
     def dropMetaDb(self):
+        if not self._checkIsConnected():
+            raise QmsException(Status.ERR_NOT_CONNECTED)
         if self.checkMetaDbExists():
             self.execCommand0("DROP DATABASE %s" % self._dbName)
             self._isConnectedToDb = False
@@ -136,6 +147,8 @@ class Db:
         return self._dbName[4:]
 
     def checkMetaDbExists(self):
+        if not self._checkIsConnected():
+            raise QmsException(Status.ERR_NOT_CONNECTED)
         if self._dbName is None:
             raise QmsException(Status.ERR_INVALID_DB_NAME)
         cmd = "SELECT COUNT(*) FROM information_schema.schemata "
@@ -149,10 +162,12 @@ class Db:
         return "%s_" % self._dbName
 
     def createTable(self, tableName, tableSchema):
+        if not self._checkIsConnectedToDb():
+            raise QmsException(Status.ERR_NOT_CONNECTED)
         self.execCommand0("CREATE TABLE %s %s" % (tableName, tableSchema))
 
     def checkTableExists(self, tableName):
-        if not self._checkIsConnected():
+        if not self._checkIsConnectedToDb():
             raise QmsException(Status.ERR_NOT_CONNECTED)
         cmd = "SELECT COUNT(*) FROM information_schema.tables "
         cmd += "WHERE table_schema = '%s' AND table_name = '%s'" % \
@@ -161,6 +176,8 @@ class Db:
         return  count[0] == 1
 
     def printTable(self, tableName):
+        if not self._checkIsConnectedToDb():
+            raise QmsException(Status.ERR_NOT_CONNECTED)
         ret = self.execCommandN("SELECT * FROM %s" % tableName)
         s = StringIO.StringIO()
         s.write(tableName)
@@ -210,6 +227,8 @@ class Db:
     def _execCommand(self, command, nRowsRet):
         """Executes mysql commands which return any number of rows.
         Expected number of returned rows should be given in nRowSet"""
+        if not self._checkIsConnected():
+            raise QmsException(Status.ERR_NOT_CONNECTED)
         cursor = self._conn.cursor()
         self._logger.debug("Executing %s" % command)
         try:

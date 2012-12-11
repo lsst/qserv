@@ -48,6 +48,7 @@ class MetaImpl:
         dbName = "qms_%s" % c.get("qmsdb", "db")
         # prep db object
         self._mdb = Db(loggerName, host, port, user, passwd, socket, dbName)
+        self._mdb.connectToMySQLServer()
 
     def __destroy__(self):
         self._mdb.disconnect()
