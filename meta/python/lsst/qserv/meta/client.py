@@ -41,7 +41,8 @@ class Client:
     ###########################################################################
     def installMeta(self):
         status = self._qms.installMeta()
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: 
+            raise Exception(getErrMsg(status))
 
     def destroyMeta(self):
         status = self._qms.destroyMeta()

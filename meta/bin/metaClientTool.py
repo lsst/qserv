@@ -341,4 +341,4 @@ if __name__ == '__main__':
         t = TheTool()
         t.parseAndRun()
     except Exception, e:
-        print "Error: ", str(e)
+        print "Error:", str(e)

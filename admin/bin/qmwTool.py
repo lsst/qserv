@@ -26,7 +26,6 @@
 
 
 from __future__ import with_statement
-import ConfigParser
 import logging
 from optparse import OptionParser
 import os
@@ -34,13 +33,11 @@ import socket
 
 # Local package imports
 from lsst.qserv.meta.status import Status, getErrMsg
-from lsst.qserv.admin.meta import Meta
+from lsst.qserv.admin.meta import Meta, readConnInfoFromFile
 
 class TheTool(object):
     def __init__(self):
         self._defaultAuthFile = "~/.qmwadm"
-        # start with default, can be overwritten through command line option
-        self._authFile = os.path.expanduser(self._defaultAuthFile)
 
         self._usage = """
 NAME
@@ -106,23 +103,27 @@ mySqlSocket: /var/lib/mysql/mysql.sock
     def parseAndRun(self):
         parser = OptionParser(usage=self._usage)
         parser.add_option("-a", "--auth", dest="authFile")
+        parser.add_option("-v","--verbose",action="store_true",dest="verbose")
         (options, args) = parser.parse_args()
         if len(args) < 1:
             parser.error("No command given")
 
-        if options.authFile:
-            self._authFile = options.authFile
-        if not os.path.exists(self._authFile):
-            raise Exception("%s does not exist." % self._authFile)
         cmdN = "_cmd_" + args[0]
         if not hasattr(self, cmdN):
             parser.error("Unrecognized command: " + args[0])
         del args[0]
 
+        if options.verbose:
+            self._loggerLevelName = "debug"
+
+        # use default file name unless overwritten through command line option
+        authFile = os.path.expanduser(self._defaultAuthFile)
+        if options.authFile:
+            authFile = options.authFile
+
         self._initLogging()
 
-        (sh,sp,su,sup,wd,wu,wp,wm) = self._getConnInfo()
-        self._meta = Meta(self._loggerName, sh,sp,su,sup,wd,wu,wp,wm)
+        self._meta = Meta(self._loggerName, *readConnInfoFromFile(authFile))
 
         cmd = getattr(self, cmdN)
         cmd(options, args)
@@ -166,39 +167,6 @@ mySqlSocket: /var/lib/mysql/mysql.sock
         print self._meta.listDbs()
 
     ###########################################################################
-    ##### connection info
-    ###########################################################################
-    def _getConnInfo(self):
-        config = ConfigParser.ConfigParser()
-        config.read(self._authFile)
-        s = "qmsConn"
-        if not config.has_section(s):
-            raise Exception("Bad %s, can't find section '%s'" % \
-                                (self._authFile, s))
-        if not config.has_option(s, "host") or \
-           not config.has_option(s, "port") or \
-           not config.has_option(s, "user") or \
-           not config.has_option(s, "pass"):
-            raise Exception("Bad %s, can't find host, port, user or pass"%\
-                                self._authFile)
-        (host,port,usr,pwd) = (config.get(s, "host"), config.getint(s, "port"),
-                               config.get(s, "user"), config.get(s, "pass"))
-
-        s = "qmwConn"
-        if not config.has_section(s):
-            raise Exception("Bad %s, can't find section '%s'" % \
-                                (self._authFile,s))
-        if not config.has_option(s, "db") or \
-           not config.has_option(s, "user") or \
-           not config.has_option(s, "pass") or \
-           not config.has_option(s, "mySqlSocket"):
-            raise Exception("Bad %s, can't find db, user, pass or mysqlSocket"\
-                                % self._authFile)
-        return (host,port,usr,pwd,
-                config.get(s, "db"), config.get(s, "user"),
-                config.get(s, "pass"), config.get(s, "mySqlSocket"))
-
-    ###########################################################################
     ##### logger
     ###########################################################################
     def _initLogging(self):
@@ -211,7 +179,7 @@ mySqlSocket: /var/lib/mysql/mysql.sock
                   "error":logging.ERROR,
                   "critical":logging.CRITICAL}
             level = ll[self._loggerLevelName]
-        self.logger = logging.getLogger(self._loggerLevelName)
+        self.logger = logging.getLogger(self._loggerName)
         hdlr = logging.FileHandler(self._loggerOutFile)
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         hdlr.setFormatter(formatter)
@@ -226,4 +194,4 @@ if __name__ == '__main__':
         t = TheTool()
         t.parseAndRun()
     except Exception, e:
-        print "Error: ", str(e)
+        print "Error:", str(e)

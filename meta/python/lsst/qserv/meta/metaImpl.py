@@ -48,7 +48,7 @@ class MetaImpl:
         dbName = "qms_%s" % c.get("qmsdb", "db")
         # prep db object
         self._mdb = Db(loggerName, host, port, user, passwd, socket, dbName)
-    
+  
     ###########################################################################
     #### installMeta
     ###########################################################################
@@ -160,10 +160,10 @@ class MetaImpl:
    comments TEXT DEFAULT NULL  -- any comments the lock creator wants 
                                -- to attach to this lock 
 )''']]
-        self._mdb.connectAndCreateDb()
+        self._mdb.reconnectAndCreateDb()
         for t in internalTables:
             self._mdb.createTable(t[0], t[1])
-        self._mdb.disconnect()
+        self.disconnect()
 
     ###########################################################################
     #### destroyMeta
@@ -176,7 +176,7 @@ class MetaImpl:
         for qmsDb in qmsDbs:
             self._mdb.execCommand0("DROP DATABASE %s" % qmsDb)
         self._mdb.dropDb()
-        self._mdb.disconnect()
+        self.disconnect()
 
     ###########################################################################
     #### printMeta
@@ -188,7 +188,7 @@ class MetaImpl:
         for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox", 
                   "EmptyChunks", "TableStats", "LockDb"]:
             self._printTable(s, t)
-        self._mdb.disconnect()
+        self.disconnect()
         return s.getvalue()
 
     ###########################################################################
@@ -309,7 +309,7 @@ class MetaImpl:
         # finally, create this table as template
         self._mdb.execCommand0("CREATE DATABASE %s%s" % \
                                    (self._mdb.getServerPrefix(), dbName))
-        self._mdb.disconnect()
+        self.disconnect()
 
     ###########################################################################
     #### dropDb
@@ -342,7 +342,7 @@ class MetaImpl:
         # drop the template database
         self._mdb.execCommand0("DROP DATABASE %s%s" % \
                                    (self._mdb.getServerPrefix(), dbName))
-        self._mdb.disconnect()
+        self.disconnect()
 
     ###########################################################################
     #### retrieveDbInfo
@@ -371,7 +371,7 @@ class MetaImpl:
             values["defaultOverlap_nearNeigh"] = ret[3]
         elif ps == "None":
             pass
-        self._mdb.disconnect()
+        self.disconnect()
         return values
 
     ###########################################################################
@@ -380,7 +380,7 @@ class MetaImpl:
     def checkDbExists(self, dbName):
         """Checks if db <dbName> exists, returns 0 or 1"""
         ret = self._mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" % dbName)
-        self._mdb.disconnect()
+        self.disconnect()
         return ret[0]
 
     ###########################################################################
@@ -396,7 +396,7 @@ class MetaImpl:
         for r in ret:
             s.write(r[0])
             s.write(' ')
-        self._mdb.disconnect()
+        self.disconnect()
         return s.getvalue()
 
     ###########################################################################
@@ -497,7 +497,7 @@ class MetaImpl:
         else:
             cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx) VALUES ('%s', '%s', %s, %s, '%s')" % (tableName, tbUuid, dbId, psId, clusteredIdx)
         self._mdb.execCommand0(cmd)
-        self._mdb.disconnect()
+        self.disconnect()
 
     ###########################################################################
     #### dropTable
@@ -533,7 +533,7 @@ class MetaImpl:
             self._mdb.execCommand0(cmd)
         cmd = "DELETE FROM TableMeta WHERE tableId = %s" % tableId
         self._mdb.execCommand0(cmd)
-        self._mdb.disconnect()
+        self.disconnect()
         self._logger.debug("dropTable: done")
 
     ###########################################################################
@@ -551,7 +551,7 @@ class MetaImpl:
         cmd = "SELECT tableName FROM TableMeta WHERE dbId=%s " % dbId + \
             "AND psId IS NOT NULL"
         tNames = self._mdb.execCommandN(cmd)
-        self._mdb.disconnect()
+        self.disconnect()
         self._logger.debug("retrieveTableInfo: done")
         return [x[0] for x in tn]
 
@@ -599,7 +599,7 @@ class MetaImpl:
         else:
             cmd = "SELECT clusteredIdx FROM TableMeta WHERE tableId=%s" % tableId
             values["clusteredIdx"] = self._mdb.execCommand1(cmd)
-        self._mdb.disconnect()
+        self.disconnect()
         return values
 
     ###########################################################################
@@ -612,6 +612,12 @@ class MetaImpl:
         except QmsException as qe:
             return (None, None)
         return (dbName is not None, dbName)
+
+    ###########################################################################
+    #### disconnect
+    ###########################################################################
+    def disconnect(self):
+        self._mdb.disconnect()
 
     ###########################################################################
     #### _checkColumnExists

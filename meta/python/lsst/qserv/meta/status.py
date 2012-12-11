@@ -30,21 +30,22 @@ class Status:
     # note: error numbered 1000 - 1200 are used by mysql,
     # see mysqld_ername.h in mysql source code
     ERR_IS_INIT            = 2001
-    ERR_MYSQL_CONNECT      = 2002
-    ERR_MYSQL_DISCONN      = 2003
-    ERR_MYSQL_ERROR        = 2004
-    ERR_NO_META            = 2005
-    ERR_DB_EXISTS          = 2006
-    ERR_DB_NOT_EXISTS      = 2007
-    ERR_TABLE_EXISTS       = 2008
-    ERR_TABLE_NOT_EXISTS   = 2009
-    ERR_NO_TABLE_IN_SCHEMA = 2010
-    ERR_COL_NOT_FOUND      = 2011
-    ERR_SCHEMA_FILE        = 2012
-    ERR_INVALID_OPTION     = 2013
-    ERR_INVALID_DB_NAME    = 2014
-    ERR_NOT_CONNECTED      = 2015
-    ERR_CANT_EXEC_SCRIPT   = 2016
+    ERR_MYSQL_CONNECT      = 2005
+    ERR_MYSQL_DISCONN      = 2010
+    ERR_MYSQL_ERROR        = 2015
+    ERR_META_EXISTS        = 2020
+    ERR_NO_META            = 2025
+    ERR_DB_EXISTS          = 2030
+    ERR_DB_NOT_EXISTS      = 2035
+    ERR_TABLE_EXISTS       = 2040
+    ERR_TABLE_NOT_EXISTS   = 2045
+    ERR_NO_TABLE_IN_SCHEMA = 2050
+    ERR_COL_NOT_FOUND      = 2055
+    ERR_SCHEMA_FILE        = 2060
+    ERR_INVALID_OPTION     = 2065
+    ERR_INVALID_DB_NAME    = 2070
+    ERR_NOT_CONNECTED      = 2075
+    ERR_CANT_EXEC_SCRIPT   = 2080
     ERR_NOT_IMPLEMENTED    = 9998
     ERR_INTERNAL           = 9999
 
@@ -53,7 +54,8 @@ class Status:
         ERR_MYSQL_CONNECT: "Unable to connect to mysql server.",
         ERR_MYSQL_DISCONN: ("Failed to commit transaction and "
                             "disconnect from mysql server."),
-        ERR_MYSQL_ERROR: ("Internal MySQL error"),
+        ERR_MYSQL_ERROR: "Internal MySQL error.",
+        ERR_META_EXISTS: "Metadata already installed.",
         ERR_NO_META: "No metadata found.",
         ERR_DB_EXISTS: "The database already exists.",
         ERR_DB_NOT_EXISTS: "The database does not exist.",
@@ -66,17 +68,17 @@ class Status:
                           " can't be access from the client."),
         ERR_INVALID_OPTION: ("Invalid option passed."),
         ERR_INVALID_DB_NAME: ("Invalid database name."),
-        ERR_NOT_CONNECTED: ("QMS not connected to mysql"),
-        ERR_CANT_EXEC_SCRIPT: ("Can't execute script"),
-        ERR_NOT_IMPLEMENTED: ("This feature is not implemented yet"),
+        ERR_NOT_CONNECTED: ("QMS not connected to MySQL."),
+        ERR_CANT_EXEC_SCRIPT: ("Can't execute script."),
+        ERR_NOT_IMPLEMENTED: ("This feature is not implemented yet."),
         ERR_INTERNAL: "Internal error."
         }
 
 def getErrMsg(errNo):
     s = Status()
     if errNo in s.errors:
-        return "qms error #%s: %s" % (errNo, s.errors[errNo])
-    return "qms error: undefined"
+        return s.errors[errNo]
+    return "Undefinied qms error"
 
 class QmsException(Exception):
     def __init__(self, errNo, extraMsg=None):

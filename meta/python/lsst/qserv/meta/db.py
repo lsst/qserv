@@ -60,45 +60,36 @@ class Db:
     def connect(self, createDb=False):
         """It connects to a server. If createDb flag is set, it will connect to
         the server, create the database, then connect to that database."""
+
         if self._checkIsConnected():
             return
 
-        try: # Socket file first
+        try: # try connect via socket first
             self._connType = "socket"
-            if createDb:
-                self._conn = sql.connect(user=self._user,
-                                         passwd=self._passwd,
-                                         unix_socket=self._socket)
-            else:
-                self._conn = sql.connect(user=self._user,
-                                         passwd=self._passwd,
-                                         unix_socket=self._socket,
-                                         db=self._dbName)
-        except Exception, e:
+            self._conn = sql.connect(user=self._user,
+                                     passwd=self._passwd,
+                                     unix_socket=self._socket)
+        except MySQLdb.Error, e:
+            if self._host is None or self._port is None:
+                msg = "Couldn't connect to MySQL via socket "
+                msg += "'%s', " % self._socket
+                msg += "and host:port not set, giving up."
+                self._logger.error(msg)
+                raise QmsException(Status.ERR_MYSQL_CONNECT, msg)
             self._connType = "port"
             try:
-                if createDb:
-                    self._conn = sql.connect(user=self._user,
-                                             passwd=self._passwd,
-                                             host=self._host,
-                                             port=self._port)
-                else:
-                    self._conn = sql.connect(user=self._user,
-                                             passwd=self._passwd,
-                                             host=self._host,
-                                             port=self._port,
-                                             db=self._dbName)
-            except Exception, e2:
+                self._conn = sql.connect(user=self._user,
+                                         passwd=self._passwd,
+                                         host=self._host,
+                                         port=self._port)
+            except MySQLdb.Error, e2:
                 self._connType = None
-                if e[1].startswith("Unknown database"):
-                    self._logger.error(e[1])
-                    raise QmsException(Status.ERR_NO_META)
                 self._conn = None
-                msg = "Couldn't connect to MySQL using file %s or host:port: %s:%s." % (self._socket, self._host,self._port)
+                msg = "Couldn't connect to MySQL using socket '%s' or host:port: %s:%s." % (self._socket, self._host,self._port)
                 self._logger.error(msg)
                 raise QmsException(Status.ERR_MYSQL_CONNECT, msg)
 
-        c = self._conn.cursor()
+        self._logger.debug("connected to mysql (%s)" % self._connType)
         if createDb:
             if self.checkDbExists():
                 msg = "Can't create db '%s', it exists." % self._dbName
@@ -106,7 +97,12 @@ class Db:
                 raise QmsException(Status.ERR_DB_EXISTS, msg)
             else:
                 self.execCommand0("CREATE DATABASE %s" % self._dbName)
+        # connect to db
+        try:
             self._conn.select_db(self._dbName)
+        except MySQLdb.Error, e:
+            self._logger.debug("Failed to select db '%s'" % self._dbName)
+            raise QmsException(Status.ERR_NO_META)
         self._logger.debug("Connected to db %s" % self._dbName)
 
     def disconnect(self):
@@ -122,7 +118,8 @@ class Db:
         self._logger.debug("MySQL connection closed")
         self._conn = None
 
-    def connectAndCreateDb(self):
+    def reconnectAndCreateDb(self):
+        self.disconnect()
         self.connect(True)
 
     def dropDb(self):
@@ -217,10 +214,10 @@ class Db:
             try:
                 msg = "MySQL Error [%d]: %s" % (e.args[0], e.args[1])
                 self._logger.error(msg)
-                raise QmsException(Status.ERR_MYSQL_ERR, msg)
+                raise QmsException(Status.ERR_MYSQL_ERROR, msg)
             except IndexError:
                 self._logger.error("MySQL Error: %s" % str(e))
-                raise QmsException(Status.ERR_MYSQL_ERR, str(e))
+                raise QmsException(Status.ERR_MYSQL_ERROR, str(e))
         if nRowsRet == 0:
             ret = ""
         elif nRowsRet == 1:
