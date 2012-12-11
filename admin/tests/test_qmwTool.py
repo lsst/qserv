@@ -87,12 +87,6 @@ class TestMeta(unittest.TestCase):
         print "=====>> unregisterDb (db not registered)"
         self.assertRaises(Exception, self._meta.unregisterDb, "dfdfd")
 
-
-
-
-
-
-
 ###############################################################################
 ##### main
 ###############################################################################
