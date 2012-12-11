@@ -93,28 +93,24 @@ def init_action(target, source, env):
 
     check_success=True
 
-    if os.access(config['base_dir'], os.W_OK):
-        Execute(Mkdir(config['base_dir']+"/build"))
-        Execute(Mkdir(config['base_dir']+"/var"))
-        Execute(Mkdir(config['base_dir']+"/var/lib"))
-    else:
-       	logging.fatal("Qserv base directory (base_dir) is not writable : %s" % config['base_dir'])
-        check_success=False
+    for param in ('base_dir','log_dir','mysqld_data_dir'):
+        dir = config[param]
+        if not utils.exists_and_is_writable(dir):
+       	    logging.fatal("%s is not writable check/update permissions or update config['%s']" % (dir, param))
+            check_success=False
 
-    if not os.access(config['log_dir'], os.W_OK):
-    	logging.fatal("Qserv log directory (log_dir) is not writable : %s" % config['log_dir'])
-        check_success=False    
+    for suffix in ('/build', '/var', '/var/lib'):
+        dir = config['base_dir']+suffix
+        if not utils.exists_and_is_writable(dir):
+       	    logging.fatal("%s is not writable check/update permissions" % dir)
+            check_success=False
 
-    if not os.access(config['mysqld_data_dir'], os.W_OK):
-    	logging.fatal("MySQL data directory (mysqld_data_dir) is not writable : %s" % config['mysqld_data_dir'])
-        check_success=False    
-
-    if not os.access(config['lsst_data_dir'], os.R_OK):
+    if not utils.is_readable(config['lsst_data_dir']):
     	logging.fatal("LSST data directory (lsst_data_dir) is not writable : %s" % config['lsst_data_dir'])
         check_success=False    
-    
+
     if check_success :
-        logger.info("Qserv initial directory structure analysis succeeded")
+        logger.info("Qserv directory structure creation succeeded")
     else:
         sys.exit(1)
 
@@ -128,7 +124,7 @@ env.Default(env.Alias('install'))
 # Defining Init Alias
 #
 ######################        
-init_cmd = env.Command('dummy-target', [], init_action)
+init_cmd = env.Command('init-dummy-target', [], init_action)
 env.Alias('init', init_cmd)
 
 ###########################        

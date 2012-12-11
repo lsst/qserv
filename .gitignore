@@ -1,5 +1,6 @@
 *.swp
 *.o
+*.log
 common/.sconf_temp/
 common/include/
 common/lib/

@@ -5,6 +5,7 @@ from datetime import datetime
 import ConfigParser
 import urllib2
 
+from SCons.Script import Execute, Mkdir   # for Execute and Mkdir
 
 def read_config(build_parser_file, default_parser):
     logger = logging.getLogger('scons-qserv')
@@ -38,38 +39,61 @@ def read_config(build_parser_file, default_parser):
 
     return config 
 
-def is_readable_dir(dir):
+def is_readable(dir):
     """
-    Test is a directory is readable.
-    Return a couple (success,message), where success is a boolean and message a string
+    Test is a dir is readable.
+    Return a boolean
     """
+    logger = logging.getLogger('scons-qserv')
+
+    logger.debug("Checking read access for : %s", dir)
+    logger = logging.getLogger('scons-qserv')
     try:
         os.listdir(dir)
-    except BaseException as e:
-        return (False,"No read access : %s" % (e));
-    return (True,"")
+        return True 
+    except Exception as e:
+        logger.debug("No read access to dir %s : %s" % (dir,e))
+        return False
 
-def is_writeable_dir(dir):
+def is_writable(dir):
     """
-    Test is a directory exists, if no try to create it, if yes test if it is writeable.
-    Return a couple (success,message), where success is a boolean and message a string
+    Test if a dir is writeable.
+    Return a boolean
     """
+    logger = logging.getLogger('scons-qserv')
     try:
-	if (os.path.exists(dir)):
-            filename="%s/test.check" % dir
-            f = open(filename,'w')
-            f.close()
-            os.remove(filename)
-        else:
+        tmp_prefix = "write_tester";
+        count = 0
+        filename = os.path.join(dir, tmp_prefix)
+        while(os.path.exists(filename)):
+            filename = "{}.{}".format(os.path.join(dir, tmp_prefix),count)
+            count = count + 1
+        f = open(filename,"w")
+        f.close()
+        os.remove(filename)
+        return True
+    except Exception as e:
+        logger.info("No write access to dir %s : %s" % (dir,e))
+        return False
+
+
+def exists_and_is_writable(dir) :
+    """
+    Test if a dir exists. If no creates it, if yes checks if it is writeable.
+    Return a boolean
+    """
+    logger = logging.getLogger('scons-qserv')
+    logger.debug("Checking existence and write access for : %s", dir)
+    if not os.path.exists(dir):
+	try:
             Execute(Mkdir(dir))
-    except IOError as e:
-        if (e.errno==errno.ENOENT) :
-            return (False,"No write access to directory : %s" % (dir));
-    except BaseException as e:
-        return (False,"No write access : %s" % (e));
-    return (True,"")
-
-
+        except Exception as e:
+            logger.info("Unable to create dir : %s : %s" % (dir,e))
+            return False 
+    elif not is_writable(dir):
+        return False
+    
+    return True	 
 
 def download_action(target, source, env):
     
@@ -103,7 +127,7 @@ def download_action(target, source, env):
     f.close()
 
 
-def build_cmd_with_opts_action(config, action='install'):
+def build_cmd_with_opts_action(config, target='install'):
 
     logger = logging.getLogger('scons-qserv')
 
@@ -127,13 +151,13 @@ def build_cmd_with_opts_action(config, action='install'):
         None
 
     log_file_prefix = config['log_dir']
-    if action=='qserv-only' :
+    if target=='qserv-only' :
         install_opts="%s --qserv" % install_opts
         log_file_prefix += "/QSERV-ONLY"
-    elif action == 'clean-all' :
+    elif target == 'clean-all' :
         install_opts="%s --clean-all" % install_opts
         log_file_prefix = "~/QSERV-CLEAN"
-    elif action == 'init-mysql-db' :
+    elif target == 'init-mysql-db' :
         install_opts="%s --init-mysql-db" % install_opts
         log_file_prefix += "/QSERV-INIT-MYSQL-DB"
     else :
@@ -143,6 +167,6 @@ def build_cmd_with_opts_action(config, action='install'):
     command_str = config['src_dir' ] + "/admin/qserv-install " 
     command_str += install_opts + " &> " + log_file_name
     
-    logger.debug("Launching perl install script with next command : %s" % command_str)
+    #logger.debug("Launching perl install script with next command : %s" % command_str)
     return command_str
 

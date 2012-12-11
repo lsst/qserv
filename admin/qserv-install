@@ -728,11 +728,10 @@ sub create_mysqlproxy_startup {
 #remove all sub dir created, and revert back to before install with only
 #source tar files in the build dir.  Will remove all loaded data also.
 sub clean_all {
-
     
-	clean_dir($log_dir);
-	
-        clean_dir($mysql_data_dir);
+        run_command("rm -rf $log_dir");
+        run_command("rm -rf $mysql_data_dir");
+        run_command("rm -rf $install_dir/qserv/master/dist");
 
 	chdir "$install_dir";
 		
@@ -774,7 +773,7 @@ sub clean_dir {
 		print " file : $file\n" if ($debug);
 		if( -d $file ) {
 			print "Removing directory : $file\n";
-			run_command("rm -r $file");
+			run_command("rm -rf $file");
 		}
 		elsif( -e $file ) {
 			print "Removing $file\n";
