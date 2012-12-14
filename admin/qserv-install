@@ -41,7 +41,7 @@ my $script_path = "$FindBin::Bin/../";
 my $pos = rindex($script_path, "/admin");
 my $src_dir=substr($script_path,0,$pos);
 
-my $templates_dir=$src_dir/admin/templates;
+my $templates_dir="$src_dir/admin/templates";
 
 usage(1) if ($Getopt::Long::error); 
 usage(0) if ($opts{'help'});

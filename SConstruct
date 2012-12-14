@@ -1,79 +1,28 @@
 # -*- python -*-
 
-import os, sys, io, re
+import os
+import sys
+import io
+import re
 import errno
 import logging
+import logger
 from SCons.Node import FS
 from SCons.Script import Mkdir,Chmod,Copy,WhereIs
-
-import utils
 import ConfigParser
 
-logger = logging.getLogger('scons-qserv')
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-# this level can be reduce for each handler
-logger.setLevel(logging.DEBUG)
+import actions 
+import commons 
+import utils
 
-file_handler = logging.FileHandler('scons.log')
-file_handler.setFormatter(formatter)
-file_handler.setLevel(logging.DEBUG)
-logger.addHandler(file_handler) 
 
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-console_handler.setLevel(logging.DEBUG)
-logger.addHandler(console_handler) 
+logger = commons.init_default_logger('scons-qserv')
+
 
 # this file must be placed in main scons directory
 src_dir=Dir('.').srcnode().abspath+"/"
 config_file_name=src_dir+"qserv-build.conf"
-
-default_config = """
-# WARNING : these variables mustn't be changed once the install process is started
-[DEFAULT]
-version = qserv-dev
-basedir = /opt/%(version)s
-logdir = %(basedir)s/var/log
-
-[qserv]
-# Qserv rpc service port is 7080 but is hard-coded
-
-# Tree possibles values :
-# mono
-# master
-# worker
-node_type=mono
-
-# Qserv master DNS name
-master=qserv-master.in2p3.fr
-
-# Geometry file will be downloaded by default in git master branch
-# but a source directory may be specified 
-# it could be retrieved for exemple with : git clone git://dev.lsstcorp.org/LSST/DMS/geom
-# geom=/home/user/geom
-
-[xrootd]
-cmsd_manager_port=4040
-xrootd_port=1094
-
-[mysql-proxy]
-
-port=4040
-
-[mysqld]
-
-port=13306
-
-pass='changeme'
-#datadir=/data/$(version)/mysql
-datadir=%(basedir)s/var/lib/mysql
-
-[lsst]
-      
-# Where to download LSST data
-# Example: PT1.1 data should be in $(datadir)/pt11/
-datadir=/data/lsst 
-"""
+default_config_file_name=src_dir+"qserv-build.default.conf"
 
 env = Environment()
 
@@ -82,7 +31,7 @@ if not os.path.exists(config_file_name):
     sys.exit(1)
 
 try: 
-    config = utils.read_config(config_file_name, default_config)
+    config = commons.read_config(config_file_name, default_config_file_name)
 except ConfigParser.NoOptionError, exc:
     logging.fatal("An option is missing in your configuration file: %s" % exc)
     sys.exit(1)
@@ -90,6 +39,8 @@ except ConfigParser.NoOptionError, exc:
 config['src_dir'] = src_dir
 
 def init_action(target, source, env):
+
+    logger = logging.getLogger('scons-qserv')
 
     check_success=True
 
@@ -105,8 +56,8 @@ def init_action(target, source, env):
        	    logging.fatal("%s is not writable check/update permissions" % dir)
             check_success=False
 
-    if not utils.is_readable(config['lsst_data_dir']):
-    	logging.fatal("LSST data directory (lsst_data_dir) is not writable : %s" % config['lsst_data_dir'])
+    if not commons.is_readable(config['lsst_data_dir']):
+    	logging.fatal("LSST data directory (lsst_data_dir) is not readable : %s" % config['lsst_data_dir'])
         check_success=False    
 
     if check_success :
@@ -144,7 +95,7 @@ for app in config['dependencies']:
         base_file_name = os.path.basename(app_url)
         output_file = output_dir + base_file_name
         # Command to use in order to download source tarball 
-        env.Command(output_file, Value(app_url), utils.download_action)
+        env.Command(output_file, Value(app_url), actions.download)
 	download_cmd_lst.append(output_file)
 env.Alias('download', download_cmd_lst)
 
@@ -155,5 +106,5 @@ env.Alias('download', download_cmd_lst)
 ######################### 
 
 for target in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'): 
-    env.Alias(target, env.Command(target+'-dummy-target', [], utils.build_cmd_with_opts_action(config,target)))
+    env.Alias(target, env.Command(target+'-dummy-target', [], actions.build_cmd_with_opts(config,target)))
 
