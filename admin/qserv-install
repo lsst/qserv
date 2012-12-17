@@ -41,7 +41,7 @@ my $script_path = "$FindBin::Bin/../";
 my $pos = rindex($script_path, "/admin");
 my $src_dir=substr($script_path,0,$pos);
 
-my $templates_dir="$src_dir/admin/templates";
+my $templates_dir="$src_dir/admin/custom";
 
 usage(1) if ($Getopt::Long::error); 
 usage(0) if ($opts{'help'});
@@ -274,7 +274,7 @@ sub check_and_install_qserv {
 	}
 
 	#copy in and edit qserv config
-	run_command("cp $templates_dir/lsst-dev01.qserv.cnf.tpl $install_dir/etc/local.qserv.cnf");
+	run_command("cp $templates_dir/local.qserv.cnf.tpl $install_dir/etc/local.qserv.cnf");
 	run_command("perl -pi -e \"s,<XROOTD_MANAGER_HOST>,$qserv_master,\" $install_dir/etc/local.qserv.cnf");
 	run_command("perl -pi -e \"s,<CMSD_MANAGER_PORT>,$cmsd_manager_port,\" $install_dir/etc/local.qserv.cnf");
 	run_command("perl -pi -e \"s,<XROOTD_PORT>,$xrootd_port,\" $install_dir/etc/local.qserv.cnf");
@@ -403,10 +403,10 @@ sub init_mysql_db {
                 # password for root@127.0.0.1 won't be updated with next command.
 		# run_command("mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password '$db_pass'", $quiet);
 		# run_command("mysqladmin -h $qserv_master -P$mysql_port -u root password '$db_pass'", $quiet);
-		run_command("cp $templates_dir/mysql-password.sql.tpl $install_dir/etc/mysql-password.sql");
-		run_command("perl -pi -e \"s,<MYSQL_PASSWORD>,$db_pass,\" $install_dir/etc/mysql-password.sql", $quiet);
-		run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root < $install_dir/etc/mysql-password.sql");
-		run_command("rm $install_dir/etc/mysql-password.sql");
+		run_command("cp $templates_dir/tmp/mysql-password.sql.tpl $install_dir/tmp/mysql-password.sql");
+		run_command("perl -pi -e \"s,<MYSQL_PASSWORD>,$db_pass,\" $install_dir/tmp/mysql-password.sql", $quiet);
+		run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root < $install_dir/tmp/mysql-password.sql");
+		run_command("rm $install_dir/tmp/mysql-password.sql");
 		# shutdown mysql
 		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock shutdown -u root -p'$db_pass'", $quiet);
 	}

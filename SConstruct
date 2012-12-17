@@ -24,7 +24,7 @@ src_dir=Dir('.').srcnode().abspath+"/"
 config_file_name=src_dir+"qserv-build.conf"
 default_config_file_name=src_dir+"qserv-build.default.conf"
 
-env = Environment()
+env = Environment(tools=['textfile'])
 
 if not os.path.exists(config_file_name):
     logging.fatal("Your configuration file is missing: %s" % config_file_name)
@@ -108,3 +108,11 @@ env.Alias('download', download_cmd_lst)
 for target in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'): 
     env.Alias(target, env.Command(target+'-dummy-target', [], actions.build_cmd_with_opts(config,target)))
 
+
+script_dict = {'@foo@': 'foo', '@bar@': 'bar', '<TEST_DIR>': 'supertoto'}
+
+env.Substfile("common.c", [Value('#include "@foo@.h"'), Value('#include "@bar@.h"'),
+                "common.h"
+                ], SUBST_DICT=script_dict)
+
+env.Alias('subst', "common.c")

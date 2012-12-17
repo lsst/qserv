@@ -34,7 +34,7 @@ def download(target, source, env):
     f.close()
 
 
-def build_cmd_with_opts(config, target='install'):
+def build_cmd_with_opts( config, target='install'):
 
     logger = logging.getLogger('scons-qserv')
 
@@ -80,4 +80,3 @@ def build_cmd_with_opts(config, target='install'):
     
     #logger.debug("Launching perl install script with next command : %s" % command_str)
     return command_str
-
