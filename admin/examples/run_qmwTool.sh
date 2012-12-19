@@ -1,8 +1,12 @@
 #!/bin/sh
 
+# You need to be in the qserv directory (top level).
 BASEPATH=`pwd`
 
-export PYTHONPATH=/u1/lsst/lib/python2.5/site-packages:$BASEPATH/admin/dist
+export PYTHONPATH=$BASEPATH/admin/dist
 
-PYTHON=/usr/bin/python # Use OS-default python, not SLAC /usr/local/bin/python
+# Use OS-default python, not SLAC /usr/local/bin/python
+PYTHON=/usr/bin/python
+
+# Run the script
 $PYTHON $BASEPATH/admin/bin/qmwTool.py $*

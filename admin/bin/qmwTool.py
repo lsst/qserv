@@ -30,6 +30,7 @@ import logging
 from optparse import OptionParser
 import os
 import socket
+import sys, traceback
 
 # Local package imports
 from lsst.qserv.meta.status import Status, getErrMsg
@@ -48,7 +49,7 @@ SYNOPSIS
 
 OPTIONS
    -a, --auth
-        Authorization file. Default: %s
+        Authorization file. Default: %(defaultAuthFile)s
 
    -h, --help
         Prints help information.
@@ -81,7 +82,7 @@ COMMANDS
 
 EXAMPLES
 Example contents of the (required) authorization file 
-(e.g., '%s'):
+(e.g., '%(defaultAuthFile)s'):
 
 [qmsConn]
 host: lsst-db3.slac.stanford.edu
@@ -94,7 +95,7 @@ db: testX
 user: qmwUser
 pass: qmwPass
 mySqlSocket: /var/lib/mysql/mysql.sock
-""" % (self._defaultAuthFile, self._defaultAuthFile)
+""" % dict(defaultAuthFile=self._defaultAuthFile)
 
         self._loggerName = "qmwLogger"
         self._loggerOutFile = "/tmp/qmwLogger.log"
@@ -195,3 +196,4 @@ if __name__ == '__main__':
         t.parseAndRun()
     except Exception, e:
         print "Error:", str(e)
+        traceback.print_exc(file=sys.stdout)

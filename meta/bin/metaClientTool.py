@@ -30,7 +30,7 @@ import getpass
 from optparse import OptionParser
 import os
 import re
-import sys
+import sys, traceback
 
 # Local package imports
 from lsst.qserv.meta.status import Status, getErrMsg
@@ -52,7 +52,7 @@ SYNOPSIS
 
 OPTIONS
    -a, --auth
-        Authorization file. Default: %s
+        Authorization file. Default: %(defaultAuthFile)s
 
    -c
         Specifies connection. Format: user@host:port.
@@ -121,14 +121,14 @@ COMMANDS
 
 EXAMPLES
 Example contents of the authorization file 
-(e.g., %s):
+(e.g., %(defaultAuthFile)s):
 
 [qmsConn]
 host: lsst-db3.slac.stanford.edu
 port: 7082
 user: qmsUser
 pass: qmsPass
-""" % (self._defaultAuthFile, self._defaultAuthFile)
+""" % dict(defaultAuthFile=self._defaultAuthFile)
 
     def parseAndRun(self):
         parser = OptionParser(usage=self._usage)
@@ -342,3 +342,4 @@ if __name__ == '__main__':
         t.parseAndRun()
     except Exception, e:
         print "Error:", str(e)
+        traceback.print_exc(file=sys.stdout)
