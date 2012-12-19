@@ -19,9 +19,10 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
-# Implementation of the qserv metadata server.
 
+"""
+This module implements the core of the qserv metadata server.
+"""
 
 import logging
 import os
@@ -57,9 +58,8 @@ class MetaImpl:
     #### installMeta
     ###########################################################################
     def installMeta(self):
-        """Initializes persistent qserv metadata structures.
-        This method should be called only once ever for a given
-        qms installation."""
+        """Initializes persistent qserv metadata structures. This method should
+           be called only once ever for a given qms installation."""
         internalTables = [
             # The DbMeta table keeps the list of databases managed through 
             # qserv. Databases not entered into that table will be ignored 
@@ -174,7 +174,7 @@ class MetaImpl:
     #### destroyMeta
     ###########################################################################
     def destroyMeta(self):
-        """This method permanently destroys qserv metadata"""
+        """This method permanently destroys qserv metadata."""
         self._mdb.selectMetaDb()
         cmd = "SHOW DATABASES LIKE '%s%%'" % self._mdb.getServerPrefix() 
         qmsDbs = self._mdb.execCommandN(cmd)
@@ -187,7 +187,7 @@ class MetaImpl:
     #### printMeta
     ###########################################################################
     def printMeta(self):
-        """This method prints all metadata into a string"""
+        """This method prints all metadata into a string."""
         self._mdb.selectMetaDb()
         s = StringIO.StringIO()
         for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox", 
@@ -352,7 +352,7 @@ class MetaImpl:
     #### retrieveDbInfo
     ###########################################################################
     def retrieveDbInfo(self, dbName):
-        """Retrieves info about a database"""
+        """Retrieves info about a database."""
         self._mdb.selectMetaDb()
         if self._mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" % dbName)[0] == 0:
             raise QmsException(Status.ERR_DB_NOT_EXISTS)
@@ -363,12 +363,7 @@ class MetaImpl:
         ps = ret[2]
         values["partitioningStrategy"] = ps
         if ps == "sphBox":
-            ret = self._mdb.execCommand1("""
-          SELECT stripes, subStripes, defaultOverlap_fuzzyness, 
-                 defaultOverlap_nearNeigh
-          FROM DbMeta 
-          JOIN PS_Db_sphBox USING(psId) 
-          WHERE dbName='%s'""" % dbName)
+            ret = self._mdb.execCommand1("""SELECT stripes, subStripes, defaultOverlap_fuzzyness, defaultOverlap_nearNeigh FROM DbMeta JOIN PS_Db_sphBox USING(psId) WHERE dbName='%s'""" % dbName)
             values["stripes"] = ret[0]
             values["subStripes"] = ret[1]
             values["defaultOverlap_fuzziness"] = ret[2]
@@ -381,7 +376,7 @@ class MetaImpl:
     #### checkDbExists
     ###########################################################################
     def checkDbExists(self, dbName):
-        """Checks if db <dbName> exists, returns 0 or 1"""
+        """Checks if db <dbName> exists, returns 0 or 1."""
         ret = self._mdb.execCommand1("SELECT COUNT(*) FROM DbMeta WHERE dbName='%s'" % dbName)
         return ret[0]
 
@@ -389,7 +384,7 @@ class MetaImpl:
     #### listDbs
     ###########################################################################
     def listDbs(self):
-        """Prints names of all databases managed by qserv into a string"""
+        """Prints names of all databases managed by qserv into a string."""
         self._mdb.selectMetaDb()
         ret = self._mdb.execCommandN("SELECT dbName FROM DbMeta")
         if not ret:
@@ -504,7 +499,7 @@ class MetaImpl:
     #### dropTable
     ###########################################################################
     def dropTable(self, dbName, tableName):
-        """Drops metadata about a table.."""
+        """Drops metadata about a table."""
         self._logger.debug("dropTable: started")
         # connect to mysql
         self._mdb.selectMetaDb()
@@ -559,7 +554,7 @@ class MetaImpl:
     #### retrieveTableInfo
     ###########################################################################
     def retrieveTableInfo(self, dbName, tableName):
-        """Retrieves metadata about a table.."""
+        """Retrieves metadata about a table."""
         self._logger.debug("retrieveTableInfo: started")
         # connect to mysql
         self._mdb.selectMetaDb()
@@ -605,7 +600,7 @@ class MetaImpl:
     #### getInternalQmsDbName
     ###########################################################################
     def getInternalQmsDbName(self):
-        """Retrieves name of the internal qms database. """
+        """Retrieves name of the internal qms database."""
         try:
             dbName = self._mdb.getDbName()
         except QmsException as qe:

@@ -19,9 +19,11 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
-# A class that defines errors (codes and their descriptions) for 
-# qserv metadata. Used by both the qms server and client.
+
+"""
+A class that defines errors (codes and their descriptions) for 
+qserv metadata. Used by both the qms server and client.
+"""
 
 
 class Status:

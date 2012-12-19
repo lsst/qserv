@@ -19,10 +19,12 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
-# server.py : This module implements Qserv Metadata Server (HTTP and 
-# XML-RPC interfacing logic using the Twisted networking library.
-# It exposes the functionality from the MetaInterface class.
+
+"""
+server.py : This module implements Qserv Metadata Server (HTTP and 
+XML-RPC interfacing logic using the Twisted networking library.
+It exposes the functionality from the MetaInterface class.
+"""
 
 
 # Standard Python imports
@@ -120,7 +122,7 @@ class HttpInterface:
                                 okname)
 
     def help(self, req):
-        """A brief help message showing available commands"""
+        """A brief help message showing available commands."""
         r = "" ## self._handyHeader()
         r += "\n<pre>available commands:\n"
         sorted =  map(lambda x: (x, getattr(self, x)), self.publishable)

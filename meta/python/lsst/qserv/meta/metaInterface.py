@@ -19,8 +19,11 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
-# Interface that qserv metadata server presents/implements.
+
+"""
+This module defines the interface that qserv metadata server presents to 
+the outside world.
+"""
 
 
 # Standard
@@ -191,7 +194,7 @@ class MetaInterface:
         return (Status.SUCCESS, dbName)
 
     def help(self):
-        """A brief help message showing available commands"""
+        """A brief help message showing available commands."""
         r = "" ## self._handyHeader()
         r += "\n<pre>Available qms commands:\n"
         sorted =  map(lambda x: (x, getattr(self, x)), self.publishable)

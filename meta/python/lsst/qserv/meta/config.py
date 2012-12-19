@@ -18,22 +18,11 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
 
-# config.py : a module for qserv configuration file parsing and defaults
-# 
-# The config module should contain all possible configuration options
-# and parameters for the qserv master's operation.  Currently, it does
-# not include configuration of the xrootd system, nor does it include
-# configuration of workers (which are configured via environment
-# variables). 
-# 
-# A sample configuration is included in this module, and should be
-# be similar to the sample configuration in examples/lsst-dev01.qserv.cnf
-# 
-# It should be the "executable" python code's (e.g., startQserv.py's)
-# responsibility to invoke loading, since it should be the one parsing
-# arguments.  
+
+"""
+config.py : a module for qserv configuration file parsing and defaults
+"""
 
 # Standard Python
 import ConfigParser
@@ -91,7 +80,6 @@ def printTo(outHandle):
 ## Error classes
 ######################################################################
 class ConfigError(Exception):
-    """An error in qserv configuration (Bad/missing values)."""
     def __init__(self, reason):
         self.reason = reason
     def __str__(self):
@@ -101,7 +89,7 @@ class ConfigError(Exception):
 ## Local
 ######################################################################
 def _initialize():
-    "Perform some static initialization upon loading"
+    """Performs some static initialization upon loading."""
     global envFilenameVar
     global envFilename
     if os.environ.has_key(envFilenameVar):

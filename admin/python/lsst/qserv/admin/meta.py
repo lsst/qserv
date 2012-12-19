@@ -19,8 +19,10 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
-# The guts of manipulating qserv metadata worker. 
+
+"""
+This module implements internals of manipulating qserv worker metadata.
+"""
 
 import ConfigParser
 import os
@@ -48,7 +50,7 @@ class Meta:
         This method should be called only once ever for a given qms
         installation on a given worker."""
         internalTables = [
-            # The DbMeta table keeps the list of databases managed through 
+            # The 'Dbs' table keeps the list of databases managed through 
             # qserv. Databases not entered into that table will be ignored 
             # by qserv.
             ['Dbs', '''(
@@ -81,8 +83,6 @@ class Meta:
             self._mdb.selectMetaDb()
             s = self._mdb.printTable("Dbs")
         except QmsException as qe:
-            # if qe.getErrNo()==Status.ERR_NO_META:
-            #     return "No metadata found."           
             raise Exception(qe.getErrMsg())
         return s
 

@@ -19,9 +19,12 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
-# The "client" module was designed to implement a client for the
-# qserv metadata server.
+
+
+"""
+The "client" module was designed to implement a client for the
+qserv metadata server.
+"""
 
 import os
 import re

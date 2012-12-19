@@ -20,6 +20,13 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
+"""
+This module is a wrapper around MySQLdb. It contains a set of low level basic
+database utilities such as connecting to database. It caches connections, and
+handles database errors. It is currently used only by the qserv metadata server,
+but is could be easily turned into a generic module and used outside of metadata
+code.
+"""
 
 from __future__ import with_statement
 import MySQLdb as sql
@@ -33,14 +40,9 @@ import sys
 
 from lsst.qserv.meta.status import Status, QmsException
 
-
 class Db:
-    """
-    Db class is a wrapper around MySQLdb for qserv metadata server. 
-    It contains a set of low level basic database utilities such 
-    as connecting to database. It caches connections, and handles 
-    database errors.
-    """
+    """This class implements the wrapper around MySQLdb."""
+
     def __init__(self, loggerName, host, port, user, passwd, socket, dbName):
         self._logger = logging.getLogger(loggerName)
         self._conn = None
@@ -63,7 +65,8 @@ class Db:
         return self._isConnectedToDb
 
     def connectToMySQLServer(self):
-        """It connects to MySQL server."""
+        """Connects to MySQL Server. If socket is available, it will try to use
+           it first. If fails, it will then try to use host:port."""
         if self._checkIsConnected():
             return
 
