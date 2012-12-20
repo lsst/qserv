@@ -7,14 +7,13 @@ import re
 import errno
 import logging
 import logger
-from SCons.Node import FS
+import SCons.Node.FS
 from SCons.Script import Mkdir,Chmod,Copy,WhereIs
 import ConfigParser
 
 import actions 
 import commons 
 import utils
-
 
 logger = commons.init_default_logger('scons-qserv')
 
@@ -44,20 +43,24 @@ def init_action(target, source, env):
 
     check_success=True
 
-    for param in ('base_dir','log_dir','mysqld_data_dir'):
-        dir = config[param]
+    for (section,option) in (('qserv','base_dir'),('qserv','log_dir'),('mysqld','data_dir')):
+        dir = config[section][option]
         if not utils.exists_and_is_writable(dir):
-       	    logging.fatal("%s is not writable check/update permissions or update config['%s']" % (dir, param))
+       	    logging.fatal("%s is not writable check/update permissions or update config[%s]['%s']" % 
+                          (dir,section,option)
+                         )
             check_success=False
 
     for suffix in ('/build', '/var', '/var/lib'):
-        dir = config['base_dir']+suffix
+        dir = config['qserv']['base_dir']+suffix
         if not utils.exists_and_is_writable(dir):
        	    logging.fatal("%s is not writable check/update permissions" % dir)
             check_success=False
 
-    if not commons.is_readable(config['lsst_data_dir']):
-    	logging.fatal("LSST data directory (lsst_data_dir) is not readable : %s" % config['lsst_data_dir'])
+    if not commons.is_readable(config['lsst']['data_dir']):
+    	logging.fatal("LSST data directory (config['lsst']['data_dir']) is not readable : %s" % 
+                       config['lsst']['data_dir']
+                     )
         check_success=False    
 
     if check_success :
@@ -87,7 +90,7 @@ source_urls = []
 target_files = []
 
 download_cmd_lst = []
-output_dir = config['base_dir'] + os.sep +"build" + os.sep
+output_dir = config['qserv']['base_dir'] + os.sep +"build" + os.sep
 # Add a command for each file to download
 for app in config['dependencies']:
     if re.match(".*_url",app) and not re.match("base_url",app):
@@ -108,11 +111,51 @@ env.Alias('download', download_cmd_lst)
 for target in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'): 
     env.Alias(target, env.Command(target+'-dummy-target', [], actions.build_cmd_with_opts(config,target)))
 
+#########################        
+#
+# Using templates files 
+#
+######################### 
 
-script_dict = {'@foo@': 'foo', '@bar@': 'bar', '<TEST_DIR>': 'supertoto'}
+def RecursiveGlob(dir_path,pattern):
+        files = Glob(dir_path+os.sep+pattern)
+        if files:
+            files += RecursiveGlob(dir_path+os.sep+"*",pattern)
+        return files
 
-env.Substfile("common.c", [Value('#include "@foo@.h"'), Value('#include "@bar@.h"'),
-                "common.h"
-                ], SUBST_DICT=script_dict)
+template_dir_path="admin/custom"
+base_dir = config['qserv']['base_dir']+"/test"
 
-env.Alias('subst', "common.c")
+script_dict = {'<XROOTD_MANAGER_HOST>': config['qserv']['master'], '@bar@': 'bar', '<TEST_DIR>': 'supertoto'}
+
+SUBST_DICT=script_dict
+
+target_lst = []
+
+logger.info("Templates ")
+for node in RecursiveGlob(template_dir_path,"/*"):
+    # strip 'data/' out to have the filepath relative to data dir
+    template_node_name=str(node)
+    logger.info("%s" % template_node_name)
+    template_dir_path = os.path.normpath(template_dir_path)
+    index = (template_node_name.find(template_dir_path) +
+             len(template_dir_path+os.sep) 
+            )
+    node_name_path = template_node_name[index:]
+    source = template_node_name 
+    target = os.path.join(base_dir, node_name_path)
+
+    logger.info("Target : %s " % target)
+    target_lst.append(target)
+ 
+    env.Alias("toto", target)
+
+    if isinstance(node, SCons.Node.FS.File) :
+        env.Substfile(target, source, SUBST_DICT=script_dict)
+
+env.Alias("tpl", target_lst)
+
+
+# template_files = [f for f in template_nodes if isinstance(f, SCons.Node.FS.File)]
+
+

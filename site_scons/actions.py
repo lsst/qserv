@@ -38,30 +38,32 @@ def build_cmd_with_opts( config, target='install'):
 
     logger = logging.getLogger('scons-qserv')
 
-    install_opts="--install-dir=\"%s\"" % config['base_dir']
-    install_opts="%s --log-dir=\"%s\"" % (install_opts, config['log_dir'])
-    install_opts="%s --mysql-data-dir=\"%s\"" % (install_opts, config['mysqld_data_dir'])
-    install_opts="%s --mysql-port=%s" % (install_opts, config['mysqld_port'])
-    install_opts="%s --mysql-proxy-port=%s" % (install_opts,config['mysqld_proxy_port'])
-    install_opts="%s --mysql-pass=\"%s\"" % (install_opts,config['mysqld_pass'])
-    install_opts="%s --cmsd-manager-port=%s" % (install_opts,config['cmsd_manager_port'])
-    install_opts="%s --xrootd-port=%s" % (install_opts,config['xrootd_port'])
+    install_opts="--install-dir=\"%s\"" % config['qserv']['base_dir']
+    install_opts="%s --log-dir=\"%s\"" % (install_opts, config['qserv']['log_dir'])
+    install_opts="%s --mysql-data-dir=\"%s\"" % (install_opts, config['mysqld']['data_dir'])
+    install_opts="%s --mysql-port=%s" % (install_opts, config['mysqld']['port'])
+    install_opts="%s --mysql-proxy-port=%s" % (install_opts,config['mysql-proxy']['port'])
+    install_opts="%s --mysql-pass=\"%s\"" % (install_opts,config['mysqld']['pass'])
+    install_opts="%s --cmsd-manager-port=%s" % (install_opts,config['xrootd']['cmsd_manager_port'])
+    install_opts="%s --xrootd-port=%s" % (install_opts,config['xrootd']['xrootd_port'])
     
     if config.has_key('geometry_src_dir') : 
-        if commons.is_readable(config['geometry_src_dir']) :
-            install_opts="%s --geometry-dir=\"%s\"" % (install_opts,config['geometry_src_dir'])
+        if commons.is_readable(configi['qserv']['geometry_src_dir']) :
+            install_opts=("%s --geometry-dir=\"%s\"" %
+                            (install_opts,config['qserv']['geometry_src_dir'])
+                    )
         else :
-            logger.fatal("Error while accessing geometry src dir : '%s' for reading." % config['geometry_src_dir'])
+            logger.fatal("Error while accessing geometry src dir : '%s' for reading." % config['qserv']['geometry_src_dir'])
             exit(1)
     
-    if config['node_type']=='mono' :
+    if config['qserv']['node_type']=='mono' :
         install_opts="%s --mono-node" % install_opts
-    elif config['node_type']=='master' :
+    elif config['qserv']['node_type']=='master' :
         None
-    elif config['node_type']=='worker' :
+    elif config['qserv']['node_type']=='worker' :
         None
 
-    log_file_prefix = config['log_dir']
+    log_file_prefix = config['qserv']['log_dir']
     if target=='qserv-only' :
         install_opts="%s --qserv" % install_opts
         log_file_prefix += "/QSERV-ONLY"

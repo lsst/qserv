@@ -18,24 +18,39 @@ def read_config(config_file, default_config_file):
         logger.debug("'%s' = '%s'" % (option, parser.get(section,option)))
 
     config = dict()
-    config['base_dir']          = parser.get("qserv","base_dir")
-    config['bin_dir']           = "{base_dir}{sep}bin".format(base_dir=config['base_dir'], sep=os.sep)
-    config['log_dir']           = parser.get("qserv","log_dir")
-    if parser.has_option("qserv","geometry_src_dir"):
-        config['geometry_src_dir']  = parser.get("qserv","geometry_src_dir")
-    config['node_type']         = parser.get("qserv","node_type")
-    config['mysqld_port']       = parser.get("mysqld","port")
+    section='qserv'
+    config[section] = dict()
+    for option in parser.options(section):
+        config[section][option] = parser.get(section,option)
+    config['qserv']['bin_dir']    = os.path.join(config['qserv']['base_dir'], "bin")
+    
+    section='mysqld'
+    config[section] = dict()
+    options = [option for option in parser.options(section) if option != 'pass']
+    for option in options:
+        config[section][option] = parser.get(section,option)
     # TODO : manage special characters (see config file comments for additional information)
-    config['mysqld_pass']       = parser.get("mysqld","pass",raw=True)
-    config['mysqld_data_dir']   = parser.get("mysqld","data_dir")
-    config['mysqld_proxy_port'] = parser.get("mysql-proxy","port") 
-    config['lsst_data_dir']     = parser.get("lsst","data_dir")
-    config['cmsd_manager_port'] = parser.get("xrootd","cmsd_manager_port")
-    config['xrootd_port']       = parser.get("xrootd","xrootd_port")
+    config['mysqld']['pass']       = parser.get("mysqld","pass",raw=True)
 
-    config['dependencies']=dict()
-    for option in parser.options("dependencies"):
-        config['dependencies'][option] = parser.get("dependencies",option)
+    section='mysql-proxy'
+    config[section] = dict()
+    for option in parser.options(section):
+        config[section][option] = parser.get(section,option)
+    
+    section='lsst'
+    config[section] = dict()
+    for option in parser.options(section):
+        config[section][option] = parser.get(section,option)
+    
+    section='xrootd'
+    config[section] = dict()
+    for option in parser.options(section):
+        config[section][option] = parser.get(section,option)
+    
+    section='dependencies'
+    config[section] = dict()
+    for option in parser.options(section):
+        config[section][option] = parser.get(section,option)
 
     return config 
 
