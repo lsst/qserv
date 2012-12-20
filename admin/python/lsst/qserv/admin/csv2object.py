@@ -31,20 +31,21 @@ def ExtractFields(filename):
         out.write(row[0] + ",  " + row[-2] + ",  " + row[-1] + "\n")
   return outfile
 
-
-args = sys.argv
-nbworkers = int(args[1])
-files = ObjectFiles(args[2:])
-
-try:
-  import multiprocessing
-
-  poolbuilder = multiprocessing.Pool
-  pool = poolbuilder(nbworkers)
-  for filename in pool.map(ExtractFields, files):
-    print open(filename).read()
-    # os.remove(filename)
-
-except ImportError:
-  for objectfile in files:
-    ExtractFields(objectfile)
+#  Example: CSV2Object(4, ["/data/pt11_partition/"], "/tmp/output")
+def CSV2Object(nbworkers, filenames, outputfilename):
+  files = ObjectFiles(filenames)
+  
+  try:
+    import multiprocessing
+  
+    poolbuilder = multiprocessing.Pool
+    pool = poolbuilder(nbworkers)
+    with open(outputfilename, 'w') as output:
+      for filename in pool.map(ExtractFields, files):
+        output.write(open(filename).read())
+        output.write('\n')
+        os.remove(filename)
+  
+  except ImportError:
+    for objectfile in files:
+      ExtractFields(objectfile)

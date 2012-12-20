@@ -7,13 +7,15 @@ import sys
 
 import commons
 
+import csv2object
+
 #current_file_name=os.path.abspath(inspect.getfile(inspect.currentframe()))
 #current_dir = os.path.dirname(current_file_name)
 #src_dir=os.path.abspath(os.path.join(current_dir,os.path.pardir))
 
 class QservDataManager:
 
-    def __init__(self, config_dir,logger_name='qserv-data-manager'):
+    def __init__(self, config_dir,logger_name='qserv-data-manager', temp='/tmp/output'):
 
         config_file_name=config_dir+os.sep+"qserv-build.conf"
         default_config_file_name=config_dir+os.sep+"qserv-build.default.conf"
@@ -51,6 +53,17 @@ class QservDataManager:
             '-e', '\'Drop database if exists LSST;\'' 
         ]
 
+        self.outfilename = temp
+
+        # Delete and load data from file
+        self.load_data = [
+            'mysql', 
+            '-S', '/opt/qserv-dev/var/lib/mysql/mysql.sock'
+            '-u', 'root' 
+            '-p', config['mysqld_pass'],
+            '-e', '\' use qservMeta;\n delete from LSST__Object;\n LOAD DATA INFILE ' + self.outfilename + 'IGNORE INTO TABLE LSST__Object FIELDS TERMINATED BY ','; \'' 
+        ]
+
         self.load_data_cmd = [
             qserv_admin_cmd,
             '--load', 
@@ -81,9 +94,17 @@ class QservDataManager:
         # bash> rm -rf /opt/qserv/xrootd-run//q/LSST/
 
 
+        config['mysqld_pass']
+        
+    def fillTableMeta(self, nbworkers):
+        # TODO: use parameters or comand line options ?
+        data_dirs = [config['lsst_data_dir'] + os.sep + 'pt11_partition']
+        csv2object.CSV2Object(nbworkers, data_dirs, self.outfilename)
+        
+
 def main():
     op = optparse.OptionParser()
-    mode_option_values = ['partition','delete-db','load-db','delete-then-load-db']
+    mode_option_values = ['partition','delete-db','load-db','delete-then-load-db','fill-table-meta']
     op.add_option("-m", "--mode", dest="mode",
                   default="delete-then-load-db",
                   help= "LSST data management mode:" +
@@ -92,6 +113,10 @@ def main():
     op.add_option("-c", "--config-dir", dest="config_dir",
                   help= "Path to directory containing qserv-build.conf and"
                         "qserv-build.default.conf")
+    op.add_option("-n", "--number-of-threads", dest="number_of_threads",
+                  help= "Number of threads used when loading data into qservMeta")
+    op.add_option("-t", "--temporary-file", dest="temporary_file",
+                  help= "Number of threads used when loading data into qservMeta")
     (options, args) = op.parse_args()
    
     script_name=sys.argv[0]
@@ -117,7 +142,10 @@ def main():
         print "Try `%s --help` for more information." % script_name
         exit(1)
 
-    qservDataManager = QservDataManager(options.config_dir)
+    if options.temporary_file is None:
+        qservDataManager = QservDataManager(options.config_dir)
+    else:
+        qservDataManager = QservDataManager(options.config_dir, options.temporary_file)
 
     if options.mode == 'partition':
         qservDataManager.partitionPt11Data()
@@ -128,6 +156,9 @@ def main():
     elif options.mode == 'delete-then-load-db':
         qservDataManager.deleteAllData()
         qservDataManager.loadPt11Data()
+    elif options.mode == 'fill-table-meta':
+        nbworkers = int(options.number_of_threads)        
+        qservDataManager.fillTableMeta(nbworkers)
     
 if __name__ == '__main__':
     main()

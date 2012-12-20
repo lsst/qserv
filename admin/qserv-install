@@ -23,7 +23,7 @@ GetOptions( \%opts,
 	"init-mysql-db",
 	"mysql-port=s",
 	"mysql-data-dir|m=s",
-	"mysql-pass=s",
+	"mysql-pass=s", # TODO: avoid passing passwords in command line parameters !
 	"mysql-proxy",
 	"mysql-proxy-port=s",
 	"python=s",
@@ -114,14 +114,14 @@ init_mysql_db() if( $build_opt eq "all" or $build_opt eq "mysql" or $build_opt e
 #setup and install python extras.
 check_and_setup_extras() if( $build_opt eq "all" or $build_opt eq "extras" );
 
+#setup the qserv code
+check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
+
 #install lua
 check_and_install_lua() if( $build_opt eq "all" or $build_opt eq "lua" );
 
 #install mysql proxy
 check_and_install_myproxy() if( $build_opt eq "all" or $build_opt eq "mysql-proxy" );
-
-#setup the qserv code
-check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
 
 #create startup scripts
 create_statups();
@@ -407,6 +407,10 @@ sub init_mysql_db {
 		run_command("perl -pi -e \"s,<MYSQL_PASSWORD>,$db_pass,\" $install_dir/etc/mysql-password.sql", $quiet);
 		run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root < $install_dir/etc/mysql-password.sql");
 		run_command("rm $install_dir/etc/mysql-password.sql");
+
+                # qservMeta database creation
+                run_command("$install_dir/bin/mysql -u root -p'$db_pass' -S $install_dir/var/lib/mysql/mysql.sock -u root <  $templates_dir/qservmeta.sql");
+                
 		# shutdown mysql
 		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock shutdown -u root -p'$db_pass'", $quiet);
 	}
