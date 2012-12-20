@@ -1,5 +1,5 @@
-Quick start guide :
--------------------
+Qserv Quick start guide :
+-------------------------
 
 Pre-requisites :
 ----------------
