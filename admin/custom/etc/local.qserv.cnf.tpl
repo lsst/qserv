@@ -22,7 +22,7 @@ xrootd_user = qsmaster
 # dropMem=
 passwd = 
 db = qservResult
-unix_socket = <INSTALL_DIR>/var/lib/mysql/mysql.sock
+unix_socket = <QSERV_BASE_DIR>/var/lib/mysql/mysql.sock
 host = 
 user = qsmaster
 port = 0
@@ -33,7 +33,7 @@ port = 0
 # emptyChunkListFile=
 substripes = 60
 stripes = 18
-emptyChunkListFile=  <INSTALL_DIR>/etc/emptyChunks.txt
+emptyChunkListFile=  <QSERV_BASE_DIR>/etc/emptyChunks.txt
 
 [table]
 # chunked=Source,ForcedSource

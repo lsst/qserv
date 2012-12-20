@@ -51,8 +51,8 @@ def init_action(target, source, env):
                          )
             check_success=False
 
-    for suffix in ('/build', '/var', '/var/lib'):
-        dir = config['qserv']['base_dir']+suffix
+    for suffix in ('etc', 'build', 'var', 'var/lib', 'var/run', 'var/run/mysqld'):
+        dir = os.path.join(config['qserv']['base_dir'],suffix)
         if not utils.exists_and_is_writable(dir):
        	    logging.fatal("%s is not writable check/update permissions" % dir)
             check_success=False
@@ -126,7 +126,18 @@ def RecursiveGlob(dir_path,pattern):
 template_dir_path="admin/custom"
 base_dir = config['qserv']['base_dir']+"/test"
 
-script_dict = {'<XROOTD_MANAGER_HOST>': config['qserv']['master'], '@bar@': 'bar', '<TEST_DIR>': 'supertoto'}
+script_dict = {
+                '<QSERV_BASE_DIR>': config['qserv']['base_dir'], 
+                '<XROOTD_MANAGER_HOST>': config['qserv']['master'], 
+                '<MYSQLD_DATA_DIR>': config['mysqld']['data_dir'], 
+                '<MYSQLD_PORT>': config['mysqld']['port'], 
+              }
+
+
+if config['qserv']['node_type']=='mono':
+    script_dict['<COMMENT_MONO_NODE>']='#MONO-NODE# '
+else:
+    script_dict['<COMMENT_MONO_NODE>']='' 
 
 SUBST_DICT=script_dict
 
@@ -141,6 +152,7 @@ for node in RecursiveGlob(template_dir_path,"/*"):
     index = (template_node_name.find(template_dir_path) +
              len(template_dir_path+os.sep) 
             )
+
     node_name_path = template_node_name[index:]
     source = template_node_name 
     target = os.path.join(base_dir, node_name_path)
@@ -148,8 +160,6 @@ for node in RecursiveGlob(template_dir_path,"/*"):
     logger.info("Target : %s " % target)
     target_lst.append(target)
  
-    env.Alias("toto", target)
-
     if isinstance(node, SCons.Node.FS.File) :
         env.Substfile(target, source, SUBST_DICT=script_dict)
 

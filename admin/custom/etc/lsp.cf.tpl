@@ -5,21 +5,26 @@
 # Example: tuson121 is the hostname of our manager node within our 
 # allocation at LLNL.
 
+###################################################################################
+# WARNING : for mono-node installation, comment manager configuration, and
+# don't start cmsd 
+###################################################################################
+
 ############
 # if manager
 ############
-if <XROOTD_MANAGER_HOST>*
+<COMMENT_MONO_NODE>if <XROOTD_MANAGER_HOST>*
 # Use manager mode
-all.role manager
+<COMMENT_MONO_NODE>all.role manager
 
 # Use standard filesystem plugin
 # Newer xrootd uses embedded plugin by default, uncomment for older xrootd
-# xrootd.fslib libXrdOfs.so
+<COMMENT_MONO_NODE>xrootd.fslib libXrdOfs.so
 
 ##########################
 # else: non-manager nodes
 ##########################
-else
+<COMMENT_MONO_NODE>else
 
 # Use server mode
 all.role server
@@ -39,7 +44,7 @@ cms.space linger 0 recalc 15 min 10m 11m
 # Use asyncronous filesystem API when interfacing with filesystem plugin 
 # (qserv-worker plugin is tested using this configuration)
 xrootd.async force
-fi
+<COMMENT_MONO_NODE>fi
 
 ########################################
 # Shared directives (manager and server)
@@ -52,7 +57,7 @@ all.pidpath <XROOTD_PID_DIR>
 all.adminpath <XROOTD_ADMIN_DIR>
 
 # host:port of manager instance (2131 is default)
-all.manager <XROOTD_MANAGER_HOST>:<CMSD_MANAGER_PORT>
+<COMMENT_MONO_NODE>all.manager <XROOTD_MANAGER_HOST>:<CMSD_MANAGER_PORT>
 
 # Do not change. This specifies valid virtual paths that can be accessed.  
 # "nolock" directive prevents write-locking and is important for qserv
