@@ -42,7 +42,7 @@ def build_cmd_with_opts( config, target='install'):
     install_opts="%s --log-dir=\"%s\"" % (install_opts, config['qserv']['log_dir'])
     install_opts="%s --mysql-data-dir=\"%s\"" % (install_opts, config['mysqld']['data_dir'])
     install_opts="%s --mysql-port=%s" % (install_opts, config['mysqld']['port'])
-    install_opts="%s --mysql-proxy-port=%s" % (install_opts,config['mysql-proxy']['port'])
+    install_opts="%s --mysql-proxy-port=%s" % (install_opts,config['mysql_proxy']['port'])
     install_opts="%s --mysql-pass=\"%s\"" % (install_opts,config['mysqld']['pass'])
     install_opts="%s --cmsd-manager-port=%s" % (install_opts,config['xrootd']['cmsd_manager_port'])
     install_opts="%s --xrootd-port=%s" % (install_opts,config['xrootd']['xrootd_port'])

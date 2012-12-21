@@ -117,53 +117,79 @@ for target in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'):
 #
 ######################### 
 
-def RecursiveGlob(dir_path,pattern):
+def recursive_glob(dir_path,pattern):
         files = Glob(dir_path+os.sep+pattern)
         if files:
-            files += RecursiveGlob(dir_path+os.sep+"*",pattern)
+            files += recursive_glob(dir_path+os.sep+"*",pattern)
         return files
 
-template_dir_path="admin/custom"
-base_dir = config['qserv']['base_dir']+"/test"
+def symlink(target, source, env):
+    os.symlink(os.path.abspath(str(source[0])), os.path.abspath(str(target[0])))
 
-script_dict = {
+def get_template_targets():
+
+    template_dir_path="admin/custom"
+    target_lst = []
+
+    script_dict = {
                 '<QSERV_BASE_DIR>': config['qserv']['base_dir'], 
-                '<XROOTD_MANAGER_HOST>': config['qserv']['master'], 
+                '<QSERV_LOG_DIR>': config['qserv']['log_dir'], 
                 '<MYSQLD_DATA_DIR>': config['mysqld']['data_dir'], 
                 '<MYSQLD_PORT>': config['mysqld']['port'], 
-              }
+                # used for mysql-proxy in mono-node
+                # '<MYSQLD_HOST>': config['qserv']['master'], 
+                '<MYSQLD_HOST>': '127.0.0.1', 
+                '<MYSQLD_PASS>': config['mysqld']['pass'], 
+                '<MYSQL_PROXY_PORT>': config['mysql_proxy']['port'], 
+                '<XROOTD_MANAGER_HOST>': config['qserv']['master'], 
+                '<XROOTD_PORT>': config['xrootd']['xrootd_port'], 
+                '<XROOTD_ADMIN_DIR>': os.path.join(config['qserv']['base_dir'],'tmp'), 
+                '<XROOTD_PID_DIR>': os.path.join(config['qserv']['base_dir'],'var/run'), 
+                '<CMSD_MANAGER_PORT>': config['xrootd']['cmsd_manager_port'] 
+    }
+    if config['qserv']['node_type']=='mono':
+        script_dict['<COMMENT_MONO_NODE>']='#MONO-NODE# '
+    else:
+        script_dict['<COMMENT_MONO_NODE>']='' 
 
-
-if config['qserv']['node_type']=='mono':
-    script_dict['<COMMENT_MONO_NODE>']='#MONO-NODE# '
-else:
-    script_dict['<COMMENT_MONO_NODE>']='' 
-
-SUBST_DICT=script_dict
-
-target_lst = []
-
-logger.info("Templates ")
-for node in RecursiveGlob(template_dir_path,"/*"):
-    # strip 'data/' out to have the filepath relative to data dir
-    template_node_name=str(node)
-    logger.info("%s" % template_node_name)
-    template_dir_path = os.path.normpath(template_dir_path)
-    index = (template_node_name.find(template_dir_path) +
+    logger.info("Applying configuration information via templates files ")
+    for node in recursive_glob(template_dir_path,"/*"):
+        # strip template_dir_path out to have the filepath relative to templates dir
+        template_node_name=str(node)
+        logger.debug("Source : %s" % template_node_name)
+        template_dir_path = os.path.normpath(template_dir_path)
+        index = (template_node_name.find(template_dir_path) +
              len(template_dir_path+os.sep) 
-            )
+        )
 
-    node_name_path = template_node_name[index:]
-    source = template_node_name 
-    target = os.path.join(base_dir, node_name_path)
+        node_name_path = template_node_name[index:]
+        source = template_node_name 
+        target = os.path.join(config['qserv']['base_dir'], node_name_path)
 
-    logger.info("Target : %s " % target)
-    target_lst.append(target)
+        logger.debug("Target : %s " % target)
+        target_lst.append(target)
  
-    if isinstance(node, SCons.Node.FS.File) :
-        env.Substfile(target, source, SUBST_DICT=script_dict)
+        if isinstance(node, SCons.Node.FS.File) :
+            env.Substfile(target, source, SUBST_DICT=script_dict)
 
-env.Alias("tpl", target_lst)
+        # qserv-admin has no extension, Substfile can't manage it easily
+        # TODO : qserv-admin could be modified in order to be removed to
+        # template files, so that next test could be removed
+        f="qserv-admin.pl"
+        logger.debug("%s %i " % (target, target.rfind(f)))
+        if target.rfind(f) == len(target) - len(f) :
+            symlink_name = target[:-3] 
+            logger.debug("Creating symlink from %s to %s " % (symlink_name,target))
+            env.Command(symlink_name, target, [
+                                              Chmod("$SOURCE", 0744),
+                                              symlink
+                                              ]
+            )
+            target_lst.append(symlink_name)
+
+    return target_lst
+
+env.Alias("tpl", get_template_targets())
 
 
 # template_files = [f for f in template_nodes if isinstance(f, SCons.Node.FS.File)]
