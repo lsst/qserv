@@ -15,8 +15,15 @@ import actions
 import commons 
 import utils
 
-logger = commons.init_default_logger('scons-qserv')
+logger = commons.init_default_logger(log_file_prefix="scons-qserv", level=logging.DEBUG)
 
+env = Environment(tools=['textfile'])
+
+#########################
+#
+# Reading config file
+#
+#########################
 
 # this file must be placed in main scons directory
 src_dir=Dir('.').srcnode().abspath+"/"
@@ -37,49 +44,30 @@ except ConfigParser.NoOptionError, exc:
 
 config['src_dir'] = src_dir
 
-def init_action(target, source, env):
+#####################################
+#
+# Defining main directory structure
+#
+#####################################
 
-    logger = logging.getLogger('scons-qserv')
+env['config']=config
 
-    check_success=True
+init_cmd = env.Command('init-dummy-target', Value(config), actions.check_root_dirs)
+env.Alias('init', init_cmd)
 
-    for (section,option) in (('qserv','base_dir'),('qserv','log_dir'),('mysqld','data_dir')):
-        dir = config[section][option]
-        if not utils.exists_and_is_writable(dir):
-       	    logging.fatal("%s is not writable check/update permissions or update config[%s]['%s']" % 
-                          (dir,section,option)
-                         )
-            check_success=False
 
-    for suffix in ('etc', 'build', 'var', 'var/lib', 'var/run', 'var/run/mysqld'):
-        dir = os.path.join(config['qserv']['base_dir'],suffix)
-        if not utils.exists_and_is_writable(dir):
-       	    logging.fatal("%s is not writable check/update permissions" % dir)
-            check_success=False
-
-    if not commons.is_readable(config['lsst']['data_dir']):
-    	logging.fatal("LSST data directory (config['lsst']['data_dir']) is not readable : %s" % 
-                       config['lsst']['data_dir']
-                     )
-        check_success=False    
-
-    if check_success :
-        logger.info("Qserv directory structure creation succeeded")
-    else:
-        sys.exit(1)
+#########################
+#
+# Defining dependencies 
+#
+#########################
 
 env.Requires(env.Alias('download'), env.Alias('init')) 
 env.Requires(env.Alias('install'), env.Alias('download'))
+env.Requires(env.Alias('install'), env.Alias('templates'))
 
 env.Default(env.Alias('install'))
         
-######################        
-#
-# Defining Init Alias
-#
-######################        
-init_cmd = env.Command('init-dummy-target', [], init_action)
-env.Alias('init', init_cmd)
 
 ###########################        
 #
@@ -189,9 +177,23 @@ def get_template_targets():
 
     return target_lst
 
-env.Alias("tpl", get_template_targets())
+env.Alias("templates", get_template_targets())
 
 
 # template_files = [f for f in template_nodes if isinstance(f, SCons.Node.FS.File)]
 
+
+# List all aliases
+
+try:
+    from SCons.Node.Alias import default_ans
+except ImportError:
+    pass
+else:
+    aliases = default_ans.keys()
+    aliases.sort()
+    env.Help('\n')
+    env.Help('Recognized targets:\n')
+    for alias in aliases:
+        env.Help('    %s\n' % alias)
 

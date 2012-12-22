@@ -1,10 +1,14 @@
+import os
 import logging
 from datetime import datetime
 import urllib2
 
+import utils
+import commons 
+
 def download(target, source, env):
     
-    logger = logging.getLogger('scons-qserv')
+    logger = logging.getLogger()
 
     logger.debug("Target %s :" % target[0])
     logger.debug("Source %s :" % source[0])
@@ -82,3 +86,38 @@ def build_cmd_with_opts( config, target='install'):
     
     #logger.debug("Launching perl install script with next command : %s" % command_str)
     return command_str
+
+def check_root_dirs(target, source, env):
+
+    logger = logging.getLogger()
+
+    check_success=True
+
+    #logger.debug("TOTOTO :"+env['config'])
+
+    config=env['config']
+
+    for (section,option) in (('qserv','base_dir'),('qserv','log_dir'),('mysqld','data_dir')):
+        dir = config[section][option]
+        if not utils.exists_and_is_writable(dir):
+       	    logging.fatal("%s is not writable check/update permissions or update config[%s]['%s']" % 
+                          (dir,section,option)
+                         )
+            check_success=False
+
+    for suffix in ('etc', 'build', 'var', 'var/lib', 'var/run', 'var/run/mysqld'):
+        dir = os.path.join(config['qserv']['base_dir'],suffix)
+        if not utils.exists_and_is_writable(dir):
+       	    logging.fatal("%s is not writable check/update permissions" % dir)
+            check_success=False
+
+    if not commons.is_readable(config['lsst']['data_dir']):
+    	logging.fatal("LSST data directory (config['lsst']['data_dir']) is not readable : %s" % 
+                       config['lsst']['data_dir']
+                     )
+        check_success=False    
+
+    if check_success :
+        logger.info("Qserv directory structure creation succeeded")
+    else:
+        sys.exit(1)

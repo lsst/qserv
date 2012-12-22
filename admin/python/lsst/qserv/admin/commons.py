@@ -5,7 +5,7 @@ import subprocess
 import ConfigParser
 
 def read_config(config_file, default_config_file):
-    logger = logging.getLogger('scons-qserv')
+    logger = logging.getLogger()
     logger.debug("Reading build config file : %s" % config_file)
     parser = ConfigParser.SafeConfigParser()
     parser.read(default_config_file)
@@ -92,14 +92,14 @@ def is_writable(dir):
         return False
 
 
-def init_default_logger(logger_name, level=logging.DEBUG, log_path=".") :
+def init_default_logger(log_file_prefix, logger_name = '', level=logging.DEBUG, log_path=".") :
 
     logger = logging.getLogger(logger_name)
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     # this level can be reduce for each handler
     logger.setLevel(level)
  
-    file_handler = logging.FileHandler(log_path+os.sep+logger_name+'.log')
+    file_handler = logging.FileHandler(os.path.join(log_path+os.sep,log_file_prefix+'.log'))
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler) 
  

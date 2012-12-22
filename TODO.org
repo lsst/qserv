@@ -1,3 +1,6 @@
+* TODO supprimer les parametres inutile de qserv-install suite à la création
+des templates dans scons 
+
 * TODO voir pour récupérer le chemin du fichier courant SConstruct (Dir(#) ??)
 * TODO scons : recopier le fichier de paramètre par défaut dans SConstruct
   
