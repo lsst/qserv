@@ -44,17 +44,16 @@ except ConfigParser.NoOptionError, exc:
 
 config['src_dir'] = src_dir
 
+env['config']=config
+
 #####################################
 #
 # Defining main directory structure
 #
 #####################################
 
-env['config']=config
-
-init_cmd = env.Command('init-dummy-target', Value(config), actions.check_root_dirs)
+init_cmd = env.Command('init-dummy-target', [], actions.check_root_dirs)
 env.Alias('init', init_cmd)
-
 
 #########################
 #
@@ -68,12 +67,12 @@ env.Requires(env.Alias('install'), env.Alias('templates'))
 
 env.Default(env.Alias('install'))
         
-
 ###########################        
 #
 # Defining Download Alias
 #
 ###########################        
+
 source_urls = []
 target_files = []
 
@@ -105,15 +104,6 @@ for target in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'):
 #
 ######################### 
 
-def recursive_glob(dir_path,pattern):
-        files = Glob(dir_path+os.sep+pattern)
-        if files:
-            files += recursive_glob(dir_path+os.sep+"*",pattern)
-        return files
-
-def symlink(target, source, env):
-    os.symlink(os.path.abspath(str(source[0])), os.path.abspath(str(target[0])))
-
 def get_template_targets():
 
     template_dir_path="admin/custom"
@@ -141,7 +131,7 @@ def get_template_targets():
         script_dict['<COMMENT_MONO_NODE>']='' 
 
     logger.info("Applying configuration information via templates files ")
-    for node in recursive_glob(template_dir_path,"/*"):
+    for node in utils.recursive_glob(template_dir_path,"*",env):
         # strip template_dir_path out to have the filepath relative to templates dir
         template_node_name=str(node)
         logger.debug("Source : %s" % template_node_name)
@@ -170,7 +160,7 @@ def get_template_targets():
             logger.debug("Creating symlink from %s to %s " % (symlink_name,target))
             env.Command(symlink_name, target, [
                                               Chmod("$SOURCE", 0744),
-                                              symlink
+                                              actions.symlink
                                               ]
             )
             target_lst.append(symlink_name)
@@ -178,10 +168,6 @@ def get_template_targets():
     return target_lst
 
 env.Alias("templates", get_template_targets())
-
-
-# template_files = [f for f in template_nodes if isinstance(f, SCons.Node.FS.File)]
-
 
 # List all aliases
 

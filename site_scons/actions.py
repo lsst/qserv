@@ -121,3 +121,6 @@ def check_root_dirs(target, source, env):
         logger.info("Qserv directory structure creation succeeded")
     else:
         sys.exit(1)
+
+def symlink(target, source, env):
+    os.symlink(os.path.abspath(str(source[0])), os.path.abspath(str(target[0])))

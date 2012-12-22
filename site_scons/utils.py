@@ -3,7 +3,7 @@ import logging
 import time
 import commons 
 
-from SCons.Script import Execute, Mkdir   # for Execute and Mkdir
+from SCons.Script import Execute, Mkdir, Chmod, Copy, WhereIs   # for Execute and Mkdir
 
 def exists_and_is_writable(dir) :
     """
@@ -21,3 +21,8 @@ def exists_and_is_writable(dir) :
     
     return True	 
 
+def recursive_glob(dir_path,pattern,env):
+    files = env.Glob(os.path.join(dir_path,pattern))
+    if files:
+        files += recursive_glob(os.path.join(dir_path,"*"),pattern,env)
+    return files
