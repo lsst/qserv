@@ -17,7 +17,7 @@ import utils
 
 logger = commons.init_default_logger(log_file_prefix="scons-qserv", level=logging.DEBUG)
 
-env = Environment(tools=['textfile'])
+env = Environment(tools=['textfile', 'pymod'])
 
 #########################
 #
@@ -29,8 +29,6 @@ env = Environment(tools=['textfile'])
 src_dir=Dir('.').srcnode().abspath+"/"
 config_file_name=src_dir+"qserv-build.conf"
 default_config_file_name=src_dir+"qserv-build.default.conf"
-
-env = Environment(tools=['textfile'])
 
 if not os.path.exists(config_file_name):
     logging.fatal("Your configuration file is missing: %s" % config_file_name)
@@ -64,6 +62,7 @@ env.Alias('init', init_cmd)
 env.Requires(env.Alias('download'), env.Alias('init')) 
 env.Requires(env.Alias('install'), env.Alias('download'))
 env.Requires(env.Alias('install'), env.Alias('templates'))
+env.Requires(env.Alias('install'), env.Alias('python-admin'))
 
 env.Default(env.Alias('install'))
         
@@ -168,6 +167,21 @@ def get_template_targets():
     return target_lst
 
 env.Alias("templates", get_template_targets())
+
+#########################        
+#
+# Install python modules 
+#
+#########################
+
+python_path_prefix=config['qserv']['base_dir']
+ 
+python_admin = env.InstallPythonModule(target=python_path_prefix, source='admin/python')
+
+#python_targets=utils.build_python_module(source='admin/python',target='/opt/qserv-dev',env=env)
+env.Alias("python-admin", python_admin)
+
+
 
 # List all aliases
 
