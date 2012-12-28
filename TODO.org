@@ -1,5 +1,11 @@
-* TODO supprimer les parametres inutile de qserv-install suite à la création
-des templates dans scons 
+* TODO update README.txt with scons, and tell about source
+  /opt/qserv-dev/qserv-env.sh in ~/.bashrc
+* TODO test pt11 data loading procedure
+  admin/python/lsst/qserv/admin/datamanager.py --config-dir home/fjammes/src/qserv/
+  and run them via a py main script in admin/bin
+* TODO remove useless parameters in qserv-install, induced by scons templates procedure
+* TODO improve scons clean_all, with dir emptying/cleaning (spécifique pour build/ et suppr fichier dans QSERV_BASE)
+* TODO scons qserv-only : it would be interesting to clean/remove qserv before re-installing ?
 
 * TODO voir pour récupérer le chemin du fichier courant SConstruct (Dir(#) ??)
 * TODO scons : recopier le fichier de paramètre par défaut dans SConstruct
@@ -7,8 +13,6 @@ des templates dans scons
 * TODO il faut faire un patch des makefile de xrootd pour debian.
 
 * TODO tuer tous les process de qserv avant une nouvelle install
-
-* TODO améliorer le clean_all (spécifique pour build/ et suppr fichier dans QSERV_BASE)
 * TODO add a note  on qserv.cnf
 "alloweddbs=LSST,qservTest_case01_q" after "prohibit" C++ message
 * TODO find bug due to slow request in tests  
@@ -62,7 +66,8 @@ used by qserv-admin, why ? It this script stills usefull ?
   - qserv-0.3.0rc3/tests/runTests.py : seems to load small test data, can a
     worker be feeded by this, or only the master ?
   
-**  error detected while launching an SQL request after having followed steps
+** DONE Solution : Add of qservMeta : 
+error detected while launching an SQL request after having followed steps
 described in qserv-admin :
 
 Using a standard Debian mysql client :
@@ -112,7 +117,7 @@ line 83, in submitQuery
   File
 "/opt/qserv/qserv-0.3.0rc3/master/dist/lsst/qserv/master/appInterface.py",
 line 111, in submitQueryWithLock
-    lambda e: lock.addError(e), resultName)
+lambda e: lock.addError(e), resultName)
   File "/opt/qserv/qserv-0.3.0rc3/master/dist/lsst/qserv/master/app.py", line
 703, in __init__
     self._evaluateHints(hints, pmap) # Also gets new dbContext

@@ -1,8 +1,8 @@
-export QSERV_VERSION=qserv-dev
-export QSERV_BASE=/opt/$QSERV_VERSION
+export QSERV_BASE=<QSERV_BASE_DIR>
 
 # qserv 
-# WARNING : set qserv binary directory before in order to use specific python of /opt/qserv/bin
+# WARNING : set qserv binary directory before running qserv in order to use
+# <QSERV_BASE_DIR>/bin/python
 
 if [ -z "${QSERV_ENV_SETTED}" ]; then
 	export PATH=${QSERV_BASE}/bin:${PATH}
@@ -14,5 +14,5 @@ fi
 alias qserv-start="qserv-admin --start"
 alias qserv-stop="qserv-admin --stop"
 # TODO : manage MySQL pass correctly
-alias qserv-status="qserv-admin --status --dbpass \"${QSERV_MYSQL_PASS}\""
+alias qserv-status="qserv-admin --status --dbpass \"<MYSQLD_PASS>\""
 

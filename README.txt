@@ -55,7 +55,7 @@ Then, as a normal user, download qserv source dependencies
   Run the full install :
   ----------------------
 
-  $ admin/qserv-install-all.sh
+  $ scons install 
 It may take a while ...
   
   Partition the PT1.1 data :
@@ -88,6 +88,3 @@ Official documentation :
 ------------------------
 It is located in ${QSERV_SRC}/admin/Install.txt
 
-Some additional documentation is here :
----------------------------------------
-https://groupes.renater.fr/wiki/petasky/public/qserv_doc

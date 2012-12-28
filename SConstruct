@@ -64,6 +64,7 @@ env.Requires(env.Alias('install'), env.Alias('download'))
 # templates must be applied before installation in order to 
 # initialize mysql db
 env.Requires(env.Alias('install'), env.Alias('templates'))
+env.Requires(env.Alias('init-mysql-db'), env.Alias('templates'))
 env.Requires(env.Alias('install'), env.Alias('python-admin'))
 
 env.Default(env.Alias('install'))

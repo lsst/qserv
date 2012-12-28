@@ -1,5 +1,7 @@
 #!/bin/bash
 
+yum install scons
+
 # Scientific Linux 6 dependencies
 # data partitioning dependency
 yum install numpy;

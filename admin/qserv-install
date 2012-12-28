@@ -590,7 +590,7 @@ sub create_startups {
 	create_xrootd_startup();
 	create_qserv_startup();
 	create_mysqlproxy_startup();
-	print "QSERV INSTALLATION SUCCESSFULLY COMPLETED\n";
+	print "PROCESS SUCCESSFULLY COMPLETED\n";
 	
 }
 
