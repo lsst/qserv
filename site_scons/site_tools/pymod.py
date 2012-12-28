@@ -1,5 +1,6 @@
 import distutils.sysconfig
-import shutil
+
+from SCons.Script import Delete
 
 import utils
 
@@ -32,21 +33,13 @@ def clean_python_path(targets,env):
 
     dirs = utils.get_top_dirs(targets,env)
 
-    print("Removing next directories : %s" % dirs)
+    #print("Removing next directories : %s" % dirs)
     for d in dirs:
-        shutil.rmtree(d)
+        env.Execute(Delete(d))
     
     return ""
 
-def clean_action(env, targets, action):
-
-    test = env.GetOption('clean') 
-    if env.GetOption('clean'):
-        
-        env.Execute(action(targets,env))
-
 def generate(env):
-    env.AddMethod(clean_action, 'CleanAction')
     env.AddMethod(install_python_module,'InstallPythonModule')
 
 def exists(env):

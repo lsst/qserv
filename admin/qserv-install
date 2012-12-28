@@ -124,7 +124,7 @@ check_and_install_lua() if( $build_opt eq "all" or $build_opt eq "lua" );
 check_and_install_myproxy() if( $build_opt eq "all" or $build_opt eq "mysql-proxy" );
 
 #create startup scripts
-create_statups();
+create_startups();
 
 #############################################################
 
@@ -340,13 +340,6 @@ sub check_and_install_mysql {
 # configure mysql for use
 sub init_mysql_db {
 
-	run_command("cp $templates_dir/my.cnf.tpl $install_dir/etc/my.cnf");
-	run_command("perl -pi -e \"s,<INSTALL_DIR>,$install_dir,\" $install_dir/etc/my.cnf");
-	run_command("perl -pi -e \"s,<LOG_DIR>,$log_dir,\" $install_dir/etc/my.cnf");
-	run_command("perl -pi -e \"s,<DATA_DIR>,$mysql_data_dir,\" $install_dir/etc/my.cnf");
-	run_command("perl -pi -e \"s,<MYSQL_PORT>,$mysql_port,\" $install_dir/etc/my.cnf");
-	run_command("perl -pi -e \"s,user=mysql,,\" $install_dir/etc/my.cnf");
-
 	system("killall mysqld mysqld_safe");	
         run_command("rm -rf $mysql_data_dir/*");
 	
@@ -362,14 +355,9 @@ sub init_mysql_db {
 		# run_command("mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password '$db_pass'", $quiet);
 		# run_command("mysqladmin -h $qserv_master -P$mysql_port -u root password '$db_pass'", $quiet);
 		
-                run_command("cp $templates_dir/tmp/mysql-password.sql.tpl $install_dir/tmp/mysql-password.sql");
-		run_command("perl -pi -e \"s,<MYSQL_PASSWORD>,$db_pass,\" $install_dir/tmp/mysql-password.sql", $quiet);
 		run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root < $install_dir/tmp/mysql-password.sql");
 		run_command("rm $install_dir/tmp/mysql-password.sql");
 
-                # qservMeta database creation
-                run_command("$install_dir/bin/mysql -u root -p'$db_pass' -S $install_dir/var/lib/mysql/mysql.sock -u root <  $templates_dir/qservmeta.sql");
-                
 		# shutdown mysql
 		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock shutdown -u root -p'$db_pass'", $quiet);
 	}
@@ -597,11 +585,12 @@ sub check_and_deploy_qserv {
 }
 
 #create the startup scripts for server components.
-sub create_statups {
+sub create_startups {
 
 	create_xrootd_startup();
 	create_qserv_startup();
 	create_mysqlproxy_startup();
+	print "QSERV INSTALLATION SUCCESSFULLY COMPLETED\n";
 	
 }
 
@@ -687,8 +676,8 @@ sub create_mysqlproxy_startup {
 #source tar files in the build dir.  Will remove all loaded data also.
 sub clean_all {
     
-        run_command("rm -rf $log_dir");
-        run_command("rm -rf $mysql_data_dir");
+        run_command("rm -rf $log_dir || rm -rf $log_dir/*");
+        run_command("rm -rf $mysql_data_dir || rm -rf $mysql_data_dir/*");
         run_command("rm -rf $install_dir/qserv/master/dist");
 
 	chdir "$install_dir";

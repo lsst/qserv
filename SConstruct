@@ -17,7 +17,7 @@ import utils
 
 logger = commons.init_default_logger(log_file_prefix="scons-qserv", level=logging.DEBUG)
 
-env = Environment(tools=['textfile', 'pymod'])
+env = Environment(tools=['textfile', 'clean', 'pymod'])
 
 #########################
 #
@@ -61,6 +61,8 @@ env.Alias('init', init_cmd)
 
 env.Requires(env.Alias('download'), env.Alias('init')) 
 env.Requires(env.Alias('install'), env.Alias('download'))
+# templates must be applied before installation in order to 
+# initialize mysql db
 env.Requires(env.Alias('install'), env.Alias('templates'))
 env.Requires(env.Alias('install'), env.Alias('python-admin'))
 
@@ -149,21 +151,21 @@ def get_template_targets():
         if isinstance(node, SCons.Node.FS.File) :
             env.Substfile(target, source, SUBST_DICT=script_dict)
 
-        # qserv-admin has no extension, Substfile can't manage it easily
-        # TODO : qserv-admin could be modified in order to be removed to
-        # template files, so that next test could be removed
-        f="qserv-admin.pl"
-        logger.debug("%s %i " % (target, target.rfind(f)))
-        if target.rfind(f) == len(target) - len(f) :
-            symlink_name = target[:-3] 
-            logger.debug("Creating symlink from %s to %s " % (symlink_name,target))
-            env.Command(symlink_name, target, [
-                                              Chmod("$SOURCE", 0744),
-                                              actions.symlink
-                                              ]
-            )
-            target_lst.append(symlink_name)
-
+            # qserv-admin has no extension, Substfile can't manage it easily
+            # TODO : qserv-admin could be modified in order to be removed to
+            # template files, so that next test could be removed
+            f="qserv-admin.pl"
+            logger.debug("%s %i " % (target, target.rfind(f)))
+            if target.rfind(f) == len(target) - len(f) :
+                env.AddPostAction(target, Chmod("$TARGET", 0760))
+                symlink_name = target[:-3] 
+                logger.debug("Creating symlink from %s to %s " % (symlink_name,target))
+                env.Command(symlink_name, target, actions.symlink)       
+                target_lst.append(symlink_name)
+            # all other files are configuration files
+            else:
+                env.AddPostAction(target, Chmod("$TARGET", 0660))
+    
     return target_lst
 
 env.Alias("templates", get_template_targets())
