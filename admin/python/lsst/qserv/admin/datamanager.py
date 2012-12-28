@@ -21,58 +21,58 @@ class QservDataManager:
 
         config_file_name=os.path.join(config_dir,"qserv-build.conf")
         default_config_file_name=os.path.join(config_dir,"qserv-build.default.conf")
-        config = commons.read_config(config_file_name, default_config_file_name)
+        self.config = commons.read_config(config_file_name, default_config_file_name)
     
         self.logger_name = logger_name
 
         self.logger = commons.init_default_logger(
             logger_name,
-            log_path=config['qserv']['log_dir']
+            log_path=self.config['qserv']['log_dir']
         )
         
-        qserv_admin_cmd=os.path.join(config['qserv']['bin_dir'],'qserv-admin')
+        qserv_admin_cmd=os.path.join(self.config['qserv']['bin_dir'],'qserv-admin')
 
         self.partition_data_cmd = [
             'PYTHONPATH=/usr/lib64/python2.6/site-packages/',   
             qserv_admin_cmd,
             '--partition',
-            '--source', os.path.join(config['lsst']['data_dir'],'pt11'),
+            '--source', os.path.join(self.config['lsst']['data_dir'],'pt11'),
             '--table', 'Object',
-            '--output', os.path.join(config['lsst']['data_dir'],'pt11_partition')
+            '--output', os.path.join(self.config['lsst']['data_dir'],'pt11_partition')
         ] 
 
         self.delete_data_cmd = [
             qserv_admin_cmd, 
             '--delete-data', 
-            '--dbpass', config['mysqld']['pass']
+            '--dbpass', self.config['mysqld']['pass']
         ]
         
         self.delete_data_cmd_2 = [
             'mysql', 
             '-S', '/opt/qserv-dev/var/lib/mysql/mysql.sock'
             '-u', 'root' 
-            '-p', config['mysqld']['pass'],
+            '-p', self.config['mysqld']['pass'],
             '-e', '\'Drop database if exists LSST;\'' 
         ]
 
-        meta_outfilename = os.path.join(config['qserv']['base_dir'],'tmp',"meta-pt11.csv")
+        self.meta_outfilename = os.path.join(self.config['qserv']['base_dir'],'tmp',"meta-pt11.csv")
 
         # Delete and load data from file
         self.load_data = [
             'mysql', 
             '-S', '/opt/qserv-dev/var/lib/mysql/mysql.sock'
             '-u', 'root' 
-            '-p', config['mysqld']['pass'],
-            '-e', '\' use qservMeta;\n delete from LSST__Object;\n LOAD DATA INFILE ' + meta_outfilename + 'IGNORE INTO TABLE LSST__Object FIELDS TERMINATED BY ','; \'' 
+            '-p', self.config['mysqld']['pass'],
+            '-e', '\' use qservMeta;\n delete from LSST__Object;\n LOAD DATA INFILE ' + self.meta_outfilename + 'IGNORE INTO TABLE LSST__Object FIELDS TERMINATED BY ','; \'' 
         ]
 
         self.load_data_cmd = [
             qserv_admin_cmd,
             '--load', 
-            '--dbpass', config['mysqld']['pass'],
-            '--source', os.path.join(config['lsst']['data_dir'],'pt11'),
+            '--dbpass', self.config['mysqld']['pass'],
+            '--source', os.path.join(self.config['lsst']['data_dir'],'pt11'),
             '--table', 'Object',
-            '--output', os.path.join(config['lsst']['data_dir'],'pt11_partition')
+            '--output', os.path.join(self.config['lsst']['data_dir'],'pt11_partition')
         ]
 
     def partitionPt11Data(self):
@@ -97,7 +97,8 @@ class QservDataManager:
         
     def fillTableMeta(self, nbworkers, outfilename):
         # TODO: use parameters or comand line options ?
-        data_dirs = os.path.join([config['lsst_data_dir'],'pt11_partition'])
+        data_dirs = [os.path.join(self.config['lsst']['data_dir'],'pt11_partition')]
+        self.logger.info("Filling meta database from PT1.1 LSST data : %s \n" % data_dirs[0])
         csv2object.CSV2Object(nbworkers, data_dirs, outfilename)
     
     def parseOptions(self):    
@@ -157,7 +158,7 @@ class QservDataManager:
             self.loadPt11Data()
         elif mode == 'fill-table-meta':
             nbworkers = int(options.number_of_threads)        
-            self.fillTableMeta(nbworkers)
+            self.fillTableMeta(nbworkers,self.meta_outfilename)
 
 def main():
     qserv_data_manager = QservDataManager()
