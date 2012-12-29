@@ -49,8 +49,8 @@ class QservDataManager:
         
         self.delete_data_cmd_2 = [
             'mysql', 
-            '-S', '/opt/qserv-dev/var/lib/mysql/mysql.sock'
-            '-u', 'root' 
+            '-S', '/opt/qserv-dev/var/lib/mysql/mysql.sock',
+            '-u', 'root', 
             '-p', self.config['mysqld']['pass'],
             '-e', '\'Drop database if exists LSST;\'' 
         ]
@@ -58,12 +58,14 @@ class QservDataManager:
         self.meta_outfilename = os.path.join(self.config['qserv']['base_dir'],'tmp',"meta-pt11.csv")
 
         # Delete and load data from file
-        self.load_data = [
+        self.load_meta_cmd = [
             'mysql', 
-            '-S', '/opt/qserv-dev/var/lib/mysql/mysql.sock'
-            '-u', 'root' 
-            '-p', self.config['mysqld']['pass'],
-            '-e', '\' use qservMeta;\n delete from LSST__Object;\n LOAD DATA INFILE ' + self.meta_outfilename + 'IGNORE INTO TABLE LSST__Object FIELDS TERMINATED BY ','; \'' 
+            '-S', '/opt/qserv-dev/var/lib/mysql/mysql.sock',
+            '-u', 'root', 
+            '-p'+self.config['mysqld']['pass'],
+            '-e', "use qservMeta; delete from LSST__Object; LOAD DATA INFILE" 
+                    + " '" + self.meta_outfilename + "' "
+                  "IGNORE INTO TABLE LSST__Object FIELDS TERMINATED BY ',';"  
         ]
 
         self.load_data_cmd = [
@@ -100,6 +102,8 @@ class QservDataManager:
         data_dirs = [os.path.join(self.config['lsst']['data_dir'],'pt11_partition')]
         self.logger.info("Filling meta database from PT1.1 LSST data : %s \n" % data_dirs[0])
         csv2object.CSV2Object(nbworkers, data_dirs, outfilename)
+        out = commons.run_command(self.load_meta_cmd, self.logger_name)
+        self.logger.info("Loading LSST PT1.1 Meta data : \n %s" % out)
     
     def parseOptions(self):    
         script_name=sys.argv[0]

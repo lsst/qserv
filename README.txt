@@ -23,35 +23,20 @@ Installing Qserv :
 First do :
  
   $ cd /path_to_qserv_src/ 
-  $ cp qserv-env.example.sh qserv-env.sh
-  $ cp qserv-install-params.example.sh qserv-install-params.sh
-  $ export QSERV_SRC=${PWD}
+  $ cp qserv-build.example.sh qserv-build.conf
 
-and then set your environment variables and install parameters in : 
-- qserv-env.sh
-- qserv-install-params.sh (restrictive rights recommended as it contains MySQL password)
-
-QSERV_SRC is a variable which points to your Qserv source directory
+and then set your install parameters in : 
+- qserv-build.conf (restrictive rights recommended as it contains MySQL
+  password)
 
 You could add next line to your ~/.bashrc :
-  source /path_to_qserv_src/qserv-env.sh 
+  source /path_to_qserv_base_dir/qserv-env.sh 
 it will provide you usefull aliases and update your PATH with qserv binaries path.
   
-  Create base directories (Optional) :
-  ------------------------------------
-
-Then launch as root (don't forget to re-set QSERV_SRC before !) :
-
-  # admin/qserv-init.sh
-
-This step can also be done by hands, indeed this small script is straight-forward.
-
-  Download source main package and dependencies :
+  Create main directories ,
+  -------------------------
+  Download source main package and dependencies ,
   -----------------------------------------------
-
-Then, as a normal user, download qserv source dependencies 
-  $ admin/qserv-download.sh
-
   Run the full install :
   ----------------------
 
@@ -60,28 +45,32 @@ It may take a while ...
   
   Partition the PT1.1 data :
   --------------------------
+TODO
+#Assuming PT1.1 data are in ${QSERV_DATA}/pt11/, next command will partition PT1.1 Object data :
+#  $ ./admin/qserv-partition-data-pt11.sh
 
-Assuming PT1.1 data are in ${QSERV_DATA}/pt11/, next command will partition PT1.1 Object data :
-  $ ./admin/qserv-partition-data-pt11.sh
-
-  Load the pt1.1 data :
-  ---------------------
+  Load the pt1.1 data and meta:
+  -----------------------------
 
 Assuming you've sourced qserv-env.sh, next command will launch Qserv :
   $ qserv-start
 
-  $ ./admin/qserv-load-data-pt11.sh
+  $ ./admin/bin/qservdatamanager.py --config-dir /path-to-dir-containing-qserv-build.conf/ 
 will load PT1.1 Object data.
+
+and
+  $ ./admin/bin/qservdatamanager.py --config-dir /path-to-dir-containing-qserv-build.conf/ -m fill-table-meta -n 4
 
   Launch Qserv and run a small test :
   -----------------------------------
 
 If not already done :
   $ qserv-start
-Then connect to MySQL proxy :
-  $ ./admin/qserv-connect-mysql-proxy.sh
-and launch next request :
-  > select * from Object;
+Then connect to MySQL proxy (assuming mysql-proxy-port was setted to 4040):
+  $  mysql --host 127.0.0.1 --port 4040 --user 'qsmaster' LSST 
+and launch next queries :
+  > select count(*) from Object;
+  > select * from Object where ObjectId=402395485975435;
 It should success.
 
 Official documentation : 
