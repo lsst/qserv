@@ -123,6 +123,7 @@ def get_template_targets():
                 '<MYSQL_PROXY_PORT>': config['mysql_proxy']['port'], 
                 '<XROOTD_MANAGER_HOST>': config['qserv']['master'], 
                 '<XROOTD_PORT>': config['xrootd']['xrootd_port'], 
+                '<XROOTD_RUN_DIR>': os.path.join(config['qserv']['base_dir'],'xrootd-run'), 
                 '<XROOTD_ADMIN_DIR>': os.path.join(config['qserv']['base_dir'],'tmp'), 
                 '<XROOTD_PID_DIR>': os.path.join(config['qserv']['base_dir'],'var/run'), 
                 '<CMSD_MANAGER_PORT>': config['xrootd']['cmsd_manager_port'] 

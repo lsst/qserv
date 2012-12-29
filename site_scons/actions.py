@@ -37,6 +37,10 @@ def download(target, source, env):
 
     f.close()
 
+# TODO : add and test fail on error
+#    if not os.path.isfile(file_name):
+#        logger.fatal("Retrieval failed for file : %s " % file_name)
+#        sys.exit(1)
 
 def build_cmd_with_opts( config, target='install'):
 

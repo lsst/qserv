@@ -35,7 +35,7 @@ xrootd.fslib libqserv_worker.so
 # Set <pathname> for file location resolution.  
 # i.e., <pathname>/somefile will be exported in the xroot URL: 
 # xroot://manager:0000/somefile
-oss.localroot /data/lsst/lspexport
+oss.localroot <XROOTD_RUN_DIR> 
 
 # Do not change.  This directive tries to lower the minimum free disk space
 # for "file" writes (which are subquery writes in our case).

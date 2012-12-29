@@ -1,3 +1,4 @@
+* TODO stop scons on download error : use urlretrieve in site_scons/actions.py
 * TODO update README.txt with scons, and tell about source
   /opt/qserv-dev/qserv-env.sh in ~/.bashrc
 * TODO test pt11 data loading procedure

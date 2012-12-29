@@ -342,6 +342,9 @@ sub load_data {
 	
 	#create database if it doesn't exist
 	run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' -e 'Create database if not exists LSST;'");
+        
+        # qservMeta database creation
+        run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' < '$install_dir/tmp/qservmeta.sql'");
 	
 	#check on the table def, and add need columns
 	print "Copy and changing $source_dir/${tablename}.sql\n";
@@ -390,9 +393,6 @@ sub load_data {
 	run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' LSST < '$install_dir/tmp/${tablename}.sql'");
 	run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' LSST < '$install_dir/tmp/${tablename}_load.sql'");
 		
-        # qservMeta database creation
-        run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' < '$install_dir/tmp/qservmeta.sql'");
-
 	#create the empty chunks file
 	create_emptychunks( \%chunkslist );
 	

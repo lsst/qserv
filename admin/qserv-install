@@ -114,14 +114,14 @@ init_mysql_db() if( $build_opt eq "all" or $build_opt eq "mysql" or $build_opt e
 #setup and install python extras.
 check_and_setup_extras() if( $build_opt eq "all" or $build_opt eq "extras" );
 
-#setup the qserv code
-check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
-
 #install lua
 check_and_install_lua() if( $build_opt eq "all" or $build_opt eq "lua" );
 
 #install mysql proxy
 check_and_install_myproxy() if( $build_opt eq "all" or $build_opt eq "mysql-proxy" );
+
+#setup the qserv code
+check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
 
 #create startup scripts
 create_startups();
@@ -317,7 +317,7 @@ sub check_and_install_mysql {
 	
 	chdir "$build_dir";
 
-#install curses lib if it is in place
+        #install curses lib if it is in place
 	my $ncurses_dir = check_and_untar( "ncurses" );
 	if( $ncurses_dir ) {
 		chdir "$build_dir/$ncurses_dir";
@@ -330,6 +330,11 @@ sub check_and_install_mysql {
 
 	my $mysql_dir = check_and_untar( "mysql-5" );
 
+        # check if it is already installed
+        if( -e "$install_dir/bin/mysqld_safe" ) {
+                print "WARNING: MySQL already installed...\n";
+                return;
+        }
 	chdir "$build_dir/$mysql_dir";
 	run_command("./configure --prefix=\"$install_dir\" --enable-local-infile --with-mysqld-user=$prod_user");
 	run_command("make");
@@ -614,9 +619,12 @@ sub create_xrootd_startup {
 	print XROOTD "\n";
 	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/xrootd -c ";
 	print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/xrootd.log &\n";
-	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/cmsd -c ";
-	print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/cmsd.log &\n";
-	
+
+        if ($cluster_type ne "mono-node") {
+	    print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/cmsd -c ";
+	    print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/cmsd.log &\n";
+	}
+
 	close XROOTD;
 	chmod 0755, "start_xrootd";
 
