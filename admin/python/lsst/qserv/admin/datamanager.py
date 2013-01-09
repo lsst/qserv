@@ -49,7 +49,7 @@ class QservDataManager:
         
         self.delete_data_cmd_2 = [
             'mysql', 
-            '-S', '/opt/qserv-dev/var/lib/mysql/mysql.sock',
+            '-S', self.config['qserv']['base_dir']+'/var/lib/mysql/mysql.sock',
             '-u', 'root', 
             '-p', self.config['mysqld']['pass'],
             '-e', '\'Drop database if exists LSST;\'' 
@@ -60,7 +60,7 @@ class QservDataManager:
         # Delete and load data from file
         self.load_meta_cmd = [
             'mysql', 
-            '-S', '/opt/qserv-dev/var/lib/mysql/mysql.sock',
+            '-S', self.config['qserv']['base_dir']+'/var/lib/mysql/mysql.sock',
             '-u', 'root', 
             '-p'+self.config['mysqld']['pass'],
             '-e', "use qservMeta; delete from LSST__Object; LOAD DATA INFILE" 
