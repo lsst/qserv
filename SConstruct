@@ -65,7 +65,8 @@ env.Requires(env.Alias('install'), env.Alias('download'))
 # initialize mysql db
 env.Requires(env.Alias('install'), env.Alias('templates'))
 env.Requires(env.Alias('init-mysql-db'), env.Alias('templates'))
-env.Requires(env.Alias('install'), env.Alias('python-admin'))
+env.Requires(env.Alias('admin-bin'), env.Alias('python-admin'))
+env.Requires(env.Alias('install'), env.Alias('admin-bin'))
 
 env.Default(env.Alias('install'))
         
@@ -186,6 +187,17 @@ python_admin = env.InstallPythonModule(target=python_path_prefix, source='admin/
 env.Alias("python-admin", python_admin)
 
 
+#########################        
+#
+# Install admin commands 
+#
+#########################
+file_base_name="qserv-datamanager.py"
+source = os.path.join("admin","bin",file_base_name)
+target = os.path.join(config['qserv']['base_dir'],"bin",file_base_name)
+Command(target, source, Copy("$TARGET", "$SOURCE"))
+
+env.Alias("admin-bin", target)
 
 # List all aliases
 

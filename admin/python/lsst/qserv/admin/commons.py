@@ -2,6 +2,7 @@ import io
 import os
 import logging
 import subprocess 
+import sys 
 import ConfigParser
 
 def read_config(config_file, default_config_file):
@@ -118,18 +119,45 @@ def run_command(cmd_args, logger_name=None) :
 
     Return a string containing stdout and stderr
     """
-    log_str="Running next command from python : '%s' " % cmd_args
+
+    cmd_str= " ".join(cmd_args)
+
+    log_str="Running next command from python : '%s'" % cmd_args
     if logger_name != None :
     	logger = logging.getLogger(logger_name)
         logger.info(log_str)
     else :
         print(log_str)
-    process = subprocess.Popen(
-        cmd_args,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT)
 
-    (stdoutdata, stderrdata) = process.communicate()
+# TODO : use this with python 2.7 :
+#  try :
+#        out = subprocess.check_output(
+#                cmd_args, 
+#                stderr=subprocess.STDOUT
+#              )
+#
+#    except subprocess.CalledProcessError as e:
+#        logger.fatal("Error : '%s' %s  while running command : '%s'" %
+#            (e,out,cmd_str)
+#        )
+#        sys.exit(1)
+
+
+    try :
+        process = subprocess.Popen(
+            cmd_args, stdin=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
+
+        (stdoutdata, stderrdata) = process.communicate()
+
+    except OSError as e:
+        logger.fatal("Error : '%s' while running command : '%s'" %
+            (e,cmd_str))
+        sys.exit(1)
+    except ValueError as e:
+        logger.fatal("Invalid parameter : '%s' for command : %s " % (e,cmd_str))
+        sys.exit(1)
+
     return stdoutdata
 
 

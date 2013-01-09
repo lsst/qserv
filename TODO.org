@@ -1,14 +1,6 @@
-* TODO stop scons on download error : use urlretrieve in site_scons/actions.py
-* TODO update README.txt with scons, and tell about source
-  /opt/qserv-dev/qserv-env.sh in ~/.bashrc
-* TODO test pt11 data loading procedure
-  admin/python/lsst/qserv/admin/datamanager.py --config-dir home/fjammes/src/qserv/
-  and run them via a py main script in admin/bin
 * TODO remove useless parameters in qserv-install, induced by scons templates procedure
 * TODO improve scons clean_all, with dir emptying/cleaning (spécifique pour build/ et suppr fichier dans QSERV_BASE)
 * TODO scons qserv-only : it would be interesting to clean/remove qserv before re-installing ?
-
-* TODO voir pour récupérer le chemin du fichier courant SConstruct (Dir(#) ??)
 * TODO scons : recopier le fichier de paramètre par défaut dans SConstruct
   
 * TODO il faut faire un patch des makefile de xrootd pour debian.
@@ -18,7 +10,35 @@
 "alloweddbs=LSST,qservTest_case01_q" after "prohibit" C++ message
 * TODO find bug due to slow request in tests  
 * TODO add a qserv command for reloading qserv parameters
-* error redirection to stdout)
+
+* TODO Is installation of mysql UDF plugin (libqserv_udf.so) usefull, because
+* this file isn't created by build process and its installation isn't done by
+* the qserv-install script ?
+  but it is specified several time in the documentation :
+  cf ./qserv-0.3.0rc3/worker/doc/HOWTO_install_udf.txt
+  cf http://dev.lsstcorp.org/trac/wiki/dbQservDevelopmentInstallationGuide
+
+* TODO current minor modification proposal :
+  - [ ] proposer de tuer les process avec des pid files (changer les chemins
+    de ceux-ci vers /opt/qserv/var/run/xrootd dans lsp.cf et ajout pour
+startQserv.py)  SLAC
+  - [X] préciser dans la doc qu'il faut installer numpy et faire un export de
+    PYTHONPATH avant de partitionner
+    yum install numpy
+    export PYTHONPATH=/usr/lib64/python2.6/site-packages/
+  - [ ] dans qserv-admin, pour --start, mettre un die() si system() ne
+    fonctionne pas.
+  - [ ] script de deletion/recreation des tables pour qserv-install : a faire
+  - [X] soumettre les modifs de qserv-admin (pour dbpass)
+  - [X] qserv-install : démarrer cmsd avant xrootd pour éviter le message :
+    120809 15:02:49 24278 XrdOpen: Unable to connect socket to
+clrlsst-dbmaster.in2p3.fr; connection refused
+* TODO comment "stop iptables" in french wiki, or better, add correct iptables
+* rules for xrootd/cmsd
+* TODO AUDIT DE CODE
+bad quality code examples :  
+- qMaster::SqlParseRunner::_interpretBadDbs
+* DONE error redirection to stdout)
    :PROPERTIES:
    :SEND:     OK
    :END: 
@@ -40,7 +60,7 @@ file (add of & before >)
 
 Could all this minor modifications be integrated please ?
 
-* TODO questions about data loading :
+* DONE questions about data loading :
    :PROPERTIES:
    :SEND:     OK
    :END: 
@@ -150,33 +170,13 @@ What can i do to solve this problem ? Modify a configuration parameter in
 qserv.cnf), or launch the runTest.py script before qserv-admin
 ) , or  ?
 
-* TODO Is installation of mysql UDF plugin (libqserv_udf.so) usefull, because
-* this file isn't created by build process and its installation isn't done by
-* the qserv-install script ?
-  but it is specified several time in the documentation :
-  cf ./qserv-0.3.0rc3/worker/doc/HOWTO_install_udf.txt
-  cf http://dev.lsstcorp.org/trac/wiki/dbQservDevelopmentInstallationGuide
-
-* TODO current minor modification proposal :
-  - [ ] proposer de tuer les process avec des pid files (changer les chemins
-    de ceux-ci vers /opt/qserv/var/run/xrootd dans lsp.cf et ajout pour
-startQserv.py)  SLAC
-  - [ ] préciser dans la doc qu'il faut installer numpy et faire un export de
-    PYTHONPATH avant de partitionner
-    yum install numpy
-    export PYTHONPATH=/usr/lib64/python2.6/site-packages/
-  - [ ] dans qserv-admin, pour --start, mettre un die() si system() ne
-    fonctionne pas.
-  - [ ] script de deletion/recreation des tables pour qserv-install : a faire
-  - [X] soumettre les modifs de qserv-admin (pour dbpass)
-  - [ ] qserv-install : démarrer cmsd avant xrootd pour éviter le message :
-    120809 15:02:49 24278 XrdOpen: Unable to connect socket to
-clrlsst-dbmaster.in2p3.fr; connection refused
-* TODO comment "stop iptables" in french wiki, or better, add correct iptables
-* rules for xrootd/cmsd
-* TODO AUDIT DE CODE
-bad quality code examples :  
-- qMaster::SqlParseRunner::_interpretBadDbs
+* DONE voir pour récupérer le chemin du fichier courant SConstruct (Dir(#) ??)
+* DONE update README.txt with scons, and tell about source
+  /opt/qserv-dev/qserv-env.sh in ~/.bashrc
+* DONE test pt11 data loading procedure
+  admin/python/lsst/qserv/admin/datamanager.py --config-dir home/fjammes/src/qserv/
+  and run them via a py main script in admin/bin
+* DONE stop scons on download error : use urlretrieve in site_scons/actions.py
 
 * DONE A TESTER : changement du mdp dans qserv-install :
 /opt/qserv-dev/bin/mysqladmin -u root password 'new-password'

@@ -617,13 +617,13 @@ sub create_xrootd_startup {
 	print XROOTD "\n";
 	print XROOTD "export LD_LIBRARY_PATH=\"$install_dir/xrootd-run;$install_dir/lib\"\n";
 	print XROOTD "\n";
-	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/xrootd -c ";
-	print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/xrootd.log &\n";
 
         if ($cluster_type ne "mono-node") {
 	    print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/cmsd -c ";
 	    print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/cmsd.log &\n";
 	}
+	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/xrootd -c ";
+	print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/xrootd.log &\n";
 
 	close XROOTD;
 	chmod 0755, "start_xrootd";
@@ -646,6 +646,7 @@ sub create_qserv_startup {
 	print QSERV "export PYTHONPATH=$install_dir/qserv/master/dist:$install_dir/qserv-run\n";
 	print QSERV "export LD_LIBRARY_PATH=$install_dir/lib:\$XRD_DIR/lib/\$PLATFORM\n";
 	print QSERV "export QSW_RESULTDIR=$install_dir/qserv-run/tmp\n";
+	print QSERV "# Disabling buffering in python in order to enable \"real-time\" logging.\n";
 	print QSERV "export PYTHONUNBUFFERED=1\n";
 	print QSERV "\$PYTHON $install_dir/qserv/master/dist/startQserv.py -c ";
 	print QSERV "$install_dir/etc/local.qserv.cnf > ";
