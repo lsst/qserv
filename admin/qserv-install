@@ -25,11 +25,8 @@ GetOptions( \%opts,
 	"mysql-data-dir|m=s",
 	"mysql-pass=s", # TODO: avoid passing passwords in command line parameters !
 	"mysql-proxy",
-	"mysql-proxy-port=s",
 	"python=s",
 	"xrootd",
-	"xrootd-port=s",
-	"cmsd-manager-port=s",
 	"mono-node",
 	"qserv",
 	"user",
@@ -53,12 +50,9 @@ my $log_dir = $opts{'log-dir'} || "$install_dir/var/log";
 my $mysql_data_dir = $opts{'mysql-data-dir'} || "$install_dir/var/lib/mysql";
 my $mysql_port = $opts{'mysql-port'} || "3306";
 my $db_pass = $opts{'mysql-pass'};
-my $mysql_proxy_port = $opts{'mysql-proxy-port'} || "4040";
 my $build_dir   = $opts{'build-dir'} || "$install_dir/build";
 my $prod_user   = $opts{'user'} || $ENV{'USER'};
 my $qserv_master = $opts{'master'} || hostname;
-my $xrootd_port = $opts{'xrootd-port'} || "1094";
-my $cmsd_manager_port = $opts{'cmsd-manager-port'} || "2131";
 my $geometry_dir = $opts{'geometry-dir'};
 my $cluster_type = "mono-node" if( $opts{'mono-node'} );
 
@@ -767,10 +761,7 @@ OPTIONS:
 	--mysql-port     	Specify mysql port (default to 3306)
 	--mysql-pass 	        Specify mysql db root passwordd
      -m,--mysql-data-dir	Mysql data dir, default the install dir suffixed with var/lib/mysql
-	--mysql-proxy-port 	Specify mysql-proxy port (default to 4040)
 	--python    		Path the python install for use, default is /usr/bin/python
-	--xrootd-port   	Specify xrootd manager port (default to 1094)
-	--cmsd-manager-port     Specify cmsd manager port (default to 2131)
 	--geometry-dir		Specify path to geometry source directory (if not in $src_dir/master/python/)
 	--user      		Username to use in qserv use, default it to use current username.
 	--test      		Test the install, don't perform any commands.
