@@ -33,7 +33,7 @@ class QservDataManager:
         qserv_admin_cmd=os.path.join(self.config['qserv']['bin_dir'],'qserv-admin')
 
         self.partition_data_cmd = [
-            'PYTHONPATH=/usr/lib64/python2.6/site-packages/',   
+            #'PYTHONPATH=/usr/lib64/python2.6/site-packages/',   
             qserv_admin_cmd,
             '--partition',
             '--source', os.path.join(self.config['lsst']['data_dir'],'pt11'),
@@ -111,9 +111,9 @@ class QservDataManager:
         mode_option_values = ['partition','delete-db','load-db','delete-then-load-db','fill-table-meta']
         op.add_option("-m", "--mode", dest="mode",
                 default="delete-then-load-db",
-                help= "LSST data management mode:" +
-                ", ".join(mode_option_values) +
-                " [default: %default]")
+                help= "LSST data management mode  : '" +
+                "', '".join(mode_option_values) +
+                "' [default: %default]")
         op.add_option("-c", "--config-dir", dest="config_dir",
                 help= "Path to directory containing qserv-build.conf and"
                 "qserv-build.default.conf")
