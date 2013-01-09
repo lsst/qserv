@@ -191,7 +191,8 @@ sub check_and_install_qserv {
 	
 	if( -e "$install_dir/qserv/master/dist" ) {	
 		#looks like qserv is already installed so, move on
-		print "WARNING: Looks like qserv is already installed in $install_dir/qserv\n";
+		print "WARNING: Not installing Qserv because it looks like it is already installed in $install_dir/qserv\n";
+		print "WARNING: Please remove $install_dir/qserv/master/dist in order to force installation.\n";
 		return;
 	}
 	
