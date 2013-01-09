@@ -83,7 +83,7 @@ download_cmd_lst = []
 output_dir = config['qserv']['base_dir'] + os.sep +"build" + os.sep
 # Add a command for each file to download
 for app in config['dependencies']:
-    if re.match(".*_url",app) and not re.match("base_url",app):
+    if re.match(".*_url",app):
         app_url=config['dependencies'][app]
         base_file_name = os.path.basename(app_url)
         output_file = output_dir + base_file_name
