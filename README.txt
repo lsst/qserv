@@ -32,7 +32,7 @@ Assuming you've downloaded qserv in /home/qserv/src/qserv/
 First do :
  
   $ cd /home/qserv/src/qserv/ 
-  $ cp qserv-build.example.sh qserv-build.conf
+  $ cp qserv-build.default.conf qserv-build.conf
 
 and then set your install parameters in qserv-build.conf (restrictive access rights recommended as it contains MySQL password)
 This file is well-commented.
@@ -55,7 +55,7 @@ It may take a while ...
   --------------------------
 
 Assuming PT1.1 data are in ${QSERV_DATA}/pt11/, next command will partition PT1.1 Object data :
-  $ qservdatamanager.py --config-dir=/home/fjammes/src/qserv/ --mode=partition 
+  $ qserv-datamanager.py --config-dir=/home/fjammes/src/qserv/ --mode=partition 
 
   Load the PT1.1 data and meta:
   -----------------------------

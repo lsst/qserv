@@ -145,7 +145,7 @@ def run_command(cmd_args, logger_name=None) :
 
     try :
         process = subprocess.Popen(
-            cmd_args, stdin=subprocess.PIPE, stderr=subprocess.STDOUT
+            cmd_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
 
         (stdoutdata, stderrdata) = process.communicate()

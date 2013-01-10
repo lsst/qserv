@@ -1,3 +1,4 @@
+* TODO remove mysql password from log
 * TODO remove useless parameters in qserv-install, induced by scons templates procedure
 * TODO improve scons clean_all, with dir emptying/cleaning (spécifique pour build/ et suppr fichier dans QSERV_BASE)
 * TODO scons qserv-only : it would be interesting to clean/remove qserv before re-installing ?
