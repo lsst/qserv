@@ -205,7 +205,7 @@ class Db:
         else:
             if self._connType == "port":
                 cmd = 'mysql -h%s -P%s -u%s %s' % \
-                (self._host, self._port, self._user, _dbName)
+                (self._host, self._port, self._user, dbName)
             else:
                 cmd = 'mysql -S%s -u%s %s' % \
                 (self._socket, self._user, dbName)

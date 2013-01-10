@@ -29,7 +29,6 @@ It exposes the functionality from the MetaInterface class.
 
 # Standard Python imports
 from itertools import ifilter
-import logging 
 import os
 import sys
 import time
