@@ -6,7 +6,7 @@
 # If partitioning is on, you must specific partitioning strategy
 # partitioningStrategy: <PSName>
 # Currently supported partitioningStrategies are: sphBox
-# You must also create [<PSName] section.
+# You must also create [<PSName>] section.
 
 # Partitioning for individual tables can be turn
 # off on table-by-table bases, see createTable

@@ -66,69 +66,56 @@ class Meta:
             self._mdb.commit()
         except QmsException as qe:
             if qe.getErrNo() == Status.ERR_DB_EXISTS:
-                raise Exception(getErrMsg(Status.ERR_META_EXISTS))
+                raise QmsException(Status.ERR_META_EXISTS)
             else:
-                raise Exception(qe.getErrMsg())
+                raise
 
     def destroyMeta(self):
-        try:
-            self._mdb.selectMetaDb()
-            self._mdb.dropMetaDb()
-            self._mdb.commit()
-        except QmsException as qe:
-            raise Exception(qe.getErrMsg())
+        self._mdb.selectMetaDb()
+        self._mdb.dropMetaDb()
+        self._mdb.commit()
 
     def printMeta(self):
-        try:
-            self._mdb.selectMetaDb()
-            s = self._mdb.printTable("Dbs")
-        except QmsException as qe:
-            raise Exception(qe.getErrMsg())
-        return s
+        self._mdb.selectMetaDb()
+        return self._mdb.printTable("Dbs")
 
     def registerDb(self, dbName):
+        self._mdb.selectMetaDb()
+        # check if already registered, fail if it is
+        if self._checkDbIsRegistered(dbName):
+            raise Exception("Db '%s' is already registered." % dbName)
+        # get dbId and dbUuid from qms
         try:
-            self._mdb.selectMetaDb()
-            # check if already registered, fail if it is
-            if self._checkDbIsRegistered(dbName):
-                raise Exception("Db '%s' is already registered." % dbName)
-            # get dbId and dbUuid from qms
-            try:
-                values = self._qmsClient.retrieveDbInfo(dbName)
-            except Exception, e:
-                if str(e) == getErrMsg(Status.ERR_DB_NOT_EXISTS):
-                    raise Exception("Db '%s' is not registered in the metadata server." % dbName)
-                else:
-                    raise
-            if not 'dbId' in values:
-                raise Exception("Invalid dbInfo from qms (dbId not found)")
-            if not 'dbUuid' in values:
-                raise Exception("Invalid dbInfo from qms (dbUuid not found)")
-            # register it
-            cmd = "INSERT INTO Dbs(dbId, dbName, dbUuid) VALUES (%s, '%s','%s')" % (values['dbId'], dbName, values['dbUuid'])
-            self._mdb.execCommand0(cmd)
-            self._mdb.commit()
-        except QmsException as qe: raise Exception(qe.getErrMsg())
+            values = self._qmsClient.retrieveDbInfo(dbName)
+        except QmsException as qe:
+            if qe.getErrNo() == Status.ERR_DB_NOT_EXISTS:
+                raise QmsException(???,
+                    "Db '%s' is not registered in the metadata server." % dbName)
+            else:
+                raise
+        if not 'dbId' in values:
+            raise QmsException(???, "Invalid dbInfo from qms (dbId not found)")
+        if not 'dbUuid' in values:
+            raise QmsException(???, "Invalid dbInfo from qms (dbUuid not found)")
+        # register it
+        cmd = "INSERT INTO Dbs(dbId, dbName, dbUuid) VALUES (%s, '%s','%s')" % (values['dbId'], dbName, values['dbUuid'])
+        self._mdb.execCommand0(cmd)
+        self._mdb.commit()
 
     def unregisterDb(self, dbName):
-        try:
-            self._mdb.selectMetaDb()
-            # check if already registered, fail if it is not
-            if not self._checkDbIsRegistered(dbName):
-                raise Exception("Db '%s' is not registered." % dbName)
-            # unregister it
-            cmd = "DELETE FROM Dbs WHERE dbName='%s'" % dbName;
-            self._mdb.execCommand0(cmd)
-            self._mdb.commit()
-        except QmsException as qe: raise Exception(qe.getErrMsg())
+        self._mdb.selectMetaDb()
+        # check if already registered, fail if it is not
+        if not self._checkDbIsRegistered(dbName):
+            raise Exception("Db '%s' is not registered." % dbName)
+        # unregister it
+        cmd = "DELETE FROM Dbs WHERE dbName='%s'" % dbName;
+        self._mdb.execCommand0(cmd)
+        self._mdb.commit()
 
     def listDbs(self):
         xx = []
-        try:
-            self._mdb.selectMetaDb()
-            xx = self._mdb.execCommandN("SELECT dbName FROM Dbs")
-        except QmsException as qe: 
-            raise Exception(qe.getErrMsg())
+        self._mdb.selectMetaDb()
+        xx = self._mdb.execCommandN("SELECT dbName FROM Dbs")
         return [x[0] for x in xx]
 
     ###########################################################################
@@ -147,28 +134,28 @@ def readConnInfoFromFile(fileName):
     if fileName[0] == '~':
         fileName = os.path.expanduser(fileName)
     if not os.path.exists(fileName):
-        raise Exception("%s does not exist." % fileName)
+        raise QmsException(???, "%s does not exist." % fileName)
     config = ConfigParser.ConfigParser()
     config.read(fileName)
     s = "qmsConn"
     if not config.has_section(s):
-        raise Exception("Bad %s, can't find section '%s'" % (fileName, s))
+        raise QmsException(???, "Bad %s, can't find section '%s'" % (fileName, s))
     if not config.has_option(s, "host") or \
        not config.has_option(s, "port") or \
        not config.has_option(s, "user") or \
        not config.has_option(s, "pass"):
-        raise Exception("Bad %s, can't find host, port, user or pass"%fileName)
+        raise QmsException(???, "Bad %s, can't find host, port, user or pass"%fileName)
     (host,port,usr,pwd) = (config.get(s, "host"), config.getint(s, "port"),
                            config.get(s, "user"), config.get(s, "pass"))
 
     s = "qmwConn"
     if not config.has_section(s):
-        raise Exception("Bad %s, can't find section '%s'" % (fileName,s))
+        raise QmsException(???, "Bad %s, can't find section '%s'" % (fileName,s))
     if not config.has_option(s, "db") or \
        not config.has_option(s, "user") or \
        not config.has_option(s, "pass") or \
        not config.has_option(s, "mySqlSocket"):
-        raise Exception("Bad %s, can't find db, user, pass or mysqlSocket"\
+        raise QmsException(???, "Bad %s, can't find db, user, pass or mysqlSocket"\
                             % fileName)
     return (host,port,usr,pwd,
             config.get(s, "db"), config.get(s, "user"),

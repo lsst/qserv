@@ -29,7 +29,7 @@ import os
 import ConfigParser
 import unittest
 
-from lsst.qserv.meta.status import Status
+from lsst.qserv.meta.status import Status, QmsException
 from lsst.qserv.meta.client import Client
 
 host = None
@@ -54,18 +54,18 @@ class TestMeta(unittest.TestCase):
         self._client = Client(host, port, user, pwd)
         # cleanup
         try: self._client.destroyMeta()
-        except Exception, e: pass
+        except QmsException: pass
 
     def tearDown(self):
         try: self._client.destroyMeta()
-        except Exception, e: pass
+        except QmsException: pass
 
     ###########################################################################
     #### test_basics
     ###########################################################################
     def test_basics(self):
         print "=====>> print meta (but meta does not exist)"
-        self.assertRaises(Exception, self._client.printMeta)
+        self.assertRaises(QmsException, self._client.printMeta)
 
         print "=====>> install meta"
         self._client.installMeta()
@@ -96,7 +96,7 @@ class TestMeta(unittest.TestCase):
         print self._client.printMeta()
 
         print "=====>> try create db (already exists)"
-        self.assertRaises(Exception, self._client.createDb, "Summer2012", dd)
+        self.assertRaises(QmsException, self._client.createDb, "Summer2012",dd)
 
         print "=====>> create non-partitioned db"
         dd = {"partitioning": "off"}
@@ -132,9 +132,8 @@ class TestMeta(unittest.TestCase):
 
         print "=====>> try create table (already exists)"
         try:
-            self._client.createTable(dbName, params)
-        except Exception, e: pass
-        except: self.fail("createTable: Unexpected exception:", e)
+            self._client.createTable("Summer2012", dd)
+        except QmsException as qe: pass
         else: self.fail("createTable: Exception not thrown")
 
         print "=====>> create table Exposure"
@@ -185,8 +184,7 @@ class TestMeta(unittest.TestCase):
               "defaultOverlap_nearNeighbor": "0.25"}
         try:
             self._client.createDb("d1", dd)
-        except Exception, e: pass
-        except: self.fail("createDb(d1) Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("createDb(d1) Exception not thrown")
 
         dd = {"partitioning": "on",
@@ -197,8 +195,7 @@ class TestMeta(unittest.TestCase):
               "defaultOverlap_nearNeighbor": "0.25"}
         try:
             self._client.createDb("d1", dd)
-        except Exception, e: pass
-        except: self.fail("createDb nSS: Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("createDb nSS: Exception not thrown")
 
         dd = {"partitioning": "on",
@@ -209,8 +206,7 @@ class TestMeta(unittest.TestCase):
               "defaultOverlap_nearNeighbor": "0.25"}
         try:
             self._client.createDb("d1", dd)
-        except Exception, e: pass
-        except: self.fail("createDb dof: Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("createDb dof: Exception not thrown")
 
         print "=====>> try create db (extra parameter)"
@@ -223,22 +219,19 @@ class TestMeta(unittest.TestCase):
               "sthExtra": "abc"}
         try:
             self._client.createDb("d1", dd)
-        except Exception, e: pass
-        except: self.fail("createDb extraParam: Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("createDb extraParam: Exception not thrown")
 
         print "=====>> try retrieveDb info (non-existing db)"
         try:
             self._client.retrieveDbInfo("drer")
-        except Exception, e: pass
-        except: self.fail("retrieveDb('bad'): Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("retrieveDb('bad'): Exception not thrown")
 
         print "=====>> try dropping table (does not exist)"
         try:
             self._client.dropTable("Summer2012", "Object")
-        except Exception, e: pass
-        except: self.fail("dropTable('bad'): Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("dropTable('bad'): Exception not thrown")
 
         print "=====>> try create table with invalid column"
@@ -254,8 +247,7 @@ class TestMeta(unittest.TestCase):
                "physChunking": "0x0021" }
         try:
             self._client.createTable("Summer2012", dd)
-        except Exception, e: pass
-        except: self.fail("createTable invParam: Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("createTable invParam: Exception not thrown")
 
         print "=====>> try create table in non-existing db"
@@ -271,8 +263,7 @@ class TestMeta(unittest.TestCase):
                "physChunking": "0x0021" }
         try:
             self._client.createTable("Sudfdfd2", dd)
-        except Exception, e: pass
-        except: self.fail("createTable invalidDb: Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("createTable invalidDb: Exception not thrown")
 
         print "=====>> create Summer2012 db"
@@ -297,29 +288,25 @@ class TestMeta(unittest.TestCase):
                "physChunking": "0x0021" }
         try:
             self._client.createTable("Summer2012", dd)
-        except Exception, e: pass
-        except: self.fail("createTable badSchemaF: Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("createTable badSchemaF: Exception not thrown")
 
         print "=====>> try retrieve table info (db does not exist)"
         try:
             self._client.retrieveTableInfo("Sudfd2012", "Exposure")
-        except Exception, e: pass
-        except: self.fail("retrieveTInfo badDb Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("retrieveTInfo badDb: Exception not thrown")
 
         print "=====>> try retrieve table info (table does not exist)"
         try:
             self._client.retrieveTableInfo("Summer2012", "Edfdfd")
-        except Exception, e: pass
-        except: self.fail("retrieveTInfo badT: Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("retrieveTInfo badT: Exception not thrown")
 
         print "=====>> try drop invalid db"
         try:
             self._client.dropDb("Sudfdmmer2012")
-        except Exception, e: pass
-        except: self.fail("dropDb badDb: Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("dropDb badDb: Exception not thrown")
 
         print "=====>> destroy meta"
@@ -328,8 +315,7 @@ class TestMeta(unittest.TestCase):
         print "=====>> try destroying non-existing meta"
         try:
             self._client.destroyMeta()
-        except Exception, e: pass
-        except: self.fail("destroy #2: Unexpected exception:", e)
+        except QmsException as qe: pass
         else: self.fail("destroy #2: Exception not thrown")
 
     def _getCachedConnInfo(self):
@@ -341,13 +327,15 @@ class TestMeta(unittest.TestCase):
         config.read(fName)
         s = "qmsConn"
         if not config.has_section(s):
-            raise Exception("Can't find section '%s' in %s" % (s, fName))
+            raise QmsException(Status.ERR_INVALID_OPTION, 
+                               "Can't find section '%s' in %s" % (s, fName))
         if not config.has_option(s, "host") or \
            not config.has_option(s, "port") or \
            not config.has_option(s, "user") or \
            not config.has_option(s, "pass"):
-            raise Exception("Bad %s, can't find host, port, user or pass" \
-                                % fName)
+            raise QmsException(Status.ERR_INVALID_OPTION,
+                               "Bad %s, can't find host, port, user or pass" \
+                                   % fName)
         return (config.get(s, "host"), config.getint(s, "port"),
                 config.get(s, "user"), config.get(s, "pass"))
 

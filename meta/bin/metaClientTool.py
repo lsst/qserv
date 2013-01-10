@@ -340,6 +340,6 @@ if __name__ == '__main__':
     try:
         t = TheTool()
         t.parseAndRun()
-    except Exception, e:
-        print "Error:", str(e)
+    except QmsException as qe:
+        print "Error:", qe.getErrMsg()
         traceback.print_exc(file=sys.stdout)

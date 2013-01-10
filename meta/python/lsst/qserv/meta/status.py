@@ -32,6 +32,7 @@ class Status:
     # note: error numbered 1000 - 1200 are used by mysql,
     # see mysqld_ername.h in mysql source code
     ERR_IS_INIT            = 2001
+    ERR_QMS_CONNECT        = 2002
     ERR_MYSQL_CONNECT      = 2005
     ERR_MYSQL_DISCONN      = 2010
     ERR_MYSQL_ERROR        = 2015
@@ -53,6 +54,7 @@ class Status:
 
     errors = { 
         ERR_IS_INIT: "Qserv metadata already initialized.",
+        ERR_QMS_CONNECT: "Unable to connect to qms.",
         ERR_MYSQL_CONNECT: "Unable to connect to mysql server.",
         ERR_MYSQL_DISCONN: ("Failed to commit transaction and "
                             "disconnect from mysql server."),

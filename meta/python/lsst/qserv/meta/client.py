@@ -22,8 +22,8 @@
 
 
 """
-The "client" module was designed to implement a client for the
-qserv metadata server.
+The "client" module implements client of the qserv metadata server.
+It throws QmsException on error.
 """
 
 import os
@@ -32,7 +32,7 @@ import socket
 import xmlrpclib
 
 # Local package imports
-from status import Status, getErrMsg
+from status import Status, getErrMsg, QmsException
 
 class Client:
     def __init__(self, host, port, user, pwd):
@@ -45,50 +45,52 @@ class Client:
     def installMeta(self):
         status = self._qms.installMeta()
         if status != Status.SUCCESS: 
-            raise Exception(getErrMsg(status))
+            raise QmsException(status)
 
     def destroyMeta(self):
         status = self._qms.destroyMeta()
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
 
     def printMeta(self):
         (status, v) = self._qms.printMeta()
         if status != Status.SUCCESS: 
-            raise Exception(getErrMsg(status))
+            raise QmsException(status)
         return v
 
     def createDb(self, dbName, theOptions):
         status = self._qms.createDb(dbName, theOptions)
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
 
     def dropDb(self, dbName):
         status = self._qms.dropDb(dbName)
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
 
     def retrieveDbInfo(self, dbName):
         (status, values) = self._qms.retrieveDbInfo(dbName)
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
         return values
 
     def checkDbExists(self, dbName):
         (status, existInfo) = self._qms.checkDbExists(dbName)
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
         return existInfo
 
     def listDbs(self):
         (status, values) = self._qms.listDbs()
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
         return values
 
     def createTable(self, dbName, theOptions):
+        print theOptions
         # read schema file and pass it as a string
         if not theOptions.has_key("schemaFile"):
-            raise Exception("Missing param 'schemaFile'")
+            raise QmsException(Status.ERR_INVALID_OPTION, 
+                               "Missing param 'schemaFile'")
         schemaFileName = theOptions["schemaFile"]
         del theOptions["schemaFile"]
         if not os.access(schemaFileName, os.R_OK):
             msg = "Schema file '%s' can't be opened" % schemaFileName
-            raise Exception(msg)
+            raise QmsException(Status.ERR_INVALID_OPTION, msg)
         tableNameFromSchema = self._extractTableName(schemaFileName)
         if "tableName" in theOptions:
             if theOptions["tableName"] != tableNameFromSchema:
@@ -96,7 +98,7 @@ class Client:
                 msg += theOptions["tableName"]
                 msg +="', but table name extracted from schema file is "
                 msg += "'%s' - they have to match." % tableNameFromSchema
-                raise Exception(msg)
+                raise QmsException(Status.ERR_INVALID_OPTION, msg)
         else:
             # it is ok to not specify table name - it can be retrieved 
             # from schema file
@@ -105,25 +107,25 @@ class Client:
         schemaStr = open(schemaFileName, 'r').read()
         # do it
         status = self._qms.createTable(dbName, theOptions, schemaStr)
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
 
     def dropTable(self, dbName, tableName):
         status = self._qms.dropTable(dbName, tableName)
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
 
     def retrievePartitionedTables(self, dbName):
         (status, tNames) = self._qms.retrievePartTables(dbName)
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
         return tNames
 
     def retrieveTableInfo(self, dbName, tableName):
         (status, values) = self._qms.retrieveTableInfo(dbName, tableName)
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
         return values
 
     def getInternalQmsDbName(self):
         (status, dbName) = self._qms.getInternalQmsDbName()
-        if status != Status.SUCCESS: raise Exception(getErrMsg(status))
+        if status != Status.SUCCESS: raise QmsException(status)
         return dbName
 
     ###########################################################################
@@ -137,10 +139,10 @@ class Client:
         try:
             status = qms.echo(echostring)
         except socket.error, err:
-            raise Exception(("Unable to connect to qms (%s)" % err))
+            raise QmsException(Status.ERR_QMS_CONNECT, err)
         if status != echostring:
-            raise Exception("Qms echo test failed (expected %s, got %s)" % \
-                                (echostring, status))
+            msg = "(expected %s, got %s)" % (echostring, status)
+            raise QmsException(Status.ERR_QMS_CONNECT, msg)
         return qms
 
     ###########################################################################
