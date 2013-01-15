@@ -370,8 +370,6 @@ class MetaImpl:
             values["subStripes"] = ret[1]
             values["defaultOverlap_fuzziness"] = ret[2]
             values["defaultOverlap_nearNeigh"] = ret[3]
-        elif ps == "None":
-            pass
         return values
 
     ###########################################################################
