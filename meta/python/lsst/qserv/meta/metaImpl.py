@@ -35,6 +35,112 @@ import config
 from db import Db
 from status import Status, getErrMsg, QmsException
 
+internalTables = [
+    # The DbMeta table keeps the list of databases managed through 
+    # qserv. Databases not entered into that table will be ignored 
+    # by qserv.
+    ['DbMeta', '''(
+   dbId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   dbName VARCHAR(255) NOT NULL,
+   dbUuid VARCHAR(255) NOT NULL, -- note: this has to be the same across 
+                                 -- all worker nodes
+
+   psName VARCHAR(255), -- partition strategy used for tables
+                        -- in this database. Must be the same for all tables
+                        -- supported so far: "sphBox". This name is used to
+                        -- determine which PS_Db_* and PS_Tb_* tables to use
+   psId INT             -- foreign key to the PS_Db_* table
+)'''],
+    # -----------------------------------------------------------------
+    # TableMeta table defines table-specific metadata.
+    # This metadata is data-independent
+    ["TableMeta", '''(
+   tableId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   tableName VARCHAR(255) NOT NULL,
+   tbUuid VARCHAR(255),       -- uuid of this table
+   dbId INT NOT NULL,         -- id of database this table belongs to
+   psId INT,                  -- foreign key to the PS_Tb_* table
+   clusteredIdx VARCHAR(255)  -- name of the clustered index, 
+                              -- Null if no clustered index.
+)'''],
+    # -----------------------------------------------------------------
+    # Partitioning strategy, database-specific parameters 
+    # for sphBox partitioning
+    ["PS_Db_sphBox", '''(
+   psId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   stripes INT,    -- base number of stripes. 
+                   -- Large tables might overwrite that and have 
+                   -- finer-grain division.
+   subStripes INT, -- base number of subStripes per stripe.
+                   -- Large tables might overwrite that and have 
+                   -- finer-grain division.
+   defaultOverlap_fuzzyness FLOAT, -- in degrees, for fuzziness
+   defaultOverlap_nearNeigh FLOAT  -- in degrees, for real neighbor query
+)'''],
+    # -----------------------------------------------------------------
+    # Partitioning strategy, table-specific parameters 
+    # for sphBox partitioning
+    ["PS_Tb_sphBox", '''(
+   psId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+   overlap FLOAT,         -- in degrees, 0 if not set
+   phiCol VARCHAR(255),   -- Null if table not partitioned
+   thetaCol VARCHAR(255), -- Null if table not partitioned
+   phiColNo INT,          -- Position of the phiColumn in the table, 
+                          -- counting from zero
+   thetaColNo INT,        -- Position of the thetaColumn in the table, 
+                          -- counting from zero
+   logicalPart SMALLINT,  -- logical partitioning flag:
+                          -- 0: no chunks
+                          -- 1: one-level chunking
+                          -- 2: two-level chunking (chunks and subchunks)
+   physChunking INT       -- physical storage flag:                        
+            -- least significant bit: 0-not persisted, 1-persisted in RDBMS
+            -- second-least significant bit indicates partitioning level,eg
+            -- 0x0010: 1st-level partitioning, not persistent
+            -- 0x0011: 1st-level partitioning, persisted in RDBMS
+            -- 0x0020: 2st-level partitioning, not persistent
+            -- 0x0021: 2st-level partitioning, persisted in RDBMS
+)'''],
+    # -----------------------------------------------------------------
+    ["EmptyChunks", '''(
+   dbId INT,
+   chunkId INT
+)'''], 
+    # -----------------------------------------------------------------
+    ["TableStats", '''(
+   tableId INT NOT NULL PRIMARY KEY,
+   rowCount BIGINT,        -- row count. Doesn't have to be precise.
+                           -- used for query cost estimates
+   chunkCount INT,         -- count of all chunks
+   subChunkCount INT,      -- count of all subchunks
+   avgSubChunkCount FLOAT  -- average sub chunk count (per chunk)
+)'''],
+    # -----------------------------------------------------------------
+    ["LockDb", '''(
+   dbId INT NOT NULL,
+   locked INT,                 -- 1: locked, 0: unlocked for now
+   lockKey BIGINT,             -- key required to bypass the lock
+   lockedBy VARCHAR(255),      -- name of user who locked the database
+   lockDate DATETIME,          -- date/time when lock was created
+   estDur INT,                 -- estimated duration in hours 
+                               -- (for message facing users, -1: unknown)
+   comments TEXT DEFAULT NULL  -- any comments the lock creator wants 
+                               -- to attach to this lock 
+)'''],
+    # -----------------------------------------------------------------
+    ["LockTable", '''(
+   tableId INT NOT NULL,
+   locked INT,                 -- 1: locked, 0: unlocked for now
+   lockKey BIGINT,             -- key required to bypass the lock
+   lockedBy VARCHAR(255),      -- name of user who locked the database
+   lockDate DATETIME,          -- date/time when lock was created
+   estDur INT,                 -- estimated duration in hours 
+                               -- (for message facing users, -1: unknown)
+   comments TEXT DEFAULT NULL  -- any comments the lock creator wants 
+                               -- to attach to this lock 
+)''']]
+
+
 class MetaImpl:
     def __init__(self, loggerName):
         # init logger
@@ -60,110 +166,6 @@ class MetaImpl:
     def installMeta(self):
         """Initializes persistent qserv metadata structures. This method should
            be called only once ever for a given qms installation."""
-        internalTables = [
-            # The DbMeta table keeps the list of databases managed through 
-            # qserv. Databases not entered into that table will be ignored 
-            # by qserv.
-            ['DbMeta', '''(
-   dbId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-   dbName VARCHAR(255) NOT NULL,
-   dbUuid VARCHAR(255) NOT NULL, -- note: this has to be the same across 
-                                 -- all worker nodes
-
-   psName VARCHAR(255), -- partition strategy used for tables
-                        -- in this database. Must be the same for all tables
-                        -- supported so far: "sphBox". This name is used to
-                        -- determine which PS_Db_* and PS_Tb_* tables to use
-   psId INT             -- foreign key to the PS_Db_* table
-)'''],
-            # -----------------------------------------------------------------
-            # TableMeta table defines table-specific metadata.
-            # This metadata is data-independent
-            ["TableMeta", '''(
-   tableId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-   tableName VARCHAR(255) NOT NULL,
-   tbUuid VARCHAR(255),       -- uuid of this table
-   dbId INT NOT NULL,         -- id of database this table belongs to
-   psId INT,                  -- foreign key to the PS_Tb_* table
-   clusteredIdx VARCHAR(255)  -- name of the clustered index, 
-                              -- Null if no clustered index.
-)'''],
-            # -----------------------------------------------------------------
-            # Partitioning strategy, database-specific parameters 
-            # for sphBox partitioning
-            ["PS_Db_sphBox", '''(
-   psId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-   stripes INT,    -- base number of stripes. 
-                   -- Large tables might overwrite that and have 
-                   -- finer-grain division.
-   subStripes INT, -- base number of subStripes per stripe.
-                   -- Large tables might overwrite that and have 
-                   -- finer-grain division.
-   defaultOverlap_fuzzyness FLOAT, -- in degrees, for fuzziness
-   defaultOverlap_nearNeigh FLOAT  -- in degrees, for real neighbor query
-)'''],
-            # -----------------------------------------------------------------
-            # Partitioning strategy, table-specific parameters 
-            # for sphBox partitioning
-            ["PS_Tb_sphBox", '''(
-   psId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-   overlap FLOAT,         -- in degrees, 0 if not set
-   phiCol VARCHAR(255),   -- Null if table not partitioned
-   thetaCol VARCHAR(255), -- Null if table not partitioned
-   phiColNo INT,          -- Position of the phiColumn in the table, 
-                          -- counting from zero
-   thetaColNo INT,        -- Position of the thetaColumn in the table, 
-                          -- counting from zero
-   logicalPart SMALLINT,  -- logical partitioning flag:
-                          -- 0: no chunks
-                          -- 1: one-level chunking
-                          -- 2: two-level chunking (chunks and subchunks)
-   physChunking INT       -- physical storage flag:                        
-            -- least significant bit: 0-not persisted, 1-persisted in RDBMS
-            -- second-least significant bit indicates partitioning level,eg
-            -- 0x0010: 1st-level partitioning, not persistent
-            -- 0x0011: 1st-level partitioning, persisted in RDBMS
-            -- 0x0020: 2st-level partitioning, not persistent
-            -- 0x0021: 2st-level partitioning, persisted in RDBMS
-)'''],
-            # -----------------------------------------------------------------
-            ["EmptyChunks", '''(
-   dbId INT,
-   chunkId INT
-)'''], 
-            # -----------------------------------------------------------------
-            ["TableStats", '''(
-   tableId INT NOT NULL PRIMARY KEY,
-   rowCount BIGINT,        -- row count. Doesn't have to be precise.
-                           -- used for query cost estimates
-   chunkCount INT,         -- count of all chunks
-   subChunkCount INT,      -- count of all subchunks
-   avgSubChunkCount FLOAT  -- average sub chunk count (per chunk)
-)'''],
-            # -----------------------------------------------------------------
-            ["LockDb", '''(
-   dbId INT NOT NULL,
-   locked INT,                 -- 1: locked, 0: unlocked for now
-   lockKey BIGINT,             -- key required to bypass the lock
-   lockedBy VARCHAR(255),      -- name of user who locked the database
-   lockDate DATETIME,          -- date/time when lock was created
-   estDur INT,                 -- estimated duration in hours 
-                               -- (for message facing users, -1: unknown)
-   comments TEXT DEFAULT NULL  -- any comments the lock creator wants 
-                               -- to attach to this lock 
-)'''],
-            # -----------------------------------------------------------------
-            ["LockTable", '''(
-   tableId INT NOT NULL,
-   locked INT,                 -- 1: locked, 0: unlocked for now
-   lockKey BIGINT,             -- key required to bypass the lock
-   lockedBy VARCHAR(255),      -- name of user who locked the database
-   lockDate DATETIME,          -- date/time when lock was created
-   estDur INT,                 -- estimated duration in hours 
-                               -- (for message facing users, -1: unknown)
-   comments TEXT DEFAULT NULL  -- any comments the lock creator wants 
-                               -- to attach to this lock 
-)''']]
         self._mdb.createMetaDb()
         self._mdb.selectMetaDb()
         for t in internalTables:
