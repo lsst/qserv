@@ -20,6 +20,9 @@ def download(target, source, env):
     url = Request(url_str)
     file_name = str(target[0])
 
+    file_size_dl = 0
+    file_size = 0
+
     success = True
 
     try:
