@@ -342,11 +342,7 @@ sub load_data {
 	
 	#create database if it doesn't exist
 	run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' -e 'Create database if not exists LSST;'");
-        
-        # qservMeta database creation
-        run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' < '$install_dir/tmp/qservmeta.sql'");
-	
-	#check on the table def, and add need columns
+        #check on the table def, and add need columns
 	print "Copy and changing $source_dir/${tablename}.sql\n";
 	my $tmptable = lc $tablename;
 	run_command("cp $source_dir/${tablename}.sql $install_dir/tmp");

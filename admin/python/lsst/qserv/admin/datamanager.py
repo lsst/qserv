@@ -57,6 +57,15 @@ class QservDataManager:
 
         self.meta_outfilename = os.path.join(self.config['qserv']['base_dir'],'tmp',"meta-pt11.csv")
 
+        # Create meta table
+        self.create_meta_cmd = [
+            'mysql', 
+            '-S', self.config['qserv']['base_dir']+'/var/lib/mysql/mysql.sock',
+            '-u', 'root', 
+            '-p'+self.config['mysqld']['pass'],
+            '-e', "source %s" % os.path.join(self.config['qserv']['base_dir'],'tmp','qservmeta.sql')   
+        ]
+
         # Delete and load data from file
         self.load_meta_cmd = [
             'mysql', 
@@ -97,9 +106,14 @@ class QservDataManager:
         # mysql> drop database qserv_worker_meta_1
         # bash> rm -rf /opt/qserv/xrootd-run//q/LSST/
         
+        
     def fillTableMeta(self, nbworkers, outfilename):
         # TODO: use parameters or comand line options ?
         data_dirs = [os.path.join(self.config['lsst']['data_dir'],'pt11_partition')]
+        self.logger.info("Erasing if needed and creating meta database \n")
+        self.logger.debug(" ".join(self.create_meta_cmd))
+        out = commons.run_command(self.create_meta_cmd, self.logger_name)
+        self.logger.info("Meta database creation report: \n %s" % out)
         self.logger.info("Filling meta database from PT1.1 LSST data : %s \n" % data_dirs[0])
         csv2object.CSV2Object(nbworkers, data_dirs, outfilename)
         out = commons.run_command(self.load_meta_cmd, self.logger_name)
