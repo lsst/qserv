@@ -47,30 +47,27 @@ class MetaInterface:
                                                     'func_doc'), 
                                   okname)
 
-    def installMeta(self):
-        """Initializes qserv metadata. It creates persistent structures,
-        (it should be called only once)."""
+    def _x1(self, f, *args):
         try:
-            self._metaImpl.installMeta()
+            f(*args)
         except QmsException as qe: 
             if qe.getErrNo() == Status.ERR_DB_EXISTS:
                 return Status.ERR_META_EXISTS
             return qe.getErrNo()
         except Exception, e:
-            self._logger.error("Exception in installMeta: %s" % str(e))
+            self._logger.error("Exception in %s: %s" % (f.func_name, str(e)))
             return Status.ERR_INTERNAL
         return Status.SUCCESS
 
+
+    def installMeta(self):
+        """Initializes qserv metadata. It creates persistent structures,
+        (it should be called only once)."""
+        return self._x1(self._metaImpl.installMeta)
+
     def destroyMeta(self):
-        """Permanently destroy qserv metadata."""
-        try:
-            self._metaImpl.destroyMeta()
-        except QmsException as qe:
-            return qe.getErrNo()
-        except Exception, e:
-            self._logger.error("Exception in destroyMeta: %s" % str(e))
-            return Status.ERR_INTERNAL
-        return Status.SUCCESS
+        """Permanently destroys qserv metadata."""
+        return self._x1(self._metaImpl.destroyMeta)
 
     def printMeta(self):
         """Returns string that contains all metadata."""
@@ -85,25 +82,11 @@ class MetaInterface:
 
     def createDb(self, dbName, crDbOptions):
         """Creates metadata about new database to be managed by qserv."""
-        try:
-            self._metaImpl.createDb(dbName, crDbOptions)
-        except QmsException as qe:
-            return qe.getErrNo()
-        except Exception, e:
-            self._logger.error("Exception in createDb: %s" % str(e))
-            return Status.ERR_INTERNAL
-        return Status.SUCCESS
+        return self._x1(self._metaImpl.createDb, dbName, crDbOptions)
 
     def dropDb(self, dbName):
         """Removes metadata about a database managed by qserv."""
-        try:
-            self._metaImpl.dropDb(dbName)
-        except QmsException as qe: 
-            return qe.getErrNo()
-        except Exception, e:
-            self._logger.error("Exception in dropDb: %s" % str(e))
-            return Status.ERR_INTERNAL
-        return Status.SUCCESS
+        return self._x1(self._metaImpl.dropDb, dbName)
 
     def retrieveDbInfo(self, dbName):
         """Retrieves information about a database managed by qserv."""
@@ -140,25 +123,12 @@ class MetaInterface:
 
     def createTable(self, dbName, crTbOptions, schemaStr):
         """Creates metadata about new table from qserv-managed database."""
-        try:
-            self._metaImpl.createTable(dbName, crTbOptions, schemaStr)
-        except QmsException as qe: 
-            return qe.getErrNo()
-        except Exception, e:
-            self._logger.error("Exception in createTable: %s" % str(e))
-            Status.ERR_INTERNAL
-        return Status.SUCCESS
+        return self._x1(self._metaImpl.createTable, 
+                        dbName, crTbOptions, schemaStr)
 
     def dropTable(self, dbName, tableName):
         """Removes metadata about a table."""
-        try:
-            self._metaImpl.dropTable(dbName, tableName)
-        except QmsException as qe: 
-            return qe.getErrNo()
-        except Exception, e:
-            self._logger.error("Exception in dropTable: %s" % str(e))
-            Status.ERR_INTERNAL
-        return Status.SUCCESS
+        return self._x1(self._metaImpl.dropTable, dbName, tableName)
 
     def retrievePartTables(self, dbName):
         """Retrieves list of partitioned tables for a given database."""

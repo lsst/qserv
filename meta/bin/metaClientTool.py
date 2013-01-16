@@ -33,7 +33,7 @@ import re
 import sys, traceback
 
 # Local package imports
-from lsst.qserv.meta.status import Status, getErrMsg
+from lsst.qserv.meta.status import Status, getErrMsg, QmsException
 from lsst.qserv.meta.client import Client
 
 
@@ -342,4 +342,6 @@ if __name__ == '__main__':
         t.parseAndRun()
     except QmsException as qe:
         print "Error:", qe.getErrMsg()
-        traceback.print_exc(file=sys.stdout)
+        #traceback.print_exc(file=sys.stdout)
+    except Exception, e:
+        print "Error:", str(e)
