@@ -19,34 +19,38 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
-# The guts of manipulating qserv metadata worker. 
 
+"""
+This module implements internals of manipulating qserv worker metadata.
+"""
+
+import ConfigParser
+import os
 import StringIO
 
-from db import Db  # consider moving to common
-from status import Status, getErrMsg
+from lsst.qserv.meta.db import Db
+from lsst.qserv.meta.status import Status, getErrMsg, QmsException
+from lsst.qserv.meta.client import Client
 
-class Meta(object):
+class Meta:
     def __init__(self, loggerName,
                  qmsHost, qmsPort, qmsUser, qmsPass,
                  qmwDb, qmwUser, qmwPass, qmwMySqlSocket):
-        self._loggerName = loggerName
-        self._qmsHost = qmsHost
-        self._qmsPort = qmsPort
-        self._qmsUser = qmsUser
-        self._qmsPass = qmsPass
-        self._qmwDb   = "qmw_%s" % qmwDb
-        self._qmwUser = qmwUser
-        self._qmwPass = qmwPass
-        self._qmwMySqlSocket = qmwMySqlSocket
+        self._qmwDb = "qmw_%s" % qmwDb
+        self._mdb = Db(loggerName, None, None, qmwUser, qmwPass,
+                       qmwMySqlSocket, self._qmwDb)
+        self._mdb.connectToMySQLServer()
+        self._qmsClient = Client(qmsHost, qmsPort, qmsUser, qmsPass)
+
+    def __del__(self):
+        self._mdb.disconnect()
 
     def installMeta(self):
         """Initializes persistent qserv metadata structures on the worker.
         This method should be called only once ever for a given qms
         installation on a given worker."""
         internalTables = [
-            # The DbMeta table keeps the list of databases managed through 
+            # The 'Dbs' table keeps the list of databases managed through 
             # qserv. Databases not entered into that table will be ignored 
             # by qserv.
             ['Dbs', '''(
@@ -54,99 +58,105 @@ class Meta(object):
    dbName VARCHAR(255) NOT NULL, 
    dbUuid VARCHAR(255) NOT NULL
    )''']]
-        mdb = Db(self._loggerName, None, None, self._qmwUser, self._qmwPass,
-                 self._qmwMySqlSocket, self._qmwDb)
-        ret = mdb.connectAndCreateDb()
-        if ret != Status.SUCCESS:
-            raise Exception(getErrMsg(ret))
-        for t in internalTables:
-            mdb.createTable(t[0], t[1])
-        return mdb.disconnect()
+        try:
+            self._mdb.createMetaDb()
+            self._mdb.selectMetaDb()
+            for t in internalTables:
+                self._mdb.createTable(t[0], t[1])
+            self._mdb.commit()
+        except QmsException as qe:
+            if qe.getErrNo() == Status.ERR_DB_EXISTS:
+                raise QmsException(Status.ERR_META_EXISTS)
+            else:
+                raise
 
     def destroyMeta(self):
-        mdb = Db(self._loggerName, None, None, self._qmwUser, self._qmwPass,
-                 self._qmwMySqlSocket, self._qmwDb)
-        ret = mdb.connect()
-        if ret != Status.SUCCESS:
-            raise Exception(getErrMsg(ret))
-        mdb.dropDb()
-        return mdb.disconnect()
+        self._mdb.selectMetaDb()
+        self._mdb.dropMetaDb()
+        self._mdb.commit()
 
     def printMeta(self):
-        mdb = Db(self._loggerName, None, None, self._qmwUser, self._qmwPass,
-                 self._qmwMySqlSocket, self._qmwDb)
-        ret = mdb.connect()
-        if ret != Status.SUCCESS:
-            if ret == Status.ERR_NO_META:
-                return "No metadata found"
-            raise Exception(getErrMsg(ret))
-        s = mdb.printTable("Dbs")
-        mdb.disconnect()
-        return s
+        self._mdb.selectMetaDb()
+        return self._mdb.printTable("Dbs")
 
     def registerDb(self, dbName):
-        raise Exception("registerDb not implemented")
+        self._mdb.selectMetaDb()
+        # check if already registered, fail if it is
+        if self._checkDbIsRegistered(dbName):
+            raise Exception("Db '%s' is already registered." % dbName)
+        # get dbId and dbUuid from qms
+        try:
+            values = self._qmsClient.retrieveDbInfo(dbName)
+        except QmsException as qe:
+            if qe.getErrNo() == Status.ERR_DB_NOT_EXISTS:
+                raise QmsException(???,
+                    "Db '%s' is not registered in the metadata server." % dbName)
+            else:
+                raise
+        if not 'dbId' in values:
+            raise QmsException(???, "Invalid dbInfo from qms (dbId not found)")
+        if not 'dbUuid' in values:
+            raise QmsException(???, "Invalid dbInfo from qms (dbUuid not found)")
+        # register it
+        cmd = "INSERT INTO Dbs(dbId, dbName, dbUuid) VALUES (%s, '%s','%s')" % (values['dbId'], dbName, values['dbUuid'])
+        self._mdb.execCommand0(cmd)
+        self._mdb.commit()
 
     def unregisterDb(self, dbName):
-        raise Exception("unregisterDb not implemented")
+        self._mdb.selectMetaDb()
+        # check if already registered, fail if it is not
+        if not self._checkDbIsRegistered(dbName):
+            raise Exception("Db '%s' is not registered." % dbName)
+        # unregister it
+        cmd = "DELETE FROM Dbs WHERE dbName='%s'" % dbName;
+        self._mdb.execCommand0(cmd)
+        self._mdb.commit()
 
     def listDbs(self):
-        raise Exception("listDbs not implemented")
+        xx = []
+        self._mdb.selectMetaDb()
+        xx = self._mdb.execCommandN("SELECT dbName FROM Dbs")
+        return [x[0] for x in xx]
 
     ###########################################################################
-    ##### connection to QMS
+    ##### miscellaneous
     ###########################################################################
-    def _connectToQMS(self):
-        (host, port, user, pwd) = self._getConnInfo()
-        if host is None or port is None or user is None or pwd is None:
-            return False
-        self._logger.debug("Using connection: %s:%s, %s,pwd=%s" % \
-                               (host, port, user, pwd))
-        url = "http://%s:%d/%s" % (host, port, self._defaultXmlPath)
-        self._logger.debug("Url is %s" % url)
-        qms = xmlrpclib.Server(url)
-        if self._echoTest(qms):
-            return qms
-        else:
-            return None
+    def _checkDbIsRegistered(self, dbName):
+        cmd = "SELECT COUNT(*) FROM Dbs WHERE dbName = '%s'" % dbName
+        ret = self._mdb.execCommand1(cmd)
+        return ret[0] == 1
 
-    def _getConnInfo(self):
-        # get if from .qmsadm, or fail
-        (host, port, user, pwd) = self._getCachedConnInfo()
-        if host is None or port is None or user is None or pwd is None:
-            print "Missing connection information ", \
-                "(hint: use -c or use .qmsadm file)"
-            return (None, None, None, None)
-        return (host, port, user, pwd)
 
-    def _getCachedConnInfo(self):
-        self._logger.debug("Getting cached connection info")
-        config = ConfigParser.ConfigParser()
-        config.read(self._dotFileName)
-        s = "qmsConn"
-        if not config.has_section(s):
-            print "Can't find section '%s' in .qmsadm" % s
-            return (None, None, None, None)
-        if not config.has_option(s, "host") or \
-           not config.has_option(s, "port") or \
-           not config.has_option(s, "user") or \
-           not config.has_option(s, "password"):
-            print "Bad %s, can't find host, port, user or password" % \
-                self._dotFileName
-            return (None, None, None, None)
-        return (config.get(s, "host"),
-                config.getint(s, "port"),
-                config.get(s, "user"),
-                config.get(s, "password"))
+###############################################################################
+##### read connection info
+###############################################################################
+def readConnInfoFromFile(fileName):
+    if fileName[0] == '~':
+        fileName = os.path.expanduser(fileName)
+    if not os.path.exists(fileName):
+        raise QmsException(???, "%s does not exist." % fileName)
+    config = ConfigParser.ConfigParser()
+    config.read(fileName)
+    s = "qmsConn"
+    if not config.has_section(s):
+        raise QmsException(???, "Bad %s, can't find section '%s'" % (fileName, s))
+    if not config.has_option(s, "host") or \
+       not config.has_option(s, "port") or \
+       not config.has_option(s, "user") or \
+       not config.has_option(s, "pass"):
+        raise QmsException(???, "Bad %s, can't find host, port, user or pass"%fileName)
+    (host,port,usr,pwd) = (config.get(s, "host"), config.getint(s, "port"),
+                           config.get(s, "user"), config.get(s, "pass"))
 
-    def _echoTest(self, qms):
-        echostring = "QMS test string echo back. 1234567890.()''?"
-        try:
-            ret = qms.echo(echostring)
-        except socket.error, err:
-            print "Unable to connect to qms (%s)" % err
-            return False
-        if ret != echostring:
-            print "Expected %s, got %s" % (echostring, ret)
-            return False
-        return True
+    s = "qmwConn"
+    if not config.has_section(s):
+        raise QmsException(???, "Bad %s, can't find section '%s'" % (fileName,s))
+    if not config.has_option(s, "db") or \
+       not config.has_option(s, "user") or \
+       not config.has_option(s, "pass") or \
+       not config.has_option(s, "mySqlSocket"):
+        raise QmsException(???, "Bad %s, can't find db, user, pass or mysqlSocket"\
+                            % fileName)
+    return (host,port,usr,pwd,
+            config.get(s, "db"), config.get(s, "user"),
+            config.get(s, "pass"), config.get(s, "mySqlSocket"))

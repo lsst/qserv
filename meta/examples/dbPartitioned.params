@@ -1,0 +1,22 @@
+[db_info]
+
+# To turn on/off database partitioning, use:
+# partitioning: on|off
+
+# If partitioning is on, you must specific partitioning strategy
+# partitioningStrategy: <PSName>
+# Currently supported partitioningStrategies are: sphBox
+# You must also create [<PSName>] section.
+
+# Partitioning for individual tables can be turn
+# off on table-by-table bases, see createTable
+# config file for details.
+
+partitioning: on
+partitioningStrategy: sphBox
+
+[sphBox]
+nStripes: 10
+nSubStripes: 23
+defaultOverlap_fuzziness: 0.0001
+defaultOverlap_nearNeighbor: 0.25

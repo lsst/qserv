@@ -20,31 +20,37 @@
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-# The tool for manipulating qserv metadata worker.
-# TheTool class simply parses arguments and delegates the work 
+# The tool for manipulating qserv metadata on the worker.
+# It is a thin shell that parses arguments and delegates the work 
 # down to the meta class.
 
+
 from __future__ import with_statement
-import ConfigParser
 import logging
 from optparse import OptionParser
 import os
 import socket
+import sys, traceback
 
 # Local package imports
-from lsst.qserv.admin.status import Status, getErrMsg  # FIXME: when ticket1944 pushed
-from lsst.qserv.admin.meta import Meta
+from lsst.qserv.meta.status import Status, getErrMsg
+from lsst.qserv.admin.meta import Meta, readConnInfoFromFile
 
 class TheTool(object):
     def __init__(self):
+        self._defaultAuthFile = "~/.qmwadm"
+
         self._usage = """
 NAME
         qmwTool - the tool for manipulating qserv metadata on worker
 
 SYNOPSIS
-        qmwTool [-h|--help] [-v|--verbose] COMMAND [ARGS]
+        qmwTool [OPTIONS] COMMAND [ARGS]
 
 OPTIONS
+   -a, --auth
+        Authorization file. Default: %(defaultAuthFile)s
+
    -h, --help
         Prints help information.
 
@@ -53,10 +59,10 @@ OPTIONS
 
 COMMANDS
   installMeta
-        Sets up internal qserv metadata database.
+        Sets up internal qserv metadata database for given worker.
 
   destroyMeta
-        Destroys internal qserv metadata database.
+        Destroys internal qserv metadata database for given worker.
 
   printMeta
         Prints all metadata for given worker.
@@ -67,25 +73,16 @@ COMMANDS
 
   unregisterDb
         Unregisters database used by qserv and destroys
-        corresponding export structures for that database.
-        Argument: <dbName>
+        corresponding export structures for that database
+        for given worker. Argument: <dbName>
 
   listDbs
-        List database names registered for qserv use.
-
-  createExportPaths
-        Generates export paths. If no dbName is given, it will
-        run for all databases registered in qserv metadata
-        for given worker. Argument: [<dbName>]
-
-  rebuildExportPaths
-        Removes existing export paths and recreates them.
-        If no dbName is given, it will run for all databases
-        registered in qserv metadata for given worker.
-        Argument: [<dbName>]
+        List database names registered for qserv use for
+        given worker.
 
 EXAMPLES
-Example contents of the (required) '~/.qmwadm' file:
+Example contents of the (required) authorization file 
+(e.g., '%(defaultAuthFile)s'):
 
 [qmsConn]
 host: lsst-db3.slac.stanford.edu
@@ -98,27 +95,36 @@ db: testX
 user: qmwUser
 pass: qmwPass
 mySqlSocket: /var/lib/mysql/mysql.sock
-"""
+""" % dict(defaultAuthFile=self._defaultAuthFile)
+
         self._loggerName = "qmwLogger"
         self._loggerOutFile = "/tmp/qmwLogger.log"
         self._loggerLevelName = None
 
     def parseAndRun(self):
         parser = OptionParser(usage=self._usage)
+        parser.add_option("-a", "--auth", dest="authFile")
+        parser.add_option("-v","--verbose",action="store_true",dest="verbose")
         (options, args) = parser.parse_args()
         if len(args) < 1:
             parser.error("No command given")
+
         cmdN = "_cmd_" + args[0]
         if not hasattr(self, cmdN):
             parser.error("Unrecognized command: " + args[0])
         del args[0]
 
+        if options.verbose:
+            self._loggerLevelName = "debug"
+
+        # use default file name unless overwritten through command line option
+        authFile = os.path.expanduser(self._defaultAuthFile)
+        if options.authFile:
+            authFile = options.authFile
+
         self._initLogging()
 
-        self._dotFileName = os.path.expanduser("~/.qmwadm")
-
-        (sh,sp,su,sp,wd,wu,wp,wm) = self._getConnInfo()
-        self._meta = Meta(self._loggerName, sh,sp,su,sp,wd,wu,wp,wm)
+        self._meta = Meta(self._loggerName, *readConnInfoFromFile(authFile))
 
         cmd = getattr(self, cmdN)
         cmd(options, args)
@@ -162,38 +168,6 @@ mySqlSocket: /var/lib/mysql/mysql.sock
         print self._meta.listDbs()
 
     ###########################################################################
-    ##### connection info
-    ###########################################################################
-    def _getConnInfo(self):
-        config = ConfigParser.ConfigParser()
-        config.read(self._dotFileName)
-        s = "qmsConn"
-        if not config.has_section(s):
-            raise Exception("Bad %s, can't find section '%s'" % \
-                                (self._dotFileName, s))
-        if not config.has_option(s, "host") or \
-           not config.has_option(s, "port") or \
-           not config.has_option(s, "user") or \
-           not config.has_option(s, "pass"):
-            raise Exception("Bad %s, can't find host, port, user or pass"%\
-                                self._dotFileName)
-        (h,p,u,p) = (config.get(s, "host"), config.getint(s, "port"),
-                     config.get(s, "user"), config.get(s, "pass"))
-
-        s = "qmwConn"
-        if not config.has_section(s):
-            raise Exception("Bad %s, can't find section '%s'" % \
-                                (self._dotFileName, s))
-        if not config.has_option(s, "db") or \
-           not config.has_option(s, "user") or \
-           not config.has_option(s, "pass") or \
-           not config.has_option(s, "mySqlSocket"):
-            raise Exception("Bad %s, can't find db, user, pass or mysqlSocket" % self._dotFileName)
-        return (h,p,u,p,
-                config.get(s, "db"), config.get(s, "user"),
-                config.get(s, "pass"), config.get(s, "mySqlSocket"))
-
-    ###########################################################################
     ##### logger
     ###########################################################################
     def _initLogging(self):
@@ -206,7 +180,7 @@ mySqlSocket: /var/lib/mysql/mysql.sock
                   "error":logging.ERROR,
                   "critical":logging.CRITICAL}
             level = ll[self._loggerLevelName]
-        self.logger = logging.getLogger(self._loggerLevelName)
+        self.logger = logging.getLogger(self._loggerName)
         hdlr = logging.FileHandler(self._loggerOutFile)
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         hdlr.setFormatter(formatter)
@@ -221,4 +195,5 @@ if __name__ == '__main__':
         t = TheTool()
         t.parseAndRun()
     except Exception, e:
-        print "Error: ", str(e)
+        print "Error:", str(e)
+        traceback.print_exc(file=sys.stdout)

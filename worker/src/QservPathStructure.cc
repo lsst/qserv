@@ -82,20 +82,33 @@ qWorker::QservPathStructure::destroy(const std::string& thePath) {
     }
     vector<string>::const_iterator itr;
     for ( itr=files.begin(); itr!=files.end(); ++itr) {
-        std::stringstream ss;
-        ss << thePath << "/" << *itr;
-        std::cout << "   rm file: " << ss.str() << std::endl;
-        if ( 0 != unlink(ss.str().c_str()) ) {
-            std::cerr << "failed to rm " << ss.str()
-                      << ", err=" << strerror(errno) << std::endl;
+        std::string s = thePath + "/" + *itr;
+        if (isDirectory(s.c_str())) {
+            destroy(s);
+        } else {
+            rmFile(s.c_str());
         }
     }
-    std::cout << "   rmdir: " << thePath << std::endl;
-    if ( 0 != rmdir(thePath.c_str()) ) {
-            std::cerr << "failed to rmdir " << thePath
-                      << ", err=" << strerror(errno) << std::endl;
-    }
+    rmDir(thePath.c_str());
     return true;
+}
+
+void
+qWorker::QservPathStructure::rmFile(const char* p) {
+    std::cout << "   rm file: " << p << std::endl;
+    if ( 0 != unlink(p) ) {
+        std::cerr << "failed to rm " << p
+                  << ", err=" << strerror(errno) << std::endl;
+    }
+}
+
+void
+qWorker::QservPathStructure::rmDir(const char* p) {
+    std::cout << "   rmdir: " << p << std::endl;
+    if ( 0 != rmdir(p) ) {
+        std::cerr << "failed to rmdir " << p
+                  << ", err=" << strerror(errno) << std::endl;
+    }
 }
 
 bool
@@ -125,9 +138,8 @@ bool
 qWorker::QservPathStructure::isRegistered() const {
     std::vector<std::string>::const_iterator i;
     for ( i=_uniqueDbDirs.begin(); i!=_uniqueDbDirs.end(); ++i) {
-        if ( isRegistered(i->c_str()) ) {
-            std::cerr << "Path already persisted ("
-                      << *i << ")" << std::endl;
+        if ( isDirectory(i->c_str()) ) {
+            std::cerr << "Path already persisted (" << *i << ")" << std::endl;
             return true;
         }
     }
@@ -135,11 +147,10 @@ qWorker::QservPathStructure::isRegistered() const {
 }
 
 bool
-qWorker::QservPathStructure::isRegistered(const char* dbPath) const {
+qWorker::QservPathStructure::isDirectory(const char* path) {
     struct stat statbuf;
-    if (stat(dbPath, &statbuf) != -1) {
-        return S_ISDIR(statbuf.st_mode);
-    }
+    if (0 == stat(path, &statbuf))
+        if (statbuf.st_mode & S_IFDIR) return true;
     return false;
 }
 

@@ -36,25 +36,11 @@
 // MySQL
 #include <mysql/mysql.h> // MYSQL is typedef, so we can't forward declare it.
 
+#include "SqlConfig.hh"
 #include "SqlErrorObject.hh"
 
 namespace lsst {
 namespace qserv {
-
-/// class SqlConfig : Value class for configuring the MySQL connection
-class SqlConfig {
-public:
-    SqlConfig() : port(0) {}
-    std::string hostname;
-    std::string username;
-    std::string password;
-    std::string dbName;
-    unsigned int port;
-    std::string socket;
-    bool isValid() const {
-        return !username.empty();
-    }
-};
 
 class SqlResults {
 public:
@@ -69,6 +55,15 @@ public:
     bool extractFirst2Columns(std::vector<std::string>&, //FIXME: generalize
                               std::vector<std::string>&, 
                               SqlErrorObject&);
+    bool extractFirst3Columns(std::vector<std::string>&, //FIXME: generalize
+                              std::vector<std::string>&, 
+                              std::vector<std::string>&, 
+                              SqlErrorObject&);
+    bool extractFirst4Columns(std::vector<std::string>&,
+                              std::vector<std::string>&, 
+                              std::vector<std::string>&, 
+                              std::vector<std::string>&, 
+                              SqlErrorObject&);
     void freeResults();
 
 private:
@@ -80,8 +75,10 @@ private:
 /// class SqlConnection : Class for interacting with a MySQL database.
 class SqlConnection {
 public:
+    SqlConnection();
     SqlConnection(SqlConfig const& sc, bool useThreadMgmt=false); 
     ~SqlConnection(); 
+    void init(SqlConfig const& sc, bool useThreadMgmt=false);
     bool connectToDb(SqlErrorObject&);
     bool selectDb(std::string const& dbName, SqlErrorObject&);
     bool runQuery(char const* query, int qSize, 

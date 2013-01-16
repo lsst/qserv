@@ -49,7 +49,7 @@ testEnv.Append(BUILDERS = {'Test': bld})
 for src in Glob("*.cc"):
     libs = []
     if(filter(lambda s: s in src.name, 
-              ["MySqlFs_", "FifoScheduler_", "Metadata_"])):
+              ["MySqlFs_", "FifoScheduler_"])):
         src = [src] + testEnv["built_libs"] 
         libs = testEnv["built_elibs"] + ["mysqlclient_r"]
     elif "PathStructure_" in src.name:
@@ -62,10 +62,7 @@ for src in Glob("*.cc"):
 
     prog = testEnv.Program(src, LIBS=libs)
 
-    # don't run Metadata tests by default, they are
-    # interractive because of mysql credentials
-    if not (("Metadata_" in src[0].name) 
-            or ("PathStructure_" in src[0].name)):  # PathStructure fails
+    if not ("PathStructure_" in src[0].name):  # PathStructure fails
         test = testEnv.Test(prog)
     pass
 

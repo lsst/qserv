@@ -48,7 +48,7 @@ public:
     std::string var(std::string const& key) const;
 
     /// @return the path prefix element for a given request type.
-    std::string prefix(RequestType const& r) const;
+    static std::string prefix(RequestType const& r);
         
     // Setup a path of a certain type.
     void setAsCquery(std::string const& db, int chunk);    

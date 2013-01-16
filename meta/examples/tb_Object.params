@@ -1,0 +1,32 @@
+[table_info]
+tableName:      Object
+
+# by default, every table inherits partitioningStrategy
+# from its database. If table is not partitioned, we
+# turn it off by specifying "off" here.
+# Allowed values are: "on", "off"
+partitioning: on
+
+# note that the file must be accessible on the client side
+schemaFile: /u1/qserv/ticket1944-qms_run/meta/examples/tbSchema_Object.sql
+
+# the cluster index name must be defined in the schemaFile.
+# Use the word None if not required
+clusteredIndex: IDX_objectId
+
+[sphBox]
+overlap:        0.025
+phiColName:     ra_PS
+thetaColName:   decl_PS
+
+# 0: none, 1: 1-level, 2: 2-level
+logicalPart:    2
+
+# specify in hexa format!
+# least significant bit: 0-not persisted, 1-persisted in RDBMS
+# second-least significant bit indicates partitioning level,eg
+# 0x0010: 1st-level partitioning, not persistent
+# 0x0011: 1st-level partitioning, persisted in RDBMS
+# 0x0020: 2st-level partitioning, not persistent
+# 0x0021: 2st-level partitioning, persisted in RDBMS
+physChunking:   0x0021
