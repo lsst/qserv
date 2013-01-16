@@ -48,6 +48,9 @@ class MetaInterface:
                                   okname)
 
     def _x1(self, f, *args):
+        """Function that accepts function objects and arbitrary number of
+           arguments that should be passed to the passed function. It returns
+           error status."""
         try:
             f(*args)
         except QmsException as qe: 
@@ -59,6 +62,18 @@ class MetaInterface:
             return Status.ERR_INTERNAL
         return Status.SUCCESS
 
+    def _x2(self, f, *args):
+        """Function that accepts function objects and arbitrary number of
+           arguments that should be passed to the passed function. It returns
+           value and the error status."""
+        try:
+            retV = f(*args)
+        except QmsException as qe: 
+            return (qe.getErrNo(), "")
+        except Exception, e:
+            self._logger.error("Exception in %s: %s" % (f.func_name, str(e)))
+            return Status.ERR_INTERNAL
+        return (Status.SUCCESS, retV)
 
     def installMeta(self):
         """Initializes qserv metadata. It creates persistent structures,
@@ -71,14 +86,7 @@ class MetaInterface:
 
     def printMeta(self):
         """Returns string that contains all metadata."""
-        try:
-            retV = self._metaImpl.printMeta()
-        except QmsException as qe:
-            return (qe.getErrNo(), "")
-        except Exception, e:
-            self._logger.error("Exception in printMeta: %s" % str(e))
-            return (Status.ERR_INTERNAL, "")
-        return (Status.SUCCESS, retV)
+        return self._x2(self._metaImpl.printMeta)
 
     def createDb(self, dbName, crDbOptions):
         """Creates metadata about new database to be managed by qserv."""
@@ -90,36 +98,15 @@ class MetaInterface:
 
     def retrieveDbInfo(self, dbName):
         """Retrieves information about a database managed by qserv."""
-        try:
-            values = self._metaImpl.retrieveDbInfo(dbName)
-        except QmsException as qe: 
-            return (qe.getErrNo(), {})
-        except Exception, e:
-            self._logger.error("Exception in retrieveDbInfo: %s" % str(e))
-            return (Status.ERR_INTERNAL, {})
-        return (Status.SUCCESS, values)
+        return self._x2(self._metaImpl.retrieveDbInfo, dbName)
 
     def checkDbExists(self, dbName):
         """Checks if db <dbName> exists, returns 0 (no) or 1 (yes)."""
-        try:
-            existInfo = self._metaImpl.checkDbExists(dbName)
-        except QmsException as qe: 
-            return (qe.getErrNo(), False)
-        except Exception, e:
-            self._logger.error("Exception in checkDbExists: %s" % str(e))
-            return (Status.ERR_INTERNAL, False)
-        return (Status.SUCCESS, existInfo)
+        return self._x2(self._metaImpl.checkDbExists, dbName)
 
     def listDbs(self):
         """Returns string that contains list of databases managed by qserv."""
-        try:
-            theString = self._metaImpl.listDbs()
-        except QmsException as qe: 
-            return (qe.getErrNo(), "")
-        except Exception, e:
-            self._logger.error("Exception in listDbs: %s" % str(e))
-            return (Status.ERR_INTERNAL, "")
-        return (Status.SUCCESS, theString)
+        return self._x2(self._metaImpl.listDbs)
 
     def createTable(self, dbName, crTbOptions, schemaStr):
         """Creates metadata about new table from qserv-managed database."""
@@ -132,36 +119,15 @@ class MetaInterface:
 
     def retrievePartTables(self, dbName):
         """Retrieves list of partitioned tables for a given database."""
-        try:
-            tNames = self._metaImpl.retrievePartTables(dbName)
-        except QmsException as qe:
-            return (qe.getErrNo(), [])
-        except Exception, e:
-            self._logger.error("Exception in retrievePartTables: %s" % str(e))
-            return (Status.ERR_INTERNAL, [])
-        return (Status.SUCCESS, tNames)
+        return self._x2(self._metaImpl.retrievePartTables, dbName)
 
     def retrieveTableInfo(self, dbName, tableName):
         """Retrieves information about a table."""
-        try:
-            tInfo = self._metaImpl.retrieveTableInfo(dbName, tableName)
-        except QmsException as qe: 
-            return (qe.getErrNo(), {})
-        except Exception, e:
-            self._logger.error("Exception in retrieveTableInfo: %s" % str(e))
-            return (Status.ERR_INTERNAL, {})
-        return (Status.SUCCESS, tInfo)
+        return self._x2(self._metaImpl.retrieveTableInfo, dbName, tableName)
 
     def getInternalQmsDbName(self):
         """Retrieves name of the internal qms database. """
-        try:
-            dbName = self._metaImpl.getInternalQmsDbName()
-        except QmsException as qe: 
-            return (qe.getErrNo(), "")
-        except Exception, e:
-            self._logger.error("Exception in getInternalQmsDbName: %s"%str(e))
-            return (Status.ERR_INTERNAL, "")
-        return (Status.SUCCESS, dbName)
+        return self._x2(self._metaImpl.getInternalQmsDbName)
 
     def help(self):
         """A brief help message showing available commands."""
