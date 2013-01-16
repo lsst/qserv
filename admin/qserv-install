@@ -224,7 +224,7 @@ sub check_and_install_qserv {
 	run_command("perl -pi -e \"s,emptyChunkListFile=emptyChunks.txt,emptyChunkListFile=$install_dir/etc/emptyChunks.txt,\" etc/local.qserv.cnf");
 	
 	#install the qserv-admin
-	run_command("cp qserv/admin/qserv-admin bin/");
+	run_command("cp qserv/admin/bin/qserv-admin bin/");
 	run_command("perl -pi -e \"s,INSTALLDIR,$install_dir,\" bin/qserv-admin");
 	
 }
@@ -268,14 +268,14 @@ sub check_and_setup_extras {
 	run_command("python setup.py build");
 	run_command("python setup.py install");
 
-        print "Installing numpy interface.\n";
+	print "Installing numpy interface.\n";
 
-        chdir "$build_dir";
-        my $numpy_dir = check_and_untar( "numpy" );
+	chdir "$build_dir";
+	my $numpy_dir = check_and_untar( "numpy" );
 	if( $numpy_dir ) {
-	        chdir "$build_dir/$numpy_dir";
-        	run_command("python setup.py build");
-        	run_command("python setup.py install");
+		chdir "$build_dir/$numpy_dir";
+		run_command("python setup.py build");
+		run_command("python setup.py install");
 	}
 
 	print "Installing Twisted interface.\n";
@@ -304,8 +304,8 @@ sub check_and_install_mysql {
 	if( $ncurses_dir ) {
 		chdir "$build_dir/$ncurses_dir";
 		run_command("./configure --prefix=\"$install_dir\"");
-	        run_command("make");
-       		run_command("make install");
+		run_command("make");
+		run_command("make install");
 	}
 
 	$ENV{'LDFLAGS'} = "-L$install_dir/lib";
@@ -664,18 +664,16 @@ INLINE_LITERAL_TEXT
 
 }
 
-sub run_command 
-{
-        my( $command ) = @_;
-        my $cwd = cwd();
+sub run_command {
+	my( $command ) = @_;
+	my $cwd = cwd();
 	my @return;
-        print "-- Running: $command in $cwd\n";
-        open(OUT, "$command 2>&1 |") || die "ERROR : can't fork $command : $!";
-        while (<OUT>) 
-        {
-                print STDOUT $_; 
-                push (@return, $_); 
-        }
-        close(OUT) || die "ERROR : $command exits with error code ($?)";
+	print "-- Running: $command in $cwd\n";
+	open( OUT, "$command 2>&1 |" ) || die "ERROR : can't fork $command : $!";
+	while( <OUT> ) {
+		print STDOUT $_; 
+		push( @return, $_ ); 
+	}
+	close( OUT ) || die "ERROR : $command exits with error code ($?)";
 	return @return;
 }

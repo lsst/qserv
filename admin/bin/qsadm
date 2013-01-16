@@ -594,7 +594,7 @@ class QservAdmin(object):
 #
 ###############################################################################
 
-    def parseOptions(self):
+    def parseOptions():
         usage = """usage: %prog [-v] [-u DBURL] COMMAND [options] [args]
 
 Commands:
