@@ -130,7 +130,7 @@ if( $opts{'status'} ) {
 
 	## TODO performs some checking before starting mysqld (already started)
 	## and idem for stopping
-	load_data( $opts{'source'}, $opts{'output'}, $opts{'table'}, $opts{'dbpass'} );
+	load_data( $opts{'source'}, $opts{'stripedir'}, $opts{'table'}, $opts{'dbpass'} );
 	
 } elsif( $opts{'set'} ) {
 
@@ -153,7 +153,7 @@ if( $opts{'status'} ) {
 	}
 
 	# deleting data from qserv
-	delete_data( $opts{'source'}, $opts{'output'}, $opts{'table'}, $opts{'dbpass'} );
+	delete_data( $opts{'source'}, $opts{'stripedir'}, $opts{'table'}, $opts{'dbpass'} );
 
 }
 
