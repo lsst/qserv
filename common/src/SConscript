@@ -48,3 +48,4 @@ deps = {'CPPPATH' : [linc]}
 tup = export_deps.installWithDeps(env, "SqlConnection.hh", "SqlConnection.hh",
                                   "../include/lsst/qserv", deps)
 env.Install('../include/lsst/qserv', 'SqlErrorObject.hh')
+env.Install('../include/lsst/qserv', 'SqlConfig.hh')

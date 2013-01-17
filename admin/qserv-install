@@ -238,8 +238,6 @@ sub check_and_install_qserv {
 	#shutdown mysql
 	run_command("./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root $pass_opt");
 	
-	#copy in xrootd config and configure
-
 }
 
 #check on extra source tar, compile, install, and configure for use.
@@ -281,14 +279,14 @@ sub check_and_setup_extras {
 	run_command("python setup.py build");
 	run_command("python setup.py install");
 
-        print "Installing numpy interface.\n";
+	print "Installing numpy interface.\n";
 
-        chdir "$build_dir";
-        my $numpy_dir = check_and_untar( "numpy" );
+	chdir "$build_dir";
+	my $numpy_dir = check_and_untar( "numpy" );
 	if( $numpy_dir ) {
-	        chdir "$build_dir/$numpy_dir";
-        	run_command("python setup.py build");
-        	run_command("python setup.py install");
+		chdir "$build_dir/$numpy_dir";
+		run_command("python setup.py build");
+		run_command("python setup.py install");
 	}
 
 	print "Installing Twisted interface.\n";
@@ -784,26 +782,23 @@ INLINE_LITERAL_TEXT
 
 }
 
-sub remove_trailing_slash
-{
+sub remove_trailing_slash {
 	my( $string ) = @_;
-	$string = $1 if($string=~/(.*)\/$/);
+	$string =~ s/\/$//;
 	return $string;
 }
 
-sub run_command 
-{
-        my( $command, $quiet ) = @_;
-        my $cwd = cwd();
+sub run_command {
+	my( $command, $quiet ) = @_;
+	my $cwd = cwd();
 	my @return;
-        if (! $quiet) { print "-- Running: $command in $cwd\n" };
-        open(OUT, "$command 2>&1 |") || die "ERROR : can't fork $command : $!";
-        while (<OUT>) 
-        {       
-               	print STDOUT $_; 
-               	push (@return, $_); 
-        }
-        close(OUT) || die "ERROR : $command exits with error code ($?)";
+	print "-- Running: $command in $cwd\n" unless( $quiet );
+	open( OUT, "$command 2>&1 |") || die "ERROR : can't fork $command : $!";
+	while( <OUT> ) {       
+		print STDOUT $_; 
+		push( @return, $_ ); 
+	}
+	close( OUT ) || die "ERROR : $command exits with error code ($?)";
 	return @return;
 }
 

@@ -9,16 +9,19 @@ my %opts = ();
 GetOptions( \%opts, 
 	"debug",
 	"help|h",
+	"set",
 	"status|s",
+	"stripes=i",
 	"stop",
 	"start",
+	"substripes=i",
 	"load",
 	"delete-data",
 	"source=s",
 	"table=s",
-	"output=s",
-	"dbpass=s",
+	"stripedir|sdir=s",
 	"mysql-proxy-port=s",
+	"dbpass=s",
 	"partition",
 	"test"
 );
@@ -28,19 +31,22 @@ usage(0) if ($opts{'help'});
 my $debug = $opts{'debug'} || 0;
 
 my $install_dir = "<QSERV_BASE_DIR>";
-my $mysql_proxy_port = "<MYSQL_PROXY_PORT>";
+my $mysql_proxy_port = "<MYSQL_PROXY_PORT>" || $opts{'mysql-proxy-port'} || 4040;
+
+print "Using $install_dir install.\n" if( $debug );
 
 #mysql variables
 my $mysqld_sock = "$install_dir/var/lib/mysql/mysql.sock";
 
 if( $opts{'status'} ) {
+	print "Checking on the status.\n" if( $debug );
 
-        unless( $opts{'dbpass'} ) {
-                print "Error: you need to specify the mysql root password with the --dbpass option.\n";
-                exit(1);
-        }
+	unless( $opts{'dbpass'} ) {
+		print "Error: you need to specify the mysql root password with the --dbpass option.\n";
+		exit(1);
+	}
 
-	if( check_mysqld( $opts{'dbpass'}  ) ) {
+	if( check_mysqld( $opts{'dbpass'} ) ) {
 		print "Mysql server up and running.\n";
 	} else {
 		print "Mysql server not running.\n";
@@ -84,7 +90,23 @@ if( $opts{'status'} ) {
 	
 } elsif( $opts{'partition'} ) {
 
+	#need to partition raw data for loading into qserv.
+	unless( $opts{'source'} ) {
+		print "Error: you need to set the path to the source data with the --source option.\n";
+		exit(1);
+	}
+	unless( $opts{'table'} ) {
+		print "Error: you need to specify the table name for the source data with the --table option.\n";
+		exit(1);
+	}
+	unless( $opts{'stripedir'} ) {
+		print "Error: you need to specify the stripe dir path with the --stripedir option.\n";
+		exit(1);
+	}
 	
+	partition_data( $opts{'source'}, $opts{'stripedir'}, $opts{'table'} );
+	
+} elsif( $opts{'load'} ) {
 
 	#need to partition raw data for loading into qserv.
 	unless( $opts{'source'} ) {
@@ -95,49 +117,47 @@ if( $opts{'status'} ) {
 		print "Error: you need to specify the table name for the source data with the --table option.\n";
 		exit(1);
 	}
-	unless( $opts{'output'} ) {
-		print "Error: you need to specify the output path with the --output option.\n";
+	unless( $opts{'stripedir'} ) {
+		print "Error: you need to specify the stripe dir path with the --stripedir option.\n";
+		exit(1);
+	}
+	unless( $opts{'dbpass'} ) {
+		print "Error: you need to specify the mysql root password with the --dbpass option.\n";
+		exit(1);
+	}
+
+	#need to load data into qserv
+
+	## TODO performs some checking before starting mysqld (already started)
+	## and idem for stopping
+	load_data( $opts{'source'}, $opts{'stripedir'}, $opts{'table'}, $opts{'dbpass'} );
+	
+} elsif( $opts{'set'} ) {
+
+	unless( $opts{'stripes'} && $opts{'stripes'} =~ /\d+/ ) {
+		print "Error: sorry you need to set the stripes you are using with the 'stripes' option\n";
+		exit(1);
+	}
+	unless( $opts{'substripes'} && $opts{'substripes'} =~ /\d+/ ) {
+		print "Error: sorry you need to set the substripes you are using with the 'substripes' option\n";
 		exit(1);
 	}
 	
-	partition_data( $opts{'source'}, $opts{'output'}, $opts{'table'} );
-	
-} elsif( $opts{'load'} ) {
-
-        #need to partition raw data for loading into qserv.
-        unless( $opts{'source'} ) {
-                print "Error: you need to set the path to the source data with the --source option.\n";
-               	exit(1);
-        }
-        unless( $opts{'table'} ) {
-                print "Error: you need to specify the table name for the source data with the --table option.\n";
-               	exit(1);
-        }
-       	unless( $opts{'output'} ) {
-                print "Error: you need to specify the output path with the --output option.\n";
-                exit(1);
-        }
-       unless( $opts{'dbpass'} ) {
-                print "Error: you need to specify the mysql root password with the --dbpass option.\n";
-                exit(1);
-        }
-
-	#need to load data into qserv
-	## TODO performs some checking before starting mysqld (already started)
-	## and idem for stopping
-	load_data( $opts{'source'}, $opts{'output'}, $opts{'table'}, $opts{'dbpass'} );
+	set_stripes( $opts{'stripes'}, $opts{'substripes'} );
 
 } elsif( $opts{'delete-data'} ) {
 
-       unless( $opts{'dbpass'} ) {
-                print "Error: you need to specify the mysql root password with the --dbpass option.\n";
-                exit(1);
-        }
+	unless( $opts{'dbpass'} ) {
+		print "Error: you need to specify the mysql root password with the --dbpass option.\n";
+		exit(1);
+	}
 
-	# deleting data into qserv
-	delete_data( $opts{'source'}, $opts{'output'}, $opts{'table'}, $opts{'dbpass'} );
+	# deleting data from qserv
+	delete_data( $opts{'source'}, $opts{'stripedir'}, $opts{'table'}, $opts{'dbpass'} );
+
 }
 
+exit( 0 );
 
 #############################################################
 
@@ -180,7 +200,7 @@ sub create_test_sql {
 #check the mysql proxy use.
 sub check_proxy {
 
-	return check_sql_server( "mysql --port=<XROOTD_PORT> --protocol=TCP" );
+	return check_sql_server( "mysql --port=$mysql_proxy_port --protocol=TCP" );
 
 }
 
@@ -235,49 +255,71 @@ sub check_ps {
 #Stop the qserv process
 sub stop_qserv {
 
-	stop_ps( "startQserv" );
+	get_and_stop_ps( "startQserv" );
 
 }
 
 #stop the xrootd process
 sub stop_xrootd {
 
-	stop_ps( "xrootd -c" );
-	stop_ps( "cmsd -c" );
+	my $pid = get_pid( "${install_dir}/tmp/xrootd.pid" );
+	stop_ps( $pid );
+	$pid = get_pid( "${install_dir}/tmp/cmsd.mangr.pid" );
+	stop_ps( $pid );
 
 }
 
 #stop the mysql server
 sub stop_mysqld {
 
-	stop_ps( "mysqld --basedir" );
+	my $pid = get_pid( "${install_dir}/var/run/mysqld/mysqld.pid" );
+	stop_ps( $pid );
 
 }
 
 #stop the mysql proxy
 sub stop_proxy {
 
-	stop_ps( "mysql-proxy" );
+	get_and_stop_ps( "mysql-proxy" );
 
 }
 
-
 #Stop a process based on the exsitence of a string in the command line
 #used to start the process.
-sub stop_ps {
+sub get_and_stop_ps {
 	my( $test_string ) = @_;
 	print "Stopping $test_string\n";
 	
 	my $pid = check_ps( $test_string );
 	print "pid to stop -- $pid\n";
 	if( $pid ) {
-		if( $opts{'test'} ) {
-			print "I would now kill process $pid.\n";
-		} else {
-			run_command("kill $pid");
-		}
+		stop_ps( $pid );
 	}
+}
 
+#Stop a process given an id
+sub stop_ps {
+	my( $pid ) = @_;
+	
+	#print "pid to stop -- $pid\n";
+	if( $opts{'test'} ) {
+		print "I would now kill process $pid.\n";
+	} else {
+		`kill $pid`;
+	}
+}
+
+#get the pid from a file
+sub get_pid {
+	my( $filename ) = @_;
+	
+	open PIDFILE, "<$filename" 
+		or warn "Sorry, can't open $filename\n";
+	my $pid = <PIDFILE>;
+	chomp $pid;
+	close PIDFILE;
+	
+	return $pid;
 }
 
 sub start_proxy {
@@ -304,23 +346,78 @@ sub start_xrootd {
 	
 }
 
+sub set_stripes {
+	my( $stripes, $substripes ) = @_;
+	
+	my $reply = `grep stripes $install_dir/etc/local.qserv.cnf`;
+	
+	if( $reply =~ /stripes\s*=\s*\d+/ ) {
+		print "Error: sorry, you have already set the stripes to use for the data.\n";
+		print "    please edit the local.qserv.cnf and remove the stripes value if you really want to change this.\n";
+		return;
+	}
+
+	`perl -pi -e 's,^substripes\\s*=,substripes = $substripes,' $install_dir/etc/local.qserv.cnf`;
+	`perl -pi -e 's,^stripes\\s*=,stripes = $stripes,' $install_dir/etc/local.qserv.cnf`;
+
+}
+
 #Partition the pt11 example data for use into chunks.  This is the example
 #use of partitioning, and this should be more flexible to create different
 #amounts of chunks, but works for now.
 sub partition_data {
 	my( $source_dir, $output_dir, $tablename ) = @_;
 	
+	my $stripes;
+	my $substripes;
+	
+	my $reply = `grep stripes $install_dir/etc/local.qserv.cnf`;
+	if( $reply =~ /^stripes\s*=\s*(\d+)/ ) {
+		if( $opts{'stripes'} ) {
+			unless( $opts{'stripes'} == $1 ) {
+				print "Warning: you used $1 for stipes before.  Please check which stripes value you wish to use.\n";
+				return;
+			}
+		}
+		$stripes = $1;
+	} else {
+		if( $opts{'stripes'} ) {
+			$stripes = $opts{'stripes'};
+		} else {
+			print "Error: sorry you need to set the stripes value before partitioning.\n";
+			return;
+		}
+	}
+	
+	$reply = `grep substripes $install_dir/etc/local.qserv.cnf`;
+	if( $reply =~ /substripes\s*=\s*(\d+)/ ) {
+		if( $opts{'substripes'} ) {
+			unless( $opts{'substripes'} == $1 ) {
+				print "Warning: you used $1 for substipes before.  Please check which substripes value you wish to use.\n";
+				return;
+			}
+		}
+		$stripes = $1;
+	} else {
+		if( $opts{'substripes'} ) {
+			$stripes = $opts{'substripes'};
+		} else {
+			print "Error: sorry you need to set the substripes value before partitioning.\n";
+			return;
+		}
+	}
+	
 	my( $dataname ) = $source_dir =~ m!/([^/]+)$!;
 	
 	if( -d "$output_dir" ) {
 		chdir "$output_dir";
 	} else {
-		print "Error: the output dir $output_dir doesn't exist.\n";
+		print "Error: the stripe dir $output_dir doesn't exist.\n";
 	}
 
 	#need to have the various steps to partition data
 	my $command = "$install_dir/bin/python $install_dir/qserv/master/examples/partition.py ".
-		"-P$tablename -t 2 -p 4 $source_dir/${tablename}.txt -S 10 -s 2";
+		"-P$tablename -t 2 -p 4 $source_dir/${tablename}.txt -S $stripes -s $substripes";
 	if( $opts{'test'} ) {
 		print "$command\n";
 	} else {
@@ -328,11 +425,12 @@ sub partition_data {
 	}
 }
 
+#Drop the loaded database from mysql
 sub delete_data {
 	my( $source_dir, $location, $tablename, $dbpass ) = @_;
         
         #delete database
-        run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock\' -u root -p'$dbpass' -e 'Drop database if exists LSST;'");
+        run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass -e 'Drop database if exists LSST;'");
 }
 
 #load the partitioned pt11 data into qserv for use.  This does a number of
@@ -340,17 +438,34 @@ sub delete_data {
 sub load_data {
 	my( $source_dir, $location, $tablename, $dbpass ) = @_;
 	
+	#check the stripes value
+	my $stripes = get_value( 'stripes' );
+	
+	unless( $stripes ) {
+		print "Error: sorry, the stripes value is unknown, please set it with the 'set' option.\n";
+		return;
+	}
+	
 	#create database if it doesn't exist
-	run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' -e 'Create database if not exists LSST;'");
-        #check on the table def, and add need columns
+	run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass -e 'Create database if not exists LSST;'");
+	
+	#check on the table def, and add need columns
 	print "Copy and changing $source_dir/${tablename}.sql\n";
 	my $tmptable = lc $tablename;
-	run_command("cp $source_dir/${tablename}.sql $install_dir/tmp");
-	run_command("perl -pi -e 's,^.*_chunkId.*\n,,' $install_dir/tmp/${tablename}.sql");
-	run_command("perl -pi -e 's,^.*_subChunkId.*\n,,' $install_dir/tmp/${tablename}.sql");
-	run_command("perl -pi -e 's!^\(\\s*PRIMARY\)!  chunkId int\(11\) default NULL,\\n\\1!' $install_dir/tmp/${tablename}.sql");
-	run_command("perl -pi -e 's!^\(\\s*PRIMARY\)!  subChunkId int\(11\) default NULL,\\n\\1!' $install_dir/tmp/${tablename}.sql");
-	run_command("perl -pi -e 's!^\\s*PRIMARY KEY\\s+\\(.*\\)!  PRIMARY KEY \(${tmptable}Id, subChunkId\)!' $install_dir/tmp/${tablename}.sql");
+	`cp $source_dir/${tablename}.sql $install_dir/tmp`;
+	`perl -pi -e 's,^.*_chunkId.*\n,,' $install_dir/tmp/${tablename}.sql`;
+	`perl -pi -e 's,^.*_subChunkId.*\n,,' $install_dir/tmp/${tablename}.sql`;
+	`perl -pi -e 's,chunkId,dummy1,' $install_dir/tmp/${tablename}.sql`;
+	`perl -pi -e 's,subChunkId,dummy2,' $install_dir/tmp/${tablename}.sql`;
+	`perl -pi -e 's!^\(\\s*PRIMARY\)!  chunkId int\(11\) default NULL,\\n\\1!' $install_dir/tmp/${tablename}.sql`;
+	`perl -pi -e 's!^\(\\s*PRIMARY\)!  subChunkId int\(11\) default NULL,\\n\\1!' $install_dir/tmp/${tablename}.sql`;
+
+	if( $tablename eq 'Object' ) {
+		`perl -pi -e 's,^.*PRIMARY.*\n,,' $install_dir/tmp/${tablename}.sql`;
+		open TMPFILE, ">>$install_dir/tmp/${tablename}.sql";
+		print TMPFILE "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
+		close TMPFILE;
+	}
 
 	#regress through looking for partitioned data, create loading script
 	open LOAD, ">$install_dir/tmp/${tablename}_load.sql";
@@ -361,7 +476,7 @@ sub load_data {
 	closedir DIR;
 	
 	#look for paritioned table chunks, and create the load data sqls.
-	foreach my $dir ( @dirslist ) {
+	foreach my $dir ( sort @dirslist ) {
 		next if( $dir =~ /^\./ );
 		
 		if( $dir =~ /^stripe/ ) {
@@ -369,13 +484,19 @@ sub load_data {
 			my @filelist = readdir DIR;
 			closedir DIR;
 			
-			foreach my $file ( @filelist ) {
+			foreach my $file ( sort @filelist ) {
 				if( $file =~ /(\w+)_(\d+).csv/ ) {
+					my $loadname = "${1}_$2";
 					if( $1 eq $tablename ) {
-					print LOAD "CREATE TABLE IF NOT EXISTS ${1}_$2 LIKE $tablename;\n";
-					print LOAD "LOAD DATA INFILE '$location/$dir/$file' INTO TABLE ${1}_$2 FIELDS TERMINATED BY ',';\n";
+					print LOAD "DROP TABLE IF EXISTS $loadname;\n";
+					print LOAD "CREATE TABLE IF NOT EXISTS $loadname LIKE $tablename;\n";
+					print LOAD "LOAD DATA INFILE '$location/$dir/$file' IGNORE INTO TABLE $loadname FIELDS TERMINATED BY ',';\n";
 
 					$chunkslist{$2} = 1;
+					}
+					if( $tablename eq 'Object' && $1 =~ /^Object\S+Overlap/ ) {
+						print LOAD "CREATE TABLE IF NOT EXISTS $loadname LIKE $tablename;\n";
+						print LOAD "LOAD DATA INFILE '$location/$dir/$file' INTO TABLE $loadname FIELDS TERMINATED BY ',';\n";
 					}
 				}
 			}
@@ -386,11 +507,13 @@ sub load_data {
 	
 	#load the data into the mysql instance
 	print "Loading data, this make take awhile...\n";
-	run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' LSST < '$install_dir/tmp/${tablename}.sql'");
-	run_command("$install_dir/bin/mysql -S '$install_dir/var/lib/mysql/mysql.sock' -u root -p'$dbpass' LSST < '$install_dir/tmp/${tablename}_load.sql'");
+	run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass LSST < $install_dir/tmp/${tablename}.sql");
+	run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass LSST < $install_dir/tmp/${tablename}_load.sql");
 		
 	#create the empty chunks file
-	create_emptychunks( \%chunkslist );
+	unless( -e "$install_dir/etc/emptyChunks.txt" ) {
+		create_emptychunks( $stripes, \%chunkslist );
+	}
 	
 	#create a setup file
 	unless( -e "$install_dir/etc/setup.cnf" ) {
@@ -403,33 +526,59 @@ sub load_data {
 		close SETUP;
 	}
 
-	#regester the database, export
+	#check if database is already registered, if it is it needs to get unreg. first.
+	if( -e "$install_dir/xrootd-run/q/LSST" ) {
+		#unreg. the database
+		my $command = "$install_dir/qserv/worker/tools/qsDbTool ";
+		$command .= "-a $install_dir/etc/setup.cnf -i 1 -b $install_dir/xrootd-run ";
+		$command .= "unregister LSST $tablename";
+		print "Command: $command\n";
+		`$command`;
+	}
+
+	#register the database, export
 	my $command = "$install_dir/qserv/worker/tools/qsDbTool ";
 	$command .= "-a $install_dir/etc/setup.cnf -i 1 ";
-	$command .= "register LSST Object";
+	$command .= "register LSST $tablename";
 	print "Command: $command\n";
 	run_command("$command");
-	
+		
 	$command = "$install_dir/qserv/worker/tools/qsDbTool ";
 	$command .= "-a $install_dir/etc/setup.cnf -i 1 -b $install_dir/xrootd-run ";
 	$command .= "export LSST";
-        print "Command: $command\n";
+	print "Command: $command\n";
 	run_command("$command");
-	
 }
 
 #Create the empty chucks list up to 1000, and print this into the
 #empty chunks file in etc.
 sub create_emptychunks {
-	my( $chunkslist ) = @_;
+	my( $stripes, $chunkslist ) = @_;
+	
+	my $top_chunk = 2 * $stripes * $stripes;
 		
 	open CHUNKS, ">$install_dir/etc/emptyChunks.txt";
-	for( my $i = 0; $i < 1000; $i++ ) {
+	for( my $i = 0; $i < $top_chunk; $i++ ) {
 		unless( defined $chunkslist->{$i} ) {
 			print CHUNKS "$i\n";
 		}
 	}
 	close CHUNKS;
+	
+}
+
+#routine to get the value from the config file
+sub get_value {
+	my( $text ) = @_;
+	
+	open CNF, "<$install_dir/etc/local.qserv.cnf";
+	while( my $line = <CNF> ) {
+		if( $line =~ /^$text\s*=\s*(\d+)/ ) {
+			close CNF;
+			return $1;
+		}
+	}
+	close CNF;
 	
 }
 
@@ -445,18 +594,22 @@ usage: $bin [options]
   Also supports the loading of pt11 example data into the server for use.
 
 Options are:
-      --debug        Print out debug messages.
-  -h, --help         Print out this help message.
-  -s, --status       Print out the status of the server processes.
-      --stop         Stop the servers.
-      --start        Start the servers.
-      --load         Load data into qserv, requires options source, output, table
-      --delete-data  Load data into qserv, requires options source, output, table
-      --source       Path to the pt11 exmple data
-      --output       Path to the paritioned data
-      --table        Table name for partitioning and loading
-      --partition    Partition the example pt11 data into chunks, requires source, output, table
-      --test         Test the use of the util, without performing the actions.
+      --debug         Print out debug messages.
+  -h, --help          Print out this help message.
+      --set           Set the stripes and substripes values, needs strips and substripes options.
+  -s, --status        Print out the status of the server processes.
+      --stop          Stop the servers.
+	  --start         Start the servers.
+	  --stripes       Number of stripes used to partition the data.
+	  --subtripes     Number of substripes used to partition the data.
+	  --load          Load data into qserv, requires options source, stripedir, table
+      --delete-data   Load data into qserv, requires options source, output, table
+	  --source        Path to the pt11 exmple data
+ --sdir, --stripedir  Path to the paritioned data
+      --mysql-proxy-port  Port number to use for the mysql proxy.
+	  --table         Table name for partitioning and loading
+	  --parition      Partition the example pt11 data into chunks, requires source, stripedir, table
+	  --test          test the use of the util, without performing the actions.
 
 Examples: $bin --status
 
@@ -467,18 +620,16 @@ INLINE_LITERAL_TEXT
 
 }
 
-sub run_command 
-{
-        my( $command ) = @_;
-        my $cwd = cwd();
+sub run_command {
+	my( $command ) = @_;
+	my $cwd = cwd();
 	my @return;
-        print "-- Running: $command in $cwd\n";
-        open(OUT, "$command 2>&1 |") || die "ERROR : can't fork $command : $!";
-        while (<OUT>) 
-        {
-                print STDOUT $_; 
-                push (@return, $_); 
-        }
-        close(OUT) || die "ERROR : $command exits with error code ($?)";
+	print "-- Running: $command in $cwd\n";
+	open( OUT, "$command |" ) || die "ERROR : can't fork $command : $!";
+	while( <OUT> ) {
+		print STDOUT $_; 
+		push( @return, $_ ); 
+	}
+	close( OUT ) || die "ERROR : $command exits with error code ($?)";
 	return @return;
 }

@@ -51,6 +51,8 @@ public:
     void printUniqueDbDirs() const;
 
 private:
+    static void rmFile(const char*);
+    static void rmDir(const char*);
     bool processOneDir(const std::string&, bool);
     bool pathsContains(const std::string&) const;
     bool uniqueDirsContains(const std::string&) const;
@@ -59,7 +61,7 @@ private:
                         std::vector<std::string>&);
     bool createDirectories() const;
     bool isRegistered() const;
-    bool isRegistered(const char*) const;
+    static bool isDirectory(const char*);
     bool createPaths() const;
 
     std::vector<std::string> _paths;
