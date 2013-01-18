@@ -31,8 +31,8 @@ port=0
 # stripes=18
 # substripes=10
 # emptyChunkListFile=
-substripes=60
-stripes=18
+substripes=2
+stripes=10
 emptyChunkListFile=<QSERV_BASE_DIR>/etc/emptyChunks.txt
 
 [table]
