@@ -19,7 +19,7 @@
 
 # Use standard filesystem plugin
 # Newer xrootd uses embedded plugin by default, uncomment for older xrootd
-<COMMENT_MONO_NODE>xrootd.fslib libXrdOfs.so
+#<COMMENT_MONO_NODE>xrootd.fslib libXrdOfs.so
 
 ##########################
 # else: non-manager nodes
