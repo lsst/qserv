@@ -54,7 +54,7 @@ my $build_dir   = $opts{'build-dir'} || "$install_dir/build";
 my $prod_user   = $opts{'user'} || $ENV{'USER'};
 my $qserv_master = $opts{'master'} || hostname;
 my $geometry_dir = $opts{'geometry-dir'};
-my $cluster_type = "mono-node" if( $opts{'mono-node'} );
+my $cluster_type = $opts{'mono-node'} || "mono-node" ;
 
 $install_dir = remove_trailing_slash($install_dir);
 $log_dir = remove_trailing_slash($log_dir);
