@@ -527,27 +527,9 @@ sub load_data {
 	}
 
 	#check if database is already registered, if it is it needs to get unreg. first.
-	if( -e "$install_dir/xrootd-run/q/LSST" ) {
-		#unreg. the database
-		my $command = "$install_dir/qserv/worker/tools/qsDbTool ";
-		$command .= "-a $install_dir/etc/setup.cnf -i 1 -b $install_dir/xrootd-run ";
-		$command .= "unregister LSST $tablename";
-		print "Command: $command\n";
-		`$command`;
-	}
-
 	#register the database, export
-	my $command = "$install_dir/qserv/worker/tools/qsDbTool ";
-	$command .= "-a $install_dir/etc/setup.cnf -i 1 ";
-	$command .= "register LSST $tablename";
-	print "Command: $command\n";
-	run_command("$command");
+	run_command("$install_dir/bin/fixExportDir.sh");
 		
-	$command = "$install_dir/qserv/worker/tools/qsDbTool ";
-	$command .= "-a $install_dir/etc/setup.cnf -i 1 -b $install_dir/xrootd-run ";
-	$command .= "export LSST";
-	print "Command: $command\n";
-	run_command("$command");
 }
 
 #Create the empty chucks list up to 1000, and print this into the

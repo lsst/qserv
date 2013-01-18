@@ -158,13 +158,16 @@ def get_template_targets():
             # TODO : qserv-admin could be modified in order to be removed to
             # template files, so that next test could be removed
             f="qserv-admin.pl"
-            logger.debug("%s %i " % (target, target.rfind(f)))
-            if target.rfind(f) == len(target) - len(f) :
-                env.AddPostAction(target, Chmod("$TARGET", 0760))
+            logger.debug("%s %s " % (target, os.path.basename(target)))
+            if os.path.basename(target)	== f :
                 symlink_name = target[:-3] 
                 logger.debug("Creating symlink from %s to %s " % (symlink_name,target))
                 env.Command(symlink_name, target, actions.symlink)       
                 target_lst.append(symlink_name)
+
+            path = os.path.dirname(target)
+            if os.path.basename(path) == "bin" : 
+                env.AddPostAction(target, Chmod("$TARGET", 0760))
             # all other files are configuration files
             else:
                 env.AddPostAction(target, Chmod("$TARGET", 0660))
