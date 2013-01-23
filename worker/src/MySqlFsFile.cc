@@ -19,6 +19,8 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+/// Implements MySqlFsFile, the primary way of interfacing qserv
+/// worker functionality to an xrootd file-system interface.
  
 #include "lsst/qserv/worker/MySqlFsFile.h"
 
@@ -41,7 +43,7 @@
 #include "lsst/qserv/worker/MySqlFsCommon.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/RequestTaker.h"
-#include "lsst/qserv/worker/XrdLogger.h"
+#include "lsst/qserv/worker/Logger.h"
 #include "lsst/qserv/QservPath.hh"
 
 #include <algorithm>
@@ -178,12 +180,13 @@ std::ostream& operator<<(std::ostream& os, Timer const& tm) {
 //////////////////////////////////////////////////////////////////////////////
 // MySqlFsFile
 //////////////////////////////////////////////////////////////////////////////
-qWorker::MySqlFsFile::MySqlFsFile(XrdSysError* lp, char const* user, 
+qWorker::MySqlFsFile::MySqlFsFile(boost::shared_ptr<Logger> log, 
+                                  char const* user, 
                                   AddCallbackFunction::Ptr acf,
                                   qWorker::fs::FileValidator::Ptr fv,
                                   boost::shared_ptr<Service> service) 
     : XrdSfsFile(user), 
-      _eDest(lp), 
+      _log(log), 
       _addCallbackF(acf),
       _validator(fv),
       _service(service) {
@@ -208,12 +211,12 @@ int qWorker::MySqlFsFile::_acceptFile(char const* fileName) {
     switch(rt) {
     case QservPath::GARBAGE:
     case QservPath::UNKNOWN:
-        _eDest->Say((Pformat("Unrecognized file open %1% by %2%")
-                     % fileName % _userName).str().c_str());
+        _log->error((Pformat("Unrecognized file open %1% by %2%")
+                   % fileName % _userName).str().c_str());
         return SFS_ERROR;
 
     case QservPath::OLDQ1:
-        _eDest->Say((Pformat("Unrecognized file open %1% by %2%")
+        _log->error((Pformat("Unrecognized file open %1% by %2%")
                      % fileName % _userName).str().c_str());
 
         return SFS_ERROR; // Unimplemented
@@ -223,7 +226,7 @@ int qWorker::MySqlFsFile::_acceptFile(char const* fileName) {
         //              % fileName % _path->chunk()).str().c_str());
         if(!(*_validator)(fileName)) {
             error.setErrInfo(ENOENT, "File does not exist");
-            _eDest->Say((Pformat("WARNING: unowned chunk query detected: %1%(%2%)")
+            _log->warn((Pformat("WARNING: unowned chunk query detected: %1%(%2%)")
                          % fileName % _chunkId ).str().c_str());
             return SFS_ERROR;        
         }
@@ -235,26 +238,26 @@ int qWorker::MySqlFsFile::_acceptFile(char const* fileName) {
     case QservPath::RESULT:
         rc = _checkForHash(_path->hashName());
         if(rc == SFS_ERROR) {
-            _eDest->Say((Pformat("File open %1% fail. Query error: %2%.")
+            _log->error((Pformat("File open %1% fail. Query error: %2%.")
                          % fileName % error.getErrText()).str().c_str());
         } else if (rc == SFS_OK) {
-            _eDest->Say((Pformat("File open %1% for result reading by %2%")
-                         % fileName % _userName).str().c_str());
+            _log->info((Pformat("File open %1% for result reading by %2%")
+                       % fileName % _userName).str().c_str());
         }
         return rc;
     case QservPath::OLDQ2:
         _chunkId = _path->chunk();
-        _eDest->Say((Pformat("File open %1% for query invocation by %2%")
+        _log->info((Pformat("File open %1% for query invocation by %2%")
                      % fileName % _userName).str().c_str());
         if(!(*_validator)(fileName)) {
             error.setErrInfo(ENOENT, "File does not exist");
-            _eDest->Say((Pformat("WARNING: unowned chunk query detected: %1%(%2%)")
+            _log->warn((Pformat("WARNING: unowned chunk query detected: %1%(%2%)")
                          % fileName % _chunkId ).str().c_str());
             return SFS_ERROR;        
         }
         return SFS_OK;
     default:
-        _eDest->Say((Pformat("Unrecognized file open %1% by %2%")
+        _log->error((Pformat("Unrecognized file open %1% by %2%")
                      % fileName % _userName).str().c_str());
         return SFS_ERROR;
     }
@@ -274,8 +277,8 @@ int qWorker::MySqlFsFile::open(char const* fileName,
 }
 
 int qWorker::MySqlFsFile::close(void) {
-    _eDest->Say((Pformat("File close(%1%) by %2%")
-                 % _path->chunk() % _userName).str().c_str());
+    _log->info((Pformat("File close(%1%) by %2%")
+               % _path->chunk() % _userName).str().c_str());
     if(_path->requestType() == QservPath::RESULT) {
         // Get rid of the news.
         std::string hash = fs::stripPath(_dumpName);
@@ -285,10 +288,10 @@ int qWorker::MySqlFsFile::close(void) {
         // _eDest->Say((Pformat("Not Removing dump file(%1%)")
         // 		 % _dumpName ).str().c_str());
         int result = ::unlink(_dumpName.c_str());
-        _eDest->Say((Pformat("Unlink: %1%") % _dumpName ).str().c_str());
+        _log->info((Pformat("Unlink: %1%") % _dumpName ).str().c_str());
         if(result != 0) {
-            _eDest->Say((Pformat("Error removing dump file(%1%): %2%")
-                         % _dumpName % strerror(errno)).str().c_str());
+            _log->error((Pformat("Error removing dump file(%1%): %2%")
+                        % _dumpName % strerror(errno)).str().c_str());
         }
     }
     return SFS_OK;
@@ -303,8 +306,8 @@ int qWorker::MySqlFsFile::fctl(
 }
 
 char const* qWorker::MySqlFsFile::FName(void) {
-    _eDest->Say((Pformat("File FName(%1%) by %2%")
-                 % _path->chunk() % _userName).str().c_str());
+    _log->info((Pformat("File FName(%1%) by %2%")
+               % _path->chunk() % _userName).str().c_str());
     return 0;
 }
 
@@ -316,12 +319,12 @@ int qWorker::MySqlFsFile::getMmap(void** Addr, off_t &Size) {
 int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
                                XrdSfsXferSize prereadSz) {
     _hasRead = true;
-    _eDest->Say((Pformat("File read(%1%) at %2% by %3%")
-                 % _path->chunk() % fileOffset % _userName).str().c_str());
+    _log->info((Pformat("File read(%1%) at %2% by %3%")
+               % _path->chunk() % fileOffset % _userName).str().c_str());
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
     if (!qWorker::dumpFileExists(_dumpName)) {
         std::string s = "Can't find dumpfile: " + _dumpName;
-        _eDest->Say(s.c_str());
+        _log->error(s);
 
         error.setErrInfo(ENOENT, "Query results missing");
         //return SFS_ERROR;
@@ -342,14 +345,13 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
     msg = (Pformat("File read(%1%) at %2% for %3% by %4% [actual=%5% %6%]")
            % _path->chunk() % fileOffset % bufferSize % _userName 
            % _dumpName % statbuf.st_size).str();
-    _eDest->Say(msg.c_str());
+    _log->info(msg);
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
     int fd = qWorker::dumpFileOpen(_dumpName);
     if (fd == -1) {
       std::stringstream ss;
       ss << (void*)this << "  Can't open dumpfile: " << _dumpName;
-      std::string s = ss.str();
-      _eDest->Say(s.c_str());
+      _log->error(ss.str());
 
       error.setErrInfo(errno, "Query results missing");
         //return -1;
@@ -357,9 +359,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
     } else {
       std::stringstream ss;
       ss << (void*)this << "  Dumpfile OK: " << _dumpName;
-      std::string s;
-      ss >> s;
-      _eDest->Say(s.c_str());
+      _log->info(ss.str());
     }
     off_t pos = ::lseek(fd, fileOffset, SEEK_SET);
     if (pos == static_cast<off_t>(-1) || pos != fileOffset) {
@@ -392,7 +392,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     t.start();
     std::string descr((Pformat("File write(%1%) at %2% for %3% by %4%")
                        % _chunkId % fileOffset % bufferSize % _userName).str());
-    _eDest->Say(descr.c_str());
+    _log->info(descr);
     //    return -EINVAL; // Garble for error testing.
 
     if (bufferSize <= 0) {
@@ -407,24 +407,23 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
         } else return -EIO;
     }
     _addWritePacket(fileOffset, buffer, bufferSize);
-    _eDest->Say((Pformat("File write(%1%) Added.") % _chunkId).str().c_str());
+    _log->info((Pformat("File write(%1%) Added.") % _chunkId).str());
 
     if(_hasPacketEof(buffer, bufferSize)) {
-        _eDest->Say((Pformat("File write(%1%) Flushing.") % _chunkId).str().c_str());
+        _log->info((Pformat("File write(%1%) Flushing.") % _chunkId).str());
         bool querySuccess = _flushWrite();
         if(!querySuccess) {
-            _eDest->Say("Flush returned fail.");
+            _log->info("Flush returned fail.");
             error.setErrInfo(EIO, "Error executing query.");
             //return -1;
             return -EIO;
         }
-        _eDest->Say("Flush ok, ready to return good.");
+        _log->info("Flush ok, ready to return good.");
     }
-    _eDest->Say((descr + " --FINISH--").c_str());
+    _log->info(descr + " --FINISH--");
     t.stop();
     ss << _chunkId << " WriteSpawn " << t;
-    std::string sst(ss.str());
-    _eDest->Say(sst.c_str());
+    _log->info(ss.str());
     return bufferSize;
 }
 	
@@ -432,7 +431,7 @@ int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
     aioparm->Result = write(aioparm->sfsAio.aio_offset, 
                             (const char*)aioparm->sfsAio.aio_buf,
                             aioparm->sfsAio.aio_nbytes);
-    _eDest->Say("AIO write.");
+    _log->info("AIO write.");
 
     if(aioparm->Result != (int)aioparm->sfsAio.aio_nbytes) {
         // overwrite error result with generic IO error?
@@ -500,7 +499,7 @@ bool qWorker::MySqlFsFile::_flushWrite() {
     case QservPath::OLDQ1:
         return _flushWriteSync();
     default:
-        _eDest->Say("Wrong filestate for writing. FIX THIS BUG.");
+        _log->error("Wrong filestate for writing. FIX THIS BUG.");
         _queryBuffer.reset(); // Kill the buffer.
         return false;
     }
@@ -508,19 +507,16 @@ bool qWorker::MySqlFsFile::_flushWrite() {
 }
 
 bool qWorker::MySqlFsFile::_flushWriteDetach() {
-    boost::shared_ptr<XrdLogger> x(new XrdLogger(*_eDest));
     Task::Ptr t(new Task(ScriptMeta(_queryBuffer, _chunkId), _userName));
-
-    qWorker::QueryRunnerArg a(x, t);
+    qWorker::QueryRunnerArg a(_log, t);
     return flushOrQueue(a);
 }
 
 bool qWorker::MySqlFsFile::_flushWriteSync() {
-    boost::shared_ptr<XrdLogger> x(new XrdLogger(*_eDest));
     Task::Ptr t(new Task(ScriptMeta(_queryBuffer, _chunkId), _userName));
     _setDumpNameAsChunkId(); // Because reads may get detached from writes.
     //_eDest->Say((Pformat("db=%1%.") % s.dbName).str().c_str());
-    QueryRunner runner(x, t, _dumpName);
+    QueryRunner runner(_log, t, _dumpName);
     return runner();
 }
 

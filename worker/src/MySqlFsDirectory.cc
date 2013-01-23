@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,17 +19,20 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+/// Implements MySqlFsDirectory, which rejects directory modification ops.  
 #include "lsst/qserv/worker/MySqlFsDirectory.h"
 
 #include "XrdSys/XrdSysError.hh"
+#include "lsst/qserv/worker/Logger.h"
 
 #include <errno.h>
 
 namespace qWorker = lsst::qserv::worker;
+using lsst::qserv::worker::Logger;
 
-qWorker::MySqlFsDirectory::MySqlFsDirectory(XrdSysError* lp, char* user) :
-    XrdSfsDirectory(user), _eDest(lp) {
+qWorker::MySqlFsDirectory::MySqlFsDirectory(boost::shared_ptr<Logger> log, 
+                                            char* user) :
+    XrdSfsDirectory(user), _log(log) {
 }
 
 qWorker::MySqlFsDirectory::~MySqlFsDirectory(void) {
@@ -52,6 +55,6 @@ int qWorker::MySqlFsDirectory::close(void) {
 }
 
 char const* qWorker::MySqlFsDirectory::FName(void) {
-    _eDest->Say("In MySqlFsDirectory::Fname()");
+    _log->info("In MySqlFsDirectory::Fname()");
     return 0;
 }

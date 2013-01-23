@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,13 +38,14 @@
 #include "lsst/qserv/worker/ResultTracker.h"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/MySqlFsFile.h"
+#include "lsst/qserv/worker/Logger.h"
 
 namespace test = boost::test_tools;
 namespace qWorker = lsst::qserv::worker;
+using lsst::qserv::worker::Logger;
 using boost::make_shared;
 
-static XrdSysLogger logDest;
-static XrdSysError errDest(&logDest);
+boost::shared_ptr<Logger> myLog = make_shared<Logger>();
 
 
 // For chunk 9980, subchunks 1,3 (tuson26 right now)
@@ -63,8 +64,8 @@ std::string queryResultPath = "/result/"+queryHash;
 
 struct TrackerFixture {
     TrackerFixture() :
-	invokeFile(&errDest, "qsmaster", make_shared<AddCallbackFunc>()),
-	resultFile(&errDest, "qsmaster", make_shared<AddCallbackFunc>()) {}
+	invokeFile(myLog, "qsmaster", make_shared<AddCallbackFunc>()),
+	resultFile(myLog, "qsmaster", make_shared<AddCallbackFunc>()) {}
     class StrCallable {
     public:
 	StrCallable(std::string& s) : val(s), isNotified(false)  {}

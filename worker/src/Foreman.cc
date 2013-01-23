@@ -1,3 +1,26 @@
+// -*- LSST-C++ -*-
+/* 
+ * LSST Data Management System
+ * Copyright 2008-2013 LSST Corporation.
+ * 
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the LSST License Statement and 
+ * the GNU General Public License along with this program.  If not, 
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+/// class Foreman implementation
 #include "lsst/qserv/worker/Foreman.h"
 
 // Std C++
@@ -13,7 +36,7 @@
 #include "lsst/qserv/worker/FifoScheduler.h"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/Base.h"
-#include "lsst/qserv/worker/StderrLogger.h"
+#include "lsst/qserv/worker/Logger.h"
 
 namespace qWorker = lsst::qserv::worker;
 ////////////////////////////////////////////////////////////////////////
@@ -121,7 +144,6 @@ void ForemanImpl::Watcher::handleAccept(qWorker::Task::Ptr t) {
             _f._startRunner(*i);
         }
     }
-    // Done. 
 }
 ////////////////////////////////////////////////////////////////////////
 // class ForemanImpl::RunnerMgr
@@ -205,7 +227,7 @@ public:
             qWorker::QueryRunner qr(a);
             std::stringstream ss;
             ss << "Runner running " << *_task;
-            (*_log)(ss.str().c_str());
+            _log->info(ss.str());
             qr.actOnce();
             if(_isPoisoned) break;
             // Request new work from the manager
@@ -236,7 +258,7 @@ ForemanImpl::ForemanImpl(Scheduler::Ptr s,
       _running(new qWorker::TodoList::TaskQueue()) {
     if(!_log.get()) {
         // Make basic logger.
-        _log.reset(new qWorker::StderrLogger());
+        _log.reset(new qWorker::Logger());
     }
     _watcher.reset(new Watcher(*this));
     _todo->addWatcher(_watcher); // Callbacks are now possible.
