@@ -18,8 +18,8 @@ class ProtocolSanityTest(unittest.TestCase):
         for i in range(1, 3):
             factory.newChunk("r_%d" % i, i)
             for i in range(1,3):
-            factory.fillFragment("SELECT * from blah;", 
-                                 range(i*10, (i+1)*10))
+                factory.fillFragment("SELECT * from blah;", 
+                                     range(i*10, (i+1)*10))
         msg = factory.getBytes()
         print "sizeof message is", len(msg)
         self.assertEqual(1,1)

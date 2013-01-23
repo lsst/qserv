@@ -1,0 +1,15 @@
+
+[qmsFrontend]
+port=7082
+
+[qmsdb]
+passwd = 
+db = testX
+unix_socket = /var/lib/mysql/mysql.sock
+host = 
+user = qsmaster
+port = 0
+
+[logging]
+outFile = /tmp/qmsServer.log
+level = debug

@@ -1,0 +1,20 @@
+import glob, os, re, sys
+import errno
+import shutil
+
+srcDir = "python/lsst/qserv/meta"
+destDir = "dist"
+pList = ["lsst", "qserv", "meta"]
+
+if not os.path.exists(destDir):
+    os.mkdir(destDir)
+for p in pList:
+    destDir += "/%s" % p
+    if not os.path.exists(destDir):
+        os.mkdir(destDir)
+    fName = "%s/__init__.py" % destDir 
+    open(fName, "w").close()
+
+for f in os.listdir(srcDir):
+    if f.endswith(".py"):
+        shutil.copyfile(os.path.join(srcDir, f), os.path.join(destDir, f))

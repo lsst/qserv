@@ -1,4 +1,5 @@
-# 
+#!/usr/bin/env python
+
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
 # 
@@ -18,16 +19,16 @@
 # You should have received a copy of the LSST License Statement and 
 # the GNU General Public License along with this program.  If not, 
 # see <http://www.lsstcorp.org/LegalNotices/>.
-#
 
-# server.py : This module implements the HTTP and XML-RPC interfacing
-# logic using the Twisted networking library.  The XML-RPC interface
-# exposes functionality from the AppInterface class, while the HTTP
-# interface has not yet been updated to do the same.
+"""
+server.py : This module implements Qserv Metadata Server (HTTP and 
+XML-RPC interfacing logic using the Twisted networking library.
+It exposes the functionality from the MetaInterface class.
+"""
+
 
 # Standard Python imports
 from itertools import ifilter
-import logging 
 import os
 import sys
 import time
@@ -41,13 +42,13 @@ import twisted.web.server
 from twisted.web import xmlrpc
 
 # Package imports
-from appInterface import AppInterface
-import config
+from metaInterface import MetaInterface
+from lsst.qserv.meta import config
 
 # Module settings
-defaultPort = 8000
+defaultPort = 8001
 defaultPath = "c"
-defaultXmlPath = "x"
+defaultXmlPath = "qms"
 
 class ClientResource(twisted.web.resource.Resource):
     def __init__(self, interface):
@@ -58,7 +59,8 @@ class ClientResource(twisted.web.resource.Resource):
         print "rendering get"
         if "action" in request.args:
             action = request.args["action"][0]
-            flattenedargs = dict(map(lambda t:(t[0],t[1][0]), request.args.items()))
+            flattenedargs = dict(map(lambda t:(t[0],t[1][0]),\
+                                         request.args.items()))
             return self.interface.execute(action, flattenedargs, lambda x:None)
         return "Error, no action found"
     
@@ -88,24 +90,22 @@ class FunctionResource(twisted.web.resource.Resource):
     def getChild(self, name, request):
         if name == '':
             return self
-        return twisted.web.resource.Resource.getChild(
-            self, name, request)
+        return twisted.web.resource.Resource.getChild(self, name, request)
+
 
 class XmlRpcInterface(xmlrpc.XMLRPC):
-    def __init__(self, appInterface):
+    def __init__(self, metaInterface):
         xmlrpc.XMLRPC.__init__(self)
-        self.appInterface = appInterface
-        self._bindAppInterface()
-        pass
+        self.metaInterface = metaInterface
+        self._bindQmsInterface()
 
-    def _bindAppInterface(self):
-        """Import the appInterface functions for publishing."""
+    def _bindQmsInterface(self):
+        """Import the QmsInterface functions for publishing."""
         prefix = 'xmlrpc'
         map(lambda x: setattr(self, "_".join([prefix,x]), 
-                              getattr(self.appInterface, x)), 
-            self.appInterface.publishable)
+                              getattr(self.metaInterface, x)), 
+            self.metaInterface.publishable)
         print "contents:"," ".join(filter(lambda x:"xmlrpc_" in x, dir(self)))
-        pass
 
     def xmlrpc_echo(self, echostr):
         "Echo a string back (useful for sanity checking)."
@@ -114,35 +114,14 @@ class XmlRpcInterface(xmlrpc.XMLRPC):
 
 
 class HttpInterface:
-    def __init__(self, appInterface):
-        self.appInterface = appInterface
+    def __init__(self, metaInterface):
+        self.metaInterface = metaInterface
         okname = ifilter(lambda x: "_" not in x, dir(self))
-        self.publishable = filter(lambda x: hasattr(getattr(self,x), 'func_doc'), 
-                                  okname)
-    def query(self, req):
-        "Issue a query. Params: q=querystring, h=hintstring"
-        print req
-        flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
-        #printdir(arg)
-        
-        if 'q' in req.args:
-            h = flatargs.get('h', None)
-            resp = ""
-            if h:
-                warning = "FIXME: No unmarshalling code for hints."
-                warning += "WARNING, no partitions will be used."
-                resp += warning
-                print warning
-                h = None
-
-            taskId = self.appInterface.query(flatargs('q'), h)
-            resp += "Server processed, q='" + flatargs['q'] + "' your id is %d" % (taskId)
-            return resp
-        else:
-            return "no query in string, try q='select...'"
+        self.publishable=filter(lambda x: hasattr(getattr(self,x),'func_doc'), 
+                                okname)
 
     def help(self, req):
-        """A brief help message showing available commands"""
+        """A brief help message showing available commands."""
         r = "" ## self._handyHeader()
         r += "\n<pre>available commands:\n"
         sorted =  map(lambda x: (x, getattr(self, x)), self.publishable)
@@ -153,53 +132,13 @@ class HttpInterface:
         return r
 
 
-    def check(self, req):
-        "Check status of query or task. Params: h=handle"
-        print req
-        key = 'id'
-        flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
-        if key in req.args and int(flatargs[key]):
-            res = self.appInterface.check(flatargs[key])
-            resp = ["checking status of query with handle %s" % flatargs[key],
-                    " would return \%done got %d", res]
-            return "\n".join(resp)
-
-        else:
-            return "\n".join([ "no handle in string, try %s=<taskId> " % key,
-                               "where <taskId> was returned from the initial query."])
-    def results(self, req):
-        "Get results location for a query or task. Params: h=handle"
-        print req
-        flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
-        key = 'id'
-        if key in req.args:
-            return "\n".join(["retrieving status of query with handle %s" % flatargs[key],
-                              " would return db handle ",
-                              self.appInterface(flatargs[key])])
-        else:
-            return "\n".join([ "no handle in string, try h=handle ",
-                               "where handle is the handle you got back from your initial query."])
-
-
-    def reset(self, req):
-        "Resets/restarts server uncleanly. No params."
-        return self.appInterface.reset() # Should not return
-
-    def stop(self, req):
-        "Unceremoniously stop the server."
-        return self.appInterface.stop()
-        reactor.stop()
-    pass
-
-
 class Master:
-
     def __init__(self):
         try:
             cfg = config.config
-            self.port = cfg.getint("frontend","port")
+            self.port = cfg.getint("qmsFrontend","port")
         except:
-            print "Bad or missing port for server. Using",defaultPort
+            print "Bad or missing port for server. Using", defaultPort
             self.port = defaultPort
         pass
 
@@ -207,9 +146,9 @@ class Master:
         root = twisted.web.resource.Resource()
         twisted.web.static.loadMimeTypes() # load from /etc/mime.types
         
-        ai = AppInterface(reactor)
-        c = HttpInterface(ai)
-        xml = XmlRpcInterface(ai)
+        mi = MetaInterface()
+        c = HttpInterface(mi)
+        xml = XmlRpcInterface(mi)
         # not sure I need the sub-pat http interface
         root.putChild(defaultPath, ClientResource(c))
         root.putChild(defaultXmlPath, xml)
@@ -221,18 +160,12 @@ class Master:
         # init listening
         reactor.listenTCP(self.port, twisted.web.server.Site(root))
 
-        print "Starting Qserv interface on port: %d"% self.port
-
-        # Insert a memento so we can check if the reactor is running.
-        reactor.lsstRunning = True 
+        print "Starting Qserv Metadata Server (QMS) on port: %d" % self.port
         reactor.run()
-        pass
    
-def runServer():
+def run():
     m = Master()
     m.listen()
-    pass
-
 
 if __name__ == "__main__":
-    runServer()
+    run()

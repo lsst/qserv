@@ -32,6 +32,10 @@ import random
 import string
 import time
 
+# For debugging
+import traceback
+import sys
+
 ## Local
 import partition
 
@@ -638,6 +642,20 @@ class CsvSchema:
         pass
             
 class Transformer:
+    """Transformer synthesizes new rows from input rows.
+    For some columns, the transformation is deterministic.
+    t : old, copynum -> new
+    The transformation functions work for PT1, PT1.1 and PT1.2. They may not
+    work for other input data due to differing ranges of values in the input
+    data. 
+
+    Potential problems for unknown data: out-of-range values for transformed
+    columns, which can cause MySQL to reject loading or integer overflowed 
+    values, which may cause aliased rows and silently corrupted rows.
+    
+    Notes: sourceId (47 bits PT12, 44 bits PT1.1)
+    objectId (48 bits (inc. skytile?)
+    """
     def _subtractIfBigger(self, theta):
         if theta >= self.normBounds[0]:
             return theta - 360
@@ -745,11 +763,21 @@ class Transformer:
             thetaphiNew = translateThetaPhiCorrectedOpt(
                 thetaphi, dupeInfo[3], self.thetaMid, dupeInfo[5])
             (newRow[thetaC], newRow[phiC]) = map(str, thetaphiNew)
-
-        for col,f in self.transformMap.items():
-            old = row[col]
-            if old != "\\N":  # skip SQL null columns
-                newRow[col] = f(old, dupeInfo[1])
+        try:
+            for col,f in self.transformMap.items():
+                old = row[col]
+                # skip SQL null columns
+                if (old != "\\N") and old.upper() != "NULL":  
+                    newRow[col] = f(old, dupeInfo[1])
+        except:
+            traceback.print_exc(file=sys.stdout)
+            print "Failing row:", row
+            orig = {}
+            for col,f in self.transformMap.items():
+                orig[(self.columnNames[col],col)] = row[col]
+            print "Suspect columns:", str(orig)
+            print "Bailing out...:"
+            raise
         return newRow
 
     def transformOnly(self, row, colList):

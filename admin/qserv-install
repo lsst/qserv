@@ -31,7 +31,7 @@ my $debug = $opts{'debug'} || 1;
 my $install_dir = $opts{'dir'} || cwd();
 my $build_dir   = $opts{'builddir'} || "$install_dir/build";
 my $prod_user   = $opts{'user'} || $ENV{'USER'};
-my $qserv_master = $opts{'master'} || $ENV{'HOST'};
+my $qserv_master = $opts{'master'} || `hostname`;
 
 my $build_opt = "all";
 $build_opt = "lua" if( $opts{'lua'} );
@@ -94,7 +94,7 @@ sub check_and_install_xrootd {
 	
 	#check if it is already installed
 	if( -e "$install_dir/xrootd" ) {
-		print "Warning: Xrootd already installed...\n";
+		print "WARNING: Xrootd already installed...\n";
 		return;
 	}
 	
@@ -104,7 +104,7 @@ sub check_and_install_xrootd {
 			print "I would untar xrootd.tar.gz here.\n";
 		} else {
 			print "Untaring xrootd...\n";
-			`tar zxf $build_dir/xrootd.tar.gz`;
+			run_command("tar zxf $build_dir/xrootd.tar.gz");
 		}
 	} else {
 		print "Sorry - I can't find the xrootd.tar.gz in the build dir.\n";
@@ -119,11 +119,11 @@ sub check_and_install_xrootd {
 		"--disable-ssl --disable-secssl --build=debug";
 	
 	print "Configuring xrootd for install.\n";
-	`$configure`;
+	run_command("$configure");
 	
 	print "Building and installing xrootd.\n";
-	`make`;
-	`make install`;
+	run_command("make");
+	run_command("make install");
 
 	chdir "$install_dir";
 	mkdir "xrootd-run";
@@ -134,7 +134,9 @@ sub check_and_install_xrootd {
 
 #check on qserv source tar, compile, install, and configure for use.
 sub check_and_install_qserv {
-	
+
+	print "Installing Qserv from source.\n";
+		
 	chdir "$install_dir";
 	
 	#check if things are already untarred
@@ -155,7 +157,7 @@ sub check_and_install_qserv {
 				print "I would untar $qserv_tar here.\n";
 			} else {
 				print "Untarring qserv...\n";
-				`tar zxf $build_dir/$qserv_tar`;
+				run_command("tar zxf $build_dir/$qserv_tar");
 				my( $tmp_qserv ) = $qserv_tar =~ /^(\S+).tar.gz/;
 				rename "$tmp_qserv", "qserv";
 			}
@@ -167,7 +169,7 @@ sub check_and_install_qserv {
 	
 	if( -e "$install_dir/qserv/master/dist" ) {	
 		#looks like qserv is already installed so, move on
-		print "Warning: Looks like qserv is already installed in $install_dir/qserv\n";
+		print "WARNING: Looks like qserv is already installed in $install_dir/qserv\n";
 		return;
 	}
 	
@@ -179,18 +181,18 @@ sub check_and_install_qserv {
 	$ENV{'PROTOC_LIB'} = "$install_dir/lib";
 	$ENV{'MYSQL_ROOT'} = "$install_dir";
 	$ENV{'SEARCH_ROOTS'} = "$install_dir";
-	`scons`;
-	`scons master`;
+	run_command("scons");
+	run_command("scons master");
 	
 	chdir "$install_dir/qserv/master";
-	`scons`;
-	`scons install`;
+	run_command("scons");
+	run_command("scons install");
 	
 	chdir "$install_dir/qserv/worker";
-	`scons`;
+	run_command("scons");
 	
 	#install worker libs
-	`cp bld/libqserv_worker.so $install_dir/xrootd-run`;
+	run_command("cp bld/libqserv_worker.so $install_dir/xrootd-run/");
 	
 	#start mysql server and install init database
 	chdir "$install_dir";
@@ -198,32 +200,32 @@ sub check_and_install_qserv {
 	system("./bin/mysqld_safe &");
 	sleep 5;
 	print "Setting up init databases.\n";
-	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE IF NOT EXISTS qservResult;"`;
-	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "CREATE DATABASE IF NOT EXISTS qservScratch;"`;
-	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';"`;
-	`./bin/mysql -S var/lib/mysql/mysql.sock -u root -e "GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';"`;
-	`./bin/mysql -S var/lib/mysql/mysql.sock -u root < qserv/master/examples/qserv-master-perms.sql`;
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"CREATE DATABASE IF NOT EXISTS qservResult;\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"CREATE DATABASE IF NOT EXISTS qservScratch;\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root < qserv/master/examples/qserv-master-perms.sql");
 	
 	#shutdown mysql
-	`./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root`;
+	run_command("./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root");
 	
 	#copy in xrootd config and configure
-	`cp qserv/master/examples/lsp.cf etc`;
+	run_command("cp qserv/master/examples/lsp.cf etc/");
 	mkdir "tmp";
-	`perl -pi -e "s,/data/lsst/lspexport,$install_dir/xrootd-run," etc/lsp.cf`;
-	`perl -pi -e "s,/data/lsst,$install_dir/tmp," etc/lsp.cf`;
-	#`perl -pi -e "s,query2,q," etc/lsp.cf`;
-	`perl -pi -e "s,tuson121,$qserv_master," etc/lsp.cf`;
+	run_command("perl -pi -e \"s,/data/lsst/lspexport,$install_dir/xrootd-run,\" etc/lsp.cf");
+	run_command("perl -pi -e \"s,/data/lsst,$install_dir/tmp,\" etc/lsp.cf");
+	#run_command("perl -pi -e \"s,query2,q,\" etc/lsp.cf");
+	run_command("perl -pi -e \"s,tuson121,$qserv_master,\" etc/lsp.cf");
 	
 	#copy in and edit qserv config
-	`cp qserv/master/examples/lsst-dev01.qserv.cnf etc/local.qserv.cnf`;
-	`perl -pi -e "s,xrootd\\s*=\\s*\\S+,xrootd = $ENV{'HOST'}:1094," etc/local.qserv.cnf`;
-	`perl -pi -e "s,unix_socket\\s*=\\s*\\S+,unix_socket = $install_dir/var/lib/mysql/mysql.sock," etc/local.qserv.cnf`;
-	`perl -pi -e "s,emptyChunkListFile=emptyChunks.txt,emptyChunkListFile=$install_dir/etc/emptyChunks.txt," etc/local.qserv.cnf`;
+	run_command("cp qserv/master/examples/lsst-dev01.qserv.cnf etc/local.qserv.cnf");
+	run_command("perl -pi -e \"s,xrootd\\s*=\\s*\\S+,xrootd = $ENV{'HOST'}:1094,\" etc/local.qserv.cnf");
+	run_command("perl -pi -e \"s,unix_socket\\s*=\\s*\\S+,unix_socket = $install_dir/var/lib/mysql/mysql.sock,\" etc/local.qserv.cnf");
+	run_command("perl -pi -e \"s,emptyChunkListFile=emptyChunks.txt,emptyChunkListFile=$install_dir/etc/emptyChunks.txt,\" etc/local.qserv.cnf");
 	
 	#install the qserv-admin
-	`cp qserv/admin/qserv-admin bin`;
-	`perl -pi -e "s,INSTALLDIR,$install_dir," bin/qserv-admin`;
+	run_command("cp qserv/admin/bin/qserv-admin bin/");
+	run_command("perl -pi -e \"s,INSTALLDIR,$install_dir,\" bin/qserv-admin");
 	
 }
 
@@ -238,12 +240,12 @@ sub check_and_setup_extras {
 	my $protobuf_dir = check_and_untar( "protobuf" );
 
 	chdir "$build_dir/$protobuf_dir";
-	`./configure --prefix="$install_dir"`;
-	`make`;
-	`make install`;
+	run_command("./configure --prefix=\"$install_dir\"");
+	run_command("make");
+	run_command("make install");
 	
 	chdir "$build_dir/$protobuf_dir/python";
-	`$install_dir/bin/python setup.py install`;
+	run_command("$install_dir/bin/python setup.py install");
 	
 	print "Installing MySQL py interface.\n";
 	
@@ -251,8 +253,11 @@ sub check_and_setup_extras {
 	my $mysqldb_dir = check_and_untar( "MySQL-python" );
 	
 	chdir "$build_dir/$mysqldb_dir";
-	`python setup.py build`;
-	`python setup.py install`;
+	run_command("echo -- DEBUG --");
+	run_command("env");
+	run_command("echo -- DEBUG --");
+	run_command("python setup.py build");
+	run_command("python setup.py install");
 
 	print "Installing zope 3 interface.\n";
 	
@@ -260,17 +265,17 @@ sub check_and_setup_extras {
 	my $zope3_dir = check_and_untar( "zope.interface" );
 	
 	chdir "$build_dir/$zope3_dir";
-	`python setup.py build`;
-	`python setup.py install`;
+	run_command("python setup.py build");
+	run_command("python setup.py install");
 
-        print "Installing numpy interface.\n";
+	print "Installing numpy interface.\n";
 
-        chdir "$build_dir";
-        my $numpy_dir = check_and_untar( "numpy" );
+	chdir "$build_dir";
+	my $numpy_dir = check_and_untar( "numpy" );
 	if( $numpy_dir ) {
-	        chdir "$build_dir/$numpy_dir";
-        	`python setup.py build`;
-        	`python setup.py install`;
+		chdir "$build_dir/$numpy_dir";
+		run_command("python setup.py build");
+		run_command("python setup.py install");
 	}
 
 	print "Installing Twisted interface.\n";
@@ -279,7 +284,7 @@ sub check_and_setup_extras {
 	my $twisted_dir = check_and_untar( "Twisted" );
 	
 	chdir "$build_dir/$twisted_dir";
-	`python setup.py install`;
+	run_command("python setup.py install");
 	
 	chdir "$install_dir";
 
@@ -298,9 +303,9 @@ sub check_and_install_mysql {
 	my $ncurses_dir = check_and_untar( "ncurses" );
 	if( $ncurses_dir ) {
 		chdir "$build_dir/$ncurses_dir";
-		`./configure --prefix="$install_dir"`;
-	        `make`;
-       		`make install`;
+		run_command("./configure --prefix=\"$install_dir\"");
+		run_command("make");
+		run_command("make install");
 	}
 
 	$ENV{'LDFLAGS'} = "-L$install_dir/lib";
@@ -308,9 +313,9 @@ sub check_and_install_mysql {
 	my $mysql_dir = check_and_untar( "mysql-5" );
 
 	chdir "$build_dir/$mysql_dir";
-	`./configure --prefix="$install_dir" --enable-local-infile --with-mysqld-user=$prod_user`;
-	`make`;
-	`make install`;
+	run_command("./configure --prefix=\"$install_dir\" --enable-local-infile --with-mysqld-user=$prod_user");
+	run_command("make");
+	run_command("make install");
 
 	chdir "$install_dir";
 	mkdir "etc";
@@ -321,11 +326,11 @@ sub check_and_install_mysql {
 	mkdir "var/run/mysqld";
 	mkdir "var/log";
 	
-	`cp /etc/my.cnf etc`;
-	`perl -pi -e "s,/var,$install_dir/var," etc/my.cnf`;
-	`perl -pi -e "s,user=mysql,," etc/my.cnf`;
+	run_command("cp /etc/my.cnf etc/");
+	run_command("perl -pi -e \"s,/var,$install_dir/var,\" etc/my.cnf");
+	run_command("perl -pi -e \"s,user=mysql,,\" etc/my.cnf");
 	
-	`mysql_install_db --user=$prod_user`;
+	run_command("mysql_install_db --user=$prod_user");
 	
 	print "Please set the mysql root user password with: ";
 	print "mysqladmin -S var/lib/mysql/mysql.sock -u root password <password>\n";
@@ -341,13 +346,13 @@ sub check_and_setup_python {
 	my $virtualenv_dir = check_and_untar( "virtualenv" );
 	
 	chdir "$build_dir/$virtualenv_dir";
-	`$python_path virtualenv.py $install_dir`;
+	run_command("$python_path virtualenv.py $install_dir");
 	
 	chdir "$build_dir";
 	my $scons_dir = check_and_untar( "scons" );
 	
 	chdir "$build_dir/$scons_dir";
-	`$install_dir/bin/python setup.py install`;
+	run_command("$install_dir/bin/python setup.py install");
 	
 	chdir "$install_dir";
 
@@ -355,15 +360,17 @@ sub check_and_setup_python {
 
 #check on lua source tars, compile, install, and configure for use.
 sub check_and_install_lua {
+
+	print "Installing lua from source.\n";
 	
 	#install readline if it is there
 	chdir "$build_dir";
 	my $readline_dir = check_and_untar( "readline" );
         if( $readline_dir ) {
 		chdir "$build_dir/$readline_dir";
-       		`./configure --prefix="$install_dir"`;
-        	`make`;
-        	`make install`;
+       		run_command("./configure --prefix=\"$install_dir\"");
+        	run_command("make");
+        	run_command("make install");
 	}
 	
 	print "Installing lua from source.\n";
@@ -372,50 +379,50 @@ sub check_and_install_lua {
 	chdir "$build_dir";
 	my $lua_dir = check_and_untar( "lua-5.1.4" );
 	chdir "$build_dir/$lua_dir";
-	`perl -pi -e "s/PLAT= none/PLAT= linux/" Makefile`;
-	`perl -pi -e "s,INSTALL_TOP= /usr/local,INSTALL_TOP= $install_dir," Makefile`;
-	`perl -pi -e "s,CFLAGS= -O2,CFLAGS= -I$install_dir/include -fPIC -O2," src/Makefile`;
-	`perl -pi -e "s,LIBS= -lm,LIBS= -L$install_dir/lib -lm," src/Makefile`;
-	`make`;
-	`make install`;
+	run_command("perl -pi -e \"s/PLAT= none/PLAT= linux/\" Makefile");
+	run_command("perl -pi -e \"s,INSTALL_TOP= /usr/local,INSTALL_TOP= $install_dir,\" Makefile");
+	run_command("perl -pi -e \"s,CFLAGS= -O2,CFLAGS= -I$install_dir/include -fPIC -O2,\" src/Makefile");
+	run_command("perl -pi -e \"s,LIBS= -lm,LIBS= -L$install_dir/lib -lm,\" src/Makefile");
+	run_command("make");
+	run_command("make install");
 	
 	#install luasocket
 	chdir "$build_dir";
 	my $luasocket_dir = check_and_untar( "luasocket" );
 	chdir "$build_dir/$luasocket_dir";
-	`perl -pi -e "s,INSTALL_TOP_SHARE=/usr/local/share/lua/5.1,LUAINC=-I$install_dir/include\nINSTALL_TOP_SHARE=$install_dir/share/lua/5.1," config`;
-	`perl -pi -e "s,INSTALL_TOP_LIB=/usr/local/lib/lua/5.1,INSTALL_TOP_LIB=$install_dir/lib/lua/5.1," config`;
-	`make`;
-	`make install`;
+	run_command("perl -pi -e \"s,INSTALL_TOP_SHARE=/usr/local/share/lua/5.1,LUAINC=-I$install_dir/include\nINSTALL_TOP_SHARE=$install_dir/share/lua/5.1,\" config");
+	run_command("perl -pi -e \"s,INSTALL_TOP_LIB=/usr/local/lib/lua/5.1,INSTALL_TOP_LIB=$install_dir/lib/lua/5.1,\" config");
+	run_command("make");
+	run_command("make install");
 	
 	#install lua xmlrpc
 	chdir "$build_dir";
 	my $luaxmlrpc_dir = check_and_untar( "lua-xmlrpc" );
 	chdir "$build_dir/$luaxmlrpc_dir";
-	`perl -pi -e "s,LUA_DIR= /usr/local,LUA_DIR= $install_dir," Makefile`;
-	`make`;
-	`make install`;
+	run_command("perl -pi -e \"s,LUA_DIR= /usr/local,LUA_DIR= $install_dir,\" Makefile");
+	run_command("make");
+	run_command("make install");
 	
 	#install expat lib
 	chdir "$build_dir";
 	my $expat_dir = check_and_untar( "expat" );
 	chdir "$build_dir/$expat_dir";
-	`./configure --prefix="$install_dir"`;
-	`make`;
-	`make install`;
+	run_command("./configure --prefix=\"$install_dir\"");
+	run_command("make");
+	run_command("make install");
 	
 	#install luaexpat
 	chdir "$build_dir";
 	my $luaexpat_dir = check_and_untar( "luaexpat" );
 	chdir "$build_dir/$luaexpat_dir";
-	`perl -pi -e "s,/usr/local,$install_dir," config`;
-	`perl -pi -e "s,5\.0,5\.1," config`;
-	`perl -pi -e "s,-O2,-O2 -fPIC," config`;
-	`perl -pi -e "s,LUA_VERSION_NUM= 500,LUA_VERSION_NUM= 514," config`;
-	`perl -pi -e "s,EXPAT_INC=(.*),EXPAT_INC=\1\nEXPAT_LIBDIR= $install_dir/lib," config`;
-	`perl -pi -e 's,-lexpat,-L\\\$\\(EXPAT_LIBDIR\\) -lexpat,' makefile`;
-	`make`;
-	`make install`;
+	run_command("perl -pi -e \"s,/usr/local,$install_dir,\" config");
+	run_command("perl -pi -e \"s,5\.0,5\.1,\" config");
+	run_command("perl -pi -e \"s,-O2,-O2 -fPIC,\" config");
+	run_command("perl -pi -e \"s,LUA_VERSION_NUM= 500,LUA_VERSION_NUM= 514,\" config");
+	run_command("perl -pi -e \"s,EXPAT_INC=(.*),EXPAT_INC=\1\nEXPAT_LIBDIR= $install_dir/lib,\" config");
+	run_command("perl -pi -e 's,-lexpat,-L\\\$\\(EXPAT_LIBDIR\\) -lexpat,' makefile");
+	run_command("make");
+	run_command("make install");
 
 }
 
@@ -428,9 +435,9 @@ sub check_and_install_myproxy {
 	chdir "$build_dir";
 	my $libevent_dir = check_and_untar( "libevent" );
 	chdir "$build_dir/$libevent_dir";
-	`./configure --prefix="$install_dir"`;
-	`make`;
-	`make install`;
+	run_command("./configure --prefix=\"$install_dir\"");
+	run_command("make");
+	run_command("make install");
 	
 	#install mysql proxy
 	chdir "$build_dir";
@@ -442,9 +449,9 @@ sub check_and_install_myproxy {
 	$ENV{'LIBS'} = "-L$install_dir/lib -levent -llua -lm";
 	$ENV{'LUA_LIBS'} = "-llua";
 	$ENV{'LUA_CFLAGS'} = "-I$install_dir/include -L$install_dir/lib";
-	`./configure --prefix="$install_dir" --with-lua`;
-	`make`;
-	`make install`;
+	run_command("./configure --prefix=\"$install_dir\" --with-lua");
+	run_command("make");
+	run_command("make install");
 
 }
 
@@ -465,19 +472,19 @@ sub check_and_untar {
 		#need to first untar the 
 		print "Untarring $tmplist[0].\n";
 		chdir "$build_dir";
-		`tar zxf $tmplist[0]`;
+		run_command("tar zxf $tmplist[0]");
 		( $tmp_dir ) = $tmplist[0] =~ /^(\S+).tar.gz/;
 	}  elsif( $tmplist[0] =~ /tar.bz/  ) {
 		#need to first untar the 
 		print "Untarring $tmplist[0].\n";
 		chdir "$build_dir";
-		`tar jxf $tmplist[0]`;
+		run_command("tar jxf $tmplist[0]");
 		( $tmp_dir ) = $tmplist[0] =~ /^(\S+).tar.bz/;
 	} elsif( $tmplist[0] =~ /zip/  ) {
 		#need to first untar the 
 		print "Unzipping $tmplist[0].\n";
 		chdir "$build_dir";
-		`unzip $tmplist[0]`;
+		run_command("unzip $tmplist[0]");
 		#need to refresh, unzip dir might have a different name than zip file.
 		list_build_dir();
 		my @tmplist2 = sort grep /$check_string/, @buildfiles;
@@ -519,9 +526,9 @@ sub create_xrootd_startup {
 	print XROOTD "export LD_LIBRARY_PATH=\"$install_dir/xrootd-run;$install_dir/lib\"\n";
 	print XROOTD "\n";
 	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/xrootd -c ";
-	print XROOTD "$install_dir/etc/lsp.cf -l $install_dir/xrootd-run/xrootd.log &\n";
+	print XROOTD "$install_dir/etc/lsp.cf -l $install_dir/var/log/xrootd.log &\n";
 	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/cmsd -c ";
-	print XROOTD "$install_dir/etc/lsp.cf -l $install_dir/xrootd-run/cmsd.log &\n";
+	print XROOTD "$install_dir/etc/lsp.cf -l $install_dir/var/log/cmsd.log &\n";
 	
 	close XROOTD;
 	chmod 0755, "start_xrootd";
@@ -544,9 +551,10 @@ sub create_qserv_startup {
 	print QSERV "export PYTHONPATH=$install_dir/qserv/master/dist:$install_dir/qserv-run\n";
 	print QSERV "export LD_LIBRARY_PATH=$install_dir/lib:\$XRD_DIR/lib/\$PLATFORM\n";
 	print QSERV "export QSW_RESULTDIR=$install_dir/qserv-run/tmp\n";
+	print QSERV "export PYTHONUNBUFFERED=1\n";
 	print QSERV "\$PYTHON $install_dir/qserv/master/dist/startQserv.py -c ";
 	print QSERV "$install_dir/etc/local.qserv.cnf > ";
-	print QSERV "$install_dir/xrootd-run/qserv.log &\n";
+	print QSERV "$install_dir/var/log/qserv.log &\n";
 
 	close QSERV;
 	chmod 0755, "start_qserv";
@@ -592,7 +600,7 @@ sub clean_all {
 		next if( $file =~ /build/ );
 		if( -d $file ) {
 			print "Removing $file\n";
-			`rm -r $file`;
+			run_command("rm -r $file");
 		}
 	}
 	
@@ -606,7 +614,7 @@ sub clean_all {
 		next if( $file =~ /^\./ );
 		if( -d $file ) {
 			print "Removing $file\n";
-			`rm -r $file`;
+			run_command("rm -r $file");
 		}
 	}
 
@@ -656,3 +664,16 @@ INLINE_LITERAL_TEXT
 
 }
 
+sub run_command {
+	my( $command ) = @_;
+	my $cwd = cwd();
+	my @return;
+	print "-- Running: $command in $cwd\n";
+	open( OUT, "$command 2>&1 |" ) || die "ERROR : can't fork $command : $!";
+	while( <OUT> ) {
+		print STDOUT $_; 
+		push( @return, $_ ); 
+	}
+	close( OUT ) || die "ERROR : $command exits with error code ($?)";
+	return @return;
+}

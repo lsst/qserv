@@ -20,6 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include <fstream>
+#include <iostream>
 #include <sstream>
 #include <cstdio>
 // Boost
@@ -28,11 +30,109 @@
 
 #include "SqlConnection.hh"
 
+using lsst::qserv::SqlConfig;
 using lsst::qserv::SqlConnection;
 using lsst::qserv::SqlResults;
 
 bool SqlConnection::_isReady = false;
 boost::mutex SqlConnection::_sharedMutex;
+
+SqlConfig::SqlConfig(const SqlConfig& c) 
+    : hostname(c.hostname),
+      username(c.username),
+      password(c.password),
+      dbName(c.dbName),
+      port(c.port),
+      socket(c.socket) {
+}
+
+void 
+SqlConfig::throwIfNotSet(std::string const& fName) const {
+    bool allSet = true;
+    std::stringstream s;
+    s << "Value for ";
+    if (hostname == "") { allSet = false; s << "host "; }
+    if (port     == 0 ) { allSet = false; s << "port "; }
+    if (username == "") { allSet = false; s << "username "; }
+    if (password == "") { allSet = false; s << "password "; }
+    if (dbName   == "") { allSet = false; s << "dbName ";   }
+    if (socket   == "") { allSet = false; s << "socket "; }
+    if (!allSet) {
+        s << "not set in the '" << fName << "' file.";
+        throw s.str();
+    }
+}
+
+/// Initializes self from a file. File format: <key>:<value>
+/// To ignore given token, pass "". 
+/// To ignore unrecognized tokens, set the flag to false.
+/// This is handy for reading a subset of a file. 
+void 
+SqlConfig::initFromFile(std::string const& fName,
+                        std::string const& hostToken,
+                        std::string const& portToken,
+                        std::string const& userToken,
+                        std::string const& passToken,
+                        std::string const& dbNmToken,
+                        std::string const& sockToken,
+                        bool ignoreUnrecognizedTokens) {
+    std::ifstream f;
+    f.open(fName.c_str());
+    if (!f) {
+        std::stringstream s;
+        s << "Failed to open '" << fName << "'";
+        throw s.str();
+    }
+    std::string line;
+    f >> line;
+    while ( !f.eof() ) {
+        int pos = line.find_first_of(':');
+        if ( pos == -1 ) {
+            std::stringstream s;
+            s << "Invalid format, expecting <token>:<value>. "
+              << "File '" << fName << "', line: '" << line << "'";
+            throw s.str();
+        }
+        std::string token = line.substr(0,pos);
+        std::string value = line.substr(pos+1, line.size());
+        if (hostToken != "" and token == hostToken) { 
+            this->hostname = value;
+        } else if (portToken != "" and token == portToken) {
+            this->port = atoi(value.c_str());
+            if ( this->port <= 0 ) {
+                std::stringstream s;
+                s << "Invalid port number " << this->port << ". "
+                  << "File '" << fName << "', line: '" << line << "'";
+                throw s.str();
+            }        
+        } else if (userToken != "" and token == userToken) {
+            this->username = value;
+        } else if (passToken != "" and token == passToken) {
+            this->password = value;
+        } else if (dbNmToken != "" and token == dbNmToken) {
+            this->dbName = value;
+        } else if (sockToken != "" and token == sockToken) {
+            this->socket = value;
+        } else if (!ignoreUnrecognizedTokens) {
+            std::stringstream s;
+            s << "Unexpected token: '" << token << "' (supported tokens " 
+              << "are: " << hostToken << ", " << portToken << ", "
+              << userToken << ", " << passToken << ", " << dbNmToken << ", "
+              << sockToken << ").";
+            throw(s.str());
+        }
+        f >> line;
+    }
+    f.close();
+    //throwIfNotSet(fName);
+}   
+
+void 
+SqlConfig::printSelf(std::string const& extras) const {
+    std::cout << "(" << extras << ") host=" << hostname << ", port=" << port 
+              << ", usr=" << username << ", pass=" << password << ", dbName=" 
+              << dbName << ", socket=" << socket << std::endl;
+}
 
 void
 SqlResults::freeResults() {
@@ -85,6 +185,46 @@ SqlResults::extractFirst2Columns(std::vector<std::string>& col1,
 }
 
 bool
+SqlResults::extractFirst3Columns(std::vector<std::string>& col1,
+                                 std::vector<std::string>& col2,
+                                 std::vector<std::string>& col3,
+                                 SqlErrorObject& errObj) {
+    int i, s = _results.size();
+    for (i=0 ; i<s ; i++) {
+        MYSQL_ROW row;
+        while (row = mysql_fetch_row(_results[i])) {
+            col1.push_back(row[0]);
+            col2.push_back(row[1]);
+            col3.push_back(row[2]);
+        }
+        mysql_free_result(_results[i]);
+    }
+    _results.clear();
+    return true;
+}
+
+bool
+SqlResults::extractFirst4Columns(std::vector<std::string>& col1,
+                                 std::vector<std::string>& col2,
+                                 std::vector<std::string>& col3,
+                                 std::vector<std::string>& col4,
+                                 SqlErrorObject& errObj) {
+    int i, s = _results.size();
+    for (i=0 ; i<s ; i++) {
+        MYSQL_ROW row;
+        while (row = mysql_fetch_row(_results[i])) {
+            col1.push_back(row[0]);
+            col2.push_back(row[1]);
+            col3.push_back(row[2]);
+            col4.push_back(row[3]);
+        }
+        mysql_free_result(_results[i]);
+    }
+    _results.clear();
+    return true;
+}
+
+bool
 SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     if (_results.size() != 1) {
         std::stringstream ss;
@@ -96,14 +236,23 @@ SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     if (!row) {
         return errObj.addErrMsg("Expecting one row, found no rows");
     }
-    ret = *(row[0]);
+    ret = (row[0]);
     freeResults();
     return true;
 }
 
+SqlConnection::SqlConnection() 
+    : _conn(NULL), _connected(false), _useThreadMgmt(false) {
+}
+
 SqlConnection::SqlConnection(SqlConfig const& sc, bool useThreadMgmt) 
-    : _conn(NULL), _config(sc), 
-      _connected(false), _useThreadMgmt(useThreadMgmt) { 
+    : _conn(NULL), _connected(false) {
+    init(sc, useThreadMgmt);
+}
+
+void
+SqlConnection::init(SqlConfig const& sc, bool useThreadMgmt) {
+    _config = sc;
     {
         boost::lock_guard<boost::mutex> g(_sharedMutex);
         if(!_isReady) {
@@ -134,17 +283,15 @@ SqlConnection::connectToDb(SqlErrorObject& errObj) {
 bool 
 SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
     if (!_connected) if (!connectToDb(errObj)) return false;
-
     if (_config.dbName == dbName) {
         return true; // nothing to do
     }
     if (!dbExists(dbName, errObj)) {
-        return errObj.addErrMsg (std::string("Can't switch to db ") 
-                                 + dbName + " (does not exist)");
-    }
-    
+        return errObj.addErrMsg(std::string("Can't switch to db ") 
+                                 + dbName + " (it does not exist).");
+    }    
     if (mysql_select_db(_conn, dbName.c_str())) {
-        return _setErrorObject(errObj, "Problem selecting db " + dbName);
+        return _setErrorObject(errObj, "Problem selecting db " + dbName + ".");
     }
     _config.dbName = dbName;
     return true;
@@ -156,7 +303,6 @@ SqlConnection::runQuery(char const* query,
                         SqlResults& results,
                         SqlErrorObject& errObj) {
     if (!_connected) if (!connectToDb(errObj)) return false;
-
     if (mysql_real_query(_conn, query, qSize) != 0) {
         MYSQL_RES* result = mysql_store_result(_conn);
         if (result) mysql_free_result(result);
@@ -205,7 +351,6 @@ SqlConnection::runQuery(std::string const query,
 bool 
 SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
     if (!_connected) if (!connectToDb(errObj)) return false;
-
     std::string sql = "SELECT COUNT(*) FROM information_schema.schemata ";
     sql += "WHERE schema_name = '";
     sql += dbName + "'";
@@ -226,7 +371,6 @@ SqlConnection::createDb(std::string const& dbName,
                         SqlErrorObject& errObj, 
                         bool failIfExists) {
     if (!_connected) if (!connectToDb(errObj)) return false;
-
     if (dbExists(dbName, errObj)) {
         if (failIfExists) {
             return errObj.addErrMsg(std::string("Can't create db ") 
@@ -246,7 +390,7 @@ SqlConnection::createDbAndSelect(std::string const& dbName,
                                  SqlErrorObject& errObj, 
                                  bool failIfExists) {
     if ( ! createDb(dbName, errObj, failIfExists) ) {
-        return errObj.addErrMsg("Failed to create db " + dbName);
+        return false;
     }
     return selectDb(dbName, errObj);
 }
@@ -256,7 +400,6 @@ SqlConnection::dropDb(std::string const& dbName,
                       SqlErrorObject& errObj,
                       bool failIfDoesNotExist) {
     if (!_connected) if (!connectToDb(errObj)) return false;
-
     if (!dbExists(dbName, errObj)) {
         if ( failIfDoesNotExist ) {
             return errObj.addErrMsg(std::string("Can't drop db ")
@@ -279,22 +422,22 @@ SqlConnection::tableExists(std::string const& tableName,
                            SqlErrorObject& errObj,
                            std::string const& dbName) {
     if (!_connected) if (!connectToDb(errObj)) return false;
-
-    std::string _dbName;
+    std::string dbName_;
     if ( ! dbName.empty() ) {
-        _dbName = dbName;
+        dbName_ = dbName;
     } else {
-        _dbName = getActiveDbName();
-        if (_dbName.empty() ) {
-            return errObj.addErrMsg("Can't check if table exist, db not selected");
+        dbName_ = getActiveDbName();
+        if (dbName_.empty() ) {
+            return errObj.addErrMsg(
+                            "Can't check if table existd, db not selected. ");
         }        
     }
-    if (!dbExists(_dbName, errObj)) {
-        return errObj.addErrMsg(std::string("Db ")+_dbName+" does not exist");
+    if (!dbExists(dbName_, errObj)) {
+        return errObj.addErrMsg(std::string("Db ")+dbName_+" does not exist");
     }
     std::string sql = "SELECT COUNT(*) FROM information_schema.tables ";
     sql += "WHERE table_schema = '";
-    sql += _dbName + "' AND table_name = '" + tableName + "'";
+    sql += dbName_ + "' AND table_name = '" + tableName + "'";
     SqlResults results;
     if (!runQuery(sql, results, errObj)) {
         return _setErrorObject(errObj, "Problem executing: " + sql);
@@ -315,7 +458,6 @@ SqlConnection::dropTable(std::string const& tableName,
     if ( getActiveDbName().empty() ) {
         return errObj.addErrMsg("Can't drop table, db not selected");
     }
-
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
     if (!tableExists(tableName, errObj, _dbName)) {
         if (failIfDoesNotExist) {
@@ -341,7 +483,6 @@ SqlConnection::listTables(std::vector<std::string>& v,
     if ( getActiveDbName().empty() ) {
         return errObj.addErrMsg("Can't list tables, db not selected. ");
     }
-
     std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
     if (!dbExists(_dbName, errObj)) {
         return errObj.addErrMsg("Can't list tables for db " + _dbName
@@ -386,8 +527,11 @@ SqlConnection::_connect(SqlErrorObject& errObj) {
          _config.port,
          _config.socket.empty() ? 0 : _config.socket.c_str(), 
          clientFlag);
-    if(c == NULL) {
-        return _setErrorObject(errObj, "Failed to connect");
+    if (c == NULL) {
+        _setErrorObject(errObj);
+        mysql_close(_conn);
+        _conn = NULL;
+        return false;
     }
     _connected = true;
     return true;
@@ -396,8 +540,12 @@ SqlConnection::_connect(SqlErrorObject& errObj) {
 bool 
 SqlConnection::_setErrorObject(SqlErrorObject& errObj, 
                                std::string const& extraMsg) {
-    errObj.setErrNo( mysql_errno(_conn) );
-    errObj.addErrMsg( mysql_error(_conn) );
+    if (_conn != NULL) {
+        errObj.setErrNo( mysql_errno(_conn) );
+        errObj.addErrMsg( mysql_error(_conn) );
+    } else {
+        errObj.setErrNo(-999);
+    }
     if ( ! extraMsg.empty() ) {
         errObj.addErrMsg(extraMsg);
     }
