@@ -31,10 +31,38 @@
 namespace test = boost::test_tools;
 namespace qsrv = lsst::qserv;
 
+namespace {
+
+inline std::string makeCreateTable(std::string const& t) {
+    std::stringstream ss;
+    ss <<  "CREATE TABLE " << t << " (o1 int)";
+    return ss.str();
+}
+inline std::string makeShowTables(std::string const& dbName=std::string()) {
+    std::stringstream ss;
+    ss <<  "SHOW TABLES ";
+    if(!dbName.empty()) { ss << "IN " << dbName; }
+    return ss.str();
+}
+class createIntTable {
+public:
+    createIntTable(qsrv::SqlConnection* sqlConn_, 
+                   qsrv::SqlErrorObject& errObj_) 
+        : sqlConn(sqlConn_), errObj(errObj_) {}
+
+
+    void operator()(std::string const& s) {
+        if ( !sqlConn->runQuery(makeCreateTable(s), errObj) ) {
+            BOOST_FAIL(errObj.printErrMsg());
+        }
+    }
+    qsrv::SqlConnection* sqlConn;
+    qsrv::SqlErrorObject& errObj;
+};
+} // anonymous namespace
+
 struct PerTestFixture {
     PerTestFixture() {
-        static qsrv::SqlConfig sqlConfig;
-
         if ( sqlConfig.username.empty() ) {
             sqlConfig.hostname = "";
             sqlConfig.dbName = "";
@@ -45,14 +73,13 @@ struct PerTestFixture {
             std::cout << "Enter mysql socket: ";
             std::cin >> sqlConfig.socket;
         }
-        sqlConn = new qsrv::SqlConnection(sqlConfig);
+        sqlConn.reset(new qsrv::SqlConnection(sqlConfig));
     }
-    ~PerTestFixture () {
-        delete sqlConn;
-        sqlConn = 0;
-    }
-    qsrv::SqlConnection* sqlConn;
+    ~PerTestFixture () {}
+    boost::shared_ptr<qsrv::SqlConnection> sqlConn;
+    static qsrv::SqlConfig sqlConfig;
 };
+qsrv::SqlConfig PerTestFixture::sqlConfig;
 
 BOOST_FIXTURE_TEST_SUITE(SqlConnectionTestSuite, PerTestFixture)
 
@@ -131,12 +158,10 @@ BOOST_AUTO_TEST_CASE(TableExists) {
 
 BOOST_AUTO_TEST_CASE(ListTables) {
     std::string dbN = "one_xysdfed34d";
-    std::string tNo1 = "object_1";
-    std::string tNo2 = "object_2";
-    std::string tNo3 = "object_3";
-    std::string tNs1 = "source_1";
-    std::string tNs2 = "source_2";
-    std::stringstream ss;
+    std::string tList[] = {
+        "object_1", "object_2", "object_3", 
+        "source_1", "source_2" };
+    int const tListLen = 5;
     qsrv::SqlErrorObject errObj;
     std::vector<std::string> v;
 
@@ -146,33 +171,15 @@ BOOST_AUTO_TEST_CASE(ListTables) {
     }
 
     // create tables
-    ss.str(""); ss <<  "CREATE TABLE " << tNo1 << " (o1 int)";
-    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
-        BOOST_FAIL(errObj.printErrMsg());
-    }
-    ss.str(""); ss <<  "CREATE TABLE " << tNo2 << " (o2 int)";
-    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
-        BOOST_FAIL(errObj.printErrMsg());
-    }
-    ss.str(""); ss <<  "CREATE TABLE " << tNo3 << " (o3 int)";
-    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
-        BOOST_FAIL(errObj.printErrMsg());
-    }
-    ss.str(""); ss <<  "CREATE TABLE " << tNs1 << " (s1 int)";
-    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
-        BOOST_FAIL(errObj.printErrMsg());
-    }
-    ss.str(""); ss <<  "CREATE TABLE " << tNs2 << " (s2 int)";
-    if ( !sqlConn->runQuery(ss.str(), errObj) ) {
-        BOOST_FAIL(errObj.printErrMsg());
-    }
+    std::for_each(tList, tList + tListLen, 
+                  createIntTable(sqlConn.get(), errObj));
+
     // try creating exiting table, should fail
-    if ( sqlConn->runQuery(ss.str(), errObj) ) {
-        BOOST_FAIL("Creating table "+ss.str() 
+    if ( sqlConn->runQuery(makeCreateTable(tList[0]), errObj) ) {
+        BOOST_FAIL("Creating table " + makeCreateTable(tList[0])
                    +" should fail, but it didn't. Received this: "
                    + errObj.printErrMsg());
     }
-
     // list all tables, should get 5
     if ( !sqlConn->listTables(v, errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
@@ -201,5 +208,42 @@ BOOST_AUTO_TEST_CASE(ListTables) {
         BOOST_FAIL(errObj.printErrMsg());
     }
 }
+
+BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
+    sqlConn.reset(new qsrv::SqlConnection(sqlConfig, true));
+    // Setup for "list tables"
+    std::string dbN = "one_xysdfed34d";
+    std::string tList[] = {
+        "object_1", "object_2", "object_3", 
+        "source_1", "source_2" };
+    int const tListLen = 5;
+    qsrv::SqlErrorObject errObj;
+    std::vector<std::string> v;
+
+    // create db and select it as default
+    if ( !sqlConn->createDbAndSelect(dbN, errObj) ) { 
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+
+    // create tables
+    std::for_each(tList, tList + tListLen, 
+                  createIntTable(sqlConn.get(), errObj));
+
+    boost::shared_ptr<qsrv::SqlResultIter> ri;
+    ri = sqlConn->getQueryIter(makeShowTables());
+    int i=0;
+    for(; !ri->done(); ++*ri, ++i) { // Assume mysql is order-preserving.
+        std::string column0 = (**ri)[0];
+        BOOST_CHECK_EQUAL(tList[i], column0);
+        BOOST_CHECK(i < tListLen);
+    }
+    BOOST_CHECK_EQUAL(i, tListLen);
+
+    // drop db
+    if ( !sqlConn->dropDb(dbN, errObj) ) {
+        BOOST_FAIL(errObj.printErrMsg());
+    }
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
