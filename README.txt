@@ -16,8 +16,8 @@ Dependencies :
 
 Depending on your distribution, you can install dependencies, as root, with next commands :
 
-  # su -c "./admin/qserv-install-deps-sl6.sh"
-  # su -c "./admin/qserv-install-deps-ubuntu.sh"
+  # su -c "./admin/bootstrap/qserv-install-deps-sl6.sh"
+  # su -c "./admin/bootstrap/qserv-install-deps-ubuntu.sh"
 
 Installing Qserv :
 ------------------
