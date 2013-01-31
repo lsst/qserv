@@ -30,32 +30,23 @@ class QservDataManager:
             log_path=self.config['qserv']['log_dir']
         )
         
-        qserv_admin_cmd=os.path.join(self.config['qserv']['bin_dir'],'qserv-admin')
-
-        self.partition_data_cmd = [
-            #'PYTHONPATH=/usr/lib64/python2.6/site-packages/',   
-            qserv_admin_cmd,
-            '--partition',
-            '--source', os.path.join(self.config['lsst']['data_dir'],'pt11'),
-            '--table', 'Object',
-            '--output', os.path.join(self.config['lsst']['data_dir'],'pt11_partition')
-        ] 
+        self.qserv_admin_cmd=os.path.join(self.config['qserv']['bin_dir'],'qserv-admin')
 
         self.delete_data_cmd = [
-            qserv_admin_cmd, 
+            self.qserv_admin_cmd, 
             '--delete-data', 
             '--dbpass', self.config['mysqld']['pass']
         ]
         
         self.delete_data_cmd_2 = [
             'mysql', 
-            '-S', self.config['qserv']['base_dir']+'/var/lib/mysql/mysql.sock',
+            '-S', self.config['mysqld']['sock'],
             '-u', 'root', 
             '-p', self.config['mysqld']['pass'],
             '-e', '\'Drop database if exists LSST;\'' 
         ]
 
-        self.meta_outfilename = os.path.join(self.config['qserv']['base_dir'],'tmp',"meta-pt11.csv")
+        self.meta_outfilename = os.path.join(self.config['qserv']['tmp_dir'],"meta-pt11.csv")
 
         # Create meta table
         self.create_meta_cmd = [
@@ -63,7 +54,7 @@ class QservDataManager:
             '-S', self.config['qserv']['base_dir']+'/var/lib/mysql/mysql.sock',
             '-u', 'root', 
             '-p'+self.config['mysqld']['pass'],
-            '-e', "source %s" % os.path.join(self.config['qserv']['base_dir'],'tmp','qservmeta.sql')   
+            '-e', "source %s" % os.path.join(self.config['qserv']['tmp_dir'],'qservmeta.sql')   
         ]
 
         # Delete and load data from file
@@ -78,7 +69,7 @@ class QservDataManager:
         ]
 
         self.load_data_cmd = [
-            qserv_admin_cmd,
+            self.qserv_admin_cmd,
             '--load', 
             '--dbpass', self.config['mysqld']['pass'],
             '--source', os.path.join(self.config['lsst']['data_dir'],'pt11'),
@@ -86,12 +77,47 @@ class QservDataManager:
             '--output', os.path.join(self.config['lsst']['data_dir'],'pt11_partition')
         ]
 
-    def partitionPt11Data(self):
-        out = commons.run_command(
-            ['mkdir', '-p', os.path.join(self.config['lsst']['data_dir'],'pt11_partition')], 
-            self.logger_name) 
-        out += commons.run_command(self.partition_data_cmd, self.logger_name)
-        self.logger.info("Partitionning PT1.1 LSST data : \n %s" % out)
+    def partitionPt11Data(self,tables,append=False):
+
+        partition_dirname = os.path.join(self.config['lsst']['data_dir'],'pt11_partition')
+        if not os.path.exists(partition_dirname):
+            self.logger.debug("Creating directory : %s" % partition_dirname)
+            os.mkdir(partition_dirname)
+        elif not append:
+            self.logger.debug("Deleting previous partitioned data for %s"
+                ", in dir %s" % (tables, partition_dirname))
+            for elem in tables :
+                for root, dirs, files in os.walk(partition_dirname, topdown=False):
+                    for name in files:
+                        if name.startswith(elem) :
+                            filename = os.path.join(root, name)
+                            self.logger.debug("Deleting  : %s" % filename) 
+                            os.remove(filename)
+       
+        pt11_config = dict()
+        pt11_config['Object']=dict() 
+        pt11_config['Object']['ra-column'] = 2
+        pt11_config['Object']['decl-column'] = 4
+        pt11_config['Source']=dict() 
+        pt11_config['Source']['ra-column'] = 6
+        pt11_config['Source']['decl-column'] = 9
+
+        for table in tables :
+            partition_data_cmd = [
+                #'PYTHONPATH=/usr/lib64/python2.6/site-packages/',  
+                os.path.join(self.config['qserv']['bin_dir'],'python'), 
+                os.path.join(self.config['qserv']['base_dir'],'qserv', 'master', 'examples', 'partition.py'),
+                '--output-dir', os.path.join(self.config['lsst']['data_dir'],'pt11_partition'),
+                '--chunk-prefix', table,
+                '--theta-column', str(pt11_config[table]['ra-column']),
+                '--phi-column', str(pt11_config[table]['decl-column']),
+                os.path.join(self.config['lsst']['data_dir'],'pt11',table+'.txt'),
+                '--num-stripes', self.config['qserv']['stripes'],
+                '--num-sub-stripes', self.config['qserv']['substripes'] 
+            ]
+            out = commons.run_command(partition_data_cmd, self.logger_name)
+            self.logger.info("Partitionning PT1.1 LSST %s data : \n %s" 
+                % (table,out))
 
     def deleteAllData(self):
         out = commons.run_command(self.delete_data_cmd, self.logger_name)
@@ -135,8 +161,13 @@ class QservDataManager:
                 default="1",
                 help= "Number of threads used when loading data into qservMeta" + 
                 " [default: %default]")
+        tables_option_values = ['Object','Source']
+        op.add_option("-t", "--tables", action="append", dest="tables",
+                default=tables_option_values,
+                help= "Names of data tables to manage" + 
+                " [default: %default]")
         # TODO : add to config file with nbthreads ?
-        op.add_option("-t", "--meta-temporary-file", dest="meta-temporary_file",
+        op.add_option("-f", "--meta-temporary-file", dest="meta-temporary_file",
                 help= "Name of the temporary file used to write and then load qservMeta")
         (options, args) = op.parse_args()
         
@@ -156,17 +187,22 @@ class QservDataManager:
                        "qserv-build.default .conf" % script_name)
                 exit(1)
 
-            if options.mode not in mode_option_values :
-                print "%s: --mode flag set with invalid value" % script_name
-                print "Try `%s --help` for more information." % script_name
-                exit(1)
+        if options.mode not in mode_option_values :
+            print "%s: --mode flag set with invalid value" % script_name
+            print "Try `%s --help` for more information." % script_name
+            exit(1)
+
+        if not set(options.tables).issubset(set(tables_option_values)) :
+            print "%s: --tables flag set with invalid value" % script_name
+            print "Try `%s --help` for more information." % script_name
+            exit(1)
 
         return options
 
     def run(self, options):
         mode = options.mode
         if mode == 'partition':
-            self.partitionPt11Data()
+            self.partitionPt11Data(options.tables)
         elif mode == 'delete-db':
             self.deleteAllData()
         elif mode == 'load-db':

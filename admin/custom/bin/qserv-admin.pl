@@ -583,7 +583,7 @@ Options are:
       --stop          Stop the servers.
 	  --start         Start the servers.
 	  --stripes       Number of stripes used to partition the data.
-	  --subtripes     Number of substripes used to partition the data.
+	  --substripes     Number of substripes used to partition the data.
 	  --load          Load data into qserv, requires options source, stripedir, table
       --delete-data   Load data into qserv, requires options source, output, table
 	  --source        Path to the pt11 exmple data

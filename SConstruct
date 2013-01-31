@@ -115,6 +115,8 @@ def get_template_targets():
     script_dict = {
                 '<QSERV_BASE_DIR>': config['qserv']['base_dir'], 
                 '<QSERV_LOG_DIR>': config['qserv']['log_dir'], 
+                '<QSERV_STRIPES>': config['qserv']['stripes'], 
+                '<QSERV_SUBSTRIPES>': config['qserv']['substripes'], 
                 '<MYSQLD_DATA_DIR>': config['mysqld']['data_dir'], 
                 '<MYSQLD_PORT>': config['mysqld']['port'], 
                 # used for mysql-proxy in mono-node

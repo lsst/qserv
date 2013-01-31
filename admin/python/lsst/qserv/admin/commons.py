@@ -30,8 +30,10 @@ def read_config(config_file, default_config_file):
     options = [option for option in parser.options(section) if option != 'pass']
     for option in options:
         config[section][option] = parser.get(section,option)
+    
     # TODO : manage special characters (see config file comments for additional information)
-    config['mysqld']['pass']       = parser.get("mysqld","pass",raw=True)
+    config['mysqld']['pass']    = parser.get("mysqld","pass",raw=True)
+    config['mysqld']['sock']    = os.path.join(config['qserv']['base_dir'], "var","lib","mysql","mysql.sock")
 
     section='mysql_proxy'
     config[section] = dict()
