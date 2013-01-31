@@ -30,8 +30,8 @@ usage(0) if ($opts{'help'});
 
 my $debug = $opts{'debug'} || 0;
 
-my $install_dir = "<QSERV_BASE_DIR>";
-my $mysql_proxy_port = "<MYSQL_PROXY_PORT>" || $opts{'mysql-proxy-port'} || 4040;
+my $install_dir = "%(QSERV_BASE_DIR)";
+my $mysql_proxy_port = "%(MYSQL_PROXY_PORT)" || $opts{'mysql-proxy-port'} || 4040;
 
 print "Using $install_dir install.\n" if( $debug );
 
@@ -315,7 +315,7 @@ sub get_pid {
 	
 	open PIDFILE, "<$filename" 
 		or warn "Sorry, can't open $filename\n";
-	my $pid = <PIDFILE>;
+	my $pid = %(PIDFILE);
 	chomp $pid;
 	close PIDFILE;
 	
@@ -554,7 +554,7 @@ sub get_value {
 	my( $text ) = @_;
 	
 	open CNF, "<$install_dir/etc/local.qserv.cnf";
-	while( my $line = <CNF> ) {
+	while( my $line = %(CNF) ) {
 		if( $line =~ /^$text\s*=\s*(\d+)/ ) {
 			close CNF;
 			return $1;
@@ -595,7 +595,7 @@ Options are:
 
 Examples: $bin --status
 
-Comments to Douglas Smith <douglas\@slac.stanford.edu>.
+Comments to Douglas Smith %(douglas\@slac.stanford.edu).
 INLINE_LITERAL_TEXT
 
 	       exit($exit) if defined $exit;
@@ -608,7 +608,7 @@ sub run_command {
 	my @return;
 	print "-- Running: $command in $cwd\n";
 	open( OUT, "$command |" ) || die "ERROR : can't fork $command : $!";
-	while( <OUT> ) {
+	while( %(OUT) ) {
 		print STDOUT $_; 
 		push( @return, $_ ); 
 	}

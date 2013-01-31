@@ -113,28 +113,28 @@ def get_template_targets():
     target_lst = []
 
     script_dict = {
-                '<QSERV_BASE_DIR>': config['qserv']['base_dir'], 
-                '<QSERV_LOG_DIR>': config['qserv']['log_dir'], 
-                '<QSERV_STRIPES>': config['qserv']['stripes'], 
-                '<QSERV_SUBSTRIPES>': config['qserv']['substripes'], 
-                '<MYSQLD_DATA_DIR>': config['mysqld']['data_dir'], 
-                '<MYSQLD_PORT>': config['mysqld']['port'], 
+                '%\(QSERV_BASE_DIR\)': config['qserv']['base_dir'], 
+                '%\(QSERV_LOG_DIR\)': config['qserv']['log_dir'], 
+                '%\(QSERV_STRIPES\)': config['qserv']['stripes'], 
+                '%\(QSERV_SUBSTRIPES\)': config['qserv']['substripes'], 
+                '%\(MYSQLD_DATA_DIR\)': config['mysqld']['data_dir'], 
+                '%\(MYSQLD_PORT\)': config['mysqld']['port'], 
                 # used for mysql-proxy in mono-node
-                # '<MYSQLD_HOST>': config['qserv']['master'], 
-                '<MYSQLD_HOST>': '127.0.0.1', 
-                '<MYSQLD_PASS>': config['mysqld']['pass'], 
-                '<MYSQL_PROXY_PORT>': config['mysql_proxy']['port'], 
-                '<XROOTD_MANAGER_HOST>': config['qserv']['master'], 
-                '<XROOTD_PORT>': config['xrootd']['xrootd_port'], 
-                '<XROOTD_RUN_DIR>': os.path.join(config['qserv']['base_dir'],'xrootd-run'), 
-                '<XROOTD_ADMIN_DIR>': os.path.join(config['qserv']['base_dir'],'tmp'), 
-                '<XROOTD_PID_DIR>': os.path.join(config['qserv']['base_dir'],'var/run'), 
-                '<CMSD_MANAGER_PORT>': config['xrootd']['cmsd_manager_port'] 
+                # '%(MYSQLD_HOST)': config['qserv']['master'], 
+                '%\(MYSQLD_HOST\)': '127.0.0.1', 
+                '%\(MYSQLD_PASS\)': config['mysqld']['pass'], 
+                '%\(MYSQL_PROXY_PORT\)': config['mysql_proxy']['port'], 
+                '%\(XROOTD_MANAGER_HOST\)': config['qserv']['master'], 
+                '%\(XROOTD_PORT\)': config['xrootd']['xrootd_port'], 
+                '%\(XROOTD_RUN_DIR\)': os.path.join(config['qserv']['base_dir'],'xrootd-run'), 
+                '%\(XROOTD_ADMIN_DIR\)': os.path.join(config['qserv']['base_dir'],'tmp'), 
+                '%\(XROOTD_PID_DIR\)': os.path.join(config['qserv']['base_dir'],'var/run'), 
+                '%\(CMSD_MANAGER_PORT\)': config['xrootd']['cmsd_manager_port'] 
     }
     if config['qserv']['node_type']=='mono':
-        script_dict['<COMMENT_MONO_NODE>']='#MONO-NODE# '
+        script_dict['%\(COMMENT_MONO_NODE\)']='#MONO-NODE# '
     else:
-        script_dict['<COMMENT_MONO_NODE>']='' 
+        script_dict['%\(COMMENT_MONO_NODE\)']='' 
 
     logger.info("Applying configuration information via templates files ")
     for node in utils.recursive_glob(template_dir_path,"*",env):
