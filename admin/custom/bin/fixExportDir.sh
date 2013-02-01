@@ -3,16 +3,16 @@ set -x
 ## The functionality for this should be in workerMgmt.sh,
 ##  so use that version instead.
 #exportroot=/tmp/exportTest  # match oss.localroot
-exportroot=%(XROOTD_RUN_DIR)  # match oss.localroot
+exportroot=%(XROOTD_RUN_DIR)s  # match oss.localroot
 
 # mysql bin location
 #mysqlBin=/usr/bin/mysql
-mysqlBin=%(QSERV_BASE_DIR)/bin/mysql
+mysqlBin=%(QSERV_BASE_DIR)s/bin/mysql
 #socketfile=$MYSQL_UNIX_PORT
 #socketfile=/u1/local/mysql.sock
-socketfile=%(QSERV_BASE_DIR)/var/lib/mysql/mysql.sock
+socketfile=%(QSERV_BASE_DIR)s/var/lib/mysql/mysql.sock
 
-mysqlDbCmd="$mysqlBin --socket $socketfile -u root -p%(MYSQLD_PASS)"
+mysqlDbCmd="$mysqlBin --socket $socketfile -u root -p%(MYSQLD_PASS)s"
 
 function fixDirForDb {
     local qservDb=$1
