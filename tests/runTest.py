@@ -28,28 +28,48 @@
 
 import ConfigParser
 import MySQLdb as sql
+from  lsst.qserv.admin import commons
+import logging
 import optparse
 import os
 import re
 import stat
+import sys
 import tempfile
 
 
-class RunTests():
+class QservTestsRunner():
 
-    def init(self, config, caseNo, outDir, mode, verboseMode):
+    def __init__(self, logging_level=logging.DEBUG ):
+        self.logger = commons.console_logger(logging_level)
 
-        self._user = config.get('mysql','user')
-        self._password = config.get('mysql','pass')
-        self._socket = config.get('mysql','sock')
-        self._qservHost = config.get('qserv','host')
-        self._qservPort = config.getint('qserv','port')
-        self._qservUser = config.get('qserv','user')
-        self._dbName = "qservTest_case%s_%s" % (caseNo, mode)
-        self._caseNo = caseNo
-        self._outDir = outDir
-        self._mode = mode
-        self._verboseMode = verboseMode
+    def configure(self, config_dir, case_id, out_dirname, log_file_prefix='qserv-unit-tests' ):
+
+        config_file_name=os.path.join(config_dir,"qserv-build.conf")
+        default_config_file_name=os.path.join(config_dir,"qserv-build.default.conf")
+        self.config = commons.read_config(config_file_name, default_config_file_name)
+
+        self._user = self.config['mysqld']['user']
+        self._password = self.config['mysqld']['pass']
+        self._socket = self.config['mysqld']['sock']
+        self._qservHost = self.config['qserv']['master']
+        self._qservPort = self.config['mysql_proxy']['port']
+        self._qservUser = self.config['qserv']['user']
+        self._case_id = case_id
+
+        if out_dirname == None :
+            out_dirname = self.config['qserv']['tmp_dir']
+        self._out_dirname = os.path.join(out_dirname, "qservTest_case%s" % case_id)
+
+        qserv_tests_dirname = os.path.join(self.config['qserv']['base_dir'],'qserv','tests',"case%s" % self._case_id)
+
+        self._input_dirname = os.path.join(qserv_tests_dirname,'data')
+        self._queries_dirname = os.path.join(qserv_tests_dirname,"queries") 
+
+        self.logger = commons.file_logger(
+            log_file_prefix,
+            log_path=self.config['qserv']['log_dir']
+        )
 
     def connectNoDb(self):
         print "Connecting via socket", self._socket, "as", self._user
@@ -68,25 +88,26 @@ class RunTests():
         self._cursor = self._conn.cursor()
 
     def runQueries(self, stopAt):
-        if self._mode == 'q':
+        if self._mode == 'qserv':
             withQserv = True
-            myOutDir = "%s/q" % self._outDir
+            myOutDir = "%s/q" % self._out_dirname
         else:
             withQserv = False
-            myOutDir = "%s/m" % self._outDir
+            myOutDir = "%s/m" % self._out_dirname
         if not os.access(myOutDir, os.F_OK):
             os.makedirs(myOutDir)
             # because mysqld will write there
             os.chmod(myOutDir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
-        qDir = "case%s/queries/" % self._caseNo
+        qDir = self._queries_dirname
         print "Testing queries from %s" % qDir
         queries = sorted(os.listdir(qDir))
         noQservLine = re.compile('[\w\-\."%% ]*-- noQserv')
         for qFN in queries:
             if qFN.endswith(".sql"):
                 if int(qFN[:4]) <= stopAt:
-                    qF = open(qDir+qFN, 'r')
+                    query_filename = os.path.join(qDir,qFN)
+                    qF = open(query_filename, 'r')
                     qText = ""
                     for line in qF:
                         line = line.rstrip().lstrip()
@@ -116,7 +137,7 @@ class RunTests():
         self._conn.close()
 
     def runQueryInShell(self, qText, outFile):
-        if self._mode == 'q':
+        if self._mode == 'qserv':
             cmd = "mysql --port %i --host %s --batch -u%s -p%s %s -e \"%s\" > %s" % \
                 (self._qservPort, self._qservHost, self._user, self._password, self._dbName, qText, outFile)
         else:
@@ -138,14 +159,13 @@ class RunTests():
         self.disconnect()
 
         self.connect2Db()
-        inputDir = "case%s/data" % self._caseNo
-        print "Loading data from %s" % inputDir
-        files = os.listdir(inputDir)
+        print "Loading data from %s" % self._input_dirname
+        files = os.listdir(self._input_dirname)
         for f in files:
             if f.endswith('.schema'):
                 tableName = f[:-7]
-                schemaFile = "%s/%s" % (inputDir, f)
-                dF = "%s/%s.tsv.gz" % (inputDir, tableName)
+                schemaFile = "%s/%s" % (self._input_dirname, f)
+                dF = "%s/%s.tsv.gz" % (self._input_dirname, tableName)
                 # check if the corresponding data file exists
                 if not os.path.exists(dF):
                     raise Exception, "File: '%s' not found" % dF
@@ -163,7 +183,7 @@ class RunTests():
 
     def loadTable(self, tableName, schemaFile, dataFile):
         # treat Object and Source differently, they need to be partitioned
-        if self._mode == 'q' and (tableName == 'Object' or tableName == 'Source'):
+        if self._mode == 'qserv' and (tableName == 'Object' or tableName == 'Source'):
             self.loadPartitionedTable(tableName, schemaFile, dataFile)
         else:
             self.loadRegularTable(tableName, schemaFile, dataFile)
@@ -214,79 +234,72 @@ mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELE
         '''
         raw_input("Press Enter to continue...")
 
-
-def runIt(config, caseNo, outDir, stopAt, mode, verboseMode):
-    x = RunTests()
-    x.init(config, caseNo, outDir, mode, verboseMode)
-    x.loadData()
-    x.runQueries(stopAt)
-
-
-def main():
-    op = optparse.OptionParser()
-    op.add_option("-c", "--caseNo", dest="caseNo",
+    def parseOptions(self):
+        script_name=sys.argv[0]
+        op = optparse.OptionParser()
+        op.add_option("-i", "--case-no", dest="case_no",
                   default="01",
                   help="test case number")
-    op.add_option("-a", "--authFile", dest="authFile",
-                  help="File with mysql connection info")
-    op.add_option("-s", "--stopAt", dest="stopAt",
+        mode_option_values = ['mysql','qserv']
+        op.add_option("-m", "--mode",  action="append", dest="mode",
+                  default=mode_option_values,
+                  help= "Qserv test modes (direct mysql connection, or via qserv) : '" +
+                  "', '".join(mode_option_values) +
+                  "' [default: %default]")
+        op.add_option("-c", "--config-dir", dest="config_dir",
+                help= "Path to directory containing qserv-build.conf and"
+                "qserv-build.default.conf")
+        op.add_option("-s", "--stop-at", dest="stop_at",
                   default = 799,
                   help="Stop at query with given number")
-    op.add_option("-o", "--outDir", dest="outDir",
-                  default = "/tmp",
+        op.add_option("-o", "--out-dir", dest="out_dirname",
                   help="Full path to directory for storing temporary results. The results will be stored in <OUTDIR>/qservTest_case<CASENO>/")
-    op.add_option("-m", "--mode", dest="mode",
-                  default = False,
-                  help="Mode: 'm' - plain mysql, 'q' - qserv, 'b' - both")
-    op.add_option("-v", "--verbose", dest="verboseMode",
+        op.add_option("-v", "--verbose", dest="verboseMode",
                   default = 'n',
                   help="Run in verbose mode (y/n)")
-    (_options, args) = op.parse_args()
+        (options, args) = op.parse_args()
 
-    if _options.authFile is None:
-        print "runTest.py: --authFile flag not set"
-        print "Try `runTest.py --help` for more information."
-        return -1
 
-    authFile = _options.authFile
-    stopAt = int(_options.stopAt)
-    if _options.verboseMode == 'y' or \
-       _options.verboseMode == 'Y' or \
-       _options.verboseMode == '1':
-        verboseMode = True
-    else:
-        verboseMode = False
-
-    if not _options.mode:
-        modePlainMySql = True
-        modeQserv = True
-    else:
-        if _options.mode == 'm':
-            modePlainMySql = True
-        elif _options.mode == 'q':
-            modeQserv = True
-        elif _options.mode == 'b':
-            modePlainMySql = True
-            modeQserv = True
+        if options.config_dir is None:
+            print "%s: --config-dir flag not set" % script_name 
+            print "Try `%s --help` for more information." % script_name
+            exit(1)
         else:
-            print "Invalid value for option 'mode'"
-            return -1
+            config_file_name=options.config_dir+os.sep+"qserv-build.conf"
+            default_config_file_name=options.config_dir+os.sep+"qserv-build.default.conf"
+            if not os.path.isfile(config_file_name):
+                print ("%s: --config-dir must point to a directory containing " 
+                        "qserv-build.conf" % script_name)
+                exit(1)
+            elif not os.path.isfile(config_file_name):
+                print ("%s: --config-dir must point to a directory containing "
+                       "qserv-build.default .conf" % script_name)
+                exit(1)
 
-    ## read auth file
-    config = ConfigParser.RawConfigParser()
-    config.read(authFile)
+        if not set(options.mode).issubset(set(mode_option_values)) :
+            print "%s: --mode flag set with invalid value" % script_name
+            print "Try `%s --help` for more information." % script_name
+            exit(1)
 
-    outDir = "%s/qservTest_case%s" % (_options.outDir, _options.caseNo)
-    
-    if not os.access(outDir, os.F_OK):
-        os.makedirs(outDir)
+        return options
 
-    if modePlainMySql:
-        print "\n***** running plain mysql test *****\n"
-        runIt(config,_options.caseNo, outDir, stopAt, "m", verboseMode)
-    if modeQserv:
-        print "\n***** running qserv test *****\n"
-        runIt(config,_options.caseNo, outDir, stopAt, "q", verboseMode)
+    def run(self, options):
+
+        if not os.access(self._out_dirname, os.F_OK):
+            os.makedirs(self._out_dirname)
+
+        for mode in options.mode:
+            self._mode=mode
+            self._dbName = "qservTest_case%s_%s" % (self._case_id, mode)
+            self.loadData()     
+            self.runQueries(options.stop_at)
+
+def main():
+
+    qserv_test_runner = QservTestsRunner()
+    options = qserv_test_runner.parseOptions()  
+    qserv_test_runner.configure(options.config_dir, options.case_no, options.out_dirname)
+    qserv_test_runner.run(options)
 
 if __name__ == '__main__':
     main()

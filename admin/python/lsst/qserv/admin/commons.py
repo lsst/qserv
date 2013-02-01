@@ -9,12 +9,14 @@ def read_config(config_file, default_config_file):
     logger = logging.getLogger()
     logger.debug("Reading build config file : %s" % config_file)
     parser = ConfigParser.SafeConfigParser()
-    parser.read(default_config_file)
+    #parser.read(default_config_file)
     parser.read(config_file)
 
     logger.debug("Build configuration : ")
     for section in parser.sections():
+       logger.debug("===")
        logger.debug("[%s]" % section)
+       logger.debug("===")
        for option in parser.options(section):
         logger.debug("'%s' = '%s'" % (option, parser.get(section,option)))
 
@@ -24,7 +26,7 @@ def read_config(config_file, default_config_file):
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
     config['qserv']['bin_dir']    = os.path.join(config['qserv']['base_dir'], "bin")
-    
+
     section='mysqld'
     config[section] = dict()
     options = [option for option in parser.options(section) if option != 'pass']
@@ -37,9 +39,12 @@ def read_config(config_file, default_config_file):
 
     section='mysql_proxy'
     config[section] = dict()
+    options = [option for option in parser.options(section) if option != 'port']
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
-    
+
+    config['mysql_proxy']['port'] = parser.getint('mysql_proxy','port')
+
     section='lsst'
     config[section] = dict()
     for option in parser.options(section):
@@ -94,10 +99,24 @@ def is_writable(dir):
         logger.info("No write access to dir %s : %s" % (dir,e))
         return False
 
+def init_default_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
+    console_logger(level)
+    logger = file_logger(log_file_prefix, level, log_path)
+    return logger
 
-def init_default_logger(log_file_prefix, logger_name = '', level=logging.DEBUG, log_path=".") :
+def console_logger(level=logging.DEBUG):
+    logger = logging.getLogger()
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    logger.setLevel(level)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    return logger
 
-    logger = logging.getLogger(logger_name)
+def file_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
+
+    logger = logging.getLogger()
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     # this level can be reduce for each handler
     logger.setLevel(level)
@@ -106,10 +125,6 @@ def init_default_logger(log_file_prefix, logger_name = '', level=logging.DEBUG, 
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler) 
  
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-
     return logger
 
 def run_command(cmd_args, logger_name=None) :
