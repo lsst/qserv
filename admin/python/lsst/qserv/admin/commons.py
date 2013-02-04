@@ -25,16 +25,20 @@ def read_config(config_file, default_config_file):
     config[section] = dict()
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
+    # computable configuration parameters
     config['qserv']['bin_dir']    = os.path.join(config['qserv']['base_dir'], "bin")
+    config['qserv']['tmp_dir']    = os.path.join(config['qserv']['base_dir'], "tmp")
 
     section='mysqld'
     config[section] = dict()
-    options = [option for option in parser.options(section) if option != 'pass']
+    options = [option for option in parser.options(section) if option not in ['pass','port'] ]
     for option in options:
         config[section][option] = parser.get(section,option)
     
-    # TODO : manage special characters (see config file comments for additional information)
+    # TODO : manage special characters for pass (see config file comments for additional information)
     config['mysqld']['pass']    = parser.get("mysqld","pass",raw=True)
+    config['mysqld']['port'] = parser.getint('mysqld','port')
+    # computable configuration parameter
     config['mysqld']['sock']    = os.path.join(config['qserv']['base_dir'], "var","lib","mysql","mysql.sock")
 
     section='mysql_proxy'

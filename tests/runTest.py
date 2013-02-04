@@ -164,29 +164,28 @@ class QservTestsRunner():
         for f in files:
             if f.endswith('.schema'):
                 tableName = f[:-7]
-                schemaFile = "%s/%s" % (self._input_dirname, f)
+                schemaFile = os.path.join(self._input_dirname, f)
                 dF = "%s/%s.tsv.gz" % (self._input_dirname, tableName)
                 # check if the corresponding data file exists
                 if not os.path.exists(dF):
                     raise Exception, "File: '%s' not found" % dF
                 # uncompress data file into temp location
-                dataFile = "%s.%s.tsv" % (tempfile.mktemp(), tableName)
-                cmd = "gunzip -c %s > %s" % (dF, dataFile)
-                print "  Uncompressing: ", cmd
+                # TODO : use a pipe instead of a tempfile
+                tmp_data_file = tempfile.NamedTemporaryFile(suffix=(".%s.tsv" % tableName), dir=(self.config['qserv']['tmp_dir']),delete=False)
+                
+                cmd = "gunzip -c %s > %s" % (dF, tmp_data_file.name)
+                self.logger.info("  Uncompressing: %s" % cmd)
                 os.system(cmd)
                 # load the table. Note, how we do it depends
                 # whether we load to plain mysql or qserv
-                self.loadTable(tableName, schemaFile, dataFile)
                 # remove temporary file
-                os.unlink(dataFile)
+                # treat Object and Source differently, they need to be partitioned
+                if self._mode == 'qserv' and (tableName == 'Object' or tableName == 'Source'):
+                    self.loadPartitionedTable(tableName, schemaFile, tmp_data_file.name)
+                else:
+                    self.loadRegularTable(tableName, schemaFile, tmp_data_file.name)
+                os.unlink(tmp_data_file.name)
         self.disconnect()
-
-    def loadTable(self, tableName, schemaFile, dataFile):
-        # treat Object and Source differently, they need to be partitioned
-        if self._mode == 'qserv' and (tableName == 'Object' or tableName == 'Source'):
-            self.loadPartitionedTable(tableName, schemaFile, dataFile)
-        else:
-            self.loadRegularTable(tableName, schemaFile, dataFile)
 
     def loadRegularTable(self, tableName, schemaFile, dataFile):
         # load schema
@@ -200,7 +199,13 @@ class QservTestsRunner():
         print "  Loading data:  ", q
         self._cursor.execute(q)
 
-    def loadPartitionedTable(self, tableName, schemaFile, dataFile):
+    def loadPartitionedTable(self, table_name, schemaFile, data_filename):
+
+        out_dirname = os.path.join(self.config['qserv']['tmp_dir'],table_name+"_partition")
+        partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
+
+        os.mkdir(out_dirname)
+        os.system("python %s -PObject -t 2  -p 4 %s --delimiter '\t' -S 10 -s 2 --output-dir %s" % (partition_scriptname, data_filename, out_dirname))
         print '''
 mkdir tmp1; cd tmp1; 
 
@@ -208,6 +213,9 @@ mkdir object; cd object
 mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Object.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM Object"
 python ../../master/examples/partition.py -PObject -t 2  -p  4 /tmp/Object.csv -S 10 -s 2 
 sudo rm /tmp/Object.csv
+
+DONE ABOVE
+
 #use the loadPartitionedObjectTables.py script to generate loadO
 mysql -u<u> -p<p> qservTest_case01_q < loadO
 mysql -u<u> -p<p> qservTest_case01_q -e "create table Object_1234567890 like Object_100"
