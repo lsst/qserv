@@ -630,9 +630,9 @@ def main():
         "-u", "--user", dest="user", help=dedent("""\
         Database user name to use when connecting to MySQL servers."""))
     parser.add_option(
-        "-p", "--password", dest="password", action="store_true",
+        "-p", "--password", dest="password",
         help=dedent("""\
-        If specified, the user will be prompted for a database password to
+        If not specified, the user will be prompted for a database password to
         use when connecting to MySQL servers."""))
     parser.add_option(
         "-d", "--database", dest="database", default="qserv_loader_test",
@@ -667,17 +667,18 @@ def main():
 
     (opts, args) = parser.parse_args()
 
+
     # Input validation and parsing
+    print("DEBUG : %i" % len(args))
     if len(args) not in (1,3):
         parser.error(dedent("""\
             A master server or a master server, input directory and
             prototype table must be specified."""))
     master = args[0]
     workers = getWorkers(opts.workers, args[0])
-    if opts.password:
+    if not opts.password:
+        print("Please enter your mysql password")
         opts.password = getpass.getpass()
-    else:
-        opts.password = None
     startTime = time.time()
     inputDir = None
     if len(args) == 3:

@@ -30,15 +30,16 @@ class QservDataManager:
             log_path=self.config['qserv']['log_dir']
         )
         
-        self.qserv_admin_cmd=os.path.join(self.config['qserv']['bin_dir'],'qserv-admin')
+        self.qserv_admin_bin=os.path.join(self.config['qserv']['bin_dir'],'qserv-admin')
 
         self.delete_data_cmd = [
-            self.qserv_admin_cmd, 
+            self.qserv_admin_bin, 
             '--delete-data', 
             '--dbpass', self.config['mysqld']['pass']
         ]
         
-        self.delete_data_cmd_2 = [
+        # TODO : replace delete_data_cmd
+        self.delete_data_cmd_TODO = [
             'mysql', 
             '-S', self.config['mysqld']['sock'],
             '-u', 'root', 
@@ -69,7 +70,7 @@ class QservDataManager:
         ]
 
         self.load_data_cmd = [
-            self.qserv_admin_cmd,
+            self.qserv_admin_bin,
             '--load', 
             '--dbpass', self.config['mysqld']['pass'],
             '--source', os.path.join(self.config['lsst']['data_dir'],'pt11'),

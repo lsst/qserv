@@ -41,7 +41,7 @@ emptyChunkListFile=<QSERV_BASE_DIR>/etc/emptyChunks.txt
 # alloweddbs=LSST
 chunked=Source,FaintSource
 subchunked=Object
-alloweddbs=LSST,Test1
+alloweddbs=LSST,qservTest_case01_qserv
 partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
 
 # [tuning]

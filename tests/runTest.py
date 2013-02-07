@@ -43,7 +43,7 @@ class QservTestsRunner():
     def __init__(self, logging_level=logging.DEBUG ):
         self.logger = commons.console_logger(logging_level)
 
-    def configure(self, config_dir, case_id, out_dirname, log_file_prefix='qserv-unit-tests' ):
+    def configure(self, config_dir, case_id, out_dirname, log_file_prefix='qserv-tests' ):
 
         config_file_name=os.path.join(config_dir,"qserv-build.conf")
         default_config_file_name=os.path.join(config_dir,"qserv-build.default.conf")
@@ -90,10 +90,9 @@ class QservTestsRunner():
     def runQueries(self, stopAt):
         if self._mode == 'qserv':
             withQserv = True
-            myOutDir = "%s/q" % self._out_dirname
         else:
             withQserv = False
-            myOutDir = "%s/m" % self._out_dirname
+        myOutDir = os.path.join(self._out_dirname, self._mode)
         if not os.access(myOutDir, os.F_OK):
             os.makedirs(myOutDir)
             # because mysqld will write there
@@ -199,13 +198,98 @@ class QservTestsRunner():
         print "  Loading data:  ", q
         self._cursor.execute(q)
 
-    def loadPartitionedTable(self, table_name, schemaFile, data_filename):
+    def loadPartitionedTable(self, table, schemaFile, data_filename):
 
-        out_dirname = os.path.join(self.config['qserv']['tmp_dir'],table_name+"_partition")
+        stripes = self.config['qserv']['stripes']
+
+        data_config = dict()
+        data_config['Object']=dict()
+        data_config['Object']['ra-column'] = 2
+        data_config['Object']['decl-column'] = 4
+        data_config['Source']=dict()
+        # Source will be placed on the same chunk that its related Object
+        data_config['Source']['ra-column'] = 33
+        data_config['Source']['decl-column'] = 34
+
+        # load schema
+        cmd = "mysql --socket=%s -u%s -p%s %s < %s" % \
+            (self._socket, self._user, self._password, self._dbName, schemaFile)
+        print "  Loading schema:", cmd
+        
+        # TODO : create index
+        # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
+
+        # partition data
+        partition_dirname = os.path.join(self.config['qserv']['tmp_dir'],table+"_partition")
         partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
+        load_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
+        mysql_bin = os.path.join(self.config['qserv']['bin_dir'],'mysql')
+        python_bin = os.path.join(self.config['qserv']['bin_dir'],'python')
+        
+        if not os.path.exists(self._out_dirname):
+            os.makedirs(self._out_dirname)
 
-        os.mkdir(out_dirname)
-        os.system("python %s -PObject -t 2  -p 4 %s --delimiter '\t' -S 10 -s 2 --output-dir %s" % (partition_scriptname, data_filename, out_dirname))
+        # os.system("python %s -PObject -t 2  -p 4 %s --delimiter '\t' -S 10 -s 2 --output-dir %s" % (partition_scriptname, data_filename, partition_dirname))
+
+        partition_data_cmd = [
+                python_bin,
+                partition_scriptname,
+                '--output-dir', partition_dirname,
+                '--chunk-prefix', table,
+                '--theta-column', str(data_config[table]['ra-column']),
+                '--phi-column', str(data_config[table]['decl-column']),
+                '--num-stripes', self.config['qserv']['stripes'],
+                '--num-sub-stripes', self.config['qserv']['substripes'],
+                '--delimiter', '\t',
+                data_filename
+            ]
+
+        out = commons.run_command(partition_data_cmd)
+        self.logger.info("Test case%s LSST %s data partitioned : \n %s"
+                % (self._case_id, table,out))
+
+        # create index database
+        cmd = [
+            mysql_bin, 
+            '-S', self.config['mysqld']['sock'],
+            '-u', 'root', 
+            '-p'+self.config['mysqld']['pass'],
+            '-e', 'Create database if not exists LSST;' 
+        ]
+
+        out = commons.run_command(cmd)
+        self.logger.info("LSST index database created : %s" % out)
+
+        # load partitionned data
+        # TODO : remove hard-coded param : qservTest_caseXX_mysql
+        cmd = [
+            python_bin, 
+            load_scriptname,
+            '-u', 'root', 
+            '-p'+self.config['mysqld']['pass'],
+            '--database', self._dbName,
+            '-D',
+            "%s:%s" %
+            (self.config['qserv']['base_dir'],self.config['mysqld']['port']),
+            partition_dirname,
+            "qservTest_case%s_mysql.%s" % (self._case_id, table)
+        ]
+        # python master/examples/loader.py --verbose -u root -p changeme --database qservTest_case01_qserv -D clrlsst-dbmaster.in2p3.fr:13306 /opt/qserv-dev/tmp/Object_partition/ qservTest_case01_mysql.Object
+        out = commons.run_command(cmd)
+        self.logger.info("Partitioned %s data loaded : %s" % (table,out))
+
+        # mysql -u<u> -p<p> qservTest_case01_qserv -e "create table Object_1234567890 like Object_100"
+        cmd = [
+            mysql_bin, 
+            '-S', self.config['mysqld']['sock'],
+            '-u', 'root', 
+            '-p'+self.config['mysqld']['pass'],
+            self._dbName,
+            '-e', "Create table {0}_1234567890 like {0}_100".format(table)
+        ]
+        out = commons.run_command(cmd)
+        self.logger.info("%s table for empty chunk created : %s" % (table,out))
+
         print '''
 mkdir tmp1; cd tmp1; 
 
@@ -214,7 +298,6 @@ mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Object.csv'
 python ../../master/examples/partition.py -PObject -t 2  -p  4 /tmp/Object.csv -S 10 -s 2 
 sudo rm /tmp/Object.csv
 
-DONE ABOVE
 
 #use the loadPartitionedObjectTables.py script to generate loadO
 mysql -u<u> -p<p> qservTest_case01_q < loadO
@@ -226,6 +309,8 @@ python ../../master/examples/partition.py -PSource -t 33 -p 34 -o 0 /tmp/Source.
 #use the loadPartitionedSourceTables.py script to generate loadS
 mysql -u<u> -p<p> qservTest_case01_q < loadS
 mysql -u<u> -p<p> qservTest_case01_q -e "create table Source_1234567890 like Source_100"
+
+DONE ABOVE
 
 # this creates the objectId index
 mysql -u<u> -p<p> -e "create database qservMeta"
@@ -293,12 +378,12 @@ mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELE
 
     def run(self, options):
 
-        if not os.access(self._out_dirname, os.F_OK):
-            os.makedirs(self._out_dirname)
+        #if not os.access(self._out_dirname, os.F_OK):
+        #    os.makedirs(self._out_dirname)
 
         for mode in options.mode:
             self._mode=mode
-            self._dbName = "qservTest_case%s_%s" % (self._case_id, mode)
+            self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
             self.loadData()     
             self.runQueries(options.stop_at)
 

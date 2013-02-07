@@ -74,7 +74,6 @@ def is_readable(dir):
     logger = logging.getLogger('scons-qserv')
 
     logger.debug("Checking read access for : %s", dir)
-    logger = logging.getLogger('scons-qserv')
     try:
         os.listdir(dir)
         return True 
@@ -140,15 +139,13 @@ def run_command(cmd_args, logger_name=None) :
 
     Return a string containing stdout and stderr
     """
+    logger = logging.getLogger(logger_name)
 
     cmd_str= " ".join(cmd_args)
 
     log_str="Running next command from python : '%s'" % cmd_args
-    if logger_name != None :
-    	logger = logging.getLogger(logger_name)
-        logger.info(log_str)
-    else :
-        print(log_str)
+
+    logger.info(log_str)
 
 # TODO : use this with python 2.7 :
 #  try :
@@ -162,7 +159,6 @@ def run_command(cmd_args, logger_name=None) :
 #            (e,out,cmd_str)
 #        )
 #        sys.exit(1)
-
 
     try :
         process = subprocess.Popen(
