@@ -127,7 +127,9 @@ CREATE TABLE `Source` (
   `sersicN_sersicN_SG_Cov` float DEFAULT NULL,
   `flagForAssociation` smallint(6) DEFAULT NULL,
   `flagForDetection` bigint(20) DEFAULT NULL,
-  `flagForWcs` smallint(6) DEFAULT NULL
+  `flagForWcs` smallint(6) DEFAULT NULL,
+  `chunkId` int(11) DEFAULT NULL,
+  `subChunkId` int(11) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

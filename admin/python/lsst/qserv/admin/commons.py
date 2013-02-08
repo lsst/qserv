@@ -130,7 +130,7 @@ def file_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
  
     return logger
 
-def run_command(cmd_args, logger_name=None) :
+def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, logger_name=None) :
     """ Run a shell command
 
     Keyword arguments
@@ -142,10 +142,26 @@ def run_command(cmd_args, logger_name=None) :
     logger = logging.getLogger(logger_name)
 
     cmd_str= " ".join(cmd_args)
+    logger.info("Running :\n---\n\t%s\n---" % cmd_str)
 
-    log_str="Running next command from python : '%s'" % cmd_args
+    sin = None
+    if stdin_file != None:
+        logger.debug("stdin file : %s" % stdout_file)
+        sin=open(stdin_file,"r")
 
-    logger.info(log_str)
+    sout = None
+    if stdout_file != None:
+        logger.debug("stdout file : %s" % stdout_file)
+        sout=open(stdout_file,"w")
+    else: 
+        sout=subprocess.PIPE
+    
+    serr = None
+    if stderr_file != None:
+        logger.debug("stderr file : %s" % stderr_file)
+        serr=open(stderr_file,"w")
+    else:
+        serr=subprocess.PIPE
 
 # TODO : use this with python 2.7 :
 #  try :
@@ -162,19 +178,27 @@ def run_command(cmd_args, logger_name=None) :
 
     try :
         process = subprocess.Popen(
-            cmd_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            cmd_args, stdin=sin, stdout=sout, stderr=serr
         )
 
         (stdoutdata, stderrdata) = process.communicate()
 
+        if stdoutdata != None and len(stdoutdata)>0:
+            logger.info("Stdout : %s " % stdoutdata)
+        if stderrdata != None and len(stderrdata)>0:
+            logger.info("Stderr : %s " % stderrdata)
+
+        if process.returncode!=0 :
+            logger.fatal("Error code returned by command : %s " % cmd_str)
+            sys.exit(1)
+
     except OSError as e:
-        logger.fatal("Error : '%s' while running command : '%s'" %
-            (e,cmd_str))
+        logger.fatal("Error : %s while running command : %s" %
+                     (e,cmd_str))
         sys.exit(1)
     except ValueError as e:
         logger.fatal("Invalid parameter : '%s' for command : %s " % (e,cmd_str))
         sys.exit(1)
 
-    return stdoutdata
 
 
