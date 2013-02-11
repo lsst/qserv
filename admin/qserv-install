@@ -617,10 +617,10 @@ sub create_xrootd_startup {
 	}
 	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/xrootd -c ";
 	print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/xrootd.log &\n";
-        print XROOTD 'echo $! > $install_dir/var/run/xrootd.pid';
+        print XROOTD "echo \$\! > $install_dir/var/run/xrootd.pid";
 	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/cmsd -c ";
 	print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/cmsd.log &\n";
-        print XROOTD 'echo $! > $install_dir/var/run/cmsd.pid';
+        print XROOTD "echo \$\! > $install_dir/var/run/cmsd.pid";
 
 	close XROOTD;
 	chmod 0755, "start_xrootd";
@@ -648,7 +648,7 @@ sub create_qserv_startup {
 	print QSERV "\$PYTHON $install_dir/qserv/master/dist/startQserv.py -c ";
 	print QSERV "$install_dir/etc/local.qserv.cnf > ";
 	print QSERV "$log_dir/qserv.log &\n";
-        print QSERV 'echo $! > $install_dir/var/run/qserv.pid';
+        print QSERV "echo \$\! > $install_dir/var/run/qserv.pid";
 
 	close QSERV;
 	chmod 0755, "start_qserv";
@@ -672,7 +672,7 @@ sub create_mysqlproxy_startup {
 	print MYSQLPROXY "LUACPATH=\"\$LUALIB/?.so;\$LUALIB/?/?.so\"\n";
 	print MYSQLPROXY "$install_dir/bin/mysql-proxy --proxy-lua-script=\$QSERVDIST/mysqlProxy.lua --defaults-file=$install_dir/etc/my-proxy.cnf";
 	print MYSQLPROXY " --lua-path=\$LUAPATH --lua-cpath=\$LUACPATH &\n";
-	print MYSQLPROXY 'echo $! > $install_dir/var/run/mysql-proxy.pid';
+	print MYSQLPROXY "echo \$\! > $install_dir/var/run/mysql-proxy.pid";
 
 	close MYSQLPROXY;
 	chmod 0755, "start_mysqlproxy";
