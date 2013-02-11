@@ -725,6 +725,7 @@ sub create_mysqlproxy_startup {
 	print MYSQLPROXY "LUACPATH=\"\$LUALIB/?.so;\$LUALIB/?/?.so\"\n";
 	print MYSQLPROXY "$install_dir/bin/mysql-proxy --proxy-lua-script=\$QSERVDIST/mysqlProxy.lua --defaults-file=$install_dir/etc/my-proxy.cnf";
 	print MYSQLPROXY " --lua-path=\$LUAPATH --lua-cpath=\$LUACPATH &\n";
+	print MYSQLPROXY 'echo $! > $install_dir/var/run/mysql-proxy.pid'
 
 	close MYSQLPROXY;
 	chmod 0755, "start_mysqlproxy";
