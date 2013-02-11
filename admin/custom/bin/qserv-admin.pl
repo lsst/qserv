@@ -254,47 +254,39 @@ sub check_ps {
 
 #Stop the qserv process
 sub stop_qserv {
-
-	get_and_stop_ps( "startQserv" );
-
+    killpid("$install_dir/var/run/qserv.pid");
 }
 
 #stop the xrootd process
 sub stop_xrootd {
-
-	my $pid = get_pid( "${install_dir}/tmp/xrootd.pid" );
-	stop_ps( $pid );
-	$pid = get_pid( "${install_dir}/tmp/cmsd.mangr.pid" );
-	stop_ps( $pid );
-
+    killpid("$install_dir/var/run/xrootd.pid");
+    killpid("$install_dir/var/run/cmsd.pid");
 }
 
 #stop the mysql server
 sub stop_mysqld {
 
-	my $pid = get_pid( "${install_dir}/var/run/mysqld/mysqld.pid" );
-	stop_ps( $pid );
+    run_command("$install_dir/bin/mysqladmin shutdown")
 
 }
 
 #stop the mysql proxy
 sub stop_proxy {
-
-	get_and_stop_ps( "mysql-proxy" );
-
+    killpid("$install_dir/var/run/mysql-proxy.pid");
 }
 
-#Stop a process based on the exsitence of a string in the command line
-#used to start the process.
-sub get_and_stop_ps {
-	my( $test_string ) = @_;
-	print "Stopping $test_string\n";
-	
-	my $pid = check_ps( $test_string );
-	print "pid to stop -- $pid\n";
-	if( $pid ) {
-		stop_ps( $pid );
-	}
+# Kill a process based on a PID file
+sub killpid {
+    my( $pidfile ) = @_;
+    if (-e $pidfile) {
+        open FILE, $pidfile;
+        while (<FILE>) {
+            kill 9, $_;
+        }
+        unlink $pidfile
+    } else {
+        print "killpid: Non existing PID file $pidfile \n";
+    }
 }
 
 #Stop a process given an id
