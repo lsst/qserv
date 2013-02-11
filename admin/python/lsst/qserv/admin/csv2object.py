@@ -37,7 +37,8 @@ def CSV2Object(nbworkers, filenames, outputfilename):
   
   try:
     import multiprocessing
-  
+ 
+    print "DEBUG : running CSV2Object" 
     poolbuilder = multiprocessing.Pool
     pool = poolbuilder(nbworkers)
     with open(outputfilename, 'w') as output:

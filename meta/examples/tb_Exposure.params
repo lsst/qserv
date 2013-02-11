@@ -1,0 +1,17 @@
+[table_info]
+tableName:      Exposure
+
+# by default, every table inherits partitioningStrategy
+# from its database. If table is not partitioned, we
+# turn it off by specifying "off" here.
+# Allowed values are: "on", "off"
+partitioning: off
+
+# note that the file must be accessible on the client side
+schemaFile: /u1/qserv/ticket1944-qms_run/meta/examples/tbSchema_Exposure.sql
+
+# the cluster index name must be defined in the schemaFile.
+# Use the word None if not required
+clusteredIndex: None
+
+

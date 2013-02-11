@@ -1,0 +1,19 @@
+This directory contains examples how to run various metadata scripts/tests.
+The files with extensions ".params" and .sql are used by the
+runCompleteTest.sh. Specifically:
+ - dbNonPartitioned.params - parameters for "create non partitioned database"
+ - dbPartitioned.params - parameter for "create partitioned database"
+ - tb_Exposure.params - parameter for "create Exposure table"
+ - tb_Object.params - parameter for "create Object table"
+ - tb_Source.params - parameter for "create Source table"
+ - tbSchema_Exposure.sql
+ - tbSchema_Object.sql
+ - tbSchema_Source.sql
+
+Permissions.sql shows what permissions typically need to be granted for
+user that owns qserv metadata database/tables.
+
+startQMS.sh and qmsConfig.cnf are showing to to start qms.
+
+runCompleteTest.sh runMetaClientTool.sh show how to configure environment
+to run meta/tests/completeTest.py and meta/bin/metaClientTool/py
