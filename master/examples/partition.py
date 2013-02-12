@@ -183,10 +183,17 @@ def addPickleWorkaround(obj):
 
 # -- Iterating over CSV records in file subsets --------
 
-def _csvArgs(conf):
+def _csvArgs(conf, mode="r"):
     """Extract and return csv formatting arguments from conf.
     """
-    return { 'delimiter': conf.delimiter,
+    if mode=='w': 
+        delimiter = conf.delimiter_out
+    else:
+        delimiter = conf.delimiter
+       
+    print "DEBUG using csv delim : %s" % delimiter
+ 
+    return { 'delimiter': delimiter,
              'doublequote': conf.doublequote,
              'quoting': conf.quoting,
              'quotechar': conf.quotechar,
@@ -249,12 +256,16 @@ class InputSplitIter(object):
     def __init__(self, inputSplit, **kwargs):
         self.fileIter = FileIter(inputSplit)
 
+        print "DEBUG READER InputSplitIter"
         self.reader = csv.reader(self.fileIter, **kwargs)
+        print "DEBUG READER DIALECT '%s' " % self.reader.dialect.delimiter 
         # self.reader = csv.reader(self.fileIter, delimiter="\t")
     def __iter__(self):
         return self
     def next(self):
-        return self.reader.next()
+        csvline = self.reader.next()
+        # print "DEBUG %s" % csvline 
+        return csvline
 
 # Size of blocks to read when searching backwards for line terminators
 LT_BLOCK_SIZE = mmap.PAGESIZE
@@ -532,7 +543,8 @@ class CsvFileWriter(object):
         self.buffer = None
         self.writer = None
         self.numRows = 0
-        self.csvArgs = _csvArgs(conf)
+        print "Calling _csvArgs in CsvFileWriter"
+        self.csvArgs = _csvArgs(conf, 'w')
         self.bufferSize = conf.outputBufferSize
         self.debug = conf.debug
 
@@ -544,8 +556,9 @@ class CsvFileWriter(object):
             print "Opening " + self.path
         self.file = open(self.path, 'ab')
         self.buffer = sio.StringIO()
-        self.writer = csv.writer(self.buffer, **self.csvArgs)
-
+        print "DEBUG WRITER _open %s " % self.csvArgs['delimiter']
+        self.writer = csv.writer(self.buffer, **(self.csvArgs))
+        print "DEBUG WRITER  DIALECT %s " % self.writer.dialect.delimiter 
     def _flush(self):
         if self.file != None and self.buffer.tell() > 0:
             if self.debug:
@@ -930,7 +943,9 @@ class PartitionReducer(object):
         self.file = open(self.path, 'ab')
         self.buffer = sio.StringIO()
 
-        self.writer = csv.writer(self.buffer, **_csvArgs(conf))
+        print "DEBUG WRITER PartitionReducer"
+        self.writer = csv.writer(self.buffer, **_csvArgs(conf, mode='w'))
+        print "DEBUG WRITER  DIALECT %s " % self.writer.dialect.delimiter 
         self.chunker = Chunker(conf)
         self.coords = np.array([0, 0, 0, 0], dtype=np.int32)
         self.bounds = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
@@ -1356,7 +1371,7 @@ class SubChunker(object):
         self.phiMax = phiMax
         self.overlap = conf.overlap
         self.rowsPerSubChunk = conf.rowsPerSubChunk
-        self.delimiter = conf.delimiter
+        self.delimiter = conf.delimiter_out
         self.file, self.mem, self.records = parseChunk(path, conf)
         prefixes = (conf.chunkPrefix, conf.chunkPrefix + 'SelfOverlap')
         d = os.path.dirname(path)
@@ -1366,7 +1381,9 @@ class SubChunker(object):
                                 conf.chunkPrefix + 'Partitions.csv')
         self.partitionWriter = CsvFileWriter(partFile, chunkId, conf)
         self.buf = sio.StringIO()
-        self.idWriter = csv.writer(self.buf, **_csvArgs(conf))
+        print "DEBUG WRITER SubChunker"
+        self.idWriter = csv.writer(self.buf, _csvArgs(conf, mode='w'))
+        print "DEBUG WRITER  DIALECT %s " % self.idWriter.dialect.delimiter 
 
     def _writeRow(self, which, subChunkId, record):
         self.idWriter.writerow((self.chunkId, subChunkId))
@@ -1800,7 +1817,12 @@ def addCsvOpts(parser):
         "-D", "--delimiter", type="char", dest="delimiter", default=",",
         help=dedent("""\
         One character string used to separate fields in the
-        input CSV files. The default is %default."""))
+        input TSV, CSV files. The default is %default."""))
+    fmt.add_option(
+        "-E", "--delimiter-out", type="char", dest="delimiter_out", default=",",
+        help=dedent("""\
+        One character string used to separate fields in the
+        output CSV files. The default is %default."""))
     fmt.add_option(
         "-n", "--no-doublequote", dest="doublequote", action="store_false",
         help=dedent("""\
@@ -1914,7 +1936,12 @@ def main():
     if conf.skipLines < 0:
         parser.error("Negative line skip count.")
     if len(conf.delimiter) > 1 or re.match(r'[0-9a-zA-Z]', conf.delimiter):
-        parser.error("Illegal CSV field delimiter : %s" % conf.delimiter)
+        parser.error("Illegal CSV field delimiter for input files : %s" % conf.delimiter)
+    if len(conf.delimiter_out) > 1 or re.match(r'[0-9a-zA-Z]', conf.delimiter_out):
+        parser.error("Illegal CSV field delimiter for output files : %s" % conf.delimiter_out)
+
+    print "DEBUG : %s" % conf.delimiter_out
+
     if len(conf.quotechar) > 1 or conf.delimiter == conf.quotechar:
         parser.error("Illegal CSV field quote character.")
 

@@ -85,6 +85,7 @@ class SqlActions(object):
         self.cursor = self.conn.cursor()
 
     def _exec(self, stmt):
+        print("DEBUG : %s" % stmt)
         self.cursor.execute(stmt)
         self.cursor.fetchall()
 

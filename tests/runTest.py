@@ -172,17 +172,27 @@ class QservTestsRunner():
         self.logger.info("SQL query for mode %s launched"
                 % self._mode)
 
+    def initDatabases(self): 
+        self.logger.info("Initializing databases %s, qservMeta" % self._dbName)
+        self.connectNoDb()
+        sql = "DROP DATABASE IF EXISTS %s" % self._dbName
+        self.logger.info(sql)
+        self._cursor.execute(sql)
+        self._cursor.execute("CREATE DATABASE %s" % self._dbName)
+        # self._cursor.execute("GRANT ALL ON %s.* TO '%s'@'*'" % (self._dbName, self._qservUser, self._qservHost))
+        self._cursor.execute("GRANT ALL ON %s.* TO '*'@'*'" % (self._dbName))
+        self._cursor.execute("USE {0};\n".format(self._dbName))
+
+        self._cursor.execute("DROP DATABASE IF EXISTS qservMeta")
+        self._cursor.execute("CREATE DATABASE qservMeta;\n")
+        self.disconnect()
+
     # creates database and load all tables caseXX/data/
     # schema should be in <table>.schema
     # data should be in <table>.tsv.gz
     def loadData(self):
-        print "Creating database %s" % self._dbName
-        self.connectNoDb()
-        self._cursor.execute("DROP DATABASE IF EXISTS %s" % self._dbName)
-        self._cursor.execute("CREATE DATABASE %s" % self._dbName)
-        # self._cursor.execute("GRANT ALL ON %s.* TO '%s'@'*'" % (self._dbName, self._qservUser, self._qservHost))
-        self._cursor.execute("GRANT ALL ON %s.* TO '*'@'*'" % (self._dbName))
-        self.disconnect()
+
+        self.initDatabases()
 
         self.connect2Db()
         print "Loading data from %s" % self._input_dirname
@@ -251,10 +261,13 @@ class QservTestsRunner():
         data_config['Object']=dict()
         data_config['Object']['ra-column'] = 2
         data_config['Object']['decl-column'] = 4
+        data_config['Object']['chunk-column-id'] = 227
         data_config['Source']=dict()
         # Source will be placed on the same chunk that its related Object
         data_config['Source']['ra-column'] = 33
         data_config['Source']['decl-column'] = 34
+        # chunkId and subChunkId will be added
+        data_config['Source']['chunk-column-id'] = None
 
         # load schema
         load_schema_cmd = [
@@ -289,25 +302,18 @@ class QservTestsRunner():
                 '--phi-column', str(data_config[table]['decl-column']),
                 '--num-stripes', self.config['qserv']['stripes'],
                 '--num-sub-stripes', self.config['qserv']['substripes'],
-                '--delimiter', '\t',
-                data_filename
+                '--delimiter', '\t'
             ]
+
+        if data_config[table]['chunk-column-id'] != None :
+             partition_data_cmd.extend(['--chunk-column', str(data_config[table]['chunk-column-id'])])
+
+        partition_data_cmd.append(data_filename)
 
         out = commons.run_command(partition_data_cmd)
         self.logger.info("Test case%s LSST %s data partitioned : \n %s"
                 % (self._case_id, table,out))
 
-        # remove potentially existing previous test data
-        sql = "DROP DATABASE IF EXISTS {0};\n".format(self._dbName)
-        sql_cmd = [
-            self.mysql_bin, 
-            '-S', self.config['mysqld']['sock'],
-            '-u', 'root', 
-            '-p'+self.config['mysqld']['pass'],
-            '-e', sql
-        ]
-        out = commons.run_command(sql_cmd)
-        self.logger.info("Previous test data removed %s" % out)
 
         # load partitionned data
         # TODO : remove hard-coded param : qservTest_caseXX_mysql
@@ -317,7 +323,6 @@ class QservTestsRunner():
             '-u', 'root', 
             '-p'+self.config['mysqld']['pass'],
             '--database', self._dbName,
-            '-D',
             "%s:%s" %
             (self.config['qserv']['master'],self.config['mysqld']['port']),
             partition_dirname,
@@ -332,9 +337,7 @@ class QservTestsRunner():
         # sql = "CREATE DATABASE IF NOT EXISTS LSST;"
         sql = "USE {0};\n".format(self._dbName)
         sql +=  "CREATE TABLE {0}_1234567890 LIKE {0}_100;\n".format(table)
-        sql += "CREATE DATABASE IF NOT EXISTS qservMeta;\n"
         sql += "USE qservMeta;\n"
-        sql += "DROP TABLE IF EXISTS LSST__{0};\n".format(table)
         sql += "CREATE TABLE LSST__{0} ({1}Id BIGINT NOT NULL PRIMARY KEY, x_chunkId INT, x_subChunkId INT);\n".format(table, table.lower())
 
         insert_sql =  "insert into LSST__{2} SELECT {3}Id, chunkId, subChunkId from qservTest_case{0}_{1}.{2}_%s;\n".format(self._case_id,self._mode, table, table.lower())
@@ -355,9 +358,8 @@ class QservTestsRunner():
         out = commons.run_command(sql_cmd)
         self.logger.info("%s table for empty chunk created, and meta Loaded : %s" % (table,out))
 
-        # Create xrootd directories
-        # TODO : rm previous ?
-        out = commons.run_command(["/opt/qserv-dev/bin/fixExportDir.sh"])
+        # Create xrootd directories (inspired from fixExportDirs.sh)
+        self.init_worker_xrd_dirs()
 
         empty_chunk_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
         f=open(empty_chunk_filename,"w")
@@ -401,6 +403,49 @@ class QservTestsRunner():
 # /u/sf/danielw/ctools/bin/makeEmptyChunks.py -o /u1/qserv/qserv-run/emptyChunks_qservTest_case01_q.txt 0 7200 /u1/qserv/qserv-git-ticket1934/tmp1/object/stripe_*
 #         '''
         raw_input("Press Enter to continue...")
+
+
+    def init_worker_xrd_dirs(self):
+
+        # match oss.localroot in etc/lsp.cf
+        xrootd_run_dir = os.path.join(self.config['qserv']['base_dir'],'xrootd-run')
+
+        xrd_query_dir = os.path.join(xrootd_run_dir, 'q', self._dbName) 
+        xrd_result_dir = os.path.join(xrootd_run_dir, 'result') 
+
+        if os.path.exists(xrd_query_dir):
+            self.logger.info("Emptying existing xrootd query dir : %s" % xrd_query_dir)
+            shutil.rmtree(xrd_query_dir)
+        os.makedirs(xrd_query_dir)
+        self.logger.info("Making placeholders")
+
+
+        mysql_cmd = " ".join([self.mysql_bin, 
+                               '--socket', self.config['mysqld']['sock'],
+                               '-u', self.config['mysqld']['user'], 
+                               '-p'+self.config['mysqld']['pass']
+                               ])
+
+        cmd =  "echo \"show tables in {0};\" | {1} | grep Object_ | sed \"s#Object_\(.*\)#touch {2}/\\1;#\" | sh --verbose".format(self._dbName, mysql_cmd, xrd_query_dir)
+
+        self.logger.debug("Running : %s" % cmd)
+        os.system(cmd)
+
+        emptychunk_xrd_dir =  os.path.join(xrd_query_dir,"1234567890")
+        cmd = "touch %s" % emptychunk_xrd_dir
+        self.logger.debug("Running : %s" % cmd)
+        os.system(cmd)
+
+        # WARNING : no data in this chunk, is it usefull ??
+        #emptychunk_xrd_dir =  os.path.join(xrd_query_dir,"0")
+        #cmd = "touch %s" % emptychunk_xrd_dir
+        #self.logger.debug("Running : %s" % cmd)
+        #os.system(cmd)
+
+        if os.path.exists(xrd_result_dir):
+            self.logger.info("Emptying existing xrootd result dir : %s" % xrd_result_dir)
+            shutil.rmtree(xrd_result_dir)
+        os.makedirs(xrd_result_dir)
 
     def parseOptions(self):
         script_name=sys.argv[0]
