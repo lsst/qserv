@@ -16,6 +16,7 @@ GetOptions( \%opts,
 	"start",
 	"substripes=i",
 	"load",
+        "mono-node",
 	"delete-data",
 	"source=s",
 	"table=s",
@@ -32,6 +33,7 @@ my $debug = $opts{'debug'} || 0;
 
 my $install_dir = "<QSERV_BASE_DIR>";
 my $mysql_proxy_port = "<MYSQL_PROXY_PORT>" || $opts{'mysql-proxy-port'} || 4040;
+my $cluster_type = $opts{'mono-node'} || "mono-node" ;
 
 print "Using $install_dir install.\n" if( $debug );
 
@@ -260,7 +262,9 @@ sub stop_qserv {
 #stop the xrootd process
 sub stop_xrootd {
     killpid("$install_dir/var/run/xrootd.pid");
-    killpid("$install_dir/var/run/cmsd.pid");
+    if ($cluster_type ne "mono-node") {
+        killpid("$install_dir/var/run/cmsd.pid");
+    }
 }
 
 #stop the mysql server

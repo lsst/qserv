@@ -55,7 +55,7 @@ It may take a while ...
   --------------------------
 
 Assuming PT1.1 data are in ${QSERV_DATA}/pt11/, next command will partition PT1.1 Object data :
-  $ qserv-datamanager.py --config-dir=/home/fjammes/src/qserv/ --mode=partition 
+  $ qserv-datamanager.py --config-dir=/home/qserv/src/qserv/ --mode=partition 
 
   Load the PT1.1 data and meta:
   -----------------------------
