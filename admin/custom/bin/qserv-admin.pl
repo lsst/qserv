@@ -270,7 +270,7 @@ sub stop_xrootd {
 #stop the mysql server
 sub stop_mysqld {
 
-    run_command("$install_dir/bin/mysqladmin shutdown")
+    run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass shutdown")
 
 }
 
