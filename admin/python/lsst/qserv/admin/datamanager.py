@@ -74,7 +74,7 @@ class QservDataManager:
             '--dbpass', self.config['mysqld']['pass'],
             '--source', os.path.join(self.config['lsst']['data_dir'],'pt11'),
             '--table', 'Object',
-            '--output', os.path.join(self.config['lsst']['data_dir'],'pt11_partition')
+            '--sdir', os.path.join(self.config['lsst']['data_dir'],'pt11_partition')
         ]
 
     def partitionPt11Data(self,tables,append=False):
