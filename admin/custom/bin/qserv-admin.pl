@@ -269,9 +269,8 @@ sub stop_xrootd {
 
 #stop the mysql server
 sub stop_mysqld {
-
-    run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass shutdown")
-
+  my( $dbpass ) = $opts{'dbpass'};
+  run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass shutdown");
 }
 
 #stop the mysql proxy
@@ -283,6 +282,7 @@ sub stop_proxy {
 sub killpid {
     my( $pidfile ) = @_;
     if (-e $pidfile) {
+        print "Killing process pids from $pidfile \n";
         open FILE, $pidfile;
         while (<FILE>) {
             kill 9, $_;
