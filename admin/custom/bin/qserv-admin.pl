@@ -30,8 +30,12 @@ usage(0) if ($opts{'help'});
 
 my $debug = $opts{'debug'} || 0;
 
-my $install_dir = "<QSERV_BASE_DIR>";
-my $mysql_proxy_port = "<MYSQL_PROXY_PORT>" || $opts{'mysql-proxy-port'} || 4040;
+# Emmanuel Medernach : WARNING:  %(...) below are template variables !
+# It  would  be  better  to  read  config files  instead  to  have  it
+# hard-coded here.
+
+my $install_dir = "%(QSERV_BASE_DIR)s";
+my $mysql_proxy_port = "%(MYSQL_PROXY_PORT)s" || $opts{'mysql-proxy-port'} || 4040;
 
 print "Using $install_dir install.\n" if( $debug );
 
