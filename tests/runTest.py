@@ -255,6 +255,11 @@ class QservTestsRunner():
         print "  Loading data:  ", q
         self._cursor.execute(q)
 
+    def getNonEmptyChunkIds(self):
+        # TODO
+        #cmd =  "echo \"show tables in {0};\" | {1} | grep Object_ | sed \"s#Object_\(.*\)#touch {2}/\\1;#\" | sh --verbose".format(self._dbName, mysql_cmd, xrd_query_dir)
+        return None
+
     def loadPartitionedTable(self, table, schemaFile, data_filename):
 
         stripes = self.config['qserv']['stripes']
@@ -340,7 +345,7 @@ class QservTestsRunner():
         sql += "USE qservMeta;\n"
         sql += "CREATE TABLE LSST__{0} ({1}Id BIGINT NOT NULL PRIMARY KEY, x_chunkId INT, x_subChunkId INT);\n".format(table, table.lower())
 
-        insert_sql =  "insert into LSST__{2} SELECT {3}Id, chunkId, subChunkId from qservTest_case{0}_{1}.{2}_%s;\n".format(self._case_id,self._mode, table, table.lower())
+        insert_sql =  "insert into LSST__{1} SELECT {2}Id, chunkId, subChunkId from {0}.{1}_%s;\n".format(self._dbName,table,table.lower())
 
         chunk_id_list=[80, 98, 100, 118]
 
