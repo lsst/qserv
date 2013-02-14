@@ -42,7 +42,6 @@ def read_config(config_file, default_config_file):
         config[section][option] = parser.get(section,option)
     # computable configuration parameters
     config['qserv']['bin_dir']    = os.path.join(config['qserv']['base_dir'], "bin")
-    config['qserv']['tmp_dir']    = os.path.join(config['qserv']['base_dir'], "tmp")
 
     section='mysqld'
     config[section] = dict()
