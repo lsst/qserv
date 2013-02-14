@@ -547,7 +547,7 @@ class MetaImpl:
         cmd = "SELECT tableName FROM TableMeta WHERE dbId=%s " % dbId + \
             "AND psId IS NOT NULL"
         tNames = self._mdb.execCommandN(cmd)
-        self._logger.debug("retrieveTableInfo: done")
+        self._logger.debug("retrievePartTables: done")
         return [x[0] for x in tn]
 
     ###########################################################################
