@@ -362,11 +362,13 @@ class QservTestsRunner():
         # Create xrootd directories (inspired from fixExportDirs.sh)
         self.init_worker_xrd_dirs()
 
-        empty_chunk_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
-        f=open(empty_chunk_filename,"w")
-        for j in [i for i in range(1,7201) if i not in chunk_id_list]:
-            f.write("%s\n" %j)
+        empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
+        f=open(empty_chunks_filename,"w")
+        empty_chunks_list=[i for i in range(7201) if i not in chunk_id_list]
+        for i in empty_chunks_list:
+            f.write("%s\n" %i)
         f.close()
+
 
 #         print '''
 # mkdir tmp1; cd tmp1; 
@@ -436,10 +438,10 @@ class QservTestsRunner():
         self.logger.debug("Running : %s" % cmd)
         os.system(cmd)
 
-        zero_dir =  os.path.join(xrd_query_dir,"0")
-        cmd = "touch %s" % zero_dir
-        self.logger.debug("Running : %s" % cmd)
-        os.system(cmd)
+        #zero_dir =  os.path.join(xrd_query_dir,"0")
+        #cmd = "touch %s" % zero_dir
+        #self.logger.debug("Running : %s" % cmd)
+        #os.system(cmd)
 
         # WARNING : no data in this chunk, is it usefull ??
         #emptychunk_xrd_dir =  os.path.join(xrd_query_dir,"0")
