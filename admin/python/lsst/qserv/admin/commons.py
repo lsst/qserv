@@ -5,9 +5,24 @@ import subprocess
 import sys 
 import ConfigParser
 
+def read_user_config():
+    config_file=os.path.join(os.getenv("HOME"),".lsst","qserv.conf")
+    default_config_file=os.path.join(os.getenv("HOME"),".lsst","qserv.default.conf")
+    config = read_config(config_file, default_config_file)
+    return config
+
 def read_config(config_file, default_config_file):
+
     logger = logging.getLogger()
     logger.debug("Reading build config file : %s" % config_file)
+
+    if not os.path.isfile(config_file):
+        logger.fatal("qserv configuration file not found : %s" % config_file)
+        exit(1)
+    elif not os.path.isfile(default_config_file):
+        logger.fatal("qserv configuration file with default values not found : %s" % default_config_file)
+        exit(1)
+
     parser = ConfigParser.SafeConfigParser()
     #parser.read(default_config_file)
     parser.read(config_file)

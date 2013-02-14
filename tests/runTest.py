@@ -45,11 +45,13 @@ class QservTestsRunner():
         self.logger = commons.console_logger(logging_level)
 
     def configure(self, config_dir, case_id, out_dirname, log_file_prefix='qserv-tests' ):
-
-        config_file_name=os.path.join(config_dir,"qserv-build.conf")
-        default_config_file_name=os.path.join(config_dir,"qserv-build.default.conf")
-
-        self.config = commons.read_config(config_file_name, default_config_file_name)
+        
+        if config_dir is None:
+            self.config = commons.read_user_config()
+        else:
+            config_file_name=os.path.join(config_dir,"qserv-build.conf")
+            default_config_file_name=os.path.join(config_dir,"qserv-build.default.conf")
+            self.config = commons.read_config(config_file_name, default_config_file_name)
 
         self._user = self.config['mysqld']['user']
         self._password = self.config['mysqld']['pass']
@@ -282,7 +284,6 @@ class QservTestsRunner():
         self.logger.info("  Loading schema %s" % schemaFile)
         commons.run_command(load_schema_cmd)
 
-
         # TODO : create index
         # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
 
@@ -419,7 +420,6 @@ class QservTestsRunner():
         os.makedirs(xrd_query_dir)
         self.logger.info("Making placeholders")
 
-
         mysql_cmd = " ".join([self.mysql_bin, 
                                '--socket', self.config['mysqld']['sock'],
                                '-u', self.config['mysqld']['user'], 
@@ -433,6 +433,11 @@ class QservTestsRunner():
 
         emptychunk_xrd_dir =  os.path.join(xrd_query_dir,"1234567890")
         cmd = "touch %s" % emptychunk_xrd_dir
+        self.logger.debug("Running : %s" % cmd)
+        os.system(cmd)
+
+        zero_dir =  os.path.join(xrd_query_dir,"0")
+        cmd = "touch %s" % zero_dir
         self.logger.debug("Running : %s" % cmd)
         os.system(cmd)
 
@@ -472,23 +477,6 @@ class QservTestsRunner():
                   help="Run in verbose mode (y/n)")
         (options, args) = op.parse_args()
 
-
-        if options.config_dir is None:
-            print "%s: --config-dir flag not set" % script_name 
-            print "Try `%s --help` for more information." % script_name
-            exit(1)
-        else:
-            config_file_name=options.config_dir+os.sep+"qserv-build.conf"
-            default_config_file_name=options.config_dir+os.sep+"qserv-build.default.conf"
-            if not os.path.isfile(config_file_name):
-                print ("%s: --config-dir must point to a directory containing " 
-                        "qserv-build.conf" % script_name)
-                exit(1)
-            elif not os.path.isfile(config_file_name):
-                print ("%s: --config-dir must point to a directory containing "
-                       "qserv-build.default .conf" % script_name)
-                exit(1)
-
         if not set(options.mode).issubset(set(mode_option_values)) :
             print "%s: --mode flag set with invalid value" % script_name
             print "Try `%s --help` for more information." % script_name
@@ -503,7 +491,11 @@ class QservTestsRunner():
 
         for mode in options.mode:
             self._mode=mode
-            self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
+
+            if (self._mode=='mysql'):
+                self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
+            else:
+                self._dbName = "LSST"
             self.loadData()     
             self.runQueries(options.stop_at)
 
