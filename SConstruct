@@ -122,6 +122,8 @@ def get_template_targets():
                 # used for mysql-proxy in mono-node
                 # '%(MYSQLD_HOST)': config['qserv']['master'], 
                 '%\(MYSQLD_HOST\)s': '127.0.0.1', 
+                '%\(MYSQLD_SOCK\)s': config['mysqld']['sock'],
+                '%\(MYSQLD_USER\)s': config['mysqld']['user'], 
                 '%\(MYSQLD_PASS\)s': config['mysqld']['pass'], 
                 '%\(MYSQL_PROXY_PORT\)s': config['mysql_proxy']['port'], 
                 '%\(XROOTD_MANAGER_HOST\)s': config['qserv']['master'], 
