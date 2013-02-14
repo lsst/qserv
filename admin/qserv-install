@@ -3,42 +3,77 @@
 use strict;
 use Getopt::Long;
 use Cwd;
+use FindBin;
+use Sys::Hostname;
+use File::Path;
 
 Getopt::Long::config('bundling_override');
 my %opts = ();
 GetOptions( \%opts, 
 	"debug",
 	"help|h",
-	"dir|d=s",
-	"builddir=s",
+	"install-dir|d=s",
+	"log-dir|l=s",
+	"build-dir=s",
 	"clean-all",
 	"extras",
 	"lua",
 	"master=s",
 	"mysql",
-	"mysqlproxy",
+	"init-mysql-db",
+	"mysql-port=s",
+	"mysql-data-dir|m=s",
+	"mysql-pass=s", # TODO: avoid passing passwords in command line parameters !
+	"mysql-proxy",
 	"python=s",
 	"xrootd",
+	"mono-node",
 	"qserv",
 	"user",
-	"test"
+	"test",
+	"geometry-dir=s"
 );
+
+my $script_path = "$FindBin::Bin/../";
+my $pos = rindex($script_path, "/admin");
+my $src_dir=substr($script_path,0,$pos);
+
+my $templates_dir="$src_dir/admin/custom";
+
 usage(1) if ($Getopt::Long::error); 
 usage(0) if ($opts{'help'});
 
-my $debug = $opts{'debug'} || 1;
+my $debug = $opts{'debug'} || 0;
 
-my $install_dir = $opts{'dir'} || cwd();
-my $build_dir   = $opts{'builddir'} || "$install_dir/build";
+my $install_dir = $opts{'install-dir'} || cwd();
+my $log_dir = $opts{'log-dir'} || "$install_dir/var/log";
+my $mysql_data_dir = $opts{'mysql-data-dir'} || "$install_dir/var/lib/mysql";
+my $mysql_port = $opts{'mysql-port'} || "3306";
+my $db_pass = $opts{'mysql-pass'};
+my $build_dir   = $opts{'build-dir'} || "$install_dir/build";
 my $prod_user   = $opts{'user'} || $ENV{'USER'};
-my $qserv_master = $opts{'master'} || `hostname`;
+my $qserv_master = $opts{'master'} || hostname;
+my $geometry_dir = $opts{'geometry-dir'};
+my $cluster_type = $opts{'mono-node'} || "mono-node" ;
+
+$install_dir = remove_trailing_slash($install_dir);
+$log_dir = remove_trailing_slash($log_dir);
+$mysql_data_dir = remove_trailing_slash($mysql_data_dir);
+$build_dir = remove_trailing_slash($build_dir);
+
+if ($geometry_dir) {
+    $geometry_dir = remove_trailing_slash($geometry_dir);
+}
+
+print "qserv master :  $qserv_master\n" if( $debug );
 
 my $build_opt = "all";
 $build_opt = "lua" if( $opts{'lua'} );
 $build_opt = "mysql" if( $opts{'mysql'} );
+$build_opt = "init-mysql-db" if( $opts{'init-mysql-db'} );
 $build_opt = "xrootd" if( $opts{'xrootd'} );
 $build_opt = "qserv" if( $opts{'qserv'} );
-$build_opt = "mysqlproxy" if( $opts{'mysqlproxy'} );
+$build_opt = "mysql-proxy" if( $opts{'mysql-proxy'} );
 $build_opt = "extras" if( $opts{'extras'} );
 
 #set python path for use
@@ -54,6 +89,9 @@ if( $opts{'clean-all'} ) {
 	exit(0);
 }
 
+# qserv templates configuration files will be used by other installs
+check_and_deploy_qserv();
+
 #setup the python env.
 check_and_setup_python();
 
@@ -65,26 +103,28 @@ check_and_install_xrootd() if( $build_opt eq "all" or $build_opt eq "xrootd" );
 #setup mysql
 check_and_install_mysql() if( $build_opt eq "all" or $build_opt eq "mysql" );
 
+init_mysql_db() if( $build_opt eq "all" or $build_opt eq "mysql" or $build_opt eq "init-mysql-db");
+
 #setup and install python extras.
 check_and_setup_extras() if( $build_opt eq "all" or $build_opt eq "extras" );
-
-#setup the qserv code
-check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
 
 #install lua
 check_and_install_lua() if( $build_opt eq "all" or $build_opt eq "lua" );
 
 #install mysql proxy
-check_and_install_myproxy() if( $build_opt eq "all" or $build_opt eq "mysqlproxy" );
+check_and_install_myproxy() if( $build_opt eq "all" or $build_opt eq "mysql-proxy" );
+
+#setup the qserv code
+check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
 
 #create startup scripts
-create_statups();
+create_startups();
 
 #############################################################
 
 sub list_build_dir {
 	#get list of files in build dir
-	opendir BUILDIR, "$build_dir";
+	opendir BUILDIR, "$build_dir" or die print "Can't open $build_dir : $!\n";
 	@buildfiles = readdir BUILDIR;
 	closedir BUILDIR;
 }
@@ -134,42 +174,19 @@ sub check_and_install_xrootd {
 
 #check on qserv source tar, compile, install, and configure for use.
 sub check_and_install_qserv {
+	my $pass_opt = '';
+
+	if ( length($db_pass) > 0) {
+		$pass_opt = "-p'$db_pass'"
+	}
 
 	print "Installing Qserv from source.\n";
-		
-	chdir "$install_dir";
-	
-	#check if things are already untarred
-	unless( -e "$install_dir/qserv" ) { 
-	
-		#check on version of qserv
-		my @tmplist = sort grep /qserv/, @buildfiles;
-		my $qserv_tar = '';
-		foreach my $file ( sort @tmplist ) {
-			if( $file =~ /tar.gz/ ) {
-				$qserv_tar = $file;
-			}
-		}
-
-		#untar the qserv code
-		if( -e "$build_dir/$qserv_tar" ) {
-			if( $opts{'test'} ) {
-				print "I would untar $qserv_tar here.\n";
-			} else {
-				print "Untarring qserv...\n";
-				run_command("tar zxf $build_dir/$qserv_tar");
-				my( $tmp_qserv ) = $qserv_tar =~ /^(\S+).tar.gz/;
-				rename "$tmp_qserv", "qserv";
-			}
-		} else {
-			print "Sorry - I can't find the qserv####.tar.gz in the build dir.\n";
-			exit(0);
-		}
-	}
+	check_and_deploy_qserv();
 	
 	if( -e "$install_dir/qserv/master/dist" ) {	
 		#looks like qserv is already installed so, move on
-		print "WARNING: Looks like qserv is already installed in $install_dir/qserv\n";
+		print "WARNING: Not installing Qserv because it looks like it is already installed in $install_dir/qserv\n";
+		print "WARNING: Please remove $install_dir/qserv/master/dist in order to force installation.\n";
 		return;
 	}
 	
@@ -184,6 +201,18 @@ sub check_and_install_qserv {
 	run_command("scons");
 	run_command("scons master");
 	
+	#install the geometry
+	if (not -e "$src_dir/master/python/lsst/qserv/master/geometry.py") {
+		if (not $geometry_dir) {
+			print "Downloading geometry file in geom master branch, Use --geometry-dir to specify a geometry source directory, get it with `git clone git://dev.lsstcorp.org/LSST/DMS/geom`"; 
+			chdir "$install_dir/qserv/master/python/lsst/qserv/master/" or die print "$!\n";
+			run_command("wget http://dev.lsstcorp.org/cgit/LSST/DMS/geom.git/plain/python/lsst/geom/geometry.py");
+		}
+		else {
+			print "Using --geometry-dir=$geometry_dir as geometry source directory";
+			run_command("cp -r $geometry_dir/python/lsst/geom/geometry.py $install_dir/qserv/master/python/lsst/qserv/master/geometry.py");
+		}
+	} 
 	chdir "$install_dir/qserv/master";
 	run_command("scons");
 	run_command("scons install");
@@ -197,35 +226,17 @@ sub check_and_install_qserv {
 	#start mysql server and install init database
 	chdir "$install_dir";
 	print "Starting mysql server.\n";
-	system("./bin/mysqld_safe &");
+	system("$install_dir/bin/mysqld_safe &");
 	sleep 5;
 	print "Setting up init databases.\n";
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"CREATE DATABASE IF NOT EXISTS qservResult;\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"CREATE DATABASE IF NOT EXISTS qservScratch;\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root -e \"GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root < qserv/master/examples/qserv-master-perms.sql");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservResult;\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservScratch;\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';\"");
+	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt < qserv/master/examples/qserv-master-perms.sql");
 	
 	#shutdown mysql
-	run_command("./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root");
-	
-	#copy in xrootd config and configure
-	run_command("cp qserv/master/examples/lsp.cf etc/");
-	mkdir "tmp";
-	run_command("perl -pi -e \"s,/data/lsst/lspexport,$install_dir/xrootd-run,\" etc/lsp.cf");
-	run_command("perl -pi -e \"s,/data/lsst,$install_dir/tmp,\" etc/lsp.cf");
-	#run_command("perl -pi -e \"s,query2,q,\" etc/lsp.cf");
-	run_command("perl -pi -e \"s,tuson121,$qserv_master,\" etc/lsp.cf");
-	
-	#copy in and edit qserv config
-	run_command("cp qserv/master/examples/lsst-dev01.qserv.cnf etc/local.qserv.cnf");
-	run_command("perl -pi -e \"s,xrootd\\s*=\\s*\\S+,xrootd = $ENV{'HOST'}:1094,\" etc/local.qserv.cnf");
-	run_command("perl -pi -e \"s,unix_socket\\s*=\\s*\\S+,unix_socket = $install_dir/var/lib/mysql/mysql.sock,\" etc/local.qserv.cnf");
-	run_command("perl -pi -e \"s,emptyChunkListFile=emptyChunks.txt,emptyChunkListFile=$install_dir/etc/emptyChunks.txt,\" etc/local.qserv.cnf");
-	
-	#install the qserv-admin
-	run_command("cp qserv/admin/bin/qserv-admin bin/");
-	run_command("perl -pi -e \"s,INSTALLDIR,$install_dir,\" bin/qserv-admin");
+	run_command("./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root $pass_opt");
 	
 }
 
@@ -290,7 +301,7 @@ sub check_and_setup_extras {
 
 }
 
-#check on mysql source tar, compile, install, and configure for use.
+#check on mysql source tar, compile, install
 sub check_and_install_mysql {
 
 	print "Installing MySQL from source.\n";
@@ -299,7 +310,7 @@ sub check_and_install_mysql {
 	
 	chdir "$build_dir";
 
-	#install curses lib if it is in place
+        #install curses lib if it is in place
 	my $ncurses_dir = check_and_untar( "ncurses" );
 	if( $ncurses_dir ) {
 		chdir "$build_dir/$ncurses_dir";
@@ -312,28 +323,47 @@ sub check_and_install_mysql {
 
 	my $mysql_dir = check_and_untar( "mysql-5" );
 
+        # check if it is already installed
+        if( -e "$install_dir/bin/mysqld_safe" ) {
+                print "WARNING: MySQL already installed...\n";
+                return;
+        }
 	chdir "$build_dir/$mysql_dir";
 	run_command("./configure --prefix=\"$install_dir\" --enable-local-infile --with-mysqld-user=$prod_user");
 	run_command("make");
 	run_command("make install");
-
-	chdir "$install_dir";
-	mkdir "etc";
-	mkdir "var";
-	mkdir "var/lib";
-	mkdir "var/lib/mysql";
-	mkdir "var/run";
-	mkdir "var/run/mysqld";
-	mkdir "var/log";
 	
-	run_command("cp /etc/my.cnf etc/");
-	run_command("perl -pi -e \"s,/var,$install_dir/var,\" etc/my.cnf");
-	run_command("perl -pi -e \"s,user=mysql,,\" etc/my.cnf");
+}
+
+# configure mysql for use
+sub init_mysql_db {
+
+	system("killall mysqld mysqld_safe");	
+        run_command("rm -rf $mysql_data_dir/*");
 	
 	run_command("mysql_install_db --user=$prod_user");
 	
-	print "Please set the mysql root user password with: ";
-	print "mysqladmin -S var/lib/mysql/mysql.sock -u root password <password>\n";
+	if ( length($db_pass) > 0) {
+		print "Starting mysql server.\n";
+		system("$install_dir/bin/mysqld_safe &");
+		sleep 5;
+		my $quiet=1;	
+		print ("Changing mysql root password.");
+                # password for root@127.0.0.1 won't be updated with next command.
+		# run_command("mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password '$db_pass'", $quiet);
+		# run_command("mysqladmin -h $qserv_master -P$mysql_port -u root password '$db_pass'", $quiet);
+		
+		run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root < $install_dir/tmp/mysql-password.sql");
+		run_command("rm $install_dir/tmp/mysql-password.sql");
+
+		# shutdown mysql
+		run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock shutdown -u root -p'$db_pass'", $quiet);
+	}
+	else {
+		print "Please set the mysql root user password with: ";
+		print "mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password <password>\n";
+		print "mysqladmin -u root -h $qserv_master -P$mysql_port password <password>\n";
+	}
 
 	chdir "$install_dir";
 
@@ -347,12 +377,6 @@ sub check_and_setup_python {
 	
 	chdir "$build_dir/$virtualenv_dir";
 	run_command("$python_path virtualenv.py $install_dir");
-	
-	chdir "$build_dir";
-	my $scons_dir = check_and_untar( "scons" );
-	
-	chdir "$build_dir/$scons_dir";
-	run_command("$install_dir/bin/python setup.py install");
 	
 	chdir "$install_dir";
 
@@ -460,7 +484,7 @@ sub check_and_install_myproxy {
 sub check_and_untar {
 	my( $check_string ) = @_;
 	
-	print "Need to check and untar from builddir $check_string.\n" if( $debug );
+	print "Need to check and untar next package from build-dir : $check_string.\n" if( $debug );
 	
 	#check on version of virtual env
 	my @tmplist = sort grep /$check_string/, @buildfiles;
@@ -498,12 +522,73 @@ sub check_and_untar {
 	return $tmp_dir;
 }
 
+sub create_symlink {
+
+	my $target = $_[0];
+	my $link = $_[1];
+	-e $link and rmtree($link);
+	symlink ($target,$link) or die print "Error creating symlink $link : $!\n";
+
+}
+
+sub check_and_deploy_qserv {
+
+	chdir "$install_dir";
+
+	# $log_dir and mysql_data_dir are already created by qserv-init script
+        if ($log_dir ne "$install_dir/var/log") {
+                create_symlink ($log_dir,"$install_dir/var/log");
+        }
+	
+        if ($mysql_data_dir ne "$install_dir/var/lib/mysql") {
+                create_symlink ($mysql_data_dir,"$install_dir/var/lib/mysql");
+        }
+
+	if (length($src_dir) > 0) {
+		if (-e "$src_dir")  {
+			create_symlink ($src_dir,"$install_dir/qserv");
+		}
+		else {
+			die print "Invalid path to Qserv source dir : $src_dir";
+		}
+	}
+
+	#check if things are already untarred
+	unless( -e "$install_dir/qserv" ) { 
+
+		#check on version of qserv, and get last version
+		my @tmplist = sort grep /qserv/, @buildfiles;
+		my $qserv_tar = '';
+		foreach my $file ( sort @tmplist ) {
+			if( $file =~ /tar.gz/ ) {
+				$qserv_tar = $file;
+			}
+		}
+
+		#untar the qserv code
+		if( -e "$build_dir/$qserv_tar" ) {
+			if( $opts{'test'} ) {
+				print "I would untar $qserv_tar here.\n";
+			} else {
+				print "Untarring qserv...\n";
+				run_command("tar zxf $build_dir/$qserv_tar");
+				my( $tmp_qserv ) = $qserv_tar =~ /^(\S+).tar.gz/;
+				rename "$tmp_qserv", "qserv";
+			}
+		} else {
+			print "Sorry - I can't find the qserv####.tar.gz in the build dir.\n";
+			exit(0);
+		}
+	}
+}
+
 #create the startup scripts for server components.
-sub create_statups {
+sub create_startups {
 
 	create_xrootd_startup();
 	create_qserv_startup();
 	create_mysqlproxy_startup();
+	print "PROCESS SUCCESSFULLY COMPLETED\n";
 	
 }
 
@@ -525,11 +610,14 @@ sub create_xrootd_startup {
 	print XROOTD "\n";
 	print XROOTD "export LD_LIBRARY_PATH=\"$install_dir/xrootd-run;$install_dir/lib\"\n";
 	print XROOTD "\n";
+
+        if ($cluster_type ne "mono-node") {
+	    print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/cmsd -c ";
+	    print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/cmsd.log &\n";
+	}
 	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/xrootd -c ";
-	print XROOTD "$install_dir/etc/lsp.cf -l $install_dir/var/log/xrootd.log &\n";
-	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/cmsd -c ";
-	print XROOTD "$install_dir/etc/lsp.cf -l $install_dir/var/log/cmsd.log &\n";
-	
+	print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/xrootd.log &\n";
+
 	close XROOTD;
 	chmod 0755, "start_xrootd";
 
@@ -551,10 +639,11 @@ sub create_qserv_startup {
 	print QSERV "export PYTHONPATH=$install_dir/qserv/master/dist:$install_dir/qserv-run\n";
 	print QSERV "export LD_LIBRARY_PATH=$install_dir/lib:\$XRD_DIR/lib/\$PLATFORM\n";
 	print QSERV "export QSW_RESULTDIR=$install_dir/qserv-run/tmp\n";
+	print QSERV "# Disabling buffering in python in order to enable \"real-time\" logging.\n";
 	print QSERV "export PYTHONUNBUFFERED=1\n";
 	print QSERV "\$PYTHON $install_dir/qserv/master/dist/startQserv.py -c ";
 	print QSERV "$install_dir/etc/local.qserv.cnf > ";
-	print QSERV "$install_dir/var/log/qserv.log &\n";
+	print QSERV "$log_dir/qserv.log &\n";
 
 	close QSERV;
 	chmod 0755, "start_qserv";
@@ -576,8 +665,8 @@ sub create_mysqlproxy_startup {
 	print MYSQLPROXY "LUALIB=\$LUAROOT/lib/lua/5.1\n";
 	print MYSQLPROXY "LUAPATH=\"\$LUASHARE/?.lua;\$LUASHARE/?/init.lua;\$LUASHARE/?/?.lua\"\n";
 	print MYSQLPROXY "LUACPATH=\"\$LUALIB/?.so;\$LUALIB/?/?.so\"\n";
-	print MYSQLPROXY "$install_dir/bin/mysql-proxy --proxy-lua-script=\$QSERVDIST/mysqlProxy.lua ";
-	print MYSQLPROXY "--lua-path=\$LUAPATH --lua-cpath=\$LUACPATH &\n";
+	print MYSQLPROXY "$install_dir/bin/mysql-proxy --proxy-lua-script=\$QSERVDIST/mysqlProxy.lua --defaults-file=$install_dir/etc/my-proxy.cnf";
+	print MYSQLPROXY " --lua-path=\$LUAPATH --lua-cpath=\$LUACPATH &\n";
 
 	close MYSQLPROXY;
 	chmod 0755, "start_mysqlproxy";
@@ -588,9 +677,14 @@ sub create_mysqlproxy_startup {
 #remove all sub dir created, and revert back to before install with only
 #source tar files in the build dir.  Will remove all loaded data also.
 sub clean_all {
+    
+        run_command("rm -rf $log_dir || rm -rf $log_dir/*");
+        run_command("rm -rf $mysql_data_dir || rm -rf $mysql_data_dir/*");
+        run_command("rm -rf $install_dir/qserv/master/dist");
 
 	chdir "$install_dir";
 		
+	print "Cleaning dir : $install_dir\n" if ($debug); 
 	opendir TMPDIR, "$install_dir";
 	my @listfiles = readdir TMPDIR;
 	closedir TMPDIR;
@@ -604,22 +698,38 @@ sub clean_all {
 		}
 	}
 	
-	chdir "$build_dir";
+	clean_dir($build_dir);
 	
-	opendir TMPDIR, "$build_dir";
-	@listfiles = readdir TMPDIR;
-	closedir TMPDIR;
-	
-	foreach my $file ( @listfiles ) {
-		next if( $file =~ /^\./ );
-		if( -d $file ) {
-			print "Removing $file\n";
-			run_command("rm -r $file");
-		}
-	}
-
 }
 
+# Remove file and directories, except *.tar.gz
+sub clean_dir {
+
+	my($dir) = @_;
+
+	print "Cleaning dir : $dir\n" if ($debug); 
+	chdir "$dir";
+
+	opendir TMPDIR, "$dir";
+	my @listfiles = readdir TMPDIR;
+	closedir TMPDIR;
+
+	foreach my $file ( @listfiles ) {
+		next if( $file =~ /^\./ );
+		next if( $file =~ /^.*\.tar\.gz$/ );
+		next if( $file =~ /^.*\.tar\.bz2$/ );
+		next if( $file =~ /^.*\.tar\.zip$/ );
+		print " file : $file\n" if ($debug);
+		if( -d $file ) {
+			print "Removing directory : $file\n";
+			run_command("rm -rf $file");
+		}
+		elsif( -e $file ) {
+			print "Removing $file\n";
+			run_command("rm $file");
+		}
+	}
+}
 
 #help report for the --help option
 sub usage {
@@ -639,21 +749,29 @@ EXAMPLES:
 	$bin 
 
 OPTIONS:
-      --debug     Print out debug messages.
-  -h, --help      Print out this help message.
-      --test      Test install proceedure.
-  -d, --dir       Install dir, default is use the current working dir.
-      --builddir  Path the source tar files, default to use "build"
-	  --clean-all Remove all produced software and data, revert to start before install
-	  --extras    Install only the extra modules needed for qserv
-	  --lua       Install only lua and needed lua modules
-	  --mysql     Install only the mysql server
-	  --mysqlproxy Install only the mysql proxy software.
-	  --python    Path the python install for use, default is /usr/bin/python
-	  --xrootd    Install only xrootd
-	  --qserv     Install only qserv
-	  --user      Username to use in qserv use, default it to use current username.
-	  --test      Test the install, don't perform any commands.
+      	--debug			Print out debug messages.
+     -h,--help			Print out this help message.
+      	--test			Test install proceedure.
+     -d,--install-dir		Install dir, default is use the current working dir.
+     -l,--log-dir       	Log dir, default is use the install dir suffixed with var/log
+      	--build-dir  		Path the source tar files, default to use "build"
+	--clean-all 		Remove all produced software and data, revert to start before install
+	--extras    		Install only the extra modules needed for qserv
+	--mysql-port     	Specify mysql port (default to 3306)
+	--mysql-pass 	        Specify mysql db root passwordd
+     -m,--mysql-data-dir	Mysql data dir, default the install dir suffixed with var/lib/mysql
+	--python    		Path the python install for use, default is /usr/bin/python
+	--geometry-dir		Specify path to geometry source directory (if not in $src_dir/master/python/)
+	--user      		Username to use in qserv use, default it to use current username.
+	--test      		Test the install, don't perform any commands.
+	
+One of these option may also be setted :
+	--lua       		Install only lua and needed lua modules
+	--mysql     		Install only the mysql server, Erase and reinstall mysql data
+	--mysql-proxy 		Install only the mysql proxy software.
+	--init-mysql-db     	Erase and reinstall mysql data
+	--xrootd    		Install only xrootd
+	--qserv     		Install only qserv
 
 Examples: $bin
 
@@ -664,16 +782,23 @@ INLINE_LITERAL_TEXT
 
 }
 
+sub remove_trailing_slash {
+	my( $string ) = @_;
+	$string =~ s/\/$//;
+	return $string;
+}
+
 sub run_command {
-	my( $command ) = @_;
+	my( $command, $quiet ) = @_;
 	my $cwd = cwd();
 	my @return;
-	print "-- Running: $command in $cwd\n";
-	open( OUT, "$command 2>&1 |" ) || die "ERROR : can't fork $command : $!";
-	while( <OUT> ) {
+	print "-- Running: $command in $cwd\n" unless( $quiet );
+	open( OUT, "$command 2>&1 |") || die "ERROR : can't fork $command : $!";
+	while( <OUT> ) {       
 		print STDOUT $_; 
 		push( @return, $_ ); 
 	}
 	close( OUT ) || die "ERROR : $command exits with error code ($?)";
 	return @return;
 }
+

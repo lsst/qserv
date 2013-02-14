@@ -20,6 +20,7 @@ GetOptions( \%opts,
 	"source=s",
 	"table=s",
 	"stripedir|sdir=s",
+	"mysql-proxy-port=s",
 	"dbpass=s",
 	"partition",
 	"test"
@@ -29,7 +30,8 @@ usage(0) if ($opts{'help'});
 
 my $debug = $opts{'debug'} || 0;
 
-my $install_dir = "INSTALLDIR";
+my $install_dir = "<QSERV_BASE_DIR>";
+my $mysql_proxy_port = "<MYSQL_PROXY_PORT>" || $opts{'mysql-proxy-port'} || 4040;
 
 print "Using $install_dir install.\n" if( $debug );
 
@@ -39,10 +41,10 @@ my $mysqld_sock = "$install_dir/var/lib/mysql/mysql.sock";
 if( $opts{'status'} ) {
 	print "Checking on the status.\n" if( $debug );
 
-    unless( $opts{'dbpass'} ) {
-            print "Error: you need to specify the mysql root password with the --dbpass option.\n";
-            exit(1);
-    }
+	unless( $opts{'dbpass'} ) {
+		print "Error: you need to specify the mysql root password with the --dbpass option.\n";
+		exit(1);
+	}
 
 	if( check_mysqld( $opts{'dbpass'} ) ) {
 		print "Mysql server up and running.\n";
@@ -88,8 +90,6 @@ if( $opts{'status'} ) {
 	
 } elsif( $opts{'partition'} ) {
 
-	
-
 	#need to partition raw data for loading into qserv.
 	unless( $opts{'source'} ) {
 		print "Error: you need to set the path to the source data with the --source option.\n";
@@ -108,23 +108,23 @@ if( $opts{'status'} ) {
 	
 } elsif( $opts{'load'} ) {
 
-        #need to partition raw data for loading into qserv.
-        unless( $opts{'source'} ) {
-                print "Error: you need to set the path to the source data with the --source option.\n";
-               	exit(1);
-        }
-        unless( $opts{'table'} ) {
-                print "Error: you need to specify the table name for the source data with the --table option.\n";
-               	exit(1);
-        }
-       	unless( $opts{'stripedir'} ) {
-                print "Error: you need to specify the stripe dir path with the --stripedir option.\n";
-                exit(1);
-        }
-       unless( $opts{'dbpass'} ) {
-                print "Error: you need to specify the mysql root password with the --dbpass option.\n";
-                exit(1);
-        }
+	#need to partition raw data for loading into qserv.
+	unless( $opts{'source'} ) {
+		print "Error: you need to set the path to the source data with the --source option.\n";
+		exit(1);
+	}
+	unless( $opts{'table'} ) {
+		print "Error: you need to specify the table name for the source data with the --table option.\n";
+		exit(1);
+	}
+	unless( $opts{'stripedir'} ) {
+		print "Error: you need to specify the stripe dir path with the --stripedir option.\n";
+		exit(1);
+	}
+	unless( $opts{'dbpass'} ) {
+		print "Error: you need to specify the mysql root password with the --dbpass option.\n";
+		exit(1);
+	}
 
 	#need to load data into qserv
 
@@ -200,7 +200,7 @@ sub create_test_sql {
 #check the mysql proxy use.
 sub check_proxy {
 
-	return check_sql_server( "mysql --port=4040 --protocol=TCP" );
+	return check_sql_server( "mysql --port=$mysql_proxy_port --protocol=TCP" );
 
 }
 
@@ -519,7 +519,7 @@ sub load_data {
 	unless( -e "$install_dir/etc/setup.cnf" ) {
 		open SETUP, ">$install_dir/etc/setup.cnf";
 		print SETUP "host:localhost\n";
-		print SETUP "port:4040\n";
+		print SETUP "port:$mysql_proxy_port\n";
 		print SETUP "user:root\n";
 		print SETUP "pass:$dbpass\n";
 		print SETUP "sock:$install_dir/var/lib/mysql/mysql.sock\n";
@@ -527,27 +527,9 @@ sub load_data {
 	}
 
 	#check if database is already registered, if it is it needs to get unreg. first.
-	if( -e "$install_dir/xrootd-run/q/LSST" ) {
-		#unreg. the database
-		my $command = "$install_dir/qserv/worker/tools/qsDbTool ";
-		$command .= "-a $install_dir/etc/setup.cnf -i 1 -b $install_dir/xrootd-run ";
-		$command .= "unregister LSST $tablename";
-		print "Command: $command\n";
-		`$command`;
-	}
-
 	#register the database, export
-	my $command = "$install_dir/qserv/worker/tools/qsDbTool ";
-	$command .= "-a $install_dir/etc/setup.cnf -i 1 ";
-	$command .= "register LSST $tablename";
-	print "Command: $command\n";
-	run_command("$command");
+	run_command("$install_dir/bin/fixExportDir.sh");
 		
-	$command = "$install_dir/qserv/worker/tools/qsDbTool ";
-	$command .= "-a $install_dir/etc/setup.cnf -i 1 -b $install_dir/xrootd-run ";
-	$command .= "export LSST";
-	print "Command: $command\n";
-	run_command("$command");
 }
 
 #Create the empty chucks list up to 1000, and print this into the
@@ -601,11 +583,12 @@ Options are:
       --stop          Stop the servers.
 	  --start         Start the servers.
 	  --stripes       Number of stripes used to partition the data.
-	  --subtripes     Number of substripes used to partition the data.
+	  --substripes     Number of substripes used to partition the data.
 	  --load          Load data into qserv, requires options source, stripedir, table
       --delete-data   Load data into qserv, requires options source, output, table
 	  --source        Path to the pt11 exmple data
  --sdir, --stripedir  Path to the paritioned data
+      --mysql-proxy-port  Port number to use for the mysql proxy.
 	  --table         Table name for partitioning and loading
 	  --parition      Partition the example pt11 data into chunks, requires source, stripedir, table
 	  --test          test the use of the util, without performing the actions.
