@@ -315,7 +315,6 @@ class QservTestsRunner():
         self.logger.info("Test case%s LSST %s data partitioned : \n %s"
                 % (self._case_id, table,out))
 
-
         # load partitionned data
         # TODO : remove hard-coded param : qservTest_caseXX_mysql
         load_partitionned_data_cmd = [
