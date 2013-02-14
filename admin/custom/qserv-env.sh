@@ -12,7 +12,7 @@ if [ -z "${QSERV_ENV_SETTED}" ]; then
 fi 
 
 alias qserv-start="qserv-admin --start"
-alias qserv-stop="qserv-admin --stop --dbpass \"<MYSQLD_PASS>\""
+alias qserv-stop="qserv-admin --stop --dbpass \"%(MYSQLD_PASS)s\""
 # TODO : manage MySQL pass correctly
 alias qserv-status="qserv-admin --status --dbpass \"%(MYSQLD_PASS)s\""
 

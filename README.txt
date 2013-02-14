@@ -37,6 +37,11 @@ First do :
 and then set your install parameters in qserv-build.conf (restrictive access rights recommended as it contains MySQL password)
 This file is well-commented.
 
+then :
+  $ mkdir ~/.lsst/
+  $ ln -s /home/qserv/src/qserv/qserv-build.conf ~/.lsst/qserv.conf  
+  $ ln -s /home/qserv/src/qserv/qserv-build.default.conf ~/.lsst/qserv.default.conf  
+
 Then add next line to your ~/.bashrc (assuming you've setted base_dir to
 /opt/qserv in qserv-build.conf):
   source /opt/qserv/qserv-env.sh 
