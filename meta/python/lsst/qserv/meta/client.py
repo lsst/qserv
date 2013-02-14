@@ -44,8 +44,7 @@ class Client:
     ###########################################################################
     def installMeta(self):
         status = self._qms.installMeta()
-        if status != Status.SUCCESS: 
-            raise QmsException(status)
+        if status != Status.SUCCESS: raise QmsException(status)
 
     def destroyMeta(self):
         status = self._qms.destroyMeta()
@@ -53,8 +52,7 @@ class Client:
 
     def printMeta(self):
         (status, v) = self._qms.printMeta()
-        if status != Status.SUCCESS: 
-            raise QmsException(status)
+        if status != Status.SUCCESS: raise QmsException(status)
         return v
 
     def createDb(self, dbName, theOptions):
