@@ -162,6 +162,12 @@ class TestMeta(unittest.TestCase):
         print "=====>> retrieve table info (Exposure)"
         print self._client.retrieveTableInfo("Summer2012", "Exposure")
 
+        print "=====>> list all tables"
+        print self._client.listTables("Summer2012")
+
+        print "=====>> list partitioned tables"
+        print self._client.listPartitionedTables("Summer2012")
+
         print "=====>> drop table Object"
         self._client.dropTable("Summer2012", "Object")
 

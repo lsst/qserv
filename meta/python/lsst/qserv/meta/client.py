@@ -111,8 +111,13 @@ class Client:
         status = self._qms.dropTable(dbName, tableName)
         if status != Status.SUCCESS: raise QmsException(status)
 
-    def retrievePartitionedTables(self, dbName):
-        (status, tNames) = self._qms.retrievePartTables(dbName)
+    def listTables(self, dbName):
+        (status, tNames) = self._qms.listTables(dbName)
+        if status != Status.SUCCESS: raise QmsException(status)
+        return tNames
+
+    def listPartitionedTables(self, dbName):
+        (status, tNames) = self._qms.listPartTables(dbName)
         if status != Status.SUCCESS: raise QmsException(status)
         return tNames
 
