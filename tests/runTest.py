@@ -80,20 +80,27 @@ class QservTestsRunner():
         )
 
     def connectNoDb(self):
-        print "Connecting via socket", self._socket, "as", self._user
+        self.logger.info("Connecting via socket"+ self._socket+ "as"+ self._user)
         self._conn = sql.connect(user=self._user,
                                  passwd=self._password,
                                  unix_socket=self._socket)
         self._cursor = self._conn.cursor()
 
     def connect2Db(self):
-        print "Connecting via socket", self._socket, "as", self._user, \
-            "to db", self._dbName
+        self.logger.info("Connecting via socket"+ self._socket+ "as"+ self._user+
+            "to db"+ self._dbName)
         self._conn = sql.connect(user=self._user,
                                  passwd=self._password,
                                  unix_socket=self._socket,
                                  db=self._dbName)
         self._cursor = self._conn.cursor()
+
+    #def setDb(self):
+
+    def disconnect(self):
+        self.logger.info("Disconnecting from DB")
+        self._cursor.close()
+        self._conn.close()
 
     def runQueries(self, stopAt):
         if self._mode == 'qserv':
@@ -107,7 +114,7 @@ class QservTestsRunner():
             os.chmod(myOutDir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
         qDir = self._queries_dirname
-        print "Testing queries from %s" % qDir
+        self.logger.info("Testing queries from %s" % qDir)
         queries = sorted(os.listdir(qDir))
         noQservLine = re.compile('[\w\-\."%% ]*-- noQserv')
         for qFN in queries:
@@ -135,13 +142,8 @@ class QservTestsRunner():
                         qText += ' '
                     outFile = "%s/%s" % (myOutDir, qFN.replace('.sql', '.txt'))
                     #qText += " INTO OUTFILE '%s'" % outFile
-                    print "Running %s: %s\n" % (qFN, qText)
+                    self.logger.info("Running %s: %s\n" % (qFN, qText))
                     self.runQueryInShell(qText, outFile)
-
-    def disconnect(self):
-        print "Disconnecting"
-        self._cursor.close()
-        self._conn.close()
 
     def runQueryInShell(self, qText, out_file):
         if self._mode == 'qserv':
@@ -174,7 +176,7 @@ class QservTestsRunner():
         self.logger.info("SQL query for mode %s launched"
                 % self._mode)
 
-    def initDatabases(self): 
+    def initQservDatabases(self): 
         self.logger.info("Initializing databases %s, qservMeta" % self._dbName)
         self.connectNoDb()
         sql = "DROP DATABASE IF EXISTS %s" % self._dbName
@@ -194,10 +196,10 @@ class QservTestsRunner():
     # data should be in <table>.tsv.gz
     def loadData(self):
 
-        self.initDatabases()
+        self.initQservDatabases()
 
         self.connect2Db()
-        print "Loading data from %s" % self._input_dirname
+        self.logger.info("Loading data from %s" % self._input_dirname)
         files = os.listdir(self._input_dirname)
         for f in files:
             if f.endswith('.schema'):
@@ -247,12 +249,12 @@ class QservTestsRunner():
             '-e', 'Source %s' %  schemaFile
         ]
 
-        self.logger.info("  Loading schema %s" % schemaFile)
+        self.logger.info("Loading schema %s" % schemaFile)
         commons.run_command(load_schema_cmd)
         # load data
         q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % \
             (dataFile, tableName)
-        print "  Loading data:  ", q
+        self.logger.info("Loading data:  %s" % q)
         self._cursor.execute(q)
 
     def getNonEmptyChunkIds(self):
@@ -269,12 +271,47 @@ class QservTestsRunner():
             m = pattern.match(row[0])
             if m:
                 chunk_id = m.group(1)
-                non_empty_chunk_list.append(chunk_id)
+                non_empty_chunk_list.append(int(chunk_id))
                 self.logger.debug("Chunk number : %s" % chunk_id)
 
-        return non_empty_chunk_list
+        return sorted(non_empty_chunk_list)
 
     def loadPartitionedTable(self, table, schemaFile, data_filename):
+        ''' Implementing next algorithm in python :
+
+        # mkdir tmp1; cd tmp1; 
+
+        # mkdir object; cd object
+        # mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Object.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM Object"
+        # python ../../master/examples/partition.py -PObject -t 2  -p  4 /tmp/Object.csv -S 10 -s 2 
+        # sudo rm /tmp/Object.csv
+
+
+        # #use the loadPartitionedObjectTables.py script to generate loadO
+        # mysql -u<u> -p<p> qservTest_case01_q < loadO
+        # mysql -u<u> -p<p> qservTest_case01_q -e "create table Object_1234567890 like Object_100"
+
+        # cd ../; mkdir source; cd source
+        # mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Source.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM Source"
+        # python ../../master/examples/partition.py -PSource -t 33 -p 34 -o 0 /tmp/Source.csv -S 10 -s 2
+        # #use the loadPartitionedSourceTables.py script to generate loadS
+        # mysql -u<u> -p<p> qservTest_case01_q < loadS
+        # mysql -u<u> -p<p> qservTest_case01_q -e "create table Source_1234567890 like Source_100"
+
+        # # this creates the objectId index
+        # mysql -u<u> -p<p> -e "create database qservMeta"
+        # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "create table LSST__Object (objectId BIGINT NOT NULL PRIMARY KEY, x_chunkId INT, x_subChunkId INT)"
+        # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_100"
+        # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_118"
+        # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_80"
+        # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_98"
+
+        # ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test register qservTest_case01_q Object Source
+        # ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test -b /u1/qserv/xrootd-run export qservTest_case01_q
+
+        # /u/sf/danielw/ctools/bin/makeEmptyChunks.py -o /u1/qserv/qserv-run/emptyChunks_qservTest_case01_q.txt 0 7200 /u1/qserv/qserv-git-ticket1934/tmp1/object/stripe_*
+
+        '''
 
         stripes = self.config['qserv']['stripes']
 
@@ -303,7 +340,7 @@ class QservTestsRunner():
         self.logger.info("  Loading schema %s" % schemaFile)
         commons.run_command(load_schema_cmd)
 
-        # TODO : create index
+        # TODO : create index and alter table with chunkId and subChunkId
         # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
 
         # partition data       
@@ -312,7 +349,7 @@ class QservTestsRunner():
             shutil.rmtree(partition_dirname)
         os.makedirs(partition_dirname)
 
-        # commons.run_command("python %s -PObject -t 2  -p 4 %s --delimiter '\t' -S 10 -s 2 --output-dir %s" % (self.partition_scriptname, data_filename, partition_dirname))
+        # python %s -PObject -t 2  -p 4 %s --delimiter '\t' -S 10 -s 2 --output-dir %s" % (self.partition_scriptname, data_filename, partition_dirname
         partition_data_cmd = [
                 self.python_bin,
                 self.partition_scriptname,
@@ -359,9 +396,11 @@ class QservTestsRunner():
         sql += "USE qservMeta;\n"
         sql += "CREATE TABLE LSST__{0} ({1}Id BIGINT NOT NULL PRIMARY KEY, x_chunkId INT, x_subChunkId INT);\n".format(table, table.lower())
 
-        insert_sql =  "insert into LSST__{1} SELECT {2}Id, chunkId, subChunkId from {0}.{1}_%s;\n".format(self._dbName,table,table.lower())
+        insert_sql =  "INSERT INTO LSST__{1} SELECT {2}Id, chunkId, subChunkId FROM {0}.{1}_%s;\n".format(self._dbName,table,table.lower())
 
         chunk_id_list=self.getNonEmptyChunkIds()
+
+        self.logger.info("Non empty data chunks list : %s " %  str(chunk_id_list))
 
         for chunkId in chunk_id_list :
             tmp =  insert_sql % chunkId
@@ -375,7 +414,7 @@ class QservTestsRunner():
             '-e', sql
         ]
         out = commons.run_command(sql_cmd)
-        self.logger.info("%s table for empty chunk created, and meta Loaded : %s" % (table,out))
+        self.logger.info("%s table for empty chunk created, and meta loaded : %s" % (table,out))
 
         # Create xrootd query directories
         self.init_worker_xrd_dirs(chunk_id_list)
@@ -383,46 +422,12 @@ class QservTestsRunner():
         # Create etc/emptychunk.txt
         empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
         f=open(empty_chunks_filename,"w")
-        empty_chunks_list=[i for i in range(7201) if i not in chunk_id_list]
+        empty_chunks_list=[i for i in range(0,7201) if i not in chunk_id_list]
         for i in empty_chunks_list:
             f.write("%s\n" %i)
         f.close()
 
-
-#         print '''
-# mkdir tmp1; cd tmp1; 
-
-# mkdir object; cd object
-# mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Object.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM Object"
-# python ../../master/examples/partition.py -PObject -t 2  -p  4 /tmp/Object.csv -S 10 -s 2 
-# sudo rm /tmp/Object.csv
-
-
-# #use the loadPartitionedObjectTables.py script to generate loadO
-# mysql -u<u> -p<p> qservTest_case01_q < loadO
-# mysql -u<u> -p<p> qservTest_case01_q -e "create table Object_1234567890 like Object_100"
-
-# cd ../; mkdir source; cd source
-# mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Source.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM Source"
-# python ../../master/examples/partition.py -PSource -t 33 -p 34 -o 0 /tmp/Source.csv -S 10 -s 2
-# #use the loadPartitionedSourceTables.py script to generate loadS
-# mysql -u<u> -p<p> qservTest_case01_q < loadS
-# mysql -u<u> -p<p> qservTest_case01_q -e "create table Source_1234567890 like Source_100"
-
-# # this creates the objectId index
-# mysql -u<u> -p<p> -e "create database qservMeta"
-# mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "create table LSST__Object (objectId BIGINT NOT NULL PRIMARY KEY, x_chunkId INT, x_subChunkId INT)"
-# mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_100"
-# mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_118"
-# mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_80"
-# mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_98"
-
-# ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test register qservTest_case01_q Object Source
-# ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test -b /u1/qserv/xrootd-run export qservTest_case01_q
-
-# /u/sf/danielw/ctools/bin/makeEmptyChunks.py -o /u1/qserv/qserv-run/emptyChunks_qservTest_case01_q.txt 0 7200 /u1/qserv/qserv-git-ticket1934/tmp1/object/stripe_*
-#         '''
-        raw_input("Press Enter to continue...")
+        raw_input("Qserv mono-node database filled with partitionned '%s' data.\nPress Enter to continue..." % table)
 
 
     def init_worker_xrd_dirs(self, non_empty_chunk_id_list):
@@ -440,8 +445,8 @@ class QservTestsRunner():
         os.makedirs(xrd_query_dir)
         self.logger.info("Making placeholders")
 
-        for id in non_empty_chunk_id_list:
-            xrd_file = os.path.join(xrd_query_dir,id)
+        for chunk_id in non_empty_chunk_id_list:
+            xrd_file = os.path.join(xrd_query_dir,str(chunk_id))
             open(xrd_file, 'w').close() 
 
         if os.path.exists(xrd_result_dir):
@@ -469,9 +474,6 @@ class QservTestsRunner():
                   help="Stop at query with given number")
         op.add_option("-o", "--out-dir", dest="out_dirname",
                   help="Full path to directory for storing temporary results. The results will be stored in <OUTDIR>/qservTest_case<CASENO>/")
-        op.add_option("-v", "--verbose", dest="verboseMode",
-                  default = 'n',
-                  help="Run in verbose mode (y/n)")
         (options, args) = op.parse_args()
 
         if not set(options.mode).issubset(set(mode_option_values)) :
@@ -491,10 +493,9 @@ class QservTestsRunner():
 
             self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
 
-            #if (self._mode=='mysql'):
-            #    self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
-            #else:
-            #    self._dbName = "LSST"
+            if (self._mode=='qserv'):
+                self._dbName= 'LSST'
+
             self.loadData()     
             self.runQueries(options.stop_at)
 
