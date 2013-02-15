@@ -256,9 +256,23 @@ class QservTestsRunner():
         self._cursor.execute(q)
 
     def getNonEmptyChunkIds(self):
-        # TODO
-        #cmd =  "echo \"show tables in {0};\" | {1} | grep Object_ | sed \"s#Object_\(.*\)#touch {2}/\\1;#\" | sh --verbose".format(self._dbName, mysql_cmd, xrd_query_dir)
-        return None
+        non_empty_chunk_list=[]
+
+        sql = "SHOW TABLES IN %s LIKE \"Object\_%%\";" % self._dbName 
+        self.logger.info("SQL : %s " % sql)
+        self._cursor.execute(sql)
+        rows = self._cursor.fetchall()
+
+        for row in rows:
+            self.logger.debug("Chunk table found : %s" % row)
+            pattern = re.compile(r"^Object_([0-9]+)$")
+            m = pattern.match(row[0])
+            if m:
+                chunk_id = m.group(1)
+                non_empty_chunk_list.append(chunk_id)
+                self.logger.debug("Chunk number : %s" % chunk_id)
+
+        return non_empty_chunk_list
 
     def loadPartitionedTable(self, table, schemaFile, data_filename):
 
@@ -347,7 +361,7 @@ class QservTestsRunner():
 
         insert_sql =  "insert into LSST__{1} SELECT {2}Id, chunkId, subChunkId from {0}.{1}_%s;\n".format(self._dbName,table,table.lower())
 
-        chunk_id_list=[80, 98, 100, 118]
+        chunk_id_list=self.getNonEmptyChunkIds()
 
         for chunkId in chunk_id_list :
             tmp =  insert_sql % chunkId
@@ -363,9 +377,10 @@ class QservTestsRunner():
         out = commons.run_command(sql_cmd)
         self.logger.info("%s table for empty chunk created, and meta Loaded : %s" % (table,out))
 
-        # Create xrootd directories (inspired from fixExportDirs.sh)
-        self.init_worker_xrd_dirs()
+        # Create xrootd query directories
+        self.init_worker_xrd_dirs(chunk_id_list)
 
+        # Create etc/emptychunk.txt
         empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
         f=open(empty_chunks_filename,"w")
         empty_chunks_list=[i for i in range(7201) if i not in chunk_id_list]
@@ -402,8 +417,6 @@ class QservTestsRunner():
 # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_80"
 # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_98"
 
-# DONE ABOVE
-
 # ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test register qservTest_case01_q Object Source
 # ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test -b /u1/qserv/xrootd-run export qservTest_case01_q
 
@@ -412,11 +425,12 @@ class QservTestsRunner():
         raw_input("Press Enter to continue...")
 
 
-    def init_worker_xrd_dirs(self):
+    def init_worker_xrd_dirs(self, non_empty_chunk_id_list):
 
         # match oss.localroot in etc/lsp.cf
         xrootd_run_dir = os.path.join(self.config['qserv']['base_dir'],'xrootd-run')
 
+        # TODO : read 'q' and 'result' in etc/lsp.cf
         xrd_query_dir = os.path.join(xrootd_run_dir, 'q', self._dbName) 
         xrd_result_dir = os.path.join(xrootd_run_dir, 'result') 
 
@@ -426,32 +440,9 @@ class QservTestsRunner():
         os.makedirs(xrd_query_dir)
         self.logger.info("Making placeholders")
 
-        mysql_cmd = " ".join([self.mysql_bin, 
-                               '--socket', self.config['mysqld']['sock'],
-                               '-u', self.config['mysqld']['user'], 
-                               '-p'+self.config['mysqld']['pass']
-                               ])
-
-        cmd =  "echo \"show tables in {0};\" | {1} | grep Object_ | sed \"s#Object_\(.*\)#touch {2}/\\1;#\" | sh --verbose".format(self._dbName, mysql_cmd, xrd_query_dir)
-
-        self.logger.debug("Running : %s" % cmd)
-        os.system(cmd)
-
-        emptychunk_xrd_dir =  os.path.join(xrd_query_dir,"1234567890")
-        cmd = "touch %s" % emptychunk_xrd_dir
-        self.logger.debug("Running : %s" % cmd)
-        os.system(cmd)
-
-        #zero_dir =  os.path.join(xrd_query_dir,"0")
-        #cmd = "touch %s" % zero_dir
-        #self.logger.debug("Running : %s" % cmd)
-        #os.system(cmd)
-
-        # WARNING : no data in this chunk, is it usefull ??
-        #emptychunk_xrd_dir =  os.path.join(xrd_query_dir,"0")
-        #cmd = "touch %s" % emptychunk_xrd_dir
-        #self.logger.debug("Running : %s" % cmd)
-        #os.system(cmd)
+        for id in non_empty_chunk_id_list:
+            xrd_file = os.path.join(xrd_query_dir,id)
+            open(xrd_file, 'w').close() 
 
         if os.path.exists(xrd_result_dir):
             self.logger.info("Emptying existing xrootd result dir : %s" % xrd_result_dir)
@@ -498,10 +489,12 @@ class QservTestsRunner():
         for mode in options.mode:
             self._mode=mode
 
-            if (self._mode=='mysql'):
-                self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
-            else:
-                self._dbName = "LSST"
+            self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
+
+            #if (self._mode=='mysql'):
+            #    self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
+            #else:
+            #    self._dbName = "LSST"
             self.loadData()     
             self.runQueries(options.stop_at)
 
