@@ -107,7 +107,7 @@ class QservTestsRunner():
             withQserv = True
         else:
             withQserv = False
-        myOutDir = os.path.join(self._out_dirname, self._mode)
+        myOutDir = os.path.join(self._out_dirname, "outputs",self._mode)
         if not os.access(myOutDir, os.F_OK):
             os.makedirs(myOutDir)
             # because mysqld will write there
@@ -199,6 +199,7 @@ class QservTestsRunner():
         self.initQservDatabases()
 
         self.connect2Db()
+
         self.logger.info("Loading data from %s" % self._input_dirname)
         files = os.listdir(self._input_dirname)
         for f in files:
@@ -212,8 +213,7 @@ class QservTestsRunner():
                 # uncompress data file into temp location
                 # TODO : use a pipe instead of a tempfile
                 tmp_suffix = (".%s.tsv" % tableName)
-                tmp_dir = self.config['qserv']['tmp_dir']
-                tmp = tempfile.NamedTemporaryFile(suffix=tmp_suffix, dir=tmp_dir,delete=False)
+                tmp = tempfile.NamedTemporaryFile(suffix=tmp_suffix, dir=self._out_dirname,delete=False)
                 tmp_data_file = tmp.name
                 
                 #cmd = "gunzip -c %s > %s" % ( zipped_data_file, tmp_data_file)
@@ -487,6 +487,11 @@ class QservTestsRunner():
 
         #if not os.access(self._out_dirname, os.F_OK):
         #    os.makedirs(self._out_dirname)
+
+        # cleanup of previous tests
+        if os.path.exists(self._out_dirname):
+            shutil.rmtree(self._out_dirname)
+        os.makedirs(self._out_dirname)
 
         for mode in options.mode:
             self._mode=mode
