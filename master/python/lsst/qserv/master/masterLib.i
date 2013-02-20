@@ -44,6 +44,14 @@ Access to the classes from the qserv_master library
 #include "lsst/qserv/master/common.h"
 %}
 
+
+%module("threads"=1, package="lsst.qserv.meta") masterLib
+%{
+#define SWIG_FILE_WITH_INIT
+#include "lsst/qserv/meta/initMeta.h"
+%}
+
+
 // %include "lsst/p_lsstSwig.i"
 %include typemaps.i
 %include cstring.i

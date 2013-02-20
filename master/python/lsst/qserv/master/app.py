@@ -63,6 +63,8 @@ from lsst.qserv.master.geometry import SphericalConvexPolygon, convexHull
 from lsst.qserv.master.db import TaskDb as Persistence
 from lsst.qserv.master.db import Db
 from lsst.qserv.master import protocol
+from lsst.qserv.meta.status import Status, QmsException
+from lsst.qserv.meta.client import Client
 
 # SWIG'd functions
 
@@ -90,6 +92,9 @@ from lsst.qserv.master import ChunkMapping, SqlSubstitution
 # Merger
 from lsst.qserv.master import TableMerger, TableMergerError, TableMergerConfig
 from lsst.qserv.master import configureSessionMerger, getSessionResultName
+
+# Metadata
+from lsstq.serv.meta import addDbInfo
 
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
@@ -1040,6 +1045,52 @@ class CheckAction:
         t = self.tracker.task(id)
         if t: 
             self.results = 50 # placeholder. 50%
+
+########################################################################
+class MetadataMgr:
+    """MetadataMgr encapsulates logic to prepare, metadata information
+       by fetching it from qserv metadata server into c++ memory 
+       structure."""
+    def __init__(self, metaId):
+        self._metaId = metaId
+        self._client = Client(config.config.get("metaServer", "host"),
+                              config.config.get("metaServer", "port"),
+                              config.config.get("metaServer", "user"),
+                              config.config.get("metaServer", "pass"))
+
+    def fetchAllData(self):
+        dbs = self._client.listDbs()
+        for db in dbs:
+            # retrieve info about each db
+            x = self._client.retrieveDbInfo(db)
+            # convert it to values acceptable by c++
+            if "psName" in x:
+                isPartitioned = '1'
+                nStripes = x["stripes"]
+                nSubStripes = x["subStripes"]
+                defOverlapF = x["defaultOverlap_fuzziness"]
+                defOverlapNN = x["defaultOverlap_nearNeigh"]
+            else:
+                isPartitioned = '0'
+                nStripes = 0
+                nSubStripes = 0
+                defOverlapF = 0
+                defOverlapNN = 0
+        # call the c++ function
+        ret = addDbInfo(qmsId, isPartitioned, nStripes, 
+                        nSubStripes, defOverlapF, defOverlapNN)
+        if ret != 0:
+            throw Exception("something went wrong...")
+
+        # then deal with each table in that database...
+        tables = listTables(db)
+        for table in tables:
+            print db, table, " - addTableInfo not implemented."
+
+
+########################################################################
+########################################################################
+########################################################################
 
 #see if it's better to not bother with an action object
 def results(tracker, handle):
