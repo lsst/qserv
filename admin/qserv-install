@@ -535,15 +535,6 @@ sub check_and_deploy_qserv {
 
 	chdir "$install_dir";
 
-	# $log_dir and mysql_data_dir are already created by qserv-init script
-        if ($log_dir ne "$install_dir/var/log") {
-                create_symlink ($log_dir,"$install_dir/var/log");
-        }
-	
-        if ($mysql_data_dir ne "$install_dir/var/lib/mysql") {
-                create_symlink ($mysql_data_dir,"$install_dir/var/lib/mysql");
-        }
-
 	if (length($src_dir) > 0) {
 		if (-e "$src_dir")  {
 			create_symlink ($src_dir,"$install_dir/qserv");

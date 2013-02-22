@@ -10,7 +10,7 @@ import SCons.Node.FS
 def exists_and_is_writable(dir) :
     """
     Test if a dir exists. If no creates it, if yes checks if it is writeable.
-    Return a boolean
+    Return True if a writeable directory exists at the end of function execution, else False
     """
     logger = logging.getLogger()
     logger.debug("Checking existence and write access for : %s", dir)
@@ -28,6 +28,7 @@ def recursive_glob(dir_path,pattern,env):
     has_files = env.Glob(os.path.join(dir_path,'*'))
     if has_files:
         files += env.Glob(os.path.join(dir_path,pattern))
+        # Analyzing sub-directories
         files += recursive_glob(os.path.join(dir_path,"*"),pattern,env)
     return files
 
@@ -43,7 +44,6 @@ def replace_base_path(path_to_remove, path_to_add, scons_fs_node,env):
                         % scons_fs_node)
     
     source_node_name=str(scons_fs_node)
-    print("Source : %s" % source_node_name)
     path_to_remove = os.path.normpath(path_to_remove)
 
     if source_node_name.find(path_to_remove)!=0:
