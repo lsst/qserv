@@ -94,7 +94,9 @@ from lsst.qserv.master import TableMerger, TableMergerError, TableMergerConfig
 from lsst.qserv.master import configureSessionMerger, getSessionResultName
 
 # Metadata
-from lsstq.serv.meta import addDbInfo
+from lsst.qserv.master import newMetadataSession, discardMetadataSession
+from lsst.qserv.master import addDbInfoNonPartitioned
+from lsst.qserv.master import addDbInfoPartitioned
 
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
@@ -1047,40 +1049,35 @@ class CheckAction:
             self.results = 50 # placeholder. 50%
 
 ########################################################################
-class MetadataMgr:
-    """MetadataMgr encapsulates logic to prepare, metadata information
+class MetadataCache:
+    """MetadataCache encapsulates logic to prepare, metadata information
        by fetching it from qserv metadata server into c++ memory 
        structure."""
-    def __init__(self, metaId):
-        self._metaId = metaId
-        self._client = Client(config.config.get("metaServer", "host"),
-                              config.config.get("metaServer", "port"),
-                              config.config.get("metaServer", "user"),
-                              config.config.get("metaServer", "pass"))
+    def __init__(self):
+        self._metaSessionId = newMetadataSession()
+        self._qmsClient = Client(
+            lsst.qserv.master.config.config.get("metaServer", "host"),
+            lsst.qserv.master.config.config.get("metaServer", "port"),
+            lsst.qserv.master.config.config.get("metaServer", "user"),
+            lsst.qserv.master.config.config.get("metaServer", "pass"))
 
     def fetchAllData(self):
-        dbs = self._client.listDbs()
+        dbs = self._qmsClient.listDbs()
         for db in dbs:
             # retrieve info about each db
-            x = self._client.retrieveDbInfo(db)
-            # convert it to values acceptable by c++
+            x = self._qmsClient.retrieveDbInfo(db)
+            # call the c++ function
             if "psName" in x:
-                isPartitioned = '1'
-                nStripes = x["stripes"]
-                nSubStripes = x["subStripes"]
-                defOverlapF = x["defaultOverlap_fuzziness"]
-                defOverlapNN = x["defaultOverlap_nearNeigh"]
+                ret = addDbInfoPartitioned(
+                    self._metaSessionId, db,
+                    int(x["stripes"]), 
+                    int(x["subStripes"]), 
+                    float(x["defaultOverlap_fuzziness"]), 
+                    float(x["defaultOverlap_nearNeigh"]))
             else:
-                isPartitioned = '0'
-                nStripes = 0
-                nSubStripes = 0
-                defOverlapF = 0
-                defOverlapNN = 0
-        # call the c++ function
-        ret = addDbInfo(qmsId, isPartitioned, nStripes, 
-                        nSubStripes, defOverlapF, defOverlapNN)
-        if ret != 0:
-            throw Exception("something went wrong...")
+                ret = addDbInfoNonPartitioned(self._metaSessionId, db);
+            if ret != 0:
+                raise Exception("something went wrong...")
 
         # then deal with each table in that database...
         tables = listTables(db)

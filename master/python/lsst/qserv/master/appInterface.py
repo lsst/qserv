@@ -140,6 +140,11 @@ class AppInterface:
         r = a.getResult()
         return r
 
+    def initMetadataCache(self):
+        """Initialize metadata cache.""" 
+        m = app.MetadataCache()
+        m.fetchAllData()
+
     def help(self):
         """A brief help message showing available commands"""
         r = "" ## self._handyHeader()

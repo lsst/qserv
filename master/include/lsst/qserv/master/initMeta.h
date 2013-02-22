@@ -20,25 +20,19 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/// dispatcher.h - main interface to be exported via SWIG for the
-/// frontend's Python layer to initiate subqueries and join them.
- 
+
 #ifndef LSST_QSERV_META_INITMETA_H
 #define LSST_QSERV_META_INITMETA_H
 
 namespace lsst {
 namespace qserv {
-namespace meta {
+namespace master {
 
-int addDbInfoNonPartitioned(int metaInfoId, char* dbName);
-
-int addDbInfoPartitioned(int metaInfoId, char* dbName, 
-                         int nStripes,
-                         int nSubStripes,
-                         float defOverlapF,
-                         float defOverlapNN);
-
- // plus a similar one for addTableInfo...
+int newMetadataSession();
+void discardMetadataSession(int);
+int addDbInfoNonPartitioned(int, char*);
+int addDbInfoPartitioned(int, char*, int, int, float, float);
+// plus a similar one for addTableInfo...
 
 }}}
 

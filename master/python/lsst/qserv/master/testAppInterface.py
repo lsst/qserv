@@ -85,7 +85,10 @@ class TestAppInterface(unittest.TestCase):
 
     def testCountQuery(self):
         tryCountQuery()
-                         
+
+    def testInitMetadataCache(self):
+        app.initMetadataCache()
+
     def _makeBadHint(self):
         "This should be randomized."
         d = {"I":32,"like":44,"peaches,":66, 
@@ -106,3 +109,4 @@ class TestAppInterface(unittest.TestCase):
             return x
         except:
             return None
+

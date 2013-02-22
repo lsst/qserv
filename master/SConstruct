@@ -190,7 +190,11 @@ dispatchSrcs = map(lambda x: os.path.join('src', x),
                     "WorkQueue.cc",
                     "Timer.cc"])
 
-srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs
+metadataSrcs = map(lambda x: os.path.join('src', x),
+                   ["MetadataCache.cc",
+                    "initMeta.cc"])
+
+srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs + metadataSrcs
 
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
              'srcPaths' : dispatchSrcs + [os.path.join('src',
