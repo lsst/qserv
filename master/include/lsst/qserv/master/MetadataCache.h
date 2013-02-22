@@ -77,8 +77,8 @@ public:
         bool getIsPartitioned() const { return _isPartitioned; }
         int getNStripes() const { return _nStripes; }
         int getNSubStripes() const { return _nSubStripes; }
-        int getDefOverlapF() const { return _defOverlapF; }
-        int getDefOverlapNN() const { return _defOverlapNN; }
+        float getDefOverlapF() const { return _defOverlapF; }
+        float getDefOverlapNN() const { return _defOverlapNN; }
     private:
         const bool _isPartitioned;
         const int _nStripes;         // invalid for non partitioned tables
