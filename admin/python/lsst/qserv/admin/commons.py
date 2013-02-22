@@ -144,6 +144,7 @@ def file_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
  
     return logger
 
+
 def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, logger_name=None) :
     """ Run a shell command
 
@@ -215,4 +216,41 @@ def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, l
         sys.exit(1)
 
 
+
+def run_backgroundCommand(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, logger_name=None):
+
+    logger = logging.getLogger(logger_name)
+
+    cmd_str= " ".join(cmd_args)
+    logger.info("Running :\n---\n\t%s\n---" % cmd_str)
+
+    sin = None
+    if stdin_file != None:
+        logger.debug("stdin file : %s" % stdout_file)
+        sin=open(stdin_file,"r")
+
+    sout = None
+    if stdout_file != None:
+        logger.debug("stdout file : %s" % stdout_file)
+        sout=open(stdout_file,"w")
+    else: 
+        sout=subprocess.PIPE
+    
+    serr = None
+    if stderr_file != None:
+        logger.debug("stderr file : %s" % stderr_file)
+        serr=open(stderr_file,"w")
+    else:
+        serr=subprocess.PIPE
+        
+    try :
+        pid = subprocess.Popen( cmd_args, stdin=sin, stdout=sout, stderr=serr ).pid
+
+    except OSError as e:
+        logger.fatal("Error : %s while running command : %s" %
+                     (e,cmd_str))
+        sys.exit(1)
+    except ValueError as e:
+        logger.fatal("Invalid parameter : '%s' for command : %s " % (e,cmd_str))
+        sys.exit(1)
 

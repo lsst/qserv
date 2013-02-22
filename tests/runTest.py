@@ -29,6 +29,7 @@
 import ConfigParser
 import MySQLdb as sql
 from  lsst.qserv.admin import commons
+import SQLReader
 import logging
 import optparse
 import os
@@ -38,12 +39,192 @@ import stat
 import sys
 import tempfile
 
+import SQLSchema
+
+# ------------------------------------------------------------
+
+import SQLSchema
+import SQLInterface
+import re
+import os
+
+
+
+def convertSchemaFile(tableName, schemaFile, newSchemaFile, schemaDict):
+    
+    mySchema = SQLSchema.SQLSchema(tableName)    
+    mySchema.read(schemaFile)    
+    mySchema.deleteField("`_chunkId`")
+    mySchema.deleteField("`_subChunkId`")
+    # mySchema.replaceField("`chunkId`","`dummy1`") 
+    # mySchema.replaceField("`subChunkId`","`dummy2`") 
+    mySchema.addField("`chunkId`", "int(11)", ("DEFAULT", "NULL"))
+    mySchema.addField("`subChunkId`", "int(11)", ("DEFAULT", "NULL"))
+    
+    if (tableName == "Object"):
+        mySchema.deletePrimaryKey()
+        mySchema.createIndex("`obj_objectid_idx`", "Object", "`objectId`")
+
+    mySchema.write(newSchemaFile)
+    schemaDict[tableName]=mySchema
+    
+    return mySchema
+
+
+def findAllDataInStripes():
+  """ Find all files like stripe_<stripeId>/<name>_<chunkId>.csv """
+
+  result = []
+  stripeRegexp = re.compile("^stripe_(.*)")
+  chunkRegexp = re.compile("(.*)_(.*).csv")
+  
+  for (dirpath, dirnames, filenames) in os.walk(stripeDir):
+    stripeMatching = stripeRegexp.match(os.path.basename(dirpath))
+    if (stripeMatching is not None):
+      stripeId = stripeMatching.groups()
+      for filename in filenames:
+        chunkMatching = chunkRegexp.match(filename)
+        if (chunkMatching is not None):
+           name, chunkId = chunkMatching.groups()
+           result.append((stripeDir, dirpath, filename, name, chunkId))
+
+  return result
+
+
+def createSQLLoadFile(tableName, filename):
+  overlapRegexp = re.compile("^Object\S+Overlap")
+  
+  with open(filename, 'w') as outfile:
+    chunksList = []
+    for (stripeDir, dirpath, filename, name, chunkId) in findAllDataInStripes():
+      basedir = os.path.basename(dirpath)
+      if (name == tableName):
+        chunksList.append(chunkId)
+        outfile.write("DROP TABLE IF EXISTS %s_%s;\n" % (name, chunkId))
+        outfile.write("CREATE TABLE IF NOT EXISTS %s_%s LIKE %s;\n" % (name, chunkId, tableName))
+        outfile.write("LOAD DATA INFILE '%s%s/%s' IGNORE INTO TABLE %s_%s FIELDS TERMINATED BY ',';\n" % (stripeDir, basedir, filename, name, chunkId))
+      if (tableName == "Object") and (overlapRegexp.match(name) is not None):
+        outfile.write("CREATE TABLE IF NOT EXISTS %s_%s LIKE %s;\n" % (name, chunkId, tableName))
+        outfile.write("LOAD DATA INFILE '%s%s/%s' INTO TABLE %s_%s FIELDS TERMINATED BY ',';\n" % (stripeDir, basedir, filename, name, chunkId))
+
+    # Seulement pour les tables Object et Source :
+    outfile.write("CREATE TABLE IF NOT EXISTS %s_1234567890 LIKE %s;\n" % (tableName, tableName))
+
+  return set(chunksList)
+      
+
+def createEmptyChunksFile(stripes, chunksSet, filename):
+  emptyChunks = set(range(0, 2 * stripes * stripes)) - chunksSet
+  emptyChunksSorted = sorted(emptyChunks)
+  with open(filename, 'w') as outfile:
+    for chunk in emptyChunksSorted:
+      outfile.write("%i\n" % chunk)
+
+      
+def createSetupFile(filename):
+  MySQLProxyPort = self.config['mysql_proxy']['port']
+  password = self.config['mysqld']['pass']
+  socketFile = self.config['mysqld']['sock']
+  with open(filename, 'w') as outfile:
+    outfile.write("host:localhost\n")
+    outfile.write("port:%i\n" % MySQLProxyPort)
+    outfile.write("user:%s\n" % username)
+    outfile.write("pass:%s\n" % password)
+    outfile.write("sock:%s\n" % socketFile) 
+    
+
+
+
+# Douglas perl code in Python
+# def loadData(tableName, schemaFile):
+#   database = "LSST"
+#   metaDatabase = "qservMeta"
+#   sqlInteface = initSQL(database)
+#   schemaFileBasename = os.path.basename(schemaFile)
+#   installdir = self.config['qserv']['base_dir']
+#   tmpdir = self.config['qserv']['tmp_dir']
+#   stripes = self.config['qserv']['stripes']
+#   newSchemaFile = os.path.join(tmpdir, schemaFileBasename)
+#   SQLLoadFile = os.path.join(tmpdir, "load_" + schemaFileBasename)
+#   emptyChunksFilename = os.path.join(installdir, "etc", "emptyChunks.txt")
+#   setupFilename = os.path.join(installdir, "etc", "setup.cnf")
+#   
+#   createDatabaseIfNotExists(sqlInterface, database)
+#   grantAllRightsOnDatabaseTo(database, "'*'@'*'")
+#   dropDatabaseIfExists(sqlInterface, metaDatabase)
+#   createDatabase(sqlInterface, metaDatabase)
+#                              
+#   convertSchemaFile(tableName, schemaFile, newSchemaFile)
+#   chunks = createSQLLoadFile(tableName, SQLLoadFile)
+#   sqlInteface.executeFromFile(newSchemaFile)
+#   sqlInteface.executeFromFile(SQLLoadFile)
+#   createEmptyChunksFile(stripes, chunks, emptyChunksFilename)
+#   createSetupFile(setupFilename)
+#   runfixExportDir()
+#   # a remplacer avec self.init_worker_xrd_dirs(chunks)
+
+
+  
+# loadData("Object", "/data/lsst/pt11/Object.sql")
+
+# ----------------------------------------
+
+# TODO: do we have to drop old schema if it exists ?  
+def loadSchema(sqlInteface, directory, table, schemaSuffix, schemaDict):
+  partitionnedTables = ["Object", "Source"]
+  schemaFile = directory + "/" + table + "." + schemaSuffix
+  if table in partitionnedTables:      
+    newSchemaFile = directory + "/" + table + "_converted" + "." + schemaSuffix
+    convertSchemaFile(table, schemaFile, newSchemaFile, schemaDict)
+    sqlInteface.executeFromFileWithMySQLCLient(newSchemaFile)
+    os.unlink(newSchemaFile)
+  else:
+    sqlInteface.executeFromFile(schemaFile)
+
+      
+# TODO: suffixes management (CSV, TSV, GZ, etc.)
+# def loadData(sqlInteface, directory, table, dataSuffixList):
+#   filename = directory + table + ".".join(dataSuffixList)
+#   if (dataSuffixList != []):
+#     suffix = dataSuffixList.pop()
+#     if (suffix == "gz"):
+#       newFilename = directory + table + ".".join(dataSuffixList)
+#       gunzip(filename, newFilename)
+#       # TODO: filename could be a fifo (from mkfifo) but then gunzip should run from background
+#       loadData(directory, table, dataSuffixList)
+#       os.unlink(newFilename)
+#     elif (suffix == "csv"):
+#       SQL_query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',';\n"  % (filename, table)
+#       sqlInteface.execute(SQL_query)
+#     elif (suffix == "tsv"):
+#       SQL_query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s;\n"  % (filename, table)
+#       sqlInteface.execute(SQL_query)
+  
+# ------------------------------------------------------------
+
+def getSchemaFiles(dirname):
+  files = os.listdir(dirname)
+  result = []
+  for file in files:
+    if file.endswith('.schema'):
+      result.append(file)
+  return result
+
+
+def gunzip(filename, output = None):
+  if (output is None):
+    commons.run_command(["gunzip", filename])
+  else:
+    commons.run_command(["gunzip", "-c", filename], stdout_file=output)
+
 
 class QservTestsRunner():
 
     def __init__(self, logging_level=logging.DEBUG ):
         self.logger = commons.console_logger(logging_level)
-
+        self._schemaDict = dict()
+    
+        
     def configure(self, config_dir, case_id, out_dirname, log_file_prefix='qserv-tests' ):
         
         if config_dir is None:
@@ -98,7 +279,7 @@ class QservTestsRunner():
     #def setDb(self):
 
     def disconnect(self):
-        self.logger.info("Disconnecting from DB")
+        self.logger.info("Disconnecting manually from DB")
         self._cursor.close()
         self._conn.close()
 
@@ -144,38 +325,56 @@ class QservTestsRunner():
                     #qText += " INTO OUTFILE '%s'" % outFile
                     self.logger.info("Running %s: %s\n" % (qFN, qText))
                     self.runQueryInShell(qText, outFile)
+                    # self._sqlInterface.executeFromFileWithMySQLCLient(query_filename, outFile)
 
-    def runQueryInShell(self, qText, out_file):
-        if self._mode == 'qserv':
-            #cmd = "mysql --port %i --host %s --batch -u%s -p%s %s -e \"%s\" > %s" % \
-            #    (self._qservPort, self._qservHost, self._user, self._password, self._dbName, qText, outFile)
+    def runQueryInShell(self, query, out_file = None):
+        interfaces = self._interfaces
+        mode = self._mode
+        interface = interfaces[mode]
+        self.logger.info("SQL query %s for mode %s launched" % (query, mode))
+        interface.executeWithMySQLCLient(query, out_file)
 
-            execute_query_cmd = [
-                self.mysql_bin, 
-                '--port', str(self.config['mysql_proxy']['port']),
-                '--host', self.config['qserv']['master'],
-                '-u', self.config['qserv']['user'], 
-                '--batch',
-                self._dbName,
-                '-e', qText
-                ]
-        else:
-            #cmd = "mysql --socket=%s --batch -u%s -p%s %s -e \"%s\" > %s" % \
-            #    (self._socket, self._user, self._password, self._dbName, qText, outFile)
-            execute_query_cmd = [
-                self.mysql_bin, 
-                '--socket', self.config['mysqld']['sock'],
-                '-u', self.config['mysqld']['user'], 
-                '-p'+self.config['mysqld']['pass'],
-                '--batch',
-                self._dbName,
-                '-e', qText
-                ]
+                         
+    def initSQLInterface(self, database):
+        self.logger.info("initSQLInterface with database %s" % database)
+        mysql_client = os.path.join(self.config['qserv']['bin_dir'],'mysql')
+        username = self.config['mysqld']['user']
+        password = self.config['mysqld']['pass']
+        socketFile = self.config['mysqld']['sock']
 
-        commons.run_command(execute_query_cmd, stdout_file=out_file)
-        self.logger.info("SQL query for mode %s launched"
-                % self._mode)
+        qserv_user = self.config['qserv']['user']
+        qserv_host = self.config['qserv']['master']
+        qserv_database = self.config['qserv']['database']
+        qserv_port = self.config['mysql_proxy']['port']
+        port = str(self.config['mysql_proxy']['port'])
 
+        self.logger.info("initSQLInterface mysql client = %s" % mysql_client)        
+        self.logger.info("initSQLInterface socketFile = %s" % socketFile)
+        
+        # /opt/qserv-dev/bin/mysql --port 4040 --host clrlsst-dbwkr2.in2p3.fr -u qsmaster --batch LSST -e ...
+        qserv_sqlInterface = SQLInterface.SQLInterface(mysql_client,
+                                                       logger = self.logger,
+                                                       user = qserv_user,
+                                                       socket = socketFile,
+                                                       host = qserv_host,
+                                                       port = qserv_port,
+                                                       database = qserv_database)
+
+        # /opt/qserv-dev/bin/mysql --socket /opt/qserv-dev/var/lib/mysql/mysql.sock -u root -pchangeme qservTest_case01_mysql -e ...
+        mysql_sqlInterface = SQLInterface.SQLInterface(mysql_client,
+                                                       logger = self.logger,
+                                                       user = username,
+                                                       socket = socketFile,
+                                                       password = password,
+                                                       database = database)
+                                                       
+                         
+        self._interfaces = {'qserv': qserv_sqlInterface,
+                            'mysql': mysql_sqlInterface }
+        
+        self._sqlInterface = mysql_sqlInterface
+
+        
     def initQservDatabases(self): 
         self.logger.info("Initializing databases %s, qservMeta" % self._dbName)
         self.connectNoDb()
@@ -190,7 +389,8 @@ class QservTestsRunner():
         self._cursor.execute("DROP DATABASE IF EXISTS qservMeta")
         self._cursor.execute("CREATE DATABASE qservMeta;\n")
         self.disconnect()
-
+    
+        
     # creates database and load all tables caseXX/data/
     # schema should be in <table>.schema
     # data should be in <table>.tsv.gz
@@ -202,60 +402,53 @@ class QservTestsRunner():
 
         self.logger.info("Loading data from %s" % self._input_dirname)
         files = os.listdir(self._input_dirname)
-        for f in files:
-            if f.endswith('.schema'):
-                tableName = f[:-7]
-                schemaFile = os.path.join(self._input_dirname, f)
-                zipped_data_file = os.path.join(self._input_dirname, "%s.tsv.gz" % tableName)
-                # check if the corresponding data file exists
-                if not os.path.exists(zipped_data_file):
-                    raise Exception, "File: '%s' not found" %  zipped_data_file
-                # uncompress data file into temp location
-                # TODO : use a pipe instead of a tempfile
-                tmp_suffix = (".%s.tsv" % tableName)
-                tmp = tempfile.NamedTemporaryFile(suffix=tmp_suffix, dir=self._out_dirname,delete=False)
-                tmp_data_file = tmp.name
-                
-                #cmd = "gunzip -c %s > %s" % ( zipped_data_file, tmp_data_file)
-                gunzip_cmd = [
-                    "gunzip",
-                    "-c", zipped_data_file
-                    ]
 
-                self.logger.info("  Uncompressing: %s" %  zipped_data_file)
-                commons.run_command(gunzip_cmd, stdout_file=tmp_data_file)
-                # load the table. Note, how we do it depends
-                # whether we load to plain mysql or qserv
-                # remove temporary file
-                # treat Object and Source differently, they need to be partitioned
-                if self._mode == 'qserv' and (tableName == 'Object' or tableName == 'Source'):
-                    self.loadPartitionedTable(tableName, schemaFile, tmp_data_file)
-                else:
-                    self.loadRegularTable(tableName, schemaFile, tmp_data_file)
+        schemaFiles = getSchemaFiles(self._input_dirname)
+        
+        for f in schemaFiles:
+            tableName = f[:-7]
+            schemaFile = os.path.join(self._input_dirname, f)
+            zipped_data_file = os.path.join(self._input_dirname, "%s.tsv.gz" % tableName)
+            # check if the corresponding data file exists
+            if not os.path.exists(zipped_data_file):
+                raise Exception, "File: '%s' not found" %  zipped_data_file
+            # uncompress data file into temp location
+            # TODO : use a pipe instead of a tempfile
+            
+            tmp_suffix = (".%s.tsv" % tableName)
+            tmp = tempfile.NamedTemporaryFile(suffix=tmp_suffix, dir=self._out_dirname,delete=False)
+            tmp_data_file = tmp.name
+
+            if os.path.exists(tmp_data_file):
                 os.unlink(tmp_data_file)
-        self.disconnect()
+                
+            # os.mkfifo(tmp_data_file)
+            
+            self.logger.info(" ./Uncompressing: %s into %s" %  (zipped_data_file, tmp_data_file))
+            gunzip(zipped_data_file, tmp_data_file)
 
-    def loadRegularTable(self, tableName, schemaFile, dataFile):
-        # load schema
-        cmd = "mysql --socket=%s -u%s -p%s %s < %s" % \
-            (self._socket, self._user, self._password, self._dbName, schemaFile)
+            self.logger.info("Loading schema of %s" % tableName)
+            loadSchema(self._sqlInterface, self._input_dirname, tableName, "schema", self._schemaDict)
 
-        load_schema_cmd = [
-            self.mysql_bin, 
-            '--socket', self.config['mysqld']['sock'],
-            '-u', self.config['mysqld']['user'], 
-            '-p'+self.config['mysqld']['pass'],
-            self._dbName,
-            '-e', 'Source %s' %  schemaFile
-        ]
+            # load the table. Note, how we do it depends
+            # whether we load to plain mysql or qserv
+            # remove temporary file
+            # treat Object and Source differently, they need to be partitioned
+            if self._mode == 'qserv' and (tableName == 'Object' or tableName == 'Source'):
+                self.loadPartitionedTable(tableName, schemaFile, tmp_data_file)
+            else:
+                self.loadRegularTable(tableName, schemaFile, tmp_data_file)
 
-        self.logger.info("Loading schema %s" % schemaFile)
-        commons.run_command(load_schema_cmd)
-        # load data
-        q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % \
-            (dataFile, tableName)
-        self.logger.info("Loading data:  %s" % q)
-        self._cursor.execute(q)
+            os.unlink(tmp_data_file)
+#TODO
+#self.disconnect()
+
+    def loadRegularTable(self, tableName, schemaFile, dataFile):        
+        self._sqlInterface.executeFromFileWithMySQLCLient(schemaFile)
+        query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % (dataFile, tableName)
+        self.logger.info("Loading data:  %s" % dataFile)
+        self._sqlInterface.executeWithMySQLCLient(query)
+        
 
     def getNonEmptyChunkIds(self):
         non_empty_chunk_list=[]
@@ -317,16 +510,34 @@ class QservTestsRunner():
 
         data_config = dict()
         data_config['Object']=dict()
-        data_config['Object']['ra-column'] = 2
-        data_config['Object']['decl-column'] = 4
+        data_config['Object']['ra-column'] = self._schemaDict['Object'].indexOf("`ra_PS`")
+        data_config['Object']['decl-column'] = self._schemaDict['Object'].indexOf("`decl_PS`")
+        
+        # zero-based index
+
+        # FIXME : return 229 instead of 227
+        #data_config['Object']['chunk-column-id'] = self._schemaDict['Object'].indexOf("`chunkId`") -2
+        
+        # for test case01
+        #data_config['Object']['ra-column'] = 2
+        #data_config['Object']['decl-column'] = 4
         data_config['Object']['chunk-column-id'] = 227
+
         data_config['Source']=dict()
         # Source will be placed on the same chunk that its related Object
-        data_config['Source']['ra-column'] = 33
-        data_config['Source']['decl-column'] = 34
+        data_config['Source']['ra-column'] = self._schemaDict['Source'].indexOf("`raObject`")
+        data_config['Source']['decl-column'] = self._schemaDict['Source'].indexOf("`declObject`")
+
+        # for test case01
+        #data_config['Source']['ra-column'] = 33
+        #data_config['Source']['decl-column'] = 34
+
         # chunkId and subChunkId will be added
         data_config['Source']['chunk-column-id'] = None
 
+        
+        self.logger.debug("Data configuration : %s" % data_config)
+        
         # load schema
         load_schema_cmd = [
             self.mysql_bin, 
@@ -343,7 +554,7 @@ class QservTestsRunner():
         # TODO : create index and alter table with chunkId and subChunkId
         # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
 
-        # partition data       
+        # partition data          
         partition_dirname = os.path.join(self._out_dirname,table+"_partition")
         if os.path.exists(partition_dirname):
             shutil.rmtree(partition_dirname)
@@ -368,6 +579,7 @@ class QservTestsRunner():
         partition_data_cmd.append(data_filename)
 
         out = commons.run_command(partition_data_cmd)
+        
         self.logger.info("Test case%s LSST %s data partitioned : \n %s"
                 % (self._case_id, table,out))
 
@@ -496,13 +708,19 @@ class QservTestsRunner():
         for mode in options.mode:
             self._mode=mode
 
-            self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
-
+            self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)            
+            
             if (self._mode=='qserv'):
                 self._dbName= 'LSST'
 
+            self.logger.info("Creation of a SQL Interface")
+            self.initSQLInterface(self._dbName)
+            
             self.loadData()     
             self.runQueries(options.stop_at)
+
+    def __del__(self):
+        self.logger.info("Calling  destructor for QservTestsRunner()")
 
 def main():
 

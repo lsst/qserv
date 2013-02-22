@@ -25,8 +25,11 @@ def createTableReader(state, tokens, fileID):
         state["current"] = "epilogue"
         return None
       else:
+        # Remove comma at the line end 
+        line = line.partition(",")[0]
+        lineSplitted = line.split()
         accumulator.append(lineSplitted)
-  return None
+  raise Exception, "SQLReader: missing ')' in CREATE TABLE"
     
 def reader(filename):
     transitionFunctionDict = {"--": comment,
@@ -50,8 +53,8 @@ def reader(filename):
                 transitionFunction = transitionFunctionDict[headToken]
                 transitionFunction(state, lineSplitted, myfile)
             else:
-                print "Missing token in transition function: %s" % headToken
-                return None
+                raise Exception, "SQLReader: Missing token in transition function: %s" % headToken
+
     myfile.close()
     return state
 

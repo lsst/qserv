@@ -8,8 +8,6 @@
 import SQLReader
 import operator
 
-def backquote(str):
-  return "`" + str + "`"
 
 class SQLSchema():
     """Schema class for management of SQL schema"""
@@ -43,7 +41,8 @@ class SQLSchema():
       self._index = (indexName, tableName, fieldName)
 
     def deleteField(self, fieldName):
-      del self._fields[fieldName]
+      if (fieldName in  self._fields):
+        del self._fields[fieldName]
     
     def replaceField(self, oldFieldName, newFieldName):
       if (oldFieldName in self._fields):
@@ -57,11 +56,11 @@ class SQLSchema():
         return "%s %s" % ( dataType, " ".join(constraints) )
     
     def addField(self, fieldName, dataType, constraints = None):
-      self._arity = self._arity + 1
       fieldSpecification = self._createFieldString(fieldName,
                                                    dataType,
                                                    constraints)
       self._fields[fieldName] = ( self._arity, fieldSpecification )
+      self._arity = self._arity + 1
 
     def convertSQLToSchema(self, SQLSchema):
       for line in SQLSchema:
@@ -97,16 +96,21 @@ class SQLSchema():
       	
       	sortedFields = sorted(self._fields.iteritems(),
       	                      key=operator.itemgetter(1))
-      	
+
+        fieldsStrList = []
       	for (fieldName, (index, specification)) in sortedFields:
-      	  outfile.write("  %s %s\n" % (fieldName, specification))
-      	  
+          fieldsStrList.append("  %s %s" % (fieldName, specification))
+
       	if (self._primaryKey is not None):
-      	  outfile.write("  PRIMARY KEY  %s\n" % self._primaryKey)
+      	  fieldsStrList.append("  PRIMARY KEY  %s" % self._primaryKey)
 
         for key in self._keys:
-          outfile.write("  KEY %s %s\n" % key)
+          fieldsStrList.append("  KEY %s %s" % key)
           
+        fieldsStr = " ,\n".join(fieldsStrList)
+        outfile.write(fieldsStr)
+        outfile.write("\n")
+        
       	outfile.write(" ".join(self._engine))
       	outfile.write("\n")
         
