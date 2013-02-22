@@ -1,6 +1,7 @@
 import io
 import os
 import logging
+import re
 import subprocess 
 import sys 
 import ConfigParser
@@ -77,6 +78,12 @@ def read_config(config_file, default_config_file):
     config[section] = dict()
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
+
+    # normalize directoriesames
+    for section in config.keys():
+        for option in config[section].keys():
+            if re.match(".*_dir",option):
+                config[section][option] = os.path.normpath(config[section][option])
 
     return config 
 

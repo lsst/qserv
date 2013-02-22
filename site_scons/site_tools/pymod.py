@@ -8,9 +8,6 @@ def install_python_module(env, target,source):
     """ Define targets which will install all python file contained in 
         source_dir_path and sub-directories in python_path_prefix.
     """  
-
-    print "DEBUG"
-
     python_path_prefix=target
     source_dir_path=source 
     target_dir_path=distutils.sysconfig.get_python_lib(prefix=python_path_prefix)
