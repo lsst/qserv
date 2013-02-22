@@ -31,7 +31,9 @@ namespace master {
 int newMetadataSession();
 void discardMetadataSession(int);
 int addDbInfoNonPartitioned(int, char*);
-int addDbInfoPartitioned(int, char*, int, int, float, float);
+int addDbInfoPartitionedSphBox(int, char*, int, int, float, float);
+void printCachedMetadata(int);
+    
 // plus a similar one for addTableInfo...
 
 }}}

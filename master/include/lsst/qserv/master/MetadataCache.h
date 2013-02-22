@@ -42,7 +42,7 @@ class MetadataCache {
 public:
     typedef boost::shared_ptr<MetadataCache> Ptr;
     int addDbInfoNonPartitioned(std::string const&);
-    int addDbInfoPartitioned(std::string const&, int, int, float, float);
+    int addDbInfoPartitionedSphBox(std::string const&, int, int, float, float);
     void printSelf() const;
 
     class TableInfo {

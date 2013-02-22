@@ -96,7 +96,8 @@ from lsst.qserv.master import configureSessionMerger, getSessionResultName
 # Metadata
 from lsst.qserv.master import newMetadataSession, discardMetadataSession
 from lsst.qserv.master import addDbInfoNonPartitioned
-from lsst.qserv.master import addDbInfoPartitioned
+from lsst.qserv.master import addDbInfoPartitionedSphBox
+from lsst.qserv.master import printCachedMetadata
 
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
@@ -1057,7 +1058,7 @@ class MetadataCache:
         self._metaSessionId = newMetadataSession()
         self._qmsClient = Client(
             lsst.qserv.master.config.config.get("metaServer", "host"),
-            lsst.qserv.master.config.config.get("metaServer", "port"),
+            int(lsst.qserv.master.config.config.get("metaServer", "port")),
             lsst.qserv.master.config.config.get("metaServer", "user"),
             lsst.qserv.master.config.config.get("metaServer", "pass"))
 
@@ -1067,23 +1068,30 @@ class MetadataCache:
             # retrieve info about each db
             x = self._qmsClient.retrieveDbInfo(db)
             # call the c++ function
-            if "psName" in x:
-                ret = addDbInfoPartitioned(
+            if x["partitioningStrategy"] == "sphBox":
+                #print "add partitioned, ", db, x
+                ret = addDbInfoPartitionedSphBox(
                     self._metaSessionId, db,
                     int(x["stripes"]), 
                     int(x["subStripes"]), 
                     float(x["defaultOverlap_fuzziness"]), 
                     float(x["defaultOverlap_nearNeigh"]))
+            elif x["partitioningStrategy"] == "None":
+                #print "add non partitioned, ", db
+                ret = addDbInfoNonPartitioned(self._metaSessionId, db)
             else:
-                ret = addDbInfoNonPartitioned(self._metaSessionId, db);
+                raise Exception("Not supported partitioning strategy: %s" % \
+                                    x["partitioningStrategy"])
             if ret != 0:
                 raise Exception("something went wrong...")
 
         # then deal with each table in that database...
-        tables = listTables(db)
+        tables = self._qmsClient.listTables(db)
         for table in tables:
             print db, table, " - addTableInfo not implemented."
 
+    def printCachedMetadata(self):
+        printCachedMetadata(self._metaSessionId)
 
 ########################################################################
 ########################################################################

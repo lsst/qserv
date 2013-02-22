@@ -389,11 +389,7 @@ class MetaImpl:
         ret = self._mdb.execCommandN("SELECT dbName FROM DbMeta")
         if not ret:
             return "No databases found"
-        s = StringIO.StringIO()
-        for r in ret:
-            s.write(r[0])
-            s.write(' ')
-        return s.getvalue()
+        return [x[0] for x in ret]
 
     ###########################################################################
     #### createTable

@@ -28,10 +28,10 @@ namespace qMaster = lsst::qserv::master;
 
 qMaster::MetadataCache::DbInfo::DbInfo() :
     _isPartitioned(false),
-    _nStripes(0),
-    _nSubStripes(0),
-    _defOverlapF(0),
-    _defOverlapNN(0) {
+    _nStripes(-1),
+    _nSubStripes(-1),
+    _defOverlapF(-1),
+    _defOverlapNN(-1) {
 }
 
 qMaster::MetadataCache::DbInfo::DbInfo(int nStripes, int nSubStripes,
@@ -75,23 +75,24 @@ qMaster::MetadataCache::addDbInfoNonPartitioned(std::string const& dbName) {
 }
 
 int
-qMaster::MetadataCache::addDbInfoPartitioned(std::string const& dbName,
-                                             int nStripes,
-                                             int nSubStripes,
-                                             float defOverlapF,
-                                             float defOverlapNN) {
+qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
+                                                   int nStripes,
+                                                   int nSubStripes,
+                                                   float defOverlapF,
+                                                   float defOverlapNN) {
     if (containsDb(dbName)) {
         return -1; // the dbInfo already exists
     }
-    DbInfo dbInfo = DbInfo(nStripes, nSubStripes, defOverlapF, defOverlapNN);
+    DbInfo dbInfo(nStripes, nSubStripes, defOverlapF, defOverlapNN);
     _dbs.insert(std::pair<std::string, DbInfo> (dbName, dbInfo));
     return 0; // success
 }
 
 void
 qMaster::MetadataCache::printSelf() const {
+    std::cout << "\n\nMetadata Cache in C++:" << std::endl;
     std::map<std::string, DbInfo>::const_iterator itr;
-    for ( ; itr!= _dbs.end() ; ++itr) {
+    for (itr=_dbs.begin() ; itr!= _dbs.end() ; ++itr) {
         std::cout << "db: " << itr->first << ": " << itr->second << "\n";
     }
     std::cout << std::endl;
@@ -115,7 +116,7 @@ qMaster::operator<<(std::ostream &s, const qMaster::MetadataCache::DbInfo &dbInf
     }
     s << "  Tables:";
     std::map<std::string, qMaster::MetadataCache::TableInfo>::const_iterator itr;
-    for ( ; itr!= dbInfo._tables.end(); ++itr) {
+    for (itr=dbInfo._tables.begin() ; itr!= dbInfo._tables.end(); ++itr) {
         s << "   " << itr->first << ": " << itr->second << "\n";
     }
     return s;

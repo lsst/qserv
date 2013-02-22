@@ -144,6 +144,7 @@ class AppInterface:
         """Initialize metadata cache.""" 
         m = app.MetadataCache()
         m.fetchAllData()
+        m.printCachedMetadata()
 
     def help(self):
         """A brief help message showing available commands"""

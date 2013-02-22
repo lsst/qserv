@@ -73,12 +73,17 @@ qMaster::addDbInfoNonPartitioned(int metaSessionId,
 }
 
 int
-qMaster::addDbInfoPartitioned(int metaSessionId,
-                              char* dbName,
-                              int nStripes,
-                              int nSubStripes,
-                              float defOverlapF,
-                              float defOverlapNN) {
-    return getMetadataCache(metaSessionId).addDbInfoPartitioned(dbName,
+qMaster::addDbInfoPartitionedSphBox(int metaSessionId,
+                                    char* dbName,
+                                    int nStripes,
+                                    int nSubStripes,
+                                    float defOverlapF,
+                                    float defOverlapNN) {
+    return getMetadataCache(metaSessionId).addDbInfoPartitionedSphBox(dbName,
                        nStripes, nSubStripes, defOverlapF, defOverlapNN);
+}
+
+void
+qMaster::printCachedMetadata(int metaSessionId) {
+    getMetadataCache(metaSessionId).printSelf();
 }
