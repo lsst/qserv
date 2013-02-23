@@ -43,27 +43,36 @@ public:
     typedef boost::shared_ptr<MetadataCache> Ptr;
     int addDbInfoNonPartitioned(std::string const&);
     int addDbInfoPartitionedSphBox(std::string const&, int, int, float, float);
+    int addTbInfoNonPartitioned(std::string const&, std::string const&);
+    int addTbInfoPartitionedSphBox(std::string const&, std::string const&,
+                                   float, std::string const&, std::string const&, 
+                                   int, int, int, int);
     void printSelf() const;
 
     class TableInfo {
     public:
         // constructors
         TableInfo();
-        TableInfo(float, std::string const&, std::string const&, int, int);
+        TableInfo(float, std::string const&, std::string const&, 
+                  int, int, int, int);
         // accessors
         bool getIsPartitioned() const { return _isPartitioned; }
         float getOverlap() const { return _overlap; }
         std::string getPhiCol() const { return _phiCol; }
         std::string getThetaCol() const { return _thetaCol; }
-        int getLogicalPart() const { return _logicalPart; }
-        int getPhysPart() const { return _physPart; }
+        int getPhiColNo() const { return _phiColNo; }
+        int getThetaColNo() const { return _thetaColNo; }
+        long getLogicalPart() const { return _logicalPart; }
+        long getPhysChunking() const { return _physChunking; }
     private:
         const bool _isPartitioned;
         const float _overlap;        // invalid for non partitioned tables
         const std::string _phiCol;   // invalid for non partitioned tables
         const std::string _thetaCol; // invalid for non partitioned tables
-        const int _logicalPart;      // invalid for non partitioned tables
-        const int _physPart;         // invalid for non partitioned tables
+        const int _phiColNo;         // invalid for non partitioned tables
+        const int _thetaColNo;       // invalid for non partitioned tables
+        const long _logicalPart;     // invalid for non partitioned tables
+        const long _physChunking;    // invalid for non partitioned tables
         // friendship
         friend std::ostream& operator<<(std::ostream&, const TableInfo&);
     };
@@ -73,6 +82,8 @@ public:
         // constructors
         DbInfo();
         DbInfo(int, int, float, float);
+        // modifiers
+        int addTable(std::string const&, const TableInfo&);
         // accessors
         bool getIsPartitioned() const { return _isPartitioned; }
         int getNStripes() const { return _nStripes; }
@@ -91,6 +102,7 @@ public:
     };
 
 private:
+    // selectors
     bool containsDb(std::string const&) const;
 
 private:

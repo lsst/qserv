@@ -97,6 +97,8 @@ from lsst.qserv.master import configureSessionMerger, getSessionResultName
 from lsst.qserv.master import newMetadataSession, discardMetadataSession
 from lsst.qserv.master import addDbInfoNonPartitioned
 from lsst.qserv.master import addDbInfoPartitionedSphBox
+from lsst.qserv.master import addTbInfoNonPartitioned
+from lsst.qserv.master import addTbInfoPartitionedSphBox
 from lsst.qserv.master import printCachedMetadata
 
 # Experimental interactive prompt (not currently working)
@@ -1064,34 +1066,60 @@ class MetadataCache:
 
     def fetchAllData(self):
         dbs = self._qmsClient.listDbs()
-        for db in dbs:
-            # retrieve info about each db
-            x = self._qmsClient.retrieveDbInfo(db)
-            # call the c++ function
-            if x["partitioningStrategy"] == "sphBox":
-                #print "add partitioned, ", db, x
-                ret = addDbInfoPartitionedSphBox(
-                    self._metaSessionId, db,
-                    int(x["stripes"]), 
-                    int(x["subStripes"]), 
-                    float(x["defaultOverlap_fuzziness"]), 
-                    float(x["defaultOverlap_nearNeigh"]))
-            elif x["partitioningStrategy"] == "None":
-                #print "add non partitioned, ", db
-                ret = addDbInfoNonPartitioned(self._metaSessionId, db)
-            else:
-                raise Exception("Not supported partitioning strategy: %s" % \
-                                    x["partitioningStrategy"])
-            if ret != 0:
-                raise Exception("something went wrong...")
-
-        # then deal with each table in that database...
-        tables = self._qmsClient.listTables(db)
-        for table in tables:
-            print db, table, " - addTableInfo not implemented."
+        for dbName in dbs:
+            partStrategy = self._addDb(dbName);
+            tables = self._qmsClient.listTables(dbName)
+            for tableName in tables:
+                self._addTable(dbName, tableName, partStrategy)
 
     def printCachedMetadata(self):
         printCachedMetadata(self._metaSessionId)
+
+    def _addDb(self, dbName):
+        # retrieve info about each db
+        x = self._qmsClient.retrieveDbInfo(dbName)
+        # call the c++ function
+        if x["partitioningStrategy"] == "sphBox":
+            #print "add partitioned, ", db, x
+            ret = addDbInfoPartitionedSphBox(
+                self._metaSessionId, dbName,
+                int(x["stripes"]), 
+                int(x["subStripes"]), 
+                float(x["defaultOverlap_fuzziness"]), 
+                float(x["defaultOverlap_nearNeigh"]))
+        elif x["partitioningStrategy"] == "None":
+            #print "add non partitioned, ", db
+            ret = addDbInfoNonPartitioned(self._metaSessionId, dbName)
+        else:
+            raise Exception("Not supported partitioning strategy: %s" % \
+                                x["partitioningStrategy"])
+        if ret != 0:
+            raise Exception("something went wrong when adding db...")
+        return x["partitioningStrategy"]
+
+    def _addTable(self, dbName, tableName, partStrategy):
+        # retrieve info about each db
+        x = self._qmsClient.retrieveTableInfo(dbName, tableName)
+        # call the c++ function
+        if partStrategy == "sphBox":
+            ret = addTbInfoPartitionedSphBox(
+                self._metaSessionId, 
+                dbName,
+                tableName, 
+                float(x["overlap"]),
+                x["phiCol"],
+                x["thetaCol"],
+                int(x["phiColNo"]),
+                int(x["thetaColNo"]),
+                int(x["logicalPart"]),
+                int(x["physChunking"]))
+        elif partStrategy == "None":
+            ret = addTbInfoNonPartitioned(self._metaSessionId, dbName, tableName)
+        else:
+            raise Exception("Not supported partitioning strategy: %s" % \
+                                x["partitioningStrategy"])
+        if ret != 0:
+            raise Exception("something went wrong when adding table...")
 
 ########################################################################
 ########################################################################

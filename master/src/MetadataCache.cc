@@ -43,26 +43,42 @@ qMaster::MetadataCache::DbInfo::DbInfo(int nStripes, int nSubStripes,
     _defOverlapNN(defOverlapNN) {
 }
 
+int
+qMaster::MetadataCache::DbInfo::addTable(std::string const& tbName, const TableInfo& tbInfo) {
+    std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tbName);
+    if (itr != _tables.end()) {
+        return -2; // the table is already there
+    }
+    _tables.insert(std::pair<std::string, TableInfo> (tbName, tbInfo));
+    return 0;
+}
+
 qMaster::MetadataCache::TableInfo::TableInfo() :
     _isPartitioned(false),
-    _overlap(0),
-    _phiCol(""),
-    _thetaCol(""),
-    _logicalPart(0),
-    _physPart(0) {
+    _overlap(-1),
+    _phiCol("invalid"),
+    _thetaCol("invalid"),
+    _phiColNo(-1),
+    _thetaColNo(-1),
+    _logicalPart(-1),
+    _physChunking(-1) {
 }
 
 qMaster::MetadataCache::TableInfo::TableInfo(float overlap, 
                                              std::string const& phiCol,
                                              std::string const& thetaCol,
+                                             int phiColNo,
+                                             int thetaColNo,
                                              int logicalPart,
-                                             int physPart) :
+                                             int physChunking) :
     _isPartitioned(true),
     _overlap(overlap),
     _phiCol(phiCol),
     _thetaCol(thetaCol),
+    _phiColNo(phiColNo),
+    _thetaColNo(thetaColNo),
     _logicalPart(logicalPart),
-    _physPart(physPart) {
+    _physChunking(physChunking) {
 }
 
 int
@@ -86,6 +102,38 @@ qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
     DbInfo dbInfo(nStripes, nSubStripes, defOverlapF, defOverlapNN);
     _dbs.insert(std::pair<std::string, DbInfo> (dbName, dbInfo));
     return 0; // success
+}
+
+int
+qMaster::MetadataCache::addTbInfoNonPartitioned(std::string const& dbName,
+                                                std::string const& tbName) {
+
+    std::map<std::string, DbInfo>::iterator itr = _dbs.find(dbName);
+    if (itr == _dbs.end()) {
+        return -1; // the dbInfo does not exist
+    }
+    const qMaster::MetadataCache::TableInfo tInfo;
+    return itr->second.addTable(tbName, tInfo);
+}
+
+int
+qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName, 
+                                                   std::string const& tbName,
+                                                   float overlap, 
+                                                   std::string const& phiCol, 
+                                                   std::string const& thetaCol, 
+                                                   int phiColNo, 
+                                                   int thetaColNo, 
+                                                   int logicalPart, 
+                                                   int physChunking) {
+    std::map<std::string, DbInfo>::iterator itr = _dbs.find(dbName);
+    if (itr == _dbs.end()) {
+        return -1; // the dbInfo does not exist
+    }
+    const qMaster::MetadataCache::TableInfo tInfo(
+                          overlap, phiCol, thetaCol, phiColNo, 
+                          thetaColNo, logicalPart, physChunking);
+    return itr->second.addTable(tbName, tInfo);
 }
 
 void
@@ -128,8 +176,10 @@ qMaster::operator<<(std::ostream &s, const qMaster::MetadataCache::TableInfo &ta
         s << "is partitioned (overlap=" << tableInfo.getOverlap()
           << ", phiCol=" << tableInfo.getPhiCol()
           << ", thetaCol=" << tableInfo.getThetaCol()
+          << ", phiColNo=" << tableInfo.getPhiColNo()
+          << ", thetaColNo=" << tableInfo.getThetaColNo()
           << ", logPart=" << tableInfo.getLogicalPart()
-          << ", physPart=" << tableInfo.getPhysPart() << ").\n";
+          << ", physChunking=" << tableInfo.getPhysChunking() << ").\n";
     } else {
         s << "is not partitioned.\n";
     }

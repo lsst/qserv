@@ -588,7 +588,7 @@ class MetaImpl:
             values["phiColNo"]     = ret[4]
             values["thetaColNo"]   = ret[5]
             values["logicalPart"]  = ret[6]
-            values["physChunking"] = hex(ret[7])
+            values["physChunking"] = ret[7]
         else:
             cmd = "SELECT clusteredIdx FROM TableMeta WHERE tableId=%s" % tableId
             values["clusteredIdx"] = self._mdb.execCommand1(cmd)
