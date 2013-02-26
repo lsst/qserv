@@ -1,6 +1,8 @@
 *.swp
 *.o
 *.log
+*.pyc
+*~
 common/.sconf_temp/
 common/include/
 common/lib/

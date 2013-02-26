@@ -61,7 +61,6 @@ class SQLConnection():
         return self.execute(sql)
       else:
         raise Exception, "File: '%s' not found" % filename
-        
 
 # ----------------------------------------
 #    

@@ -83,77 +83,6 @@ def findAllDataInStripes():
 
   return result
 
-
-def createSQLLoadFile(tableName, filename):
-  overlapRegexp = re.compile("^Object\S+Overlap")
-  
-  with open(filename, 'w') as outfile:
-    chunksList = []
-    for (stripeDir, dirpath, filename, name, chunkId) in findAllDataInStripes():
-      basedir = os.path.basename(dirpath)
-      if (name == tableName):
-        chunksList.append(chunkId)
-        outfile.write("DROP TABLE IF EXISTS %s_%s;\n" % (name, chunkId))
-        outfile.write("CREATE TABLE IF NOT EXISTS %s_%s LIKE %s;\n" % (name, chunkId, tableName))
-        outfile.write("LOAD DATA INFILE '%s%s/%s' IGNORE INTO TABLE %s_%s FIELDS TERMINATED BY ',';\n" % (stripeDir, basedir, filename, name, chunkId))
-      if (tableName == "Object") and (overlapRegexp.match(name) is not None):
-        outfile.write("CREATE TABLE IF NOT EXISTS %s_%s LIKE %s;\n" % (name, chunkId, tableName))
-        outfile.write("LOAD DATA INFILE '%s%s/%s' INTO TABLE %s_%s FIELDS TERMINATED BY ',';\n" % (stripeDir, basedir, filename, name, chunkId))
-
-    # Seulement pour les tables Object et Source :
-    outfile.write("CREATE TABLE IF NOT EXISTS %s_1234567890 LIKE %s;\n" % (tableName, tableName))
-
-  return set(chunksList)
-      
-      
-#def createSetupFile(filename):
-#  MySQLProxyPort = self.config['mysql_proxy']['port']
-#  password = self.config['mysqld']['pass']
-#  socketFile = self.config['mysqld']['sock']
-#  with open(filename, 'w') as outfile:
-#    outfile.write("host:localhost\n")
-#    outfile.write("port:%i\n" % MySQLProxyPort)
-#    outfile.write("user:%s\n" % username)
-#    outfile.write("pass:%s\n" % password)
-#    outfile.write("sock:%s\n" % socketFile) 
-    
-
-
-
-# Douglas perl code in Python
-# def loadData(tableName, schemaFile):
-#   database = "LSST"
-#   metaDatabase = "qservMeta"
-#   sqlInteface = initSQL(database)
-#   schemaFileBasename = os.path.basename(schemaFile)
-#   installdir = self.config['qserv']['base_dir']
-#   tmpdir = self.config['qserv']['tmp_dir']
-#   stripes = self.config['qserv']['stripes']
-#   newSchemaFile = os.path.join(tmpdir, schemaFileBasename)
-#   SQLLoadFile = os.path.join(tmpdir, "load_" + schemaFileBasename)
-#   emptyChunksFilename = os.path.join(installdir, "etc", "emptyChunks.txt")
-#   setupFilename = os.path.join(installdir, "etc", "setup.cnf")
-#   
-#   createDatabaseIfNotExists(sqlInterface, database)
-#   grantAllRightsOnDatabaseTo(database, "'*'@'*'")
-#   dropDatabaseIfExists(sqlInterface, metaDatabase)
-#   createDatabase(sqlInterface, metaDatabase)
-#                              
-#   convertSchemaFile(tableName, schemaFile, newSchemaFile)
-#   chunks = createSQLLoadFile(tableName, SQLLoadFile)
-#   sqlInteface.executeFromFile(newSchemaFile)
-#   sqlInteface.executeFromFile(SQLLoadFile)
-#   createEmptyChunksFile(stripes, chunks, emptyChunksFilename)
-#   createSetupFile(setupFilename)
-#   runfixExportDir()
-#   # a remplacer avec self.init_worker_xrd_dirs(chunks)
-
-
-  
-# loadData("Object", "/data/lsst/pt11/Object.sql")
-
-# ----------------------------------------
-
 # TODO: do we have to drop old schema if it exists ?  
 def loadSchema(sqlInterface, directory, table, schemaSuffix, schemaDict):
   partitionnedTables = ["Object", "Source"]
@@ -230,8 +159,6 @@ class QservTestsRunner():
         self._logFilePrefix = log_file_prefix
         self._sqlInterface = dict()
 
-        self.partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
-        self.load_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "loader.py")
 
         if out_dirname == None :
             out_dirname = self.config['qserv']['tmp_dir']
@@ -354,12 +281,15 @@ class QservTestsRunner():
             self.logger.info("Loading schema of %s" % tableName)
             loadSchema(self._sqlInterface, self._input_dirname, tableName, "schema", self._schemaDict)
 
+           
+
             # load the table. Note, how we do it depends
             # whether we load to plain mysql or qserv
             # remove temporary file
             # treat Object and Source differently, they need to be partitioned
             if self._mode == 'qserv' and (tableName == 'Object' or tableName == 'Source'):
-                self.loadPartitionedTable(tableName, schemaFile, tmp_data_file)
+                self.qservDataLoader._schemaDict=self._schemaDict
+                self.qservDataLoader.loadPartitionedTable(tableName, schemaFile, tmp_data_file)
             else:
                 self.loadRegularTable(tableName, schemaFile, tmp_data_file)
 
@@ -372,142 +302,6 @@ class QservTestsRunner():
         query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % (dataFile, tableName)
         self.logger.info("Loading data:  %s" % dataFile)
         self._sqlInterface['cmd'].executeWithMySQLCLient(query)
-
-    def loadPartitionedTable(self, table, schemaFile, data_filename):
-        ''' Partition and load Qserv data like Source and Object
-        '''
-
-        stripes = self.config['qserv']['stripes']
-
-        data_config = dict()
-        data_config['Object']=dict()
-        data_config['Object']['ra-column'] = self._schemaDict['Object'].indexOf("`ra_PS`")
-        data_config['Object']['decl-column'] = self._schemaDict['Object'].indexOf("`decl_PS`")
-        
-        # zero-based index
-
-        # FIXME : return 229 instead of 227
-        #data_config['Object']['chunk-column-id'] = self._schemaDict['Object'].indexOf("`chunkId`") -2
-        
-        # for test case01
-        #data_config['Object']['ra-column'] = 2
-        #data_config['Object']['decl-column'] = 4
-        data_config['Object']['chunk-column-id'] = 227
-
-        data_config['Source']=dict()
-        # Source will be placed on the same chunk that its related Object
-        data_config['Source']['ra-column'] = self._schemaDict['Source'].indexOf("`raObject`")
-        data_config['Source']['decl-column'] = self._schemaDict['Source'].indexOf("`declObject`")
-
-        # for test case01
-        #data_config['Source']['ra-column'] = 33
-        #data_config['Source']['decl-column'] = 34
-
-        # chunkId and subChunkId will be added
-        data_config['Source']['chunk-column-id'] = None
-
-        
-        self.logger.debug("Data configuration : %s" % data_config)
-        
-        # load schema
-        load_schema_cmd = [
-            self.config['bin']['mysql'], 
-            '--socket', self.config['mysqld']['sock'],
-            '-u', self.config['mysqld']['user'], 
-            '-p'+self.config['mysqld']['pass'],
-            self._dbName,
-            '-e', 'Source %s' %  schemaFile
-        ]
-
-        self.logger.info("  Loading schema %s" % schemaFile)
-        commons.run_command(load_schema_cmd)
-
-        # TODO : create index and alter table with chunkId and subChunkId
-        # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
-
-        # partition data          
-        partition_dirname = os.path.join(self._out_dirname,table+"_partition")
-        if os.path.exists(partition_dirname):
-            shutil.rmtree(partition_dirname)
-        os.makedirs(partition_dirname)
-
-        # python %s -PObject -t 2  -p 4 %s --delimiter '\t' -S 10 -s 2 --output-dir %s" % (self.partition_scriptname, data_filename, partition_dirname
-        partition_data_cmd = [
-            self.config['bin']['python'],
-            self.partition_scriptname,
-            '--output-dir', partition_dirname,
-            '--chunk-prefix', table,
-            '--theta-column', str(data_config[table]['ra-column']),
-            '--phi-column', str(data_config[table]['decl-column']),
-            '--num-stripes', self.config['qserv']['stripes'],
-            '--num-sub-stripes', self.config['qserv']['substripes'],
-            '--delimiter', '\t'
-            ]
-
-        if data_config[table]['chunk-column-id'] != None :
-             partition_data_cmd.extend(['--chunk-column', str(data_config[table]['chunk-column-id'])])
-
-        partition_data_cmd.append(data_filename)
-
-        out = commons.run_command(partition_data_cmd)
-        
-        self.logger.info("Test case%s LSST %s data partitioned : \n %s"
-                % (self._case_id, table,out))
-
-        # load partitionned data
-        # TODO : remove hard-coded param : qservTest_caseXX_mysql
-        load_partitionned_data_cmd = [
-            self.config['bin']['python'], 
-            self.load_scriptname,
-            '-u', 'root', 
-            '-p'+self.config['mysqld']['pass'],
-            '--database', self._dbName,
-            "%s:%s" %
-            (self.config['qserv']['master'],self.config['mysqld']['port']),
-            partition_dirname,
-            "qservTest_case%s_mysql.%s" % (self._case_id, table)
-        ]
-        # python master/examples/loader.py --verbose -u root -p changeme --database qservTest_case01_qserv -D clrlsst-dbmaster.in2p3.fr:13306 /opt/qserv-dev/tmp/Object_partition/ qservTest_case01_mysql.Object
-        out = commons.run_command(load_partitionned_data_cmd)
-        self.logger.info("Partitioned %s data loaded : %s" % (table,out))
-
-        # mysql -u<u> -p<p> qservTest_case01_qserv -e "create table Object_1234567890 like Object_100"
-        
-        # sql = "CREATE DATABASE IF NOT EXISTS LSST;"
-        sql = "USE {0};\n".format(self._dbName)
-        sql +=  "CREATE TABLE {0}_1234567890 LIKE {0}_100;\n".format(table)
-        sql += "USE qservMeta;\n"
-        sql += "CREATE TABLE LSST__{0} ({1}Id BIGINT NOT NULL PRIMARY KEY, x_chunkId INT, x_subChunkId INT);\n".format(table, table.lower())
-
-        insert_sql =  "INSERT INTO LSST__{1} SELECT {2}Id, chunkId, subChunkId FROM {0}.{1}_%s;\n".format(self._dbName,table,table.lower())
-
-        chunk_id_list=self.qservDataLoader.getNonEmptyChunkIds()
-
-        self.logger.info("Non empty data chunks list : %s " %  str(chunk_id_list))
-
-        for chunkId in chunk_id_list :
-            tmp =  insert_sql % chunkId
-            sql += "\n" + tmp
-
-        sql_cmd = [
-            self.config['bin']['mysql'], 
-            '-S', self.config['mysqld']['sock'],
-            '-u', 'root', 
-            '-p'+self.config['mysqld']['pass'],
-            '-e', sql
-        ]
-        out = commons.run_command(sql_cmd)
-        self.logger.info("%s table for empty chunk created, and meta loaded : %s" % (table,out))
-
-        # Create xrootd query directories
-        self.qservDataLoader.init_worker_xrd_dirs(chunk_id_list)
-
-        # Create etc/emptychunk.txt
-        empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
-        stripes=self.config['qserv']['stripes']
-        self.qservDataLoader.createEmptyChunksFile(stripes, chunk_id_list,  empty_chunks_filename)
-
-        raw_input("Qserv mono-node database filled with partitionned '%s' data.\nPress Enter to continue..." % table)
 
     def parseOptions(self):
         script_name=sys.argv[0]
@@ -569,7 +363,7 @@ class QservTestsRunner():
             elif (self._mode=='qserv'):
                 self._dbName= 'LSST'                
                 self.logger.info("Creation of a SQL Interface")
-                self.qservDataLoader = QservDataLoader.QservDataLoader(self.config, self._dbName, self._logFilePrefix)
+                self.qservDataLoader = QservDataLoader.QservDataLoader(self.config, self._dbName, self._out_dirname, self._logFilePrefix)
                 self.qservDataLoader.initDatabases()
                 self._sqlInterface['sock'] =  self.qservDataLoader._sqlInterface['sock']
                 self._sqlInterface['cmd'] =  self.qservDataLoader._sqlInterface['cmd']
