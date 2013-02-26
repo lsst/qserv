@@ -29,25 +29,20 @@
 import ConfigParser
 import MySQLdb as sql
 from  lsst.qserv.admin import commons
-import SQLReader
 import logging
 import optparse
 import os
+import QservDataLoader
 import re
 import shutil
+import SQLCmd
+import SQLConnection
+import SQLMode
+import SQLReader
+import SQLSchema
 import stat
 import sys
 import tempfile
-
-import SQLSchema
-
-# ------------------------------------------------------------
-
-import SQLSchema
-import SQLInterface
-import re
-import os
-
 
 
 def convertSchemaFile(tableName, schemaFile, newSchemaFile, schemaDict):
@@ -56,8 +51,6 @@ def convertSchemaFile(tableName, schemaFile, newSchemaFile, schemaDict):
     mySchema.read(schemaFile)    
     mySchema.deleteField("`_chunkId`")
     mySchema.deleteField("`_subChunkId`")
-    # mySchema.replaceField("`chunkId`","`dummy1`") 
-    # mySchema.replaceField("`subChunkId`","`dummy2`") 
     mySchema.addField("`chunkId`", "int(11)", ("DEFAULT", "NULL"))
     mySchema.addField("`subChunkId`", "int(11)", ("DEFAULT", "NULL"))
     
@@ -112,25 +105,17 @@ def createSQLLoadFile(tableName, filename):
 
   return set(chunksList)
       
-
-def createEmptyChunksFile(stripes, chunksSet, filename):
-  emptyChunks = set(range(0, 2 * stripes * stripes)) - chunksSet
-  emptyChunksSorted = sorted(emptyChunks)
-  with open(filename, 'w') as outfile:
-    for chunk in emptyChunksSorted:
-      outfile.write("%i\n" % chunk)
-
       
-def createSetupFile(filename):
-  MySQLProxyPort = self.config['mysql_proxy']['port']
-  password = self.config['mysqld']['pass']
-  socketFile = self.config['mysqld']['sock']
-  with open(filename, 'w') as outfile:
-    outfile.write("host:localhost\n")
-    outfile.write("port:%i\n" % MySQLProxyPort)
-    outfile.write("user:%s\n" % username)
-    outfile.write("pass:%s\n" % password)
-    outfile.write("sock:%s\n" % socketFile) 
+#def createSetupFile(filename):
+#  MySQLProxyPort = self.config['mysql_proxy']['port']
+#  password = self.config['mysqld']['pass']
+#  socketFile = self.config['mysqld']['sock']
+#  with open(filename, 'w') as outfile:
+#    outfile.write("host:localhost\n")
+#    outfile.write("port:%i\n" % MySQLProxyPort)
+#    outfile.write("user:%s\n" % username)
+#    outfile.write("pass:%s\n" % password)
+#    outfile.write("sock:%s\n" % socketFile) 
     
 
 
@@ -170,16 +155,16 @@ def createSetupFile(filename):
 # ----------------------------------------
 
 # TODO: do we have to drop old schema if it exists ?  
-def loadSchema(sqlInteface, directory, table, schemaSuffix, schemaDict):
+def loadSchema(sqlInterface, directory, table, schemaSuffix, schemaDict):
   partitionnedTables = ["Object", "Source"]
   schemaFile = directory + "/" + table + "." + schemaSuffix
   if table in partitionnedTables:      
     newSchemaFile = directory + "/" + table + "_converted" + "." + schemaSuffix
     convertSchemaFile(table, schemaFile, newSchemaFile, schemaDict)
-    sqlInteface.executeFromFileWithMySQLCLient(newSchemaFile)
+    sqlInterface['cmd'].executeFromFileWithMySQLCLient(newSchemaFile)
     os.unlink(newSchemaFile)
   else:
-    sqlInteface.executeFromFile(schemaFile)
+    sqlInterface['sock'].executeFromFile(schemaFile)
 
       
 # TODO: suffixes management (CSV, TSV, GZ, etc.)
@@ -223,7 +208,8 @@ class QservTestsRunner():
     def __init__(self, logging_level=logging.DEBUG ):
         self.logger = commons.console_logger(logging_level)
         self._schemaDict = dict()
-    
+        self.qservDataLoader = None
+
         
     def configure(self, config_dir, case_id, out_dirname, log_file_prefix='qserv-tests' ):
         
@@ -241,11 +227,11 @@ class QservTestsRunner():
         self._qservPort = self.config['mysql_proxy']['port']
         self._qservUser = self.config['qserv']['user']
         self._case_id = case_id
+        self._logFilePrefix = log_file_prefix
+        self._sqlInterface = dict()
 
         self.partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
         self.load_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "loader.py")
-        self.mysql_bin = os.path.join(self.config['qserv']['bin_dir'],'mysql')
-        self.python_bin = os.path.join(self.config['qserv']['bin_dir'],'python')
 
         if out_dirname == None :
             out_dirname = self.config['qserv']['tmp_dir']
@@ -260,6 +246,7 @@ class QservTestsRunner():
             log_path=self.config['qserv']['log_dir']
         )
 
+       
     def connectNoDb(self):
         self.logger.info("Connecting via socket"+ self._socket+ "as"+ self._user)
         self._conn = sql.connect(user=self._user,
@@ -275,8 +262,6 @@ class QservTestsRunner():
                                  unix_socket=self._socket,
                                  db=self._dbName)
         self._cursor = self._conn.cursor()
-
-    #def setDb(self):
 
     def disconnect(self):
         self.logger.info("Disconnecting manually from DB")
@@ -328,76 +313,15 @@ class QservTestsRunner():
                     # self._sqlInterface.executeFromFileWithMySQLCLient(query_filename, outFile)
 
     def runQueryInShell(self, query, out_file = None):
-        interfaces = self._interfaces
         mode = self._mode
-        interface = interfaces[mode]
         self.logger.info("SQL query %s for mode %s launched" % (query, mode))
-        interface.executeWithMySQLCLient(query, out_file)
-
-                         
-    def initSQLInterface(self, database):
-        self.logger.info("initSQLInterface with database %s" % database)
-        mysql_client = os.path.join(self.config['qserv']['bin_dir'],'mysql')
-        username = self.config['mysqld']['user']
-        password = self.config['mysqld']['pass']
-        socketFile = self.config['mysqld']['sock']
-
-        qserv_user = self.config['qserv']['user']
-        qserv_host = self.config['qserv']['master']
-        qserv_database = self.config['qserv']['database']
-        qserv_port = self.config['mysql_proxy']['port']
-        port = str(self.config['mysql_proxy']['port'])
-
-        self.logger.info("initSQLInterface mysql client = %s" % mysql_client)        
-        self.logger.info("initSQLInterface socketFile = %s" % socketFile)
-        
-        # /opt/qserv-dev/bin/mysql --port 4040 --host clrlsst-dbwkr2.in2p3.fr -u qsmaster --batch LSST -e ...
-        qserv_sqlInterface = SQLInterface.SQLInterface(mysql_client,
-                                                       logger = self.logger,
-                                                       user = qserv_user,
-                                                       socket = socketFile,
-                                                       host = qserv_host,
-                                                       port = qserv_port,
-                                                       database = qserv_database)
-
-        # /opt/qserv-dev/bin/mysql --socket /opt/qserv-dev/var/lib/mysql/mysql.sock -u root -pchangeme qservTest_case01_mysql -e ...
-        mysql_sqlInterface = SQLInterface.SQLInterface(mysql_client,
-                                                       logger = self.logger,
-                                                       user = username,
-                                                       socket = socketFile,
-                                                       password = password,
-                                                       database = database)
-                                                       
-                         
-        self._interfaces = {'qserv': qserv_sqlInterface,
-                            'mysql': mysql_sqlInterface }
-        
-        self._sqlInterface = mysql_sqlInterface
-
-        
-    def initQservDatabases(self): 
-        self.logger.info("Initializing databases %s, qservMeta" % self._dbName)
-        self.connectNoDb()
-        sql = "DROP DATABASE IF EXISTS %s" % self._dbName
-        self.logger.info(sql)
-        self._cursor.execute(sql)
-        self._cursor.execute("CREATE DATABASE %s" % self._dbName)
-        # self._cursor.execute("GRANT ALL ON %s.* TO '%s'@'*'" % (self._dbName, self._qservUser, self._qservHost))
-        self._cursor.execute("GRANT ALL ON %s.* TO '*'@'*'" % (self._dbName))
-        self._cursor.execute("USE {0};\n".format(self._dbName))
-
-        self._cursor.execute("DROP DATABASE IF EXISTS qservMeta")
-        self._cursor.execute("CREATE DATABASE qservMeta;\n")
-        self.disconnect()
+        self._sqlInterface['query'].executeWithMySQLCLient(query, out_file)
     
         
     # creates database and load all tables caseXX/data/
     # schema should be in <table>.schema
     # data should be in <table>.tsv.gz
     def loadData(self):
-
-        self.initQservDatabases()
-
         self.connect2Db()
 
         self.logger.info("Loading data from %s" % self._input_dirname)
@@ -444,66 +368,13 @@ class QservTestsRunner():
 #self.disconnect()
 
     def loadRegularTable(self, tableName, schemaFile, dataFile):        
-        self._sqlInterface.executeFromFileWithMySQLCLient(schemaFile)
+        self._sqlInterface['cmd'].executeFromFileWithMySQLCLient(schemaFile)
         query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % (dataFile, tableName)
         self.logger.info("Loading data:  %s" % dataFile)
-        self._sqlInterface.executeWithMySQLCLient(query)
-        
-
-    def getNonEmptyChunkIds(self):
-        non_empty_chunk_list=[]
-
-        sql = "SHOW TABLES IN %s LIKE \"Object\_%%\";" % self._dbName 
-        self.logger.info("SQL : %s " % sql)
-        self._cursor.execute(sql)
-        rows = self._cursor.fetchall()
-
-        for row in rows:
-            self.logger.debug("Chunk table found : %s" % row)
-            pattern = re.compile(r"^Object_([0-9]+)$")
-            m = pattern.match(row[0])
-            if m:
-                chunk_id = m.group(1)
-                non_empty_chunk_list.append(int(chunk_id))
-                self.logger.debug("Chunk number : %s" % chunk_id)
-
-        return sorted(non_empty_chunk_list)
+        self._sqlInterface['cmd'].executeWithMySQLCLient(query)
 
     def loadPartitionedTable(self, table, schemaFile, data_filename):
-        ''' Implementing next algorithm in python :
-
-        # mkdir tmp1; cd tmp1; 
-
-        # mkdir object; cd object
-        # mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Object.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM Object"
-        # python ../../master/examples/partition.py -PObject -t 2  -p  4 /tmp/Object.csv -S 10 -s 2 
-        # sudo rm /tmp/Object.csv
-
-
-        # #use the loadPartitionedObjectTables.py script to generate loadO
-        # mysql -u<u> -p<p> qservTest_case01_q < loadO
-        # mysql -u<u> -p<p> qservTest_case01_q -e "create table Object_1234567890 like Object_100"
-
-        # cd ../; mkdir source; cd source
-        # mysql -u<u> -p<p> qservTest_case01_m -e "select * INTO outfile '/tmp/Source.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY '\n' FROM Source"
-        # python ../../master/examples/partition.py -PSource -t 33 -p 34 -o 0 /tmp/Source.csv -S 10 -s 2
-        # #use the loadPartitionedSourceTables.py script to generate loadS
-        # mysql -u<u> -p<p> qservTest_case01_q < loadS
-        # mysql -u<u> -p<p> qservTest_case01_q -e "create table Source_1234567890 like Source_100"
-
-        # # this creates the objectId index
-        # mysql -u<u> -p<p> -e "create database qservMeta"
-        # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "create table LSST__Object (objectId BIGINT NOT NULL PRIMARY KEY, x_chunkId INT, x_subChunkId INT)"
-        # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_100"
-        # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_118"
-        # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_80"
-        # mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELECT objectId, chunkId, subChunkId from qservTest_case01_q.Object_98"
-
-        # ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test register qservTest_case01_q Object Source
-        # ../qserv-git-master/worker/tools/qsDbTool -a /u/sf/becla/.lsst/dbAuth.txt -i test -b /u1/qserv/xrootd-run export qservTest_case01_q
-
-        # /u/sf/danielw/ctools/bin/makeEmptyChunks.py -o /u1/qserv/qserv-run/emptyChunks_qservTest_case01_q.txt 0 7200 /u1/qserv/qserv-git-ticket1934/tmp1/object/stripe_*
-
+        ''' Partition and load Qserv data like Source and Object
         '''
 
         stripes = self.config['qserv']['stripes']
@@ -540,7 +411,7 @@ class QservTestsRunner():
         
         # load schema
         load_schema_cmd = [
-            self.mysql_bin, 
+            self.config['bin']['mysql'], 
             '--socket', self.config['mysqld']['sock'],
             '-u', self.config['mysqld']['user'], 
             '-p'+self.config['mysqld']['pass'],
@@ -562,15 +433,15 @@ class QservTestsRunner():
 
         # python %s -PObject -t 2  -p 4 %s --delimiter '\t' -S 10 -s 2 --output-dir %s" % (self.partition_scriptname, data_filename, partition_dirname
         partition_data_cmd = [
-                self.python_bin,
-                self.partition_scriptname,
-                '--output-dir', partition_dirname,
-                '--chunk-prefix', table,
-                '--theta-column', str(data_config[table]['ra-column']),
-                '--phi-column', str(data_config[table]['decl-column']),
-                '--num-stripes', self.config['qserv']['stripes'],
-                '--num-sub-stripes', self.config['qserv']['substripes'],
-                '--delimiter', '\t'
+            self.config['bin']['python'],
+            self.partition_scriptname,
+            '--output-dir', partition_dirname,
+            '--chunk-prefix', table,
+            '--theta-column', str(data_config[table]['ra-column']),
+            '--phi-column', str(data_config[table]['decl-column']),
+            '--num-stripes', self.config['qserv']['stripes'],
+            '--num-sub-stripes', self.config['qserv']['substripes'],
+            '--delimiter', '\t'
             ]
 
         if data_config[table]['chunk-column-id'] != None :
@@ -586,7 +457,7 @@ class QservTestsRunner():
         # load partitionned data
         # TODO : remove hard-coded param : qservTest_caseXX_mysql
         load_partitionned_data_cmd = [
-            self.python_bin, 
+            self.config['bin']['python'], 
             self.load_scriptname,
             '-u', 'root', 
             '-p'+self.config['mysqld']['pass'],
@@ -610,7 +481,7 @@ class QservTestsRunner():
 
         insert_sql =  "INSERT INTO LSST__{1} SELECT {2}Id, chunkId, subChunkId FROM {0}.{1}_%s;\n".format(self._dbName,table,table.lower())
 
-        chunk_id_list=self.getNonEmptyChunkIds()
+        chunk_id_list=self.qservDataLoader.getNonEmptyChunkIds()
 
         self.logger.info("Non empty data chunks list : %s " %  str(chunk_id_list))
 
@@ -619,7 +490,7 @@ class QservTestsRunner():
             sql += "\n" + tmp
 
         sql_cmd = [
-            self.mysql_bin, 
+            self.config['bin']['mysql'], 
             '-S', self.config['mysqld']['sock'],
             '-u', 'root', 
             '-p'+self.config['mysqld']['pass'],
@@ -629,42 +500,14 @@ class QservTestsRunner():
         self.logger.info("%s table for empty chunk created, and meta loaded : %s" % (table,out))
 
         # Create xrootd query directories
-        self.init_worker_xrd_dirs(chunk_id_list)
+        self.qservDataLoader.init_worker_xrd_dirs(chunk_id_list)
 
         # Create etc/emptychunk.txt
         empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
-        f=open(empty_chunks_filename,"w")
-        empty_chunks_list=[i for i in range(0,7201) if i not in chunk_id_list]
-        for i in empty_chunks_list:
-            f.write("%s\n" %i)
-        f.close()
+        stripes=self.config['qserv']['stripes']
+        self.qservDataLoader.createEmptyChunksFile(stripes, chunk_id_list,  empty_chunks_filename)
 
         raw_input("Qserv mono-node database filled with partitionned '%s' data.\nPress Enter to continue..." % table)
-
-
-    def init_worker_xrd_dirs(self, non_empty_chunk_id_list):
-
-        # match oss.localroot in etc/lsp.cf
-        xrootd_run_dir = os.path.join(self.config['qserv']['base_dir'],'xrootd-run')
-
-        # TODO : read 'q' and 'result' in etc/lsp.cf
-        xrd_query_dir = os.path.join(xrootd_run_dir, 'q', self._dbName) 
-        xrd_result_dir = os.path.join(xrootd_run_dir, 'result') 
-
-        if os.path.exists(xrd_query_dir):
-            self.logger.info("Emptying existing xrootd query dir : %s" % xrd_query_dir)
-            shutil.rmtree(xrd_query_dir)
-        os.makedirs(xrd_query_dir)
-        self.logger.info("Making placeholders")
-
-        for chunk_id in non_empty_chunk_id_list:
-            xrd_file = os.path.join(xrd_query_dir,str(chunk_id))
-            open(xrd_file, 'w').close() 
-
-        if os.path.exists(xrd_result_dir):
-            self.logger.info("Emptying existing xrootd result dir : %s" % xrd_result_dir)
-            shutil.rmtree(xrd_result_dir)
-        os.makedirs(xrd_result_dir)
 
     def parseOptions(self):
         script_name=sys.argv[0]
@@ -708,14 +551,34 @@ class QservTestsRunner():
         for mode in options.mode:
             self._mode=mode
 
-            self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)            
-            
-            if (self._mode=='qserv'):
-                self._dbName= 'LSST'
-
-            self.logger.info("Creation of a SQL Interface")
-            self.initSQLInterface(self._dbName)
-            
+            if (self._mode=='mysql'):
+                self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode) 
+                self.logger.info("Creation of a SQL Interface")
+                self._sqlInterface['cmd'] = SQLCmd.SQLCmd(config = self.config,
+                                                          mode = SQLMode.MYSQL_SOCK,
+                                                          database = self._dbName
+                                                          )
+                self._sqlInterface['sock'] = SQLConnection.SQLConnection(
+                                                          config = self.config,
+                                                          mode = SQLMode.MYSQL_SOCK,
+                                                          database = self._dbName
+                                                          )
+                self._sqlInterface['query'] = self._sqlInterface['cmd']
+                
+                
+            elif (self._mode=='qserv'):
+                self._dbName= 'LSST'                
+                self.logger.info("Creation of a SQL Interface")
+                self.qservDataLoader = QservDataLoader.QservDataLoader(self.config, self._dbName, self._logFilePrefix)
+                self.qservDataLoader.initDatabases()
+                self._sqlInterface['sock'] =  self.qservDataLoader._sqlInterface['sock']
+                self._sqlInterface['cmd'] =  self.qservDataLoader._sqlInterface['cmd']
+                self._sqlInterface['query'] = SQLCmd.SQLCmd(config = self.config,
+                                                          mode = SQLMode.MYSQL_PROXY,
+                                                          database = self._dbName
+                                                          )
+                
+    
             self.loadData()     
             self.runQueries(options.stop_at)
 

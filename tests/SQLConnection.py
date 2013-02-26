@@ -1,34 +1,29 @@
+import logging
 import MySQLdb as sql
 import os.path
 import sys
 from  lsst.qserv.admin import commons
 
-# TODO: replace all SQL by SQLInterface    
-class SQLInterface():
-    """ SQLInterface is a class for managing SQL connection and executing queries"""
-    
+# TODO: replace all SQL by SQLConnection    
+class SQLConnection():
+    """ SQLConnection is a class for managing SQL connection and executing queries"""
     def __init__(self,
-                 mysql_client,
-                 user,                 
-                 database,
-                 password = None, 
-                 socket = None,
-                 host = None,
-                 port = None,
-                 logger = None):
+                 config, 
+                 mode,
+                 database):
       
-        self.logger = logger
-        self.logger.info("SQLInterface creation ")
+        self.logger = logging.getLogger()
+        self.logger.info("SQLConnection creation ")
 
 
         socket_connection_params = { 
-          'user': user,
+          'user': config['mysqld']['user'],
           'db' : database,
-          'unix_socket' : socket
+          'unix_socket' : config['mysqld']['sock'],
           }
 
-        if (password is not None):
-           socket_connection_params['passwd']=password
+        if (config['mysqld']['pass'] is not None):
+           socket_connection_params['passwd']=config['mysqld']['pass']
 
         #if (socket is not None):
         #  socket_connection_params['unix_socket']=socket
@@ -36,42 +31,18 @@ class SQLInterface():
         try :
           self._connection = sql.connect(**socket_connection_params)
         except:
-          self.logger.fatal("SQL connection error")
+          self.logger.fatal("SQL connection error %s" % socket_connection_params )
           sys.exit(1)
 
         self._cursor = None
-
-        mysql_cmd = [ mysql_client ]
-        
-        if (host is not None):
-          mysql_cmd.append('--host=%s' % host)
-          
-        if (port is not None):
-          mysql_cmd.append('--port=%s'% port)
-
-        if (user is not None):
-          mysql_cmd.append('--user=%s' % user)
-
-        if (socket is not None):
-          mysql_cmd.append('--socket=%s' % socket)
-
-        if (password is not None):
-          mysql_cmd.append('--password=%s'% password)
-          
-        if (database is not None):
-          mysql_cmd.append(database)
-
-        mysql_cmd.append("--batch")
-        mysql_cmd.append("-e")
-        
-        self._mysql_cmd = mysql_cmd
-        
+       
+    # TODO the mysqldb destructor should close the connection when object is deleted
     def __del__(self):
-        self.logger.info("SQLInterface: Calling destructor %s" % self._mysql_cmd)
+        self.logger.info("SQLConnection: Calling destructor, and closing connection")
         self._connection.close()
 
     def disconnect(self):
-        self.logger.info("SQLInterface: disconnecting")
+        self.logger.info("SQLConnection: disconnecting")
         self._connection.close()
         
     def execute(self, query):
@@ -85,23 +56,11 @@ class SQLInterface():
     def executeFromFile(self, filename):
       if os.path.exists(filename):
         # What a pity: SOURCE doesn't work with MySQLdb !
-        self.logger.info("SQLInterface.executeFromFile:  %s" % filename)
+        self.logger.info("SQLConnection.executeFromFile:  %s" % filename)
         sql = open(filename).read()
         return self.execute(sql)
       else:
         raise Exception, "File: '%s' not found" % filename
-
-    def executeWithMySQLCLient(self, query, stdout = None):
-      """ Some queries cannot run correctly through MySQLdb, so we must use MySQL client instead """
-      self.logger.info("SQLInterface.executeWithMySQLCLient:  %s" % query)
-      commandLine = self._mysql_cmd + [query]
-      commons.run_command(commandLine, stdout_file=stdout)
-      
-    def executeFromFileWithMySQLCLient(self, filename, stdout = None):
-      """ Some queries cannot run correctly through MySQLdb, so we must use MySQL client instead """
-      self.logger.info("SQLInterface.executeFromFile:  %s" % filename)
-      commandLine = self._mysql_cmd + ["SOURCE %s" % filename]
-      commons.run_command(commandLine, stdout_file=stdout)
         
 
 # ----------------------------------------

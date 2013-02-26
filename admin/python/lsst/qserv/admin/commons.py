@@ -79,11 +79,15 @@ def read_config(config_file, default_config_file):
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
 
-    # normalize directoriesames
+    # normalize directories names
     for section in config.keys():
         for option in config[section].keys():
             if re.match(".*_dir",option):
                 config[section][option] = os.path.normpath(config[section][option])
+       
+    config['bin'] = dict()         
+    config['bin']['mysql'] = os.path.join(config['qserv']['bin_dir'],'mysql')
+    config['bin']['python'] = os.path.join(config['qserv']['bin_dir'],'python')
 
     return config 
 
