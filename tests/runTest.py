@@ -90,7 +90,7 @@ def loadSchema(sqlInterface, directory, table, schemaSuffix, schemaDict):
   if table in partitionnedTables:      
     newSchemaFile = directory + "/" + table + "_converted" + "." + schemaSuffix
     convertSchemaFile(table, schemaFile, newSchemaFile, schemaDict)
-    sqlInterface['cmd'].executeFromFileWithMySQLCLient(newSchemaFile)
+    sqlInterface['cmd'].executeFromFile(newSchemaFile)
     os.unlink(newSchemaFile)
   else:
     sqlInterface['sock'].executeFromFile(schemaFile)
@@ -149,16 +149,9 @@ class QservTestsRunner():
             default_config_file_name=os.path.join(config_dir,"qserv-build.default.conf")
             self.config = commons.read_config(config_file_name, default_config_file_name)
 
-        self._user = self.config['mysqld']['user']
-        self._password = self.config['mysqld']['pass']
-        self._socket = self.config['mysqld']['sock']
-        self._qservHost = self.config['qserv']['master']
-        self._qservPort = self.config['mysql_proxy']['port']
-        self._qservUser = self.config['qserv']['user']
         self._case_id = case_id
         self._logFilePrefix = log_file_prefix
         self._sqlInterface = dict()
-
 
         if out_dirname == None :
             out_dirname = self.config['qserv']['tmp_dir']
@@ -166,34 +159,16 @@ class QservTestsRunner():
 
         qserv_tests_dirname = os.path.join(self.config['qserv']['base_dir'],'qserv','tests',"case%s" % self._case_id)
         self._input_dirname = os.path.join(qserv_tests_dirname,'data')
+        
+        # TODO rename SQLMode
+        self.data_config = SQLMode.readDataConfig(self._input_dirname)
+
         self._queries_dirname = os.path.join(qserv_tests_dirname,"queries") 
 
         self.logger = commons.file_logger(
             log_file_prefix,
             log_path=self.config['qserv']['log_dir']
         )
-
-       
-    def connectNoDb(self):
-        self.logger.info("Connecting via socket"+ self._socket+ "as"+ self._user)
-        self._conn = sql.connect(user=self._user,
-                                 passwd=self._password,
-                                 unix_socket=self._socket)
-        self._cursor = self._conn.cursor()
-
-    def connect2Db(self):
-        self.logger.info("Connecting via socket"+ self._socket+ "as"+ self._user+
-            "to db"+ self._dbName)
-        self._conn = sql.connect(user=self._user,
-                                 passwd=self._password,
-                                 unix_socket=self._socket,
-                                 db=self._dbName)
-        self._cursor = self._conn.cursor()
-
-    def disconnect(self):
-        self.logger.info("Disconnecting manually from DB")
-        self._cursor.close()
-        self._conn.close()
 
     def runQueries(self, stopAt):
         if self._mode == 'qserv':
@@ -235,21 +210,14 @@ class QservTestsRunner():
                         qText += ' '
                     outFile = "%s/%s" % (myOutDir, qFN.replace('.sql', '.txt'))
                     #qText += " INTO OUTFILE '%s'" % outFile
-                    self.logger.info("Running %s: %s\n" % (qFN, qText))
-                    self.runQueryInShell(qText, outFile)
-                    # self._sqlInterface.executeFromFileWithMySQLCLient(query_filename, outFile)
+                    self.logger.info("Mode %s Running %s: %s\n" % (self._mode,qFN, qText))
+                    self._sqlInterface['query'].execute(qText, outFile)
 
-    def runQueryInShell(self, query, out_file = None):
-        mode = self._mode
-        self.logger.info("SQL query %s for mode %s launched" % (query, mode))
-        self._sqlInterface['query'].executeWithMySQLCLient(query, out_file)
-    
         
     # creates database and load all tables caseXX/data/
     # schema should be in <table>.schema
     # data should be in <table>.tsv.gz
     def loadData(self):
-        self.connect2Db()
 
         self.logger.info("Loading data from %s" % self._input_dirname)
         files = os.listdir(self._input_dirname)
@@ -281,8 +249,6 @@ class QservTestsRunner():
             self.logger.info("Loading schema of %s" % tableName)
             loadSchema(self._sqlInterface, self._input_dirname, tableName, "schema", self._schemaDict)
 
-           
-
             # load the table. Note, how we do it depends
             # whether we load to plain mysql or qserv
             # remove temporary file
@@ -294,14 +260,57 @@ class QservTestsRunner():
                 self.loadRegularTable(tableName, schemaFile, tmp_data_file)
 
             os.unlink(tmp_data_file)
-#TODO
-#self.disconnect()
 
     def loadRegularTable(self, tableName, schemaFile, dataFile):        
-        self._sqlInterface['cmd'].executeFromFileWithMySQLCLient(schemaFile)
+        self._sqlInterface['cmd'].executeFromFile(schemaFile)
         query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % (dataFile, tableName)
         self.logger.info("Loading data:  %s" % dataFile)
-        self._sqlInterface['cmd'].executeWithMySQLCLient(query)
+        self._sqlInterface['cmd'].execute(query)
+
+    def run(self, options):
+
+        # cleanup of previous tests
+        if os.path.exists(self._out_dirname):
+            shutil.rmtree(self._out_dirname)
+        os.makedirs(self._out_dirname)
+
+        for mode in options.mode:
+            self._mode=mode
+
+            if (self._mode=='mysql'):
+                self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode) 
+                self.logger.info("Creation of a SQL Interface")
+                self._sqlInterface['cmd'] = SQLCmd.SQLCmd(config = self.config,
+                                                          mode = SQLMode.MYSQL_SOCK,
+                                                          database = self._dbName
+                                                          )
+                self._sqlInterface['sock'] = SQLConnection.SQLConnection(
+                                                          config = self.config,
+                                                          mode = SQLMode.MYSQL_SOCK,
+                                                          database = self._dbName
+                                                          )
+                self._sqlInterface['query'] = self._sqlInterface['cmd']
+                
+                
+            elif (self._mode=='qserv'):
+                self._dbName= 'LSST'                
+                self.logger.info("Creation of a SQL Interface")
+                self.qservDataLoader = QservDataLoader.QservDataLoader(
+                    self.config, 
+                    self.data_config,
+                    self._dbName, 
+                    self._out_dirname, 
+                    self._logFilePrefix
+                    )
+                self.qservDataLoader.initDatabases()
+                self._sqlInterface['sock'] =  self.qservDataLoader._sqlInterface['sock']
+                self._sqlInterface['cmd'] =  self.qservDataLoader._sqlInterface['cmd']
+                self._sqlInterface['query'] = SQLCmd.SQLCmd(config = self.config,
+                                                          mode = SQLMode.MYSQL_PROXY,
+                                                          database = self._dbName
+                                                          )
+            self.loadData()     
+            self.runQueries(options.stop_at)
 
     def parseOptions(self):
         script_name=sys.argv[0]
@@ -332,58 +341,13 @@ class QservTestsRunner():
 
         return options
 
-    def run(self, options):
-
-        #if not os.access(self._out_dirname, os.F_OK):
-        #    os.makedirs(self._out_dirname)
-
-        # cleanup of previous tests
-        if os.path.exists(self._out_dirname):
-            shutil.rmtree(self._out_dirname)
-        os.makedirs(self._out_dirname)
-
-        for mode in options.mode:
-            self._mode=mode
-
-            if (self._mode=='mysql'):
-                self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode) 
-                self.logger.info("Creation of a SQL Interface")
-                self._sqlInterface['cmd'] = SQLCmd.SQLCmd(config = self.config,
-                                                          mode = SQLMode.MYSQL_SOCK,
-                                                          database = self._dbName
-                                                          )
-                self._sqlInterface['sock'] = SQLConnection.SQLConnection(
-                                                          config = self.config,
-                                                          mode = SQLMode.MYSQL_SOCK,
-                                                          database = self._dbName
-                                                          )
-                self._sqlInterface['query'] = self._sqlInterface['cmd']
-                
-                
-            elif (self._mode=='qserv'):
-                self._dbName= 'LSST'                
-                self.logger.info("Creation of a SQL Interface")
-                self.qservDataLoader = QservDataLoader.QservDataLoader(self.config, self._dbName, self._out_dirname, self._logFilePrefix)
-                self.qservDataLoader.initDatabases()
-                self._sqlInterface['sock'] =  self.qservDataLoader._sqlInterface['sock']
-                self._sqlInterface['cmd'] =  self.qservDataLoader._sqlInterface['cmd']
-                self._sqlInterface['query'] = SQLCmd.SQLCmd(config = self.config,
-                                                          mode = SQLMode.MYSQL_PROXY,
-                                                          database = self._dbName
-                                                          )
-                
-    
-            self.loadData()     
-            self.runQueries(options.stop_at)
-
-    def __del__(self):
-        self.logger.info("Calling  destructor for QservTestsRunner()")
 
 def main():
 
     qserv_test_runner = QservTestsRunner()
     options = qserv_test_runner.parseOptions()  
     qserv_test_runner.configure(options.config_dir, options.case_no, options.out_dirname)
+
     qserv_test_runner.run(options)
 
 if __name__ == '__main__':

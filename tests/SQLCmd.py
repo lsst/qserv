@@ -57,13 +57,13 @@ class SQLCmd():
         self._mysql_cmd.append("--user=%s" % self.config['mysqld']['user'])
         self._mysql_cmd.append("--password=%s" % self.config['mysqld']['pass'])
 
-    def executeWithMySQLCLient(self, query, stdout = None):
+    def execute(self, query, stdout = None):
       """ Some queries cannot run correctly through MySQLdb, so we must use MySQL client instead """
-      self.logger.info("SQLCmd.executeWithMySQLCLient:  %s" % query)
+      self.logger.info("SQLCmd.execute:  %s" % query)
       commandLine = self._mysql_cmd + [query]
       commons.run_command(commandLine, stdout_file=stdout)
       
-    def executeFromFileWithMySQLCLient(self, filename, stdout = None):
+    def executeFromFile(self, filename, stdout = None):
       """ Some queries cannot run correctly through MySQLdb, so we must use MySQL client instead """
       self.logger.info("SQLCmd.executeFromFile:  %s" % filename)
       commandLine = self._mysql_cmd + ["SOURCE %s" % filename]
