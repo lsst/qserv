@@ -5,7 +5,7 @@
 # s.read("/tmp/a.sql")
 
 
-import SQLReader
+import reader
 import operator
 
 
@@ -80,7 +80,7 @@ class SQLSchema():
                 
     def read(self, filename):
       """ Read a MySQL dump schema file """
-      parsing = SQLReader.reader(filename)
+      parsing = reader.reader(filename)
       self._prologue = parsing["prologue"]
       self.convertSQLToSchema(parsing["schema"])
       self._engine = parsing["engine"]

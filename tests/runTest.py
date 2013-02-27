@@ -28,72 +28,17 @@
 
 import ConfigParser
 import MySQLdb as sql
-from  lsst.qserv.admin import commons
+from lsst.qserv import dataloader
+from lsst.qserv.admin import commons
+from lsst.qserv.sql import cmd, connection, const, dataconfig, schema
 import logging
 import optparse
 import os
-import QservDataLoader
 import re
 import shutil
-import SQLCmd
-import SQLConnection
-import SQLMode
-import SQLReader
-import SQLSchema
 import stat
 import sys
 import tempfile
-
-
-def convertSchemaFile(tableName, schemaFile, newSchemaFile, schemaDict):
-    
-    mySchema = SQLSchema.SQLSchema(tableName)    
-    mySchema.read(schemaFile)    
-    mySchema.deleteField("`_chunkId`")
-    mySchema.deleteField("`_subChunkId`")
-    mySchema.addField("`chunkId`", "int(11)", ("DEFAULT", "NULL"))
-    mySchema.addField("`subChunkId`", "int(11)", ("DEFAULT", "NULL"))
-    
-    if (tableName == "Object"):
-        mySchema.deletePrimaryKey()
-        mySchema.createIndex("`obj_objectid_idx`", "Object", "`objectId`")
-
-    mySchema.write(newSchemaFile)
-    schemaDict[tableName]=mySchema
-    
-    return mySchema
-
-
-def findAllDataInStripes():
-  """ Find all files like stripe_<stripeId>/<name>_<chunkId>.csv """
-
-  result = []
-  stripeRegexp = re.compile("^stripe_(.*)")
-  chunkRegexp = re.compile("(.*)_(.*).csv")
-  
-  for (dirpath, dirnames, filenames) in os.walk(stripeDir):
-    stripeMatching = stripeRegexp.match(os.path.basename(dirpath))
-    if (stripeMatching is not None):
-      stripeId = stripeMatching.groups()
-      for filename in filenames:
-        chunkMatching = chunkRegexp.match(filename)
-        if (chunkMatching is not None):
-           name, chunkId = chunkMatching.groups()
-           result.append((stripeDir, dirpath, filename, name, chunkId))
-
-  return result
-
-# TODO: do we have to drop old schema if it exists ?  
-def loadSchema(sqlInterface, directory, table, schemaSuffix, schemaDict):
-  partitionnedTables = ["Object", "Source"]
-  schemaFile = directory + "/" + table + "." + schemaSuffix
-  if table in partitionnedTables:      
-    newSchemaFile = directory + "/" + table + "_converted" + "." + schemaSuffix
-    convertSchemaFile(table, schemaFile, newSchemaFile, schemaDict)
-    sqlInterface['cmd'].executeFromFile(newSchemaFile)
-    os.unlink(newSchemaFile)
-  else:
-    sqlInterface['sock'].executeFromFile(schemaFile)
 
       
 # TODO: suffixes management (CSV, TSV, GZ, etc.)
@@ -115,15 +60,6 @@ def loadSchema(sqlInterface, directory, table, schemaSuffix, schemaDict):
 #       sqlInteface.execute(SQL_query)
   
 # ------------------------------------------------------------
-
-def getSchemaFiles(dirname):
-  files = os.listdir(dirname)
-  result = []
-  for file in files:
-    if file.endswith('.schema'):
-      result.append(file)
-  return result
-
 
 def gunzip(filename, output = None):
   if (output is None):
@@ -160,8 +96,9 @@ class QservTestsRunner():
         qserv_tests_dirname = os.path.join(self.config['qserv']['base_dir'],'qserv','tests',"case%s" % self._case_id)
         self._input_dirname = os.path.join(qserv_tests_dirname,'data')
         
-        # TODO rename SQLMode
-        self.data_config = SQLMode.readDataConfig(self._input_dirname)
+
+        self.dataReader = dataconfig.DataReader(self._input_dirname)
+        self.dataReader.analyze()
 
         self._queries_dirname = os.path.join(qserv_tests_dirname,"queries") 
 
@@ -222,9 +159,10 @@ class QservTestsRunner():
         self.logger.info("Loading data from %s" % self._input_dirname)
         files = os.listdir(self._input_dirname)
 
-        schemaFiles = getSchemaFiles(self._input_dirname)
+        schemaFiles = self.dataReader.getSchemaFiles()
         
         for f in schemaFiles:
+            self.logger.debug("LOADING SCHEMA %s" % f)
             tableName = f[:-7]
             schemaFile = os.path.join(self._input_dirname, f)
             zipped_data_file = os.path.join(self._input_dirname, "%s.tsv.gz" % tableName)
@@ -246,26 +184,22 @@ class QservTestsRunner():
             self.logger.info(" ./Uncompressing: %s into %s" %  (zipped_data_file, tmp_data_file))
             gunzip(zipped_data_file, tmp_data_file)
 
-            self.logger.info("Loading schema of %s" % tableName)
-            loadSchema(self._sqlInterface, self._input_dirname, tableName, "schema", self._schemaDict)
 
             # load the table. Note, how we do it depends
             # whether we load to plain mysql or qserv
             # remove temporary file
             # treat Object and Source differently, they need to be partitioned
             if self._mode == 'qserv' and (tableName == 'Object' or tableName == 'Source'):
+                
+                self.logger.info("Loading schema of partionned table %s" % tableName)
+                self.qservDataLoader.loadPartitionedSchema(self._input_dirname, tableName, "schema", self._schemaDict)
                 self.qservDataLoader._schemaDict=self._schemaDict
                 self.qservDataLoader.loadPartitionedTable(tableName, schemaFile, tmp_data_file)
             else:
-                self.loadRegularTable(tableName, schemaFile, tmp_data_file)
+                self._sqlInterface['cmd'].createAndLoadTable(tableName, schemaFile, tmp_data_file)
 
             os.unlink(tmp_data_file)
 
-    def loadRegularTable(self, tableName, schemaFile, dataFile):        
-        self._sqlInterface['cmd'].executeFromFile(schemaFile)
-        query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % (dataFile, tableName)
-        self.logger.info("Loading data:  %s" % dataFile)
-        self._sqlInterface['cmd'].execute(query)
 
     def run(self, options):
 
@@ -280,13 +214,13 @@ class QservTestsRunner():
             if (self._mode=='mysql'):
                 self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode) 
                 self.logger.info("Creation of a SQL Interface")
-                self._sqlInterface['cmd'] = SQLCmd.SQLCmd(config = self.config,
-                                                          mode = SQLMode.MYSQL_SOCK,
+                self._sqlInterface['cmd'] = cmd.Cmd(config = self.config,
+                                                          mode = const.MYSQL_SOCK,
                                                           database = self._dbName
                                                           )
-                self._sqlInterface['sock'] = SQLConnection.SQLConnection(
+                self._sqlInterface['sock'] = connection.Connection(
                                                           config = self.config,
-                                                          mode = SQLMode.MYSQL_SOCK,
+                                                          mode = const.MYSQL_SOCK,
                                                           database = self._dbName
                                                           )
                 self._sqlInterface['query'] = self._sqlInterface['cmd']
@@ -295,9 +229,9 @@ class QservTestsRunner():
             elif (self._mode=='qserv'):
                 self._dbName= 'LSST'                
                 self.logger.info("Creation of a SQL Interface")
-                self.qservDataLoader = QservDataLoader.QservDataLoader(
+                self.qservDataLoader = dataloader.QservDataLoader(
                     self.config, 
-                    self.data_config,
+                    self.dataReader.dataConfig,
                     self._dbName, 
                     self._out_dirname, 
                     self._logFilePrefix
@@ -305,8 +239,8 @@ class QservTestsRunner():
                 self.qservDataLoader.initDatabases()
                 self._sqlInterface['sock'] =  self.qservDataLoader._sqlInterface['sock']
                 self._sqlInterface['cmd'] =  self.qservDataLoader._sqlInterface['cmd']
-                self._sqlInterface['query'] = SQLCmd.SQLCmd(config = self.config,
-                                                          mode = SQLMode.MYSQL_PROXY,
+                self._sqlInterface['query'] = cmd.Cmd(config = self.config,
+                                                          mode = const.MYSQL_PROXY,
                                                           database = self._dbName
                                                           )
             self.loadData()     

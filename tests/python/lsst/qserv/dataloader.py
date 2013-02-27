@@ -1,12 +1,9 @@
 from  lsst.qserv.admin import commons
+from  lsst.qserv.sql import const, cmd, connection, const, schema
 import logging
 import os
 import re
 import shutil
-import SQLCmd
-import SQLConnection
-import SQLInterface
-import SQLMode
 
 class QservDataLoader():
 
@@ -25,13 +22,13 @@ class QservDataLoader():
         self.logger = logging.getLogger()
         sock_connection_params = {
             'config' : self.config,
-            'mode' : SQLMode.MYSQL_SOCK,
+            'mode' : const.MYSQL_SOCK,
             'database' : self._dbName
             }
 
         self._sqlInterface = dict()
-        self._sqlInterface['sock'] = SQLConnection.SQLConnection(**sock_connection_params)
-        self._sqlInterface['cmd'] = SQLCmd.SQLCmd(**sock_connection_params)
+        self._sqlInterface['sock'] = connection.Connection(**sock_connection_params)
+        self._sqlInterface['cmd'] = cmd.Cmd(**sock_connection_params)
 
     def workerGetNonEmptyChunkIds(self):
         non_empty_chunk_list=[]
@@ -202,3 +199,52 @@ class QservDataLoader():
 
         self._sqlInterface['sock'].execute(sql)
         self.logger.info("meta table created and loaded for %s" % table)
+
+    def convertSchemaFile(self, tableName, schemaFile, newSchemaFile, schemaDict):
+    
+        mySchema = schema.SQLSchema(tableName)    
+        mySchema.read(schemaFile)    
+        mySchema.deleteField("`_chunkId`")
+        mySchema.deleteField("`_subChunkId`")
+        mySchema.addField("`chunkId`", "int(11)", ("DEFAULT", "NULL"))
+        mySchema.addField("`subChunkId`", "int(11)", ("DEFAULT", "NULL"))
+        
+        if (tableName == "Object"):
+            mySchema.deletePrimaryKey()
+            mySchema.createIndex("`obj_objectid_idx`", "Object", "`objectId`")
+
+        mySchema.write(newSchemaFile)
+        schemaDict[tableName]=mySchema
+    
+        return mySchema
+
+
+    # TODO: do we have to drop old schema if it exists ?  
+    def loadPartitionedSchema(self, directory, table, schemaSuffix, schemaDict):
+      partitionnedTables = ["Object", "Source"]
+      schemaFile = directory + "/" + table + "." + schemaSuffix
+      if table in partitionnedTables:      
+        newSchemaFile = directory + "/" + table + "_converted" + "." + schemaSuffix
+        self.convertSchemaFile(table, schemaFile, newSchemaFile, schemaDict)
+        self._sqlInterface['cmd'].executeFromFile(newSchemaFile)
+        os.unlink(newSchemaFile)
+
+
+    def findAllDataInStripes(self):
+      """ Find all files like stripe_<stripeId>/<name>_<chunkId>.csv """
+
+      result = []
+      stripeRegexp = re.compile("^stripe_(.*)")
+      chunkRegexp = re.compile("(.*)_(.*).csv")
+
+      for (dirpath, dirnames, filenames) in os.walk(stripeDir):
+        stripeMatching = stripeRegexp.match(os.path.basename(dirpath))
+        if (stripeMatching is not None):
+          stripeId = stripeMatching.groups()
+          for filename in filenames:
+            chunkMatching = chunkRegexp.match(filename)
+            if (chunkMatching is not None):
+               name, chunkId = chunkMatching.groups()
+               result.append((stripeDir, dirpath, filename, name, chunkId))
+
+      return result

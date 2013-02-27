@@ -5,7 +5,7 @@ import sys
 from  lsst.qserv.admin import commons
 
 # TODO: replace all SQL by SQLConnection    
-class SQLConnection():
+class Connection():
     """ SQLConnection is a class for managing SQL connection and executing queries"""
     def __init__(self,
                  config, 
@@ -14,7 +14,7 @@ class SQLConnection():
       
         self.logger = logging.getLogger()
         self.logger.info("SQLConnection creation ")
-
+        self.database = database
 
         socket_connection_params = { 
           'user': config['mysqld']['user'],
@@ -47,7 +47,7 @@ class SQLConnection():
         
     def execute(self, query):
         self._cursor = self._connection.cursor()
-        self.logger.info("Executing query: %s" % query)
+        self.logger.info("SQLConnection.execute : %s" % query)
         self._cursor.execute(query)
         result = self._cursor.fetchall()
         self._cursor.close()
@@ -61,6 +61,7 @@ class SQLConnection():
         return self.execute(sql)
       else:
         raise Exception, "File: '%s' not found" % filename
+
 
 # ----------------------------------------
 #    

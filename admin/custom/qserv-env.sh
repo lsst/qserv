@@ -7,7 +7,7 @@ export QSERV_BASE=%(QSERV_BASE_DIR)s
 if [ -z "${QSERV_ENV_SETTED}" ]; then
 	export PATH=${QSERV_BASE}/bin:${PATH}
 	# in order to load numpy
-	export PYTHONPATH=/usr/lib64/python2.6/site-packages/
+	export PYTHONPATH=${PYTHONPATH}:/usr/lib64/python2.6/site-packages/
 	export QSERV_ENV_SETTED=1
 fi 
 

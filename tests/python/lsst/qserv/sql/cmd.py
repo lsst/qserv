@@ -2,11 +2,11 @@ import logging
 import MySQLdb as sql
 import os.path
 import sys
-import SQLMode
+import const
 from  lsst.qserv.admin import commons
 
 # TODO: replace all SQL by SQLConnection    
-class SQLCmd():
+class Cmd():
     """ SQLCmd is a class for managing SQL cmd via a shell client"""
     def __init__(self,
                  config,
@@ -25,11 +25,11 @@ class SQLCmd():
         
         self._mysql_cmd.append(self.config['bin']['mysql']) 
         
-        if mode==SQLMode.MYSQL_PROXY :
+        if mode==const.MYSQL_PROXY :
             self._addQservCmdParams()
-        elif mode==SQLMode.MYSQL_SOCK :
+        elif mode==const.MYSQL_SOCK :
             self._addMySQLSockCmdParams()
-        elif mode==SQLMode.MYSQL_NET :
+        elif mode==const.MYSQL_NET :
             self._addMySQLNetCmdParams()
         
         self._mysql_cmd.append("--batch")
@@ -69,6 +69,12 @@ class SQLCmd():
       commandLine = self._mysql_cmd + ["SOURCE %s" % filename]
       commons.run_command(commandLine, stdout_file=stdout)
         
+    def createAndLoadTable(self, tableName, schemaFile, dataFile):        
+        self.executeFromFile(schemaFile)
+        query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % (dataFile, tableName)
+        self.logger.info("Loading data:  %s" % dataFile)
+        self.execute(query)
+
 
 # ----------------------------------------
 #    
