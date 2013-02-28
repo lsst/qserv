@@ -160,7 +160,7 @@ class QservTestsRunner():
 
         for table_name in  self.dataReader.tables:
             self.logger.debug("Using data of %s" % table_name)
-            (schema_filename, data_filename, zipped_data_filename) =  self.dataReader.getDataFiles(table_name)
+            (schema_filename, data_filename, zipped_data_filename) =  self.dataReader.getSchemaAndDataFiles(table_name)
             # check if the corresponding data file exists
             if not os.path.exists(zipped_data_filename):
                 raise Exception, "File: '%s' not found" %  zipped_data_filename
@@ -186,7 +186,7 @@ class QservTestsRunner():
             # treat Object and Source differently, they need to be partitioned
             if self._mode == 'qserv' and (table_name == 'Object' or table_name == 'Source'):
                 
-                self.logger.info("Loading schema of partionned table %s" % table_name)
+                self.logger.info("Loading schema of partitionned table %s" % table_name)
                 self.qservDataLoader.loadPartitionedSchema(self._input_dirname, table_name, "schema", self._schemaDict)
                 self.qservDataLoader._schemaDict=self._schemaDict
                 self.qservDataLoader.loadPartitionedTable(table_name, schema_filename, tmp_data_file)

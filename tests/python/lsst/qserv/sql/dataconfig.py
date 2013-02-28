@@ -1,6 +1,7 @@
 from lsst.qserv.admin import commons
 import logging
 import os
+import tempfile
 
 class DataReader():
 
@@ -54,12 +55,33 @@ class DataReader():
                 if fileext == self.dataConfig['schema-extension']:
                     self.tables.append(filename)
 
-    def getDataFiles(self, table_name):
+    def getSchemaAndDataFiles(self, table_name):
         if table_name in self.tables:
             prefix = os.path.join(self.dataDirName, table_name)
             schema_filename = prefix + self.dataConfig['schema-extension']
             data_filename = prefix + self.dataConfig['data-extension']
-            zipped_data_filename = data_filename + self.dataConfig['zip-extension']
-            return (schema_filename, data_filename,zipped_data_filename)
+            if self.dataConfig['zip-extension'] is not None:
+                zipped_data_filename = data_filename + self.dataConfig['zip-extension']
+            else:
+                data_filename = prefix + self.dataConfig['data-extension']
+            return (schema_filename, data_filename, zipped_data_filename)
         else:
-            return None
+            raise Exception, "%s.getDataFiles(): '%s' table isn't described in input data" %  (self.__class__.__name__, table_name)
+
+    def getTextDataFile(self, out_dirname, table_name):
+        (schema_filename, data_filename, zipped_data_filename) = self.getSchemaAndDataFiles(table_name)
+
+        tmp_suffix = (".%s.%s" % (table_name,self.dataConfig['data-extension']))
+        tmp = tempfile.NamedTemporaryFile(suffix=tmp_suffix, dir=out_dirname,delete=False)
+        tmp_data_file = tmp.name
+
+        if data_filename is not None:
+            # TODO make a link
+            return data_filename
+        elif zipped_data_filename is not None:
+            if os.path.exists(tmp_data_file):
+                os.unlink(tmp_data_file)
+            self.log.info(" ./Uncompressing: %s into %s" %  (zipped_data_filename, tmp_data_file))
+            # TODO gunzip(zipped_data_filename, tmp_data_file)
+  
+        return  tmp_data_file
