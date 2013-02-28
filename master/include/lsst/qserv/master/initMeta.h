@@ -35,9 +35,8 @@ int addDbInfoPartitionedSphBox(int, char*, int, int, float, float);
 int addTbInfoNonPartitioned(int, char*, char*);
 int addTbInfoPartitionedSphBox(int, char*, char*, float, char*, char*,
                                int, int, int, int);
-void printCachedMetadata(int);
-    
-// plus a similar one for addTableInfo...
+void resetMetadataCache(int);
+void printMetadataCache(int);
 
 }}}
 

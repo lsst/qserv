@@ -99,7 +99,8 @@ from lsst.qserv.master import addDbInfoNonPartitioned
 from lsst.qserv.master import addDbInfoPartitionedSphBox
 from lsst.qserv.master import addTbInfoNonPartitioned
 from lsst.qserv.master import addTbInfoPartitionedSphBox
-from lsst.qserv.master import printCachedMetadata
+from lsst.qserv.master import printMetadataCache
+from lsst.qserv.master import resetMetadataCache
 
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
@@ -1072,8 +1073,11 @@ class MetadataCache:
             for tableName in tables:
                 self._addTable(dbName, tableName, partStrategy)
 
-    def printCachedMetadata(self):
-        printCachedMetadata(self._metaSessionId)
+    def resetMetadataCache(self):
+        resetMetadataCache(self._metaSessionId)
+
+    def printMetadataCache(self):
+        printMetadataCache(self._metaSessionId)
 
     def _addDb(self, dbName):
         # retrieve info about each db

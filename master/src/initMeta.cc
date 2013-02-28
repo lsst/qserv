@@ -107,6 +107,11 @@ qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
 }
 
 void
-qMaster::printCachedMetadata(int metaSessionId) {
+qMaster::resetMetadataCache(int metaSessionId) {
+    getMetadataCache(metaSessionId).resetSelf();
+}
+
+void
+qMaster::printMetadataCache(int metaSessionId) {
     getMetadataCache(metaSessionId).printSelf();
 }

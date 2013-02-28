@@ -137,6 +137,11 @@ qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
 }
 
 void
+qMaster::MetadataCache::resetSelf() {
+    _dbs.clear();
+}
+
+void
 qMaster::MetadataCache::printSelf() const {
     std::cout << "\n\nMetadata Cache in C++:" << std::endl;
     std::map<std::string, DbInfo>::const_iterator itr;

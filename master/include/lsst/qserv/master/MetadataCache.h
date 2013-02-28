@@ -47,6 +47,7 @@ public:
     int addTbInfoPartitionedSphBox(std::string const&, std::string const&,
                                    float, std::string const&, std::string const&, 
                                    int, int, int, int);
+    void resetSelf();
     void printSelf() const;
 
     class TableInfo {
