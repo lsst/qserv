@@ -218,11 +218,11 @@ class QservDataLoader():
         return mySchema
 
     # TODO: do we have to drop old schema if it exists ?  
-    def loadPartitionedSchema(self, directory, table, schemaSuffix, schemaDict):
+    def loadPartitionedSchema(self, directory, table, schemaSuffix, schemaDict, tmpdir):
       partitionnedTables = ["Object", "Source"]
-      schemaFile = directory + "/" + table + "." + schemaSuffix
+      schemaFile = os.path.join(directory, table + "." + schemaSuffix)
       if table in partitionnedTables:      
-        newSchemaFile = directory + "/" + table + "_converted" + "." + schemaSuffix
+        newSchemaFile = os.path.join(tmpdir, table + "_converted" + "." + schemaSuffix)
         self.convertSchemaFile(table, schemaFile, newSchemaFile, schemaDict)
         self._sqlInterface['cmd'].executeFromFile(newSchemaFile)
         os.unlink(newSchemaFile)
