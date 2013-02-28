@@ -156,7 +156,7 @@ def file_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
     return logger
 
 
-def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, logger_name=None) :
+def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None) :
     """ Run a shell command
 
     Keyword arguments
@@ -165,7 +165,7 @@ def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, l
 
     Return a string containing stdout and stderr
     """
-    logger = logging.getLogger(logger_name)
+    logger = logging.getLogger()
 
     cmd_str= " ".join(cmd_args)
     logger.info("Running :\n---\n\t%s\n---" % cmd_str)

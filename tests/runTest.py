@@ -192,7 +192,8 @@ class QservTestsRunner():
             if self._mode == 'qserv' and (tableName == 'Object' or tableName == 'Source'):
                 
                 self.logger.info("Loading schema of partionned table %s" % tableName)
-                self.qservDataLoader.loadPartitionedSchema(self._input_dirname, tableName, "schema", self._schemaDict)
+                tmpdir = self.config['qserv']['tmp_dir']
+                self.qservDataLoader.loadPartitionedSchema(self._input_dirname, tableName, "schema", self._schemaDict, tmpdir)
                 self.qservDataLoader._schemaDict=self._schemaDict
                 self.qservDataLoader.loadPartitionedTable(tableName, schemaFile, tmp_data_file)
             else:

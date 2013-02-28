@@ -116,16 +116,16 @@ class QservDataManager:
                 '--num-stripes', self.config['qserv']['stripes'],
                 '--num-sub-stripes', self.config['qserv']['substripes'] 
             ]
-            out = commons.run_command(partition_data_cmd, self.logger_name)
+            out = commons.run_command(partition_data_cmd)
             self.logger.info("Partitionning PT1.1 LSST %s data : \n %s" 
                 % (table,out))
 
     def deleteAllData(self):
-        out = commons.run_command(self.delete_data_cmd, self.logger_name)
+        out = commons.run_command(self.delete_data_cmd)
         self.logger.info("Deleting previous LSST data : \n %s" % out)
 
     def loadPt11Data(self):
-        out = commons.run_command(self.load_data_cmd, self.logger_name)
+        out = commons.run_command(self.load_data_cmd)
         self.logger.info("Loading LSST PT1.1 Object data : \n %s" % out)
 
         # if it fails : launch next commands to reset to initial state.
@@ -139,11 +139,11 @@ class QservDataManager:
         data_dirs = [os.path.join(self.config['lsst']['data_dir'],'pt11_partition')]
         self.logger.info("Erasing if needed and creating meta database \n")
         self.logger.debug(" ".join(self.create_meta_cmd))
-        out = commons.run_command(self.create_meta_cmd, self.logger_name)
+        out = commons.run_command(self.create_meta_cmd)
         self.logger.info("Meta database creation report: \n %s" % out)
         self.logger.info("Filling meta database from PT1.1 LSST data : %s \n" % data_dirs[0])
         csv2object.CSV2Object(nbworkers, data_dirs, outfilename)
-        out = commons.run_command(self.load_meta_cmd, self.logger_name)
+        out = commons.run_command(self.load_meta_cmd)
         self.logger.info("Loading LSST PT1.1 Meta data : \n %s" % out)
     
     def parseOptions(self):    
