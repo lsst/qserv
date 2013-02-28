@@ -4,16 +4,19 @@ import os
 
 class DataReader():
 
-    def __init__(self, data_dir_name, logging_level=logging.DEBUG ):
+    def __init__(self, data_dir_name):
         self.log = logging.getLogger()
         self.dataDirName = data_dir_name
+        self.dataConfig = dict()
+
+        self.tables = []
 
     def analyze(self):
 
-        self.dataConfig = dict()
-
         self.dataConfig['partitionned-tables'] = ["Object", "Source"]
         self.dataConfig['schema-extension']='.schema'
+        self.dataConfig['data-extension']='.tsv'
+        self.dataConfig['zip-extension']='.gz'
         self.dataConfig['Object']=dict()
     #dataConfig['Object']['ra-column'] = self._schemaDict['Object'].indexOf("`ra_PS`")
     #dataConfig['Object']['decl-column'] = self._schemaDict['Object'].indexOf("`decl_PS`")
@@ -43,10 +46,20 @@ class DataReader():
         self.log.debug("Data configuration : %s" % self.dataConfig)
 
 
-    def getSchemaFiles(self):
+    def readTableList(self):
         files = os.listdir(self.dataDirName)
-        result = []
-        for file in files:
-            if file.endswith(self.dataConfig['schema-extension']):
-                result.append(file)
-        return result
+        if self.tables==[]:
+            for f in files:
+                filename, fileext = os.path.splitext(f)
+                if fileext == self.dataConfig['schema-extension']:
+                    self.tables.append(filename)
+
+    def getDataFiles(self, table_name):
+        if table_name in self.tables:
+            prefix = os.path.join(self.dataDirName, table_name)
+            schema_filename = prefix + self.dataConfig['schema-extension']
+            data_filename = prefix + self.dataConfig['data-extension']
+            zipped_data_filename = data_filename + self.dataConfig['zip-extension']
+            return (schema_filename, data_filename,zipped_data_filename)
+        else:
+            return None

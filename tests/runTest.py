@@ -157,22 +157,17 @@ class QservTestsRunner():
     def loadData(self):
 
         self.logger.info("Loading data from %s" % self._input_dirname)
-        files = os.listdir(self._input_dirname)
 
-        schemaFiles = self.dataReader.getSchemaFiles()
-        
-        for f in schemaFiles:
-            self.logger.debug("LOADING SCHEMA %s" % f)
-            tableName = f[:-7]
-            schemaFile = os.path.join(self._input_dirname, f)
-            zipped_data_file = os.path.join(self._input_dirname, "%s.tsv.gz" % tableName)
+        for table_name in  self.dataReader.tables:
+            self.logger.debug("Using data of %s" % table_name)
+            (schema_filename, data_filename, zipped_data_filename) =  self.dataReader.getDataFiles(table_name)
             # check if the corresponding data file exists
-            if not os.path.exists(zipped_data_file):
-                raise Exception, "File: '%s' not found" %  zipped_data_file
+            if not os.path.exists(zipped_data_filename):
+                raise Exception, "File: '%s' not found" %  zipped_data_filename
             # uncompress data file into temp location
             # TODO : use a pipe instead of a tempfile
             
-            tmp_suffix = (".%s.tsv" % tableName)
+            tmp_suffix = (".%s.%s" % (table_name,self.dataReader.dataConfig['data-extension']))
             tmp = tempfile.NamedTemporaryFile(suffix=tmp_suffix, dir=self._out_dirname,delete=False)
             tmp_data_file = tmp.name
 
@@ -181,22 +176,22 @@ class QservTestsRunner():
                 
             # os.mkfifo(tmp_data_file)
             
-            self.logger.info(" ./Uncompressing: %s into %s" %  (zipped_data_file, tmp_data_file))
-            gunzip(zipped_data_file, tmp_data_file)
+            self.logger.info(" ./Uncompressing: %s into %s" %  (zipped_data_filename, tmp_data_file))
+            gunzip(zipped_data_filename, tmp_data_file)
 
 
             # load the table. Note, how we do it depends
             # whether we load to plain mysql or qserv
             # remove temporary file
             # treat Object and Source differently, they need to be partitioned
-            if self._mode == 'qserv' and (tableName == 'Object' or tableName == 'Source'):
+            if self._mode == 'qserv' and (table_name == 'Object' or table_name == 'Source'):
                 
-                self.logger.info("Loading schema of partionned table %s" % tableName)
-                self.qservDataLoader.loadPartitionedSchema(self._input_dirname, tableName, "schema", self._schemaDict)
+                self.logger.info("Loading schema of partionned table %s" % table_name)
+                self.qservDataLoader.loadPartitionedSchema(self._input_dirname, table_name, "schema", self._schemaDict)
                 self.qservDataLoader._schemaDict=self._schemaDict
-                self.qservDataLoader.loadPartitionedTable(tableName, schemaFile, tmp_data_file)
+                self.qservDataLoader.loadPartitionedTable(table_name, schema_filename, tmp_data_file)
             else:
-                self._sqlInterface['cmd'].createAndLoadTable(tableName, schemaFile, tmp_data_file)
+                self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, tmp_data_file)
 
             os.unlink(tmp_data_file)
 
@@ -207,6 +202,8 @@ class QservTestsRunner():
         if os.path.exists(self._out_dirname):
             shutil.rmtree(self._out_dirname)
         os.makedirs(self._out_dirname)
+
+        self.dataReader.readTableList()
 
         for mode in options.mode:
             self._mode=mode

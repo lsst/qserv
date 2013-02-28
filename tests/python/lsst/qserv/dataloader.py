@@ -1,5 +1,5 @@
 from  lsst.qserv.admin import commons
-from  lsst.qserv.sql import const, cmd, connection, const, schema
+from  lsst.qserv.sql import const, cmd, connection, schema
 import logging
 import os
 import re
@@ -30,6 +30,50 @@ class QservDataLoader():
         self._sqlInterface['sock'] = connection.Connection(**sock_connection_params)
         self._sqlInterface['cmd'] = cmd.Cmd(**sock_connection_params)
 
+    def loadPartitionedTable(self, table, schemaFile, data_filename):
+        ''' Partition and load Qserv data like Source and Object
+        '''
+
+        # load schema with chunkId and subChunkId
+        self.logger.info("  Loading schema %s" % schemaFile)
+        self._sqlInterface['sock'].executeFromFile(schemaFile)
+        # TODO : create index and alter table with chunkId and subChunkId
+        # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
+
+        partition_dirname = self.partitionData(table,data_filename)
+        
+        self.loadPartitionedData(partition_dirname,table)
+
+        self.workerCreateTable1234567890(table)
+
+        chunk_id_list=self.workerGetNonEmptyChunkIds()
+        self.masterCreateAndFeedMetaTable(table,chunk_id_list)
+
+        # Create xrootd query directories
+        self.workerCreateXrootdExportDirs(chunk_id_list)
+
+        # Create etc/emptychunk.txt
+        empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
+        stripes=self.config['qserv']['stripes']
+        self.masterCreateEmptyChunksFile(stripes, chunk_id_list,  empty_chunks_filename)
+
+        self.logger.info("-----\nQserv mono-node database filled with partitionned '%s' data.-----\n" % table)
+
+    def initDatabases(self): 
+        self.logger.info("Initializing databases %s, qservMeta" % self._dbName)
+        sql_instructions= [
+            "DROP DATABASE IF EXISTS %s" % self._dbName,
+            "CREATE DATABASE %s" % self._dbName,
+            # TODO : "GRANT ALL ON %s.* TO '%s'@'*'" % (self._dbName, self._qservUser, self._qservHost)
+            "GRANT ALL ON %s.* TO '*'@'*'" % (self._dbName),
+            "DROP DATABASE IF EXISTS qservMeta",
+            "CREATE DATABASE qservMeta",
+            "USE %s" %  self._dbName
+            ]
+        
+        for sql in sql_instructions:
+            self._sqlInterface['sock'].execute(sql)
+
     def workerGetNonEmptyChunkIds(self):
         non_empty_chunk_list=[]
 
@@ -47,24 +91,10 @@ class QservDataLoader():
         chunk_list = sorted(non_empty_chunk_list)
         self.logger.info("Non empty data chunks list : %s " %  chunk_list)
         return chunk_list
-        
-    def initDatabases(self): 
-        self.logger.info("Initializing databases %s, qservMeta" % self._dbName)
-        sql_instructions= [
-            "DROP DATABASE IF EXISTS %s" % self._dbName,
-            "CREATE DATABASE %s" % self._dbName,
-            # TODO : "GRANT ALL ON %s.* TO '%s'@'*'" % (self._dbName, self._qservUser, self._qservHost)
-            "GRANT ALL ON %s.* TO '*'@'*'" % (self._dbName),
-            "DROP DATABASE IF EXISTS qservMeta",
-            "CREATE DATABASE qservMeta",
-            "USE %s" %  self._dbName
-            ]
-        
-        for sql in sql_instructions:
-            self._sqlInterface['sock'].execute(sql)
 
     def masterCreateEmptyChunksFile(self, stripes, chunk_id_list, empty_chunks_filename):
         f=open(empty_chunks_filename,"w")
+        # TODO : replace 7201 by an operation with stripes
         empty_chunks_list=[i for i in range(0,7201) if i not in chunk_id_list]
         for i in empty_chunks_list:
             f.write("%s\n" %i)
@@ -93,37 +123,6 @@ class QservDataLoader():
             self.logger.info("Emptying existing xrootd result dir : %s" % xrd_result_dir)
             shutil.rmtree(xrd_result_dir)
         os.makedirs(xrd_result_dir)
-
-
-    def loadPartitionedTable(self, table, schemaFile, data_filename):
-        ''' Partition and load Qserv data like Source and Object
-        '''
-
-        # load schema with chunkId and subChunkId
-        self.logger.info("  Loading schema %s" % schemaFile)
-        self._sqlInterface['sock'].executeFromFile(schemaFile)
-        # TODO : create index and alter table with chunkId and subChunkId
-        # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
-
-        partition_dirname = self.partitionData(table,data_filename)
-        
-        self.loadPartitionedData(partition_dirname,table)
-
-        self.workerCreateTable1234567890(table)
-
-        chunk_id_list=self.workerGetNonEmptyChunkIds()
-        self.masterCreateAndFeedMetaTable(table,chunk_id_list)
-
-        # Create xrootd query directories
-        self.workerCreateXrootdExportDirs(chunk_id_list)
-
-        # Create etc/emptychunk.txt
-        empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
-        stripes=self.config['qserv']['stripes']
-        self.masterCreateEmptyChunksFile(stripes, chunk_id_list,  empty_chunks_filename)
-
-        raw_input("Qserv mono-node database filled with partitionned '%s' data.\nPress Enter to continue..." % table)
-
 
     def partitionData(self,table, data_filename):
         # partition data          
@@ -218,7 +217,6 @@ class QservDataLoader():
     
         return mySchema
 
-
     # TODO: do we have to drop old schema if it exists ?  
     def loadPartitionedSchema(self, directory, table, schemaSuffix, schemaDict):
       partitionnedTables = ["Object", "Source"]
@@ -230,6 +228,7 @@ class QservDataLoader():
         os.unlink(newSchemaFile)
 
 
+    # TODO : not used now
     def findAllDataInStripes(self):
       """ Find all files like stripe_<stripeId>/<name>_<chunkId>.csv """
 
