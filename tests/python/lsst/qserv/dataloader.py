@@ -202,12 +202,10 @@ class QservDataLoader():
     def convertSchemaFile(self, tableName, schemaFile, newSchemaFile, schemaDict):
     
         mySchema = schema.SQLSchema(tableName)    
-        mySchema.read(schemaFile)    
-        mySchema.deleteField("`_chunkId`")
-        mySchema.deleteField("`_subChunkId`")
-        mySchema.addField("`chunkId`", "int(11)", ("DEFAULT", "NULL"))
-        mySchema.addField("`subChunkId`", "int(11)", ("DEFAULT", "NULL"))
-        
+        mySchema.read(schemaFile)
+        mySchema.replaceField("`_chunkId`", "`chunkId`")
+        mySchema.replaceField("`_subchunkId`", "`subchunkId`")
+
         if (tableName == "Object"):
             mySchema.deletePrimaryKey()
             mySchema.createIndex("`obj_objectid_idx`", "Object", "`objectId`")
@@ -219,6 +217,7 @@ class QservDataLoader():
 
     # TODO: do we have to drop old schema if it exists ?  
     def loadPartitionedSchema(self, directory, table, schemaSuffix, schemaDict):
+      # TODO: read meta data to know which table must be partitionned.
       partitionnedTables = ["Object", "Source"]
       schemaFile = os.path.join(directory, table + "." + schemaSuffix)
       if table in partitionnedTables:      

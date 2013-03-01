@@ -72,7 +72,6 @@ class QservTestsRunner():
 
     def __init__(self, logging_level=logging.DEBUG ):
         self.logger = commons.console_logger(logging_level)
-        self._schemaDict = dict()
         self.qservDataLoader = None
 
         
@@ -187,8 +186,9 @@ class QservTestsRunner():
             if self._mode == 'qserv' and (table_name == 'Object' or table_name == 'Source'):
                 
                 self.logger.info("Loading schema of partitionned table %s" % table_name)
-                self.qservDataLoader.loadPartitionedSchema(self._input_dirname, table_name, "schema", self._schemaDict)
-                self.qservDataLoader._schemaDict=self._schemaDict
+                schemaDict = dict()
+                self.qservDataLoader.loadPartitionedSchema(self._input_dirname, table_name, "schema", schemaDict)
+                self.qservDataLoader.setTableConfig(schemaDict)
                 self.qservDataLoader.loadPartitionedTable(table_name, schema_filename, tmp_data_file)
             else:
                 self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, tmp_data_file)

@@ -47,7 +47,7 @@ class SQLSchema():
     def replaceField(self, oldFieldName, newFieldName):
       if (oldFieldName in self._fields):
         self._fields[newFieldName] = self._fields[oldFieldName]
-        del self.deleteField[oldFieldName]
+        self.deleteField[oldFieldName]
 
     def _createFieldString(self, fieldName, dataType, constraints):
       if (constraints is None):
@@ -81,6 +81,7 @@ class SQLSchema():
     def read(self, filename):
       """ Read a MySQL dump schema file """
       parsing = reader.reader(filename)
+      self.__init__(filename)
       self._prologue = parsing["prologue"]
       self.convertSQLToSchema(parsing["schema"])
       self._engine = parsing["engine"]

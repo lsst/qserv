@@ -18,34 +18,25 @@ class DataReader():
         self.dataConfig['schema-extension']='.schema'
         self.dataConfig['data-extension']='.tsv'
         self.dataConfig['zip-extension']='.gz'
+
+        
+    def setTableConfig(self, schemaDict):
+        """ Fill column position (zero-based index) """
         self.dataConfig['Object']=dict()
-    #dataConfig['Object']['ra-column'] = self._schemaDict['Object'].indexOf("`ra_PS`")
-    #dataConfig['Object']['decl-column'] = self._schemaDict['Object'].indexOf("`decl_PS`")
-    
-    # zero-based index
-    
-    # FIXME : return 229 instead of 227
-        #dataConfig['Object']['chunk-column-id'] = self._schemaDict['Object'].indexOf("`chunkId`") -2
-    
-    # for test case01
-        self.dataConfig['Object']['ra-column'] = 2
-        self.dataConfig['Object']['decl-column'] = 4
-        self.dataConfig['Object']['chunk-column-id'] = 227
-    
+        self.dataConfig['Object']['ra-column'] = schemaDict['Object'].indexOf("`ra_PS`")
+        self.dataConfig['Object']['decl-column'] = schemaDict['Object'].indexOf("`decl_PS`")
+        self.dataConfig['Object']['chunk-column-id'] = schemaDict['Object'].indexOf("`chunkId`")
+        
         self.dataConfig['Source']=dict()
         # Source will be placed on the same chunk that its related Object
-    #dataConfig['Source']['ra-column'] = self._schemaDict['Source'].indexOf("`raObject`")
-    #dataConfig['Source']['decl-column'] = self._schemaDict['Source'].indexOf("`declObject`")
-    
-    # for test case01
-        self.dataConfig['Source']['ra-column'] = 33
-        self.dataConfig['Source']['decl-column'] = 34
-    
+        self.dataConfig['Source']['ra-column'] = schemaDict['Source'].indexOf("`raObject`")
+        self.dataConfig['Source']['decl-column'] = schemaDict['Source'].indexOf("`declObject`")
+        
         # chunkId and subChunkId will be added
         self.dataConfig['Source']['chunk-column-id'] = None
 
         self.log.debug("Data configuration : %s" % self.dataConfig)
-
+        
 
     def readTableList(self):
         files = os.listdir(self.dataDirName)
