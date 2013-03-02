@@ -59,8 +59,8 @@ qMaster::newMetadataSession() {
 }
 
 void
-qMaster::resetMetadataSession(int metaSessionId) {
-    getMetadataCache(metaSessionId).resetSelf();
+qMaster::discardMetadataSession(int metaSessionId) {
+    getSessionManager().discardSession(metaSessionId);
 }
 
 // ============================================================================
@@ -104,11 +104,6 @@ qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
     return getMetadataCache(metaSessionId).addTbInfoPartitionedSphBox(
                  dbName, tbName, overlap, phiCol, thetaCol, phiColNo, 
                  thetaColNo, logicalPart, physChunking);
-}
-
-void
-qMaster::resetMetadataCache(int metaSessionId) {
-    getMetadataCache(metaSessionId).resetSelf();
 }
 
 void

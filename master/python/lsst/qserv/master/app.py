@@ -94,13 +94,12 @@ from lsst.qserv.master import TableMerger, TableMergerError, TableMergerConfig
 from lsst.qserv.master import configureSessionMerger, getSessionResultName
 
 # Metadata
-from lsst.qserv.master import newMetadataSession, resetMetadataSession
+from lsst.qserv.master import newMetadataSession, discardMetadataSession
 from lsst.qserv.master import addDbInfoNonPartitioned
 from lsst.qserv.master import addDbInfoPartitionedSphBox
 from lsst.qserv.master import addTbInfoNonPartitioned
 from lsst.qserv.master import addTbInfoPartitionedSphBox
 from lsst.qserv.master import printMetadataCache
-from lsst.qserv.master import resetMetadataCache
 
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
@@ -1054,46 +1053,52 @@ class CheckAction:
 
 ########################################################################
 class MetadataCacheInterface:
-    """MetadataCache encapsulates logic to prepare, metadata information
-       by fetching it from qserv metadata server into c++ memory 
-       structure."""
-    def __init__(self):
-        self._metaSessionId = newMetadataSession()
-        self._qmsClient = Client(
+    """MetadataCacheInterface encapsulates logic to prepare, metadata 
+       information by fetching it from qserv metadata server into 
+       C++ memory structure. It is stateless. Throws exceptions on
+       failure."""
+
+    def newSession(self):
+        """Creates new session: assigns sessionId, populates the C++
+           cache and returns the sessionId."""
+        sessionId = newMetadataSession()
+        qmsClient = Client(
             lsst.qserv.master.config.config.get("metaServer", "host"),
             int(lsst.qserv.master.config.config.get("metaServer", "port")),
             lsst.qserv.master.config.config.get("metaServer", "user"),
             lsst.qserv.master.config.config.get("metaServer", "pass"))
+        self._fetchAllData(sessionId, qmsClient)
+        return sessionId
 
-    def fetchAllData(self):
-        dbs = self._qmsClient.listDbs()
+    def printSession(self, sessionId):
+        printMetadataCache(sessionId)
+
+    def discardSession(self, sessionId):
+        discardMetadataSession(sessionId)
+
+    def _fetchAllData(self, sessionId, qmsClient):
+        dbs = qmsClient.listDbs()
         for dbName in dbs:
-            partStrategy = self._addDb(dbName);
-            tables = self._qmsClient.listTables(dbName)
+            partStrategy = self._addDb(dbName, sessionId, qmsClient);
+            tables = qmsClient.listTables(dbName)
             for tableName in tables:
-                self._addTable(dbName, tableName, partStrategy)
+                self._addTable(dbName, tableName, partStrategy, sessionId, qmsClient)
 
-    def resetMetadataCache(self):
-        resetMetadataCache(self._metaSessionId)
-
-    def printMetadataCache(self):
-        printMetadataCache(self._metaSessionId)
-
-    def _addDb(self, dbName):
+    def _addDb(self, dbName, sessionId, qmsClient):
         # retrieve info about each db
-        x = self._qmsClient.retrieveDbInfo(dbName)
+        x = qmsClient.retrieveDbInfo(dbName)
         # call the c++ function
         if x["partitioningStrategy"] == "sphBox":
             #print "add partitioned, ", db, x
             ret = addDbInfoPartitionedSphBox(
-                self._metaSessionId, dbName,
+                sessionId, dbName,
                 int(x["stripes"]), 
                 int(x["subStripes"]), 
                 float(x["defaultOverlap_fuzziness"]), 
                 float(x["defaultOverlap_nearNeigh"]))
         elif x["partitioningStrategy"] == "None":
             #print "add non partitioned, ", db
-            ret = addDbInfoNonPartitioned(self._metaSessionId, dbName)
+            ret = addDbInfoNonPartitioned(sessionId, dbName)
         else:
             raise Exception("Not supported partitioning strategy: %s" % \
                                 x["partitioningStrategy"])
@@ -1101,13 +1106,13 @@ class MetadataCacheInterface:
             raise Exception("something went wrong when adding db...")
         return x["partitioningStrategy"]
 
-    def _addTable(self, dbName, tableName, partStrategy):
+    def _addTable(self, dbName, tableName, partStrategy, sessionId, qmsClient):
         # retrieve info about each db
-        x = self._qmsClient.retrieveTableInfo(dbName, tableName)
+        x = qmsClient.retrieveTableInfo(dbName, tableName)
         # call the c++ function
         if partStrategy == "sphBox":
             ret = addTbInfoPartitionedSphBox(
-                self._metaSessionId, 
+                sessionId, 
                 dbName,
                 tableName, 
                 float(x["overlap"]),
@@ -1118,7 +1123,7 @@ class MetadataCacheInterface:
                 int(x["logicalPart"]),
                 int(x["physChunking"]))
         elif partStrategy == "None":
-            ret = addTbInfoNonPartitioned(self._metaSessionId, dbName, tableName)
+            ret = addTbInfoNonPartitioned(sessionId, dbName, tableName)
         else:
             raise Exception("Not supported partitioning strategy: %s" % \
                                 x["partitioningStrategy"])

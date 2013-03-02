@@ -30,14 +30,13 @@ namespace qserv {
 namespace master {
 
 int newMetadataSession();
-void resetMetadataSession(int);
+void discardMetadataSession(int);
 int addDbInfoNonPartitioned(int, char*);
 int addDbInfoPartitionedSphBox(int, char*, int, int, float, float);
 int addTbInfoNonPartitioned(int, char*, char*);
 int addTbInfoPartitionedSphBox(int, char*, char*, float, char*, char*,
                                int, int, int, int);
 void printMetadataCache(int);
-void resetMetadataCache(int);
 
 }}}
 
