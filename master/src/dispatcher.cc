@@ -308,7 +308,6 @@ std::string qMaster::getSessionResultName(int session) {
 
 void qMaster::discardSession(int session) {
     getSessionManager().discardSession(session);
-    return; 
 }
 
 qMaster::XrdTransResult qMaster::getQueryResult(int session, int chunk) {
