@@ -41,6 +41,7 @@ namespace master {
 class MetadataCache {
 public:
     typedef boost::shared_ptr<MetadataCache> Ptr;
+    // modifiers
     int addDbInfoNonPartitioned(std::string const&);
     int addDbInfoPartitionedSphBox(std::string const&, int, int, float, float);
     int addTbInfoNonPartitioned(std::string const&, std::string const&);
@@ -48,6 +49,9 @@ public:
                                    float, std::string const&, std::string const&, 
                                    int, int, int, int);
     void resetSelf();
+    // accessors
+    bool checkIfContainsDb(std::string const&) const;
+    bool checkIfContainsTable(std::string const&, std::string const&) const;
     void printSelf() const;
 
     class TableInfo {
@@ -91,6 +95,8 @@ public:
         int getNSubStripes() const { return _nSubStripes; }
         float getDefOverlapF() const { return _defOverlapF; }
         float getDefOverlapNN() const { return _defOverlapNN; }
+        bool checkIfContainsTable(std::string const&) const;
+        
     private:
         const bool _isPartitioned;
         const int _nStripes;         // invalid for non partitioned tables
@@ -101,10 +107,6 @@ public:
         // friendship
         friend std::ostream& operator<<(std::ostream&, const DbInfo&);
     };
-
-private:
-    // selectors
-    bool containsDb(std::string const&) const;
 
 private:
     std::map<std::string, DbInfo> _dbs;

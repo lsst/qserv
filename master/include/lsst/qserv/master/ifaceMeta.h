@@ -20,24 +20,25 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#ifndef LSST_QSERV_META_IFACEMETA_H
+#define LSST_QSERV_META_IFACEMETA_H
 
-#ifndef LSST_QSERV_META_INITMETA_H
-#define LSST_QSERV_META_INITMETA_H
+// interface to metadata used by swig
 
 namespace lsst {
 namespace qserv {
 namespace master {
 
 int newMetadataSession();
-void discardMetadataSession(int);
+void resetMetadataSession(int);
 int addDbInfoNonPartitioned(int, char*);
 int addDbInfoPartitionedSphBox(int, char*, int, int, float, float);
 int addTbInfoNonPartitioned(int, char*, char*);
 int addTbInfoPartitionedSphBox(int, char*, char*, float, char*, char*,
                                int, int, int, int);
-void resetMetadataCache(int);
 void printMetadataCache(int);
+void resetMetadataCache(int);
 
 }}}
 
-#endif // LSST_QSERV_META_INITMETA_H
+#endif // LSST_QSERV_META_IFACEMETA_H

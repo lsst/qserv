@@ -53,6 +53,12 @@ qMaster::MetadataCache::DbInfo::addTable(std::string const& tbName, const TableI
     return 0;
 }
 
+bool
+qMaster::MetadataCache::DbInfo::checkIfContainsTable(std::string const& tableName) const {
+    std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
+    return itr != _tables.end();
+}
+
 qMaster::MetadataCache::TableInfo::TableInfo() :
     _isPartitioned(false),
     _overlap(-1),
@@ -83,7 +89,7 @@ qMaster::MetadataCache::TableInfo::TableInfo(float overlap,
 
 int
 qMaster::MetadataCache::addDbInfoNonPartitioned(std::string const& dbName) {
-    if (containsDb(dbName)) {
+    if (checkIfContainsDb(dbName)) {
         return -1; // the dbInfo already exists
     }
     _dbs.insert(std::pair<std::string, DbInfo> (dbName, DbInfo()));
@@ -96,7 +102,7 @@ qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
                                                    int nSubStripes,
                                                    float defOverlapF,
                                                    float defOverlapNN) {
-    if (containsDb(dbName)) {
+    if (checkIfContainsDb(dbName)) {
         return -1; // the dbInfo already exists
     }
     DbInfo dbInfo(nStripes, nSubStripes, defOverlapF, defOverlapNN);
@@ -141,6 +147,22 @@ qMaster::MetadataCache::resetSelf() {
     _dbs.clear();
 }
 
+bool 
+qMaster::MetadataCache::checkIfContainsDb(std::string const& dbName) const {
+    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
+    return itr != _dbs.end();
+}
+
+bool 
+qMaster::MetadataCache::checkIfContainsTable(std::string const& dbName,
+                                             std::string const& tableName) const {
+    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
+    if (itr == _dbs.end()) {
+        return false;
+    }
+    return itr->second.checkIfContainsTable(tableName);
+}
+
 void
 qMaster::MetadataCache::printSelf() const {
     std::cout << "\n\nMetadata Cache in C++:" << std::endl;
@@ -149,12 +171,6 @@ qMaster::MetadataCache::printSelf() const {
         std::cout << "db: " << itr->first << ": " << itr->second << "\n";
     }
     std::cout << std::endl;
-}
-
-bool 
-qMaster::MetadataCache::containsDb(std::string const& dbName) const {
-    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
-    return itr != _dbs.end();
 }
 
 std::ostream &

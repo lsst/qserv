@@ -94,7 +94,7 @@ from lsst.qserv.master import TableMerger, TableMergerError, TableMergerConfig
 from lsst.qserv.master import configureSessionMerger, getSessionResultName
 
 # Metadata
-from lsst.qserv.master import newMetadataSession, discardMetadataSession
+from lsst.qserv.master import newMetadataSession, resetMetadataSession
 from lsst.qserv.master import addDbInfoNonPartitioned
 from lsst.qserv.master import addDbInfoPartitionedSphBox
 from lsst.qserv.master import addTbInfoNonPartitioned

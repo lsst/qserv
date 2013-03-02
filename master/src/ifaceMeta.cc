@@ -22,7 +22,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "lsst/qserv/master/initMeta.h"
+#include "lsst/qserv/master/ifaceMeta.h"
 #include "lsst/qserv/master/MetadataCache.h"
 #include "lsst/qserv/master/SessionManager.h"
 
@@ -59,8 +59,8 @@ qMaster::newMetadataSession() {
 }
 
 void
-qMaster::discardMetadataSession(int session) {
-    getSessionManager().discardSession(session);
+qMaster::resetMetadataSession(int metaSessionId) {
+    getMetadataCache(metaSessionId).resetSelf();
 }
 
 // ============================================================================
