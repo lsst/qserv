@@ -726,7 +726,7 @@ class HintedQueryAction:
         self._prepForExec(self._useMemory, reportError, resultName)
 
     def _importQconfig(self, pmap, hints):
-        self._dbContext = "LSST" # Later adjusted by hints.        
+        self._dbContext = "LSST" # Later adjusted by hints.
         # Hint evaluation
         self._pmap = pmap            
         self._isFullSky = False # Does query involves whole sky
@@ -1053,7 +1053,7 @@ class CheckAction:
             self.results = 50 # placeholder. 50%
 
 ########################################################################
-class MetadataCache:
+class MetadataCacheInterface:
     """MetadataCache encapsulates logic to prepare, metadata information
        by fetching it from qserv metadata server into c++ memory 
        structure."""

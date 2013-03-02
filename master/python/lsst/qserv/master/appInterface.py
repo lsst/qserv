@@ -142,13 +142,13 @@ class AppInterface:
 
     def initMetadataCache(self):
         """Initialize metadata cache.""" 
-        m = app.MetadataCache()
+        m = app.MetadataCacheInterface()
         m.fetchAllData()
         m.printMetadataCache() # for debugging
 
     def resetMetadataCache(self):
         """Reset metadata cache."""
-        m = app.MetadataCache()
+        m = app.MetadataCacheInterface()
         m.resetMetadataCache()
         m.printMetadataCache() # for debugging
 
