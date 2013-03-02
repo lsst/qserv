@@ -224,9 +224,8 @@ xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
 
 ## FIXME: need to detect Lua so we can generate a "startMysqlProxy"
 ## script in the installation.
-               
-def installTo(env, targetDir, pyLib):
-    pathList = ["lsst","qserv","master"]
+
+def installToDist(env, targetDir, pyLib, pathList):
     pyDir = os.path.join(targetDir, *pathList)
     srcPyDir = os.path.join("python" , *pathList)
     
@@ -234,7 +233,7 @@ def installTo(env, targetDir, pyLib):
     for s in env.Glob(os.path.join(srcPyDir,"*.py")):
         if s.name == "argv.py": continue # workaround Scons missing argv.py
         env.Alias("install", env.Install(pyDir, s))
-    # install pylib. 
+    # install pylib
     env.Alias("install", env.Install(pyDir, pyLib))
     # Make sure path exists.
     try: os.makedirs(pyDir)
@@ -247,6 +246,12 @@ def installTo(env, targetDir, pyLib):
         plist = [targetDir] + pathList[:p] + ["__init__.py"]
         fname = os.path.join(*plist)
         open(fname, "w").close()
+
+
+def installTo(env, targetDir, pyLib):
+    installToDist(env, targetDir, pyLib, ["lsst","qserv","master"])
+    installToDist(env, targetDir, pyLib, ["lsst","qserv","meta"])
+
     #install bins
     env.Alias("install", 
               env.Install(targetDir, env.Glob(os.path.join("bin","*.py"))))
