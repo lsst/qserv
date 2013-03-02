@@ -34,7 +34,7 @@ import time
 
 # Package imports
 import lsst.qserv.master
-from lsst.qserv.master import appInterface as app
+from lsst.qserv.master import appInterface as appI
 from lsst.qserv.master.app import HintedQueryAction, makePmap
 from lsst.qserv.master import config
 from db import Db
@@ -79,7 +79,7 @@ class TestAppInterface(unittest.TestCase):
         self._applyQueryFromFile("/etc/motd")
 
     def testShortCircuit(self):
-        r = app.computeShortCircuitQuery("select current_user()",{})
+        r = appI.computeShortCircuitQuery("select current_user()",{})
         self.assertEqual(r, ("qserv@%", "", ""))
         pass
 
@@ -87,7 +87,7 @@ class TestAppInterface(unittest.TestCase):
         tryCountQuery()
 
     def testInitMetadataCache(self):
-        app.initMetadataCache()
+        appI.initMetadataCache()
 
     def _makeBadHint(self):
         "This should be randomized."
@@ -98,7 +98,7 @@ class TestAppInterface(unittest.TestCase):
     def _applyQueryFromFile(self, filename):
         x = self._readFile(filename)
         if x:
-            a = app.AppInterface()
+            a = appI.AppInterface()
             q = x
             result = a.queryNow(q, self._makeBadHint())
         print result
