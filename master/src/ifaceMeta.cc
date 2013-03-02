@@ -37,7 +37,8 @@ using lsst::qserv::master::SessionManager;
 typedef SessionManager<qMaster::MetadataCache::Ptr> SessionMgr;
 typedef boost::shared_ptr<SessionMgr> SessionMgrPtr;
 namespace {
-    SessionMgr& getSessionManager() {
+    SessionMgr&
+    getSessionManager() {
         static SessionMgrPtr sm;
         if(sm.get() == NULL) {
             sm = boost::make_shared<SessionMgr>();
@@ -46,8 +47,9 @@ namespace {
         return *sm;
     }
 
-    qMaster::MetadataCache& getMetadataCache(int session) {
-        return *(getSessionManager().getSession(session));
+    boost::shared_ptr<qMaster::MetadataCache> 
+    getMetadataCache(int session) {
+        return getSessionManager().getSession(session);
     }
 }
 
@@ -69,7 +71,7 @@ qMaster::discardMetadataSession(int metaSessionId) {
 int
 qMaster::addDbInfoNonPartitioned(int metaSessionId,
                                  char* dbName) {
-    return getMetadataCache(metaSessionId).addDbInfoNonPartitioned(dbName);
+    return getMetadataCache(metaSessionId)->addDbInfoNonPartitioned(dbName);
 }
 
 int
@@ -79,7 +81,7 @@ qMaster::addDbInfoPartitionedSphBox(int metaSessionId,
                                     int nSubStripes,
                                     float defOverlapF,
                                     float defOverlapNN) {
-    return getMetadataCache(metaSessionId).addDbInfoPartitionedSphBox(dbName,
+    return getMetadataCache(metaSessionId)->addDbInfoPartitionedSphBox(dbName,
                        nStripes, nSubStripes, defOverlapF, defOverlapNN);
 }
 
@@ -87,7 +89,7 @@ int
 qMaster::addTbInfoNonPartitioned(int metaSessionId,
                                  char* dbName,
                                  char* tbName) {
-    return getMetadataCache(metaSessionId).addTbInfoNonPartitioned(dbName, tbName);
+    return getMetadataCache(metaSessionId)->addTbInfoNonPartitioned(dbName, tbName);
 }
 
 int
@@ -101,12 +103,12 @@ qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
                                     int thetaColNo,
                                     int logicalPart,
                                     int physChunking) {
-    return getMetadataCache(metaSessionId).addTbInfoPartitionedSphBox(
+    return getMetadataCache(metaSessionId)->addTbInfoPartitionedSphBox(
                  dbName, tbName, overlap, phiCol, thetaCol, phiColNo, 
                  thetaColNo, logicalPart, physChunking);
 }
 
 void
 qMaster::printMetadataCache(int metaSessionId) {
-    getMetadataCache(metaSessionId).printSelf();
+    getMetadataCache(metaSessionId)->printSelf();
 }
