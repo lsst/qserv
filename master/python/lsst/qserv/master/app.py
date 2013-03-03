@@ -1128,8 +1128,7 @@ class MetadataCacheInterface:
         elif partStrategy == "None":
             ret = addTbInfoNonPartitioned(sessionId, dbName, tableName)
         else:
-            raise Exception("Not supported partitioning strategy: %s" % \
-                                x["partitioningStrategy"])
+            raise QmsException(Status.ERR_INVALID_PART)
         if ret != 0:
             if ret == -1: # the dbInfo does not exist
                 raise QmsException(Status.ERR_DB_NOT_EXISTS)
