@@ -31,6 +31,7 @@
 
 // Boost
 #include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>     // for mutex
 
 namespace lsst {
 namespace qserv {
@@ -48,11 +49,10 @@ public:
     int addTbInfoPartitionedSphBox(std::string const&, std::string const&,
                                    float, std::string const&, std::string const&, 
                                    int, int, int, int);
-    void resetSelf();
     // accessors
-    bool checkIfContainsDb(std::string const&) const;
-    bool checkIfContainsTable(std::string const&, std::string const&) const;
-    void printSelf() const;
+    bool checkIfContainsDb(std::string const&);
+    bool checkIfContainsTable(std::string const&, std::string const&);
+    void printSelf();
 
     class TableInfo {
     public:
@@ -110,6 +110,7 @@ public:
 
 private:
     std::map<std::string, DbInfo> _dbs;
+    boost::mutex _mutex; // guards the map "_dbs"
 };
 
 }}} // namespace lsst::qserv::meta

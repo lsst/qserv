@@ -92,6 +92,7 @@ qMaster::MetadataCache::addDbInfoNonPartitioned(std::string const& dbName) {
     if (checkIfContainsDb(dbName)) {
         return -1; // the dbInfo already exists
     }
+    boost::lock_guard<boost::mutex> m(_mutex);
     _dbs.insert(std::pair<std::string, DbInfo> (dbName, DbInfo()));
     return 0; // success
 }
@@ -106,6 +107,7 @@ qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
         return -1; // the dbInfo already exists
     }
     DbInfo dbInfo(nStripes, nSubStripes, defOverlapF, defOverlapNN);
+    boost::lock_guard<boost::mutex> m(_mutex);
     _dbs.insert(std::pair<std::string, DbInfo> (dbName, dbInfo));
     return 0; // success
 }
@@ -113,7 +115,7 @@ qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
 int
 qMaster::MetadataCache::addTbInfoNonPartitioned(std::string const& dbName,
                                                 std::string const& tbName) {
-
+    boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
         return -1; // the dbInfo does not exist
@@ -132,6 +134,7 @@ qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
                                                    int thetaColNo, 
                                                    int logicalPart, 
                                                    int physChunking) {
+    boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
         return -1; // the dbInfo does not exist
@@ -142,20 +145,17 @@ qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
     return itr->second.addTable(tbName, tInfo);
 }
 
-void
-qMaster::MetadataCache::resetSelf() {
-    _dbs.clear();
-}
-
 bool 
-qMaster::MetadataCache::checkIfContainsDb(std::string const& dbName) const {
+qMaster::MetadataCache::checkIfContainsDb(std::string const& dbName) {
+    boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
     return itr != _dbs.end();
 }
 
 bool 
 qMaster::MetadataCache::checkIfContainsTable(std::string const& dbName,
-                                             std::string const& tableName) const {
+                                             std::string const& tableName) {
+    boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
         return false;
@@ -164,9 +164,10 @@ qMaster::MetadataCache::checkIfContainsTable(std::string const& dbName,
 }
 
 void
-qMaster::MetadataCache::printSelf() const {
+qMaster::MetadataCache::printSelf() {
     std::cout << "\n\nMetadata Cache in C++:" << std::endl;
     std::map<std::string, DbInfo>::const_iterator itr;
+    boost::lock_guard<boost::mutex> m(_mutex);
     for (itr=_dbs.begin() ; itr!= _dbs.end() ; ++itr) {
         std::cout << "db: " << itr->first << ": " << itr->second << "\n";
     }
