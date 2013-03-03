@@ -1100,10 +1100,13 @@ class MetadataCacheInterface:
             #print "add non partitioned, ", db
             ret = addDbInfoNonPartitioned(sessionId, dbName)
         else:
-            raise Exception("Not supported partitioning strategy: %s" % \
-                                x["partitioningStrategy"])
+            raise QmsException(Status.ERR_INVALID_PART)
         if ret != 0:
-            raise Exception("something went wrong when adding db...")
+            if ret == -1: # the dbInfo does not exist
+                raise QmsException(Status.ERR_DB_NOT_EXISTS)
+            if ret == -2: # the table is already there
+                raise QmsException(Status.ERR_TABLE_EXISTS)
+            raise QmsException(Status.ERR_INTERNAL)
         return x["partitioningStrategy"]
 
     def _addTable(self, dbName, tableName, partStrategy, sessionId, qmsClient):
@@ -1128,7 +1131,11 @@ class MetadataCacheInterface:
             raise Exception("Not supported partitioning strategy: %s" % \
                                 x["partitioningStrategy"])
         if ret != 0:
-            raise Exception("something went wrong when adding table...")
+            if ret == -1: # the dbInfo does not exist
+                raise QmsException(Status.ERR_DB_NOT_EXISTS)
+            if ret == -2: # the table is already there
+                raise QmsException(Status.ERR_TABLE_EXISTS)
+            raise QmsException(Status.ERR_INTERNAL)
 
 ########################################################################
 ########################################################################
