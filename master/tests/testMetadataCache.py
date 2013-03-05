@@ -30,6 +30,7 @@
 # Standard Python imports
 import unittest
 import sys
+import tempfile
 import time
 
 # Package imports
@@ -40,7 +41,8 @@ from lsst.qserv.master.config import load
 from lsst.qserv.meta.status import Status, QmsException
 
 try:
-    load("/tmp/x") # silly, but must provide config, or it will fail
+    tf = tempfile.NamedTemporaryFile(delete=True)
+    load(tf.name) # silly, but must provide config, or it will fail
     mcI = MetadataCacheInterface()
     sessionId = mcI.newSession()
     mcI.printSession(sessionId)
