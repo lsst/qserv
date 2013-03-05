@@ -178,6 +178,92 @@ def getResultTable(tableName):
 ## Classes
 ######################################################################
 
+class MetadataCacheInterface:
+    """MetadataCacheInterface encapsulates logic to prepare, metadata 
+       information by fetching it from qserv metadata server into 
+       C++ memory structure. It is stateless. Throws exceptions on
+       failure."""
+
+    def newSession(self):
+        """Creates new session: assigns sessionId, populates the C++
+           cache and returns the sessionId."""
+        sessionId = newMetadataSession()
+        qmsClient = Client(
+            lsst.qserv.master.config.config.get("metaServer", "host"),
+            int(lsst.qserv.master.config.config.get("metaServer", "port")),
+            lsst.qserv.master.config.config.get("metaServer", "user"),
+            lsst.qserv.master.config.config.get("metaServer", "pass"))
+        self._fetchAllData(sessionId, qmsClient)
+        return sessionId
+
+    def printSession(self, sessionId):
+        printMetadataCache(sessionId)
+
+    def discardSession(self, sessionId):
+        discardMetadataSession(sessionId)
+
+    def _fetchAllData(self, sessionId, qmsClient):
+        dbs = qmsClient.listDbs()
+        for dbName in dbs:
+            partStrategy = self._addDb(dbName, sessionId, qmsClient);
+            tables = qmsClient.listTables(dbName)
+            for tableName in tables:
+                self._addTable(dbName, tableName, partStrategy, sessionId, qmsClient)
+
+    def _addDb(self, dbName, sessionId, qmsClient):
+        # retrieve info about each db
+        x = qmsClient.retrieveDbInfo(dbName)
+        # call the c++ function
+        if x["partitioningStrategy"] == "sphBox":
+            #print "add partitioned, ", db, x
+            ret = addDbInfoPartitionedSphBox(
+                sessionId, dbName,
+                int(x["stripes"]), 
+                int(x["subStripes"]), 
+                float(x["defaultOverlap_fuzziness"]), 
+                float(x["defaultOverlap_nearNeigh"]))
+        elif x["partitioningStrategy"] == "None":
+            #print "add non partitioned, ", db
+            ret = addDbInfoNonPartitioned(sessionId, dbName)
+        else:
+            raise QmsException(Status.ERR_INVALID_PART)
+        if ret != 0:
+            if ret == -1: # the dbInfo does not exist
+                raise QmsException(Status.ERR_DB_NOT_EXISTS)
+            if ret == -2: # the table is already there
+                raise QmsException(Status.ERR_TABLE_EXISTS)
+            raise QmsException(Status.ERR_INTERNAL)
+        return x["partitioningStrategy"]
+
+    def _addTable(self, dbName, tableName, partStrategy, sessionId, qmsClient):
+        # retrieve info about each db
+        x = qmsClient.retrieveTableInfo(dbName, tableName)
+        # call the c++ function
+        if partStrategy == "sphBox":
+            ret = addTbInfoPartitionedSphBox(
+                sessionId, 
+                dbName,
+                tableName, 
+                float(x["overlap"]),
+                x["phiCol"],
+                x["thetaCol"],
+                int(x["phiColNo"]),
+                int(x["thetaColNo"]),
+                int(x["logicalPart"]),
+                int(x["physChunking"]))
+        elif partStrategy == "None":
+            ret = addTbInfoNonPartitioned(sessionId, dbName, tableName)
+        else:
+            raise QmsException(Status.ERR_INVALID_PART)
+        if ret != 0:
+            if ret == -1: # the dbInfo does not exist
+                raise QmsException(Status.ERR_DB_NOT_EXISTS)
+            if ret == -2: # the table is already there
+                raise QmsException(Status.ERR_TABLE_EXISTS)
+            raise QmsException(Status.ERR_INTERNAL)
+
+########################################################################
+
 class TaskTracker:
     def __init__(self):
         self.tasks = {}
@@ -758,7 +844,6 @@ class HintedQueryAction:
             self._substitution = SqlSubstitution(query, 
                                                  self._pConfig.chunkMeta,
                                                  cfg)
-
             if self._substitution.getError():
                 self._error = self._substitution.getError()
                 self._isValid = False
@@ -789,13 +874,11 @@ class HintedQueryAction:
         # Should use db from query, not necessarily context.
         self._factory = protocol.TaskMsgFactory(self._sessionId, 
                                                 self._dbContext)
-
         # We want result table names longer than result-merging table names.
         self._isValid = True
         self._invokeLock = threading.Semaphore()
         self._invokeLock.acquire() # Prevent result retrieval before invoke
         pass
-
 
     # In transition to new protocol: only 1 result table allowed.
     def _headerFunc(self, tableNames, subc=[]):
@@ -1050,91 +1133,6 @@ class CheckAction:
         t = self.tracker.task(id)
         if t: 
             self.results = 50 # placeholder. 50%
-
-########################################################################
-class MetadataCacheInterface:
-    """MetadataCacheInterface encapsulates logic to prepare, metadata 
-       information by fetching it from qserv metadata server into 
-       C++ memory structure. It is stateless. Throws exceptions on
-       failure."""
-
-    def newSession(self):
-        """Creates new session: assigns sessionId, populates the C++
-           cache and returns the sessionId."""
-        sessionId = newMetadataSession()
-        qmsClient = Client(
-            lsst.qserv.master.config.config.get("metaServer", "host"),
-            int(lsst.qserv.master.config.config.get("metaServer", "port")),
-            lsst.qserv.master.config.config.get("metaServer", "user"),
-            lsst.qserv.master.config.config.get("metaServer", "pass"))
-        self._fetchAllData(sessionId, qmsClient)
-        return sessionId
-
-    def printSession(self, sessionId):
-        printMetadataCache(sessionId)
-
-    def discardSession(self, sessionId):
-        discardMetadataSession(sessionId)
-
-    def _fetchAllData(self, sessionId, qmsClient):
-        dbs = qmsClient.listDbs()
-        for dbName in dbs:
-            partStrategy = self._addDb(dbName, sessionId, qmsClient);
-            tables = qmsClient.listTables(dbName)
-            for tableName in tables:
-                self._addTable(dbName, tableName, partStrategy, sessionId, qmsClient)
-
-    def _addDb(self, dbName, sessionId, qmsClient):
-        # retrieve info about each db
-        x = qmsClient.retrieveDbInfo(dbName)
-        # call the c++ function
-        if x["partitioningStrategy"] == "sphBox":
-            #print "add partitioned, ", db, x
-            ret = addDbInfoPartitionedSphBox(
-                sessionId, dbName,
-                int(x["stripes"]), 
-                int(x["subStripes"]), 
-                float(x["defaultOverlap_fuzziness"]), 
-                float(x["defaultOverlap_nearNeigh"]))
-        elif x["partitioningStrategy"] == "None":
-            #print "add non partitioned, ", db
-            ret = addDbInfoNonPartitioned(sessionId, dbName)
-        else:
-            raise QmsException(Status.ERR_INVALID_PART)
-        if ret != 0:
-            if ret == -1: # the dbInfo does not exist
-                raise QmsException(Status.ERR_DB_NOT_EXISTS)
-            if ret == -2: # the table is already there
-                raise QmsException(Status.ERR_TABLE_EXISTS)
-            raise QmsException(Status.ERR_INTERNAL)
-        return x["partitioningStrategy"]
-
-    def _addTable(self, dbName, tableName, partStrategy, sessionId, qmsClient):
-        # retrieve info about each db
-        x = qmsClient.retrieveTableInfo(dbName, tableName)
-        # call the c++ function
-        if partStrategy == "sphBox":
-            ret = addTbInfoPartitionedSphBox(
-                sessionId, 
-                dbName,
-                tableName, 
-                float(x["overlap"]),
-                x["phiCol"],
-                x["thetaCol"],
-                int(x["phiColNo"]),
-                int(x["thetaColNo"]),
-                int(x["logicalPart"]),
-                int(x["physChunking"]))
-        elif partStrategy == "None":
-            ret = addTbInfoNonPartitioned(sessionId, dbName, tableName)
-        else:
-            raise QmsException(Status.ERR_INVALID_PART)
-        if ret != 0:
-            if ret == -1: # the dbInfo does not exist
-                raise QmsException(Status.ERR_DB_NOT_EXISTS)
-            if ret == -2: # the table is already there
-                raise QmsException(Status.ERR_TABLE_EXISTS)
-            raise QmsException(Status.ERR_INTERNAL)
 
 ########################################################################
 ########################################################################
