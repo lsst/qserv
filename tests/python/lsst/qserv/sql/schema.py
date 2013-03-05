@@ -4,7 +4,7 @@
 # s = SQLSchema.SQLSchema("foo")
 # s.read("/tmp/a.sql")
 
-
+import logging
 import reader
 import operator
 
@@ -12,17 +12,21 @@ import operator
 class SQLSchema():
     """Schema class for management of SQL schema"""
     
-    def __init__(self, tableName):
-      # each field must have a positional parameter !
-      self._tableName = tableName
-      self._arity = 0
-      self._primaryKey = None
-      self._index = None
-      self._keys = []
-      self._fields = dict()
-      self._engine = None
-      self._prologue = []
-      self._epilogue = []
+    def __init__(self, tableName, schemaFile):
+        self.log = logging.getLogger()
+        self.log.debug("Calling SQLSchema(%s)",  tableName)
+        # each field must have a positional parameter !
+        self._tableName = tableName
+        self._schemaFile = schemaFile
+        self._arity = 0
+        self._primaryKey = None
+        self._index = None
+        self._keys = []
+        self._fields = dict()
+        self._engine = None
+        self._prologue = []
+        self._epilogue = []
+
 
     def indexOf(self,fieldName):
       (index, fieldSpecification) = self._fields[fieldName]
@@ -78,10 +82,9 @@ class SQLSchema():
           print "convertSQLToSchema: unknown line : %s\n" % line
       return None
                 
-    def read(self, filename):
+    def read(self):
       """ Read a MySQL dump schema file """
-      parsing = reader.reader(filename)
-      self.__init__(filename)
+      parsing = reader.reader(self._schemaFile)
       self._prologue = parsing["prologue"]
       self.convertSQLToSchema(parsing["schema"])
       self._engine = parsing["engine"]
@@ -93,6 +96,7 @@ class SQLSchema():
       	  outfile.write(" ".join(line))
           outfile.write("\n")
       	  
+        self.log.debug("Writing schema table for table : %s",  self._tableName)
       	outfile.write("CREATE TABLE `%s` (\n" % self._tableName)
       	
       	sortedFields = sorted(self._fields.iteritems(),

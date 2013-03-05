@@ -188,7 +188,6 @@ class QservTestsRunner():
                 self.logger.info("Loading schema of partitionned table %s" % table_name)
                 schemaDict = dict()
                 self.qservDataLoader.loadPartitionedSchema(self._input_dirname, table_name, "schema", schemaDict)
-                self.qservDataLoader.setTableConfig(schemaDict)
                 self.qservDataLoader.loadPartitionedTable(table_name, schema_filename, tmp_data_file)
             else:
                 self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, tmp_data_file)
@@ -204,6 +203,7 @@ class QservTestsRunner():
         os.makedirs(self._out_dirname)
 
         self.dataReader.readTableList()
+        self.dataReader.setTableConfig()
 
         for mode in options.mode:
             self._mode=mode

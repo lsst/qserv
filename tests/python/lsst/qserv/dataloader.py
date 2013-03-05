@@ -201,8 +201,9 @@ class QservDataLoader():
 
     def convertSchemaFile(self, tableName, schemaFile, newSchemaFile, schemaDict):
     
-        mySchema = schema.SQLSchema(tableName)    
-        mySchema.read(schemaFile)
+        self.logger.debug("Converting schema file for table : %s" % tableName)
+        mySchema = schema.SQLSchema(tableName, schemaFile)    
+        mySchema.read()
         mySchema.replaceField("`_chunkId`", "`chunkId`")
         mySchema.replaceField("`_subchunkId`", "`subchunkId`")
 
@@ -217,32 +218,32 @@ class QservDataLoader():
 
     # TODO: do we have to drop old schema if it exists ?  
     def loadPartitionedSchema(self, directory, table, schemaSuffix, schemaDict):
-      # TODO: read meta data to know which table must be partitionned.
-      partitionnedTables = ["Object", "Source"]
-      schemaFile = os.path.join(directory, table + "." + schemaSuffix)
-      if table in partitionnedTables:      
-        newSchemaFile = os.path.join(self._out_dirname, table + "_converted" + "." + schemaSuffix)
-        self.convertSchemaFile(table, schemaFile, newSchemaFile, schemaDict)
-        self._sqlInterface['cmd'].executeFromFile(newSchemaFile)
-        os.unlink(newSchemaFile)
+        # TODO: read meta data to know which table must be partitionned.
+        partitionnedTables = ["Object", "Source"]
+        schemaFile = os.path.join(directory, table + "." + schemaSuffix)
+        if table in partitionnedTables:      
+            newSchemaFile = os.path.join(self._out_dirname, table + "_converted" + "." + schemaSuffix)
+            self.convertSchemaFile(table, schemaFile, newSchemaFile, schemaDict)
+            self._sqlInterface['cmd'].executeFromFile(newSchemaFile)
+            os.unlink(newSchemaFile)
 
 
     # TODO : not used now
     def findAllDataInStripes(self):
-      """ Find all files like stripe_<stripeId>/<name>_<chunkId>.csv """
+        """ Find all files like stripe_<stripeId>/<name>_<chunkId>.csv """
 
-      result = []
-      stripeRegexp = re.compile("^stripe_(.*)")
-      chunkRegexp = re.compile("(.*)_(.*).csv")
+        result = []
+        stripeRegexp = re.compile("^stripe_(.*)")
+        chunkRegexp = re.compile("(.*)_(.*).csv")
 
-      for (dirpath, dirnames, filenames) in os.walk(stripeDir):
-        stripeMatching = stripeRegexp.match(os.path.basename(dirpath))
-        if (stripeMatching is not None):
-          stripeId = stripeMatching.groups()
-          for filename in filenames:
-            chunkMatching = chunkRegexp.match(filename)
-            if (chunkMatching is not None):
-               name, chunkId = chunkMatching.groups()
-               result.append((stripeDir, dirpath, filename, name, chunkId))
+        for (dirpath, dirnames, filenames) in os.walk(stripeDir):
+            stripeMatching = stripeRegexp.match(os.path.basename(dirpath))
+            if (stripeMatching is not None):
+                stripeId = stripeMatching.groups()
+                for filename in filenames:
+                    chunkMatching = chunkRegexp.match(filename)
+                    if (chunkMatching is not None):
+                        name, chunkId = chunkMatching.groups()
+                        result.append((stripeDir, dirpath, filename, name, chunkId))
 
-      return result
+        return result
