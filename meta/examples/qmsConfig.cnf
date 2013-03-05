@@ -2,7 +2,8 @@
 [qmsdb]
 db = testX
 unix_socket = /var/lib/mysql/mysql.sock
-passwd = myPwd
+user=qms
+passwd = qmsPass
 
 [logging]
 outFile = /tmp/qmsServer.log
