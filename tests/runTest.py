@@ -26,6 +26,7 @@
 # functionality available through the appInterface module.  Currently
 # only includes minimal fuzz testing and (unfinished) query replaying.
 
+import ConfigParser
 import MySQLdb as sql
 import optparse
 import os
@@ -36,12 +37,14 @@ import tempfile
 
 class RunTests():
 
-    def init(self, user, password, socket, qservHost, qservPort, caseNo, outDir, mode, verboseMode):
-        self._user = user
-        self._password = password
-        self._socket = socket
-        self._qservHost = qservHost
-        self._qservPort = qservPort
+    def init(self, config, caseNo, outDir, mode, verboseMode):
+
+        self._user = config.get('mysql','user')
+        self._password = config.get('mysql','pass')
+        self._socket = config.get('mysql','sock')
+        self._qservHost = config.get('qserv','host')
+        self._qservPort = config.getint('qserv','port')
+        self._qservUser = config.get('qserv','user')
         self._dbName = "qservTest_case%s_%s" % (caseNo, mode)
         self._caseNo = caseNo
         self._outDir = outDir
@@ -71,9 +74,10 @@ class RunTests():
         else:
             withQserv = False
             myOutDir = "%s/m" % self._outDir
-        os.makedirs(myOutDir)
-        # because mysqld will write there
-        os.chmod(myOutDir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        if not os.access(myOutDir, os.F_OK):
+            os.makedirs(myOutDir)
+            # because mysqld will write there
+            os.chmod(myOutDir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
         qDir = "case%s/queries/" % self._caseNo
         print "Testing queries from %s" % qDir
@@ -116,9 +120,9 @@ class RunTests():
             cmd = "mysql --port %i --host %s --batch -u%s -p%s %s -e \"%s\" > %s" % \
                 (self._qservPort, self._qservHost, self._user, self._password, self._dbName, qText, outFile)
         else:
-            cmd = "mysql --batch -u%s -p%s %s -e \"%s\" > %s" % \
-                (self._user, self._password, self._dbName, qText, outFile)
-        #print cmd
+            cmd = "mysql --socket=%s --batch -u%s -p%s %s -e \"%s\" > %s" % \
+                (self._socket, self._user, self._password, self._dbName, qText, outFile)
+        print cmd
         os.system(cmd)
 
     # creates database and load all tables caseXX/data/
@@ -129,6 +133,8 @@ class RunTests():
         self.connectNoDb()
         self._cursor.execute("DROP DATABASE IF EXISTS %s" % self._dbName)
         self._cursor.execute("CREATE DATABASE %s" % self._dbName)
+        # self._cursor.execute("GRANT ALL ON %s.* TO '%s'@'*'" % (self._dbName, self._qservUser, self._qservHost))
+        self._cursor.execute("GRANT ALL ON %s.* TO '*'@'*'" % (self._dbName))
         self.disconnect()
 
         self.connect2Db()
@@ -164,8 +170,8 @@ class RunTests():
 
     def loadRegularTable(self, tableName, schemaFile, dataFile):
         # load schema
-        cmd = "mysql -u%s -p%s %s < %s" % \
-            (self._user, self._password, self._dbName, schemaFile)
+        cmd = "mysql --socket=%s -u%s -p%s %s < %s" % \
+            (self._socket, self._user, self._password, self._dbName, schemaFile)
         print "  Loading schema:", cmd
         os.system(cmd)
         # load data
@@ -209,9 +215,9 @@ mysql -u<u> -p<p> qservTest_case01_q qservMeta -e "insert into LSST__Object SELE
         raw_input("Press Enter to continue...")
 
 
-def runIt(user, pwd, theSocket, qservHost, qservPort, caseNo, outDir, stopAt, mode, verboseMode):
+def runIt(config, caseNo, outDir, stopAt, mode, verboseMode):
     x = RunTests()
-    x.init(user, pwd, theSocket, qservHost, qservPort, caseNo, outDir, mode, verboseMode)
+    x.init(config, caseNo, outDir, mode, verboseMode)
     x.loadData()
     x.runQueries(stopAt)
 
@@ -267,33 +273,20 @@ def main():
             return -1
 
     ## read auth file
-    f = open(authFile)
-    for line in f:
-        line = line.rstrip()
-        (key, value) = line.split(':')
-        if key == 'user':
-            mysqlUser = value
-        elif key == 'pass':
-            mysqlPass = value
-        elif key == 'mysqlSock':
-            mysqlSock = value
-        elif key == 'qservHost':
-            qservHost = value
-        elif key == 'qservPort':
-            qservPort = int(value)
-    f.close()
+    config = ConfigParser.RawConfigParser()
+    config.read(authFile)
 
     outDir = "%s/qservTest_case%s" % (_options.outDir, _options.caseNo)
-    os.makedirs(outDir)
+    
+    if not os.access(outDir, os.F_OK):
+        os.makedirs(outDir)
 
     if modePlainMySql:
         print "\n***** running plain mysql test *****\n"
-        runIt(mysqlUser, mysqlPass, mysqlSock, qservHost, qservPort, 
-             _options.caseNo, outDir, stopAt, "m", verboseMode)
+        runIt(config,_options.caseNo, outDir, stopAt, "m", verboseMode)
     if modeQserv:
         print "\n***** running qserv test *****\n"
-        runIt(mysqlUser, mysqlPass, mysqlSock, qservHost, qservPort,
-              _options.caseNo, outDir, stopAt, "q", verboseMode)
+        runIt(config,_options.caseNo, outDir, stopAt, "q", verboseMode)
 
 if __name__ == '__main__':
     main()
