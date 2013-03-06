@@ -20,23 +20,17 @@ class QservDataLoader():
         #    log_path=self.config['qserv']['log_dir']
         #)
         self.logger = logging.getLogger()
-        sock_connection_params = {
+        self.sock_connection_params = {
             'config' : self.config,
-            'mode' : const.MYSQL_SOCK,
-            'database' : self._dbName
+            'mode' : const.MYSQL_SOCK
             }
 
         self._sqlInterface = dict()
-        self._sqlInterface['sock'] = connection.Connection(**sock_connection_params)
-        self._sqlInterface['cmd'] = cmd.Cmd(**sock_connection_params)
 
-    def loadPartitionedTable(self, table, schemaFile, data_filename):
+    def loadPartitionedTable(self, table, data_filename):
         ''' Partition and load Qserv data like Source and Object
         '''
 
-        # load schema with chunkId and subChunkId
-        self.logger.info("  Loading schema %s" % schemaFile)
-        self._sqlInterface['sock'].executeFromFile(schemaFile)
         # TODO : create index and alter table with chunkId and subChunkId
         # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
 
@@ -59,7 +53,10 @@ class QservDataLoader():
 
         self.logger.info("-----\nQserv mono-node database filled with partitionned '%s' data.-----\n" % table)
 
-    def initDatabases(self): 
+    def connectAndInitDatabases(self): 
+        
+        self._sqlInterface['sock'] = connection.Connection(**self.sock_connection_params)
+
         self.logger.info("Initializing databases %s, qservMeta" % self._dbName)
         sql_instructions= [
             "DROP DATABASE IF EXISTS %s" % self._dbName,
@@ -73,6 +70,10 @@ class QservDataLoader():
         
         for sql in sql_instructions:
             self._sqlInterface['sock'].execute(sql)
+
+        cmd_connection_params =   self.sock_connection_params  
+        cmd_connection_params['database'] = self._dbName
+        self._sqlInterface['cmd'] = cmd.Cmd(**cmd_connection_params)
 
     def workerGetNonEmptyChunkIds(self):
         non_empty_chunk_list=[]
@@ -143,7 +144,7 @@ class QservDataLoader():
             '--phi-column', str(self.dataConfig[table]['decl-column']),
             '--num-stripes', self.config['qserv']['stripes'],
             '--num-sub-stripes', self.config['qserv']['substripes'],
-            '--delimiter', '\t'
+            '--delimiter', self.dataConfig['delimiter']
             ]
         
         if self.dataConfig[table]['chunk-column-id'] != None :
@@ -180,7 +181,7 @@ class QservDataLoader():
         self.logger.info("Partitioned %s data loaded : %s" % (table,out))
 
     def workerCreateTable1234567890(self,table):
-        sql =  "CREATE TABLE {0}.{1}_1234567890 LIKE {1};\n".format(self._dbName,table)
+        sql =  "CREATE TABLE {0}.{1}_1234567890 LIKE {0}.{1};\n".format(self._dbName,table)
         self._sqlInterface['sock'].execute(sql)
 
         self.logger.info("%s table for empty chunk created" % table)
@@ -204,8 +205,17 @@ class QservDataLoader():
         self.logger.debug("Converting schema file for table : %s" % tableName)
         mySchema = schema.SQLSchema(tableName, schemaFile)    
         mySchema.read()
-        mySchema.replaceField("`_chunkId`", "`chunkId`")
-        mySchema.replaceField("`_subchunkId`", "`subchunkId`")
+
+        # TODO schema should be correct before
+        #for field_name in ["chunkId","subChunkId"]:
+        #    previous_field_name = "`_%s`" % field_name
+        #    if mySchema.hasField(field_name):
+        #        continue
+        #    elif mySchema.hasField(previous_field_name):
+        #        self.logger.debug("Replacing field %s in schema %s" % (field_name, tableName))
+        #        mySchema.replaceField(previous_field_name, "`%s`" %field_name)
+        #    else:
+        #        mySchema.addField(field_name, "int(11)", ("default", "NULL"))
 
         if (tableName == "Object"):
             mySchema.deletePrimaryKey()
@@ -217,15 +227,15 @@ class QservDataLoader():
         return mySchema
 
     # TODO: do we have to drop old schema if it exists ?  
-    def loadPartitionedSchema(self, directory, table, schemaSuffix, schemaDict):
+    def createAndLoadPartitionedSchema(self, directory, table, schemaFile, schemaDict):
         # TODO: read meta data to know which table must be partitionned.
-        partitionnedTables = ["Object", "Source"]
-        schemaFile = os.path.join(directory, table + "." + schemaSuffix)
-        if table in partitionnedTables:      
-            newSchemaFile = os.path.join(self._out_dirname, table + "_converted" + "." + schemaSuffix)
-            self.convertSchemaFile(table, schemaFile, newSchemaFile, schemaDict)
-            self._sqlInterface['cmd'].executeFromFile(newSchemaFile)
-            os.unlink(newSchemaFile)
+        partitionnedTables = self.dataConfig['partitionned-tables']
+        if table in partitionnedTables:     
+            # TODO create tmp file here 
+            tmpSchemaFile = os.path.join(self._out_dirname, table + "_converted" + self.dataConfig['schema-extension'])
+            self.convertSchemaFile(table, schemaFile, tmpSchemaFile, schemaDict)
+            self._sqlInterface['cmd'].executeFromFile(tmpSchemaFile)
+            os.unlink(tmpSchemaFile)
 
 
     # TODO : not used now

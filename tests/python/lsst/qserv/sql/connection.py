@@ -10,7 +10,7 @@ class Connection():
     def __init__(self,
                  config, 
                  mode,
-                 database):
+                 database=None):
       
         self.logger = logging.getLogger()
         self.logger.info("SQLConnection creation ")
@@ -18,10 +18,11 @@ class Connection():
 
         socket_connection_params = { 
           'user': config['mysqld']['user'],
-          'db' : database,
           'unix_socket' : config['mysqld']['sock'],
           }
 
+        if (database is not None):
+           socket_connection_params['db']=database
         if (config['mysqld']['pass'] is not None):
            socket_connection_params['passwd']=config['mysqld']['pass']
 
@@ -46,11 +47,11 @@ class Connection():
         self._connection.close()
         
     def execute(self, query):
-        self._cursor = self._connection.cursor()
+        cursor = self._connection.cursor()
         self.logger.info("SQLConnection.execute : %s" % query)
-        self._cursor.execute(query)
-        result = self._cursor.fetchall()
-        self._cursor.close()
+        cursor.execute(query)
+        result = cursor.fetchall()
+        cursor.close()
         return result
 
     def executeFromFile(self, filename):
@@ -62,6 +63,18 @@ class Connection():
       else:
         raise Exception, "File: '%s' not found" % filename
 
+    
+    def dropAndCreateDb(self, db_name):
+        sql_instructions = [
+            "DROP DATABASE IF EXISTS %s" % db_name,
+            "CREATE DATABASE %s" % db_name
+            ]
+        for sql in sql_instructions:
+            self.execute(sql)
+
+    def setDb(self, db_name): 
+        self.execute("USE %s" %  db_name)
+        
 
 # ----------------------------------------
 #    

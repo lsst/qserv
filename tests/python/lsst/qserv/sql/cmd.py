@@ -69,10 +69,10 @@ class Cmd():
       commandLine = self._mysql_cmd + ["SOURCE %s" % filename]
       commons.run_command(commandLine, stdout_file=stdout)
         
-    def createAndLoadTable(self, tableName, schemaFile, dataFile):        
+    def createAndLoadTable(self, tableName, schemaFile, dataFile, delimiter):        
         self.executeFromFile(schemaFile)
-        query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s" % (dataFile, tableName)
-        self.logger.info("Loading data:  %s" % dataFile)
+        query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY '%s';" % (dataFile, tableName,delimiter)
+        self.logger.info("createAndLoadTable() Loading data:  %s" % dataFile)
         self.execute(query)
 
 

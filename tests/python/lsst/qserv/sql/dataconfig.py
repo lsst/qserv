@@ -18,22 +18,26 @@ class DataReader():
         self.dataConfig['schema-extension']='.schema'
         self.dataConfig['data-extension']='.tsv'
         self.dataConfig['zip-extension']='.gz'
+        self.dataConfig['delimiter']='\t'
 
-        
-    def setTableConfig(self):
         """ Fill column position (zero-based index) """
         self.dataConfig['Object']=dict()
+        self.dataConfig['Source']=dict()
         #self.dataConfig['Object']['ra-column'] = schemaDict['Object'].indexOf("`ra_PS`")
         #self.dataConfig['Object']['decl-column'] = schemaDict['Object'].indexOf("`decl_PS`")
         #self.dataConfig['Object']['chunk-column-id'] = schemaDict['Object'].indexOf("`chunkId`")
         self.dataConfig['Object']['ra-column'] = 2
         self.dataConfig['Object']['decl-column'] = 4
+
+        # for case01
         self.dataConfig['Object']['chunk-column-id'] = 227
 
-        self.dataConfig['Source']=dict()
+
         # Source will be placed on the same chunk that its related Object
         #self.dataConfig['Source']['ra-column'] = schemaDict['Source'].indexOf("`raObject`")
         #self.dataConfig['Source']['decl-column'] = schemaDict['Source'].indexOf("`declObject`")
+
+        # for case01
         self.dataConfig['Source']['ra-column'] = 33
         self.dataConfig['Source']['decl-column'] = 34
         
@@ -41,7 +45,17 @@ class DataReader():
         self.dataConfig['Source']['chunk-column-id'] = None
 
         self.log.debug("Data configuration : %s" % self.dataConfig)
-        
+
+        # for PT1.1
+        self.dataConfig['schema-extension']='.sql'
+        self.dataConfig['data-extension']='.txt'
+        self.dataConfig['zip-extension']=None
+        self.dataConfig['delimiter']=','
+
+        # for PT1.1
+        self.dataConfig['Object']['chunk-column-id'] = 225
+        self.dataConfig['Source']['ra-column'] = 32
+        self.dataConfig['Source']['decl-column'] = 33
 
     def readTableList(self):
         files = os.listdir(self.dataDirName)
@@ -50,8 +64,11 @@ class DataReader():
                 filename, fileext = os.path.splitext(f)
                 if fileext == self.dataConfig['schema-extension']:
                     self.tables.append(filename)
+        self.log.debug("%s.readTableList() found : %s" %  (self.__class__.__name__, self.tables))
 
     def getSchemaAndDataFiles(self, table_name):
+        zipped_data_filename = None
+        data_filename = None
         if table_name in self.tables:
             prefix = os.path.join(self.dataDirName, table_name)
             schema_filename = prefix + self.dataConfig['schema-extension']

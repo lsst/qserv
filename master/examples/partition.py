@@ -191,8 +191,6 @@ def _csvArgs(conf, mode="r"):
     else:
         delimiter = conf.delimiter
        
-    print "DEBUG using csv delim : %s" % delimiter
- 
     return { 'delimiter': delimiter,
              'doublequote': conf.doublequote,
              'quoting': conf.quoting,
@@ -543,7 +541,6 @@ class CsvFileWriter(object):
         self.buffer = None
         self.writer = None
         self.numRows = 0
-        print "Calling _csvArgs in CsvFileWriter"
         self.csvArgs = _csvArgs(conf, 'w')
         self.bufferSize = conf.outputBufferSize
         self.debug = conf.debug
@@ -556,9 +553,7 @@ class CsvFileWriter(object):
             print "Opening " + self.path
         self.file = open(self.path, 'ab')
         self.buffer = sio.StringIO()
-        print "DEBUG WRITER _open %s " % self.csvArgs['delimiter']
         self.writer = csv.writer(self.buffer, **(self.csvArgs))
-        print "DEBUG WRITER  DIALECT %s " % self.writer.dialect.delimiter 
     def _flush(self):
         if self.file != None and self.buffer.tell() > 0:
             if self.debug:
