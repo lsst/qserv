@@ -40,33 +40,11 @@ import stat
 import sys
 import tempfile
 
-      
-# TODO: suffixes management (CSV, TSV, GZ, etc.)
-# def loadData(sqlInteface, directory, table, dataSuffixList):
-#   filename = directory + table + ".".join(dataSuffixList)
-#   if (dataSuffixList != []):
-#     suffix = dataSuffixList.pop()
-#     if (suffix == "gz"):
-#       newFilename = directory + table + ".".join(dataSuffixList)
-#       gunzip(filename, newFilename)
-#       # TODO: filename could be a fifo (from mkfifo) but then gunzip should run from background
-#       loadData(directory, table, dataSuffixList)
-#       os.unlink(newFilename)
-#     elif (suffix == "csv"):
-#       SQL_query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY ',';\n"  % (filename, table)
-#       sqlInteface.execute(SQL_query)
-#     elif (suffix == "tsv"):
-#       SQL_query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s;\n"  % (filename, table)
-#       sqlInteface.execute(SQL_query)
-  
-# ------------------------------------------------------------
-
 def gunzip(filename, output = None):
     if (output is None):
         commons.run_command(["gunzip", filename])
     else:
         commons.run_command(["gunzip", "-c", filename], stdout_file=output)
-
 
 class QservTestsRunner():
 
@@ -100,7 +78,6 @@ class QservTestsRunner():
         qserv_tests_dirname = os.path.join(self.config['qserv']['base_dir'],'qserv','tests',"case%s" % self._case_id)
         self._input_dirname = os.path.join(qserv_tests_dirname,'data')
         
-
         self.dataReader = dataconfig.DataReader(self._input_dirname, "case%s" % self._case_id)
 
         self._queries_dirname = os.path.join(qserv_tests_dirname,"queries") 
@@ -111,6 +88,7 @@ class QservTestsRunner():
             )
 
     def runQueries(self, stopAt):
+        self.logger.debug("Running queries : (stop-at : %s)" % stopAt)
         if self._mode == 'qserv':
             withQserv = True
         else:
@@ -148,7 +126,7 @@ class QservTestsRunner():
                             elif not qData:
                                 qText += line
                         qText += ' '
-                    outFile = "%s/%s" % (myOutDir, qFN.replace('.sql', '.txt'))
+                    outFile = os.path.join(myOutDir, qFN.replace('.sql', '.txt'))
                     #qText += " INTO OUTFILE '%s'" % outFile
                     self.logger.info("Mode %s Running %s: %s\n" % (self._mode,qFN, qText))
                     self._sqlInterface['query'].execute(qText, outFile)
@@ -165,7 +143,6 @@ class QservTestsRunner():
             self.logger.debug("Using data of %s" % table_name)
             (schema_filename, data_filename, zipped_data_filename) =  self.dataReader.getSchemaAndDataFiles(table_name)
   
-            # os.mkfifo(tmp_data_file)
             if zipped_data_filename is not None :
 
                 # check if the corresponding data file exists
@@ -281,9 +258,10 @@ class QservTestsRunner():
         op.add_option("-c", "--config-dir", dest="config_dir",
                 help= "Path to directory containing qserv-build.conf and"
                 "qserv-build.default.conf")
-        op.add_option("-s", "--stop-at", dest="stop_at",
+        op.add_option("-s", "--stop-at", type="int", dest="stop_at",
                   default = 799,
-                  help="Stop at query with given number")
+                  help="Stop at query with given number"  +
+                  "' [default: %default]")
         op.add_option("-o", "--out-dir", dest="out_dirname",
                   help="Full path to directory for storing temporary results. The results will be stored in <OUTDIR>/qservTest_case<CASENO>/")
         options = op.parse_args()[0]

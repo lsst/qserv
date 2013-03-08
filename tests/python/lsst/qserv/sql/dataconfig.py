@@ -24,7 +24,7 @@ class DataReader():
         #self.dataConfig['Object']['decl-column'] = schemaDict['Object'].indexOf("`decl_PS`")
         #self.dataConfig['Object']['chunk-column-id'] = schemaDict['Object'].indexOf("`chunkId`")
 
-        # TODO : use meta service
+        # TODO : use meta service instead of hard-coded parameters
         self.log.debug("DataReader.analyze() : Data name is : %s" %self.dataName )
         if self.dataName=="case01":
             
@@ -46,7 +46,7 @@ class DataReader():
             self.log.debug("Data configuration : %s" % self.dataConfig)
             
         # for PT1.1
-        elif self.dataName=="case02":
+        elif self.dataName in ["case02","case03"]:
             
             self.dataConfig['schema-extension']='.sql'
             self.dataConfig['data-extension']='.txt'
