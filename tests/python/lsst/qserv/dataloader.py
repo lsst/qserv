@@ -26,6 +26,7 @@ class QservDataLoader():
             }
 
         self._sqlInterface = dict()
+        self.chunk_id_list = None
 
     def loadPartitionedTable(self, table, data_filename):
         ''' Partition and load Qserv data like Source and Object
@@ -38,20 +39,23 @@ class QservDataLoader():
         
         self.loadPartitionedData(partition_dirname,table)
 
-        self.workerCreateTable1234567890(table)
+        self.logger.info("-----\nQserv mono-node database filled with partitionned '%s' data.-----\n" % table)
 
+
+    def configureXrootdQservMetaEmptyChunk(self):
         chunk_id_list=self.workerGetNonEmptyChunkIds()
-        self.masterCreateAndFeedMetaTable(table,chunk_id_list)
-
-        # Create xrootd query directories
-        self.workerCreateXrootdExportDirs(chunk_id_list)
+        for table in self.dataConfig['partitionned-tables']:
+            self.workerCreateTable1234567890(table)
+            self.workerCreateXrootdExportDirs(chunk_id_list)
+            self.masterCreateAndFeedMetaTable(table,chunk_id_list)
 
         # Create etc/emptychunk.txt
         empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
         stripes=self.config['qserv']['stripes']
         self.masterCreateEmptyChunksFile(stripes, chunk_id_list,  empty_chunks_filename)
 
-        self.logger.info("-----\nQserv mono-node database filled with partitionned '%s' data.-----\n" % table)
+        self.logger.info("-----\nQserv mono-node database configured\n")
+            
 
     def connectAndInitDatabases(self): 
         
@@ -114,9 +118,12 @@ class QservDataLoader():
             self.logger.info("Emptying existing xrootd query dir : %s" % xrd_query_dir)
             shutil.rmtree(xrd_query_dir)
         os.makedirs(xrd_query_dir)
-        self.logger.info("Making placeholders")
+ 
+        empty_chunk_alias = 1234567890
 
-        for chunk_id in non_empty_chunk_id_list:
+        xrootd_file_names = non_empty_chunk_id_list + [empty_chunk_alias]
+        self.logger.info("Making next placeholders %s" % xrootd_file_names )
+        for chunk_id in xrootd_file_names:
             xrd_file = os.path.join(xrd_query_dir,str(chunk_id))
             open(xrd_file, 'w').close() 
 
@@ -124,6 +131,7 @@ class QservDataLoader():
             self.logger.info("Emptying existing xrootd result dir : %s" % xrd_result_dir)
             shutil.rmtree(xrd_result_dir)
         os.makedirs(xrd_result_dir)
+
 
     def partitionData(self,table, data_filename):
         # partition data          
@@ -207,15 +215,15 @@ class QservDataLoader():
         mySchema.read()
 
         # TODO schema should be correct before
-        #for field_name in ["chunkId","subChunkId"]:
-        #    previous_field_name = "`_%s`" % field_name
-        #    if mySchema.hasField(field_name):
-        #        continue
-        #    elif mySchema.hasField(previous_field_name):
-        #        self.logger.debug("Replacing field %s in schema %s" % (field_name, tableName))
-        #        mySchema.replaceField(previous_field_name, "`%s`" %field_name)
-        #    else:
-        #        mySchema.addField(field_name, "int(11)", ("default", "NULL"))
+        for field_name in ["chunkId","subChunkId"]:
+            previous_field_name = "`_%s`" % field_name
+            if not mySchema.hasField(field_name):
+                if mySchema.hasField(previous_field_name):
+                    self.logger.debug("Replacing field %s in schema %s" % (field_name, tableName))
+                    mySchema.replaceField(previous_field_name, "`%s`" %field_name)
+                else:
+                    self.logger.debug("Adding field %s in schema %s" % (field_name, tableName))
+                    mySchema.addField("`%s`" %field_name, "int(11)", ("default", "NULL"))
 
         if (tableName == "Object"):
             mySchema.deletePrimaryKey()
@@ -226,6 +234,19 @@ class QservDataLoader():
     
         return mySchema
 
+
+#    def convertTable(self, table):
+#
+#        sql_statement = "SHOW COLUMNS FROM `%s` LIKE '%s'"
+#        for field_name in ["chunkId","subChunkId"]:
+#            sql =  sql_statement % (table,field_name)
+#            col = self._sqlInterface['sock']. execute(sql)
+#            if col:
+#                continue
+#            else:
+#                self.logger.debug("Replacing field %s in schema %s" % (field_name, table))
+                
+
     # TODO: do we have to drop old schema if it exists ?  
     def createAndLoadPartitionedSchema(self, directory, table, schemaFile, schemaDict):
         # TODO: read meta data to know which table must be partitionned.
@@ -235,6 +256,7 @@ class QservDataLoader():
             tmpSchemaFile = os.path.join(self._out_dirname, table + "_converted" + self.dataConfig['schema-extension'])
             self.convertSchemaFile(table, schemaFile, tmpSchemaFile, schemaDict)
             self._sqlInterface['cmd'].executeFromFile(tmpSchemaFile)
+
             os.unlink(tmpSchemaFile)
 
 

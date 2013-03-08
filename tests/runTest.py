@@ -77,6 +77,7 @@ class QservTestsRunner():
         self.config = None
         self._case_id = None
         self._logFilePrefix = None
+        self._sqlInterface = None
         
     def configure(self, config_dir, case_id, out_dirname, log_file_prefix='qserv-tests' ):
         
@@ -89,6 +90,7 @@ class QservTestsRunner():
 
         self._case_id = case_id
         self._logFilePrefix = log_file_prefix
+        
         self._sqlInterface = dict()
 
         if out_dirname == None :
@@ -99,7 +101,7 @@ class QservTestsRunner():
         self._input_dirname = os.path.join(qserv_tests_dirname,'data')
         
 
-        self.dataReader = dataconfig.DataReader(self._input_dirname)
+        self.dataReader = dataconfig.DataReader(self._input_dirname, "case%s" % self._case_id)
 
         self._queries_dirname = os.path.join(qserv_tests_dirname,"queries") 
 
@@ -257,7 +259,11 @@ class QservTestsRunner():
                                                       database = self._dbName
                                                       )
 
-            self.loadData()     
+            self.loadData() 
+
+            if (self._mode=='qserv'):
+                self.qservDataLoader.configureXrootdQservMetaEmptyChunk()
+
             self.runQueries(options.stop_at)
 
     def parseOptions(self):

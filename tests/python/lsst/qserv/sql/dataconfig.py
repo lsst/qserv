@@ -5,9 +5,10 @@ import tempfile
 
 class DataReader():
 
-    def __init__(self, data_dir_name):
+    def __init__(self, data_dir_name, data_name=None):
         self.log = logging.getLogger()
         self.dataDirName = data_dir_name
+        self.dataName = data_name
         self.dataConfig = dict()
 
         self.tables = []
@@ -15,47 +16,51 @@ class DataReader():
     def analyze(self):
 
         self.dataConfig['partitionned-tables'] = ["Object", "Source"]
-        self.dataConfig['schema-extension']='.schema'
-        self.dataConfig['data-extension']='.tsv'
-        self.dataConfig['zip-extension']='.gz'
-        self.dataConfig['delimiter']='\t'
-
+       
         """ Fill column position (zero-based index) """
         self.dataConfig['Object']=dict()
         self.dataConfig['Source']=dict()
         #self.dataConfig['Object']['ra-column'] = schemaDict['Object'].indexOf("`ra_PS`")
         #self.dataConfig['Object']['decl-column'] = schemaDict['Object'].indexOf("`decl_PS`")
         #self.dataConfig['Object']['chunk-column-id'] = schemaDict['Object'].indexOf("`chunkId`")
-        self.dataConfig['Object']['ra-column'] = 2
-        self.dataConfig['Object']['decl-column'] = 4
 
-        # for case01
-        self.dataConfig['Object']['chunk-column-id'] = 227
-
-
-        # Source will be placed on the same chunk that its related Object
-        #self.dataConfig['Source']['ra-column'] = schemaDict['Source'].indexOf("`raObject`")
-        #self.dataConfig['Source']['decl-column'] = schemaDict['Source'].indexOf("`declObject`")
-
-        # for case01
-        self.dataConfig['Source']['ra-column'] = 33
-        self.dataConfig['Source']['decl-column'] = 34
-        
-        # chunkId and subChunkId will be added
-        self.dataConfig['Source']['chunk-column-id'] = None
-
-        self.log.debug("Data configuration : %s" % self.dataConfig)
-
+        # TODO : use meta service
+        self.log.debug("DataReader.analyze() : Data name is : %s" %self.dataName )
+        if self.dataName=="case01":
+            
+            self.dataConfig['schema-extension']='.schema'
+            self.dataConfig['data-extension']='.tsv'
+            self.dataConfig['zip-extension']='.gz'
+            self.dataConfig['delimiter']='\t'
+            
+            self.dataConfig['Object']['ra-column'] = 2
+            self.dataConfig['Object']['decl-column'] = 4
+            self.dataConfig['Object']['chunk-column-id'] = 227
+            
+            self.dataConfig['Source']['ra-column'] = 33
+            self.dataConfig['Source']['decl-column'] = 34
+            
+             # chunkId and subChunkId will be added
+            self.dataConfig['Source']['chunk-column-id'] = None
+            
+            self.log.debug("Data configuration : %s" % self.dataConfig)
+            
         # for PT1.1
-        self.dataConfig['schema-extension']='.sql'
-        self.dataConfig['data-extension']='.txt'
-        self.dataConfig['zip-extension']=None
-        self.dataConfig['delimiter']=','
+        elif self.dataName=="case02":
+            
+            self.dataConfig['schema-extension']='.sql'
+            self.dataConfig['data-extension']='.txt'
+            self.dataConfig['zip-extension']=None
+            self.dataConfig['delimiter']=','
 
-        # for PT1.1
-        self.dataConfig['Object']['chunk-column-id'] = 225
-        self.dataConfig['Source']['ra-column'] = 32
-        self.dataConfig['Source']['decl-column'] = 33
+            self.dataConfig['Object']['ra-column'] = 2
+            self.dataConfig['Object']['decl-column'] = 4
+            self.dataConfig['Object']['chunk-column-id'] = 225
+
+            self.dataConfig['Source']['ra-column'] = 32
+            self.dataConfig['Source']['decl-column'] = 33
+             # chunkId and subChunkId will be added
+            self.dataConfig['Source']['chunk-column-id'] = None
 
     def readTableList(self):
         files = os.listdir(self.dataDirName)
