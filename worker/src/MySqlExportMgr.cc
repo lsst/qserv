@@ -28,14 +28,8 @@
 #include "lsst/qserv/worker/Config.h"
 #include "lsst/qserv/worker/Logger.h"
 
-namespace qWorker=lsst::qserv::worker;
-using lsst::qserv::worker::Logger;
-using lsst::qserv::worker::MySqlExportMgr;
-using lsst::qserv::SqlConfig;
-using lsst::qserv::SqlConnection;
-using lsst::qserv::SqlResultIter;
-using lsst::qserv::SqlErrorObject;
-
+using namespace lsst::qserv::worker;
+using namespace lsst::qserv;
 
 namespace { // File-scope helpers
 

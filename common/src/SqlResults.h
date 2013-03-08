@@ -20,13 +20,22 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// X is a ...
-
+// SqlResults is a class that buffers up results from a particular query. It is
+// currently mysql-specific, but this may (likely) change in the future. 
+// Unfortunately, including SqlResults.h will pull in mysql.h since MYSQL_RES is
+// used in the class declaration and MYSQL_RES is a typedef rather than a class
+// or simple struct.
 #ifndef LSST_QSERV_SQLRESULTS_H
 #define LSST_QSERV_SQLRESULTS_H
 
+#include <string>
+#include <vector>
+#include <mysql/mysql.h>
+#include <boost/utility.hpp>
+#include "SqlErrorObject.hh"
+
 namespace lsst { namespace qserv {
-class SqlResults {
+class SqlResults : boost::noncopyable {
 public:
     SqlResults(bool discardImmediately=false) 
         :_discardImmediately(discardImmediately) {};

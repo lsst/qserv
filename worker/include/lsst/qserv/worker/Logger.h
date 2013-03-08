@@ -26,6 +26,7 @@
 #define LSST_QSERV_WORKER_LOGGER_H
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include <boost/utility.hpp>
 // Forward
 class XrdSysLogger;
 class XrdSysError;
@@ -35,15 +36,15 @@ namespace lsst { namespace qserv { namespace worker {
 /// A class to define a logging facility that:
 /// (a)  has logging levels
 /// (b)  has selectable outputs: stdout and xrootd's system log
-class Logger {
+class Logger : boost::noncopyable {
 public:
     typedef boost::shared_ptr<Logger> Ptr;
 
-    enum LogLevel { LOG_FATAL=1,
-                    LOG_ERROR=2, 
-                    LOG_WARN=3, 
-                    LOG_INFO=4, 
-                    LOG_DEBUG=5,
+    enum LogLevel { LOG_FATAL=10,
+                    LOG_ERROR=20, 
+                    LOG_WARN=30, 
+                    LOG_INFO=40, 
+                    LOG_DEBUG=50,
                     LOG_EVERYTHING=9999 };
     Logger()
         : _logLevel(LOG_EVERYTHING), _prefix("") {

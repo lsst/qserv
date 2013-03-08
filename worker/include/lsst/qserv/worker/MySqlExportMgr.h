@@ -22,8 +22,8 @@
  */
 // MySqlExportMgr is a class that implements the capability to retrieve
 // table publishing information from a qserv worker's associated mysqld.
-// It includes helper functions for checking this table publishing table
-// for the existence of certain xrootd paths.
+// It includes helper functions for checking the resulting data structure for
+// the existence of certain xrootd paths.
 
 #ifndef LSST_QSERV_WORKER_MYSQLEXPORTMGR_H
 #define LSST_QSERV_WORKER_MYSQLEXPORTMGR_H

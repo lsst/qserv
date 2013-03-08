@@ -63,27 +63,14 @@ public:
 class QservOss : public XrdOss {
 public:
     typedef std::set<std::string> StringSet; // Convert to unordered_set (C++0x)
-    static QservOss* getInstance() {
-        if(!_instance.get()) { 
-            _instance.reset(new QservOss());
-        }
-        return _instance.get();
-    }
+    static QservOss* getInstance();
+
     /// Reset this instance to these settings.
     QservOss* reset(XrdOss *native_oss,
                     XrdSysLogger *log,
                     const char   *cfgFn,
                     const char   *cfgParams,
-                    const char   *name) {
-        if(cfgParams) { _cfgParams = cfgParams; }
-        else { _cfgParams.assign(""); }
-
-        if(name) { _name = name; }
-        else { _name.assign("unknown"); }
-        // Not sure what to do with native_oss, so we will throw it
-        // away for now.
-        Init(log, cfgFn);
-    }
+                    const char   *name);
 
     // XrdOss overrides (relevant)
     virtual int Stat(const char* path, struct stat* buff, int opts=0);
@@ -109,9 +96,6 @@ private:
     QservOss();
     void _fillQueryFileStat(struct stat &buf);
     bool _checkExist(std::string const& db, int chunk);
-
-    // fields (static)
-    static boost::shared_ptr<QservOss> _instance;
 
     // fields (non-static)
     boost::shared_ptr<StringSet> _pathSet;

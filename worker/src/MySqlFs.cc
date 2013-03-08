@@ -48,15 +48,13 @@ XrdSfsGetDefaultFileSystem(XrdSfsFileSystem* nativeFS,
 
 
 namespace qWorker = lsst::qserv::worker;
-using lsst::qserv::worker::Logger;
-using lsst::qserv::worker::MySqlExportMgr;
-using lsst::qserv::worker::MySqlFs;
+using namespace lsst::qserv::worker;
 using lsst::qserv::QservPath;
 
 namespace { 
 
 #ifdef NO_XROOTD_FS // Fake placeholder functions
-class FakeAddCallback : public qWorker::AddCallbackFunction {
+class FakeAddCallback : public AddCallbackFunction {
 public:
     typedef boost::shared_ptr<FakeAddCallback> Ptr;
     virtual ~FakeAddCallback() {}
@@ -64,7 +62,7 @@ public:
     }
 };    
 
-class FakeFileValidator : public qWorker::fs::FileValidator {
+class FakeFileValidator : public fs::FileValidator {
 public:
     typedef boost::shared_ptr<FakeFileValidator> Ptr;
     FakeFileValidator() {}
@@ -79,7 +77,7 @@ template<class Callback>
 class FinishListener { 
 public:
     FinishListener(Callback* cb) : _callback(cb) {}
-    virtual void operator()(qWorker::ResultError const& p) {
+    virtual void operator()(ResultError const& p) {
         if(p.first == 0) {
             // std::cerr << "Callback=OK!\t" << (void*)_callback << std::endl;
             _callback->Reply_OK();
@@ -96,7 +94,7 @@ private:
 };
 
 /// An AddCallbackFunction implementation to provide xrootd-backed callbacks.
-class AddCallbackFunc : public qWorker::AddCallbackFunction {
+class AddCallbackFunc : public AddCallbackFunction {
 public:
     typedef boost::shared_ptr<AddCallbackFunc> Ptr;
     virtual ~AddCallbackFunc() {}
@@ -104,7 +102,7 @@ public:
         XrdSfsCallBack * callback = XrdSfsCallBack::Create(&(caller.error));
         // Register callback with opener.
         //std::cerr << "Callback reg!\t" << (void*)callback << std::endl;
-        qWorker::QueryRunner::getTracker().listenOnce(
+        QueryRunner::getTracker().listenOnce(
                            filename, FinishListener<XrdSfsCallBack>(callback));
     }
 };
@@ -113,7 +111,7 @@ public:
 /// Filesystem-based file path validation. Deprecated in favor of the
 /// internal data-structure-backed PathValidator (populated via mysqld
 /// upon startup/initialization)
-class FileValidator : public qWorker::fs::FileValidator {
+class FileValidator : public fs::FileValidator {
 public:
     typedef boost::shared_ptr<FileValidator> Ptr;
     FileValidator(char const* localroot) : _localroot(localroot) {}
@@ -132,7 +130,7 @@ private:
 
 /// PathValidator
 /// Uses exports data struct instead of hitting the filesystem.
-class PathValidator : public qWorker::fs::FileValidator {
+class PathValidator : public fs::FileValidator {
 public:
     typedef boost::shared_ptr<PathValidator> Ptr;
     PathValidator(MySqlExportMgr::StringSet const& exports)
@@ -268,7 +266,7 @@ int MySqlFs::rem(
     }
     std::string hash = fs::stripPath(path);
     // Signal query squashing
-    qWorker::QueryRunner::Manager& mgr = qWorker::QueryRunner::getMgr();
+    QueryRunner::Manager& mgr = QueryRunner::getMgr();
     mgr.squashByHash(hash);
     return SFS_OK;
 }

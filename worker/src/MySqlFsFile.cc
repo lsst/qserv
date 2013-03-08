@@ -61,8 +61,7 @@
 
 #define QSERV_USE_STUPID_STRING 1
 
-namespace qWorker = lsst::qserv::worker;
-
+using namespace lsst::qserv::worker;
 
 // Boost launching helper
 template <typename Callable>
@@ -78,7 +77,7 @@ void launchThread(Callable const& c) {
 
 class ReadCallable {
 public:
-    ReadCallable(qWorker::MySqlFsFile& fsfile,
+    ReadCallable(MySqlFsFile& fsfile,
                  XrdSfsAio* aioparm)
         : _fsfile(fsfile), _aioparm(aioparm), _sfsAio(aioparm->sfsAio) {}
 
@@ -89,7 +88,7 @@ public:
         _aioparm->doneRead();
     }
 private:
-    qWorker::MySqlFsFile& _fsfile;
+    MySqlFsFile& _fsfile;
     XrdSfsAio* _aioparm;
     struct aiocb& _sfsAio;
 
@@ -97,7 +96,7 @@ private:
 
 class WriteCallable {
 public:
-    WriteCallable(qWorker::MySqlFsFile& fsfile,
+    WriteCallable(MySqlFsFile& fsfile,
                   XrdSfsAio* aioparm, char* buffer)
         : _fsfile(fsfile), _aioparm(aioparm), _sfsAio(aioparm->sfsAio), 
           _buffer(buffer)
@@ -121,17 +120,17 @@ public:
     }
 
 private:
-    qWorker::MySqlFsFile& _fsfile;
+    MySqlFsFile& _fsfile;
     XrdSfsAio* _aioparm;
     struct aiocb& _sfsAio;
     char* _buffer;
-    static qWorker::Semaphore _sema;
+    static Semaphore _sema;
 };
 // for now, two simultaneous writes (queries)
-qWorker::Semaphore WriteCallable::_sema(2);
+Semaphore WriteCallable::_sema(2);
 
-bool flushOrQueue(qWorker::QueryRunnerArg const& a)  {
-    qWorker::QueryRunner::Manager& mgr = qWorker::QueryRunner::getMgr();
+bool flushOrQueue(QueryRunnerArg const& a)  {
+    QueryRunner::Manager& mgr = QueryRunner::getMgr();
     mgr.runOrEnqueue(a);
     return true;
 }
@@ -180,10 +179,10 @@ std::ostream& operator<<(std::ostream& os, Timer const& tm) {
 //////////////////////////////////////////////////////////////////////////////
 // MySqlFsFile
 //////////////////////////////////////////////////////////////////////////////
-qWorker::MySqlFsFile::MySqlFsFile(boost::shared_ptr<Logger> log, 
+MySqlFsFile::MySqlFsFile(boost::shared_ptr<Logger> log, 
                                   char const* user, 
                                   AddCallbackFunction::Ptr acf,
-                                  qWorker::fs::FileValidator::Ptr fv,
+                                  fs::FileValidator::Ptr fv,
                                   boost::shared_ptr<Service> service) 
     : XrdSfsFile(user), 
       _log(log), 
@@ -201,10 +200,10 @@ qWorker::MySqlFsFile::MySqlFsFile(boost::shared_ptr<Logger> log,
     _userName = std::string(user, cursor - user);
 }
 
-qWorker::MySqlFsFile::~MySqlFsFile(void) {
+MySqlFsFile::~MySqlFsFile(void) {
 }
 
-int qWorker::MySqlFsFile::_acceptFile(char const* fileName) {
+int MySqlFsFile::_acceptFile(char const* fileName) {
     int rc;
     _path.reset(new QservPath(fileName));
     QservPath::RequestType rt = _path->requestType();
@@ -264,7 +263,7 @@ int qWorker::MySqlFsFile::_acceptFile(char const* fileName) {
 
 }
 
-int qWorker::MySqlFsFile::open(char const* fileName, 
+int MySqlFsFile::open(char const* fileName, 
                                XrdSfsFileOpenMode openMode, 
                                mode_t createMode,
                                XrdSecEntity const* client, 
@@ -276,7 +275,7 @@ int qWorker::MySqlFsFile::open(char const* fileName,
     return _acceptFile(fileName);
 }
 
-int qWorker::MySqlFsFile::close(void) {
+int MySqlFsFile::close(void) {
     _log->info((Pformat("File close(%1%) by %2%")
                % _path->chunk() % _userName).str().c_str());
     if(_path->requestType() == QservPath::RESULT) {
@@ -297,7 +296,7 @@ int qWorker::MySqlFsFile::close(void) {
     return SFS_OK;
 }
 
-int qWorker::MySqlFsFile::fctl(
+int MySqlFsFile::fctl(
     int const cmd, char const* args, XrdOucErrInfo& outError) {
     // if rewind: do something
     // else:
@@ -305,24 +304,24 @@ int qWorker::MySqlFsFile::fctl(
     return SFS_ERROR;
 }
 
-char const* qWorker::MySqlFsFile::FName(void) {
+char const* MySqlFsFile::FName(void) {
     _log->info((Pformat("File FName(%1%) by %2%")
                % _path->chunk() % _userName).str().c_str());
     return 0;
 }
 
-int qWorker::MySqlFsFile::getMmap(void** Addr, off_t &Size) {
+int MySqlFsFile::getMmap(void** Addr, off_t &Size) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
-int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
+int MySqlFsFile::read(XrdSfsFileOffset fileOffset,
                                XrdSfsXferSize prereadSz) {
     _hasRead = true;
     _log->info((Pformat("File read(%1%) at %2% by %3%")
                % _path->chunk() % fileOffset % _userName).str().c_str());
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
-    if (!qWorker::dumpFileExists(_dumpName)) {
+    if (!dumpFileExists(_dumpName)) {
         std::string s = "Can't find dumpfile: " + _dumpName;
         _log->error(s);
 
@@ -333,7 +332,7 @@ int qWorker::MySqlFsFile::read(XrdSfsFileOffset fileOffset,
     return SFS_OK;
 }
 
-XrdSfsXferSize qWorker::MySqlFsFile::read(
+XrdSfsXferSize MySqlFsFile::read(
     XrdSfsFileOffset fileOffset, char* buffer, XrdSfsXferSize bufferSize) {
     std::string msg;
     _hasRead = true;
@@ -347,7 +346,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
            % _dumpName % statbuf.st_size).str();
     _log->info(msg);
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
-    int fd = qWorker::dumpFileOpen(_dumpName);
+    int fd = dumpFileOpen(_dumpName);
     if (fd == -1) {
       std::stringstream ss;
       ss << (void*)this << "  Can't open dumpfile: " << _dumpName;
@@ -377,14 +376,14 @@ XrdSfsXferSize qWorker::MySqlFsFile::read(
     return bytes;
 }
 
-int qWorker::MySqlFsFile::read(XrdSfsAio* aioparm) {
+int MySqlFsFile::read(XrdSfsAio* aioparm) {
     _hasRead = true;
     // Spawn a throwaway thread that calls the normal, blocking read.
     launchThread(ReadCallable(*this, aioparm));
     return SFS_OK;
 }
 
-XrdSfsXferSize qWorker::MySqlFsFile::write(
+XrdSfsXferSize MySqlFsFile::write(
     XrdSfsFileOffset fileOffset, char const* buffer,
     XrdSfsXferSize bufferSize) {
     Timer t;
@@ -427,7 +426,7 @@ XrdSfsXferSize qWorker::MySqlFsFile::write(
     return bufferSize;
 }
 	
-int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
+int MySqlFsFile::write(XrdSfsAio* aioparm) {
     aioparm->Result = write(aioparm->sfsAio.aio_offset, 
                             (const char*)aioparm->sfsAio.aio_buf,
                             aioparm->sfsAio.aio_nbytes);
@@ -441,46 +440,46 @@ int qWorker::MySqlFsFile::write(XrdSfsAio* aioparm) {
     return SFS_OK;
 }
 
-int qWorker::MySqlFsFile::sync(void) {
+int MySqlFsFile::sync(void) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
-int qWorker::MySqlFsFile::sync(XrdSfsAio* aiop) {
+int MySqlFsFile::sync(XrdSfsAio* aiop) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
-int qWorker::MySqlFsFile::stat(struct stat* buf) {
+int MySqlFsFile::stat(struct stat* buf) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
-int qWorker::MySqlFsFile::truncate(XrdSfsFileOffset fileOffset) {
+int MySqlFsFile::truncate(XrdSfsFileOffset fileOffset) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
-int qWorker::MySqlFsFile::getCXinfo(char cxtype[4], int &cxrsz) {
+int MySqlFsFile::getCXinfo(char cxtype[4], int &cxrsz) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
-bool qWorker::MySqlFsFile::_addWritePacket(XrdSfsFileOffset offset, 
+bool MySqlFsFile::_addWritePacket(XrdSfsFileOffset offset, 
                                            char const* buffer, 
                                            XrdSfsXferSize bufferSize) {
     _queryBuffer.addBuffer(offset, buffer, bufferSize);
     return true;
 }
 
-void qWorker::MySqlFsFile::_addCallback(std::string const& filename) {
+void MySqlFsFile::_addCallback(std::string const& filename) {
     assert(_path->requestType() == QservPath::RESULT);
     assert(_addCallbackF.get() != 0);
     (*_addCallbackF)(*this, filename);
 }
 
-qWorker::ResultErrorPtr 
-qWorker::MySqlFsFile::_getResultState(std::string const& physFilename) {
+ResultErrorPtr 
+MySqlFsFile::_getResultState(std::string const& physFilename) {
     assert(_path->requestType() == QservPath::RESULT);
     // Lookup result hash.
     std::string hash = fs::stripPath(physFilename);
@@ -489,7 +488,7 @@ qWorker::MySqlFsFile::_getResultState(std::string const& physFilename) {
     return p;
 }
 
-bool qWorker::MySqlFsFile::_flushWrite() {
+bool MySqlFsFile::_flushWrite() {
     switch(_path->requestType()) {
     case QservPath::CQUERY:
         //return _fs.addQuery(_queryBuffer);
@@ -506,13 +505,13 @@ bool qWorker::MySqlFsFile::_flushWrite() {
     // switch should have already returned.
 }
 
-bool qWorker::MySqlFsFile::_flushWriteDetach() {
+bool MySqlFsFile::_flushWriteDetach() {
     Task::Ptr t(new Task(ScriptMeta(_queryBuffer, _chunkId), _userName));
-    qWorker::QueryRunnerArg a(_log, t);
+    QueryRunnerArg a(_log, t);
     return flushOrQueue(a);
 }
 
-bool qWorker::MySqlFsFile::_flushWriteSync() {
+bool MySqlFsFile::_flushWriteSync() {
     Task::Ptr t(new Task(ScriptMeta(_queryBuffer, _chunkId), _userName));
     _setDumpNameAsChunkId(); // Because reads may get detached from writes.
     //_eDest->Say((Pformat("db=%1%.") % s.dbName).str().c_str());
@@ -520,7 +519,7 @@ bool qWorker::MySqlFsFile::_flushWriteSync() {
     return runner();
 }
 
-bool qWorker::MySqlFsFile::_hasPacketEof(
+bool MySqlFsFile::_hasPacketEof(
     char const* buffer, XrdSfsXferSize bufferSize) const {
     if(bufferSize < 4) {
         return false;
@@ -532,19 +531,19 @@ bool qWorker::MySqlFsFile::_hasPacketEof(
             (last4[3] == '\0'));
 }
 
-void qWorker::MySqlFsFile::_setDumpNameAsChunkId() {
+void MySqlFsFile::_setDumpNameAsChunkId() {
     // This can get deprecated soon.
     std::stringstream ss;
     ss << DUMP_BASE << _chunkId << ".dump";
     ss >> _dumpName;
 }
 
-int qWorker::MySqlFsFile::_handleTwoReadOpen(char const* fileName) {
+int MySqlFsFile::_handleTwoReadOpen(char const* fileName) {
     std::string hash = fs::stripPath(fileName);
     return _checkForHash(hash);
 }
 
-int qWorker::MySqlFsFile::_checkForHash(std::string const& hash) {
+int MySqlFsFile::_checkForHash(std::string const& hash) {
     _dumpName = hashToResultPath(hash); 
     _hasRead = false;
     ResultErrorPtr p = _getResultState(_dumpName);

@@ -29,7 +29,6 @@
 #include <iostream>
 #include "XrdSys/XrdSysLogger.hh"
 
-namespace qWorker=lsst::qserv::worker;
 using lsst::qserv::worker::Logger;
 
 void Logger::message(Logger::LogLevel logLevel, char const* s) {

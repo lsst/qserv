@@ -20,30 +20,33 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// X is a ...
+// MySqlConnection represents an abstracted interface to the mysql C-API.
+// Each MySqlConnection object is not parallel, but multiple objects can be used
+// to achieve parallel query streams.
 
 #ifndef LSST_QSERV_MYSQLCONNECTION_H
 #define LSST_QSERV_MYSQLCONNECTION_H
 #include <mysql/mysql.h>
 // Boost
 #include <boost/thread.hpp>
+#include <boost/utility.hpp>
 
 namespace lsst { namespace qserv {
 // Forward
 class SqlConfig;
 
-class MysqlConnection {
+class MySqlConnection : boost::noncopyable {
 public:
-    MysqlConnection();
-    MysqlConnection(SqlConfig const& sqlConfig, bool useThreadMgmt=false);
+    MySqlConnection();
+    MySqlConnection(SqlConfig const& sqlConfig, bool useThreadMgmt=false);
     
-    ~MysqlConnection();
+    ~MySqlConnection();
     
     bool connect();
 
     bool connected() const { return _isConnected; }
     // instance destruction invalidates this return value
-    MYSQL* getMysql() { return _mysql;} 
+    MYSQL* getMySql() { return _mysql;} 
     SqlConfig const& getSqlConfig() const { return *_sqlConfig; }
     
     bool queryUnbuffered(std::string const& query);
@@ -53,8 +56,12 @@ public:
         assert(_mysql);
         return mysql_field_count(_mysql);
     }
+    SqlConfig const& getConfig() const { return *_sqlConfig; }
+    bool selectDb(std::string const& dbName);
+
+
 private:
-    bool _initMysql();
+    bool _initMySql();
     static boost::mutex _mysqlShared;
     static bool _mysqlReady;
 

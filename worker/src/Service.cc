@@ -24,9 +24,9 @@
 #include "lsst/qserv/worker/Service.h"
 #include "lsst/qserv/worker/Logger.h"
 
-namespace qWorker = lsst::qserv::worker;
+using namespace lsst::qserv::worker;
 
-qWorker::Service::Service(qWorker::Logger::Ptr log) 
+Service::Service(Logger::Ptr log) 
     : _todo(new TodoList()) {
     if(!log.get()) {
         log.reset(new Logger());
@@ -34,6 +34,6 @@ qWorker::Service::Service(qWorker::Logger::Ptr log)
     _foreman = newForeman(_todo, log);
 }
 
-qWorker::TaskAcceptor::Ptr qWorker::Service::getAcceptor() {
+TaskAcceptor::Ptr Service::getAcceptor() {
     return _todo;
 }

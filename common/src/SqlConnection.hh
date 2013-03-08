@@ -19,18 +19,23 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-#ifndef LSST_QSERV_SQL_H
-#define LSST_QSERV_SQL_H
-// sql.h - SQL interface module.  Convenience code/abstraction layer
-// fro calling into MySQL.  Uncertain of how this usage conflicts with
-// db usage via the python MySQLdb api. 
-
+// SqlConnection.h - The SqlConnection class provides a convenience
+// layer on top of an underlying mysqlclient. Historically, the
+// SqlConnection class abstracted every interaction with the database
+// and provided some convenience functions (e.g., show tables, show
+// databases) that went beyond providing a C++ wrapper to mysql. Some
+// of the more raw mysql code has been moved to MySqlConnection, but
+// not all.
+// It is uncertain of how this usage conflicts with db usage via the
+// python MySQLdb api, but no problems have been detected so far.
+#ifndef LSST_QSERV_SQLCONNECTION_H
+#define LSST_QSERV_SQLCONNECTION_H
 
 // Standard
 #include <string>
 #include <vector>
 
+#include <boost/shared_ptr.hpp>
 
 #include "SqlConfig.hh"
 #include "SqlErrorObject.hh"
@@ -38,7 +43,7 @@
 namespace lsst {
 namespace qserv {
 // forward
-class MysqlConnection;
+class MySqlConnection;
 class SqlResults;
 
 class SqlResultIter {
@@ -55,7 +60,7 @@ public:
 private:
     bool _setup(SqlConfig const& sqlConfig, std::string const& query);
 
-    boost::shared_ptr<MysqlConnection> _connection;
+    boost::shared_ptr<MySqlConnection> _connection;
     List _current;
     SqlErrorObject _errObj;
     int _columnCount;
@@ -97,10 +102,10 @@ public:
                     std::string const& prefixed="",
                     std::string const& dbName="");
 
-    std::string getActiveDbName() const { return _config.dbName; }
+    std::string getActiveDbName() const;
 
     // Static helpers
-    static void populateErrorObject(MysqlConnection& m, SqlErrorObject& o);
+    static void populateErrorObject(MySqlConnection& m, SqlErrorObject& o);
 
 private:
     friend class SqlResultIter;
@@ -109,8 +114,7 @@ private:
     bool _setErrorObject(SqlErrorObject&, 
                          std::string const& details=std::string(""));
 
-    SqlConfig _config;
-    boost::shared_ptr<MysqlConnection> _connection;
+    boost::shared_ptr<MySqlConnection> _connection;
 }; // class SqlConnection
 
 
@@ -120,4 +124,4 @@ private:
 // comment-column:0 
 // End:             
 
-#endif // LSST_QSERV_SQL_H
+#endif // LSST_QSERV_SQLCONNECTION_H

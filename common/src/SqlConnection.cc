@@ -26,18 +26,14 @@
 #include <cstdio>
 // Boost
 #include <boost/thread.hpp> // for mutex. 
-#include <boost/format.hpp> // for mutex. 
+#include <boost/format.hpp> 
 
 // mysql
 #include "SqlConnection.hh"
-#include "MysqlConnection.h"
+#include "MySqlConnection.h"
 #include "SqlResults.h"
 
-using lsst::qserv::SqlConfig;
-using lsst::qserv::SqlConnection;
-using lsst::qserv::SqlResults;
-using lsst::qserv::SqlResultIter;
-
+using namespace lsst::qserv;
 
 SqlConfig::SqlConfig(const SqlConfig& c) 
     : hostname(c.hostname),
@@ -137,115 +133,6 @@ SqlConfig::printSelf(std::string const& extras) const {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// class SqlResults
-////////////////////////////////////////////////////////////////////////
-void
-SqlResults::freeResults() {
-    int i, s = _results.size();
-    for (i=0 ; i<s ; i++) {
-        mysql_free_result(_results[i]);
-    }
-    _results.clear();
-}
-
-void 
-SqlResults::addResult(MYSQL_RES* r) {
-    if ( _discardImmediately ) {
-        mysql_free_result(r);
-    } else {
-        _results.push_back(r);
-    }
-}
-
-bool
-SqlResults::extractFirstColumn(std::vector<std::string>& ret,
-                               SqlErrorObject& errObj) {
-    int i, s = _results.size();
-    for (i=0 ; i<s ; i++) {
-        MYSQL_ROW row;
-        while (row = mysql_fetch_row(_results[i])) {
-            ret.push_back(row[0]);
-        }
-        mysql_free_result(_results[i]);
-    }
-    _results.clear();
-    return true;
-}
-
-bool
-SqlResults::extractFirst2Columns(std::vector<std::string>& col1,
-                                 std::vector<std::string>& col2,
-                                 SqlErrorObject& errObj) {
-    int i, s = _results.size();
-    for (i=0 ; i<s ; i++) {
-        MYSQL_ROW row;
-        while (row = mysql_fetch_row(_results[i])) {
-            col1.push_back(row[0]);
-            col2.push_back(row[1]);
-        }
-        mysql_free_result(_results[i]);
-    }
-    _results.clear();
-    return true;
-}
-
-bool
-SqlResults::extractFirst3Columns(std::vector<std::string>& col1,
-                                 std::vector<std::string>& col2,
-                                 std::vector<std::string>& col3,
-                                 SqlErrorObject& errObj) {
-    int i, s = _results.size();
-    for (i=0 ; i<s ; i++) {
-        MYSQL_ROW row;
-        while (row = mysql_fetch_row(_results[i])) {
-            col1.push_back(row[0]);
-            col2.push_back(row[1]);
-            col3.push_back(row[2]);
-        }
-        mysql_free_result(_results[i]);
-    }
-    _results.clear();
-    return true;
-}
-
-bool
-SqlResults::extractFirst4Columns(std::vector<std::string>& col1,
-                                 std::vector<std::string>& col2,
-                                 std::vector<std::string>& col3,
-                                 std::vector<std::string>& col4,
-                                 SqlErrorObject& errObj) {
-    int i, s = _results.size();
-    for (i=0 ; i<s ; i++) {
-        MYSQL_ROW row;
-        while (row = mysql_fetch_row(_results[i])) {
-            col1.push_back(row[0]);
-            col2.push_back(row[1]);
-            col3.push_back(row[2]);
-            col4.push_back(row[3]);
-        }
-        mysql_free_result(_results[i]);
-    }
-    _results.clear();
-    return true;
-}
-
-bool
-SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
-    if (_results.size() != 1) {
-        std::stringstream ss;
-        ss << "Expecting one row, found " << _results.size() << " results"
-           << std::endl;
-        return errObj.addErrMsg(ss.str());
-    }
-    MYSQL_ROW row = mysql_fetch_row(_results[0]);
-    if (!row) {
-        return errObj.addErrMsg("Expecting one row, found no rows");
-    }
-    ret = (row[0]);
-    freeResults();
-    return true;
-}
-////////////////////////////////////////////////////////////////////////
 // class SqlResultIter
 ////////////////////////////////////////////////////////////////////////
 SqlResultIter::SqlResultIter(SqlConfig const& sqlConfig,
@@ -281,7 +168,7 @@ SqlResultIter::done() const {
 bool
 SqlResultIter::_setup(SqlConfig const& sqlConfig, std::string const& query) {
     _columnCount = 0;
-    _connection.reset(new MysqlConnection(sqlConfig, true));
+    _connection.reset(new MySqlConnection(sqlConfig, true));
     if(!_connection->connect()) {
         SqlConnection::populateErrorObject(*_connection, _errObj);
         return false;
@@ -301,14 +188,12 @@ SqlConnection::SqlConnection()
 }
 
 SqlConnection::SqlConnection(SqlConfig const& sc, bool useThreadMgmt) 
-    : _config(sc),
-      _connection(new MysqlConnection(sc, useThreadMgmt)) {
+    : _connection(new MySqlConnection(sc, useThreadMgmt)) {
 }
 
 void
 SqlConnection::reset(SqlConfig const& sc, bool useThreadMgmt) {
-    _config = sc;
-    _connection.reset(new MysqlConnection(sc, useThreadMgmt));
+    _connection.reset(new MySqlConnection(sc, useThreadMgmt));
 }
 
 SqlConnection::~SqlConnection() {
@@ -330,17 +215,17 @@ SqlConnection::connectToDb(SqlErrorObject& errObj) {
 bool 
 SqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj) {
     if (!connectToDb(errObj)) return false;
-    if (_config.dbName == dbName) {
+    if (_connection->getConfig().dbName == dbName) {
         return true; // nothing to do
     }
     if (!dbExists(dbName, errObj)) {
         return errObj.addErrMsg(std::string("Can't switch to db ") 
                                  + dbName + " (it does not exist).");
     }    
-    if (mysql_select_db(_connection->getMysql(), dbName.c_str())) {
-        return _setErrorObject(errObj, "Problem selecting db " + dbName + ".");
+    if(!_connection->selectDb(dbName)) {
+        _setErrorObject(errObj, "Problem selecting db " + dbName + ".");
+        return false;
     }
-    _config.dbName = dbName;
     return true;
 }
 
@@ -350,8 +235,8 @@ SqlConnection::runQuery(char const* query,
                         SqlResults& results,
                         SqlErrorObject& errObj) {
     if (!connectToDb(errObj)) return false;
-    if (mysql_real_query(_connection->getMysql(), query, qSize) != 0) {
-        MYSQL_RES* result = mysql_store_result(_connection->getMysql());
+    if (mysql_real_query(_connection->getMySql(), query, qSize) != 0) {
+        MYSQL_RES* result = mysql_store_result(_connection->getMySql());
         if (result) mysql_free_result(result);
         std::string msg = std::string("Unable to execute query: ") + query;
         //    + "\nQuery = " + std::string(query, qSize);
@@ -359,14 +244,14 @@ SqlConnection::runQuery(char const* query,
     }
     int status = 0;
     do {
-        MYSQL_RES* result = mysql_store_result(_connection->getMysql());
+        MYSQL_RES* result = mysql_store_result(_connection->getMySql());
         if (result) {
             results.addResult(result);
-        } else if (mysql_field_count(_connection->getMysql()) != 0) {
+        } else if (mysql_field_count(_connection->getMySql()) != 0) {
             return _setErrorObject(errObj, 
                     std::string("Unable to store result for query: ") + query);
         }
-        status = mysql_next_result(_connection->getMysql());
+        status = mysql_next_result(_connection->getMySql());
         if (status > 0) {
             return _setErrorObject(errObj,
                   std::string("Error retrieving results for query: ") + query);
@@ -398,9 +283,11 @@ SqlConnection::runQuery(std::string const query,
 /// with runQueryIter SqlConnection is busy until SqlResultIter is closed
 boost::shared_ptr<SqlResultIter>
 SqlConnection::getQueryIter(std::string const& query) {
-    boost::shared_ptr<SqlResultIter> i(new SqlResultIter(_config, query));
+    boost::shared_ptr<SqlResultIter> i(
+        new SqlResultIter(_connection->getConfig(), query));
     return i; // Can't defer to iterator without thread mgmt.
 }
+
 bool 
 SqlConnection::dbExists(std::string const& dbName, SqlErrorObject& errObj) {
     if (!connectToDb(errObj)) return false;
@@ -465,7 +352,8 @@ SqlConnection::dropDb(std::string const& dbName,
         return _setErrorObject(errObj, "Problem executing: " + sql);
     }
     if ( getActiveDbName() == dbName ) {
-        _config.dbName.clear();
+        _connection->selectDb(std::string());
+
     }
     return true;
 }
@@ -553,9 +441,14 @@ SqlConnection::listTables(std::vector<std::string>& v,
     return results.extractFirstColumn(v, errObj);
 }
 
+std::string
+SqlConnection::getActiveDbName() const {
+    return _connection->getConfig().dbName;
+}
+
 void 
-SqlConnection::populateErrorObject(MysqlConnection& m, SqlErrorObject& o) {
-    MYSQL* mysql = m.getMysql();
+SqlConnection::populateErrorObject(MySqlConnection& m, SqlErrorObject& o) {
+    MYSQL* mysql = m.getMySql();
     if(mysql == NULL) {
         o.setErrNo(-999);
     } else {

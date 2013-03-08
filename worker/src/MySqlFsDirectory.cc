@@ -27,34 +27,33 @@
 
 #include <errno.h>
 
-namespace qWorker = lsst::qserv::worker;
-using lsst::qserv::worker::Logger;
+using namespace lsst::qserv::worker;
 
-qWorker::MySqlFsDirectory::MySqlFsDirectory(boost::shared_ptr<Logger> log, 
+MySqlFsDirectory::MySqlFsDirectory(boost::shared_ptr<Logger> log, 
                                             char* user) :
     XrdSfsDirectory(user), _log(log) {
 }
 
-qWorker::MySqlFsDirectory::~MySqlFsDirectory(void) {
+MySqlFsDirectory::~MySqlFsDirectory(void) {
 }
 
-int qWorker::MySqlFsDirectory::open(
+int MySqlFsDirectory::open(
     char const* dirName, XrdSecEntity const* client,
     char const* opaque) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
-char const* qWorker::MySqlFsDirectory::nextEntry(void) {
+char const* MySqlFsDirectory::nextEntry(void) {
     return 0;
 }
 
-int qWorker::MySqlFsDirectory::close(void) {
+int MySqlFsDirectory::close(void) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
-char const* qWorker::MySqlFsDirectory::FName(void) {
+char const* MySqlFsDirectory::FName(void) {
     _log->info("In MySqlFsDirectory::Fname()");
     return 0;
 }

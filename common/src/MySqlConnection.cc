@@ -19,21 +19,23 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// X houses the implementation of 
+// MySqlConnection.cc houses the definition of methods in the
+// MySqlConnection class. Eventually most (if not all) mysql_*
+// function invocations should move into this class (and perhaps its
+// delegates). 
 
-#include "MysqlConnection.h" // FIXME: switch to lsst/... namespace
+
+#include "MySqlConnection.h" // FIXME: switch to lsst/... namespace
 #include "SqlConfig.hh"
 
-namespace qsrv=lsst::qserv;
-using lsst::qserv::MysqlConnection;
-using lsst::qserv::SqlConfig;
+using namespace lsst::qserv;
 
 // Statics
-bool MysqlConnection::_mysqlReady = false;
-boost::mutex MysqlConnection::_mysqlShared;
+bool MySqlConnection::_mysqlReady = false;
+boost::mutex MySqlConnection::_mysqlShared;
 
 namespace { // File-scope helpers
-inline void killMysql(MYSQL* mysql, bool useThreadMgmt) {
+inline void killMySql(MYSQL* mysql, bool useThreadMgmt) {
     mysql_close(mysql);
     if(useThreadMgmt) {
         mysql_thread_end(); 
@@ -41,33 +43,33 @@ inline void killMysql(MYSQL* mysql, bool useThreadMgmt) {
 }
 } // anonymous namespace
 
-MysqlConnection::MysqlConnection() 
+MySqlConnection::MySqlConnection() 
     : _mysql(NULL), _mysql_res(NULL) {
-    _initMysql();
+    _initMySql();
 }
 
-MysqlConnection::MysqlConnection(SqlConfig const& sqlConfig,
+MySqlConnection::MySqlConnection(SqlConfig const& sqlConfig,
                                  bool useThreadMgmt) 
     : _sqlConfig(new SqlConfig(sqlConfig)), _useThreadMgmt(useThreadMgmt),
       _mysql(NULL), _mysql_res(NULL) {
-    _initMysql();
+    _initMySql();
 }
     
-MysqlConnection::~MysqlConnection() {
+MySqlConnection::~MySqlConnection() {
     if(_mysql) {
         if(_mysql_res) {
             MYSQL_ROW row;
             while(row = mysql_fetch_row(_mysql_res)); // Drain results.
             _mysql_res = NULL;
         }
-        killMysql(_mysql, _useThreadMgmt);
+        killMySql(_mysql, _useThreadMgmt);
     }
 }
 
 bool
-MysqlConnection::connect() {
+MySqlConnection::connect() {
     // Cleanup garbage
-    if(_mysql) killMysql(_mysql, _useThreadMgmt);
+    if(_mysql) killMySql(_mysql, _useThreadMgmt);
     _isConnected = false;
     // Make myself a thread
     if(_useThreadMgmt) {
@@ -89,7 +91,7 @@ MysqlConnection::connect() {
     return _isConnected;
 }
 bool
-MysqlConnection::queryUnbuffered(std::string const& query) {
+MySqlConnection::queryUnbuffered(std::string const& query) {
     // run query, store into list.
     int rc;
     rc = mysql_real_query(_mysql, query.c_str(), query.length());
@@ -99,12 +101,22 @@ MysqlConnection::queryUnbuffered(std::string const& query) {
     return true;
 }
 
+bool
+MySqlConnection::selectDb(std::string const& dbName) {
+    if(!dbName.empty() &&
+       mysql_select_db(_mysql, dbName.c_str())) {
+        return false;
+    }
+    _sqlConfig->dbName = dbName;
+    return true;
+}
+
 ////////////////////////////////////////////////////////////////////////
-// MysqlConnection
+// MySqlConnection
 // private:
 ////////////////////////////////////////////////////////////////////////
 bool
-MysqlConnection::_initMysql() {
+MySqlConnection::_initMySql() {
     _isConnected = false; // reset.
     _mysql = NULL;
     boost::lock_guard<boost::mutex> g(_mysqlShared);

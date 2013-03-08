@@ -39,10 +39,7 @@
 #include "lsst/qserv/worker/MySqlExportMgr.h"
 #include "lsst/qserv/worker/XrdName.h"
 
-using lsst::qserv::worker::QservOss;
-using lsst::qserv::worker::Logger;
-using lsst::qserv::worker::XrdName;
-
+using namespace lsst::qserv::worker;
 
 namespace {
 /*
@@ -86,7 +83,32 @@ inline std::ostream& print(std::ostream& os, QservOss::StringSet const& h) {
 ////////////////////////////////////////////////////////////////////////
 // QservOss static
 ////////////////////////////////////////////////////////////////////////
-boost::shared_ptr<QservOss> QservOss::_instance;
+QservOss* QservOss::getInstance() {
+    static boost::shared_ptr<QservOss> instance;
+    if(!instance.get()) { 
+        instance.reset(new QservOss());
+    }
+    return instance.get();
+}
+////////////////////////////////////////////////////////////////////////
+// QservOss::reset
+////////////////////////////////////////////////////////////////////////
+QservOss* QservOss::reset(XrdOss *native_oss,
+                          XrdSysLogger *log,
+                          const char   *cfgFn,
+                          const char   *cfgParams,
+                          const char   *name) {
+    if(cfgParams) { _cfgParams = cfgParams; }
+    else { _cfgParams.assign(""); }
+    
+    if(name) { _name = name; }
+    else { _name.assign("unknown"); }
+    // Not sure what to do with native_oss, so we will throw it
+    // away for now.
+    Init(log, cfgFn);
+    return this;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // QservOss::QservOss()
 ////////////////////////////////////////////////////////////////////////
