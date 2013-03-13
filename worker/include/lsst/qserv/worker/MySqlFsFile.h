@@ -1,6 +1,7 @@
+// -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -48,18 +49,28 @@ namespace lsst {
 namespace qserv {
 namespace worker {
 class RequestTaker; // Forward
+class Logger;
 
-
+/// A factory functor that exists for the MySqlFsFile to register a callback for
+/// a completed query operation. The callback object is constructed with a
+/// reference to the File object and attached to the ResultTracker. When the
+/// ResultTracker receives the event (identified by filename), it fires the
+/// callback, which triggers the calling File object. The functor abstraction
+/// allows the MySqlFsFile object to avoid another direct dependence on xrootd
+/// logic, enhancing testability outside of an xrootd running process. 
 class AddCallbackFunction {
 public:
     typedef boost::shared_ptr<AddCallbackFunction> Ptr;
     virtual ~AddCallbackFunction() {}
     virtual void operator()(XrdSfsFile& caller, std::string const& filename) = 0;
 };
-    
+
+/// A file object used by xrootd to represent a single (open-)file context. 
+/// Xrootd expects the object to support read/write and track its own position
+/// in the "file".
 class MySqlFsFile : public XrdSfsFile {
 public:
-    MySqlFsFile(XrdSysError* lp, char const* user = 0, 
+    MySqlFsFile(boost::shared_ptr<Logger> log, char const* user = 0, 
                 AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr(),
                 fs::FileValidator::Ptr fv = fs::FileValidator::Ptr(),
                 boost::shared_ptr<Service> service = Service::Ptr());
@@ -110,7 +121,7 @@ private:
 
     void _setDumpNameAsChunkId();
 
-    XrdSysError* _eDest;
+    boost::shared_ptr<Logger> _log;
     AddCallbackFunction::Ptr _addCallbackF;
     fs::FileValidator::Ptr _validator;
     int _chunkId;

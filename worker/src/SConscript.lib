@@ -9,9 +9,13 @@ import os, fnmatch
 libEnv = env.Clone()
  
 # Build up list of sources for lib.
-sources=[]
+cmsSourcesOnly = ["QservOss.cc"]
+sharedSources = ["Config.cc", "Logger.cc", "MySqlExportMgr.cc"]
+sources = []
+cmsSources = cmsSourcesOnly + sharedSources
 #print os.getcwd(), os.listdir('../src')
 for root, dirs, files in os.walk('../src'):
+    files = [f for f in files if f not in cmsSourcesOnly]
     sources += fnmatch.filter(files, "*.cc")
     # Filter out dotfiles?
     dirs = [d for d in dirs if not fnmatch.fnmatch(d, ".*")]
@@ -42,10 +46,12 @@ conf.CheckLib("qserv_proto")
 conf.CheckLib("XrdOfs")
 libEnv = conf.Finish()
 
+cmsLib = libEnv.SharedLibrary("qserv_workerCmsd", cmsSources)
 lib = libEnv.SharedLibrary("qserv_worker", sources)
 installedLib = libEnv.Install('lib', lib)
+installedCms = libEnv.Install('lib', cmsLib)
 #export
-env.Append(built_libs=[installedLib[0]])
+env.Append(built_libs=[installedLib[0],installedCms[0]])
 env.Append(built_cpppath=libEnv["CPPPATH"])
 env.Append(built_libpath=libEnv["LIBPATH"])
 env.Append(built_elibs=libEnv["LIBS"])
