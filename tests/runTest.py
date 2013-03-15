@@ -57,7 +57,7 @@ class QservTestsRunner():
         self._logFilePrefix = None
         self._sqlInterface = None
         
-    def configure(self, config_dir, case_id, out_dirname, log_file_prefix='qserv-tests' ):
+    def configure(self, config_dir, case_id, out_dirname_prefix, log_file_prefix='qserv-tests' ):
         
         if config_dir is None:
             self.config = commons.read_user_config()
@@ -71,9 +71,9 @@ class QservTestsRunner():
         
         self._sqlInterface = dict()
 
-        if out_dirname == None :
-            out_dirname = self.config['qserv']['tmp_dir']
-        self._out_dirname = os.path.join(out_dirname, "qservTest_case%s" % case_id)
+        if out_dirname_prefix == None :
+            out_dirname_prefix = self.config['qserv']['tmp_dir']
+        self._out_dirname = os.path.join(out_dirname_prefix, "qservTest_case%s" % case_id)
 
         qserv_tests_dirname = os.path.join(self.config['qserv']['base_dir'],'qserv','tests',"case%s" % self._case_id)
         self._input_dirname = os.path.join(qserv_tests_dirname,'data')
@@ -91,8 +91,17 @@ class QservTestsRunner():
         self.logger.debug("Running queries : (stop-at : %s)" % stopAt)
         if self._mode == 'qserv':
             withQserv = True
+            self._sqlInterface['query'] = cmd.Cmd(config = self.config,
+                                                  mode = const.MYSQL_PROXY,
+                                                  database = self._dbName
+                                                  )
         else:
             withQserv = False
+            self._sqlInterface['query'] = cmd.Cmd(config = self.config,
+                                                mode = const.MYSQL_SOCK,
+                                                database = self._dbName
+                                                )
+            
         myOutDir = os.path.join(self._out_dirname, "outputs",self._mode)
         if not os.access(myOutDir, os.F_OK):
             os.makedirs(myOutDir)
@@ -181,67 +190,56 @@ class QservTestsRunner():
             if zipped_data_filename is not None :
                 os.unlink(tmp_data_file)
 
-
-    def run(self, options):
-
-        # cleanup of previous tests
-        if os.path.exists(self._out_dirname):
-            shutil.rmtree(self._out_dirname)
-        os.makedirs(self._out_dirname)
+    def readInputData(self):
 
         self.dataReader.analyze()
         self.dataReader.readTableList()
 
-        for mode in options.mode:
-            self._mode=mode
+    def cleanup(self):
+        # cleanup of previous tests
+        if os.path.exists(self._out_dirname):
+            shutil.rmtree(self._out_dirname)
+        os.makedirs(self._out_dirname)      
 
-            if (self._mode=='mysql'):
-                self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode) 
-                self.logger.info("Creation of a SQL Interface")
+    def connectAndLoad(self, options):
 
+        self.logger.info("Loading data for mode : %s" % self._mode)
+
+        if (self._mode=='mysql'):
+            self.logger.info("Creation of a SQL Interface")
                 
-                self._sqlInterface['sock'] = connection.Connection(
-                                                          config = self.config,
-                                                          mode = const.MYSQL_SOCK
-                                                          )
+            self._sqlInterface['sock'] = connection.Connection(
+                config = self.config,
+                mode = const.MYSQL_SOCK
+                )
 
-                self._sqlInterface['sock'].dropAndCreateDb(self._dbName)
-                self._sqlInterface['sock'].setDb(self._dbName)
-
-
-                self._sqlInterface['cmd'] = cmd.Cmd(config = self.config,
-                                                          mode = const.MYSQL_SOCK,
-                                                          database = self._dbName
-                                                    )
-                self._sqlInterface['query'] = self._sqlInterface['cmd']
+            self._sqlInterface['sock'].dropAndCreateDb(self._dbName)
+            self._sqlInterface['sock'].setDb(self._dbName)
 
 
-                
-            elif (self._mode=='qserv'):
-                self._dbName= 'LSST'     
-                # FIXME bug in LSST deletion/creation
-                self.logger.info("Creation of a SQL Interface")
-                self.qservDataLoader = dataloader.QservDataLoader(
-                    self.config, 
-                    self.dataReader.dataConfig,
-                    self._dbName, 
-                    self._out_dirname, 
-                    self._logFilePrefix
-                    )
-                self.qservDataLoader.connectAndInitDatabases()
-                self._sqlInterface['sock'] =  None
-                self._sqlInterface['cmd'] = self.qservDataLoader._sqlInterface['cmd']
-                self._sqlInterface['query'] = cmd.Cmd(config = self.config,
-                                                      mode = const.MYSQL_PROXY,
-                                                      database = self._dbName
-                                                      )
+            self._sqlInterface['cmd'] = cmd.Cmd(config = self.config,
+                                                mode = const.MYSQL_SOCK,
+                                                database = self._dbName
+                                                )
 
-            self.loadData() 
+        elif (self._mode=='qserv'):
+            self.logger.info("Creation of a SQL Interface")
+            self.qservDataLoader = dataloader.QservDataLoader(
+                self.config, 
+                self.dataReader.dataConfig,
+                self._dbName, 
+                self._out_dirname, 
+                self._logFilePrefix
+                )
+            self.qservDataLoader.connectAndInitDatabases()
+            self._sqlInterface['sock'] =  None
+            self._sqlInterface['cmd'] = self.qservDataLoader._sqlInterface['cmd']
 
-            if (self._mode=='qserv'):
-                self.qservDataLoader.configureXrootdQservMetaEmptyChunk()
 
-            self.runQueries(options.stop_at)
+        self.loadData() 
+
+        if (self._mode=='qserv'):
+            self.qservDataLoader.configureXrootdQservMetaEmptyChunk()
 
     def parseOptions(self):
         script_name=sys.argv[0]
@@ -249,28 +247,31 @@ class QservTestsRunner():
         op.add_option("-i", "--case-no", dest="case_no",
                   default="01",
                   help="test case number")
-        mode_option_values = ['mysql','qserv']
-        op.add_option("-m", "--mode",  action="append", dest="mode",
-                  default=mode_option_values,
+        mode_option_values = ['mysql','qserv','all']
+        op.add_option("-m", "--mode", type='choice', dest="mode", choices=mode_option_values,
+                  default='all',
                   help= "Qserv test modes (direct mysql connection, or via qserv) : '" +
                   "', '".join(mode_option_values) +
                   "' [default: %default]")
         op.add_option("-c", "--config-dir", dest="config_dir",
                 help= "Path to directory containing qserv-build.conf and"
                 "qserv-build.default.conf")
-        op.add_option("-s", "--stop-at", type="int", dest="stop_at",
+        op.add_option("-s", "--stop-at-query", type="int", dest="stop_at_query",
                   default = 799,
                   help="Stop at query with given number"  +
+                  "' [default: %default]")
+        op.add_option("-l", "--no-load", action="store_false", dest="load_data",default=False,
+                  help="Run queries on previously loaded data"  +
                   "' [default: %default]")
         op.add_option("-o", "--out-dir", dest="out_dirname",
                   help="Full path to directory for storing temporary results. The results will be stored in <OUTDIR>/qservTest_case<CASENO>/")
         options = op.parse_args()[0]
 
-        if not set(options.mode).issubset(set(mode_option_values)) :
-            print "%s: --mode flag set with invalid value" % script_name
-            print "Try `%s --help` for more information." % script_name
-            exit(1)
-
+        if options.mode=='all': 
+            options.mode_list = ['mysql','qserv']
+        else:
+            options.mode_list = [options.mode]
+        
         return options
 
 
@@ -280,7 +281,17 @@ def main():
     options = qserv_test_runner.parseOptions()  
     qserv_test_runner.configure(options.config_dir, options.case_no, options.out_dirname)
 
-    qserv_test_runner.run(options)
+    qserv_test_runner.cleanup()
+    qserv_test_runner.readInputData()
+
+    print("DEBUG : %s" % options.mode)
+
+    for mode in options.mode_list:
+        qserv_test_runner._mode = mode
+        qserv_test_runner._dbName = "qservTest_case%s_%s" % (options.case_no, qserv_test_runner._mode) 
+        if options.load_data:
+            qserv_test_runner.connectAndLoad(options)
+        qserv_test_runner.runQueries(options.stop_at_query)
 
 if __name__ == '__main__':
     main()
