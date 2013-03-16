@@ -1,6 +1,7 @@
+// -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,16 +25,21 @@
 #define LSST_LSPEED_MYSQLFSDIRECTORY_H
 
 #include "XrdSfs/XrdSfsInterface.hh"
+#include <boost/shared_ptr.hpp>
 
 class XrdSysError;
 
 namespace lsst {
 namespace qserv {
 namespace worker {
+class Logger; // Forward
 
+/// MySqlFsDirectory is directory object returned by MySqlFs. It
+/// rejects directory operations because they have not been assigned
+/// any meaning in qserv.
 class MySqlFsDirectory : public XrdSfsDirectory {
 public:
-    MySqlFsDirectory(XrdSysError* lp, char* user = 0);
+    MySqlFsDirectory(boost::shared_ptr<Logger> log, char* user = 0);
     ~MySqlFsDirectory(void);
 
     int open(char const* dirName, XrdSecEntity const* client = 0,
@@ -43,7 +49,7 @@ public:
     char const* FName(void);
 
 private:
-    XrdSysError* _eDest;
+    boost::shared_ptr<Logger> _log;
 };
 
 }}} // namespace lsst::qserv::worker

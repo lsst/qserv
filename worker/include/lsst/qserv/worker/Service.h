@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012, 2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,12 +28,15 @@ namespace worker {
 
 class TodoList; // Forward
 class Foreman; // Forward
+class Logger;
 
+// A container for a list of work (TodoList) and a dispatching scheduler 
+// (Foreman). 
 class Service {
 public:
     typedef boost::shared_ptr<Service> Ptr;
 
-    explicit Service(Logger::Ptr log=Logger::Ptr());
+    explicit Service(boost::shared_ptr<Logger> log=boost::shared_ptr<Logger>());
     TaskAcceptor::Ptr getAcceptor();
 private:
     boost::shared_ptr<TodoList> _todo;

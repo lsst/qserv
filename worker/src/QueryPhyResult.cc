@@ -19,6 +19,7 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+/// QueryPhyResult instances contain and manage result table operations
 #include "lsst/qserv/worker/QueryPhyResult.h"
 
 #include <fcntl.h>
@@ -27,24 +28,25 @@
 #include "lsst/qserv/SqlErrorObject.hh"
 #include "lsst/qserv/worker/Config.h"
 #include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/worker/Logger.h"
  
-namespace qWorker = lsst::qserv::worker;
+using namespace lsst::qserv::worker;
 
 ////////////////////////////////////////////////////////////////////////
-void qWorker::QueryPhyResult::addResultTable(std::string const& t) {
+void QueryPhyResult::addResultTable(std::string const& t) {
     _resultTables.insert(t);
 }
 
-bool qWorker::QueryPhyResult::hasResultTable(std::string const& t) const {
+bool QueryPhyResult::hasResultTable(std::string const& t) const {
     return _resultTables.end() != _resultTables.find(t);
 }
 
-void qWorker::QueryPhyResult::reset() {
+void QueryPhyResult::reset() {
     _resultTables.clear();
     _outDb.assign(std::string());
 }
 
-std::string qWorker::QueryPhyResult::getCommaResultTables()  {
+std::string QueryPhyResult::getCommaResultTables()  {
     std::stringstream ss;
     std::string s;
     std::copy(_resultTables.begin(), _resultTables.end(), 
@@ -54,7 +56,7 @@ std::string qWorker::QueryPhyResult::getCommaResultTables()  {
     return s;
 }
 
-std::string qWorker::QueryPhyResult::_getSpaceResultTables() const {
+std::string QueryPhyResult::_getSpaceResultTables() const {
     std::stringstream ss;
     std::copy(_resultTables.begin(), _resultTables.end(), 
               std::ostream_iterator<std::string const&>(ss, " "));
@@ -62,10 +64,10 @@ std::string qWorker::QueryPhyResult::_getSpaceResultTables() const {
 }
 
 
-bool qWorker::QueryPhyResult::performMysqldump(qWorker::Logger& log,
-                                               std::string const& user,
-                                               std::string const& dumpFile,
-                                               SqlErrorObject& errObj) {
+bool QueryPhyResult::performMysqldump(Logger& log,
+                                      std::string const& user,
+                                      std::string const& dumpFile,
+                                      SqlErrorObject& errObj) {
     // Dump a database to a dumpfile.
     
     // Make sure the path exists
@@ -81,14 +83,14 @@ bool qWorker::QueryPhyResult::performMysqldump(qWorker::Logger& log,
          % user
          % dumpFile % _outDb 
          % _getSpaceResultTables()).str();
-    log((Pformat("dump cmdline: %1%") % cmd).str().c_str());
+    log.info((Pformat("dump cmdline: %1%") % cmd).str());
 
-    log((Pformat("TIMING,000000QueryDumpStart,%1%")
-            % ::time(NULL)).str().c_str());
+    log.info((Pformat("TIMING,000000QueryDumpStart,%1%")
+            % ::time(NULL)).str());
     int cmdResult = system(cmd.c_str());
 
-    log((Pformat("TIMING,000000QueryDumpFinish,%1%")
-            % ::time(NULL)).str().c_str());
+    log.info((Pformat("TIMING,000000QueryDumpFinish,%1%")
+            % ::time(NULL)).str());
 
     if (cmdResult != 0) {
         errObj.setErrNo(errno);
@@ -98,7 +100,7 @@ bool qWorker::QueryPhyResult::performMysqldump(qWorker::Logger& log,
     return true;
 }
 
-void qWorker::QueryPhyResult::_mkdirP(std::string const& filePath) {
+void QueryPhyResult::_mkdirP(std::string const& filePath) {
     // Quick and dirty mkdir -p functionality.  No error checking.
     std::string::size_type pos = 0;
     struct stat statbuf;

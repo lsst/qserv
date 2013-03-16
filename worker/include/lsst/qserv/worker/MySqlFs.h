@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -25,17 +26,25 @@
 
 #include "XrdSfs/XrdSfsInterface.hh"
 #include <boost/shared_ptr.hpp>
+#include <set>
 
 class XrdSysError;
+class XrdSysLogger;
 
 namespace lsst {
 namespace qserv {
 namespace worker {
-class Service; // Forward
+ // Forward
+class Logger;
+class Service;
 
+/// MySqlFs is an xrootd fs plugin class
 class MySqlFs : public XrdSfsFileSystem {
 public:
-    MySqlFs(XrdSysError* lp, char const* cFileName);
+    typedef std::set<std::string> StringSet;
+
+    MySqlFs(boost::shared_ptr<Logger> log, XrdSysLogger* lp,
+            char const* cFileName);
     virtual ~MySqlFs(void);
 
 // Object Allocation Functions
@@ -84,12 +93,15 @@ public:
     int truncate(char const* Name, XrdSfsFileOffset fileOffset,
                  XrdOucErrInfo& outError, XrdSecEntity const* client = 0,
                  char const* opaque = 0);
-
 private:
+    void _initExports();
+
     XrdSysError* _eDest;
     int _isMysqlFail;
     char const* _localroot;
     boost::shared_ptr<Service> _service;
+    boost::shared_ptr<StringSet> _exports;
+    boost::shared_ptr<Logger> _log;
 };
 
 }}} // namespace lsst::qserv::worker
