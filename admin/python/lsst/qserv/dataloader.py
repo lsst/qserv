@@ -28,6 +28,15 @@ class QservDataLoader():
         self._sqlInterface = dict()
         self.chunk_id_list = None
 
+    def createAndLoadTable(self, table_name, schema_filename, input_filename):
+
+        if table_name in self.dataConfig['partitionned-tables']:
+            self.logger.info("Loading schema of partitionned table %s" % table_name)
+            self.createAndLoadPartitionedSchema(table_name, schema_filename)
+            self.loadPartitionedTable(table_name, input_filename)
+        else:
+            self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
+
     def loadPartitionedTable(self, table, data_filename):
         ''' Partition and load Qserv data like Source and Object
         '''
@@ -213,7 +222,7 @@ class QservDataLoader():
         self._sqlInterface['sock'].execute(sql)
         self.logger.info("meta table created and loaded for %s" % table)
 
-    def convertSchemaFile(self, tableName, schemaFile, newSchemaFile, schemaDict):
+    def convertSchemaFile(self, tableName, schemaFile, newSchemaFile):
     
         self.logger.debug("Converting schema file for table : %s" % tableName)
         mySchema = schema.SQLSchema(tableName, schemaFile)    
@@ -235,8 +244,7 @@ class QservDataLoader():
             mySchema.createIndex("`obj_objectid_idx`", "Object", "`objectId`")
 
         mySchema.write(newSchemaFile)
-        schemaDict[tableName]=mySchema
-    
+
         return mySchema
 
 
@@ -251,15 +259,11 @@ class QservDataLoader():
 #            else:
 #                self.logger.debug("Replacing field %s in schema %s" % (field_name, table))
                 
-
-    # TODO: do we have to drop old schema if it exists ?  
-    def createAndLoadPartitionedSchema(self, directory, table, schemaFile, schemaDict):
-        # TODO: read meta data to know which table must be partitionned.
+    def createAndLoadPartitionedSchema(self, table, schemaFile):
         partitionnedTables = self.dataConfig['partitionned-tables']
         if table in partitionnedTables:     
-            # TODO create tmp file here 
             tmpSchemaFile = os.path.join(self._out_dirname, table + "_converted" + self.dataConfig['schema-extension'])
-            self.convertSchemaFile(table, schemaFile, tmpSchemaFile, schemaDict)
+            self.convertSchemaFile(table, schemaFile, tmpSchemaFile)
             self._sqlInterface['cmd'].executeFromFile(tmpSchemaFile)
 
             os.unlink(tmpSchemaFile)
