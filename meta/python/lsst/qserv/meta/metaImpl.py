@@ -60,8 +60,9 @@ internalTables = [
    tbUuid VARCHAR(255),       -- uuid of this table
    dbId INT NOT NULL,         -- id of database this table belongs to
    psId INT,                  -- foreign key to the PS_Tb_* table
-   clusteredIdx VARCHAR(255)  -- name of the clustered index, 
+   clusteredIdx VARCHAR(255), -- name of the clustered index, 
                               -- Null if no clustered index.
+   isRefMatch TINYINT DEFAULT 0 -- flag indicating if the table is a "RefMatch"
 )'''],
     # -----------------------------------------------------------------
     # Partitioning strategy, database-specific parameters 
@@ -402,12 +403,16 @@ class MetaImpl:
         if not opts.has_key("clusteredIndex"):
             print("param 'clusteredIndex' not found, will use default: NULL")
             opts["clusteredIndex"] = "NULL"
+        if not opts.has_key("isRefMatch"):
+            print("param 'isRefMatch' not found, will use default: No")
+            opts["isRefMatch"] = "No"
 
         _crTbOpts = {
             "table_info":("tableName",
                           "partitioning",
                           "schemaFile",
-                          "clusteredIndex")}
+                          "clusteredIndex",
+                          "isRefMatch")}
         _crTbPSOpts = {
             "sphBox":("overlap",
                       "phiColName", 
@@ -486,12 +491,14 @@ class MetaImpl:
             self._mdb.execCommand0(cmd)
             psId = (self._mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
         # create entry in TableMeta
+        isRefMatch = crTbOptions["isRefMatch"]
+        isRefMatchValue = 1 if isRefMatch.lower() == "yes" else 0
         tbUuid = uuid.uuid4() # random UUID
         clusteredIdx = crTbOptions["clusteredIndex"]
         if clusteredIdx == "None":
-            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId) VALUES ('%s', '%s', %s, %s)" % (tableName, tbUuid, dbId, psId)
+            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, isRefMatch) VALUES ('%s', '%s', %s, %s, %d)" % (tableName, tbUuid, dbId, psId, isRefMatchValue)
         else:
-            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx) VALUES ('%s', '%s', %s, %s, '%s')" % (tableName, tbUuid, dbId, psId, clusteredIdx)
+            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx, isRefMatch) VALUES ('%s', '%s', %s, %s, '%s', %d)" % (tableName, tbUuid, dbId, psId, clusteredIdx, isRefMatchValue)
         self._mdb.execCommand0(cmd)
         self._mdb.commit()
 
@@ -582,18 +589,21 @@ class MetaImpl:
         # retrieve table info
         values = dict()
         if psId and psName == "sphBox":
-            ret = self._mdb.execCommand1("SELECT clusteredIdx, overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking FROM TableMeta JOIN PS_Tb_sphBox USING(psId) WHERE tableId=%s" % tableId)
+            ret = self._mdb.execCommand1("SELECT clusteredIdx, isRefMatch, overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking FROM TableMeta JOIN PS_Tb_sphBox USING(psId) WHERE tableId=%s" % tableId)
             values["clusteredIdx"] = ret[0]
-            values["overlap"]      = ret[1]
-            values["phiCol"]       = ret[2]
-            values["thetaCol"]     = ret[3]
-            values["phiColNo"]     = ret[4]
-            values["thetaColNo"]   = ret[5]
-            values["logicalPart"]  = ret[6]
-            values["physChunking"] = hex(ret[7])
+            values["isRefMatch"]   = ret[1]
+            values["overlap"]      = ret[2]
+            values["phiCol"]       = ret[3]
+            values["thetaCol"]     = ret[4]
+            values["phiColNo"]     = ret[5]
+            values["thetaColNo"]   = ret[6]
+            values["logicalPart"]  = ret[7]
+            values["physChunking"] = hex(ret[8])
         else:
-            cmd = "SELECT clusteredIdx FROM TableMeta WHERE tableId=%s" % tableId
-            values["clusteredIdx"] = self._mdb.execCommand1(cmd)
+            cmd = "SELECT clusteredIdx, isRefMatch FROM TableMeta WHERE tableId=%s" % tableId
+            ret = self._mdb.execCommand1(cmd)
+            values["clusteredIdx"] = ret[0]
+            values["isRefMatch"]   = ret[1]
         return values
 
     ###########################################################################
