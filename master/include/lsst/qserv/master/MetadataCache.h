@@ -20,6 +20,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+/**
+  * @file MetadataCache.h
+  *
+  * @brief Transient metadata structure for qserv. 
+  *
+  * @Author Jacek Becla, SLAC
+  */
 
 #ifndef LSST_QSERV_META_METADATACACHE_H
 #define LSST_QSERV_META_METADATACACHE_H
@@ -37,8 +44,9 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
-/// The class manages transient structure that contains metadata
-/// information fetched from the qserv metadata server.
+/** The class manages transient structure that contains metadata
+ * information fetched from the qserv metadata server and used by qserv.
+ */
 class MetadataCache {
 public:
     typedef boost::shared_ptr<MetadataCache> Ptr;
@@ -54,6 +62,8 @@ public:
     bool checkIfContainsTable(std::string const&, std::string const&);
     void printSelf();
 
+    /** The class TableInfo encapsulates metadata information about single table.
+      */
     class TableInfo {
     public:
         // constructors
@@ -82,6 +92,8 @@ public:
         friend std::ostream& operator<<(std::ostream&, const TableInfo&);
     };
 
+    /** The class DbInfo encapsulates metadata information about a single database.
+      */
     class DbInfo {        
     public:
         // constructors

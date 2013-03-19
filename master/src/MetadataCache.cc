@@ -22,10 +22,20 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+/**
+  * @file MetadataCache.cc
+  *
+  * @brief Transient metadata structure for qserv. 
+  *
+  * @Author Jacek Becla, SLAC
+  */
+
 #include "lsst/qserv/master/MetadataCache.h"
 
 namespace qMaster = lsst::qserv::master;
 
+/** Constructs object representing a non-partitioned database.
+  */
 qMaster::MetadataCache::DbInfo::DbInfo() :
     _isPartitioned(false),
     _nStripes(-1),
@@ -34,6 +44,14 @@ qMaster::MetadataCache::DbInfo::DbInfo() :
     _defOverlapNN(-1) {
 }
 
+/** Constructs object representing a partitioned database
+  * which use spherical partitioning mode.
+  *
+  * @param nStripes number of stripes
+  * @param nSubStripes number of sub-stripes
+  * @param defOverlapF default overlap for 'fuzziness'
+  * @param defOverlapNN default overlap for 'near-neighbor'-type queries
+  */
 qMaster::MetadataCache::DbInfo::DbInfo(int nStripes, int nSubStripes,
                                        float defOverlapF, float defOverlapNN) :
     _isPartitioned(true),
@@ -43,6 +61,13 @@ qMaster::MetadataCache::DbInfo::DbInfo(int nStripes, int nSubStripes,
     _defOverlapNN(defOverlapNN) {
 }
 
+/** Adds information about a non-partitioned table.
+  *
+  * @param dbName database name
+  * @param tableName table name
+  *
+  * @return retuns status (0 on success)
+  */
 int
 qMaster::MetadataCache::DbInfo::addTable(std::string const& tbName, const TableInfo& tbInfo) {
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tbName);
@@ -53,12 +78,20 @@ qMaster::MetadataCache::DbInfo::addTable(std::string const& tbName, const TableI
     return 0;
 }
 
+/** Checks if a given table is registered in the qserv metadata.
+  *
+  * @param tableName table name
+  *
+  * @return returns true or false
+  */
 bool
 qMaster::MetadataCache::DbInfo::checkIfContainsTable(std::string const& tableName) const {
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
     return itr != _tables.end();
 }
 
+/** Constructs object representing a non-partitioned table.
+  */
 qMaster::MetadataCache::TableInfo::TableInfo() :
     _isPartitioned(false),
     _overlap(-1),
@@ -70,6 +103,17 @@ qMaster::MetadataCache::TableInfo::TableInfo() :
     _physChunking(-1) {
 }
 
+/** Constructs object representing a partitioned table
+  * which use spherical partitioning mode.
+  *
+  * @param overlap used for this table (overwrites overlaps from dbInfo)
+  * @param phiCol name of the phi col (right ascention)
+  * @param thetaCol name of the theta col (declination)
+  * @param phiColNo position of the phi col in the table, counting from zero
+  * @param thetaColNo position of the theta col in the table, counting from zero
+  * @param logicalPart definition how the table is partitioned logically
+  * @param physChunking definition how the table is chunked physically
+  */
 qMaster::MetadataCache::TableInfo::TableInfo(float overlap, 
                                              std::string const& phiCol,
                                              std::string const& thetaCol,
@@ -87,6 +131,12 @@ qMaster::MetadataCache::TableInfo::TableInfo(float overlap,
     _physChunking(physChunking) {
 }
 
+/** Adds database information for a non-partitioned database.
+  *
+  * @param dbName database name
+  *
+  * @return retuns status (0 on success)
+  */
 int
 qMaster::MetadataCache::addDbInfoNonPartitioned(std::string const& dbName) {
     if (checkIfContainsDb(dbName)) {
@@ -97,6 +147,17 @@ qMaster::MetadataCache::addDbInfoNonPartitioned(std::string const& dbName) {
     return 0; // success
 }
 
+/** Adds database information for a partitioned database,
+  * which use spherical partitioning mode.
+  *
+  * @param dbName database name
+  * @param nStripes number of stripes
+  * @param nSubStripes number of sub-stripes
+  * @param defOverlapF default overlap for 'fuzziness'
+  * @param defOverlapNN default overlap for 'near-neighbor'-type queries
+  *
+  * @return retuns status (0 on success)
+  */
 int
 qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
                                                    int nStripes,
@@ -112,6 +173,13 @@ qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
     return 0; // success
 }
 
+/** Adds table information for a non-partitioned table.
+  *
+  * @param dbName database name
+  * @param tableName table name
+  *
+  * @return retuns status (0 on success)
+  */
 int
 qMaster::MetadataCache::addTbInfoNonPartitioned(std::string const& dbName,
                                                 std::string const& tbName) {
@@ -124,6 +192,21 @@ qMaster::MetadataCache::addTbInfoNonPartitioned(std::string const& dbName,
     return itr->second.addTable(tbName, tInfo);
 }
 
+/** Adds database information for a partitioned table,
+  * which use spherical partitioning mode.
+  *
+  * @param dbName database name
+  * @param tableName table name
+  * @param overlap used for this table (overwrites overlaps from dbInfo)
+  * @param phiCol name of the phi col (right ascention)
+  * @param thetaCol name of the theta col (declination)
+  * @param phiColNo position of the phi col in the table, counting from zero
+  * @param thetaColNo position of the theta col in the table, counting from zero
+  * @param logicalPart definition how the table is partitioned logically
+  * @param physChunking definition how the table is chunked physically
+  *
+  * @return retuns status (0 on success)
+  */
 int
 qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName, 
                                                    std::string const& tbName,
@@ -145,14 +228,27 @@ qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
     return itr->second.addTable(tbName, tInfo);
 }
 
-bool 
+/** Checks if a given database is registered in the qserv metadata.
+  *
+  * @param dbName database name
+  *
+  * @return returns true or false
+  */
+bool
 qMaster::MetadataCache::checkIfContainsDb(std::string const& dbName) {
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
     return itr != _dbs.end();
 }
 
-bool 
+/** Checks if a given table is registered in the qserv metadata.
+  *
+  * @param dbName database name
+  * @param tableName table name
+  *
+  * @return returns true or false
+  */
+bool
 qMaster::MetadataCache::checkIfContainsTable(std::string const& dbName,
                                              std::string const& tableName) {
     boost::lock_guard<boost::mutex> m(_mutex);
@@ -163,6 +259,9 @@ qMaster::MetadataCache::checkIfContainsTable(std::string const& dbName,
     return itr->second.checkIfContainsTable(tableName);
 }
 
+/** Prints the contents of the qserv metadata cache. This is
+  * handy for debugging.
+  */
 void
 qMaster::MetadataCache::printSelf() {
     std::cout << "\n\nMetadata Cache in C++:" << std::endl;
@@ -174,6 +273,13 @@ qMaster::MetadataCache::printSelf() {
     std::cout << std::endl;
 }
 
+/** Operator<< for printing DbInfo object
+  *
+  * @param s the output stream
+  * @param dbInfo DbInfo object
+  *
+  * @return returns the output stream
+  */
 std::ostream &
 qMaster::operator<<(std::ostream &s, const qMaster::MetadataCache::DbInfo &dbInfo) {
     if (dbInfo.getIsPartitioned()) {
@@ -192,6 +298,13 @@ qMaster::operator<<(std::ostream &s, const qMaster::MetadataCache::DbInfo &dbInf
     return s;
 }
 
+/** Operator<< for printing TableInfo object
+  *
+  * @param s the output stream
+  * @param tableInfo TableInfo object
+  *
+  * @return returns the output stream
+  */
 std::ostream &
 qMaster::operator<<(std::ostream &s, const qMaster::MetadataCache::TableInfo &tableInfo) {
     if (tableInfo.getIsPartitioned()) {

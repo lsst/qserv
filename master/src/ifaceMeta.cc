@@ -22,6 +22,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+/**
+  * @file ifaceMeta.xx
+  *
+  * @brief Interface used for exporting C++ metadata cache to python through swig.
+  *
+  * @Author Jacek Becla, SLAC
+  */
+
+
 #include "lsst/qserv/master/ifaceMeta.h"
 #include "lsst/qserv/master/MetadataCache.h"
 #include "lsst/qserv/master/SessionManager.h"
@@ -53,6 +62,8 @@ namespace {
     }
 }
 
+/** Creates a new metadata session
+  */
 int
 qMaster::newMetadataSession() {
     MetadataCache::Ptr m = 
@@ -60,6 +71,9 @@ qMaster::newMetadataSession() {
     return getSessionManager().newSession(m);
 }
 
+/** Destroys existing metadata session.
+  * @param metaSessionId id of the metadat session
+  */
 void
 qMaster::discardMetadataSession(int metaSessionId) {
     getSessionManager().discardSession(metaSessionId);
@@ -68,12 +82,29 @@ qMaster::discardMetadataSession(int metaSessionId) {
 // ============================================================================
 // ===== real work done here
 // ============================================================================
+
+/** Adds database information for a non-partitioned database.
+  * @param metaSessionId id of the metadat session
+  * @param dbName database name
+  */
 int
 qMaster::addDbInfoNonPartitioned(int metaSessionId,
                                  char* dbName) {
     return getMetadataCache(metaSessionId)->addDbInfoNonPartitioned(dbName);
 }
 
+/** Adds database information for a partitioned database,
+  * which use spherical partitioning mode.
+  *
+  * @param metaSessionId id of the metadat session
+  * @param dbName database name
+  * @param nStripes number of stripes
+  * @param nSubStripes number of sub-stripes
+  * @param defOverlapF default overlap for 'fuzziness'
+  * @param defOverlapNN default overlap for 'near-neighbor'-type queries
+  *
+  * @return retuns status (0 on success)
+  */
 int
 qMaster::addDbInfoPartitionedSphBox(int metaSessionId,
                                     char* dbName,
@@ -85,6 +116,14 @@ qMaster::addDbInfoPartitionedSphBox(int metaSessionId,
                        nStripes, nSubStripes, defOverlapF, defOverlapNN);
 }
 
+/** Adds information about a non-partitioned table.
+  *
+  * @param metaSessionId id of the metadat session
+  * @param dbName database name
+  * @param tableName table name
+  *
+  * @return retuns status (0 on success)
+  */
 int
 qMaster::addTbInfoNonPartitioned(int metaSessionId,
                                  char* dbName,
@@ -92,6 +131,22 @@ qMaster::addTbInfoNonPartitioned(int metaSessionId,
     return getMetadataCache(metaSessionId)->addTbInfoNonPartitioned(dbName, tbName);
 }
 
+/** Adds database information for a partitioned table,
+  * which use spherical partitioning mode.
+  *
+  * @param metaSessionId id of the metadat session
+  * @param dbName database name
+  * @param tableName table name
+  * @param overlap used for this table (overwrites overlaps from dbInfo)
+  * @param phiCol name of the phi col (right ascention)
+  * @param thetaCol name of the theta col (declination)
+  * @param phiColNo position of the phi col in the table, counting from zero
+  * @param thetaColNo position of the theta col in the table, counting from zero
+  * @param logicalPart definition how the table is partitioned logically
+  * @param physChunking definition how the table is chunked physically
+  *
+  * @return retuns status (0 on success)
+  */
 int
 qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
                                     char* dbName,
@@ -108,6 +163,9 @@ qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
                  thetaColNo, logicalPart, physChunking);
 }
 
+/** Prints the contents of the qserv metadata cache. This is
+  * handy for debugging.
+  */
 void
 qMaster::printMetadataCache(int metaSessionId) {
     getMetadataCache(metaSessionId)->printSelf();

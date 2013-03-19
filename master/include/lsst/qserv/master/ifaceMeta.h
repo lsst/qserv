@@ -20,10 +20,16 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+/**
+  * @file ifaceMeta.h
+  *
+  * @brief Interface used for exporting C++ metadata cache to python through swig.
+  *
+  * @Author Jacek Becla, SLAC
+  */
+
 #ifndef LSST_QSERV_META_IFACEMETA_H
 #define LSST_QSERV_META_IFACEMETA_H
-
-// interface to metadata used by swig
 
 namespace lsst {
 namespace qserv {
