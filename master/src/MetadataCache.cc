@@ -66,16 +66,16 @@ qMaster::MetadataCache::DbInfo::DbInfo(int nStripes, int nSubStripes,
   * @param dbName database name
   * @param tableName table name
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::MetadataCache::DbInfo::addTable(std::string const& tbName, const TableInfo& tbInfo) {
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tbName);
     if (itr != _tables.end()) {
-        return -2; // the table is already there
+        return STATUS_ERR_TABLE_EXISTS;
     }
     _tables.insert(std::pair<std::string, TableInfo> (tbName, tbInfo));
-    return 0;
+    return STATUS_OK;
 }
 
 /** Checks if a given table is registered in the qserv metadata.
@@ -135,16 +135,16 @@ qMaster::MetadataCache::TableInfo::TableInfo(float overlap,
   *
   * @param dbName database name
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::MetadataCache::addDbInfoNonPartitioned(std::string const& dbName) {
     if (checkIfContainsDb(dbName)) {
-        return -1; // the dbInfo already exists
+        return STATUS_ERR_DB_EXISTS;
     }
     boost::lock_guard<boost::mutex> m(_mutex);
     _dbs.insert(std::pair<std::string, DbInfo> (dbName, DbInfo()));
-    return 0; // success
+    return STATUS_OK;
 }
 
 /** Adds database information for a partitioned database,
@@ -156,7 +156,7 @@ qMaster::MetadataCache::addDbInfoNonPartitioned(std::string const& dbName) {
   * @param defOverlapF default overlap for 'fuzziness'
   * @param defOverlapNN default overlap for 'near-neighbor'-type queries
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
@@ -165,12 +165,12 @@ qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
                                                    float defOverlapF,
                                                    float defOverlapNN) {
     if (checkIfContainsDb(dbName)) {
-        return -1; // the dbInfo already exists
+        return STATUS_ERR_DB_EXISTS;
     }
     DbInfo dbInfo(nStripes, nSubStripes, defOverlapF, defOverlapNN);
     boost::lock_guard<boost::mutex> m(_mutex);
     _dbs.insert(std::pair<std::string, DbInfo> (dbName, dbInfo));
-    return 0; // success
+    return STATUS_OK;
 }
 
 /** Adds table information for a non-partitioned table.
@@ -178,7 +178,7 @@ qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
   * @param dbName database name
   * @param tableName table name
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::MetadataCache::addTbInfoNonPartitioned(std::string const& dbName,
@@ -186,7 +186,7 @@ qMaster::MetadataCache::addTbInfoNonPartitioned(std::string const& dbName,
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
-        return -1; // the dbInfo does not exist
+        return STATUS_ERR_DB_NOT_EXISTS;
     }
     const qMaster::MetadataCache::TableInfo tInfo;
     return itr->second.addTable(tbName, tInfo);
@@ -205,7 +205,7 @@ qMaster::MetadataCache::addTbInfoNonPartitioned(std::string const& dbName,
   * @param logicalPart definition how the table is partitioned logically
   * @param physChunking definition how the table is chunked physically
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName, 
@@ -220,7 +220,7 @@ qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
-        return -1; // the dbInfo does not exist
+        return STATUS_ERR_DB_NOT_EXISTS;
     }
     const qMaster::MetadataCache::TableInfo tInfo(
                           overlap, phiCol, thetaCol, phiColNo, 

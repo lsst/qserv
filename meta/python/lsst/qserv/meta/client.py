@@ -21,11 +21,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 
-"""
-The "client" module implements client of the qserv metadata server.
-It throws QmsException on error.
-"""
-
 import os
 import re
 import socket
@@ -34,6 +29,10 @@ import xmlrpclib
 # Local package imports
 from status import Status, getErrMsg, QmsException
 
+"""
+The "client" module implements client of the qserv metadata server.
+It throws QmsException on error.
+"""
 class Client:
     def __init__(self, host, port, user, pwd):
         defaultXmlPath = "qms"
