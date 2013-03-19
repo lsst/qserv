@@ -50,7 +50,7 @@ namespace master {
 class MetadataCache {
 public:
     enum { STATUS_OK = 0,
-           STATUS_ERR_DB_DOES_NOT_EXISTS = -1, 
+           STATUS_ERR_DB_DOES_NOT_EXIST = -1, 
            STATUS_ERR_DB_EXISTS = -2, 
            STATUS_ERR_TABLE_EXISTS = -3
     };

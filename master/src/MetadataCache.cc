@@ -72,10 +72,10 @@ int
 qMaster::MetadataCache::DbInfo::addTable(std::string const& tbName, const TableInfo& tbInfo) {
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tbName);
     if (itr != _tables.end()) {
-        return STATUS_ERR_TABLE_EXISTS;
+        return MetadataCache::STATUS_ERR_TABLE_EXISTS;
     }
     _tables.insert(std::pair<std::string, TableInfo> (tbName, tbInfo));
-    return STATUS_OK;
+    return MetadataCache::STATUS_OK;
 }
 
 /** Checks if a given table is registered in the qserv metadata.
@@ -140,11 +140,11 @@ qMaster::MetadataCache::TableInfo::TableInfo(float overlap,
 int
 qMaster::MetadataCache::addDbInfoNonPartitioned(std::string const& dbName) {
     if (checkIfContainsDb(dbName)) {
-        return STATUS_ERR_DB_EXISTS;
+        return MetadataCache::STATUS_ERR_DB_EXISTS;
     }
     boost::lock_guard<boost::mutex> m(_mutex);
     _dbs.insert(std::pair<std::string, DbInfo> (dbName, DbInfo()));
-    return STATUS_OK;
+    return MetadataCache::STATUS_OK;
 }
 
 /** Adds database information for a partitioned database,
@@ -165,12 +165,12 @@ qMaster::MetadataCache::addDbInfoPartitionedSphBox(std::string const& dbName,
                                                    float defOverlapF,
                                                    float defOverlapNN) {
     if (checkIfContainsDb(dbName)) {
-        return STATUS_ERR_DB_EXISTS;
+        return MetadataCache::STATUS_ERR_DB_EXISTS;
     }
     DbInfo dbInfo(nStripes, nSubStripes, defOverlapF, defOverlapNN);
     boost::lock_guard<boost::mutex> m(_mutex);
     _dbs.insert(std::pair<std::string, DbInfo> (dbName, dbInfo));
-    return STATUS_OK;
+    return MetadataCache::STATUS_OK;
 }
 
 /** Adds table information for a non-partitioned table.
@@ -186,7 +186,7 @@ qMaster::MetadataCache::addTbInfoNonPartitioned(std::string const& dbName,
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
-        return STATUS_ERR_DB_NOT_EXISTS;
+        return MetadataCache::STATUS_ERR_DB_DOES_NOT_EXIST;
     }
     const qMaster::MetadataCache::TableInfo tInfo;
     return itr->second.addTable(tbName, tInfo);
@@ -220,7 +220,7 @@ qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
-        return STATUS_ERR_DB_NOT_EXISTS;
+        return MetadataCache::STATUS_ERR_DB_DOES_NOT_EXIST;
     }
     const qMaster::MetadataCache::TableInfo tInfo(
                           overlap, phiCol, thetaCol, phiColNo, 
