@@ -1,13 +1,4 @@
-
-----
-TEMPORARY QUICK AND DIRTY START GUIDE
-
-in order to deploy python package associated to this feature run next command 
-in QSERV_SRC/tests directory :
-cp -r python/* /opt/qserv-dev/lib/python2.6/site-packages/
-where /opt/qserv-dev/ is your qserv install base directory.
-
-then create a user configuration file for Qserv (at the moment it's the same
+Create a user configuration file for Qserv (at the moment it's the same
 than the build configuration file):
   $ mkdir ~/.lsst/
   $ ln -s /home/qserv/src/qserv/qserv-build.conf ~/.lsst/qserv.conf  
@@ -18,40 +9,32 @@ Check that Qserv is running and then run in QSERV_SRC/tests :
 or 
 ./runTest.py --stop-at=8000
 
-In order to load PT1.1 data set :
-cd case02/
-ln -s /data/lsst/pt11 data
+In order to load and run queries against PT1.1 data set :
+  $ cd case03/
+  $ ln -s /data/lsst/pt11 data
 where /data/lsst/pt11 contains unzipped pt11 data
-./runTest.py --case-no=02
+  $ ln -s ../case02/queries queries
+  $ ./runTest.py --case-no=03
 
 
-Results are stored in /opt/qserv-dev/tmp/qservTestCase??/outputs/, and erased
+Results are stored in /opt/qserv-dev/tmp/qservTest_case<number>/outputs/, and erased
 before each run.
 -----
 
-directory structure:
+Directory structure for a test case :
+-------------------------------------
   case<number>/
+    README.txt - contains info about data
     queries/
     data/
-     readme.txt - contains info about data
      <table>.schema - contains schema info per table
      <table>.csv.gz - contains data
 
-
-To generate .schema and data files use:
-
-mysqldump -u<user> -p<pass> <db> <table> -T/tmp/
-then copy <table>.sql and <table>.txt
-
-
 data from case<number> will be loaded into databases called 
- - qservTest_case<number>_m
- - qservTest_case<number>_q
+ - qservTest_case<number>_mysql
+ - qservTest_case<number>_qserv
 
-
-
-
-format of the files containing queries: <idA>_<descr>.sql
+- format of the files containing queries: <idA>_<descr>.sql
 where <idA>:
   0xxx - supported, trivial (single object)
   1xxx - supported, simple (small area)
@@ -63,5 +46,3 @@ where <idA>:
 
 files that are not yet supported should have extension .FIXME
 
-
-./runTest.py --authFile=/u/sf/becla/.lsst/dbAuth.txt -o /tmp -s 7999
