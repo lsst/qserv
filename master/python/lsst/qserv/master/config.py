@@ -95,7 +95,7 @@ mysqlclient=
 host=localhost
 port=7082
 user=qms
-pass=qmsPass
+passwd=qmsPass
 
 """)
 

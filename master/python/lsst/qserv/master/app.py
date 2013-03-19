@@ -192,7 +192,7 @@ class MetadataCacheInterface:
             lsst.qserv.master.config.config.get("metaServer", "host"),
             int(lsst.qserv.master.config.config.get("metaServer", "port")),
             lsst.qserv.master.config.config.get("metaServer", "user"),
-            lsst.qserv.master.config.config.get("metaServer", "pass"))
+            lsst.qserv.master.config.config.get("metaServer", "passwd"))
         self._fetchAllData(sessionId, qmsClient)
         return sessionId
 
