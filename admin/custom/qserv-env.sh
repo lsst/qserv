@@ -12,7 +12,7 @@ if [ -z "${QSERV_ENV_SETTED}" ]; then
 fi 
 
 alias qserv-start="qserv-admin --start"
-alias qserv-stop="qserv-admin --stop"
+alias qserv-stop="qserv-admin --stop; rm -f ${QSERV_BASE}/xrootd-run/result/*"
 # TODO : manage MySQL pass correctly
 alias qserv-status="qserv-admin --status --dbpass \"<MYSQLD_PASS>\""
 
