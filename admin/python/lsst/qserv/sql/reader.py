@@ -58,5 +58,3 @@ def reader(filename):
     myfile.close()
     return state
 
-
-# SQLReadeR.reader("/tmp/Object.sql")

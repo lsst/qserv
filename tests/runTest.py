@@ -26,18 +26,17 @@
 # functionality available through the appInterface module.  Currently
 # only includes minimal fuzz testing and (unfinished) query replaying.
 
-import ConfigParser
-import MySQLdb as sql
-from lsst.qserv import dataloader
-from lsst.qserv.admin import commons
-from lsst.qserv.sql import cmd, connection, const, dataconfig, schema
 import logging
 import optparse
+import shutil
+import sys
+
+from lsst.qserv import dataloader, datareader
+from lsst.qserv.admin import commons
+from lsst.qserv.sql import cmd, connection, const
 import os
 import re
-import shutil
 import stat
-import sys
 
 
 class QservTestsRunner():
@@ -72,7 +71,7 @@ class QservTestsRunner():
         qserv_tests_dirname = os.path.join(self.config['qserv']['base_dir'],'qserv','tests',"case%s" % self._case_id)
         self._input_dirname = os.path.join(qserv_tests_dirname,'data')
 
-        self.dataReader = dataconfig.DataReader(self._input_dirname, "case%s" % self._case_id)
+        self.dataReader = datareader.DataReader(self._input_dirname, "case%s" % self._case_id)
 
         self._queries_dirname = os.path.join(qserv_tests_dirname,"queries")
 
@@ -158,12 +157,11 @@ class QservTestsRunner():
 
         for table_name in  self.dataReader.tables:
             self.logger.debug("Using data of %s" % table_name)
-            (schema_filename, data_filename, zipped_data_filename) =  self.dataReader.getSchemaAndDataFiles(table_name)
+            (schema_filename, data_filename, zipped_data_filename) =  self.dataReader.getSchemaAndDataFilenames(table_name)
 
             if zipped_data_filename is not None :
                 tmp_data_file = self.gunzip(table_name, zipped_data_filename)
                 input_filename = tmp_data_file
-
             else:
                 input_filename = data_filename
 
@@ -202,7 +200,6 @@ class QservTestsRunner():
 
             self._sqlInterface['sock'].dropAndCreateDb(self._dbName)
             self._sqlInterface['sock'].setDb(self._dbName)
-
 
             self._sqlInterface['cmd'] = cmd.Cmd(config = self.config,
                                                 mode = const.MYSQL_SOCK,

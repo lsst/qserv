@@ -1,9 +1,9 @@
 import logging
-import MySQLdb as sql
-import os.path
-import sys
-import const
+
 from  lsst.qserv.admin import commons
+
+import const
+
 
 # TODO: replace all SQL by SQLConnection    
 class Cmd():
@@ -13,6 +13,12 @@ class Cmd():
                  mode,                 
                  database):
       
+        """
+
+      @param config:
+      @param mode:
+      @param database:
+      """
         self.config = config
       
         self.logger = logging.getLogger()

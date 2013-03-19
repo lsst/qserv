@@ -11,6 +11,7 @@ def install_python_module(env, target,source):
     python_path_prefix=target
     source_dir_path=source 
     target_dir_path=distutils.sysconfig.get_python_lib(prefix=python_path_prefix)
+    env['pythonpath'] = target_dir_path
     target_lst = []
 
     for f in utils.recursive_glob(source_dir_path,'*.py',env) :
@@ -25,10 +26,9 @@ def install_python_module(env, target,source):
 def clean_python_path(targets,env):
     """ targets is a list of installed python files in PYTHONPATH 
         remove the highest directory of installed python modules assuming it
-        contain and __init__.py file 
+        contain an __init__.py file 
     """
-
-    dirs = utils.get_top_dirs(targets,env)
+    dirs = [dir for dir in utils.get_top_dirs(targets,env) if dir != env['pythonpath']] 
 
     #print("Removing next directories : %s" % dirs)
     for d in dirs:

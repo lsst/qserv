@@ -1,8 +1,9 @@
 import logging
+import sys
+
 import MySQLdb as sql
 import os.path
-import sys
-from  lsst.qserv.admin import commons
+
 
 # TODO: replace all SQL by SQLConnection    
 class Connection():
