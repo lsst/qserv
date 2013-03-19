@@ -390,11 +390,7 @@ class MetaImpl:
         ret = self._mdb.execCommandN("SELECT dbName FROM DbMeta")
         if not ret:
             return "No databases found"
-        s = StringIO.StringIO()
-        for r in ret:
-            s.write(r[0])
-            s.write(' ')
-        return s.getvalue()
+        return [x[0] for x in ret]
 
     ###########################################################################
     #### createTable
@@ -540,22 +536,24 @@ class MetaImpl:
         self._logger.debug("dropTable: done")
 
     ###########################################################################
-    #### retrievePartTables
+    #### listTables
     ###########################################################################
-    def retrievePartTables(self, dbName):
-        """Retrieves list of partitioned tables for a given database."""
-        self._logger.debug("retrievePartTables: started")
+    def listTables(self, dbName, partitionedOnlyFlag):
+        """Lists all tables in a given database. If partitionedOnlyFlag is set,
+           it lists only partitioned tables."""
+        self._logger.debug("listTables: started")
         # connect to mysql
         self._mdb.selectMetaDb()
         # check if db exists
         cmd = "SELECT dbId FROM DbMeta WHERE dbName = '%s'" % dbName
         ret = self._mdb.execCommand1(cmd)
         dbId = ret[0]
-        cmd = "SELECT tableName FROM TableMeta WHERE dbId=%s " % dbId + \
-            "AND psId IS NOT NULL"
+        cmd = "SELECT tableName FROM TableMeta WHERE dbId=%s " % dbId
+        if partitionedOnlyFlag:
+            cmd += "AND psId IS NOT NULL"
         tNames = self._mdb.execCommandN(cmd)
-        self._logger.debug("retrieveTableInfo: done")
-        return [x[0] for x in tn]
+        self._logger.debug("listTables: done")
+        return [x[0] for x in tNames]
 
     ###########################################################################
     #### retrieveTableInfo
@@ -598,7 +596,7 @@ class MetaImpl:
             values["phiColNo"]     = ret[5]
             values["thetaColNo"]   = ret[6]
             values["logicalPart"]  = ret[7]
-            values["physChunking"] = hex(ret[8])
+            values["physChunking"] = ret[8]
         else:
             cmd = "SELECT clusteredIdx, isRefMatch FROM TableMeta WHERE tableId=%s" % tableId
             ret = self._mdb.execCommand1(cmd)

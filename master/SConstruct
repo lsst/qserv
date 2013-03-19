@@ -190,7 +190,11 @@ dispatchSrcs = map(lambda x: os.path.join('src', x),
                     "WorkQueue.cc",
                     "Timer.cc"])
 
-srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs
+metadataSrcs = map(lambda x: os.path.join('src', x),
+                   ["MetadataCache.cc",
+                    "ifaceMeta.cc"])
+
+srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs + metadataSrcs
 
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
              'srcPaths' : dispatchSrcs + [os.path.join('src',
@@ -220,29 +224,35 @@ xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
 
 ## FIXME: need to detect Lua so we can generate a "startMysqlProxy"
 ## script in the installation.
-               
-def installTo(env, targetDir, pyLib):
-    pathList = ["lsst","qserv","master"]
+
+def installToDist(env, targetDir, pathList, pyLib):
     pyDir = os.path.join(targetDir, *pathList)
-    srcPyDir = os.path.join("python" , *pathList)
-    
-    #install py files
+    p = "../%s/python" % pathList[2]
+    srcPyDir = os.path.join(p , *pathList)
+    # install py files
     for s in env.Glob(os.path.join(srcPyDir,"*.py")):
         if s.name == "argv.py": continue # workaround Scons missing argv.py
         env.Alias("install", env.Install(pyDir, s))
-    # install pylib. 
-    env.Alias("install", env.Install(pyDir, pyLib))
-    # Make sure path exists.
+    # install pylib
+    if pyLib is not None:
+        env.Alias("install", env.Install(pyDir, pyLib))
+    # make sure path exists
     try: os.makedirs(pyDir)
     except OSError, exc: # "as" syntax not available in Python <=2.5 
         if exc.errno == errno.EEXIST:
             pass
         else: raise
-
-    for p in range(1,len(pathList)): # touch init files
+    # touch init files
+    for p in range(1,len(pathList)):
         plist = [targetDir] + pathList[:p] + ["__init__.py"]
         fname = os.path.join(*plist)
         open(fname, "w").close()
+
+
+def installTo(env, targetDir, pyLib):
+    installToDist(env, targetDir, ["lsst","qserv","master"], pyLib)
+    installToDist(env, targetDir, ["lsst","qserv","meta"], None)
+
     #install bins
     env.Alias("install", 
               env.Install(targetDir, env.Glob(os.path.join("bin","*.py"))))
