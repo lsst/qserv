@@ -31,7 +31,7 @@ import optparse
 import shutil
 import sys
 
-from lsst.qserv import dataloader, datareader
+from lsst.qserv import qservdataloader, mysqldataloader, datareader
 from lsst.qserv.admin import commons
 from lsst.qserv.sql import cmd, connection, const
 import os
@@ -43,12 +43,12 @@ class QservTestsRunner():
 
     def __init__(self, logging_level=logging.DEBUG ):
         self.logger = commons.console_logger(logging_level)
-        self.qservDataLoader = None
+        self.dataLoader = dict()
         self._out_dirname = None
         self.config = None
         self._case_id = None
         self._logFilePrefix = None
-        self._sqlInterface = None
+        self._sqlInterface = dict()
 
     def configure(self, config_dir, case_id, out_dirname_prefix, log_file_prefix='qserv-tests' ):
 
@@ -61,8 +61,6 @@ class QservTestsRunner():
 
         self._case_id = case_id
         self._logFilePrefix = log_file_prefix
-
-        self._sqlInterface = dict()
 
         if out_dirname_prefix == None :
             out_dirname_prefix = self.config['qserv']['tmp_dir']
@@ -146,9 +144,6 @@ class QservTestsRunner():
         commons.run_command(["gunzip", "-c", zipped_data_filename], stdout_file=tmp_data_file)
         return tmp_data_file
 
-    # creates database and load all tables caseXX/data/
-    # schema should be in <table>.schema
-    # data should be in <table>.tsv.gz
     def loadData(self):
         """
         Creates tables and load data for input file located in caseXX/data/
@@ -165,20 +160,10 @@ class QservTestsRunner():
             else:
                 input_filename = data_filename
 
-            if self._mode == 'qserv':
-
-                self.qservDataLoader.createAndLoadTable(table_name, schema_filename, input_filename)
-
-            elif self._mode == 'mysql':
-                self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataReader.dataConfig['delimiter'])
+            self.dataLoader[self._mode].createAndLoadTable(table_name, schema_filename, input_filename)
 
             if zipped_data_filename is not None :
                 os.unlink(tmp_data_file)
-
-    def readInputData(self):
-
-        self.dataReader.analyze()
-        self.dataReader.readTableList()
 
     def cleanup(self):
         # cleanup of previous tests
@@ -186,37 +171,37 @@ class QservTestsRunner():
             shutil.rmtree(self._out_dirname)
         os.makedirs(self._out_dirname)
 
-    def connect(self):
+    def readInputData(self):
 
-        self.logger.info("Loading data for mode : %s" % self._mode)
+        self.dataReader.analyze()
+        self.dataReader.readTableList()
 
+    def connectAndInitDatabases(self):
+        self.logger.info("Creation of data loader for %s mode" % self._mode)
         if (self._mode=='mysql'):
-            self.logger.info("Creation of a SQL Interface")
-
-            self._sqlInterface['sock'] = connection.Connection(
-                config = self.config,
-                mode = const.MYSQL_SOCK
-                )
-
-            self._sqlInterface['sock'].dropAndCreateDb(self._dbName)
-            self._sqlInterface['sock'].setDb(self._dbName)
-
-            self._sqlInterface['cmd'] = cmd.Cmd(config = self.config,
-                                                mode = const.MYSQL_SOCK,
-                                                database = self._dbName
-                                                )
-
-        elif (self._mode=='qserv'):
-            self.logger.info("Creation of a SQL Interface")
-            self.qservDataLoader = dataloader.QservDataLoader(
+            self.dataLoader[self._mode] = mysqldataloader.MysqlDataLoader(
                 self.config,
                 self.dataReader.dataConfig,
                 self._dbName,
                 self._out_dirname,
                 self._logFilePrefix
                 )
-            self.qservDataLoader.connectAndInitDatabases()
+        elif (self._mode=='qserv'):
+            self.dataLoader[self._mode] = qservdataloader.QservDataLoader(
+                self.config,
+                self.dataReader.dataConfig,
+                self._dbName,
+                self._out_dirname,
+                self._logFilePrefix
+            )
+        self.logger.info("Initializing databases for %s mode" % self._mode)
+        self.dataLoader[self._mode].connectAndInitDatabases()
 
+    def finalize(self):
+        if (self._mode=='qserv'):
+            self.dataLoader[self._mode].configureXrootdQservMetaEmptyChunk()
+        # in order to close socket connections
+        del(self.dataLoader[self._mode])
 
     def parseOptions(self):
         script_name=sys.argv[0]
@@ -261,10 +246,9 @@ class QservTestsRunner():
             self._dbName = "qservTest_case%s_%s" % (case_no, self._mode)
 
             if load_data:
-                self.connect()
+                self.connectAndInitDatabases()
                 self.loadData()
-                if (self._mode=='qserv'):
-                    self.qservDataLoader.configureXrootdQservMetaEmptyChunk()
+                self.finalize()
 
             self.runQueries(stop_at_query)
 
