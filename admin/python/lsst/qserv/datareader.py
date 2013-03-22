@@ -15,11 +15,6 @@ class DataReader():
 
     def analyze(self):
 
-        self.dataConfig['partitionned-tables'] = ["Object", "Source"]
-       
-        """ Fill column position (zero-based index) """
-        self.dataConfig['Object']=dict()
-        self.dataConfig['Source']=dict()
         #self.dataConfig['Object']['ra-column'] = schemaDict['Object'].indexOf("`ra_PS`")
         #self.dataConfig['Object']['decl-column'] = schemaDict['Object'].indexOf("`decl_PS`")
         #self.dataConfig['Object']['chunk-column-id'] = schemaDict['Object'].indexOf("`chunkId`")
@@ -27,6 +22,12 @@ class DataReader():
         # TODO : use meta service instead of hard-coded parameters
         self.log.debug("DataReader.analyze() : Data name is : %s" %self.dataName )
         if self.dataName=="case01":
+            
+            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+       
+            """ Fill column position (zero-based index) """
+            self.dataConfig['Object']=dict()
+            self.dataConfig['Source']=dict()
             
             self.dataConfig['schema-extension']='.schema'
             self.dataConfig['data-extension']='.tsv'
@@ -46,7 +47,13 @@ class DataReader():
             self.log.debug("Data configuration : %s" % self.dataConfig)
             
         # for PT1.1
-        elif self.dataName in ["case02","case03"]:
+        elif self.dataName=="case02":
+            
+            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+       
+            """ Fill column position (zero-based index) """
+            self.dataConfig['Object']=dict()
+            self.dataConfig['Source']=dict()
             
             self.dataConfig['schema-extension']='.sql'
             self.dataConfig['data-extension']='.txt'
@@ -62,6 +69,42 @@ class DataReader():
              # chunkId and subChunkId will be added
             self.dataConfig['Source']['chunk-column-id'] = None
 
+        # for W13
+        elif self.dataName=="case03":
+
+            self.dataConfig['partitionned-tables'] = ["AveForcedPhot",
+                                                "AveForcePhotoYearly",
+                                                "RefObject", 
+                                                "RunDeepSource",
+                                                "RunDeepForcedSource"]
+ 
+            for table in self.dataConfig['partitionned-tables']:
+                self.dataConfig[table]=dict()
+                # chunkId and subChunkId will be added
+                self.dataConfig[table]['chunk-column-id'] = None
+
+            self.dataConfig['schema-extension']='.sql'
+            self.dataConfig['data-extension']='.txt'
+            self.dataConfig['zip-extension']=None
+            self.dataConfig['delimiter']=','
+
+            self.dataConfig['AveForcedPhot']['ra-column'] = 1
+            self.dataConfig['AveForcedPhot']['decl-column'] = 2
+            
+            self.dataConfig['RefObject']['ra-column'] = 12
+            self.dataConfig['RefObject']['decl-column'] = 13
+
+            self.dataConfig['RunDeepSource']['ra-column'] = 1
+            self.dataConfig['RunDeepSource']['decl-column'] = 2
+
+            self.dataConfig['RunDeepForcedSource']['ra-column'] = 1
+            self.dataConfig['RunDeepForcedSource']['decl-column'] = 2
+
+            self.tables=['Science_Ccd_Exposure_Metadata_coadd_r', 'AvgForcedPhotYearly', 'Science_Ccd_Exposure_Metadata', 'RunDeepSource',  'RunDeepForcedSource', 'DeepForcedSource', 'ZZZ_Db_Description', 'RefObject', 'RefDeepSrcMatch', 'Science_Ccd_Exposure_coadd_r', 'Science_Ccd_Exposure', 'AvgForcedPhot', 'DeepCoadd_To_Htm10', 'Science_Ccd_Exposure_To_Htm10_coadd_r', 'LeapSeconds', 'DeepCoadd', 'DeepCoadd_Metadata', 'DeepSource', 'Filter']
+
+            self.dataConfig['sql-views'] = ['DeepForcedSource','DeepSource']
+
+        
     def readTableList(self):
         files = os.listdir(self.dataDirName)
         if self.tables==[]:

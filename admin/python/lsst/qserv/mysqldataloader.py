@@ -30,7 +30,10 @@ class MysqlDataLoader():
 
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
 
-        self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
+        if table_name in self.dataConfig['sql-views']:
+            self._sqlInterface['cmd'].executeFromFile(schema_filename)
+        else:
+            self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
 
     def connectAndInitDatabases(self):
 
