@@ -1,7 +1,7 @@
 SELECT count(*) 
  FROM   Object 
- WHERE ra_PS BETWEEN 0. AND 0.1
-  AND  decl_PS BETWEEN 0.2 AND 0.3
+ WHERE ra_PS BETWEEN 1.28 AND 1.38
+   AND decl_PS BETWEEN 3.18 AND 3.34
   AND scisql_fluxToAbMag(zFlux_PS)
       BETWEEN 21 AND 21.5  
   AND scisql_fluxToAbMag(gFlux_PS)

@@ -3,7 +3,7 @@
         scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) AS distance
  FROM   Object o1, 
         Object o2
- WHERE  o1.ra_PS BETWEEN 0. AND 0.01
-   AND  o1.decl_PS BETWEEN 0.02 AND 0.03
+ WHERE  o1.ra_PS BETWEEN 1.28 AND 1.38
+   AND  o1.decl_PS BETWEEN 3.18 AND 3.34
    AND  scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) < 1
    AND  o1.objectId <> o2.objectId

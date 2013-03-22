@@ -1,0 +1,4 @@
+ SELECT count(*) 
+ FROM Object
+ WHERE qserv_areaspec_box(1.28,1.38,3.18,3.34)
+ ORDER BY ra_PS
