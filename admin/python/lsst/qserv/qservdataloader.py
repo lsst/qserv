@@ -30,10 +30,14 @@ class QservDataLoader():
 
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
 
+        print "TABLETABLETABLE " % table_name
+
         if table_name in self.dataConfig['partitionned-tables']:
             self.logger.info("Loading schema of partitionned table %s" % table_name)
             self.createAndLoadPartitionedSchema(table_name, schema_filename)
             self.loadPartitionedTable(table_name, input_filename)
+        elif table_name in self.dataConfig['sql-views']:
+            self._sqlInterface['cmd'].executeFromFile(schema_filename)
         else:
             self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
 
