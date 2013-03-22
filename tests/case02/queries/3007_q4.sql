@@ -1,0 +1,3 @@
+SELECT COUNT(*)
+ FROM Object
+ WHERE gFlux_PS>1e-25

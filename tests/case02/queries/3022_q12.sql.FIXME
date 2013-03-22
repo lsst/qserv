@@ -1,0 +1,5 @@
+SELECT o1.objectId, o2.objectId, 
+       o1.uMag, o2.uMag 
+FROM LSST.Object o1, LSST.Object o2 
+WHERE qserv_areaspec_box(0.5, 0.5, 1.5, 1.5)
+  AND scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_Ps) < 0.2
