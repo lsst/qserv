@@ -1,0 +1,9 @@
+-- https://dev.lsstcorp.org/trac/wiki/db/Qserv/IN2P3/BenchmarkMarch2013
+
+SELECT count(*) AS n,
+        AVG(ra_PS),
+        AVG(decl_PS),
+        objectId,
+        _chunkId
+ FROM Object 
+ GROUP BY _chunkId

@@ -266,10 +266,17 @@ class QservDataLoader():
                 self.logger.debug("Nothing to do")
                 continue
             else:
-                sql =  sql_statement % (table,"_"%field_name)
+                sql =  sql_statement % (table,"_%s" % field_name)
                 col = self._sqlInterface['sock']. execute(sql)
                 if col:
                     self.logger.debug("Replacing field %s in schema %s" % (field_name, table))
+                    sql = 'ALTER TABLE %s DROP COLUMN _%s' % (table,field_name)
+                    self._sqlInterface['sock']. execute(sql)
+                else:
+                    self.logger.debug("Adding field %s in schema %s" % (field_name, table))
+                sql = 'ALTER TABLE %s ADD %s int(11) NOT NULL' % (table,field_name)
+                self._sqlInterface['sock']. execute(sql)
+        # TODO add index creation w.r.t. dataConfig
                 
     def createAndLoadPartitionedSchema(self, table, schemaFile):
         partitionnedTables = self.dataConfig['partitionned-tables']

@@ -13,6 +13,10 @@ class DataReader():
 
         self.tables = []
 
+    def readInputData(self):
+        self.analyze()
+        self.readTableList()
+
     def analyze(self):
 
         #self.dataConfig['Object']['ra-column'] = schemaDict['Object'].indexOf("`ra_PS`")
@@ -109,7 +113,6 @@ class DataReader():
             self.tables=['Science_Ccd_Exposure_Metadata_coadd_r', 'AvgForcedPhotYearly', 'Science_Ccd_Exposure_Metadata', 'RunDeepSource',  'RunDeepForcedSource', 'DeepForcedSource', 'ZZZ_Db_Description', 'RefObject', 'RefDeepSrcMatch', 'Science_Ccd_Exposure_coadd_r', 'Science_Ccd_Exposure', 'AvgForcedPhot', 'DeepCoadd_To_Htm10', 'Science_Ccd_Exposure_To_Htm10_coadd_r', 'LeapSeconds', 'DeepCoadd', 'DeepCoadd_Metadata', 'DeepSource', 'Filter']
 
             self.dataConfig['sql-views'] = ['DeepForcedSource','DeepSource']
-
         
     def readTableList(self):
         files = os.listdir(self.dataDirName)
