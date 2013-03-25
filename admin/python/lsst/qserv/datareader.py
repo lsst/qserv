@@ -21,6 +21,9 @@ class DataReader():
 
         # TODO : use meta service instead of hard-coded parameters
         self.log.debug("DataReader.analyze() : Data name is : %s" %self.dataName )
+
+        self.dataConfig['sql-views'] = []
+
         if self.dataName=="case01":
             
             self.dataConfig['partitionned-tables'] = ["Object", "Source"]
@@ -72,8 +75,8 @@ class DataReader():
         # for W13
         elif self.dataName=="case03":
 
-            self.dataConfig['partitionned-tables'] = ["AveForcedPhot",
-                                                "AveForcePhotoYearly",
+            self.dataConfig['partitionned-tables'] = ["AvgForcedPhot",
+                                                "AvgForcedPhotYearly",
                                                 "RefObject", 
                                                 "RunDeepSource",
                                                 "RunDeepForcedSource"]
@@ -88,8 +91,11 @@ class DataReader():
             self.dataConfig['zip-extension']=None
             self.dataConfig['delimiter']=','
 
-            self.dataConfig['AveForcedPhot']['ra-column'] = 1
-            self.dataConfig['AveForcedPhot']['decl-column'] = 2
+            self.dataConfig['AvgForcedPhot']['ra-column'] = 1
+            self.dataConfig['AvgForcedPhot']['decl-column'] = 2
+
+            self.dataConfig['AvgForcedPhotYearly']['ra-column'] = 2
+            self.dataConfig['AvgForcedPhotYearly']['decl-column'] = 3
             
             self.dataConfig['RefObject']['ra-column'] = 12
             self.dataConfig['RefObject']['decl-column'] = 13
