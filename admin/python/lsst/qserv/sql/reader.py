@@ -6,6 +6,9 @@
 import re
 
 def SQLPrimaryReader(line):
+    """ Function to parse a "PRIMARY ..." line
+    """
+    # Examples:
     # PRIMARY KEY (JobID)
     # PRIMARY KEY(JobID)
     # PRIMARY KEY( JobID ),
@@ -24,15 +27,24 @@ def SQLPrimaryReader(line):
     commaSeparatedKeys = rightParen[0]
     return ["PRIMARY KEY", commaSeparatedKeys]    
 
+
 def comment(state, tokens, fileID):
+    """ State function to read comments
+    """
     return None
 
+
 def appendToState(state, tokens, fileID):
+    """ State function to append tokens
+    """
     current = state["current"]
     state[current].append(tokens)
     return None
 
+
 def createTableReader(state, tokens, fileID):
+    """ State function to parse table creation
+    """
     state["current"] = "schema"
     accumulator = []
     for line in fileID:
@@ -55,7 +67,10 @@ def createTableReader(state, tokens, fileID):
                 accumulator.append(lineSplitted)
     raise Exception, "SQLReader: missing ')' in CREATE TABLE"
 
+
 def reader(filename):
+    """ Stack automaton to read SQL schema 
+    """
     transitionFunctionDict = {"--": comment,
                               "DROP": appendToState,
                               "SET": appendToState,
