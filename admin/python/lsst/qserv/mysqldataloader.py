@@ -35,7 +35,7 @@ class MysqlDataLoader():
         else:
             self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
 
-    def connectAndInitDatabases(self):
+    def connectAndInitDatabase(self):
 
         self._sqlInterface['sock'] = connection.Connection(**self.sock_connection_params)
 

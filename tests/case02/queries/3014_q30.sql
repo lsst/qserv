@@ -1,3 +1,5 @@
+-- https://dev.lsstcorp.org/trac/wiki/db/Qserv/IN2P3/BenchmarkMarch2013
+
 SELECT s.ra, s.decl
  FROM   Object o
  JOIN   Source s

@@ -30,8 +30,6 @@ class QservDataLoader():
 
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
 
-        print "TABLETABLETABLE " % table_name
-
         if table_name in self.dataConfig['partitionned-tables']:
             self.logger.info("Loading schema of partitionned table %s" % table_name)
             self.createAndLoadPartitionedSchema(table_name, schema_filename)
@@ -60,6 +58,7 @@ class QservDataLoader():
         for table in self.dataConfig['partitionned-tables']:
             self.workerCreateTable1234567890(table)
             self.workerCreateXrootdExportDirs(chunk_id_list)
+            self.masterCreateMetaDatabase()
             self.masterCreateAndFeedMetaTable(table,chunk_id_list)
 
         # Create etc/emptychunk.txt
@@ -70,7 +69,7 @@ class QservDataLoader():
         self.logger.info("-----\nQserv mono-node database configured\n")
             
 
-    def connectAndInitDatabases(self): 
+    def connectAndInitDatabase(self): 
         
         self._sqlInterface['sock'] = connection.Connection(**self.sock_connection_params)
 
@@ -80,8 +79,6 @@ class QservDataLoader():
             "CREATE DATABASE %s" % self._dbName,
             # TODO : "GRANT ALL ON %s.* TO '%s'@'*'" % (self._dbName, self._qservUser, self._qservHost)
             "GRANT ALL ON %s.* TO '*'@'*'" % (self._dbName),
-            "DROP DATABASE IF EXISTS qservMeta",
-            "CREATE DATABASE qservMeta",
             "USE %s" %  self._dbName
             ]
         
@@ -207,6 +204,14 @@ class QservDataLoader():
 
         self.logger.info("%s table for empty chunk created" % table)
 
+    def masterCreateMetaDatabase():
+        sql_instructions= [
+            "DROP DATABASE IF EXISTS qservMeta",
+            "CREATE DATABASE qservMeta"
+            ]
+        for sql in sql_instructions:
+            self._sqlInterface['sock'].execute(sql)
+
     def masterCreateAndFeedMetaTable(self,table,chunk_id_list):
 
 	meta_table_prefix = "LSST__"
@@ -252,16 +257,26 @@ class QservDataLoader():
         return mySchema
 
 
-#    def convertTable(self, table):
-#
-#        sql_statement = "SHOW COLUMNS FROM `%s` LIKE '%s'"
-#        for field_name in ["chunkId","subChunkId"]:
-#            sql =  sql_statement % (table,field_name)
-#            col = self._sqlInterface['sock']. execute(sql)
-#            if col:
-#                continue
-#            else:
-#                self.logger.debug("Replacing field %s in schema %s" % (field_name, table))
+    def alterTable(self, table):
+        sql_statement = "SHOW COLUMNS FROM `%s` LIKE '%s'"
+        for field_name in ["chunkId","subChunkId"]:
+            sql =  sql_statement % (table,field_name)
+            col = self._sqlInterface['sock']. execute(sql)
+            if col:
+                self.logger.debug("Nothing to do")
+                continue
+            else:
+                sql =  sql_statement % (table,"_%s" % field_name)
+                col = self._sqlInterface['sock']. execute(sql)
+                if col:
+                    self.logger.debug("Replacing field %s in schema %s" % (field_name, table))
+                    sql = 'ALTER TABLE %s DROP COLUMN _%s' % (table,field_name)
+                    self._sqlInterface['sock']. execute(sql)
+                else:
+                    self.logger.debug("Adding field %s in schema %s" % (field_name, table))
+                sql = 'ALTER TABLE %s ADD %s int(11) NOT NULL' % (table,field_name)
+                self._sqlInterface['sock']. execute(sql)
+        # TODO add index creation w.r.t. dataConfig
                 
     def createAndLoadPartitionedSchema(self, table, schemaFile):
         partitionnedTables = self.dataConfig['partitionned-tables']

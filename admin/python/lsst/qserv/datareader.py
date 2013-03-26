@@ -13,6 +13,10 @@ class DataReader():
 
         self.tables = []
 
+    def readInputData(self):
+        self.analyze()
+        self.readTableList()
+
     def analyze(self):
 
         #self.dataConfig['Object']['ra-column'] = schemaDict['Object'].indexOf("`ra_PS`")
@@ -21,6 +25,9 @@ class DataReader():
 
         # TODO : use meta service instead of hard-coded parameters
         self.log.debug("DataReader.analyze() : Data name is : %s" %self.dataName )
+
+        self.dataConfig['sql-views'] = []
+
         if self.dataName=="case01":
             
             self.dataConfig['partitionned-tables'] = ["Object", "Source"]
@@ -72,8 +79,8 @@ class DataReader():
         # for W13
         elif self.dataName=="case03":
 
-            self.dataConfig['partitionned-tables'] = ["AveForcedPhot",
-                                                "AveForcePhotoYearly",
+            self.dataConfig['partitionned-tables'] = ["AvgForcedPhot",
+                                                "AvgForcedPhotYearly",
                                                 "RefObject", 
                                                 "RunDeepSource",
                                                 "RunDeepForcedSource"]
@@ -88,8 +95,11 @@ class DataReader():
             self.dataConfig['zip-extension']=None
             self.dataConfig['delimiter']=','
 
-            self.dataConfig['AveForcedPhot']['ra-column'] = 1
-            self.dataConfig['AveForcedPhot']['decl-column'] = 2
+            self.dataConfig['AvgForcedPhot']['ra-column'] = 1
+            self.dataConfig['AvgForcedPhot']['decl-column'] = 2
+
+            self.dataConfig['AvgForcedPhotYearly']['ra-column'] = 2
+            self.dataConfig['AvgForcedPhotYearly']['decl-column'] = 3
             
             self.dataConfig['RefObject']['ra-column'] = 12
             self.dataConfig['RefObject']['decl-column'] = 13
@@ -103,7 +113,6 @@ class DataReader():
             self.tables=['Science_Ccd_Exposure_Metadata_coadd_r', 'AvgForcedPhotYearly', 'Science_Ccd_Exposure_Metadata', 'RunDeepSource',  'RunDeepForcedSource', 'DeepForcedSource', 'ZZZ_Db_Description', 'RefObject', 'RefDeepSrcMatch', 'Science_Ccd_Exposure_coadd_r', 'Science_Ccd_Exposure', 'AvgForcedPhot', 'DeepCoadd_To_Htm10', 'Science_Ccd_Exposure_To_Htm10_coadd_r', 'LeapSeconds', 'DeepCoadd', 'DeepCoadd_Metadata', 'DeepSource', 'Filter']
 
             self.dataConfig['sql-views'] = ['DeepForcedSource','DeepSource']
-
         
     def readTableList(self):
         files = os.listdir(self.dataDirName)

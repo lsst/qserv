@@ -1,3 +1,5 @@
+-- https://dev.lsstcorp.org/trac/wiki/db/Qserv/IN2P3/BenchmarkMarch2013
+
 SELECT o1.objectId AS objId1, 
         o2.objectId AS objId2,
         scisql_angSep(o1.ra_PS, o1.decl_PS, o2.ra_PS, o2.decl_PS) AS distance

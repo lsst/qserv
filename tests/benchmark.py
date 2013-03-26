@@ -29,7 +29,6 @@
 import logging
 import optparse
 import shutil
-import sys
 
 from lsst.qserv import qservdataloader, mysqldataloader, datareader
 from lsst.qserv.admin import commons
@@ -38,19 +37,21 @@ import os
 import re
 import stat
 
+from filecmp import dircmp
 
-class QservTestsRunner():
 
-    def __init__(self, logging_level=logging.DEBUG ):
+class Benchmark():
+
+    def __init__(self, case_id, out_dirname_prefix, 
+                 config_dir=None, 
+                 log_file_prefix='qserv-tests',  
+                 logging_level=logging.DEBUG ):
+
         self.logger = commons.console_logger(logging_level)
         self.dataLoader = dict()
-        self._out_dirname = None
-        self.config = None
-        self._case_id = None
-        self._logFilePrefix = None
         self._sqlInterface = dict()
-
-    def configure(self, config_dir, case_id, out_dirname_prefix, log_file_prefix='qserv-tests' ):
+        self._mode=None
+        self._dbName=None
 
         if config_dir is None:
             self.config = commons.read_user_config()
@@ -171,10 +172,6 @@ class QservTestsRunner():
             shutil.rmtree(self._out_dirname)
         os.makedirs(self._out_dirname)
 
-    def readInputData(self):
-
-        self.dataReader.analyze()
-        self.dataReader.readTableList()
 
     def connectAndInitDatabases(self):
         self.logger.info("Creation of data loader for %s mode" % self._mode)
@@ -194,8 +191,8 @@ class QservTestsRunner():
                 self._out_dirname,
                 self._logFilePrefix
             )
-        self.logger.info("Initializing databases for %s mode" % self._mode)
-        self.dataLoader[self._mode].connectAndInitDatabases()
+        self.logger.info("Initializing database for %s mode" % self._mode)
+        self.dataLoader[self._mode].connectAndInitDatabase()
 
     def finalize(self):
         if (self._mode=='qserv'):
@@ -203,47 +200,14 @@ class QservTestsRunner():
         # in order to close socket connections
         del(self.dataLoader[self._mode])
 
-    def parseOptions(self):
-        script_name=sys.argv[0]
-        op = optparse.OptionParser()
-        op.add_option("-i", "--case-no", dest="case_no",
-                  default="01",
-                  help="test case number")
-        mode_option_values = ['mysql','qserv','all']
-        op.add_option("-m", "--mode", type='choice', dest="mode", choices=mode_option_values,
-                  default='all',
-                  help= "Qserv test modes (direct mysql connection, or via qserv) : '" +
-                  "', '".join(mode_option_values) +
-                  "' [default: %default]")
-        op.add_option("-c", "--config-dir", dest="config_dir",
-                help= "Path to directory containing qserv-build.conf and"
-                "qserv-build.default.conf")
-        op.add_option("-s", "--stop-at-query", type="int", dest="stop_at_query",
-                  default = 799,
-                  help="Stop at query with given number"  +
-                  "' [default: %default]")
-        op.add_option("-l", "--load", action="store_true", dest="load_data",default=False,
-                  help="Run queries on previously loaded data"  +
-                  "' [default: %default]")
-        op.add_option("-o", "--out-dir", dest="out_dirname",
-                  help="Full path to directory for storing temporary results. The results will be stored in <OUTDIR>/qservTest_case<CASENO>/")
-        options = op.parse_args()[0]
-
-        if options.mode=='all':
-            options.mode_list = ['mysql','qserv']
-        else:
-            options.mode_list = [options.mode]
-
-        return options
-
-    def run(self, mode_list, case_no, load_data, stop_at_query):
+    def run(self, mode_list, load_data, stop_at_query=7999):
 
         self.cleanup()
-        self.readInputData()
+        self.dataReader.readInputData()
 
         for mode in mode_list:
             self._mode = mode
-            self._dbName = "qservTest_case%s_%s" % (case_no, self._mode)
+            self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
 
             if load_data:
                 self.connectAndInitDatabases()
@@ -252,14 +216,69 @@ class QservTestsRunner():
 
             self.runQueries(stop_at_query)
 
+    def areQueryResultsEquals(self):
+
+        outputs_dir = os.path.join(self._out_dirname, "outputs")
+
+        mysql_out_dir = os.path.join(outputs_dir,"mysql")
+        qserv_out_dir = os.path.join(outputs_dir,"qserv")
+
+        dcmp = dircmp( mysql_out_dir, qserv_out_dir)
+
+        if len(dcmp.diff_files)==0:
+            return True
+        else:
+            for name in dcmp.diff_files:
+                self.logger.info("diff_file %s found in %s and %s" % (name, dcmp.left, dcmp.right))
+            return False
+                       
+def parseOptions():
+    op = optparse.OptionParser()
+    op.add_option("-i", "--case-no", dest="case_no",
+              default="01",
+              help="test case number")
+    mode_option_values = ['mysql','qserv','all']
+    op.add_option("-m", "--mode", type='choice', dest="mode", choices=mode_option_values,
+              default='all',
+              help= "Qserv test modes (direct mysql connection, or via qserv) : '" +
+              "', '".join(mode_option_values) +
+              "' [default: %default]")
+    op.add_option("-c", "--config-dir", dest="config_dir",
+            help= "Path to directory containing qserv-build.conf and"
+            "qserv-build.default.conf")
+    op.add_option("-s", "--stop-at-query", type="int", dest="stop_at_query",
+              default = 7999,
+              help="Stop at query with given number"  +
+              "' [default: %default]")
+    op.add_option("-l", "--load", action="store_true", dest="load_data",default=False,
+              help="Run queries on previously loaded data"  +
+              "' [default: %default]")
+    op.add_option("-o", "--out-dir", dest="out_dirname",
+              help="Full path to directory for storing temporary results. The results will be stored in <OUTDIR>/qservTest_case<CASENO>/")
+    options = op.parse_args()[0]
+
+    if options.mode=='all':
+        options.mode_list = ['mysql','qserv']
+    else:
+        options.mode_list = [options.mode]
+
+    return options
+
 
 def main():
 
-    qserv_test_runner = QservTestsRunner()
-    options = qserv_test_runner.parseOptions()
-    qserv_test_runner.configure(options.config_dir, options.case_no, options.out_dirname)
+    options = parseOptions()
+    bench = Benchmark(options.case_no, options.out_dirname, options.config_dir)
 
-    qserv_test_runner.run(options.mode_list, options.case_no, options.load_data, options.stop_at_query)
+    bench.run(options.mode_list, options.load_data, options.stop_at_query)
+
+    if bench.areQueryResultsEquals():
+        print "Test case%s succeed" % options.case_no
+    else:
+        print "Test case%s failed" % options.case_no
+        if options.load_data==False:
+            print ("Please check that corresponding data are loaded, otherwise run test with -l option."
+            % options.case_no)
 
 if __name__ == '__main__':
     main()

@@ -1,3 +1,5 @@
+-- https://dev.lsstcorp.org/trac/wiki/db/Qserv/IN2P3/BenchmarkMarch2013
+
 SELECT DISTINCT o1.objectId, o1.ra_PS, o1.decl_PS, o2.iauId
 FROM   Object o1, Object o2
 WHERE  ABS(o2.ra_PS   - o1.ra_PS  ) < o2.raRange/(2*COS(RADIANS(o1.decl_PS)))
