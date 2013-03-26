@@ -81,8 +81,8 @@ class SQLSchema():
 
     def convertSQLToSchema(self, SQLSchemaStr):
         for line in SQLSchemaStr:
-            if ((line[0] == "PRIMARY") and (line[1] == "KEY")):
-                self.primaryKey(line[2])
+            if ((line[0] == "PRIMARY KEY")):
+                self.primaryKey(line[1])
             elif (line[0] == "KEY"):
                 self.addKey(line[1], line[2])
             elif (len(line) == 2):
@@ -120,7 +120,7 @@ class SQLSchema():
               fieldsStrList.append("  %s %s" % (fieldName, specification))
 
             if (self._primaryKey is not None):
-                fieldsStrList.append("  PRIMARY KEY  %s" % self._primaryKey)
+                fieldsStrList.append("  PRIMARY KEY  (%s)" % self._primaryKey)
 
             for key in self._keys:
                 fieldsStrList.append("  KEY %s %s" % key)
