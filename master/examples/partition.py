@@ -254,15 +254,12 @@ class InputSplitIter(object):
     def __init__(self, inputSplit, **kwargs):
         self.fileIter = FileIter(inputSplit)
 
-        print "DEBUG READER InputSplitIter"
         self.reader = csv.reader(self.fileIter, **kwargs)
-        print "DEBUG READER DIALECT '%s' " % self.reader.dialect.delimiter 
         # self.reader = csv.reader(self.fileIter, delimiter="\t")
     def __iter__(self):
         return self
     def next(self):
         csvline = self.reader.next()
-        # print "DEBUG %s" % csvline 
         return csvline
 
 # Size of blocks to read when searching backwards for line terminators
@@ -938,9 +935,7 @@ class PartitionReducer(object):
         self.file = open(self.path, 'ab')
         self.buffer = sio.StringIO()
 
-        print "DEBUG WRITER PartitionReducer"
         self.writer = csv.writer(self.buffer, **_csvArgs(conf, mode='w'))
-        print "DEBUG WRITER  DIALECT %s " % self.writer.dialect.delimiter 
         self.chunker = Chunker(conf)
         self.coords = np.array([0, 0, 0, 0], dtype=np.int32)
         self.bounds = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
@@ -1376,9 +1371,7 @@ class SubChunker(object):
                                 conf.chunkPrefix + 'Partitions.csv')
         self.partitionWriter = CsvFileWriter(partFile, chunkId, conf)
         self.buf = sio.StringIO()
-        print "DEBUG WRITER SubChunker"
         self.idWriter = csv.writer(self.buf, _csvArgs(conf, mode='w'))
-        print "DEBUG WRITER  DIALECT %s " % self.idWriter.dialect.delimiter 
 
     def _writeRow(self, which, subChunkId, record):
         self.idWriter.writerow((self.chunkId, subChunkId))
@@ -1934,8 +1927,6 @@ def main():
         parser.error("Illegal CSV field delimiter for input files : %s" % conf.delimiter)
     if len(conf.delimiter_out) > 1 or re.match(r'[0-9a-zA-Z]', conf.delimiter_out):
         parser.error("Illegal CSV field delimiter for output files : %s" % conf.delimiter_out)
-
-    print "DEBUG : %s" % conf.delimiter_out
 
     if len(conf.quotechar) > 1 or conf.delimiter == conf.quotechar:
         parser.error("Illegal CSV field quote character.")

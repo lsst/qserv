@@ -32,7 +32,7 @@ class QservDataLoader():
 
         if table_name in self.dataConfig['partitionned-tables']:
             self.logger.info("Loading schema of partitionned table %s" % table_name)
-            self.createAndLoadPartitionedSchema(table_name, schema_filename)
+            self.createPartitionedTable(table_name, schema_filename)
             self.loadPartitionedTable(table_name, input_filename)
         elif table_name in self.dataConfig['sql-views']:
             self._sqlInterface['cmd'].executeFromFile(schema_filename)
@@ -55,10 +55,10 @@ class QservDataLoader():
 
     def configureXrootdQservMetaEmptyChunk(self):
         chunk_id_list=self.workerGetNonEmptyChunkIds()
+        self.masterCreateMetaDatabase()
         for table in self.dataConfig['partitionned-tables']:
             self.workerCreateTable1234567890(table)
             self.workerCreateXrootdExportDirs(chunk_id_list)
-            self.masterCreateMetaDatabase()
             self.masterCreateAndFeedMetaTable(table,chunk_id_list)
 
         # Create etc/emptychunk.txt
@@ -204,7 +204,7 @@ class QservDataLoader():
 
         self.logger.info("%s table for empty chunk created" % table)
 
-    def masterCreateMetaDatabase():
+    def masterCreateMetaDatabase(self):
         sql_instructions= [
             "DROP DATABASE IF EXISTS qservMeta",
             "CREATE DATABASE qservMeta"
@@ -263,30 +263,25 @@ class QservDataLoader():
             sql =  sql_statement % (table,field_name)
             col = self._sqlInterface['sock']. execute(sql)
             if col:
-                self.logger.debug("Nothing to do")
+                self.logger.debug("Table %s already contain column %s" % (table,field_name))
                 continue
             else:
                 sql =  sql_statement % (table,"_%s" % field_name)
                 col = self._sqlInterface['sock']. execute(sql)
                 if col:
-                    self.logger.debug("Replacing field %s in schema %s" % (field_name, table))
+                    self.logger.debug("Removing column _%s in table %s" % (field_name, table))
                     sql = 'ALTER TABLE %s DROP COLUMN _%s' % (table,field_name)
                     self._sqlInterface['sock']. execute(sql)
                 else:
-                    self.logger.debug("Adding field %s in schema %s" % (field_name, table))
+                    self.logger.debug("Adding column %s in table %s" % (field_name, table))
                 sql = 'ALTER TABLE %s ADD %s int(11) NOT NULL' % (table,field_name)
                 self._sqlInterface['sock']. execute(sql)
         # TODO add index creation w.r.t. dataConfig
                 
-    def createAndLoadPartitionedSchema(self, table, schemaFile):
-        partitionnedTables = self.dataConfig['partitionned-tables']
-        if table in partitionnedTables:     
-            tmpSchemaFile = os.path.join(self._out_dirname, table + "_converted" + self.dataConfig['schema-extension'])
-            self.convertSchemaFile(table, schemaFile, tmpSchemaFile)
-            self._sqlInterface['cmd'].executeFromFile(tmpSchemaFile)
-
-            os.unlink(tmpSchemaFile)
-
+    def createPartitionedTable(self, table, schemaFile):
+        if table in self.dataConfig['partitionned-tables']:     
+            self._sqlInterface['cmd'].executeFromFile(schemaFile)
+            self.alterTable(table)
 
     # TODO : not used now
     def findAllDataInStripes(self):
