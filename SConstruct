@@ -71,6 +71,7 @@ env.Requires(env.Alias('install'), env.Alias('download'))
 env.Requires(env.Alias('install'), env.Alias('templates'))
 env.Requires(env.Alias('init-mysql-db'), env.Alias('templates'))
 env.Requires(env.Alias('admin-bin'), env.Alias('python-admin'))
+#env.Requires(env.Alias('install'), env.Alias('python-tests'))
 env.Requires(env.Alias('install'), env.Alias('admin-bin'))
 
 env.Default(env.Alias('install'))
@@ -103,7 +104,7 @@ env.Alias('download', download_cmd_lst)
 #
 ######################### 
 
-for target in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'): 
+for target in ('perl-install', 'perl-init-mysql-db', 'perl-qserv-only', 'perl-clean-all'): 
     env.Alias(target, env.Command(target+'-dummy-target', [], actions.build_cmd_with_opts(config,target)))
 
 #########################        
@@ -182,17 +183,18 @@ env.Alias("templates", get_template_targets())
 python_path_prefix=config['qserv']['base_dir']
  
 python_admin = env.InstallPythonModule(target=python_path_prefix, source='admin/python')
-
 #python_targets=utils.build_python_module(source='admin/python',target='/opt/qserv-dev',env=env)
 env.Alias("python-admin", python_admin)
 
+python_tests = env.InstallPythonModule(target=python_path_prefix, source='tests/python')
+env.Alias("python-tests", python_tests)
 
 #########################        
 #
 # Install admin commands 
 #
 #########################
-file_base_name="qserv-datamanager.py"
+file_base_name="qserv-benchmark.py"
 source = os.path.join("admin","bin",file_base_name)
 target = os.path.join(config['qserv']['base_dir'],"bin",file_base_name)
 Command(target, source, Copy("$TARGET", "$SOURCE"))
