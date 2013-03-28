@@ -65,16 +65,20 @@ env.Alias('init', init_target_lst)
 #########################
 
 env.Requires(env.Alias('download'), env.Alias('init')) 
-env.Requires(env.Alias('install'), env.Alias('download'))
+env.Requires(env.Alias('perl-install'), env.Alias('download'))
 # templates must be applied before installation in order to 
 # initialize mysql db
-env.Requires(env.Alias('install'), env.Alias('templates'))
-env.Requires(env.Alias('init-mysql-db'), env.Alias('templates'))
-env.Requires(env.Alias('admin-bin'), env.Alias('python-admin'))
-env.Requires(env.Alias('install'), env.Alias('python-tests'))
-env.Requires(env.Alias('install'), env.Alias('admin-bin'))
+env.Requires(env.Alias('perl-install'), env.Alias('templates'))
+env.Requires(env.Alias('perl-init-mysql-db'), env.Alias('templates'))
+env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
+env.Requires(env.Alias('admin-bin'), env.Alias('python-tests'))
+env.Requires(env.Alias('perl-install'), env.Alias('admin-bin'))
+
+env.Alias('install',env.Alias('perl-install'))
 
 env.Default(env.Alias('install'))
+
+#env.CleanAction(env.Alias('perl-install'),env.Alias('perl-clean-all'))
         
 ###########################        
 #
@@ -104,8 +108,9 @@ env.Alias('download', download_cmd_lst)
 #
 ######################### 
 
-for target in ('perl-install', 'perl-init-mysql-db', 'perl-qserv-only', 'perl-clean-all'): 
-    env.Alias(target, env.Command(target+'-dummy-target', [], actions.build_cmd_with_opts(config,target)))
+for perl_option in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'): 
+    scons_target = "perl-%s" % perl_option
+    env.Alias(scons_target, env.Command(scons_target+'-dummy-target', [], actions.build_cmd_with_opts(config,perl_option)))
 
 #########################        
 #
