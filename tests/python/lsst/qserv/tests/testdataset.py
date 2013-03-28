@@ -28,6 +28,11 @@ class TestDataSet(unittest.TestCase):
         case_id = "03"
         self._runTestCase(case_id)
 
-if __name__ == '__main__':
-    unittest.main()
+def suite():
+    suite = unittest.TestSuite()
+    #suite.addTest(TestDataSet('test_case01'))    
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestDataSet)
+    return suite
+
+unittest.TextTestRunner(verbosity=2).run(suite())
 
