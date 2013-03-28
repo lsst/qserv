@@ -1,4 +1,6 @@
+-- Select all pair of objects with their distance in a given region
 -- https://dev.lsstcorp.org/trac/wiki/db/Qserv/IN2P3/BenchmarkMarch2013
+-- Based on https://dev.lsstcorp.org/trac/wiki/db/queries/022
 
 SELECT o1.objectId AS objId1, 
         o2.objectId AS objId2,

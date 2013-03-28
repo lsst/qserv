@@ -1,4 +1,6 @@
+-- Select pair of objects in dense region
 -- https://dev.lsstcorp.org/trac/wiki/db/Qserv/IN2P3/BenchmarkMarch2013
+-- Based on https://dev.lsstcorp.org/trac/wiki/db/queries/025
 
 SELECT DISTINCT o1.objectId, o1.ra_PS, o1.decl_PS, o2.iauId
 FROM   Object o1, Object o2

@@ -1,4 +1,6 @@
+-- Seelct object with Magnitude in intervals
 -- https://dev.lsstcorp.org/trac/wiki/db/Qserv/IN2P3/BenchmarkMarch2013
+-- Based on https://dev.lsstcorp.org/trac/wiki/db/queries/013
 
 SELECT count(*) 
  FROM   Object 

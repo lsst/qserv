@@ -1,4 +1,6 @@
+-- Select all pairs  within some distance of points in region
 -- https://dev.lsstcorp.org/trac/wiki/db/Qserv/IN2P3/BenchmarkMarch2013
+-- based on https://dev.lsstcorp.org/trac/wiki/db/queries/022
 
 SELECT o1.objectId, o2.objectId
 FROM Object o1, Object o2 

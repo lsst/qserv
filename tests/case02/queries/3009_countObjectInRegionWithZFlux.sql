@@ -1,4 +1,6 @@
+-- Count object in a region with ZFlux in a given interval
 -- https://dev.lsstcorp.org/trac/wiki/db/Qserv/IN2P3/BenchmarkMarch2013
+-- Based on https://dev.lsstcorp.org/trac/wiki/db/queries/020
 
 SELECT count(*) 
 FROM Object
