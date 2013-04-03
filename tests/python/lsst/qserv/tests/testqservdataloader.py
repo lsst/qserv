@@ -20,7 +20,13 @@ class TestQservDataLoader(unittest.TestCase):
 
         for case_id in case_id_list:
 
-            qserv_tests_dirname = os.path.join(self.config['qserv']['base_dir'],'qserv','tests',"case%s" % case_id)
+            qserv_tests_dirname = os.path.join(
+                self.config['qserv']['base_dir'],
+                'qserv',
+                'tests',
+                'testdata',
+                "case%s" % case_id
+            )
             input_dirname = os.path.join(qserv_tests_dirname,'data')
 
             dataReader = DataReader(input_dirname, "case%s" % case_id)
