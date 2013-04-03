@@ -69,7 +69,7 @@ class Benchmark():
 
         qserv_tests_dirname = os.path.join(
             self.config['qserv']['base_dir'],
-            'qserv','tests', 'test-datasets',
+            'qserv','tests', 'testdata',
             "case%s" % self._case_id
             )
 

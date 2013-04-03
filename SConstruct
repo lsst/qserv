@@ -78,6 +78,7 @@ env.Alias('install',env.Alias('perl-install'))
 
 env.Default(env.Alias('install'))
 
+# TODO :
 #env.CleanAction(env.Alias('perl-install'),env.Alias('perl-clean-all'))
         
 ###########################        
@@ -199,12 +200,18 @@ env.Alias("python-tests", python_tests)
 # Install admin commands 
 #
 #########################
-file_base_name="qserv-benchmark.py"
-source = os.path.join("admin","bin",file_base_name)
-target = os.path.join(config['qserv']['base_dir'],"bin",file_base_name)
-Command(target, source, Copy("$TARGET", "$SOURCE"))
+bin_basename_lst=[
+    "qserv-benchmark.py","qserv-testdata.py", 
+    "qserv-testunit.py"
+]
+bin_target_lst = [] 
+for f in bin_basename_lst:
+    source = os.path.join("admin","bin",f)
+    target = os.path.join(config['qserv']['base_dir'],"bin",f)
+    Command(target, source, Copy("$TARGET", "$SOURCE"))
+    bin_target_lst.append(target)
 
-env.Alias("admin-bin", target)
+env.Alias("admin-bin", bin_target_lst)
 
 # List all aliases
 

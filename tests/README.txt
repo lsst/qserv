@@ -4,17 +4,19 @@ than the build configuration file):
   $ ln -s /home/qserv/src/qserv/qserv-build.conf ~/.lsst/qserv.conf  
   $ ln -s /home/qserv/src/qserv/qserv-build.default.conf ~/.lsst/qserv.default.conf 
 
-Check that Qserv is running and then run in QSERV_SRC/tests :
-./runTest.py
-or 
-./runTest.py --stop-at=8000
+Check that Qserv is running and then run :
+  $ qserv-benchmark.py -l --case=01
+
+Doc is here :
+  $ qserv-benchmark.py --help
 
 In order to load and run queries against PT1.1 data set :
-  $ cd case03/
+  $ mkdir /home/qserv/src/qserv/tests/case04
+  $ cd /home/qserv/src/qserv/tests/case04
   $ ln -s /data/lsst/pt11 data
 where /data/lsst/pt11 contains unzipped pt11 data
   $ ln -s ../case02/queries queries
-  $ ./runTest.py --case-no=03
+  $ qserv-benchmark.py -l --case=02
 
 
 Results are stored in /opt/qserv-dev/tmp/qservTest_case<number>/outputs/, and erased
@@ -31,8 +33,8 @@ Directory structure for a test case :
      <table>.csv.gz - contains data
 
 data from case<number> will be loaded into databases called 
- - qservTest_case<number>_mysql
- - qservTest_case<number>_qserv
+ - qservTest_case<number>_mysql, for mysql
+ - and LSST, for qserv 
 
 - format of the files containing queries: <idA>_<descr>.sql
 where <idA>:
