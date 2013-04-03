@@ -16,7 +16,7 @@ In order to load and run queries against PT1.1 data set :
   $ ln -s /data/lsst/pt11 data
 where /data/lsst/pt11 contains unzipped pt11 data
   $ ln -s ../case02/queries queries
-  $ qserv-benchmark.py -l --case=02
+  $ qserv-benchmark.py -l --case=04
 
 
 Results are stored in /opt/qserv-dev/tmp/qservTest_case<number>/outputs/, and erased
