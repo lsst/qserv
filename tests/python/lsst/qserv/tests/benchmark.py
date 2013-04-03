@@ -67,7 +67,12 @@ class Benchmark():
             out_dirname_prefix = self.config['qserv']['tmp_dir']
         self._out_dirname = os.path.join(out_dirname_prefix, "qservTest_case%s" % case_id)
 
-        qserv_tests_dirname = os.path.join(self.config['qserv']['base_dir'],'qserv','tests',"case%s" % self._case_id)
+        qserv_tests_dirname = os.path.join(
+            self.config['qserv']['base_dir'],
+            'qserv','tests', 'test-datasets',
+            "case%s" % self._case_id
+            )
+
         self._input_dirname = os.path.join(qserv_tests_dirname,'data')
 
         self.dataReader = datareader.DataReader(self._input_dirname, "case%s" % self._case_id)
@@ -138,7 +143,7 @@ class Benchmark():
         if not os.path.exists(zipped_data_filename):
             raise Exception, "File: '%s' not found" %  zipped_data_filename
 
-        tmp_suffix = (".%s%s" % (table_name,self.dataReader.dataConfig['data-extension']))
+        tmp_suffix = ("%s%s" % (table_name,self.dataReader.dataConfig['data-extension']))
         tmp_data_file = os.path.join(self._out_dirname,tmp_suffix)
 
         self.logger.info(" ./Uncompressing: %s into %s" %  (zipped_data_filename, tmp_data_file))
@@ -207,7 +212,11 @@ class Benchmark():
 
         for mode in mode_list:
             self._mode = mode
-            self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
+
+	    if self._mode == 'qserv':
+	        self._dbName = "LSST"
+	    else:	
+                self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
 
             if load_data:
                 self.connectAndInitDatabases()

@@ -64,7 +64,7 @@ class DataReader():
             
             self.dataConfig['schema-extension']='.sql'
             self.dataConfig['data-extension']='.txt'
-            self.dataConfig['zip-extension']=None
+            self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
 
             self.dataConfig['Object']['ra-column'] = 2
@@ -92,7 +92,7 @@ class DataReader():
 
             self.dataConfig['schema-extension']='.sql'
             self.dataConfig['data-extension']='.txt'
-            self.dataConfig['zip-extension']=None
+            self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
 
             self.dataConfig['AvgForcedPhot']['ra-column'] = 1
@@ -129,11 +129,11 @@ class DataReader():
         if table_name in self.tables:
             prefix = os.path.join(self.dataDirName, table_name)
             schema_filename = prefix + self.dataConfig['schema-extension']
-            data_filename = prefix + self.dataConfig['data-extension']
-            if self.dataConfig['zip-extension'] is not None:
-                zipped_data_filename = data_filename + self.dataConfig['zip-extension']
-            else:
-                data_filename = prefix + self.dataConfig['data-extension']
+            if table_name not in self.dataConfig['sql-views']:
+                if self.dataConfig['zip-extension'] is not None:
+                    zipped_data_filename = prefix + self.dataConfig['data-extension'] + self.dataConfig['zip-extension']
+                else:
+                    data_filename = prefix + self.dataConfig['data-extension']
             return (schema_filename, data_filename, zipped_data_filename)
         else:
             raise Exception, "%s.getDataFiles(): '%s' table isn't described in input data" %  (self.__class__.__name__, table_name)
