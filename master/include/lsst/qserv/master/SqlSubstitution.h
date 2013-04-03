@@ -53,7 +53,8 @@ public:
     /*                 std::map<std::string,std::string> const& config); */
     SqlSubstitution(std::string const& sqlStatement, 
                     ChunkMeta const& cMeta,
-                    std::map<std::string,std::string> const& config);
+                    std::map<std::string,std::string> const& config,
+                    int metaCacheId);
     /// config should include qserv master config + current session context
     /// i.e., defaultDb=LSST (or defaultDb=TestDb)
 
@@ -90,6 +91,7 @@ private:
     CmetaPtr _cMeta;
     boost::mutex _mappingMutex;
     StringMap _config;
+    int _metaCacheId;
 };
 
 }}} // namespace lsst::qserv::master

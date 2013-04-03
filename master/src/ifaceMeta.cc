@@ -2,7 +2,7 @@
 
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,25 +42,31 @@ namespace qMaster = lsst::qserv::master;
 // ============================================================================
 // ===== session related
 // ============================================================================
+namespace lsst {
+namespace qserv {
+namespace master {
+        
 using lsst::qserv::master::SessionManager;
 typedef SessionManager<qMaster::MetadataCache::Ptr> SessionMgr;
 typedef boost::shared_ptr<SessionMgr> SessionMgrPtr;
-namespace {
-    SessionMgr&
-    getSessionManager() {
-        static SessionMgrPtr sm;
-        if(sm.get() == NULL) {
-            sm = boost::make_shared<SessionMgr>();
-        }
-        assert(sm.get() != NULL);
-        return *sm;
+SessionMgr&
+getSessionManager() {
+    static SessionMgrPtr sm;
+    if(sm.get() == NULL) {
+        sm = boost::make_shared<SessionMgr>();
     }
-
-    boost::shared_ptr<qMaster::MetadataCache> 
-    getMetadataCache(int session) {
-        return getSessionManager().getSession(session);
-    }
+    assert(sm.get() != NULL);
+    return *sm;
 }
+
+typedef boost::shared_ptr<qMaster::MetadataCache> MetaCachePtr;
+MetaCachePtr
+getMetadataCache(int session) {
+    MetaCachePtr x = getSessionManager().getSession(session);
+    assert(x != NULL); // if you get an assert here, you passed an invalid session
+    return x;
+}
+}}}
 
 /** Creates a new metadata session
   */

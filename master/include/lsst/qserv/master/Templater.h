@@ -46,10 +46,8 @@ namespace antlr {
 namespace lsst {
 namespace qserv {
 namespace master {
-class TableRefChecker; // Forward
 class TableAliasFunc; // Forward
 
-typedef boost::shared_ptr<TableRefChecker const> RefCheckerConstPtr;
 
 /// class Templater : A templating module that helps produce string
 /// templates for substitution for making SQL subqueries.  Manages db
@@ -205,8 +203,8 @@ public:
               antlr::ASTFactory* factory=0);
     ~Templater() { }
     void setup(IntMap const& dbWhiteList=IntMap(),
-               RefCheckerConstPtr refChecker=RefCheckerConstPtr(),
-               std::string const& defaultDb=std::string());
+               std::string const& defaultDb=std::string(),
+               int metaCacheId=-1);
 
     template <typename Iter>
     void setKeynames(Iter begin, Iter end) {
@@ -240,8 +238,6 @@ public:
     std::string const& getDelimiter() const { return _delimiter; 
     }
 
-//    TableRefChecker const& getTableRefChecker() const;
-
     StringList const& getBadDbs() const { return _badDbs; }
     void addGoodDb(std::string const& db) { _dbWhiteList[db] = 1; }
     class addAliasFunc {
@@ -273,7 +269,7 @@ private:
     antlr::ASTFactory* _factory;
     std::string _defaultDb;
     StringList _badDbs;
-    boost::shared_ptr<TableRefChecker const> _refChecker;
+    int _metaCacheId;
     bool _fromStmtActive;
     bool _shouldDefer;
     

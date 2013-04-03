@@ -92,9 +92,10 @@ class QmsException(Exception):
         self._extraMsg = extraMsg
 
     def getErrMsg(self):
+        msg = getErrMsg(self._errNo)
         if self._extraMsg is not None:
-            return self._extraMsg
-        return getErrMsg(self._errNo)
+            msg += " (%s)" % self._extraMsg
+        return msg
 
     def getErrNo(self):
         return self._errNo

@@ -178,14 +178,26 @@ def getResultTable(tableName):
 ## Classes
 ######################################################################
 
-class MetadataCacheInterface:
-    """MetadataCacheInterface encapsulates logic to prepare, metadata 
+_defaultMetadataCacheSessionId = None
+
+class MetadataCacheIface:
+    """MetadataCacheIface encapsulates logic to prepare, metadata 
        information by fetching it from qserv metadata server into 
        C++ memory structure. It is stateless. Throws exceptions on
        failure."""
 
+    def getDefaultSessionId(self):
+        """Returns default sessionId. It will initialize it if needed.
+           Note: initialization involves contacting qserv metadata
+           server (qms). This is the only time qserv talks to qms. 
+           This function throws QmsException if case of problems."""
+        global _defaultMetadataCacheSessionId
+        if _defaultMetadataCacheSessionId is None:
+            _defaultMetadataCacheSessionId = self.newSession()
+        return _defaultMetadataCacheSessionId
+
     def newSession(self):
-        """Creates new session: assigns sessionId, populates the C++
+        """Creates a new session: assigns sessionId, populates the C++
            cache and returns the sessionId."""
         sessionId = newMetadataSession()
         qmsClient = Client(
@@ -239,18 +251,21 @@ class MetadataCacheInterface:
         # retrieve info about each db
         x = qmsClient.retrieveTableInfo(dbName, tableName)
         # call the c++ function
-        if partStrategy == "sphBox":
-            ret = addTbInfoPartitionedSphBox(
-                sessionId, 
-                dbName,
-                tableName, 
-                float(x["overlap"]),
-                x["phiCol"],
-                x["thetaCol"],
-                int(x["phiColNo"]),
-                int(x["thetaColNo"]),
-                int(x["logicalPart"]),
-                int(x["physChunking"]))
+        if partStrategy == "sphBox": # db is partitioned
+            if "overlap" in x:       # but this table does not have to be
+                ret = addTbInfoPartitionedSphBox(
+                    sessionId, 
+                    dbName,
+                    tableName, 
+                    float(x["overlap"]),
+                    x["phiCol"],
+                    x["thetaCol"],
+                    int(x["phiColNo"]),
+                    int(x["thetaColNo"]),
+                    int(x["logicalPart"]),
+                    int(x["physChunking"]))
+            else:                    # db is not partitioned
+                ret = addTbInfoNonPartitioned(sessionId, dbName, tableName)
         elif partStrategy == "None":
             ret = addTbInfoNonPartitioned(sessionId, dbName, tableName)
         else:
@@ -796,6 +811,8 @@ class HintedQueryAction:
         if self.queryStr[-1] != ";":  # Add terminal semicolon
             self.queryStr += ";" 
 
+        self._metaCacheSession = MetadataCacheIface().getDefaultSessionId()
+
         # queryHash identifies the top-level query.
         self.queryHash = self._computeHash(self.queryStr)[:18]
         self.chunkLimit = 2**32 # something big
@@ -843,7 +860,8 @@ class HintedQueryAction:
             cfg = self._prepareCppConfig(self._dbContext, hints)
             self._substitution = SqlSubstitution(query, 
                                                  self._pConfig.chunkMeta,
-                                                 cfg)
+                                                 cfg,
+                                                 self._metaCacheSession)
             if self._substitution.getError():
                 self._error = self._substitution.getError()
                 self._isValid = False

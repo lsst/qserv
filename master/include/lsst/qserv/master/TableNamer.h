@@ -43,7 +43,8 @@
 namespace lsst {
 namespace qserv {
 namespace master {
-class TableRefChecker; // Forward
+
+// forward declarations
 class TableAliasFunc;
 
 class TableNamer {
@@ -65,7 +66,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, AliasedRef const& ar);
     typedef std::deque<AliasedRef> RefDeque;
 
-    explicit TableNamer(TableRefChecker const& checker);
+    explicit TableNamer(int metaCacheId);
     
     void setDefaultDb(std::string const& db) {
         _defaultDb = db; }
@@ -100,7 +101,7 @@ private:
                                   bool isAlias); 
     void _computeChunking() const;
 
-    TableRefChecker const& _checker;
+    int _metaCacheId;
     RefDeque _refs;
     
     std::string _defaultDb;

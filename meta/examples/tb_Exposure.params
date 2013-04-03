@@ -8,7 +8,7 @@ tableName:      Exposure
 partitioning: off
 
 # note that the file must be accessible on the client side
-schemaFile: /u1/qserv/ticket1944-qms_run/meta/examples/tbSchema_Exposure.sql
+schemaFile: /u1/qserv/sandbox/qserv/meta/examples/tbSchema_Exposure.sql
 
 # the cluster index name must be defined in the schemaFile.
 # Use the word None if not required

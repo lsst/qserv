@@ -51,7 +51,6 @@
 #include "lsst/qserv/master/Substitution.h"
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/stringUtil.h"
-#include "lsst/qserv/master/TableRefChecker.h"
 #include "lsst/qserv/master/TableNamer.h"
 #include "lsst/qserv/master/TableRemapper.h"
 #include "lsst/qserv/master/SpatialUdfHandler.h"
@@ -278,15 +277,18 @@ private:
 boost::shared_ptr<qMaster::SqlParseRunner> 
 qMaster::SqlParseRunner::newInstance(std::string const& statement, 
                                      std::string const& delimiter,
-                                     qMaster::StringMap const& config) {
+                                     qMaster::StringMap const& config,
+                                     int metaCacheId) {
     return boost::shared_ptr<SqlParseRunner>(new SqlParseRunner(statement, 
                                                                 delimiter,
-                                                                config));
+                                                                config,
+                                                                metaCacheId));
 }
 
 qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement, 
                                         std::string const& delimiter,
-                                        qMaster::StringMap const& config) :
+                                        qMaster::StringMap const& config,
+                                        int metaCacheId) :
     _statement(statement),
     _stream(statement, stringstream::in | stringstream::out),
     _factory(new ASTFactory()),
@@ -296,8 +298,8 @@ qMaster::SqlParseRunner::SqlParseRunner(std::string const& statement,
     _templater(delimiter, _factory.get()),
     _aliasMgr(),
     _aggMgr(_aliasMgr),
-    _refChecker(new TableRefChecker()),
-    _tableNamer(new TableNamer(*_refChecker)),
+    _metaCacheId(metaCacheId),
+    _tableNamer(new TableNamer(metaCacheId)),
     _spatialUdfHandler(new SpatialUdfHandler(_factory.get(),
                                              _tableConfigMap, 
                                              *_tableNamer))
@@ -373,7 +375,7 @@ void qMaster::SqlParseRunner::_computeParseResult() {
             //std::cout << "passSelect " << getPassSelect();
             // ";" is not in the AST, so add it back.
             // Apply substitution.
-            TableRemapper tr(*_tableNamer, *_refChecker, _delimiter);
+            TableRemapper tr(*_tableNamer, _metaCacheId, _delimiter);
             //std::cout << "PRE:: " << walkTreeString(ast) << std::endl;
             walkTreeSubstitute(ast, tr.getMap());
             //std::cout << "POST:: " << walkTreeString(ast) << std::endl;;
@@ -503,8 +505,7 @@ void qMaster::SqlParseRunner::_readConfig(qMaster::StringMap const& m) {
         whiteList["LSST"] = 1;
     }    
 
-    _templater.setup(whiteList, _refChecker, defaultDb);
-    _refChecker->importDbWhitelist(tokens);
+    _templater.setup(whiteList, defaultDb, _metaCacheId);
     _tableNamer->setDefaultDb(defaultDb);
     tokens.clear();
     tokenizeInto(getFromMap(m,"table.partitioncols", blank), ";", tokens,

@@ -2,7 +2,7 @@
 
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -88,6 +88,38 @@ bool
 qMaster::MetadataCache::DbInfo::checkIfContainsTable(std::string const& tableName) const {
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
     return itr != _tables.end();
+}
+
+/** Checks if a given table is chunked
+  *
+  * @param tableName table name
+  *
+  * @return returns true or false (false if the table does not exist)
+  */
+bool
+qMaster::MetadataCache::DbInfo::checkIfTableIsChunked(std::string const& tableName) const {
+    std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
+    if (itr == _tables.end()) {
+        return false;
+    }
+    return itr->second.getIsPartitioned();
+}
+
+/** Checks if a given table is subchunked
+  *
+  * @param tableName table name
+  *
+  * @return returns true or false (false if the table does not exist)
+  */
+bool
+qMaster::MetadataCache::DbInfo::checkIfTableIsSubChunked(std::string const& tableName) const {
+    std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
+    if (itr == _tables.end()) {
+        return false;
+    }
+    // why 2? See meta/python/lsst/qserv/meta/metaImpl.py, 
+    // schema for PS_Tb_sphBox, explaination of bits for logicalPart
+    return 2 == itr->second.getLogicalPart();
 }
 
 /** Constructs object representing a non-partitioned table.
@@ -257,6 +289,42 @@ qMaster::MetadataCache::checkIfContainsTable(std::string const& dbName,
         return false;
     }
     return itr->second.checkIfContainsTable(tableName);
+}
+
+/** Checks if a given table is chunked
+  *
+  * @param dbName database name
+  * @param tableName table name
+  *
+  * @return returns true or false
+  */
+bool
+qMaster::MetadataCache::checkIfTableIsChunked(std::string const& dbName,
+                                              std::string const& tableName) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
+    if (itr == _dbs.end()) {
+        return false;
+    }
+    return itr->second.checkIfTableIsChunked(tableName);
+}
+
+/** Checks if a given table is subchunked
+  *
+  * @param dbName database name
+  * @param tableName table name
+  *
+  * @return returns true or false
+  */
+bool
+qMaster::MetadataCache::checkIfTableIsSubChunked(std::string const& dbName,
+                                                 std::string const& tableName) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
+    if (itr == _dbs.end()) {
+        return false;
+    }
+    return itr->second.checkIfTableIsSubChunked(tableName);
 }
 
 /** Prints the contents of the qserv metadata cache. This is

@@ -172,8 +172,8 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "SqlSQL2Lexer.cpp", 
                   "SqlSQL2Parser.cpp",
                   "TableNamer.cc",
-                  "TableRefChecker.cc",
-                  "TableRemapper.cc"])
+                  "TableRemapper.cc",
+                  "ifaceMeta.cc", "MetadataCache.cc"])
 
 pyPath = 'python/lsst/qserv/master'
 pyLibName = os.path.join(pyPath, '_masterLib.so')
@@ -190,11 +190,7 @@ dispatchSrcs = map(lambda x: os.path.join('src', x),
                     "WorkQueue.cc",
                     "Timer.cc"])
 
-metadataSrcs = map(lambda x: os.path.join('src', x),
-                   ["MetadataCache.cc",
-                    "ifaceMeta.cc"])
-
-srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs + metadataSrcs
+srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs
 
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
              'srcPaths' : dispatchSrcs + [os.path.join('src',

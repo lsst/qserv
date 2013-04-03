@@ -29,20 +29,20 @@ namespace lsst {
 namespace qserv {
 namespace master {
 class TableNamer; // Forward
-class TableRefChecker;
 
-/// Computes substitution maps using the TableNamer namespace and the
-/// TableRefChecker for chunk/subchunk information. 
+/// Computes substitution maps using the TableNamer namespace
+/// and the metadata cache
 class TableRemapper {
 public:
-    TableRemapper(TableNamer const& tn, TableRefChecker const& checker, 
+    TableRemapper(TableNamer const& tn, 
+                  int metaCacheId, 
                   std::string const& delim);
 
     StringMap getMap(bool overlap=false);
     StringMap getPatchMap();
 private:
     TableNamer const& _tableNamer;
-    TableRefChecker const& _checker;
+    const int _metaCacheId;
     std::string const _delim; // transitional. Shouldn't need in the future.
 
 };

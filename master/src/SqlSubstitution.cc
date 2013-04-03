@@ -75,10 +75,12 @@ qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement,
 
 qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
                                           ChunkMeta const& cMeta,
-                                          qMaster::StringMap const& config)
+                                          qMaster::StringMap const& config,
+                                          int metaCacheId)
     : _delimiter("*?*"), _hasAggregate(false), 
       _cMeta(new ChunkMeta(cMeta)), 
-      _config(config) {
+      _config(config),
+      _metaCacheId(metaCacheId) {
     // client DB context
     _defaultDb = getFromMap(config, "table.defaultdb", "LSST"); 
     _mapping.setFromMeta(cMeta);
@@ -153,7 +155,8 @@ void qMaster::SqlSubstitution::_build(std::string const& sqlStatement) {
     }
     //std::cout << "PARSING: " << sqlStatement << std::endl;
     boost::shared_ptr<SqlParseRunner> spr;
-    spr = SqlParseRunner::newInstance(sqlStatement, _delimiter, _config);
+    spr = SqlParseRunner::newInstance(sqlStatement, _delimiter, 
+                                      _config, _metaCacheId);
     spr->setup(names);
     if(spr->getHasAggregate()) {
         template_ = spr->getAggParseResult();

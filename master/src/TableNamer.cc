@@ -22,12 +22,20 @@
  */
 // Please see TableNamer.h
 #include "lsst/qserv/master/TableNamer.h"
-#include "lsst/qserv/master/TableRefChecker.h"
+#include "lsst/qserv/master/MetadataCache.h"
 #include "lsst/qserv/master/parseHandlers.h"
 #include <string>
 #include <sstream>
 #include <iostream> // debugging
-namespace qMaster =  lsst::qserv::master;
+
+namespace qMaster = lsst::qserv::master;
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace master {
+    boost::shared_ptr<qMaster::MetadataCache> getMetadataCache(int);
+}}}
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -81,7 +89,7 @@ private:
     void _updateMagic(TableNamer::AliasedRef& ar) {
         std::stringstream ss;
         // Munge the name, only for chunked tables.
-        if(_tn._checker.isChunked(ar.db, ar.table)) {
+        if(_tn.isChunked(ar)) {
             ss << mungeDelim 
                << ar.db << ar.table << _tn._refs.size()
                << mungeDelim;
@@ -97,8 +105,8 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // class TableNamer (public)
 ////////////////////////////////////////////////////////////////////////
-qMaster::TableNamer::TableNamer(qMaster::TableRefChecker const& checker) 
-    : _checker(checker) {
+qMaster::TableNamer::TableNamer(int metaCacheId) 
+    : _metaCacheId(metaCacheId) {
     resetTransient();
 }
 
@@ -148,11 +156,11 @@ bool qMaster::TableNamer::getHasSubChunks() const {
 
 qMaster::StringList qMaster::TableNamer::getBadDbs() const {
     StringList result;
-    // Filter my dbs from table refs through refchecker.
+    // Filter my dbs from table refs
     for(RefDeque::const_iterator i=_refs.begin();
         i != _refs.end();
         ++i) {
-        if(!_checker.isDbAllowed(i->db)) {
+        if(!getMetadataCache(_metaCacheId)->checkIfContainsDb(i->db)) {
             result.push_back(i->db);
         }
     }
@@ -161,7 +169,7 @@ qMaster::StringList qMaster::TableNamer::getBadDbs() const {
 
 /// @return true if the ref refers to a chunked table.
 bool qMaster::TableNamer::isChunked(AliasedRef const& r) const{
-    return _checker.isChunked(r.db, r.table);
+    return getMetadataCache(_metaCacheId)->checkIfTableIsChunked(r.db, r.table);
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -198,11 +206,11 @@ void qMaster::TableNamer::_computeChunking() const {
     for(RefDeque::const_iterator i=_refs.begin();
         i != _refs.end();
         ++i) {
-        if(_checker.isChunked(i->db, i->table)) {
+        if(getMetadataCache(_metaCacheId)->checkIfTableIsChunked(i->db, i->table)) {
             // if(canSubChunk) {
             //     _hasSubChunks = true;
             // }
-            bool subC = _checker.isSubChunked(i->db, i->table);
+            bool subC = getMetadataCache(_metaCacheId)->checkIfTableIsSubChunked(i->db, i->table);
             if(canSubChunk && subC) {
                 _hasSubChunks = true;
             }

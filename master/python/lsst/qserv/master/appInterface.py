@@ -68,6 +68,11 @@ class AppInterface:
             return lambda f: thread.start_new_thread(f, tuple())
         pass
 
+    def initMetadataCache(self):
+        """Initializes default session for metadata cache.
+           Throws QmsExeption on failure."""
+        app.MetadataCacheIface().getDefaultSessionId()
+
     def queryNow(self, q, hints):
         """Issue a query. q=querystring, h=hint list
         @return query results

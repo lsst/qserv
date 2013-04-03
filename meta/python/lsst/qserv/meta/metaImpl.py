@@ -62,7 +62,8 @@ internalTables = [
    psId INT,                  -- foreign key to the PS_Tb_* table
    clusteredIdx VARCHAR(255), -- name of the clustered index, 
                               -- Null if no clustered index.
-   isRefMatch TINYINT DEFAULT 0 -- flag indicating if the table is a "RefMatch"
+   isRefMatch TINYINT DEFAULT 0, -- flag indicating if the table is a "RefMatch"
+   isView TINYINT DEFAULT 0      -- flag inidcating if the table is a view or not
 )'''],
     # -----------------------------------------------------------------
     # Partitioning strategy, database-specific parameters 
@@ -389,7 +390,7 @@ class MetaImpl:
         self._mdb.selectMetaDb()
         ret = self._mdb.execCommandN("SELECT dbName FROM DbMeta")
         if not ret:
-            return "No databases found"
+            return []
         return [x[0] for x in ret]
 
     ###########################################################################
@@ -408,7 +409,8 @@ class MetaImpl:
                           "partitioning",
                           "schemaFile",
                           "clusteredIndex",
-                          "isRefMatch")}
+                          "isRefMatch",
+                          "isView")}
         _crTbPSOpts = {
             "sphBox":("overlap",
                       "phiColName", 
@@ -421,6 +423,7 @@ class MetaImpl:
 
     def createTable(self, dbName, crTbOptions, schemaStr):
         """Creates metadata about new table in qserv-managed database."""
+        self._mdb.selectMetaDb()
         # check if db exists
         if self.checkDbExists(dbName) == 0:
             self._logger.error("Database '%s' does not exist." % dbName)
@@ -468,9 +471,10 @@ class MetaImpl:
         else:
             psName = crTbOptions["partitioningStrategy"]
         if psName == "sphBox":
-            # add two special columns
-            cmd = "ALTER TABLE %s%s.%s ADD COLUMN chunk BIGINT, ADD COLUMN subChunk BIGINT" % (self._mdb.getServerPrefix(), dbName, tableName)
-            self._mdb.execCommand0(cmd)
+            if not crTbOptions["isView"]:
+                # add two special columns
+                cmd = "ALTER TABLE %s%s.%s ADD COLUMN chunk BIGINT, ADD COLUMN subChunk BIGINT" % (self._mdb.getServerPrefix(), dbName, tableName)
+                self._mdb.execCommand0(cmd)
 
             self._logger.debug("persisting for sphBox")
             ov = crTbOptions["overlap"]
@@ -489,12 +493,13 @@ class MetaImpl:
         # create entry in TableMeta
         isRefMatch = crTbOptions["isRefMatch"]
         isRefMatchValue = 1 if isRefMatch.lower() == "yes" else 0
+        isView = 1 if crTbOptions["isView"] else 0
         tbUuid = uuid.uuid4() # random UUID
         clusteredIdx = crTbOptions["clusteredIndex"]
         if clusteredIdx == "None":
-            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, isRefMatch) VALUES ('%s', '%s', %s, %s, %d)" % (tableName, tbUuid, dbId, psId, isRefMatchValue)
+            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, isRefMatch, isView) VALUES ('%s', '%s', %s, %s, %d, %d)" % (tableName, tbUuid, dbId, psId, isRefMatchValue, isView)
         else:
-            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx, isRefMatch) VALUES ('%s', '%s', %s, %s, '%s', %d)" % (tableName, tbUuid, dbId, psId, clusteredIdx, isRefMatchValue)
+            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx, isRefMatch, isView) VALUES ('%s', '%s', %s, %s, '%s', %d, %d)" % (tableName, tbUuid, dbId, psId, clusteredIdx, isRefMatchValue, isView)
         self._mdb.execCommand0(cmd)
         self._mdb.commit()
 
@@ -587,21 +592,23 @@ class MetaImpl:
         # retrieve table info
         values = dict()
         if psId and psName == "sphBox":
-            ret = self._mdb.execCommand1("SELECT clusteredIdx, isRefMatch, overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking FROM TableMeta JOIN PS_Tb_sphBox USING(psId) WHERE tableId=%s" % tableId)
+            ret = self._mdb.execCommand1("SELECT clusteredIdx, isRefMatch, isView, overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking FROM TableMeta JOIN PS_Tb_sphBox USING(psId) WHERE tableId=%s" % tableId)
             values["clusteredIdx"] = ret[0]
             values["isRefMatch"]   = ret[1]
-            values["overlap"]      = ret[2]
-            values["phiCol"]       = ret[3]
-            values["thetaCol"]     = ret[4]
-            values["phiColNo"]     = ret[5]
-            values["thetaColNo"]   = ret[6]
-            values["logicalPart"]  = ret[7]
-            values["physChunking"] = ret[8]
+            values["isView"]       = ret[2]
+            values["overlap"]      = ret[3]
+            values["phiCol"]       = ret[4]
+            values["thetaCol"]     = ret[5]
+            values["phiColNo"]     = ret[6]
+            values["thetaColNo"]   = ret[7]
+            values["logicalPart"]  = ret[8]
+            values["physChunking"] = ret[9]
         else:
-            cmd = "SELECT clusteredIdx, isRefMatch FROM TableMeta WHERE tableId=%s" % tableId
+            cmd = "SELECT clusteredIdx, isRefMatch, isView FROM TableMeta WHERE tableId=%s" % tableId
             ret = self._mdb.execCommand1(cmd)
             values["clusteredIdx"] = ret[0]
             values["isRefMatch"]   = ret[1]
+            values["isView"]       = ret[2]
         return values
 
     ###########################################################################

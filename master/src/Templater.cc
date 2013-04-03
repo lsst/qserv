@@ -28,12 +28,15 @@
 
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/Templater.h"
-#include "lsst/qserv/master/TableRefChecker.h"
+#include "lsst/qserv/master/MetadataCache.h"
 #include "lsst/qserv/master/parseHandlers.h"
 #include "lsst/qserv/master/common.h"
 
+
 using lsst::qserv::master::Templater;
-using lsst::qserv::master::TableRefChecker;
+
+// Forward declarations
+boost::shared_ptr<lsst::qserv::master::MetadataCache> getMetadataCache(int);
 
 // anonymous
 namespace {
@@ -226,11 +229,11 @@ Templater::Templater(std::string const& delimiter,
 }
 
 void Templater::setup(Templater::IntMap const& dbWhiteList,
-                      boost::shared_ptr<TableRefChecker const> refChecker,
-                      std::string const& defaultDb) {
+                      std::string const& defaultDb,
+                      int metaCacheId) {
     _dbWhiteList = dbWhiteList;
-    _refChecker = refChecker;
-    _defaultDb = defaultDb;    
+    _defaultDb = defaultDb;
+    _metaCacheId = metaCacheId;
 }
 
 void Templater::processNames() {
@@ -299,8 +302,8 @@ void Templater::_processName(Templater::RefAstPair& dbn) {
             _markBadDb(dbName);
         }
     }
-    if(_refChecker->isChunked(dbName, tableName)) {
-        std::string mungedName = mungeName(tableName);        
+    if(getMetadataCache(_metaCacheId)->checkIfTableIsChunked(dbName, tableName)) {
+        std::string mungedName = mungeName(tableName);
         n->setText(mungedName);
     }
 #endif

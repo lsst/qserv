@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -66,6 +66,8 @@ public:
     // accessors
     bool checkIfContainsDb(std::string const&);
     bool checkIfContainsTable(std::string const&, std::string const&);
+    bool checkIfTableIsChunked(std::string const&, std::string const&);
+    bool checkIfTableIsSubChunked(std::string const&, std::string const&);
     void printSelf();
 
     /** The class TableInfo encapsulates metadata information about single table.
@@ -114,7 +116,9 @@ public:
         float getDefOverlapF() const { return _defOverlapF; }
         float getDefOverlapNN() const { return _defOverlapNN; }
         bool checkIfContainsTable(std::string const&) const;
-        
+        bool checkIfTableIsChunked(std::string const&) const;
+        bool checkIfTableIsSubChunked(std::string const&) const;
+
     private:
         const bool _isPartitioned;
         const int _nStripes;         // invalid for non partitioned tables

@@ -51,7 +51,6 @@ namespace master {
 class LimitHandler; // Parse handler
 class OrderByHandler; // Parse handler
 class SpatialUdfHandler; // 
-class TableRefChecker; // alias/ref checker.
 class TableNamer; // alias/ref namespace mgr
 
 /// class SqlParseRunner - drives the ANTLR-generated SQL parser.
@@ -65,7 +64,8 @@ public:
 
     static Ptr newInstance(std::string const& statement, 
                            std::string const& delimiter,
-                           StringMap const& config);
+                           StringMap const& config,
+                           int metaCacheId);
     void setup(std::list<std::string> const& names);
     std::string const& getStatement() const { return _statement; }
     std::string getParseResult();
@@ -102,7 +102,8 @@ private:
     // Setup and construction
     SqlParseRunner(std::string const& statement, 
                    std::string const& delimiter,
-                   StringMap const& config);
+                   StringMap const& config,
+                   int metaCacheId);
     void _readConfig(StringMap const& m);
 
     // Helpers for operation
@@ -139,8 +140,8 @@ private:
     Templater _templater;
     AliasMgr _aliasMgr;
     AggregateMgr _aggMgr;
+    int _metaCacheId;
     boost::shared_ptr<Templater::TableListHandler>  _tableListHandler;
-    boost::shared_ptr<TableRefChecker> _refChecker;
     boost::shared_ptr<TableNamer> _tableNamer;
     boost::shared_ptr<SpatialUdfHandler> _spatialUdfHandler;
     

@@ -9,6 +9,9 @@ echo === installMeta ===
 echo === printMeta ===
 ./meta/examples/runMetaClientTool.sh printMeta
 
+echo === list dbs===
+./meta/examples/runMetaClientTool.sh listDbs
+
 echo === create 4 dbs ===
 ./meta/examples/runMetaClientTool.sh createDb Summer2012 @./meta/examples/dbPartitioned.params
 ./meta/examples/runMetaClientTool.sh createDb NonPartA @./meta/examples/dbNonPartitioned.params
