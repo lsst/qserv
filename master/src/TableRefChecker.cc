@@ -53,12 +53,14 @@ namespace {
     inline void addDefaultTables(qMaster::TableRefChecker::DbInfo& dbinfo) {
         dbinfo.chunked.insert("Source");
         dbinfo.subchunked.insert("Object");
-        dbinfo.chunked.insert("GoodSeeingSource");
-        dbinfo.chunked.insert("GoodSeeingForcedSource");
         dbinfo.subchunked.insert("RunObject");
         dbinfo.subchunked.insert("RefObject");
         dbinfo.chunked.insert("RefObjMatch");
         dbinfo.chunked.insert("RefSrcMatch");
+        dbinfo.chunked.insert("GoodSeeingSource");
+        dbinfo.chunked.insert("GoodSeeingForcedSource");
+        dbinfo.chunked.insert("DeepSource");
+        dbinfo.chunked.insert("DeepForcedSource");
     }
 
 } // anonymous namespace

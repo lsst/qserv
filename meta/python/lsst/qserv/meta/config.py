@@ -44,10 +44,10 @@ port=7082
 [qmsdb]
 host=
 port=0
-unix_socket=/u1/local/mysql.sock
+unix_socket=/valid/path/here/mysql.sock
 db=qservMetadata
-user=qsmaster
-passwd=
+user=qms
+passwd=notShowing
 
 [logging]
 outFile=/tmp/qms.log

@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,39 +19,41 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+/// Implements MySqlFsDirectory, which rejects directory modification ops.  
 #include "lsst/qserv/worker/MySqlFsDirectory.h"
 
 #include "XrdSys/XrdSysError.hh"
+#include "lsst/qserv/worker/Logger.h"
 
 #include <errno.h>
 
-namespace qWorker = lsst::qserv::worker;
+using namespace lsst::qserv::worker;
 
-qWorker::MySqlFsDirectory::MySqlFsDirectory(XrdSysError* lp, char* user) :
-    XrdSfsDirectory(user), _eDest(lp) {
+MySqlFsDirectory::MySqlFsDirectory(boost::shared_ptr<Logger> log, 
+                                            char* user) :
+    XrdSfsDirectory(user), _log(log) {
 }
 
-qWorker::MySqlFsDirectory::~MySqlFsDirectory(void) {
+MySqlFsDirectory::~MySqlFsDirectory(void) {
 }
 
-int qWorker::MySqlFsDirectory::open(
+int MySqlFsDirectory::open(
     char const* dirName, XrdSecEntity const* client,
     char const* opaque) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
-char const* qWorker::MySqlFsDirectory::nextEntry(void) {
+char const* MySqlFsDirectory::nextEntry(void) {
     return 0;
 }
 
-int qWorker::MySqlFsDirectory::close(void) {
+int MySqlFsDirectory::close(void) {
     error.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
-char const* qWorker::MySqlFsDirectory::FName(void) {
-    _eDest->Say("In MySqlFsDirectory::Fname()");
+char const* MySqlFsDirectory::FName(void) {
+    _log->info("In MySqlFsDirectory::Fname()");
     return 0;
 }

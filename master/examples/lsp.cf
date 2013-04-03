@@ -27,6 +27,9 @@ all.role server
 # Use qserv worker filesystem plugin
 xrootd.fslib libqserv_worker.so
 
+# Use qserv worker oss plugin (export path handling)
+ofs.osslib libqserv_workerCmsd.so
+
 # Set <pathname> for file location resolution.  
 # i.e., <pathname>/somefile will be exported in the xroot URL: 
 # xroot://manager:0000/somefile

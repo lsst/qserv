@@ -127,7 +127,8 @@ class TestMeta(unittest.TestCase):
                "phiColName": "ra_PS",
                "thetaColName": "decl_PS",
                "logicalPart": "2",
-               "physChunking": "0x0021" }
+               "physChunking": "0x0021",
+               "isRefMatch":"no" }
         self._client.createTable("Summer2012", dd)
 
         print "=====>> try create table (already exists)"
@@ -144,6 +145,7 @@ class TestMeta(unittest.TestCase):
         self._client.createTable("Summer2012", dd)
 
         print "=====>> create table Source"
+        # note, isRefMatch not set, default should be picked "no"
         s = "%s/tbSchema_Source.sql" % self._baseDir
         dd = { #"tableName": "Source", # get table name from schema file
                "partitioning": "on",
@@ -156,11 +158,36 @@ class TestMeta(unittest.TestCase):
                "physChunking": "0x0011" }
         self._client.createTable("Summer2012", dd)
 
+        print "=====>> create table RefObjMatch"
+        s = "%s/tbSchema_RefObjMatch.sql" % self._baseDir
+        dd = { #"tableName": "Source", # get table name from schema file
+               "partitioning": "on",
+               "schemaFile": s,
+               "overlap": "0",
+               "phiColName": "refRa",
+               "thetaColName": "refDec",
+               "logicalPart": "1",
+               "physChunking": "0x0011",
+               "isRefMatch": "yes" }
+        try:
+            self._client.createTable("Summer2012", dd)
+        except QmsException as q:
+            print q.getErrMsg()
+
         print "=====>> retrieve table info (Source) "
         print self._client.retrieveTableInfo("Summer2012", "Source")
 
         print "=====>> retrieve table info (Exposure)"
         print self._client.retrieveTableInfo("Summer2012", "Exposure")
+
+        print "=====>> retrieve table info (RefObjMatch)"
+        print self._client.retrieveTableInfo("Summer2012", "RefObjMatch")
+
+        print "=====>> list all tables"
+        print self._client.listTables("Summer2012")
+
+        print "=====>> list partitioned tables"
+        print self._client.listPartitionedTables("Summer2012")
 
         print "=====>> drop table Object"
         self._client.dropTable("Summer2012", "Object")

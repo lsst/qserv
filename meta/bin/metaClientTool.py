@@ -107,8 +107,12 @@ COMMANDS
         Removes metadata about a table.
         Arguments: <dbName> <tableName>
 
-  retrievePartitionedTables
-        Retrieves table names of all partitioned tables
+  listTables
+        Retrieves a list of all table names in a given database.
+        Arguments: <dbName>
+
+  listPartitionedTables
+        Retrieves a list of all partitioned table names 
         in a given database.
         Arguments: <dbName>
 
@@ -229,11 +233,18 @@ pass: qmsPass
         self._client.dropTable(dbName, tableName)
         print "Table dropped."
 
-    def _cmd_retrievePartitionedTables(self, options, args):
+    def _cmd_listTables(self, options, args):
         if len(args) != 1:
-            raise Exception("'retrievePartTables' takes one argument: <dbName>")
+            raise Exception("'listTables' takes one argument: <dbName>")
         dbName = args[0]
-        tNames = self._client.retrievePartTables(dbName)
+        tNames = self._client.listTables(dbName)
+        print tNames
+
+    def _cmd_listPartitionedTables(self, options, args):
+        if len(args) != 1:
+            raise Exception("'listPartitionedTables' takes one argument: <dbName>")
+        dbName = args[0]
+        tNames = self._client.listPartTables(dbName)
         print tNames
 
     def _cmd_retrieveTableInfo(self, options, args):

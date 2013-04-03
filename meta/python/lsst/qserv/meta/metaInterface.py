@@ -69,10 +69,12 @@ class MetaInterface:
         try:
             retV = f(*args)
         except QmsException as qe: 
+            self._logger.error("Exception in %s: %s" % \
+                                   (f.func_name, qe.getErrMsg()))
             return (qe.getErrNo(), "")
         except Exception, e:
             self._logger.error("Exception in %s: %s" % (f.func_name, str(e)))
-            return Status.ERR_INTERNAL
+            return (Status.ERR_INTERNAL, "")
         return (Status.SUCCESS, retV)
 
     def installMeta(self):
@@ -117,9 +119,13 @@ class MetaInterface:
         """Removes metadata about a table."""
         return self._x1(self._metaImpl.dropTable, dbName, tableName)
 
-    def retrievePartTables(self, dbName):
-        """Retrieves list of partitioned tables for a given database."""
-        return self._x2(self._metaImpl.retrievePartTables, dbName)
+    def listTables(self, dbName):
+        """Retrieves a list of all tables for a given database."""
+        return self._x2(self._metaImpl.listTables, dbName, False)
+
+    def listPartTables(self, dbName):
+        """Retrieves a list of partitioned tables for a given database."""
+        return self._x2(self._metaImpl.listTables, dbName, True)
 
     def retrieveTableInfo(self, dbName, tableName):
         """Retrieves information about a table."""

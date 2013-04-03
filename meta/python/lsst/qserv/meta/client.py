@@ -21,11 +21,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 
-"""
-The "client" module implements client of the qserv metadata server.
-It throws QmsException on error.
-"""
-
 import os
 import re
 import socket
@@ -34,6 +29,10 @@ import xmlrpclib
 # Local package imports
 from status import Status, getErrMsg, QmsException
 
+"""
+The "client" module implements client of the qserv metadata server.
+It throws QmsException on error.
+"""
 class Client:
     def __init__(self, host, port, user, pwd):
         defaultXmlPath = "qms"
@@ -44,8 +43,7 @@ class Client:
     ###########################################################################
     def installMeta(self):
         status = self._qms.installMeta()
-        if status != Status.SUCCESS: 
-            raise QmsException(status)
+        if status != Status.SUCCESS: raise QmsException(status)
 
     def destroyMeta(self):
         status = self._qms.destroyMeta()
@@ -53,8 +51,7 @@ class Client:
 
     def printMeta(self):
         (status, v) = self._qms.printMeta()
-        if status != Status.SUCCESS: 
-            raise QmsException(status)
+        if status != Status.SUCCESS: raise QmsException(status)
         return v
 
     def createDb(self, dbName, theOptions):
@@ -113,8 +110,13 @@ class Client:
         status = self._qms.dropTable(dbName, tableName)
         if status != Status.SUCCESS: raise QmsException(status)
 
-    def retrievePartitionedTables(self, dbName):
-        (status, tNames) = self._qms.retrievePartTables(dbName)
+    def listTables(self, dbName):
+        (status, tNames) = self._qms.listTables(dbName)
+        if status != Status.SUCCESS: raise QmsException(status)
+        return tNames
+
+    def listPartitionedTables(self, dbName):
+        (status, tNames) = self._qms.listPartTables(dbName)
         if status != Status.SUCCESS: raise QmsException(status)
         return tNames
 

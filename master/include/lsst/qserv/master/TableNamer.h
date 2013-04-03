@@ -98,7 +98,7 @@ private:
     AliasedRef _computeAliasedRef(std::string const& logical,
                                   std::string const& physical,
                                   bool isAlias); 
-   void _computeChunking() const;
+    void _computeChunking() const;
 
     TableRefChecker const& _checker;
     RefDeque _refs;

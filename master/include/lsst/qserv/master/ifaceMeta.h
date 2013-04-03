@@ -19,27 +19,31 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-//  class StderrLogger -- A basic logger class that outputs to stderr
-//  as a stand-in for non-xrootd environments.
-#ifndef LSST_QSERV_WORKER_STDERRLOGGER_H
-#define LSST_QSERV_WORKER_STDERRLOGGER_H
-#include <iostream>
+
+/**
+  * @file ifaceMeta.h
+  *
+  * @brief Interface used for exporting C++ metadata cache to python through swig.
+  *
+  * @Author Jacek Becla, SLAC
+  */
+
+#ifndef LSST_QSERV_META_IFACEMETA_H
+#define LSST_QSERV_META_IFACEMETA_H
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace master {
 
-class StderrLogger : public Logger {
-public:
-    typedef boost::shared_ptr<StderrLogger> Ptr;
-    virtual ~StderrLogger() {}
-    virtual void operator()(std::string const& s) {
-        std::cerr << "LOG: " << s << std::endl;
-    }
-    virtual void operator()(char const* s) {
-        std::cerr << "LOG: " << s << std::endl;
-    }
-};
-}}}  // namespace lsst::qserv::worker
+int newMetadataSession();
+void discardMetadataSession(int);
+int addDbInfoNonPartitioned(int, char*);
+int addDbInfoPartitionedSphBox(int, char*, int, int, float, float);
+int addTbInfoNonPartitioned(int, char*, char*);
+int addTbInfoPartitionedSphBox(int, char*, char*, float, char*, char*,
+                               int, int, int, int);
+void printMetadataCache(int);
 
-#endif // LSST_QSERV_WORKER_STDERRLOGGER_H
+}}}
+
+#endif // LSST_QSERV_META_IFACEMETA_H

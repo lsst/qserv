@@ -22,18 +22,18 @@
 #include "lsst/qserv/worker/TodoList.h"
 #include "lsst/qserv/worker/Foreman.h"
 #include "lsst/qserv/worker/Service.h"
-#include "lsst/qserv/worker/StderrLogger.h"
+#include "lsst/qserv/worker/Logger.h"
 
-namespace qWorker = lsst::qserv::worker;
+using namespace lsst::qserv::worker;
 
-qWorker::Service::Service(qWorker::Logger::Ptr log) 
+Service::Service(Logger::Ptr log) 
     : _todo(new TodoList()) {
     if(!log.get()) {
-        log.reset(new StderrLogger());
+        log.reset(new Logger());
     }
     _foreman = newForeman(_todo, log);
 }
 
-qWorker::TaskAcceptor::Ptr qWorker::Service::getAcceptor() {
+TaskAcceptor::Ptr Service::getAcceptor() {
     return _todo;
 }

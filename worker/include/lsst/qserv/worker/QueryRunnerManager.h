@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
@@ -29,16 +30,17 @@ namespace qserv {
 namespace worker {
 
 // Forward
+class Logger;
 class QueryRunner;
 
 ////////////////////////////////////////////////////////////////////////
 class QueryRunnerArg {
 public:
-QueryRunnerArg(Logger::Ptr log_,
+QueryRunnerArg(boost::shared_ptr<Logger> log_,
                Task::Ptr task_,
                std::string overrideDump_=std::string()) 
     : log(log_), task(task_), overrideDump(overrideDump_) { }
-    Logger::Ptr log;
+    boost::shared_ptr<Logger> log;
     Task::Ptr task;
     std::string overrideDump;
 };
@@ -49,6 +51,10 @@ public:
     virtual void operator()(QueryRunnerArg const& )=0;
 };
 
+////////////////////////////////////////////////////////////////////////
+// QueryRunnerManager manages a set of QueryRunner threads, which
+// execute queued query tasks for the fulfillment of incoming
+// ChunkQueries. 
 ////////////////////////////////////////////////////////////////////////
 class QueryRunnerManager {
 public:
@@ -89,7 +95,7 @@ private:
     int _jobTotal;
     
     int _limit;
-    boost::mutex _mutex;    
+    boost::mutex _mutex;
 };
 }}} // lsst::qserv::worker
 #endif // LSST_QSERV_WORKER_QUERYRUNNERMANAGER_H

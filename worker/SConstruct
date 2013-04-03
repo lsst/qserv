@@ -80,6 +80,7 @@ sfsObjs = map(lambda f: env.SharedObject(os.path.join("bld",f+".os"),
               ["XrdSfsCallBack.cc","XrdSfsNative.cc"])
 env.Append(sfsObjs=sfsObjs)
 envNoXrd.Append(sfsObjs=sfsObjs)
+
 for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
 #for bldDir, expEnv in [['bld',env]]:
     try:

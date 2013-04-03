@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,13 +38,14 @@
 #include "lsst/qserv/worker/ResultTracker.h"
 #include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/MySqlFsFile.h"
+#include "lsst/qserv/worker/Logger.h"
 
 namespace test = boost::test_tools;
 namespace qWorker = lsst::qserv::worker;
+using namespace lsst::qserv::worker;
 using boost::make_shared;
 
-static XrdSysLogger logDest;
-static XrdSysError errDest(&logDest);
+boost::shared_ptr<Logger> myLog = make_shared<Logger>();
 
 
 // For chunk 9980, subchunks 1,3 (tuson26 right now)
@@ -58,13 +59,13 @@ std::string queryNonMagic =
 //SELECT COUNT(*) FROM (SELECT * FROM Subchunks_9880.Object_9880_1 UNION SELECT * FROM Subchunks_9880.Object_9880_3) AS _Obj_Subchunks;
 
 std::string query(queryNonMagic + std::string(4, '\0')); // Force magic EOF
-std::string queryHash = qWorker::hashQuery(query.c_str(), query.size());
+std::string queryHash = hashQuery(query.c_str(), query.size());
 std::string queryResultPath = "/result/"+queryHash;
 
 struct TrackerFixture {
     TrackerFixture() :
-	invokeFile(&errDest, "qsmaster", make_shared<AddCallbackFunc>()),
-	resultFile(&errDest, "qsmaster", make_shared<AddCallbackFunc>()) {}
+	invokeFile(myLog, "qsmaster", make_shared<AddCallbackFunc>()),
+	resultFile(myLog, "qsmaster", make_shared<AddCallbackFunc>()) {}
     class StrCallable {
     public:
 	StrCallable(std::string& s) : val(s), isNotified(false)  {}
@@ -79,13 +80,13 @@ struct TrackerFixture {
     public:
 	Listener(std::string const& filename) :_filename(filename) {}
 	virtual ~Listener() {}
-	virtual void operator()(qWorker::ResultError const& re) {
+	virtual void operator()(ResultError const& re) {
 	    std::cout << "notification received for file " 
 		      << _filename << std::endl;
 	}
 	std::string _filename;
     };
-    class AddCallbackFunc : public qWorker::AddCallbackFunction {
+    class AddCallbackFunc : public AddCallbackFunction {
     public:
 	typedef boost::shared_ptr<AddCallbackFunction> Ptr;
 	AddCallbackFunc() {}
@@ -94,17 +95,17 @@ struct TrackerFixture {
 	virtual void operator()(XrdSfsFile& caller, 
 				std::string const& filename) {
 	    std::cout << "Will listen for " << filename << ".\n";
-	    qWorker::QueryRunner::getTracker().listenOnce(filename, Listener(filename));
+	    QueryRunner::getTracker().listenOnce(filename, Listener(filename));
 	}
     };
     
-    qWorker::QueryRunner::Tracker& getTracker() { // alias.
-	return qWorker::QueryRunner::getTracker();
+    QueryRunner::Tracker& getTracker() { // alias.
+	return QueryRunner::getTracker();
     }
 
     void printNews() { // 
 	
-	typedef qWorker::QueryRunner::Tracker Tracker;
+	typedef QueryRunner::Tracker Tracker;
 	Tracker& t = getTracker();
 	Tracker::NewsMap& nm = t.debugGetNews();
 	Tracker::NewsMap::iterator i = nm.begin();
@@ -117,17 +118,17 @@ struct TrackerFixture {
     }
 
     
-    qWorker::MySqlFsFile invokeFile;
-    qWorker::MySqlFsFile resultFile;
+    MySqlFsFile invokeFile;
+    MySqlFsFile resultFile;
     int lastResult;
-    qWorker::QueryRunner::Tracker* debugTrackerPtr;
+    QueryRunner::Tracker* debugTrackerPtr;
 };
 
 
 BOOST_FIXTURE_TEST_SUITE(ResultTrackerSuite, TrackerFixture)
 
 BOOST_AUTO_TEST_CASE(IntKey) {
-    qWorker::ResultTracker<int, std::string> rt;
+    ResultTracker<int, std::string> rt;
     BOOST_CHECK(rt.getSignalCount() == 0);
     BOOST_CHECK(rt.getNewsCount() == 0);
     std::string msg;
@@ -202,7 +203,7 @@ BOOST_AUTO_TEST_CASE(QueryAttemptTwo) {
 	if(lastResult == SFS_OK) {
 	    break;
 	} else if(lastResult == SFS_STARTED) {
-	    qWorker::ResultErrorPtr p;
+	    ResultErrorPtr p;
 	    int i = 0;
 	    while(i < 10) {
 		p = getTracker().getNews(queryHash);

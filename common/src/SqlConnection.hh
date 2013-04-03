@@ -19,58 +19,52 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-#ifndef LSST_QSERV_SQL_H
-#define LSST_QSERV_SQL_H
-// sql.h - SQL interface module.  Convenience code/abstraction layer
-// fro calling into MySQL.  Uncertain of how this usage conflicts with
-// db usage via the python MySQLdb api. 
-
+// SqlConnection.h - The SqlConnection class provides a convenience
+// layer on top of an underlying mysqlclient. Historically, the
+// SqlConnection class abstracted every interaction with the database
+// and provided some convenience functions (e.g., show tables, show
+// databases) that went beyond providing a C++ wrapper to mysql. Some
+// of the more raw mysql code has been moved to MySqlConnection, but
+// not all.
+// It is uncertain of how this usage conflicts with db usage via the
+// python MySQLdb api, but no problems have been detected so far.
+#ifndef LSST_QSERV_SQLCONNECTION_H
+#define LSST_QSERV_SQLCONNECTION_H
 
 // Standard
 #include <string>
 #include <vector>
 
-// Boost
-#include <boost/thread.hpp>
-// MySQL
-#include <mysql/mysql.h> // MYSQL is typedef, so we can't forward declare it.
+#include <boost/shared_ptr.hpp>
 
 #include "SqlConfig.hh"
 #include "SqlErrorObject.hh"
 
 namespace lsst {
 namespace qserv {
+// forward
+class MySqlConnection;
+class SqlResults;
 
-class SqlResults {
+class SqlResultIter {
 public:
-    SqlResults(bool discardImmediately=false) 
-        :_discardImmediately(discardImmediately) {};
-    ~SqlResults() {freeResults();};
-
-    void addResult(MYSQL_RES* r);
-    bool extractFirstValue(std::string&, SqlErrorObject&);
-    bool extractFirstColumn(std::vector<std::string>&, 
-                            SqlErrorObject&);
-    bool extractFirst2Columns(std::vector<std::string>&, //FIXME: generalize
-                              std::vector<std::string>&, 
-                              SqlErrorObject&);
-    bool extractFirst3Columns(std::vector<std::string>&, //FIXME: generalize
-                              std::vector<std::string>&, 
-                              std::vector<std::string>&, 
-                              SqlErrorObject&);
-    bool extractFirst4Columns(std::vector<std::string>&,
-                              std::vector<std::string>&, 
-                              std::vector<std::string>&, 
-                              std::vector<std::string>&, 
-                              SqlErrorObject&);
-    void freeResults();
+    typedef std::vector<std::string> List;
+    SqlResultIter() {}
+    SqlResultIter(SqlConfig const& sc, std::string const& query);
+    SqlErrorObject& getErrorObject() { return _errObj; }
+    
+    List const& operator*() const { return _current; }
+    SqlResultIter& operator++(); // pre-increment iterator advance.
+    bool done() const; // Would like to relax LSST standard 3-4 for iterator classes
 
 private:
-    std::vector<MYSQL_RES*> _results;
-    bool _discardImmediately;
-};
+    bool _setup(SqlConfig const& sqlConfig, std::string const& query);
 
+    boost::shared_ptr<MySqlConnection> _connection;
+    List _current;
+    SqlErrorObject _errObj;
+    int _columnCount;
+};
         
 /// class SqlConnection : Class for interacting with a MySQL database.
 class SqlConnection {
@@ -78,13 +72,15 @@ public:
     SqlConnection();
     SqlConnection(SqlConfig const& sc, bool useThreadMgmt=false); 
     ~SqlConnection(); 
-    void init(SqlConfig const& sc, bool useThreadMgmt=false);
+    void reset(SqlConfig const& sc, bool useThreadMgmt=false);
     bool connectToDb(SqlErrorObject&);
     bool selectDb(std::string const& dbName, SqlErrorObject&);
     bool runQuery(char const* query, int qSize, 
                   SqlResults& results, SqlErrorObject&);
     bool runQuery(char const* query, int qSize, SqlErrorObject&);
     bool runQuery(std::string const query, SqlResults&, SqlErrorObject&);
+    /// with runQueryIter SqlConnection is busy until SqlResultIter is closed
+    boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
     bool runQuery(std::string const query, SqlErrorObject&);
     bool dbExists(std::string const& dbName, SqlErrorObject&);
     bool createDb(std::string const& dbName, SqlErrorObject&, 
@@ -106,27 +102,19 @@ public:
                     std::string const& prefixed="",
                     std::string const& dbName="");
 
-    std::string getActiveDbName() const { return _config.dbName; }
+    std::string getActiveDbName() const;
 
-    // FIXME: remove, not thread safe, use SqlErrorObject instead
-    char const* getMySqlError() const { return _mysqlError; }
-    int getMySqlErrno() const { return _mysqlErrno; }
+    // Static helpers
+    static void populateErrorObject(MySqlConnection& m, SqlErrorObject& o);
 
 private:
+    friend class SqlResultIter;
     bool _init(SqlErrorObject&);
     bool _connect(SqlErrorObject&);
     bool _setErrorObject(SqlErrorObject&, 
                          std::string const& details=std::string(""));
 
-    MYSQL* _conn;
-    std::string _error;
-    int _mysqlErrno;
-    const char* _mysqlError;
-    SqlConfig _config;
-    bool _connected;
-    bool _useThreadMgmt;
-    static boost::mutex _sharedMutex;
-    static bool _isReady;
+    boost::shared_ptr<MySqlConnection> _connection;
 }; // class SqlConnection
 
 
@@ -136,4 +124,4 @@ private:
 // comment-column:0 
 // End:             
 
-#endif // LSST_QSERV_SQL_H
+#endif // LSST_QSERV_SQLCONNECTION_H
