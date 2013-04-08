@@ -8,7 +8,7 @@ WARNING :
 
 WARNING : 
     Qserv must be installed and executed with a non-root account, so
-    create this account this  next command first :
+    create this account with next command first :
 
   # su -c "useradd qserv"
 
@@ -37,7 +37,7 @@ First do :
   $ cp qserv-build.default.conf qserv-build.conf
 
 and then set your install parameters in qserv-build.conf (restrictive access rights recommended as it contains MySQL password)
-This file is well-commented.
+This file is well-commented. qserv-build.default.conf will contains all the default values for parameters.
 
 then :
   $ mkdir ~/.lsst/
@@ -57,6 +57,16 @@ Then source your ~/.bashrc :
 
   $ scons install 
 It may take a while ...
+
+
+  Install SciSQL on each worker nodes :
+  --------------------------------
+
+  $ cd /qserv/qserv-current/build/
+  $ tar -jxvf scisql-0.3.tar.bz2
+  $ ./configure --prefix /opt/qserv-dev/ --mysql-user root --mysql-socket /opt/qserv-dev/var/lib/mysql/mysql.sock 
+  $ make 
+  $ make install
 
 Launch Qserv :
 --------------
