@@ -92,13 +92,6 @@ def build_cmd_with_opts( config, target='install'):
             logger.fatal("Error while accessing geometry src dir : '%s' for reading." % config['qserv']['geometry_src_dir'])
             exit(1)
     
-    if config['qserv']['node_type']=='mono' :
-        install_opts="%s --mono-node" % install_opts
-    elif config['qserv']['node_type']=='master' :
-        None
-    elif config['qserv']['node_type']=='worker' :
-        None
-
     log_file_prefix = config['qserv']['log_dir']
     if target=='qserv-only' :
         install_opts="%s --qserv" % install_opts
@@ -125,11 +118,9 @@ def check_root_dirs(target, source, env):
 
     check_success=True
 
-    #logger.debug("TOTOTO :"+env['config'])
-
     config=env['config']
 
-    for (section,option) in (('qserv','base_dir'),('qserv','log_dir'),('mysqld','data_dir')):
+    for (section,option) in (('qserv','base_dir'),('qserv','log_dir'),('qserv','tmp_dir'),('mysqld','data_dir')):
         dir = config[section][option]
         if not utils.exists_and_is_writable(dir):
        	    logging.fatal("%s is not writable check/update permissions or update config[%s]['%s']" % 
@@ -154,5 +145,46 @@ def check_root_dirs(target, source, env):
     else:
         sys.exit(1)
 
+def check_root_symlinks(target, source, env):
+    """ symlinks creation for directories externalised of qserv directory tree
+    """
+    log = logging.getLogger()
+    config=env['config']
+
+    check_success=True
+
+    for (section,option,symlink_suffix) in (
+        ('qserv','log_dir','var/log'),
+        ('qserv','tmp_dir','tmp'),
+        ('mysqld','data_dir', 'var/lib/mysql')
+        ):
+        symlink_target = config[section][option]
+        symlink_name = os.path.join(config['qserv']['base_dir'],symlink_suffix)
+       
+        # A symlink is needed if : 
+        #   - the target directory is not in qserv base dir
+        #   - it doesn't already exists
+        if symlink_target != os.path.realpath(symlink_name):
+            # cleaning if needed, management of build configuration file update
+            # log.debug("TARGET %s, REALNAME %s " % (symlink_target, os.path.realpath(symlink_name)))
+            if os.path.exists(symlink_name) :
+                if os.path.islink(symlink_name):
+                    os.unlink(symlink_name)
+                else:
+                    env.Execute(Delete(symlink_name))
+            symlink_with_log(symlink_target, symlink_name)
+                    #env.Execute(env.Command(symlink_name, symlink_target, actions.symlink))       
+                    #init_target_lst.append(symlink_name)
+
+    if check_success :
+        log.info("Qserv symlinks creation for externalized directories succeeded")
+    else:
+        sys.exit(1)
+
 def symlink(target, source, env):
-    os.symlink(os.path.abspath(str(source[0])), os.path.abspath(str(target[0])))
+    symlink_with_log(os.path.abspath(str(source[0])), os.path.abspath(str(target[0])))
+
+def symlink_with_log(target, link_name):
+    logger = logging.getLogger()
+    logger.debug("Creating symlink, target : %s, link name : %s " % (target,link_name))
+    os.symlink(target, link_name)

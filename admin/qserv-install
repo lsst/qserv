@@ -27,7 +27,6 @@ GetOptions( \%opts,
 	"mysql-proxy",
 	"python=s",
 	"xrootd",
-	"mono-node",
 	"qserv",
 	"user",
 	"test",
@@ -54,7 +53,6 @@ my $build_dir   = $opts{'build-dir'} || "$install_dir/build";
 my $prod_user   = $opts{'user'} || $ENV{'USER'};
 my $qserv_master = $opts{'master'} || hostname;
 my $geometry_dir = $opts{'geometry-dir'};
-my $cluster_type = $opts{'mono-node'} || "mono-node" ;
 
 $install_dir = remove_trailing_slash($install_dir);
 $log_dir = remove_trailing_slash($log_dir);
@@ -222,6 +220,7 @@ sub check_and_install_qserv {
 	
 	#install worker libs
 	run_command("cp bld/libqserv_worker.so $install_dir/xrootd-run/");
+	run_command("cp bld/libqserv_workerCmsd.so $install_dir/xrootd-run/");
 	
 	#start mysql server and install init database
 	chdir "$install_dir";
@@ -585,42 +584,10 @@ sub check_and_deploy_qserv {
 #create the startup scripts for server components.
 sub create_startups {
 
-	create_xrootd_startup();
 	create_qserv_startup();
 	create_mysqlproxy_startup();
 	print "PROCESS SUCCESSFULLY COMPLETED\n";
 	
-}
-
-#create the xrootd startup script.
-sub create_xrootd_startup {
-
-	chdir $install_dir;
-	open XROOTD, ">start_xrootd";
-	
-	print XROOTD "#!/bin/bash\n";
-	print XROOTD "\n";
-	print XROOTD "#start_xrootd\n";
-	print XROOTD "export QSW_XRDQUERYPATH=\"/q\"\n";
-	print XROOTD "export QSW_DBSOCK=\"$install_dir/var/lib/mysql/mysql.sock\"\n";
-	print XROOTD "export QSW_MYSQLDUMP=\"$install_dir/bin/mysqldump\"\n";
-	print XROOTD "QSW_SCRATCHPATH=\"$install_dir/tmp\"\n";
-	print XROOTD "QSW_SCRATCHDB=\"qservScratch\"\n";
-	print XROOTD "export QSW_RESULTPATH=\"$install_dir/xrootd-run/result\"\n";
-	print XROOTD "\n";
-	print XROOTD "export LD_LIBRARY_PATH=\"$install_dir/xrootd-run;$install_dir/lib\"\n";
-	print XROOTD "\n";
-
-        if ($cluster_type ne "mono-node") {
-	    print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/cmsd -c ";
-	    print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/cmsd.log &\n";
-	}
-	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/xrootd -c ";
-	print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/xrootd.log &\n";
-
-	close XROOTD;
-	chmod 0755, "start_xrootd";
-
 }
 
 #create the qserv startup script.

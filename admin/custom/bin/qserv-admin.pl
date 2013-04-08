@@ -16,6 +16,7 @@ GetOptions( \%opts,
 	"start",
 	"substripes=i",
 	"load",
+        "mono-node",
 	"delete-data",
 	"source=s",
 	"table=s",
@@ -30,8 +31,13 @@ usage(0) if ($opts{'help'});
 
 my $debug = $opts{'debug'} || 0;
 
-my $install_dir = "<QSERV_BASE_DIR>";
-my $mysql_proxy_port = "<MYSQL_PROXY_PORT>" || $opts{'mysql-proxy-port'} || 4040;
+# WARNING:  %(...) below are template variables !
+# It  would  be  better  to  read  config files  instead  to  have  it
+# hard-coded here. see https://dev.lsstcorp.org/trac/ticket/2566
+
+my $install_dir = "%(QSERV_BASE_DIR)s";
+my $mysql_proxy_port = "%(MYSQL_PROXY_PORT)s" || $opts{'mysql-proxy-port'} || 4040;
+my $cluster_type = $opts{'mono-node'} || "mono-node" ;
 
 print "Using $install_dir install.\n" if( $debug );
 
@@ -254,47 +260,41 @@ sub check_ps {
 
 #Stop the qserv process
 sub stop_qserv {
-
-	get_and_stop_ps( "startQserv" );
-
+    killpid("$install_dir/var/run/qserv.pid");
 }
 
 #stop the xrootd process
 sub stop_xrootd {
-
-	my $pid = get_pid( "${install_dir}/tmp/xrootd.pid" );
-	stop_ps( $pid );
-	$pid = get_pid( "${install_dir}/tmp/cmsd.mangr.pid" );
-	stop_ps( $pid );
-
+    killpid("$install_dir/var/run/xrootd.pid");
+    if ($cluster_type ne "mono-node") {
+        killpid("$install_dir/var/run/cmsd.pid");
+    }
 }
 
 #stop the mysql server
 sub stop_mysqld {
-
-	my $pid = get_pid( "${install_dir}/var/run/mysqld/mysqld.pid" );
-	stop_ps( $pid );
-
+  my( $dbpass ) = $opts{'dbpass'};
+  run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass shutdown");
 }
 
 #stop the mysql proxy
 sub stop_proxy {
-
-	get_and_stop_ps( "mysql-proxy" );
-
+    killpid("$install_dir/var/run/mysql-proxy.pid");
 }
 
-#Stop a process based on the exsitence of a string in the command line
-#used to start the process.
-sub get_and_stop_ps {
-	my( $test_string ) = @_;
-	print "Stopping $test_string\n";
-	
-	my $pid = check_ps( $test_string );
-	print "pid to stop -- $pid\n";
-	if( $pid ) {
-		stop_ps( $pid );
-	}
+# Kill a process based on a PID file
+sub killpid {
+    my( $pidfile ) = @_;
+    if (-e $pidfile) {
+        print "Killing process pids from $pidfile \n";
+        open FILE, $pidfile;
+        while (<FILE>) {
+            kill 9, $_;
+        }
+        unlink $pidfile
+    } else {
+        print "killpid: Non existing PID file $pidfile \n";
+    }
 }
 
 #Stop a process given an id

@@ -1,7 +1,7 @@
 # Unified configuration for xrootd/cmsd for both manager and server instances
 # "if"-block separates manager-only and server-only configuration.
 
-# if <regexp> block.  Test whether the hostname matches the <regexp>, 
+# if %(regexp)s block.  Test whether the hostname matches the %(regexp)s, 
 # Example: tuson121 is the hostname of our manager node within our 
 # allocation at LLNL.
 
@@ -13,29 +13,31 @@
 ############
 # if manager
 ############
-<COMMENT_MONO_NODE>if <XROOTD_MANAGER_HOST>*
+%(COMMENT_MONO_NODE)sif %(XROOTD_MANAGER_HOST)s*
 # Use manager mode
-<COMMENT_MONO_NODE>all.role manager
+%(COMMENT_MONO_NODE)sall.role manager
 
 # Use standard filesystem plugin
 # Newer xrootd uses embedded plugin by default, uncomment for older xrootd
-#<COMMENT_MONO_NODE>xrootd.fslib libXrdOfs.so
+#%(COMMENT_MONO_NODE)sxrootd.fslib libXrdOfs.so
 
 ##########################
 # else: non-manager nodes
 ##########################
-<COMMENT_MONO_NODE>else
+%(COMMENT_MONO_NODE)selse
 
 # Use server mode
 all.role server
 
 # Use qserv worker filesystem plugin
-xrootd.fslib libqserv_worker.so
+# default path is %(QSERV_BASE_DIR)s/xrootd-run/
+xrootd.fslib %(QSERV_BASE_DIR)s/xrootd-run/libqserv_worker.so
+ofs.osslib %(QSERV_BASE_DIR)s/xrootd-run/libqserv_workerCmsd.so
 
-# Set <pathname> for file location resolution.  
-# i.e., <pathname>/somefile will be exported in the xroot URL: 
+# Set %(pathname)s for file location resolution.  
+# i.e., %(pathname)s/somefile will be exported in the xroot URL: 
 # xroot://manager:0000/somefile
-oss.localroot <XROOTD_RUN_DIR> 
+oss.localroot %(XROOTD_RUN_DIR)s 
 
 # Do not change.  This directive tries to lower the minimum free disk space
 # for "file" writes (which are subquery writes in our case).
@@ -44,7 +46,7 @@ cms.space linger 0 recalc 15 min 10m 11m
 # Use asyncronous filesystem API when interfacing with filesystem plugin 
 # (qserv-worker plugin is tested using this configuration)
 xrootd.async force
-<COMMENT_MONO_NODE>fi
+%(COMMENT_MONO_NODE)sfi
 
 ########################################
 # Shared directives (manager and server)
@@ -52,12 +54,12 @@ xrootd.async force
 
 # Writable paths for administration
 # cmsd and xrootd paths for pid
-all.pidpath <XROOTD_PID_DIR> 
+all.pidpath %(XROOTD_PID_DIR)s 
 # path to write logging and other information
-all.adminpath <XROOTD_ADMIN_DIR>
+all.adminpath %(XROOTD_ADMIN_DIR)s
 
 # host:port of manager instance (2131 is default)
-<COMMENT_MONO_NODE>all.manager <XROOTD_MANAGER_HOST>:<CMSD_MANAGER_PORT>
+%(COMMENT_MONO_NODE)sall.manager %(XROOTD_MANAGER_HOST)s:%(CMSD_MANAGER_PORT)s
 
 # Do not change. This specifies valid virtual paths that can be accessed.  
 # "nolock" directive prevents write-locking and is important for qserv
@@ -65,7 +67,7 @@ all.adminpath <XROOTD_ADMIN_DIR>
 all.export /q/ nolock
 all.export /result/ nolock
 
-xrd.port <XROOTD_PORT>
+xrd.port %(XROOTD_PORT)s
 
 # Optional: Prevent dns resolution in logs.  
 # This may speed up request processing.
