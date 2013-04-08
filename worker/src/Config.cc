@@ -128,7 +128,7 @@ void Config::_load() {
     _sqlConfig.reset(new SqlConfig);
     SqlConfig& sc = *_sqlConfig;
     sc.hostname = "";    
-    sc.username = ""; /// Empty default for now. 
+    sc.username = "qsmaster"; /// Empty default for now. 
                               /// Consider "qworker" or "qsw"
     sc.password = "";
     // Sanity checks require default db, even for queries that don't use it.

@@ -171,7 +171,7 @@ def get_template_targets():
                 target_lst.append(symlink_name)
 
             path = os.path.dirname(target_name)
-            if os.path.basename(path) == "bin" : 
+            if os.path.basename(path) == "bin" or os.path.basename(target_name) == "start_xrootd": 
                 env.AddPostAction(target_node, Chmod("$TARGET", 0760))
             # all other files are configuration files
             else:
