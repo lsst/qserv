@@ -218,10 +218,6 @@ sub check_and_install_qserv {
 	chdir "$install_dir/qserv/worker";
 	run_command("scons");
 	
-	#install worker libs
-	run_command("cp bld/libqserv_worker.so $install_dir/xrootd-run/");
-	run_command("cp bld/libqserv_workerCmsd.so $install_dir/xrootd-run/");
-	
 	#start mysql server and install init database
 	chdir "$install_dir";
 	print "Starting mysql server.\n";
