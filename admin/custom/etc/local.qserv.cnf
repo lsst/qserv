@@ -4,8 +4,8 @@
 # xrootd_user=qsmaster
 # scratch_path=/dev/shm/qserv
 # port=7080
-xrootd=<XROOTD_MANAGER_HOST>:<XROOTD_PORT>
-scratch_path=/dev/shm/qserv
+xrootd=%(XROOTD_MANAGER_HOST)s:%(XROOTD_PORT)s
+scratch_path=/dev/shm/%(QSERV_BASE_DIR)s
 xrootd_user=qsmaster
 
 # [mgmtdb]
@@ -22,7 +22,7 @@ xrootd_user=qsmaster
 # dropMem=
 passwd = 
 db=qservResult
-unix_socket=<QSERV_BASE_DIR>/var/lib/mysql/mysql.sock
+unix_socket=%(QSERV_BASE_DIR)s/var/lib/mysql/mysql.sock
 host= 
 user=qsmaster
 port=0
@@ -31,9 +31,9 @@ port=0
 # stripes=18
 # substripes=10
 # emptyChunkListFile=
-substripes=<QSERV_SUBSTRIPES>
-stripes=<QSERV_STRIPES>
-emptyChunkListFile=<QSERV_BASE_DIR>/etc/emptyChunks.txt
+substripes=%(QSERV_SUBSTRIPES)s
+stripes=%(QSERV_STRIPES)s
+emptyChunkListFile=%(QSERV_BASE_DIR)s/etc/emptyChunks.txt
 
 [table]
 # chunked=Source,ForcedSource
@@ -41,7 +41,7 @@ emptyChunkListFile=<QSERV_BASE_DIR>/etc/emptyChunks.txt
 # alloweddbs=LSST
 chunked=Source,FaintSource
 subchunked=Object
-alloweddbs=LSST,Test1
+alloweddbs=LSST,qservTest_case01_qserv,qservTest_case02_qserv,qservTest_case03_qserv
 partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
 
 # [tuning]

@@ -113,66 +113,63 @@ def get_template_targets():
     target_lst = []
 
     script_dict = {
-                '<QSERV_BASE_DIR>': config['qserv']['base_dir'], 
-                '<QSERV_LOG_DIR>': config['qserv']['log_dir'], 
-                '<QSERV_STRIPES>': config['qserv']['stripes'], 
-                '<QSERV_SUBSTRIPES>': config['qserv']['substripes'], 
-                '<MYSQLD_DATA_DIR>': config['mysqld']['data_dir'], 
-                '<MYSQLD_PORT>': config['mysqld']['port'], 
-                # used for mysql-proxy in mono-node
-                # '<MYSQLD_HOST>': config['qserv']['master'], 
-                '<MYSQLD_HOST>': '127.0.0.1', 
-                '<MYSQLD_PASS>': config['mysqld']['pass'], 
-                '<MYSQL_PROXY_PORT>': config['mysql_proxy']['port'], 
-                '<XROOTD_MANAGER_HOST>': config['qserv']['master'], 
-                '<XROOTD_PORT>': config['xrootd']['xrootd_port'], 
-                '<XROOTD_RUN_DIR>': os.path.join(config['qserv']['base_dir'],'xrootd-run'), 
-                '<XROOTD_ADMIN_DIR>': os.path.join(config['qserv']['base_dir'],'tmp'), 
-                '<XROOTD_PID_DIR>': os.path.join(config['qserv']['base_dir'],'var/run'), 
-                '<CMSD_MANAGER_PORT>': config['xrootd']['cmsd_manager_port'] 
-    }
+        '%\(QSERV_BASE_DIR\)s': config['qserv']['base_dir'], 
+        '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'], 
+        '%\(QSERV_STRIPES\)s': config['qserv']['stripes'], 
+        '%\(QSERV_SUBSTRIPES\)s': config['qserv']['substripes'], 
+        '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['base_dir'],'var/run'),   
+        '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'], 
+        '%\(MYSQLD_PORT\)s': config['mysqld']['port'], 
+        # used for mysql-proxy in mono-node
+        # '%(MYSQLD_HOST)': config['qserv']['master'], 
+        '%\(MYSQLD_HOST\)s': '127.0.0.1', 
+        '%\(MYSQLD_SOCK\)s': config['mysqld']['sock'],
+        '%\(MYSQLD_USER\)s': config['mysqld']['user'], 
+        '%\(MYSQLD_PASS\)s': config['mysqld']['pass'], 
+        '%\(MYSQL_PROXY_PORT\)s': config['mysql_proxy']['port'], 
+        '%\(XROOTD_MANAGER_HOST\)s': config['qserv']['master'], 
+        '%\(XROOTD_PORT\)s': config['xrootd']['xrootd_port'], 
+        '%\(XROOTD_RUN_DIR\)s': os.path.join(config['qserv']['base_dir'],'xrootd-run'), 
+        '%\(XROOTD_ADMIN_DIR\)s': os.path.join(config['qserv']['base_dir'],'tmp'), 
+        '%\(CMSD_MANAGER_PORT\)s': config['xrootd']['cmsd_manager_port'] 
+        }
+
     if config['qserv']['node_type']=='mono':
         script_dict['<COMMENT_MONO_NODE>']='#MONO-NODE# '
     else:
         script_dict['<COMMENT_MONO_NODE>']='' 
 
     logger.info("Applying configuration information via templates files ")
-    for node in utils.recursive_glob(template_dir_path,"*",env):
-        # strip template_dir_path out to have the filepath relative to templates dir
-        template_node_name=str(node)
-        logger.debug("Source : %s" % template_node_name)
-        template_dir_path = os.path.normpath(template_dir_path)
-        index = (template_node_name.find(template_dir_path) +
-             len(template_dir_path+os.sep) 
-        )
+   
+    for src_node in utils.recursive_glob(template_dir_path,"*",env):
 
-        node_name_path = template_node_name[index:]
-        source = template_node_name 
-        target = os.path.join(config['qserv']['base_dir'], node_name_path)
+        target_node = utils.replace_base_path(template_dir_path,config['qserv']['base_dir'],src_node,env)
 
-        logger.debug("Target : %s " % target)
-        target_lst.append(target)
- 
-        if isinstance(node, SCons.Node.FS.File) :
-            env.Substfile(target, source, SUBST_DICT=script_dict)
+        if isinstance(src_node, SCons.Node.FS.File) :
 
+            logger.debug("Template SOURCE : %s, TARGET : %s" % (src_node, target_node))  
+            env.Substfile(target_node, src_node, SUBST_DICT=script_dict)
+            target_lst.append(target_node)
             # qserv-admin has no extension, Substfile can't manage it easily
             # TODO : qserv-admin could be modified in order to be removed to
             # template files, so that next test could be removed
+            target_name = str(target_node)
             f="qserv-admin.pl"
-            logger.debug("%s %s " % (target, os.path.basename(target)))
-            if os.path.basename(target)	== f :
-                symlink_name = target[:-3] 
-                logger.debug("Creating symlink from %s to %s " % (symlink_name,target))
-                env.Command(symlink_name, target, actions.symlink)       
+            if os.path.basename(target_name)	== f :
+                symlink_name, file_ext = os.path.splitext(target_name)
+                env.Command(symlink_name, target_node, actions.symlink)       
                 target_lst.append(symlink_name)
-
-            path = os.path.dirname(target)
-            if os.path.basename(path) == "bin" : 
-                env.AddPostAction(target, Chmod("$TARGET", 0760))
+                
+            path = os.path.dirname(target_name)
+            if os.path.basename(path) == "bin" or os.path.basename(target_name) in [
+                "start_xrootd",
+                "start_qserv",
+                "start_mysqld"
+                ]: 
+                env.AddPostAction(target_node, Chmod("$TARGET", 0760))
             # all other files are configuration files
             else:
-                env.AddPostAction(target, Chmod("$TARGET", 0660))
+                env.AddPostAction(target_node, Chmod("$TARGET", 0660))
     
     return target_lst
 

@@ -27,7 +27,6 @@ GetOptions( \%opts,
 	"mysql-proxy",
 	"python=s",
 	"xrootd",
-	"mono-node",
 	"qserv",
 	"user",
 	"test",
@@ -54,7 +53,6 @@ my $build_dir   = $opts{'build-dir'} || "$install_dir/build";
 my $prod_user   = $opts{'user'} || $ENV{'USER'};
 my $qserv_master = $opts{'master'} || hostname;
 my $geometry_dir = $opts{'geometry-dir'};
-my $cluster_type = $opts{'mono-node'} || "mono-node" ;
 
 $install_dir = remove_trailing_slash($install_dir);
 $log_dir = remove_trailing_slash($log_dir);
@@ -117,8 +115,7 @@ check_and_install_myproxy() if( $build_opt eq "all" or $build_opt eq "mysql-prox
 #setup the qserv code
 check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
 
-#create startup scripts
-create_startups();
+print "PROCESS SUCCESSFULLY COMPLETED\n";
 
 #############################################################
 
@@ -581,98 +578,6 @@ sub check_and_deploy_qserv {
 		}
 	}
 }
-
-#create the startup scripts for server components.
-sub create_startups {
-
-	create_xrootd_startup();
-	create_qserv_startup();
-	create_mysqlproxy_startup();
-	print "PROCESS SUCCESSFULLY COMPLETED\n";
-	
-}
-
-#create the xrootd startup script.
-sub create_xrootd_startup {
-
-	chdir $install_dir;
-	open XROOTD, ">start_xrootd";
-	
-	print XROOTD "#!/bin/bash\n";
-	print XROOTD "\n";
-	print XROOTD "#start_xrootd\n";
-	print XROOTD "export QSW_XRDQUERYPATH=\"/q\"\n";
-	print XROOTD "export QSW_DBSOCK=\"$install_dir/var/lib/mysql/mysql.sock\"\n";
-	print XROOTD "export QSW_MYSQLDUMP=\"$install_dir/bin/mysqldump\"\n";
-	print XROOTD "QSW_SCRATCHPATH=\"$install_dir/tmp\"\n";
-	print XROOTD "QSW_SCRATCHDB=\"qservScratch\"\n";
-	print XROOTD "export QSW_RESULTPATH=\"$install_dir/xrootd-run/result\"\n";
-	print XROOTD "\n";
-	print XROOTD "export LD_LIBRARY_PATH=\"$install_dir/xrootd-run;$install_dir/lib\"\n";
-	print XROOTD "\n";
-
-        if ($cluster_type ne "mono-node") {
-	    print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/cmsd -c ";
-	    print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/cmsd.log &\n";
-	}
-	print XROOTD "$install_dir/bin/x86_64_linux_26_dbg/xrootd -c ";
-	print XROOTD "$install_dir/etc/lsp.cf -l $log_dir/xrootd.log &\n";
-
-	close XROOTD;
-	chmod 0755, "start_xrootd";
-
-}
-
-#create the qserv startup script.
-sub create_qserv_startup {
-
-	chdir $install_dir;
-	open QSERV, ">start_qserv";
-	
-	print QSERV "#!/bin/bash\n";
-	print QSERV "\n";
-	print QSERV "#start_qserv\n";
-	print QSERV "export PATH=$install_dir/bin:\$PATH\n";
-	print QSERV "XRD_DIR=$install_dir/xrootd\n";
-	print QSERV "PLATFORM=x86_64_linux_26_dbg\n";
-	print QSERV "PYTHON=$install_dir/bin/python\n";
-	print QSERV "export PYTHONPATH=$install_dir/qserv/master/dist:$install_dir/qserv-run\n";
-	print QSERV "export LD_LIBRARY_PATH=$install_dir/lib:\$XRD_DIR/lib/\$PLATFORM\n";
-	print QSERV "export QSW_RESULTDIR=$install_dir/qserv-run/tmp\n";
-	print QSERV "# Disabling buffering in python in order to enable \"real-time\" logging.\n";
-	print QSERV "export PYTHONUNBUFFERED=1\n";
-	print QSERV "\$PYTHON $install_dir/qserv/master/dist/startQserv.py -c ";
-	print QSERV "$install_dir/etc/local.qserv.cnf > ";
-	print QSERV "$log_dir/qserv.log &\n";
-
-	close QSERV;
-	chmod 0755, "start_qserv";
-
-}
-
-#create the mysql proxy startup script.
-sub create_mysqlproxy_startup {
-
-	chdir $install_dir;
-	open MYSQLPROXY, ">start_mysqlproxy";
-	
-	print MYSQLPROXY "#!/bin/bash\n";
-	print MYSQLPROXY "\n";
-	print MYSQLPROXY "#start_mysqlproxy\n";
-	print MYSQLPROXY "LUAROOT=$install_dir\n";
-	print MYSQLPROXY "QSERVDIST=$install_dir/qserv/master/proxy/\n";
-	print MYSQLPROXY "LUASHARE=\$LUAROOT/share/lua/5.1\n";
-	print MYSQLPROXY "LUALIB=\$LUAROOT/lib/lua/5.1\n";
-	print MYSQLPROXY "LUAPATH=\"\$LUASHARE/?.lua;\$LUASHARE/?/init.lua;\$LUASHARE/?/?.lua\"\n";
-	print MYSQLPROXY "LUACPATH=\"\$LUALIB/?.so;\$LUALIB/?/?.so\"\n";
-	print MYSQLPROXY "$install_dir/bin/mysql-proxy --proxy-lua-script=\$QSERVDIST/mysqlProxy.lua --defaults-file=$install_dir/etc/my-proxy.cnf";
-	print MYSQLPROXY " --lua-path=\$LUAPATH --lua-cpath=\$LUACPATH &\n";
-
-	close MYSQLPROXY;
-	chmod 0755, "start_mysqlproxy";
-	
-}
-
 
 #remove all sub dir created, and revert back to before install with only
 #source tar files in the build dir.  Will remove all loaded data also.
