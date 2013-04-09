@@ -164,7 +164,7 @@ def get_template_targets():
             if os.path.basename(path) == "bin" or os.path.basename(target_name) in [
                 "start_xrootd",
                 "start_qserv",
-                "start_mysqld"
+                "start_mysqlproxy"
                 ]: 
                 env.AddPostAction(target_node, Chmod("$TARGET", 0760))
             # all other files are configuration files
