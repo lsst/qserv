@@ -54,7 +54,7 @@ xrootd.async force
 
 # Writable paths for administration
 # cmsd and xrootd paths for pid
-all.pidpath %(XROOTD_PID_DIR)s 
+all.pidpath %(QSERV_PID_DIR)s 
 # path to write logging and other information
 all.adminpath %(XROOTD_ADMIN_DIR)s
 
