@@ -125,38 +125,40 @@ def get_template_targets():
     target_lst = []
 
     script_dict = {
-                '%\(QSERV_BASE_DIR\)s': config['qserv']['base_dir'], 
-                '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'], 
-                '%\(QSERV_STRIPES\)s': config['qserv']['stripes'], 
-                '%\(QSERV_SUBSTRIPES\)s': config['qserv']['substripes'], 
-                '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'], 
-                '%\(MYSQLD_PORT\)s': config['mysqld']['port'], 
-                # used for mysql-proxy in mono-node
-                # '%(MYSQLD_HOST)': config['qserv']['master'], 
-                '%\(MYSQLD_HOST\)s': '127.0.0.1', 
-                '%\(MYSQLD_SOCK\)s': config['mysqld']['sock'],
-                '%\(MYSQLD_USER\)s': config['mysqld']['user'], 
-                '%\(MYSQLD_PASS\)s': config['mysqld']['pass'], 
-                '%\(MYSQL_PROXY_PORT\)s': config['mysql_proxy']['port'], 
-                '%\(XROOTD_MANAGER_HOST\)s': config['qserv']['master'], 
-                '%\(XROOTD_PORT\)s': config['xrootd']['xrootd_port'], 
-                '%\(XROOTD_RUN_DIR\)s': os.path.join(config['qserv']['base_dir'],'xrootd-run'), 
-                '%\(XROOTD_ADMIN_DIR\)s': os.path.join(config['qserv']['base_dir'],'tmp'), 
-                '%\(XROOTD_PID_DIR\)s': os.path.join(config['qserv']['base_dir'],'var/run'), 
-                '%\(CMSD_MANAGER_PORT\)s': config['xrootd']['cmsd_manager_port'] 
-    }
+        '%\(QSERV_BASE_DIR\)s': config['qserv']['base_dir'], 
+        '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'], 
+        '%\(QSERV_STRIPES\)s': config['qserv']['stripes'], 
+        '%\(QSERV_SUBSTRIPES\)s': config['qserv']['substripes'], 
+        '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['base_dir'],'var/run'),   
+        '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'], 
+        '%\(MYSQLD_PORT\)s': config['mysqld']['port'], 
+        # used for mysql-proxy in mono-node
+        # '%(MYSQLD_HOST)': config['qserv']['master'], 
+        '%\(MYSQLD_HOST\)s': '127.0.0.1', 
+        '%\(MYSQLD_SOCK\)s': config['mysqld']['sock'],
+        '%\(MYSQLD_USER\)s': config['mysqld']['user'], 
+        '%\(MYSQLD_PASS\)s': config['mysqld']['pass'], 
+        '%\(MYSQL_PROXY_PORT\)s': config['mysql_proxy']['port'], 
+        '%\(XROOTD_MANAGER_HOST\)s': config['qserv']['master'], 
+        '%\(XROOTD_PORT\)s': config['xrootd']['xrootd_port'], 
+        '%\(XROOTD_RUN_DIR\)s': os.path.join(config['qserv']['base_dir'],'xrootd-run'), 
+        '%\(XROOTD_ADMIN_DIR\)s': os.path.join(config['qserv']['base_dir'],'tmp'), 
+        '%\(CMSD_MANAGER_PORT\)s': config['xrootd']['cmsd_manager_port'] 
+        }
+
     if config['qserv']['node_type']=='mono':
         script_dict['%\(COMMENT_MONO_NODE\)s']='#MONO-NODE# '
     else:
         script_dict['%\(COMMENT_MONO_NODE\)s']='' 
 
     logger.info("Applying configuration information via templates files ")
+   
     for src_node in utils.recursive_glob(template_dir_path,"*",env):
 
         target_node = utils.replace_base_path(template_dir_path,config['qserv']['base_dir'],src_node,env)
-  
+
         if isinstance(src_node, SCons.Node.FS.File) :
-            
+
             logger.debug("Template SOURCE : %s, TARGET : %s" % (src_node, target_node))  
             env.Substfile(target_node, src_node, SUBST_DICT=script_dict)
             target_lst.append(target_node)
@@ -169,9 +171,13 @@ def get_template_targets():
                 symlink_name, file_ext = os.path.splitext(target_name)
                 env.Command(symlink_name, target_node, actions.symlink)       
                 target_lst.append(symlink_name)
-
+                
             path = os.path.dirname(target_name)
-            if os.path.basename(path) == "bin" or os.path.basename(target_name) == "start_xrootd": 
+            if os.path.basename(path) == "bin" or os.path.basename(target_name) in [
+                "start_xrootd",
+                "start_qserv",
+                "start_mysqld"
+                ]: 
                 env.AddPostAction(target_node, Chmod("$TARGET", 0760))
             # all other files are configuration files
             else:

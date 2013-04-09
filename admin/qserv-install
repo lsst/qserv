@@ -115,8 +115,7 @@ check_and_install_myproxy() if( $build_opt eq "all" or $build_opt eq "mysql-prox
 #setup the qserv code
 check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
 
-#create startup scripts
-create_startups();
+print "PROCESS SUCCESSFULLY COMPLETED\n";
 
 #############################################################
 
@@ -571,68 +570,6 @@ sub check_and_deploy_qserv {
 		}
 	}
 }
-
-#create the startup scripts for server components.
-sub create_startups {
-
-	create_qserv_startup();
-	create_mysqlproxy_startup();
-	print "PROCESS SUCCESSFULLY COMPLETED\n";
-	
-}
-
-#create the qserv startup script.
-sub create_qserv_startup {
-
-	chdir $install_dir;
-	open QSERV, ">start_qserv";
-	
-	print QSERV "#!/bin/bash\n";
-	print QSERV "\n";
-	print QSERV "#start_qserv\n";
-	print QSERV "export PATH=$install_dir/bin:\$PATH\n";
-	print QSERV "XRD_DIR=$install_dir/xrootd\n";
-	print QSERV "PLATFORM=x86_64_linux_26_dbg\n";
-	print QSERV "PYTHON=$install_dir/bin/python\n";
-	print QSERV "export PYTHONPATH=$install_dir/qserv/master/dist:$install_dir/qserv-run\n";
-	print QSERV "export LD_LIBRARY_PATH=$install_dir/lib:\$XRD_DIR/lib/\$PLATFORM\n";
-	print QSERV "export QSW_RESULTDIR=$install_dir/qserv-run/tmp\n";
-	print QSERV "# Disabling buffering in python in order to enable \"real-time\" logging.\n";
-	print QSERV "export PYTHONUNBUFFERED=1\n";
-	print QSERV "\$PYTHON $install_dir/qserv/master/dist/startQserv.py -c ";
-	print QSERV "$install_dir/etc/local.qserv.cnf > ";
-	print QSERV "$log_dir/qserv.log &\n";
-        print QSERV "echo \$\! > $install_dir/var/run/qserv.pid \n";
-
-	close QSERV;
-	chmod 0755, "start_qserv";
-
-}
-
-#create the mysql proxy startup script.
-sub create_mysqlproxy_startup {
-
-	chdir $install_dir;
-	open MYSQLPROXY, ">start_mysqlproxy";
-	
-	print MYSQLPROXY "#!/bin/bash\n";
-	print MYSQLPROXY "\n";
-	print MYSQLPROXY "#start_mysqlproxy\n";
-	print MYSQLPROXY "LUAROOT=$install_dir\n";
-	print MYSQLPROXY "QSERVDIST=$install_dir/qserv/master/proxy/\n";
-	print MYSQLPROXY "LUASHARE=\$LUAROOT/share/lua/5.1\n";
-	print MYSQLPROXY "LUALIB=\$LUAROOT/lib/lua/5.1\n";
-	print MYSQLPROXY "LUAPATH=\"\$LUASHARE/?.lua;\$LUASHARE/?/init.lua;\$LUASHARE/?/?.lua\"\n";
-	print MYSQLPROXY "LUACPATH=\"\$LUALIB/?.so;\$LUALIB/?/?.so\"\n";
-	print MYSQLPROXY "$install_dir/bin/mysql-proxy --proxy-lua-script=\$QSERVDIST/mysqlProxy.lua --defaults-file=$install_dir/etc/my-proxy.cnf";
-	print MYSQLPROXY " --lua-path=\$LUAPATH --lua-cpath=\$LUACPATH &\n";
-	print MYSQLPROXY "echo \$\! > $install_dir/var/run/mysql-proxy.pid \n";
-
-	close MYSQLPROXY;
-	chmod 0755, "start_mysqlproxy";
-	
-}
-
 
 #remove all sub dir created, and revert back to before install with only
 #source tar files in the build dir.  Will remove all loaded data also.

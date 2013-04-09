@@ -90,8 +90,10 @@ if( $opts{'status'} ) {
 } elsif( $opts{'start'} ) {
 
 	start_proxy();
-	start_xrootd();
 	start_mysqld();
+        # xrootd will launch mysql queries at startup
+        sleep(2);
+	start_xrootd();
 	start_qserv();
 	
 } elsif( $opts{'partition'} ) {
