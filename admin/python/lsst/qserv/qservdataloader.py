@@ -78,7 +78,7 @@ class QservDataLoader():
             "DROP DATABASE IF EXISTS %s" % self._dbName,
             "CREATE DATABASE %s" % self._dbName,
             # TODO : "GRANT ALL ON %s.* TO '%s'@'*'" % (self._dbName, self._qservUser, self._qservHost)
-            "GRANT ALL ON %s.* TO '*'@'*'" % (self._dbName),
+            "GRANT ALL ON %s.* TO 'qsmaster'@'localhost'" % (self._dbName),
             "USE %s" %  self._dbName
             ]
         

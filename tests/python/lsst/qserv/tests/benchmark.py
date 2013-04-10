@@ -223,6 +223,20 @@ class Benchmark():
                 self.loadData()
                 self.finalize()
 
+            # restart xrootd in order to reload  export paths w.r.t loaded chunks
+            if self._mode == 'qserv':
+                # TODO make a clean startup file for xrootd, in etc/init.d
+                stop_xrootd_cmd = [
+                    'killall',
+                    'xrootd',
+                ]
+                out = os.system(' '.join(stop_xrootd_cmd))
+                start_xrootd_cmd = [
+                    os.path.join(self.config['qserv']['base_dir'],'start_xrootd'),
+                    "&"
+                ]
+                out = os.system(' '.join(start_xrootd_cmd))
+
             self.runQueries(stop_at_query)
 
     def areQueryResultsEquals(self):
