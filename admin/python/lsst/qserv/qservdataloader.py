@@ -58,7 +58,7 @@ class QservDataLoader():
         self.masterCreateMetaDatabase()
         for table in self.dataConfig['partitionned-tables']:
             self.workerCreateTable1234567890(table)
-            self.workerCreateXrootdExportDirs(chunk_id_list)
+            #self.workerCreateXrootdExportDirs(chunk_id_list)
             self.masterCreateAndFeedMetaTable(table,chunk_id_list)
 
         # Create etc/emptychunk.txt

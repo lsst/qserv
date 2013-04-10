@@ -223,7 +223,7 @@ class Benchmark():
                 self.loadData()
                 self.finalize()
 
-            # restart xrootd in order to reload  export paths w.r.t loaded chunks
+            # restart xrootd in order to reload  export paths w.r.t loaded chunks, cf. #2478
             if self._mode == 'qserv':
                 # TODO make a clean startup file for xrootd, in etc/init.d
                 stop_xrootd_cmd = [
