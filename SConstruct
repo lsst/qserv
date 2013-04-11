@@ -135,9 +135,9 @@ def get_template_targets():
         }
 
     if config['qserv']['node_type']=='mono':
-        script_dict['<COMMENT_MONO_NODE>']='#MONO-NODE# '
+        script_dict['%\(COMMENT_MONO_NODE\)s']='#MONO-NODE# '
     else:
-        script_dict['<COMMENT_MONO_NODE>']='' 
+        script_dict['%\(COMMENT_MONO_NODE\)s']=''
 
     logger.info("Applying configuration information via templates files ")
    
