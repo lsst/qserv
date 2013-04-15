@@ -118,6 +118,7 @@ def get_template_targets():
         '%\(QSERV_STRIPES\)s': config['qserv']['stripes'], 
         '%\(QSERV_SUBSTRIPES\)s': config['qserv']['substripes'], 
         '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['base_dir'],'var/run'),   
+        '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
         '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'], 
         '%\(MYSQLD_PORT\)s': config['mysqld']['port'], 
         # used for mysql-proxy in mono-node

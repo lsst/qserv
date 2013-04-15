@@ -5,3 +5,10 @@ proxy-address = :%(MYSQL_PROXY_PORT)s
 # proxy-backend-addresses = 127.0.0.1:3306
 # TODO : is it usefull for multi node ?
 proxy-backend-addresses = %(MYSQLD_HOST)s:%(MYSQLD_PORT)s
+
+log-file=%(QSERV_LOG_DIR)s/mysql-proxy.log
+log-level=debug
+
+pid-file = %(QSERV_PID_DIR)s/mysql-proxy.pid
+proxy-lua-script = %(QSERV_BASE_DIR)s/qserv/master/proxy/mysqlProxy.lua
+#lua-path=/usr/lib/mysql-proxy/lua/proxy/*.lua
