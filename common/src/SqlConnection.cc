@@ -35,6 +35,7 @@
 
 using namespace lsst::qserv;
 
+/*
 SqlConfig::SqlConfig(const SqlConfig& c) 
     : hostname(c.hostname),
       username(c.username),
@@ -131,6 +132,7 @@ SqlConfig::printSelf(std::string const& extras) const {
               << ", usr=" << username << ", pass=" << password << ", dbName=" 
               << dbName << ", socket=" << socket << std::endl;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////
 // class SqlResultIter
