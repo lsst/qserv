@@ -25,7 +25,7 @@ def read_config(config_file, default_config_file):
         exit(1)
 
     parser = ConfigParser.SafeConfigParser()
-    #parser.read(default_config_file)
+    parser.read(default_config_file)
     parser.read(config_file)
 
     logger.debug("Build configuration : ")
