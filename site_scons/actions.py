@@ -92,13 +92,6 @@ def build_cmd_with_opts( config, target='install'):
             logger.fatal("Error while accessing geometry src dir : '%s' for reading." % config['qserv']['geometry_src_dir'])
             exit(1)
     
-    if config['qserv']['node_type']=='mono' :
-        install_opts="%s --mono-node" % install_opts
-    elif config['qserv']['node_type']=='master' :
-        None
-    elif config['qserv']['node_type']=='worker' :
-        None
-
     log_file_prefix = config['qserv']['log_dir']
     if target=='qserv-only' :
         install_opts="%s --qserv" % install_opts
