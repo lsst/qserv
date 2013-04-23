@@ -11,4 +11,4 @@ export QSW_RESULTDIR=%(QSERV_BASE_DIR)s/qserv-run/tmp
 # Disabling buffering in python in order to enable "real-time" logging.
 export PYTHONUNBUFFERED=1
 $PYTHON %(QSERV_BASE_DIR)s/qserv/master/dist/startQserv.py -c %(QSERV_BASE_DIR)s/etc/local.qserv.cnf > %(QSERV_LOG_DIR)s/qserv.log &
-echo $! > %(QSERV_PID_DIR)s/qserv.pid 
+echo $! > %(QSERV_PID_DIR)s/qserv.pid

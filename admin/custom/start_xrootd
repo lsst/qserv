@@ -12,6 +12,6 @@ export LD_LIBRARY_PATH="%(XROOTD_RUN_DIR)s;%(QSERV_BASE_DIR)s/lib"
 
 # cmsd won't start if no manager is specified
 %(COMMENT_MONO_NODE)s%(QSERV_BASE_DIR)s/bin/x86_64_linux_26_dbg/cmsd -c %(QSERV_BASE_DIR)s/etc/lsp.cf -l %(QSERV_LOG_DIR)s/cmsd.log -n worker &
-%(COMMENT_MONO_NODE)secho $! > %(QSERV_PID_DIR)s/cmsd.pid 
+%(COMMENT_MONO_NODE)secho $! > %(QSERV_PID_DIR)s/cmsd.pid
 %(QSERV_BASE_DIR)s/bin/x86_64_linux_26_dbg/xrootd -c %(QSERV_BASE_DIR)s/etc/lsp.cf -l %(QSERV_LOG_DIR)s/xrootd.log -n worker &
-echo $! > %(QSERV_PID_DIR)s/xrootd.pid 
+echo $! > %(QSERV_PID_DIR)s/xrootd.pid
