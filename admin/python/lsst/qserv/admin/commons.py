@@ -82,6 +82,7 @@ def read_config(config_file, default_config_file):
         config[section][option] = parser.get(section,option)
 
     # normalize directories names
+    # TODO duplicate normpath() call
     for section in config.keys():
         for option in config[section].keys():
             if re.match(".*_dir",option):
