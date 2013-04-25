@@ -161,10 +161,13 @@ def get_template_targets():
                 target_lst.append(symlink_name)
 
             path = os.path.dirname(target_name)
-            if os.path.basename(path) == "bin" or os.path.basename(target_name) in [
+            target_basename = os.path.basename(target_name)
+            logger.debug("TARGET BASENAME : %s" % target_basename)
+            if os.path.basename(path) == "bin" or target_basename in [
                 "start_xrootd",
                 "start_qserv",
-                "start_mysqlproxy"
+                "start_mysqlproxy",
+                "scidb.sh"
                 ]:
                 env.AddPostAction(target_node, Chmod("$TARGET", 0760))
             # all other files are configuration files
