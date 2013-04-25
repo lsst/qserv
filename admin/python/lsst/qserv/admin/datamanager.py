@@ -30,15 +30,16 @@ class QservDataManager:
             log_path=self.config['qserv']['log_dir']
         )
         
-        self.qserv_admin_cmd=os.path.join(self.config['qserv']['bin_dir'],'qserv-admin')
+        self.qserv_admin_bin=os.path.join(self.config['qserv']['bin_dir'],'qserv-admin')
 
         self.delete_data_cmd = [
-            self.qserv_admin_cmd, 
+            self.qserv_admin_bin, 
             '--delete-data', 
             '--dbpass', self.config['mysqld']['pass']
         ]
         
-        self.delete_data_cmd_2 = [
+        # TODO : replace delete_data_cmd
+        self.delete_data_cmd_TODO = [
             'mysql', 
             '-S', self.config['mysqld']['sock'],
             '-u', 'root', 
@@ -69,12 +70,12 @@ class QservDataManager:
         ]
 
         self.load_data_cmd = [
-            self.qserv_admin_cmd,
+            self.qserv_admin_bin,
             '--load', 
             '--dbpass', self.config['mysqld']['pass'],
             '--source', os.path.join(self.config['lsst']['data_dir'],'pt11'),
             '--table', 'Object',
-            '--output', os.path.join(self.config['lsst']['data_dir'],'pt11_partition')
+            '--stripedir', os.path.join(self.config['lsst']['data_dir'],'pt11_partition')
         ]
 
     def partitionPt11Data(self,tables,append=False):
@@ -115,16 +116,16 @@ class QservDataManager:
                 '--num-stripes', self.config['qserv']['stripes'],
                 '--num-sub-stripes', self.config['qserv']['substripes'] 
             ]
-            out = commons.run_command(partition_data_cmd, self.logger_name)
+            out = commons.run_command(partition_data_cmd)
             self.logger.info("Partitionning PT1.1 LSST %s data : \n %s" 
                 % (table,out))
 
     def deleteAllData(self):
-        out = commons.run_command(self.delete_data_cmd, self.logger_name)
+        out = commons.run_command(self.delete_data_cmd)
         self.logger.info("Deleting previous LSST data : \n %s" % out)
 
     def loadPt11Data(self):
-        out = commons.run_command(self.load_data_cmd, self.logger_name)
+        out = commons.run_command(self.load_data_cmd)
         self.logger.info("Loading LSST PT1.1 Object data : \n %s" % out)
 
         # if it fails : launch next commands to reset to initial state.
@@ -138,11 +139,11 @@ class QservDataManager:
         data_dirs = [os.path.join(self.config['lsst']['data_dir'],'pt11_partition')]
         self.logger.info("Erasing if needed and creating meta database \n")
         self.logger.debug(" ".join(self.create_meta_cmd))
-        out = commons.run_command(self.create_meta_cmd, self.logger_name)
+        out = commons.run_command(self.create_meta_cmd)
         self.logger.info("Meta database creation report: \n %s" % out)
         self.logger.info("Filling meta database from PT1.1 LSST data : %s \n" % data_dirs[0])
         csv2object.CSV2Object(nbworkers, data_dirs, outfilename)
-        out = commons.run_command(self.load_meta_cmd, self.logger_name)
+        out = commons.run_command(self.load_meta_cmd)
         self.logger.info("Loading LSST PT1.1 Meta data : \n %s" % out)
     
     def parseOptions(self):    

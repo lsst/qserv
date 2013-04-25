@@ -29,15 +29,33 @@ require ("xmlrpc.http")
 --  * hintString: "box", "1,2,11,12", "box", "5,55,6,66", 
 --    "objectId", "3", "objectId", "5,6,7,8" and so on
 
+-------------------------------------------------------------------------------
+--                             debug tool                                    --
+-------------------------------------------------------------------------------
+local DEBUG = os.getenv('DEBUG') or 0
+DEBUG = DEBUG + 0
+
+function print_debug(msg, level)
+ level = level or 1
+ if DEBUG >= level then
+     print ("DEBUG : "..msg)
+ end
+end
 
 -------------------------------------------------------------------------------
 --                        global variables (yuck)                            --
 -------------------------------------------------------------------------------
 
 rpcHost = "127.0.0.1"
-rpcPort = 7080
-rpcHP = "http://" .. rpcHost .. ":" .. rpcPort .. "/x"
 
+local rpcPort = os.getenv("QSERV_RPC_PORT")
+if (rpcPort == nil) then
+   rpcPort = 7080
+end
+rpcHP = "http://" .. rpcHost .. ":" .. rpcPort .. "/x"
+print_debug("RPC url "..rpcHP,1)
+-- qserv_url =  proxy.global.backends[1].dst.name
+-- print("| proxy.global.backends[ndx].dst.name = "..qserv_url) 
 
 -- constants (kind of)
 ERR_AND_EXPECTED   = -4001
@@ -60,7 +78,6 @@ hintsToPassArr = {}
 -- global variables have per-session(client) scope
 -- queryErrorCount -- number of run-time errors detected during query exec.
 queryErrorCount = 0
-
 
 -------------------------------------------------------------------------------
 --                             error handling                                --

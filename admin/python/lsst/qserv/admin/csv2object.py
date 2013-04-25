@@ -28,6 +28,7 @@ def ExtractFields(filename):
     with open(filename) as csvfile:
       reader = csv.reader(csvfile)
       for row in reader:
+        # objectId, chunkId, subChunkId
         out.write(row[0] + ",  " + row[-2] + ",  " + row[-1] + "\n")
   return outfile
 

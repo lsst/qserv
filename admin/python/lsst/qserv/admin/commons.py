@@ -1,20 +1,38 @@
 import io
 import os
 import logging
+import re
 import subprocess 
 import sys 
 import ConfigParser
 
+def read_user_config():
+    config_file=os.path.join(os.getenv("HOME"),".lsst","qserv.conf")
+    default_config_file=os.path.join(os.getenv("HOME"),".lsst","qserv.default.conf")
+    config = read_config(config_file, default_config_file)
+    return config
+
 def read_config(config_file, default_config_file):
+
     logger = logging.getLogger()
     logger.debug("Reading build config file : %s" % config_file)
+
+    if not os.path.isfile(config_file):
+        logger.fatal("qserv configuration file not found : %s" % config_file)
+        exit(1)
+    elif not os.path.isfile(default_config_file):
+        logger.fatal("qserv configuration file with default values not found : %s" % default_config_file)
+        exit(1)
+
     parser = ConfigParser.SafeConfigParser()
     parser.read(default_config_file)
     parser.read(config_file)
 
     logger.debug("Build configuration : ")
     for section in parser.sections():
+       logger.debug("===")
        logger.debug("[%s]" % section)
+       logger.debug("===")
        for option in parser.options(section):
         logger.debug("'%s' = '%s'" % (option, parser.get(section,option)))
 
@@ -23,23 +41,29 @@ def read_config(config_file, default_config_file):
     config[section] = dict()
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
+    # computable configuration parameters
     config['qserv']['bin_dir']    = os.path.join(config['qserv']['base_dir'], "bin")
-    
+
     section='mysqld'
     config[section] = dict()
-    options = [option for option in parser.options(section) if option != 'pass']
+    options = [option for option in parser.options(section) if option not in ['pass','port'] ]
     for option in options:
         config[section][option] = parser.get(section,option)
     
-    # TODO : manage special characters (see config file comments for additional information)
+    # TODO : manage special characters for pass (see config file comments for additional information)
     config['mysqld']['pass']    = parser.get("mysqld","pass",raw=True)
+    config['mysqld']['port'] = parser.getint('mysqld','port')
+    # computable configuration parameter
     config['mysqld']['sock']    = os.path.join(config['qserv']['base_dir'], "var","lib","mysql","mysql.sock")
 
     section='mysql_proxy'
     config[section] = dict()
+    options = [option for option in parser.options(section) if option != 'port']
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
-    
+
+    config['mysql_proxy']['port'] = parser.getint('mysql_proxy','port')
+
     section='lsst'
     config[section] = dict()
     for option in parser.options(section):
@@ -55,6 +79,16 @@ def read_config(config_file, default_config_file):
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
 
+    # normalize directories names
+    for section in config.keys():
+        for option in config[section].keys():
+            if re.match(".*_dir",option):
+                config[section][option] = os.path.normpath(config[section][option])
+       
+    config['bin'] = dict()         
+    config['bin']['mysql'] = os.path.join(config['qserv']['bin_dir'],'mysql')
+    config['bin']['python'] = os.path.join(config['qserv']['bin_dir'],'python')
+
     return config 
 
 def is_readable(dir):
@@ -65,7 +99,6 @@ def is_readable(dir):
     logger = logging.getLogger('scons-qserv')
 
     logger.debug("Checking read access for : %s", dir)
-    logger = logging.getLogger('scons-qserv')
     try:
         os.listdir(dir)
         return True 
@@ -94,10 +127,24 @@ def is_writable(dir):
         logger.info("No write access to dir %s : %s" % (dir,e))
         return False
 
+def init_default_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
+    console_logger(level)
+    logger = file_logger(log_file_prefix, level, log_path)
+    return logger
 
-def init_default_logger(log_file_prefix, logger_name = '', level=logging.DEBUG, log_path=".") :
+def console_logger(level=logging.DEBUG):
+    logger = logging.getLogger()
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    logger.setLevel(level)
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    return logger
 
-    logger = logging.getLogger(logger_name)
+def file_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
+
+    logger = logging.getLogger()
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     # this level can be reduce for each handler
     logger.setLevel(level)
@@ -106,13 +153,10 @@ def init_default_logger(log_file_prefix, logger_name = '', level=logging.DEBUG, 
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler) 
  
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-
     return logger
 
-def run_command(cmd_args, logger_name=None) :
+
+def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None) :
     """ Run a shell command
 
     Keyword arguments
@@ -121,15 +165,29 @@ def run_command(cmd_args, logger_name=None) :
 
     Return a string containing stdout and stderr
     """
+    logger = logging.getLogger()
 
     cmd_str= " ".join(cmd_args)
+    logger.info("Running :\n---\n\t%s\n---" % cmd_str)
 
-    log_str="Running next command from python : '%s'" % cmd_args
-    if logger_name != None :
-    	logger = logging.getLogger(logger_name)
-        logger.info(log_str)
-    else :
-        print(log_str)
+    sin = None
+    if stdin_file != None:
+        logger.debug("stdin file : %s" % stdout_file)
+        sin=open(stdin_file,"r")
+
+    sout = None
+    if stdout_file != None:
+        logger.debug("stdout file : %s" % stdout_file)
+        sout=open(stdout_file,"w")
+    else: 
+        sout=subprocess.PIPE
+    
+    serr = None
+    if stderr_file != None:
+        logger.debug("stderr file : %s" % stderr_file)
+        serr=open(stderr_file,"w")
+    else:
+        serr=subprocess.PIPE
 
 # TODO : use this with python 2.7 :
 #  try :
@@ -144,22 +202,66 @@ def run_command(cmd_args, logger_name=None) :
 #        )
 #        sys.exit(1)
 
-
     try :
         process = subprocess.Popen(
-            cmd_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            cmd_args, stdin=sin, stdout=sout, stderr=serr
         )
 
         (stdoutdata, stderrdata) = process.communicate()
 
+        if stdoutdata != None and len(stdoutdata)>0:
+            logger.info("Stdout : %s " % stdoutdata)
+        if stderrdata != None and len(stderrdata)>0:
+            logger.info("Stderr : %s " % stderrdata)
+
+        if process.returncode!=0 :
+            logger.fatal("Error code returned by command : %s " % cmd_str)
+            sys.exit(1)
+
     except OSError as e:
-        logger.fatal("Error : '%s' while running command : '%s'" %
-            (e,cmd_str))
+        logger.fatal("Error : %s while running command : %s" %
+                     (e,cmd_str))
         sys.exit(1)
     except ValueError as e:
         logger.fatal("Invalid parameter : '%s' for command : %s " % (e,cmd_str))
         sys.exit(1)
 
-    return stdoutdata
 
+
+def run_backgroundCommand(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, logger_name=None):
+
+    logger = logging.getLogger(logger_name)
+
+    cmd_str= " ".join(cmd_args)
+    logger.info("Running :\n---\n\t%s\n---" % cmd_str)
+
+    sin = None
+    if stdin_file != None:
+        logger.debug("stdin file : %s" % stdout_file)
+        sin=open(stdin_file,"r")
+
+    sout = None
+    if stdout_file != None:
+        logger.debug("stdout file : %s" % stdout_file)
+        sout=open(stdout_file,"w")
+    else: 
+        sout=subprocess.PIPE
+    
+    serr = None
+    if stderr_file != None:
+        logger.debug("stderr file : %s" % stderr_file)
+        serr=open(stderr_file,"w")
+    else:
+        serr=subprocess.PIPE
+        
+    try :
+        pid = subprocess.Popen( cmd_args, stdin=sin, stdout=sout, stderr=serr ).pid
+
+    except OSError as e:
+        logger.fatal("Error : %s while running command : %s" %
+                     (e,cmd_str))
+        sys.exit(1)
+    except ValueError as e:
+        logger.fatal("Invalid parameter : '%s' for command : %s " % (e,cmd_str))
+        sys.exit(1)
 

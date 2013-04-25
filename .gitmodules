@@ -1,0 +1,3 @@
+[submodule "tests/testdata"]
+	path = tests/testdata
+	url = git@git.lsstcorp.org:LSST/DMS/testdata/qservdata.git

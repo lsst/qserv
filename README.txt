@@ -1,13 +1,14 @@
 Qserv Quick start guide :
 -------------------------
 
-Pre-requisites :
-----------------
+WARNING : 
+    By default, Qserv install script rebuild MySQL. But MySQL configuration file 
+    (/etc/my.cnf on RedHat-like distributions or /etc/mysql/my.cnf on Debian-like distributions) 
+    can produce conflict with MySQL provided with Qserv package. So, you should backup and then remove this file.
 
-By default, Qserv install script rebuild MySQL. But MySQL configuration file (/etc/my.cnf on RedHat-like distributions or /etc/mysql/my.cnf on Debian-like distributions) can produce conflict with MySQL provided with Qserv package. So, you should backup and then remove this file.
-
-WARNING : Qserv must be installed and executed with a non-root account, so
-create this account this  next command first :
+WARNING : 
+    Qserv must be installed and executed with a non-root account, so
+    create this account with next command first :
 
   # su -c "useradd qserv"
 
@@ -25,7 +26,8 @@ Installing Qserv :
   Configure the build :
   ---------------------
 
-WARNING : next commands have to be executed with qserv account.
+WARNING : 
+    Next commands have to be executed with qserv account.
 
 Assuming you've downloaded qserv in /home/qserv/src/qserv/
 
@@ -35,7 +37,12 @@ First do :
   $ cp qserv-build.default.conf qserv-build.conf
 
 and then set your install parameters in qserv-build.conf (restrictive access rights recommended as it contains MySQL password)
-This file is well-commented.
+This file is well-commented. qserv-build.default.conf will contains all the default values for parameters.
+
+then :
+  $ mkdir ~/.lsst/
+  $ ln -s /home/qserv/src/qserv/qserv-build.conf ~/.lsst/qserv.conf  
+  $ ln -s /home/qserv/src/qserv/qserv-build.default.conf ~/.lsst/qserv.default.conf  
 
 Then add next line to your ~/.bashrc (assuming you've setted base_dir to
 /opt/qserv in qserv-build.conf):
@@ -50,40 +57,45 @@ Then source your ~/.bashrc :
 
   $ scons install 
 It may take a while ...
-  
-  Partition the PT1.1 data :
-  --------------------------
 
-Assuming PT1.1 data are in ${QSERV_DATA}/pt11/, next command will partition PT1.1 Object data :
-  $ qserv-datamanager.py --config-dir=/home/fjammes/src/qserv/ --mode=partition 
 
-  Load the PT1.1 data and meta:
-  -----------------------------
+  Install SciSQL on each worker nodes :
+  --------------------------------
 
-Assuming you've sourced qserv-env.sh, next command will launch Qserv :
-  $ qserv-start
+  $ cd /qserv/qserv-current/build/
+  $ tar -jxvf scisql-0.3.tar.bz2
+  $ ./configure --prefix /opt/qserv-dev/ --mysql-user root --mysql-socket /opt/qserv-dev/var/lib/mysql/mysql.sock 
+  $ make 
+  $ make install
 
-Load PT1.1 Object data :
-  $ qserv-datamanager.py --config-dir /home/qserv/src/qserv/
-
-Generate and load PT1.1 Object meta :
-  $ qserv-datamanager.py --config-dir /home/qserv/src/qserv/ -m fill-table-meta -n 4
-
-  Launch Qserv and run a small test :
-  -----------------------------------
+Launch Qserv :
+--------------
 
 If not already done :
   $ qserv-start
 
-Then connect to MySQL proxy (assuming mysql-proxy-port was setted to 4040 in
-qserv-build.conf):
-  $  mysql --host 127.0.0.1 --port 4040 --user 'qsmaster' LSST 
+Launch functionnal tests :
+--------------------------
 
-and launch next queries :
-  > select count(*) from Object;
-  > select * from Object where ObjectId=402395485975435;
+  $ qserv-testdata.sh
 
-It should success.
+This command will load tree small dataset on a mono-node installation, and on a
+mysql server and compare results of some meaningfull queries.
+More documentation can be found in tests/README.txt
+
+Launch unit tests :
+-------------------
+
+  $ qserv-testunit.sh
+
+Code coverage of unit tests still need to be improved.
+
+Cleaning and uninstalling Qserv :
+---------------------------------
+
+  $ qserv-stop
+  $ scons -c
+  $ scons perl-clean-all
 
 Official documentation : 
 ------------------------

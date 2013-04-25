@@ -47,6 +47,8 @@ void getDbs(Logger& log,
     SqlErrorObject sqlErrorObject;
     std::string tableNameDbListing = getTableNameDbListing(instanceName);
     std::string listq = "SELECT db FROM " + tableNameDbListing;
+    log.warn("Launching query : " + listq);
+    log.warn("TEST Launching query : ");
     boost::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(listq);
     assert(resultP.get());
     bool nothing = true;
@@ -54,7 +56,7 @@ void getDbs(Logger& log,
         dbs.push_back((**resultP)[0]);
         nothing = false;
     }
-    if(nothing) log.warn("No databases found to export.");
+    if(nothing) log.warn("TEST : No databases found to export."+listq);
 }
 
 /// Functor to be called per-table name

@@ -27,6 +27,7 @@
 # made, but this script remains untested on python 2.4.x.
 import cStringIO as sio
 import csv
+from copy import copy
 import errno
 import fcntl
 from glob import glob
@@ -182,12 +183,16 @@ def addPickleWorkaround(obj):
 
 # -- Iterating over CSV records in file subsets --------
 
-def _csvArgs(conf):
+def _csvArgs(conf, mode="r"):
     """Extract and return csv formatting arguments from conf.
     """
-    return { 'delimiter': conf.delimiter,
+    if mode=='w': 
+        delimiter = conf.delimiter_out
+    else:
+        delimiter = conf.delimiter
+       
+    return { 'delimiter': delimiter,
              'doublequote': conf.doublequote,
-             'escapechar': conf.escapechar,
              'quoting': conf.quoting,
              'quotechar': conf.quotechar,
              'skipinitialspace': conf.skipinitialspace,
@@ -248,11 +253,14 @@ class InputSplitIter(object):
     """
     def __init__(self, inputSplit, **kwargs):
         self.fileIter = FileIter(inputSplit)
-        self.reader = csv.reader(self.fileIter, kwargs)
+
+        self.reader = csv.reader(self.fileIter, **kwargs)
+        # self.reader = csv.reader(self.fileIter, delimiter="\t")
     def __iter__(self):
         return self
     def next(self):
-        return self.reader.next()
+        csvline = self.reader.next()
+        return csvline
 
 # Size of blocks to read when searching backwards for line terminators
 LT_BLOCK_SIZE = mmap.PAGESIZE
@@ -328,7 +336,8 @@ def _dispatchMapper(args):
     split, mapperType, conf, i = args
     results = []
     mapper = mapperType(conf, i)
-    rows = InputSplitIter(split, kwargs=_csvArgs(conf))
+
+    rows = InputSplitIter(split, **_csvArgs(conf))
     if hasattr(conf, "rowFilter"): # Allow optional filter (e.g., duplicator)
         rows = pickleWorkaround[conf.rowFilter](rows)
     for row in rows:
@@ -529,7 +538,7 @@ class CsvFileWriter(object):
         self.buffer = None
         self.writer = None
         self.numRows = 0
-        self.csvArgs = _csvArgs(conf)
+        self.csvArgs = _csvArgs(conf, 'w')
         self.bufferSize = conf.outputBufferSize
         self.debug = conf.debug
 
@@ -541,8 +550,7 @@ class CsvFileWriter(object):
             print "Opening " + self.path
         self.file = open(self.path, 'ab')
         self.buffer = sio.StringIO()
-        self.writer = csv.writer(self.buffer, **self.csvArgs)
-
+        self.writer = csv.writer(self.buffer, **(self.csvArgs))
     def _flush(self):
         if self.file != None and self.buffer.tell() > 0:
             if self.debug:
@@ -846,6 +854,7 @@ class SpatialChunkMapper(object):
                     self.writers[i].append(ChunkWriter(paths, chunkId, conf))
 
     def map(self, row):
+
         # extract position from row
         theta = float(row[self.thetaColumn])
         phi = float(row[self.phiColumn])
@@ -925,7 +934,8 @@ class PartitionReducer(object):
         self.path = os.path.join(conf.outputDir, name)
         self.file = open(self.path, 'ab')
         self.buffer = sio.StringIO()
-        self.writer = csv.writer(self.buffer, **_csvArgs(conf))
+
+        self.writer = csv.writer(self.buffer, **_csvArgs(conf, mode='w'))
         self.chunker = Chunker(conf)
         self.coords = np.array([0, 0, 0, 0], dtype=np.int32)
         self.bounds = np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float64)
@@ -1351,7 +1361,7 @@ class SubChunker(object):
         self.phiMax = phiMax
         self.overlap = conf.overlap
         self.rowsPerSubChunk = conf.rowsPerSubChunk
-        self.delimiter = conf.delimiter
+        self.delimiter = conf.delimiter_out
         self.file, self.mem, self.records = parseChunk(path, conf)
         prefixes = (conf.chunkPrefix, conf.chunkPrefix + 'SelfOverlap')
         d = os.path.dirname(path)
@@ -1361,7 +1371,7 @@ class SubChunker(object):
                                 conf.chunkPrefix + 'Partitions.csv')
         self.partitionWriter = CsvFileWriter(partFile, chunkId, conf)
         self.buf = sio.StringIO()
-        self.idWriter = csv.writer(self.buf, **_csvArgs(conf))
+        self.idWriter = csv.writer(self.buf, _csvArgs(conf, mode='w'))
 
     def _writeRow(self, which, subChunkId, record):
         self.idWriter.writerow((self.chunkId, subChunkId))
@@ -1792,17 +1802,19 @@ def addCsvOpts(parser):
         See http://docs.python.org/library/csv.html#csv-fmt-params for
         details."""))
     fmt.add_option(
-        "-D", "--delimiter", dest="delimiter", default=",",
+        "-D", "--delimiter", type="char", dest="delimiter", default=",",
         help=dedent("""\
         One character string used to separate fields in the
-        input CSV files. The default is %default."""))
+        input TSV, CSV files. The default is %default."""))
+    fmt.add_option(
+        "-E", "--delimiter-out", type="char", dest="delimiter_out", default=",",
+        help=dedent("""\
+        One character string used to separate fields in the
+        output CSV files. The default is %default."""))
     fmt.add_option(
         "-n", "--no-doublequote", dest="doublequote", action="store_false",
         help=dedent("""\
         Turn off double quoting of quote characters inside a CSV field."""))
-    fmt.add_option(
-        "-e", "--escapechar", dest="escapechar", default=None,
-        help="Delimiter escape character.")
     quoteHelp = dedent("""\
         CSV quoting style. May be one of %d  (quote all fields), %d (quote
         fields containing special characters), %d (quote non-numeric fields)
@@ -1843,12 +1855,25 @@ def addTuningOpts(parser):
         Fractional values are allowed."""))
     parser.add_option_group(tuning)
 
+def check_char(option, opt, value):
+    try:
+        return value.decode('string-escape')
+        #return value
+    except ValueError:
+        raise OptionValueError(
+            "option %s: invalid char value: %r" % (opt, value))
+
+class CharOption (optparse.Option):
+    TYPES = optparse.Option.TYPES + ("char",)
+    TYPE_CHECKER = copy(optparse.Option.TYPE_CHECKER)
+    TYPE_CHECKER["char"] = check_char
 
 def main():
     # Command line parsing/usage
     t = time.time()
+
     usage = "usage: %prog [options] input_1 input_2 ..."
-    parser = optparse.OptionParser(usage)
+    parser = optparse.OptionParser(usage, option_class=CharOption)
 
     def explainArgs(option,opt,value,parser):
         conf = parser.values
@@ -1899,7 +1924,10 @@ def main():
     if conf.skipLines < 0:
         parser.error("Negative line skip count.")
     if len(conf.delimiter) > 1 or re.match(r'[0-9a-zA-Z]', conf.delimiter):
-        parser.error("Illegal CSV field delimiter.")
+        parser.error("Illegal CSV field delimiter for input files : %s" % conf.delimiter)
+    if len(conf.delimiter_out) > 1 or re.match(r'[0-9a-zA-Z]', conf.delimiter_out):
+        parser.error("Illegal CSV field delimiter for output files : %s" % conf.delimiter_out)
+
     if len(conf.quotechar) > 1 or conf.delimiter == conf.quotechar:
         parser.error("Illegal CSV field quote character.")
 

@@ -1,18 +1,16 @@
 # -*- python -*-
-
+import actions 
+import commons
+import ConfigParser
+import errno
+import io
+import logging
 import os
 import sys
-import io
 import re
-import errno
-import logging
-import logger
 import SCons.Node.FS
 from SCons.Script import Mkdir,Chmod,Copy,WhereIs
-import ConfigParser
-
-import actions
-import commons
+import shutil
 import utils
 
 logger = commons.init_default_logger(log_file_prefix="scons-qserv", level=logging.DEBUG)
@@ -50,8 +48,15 @@ env['config']=config
 #
 #####################################
 
-init_cmd = env.Command('init-dummy-target', [], actions.check_root_dirs)
-env.Alias('init', init_cmd)
+init_target_lst = []
+make_root_dirs_cmd = env.Command('make-root-dirs-dummy-target', [], actions.check_root_dirs)
+init_target_lst.append(make_root_dirs_cmd)
+
+
+make_root_symlinks_cmd = env.Command('make-root-symlinks-dummy-target', [], actions.check_root_symlinks)
+init_target_lst.append(make_root_symlinks_cmd)
+
+env.Alias('init', init_target_lst)
 
 #########################
 #
@@ -60,16 +65,22 @@ env.Alias('init', init_cmd)
 #########################
 
 env.Requires(env.Alias('download'), env.Alias('init'))
-env.Requires(env.Alias('install'), env.Alias('download'))
+env.Requires(env.Alias('perl-install'), env.Alias('download'))
 # templates must be applied before installation in order to
-# initialize mysql db
-env.Requires(env.Alias('install'), env.Alias('templates'))
-env.Requires(env.Alias('init-mysql-db'), env.Alias('templates'))
-env.Requires(env.Alias('admin-bin'), env.Alias('python-admin'))
-env.Requires(env.Alias('install'), env.Alias('admin-bin'))
+# initialize mysqld
+env.Requires(env.Alias('perl-install'), env.Alias('templates'))
+env.Requires(env.Alias('perl-init-mysql-db'), env.Alias('templates'))
+env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
+env.Requires(env.Alias('admin-bin'), env.Alias('python-tests'))
+env.Requires(env.Alias('perl-install'), env.Alias('admin-bin'))
+
+env.Alias('install',env.Alias('perl-install'))
 
 env.Default(env.Alias('install'))
 
+# TODO :
+#env.CleanAction(env.Alias('perl-install'),env.Alias('perl-clean-all'))
+        
 ###########################
 #
 # Defining Download Alias
@@ -98,8 +109,9 @@ env.Alias('download', download_cmd_lst)
 #
 #########################
 
-for target in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'):
-    env.Alias(target, env.Command(target+'-dummy-target', [], actions.build_cmd_with_opts(config,target)))
+for perl_option in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'): 
+    scons_target = "perl-%s" % perl_option
+    env.Alias(scons_target, env.Command(scons_target+'-dummy-target', [], actions.build_cmd_with_opts(config,perl_option)))
 
 #########################
 #
@@ -109,17 +121,20 @@ for target in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'):
 
 def get_template_targets():
 
-    template_dir_path="admin/custom"
+    template_dir_path= os.path.normpath("admin/custom")
     target_lst = []
 
     script_dict = {
-        '%\(QSERV_BASE_DIR\)s': config['qserv']['base_dir'],
-        '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'],
-        '%\(QSERV_STRIPES\)s': config['qserv']['stripes'],
-        '%\(QSERV_SUBSTRIPES\)s': config['qserv']['substripes'],
-        '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['base_dir'],'var/run'),
-        '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'],
-        '%\(MYSQLD_PORT\)s': config['mysqld']['port'],
+        '%\(QSERV_BASE_DIR\)s': config['qserv']['base_dir'], 
+        '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'], 
+        '%\(QSERV_STRIPES\)s': config['qserv']['stripes'], 
+        '%\(QSERV_SUBSTRIPES\)s': config['qserv']['substripes'], 
+        '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['base_dir'],'var/run'),   
+        '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
+        '%\(QSERV_LUA_SHARE\)s': os.path.join(config['qserv']['base_dir'],"share","lua","5.1"), 
+        '%\(QSERV_LUA_LIB\)s': os.path.join(config['qserv']['base_dir'],"lib","lua","5.1"), 
+        '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'], 
+        '%\(MYSQLD_PORT\)s': config['mysqld']['port'], 
         # used for mysql-proxy in mono-node
         # '%(MYSQLD_HOST)': config['qserv']['master'],
         '%\(MYSQLD_HOST\)s': '127.0.0.1',
@@ -183,26 +198,32 @@ env.Alias("templates", get_template_targets())
 # Install python modules
 #
 #########################
-
 python_path_prefix=config['qserv']['base_dir']
 
 python_admin = env.InstallPythonModule(target=python_path_prefix, source='admin/python')
-
 #python_targets=utils.build_python_module(source='admin/python',target='/opt/qserv-dev',env=env)
 env.Alias("python-admin", python_admin)
 
+python_tests = env.InstallPythonModule(target=python_path_prefix, source='tests/python')
+env.Alias("python-tests", python_tests)
 
 #########################
 #
 # Install admin commands
 #
 #########################
-file_base_name="qserv-datamanager.py"
-source = os.path.join("admin","bin",file_base_name)
-target = os.path.join(config['qserv']['base_dir'],"bin",file_base_name)
-Command(target, source, Copy("$TARGET", "$SOURCE"))
+bin_basename_lst=[
+    "qserv-benchmark.py","qserv-testdata.py", 
+    "qserv-testunit.py"
+]
+bin_target_lst = [] 
+for f in bin_basename_lst:
+    source = os.path.join("admin","bin",f)
+    target = os.path.join(config['qserv']['base_dir'],"bin",f)
+    Command(target, source, Copy("$TARGET", "$SOURCE"))
+    bin_target_lst.append(target)
 
-env.Alias("admin-bin", target)
+env.Alias("admin-bin", bin_target_lst)
 
 # List all aliases
 

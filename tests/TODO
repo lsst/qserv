@@ -1,2 +1,0 @@
-- qservTest_case%s_%s should be automatically added in field 'alloweddbs' of etc/local/qserv.cnf, and qserv config reloaded 
-- in order to ease the tests GRANT rights are full on test db, this should be refined later.
