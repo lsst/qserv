@@ -125,6 +125,7 @@ class SqlActions(object):
         return self.cursor.fetchone()[1]
 
     def loadPartitions(self, table, partFile, index=True):
+        print "Loading partition table: %s with %s" % (table, os.path.abspath(partFile))
         self.dropTable(table)
         self._exec("""
             CREATE TABLE %s (
@@ -148,6 +149,7 @@ class SqlActions(object):
                 "ALTER TABLE %s ADD INDEX (chunkId, subChunkId);" % table)
 
     def createPrototype(self, table, schema):
+        self._exec("DROP TABLE IF EXISTS %s" % table)
         # Doesn't work if table name contains `
         tableRe = r"^\s*CREATE\s+TABLE\s+`[^`]+`\s+"
         m = re.match(tableRe, schema)
@@ -554,6 +556,7 @@ def loadWorker(args):
     try:
         act.createDatabase(params.database)
         prototype = params.database + '.' + params.chunkPrefix + "Prototype"
+        print "Loading chunk: %s" % prototype
         if prototype != params.prototype:
             act.createPrototype(prototype, params.schema)
         if params.npad != None and params.npad > 0:
@@ -752,6 +755,7 @@ def main():
                        (opts.database, time.time() - t))
         # Load chunks
         if len(chunkFiles) > 0:
+            print "Init master with options: %s" % opts
             schema, npad = masterInit(master, chunkFiles[0][0], opts)
             for params in serverParams:
                 params.schema, params.npad = schema, npad

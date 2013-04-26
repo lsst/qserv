@@ -4,5 +4,5 @@ BEGIN {
         objectid[ID]=1;
 }
 
-// { if ($4 in objectid) print ; }
+/./ { if ($4 in objectid) print ; }
 

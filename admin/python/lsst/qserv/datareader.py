@@ -132,9 +132,13 @@ class DataReader():
             self.dataConfig['Object']['decl-column'] = 5
             self.dataConfig['Object']['chunk-column-id'] = 228
 
+            # self.dataConfig['Source']['ra-column'] = 7
+            # self.dataConfig['Source']['decl-column'] = 10
+            
             self.dataConfig['Source']['ra-column'] = 34
             self.dataConfig['Source']['decl-column'] = 35
-             # chunkId and subChunkId will be added
+
+            # chunkId and subChunkId will be added
             self.dataConfig['Source']['chunk-column-id'] = None
 
         

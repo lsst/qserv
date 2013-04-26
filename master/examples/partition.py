@@ -855,39 +855,44 @@ class SpatialChunkMapper(object):
 
     def map(self, row):
 
-        # extract position from row
-        theta = float(row[self.thetaColumn])
-        phi = float(row[self.phiColumn])
-        # compute coordinates, ids, and sub-chunk bounds
-        self.chunker.setCoords(theta, phi, self.coords)
-        self.chunker.setBounds(self.coords, self.bounds)
-        chunkId, subChunkId = self.chunker.getIds(self.coords)
-        # Reject the unaccepted
-        if self.chunkAcceptor and not self.chunkAcceptor(chunkId): return 
-        # write row plus the chunkId and subChunkId to the appropriate file
-        writer = self.writers[self.coords[0]][self.coords[2]]
-        self.cache.update(writer)
-        r = self._combineChunkWithRow(row, [chunkId, subChunkId])
-        writer.writerow(r, ChunkWriter.CHUNK)
-        # write to overlap files
-        overlap = self.chunker.getOverlap(theta, phi, self.coords,
-                                          self.bounds)
-        for ids, coords, both in overlap:
-            w = self.writers[coords[0]][coords[1]]
-            if not w: continue
-            self.cache.update(w)
-            r = self._combineChunkWithRow(row, ids)
-            if both:
-                w.writerow(r, ChunkWriter.SELF_OVERLAP)
-            w.writerow(r, ChunkWriter.FULL_OVERLAP)
-        # Record sub-chunks containing at least one row
-        if chunkId not in self.chunks:
-            self.chunks[chunkId] = {subChunkId: 1}
+        if (self.thetaColumn >= len(row)) :
+            print "WRONG ROW: theta=%s row=%s" % (self.thetaColumn, row)
+        elif (self.phiColumn >= len(row)):
+            print "WRONG ROW: phi=%s row=%s" % (self.phiColumn, row)
         else:
-            if subChunkId in self.chunks[chunkId]:
-                self.chunks[chunkId][subChunkId] += 1
+            # extract position from row
+            theta = float(row[self.thetaColumn])
+            phi = float(row[self.phiColumn])
+            # compute coordinates, ids, and sub-chunk bounds
+            self.chunker.setCoords(theta, phi, self.coords)
+            self.chunker.setBounds(self.coords, self.bounds)
+            chunkId, subChunkId = self.chunker.getIds(self.coords)
+            # Reject the unaccepted
+            if self.chunkAcceptor and not self.chunkAcceptor(chunkId): return 
+            # write row plus the chunkId and subChunkId to the appropriate file
+            writer = self.writers[self.coords[0]][self.coords[2]]
+            self.cache.update(writer)
+            r = self._combineChunkWithRow(row, [chunkId, subChunkId])
+            writer.writerow(r, ChunkWriter.CHUNK)
+            # write to overlap files
+            overlap = self.chunker.getOverlap(theta, phi, self.coords,
+                                              self.bounds)
+            for ids, coords, both in overlap:
+                w = self.writers[coords[0]][coords[1]]
+                if not w: continue
+                self.cache.update(w)
+                r = self._combineChunkWithRow(row, ids)
+                if both:
+                    w.writerow(r, ChunkWriter.SELF_OVERLAP)
+                w.writerow(r, ChunkWriter.FULL_OVERLAP)
+            # Record sub-chunks containing at least one row
+            if chunkId not in self.chunks:
+                self.chunks[chunkId] = {subChunkId: 1}
             else:
-                self.chunks[chunkId][subChunkId] = 1
+                if subChunkId in self.chunks[chunkId]:
+                    self.chunks[chunkId][subChunkId] += 1
+                else:
+                    self.chunks[chunkId][subChunkId] = 1
 
     def finish(self, conf):
         """Flush and close all open chunk files; return a list
