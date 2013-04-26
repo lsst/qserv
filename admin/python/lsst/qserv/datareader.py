@@ -113,6 +113,30 @@ class DataReader():
             self.tables=['Science_Ccd_Exposure_Metadata_coadd_r', 'AvgForcedPhotYearly', 'Science_Ccd_Exposure_Metadata', 'RunDeepSource',  'RunDeepForcedSource', 'DeepForcedSource', 'ZZZ_Db_Description', 'RefObject', 'RefDeepSrcMatch', 'Science_Ccd_Exposure_coadd_r', 'Science_Ccd_Exposure', 'AvgForcedPhot', 'DeepCoadd_To_Htm10', 'Science_Ccd_Exposure_To_Htm10_coadd_r', 'LeapSeconds', 'DeepCoadd', 'DeepCoadd_Metadata', 'DeepSource', 'Filter']
 
             self.dataConfig['sql-views'] = ['DeepForcedSource','DeepSource']
+
+        # for PT1.2
+        elif self.dataName=="case04":
+            
+            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+       
+            """ Fill column position (zero-based index) """
+            self.dataConfig['Object']=dict()
+            self.dataConfig['Source']=dict()
+            
+            self.dataConfig['schema-extension']='.schema'
+            self.dataConfig['data-extension']='.csv'
+            self.dataConfig['zip-extension']='.gz'
+            self.dataConfig['delimiter']=','
+
+            self.dataConfig['Object']['ra-column'] = 3
+            self.dataConfig['Object']['decl-column'] = 5
+            self.dataConfig['Object']['chunk-column-id'] = 228
+
+            self.dataConfig['Source']['ra-column'] = 34
+            self.dataConfig['Source']['decl-column'] = 35
+             # chunkId and subChunkId will be added
+            self.dataConfig['Source']['chunk-column-id'] = None
+
         
     def readTableList(self):
         files = os.listdir(self.dataDirName)
