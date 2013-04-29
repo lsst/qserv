@@ -130,7 +130,7 @@ class DataReader():
 
             self.dataConfig['Object']['ra-column'] = 2
             self.dataConfig['Object']['decl-column'] = 4
-            self.dataConfig['Object']['chunk-column-id'] = 228
+            self.dataConfig['Object']['chunk-column-id'] = 227
 
             # self.dataConfig['Source']['ra-column'] = 7
             # self.dataConfig['Source']['decl-column'] = 10
