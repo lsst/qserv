@@ -128,15 +128,15 @@ class DataReader():
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
 
-            self.dataConfig['Object']['ra-column'] = 3
-            self.dataConfig['Object']['decl-column'] = 5
+            self.dataConfig['Object']['ra-column'] = 2
+            self.dataConfig['Object']['decl-column'] = 4
             self.dataConfig['Object']['chunk-column-id'] = 228
 
             # self.dataConfig['Source']['ra-column'] = 7
             # self.dataConfig['Source']['decl-column'] = 10
             
-            self.dataConfig['Source']['ra-column'] = 34
-            self.dataConfig['Source']['decl-column'] = 35
+            self.dataConfig['Source']['ra-column'] = 33
+            self.dataConfig['Source']['decl-column'] = 34
 
             # chunkId and subChunkId will be added
             self.dataConfig['Source']['chunk-column-id'] = None
