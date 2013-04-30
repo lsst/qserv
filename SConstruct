@@ -67,7 +67,7 @@ env.Alias('init', init_target_lst)
 env.Requires(env.Alias('download'), env.Alias('init'))
 env.Requires(env.Alias('perl-install'), env.Alias('download'))
 # templates must be applied before installation in order to
-# initialize mysql db
+# initialize mysqld
 env.Requires(env.Alias('perl-install'), env.Alias('templates'))
 env.Requires(env.Alias('perl-init-mysql-db'), env.Alias('templates'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
@@ -130,9 +130,6 @@ def get_template_targets():
         '%\(QSERV_STRIPES\)s': config['qserv']['stripes'],
         '%\(QSERV_SUBSTRIPES\)s': config['qserv']['substripes'],
         '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['base_dir'],'var/run'),
-        '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
-        '%\(QSERV_LUA_SHARE\)s': os.path.join(config['qserv']['base_dir'],"share","lua","5.1"),
-        '%\(QSERV_LUA_LIB\)s': os.path.join(config['qserv']['base_dir'],"lib","lua","5.1"),
         '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'],
         '%\(MYSQLD_PORT\)s': config['mysqld']['port'],
         # used for mysql-proxy in mono-node
@@ -176,10 +173,13 @@ def get_template_targets():
                 target_lst.append(symlink_name)
 
             path = os.path.dirname(target_name)
-            if os.path.basename(path) == "bin" or os.path.basename(target_name) in [
+            target_basename = os.path.basename(target_name)
+            logger.debug("TARGET BASENAME : %s" % target_basename)
+            if os.path.basename(path) == "bin" or target_basename in [
                 "start_xrootd",
                 "start_qserv",
-                "start_mysqlproxy"
+                "start_mysqlproxy",
+                "scidb.sh"
                 ]:
                 env.AddPostAction(target_node, Chmod("$TARGET", 0760))
             # all other files are configuration files

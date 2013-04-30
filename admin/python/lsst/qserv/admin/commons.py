@@ -2,8 +2,8 @@ import io
 import os
 import logging
 import re
-import subprocess 
-import sys 
+import subprocess
+import sys
 import ConfigParser
 
 def read_user_config():
@@ -42,14 +42,16 @@ def read_config(config_file, default_config_file):
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
     # computable configuration parameters
-    config['qserv']['bin_dir']    = os.path.join(config['qserv']['base_dir'], "bin")
+    for dir in ['base_dir', 'tmp_dir', 'log_dir']:
+        config['qserv'][dir] = os.path.normpath(config['qserv'][dir])
+    config['qserv']['bin_dir'] = os.path.join(config['qserv']['base_dir'], "bin")
 
     section='mysqld'
     config[section] = dict()
     options = [option for option in parser.options(section) if option not in ['pass','port'] ]
     for option in options:
         config[section][option] = parser.get(section,option)
-    
+
     # TODO : manage special characters for pass (see config file comments for additional information)
     config['mysqld']['pass']    = parser.get("mysqld","pass",raw=True)
     config['mysqld']['port'] = parser.getint('mysqld','port')
@@ -68,28 +70,29 @@ def read_config(config_file, default_config_file):
     config[section] = dict()
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
-    
+
     section='xrootd'
     config[section] = dict()
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
-    
+
     section='dependencies'
     config[section] = dict()
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
 
     # normalize directories names
+    # TODO duplicate normpath() call
     for section in config.keys():
         for option in config[section].keys():
             if re.match(".*_dir",option):
                 config[section][option] = os.path.normpath(config[section][option])
-       
-    config['bin'] = dict()         
+
+    config['bin'] = dict()
     config['bin']['mysql'] = os.path.join(config['qserv']['bin_dir'],'mysql')
     config['bin']['python'] = os.path.join(config['qserv']['bin_dir'],'python')
 
-    return config 
+    return config
 
 def is_readable(dir):
     """
@@ -101,7 +104,7 @@ def is_readable(dir):
     logger.debug("Checking read access for : %s", dir)
     try:
         os.listdir(dir)
-        return True 
+        return True
     except Exception as e:
         logger.debug("No read access to dir %s : %s" % (dir,e))
         return False
@@ -139,7 +142,7 @@ def console_logger(level=logging.DEBUG):
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
-    
+
     return logger
 
 def file_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
@@ -148,11 +151,11 @@ def file_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     # this level can be reduce for each handler
     logger.setLevel(level)
- 
+
     file_handler = logging.FileHandler(os.path.join(log_path+os.sep,log_file_prefix+'.log'))
     file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler) 
- 
+    logger.addHandler(file_handler)
+
     return logger
 
 
@@ -161,7 +164,7 @@ def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None) :
 
     Keyword arguments
     cmd_args -- a list of arguments
-    logger_name -- the name of a logger, if not specified, will log to stdout 
+    logger_name -- the name of a logger, if not specified, will log to stdout
 
     Return a string containing stdout and stderr
     """
@@ -179,9 +182,9 @@ def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None) :
     if stdout_file != None:
         logger.debug("stdout file : %s" % stdout_file)
         sout=open(stdout_file,"w")
-    else: 
+    else:
         sout=subprocess.PIPE
-    
+
     serr = None
     if stderr_file != None:
         logger.debug("stderr file : %s" % stderr_file)
@@ -192,7 +195,7 @@ def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None) :
 # TODO : use this with python 2.7 :
 #  try :
 #        out = subprocess.check_output(
-#                cmd_args, 
+#                cmd_args,
 #                stderr=subprocess.STDOUT
 #              )
 #
@@ -244,16 +247,16 @@ def run_backgroundCommand(cmd_args, stdin_file=None, stdout_file=None, stderr_fi
     if stdout_file != None:
         logger.debug("stdout file : %s" % stdout_file)
         sout=open(stdout_file,"w")
-    else: 
+    else:
         sout=subprocess.PIPE
-    
+
     serr = None
     if stderr_file != None:
         logger.debug("stderr file : %s" % stderr_file)
         serr=open(stderr_file,"w")
     else:
         serr=subprocess.PIPE
-        
+
     try :
         pid = subprocess.Popen( cmd_args, stdin=sin, stdout=sout, stderr=serr ).pid
 

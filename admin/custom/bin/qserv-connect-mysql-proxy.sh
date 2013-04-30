@@ -1,1 +1,1 @@
-mysql --host 127.0.0.1 --port %(MYSQL_PROXY_PORT)s --user qsmaster LSST 
+mysql --host 127.0.0.1 --port %(MYSQL_PROXY_PORT)s --user qsmaster LSST

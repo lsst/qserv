@@ -193,7 +193,7 @@ class App:
         
         # Got inputs?
         if len(inputs) == 0 and self.shouldDuplicate:
-            self.parser.error("At least one input file must be specified")
+            self.parser.error("At least one input data file must be specified")
 
         # Validate and adjust sizes
         if conf.outputBufferSize < 1.0 / 1024 or conf.outputBufferSize > 64.0:
