@@ -1,5 +1,6 @@
 #!/bin/bash
 # TODO manage scisql version in templating system
+%(QSERV_BASE_DIR)s/bin/mysqld_safe &
 cd %(QSERV_BASE_DIR)s/build &&
 tar jxvf scisql-0.3.tar.bz2 &&
 cd scisql-0.3 &&

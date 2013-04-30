@@ -179,7 +179,7 @@ def get_template_targets():
                 "start_xrootd",
                 "start_qserv",
                 "start_mysqlproxy",
-                "scidb.sh"
+                "scisql.sh"
                 ]:
                 env.AddPostAction(target_node, Chmod("$TARGET", 0760))
             # all other files are configuration files
