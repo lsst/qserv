@@ -8,5 +8,5 @@ LUALIB=$LUAROOT/lib/lua/5.1
 LUAPATH="$LUASHARE/?.lua;$LUASHARE/?/init.lua;$LUASHARE/?/?.lua"
 LUACPATH="$LUALIB/?.so;$LUALIB/?/?.so"
 %(QSERV_BASE_DIR)s/bin/mysql-proxy --proxy-lua-script=$QSERVDIST/mysqlProxy.lua --defaults-file=%(QSERV_BASE_DIR)s/etc/my-proxy.cnf --lua-path=$LUAPATH --lua-cpath=$LUACPATH &
-
+echo $! > %(QSERV_PID_DIR)s/mysql-proxy.pid
 
