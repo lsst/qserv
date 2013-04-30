@@ -91,7 +91,7 @@ class Db:
             except MySQLdb.Error, e2:
                 self._connType = None
                 self._conn = None
-                msg = "Couldn't connect to MySQL using socket '%s' or host:port: %s:%s." % (self._socket, self._host,self._port)
+                msg = "Couldn't connect to MySQL using socket '%s' or host:port: '%s:%s'." % (self._socket, self._host,self._port)
                 self._logger.error(msg)
                 raise QmsException(Status.ERR_MYSQL_CONNECT, msg)
 
@@ -115,10 +115,10 @@ class Db:
         try:
             self._conn.select_db(self._dbName)
         except MySQLdb.Error, e:
-            self._logger.debug("Failed to select db '%s'" % self._dbName)
+            self._logger.debug("Failed to select db '%s'." % self._dbName)
             raise QmsException(Status.ERR_NO_META)
         self._isConnectedToDb = True
-        self._logger.debug("Connected to db %s" % self._dbName)
+        self._logger.debug("Connected to db '%s'." % self._dbName)
 
     def commit(self):
         if not self._checkIsConnected():
@@ -131,11 +131,11 @@ class Db:
             self.commit()
             self._conn.close()
         except MySQLdb.Error, e:
-            msg = "DB Error %d: %s" % \
+            msg = "DB Error %d: %s." % \
                                    (e.args[0], e.args[1])
             self._logger.error(msg)
             raise QmsException(Status.ERR_MYSQL_DISCONN, msg)
-        self._logger.debug("MySQL connection closed")
+        self._logger.debug("MySQL connection closed.")
         self._conn = None
         self._isConnectedToDb = False
 
@@ -238,11 +238,11 @@ class Db:
             cursor.execute(command)
         except MySQLdb.Error, e:
             try:
-                msg = "MySQL Error [%d]: %s" % (e.args[0], e.args[1])
+                msg = "MySQL Error [%d]: %s." % (e.args[0], e.args[1])
                 self._logger.error(msg)
                 raise QmsException(Status.ERR_MYSQL_ERROR, msg)
             except IndexError:
-                self._logger.error("MySQL Error: %s" % str(e))
+                self._logger.error("MySQL Error: %s." % str(e))
                 raise QmsException(Status.ERR_MYSQL_ERROR, str(e))
         if nRowsRet == 0:
             ret = ""
