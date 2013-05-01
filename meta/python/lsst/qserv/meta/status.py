@@ -84,7 +84,7 @@ def getErrMsg(errNo):
     s = Status()
     if errNo in s.errors:
         return s.errors[errNo]
-    return "Undefinied qms error"
+    return "Undefined qms error"
 
 class QmsException(Exception):
     def __init__(self, errNo, extraMsg=None):

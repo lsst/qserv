@@ -37,8 +37,8 @@ echo === create 5 tables ===
 ./meta/examples/runMetaClientTool.sh createTable Winter2013 @./meta/examples/tb_Source.params
 
 echo === retrieve table info for 2 tables ===
-./meta/examples/runMetaClientTool.sh retrieveTableInfo Winter2013 Object
-./meta/examples/runMetaClientTool.sh retrieveTableInfo Winter2013 Exposure
+./meta/examples/runMetaClientTool.sh retrieveTableInfo Summer2012 Object
+./meta/examples/runMetaClientTool.sh retrieveTableInfo Summer2012 Exposure
 
 echo === print meta ===
 ./meta/examples/runMetaClientTool.sh printMeta
