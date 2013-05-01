@@ -745,55 +745,6 @@ class QueryBabysitter:
         return os.path.join(self._scratchPath, dumpName)
 
 ########################################################################
-
-class PartitioningConfig: 
-    """ An object that stores information about the partitioning setup.
-    """
-    def __init__(self):
-        self.clear() # reset fields
-
-    def clear(self):
-        ## public
-        self.chunked = set([])
-        self.subchunked = set([])
-        self.allowedDbs = set([])
-        self.chunkMapping = ChunkMapping()
-        self.chunkMeta = ChunkMeta()
-        pass
-
-    def applyConfig(self):
-        c = lsst.qserv.master.config.config
-        try:
-            chk = c.get("table", "chunked")
-            subchk = c.get("table", "subchunked")
-            adb = c.get("table", "alloweddbs")
-            self.chunked.update(chk.split(","))
-            self.subchunked.update(subchk.split(","))    
-            self.allowedDbs.update(adb.split(","))
-        except:
-            print "Error: Bad or missing chunked/subchunked spec."
-        self._updateMap()
-        self._updateMeta()
-        pass
-
-    def getMapRef(self, chunk, subchunk):
-        """@return a map reference suitable for sql parsing and substitution.
-        For convenience.
-        """
-        return self.chunkMapping.getMapReference(chunk, subchunk)
-
-    def _updateMeta(self):
-        for db in self.allowedDbs:
-            map(lambda t: self.chunkMeta.add(db, t, 1), self.chunked)
-            map(lambda t: self.chunkMeta.add(db, t, 2), self.subchunked)
-        pass
-
-    def _updateMap(self):
-        map(self.chunkMapping.addChunkKey, self.chunked)
-        map(self.chunkMapping.addSubChunkKey, self.subchunked)
-        pass
-
-########################################################################
 class QueryHintError(Exception):
     """An error in query hinting (Bad/missing values)."""
     def __init__(self, reason):
@@ -855,11 +806,8 @@ class HintedQueryAction:
     def _parseAndPrep(self, query, hints):
         # Table mapping 
         try:
-            self._pConfig = PartitioningConfig() # Should be shared.
-            self._pConfig.applyConfig()
             cfg = self._prepareCppConfig(self._dbContext, hints)
             self._substitution = SqlSubstitution(query, 
-                                                 self._pConfig.chunkMeta,
                                                  cfg,
                                                  self._metaCacheSession)
             if self._substitution.getError():

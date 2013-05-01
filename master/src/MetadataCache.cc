@@ -122,6 +122,38 @@ qMaster::MetadataCache::DbInfo::checkIfTableIsSubChunked(std::string const& tabl
     return 2 == itr->second.getLogicalPart();
 }
 
+/** Gets chunked tables
+  *
+  * @return returns a vector of table names that are chunked
+  */
+std::vector<std::string>
+qMaster::MetadataCache::DbInfo::getChunkedTables() const {
+    std::vector<std::string> v;
+    std::map<std::string, qMaster::MetadataCache::TableInfo>::const_iterator itr;
+    for (itr=_tables.begin() ; itr!=_tables.end(); ++itr) {
+        if (checkIfTableIsChunked(itr->first)) {
+            v.push_back(itr->first);
+        }
+    }
+    return v;
+}
+
+/** Gets a list of subchunked tables
+  *
+  * @return returns a vector of table names that are subchunked
+  */
+std::vector<std::string>
+qMaster::MetadataCache::DbInfo::getSubChunkedTables() const {
+    std::vector<std::string> v;
+    std::map<std::string, qMaster::MetadataCache::TableInfo>::const_iterator itr;
+    for (itr=_tables.begin() ; itr!=_tables.end(); ++itr) {
+        if (checkIfTableIsSubChunked(itr->first)) {
+            v.push_back(itr->first);
+        }
+    }
+    return v;
+}
+
 /** Constructs object representing a non-partitioned table.
   */
 qMaster::MetadataCache::TableInfo::TableInfo() :
@@ -327,6 +359,55 @@ qMaster::MetadataCache::checkIfTableIsSubChunked(std::string const& dbName,
     return itr->second.checkIfTableIsSubChunked(tableName);
 }
 
+/** Gets allowed databases (database that are configured for qserv)
+  *
+  * @return returns a vector of database names that are configured for qserv
+  */
+std::vector<std::string>
+qMaster::MetadataCache::getAllowedDbs() {
+    std::vector<std::string> v;
+    boost::lock_guard<boost::mutex> m(_mutex);
+    std::map<std::string, DbInfo>::const_iterator itr;
+    for (itr=_dbs.begin() ; itr!=_dbs.end(); ++itr) {
+        v.push_back(itr->first);
+    }
+    return v;
+}
+
+/** Gets chunked tables
+  *
+  * @param dbName database name
+  *
+  * @return returns a vector of table names that are chunked
+  */
+std::vector<std::string>
+qMaster::MetadataCache::getChunkedTables(std::string const& dbName) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
+    if (itr == _dbs.end()) {
+        std::vector<std::string> v;
+        return v;
+    }
+    return itr->second.getChunkedTables();
+}
+
+/** Gets subchunked tables
+  *
+  * @param dbName database name
+  *
+  * @return returns a vector of table names that are subchunked
+  */
+std::vector<std::string>
+qMaster::MetadataCache::getSubChunkedTables(std::string const& dbName) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
+    if (itr == _dbs.end()) {
+        std::vector<std::string> v;
+        return v;
+    }
+    return itr->second.getSubChunkedTables();
+}
+
 /** Prints the contents of the qserv metadata cache. This is
   * handy for debugging.
   */
@@ -335,7 +416,7 @@ qMaster::MetadataCache::printSelf() {
     std::cout << "\n\nMetadata Cache in C++:" << std::endl;
     std::map<std::string, DbInfo>::const_iterator itr;
     boost::lock_guard<boost::mutex> m(_mutex);
-    for (itr=_dbs.begin() ; itr!= _dbs.end() ; ++itr) {
+    for (itr=_dbs.begin() ; itr!=_dbs.end() ; ++itr) {
         std::cout << "db: " << itr->first << ": " << itr->second << "\n";
     }
     std::cout << std::endl;
@@ -360,7 +441,7 @@ qMaster::operator<<(std::ostream &s, const qMaster::MetadataCache::DbInfo &dbInf
     }
     s << "  Tables:";
     std::map<std::string, qMaster::MetadataCache::TableInfo>::const_iterator itr;
-    for (itr=dbInfo._tables.begin() ; itr!= dbInfo._tables.end(); ++itr) {
+    for (itr=dbInfo._tables.begin() ; itr!=dbInfo._tables.end(); ++itr) {
         s << "   " << itr->first << ": " << itr->second << "\n";
     }
     return s;

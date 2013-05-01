@@ -52,7 +52,6 @@ public:
     /*                 ChunkMapping const& mapping,  */
     /*                 std::map<std::string,std::string> const& config); */
     SqlSubstitution(std::string const& sqlStatement, 
-                    ChunkMeta const& cMeta,
                     std::map<std::string,std::string> const& config,
                     int metaCacheId);
     /// config should include qserv master config + current session context

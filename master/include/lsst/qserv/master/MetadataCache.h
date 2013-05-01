@@ -33,8 +33,9 @@
 
 // Standard
 #include <iostream>
-#include <string>
 #include <map>
+#include <string>
+#include <vector>
 
 // Boost
 #include <boost/shared_ptr.hpp>
@@ -63,11 +64,14 @@ public:
     int addTbInfoPartitionedSphBox(std::string const&, std::string const&,
                                    float, std::string const&, std::string const&, 
                                    int, int, int, int);
-    // accessors
+    // accessors (they all lock a mutex, thus can't be const)
     bool checkIfContainsDb(std::string const&);
     bool checkIfContainsTable(std::string const&, std::string const&);
     bool checkIfTableIsChunked(std::string const&, std::string const&);
     bool checkIfTableIsSubChunked(std::string const&, std::string const&);
+    std::vector<std::string> getAllowedDbs();
+    std::vector<std::string> getChunkedTables(std::string const&);
+    std::vector<std::string> getSubChunkedTables(std::string const&);
     void printSelf();
 
     /** The class TableInfo encapsulates metadata information about single table.
@@ -118,6 +122,8 @@ public:
         bool checkIfContainsTable(std::string const&) const;
         bool checkIfTableIsChunked(std::string const&) const;
         bool checkIfTableIsSubChunked(std::string const&) const;
+        std::vector<std::string> getChunkedTables() const;
+        std::vector<std::string> getSubChunkedTables() const;
 
     private:
         const bool _isPartitioned;

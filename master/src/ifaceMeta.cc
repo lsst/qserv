@@ -78,7 +78,7 @@ qMaster::newMetadataSession() {
 }
 
 /** Destroys existing metadata session.
-  * @param metaSessionId id of the metadat session
+  * @param metaSessionId id of the metadata session
   */
 void
 qMaster::discardMetadataSession(int metaSessionId) {
@@ -90,30 +90,30 @@ qMaster::discardMetadataSession(int metaSessionId) {
 // ============================================================================
 
 /** Adds database information for a non-partitioned database.
-  * @param metaSessionId id of the metadat session
+  * @param metaSessionId id of the metadata session
   * @param dbName database name
   */
 int
 qMaster::addDbInfoNonPartitioned(int metaSessionId,
-                                 char* dbName) {
+                                 const char* dbName) {
     return getMetadataCache(metaSessionId)->addDbInfoNonPartitioned(dbName);
 }
 
 /** Adds database information for a partitioned database,
   * which use spherical partitioning mode.
   *
-  * @param metaSessionId id of the metadat session
+  * @param metaSessionId id of the metadata session
   * @param dbName database name
   * @param nStripes number of stripes
   * @param nSubStripes number of sub-stripes
   * @param defOverlapF default overlap for 'fuzziness'
   * @param defOverlapNN default overlap for 'near-neighbor'-type queries
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::addDbInfoPartitionedSphBox(int metaSessionId,
-                                    char* dbName,
+                                    const char* dbName,
                                     int nStripes,
                                     int nSubStripes,
                                     float defOverlapF,
@@ -124,23 +124,23 @@ qMaster::addDbInfoPartitionedSphBox(int metaSessionId,
 
 /** Adds information about a non-partitioned table.
   *
-  * @param metaSessionId id of the metadat session
+  * @param metaSessionId id of the metadata session
   * @param dbName database name
   * @param tableName table name
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::addTbInfoNonPartitioned(int metaSessionId,
-                                 char* dbName,
-                                 char* tbName) {
+                                 const char* dbName,
+                                 const char* tbName) {
     return getMetadataCache(metaSessionId)->addTbInfoNonPartitioned(dbName, tbName);
 }
 
 /** Adds database information for a partitioned table,
   * which use spherical partitioning mode.
   *
-  * @param metaSessionId id of the metadat session
+  * @param metaSessionId id of the metadata session
   * @param dbName database name
   * @param tableName table name
   * @param overlap used for this table (overwrites overlaps from dbInfo)
@@ -151,15 +151,15 @@ qMaster::addTbInfoNonPartitioned(int metaSessionId,
   * @param logicalPart definition how the table is partitioned logically
   * @param physChunking definition how the table is chunked physically
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
-                                    char* dbName,
-                                    char* tbName,
+                                    const char* dbName,
+                                    const char* tbName,
                                     float overlap,
-                                    char* phiCol,
-                                    char* thetaCol,
+                                    const char* phiCol,
+                                    const char* thetaCol,
                                     int phiColNo,
                                     int thetaColNo,
                                     int logicalPart,

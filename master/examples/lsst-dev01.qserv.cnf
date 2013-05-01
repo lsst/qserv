@@ -39,9 +39,9 @@ emptyChunkListFile=emptyChunks.txt
 # chunked=Source,ForcedSource
 # subchunked=Object
 # alloweddbs=LSST
-chunked=Source,FaintSource
-subchunked=Object
-alloweddbs=LSST,Test1
+### chunked=Source,FaintSource  # this is now handled through qms
+### subchunked=Object           # ditto
+### alloweddbs=LSST,Test1       # ditto
 partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
 
 # [tuning]

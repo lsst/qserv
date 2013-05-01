@@ -9,9 +9,9 @@ scratch_path = /dev/shm/qserv
 xrootd_user = qsmaster
 
 [table]
-chunked=Source
-subchunked=Object
-alloweddbs=LSST,Test1
+### chunked=Source        # this is now handled through qms
+### subchunked=Object     # ditto
+### alloweddbs=LSST,Test1 # ditto
 partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
 
 [resultdb]

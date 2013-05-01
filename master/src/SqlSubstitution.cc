@@ -33,9 +33,17 @@
 #include "lsst/qserv/master/SqlSubstitution.h"
 #include "lsst/qserv/master/SqlParseRunner.h"
 #include "lsst/qserv/master/ChunkMeta.h"
-
+#include "lsst/qserv/master/MetadataCache.h"
 
 namespace qMaster = lsst::qserv::master;
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace master {
+    boost::shared_ptr<qMaster::MetadataCache> getMetadataCache(int);
+}}}
+
 
 namespace { // Anonymous
 
@@ -74,16 +82,32 @@ qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement,
 #endif
 
 qMaster::SqlSubstitution::SqlSubstitution(std::string const& sqlStatement, 
-                                          ChunkMeta const& cMeta,
                                           qMaster::StringMap const& config,
                                           int metaCacheId)
-    : _delimiter("*?*"), _hasAggregate(false), 
-      _cMeta(new ChunkMeta(cMeta)), 
+    : _delimiter("*?*"), _hasAggregate(false),
+      _cMeta(new ChunkMeta()),
       _config(config),
       _metaCacheId(metaCacheId) {
+    // ChunkMeta initialization based on info from metadata cache
+    boost::shared_ptr<qMaster::MetadataCache> mcP = getMetadataCache(_metaCacheId);
+    std::vector<std::string> allowedDbs = mcP->getAllowedDbs();
+    std::vector<std::string>::const_iterator allowedDb;
+    for (allowedDb=allowedDbs.begin() ; allowedDb!=allowedDbs.end() ; ++allowedDb) {
+        std::vector<std::string> cTables = mcP->getChunkedTables(*allowedDb);
+        std::vector<std::string>::const_iterator cTable;
+        for (cTable=cTables.begin() ; cTable!=cTables.end() ; ++cTable) {
+            _cMeta->add(*allowedDb, *cTable, 1);
+        }
+        std::vector<std::string> scTables = mcP->getSubChunkedTables(*allowedDb);
+        std::vector<std::string>::const_iterator scTable;
+        for (scTable=scTables.begin() ; scTable!=scTables.end() ; ++scTable) {
+            _cMeta->add(*allowedDb, *scTable, 2);
+        }
+    }
+
     // client DB context
     _defaultDb = getFromMap(config, "table.defaultdb", "LSST"); 
-    _mapping.setFromMeta(cMeta);
+    _mapping.setFromMeta(*_cMeta);
     _setupOverlap(); // Don't use importSubChunkTables()
 
     // Note: makes copy of chunkmapping.

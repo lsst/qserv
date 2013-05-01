@@ -37,13 +37,12 @@ namespace master {
 
 int newMetadataSession();
 void discardMetadataSession(int);
-int addDbInfoNonPartitioned(int, char*);
-int addDbInfoPartitionedSphBox(int, char*, int, int, float, float);
-int addTbInfoNonPartitioned(int, char*, char*);
-int addTbInfoPartitionedSphBox(int, char*, char*, float, char*, char*,
-                               int, int, int, int);
+int addDbInfoNonPartitioned(int, const char*);
+int addDbInfoPartitionedSphBox(int, const char*, int, int, float, float);
+int addTbInfoNonPartitioned(int, const char*, const char*);
+int addTbInfoPartitionedSphBox(int, const char*, const char*, float, 
+                               const char*, const char*, int, int, int, int);
 void printMetadataCache(int);
-
 }}}
 
 #endif // LSST_QSERV_META_IFACEMETA_H
