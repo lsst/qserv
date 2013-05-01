@@ -126,6 +126,7 @@ class TestMeta(unittest.TestCase):
                "overlap": "0.025",
                "phiColName": "ra_PS",
                "thetaColName": "decl_PS",
+               "objIdColName": "objectId",
                "logicalPart": "2",
                "physChunking": "0x0021",
                "isRefMatch":"no" }
@@ -154,6 +155,7 @@ class TestMeta(unittest.TestCase):
                "overlap": "0",
                "phiColName": "ra",
                "thetaColName": "decl",
+               "objIdColName": "sourceId",
                "logicalPart": "1",
                "physChunking": "0x0011" }
         self._client.createTable("Summer2012", dd)
@@ -166,6 +168,7 @@ class TestMeta(unittest.TestCase):
                "overlap": "0",
                "phiColName": "refRa",
                "thetaColName": "refDec",
+               "objIdColName": "objectId",
                "logicalPart": "1",
                "physChunking": "0x0011",
                "isRefMatch": "yes" }
@@ -270,6 +273,7 @@ class TestMeta(unittest.TestCase):
                "overlap": "0.025",
                "phiColName": "dfadfd", # this is invalid
                "thetaColName": "decl_PS",
+               "objIdColName": "objectId",
                "logicalPart": "2",
                "physChunking": "0x0021" }
         try:
@@ -286,6 +290,7 @@ class TestMeta(unittest.TestCase):
                "overlap": "0.025",
                "phiColName": "ra_PS",
                "thetaColName": "decl_PS",
+               "objIdColName": "objectId",
                "logicalPart": "2",
                "physChunking": "0x0021" }
         try:
@@ -311,6 +316,7 @@ class TestMeta(unittest.TestCase):
                "overlap": "0.025",
                "phiColName": "ra_PS",
                "thetaColName": "decl_PS",
+               "objIdColName": "objectId",
                "logicalPart": "2",
                "physChunking": "0x0021" }
         try:

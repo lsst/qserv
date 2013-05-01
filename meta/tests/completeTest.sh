@@ -30,10 +30,10 @@ echo === 'retrieve dbInfo for 2 dbs (ok, fail)' ===
 ./meta/examples/runMetaClientTool.sh retrieveDbInfo NonPart
 
 echo === create 5 tables ===
-./meta/examples/runMetaClientTool.sh createTable Summer2012 tableName=Object partitioning=on schemaFile=./meta/examples/tbSchema_Object.sql clusteredIndex=IDX_objectId overlap=0.025 phiColName=ra_PS thetaColName=decl_PS logicalPart=2 physChunking=0x0021
+./meta/examples/runMetaClientTool.sh createTable Summer2012 tableName=Object partitioning=on schemaFile=./meta/examples/tbSchema_Object.sql clusteredIndex=IDX_objectId overlap=0.025 phiColName=ra_PS thetaColName=decl_PS objIdColName=objectId logicalPart=2 physChunking=0x0021
 ./meta/examples/runMetaClientTool.sh createTable Summer2012 partitioning=off tableName=Exposure schemaFile=./meta/examples/tbSchema_Exposure.sql
 ./meta/examples/runMetaClientTool.sh createTable Summer2012 @./meta/examples/tb_Source.params
-./meta/examples/runMetaClientTool.sh createTable Summer2012 @./meta/examples/tb_Exposure.params
+./meta/examples/runMetaClientTool.sh createTable Winter2013 @./meta/examples/tb_Exposure.params
 ./meta/examples/runMetaClientTool.sh createTable Winter2013 @./meta/examples/tb_Source.params
 
 echo === retrieve table info for 2 tables ===

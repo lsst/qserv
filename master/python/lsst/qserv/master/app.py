@@ -260,8 +260,10 @@ class MetadataCacheIface:
                     float(x["overlap"]),
                     x["phiCol"],
                     x["thetaCol"],
+                    x["objIdCol"],
                     int(x["phiColNo"]),
                     int(x["thetaColNo"]),
+                    int(x["objIdColNo"]),
                     int(x["logicalPart"]),
                     int(x["physChunking"]))
             else:                    # db is not partitioned
