@@ -41,7 +41,7 @@ int addDbInfoNonPartitioned(int, const char*);
 int addDbInfoPartitionedSphBox(int, const char*, int, int, float, float);
 int addTbInfoNonPartitioned(int, const char*, const char*);
 int addTbInfoPartitionedSphBox(int, const char*, const char*, float, 
-                               const char*, const char*, int, int, int, int);
+                               const char*, const char*, const char*, int, int, int, int, int);
 void printMetadataCache(int);
 }}}
 
