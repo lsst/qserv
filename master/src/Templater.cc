@@ -36,7 +36,11 @@
 using lsst::qserv::master::Templater;
 
 // Forward declarations
-boost::shared_ptr<lsst::qserv::master::MetadataCache> getMetadataCache(int);
+namespace lsst {
+namespace qserv {
+namespace master {
+    boost::shared_ptr<lsst::qserv::master::MetadataCache> getMetadataCache(int);
+}}}
 
 // anonymous
 namespace {

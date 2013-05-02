@@ -55,10 +55,18 @@
 #include "lsst/qserv/master/TableRemapper.h"
 #include "lsst/qserv/master/SpatialUdfHandler.h"
 #include "lsst/qserv/master/parseExceptions.h"
+#include "lsst/qserv/master/MetadataCache.h"
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
 using std::stringstream;
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace master {
+    boost::shared_ptr<lsst::qserv::master::MetadataCache> getMetadataCache(int);
+}}}
 
 // Anonymous helpers
 namespace {
@@ -230,6 +238,19 @@ public:
         sm["declCol"] = columns[1];
         sm["objectIdCol"] = columns[2];
         _spr.updateTableConfig(name, sm);
+        std::cout << "***** original  for " << name << ": " << sm["raCol"] 
+                  << ", " << sm["declCol"] << ", "<< sm["objectIdCol"] << std::endl;
+
+        // demo how to do it via the metadata cache
+        std::string dbName = "LSST";
+        std::string tableName = name;
+        std::vector<std::string> v = 
+            getMetadataCache(_spr._metaCacheId)->getPartitionCols(dbName, name);
+        sm["raCol"] = v[0];
+        sm["declCol"] = v[1];
+        sm["objectIdCol"] = v[2];
+        std::cout << "***** qms-based for " << name << ": " << sm["raCol"] 
+                  << ", " << sm["declCol"] << ", "<< sm["objectIdCol"] << std::endl;
     }
     
     private:
@@ -511,7 +532,4 @@ void qMaster::SqlParseRunner::_readConfig(qMaster::StringMap const& m) {
     tokenizeInto(getFromMap(m,"table.partitioncols", blank), ";", tokens,
                  passFunc<std::string>());
     for_each(tokens.begin(), tokens.end(), PartitionTupleProcessor(*this));
-
-}    
-
-    
+}

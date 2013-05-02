@@ -57,13 +57,14 @@ public:
     };
     
     typedef boost::shared_ptr<MetadataCache> Ptr;
+
     // modifiers
     int addDbInfoNonPartitioned(std::string const&);
     int addDbInfoPartitionedSphBox(std::string const&, int, int, float, float);
     int addTbInfoNonPartitioned(std::string const&, std::string const&);
     int addTbInfoPartitionedSphBox(std::string const&, std::string const&,
-                                   float, std::string const&, std::string const&, 
-                                   int, int, int, int);
+                                   float, std::string const&, std::string const&, std::string const&,
+                                   int, int, int, int, int);
     // accessors (they all lock a mutex, thus can't be const)
     bool checkIfContainsDb(std::string const&);
     bool checkIfContainsTable(std::string const&, std::string const&);
@@ -72,6 +73,8 @@ public:
     std::vector<std::string> getAllowedDbs();
     std::vector<std::string> getChunkedTables(std::string const&);
     std::vector<std::string> getSubChunkedTables(std::string const&);
+    std::vector<std::string> getPartitionCols(std::string const&, std::string const&);
+
     void printSelf();
 
     /** The class TableInfo encapsulates metadata information about single table.
@@ -80,15 +83,17 @@ public:
     public:
         // constructors
         TableInfo();
-        TableInfo(float, std::string const&, std::string const&, 
-                  int, int, int, int);
+        TableInfo(float, std::string const&, std::string const&, std::string const&,
+                  int, int, int, int, int);
         // accessors
         bool getIsPartitioned() const { return _isPartitioned; }
         float getOverlap() const { return _overlap; }
         std::string getPhiCol() const { return _phiCol; }
         std::string getThetaCol() const { return _thetaCol; }
+        std::string getObjIdCol() const { return _objIdCol; }
         int getPhiColNo() const { return _phiColNo; }
         int getThetaColNo() const { return _thetaColNo; }
+        int getObjIdColNo() const { return _objIdColNo; }
         long getLogicalPart() const { return _logicalPart; }
         long getPhysChunking() const { return _physChunking; }
     private:
@@ -96,8 +101,10 @@ public:
         const float _overlap;        // invalid for non partitioned tables
         const std::string _phiCol;   // invalid for non partitioned tables
         const std::string _thetaCol; // invalid for non partitioned tables
+        const std::string _objIdCol; // invalid for non partitioned tables
         const int _phiColNo;         // invalid for non partitioned tables
         const int _thetaColNo;       // invalid for non partitioned tables
+        const int _objIdColNo;       // invalid for non partitioned tables
         const long _logicalPart;     // invalid for non partitioned tables
         const long _physChunking;    // invalid for non partitioned tables
         // friendship
@@ -124,6 +131,7 @@ public:
         bool checkIfTableIsSubChunked(std::string const&) const;
         std::vector<std::string> getChunkedTables() const;
         std::vector<std::string> getSubChunkedTables() const;
+        std::vector<std::string> getPartitionCols(std::string const&) const;
 
     private:
         const bool _isPartitioned;

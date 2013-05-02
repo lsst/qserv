@@ -84,7 +84,6 @@ struct ParserFixture {
         tableNames.push_back("Object");
         tableNames.push_back("Source");
         config["table.defaultdb"] ="LSST";
-        config["table.alloweddbs"] = "LSST";
         config["table.partitioncols"] = "Object:ra_Test,decl_Test,objectIdObjTest;"
             "Source:raObjectTest,declObjectTest,objectIdSourceTest";
 
@@ -98,14 +97,14 @@ struct ParserFixture {
                                        0.025);    // default overlap near neighbor
         mc->addTbInfoPartitionedSphBox("LSST", "Object",
                                        0.025,     // actual overlap
-                                       "ra", "decl",
-                                       1, 2,      // positions of ra, decl
+                                       "ra_Test", "decl_Test", "objectIdObjTest",
+                                       1, 2, 0,   // positions of the above columns
                                        2,         // 2-level chunking
                                        0x0011);   // 1-level persisted
         mc->addTbInfoPartitionedSphBox("LSST", "Source",
                                        0,         // actual overlap
-                                       "raObjectTest", "declObjectTest",
-                                       1, 2,      // positions of ra, decl
+                                       "raObjectTest", "declObjectTest", "objectIdSourceTest",
+                                       1, 2, 0,   // positions of the above columns
                                        1,         // 1-level chunking
                                        0x0011);   // 1-level persisted
 
@@ -117,14 +116,14 @@ struct ParserFixture {
                                        0.025);    // default overlap near neighbor
         mc->addTbInfoPartitionedSphBox("rplante_PT1_2_u_pt12prod_im3000_qserv", "Object",
                                        0.025,     // actual overlap
-                                       "ra", "decl",
-                                       1, 2,      // positions of ra, decl
+                                       "ra", "decl", "objectIdSourceTest",
+                                       1, 2, 0,   // positions of above columns
                                        2,         // 2-level chunking
                                        0x0011);   // 1-level persisted
         mc->addTbInfoPartitionedSphBox("rplante_PT1_2_u_pt12prod_im3000_qserv", "Source",
                                        0,         // actual overlap
-                                       "raObjectTest", "declObjectTest",
-                                       1, 2,      // positions of ra, decl
+                                       "raObjectTest", "declObjectTest", "objectIdSourceTest",
+                                       1, 2, 0,   // positions of the above columns
                                        1,         // 1-level chunking
                                        0x0011);   // 1-level persisted
 
@@ -175,8 +174,8 @@ void tryTriple() {
         lsst::qserv::master::getMetadataCache(metaCacheSessionId);
     mc->addTbInfoPartitionedSphBox("LSST", "ObjectSub",
                                    0.025,     // actual overlap
-                                   "ra", "decl",
-                                   1, 2,      // positions of ra, decl
+                                   "ra", "decl", "objectId",  // warning: unsure if the objectId col is right
+                                   1, 2, 0,   // positions of the above columns, unsure if 0 is correct
                                    2,         // 2-level chunking
                                    0x0011);   // 1-level persisted
     SqlSubstitution ss(stmt, cfg, metaCacheSessionId);

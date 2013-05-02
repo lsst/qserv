@@ -154,6 +154,26 @@ qMaster::MetadataCache::DbInfo::getSubChunkedTables() const {
     return v;
 }
 
+/** Gets names of partition columns (ra, decl, objectId) for a given table.
+  *
+  * @return returns a 3-element vector with column names: ra, decl, objectId
+  */
+std::vector<std::string>
+qMaster::MetadataCache::DbInfo::getPartitionCols(std::string const& tableName) const {
+    std::vector<std::string> v;
+    std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
+    if (itr == _tables.end()) {
+        v.push_back("");
+        v.push_back("");
+        v.push_back("");
+        return v;
+    }
+    v.push_back(itr->second.getPhiCol());
+    v.push_back(itr->second.getThetaCol());
+    v.push_back(itr->second.getObjIdCol());
+    return v;
+}
+
 /** Constructs object representing a non-partitioned table.
   */
 qMaster::MetadataCache::TableInfo::TableInfo() :
@@ -161,8 +181,10 @@ qMaster::MetadataCache::TableInfo::TableInfo() :
     _overlap(-1),
     _phiCol("invalid"),
     _thetaCol("invalid"),
+    _objIdCol("invalid"),
     _phiColNo(-1),
     _thetaColNo(-1),
+    _objIdColNo(-1),
     _logicalPart(-1),
     _physChunking(-1) {
 }
@@ -171,26 +193,32 @@ qMaster::MetadataCache::TableInfo::TableInfo() :
   * which use spherical partitioning mode.
   *
   * @param overlap used for this table (overwrites overlaps from dbInfo)
-  * @param phiCol name of the phi col (right ascention)
-  * @param thetaCol name of the theta col (declination)
-  * @param phiColNo position of the phi col in the table, counting from zero
-  * @param thetaColNo position of the theta col in the table, counting from zero
+  * @param phiCol name of the phi column (right ascention)
+  * @param thetaCol name of the theta column (declination)
+  * @param objIdCol name of the objectId column
+  * @param phiColNo position of the phi column in the table, counting from zero
+  * @param thetaColNo position of the theta column in the table, counting from zero
+  * @param objIdColNo position of the objectId column in the table, counting from zero
   * @param logicalPart definition how the table is partitioned logically
   * @param physChunking definition how the table is chunked physically
   */
 qMaster::MetadataCache::TableInfo::TableInfo(float overlap, 
                                              std::string const& phiCol,
                                              std::string const& thetaCol,
+                                             std::string const& objIdCol,
                                              int phiColNo,
                                              int thetaColNo,
+                                             int objIdColNo,
                                              int logicalPart,
                                              int physChunking) :
     _isPartitioned(true),
     _overlap(overlap),
     _phiCol(phiCol),
     _thetaCol(thetaCol),
+    _objIdCol(objIdCol),
     _phiColNo(phiColNo),
     _thetaColNo(thetaColNo),
+    _objIdColNo(objIdColNo),
     _logicalPart(logicalPart),
     _physChunking(physChunking) {
 }
@@ -262,24 +290,28 @@ qMaster::MetadataCache::addTbInfoNonPartitioned(std::string const& dbName,
   * @param dbName database name
   * @param tableName table name
   * @param overlap used for this table (overwrites overlaps from dbInfo)
-  * @param phiCol name of the phi col (right ascention)
-  * @param thetaCol name of the theta col (declination)
-  * @param phiColNo position of the phi col in the table, counting from zero
-  * @param thetaColNo position of the theta col in the table, counting from zero
+  * @param phiCol name of the phi column (right ascention)
+  * @param thetaCol name of the theta column (declination)
+  * @param objIdCol name of the objId column
+  * @param phiColNo position of the phi column in the table, counting from zero
+  * @param thetaColNo position of the theta column in the table, counting from zero
+  * @param objIdColNo position of the objId column in the table, counting from zero
   * @param logicalPart definition how the table is partitioned logically
   * @param physChunking definition how the table is chunked physically
   *
   * @return returns status (0 on success)
   */
 int
-qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName, 
+qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
                                                    std::string const& tbName,
-                                                   float overlap, 
-                                                   std::string const& phiCol, 
-                                                   std::string const& thetaCol, 
-                                                   int phiColNo, 
-                                                   int thetaColNo, 
-                                                   int logicalPart, 
+                                                   float overlap,
+                                                   std::string const& phiCol,
+                                                   std::string const& thetaCol,
+                                                   std::string const& objIdCol,
+                                                   int phiColNo,
+                                                   int thetaColNo,
+                                                   int objIdColNo,
+                                                   int logicalPart,
                                                    int physChunking) {
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::iterator itr = _dbs.find(dbName);
@@ -287,8 +319,8 @@ qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
         return MetadataCache::STATUS_ERR_DB_DOES_NOT_EXIST;
     }
     const qMaster::MetadataCache::TableInfo tInfo(
-                          overlap, phiCol, thetaCol, phiColNo, 
-                          thetaColNo, logicalPart, physChunking);
+                          overlap, phiCol, thetaCol, objIdCol, phiColNo, 
+                          thetaColNo, objIdColNo, logicalPart, physChunking);
     return itr->second.addTable(tbName, tInfo);
 }
 
@@ -408,6 +440,28 @@ qMaster::MetadataCache::getSubChunkedTables(std::string const& dbName) {
     return itr->second.getSubChunkedTables();
 }
 
+/** Gets names of partition columns (ra, decl, objectId) for a given database/table.
+  *
+  * @param dbName database name
+  * @param tableName table name
+  *
+  * @return returns a 3-element vector with column names: ra, decl, objectId
+  */
+std::vector<std::string>
+qMaster::MetadataCache::getPartitionCols(std::string const& dbName,
+                                         std::string const& tableName) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
+    if (itr == _dbs.end()) {
+        std::vector<std::string> v;
+        v.push_back("");
+        v.push_back("");
+        v.push_back("");
+        return v;
+    }
+    return itr->second.getPartitionCols(tableName);
+}
+
 /** Prints the contents of the qserv metadata cache. This is
   * handy for debugging.
   */
@@ -439,7 +493,7 @@ qMaster::operator<<(std::ostream &s, const qMaster::MetadataCache::DbInfo &dbInf
     } else {
         s << "is not partitioned.\n";
     }
-    s << "  Tables:";
+    s << "  Tables:\n";
     std::map<std::string, qMaster::MetadataCache::TableInfo>::const_iterator itr;
     for (itr=dbInfo._tables.begin() ; itr!=dbInfo._tables.end(); ++itr) {
         s << "   " << itr->first << ": " << itr->second << "\n";
@@ -460,8 +514,10 @@ qMaster::operator<<(std::ostream &s, const qMaster::MetadataCache::TableInfo &ta
         s << "is partitioned (overlap=" << tableInfo.getOverlap()
           << ", phiCol=" << tableInfo.getPhiCol()
           << ", thetaCol=" << tableInfo.getThetaCol()
+          << ", objIdCol=" << tableInfo.getObjIdCol()
           << ", phiColNo=" << tableInfo.getPhiColNo()
           << ", thetaColNo=" << tableInfo.getThetaColNo()
+          << ", objIdColNo=" << tableInfo.getObjIdColNo()
           << ", logPart=" << tableInfo.getLogicalPart()
           << ", physChunking=" << tableInfo.getPhysChunking() << ").\n";
     } else {

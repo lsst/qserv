@@ -144,10 +144,12 @@ qMaster::addTbInfoNonPartitioned(int metaSessionId,
   * @param dbName database name
   * @param tableName table name
   * @param overlap used for this table (overwrites overlaps from dbInfo)
-  * @param phiCol name of the phi col (right ascention)
-  * @param thetaCol name of the theta col (declination)
-  * @param phiColNo position of the phi col in the table, counting from zero
-  * @param thetaColNo position of the theta col in the table, counting from zero
+  * @param phiCol name of the phi column (right ascention)
+  * @param thetaCol name of the theta column (declination)
+  * @param objIdCol name of the objId column
+  * @param phiColNo position of the phi column in the table, counting from zero
+  * @param thetaColNo position of the theta column in the table, counting from zero
+  * @param objIdColNo position of the objId column in the table, counting from zero
   * @param logicalPart definition how the table is partitioned logically
   * @param physChunking definition how the table is chunked physically
   *
@@ -160,13 +162,15 @@ qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
                                     float overlap,
                                     const char* phiCol,
                                     const char* thetaCol,
+                                    const char* objIdCol,
                                     int phiColNo,
                                     int thetaColNo,
+                                    int objIdColNo,
                                     int logicalPart,
                                     int physChunking) {
     return getMetadataCache(metaSessionId)->addTbInfoPartitionedSphBox(
-                 dbName, tbName, overlap, phiCol, thetaCol, phiColNo, 
-                 thetaColNo, logicalPart, physChunking);
+                 dbName, tbName, overlap, phiCol, thetaCol, objIdCol,
+                 phiColNo, thetaColNo, objIdColNo, logicalPart, physChunking);
 }
 
 /** Prints the contents of the qserv metadata cache. This is

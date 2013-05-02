@@ -194,6 +194,7 @@ class MetadataCacheIface:
         global _defaultMetadataCacheSessionId
         if _defaultMetadataCacheSessionId is None:
             _defaultMetadataCacheSessionId = self.newSession()
+            self.printSession(_defaultMetadataCacheSessionId)
         return _defaultMetadataCacheSessionId
 
     def newSession(self):
