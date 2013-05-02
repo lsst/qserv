@@ -29,7 +29,6 @@
 // OrderByHandler
 // FromHandler 
 // SpatialTableNotifier
-// PartitionTupleProcessor
 // HintTupleProcessor
 
 
@@ -209,55 +208,6 @@ public:
     }
 private:
     qMaster::SqlParseRunner& _spr;
-};
-
-/// PartitionTupleProcessor : Function object that ingests config
-/// entries from table.partitionCols.
-/// e.g. table.partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
-/// First, split by ";", and then this object imports the resulting entries.
-/// 
-class lsst::qserv::master::SqlParseRunner::PartitionTupleProcessor {
-public:
-    PartitionTupleProcessor(SqlParseRunner& spr) : _spr(spr) {}
-    void operator()(std::string const& s) {
-        vec.clear();
-        tokenizeInto(s, ":", vec, passFunc<std::string>());
-        if(vec.size() != 2) {
-            if(vec.size() == 0) {
-                return; // Nothing to do.
-            }
-            std::cout << "Error, badly formed partition col spec: " << s 
-                      << std::endl;
-            return;
-        }
-        std::string name = vec[0];
-        columns.clear();
-        tokenizeInto(vec[1], ",", columns, passFunc<std::string>());
-        StringMap sm;
-        sm["raCol"] = columns[0];
-        sm["declCol"] = columns[1];
-        sm["objectIdCol"] = columns[2];
-        _spr.updateTableConfig(name, sm);
-        std::cout << "***** original  for " << name << ": " << sm["raCol"] 
-                  << ", " << sm["declCol"] << ", "<< sm["objectIdCol"] << std::endl;
-
-        // demo how to do it via the metadata cache
-        std::string dbName = "LSST";
-        std::string tableName = name;
-        std::vector<std::string> v = 
-            getMetadataCache(_spr._metaCacheId)->getPartitionCols(dbName, name);
-        sm["raCol"] = v[0];
-        sm["declCol"] = v[1];
-        sm["objectIdCol"] = v[2];
-        std::cout << "***** qms-based for " << name << ": " << sm["raCol"] 
-                  << ", " << sm["declCol"] << ", "<< sm["objectIdCol"] << std::endl;
-    }
-    
-    private:
-
-    std::vector<std::string> vec;    
-    std::vector<std::string> columns;
-    SqlParseRunner& _spr;
 };
 
 /// HintTupleProcessor: Function object that ingests config
@@ -528,8 +478,20 @@ void qMaster::SqlParseRunner::_readConfig(qMaster::StringMap const& m) {
 
     _templater.setup(whiteList, defaultDb, _metaCacheId);
     _tableNamer->setDefaultDb(defaultDb);
-    tokens.clear();
-    tokenizeInto(getFromMap(m,"table.partitioncols", blank), ";", tokens,
-                 passFunc<std::string>());
-    for_each(tokens.begin(), tokens.end(), PartitionTupleProcessor(*this));
+    std::vector<std::string> allowedDbs = getMetadataCache(_metaCacheId)->getAllowedDbs();
+    std::vector<std::string>::const_iterator allowedDb;
+    for (allowedDb=allowedDbs.begin() ; allowedDb!=allowedDbs.end() ; ++allowedDb) {
+        std::vector<std::string> tables = getMetadataCache(_metaCacheId)->getChunkedTables(*allowedDb);
+        std::vector<std::string>::const_iterator table;
+        for (table=tables.begin() ; table!=tables.end() ; ++table) {
+            std::vector<std::string> v = getMetadataCache(_metaCacheId)->getPartitionCols(*allowedDb, *table);
+            StringMap sm;
+            sm["raCol"] = v[0];
+            sm["declCol"] = v[1];
+            sm["objectIdCol"] = v[2];
+            //std::cout << "***** qms-based for " << *allowedDb << "." << *table << ": " << sm["raCol"] 
+            //          << ", " << sm["declCol"] << ", "<< sm["objectIdCol"] << std::endl;
+            updateTableConfig(*table, sm);
+        }
+    }
 }

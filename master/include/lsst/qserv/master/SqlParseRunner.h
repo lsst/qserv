@@ -122,7 +122,6 @@ private:
     }
     
     // Table partition handling
-    class PartitionTupleProcessor;
     friend class ParititonTupleProcessor;
     // Query hint plumbing
     class HintTupleProcessor;
