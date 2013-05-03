@@ -12,7 +12,7 @@ xrootd_user = qsmaster
 ### chunked=Source        # this is now handled through qms
 ### subchunked=Object     # ditto
 ### alloweddbs=LSST,Test1 # ditto
-partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
+### partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId # ditto
 
 [resultdb]
 passwd = 
