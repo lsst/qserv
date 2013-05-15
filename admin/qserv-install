@@ -220,7 +220,7 @@ sub check_and_install_qserv {
 	#start mysql server and install init database
 	chdir "$install_dir";
 	print "Starting mysql server.\n";
-	system("$install_dir/bin/mysqld_safe &");
+	system("$install_dir/bin/mysqld_safe --defaults-file=$install_dir/etc/my.cnf &");
 	sleep 5;
 	print "Setting up init databases.\n";
 	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservResult;\"");
@@ -337,11 +337,11 @@ sub init_mysql_db {
 	system("killall mysqld mysqld_safe");	
         run_command("rm -rf $mysql_data_dir/*");
 	
-	run_command("mysql_install_db --user=$prod_user");
+	run_command("mysql_install_db --defaults-file=$install_dir/etc/my.cnf --user=$prod_user");
 	
 	if ( length($db_pass) > 0) {
 		print "Starting mysql server.\n";
-		system("$install_dir/bin/mysqld_safe &");
+		system("$install_dir/bin/mysqld_safe --defaults-file=$install_dir/etc/my.cnf &");
 		sleep 5;
 		my $quiet=1;	
 		print ("Changing mysql root password.");

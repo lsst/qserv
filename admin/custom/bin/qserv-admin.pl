@@ -332,7 +332,7 @@ sub start_proxy {
 
 sub start_mysqld {
 
-	system("$install_dir/bin/mysqld_safe &");
+	system("$install_dir/bin/mysqld_safe --defaults-file=$install_dir/etc/my.cnf &");
 
 }
 
