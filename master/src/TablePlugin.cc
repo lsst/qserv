@@ -33,7 +33,6 @@
 #include "lsst/qserv/master/FuncExpr.h"
 #include "lsst/qserv/master/SphericalBoxStrategy.h"
 #include "lsst/qserv/master/TableRefChecker.h"
-#include "lsst/qserv/master/TableNamer.h"
 #include "lsst/qserv/master/QueryMapping.h"
 #include "lsst/qserv/master/QueryContext.h"
 #include "lsst/qserv/master/ValueFactor.h"

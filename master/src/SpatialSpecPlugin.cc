@@ -38,12 +38,6 @@
 #include "lsst/qserv/master/FuncExpr.h"
 #include "lsst/qserv/master/WhereClause.h"
 #include "lsst/qserv/master/ValueFactor.h"
-#if 0
-#include "lsst/qserv/master/SelectList.h"
-#include "lsst/qserv/master/SphericalBoxStrategy.h"
-#include "lsst/qserv/master/TableNamer.h"
-#include "lsst/qserv/master/QueryMapping.h"
-#endif
 
 namespace qMaster=lsst::qserv::master;
 

@@ -66,15 +66,8 @@ class PartitioningConfig:
             self.allowedDbs.update(adb.split(","))
         except:
             print "Error: Bad or missing chunked/subchunked spec."
-        self._updateMap()
         self._updateMeta()
         pass
-
-    def getMapRef(self, chunk, subchunk):
-        """@return a map reference suitable for sql parsing and substitution.
-        For convenience.
-        """
-        return self.chunkMapping.getMapReference(chunk, subchunk)
 
     def _updateMeta(self):
         for db in self.allowedDbs:
@@ -82,10 +75,6 @@ class PartitioningConfig:
             map(lambda t: self.chunkMeta.add(db, t, 2), self.subchunked)
         pass
 
-    def _updateMap(self):
-        map(self.chunkMapping.addChunkKey, self.chunked)
-        map(self.chunkMapping.addSubChunkKey, self.subchunked)
-        pass
 
 ########################################################################
 

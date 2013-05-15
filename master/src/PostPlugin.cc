@@ -28,15 +28,6 @@
 #include "lsst/qserv/master/QueryPlugin.h"
 #include "lsst/qserv/master/SelectList.h"
 #include "lsst/qserv/master/SelectStmt.h"
-#if 0
-#include "lsst/qserv/master/FromList.h"
-#include "lsst/qserv/master/WhereClause.h"
-#include "lsst/qserv/master/FuncExpr.h"
-#include "lsst/qserv/master/SphericalBoxStrategy.h"
-#include "lsst/qserv/master/TableRefChecker.h"
-#include "lsst/qserv/master/TableNamer.h"
-#include "lsst/qserv/master/QueryMapping.h"
-#endif
 namespace qMaster=lsst::qserv::master;
 
 namespace { // File-scope helpers

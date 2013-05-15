@@ -1,6 +1,6 @@
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
+# Copyright 2008-2013 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -96,7 +96,6 @@ from lsst.qserv.master import SUCCESS as QueryState_SUCCESS
 from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
 from lsst.qserv.master import ChunkMeta
-from lsst.qserv.master import ChunkMapping, SqlSubstitution
 # Merger
 from lsst.qserv.master import TableMerger, TableMergerError, TableMergerConfig
 from lsst.qserv.master import configureSessionMerger, getSessionResultName
