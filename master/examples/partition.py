@@ -1807,12 +1807,12 @@ def addCsvOpts(parser):
         See http://docs.python.org/library/csv.html#csv-fmt-params for
         details."""))
     fmt.add_option(
-        "-D", "--delimiter", type="char", dest="delimiter", default=",",
+        "-D", "--delimiter", type="string", dest="delimiter", default=",",
         help=dedent("""\
         One character string used to separate fields in the
         input TSV, CSV files. The default is %default."""))
     fmt.add_option(
-        "-E", "--delimiter-out", type="char", dest="delimiter_out", default=",",
+        "-E", "--delimiter-out", type="string", dest="delimiter_out", default=",",
         help=dedent("""\
         One character string used to separate fields in the
         output CSV files. The default is %default."""))

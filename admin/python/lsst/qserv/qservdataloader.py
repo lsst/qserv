@@ -40,17 +40,23 @@ class QservDataLoader():
             self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
 
     def loadPartitionedTable(self, table, data_filename):
-        ''' Partition and load Qserv data like Source and Object
+        ''' Duplicate, partition and load Qserv data like Source and Object
         '''
 
         # TODO : create index and alter table with chunkId and subChunkId
         # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
 
-        partition_dirname = self.partitionData(table,data_filename)
+        self.logger.info("-----\nQserv Partitioning / Loading data for table  '%s' -----\n" % table)
+        
+        if ('Duplication' in self.dataConfig) and self.dataConfig['Duplication']:
+            self.logger.info("-----\nQserv Duplicating data for table  '%s' -----\n" % table)
+            partition_dirname = self.duplicateAndPartitionData(table, data_filename)
+        else:
+            partition_dirname = self.partitionData(table, data_filename)
         
         self.loadPartitionedData(partition_dirname,table)
 
-        self.logger.info("-----\nQserv mono-node database filled with partitionned '%s' data.-----\n" % table)
+        self.logger.info("-----\nQserv mono-node database filled with partitionned '%s' data. -----\n" % table)
 
 
     def configureXrootdQservMetaEmptyChunk(self):
@@ -143,6 +149,56 @@ class QservDataLoader():
         os.makedirs(xrd_result_dir)
 
 
+    def duplicateAndPartitionData(self, table, data_filename):
+
+        partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
+        partition_dirname = os.path.join(self._out_dirname,table+"_partition")
+        
+        if os.path.exists(partition_dirname):
+            shutil.rmtree(partition_dirname)
+        os.makedirs(partition_dirname)
+        
+        schema_filename = os.path.join(self.dataConfig['dataDirName'], table + self.dataConfig['schema-extension'])
+        data_filename = os.path.join(self.dataConfig['dataDirName'], table + self.dataConfig['data-extension'])
+
+        data_filename_cleanup = False
+        data_filename_zipped = data_filename + self.dataConfig['zip-extension']
+        if (not os.path.exists(data_filename)) and os.path.exists(data_filename_zipped):
+            commons.run_command(["gunzip", data_filename_zipped])
+            data_filename_cleanup = True
+        if not os.path.exists(data_filename):
+            raise Exception, "File: %s not found" % data_filename
+
+        chunker_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "makeChunk.py")
+         
+        chunker_cmd = [
+            self.config['bin']['python'],
+            chunker_scriptname,
+            '--output-dir', partition_dirname,
+            '--delimiter', self.dataConfig['delimiter'],
+            '-S', str(self.dataConfig['nbStripes']),
+            '-s', str(self.dataConfig['nbSubstripes']),
+            '--dupe',
+            '--node-count', str(self.dataConfig['nbNodes']),
+            '--node=' + str(self.dataConfig['currentNodeID']),
+            '--chunk-prefix=' + table,
+            '--theta-name=' + self.dataConfig[table]['ra-fieldname'],
+            '--phi-name=' + self.dataConfig[table]['decl-fieldname'],
+            '--schema', schema_filename,
+            data_filename
+            ]
+
+        out = commons.run_command(chunker_cmd)
+
+        self.logger.info("Working in DB : %s.  LSST %s data duplicated and partitioned : \n %s"
+                % (self._dbName, table,out))
+
+        if data_filename_cleanup:
+            commons.run_command(["gzip", data_filename])
+        
+        return partition_dirname
+    
+        
     def partitionData(self,table, data_filename):
         # partition data          
         
