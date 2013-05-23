@@ -180,12 +180,14 @@ class SqlActions(object):
             (components[0], components[1]))
         return self.cursor.fetchone()[0]
 
-    def loadChunk(self, table, prototype, path, npad = None, index = False):
+    def loadChunk(self, table, prototype, path, npad = None, index = False, dropPrimaryKey = False ):
         if table == prototype:
             raise RuntimeError(
                 "Chunk and prototype tables have identical names: %s" % table)
         self.dropTable(table)
         self._exec("CREATE TABLE %s LIKE %s ;" % (table, prototype))
+        if (dropPrimaryKey):
+            self._exec("ALTER TABLE %s DROP primary key;" % (table))
         self._exec("""
             LOAD DATA INFILE '%s'
             INTO TABLE %s
@@ -408,6 +410,7 @@ class Params(object):
         self.partFile = opts.partFile
         self.test = opts.test
         self.verbose = opts.verbose
+        self.dropPrimaryKeyTable = opts.dropPrimaryKeyTable
 
     def __eq__(self, other):
         if isinstance(other, Params):
@@ -553,6 +556,7 @@ def loadWorker(args):
     params, chunks = args
     act = SqlActions(params.host, params.port, params.user, params.password)
     partTable = None
+    
     try:
         act.createDatabase(params.database)
         prototype = params.database + '.' + params.chunkPrefix + "Prototype"
@@ -567,7 +571,9 @@ def loadWorker(args):
         for files in chunks:
             for f in files:
                 table = tableFromPath(f, params)
-                act.loadChunk(table, prototype, f, params.npad, True)
+                # Check if params.dropPrimaryKeyTable is non empty and if table contains it:
+                dropPrimaryKey = params.dropPrimaryKeyTable and (params.dropPrimaryKeyTable in table)
+                act.loadChunk(table, prototype, f, params.npad, True, dropPrimaryKey)
             if params.test:
                 pfx = params.database + '.' + params.chunkPrefix
                 chunkId = chunkIdFromPath(files[0])
@@ -648,6 +654,12 @@ def main():
         "-c", "--clean", dest="clean", help=dedent("""\
         Table name prefix identifying the chunk tables, partition map,
         and prototype tables to drop; this is done prior to loading."""))
+    parser.add_option(
+        "--drop-primary-key-table",
+        dest="dropPrimaryKeyTable",
+        type="string",
+        default="",
+        help=dedent(""" Drop primary key."""))
     parser.add_option(
         "-D", "--drop-database", dest="dropDatabase", action="store_true",
         help=dedent("""\
