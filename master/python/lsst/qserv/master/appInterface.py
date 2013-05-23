@@ -48,7 +48,6 @@ class AppInterface:
                                                     'func_doc'), 
                                   okname)
         self.reactor = reactor
-        self.pmap = spatial.makePmap()
         self.actions = {} 
         # set id counter to seconds since the epoch, mod 1 year.
         self._idCounter = int(time.time() % (60*60*24*365))
@@ -76,24 +75,18 @@ class AppInterface:
 
     def queryNow(self, q, hints):
         """Issue a query. q=querystring, h=hint list
-        @return query results
-        This executes the query, waits for completion, and returns results."""
-        a = app.HintedQueryAction(q, hints, self.pmap)
-        if not a.getIsValid():
-            return "Error during query parse step." + a.getError()
-        a.invoke()
-        r = a.getResult()
-        return app.getResultTable(r)
+        @return query result table name
+        This executes the query, waits for completion, and returns results.
+        (broken)"""
+        raise StandardError("Unimplemented")
 
     def submitQuery(self, query, conditions):
         return self.submitQueryWithLock(query, conditions)
 
     def submitQueryPlain(self, query, conditions):
-        """Simplified mysqlproxy version.  returns table name."""
-        a = app.HintedQueryAction(query, conditions, self.pmap)
-        a.invoke()        
-        r = a.getResult()
-        return r
+        """Simplified mysqlproxy version.  returns table name.
+        (broken)"""
+        raise StandardError("Unimplemented")
 
     def submitQueryWithLock(self, query, conditions):
         """Simplified mysqlproxy version.  
@@ -113,9 +106,7 @@ class AppInterface:
         if not lock.lock():
             return ("error", "error",
                     "error locking result, check qserv/db config.")
-        # a = app.HintedQueryAction(query, conditions, self.pmap, 
-        #                           lambda e: lock.addError(e), resultName)
-        a = app.InbandQueryAction(query, conditions, self.pmap, 
+        a = app.InbandQueryAction(query, conditions, 
                                   lambda e: lock.addError(e), resultName)
         if a.getIsValid():
             self._callWithThread(a.invoke)
@@ -128,11 +119,14 @@ class AppInterface:
     def query(self, q, hints):
         """Issue a query, and return a taskId that can be used for tracking.
         taskId is a 16 byte string, but should be treated as an 
-        opaque identifier."""
+        opaque identifier.
+        (broken)
+        """
         # FIXME: Need to fix task tracker.
         #taskId = self.tracker.track("myquery", a, q)
         #stats = time.qServQueryTimer[time.qServRunningName]
         #stats["appInvokeStart"] = time.time()
+        raise StandardError("unimplemented")
         a = app.HintedQueryAction(q, hints, self.pmap)
         key = a.queryHash
         self.actions[key] = a

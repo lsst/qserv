@@ -32,7 +32,6 @@
 #include "lsst/qserv/master/WhereClause.h"
 #include "lsst/qserv/master/FuncExpr.h"
 #include "lsst/qserv/master/SphericalBoxStrategy.h"
-#include "lsst/qserv/master/TableRefChecker.h"
 #include "lsst/qserv/master/QueryMapping.h"
 #include "lsst/qserv/master/QueryContext.h"
 #include "lsst/qserv/master/ValueFactor.h"
@@ -293,6 +292,9 @@ TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     addDbContext adc(context);
     std::for_each(tList.begin(), tList.end(), adc);
     _dominantDb = adc.dominantDb;
+    if(_dominantDb.empty()) {
+        _dominantDb = context.defaultDb;
+    }
     
     // Apply function using the iterator...
     //wClause.walk(fixExprAlias(reverseAlias));
@@ -332,8 +334,7 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
     // The QueryMapping abstraction provides a symbolic mapping so
     // that a later query generation stage can generate queries from
     // templatable queries a list of partition tuples.
-    TableRefChecker trc; // Lookup oracle for table characteristics
-    SphericalBoxStrategy s(fList, trc, context);
+    SphericalBoxStrategy s(fList, context);
     QueryMapping::Ptr qm = s.getMapping();
     s.patchFromList(fList);
     // std::cout << "post-patched fromlist " << fList.getGenerated() << std::endl;

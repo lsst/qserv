@@ -56,6 +56,7 @@ from string import Template
 
 # Package imports
 import metadata
+import spatial
 import lsst.qserv.master.config
 from lsst.qserv.master import geometry
 from lsst.qserv.master.geometry import SphericalBox
@@ -63,7 +64,6 @@ from lsst.qserv.master.geometry import SphericalConvexPolygon, convexHull
 from lsst.qserv.master.db import TaskDb as Persistence
 from lsst.qserv.master.db import Db
 from lsst.qserv.master import protocol
-from lsst.qserv.master.spatial import getSpatialConfig, getRegionFactory
 
 from lsst.qserv.meta.status import Status, QmsException
 from lsst.qserv.meta.client import Client
@@ -351,7 +351,9 @@ class InbandQueryAction:
     from HintedQueryAction, but uses different abstractions
     underneath.
     """
-    def __init__(self, query, hints, pmap, reportError, resultName=""):
+    def __init__(self, query, hints, reportError, resultName=""):
+        ## Fields with leading underscores are internal-only
+        ## Those without leading underscores may be read by clients
         self.queryStr = query.strip()# Pull trailing whitespace
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
@@ -363,7 +365,6 @@ class InbandQueryAction:
         self.isValid = False
 
         self.hints = hints
-        self.pmap = pmap
 
         self._importQconfig()
         self._invokeLock = threading.Semaphore()
@@ -371,7 +372,7 @@ class InbandQueryAction:
         self._resultName = resultName
         self._reportError = reportError
         self.isValid = True
-        self._metaCacheSession = MetadataCacheIface().getDefaultSessionId()
+        self.metaCacheSession = MetadataCacheIface().getDefaultSessionId()
         pass
 
     def invoke(self):
@@ -426,7 +427,7 @@ class InbandQueryAction:
 
     def _evaluateHints(self, hints, pmap):
         """Modify self.fullSky and self.partitionCoverage according to 
-        spatial hints. This is copied from older parser model"""
+        spatial hints. This is copied from older parser model."""
         self._isFullSky = True
         self._intersectIter = pmap
         if hints:
@@ -461,10 +462,14 @@ class InbandQueryAction:
         pass
 
     def _applyConstraints(self):
+        """Extract constraints from parsed query(C++), re-marshall values,
+        call evaluateHints, and add the chunkIds into the query(C++) """
         # Retrieve constraints as (name, [param1,param2,param3,...])        
         self.constraints = getConstraints(self.sessionId)
         #print "Getting constraints", self.constraints, "size=",self.constraints.size()
-        # Apply constraints
+        dominantDb = getDominantDb(self.sessionId)
+        self.pmap = spatial.makePmap(dominantDb, self.metaCacheSession)
+        
         def iterateConstraints(constraintVec):
             for i in range(constraintVec.size()):
                 yield constraintVec.get(i)
@@ -475,7 +480,6 @@ class InbandQueryAction:
             self.hints[constraint.name] = params
             pass 
         self._evaluateHints(self.hints, self.pmap)
-        dominantDb = getDominantDb(self.sessionId)
         self._emptyChunks = metadata.getEmptyChunks(dominantDb)
         count = 0
         chunkLimit = self.chunkLimit
@@ -543,10 +547,11 @@ class InbandQueryAction:
         cfg["query.hints"] = ";".join(
             map(lambda (k,v): k + "," + v, self.hints.items()))
         cfg["table.result"] = self._resultName
+        cfg["runtime.metaCacheSession"] = str(self.metaCacheSession)
         return cfg
 
     def _computeRegions(self, hints):
-        r = getRegionFactory()
+        r = spatial.getRegionFactory()
         regs = r.getRegionFromHint(hints)
         if regs != None:
             return regs

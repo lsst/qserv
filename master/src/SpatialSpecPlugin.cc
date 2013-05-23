@@ -29,15 +29,15 @@
 #include <deque>
 #include <string>
 
-#include "lsst/qserv/master/QueryPlugin.h"
-#include "lsst/qserv/master/QueryContext.h"
-#include "lsst/qserv/master/SelectStmt.h"
-#include "lsst/qserv/master/TableRefChecker.h"
+#include "lsst/qserv/master/QueryPlugin.h" // Parent class
 #include "lsst/qserv/master/ColumnRef.h"
 #include "lsst/qserv/master/FromList.h"
 #include "lsst/qserv/master/FuncExpr.h"
-#include "lsst/qserv/master/WhereClause.h"
+#include "lsst/qserv/master/QueryContext.h"
+#include "lsst/qserv/master/MetadataCache.h" 
+#include "lsst/qserv/master/SelectStmt.h"
 #include "lsst/qserv/master/ValueFactor.h"
+#include "lsst/qserv/master/WhereClause.h"
 
 namespace qMaster=lsst::qserv::master;
 
@@ -113,8 +113,8 @@ typedef std::deque<SpatialEntry> SpatialEntries;
 class getTable {
 public:
     
-    explicit getTable(TableRefChecker& trc, SpatialEntries& entries) 
-        : _tableRefChecker(trc), 
+    explicit getTable(MetadataCache& metadata, SpatialEntries& entries) 
+        : _metadata(metadata), 
           _entries(entries) {}
     void operator()(qMaster::TableRefN::Ptr t) {
         assert(t.get());
@@ -122,7 +122,7 @@ public:
         std::string table = t->getTable();
         
         // Is table chunked?
-        if(!_tableRefChecker.isChunked(db, table)) {
+        if(!_metadata.checkIfTableIsChunked(db, table)) {
             return; // Do nothing for non-chunked tables            
         }
         // Now save an entry for WHERE clause processing.
@@ -130,12 +130,13 @@ public:
         assert(!alias.empty()); // For now, only accept aliased
                                 // tablerefs (should have been done
                                 // earlier)
+        std::vector<std::string> pCols = _metadata.getPartitionCols(db, table);
         SpatialEntry se(alias,
-                        _tableRefChecker.getSpatialColumns(db, table),
-                        _tableRefChecker.getKeyColumn(db,table));
+                        StringPair(pCols[0], pCols[1]),
+                        pCols[2]);
         _entries.push_back(se);
     }
-    TableRefChecker& _tableRefChecker;
+    MetadataCache& _metadata;
     SpatialEntries& _entries;
 };
 ////////////////////////////////////////////////////////////////////////
@@ -306,14 +307,12 @@ SpatialSpecPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     // rewrite in the context of whatever chunked tables exist in the
     // FROM list.
 
-    TableRefChecker trc; // Lookup oracle for table characteristics
-                         // (should share with others)
- 
     // First, get a list of the chunked tables.
     FromList& fList = stmt.getFromList();    
     TableRefnList& tList = fList.getTableRefnList();
     SpatialEntries entries;
-    getTable gt(trc, entries);
+    assert(context.metadata);
+    getTable gt(*context.metadata, entries);
     std::for_each(tList.begin(), tList.end(), gt);
     
     if(!stmt.hasWhereClause()) { return; }

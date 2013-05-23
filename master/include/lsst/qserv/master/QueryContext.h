@@ -34,11 +34,13 @@
 
 namespace lsst { namespace qserv { namespace master {
 class QsRestrictor;
+class MetadataCache;
 
 class QueryContext {
 public:
     typedef std::list<boost::shared_ptr<QsRestrictor> > RestrList;
 
+    MetadataCache* metadata;
     std::string defaultDb;
     std::string dominantDb;
     std::string anonymousTable;

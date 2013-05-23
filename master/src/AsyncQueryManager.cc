@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -341,6 +341,16 @@ void qMaster::AsyncQueryManager::_destroyPool() {
     _writeQueue.reset();
 }
 
+inline int coerceInt(std::string const& s, int defaultValue) {
+    try {
+        std::istringstream ss(s);
+        int output;
+        ss >> output;
+        return output;
+    } catch (...) {
+        return defaultValue;
+    }
+}
 inline std::string getConfigElement(std::map<std::string, 
                                              std::string> const& cfg,
                                     std::string const& key,
@@ -377,9 +387,13 @@ void qMaster::AsyncQueryManager::_readConfig(std::map<std::string,
         cfg, "resultdb.db", 
         "Error, resultdb.db not found. Using qservResult.",
         "qservResult");
-    
+    std::string metaStr =  getConfigElement(
+        cfg, "runtime.metaCacheSession", 
+        "No runtime.metaCacheSession. using default.",
+        "");
+    int metaCacheSession = coerceInt(metaStr, -1);
     // Setup session
-    _qSession.reset(new QuerySession());
+    _qSession.reset(new QuerySession(metaCacheSession));
 }
 
 void qMaster::AsyncQueryManager::_addNewResult(PacIterPtr pacIter,

@@ -31,9 +31,17 @@
 #ifndef LSST_QSERV_META_IFACEMETA_H
 #define LSST_QSERV_META_IFACEMETA_H
 
+#include <boost/shared_ptr.hpp>
+
 namespace lsst {
 namespace qserv {
 namespace master {
+class MetadataCache;
+
+struct DbStriping {
+    int stripes;
+    int subStripes;
+};
 
 int newMetadataSession();
 void discardMetadataSession(int);
@@ -43,6 +51,9 @@ int addTbInfoNonPartitioned(int, const char*, const char*);
 int addTbInfoPartitionedSphBox(int, const char*, const char*, float, 
                                const char*, const char*, const char*, int, int, int, int, int);
 void printMetadataCache(int);
+
+boost::shared_ptr<MetadataCache> getMetadataCache(int);
+DbStriping getDbStriping(int metaSessionId, char const* dbName);
 }}}
 
 #endif // LSST_QSERV_META_IFACEMETA_H

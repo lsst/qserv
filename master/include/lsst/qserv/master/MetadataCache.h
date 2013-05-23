@@ -50,6 +50,7 @@ namespace master {
  */
 class MetadataCache {
 public:
+    class DbInfo; // Forward.
     enum { STATUS_OK = 0,
            STATUS_ERR_DB_DOES_NOT_EXIST = -1, 
            STATUS_ERR_DB_EXISTS = -2, 
@@ -74,6 +75,8 @@ public:
     std::vector<std::string> getChunkedTables(std::string const&);
     std::vector<std::string> getSubChunkedTables(std::string const&);
     std::vector<std::string> getPartitionCols(std::string const&, std::string const&);
+    long getChunkLevel(std::string const& db, std::string const& table);
+    DbInfo getDbInfo(std::string const& dbName);
 
     void printSelf();
 
@@ -129,6 +132,7 @@ public:
         bool checkIfContainsTable(std::string const&) const;
         bool checkIfTableIsChunked(std::string const&) const;
         bool checkIfTableIsSubChunked(std::string const&) const;
+        int getChunkLevel(std::string const& table) const;
         std::vector<std::string> getChunkedTables() const;
         std::vector<std::string> getSubChunkedTables() const;
         std::vector<std::string> getPartitionCols(std::string const&) const;

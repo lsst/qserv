@@ -22,11 +22,12 @@
 // 
 #include "lsst/qserv/master/SphericalBoxStrategy.h"
 #include <sstream>
+#include <deque>
 
 #include "lsst/qserv/master/FromList.h"
 #include "lsst/qserv/master/QueryMapping.h"
 #include "lsst/qserv/master/QueryContext.h"
-#include "lsst/qserv/master/TableRefChecker.h"
+#include "lsst/qserv/master//MetadataCache.h"
 
 #define CHUNKTAG "%CC%"
 #define SUBCHUNKTAG "%SS%"
@@ -131,26 +132,19 @@ int patchTuples(Tuples& tuples) {
 }
 class lookupTuple {
 public:
-    lookupTuple(TableRefChecker& checker_, bool& allowed_) 
-        : checker(checker_),
+    lookupTuple(MetadataCache& metadata_, bool& allowed_) 
+        : metadata(metadata_),
           allowed(allowed_)
         {}
 
     void operator()(Tuple& t) {
-        bool chunked = checker.isChunked(t.db, t.table);
-        if(chunked) {
-            if(checker.isSubChunked(t.db, t.table)) {
-                t.chunkLevel = 2;
-            } else {
-                t.chunkLevel = 1;
-            }
-        } else {
-            t.chunkLevel = 0;
+        t.allowed = metadata.checkIfContainsDb(t.db);
+        if(t.allowed) {
+            t.chunkLevel = metadata.getChunkLevel(t.db, t.table);
         }
-        t.allowed = checker.isDbAllowed(t.db);
         allowed = (allowed && t.allowed);
     }
-    TableRefChecker& checker;
+    MetadataCache& metadata;
     bool& allowed;
     
 };
@@ -203,14 +197,12 @@ private:
 // SphericalBoxStrategy public
 ////////////////////////////////////////////////////////////////////////
 SphericalBoxStrategy::SphericalBoxStrategy(FromList const& f, 
-                                           TableRefChecker& checker,
                                            QueryContext& context) 
-    : _checker(checker), 
-      _context(context), 
+    : _context(context), 
       _impl(new Impl()) {
     _import(const_cast<FromList&>(f)); // FIXME: should make a copy.
-    // FIXME
 }
+
 boost::shared_ptr<QueryMapping> SphericalBoxStrategy::getMapping() {
     assert(_impl.get());
     boost::shared_ptr<QueryMapping> qm(new QueryMapping());
@@ -306,7 +298,8 @@ void SphericalBoxStrategy::_import(FromList& f) {
     bool accessAllowed = true; 
     // Convenient to check db.table allowed state, but should be done
     // in non-partition-specific code. 
-    lookupTuple lookup(_checker, accessAllowed);
+    assert(_context.metadata);
+    lookupTuple lookup(*_context.metadata, accessAllowed);
     std::for_each(_impl->tuples.begin(), _impl->tuples.end(), lookup);
 #if 0
     std::cout << "Imported:::::";

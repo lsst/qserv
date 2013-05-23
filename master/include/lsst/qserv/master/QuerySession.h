@@ -79,7 +79,7 @@ private:
     typedef std::list<ChunkSpec> ChunkSpecList;
     typedef std::list<QueryPlugin::Ptr> PluginList;
 
-    QuerySession();
+    explicit QuerySession(int metaCacheSession);
 
     // Pipeline helpers
     void _initContext();
@@ -93,6 +93,7 @@ private:
     std::vector<std::string> _buildChunkQueries(ChunkSpec const& s);
 
     // Fields
+    int _metaCacheSession;
     std::string _original;
     boost::shared_ptr<QueryContext> _context;
     boost::shared_ptr<SelectStmt> _stmt;

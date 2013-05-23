@@ -180,3 +180,20 @@ void
 qMaster::printMetadataCache(int metaSessionId) {
     getMetadataCache(metaSessionId)->printSelf();
 }
+
+/** Retrieve the minimal striping info for a particular db.
+  *
+  * @param metaSessionId id of the metadata session
+  * @param dbName name of database
+  *
+  * @return returns DbStriping object (0-filled if not partitioned)
+  */
+qMaster::DbStriping
+qMaster::getDbStriping(int metaSessionId, char const* dbName) {
+    MetadataCache::DbInfo const dbInfo 
+        = getMetadataCache(metaSessionId)->getDbInfo(std::string(dbName));
+    DbStriping dbs;
+    dbs.stripes = dbInfo.getNStripes();
+    dbs.subStripes = dbInfo.getNSubStripes();
+    return dbs;
+}

@@ -37,6 +37,7 @@
 #include "lsst/qserv/master/SpatialSpecPlugin.h"
 #include "lsst/qserv/master/TablePlugin.h"
 #include "lsst/qserv/master/PostPlugin.h"
+#include "lsst/qserv/master/ifaceMeta.h" // Retrieve metadata object
 
 namespace qMaster=lsst::qserv::master;
 
@@ -59,7 +60,9 @@ void printConstraints(qMaster::ConstraintVector const& cv) {
 
 namespace lsst { namespace qserv  { namespace master {
 
-QuerySession::QuerySession() {} // do nothing.
+QuerySession::QuerySession(int metaCacheSession) 
+    : _metaCacheSession(metaCacheSession) {
+} 
 
 void QuerySession::setQuery(std::string const& q) {
     _original = q;
@@ -158,6 +161,9 @@ void QuerySession::_initContext() {
     _context->defaultDb = "LSST";
     _context->username = "default";
     _context->needsMerge = false;
+    MetadataCache* metadata = getMetadataCache(_metaCacheSession).get();
+    _context->metadata = metadata;
+    assert(metadata);
 }
 void QuerySession::_preparePlugins() {
     _plugins.reset(new PluginList);

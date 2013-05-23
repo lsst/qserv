@@ -51,7 +51,8 @@ void pauseReadTrans(int session);
 void resumeReadTrans(int session);
 
 // Parser model 3:
-void setupQuery(int session, std::string const& query,
+void setupQuery(int session, 
+                std::string const& query,
                 std::string const& resultTable); // new model.
 std::string const& getSessionError(int session);
 lsst::qserv::master::ConstraintVec getConstraints(int session);

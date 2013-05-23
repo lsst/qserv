@@ -25,16 +25,16 @@
 # needed to prepare the lower C++ code to rewrite the query properly.
 import lsst.qserv.master.config
 from lsst.qserv.master.geometry import SphericalBoxPartitionMap, SphericalBox
+from lsst.qserv.master import getDbStriping
 
-def makePmap():
-    c = lsst.qserv.master.config.config
-    stripes = c.getint("partitioner", "stripes")
-    substripes = c.getint("partitioner", "substripes")
-    if (stripes < 1) or (substripes < 1):
+def makePmap(dominantDb, metaCacheSession):
+    dbStriping = getDbStriping(metaCacheSession, dominantDb)
+    if (dbStriping.stripes < 1) or (dbStriping.subStripes < 1):
         msg = "Partitioner's stripes and substripes must be natural numbers."
         raise lsst.qserv.master.config.ConfigError(msg)
-    p = SphericalBoxPartitionMap(stripes, substripes) 
-    print "Using %d stripes and %d substripes." % (stripes, substripes)
+    p = SphericalBoxPartitionMap(dbStriping.stripes, dbStriping.subStripes) 
+    print "Using %d stripes and %d substripes." % (dbStriping.stripes, 
+                                                   dbStriping.subStripes)
     return p
 
 

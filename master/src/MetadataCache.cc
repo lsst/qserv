@@ -28,6 +28,8 @@
   * @brief Transient metadata structure for qserv. 
   *
   * @Author Jacek Becla, SLAC
+  *
+  * with small tweaks: Daniel L. Wang, SLAC
   */
 
 #include "lsst/qserv/master/MetadataCache.h"
@@ -122,6 +124,26 @@ qMaster::MetadataCache::DbInfo::checkIfTableIsSubChunked(std::string const& tabl
     return 2 == itr->second.getLogicalPart();
 }
 
+/** Retrieve the logical chunking level for a table
+  *
+  * @param tableName table name
+  *
+  * @return returns the chunk level (or -1 if table not found)
+  */
+int
+qMaster::MetadataCache::DbInfo::getChunkLevel(std::string const& tableName) const {
+    std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
+    if (itr == _tables.end()) {
+        return -1;
+    }
+    TableInfo const& ti = itr->second;
+    if(ti.getIsPartitioned()) { 
+        return ti.getLogicalPart();
+    } else {
+        return 0; 
+    }
+}
+
 /** Gets chunked tables
   *
   * @return returns a vector of table names that are chunked
@@ -157,6 +179,7 @@ qMaster::MetadataCache::DbInfo::getSubChunkedTables() const {
 /** Gets names of partition columns (ra, decl, objectId) for a given table.
   *
   * @return returns a 3-element vector with column names: ra, decl, objectId
+  * (theta, phi, key) column
   */
 std::vector<std::string>
 qMaster::MetadataCache::DbInfo::getPartitionCols(std::string const& tableName) const {
@@ -460,6 +483,43 @@ qMaster::MetadataCache::getPartitionCols(std::string const& dbName,
         return v;
     }
     return itr->second.getPartitionCols(tableName);
+}
+
+/** Gets chunking level for a particular database.table.
+  *
+  * @param dbName database name
+  * @param tableName table name
+  *
+  * @return returns 0 if not partitioned, 1 if chunked, 2 if subchunked.
+  */
+long
+qMaster::MetadataCache::getChunkLevel(std::string const& dbName,
+                                      std::string const& tableName) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
+    if (itr == _dbs.end()) {
+        return -1;
+    }
+    return itr->second.checkIfTableIsSubChunked(tableName);
+}
+
+/** Gets DbInfo structure for a given database.
+  *
+  * @param dbName database name
+  *
+  * @return returns a const DbInfo structure
+  * 
+  * result is undefined if checkIfContainsDb(dbName) returns false
+  */
+qMaster::MetadataCache::DbInfo  
+qMaster::MetadataCache::getDbInfo(std::string const& dbName) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
+    if (itr == _dbs.end()) { // Better to crash?
+        static DbInfo dummy;
+        return dummy;
+    }
+    return itr->second;    
 }
 
 /** Prints the contents of the qserv metadata cache. This is
