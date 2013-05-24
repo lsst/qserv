@@ -29,14 +29,17 @@ class QservDataLoader():
         self.chunk_id_list = None
 
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
-
+        self.logger.info("QservDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
+        
         if table_name in self.dataConfig['partitionned-tables']:
             self.logger.info("Loading schema of partitionned table %s" % table_name)
             self.createPartitionedTable(table_name, schema_filename)
             self.loadPartitionedTable(table_name, input_filename)
         elif table_name in self.dataConfig['sql-views']:
+            self.logger.info("Creating schema for table %s as a view" % table_name)
             self._sqlInterface['cmd'].executeFromFile(schema_filename)
         else:
+            self.logger.info("Creating and loading non-partitionned table %s" % table_name)
             self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
 
     def loadPartitionedTable(self, table, data_filename):
@@ -150,7 +153,8 @@ class QservDataLoader():
 
 
     def duplicateAndPartitionData(self, table, data_filename):
-
+        self.logger.info("Duplicating and partitioning table  '%s' from file '%s'\n" % (table, data_filename))
+        
         partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
         partition_dirname = os.path.join(self._out_dirname,table+"_partition")
         
@@ -176,8 +180,8 @@ class QservDataLoader():
             chunker_scriptname,
             '--output-dir', partition_dirname,
             '--delimiter', self.dataConfig['delimiter'],
-            '-S', str(self.dataConfig['nbStripes']),
-            '-s', str(self.dataConfig['nbSubstripes']),
+            '-S', str(self.config['qserv']['stripes']), 
+            '-s', str(self.config['qserv']['substripes']),
             '--dupe',
             '--node-count', str(self.dataConfig['nbNodes']),
             '--node=' + str(self.dataConfig['currentNodeID']),
@@ -244,12 +248,19 @@ class QservDataLoader():
             load_scriptname,
             '--user=%s' % self.config['mysqld']['user'], 
             '--password=%s' % self.config['mysqld']['pass'],
-            '--database=%s' % self._dbName,
+            '--database=%s' % self._dbName
+            ]
+
+        if (table in self.dataConfig['partitionned-tables']):
+            load_partitionned_data_cmd.extend(['--drop-primary-key', 'Overlap'])
+
+        load_partitionned_data_cmd.extend( [
             "%s:%s" %
             (self.config['qserv']['master'],self.config['mysqld']['port']),
             partition_dirname,
             "%s.%s" % (self._dbName, table)
-            ]
+            ])
+                                           
         # python master/examples/loader.py --verbose -u root -p changeme --database qservTest_case01_qserv -D clrlsst-dbmaster.in2p3.fr:13306 /opt/qserv-dev/tmp/Object_partition/ qservTest_case01_mysql.Object
         out = commons.run_command(load_partitionned_data_cmd)
         self.logger.info("Partitioned %s data loaded : %s" % (table,out))
@@ -335,6 +346,7 @@ class QservDataLoader():
         # TODO add index creation w.r.t. dataConfig
                 
     def createPartitionedTable(self, table, schemaFile):
+        self.logger.info("Creating partitionned table %s with schema %s" % (table, schemaFile))
         if table in self.dataConfig['partitionned-tables']:     
             self._sqlInterface['cmd'].executeFromFile(schemaFile)
             self.alterTable(table)

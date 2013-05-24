@@ -128,9 +128,39 @@ class DataReader():
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
             
+            self.dataConfig['Object']['ra-fieldname'] = "ra_PS"
+            self.dataConfig['Object']['decl-fieldname'] = "decl_PS"
+            self.dataConfig['Source']['ra-fieldname'] = "ra"
+            self.dataConfig['Source']['decl-fieldname'] = "decl"
+
+            self.dataConfig['Object']['ra-column'] = 2
+            self.dataConfig['Object']['decl-column'] = 4
+            self.dataConfig['Object']['chunk-column-id'] = 227
+
+            # self.dataConfig['Source']['ra-column'] = 7
+            # self.dataConfig['Source']['decl-column'] = 10
+            
+            self.dataConfig['Source']['ra-column'] = 33
+            self.dataConfig['Source']['decl-column'] = 34
+
+            # chunkId and subChunkId will be added
+            self.dataConfig['Source']['chunk-column-id'] = None
+
+        # for duplicated/replicated PT1.2
+        elif self.dataName=="case05":
+
+            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+       
+            """ Fill column position (zero-based index) """
+            self.dataConfig['Object']=dict()
+            self.dataConfig['Source']=dict() 
+            
+            self.dataConfig['schema-extension']='.schema'
+            self.dataConfig['data-extension']='.csv'
+            self.dataConfig['zip-extension']='.gz'
+            self.dataConfig['delimiter']=','
+            
             self.dataConfig['Duplication'] = True
-            self.dataConfig['nbStripes'] = 100
-            self.dataConfig['nbSubstripes'] = 10
             self.dataConfig['nbNodes'] = 300
             self.dataConfig['currentNodeID'] = 42
             self.dataConfig['dataDirName'] = self.dataDirName
