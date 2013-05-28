@@ -30,13 +30,31 @@ require ("xmlrpc.http")
 --    "objectId", "3", "objectId", "5,6,7,8" and so on
 
 -------------------------------------------------------------------------------
+--                             debug tool                                    --
+-------------------------------------------------------------------------------
+local DEBUG = os.getenv('DEBUG') or 0
+DEBUG = DEBUG + 0
+
+function print_debug(msg, level)
+ level = level or 1
+ if DEBUG >= level then
+     print ("DEBUG : "..msg)
+ end
+end
+
+-------------------------------------------------------------------------------
 --                        global variables (yuck)                            --
 -------------------------------------------------------------------------------
 
 rpcHost = "127.0.0.1"
-rpcPort = 7080
-rpcHP = "http://" .. rpcHost .. ":" .. rpcPort .. "/x"
+defaultRpcPort = 7080
 
+local rpcPort = os.getenv("QSERV_RPC_PORT")
+if (rpcPort == nil) then
+   rpcPort = defaultRpcPort 
+end
+rpcHP = "http://" .. rpcHost .. ":" .. rpcPort .. "/x"
+print_debug("RPC url "..rpcHP,1)
 
 -- constants (kind of)
 ERR_AND_EXPECTED   = -4001
@@ -117,7 +135,6 @@ end
 
 
 err = errors()
-
 
 -------------------------------------------------------------------------------
 --                       random util functions                               --

@@ -7,6 +7,7 @@
 xrootd=%(XROOTD_MANAGER_HOST)s:%(XROOTD_PORT)s
 scratch_path=/dev/shm/%(QSERV_BASE_DIR)s
 xrootd_user=qsmaster
+port=%(QSERV_RPC_PORT)s
 
 #[mgmtdb]
 #db=qservMeta
@@ -25,7 +26,6 @@ db=qservResult
 unix_socket=%(QSERV_BASE_DIR)s/var/lib/mysql/mysql.sock
 host= 
 user=qsmaster
-port=0
 
 [partitioner]
 #stripes=18
