@@ -20,8 +20,8 @@ def download(target, source, env):
     url = Request(url_str)
     file_name = str(target[0])
 
-    file_size_dl = 0
-    file_size = 0
+    file_size_dl = -2
+    file_size = -1
 
     success = True
 
@@ -55,12 +55,12 @@ def download(target, source, env):
     #handle errors
     except HTTPError, e:
         logger.fatal("HTTP Error: %s %s" % (e, url_str))
-        succes = True
+        success = False
     except URLError, e:
         logger.fatal("URL Error: %s %s " % (e, url_str))
-        succes = False
+        success = False
 
-    if file_size_dl<file_size:
+    if file_size_dl != file_size:
         logger.fatal("Download of file %s failed" % url_str)
         success = False
 
