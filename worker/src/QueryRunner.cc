@@ -61,7 +61,7 @@ runBatch(boost::shared_ptr<qWorker::Logger> log,
          std::string const& scriptId,
          QuerySql::Batch& batch,
          qWorker::CheckFlag* checkAbort) {
-    (*log)((Pformat("TIMING,%1%%2%Start,%3%")
+    log->info((Pformat("TIMING,%1%%2%Start,%3%")
                  % scriptId % batch.name % ::time(NULL)).str().c_str());
     bool aborted = false;
     while(!batch.isDone()) {
