@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,15 +19,27 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// See TableMerger.h
- 
+/**
+  * @file TableMerger.cc
+  *
+  * @brief TableMerger implementation
+  *
+  * TableMerger is a class that is responsible for the organized
+  * merging of query results into a single table that can be returned
+  * to the user. The current strategy loads dumped chunk result tables
+  * from workers into a single table, followed by a
+  * merging/aggregation query (as needed) to produce the final user
+  * result table.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
+#include "lsst/qserv/master/TableMerger.h"
 #include <sys/time.h> 
 #include <sstream>
 #include <iostream>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
 #include "lsst/qserv/SqlConnection.hh"
-#include "lsst/qserv/master/TableMerger.h"
 #include "lsst/qserv/master/SqlInsertIter.h"
 #include "lsst/qserv/master/MmapFile.h"
 using lsst::qserv::SqlErrorObject;

@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,10 +19,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
 #ifndef LSST_QSERV_WORKER_QUERYRUNNER_H
 #define LSST_QSERV_WORKER_QUERYRUNNER_H
-
+ /**
+  * @file QueryRunner.h  
+  *
+  * @brief QueryRunner instances perform actual query execution on SQL
+  * databases using SqlConnection objects to interact with dbms
+  * instances.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 // C++
 #include <deque>
 
@@ -107,8 +114,8 @@ private:
     StringDeque _poisoned;
 };
 
- int dumpFileOpen(std::string const& dbName);
- bool dumpFileExists(std::string const& dumpFilename);
+int dumpFileOpen(std::string const& dbName);
+bool dumpFileExists(std::string const& dumpFilename);
 
-}}}
+}}} // lsst::qserv::worker
 #endif // LSST_QSERV_WORKER_QUERYRUNNER_H

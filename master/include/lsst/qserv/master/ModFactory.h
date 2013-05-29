@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,24 +20,24 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ModFactory constructs representations of misc modifier clauses in SQL such as
-// ORDER BY, GROUP BY, LIMIT, and HAVING (not yet).
-// LIMIT is assumed to only permit unsigned integers.
-
 #ifndef LSST_QSERV_MASTER_MODFACTORY_H
 #define LSST_QSERV_MASTER_MODFACTORY_H
-
-// #include <list>
-// #include <map>
+/**
+  * @file ModFactory.h
+  *
+  * @brief ModFactory constructs representations of misc. modifier clauses in
+  * SQL such as ORDER BY, GROUP BY, LIMIT, and HAVING. LIMIT is assumed to only
+  * permit unsigned integers. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <antlr/AST.hpp>
 #include <boost/shared_ptr.hpp>
 
 // Forward
 class SqlSQL2Parser;
 
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 // Forward
 class SelectFactory;
 class ValueExprFactory;
@@ -79,9 +79,6 @@ private:
     boost::shared_ptr<GroupByClause> _groupBy;
     boost::shared_ptr<HavingClause> _having;
 };
-
-
 }}} // namespace lsst::qserv::master
-
 #endif // LSST_QSERV_MASTER_MODFACTORY_H
 

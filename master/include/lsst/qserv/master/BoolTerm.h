@@ -20,10 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// BoolTerm is a representation of a boolean term in a WHERE clause
-
 #ifndef LSST_QSERV_MASTER_BOOLTERM_H
 #define LSST_QSERV_MASTER_BOOLTERM_H
+/**
+  * @file BoolTerm.h
+  *
+  * @brief BoolTerm is a representation of a boolean term in a WHERE clause
+  *
+  * @author Daniel L. Wang, SLAC
+  */
+// 
+
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
@@ -32,6 +39,7 @@ namespace lsst { namespace qserv { namespace master {
 class QueryTemplate; // Forward
 class ValueExpr;
 
+/// BoolTerm is a representation of a boolean-valued term in a SQL WHERE 
 class BoolTerm {
 public:
     typedef boost::shared_ptr<BoolTerm> Ptr;
@@ -50,7 +58,7 @@ public:
         return boost::shared_ptr<BoolTerm>(); }
     class render;
 };
-
+/// BfTerm is a term in a in a BoolFactor
 class BfTerm {
 public:
     typedef boost::shared_ptr<BfTerm> Ptr;
@@ -59,7 +67,7 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
 };
-
+/// OrTerm is a set of OR-connected BoolTerms
 class OrTerm : public BoolTerm {
 public:    
     typedef boost::shared_ptr<OrTerm> Ptr;
@@ -75,6 +83,7 @@ public:
     class render;
     BoolTerm::PtrList _terms;
 };
+/// OrTerm is a set of AND-connected BoolTerms
 class AndTerm : public BoolTerm {
 public:
     typedef boost::shared_ptr<AndTerm> Ptr;
@@ -89,7 +98,7 @@ public:
     virtual boost::shared_ptr<BoolTerm> copySyntax();
     BoolTerm::PtrList _terms;
 };
-
+/// BoolFactor is a plain factor in a BoolTerm 
 class BoolFactor : public BoolTerm {
 public:
     typedef boost::shared_ptr<BoolFactor> Ptr;
@@ -99,12 +108,16 @@ public:
     virtual void renderTo(QueryTemplate& qt) const;
     BfTerm::PtrList _terms;
 };
+/// UnknownTerm is a catch-all term intended to help the framework pass-through
+/// syntax that is not analyzed, modified, or manipulated in Qserv.
 class UnknownTerm : public BoolTerm {
 public:
     typedef boost::shared_ptr<UnknownTerm> Ptr;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
 };
+/// PassTerm is a catch-all boolean factor term that can be safely passed
+/// without further analysis or manipulation.
 class PassTerm : public BfTerm {
 public: // text
     typedef boost::shared_ptr<PassTerm> Ptr;
@@ -112,6 +125,7 @@ public: // text
     virtual void renderTo(QueryTemplate& qt) const;
     std::string _text;
 };
+/// PassListTerm is like a PassTerm, but holds a list of passing strings
 class PassListTerm : public BfTerm {
 public: // ( term, term, term )
     typedef std::list<std::string> StringList;
@@ -120,6 +134,7 @@ public: // ( term, term, term )
     virtual void renderTo(QueryTemplate& qt) const;
     StringList _terms;
 };
+/// ValueExprTerm is a bool factor term that contains a value expression
 class ValueExprTerm : public BfTerm {
 public:
     typedef boost::shared_ptr<ValueExprTerm> Ptr;

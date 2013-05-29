@@ -1,8 +1,7 @@
 // -*- LSST-C++ -*-
-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,17 +20,32 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// See also: dispatcher.h 
-// Basic usage: 
-//
-// initDispatcher() // Set things up.
-// newSession() // Init a new session
-// setupQuery(int session, std::string const& query) // setup the session with a query. This triggers a parse.
-// getSessionError(int session) // See if there are errors
-// getConstraints(int session)  // Retrieve the detected constraints so that we can apply them to see which chunks we need. (done in Python)
-// addChunk(int session, lsst::qserv::master::ChunkSpec const& cs ) // add the computed chunks to the query
-// submitQuery3(int session)  // Trigger the dispatch of all chunk queries for the session.
-
+/**
+  * @file dispatcher.cc
+  *
+  * @brief SWIG-exported interface to dispatching queries.
+  * Basic usage: 
+  *
+  * initDispatcher() // Set things up.
+  *
+  * newSession() // Init a new session
+  *
+  * setupQuery(int session, std::string const& query) // setup the session with
+  * a query. This triggers a parse.
+  *
+  * getSessionError(int session) // See if there are errors
+  *
+  * getConstraints(int session)  // Retrieve the detected constraints so that we
+  * can apply them to see which chunks we need. (done in Python)
+  *
+  * addChunk(int session, lsst::qserv::master::ChunkSpec const& cs ) // add the
+  * computed chunks to the query
+  *
+  * submitQuery3(int session) // Trigger the dispatch of all chunk queries for
+  * the session.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/dispatcher.h"
 #include "lsst/qserv/master/thread.h"

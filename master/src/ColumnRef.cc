@@ -19,7 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// class ColumnRef implementation 
+/**
+  * @file ColumnRef.cc
+  *
+  * @brief class ColumnRef implementation
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/ColumnRef.h"
 #include <iostream>
 #include "lsst/qserv/master/QueryTemplate.h"

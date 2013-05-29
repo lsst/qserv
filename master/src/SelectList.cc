@@ -19,8 +19,14 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// SelectList
-
+/**
+  * @file SelectList.cc
+  *
+  * @brief Implementation of a SelectList
+  *
+  * @author Daniel L. Wang, SLAC
+  */
+// SelectList design notes:
 // Idea was to have this as an intermediate query tree representation.
 // This might be practical through the use of factories to hide enough
 // of the ANTLR-specific parts. Because we have inserted nodes in the
@@ -60,24 +66,6 @@ struct renderWithSep {
 
 };
 } // anonymous namespace
-
-void
-ColumnRefList::acceptColumnRef(antlr::RefAST d, antlr::RefAST t, 
-                               antlr::RefAST c) {
-    using lsst::qserv::master::tokenText;
-    boost::shared_ptr<ColumnRef> cr(new ColumnRef(tokenText(d), 
-                                                  tokenText(t), 
-                                                  tokenText(c)));
-    antlr::RefAST first = d;
-    if(!d.get()) { 
-        if (!t.get()) { first = c; }
-        else first = t; 
-    } 
-    _refs[first] = cr;
-    // Don't add to list. Let selectList handle it later. Only track for now.
-    // Need to be able to lookup ref by RefAST.
-}
-
 void
 SelectList::addStar(antlr::RefAST table) {
     assert(_valueExprList.get());

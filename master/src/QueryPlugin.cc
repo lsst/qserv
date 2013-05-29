@@ -19,10 +19,14 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// QueryPlugin houses the implementation of the factory lookup code
-// for QueryPlugins. 
+/**
+  * @file QueryMapping.cc
+  *
+  * @brief Implementation of the factory lookup code for QueryPlugins. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/QueryPlugin.h"
-
 
 #include <map>
 #include <boost/thread/locks.hpp>
@@ -54,8 +58,7 @@ QueryPlugin::newInstance(std::string const& name) {
         throw PluginNotFoundError(name);
     } else {
         return e->second->newInstance();
-    }
-    
+    }    
 }
 
 void

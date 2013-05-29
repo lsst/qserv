@@ -20,35 +20,36 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ColumnRefList is a list of column refs derived from a sql parse
-// tree. This logic might be better off renamed/moved to a column ref
-// factory. 
-
 #ifndef LSST_QSERV_MASTER_COLUMNREFLIST_H
 #define LSST_QSERV_MASTER_COLUMNREFLIST_H
-#include "lsst/qserv/master/ValueExpr.h"
+/**
+  * @file ColumnRefList.h
+  *
+  * @brief ColumnRefList is a list of column refs derived from a sql parse
+  * tree. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
+#include "lsst/qserv/master/ColumnRefList.h"
 #include "lsst/qserv/master/ColumnRefH.h"
 
 namespace lsst { namespace qserv { namespace master {
 class ColumnRef; // Forward
 
+/// ColumnRefList is a listener that maintains a mapping from node to a
+/// ColumnRef. Consider eliminating ColumnRefMap (ColumnRefH.h)
 class ColumnRefList : public ColumnRefH::Listener {
 public:
     ColumnRefList() {}
     virtual ~ColumnRefList() {}
     virtual void acceptColumnRef(antlr::RefAST d, antlr::RefAST t, 
                                  antlr::RefAST c);
-    void setValueExprList(boost::shared_ptr<ValueExprList> vel) {
-        _valueExprList = vel;
-    }
     boost::shared_ptr<ColumnRef const> getRef(antlr::RefAST r);
     void printRefs() const;
 
 private:
     typedef std::map<antlr::RefAST, boost::shared_ptr<ColumnRef> > RefMap;
     RefMap _refs;
-    
-    boost::shared_ptr<ValueExprList> _valueExprList;
 };
 
 }}} // namespace lsst::qserv::master

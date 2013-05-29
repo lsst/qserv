@@ -19,14 +19,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// TableRefN, SimpleTableN, JoinRefN implementations
+/**
+  * @file TableRefN.cc
+  *
+  * @brief TableRefN, SimpleTableN, JoinRefN implementations
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/TableRefN.h"
 #include <sstream>
 
 namespace qMaster=lsst::qserv::master;
-
-namespace { // File-scope helpers
-}
 
 namespace lsst { namespace qserv { namespace master {
 ////////////////////////////////////////////////////////////////////////

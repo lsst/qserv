@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,23 +20,23 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// SelectListFactory maintains parse state so that a SelectList can be
-// built from a parse tree. It populates some state for SelectFactory.
-
-
 #ifndef LSST_QSERV_MASTER_SELECTLISTFACTORY_H
 #define LSST_QSERV_MASTER_SELECTLISTFACTORY_H
+/**
+  * @file SelectListFactory.h
+  *
+  * @brief SelectListFactory maintains parse state so that a SelectList can be
+  * built from a parse tree. It populates some state for SelectFactory. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 #include <list>
 #include <map>
 #include <antlr/AST.hpp>
 #include <boost/shared_ptr.hpp>
 #include <stdexcept>
-
-
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 // Forward
 class ParseAliasMap;
 class ValueExpr;
@@ -46,6 +46,7 @@ typedef std::list<ValueExprPtr> ValueExprList;
 class SelectList;
 class ValueExprFactory;
 
+/// SelectListFactory is a factory for SelectLists from ANTLR nodes
 class SelectListFactory {
 public:
     boost::shared_ptr<SelectList> getProduct();
@@ -82,14 +83,12 @@ private:
     
 };
 
-
 class SelectListFactory::ParseException : public std::runtime_error {
 public:
   explicit ParseException(RefAST subtree);
 };
 
 }}} // namespace lsst::qserv::master
-
 
 #endif // LSST_QSERV_MASTER_SELECTLISTFACTORY_H
 

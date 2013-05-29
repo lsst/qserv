@@ -20,11 +20,15 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ValueExpr is a parse element commonly found in SelectList elements.
-
 #ifndef LSST_QSERV_MASTER_VALUETERM_H
 #define LSST_QSERV_MASTER_VALUETERM_H
-
+/**
+  * @file ValueExpr.h
+  *
+  * @brief ValueExpr is a parse element commonly found in SelectList elements.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <iostream>
 #include <list>
 #include <string>
@@ -38,7 +42,9 @@ class ValueExpr;
 typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
 typedef std::list<ValueExprPtr> ValueExprList;
 class ValueFactor; 
-
+/// ValueExpr is a general value expression. It is allowed to have an alias and
+/// a single level of ValueFactors joined by arithmetic operators. No nesting is
+/// allowed yet. 
 class ValueExpr {
 public:
     ValueExpr();
@@ -69,7 +75,7 @@ private:
     std::string _alias;
     std::list<FactorOp> _factorOps;
 };
-
+/// A helper functor for rendering to QueryTemplates
 class ValueExpr::render : public std::unary_function<ValueExpr, void> {
 public:
     render(QueryTemplate& qt, bool needsComma) 
@@ -84,8 +90,6 @@ public:
     int _count;
 };
 
-
 }}} // namespace lsst::qserv::master
-
 
 #endif // LSST_QSERV_MASTER_VALUEEXPR_H

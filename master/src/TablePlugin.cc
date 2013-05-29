@@ -19,8 +19,15 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// TablePlugin replaces user query table names with substitutable
-// names and maintains a list of tables that need to be substituted. 
+/**
+  * @file TablePlugin.cc
+  *
+  * @brief TablePlugin implementation. TablePlugin replaces user query
+  * table names with substitutable names and maintains a list of
+  * tables that need to be substituted. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/TablePlugin.h"
 #include <string>
 

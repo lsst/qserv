@@ -19,9 +19,18 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ValueExpr.cc houses the implementation of ValueExpr, a object
-// containing elements of a SQL value expresssion (construct that
-// evaluates to a [non-boolean] SQL primitive value)
+/**
+  * @file ValueFactor.cc
+  *
+  * @brief ValueFactor can be thought of the "ValueExpr" portion of a
+  * ValueExpr. A ValueFactor is an element that evaluates to a
+  * non-boolean value. ValueExprs bundle ValueFactors together with
+  * conjunctions and allow tagging with an aliases. ValueFactors do
+  * not have aliases. Value factor is a concept borrowed from the
+  * SQL92 grammer.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/ValueFactor.h"
 #include <iostream>
 #include <sstream>

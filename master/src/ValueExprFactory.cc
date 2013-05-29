@@ -19,9 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ValueExprFactory.cc constructs ValueExpr instances from an ANTLR
-// subtrees.
-
+/**
+  * @file ValueExpr.cc
+  *
+  * @brief ValueExprFactory constructs ValueExpr instances from ANTLR subtrees.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/ValueExprFactory.h"
 #include "lsst/qserv/master/ValueFactorFactory.h"
 #include "lsst/qserv/master/ColumnRefH.h"

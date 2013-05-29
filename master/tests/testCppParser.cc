@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,7 +19,16 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+ /**
+  * @file testCppParser.cc
+  *
+  * @brief Test C++ parsing logic. 
+  *
+  * Note: Most tests have not yet been migrated to new parsing model.  
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
+
 #define BOOST_TEST_MODULE testCppParser
 #include "boost/test/included/unit_test.hpp"
 #include <list>
@@ -774,13 +783,3 @@ BOOST_AUTO_TEST_SUITE_END()
 //  WHERE ABS(o1.decl-o2.decl) < 0.001 
 //      AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 
 //      AND o1.id != o2.id;
-
-#if 0
-int main(int, char**) {
-    //    tryAutoSubstitute();
-    tryNnSubstitute();
-    //tryTriple();
-    //    tryAggregate();
-    return 0;
-}
-#endif

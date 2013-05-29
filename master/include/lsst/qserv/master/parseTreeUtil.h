@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,11 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-/// parseTreeUtil.h - contains utility functions for examining,
-/// processing, and manipulating the ANTLR parse tree.   
 #ifndef LSST_QSERV_MASTER_PARSETREEUTIL_H
 #define LSST_QSERV_MASTER_PARSETREEUTIL_H
+/**
+  * @file parseTreeUtil.h
+  *
+  * @brief Utility functions for examining,  processing, and 
+  * manipulating the ANTLR parse tree.   
+  *
+  * @author Daniel L. Wang, SLAC
+  */
+
 #include <cassert>
 #include <iostream>
 #include <sstream>
@@ -39,9 +45,7 @@ namespace antlr {
 class ASTFactory;
 }
 
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 
 template <typename AnAst>
 std::string tokenText(AnAst r) {

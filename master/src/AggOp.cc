@@ -19,6 +19,14 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+/**
+  * @file AggOp.cc
+  *
+  * @brief AggOp class implementation
+  *
+  * @author Daniel L. Wang, SLAC
+  */
+
 #include "lsst/qserv/master/AggOp.h"
 
 #include <sstream>
@@ -40,6 +48,7 @@ namespace lsst { namespace qserv {namespace master {
 ////////////////////////////////////////////////////////////////////////
 // AggOp specializations
 ////////////////////////////////////////////////////////////////////////
+/// PassAggOp is a pass-through aggregation. Unused now.
 class PassAggOp : public AggOp {
 public:
     explicit PassAggOp(AggOp::Mgr& mgr) : AggOp(mgr) {}
@@ -53,6 +62,8 @@ public:
         return arp;
     } 
 };
+
+/// CountAggOp implements COUNT() (COUNT followed by SUM)
 class CountAggOp : public AggOp {
 public:
     explicit CountAggOp(AggOp::Mgr& mgr) : AggOp(mgr) {}
@@ -76,6 +87,8 @@ public:
         return arp;
     }
 };
+/// AccumulateOp implements simple aggregations (MIN, MAX, SUM) where
+/// the same action may be used in the parallel and merging phases.  
 class AccumulateOp : public AggOp {
 public:
     typedef enum {MIN, MAX, SUM} Type;
@@ -108,7 +121,7 @@ public:
     std::string accName;
 };
 
-
+/// AvgAggOp implements AVG (SUM-COUNT followed by SUM/SUM)
 class AvgAggOp : public AggOp {
 public:
     explicit AvgAggOp(AggOp::Mgr& mgr) : AggOp(mgr) {}

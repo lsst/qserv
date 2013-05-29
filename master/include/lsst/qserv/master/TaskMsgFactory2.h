@@ -20,21 +20,29 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// TaskMsgFactory2 is a factory for TaskMsg (protobuf) objects. 
-// This functionality exists in the python later as TaskMsgFactory,
-// but we are pushing the functionality to C++ so that we can avoid
-// the Python/C++ for each chunk query. This should dramatically
-// improve query dispatch speed (and also reduce overall user query
-// latency).
-
 #ifndef LSST_QSERV_MASTER_TASKMSGFACTORY2_H
 #define LSST_QSERV_MASTER_TASKMSGFACTORY2_H
+/**
+  * @file TaskMsgFactory2.h
+  *
+  * @brief TaskMsgFactory2 is a factory for TaskMsg (protobuf) objects. The "2"
+  * differentiates it from the TaskMsgFactory in the Python layer (which has
+  * been deprecated).
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <iostream>
 #include <boost/shared_ptr.hpp>
 
 namespace lsst { namespace qserv { namespace master {
 class ChunkQuerySpec;
 
+/// TaskMsgFactory2 is a factory for TaskMsg (protobuf) objects. 
+/// This functionality exists in the python later as TaskMsgFactory,
+/// but we are pushing the functionality to C++ so that we can avoid
+/// the Python/C++ for each chunk query. This should dramatically
+/// improve query dispatch speed (and also reduce overall user query
+/// latency).
 class TaskMsgFactory2 {
 public:
     TaskMsgFactory2(int session);
@@ -48,9 +56,6 @@ private:
     boost::shared_ptr<Impl> _impl;
 };
 
-
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_TASKMSGFACTORY2_H
 

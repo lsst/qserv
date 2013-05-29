@@ -23,12 +23,17 @@
 
 #ifndef LSST_QSERV_MASTER_POSTPLUGIN_H
 #define LSST_QSERV_MASTER_POSTPLUGIN_H
-
+/**
+  * @file PostPlugin.h
+  *
+  * @brief PostPlugin is a plugin handling query result post-processing.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 namespace lsst { namespace qserv { namespace master {
 void registerPostPlugin();
 
 }}} // namespace lsst::qserv::master
-
 
 #endif // LSST_QSERV_MASTER_POSTPLUGIN_H
 

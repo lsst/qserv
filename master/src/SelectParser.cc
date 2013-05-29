@@ -19,13 +19,18 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-// SelectParser is the top-level manager for everything attached to
-// parsing the top-level SQL query. Given an input query and a
-// configuration, computes a query info structure, name ref list, and
-// a "query plan".  
-
-
+/**
+  * @file SelectParser.cc
+  *
+  * @brief Implementation of a SelectParser
+  *
+  *  SelectParser is the top-level manager for everything attached to
+  *  parsing the top-level SQL query. Given an input query and a
+  *  configuration, computes a query info structure, name ref list,
+  *  and a "query plan".   
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 // Standard
 #include <functional>
 #include <cstdio>

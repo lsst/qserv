@@ -20,19 +20,28 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ChunkQuerySpec is an value class that contains information pertinent to
-// executing a chunk query. 
-
 #ifndef LSST_QSERV_MASTER_CHUNKQUERYSPEC_H
 #define LSST_QSERV_MASTER_CHUNKQUERYSPEC_H
+/**
+  * @file ChunkQuerySpec.h
+  *
+  * @brief ChunkQuerySpec is an value class that contains information pertinent
+  * to executing a chunk query.  
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <string>
 #include <vector>
 #include <boost/shared_ptr.hpp>
 
 namespace lsst { namespace qserv { namespace master {
-// This is pretty tentative.
+/// ChunkQuerySpec is a value class that bundles a set of queries with their
+/// dependent db, chunkId, and set of subChunkIds. It has a pointer to another
+/// ChunkQuerySpec as a means of allowing Specs to be easily fragmented for
+/// dispatch in smaller pieces.
 class ChunkQuerySpec {
 public:
+    // Contents could change
     std::string db;
     int chunkId;
     std::vector<std::string> subChunkTables;
@@ -40,7 +49,7 @@ public:
     std::vector<std::string> queries;
     boost::shared_ptr<ChunkQuerySpec> nextFragment;
 };
-// Implementation in TaskMsgFactory2.cc
+
 std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c);
 }}} // namespace lsst::qserv::master
 

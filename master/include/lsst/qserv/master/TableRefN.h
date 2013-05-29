@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,20 +20,26 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// TableRefN is a table ref node in a parsed query.
 #ifndef LSST_QSERV_MASTER_TABLEREFN_H
 #define LSST_QSERV_MASTER_TABLEREFN_H
+/**
+  * @file TableRefN.h
+  *
+  * @brief TableRefN is a table ref node in a parsed query. Subclasses:
+  * SimpleTableN and JoinRefN
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <string>
 #include <list>
 #include <iostream>
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/QueryTemplate.h"
 
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 class QueryTemplate; // Forward
 
+/// TableRefN is a parsed table reference 
 class TableRefN {
 public:
     typedef boost::shared_ptr<TableRefN> Ptr;
@@ -81,6 +87,7 @@ protected:
 std::ostream& operator<<(std::ostream& os, TableRefN const& refN);
 std::ostream& operator<<(std::ostream& os, TableRefN const* refN);
 
+/// class render: helper functor for QueryTemplate conversion
 class TableRefN::render {
 public:
     render(QueryTemplate& qt) : _qt(qt), _count(0) {}
@@ -92,6 +99,7 @@ public:
     int _count;
 };
 
+/// SimpleTableN is the simplest TableRefN: a db.table reference
 class SimpleTableN : public TableRefN {
 public:
     typedef boost::shared_ptr<SimpleTableN> Ptr;
@@ -120,6 +128,9 @@ protected:
     std::string table;
 };
 
+/// JoinRefN is a more complex TableRefN: the JOIN of two TableRefN. It is
+/// flattened to only allow db.table as its joining tables (no additional
+/// nesting is allowed). 
 class JoinRefN : public TableRefN {
 public:
     enum JoinType {DEFAULT, INNER, LEFT, RIGHT, NATURAL, CROSS, FULL};

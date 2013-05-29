@@ -19,7 +19,18 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// 
+/**
+  * @file SphericalBoxStrategy.cc
+  *
+  * @brief SphericalBoxStrategy implementation
+  *
+  * SphericalBoxStrategy aims to collect the behavior for handling
+  * partitioning-related decisions specific to the spherical-box
+  * partitioning scheme that are not part of other partitioning
+  * schemes like hash-partitioning or 1D range-partitioning.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/SphericalBoxStrategy.h"
 #include <sstream>
 #include <deque>

@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,6 +19,15 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+ /**
+  * @file SqlFragmenter.cc
+  *
+  * @brief SqlFragmenter breaks up a single string containing several
+  * SQL statements into one or more fragments, in the effort to avoid
+  * MySQL protocol limits for submitted query length.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/worker/SqlFragmenter.h"
 
 namespace qWorker = lsst::qserv::worker;
@@ -32,8 +41,7 @@ qWorker::SqlFragmenter::SqlFragmenter(std::string const& query)
       _qEnd(query.length()),
       _sizeTarget(1024), // too little?
       _count(0)
-{
-}
+{}
 
 qWorker::SqlFragmenter::Piece const& qWorker::SqlFragmenter::getNextPiece() {
     if(_pNext == _qEnd) {

@@ -19,10 +19,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// SelectFactory.cc houses the implementation of the SelectFactory,
-// which is responsible (through some delegated behavior) for
-// constructing SelectStmt (and SelectList, etc.) from an ANTLR parse
-// tree. 
+/**
+  * @file SelectFactory.cc
+  *
+  * @brief Implementation of the SelectFactory, which is responsible
+  * (through some delegated behavior) for constructing SelectStmt (and
+  * SelectList, etc.) from an ANTLR parse tree.
+  *
+  * Includes parse handlers: SelectListH, SelectStarH, ColumnAliasH
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/SelectFactory.h"
 
 // C++

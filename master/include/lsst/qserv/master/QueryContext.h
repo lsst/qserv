@@ -20,12 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// QueryContext is a value class that contains the user context of a
-// submitted query that may be needed to execute a query accurately,
-// but is not contained in the query text itself. 
-
 #ifndef LSST_QSERV_MASTER_QUERYCONTEXT_H
 #define LSST_QSERV_MASTER_QUERYCONTEXT_H
+/**
+  * @file QueryContext.h
+  *
+  * @brief QueryContext is a value class that contains the user context of a
+  * submitted query that may be needed to execute a query accurately, but is not
+  * contained in the query text itself. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
@@ -36,11 +41,14 @@ namespace lsst { namespace qserv { namespace master {
 class QsRestrictor;
 class MetadataCache;
 
+/// QueryContext is a container for query state related to analyzing, rewriting,
+/// and generating queries. It is the primary mechanism for QueryPlugin
+/// instances to share information.
 class QueryContext {
 public:
     typedef std::list<boost::shared_ptr<QsRestrictor> > RestrList;
 
-    MetadataCache* metadata;
+    MetadataCache* metadata; // Unowned, assumed to be alive for this lifetime.
     std::string defaultDb;
     std::string dominantDb;
     std::string anonymousTable;
@@ -56,7 +64,5 @@ public:
 };
 
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_QUERYCONTEXT_H
 

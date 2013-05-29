@@ -20,19 +20,19 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ValueFactorFactory constructs ValueFactor instances from antlr nodes.
-
 #ifndef LSST_QSERV_MASTER_VALUETERMFACTORY_H
 #define LSST_QSERV_MASTER_VALUETERMFACTORY_H
-
+/**
+  * @file ValueFactor.h
+  *
+  * @brief ValueFactorFactory constructs ValueFactor instances from antlr nodes.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <boost/shared_ptr.hpp>
 #include <antlr/AST.hpp>
 
-// Forward
-
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 // Forward
 class ColumnRefMap;
 class ValueFactor;
@@ -47,7 +47,5 @@ private:
 };
 
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_VALUETERMFACTORY_H
 

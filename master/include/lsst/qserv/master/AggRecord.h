@@ -20,29 +20,33 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// X is a ...
-
 #ifndef LSST_QSERV_MASTER_AGGRECORD_H
 #define LSST_QSERV_MASTER_AGGRECORD_H
+/**
+  * @file AggRecord.h
+  *
+  * @brief AggRecord is a value class that stores an aggregation instance during
+  * query analysis, generation, and manipulation
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/ValueExpr.h"
 #include "lsst/qserv/master/ValueFactor.h"
 
 namespace lsst { namespace qserv { namespace master {
 
-// Record is derived from the previous parse framework's
+// AggRecord is derived from the previous parse framework's
 // AggregateRecord class.  It is a value class for the information 
 // needed to successfully perform aggregation of distributed queries.
 // lbl and meaning record the original aggregation invocation (+alias)
 // orig, pass, and fixup record SQL expressions
-class AggRecord { // Test
+class AggRecord { 
 public:
     typedef boost::shared_ptr<AggRecord> Ptr;
     lsst::qserv::master::ValueFactorPtr orig;
     lsst::qserv::master::ValueExprList pass;
     lsst::qserv::master::ValueFactorPtr fixup;
     std::ostream& printTo(std::ostream& os);
-    std::string getFuncParam() const;
-    std::string getLabelText() const;
 };
 
 }}} // namespace lsst::qserv::master

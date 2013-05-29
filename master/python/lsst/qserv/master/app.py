@@ -24,21 +24,30 @@
 #
 # The app module can be thought-of as the top-level code module for
 # the qserv frontend's functionality.  It implements the "interesting"
-# code that accepts an incoming query, parses it, generates
-# subqueries, dispatches to workers, collects results, and returns to
-# the caller, marshalling code from other modules as necessary.
+# code that accepts an incoming query and sends it to be
+# executed. Most of its logic should eventually be pushed to C++ code
+# for greater efficiency and maintainability. The dispatch and query
+# management has been migrated over to the C++ layer for efficiency, so
+# it makes sense to move closely-related code there to reduce the pain
+# of Python-C++ language boundary crossings. 
 # 
 # This is the  "high-level application logic" and glue of the qserv
 # master/frontend.  
 #
-# Warning: Older code for older/alternate parsing models and
-# older/alternate dispatch/collection models remains here, in
-# anticipation of supporting performance investigation.  The most
-# current functionality can be understood by examining the
-# HintedQueryAction class, QueryBabysitter class, and other related
-# classes. 
-# 
-
+# InBandQueryAction is the biggest actor in this module. Leftover code
+# from older parsing/manipulation/dispatch models may exist and should
+# be removed (please open a ticket). 
+#
+# The biggest ugliness here is due to the use of a Python geometry
+# module for computing the chunk numbers, given a RA/decl area
+# specification. The C++ layer extracts these specifications from the
+# query, the code here must pull them out, pass them to the geometry
+# module, and then push the resulting specifications down to C++ again
+# so that the chunk queries can be dispatched without language
+# crossings for each chunk query.
+#
+# Questions? Contact Daniel L. Wang, SLAC (danielw) 
+#
 # Standard Python imports
 import errno
 import hashlib

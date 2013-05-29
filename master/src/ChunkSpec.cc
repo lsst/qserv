@@ -19,7 +19,14 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// Implementation of helper printers for ChunkSpec
+/**
+  * @file ChunkSpec.cc
+  *
+  * @brief Implementation of helper printers for ChunkSpec
+  *
+  * @author Daniel L. Wang, SLAC
+  */
+
 #include "lsst/qserv/master/ChunkSpec.h"
 #include <iterator>
 #include <cassert>

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,15 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// WhereFactory constructs a WhereClause that maintains parse state of
-// the WHERE clause for future interrogation, manipulation, and
-// reconstruction.
-
 #ifndef LSST_QSERV_MASTER_WHEREFACTORY_H
 #define LSST_QSERV_MASTER_WHEREFACTORY_H
-
-// #include <list>
-// #include <map>
+/**
+  * @file WhereFactory.h
+  *
+  * @brief WhereFactory constructs a WhereClause that maintains parse state of
+  * the WHERE clause for future interrogation, manipulation, and
+  * reconstruction. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <antlr/AST.hpp>
 #include <boost/shared_ptr.hpp>
 
@@ -39,16 +41,11 @@ namespace lsst {
 namespace qserv {
 namespace master {
 // Forward
-// class ParseAliasMap;
-// class ColumnRefMap;
-// class SelectListFactory;
-// class FromFactory;
-// class SelectStmt;
-// class FromList;
 class SelectFactory;
 class WhereClause;
 class ValueExprFactory;
 
+/// WhereFactory is a factory for WhereClause parsed elements.
 class WhereFactory {
 public:
     friend class SelectFactory;
@@ -70,8 +67,6 @@ private:
     boost::shared_ptr<ValueExprFactory> _vf;
 };
 
-
 }}} // namespace lsst::qserv::master
-
 #endif // LSST_QSERV_MASTER_WHEREFACTORY_H
 

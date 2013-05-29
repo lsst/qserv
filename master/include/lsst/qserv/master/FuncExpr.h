@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,10 +20,16 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// X is a ...
-
 #ifndef LSST_QSERV_MASTER_FUNCEXPR_H
 #define LSST_QSERV_MASTER_FUNCEXPR_H
+/**
+  * @file FuncExpr.h
+  *
+  * @brief FuncExpr is a SQL function expression including a name and a list of
+  * parameters.  
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
@@ -36,6 +42,7 @@ class ValueExpr;
 typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
 typedef std::list<ValueExprPtr> ValueExprList;
 
+// FuncExpr is a function expression, e.g., foo(1,2,bar)
 class FuncExpr {
 public:
     typedef boost::shared_ptr<FuncExpr> Ptr;

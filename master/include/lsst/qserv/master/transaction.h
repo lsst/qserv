@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,18 +19,23 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
 #ifndef LSST_QSERV_MASTER_TRANSACTION_H
 #define LSST_QSERV_MASTER_TRANSACTION_H
+/**
+  * @file transaction.h
+  *
+  * @brief Value classes for SWIG-mediated interaction between Python
+  * and C++. Includes TransactionSpec, Constraint, ConstraintVector,
+  * and ConstraintVec. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <string>
 #include <vector>
 #include <list>
 #include <boost/shared_ptr.hpp>
 
-namespace lsst {
-namespace qserv {
-namespace master {
-
+namespace lsst { namespace qserv { namespace master {
 /// class TransactionSpec - A value class for the minimum
 /// specification of a subquery, as far as the xrootd layer is
 /// concerned.
@@ -47,7 +52,7 @@ public:
     
     class Reader;  // defined in thread.h
 };
-
+/// A detected qserv constraint for C++ to Python 
 class Constraint {
 public:
     std::string name;
@@ -60,7 +65,8 @@ public:
     }
 };
 typedef std::vector<Constraint> ConstraintVector;
-class ConstraintVec { // Wrapper for SWIG.
+/// A SWIG-purposed wrapper of a ConstraintVector.
+class ConstraintVec { 
 public:
     ConstraintVec(boost::shared_ptr<ConstraintVector > v)
         : _vec(v) {}

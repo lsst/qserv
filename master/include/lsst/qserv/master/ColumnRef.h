@@ -20,16 +20,23 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ColumnRef is a representation of a parsed column reference in SQL.
 
 #ifndef LSST_QSERV_MASTER_COLUMNREF_H
 #define LSST_QSERV_MASTER_COLUMNREF_H
+/**
+  * @file ColumnRef.h
+  *
+  * @brief ColumnRef is a representation of a parsed column reference in SQL.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <string>
 
 namespace lsst { namespace qserv { namespace master {
 
 class QueryTemplate; // Forward
 
+/// ColumnRef is an abstract value class holding a parsed single column ref
 class ColumnRef {
 public:
     ColumnRef(std::string db_, std::string table_, std::string column_) 

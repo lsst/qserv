@@ -19,8 +19,14 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// FuncExpr.cc houses the implementation of FuncExpr (a parsed
-// function call expression)
+/**
+  * @file FuncExpr.cc
+  *
+  * @brief Implementation of FuncExpr (a parsed function call
+  * expression) and FuncExpr::render 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/FuncExpr.h"
 
 #include "lsst/qserv/master/ColumnRef.h"
@@ -30,10 +36,6 @@
 #include <iostream>
 namespace qMaster=lsst::qserv::master;
 using lsst::qserv::master::FuncExpr;
-
-namespace { // File-scope helpers
-}
-
 
 FuncExpr::Ptr 
 FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {

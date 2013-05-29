@@ -1,6 +1,9 @@
-
--- For questions, contact Jacek Becla or Daniel Wang
-
+-- mysqlProxy.lua -- A Lua-language script for customizing a
+-- mysqlproxy instance so that it uses a Qserv frontend as a backend
+-- for executing queries. While it has some responsibilities now, it
+-- should eventually act as a thin wrapper to delegating all
+-- functionality to a Qserv daemon. 
+-- For questions, contact Jacek Becla or Daniel L. Wang
 
 require ("xmlrpc.http")
 
@@ -18,9 +21,6 @@ require ("xmlrpc.http")
 --  * supress errors "FUNCTION proxyTest.areaSpec_box does not exist"
 --
 --  * test what happens when I change db (use x; later use y)
-
-
-
 
 -- API between lua and qserv:
 --  * invoke(cleanQueryString, hintString)

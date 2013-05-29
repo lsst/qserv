@@ -19,8 +19,14 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// PostPlugin does the right thing to handle LIMIT (and perhaps ORDER
-// BY and GROUP BY) clauses. 
+/**
+  * @file PostPlugin.cc
+  *
+  * @brief PostPlugin does the right thing to handle LIMIT (and
+  * perhaps ORDER BY and GROUP BY) clauses.  
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/PostPlugin.h"
 #include <string>
 
@@ -30,11 +36,7 @@
 #include "lsst/qserv/master/SelectStmt.h"
 namespace qMaster=lsst::qserv::master;
 
-namespace { // File-scope helpers
-} // anonymous
-
 namespace lsst { namespace qserv { namespace master {
-
 
 ////////////////////////////////////////////////////////////////////////
 // PostPlugin declaration

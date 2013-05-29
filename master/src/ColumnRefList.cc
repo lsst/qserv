@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,20 +19,37 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ColumnRefList.cc houses the implementation of a ColumnRefList, a
-// container for column refs parsed from a sql statement.
-
+/**
+  * @file ColumnRefList.cc
+  *
+  * @brief Implementation of a ColumnRefList, a container for column
+  * refs parsed from a SQL statement 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/ColumnRefList.h"
 #include "lsst/qserv/master/ColumnRef.h"
 
-namespace qMaster=lsst::qserv::master;
+namespace lsst { namespace qserv { namespace master {
 
-namespace { // File-scope helpers
+void
+ColumnRefList::acceptColumnRef(antlr::RefAST d, antlr::RefAST t, 
+                               antlr::RefAST c) {
+    boost::shared_ptr<ColumnRef> cr(new ColumnRef(tokenText(d), 
+                                                  tokenText(t), 
+                                                  tokenText(c)));
+    antlr::RefAST first = d;
+    if(!d.get()) { 
+        if (!t.get()) { first = c; }
+        else first = t; 
+    } 
+    _refs[first] = cr;
+    // Don't add to list. Let selectList handle it later. Only track for now.
+    // Need to be able to lookup ref by RefAST.
 }
 
-
-boost::shared_ptr<qMaster::ColumnRef const>
-qMaster::ColumnRefList::getRef(antlr::RefAST r) { 
+boost::shared_ptr<ColumnRef const>
+ColumnRefList::getRef(antlr::RefAST r) { 
     if(_refs.find(r) == _refs.end()) {
         std::cout << "couldn't find " << tokenText(r) << " in";
         printRefs(); 
@@ -41,7 +58,8 @@ qMaster::ColumnRefList::getRef(antlr::RefAST r) {
     return _refs[r];
 }
     
-void qMaster::ColumnRefList::printRefs() const { 
+void 
+ColumnRefList::printRefs() const { 
     std::cout << "Printing select refs." << std::endl;
     typedef RefMap::const_iterator Citer; 
     Citer end = _refs.end();
@@ -54,4 +72,4 @@ void qMaster::ColumnRefList::printRefs() const {
                   << std::endl; 
     }
 }
-
+}}} // lsst::qserv::master

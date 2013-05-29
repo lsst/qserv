@@ -19,10 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// SelectFactory.cc houses the implementation of the SelectFactory,
-// which is responsible (through some delegated behavior) for
-// constructing SelectStmt (and SelectList, etc.) from an ANTLR parse
-// tree. 
+/**
+  * @file ParseException.cc
+  *
+  * @brief Implementation of ParseException
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/ParseException.h"
 
 // Package
@@ -31,12 +34,9 @@
 ////////////////////////////////////////////////////////////////////////
 // ParseException
 ////////////////////////////////////////////////////////////////////////
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 
 ParseException::ParseException(char const* msg, antlr::RefAST subTree) 
     : std::runtime_error(std::string(msg) + ":" + tokenText(subTree))
-{
-}
+{}
 }}} // lsst::qserv::master

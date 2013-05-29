@@ -20,13 +20,19 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// Constants. Should be moved to qserv/common in a future ticket.
 #ifndef LSST_QSERV_CONSTANTS_H
 #define LSST_QSERV_CONSTANTS_H
+ /**
+  * @file testCppParser.cc
+  *
+  * @brief  Constants. Consider moving to qserv/common in a future ticket.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 
 namespace lsst {
 namespace qserv {
-// FIXME: should be metadata or constant somewhere else.
+// FIXME: should be constant somewhere else.
 const char CHUNK_COLUMN[] = "chunkId";
 const char SUB_CHUNK_COLUMN[] = "subChunkId";
 

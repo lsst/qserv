@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,13 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// QueryPlugin is an interface for classes which implement rewrite/optimization
-// rules for incoming SQL queries.  Plugins can act upon the intermediate
-// representation or the concrete plan or both.
-
 #ifndef LSST_QSERV_MASTER_QUERYPLUGIN_H
 #define LSST_QSERV_MASTER_QUERYPLUGIN_H
-
+/**
+  * @file QueryPlugin.h
+  *
+  * @brief QueryPlugin is an abstract query plugin that operates on query
+  * representations. It has hooks for preparation, applying on logical queries
+  * (SelectStmt) and physical queries (multiple SelectStmt). 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
@@ -39,6 +43,9 @@ class SelectStmt;
 
 typedef std::list<boost::shared_ptr<SelectStmt> > SelectStmtList;
  
+/// QueryPlugin is an interface for classes which implement rewrite/optimization
+/// rules for incoming SQL queries.  Plugins can act upon the intermediate
+/// representation or the concrete plan or both.
 class QueryPlugin {
 public:
     // Types
@@ -62,6 +69,7 @@ public:
     static void registerClass(FactoryPtr f);
 };
 
+/// Factory is an abstract class for specifi QueryPlugin Factories
 class QueryPlugin::Factory {
 public:
     // Types

@@ -20,18 +20,21 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-//  class QuerySql -- A bundle of SQL statements that represent an
-//  accepted query's generated SQL. 
-//
 #ifndef LSST_QSERV_WORKER_QUERYSQL_H
 #define LSST_QSERV_WORKER_QUERYSQL_H
+ /**
+  * @file QuerySql.h  
+  *
+  * @brief QuerySql is a bundle of SQL statements that represent an accepted
+  * query's generated SQL.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include <deque>
 #include <boost/shared_ptr.hpp>
 
 #include "lsst/qserv/worker/Task.h"
-namespace lsst {
-namespace qserv {
-namespace worker {
+namespace lsst { namespace qserv { namespace worker {
 class Task;
 
 class QuerySql {

@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,12 +19,15 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-/// parseTreeUtil.cc - non-templated implementation bits for working with
-/// antlr parse trees.
-
+/**
+  * @file parseTreeUtil.cc
+  *
+  * @brief  non-templated implementation bits for working with ANTLR
+  * parse trees.  
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/parseTreeUtil.h"
-
 #include <antlr/ASTFactory.hpp>
 
 namespace qMaster=lsst::qserv::master;
@@ -60,7 +63,8 @@ public:
     std::stringstream s;
 
 };
-}
+} // anonymous namespace
+
 // Creates a new text node and and puts it into the tree
 // after the specified node, but before the node's next sibling.
 antlr::RefAST qMaster::insertTextNodeAfter(antlr::ASTFactory* factory, 

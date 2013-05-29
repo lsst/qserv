@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,25 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// QueryTemplate
-
-// A query template is render-able query. This replaces the
-// string-based Substitution class that was used to perform fast chunk
-// substitutions in generating queries. 
-//
-// The Substition/SqlSubstitution model employed a single template
-// string along with an index to the string regions that were
-// substitutable. Callers provided a mapping (i.e., {Object ->
-// Object_2031, Object_s2 -> Object_2031_232} ) that was used to
-// perform the subsitution.
-// 
-// A query template are intermediate stage to generated queries. The
-// copy-to-output-iterator paradigm was a very useful paradigm for outputting
-// components, but it is clear that a vanilla c++ stream iterator is not
-// enough--there is a benefit to using the paradigm for: a debugging (or
-// machine-readable) output, a human readable output, and a generated query.
 #ifndef LSST_QSERV_MASTER_QUERYTEMPLATE_H
 #define LSST_QSERV_MASTER_QUERYTEMPLATE_H
+/**
+  * @file QueryTemplate.h
+  *
+  * @brief QueryTemplate stores a query representation that is a sequence of
+  * mostly-concrete tokens. It contains minimal structural information except
+  * what is necessary to vary queries for different partitions. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <string>
 #include <list>
 #include <boost/shared_ptr.hpp>
@@ -48,6 +40,23 @@ namespace lsst { namespace qserv { namespace master {
 class ColumnRef;
 class TableRefN;
 
+/// QueryTemplate
+///
+/// A query template is render-able query. This replaces the
+/// string-based Substitution class that was used to perform fast chunk
+/// substitutions in generating queries. 
+///
+/// The Substition/SqlSubstitution model employed a single template
+/// string along with an index to the string regions that were
+/// substitutable. Callers provided a mapping (i.e., {Object ->
+/// Object_2031, Object_s2 -> Object_2031_232} ) that was used to
+/// perform the subsitution.
+/// 
+/// A query template are intermediate stage to generated queries. The
+/// copy-to-output-iterator paradigm was a very useful paradigm for outputting
+/// components, but it is clear that a vanilla c++ stream iterator is not
+/// enough--there is a benefit to using the paradigm for: a debugging (or
+/// machine-readable) output, a human readable output, and a generated query.
 class QueryTemplate {
 public:
     class Entry {

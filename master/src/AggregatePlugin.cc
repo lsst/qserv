@@ -19,13 +19,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// AggregatePlugin houses the implementation of an implementation of a
-// QueryPlugin that primarily operates in the second phase of query
-// manipulation. It rewrites the select-list of a query in their
-// parallel and merging instances so that a SUM() becomes a SUM()
-// followed by another SUM(), AVG() becomes SUM() and COUNT() followed
-// by SUM()/SUM(), etc. 
-
+/**
+  * @file AggregatePlugin.cc
+  *
+  * @brief Implemenation of AggregatePlugin that primarily operates in
+  * the second phase of query manipulation. It rewrites the
+  * select-list of a query in their parallel and merging instances so
+  * that a SUM() becomes a SUM() followed by another SUM(), AVG()
+  * becomes SUM() and COUNT() followed by SUM()/SUM(), etc.  
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/AggregatePlugin.h"
 #include <string>
 #include "lsst/qserv/master/QueryContext.h"
@@ -48,7 +52,7 @@ using lsst::qserv::master::FuncExpr;
 using lsst::qserv::master::AggOp;
 using lsst::qserv::master::AggRecord;
 
-namespace { // File-scope helpers
+namespace { // Anonymous helpers
 template <class C>
 void printList(char const* label, C const& c) {
     typename C::const_iterator i; 

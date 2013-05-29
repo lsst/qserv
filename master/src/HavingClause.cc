@@ -19,7 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// OrderByClause, OrderByTerm implementations
+/**
+  * @file HavingClause.cc
+  *
+  * @brief Implementation of HavingClause
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/HavingClause.h"
 
 #include <iostream>
@@ -27,10 +33,6 @@
 
 #include "lsst/qserv/master/BoolTerm.h"
 #include "lsst/qserv/master/QueryTemplate.h"
-
-namespace { // File-scope helpers
-
-} // anonymous namespace
 
 namespace lsst { namespace qserv { namespace master {
 
@@ -58,10 +60,13 @@ HavingClause::renderTo(QueryTemplate& qt) const {
     }
 }
 
-boost::shared_ptr<HavingClause> HavingClause::copyDeep() {
+boost::shared_ptr<HavingClause> 
+HavingClause::copyDeep() {
     return boost::make_shared<HavingClause>(*this); // FIXME
 }
-boost::shared_ptr<HavingClause> HavingClause::copySyntax() {
+
+boost::shared_ptr<HavingClause> 
+HavingClause::copySyntax() {
     return boost::make_shared<HavingClause>(*this);
 }
 

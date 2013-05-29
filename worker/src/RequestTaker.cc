@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2011, 2012 LSST Corporation.
+ * Copyright 2011-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,12 +19,18 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// RequestTaker.cc
-/// A class that handles incoming request streams. Migrates some
-/// functionality out of MySqlFsFile so that qserv request handling
-/// is less dependent on Xrootd. (some dependencies still exist in
-/// MySqlFs.)
-/// @author Daniel L. Wang (danielw)
+ /**
+  * @file RequestTaker.cc
+  *
+  * @brief RequestTaker is a class that handles incoming request
+  * streams. Migrates some functionality out of MySqlFsFile so that
+  * qserv request handling is less dependent on Xrootd. (some
+  * dependencies still exist in MySqlFs.)
+  *
+  * FIXME: Unfinished infrastructure for passing subchunk table name to worker.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/worker/RequestTaker.h"
 #include "lsst/qserv/QservPath.hh"
 #include "lsst/qserv/worker.pb.h"

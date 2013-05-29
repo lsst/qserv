@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,13 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// WhereClause.h is a representation of a parsed SQL WHERE.
-
 #ifndef LSST_QSERV_MASTER_WHERECLAUSE_H
 #define LSST_QSERV_MASTER_WHERECLAUSE_H
-
-
-// Std
+/**
+  * @file WhereClause.h
+  *
+  * @brief WhereClause is a parsed SQL WHERE; QsRestrictor is a queryspec
+  * spatial restrictor.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
+// Standard
 #include <iostream>
 #include <list>
 #include <stack>
@@ -36,19 +40,12 @@
 // Qserv
 #include "lsst/qserv/master/ColumnRefList.h"
 #include "lsst/qserv/master/BoolTerm.h"
-
-#if 0
-#include <map>
-#include <deque>
-#include <antlr/AST.hpp>
-
-
-#include "lsst/qserv/master/TableRefN.h"
-#endif
+#include "lsst/qserv/master/ValueExpr.h"
 
 namespace lsst { namespace qserv { namespace master {
 class BoolTerm; // Forward
 
+/// QsRestrictor is a Qserv spatial restrictor element
 class QsRestrictor {
 public:
     typedef boost::shared_ptr<QsRestrictor> Ptr;
@@ -65,7 +62,7 @@ public:
     std::string _name;
     StringList _params;
 };
-
+/// WhereClause is a SQL WHERE containing QsRestrictors and a BoolTerm tree.
 class WhereClause {
 public:
     WhereClause() : _columnRefList(new ColumnRefList()) {}
@@ -98,7 +95,8 @@ private:
     boost::shared_ptr<QsRestrictor::List> _restrs;
 
 };
-
+/// ValueExprIter facilitates iteration over value expressions in WhereClause
+/// objects for analysis and manipulation.  
 class WhereClause::ValueExprIter : public boost::iterator_facade <
     WhereClause::ValueExprIter, ValueExprPtr, boost::forward_traversal_tag> {
 public:
@@ -133,9 +131,6 @@ private:
     BfTerm::PtrList::iterator _bfEnd;
 };
 
-
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_WHERECLAUSE_H
 

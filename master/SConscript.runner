@@ -1,4 +1,5 @@
 # -*- python -*-
+# Sconscript.runner: Build a wrapper script to use when running built-binaries.
 Import("env")
 
 import os, stat

@@ -19,11 +19,18 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// SpatialSpecPlugin replaces a spatial specification with directives
-// that can be executed on a qserv mysqld.
-// This plugin should be execute after aliases for tables have been
-// generates, so that the new spatial function clauses/phrases can use
-// the aliases.
+/**
+  * @file SpatialSpecPlugin.cc
+  *
+  * @brief SpatialSpecPlugin implementation
+  *
+  * SpatialSpecPlugin replaces a spatial specification with directives
+  * that can be executed on a qserv mysqld. This plugin should be
+  * execute after aliases for tables have been generates, so that the
+  * new spatial function clauses/phrases can use the aliases. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 #include "lsst/qserv/master/SpatialSpecPlugin.h"
 #include <deque>
@@ -37,6 +44,7 @@
 #include "lsst/qserv/master/MetadataCache.h" 
 #include "lsst/qserv/master/SelectStmt.h"
 #include "lsst/qserv/master/ValueFactor.h"
+#include "lsst/qserv/master/ValueExpr.h"
 #include "lsst/qserv/master/WhereClause.h"
 
 namespace qMaster=lsst::qserv::master;

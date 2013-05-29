@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,26 +20,28 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-/// dispatcher.h - main interface to be exported via SWIG for the
-/// frontend's Python layer to initiate subqueries and join them.
- 
 #ifndef LSST_QSERV_MASTER_DISPATCHER_H
 #define LSST_QSERV_MASTER_DISPATCHER_H
-
+/**
+  * @file dispatcher.h
+  *
+  * @brief Main interface to be exported via SWIG for the
+  * frontend's Python layer to initiate subqueries and join them.
+   *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/common.h"
 #include "lsst/qserv/master/transaction.h" 
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/TableMerger.h"
 
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 class ChunkSpec; // Forward    
 
 enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};
 
 void initDispatcher();
+// TODO: Eliminate obsolete code.
 int submitQuery(int session, int chunk, char* str, int len, char* savePath,
                 std::string const& resultName=std::string());
 int submitQueryMsg(int session, char* dbName, int chunk,
@@ -74,7 +76,6 @@ void configureSessionMerger3(int session);
 std::string getSessionResultName(int session);
 void discardSession(int session);
 lsst::qserv::master::XrdTransResult getQueryResult(int session, int chunk);
-
 
 }}} // namespace lsst::qserv:master
 #endif // LSST_QSERV_MASTER_DISPATCHER_H

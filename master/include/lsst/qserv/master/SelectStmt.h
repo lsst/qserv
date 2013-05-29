@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,12 +20,15 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// SelectStmt contains extracted information about a particular parsed
-// SQL select statement. It is not responsible for performing
-// verification, validation, or other processing that requires
-// persistent or run-time state.
 #ifndef LSST_QSERV_MASTER_SELECTSTMT_H
 #define LSST_QSERV_MASTER_SELECTSTMT_H
+/**
+  * @file SelectStmt.h
+  *
+  * @brief SelectStmt is a parsed SELECT statment.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 // Standard
 #include <list>
@@ -37,9 +40,7 @@
 // Forward
 class SqlSQL2Parser;
 
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 // Forward
 class SelectList;
 class FromList;
@@ -47,9 +48,11 @@ class WhereClause;
 class OrderByClause;
 class GroupByClause;
 class HavingClause;
-class ColumnAliasMap;
 
-/// class SelectStmt - a container for SQL SELECT statement info.
+// SelectStmt contains extracted information about a particular parsed
+// SQL select statement. It is not responsible for performing
+// verification, validation, or other processing that requires
+// persistent or run-time state.
 class SelectStmt  {
 public:
     typedef boost::shared_ptr<SelectStmt> Ptr;
@@ -100,12 +103,9 @@ public:
     boost::shared_ptr<HavingClause> _having; // Aggr. grouping
     
     int  _limit; // result limit
-    boost::shared_ptr<ColumnAliasMap> _columnAliasMap;
     StringList OutputMods; // Output modifiers (order, grouping,
                            // sort, limit
 };
 
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_SELECTSTMT_H

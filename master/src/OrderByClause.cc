@@ -19,7 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// OrderByClause, OrderByTerm implementations
+/**
+  * @file OrderByClause.cc
+  *
+  * @brief Implementation of OrderByTerm and OrderByClause
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/OrderByClause.h"
 #include <iostream>
 #include <iterator>
@@ -30,10 +36,6 @@
 
 using lsst::qserv::master::OrderByClause;
 namespace qMaster=lsst::qserv::master;
-
-namespace { // File-scope helpers
-
-} // anonymous namespace
 
 namespace lsst { namespace qserv { namespace master {
 

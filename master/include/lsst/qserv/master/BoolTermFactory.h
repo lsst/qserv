@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,22 +20,32 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// BoolTermFactory is a factory class for BoolTerm objects that get placed
-// (typically) in WhereClause objects. 
-
 #ifndef LSST_QSERV_MASTER_BOOLTERMFACTORY_H
 #define LSST_QSERV_MASTER_BOOLTERMFACTORY_H
+/**
+  * @file BoolTermFactory.h
+  *
+  * @brief BoolTermFactory is a factory class for BoolTerm objects that get
+  * placed (typically) in WhereClause objects.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 #include "lsst/qserv/master/WhereClause.h"
 #include <antlr/AST.hpp>
 
 namespace lsst { namespace qserv { namespace master {
+class ValueExprFactory; // Forward
+
+/// BoolTermFactory is a factory class for BoolTerm objects that get
+/// placed (typically) in WhereClause objects.
 class BoolTermFactory {
 public:
     BoolTermFactory(boost::shared_ptr<ValueExprFactory> vf);
 
+    /// Apply a functor, unless the reject function returns true. 
     template <class Apply, class Reject>
-    class applyExcept {
+    class applyExcept { 
     public:
         applyExcept(Apply& af, Reject& rf) : _af(af), _rf(rf)  {}
         void operator()(antlr::RefAST a) {
@@ -45,6 +55,7 @@ public:
         Apply& _af;
         Reject& _rf;
     };
+    /// Construct BoolTerm and add it to another term.
     template <typename Term>
     class multiImport {
     public:
@@ -56,6 +67,7 @@ public:
         BoolTermFactory& _bf;
         Term& _t;
     };
+    /// 
     class bfImport {
     public:
         bfImport(BoolTermFactory& bf, BoolFactor& bfr) : _bf(bf), _bfr(bfr)  {}

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,13 +20,15 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// SelectStmt contains extracted information about a particular parsed
-// SQL select statement. It is not responsible for performing
-// verification, validation, or other processing that requires
-// persistent or run-time state.
 #ifndef LSST_QSERV_MASTER_SELECTLIST_H
 #define LSST_QSERV_MASTER_SELECTLIST_H
-
+/**
+  * @file SelectList.h
+  *
+  * @brief SelectList is the SELECT... portion of a SELECT...FROM...
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <list>
 #include <map>
 #include <deque>
@@ -37,9 +39,7 @@
 #include "lsst/qserv/master/ColumnRefList.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 // Forward
 class ColumnRefMap;
 class ColumnAliasMap;
@@ -52,19 +52,12 @@ public:
     SelectList() 
         : _columnRefList(new ColumnRefList()) ,
           _valueExprList(new ValueExprList())
-    {
-        _columnRefList->setValueExprList(_valueExprList);
-    }
+        {}
     ~SelectList() {}
     boost::shared_ptr<ColumnRefList> getColumnRefList() {
         return _columnRefList;
     }
     void addStar(antlr::RefAST table);
-#if 0
-    void addRegular(antlr::RefAST n);
-    void addFunc(antlr::RefAST n);
-    void addAgg(antlr::RefAST n);
-#endif
     void dbgPrint() const;
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
@@ -78,14 +71,11 @@ public:
     friend class SelectListFactory;
 private:
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
-//    void _fillParams(ValueExprList& p, antlr::RefAST pnodes);
     boost::shared_ptr<ColumnRefList> _columnRefList;
     boost::shared_ptr<ValueExprList> _valueExprList;
     boost::shared_ptr<ColumnRefMap const> _aliasMap;
 };
 
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_SELECTLIST_H
 

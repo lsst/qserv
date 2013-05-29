@@ -24,11 +24,15 @@
 
 #ifndef LSST_QSERV_MASTER_VALUEEXPRFACTORY_H
 #define LSST_QSERV_MASTER_VALUEEXPRFACTORY_H
-
+/**
+  * @file ValueExprFactory.h
+  *
+  * @brief ValueExprFactory makes ValueExpr objects.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <boost/shared_ptr.hpp>
 #include <antlr/AST.hpp>
-
-// Forward
 
 namespace lsst {
 namespace qserv {
@@ -37,7 +41,7 @@ namespace master {
 class ColumnRefMap;
 class ValueExpr;
 class ValueFactorFactory;
-
+/// ValueExprFactory is a factory for making ValueExpr objects
 class ValueExprFactory {
 public:
     ValueExprFactory(boost::shared_ptr<ColumnRefMap> cMap);
@@ -48,7 +52,5 @@ private:
 };
 
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_VALUEEXPRFACTORY_H
 

@@ -19,10 +19,16 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// QueryRunner instances perform actual query execution on SQL
-/// databases using SqlConnection objects to interact with dbms
-/// instances.
- 
+ /**
+  * @file QueryRunner.cc  
+  *
+  * @brief QueryRunner instances perform actual query execution on SQL
+  * databases using SqlConnection objects to interact with dbms
+  * instances.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
+#include "lsst/qserv/worker/QueryRunner.h"
 #include <iostream>
 #include <fcntl.h>
 
@@ -30,7 +36,6 @@
 #include <boost/regex.hpp>
 #include "lsst/qserv/SqlErrorObject.hh"
 #include "lsst/qserv/SqlConnection.hh"
-#include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/QueryPhyResult.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/Config.h"
@@ -203,36 +208,6 @@ bool QueryRunner::operator()() {
     return true;
 }
 
-#if 0
-bool QueryRunner::operate2()() {
-    
-    bool haveWork = true;
-    Manager& mgr = getMgr();
-    boost::shared_ptr<ArgFunc> afPtr(getResetFunc());
-    mgr.addRunner(this);
-    _log->info((Pformat("(Queued: %1%, running: %2%)")
-            % mgr.getQueueLength() % mgr.getRunnerCount()).str().c_str());
-    while(haveWork) {
-        if(_checkPoisoned()) {
-            _poisonCleanup();
-        } else {
-            _act(); 
-            // Might be wise to clean up poison for the current hash anyway.
-        }
-        _log->info((Pformat("(Looking for work... Queued: %1%, running: %2%)")
-                % mgr.getQueueLength() 
-                % mgr.getRunnerCount()).str().c_str());
-        assert(_task.get()); 
-        assert(_task->msg.get());
-        bool reused = mgr.recycleRunner(afPtr.get(), _task->msg->chunkid());
-        if(!reused) {
-            mgr.dropRunner(this);
-            haveWork = false;
-        }
-    } // finished with work.
-    return true;
-}
-#endif
 
 void QueryRunner::poison(std::string const& hash) {
     boost::lock_guard<boost::mutex> lock(*_poisonedMutex);

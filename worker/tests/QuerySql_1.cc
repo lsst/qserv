@@ -19,8 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-
+  /**
+  * @file QuerySql_1.cc
+  *
+  * @brief Simple testing for class QuerySql
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #define BOOST_TEST_MODULE QuerySql_1
 #include "boost/test/included/unit_test.hpp"
 #include "lsst/qserv/worker/QuerySql.h"

@@ -1,6 +1,6 @@
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
+# Copyright 2009-2013 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -23,8 +23,9 @@
 # metadata module for lsst.qserv.master
 #
 # The metadata module contains functions, constants, and data related
-# strictly to qserv's metadata.  This includes anything in the qserv
-# metadata database and name mangling code.
+# strictly to qserv's runtime metadata.  This includes the objectId
+# index (secondary indexing) and the empty chunks file(s). This needs
+# to be re-thought, now that the Qms is available. 
 
 # Pkg imports
 import config

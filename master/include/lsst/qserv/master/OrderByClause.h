@@ -20,30 +20,25 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// OrderByClause is a representation of a SQL ORDER BY clause.
-// It consists of OrderByTerm objects.
-// HavingClause is defined here as well, but real support has not yet
-// been implemented.
 #ifndef LSST_QSERV_MASTER_ORDERBYCLAUSE_H
 #define LSST_QSERV_MASTER_ORDERBYCLAUSE_H
-
+/**
+  * @file OrderByClause.h
+  *
+  * @brief OrderByClause is a representation of a SQL ORDER BY clause.  It
+  * consists of OrderByTerm objects.  HavingClause is defined here as well, but
+  * real support has not yet been implemented. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <deque>
 #include <string>
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/ValueExpr.h"
 
-namespace lsst {
-namespace qserv {
-namespace master {
-#if 0
-// Forward
-class ColumnRefMap;
-class ColumnAliasMap;
-class QueryTemplate;
-class BoolTerm;
-class GroupByClause;
-#endif
+namespace lsst { namespace qserv { namespace master {
 
+/// OrderByTerm is an element of an OrderByClause
 class OrderByTerm {
 public:
     enum Order {DEFAULT, ASC, DESC};
@@ -78,6 +73,7 @@ public:
 };
 
 
+/// OrderByClause is a parsed SQL ORDER BY ... clause
 class OrderByClause {
 public:
     typedef std::deque<OrderByTerm> List;
@@ -98,7 +94,5 @@ private:
     boost::shared_ptr<List> _terms;
 };
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_ORDERBYCLAUSE_H
 

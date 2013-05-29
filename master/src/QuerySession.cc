@@ -19,9 +19,15 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// QuerySession.cc houses the implementation of the class
-// QuerySession, which is a container for input query state (and
-// related state available prior to execution.
+/**
+  * @file QueryMapping.cc
+  *
+  * @brief Implementation of the class QuerySession, which is a
+  * container for input query state (and related state available prior
+  * to execution). Also includes QuerySession::Iter and initQuerySession()
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/QuerySession.h"
 
 #include <algorithm>
@@ -60,6 +66,9 @@ void printConstraints(qMaster::ConstraintVector const& cv) {
 
 namespace lsst { namespace qserv  { namespace master {
 
+////////////////////////////////////////////////////////////////////////
+// class QuerySession
+////////////////////////////////////////////////////////////////////////
 QuerySession::QuerySession(int metaCacheSession) 
     : _metaCacheSession(metaCacheSession) {
 } 

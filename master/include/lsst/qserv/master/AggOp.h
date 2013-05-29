@@ -23,6 +23,14 @@
 
 #ifndef LSST_QSERV_MASTER_AGGOP_H
 #define LSST_QSERV_MASTER_AGGOP_H
+/**
+  * @file AggOp.h
+  *
+  * @brief AggOp class for individual behaviors of SQL aggregation operations
+  *
+  * @author Daniel L. Wang, SLAC
+  */
+
 #include <map>
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/AggRecord.h"
@@ -30,6 +38,8 @@
 
 namespace lsst { namespace qserv { namespace master {
 
+/// class AggOp is an abstract function object that creates AggRecords from
+/// aggregation parameters.
 class AggOp {
 public:
     typedef boost::shared_ptr<AggOp> Ptr;
@@ -42,6 +52,9 @@ protected:
     Mgr& _mgr;
 };
 
+/// class AggOp::Mgr is a manager which provides lookup for specific AggOp
+/// instances according to the proper aggregation operator. Specific AggOp
+/// implementations are shielded from dependency.
 class AggOp::Mgr {
 public:
     typedef std::map<std::string, AggOp::Ptr> OpMap;
@@ -60,5 +73,5 @@ private:
 }}} // namespace lsst::qserv::master
 
 
-#endif // LSST_QSERV_MASTER_AGGREGATEOP_H
+#endif // LSST_QSERV_MASTER_AGGOP_H
 

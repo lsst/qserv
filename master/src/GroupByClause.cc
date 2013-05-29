@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,7 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// X houses the implementation of 
+/**
+  * @file GroupByClause.cc
+  *
+  * @brief Implementation of GroupByClause and GroupByTerm
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/GroupByClause.h"
 #include <iostream>
 #include <iterator>
@@ -27,13 +33,9 @@
 #include "lsst/qserv/master/QueryTemplate.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
-
 namespace qMaster=lsst::qserv::master;
 using lsst::qserv::master::GroupByTerm;
 using lsst::qserv::master::GroupByClause;
-
-namespace { // File-scope helpers
-}
 
 class GroupByTerm::render {
 public:
@@ -66,32 +68,26 @@ qMaster::operator<<(std::ostream& os, qMaster::GroupByClause const& c) {
     return os;
 }
 std::string
-qMaster::GroupByClause::getGenerated() {
+GroupByClause::getGenerated() {
     QueryTemplate qt;
     renderTo(qt);
     return qt.dbgStr();
 }
 
 void
-qMaster::GroupByClause::renderTo(qMaster::QueryTemplate& qt) const {
+GroupByClause::renderTo(qMaster::QueryTemplate& qt) const {
    if(_terms.get() && _terms->size() > 0) {
         List const& terms = *_terms;
         std::for_each(terms.begin(), terms.end(), GroupByTerm::render(qt));
     } 
 }
-#if 0
-    std::stringstream ss;
-    if(_terms.get()) {
-        std::copy(_terms->begin(), _terms->end(),
-              std::ostream_iterator<qMaster::GroupByTerm>(ss,", "));
-    }
-    
-    qt.append(ss.str()); // FIXME
-}
-#endif
-boost::shared_ptr<GroupByClause> GroupByClause::copyDeep() {
+
+boost::shared_ptr<GroupByClause> 
+GroupByClause::copyDeep() {
     return boost::make_shared<GroupByClause>(*this); // FIXME
 }
-boost::shared_ptr<GroupByClause> GroupByClause::copySyntax() {
+
+boost::shared_ptr<GroupByClause> 
+GroupByClause::copySyntax() {
     return boost::make_shared<GroupByClause>(*this);
 }

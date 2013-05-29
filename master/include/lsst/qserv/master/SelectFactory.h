@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,18 +20,20 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// SelectFactory maintains parse state so that a SelectStmt can be
-// built from a parse tree. SelectListFactory depends on some of this
-// state. 
-
 #ifndef LSST_QSERV_MASTER_SELECTFACTORY_H
 #define LSST_QSERV_MASTER_SELECTFACTORY_H
-
+/**
+  * @file SelectFactory.h
+  *
+  * @brief SelectFactory maintains parse state so that a SelectStmt can be built
+  * from a parse tree. SelectListFactory depends on some of this state.  
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <list>
 #include <map>
 #include <antlr/AST.hpp>
 #include <boost/shared_ptr.hpp>
-
 
 // Impl
 #include <boost/make_shared.hpp>
@@ -39,9 +41,7 @@
 // Forward
 class SqlSQL2Parser;
 
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 // Forward
 class ParseAliasMap;
 class ColumnRefMap;
@@ -53,8 +53,9 @@ class ValueExprFactory;
 class SelectStmt;
 class FromList;
 class WhereClause;
-class ValueExpr;
 
+/// SelectFactory is responsible for constructing a SelectStmt (including
+/// SelectList, FromClause, WhereClause, etc.) from ANTLR parse actions
 class SelectFactory {
 public:
     SelectFactory();
@@ -86,7 +87,6 @@ private:
 };
 
 }}} // namespace lsst::qserv::master
-
 
 #endif // LSST_QSERV_MASTER_SELECTFACTORY_H
 

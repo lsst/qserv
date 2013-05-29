@@ -20,15 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// class QuerySql::Batch -- A small helper class for batching up 
-// containers of SQL statements.
-//
 #ifndef LSST_QSERV_WORKER_QUERYSQL_BATCH_H
 #define LSST_QSERV_WORKER_QUERYSQL_BATCH_H
+ /**
+  * @file QuerySql_Batch.h  
+  *
+  * @brief QuerySql::Batch is the actual bundling portion of a QuerySql object.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/worker/QuerySql.h"
-namespace lsst {
-namespace qserv {
-namespace worker {
+namespace lsst { namespace qserv { namespace worker {
 
 struct QuerySql::Batch {
     // Default to 5 SQL statements at a time.

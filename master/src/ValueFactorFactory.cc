@@ -19,9 +19,14 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ValueFactorFactory.cc constructs ValueFactor instances from an ANTLR
-// subtrees.
-
+/**
+  * @file ValueFactorFactory.cc
+  *
+  * @brief ValueFactorFactory constructs ValueFactor instances from
+  * ANTLR subtrees.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/ValueFactorFactory.h"
 #include <stdexcept>
 

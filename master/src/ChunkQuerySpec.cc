@@ -19,12 +19,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+/**
+  * @file ChunkQuerySpec.cc
+  *
+  * @brief Implementation of ostream << operator for ChunkQuerySpec
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/ChunkQuerySpec.h"
 #include <algorithm>
 #include <iterator>
 #include <iostream>
-
-
 namespace qMaster=lsst::qserv::master;
 
 namespace lsst { namespace qserv { namespace master {

@@ -20,11 +20,16 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// TablePlugin is a query plugin that inserts placeholders for table name
-// substitution.
-
 #ifndef LSST_QSERV_MASTER_SPATIALSPECPLUGIN_H
 #define LSST_QSERV_MASTER_SPATIALSPECPLUGIN_H
+/**
+  * @file SpatialSpecPlugin.h
+  *
+  * @brief SpatialSpecPlugin is a QueryPlugin that is responsible for handling
+  * spatial restriction specifications in queries.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 namespace lsst { namespace qserv { namespace master {
 void registerSpatialSpecPlugin();

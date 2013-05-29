@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,9 +19,16 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// FIXME: Unfinished infrastructure for passing subchunk table name to worker.
-// 
-
+ /**
+  * @file QuerySql.cc
+  *
+  * @brief QuerySql is a bundle of SQL statements that represent an accepted
+  * query's generated SQL.
+  *
+  * FIXME: Unfinished infrastructure for passing subchunk table name to worker.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/worker/QuerySql.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/constants.h"

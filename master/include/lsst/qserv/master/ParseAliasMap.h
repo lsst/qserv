@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,20 +20,21 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ColumnAliasMap contains meta-information on column aliases
-//  declared in the select list of a SQL select statement.
 #ifndef LSST_QSERV_MASTER_PARSEALIASMAP_H
 #define LSST_QSERV_MASTER_PARSEALIASMAP_H
+/**
+  * @file ParseAliasMap.h
+  *
+  * @brief ParseAliasAliasMap contains meta-information on column aliases
+  * declared in the select list of a SQL select statement. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 // Standard
 #include <map>
 
-// Forward
-
-
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 
 /// class ParseAliasMap - maintain mappings for aliasing in SQL statements
 /// in the parse node domain.
@@ -51,7 +52,6 @@ public:
     // The first "Object" node points only at o1, and the second
     // "Object" node points only at o2.  In the parse tree domain,
     // "Object" is not merged.
-
     
     typedef Map::const_iterator Miter;
     ParseAliasMap() {}

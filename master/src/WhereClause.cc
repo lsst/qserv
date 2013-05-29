@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,8 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// WhereClause.cc houses the implementation of a WhereClause, a
-// container for the parsed elements of a SQL WHERE.
+/**
+  * @file WhereClause.cc
+  *
+  * @brief WhereClause is a parse element construct for SQL WHERE.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/WhereClause.h"
 
 #include <iostream>
@@ -29,9 +34,6 @@
 namespace qMaster=lsst::qserv::master;
 using lsst::qserv::master::QsRestrictor;
 using lsst::qserv::master::WhereClause;
-
-namespace { // File-scope helpers
-}
 
 namespace lsst { namespace qserv { namespace master {
 BoolTerm::Ptr findAndTerm(BoolTerm::Ptr tree) {

@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,11 +19,16 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// WhereFactory.cc houses the implementation of the WhereFactory, which
-// is responsible for constructing
-// WhereList (and SelectList, etc.) from an ANTLR parse tree.  For
-// now, the code for other factories is included here as well.
-
+/**
+  * @file WhereClause.cc
+  *
+  * @brief WhereFactory is responsible for constructing WhereList (and
+  * SelectList, etc.) from an ANTLR parse tree.  For now, the code for
+  * other factories is included here as well.  WhereClause is a parse
+  * element construct for SQL WHERE.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/WhereFactory.h"
 
 // Std
@@ -32,7 +37,6 @@
 // Package
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 #include "lsst/qserv/master/parserBase.h" // Handler base classes
-#include "lsst/qserv/master/ValueExprFactory.h" 
 #include "lsst/qserv/master/WhereClause.h" 
 #include "lsst/qserv/master/BoolTermFactory.h"
 
@@ -242,122 +246,6 @@ struct MetaCheck {
         return false;
     }
 };
-////////////////////////////////////////////////////////////////////////
-// BoolTermFactory helper
-////////////////////////////////////////////////////////////////////////
-class matchStr {
-public: 
-    matchStr(std::string const& s) : _s(s) {}
-    bool operator()(antlr::RefAST a) {
-        return qMaster::tokenText(a) == _s;
-    }
-    std::string _s;
-};
-class matchType {
-public: 
-    matchType(int tokenType) : _type(tokenType) {}
-    bool operator()(antlr::RefAST a) {
-        return a->getType() == _type;
-    }
-    int _type;
-};
-
-template <class F>
-void forEachSibs(antlr::RefAST a, F& f) {
-    for(; a.get(); a = a->getNextSibling()) {
-        f(a);
-    }
-}
-////////////////////////////////////////////////////////////////////////
-// BoolTermFactory::bfImport
-////////////////////////////////////////////////////////////////////////
-
-void qMaster::BoolTermFactory::bfImport::operator()(antlr::RefAST a) {
-    switch(a->getType()) {
-    case SqlSQL2TokenTypes::VALUE_EXP:
-        _bfr._terms.push_back(_bf.newValueExprTerm(a));
-        break;
-    default:
-        _bfr._terms.push_back(_bf.newPassTerm(a));
-        break;
-    }
-}
-
-////////////////////////////////////////////////////////////////////////
-// BoolTermFactory
-////////////////////////////////////////////////////////////////////////
-using qMaster::BoolTermFactory;
-BoolTermFactory::BoolTermFactory(boost::shared_ptr<ValueExprFactory> vf)
-    : _vFactory(vf) {    
-}
-
-qMaster::BoolTerm::Ptr 
-BoolTermFactory::newBoolTerm(antlr::RefAST a) {
-    BoolTerm::Ptr b;
-    antlr::RefAST child = a->getFirstChild();
-    switch(a->getType()) {
-    case SqlSQL2TokenTypes::OR_OP: b = newOrTerm(child); break;
-    case SqlSQL2TokenTypes::AND_OP: b = newAndTerm(child); break;
-    case SqlSQL2TokenTypes::BOOLEAN_FACTOR: b = newBoolFactor(child); break;
-    case SqlSQL2TokenTypes::VALUE_EXP: 
-        b = newUnknown(a); break; // Value expr not expected here.
-    default:
-        b = newUnknown(a); break; 
-    }
-    return b;
-}
-
-qMaster::OrTerm::Ptr 
-BoolTermFactory::newOrTerm(antlr::RefAST a) {
-    qMaster::OrTerm::Ptr p(new OrTerm());
-    multiImport<OrTerm> oi(*this, *p);
-    matchType matchOr(SqlSQL2TokenTypes::SQL2RW_or);
-    applyExcept<multiImport<OrTerm>,matchType> ae(oi, matchOr);
-    forEachSibs(a, ae);
-    return p;
-}
-qMaster::AndTerm::Ptr 
-BoolTermFactory::newAndTerm(antlr::RefAST a) {
-    qMaster::AndTerm::Ptr p(new AndTerm());
-    multiImport<AndTerm> ai(*this, *p);
-    matchType matchAnd(SqlSQL2TokenTypes::SQL2RW_and);
-    applyExcept<multiImport<AndTerm>,matchType> ae(ai, matchAnd);
-    forEachSibs(a, ae);
-    return p;
-}
-qMaster::BoolFactor::Ptr 
-BoolTermFactory::newBoolFactor(antlr::RefAST a) {
-#if 0
-    std::cout << "bool factor:";
-    spacePrint sp(std::cout);
-    forEachSibs(a, sp);
-    std::cout << std::endl;
-#endif
-    BoolFactor::Ptr bf(new BoolFactor());
-    bfImport bfi(*this, *bf);
-    forEachSibs(a, bfi);
-    return bf;
-}
-qMaster::UnknownTerm::Ptr 
-BoolTermFactory::newUnknown(antlr::RefAST a) {
-    std::cout << "unknown term:" << qMaster::walkTreeString(a) << std::endl;
-    return qMaster::UnknownTerm::Ptr(new qMaster::UnknownTerm());
-}
-
-qMaster::PassTerm::Ptr
-BoolTermFactory::newPassTerm(antlr::RefAST a) {
-    qMaster::PassTerm::Ptr p(new PassTerm());
-    p->_text = tokenText(a); // FIXME: Should this be a tree walk?
-    return p;
-}
-
-qMaster::ValueExprTerm::Ptr
-BoolTermFactory::newValueExprTerm(antlr::RefAST a) {
-    qMaster::ValueExprTerm::Ptr p(new ValueExprTerm());
-    p->_expr = _vFactory->newExpr(a->getFirstChild());
-    return p;
-}
-
 void 
 WhereFactory::_addOrSibs(antlr::RefAST a) {
     MetaCheck mc;

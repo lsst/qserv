@@ -20,18 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// HavingClause is a representation of a SQL HAVING clause.
-// HavingClause is represented much like a WhereClause, but with more
-// limitations.
 #ifndef LSST_QSERV_MASTER_HAVINGCLAUSE_H
 #define LSST_QSERV_MASTER_HAVINGCLAUSE_H
-
+/**
+  * @file HavingClause.h
+  *
+  * @brief HavingClause is a representation of a SQL HAVING clause, similar to a
+  * WhereClause, but with more limitations. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <boost/shared_ptr.hpp>
-#if 0
-#include <deque>
-#include <string>
-#include "lsst/qserv/master/ValueExpr.h"
-#endif
 
 namespace lsst {
 namespace qserv {
@@ -57,7 +56,5 @@ private:
 };
 
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_HAVINGCLAUSE_H
 

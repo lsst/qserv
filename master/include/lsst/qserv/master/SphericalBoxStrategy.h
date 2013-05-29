@@ -20,15 +20,16 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// SphericalBoxStrategy is a class designed to abstract the
-// computations and constructs that are specific to the spherical-box
-// style of partitioning. Ideally, we would have an abstract strategy
-// class as an interface that all partitioning strategies would share,
-// but this is difficult to do without at least one other strategy and
-// we don't have the resources (yet) to implement another strategy.
-
 #ifndef LSST_QSERV_MASTER_SPHERICALBOXSTRATEGY_H
 #define LSST_QSERV_MASTER_SPHERICALBOXSTRATEGY_H
+/**
+  * @file SphericalBoxStrategy.h
+  *
+  * @brief SphericalBoxStrategy holds some of the logic for going from
+  * table-name+chunk+subchunk to a physical table name.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <boost/shared_ptr.hpp>
 
 namespace lsst { namespace qserv { namespace master {
@@ -36,6 +37,14 @@ class FromList;
 class QueryContext;
 class QueryMapping;
 
+/// SphericalBoxStrategy is a class designed to abstract the
+/// computations and constructs that are specific to the spherical-box
+/// style of partitioning. Ideally, we would have an abstract strategy
+/// class as an interface that all partitioning strategies would share,
+/// but this is difficult to do without at least one other strategy and
+/// we don't have the resources (yet) to implement another strategy.
+/// Unfortunately, it only contains a portion of the logic needed for Spherical
+/// Box partitioning, rather than all of it. 
 class SphericalBoxStrategy {
 public:
     SphericalBoxStrategy(FromList const& f, 
@@ -58,7 +67,5 @@ private:
 };
 
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_SPHERICALBOXSTRATEGY_H
 

@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,7 +19,14 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
+ /**
+  * @file FifoScheduler.cc
+  *
+  * @brief A simple scheduler implementation for ordering query tasks
+  * to send to the mysqld.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/worker/FifoScheduler.h"
 #include <boost/thread.hpp>
 // #include <iostream> // Enable for debugging.
@@ -29,9 +36,7 @@ typedef qWorker::Foreman::TaskQueuePtr TaskQueuePtr;
 
 qWorker::FifoScheduler::FifoScheduler() 
     : _maxRunning(4) // FIXME: set to system proc count.
-{
-
-}    
+{}    
 
 TaskQueuePtr qWorker::FifoScheduler::nopAct(TodoList::Ptr todo, 
                                             TaskQueuePtr running) {

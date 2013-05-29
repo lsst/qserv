@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,23 +19,26 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-// SelectStmt is the query info structure. It contains information
-// about the top-level query characteristics. It shouldn't contain
-// information about run-time query execution.  It might contain
-// enough information to generate queries for execution.
+/**
+  * @file SelectStmt.cc
+  *
+  * @brief Implementation of a SelectStmt
+  *
+  * SelectStmt is the query info structure. It contains information
+  * about the top-level query characteristics. It shouldn't contain
+  * information about run-time query execution.  It might contain
+  * enough information to generate queries for execution. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 #include "lsst/qserv/master/SelectStmt.h"
 
 // Standard
 #include <map>
-//#include <antlr/AST.hpp>
 
 // Boost
-//#include <boost/make_shared.hpp>
-
 #include <boost/algorithm/string/predicate.hpp> // string iequal
-
 
 // Local (placed in src/)
 #include "SqlSQL2Parser.hpp" 
@@ -43,7 +46,6 @@
 
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/ColumnRefH.h"
-#include "lsst/qserv/master/ColumnAliasMap.h"
 #include "lsst/qserv/master/SelectList.h"
 #include "lsst/qserv/master/FromList.h"
 #include "lsst/qserv/master/GroupByClause.h"
@@ -195,8 +197,8 @@ inline OS& generate(OS& os, char const label[], boost::shared_ptr<T> t) {
     }
     return os; 
 }
+} // anonymous
 
-}
 void qMaster::SelectStmt::_print() {
     //_selectList->getColumnRefList()->printRefs();
     using std::cout;
@@ -211,16 +213,5 @@ void qMaster::SelectStmt::_print() {
 }
 
 void qMaster::SelectStmt::_generate() {
-    //_selectList->getColumnRefList()->printRefs();
-    using std::cout;
-    using std::endl;
-#if 0
-    generate(std::cout, "SELECT", _selectList);
-    generate(std::cout, "FROM", _fromList);
-    generate(std::cout, "WHERE", _whereClause);
-    generate(std::cout, "ORDER BY", _orderBy);
-    generate(std::cout, "GROUP BY", _groupBy);
-    generate(std::cout, "HAVING", _having);
-#endif    
     std::cout << getTemplate().dbgStr() << std::endl;
 }

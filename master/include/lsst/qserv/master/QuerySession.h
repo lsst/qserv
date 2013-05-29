@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,12 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// A QuerySession contains information regarding a top-level query, including
-// the text of the original query, a parsed query tree, and other user
-// state/context. 
-
 #ifndef LSST_QSERV_MASTER_QUERYSESSION_H
 #define LSST_QSERV_MASTER_QUERYSESSION_H
+/**
+  * @file QuerySession.h
+  *
+  * @brief QuerySession contains state and behavior for operating on user
+  * queries. It contains much of the query analysis-side of AsyncQueryManager's
+  * responsibility. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <list>
 #include <string>
 #include <boost/iterator/iterator_facade.hpp>
@@ -42,6 +47,9 @@ namespace lsst { namespace qserv { namespace master {
 class SelectStmt; // forward
 class QueryPlugin; // forward
 
+/// A QuerySession contains information regarding a top-level query, including
+/// the text of the original query, a parsed query tree, and other user
+/// state/context. 
 class QuerySession {
 public:
     class Iter;
@@ -107,7 +115,7 @@ private:
     boost::shared_ptr<PluginList> _plugins;
 };
 
-
+/// Iterates over a ChunkSpecList to return QueryFragments for execution
 class QuerySession::Iter : public boost::iterator_facade <
     QuerySession::Iter, ChunkQuerySpec, boost::forward_traversal_tag> {
 public:

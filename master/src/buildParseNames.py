@@ -26,6 +26,10 @@
 # 
 # Usage:
 # buildParseNames.py <infile.txt> <out.h>
+# 
+# Note, this tool is no longer needed for qserv, but may be useful in
+#  the future if ANTLR parse symbols are needed in other languages in
+#  qserv.
 import os,sys
 import re
 from itertools import chain, imap, tee

@@ -19,12 +19,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ModFactory.cc houses the implementation of the ModFactory, which
-// is responsible for constructing representations of LIMIT, ORDER BY,
-// and GROUP BY clauses. It has a placeholder to support HAVING.
-
+/**
+  * @file ModFactory.cc
+  *
+  * @brief Implementation of ModFactory, which is responsible for
+  * constructing representations of LIMIT, ORDER BY, and GROUP BY
+  * clauses. It has a placeholder-grade support for HAVING. 
+  * Nested handlers: LimitH, OrderByH, GroupByH, HavingH
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/ModFactory.h"
-#include "lsst/qserv/master/GroupByClause.h"
 
 // Std
 #include <iterator>
@@ -44,10 +49,6 @@
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
-
-// Anonymous helpers
-namespace {
-} // anonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
 // ModFactory::LimitH

@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,9 +19,15 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// QueryTemplate houses the implementation of QueryTemplate, which is
-// a object that can be used to generate concrete queries from a
-// template, given certain parameters (e.g. chunk/subchunk).
+/**
+  * @file QueryTemplate.cc
+  *
+  * @brief Implementation of QueryTemplate, which is a object that can
+  * be used to generate concrete queries from a template, given
+  * certain parameters (e.g. chunk/subchunk). 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/QueryTemplate.h"
 #include <sstream>
 #include <iostream>

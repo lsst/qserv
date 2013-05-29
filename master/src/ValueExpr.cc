@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,10 +19,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ValueExpr.cc houses the implementation of ValueExpr, a object
-// containing elements of a SQL value expresssion (construct that
-// evaluates to a [non-boolean] SQL primitive value)
-// ValueExpr elements are formed as 'term (op term)*' .
+/**
+  * @file ValueExpr.cc
+  *
+  * @brief ValueExpr implementat. A ValueExpr is an object
+  * object containing elements of a SQL value expresssion (construct
+  * that evaluates to a [non-boolean] SQL primitive value).
+  *
+  * ValueExpr elements are formed as 'term (op term)*' .
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/master/ValueExpr.h"
 #include <iostream>
 #include <sstream>

@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,9 +19,14 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// FromFactory.cc houses the implementation of the FromFactory, which
-// is responsible for constructing FromList from an ANTLR parse tree.
-
+/**
+  * @file FromFactory.cc
+  *
+  * @brief Implementation of FromFactory, which is responsible for
+  * constructing FromList from an ANTLR parse tree.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/FromFactory.h"
 #include "lsst/qserv/master/FromList.h" // for class FromList
 // C++
@@ -31,11 +36,8 @@
 // Package
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 #include "lsst/qserv/master/ColumnRefH.h"
-
 #include "lsst/qserv/master/ParseAliasMap.h" 
-
 #include "lsst/qserv/master/parseTreeUtil.h"
-
 #include "lsst/qserv/master/TableRefN.h"
 #include "lsst/qserv/master/QueryTemplate.h"
 // namespace modifiers
@@ -336,4 +338,3 @@ FromFactory::_import(antlr::RefAST a) {
     std::string s(ss.str());
     if(s.size() > 0) { std::cout << s << std::endl; } 
 }
-

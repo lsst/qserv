@@ -1,6 +1,6 @@
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
+# Copyright 2009-2013 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -40,6 +40,9 @@ import lsst.qserv.master.spatial as spatial
 # server.py), or be used directly by test programs or
 # development/administrative code. 
 # 
+# Ideally, AppInterface objects can be used from standalone Python
+# programs, facilitating testing and usage without bringing up a qserv
+# master daemon. It is unclear whether this still works.
 class AppInterface:
     def __init__(self, reactor=None):
         self.tracker = app.TaskTracker()

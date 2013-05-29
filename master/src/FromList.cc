@@ -19,13 +19,16 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// Implementation of class FromList
+/**
+  * @file FromList.cc
+  *
+  * @brief Implementation of FromList
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/FromList.h"
 
 namespace qMaster=lsst::qserv::master;
-
-namespace { // File-scope helpers
-}
 
 std::ostream& 
 qMaster::operator<<(std::ostream& os, qMaster::FromList const& fl) {

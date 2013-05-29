@@ -20,13 +20,17 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// QueryMapping is a value class that stores a mapping that can be
-// consulted for a partitioning-strategy-agnostic query generation
-// stage that substitutes real table names for placeholders, according
-// to a query's specified partition coverage.
-
 #ifndef LSST_QSERV_MASTER_QUERYMAPPING_H
 #define LSST_QSERV_MASTER_QUERYMAPPING_H
+/**
+  * @file QueryMapping.h
+  *
+  * @brief QueryMapping facilitates mapping a QueryTemplate to a concrete
+  * queries for executing on workers. In the future, this responsibility may be
+  * moved to the worker. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <boost/shared_ptr.hpp>
 #include <set>
 #include <map>
@@ -36,6 +40,10 @@ class ChunkSpec;
 class ChunkSpecSingle;
 class QueryTemplate;
 
+/// QueryMapping is a value class that stores a mapping that can be
+/// consulted for a partitioning-strategy-agnostic query generation
+/// stage that substitutes real table names for placeholders, according
+/// to a query's specified partition coverage.
 class QueryMapping {
 public:
     class MapTuple;

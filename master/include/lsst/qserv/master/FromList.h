@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,17 +20,22 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// FromList is a representation of the contents of a SQL query's 
-// FROM list.
-
 #ifndef LSST_QSERV_MASTER_FROMLIST_H
 #define LSST_QSERV_MASTER_FROMLIST_H
+/**
+  * @file FromList.h
+  *
+  * @brief FromList is a representation of the contents of a SQL query's FROM
+  * list. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/ColumnRefList.h"
 #include "lsst/qserv/master/TableRefN.h"
 
 namespace lsst { namespace qserv { namespace master {
-
+// FromList is a representation of SQL FROM.
 class FromList {
 public:
     FromList() : _columnRefList(new ColumnRefList()) {}
@@ -52,10 +57,6 @@ private:
     boost::shared_ptr<ColumnRefList> _columnRefList;
     TableRefnListPtr _tableRefns;
 };
-
-
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_FROMLIST_H
 

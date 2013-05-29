@@ -20,17 +20,20 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// TablePlugin is a query plugin that inserts placeholders for table name
-// substitution.
-
 #ifndef LSST_QSERV_MASTER_TABLEPLUGIN_H
 #define LSST_QSERV_MASTER_TABLEPLUGIN_H
+/**
+  * @file TablePlugin.h
+  *
+  * @brief TablePlugin is a query plugin that inserts placeholders for table
+  * name substitution. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 namespace lsst { namespace qserv { namespace master {
 void registerTablePlugin();
 
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_TABLEPLUGIN_H
 

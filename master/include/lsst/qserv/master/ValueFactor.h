@@ -21,11 +21,17 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // ValueFactor is a term in a ValueExpr's "term (term_op term)*" phrase
-// This needs to be reconciled with the WhereClause's ValueExprTerm
-
+// This needs to be reconciled with the WhereClause's ValueExprTerm eventually.
 #ifndef LSST_QSERV_MASTER_VALUEEXPR_H
 #define LSST_QSERV_MASTER_VALUEEXPR_H
-
+/**
+  * @file ValueFactor.h
+  *
+  * @brief ValueFactor is a value factor, i.e., a function, a column reference,
+  * an expression, a constant, a *, etc.  
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
@@ -41,6 +47,8 @@ class ValueFactor;
 typedef boost::shared_ptr<ValueFactor> ValueFactorPtr;
 typedef std::list<ValueFactorPtr> ValueFactorList;
 
+/// ValueFactor is some kind of value that can exist in a column. It can be
+/// logical (i.e. a column name) or physical (a constant number or value).
 class ValueFactor {
 public:
     enum Type { COLUMNREF, FUNCTION, AGGFUNC, STAR, CONST, EXPR };
@@ -93,8 +101,5 @@ public:
     QueryTemplate& _qt;
 };
 
-
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_VALUEEXPR_H

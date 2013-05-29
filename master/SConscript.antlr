@@ -6,15 +6,6 @@ import sys
 Import('env')
 
 #How to use: SConscript("SConscript.antlr"), exports={'env' : env})
-if False: ## An equivalent header is already in SqlSQL2TokenTypes.hpp
-    parseNamesScript = "src/buildParseNames.py"
-    namesBuilder = Builder(action='python %s $SOURCE $TARGET' % (parseNamesScript),
-                           suffix='.h', src_suffix='.txt')
-    namesEnv = Environment(BUILDERS = {'ParseNames' : namesBuilder})
-    names = namesEnv.ParseNames('src/SqlSQL2Tokens', ['src/SqlSQL2ImpTokenTypes.txt'])
-    env.Depends(names, parseNamesScript)
-    env["ANTLR_NAME_HEADER"] = names
-    pass
 
 class AntlrFileEmitter:
     """File name computers borrowed from: 
@@ -56,8 +47,6 @@ tgts = env.Command(afe.computeTargets(*srcs), srcs,
 env.Append(antlrout=tgts)
 depends = filter(lambda t: not t.name.endswith(".cpp"), tgts)
 env.Append(antlrdeps=depends)  
-
-
 
 #print map(lambda t: t.name, depends)
 #print tgts

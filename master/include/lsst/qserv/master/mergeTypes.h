@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,11 +22,18 @@
  
 #ifndef LSST_QSERV_MASTER_MERGETYPES_H
 #define LSST_QSERV_MASTER_MERGETYPES_H
+/**
+  * @file mergeTypes.h
+  *
+  * @brief MergeFixup is a value class for exchanging query merge
+  * information from Python to C++. It has not been streamlined with
+  * the newer query model. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <string>
 
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 
 /// class MergeFixup - A value class that specifies the SQL predicates
 /// to use when merging subqueries into final results. 

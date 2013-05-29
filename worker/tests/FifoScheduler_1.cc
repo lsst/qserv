@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,8 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
-
+  /**
+  * @file FifoScheduler_1.cc
+  *
+  * @brief Simple testing for class FifoScheduler
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #define BOOST_TEST_MODULE FifoScheduler_1
 #include "boost/test/included/unit_test.hpp"
 #include "lsst/qserv/worker/FifoScheduler.h"

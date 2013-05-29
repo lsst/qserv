@@ -19,6 +19,16 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+/**
+  * @file QueryMapping.cc
+  *
+  * @brief Implementation of QueryMapping. Local implementations of:
+  * class MapTuple
+  * class Entry : public QueryTemplate::Entry
+  * class Mapping : public QueryTemplate::EntryMapping
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/QueryMapping.h"
 
 #include <deque>

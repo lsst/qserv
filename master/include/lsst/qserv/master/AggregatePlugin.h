@@ -20,11 +20,20 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 // AggregatePlugin is a query plugin that operates on the query in its split
 // parallel/merge forms. 
 
 #ifndef LSST_QSERV_MASTER_AGGREGATEPLUGIN_H
 #define LSST_QSERV_MASTER_AGGREGATEPLUGIN_H
+/**
+  * @file AggregatePlugin.h
+  *
+  * @brief AggregatePlugin inherits from QueryPlugin, but has no public
+  * interface, aside from getting registered in the plugin manager
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 namespace lsst { namespace qserv { namespace master {
 void registerAggregatePlugin();

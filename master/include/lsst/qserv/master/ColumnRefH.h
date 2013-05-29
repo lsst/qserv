@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,22 +20,31 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ColumnRefH -- column reference parse handler for parser model 3
 #ifndef LSST_QSERV_MASTER_COLUMNREFH_H
 #define LSST_QSERV_MASTER_COLUMNREFH_H
+/**
+  * @file ColumnRefH.h
+  *
+  * @brief  ColumnRefH is a column reference parse handler that is triggered
+  * when the ANTLR parser produces column references. ColumnRefMap maintains
+  * node-to-parsed-ref mappings
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 // Standard
 #include <list>
+
+#include <boost/shared_ptr.hpp>
 
 #include "lsst/qserv/master/parserBase.h" // VoidFourRefFunc
 #include "lsst/qserv/master/parseTreeUtil.h" // tokenText
 // Forward
 class SqlSQL2Parser;
 
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace lsst { namespace qserv { namespace master {
 
+/// ColumnRefH is a parse action for column_ref tokens in the grammar
 class ColumnRefH : public VoidFourRefFunc {
 public: 
     class Listener;
@@ -44,6 +53,8 @@ public:
     virtual ~ColumnRefH() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b, 
                             antlr::RefAST c, antlr::RefAST d) {
+        /// The listener abstraction deals with differently-formed column
+        /// references, i.e., column; table.column; database.table.column
         if(d.get()) {
             _process(b, c, d);
         } else if(c.get()) {
@@ -62,13 +73,17 @@ private:
     boost::shared_ptr<Listener> _listener;
 };
 
+/// ColumnRefH::Listener is an interface for functors that act upon normalized
+/// column references (db,table,column)  
 class ColumnRefH::Listener {
 public:
     virtual ~Listener() {}
     virtual void acceptColumnRef(antlr::RefAST d, antlr::RefAST t, 
                                  antlr::RefAST c) = 0;
 };
-
+/// ColumnRefMap is a Listener which remembers ColumnRefs as nodes.
+/// Somewhat different than ColumnRefList, which is not a listener
+/// and stores strings rather than node refs.
 class ColumnRefMap : public ColumnRefH::Listener {
 public:
     struct Ref {
@@ -94,6 +109,7 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // Inlines
 ////////////////////////////////////////////////////////////////////////
+/// Redirect a normalized ref to a listener, if available
 inline void 
 ColumnRefH::_process(antlr::RefAST d, antlr::RefAST t, antlr::RefAST c) {
     using lsst::qserv::master::tokenText;

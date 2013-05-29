@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,10 +20,15 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// GroupByClause is a class for group-by clause parse elements.
-
 #ifndef LSST_QSERV_MASTER_GROUPBYCLAUSE_H
 #define LSST_QSERV_MASTER_GROUPBYCLAUSE_H
+/**
+  * @file GroupByClause.h
+  *
+  * @brief GroupByClause is a representation of a group-by clause element.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <boost/shared_ptr.hpp>
 #include <deque>
 #include <string>
@@ -34,6 +39,7 @@ namespace lsst { namespace qserv { namespace master {
 class QueryTemplate;
 class ValueExpr;
 
+// GroupByTerm is a element of a GroupByClause
 class GroupByTerm {
 public:
     class render; 
@@ -52,7 +58,7 @@ private:
     boost::shared_ptr<ValueExpr> _expr;
     std::string _collate;
 };
-
+/// GroupByClause is a parsed GROUP BY ... element.
 class GroupByClause {
 public:
     typedef std::deque<GroupByTerm> List;
@@ -72,11 +78,6 @@ private:
     void _addTerm(GroupByTerm const& t) { _terms->push_back(t); }
     boost::shared_ptr<List> _terms;
 };
-
-
-
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_GROUPBYCLAUSE_H
 

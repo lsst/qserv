@@ -19,8 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// BoolTerm.cc houses the implementation for the parsed
-// representations of boolean terms
+/**
+  * @file BoolTerm.cc
+  *
+  * @brief BoolTerm and BoolTermFactory implementations.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include "lsst/qserv/master/BoolTerm.h"
 #include "lsst/qserv/master/QueryTemplate.h"
 #include "lsst/qserv/master/ValueExpr.h"
@@ -128,4 +133,3 @@ boost::shared_ptr<qMaster::BoolTerm> qMaster::AndTerm::copySyntax() {
     at->_terms = _terms; // shallow copy for now
     return at;
 }
-
