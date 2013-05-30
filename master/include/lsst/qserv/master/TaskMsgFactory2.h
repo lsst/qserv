@@ -46,7 +46,8 @@ class ChunkQuerySpec;
 class TaskMsgFactory2 {
 public:
     TaskMsgFactory2(int session);
-    
+
+    /// Construct a TaskMsg and serialize it to a stream
     void serializeMsg(ChunkQuerySpec const& s, 
                       std::string const& chunkResultName,
                       std::ostream& os);

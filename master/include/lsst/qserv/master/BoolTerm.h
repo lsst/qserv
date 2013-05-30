@@ -48,12 +48,15 @@ public:
     virtual ~BoolTerm() {}
     virtual char const* getName() const { return "BoolTerm"; }
 
+    /// @return a mutable list iterator for the contained terms
     virtual PtrList::iterator iterBegin() { return PtrList::iterator(); }
+    /// @return the terminal iterator
     virtual PtrList::iterator iterEnd() { return PtrList::iterator(); }
 
     friend std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
+    /// Deep copy this term.
     virtual boost::shared_ptr<BoolTerm> copySyntax() {
         return boost::shared_ptr<BoolTerm>(); }
     class render;

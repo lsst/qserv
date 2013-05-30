@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,7 +31,6 @@
 #include "lsst/qserv/master/QuerySession.h"
 
 #include <algorithm>
-#include "lsst/qserv/master/PlanWriter.h"
 #include "lsst/qserv/master/SelectParser.h"
 #include "lsst/qserv/master/SelectStmt.h"
 #include "lsst/qserv/master/SelectList.h"

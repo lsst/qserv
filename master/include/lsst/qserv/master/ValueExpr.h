@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_VALUETERM_H
-#define LSST_QSERV_MASTER_VALUETERM_H
+#ifndef LSST_QSERV_MASTER_VALUEEXPR_H
+#define LSST_QSERV_MASTER_VALUEEXPR_H
 /**
   * @file ValueExpr.h
   *
@@ -59,7 +59,9 @@ public:
     std::string const& getAlias() const { return _alias; }
     void setAlias(std::string const& a) { _alias = a; }
 
+    /// @return a list of ValueFactor-Op 
     FactorOpList& getFactorOps() { return _factorOps; }
+    /// @return a const list of ValueFactor-Op 
     FactorOpList const& getFactorOps() const { return _factorOps; }
 
     ValueExprPtr clone() const;

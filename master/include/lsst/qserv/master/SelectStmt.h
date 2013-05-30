@@ -86,7 +86,7 @@ public:
     OrderByClause const& getOrderBy() const { return *_orderBy; }
     OrderByClause& getOrderBy() { return *_orderBy; }
 
- private: // public for now.
+ private: 
     // Declarations
     friend class SelectFactory;
 

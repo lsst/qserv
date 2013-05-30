@@ -53,14 +53,19 @@ void pauseReadTrans(int session);
 void resumeReadTrans(int session);
 
 // Parser model 3:
+/// Setup a query for execution.
 void setupQuery(int session, 
                 std::string const& query,
-                std::string const& resultTable); // new model.
+                std::string const& resultTable); 
+/// @return error description
 std::string const& getSessionError(int session);
+/// @return discovered constraints in the query
 lsst::qserv::master::ConstraintVec getConstraints(int session);
+/// @return the dominant db for the query
 std::string const& getDominantDb(int session);
-
+/// Add a chunk spec for execution
 void addChunk(int session, lsst::qserv::master::ChunkSpec const& cs );
+/// Dispatch all chunk queries for this query
 void submitQuery3(int session);
 // TODO: need pokes into running state for debugging.
 

@@ -59,12 +59,14 @@ class TableRefN;
 /// machine-readable) output, a human readable output, and a generated query.
 class QueryTemplate {
 public:
+    /// An abstract entry in a query template
     class Entry {
     public:
         virtual ~Entry() {}
         virtual std::string getValue() const = 0;
         virtual bool isDynamic() const { return false; }
     };
+    /// An abstract mapping from entry to entry
     class EntryMapping {
     public:
         virtual ~EntryMapping() {}

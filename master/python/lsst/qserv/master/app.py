@@ -637,12 +637,3 @@ def clauses(col, cmin, cmax):
     return ["%s between %smin and %smax" % (cmin, col, col),
             "%s between %smin and %smax" % (cmax, col, col),
             "%smin between %s and %s" % (col, cmin, cmax)]
-
-# Watch out for memory errors:
-# Exception in thread Thread-2897:
-# Traceback (most recent call last):
-#   File "/home/wang55/scratch/s/Linux/external/python/2.5.2/lib/python2.5/threading.py", line 486, in __bootstrap_inner
-#     self.run()
-#   File "/home/wang55/5node/m121/lsst/qserv/master/app.py", line 192, in run
-#     buf = "".center(bufSize) # Fill buffer
-# MemoryError

@@ -308,8 +308,8 @@ LSST Query Services master server package
 #
 # Build/install things
 #
+SConscript("SConscript.runner", exports='env') # Build a runner script
 for d in Split("lib examples doc"):
-    SConscript("SConscript.runner", exports='env') # Build a runner script
     if os.path.isdir(d):
         try:
             SConscript(os.path.join(d, "SConscript"), exports='env')

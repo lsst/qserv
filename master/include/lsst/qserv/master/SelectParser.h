@@ -58,22 +58,18 @@ class SelectParser {
 public:
     typedef boost::shared_ptr<SelectParser> Ptr;
 
-    // From SqlParseRunner (interface)
     static Ptr newInstance(std::string const& statement);
 
-    // (Deprecated) Pass in a list of allowed names
+    /// Setup the parser and parse into a SelectStmt
     void setup();
+
     // @return Original select statement
     std::string const& getStatement() const { return _statement; }
     
     boost::shared_ptr<SelectStmt> getSelectStmt() { return _selectStmt; }
-    // Move to QueryPlan
+
 private:
-    // Setup and construction
     SelectParser(std::string const& statement);
-    // Init
-    //void _readConfig(StringMap const& m);
-    // Post-parse
 
     std::string const _statement;
     boost::shared_ptr<SelectStmt> _selectStmt;    

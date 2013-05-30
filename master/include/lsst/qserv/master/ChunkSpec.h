@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,18 +20,24 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// ChunkSpec is a type that bundles the per-chunk information that is used to
-// compose a concrete chunk query for a specific chunk from an input parsed
-// query statement. 
-
 #ifndef LSST_QSERV_MASTER_CHUNKSPEC_H
 #define LSST_QSERV_MASTER_CHUNKSPEC_H
+/**
+  * @file ChunkQuerySpec.h
+  *
+  * @brief ChunkSpec is a type that bundles the per-chunk information that is
+  * used to compose a concrete chunk query for a specific chunk from an input
+  * parsed query statement.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <iostream>
 #include <list>
 #include <vector>
 
 namespace lsst { namespace qserv { namespace master {
 
+/// A specification of chunkId and subChunkId list
 class ChunkSpec {
 public:
     int chunkId;
@@ -44,6 +50,7 @@ std::ostream& operator<<(std::ostream& os, ChunkSpec const& c);
 typedef std::list<ChunkSpec> ChunkSpecList;
 typedef std::vector<ChunkSpec> ChunkSpecVector;
 
+/// An iterating fragmenter to reduce the number of subChunkIds per ChunkSpec
 class ChunkSpecFragmenter {
 public:
     ChunkSpecFragmenter(ChunkSpec const& s);
@@ -55,6 +62,7 @@ private:
     unsigned _pos;
     
 };
+/// A single subChunk specification.
 class ChunkSpecSingle {
 public:
     typedef std::list<ChunkSpecSingle> List;
@@ -64,9 +72,6 @@ public:
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpecSingle const& c);
 
-
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_CHUNKSPEC_H
 

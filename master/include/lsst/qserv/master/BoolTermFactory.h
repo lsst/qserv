@@ -67,7 +67,7 @@ public:
         BoolTermFactory& _bf;
         Term& _t;
     };
-    /// 
+    /// Import a node into the factory
     class bfImport {
     public:
         bfImport(BoolTermFactory& bf, BoolFactor& bfr) : _bf(bf), _bfr(bfr)  {}
@@ -76,7 +76,7 @@ public:
         BoolTermFactory& _bf;
         BoolFactor& _bfr;
     };
-
+    /// Print tagged tokens to a stream
     struct tagPrint {
         tagPrint(std::ostream& os_, std::string const& tag_) 
             : os(os_), tag(tag_) {}
@@ -86,6 +86,7 @@ public:
         std::ostream& os;
         std::string tag;
     };
+    // Print tokens with spacing.
     struct spacePrint {
         spacePrint(std::ostream& os_) : os(os_), count(0) {}
         void operator()(antlr::RefAST a) {

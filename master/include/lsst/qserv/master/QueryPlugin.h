@@ -65,7 +65,10 @@ public:
     /// Apply the plugins's actions to the concrete query plan.
     virtual void applyPhysical(Plan& phy, QueryContext& context) {} 
 
+    /// Lookup a factory for the named type of plugin and construct an instance
     static Ptr newInstance(std::string const& name);
+
+    /// Register a QueryPlugin factory
     static void registerClass(FactoryPtr f);
 };
 

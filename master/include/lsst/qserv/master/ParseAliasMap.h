@@ -56,6 +56,7 @@ public:
     typedef Map::const_iterator Miter;
     ParseAliasMap() {}
 
+    /// Add a forward and reverse mapping for alias->target
     void addAlias(antlr::RefAST alias, antlr::RefAST target) {
         _map[alias] = target;
         _rMap[target] = alias;

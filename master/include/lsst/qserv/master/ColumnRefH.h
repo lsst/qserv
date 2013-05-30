@@ -51,6 +51,7 @@ public:
     typedef boost::shared_ptr<ColumnRefH> Ptr;
     ColumnRefH() {}
     virtual ~ColumnRefH() {}
+    /// Accept nodes for a column ref and pass to a listener.
     virtual void operator()(antlr::RefAST a, antlr::RefAST b, 
                             antlr::RefAST c, antlr::RefAST d) {
         /// The listener abstraction deals with differently-formed column

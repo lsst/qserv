@@ -48,9 +48,13 @@ public:
     typedef boost::shared_ptr<FuncExpr> Ptr;
     std::string getName() const;
     ValueExprList getParams() const;
+
+    /// Construct a new FuncExpr like an existing one.
     static FuncExpr::Ptr newLike(FuncExpr const& src, std::string const& newName);
+    /// Construct a new FuncExpr with a name and string arg
     static FuncExpr::Ptr newArg1(std::string const& newName, 
                                  std::string const& arg1);
+    /// Construct a new FuncExpr with a name and ValueExpr arg
     static FuncExpr::Ptr newArg1(std::string const& newName, 
                                  ValueExprPtr ve);
 
