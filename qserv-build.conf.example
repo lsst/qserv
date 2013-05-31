@@ -44,6 +44,7 @@ base_dir = /opt/qserv-%(version)s
 # user = qsmaster
 
 # Qserv master DNS name
+# WARNING : do not use value localhost, but 127.0.0.1
 master=qserv-master-example-name.mydomain.edu
 
 # partitioning parameters
