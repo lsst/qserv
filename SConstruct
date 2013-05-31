@@ -33,7 +33,7 @@ if not os.path.exists(config_file_name):
     sys.exit(1)
 
 try:
-    config = commons.read_config(config_file_name, default_config_file_name)
+    config = commons.read_config(config_file_name)
 except ConfigParser.NoOptionError, exc:
     logging.fatal("An option is missing in your configuration file: %s" % exc)
     sys.exit(1)
