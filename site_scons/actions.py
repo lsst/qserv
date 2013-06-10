@@ -135,6 +135,12 @@ def check_root_dirs(target, source, env):
        	    logging.fatal("%s is not writable check/update permissions" % dir)
             sys.exit(1)
 
+    # user config
+    # user_config_dir=os.path.join(os.getenv("HOME"),".lsst") 
+    # if not utils.exists_and_is_writable(user_config_dir) 
+    #   	    logging.fatal("%s is not writable check/update permissions" % dir)
+    #        sys.exit(1)
+
     if not commons.is_readable(config['lsst']['data_dir']):
     	logging.warning("LSST data directory (config['lsst']['data_dir']) is not readable : %s" %
                        config['lsst']['data_dir']

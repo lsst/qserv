@@ -25,8 +25,7 @@ env = Environment(tools=['textfile', 'clean', 'pymod'])
 
 # this file must be placed in main scons directory
 src_dir=Dir('.').srcnode().abspath+"/"
-config_file_name=src_dir+"qserv-build.conf"
-default_config_file_name=src_dir+"qserv-build.default.conf"
+config_file_name=os.path.join(src_dir, "qserv-build.conf")
 
 if not os.path.exists(config_file_name):
     logging.fatal("Your configuration file is missing: %s" % config_file_name)
@@ -52,6 +51,10 @@ init_target_lst = []
 make_root_dirs_cmd = env.Command('make-root-dirs-dummy-target', [], actions.check_root_dirs)
 init_target_lst.append(make_root_dirs_cmd)
 
+user_config_dir=os.path.join(os.getenv("HOME"),".lsst") 
+user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
+make_user_config_cmd = env.Command(user_config_file_name, config_file_name, Copy("$TARGET", "$SOURCE"))
+init_target_lst.append(make_user_config_cmd)
 
 make_root_symlinks_cmd = env.Command('make-root-symlinks-dummy-target', [], actions.check_root_symlinks)
 init_target_lst.append(make_root_symlinks_cmd)
