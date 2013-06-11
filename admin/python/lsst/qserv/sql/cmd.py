@@ -33,6 +33,8 @@ class Cmd():
         
         if mode==const.MYSQL_PROXY :
             self._addQservCmdParams()
+	elif mode==const.QSERV_LOAD :
+	    self._addQservSockCmdParams()
         elif mode==const.MYSQL_SOCK :
             self._addMySQLSockCmdParams()
         elif mode==const.MYSQL_NET :
@@ -51,7 +53,12 @@ class Cmd():
         self._mysql_cmd.append( "--host=%s" % self.config['qserv']['master'])
         self._mysql_cmd.append( "--port=%s" % self.config['mysql_proxy']['port'])
         self._mysql_cmd.append("--user=%s" % self.config['qserv']['user'])
-        
+
+    def _addQservSockCmdParams(self):
+	""" User root should not be used for data loading, only for database creation and to give rights. Use qsmaster user instead. """
+        self._mysql_cmd.append("--sock=%s" % self.config['mysqld']['sock'])
+	self._mysql_cmd.append("--user=%s" % self.config['qserv']['user'])
+
     def _addMySQLSockCmdParams(self):
         self._mysql_cmd.append("--sock=%s" % self.config['mysqld']['sock'])
         self._mysql_cmd.append("--user=%s" % self.config['mysqld']['user'])
