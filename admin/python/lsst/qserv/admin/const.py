@@ -81,7 +81,7 @@ luasocket_url=%(repository)s/luasocket-2.0.2.tar.gz
 mysql_url=%(repository)s/mysql-5.1.61.tar.gz
 mysql_proxy_url=%(repository)s/mysql-proxy-0.8.2.tar.gz
 protobuf_url=%(repository)s/protobuf-2.4.1.tar.gz
-scisql_url=%(repository)s/scisql-0.3.tar.bz2
+scisql_url=https://launchpad.net/scisql/trunk/0.3.2/+download/scisql-0.3.2.tar.bz2
 virtualenv_url=%(repository)s/virtualenv-1.7.tar.gz
 xrootd_url=%(repository)s/xrootd.tar.gz
 """
