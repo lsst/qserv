@@ -15,7 +15,7 @@ import utils
 
 logger = commons.init_default_logger(log_file_prefix="scons-qserv", level=logging.DEBUG)
 
-env = Environment(tools=['textfile', 'clean', 'pymod'])
+env = Environment(tools=['textfile', 'pymod'])
 
 #########################
 #
@@ -51,11 +51,6 @@ init_target_lst = []
 make_root_dirs_cmd = env.Command('make-root-dirs-dummy-target', [], actions.check_root_dirs)
 init_target_lst.append(make_root_dirs_cmd)
 
-user_config_dir=os.path.join(os.getenv("HOME"),".lsst") 
-user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
-make_user_config_cmd = env.Command(user_config_file_name, config_file_name, Copy("$TARGET", "$SOURCE"))
-init_target_lst.append(make_user_config_cmd)
-
 make_root_symlinks_cmd = env.Command('make-root-symlinks-dummy-target', [], actions.check_root_symlinks)
 init_target_lst.append(make_root_symlinks_cmd)
 
@@ -71,7 +66,7 @@ env.Requires(env.Alias('download'), env.Alias('init'))
 env.Requires(env.Alias('perl-install'), env.Alias('download'))
 # templates must be applied before installation in order to
 # initialize mysqld
-env.Requires(env.Alias('perl-install'), env.Alias('templates'))
+env.Requires(env.Alias('perl-install'), env.Alias('config'))
 env.Requires(env.Alias('perl-init-mysql-db'), env.Alias('templates'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
 env.Requires(env.Alias('admin-bin'), env.Alias('python-tests'))
@@ -80,9 +75,6 @@ env.Requires(env.Alias('perl-install'), env.Alias('admin-bin'))
 env.Alias('install',env.Alias('perl-install'))
 
 env.Default(env.Alias('install'))
-
-# TODO :
-#env.CleanAction(env.Alias('perl-install'),env.Alias('perl-clean-all'))
 
 ###########################
 #
@@ -94,7 +86,7 @@ source_urls = []
 target_files = []
 
 download_cmd_lst = []
-output_dir = config['qserv']['base_dir'] + os.sep +"build" + os.sep
+output_dir = os.path.join(config['qserv']['base_dir'],"build")
 # Add a command for each file to download
 for app in config['dependencies']:
     if re.match(".*_url",app):
@@ -102,8 +94,8 @@ for app in config['dependencies']:
         base_file_name = os.path.basename(app_url)
         output_file = output_dir + base_file_name
         # Command to use in order to download source tarball
-        env.Command(output_file, Value(app_url), actions.download)
-	download_cmd_lst.append(output_file)
+        cmd = env.Command(output_file, Value(app_url), actions.download)
+	download_cmd_lst.append(cmd)
 env.Alias('download', download_cmd_lst)
 
 #########################
@@ -196,6 +188,18 @@ def get_template_targets():
 
 env.Alias("templates", get_template_targets())
 
+############################
+#
+# Fill configuration files
+#
+############################
+
+user_config_dir=os.path.join(os.getenv("HOME"),".lsst") 
+user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
+make_user_config_cmd = env.Command(user_config_file_name, config_file_name, Copy("$TARGET", "$SOURCE"))
+
+env.Alias("config", [env.Alias("templates"),make_user_config_cmd])
+
 #########################
 #
 # Install python modules
@@ -227,6 +231,23 @@ for f in bin_basename_lst:
     bin_target_lst.append(target)
 
 env.Alias("admin-bin", bin_target_lst)
+
+
+#########################
+#
+# Uninstall everything:
+#
+#########################
+if 'uninstall' in COMMAND_LINE_TARGETS:
+    for dir in  [
+            os.path.join(config['qserv']['base_dir'],'qserv','master','dist'),
+            os.path.join(config['qserv']['base_dir'],'qserv','worker','dist'),
+            config['qserv']['base_dir'],
+            user_config_dir
+            ]:
+        # create uninstall targets
+        actions.create_uninstall_target(env, dir, False)
+
 
 # List all aliases
 
