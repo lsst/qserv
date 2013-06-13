@@ -92,7 +92,7 @@ for app in config['dependencies']:
     if re.match(".*_url",app):
         app_url=config['dependencies'][app]
         base_file_name = os.path.basename(app_url)
-        output_file = output_dir + base_file_name
+        output_file = os.path.join(output_dir,base_file_name)
         # Command to use in order to download source tarball
         cmd = env.Command(output_file, Value(app_url), actions.download)
 	download_cmd_lst.append(cmd)
@@ -232,6 +232,23 @@ for f in bin_basename_lst:
 
 env.Alias("admin-bin", bin_target_lst)
 
+#########################
+#
+# Install scisql 
+#
+#########################
+if config['qserv']['node_type'] in ['mono','worker']:
+
+    # MySQL is required 
+    env.Requires(env.Alias('scisql'), env.Alias('perl-install'))
+    env.Requires(env.Alias('install'), env.Alias('scisql'))
+   
+    scisql_cmd=[] 
+    scisql_install_sh = os.path.join(config['qserv']['base_dir'],'tmp','install', "scisql.sh")
+    cmd = env.Command('scisql-dummy-target', [], scisql_install_sh)
+    scisql_cmd.append(cmd)
+    
+    env.Alias("scisql", scisql_cmd)
 
 #########################
 #
@@ -239,15 +256,16 @@ env.Alias("admin-bin", bin_target_lst)
 #
 #########################
 if 'uninstall' in COMMAND_LINE_TARGETS:
-    for dir in  [
+    paths = [
             os.path.join(config['qserv']['base_dir'],'qserv','master','dist'),
             os.path.join(config['qserv']['base_dir'],'qserv','worker','dist'),
-            config['qserv']['base_dir'],
+            os.path.join(config['qserv']['base_dir']),
             user_config_dir
-            ]:
-        # create uninstall targets
-        actions.create_uninstall_target(env, dir, False)
+            ]
 
+    env['uninstallpaths'] = paths
+    uninstall_cmd = env.Command('uninstall-dummy-target', [], actions.uninstall)
+    env.Alias("uninstall", uninstall_cmd)
 
 # List all aliases
 

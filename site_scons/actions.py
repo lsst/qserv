@@ -192,22 +192,11 @@ def symlink_with_log(target, link_name):
     logger.debug("Creating symlink, target : %s, link name : %s " % (target,link_name))
     os.symlink(target, link_name)
 
-def create_uninstall_target(env, path, is_glob):
+def uninstall(target, source, env):
     logger = logging.getLogger()
-    if not os.path.exists(path):
-        logger.info("Not uninstalling %s because it doesn't exists." % path)
-    else:    
-        if is_glob:
-            all_files = Glob(path,strings=True)
-            for filei in all_files:
-                env.Command( "uninstall-"+filei, filei,
-                [
-                Delete("$SOURCE"),
-                ])
-                env.Alias("uninstall", "uninstall-"+filei)   
-        else:
-            env.Command( "uninstall-"+path, "",
-            [
-            Delete(path),
-            ])
-            env.Alias("uninstall", "uninstall-"+path)
+    for path in env['uninstallpaths']:
+        if not os.path.exists(path):
+            logger.info("Not uninstalling %s because it doesn't exists." % path)
+        else:    
+            env.Execute(Delete(path))
+
