@@ -41,6 +41,7 @@
 # near the poles.
 
 # try -S60 -s18 ( 60 stripes, 18 substripes). used for pt1 testing
+
 import csv
 from collections import defaultdict
 import itertools
@@ -51,6 +52,7 @@ import partition
 import random
 from textwrap import dedent
 import time
+import os
 
 import duplicator
         
@@ -157,6 +159,7 @@ class App:
         self.chunks = set()
         pass
 
+    
     def run(self):
         self._ingestArgs()
         if self.conf.explainArgs:
@@ -205,6 +208,9 @@ class App:
             self.parser.error("Input split size must not exceed 256 MiB.")
         conf.inputSplitSize = int(conf.inputSplitSize * 1048576.0)
 
+        if not os.path.isdir(conf.outputDir):
+            self.parser.error("Specified output directory does not exist or is not a directory.")
+        
         self._setupChunking(conf)
         if self.shouldDuplicate:
             self._setupDuplication(conf)
@@ -324,6 +330,11 @@ class App:
             dest="node", help=dedent("""\
             This node's number out of all nodes (0 - (total-1);
             defaults to %default."""))
+# optparse.OptionConflictError: option --output-dir: conflicting option string(s): --output-dir
+#        duplication.add_option(
+#            "--output-dir", type="string",
+#            dest="outputDir", default=".",
+#            help=dedent(""" Output directory."""))
         duplication.add_option(
             "--node-count", type="int",
             dest="nodeCount", help=dedent("""\
