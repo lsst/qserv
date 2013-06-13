@@ -57,8 +57,7 @@ class Benchmark():
             self.config = commons.read_user_config()
         else:
             config_file_name=os.path.join(config_dir,"qserv-build.conf")
-            default_config_file_name=os.path.join(config_dir,"qserv-build.default.conf")
-            self.config = commons.read_config(config_file_name, default_config_file_name)
+            self.config = commons.read_config(config_file_name)
 
         self._case_id = case_id
         self._logFilePrefix = log_file_prefix
