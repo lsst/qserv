@@ -257,6 +257,8 @@ if config['qserv']['node_type'] in ['mono','worker']:
 #########################
 if 'uninstall' in COMMAND_LINE_TARGETS:
     paths = [
+            os.path.join(config['qserv']['log_dir']),
+            os.path.join(config['mysqld']['data_dir']),
             os.path.join(config['qserv']['base_dir'],'qserv','master','dist'),
             os.path.join(config['qserv']['base_dir'],'qserv','worker','dist'),
             os.path.join(config['qserv']['base_dir']),

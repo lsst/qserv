@@ -1,6 +1,6 @@
 #!/bin/bash
 # TODO manage scisql version in templating system
-PATH=${QSERV_BASE}/bin:${PATH}
+PATH=%(QSERV_BASE_DIR)s/bin:${PATH}
 SCISQL_VERSION=scisql-0.3.2
 
 %(QSERV_BASE_DIR)s/bin/mysqld_safe --defaults-file=%(QSERV_BASE_DIR)s/etc/my.cnf &
