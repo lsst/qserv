@@ -1,21 +1,20 @@
 #!/usr/bin/env python
 
-# - Faire un merge avec ticket 2834
-# - Voir comment loader attribue ses numero de chunks
-# - Charger les donnees avec le qservdataloader des tests
-
-# admin/bin/qserv-dataload.py
-# -c ~/src/release/qserv/
-# -m master
-# --chunks-file /tmp/toto
-# /home/qserv/src/release/qserv/tests/testdata/case01/data/Object.schema /home/qserv/src/release/qserv/tests/testdata/case01/data/Source.schema 
+# Usage: Loads chunk into Qserv
+# 
+# qserv-dataload.py -m [master | worker]
+#   -c <Directory of qserv configuration file> 
+#   --chunks-file <file containing chunks to be loaded in worker or all chunks id for master>
+#   <Schema to be loaded> ...
+#   <Data to be loaded> ...
 
 from lsst.qserv.admin import commons
 from lsst.qserv.sql import cmd, const
+from lsst.qserv import qservdataloader
 from optparse import OptionParser
 
 import os
-
+import shutil
 
 def parseOptions():
     print "Parsing options."
@@ -34,6 +33,9 @@ def parseOptions():
     commandline_parser.add_option("--chunks-file",
                                   dest="chunks_file", default=None,
                                   help= "Path to a file containing all chunks of all workers.")
+    commandline_parser.add_option("--database",
+                                  dest="database", default="LSST",
+                                  help= "Database to be used for data loading. [default: %default]")
 
     (options, args) = commandline_parser.parse_args()
 
@@ -54,11 +56,11 @@ def CreateEmptyChunksFile(nbstripes, chunk_id_list, empty_chunks_filename):
             f.write("%s\n" %i)
 
 
-def LoadSchemas(logger, config, schemas):
-    sqlCommand = cmd.Cmd(config, mode=const.QSERV_LOAD, database="LSST")
-    for schemaFile in schemas:
-        logger.info("Loading schema %s." % schemaFile)
-        sqlCommand.executeFromFile(schemaFile)
+def LoadSql(logger, config, dbname, sql_list):
+    sqlCommand = cmd.Cmd(config, mode=const.QSERV_LOAD, database=dbname)
+    for sqlFile in sql_list:
+        logger.info("Loading SQL %s." % sqlFile)
+        sqlCommand.executeFromFile(sqlFile)
     
 
 def read_chunks(logger, chunkfile):
@@ -69,7 +71,7 @@ def read_chunks(logger, chunkfile):
     return chunk_id_list
 
 
-def configure_master(logger, config, chunkfile, schemas):
+def configure_master(logger, config, chunkfile, dbname, sql_list):
     filename =  os.path.join(config['qserv']['base_dir'],"etc","emptyChunks.txt")
     nbstripes = config['qserv']['stripes']
 
@@ -78,28 +80,21 @@ def configure_master(logger, config, chunkfile, schemas):
     logger.info("Creating empty chunk file : %s with %s stripes." % (filename, nbstripes))
     CreateEmptyChunksFile(int(nbstripes), chunk_id_list, filename)
 
-    logger.info("Loading schemas into database LSST.")
-    LoadSchemas(logger, config, schemas)
+    logger.info("Loading SQL into database %s." % dbname)
+    LoadSql(logger, config, dbname, sql_list)
 
     
-def configure_worker(logger, config, chunkfile, schemas):
-    logger.info("Loading schemas into database LSST.")
-    LoadSchemas(logger, config, schemas)
+def configure_worker(logger, config, chunkfile, dbname, sql_list):
+    logger.info("Loading chunks data into MySQL database %s." % dbname)
+    LoadSql(logger, config, dbname, sql_list)    
 
-    # Here we need to do duplication/replication/partitioning on the fly
+    LSST_dir = os.path.join(config['qserv']['base_dir'],"xrootd-run","q",dbname)
+    if os.path.isdir(LSST_dir):
+        logger.info("Removing existing directory %s" % LSST_dir)
+        shutil.rmtree(LSST_dir)
     
-    # Partitioning
-    # $ mkdir /tmp/partitions
-    # $ /opt/qserv-dev/qserv-release-0.5.1rc2/bin/python /opt/qserv-dev/qserv-release-0.5.1rc2/qserv/master/examples/partition.py --output-dir /tmp/partitions/ --chunk-prefix Object --theta-column 2 --phi-column 4 --num-stripes 10 --num-sub-stripes 10 --delimiter '\t' --chunk-column 227 /home/qserv/src/release/data/case01/data/Object.tsv
-    # $ find /tmp/partitions/ -type f
-    # $ /opt/qserv-dev/qserv-release-0.5.1rc2/bin/python /home/qserv/src/release/qserv/master/examples/loader.py --user=root --password=2T7KR0 --database=LSST clrlsstwn02-vm.in2p3.fr:3306 /tmp/partitions LSST.Object
-
-    # TODO: Comment retrouver les chunks id a partir des worker id dans le load.py ?
-    
-    LSST_dir = os.path.join(config['qserv']['base_dir'],"xrootd-run","q","LSST")
-    logger.info("Creation of LSST Xrootd query directory (%s)." % LSST_dir)
-    if not os.path.exists(LSST_dir):
-        os.makedirs(LSST_dir)
+    logger.info("Creation of %s Xrootd query directory (%s)." % (dbname, LSST_dir))
+    os.makedirs(LSST_dir)
     
     logger.info("Chunk directory creation for Xrootd.")
     chunk_id_list = read_chunks(logger, chunkfile)
@@ -108,13 +103,13 @@ def configure_worker(logger, config, chunkfile, schemas):
         chunk_file = os.path.join(LSST_dir, chunk_name)
         with open(chunk_file, "w") as f:
              logger.info("Chunk directory %s creation." % chunk_name) 
-            
+
     
 def main():
     logger = commons.init_default_logger("dataload", log_path="/tmp")
     (options, args) = parseOptions()
     chunksfile = options.chunks_file
-    schemas = args
+    sql_list = args
 
     if options.config_dir is None:
         config = commons.read_user_config()
@@ -123,10 +118,11 @@ def main():
         default_config_file_name=os.path.join(options.config_dir,"qserv-build.default.conf")
         config = commons.read_config(config_file_name, default_config_file_name)
 
+    dbname = options.database
+    
     configure = {'master': configure_master,
                  'worker': configure_worker}
-    configure[options.mode](logger, config, chunksfile, schemas)
-
+    configure[options.mode](logger, config, chunksfile, dbname, sql_list)
 
     
 if __name__ == '__main__':
