@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2009-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,27 +9,27 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_WORKER_QUERYRUNNER_H
 #define LSST_QSERV_WORKER_QUERYRUNNER_H
  /**
-  * @file QueryRunner.h  
+  * @file QueryRunner.h
   *
   * @brief QueryRunner instances perform actual query execution on SQL
   * databases using SqlConnection objects to interact with dbms
   * instances.
   *
   * @author Daniel L. Wang, SLAC
-  */ 
+  */
 // C++
 #include <deque>
 
@@ -59,11 +59,7 @@ class QueryPhyResult; // Forward
 class QueryRunner {
 public:
     typedef ResultTracker<std::string, ResultError> Tracker;
-    typedef QueryRunnerManager Manager;
-    QueryRunner(boost::shared_ptr<Logger> log, 
-                Task::Ptr task,
-                std::string overrideDump=std::string());
-    explicit QueryRunner(QueryRunnerArg const& a);
+    QueryRunner(QueryRunnerArg const& a);
     ~QueryRunner();
     bool operator()(); // exec and loop as long as there are queries
                        // to run.
@@ -72,9 +68,8 @@ public:
     std::string const& getHash() const { return _task->hash; }
     void poison(std::string const& hash);
 
-    // Static: 
+    // Static:
     static Tracker& getTracker() { static Tracker t; return t;}
-    static Manager& getMgr() { static Manager m; return m;}
 
 private:
     typedef std::deque<std::string> StringDeque;
@@ -93,7 +88,7 @@ private:
     bool _prepareAndSelectResultDb(SqlConnection& sqlConn,
                                    std::string const& dbName=std::string());
     bool _prepareScratchDb(SqlConnection& sqlConn);
-    bool _performMysqldump(std::string const& dbName, 
+    bool _performMysqldump(std::string const& dbName,
                            std::string const& dumpFile,
                            std::string const& tables);
     bool _isExecutable(std::string const& execName);
@@ -104,6 +99,7 @@ private:
     boost::shared_ptr<CheckFlag> _makeAbort();
     bool _poisonCleanup();
 
+    // Fields
     boost::shared_ptr<Logger> _log;
     SqlErrorObject _errObj;
     std::string _user;

@@ -215,7 +215,6 @@ public:
     virtual void applyLogical(SelectStmt& stmt, QueryContext& context);
     virtual void applyPhysical(QueryPlugin::Plan& p, QueryContext& context);
 private:
-    StringList _findScanTables(SelectStmt& stmt, QueryContext& context);
     int _rewriteTables(SelectStmtList& outList,
                        SelectStmt& in,
                        QueryContext& context,
@@ -304,7 +303,6 @@ TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     // wClause.walk(fixExprAlias(reverseAlias));
     // order by
     // having
-    context.scanTables = _findScanTables(stmt, context);
 }
 
 void
@@ -402,65 +400,9 @@ bool testIfSecondary(BoolTerm& t) {
     // FIXME: Look for secondary key in the bool term.
     std::cout << "Testing ";
     t.putStream(std::cout) << std::endl;
+
     return false;
 }
 
-StringList
-TablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
-    // Might be better as a separate plugin
-
-    // All tables of a query are scan tables if the statement both:
-    // a. has non-trivial spatial scope (all chunks? >1 chunk?)
-    // b. requires column reading
-
-    // a. means that the there is a spatial scope specification in the
-    // WHERE clause or none at all (everything matches). However, an
-    // objectId specification counts as a trivial spatial scope,
-    // because it evaluates to a specific set of subchunks. We limit
-    // the objectId specification, but the limit can be large--each
-    // concrete objectId incurs at most the cost of one subchunk.
-
-    // b. means that columns are needed to process the query.
-    // In the SelectList, count(*) does not need columns, but *
-    // does. So do ra_PS and iFlux_SG*10
-    // In the WhereClause, this means that we have expressions that
-    // require columns to evaluate.
-
-    // When there is no WHERE clause that requires column reading,
-    // the presence of a small-valued LIMIT should be enough to
-    // de-classify a query as a scanning query.
-
-    bool hasSpatialSelect = false;
-    bool hasWhereColumnRef = false;
-    bool hasSecondaryKey = false;
-
-    if(stmt.hasWhereClause()) {
-        WhereClause& wc = stmt.getWhereClause();
-        // Check WHERE for spatial select
-        boost::shared_ptr<QsRestrictor::List const> restrs = wc.getRestrs();
-        hasSpatialSelect = restrs && !restrs->empty();
-
-        // Look for column refs
-        boost::shared_ptr<ColumnRefMap::List const> crl = wc.getColumnRefs();
-        if(crl) {
-            hasWhereColumnRef = !crl->empty();
-            boost::shared_ptr<AndTerm> aterm = wc.getRootAndTerm();
-            if(aterm) {
-                // Look for secondary key matches
-                typedef BoolTerm::PtrList PtrList;
-                for(PtrList::iterator i = aterm->iterBegin();
-                    i != aterm->iterEnd(); ++i) {
-                    if(testIfSecondary(**i)) {
-                        hasSecondaryKey = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-    }
-
-    return StringList(); // FIXME
-}
 
 }}} // namespace lsst::qserv::master

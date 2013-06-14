@@ -21,7 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // ValueFactor is a term in a ValueExpr's "term (term_op term)*" phrase
-// This needs to be reconciled with the WhereClause's ValueExprTerm eventually.
 #ifndef LSST_QSERV_MASTER_VALUEFACTOR_H
 #define LSST_QSERV_MASTER_VALUEFACTOR_H
 /**

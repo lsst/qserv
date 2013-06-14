@@ -1,6 +1,7 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2010-2013 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_FIFOSCHEDULER_H
-#define LSST_QSERV_WORKER_FIFOSCHEDULER_H
+#ifndef LSST_QSERV_WORKER_SCANSCHEDULER_H
+#define LSST_QSERV_WORKER_SCANSCHEDULER_H
 
 #include <boost/thread/mutex.hpp>
 #include "lsst/qserv/worker/Foreman.h"
@@ -28,27 +29,42 @@
 namespace lsst {
 namespace qserv {
 namespace worker {
+class ChunkDisk; // Forward
+class Logger;
 
-class FifoScheduler : public Foreman::Scheduler {
+class ScanScheduler : public Foreman::Scheduler {
 public:
-    typedef boost::shared_ptr<FifoScheduler> Ptr;
+    typedef boost::shared_ptr<ScanScheduler> Ptr;
+    typedef std::vector<boost::shared_ptr<ChunkDisk> > ChunkDiskList;
 
-    explicit FifoScheduler(int maxRunning=-1);
-    virtual ~FifoScheduler() {}
+    ScanScheduler(boost::shared_ptr<Logger> logger);
+    virtual ~ScanScheduler() {}
 
+    virtual bool removeByHash(std::string const& hash);
     virtual void queueTaskAct(Task::Ptr incoming);
     virtual TaskQueuePtr nopAct(TaskQueuePtr running);
     virtual TaskQueuePtr newTaskAct(Task::Ptr incoming,
                                     TaskQueuePtr running);
     virtual TaskQueuePtr taskFinishAct(Task::Ptr finished,
                                        TaskQueuePtr running);
-    static std::string getName() { return std::string("FifoSched"); }
-private:
-    TaskQueuePtr _fetchTask();
+    // TaskWatcher interface
+    virtual void markStarted(Task::Ptr t);
+    virtual void markFinished(Task::Ptr t);
 
+    static std::string getName()  { return std::string("ScanSched"); }
+    bool checkIntegrity();
+private:
+    TaskQueuePtr _getNextTasks(int max);
+    void _enqueueTask(Task::Ptr incoming);
+    bool _integrityHelper();
+
+    ChunkDiskList _disks;
+    boost::shared_ptr<Logger> _logger;
     boost::mutex _mutex;
-    TaskQueue _queue;
     int _maxRunning;
 };
 }}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_FIFOSCHEDULER_H
+extern lsst::qserv::worker::ScanScheduler* dbgScanScheduler; //< A symbol for gdb
+extern lsst::qserv::worker::ChunkDisk* dbgChunkDisk1; //< A symbol for gdb
+#endif // LSST_QSERV_WORKER_SCANSCHEDULER_H
+

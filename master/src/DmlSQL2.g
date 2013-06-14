@@ -785,7 +785,7 @@ row_predicate :
         ( comp_predicate {#row_predicate = #([COMP_PREDICATE,"COMP_PREDICATE"],row_predicate);}
         | ("not")? (between_predicate {#row_predicate = #([BETWEEN_PREDICATE, "BETWEEN_PREDICATE"], row_predicate);}
             | in_predicate {#row_predicate = #([IN_PREDICATE, "IN_PREDICATE"], row_predicate);}
-            | like_predicate
+            | like_predicate {#row_predicate = #([LIKE_PREDICATE, "LIKE_PREDICATE"], row_predicate);}
             )
         | null_predicate 
 	    | quantified_comp_predicate 

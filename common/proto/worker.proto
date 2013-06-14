@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
- * Copyright 2011, 2012 LSST Corporation.
- * 
+ * Copyright 2011-2013 LSST Corporation.
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// worker.proto
@@ -29,26 +29,28 @@ package lsst.qserv;
 message TaskMsg {
     optional int64 session = 1;
     // Future: might have multiple db/chunk dependencies.
-    optional string db = 2; 
+    optional string db = 2;
     optional int32 chunkid = 3;
+    repeated string scantables = 4;
     message Subchunk {
         required string database = 1; // database
         repeated string table = 2; // subchunked tables
         repeated int32 id = 3; // subchunk ids
     }
     message Fragment {
-        // A query fragment without "CREATE or INSERT". 
+        // A query fragment without "CREATE or INSERT".
         // Worker should synthesize.
-        repeated string query = 1; 
+        repeated string query = 1;
         optional string resulttable = 3;
         optional Subchunk subchunks = 4; // Only needed with subchunk-ed queries
 
         // Each fragment may only write results to one table,
-        // but multiple fragments may write to the same table, 
-        // in which case the table contains a concatenation of the 
+        // but multiple fragments may write to the same table,
+        // in which case the table contains a concatenation of the
         // contributing fragments' rows.
     }
-    repeated Fragment fragment = 4;
+    repeated Fragment fragment = 5;
+
 }
 
 // Result message received from worker
@@ -57,12 +59,12 @@ message TaskMsg {
 // the ResultHeader message, indicating the size of the ResultHeader
 // object.
 // The Header message contains size information so each result can be
-// distinguished. 
+// distinguished.
 message ResultHeader {
     optional int64 session = 1;
     message Result {
         // Meta-info of an upcoming result
-        required string hash = 1; // 
+        required string hash = 1; //
         required int64 resultsize = 3;
         optional int32 chunkid = 2;
     }

@@ -321,6 +321,8 @@ SqlConnection::createDb(std::string const& dbName,
                                     + dbName + ", it already exists");
         }
         return true;
+    } else {
+        if ( errObj.isSet() ) { return false; } // Can't check existence.
     }
     std::string sql = "CREATE DATABASE " + dbName;
     if (!runQuery(sql, errObj)) {
@@ -345,6 +347,7 @@ SqlConnection::dropDb(std::string const& dbName,
                       bool failIfDoesNotExist) {
     if (!connectToDb(errObj)) return false;
     if (!dbExists(dbName, errObj)) {
+        if ( errObj.isSet() ) { return false; } // Can't check existence.
         if ( failIfDoesNotExist ) {
             return errObj.addErrMsg(std::string("Can't drop db ")
                                     + dbName + ", it does not exist");

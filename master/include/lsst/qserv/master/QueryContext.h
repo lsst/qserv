@@ -31,6 +31,7 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
+#include "lsst/qserv/master/common.h"
 #include "lsst/qserv/master/QueryMapping.h"
 #include "lsst/qserv/master/TableAlias.h"
 
@@ -57,7 +58,7 @@ public:
     std::string anonymousTable; ///< Implicit table context
     std::string username; ///< unused, but reserved.
 
-    std::list<std::string> scanTables; // Tables scanned (for shared scans)
+    StringPairList scanTables; // Tables scanned (for shared scans)
 
     // Table aliasing
     TableAlias tableAliases;
@@ -66,6 +67,8 @@ public:
     // Owned QueryMapping and query restrictors
     boost::shared_ptr<QueryMapping> queryMapping;
     boost::shared_ptr<RestrList> restrictors;
+
+    int chunkCount; //< -1: all, 0: none, N: #chunks
 
     bool needsMerge; ///< Does this query require a merge/post-processing step?
 
