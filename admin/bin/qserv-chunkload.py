@@ -125,8 +125,8 @@ def partition(logger, options, config, chunk_str_list):
         rafieldname = description["rafieldname"]
         declfieldname = description["declfieldname"]
 
-        # Loading schemas
-        LoadSql(logger, config, dbname, sql_list)
+        # Loading schemas 
+        LoadSql(logger, config, dbname, [schema_filename])
         
         chunker_cmd = [ python,
                         chunker_scriptname,
