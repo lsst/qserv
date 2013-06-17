@@ -99,7 +99,7 @@ class SqlActions(object):
         self.cursor.execute(stmt)
         self.cursor.fetchall()
 
-    def createDatabase(self, database):
+    def createDatabase(self, database):        
         self._exec("CREATE DATABASE IF NOT EXISTS %s ;" % database)
 
     def dropDatabase(self, database):
@@ -131,6 +131,7 @@ class SqlActions(object):
             self.cursor.fetchall()
 
     def getSchema(self, table):
+        print("getSchema of table %s" % table)
         self.cursor.execute("SHOW CREATE TABLE %s ;" % table)
         return self.cursor.fetchone()[1]
 

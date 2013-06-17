@@ -93,6 +93,7 @@ def read_description(filename):
     return description
 
 def partition(logger, options, config, chunk_str_list):
+    dbname = options.database
     base_dir = config['qserv']['base_dir']
     tmp_dir = config['qserv']['tmp_dir']
     
@@ -120,9 +121,13 @@ def partition(logger, options, config, chunk_str_list):
         schema_filename = description["schema"]
         data_filename = description["data"]
         delimiter = description["delimiter"]
+        delimiter = delimiter.replace("\\t","\t")
         rafieldname = description["rafieldname"]
         declfieldname = description["declfieldname"]
 
+        # Loading schemas
+        LoadSql(logger, config, dbname, sql_list)
+        
         chunker_cmd = [ python,
                         chunker_scriptname,
                         '--output-dir', partition_dirname,
@@ -182,7 +187,7 @@ def configure_worker(logger, options, config, sql_list):
 
     (chunk_id_list, chunk_str_list) = read_chunks(logger, chunkfile)
 
-    # LoadSql(logger, config, dbname, sql_list)
+    LoadSql(logger, config, dbname, sql_list)
     if options.tables_list is not None:
         partition(logger, options, config, chunk_str_list)
     else:
