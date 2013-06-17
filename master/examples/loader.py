@@ -76,6 +76,7 @@ strategies = { 'round-robin': roundRobin }
 class SqlActions(object):
     """Higher level interface for database loading/cleanup tasks.
     """
+    
     def __init__(self, host, port, user, passwd, socket=None, database="LSST"):
         kw = dict()
         if socket is None:
@@ -538,6 +539,7 @@ def masterInit(master, sampleFile, opts):
             Chunk prototype and partition map tables have
             identical names: %s""" % partTable))
     hp = hostPort(master)
+
     act = SqlActions(hp[0], hp[1], opts.user, opts.password, opts.socket, opts.database)
     try:
         act.createDatabase(opts.database)
