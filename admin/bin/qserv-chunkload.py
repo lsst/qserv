@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 # Usage: Loads chunk into Qserv
-# 
+#
 # qserv-dataload.py -m [master | worker]
-#   -c <Directory of qserv configuration file> 
+#   -c <Directory of qserv configuration file>
 #   --chunks-file <file containing chunks to be loaded in worker or all chunks id for master>
-#   <Schema to be loaded> ...
-#   <Data to be loaded> ...
+#   <Schema to be loaded on master> ...
+#   <Non partitionned data to be loaded on master> ...
 
 from lsst.qserv.admin import commons
 from lsst.qserv.sql import cmd, const
@@ -16,9 +16,12 @@ from optparse import OptionParser
 import os
 import shutil
 
+def splitlist_callback(option, opt, value, parser):
+    setattr(parser.values, option.dest, value.split(','))
+
 def parseOptions():
     print "Parsing options."
-    commandline_parser = OptionParser(usage="usage: %prog -c <config dir> -m <mode> --chunks-file <chunks filename> <schema or data file> ...")
+    commandline_parser = OptionParser()
     commandline_parser.add_option("-c", "--config-dir",
                                   dest="config_dir", default=None,
                                   help= "Path to directory containing qserv-build.conf and"
@@ -36,14 +39,24 @@ def parseOptions():
     commandline_parser.add_option("--database",
                                   dest="database", default="LSST",
                                   help= "Database to be used for data loading. [default: %default]")
-
+    commandline_parser.add_option("--number-of-nodes",
+                                  dest="nbNodes", default=None,
+                                  help= "Number of nodes.")
+    commandline_parser.add_option("--delimiter",
+                                  dest="delimiter", default="\t",
+                                  help= "Delimiter for data files. [default: %default]")
+    commandline_parser.add_option("--table-description-file",
+                                  type='string',
+                                  dest="tables_list", default=None,
+                                  action='callback', callback=splitlist_callback,
+                                  help= "Comma separated list of table description files.")
     (options, args) = commandline_parser.parse_args()
 
     if options.chunks_file is None:
         commandline_parser.error("Chunks file is missing")
-        
-    if len(args) < 1:
-        commandline_parser.error("Schema(s) or data file(s) are missing")
+
+    if options.nbNodes is None:
+        commandline_parser.error("Number of nodes is missing")
 
     return (options, args)
 
@@ -61,21 +74,99 @@ def LoadSql(logger, config, dbname, sql_list):
     for sqlFile in sql_list:
         logger.info("Loading SQL %s." % sqlFile)
         sqlCommand.executeFromFile(sqlFile)
-    
 
-def read_chunks(logger, chunkfile):
-    with open(chunkfile) as f:
-        chunk_ids = f.read().splitlines()        
+
+def read_chunks(logger, chunksfile):
+    with open(chunksfile) as f:
+        chunk_ids = f.read().splitlines()
     logger.info("Chunks = " + ', '.join(chunk_ids))
     chunk_id_list = map(int, chunk_ids)
-    return chunk_id_list
+    return (chunk_id_list, chunk_ids)
 
 
-def configure_master(logger, config, chunkfile, dbname, sql_list):
+def read_description(filename):
+    description = dict()
+    with open(filename) as f:
+        for line in f:
+            (key, val) = line.split()
+            description[key] = val
+    return description
+
+def partition(logger, options, config, chunk_str_list):
+    base_dir = config['qserv']['base_dir']
+    tmp_dir = config['qserv']['tmp_dir']
+    
+    partition_dirname = os.path.join(tmp_dir, "partition")
+    if os.path.isdir(partition_dirname):
+        logger.info("Removing existing directory %s" % partition_dirname)
+        shutil.rmtree(partition_dirname)
+
+    logger.info("Creation of partition directory : %s." % partition_dirname)
+    os.makedirs(partition_dirname)
+
+    chunker_scriptname = os.path.join(base_dir,"qserv", "master", "examples", "makeChunk.py")
+
+    python = config['bin']['python']
+    username = config['qserv']['user']
+    nbstripes = config['qserv']['stripes']
+    nbsubstripes = config['qserv']['substripes']
+    master = config['qserv']['master']
+    port = config['mysqld']['port']
+
+    for filename in options.tables_list:
+        description = read_description(filename) 
+
+        tablename = description["tablename"]
+        schema_filename = description["schema"]
+        data_filename = description["data"]
+        rafieldname = description["rafieldname"]
+        declfieldname = description["declfieldname"]
+
+        chunker_cmd = [ python,
+                        chunker_scriptname,
+                        '--output-dir', partition_dirname,
+                        '-S', str(nbstripes),
+                        '-s', str(nbsubstripes),
+                        '--dupe',
+                        '--chunk-prefix=' + tablename,
+                        "--chunk-list=" + ",".join(chunk_str_list),
+                        "--node-count=" + options.nbNodes,
+                        "--delimiter=" + options.delimiter,
+                        "--theta-name=" + rafieldname,
+                        "--phi-name=" + declfieldname,
+                        "--schema=" + schema_filename,
+                        data_filename
+                        ]
+
+        logger.info("Partitioning data into chunks.")
+        out = commons.run_command(chunker_cmd)
+
+        loader_scriptname = os.path.join(base_dir,"qserv", "master", "examples", "loader.py")
+        socketname = config['mysqld']['sock']
+
+        loader_cmd = [ python,
+                       loader_scriptname,
+                       '--user=' + username,
+                       '--socket=' + socketname,
+                       '--database=' + options.database,
+                       master + ":" + str(port),
+                       partition_dirname,
+                       options.database + "." + tablename
+                       ]
+
+        logger.info("Loading chunks data into MySQL database %s." % options.database)
+        out =  commons.run_command(loader_cmd)
+
+
+
+def configure_master(logger, options, config, sql_list):
+    chunkfile = options.chunks_file
+    dbname = options.database
+
     filename =  os.path.join(config['qserv']['base_dir'],"etc","emptyChunks.txt")
     nbstripes = config['qserv']['stripes']
 
-    chunk_id_list = read_chunks(logger, chunkfile)   
+    (chunk_id_list, chunk_str_list) = read_chunks(logger, chunkfile)
 
     logger.info("Creating empty chunk file : %s with %s stripes." % (filename, nbstripes))
     CreateEmptyChunksFile(int(nbstripes), chunk_id_list, filename)
@@ -83,28 +174,36 @@ def configure_master(logger, config, chunkfile, dbname, sql_list):
     logger.info("Loading SQL into database %s." % dbname)
     LoadSql(logger, config, dbname, sql_list)
 
-    
-def configure_worker(logger, config, chunkfile, dbname, sql_list):
-    logger.info("Loading chunks data into MySQL database %s." % dbname)
-    LoadSql(logger, config, dbname, sql_list)    
 
+def configure_worker(logger, options, config, sql_list):
+    chunkfile = options.chunks_file
+    dbname = options.database
+
+    (chunk_id_list, chunk_str_list) = read_chunks(logger, chunkfile)
+
+    # LoadSql(logger, config, dbname, sql_list)
+    if options.tables_list is not None:
+        partition(logger, options, config, chunk_str_list)
+    else:
+        logger.info("WARNING: empty tables list ! (--table-description-file)")
+        exit(1)
+        
     LSST_dir = os.path.join(config['qserv']['base_dir'],"xrootd-run","q",dbname)
     if os.path.isdir(LSST_dir):
         logger.info("Removing existing directory %s" % LSST_dir)
         shutil.rmtree(LSST_dir)
-    
+
     logger.info("Creation of %s Xrootd query directory (%s)." % (dbname, LSST_dir))
     os.makedirs(LSST_dir)
-    
+
     logger.info("Chunk directory creation for Xrootd.")
-    chunk_id_list = read_chunks(logger, chunkfile)
     for chunk_id in chunk_id_list:
         chunk_name = str(chunk_id)
         chunk_file = os.path.join(LSST_dir, chunk_name)
         with open(chunk_file, "w") as f:
-             logger.info("Chunk directory %s creation." % chunk_name) 
+             logger.info("Chunk directory %s creation." % chunk_name)
 
-    
+
 def main():
     logger = commons.init_default_logger("dataload", log_path="/tmp")
     (options, args) = parseOptions()
@@ -118,12 +217,10 @@ def main():
         default_config_file_name=os.path.join(options.config_dir,"qserv-build.default.conf")
         config = commons.read_config(config_file_name, default_config_file_name)
 
-    dbname = options.database
-    
     configure = {'master': configure_master,
                  'worker': configure_worker}
-    configure[options.mode](logger, config, chunksfile, dbname, sql_list)
+    configure[options.mode](logger, options, config, sql_list)
 
-    
+
 if __name__ == '__main__':
     main()

@@ -76,11 +76,20 @@ strategies = { 'round-robin': roundRobin }
 class SqlActions(object):
     """Higher level interface for database loading/cleanup tasks.
     """
-    def __init__(self, host, port, user, passwd):
-        kw = { 'host': host }
-        for k in ((port, 'port'), (user, 'user'), (passwd, 'passwd')):
-            if k[0] != None:
-                kw[k[1]] = k[0]
+    def __init__(self, host, port, user, passwd, socket=None, database="LSST"):
+        kw = dict()
+        if socket is None:
+            kw['host'] = host 
+            for k in ((port, 'port'), (user, 'user'), (passwd, 'passwd'), (socket, 'unix_socket'), (database, 'db')):
+                if k[0] != None:
+                    kw[k[1]] = k[0]
+        else:
+            for k in ((user, 'user'), (passwd, 'passwd'), (socket, 'unix_socket'), (database, 'db')):
+                if k[0] != None:
+                    kw[k[1]] = k[0]
+
+        print("SqlActions init : %s" % str(kw))
+        
         self.conn = sql.connect(**kw)
         self.cursor = self.conn.cursor()
 
@@ -140,7 +149,7 @@ class SqlActions(object):
                 alpha DOUBLE PRECISION NOT NULL
             );""" % table)
         self._exec("""
-            LOAD DATA INFILE '%s'
+            LOAD DATA LOCAL INFILE '%s'
             INTO TABLE %s
             FIELDS TERMINATED BY ',';""" %
             (os.path.abspath(partFile), table))
@@ -189,7 +198,7 @@ class SqlActions(object):
         if (dropPrimaryKey):
             self._exec("ALTER TABLE %s DROP primary key;" % (table))
         self._exec("""
-            LOAD DATA INFILE '%s'
+            LOAD DATA LOCAL INFILE '%s'
             INTO TABLE %s
             FIELDS TERMINATED BY ',';""" %
             (os.path.abspath(path), table))
@@ -403,6 +412,7 @@ class Params(object):
         self.database = opts.database
         self.user = opts.user
         self.password = opts.password
+        self.socket = opts.socket
         self.clean = opts.clean
         self.prototype = opts.prototype
         self.schema = opts.schema
@@ -499,14 +509,14 @@ def findChunkFiles(inputDir, prefix):
 # -- Actions --------
 
 def dropDatabase(params):
-    act = SqlActions(params.host, params.port, params.user, params.password)
+    act = SqlActions(params.host, params.port, params.user, params.password, params.socket, params.database)
     try:
         act.dropDatabase(params.database)
     finally:
         act.close()
 
 def cleanDatabase(params):
-    act = SqlActions(params.host, params.port, params.user, params.password)
+    act = SqlActions(params.host, params.port, params.user, params.password, params.socket, params.database)
     try:
         if params.clean != None:
             act.dropTables(params.database, params.clean)
@@ -528,7 +538,7 @@ def masterInit(master, sampleFile, opts):
             Chunk prototype and partition map tables have
             identical names: %s""" % partTable))
     hp = hostPort(master)
-    act = SqlActions(hp[0], hp[1], opts.user, opts.password)
+    act = SqlActions(hp[0], hp[1], opts.user, opts.password, opts.socket, opts.database)
     try:
         act.createDatabase(opts.database)
         # Get prototype schema
@@ -554,7 +564,7 @@ def loadWorker(args):
     """Loads chunk files on a worker server.
     """
     params, chunks = args
-    act = SqlActions(params.host, params.port, params.user, params.password)
+    act = SqlActions(params.host, params.port, params.user, params.password, params.socket, params.database)
     partTable = None
     
     try:
@@ -651,6 +661,9 @@ def main():
         database is created if it does not already exist and defaults to
         %default."""))
     parser.add_option(
+        "--socket", dest="socket", default=None,
+        help="Socket to use for database connection.")        
+    parser.add_option(
         "-c", "--clean", dest="clean", help=dedent("""\
         Table name prefix identifying the chunk tables, partition map,
         and prototype tables to drop; this is done prior to loading."""))
@@ -692,7 +705,7 @@ def main():
             prototype table must be specified."""))
     master = args[0]
     workers = getWorkers(opts.workers, args[0])
-    if not opts.password:
+    if not opts.password and not opts.socket:
         print("Please enter your mysql password")
         opts.password = getpass.getpass()
     startTime = time.time()
