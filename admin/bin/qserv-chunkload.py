@@ -119,6 +119,7 @@ def partition(logger, options, config, chunk_str_list):
         tablename = description["tablename"]
         schema_filename = description["schema"]
         data_filename = description["data"]
+        delimiter = description["delimiter"]
         rafieldname = description["rafieldname"]
         declfieldname = description["declfieldname"]
 
@@ -131,7 +132,7 @@ def partition(logger, options, config, chunk_str_list):
                         '--chunk-prefix=' + tablename,
                         "--chunk-list=" + ",".join(chunk_str_list),
                         "--node-count=" + options.nbNodes,
-                        "--delimiter=" + options.delimiter,
+                        "--delimiter=" + delimiter,
                         "--theta-name=" + rafieldname,
                         "--phi-name=" + declfieldname,
                         "--schema=" + schema_filename,
