@@ -1,12 +1,26 @@
 #!/usr/bin/env python
 
-# Usage: Loads chunk into Qserv
-#
-# qserv-dataload.py -m [master | worker]
+# Loads chunk into Qserv
+
+# Example usage: 
+# admin/bin/qserv-chunkload.py --database LSST --number-of-nodes 300 -c $PWD -m worker --chunks-file /tmp/chunks --table-description-file /tmp/descfile 
+# qserv-chunkload.py -m [master | worker]
 #   -c <Directory of qserv configuration file>
+#   --database <database>
+#   --number-of-nodes <#workers>
 #   --chunks-file <file containing chunks to be loaded in worker or all chunks id for master>
+#   --table-description-file <table description file>
 #   <Schema to be loaded on master> ...
 #   <Non partitionned data to be loaded on master> ...
+
+# Description file format :
+# tablename  Object
+# schema     /home/qserv/qserv/tests/testdata/case01/data/Object.schema
+# data       /home/qserv/qserv/tests/testdata/case01/data/Object.tsv 
+# delimiter  \t 
+# rafieldname    ra_PS
+# declfieldname  decl_PS
+
 
 from lsst.qserv.admin import commons
 from lsst.qserv.sql import cmd, const
