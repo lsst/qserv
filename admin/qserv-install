@@ -51,7 +51,6 @@ my $mysql_port = $opts{'mysql-port'} || "3306";
 my $db_pass = $opts{'mysql-pass'};
 my $build_dir   = $opts{'build-dir'} || "$install_dir/build";
 my $prod_user   = $opts{'user'} || $ENV{'USER'};
-my $qserv_master = $opts{'master'} || hostname;
 my $geometry_dir = $opts{'geometry-dir'};
 
 $install_dir = remove_trailing_slash($install_dir);
@@ -59,11 +58,13 @@ $log_dir = remove_trailing_slash($log_dir);
 $mysql_data_dir = remove_trailing_slash($mysql_data_dir);
 $build_dir = remove_trailing_slash($build_dir);
 
+my $fqdn = system("hostname -f");
+
 if ($geometry_dir) {
     $geometry_dir = remove_trailing_slash($geometry_dir);
 }
 
-print "qserv master :  $qserv_master\n" if( $debug );
+print "hostname :  $fqdn\n" if( $debug );
 
 my $build_opt = "all";
 $build_opt = "lua" if( $opts{'lua'} );
@@ -347,7 +348,7 @@ sub init_mysql_db {
 		print ("Changing mysql root password.");
                 # password for root@127.0.0.1 won't be updated with next command.
 		# run_command("mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password '$db_pass'", $quiet);
-		# run_command("mysqladmin -h $qserv_master -P$mysql_port -u root password '$db_pass'", $quiet);
+		# run_command("mysqladmin -h $fqdn -P$mysql_port -u root password '$db_pass'", $quiet);
 		
 		run_command("$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root < $install_dir/tmp/mysql-password.sql");
 		run_command("rm $install_dir/tmp/mysql-password.sql");
@@ -358,7 +359,7 @@ sub init_mysql_db {
 	else {
 		print "Please set the mysql root user password with: ";
 		print "mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root password <password>\n";
-		print "mysqladmin -u root -h $qserv_master -P$mysql_port password <password>\n";
+		print "mysqladmin -u root -h $fqdn -P$mysql_port password <password>\n";
 	}
 
 	chdir "$install_dir";
