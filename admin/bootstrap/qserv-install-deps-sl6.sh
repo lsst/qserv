@@ -1,5 +1,7 @@
 #!/bin/bash
 
+alias yum="yum -y"
+
 yum install scons
 
 # Scientific Linux 6 dependencies
