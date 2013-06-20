@@ -251,8 +251,8 @@ class QservDataLoader():
             '--database=%s' % self._dbName
             ]
 
-        if (table in self.dataConfig['partitionned-tables']):
-            load_partitionned_data_cmd.extend(['--drop-primary-key', 'Overlap'])
+        # if (table in self.dataConfig['partitionned-tables']):
+        #     load_partitionned_data_cmd.extend(['--drop-primary-key', 'Overlap'])
 
         load_partitionned_data_cmd.extend( [
             "%s:%s" %

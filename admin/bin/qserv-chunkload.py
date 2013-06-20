@@ -13,7 +13,7 @@
 #   <Schema to be loaded on master> ...
 #   <Non partitionned data to be loaded on master> ...
 
-# Description file format :
+# Description file format : (TODO: to be filled in metadata server instead)
 # tablename  Object
 # schema     /home/qserv/qserv/tests/testdata/case01/data/Object.schema
 # data       /home/qserv/qserv/tests/testdata/case01/data/Object.tsv 
@@ -64,6 +64,11 @@ def parseOptions():
                                   dest="tables_list", default=None,
                                   action='callback', callback=splitlist_callback,
                                   help= "Comma separated list of table description files.")
+    commandline_parser.add_option("--generate-chunks-only",
+                                  dest='generate_chunks_only', 
+                                  default=False,
+                                  action='store_true',
+                                  help="Generates only chunks file without loading.")
     (options, args) = commandline_parser.parse_args()
 
     if options.chunks_file is None:
@@ -161,6 +166,9 @@ def partition(logger, options, config, chunk_str_list):
         logger.info("Partitioning data into chunks.")
         out = commons.run_command(chunker_cmd)
 
+        if options.generate_chunks_only:
+            return None
+        
         loader_scriptname = os.path.join(base_dir,"qserv", "master", "examples", "loader.py")
         socketname = config['mysqld']['sock']
 

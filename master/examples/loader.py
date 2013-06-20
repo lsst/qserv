@@ -198,7 +198,7 @@ class SqlActions(object):
         self.dropTable(table)
         self._exec("CREATE TABLE %s LIKE %s ;" % (table, prototype))
         if (dropPrimaryKey):
-            self._exec("ALTER TABLE %s DROP primary key;" % (table))
+            self._exec("ALTER TABLE %s DROP PRIMARY KEY;" % (table))
         self._exec("""
             LOAD DATA LOCAL INFILE '%s'
             INTO TABLE %s
