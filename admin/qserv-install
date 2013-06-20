@@ -338,7 +338,7 @@ sub init_mysql_db {
 	system("killall mysqld mysqld_safe");	
         run_command("rm -rf $mysql_data_dir/*");
 	
-	run_command("mysql_install_db --defaults-file=$install_dir/etc/my.cnf --user=$prod_user");
+	run_command("$install_dir/bin/mysql_install_db --defaults-file=$install_dir/etc/my.cnf --user=$prod_user");
 	
 	if ( length($db_pass) > 0) {
 		print "Starting mysql server.\n";
