@@ -123,8 +123,8 @@ def check_root_dirs(target, source, env):
     for (section,option) in (('qserv','base_dir'),('qserv','log_dir'),('qserv','tmp_dir'),('mysqld','data_dir')):
         dir = config[section][option]
         if not utils.exists_and_is_writable(dir):
-       	    logging.fatal(  "%s is not writable check/update permissions or" %
-                            "change config[%s]['%s']" %
+       	    logging.fatal(  ("%s is not writable check/update permissions or"
+                            " change config['%s']['%s']") %
                             (dir,section,option)
                          )
             sys.exit(1)
