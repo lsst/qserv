@@ -190,7 +190,7 @@ class QservDataLoader():
             '--password=%s' % self.config['mysqld']['pass'],
             '--database=%s' % self._dbName,
             "%s:%s" %
-            (self.config['qserv']['master'],self.config['mysqld']['port']),
+            ("127.0.0.1",self.config['mysqld']['port']),
             partition_dirname,
             "%s.%s" % (self._dbName, table)
             ]
