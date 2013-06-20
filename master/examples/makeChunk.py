@@ -242,7 +242,15 @@ class App:
                           for cb in cList]
         self._alloc = Alloc(conf.nodeCount, allChunkBounds, 
                             lambda c:c.chunkId, self.conf)
-        if conf.chunkList:
+
+        if conf.chunks_file is not None:
+            with open(conf.chunks_file) as f:
+                chunk_ids = f.read().splitlines()
+            cnums = map(int, chunk_ids)
+            chunkBounds = filter(lambda cb:cb.chunkId in cnums, 
+                                 allChunkBounds)
+            pass
+        elif conf.chunkList:
             cnums = map(int, str(conf.chunkList).split(","))
             chunkBounds = filter(lambda cb:cb.chunkId in cnums, 
                                  allChunkBounds)
@@ -368,6 +376,10 @@ class App:
             A comma-separated list of chunk numbers to generate.  
             Cannot be used in conjunction with --node and --nodeCount.
             (experimental)"""))
+        duplication.add_option(
+            "--chunks-file",
+            dest="chunks_file", default=None,
+            help= "Path to a file containing all chunks of all workers.")
         duplication.add_option(
             "--bounds", dest="bounds",
             default=

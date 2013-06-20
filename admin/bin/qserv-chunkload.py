@@ -124,6 +124,7 @@ def partition(logger, options, config, chunk_str_list):
     logger.info("Creation of partition directory : %s." % partition_dirname)
     os.makedirs(partition_dirname)
 
+    chunkfile = options.chunks_file
     chunker_scriptname = os.path.join(base_dir,"qserv", "master", "examples", "makeChunk.py")
 
     python = config['bin']['python']
@@ -154,7 +155,8 @@ def partition(logger, options, config, chunk_str_list):
                         '-s', str(nbsubstripes),
                         '--dupe',
                         '--chunk-prefix=' + tablename,
-                        "--chunk-list=" + ",".join(chunk_str_list),
+                        # "--chunk-list=" + ",".join(chunk_str_list),
+                        "--chunks-file", chunkfile,
                         "--node-count=" + options.nbNodes,
                         "--delimiter=" + delimiter,
                         "--theta-name=" + rafieldname,
