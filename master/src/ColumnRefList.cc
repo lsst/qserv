@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "lsst/qserv/master/ColumnRefList.h"
+#include <stdexcept>
 #include "lsst/qserv/master/ColumnRef.h"
 
 namespace lsst { namespace qserv { namespace master {
@@ -54,7 +55,9 @@ ColumnRefList::getRef(antlr::RefAST r) {
         std::cout << "couldn't find " << tokenText(r) << " in";
         printRefs(); 
     } 
-    assert(_refs.find(r) != _refs.end()); 
+    if(_refs.find(r) == _refs.end()) {
+        throw std::invalid_argument("Node not tracked in _refs.");
+    } 
     return _refs[r];
 }
     

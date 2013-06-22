@@ -25,18 +25,20 @@
 /**
   * @file TableRefN.h
   *
-  * @brief TableRefN is a table ref node in a parsed query. Subclasses:
-  * SimpleTableN and JoinRefN
+  * @brief Declarations for TableRefN and subclasses SimpleTableN and JoinRefN
   *
   * @author Daniel L. Wang, SLAC
   */
+#include <stdexcept>
 #include <string>
 #include <list>
 #include <iostream>
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/QueryTemplate.h"
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 class QueryTemplate; // Forward
 
 /// TableRefN is a parsed table reference 
@@ -46,7 +48,7 @@ public:
     virtual ~TableRefN() {}
     virtual std::string const& getAlias() const { return alias; }
     virtual std::string const& getDb() const = 0;
-    virtual std::string const& getTable() const = 0;
+    virtual std::string const& getTable() const = 0; ///< empty string if compound
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void putTemplate(QueryTemplate& qt) const = 0;
     // Modifiers:
@@ -56,13 +58,17 @@ public:
 
     class Func {
     public:
-        virtual void operator()(TableRefN& t) {}
+        virtual ~Func() {}
+        virtual void operator()(TableRefN& t) { (*this)(t); }
+        virtual void operator()(TableRefN const& t) {}
     };
     template <class F>
     class Fwrapper {
     public:
         Fwrapper(F& f_) : f(f_) {}
         inline void operator()(TableRefN::Ptr& t) {
+            if(t.get()) { t->apply(f); } }
+        inline void operator()(TableRefN::Ptr const& t) {
             if(t.get()) { t->apply(f); } }
         F& f;
     };
@@ -105,7 +111,9 @@ public:
     typedef boost::shared_ptr<SimpleTableN> Ptr;
     SimpleTableN(std::string const& db_, std::string const& table_,
                  std::string const& alias_) 
-        : TableRefN(alias_), db(db_), table(table_)  {}
+        : TableRefN(alias_), db(db_), table(table_)  {
+        if(table_.empty()) { throw std::logic_error("SimpleTableN without table"); }
+    }
     
     virtual std::string const& getDb() const { return db; }
     virtual std::string const& getTable() const { return table; }
@@ -122,8 +130,8 @@ public:
     virtual void setDb(std::string const& db_) { db = db_; }
     virtual void setTable(std::string const& table_) { table = table_; }
     virtual void apply(Func& f) { f(*this); }
+    virtual void apply(Func& f) const { f(*this); }
 protected:
-//    std::string alias; // inherited
     std::string db;
     std::string table;
 };
@@ -131,6 +139,7 @@ protected:
 /// JoinRefN is a more complex TableRefN: the JOIN of two TableRefN. It is
 /// flattened to only allow db.table as its joining tables (no additional
 /// nesting is allowed). 
+/// Implementation is incomplete/broken.
 class JoinRefN : public TableRefN {
 public:
     enum JoinType {DEFAULT, INNER, LEFT, RIGHT, NATURAL, CROSS, FULL};

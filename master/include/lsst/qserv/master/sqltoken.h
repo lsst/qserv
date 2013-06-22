@@ -24,7 +24,7 @@
 #ifndef LSST_QSERV_MASTER_SQLTOKEN_H
 #define LSST_QSERV_MASTER_SQLTOKEN_H
 /**
-  * @file parseTreeUtil.h
+  * @file 
   *
   * @brief utility functions for working with SQL language tokens.
   *
@@ -32,7 +32,9 @@
   */
 #include <boost/algorithm/string/predicate.hpp>
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 /// @return true if a string should be space-separated, 
 ///         given the preceding and following characters.
 bool sqlShouldSeparate(std::string const& s, int last, int next);

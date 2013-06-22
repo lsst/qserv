@@ -22,7 +22,7 @@
 /**
   * @file AggOp.cc
   *
-  * @brief AggOp class implementation
+  * @brief PassAggOp, CountAggOp, AccumulateOp, AvgAggOp implementations
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -30,23 +30,17 @@
 #include "lsst/qserv/master/AggOp.h"
 
 #include <sstream>
+#include <stdexcept>
 #include "lsst/qserv/master/FuncExpr.h"
 #include "lsst/qserv/master/ValueExpr.h"
 #include "lsst/qserv/master/ValueFactor.h"
 
-namespace qMaster=lsst::qserv::master;
-using lsst::qserv::master::AggOp;
-using lsst::qserv::master::AggRecord;
-using lsst::qserv::master::ValueExpr;
-using lsst::qserv::master::ValueFactor;
-using lsst::qserv::master::FuncExpr;
-
-namespace { // File-scope helpers
-
-}
-namespace lsst { namespace qserv {namespace master {
+namespace lsst { 
+namespace qserv {
+namespace master {
 ////////////////////////////////////////////////////////////////////////
-// AggOp specializations
+// AggOp specializations 
+// TODO: Refactor towards functions rather than functors
 ////////////////////////////////////////////////////////////////////////
 /// PassAggOp is a pass-through aggregation. Unused now.
 class PassAggOp : public AggOp {
@@ -56,8 +50,8 @@ public:
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
         AggRecord::Ptr arp(new AggRecord());
         arp->orig = orig.clone();
-        arp->pass.push_back(ValueExpr::newSimple(orig.clone()));
-        arp->fixup = orig.clone();
+        arp->parallel.push_back(ValueExpr::newSimple(orig.clone()));
+        arp->merge = orig.clone();
         // Alias handling left to caller.
         return arp;
     } 
@@ -74,16 +68,16 @@ public:
         arp->orig = orig.clone();
         boost::shared_ptr<FuncExpr> fe;
         boost::shared_ptr<ValueFactor> vf;
-        boost::shared_ptr<ValueExpr> passExpr;
+        boost::shared_ptr<ValueExpr> parallelExpr;
         
-        passExpr = ValueExpr::newSimple(orig.clone());
-        passExpr->setAlias(interName);
-        arp->pass.push_back(passExpr);
+        parallelExpr = ValueExpr::newSimple(orig.clone());
+        parallelExpr->setAlias(interName);
+        arp->parallel.push_back(parallelExpr);
 
         fe = FuncExpr::newArg1("SUM", interName);
         vf = ValueFactor::newFuncFactor(fe);
         // orig alias handled by caller.
-        arp->fixup = vf;
+        arp->merge = vf;
         return arp;
     }
 };
@@ -106,16 +100,16 @@ public:
         arp->orig = orig.clone();
         boost::shared_ptr<FuncExpr> fe;
         boost::shared_ptr<ValueFactor> vf;
-        boost::shared_ptr<ValueExpr> passExpr;
+        boost::shared_ptr<ValueExpr> parallelExpr;
         
-        passExpr = ValueExpr::newSimple(orig.clone());
-        passExpr->setAlias(interName);
-        arp->pass.push_back(passExpr);
+        parallelExpr = ValueExpr::newSimple(orig.clone());
+        parallelExpr->setAlias(interName);
+        arp->parallel.push_back(parallelExpr);
 
         fe = FuncExpr::newArg1(accName, interName);
         vf = ValueFactor::newFuncFactor(fe);
         // orig alias handled by caller.
-        arp->fixup = vf;
+        arp->merge = vf;
         return arp;
     }
     std::string accName;
@@ -130,7 +124,7 @@ public:
         
         AggRecord::Ptr arp(new AggRecord());
         arp->orig = orig.clone();
-        // Pass: get each aggregation subterm.
+        // Parallel: get each aggregation subterm.
         boost::shared_ptr<FuncExpr> fe;
         boost::shared_ptr<ValueFactor const> origVf(orig.clone());
         boost::shared_ptr<ValueExpr> ve;
@@ -138,13 +132,13 @@ public:
         fe = FuncExpr::newLike(*origVf->getFuncExpr(), "COUNT");
         ve = ValueExpr::newSimple(ValueFactor::newFuncFactor(fe));
         ve->setAlias(cAlias);
-        arp->pass.push_back(ve);
+        arp->parallel.push_back(ve);
 
         std::string sAlias = _mgr.getAggName("SUM"); 
         fe = FuncExpr::newLike(*origVf->getFuncExpr(), "SUM");
         ve = ValueExpr::newSimple(ValueFactor::newFuncFactor(fe));
         ve->setAlias(sAlias);
-        arp->pass.push_back(ve);
+        arp->parallel.push_back(ve);
 
         boost::shared_ptr<FuncExpr> feSum;
         boost::shared_ptr<FuncExpr> feCount;
@@ -161,7 +155,7 @@ public:
         fo.factor = ValueFactor::newFuncFactor(feCount);
         fo.op = ValueExpr::NONE;
         factorOps.push_back(fo);
-        arp->fixup = ValueFactor::newExprFactor(ve);
+        arp->merge = ValueFactor::newExprFactor(ve);
         return arp;
     }
 };
@@ -171,7 +165,6 @@ public:
 ////////////////////////////////////////////////////////////////////////
 AggOp::Mgr::Mgr() {
     // Load the map
-    AggOp::Ptr pass(new PassAggOp(*this));
     _map["COUNT"].reset(new CountAggOp(*this));
     _map["AVG"].reset(new AvgAggOp(*this));
     _map["MAX"].reset(new AccumulateOp(*this, AccumulateOp::MAX));
@@ -192,7 +185,9 @@ AggOp::Mgr::applyOp(std::string const& name, ValueFactor const& orig) {
     std::string n(name);
     std::transform(name.begin(), name.end(), n.begin(), ::toupper);
     AggOp::Ptr p = getOp(n);
-    assert(p.get());
+    if(!p) {
+        throw std::invalid_argument("Missing AggOp in applyOp()");
+    }
     return (*p)(orig);
 }
 

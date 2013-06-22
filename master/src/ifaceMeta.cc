@@ -32,6 +32,7 @@
 
 
 #include "lsst/qserv/master/ifaceMeta.h"
+#include <stdexcept>
 #include "lsst/qserv/master/MetadataCache.h"
 #include "lsst/qserv/master/SessionManager.h"
 
@@ -55,7 +56,9 @@ getSessionManager() {
     if(sm.get() == NULL) {
         sm = boost::make_shared<SessionMgr>();
     }
-    assert(sm.get() != NULL);
+    if(!sm) {
+        throw std::logic_error("Can't initialize SessionMgr");
+    }
     return *sm;
 }
 
@@ -63,7 +66,9 @@ typedef boost::shared_ptr<qMaster::MetadataCache> MetaCachePtr;
 MetaCachePtr
 getMetadataCache(int session) {
     MetaCachePtr x = getSessionManager().getSession(session);
-    assert(x != NULL); // if you get an assert here, you passed an invalid session
+    if(!x) {
+        throw std::invalid_argument("Invalid MetadataCache session");
+    }
     return x;
 }
 }}}

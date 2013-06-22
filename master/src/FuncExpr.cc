@@ -44,13 +44,19 @@ FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
     e->params = src.params; // Shallow list copy.
     return e;
 }
+
 FuncExpr::Ptr 
 FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
+    boost::shared_ptr<ColumnRef> cr(new ColumnRef("","",arg1));
+    return newArg1(newName, 
+                   ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr)));
+}
+
+FuncExpr::Ptr 
+FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
     FuncExpr::Ptr e(new FuncExpr()); 
     e->name = newName;
-    boost::shared_ptr<ColumnRef> cr(new ColumnRef("","",arg1));
-    e->params.push_back(ValueExpr::newSimple(
-                            ValueFactor::newColumnRefFactor(cr)));
+    e->params.push_back(ve);
     return e;
 }
 

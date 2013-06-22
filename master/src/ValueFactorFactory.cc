@@ -92,7 +92,9 @@ newColumnFactor(antlr::RefAST t, ColumnRefMap& cMap) {
         // make column ref. (no further children)
         {
             ColumnRefMap::Map::const_iterator it = cMap.map.find(t);
-            assert(it != cMap.map.end()); // Consider an exception instead
+            if(it == cMap.map.end()) {
+                throw std::logic_error("Expected to find REGULAR_ID in table map");
+            }
             ColumnRefMap::Ref r = it->second;
             boost::shared_ptr<ColumnRef> newColumnRef;
             newColumnRef.reset(new qMaster::ColumnRef(tokenText(r.db),
@@ -108,7 +110,9 @@ newColumnFactor(antlr::RefAST t, ColumnRefMap& cMap) {
         last = walkToSiblingBefore(child, SqlSQL2TokenTypes::LEFT_PAREN);
         fe->name = getSiblingStringBounded(child, last);
         last = last->getNextSibling(); // Advance to LEFT_PAREN
-        assert(last.get());
+        if(!last.get()) { 
+            throw ParseException("Expected LEFT_PAREN", last);
+        }
         // Now fill params. 
         for(antlr::RefAST current = last->getNextSibling();
             current.get(); current = current->getNextSibling()) {
@@ -148,12 +152,16 @@ newSetFctSpec(RefAST expr, ColumnRefMap& cMap) {
     boost::shared_ptr<FuncExpr> fe(new FuncExpr());
     //    std::cout << "set_fct_spec " << walkTreeString(expr) << std::endl;
     RefAST nNode = expr->getFirstChild();
-    assert(nNode.get());
+    if(!nNode.get()) {
+        throw ParseException("Missing name node of function spec", expr);
+    }
     fe->name = nNode->getText();
     // Now fill params.
     antlr::RefAST current = nNode->getFirstChild();
     // Aggregation functions can only have one param.
-    assert(current->getType() == SqlSQL2TokenTypes::LEFT_PAREN); 
+    if(current->getType() != SqlSQL2TokenTypes::LEFT_PAREN) {
+        throw ParseException("Expected LEFT_PAREN", current);
+    }
     current = current->getNextSibling();
     // Should be a * or a value expr.
     boost::shared_ptr<ValueFactor> pvt;
@@ -167,7 +175,9 @@ newSetFctSpec(RefAST expr, ColumnRefMap& cMap) {
     default: break;
     }
     current = current->getNextSibling();
-    assert(current->getType() == SqlSQL2TokenTypes::RIGHT_PAREN); 
+    if(current->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
+        throw ParseException("Expected RIGHT_PAREN", current);
+    }
     fe->params.push_back(ValueExpr::newSimple(pvt));
     return ValueFactor::newAggFactor(fe);
 }
@@ -190,7 +200,9 @@ ValueFactorFactory::ValueFactorFactory(boost::shared_ptr<ColumnRefMap> cMap)
 /* TERM   (TERM_OP TERM)*  */
 boost::shared_ptr<ValueFactor> 
 ValueFactorFactory::newFactor(antlr::RefAST a) {
-    assert(_columnRefMap.get());
+    if(!_columnRefMap) {
+        throw std::logic_error("ValueFactorFactory missing _columnRefMap");
+    }
     boost::shared_ptr<ValueFactor> vt;
     int eType = a->getType();
     if(a->getType() == SqlSQL2TokenTypes::FACTOR) {
@@ -209,7 +221,9 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
         vt = newConstFactor(a);
         break;
     }
-    assert(vt.get());
+    if(!vt) {
+        throw std::logic_error("Faled to construct ValueFactor");
+    }
     return vt;
 }
 }}} // lsst::qserv::master

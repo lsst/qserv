@@ -23,16 +23,16 @@
 #ifndef LSST_QSERV_MASTER_SPHERICALBOXSTRATEGY_H
 #define LSST_QSERV_MASTER_SPHERICALBOXSTRATEGY_H
 /**
-  * @file SphericalBoxStrategy.h
-  *
-  * @brief SphericalBoxStrategy holds some of the logic for going from
-  * table-name+chunk+subchunk to a physical table name.
+  * @file 
   *
   * @author Daniel L. Wang, SLAC
   */
 #include <boost/shared_ptr.hpp>
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
+
 class FromList;
 class QueryContext;
 class QueryMapping;
@@ -45,6 +45,9 @@ class QueryMapping;
 /// we don't have the resources (yet) to implement another strategy.
 /// Unfortunately, it only contains a portion of the logic needed for Spherical
 /// Box partitioning, rather than all of it. 
+///
+/// This class holds some of the logic for going from table-name+chunk+subchunk
+/// to a physical table name.
 class SphericalBoxStrategy {
 public:
     SphericalBoxStrategy(FromList const& f, 
@@ -60,9 +63,8 @@ public:
 
 private:
     class Impl;
-    void _import(FromList& f);
+    void _import(FromList const& f);
 
-    QueryContext& _context;
     boost::shared_ptr<Impl> _impl;
 };
 

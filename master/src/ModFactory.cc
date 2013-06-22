@@ -106,8 +106,9 @@ ModFactory::ModFactory(boost::shared_ptr<ValueExprFactory> vf)
     : _vFactory(vf),
       _limit(-1)
 {
-    assert(vf.get());
-    // FIXME
+    if(!vf) { 
+        throw std::invalid_argument("ModFactory requires ValueExprFactory");
+    }
 }
 
 void ModFactory::attachTo(SqlSQL2Parser& p) {
@@ -120,7 +121,9 @@ void ModFactory::attachTo(SqlSQL2Parser& p) {
 void ModFactory::_importLimit(antlr::RefAST a) {
     // Limit always has an int.
     std::cout << "Limit got " << walkTreeString(a) << std::endl;
-    assert(a.get());
+    if(!a.get()) {
+        throw std::invalid_argument("Cannot _importLimit(NULL)");
+    }
     std::stringstream ss(a->getText());
     ss >> _limit;
 }
@@ -129,9 +132,13 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
     _orderBy.reset(new OrderByClause());
     // ORDER BY takes a column ref (expression)
     std::cout << "orderby got " << walkTreeString(a) << std::endl;
-    assert(a.get());
+    if(!a.get()) {
+        throw std::invalid_argument("Cannot _importOrderBy(NULL)");
+    }
     while(a.get()) {
-        assert(a->getType() == SqlSQL2TokenTypes::SORT_SPEC);
+        if(a->getType() != SqlSQL2TokenTypes::SORT_SPEC) {
+            throw std::logic_error("Expected SORT_SPEC token)");
+        }
         RefAST key = a->getFirstChild();
         OrderByTerm ob;
         ob._order = OrderByTerm::DEFAULT;
@@ -173,9 +180,13 @@ void ModFactory::_importGroupBy(antlr::RefAST a) {
     _groupBy = boost::make_shared<GroupByClause>();
     // GROUP BY takes a column reference (expression?)
     std::cout << "groupby got " << walkTreeString(a) << std::endl;
-    assert(a.get());
+    if(!a.get()) {
+        throw std::invalid_argument("Cannot _importGroupBy(NULL)");
+    }
     while(a.get()) {
-        assert(a->getType() == SqlSQL2TokenTypes::GROUPING_COLUMN_REF);
+        if((a->getType() != SqlSQL2TokenTypes::GROUPING_COLUMN_REF)) {
+            throw std::logic_error("Attempting _import of non-grouping column");
+        }
         GroupByTerm gb;
         RefAST key = a->getFirstChild();
         boost::shared_ptr<ValueExpr> ve;
@@ -205,7 +216,9 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     // and only one boolean, so this code will only accept single
     // aggregation, single boolean expressions.
     // e.g. HAVING count(obj.ra_PS_sigma) > 0.04
-    assert(a.get());
+    if(!a.get()) {
+        throw std::invalid_argument("Cannot _importHaving(NULL)");
+}
     //std::cout << "having got " << walkTreeString(a) << std::endl;
     // For now, we will silently traverse and recognize but ignore.
     
@@ -227,6 +240,7 @@ void ModFactory::_importHaving(antlr::RefAST a) {
         }
     }
     _having->_tree.reset(); // NULL-out. Unhandled syntax.
+
+    // FIXME: Log this at the WARNING level
     std::cout << "Parse warning: HAVING clause unhandled." << std::endl;
-    // FIXME: Should we report an error?
 }

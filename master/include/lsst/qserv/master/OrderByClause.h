@@ -26,8 +26,7 @@
   * @file OrderByClause.h
   *
   * @brief OrderByClause is a representation of a SQL ORDER BY clause.  It
-  * consists of OrderByTerm objects.  HavingClause is defined here as well, but
-  * real support has not yet been implemented. 
+  * consists of OrderByTerm objects.
   *
   * @author Daniel L. Wang, SLAC
   */

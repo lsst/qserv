@@ -23,18 +23,19 @@
 #ifndef LSST_QSERV_MASTER_CHUNKQUERYSPEC_H
 #define LSST_QSERV_MASTER_CHUNKQUERYSPEC_H
 /**
-  * @file ChunkQuerySpec.h
-  *
-  * @brief ChunkQuerySpec is an value class that contains information pertinent
-  * to executing a chunk query.  
+  * @file 
   *
   * @author Daniel L. Wang, SLAC
   */
+#include <ostream>
 #include <string>
 #include <vector>
 #include <boost/shared_ptr.hpp>
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
+
 /// ChunkQuerySpec is a value class that bundles a set of queries with their
 /// dependent db, chunkId, and set of subChunkIds. It has a pointer to another
 /// ChunkQuerySpec as a means of allowing Specs to be easily fragmented for
@@ -44,9 +45,13 @@ public:
     // Contents could change
     std::string db;
     int chunkId;
+    // Consider saving subChunkTable templates, and substituting the chunkIds
+    // and subChunkIds into them on-the-fly. 
     std::vector<std::string> subChunkTables;
     std::vector<int> subChunkIds;
     std::vector<std::string> queries;
+    // Consider promoting the concept of container of ChunkQuerySpec
+    // in the hopes of increased code cleanliness.
     boost::shared_ptr<ChunkQuerySpec> nextFragment;
 };
 

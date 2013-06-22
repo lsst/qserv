@@ -26,13 +26,13 @@
 /**
   * @file ColumnRef.h
   *
-  * @brief ColumnRef is a representation of a parsed column reference in SQL.
-  *
   * @author Daniel L. Wang, SLAC
   */
 #include <string>
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 
 class QueryTemplate; // Forward
 
@@ -52,7 +52,6 @@ public:
 
 // Should refactor most of this into a ColumnRef factory.
 }}} // namespace lsst::qserv::master
-
 
 #endif // LSST_QSERV_MASTER_COLUMNREF_H
 

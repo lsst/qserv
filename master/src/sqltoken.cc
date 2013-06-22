@@ -38,22 +38,18 @@ struct InsensitiveCompare {
     }
 };
 
+/// std::map-based lookup of separating words.
+/// If this becomes significant in execution time, consider faster
+/// implementations. Possibilities: hashing, lookup tables.
 struct CompareMap {
-    CompareMap() { _init(); }
-    void _init() {
+    CompareMap() {
         const char* sepWords[] = {"select", "from", "where", "by", "limit"};
         const int swSize=5;
         _sepWords.insert(sepWords, sepWords + swSize);
     }
-    // Only works for ASCII. I know.
-    inline bool lookupChar(char a, char const* map) {
-        int idx = static_cast<int>(static_cast<unsigned char>(a));
-        return map[idx];
-    }
     inline bool isSeparatingWord(std::string const& w) {
         return _sepWords.find(w) != _sepWords.end();
     };
-    char _separateTokens[256];
     std::set<std::string, InsensitiveCompare> _sepWords;
 };
 CompareMap _cMap;

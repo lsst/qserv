@@ -42,11 +42,15 @@ def makePmap(dominantDb, metaCacheSession):
 
 class PartitioningConfig: 
     """ An object that stores information about the partitioning setup.
+    
+    Note: This will be removed or rewritten as the qserv metadata 
+    server integration progresses.
     """
     def __init__(self):
         self.clear() # reset fields
 
     def clear(self):
+        """Reset this object"""
         ## public
         self.chunked = set([])
         self.subchunked = set([])
@@ -56,6 +60,7 @@ class PartitioningConfig:
         pass
 
     def applyConfig(self):
+        """Load configuration parameters from the global configuration"""
         c = lsst.qserv.master.config.config
         try:
             chk = c.get("table", "chunked")
@@ -79,6 +84,8 @@ class PartitioningConfig:
 ########################################################################
 
 class RegionFactory:
+    """A class that constructs region objects to be used to compute 
+    spatial coverage for SQL queries"""
     def __init__(self):
         self._constraintNames = {
             "box" : self._handleBox,
@@ -196,12 +203,14 @@ _rFactory = None
 
 
 def getSpatialConfig():
+    """@return the global PartitioningConfig instance"""
     if not _spatialConfig:
         _spatialConfig = PartitioningConfig()
         _spatialConfig.applyConfig()
     return _spatialConfig
 
 def getRegionFactory():
+    """@return return the global RegionFactory instance"""
     global _rFactory
     if not _rFactory:
         _rFactory = RegionFactory()

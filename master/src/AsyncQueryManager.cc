@@ -373,14 +373,17 @@ inline std::string getConfigElement(std::map<std::string,
 
 void qMaster::AsyncQueryManager::_readConfig(std::map<std::string,
                                                       std::string> const& cfg) {
+    /// localhost:1094 is the most reasonable default, even though it is
+    /// the wrong choice for all but small developer installations.
     _xrootdHostPort = getConfigElement(
         cfg, "frontend.xrootd", 
-        "WARNING! No xrootd spec. Using lsst-dev01:1094", 
-        "lsst-dev01:1094");
+        "WARNING! No xrootd spec. Using localhost:1094", 
+        "localhost:1094"); 
     _scratchPath =  getConfigElement(
         cfg, "frontend.scratch_path", 
         "Error, no scratch path found. Using /tmp.",
         "/tmp");
+    // This should be overriden by the installer properly.
     _resultDbSocket =  getConfigElement(
         cfg, "resultdb.unix_socket", 
         "Error, resultdb.unix_socket not found. Using /u1/local/mysql.sock.",
@@ -421,7 +424,9 @@ void qMaster::AsyncQueryManager::_addNewResult(PacIterPtr pacIter,
 void qMaster::AsyncQueryManager::_addNewResult(ssize_t dumpSize, 
                                                std::string const& dumpFile, 
                                                std::string const& tableName) {
-    assert(dumpSize >= 0);
+    if(dumpSize < 0) {
+        throw std::invalid_argument("dumpSize < 0");
+    }
     {
         boost::lock_guard<boost::mutex> lock(_totalSizeMutex);
         _totalSize += dumpSize; 

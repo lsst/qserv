@@ -46,16 +46,6 @@
 namespace qMaster=lsst::qserv::master;
 
 namespace { // File-scope helpers
-// Shared among plugins?
-template <class C>
-void printList(char const* label, C const& c) {
-    typename C::const_iterator i; 
-    std::cout << label << ": ";
-    for(i = c.begin(); i != c.end(); ++i) {
-        std::cout << **i << ", ";
-    }
-    std::cout << std::endl;
-}
 class ReverseAlias {
 public:
     ReverseAlias() {}
@@ -156,7 +146,9 @@ public:
         ValueExpr::FactorOpList& factorOps = vep->getFactorOps();
         for(ValueExpr::FactorOpList::iterator i=factorOps.begin();
             i != factorOps.end(); ++i) {
-            assert(i->factor.get());
+            if(!i->factor) {
+                throw std::logic_error("Bad ValueExpr::FactorOps");
+            }
             ValueFactor& t = *i->factor;
             //std::cout << "fixing factor: " << *vep << std::endl;
             std::string newAlias;
@@ -213,6 +205,8 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // TablePlugin declaration
 ////////////////////////////////////////////////////////////////////////
+/// TablePlugin is a query plugin that inserts placeholders for table
+/// name substitution.
 class TablePlugin : public lsst::qserv::master::QueryPlugin {
 public:
     // Types
@@ -220,13 +214,9 @@ public:
     
     virtual ~TablePlugin() {}
 
-    /// Prepare the plugin for a query
     virtual void prepare() {}
 
-    /// Apply the plugin's actions to the parsed, but not planned query
     virtual void applyLogical(SelectStmt& stmt, QueryContext&);
-
-    /// Apply the plugins's actions to the concrete query plan.
     virtual void applyPhysical(QueryPlugin::Plan& p, QueryContext& context);
 private:
     std::string _dominantDb;
@@ -249,7 +239,7 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////
-// registarTablePlugin implementation
+// registerTablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
 // factory registration
 void 
@@ -280,6 +270,8 @@ TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     std::for_each(tList.begin(), tList.end(), 
                   addAlias<generateAlias,addMap>(generateAlias(seq), 
                                                  addMap(reverseAlias)));
+    // FIXME: Now is a good time to verify that access is allowed and
+    // populate the context accordingly.  
 
     // Now snoop around the other clauses (SELECT, WHERE, etc. and
     // patch their table references)
@@ -318,8 +310,9 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
     SelectList& oList = p.stmtOriginal.getSelectList();
     boost::shared_ptr<qMaster::ValueExprList> vlist;
     vlist = oList.getValueExprList();
-    assert(vlist.get());
-    
+    if(!vlist) {
+        throw std::logic_error("Invalid stmtOriginal.SelectList");
+    }
     p.dominantDb = _dominantDb;
     
 

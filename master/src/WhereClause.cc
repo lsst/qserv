@@ -29,6 +29,7 @@
 #include "lsst/qserv/master/WhereClause.h"
 
 #include <iostream>
+#include <stdexcept>
 #include "lsst/qserv/master/QueryTemplate.h"
 
 namespace qMaster=lsst::qserv::master;
@@ -149,8 +150,11 @@ WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
         rootAnd = a.get();
         
     }
-    assert(rootAnd);
-    
+    if(!rootAnd) {
+        // For now, the root AND should be there by construction. No
+        // code has been written that would eliminate the root AND term.
+        throw std::logic_error("Couldn't find root AND term");
+    }    
     
     AndTerm* incomingTerms = dynamic_cast<AndTerm*>(t.get());
     if(incomingTerms) {
@@ -222,7 +226,9 @@ qMaster::ValueExprTerm* WhereClause::ValueExprIter::_checkForExpr() const {
 }
 
 void WhereClause::ValueExprIter::_incrementBfTerm() {
-    assert(_bfIter != _bfEnd);
+    if(_bfIter == _bfEnd) {
+        throw std::logic_error("Already at end of iteration.");
+    }
     ++_bfIter;
     if(_bfIter == _bfEnd) {
         _incrementBterm();
@@ -231,7 +237,9 @@ void WhereClause::ValueExprIter::_incrementBfTerm() {
 }
 
 void WhereClause::ValueExprIter::_incrementBterm() {
-    assert(!_posStack.empty());
+    if(_posStack.empty()) {
+        throw std::logic_error("Missing _posStack context for _incrementBterm");
+    }
     PosTuple& tuple = _posStack.top();
     ++tuple.first; // Advance
     if(tuple.first == tuple.second) { // At the end? then pop the stack
@@ -255,19 +263,25 @@ bool WhereClause::ValueExprIter::equal(WhereClause::ValueExprIter const& other) 
 qMaster::ValueExprPtr & WhereClause::ValueExprIter::dereference() const {
     static ValueExprPtr nullPtr;
     ValueExprTerm * vet = _checkForExpr();
-    assert(vet);
+    if(!vet) {
+        throw std::invalid_argument("Cannot dereference NULL ValueExprTerm");
+    }
     return vet->_expr;
 }
 
 qMaster::ValueExprPtr& WhereClause::ValueExprIter::dereference() {
     static ValueExprPtr nullPtr;
     ValueExprTerm* vet = _checkForExpr();
-    assert(vet);
+    if(!vet) {
+        throw std::invalid_argument("Cannot dereference NULL ValueExprTerm");
+    }
     return vet->_expr;
 }
 
 bool WhereClause::ValueExprIter::_findFactor() {
-    assert(!_posStack.empty());
+    if(_posStack.empty()) {
+        throw std::logic_error("Missing state: invalid _posStack ");
+    }
     while(true) {
         PosTuple& tuple = _posStack.top();
         BoolTerm::Ptr tptr = *tuple.first;
@@ -282,10 +296,14 @@ bool WhereClause::ValueExprIter::_findFactor() {
 }
 bool WhereClause::ValueExprIter::_setupBfIter() {
     // Return true if we successfully setup a valid _bfIter;
-    assert(!_posStack.empty());
+    if(_posStack.empty()) {
+        throw std::logic_error("Missing state: invalid _posStack ");
+    }
     PosTuple& tuple = _posStack.top();
     BoolTerm::Ptr tptr = *tuple.first;
-    assert(tptr.get());
+    if(!tptr) {
+        throw std::logic_error("Invalid _posStack state.");
+    }
     BoolFactor* bf = dynamic_cast<BoolFactor*>(tptr.get());
     if(bf) {
         _bfIter = bf->_terms.begin();

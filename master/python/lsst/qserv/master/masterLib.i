@@ -50,6 +50,7 @@ Access to the classes from the qserv_master library
 %include "std_map.i"
 %include "std_string.i"
 %include "std_vector.i"
+%include "stdint.i"
 
 %include cdata.i
 %array_class(char, charArray);

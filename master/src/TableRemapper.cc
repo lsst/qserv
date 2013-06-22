@@ -46,10 +46,14 @@ const char sep='#';
 
 std::string stripDelim(std::string const& src,std::string const& delim) {
     std::string::size_type p1 = src.find(delim);
-    assert(p1 != std::string::npos);
+    if(p1 == std::string::npos) {
+        throw std::invalid_argument("No delimiter to strip in stripDelim()");
+    }
     p1 += delim.size();
     std::string::size_type p2 = src.find(delim, p1);
-    assert(p2 != std::string::npos);
+    if(p2 == std::string::npos) {
+        throw std::invalid_argument("No delimiter to strip in stripDelim()");
+    }
     return src.substr(p1, p2-p1);
 }
 

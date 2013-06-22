@@ -35,23 +35,23 @@
 #include "lsst/qserv/master/ColumnRef.h"
 #include "lsst/qserv/master/TableRefN.h"
 
-namespace qMaster=lsst::qserv::master;
-using lsst::qserv::master::QueryTemplate;
-
-namespace { // File-scope helpers
+namespace lsst {
+namespace qserv {
+namespace master {
 struct SpacedOutput {
     SpacedOutput(std::ostream& os_, std::string sep_=" ") 
         : os(os_), sep(sep_), count(0) {}
     void operator()(std::string const& s) {
         if(s.empty()) return;
-        if(qMaster::sqlShouldSeparate(last, *(last.end()-1), s[0]))  {
+        
+        if(!last.empty() && sqlShouldSeparate(last, *(last.end()-1), s[0]))  {
             os << sep;
         }
         os << s;
         last = s;
     }
     void operator()(boost::shared_ptr<QueryTemplate::Entry> e) {
-        assert(e.get());
+        if(!e) { throw std::invalid_argument("NULL QueryTemplate::Entry"); }
         //if(e->isDynamic()) { os << "(" << count << ")"; }
         (*this)(e->getValue());
         ++count;
@@ -79,13 +79,13 @@ struct MappingWrapper {
     QueryTemplate::EntryMapping const& em;
     QueryTemplate& qt;
 };
-} // anonymous namespace
+
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate::Entry subclasses
 ////////////////////////////////////////////////////////////////////////
-class TableEntry : public qMaster::QueryTemplate::Entry {
+class TableEntry : public QueryTemplate::Entry {
 public:
-    TableEntry(qMaster::TableRefN const& tr) 
+    TableEntry(TableRefN const& tr) 
         : db(tr.getDb()), table(tr.getTable()) {
     }
     virtual std::string getValue() const { 
@@ -101,7 +101,7 @@ public:
 };
 class ColumnEntry : public QueryTemplate::Entry {
 public:
-    ColumnEntry(qMaster::ColumnRef const& cr) 
+    ColumnEntry(ColumnRef const& cr) 
         : db(cr.db), table(cr.table), column(cr.column) {        
     }
     virtual std::string getValue() const { 
@@ -116,12 +116,6 @@ public:
     std::string db;
     std::string table;
     std::string column;
-};
-class StringEntry : public QueryTemplate::Entry {
-public:
-    StringEntry(std::string const& s_) : s(s_) {}
-    virtual std::string getValue() const { return s; } 
-    std::string s;
 };
 struct EntryMerger {
     EntryMerger() {}
@@ -142,7 +136,7 @@ struct EntryMerger {
     void _mergeCurrent() {
         if(_candidates.size() > 1) {
             boost::shared_ptr<QueryTemplate::Entry> e;
-            e.reset(new StringEntry(outputString(_candidates)));
+            e.reset(new QueryTemplate::StringEntry(outputString(_candidates)));
             _entries.push_back(e);
             _candidates.clear();
         } else if(!_candidates.empty()) {
@@ -154,59 +148,53 @@ struct EntryMerger {
     std::list<boost::shared_ptr<QueryTemplate::Entry> > _candidates;
     std::list<boost::shared_ptr<QueryTemplate::Entry> > _entries;
 };
-// Wraps up the EntryMerger, so that for_each uses persistent state.
-struct EntryMergerWrapper {
-    EntryMergerWrapper(EntryMerger& em_) : em(em_) {}
-
-    void operator()(boost::shared_ptr<QueryTemplate::Entry> e) {
-        em(e);
-    }
-    EntryMerger& em;
-};
 
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate
 ////////////////////////////////////////////////////////////////////////
-std::string qMaster::QueryTemplate::dbgStr() const {
-    _optimize(); // FIXME: needs to be moved to the right place
+std::string QueryTemplate::dbgStr() const {
     return outputString(_entries);
 }
-void qMaster::QueryTemplate::append(std::string const& s) {
+void QueryTemplate::append(std::string const& s) {
     boost::shared_ptr<Entry> e(new StringEntry(s));
     _entries.push_back(e);
 }
-void qMaster::QueryTemplate::append(qMaster::ColumnRef const& cr) {
+void QueryTemplate::append(ColumnRef const& cr) {
     boost::shared_ptr<Entry> e(new ColumnEntry(cr));
     _entries.push_back(e);
 }
 
-void qMaster::QueryTemplate::append(qMaster::TableRefN const& tr) {
+void QueryTemplate::append(TableRefN const& tr) {
     boost::shared_ptr<Entry> e(new TableEntry(tr));
     _entries.push_back(e);
 }
-void qMaster::QueryTemplate::append(boost::shared_ptr<QueryTemplate::Entry> e) {
+void QueryTemplate::append(boost::shared_ptr<QueryTemplate::Entry> const& e) {
     _entries.push_back(e);
 }
-std::string qMaster::QueryTemplate::generate() const {
+std::string QueryTemplate::generate() const {
     return outputString(_entries);
 }
-std::string qMaster::QueryTemplate::generate(EntryMapping const& em) const {
+std::string QueryTemplate::generate(EntryMapping const& em) const {
     QueryTemplate newQt;
     std::for_each(_entries.begin(), _entries.end(), MappingWrapper(em, newQt));
     return outputString(newQt._entries);
 }
-void qMaster::QueryTemplate::clear() {
+void QueryTemplate::clear() {
     _entries.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate (private)
 ////////////////////////////////////////////////////////////////////////
-void qMaster::QueryTemplate::_optimize() const {
+void QueryTemplate::_optimize() {
+    typedef std::list<boost::shared_ptr<Entry> >::const_iterator Iter;
+
     EntryMerger em;
-    EntryMergerWrapper emw(em);
-    std::for_each(_entries.begin(), _entries.end(), emw);
+    for(Iter i=_entries.begin(); i != _entries.end(); ++i) {
+        em(*i);
+    }
     em.pack();
+    _entries.swap(em._entries);
 #if 0 // Debugging.
     std::cout << "merged " << _entries.size() << " entries to "
               << em._entries.size() << std::endl;
@@ -214,3 +202,4 @@ void qMaster::QueryTemplate::_optimize() const {
     std::cout << "now: " << outputString(em._entries) << std::endl;
 #endif
 }
+}}} // lsst::qserv::master

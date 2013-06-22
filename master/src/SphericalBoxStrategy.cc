@@ -63,48 +63,15 @@ std::ostream& operator<<(std::ostream& os, Tuple const& t) {
     if(!t.allowed) { os << "ILLEGAL"; }
     return os;
 }
-
-} // anonymous namespace
-
-namespace lsst { namespace qserv { namespace master {
-inline void addChunkMap(QueryMapping& m) {
-    m.addEntry(CHUNKTAG, QueryMapping::CHUNK);
+inline void addChunkMap(lsst::qserv::master::QueryMapping& m) {
+    m.insertEntry(CHUNKTAG, lsst::qserv::master::QueryMapping::CHUNK);
 }
-
-inline void addSubChunkMap(QueryMapping& m) {
-    m.addEntry(SUBCHUNKTAG, QueryMapping::SUBCHUNK);
+inline void addSubChunkMap(lsst::qserv::master::QueryMapping& m) {
+    m.insertEntry(SUBCHUNKTAG, lsst::qserv::master::QueryMapping::SUBCHUNK);
 }
-
-class SphericalBoxStrategy::Impl {
-public:
-    friend class SphericalBoxStrategy;
-    Tuples tuples;
-    int chunkLevel;
-    template <class C>
-    inline void getSubChunkTables(C& tables) {
-        for(Tuples::const_iterator i=tuples.begin();
-            i != tuples.end(); ++i) {
-            if(i->chunkLevel == 2) { 
-                tables.push_back(i->table);
-            }
-        }
-    }
-    inline void updateMapping(QueryMapping& m) {
-        for(Tuples::const_iterator i=tuples.begin();
-            i != tuples.end(); ++i) {
-            if(i->chunkLevel == 2) { 
-                std::string const& table = i->prePatchTable;
-                assert(!table.empty());
-                m.insertSubChunkTable(table);
-            }
-        }
-    }
-
-};
-
-// @return count of chunked tables.
+/// @return count of chunked tables.
 int patchTuples(Tuples& tuples) {
-    
+    using lsst::qserv::master::SphericalBoxStrategy;
     // Are multiple subchunked tables involved? Then do
     // overlap... which requires creating a query sequence.
     // For now, skip the sequence part.
@@ -141,11 +108,11 @@ int patchTuples(Tuples& tuples) {
     }
     return chunkedCount; 
 }
+
 class lookupTuple {
 public:
-    lookupTuple(MetadataCache& metadata_, bool& allowed_) 
-        : metadata(metadata_),
-          allowed(allowed_)
+    lookupTuple(lsst::qserv::master::MetadataCache& metadata_) 
+        : metadata(metadata_)
         {}
 
     void operator()(Tuple& t) {
@@ -153,17 +120,52 @@ public:
         if(t.allowed) {
             t.chunkLevel = metadata.getChunkLevel(t.db, t.table);
         }
-        allowed = (allowed && t.allowed);
     }
-    MetadataCache& metadata;
-    bool& allowed;
-    
+    lsst::qserv::master::MetadataCache& metadata;
 };
+
+} // anonymous namespace
+
+namespace lsst {
+namespace qserv { 
+namespace master {
+
+class SphericalBoxStrategy::Impl {
+public:
+    friend class SphericalBoxStrategy;
+    Impl(QueryContext& context_) : context(context_) {}
+    template <class C>
+    inline void getSubChunkTables(C& tables) {
+        for(Tuples::const_iterator i=tuples.begin();
+            i != tuples.end(); ++i) {
+            if(i->chunkLevel == 2) { 
+                tables.push_back(i->table);
+            }
+        }
+    }
+    inline void updateMapping(QueryMapping& m) {
+        for(Tuples::const_iterator i=tuples.begin();
+            i != tuples.end(); ++i) {
+            if(i->chunkLevel == 2) { 
+                std::string const& table = i->prePatchTable;
+                if(table.empty()) {
+                    throw std::logic_error("Unknown prePatchTable in QueryMapping");
+                }
+                m.insertSubChunkTable(table);
+            }
+        }
+    }
+    QueryContext& context;
+    FromList const* fromListPtr;
+    Tuples tuples;
+    int chunkLevel;
+};
+
 
 //template <typename G, typename A>
 class addTable : public TableRefN::Func {
 public:
-    addTable(Tuples& tuples) : _count(0), _tuples(tuples) { 
+    addTable(Tuples& tuples) : _tuples(tuples) { 
     }
     virtual void operator()(TableRefN& t) {
         std::string table = t.getTable();
@@ -172,7 +174,6 @@ public:
         _tuples.push_back(Tuple(t.getDb(), t.getTable()));
     }
 private:
-    int _count;
     Tuples& _tuples;
 };
 
@@ -188,7 +189,9 @@ public:
         std::string table = t.getTable();
         if(table.empty()) return; // Ignore the compound-part of
                                   // compound ref. 
-        assert(_i != _end);
+        if(_i == _end) {
+            throw std::invalid_argument("TableRefN missing table.");
+        }
         // std::cout << "Patching tablerefn:" << t << std::endl;
         t.setDb(_i->db);
         t.setTable(_i->table);
@@ -209,8 +212,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 SphericalBoxStrategy::SphericalBoxStrategy(FromList const& f, 
                                            QueryContext& context) 
-    : _context(context), 
-      _impl(new Impl()) {
+    : _impl(new Impl(context)) {
     _import(const_cast<FromList&>(f)); // FIXME: should make a copy.
 }
 
@@ -234,8 +236,15 @@ boost::shared_ptr<QueryMapping> SphericalBoxStrategy::getMapping() {
     return qm;
 }
 
+/// Patch the FromList to add partitioning substitution strings.
+/// FromList should be the same as was used at construction
 void SphericalBoxStrategy::patchFromList(FromList& f) {
+    if(&f != _impl->fromListPtr) { 
+        throw std::logic_error("Attempted to patch a different FromList"); 
+    }
+    
     TableRefnList& tList = f.getTableRefnList();
+
     patchTable pt(_impl->tuples);
     std::for_each(tList.begin(), tList.end(), 
                   TableRefN::Fwrapper<patchTable>(pt));
@@ -288,7 +297,9 @@ SphericalBoxStrategy::makeSubChunkTableTemplate(std::string const& table) {
 ////////////////////////////////////////////////////////////////////////
 // SphericalBoxStrategy private
 ////////////////////////////////////////////////////////////////////////
-void SphericalBoxStrategy::_import(FromList& f) {
+void SphericalBoxStrategy::_import(FromList const& f) {
+    // Save the FromList ref for a later sanity check.
+    _impl->fromListPtr = &f; 
     // Idea: 
     // construct mapping of TableName to a mappable table name
     // Put essential info into QueryMapping so that a query can be
@@ -296,7 +307,7 @@ void SphericalBoxStrategy::_import(FromList& f) {
     // strategy. 
     
     // Iterate over FromList elements
-    TableRefnList& tList = f.getTableRefnList();
+    TableRefnList const& tList = f.getTableRefnList();
 
     // What we need to know:
     // Are there partitioned tables? If yes, then make chunked queries
@@ -306,11 +317,10 @@ void SphericalBoxStrategy::_import(FromList& f) {
     std::for_each(tList.begin(), tList.end(), 
                   TableRefN::Fwrapper<addTable>(a));
     
-    bool accessAllowed = true; 
-    // Convenient to check db.table allowed state, but should be done
-    // in non-partition-specific code. 
-    assert(_context.metadata);
-    lookupTuple lookup(*_context.metadata, accessAllowed);
+    if(!_impl->context.metadata) {
+        throw std::logic_error("Missing context.metadata");
+    }
+    lookupTuple lookup(*_impl->context.metadata);
     std::for_each(_impl->tuples.begin(), _impl->tuples.end(), lookup);
 #if 0
     std::cout << "Imported:::::";
@@ -325,10 +335,10 @@ void SphericalBoxStrategy::_import(FromList& f) {
     else { _impl->chunkLevel = 0; }
 
     // Patch context with mapping.
-    if(_context.queryMapping.get()) {
-        _context.queryMapping->update(*getMapping());
+    if(_impl->context.queryMapping.get()) {
+        _impl->context.queryMapping->update(*getMapping());
     } else {
-        _context.queryMapping = getMapping();
+        _impl->context.queryMapping = getMapping();
     }
 }
 

@@ -23,10 +23,7 @@
 #ifndef LSST_QSERV_MASTER_BOOLTERMFACTORY_H
 #define LSST_QSERV_MASTER_BOOLTERMFACTORY_H
 /**
-  * @file BoolTermFactory.h
-  *
-  * @brief BoolTermFactory is a factory class for BoolTerm objects that get
-  * placed (typically) in WhereClause objects.
+  * @file 
   *
   * @author Daniel L. Wang, SLAC
   */

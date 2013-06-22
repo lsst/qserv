@@ -26,7 +26,7 @@
 /**
   * @file PostPlugin.h
   *
-  * @brief PostPlugin is a plugin handling query result post-processing.
+  * @brief Declaration of registerPostPlugin
   *
   * @author Daniel L. Wang, SLAC
   */

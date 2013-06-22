@@ -138,6 +138,7 @@ def debug(sig, frame):
     i.interact(message)
 
 def listen():
+    """Register debug() as a signal handler to SIGUSR1"""
     signal.signal(signal.SIGUSR1, debug)  # Register handler
 listen()
 
@@ -147,14 +148,16 @@ listen()
 ######################################################################
 ## MySQL interface helpers
 def computeShortCircuitQuery(query, conditions):
+    """Return the result for a short-circuit query, or None if query is
+    not a known short-circuit query."""
     if query == "select current_user()":
         return ("qserv@%","","")
     return # not a short circuit query.
 
 ## Helpers
 def getResultTable(tableName):
-    """A convenience function that uses the mysql client to get quick 
-    results."""
+    """Spawn a subprocess to invoke mysql and retrieve the rows of
+    table tableName."""
     # Minimal sanitizing
     tableName = tableName.strip()
     assert not filter(lambda x: x in tableName, ["(",")",";"])
@@ -178,23 +181,6 @@ def getResultTable(tableName):
         return "Error getting table %s." % tableName, outdata
     return outdata
 
-def loadEmptyChunks(filename):
-    def tolerantInt(i):
-        try:
-            return int(i)
-        except:
-            return None
-    empty = set()
-    try:
-        if filename:
-            s = open(filename).read()
-            empty = set(map(tolerantInt, s.split("\n")))
-    except:
-        print filename, "not found while loading empty chunks file."
-        return None
-    return empty
-    
-    
 ######################################################################
 ## Classes
 ######################################################################
@@ -336,6 +322,8 @@ class QueryHintError(Exception):
         return repr(self.reason)
 
 def setupResultScratch():
+    """Prepare the configured scratch directory for use, creating if 
+    necessary and checking for r/w access. """
     # Make sure scratch directory exists.
     cm = lsst.qserv.master.config
     c = lsst.qserv.master.config.config
@@ -361,6 +349,12 @@ class InbandQueryAction:
     underneath.
     """
     def __init__(self, query, hints, reportError, resultName=""):
+        """Construct an InbandQueryAction
+        @param query SQL query text (SELECT...)
+        @param hints dict containing query hints and context
+        @param reportError unary function that accepts the description 
+                           of an encountered error.
+        @param resultName name of result table for query results."""
         ## Fields with leading underscores are internal-only
         ## Those without leading underscores may be read by clients
         self.queryStr = query.strip()# Pull trailing whitespace
@@ -385,11 +379,13 @@ class InbandQueryAction:
         pass
 
     def invoke(self):
+        """Begin execution of the query"""
         self._prepareForExec()
         self._execAndJoin()
         self._invokeLock.release()
 
     def getError(self):
+        """@return description of last error encountered. """
         try:
             return self._error
         except:
@@ -397,7 +393,8 @@ class InbandQueryAction:
 
     def getResult(self):
         """Wait for query to complete (as necessary) and then return 
-        a handle to the result."""
+        a handle to the result.
+        @return name of result table"""
         self._invokeLock.acquire()
         # Make sure it's joined.
         self._invokeLock.release()
@@ -406,20 +403,11 @@ class InbandQueryAction:
     def getIsValid(self):
         return self.isValid
 
-    def pauseReadback(self): 
-        """pause readback of results for this session. 
-        FIXME is this needed in the C++-managed dispatch scheme?"""
-        pauseReadTrans(self.sessionId)
-        pass
-
-    def resumeReadback(self):
-        resumeReadTrans(self.sessionId)
-        pass
-
     def _computeHash(self, bytes):
         return hashlib.md5(bytes).hexdigest()
 
     def _prepareForExec(self):
+        """Prepare data structures and objects for query execution"""
         self.hints = self.hints.copy() # make a copy
         self._dbContext = self.hints.get("db", "")
 
@@ -513,6 +501,7 @@ class InbandQueryAction:
         pass
 
     def _execAndJoin(self):
+        """Signal dispatch to C++ layer and block until execution completes"""
         lastTime = time.time()
         submitQuery3(self.sessionId)
         elapsed = time.time() - lastTime
@@ -549,7 +538,8 @@ class InbandQueryAction:
     
     def _prepareCppConfig(self):
         """Construct a C++ stringmap for passing settings and context
-        to the C++ layer."""
+        to the C++ layer.
+        @return the C++ StringMap object """
         cfg = lsst.qserv.master.config.getStringMap()
         cfg["frontend.scratchPath"] = setupResultScratch()
         cfg["table.defaultdb"] = self._dbContext
@@ -560,6 +550,8 @@ class InbandQueryAction:
         return cfg
 
     def _computeRegions(self, hints):
+        """Compute spatial region coverage based on hints.
+        @return list of regions"""
         r = spatial.getRegionFactory()
         regs = r.getRegionFromHint(hints)
         if regs != None:
@@ -573,6 +565,7 @@ class InbandQueryAction:
         pass
 
     def _prepareMerger(self):
+        """Prepare session merger to handle incoming results."""
         c = lsst.qserv.master.config.config
         dbSock = c.get("resultdb", "unix_socket")
         dbUser = c.get("resultdb", "user")

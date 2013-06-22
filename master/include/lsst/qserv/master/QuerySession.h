@@ -23,11 +23,7 @@
 #ifndef LSST_QSERV_MASTER_QUERYSESSION_H
 #define LSST_QSERV_MASTER_QUERYSESSION_H
 /**
-  * @file QuerySession.h
-  *
-  * @brief QuerySession contains state and behavior for operating on user
-  * queries. It contains much of the query analysis-side of AsyncQueryManager's
-  * responsibility. 
+  * @file 
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -43,13 +39,16 @@
 #include "lsst/qserv/master/QueryPlugin.h"
 #include "lsst/qserv/master/mergeTypes.h"
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 class SelectStmt; // forward
 class QueryPlugin; // forward
 
-/// A QuerySession contains information regarding a top-level query, including
-/// the text of the original query, a parsed query tree, and other user
-/// state/context. 
+///  QuerySession contains state and behavior for operating on user queries. It
+///  contains much of the query analysis-side of AsyncQueryManager's
+///  responsibility, including the text of the original query, a parsed query
+///  tree, and other user state/context.
 class QuerySession {
 public:
     class Iter;
@@ -58,7 +57,7 @@ public:
 
     std::string const& getOriginal() const { return _original; }
     void setQuery(std::string const& q);
-    bool getHasAggregate() const;
+    bool hasAggregate() const;
 
     boost::shared_ptr<ConstraintVector> getConstraints() const;
     void addChunk(ChunkSpec const& cs);
@@ -70,7 +69,10 @@ public:
     // obsolete).
     void setResultTable(std::string const& resultTable);
     std::string const& getResultTable() const { return _resultTable; }
-    
+
+    /// Dominant database is the database that will be used for query
+    /// dispatch. This is distinct from the default database, which is what is
+    /// used for unqualified table and column references 
     std::string const& getDominantDb() const;
     
     MergeFixup makeMergeFixup() const;
@@ -84,7 +86,6 @@ public:
     explicit QuerySession(Test const& t) {_initContext();}
 
 private:
-    typedef std::list<ChunkSpec> ChunkSpecList;
     typedef std::list<QueryPlugin::Ptr> PluginList;
 
     explicit QuerySession(int metaCacheSession);
@@ -115,7 +116,7 @@ private:
     boost::shared_ptr<PluginList> _plugins;
 };
 
-/// Iterates over a ChunkSpecList to return QueryFragments for execution
+/// Iterates over a ChunkSpecList to return ChunkQuerySpecs for execution
 class QuerySession::Iter : public boost::iterator_facade <
     QuerySession::Iter, ChunkQuerySpec, boost::forward_traversal_tag> {
 public:

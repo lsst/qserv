@@ -35,7 +35,11 @@ namespace qWorker = lsst::qserv::worker;
 typedef qWorker::Foreman::TaskQueuePtr TaskQueuePtr;
 
 qWorker::FifoScheduler::FifoScheduler() 
-    : _maxRunning(4) // FIXME: set to system proc count.
+    : _maxRunning(4) 
+      // FIXME: _maxRunning needs some design. The optimal value can
+      // be quite complex, and is probably dynamic. This is noted as a
+      // long-term design issue on
+      // https://dev.lsstcorp.org/trac/wiki/db/Qserv/WorkerParallelism
 {}    
 
 TaskQueuePtr qWorker::FifoScheduler::nopAct(TodoList::Ptr todo, 

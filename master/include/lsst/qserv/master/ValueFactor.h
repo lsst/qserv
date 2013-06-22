@@ -27,16 +27,15 @@
 /**
   * @file ValueFactor.h
   *
-  * @brief ValueFactor is a value factor, i.e., a function, a column reference,
-  * an expression, a constant, a *, etc.  
-  *
   * @author Daniel L. Wang, SLAC
   */
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 // Forward
 class ColumnRef;
 class QueryTemplate;

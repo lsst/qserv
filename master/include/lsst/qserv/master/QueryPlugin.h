@@ -23,11 +23,7 @@
 #ifndef LSST_QSERV_MASTER_QUERYPLUGIN_H
 #define LSST_QSERV_MASTER_QUERYPLUGIN_H
 /**
-  * @file QueryPlugin.h
-  *
-  * @brief QueryPlugin is an abstract query plugin that operates on query
-  * representations. It has hooks for preparation, applying on logical queries
-  * (SelectStmt) and physical queries (multiple SelectStmt). 
+  * @file 
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -44,8 +40,9 @@ class SelectStmt;
 typedef std::list<boost::shared_ptr<SelectStmt> > SelectStmtList;
  
 /// QueryPlugin is an interface for classes which implement rewrite/optimization
-/// rules for incoming SQL queries.  Plugins can act upon the intermediate
-/// representation or the concrete plan or both.
+/// rules for incoming SQL queries by operating on query representations.
+/// Plugins can act upon the intermediate representation or the concrete plan or both.
+/// The QuerySession requests specific QueryPlugins by name and calls them in order.
 class QueryPlugin {
 public:
     // Types
@@ -72,7 +69,7 @@ public:
     static void registerClass(FactoryPtr f);
 };
 
-/// Factory is an abstract class for specifi QueryPlugin Factories
+/// Factory is an abstract class for specific QueryPlugin Factories
 class QueryPlugin::Factory {
 public:
     // Types
@@ -84,7 +81,7 @@ public:
     virtual QueryPlugin::Ptr newInstance() { return QueryPlugin::Ptr(); }
 };
 
-// A bundle of references to a components that form a "plan"
+/// A bundle of references to a components that form a "plan"
 class QueryPlugin::Plan { 
 public:
     Plan(SelectStmt& stmtOriginal_, SelectStmt& stmtParallel_, 
@@ -103,9 +100,6 @@ public:
     bool hasMerge;
 };
 
-
 }}} // namespace lsst::qserv::master
-
-
 #endif // LSST_QSERV_MASTER_QUERYPLUGIN_H
 

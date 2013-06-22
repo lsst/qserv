@@ -33,7 +33,7 @@
 namespace lsst { namespace qserv { namespace worker {
 
 struct QuerySql::Batch {
-    // Default to 5 SQL statements at a time.
+    // Default to 10 SQL statements at a time.
     // Idea: Could add statements according to some cost metric(a
     // simple one) or to a certain overall query string length 
     Batch(std::string const& name_,

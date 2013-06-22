@@ -25,8 +25,6 @@
 /**
   * @file SelectList.h
   *
-  * @brief SelectList is the SELECT... portion of a SELECT...FROM...
-  *
   * @author Daniel L. Wang, SLAC
   */
 #include <list>
@@ -39,7 +37,9 @@
 #include "lsst/qserv/master/ColumnRefList.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 // Forward
 class ColumnRefMap;
 class ColumnAliasMap;
@@ -47,6 +47,9 @@ class QueryTemplate;
 class BoolTerm;
 class GroupByClause;
 
+/// SelectList is the SELECT... portion of a SELECT...FROM...
+/// SelectList contains a list of the ValueExprs that are representative of the
+/// columns in the SELECT query's result.
 class SelectList {
 public:
     SelectList() 

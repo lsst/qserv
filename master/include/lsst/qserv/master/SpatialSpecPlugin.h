@@ -25,8 +25,7 @@
 /**
   * @file SpatialSpecPlugin.h
   *
-  * @brief SpatialSpecPlugin is a QueryPlugin that is responsible for handling
-  * spatial restriction specifications in queries.
+  * @brief Declaration of registerSpatialSpecPlugin
   *
   * @author Daniel L. Wang, SLAC
   */

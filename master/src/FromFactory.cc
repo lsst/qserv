@@ -108,7 +108,9 @@ public:
 
         std::string operator*() {
             Check c;
-            assert(current.get());
+            if(!current) {
+                throw std::invalid_argument("Invalid _current in iteration");
+            }
             qMaster::CompactPrintVisitor<antlr::RefAST> p;
             for(;current.get() && !c(current); 
                 current = current->getNextSibling()) {
@@ -233,7 +235,9 @@ public:
         
     }
     TableRefN::Ptr get() const {
-        assert(_cursor->getType() == SqlSQL2TokenTypes::TABLE_REF);
+        if(_cursor->getType() != SqlSQL2TokenTypes::TABLE_REF) {
+            throw std::logic_error("_cursor is not a TABLE_REF");
+        }
         RefAST node = _cursor->getFirstChild();
         RefAST child;
 

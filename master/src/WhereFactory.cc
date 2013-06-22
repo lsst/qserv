@@ -37,6 +37,7 @@
 // Package
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 #include "lsst/qserv/master/parserBase.h" // Handler base classes
+#include "lsst/qserv/master/ParseException.h"
 #include "lsst/qserv/master/WhereClause.h" 
 #include "lsst/qserv/master/BoolTermFactory.h"
 
@@ -88,7 +89,9 @@ public:
 
         std::string operator*() {
             Check c;
-            assert(current.get());
+            if(!current) {
+                throw std::logic_error("Corrupted ParamGenerator::Iter");
+            }
             qMaster::CompactPrintVisitor<antlr::RefAST> p;
             for(;current.get() && !c(current); 
                 current = current->getNextSibling()) {
@@ -183,9 +186,13 @@ WhereFactory::_import(antlr::RefAST a) {
     //           << " (" << a->getType() << ")" << std::endl;    
 
     // std::cout << "WHERE indented: " << walkIndentedString(a) << std::endl;
-    assert(a->getType() == SqlSQL2TokenTypes::SQL2RW_where);
+    if(a->getType() != SqlSQL2TokenTypes::SQL2RW_where) {
+        throw ParseException("Bug: _import expected WHERE node", a);
+    }
     RefAST first = a->getFirstChild();
-    assert(first.get());
+    if(!first.get()) {
+        throw ParseException("Missing subtree from WHERE node", a);
+    }
     while(first.get() 
           && (first->getType() == SqlSQL2TokenTypes::QSERV_FCT_SPEC)) {
         _addQservRestrictor(first->getFirstChild());
@@ -216,7 +223,9 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     std::copy(pg.begin(), pg.end(), std::back_inserter(params));
     std::copy(params.begin(), params.end(),
               std::ostream_iterator<std::string>(std::cout,", "));
-    assert(_clause->_restrs.get());
+    if(!_clause->_restrs) {
+        throw std::logic_error("Invalid WhereClause._restrs");
+    }
     restr->_name = r;
     _clause->_restrs->push_back(restr);
 }
@@ -251,7 +260,9 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
     MetaCheck mc;
     PrintExcept<MetaCheck> p(mc);
     
-    assert(_clause.get());
+    if(!_clause.get()) {
+        throw std::logic_error("Expected valid WhereClause");
+    }
 
     walkTreeVisit(a, p);
     std::cout << "Adding orsibs: " << p.result << std::endl;

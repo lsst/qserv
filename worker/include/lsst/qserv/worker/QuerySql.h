@@ -52,11 +52,11 @@ public:
 
 class QuerySql::Factory {
 public:
-    boost::shared_ptr<QuerySql> make(std::string const& db, 
-                                     int chunkId,
-                                     Task::Fragment const& f,
-                                     bool needCreate,
-                                     std::string const& defaultResultTable);
+    boost::shared_ptr<QuerySql> newQuerySql(std::string const& db, 
+                                            int chunkId,
+                                            Task::Fragment const& f,
+                                            bool needCreate,
+                                            std::string const& defaultResultTable);
 };
 
 }}} // lsst::qserv::worker

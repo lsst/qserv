@@ -63,7 +63,7 @@ runBatch(boost::shared_ptr<qWorker::Logger> log,
          qWorker::CheckFlag* checkAbort) {
     log->info((Pformat("TIMING,%1%%2%Start,%3%")
                  % scriptId % batch.name % ::time(NULL)).str().c_str());
-    bool aborted = false;
+    bool batchAborted = false;
     while(!batch.isDone()) {
         std::string piece = batch.current();
         if(!sqlConn.runQuery(piece.data(), piece.size(), errObj) ) {
@@ -73,13 +73,13 @@ runBatch(boost::shared_ptr<qWorker::Logger> log,
                 log->error((Pformat(">>%1%<<---Error with piece %2% complete (size=%3%).") 
                             % errObj.errMsg() 
                             % batch.pos % batch.sequence.size()).str().c_str());
-                aborted = true;
+                batchAborted = true;
                 break;
             } else if(checkAbort && (*checkAbort)()) {
                 log->error((Pformat("Aborting query by request (%1% complete).") 
                             % batch.pos).str().c_str());
                 errObj.addErrMsg("Query poisoned by client request");
-                aborted = true;
+                batchAborted = true;
                 break;
             }
         }
@@ -87,7 +87,7 @@ runBatch(boost::shared_ptr<qWorker::Logger> log,
     }
     log->info((Pformat("TIMING,%1%%2%Finish,%3%")
                % scriptId % batch.name % ::time(NULL)).str().c_str());
-    if ( aborted ) {
+    if(batchAborted) {
         errObj.addErrMsg("(during " + batch.name 
                          + ")\nQueryFragment: " + batch.current());
         log->info((Pformat("Broken! ,%1%%2%---%3%")
@@ -108,18 +108,17 @@ runScriptPieces(boost::shared_ptr<Logger> log,
     QuerySql::Batch build("QueryBuildSub", qSql.buildList);
     QuerySql::Batch exec("QueryExec", qSql.executeList);
     QuerySql::Batch clean("QueryDestroySub", qSql.cleanupList);
-    bool ok = false;
+    bool sequenceOk = false;
     if(runBatch(log, sqlConn, errObj, scriptId, build, checkAbort)) {
         if(!runBatch(log, sqlConn, errObj, scriptId, exec, checkAbort)) {
             log->error((Pformat("Fail QueryExec phase for %1%: %2%") 
                         % scriptId % errObj.errMsg()).str().c_str());
         } else {
-            ok = true;
+            sequenceOk = true;
         }
     }
-    // TODO: Should drop "exec" result tables too.
     // Always destroy subchunks, no aborting (use NULL checkflag)    
-    return ok && runBatch(log, sqlConn, errObj, scriptId, clean, NULL);
+    return sequenceOk && runBatch(log, sqlConn, errObj, scriptId, clean, NULL);
 }
 
 std::string commasToSpaces(std::string const& s) {
@@ -327,7 +326,7 @@ bool QueryRunner::_runTask(Task::Ptr t) {
     for(int i=0; i < m.fragment_size(); ++i) {
         Task::Fragment const& f(m.fragment(i));
         int chunkId = 1234567890;
-        std::string defaultDb = "LSST";
+        std::string defaultDb = "test"; // should always get db from TaskMsg
         if(m.has_chunkid()) { chunkId = m.chunkid(); }
         if(m.has_db()) { defaultDb = m.db(); }
         if(f.has_resulttable()) { resultTable = f.resulttable(); }
@@ -337,10 +336,10 @@ bool QueryRunner::_runTask(Task::Ptr t) {
         // If protocol gives us a query sequence, we won't need to
         // split fragments.
         bool first = t->needsCreate && (i==0);
-        boost::shared_ptr<QuerySql> qSql = qf.make(defaultDb, chunkId, 
-                                                   m.fragment(i), 
-                                                   first,
-                                                   resultTable);
+        boost::shared_ptr<QuerySql> qSql = qf.newQuerySql(defaultDb, chunkId, 
+                                                          m.fragment(i), 
+                                                          first,
+                                                          resultTable);
         
         success = _runFragment(_sqlConn, *qSql);
         if(!success) return false;
@@ -357,8 +356,6 @@ bool QueryRunner::_runTask(Task::Ptr t) {
     return true;
 }
 
-// FIXME rework this function!!! Jacek; Does it still need reworking? -Daniel
-// QuerySql version
 bool qWorker::QueryRunner::_runFragment(SqlConnection& sqlConn,
                                         QuerySql const& qSql) {
     boost::shared_ptr<CheckFlag> check(_makeAbort());

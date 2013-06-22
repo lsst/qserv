@@ -171,14 +171,6 @@ qMaster::SelectStmt::copySyntax() const {
     return newS;
 }
 
-void qMaster::SelectStmt::fillEmpty() {
-    // Not sure this is a good idea.
-    if(!_whereClause.get()) {
-        _whereClause = WhereFactory::newEmpty();
-    }
-    // TODO: Also for OrderByClause, GroupByClause, HavingClause
-}
-
 ////////////////////////////////////////////////////////////////////////
 // class SelectStmt (private)
 ////////////////////////////////////////////////////////////////////////

@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */ 
 #include "lsst/qserv/master/parseTreeUtil.h"
+#include <stdexcept>
 #include <antlr/ASTFactory.hpp>
 
 namespace qMaster=lsst::qserv::master;
@@ -104,7 +105,9 @@ qMaster::substituteWithMap(std::string& s,
                            std::map<std::string, std::string>  const& m,
                            int minMatch) {
     if(s.empty()) return false;
-    assert(minMatch >= 0);
+    if(minMatch < 0) {
+        throw std::invalid_argument("substituteWithMap needs minMatch >= 0");
+    }
     bool did = false;
     std::map<std::string, std::string>::const_iterator i = m.find(s);
     if(i != m.end()) {

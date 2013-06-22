@@ -156,16 +156,10 @@ template <typename AnAst, typename Visitor, typename CheckTerm>
 void walkTreeVisit(AnAst r, Visitor& v, CheckTerm& ct, int depth=0) {
     AnAst first = r;
     do {
-        // if(r != first) {
-        //     std::cout << "(Sib) ";
-        // }
-        //DFS walk?
+        // DFS walk
         v(r);
-        //if(ct(r,depth)) return; // On terminal, visit only.
         antlr::RefAST c = r->getFirstChild();
         if(c.get()) {
-            // std::cout << "Child: " << tokenText(r) << "----" << tokenText(c) 
-            //           << std::endl;
             walkTreeVisit(c, v, ct, depth+1);
         } 
         r = r->getNextSibling();
@@ -205,7 +199,6 @@ template <typename AnAst>
 void printIndented(AnAst r) {
     std::list<AnAst> mylist;
     IndentPrinter<AnAst, std::list<AnAst> > p(std::cout);
-    //visitTreeRooted<AnAst, IndentPrinter, std::list<AnAst> >(r, p, mylist);
     visitTreeRooted(r, p, mylist);
 }
 
@@ -214,7 +207,6 @@ std::string walkIndentedString(AnAst r) {
     std::list<AnAst> mylist;
     std::stringstream ss;
     IndentPrinter<AnAst, std::list<AnAst> > p(ss);
-    //visitTreeRooted<AnAst, IndentPrinter, std::list<AnAst> >(r, p, mylist);
     visitTreeRooted(r, p, mylist);
     return ss.str();
 }

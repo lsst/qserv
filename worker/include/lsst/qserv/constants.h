@@ -32,7 +32,7 @@
 
 namespace lsst {
 namespace qserv {
-// FIXME: should be constant somewhere else.
+// FIXME: should be constant somewhere else. See #2405
 const char CHUNK_COLUMN[] = "chunkId";
 const char SUB_CHUNK_COLUMN[] = "subChunkId";
 

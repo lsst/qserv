@@ -26,7 +26,7 @@
 /**
   * @file AggOp.h
   *
-  * @brief AggOp class for individual behaviors of SQL aggregation operations
+  * @brief AggOp and AggOp::Mgr declarations
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -38,13 +38,17 @@
 
 namespace lsst { namespace qserv { namespace master {
 
-/// class AggOp is an abstract function object that creates AggRecords from
-/// aggregation parameters.
+/// class AggOp is a function object that creates AggRecords from
+/// aggregation parameters. It is used to contain the differences in how
+/// different aggregation functions (e.g., AVG, MAX, SUM, COUNT, etc) are
+/// represented in the parallel and merging portions of query execution. A
+/// ValueFactor object represents the column representation being aggregated.
+/// TODO: Refactor to eliminate AggOp functors to make things simpler.
 class AggOp {
 public:
     typedef boost::shared_ptr<AggOp> Ptr;
     class Mgr;
-    
+    /// Produce an AggRecord from a ValueFactor. 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) = 0;
     virtual ~AggOp() {}
 protected:
@@ -54,7 +58,11 @@ protected:
 
 /// class AggOp::Mgr is a manager which provides lookup for specific AggOp
 /// instances according to the proper aggregation operator. Specific AggOp
-/// implementations are shielded from dependency.
+/// implementations are shielded from dependency. Typically, Mgr is wholly
+/// contained within an AggregatePlugin instance. Plugins are created per-query
+/// (top-level), because they may contain per-query state.
+/// 
+/// Note that AggOp::Mgr is concrete and is not meant to have subclasses
 class AggOp::Mgr {
 public:
     typedef std::map<std::string, AggOp::Ptr> OpMap;

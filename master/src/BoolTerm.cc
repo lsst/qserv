@@ -27,6 +27,7 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "lsst/qserv/master/BoolTerm.h"
+#include <stdexcept>
 #include "lsst/qserv/master/QueryTemplate.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
@@ -83,7 +84,7 @@ inline void renderList(qMaster::QueryTemplate& qt,
     typename Plist::const_iterator i;
     for(i = lst.begin(); i != lst.end(); ++i) {
         if(!sep.empty() && ++count > 1) { qt.append(sep); }
-        assert(i->get());
+        if(!*i) { throw std::logic_error("Bad list term"); }
         (**i).renderTo(qt);
     }
 }
@@ -120,7 +121,7 @@ void qMaster::PassListTerm::renderTo(QueryTemplate& qt) const {
 void qMaster::ValueExprTerm::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r(_expr);
-    assert(_expr.get());
+    if(!_expr) { throw std::invalid_argument("Null-ValueExpr for renderTo()"); }
 }
 
 boost::shared_ptr<qMaster::BoolTerm> qMaster::OrTerm::copySyntax() {

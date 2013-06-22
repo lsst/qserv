@@ -25,9 +25,6 @@
 /**
   * @file HavingClause.h
   *
-  * @brief HavingClause is a representation of a SQL HAVING clause, similar to a
-  * WhereClause, but with more limitations. 
-  *
   * @author Daniel L. Wang, SLAC
   */
 #include <boost/shared_ptr.hpp>
@@ -39,6 +36,8 @@ namespace master {
 class QueryTemplate;
 class BoolTerm;
 
+/// HavingClause: a representation of SQL HAVING. Support for this construct is
+/// incomplete. 
 class HavingClause {
 public:
     HavingClause() {}

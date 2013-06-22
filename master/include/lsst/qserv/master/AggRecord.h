@@ -23,10 +23,7 @@
 #ifndef LSST_QSERV_MASTER_AGGRECORD_H
 #define LSST_QSERV_MASTER_AGGRECORD_H
 /**
-  * @file AggRecord.h
-  *
-  * @brief AggRecord is a value class that stores an aggregation instance during
-  * query analysis, generation, and manipulation
+  * @file 
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -35,22 +32,27 @@
 
 namespace lsst { namespace qserv { namespace master {
 
-// AggRecord is derived from the previous parse framework's
-// AggregateRecord class.  It is a value class for the information 
-// needed to successfully perform aggregation of distributed queries.
-// lbl and meaning record the original aggregation invocation (+alias)
-// orig, pass, and fixup record SQL expressions
-class AggRecord { 
+/// AggRecord is a value class for the information needed to successfully
+/// perform aggregation of distributed queries.  lbl and meaning record the
+/// original aggregation invocation (+alias) orig, pass, and fixup record SQL
+/// expressions
+/// TODO: Consider renaming to AggEntry
+struct AggRecord { 
 public:
     typedef boost::shared_ptr<AggRecord> Ptr;
+    /// Original ValueFactor representing the call (e.g., COUNT(ra_PS))
     lsst::qserv::master::ValueFactorPtr orig;
-    lsst::qserv::master::ValueExprList pass;
-    lsst::qserv::master::ValueFactorPtr fixup;
+    /// List of expressions to pass for parallel execution.
+    /// Some aggregations need more than one aggregation to be computed (per 
+    /// chunk) in order to compute the final aggregation value (e.g., AVG)
+    lsst::qserv::master::ValueExprList parallel;
+    /// ValueFactor representing merge step. Not a list, because the original
+    /// wasn't a list and we want the final result to correspond.
+    lsst::qserv::master::ValueFactorPtr merge;
     std::ostream& printTo(std::ostream& os);
 };
 
 }}} // namespace lsst::qserv::master
-
 
 #endif // LSST_QSERV_MASTER_AGGRECORD_H
 

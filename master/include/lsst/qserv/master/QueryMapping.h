@@ -23,11 +23,7 @@
 #ifndef LSST_QSERV_MASTER_QUERYMAPPING_H
 #define LSST_QSERV_MASTER_QUERYMAPPING_H
 /**
-  * @file QueryMapping.h
-  *
-  * @brief QueryMapping facilitates mapping a QueryTemplate to a concrete
-  * queries for executing on workers. In the future, this responsibility may be
-  * moved to the worker. 
+  * @file 
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -44,23 +40,38 @@ class QueryTemplate;
 /// consulted for a partitioning-strategy-agnostic query generation
 /// stage that substitutes real table names for placeholders, according
 /// to a query's specified partition coverage.
+///
+/// This class helps abstract the concept of mapping partitioned table name
+/// templates to concrete table names. Name templates will use a text markup to
+/// specify where chunk numbers should be substituted, and then a ChunkSpec,
+/// with the help of a QueryMapping can be applied on a QueryTemplate to produce
+/// a concrete query. The abstraction is intended to provide some space between
+/// the spherical box partitioning code and the query mapping code.
+///
+/// _subs stores the mapping from text-markup to partition number. 
+/// _subChunkTables was intended to aid subchunked query mapping, and will be
+/// refined or removed when near-neighbor subchunked queries are done and
+/// tested.
+///
+/// QueryMapping facilitates mapping a QueryTemplate to a concrete
+/// queries for executing on workers. In the future, this responsibility may be
+/// moved to the worker. 
 class QueryMapping {
 public:
-    class MapTuple;
     typedef boost::shared_ptr<QueryMapping> Ptr;
     enum Parameter {INVALID, CHUNK=100, SUBCHUNK, HTM1=200};
     typedef std::map<std::string,Parameter> ParameterMap;
     typedef std::set<std::string> StringSet;
 
-    explicit QueryMapping();
+    QueryMapping();
 
-    std::string apply(ChunkSpec const& s, QueryTemplate const& t);
-    std::string apply(ChunkSpecSingle const& s, QueryTemplate const& t);
+    std::string apply(ChunkSpec const& s, QueryTemplate const& t) const;
+    std::string apply(ChunkSpecSingle const& s, QueryTemplate const& t) const;
 
     // Modifiers
     void insertSubChunkTable(std::string const& table) { 
         _subChunkTables.insert(table); }
-    void addEntry(std::string const& s, Parameter p) { _subs[s] = p; }
+    void insertEntry(std::string const& s, Parameter p) { _subs[s] = p; }
     void update(QueryMapping const& qm);
 
     // Accessors

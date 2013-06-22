@@ -23,10 +23,7 @@
 #ifndef LSST_QSERV_MASTER_FROMLIST_H
 #define LSST_QSERV_MASTER_FROMLIST_H
 /**
-  * @file FromList.h
-  *
-  * @brief FromList is a representation of the contents of a SQL query's FROM
-  * list. 
+  * @file 
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -34,7 +31,10 @@
 #include "lsst/qserv/master/ColumnRefList.h"
 #include "lsst/qserv/master/TableRefN.h"
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
+
 // FromList is a representation of SQL FROM.
 class FromList {
 public:
@@ -43,12 +43,17 @@ public:
     boost::shared_ptr<ColumnRefList> getColumnRefList() {
         return _columnRefList;
     }
-    /// Get a list of TableRefN that occur
+    /// @return a list of TableRefN that occur
     TableRefnList& getTableRefnList() { return *_tableRefns; }
+    /// @return a list of TableRefN that occur
+    TableRefnList const& getTableRefnList() const { return *_tableRefns; }
+    /// @return a flattened string representation.
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
-
+    
+    /// Deep-copy this node
     boost::shared_ptr<FromList> copyDeep() const;
+    /// Shallow copy this node, sharing its linked objects.
     boost::shared_ptr<FromList> copySyntax();
 
 private:

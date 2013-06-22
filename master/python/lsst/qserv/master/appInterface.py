@@ -44,6 +44,7 @@ import lsst.qserv.master.spatial as spatial
 # programs, facilitating testing and usage without bringing up a qserv
 # master daemon. It is unclear whether this still works.
 class AppInterface:
+    """An implemented interface to the Qserv master application logic. """
     def __init__(self, reactor=None):
         self.tracker = app.TaskTracker()
         okname = ifilter(lambda x: "_" not in x, dir(self))

@@ -32,6 +32,8 @@ import config
 import string
 
 class Runtime:
+    """The in-memory class for containing general Qserv frontend metadata. 
+    """
     def __init__(self):
         self.metaDbName = config.config.get("mgmtdb", "db")
         self.emptyChunkInfo = {}
@@ -64,6 +66,10 @@ class Runtime:
         pass
     
     def loadIntsFromFile(self, filename):
+        """Return a set() of ints from a file that is assumed to contain 
+        ASCII-represented integers delimited with newline characters.
+        @return set of ints, or None on any error.
+        """
         def tolerantInt(i):
             try:
                 return int(i)

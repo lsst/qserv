@@ -25,8 +25,7 @@
 /**
   * @file PluginNotFoundError.h
   *
-  * @brief PluginNotFoundError is an exception class thrown when a plugin is
-  * requested  by a name that has not been registered. 
+  * @brief 
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -36,8 +35,8 @@
 
 namespace lsst { namespace qserv { namespace master {
 
-/// PluginNotFoundError is thrown by QueryPlugin::newInstance() when a the name
-/// of a parse plugin is not found. 
+/// PluginNotFoundError is an exception class thrown when a plugin is requested
+/// by a name that has not been registered. 
 class PluginNotFoundError: public std::exception {
 public:
     explicit PluginNotFoundError(std::string const& name) {

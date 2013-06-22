@@ -23,10 +23,7 @@
 #ifndef LSST_QSERV_MASTER_SELECTLISTFACTORY_H
 #define LSST_QSERV_MASTER_SELECTLISTFACTORY_H
 /**
-  * @file SelectListFactory.h
-  *
-  * @brief SelectListFactory maintains parse state so that a SelectList can be
-  * built from a parse tree. It populates some state for SelectFactory. 
+  * @file 
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -36,7 +33,10 @@
 #include <antlr/AST.hpp>
 #include <boost/shared_ptr.hpp>
 #include <stdexcept>
-namespace lsst { namespace qserv { namespace master {
+
+namespace lsst { 
+namespace qserv { 
+namespace master {
 // Forward
 class ParseAliasMap;
 class ValueExpr;
@@ -46,7 +46,8 @@ typedef std::list<ValueExprPtr> ValueExprList;
 class SelectList;
 class ValueExprFactory;
 
-/// SelectListFactory is a factory for SelectLists from ANTLR nodes
+/// SelectListFactory maintains parse state so that a SelectList can be built
+/// from a ANTLR parse tree nodes. It populates some state for SelectFactory.
 class SelectListFactory {
 public:
     boost::shared_ptr<SelectList> getProduct();
@@ -57,7 +58,6 @@ private:
     class SelectStarH;
     friend class SelectStarH;
     class ColumnAliasH;
-    class ParseException;
 
     // For "friends"
     SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
@@ -81,11 +81,6 @@ private:
     boost::shared_ptr<ValueExprFactory> _vFactory;
     boost::shared_ptr<ValueExprList> _valueExprList;
     
-};
-
-class SelectListFactory::ParseException : public std::runtime_error {
-public:
-  explicit ParseException(RefAST subtree);
 };
 
 }}} // namespace lsst::qserv::master

@@ -84,11 +84,11 @@ std::ostream& operator<<(std::ostream& os, QuerySql const& q) {
 // QuerySql::Factory
 ////////////////////////////////////////////////////////////////////////
 boost::shared_ptr<QuerySql>
-QuerySql::Factory::make(std::string const& db, 
-                        int chunkId,
-                        Task::Fragment const& f, 
-                        bool needCreate,
-                        std::string const& defaultResultTable) {
+QuerySql::Factory::newQuerySql(std::string const& db, 
+                               int chunkId,
+                               Task::Fragment const& f, 
+                               bool needCreate,
+                               std::string const& defaultResultTable) {
     boost::shared_ptr<QuerySql> qSql(new QuerySql);
     std::string resultTable;
     if(f.has_resulttable()) { resultTable = f.resulttable(); }

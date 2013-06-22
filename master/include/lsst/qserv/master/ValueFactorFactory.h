@@ -25,8 +25,6 @@
 /**
   * @file ValueFactor.h
   *
-  * @brief ValueFactorFactory constructs ValueFactor instances from antlr nodes.
-  *
   * @author Daniel L. Wang, SLAC
   */
 #include <boost/shared_ptr.hpp>
@@ -37,6 +35,7 @@ namespace lsst { namespace qserv { namespace master {
 class ColumnRefMap;
 class ValueFactor;
 
+/// ValueFactorFactory constructs ValueFactor instances from antlr nodes.
 class ValueFactorFactory {
 public:
     ValueFactorFactory(boost::shared_ptr<ColumnRefMap> cMap);

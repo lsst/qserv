@@ -64,7 +64,10 @@ void forEachSibs(antlr::RefAST a, F& f) {
     }
 }
 } // anonymous namespace
-namespace lsst { namespace qserv { namespace master {
+
+namespace lsst { 
+namespace qserv { 
+namespace master {
 ////////////////////////////////////////////////////////////////////////
 // BoolTermFactory::bfImport
 ////////////////////////////////////////////////////////////////////////

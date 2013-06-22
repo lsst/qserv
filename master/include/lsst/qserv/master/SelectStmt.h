@@ -25,8 +25,6 @@
 /**
   * @file SelectStmt.h
   *
-  * @brief SelectStmt is a parsed SELECT statment.
-  *
   * @author Daniel L. Wang, SLAC
   */
 
@@ -69,8 +67,6 @@ public:
     boost::shared_ptr<SelectStmt> copyMerge() const;    
     boost::shared_ptr<SelectStmt> copySyntax() const;
     
-    void fillEmpty(); // Add placeholders for NULL parts
-
     SelectList const& getSelectList() const { return *_selectList; }
     SelectList& getSelectList() { return *_selectList; }
 

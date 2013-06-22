@@ -24,7 +24,6 @@
   *
   * @brief Implementation of QueryMapping. Local implementations of:
   * class MapTuple
-  * class Entry : public QueryTemplate::Entry
   * class Mapping : public QueryTemplate::EntryMapping
   *
   * @author Daniel L. Wang, SLAC
@@ -35,21 +34,14 @@
 #include <sstream>
 
 #include <boost/regex.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "lsst/qserv/master/ChunkSpec.h"
 #include "lsst/qserv/master/QueryTemplate.h"
 
-namespace qMaster=lsst::qserv::master;
-
-namespace { // File-scope helpers
-inline std::string intToString(int i) {
-    std::stringstream ss;
-    ss << i;
-    return ss.str();
-}
-
-}
-namespace lsst { namespace qserv { namespace master { 
+namespace lsst { 
+namespace qserv { 
+namespace master { 
 
 class MapTuple {
 public:
@@ -61,14 +53,6 @@ public:
     std::string tgt;
     QueryMapping::Parameter param;
 };
-class Entry : public QueryTemplate::Entry { 
-public:
-    Entry(std::string const& text_) : text(text_) {}
-    virtual ~Entry() {}
-    virtual std::string getValue() const { return text; }
-    virtual bool isDynamic() const { return false; }
-    std::string text;
-};
 
 class Mapping : public QueryTemplate::EntryMapping {
 public:
@@ -76,33 +60,36 @@ public:
     typedef std::deque<MapTuple> Map;
 
     Mapping(QueryMapping::ParameterMap const& m, ChunkSpec const& s) 
-        : _m(m), _subChunks(s.subChunks.begin(), s.subChunks.end()) {
-        _chunkString = intToString(s.chunkId);
+        : _subChunks(s.subChunks.begin(), s.subChunks.end()) {
+        _chunkString = boost::lexical_cast<std::string>(s.chunkId);
         if(!_subChunks.empty()) {
-            _subChunkString = intToString(_subChunks.front());            
+            _subChunkString = boost::lexical_cast<std::string>(_subChunks.front());
         }
         _initMap(m);
     }
-    Mapping(QueryMapping::ParameterMap const& m, ChunkSpecSingle const& s) 
-        : _m(m)  {
-        _chunkString = intToString(s.chunkId);
-        _subChunkString = intToString(s.subChunkId);
+    Mapping(QueryMapping::ParameterMap const& m, ChunkSpecSingle const& s) {
+        _chunkString = boost::lexical_cast<std::string>(s.chunkId);
+        _subChunkString = boost::lexical_cast<std::string>(s.subChunkId);
         _subChunks.push_back(s.subChunkId);
         _initMap(m);
     }
     virtual ~Mapping() {}
     virtual boost::shared_ptr<QueryTemplate::Entry> mapEntry(QueryTemplate::Entry const& e) const {
-        boost::shared_ptr<Entry> newE(new Entry(e.getValue()));
+        typedef QueryTemplate::StringEntry StringEntry;
+        boost::shared_ptr<StringEntry> newE(new StringEntry(e.getValue()));
         Map::const_iterator i;
+
+        // FIXME see if this works
+        //if(!e.isDynamic()) {return newE; }
+
         for(i=_map.begin(); i != _map.end(); ++i) {
-            newE->text = boost::regex_replace(newE->text, i->reg, i->tgt);
+            newE->s = boost::regex_replace(newE->s, i->reg, i->tgt);
             if(i->param == QueryMapping::SUBCHUNK) {
                 // Remember that we mapped a subchunk,
                     // so we know to iterate over subchunks.
                     // Or... the plugins could signal that subchunks
                     // are needed somehow. FIXME.
-            }
-            
+            }            
         }
         return newE;
     } 
@@ -126,6 +113,8 @@ private:
             return _chunkString;
         case QueryMapping::SUBCHUNK:
             return _subChunkString;
+        case QueryMapping::HTM1:
+            throw std::range_error("HTM unimplemented");
         default:
             return "UNKNOWN";
         }
@@ -133,9 +122,8 @@ private:
     void _nextSubChunk() {
         _subChunks.pop_front();
         if(_subChunks.empty()) return;
-        _subChunkString = intToString(_subChunks.front());
+        _subChunkString = boost::lexical_cast<std::string>(_subChunks.front());
     }
-    QueryMapping::ParameterMap const& _m;
         
     std::string _chunkString;
     std::string _subChunkString;
@@ -149,25 +137,30 @@ private:
 ////////////////////////////////////////////////////////////////////////
 QueryMapping::QueryMapping() {}
 
-std::string QueryMapping::apply(ChunkSpec const& s, QueryTemplate const& t) {
+std::string 
+QueryMapping::apply(ChunkSpec const& s, QueryTemplate const& t) const {
     Mapping m(_subs, s);
     return t.generate(m);
 }
-std::string QueryMapping::apply(ChunkSpecSingle const& s, QueryTemplate const& t) {
+std::string 
+QueryMapping::apply(ChunkSpecSingle const& s, QueryTemplate const& t) const {
     Mapping m(_subs, s);
     return t.generate(m);
 }
 
-void QueryMapping::update(QueryMapping const& m) {
+void 
+QueryMapping::update(QueryMapping const& m) {
     // Update this mapping to reflect the union of the two mappings.
     // We manually merge so that we have a chance to detect conflicts.
     ParameterMap::const_iterator i;
     for(i=m._subs.begin(); i != m._subs.end(); ++i) {
         ParameterMap::const_iterator f = _subs.find(i->first);
         if(f != _subs.end()) {
-            assert(f->second == i->second);
-            // Not sure what to do.
-            // This is a big parse error, or a flaw in parsing logic.
+            if(f->second != i->second) {
+                throw std::logic_error("Conflict  during update in QueryMapping");
+                // Not sure what to do.
+                // This is a big parse error, or a flaw in parsing logic.
+            }
         } else {
             _subs.insert(*i);
         }
@@ -175,7 +168,8 @@ void QueryMapping::update(QueryMapping const& m) {
     _subChunkTables.insert(m._subChunkTables.begin(), m._subChunkTables.end());
 }
 
-bool QueryMapping::hasParameter(Parameter p) const {
+bool 
+QueryMapping::hasParameter(Parameter p) const {
     ParameterMap::const_iterator i;
     for(i=_subs.begin(); i != _subs.end(); ++i) {
         if(i->second == p) return true;

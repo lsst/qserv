@@ -42,7 +42,7 @@ namespace { // File-scope helpers
 typedef std::map<std::string, QueryPlugin::FactoryPtr> FactoryMap;
 
 //boost::once_flag factoryMapFlag = BOOST_ONCE_INIT;
-boost::mutex factoryMapMutex;
+static boost::mutex factoryMapMutex;
 
 // Static local member
 static FactoryMap factoryMap;

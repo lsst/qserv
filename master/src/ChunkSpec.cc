@@ -30,13 +30,19 @@
 #include "lsst/qserv/master/ChunkSpec.h"
 #include <iterator>
 #include <cassert>
+#include <stdexcept>
 
 namespace qMaster=lsst::qserv::master;
 
 namespace { // File-scope helpers
-int const GOOD_SUBCHUNK_COUNT = 20;
+/// A "good" number of subchunks to include in a chunk query.  This is
+/// a guess. The best value is an open question
+int const GOOD_SUBCHUNK_COUNT = 20; 
 }
-namespace lsst { namespace qserv { namespace master {
+
+namespace lsst { 
+namespace qserv { 
+namespace master {
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
     os << "ChunkSpec[" 
        << "chunkId=" << c.chunkId
@@ -57,18 +63,18 @@ bool ChunkSpec::shouldSplit() const {
 // ChunkSpecFragmenter
 ////////////////////////////////////////////////////////////////////////
 ChunkSpecFragmenter::ChunkSpecFragmenter(ChunkSpec const& s) 
-    : _original(s), _pos(0) {
+    : _original(s), _pos(_original.subChunks.begin()) {
 }
 ChunkSpec ChunkSpecFragmenter::get() const {
     ChunkSpec c;
     c.chunkId = _original.chunkId;
-    int posEnd = _pos + GOOD_SUBCHUNK_COUNT;
-    int end = _original.subChunks.size();
-    if(posEnd >= end) posEnd = end;
+    Iter posEnd = _pos + GOOD_SUBCHUNK_COUNT;
+    Iter end = _original.subChunks.end();
+    if(posEnd >= end) {
+        posEnd = end;
+    }
     c.subChunks.resize(posEnd - _pos);
-    std::copy(_original.subChunks.begin()+_pos,
-              _original.subChunks.begin()+posEnd,
-              c.subChunks.begin());
+    std::copy(_pos, posEnd, c.subChunks.begin());
     return c;
 }
 
@@ -77,7 +83,7 @@ void ChunkSpecFragmenter::next() {
 }
 
 bool ChunkSpecFragmenter::isDone() {
-    return _pos >= _original.subChunks.size();
+    return _pos >= _original.subChunks.end();
 }
 ////////////////////////////////////////////////////////////////////////
 // ChunkSpecSingle
@@ -85,7 +91,9 @@ bool ChunkSpecFragmenter::isDone() {
 // precondition: !spec.subChunks.empty() 
 ChunkSpecSingle::List ChunkSpecSingle::makeList(ChunkSpec const& spec) {
     List list;
-    assert(!spec.subChunks.empty());
+    if(spec.subChunks.empty()) {
+        throw std::logic_error("Attempted subchunk spec list without subchunks.");
+    }
     ChunkSpecSingle s;
     s.chunkId = spec.chunkId;
     std::vector<int>::const_iterator i;

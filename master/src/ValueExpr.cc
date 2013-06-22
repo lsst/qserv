@@ -32,8 +32,9 @@
   */ 
 #include "lsst/qserv/master/ValueExpr.h"
 #include <iostream>
-#include <sstream>
 #include <iterator>
+#include <sstream>
+#include <stdexcept>
 #include "lsst/qserv/master/ValueFactor.h"
 #include "lsst/qserv/master/QueryTemplate.h"
 #include "lsst/qserv/master/FuncExpr.h"
@@ -77,7 +78,9 @@ operator<<(std::ostream& os, ValueExpr::FactorOp const& fo) {
 // ValueExpr statics
 ////////////////////////////////////////////////////////////////////////
 ValueExprPtr ValueExpr::newSimple(boost::shared_ptr<ValueFactor> vt)  {
-    assert(vt.get());
+    if(!vt) {
+        throw std::invalid_argument("Unexpected NULL ValueFactor");
+    }
     boost::shared_ptr<ValueExpr> ve(new ValueExpr);
     FactorOp t = {vt, NONE};
     ve->_factorOps.push_back(t);

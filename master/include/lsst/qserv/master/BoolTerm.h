@@ -25,7 +25,8 @@
 /**
   * @file BoolTerm.h
   *
-  * @brief BoolTerm is a representation of a boolean term in a WHERE clause
+  * @brief BoolTerm, BfTerm, OrTerm, AndTerm, BoolFactor, PassTerm, UnknownTerm,
+  * ValueExprTerm declarations.
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -86,7 +87,7 @@ public:
     class render;
     BoolTerm::PtrList _terms;
 };
-/// OrTerm is a set of AND-connected BoolTerms
+/// AndTerm is a set of AND-connected BoolTerms
 class AndTerm : public BoolTerm {
 public:
     typedef boost::shared_ptr<AndTerm> Ptr;

@@ -254,7 +254,9 @@ qMaster::ChunkQuery::ChunkQuery(qMaster::TransactionSpec const& t, int id,
       _id(id), _spec(t), 
       _manager(mgr),
       _shouldSquash(false) {
-    assert(_manager != NULL);
+    if(!_manager) {
+        throw std::invalid_argument("Null AsyncQueryMsnager"); 
+    }    
     _result.open = 0;
     _result.queryWrite = 0;
     _result.read = 0;

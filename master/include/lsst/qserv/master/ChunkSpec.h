@@ -23,25 +23,28 @@
 #ifndef LSST_QSERV_MASTER_CHUNKSPEC_H
 #define LSST_QSERV_MASTER_CHUNKSPEC_H
 /**
-  * @file ChunkQuerySpec.h
+  * @file 
   *
-  * @brief ChunkSpec is a type that bundles the per-chunk information that is
-  * used to compose a concrete chunk query for a specific chunk from an input
-  * parsed query statement.
+  * @brief ChunkSpec, ChunkSpecFragmenter, and ChunkSpecSingle declarations
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <iostream>
+#include <ostream>
 #include <list>
 #include <vector>
+#include <stdint.h>
 
 namespace lsst { namespace qserv { namespace master {
 
-/// A specification of chunkId and subChunkId list
-class ChunkSpec {
+/// ChunkSpec is a value class that bundles the per-chunk information that is
+/// used to compose a concrete chunk query for a specific chunk from an input
+/// parsed query statement. Contains A specification of chunkId and subChunkId
+/// list.
+struct ChunkSpec {
 public:
-    int chunkId;
-    std::vector<int> subChunks;
+    ChunkSpec() : chunkId(-1) {}
+    int32_t chunkId;
+    std::vector<int32_t> subChunks;
     void addSubChunk(int s) { subChunks.push_back(s); }
     bool shouldSplit() const;
 };
@@ -58,16 +61,19 @@ public:
     void next();
     bool isDone();
 private:
+    typedef std::vector<int32_t>::const_iterator Iter;
     ChunkSpec _original;
-    unsigned _pos;
+    Iter _pos;
     
 };
-/// A single subChunk specification.
+/// A specification of ChunkSpec with only one subChunk
+/// TODO: Consider renaming this. (SubChunkSpec?)
 class ChunkSpecSingle {
 public:
     typedef std::list<ChunkSpecSingle> List;
-    int chunkId;
-    int subChunkId;
+    ChunkSpecSingle() : chunkId(-1), subChunkId(-1) {}
+    int32_t chunkId;
+    int32_t subChunkId;
     static List makeList(ChunkSpec const& spec);
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpecSingle const& c);
