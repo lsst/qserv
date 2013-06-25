@@ -128,6 +128,7 @@ def get_template_targets():
         '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
         '%\(QSERV_LUA_SHARE\)s': os.path.join(config['qserv']['base_dir'],"share","lua","5.1"),
         '%\(QSERV_LUA_LIB\)s': os.path.join(config['qserv']['base_dir'],"lib","lua","5.1"),
+        '%\(QSERV_SCRATCH_DIR\)s': config['qserv']['scratch_dir'],
         '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'],
         '%\(MYSQLD_PORT\)s': config['mysqld']['port'],
         # used for mysql-proxy in mono-node
@@ -194,7 +195,8 @@ env.Alias("templates", get_template_targets())
 #
 ############################
 
-user_config_dir=os.path.join(os.getenv("HOME"),".lsst") 
+homedir=os.path.expanduser("~")
+user_config_dir=os.path.join(homedir,".lsst") 
 user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
 make_user_config_cmd = env.Command(user_config_file_name, config_file_name, Copy("$TARGET", "$SOURCE"))
 
@@ -262,6 +264,7 @@ if 'uninstall' in COMMAND_LINE_TARGETS:
             os.path.join(config['qserv']['base_dir'],'qserv','master','dist'),
             os.path.join(config['qserv']['base_dir'],'qserv','worker','dist'),
             os.path.join(config['qserv']['base_dir']),
+            os.path.join(config['qserv']['scratch_dir']),
             user_config_dir
             ]
 

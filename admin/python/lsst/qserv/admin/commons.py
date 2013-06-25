@@ -1,5 +1,6 @@
 import io
 import os
+import hashlib 
 import logging
 import re
 import subprocess
@@ -42,6 +43,10 @@ def read_config(config_file):
     for dir in ['base_dir', 'tmp_dir', 'log_dir']:
         config['qserv'][dir] = os.path.normpath(config['qserv'][dir])
     config['qserv']['bin_dir'] = os.path.join(config['qserv']['base_dir'], "bin")
+    config['qserv']['scratch_dir'] = os.path.join( "/dev", "shm", "qserv-%s-%s" %
+                                        (os.getlogin(),
+                                        hashlib.sha224(config['qserv']['base_dir']).hexdigest())
+                                    )
 
     section='mysqld'
     config[section] = dict()
