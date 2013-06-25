@@ -47,61 +47,62 @@
 #include "lsst/qserv/master/OrderByClause.h" // Clauses
 #include "lsst/qserv/master/GroupByClause.h" // Clauses
 
-// namespace modifiers
-namespace qMaster = lsst::qserv::master;
+namespace lsst {
+namespace qserv {
+namespace master {
 
 ////////////////////////////////////////////////////////////////////////
 // ModFactory::LimitH
 ////////////////////////////////////////////////////////////////////////
-class lsst::qserv::master::ModFactory::LimitH : public VoidOneRefFunc {
+class ModFactory::LimitH : public VoidOneRefFunc {
 public:
-    LimitH(lsst::qserv::master::ModFactory& mf) : _mf(mf) {}
+    LimitH(ModFactory& mf) : _mf(mf) {}
     virtual void operator()(antlr::RefAST n) {
         _mf._importLimit(n);
     }
 private:
-    lsst::qserv::master::ModFactory& _mf;
+    ModFactory& _mf;
 };
 ////////////////////////////////////////////////////////////////////////
 // ModFactory::OrderByH
 ////////////////////////////////////////////////////////////////////////
-class lsst::qserv::master::ModFactory::OrderByH : public VoidOneRefFunc {
+class ModFactory::OrderByH : public VoidOneRefFunc {
 public:
-    OrderByH(lsst::qserv::master::ModFactory& mf) : _mf(mf) {}
+    OrderByH(ModFactory& mf) : _mf(mf) {}
     virtual void operator()(antlr::RefAST n) {
+        std::cout << "Importing Orderby:" << walkIndentedString(n) << std::endl;
         _mf._importOrderBy(n);
     }
 private:
-    lsst::qserv::master::ModFactory& _mf;
+    ModFactory& _mf;
 };
 ////////////////////////////////////////////////////////////////////////
 // ModFactory::GroupByH
 ////////////////////////////////////////////////////////////////////////
-class lsst::qserv::master::ModFactory::GroupByH : public VoidOneRefFunc {
+class ModFactory::GroupByH : public VoidOneRefFunc {
 public:
-    GroupByH(lsst::qserv::master::ModFactory& mf) : _mf(mf) {}
+    GroupByH(ModFactory& mf) : _mf(mf) {}
     virtual void operator()(antlr::RefAST n) {
         _mf._importGroupBy(n);
     }
 private:
-    lsst::qserv::master::ModFactory& _mf;
+    ModFactory& _mf;
 };
 ////////////////////////////////////////////////////////////////////////
 // ModFactory::HavingH
 ////////////////////////////////////////////////////////////////////////
-class lsst::qserv::master::ModFactory::HavingH : public VoidOneRefFunc {
+class ModFactory::HavingH : public VoidOneRefFunc {
 public:
-    HavingH(lsst::qserv::master::ModFactory& mf) : _mf(mf) {}
+    HavingH(ModFactory& mf) : _mf(mf) {}
     virtual void operator()(antlr::RefAST n) {
         _mf._importHaving(n);
     }
 private:
-    lsst::qserv::master::ModFactory& _mf;
+    ModFactory& _mf;
 };
 ////////////////////////////////////////////////////////////////////////
 // ModFactory
 ////////////////////////////////////////////////////////////////////////
-using qMaster::ModFactory;
 ModFactory::ModFactory(boost::shared_ptr<ValueExprFactory> vf)
     : _vFactory(vf),
       _limit(-1)
@@ -131,7 +132,7 @@ void ModFactory::_importLimit(antlr::RefAST a) {
 void ModFactory::_importOrderBy(antlr::RefAST a) {
     _orderBy.reset(new OrderByClause());
     // ORDER BY takes a column ref (expression)
-    std::cout << "orderby got " << walkTreeString(a) << std::endl;
+    //std::cout << "orderby got " << walkTreeString(a) << std::endl;
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importOrderBy(NULL)");
     }
@@ -144,7 +145,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
         ob._order = OrderByTerm::DEFAULT;
         boost::shared_ptr<ValueExpr> ve;
         if(key->getType() == SqlSQL2TokenTypes::SORT_KEY) {
-            ob._expr = _vFactory->newExpr(key); //->getFirstChild());
+            ob._expr = _vFactory->newExpr(key->getFirstChild()); 
             RefAST sib = key->getNextSibling();
             if(sib.get() 
                && (sib->getType() == SqlSQL2TokenTypes::COLLATE_CLAUSE)) {
@@ -218,7 +219,7 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     // e.g. HAVING count(obj.ra_PS_sigma) > 0.04
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importHaving(NULL)");
-}
+    }
     //std::cout << "having got " << walkTreeString(a) << std::endl;
     // For now, we will silently traverse and recognize but ignore.
     
@@ -244,3 +245,4 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     // FIXME: Log this at the WARNING level
     std::cout << "Parse warning: HAVING clause unhandled." << std::endl;
 }
+}}} // lsst::qserv::master

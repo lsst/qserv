@@ -33,8 +33,11 @@
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include "lsst/qserv/master/ColumnRef.h"
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 
 // Forward
 class QueryTemplate;
@@ -58,6 +61,9 @@ public:
     static FuncExpr::Ptr newArg1(std::string const& newName, 
                                  ValueExprPtr ve);
 
+    void findColumnRefs(ColumnRef::List& list);
+
+    // Fields
     std::string name;
     ValueExprList params;
     friend std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);

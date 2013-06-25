@@ -34,14 +34,14 @@
 #include <boost/shared_ptr.hpp>
 
 #include "lsst/qserv/master/ColumnRef.h"
-#include "lsst/qserv/master/ColumnRefList.h"
+#include "lsst/qserv/master/ColumnRefMap.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
 namespace lsst { 
 namespace qserv { 
 namespace master {
 // Forward
-class ColumnRefMap;
+class ColumnRefNodeMap;
 class ColumnAliasMap;
 class QueryTemplate;
 class BoolTerm;
@@ -53,12 +53,12 @@ class GroupByClause;
 class SelectList {
 public:
     SelectList() 
-        : _columnRefList(new ColumnRefList()) ,
+        : _columnRefMap(new ColumnRefMap()) ,
           _valueExprList(new ValueExprList())
         {}
     ~SelectList() {}
-    boost::shared_ptr<ColumnRefList> getColumnRefList() {
-        return _columnRefList;
+    boost::shared_ptr<ColumnRefMap> getColumnRefMap() {
+        return _columnRefMap;
     }
     void addStar(antlr::RefAST table);
     void dbgPrint() const;
@@ -74,9 +74,9 @@ public:
     friend class SelectListFactory;
 private:
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
-    boost::shared_ptr<ColumnRefList> _columnRefList;
+    boost::shared_ptr<ColumnRefMap> _columnRefMap;
     boost::shared_ptr<ValueExprList> _valueExprList;
-    boost::shared_ptr<ColumnRefMap const> _aliasMap;
+    boost::shared_ptr<ColumnRefNodeMap const> _aliasMap;
 };
 
 }}} // namespace lsst::qserv::master

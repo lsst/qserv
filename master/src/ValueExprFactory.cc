@@ -34,7 +34,6 @@
 #include "lsst/qserv/master/ParseException.h" // 
 #include "SqlSQL2TokenTypes.hpp" // antlr-generated
 
-
 using antlr::RefAST;
 
 namespace lsst { 
@@ -43,22 +42,22 @@ namespace master {
 ////////////////////////////////////////////////////////////////////////
 // ValueExprFactory implementation
 ////////////////////////////////////////////////////////////////////////
-ValueExprFactory::ValueExprFactory(boost::shared_ptr<ColumnRefMap> cMap) 
+ValueExprFactory::ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap) 
     : _valueFactorFactory(new ValueFactorFactory(cMap)) {
 }
 
 // VALUE_EXP                     //
 // |      \                      //
 // TERM   (TERM_OP TERM)*        //
+/// @param first child of VALUE_EXP node.
 boost::shared_ptr<ValueExpr> 
 ValueExprFactory::newExpr(antlr::RefAST a) {
     boost::shared_ptr<ValueExpr> expr(new ValueExpr);
     //std::cout << walkIndentedString(a) << std::endl;
     while(a.get()) {
         ValueExpr::FactorOp newFactorOp;
-        //std::cout << "factor: " << tokenText(a) << std::endl;
-        newFactorOp.factor = _valueFactorFactory->newFactor(a);
         RefAST op = a->getNextSibling();
+        newFactorOp.factor = _valueFactorFactory->newFactor(a);
         if(op.get()) { // No more ops?
             //std::cout << "expected op: " << tokenText(op) << std::endl;
             int eType = op->getType();

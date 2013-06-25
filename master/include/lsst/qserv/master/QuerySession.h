@@ -74,6 +74,7 @@ public:
     /// dispatch. This is distinct from the default database, which is what is
     /// used for unqualified table and column references 
     std::string const& getDominantDb() const;
+    std::string const& getError() const { return _error; }
     
     MergeFixup makeMergeFixup() const;
 
@@ -82,8 +83,10 @@ public:
     Iter cQueryEnd();
     
     // For test harnesses.
-    struct Test { int cfgNum; };
-    explicit QuerySession(Test const& t) {_initContext();}
+    struct Test { int cfgNum; int metaSession; };
+    explicit QuerySession(Test& t) 
+        : _metaCacheSession(t.metaSession) { _initContext(); }    
+    boost::shared_ptr<QueryContext> dbgGetContext() { return _context; }
 
 private:
     typedef std::list<QueryPlugin::Ptr> PluginList;
@@ -111,6 +114,7 @@ private:
     bool _hasMerge;
     std::string _tmpTable;
     std::string _resultTable;
+    std::string _error;
 
     ChunkSpecList _chunks;
     boost::shared_ptr<PluginList> _plugins;

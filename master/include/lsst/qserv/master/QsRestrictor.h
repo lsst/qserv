@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,34 +20,43 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_VALUETERMFACTORY_H
-#define LSST_QSERV_MASTER_VALUETERMFACTORY_H
+#ifndef LSST_QSERV_MASTER_QSRESTRICTOR_H
+#define LSST_QSERV_MASTER_QSRESTRICTOR_H
 /**
-  * @file ValueFactor.h
+  * @file QsRestrictor.h
   *
   * @author Daniel L. Wang, SLAC
   */
+#include <list>
+#include <string>
 #include <boost/shared_ptr.hpp>
-#include <antlr/AST.hpp>
 
 namespace lsst { 
 namespace qserv { 
 namespace master {
+class QueryTemplate;
 
-// Forward
-class ColumnRefNodeMap;
-class ValueFactor;
-
-/// ValueFactorFactory constructs ValueFactor instances from antlr nodes.
-class ValueFactorFactory {
+/// QsRestrictor is a Qserv spatial restrictor element that is used to
+/// signal dependencies on spatially-partitioned tables. It includes
+/// qserv-specific restrictors that make use of the spatial indexing,
+/// but are not strictly spatial restrictuions.
+class QsRestrictor {
 public:
-    ValueFactorFactory(boost::shared_ptr<ColumnRefNodeMap> cMap);
-    boost::shared_ptr<ValueFactor> newFactor(antlr::RefAST a);
-                                         
-private:
-    boost::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
-};
+    typedef boost::shared_ptr<QsRestrictor> Ptr;
+    typedef std::list<Ptr> List;
+    typedef std::list<std::string> StringList;
 
+    class render {
+    public:
+        render(QueryTemplate& qt_) : qt(qt_) {}
+        void operator()(boost::shared_ptr<QsRestrictor> const& p);
+        QueryTemplate& qt;
+    };
+
+    std::string _name;
+    StringList _params;
+};
+std::ostream& operator<<(std::ostream& os, QsRestrictor const& q);
 }}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_VALUETERMFACTORY_H
+#endif // LSST_QSERV_MASTER_QSRESTRICTOR_H
 

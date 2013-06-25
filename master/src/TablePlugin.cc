@@ -33,6 +33,7 @@
 
 #include "lsst/qserv/master/QueryPlugin.h"
 
+#include "lsst/qserv/master/common.h"
 #include "lsst/qserv/master/SelectList.h"
 #include "lsst/qserv/master/SelectStmt.h"
 #include "lsst/qserv/master/FromList.h"
@@ -41,39 +42,29 @@
 #include "lsst/qserv/master/SphericalBoxStrategy.h"
 #include "lsst/qserv/master/QueryMapping.h"
 #include "lsst/qserv/master/QueryContext.h"
+#include "lsst/qserv/master/TableAlias.h"
 #include "lsst/qserv/master/ValueFactor.h"
 
-namespace qMaster=lsst::qserv::master;
+namespace lsst { 
+namespace qserv { 
+namespace master {
+typedef std::list<std::string> StringList;
 
-namespace { // File-scope helpers
-class ReverseAlias {
-public:
-    ReverseAlias() {}
-    std::string const& get(std::string db, std::string table) {
-        return _map[makeKey(db, table)];
-    }
-    void set(std::string const& db, std::string const& table, 
-             std::string const& alias) {
-        _map[makeKey(db, table)] = alias;
-    }
-    inline std::string makeKey(std::string db, std::string table) {
-        std::stringstream ss;
-        ss << db << "__" << table << "__";
-        return ss.str();
-    }
-    std::map<std::string, std::string> _map;
-};
 
 class addMap {
 public:
-    explicit addMap(ReverseAlias& r) : _reverseAlias(r) {}
+    explicit addMap(TableAlias& t, TableAliasReverse& r) 
+        : _tableAlias(t), _tableAliasReverse(r) {}
     void operator()(std::string const& alias, 
                     std::string const& db, std::string const& table) {
         // std::cout << "set: " << alias << "->" 
         //           << db << "." << table << std::endl;
-        _reverseAlias.set(db, table, alias);
+        _tableAlias.set(db, table, alias);
+        _tableAliasReverse.set(db, table, alias);
     }
-    ReverseAlias& _reverseAlias;
+
+    TableAlias& _tableAlias;
+    TableAliasReverse& _tableAliasReverse;
 };
 
 class generateAlias {
@@ -86,27 +77,33 @@ public:
     }
     int& _seqN;
 };
-class addDbContext : public qMaster::TableRefN::Func {
+class addDbContext : public TableRefN::Func {
 public:
-    addDbContext(qMaster::QueryContext const& c) : context(c) {}
-    void operator()(qMaster::TableRefN::Ptr t) {
+    addDbContext(QueryContext const& c, 
+                 std::string& firstDb_,
+                 std::string& firstTable_)
+        : context(c), firstDb(firstDb_), firstTable(firstTable_)
+        {}
+    void operator()(TableRefN::Ptr t) {
         if(t.get()) { t->apply(*this); }     
     }
-    void operator()(qMaster::TableRefN& t) {
+    void operator()(TableRefN& t) {
         std::string table = t.getTable();
         if(table.empty()) return; // Add context only to concrete refs
         if(t.getDb().empty()) { t.setDb(context.defaultDb); }
-        if(dominantDb.empty()) { dominantDb = t.getDb(); }
+        if(firstDb.empty()) { firstDb = t.getDb(); }
+        if(firstTable.empty()) { firstTable = table; }
     }
-    qMaster::QueryContext const& context;
-    std::string dominantDb;
+    QueryContext const& context;
+    std::string& firstDb;
+    std::string& firstTable;
 };
 
 template <typename G, typename A>
 class addAlias {
 public:
     addAlias(G g, A a) : _generate(g), _addMap(a) {}
-    void operator()(qMaster::TableRefN::Ptr t) {
+    void operator()(TableRefN::Ptr t) {
         // std::cout << "tableref:";
         // t->putStream(std::cout);
         // std::cout << std::endl;
@@ -124,20 +121,17 @@ private:
     A _addMap; // Functor that adds a new alias mapping for matchin
                // later clauses.
 };
-} // anonymous
-
-namespace lsst { namespace qserv { namespace master {
 
 ////////////////////////////////////////////////////////////////////////
 // fixExprAlias is a functor that acts on ValueExpr objects and
 // modifys them in-place, altering table names to use an aliased name
-// that is mapped via ReverseAlias. 
+// that is mapped via TableAliasReverse. 
 // It does not add table qualifiers where none already exist, because
 // there is no compelling reason to do so (yet).
 ////////////////////////////////////////////////////////////////////////
 class fixExprAlias {
 public:
-    explicit fixExprAlias(ReverseAlias& r) : _reverseAlias(r) {}
+    explicit fixExprAlias(TableAliasReverse& r) : _tableAliasReverse(r) {}
     void operator()(ValueExprPtr& vep) {
         if(!vep.get()) {
             return;
@@ -180,10 +174,12 @@ private:
         ref.db.assign("");
         ref.table.assign(newAlias);
     }
+
     inline void _patchFuncExpr(FuncExpr& fe) {
         std::for_each(fe.params.begin(), fe.params.end(), 
-                      fixExprAlias(_reverseAlias));
+                      fixExprAlias(_tableAliasReverse));
     }
+
     inline void _patchStar(ValueFactor& vt) {
         // TODO: No support for <db>.<table>.* in framework
         // Only <table>.* is supported.
@@ -193,13 +189,13 @@ private:
         else { vt.setTableStar(newAlias); }
     }
 
-
     inline std::string _getAlias(std::string const& db,
                                  std::string const& table) {
         //std::cout << "lookup: " << db << "." << table << std::endl;
-        return _reverseAlias.get(db, table);
+        return _tableAliasReverse.get(db, table);
     }
-    ReverseAlias& _reverseAlias;
+
+    TableAliasReverse& _tableAliasReverse;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -216,9 +212,11 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(SelectStmt& stmt, QueryContext&);
+    virtual void applyLogical(SelectStmt& stmt, QueryContext& context);
     virtual void applyPhysical(QueryPlugin::Plan& p, QueryContext& context);
 private:
+    StringList _findScanTables(SelectStmt& stmt, QueryContext& context);
+    
     std::string _dominantDb;
 };
 
@@ -267,15 +265,15 @@ TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     // std::cout << "TABLE:Logical:orig fromlist "
     //           << fList.getGenerated() << std::endl;
     TableRefnList& tList = fList.getTableRefnList();
-    
+
     // For each tableref, modify to add alias.
     int seq=0;
-    ReverseAlias reverseAlias;
+    addMap addMapContext(addMap(context.tableAliases, 
+                                context.tableAliasReverses));
+
     std::for_each(tList.begin(), tList.end(), 
                   addAlias<generateAlias,addMap>(generateAlias(seq), 
-                                                 addMap(reverseAlias)));
-    // FIXME: Now is a good time to verify that access is allowed and
-    // populate the context accordingly.  
+                                                 addMapContext));
 
     // Now snoop around the other clauses (SELECT, WHERE, etc. and
     // patch their table references)
@@ -283,27 +281,27 @@ TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     SelectList& sList = stmt.getSelectList();
     ValueExprList& exprList = *sList.getValueExprList();
     std::for_each(exprList.begin(), exprList.end(), 
-                  fixExprAlias(reverseAlias));
+                  fixExprAlias(context.tableAliasReverses));
     // where
     if(stmt.hasWhereClause()) {
         WhereClause& wClause = stmt.getWhereClause();
         WhereClause::ValueExprIter veI = wClause.vBegin();
         WhereClause::ValueExprIter veEnd = wClause.vEnd();
-        std::for_each(veI, veEnd, fixExprAlias(reverseAlias));
+        std::for_each(veI, veEnd, fixExprAlias(context.tableAliasReverses));
     }
     // Fill-in default db context.
-    addDbContext adc(context);
+        
+    DbTablePair p;
+    addDbContext adc(context, p.db, p.table);
     std::for_each(tList.begin(), tList.end(), adc);
-    _dominantDb = adc.dominantDb;
-    if(_dominantDb.empty()) {
-        _dominantDb = context.defaultDb;
-    }
-    
+    _dominantDb = context.dominantDb = p.db;
+    context.anonymousTable = p.table;   
+        
     // Apply function using the iterator...
-    //wClause.walk(fixExprAlias(reverseAlias));
+    // wClause.walk(fixExprAlias(reverseAlias));
     // order by
     // having        
-    context.dominantDb = _dominantDb;
+    context.scanTables = _findScanTables(stmt, context);
 }
 
 void
@@ -312,7 +310,7 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
     // for the parallel and merge versions.
     // Set hasMerge to true if aggregation is detected.
     SelectList& oList = p.stmtOriginal.getSelectList();
-    boost::shared_ptr<qMaster::ValueExprList> vlist;
+    boost::shared_ptr<ValueExprList> vlist;
     vlist = oList.getValueExprList();
     if(!vlist) {
         throw std::logic_error("Invalid stmtOriginal.SelectList");
@@ -355,8 +353,70 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
     //
     // For each tableref, modify to replace tablename with
     // substitutable.
-    
-
-
 }
+
+bool testIfSecondary(BoolTerm& t) {
+    std::cout << "Testing "; 
+    t.putStream(std::cout) << std::endl;
+    return false;
+}
+
+StringList
+TablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
+    // Might be better as a separate plugin
+
+    // All tables of a query are scan tables if the statement both:
+    // a. has non-trivial spatial scope (all chunks? >1 chunk?)
+    // b. requires column reading
+    
+    // a. means that the there is a spatial scope specification in the
+    // WHERE clause or none at all (everything matches). However, an
+    // objectId specification counts as a trivial spatial scope,
+    // because it evaluates to a specific set of subchunks. We limit
+    // the objectId specification, but the limit can be large--each
+    // concrete objectId incurs at most the cost of one subchunk.
+    
+    // b. means that columns are needed to process the query. 
+    // In the SelectList, count(*) does not need columns, but *
+    // does. So do ra_PS and iFlux_SG*10
+    // In the WhereClause, this means that we have expressions that
+    // require columns to evaluate.
+
+    // When there is no WHERE clause that requires column reading,
+    // the presence of a small-valued LIMIT should be enough to
+    // de-classify a query as a scanning query.
+
+    bool hasSpatialSelect = false;
+    bool hasWhereColumnRef = false;
+    bool hasSecondaryKey = false;
+
+    if(stmt.hasWhereClause()) {
+        WhereClause& wc = stmt.getWhereClause();
+        // Check WHERE for spatial select
+        boost::shared_ptr<QsRestrictor::List const> restrs = wc.getRestrs();
+        hasSpatialSelect = restrs && !restrs->empty();
+
+        // Look for column refs
+        boost::shared_ptr<ColumnRefMap::List const> crl = wc.getColumnRefs();
+        if(crl) {
+            hasWhereColumnRef = !crl->empty();
+            boost::shared_ptr<AndTerm> aterm = wc.getRootAndTerm();
+            if(aterm) {
+                // Look for secondary key matches
+                typedef BoolTerm::PtrList PtrList;
+                for(PtrList::iterator i = aterm->iterBegin();
+                    i != aterm->iterEnd(); ++i) {
+                    if(testIfSecondary(**i)) {
+                        hasSecondaryKey = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+    }
+
+    return StringList(); // FIXME
+}
+
 }}} // namespace lsst::qserv::master

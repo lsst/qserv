@@ -41,6 +41,7 @@
 #include "lsst/qserv/master/QueryContext.h"
 #include "lsst/qserv/master/QueryMapping.h"
 #include "lsst/qserv/master/QueryPlugin.h"
+#include "lsst/qserv/master/ParseException.h"
 #include "lsst/qserv/master/ifaceMeta.h" // Retrieve metadata object
 
 namespace lsst {
@@ -61,7 +62,6 @@ void printConstraints(ConstraintVector const& cv) {
     std::for_each(cv.begin(), cv.end(), printConstraintHelper(std::cout));
 }
 
-
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
@@ -73,15 +73,20 @@ void QuerySession::setQuery(std::string const& q) {
     _original = q;
     _initContext();
     assert(_context.get());
+
     SelectParser::Ptr p;
-    p = SelectParser::newInstance(q);
-    p->setup();
-    _stmt = p->getSelectStmt();
-    _preparePlugins();
-    _applyLogicPlugins();
-    _generateConcrete();
-    _applyConcretePlugins();
-    _showFinal(); // DEBUG    
+    try {
+        p = SelectParser::newInstance(q);
+        p->setup();
+        _stmt = p->getSelectStmt();
+        _preparePlugins();
+        _applyLogicPlugins();
+        _generateConcrete();
+        _applyConcretePlugins();
+        _showFinal(); // DEBUG    
+    } catch(ParseException& e) {
+        _error = std::string("ParseException:") + e.what();
+    }
 }
 
 bool QuerySession::hasAggregate() const {
@@ -115,10 +120,10 @@ boost::shared_ptr<ConstraintVector> QuerySession::getConstraints() const {
             (*cv)[i] = c;
             ++i;
         }
-        printConstraints(*cv);
+        //printConstraints(*cv);
         return cv;
     } else {
-        std::cout << "No constraints." << std::endl;
+        //std::cout << "No constraints." << std::endl;
     }
     // No constraint vector
     return cv;

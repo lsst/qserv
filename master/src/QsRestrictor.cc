@@ -1,7 +1,6 @@
-// -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,34 +19,25 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_VALUETERMFACTORY_H
-#define LSST_QSERV_MASTER_VALUETERMFACTORY_H
 /**
-  * @file ValueFactor.h
+  * @file 
   *
   * @author Daniel L. Wang, SLAC
-  */
-#include <boost/shared_ptr.hpp>
-#include <antlr/AST.hpp>
+  */ 
+#include "lsst/qserv/master/QsRestrictor.h"
+
+#include <iostream>
+#include <iterator>
 
 namespace lsst { 
 namespace qserv { 
 namespace master {
-
-// Forward
-class ColumnRefNodeMap;
-class ValueFactor;
-
-/// ValueFactorFactory constructs ValueFactor instances from antlr nodes.
-class ValueFactorFactory {
-public:
-    ValueFactorFactory(boost::shared_ptr<ColumnRefNodeMap> cMap);
-    boost::shared_ptr<ValueFactor> newFactor(antlr::RefAST a);
-                                         
-private:
-    boost::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
-};
-
+std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
+    os << "Restrictor " << q._name << "(";
+    std::copy(q._params.begin(), q._params.end(), 
+              std::ostream_iterator<std::string>(os, ","));
+    os << ")";
+    return os;
+}
 }}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_VALUETERMFACTORY_H
 

@@ -30,13 +30,13 @@
 
 #include <iostream>
 #include <stdexcept>
+#include "lsst/qserv/master/Predicate.h"
 #include "lsst/qserv/master/QueryTemplate.h"
 
-namespace qMaster=lsst::qserv::master;
-using lsst::qserv::master::QsRestrictor;
-using lsst::qserv::master::WhereClause;
+namespace lsst { 
+namespace qserv { 
+namespace master {
 
-namespace lsst { namespace qserv { namespace master {
 BoolTerm::Ptr findAndTerm(BoolTerm::Ptr tree) {
     while(1) {
         AndTerm* at = dynamic_cast<AndTerm*>(tree.get());
@@ -80,6 +80,60 @@ std::ostream&
 operator<<(std::ostream& os, WhereClause const& wc) {
     os << "WHERE " << wc.getGenerated();
     return os;
+}
+void findColumnRefs(boost::shared_ptr<BoolFactor> f, ColumnRefMap::List& list) {
+    if(f) { 
+        f->findColumnRefs(list);
+    }
+}
+
+void findColumnRefs(boost::shared_ptr<ValueExprTerm> vet, ColumnRefMap::List& list) {
+    if(vet) {
+        ValueExpr& expr = *vet->_expr;
+        expr.findColumnRefs(list);        
+    }
+}
+
+void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRefMap::List& list) {
+    if(!t) { return; }
+    BoolTerm::PtrList::iterator i = t->iterBegin();
+    BoolTerm::PtrList::iterator e = t->iterEnd();
+    if(i == e) { // Leaf. 
+        // Bool factor?
+        boost::shared_ptr<BoolFactor> bf = boost::dynamic_pointer_cast<BoolFactor>(t);
+        if(bf) {
+            findColumnRefs(bf, list);
+        } else {
+            boost::shared_ptr<ValueExprTerm> vet = boost::dynamic_pointer_cast<ValueExprTerm>(t);
+            findColumnRefs(vet, list);
+        }
+    } else {
+        for(; i != e; ++i) {
+            findColumnRefs(*i, list); // Recurse
+        }
+    }    
+}
+
+boost::shared_ptr<ColumnRefMap::List const> 
+WhereClause::getColumnRefs() const {
+    boost::shared_ptr<ColumnRefMap::List> list(new ColumnRefMap::List());
+
+    // Idea: Walk the expression tree and add all column refs to the
+    // list. We will walk in depth-first order, but the interface spec
+    // doesn't require any particular order.
+    findColumnRefs(_tree, *list);
+    
+    return boost::shared_ptr<ColumnRefMap::List const>();
+}
+
+
+boost::shared_ptr<AndTerm> 
+WhereClause::getRootAndTerm() {
+    // Walk the list to find the global AND. If an OR term is root,
+    // and has multiple terms, there is no global AND which means we
+    // should return NULL. 
+    BoolTerm::Ptr t = findAndTerm(_tree);
+    return boost::dynamic_pointer_cast<AndTerm>(t);
 }
 
 WhereClause::ValueExprIter WhereClause::vBegin() {
@@ -192,9 +246,9 @@ WhereClause::ValueExprIter::ValueExprIter(WhereClause* wc,
         PosTuple p(bPos->iterBegin(), bPos->iterEnd()); // Initial position
         _posStack.push(p); // Put it on the stack.
         setupOk = _findFactor();
-    }
-    if(setupOk) {
-        setupOk = _setupBfIter();
+        if(setupOk) {
+            setupOk = _setupBfIter();
+        }
     }
     if(!setupOk) {
         while(_posStack.size() > 0) { _posStack.pop(); }
@@ -204,25 +258,26 @@ WhereClause::ValueExprIter::ValueExprIter(WhereClause* wc,
 
 void WhereClause::ValueExprIter::increment() {
     while(1) {
-        _incrementBfTerm(); // Advance
+        _incrementValueExpr(); // Advance
         if(_posStack.empty()) {
             _wc = NULL; // Clear out WhereClause ptr
             return; 
         }
-        if(_checkForExpr()) return;
+        if(_checkIfValid()) return;
     }
 }
 
-qMaster::ValueExprTerm* WhereClause::ValueExprIter::_checkForExpr() {
-    BfTerm::Ptr b = *_bfIter;
-    ValueExprTerm* vet = dynamic_cast<ValueExprTerm*>(b.get());
-    return vet;
+bool WhereClause::ValueExprIter::_checkIfValid() const {
+    return _vIter != _vEnd;
 }
 
-qMaster::ValueExprTerm* WhereClause::ValueExprIter::_checkForExpr() const {
-    BfTerm::Ptr b = *_bfIter;
-    ValueExprTerm* vet = dynamic_cast<ValueExprTerm*>(b.get());
-    return vet;
+void WhereClause::ValueExprIter::_incrementValueExpr() {
+    assert(_vIter != _vEnd);
+    ++_vIter;
+    if(_vIter == _vEnd) {
+        _incrementBfTerm();
+        return;
+    } 
 }
 
 void WhereClause::ValueExprIter::_incrementBfTerm() {
@@ -233,7 +288,9 @@ void WhereClause::ValueExprIter::_incrementBfTerm() {
     if(_bfIter == _bfEnd) {
         _incrementBterm();
         return;
-    } 
+    } else {
+        _updateValueExprIter();
+    }
 }
 
 void WhereClause::ValueExprIter::_incrementBterm() {
@@ -257,25 +314,23 @@ bool WhereClause::ValueExprIter::equal(WhereClause::ValueExprIter const& other) 
     // Compare the posStack (only .first) and the bfIter.
     if(this->_wc != other._wc) return false;
     if(!this->_wc) return true; // Both are NULL
-    return _posStack == other._posStack;
+    return (_posStack == other._posStack)
+        && (_bfIter == other._bfIter)
+        && (_vIter == other._vIter);
 }
 
-qMaster::ValueExprPtr & WhereClause::ValueExprIter::dereference() const {
-    static ValueExprPtr nullPtr;
-    ValueExprTerm * vet = _checkForExpr();
-    if(!vet) {
-        throw std::invalid_argument("Cannot dereference NULL ValueExprTerm");
+ValueExprPtr & WhereClause::ValueExprIter::dereference() const {
+    if(_vIter == _vEnd) {
+        throw std::invalid_argument("Cannot dereference end iterator");
     }
-    return vet->_expr;
+    return *_vIter;
 }
 
-qMaster::ValueExprPtr& WhereClause::ValueExprIter::dereference() {
-    static ValueExprPtr nullPtr;
-    ValueExprTerm* vet = _checkForExpr();
-    if(!vet) {
-        throw std::invalid_argument("Cannot dereference NULL ValueExprTerm");
+ValueExprPtr& WhereClause::ValueExprIter::dereference() {
+    if(_vIter == _vEnd) {
+        throw std::invalid_argument("Cannot dereference end iterator");
     }
-    return vet->_expr;
+    return *_vIter;
 }
 
 bool WhereClause::ValueExprIter::_findFactor() {
@@ -308,12 +363,28 @@ bool WhereClause::ValueExprIter::_setupBfIter() {
     if(bf) {
         _bfIter = bf->_terms.begin();
         _bfEnd = bf->_terms.end();
+        _updateValueExprIter();
         return true;
     } else {
         // Try recursing deeper.
         // FIXME
         return false;
     }
+}
+void WhereClause::ValueExprIter::_updateValueExprIter() {
+    _vIter = _vEnd = ValueExprListIter();
+    if(_bfIter == _bfEnd) { 
+        return;
+    }
+    BfTerm::Ptr b = *_bfIter;
+    assert(b);
+    Predicate* p = dynamic_cast<Predicate*>(b.get());
+    if(!p) {
+        return;
+    }
+    p->cacheValueExprList();
+    _vIter = p->valueExprCacheBegin();
+    _vEnd = p->valueExprCacheEnd();
 }
 
 }}} // namespace lsst::qserv::master

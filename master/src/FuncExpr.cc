@@ -60,6 +60,17 @@ FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
     return e;
 }
 
+void 
+FuncExpr::findColumnRefs(ColumnRef::List& list) {
+    for(ValueExprList::iterator i=params.begin();
+        i != params.end(); ++i) {
+        if(*i) {
+            (**i).findColumnRefs(list);
+        }
+    }
+}
+
+
 std::ostream& qMaster::operator<<(std::ostream& os, FuncExpr const& fe) {
     os << "(" << fe.name << ",";
     output(os, fe.params);

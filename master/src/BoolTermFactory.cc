@@ -29,6 +29,8 @@
   */
 #include "lsst/qserv/master/BoolTermFactory.h"
 #include "lsst/qserv/master/ValueExprFactory.h" 
+#include "lsst/qserv/master/Predicate.h" 
+#include "lsst/qserv/master/PredicateFactory.h" 
 #include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
 namespace qMaster=lsst::qserv::master;
@@ -73,9 +75,22 @@ namespace master {
 ////////////////////////////////////////////////////////////////////////
 /// Construct a ValueExpr (or PassTerm) term and import as appropriate
 void BoolTermFactory::bfImport::operator()(antlr::RefAST a) {
+    PredicateFactory _pf(*_bf._vFactory); // placeholder
     switch(a->getType()) {
     case SqlSQL2TokenTypes::VALUE_EXP:
         _bfr._terms.push_back(_bf.newValueExprTerm(a));
+        break;
+    case SqlSQL2TokenTypes::COMP_PREDICATE:
+        printIndented(a);
+        _bfr._terms.push_back(_pf.newCompPredicate(a));
+        break;
+    case SqlSQL2TokenTypes::BETWEEN_PREDICATE:
+        printIndented(a);
+        _bfr._terms.push_back(_pf.newBetweenPredicate(a));
+        break;
+    case SqlSQL2TokenTypes::IN_PREDICATE:
+        printIndented(a);
+        _bfr._terms.push_back(_pf.newInPredicate(a));
         break;
     default:
         _bfr._terms.push_back(_bf.newPassTerm(a));

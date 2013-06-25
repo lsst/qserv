@@ -100,7 +100,7 @@ class RegionFactory:
             "qserv_areaspec_hull": self._handleConvexHull,
             # Handled elsewhere
             "db" : self._handleNop,
-            "objectId" : self._handleNop,
+            "sIndex" : self._handleNop,
             "qserv_areaspec_objectid" : self._handleNop
             }
         pass
@@ -168,18 +168,18 @@ class RegionFactory:
     def _handleNop(self, param):
         return []
 
-    def getRegionFromHint(self, hintDict):
+    def getRegionFromHint(self, hintList):
         """
         Convert a hint string list into a list of geometry regions that
         can be used with a partition mapper.
         
-        @param hintDict a dictionary of hints
+        @param hintList a list of hint tuples (name, params)
         @return None on error
         @return list of spherical regions if successful
         """
         regions = []
         try:
-            for name,param in hintDict.items():
+            for (name,param) in hintList:
                 if name in self._constraintNames: # spec?
                     regs = self._constraintNames[name](param)
                     regions.extend(regs)

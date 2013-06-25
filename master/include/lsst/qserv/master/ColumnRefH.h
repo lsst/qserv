@@ -26,8 +26,8 @@
   * @file ColumnRefH.h
   *
   * @brief  ColumnRefH is a column reference parse handler that is triggered
-  * when the ANTLR parser produces column references. ColumnRefMap maintains
-  * node-to-parsed-ref mappings
+  * when the ANTLR parser produces column references. ColumnRefNodeMap 
+  * maintains node-to-parsed-ref mappings.
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -42,7 +42,9 @@
 // Forward
 class SqlSQL2Parser;
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 
 /// ColumnRefH is a parse action for column_ref tokens in the grammar
 class ColumnRefH : public VoidFourRefFunc {
@@ -82,10 +84,10 @@ public:
     virtual void acceptColumnRef(antlr::RefAST d, antlr::RefAST t, 
                                  antlr::RefAST c) = 0;
 };
-/// ColumnRefMap is a Listener which remembers ColumnRefs as nodes.
-/// Somewhat different than ColumnRefList, which is not a listener
+/// ColumnRefNodeMap is a Listener which remembers ColumnRefs as nodes.
+/// Somewhat different than ColumnRefMap, which is not a listener
 /// and stores strings rather than node refs.
-class ColumnRefMap : public ColumnRefH::Listener {
+class ColumnRefNodeMap : public ColumnRefH::Listener {
 public:
     struct Ref {
         Ref() {}

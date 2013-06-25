@@ -41,10 +41,12 @@
 // Forward
 class SqlSQL2Parser;
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 // Forward
 class ParseAliasMap;
-class ColumnRefMap;
+class ColumnRefNodeMap;
 class SelectListFactory;
 class FromFactory;
 class WhereFactory;
@@ -76,7 +78,7 @@ private:
     // parse-domain state
     boost::shared_ptr<ParseAliasMap> _columnAliases;
     boost::shared_ptr<ParseAliasMap> _tableAliases;
-    boost::shared_ptr<ColumnRefMap> _columnRefMap;
+    boost::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
 
     // delegates
     boost::shared_ptr<SelectListFactory> _slFactory;

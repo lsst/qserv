@@ -30,6 +30,7 @@
 // No public interface (no QservRestrictorPlugin.h)
 #include <deque>
 #include <string>
+#include <boost/pointer_cast.hpp>
 
 #include "lsst/qserv/master/QueryPlugin.h" // Parent class
 #include "lsst/qserv/master/ColumnRef.h"
@@ -37,6 +38,7 @@
 #include "lsst/qserv/master/FuncExpr.h"
 #include "lsst/qserv/master/QueryContext.h"
 #include "lsst/qserv/master/MetadataCache.h" 
+#include "lsst/qserv/master/Predicate.h" 
 #include "lsst/qserv/master/SelectStmt.h"
 #include "lsst/qserv/master/ValueFactor.h"
 #include "lsst/qserv/master/ValueExpr.h"
@@ -165,9 +167,17 @@ public:
 
     virtual void applyLogical(SelectStmt& stmt, QueryContext&);
     virtual void applyPhysical(QueryPlugin::Plan& p, QueryContext& context);
+
 private:
     BoolTerm::Ptr _makeCondition(boost::shared_ptr<QsRestrictor> const restr,
                                  RestrictorEntry const& restrictorEntry);
+    boost::shared_ptr<QsRestrictor::List> _getKeyPreds(QueryContext& context, AndTerm::Ptr p);
+    bool _lookupKey(QueryContext& context, boost::shared_ptr<ColumnRef>  cr);
+    QsRestrictor::Ptr _newKeyRestrictor(QueryContext& context, 
+                                        boost::shared_ptr<ColumnRef> cr, 
+                                        ValueExprList& vList);
+    QsRestrictor::Ptr _convertObjectId(QueryContext& context, 
+                                       QsRestrictor const& original);
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -331,10 +341,14 @@ QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     WhereClause& wc = stmt.getWhereClause();
 
     boost::shared_ptr<QsRestrictor::List const> rListP = wc.getRestrs();
-    context.restrictors.reset(new QueryContext::RestrList);
-    if(!rListP.get()) return; // No qserv restrictions -> nothing to do
+    AndTerm::Ptr originalAnd(wc.getRootAndTerm());
+    boost::shared_ptr<QsRestrictor::List> keyPreds;
+    keyPreds = _getKeyPreds(context, originalAnd);
 
+    // Now handle the explicit restrictors
+    if(!rListP.get()) return; // No spatial restrictions -> nothing to do
     QsRestrictor::List const& rList = *rListP;
+    context.restrictors.reset(new QueryContext::RestrList);
     AndTerm::Ptr newTerm(new AndTerm);
 
     // Now, for each of the qserv restrictors:
@@ -346,11 +360,23 @@ QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
             j != entries.end(); ++j) {
             newTerm->_terms.push_back(_makeCondition(*i, *j));
         }
-        // Save restrictor in QueryContext.
-        context.restrictors->push_back(*i);
+        if((**i)._name == "qserv_objectId") {
+            // Convert to secIndex restrictor
+            QsRestrictor::Ptr p = _convertObjectId(context, **i);
+            context.restrictors->push_back(p);
+        } else {
+            // Save restrictor in QueryContext.
+            context.restrictors->push_back(*i);
+        }
     }
     
     wc.resetRestrs();
+    // Merge in the implicit restrictors
+    if(keyPreds) {
+        context.restrictors->insert(context.restrictors->end(), 
+                                    keyPreds->begin(), keyPreds->end());
+    }
+    if(context.restrictors->empty()) { context.restrictors.reset(); }
     wc.prependAndTerm(newTerm);
 }
 
@@ -364,6 +390,108 @@ QservRestrictorPlugin::_makeCondition(boost::shared_ptr<QsRestrictor> const rest
                                       RestrictorEntry const& restrictorEntry) {
     Restriction r(*restr);
     return r.generate(restrictorEntry);
+}
+
+boost::shared_ptr<QsRestrictor::List> 
+QservRestrictorPlugin::_getKeyPreds(QueryContext& context, AndTerm::Ptr p) {
+    typedef BoolTerm::PtrList::iterator TermIter;
+    typedef BfTerm::PtrList::iterator BfIter;
+    boost::shared_ptr<QsRestrictor::List> keyPreds;
+
+    if(!p) return keyPreds;
+
+    for(TermIter i = p->iterBegin(); i != p->iterEnd(); ++i) {
+        BoolFactor* factor = dynamic_cast<BoolFactor*>(i->get());
+        if(!factor) continue;
+        for(BfIter b = factor->_terms.begin(); 
+            b != factor->_terms.end();
+            ++b) {
+            InPredicate::Ptr ip = boost::dynamic_pointer_cast<InPredicate>(*b);
+            if(!ip) continue;
+            boost::shared_ptr<ColumnRef> cr = ip->value->castAsColumnRef();
+            cr.reset(new ColumnRef(*cr));
+            DbTablePair p = context.resolve(cr);
+            cr->table = p.table;
+            cr->db = p.db;
+            if(_lookupKey(context, cr)) {
+                QsRestrictor::Ptr p = _newKeyRestrictor(context, cr, ip->cands);
+                if(p) { 
+                    if(!keyPreds) {
+                        keyPreds.reset(new QsRestrictor::List());                        
+                    }
+                    keyPreds->push_back(p);
+                }
+            }            
+        }
+    }
+    return keyPreds;
+}
+
+/// @return true if v represents a valid key column.
+bool
+QservRestrictorPlugin::_lookupKey(QueryContext& context, boost::shared_ptr<ColumnRef> cr) {
+    // Match v as a column ref against the key column for a database's 
+    // partitioning strategy.
+    if((!cr) || !context.metadata) { return false; }
+    std::string keyColumn = context.metadata->getKeyColumn(cr->db, cr->table);
+    return (!cr->column.empty()) && (keyColumn == cr->column);
+}
+struct validateLiteral {
+    validateLiteral(bool& isValid_) : isValid(isValid_) {}
+    std::string operator()(ValueExprPtr p) {
+        std::string val = p->castAsLiteral();
+        if(val.empty()) { isValid = false; }
+        return val;
+    }
+    bool& isValid;
+};
+struct extractLiteral {
+    inline std::string operator()(ValueExprPtr p) {
+        return p->castAsLiteral();
+    }
+};
+/// @return a new QsRestrictor from the column ref and the set of 
+/// specified values or NULL if one of the values is a non-literal.
+QsRestrictor::Ptr 
+QservRestrictorPlugin::_newKeyRestrictor(QueryContext& context, 
+                                     boost::shared_ptr<ColumnRef> cr, 
+                                     ValueExprList& vList) {
+    // Extract the literals, bailing out if we see a non-literal
+    bool isValid = true;
+    std::for_each(vList.begin(), vList.end(), validateLiteral(isValid));
+    if(!isValid) {
+        return QsRestrictor::Ptr(); 
+    }
+    
+    // Build the QsRestrictor
+    QsRestrictor::Ptr p(new QsRestrictor());
+    p->_name = "sIndex";
+    // sIndex has paramers as follows:
+    // db, table, column, val1, val2, ...
+    p->_params.push_back(cr->db);
+    p->_params.push_back(cr->table);
+    p->_params.push_back(cr->column);
+    std::transform(vList.begin(), vList.end(), 
+                   std::back_inserter(p->_params), extractLiteral());
+    return p;
+}
+
+QsRestrictor::Ptr
+QservRestrictorPlugin::_convertObjectId(QueryContext& context, 
+                                    QsRestrictor const& original) {
+    // Build the QsRestrictor
+    QsRestrictor::Ptr p(new QsRestrictor());
+    p->_name = "sIndex";
+    // sIndex has paramers as follows:
+    // db, table, column, val1, val2, ...
+    p->_params.push_back(context.dominantDb);
+    p->_params.push_back(context.anonymousTable);
+    std::string keyColumn = context.metadata->getKeyColumn(context.dominantDb, 
+                                                           context.anonymousTable);
+    p->_params.push_back(keyColumn);
+    std::copy(original._params.begin(), original._params.end(), 
+              std::back_inserter(p->_params));
+    return p;
 }
 
 }}} // namespace lsst::qserv::master

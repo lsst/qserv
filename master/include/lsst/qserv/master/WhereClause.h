@@ -39,8 +39,9 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 // Qserv
-#include "lsst/qserv/master/ColumnRefList.h"
+#include "lsst/qserv/master/ColumnRefMap.h"
 #include "lsst/qserv/master/BoolTerm.h"
+#include "lsst/qserv/master/QsRestrictor.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
 namespace lsst { 
@@ -48,36 +49,22 @@ namespace qserv {
 namespace master {
 class BoolTerm; // Forward
 
-/// QsRestrictor is a Qserv spatial restrictor element. Also includes other
-/// qserv-specific restrictor directives, like qserv_objectid()
-class QsRestrictor {
-public:
-    typedef boost::shared_ptr<QsRestrictor> Ptr;
-    typedef std::list<Ptr> List;
-    typedef std::list<std::string> StringList;
-
-    class render {
-    public:
-        render(QueryTemplate& qt_) : qt(qt_) {}
-        void operator()(QsRestrictor::Ptr const& p);
-        QueryTemplate& qt;
-    };
-
-    std::string _name;
-    StringList _params;
-};
 /// WhereClause is a SQL WHERE containing QsRestrictors and a BoolTerm tree.
 class WhereClause {
 public:
-    WhereClause() : _columnRefList(new ColumnRefList()) {}
+    WhereClause() {} 
     ~WhereClause() {}
     class ValueExprIter; // iteratable interface.
     friend class ValueExprIter; 
 
-    boost::shared_ptr<ColumnRefList> getColumnRefList() { 
-        return _columnRefList; }
     boost::shared_ptr<QsRestrictor::List const> getRestrs() const {
         return _restrs; }
+    boost::shared_ptr<BoolTerm const> getRootTerm() const {
+        return _tree;
+    }
+    boost::shared_ptr<ColumnRefMap::List const> getColumnRefs() const;
+    boost::shared_ptr<AndTerm> getRootAndTerm();
+    
     ValueExprIter vBegin();
     ValueExprIter vEnd();
     
@@ -85,7 +72,7 @@ public:
     void renderTo(QueryTemplate& qt) const;
     boost::shared_ptr<WhereClause> copyDeep() const;
     boost::shared_ptr<WhereClause> copySyntax();
-
+    
     void resetRestrs();
     void prependAndTerm(boost::shared_ptr<BoolTerm> t);
     
@@ -94,7 +81,6 @@ private:
     friend class WhereFactory;
     
     std::string _original;
-    boost::shared_ptr<ColumnRefList> _columnRefList;
     boost::shared_ptr<BoolTerm> _tree;
     boost::shared_ptr<QsRestrictor::List> _restrs;
 
@@ -119,12 +105,13 @@ private:
     ValueExprPtr& dereference() const;
     ValueExprPtr& dereference();
 
-    ValueExprTerm* _checkForExpr();
-    ValueExprTerm* _checkForExpr() const;
+    bool _checkIfValid() const;
+    void _incrementValueExpr();
     void _incrementBfTerm();
     void _incrementBterm();
     bool _findFactor();
     bool _setupBfIter();
+    void _updateValueExprIter();
     
 
     WhereClause* _wc; // no shared_ptr available
@@ -134,6 +121,9 @@ private:
     std::stack<PosTuple> _posStack;
     BfTerm::PtrList::iterator _bfIter;
     BfTerm::PtrList::iterator _bfEnd;
+    typedef ValueExprList::iterator ValueExprListIter;
+    ValueExprListIter _vIter;
+    ValueExprListIter _vEnd;
 };
 
 }}} // namespace lsst::qserv::master

@@ -31,43 +31,41 @@
 #include "lsst/qserv/master/QueryTemplate.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
-namespace qMaster=lsst::qserv::master;
-
-namespace { // File-scope helpers
-}
-
+namespace lsst {
+namespace qserv {
+namespace master {
 ////////////////////////////////////////////////////////////////////////
 // BoolTerm section
 ////////////////////////////////////////////////////////////////////////
-std::ostream& qMaster::OrTerm::putStream(std::ostream& os) const {
+std::ostream& OrTerm::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-std::ostream& qMaster::AndTerm::putStream(std::ostream& os) const {
+std::ostream& AndTerm::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-std::ostream& qMaster::BoolFactor::putStream(std::ostream& os) const {
+std::ostream& BoolFactor::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-std::ostream& qMaster::UnknownTerm::putStream(std::ostream& os) const {
+std::ostream& UnknownTerm::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-std::ostream& qMaster::PassTerm::putStream(std::ostream& os) const {
+std::ostream& PassTerm::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-std::ostream& qMaster::PassListTerm::putStream(std::ostream& os) const {
+std::ostream& PassListTerm::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-std::ostream& qMaster::ValueExprTerm::putStream(std::ostream& os) const {
+std::ostream& ValueExprTerm::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-class qMaster::BoolTerm::render {
+class BoolTerm::render {
 public:
     render(QueryTemplate& qt_) : qt(qt_) {}
     void operator()(BoolTerm::Ptr const& t) {
@@ -77,7 +75,7 @@ public:
 };
 namespace {
 template <typename Plist>
-inline void renderList(qMaster::QueryTemplate& qt, 
+inline void renderList(QueryTemplate& qt, 
                        Plist const& lst, 
                        std::string const& sep) {
     int count=0;
@@ -89,23 +87,23 @@ inline void renderList(qMaster::QueryTemplate& qt,
     }
 }
 }
-void qMaster::OrTerm::renderTo(QueryTemplate& qt) const {
+void OrTerm::renderTo(QueryTemplate& qt) const {
     renderList(qt, _terms, "OR");
 }
-void qMaster::AndTerm::renderTo(QueryTemplate& qt) const {
+void AndTerm::renderTo(QueryTemplate& qt) const {
     renderList(qt, _terms, "AND");
 }
-void qMaster::BoolFactor::renderTo(QueryTemplate& qt) const {
+void BoolFactor::renderTo(QueryTemplate& qt) const {
     std::string s;
     renderList(qt, _terms, s);
 }
-void qMaster::UnknownTerm::renderTo(QueryTemplate& qt) const {
+void UnknownTerm::renderTo(QueryTemplate& qt) const {
     qt.append("unknown");
 }
-void qMaster::PassTerm::renderTo(QueryTemplate& qt) const {
+void PassTerm::renderTo(QueryTemplate& qt) const {
     qt.append(_text);
 }
-void qMaster::PassListTerm::renderTo(QueryTemplate& qt) const {
+void PassListTerm::renderTo(QueryTemplate& qt) const {
     qt.append("(");
     StringList::const_iterator i;
     bool isFirst=true;
@@ -118,19 +116,29 @@ void qMaster::PassListTerm::renderTo(QueryTemplate& qt) const {
     }
     qt.append(")");
 }
-void qMaster::ValueExprTerm::renderTo(QueryTemplate& qt) const {
+void ValueExprTerm::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r(_expr);
     if(!_expr) { throw std::invalid_argument("Null-ValueExpr for renderTo()"); }
 }
 
-boost::shared_ptr<qMaster::BoolTerm> qMaster::OrTerm::copySyntax() {
+void BoolFactor::findColumnRefs(ColumnRefMap::List& list) {
+    BfTerm::PtrList::const_iterator i;
+    for(i = _terms.begin(); i != _terms.end(); ++i) {
+        (**i).findColumnRefs(list);
+    }
+}
+void ValueExprTerm::findColumnRefs(ColumnRefMap::List& list) {
+    if(_expr) { return _expr->findColumnRefs(list); }
+}
+boost::shared_ptr<BoolTerm> OrTerm::copySyntax() {
     boost::shared_ptr<OrTerm> ot(new OrTerm());
     ot->_terms = _terms; // shallow copy for now
     return ot;
 }
-boost::shared_ptr<qMaster::BoolTerm> qMaster::AndTerm::copySyntax() {
+boost::shared_ptr<BoolTerm> AndTerm::copySyntax() {
     boost::shared_ptr<AndTerm> at(new AndTerm());
     at->_terms = _terms; // shallow copy for now
     return at;
 }
+}}} // lsst::qserv::master

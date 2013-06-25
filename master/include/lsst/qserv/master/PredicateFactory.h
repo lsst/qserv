@@ -20,34 +20,40 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_VALUETERMFACTORY_H
-#define LSST_QSERV_MASTER_VALUETERMFACTORY_H
+// PredicateFactory constructs Predicate instances from antlr nodes.
+
+#ifndef LSST_QSERV_MASTER_PREDICATEFACTORY_H
+#define LSST_QSERV_MASTER_PREDICATEFACTORY_H
 /**
-  * @file ValueFactor.h
+  * @file PredicateFactory.h
+  *
+  * @brief PredicateFactory makes Predicate objects.
   *
   * @author Daniel L. Wang, SLAC
   */
 #include <boost/shared_ptr.hpp>
 #include <antlr/AST.hpp>
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
-
 // Forward
-class ColumnRefNodeMap;
-class ValueFactor;
+class CompPredicate;
+class BetweenPredicate;
+class InPredicate;
+class ValueExprFactory;
 
-/// ValueFactorFactory constructs ValueFactor instances from antlr nodes.
-class ValueFactorFactory {
+/// PredicateFactory is a factory for making Predicate objects
+class PredicateFactory {
 public:
-    ValueFactorFactory(boost::shared_ptr<ColumnRefNodeMap> cMap);
-    boost::shared_ptr<ValueFactor> newFactor(antlr::RefAST a);
-                                         
+    explicit PredicateFactory(ValueExprFactory& vf) 
+        : _vf(vf) {}
+    boost::shared_ptr<CompPredicate> newCompPredicate(antlr::RefAST a);
+    boost::shared_ptr<BetweenPredicate> newBetweenPredicate(antlr::RefAST a);
+    boost::shared_ptr<InPredicate> newInPredicate(antlr::RefAST a);
 private:
-    boost::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
+    ValueExprFactory& _vf;
 };
-
 }}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_VALUETERMFACTORY_H
+#endif // LSST_QSERV_MASTER_PREDICATEFACTORY_H
 

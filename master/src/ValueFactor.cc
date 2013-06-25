@@ -40,11 +40,10 @@
 #include "lsst/qserv/master/FuncExpr.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
-namespace qMaster=lsst::qserv::master;
-using lsst::qserv::master::ValueFactor;
-using lsst::qserv::master::ValueFactorPtr;
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 
 ValueFactorPtr ValueFactor::newColumnRefFactor(boost::shared_ptr<ColumnRef const> cr) {
     ValueFactorPtr term(new ValueFactor());
@@ -91,9 +90,29 @@ ValueFactor::newExprFactor(boost::shared_ptr<ValueExpr> ve) {
     return factor;
 }
 
+void ValueFactor::findColumnRefs(ColumnRef::List& list) {
+    switch(_type) {
+    case COLUMNREF:
+        list.push_back(_columnRef);
+        break;
+    case FUNCTION: 
+    case AGGFUNC:        
+        _funcExpr->findColumnRefs(list);
+        break;
+    case STAR:
+    case CONST:
+        break;
+    case EXPR:
+        _valueExpr->findColumnRefs(list);
+        break;
+    default: break;
+    }
+}
+
 ValueFactorPtr ValueFactor::clone() const{
     ValueFactorPtr expr(new ValueFactor(*this));
     // Clone refs.
+    // FIXME: not sure these are deep copies.
     if(_columnRef.get()) {
         expr->_columnRef.reset(new ColumnRef(*_columnRef));
     }
@@ -131,7 +150,7 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const* ve) {
     return os << *ve;
 }
 
-void ValueFactor::render::operator()(qMaster::ValueFactor const& ve) {
+void ValueFactor::render::operator()(ValueFactor const& ve) {
     switch(ve._type) {
     case ValueFactor::COLUMNREF: ve._columnRef->render(_qt); break;
     case ValueFactor::FUNCTION: ve._funcExpr->render(_qt); break;

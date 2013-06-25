@@ -54,26 +54,20 @@
 #include "lsst/qserv/master/ParseException.h" 
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/TableRefN.h"
-// namespace modifiers
-namespace qMaster = lsst::qserv::master;
-
-////////////////////////////////////////////////////////////////////////
-// Parse handlers
-////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////
 // SelectFactory
 ////////////////////////////////////////////////////////////////////////
-using qMaster::SelectFactory;
-using qMaster::SelectListFactory;
-using qMaster::SelectStmt;
+namespace lsst {
+namespace qserv {
+namespace master {
 
 SelectFactory::SelectFactory() 
     : _columnAliases(new ParseAliasMap()),
       _tableAliases(new ParseAliasMap()),
-      _columnRefMap(new ColumnRefMap()),
+      _columnRefNodeMap(new ColumnRefNodeMap()),
       _fFactory(new FromFactory(_tableAliases)),
-      _vFactory(new ValueExprFactory(_columnRefMap)) {
+      _vFactory(new ValueExprFactory(_columnRefNodeMap)) {
 
     _slFactory.reset(new SelectListFactory(_columnAliases, _vFactory));
     _mFactory.reset(new ModFactory(_vFactory));
@@ -106,7 +100,7 @@ SelectFactory::getStatement() {
 void 
 SelectFactory::_attachShared(SqlSQL2Parser& p) {
     boost::shared_ptr<ColumnRefH> crh(new ColumnRefH());
-    crh->setListener(_columnRefMap);
+    crh->setListener(_columnRefNodeMap);
     p._columnRefHandler = crh;
 }
 
@@ -143,17 +137,10 @@ private:
 ////////////////////////////////////////////////////////////////////////
 class SelectListFactory::ColumnAliasH : public VoidTwoRefFunc {
 public: 
-    ColumnAliasH(boost::shared_ptr<qMaster::ParseAliasMap> map) : _map(map) {}
+    ColumnAliasH(boost::shared_ptr<ParseAliasMap> map) : _map(map) {}
     virtual ~ColumnAliasH() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
-        using lsst::qserv::master::getSiblingBefore;
-        using qMaster::tokenText;
         if(b.get()) {
-            // qMaster::NodeBound target(a, getSiblingBefore(a,b));
-            // // Exclude the "AS" 
-            // if(boost::iequals(tokenText(target.second) , "as")) {
-            //     target.second = getSiblingBefore(a, target.second);
-            // }
             b->setType(SqlSQL2TokenTypes::COLUMN_ALIAS_NAME);
             _map->addAlias(b, a);
         }
@@ -161,15 +148,13 @@ public:
         // regardless of alias.
     }
 private:
-    boost::shared_ptr<qMaster::ParseAliasMap> _map;
+    boost::shared_ptr<ParseAliasMap> _map;
 }; // class ColumnAliasH
 
 
 ////////////////////////////////////////////////////////////////////////
 // class SelectListFactory 
 ////////////////////////////////////////////////////////////////////////
-using qMaster::SelectList;
-
 SelectListFactory::SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
                                      boost::shared_ptr<ValueExprFactory> vf)
     : _aliases(aliasMap),
@@ -273,3 +258,4 @@ SelectListFactory::_addSelectStar(RefAST child) {
     _valueExprList->push_back(ValueExpr::newSimple(vt));
 }
 
+}}} // lsst::qserv::master

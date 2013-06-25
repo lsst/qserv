@@ -29,8 +29,10 @@
   */
 #include <iostream>
 #include <list>
+#include <sstream>
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include "lsst/qserv/master/ColumnRef.h"
 
 namespace lsst { 
 namespace qserv { 
@@ -63,6 +65,13 @@ public:
     FactorOpList& getFactorOps() { return _factorOps; }
     /// @return a const list of ValueFactor-Op 
     FactorOpList const& getFactorOps() const { return _factorOps; }
+
+    boost::shared_ptr<ColumnRef> castAsColumnRef() const;
+    std::string castAsLiteral() const;
+    template<typename T>
+    T castAsType(T const& defaultValue) const;
+
+    void findColumnRefs(ColumnRef::List& list);
 
     ValueExprPtr clone() const;
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const& ve);

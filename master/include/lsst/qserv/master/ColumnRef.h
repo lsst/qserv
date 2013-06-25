@@ -29,6 +29,8 @@
   * @author Daniel L. Wang, SLAC
   */
 #include <string>
+#include <list>
+#include <boost/shared_ptr.hpp>
 
 namespace lsst { 
 namespace qserv { 
@@ -39,6 +41,8 @@ class QueryTemplate; // Forward
 /// ColumnRef is an abstract value class holding a parsed single column ref
 class ColumnRef {
 public:
+    typedef std::list<boost::shared_ptr<ColumnRef> > List;
+
     ColumnRef(std::string db_, std::string table_, std::string column_) 
         : db(db_), table(table_), column(column_) {}
     

@@ -197,6 +197,23 @@ qMaster::MetadataCache::DbInfo::getPartitionCols(std::string const& tableName) c
     return v;
 }
 
+/** Retrieve the key column for a database
+  *
+  * @param table table name
+  *
+  * @return the name of the partitioning key column
+  * The partitioning key column is constant over a database in the current 
+  * implementation. 
+  */
+std::string
+qMaster::MetadataCache::DbInfo::getKeyColumn(std::string const& table) const {
+    std::map<std::string, TableInfo>::const_iterator itr = _tables.find(table);
+    if (itr == _tables.end()) {        
+        return std::string();
+    }
+    return itr->second.getObjIdCol();
+}
+
 /** Constructs object representing a non-partitioned table.
   */
 qMaster::MetadataCache::TableInfo::TableInfo() :
@@ -500,7 +517,26 @@ qMaster::MetadataCache::getChunkLevel(std::string const& dbName,
     if (itr == _dbs.end()) {
         return -1;
     }
-    return itr->second.checkIfTableIsSubChunked(tableName);
+    return itr->second.getChunkLevel(tableName);
+}
+
+/** Retrieve the key column for a database
+  *
+  * @param db database name
+  * @param table table name
+  *
+  * @return the name of the partitioning key column
+  * The partitioning key column is constant over a database in the current 
+  * implementation. 
+  */
+std::string
+qMaster::MetadataCache::getKeyColumn(std::string const& db, std::string const& table) {
+    boost::lock_guard<boost::mutex> m(_mutex);
+    std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(db);
+    if (itr == _dbs.end()) {
+        return std::string();
+    }
+    return itr->second.getKeyColumn(table);
 }
 
 /** Gets DbInfo structure for a given database.

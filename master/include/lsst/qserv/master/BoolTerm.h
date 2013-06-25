@@ -35,8 +35,12 @@
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include "lsst/qserv/master/ColumnRefMap.h"
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
+
 class QueryTemplate; // Forward
 class ValueExpr;
 
@@ -70,6 +74,7 @@ public:
     virtual ~BfTerm() {}
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
+    void findColumnRefs(ColumnRefMap::List& list) {}
 };
 /// OrTerm is a set of OR-connected BoolTerms
 class OrTerm : public BoolTerm {
@@ -110,6 +115,8 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
+    void findColumnRefs(ColumnRefMap::List& list);
+
     BfTerm::PtrList _terms;
 };
 /// UnknownTerm is a catch-all term intended to help the framework pass-through
@@ -138,12 +145,14 @@ public: // ( term, term, term )
     virtual void renderTo(QueryTemplate& qt) const;
     StringList _terms;
 };
+
 /// ValueExprTerm is a bool factor term that contains a value expression
 class ValueExprTerm : public BfTerm {
 public:
     typedef boost::shared_ptr<ValueExprTerm> Ptr;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
+    virtual void findColumnRefs(ColumnRefMap::List& list);
     boost::shared_ptr<ValueExpr> _expr;
 };
 

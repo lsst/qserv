@@ -1,0 +1,197 @@
+// -*- LSST-C++ -*-
+/* 
+ * LSST Data Management System
+ * Copyright 2013 LSST Corporation.
+ * 
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the LSST License Statement and 
+ * the GNU General Public License along with this program.  If not, 
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+#ifndef LSST_QSERV_MASTER_PREDICATE_H
+#define LSST_QSERV_MASTER_PREDICATE_H
+/**
+  * @file Predicate.h
+  *
+  * @brief Predicate is a representation of a boolean term in a WHERE clause
+  *
+  * @author Daniel L. Wang, SLAC
+  */
+// 
+
+#include <list>
+#include <string>
+#include <boost/shared_ptr.hpp>
+#include "lsst/qserv/master/BoolTerm.h"
+
+namespace lsst { 
+namespace qserv { 
+namespace master {
+
+class QueryTemplate; // Forward
+class ValueExpr;
+
+///  Predicate is a representation of a SQL predicate.
+/// predicate : 
+/// 	  row_value_constructor 
+/// 	    ( comp_predicate
+/// 	    | ("not")? ( between_predicate 
+/// 	               | in_predicate 
+/// 	               | like_predicate 
+/// 	               )
+/// 	    | null_predicate 
+/// 	    | quantified_comp_predicate 
+/// 	    | match_predicate 
+/// 	    | overlaps_predicate 
+/// 	    ) {#predicate = #([PREDICATE, "PREDICATE"],predicate);}
+/// 	| exists_predicate 
+/// 	| unique_predicate 
+class Predicate : public BfTerm {
+public:
+    typedef boost::shared_ptr<Predicate> Ptr;
+    typedef std::list<Ptr> PtrList;
+    typedef std::list<boost::shared_ptr<ValueExpr> > ValueExprList;
+    typedef ValueExprList::iterator ValueExprListIter;
+
+    virtual ~Predicate() {}
+    virtual char const* getName() const { return "Predicate"; }
+
+    virtual void cacheValueExprList() {}
+    virtual ValueExprList::iterator valueExprCacheBegin() { return ValueExprList::iterator(); }
+    virtual ValueExprList::iterator valueExprCacheEnd() { return ValueExprList::iterator(); }
+
+    virtual void findColumnRefs(ColumnRefMap::List& list) {}
+
+    friend std::ostream& operator<<(std::ostream& os, Predicate const& bt);
+    virtual std::ostream& putStream(std::ostream& os) const = 0;
+    virtual void renderTo(QueryTemplate& qt) const = 0;
+    /// Deep copy this term.
+    virtual boost::shared_ptr<Predicate> copySyntax() {
+        return boost::shared_ptr<Predicate>(); }
+    class render;
+};
+
+/// GenericPredicate is a Predicate whose structure whose semantic meaning 
+/// is unimportant for qserv
+class GenericPredicate : public Predicate {
+public:
+    typedef boost::shared_ptr<Predicate> Ptr;
+    typedef std::list<Ptr> PtrList;
+
+    virtual ~GenericPredicate() {}
+    virtual char const* getName() const { return "GenericPredicate"; }
+
+    /// @return a mutable list iterator for the contained terms
+    //virtual PtrList::iterator iterBegin() { return PtrList::iterator(); }
+    /// @return the terminal iterator
+    //virtual PtrList::iterator iterEnd() { return PtrList::iterator(); }
+
+    friend std::ostream& operator<<(std::ostream& os, GenericPredicate const& bt);
+    virtual std::ostream& putStream(std::ostream& os) const = 0;
+    virtual void renderTo(QueryTemplate& qt) const = 0;
+    /// Deep copy this term.
+    virtual boost::shared_ptr<Predicate> copySyntax() {
+        return boost::shared_ptr<Predicate>(); }
+    class render;
+};
+
+/// CompPredicate is a Predicate involving a row value compared to another row value.
+/// (literals can be row values)
+class CompPredicate : public Predicate {
+public:
+    typedef boost::shared_ptr<Predicate> Ptr;
+    typedef std::list<Ptr> PtrList;
+
+    virtual ~CompPredicate() {}
+    virtual char const* getName() const { return "CompPredicate"; }
+
+    virtual void cacheValueExprList();
+    virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
+    virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
+    virtual void findColumnRefs(ColumnRefMap::List& list);
+
+    friend std::ostream& operator<<(std::ostream& os, CompPredicate const& bt);
+    virtual std::ostream& putStream(std::ostream& os) const;
+    virtual void renderTo(QueryTemplate& qt) const;
+    /// Deep copy this term.
+    virtual boost::shared_ptr<Predicate> copySyntax() {
+        return boost::shared_ptr<Predicate>(); }
+    class render;
+    
+    boost::shared_ptr<ValueExpr> left;
+    int op; // Parser token type of operator
+    boost::shared_ptr<ValueExpr> right;
+    boost::shared_ptr<Predicate::ValueExprList> _cache;
+};
+
+/// InPredicate is a Predicate comparing a row value to a set
+class InPredicate : public Predicate {
+public:
+    typedef boost::shared_ptr<InPredicate> Ptr;
+    typedef std::list<Ptr> PtrList;
+
+    virtual ~InPredicate() {}
+    virtual char const* getName() const { return "InPredicate"; }
+
+    virtual void cacheValueExprList();
+    virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
+    virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
+    virtual void findColumnRefs(ColumnRefMap::List& list);
+
+    friend std::ostream& operator<<(std::ostream& os, InPredicate const& bt);
+    virtual std::ostream& putStream(std::ostream& os) const;
+    virtual void renderTo(QueryTemplate& qt) const;
+    /// Deep copy this term.
+    virtual boost::shared_ptr<Predicate> copySyntax() {
+        return boost::shared_ptr<Predicate>(); }
+    class render;
+
+    boost::shared_ptr<ValueExpr> value;
+    
+    std::list<boost::shared_ptr<ValueExpr> > cands;
+    boost::shared_ptr<Predicate::ValueExprList> _cache;
+};
+/// BetweenPredicate is a Predicate comparing a row value to a range 
+class BetweenPredicate : public Predicate {
+public:
+    typedef boost::shared_ptr<BetweenPredicate> Ptr;
+    typedef std::list<Ptr> PtrList;
+
+    virtual ~BetweenPredicate() {}
+    virtual char const* getName() const { return "BetweenPredicate"; }
+
+    virtual void cacheValueExprList();
+    virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
+    virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
+    virtual void findColumnRefs(ColumnRefMap::List& list);
+    friend std::ostream& operator<<(std::ostream& os, BetweenPredicate const& bt);
+    virtual std::ostream& putStream(std::ostream& os) const;
+    virtual void renderTo(QueryTemplate& qt) const;
+    /// Deep copy this term.
+    virtual boost::shared_ptr<Predicate> copySyntax() {
+        return boost::shared_ptr<Predicate>(); }
+    class render;
+
+    boost::shared_ptr<ValueExpr> value;
+    boost::shared_ptr<ValueExpr> minValue;
+    boost::shared_ptr<ValueExpr> maxValue;
+    boost::shared_ptr<Predicate::ValueExprList> _cache;
+};
+
+}}} // namespace lsst::qserv::master
+
+
+#endif // LSST_QSERV_MASTER_PREDICATE_H
+

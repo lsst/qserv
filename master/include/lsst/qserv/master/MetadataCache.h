@@ -76,6 +76,7 @@ public:
     std::vector<std::string> getSubChunkedTables(std::string const&);
     std::vector<std::string> getPartitionCols(std::string const&, std::string const&);
     long getChunkLevel(std::string const& db, std::string const& table);
+    std::string getKeyColumn(std::string const& db, std::string const& table);
     DbInfo getDbInfo(std::string const& dbName);
 
     void printSelf();
@@ -136,6 +137,7 @@ public:
         std::vector<std::string> getChunkedTables() const;
         std::vector<std::string> getSubChunkedTables() const;
         std::vector<std::string> getPartitionCols(std::string const&) const;
+        std::string getKeyColumn(std::string const&) const;
 
     private:
         const bool _isPartitioned;

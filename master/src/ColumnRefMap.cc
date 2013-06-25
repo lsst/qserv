@@ -20,21 +20,23 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file ColumnRefList.cc
+  * @file ColumnRefMap.cc
   *
-  * @brief Implementation of a ColumnRefList, a container for column
+  * @brief Implementation of a ColumnRefMap, a container for column
   * refs parsed from a SQL statement 
   *
   * @author Daniel L. Wang, SLAC
   */
-#include "lsst/qserv/master/ColumnRefList.h"
+#include "lsst/qserv/master/ColumnRefMap.h"
 #include <stdexcept>
 #include "lsst/qserv/master/ColumnRef.h"
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 
 void
-ColumnRefList::acceptColumnRef(antlr::RefAST d, antlr::RefAST t, 
+ColumnRefMap::acceptColumnRef(antlr::RefAST d, antlr::RefAST t, 
                                antlr::RefAST c) {
     boost::shared_ptr<ColumnRef> cr(new ColumnRef(tokenText(d), 
                                                   tokenText(t), 
@@ -50,7 +52,7 @@ ColumnRefList::acceptColumnRef(antlr::RefAST d, antlr::RefAST t,
 }
 
 boost::shared_ptr<ColumnRef const>
-ColumnRefList::getRef(antlr::RefAST r) { 
+ColumnRefMap::getRef(antlr::RefAST r) { 
     if(_refs.find(r) == _refs.end()) {
         std::cout << "couldn't find " << tokenText(r) << " in";
         printRefs(); 
@@ -62,7 +64,7 @@ ColumnRefList::getRef(antlr::RefAST r) {
 }
     
 void 
-ColumnRefList::printRefs() const { 
+ColumnRefMap::printRefs() const { 
     std::cout << "Printing select refs." << std::endl;
     typedef RefMap::const_iterator Citer; 
     Citer end = _refs.end();

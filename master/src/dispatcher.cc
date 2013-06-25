@@ -262,14 +262,12 @@ void qMaster::setupQuery(int session, std::string const& query,
     QuerySession& qs = qm.getQuerySession();
     qs.setResultTable(resultTable);
     qs.setQuery(query);
-
 }
 
-
 std::string const& qMaster::getSessionError(int session) {
-    static const std::string empty;
-    // TODO: Retrieve from QuerySession.
-    return empty;
+    AsyncQueryManager& qm = getAsyncManager(session);
+    QuerySession& qs = qm.getQuerySession();
+    return qs.getError();
 }
 
 lsst::qserv::master::Constraint getC(int base) {

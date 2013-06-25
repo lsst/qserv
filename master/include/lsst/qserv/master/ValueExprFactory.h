@@ -38,13 +38,13 @@ namespace lsst {
 namespace qserv {
 namespace master {
 // Forward
-class ColumnRefMap;
+class ColumnRefNodeMap;
 class ValueExpr;
 class ValueFactorFactory;
 /// ValueExprFactory is a factory for making ValueExpr objects
 class ValueExprFactory {
 public:
-    ValueExprFactory(boost::shared_ptr<ColumnRefMap> cMap);
+    ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap);
     boost::shared_ptr<ValueExpr> newExpr(antlr::RefAST a);
                                          
 private:

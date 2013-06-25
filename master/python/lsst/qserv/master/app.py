@@ -51,7 +51,7 @@
 # Standard Python imports
 import errno
 import hashlib
-from itertools import chain, imap
+from itertools import chain, imap, ifilter
 import os
 import cProfile as profile
 import pstats
@@ -123,7 +123,7 @@ import code, traceback, signal
 
 # Constant, long-term, this should be defined differently
 dummyEmptyChunk = 1234567890
-
+CHUNK_COL = "chunkId"
 
 def debug(sig, frame):
     """Interrupt running process, and provide a python prompt for
@@ -341,6 +341,34 @@ def setupResultScratch():
         raise cm.ConfigError("No access for scratch_path(%s)" % scratchPath)
     return scratchPath
 
+class IndexLookup:
+    def __init__(self, db, table, keyColumn, keyVals):
+        self.db = db
+        self.table = table
+        self.keyColumn = keyColumn
+        self.keyVals = keyVals
+        pass
+class SecondaryIndex:
+    def lookup(self, indexLookups):
+        sqls = []
+        for lookup in indexLookups:
+            table = metadata.getIndexNameForTable("%s.%s" % (lookup.db,
+                                                             lookup.table))
+            keys = ",".join(lookup.keyVals)
+            condition = "%s IN (%s)" % (lookup.keyColumn, keys)
+            sql = "SELECT %s FROM %s WHERE %s" % (CHUNK_COL, table, condition)
+            sqls.append(sql)
+        if not sqls:
+            return
+        sql = " UNION ".join(sqls)
+        db = Db()
+        db.activate()
+        cids = db.applySql(sql)
+        print "cids are ", cids
+        cids = map(lambda t: t[0], cids)
+        del db
+        return cids
+
 ########################################################################    
 class InbandQueryAction:
     """InbandQueryAction is an action which represents a user-query
@@ -368,19 +396,26 @@ class InbandQueryAction:
         self.isValid = False
 
         self.hints = hints
+        self.hintList = [] # C++ parser-extracted hints only. 
 
         self._importQconfig()
         self._invokeLock = threading.Semaphore()
         self._invokeLock.acquire() # Prevent res-retrieval before invoke
         self._resultName = resultName
         self._reportError = reportError
-        self.isValid = True
-        self.metaCacheSession = MetadataCacheIface().getDefaultSessionId()
+        try:
+            self.metaCacheSession = MetadataCacheIface().getDefaultSessionId()
+            self._prepareForExec()
+            self.isValid = True
+        except QueryHintError, e:
+            self._error = str(e)
+        except:
+            self._error = "Unexpected error: " + str(sys.exc_info())
+            print self._error
         pass
 
     def invoke(self):
         """Begin execution of the query"""
-        self._prepareForExec()
         self._execAndJoin()
         self._invokeLock.release()
 
@@ -422,27 +457,26 @@ class InbandQueryAction:
         self._prepareMerger()
         pass
 
-    def _evaluateHints(self, hints, pmap):
+    def _evaluateHints(self, dominantDb, hintList, pmap):
         """Modify self.fullSky and self.partitionCoverage according to 
         spatial hints. This is copied from older parser model."""
         self._isFullSky = True
         self._intersectIter = pmap
-        if hints:
-            regions = self._computeRegions(hints)
-            self._dbContext = hints.get("db", "")
-            ids = hints.get("objectId", "")
+        if hintList:
+            regions = self._computeSpatialRegions(hintList)
+            indexRegions = self._computeIndexRegions(hintList)
+            
             if regions != []:
                 # Remove the region portion from the intersection tuple
                 self._intersectIter = map(
                     lambda i: (i[0], map(lambda j:j[0], i[1])),
                     pmap.intersect(regions))
                 self._isFullSky = False
-            if ids:
-                chunkIds = self._getChunkIdsFromObjs(ids)
+            if indexRegions:
                 if regions != []:
-                    self._intersectIter = chain(self._intersectIter, chunkIds)
+                    self._intersectIter = chain(self._intersectIter, indexRegions)
                 else:
-                    self._intersectIter = map(lambda i: (i,[]), chunkIds)
+                    self._intersectIter = map(lambda i: (i,[]), indexRegions)
                 self._isFullSky = False
                 if not self._intersectIter:
                     self._intersectIter = [(dummyEmptyChunk, [])]
@@ -475,8 +509,9 @@ class InbandQueryAction:
             params = [constraint.paramsGet(i) 
                       for i in range(constraint.paramsSize())]
             self.hints[constraint.name] = params
+            self.hintList.append((constraint.name, params))
             pass 
-        self._evaluateHints(self.hints, self.pmap)
+        self._evaluateHints(dominantDb, self.hintList, self.pmap)
         self._emptyChunks = metadata.getEmptyChunks(dominantDb)
         count = 0
         chunkLimit = self.chunkLimit
@@ -549,17 +584,33 @@ class InbandQueryAction:
         cfg["runtime.metaCacheSession"] = str(self.metaCacheSession)
         return cfg
 
-    def _computeRegions(self, hints):
+    def _computeIndexRegions(self, hintList):
+        """Compute spatial region coverage based on hints.
+        @return list of regions"""
+        print "Looking for indexhints in ", hintList
+        secIndexSpecs = ifilter(lambda t: t[0] == "sIndex", hintList)
+        lookups = []
+        for s in secIndexSpecs:
+            params = s[1]
+            lookup = IndexLookup(params[0], params[1], params[2], params[3:])
+            lookups.append(lookup)
+            pass
+        index = SecondaryIndex()
+        chunkIds = index.lookup(lookups)
+        print "lookup got chunks:", chunkIds
+        return chunkIds
+
+    def _computeSpatialRegions(self, hintList):
         """Compute spatial region coverage based on hints.
         @return list of regions"""
         r = spatial.getRegionFactory()
-        regs = r.getRegionFromHint(hints)
+        regs = r.getRegionFromHint(hintList)
         if regs != None:
             return regs
         else:
             if r.errorDesc:
                 # How can we give a good error msg to the client?
-                s = "Error parsing hint string %s"
+                s = "Error parsing hint string %s"                
                 raise QueryHintError(s % r.errorDesc)
             return []
         pass
@@ -578,27 +629,6 @@ class InbandQueryAction:
         configureSessionMerger3(self.sessionId)
         pass
 
-    def _getChunkIdsFromObjs(self, ids):
-        """ FIXME: objectID indexing not supported yet"""
-        table = metadata.getIndexNameForTable("LSST.Object")
-        objCol = "objectId"
-        chunkCol = "x_chunkId"
-        try:
-            test = ",".join(map(str, map(int, ids.split(","))))
-            chopped = filter(lambda c: not c.isspace(), ids)
-            assert test == chopped
-        except Exception, e:
-            print "Error converting objectId spec. ", ids, "Ignoring.",e
-            #print test,"---",chopped
-            return []
-        sql = "SELECT %s FROM %s WHERE %s IN (%s);" % (chunkCol, table,
-                                                       objCol, ids)
-        db = Db()
-        db.activate()
-        cids = db.applySql(sql)
-        cids = map(lambda t: t[0], cids)
-        del db
-        return cids
         
     pass # class InbandQueryAction
 
