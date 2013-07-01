@@ -1,18 +1,19 @@
 import io
 import os
+import hashlib 
 import logging
 import re
 import subprocess
 import sys
 import ConfigParser
+import const
 
 def read_user_config():
     config_file=os.path.join(os.getenv("HOME"),".lsst","qserv.conf")
-    default_config_file=os.path.join(os.getenv("HOME"),".lsst","qserv.default.conf")
-    config = read_config(config_file, default_config_file)
+    config = read_config(config_file)
     return config
 
-def read_config(config_file, default_config_file):
+def read_config(config_file):
 
     logger = logging.getLogger()
     logger.debug("Reading build config file : %s" % config_file)
@@ -20,12 +21,9 @@ def read_config(config_file, default_config_file):
     if not os.path.isfile(config_file):
         logger.fatal("qserv configuration file not found : %s" % config_file)
         exit(1)
-    elif not os.path.isfile(default_config_file):
-        logger.fatal("qserv configuration file with default values not found : %s" % default_config_file)
-        exit(1)
 
     parser = ConfigParser.SafeConfigParser()
-    parser.read(default_config_file)
+    parser.readfp(io.BytesIO(const.DEFAULT_CONFIG))
     parser.read(config_file)
 
     logger.debug("Build configuration : ")
@@ -45,6 +43,10 @@ def read_config(config_file, default_config_file):
     for dir in ['base_dir', 'tmp_dir', 'log_dir']:
         config['qserv'][dir] = os.path.normpath(config['qserv'][dir])
     config['qserv']['bin_dir'] = os.path.join(config['qserv']['base_dir'], "bin")
+    config['qserv']['scratch_dir'] = os.path.join( "/dev", "shm", "qserv-%s-%s" %
+                                        (os.getlogin(),
+                                        hashlib.sha224(config['qserv']['base_dir']).hexdigest())
+                                    )
 
     section='mysqld'
     config[section] = dict()

@@ -1,9 +1,10 @@
+DEFAULT_CONFIG="""
 # WARNING : these variables mustn't be changed once the install process is started
 # This file relies on Python templating system i.e. each %(variable_name)s will be replaced by the value of variable_name
 [DEFAULT]
-version = qserv-dev
+version = 0.5.1rc3
 # Qserv will be installed in base_dir
-base_dir = /opt/%(version)s
+base_dir = /opt/qserv-%(version)s
 # Log file will be stored here
 log_dir = %(base_dir)s/var/log
 # Temporary files will be stored here
@@ -50,7 +51,7 @@ port=4040
 port=3306
 
 user=root
-# Be careful, special characters (',%,",...) may cause error,
+# Be careful, special characters (',%,\",...) may cause error,
 # use %% instead of %
 pass=changeme
 
@@ -80,9 +81,9 @@ luasocket_url=%(repository)s/luasocket-2.0.2.tar.gz
 mysql_url=%(repository)s/mysql-5.1.61.tar.gz
 mysql_proxy_url=%(repository)s/mysql-proxy-0.8.2.tar.gz
 protobuf_url=%(repository)s/protobuf-2.4.1.tar.gz
-scisql_url=%(repository)s/scisql-0.3.tar.bz2
+scisql_url=https://launchpad.net/scisql/trunk/0.3.2/+download/scisql-0.3.2.tar.bz2
 virtualenv_url=%(repository)s/virtualenv-1.7.tar.gz
 xrootd_url=%(repository)s/xrootd.tar.gz
-# scons_url=%(repository)s/scons-2.1.0.tar.gz
+"""
 
 

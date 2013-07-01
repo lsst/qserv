@@ -15,7 +15,7 @@ import utils
 
 logger = commons.init_default_logger(log_file_prefix="scons-qserv", level=logging.DEBUG)
 
-env = Environment(tools=['textfile', 'clean', 'pymod'])
+env = Environment(tools=['textfile', 'pymod'])
 
 #########################
 #
@@ -25,15 +25,14 @@ env = Environment(tools=['textfile', 'clean', 'pymod'])
 
 # this file must be placed in main scons directory
 src_dir=Dir('.').srcnode().abspath+"/"
-config_file_name=src_dir+"qserv-build.conf"
-default_config_file_name=src_dir+"qserv-build.default.conf"
+config_file_name=os.path.join(src_dir, "qserv-build.conf")
 
 if not os.path.exists(config_file_name):
     logging.fatal("Your configuration file is missing: %s" % config_file_name)
     sys.exit(1)
 
 try:
-    config = commons.read_config(config_file_name, default_config_file_name)
+    config = commons.read_config(config_file_name)
 except ConfigParser.NoOptionError, exc:
     logging.fatal("An option is missing in your configuration file: %s" % exc)
     sys.exit(1)
@@ -52,7 +51,6 @@ init_target_lst = []
 make_root_dirs_cmd = env.Command('make-root-dirs-dummy-target', [], actions.check_root_dirs)
 init_target_lst.append(make_root_dirs_cmd)
 
-
 make_root_symlinks_cmd = env.Command('make-root-symlinks-dummy-target', [], actions.check_root_symlinks)
 init_target_lst.append(make_root_symlinks_cmd)
 
@@ -68,7 +66,7 @@ env.Requires(env.Alias('download'), env.Alias('init'))
 env.Requires(env.Alias('perl-install'), env.Alias('download'))
 # templates must be applied before installation in order to
 # initialize mysqld
-env.Requires(env.Alias('perl-install'), env.Alias('templates'))
+env.Requires(env.Alias('perl-install'), env.Alias('config'))
 env.Requires(env.Alias('perl-init-mysql-db'), env.Alias('templates'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
 env.Requires(env.Alias('admin-bin'), env.Alias('python-tests'))
@@ -77,9 +75,6 @@ env.Requires(env.Alias('perl-install'), env.Alias('admin-bin'))
 env.Alias('install',env.Alias('perl-install'))
 
 env.Default(env.Alias('install'))
-
-# TODO :
-#env.CleanAction(env.Alias('perl-install'),env.Alias('perl-clean-all'))
 
 ###########################
 #
@@ -91,16 +86,16 @@ source_urls = []
 target_files = []
 
 download_cmd_lst = []
-output_dir = config['qserv']['base_dir'] + os.sep +"build" + os.sep
+output_dir = os.path.join(config['qserv']['base_dir'],"build")
 # Add a command for each file to download
 for app in config['dependencies']:
     if re.match(".*_url",app):
         app_url=config['dependencies'][app]
         base_file_name = os.path.basename(app_url)
-        output_file = output_dir + base_file_name
+        output_file = os.path.join(output_dir,base_file_name)
         # Command to use in order to download source tarball
-        env.Command(output_file, Value(app_url), actions.download)
-	download_cmd_lst.append(output_file)
+        cmd = env.Command(output_file, Value(app_url), actions.download)
+	download_cmd_lst.append(cmd)
 env.Alias('download', download_cmd_lst)
 
 #########################
@@ -133,6 +128,7 @@ def get_template_targets():
         '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
         '%\(QSERV_LUA_SHARE\)s': os.path.join(config['qserv']['base_dir'],"share","lua","5.1"),
         '%\(QSERV_LUA_LIB\)s': os.path.join(config['qserv']['base_dir'],"lib","lua","5.1"),
+        '%\(QSERV_SCRATCH_DIR\)s': config['qserv']['scratch_dir'],
         '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'],
         '%\(MYSQLD_PORT\)s': config['mysqld']['port'],
         # used for mysql-proxy in mono-node
@@ -193,6 +189,19 @@ def get_template_targets():
 
 env.Alias("templates", get_template_targets())
 
+############################
+#
+# Fill configuration files
+#
+############################
+
+homedir=os.path.expanduser("~")
+user_config_dir=os.path.join(homedir,".lsst") 
+user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
+make_user_config_cmd = env.Command(user_config_file_name, config_file_name, Copy("$TARGET", "$SOURCE"))
+
+env.Alias("config", [env.Alias("templates"),make_user_config_cmd])
+
 #########################
 #
 # Install python modules
@@ -224,6 +233,44 @@ for f in bin_basename_lst:
     bin_target_lst.append(target)
 
 env.Alias("admin-bin", bin_target_lst)
+
+#########################
+#
+# Install scisql 
+#
+#########################
+if config['qserv']['node_type'] in ['mono','worker']:
+
+    # MySQL is required 
+    env.Requires(env.Alias('scisql'), env.Alias('perl-install'))
+    env.Requires(env.Alias('install'), env.Alias('scisql'))
+   
+    scisql_cmd=[] 
+    scisql_install_sh = os.path.join(config['qserv']['base_dir'],'tmp','install', "scisql.sh")
+    cmd = env.Command('scisql-dummy-target', [], scisql_install_sh)
+    scisql_cmd.append(cmd)
+    
+    env.Alias("scisql", scisql_cmd)
+
+#########################
+#
+# Uninstall everything:
+#
+#########################
+if 'uninstall' in COMMAND_LINE_TARGETS:
+    paths = [
+            os.path.join(config['qserv']['log_dir']),
+            os.path.join(config['mysqld']['data_dir']),
+            os.path.join(config['qserv']['base_dir'],'qserv','master','dist'),
+            os.path.join(config['qserv']['base_dir'],'qserv','worker','dist'),
+            os.path.join(config['qserv']['base_dir']),
+            os.path.join(config['qserv']['scratch_dir']),
+            user_config_dir
+            ]
+
+    env['uninstallpaths'] = paths
+    uninstall_cmd = env.Command('uninstall-dummy-target', [], actions.uninstall)
+    env.Alias("uninstall", uninstall_cmd)
 
 # List all aliases
 

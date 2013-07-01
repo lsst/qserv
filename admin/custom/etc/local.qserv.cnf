@@ -5,7 +5,8 @@
 #scratch_path=/dev/shm/qserv
 #port=7080
 xrootd=%(XROOTD_MANAGER_HOST)s:%(XROOTD_PORT)s
-scratch_path=/dev/shm/%(QSERV_BASE_DIR)s
+# Use /dev/shm shared memory for better performance
+scratch_path=%(QSERV_SCRATCH_DIR)s
 xrootd_user=qsmaster
 port=%(QSERV_RPC_PORT)s
 
