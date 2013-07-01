@@ -153,7 +153,7 @@ class Benchmark():
         """
         Creates tables and load data for input file located in caseXX/data/
         """
-        self.logger.info("Loading data from %s" % self._input_dirname)
+        self.logger.info("Loading data from %s (%s mode)" % (self._input_dirname, self._mode))
 
         for table_name in  self.dataReader.tables:
             self.logger.debug("Using data of %s" % table_name)

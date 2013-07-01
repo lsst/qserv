@@ -224,8 +224,10 @@ sub check_and_install_qserv {
 	system("$install_dir/bin/mysqld_safe --defaults-file=$install_dir/etc/my.cnf &");
 	sleep 5;
 	print "Setting up init databases.\n";
+        run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS LSST;\"");
 	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservResult;\"");
 	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservScratch;\"");
+        run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON LSST.* TO \'qsmaster\'\@\'localhost\';\"");
 	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';\"");
 	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';\"");
 	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt < qserv/master/examples/qserv-master-perms.sql");
