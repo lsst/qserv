@@ -16,3 +16,20 @@ alias qserv-stop="qserv-admin --stop  --dbpass \"%(MYSQLD_PASS)s\"; rm -f ${QSER
 # TODO : manage MySQL pass correctly
 alias qserv-status="qserv-admin --status --dbpass \"%(MYSQLD_PASS)s\""
 
+if [[ $1 ]]
+then
+case $1 in 
+start)
+qserv-start
+;;
+stop)
+qserv-stop
+;;
+status)
+qserv-status
+;;
+*)
+exit 1
+;;
+esac
+fi
