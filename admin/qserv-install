@@ -129,20 +129,22 @@ sub list_build_dir {
 
 #check on the xrootd source tar, untar, compile, configure for use.
 sub check_and_install_xrootd {
+        
+        my $xrootd_archive = "xrootd-qsPatch2.tar.bz2";
 	
 	#check if it is already installed
 	if( -e "$install_dir/xrootd" ) {
 		print "WARNING: Xrootd already installed...\n";
 		return;
 	}
-	
+
 	#untar xrootd
-	if( -e "$build_dir/xrootd.tar.gz" ) {
+	if( -e "$build_dir/$xrootd_archive" ) {
 		if( $opts{'test'} ) {
-			print "I would untar xrootd.tar.gz here.\n";
+			print "I would untar $xrootd_archive here.\n";
 		} else {
 			print "Untaring xrootd...\n";
-			run_command("tar zxf $build_dir/xrootd.tar.gz");
+			run_command("tar jxvf $build_dir/$xrootd_archive");
 		}
 	} else {
 		print "Sorry - I can't find the xrootd.tar.gz in the build dir.\n";
