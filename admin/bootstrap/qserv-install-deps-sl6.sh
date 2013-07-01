@@ -18,7 +18,7 @@ yum install python-devel
 yum install ncurses-devel glibc-devel
 
 # qserv
-yum install boost-devel openssl-devel antlr swig java-1.6.0-openjdk
+yum install boost-devel openssl-devel antlr swig java
 
 # lua
 yum install readline-devel
