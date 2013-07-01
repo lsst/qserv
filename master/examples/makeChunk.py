@@ -41,6 +41,7 @@
 # near the poles.
 
 # try -S60 -s18 ( 60 stripes, 18 substripes). used for pt1 testing
+
 import csv
 from collections import defaultdict
 import itertools
@@ -51,6 +52,7 @@ import partition
 import random
 from textwrap import dedent
 import time
+import os
 
 import duplicator
         
@@ -157,6 +159,7 @@ class App:
         self.chunks = set()
         pass
 
+    
     def run(self):
         self._ingestArgs()
         if self.conf.explainArgs:
@@ -205,6 +208,9 @@ class App:
             self.parser.error("Input split size must not exceed 256 MiB.")
         conf.inputSplitSize = int(conf.inputSplitSize * 1048576.0)
 
+        if not os.path.isdir(conf.outputDir):
+            self.parser.error("Specified output directory does not exist or is not a directory.")
+        
         self._setupChunking(conf)
         if self.shouldDuplicate:
             self._setupDuplication(conf)
@@ -236,7 +242,15 @@ class App:
                           for cb in cList]
         self._alloc = Alloc(conf.nodeCount, allChunkBounds, 
                             lambda c:c.chunkId, self.conf)
-        if conf.chunkList:
+
+        if conf.chunks_file is not None:
+            with open(conf.chunks_file) as f:
+                chunk_ids = f.read().splitlines()
+            cnums = map(int, chunk_ids)
+            chunkBounds = filter(lambda cb:cb.chunkId in cnums, 
+                                 allChunkBounds)
+            pass
+        elif conf.chunkList:
             cnums = map(int, str(conf.chunkList).split(","))
             chunkBounds = filter(lambda cb:cb.chunkId in cnums, 
                                  allChunkBounds)
@@ -324,6 +338,11 @@ class App:
             dest="node", help=dedent("""\
             This node's number out of all nodes (0 - (total-1);
             defaults to %default."""))
+# optparse.OptionConflictError: option --output-dir: conflicting option string(s): --output-dir
+#        duplication.add_option(
+#            "--output-dir", type="string",
+#            dest="outputDir", default=".",
+#            help=dedent(""" Output directory."""))
         duplication.add_option(
             "--node-count", type="int",
             dest="nodeCount", help=dedent("""\
@@ -357,6 +376,10 @@ class App:
             A comma-separated list of chunk numbers to generate.  
             Cannot be used in conjunction with --node and --nodeCount.
             (experimental)"""))
+        duplication.add_option(
+            "--chunks-file",
+            dest="chunks_file", default=None,
+            help= "Path to a file containing all chunks of all workers.")
         duplication.add_option(
             "--bounds", dest="bounds",
             default=

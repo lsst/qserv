@@ -76,11 +76,21 @@ strategies = { 'round-robin': roundRobin }
 class SqlActions(object):
     """Higher level interface for database loading/cleanup tasks.
     """
-    def __init__(self, host, port, user, passwd):
-        kw = { 'host': host }
-        for k in ((port, 'port'), (user, 'user'), (passwd, 'passwd')):
-            if k[0] != None:
-                kw[k[1]] = k[0]
+    
+    def __init__(self, host, port, user, passwd, socket=None, database="LSST"):
+        kw = dict()
+        if socket is None:
+            kw['host'] = host 
+            for k in ((port, 'port'), (user, 'user'), (passwd, 'passwd'), (socket, 'unix_socket'), (database, 'db')):
+                if k[0] != None:
+                    kw[k[1]] = k[0]
+        else:
+            for k in ((user, 'user'), (passwd, 'passwd'), (socket, 'unix_socket'), (database, 'db')):
+                if k[0] != None:
+                    kw[k[1]] = k[0]
+
+        print("SqlActions init : %s" % str(kw))
+        
         self.conn = sql.connect(**kw)
         self.cursor = self.conn.cursor()
 
@@ -89,7 +99,7 @@ class SqlActions(object):
         self.cursor.execute(stmt)
         self.cursor.fetchall()
 
-    def createDatabase(self, database):
+    def createDatabase(self, database):        
         self._exec("CREATE DATABASE IF NOT EXISTS %s ;" % database)
 
     def dropDatabase(self, database):
@@ -121,10 +131,12 @@ class SqlActions(object):
             self.cursor.fetchall()
 
     def getSchema(self, table):
+        print("getSchema of table %s" % table)
         self.cursor.execute("SHOW CREATE TABLE %s ;" % table)
         return self.cursor.fetchone()[1]
 
     def loadPartitions(self, table, partFile, index=True):
+        print "Loading partition table: %s with %s" % (table, os.path.abspath(partFile))
         self.dropTable(table)
         self._exec("""
             CREATE TABLE %s (
@@ -139,7 +151,7 @@ class SqlActions(object):
                 alpha DOUBLE PRECISION NOT NULL
             );""" % table)
         self._exec("""
-            LOAD DATA INFILE '%s'
+            LOAD DATA LOCAL INFILE '%s'
             INTO TABLE %s
             FIELDS TERMINATED BY ',';""" %
             (os.path.abspath(partFile), table))
@@ -148,6 +160,7 @@ class SqlActions(object):
                 "ALTER TABLE %s ADD INDEX (chunkId, subChunkId);" % table)
 
     def createPrototype(self, table, schema):
+        self._exec("DROP TABLE IF EXISTS %s" % table)
         # Doesn't work if table name contains `
         tableRe = r"^\s*CREATE\s+TABLE\s+`[^`]+`\s+"
         m = re.match(tableRe, schema)
@@ -178,14 +191,16 @@ class SqlActions(object):
             (components[0], components[1]))
         return self.cursor.fetchone()[0]
 
-    def loadChunk(self, table, prototype, path, npad = None, index = False):
+    def loadChunk(self, table, prototype, path, npad = None, index = False, dropPrimaryKey = False ):
         if table == prototype:
             raise RuntimeError(
                 "Chunk and prototype tables have identical names: %s" % table)
         self.dropTable(table)
         self._exec("CREATE TABLE %s LIKE %s ;" % (table, prototype))
+        if (dropPrimaryKey):
+            self._exec("ALTER TABLE %s DROP PRIMARY KEY;" % (table))
         self._exec("""
-            LOAD DATA INFILE '%s'
+            LOAD DATA LOCAL INFILE '%s'
             INTO TABLE %s
             FIELDS TERMINATED BY ',';""" %
             (os.path.abspath(path), table))
@@ -399,6 +414,7 @@ class Params(object):
         self.database = opts.database
         self.user = opts.user
         self.password = opts.password
+        self.socket = opts.socket
         self.clean = opts.clean
         self.prototype = opts.prototype
         self.schema = opts.schema
@@ -406,6 +422,7 @@ class Params(object):
         self.partFile = opts.partFile
         self.test = opts.test
         self.verbose = opts.verbose
+        self.dropPrimaryKeyTable = opts.dropPrimaryKeyTable
 
     def __eq__(self, other):
         if isinstance(other, Params):
@@ -494,14 +511,14 @@ def findChunkFiles(inputDir, prefix):
 # -- Actions --------
 
 def dropDatabase(params):
-    act = SqlActions(params.host, params.port, params.user, params.password)
+    act = SqlActions(params.host, params.port, params.user, params.password, params.socket, params.database)
     try:
         act.dropDatabase(params.database)
     finally:
         act.close()
 
 def cleanDatabase(params):
-    act = SqlActions(params.host, params.port, params.user, params.password)
+    act = SqlActions(params.host, params.port, params.user, params.password, params.socket, params.database)
     try:
         if params.clean != None:
             act.dropTables(params.database, params.clean)
@@ -523,7 +540,8 @@ def masterInit(master, sampleFile, opts):
             Chunk prototype and partition map tables have
             identical names: %s""" % partTable))
     hp = hostPort(master)
-    act = SqlActions(hp[0], hp[1], opts.user, opts.password)
+
+    act = SqlActions(hp[0], hp[1], opts.user, opts.password, opts.socket, opts.database)
     try:
         act.createDatabase(opts.database)
         # Get prototype schema
@@ -549,11 +567,13 @@ def loadWorker(args):
     """Loads chunk files on a worker server.
     """
     params, chunks = args
-    act = SqlActions(params.host, params.port, params.user, params.password)
+    act = SqlActions(params.host, params.port, params.user, params.password, params.socket, params.database)
     partTable = None
+    
     try:
         act.createDatabase(params.database)
         prototype = params.database + '.' + params.chunkPrefix + "Prototype"
+        print "Loading chunk: %s" % prototype
         if prototype != params.prototype:
             act.createPrototype(prototype, params.schema)
         if params.npad != None and params.npad > 0:
@@ -564,7 +584,9 @@ def loadWorker(args):
         for files in chunks:
             for f in files:
                 table = tableFromPath(f, params)
-                act.loadChunk(table, prototype, f, params.npad, True)
+                # Check if params.dropPrimaryKeyTable is non empty and if table contains it:
+                dropPrimaryKey = params.dropPrimaryKeyTable and (params.dropPrimaryKeyTable in table)
+                act.loadChunk(table, prototype, f, params.npad, True, dropPrimaryKey)
             if params.test:
                 pfx = params.database + '.' + params.chunkPrefix
                 chunkId = chunkIdFromPath(files[0])
@@ -642,9 +664,18 @@ def main():
         database is created if it does not already exist and defaults to
         %default."""))
     parser.add_option(
+        "--socket", dest="socket", default=None,
+        help="Socket to use for database connection.")        
+    parser.add_option(
         "-c", "--clean", dest="clean", help=dedent("""\
         Table name prefix identifying the chunk tables, partition map,
         and prototype tables to drop; this is done prior to loading."""))
+    parser.add_option(
+        "--drop-primary-key-table",
+        dest="dropPrimaryKeyTable",
+        type="string",
+        default="",
+        help=dedent(""" Drop primary key."""))
     parser.add_option(
         "-D", "--drop-database", dest="dropDatabase", action="store_true",
         help=dedent("""\
@@ -677,7 +708,7 @@ def main():
             prototype table must be specified."""))
     master = args[0]
     workers = getWorkers(opts.workers, args[0])
-    if not opts.password:
+    if not opts.password and not opts.socket:
         print("Please enter your mysql password")
         opts.password = getpass.getpass()
     startTime = time.time()
@@ -752,6 +783,7 @@ def main():
                        (opts.database, time.time() - t))
         # Load chunks
         if len(chunkFiles) > 0:
+            print "Init master with options: %s" % opts
             schema, npad = masterInit(master, chunkFiles[0][0], opts)
             for params in serverParams:
                 params.schema, params.npad = schema, npad

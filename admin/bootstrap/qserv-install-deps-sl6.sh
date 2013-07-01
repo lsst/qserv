@@ -1,5 +1,6 @@
 #!/bin/bash
 
+shopt -s expand_aliases
 alias yum="yum -y"
 
 yum install scons
