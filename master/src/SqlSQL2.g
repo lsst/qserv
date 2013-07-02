@@ -106,7 +106,8 @@ options {
 	language=Cpp;
 	namespaceAntlr="";
 	namespaceStd=""; 
-	genHashLines = false;
+    // genHashLines = false;
+	genHashLines = true; //Enable line numbers for errors
 }
 
 //
@@ -190,6 +191,12 @@ void handleSetFctSpec(RefAST fct) {
     }
     return; // Do-nothing placeholder
 }
+void handleFunctionSpec(RefAST name, RefAST params) {
+    if(_functionSpecHandler.get()) {
+        (*_functionSpecHandler)(name, params);
+    }
+    return; // Do-nothing placeholder
+}
 void handleSelectList(RefAST a) {
     if(_selectListHandler.get()) {
         (*_selectListHandler)(a);
@@ -197,9 +204,9 @@ void handleSelectList(RefAST a) {
     return; // Do-nothing placeholder
     
 }
-void handleSelectStar() {
+void handleSelectStar(RefAST a) {
     if(_selectStarHandler.get()) {
-        (*_selectStarHandler)();
+        (*_selectStarHandler)(a);
     }
     return; // Do-nothing placeholder    
 }
@@ -241,6 +248,12 @@ void handleFromWhere(RefAST fw) {
     }
     return; // Do-nothing placeholder    
 }
+void handleHaving(RefAST h) {
+    if(_havingHandler.get()) {
+        (*_havingHandler)(h);
+    }
+    return; // Do-nothing placeholder    
+}
 void handleWhereCondition(RefAST where) {
     if(_whereCondHandler.get()) {
         (*_whereCondHandler)(where);
@@ -273,12 +286,14 @@ boost::shared_ptr<VoidTwoRefFunc> _tableListHandler;
 boost::shared_ptr<VoidTwoRefFunc> _columnAliasHandler;
 boost::shared_ptr<VoidFourRefFunc> _tableAliasHandler;
 boost::shared_ptr<VoidOneRefFunc> _setFctSpecHandler;
+boost::shared_ptr<VoidTwoRefFunc> _functionSpecHandler;
 boost::shared_ptr<VoidOneRefFunc> _selectListHandler;
-boost::shared_ptr<VoidVoidFunc> _selectStarHandler;
+boost::shared_ptr<VoidOneRefFunc> _selectStarHandler;
 boost::shared_ptr<VoidOneRefFunc> _groupByHandler;
 boost::shared_ptr<VoidOneRefFunc> _groupColumnHandler;
 boost::shared_ptr<VoidOneRefFunc> _limitHandler;
 boost::shared_ptr<VoidOneRefFunc> _orderByHandler;
+boost::shared_ptr<VoidOneRefFunc> _havingHandler;
 
 // for WHERE clause editing/injection.
 boost::shared_ptr<VoidVoidFunc> _fromHandler;

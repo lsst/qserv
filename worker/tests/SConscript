@@ -49,7 +49,7 @@ testEnv.Append(BUILDERS = {'Test': bld})
 for src in Glob("*.cc"):
     libs = []
     if(filter(lambda s: s in src.name, 
-              ["MySqlFs_", "FifoScheduler_"])):
+              ["MySqlFs_", "FifoScheduler_", "QuerySql_"])):
         src = [src] + testEnv["built_libs"] 
         libs = testEnv["built_elibs"] + ["mysqlclient_r"]
     elif "PathStructure_" in src.name:

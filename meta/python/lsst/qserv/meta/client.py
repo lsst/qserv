@@ -88,7 +88,15 @@ class Client:
         if not os.access(schemaFileName, os.R_OK):
             msg = "Schema file '%s' can't be opened" % schemaFileName
             raise QmsException(Status.ERR_INVALID_OPTION, msg)
+        theOptions["isView"] = False
         tableNameFromSchema = self._extractTableName(schemaFileName)
+        # if can't find "create table...", try if it is a view
+        if not tableNameFromSchema:
+            tableNameFromSchema = self._extractViewName(schemaFileName)
+            if tableNameFromSchema:
+                theOptions["isView"] = True
+            else:
+                raise QmsException(Status.ERR_NO_TABLE_IN_SCHEMA)
         if "tableName" in theOptions:
             if theOptions["tableName"] != tableNameFromSchema:
                 msg = "Table name specified through param is '"
@@ -156,6 +164,18 @@ class Client:
         theName = None
         for line in f:
             m = findIt.match(line)
+            if m:
+                theName = m.group(1)
+                break
+        f.close()
+        return theName
+
+    def _extractViewName(self, fName):
+        f = open(fName, 'r')
+        findIt = re.compile(r'VIEW `(\w+)` AS SELECT', re.IGNORECASE)
+        theName = None
+        for line in f:
+            m = findIt.search(line)
             if m:
                 theName = m.group(1)
                 break

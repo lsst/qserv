@@ -2,7 +2,7 @@
 
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,6 +32,7 @@
 
 
 #include "lsst/qserv/master/ifaceMeta.h"
+#include <stdexcept>
 #include "lsst/qserv/master/MetadataCache.h"
 #include "lsst/qserv/master/SessionManager.h"
 
@@ -42,25 +43,35 @@ namespace qMaster = lsst::qserv::master;
 // ============================================================================
 // ===== session related
 // ============================================================================
+namespace lsst {
+namespace qserv {
+namespace master {
+        
 using lsst::qserv::master::SessionManager;
 typedef SessionManager<qMaster::MetadataCache::Ptr> SessionMgr;
 typedef boost::shared_ptr<SessionMgr> SessionMgrPtr;
-namespace {
-    SessionMgr&
-    getSessionManager() {
-        static SessionMgrPtr sm;
-        if(sm.get() == NULL) {
-            sm = boost::make_shared<SessionMgr>();
-        }
-        assert(sm.get() != NULL);
-        return *sm;
+SessionMgr&
+getSessionManager() {
+    static SessionMgrPtr sm;
+    if(sm.get() == NULL) {
+        sm = boost::make_shared<SessionMgr>();
     }
-
-    boost::shared_ptr<qMaster::MetadataCache> 
-    getMetadataCache(int session) {
-        return getSessionManager().getSession(session);
+    if(!sm) {
+        throw std::logic_error("Can't initialize SessionMgr");
     }
+    return *sm;
 }
+
+typedef boost::shared_ptr<qMaster::MetadataCache> MetaCachePtr;
+MetaCachePtr
+getMetadataCache(int session) {
+    MetaCachePtr x = getSessionManager().getSession(session);
+    if(!x) {
+        throw std::invalid_argument("Invalid MetadataCache session");
+    }
+    return x;
+}
+}}}
 
 /** Creates a new metadata session
   */
@@ -72,7 +83,7 @@ qMaster::newMetadataSession() {
 }
 
 /** Destroys existing metadata session.
-  * @param metaSessionId id of the metadat session
+  * @param metaSessionId id of the metadata session
   */
 void
 qMaster::discardMetadataSession(int metaSessionId) {
@@ -84,30 +95,30 @@ qMaster::discardMetadataSession(int metaSessionId) {
 // ============================================================================
 
 /** Adds database information for a non-partitioned database.
-  * @param metaSessionId id of the metadat session
+  * @param metaSessionId id of the metadata session
   * @param dbName database name
   */
 int
 qMaster::addDbInfoNonPartitioned(int metaSessionId,
-                                 char* dbName) {
+                                 const char* dbName) {
     return getMetadataCache(metaSessionId)->addDbInfoNonPartitioned(dbName);
 }
 
 /** Adds database information for a partitioned database,
   * which use spherical partitioning mode.
   *
-  * @param metaSessionId id of the metadat session
+  * @param metaSessionId id of the metadata session
   * @param dbName database name
   * @param nStripes number of stripes
   * @param nSubStripes number of sub-stripes
   * @param defOverlapF default overlap for 'fuzziness'
   * @param defOverlapNN default overlap for 'near-neighbor'-type queries
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::addDbInfoPartitionedSphBox(int metaSessionId,
-                                    char* dbName,
+                                    const char* dbName,
                                     int nStripes,
                                     int nSubStripes,
                                     float defOverlapF,
@@ -118,49 +129,53 @@ qMaster::addDbInfoPartitionedSphBox(int metaSessionId,
 
 /** Adds information about a non-partitioned table.
   *
-  * @param metaSessionId id of the metadat session
+  * @param metaSessionId id of the metadata session
   * @param dbName database name
   * @param tableName table name
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::addTbInfoNonPartitioned(int metaSessionId,
-                                 char* dbName,
-                                 char* tbName) {
+                                 const char* dbName,
+                                 const char* tbName) {
     return getMetadataCache(metaSessionId)->addTbInfoNonPartitioned(dbName, tbName);
 }
 
 /** Adds database information for a partitioned table,
   * which use spherical partitioning mode.
   *
-  * @param metaSessionId id of the metadat session
+  * @param metaSessionId id of the metadata session
   * @param dbName database name
   * @param tableName table name
   * @param overlap used for this table (overwrites overlaps from dbInfo)
-  * @param phiCol name of the phi col (right ascention)
-  * @param thetaCol name of the theta col (declination)
-  * @param phiColNo position of the phi col in the table, counting from zero
-  * @param thetaColNo position of the theta col in the table, counting from zero
+  * @param phiCol name of the phi column (right ascention)
+  * @param thetaCol name of the theta column (declination)
+  * @param objIdCol name of the objId column
+  * @param phiColNo position of the phi column in the table, counting from zero
+  * @param thetaColNo position of the theta column in the table, counting from zero
+  * @param objIdColNo position of the objId column in the table, counting from zero
   * @param logicalPart definition how the table is partitioned logically
   * @param physChunking definition how the table is chunked physically
   *
-  * @return retuns status (0 on success)
+  * @return returns status (0 on success)
   */
 int
 qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
-                                    char* dbName,
-                                    char* tbName,
+                                    const char* dbName,
+                                    const char* tbName,
                                     float overlap,
-                                    char* phiCol,
-                                    char* thetaCol,
+                                    const char* phiCol,
+                                    const char* thetaCol,
+                                    const char* objIdCol,
                                     int phiColNo,
                                     int thetaColNo,
+                                    int objIdColNo,
                                     int logicalPart,
                                     int physChunking) {
     return getMetadataCache(metaSessionId)->addTbInfoPartitionedSphBox(
-                 dbName, tbName, overlap, phiCol, thetaCol, phiColNo, 
-                 thetaColNo, logicalPart, physChunking);
+                 dbName, tbName, overlap, phiCol, thetaCol, objIdCol,
+                 phiColNo, thetaColNo, objIdColNo, logicalPart, physChunking);
 }
 
 /** Prints the contents of the qserv metadata cache. This is
@@ -169,4 +184,21 @@ qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
 void
 qMaster::printMetadataCache(int metaSessionId) {
     getMetadataCache(metaSessionId)->printSelf();
+}
+
+/** Retrieve the minimal striping info for a particular db.
+  *
+  * @param metaSessionId id of the metadata session
+  * @param dbName name of database
+  *
+  * @return returns DbStriping object (0-filled if not partitioned)
+  */
+qMaster::DbStriping
+qMaster::getDbStriping(int metaSessionId, char const* dbName) {
+    MetadataCache::DbInfo const dbInfo 
+        = getMetadataCache(metaSessionId)->getDbInfo(std::string(dbName));
+    DbStriping dbs;
+    dbs.stripes = dbInfo.getNStripes();
+    dbs.subStripes = dbInfo.getNSubStripes();
+    return dbs;
 }

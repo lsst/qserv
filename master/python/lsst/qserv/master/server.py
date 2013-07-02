@@ -43,6 +43,7 @@ from twisted.web import xmlrpc
 # Package imports
 from appInterface import AppInterface
 import config
+from lsst.qserv.meta.status import QmsException
 
 # Module settings
 defaultPort = 8000
@@ -210,6 +211,14 @@ class Master:
         ai = AppInterface(reactor)
         c = HttpInterface(ai)
         xml = XmlRpcInterface(ai)
+
+        # initialize metadata cache
+        try:
+            ai.initMetadataCache()
+        except QmsException as qe:
+            print qe.getErrMsg()
+            return
+
         # not sure I need the sub-pat http interface
         root.putChild(defaultPath, ClientResource(c))
         root.putChild(defaultXmlPath, xml)

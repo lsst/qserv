@@ -46,7 +46,8 @@ class Status:
     ERR_COL_NOT_FOUND      = 2055
     ERR_SCHEMA_FILE        = 2060
     ERR_INVALID_OPTION     = 2065
-    ERR_INVALID_PART       = 2066
+    ERR_MISSING_OPTION     = 2066
+    ERR_INVALID_PART       = 2067
     ERR_INVALID_DB_NAME    = 2070
     ERR_NOT_CONNECTED      = 2075
     ERR_CANT_EXEC_SCRIPT   = 2080
@@ -72,6 +73,7 @@ class Status:
         ERR_SCHEMA_FILE: ("The schema file specified in the config file"
                           " can't be access from the client."),
         ERR_INVALID_OPTION: ("Invalid option passed."),
+        ERR_MISSING_OPTION: ("Required option missing."),
         ERR_INVALID_PART: ("Invalid partitioning."),
         ERR_INVALID_DB_NAME: ("Invalid database name."),
         ERR_NOT_CONNECTED: ("QMS not connected to MySQL."),
@@ -84,7 +86,7 @@ def getErrMsg(errNo):
     s = Status()
     if errNo in s.errors:
         return s.errors[errNo]
-    return "Undefinied qms error"
+    return "Undefined qms error"
 
 class QmsException(Exception):
     def __init__(self, errNo, extraMsg=None):
@@ -92,9 +94,10 @@ class QmsException(Exception):
         self._extraMsg = extraMsg
 
     def getErrMsg(self):
+        msg = getErrMsg(self._errNo)
         if self._extraMsg is not None:
-            return self._extraMsg
-        return getErrMsg(self._errNo)
+            msg += " (%s)" % self._extraMsg
+        return msg
 
     def getErrNo(self):
         return self._errNo

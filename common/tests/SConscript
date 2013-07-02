@@ -18,7 +18,7 @@ protoEnv = env.Clone()
 protoEnv.Append(LIBPATH = ["../lib", 
                           os.environ["PROTOC_LIB"]])
 protoEnv.Append(CPPPATH = ["../proto", os.environ["PROTOC_INC"]])
-protoEnv.Replace(LIBS = ["stdc++", "qserv_proto", "protobuf", "ssl"])
+protoEnv.Replace(LIBS = ["stdc++", "qserv_proto", "protobuf", "ssl", "crypto"])
 
 
 def patch_environ(environ, libpaths):

@@ -1,0 +1,46 @@
+// Copyright 2012 LSST Corporation
+// GPLv3
+// Generate using:
+// dot -Tpng -oquerymanip1.png doc/query_manipulation.dot
+// For dbQserv/QueryManipulation
+
+digraph QservQueryManipulation {
+  ratio=auto
+  subgraph cluster_0 {
+    style=invis;
+    Statement [label="Statement\nparsed repr" shape=box];
+    rule1pre [label="" shape=none width=0.1 height=0.1];
+    rule2pre [label="" shape=none width=0.1 height=0.1];
+    rule3pre [label="" shape=none width=0.1 height=0.1];
+    StatementMod [label="Statement\n(with modifications)" shape=box];
+    anon [style=invis label="" width=0 height=0];
+
+    Statement -> rule1pre [label="rule 1" ];
+    rule1pre -> rule2pre [label="rule 2" ];
+    rule2pre -> rule3pre [label="rule 3" ];
+    rule3pre -> StatementMod  [label="..." ];
+
+    StatementMod-> anon [label="Initial\nplanning"];
+   }
+  subgraph cluster_2 {
+    style=invis;
+
+    anon2 [style=invis label="" width=0 height=0];
+    SplitState [label="Map steps|Reduce steps" shape=record];
+    rule1post [label="" shape=none width=0.1 height=0.1];
+    rule2post [label="" shape=none width=0.1 height=0.1];
+    rule3post [label="" shape=none width=0.1 height=0.1];
+    SplitStateMod [label="Map steps|Reduce steps| dispatch hints" shape=record];
+    Execute [label="Template-ready\nstatements" shape=ellipse];
+
+    anon2 -> SplitState [label="Initial\nplanning"];
+    SplitState -> rule1post [label="rule 1" ];
+    rule1post -> rule2post [label="rule 2" ];
+    rule2post -> rule3post [label="rule 3" ];
+    rule3post -> SplitStateMod [label="..." ];
+    SplitStateMod -> Execute;
+  }
+
+
+
+}

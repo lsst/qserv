@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,7 +19,13 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
+ /**
+  * @file Task.cc
+  *
+  * @brief Task is a bundle of query task fields
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
 #include "lsst/qserv/worker/Task.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/TaskMsgDigest.h"
@@ -29,8 +35,9 @@ namespace qWorker = lsst::qserv::worker;
 
 namespace {
     void updateSubchunks(std::string const& s, 
-                         qWorker::Task::Fragment& f) {
-        f.clear_subchunk(); // Empty out existing.
+                         qWorker::Task::Fragment& f) {       
+        // deprecated though...
+        f.mutable_subchunks()->clear_id();
         std::stringstream ss;
         int sc;
         std::string firstLine = s.substr(0, s.find('\n'));
@@ -40,8 +47,8 @@ namespace {
         for(i = boost::make_regex_iterator(firstLine, re);
              i != boost::sregex_iterator(); ++i) {
             ss.str((*i).str(0));
-            ss >> sc;
-            f.add_subchunk(sc);
+            ss >> sc;            
+            f.mutable_subchunks()->add_id(sc);
         }
     }
     
@@ -67,10 +74,15 @@ namespace {
     std::ostream& dump(std::ostream& os, 
                        lsst::qserv::TaskMsg_Fragment const& f) {
         os << "frag: " 
-           << "q=" << f.query()
-           << " sc=";
-        for(int i=0; i < f.subchunk_size(); ++i) {
-            os << f.subchunk(i) << ",";
+           << "q=";
+        for(int i=0; i < f.query_size(); ++i) {
+            os << f.query(i) << ",";        
+        }
+        if(f.has_subchunks()) {
+            os << " sc=";
+            for(int i=0; i < f.subchunks().id_size(); ++i) {
+                os << f.subchunks().id(i) << ",";
+            }
         }
         os << " rt=" << f.resulttable();
         return os;
@@ -91,7 +103,7 @@ qWorker::Task::Task(qWorker::ScriptMeta const& s, std::string const& user_) {
     lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
     updateSubchunks(s.script, *f);
     updateResultTables(s.script, *f);
-    f->set_query(s.script);
+    f->add_query(s.script);
     needsCreate = false;
     msg = t;
 }

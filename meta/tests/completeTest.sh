@@ -9,6 +9,9 @@ echo === installMeta ===
 echo === printMeta ===
 ./meta/examples/runMetaClientTool.sh printMeta
 
+echo === list dbs===
+./meta/examples/runMetaClientTool.sh listDbs
+
 echo === create 4 dbs ===
 ./meta/examples/runMetaClientTool.sh createDb Summer2012 @./meta/examples/dbPartitioned.params
 ./meta/examples/runMetaClientTool.sh createDb NonPartA @./meta/examples/dbNonPartitioned.params
@@ -27,15 +30,15 @@ echo === 'retrieve dbInfo for 2 dbs (ok, fail)' ===
 ./meta/examples/runMetaClientTool.sh retrieveDbInfo NonPart
 
 echo === create 5 tables ===
-./meta/examples/runMetaClientTool.sh createTable Summer2012 tableName=Object partitioning=on schemaFile=./meta/examples/tbSchema_Object.sql clusteredIndex=IDX_objectId overlap=0.025 phiColName=ra_PS thetaColName=decl_PS logicalPart=2 physChunking=0x0021
+./meta/examples/runMetaClientTool.sh createTable Summer2012 tableName=Object partitioning=on schemaFile=./meta/examples/tbSchema_Object.sql clusteredIndex=IDX_objectId overlap=0.025 phiColName=ra_PS thetaColName=decl_PS objIdColName=objectId logicalPart=2 physChunking=0x0021
 ./meta/examples/runMetaClientTool.sh createTable Summer2012 partitioning=off tableName=Exposure schemaFile=./meta/examples/tbSchema_Exposure.sql
 ./meta/examples/runMetaClientTool.sh createTable Summer2012 @./meta/examples/tb_Source.params
-./meta/examples/runMetaClientTool.sh createTable Summer2012 @./meta/examples/tb_Exposure.params
+./meta/examples/runMetaClientTool.sh createTable Winter2013 @./meta/examples/tb_Exposure.params
 ./meta/examples/runMetaClientTool.sh createTable Winter2013 @./meta/examples/tb_Source.params
 
 echo === retrieve table info for 2 tables ===
-./meta/examples/runMetaClientTool.sh retrieveTableInfo Winter2013 Object
-./meta/examples/runMetaClientTool.sh retrieveTableInfo Winter2013 Exposure
+./meta/examples/runMetaClientTool.sh retrieveTableInfo Summer2012 Object
+./meta/examples/runMetaClientTool.sh retrieveTableInfo Summer2012 Exposure
 
 echo === print meta ===
 ./meta/examples/runMetaClientTool.sh printMeta

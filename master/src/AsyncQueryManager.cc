@@ -1,6 +1,6 @@
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,11 +20,18 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  
-// AsyncQueryManager: Manages/dispatches individual chunk queries,
-// waits for their completions, collects results, and invokes result
-// merging. Initiates query squashing when faults are detected. 
-// "Async" refers to the use of asynchronous xrootd client API, which
-// required some state management and liberal use of callbacks.
+/**
+  * @file AsyncQueryManager.cc
+  *
+  * @brief AsyncQueryManager: Manages/dispatches individual chunk
+  * queries, waits for their completions, collects results, and
+  * invokes result merging. Initiates query squashing when faults are
+  * detected.  "Async" refers to the use of asynchronous xrootd client
+  * API, which required some state management and liberal use of
+  * callbacks. 
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 #include <iostream>
 
 #include <boost/make_shared.hpp>
@@ -34,6 +41,7 @@
 #include "lsst/qserv/master/ChunkQuery.h"
 #include "lsst/qserv/master/TableMerger.h"
 #include "lsst/qserv/master/Timer.h"
+#include "lsst/qserv/master/QuerySession.h"
 #include "lsst/qserv/common/WorkQueue.h"
 #include "lsst/qserv/master/PacketIter.h"
 
@@ -256,7 +264,27 @@ void qMaster::AsyncQueryManager::joinEverything() {
 }
 
 void qMaster::AsyncQueryManager::configureMerger(TableMergerConfig const& c) {
+    
     _merger = boost::make_shared<TableMerger>(c);
+}
+
+void qMaster::AsyncQueryManager::configureMerger(MergeFixup const& m, 
+                                                 std::string const& resultTable) {
+    // Can we configure the merger without involving settings
+    // from the python layer? Historically, the Python layer was
+    // needed to generate the merging SQL statements, but we are now
+    // creating them without Python.
+    std::string mysqlBin="obsolete";
+    std::string dropMem;
+    TableMergerConfig cfg(_resultDbDb,  // cfg result db
+                          resultTable, // cfg resultname
+                          m, // merge fixup obj
+                          _resultDbUser, // result db credentials
+                          _resultDbSocket, // result db credentials
+                          mysqlBin,  // Obsolete
+                          dropMem // cfg
+        );
+    _merger = boost::make_shared<TableMerger>(cfg);
 }
 
 std::string qMaster::AsyncQueryManager::getMergeResultName() const {
@@ -304,7 +332,6 @@ void qMaster::AsyncQueryManager::resumeReadTrans() {
     _canReadCondition.notify_all();
 }
 
-
 ////////////////////////////////////////////////////////////////////////
 // private: ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
@@ -320,16 +347,62 @@ void qMaster::AsyncQueryManager::_destroyPool() {
     _writeQueue.reset();
 }
 
+inline int coerceInt(std::string const& s, int defaultValue) {
+    try {
+        std::istringstream ss(s);
+        int output;
+        ss >> output;
+        return output;
+    } catch (...) {
+        return defaultValue;
+    }
+}
+inline std::string getConfigElement(std::map<std::string, 
+                                             std::string> const& cfg,
+                                    std::string const& key,
+                                    std::string const& errorMsg,
+                                    std::string const& defaultValue) {
+    std::map<std::string,std::string>::const_iterator i = cfg.find(key);
+    if(i != cfg.end()) { 
+        return i->second;
+    } else { 
+        std::cout << errorMsg << std::endl; 
+        return defaultValue; 
+    }
+}
+
 void qMaster::AsyncQueryManager::_readConfig(std::map<std::string,
                                                       std::string> const& cfg) {
-    StringMap::const_iterator i = cfg.find("frontend.xrootd");
-    if(i != cfg.end()) {
-        _xrootdHostPort = i->second;
-    } else {
-        std::cout << "WARNING! No xrootd spec. Using lsst-dev01:1094" 
-                  << std::endl;
-        _xrootdHostPort = "lsst-dev01:1094";
-    }
+    /// localhost:1094 is the most reasonable default, even though it is
+    /// the wrong choice for all but small developer installations.
+    _xrootdHostPort = getConfigElement(
+        cfg, "frontend.xrootd", 
+        "WARNING! No xrootd spec. Using localhost:1094", 
+        "localhost:1094"); 
+    _scratchPath =  getConfigElement(
+        cfg, "frontend.scratch_path", 
+        "Error, no scratch path found. Using /tmp.",
+        "/tmp");
+    // This should be overriden by the installer properly.
+    _resultDbSocket =  getConfigElement(
+        cfg, "resultdb.unix_socket", 
+        "Error, resultdb.unix_socket not found. Using /u1/local/mysql.sock.",
+        "/u1/local/mysql.sock");
+    _resultDbUser =  getConfigElement(
+        cfg, "resultdb.user", 
+        "Error, resultdb.user not found. Using qsmaster.",
+        "qsmaster");
+    _resultDbDb =  getConfigElement(
+        cfg, "resultdb.db", 
+        "Error, resultdb.db not found. Using qservResult.",
+        "qservResult");
+    std::string metaStr =  getConfigElement(
+        cfg, "runtime.metaCacheSession", 
+        "No runtime.metaCacheSession. using default.",
+        "");
+    int metaCacheSession = coerceInt(metaStr, -1);
+    // Setup session
+    _qSession.reset(new QuerySession(metaCacheSession));
 }
 
 void qMaster::AsyncQueryManager::_addNewResult(PacIterPtr pacIter,
@@ -351,7 +424,9 @@ void qMaster::AsyncQueryManager::_addNewResult(PacIterPtr pacIter,
 void qMaster::AsyncQueryManager::_addNewResult(ssize_t dumpSize, 
                                                std::string const& dumpFile, 
                                                std::string const& tableName) {
-    assert(dumpSize >= 0);
+    if(dumpSize < 0) {
+        throw std::invalid_argument("dumpSize < 0");
+    }
     {
         boost::lock_guard<boost::mutex> lock(_totalSizeMutex);
         _totalSize += dumpSize; 

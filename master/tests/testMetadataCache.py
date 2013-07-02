@@ -2,7 +2,7 @@
 
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
+# Copyright 2013 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -22,20 +22,22 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# testAppInterface.py : A module with Python unittest code for testing
-# functionality available through the appInterface module.  Currently
-# only includes minimal fuzz testing and (unfinished) query replaying.
+"""
+@file testMetadataCache.py
 
+@brief A module with Python unittest code for testing metadata cache
+
+@Author Jacek Becla, SLAC
+"""
 
 # Standard Python imports
-import unittest
 import sys
 import tempfile
 import time
 
 # Package imports
 import lsst.qserv.master
-from lsst.qserv.master.app import MetadataCacheInterface
+from lsst.qserv.master.app import MetadataCacheIface
 from lsst.qserv.master import config
 from lsst.qserv.master.config import load
 from lsst.qserv.meta.status import Status, QmsException
@@ -43,7 +45,7 @@ from lsst.qserv.meta.status import Status, QmsException
 try:
     tf = tempfile.NamedTemporaryFile(delete=True)
     load(tf.name) # silly, but must provide config, or it will fail
-    mcI = MetadataCacheInterface()
+    mcI = MetadataCacheIface()
     sessionId = mcI.newSession()
     mcI.printSession(sessionId)
     mcI.discardSession(sessionId)

@@ -19,10 +19,6 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// TodoList.h
-/// A class that contains a collection of tasks to be executed by the
-/// Qserv-worker.  Allows selection and prioritization on top of a 
-/// generic container.
 /// @author Daniel L. Wang (danielw)
 #ifndef LSST_QSERV_WORKER_TODOLIST_H
 #define LSST_QSERV_WORKER_TODOLIST_H
@@ -39,6 +35,9 @@ namespace qserv {
 namespace worker {
 class QueryRunnerArg;    // forward
 
+/// A class that contains a collection of tasks to be executed by the
+/// Qserv-worker.  Allows selection and prioritization on top of a 
+/// generic container.
 class TodoList : public TaskAcceptor {
 public:
     typedef boost::shared_ptr<TodoList> Ptr;

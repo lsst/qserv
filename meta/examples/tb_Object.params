@@ -8,16 +8,24 @@ tableName:      Object
 partitioning: on
 
 # note that the file must be accessible on the client side
-schemaFile: /u1/qserv/ticket1944-qms_run/meta/examples/tbSchema_Object.sql
+schemaFile: /u1/qserv/sandbox/qserv/meta/examples/tbSchema_Object.sql
 
 # the cluster index name must be defined in the schemaFile.
 # Use the word None if not required
 clusteredIndex: IDX_objectId
 
+# *RefMatch tables need special handling.
+# yes: table is a refmatch table
+isRefMatch: No
+
+# Uncomment the following line if this is a view (unsupported).
+#isView: yes
+
 [sphBox]
 overlap:        0.025
 phiColName:     ra_PS
 thetaColName:   decl_PS
+objIdColName:   objectId
 
 # 0: none, 1: 1-level, 2: 2-level
 logicalPart:    2

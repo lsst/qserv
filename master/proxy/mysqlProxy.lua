@@ -1,6 +1,9 @@
-
--- For questions, contact Jacek Becla or Daniel Wang
-
+-- mysqlProxy.lua -- A Lua-language script for customizing a
+-- mysqlproxy instance so that it uses a Qserv frontend as a backend
+-- for executing queries. While it has some responsibilities now, it
+-- should eventually act as a thin wrapper to delegating all
+-- functionality to a Qserv daemon. 
+-- For questions, contact Jacek Becla or Daniel L. Wang
 
 require ("xmlrpc.http")
 
@@ -18,9 +21,6 @@ require ("xmlrpc.http")
 --  * supress errors "FUNCTION proxyTest.areaSpec_box does not exist"
 --
 --  * test what happens when I change db (use x; later use y)
-
-
-
 
 -- API between lua and qserv:
 --  * invoke(cleanQueryString, hintString)
@@ -482,28 +482,11 @@ function queryProcessing()
         local p1 = string.find(qU, "WHERE")
         parser.reset()
         hintsToPassArr = {} -- Reset hints (it's global)
-        if p1 then
-            local afterWhere = p1 + 5 -- 5=length of 'where'
-            if string.find(string.sub(q, p1+5), "^ ") then
-                afterWhere = p1 + 6 -- Clip when there is space
-            end
-            queryToPassStr = string.sub(q, 0, p1-1)
-
-            -- Handle special predicates, modify queryToPassStr as necessary
-            local p2 = parser.parseIt(qU, afterWhere) 
-            -- Add client db context
-            hintsToPassStr = utils.tableToString(hintsToPassArr)
-            -- Add all remaining predicates
-            if ( p2 < 0 ) then
-                return err.errNo()
-            end
-            local pEnd = string.len(qU)
-            queryToPassStr = queryToPassStr .. ' ' .. string.sub(q, p2, pEnd)
-        else
-            queryToPassStr = q
-            hintsToPassStr = ""
-        end
+        -- Force original query to delegate spatial work to qsmaster.
+        queryToPassStr = q
+        -- Add client db context
         hintsToPassArr["db"] = proxy.connection.client.default_db
+        hintsToPassStr = utils.tableToString(hintsToPassArr)
 
         print ("Passing query: " .. queryToPassStr)
         print ("Passing hints: " .. hintsToPassStr)

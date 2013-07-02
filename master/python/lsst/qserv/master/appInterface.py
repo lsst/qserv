@@ -1,6 +1,6 @@
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
+# Copyright 2009-2013 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -28,6 +28,7 @@ import time
 import app
 import proxy
 import lsst.qserv.master.config as config
+import lsst.qserv.master.spatial as spatial
 
 # Main AppInterface class
 #
@@ -39,7 +40,11 @@ import lsst.qserv.master.config as config
 # server.py), or be used directly by test programs or
 # development/administrative code. 
 # 
+# Ideally, AppInterface objects can be used from standalone Python
+# programs, facilitating testing and usage without bringing up a qserv
+# master daemon. It is unclear whether this still works.
 class AppInterface:
+    """An implemented interface to the Qserv master application logic. """
     def __init__(self, reactor=None):
         self.tracker = app.TaskTracker()
         okname = ifilter(lambda x: "_" not in x, dir(self))
@@ -47,7 +52,6 @@ class AppInterface:
                                                     'func_doc'), 
                                   okname)
         self.reactor = reactor
-        self.pmap = app.makePmap()
         self.actions = {} 
         # set id counter to seconds since the epoch, mod 1 year.
         self._idCounter = int(time.time() % (60*60*24*365))
@@ -68,26 +72,25 @@ class AppInterface:
             return lambda f: thread.start_new_thread(f, tuple())
         pass
 
+    def initMetadataCache(self):
+        """Initializes default session for metadata cache.
+           Throws QmsExeption on failure."""
+        app.MetadataCacheIface().getDefaultSessionId()
+
     def queryNow(self, q, hints):
         """Issue a query. q=querystring, h=hint list
-        @return query results
-        This executes the query, waits for completion, and returns results."""
-        a = app.HintedQueryAction(q, hints, self.pmap)
-        if not a.getIsValid():
-            return "Error during query parse step." + a.getError()
-        a.invoke()
-        r = a.getResult()
-        return app.getResultTable(r)
+        @return query result table name
+        This executes the query, waits for completion, and returns results.
+        (broken)"""
+        raise StandardError("Unimplemented")
 
     def submitQuery(self, query, conditions):
         return self.submitQueryWithLock(query, conditions)
 
     def submitQueryPlain(self, query, conditions):
-        """Simplified mysqlproxy version.  returns table name."""
-        a = app.HintedQueryAction(query, conditions, self.pmap)
-        a.invoke()        
-        r = a.getResult()
-        return r
+        """Simplified mysqlproxy version.  returns table name.
+        (broken)"""
+        raise StandardError("Unimplemented")
 
     def submitQueryWithLock(self, query, conditions):
         """Simplified mysqlproxy version.  
@@ -107,7 +110,7 @@ class AppInterface:
         if not lock.lock():
             return ("error", "error",
                     "error locking result, check qserv/db config.")
-        a = app.HintedQueryAction(query, conditions, self.pmap, 
+        a = app.InbandQueryAction(query, conditions, 
                                   lambda e: lock.addError(e), resultName)
         if a.getIsValid():
             self._callWithThread(a.invoke)
@@ -120,11 +123,14 @@ class AppInterface:
     def query(self, q, hints):
         """Issue a query, and return a taskId that can be used for tracking.
         taskId is a 16 byte string, but should be treated as an 
-        opaque identifier."""
+        opaque identifier.
+        (broken)
+        """
         # FIXME: Need to fix task tracker.
         #taskId = self.tracker.track("myquery", a, q)
         #stats = time.qServQueryTimer[time.qServRunningName]
         #stats["appInvokeStart"] = time.time()
+        raise StandardError("unimplemented")
         a = app.HintedQueryAction(q, hints, self.pmap)
         key = a.queryHash
         self.actions[key] = a

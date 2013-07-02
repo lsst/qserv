@@ -62,7 +62,8 @@ internalTables = [
    psId INT,                  -- foreign key to the PS_Tb_* table
    clusteredIdx VARCHAR(255), -- name of the clustered index, 
                               -- Null if no clustered index.
-   isRefMatch TINYINT DEFAULT 0 -- flag indicating if the table is a "RefMatch"
+   isRefMatch TINYINT DEFAULT 0, -- flag indicating if the table is a "RefMatch"
+   isView TINYINT DEFAULT 0      -- flag inidcating if the table is a view or not
 )'''],
     # -----------------------------------------------------------------
     # Partitioning strategy, database-specific parameters 
@@ -86,10 +87,10 @@ internalTables = [
    overlap FLOAT,         -- in degrees, 0 if not set
    phiCol VARCHAR(255),   -- Null if table not partitioned
    thetaCol VARCHAR(255), -- Null if table not partitioned
-   phiColNo INT,          -- Position of the phiColumn in the table, 
-                          -- counting from zero
-   thetaColNo INT,        -- Position of the thetaColumn in the table, 
-                          -- counting from zero
+   objIdCol VARCHAR(255), -- Null if table not partitioned
+   phiColNo INT,          -- Position of the phiCol in the table, counting from zero
+   thetaColNo INT,        -- Position of the thetaCol in the table, counting from zero
+   objIdColNo INT,        -- Position of the objIdCol in the table, counting from zero
    logicalPart SMALLINT,  -- logical partitioning flag:
                           -- 0: no chunks
                           -- 1: one-level chunking
@@ -204,7 +205,7 @@ class MetaImpl:
     def _validateKVOptions(self, x, xxOpts, psOpts, whichInfo):
         if not x.has_key("partitioning"):
             self._logger.error("Can't find required param 'partitioning'")
-            raise QmsException(Status.ERR_INVALID_OPTION)
+            raise QmsException(Status.ERR_MISSING_OPTION)
 
         partOff = x["partitioning"] == "off" 
         for (theName, theOpts) in xxOpts.items():
@@ -218,7 +219,7 @@ class MetaImpl:
                     continue
                 if not x.has_key(o):
                     self._logger.error("Can't find required param '%s'" % o)
-                    raise QmsException(Status.ERR_INVALID_OPTION)
+                    raise QmsException(Status.ERR_MISSING_OPTION)
         if partOff:
             return
         if x["partitioning"] != "on":
@@ -228,7 +229,7 @@ class MetaImpl:
         if not x.has_key("partitioningStrategy"):
             self._logger.error("partitioningStrategy option is required if "
                                "partitioning is on")
-            raise QmsException(Status.ERR_INVALID_OPTION)
+            raise QmsException(Status.ERR_MISSING_OPTION)
 
         psFound = False
         for (psName, theOpts) in psOpts.items():
@@ -238,7 +239,7 @@ class MetaImpl:
                 for o in theOpts:
                     if not x.has_key(o):
                         self._logger.error("Can't find param '%s' required for partitioning strategy '%s'" % (o, psName))
-                        raise QmsException(Status.ERR_INVALID_OPTION)
+                        raise QmsException(Status.ERR_MISSING_OPTION)
                 # check if there are any unrecognized options
                 for o in x:
                     if not ((o in xxOpts[whichInfo]) or (o in theOpts)):
@@ -389,7 +390,7 @@ class MetaImpl:
         self._mdb.selectMetaDb()
         ret = self._mdb.execCommandN("SELECT dbName FROM DbMeta")
         if not ret:
-            return "No databases found"
+            return []
         return [x[0] for x in ret]
 
     ###########################################################################
@@ -408,11 +409,13 @@ class MetaImpl:
                           "partitioning",
                           "schemaFile",
                           "clusteredIndex",
-                          "isRefMatch")}
+                          "isRefMatch",
+                          "isView")}
         _crTbPSOpts = {
             "sphBox":("overlap",
                       "phiColName", 
                       "thetaColName", 
+                      "objIdColName",
                       "logicalPart",
                       "physChunking")}
         # validate the options
@@ -421,6 +424,7 @@ class MetaImpl:
 
     def createTable(self, dbName, crTbOptions, schemaStr):
         """Creates metadata about new table in qserv-managed database."""
+        self._mdb.selectMetaDb()
         # check if db exists
         if self.checkDbExists(dbName) == 0:
             self._logger.error("Database '%s' does not exist." % dbName)
@@ -468,33 +472,38 @@ class MetaImpl:
         else:
             psName = crTbOptions["partitioningStrategy"]
         if psName == "sphBox":
-            # add two special columns
-            cmd = "ALTER TABLE %s%s.%s ADD COLUMN chunk BIGINT, ADD COLUMN subChunk BIGINT" % (self._mdb.getServerPrefix(), dbName, tableName)
-            self._mdb.execCommand0(cmd)
+            if not crTbOptions["isView"]:
+                # add two special columns
+                cmd = "ALTER TABLE %s%s.%s ADD COLUMN chunk BIGINT, ADD COLUMN subChunk BIGINT" % (self._mdb.getServerPrefix(), dbName, tableName)
+                self._mdb.execCommand0(cmd)
 
             self._logger.debug("persisting for sphBox")
             ov = crTbOptions["overlap"]
             pCN = crTbOptions["phiColName"]
             tCN = crTbOptions["thetaColName"]
+            oCN = crTbOptions["objIdColName"]
             if not self._checkColumnExists(dbName, tableName, pCN) or \
-               not self._checkColumnExists(dbName, tableName, tCN):
+               not self._checkColumnExists(dbName, tableName, tCN) or \
+               not self._checkColumnExists(dbName, tableName, oCN):
                 raise QmsException(Status.ERR_COL_NOT_FOUND)
             pN = self._getColumnPos(dbName, tableName, pCN)
             tN = self._getColumnPos(dbName, tableName, tCN)
+            oN = self._getColumnPos(dbName, tableName, oCN)
             lP = int(crTbOptions["logicalPart"])
             pC = int(crTbOptions["physChunking"], 16)
-            cmd = "INSERT INTO PS_Tb_sphBox(overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking) VALUES(%s, '%s', '%s', %d, %d, %d, %d)" % (ov, pCN, tCN, pN, tN, lP, pC)
+            cmd = "INSERT INTO PS_Tb_sphBox(overlap, phiCol, thetaCol, objIdCol, phiColNo, thetaColNo, objIdColNo, logicalPart, physChunking) VALUES(%s, '%s', '%s', '%s', %d, %d, %d, %d, %d)" % (ov, pCN, tCN, oCN, pN, tN, oN, lP, pC)
             self._mdb.execCommand0(cmd)
             psId = (self._mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
         # create entry in TableMeta
         isRefMatch = crTbOptions["isRefMatch"]
         isRefMatchValue = 1 if isRefMatch.lower() == "yes" else 0
+        isView = 1 if crTbOptions["isView"] else 0
         tbUuid = uuid.uuid4() # random UUID
         clusteredIdx = crTbOptions["clusteredIndex"]
         if clusteredIdx == "None":
-            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, isRefMatch) VALUES ('%s', '%s', %s, %s, %d)" % (tableName, tbUuid, dbId, psId, isRefMatchValue)
+            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, isRefMatch, isView) VALUES ('%s', '%s', %s, %s, %d, %d)" % (tableName, tbUuid, dbId, psId, isRefMatchValue, isView)
         else:
-            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx, isRefMatch) VALUES ('%s', '%s', %s, %s, '%s', %d)" % (tableName, tbUuid, dbId, psId, clusteredIdx, isRefMatchValue)
+            cmd = "INSERT INTO TableMeta(tableName, tbUuid, dbId, psId, clusteredIdx, isRefMatch, isView) VALUES ('%s', '%s', %s, %s, '%s', %d, %d)" % (tableName, tbUuid, dbId, psId, clusteredIdx, isRefMatchValue, isView)
         self._mdb.execCommand0(cmd)
         self._mdb.commit()
 
@@ -587,21 +596,25 @@ class MetaImpl:
         # retrieve table info
         values = dict()
         if psId and psName == "sphBox":
-            ret = self._mdb.execCommand1("SELECT clusteredIdx, isRefMatch, overlap, phiCol, thetaCol, phiColNo, thetaColNo, logicalPart, physChunking FROM TableMeta JOIN PS_Tb_sphBox USING(psId) WHERE tableId=%s" % tableId)
+            ret = self._mdb.execCommand1("SELECT clusteredIdx, isRefMatch, isView, overlap, phiCol, thetaCol, objIdCol, phiColNo, thetaColNo, objIdColNo, logicalPart, physChunking FROM TableMeta JOIN PS_Tb_sphBox USING(psId) WHERE tableId=%s" % tableId)
             values["clusteredIdx"] = ret[0]
             values["isRefMatch"]   = ret[1]
-            values["overlap"]      = ret[2]
-            values["phiCol"]       = ret[3]
-            values["thetaCol"]     = ret[4]
-            values["phiColNo"]     = ret[5]
-            values["thetaColNo"]   = ret[6]
-            values["logicalPart"]  = ret[7]
-            values["physChunking"] = ret[8]
+            values["isView"]       = ret[2]
+            values["overlap"]      = ret[3]
+            values["phiCol"]       = ret[4]
+            values["thetaCol"]     = ret[5]
+            values["objIdCol"]     = ret[6]
+            values["phiColNo"]     = ret[7]
+            values["thetaColNo"]   = ret[8]
+            values["objIdColNo"]   = ret[9]
+            values["logicalPart"]  = ret[10]
+            values["physChunking"] = ret[11]
         else:
-            cmd = "SELECT clusteredIdx, isRefMatch FROM TableMeta WHERE tableId=%s" % tableId
+            cmd = "SELECT clusteredIdx, isRefMatch, isView FROM TableMeta WHERE tableId=%s" % tableId
             ret = self._mdb.execCommand1(cmd)
             values["clusteredIdx"] = ret[0]
             values["isRefMatch"]   = ret[1]
+            values["isView"]       = ret[2]
         return values
 
     ###########################################################################

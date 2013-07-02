@@ -2,7 +2,7 @@
 
 /* 
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2013 LSST Corporation.
  * 
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,6 +24,15 @@
  
 #ifndef LSST_QSERV_MASTER_ASYNCQUERYMANAGER_H
 #define LSST_QSERV_MASTER_ASYNCQUERYMANAGER_H
+/**
+  * @file AsyncQueryManager.h
+  *
+  * @brief AsyncQueryManager is the class that orchestrates the C++ layer
+  * execution of a query. While most of its work is delegated, it is the one
+  * that maintains thread pools and dispatch/join of chunk queries.
+  *
+  * @author Daniel L. Wang, SLAC
+  */
 
 // Standard
 #include <deque>
@@ -45,11 +54,13 @@ namespace master {
 
 // Forward
 class ChunkQuery;
+class MergeFixup;
+class PacketIter;
+class QuerySession;
 class TableMerger;
 class TableMergerConfig;
-class XrdTransResult;
 class TransactionSpec;
-class PacketIter;
+class XrdTransResult;
 
 //////////////////////////////////////////////////////////////////////
 // class AsyncQueryManager 
@@ -80,6 +91,8 @@ public:
     { _destroyPool(); }
 
     void configureMerger(TableMergerConfig const& c);
+    void configureMerger(MergeFixup const& m, 
+                         std::string const& resultTable);
 
     int add(TransactionSpec const& t, std::string const& resultName);
     void join(int id);
@@ -90,6 +103,7 @@ public:
     void finalizeQuery(int id,  XrdTransResult r, bool aborted); 
     std::string getMergeResultName() const;
     std::string const& getXrootdHostPort() const { return _xrootdHostPort; };
+    std::string const& getScratchPath() const { return _scratchPath; };
 
     void getReadPermission();
     void getWritePermission();
@@ -98,6 +112,9 @@ public:
     void resumeReadTrans();
     lsst::qserv::common::WorkQueue& getReadQueue() { return *_readQueue; }
     lsst::qserv::common::WorkQueue& getWriteQueue() { return *_writeQueue; }
+    
+    QuerySession& getQuerySession() { return *_qSession; }
+
 private:
     // QuerySpec: ChunkQuery object + result name
     typedef std::pair<boost::shared_ptr<ChunkQuery>, std::string> QuerySpec;
@@ -141,11 +158,18 @@ private:
     ssize_t _totalSize;
     bool _canRead;
     int _reliefFiles;
+    
+    // For merger configuration
+    std::string _resultDbSocket;
+    std::string _resultDbUser;
+    std::string _resultDbDb;
 
     std::string _xrootdHostPort;
+    std::string _scratchPath;
     boost::shared_ptr<TableMerger> _merger;
     boost::shared_ptr<lsst::qserv::common::WorkQueue> _readQueue;
     boost::shared_ptr<lsst::qserv::common::WorkQueue> _writeQueue;
+    boost::shared_ptr<QuerySession> _qSession;
 };
 }}} // lsst::qserv::master namespace
 

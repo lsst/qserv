@@ -8,7 +8,7 @@ tableName:      Source
 partitioning: on
 
 # note that the file must be accessible on the client side
-schemaFile: /u1/qserv/ticket1944-qms_run/meta/examples/tbSchema_Source.sql
+schemaFile: /u1/qserv/sandbox/qserv/meta/examples/tbSchema_Source.sql
 
 # the cluster index name must be defined in the schemaFile.
 # Use the word None if not required
@@ -18,6 +18,7 @@ clusteredIndex: IDX_objectId
 overlap:        0
 phiColName:     ra
 thetaColName:   decl
+objIdColName:   sourceId
 
 # 0: none, 1: 1-level, 2: 2-level
 logicalPart:    1

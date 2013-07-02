@@ -28,21 +28,32 @@
 
 // Pkg
 #include "lsst/qserv/master/TableNamer.h"
-#include "lsst/qserv/master/TableRefChecker.h"
+#include "lsst/qserv/master/MetadataCache.h"
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
 typedef std::map<std::string, int> IntMap;
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace master {
+    boost::shared_ptr<qMaster::MetadataCache> getMetadataCache(int);
+}}}
 
 namespace { // anonymous 
 const char sep='#';
 
 std::string stripDelim(std::string const& src,std::string const& delim) {
     std::string::size_type p1 = src.find(delim);
-    assert(p1 != std::string::npos);
+    if(p1 == std::string::npos) {
+        throw std::invalid_argument("No delimiter to strip in stripDelim()");
+    }
     p1 += delim.size();
     std::string::size_type p2 = src.find(delim, p1);
-    assert(p2 != std::string::npos);
+    if(p2 == std::string::npos) {
+        throw std::invalid_argument("No delimiter to strip in stripDelim()");
+    }
     return src.substr(p1, p2-p1);
 }
 
@@ -111,9 +122,9 @@ public:
 
 
 qMaster::TableRemapper::TableRemapper(TableNamer const& tn,
-                                      TableRefChecker const& checker,
+                                      int metaCacheId,
                                       std::string const& delim) 
-    : _tableNamer(tn), _checker(checker), _delim(delim) {
+    : _tableNamer(tn), _metaCacheId(metaCacheId), _delim(delim) {
 }
 
 qMaster::StringMap qMaster::TableRemapper::TableRemapper::getMap(bool overlap) {
@@ -132,9 +143,9 @@ qMaster::StringMap qMaster::TableRemapper::TableRemapper::getMap(bool overlap) {
         // For now, map back to original naming scheme.
         std::string db = i->db;
         std::string table = i->table;
-        if(subC && _checker.isSubChunked(db, table)) {
+        if(subC && getMetadataCache(_metaCacheId)->checkIfTableIsSubChunked(db, table)) {
             g->writeSubChunkName(ss, db, table);
-        } else if(_checker.isChunked(db, table)) {
+        } else if(getMetadataCache(_metaCacheId)->checkIfTableIsChunked(db, table)) {
             g->writeChunkName(ss, db, table);
         } else {
             g->writePlainName(ss, db, table);

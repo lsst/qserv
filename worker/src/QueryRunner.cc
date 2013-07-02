@@ -19,10 +19,16 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// QueryRunner instances perform actual query execution on SQL
-/// databases using SqlConnection objects to interact with dbms
-/// instances.
- 
+ /**
+  * @file QueryRunner.cc  
+  *
+  * @brief QueryRunner instances perform actual query execution on SQL
+  * databases using SqlConnection objects to interact with dbms
+  * instances.
+  *
+  * @author Daniel L. Wang, SLAC
+  */ 
+#include "lsst/qserv/worker/QueryRunner.h"
 #include <iostream>
 #include <fcntl.h>
 
@@ -30,103 +36,89 @@
 #include <boost/regex.hpp>
 #include "lsst/qserv/SqlErrorObject.hh"
 #include "lsst/qserv/SqlConnection.hh"
-#include "lsst/qserv/worker/QueryRunner.h"
 #include "lsst/qserv/worker/QueryPhyResult.h"
 #include "lsst/qserv/worker/Base.h"
 #include "lsst/qserv/worker/Config.h"
 #include "lsst/qserv/worker/Logger.h"
 #include "lsst/qserv/worker/SqlFragmenter.h"
+#include "lsst/qserv/constants.h"
+#include "lsst/qserv/worker/QuerySql.h"
+#include "lsst/qserv/worker/QuerySql_Batch.h"
+
 using lsst::qserv::SqlErrorObject;
 using lsst::qserv::SqlConfig;
 using lsst::qserv::SqlConnection;
 
 using namespace lsst::qserv::worker;
 namespace qWorker = lsst::qserv::worker;
+using lsst::qserv::worker::QuerySql;
 
 namespace {
-
 bool
-runQueryInPieces(boost::shared_ptr<Logger> log, 
-                 SqlConnection& sqlConn,
-                 SqlErrorObject& errObj,
-                 std::string const& query,
-                 CheckFlag* checkAbort) {
-    // Run a larger query in pieces split by semicolon/newlines.
-    // This tries to avoid the max_allowed_packet
-    // (MySQL client/server protocol) problem.
-    // MySQL default max_allowed_packet=1MB
-    SqlFragmenter sf(query);
-    while(!sf.isDone()) {
-        SqlFragmenter::Piece p = sf.getNextPiece();
-        if ( !sqlConn.runQuery(p.first, p.second, errObj) ) {
+runBatch(boost::shared_ptr<qWorker::Logger> log, 
+         SqlConnection& sqlConn,
+         SqlErrorObject& errObj,
+         std::string const& scriptId,
+         QuerySql::Batch& batch,
+         qWorker::CheckFlag* checkAbort) {
+    log->info((Pformat("TIMING,%1%%2%Start,%3%")
+                 % scriptId % batch.name % ::time(NULL)).str().c_str());
+    bool batchAborted = false;
+    while(!batch.isDone()) {
+        std::string piece = batch.current();
+        if(!sqlConn.runQuery(piece.data(), piece.size(), errObj) ) {
             // On error, the partial error is as good as the global.
-            if( errObj.isSet() ) {
-                unsigned s=p.second;
+            if(errObj.isSet() ) {
+                unsigned s=piece.size();
                 log->error((Pformat(">>%1%<<---Error with piece %2% complete (size=%3%).") 
-                        % errObj.errMsg() % sf.getCount() % s).str());
-                return false;
+                            % errObj.errMsg() 
+                            % batch.pos % batch.sequence.size()).str().c_str());
+                batchAborted = true;
+                break;
             } else if(checkAbort && (*checkAbort)()) {
-                if(sf.isDone()) {
-                    log->info("Query finished, though client requested abort.");
-                } else {
-                    log->info((Pformat("Aborting query by request (%1% complete).") 
-                            % sf.getCount()).str().c_str());
-                    return errObj.addErrMsg("Query poisoned by client request");
-                }
+                log->error((Pformat("Aborting query by request (%1% complete).") 
+                            % batch.pos).str().c_str());
+                errObj.addErrMsg("Query poisoned by client request");
+                batchAborted = true;
+                break;
             }
         }
+        batch.next();
     }
-    // Can't use _eDest (we are in file-scope)
-    //std::cout << Pformat("Executed query in %1% pieces.") % pieceCount;
-    
-    // Getting here means that none of the pieces failed.
-    return true;
-}
-
-bool
-runScriptPiece(boost::shared_ptr<Logger> log,
-               SqlConnection& sqlConn,
-               SqlErrorObject& errObj,
-               std::string const& scriptId, 
-               std::string const& pieceName,
-               std::string const& piece, 
-               CheckFlag* checkAbort) {
-    log->info((Pformat("TIMING,%1%%2%Start,%3%")
-                 % scriptId % pieceName % ::time(NULL)).str().c_str());
-    //log->info(("Hi. my piece is++"+piece+"++").c_str());
-	
-    bool result = runQueryInPieces(log, sqlConn, errObj, piece, checkAbort);
     log->info((Pformat("TIMING,%1%%2%Finish,%3%")
-           % scriptId % pieceName % ::time(NULL)).str().c_str());
-    if ( ! result ) {
-        errObj.addErrMsg("(during " + pieceName + ")\nQueryFragment: " + piece);
+               % scriptId % batch.name % ::time(NULL)).str().c_str());
+    if(batchAborted) {
+        errObj.addErrMsg("(during " + batch.name 
+                         + ")\nQueryFragment: " + batch.current());
         log->info((Pformat("Broken! ,%1%%2%---%3%")
-               % scriptId % pieceName % errObj.errMsg()).str().c_str());
+                   % scriptId % batch.name % errObj.errMsg()).str().c_str());
         return false;
     }
     return true;
 }
 
+// Newer, flexibly-batched system.
 bool
 runScriptPieces(boost::shared_ptr<Logger> log,
                 SqlConnection& sqlConn,
                 SqlErrorObject& errObj,
                 std::string const& scriptId, 
-                std::string const& build, 
-                std::string const& run, 
-                std::string const& cleanup,
-                CheckFlag* checkAbort) {
-    if ( runScriptPiece(log, sqlConn, errObj, scriptId, "QueryBuildSub", 
-                        build, checkAbort) ) {
-        if ( ! runScriptPiece(log, sqlConn, errObj, scriptId, "QueryExec", 
-                              run, checkAbort) ) {
+                QuerySql const& qSql,
+                qWorker::CheckFlag* checkAbort) {
+    QuerySql::Batch build("QueryBuildSub", qSql.buildList);
+    QuerySql::Batch exec("QueryExec", qSql.executeList);
+    QuerySql::Batch clean("QueryDestroySub", qSql.cleanupList);
+    bool sequenceOk = false;
+    if(runBatch(log, sqlConn, errObj, scriptId, build, checkAbort)) {
+        if(!runBatch(log, sqlConn, errObj, scriptId, exec, checkAbort)) {
             log->error((Pformat("Fail QueryExec phase for %1%: %2%") 
-                   % scriptId % errObj.errMsg()).str().c_str());
+                        % scriptId % errObj.errMsg()).str().c_str());
+        } else {
+            sequenceOk = true;
         }
     }
-    // Always destroy subchunks, no aborting.
-    return runScriptPiece(log, sqlConn, errObj, scriptId, 
-                          "QueryDestroySub", cleanup, 0);
+    // Always destroy subchunks, no aborting (use NULL checkflag)    
+    return sequenceOk && runBatch(log, sqlConn, errObj, scriptId, clean, NULL);
 }
 
 std::string commasToSpaces(std::string const& s) {
@@ -154,41 +146,6 @@ void forEachSubChunk(std::string const& script, F& func) {
         ++subChunkCount;
     }
 }
-
-// FIXME: should be metadata or constant somewhere else.
-const char SUB_CHUNK_COLUMN[] = "subChunkId";
-
-template <typename T>
-class ScScriptBuilder {
-public:
-    ScScriptBuilder(std::string const& db, std::string const& table, 
-                    std::string const& scColumn, 
-                    int chunkId_) : chunkId(chunkId_) {
-        buildTemplate.assign((Pformat(CREATE_SUBCHUNK_SCRIPT)
-                              % db % table % scColumn
-                              % chunkId % "%1%").str()); 
-        cleanTemplate.assign((Pformat(CLEANUP_SUBCHUNK_SCRIPT)
-                              % db % table 
-                              % chunkId % "%1%").str()); 
-
-    }
-    void operator()(T const& subc) {
-        build << (Pformat(buildTemplate) % subc).str() 
-              << "\n";
-        clean << (Pformat(cleanTemplate) % subc).str()
-              << "\n";
-    }
-    void reset(int chunkId_) {
-        chunkId = chunkId_;
-        build.str(std::string());
-        clean.str(std::string());
-    }
-    std::string buildTemplate;
-    std::string cleanTemplate;
-    int chunkId;
-    std::stringstream build;
-    std::stringstream clean;
-};
 
 } // anonymous namespace
 
@@ -250,36 +207,6 @@ bool QueryRunner::operator()() {
     return true;
 }
 
-#if 0
-bool QueryRunner::operate2()() {
-    
-    bool haveWork = true;
-    Manager& mgr = getMgr();
-    boost::shared_ptr<ArgFunc> afPtr(getResetFunc());
-    mgr.addRunner(this);
-    _log->info((Pformat("(Queued: %1%, running: %2%)")
-            % mgr.getQueueLength() % mgr.getRunnerCount()).str().c_str());
-    while(haveWork) {
-        if(_checkPoisoned()) {
-            _poisonCleanup();
-        } else {
-            _act(); 
-            // Might be wise to clean up poison for the current hash anyway.
-        }
-        _log->info((Pformat("(Looking for work... Queued: %1%, running: %2%)")
-                % mgr.getQueueLength() 
-                % mgr.getRunnerCount()).str().c_str());
-        assert(_task.get()); 
-        assert(_task->msg.get());
-        bool reused = mgr.recycleRunner(afPtr.get(), _task->msg->chunkid());
-        if(!reused) {
-            mgr.dropRunner(this);
-            haveWork = false;
-        }
-    } // finished with work.
-    return true;
-}
-#endif
 
 void QueryRunner::poison(std::string const& hash) {
     boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
@@ -395,29 +322,26 @@ bool QueryRunner::_runTask(Task::Ptr t) {
                 % getConfig().getString("mysqlSocket") % _user).str());
         return _errObj.addErrMsg("Unable to connect to MySQL as " + _user);
     }
+    QuerySql::Factory qf;
     for(int i=0; i < m.fragment_size(); ++i) {
         Task::Fragment const& f(m.fragment(i));
-        ScScriptBuilder<int> scb("LSST", "Object", // FIXME: get from message
-                                 SUB_CHUNK_COLUMN, t->msg->chunkid());
-        std::stringstream ss;
-
-        for(int j=0; j < f.subchunk_size(); ++j) {
-            scb(f.subchunk(j));
-        }
+        int chunkId = 1234567890;
+        std::string defaultDb = "test"; // should always get db from TaskMsg
+        if(m.has_chunkid()) { chunkId = m.chunkid(); }
+        if(m.has_db()) { defaultDb = m.db(); }
         if(f.has_resulttable()) { resultTable = f.resulttable(); }
         assert(!resultTable.empty());
-
-        if(t->needsCreate) {
-            if(!_pResult->hasResultTable(resultTable)) {
-                ss << "CREATE TABLE " << resultTable << " ";
-            } else {
-                ss << "INSERT INTO " << resultTable << " ";
-            }
-        }
-        ss << f.query();
-        success = _runFragment(_sqlConn, ss.str(), 
-                               scb.build.str(), scb.clean.str(), 
-                               resultTable);
+        
+        // Use SqlFragmenter to break up query portion into fragments.
+        // If protocol gives us a query sequence, we won't need to
+        // split fragments.
+        bool first = t->needsCreate && (i==0);
+        boost::shared_ptr<QuerySql> qSql = qf.newQuerySql(defaultDb, chunkId, 
+                                                          m.fragment(i), 
+                                                          first,
+                                                          resultTable);
+        
+        success = _runFragment(_sqlConn, *qSql);
         if(!success) return false;
         _pResult->addResultTable(resultTable);
     }
@@ -432,12 +356,8 @@ bool QueryRunner::_runTask(Task::Ptr t) {
     return true;
 }
 
-// FIXME rework this function!!! Jacek
-bool QueryRunner::_runFragment(SqlConnection& sqlConn,
-                                        std::string const& scr,
-                                        std::string const& buildSc,
-                                        std::string const& cleanSc,
-                                        std::string const& resultTable) {
+bool qWorker::QueryRunner::_runFragment(SqlConnection& sqlConn,
+                                        QuerySql const& qSql) {
     boost::shared_ptr<CheckFlag> check(_makeAbort());
     
     if(!_prepareAndSelectResultDb(sqlConn)) {
@@ -447,29 +367,13 @@ bool QueryRunner::_runFragment(SqlConnection& sqlConn,
         _poisonCleanup(); // Clean it up.
         return false; 
     }
-    if ( !runScriptPieces(_log, sqlConn, _errObj, _scriptId, buildSc, 
-                          scr, cleanSc, check.get()) ) {
+    if( !runScriptPieces(_log, sqlConn, _errObj, _scriptId, 
+                         qSql, check.get()) ) {
         return false;
     }
     _log->info((Pformat("TIMING,%1%ScriptFinish,%2%")
                 % _scriptId % ::time(NULL)).str().c_str());
     return true;
-}
-
-void QueryRunner::_buildSubchunkScripts(std::string const& script,
-                                                 std::string& build, 
-                                                 std::string& cleanup) {
-    ScScriptBuilder<std::string> scb("LSST", "Object", SUB_CHUNK_COLUMN,
-                                     _task->msg->chunkid());
-    _log->info((Pformat("TIMING,%1%QueryFormatStart,%2%")
-                % _scriptId % ::time(NULL)).str().c_str());
-    
-    forEachSubChunk(script, scb);
-    build.assign(scb.build.str());
-    cleanup.assign(scb.clean.str());
-
-    _log->info((Pformat("TIMING,%1%QueryFormatFinish,%2%")
-            % _scriptId % ::time(NULL)).str().c_str());
 }
 
 bool 
