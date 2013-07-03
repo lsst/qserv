@@ -45,7 +45,10 @@ typedef std::map<std::string, QueryPlugin::FactoryPtr> FactoryMap;
 static boost::mutex factoryMapMutex;
 
 // Static local member
-static FactoryMap factoryMap;
+FactoryMap& factoryMap() {
+    static FactoryMap instance;
+    return instance;
+}
 
 } // anonymous namespace
 
@@ -53,8 +56,8 @@ QueryPlugin::Ptr
 QueryPlugin::newInstance(std::string const& name) {
     boost::lock_guard<boost::mutex> guard(factoryMapMutex);
 
-    FactoryMap::iterator e = factoryMap.find(name);
-    if(e == factoryMap.end()) { // No plugin.
+    FactoryMap::iterator e = factoryMap().find(name);
+    if(e == factoryMap().end()) { // No plugin.
         throw PluginNotFoundError(name);
     } else {
         return e->second->newInstance();
@@ -65,5 +68,5 @@ void
 QueryPlugin::registerClass(QueryPlugin::FactoryPtr f) {
     boost::lock_guard<boost::mutex> guard(factoryMapMutex);
     if(!f.get()) return;    
-    factoryMap[f->getName()] = f;
+    factoryMap()[f->getName()] = f;
 }

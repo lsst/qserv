@@ -24,7 +24,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include "lsst/qserv/master/AggregatePlugin.h"
+// No public interface (no AggregatePlugin.h)
 #include <string>
 #include <stdexcept>
 #include "lsst/qserv/master/common.h"
@@ -39,8 +39,6 @@
 #include "lsst/qserv/master/SelectStmt.h"
 #include "lsst/qserv/master/AggOp.h"
 
-namespace { // Anonymous helpers
-} // Anonymous namespace
 
 namespace lsst { 
 namespace qserv { 
@@ -161,13 +159,16 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // registerAggregatePlugin implementation
 ////////////////////////////////////////////////////////////////////////
-// factory registration
-void 
-registerAggregatePlugin() {
-    AggregatePluginFactory::Ptr f(new AggregatePluginFactory());
-    lsst::qserv::master::QueryPlugin::registerClass(f);
+namespace {
+struct registerPlugin {
+    registerPlugin() {
+        AggregatePluginFactory::Ptr f(new AggregatePluginFactory());
+        lsst::qserv::master::QueryPlugin::registerClass(f);
+    }
+};
+// Static registration
+registerPlugin registerAggregatePlugin;
 }
-
 ////////////////////////////////////////////////////////////////////////
 // AggregatePlugin implementation
 ////////////////////////////////////////////////////////////////////////

@@ -28,7 +28,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */ 
-#include "lsst/qserv/master/TablePlugin.h"
+// No public interface (no TablePlugin.h)
 #include <string>
 
 #include "lsst/qserv/master/QueryPlugin.h"
@@ -241,11 +241,15 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // registerTablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
-// factory registration
-void 
-registerTablePlugin() {
+namespace {
+struct registerPlugin {
+    registerPlugin() {
     TablePluginFactory::Ptr f(new TablePluginFactory());
     QueryPlugin::registerClass(f);
+    }
+};
+// Static registration
+registerPlugin registerTablePlugin;
 }
 
 ////////////////////////////////////////////////////////////////////////

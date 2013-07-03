@@ -152,7 +152,6 @@ private:
     mutable bool _dirty;
 };
 
-void initQuerySession(); // Initialize QuerySession-related statics.
 }}} // namespace lsst::qserv::master
 
 

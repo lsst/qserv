@@ -41,7 +41,7 @@ namespace qserv {
 namespace master {
 class QueryTemplate; // Forward
 
-/// TableRefN is a parsed table reference 
+/// TableRefN is a parsed table reference node
 class TableRefN {
 public:
     typedef boost::shared_ptr<TableRefN> Ptr;

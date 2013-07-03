@@ -20,14 +20,14 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file SpatialSpecPlugin.cc
+  * @file 
   *
-  * @brief SpatialSpecPlugin implementation
+  * @brief QservRestrictorPlugin implementation
   *
   * @author Daniel L. Wang, SLAC
   */
 
-#include "lsst/qserv/master/SpatialSpecPlugin.h"
+// No public interface (no QservRestrictorPlugin.h)
 #include <deque>
 #include <string>
 
@@ -46,7 +46,9 @@ namespace { // File-scope helpers
 std::string const UDF_PREFIX = "scisql_";
 } // anonymous
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace master {
 typedef std::pair<std::string,std::string> StringPair;
 
 ValueExprTerm::Ptr newColRef(std::string const& key) {
@@ -98,8 +100,8 @@ ValueExprTerm::Ptr newFunc(char const fName[],
 }
 
 
-struct SpatialEntry {
-    SpatialEntry(std::string const& alias_, 
+struct RestrictorEntry {
+    RestrictorEntry(std::string const& alias_, 
                  StringPair const& chunkColumns_,
                  std::string const& keyColumn_)
         : alias(alias_), 
@@ -110,11 +112,11 @@ struct SpatialEntry {
     StringPair chunkColumns;
     std::string keyColumn;
 };
-typedef std::deque<SpatialEntry> SpatialEntries;
+typedef std::deque<RestrictorEntry> RestrictorEntries;
 class getTable {
 public:
     
-    explicit getTable(MetadataCache& metadata, SpatialEntries& entries) 
+    explicit getTable(MetadataCache& metadata, RestrictorEntries& entries) 
         : _metadata(metadata), 
           _entries(entries) {}
     void operator()(TableRefN::Ptr t) {
@@ -136,28 +138,28 @@ public:
             throw std::logic_error("Unexpected unaliased table reference");
         }
         std::vector<std::string> pCols = _metadata.getPartitionCols(db, table);
-        SpatialEntry se(alias,
+        RestrictorEntry se(alias,
                         StringPair(pCols[0], pCols[1]),
                         pCols[2]);
         _entries.push_back(se);
     }
     MetadataCache& _metadata;
-    SpatialEntries& _entries;
+    RestrictorEntries& _entries;
 };
 ////////////////////////////////////////////////////////////////////////
-// SpatialSpec declaration
+// QservRestrictorPlugin declaration
 ////////////////////////////////////////////////////////////////////////
-/// SpatialSpecPlugin replaces a spatial specification with directives
+/// QservRestrictorPlugin replaces a qserv restrictor spec with directives
 /// that can be executed on a qserv mysqld. This plugin should be
 /// execute after aliases for tables have been generates, so that the
-/// new spatial function clauses/phrases can use the aliases.
-class SpatialSpecPlugin : public lsst::qserv::master::QueryPlugin {
+/// new restrictor function clauses/phrases can use the aliases.
+class QservRestrictorPlugin : public lsst::qserv::master::QueryPlugin {
 public:
     // Types
-    typedef boost::shared_ptr<SpatialSpecPlugin> Ptr;
+    typedef boost::shared_ptr<QservRestrictorPlugin> Ptr;
     class Restriction;
     
-    virtual ~SpatialSpecPlugin() {}
+    virtual ~QservRestrictorPlugin() {}
 
     virtual void prepare() {}
 
@@ -165,21 +167,21 @@ public:
     virtual void applyPhysical(QueryPlugin::Plan& p, QueryContext& context);
 private:
     BoolTerm::Ptr _makeCondition(boost::shared_ptr<QsRestrictor> const restr,
-                                 SpatialEntry const& spatialEntry);
+                                 RestrictorEntry const& restrictorEntry);
 };
 
 ////////////////////////////////////////////////////////////////////////
-// SpatialSpecPlugin::Restriction
+// QservRestrictorPlugin::Restriction
 // Generates WHERE clause terms from restriction specs. Borrowed from
 // older parsing framework. 
 ////////////////////////////////////////////////////////////////////////
-class SpatialSpecPlugin::Restriction {
+class QservRestrictorPlugin::Restriction {
 public:
     Restriction(QsRestrictor const& r) 
         : _name(r._name) {
         _setGenerator(r);
     }
-    BoolFactor::Ptr generate(SpatialEntry const& e) {
+    BoolFactor::Ptr generate(RestrictorEntry const& e) {
         return (*_generator)(e);
     }
 
@@ -193,7 +195,7 @@ public:
     class Generator {
     public:
         virtual ~Generator() {}
-        virtual BoolFactor::Ptr operator()(SpatialEntry const& e) = 0;
+        virtual BoolFactor::Ptr operator()(RestrictorEntry const& e) = 0;
     };
 private:
     class ObjectIdGenerator : public Generator {
@@ -202,7 +204,7 @@ private:
             : params(params_.begin(), params_.end()) {
         }
 
-        virtual BoolFactor::Ptr operator()(SpatialEntry const& e) {
+        virtual BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             BoolFactor::Ptr newFactor(new BoolFactor);
             newFactor->_terms.push_back(newColRef(e.keyColumn));
             newFactor->_terms.push_back(newPass("IN"));
@@ -224,7 +226,7 @@ private:
             }
         }
 
-        virtual BoolFactor::Ptr operator()(SpatialEntry const& e) {
+        virtual BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             BoolFactor::Ptr newFactor(new BoolFactor);
             BfTerm::PtrList& terms = newFactor->_terms;
             
@@ -275,44 +277,48 @@ private:
 
 
 ////////////////////////////////////////////////////////////////////////
-// SpatialSpecPluginFactory declaration+implementation
+// QservRestrictorPluginFactory declaration+implementation
 ////////////////////////////////////////////////////////////////////////
-class SpatialSpecPluginFactory : public lsst::qserv::master::QueryPlugin::Factory {
+class QservRestrictorPluginFactory : public lsst::qserv::master::QueryPlugin::Factory {
 public:
     // Types
-    typedef boost::shared_ptr<SpatialSpecPluginFactory> Ptr;
-    SpatialSpecPluginFactory() {}
-    virtual ~SpatialSpecPluginFactory() {}
+    typedef boost::shared_ptr<QservRestrictorPluginFactory> Ptr;
+    QservRestrictorPluginFactory() {}
+    virtual ~QservRestrictorPluginFactory() {}
 
-    virtual std::string getName() const { return "SpatialSpec"; }
+    virtual std::string getName() const { return "QservRestrictor"; }
     virtual lsst::qserv::master::QueryPlugin::Ptr newInstance() {
-        return lsst::qserv::master::QueryPlugin::Ptr(new SpatialSpecPlugin());
+        return lsst::qserv::master::QueryPlugin::Ptr(new QservRestrictorPlugin());
     }
 };
 
 ////////////////////////////////////////////////////////////////////////
-// registerSpatialSpecPlugin implementation
+// registerQservRestrictorPlugin implementation
 ////////////////////////////////////////////////////////////////////////
-// factory registration
-void 
-registerSpatialSpecPlugin() {
-    SpatialSpecPluginFactory::Ptr f(new SpatialSpecPluginFactory());
-    QueryPlugin::registerClass(f);
+namespace {
+struct registerPlugin {
+    registerPlugin() {
+        QservRestrictorPluginFactory::Ptr f(new QservRestrictorPluginFactory());
+        QueryPlugin::registerClass(f);
+    }
+};
+// Static registration
+registerPlugin registerQservRestrictorPlugin;
 }
 
 ////////////////////////////////////////////////////////////////////////
-// SpatialSpecPlugin implementation
+// QservRestrictorPlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void 
-SpatialSpecPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
-    // Idea: For each of the spatial specs in the WHERE clause,
+QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
+    // Idea: For each of the qserv restrictors in the WHERE clause,
     // rewrite in the context of whatever chunked tables exist in the
     // FROM list.
 
     // First, get a list of the chunked tables.
     FromList& fList = stmt.getFromList();    
     TableRefnList& tList = fList.getTableRefnList();
-    SpatialEntries entries;
+    RestrictorEntries entries;
     if(!context.metadata) {
         throw std::logic_error("Missing metadata in context");
     }
@@ -326,17 +332,17 @@ SpatialSpecPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
 
     boost::shared_ptr<QsRestrictor::List const> rListP = wc.getRestrs();
     context.restrictors.reset(new QueryContext::RestrList);
-    if(!rListP.get()) return; // No spatial restrictions -> nothing to do
+    if(!rListP.get()) return; // No qserv restrictions -> nothing to do
 
     QsRestrictor::List const& rList = *rListP;
     AndTerm::Ptr newTerm(new AndTerm);
 
-    // Now, for each of the spatial restrictors:
+    // Now, for each of the qserv restrictors:
     for(QsRestrictor::List::const_iterator i=rList.begin();
         i != rList.end(); ++i) {
-        // for each spatial entry
+        // for each restrictor entry
         // generate a restrictor condition.
-        for(SpatialEntries::const_iterator j = entries.begin();
+        for(RestrictorEntries::const_iterator j = entries.begin();
             j != entries.end(); ++j) {
             newTerm->_terms.push_back(_makeCondition(*i, *j));
         }
@@ -349,15 +355,15 @@ SpatialSpecPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
 }
 
 void
-SpatialSpecPlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
+QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
     // Probably nothing is needed here...
 }
 
 BoolTerm::Ptr 
-SpatialSpecPlugin::_makeCondition(boost::shared_ptr<QsRestrictor> const restr,
-                                  SpatialEntry const& spatialEntry) {
+QservRestrictorPlugin::_makeCondition(boost::shared_ptr<QsRestrictor> const restr,
+                                      RestrictorEntry const& restrictorEntry) {
     Restriction r(*restr);
-    return r.generate(spatialEntry);
+    return r.generate(restrictorEntry);
 }
 
 }}} // namespace lsst::qserv::master

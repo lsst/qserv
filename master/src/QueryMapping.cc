@@ -116,7 +116,7 @@ private:
         case QueryMapping::HTM1:
             throw std::range_error("HTM unimplemented");
         default:
-            return "UNKNOWN";
+            throw std::range_error("Unknown mapping parameter");
         }
     }
     void _nextSubChunk() {

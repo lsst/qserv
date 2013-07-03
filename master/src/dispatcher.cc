@@ -71,7 +71,6 @@ SessionMgr& getSessionManager() {
     static SessionMgrPtr sm;
     if(sm.get() == NULL) {
         sm = boost::make_shared<SessionMgr>();
-        qMaster::initQuerySession();
     }
     if(!sm) {
         throw std::logic_error("Couldn't initialize SessionManager");

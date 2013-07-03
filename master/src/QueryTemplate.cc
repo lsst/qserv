@@ -186,7 +186,7 @@ void QueryTemplate::clear() {
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate (private)
 ////////////////////////////////////////////////////////////////////////
-void QueryTemplate::_optimize() {
+void QueryTemplate::optimize() {
     typedef std::list<boost::shared_ptr<Entry> >::const_iterator Iter;
 
     EntryMerger em;

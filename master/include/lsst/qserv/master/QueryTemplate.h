@@ -98,8 +98,9 @@ public:
     std::string generate() const;
     std::string generate(EntryMapping const& em) const;
     void clear();
+    void optimize();
+
 private:
-    void _optimize();
     std::list<boost::shared_ptr<Entry> > _entries;
 };
 typedef std::list<boost::shared_ptr<QueryTemplate> >QueryTemplateList;

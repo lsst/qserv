@@ -51,8 +51,11 @@ public:
     std::string dominantDb; ///< "dominant" database for this query
     std::string anonymousTable; ///< Implicit table context
     std::string username; ///< unused, but reserved.
+
+    // Owned QueryMapping and query restrictors
     boost::shared_ptr<QueryMapping> queryMapping;
     boost::shared_ptr<RestrList> restrictors;
+
     bool needsMerge; ///< Does this query require a merge/post-processing step?
 
     bool hasChunks() const { 

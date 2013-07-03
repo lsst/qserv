@@ -101,11 +101,6 @@ void testStmt3(QuerySession::Test& t,  std::string const& stmt) {
 
 } // anonymous namespace
 
-struct StaticFixture {
-    StaticFixture() { qMaster::initQuerySession(); }
-    ~StaticFixture() {}
-};
-
 struct ParserFixture {
     ParserFixture(void) 
         : delimiter("%$#") {
@@ -228,7 +223,6 @@ void tryAggregate() {
 ////////////////////////////////////////////////////////////////////////
 // CppParser basic tests
 ////////////////////////////////////////////////////////////////////////
-BOOST_GLOBAL_FIXTURE(StaticFixture)
 BOOST_FIXTURE_TEST_SUITE(CppParser, ParserFixture)
 
 #if 0 // Convert these to test new parser. Defer to a later ticket.

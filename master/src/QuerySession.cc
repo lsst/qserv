@@ -41,10 +41,6 @@
 #include "lsst/qserv/master/QueryContext.h"
 #include "lsst/qserv/master/QueryMapping.h"
 #include "lsst/qserv/master/QueryPlugin.h"
-#include "lsst/qserv/master/AggregatePlugin.h"
-#include "lsst/qserv/master/SpatialSpecPlugin.h"
-#include "lsst/qserv/master/TablePlugin.h"
-#include "lsst/qserv/master/PostPlugin.h"
 #include "lsst/qserv/master/ifaceMeta.h" // Retrieve metadata object
 
 namespace lsst {
@@ -183,7 +179,7 @@ void QuerySession::_preparePlugins() {
 
     _plugins->push_back(QueryPlugin::newInstance("Aggregate"));
     _plugins->push_back(QueryPlugin::newInstance("Table"));
-    _plugins->push_back(QueryPlugin::newInstance("SpatialSpec"));
+    _plugins->push_back(QueryPlugin::newInstance("QservRestrictor"));
     _plugins->push_back(QueryPlugin::newInstance("Post"));
     PluginList::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
@@ -326,18 +322,6 @@ QuerySession::Iter::_buildFragment(ChunkSpecFragmenter& f) const {
         f.next();
     }
     return first;
-}
-
-
-////////////////////////////////////////////////////////////////////////
-// initQuerySession
-////////////////////////////////////////////////////////////////////////
-void initQuerySession() {
-    // Plugins should probably be registered once, at startup.
-    registerAggregatePlugin(); 
-    registerTablePlugin();
-    registerSpatialSpecPlugin();
-    registerPostPlugin();
 }
 
 }}} // namespace lsst::qserv::master

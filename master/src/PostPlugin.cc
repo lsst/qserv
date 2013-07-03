@@ -27,7 +27,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include "lsst/qserv/master/PostPlugin.h"
+// No public interface (no PostPlugin.h)
 #include <stdexcept>
 #include <string>
 
@@ -36,8 +36,9 @@
 #include "lsst/qserv/master/SelectList.h"
 #include "lsst/qserv/master/SelectStmt.h"
 
-namespace lsst { namespace qserv { namespace master {
-
+namespace lsst {
+namespace qserv {
+namespace master {
 ////////////////////////////////////////////////////////////////////////
 // PostPlugin declaration
 ////////////////////////////////////////////////////////////////////////
@@ -80,11 +81,15 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // registerPostPlugin implementation
 ////////////////////////////////////////////////////////////////////////
-// factory registration
-void
-registerPostPlugin() {
+namespace {
+struct registerPlugin {
+    registerPlugin() {
     PostPluginFactory::Ptr f(new PostPluginFactory());
     QueryPlugin::registerClass(f);
+    }
+};
+// Static registration
+registerPlugin registerPostPlugin;
 }
 
 ////////////////////////////////////////////////////////////////////////
