@@ -36,19 +36,23 @@
 #include <string>
 #include <antlr/NoViableAltException.hpp>
 
-#include "lsst/qserv/master/MetadataCache.h"
-#include "lsst/qserv/master/ifaceMeta.h"
 #include "lsst/qserv/master/ChunkMeta.h"
-#include "lsst/qserv/master/SelectParser.h"
-#include "lsst/qserv/master/SelectStmt.h"
-#include "lsst/qserv/master/transaction.h"
+#include "lsst/qserv/master/ifaceMeta.h"
+#include "lsst/qserv/master/MetadataCache.h"
 #include "lsst/qserv/master/QsRestrictor.h"
 #include "lsst/qserv/master/QueryContext.h"
 #include "lsst/qserv/master/QuerySession.h"
 #include "lsst/qserv/master/ParseException.h"
+#include "lsst/qserv/master/SelectParser.h"
+#include "lsst/qserv/master/SelectStmt.h"
+#include "lsst/qserv/master/Constraint.h"
 
 using lsst::qserv::master::ChunkMeta;
 using lsst::qserv::master::ChunkSpec;
+using lsst::qserv::master::ChunkQuerySpec;
+using lsst::qserv::master::Constraint;
+using lsst::qserv::master::ConstraintVec;
+using lsst::qserv::master::ConstraintVector;
 using lsst::qserv::master::QsRestrictor;
 using lsst::qserv::master::QueryContext;
 using lsst::qserv::master::QuerySession;
@@ -93,19 +97,25 @@ boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,
     boost::shared_ptr<QuerySession> qs(new QuerySession(t));
     qs->setQuery(stmt);
     BOOST_CHECK_EQUAL(qs->getError(), "");
-    qs->getConstraints();    
-    // SelectStmt const& stmt2 = 
-    qs->getStmt();
-    qs->addChunk(makeChunkSpec(100));
-    qs->addChunk(makeChunkSpec(101));
+    ConstraintVec cv(qs->getConstraints());
+    boost::shared_ptr<ConstraintVector> cvRaw = cv.getVector();
+    if(cvRaw) {
+        std::copy(cvRaw->begin(), cvRaw->end(), std::ostream_iterator<Constraint>(std::cout, ","));
+        typedef ConstraintVector::iterator Iter;
+        for(Iter i=cvRaw->begin(), e=cvRaw->end(); i != e; ++i) {
+            std::cout << *i << ",";
+        }
+    }
+    return qs;
+}
+
+void printChunkQuerySpecs(boost::shared_ptr<QuerySession> qs) {
     QuerySession::Iter i;
     QuerySession::Iter e = qs->cQueryEnd();
     for(i = qs->cQueryBegin(); i != e; ++i) {
         qMaster::ChunkQuerySpec& cs = *i;
         std::cout << "Spec: " << cs << std::endl;
-        //std::cout << *i << std::endl;
     }    
-    return qs;
 }
 } // anonymous namespace
 
@@ -360,29 +370,74 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
                                   params, params+6); 
 }
-#if 0
+
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::string stmt = "select * from Object as o1 where qserv_objectId(2,3145,9999);";
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
-    BOOST_CHECK(spr->getHasChunks());
-    BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(!spr->getHasAggregate());
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(context->restrictors);
+    BOOST_CHECK_EQUAL(context->restrictors->size(), 1);
+    BOOST_REQUIRE(context->restrictors->front());
+    QsRestrictor& r = *context->restrictors->front();
+    BOOST_CHECK_EQUAL(r._name, "sIndex");
+    char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
+                                  params, params+6); 
+
 }
 BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
-    std::string stmt = "select count(*) from Object as o1, Object as o2 where qserv_areaspec_box(6,6,7,7) AND o1.ra_PS between 6 and 7 and o1.decl_PS between 6 and 7 ;";
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
-    BOOST_CHECK(spr->getHasChunks());
-    BOOST_CHECK(spr->getHasSubChunks());
-    BOOST_CHECK(spr->getHasAggregate());
+    std::string stmt = "select count(*) from Object as o1, Object as o2 "
+        "where qserv_areaspec_box(6,6,7,7) AND rFlux_PS<0.005;";
+    std::string expected_100_100000_core = 
+        "SELECT count(*) AS QS1_COUNT FROM Subchunks_LSST_100.Object_100_100000 AS o1,Subchunks_LSST_100.ObjectFullOverlap_100_100000 AS o2 "
+        "WHERE scisql_s2PtInBox(o1.ra_Test,o1.decl_Test,6,6,7,7)=1 AND scisql_s2PtInBox(o2.ra_Test,o2.decl_Test,6,6,7,7)=1 AND rFlux_PS<0.005";
+    std::string expected_100_100010_overlap = 
+        "SELECT count(*) AS QS1_COUNT FROM Subchunks_LSST_100.Object_100_100010 AS o1,Subchunks_LSST_100.Object_100_100010 AS o2 "
+        "WHERE scisql_s2PtInBox(o1.ra_Test,o1.decl_Test,6,6,7,7)=1 AND scisql_s2PtInBox(o2.ra_Test,o2.decl_Test,6,6,7,7)=1 AND rFlux_PS<0.005";
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(context->restrictors);
+    BOOST_CHECK_EQUAL(context->restrictors->size(), 1);
+    BOOST_REQUIRE(context->restrictors->front());
+    QsRestrictor& r = *context->restrictors->front();
+    BOOST_CHECK_EQUAL(r._name, "qserv_areaspec_box");
+    char const* params[] = {"6","6","7","7"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
+                                  params, params+4); 
+
+    qs->addChunk(makeChunkSpec(100,true));
+    QuerySession::Iter i = qs->cQueryBegin();
+    QuerySession::Iter e = qs->cQueryEnd();
+    BOOST_REQUIRE(i != e);
+    ChunkQuerySpec& first = *i;
+    BOOST_CHECK(first.queries.size() == 6);
+    BOOST_CHECK_EQUAL(first.queries[1], expected_100_100000_core);
+    BOOST_CHECK_EQUAL(first.queries[2], expected_100_100010_overlap);
+
+
 }
 
 BOOST_AUTO_TEST_CASE(BadDbAccess) {
     std::string stmt = "select count(*) from Bad.Object as o1, Object o2 where qserv_areaspec_box(6,6,7,7) AND o1.ra_PS between 6 and 7 and o1.decl_PS between 6 and 7 ;";
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr, true);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(context->restrictors);
+    BOOST_CHECK_EQUAL(context->restrictors->size(), 1);
+    BOOST_REQUIRE(context->restrictors->front());
+    QsRestrictor& r = *context->restrictors->front();
+    BOOST_CHECK_EQUAL(r._name, "sIndex");
+    char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
+                                  params, params+6); 
 }
+#if 0
 
 BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     std::string stmt = "select * from LSST.Object o, Source s WHERE "
@@ -646,6 +701,12 @@ BOOST_AUTO_TEST_CASE(FancyArith) {
     std::string stmt = "SELECT (1+f(one))/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
     testStmt3(qsTest, stmt);
 } 
+BOOST_AUTO_TEST_CASE(Petasky1) {
+    // An example slow query from French Petasky colleagues
+    std::string stmt = "SELECT objectId as id, COUNT(sourceId) as c"
+        " from Source group by objectid having  c > 1000 limit 10;";
+    testStmt3(qsTest, stmt);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////

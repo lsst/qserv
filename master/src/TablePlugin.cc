@@ -216,6 +216,11 @@ public:
     virtual void applyPhysical(QueryPlugin::Plan& p, QueryContext& context);
 private:
     StringList _findScanTables(SelectStmt& stmt, QueryContext& context);
+    int _rewriteTables(SelectStmtList& outList, 
+                       SelectStmt& in, 
+                       QueryContext& context,
+                       boost::shared_ptr<QueryMapping>& mapping);
+
     
     std::string _dominantDb;
 };
@@ -317,14 +322,40 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
     }
     p.dominantDb = _dominantDb;
     
+    typedef SelectStmtList::iterator Iter;
+    SelectStmtList newList;
+    for(Iter i=p.stmtParallel.begin(), e=p.stmtParallel.end();
+        i != e; ++i) {
+        int added;
+        added = _rewriteTables(newList, **i, context, p.queryMapping);
+        if(added == 0) {
+            newList.push_back(*i);
+        }
+    }
+    p.stmtParallel.swap(newList);
+}
 
+/// Patch the FromList tables in an input SelectStmt.
+/// Or, if a query split is involved (to operate using overlap
+/// tables), place new SelectStmts in the outList instead of patching
+/// the existing SelectStmt. 
+/// This allows the caller to forgo excess SelectStmt manipulation by
+/// reusing the existing SelectStmt in the common case where overlap
+/// tables are not needed.
+/// @return the number of statements added to the outList.
+int TablePlugin::_rewriteTables(SelectStmtList& outList, 
+                                SelectStmt& in, 
+                                QueryContext& context,
+                                boost::shared_ptr<QueryMapping>& mapping) {
+    int added = 0;
     // Idea: Rewrite table names in from-list of the parallel
     // query. This is sufficient because table aliases were added in
     // the logical plugin stage so that real table refs should only
     // exist in the from-list.
-    FromList& fList = p.stmtParallel.getFromList();
+    FromList& fList = in.getFromList();
     //    std::cout << "orig fromlist " << fList.getGenerated() << std::endl;
 
+    // TODO: Better join handling by leveraging JOIN...ON syntax.
     // Before rewriting, compute the need for chunking and subchunking
     // based entirely on the FROM list. Queries that involve chunked
     // tables are necessarily chunked. Subchunking is inferred when
@@ -338,14 +369,27 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
     // templatable queries a list of partition tuples.
     SphericalBoxStrategy s(fList, context);
     QueryMapping::Ptr qm = s.getMapping();
-    s.patchFromList(fList);
-    // std::cout << "post-patched fromlist " << fList.getGenerated() << std::endl;
-
-    // Now add/merge the mapping to the Plan
-    if(!p.queryMapping.get()) {
-        p.queryMapping = qm;
+    // Compute the new fromLists, and if there are more than one, then
+    // clone the selectstmt for each copy. 
+    if(s.needsMultiple()) {
+        typedef std::list<boost::shared_ptr<FromList> > FromListList;
+        typedef FromListList::iterator Iter;
+        FromListList newFroms = s.computeNewFromLists();
+        for(Iter i=newFroms.begin(), e=newFroms.end(); i != e; ++i) {        
+            boost::shared_ptr<SelectStmt> stmt = in.copyDeep();
+            stmt->replaceFromList(*i);
+            outList.push_back(stmt);
+            ++added;
+        }
     } else {
-        p.queryMapping->update(*qm);
+        s.patchFromList(fList);
+        // std::cout << "post-patched fromlist " << fList.getGenerated() << std::endl;
+    }
+    // Now add/merge the mapping to the Plan
+    if(!mapping.get()) {
+        mapping = qm;
+    } else {
+        mapping->update(*qm);
     }
     // Query generation needs to be sensitive to this.
     // If no subchunks are needed, 
@@ -353,6 +397,7 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
     //
     // For each tableref, modify to replace tablename with
     // substitutable.
+    return added;
 }
 
 bool testIfSecondary(BoolTerm& t) {

@@ -34,6 +34,7 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "lsst/qserv/master/Constraint.h"
 #include "lsst/qserv/master/SelectParser.h"
 #include "lsst/qserv/master/SelectStmt.h"
 #include "lsst/qserv/master/SelectList.h"
@@ -48,18 +49,10 @@ namespace lsst {
 namespace qserv { 
 namespace master {
 
-struct printConstraintHelper {
-    printConstraintHelper(std::ostream& os_) : os(os_) {}
-    void operator()(Constraint const& c) {
-        os << "Constraint " << c.name << " ";
-        std::copy(c.params.begin(), c.params.end(), 
-                  std::ostream_iterator<std::string>(os, ","));
-        os << "[" << c.params.size() << "]";
-    }
-    std::ostream& os;
-};
 void printConstraints(ConstraintVector const& cv) {
-    std::for_each(cv.begin(), cv.end(), printConstraintHelper(std::cout));
+    std::copy(cv.begin(), cv.end(), 
+              std::ostream_iterator<Constraint>(std::cout, ","));
+
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -214,7 +207,7 @@ void QuerySession::_generateConcrete() {
     // Needs to copy SelectList, since the parallel statement's
     // version will get updated by plugins. Plugins probably need
     // access to the original as a reference.
-    _stmtParallel = _stmt->copyDeep(); 
+    _stmtParallel.push_back(_stmt->copyDeep());
 
     // Copy SelectList and Mods, but not FROM, and perhaps not
     // WHERE(???). Conceptually, we want to copy the parts that are
@@ -226,7 +219,7 @@ void QuerySession::_generateConcrete() {
 
 
 void QuerySession::_applyConcretePlugins() {
-    QueryPlugin::Plan p(*_stmt, *_stmtParallel, *_stmtMerge, _hasMerge);
+    QueryPlugin::Plan p(*_stmt, _stmtParallel, *_stmtMerge, _hasMerge);
     PluginList::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyPhysical(p, *_context);
@@ -237,7 +230,7 @@ void QuerySession::_applyConcretePlugins() {
 /// Some code useful for debugging. 
 void QuerySession::_showFinal() {
     // Print out the end result.
-    QueryTemplate par = _stmtParallel->getTemplate();
+    QueryTemplate par = _stmtParallel.front()->getTemplate();
     QueryTemplate mer = _stmtMerge->getTemplate();
     
     std::cout << "parallel: " << par.dbgStr() << std::endl;
@@ -247,21 +240,34 @@ void QuerySession::_showFinal() {
 std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) { 
     std::vector<std::string> q;
     // This logic may be pushed over to the qserv worker in the future.
-    if(!_stmtParallel) {
+    if(_stmtParallel.empty() || !_stmtParallel.front()) {
         throw std::logic_error("Attempted buildChunkQueries without _stmtParallel");
-    }
-    QueryTemplate cqTemp = _stmtParallel->getTemplate();
+    } 
+
     if(!_context->queryMapping) {
         throw std::logic_error("Missing QueryMapping in _context");
     }
     QueryMapping const& queryMapping = *_context->queryMapping;
+
+    typedef std::list<boost::shared_ptr<SelectStmt> >::const_iterator Iter;
+    typedef std::list<QueryTemplate> Tlist;
+    typedef Tlist::const_iterator TlistIter;
+    Tlist tlist;
+    for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end();
+        i != e; ++i) {
+        tlist.push_back((**i).getTemplate());
+    }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
-        q.push_back(_context->queryMapping->apply(s, cqTemp));
+        for(TlistIter i=tlist.begin(), e=tlist.end(); i != e; ++i) {            
+            q.push_back(_context->queryMapping->apply(s, *i));
+        }
     } else { // subchunked:
         ChunkSpecSingle::List sList = ChunkSpecSingle::makeList(s);
-        ChunkSpecSingle::List::const_iterator i;
-        for(i=sList.begin(); i != sList.end(); ++i) {
-            q.push_back(_context->queryMapping->apply(*i, cqTemp));
+        typedef ChunkSpecSingle::List::const_iterator ChunkIter;
+        for(ChunkIter i=sList.begin(), e=sList.end(); i != e; ++i) {
+            for(TlistIter j=tlist.begin(), je=tlist.end(); j != je; ++j) {
+                q.push_back(_context->queryMapping->apply(*i, *j));
+            }
         }
     }
     return q;

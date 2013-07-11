@@ -117,6 +117,7 @@ namespace std {
 %include "lsst/qserv/master/mergeTypes.h"
 %include "lsst/qserv/master/dispatcher.h"
 %include "lsst/qserv/master/Substitution.h"
+%include "lsst/qserv/master/Constraint.h"
 %include "lsst/qserv/master/ChunkMeta.h"
 %include "lsst/qserv/master/ChunkSpec.h"
 %include "lsst/qserv/master/TableMerger.h"

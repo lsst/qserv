@@ -31,6 +31,7 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "lsst/qserv/master/common.h"
+#include "lsst/qserv/master/Constraint.h" 
 #include "lsst/qserv/master/transaction.h" 
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/TableMerger.h"

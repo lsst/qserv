@@ -34,6 +34,7 @@
 #include "lsst/qserv/master/SphericalBoxStrategy.h"
 #include <sstream>
 #include <deque>
+#include <boost/lexical_cast.hpp>
 
 #include "lsst/qserv/master/FromList.h"
 #include "lsst/qserv/master/QueryMapping.h"
@@ -48,18 +49,30 @@ namespace qMaster=lsst::qserv::master;
 
 namespace { // File-scope helpers
 struct Tuple {
-    Tuple(std::string const& db_, std::string const& table_) 
-        : db(db_), table(table_), chunkLevel(-1) {}
+    Tuple(std::string const& db_, 
+          std::string const& prePatchTable_,
+          std::string const& alias_) 
+        : db(db_), 
+          prePatchTable(prePatchTable_), 
+          alias(alias_), 
+          chunkLevel(-1) {
+    }
     std::string db;
-    std::string table;
+    std::list<std::string> tables;
     std::string prePatchTable;
+    std::string alias;
     int allowed;
     int chunkLevel;
 };
 
 typedef std::deque<Tuple> Tuples;
 std::ostream& operator<<(std::ostream& os, Tuple const& t) {
-    os << t.db << "." << t.table << "_c" << t.chunkLevel << "_";
+    
+    os << t.db << "."; 
+    os << "(" << t.prePatchTable << ")";
+    std::copy(t.tables.begin(), t.tables.end(), 
+              std::ostream_iterator<std::string>(os, ","));
+    os << "_c" << t.chunkLevel << "_";
     if(!t.allowed) { os << "ILLEGAL"; }
     return os;
 }
@@ -86,23 +99,26 @@ int patchTuples(Tuples& tuples) {
         if(i->chunkLevel > 0) ++chunkedCount;
     }
     for(i = tuples.begin(); i != e; ++i) {
+        std::string const& prePatch = i->prePatchTable;
         switch(i->chunkLevel) {
         case 0:
+            i->tables.push_back(prePatch);
             break;
         case 1:
-            i->prePatchTable = i->table;
-            i->table = SphericalBoxStrategy::makeChunkTableTemplate(i->table);
+            i->tables.push_back(SphericalBoxStrategy::makeChunkTableTemplate(prePatch));
             break;
         case 2:
-            i->prePatchTable = i->table;
             if(chunkedCount > 1) {                
                 i->db = SphericalBoxStrategy::makeSubChunkDbTemplate(i->db);
-                i->table = SphericalBoxStrategy::makeSubChunkTableTemplate(i->table);
+                i->tables.push_back(SphericalBoxStrategy::makeSubChunkTableTemplate(prePatch));
+                i->tables.push_back(SphericalBoxStrategy::makeOverlapTableTemplate(prePatch));
             } else {
-                i->table = SphericalBoxStrategy::makeChunkTableTemplate(i->table);
+                i->tables.push_back(SphericalBoxStrategy::makeChunkTableTemplate(prePatch));
             }
             break;
         default:
+            throw std::logic_error("Unexpected chunkLevel=" + 
+                                   boost::lexical_cast<std::string>(i->chunkLevel));
             break;
         }
     }
@@ -118,7 +134,7 @@ public:
     void operator()(Tuple& t) {
         t.allowed = metadata.checkIfContainsDb(t.db);
         if(t.allowed) {
-            t.chunkLevel = metadata.getChunkLevel(t.db, t.table);
+            t.chunkLevel = metadata.getChunkLevel(t.db, t.prePatchTable);
         }
     }
     lsst::qserv::master::MetadataCache& metadata;
@@ -139,11 +155,12 @@ public:
         for(Tuples::const_iterator i=tuples.begin();
             i != tuples.end(); ++i) {
             if(i->chunkLevel == 2) { 
-                tables.push_back(i->table);
+                tables.push_back(i->prePatchTable);
             }
         }
     }
     inline void updateMapping(QueryMapping& m) {
+        // Look for subChunked tables
         for(Tuples::const_iterator i=tuples.begin();
             i != tuples.end(); ++i) {
             if(i->chunkLevel == 2) { 
@@ -151,6 +168,7 @@ public:
                 if(table.empty()) {
                     throw std::logic_error("Unknown prePatchTable in QueryMapping");
                 }
+                // Add them to the list of subchunk table dependencies
                 m.insertSubChunkTable(table);
             }
         }
@@ -171,7 +189,7 @@ public:
         std::string table = t.getTable();
         if(table.empty()) return; // Don't add the compound-part of
                                   // compound ref.  
-        _tuples.push_back(Tuple(t.getDb(), t.getTable()));
+        _tuples.push_back(Tuple(t.getDb(), t.getTable(), t.getAlias()));
     }
 private:
     Tuples& _tuples;
@@ -194,7 +212,13 @@ public:
         }
         // std::cout << "Patching tablerefn:" << t << std::endl;
         t.setDb(_i->db);
-        t.setTable(_i->table);
+        // Always use the first table. A different function will be
+        // used when multiple tables are involved.
+        if(_i->tables.empty()) {
+            throw std::logic_error("Missing patched table");
+        } else {
+            t.setTable(_i->tables.front());
+        }
         ++_i;
     }
 private:
@@ -205,6 +229,42 @@ private:
     // G _generate; // Functor that creates a new alias name
     // A _addMap; // Functor that adds a new alias mapping for matchin
     //            // later clauses.
+};
+class composeOverlap {
+public:
+    composeOverlap() 
+        : listCore(new TableRefnList()),
+          listOverlap(new TableRefnList()),
+          _firstSubChunkTable(true) {
+    }
+    virtual void operator()(Tuple const& t) {
+        // Idea: Make a TableRefN from each and add it to each list
+        typedef std::list<std::string>::const_iterator Iter;
+        Iter i=t.tables.begin();
+        Iter e=t.tables.end();
+        boost::shared_ptr<SimpleTableN> rn1;
+        boost::shared_ptr<SimpleTableN> rn2;
+        rn1.reset(new SimpleTableN(t.db, *i, t.alias));
+        ++i;
+        if(_firstSubChunkTable || (i==e))  {
+            rn2.reset(new SimpleTableN(*rn1));
+        } else {
+            rn2.reset(new SimpleTableN(t.db, *i, t.alias));
+            ++i;
+            if(i != e) {
+                throw std::logic_error("Unexpected third table entry");
+            }            
+        }
+        if(t.chunkLevel == 2) {
+            _firstSubChunkTable = false;
+        }
+        listCore->push_back(rn1);
+        listOverlap->push_back(rn2);
+    }
+    boost::shared_ptr<TableRefnList> listCore;
+    boost::shared_ptr<TableRefnList> listOverlap;
+private:
+    bool _firstSubChunkTable;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -263,6 +323,40 @@ void SphericalBoxStrategy::patchFromList(FromList& f) {
     //std::for_each(tList.begin(), tList.end(), pt);
     // FIXME
 }
+bool
+SphericalBoxStrategy::needsMultiple() {
+    return _impl->chunkLevel > 1;
+}
+
+/// Returns a list of two FromLists. Should only be called when
+/// _impl->chunkLevel > 1 (i.e., needsMultiple() returns true).  Right
+/// now, we only return two, because the only case so far is for
+/// near-neighbor self-joins. In this case, we want:
+/// SELECT ... FROM Table_x_y, Table_x_y WHERE...
+/// and 
+/// SELECT ... FROM Table_x_y, TableFullOverlap_x_y WHERE...
+std::list<boost::shared_ptr<FromList> > 
+SphericalBoxStrategy::computeNewFromLists() {
+    composeOverlap co;
+    std::for_each(_impl->tuples.begin(), _impl->tuples.end(), co);
+    std::list<boost::shared_ptr<FromList> > froms;
+    boost::shared_ptr<FromList> core(new FromList(co.listCore));
+    boost::shared_ptr<FromList> overlap(new FromList(co.listOverlap));
+    froms.push_back(core);
+    froms.push_back(overlap);
+    return froms;
+#if 0
+    TableRefnList& tList = f.getTableRefnList();
+
+    patchTable pt(_impl->tuples);
+    std::for_each(tList.begin(), tList.end(), 
+                  TableRefN::Fwrapper<patchTable>(pt));
+#endif
+    throw std::logic_error("computeNewFromLists unimplemented");
+    return std::list<boost::shared_ptr<FromList> > ();
+}
+
+
 ////////////////////////////////////////////////////////////////////////
 // SphericalBoxStrategy public static
 ////////////////////////////////////////////////////////////////////////

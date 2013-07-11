@@ -27,6 +27,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+#include <list>
 #include <boost/shared_ptr.hpp>
 
 namespace lsst { 
@@ -54,6 +55,8 @@ public:
                          QueryContext& context);
     boost::shared_ptr<QueryMapping> getMapping();
     void patchFromList(FromList& f);
+    bool needsMultiple();
+    std::list<boost::shared_ptr<FromList> > computeNewFromLists();
 
     static std::string makeSubChunkDbTemplate(std::string const& db); 
     // Make full overlap for now.

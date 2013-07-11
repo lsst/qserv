@@ -39,6 +39,7 @@ namespace master {
 class FromList {
 public:
     FromList() : _columnRefMap(new ColumnRefMap()) {}
+    explicit FromList(TableRefnListPtr p) : _tableRefns(p) {}
     ~FromList() {}
     boost::shared_ptr<ColumnRefMap> getColumnRefMap() {
         return _columnRefMap;

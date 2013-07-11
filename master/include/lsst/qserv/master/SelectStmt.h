@@ -75,6 +75,7 @@ public:
 
     FromList const& getFromList() const { return *_fromList; }
     FromList& getFromList() { return *_fromList; }
+    void replaceFromList(boost::shared_ptr<FromList> f) { _fromList = f; }
     
     bool hasWhereClause() { return _whereClause.get(); }
     WhereClause const& getWhereClause() const { return *_whereClause; }
