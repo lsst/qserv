@@ -437,32 +437,39 @@ BOOST_AUTO_TEST_CASE(BadDbAccess) {
     BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
                                   params, params+6); 
 }
-#if 0
 
 BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     std::string stmt = "select * from LSST.Object o, Source s WHERE "
         "qserv_areaspec_box(2,2,3,3) AND o.objectId = s.objectId;";
     std::string expected = "select * from LSST.%$#Object%$# o,LSST.%$#Source%$# s WHERE (scisql_s2PtInBox(o.ra_Test,o.decl_Test,2,2,3,3) = 1) AND (scisql_s2PtInBox(s.raObjectTest,s.declObjectTest,2,2,3,3) = 1) AND o.objectId=s.objectId;";
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
-    //std::cout << "Parse result: " << spr->getParseResult() << std::endl;
-    BOOST_CHECK(spr->getHasChunks());
-    BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(!spr->getHasAggregate());
-    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
+
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(context->restrictors);
+    BOOST_CHECK_EQUAL(context->restrictors->size(), 1);
+    BOOST_REQUIRE(context->restrictors->front());
+    QsRestrictor& r = *context->restrictors->front();
+    BOOST_CHECK_EQUAL(r._name, "qserv_areaspec_box");
+    char const* params[] = {"2","2","3","3"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
+                                  params, params+4); 
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
     std::string stmt = "select count(*) from Object as o1, Object as o2;";
     std::string expected = "select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sc2%$# as o2 UNION select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sfo%$# as o2;";
-
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
-    //std::cout << "Parse result: " << spr->getParseResult() << std::endl;
-    BOOST_CHECK(spr->getHasChunks());
-    BOOST_CHECK(spr->getHasSubChunks());
-    BOOST_CHECK(spr->getHasAggregate());
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(context->restrictors);
+    BOOST_CHECK_EQUAL(context->restrictors->size(), 0);
 }
+#if 0
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     std::string stmt = "select count(*) from LSST.Object as o1, LSST.Object as o2;";
@@ -703,8 +710,8 @@ BOOST_AUTO_TEST_CASE(FancyArith) {
 } 
 BOOST_AUTO_TEST_CASE(Petasky1) {
     // An example slow query from French Petasky colleagues
-    std::string stmt = "SELECT objectId as id, COUNT(sourceId) as c"
-        " from Source group by objectid having  c > 1000 limit 10;";
+    std::string stmt = "SELECT objectId as id, COUNT(sourceId) AS c"
+        " FROM Source GROUP BY objectId HAVING  c > 1000 LIMIT 10;";
     testStmt3(qsTest, stmt);
 }
 

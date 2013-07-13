@@ -208,6 +208,7 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
     if(a->getType() == SqlSQL2TokenTypes::FACTOR) {
         a = a->getFirstChild(); // FACTOR is a parent placeholder element
     }
+    eType = a->getType();
     //    std::cout << "new ValueFactor: " << tokenText(a) << std::endl;
     switch(a->getType()) {
     case SqlSQL2TokenTypes::COLUMN_REF:

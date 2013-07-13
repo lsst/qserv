@@ -520,11 +520,12 @@ delete_stmt :
 //{ Rule #291 <id> incorporates the rule #003 <actual_id> and <char_set_spec> is <char_set_name>
 //  The tricky semantic predicate {true}? for the non_reserved_word is just to make the generator
 //  effectively put the alternative to the "default" branch of "switch" statement and use a BitSet
+//  danielw: Force non_reserved word as REGULAR_ID to treat as char literal
 id :
 	(INTRODUCER char_set_name)? 
 	( REGULAR_ID 
 	| DELIMITED_ID 
-	| {true}? non_reserved_word 
+	| {true}? n:non_reserved_word { n_AST->setType(REGULAR_ID); }
 	) 
 ;
 //}
