@@ -43,13 +43,12 @@
 #include "lsst/qserv/master/xrootd.h"
 #include "lsst/qserv/master/AsyncQueryManager.h"
 #include "lsst/qserv/master/PacketIter.h"
-#include "lsst/qserv/common/WorkQueue.h"
+#include "lsst/qserv/master/DynamicWorkQueue.h"
 
 // Namespace modifiers
 using boost::make_shared;
 namespace qMaster = lsst::qserv::master;
-namespace qCommon = lsst::qserv::common;
-using qCommon::WorkQueue;
+using qMaster::DynamicWorkQueue;
 
 namespace {
     void errnoComplain(char const* desc, int num, int errn) {
@@ -83,9 +82,8 @@ namespace {
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery::ReadCallable
 //////////////////////////////////////////////////////////////////////
-class lsst::qserv::master::ChunkQuery::ReadCallable : public WorkQueue::Callable {
+class lsst::qserv::master::ChunkQuery::ReadCallable : public DynamicWorkQueue::Callable {
 public:
-    typedef boost::shared_ptr<WorkQueue::Callable> CPtr;
     explicit ReadCallable(qMaster::ChunkQuery& cq) : 
         _cq(cq), _isRunning(false)
     {}
@@ -117,9 +115,6 @@ public:
         }
     }
 
-    static CPtr makeShared(qMaster::ChunkQuery& cq) {
-        return CPtr(new ReadCallable(cq));
-    }
 private:
     ChunkQuery& _cq;
     bool _isRunning;
@@ -128,9 +123,8 @@ private:
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery::WriteCallable
 //////////////////////////////////////////////////////////////////////
-class lsst::qserv::master::ChunkQuery::WriteCallable : public WorkQueue::Callable {
+class lsst::qserv::master::ChunkQuery::WriteCallable : public DynamicWorkQueue::Callable {
 public:
-    typedef boost::shared_ptr<WorkQueue::Callable> CPtr;
     explicit WriteCallable(qMaster::ChunkQuery& cq) : 
         _cq(cq)
     {}
@@ -164,9 +158,6 @@ public:
     }
     virtual void cancel() {
         _cq.Complete(-1);
-    }
-    static CPtr makeShared(qMaster::ChunkQuery& cq) {
-        return CPtr(new WriteCallable(cq));
     }
 private:
     ChunkQuery& _cq;
@@ -303,8 +294,7 @@ void qMaster::ChunkQuery::run() {
     }
 #elif 1
     _state = WRITE_QUEUE;
-    WriteCallable w(*this);
-    _manager->getWriteQueue().add(WriteCallable::makeShared(*this));
+    _manager->addToWriteQueue(new WriteCallable(*this));
 #else     //synchronous open:    
     result = qMaster::xrdOpen(_spec.path.c_str(), O_WRONLY);
     if (result == -1) {
@@ -515,7 +505,7 @@ void qMaster::ChunkQuery::_sendQuery(int fd) {
 #if 1
             _state = READ_QUEUE;
             // Only attempt opening the read if not squashing.
-            _manager->getReadQueue().add(ReadCallable::makeShared(*this));
+            _manager->addToReadQueue(new ReadCallable(*this));
 #else
             if(!_openForRead(_resultUrl)) {
                 isReallyComplete = true;
