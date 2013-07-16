@@ -61,6 +61,7 @@ from subprocess import Popen, PIPE
 import sys
 import threading
 import time
+import traceback
 from string import Template
 
 # Package imports
@@ -320,7 +321,13 @@ class QueryHintError(Exception):
         self.reason = reason
     def __str__(self):
         return repr(self.reason)
-
+class ParseError(Exception):
+    """An error in parsing the query"""
+    def __init__(self, reason):
+        self.reason = reason
+    def __str__(self):
+        return repr(self.reason)
+########################################################################
 def setupResultScratch():
     """Prepare the configured scratch directory for use, creating if 
     necessary and checking for r/w access. """
@@ -409,9 +416,11 @@ class InbandQueryAction:
             self.isValid = True
         except QueryHintError, e:
             self._error = str(e)
+        except ParseError, e:
+            self._error = str(e)
         except:
             self._error = "Unexpected error: " + str(sys.exc_info())
-            print self._error
+            print self._error, traceback.format_exc()
         pass
 
     def invoke(self):
@@ -450,8 +459,7 @@ class InbandQueryAction:
         self.sessionId = newSession(cfg)
         setupQuery(self.sessionId, self.queryStr, self._resultName)
         errorMsg = getSessionError(self.sessionId)
-        # TODO: Handle error more gracefully.
-        assert not getSessionError(self.sessionId)
+        if errorMsg: raise ParseError(errorMsg)
 
         self._applyConstraints()
         self._prepareMerger()
