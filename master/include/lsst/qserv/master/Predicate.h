@@ -111,7 +111,7 @@ public:
 /// (literals can be row values)
 class CompPredicate : public Predicate {
 public:
-    typedef boost::shared_ptr<Predicate> Ptr;
+    typedef boost::shared_ptr<CompPredicate> Ptr;
     typedef std::list<Ptr> PtrList;
 
     virtual ~CompPredicate() {}
@@ -129,6 +129,8 @@ public:
     virtual boost::shared_ptr<Predicate> copySyntax() {
         return boost::shared_ptr<Predicate>(); }
     class render;
+
+    static int reverseOp(int op); // Reverses operator token
     
     boost::shared_ptr<ValueExpr> left;
     int op; // Parser token type of operator

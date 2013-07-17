@@ -99,7 +99,11 @@ boost::shared_ptr<ColumnRef> ValueExpr::castAsColumnRef() const {
     if(_factorOps.size() > 1) { return cr; } // Not a single ColumnRef
     boost::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
     if(!factor) { return cr; }
-    return boost::make_shared<ColumnRef>(*factor->getColumnRef());
+    cr = factor->getColumnRef();
+    if(cr) {// Return a copy.
+        return boost::make_shared<ColumnRef>(*cr); 
+    } 
+    return cr;
 }
 
 std::string ValueExpr::castAsLiteral() const{

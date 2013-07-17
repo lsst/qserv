@@ -180,7 +180,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
 void ModFactory::_importGroupBy(antlr::RefAST a) {
     _groupBy = boost::make_shared<GroupByClause>();
     // GROUP BY takes a column reference (expression?)
-    std::cout << "groupby got " << walkTreeString(a) << std::endl;
+    //std::cout << "groupby got " << walkTreeString(a) << std::endl;
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importGroupBy(NULL)");
     }
@@ -232,7 +232,6 @@ void ModFactory::_importHaving(antlr::RefAST a) {
         if(first.get() 
            && (first->getType() == SqlSQL2TokenTypes::AND_OP)) {
             antlr::RefAST second = first->getFirstChild();
-            std::cout << "HAVING root child child=" << tokenText(second) << std::endl;
             if(second.get()) {
                 BoolTermFactory f(_vFactory);
                 _having->_tree = f.newBoolTerm(a);

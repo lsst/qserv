@@ -122,4 +122,25 @@ void BetweenPredicate::cacheValueExprList() {
     _cache->push_back(maxValue);
 }
 
+// CompPredicate special function
+/// @return a parse token type that is the reversed operator of the
+///         input token type. 
+int CompPredicate::reverseOp(int op) {
+    switch(op) {
+    case SqlSQL2TokenTypes::NOT_EQUALS_OP: 
+        return SqlSQL2TokenTypes::NOT_EQUALS_OP;
+    case SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP:
+        return SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP;
+    case  SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP:
+        return SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP;
+    case SqlSQL2TokenTypes::LESS_THAN_OP:
+        return SqlSQL2TokenTypes::GREATER_THAN_OP;
+    case  SqlSQL2TokenTypes::GREATER_THAN_OP:
+        return SqlSQL2TokenTypes::LESS_THAN_OP;
+    case SqlSQL2TokenTypes::EQUALS_OP:
+        return SqlSQL2TokenTypes::EQUALS_OP;
+    default:
+        throw std::logic_error("Invalid op type for reversing");
+    }
+}
 }}} // lsst::qserv::master

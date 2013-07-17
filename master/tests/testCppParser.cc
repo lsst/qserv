@@ -721,17 +721,21 @@ BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
 
 BOOST_FIXTURE_TEST_SUITE(Case01Parse, ParserFixture)
-#if 0 // FIXME: To be migrated to new parser interface in later ticket.
 BOOST_AUTO_TEST_CASE(Case01_0002) {
-    std::string stmt = "SELECT * FROM Object WHERE objectId = 430213989000;";
-    std::string expected = "SELECT * FROM LSST.%$#Object%$# WHERE objectId=430213989000;";
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
-    BOOST_CHECK(spr->getHasChunks());
-    BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
-    // FIXME: Impl something in spr to inspect for objectid
-    //  (or other indexing!)
+    std::string stmt = "SELECT * FROM Object WHERE objectIdObjTest = 430213989000;";
+    //std::string expected = "SELECT * FROM LSST.%$#Object%$# WHERE objectId=430213989000;";
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_REQUIRE(context->restrictors);
+    BOOST_CHECK_EQUAL(context->restrictors->size(), 1);
+    BOOST_REQUIRE(context->restrictors->front());
+    QsRestrictor& r = *context->restrictors->front();
+    BOOST_CHECK_EQUAL(r._name, "sIndex");
+    char const* params[] = {"LSST","Object", "objectIdObjTest", "430213989000"};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
+                                  params, params+4);
 }
 
 BOOST_AUTO_TEST_CASE(Case01_0012) {
@@ -742,31 +746,29 @@ BOOST_AUTO_TEST_CASE(Case01_0012) {
         "WHERE (sce.visit = 887404831) "
         "AND (sce.raftName = '3,3') "
         "AND (sce.ccdName LIKE '%')";
-
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
-    BOOST_CHECK(!spr->getHasChunks());
-    BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(!spr->getHasAggregate());
-    BOOST_CHECK(spr->getError() == "");
-    //std::cout << "Parse output:" << spr->getParseResult() << std::endl;
-    //std::cout << "Error:" << spr->getError() << std::endl;
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    // BOOST_CHECK(!spr->getHasChunks());
+    // BOOST_CHECK(!spr->getHasSubChunks());
+    // BOOST_CHECK(!spr->getHasAggregate());
+    // BOOST_CHECK(spr->getError() == "");
     // should parse okay as a full-scan of sce, non-partitioned.
     // Optional parens may be confusing the parser.
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1012) {
     std::string stmt = "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ABS(iE1_SG);";
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
+    testStmt3(qsTest, stmt);
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1013) {
     std::string stmt = "SELECT objectId, ROUND(iE1_SG, 3), ROUND(ABS(iE1_SG), 3) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ROUND(ABS(iE1_SG), 3);";
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
+    testStmt3(qsTest, stmt);
 }
 
+#if 0
 // ASC and maybe USING(...) syntax not supported currently.
 // Bug applying spatial restrictor to Filter (non-partitioned) is #2052
 BOOST_AUTO_TEST_CASE(Case01_1030) {

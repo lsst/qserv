@@ -176,6 +176,8 @@ private:
     QsRestrictor::Ptr _newKeyRestrictor(QueryContext& context, 
                                         boost::shared_ptr<ColumnRef> cr, 
                                         ValueExprList& vList);
+    QsRestrictor::Ptr _newKeyRestrictor(QueryContext& context, 
+                                        boost::shared_ptr<CompPredicate> cp);
     QsRestrictor::Ptr _convertObjectId(QueryContext& context, 
                                        QsRestrictor const& original);
 };
@@ -392,6 +394,29 @@ QservRestrictorPlugin::_makeCondition(boost::shared_ptr<QsRestrictor> const rest
     return r.generate(restrictorEntry);
 }
 
+boost::shared_ptr<ColumnRef> 
+resolveAsColumnRef(QueryContext& context, ValueExprPtr vexpr) {
+    boost::shared_ptr<ColumnRef> cr = vexpr->castAsColumnRef();
+    if(!cr) {
+        return cr;
+    }
+    cr.reset(new ColumnRef(*cr));
+    DbTablePair p = context.resolve(cr);
+    cr->table = p.table;
+    cr->db = p.db;
+    return cr;
+}
+
+inline void 
+addPred(boost::shared_ptr<QsRestrictor::List>& preds, QsRestrictor::Ptr p) {
+    if(p) { 
+        if(!preds) {
+            preds.reset(new QsRestrictor::List());
+        }
+        preds->push_back(p);
+    }
+}
+
 boost::shared_ptr<QsRestrictor::List> 
 QservRestrictorPlugin::_getKeyPreds(QueryContext& context, AndTerm::Ptr p) {
     typedef BoolTerm::PtrList::iterator TermIter;
@@ -407,21 +432,22 @@ QservRestrictorPlugin::_getKeyPreds(QueryContext& context, AndTerm::Ptr p) {
             b != factor->_terms.end();
             ++b) {
             InPredicate::Ptr ip = boost::dynamic_pointer_cast<InPredicate>(*b);
-            if(!ip) continue;
-            boost::shared_ptr<ColumnRef> cr = ip->value->castAsColumnRef();
-            cr.reset(new ColumnRef(*cr));
-            DbTablePair p = context.resolve(cr);
-            cr->table = p.table;
-            cr->db = p.db;
-            if(_lookupKey(context, cr)) {
-                QsRestrictor::Ptr p = _newKeyRestrictor(context, cr, ip->cands);
-                if(p) { 
-                    if(!keyPreds) {
-                        keyPreds.reset(new QsRestrictor::List());                        
-                    }
-                    keyPreds->push_back(p);
+            if(ip) {
+                boost::shared_ptr<ColumnRef> cr = resolveAsColumnRef(context, 
+                                                                     ip->value);
+                if(cr && _lookupKey(context, cr)) {
+                    QsRestrictor::Ptr p = _newKeyRestrictor(context, 
+                                                            cr,
+                                                            ip->cands);
+                    addPred(keyPreds, p);
                 }
-            }            
+            } else {
+                CompPredicate::Ptr cp = boost::dynamic_pointer_cast<CompPredicate>(*b);
+                if(cp) {
+                    QsRestrictor::Ptr p = _newKeyRestrictor(context, cp);
+                    addPred(keyPreds, p);
+                }                
+            }
         }
     }
     return keyPreds;
@@ -476,6 +502,36 @@ QservRestrictorPlugin::_newKeyRestrictor(QueryContext& context,
     return p;
 }
 
+/// @return a new QsRestrictor from a CompPredicate
+QsRestrictor::Ptr 
+QservRestrictorPlugin::_newKeyRestrictor(QueryContext& context, 
+                                         boost::shared_ptr<CompPredicate> cp) {
+    QsRestrictor::Ptr p;
+    boost::shared_ptr<ColumnRef> key = resolveAsColumnRef(context, 
+                                                          cp->left);
+    int op = cp->op;
+    ValueExprPtr literalValue = cp->right;
+    // Find the key column ref: Is it on the rhs or lhs?
+    if(key && _lookupKey(context, key)) {
+        // go on.
+    } else {
+        key = resolveAsColumnRef(context, cp->right);
+        if(key && _lookupKey(context, key)) {
+            op = CompPredicate::reverseOp(op);
+            literalValue = cp->left;
+        } else {
+            return p; // No key column ref. Leave it alone.
+        }
+    }
+    // Make sure the expected literal is a literal
+    bool isValid = true;
+    validateLiteral vl(isValid);
+    vl(literalValue);
+    if(!isValid) { return p; } // No key. Leave alone.
+    std::list<boost::shared_ptr<ValueExpr> > cands;
+    cands.push_back(literalValue);
+    return _newKeyRestrictor(context, key, cands);    
+}
 QsRestrictor::Ptr
 QservRestrictorPlugin::_convertObjectId(QueryContext& context, 
                                     QsRestrictor const& original) {

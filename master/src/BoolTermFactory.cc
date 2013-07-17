@@ -81,15 +81,12 @@ void BoolTermFactory::bfImport::operator()(antlr::RefAST a) {
         _bfr._terms.push_back(_bf.newValueExprTerm(a));
         break;
     case SqlSQL2TokenTypes::COMP_PREDICATE:
-        printIndented(a);
         _bfr._terms.push_back(_pf.newCompPredicate(a));
         break;
     case SqlSQL2TokenTypes::BETWEEN_PREDICATE:
-        printIndented(a);
         _bfr._terms.push_back(_pf.newBetweenPredicate(a));
         break;
     case SqlSQL2TokenTypes::IN_PREDICATE:
-        printIndented(a);
         _bfr._terms.push_back(_pf.newInPredicate(a));
         break;
     default:
