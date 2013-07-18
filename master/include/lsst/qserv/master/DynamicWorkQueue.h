@@ -23,15 +23,15 @@
 #ifndef LSST_QSERV_MASTER_DYNAMICWORKQUEUE_H
 #define LSST_QSERV_MASTER_DYNAMICWORKQUEUE_H
 
+#include <map>
 #include <set>
 
 #include "boost/thread.hpp"
-#include "boost/unordered_map.hpp"
 
 
-namespace lsst { namespace qserv { namespace master {
-
-class AsyncQueryManager;
+namespace lsst {
+namespace qserv {
+namespace master {
 
 /// A dynamic work queue is a pool of threads created with some initial
 /// number of threads (by default 0). As work is added, threads are created,
@@ -39,8 +39,8 @@ class AsyncQueryManager;
 /// to some minimum count.
 ///
 /// Units of work must be encapsulated in `Callable` sub-classes. They are
-/// added to a queue along with an associated query. The assignment of
-/// work to threads of execution seeks to give each query an even
+/// added to a queue along with an associated session. The assignment of
+/// work to threads of execution seeks to give each session an even
 /// share of the available threads.
 class DynamicWorkQueue {
     struct Queue;
@@ -61,47 +61,54 @@ public:
         /// Halt while running or otherwise.
         virtual void abort() { }
 
-        /// Cleanup.
+        /// Cleanup. Must not throw.
         virtual void cancel() { }
 
     private:
-        Callable * _next;
+        Callable * _next; // Embedded singly linked-list pointer; not owned.
         friend class DynamicWorkQueue;
         friend struct DynamicWorkQueue::Queue;
     };
 
-    DynamicWorkQueue(size_t minThreads,       ///< Minimum # of threads.
-                     size_t maxThreads,       ///< Maximum # of threads.
-                     size_t initThreads = 0); ///< # of threads to create now.
+    DynamicWorkQueue(
+        size_t minThreads,           ///< Minimum # of threads overall.
+        size_t minThreadsPerSession, ///< Minimum # of threads per session.
+        size_t maxThreads,           ///< Maximum # of threads overall.
+        size_t initThreads = 0);     ///< # of threads to create up front.
 
     ~DynamicWorkQueue();
 
-    /// Add `callable` to the queue, associating it with `query`.
-    /// This queue assumes ownership of `callable`.
-    void add(AsyncQueryManager const * query, Callable * callable);
+    /// Add `callable` to the queue, associating it with `session`.
+    /// Ownership of `callable` is transfered from the caller to the queue.
+    void add(void const * session, Callable * callable);
 
-    /// Remove and `cancel()` any `Callable` objects associated with `query`
+    /// Remove and `cancel()` any `Callable` objects associated with `session`
     /// from this queue.
-    void cancelQueued(AsyncQueryManager const * query);
+    void cancelQueued(void const * session);
 
 private:
     // Disable copy-construction and assignment.
     DynamicWorkQueue(DynamicWorkQueue const &);
     DynamicWorkQueue & operator=(DynamicWorkQueue const &);
 
-    typedef boost::unordered_map<AsyncQueryManager const *, Queue *> QueryQueueMap;
+    typedef std::map<void const *, Queue *> SessionQueueMap;
     typedef std::set<Queue *, QueuePtrCmp> QueueSet;
 
-    size_t const  _minThreads;
-    size_t const  _maxThreads;
+    // Call only while holding a lock on _mutex.
+    bool _shouldIncreaseThreadCount() const;
+    bool _shouldDecreaseThreadCount() const;
 
-    boost::mutex  _mutex;
-    size_t        _numCallables;
-    size_t        _numThreads;
-    bool          _exitNow;
-    QueryQueueMap _queries;
-    QueueSet      _queues;
-    boost::condition_variable _nonEmpty;
+    size_t const _minThreads;
+    size_t const _minThreadsPerSession;
+    size_t const _maxThreads;
+
+    boost::mutex              _mutex;
+    size_t                    _numCallables;
+    size_t                    _numThreads;
+    bool                      _exitNow;
+    SessionQueueMap           _sessions;
+    QueueSet                  _nonEmptyQueues;
+    boost::condition_variable _workAvailable;
     boost::condition_variable _threadsExited;
 
     friend struct Runner;

@@ -34,8 +34,6 @@
   * @author Daniel L. Wang, SLAC
   */
 
-#include <sys/time.h>
-
 // Standard
 #include <deque>
 #include <map>
@@ -78,17 +76,14 @@ public:
     typedef std::map<std::string, std::string> StringMap;
     typedef boost::shared_ptr<PacketIter> PacIterPtr;
     
-    explicit AsyncQueryManager(std::map<std::string,std::string> const& cfg) 
-        :_lastId(1000000000), 
+    explicit AsyncQueryManager(std::map<std::string,std::string> const& cfg)
+        :_lastId(1000000000),
         _isExecFaulty(false), _isSquashed(false),
         _queryCount(0),
         _shouldLimitResult(false), 
         _resultLimit(1024*1024*1024), _totalSize(0),
         _canRead(true), _reliefFiles(0)
     {
-        struct ::timeval t;
-        ::gettimeofday(&t, NULL);
-        _startTime = t.tv_sec + 0.000001 * t.tv_usec;
         _readConfig(cfg);
     }
 
@@ -120,8 +115,6 @@ public:
     
     QuerySession& getQuerySession() { return *_qSession; }
 
-    double getStartTime() const { return _startTime; }
-
 private:
     // QuerySpec: ChunkQuery object + result name
     typedef std::pair<boost::shared_ptr<ChunkQuery>, std::string> QuerySpec;
@@ -151,7 +144,6 @@ private:
     boost::mutex _canReadMutex;
     boost::condition_variable _canReadCondition;
 
-    double _startTime;
     int _lastId;
     bool _isExecFaulty;
     bool _isSquashed;

@@ -22,28 +22,37 @@
 /// @file
 #include "lsst/qserv/master/DynamicWorkQueue.h"
 
+#include <sys/time.h>
 #include <stdexcept>
 
-#include "lsst/qserv/master/AsyncQueryManager.h"
-#include "lsst/qserv/master/xrdfile.h"
 
+namespace lsst {
+namespace qserv {
+namespace master {
 
-namespace lsst { namespace qserv { namespace master {
-
-// A linked list of Callable objects associated with a specific query.
+// A linked list of Callable objects associated with a specific session.
 struct DynamicWorkQueue::Queue {
-    size_t numThreads; // # of threads running work from this queue.
-    double startTime;  // Query start time in seconds since the Epoch.
-    AsyncQueryManager const * query;    // Query associated with this queue.
-    DynamicWorkQueue::Callable * head;  // First work-item in queue.
-    DynamicWorkQueue::Callable * tail;  // Last work-item in queue.
+    // # of threads running work from this queue.
+    size_t numThreads;
+    // Queue creation time in seconds since the Epoch.
+    double createTime;
+    // Opaque handle used to look up the Queue for a session by DynamicWorkQueue.
+    void const * session;
+    // Singly linked list of callables.
+    DynamicWorkQueue::Callable * head;
+    DynamicWorkQueue::Callable * tail;
 
-    Queue() : numThreads(0), startTime(0), query(0), head(0), tail(0) { }
+    Queue(void const * handle) :
+        numThreads(0), session(handle), head(0), tail(0)
+    {
+        struct ::timeval t;
+        ::gettimeofday(&t, NULL);
+        createTime = t.tv_sec + 0.000001 * t.tv_usec;
+    }
 
     ~Queue() {
         Callable * c = head;
         head = tail = 0;
-        query = 0;
         while (c) {
             Callable * next = c->_next;
             delete c;
@@ -53,7 +62,8 @@ struct DynamicWorkQueue::Queue {
 
     bool empty() const { return head == 0; }
 
-    void push(Callable * c) {
+    // Take ownership of a Callable and add it to the end of the queue.
+    void put(Callable * c) {
         if (c) {
             if (tail) {
                 tail->_next = c;
@@ -64,7 +74,9 @@ struct DynamicWorkQueue::Queue {
         }
     }
 
-    Callable * pop() {
+    // Remove a Callable from the beginning of the queue and relinquish
+    // ownership of it. If the queue is empty, NULL is returned.
+    Callable * take() {
         Callable * c = head;
         if (c) {
             Callable * next = c->_next;
@@ -76,15 +88,17 @@ struct DynamicWorkQueue::Queue {
         return c;
     }
 
-    Callable * popAll() {
+    // Remove and relinquish ownership for all Callable objects in the queue.
+    Callable * takeAll() {
         Callable * c = head;
         head = tail = 0;
         return c;
     }
 };
 
+
 // Order queue pointers lexicographically by
-// (active thread count, query start time, memory address).
+// (active thread count, queue creation time, queue memory address).
 bool DynamicWorkQueue::QueuePtrCmp::operator()(
     DynamicWorkQueue::Queue const *x,
     DynamicWorkQueue::Queue const *y) const
@@ -92,9 +106,9 @@ bool DynamicWorkQueue::QueuePtrCmp::operator()(
     if (x->numThreads < y->numThreads) {
         return true;
     } else if (x->numThreads == y->numThreads) {
-        if (x->startTime < y->startTime) {
+        if (x->createTime < y->createTime) {
             return true;
-        } else if (x->startTime == y->startTime) {
+        } else if (x->createTime == y->createTime) {
             return x < y;
         }
     }
@@ -102,6 +116,7 @@ bool DynamicWorkQueue::QueuePtrCmp::operator()(
 }
 
 
+// Wraps a DynamicWorkQueue reference and implements the work scheduling loop.
 struct DynamicWorkQueue::Runner {
     Runner(DynamicWorkQueue & queue) : wq(queue) { }
     void operator()();
@@ -111,26 +126,30 @@ struct DynamicWorkQueue::Runner {
 void DynamicWorkQueue::Runner::operator()() {
     boost::unique_lock<boost::mutex> lock(wq._mutex);
     do {
-        // Wait for an available queue or for an exit signal.
-        while (wq._queues.empty() && !wq._exitNow) {
-            wq._nonEmpty.wait(lock);
+        // Wait for work or an exit signal.
+        while (wq._nonEmptyQueues.empty() && !wq._exitNow) {
+            wq._workAvailable.wait(lock);
         }
         if (wq._exitNow) { break; }
-
         // The first set element is the oldest of the queues with the smallest
         // active thread count.
-        Queue *q = *wq._queues.begin();
-        // Remove q from _queues prior to updating it - this is necessary
-        // because the updates may change how it compares to other queues.
-        wq._queues.erase(q);
+        Queue *q = *wq._nonEmptyQueues.begin();
+        // Remove q from _nonEmptyQueues prior to updating it - this is
+        // necessary because the queues may be reordered by the update.
+        //
+        // Unfortunately, this means that q may have to be reinserted
+        // later. While this breaks the exception safety of the code, it only
+        // does so when the insert fails to allocate memory, in which case it
+        // is probably OK to terminate() the master.
+        wq._nonEmptyQueues.erase(q);
         assert(q && !q->empty());
 
         q->numThreads += 1; // Increment the active thread count for q.
-        boost::scoped_ptr<Callable> c(q->pop());
+        // Remove a callable from q and take responsibility for deleting it.
+        boost::scoped_ptr<Callable> c(q->take());
         if (!q->empty()) {
-            // If work remains in q, make it available to other threads.
-            wq._queues.insert(q);
-            wq._nonEmpty.notify_one();
+            // Work remains in q, so make it available to other threads.
+            wq._nonEmptyQueues.insert(q);
         }
         lock.unlock();
 
@@ -141,21 +160,24 @@ void DynamicWorkQueue::Runner::operator()() {
         lock.lock();
         wq._numCallables -= 1;
 
-        wq._queues.erase(q); // Remove q from _queues prior to updating.
+        // Remove q from _nonEmptyQueues prior to updating. Note that another
+        // thread may have inserted q into _nonEmptyQueues (when add()ing a
+        // Callable for the same session), even if q wasn't reinserted above.
+        wq._nonEmptyQueues.erase(q);
         q->numThreads -= 1; // Decrement active thread count for q.
         if (!q->empty()) {
             // Work remains in q, so make it available to other threads.
-            wq._queues.insert(q);
+            wq._nonEmptyQueues.insert(q);
         } else if (q->numThreads == 0) {
-            // q is empty and no threads are in-flight for the associated query.
-            wq._queries.erase(q->query);
+            // q is empty and no threads are in-flight for the associated session.
+            wq._sessions.erase(q->session);
             delete q;
         }
-        // If there are more than the minimum number of threads,
-        // and less work-items than threads, exit.
-    } while (wq._numThreads <= wq._minThreads ||
-             wq._numThreads <= wq._numCallables);
+    } while (!wq._shouldDecreaseThreadCount());
     wq._numThreads -= 1;
+    // ~DynamicWorkQueue waits for all Runner threads to complete before
+    // proceeding. If this is the last Runner, signal the destructor
+    // that it's OK to proceed.
     if (wq._numThreads == 0) {
         wq._threadsExited.notify_one();
     }
@@ -163,9 +185,11 @@ void DynamicWorkQueue::Runner::operator()() {
 
 
 DynamicWorkQueue::DynamicWorkQueue(size_t minThreads,
+                                   size_t minThreadsPerSession,
                                    size_t maxThreads,
                                    size_t initThreads) :
     _minThreads(minThreads),
+    _minThreadsPerSession(minThreadsPerSession),
     _maxThreads(maxThreads),
     _numCallables(0),
     _numThreads(std::min(initThreads, maxThreads)),
@@ -182,64 +206,113 @@ DynamicWorkQueue::DynamicWorkQueue(size_t minThreads,
 DynamicWorkQueue::~DynamicWorkQueue()
 {
     boost::unique_lock<boost::mutex> lock(_mutex);
-    // Signal all threads to exit, and wait until they do.
+    // Signal all threads to exit, and wait until they do. This
+    // is necessary because each Runner created by this DynamicWorkQueue
+    // has a reference to *this which must not be invalidated from underfoot.
     _exitNow = true;
+    _workAvailable.notify_all();
     while (_numThreads != 0) {
         _threadsExited.wait(lock);
     }
-    // Clean up allocated memory.
-    _queues.clear();
-    for (QueryQueueMap::iterator i = _queries.begin(), e = _queries.end();
+    _nonEmptyQueues.clear();
+    // Destroy remaining queues.
+    for (SessionQueueMap::iterator i = _sessions.begin(), e = _sessions.end();
          i != e; ++i) {
         delete i->second;
     }
-    _queries.clear();
+    _sessions.clear();
 }
 
-void DynamicWorkQueue::add(AsyncQueryManager const * query,
+void DynamicWorkQueue::add(void const * session,
                            DynamicWorkQueue::Callable * callable)
 {
     boost::lock_guard<boost::mutex> lock(_mutex);
-    Queue *& q = _queries[query];
-    if (q == 0) {
-        // fresh insertion
-        q = new Queue();
-        q->query = query;
-        q->startTime = query ? query->getStartTime() : 0.0;
-    }
-    q->push(callable);
-    _queues.insert(q);
-    _numCallables += 1;
-    _nonEmpty.notify_one();
-    if (_numThreads < _maxThreads && _numCallables > _numThreads) {
-        _numThreads += 1;
+    if (_shouldIncreaseThreadCount()) {
         boost::thread(Runner(*this));
+        // Increment the thread count. Note, if this were done by Runner in
+        // operator()(), the following sequence of events would become
+        // possible:
+        //
+        //  - [thread 1] A DynamicWorkQueue D is created with 0 initial threads.
+        //  - [thread 1] D.add() is called, creating thread 2, but leaving
+        //               _numThreads unchanged at 0.
+        //  - [thread 1] The destructor for D is called. Upon seeing that
+        //               D._numThreads is 0, D is destroyed immediately.
+        //  - [thread 2] The Runner created by D.add() fires up. It now
+        //               contains a reference to D, even though D has been
+        //               destroyed, and may be located in memory that has
+        //               been freed.
+        //  - Havoc ensues.
+        //
+        // Therefore, add() increments the thread count when a new
+        // thread is created, and Runner decrements it before exiting.
+        _numThreads += 1;
     }
+    Queue * q = 0;
+    SessionQueueMap::iterator i = _sessions.find(session);
+    if (i != _sessions.end()) {
+        // There is an existing queue for session.
+        q = i->second;
+        _nonEmptyQueues.insert(q);
+    } else {
+        // Create a Queue for session and put callable on it.
+        std::auto_ptr<Queue> qp(new Queue(session));
+        q = qp.get();
+        _sessions.insert(std::make_pair(session, q));
+        try {
+            _nonEmptyQueues.insert(q);
+        } catch (...) {
+            _sessions.erase(session);
+            throw;
+        }
+        qp.release();
+    }
+    q->put(callable);
+    // Wake up a thread waiting on work.
+    _numCallables += 1;
+    _workAvailable.notify_one();
 }
 
-void DynamicWorkQueue::cancelQueued(AsyncQueryManager const * query)
+void DynamicWorkQueue::cancelQueued(void const * session)
 {
     Callable * c = 0;
     {
         boost::lock_guard<boost::mutex> lock(_mutex);
-        QueryQueueMap::iterator i = _queries.find(query);
-        if (i != _queries.end()) {
+        SessionQueueMap::iterator i = _sessions.find(session);
+        if (i != _sessions.end()) {
             Queue * q = i->second;
-            c = q->popAll();
+            c = q->takeAll();
+            _nonEmptyQueues.erase(q);
             if (q->numThreads == 0) {
-                // q is empty and no threads are in-flight for query
-                _queries.erase(i);
-                _queues.erase(q);
+                // q is empty and no threads are in-flight for session
+                _sessions.erase(i);
                 delete q;
             }
         }
     }
     while (c) {
         Callable * next = c->_next;
-        c->cancel();
+        c->cancel(); // TODO: what if cancel() throws?
         delete c;
         c = next;
     }
+}
+
+bool DynamicWorkQueue::_shouldIncreaseThreadCount() const {
+    if (_numThreads < _minThreads) {
+        return _numThreads < _numCallables + 1;
+    }
+    size_t maxOverflow = (_sessions.size() + 1)*_minThreadsPerSession;
+    return _numThreads < _maxThreads &&
+           _numThreads - _minThreads < maxOverflow;
+}
+
+bool DynamicWorkQueue::_shouldDecreaseThreadCount() const {
+    if (_numThreads <= _minThreads) {
+        return false;
+    }
+    return _numThreads > _numCallables ||
+           _numThreads - _minThreads > _sessions.size()*_minThreadsPerSession;
 }
 
 }}} // namespace lsst::qserv::master
