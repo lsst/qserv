@@ -269,6 +269,7 @@ void WhereClause::ValueExprIter::_incrementBfTerm() {
         return;
     } else {
         _updateValueExprIter();
+        assert(_vIter != _vEnd);
     }
 }
 
@@ -281,6 +282,7 @@ void WhereClause::ValueExprIter::_incrementBterm() {
     if(tuple.first == tuple.second) { // At the end? then pop the stack
         _posStack.pop();
         if(_posStack.empty()) { // No more to traverse?
+            _reset(); // Set to default-constructed iterator to match end.
             return;
         } else {
             _incrementBterm();
@@ -328,6 +330,11 @@ bool WhereClause::ValueExprIter::_findFactor() {
     }
     return false; // Should not get here.
 }
+
+void WhereClause::ValueExprIter::_reset() {
+    _wc = NULL; // NULL _wc is enough to compare as true with default iterator
+}
+
 bool WhereClause::ValueExprIter::_setupBfIter() {
     // Return true if we successfully setup a valid _bfIter;
     if(_posStack.empty()) {
@@ -343,7 +350,8 @@ bool WhereClause::ValueExprIter::_setupBfIter() {
         _bfIter = bf->_terms.begin();
         _bfEnd = bf->_terms.end();
         _updateValueExprIter();
-        return true;
+        
+        return _vIter != _vEnd;
     } else {
         // Try recursing deeper.
         // FIXME
