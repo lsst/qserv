@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
@@ -28,9 +28,9 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "lsst/qserv/master/BoolTermFactory.h"
-#include "lsst/qserv/master/ValueExprFactory.h" 
-#include "lsst/qserv/master/Predicate.h" 
-#include "lsst/qserv/master/PredicateFactory.h" 
+#include "lsst/qserv/master/ValueExprFactory.h"
+#include "lsst/qserv/master/Predicate.h"
+#include "lsst/qserv/master/PredicateFactory.h"
 #include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
 namespace qMaster=lsst::qserv::master;
@@ -42,7 +42,7 @@ namespace { // anonymous helpers
 ////////////////////////////////////////////////////////////////////////
 /// Functor returning true if a node matches a string
 class matchStr {
-public: 
+public:
     matchStr(std::string const& s) : _s(s) {}
     bool operator()(antlr::RefAST a) {
         return qMaster::tokenText(a) == _s;
@@ -51,7 +51,7 @@ public:
 };
 /// Functor returning true if a node matches a type
 class matchType {
-public: 
+public:
     matchType(int tokenType) : _type(tokenType) {}
     bool operator()(antlr::RefAST a) {
         return a->getType() == _type;
@@ -67,8 +67,8 @@ void forEachSibs(antlr::RefAST a, F& f) {
 }
 } // anonymous namespace
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 ////////////////////////////////////////////////////////////////////////
 // BoolTermFactory::bfImport
@@ -103,10 +103,10 @@ void BoolTermFactory::bfImport::operator()(antlr::RefAST a) {
 ////////////////////////////////////////////////////////////////////////
 /// Constructor
 BoolTermFactory::BoolTermFactory(boost::shared_ptr<ValueExprFactory> vf)
-    : _vFactory(vf) {    
+    : _vFactory(vf) {
 }
 /// Construct a new BoolTerm from a node (delegates according to type)
-BoolTerm::Ptr 
+BoolTerm::Ptr
 BoolTermFactory::newBoolTerm(antlr::RefAST a) {
     BoolTerm::Ptr b;
     antlr::RefAST child = a->getFirstChild();
@@ -114,16 +114,16 @@ BoolTermFactory::newBoolTerm(antlr::RefAST a) {
     case SqlSQL2TokenTypes::OR_OP: b = newOrTerm(child); break;
     case SqlSQL2TokenTypes::AND_OP: b = newAndTerm(child); break;
     case SqlSQL2TokenTypes::BOOLEAN_FACTOR: b = newBoolFactor(child); break;
-    case SqlSQL2TokenTypes::VALUE_EXP: 
+    case SqlSQL2TokenTypes::VALUE_EXP:
         b = newUnknown(a); break; // Value expr not expected here.
     default:
-        b = newUnknown(a); break; 
+        b = newUnknown(a); break;
     }
     return b;
 }
 
 /// Construct a new OrTerm from a node
-OrTerm::Ptr 
+OrTerm::Ptr
 BoolTermFactory::newOrTerm(antlr::RefAST a) {
     qMaster::OrTerm::Ptr p(new OrTerm());
     multiImport<OrTerm> oi(*this, *p);
@@ -133,7 +133,7 @@ BoolTermFactory::newOrTerm(antlr::RefAST a) {
     return p;
 }
 /// Construct a new AndTerm from a node
-AndTerm::Ptr 
+AndTerm::Ptr
 BoolTermFactory::newAndTerm(antlr::RefAST a) {
     qMaster::AndTerm::Ptr p(new AndTerm());
     multiImport<AndTerm> ai(*this, *p);
@@ -142,8 +142,8 @@ BoolTermFactory::newAndTerm(antlr::RefAST a) {
     forEachSibs(a, ae);
     return p;
 }
-/// Construct a new BoolFactor 
-BoolFactor::Ptr 
+/// Construct a new BoolFactor
+BoolFactor::Ptr
 BoolTermFactory::newBoolFactor(antlr::RefAST a) {
 #if 0
     std::cout << "bool factor:";
@@ -156,8 +156,8 @@ BoolTermFactory::newBoolFactor(antlr::RefAST a) {
     forEachSibs(a, bfi);
     return bf;
 }
-/// Construct an UnknownTerm(BoolTerm) 
-UnknownTerm::Ptr 
+/// Construct an UnknownTerm(BoolTerm)
+UnknownTerm::Ptr
 BoolTermFactory::newUnknown(antlr::RefAST a) {
     std::cout << "unknown term:" << qMaster::walkTreeString(a) << std::endl;
     return qMaster::UnknownTerm::Ptr(new qMaster::UnknownTerm());

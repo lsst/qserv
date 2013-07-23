@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,14 +10,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_MASTER_TABLEALIAS_H
@@ -31,14 +31,14 @@
   */
 #include <sstream>
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 
 struct DbTablePair {
     DbTablePair(std::string const& db_, std::string const& table_)
         : db(db_), table(table_) {}
-    DbTablePair() {} 
+    DbTablePair() {}
     bool empty() const { return db.empty() && table.empty(); }
     std::string db;
     std::string table;
@@ -57,7 +57,7 @@ public:
         if(i != _map.end()) { return i->second; }
         return DbTablePair();
     }
-    void set(std::string const& db, std::string const& table, 
+    void set(std::string const& db, std::string const& table,
              std::string const& alias) {
         _map[alias] = DbTablePair(db, table);
     }
@@ -71,7 +71,7 @@ public:
     std::string const& get(std::string db, std::string table) {
         return _map[makeKey(db, table)];
     }
-    void set(std::string const& db, std::string const& table, 
+    void set(std::string const& db, std::string const& table,
              std::string const& alias) {
         _map[makeKey(db, table)] = alias;
     }
@@ -86,4 +86,3 @@ public:
 }}} // namespace lsst::qserv::master
 
 #endif // LSST_QSERV_MASTER_TABLEALIAS_H
-

@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,20 +10,20 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_MASTER_QUERYSESSION_H
 #define LSST_QSERV_MASTER_QUERYSESSION_H
 /**
-  * @file 
+  * @file
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -39,8 +39,8 @@
 #include "lsst/qserv/master/QueryPlugin.h"
 #include "lsst/qserv/master/mergeTypes.h"
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 class SelectStmt; // forward
 class QueryPlugin; // forward
@@ -61,7 +61,7 @@ public:
 
     boost::shared_ptr<ConstraintVector> getConstraints() const;
     void addChunk(ChunkSpec const& cs);
-    
+
     SelectStmt const& getStmt() const { return *_stmt; }
 
     // Resulttable concept will be obsolete after we implement query result
@@ -72,20 +72,20 @@ public:
 
     /// Dominant database is the database that will be used for query
     /// dispatch. This is distinct from the default database, which is what is
-    /// used for unqualified table and column references 
+    /// used for unqualified table and column references
     std::string const& getDominantDb() const;
     std::string const& getError() const { return _error; }
-    
+
     MergeFixup makeMergeFixup() const;
 
     // Iteration
     Iter cQueryBegin();
     Iter cQueryEnd();
-    
+
     // For test harnesses.
     struct Test { int cfgNum; int metaSession; };
-    explicit QuerySession(Test& t) 
-        : _metaCacheSession(t.metaSession) { _initContext(); }    
+    explicit QuerySession(Test& t)
+        : _metaCacheSession(t.metaSession) { _initContext(); }
     boost::shared_ptr<QueryContext> dbgGetContext() { return _context; }
 
 private:
@@ -160,4 +160,3 @@ private:
 
 
 #endif // LSST_QSERV_MASTER_QUERYSESSION_H
-

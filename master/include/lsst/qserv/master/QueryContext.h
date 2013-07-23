@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,20 +10,20 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_MASTER_QUERYCONTEXT_H
 #define LSST_QSERV_MASTER_QUERYCONTEXT_H
 /**
-  * @file 
+  * @file
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -34,8 +34,8 @@
 #include "lsst/qserv/master/QueryMapping.h"
 #include "lsst/qserv/master/TableAlias.h"
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 
 class ColumnRef;
@@ -62,16 +62,16 @@ public:
     // Table aliasing
     TableAlias tableAliases;
     TableAliasReverse tableAliasReverses;
-    
+
     // Owned QueryMapping and query restrictors
     boost::shared_ptr<QueryMapping> queryMapping;
     boost::shared_ptr<RestrList> restrictors;
 
     bool needsMerge; ///< Does this query require a merge/post-processing step?
 
-    bool hasChunks() const { 
+    bool hasChunks() const {
         return queryMapping.get() && queryMapping->hasChunks(); }
-    bool hasSubChunks() const { 
+    bool hasSubChunks() const {
         return queryMapping.get() && queryMapping->hasSubChunks(); }
     DbTablePair resolve(boost::shared_ptr<ColumnRef> cr);
 
@@ -79,4 +79,3 @@ public:
 
 }}} // namespace lsst::qserv::master
 #endif // LSST_QSERV_MASTER_QUERYCONTEXT_H
-

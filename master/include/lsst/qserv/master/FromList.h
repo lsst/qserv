@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,20 +10,20 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_MASTER_FROMLIST_H
 #define LSST_QSERV_MASTER_FROMLIST_H
 /**
-  * @file 
+  * @file
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -31,8 +31,8 @@
 #include "lsst/qserv/master/ColumnRefMap.h"
 #include "lsst/qserv/master/TableRefN.h"
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 
 // FromList is a representation of SQL FROM.
@@ -50,7 +50,7 @@ public:
     /// @return a flattened string representation.
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
-    
+
     /// Deep-copy this node
     boost::shared_ptr<FromList> copyDeep() const;
     /// Shallow copy this node, sharing its linked objects.
@@ -65,4 +65,3 @@ private:
 };
 }}} // namespace lsst::qserv::master
 #endif // LSST_QSERV_MASTER_FROMLIST_H
-

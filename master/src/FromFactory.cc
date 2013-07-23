@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
@@ -71,7 +71,7 @@ class ParamGenerator {
 public:
     struct Check {
         bool operator()(RefAST r) {
-            return (r->getType() == SqlSQL2TokenTypes::RIGHT_PAREN) 
+            return (r->getType() == SqlSQL2TokenTypes::RIGHT_PAREN)
                 || (r->getType() == SqlSQL2TokenTypes::COMMA);
         }
     };
@@ -95,16 +95,16 @@ public:
         Iter& operator++() {
             //std::cout << "advancing..: " << current->getText() << std::endl;
             Check c;
-            if(nextCache.get()) { 
-                current = nextCache; 
+            if(nextCache.get()) {
+                current = nextCache;
             } else {
                 current = qMaster::findSibling(current, c);
                 if(current.get()) {
                     // Move to next value
-                    current = current->getNextSibling(); 
+                    current = current->getNextSibling();
                 }
             }
-            return *this; 
+            return *this;
         }
 
         std::string operator*() {
@@ -113,9 +113,9 @@ public:
                 throw std::invalid_argument("Invalid _current in iteration");
             }
             qMaster::CompactPrintVisitor<antlr::RefAST> p;
-            for(;current.get() && !c(current); 
+            for(;current.get() && !c(current);
                 current = current->getNextSibling()) {
-                p(current);                
+                p(current);
             }
             return p.result;
         }
@@ -153,7 +153,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // ParseAliasMap misc impl. (to be placed in ParseAliasMap.cc later)
 ////////////////////////////////////////////////////////////////////////
-std::ostream& qMaster::operator<<(std::ostream& os, 
+std::ostream& qMaster::operator<<(std::ostream& os,
                                   qMaster::ParseAliasMap const& m) {
     using qMaster::ParseAliasMap;
     typedef ParseAliasMap::Miter Miter;
@@ -185,7 +185,7 @@ public:
     virtual ~TableRefListH() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b) {
         _f._import(a); // Trigger from list construction
-    }    
+    }
 private:
     FromFactory& _f;
 };
@@ -193,29 +193,29 @@ private:
 // FromFactory::TableRefAuxH
 ////////////////////////////////////////////////////////////////////////
 class FromFactory::TableRefAuxH : public VoidFourRefFunc {
-public: 
-    TableRefAuxH(boost::shared_ptr<qMaster::ParseAliasMap> map) 
+public:
+    TableRefAuxH(boost::shared_ptr<qMaster::ParseAliasMap> map)
         : _map(map) {}
     virtual ~TableRefAuxH() {}
-    virtual void operator()(antlr::RefAST name, antlr::RefAST sub, 
+    virtual void operator()(antlr::RefAST name, antlr::RefAST sub,
                             antlr::RefAST as, antlr::RefAST alias)  {
         using lsst::qserv::master::getSiblingBefore;
         using qMaster::tokenText;
         if(alias.get()) {
             _map->addAlias(alias, name);
         }
-        // Save column ref for pass/fixup computation, 
+        // Save column ref for pass/fixup computation,
         // regardless of alias.
     }
 private:
     boost::shared_ptr<qMaster::ParseAliasMap> _map;
 };
 class QualifiedName {
-public:    
+public:
     QualifiedName(antlr::RefAST qn) {
         for(; qn.get(); qn = qn->getNextSibling()) {
             if(qn->getType() == SqlSQL2TokenTypes::PERIOD) continue;
-            names.push_back(qn->getText());            
+            names.push_back(qn->getText());
         }
     }
     std::string getQual(int i) const {
@@ -228,12 +228,12 @@ public:
 // FromFactory::ListIterator
 ////////////////////////////////////////////////////////////////////////
 class FromFactory::RefGenerator {
-public: 
+public:
     RefGenerator(antlr::RefAST firstRef,
-                 boost::shared_ptr<ParseAliasMap> aliases) 
+                 boost::shared_ptr<ParseAliasMap> aliases)
         : _cursor(firstRef), _aliases(aliases) {
         std::cout << *_aliases << std::endl;
-        
+
     }
     TableRefN::Ptr get() const {
         if(_cursor->getType() != SqlSQL2TokenTypes::TABLE_REF) {
@@ -271,7 +271,7 @@ public:
             next();
             break;
         default:
-            // std::cout << "next type is:" << _cursor->getType() 
+            // std::cout << "next type is:" << _cursor->getType()
             //           << " and text is:" << _cursor->getText() << std::endl;
             break;
         }
@@ -307,7 +307,7 @@ private:
     // Fields
     antlr::RefAST _cursor;
     boost::shared_ptr<ParseAliasMap> _aliases;
-                 
+
 };
 ////////////////////////////////////////////////////////////////////////
 // FromFactory (impl)
@@ -316,12 +316,12 @@ FromFactory::FromFactory(boost::shared_ptr<ParseAliasMap> aliases) :
         _aliases(aliases) {
 }
 
-boost::shared_ptr<FromList> 
+boost::shared_ptr<FromList>
 FromFactory::getProduct() {
     return _list;
 }
 
-void 
+void
 FromFactory::attachTo(SqlSQL2Parser& p) {
     boost::shared_ptr<TableRefListH> lh(new TableRefListH(*this));
     p._tableListHandler = lh;
@@ -329,12 +329,12 @@ FromFactory::attachTo(SqlSQL2Parser& p) {
     p._tableAliasHandler = ah;
 }
 
-void 
+void
 FromFactory::_import(antlr::RefAST a) {
     _list.reset(new FromList());
     _list->_tableRefns.reset(new TableRefnList());
 
-    // std::cout << "FROM starts with: " << a->getText() 
+    // std::cout << "FROM starts with: " << a->getText()
     //           << " (" << a->getType() << ")" << std::endl;
     std::stringstream ss;
     //std::cout << "FROM indented: " << walkIndentedString(a) << std::endl;
@@ -342,9 +342,9 @@ FromFactory::_import(antlr::RefAST a) {
         TableRefN::Ptr p = refGen.get();
         ss << "Found ref:" ;
         TableRefN& tn = *p;
-        ss << tn;   
+        ss << tn;
         _list->_tableRefns->push_back(p);
     }
     std::string s(ss.str());
-    if(s.size() > 0) { std::cout << s << std::endl; } 
+    if(s.size() > 0) { std::cout << s << std::endl; }
 }

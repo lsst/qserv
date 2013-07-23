@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,14 +10,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_MASTER_PREDICATE_H
@@ -29,35 +29,35 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-// 
+//
 
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/BoolTerm.h"
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 
 class QueryTemplate; // Forward
 class ValueExpr;
 
 ///  Predicate is a representation of a SQL predicate.
-/// predicate : 
-/// 	  row_value_constructor 
-/// 	    ( comp_predicate
-/// 	    | ("not")? ( between_predicate 
-/// 	               | in_predicate 
-/// 	               | like_predicate 
-/// 	               )
-/// 	    | null_predicate 
-/// 	    | quantified_comp_predicate 
-/// 	    | match_predicate 
-/// 	    | overlaps_predicate 
-/// 	    ) {#predicate = #([PREDICATE, "PREDICATE"],predicate);}
-/// 	| exists_predicate 
-/// 	| unique_predicate 
+/// predicate :
+///       row_value_constructor
+///         ( comp_predicate
+///         | ("not")? ( between_predicate
+///                    | in_predicate
+///                    | like_predicate
+///                    )
+///         | null_predicate
+///         | quantified_comp_predicate
+///         | match_predicate
+///         | overlaps_predicate
+///         ) {#predicate = #([PREDICATE, "PREDICATE"],predicate);}
+///     | exists_predicate
+///     | unique_predicate
 class Predicate : public BfTerm {
 public:
     typedef boost::shared_ptr<Predicate> Ptr;
@@ -83,7 +83,7 @@ public:
     class render;
 };
 
-/// GenericPredicate is a Predicate whose structure whose semantic meaning 
+/// GenericPredicate is a Predicate whose structure whose semantic meaning
 /// is unimportant for qserv
 class GenericPredicate : public Predicate {
 public:
@@ -129,7 +129,7 @@ public:
     virtual boost::shared_ptr<Predicate> copySyntax() {
         return boost::shared_ptr<Predicate>(); }
     class render;
-    
+
     boost::shared_ptr<ValueExpr> left;
     int op; // Parser token type of operator
     boost::shared_ptr<ValueExpr> right;
@@ -159,11 +159,11 @@ public:
     class render;
 
     boost::shared_ptr<ValueExpr> value;
-    
+
     std::list<boost::shared_ptr<ValueExpr> > cands;
     boost::shared_ptr<Predicate::ValueExprList> _cache;
 };
-/// BetweenPredicate is a Predicate comparing a row value to a range 
+/// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<BetweenPredicate> Ptr;
@@ -194,4 +194,3 @@ public:
 
 
 #endif // LSST_QSERV_MASTER_PREDICATE_H
-

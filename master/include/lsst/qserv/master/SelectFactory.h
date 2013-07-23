@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,14 +10,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_MASTER_SELECTFACTORY_H
@@ -26,7 +26,7 @@
   * @file SelectFactory.h
   *
   * @brief SelectFactory maintains parse state so that a SelectStmt can be built
-  * from a parse tree. SelectListFactory depends on some of this state.  
+  * from a parse tree. SelectListFactory depends on some of this state.
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -41,8 +41,8 @@
 // Forward
 class SqlSQL2Parser;
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 // Forward
 class ParseAliasMap;
@@ -65,10 +65,10 @@ public:
 
     boost::shared_ptr<SelectStmt> getStatement();
 
-    boost::shared_ptr<SelectListFactory> getSelectListFactory() { 
+    boost::shared_ptr<SelectListFactory> getSelectListFactory() {
         return _slFactory; }
-    boost::shared_ptr<FromFactory> getFromFactory() { 
-        return _fFactory; }    
+    boost::shared_ptr<FromFactory> getFromFactory() {
+        return _fFactory; }
     boost::shared_ptr<WhereFactory> getWhereFactory() {
         return _wFactory; }
 
@@ -91,4 +91,3 @@ private:
 }}} // namespace lsst::qserv::master
 
 #endif // LSST_QSERV_MASTER_SELECTFACTORY_H
-
