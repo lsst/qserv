@@ -38,12 +38,21 @@ post = detect_deps.mergeDict(post, post2)
 post2 = detect_deps.importDeps(env, "../../common/lib/qserv_common")
 post = detect_deps.mergeDict(post, post2)
 
+def requireLib(conf, libname):
+    if not conf.CheckLib(libname):
+        print "******** Can't link %s .   BUILD FAILED. *********" % (libname)
+    pass
 # Apply lib dependencies.
 conf = Configure(libEnv)
 detect_deps.checkLibsFromDict(conf, post)
-conf.CheckLib("qserv_common")
-conf.CheckLib("qserv_proto")
-conf.CheckLib("XrdOfs")
+requireLib(conf, "qserv_common")
+requireLib(conf, "qserv_proto")
+requireLib(conf, "XrdUtils")
+requireLib(conf, "XrdClient")
+requireLib(conf, "XrdServer")
+requireLib(conf, "XrdSys")
+requireLib(conf, "XrdOfs")
+requireLib(conf, "XrdSfs")
 libEnv = conf.Finish()
 
 cmsLib = libEnv.SharedLibrary("qserv_workerCmsd", cmsSources)

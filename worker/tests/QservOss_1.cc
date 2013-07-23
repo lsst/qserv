@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(Test1) {
     ossDf.reset(oss->newFile(tident));
     BOOST_CHECK_NE(ossDf.get(),  static_cast<XrdOssDF*>(NULL));
 
-    result = oss->Chmod(aPath, 0777);
+    result = oss->Chmod(aPath, 0777, NULL);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
 
     XrdOucEnv env;
@@ -78,15 +78,15 @@ BOOST_AUTO_TEST_CASE(Test1) {
 
     result = oss->Init(&logger, NULL);
     BOOST_CHECK_EQUAL(result, 0);
-    result = oss->Mkdir(aPath, 0777);
+    result = oss->Mkdir(aPath, 0777, 0, NULL);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
-    result = oss->Remdir(aPath);
+    result = oss->Remdir(aPath, 0, NULL);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
-    result = oss->Truncate(aPath, 0);
+    result = oss->Truncate(aPath, 0, NULL);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
-    result = oss->Unlink(aPath, 0);
+    result = oss->Unlink(aPath, 0, NULL);
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
-    result = oss->Rename(aPath, aPath); 
+    result = oss->Rename(aPath, aPath, 0, NULL); 
     BOOST_CHECK_EQUAL(result, -ENOTSUP);
 }
 BOOST_AUTO_TEST_SUITE_END()

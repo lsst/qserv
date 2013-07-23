@@ -51,7 +51,7 @@ for src in Glob("*.cc"):
     if(filter(lambda s: s in src.name, 
               ["MySqlFs_", "FifoScheduler_", "QuerySql_"])):
         src = [src] + testEnv["built_libs"] 
-        libs = testEnv["built_elibs"] + ["mysqlclient_r"]
+        libs = testEnv["built_elibs"] + ["mysqlclient_r", "XrdSys", "XrdClient", "XrdUtils"]
     elif "PathStructure_" in src.name:
         # src = [src, testEnv.Object("QservPathStructure.o", 
         #                            "../src/QservPathStructure.cc")]
@@ -62,7 +62,8 @@ for src in Glob("*.cc"):
                                                     "QservOss.cc", 
                                                     "Logger.cc", 
                                                     "MySqlExportMgr.cc"])
-        libs = testEnv["built_elibs"] + ["mysqlclient_r", "XrdOuc"]
+        libs = testEnv["built_elibs"] + ["mysqlclient_r", "XrdOuc",
+                                         "XrdClient", "XrdUtils", "XrdSys"]
     else:
         src = [src]
     pass

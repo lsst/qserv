@@ -39,8 +39,9 @@ $*
 """
 
 def makeRunner(target):
+    libpath = filter(lambda a: a, env["LIBPATH"])
     s = scriptTemplate % {
-        "ldpath" : ":".join(env["LIBPATH"]), #commaReplace(env["LIBPATH"]),
+        "ldpath" : ":".join(libpath), #commaReplace(env["LIBPATH"]),
         "pythonpath" : os.path.join(os.curdir,"dist"),
         "sname" : os.path.basename(target)
         }

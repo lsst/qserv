@@ -176,7 +176,7 @@ bool QservOss::_checkExist(std::string const& db, int chunk) {
 
   Notes:    The XRDOSS_resonly flag in Opts is not supported.
 */
-int QservOss::Stat(const char *path, struct stat *buff, int opts) {
+int QservOss::Stat(const char *path, struct stat *buff, int opts, XrdOucEnv*) {
     // Idea: Avoid the need to worry about the export dir.
     // 
     // Ignore opts, since we don't know what to do with 
@@ -216,7 +216,8 @@ int QservOss::Stat(const char *path, struct stat *buff, int opts) {
             Note that quota is zero when sname is null.
 */
 
-int QservOss::StatVS(XrdOssVSInfo *sP, const char *sname, int updt) {
+int QservOss::StatVS(XrdOssVSInfo *sP, const char *sname, 
+                     int updt, XrdOucEnv*) {
     // Idea: Always return some large amount of space, so that
     // the amount never prevents the manager xrootd/cmsd from
     // selecting us as a write target (qserv dispatch target)
