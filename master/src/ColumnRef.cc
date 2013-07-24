@@ -30,9 +30,9 @@
 #include <iostream>
 #include "lsst/qserv/master/QueryTemplate.h"
 
-namespace qMaster=lsst::qserv::master;
-
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 
 std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     return os << "(" << cr.db << "," << cr.table << "," << cr.column << ")";
@@ -42,7 +42,7 @@ std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
     return os << *cr;
 }
 
-void ColumnRef::render(QueryTemplate& qt) const {
+void ColumnRef::renderTo(QueryTemplate& qt) const {
     qt.append(*this);
 }
 

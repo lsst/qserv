@@ -152,9 +152,9 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const* ve) {
 
 void ValueFactor::render::operator()(ValueFactor const& ve) {
     switch(ve._type) {
-    case ValueFactor::COLUMNREF: ve._columnRef->render(_qt); break;
-    case ValueFactor::FUNCTION: ve._funcExpr->render(_qt); break;
-    case ValueFactor::AGGFUNC: ve._funcExpr->render(_qt); break;
+    case ValueFactor::COLUMNREF: ve._columnRef->renderTo(_qt); break;
+    case ValueFactor::FUNCTION: ve._funcExpr->renderTo(_qt); break;
+    case ValueFactor::AGGFUNC: ve._funcExpr->renderTo(_qt); break;
     case ValueFactor::STAR:
         if(!ve._tableStar.empty()) {
             _qt.append(ColumnRef("",ve._tableStar, "*"));

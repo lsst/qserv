@@ -39,7 +39,22 @@ class QueryTemplate;
 /// QsRestrictor is a Qserv spatial restrictor element that is used to
 /// signal dependencies on spatially-partitioned tables. It includes
 /// qserv-specific restrictors that make use of the spatial indexing,
-/// but are not strictly spatial restrictuions.
+/// but are not strictly spatial restrictions.
+/// QsRestrictors can come from user-specification:
+/// ... WHERE qserv_areaspec_box(1,1,2,2) ...
+/// but may be auto-detected from predicates in the where clause.
+/// ... WHERE objectId IN (1,2,3,4) ... --> qserv_objectid(1,2,3,4)
+/// Some metadata checking is done in the process.
+/// Names are generally one of:
+/// qserv_fct_name :
+///   "qserv_areaspec_box"^ 
+///    | "qserv_areaspec_circle"^ 
+///    | "qserv_areaspec_ellipse"^ 
+///    | "qserv_areaspec_poly"^ 
+///    | "qserv_areaspec_hull"^ 
+///    | "qserv_objectId"^
+/// but may include other names. They are used to pass information back
+/// to the python layer to evaluate the geometry restriction.
 class QsRestrictor {
 public:
     typedef boost::shared_ptr<QsRestrictor> Ptr;

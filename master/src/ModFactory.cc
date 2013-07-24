@@ -70,7 +70,8 @@ class ModFactory::OrderByH : public VoidOneRefFunc {
 public:
     OrderByH(ModFactory& mf) : _mf(mf) {}
     virtual void operator()(antlr::RefAST n) {
-        std::cout << "Importing Orderby:" << walkIndentedString(n) << std::endl;
+        // Log this.
+        //std::cout << "Importing Orderby:" << walkIndentedString(n) << std::endl;
         _mf._importOrderBy(n);
     }
 private:

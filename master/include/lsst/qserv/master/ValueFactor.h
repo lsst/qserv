@@ -38,7 +38,6 @@ namespace lsst {
 namespace qserv {
 namespace master {
 // Forward
-class ColumnRef;
 class QueryTemplate;
 class FuncExpr;
 class ValueExpr; // To support nested expressions.

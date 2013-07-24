@@ -53,7 +53,7 @@ typedef std::list<std::string> StringList;
 
 class addMap {
 public:
-    explicit addMap(TableAlias& t, TableAliasReverse& r)
+    addMap(TableAlias& t, TableAliasReverse& r)
         : _tableAlias(t), _tableAliasReverse(r) {}
     void operator()(std::string const& alias,
                     std::string const& db, std::string const& table) {
@@ -69,7 +69,7 @@ public:
 
 class generateAlias {
 public:
-    generateAlias(int& seqN) : _seqN(seqN) {}
+    explicit generateAlias(int& seqN) : _seqN(seqN) {}
     std::string operator()() {
         std::stringstream ss;
         ss << "QST_" << ++_seqN << "_";
@@ -268,8 +268,7 @@ TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
 
     // For each tableref, modify to add alias.
     int seq=0;
-    addMap addMapContext(addMap(context.tableAliases,
-                                context.tableAliasReverses));
+    addMap addMapContext(context.tableAliases, context.tableAliasReverses);
 
     std::for_each(tList.begin(), tList.end(),
                   addAlias<generateAlias,addMap>(generateAlias(seq),
@@ -356,6 +355,7 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
 }
 
 bool testIfSecondary(BoolTerm& t) {
+    // FIXME: Look for secondary key in the bool term.
     std::cout << "Testing ";
     t.putStream(std::cout) << std::endl;
     return false;

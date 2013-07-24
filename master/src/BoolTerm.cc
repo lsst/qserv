@@ -37,6 +37,10 @@ namespace master {
 ////////////////////////////////////////////////////////////////////////
 // BoolTerm section
 ////////////////////////////////////////////////////////////////////////
+std::ostream& operator<<(std::ostream& os, BoolTerm const& bt) {
+    return bt.putStream(os);
+}
+
 std::ostream& OrTerm::putStream(std::ostream& os) const {
     // FIXME
     return os;
@@ -65,14 +69,6 @@ std::ostream& ValueExprTerm::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-class BoolTerm::render {
-public:
-    render(QueryTemplate& qt_) : qt(qt_) {}
-    void operator()(BoolTerm::Ptr const& t) {
-        t->renderTo(qt);
-    }
-    QueryTemplate& qt;
-};
 namespace {
 template <typename Plist>
 inline void renderList(QueryTemplate& qt,
@@ -129,7 +125,7 @@ void BoolFactor::findColumnRefs(ColumnRefMap::List& list) {
     }
 }
 void ValueExprTerm::findColumnRefs(ColumnRefMap::List& list) {
-    if(_expr) { return _expr->findColumnRefs(list); }
+    if(_expr) { _expr->findColumnRefs(list); }
 }
 boost::shared_ptr<BoolTerm> OrTerm::copySyntax() {
     boost::shared_ptr<OrTerm> ot(new OrTerm());

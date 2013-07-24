@@ -80,7 +80,6 @@ public:
     /// Deep copy this term.
     virtual boost::shared_ptr<Predicate> copySyntax() {
         return boost::shared_ptr<Predicate>(); }
-    class render;
 };
 
 /// GenericPredicate is a Predicate whose structure whose semantic meaning
@@ -98,20 +97,18 @@ public:
     /// @return the terminal iterator
     //virtual PtrList::iterator iterEnd() { return PtrList::iterator(); }
 
-    friend std::ostream& operator<<(std::ostream& os, GenericPredicate const& bt);
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
     /// Deep copy this term.
     virtual boost::shared_ptr<Predicate> copySyntax() {
         return boost::shared_ptr<Predicate>(); }
-    class render;
 };
 
 /// CompPredicate is a Predicate involving a row value compared to another row value.
 /// (literals can be row values)
 class CompPredicate : public Predicate {
 public:
-    typedef boost::shared_ptr<Predicate> Ptr;
+    typedef boost::shared_ptr<CompPredicate> Ptr;
     typedef std::list<Ptr> PtrList;
 
     virtual ~CompPredicate() {}
@@ -122,17 +119,16 @@ public:
     virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
     virtual void findColumnRefs(ColumnRefMap::List& list);
 
-    friend std::ostream& operator<<(std::ostream& os, CompPredicate const& bt);
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
     virtual boost::shared_ptr<Predicate> copySyntax() {
         return boost::shared_ptr<Predicate>(); }
-    class render;
 
     boost::shared_ptr<ValueExpr> left;
     int op; // Parser token type of operator
     boost::shared_ptr<ValueExpr> right;
+private:
     boost::shared_ptr<Predicate::ValueExprList> _cache;
 };
 
@@ -150,17 +146,16 @@ public:
     virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
     virtual void findColumnRefs(ColumnRefMap::List& list);
 
-    friend std::ostream& operator<<(std::ostream& os, InPredicate const& bt);
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
     virtual boost::shared_ptr<Predicate> copySyntax() {
         return boost::shared_ptr<Predicate>(); }
-    class render;
 
     boost::shared_ptr<ValueExpr> value;
 
     std::list<boost::shared_ptr<ValueExpr> > cands;
+private:
     boost::shared_ptr<Predicate::ValueExprList> _cache;
 };
 /// BetweenPredicate is a Predicate comparing a row value to a range
@@ -176,17 +171,16 @@ public:
     virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
     virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
     virtual void findColumnRefs(ColumnRefMap::List& list);
-    friend std::ostream& operator<<(std::ostream& os, BetweenPredicate const& bt);
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
     virtual boost::shared_ptr<Predicate> copySyntax() {
         return boost::shared_ptr<Predicate>(); }
-    class render;
 
     boost::shared_ptr<ValueExpr> value;
     boost::shared_ptr<ValueExpr> minValue;
     boost::shared_ptr<ValueExpr> maxValue;
+private:
     boost::shared_ptr<Predicate::ValueExprList> _cache;
 };
 

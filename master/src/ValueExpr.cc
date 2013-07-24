@@ -95,20 +95,21 @@ ValueExpr::ValueExpr() {
 
 boost::shared_ptr<ColumnRef> ValueExpr::castAsColumnRef() const {
     boost::shared_ptr<ColumnRef> cr;
-    if(_factorOps.empty()) { return cr; } // Empty?
-    if(_factorOps.size() > 1) { return cr; } // Not a single ColumnRef
+    if(_factorOps.size() != 1) { return cr; } // Empty or Not a single ColumnRef
     boost::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
-    if(!factor) { return cr; }
-    return boost::make_shared<ColumnRef>(*factor->getColumnRef());
+    assert(factor);
+    cr.reset(new ColumnRef(*factor->getColumnRef()));
+    return cr;
 }
 
-std::string ValueExpr::castAsLiteral() const{
+std::string ValueExpr::castAsLiteral() const {
     std::string s;
     // Make sure there is only one factor.
     if(_factorOps.empty() || (_factorOps.size() > 1)) { return s; }
 
     boost::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
-    if(!factor || (factor->getType() != ValueFactor::CONST)) { return s; }
+    assert(factor);
+    if(factor->getType() != ValueFactor::CONST) { return s; }
     return factor->getTableStar();
 }
 
@@ -125,7 +126,13 @@ T ValueExpr::castAsType(T const& defaultValue) const {
     }
     return value;
 }
+template<>
+float ValueExpr::castAsType<float>(float const& defaultValue) const;
+template<>
+double ValueExpr::castAsType<double>(double const& defaultValue) const;
+
 template int ValueExpr::castAsType<int>(int const&) const;
+
 
 void ValueExpr::findColumnRefs(ColumnRef::List& list) {
     for(FactorOpList::iterator i=_factorOps.begin();

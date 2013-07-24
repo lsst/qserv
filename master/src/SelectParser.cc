@@ -79,23 +79,16 @@ public:
         } catch(antlr::NoViableAltException& e) {
             throw ParseException("ANTLR parse error:" + e.getMessage(), e.node);
         }
-        explore();
+        RefAST a = parser.getAST();
+    
     }
-    void explore();
+
     std::string statement;
     std::stringstream stream;
     ASTFactory factory;
     SqlSQL2Lexer lexer;
     SqlSQL2Parser parser;
 };
-void
-AntlrParser::explore() {
-    RefAST a = parser.getAST();
-//    std::cout << "wholething: " << walkIndentedString(a) << std::endl;
-//    std::cout << "printing walktree \n";
-//    printIndented(a);
-
-}
 
 ////////////////////////////////////////////////////////////////////////
 // class SelectParser

@@ -76,7 +76,7 @@ private:
     boost::shared_ptr<Listener> _listener;
 };
 
-/// ColumnRefH::Listener is an interface for functors that act upon normalized
+/// ColumnRefH::Listener is an interface that acts upon normalized
 /// column references (db,table,column)
 class ColumnRefH::Listener {
 public:
@@ -85,8 +85,8 @@ public:
                                  antlr::RefAST c) = 0;
 };
 /// ColumnRefNodeMap is a Listener which remembers ColumnRefs as nodes.
-/// Somewhat different than ColumnRefMap, which is not a listener
-/// and stores strings rather than node refs.
+/// Somewhat different than ColumnRefMap, which stores strings rather
+/// than node refs.
 class ColumnRefNodeMap : public ColumnRefH::Listener {
 public:
     struct Ref {

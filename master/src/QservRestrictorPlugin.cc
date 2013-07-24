@@ -344,32 +344,33 @@ QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     AndTerm::Ptr originalAnd(wc.getRootAndTerm());
     boost::shared_ptr<QsRestrictor::List> keyPreds;
     keyPreds = _getKeyPreds(context, originalAnd);
-
+    AndTerm::Ptr newTerm;
     // Now handle the explicit restrictors
-    if(!rListP.get()) return; // No spatial restrictions -> nothing to do
-    QsRestrictor::List const& rList = *rListP;
-    context.restrictors.reset(new QueryContext::RestrList);
-    AndTerm::Ptr newTerm(new AndTerm);
-
-    // Now, for each of the qserv restrictors:
-    for(QsRestrictor::List::const_iterator i=rList.begin();
-        i != rList.end(); ++i) {
-        // for each restrictor entry
-        // generate a restrictor condition.
-        for(RestrictorEntries::const_iterator j = entries.begin();
-            j != entries.end(); ++j) {
-            newTerm->_terms.push_back(_makeCondition(*i, *j));
-        }
-        if((**i)._name == "qserv_objectId") {
-            // Convert to secIndex restrictor
-            QsRestrictor::Ptr p = _convertObjectId(context, **i);
-            context.restrictors->push_back(p);
-        } else {
-            // Save restrictor in QueryContext.
-            context.restrictors->push_back(*i);
+    if(rListP && !rListP->empty()) {
+        // spatial restrictions 
+        QsRestrictor::List const& rList = *rListP;
+        context.restrictors.reset(new QueryContext::RestrList);
+        newTerm.reset(new AndTerm);
+        
+        // Now, for each of the qserv restrictors:
+        for(QsRestrictor::List::const_iterator i=rList.begin();
+            i != rList.end(); ++i) {
+            // for each restrictor entry
+            // generate a restrictor condition.
+            for(RestrictorEntries::const_iterator j = entries.begin();
+                j != entries.end(); ++j) {
+                newTerm->_terms.push_back(_makeCondition(*i, *j));
+            }
+            if((**i)._name == "qserv_objectId") {
+                // Convert to secIndex restrictor
+                QsRestrictor::Ptr p = _convertObjectId(context, **i);
+                context.restrictors->push_back(p);
+            } else {
+                // Save restrictor in QueryContext.
+                context.restrictors->push_back(*i);
+            }
         }
     }
-
     wc.resetRestrs();
     // Merge in the implicit restrictors
     if(keyPreds) {
@@ -377,7 +378,7 @@ QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
                                     keyPreds->begin(), keyPreds->end());
     }
     if(context.restrictors->empty()) { context.restrictors.reset(); }
-    wc.prependAndTerm(newTerm);
+    if(newTerm) { wc.prependAndTerm(newTerm); }
 }
 
 void

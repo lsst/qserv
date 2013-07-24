@@ -68,7 +68,7 @@ public:
     ValueExprList params;
     friend std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);
     friend std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
-    void render(QueryTemplate& qt) const;
+    void renderTo(QueryTemplate& qt) const;
 };
 
 std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);

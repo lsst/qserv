@@ -28,6 +28,7 @@
 
 #include <iostream>
 #include <iterator>
+#include "lsst/qserv/master/QueryTemplate.h"
 
 namespace lsst {
 namespace qserv {
@@ -39,4 +40,23 @@ std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
     os << ")";
     return os;
 }
+////////////////////////////////////////////////////////////////////////
+// QsRestrictor::render
+////////////////////////////////////////////////////////////////////////
+void
+QsRestrictor::render::operator()(QsRestrictor::Ptr const& p) {
+    if(p.get()) {
+        qt.append(p->_name);
+        qt.append("(");
+        StringList::const_iterator i;
+        int c=0;
+        for(i=p->_params.begin(); i != p->_params.end(); ++i) {
+            if(++c > 1) qt.append(",");
+            qt.append(*i);
+        }
+        qt.append(")");
+    }
+}
+
+
 }}} // namespace lsst::qserv::master

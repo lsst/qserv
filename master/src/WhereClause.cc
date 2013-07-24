@@ -55,25 +55,6 @@ BoolTerm::Ptr findAndTerm(BoolTerm::Ptr tree) {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// QsRestrictor::render
-////////////////////////////////////////////////////////////////////////
-void
-QsRestrictor::render::operator()(QsRestrictor::Ptr const& p) {
-    if(p.get()) {
-        qt.append(p->_name);
-        qt.append("(");
-        StringList::const_iterator i;
-        int c=0;
-        for(i=p->_params.begin(); i != p->_params.end(); ++i) {
-            if(++c > 1) qt.append(",");
-            qt.append(*i);
-        }
-        qt.append(")");
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////
 // WhereClause
 ////////////////////////////////////////////////////////////////////////
 std::ostream&
@@ -123,7 +104,7 @@ WhereClause::getColumnRefs() const {
     // doesn't require any particular order.
     findColumnRefs(_tree, *list);
 
-    return boost::shared_ptr<ColumnRefMap::List const>();
+    return list;
 }
 
 
@@ -257,14 +238,12 @@ WhereClause::ValueExprIter::ValueExprIter(WhereClause* wc,
 }
 
 void WhereClause::ValueExprIter::increment() {
-    while(1) {
-        _incrementValueExpr(); // Advance
-        if(_posStack.empty()) {
-            _wc = NULL; // Clear out WhereClause ptr
-            return;
-        }
-        if(_checkIfValid()) return;
+    _incrementValueExpr(); // Advance
+    if(_posStack.empty()) {
+        _wc = NULL; // Clear out WhereClause ptr
+        return;
     }
+    if(_checkIfValid()) return;
 }
 
 bool WhereClause::ValueExprIter::_checkIfValid() const {

@@ -81,7 +81,7 @@ std::ostream& qMaster::operator<<(std::ostream& os, FuncExpr const* fe) {
     return os << *fe;
 }
 
-void qMaster::FuncExpr::render(qMaster::QueryTemplate& qt) const {
+void qMaster::FuncExpr::renderTo(qMaster::QueryTemplate& qt) const {
     qt.append(name);
     qt.append("(");
     renderList(qt, params);

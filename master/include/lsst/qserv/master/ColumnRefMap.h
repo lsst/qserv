@@ -30,8 +30,8 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+#include <ostream>
 #include "lsst/qserv/master/ColumnRefH.h"
-
 namespace lsst {
 namespace qserv {
 namespace master {
@@ -51,10 +51,8 @@ public:
     virtual void acceptColumnRef(antlr::RefAST d, antlr::RefAST t,
                                  antlr::RefAST c);
 
-    List exportList();
-
-    boost::shared_ptr<ColumnRef const> getRef(antlr::RefAST r);
-    void printRefs() const;
+    boost::shared_ptr<ColumnRef const> getRef(antlr::RefAST r) const;
+    std::ostream& printRefs(std::ostream& os) const;
 
 private:
     typedef std::map<antlr::RefAST, boost::shared_ptr<ColumnRef> > RefMap;

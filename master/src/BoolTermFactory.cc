@@ -33,10 +33,9 @@
 #include "lsst/qserv/master/PredicateFactory.h"
 #include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
-namespace qMaster=lsst::qserv::master;
-
-namespace { // anonymous helpers
-
+namespace lsst {
+namespace qserv {
+namespace master {
 ////////////////////////////////////////////////////////////////////////
 // BoolTermFactory helper
 ////////////////////////////////////////////////////////////////////////
@@ -45,7 +44,7 @@ class matchStr {
 public:
     matchStr(std::string const& s) : _s(s) {}
     bool operator()(antlr::RefAST a) {
-        return qMaster::tokenText(a) == _s;
+        return tokenText(a) == _s;
     }
     std::string _s;
 };
@@ -65,11 +64,7 @@ void forEachSibs(antlr::RefAST a, F& f) {
         f(a);
     }
 }
-} // anonymous namespace
 
-namespace lsst {
-namespace qserv {
-namespace master {
 ////////////////////////////////////////////////////////////////////////
 // BoolTermFactory::bfImport
 ////////////////////////////////////////////////////////////////////////
@@ -125,7 +120,7 @@ BoolTermFactory::newBoolTerm(antlr::RefAST a) {
 /// Construct a new OrTerm from a node
 OrTerm::Ptr
 BoolTermFactory::newOrTerm(antlr::RefAST a) {
-    qMaster::OrTerm::Ptr p(new OrTerm());
+    OrTerm::Ptr p(new OrTerm());
     multiImport<OrTerm> oi(*this, *p);
     matchType matchOr(SqlSQL2TokenTypes::SQL2RW_or);
     applyExcept<multiImport<OrTerm>,matchType> ae(oi, matchOr);
@@ -135,7 +130,7 @@ BoolTermFactory::newOrTerm(antlr::RefAST a) {
 /// Construct a new AndTerm from a node
 AndTerm::Ptr
 BoolTermFactory::newAndTerm(antlr::RefAST a) {
-    qMaster::AndTerm::Ptr p(new AndTerm());
+    AndTerm::Ptr p(new AndTerm());
     multiImport<AndTerm> ai(*this, *p);
     matchType matchAnd(SqlSQL2TokenTypes::SQL2RW_and);
     applyExcept<multiImport<AndTerm>,matchType> ae(ai, matchAnd);
@@ -159,20 +154,20 @@ BoolTermFactory::newBoolFactor(antlr::RefAST a) {
 /// Construct an UnknownTerm(BoolTerm)
 UnknownTerm::Ptr
 BoolTermFactory::newUnknown(antlr::RefAST a) {
-    std::cout << "unknown term:" << qMaster::walkTreeString(a) << std::endl;
-    return qMaster::UnknownTerm::Ptr(new qMaster::UnknownTerm());
+    std::cout << "unknown term:" << walkTreeString(a) << std::endl;
+    return UnknownTerm::Ptr(new UnknownTerm());
 }
 /// Construct an PassTerm
 PassTerm::Ptr
 BoolTermFactory::newPassTerm(antlr::RefAST a) {
-    qMaster::PassTerm::Ptr p(new PassTerm());
+    PassTerm::Ptr p(new PassTerm());
     p->_text = tokenText(a); // FIXME: Should this be a tree walk?
     return p;
 }
 /// Construct a new ValueExprTerm using the ValueExprFactory
 ValueExprTerm::Ptr
 BoolTermFactory::newValueExprTerm(antlr::RefAST a) {
-    qMaster::ValueExprTerm::Ptr p(new ValueExprTerm());
+    ValueExprTerm::Ptr p(new ValueExprTerm());
     p->_expr = _vFactory->newExpr(a->getFirstChild());
     return p;
 }

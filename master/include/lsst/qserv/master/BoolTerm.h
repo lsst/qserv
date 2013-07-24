@@ -58,13 +58,11 @@ public:
     /// @return the terminal iterator
     virtual PtrList::iterator iterEnd() { return PtrList::iterator(); }
 
-    friend std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
     /// Deep copy this term.
     virtual boost::shared_ptr<BoolTerm> copySyntax() {
         return boost::shared_ptr<BoolTerm>(); }
-    class render;
 };
 /// BfTerm is a term in a in a BoolFactor
 class BfTerm {
@@ -89,7 +87,6 @@ public:
     virtual void renderTo(QueryTemplate& qt) const;
     virtual boost::shared_ptr<BoolTerm> copySyntax();
 
-    class render;
     BoolTerm::PtrList _terms;
 };
 /// AndTerm is a set of AND-connected BoolTerms
@@ -104,6 +101,7 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
+
     virtual boost::shared_ptr<BoolTerm> copySyntax();
     BoolTerm::PtrList _terms;
 };
@@ -115,7 +113,7 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    void findColumnRefs(ColumnRefMap::List& list);
+    virtual void findColumnRefs(ColumnRefMap::List& list);
 
     BfTerm::PtrList _terms;
 };

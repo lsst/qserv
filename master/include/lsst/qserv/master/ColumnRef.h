@@ -28,6 +28,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+#include <ostream>
 #include <string>
 #include <list>
 #include <boost/shared_ptr.hpp>
@@ -51,7 +52,7 @@ public:
     std::string column;
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const& cr);
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const* cr);
-    void render(QueryTemplate& qt) const;
+    void renderTo(QueryTemplate& qt) const;
 };
 
 // Should refactor most of this into a ColumnRef factory.

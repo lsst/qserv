@@ -47,34 +47,31 @@ ColumnRefMap::acceptColumnRef(antlr::RefAST d, antlr::RefAST t,
         else first = t;
     }
     _refs[first] = cr;
-    // Don't add to list. Let selectList handle it later. Only track for now.
-    // Need to be able to lookup ref by RefAST.
 }
 
 boost::shared_ptr<ColumnRef const>
-ColumnRefMap::getRef(antlr::RefAST r) {
-    if(_refs.find(r) == _refs.end()) {
+ColumnRefMap::getRef(antlr::RefAST r) const {
+    RefMap::const_iterator ref = _refs.find(r);
+    if(ref == _refs.end()) {
         std::cout << "couldn't find " << tokenText(r) << " in";
-        printRefs();
-    }
-    if(_refs.find(r) == _refs.end()) {
+        printRefs(std::cout);
         throw std::invalid_argument("Node not tracked in _refs.");
     }
-    return _refs[r];
+    return ref->second;
 }
 
-void
-ColumnRefMap::printRefs() const {
-    std::cout << "Printing select refs." << std::endl;
+std::ostream& 
+ColumnRefMap::printRefs(std::ostream& os) const {
     typedef RefMap::const_iterator Citer;
     Citer end = _refs.end();
 
     for(Citer i=_refs.begin(); i != end; ++i) {
         ColumnRef const& cr(*(i->second));
-        std::cout << "\t\"" << cr.db << "\".\""
+        os << "\t\"" << cr.db << "\".\""
                   << cr.table << "\".\""
                   << cr.column << "\""
                   << std::endl;
     }
+    return os;
 }
 }}} // lsst::qserv::master
