@@ -396,7 +396,7 @@ QservRestrictorPlugin::_makeCondition(boost::shared_ptr<QsRestrictor> const rest
 
 boost::shared_ptr<ColumnRef> 
 resolveAsColumnRef(QueryContext& context, ValueExprPtr vexpr) {
-    boost::shared_ptr<ColumnRef> cr = vexpr->castAsColumnRef();
+    boost::shared_ptr<ColumnRef> cr = vexpr->copyAsColumnRef();
     if(!cr) {
         return cr;
     }
@@ -462,18 +462,22 @@ QservRestrictorPlugin::_lookupKey(QueryContext& context, boost::shared_ptr<Colum
     std::string keyColumn = context.metadata->getKeyColumn(cr->db, cr->table);
     return (!cr->column.empty()) && (keyColumn == cr->column);
 }
+
+inline bool isValidLiteral(ValueExprPtr p) { 
+    return p && !p->copyAsLiteral().empty(); 
+} 
+
 struct validateLiteral {
     validateLiteral(bool& isValid_) : isValid(isValid_) {}
-    std::string operator()(ValueExprPtr p) {
-        std::string val = p->castAsLiteral();
-        if(val.empty()) { isValid = false; }
-        return val;
+    inline void operator()(ValueExprPtr p) {
+        isValid = isValid && isValidLiteral(p);
     }
     bool& isValid;
 };
+
 struct extractLiteral {
     inline std::string operator()(ValueExprPtr p) {
-        return p->castAsLiteral();
+        return p->copyAsLiteral();
     }
 };
 /// @return a new QsRestrictor from the column ref and the set of 

@@ -109,7 +109,7 @@ private:
     std::string _original;
     boost::shared_ptr<QueryContext> _context;
     boost::shared_ptr<SelectStmt> _stmt;
-    /// Group of paralle statements (not a sequence)
+    /// Group of parallel statements (not a sequence)
     std::list<boost::shared_ptr<SelectStmt> > _stmtParallel;    
     boost::shared_ptr<SelectStmt> _stmtMerge;
     bool _hasMerge;

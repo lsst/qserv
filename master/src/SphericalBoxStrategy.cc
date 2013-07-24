@@ -345,15 +345,6 @@ SphericalBoxStrategy::computeNewFromLists() {
     froms.push_back(core);
     froms.push_back(overlap);
     return froms;
-#if 0
-    TableRefnList& tList = f.getTableRefnList();
-
-    patchTable pt(_impl->tuples);
-    std::for_each(tList.begin(), tList.end(), 
-                  TableRefN::Fwrapper<patchTable>(pt));
-#endif
-    throw std::logic_error("computeNewFromLists unimplemented");
-    return std::list<boost::shared_ptr<FromList> > ();
 }
 
 

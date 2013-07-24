@@ -93,7 +93,7 @@ ValueExprPtr ValueExpr::newSimple(boost::shared_ptr<ValueFactor> vt)  {
 ValueExpr::ValueExpr() {
 }
 
-boost::shared_ptr<ColumnRef> ValueExpr::castAsColumnRef() const {
+boost::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
     boost::shared_ptr<ColumnRef> cr;
     if(_factorOps.empty()) { return cr; } // Empty?
     if(_factorOps.size() > 1) { return cr; } // Not a single ColumnRef
@@ -106,7 +106,7 @@ boost::shared_ptr<ColumnRef> ValueExpr::castAsColumnRef() const {
     return cr;
 }
 
-std::string ValueExpr::castAsLiteral() const{
+std::string ValueExpr::copyAsLiteral() const{
     std::string s;
     // Make sure there is only one factor.
     if(_factorOps.empty() || (_factorOps.size() > 1)) { return s; } 
@@ -117,8 +117,8 @@ std::string ValueExpr::castAsLiteral() const{
 }
 
 template<typename T>
-T ValueExpr::castAsType(T const& defaultValue) const {
-    std::string literal = castAsLiteral();
+T ValueExpr::copyAsType(T const& defaultValue) const {
+    std::string literal = copyAsLiteral();
     std::istringstream is(literal);
     T value;
     is >> value;
@@ -129,7 +129,7 @@ T ValueExpr::castAsType(T const& defaultValue) const {
     }
     return value;
 }
-template int ValueExpr::castAsType<int>(int const&) const;
+template int ValueExpr::copyAsType<int>(int const&) const;
 
 void ValueExpr::findColumnRefs(ColumnRef::List& list) {
     for(FactorOpList::iterator i=_factorOps.begin();

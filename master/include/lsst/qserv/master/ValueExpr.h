@@ -66,10 +66,10 @@ public:
     /// @return a const list of ValueFactor-Op 
     FactorOpList const& getFactorOps() const { return _factorOps; }
 
-    boost::shared_ptr<ColumnRef> castAsColumnRef() const;
-    std::string castAsLiteral() const;
+    boost::shared_ptr<ColumnRef> copyAsColumnRef() const;
+    std::string copyAsLiteral() const;
     template<typename T>
-    T castAsType(T const& defaultValue) const;
+    T copyAsType(T const& defaultValue) const;
 
     void findColumnRefs(ColumnRef::List& list);
 
