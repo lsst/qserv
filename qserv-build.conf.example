@@ -55,6 +55,12 @@ master=qserv-master-example-name.mydomain.edu
 # geometry will be then copied from this source directory
 # geometry_src_dir=/home/user/geom
 
+[qms]
+db = QMS
+user = qmsuser
+pass = changeme
+port = 7082
+
 [xrootd]
 # cmsd_manager_port=2131
 # xrootd_port=1094

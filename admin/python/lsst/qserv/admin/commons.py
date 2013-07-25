@@ -48,6 +48,11 @@ def read_config(config_file):
                                         hashlib.sha224(config['qserv']['base_dir']).hexdigest())
                                     )
 
+    section='qms'
+    config[section] = dict()    
+    for option in parser.options(section):
+        config[section][option] = parser.get(section,option)
+
     section='mysqld'
     config[section] = dict()
     options = [option for option in parser.options(section) if option not in ['pass','port'] ]

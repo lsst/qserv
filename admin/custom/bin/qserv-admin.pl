@@ -80,6 +80,8 @@ if( $opts{'status'} ) {
 	
 	print "Stopping mysql-proxy\n";
 	stop_proxy();
+        print "Stopping QMS\n";
+        stop_qms();
 	print "Stopping xrootd\n";
 	stop_xrootd();
 	print "Stopping mysqld\n"; 
@@ -91,6 +93,7 @@ if( $opts{'status'} ) {
 
 	start_proxy();
 	start_mysqld();
+        start_qms();
         # xrootd will launch mysql queries at startup
         sleep(2);
 	start_xrootd();
@@ -265,6 +268,10 @@ sub stop_qserv {
     killpid("$install_dir/var/run/qserv.pid");
 }
 
+sub stop_qms {
+    killpid("$install_dir/var/run/qms.pid");
+}
+
 #stop the xrootd process
 sub stop_xrootd {
     killpid("$install_dir/var/run/xrootd.pid");
@@ -334,6 +341,10 @@ sub start_mysqld {
 
 	system("$install_dir/bin/mysqld_safe --defaults-file=$install_dir/etc/my.cnf &");
 
+}
+
+sub start_qms {
+       system("$install_dir/start_qms &");
 }
 
 sub start_qserv {

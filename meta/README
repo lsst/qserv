@@ -1,3 +1,9 @@
+Quick start :
+-------------
+
+Build and install qms python modules :
+scons --site-dir=../site_scons/
+
 The design overview document for the qserv metadata can be found at:
 http://dev.lsstcorp.org/trac/wiki/dbQservMetadata
 
