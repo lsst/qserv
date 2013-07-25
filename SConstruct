@@ -149,7 +149,8 @@ def get_template_targets():
         '%\(XROOTD_PORT\)s': config['xrootd']['xrootd_port'],
         '%\(XROOTD_RUN_DIR\)s': os.path.join(config['qserv']['base_dir'],'xrootd-run'),
         '%\(XROOTD_ADMIN_DIR\)s': os.path.join(config['qserv']['base_dir'],'tmp'),
-        '%\(CMSD_MANAGER_PORT\)s': config['xrootd']['cmsd_manager_port']
+        '%\(CMSD_MANAGER_PORT\)s': config['xrootd']['cmsd_manager_port'],
+        '%\(HOME\)s': os.path.expanduser("~") 
         }
 
     if config['qserv']['node_type']=='mono':
