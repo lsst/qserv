@@ -130,40 +130,45 @@ sub list_build_dir {
 #check on the xrootd source tar, untar, compile, configure for use.
 sub check_and_install_xrootd {
         
-        my $xrootd_archive = "xrootd-qsPatch2.tar.bz2";
+        my $xrootd_archive = "xrootd-qs4.tar.gz";
 	
 	#check if it is already installed
-	if( -e "$install_dir/xrootd" ) {
+	if( -e "$install_dir/share/xrootd" ) {
 		print "WARNING: Xrootd already installed...\n";
 		return;
 	}
-
+	
 	#untar xrootd
-	if( -e "$build_dir/$xrootd_archive" ) {
+	chdir "$build_dir";
+	if( -e "$xrootd_archive" ) {
 		if( $opts{'test'} ) {
 			print "I would untar $xrootd_archive here.\n";
 		} else {
 			print "Untaring xrootd...\n";
-			run_command("tar jxvf $build_dir/$xrootd_archive");
+			run_command("tar zxf $xrootd_archive");
 		}
 	} else {
-		print "Sorry - I can't find the xrootd.tar.gz in the build dir.\n";
+		print "Sorry - I can't find the $xrootd_archive in the build dir $build_dir.\n";
 		exit(0);
 	}
 	
-	chdir "$install_dir/xrootd";
+	mkdir "xrootd-build";
+	chdir "xrootd-build";
 	
 	#setup and configure for rhel 6
-	my $configure = "./configure.classic --prefix=$install_dir --disable-afs ".
-		"--disable-gsi --enable-trace --disable-krb4 --disable-krb5 ".
-		"--disable-ssl --disable-secssl --build=debug";
-	
+	my $configure = "cmake $build_dir/xrootd -DCMAKE_INSTALL_PREFIX=$install_dir ".
+		"-DENABLE_PERL=FALSE";
+
 	print "Configuring xrootd for install.\n";
 	run_command("$configure");
 	
 	print "Building and installing xrootd.\n";
 	run_command("make");
 	run_command("make install");
+
+	#cludge fix for placement of new libs so qserv master can find them
+	chdir "$install_dir/lib";
+	`ln -s ../lib x86_64_linux_26_dbg`;
 
 	chdir "$install_dir";
 	mkdir "xrootd-run";
@@ -191,7 +196,7 @@ sub check_and_install_qserv {
 	}
 	
 	chdir "$install_dir/qserv/common";
-	$ENV{'XRD_DIR'} = "$install_dir/xrootd";
+	$ENV{'XRD_DIR'} = "$install_dir";
 	$ENV{'XRD_PLATFORM'} = "x86_64_linux_26_dbg";
 	$ENV{'PROTOC'} = "$install_dir/bin/protoc";
 	$ENV{'PROTOC_INC'} = "$install_dir/include";

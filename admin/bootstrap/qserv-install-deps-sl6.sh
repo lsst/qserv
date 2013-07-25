@@ -10,7 +10,7 @@ yum install scons
 yum install numpy;
 
 # xrootd
-yum install gcc-c++ git zlib-devel
+yum install gcc-c++ git zlib-devel cmake
 
 # zope_interface
 yum install python-devel
