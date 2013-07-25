@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2009-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,25 +9,25 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  /**
   * @file testCppParser.cc
   *
-  * @brief Test C++ parsing logic. 
+  * @brief Test C++ parsing logic.
   *
-  * Note: Most tests have not yet been migrated to new parsing model.  
+  * Note: Most tests have not yet been migrated to new parsing model.
   *
   * @author Daniel L. Wang, SLAC
-  */ 
+  */
 
 #define BOOST_TEST_MODULE testCppParser
 #include "boost/test/included/unit_test.hpp"
@@ -92,7 +92,7 @@ ChunkSpec makeChunkSpec(int chunkNum, bool withSubChunks=false) {
 void testParse(SelectParser::Ptr p) {
 }
 
-boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,  
+boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,
                                           std::string const& stmt) {
     boost::shared_ptr<QuerySession> qs(new QuerySession(t));
     qs->setQuery(stmt);
@@ -115,12 +115,12 @@ void printChunkQuerySpecs(boost::shared_ptr<QuerySession> qs) {
     for(i = qs->cQueryBegin(); i != e; ++i) {
         qMaster::ChunkQuerySpec& cs = *i;
         std::cout << "Spec: " << cs << std::endl;
-    }    
+    }
 }
 } // anonymous namespace
 
 struct ParserFixture {
-    ParserFixture(void) 
+    ParserFixture(void)
         : delimiter("%$#") {
         cMeta.add("LSST", "Source", 1);
         cMeta.add("LSST", "Object", 2);
@@ -183,7 +183,7 @@ struct ParserFixture {
     SelectParser::Ptr getParser(std::string const& stmt) {
         return getParser(stmt, config);
     }
-    SelectParser::Ptr getParser(std::string const& stmt, 
+    SelectParser::Ptr getParser(std::string const& stmt,
                                 std::map<std::string,std::string> const& cfg) {
         SelectParser::Ptr p;
         p = SelectParser::newInstance(stmt);
@@ -234,7 +234,7 @@ void tryAggregate() {
 
     ChunkMeta c = newTestCmeta();
     testStmt3(qsTest, stmt);
-    testStmt3(qsTest, stmt2);    
+    testStmt3(qsTest, stmt2);
 }
 #endif
 
@@ -246,7 +246,7 @@ BOOST_FIXTURE_TEST_SUITE(CppParser, ParserFixture)
 #if 0 // Convert these to test new parser. Defer to a later ticket.
 BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
-    SqlParseRunner::Ptr spr = SqlParseRunner::newInstance(stmt, 
+    SqlParseRunner::Ptr spr = SqlParseRunner::newInstance(stmt,
                                                           delimiter,
                                                           config,
                                                           metaCacheSessionId);
@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE(TrivialSub) {
     BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(!spr->getHasAggregate());
 }
-#endif 
+#endif
 
 BOOST_AUTO_TEST_CASE(NoSub) {
     std::string stmt = "SELECT * FROM Filter WHERE filterId=4;";
@@ -286,16 +286,16 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_REQUIRE(ss.hasGroupBy());
-    
-    // BOOST_CHECK_EQUAL(ss.getFixupSelect(), 
+
+    // BOOST_CHECK_EQUAL(ss.getFixupSelect(),
     //                   "sum(`sum(pm_declErr)`) AS `sum(pm_declErr)`, `chunkId`, SUM(avgs_bMagF2)/SUM(avgc_bMagF2) AS `bmf2`");
     // BOOST_CHECK_EQUAL(ss.getFixupPost(), "GROUP BY `chunkId`");
-    
+
 }
 
 BOOST_AUTO_TEST_CASE(Limit) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 limit 2;";
-    
+
     boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -311,7 +311,7 @@ BOOST_AUTO_TEST_CASE(Limit) {
 
 BOOST_AUTO_TEST_CASE(OrderBy) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;";
-    
+
     boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -319,7 +319,7 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
     BOOST_CHECK(!context->restrictors);
     BOOST_REQUIRE(ss.hasOrderBy());
     // TODO add testing of order-by clause
-    //OrderByClause const& oc = ss->getOrderBy();    
+    //OrderByClause const& oc = ss->getOrderBy();
 }
 
 BOOST_AUTO_TEST_CASE(RestrictorBox) {
@@ -333,7 +333,7 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
     QsRestrictor& r = *context->restrictors->front();
     BOOST_CHECK_EQUAL(r._name, "qserv_areaspec_box");
     char const* params[] = {"0","0","1","1"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
+    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
                                   params, params+4);
     BOOST_CHECK(!context->needsMerge);
     BOOST_CHECK_EQUAL(context->anonymousTable, "Object");
@@ -351,8 +351,8 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectId) {
     QsRestrictor& r = *context->restrictors->front();
     BOOST_CHECK_EQUAL(r._name, "sIndex");
     char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
-                                  params, params+6); 
+    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+                                  params, params+6);
 
 }
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
@@ -367,8 +367,8 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     QsRestrictor& r = *context->restrictors->front();
     BOOST_CHECK_EQUAL(r._name, "sIndex");
     char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
-    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
-                                  params, params+6); 
+    BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
+                                  params, params+6);
 }
 
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
@@ -485,7 +485,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
 
 BOOST_AUTO_TEST_CASE(ObjectSelfJoinWithAs) {
     // AS alias in column select, <> operator
-    std::string stmt = "select o1.objectId, o2.objectI2, scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS distance " 
+    std::string stmt = "select o1.objectId, o2.objectI2, scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS distance "
         "from LSST.Object as o1, LSST.Object as o2 "
         "where o1.objectId <> o2.objectId;";
     std::string expected = "select o1.objectId,o2.objectI2,scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS distance from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sc2%$# as o2 where o1.objectId<>o2.objectId UNION select o1.objectId,o2.objectI2,scisql_angSep(o1.ra_PS,o1.decl_PS,o2.ra_PS,o2.decl_PS) AS distance from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sfo%$# as o2 where o1.objectId<>o2.objectId;";
@@ -520,7 +520,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     hintedCfg["query.hints"] = "box,5.5,5.5,6.1,6.1";
     SqlParseRunner::Ptr spr = getRunner(stmt, hintedCfg);
     testStmt2(spr);
-    
+
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
@@ -531,9 +531,9 @@ BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
     // This is actually invalid for Qserv right now because it produces
     // a result that can't be stored in a table as-is.
     // It's also a non-distance-bound spatially-unlimited query. Qserv should
-    // reject this. But the parser should still handle it. 
+    // reject this. But the parser should still handle it.
     std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, o2.ra_PS, o2.ra_PS_Sigma from Object o1, Object o2 where o1.ra_PS_Sigma < 4e-7 and o2.ra_PS_Sigma < 4e-7;";
-    std::string expected = "select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object_sc1%$# o1,LSST.%$#Object_sc2%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7 UNION select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object_sc1%$# o1,LSST.%$#Object_sfo%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7;"; 
+    std::string expected = "select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object_sc1%$# o1,LSST.%$#Object_sc2%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7 UNION select o1.ra_PS,o1.ra_PS_Sigma,o2.ra_PS,o2.ra_PS_Sigma from LSST.%$#Object_sc1%$# o1,LSST.%$#Object_sfo%$# o2 where o1.ra_PS_Sigma<4e-7 and o2.ra_PS_Sigma<4e-7;";
 
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
@@ -692,22 +692,23 @@ BOOST_AUTO_TEST_CASE(Mods) {
     };
     for(int i=0; i < 3; ++i) {
         std::string stmt = stmts[i];
-        testStmt3(qsTest, stmt);        
+        testStmt3(qsTest, stmt);
     }
  }
 
 BOOST_AUTO_TEST_CASE(CountNew) {
     std::string stmt = "SELECT count(*), sum(Source.flux), flux2, Source.flux3 from Source where qserv_areaspec_box(0,0,1,1) and flux4=2 and Source.flux5=3;";
     testStmt3(qsTest, stmt);
-} 
+}
 BOOST_AUTO_TEST_CASE(ArithTwoOp) {
     std::string stmt = "SELECT f(one)/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
     testStmt3(qsTest, stmt);
-} 
+}
 BOOST_AUTO_TEST_CASE(FancyArith) {
     std::string stmt = "SELECT (1+f(one))/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
     testStmt3(qsTest, stmt);
-} 
+}
+
 BOOST_AUTO_TEST_CASE(Petasky1) {
     // An example slow query from French Petasky colleagues
     std::string stmt = "SELECT objectId as id, COUNT(sourceId) AS c"
@@ -783,10 +784,10 @@ BOOST_AUTO_TEST_CASE(Case01_1030) {
     testStmt2(spr);
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks());
-    // Aggregation for qserv means a different chunk query 
+    // Aggregation for qserv means a different chunk query
     // and some form of post-fixup query.
-    BOOST_CHECK(spr->getHasAggregate()); 
-    BOOST_CHECK_EQUAL(spr->getParseResult(), expected); 
+    BOOST_CHECK(spr->getHasAggregate());
+    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
     // std::cout << "Parse output:" << spr->getParseResult() << std::endl;
     // But should have a check for ordering-type fixups.
     // "JOIN" syntax, "ORDER BY" with "ASC"
@@ -800,11 +801,11 @@ BOOST_AUTO_TEST_CASE(Case01_1052) {
     testStmt2(spr);
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(spr->getHasAggregate()); 
+    BOOST_CHECK(spr->getHasAggregate());
     BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
     // FIXME: this is a different kind of aggregation syntax than
     // sum() or count(). Maybe another check separate from
-    // HasAggregate(). 
+    // HasAggregate().
 
     // DISTINCT syntax (simplified from 1052)
     // not currently supported? (parser or aggregator)
@@ -820,7 +821,7 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks()); // Are RefObjMatch and
                                           // SimRefObject chunked/subchunked?
-    BOOST_CHECK(spr->getHasAggregate()); 
+    BOOST_CHECK(spr->getHasAggregate());
     // JOIN syntax, "is NULL" syntax
 }
 
@@ -834,7 +835,7 @@ BOOST_AUTO_TEST_CASE(Case01_1083) {
     BOOST_CHECK(spr->getHasChunks());
     BOOST_CHECK(!spr->getHasSubChunks()); // Are RefObjMatch and
                                           // SimRefObject chunked/subchunked?
-    BOOST_CHECK(!spr->getHasAggregate()); 
+    BOOST_CHECK(!spr->getHasAggregate());
     // arith expr in column spec, JOIN ..USING() syntax
 }
 
@@ -852,9 +853,9 @@ BOOST_AUTO_TEST_CASE(Case01_2001) {
         "AND    scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) < 0.8;";
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
-    BOOST_CHECK(spr->getHasChunks()); 
-    BOOST_CHECK(!spr->getHasSubChunks()); 
-    BOOST_CHECK(!spr->getHasAggregate()); 
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
     // complex.
 }
 
@@ -869,9 +870,9 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
 
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
-    BOOST_CHECK(spr->getHasChunks()); 
-    BOOST_CHECK(!spr->getHasSubChunks()); 
-    BOOST_CHECK(spr->getHasAggregate()); 
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(spr->getHasAggregate());
     BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
 }
 
@@ -880,9 +881,9 @@ BOOST_AUTO_TEST_CASE(Case01_2006) {
         "FROM   Object WHERE  (objectId % 100 ) = 40;";
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
-    BOOST_CHECK(spr->getHasChunks()); 
-    BOOST_CHECK(!spr->getHasSubChunks()); 
-    BOOST_CHECK(!spr->getHasAggregate()); 
+    BOOST_CHECK(spr->getHasChunks());
+    BOOST_CHECK(!spr->getHasSubChunks());
+    BOOST_CHECK(!spr->getHasAggregate());
     //std::cout << "--SAMPLING--" << spr->getParseResult() << std::endl;
     // % op in WHERE clause
 }
@@ -890,8 +891,8 @@ BOOST_AUTO_TEST_CASE(Case01_2006) {
 BOOST_AUTO_TEST_SUITE_END()
 
 // SELECT o1.id as o1id,o2.id as o2id,
-//        LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) 
-//  AS dist FROM Object AS o1, Object AS o2 
-//  WHERE ABS(o1.decl-o2.decl) < 0.001 
-//      AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001 
+//        LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl)
+//  AS dist FROM Object AS o1, Object AS o2
+//  WHERE ABS(o1.decl-o2.decl) < 0.001
+//      AND LSST.spdist(o1.ra, o1.decl, o2.ra, o2.decl) < 0.001
 //      AND o1.id != o2.id;

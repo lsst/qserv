@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
@@ -30,14 +30,14 @@
 
 #include "lsst/qserv/master/Predicate.h"
 #include "lsst/qserv/master/PredicateFactory.h"
-#include "lsst/qserv/master/ValueExprFactory.h" 
+#include "lsst/qserv/master/ValueExprFactory.h"
 #include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 
-boost::shared_ptr<CompPredicate> 
+boost::shared_ptr<CompPredicate>
 PredicateFactory::newCompPredicate(antlr::RefAST a) {
     boost::shared_ptr<CompPredicate> p(new CompPredicate());
     if(a->getType() == SqlSQL2TokenTypes::COMP_PREDICATE) { a = a->getFirstChild(); }
@@ -58,7 +58,7 @@ boost::shared_ptr<BetweenPredicate> PredicateFactory::newBetweenPredicate(antlr:
     RefAST maxValue = andToken->getNextSibling();
     p->value = _vf.newExpr(a->getFirstChild());
     p->minValue = _vf.newExpr(minValue->getFirstChild());
-    p->maxValue = _vf.newExpr(maxValue->getFirstChild()); 
+    p->maxValue = _vf.newExpr(maxValue->getFirstChild());
     return p;
 }
 boost::shared_ptr<InPredicate> PredicateFactory::newInPredicate(antlr::RefAST a) {
@@ -69,8 +69,8 @@ boost::shared_ptr<InPredicate> PredicateFactory::newInPredicate(antlr::RefAST a)
     RefAST leftParen = inToken->getNextSibling();
     RefAST firstElement = leftParen->getNextSibling();
     p->value = _vf.newExpr(value->getFirstChild());
-    for(RefAST i=firstElement; 
-        i.get() && i->getType() != SqlSQL2TokenTypes::RIGHT_PAREN; 
+    for(RefAST i=firstElement;
+        i.get() && i->getType() != SqlSQL2TokenTypes::RIGHT_PAREN;
         i = i->getNextSibling()) {
         if(i->getType() == SqlSQL2TokenTypes::COMMA) {
             i = i->getNextSibling();

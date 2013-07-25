@@ -1,9 +1,9 @@
 // -*- LSST-C++ -*-
 
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -11,21 +11,21 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
 /**
   * @file MetadataCache.cc
   *
-  * @brief Transient metadata structure for qserv. 
+  * @brief Transient metadata structure for qserv.
   *
   * @Author Jacek Becla, SLAC
   *
@@ -119,7 +119,7 @@ qMaster::MetadataCache::DbInfo::checkIfTableIsSubChunked(std::string const& tabl
     if (itr == _tables.end()) {
         return false;
     }
-    // why 2? See meta/python/lsst/qserv/meta/metaImpl.py, 
+    // why 2? See meta/python/lsst/qserv/meta/metaImpl.py,
     // schema for PS_Tb_sphBox, explaination of bits for logicalPart
     return 2 == itr->second.getLogicalPart();
 }
@@ -137,10 +137,10 @@ qMaster::MetadataCache::DbInfo::getChunkLevel(std::string const& tableName) cons
         return -1;
     }
     TableInfo const& ti = itr->second;
-    if(ti.getIsPartitioned()) { 
+    if(ti.getIsPartitioned()) {
         return ti.getLogicalPart();
     } else {
-        return 0; 
+        return 0;
     }
 }
 
@@ -202,13 +202,13 @@ qMaster::MetadataCache::DbInfo::getPartitionCols(std::string const& tableName) c
   * @param table table name
   *
   * @return the name of the partitioning key column
-  * The partitioning key column is constant over a database in the current 
-  * implementation. 
+  * The partitioning key column is constant over a database in the current
+  * implementation.
   */
 std::string
 qMaster::MetadataCache::DbInfo::getKeyColumn(std::string const& table) const {
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(table);
-    if (itr == _tables.end()) {        
+    if (itr == _tables.end()) {
         return std::string();
     }
     return itr->second.getObjIdCol();
@@ -242,7 +242,7 @@ qMaster::MetadataCache::TableInfo::TableInfo() :
   * @param logicalPart definition how the table is partitioned logically
   * @param physChunking definition how the table is chunked physically
   */
-qMaster::MetadataCache::TableInfo::TableInfo(float overlap, 
+qMaster::MetadataCache::TableInfo::TableInfo(float overlap,
                                              std::string const& phiCol,
                                              std::string const& thetaCol,
                                              std::string const& objIdCol,
@@ -359,7 +359,7 @@ qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
         return MetadataCache::STATUS_ERR_DB_DOES_NOT_EXIST;
     }
     const qMaster::MetadataCache::TableInfo tInfo(
-                          overlap, phiCol, thetaCol, objIdCol, phiColNo, 
+                          overlap, phiCol, thetaCol, objIdCol, phiColNo,
                           thetaColNo, objIdColNo, logicalPart, physChunking);
     return itr->second.addTable(tbName, tInfo);
 }
@@ -526,8 +526,8 @@ qMaster::MetadataCache::getChunkLevel(std::string const& dbName,
   * @param table table name
   *
   * @return the name of the partitioning key column
-  * The partitioning key column is constant over a database in the current 
-  * implementation. 
+  * The partitioning key column is constant over a database in the current
+  * implementation.
   */
 std::string
 qMaster::MetadataCache::getKeyColumn(std::string const& db, std::string const& table) {
@@ -544,10 +544,10 @@ qMaster::MetadataCache::getKeyColumn(std::string const& db, std::string const& t
   * @param dbName database name
   *
   * @return returns a const DbInfo structure
-  * 
+  *
   * result is undefined if checkIfContainsDb(dbName) returns false
   */
-qMaster::MetadataCache::DbInfo  
+qMaster::MetadataCache::DbInfo
 qMaster::MetadataCache::getDbInfo(std::string const& dbName) {
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
@@ -555,7 +555,7 @@ qMaster::MetadataCache::getDbInfo(std::string const& dbName) {
         static DbInfo dummy;
         return dummy;
     }
-    return itr->second;    
+    return itr->second;
 }
 
 /** Prints the contents of the qserv metadata cache. This is

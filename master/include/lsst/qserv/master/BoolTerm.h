@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,14 +10,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_MASTER_BOOLTERM_H
@@ -30,21 +30,21 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-// 
+//
 
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/master/ColumnRefMap.h"
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 
 class QueryTemplate; // Forward
 class ValueExpr;
 
-/// BoolTerm is a representation of a boolean-valued term in a SQL WHERE 
+/// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
 class BoolTerm {
 public:
     typedef boost::shared_ptr<BoolTerm> Ptr;
@@ -58,13 +58,11 @@ public:
     /// @return the terminal iterator
     virtual PtrList::iterator iterEnd() { return PtrList::iterator(); }
 
-    friend std::ostream& operator<<(std::ostream& os, BoolTerm const& bt);
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
     /// Deep copy this term.
     virtual boost::shared_ptr<BoolTerm> copySyntax() {
         return boost::shared_ptr<BoolTerm>(); }
-    class render;
 };
 /// BfTerm is a term in a in a BoolFactor
 class BfTerm {
@@ -78,7 +76,7 @@ public:
 };
 /// OrTerm is a set of OR-connected BoolTerms
 class OrTerm : public BoolTerm {
-public:    
+public:
     typedef boost::shared_ptr<OrTerm> Ptr;
 
     virtual char const* getName() const { return "OrTerm"; }
@@ -89,7 +87,6 @@ public:
     virtual void renderTo(QueryTemplate& qt) const;
     virtual boost::shared_ptr<BoolTerm> copySyntax();
 
-    class render;
     BoolTerm::PtrList _terms;
 };
 /// AndTerm is a set of AND-connected BoolTerms
@@ -104,10 +101,11 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
+
     virtual boost::shared_ptr<BoolTerm> copySyntax();
     BoolTerm::PtrList _terms;
 };
-/// BoolFactor is a plain factor in a BoolTerm 
+/// BoolFactor is a plain factor in a BoolTerm
 class BoolFactor : public BoolTerm {
 public:
     typedef boost::shared_ptr<BoolFactor> Ptr;
@@ -115,7 +113,7 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    void findColumnRefs(ColumnRefMap::List& list);
+    virtual void findColumnRefs(ColumnRefMap::List& list);
 
     BfTerm::PtrList _terms;
 };
@@ -160,4 +158,3 @@ public:
 
 
 #endif // LSST_QSERV_MASTER_BOOLTERM_H
-

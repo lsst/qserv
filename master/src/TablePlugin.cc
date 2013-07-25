@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
@@ -24,10 +24,10 @@
   *
   * @brief TablePlugin implementation. TablePlugin replaces user query
   * table names with substitutable names and maintains a list of
-  * tables that need to be substituted. 
+  * tables that need to be substituted.
   *
   * @author Daniel L. Wang, SLAC
-  */ 
+  */
 // No public interface (no TablePlugin.h)
 #include <string>
 
@@ -45,19 +45,19 @@
 #include "lsst/qserv/master/TableAlias.h"
 #include "lsst/qserv/master/ValueFactor.h"
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 typedef std::list<std::string> StringList;
 
 
 class addMap {
 public:
-    explicit addMap(TableAlias& t, TableAliasReverse& r) 
+    addMap(TableAlias& t, TableAliasReverse& r)
         : _tableAlias(t), _tableAliasReverse(r) {}
-    void operator()(std::string const& alias, 
+    void operator()(std::string const& alias,
                     std::string const& db, std::string const& table) {
-        // std::cout << "set: " << alias << "->" 
+        // std::cout << "set: " << alias << "->"
         //           << db << "." << table << std::endl;
         _tableAlias.set(db, table, alias);
         _tableAliasReverse.set(db, table, alias);
@@ -69,7 +69,7 @@ public:
 
 class generateAlias {
 public:
-    generateAlias(int& seqN) : _seqN(seqN) {}
+    explicit generateAlias(int& seqN) : _seqN(seqN) {}
     std::string operator()() {
         std::stringstream ss;
         ss << "QST_" << ++_seqN << "_";
@@ -79,13 +79,13 @@ public:
 };
 class addDbContext : public TableRefN::Func {
 public:
-    addDbContext(QueryContext const& c, 
+    addDbContext(QueryContext const& c,
                  std::string& firstDb_,
                  std::string& firstTable_)
         : context(c), firstDb(firstDb_), firstTable(firstTable_)
         {}
     void operator()(TableRefN::Ptr t) {
-        if(t.get()) { t->apply(*this); }     
+        if(t.get()) { t->apply(*this); }
     }
     void operator()(TableRefN& t) {
         std::string table = t.getTable();
@@ -107,7 +107,7 @@ public:
         // std::cout << "tableref:";
         // t->putStream(std::cout);
         // std::cout << std::endl;
-        // If no alias, then add one. 
+        // If no alias, then add one.
         std::string alias = t->getAlias();
         if(alias.empty()) {
             alias = _generate();
@@ -125,7 +125,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // fixExprAlias is a functor that acts on ValueExpr objects and
 // modifys them in-place, altering table names to use an aliased name
-// that is mapped via TableAliasReverse. 
+// that is mapped via TableAliasReverse.
 // It does not add table qualifiers where none already exist, because
 // there is no compelling reason to do so (yet).
 ////////////////////////////////////////////////////////////////////////
@@ -146,7 +146,7 @@ public:
             ValueFactor& t = *i->factor;
             //std::cout << "fixing factor: " << *vep << std::endl;
             std::string newAlias;
-            
+
             switch(t.getType()) {
             case ValueFactor::COLUMNREF:
                 // check columnref.
@@ -157,7 +157,7 @@ public:
                 // recurse for func params (aggfunc is special case of function)
                 _patchFuncExpr(*t.getFuncExpr());
                 break;
-            case ValueFactor::STAR: 
+            case ValueFactor::STAR:
                 // Patch db/table name if applicable
                 _patchStar(t);
                 break;
@@ -176,7 +176,7 @@ private:
     }
 
     inline void _patchFuncExpr(FuncExpr& fe) {
-        std::for_each(fe.params.begin(), fe.params.end(), 
+        std::for_each(fe.params.begin(), fe.params.end(),
                       fixExprAlias(_tableAliasReverse));
     }
 
@@ -207,7 +207,7 @@ class TablePlugin : public lsst::qserv::master::QueryPlugin {
 public:
     // Types
     typedef boost::shared_ptr<TablePlugin> Ptr;
-    
+
     virtual ~TablePlugin() {}
 
     virtual void prepare() {}
@@ -216,12 +216,11 @@ public:
     virtual void applyPhysical(QueryPlugin::Plan& p, QueryContext& context);
 private:
     StringList _findScanTables(SelectStmt& stmt, QueryContext& context);
-    int _rewriteTables(SelectStmtList& outList, 
-                       SelectStmt& in, 
+    int _rewriteTables(SelectStmtList& outList,
+                       SelectStmt& in,
                        QueryContext& context,
                        boost::shared_ptr<QueryMapping>& mapping);
 
-    
     std::string _dominantDb;
 };
 
@@ -258,7 +257,7 @@ registerPlugin registerTablePlugin;
 ////////////////////////////////////////////////////////////////////////
 // TablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
-void 
+void
 TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     // Idea: Add aliases to all table references in the from-list (if
     // they don't exist already) and then patch the other clauses so
@@ -273,11 +272,10 @@ TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
 
     // For each tableref, modify to add alias.
     int seq=0;
-    addMap addMapContext(addMap(context.tableAliases, 
-                                context.tableAliasReverses));
+    addMap addMapContext(context.tableAliases, context.tableAliasReverses);
 
-    std::for_each(tList.begin(), tList.end(), 
-                  addAlias<generateAlias,addMap>(generateAlias(seq), 
+    std::for_each(tList.begin(), tList.end(),
+                  addAlias<generateAlias,addMap>(generateAlias(seq),
                                                  addMapContext));
 
     // Now snoop around the other clauses (SELECT, WHERE, etc. and
@@ -285,7 +283,7 @@ TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     // select list
     SelectList& sList = stmt.getSelectList();
     ValueExprList& exprList = *sList.getValueExprList();
-    std::for_each(exprList.begin(), exprList.end(), 
+    std::for_each(exprList.begin(), exprList.end(),
                   fixExprAlias(context.tableAliasReverses));
     // where
     if(stmt.hasWhereClause()) {
@@ -295,17 +293,17 @@ TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
         std::for_each(veI, veEnd, fixExprAlias(context.tableAliasReverses));
     }
     // Fill-in default db context.
-        
+
     DbTablePair p;
     addDbContext adc(context, p.db, p.table);
     std::for_each(tList.begin(), tList.end(), adc);
     _dominantDb = context.dominantDb = p.db;
-    context.anonymousTable = p.table;   
-        
+    context.anonymousTable = p.table;
+
     // Apply function using the iterator...
     // wClause.walk(fixExprAlias(reverseAlias));
     // order by
-    // having        
+    // having
     context.scanTables = _findScanTables(stmt, context);
 }
 
@@ -321,7 +319,7 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
         throw std::logic_error("Invalid stmtOriginal.SelectList");
     }
     p.dominantDb = _dominantDb;
-    
+
     typedef SelectStmtList::iterator Iter;
     SelectStmtList newList;
     for(Iter i=p.stmtParallel.begin(), e=p.stmtParallel.end();
@@ -338,13 +336,13 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
 /// Patch the FromList tables in an input SelectStmt.
 /// Or, if a query split is involved (to operate using overlap
 /// tables), place new SelectStmts in the outList instead of patching
-/// the existing SelectStmt. 
+/// the existing SelectStmt.
 /// This allows the caller to forgo excess SelectStmt manipulation by
 /// reusing the existing SelectStmt in the common case where overlap
 /// tables are not needed.
 /// @return the number of statements added to the outList.
-int TablePlugin::_rewriteTables(SelectStmtList& outList, 
-                                SelectStmt& in, 
+int TablePlugin::_rewriteTables(SelectStmtList& outList,
+                                SelectStmt& in,
                                 QueryContext& context,
                                 boost::shared_ptr<QueryMapping>& mapping) {
     int added = 0;
@@ -370,12 +368,12 @@ int TablePlugin::_rewriteTables(SelectStmtList& outList,
     SphericalBoxStrategy s(fList, context);
     QueryMapping::Ptr qm = s.getMapping();
     // Compute the new fromLists, and if there are more than one, then
-    // clone the selectstmt for each copy. 
+    // clone the selectstmt for each copy.
     if(s.needsMultiple()) {
         typedef std::list<boost::shared_ptr<FromList> > FromListList;
         typedef FromListList::iterator Iter;
         FromListList newFroms = s.computeNewFromLists();
-        for(Iter i=newFroms.begin(), e=newFroms.end(); i != e; ++i) {        
+        for(Iter i=newFroms.begin(), e=newFroms.end(); i != e; ++i) {
             boost::shared_ptr<SelectStmt> stmt = in.copyDeep();
             stmt->replaceFromList(*i);
             outList.push_back(stmt);
@@ -392,8 +390,8 @@ int TablePlugin::_rewriteTables(SelectStmtList& outList,
         mapping->update(*qm);
     }
     // Query generation needs to be sensitive to this.
-    // If no subchunks are needed, 
-    
+    // If no subchunks are needed,
+
     //
     // For each tableref, modify to replace tablename with
     // substitutable.
@@ -401,7 +399,8 @@ int TablePlugin::_rewriteTables(SelectStmtList& outList,
 }
 
 bool testIfSecondary(BoolTerm& t) {
-    std::cout << "Testing "; 
+    // FIXME: Look for secondary key in the bool term.
+    std::cout << "Testing ";
     t.putStream(std::cout) << std::endl;
     return false;
 }
@@ -413,15 +412,15 @@ TablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
     // All tables of a query are scan tables if the statement both:
     // a. has non-trivial spatial scope (all chunks? >1 chunk?)
     // b. requires column reading
-    
+
     // a. means that the there is a spatial scope specification in the
     // WHERE clause or none at all (everything matches). However, an
     // objectId specification counts as a trivial spatial scope,
     // because it evaluates to a specific set of subchunks. We limit
     // the objectId specification, but the limit can be large--each
     // concrete objectId incurs at most the cost of one subchunk.
-    
-    // b. means that columns are needed to process the query. 
+
+    // b. means that columns are needed to process the query.
     // In the SelectList, count(*) does not need columns, but *
     // does. So do ra_PS and iFlux_SG*10
     // In the WhereClause, this means that we have expressions that
@@ -458,7 +457,7 @@ TablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
                 }
             }
         }
-        
+
     }
 
     return StringList(); // FIXME

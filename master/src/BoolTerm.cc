@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
@@ -37,6 +37,10 @@ namespace master {
 ////////////////////////////////////////////////////////////////////////
 // BoolTerm section
 ////////////////////////////////////////////////////////////////////////
+std::ostream& operator<<(std::ostream& os, BoolTerm const& bt) {
+    return bt.putStream(os);
+}
+
 std::ostream& OrTerm::putStream(std::ostream& os) const {
     // FIXME
     return os;
@@ -65,18 +69,10 @@ std::ostream& ValueExprTerm::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-class BoolTerm::render {
-public:
-    render(QueryTemplate& qt_) : qt(qt_) {}
-    void operator()(BoolTerm::Ptr const& t) {
-        t->renderTo(qt);
-    }
-    QueryTemplate& qt;
-};
 namespace {
 template <typename Plist>
-inline void renderList(QueryTemplate& qt, 
-                       Plist const& lst, 
+inline void renderList(QueryTemplate& qt,
+                       Plist const& lst,
                        std::string const& sep) {
     int count=0;
     typename Plist::const_iterator i;
@@ -129,7 +125,7 @@ void BoolFactor::findColumnRefs(ColumnRefMap::List& list) {
     }
 }
 void ValueExprTerm::findColumnRefs(ColumnRefMap::List& list) {
-    if(_expr) { return _expr->findColumnRefs(list); }
+    if(_expr) { _expr->findColumnRefs(list); }
 }
 boost::shared_ptr<BoolTerm> OrTerm::copySyntax() {
     boost::shared_ptr<OrTerm> ot(new OrTerm());

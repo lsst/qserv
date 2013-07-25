@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
@@ -42,16 +42,16 @@
 
 #include "lsst/qserv/master/SelectStmt.h"
 
-#include "lsst/qserv/master/SelectListFactory.h" 
-#include "lsst/qserv/master/SelectList.h" 
+#include "lsst/qserv/master/SelectListFactory.h"
+#include "lsst/qserv/master/SelectList.h"
 #include "lsst/qserv/master/FromFactory.h"
 #include "lsst/qserv/master/WhereFactory.h"
 #include "lsst/qserv/master/ModFactory.h"
 #include "lsst/qserv/master/ValueExprFactory.h"
 #include "lsst/qserv/master/ValueFactor.h"
 
-#include "lsst/qserv/master/ParseAliasMap.h" 
-#include "lsst/qserv/master/ParseException.h" 
+#include "lsst/qserv/master/ParseAliasMap.h"
+#include "lsst/qserv/master/ParseException.h"
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/TableRefN.h"
 
@@ -62,7 +62,7 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
-SelectFactory::SelectFactory() 
+SelectFactory::SelectFactory()
     : _columnAliases(new ParseAliasMap()),
       _tableAliases(new ParseAliasMap()),
       _columnRefNodeMap(new ColumnRefNodeMap()),
@@ -77,7 +77,7 @@ SelectFactory::SelectFactory()
 void
 SelectFactory::attachTo(SqlSQL2Parser& p) {
     _attachShared(p);
-    
+
     _slFactory->attachTo(p);
     _fFactory->attachTo(p);
     _wFactory->attachTo(p);
@@ -97,7 +97,7 @@ SelectFactory::getStatement() {
     return stmt;
 }
 
-void 
+void
 SelectFactory::_attachShared(SqlSQL2Parser& p) {
     boost::shared_ptr<ColumnRefH> crh(new ColumnRefH());
     crh->setListener(_columnRefNodeMap);
@@ -108,7 +108,7 @@ SelectFactory::_attachShared(SqlSQL2Parser& p) {
 // SelectListFactory::SelectListH
 ////////////////////////////////////////////////////////////////////////
 class SelectListFactory::SelectListH : public VoidOneRefFunc {
-public: 
+public:
     explicit SelectListH(SelectListFactory& f) : _f(f) {}
     virtual ~SelectListH() {}
     virtual void operator()(RefAST a) {
@@ -121,7 +121,7 @@ public:
 // SelectListFactory::SelectStarH
 ////////////////////////////////////////////////////////////////////////
 class SelectListFactory::SelectStarH : public VoidOneRefFunc {
-public: 
+public:
     explicit SelectStarH(SelectListFactory& f) : _f(f) {}
     virtual ~SelectStarH() {}
     virtual void operator()(antlr::RefAST a) {
@@ -136,7 +136,7 @@ private:
 // SelectListFactory::ColumnAliasH
 ////////////////////////////////////////////////////////////////////////
 class SelectListFactory::ColumnAliasH : public VoidTwoRefFunc {
-public: 
+public:
     ColumnAliasH(boost::shared_ptr<ParseAliasMap> map) : _map(map) {}
     virtual ~ColumnAliasH() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
@@ -144,7 +144,7 @@ public:
             b->setType(SqlSQL2TokenTypes::COLUMN_ALIAS_NAME);
             _map->addAlias(b, a);
         }
-        // Save column ref for pass/fixup computation, 
+        // Save column ref for pass/fixup computation,
         // regardless of alias.
     }
 private:
@@ -153,7 +153,7 @@ private:
 
 
 ////////////////////////////////////////////////////////////////////////
-// class SelectListFactory 
+// class SelectListFactory
 ////////////////////////////////////////////////////////////////////////
 SelectListFactory::SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
                                      boost::shared_ptr<ValueExprFactory> vf)
@@ -201,19 +201,19 @@ SelectListFactory::_import(RefAST selectRoot) {
         case SqlSQL2TokenTypes::ASTERISK: // Not sure this will be
                                           // handled here.
             _addSelectStar();
-            // should only have a single unqualified "*"            
+            // should only have a single unqualified "*"
             break;
         default:
             throw ParseException("Invalid SelectList token type",selectRoot);
-     
+
         } // end switch
     } // end for-each select_list child.
 }
 
 void
-SelectListFactory::_addSelectColumn(RefAST expr) {    
+SelectListFactory::_addSelectColumn(RefAST expr) {
     // Figure out what type of value expr, and create it properly.
-    // std::cout << "SelectCol Type of:" << expr->getText() 
+    // std::cout << "SelectCol Type of:" << expr->getText()
     //           << "(" << expr->getType() << ")" << std::endl;
     if(!expr.get()) {
         throw std::invalid_argument("Attempted _addSelectColumn(NULL)");
@@ -253,7 +253,7 @@ SelectListFactory::_addSelectStar(RefAST child) {
         }
         tableName = tokenText(table);
         std::cout << "table ref'd for *: " << tableName << std::endl;
-    } 
+    }
     vt = ValueFactor::newStarFactor(tableName);
     _valueExprList->push_back(ValueExpr::newSimple(vt));
 }

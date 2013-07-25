@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,14 +10,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
@@ -28,12 +28,13 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+#include <ostream>
 #include <string>
 #include <list>
 #include <boost/shared_ptr.hpp>
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 
 class QueryTemplate; // Forward
@@ -43,19 +44,18 @@ class ColumnRef {
 public:
     typedef std::list<boost::shared_ptr<ColumnRef> > List;
 
-    ColumnRef(std::string db_, std::string table_, std::string column_) 
+    ColumnRef(std::string db_, std::string table_, std::string column_)
         : db(db_), table(table_), column(column_) {}
-    
+
     std::string db;
     std::string table;
     std::string column;
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const& cr);
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const* cr);
-    void render(QueryTemplate& qt) const;
+    void renderTo(QueryTemplate& qt) const;
 };
 
 // Should refactor most of this into a ColumnRef factory.
 }}} // namespace lsst::qserv::master
 
 #endif // LSST_QSERV_MASTER_COLUMNREF_H
-

@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
@@ -46,11 +46,11 @@
 #include "lsst/qserv/master/ifaceMeta.h" // Retrieve metadata object
 
 namespace lsst {
-namespace qserv { 
+namespace qserv {
 namespace master {
 
 void printConstraints(ConstraintVector const& cv) {
-    std::copy(cv.begin(), cv.end(), 
+    std::copy(cv.begin(), cv.end(),
               std::ostream_iterator<Constraint>(std::cout, ","));
 
 }
@@ -58,9 +58,9 @@ void printConstraints(ConstraintVector const& cv) {
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
-QuerySession::QuerySession(int metaCacheSession) 
+QuerySession::QuerySession(int metaCacheSession)
     : _metaCacheSession(metaCacheSession) {
-} 
+}
 
 void QuerySession::setQuery(std::string const& q) {
     _original = q;
@@ -76,7 +76,7 @@ void QuerySession::setQuery(std::string const& q) {
         _applyLogicPlugins();
         _generateConcrete();
         _applyConcretePlugins();
-        _showFinal(); // DEBUG    
+        _showFinal(); // DEBUG
     } catch(ParseException& e) {
         _error = std::string("ParseException:") + e.what();
     }
@@ -89,7 +89,7 @@ bool QuerySession::hasAggregate() const {
     // multi-pass execution, the statement makes use of a (proper,
     // probably) subset of its components to compose each pass. Right
     // now, the only goal is to support aggregation using two passes.
-    
+
     // FIXME
     return false;
 }
@@ -137,7 +137,7 @@ std::string const& QuerySession::getDominantDb() const {
 
 MergeFixup QuerySession::makeMergeFixup() const {
     // Make MergeFixup to adapt new query parser/generation framework
-    // to older merging code. 
+    // to older merging code.
     if(!_stmt) {
         throw std::invalid_argument("Cannot makeMergeFixup() with NULL _stmt");
     }
@@ -149,7 +149,7 @@ MergeFixup QuerySession::makeMergeFixup() const {
     std::string post; // TODO: handle GroupBy, etc.
     std::string orderBy; // TODO
     bool needsMerge = _context->needsMerge;
-    return MergeFixup(select, post, orderBy, 
+    return MergeFixup(select, post, orderBy,
                       _stmtMerge->getLimit(), needsMerge);
 }
 
@@ -162,7 +162,7 @@ QuerySession::Iter QuerySession::cQueryEnd() {
 
 
 void QuerySession::_initContext() {
-    _context.reset(new QueryContext()); 
+    _context.reset(new QueryContext());
     _context->defaultDb = "LSST";
     _context->username = "default";
     _context->needsMerge = false;
@@ -211,7 +211,7 @@ void QuerySession::_generateConcrete() {
 
     // Copy SelectList and Mods, but not FROM, and perhaps not
     // WHERE(???). Conceptually, we want to copy the parts that are
-    // needed during merging and aggregation. 
+    // needed during merging and aggregation.
     _stmtMerge = _stmt->copyMerge();
 
     // TableMerger needs to be integrated into this design.
@@ -227,22 +227,22 @@ void QuerySession::_applyConcretePlugins() {
 }
 
 
-/// Some code useful for debugging. 
+/// Some code useful for debugging.
 void QuerySession::_showFinal() {
     // Print out the end result.
     QueryTemplate par = _stmtParallel.front()->getTemplate();
     QueryTemplate mer = _stmtMerge->getTemplate();
-    
+
     std::cout << "parallel: " << par.dbgStr() << std::endl;
     std::cout << "merge: " << mer.dbgStr() << std::endl;
 }
 
-std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) { 
+std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) {
     std::vector<std::string> q;
     // This logic may be pushed over to the qserv worker in the future.
     if(_stmtParallel.empty() || !_stmtParallel.front()) {
         throw std::logic_error("Attempted buildChunkQueries without _stmtParallel");
-    } 
+    }
 
     if(!_context->queryMapping) {
         throw std::logic_error("Missing QueryMapping in _context");
@@ -258,7 +258,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) {
         tlist.push_back((**i).getTemplate());
     }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
-        for(TlistIter i=tlist.begin(), e=tlist.end(); i != e; ++i) {            
+        for(TlistIter i=tlist.begin(), e=tlist.end(); i != e; ++i) {
             q.push_back(_context->queryMapping->apply(s, *i));
         }
     } else { // subchunked:
@@ -300,7 +300,7 @@ void QuerySession::Iter::_buildCache() const {
     QueryMapping const& queryMapping = *(_qs->_context->queryMapping);
     QueryMapping::StringSet const& sTables = queryMapping.getSubChunkTables();
     _cache.subChunkTables.insert(_cache.subChunkTables.begin(),
-                                 sTables.begin(), sTables.end());    
+                                 sTables.begin(), sTables.end());
     if(_hasSubChunks) {
         if(_pos->shouldSplit()) {
             ChunkSpecFragmenter frag(*_pos);
@@ -308,14 +308,14 @@ void QuerySession::Iter::_buildCache() const {
             _cache.queries = _qs->_buildChunkQueries(s);
             _cache.subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
             frag.next();
-            _cache.nextFragment = _buildFragment(frag);                
+            _cache.nextFragment = _buildFragment(frag);
         } else {
-            _cache.subChunkIds.assign(_pos->subChunks.begin(), 
+            _cache.subChunkIds.assign(_pos->subChunks.begin(),
                                       _pos->subChunks.end());
         }
     }
 }
-boost::shared_ptr<ChunkQuerySpec> 
+boost::shared_ptr<ChunkQuerySpec>
 QuerySession::Iter::_buildFragment(ChunkSpecFragmenter& f) const {
     boost::shared_ptr<ChunkQuerySpec> first;
     boost::shared_ptr<ChunkQuerySpec> last;
