@@ -1,4 +1,3 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
@@ -20,29 +19,44 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_PARSEEXCEPTION_H
-#define LSST_QSERV_MASTER_PARSEEXCEPTION_H
 /**
   * @file
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <map>
-#include <antlr/AST.hpp>
-#include <stdexcept>
+#include "lsst/qserv/master/QsRestrictor.h"
+
+#include <iostream>
+#include <iterator>
+#include "lsst/qserv/master/QueryTemplate.h"
+
 namespace lsst {
 namespace qserv {
 namespace master {
+std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
+    os << "Restrictor " << q._name << "(";
+    std::copy(q._params.begin(), q._params.end(),
+              std::ostream_iterator<std::string>(os, ","));
+    os << ")";
+    return os;
+}
+////////////////////////////////////////////////////////////////////////
+// QsRestrictor::render
+////////////////////////////////////////////////////////////////////////
+void
+QsRestrictor::render::operator()(QsRestrictor::Ptr const& p) {
+    if(p.get()) {
+        qt.append(p->_name);
+        qt.append("(");
+        StringList::const_iterator i;
+        int c=0;
+        for(i=p->_params.begin(); i != p->_params.end(); ++i) {
+            if(++c > 1) qt.append(",");
+            qt.append(*i);
+        }
+        qt.append(")");
+    }
+}
 
-/// ParseException is a trivial exception for Qserv parse problems.
-/// ParseExceptions automatically retrieves basic information from the ANTLR
-/// parse node to be bundled with the exception for greater context.
-class ParseException : public std::runtime_error {
-public:
-    explicit ParseException(char const* msg, antlr::RefAST subTree);
-    explicit ParseException(std::string const& msg, antlr::RefAST subTree);
-};
 
 }}} // namespace lsst::qserv::master
-
-#endif // LSST_QSERV_MASTER_PARSEEXCEPTION_H

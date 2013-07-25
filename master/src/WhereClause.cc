@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
@@ -25,18 +25,18 @@
   * @brief WhereClause is a parse element construct for SQL WHERE.
   *
   * @author Daniel L. Wang, SLAC
-  */ 
+  */
 #include "lsst/qserv/master/WhereClause.h"
 
 #include <iostream>
 #include <stdexcept>
+#include "lsst/qserv/master/Predicate.h"
 #include "lsst/qserv/master/QueryTemplate.h"
 
-namespace qMaster=lsst::qserv::master;
-using lsst::qserv::master::QsRestrictor;
-using lsst::qserv::master::WhereClause;
+namespace lsst {
+namespace qserv {
+namespace master {
 
-namespace lsst { namespace qserv { namespace master {
 BoolTerm::Ptr findAndTerm(BoolTerm::Ptr tree) {
     while(1) {
         AndTerm* at = dynamic_cast<AndTerm*>(tree.get());
@@ -55,31 +55,66 @@ BoolTerm::Ptr findAndTerm(BoolTerm::Ptr tree) {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// QsRestrictor::render
-////////////////////////////////////////////////////////////////////////
-void 
-QsRestrictor::render::operator()(QsRestrictor::Ptr const& p) {
-    if(p.get()) {
-        qt.append(p->_name);
-        qt.append("(");
-        StringList::const_iterator i;
-        int c=0;
-        for(i=p->_params.begin(); i != p->_params.end(); ++i) {
-            if(++c > 1) qt.append(",");
-            qt.append(*i);
-        }
-        qt.append(")");
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////
 // WhereClause
 ////////////////////////////////////////////////////////////////////////
-std::ostream& 
+std::ostream&
 operator<<(std::ostream& os, WhereClause const& wc) {
     os << "WHERE " << wc.getGenerated();
     return os;
+}
+void findColumnRefs(boost::shared_ptr<BoolFactor> f, ColumnRefMap::List& list) {
+    if(f) {
+        f->findColumnRefs(list);
+    }
+}
+
+void findColumnRefs(boost::shared_ptr<ValueExprTerm> vet, ColumnRefMap::List& list) {
+    if(vet) {
+        ValueExpr& expr = *vet->_expr;
+        expr.findColumnRefs(list);
+    }
+}
+
+void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRefMap::List& list) {
+    if(!t) { return; }
+    BoolTerm::PtrList::iterator i = t->iterBegin();
+    BoolTerm::PtrList::iterator e = t->iterEnd();
+    if(i == e) { // Leaf.
+        // Bool factor?
+        boost::shared_ptr<BoolFactor> bf = boost::dynamic_pointer_cast<BoolFactor>(t);
+        if(bf) {
+            findColumnRefs(bf, list);
+        } else {
+            boost::shared_ptr<ValueExprTerm> vet = boost::dynamic_pointer_cast<ValueExprTerm>(t);
+            findColumnRefs(vet, list);
+        }
+    } else {
+        for(; i != e; ++i) {
+            findColumnRefs(*i, list); // Recurse
+        }
+    }
+}
+
+boost::shared_ptr<ColumnRefMap::List const>
+WhereClause::getColumnRefs() const {
+    boost::shared_ptr<ColumnRefMap::List> list(new ColumnRefMap::List());
+
+    // Idea: Walk the expression tree and add all column refs to the
+    // list. We will walk in depth-first order, but the interface spec
+    // doesn't require any particular order.
+    findColumnRefs(_tree, *list);
+
+    return list;
+}
+
+
+boost::shared_ptr<AndTerm>
+WhereClause::getRootAndTerm() {
+    // Walk the list to find the global AND. If an OR term is root,
+    // and has multiple terms, there is no global AND which means we
+    // should return NULL.
+    BoolTerm::Ptr t = findAndTerm(_tree);
+    return boost::dynamic_pointer_cast<AndTerm>(t);
 }
 
 WhereClause::ValueExprIter WhereClause::vBegin() {
@@ -98,7 +133,7 @@ WhereClause::getGenerated() const {
 }
 void WhereClause::renderTo(QueryTemplate& qt) const {
     if(_restrs.get()) {
-        std::for_each(_restrs->begin(), _restrs->end(), 
+        std::for_each(_restrs->begin(), _restrs->end(),
                       QsRestrictor::render(qt));
     }
     if(_tree.get()) {
@@ -131,7 +166,7 @@ boost::shared_ptr<WhereClause> WhereClause::copySyntax() {
     return newC;
 }
 
-void 
+void
 WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
     // Walk to AndTerm and prepend new BoolTerm in front of the
     // list. If the new BoolTerm is an instance of AndTerm, prepend
@@ -139,7 +174,7 @@ WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
     boost::shared_ptr<BoolTerm> insertPos = findAndTerm(_tree);
 
     // FIXME: Should deal with case where AndTerm is not found.
-    AndTerm* rootAnd = dynamic_cast<AndTerm*>(insertPos.get()); 
+    AndTerm* rootAnd = dynamic_cast<AndTerm*>(insertPos.get());
     if(!rootAnd) {
         boost::shared_ptr<AndTerm> a(new AndTerm());
         boost::shared_ptr<BoolTerm> oldTree(_tree);
@@ -148,24 +183,24 @@ WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
             a->_terms.push_back(oldTree);
         }
         rootAnd = a.get();
-        
+
     }
     if(!rootAnd) {
         // For now, the root AND should be there by construction. No
         // code has been written that would eliminate the root AND term.
         throw std::logic_error("Couldn't find root AND term");
-    }    
-    
+    }
+
     AndTerm* incomingTerms = dynamic_cast<AndTerm*>(t.get());
     if(incomingTerms) {
         // Insert its elements then.
-        rootAnd->_terms.insert(rootAnd->_terms.begin(), 
+        rootAnd->_terms.insert(rootAnd->_terms.begin(),
                                incomingTerms->_terms.begin(),
                                incomingTerms->_terms.end());
     } else {
         // Just insert the term as-is.
         rootAnd->_terms.insert(rootAnd->_terms.begin(), t);
-    }    
+    }
 }
 
 
@@ -178,10 +213,10 @@ WhereClause::resetRestrs() {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// WhereClause::ValueExprIter 
+// WhereClause::ValueExprIter
 ////////////////////////////////////////////////////////////////////////
-WhereClause::ValueExprIter::ValueExprIter(WhereClause* wc, 
-                                          boost::shared_ptr<BoolTerm> bPos) 
+WhereClause::ValueExprIter::ValueExprIter(WhereClause* wc,
+                                          boost::shared_ptr<BoolTerm> bPos)
     : _wc(wc) {
     // How to iterate: walk the bool term tree!
     // Starting point: BoolTerm
@@ -192,37 +227,36 @@ WhereClause::ValueExprIter::ValueExprIter(WhereClause* wc,
         PosTuple p(bPos->iterBegin(), bPos->iterEnd()); // Initial position
         _posStack.push(p); // Put it on the stack.
         setupOk = _findFactor();
-    }
-    if(setupOk) {
-        setupOk = _setupBfIter();
+        if(setupOk) {
+            setupOk = _setupBfIter();
+        }
     }
     if(!setupOk) {
         while(_posStack.size() > 0) { _posStack.pop(); }
-        _wc = NULL; 
+        _wc = NULL;
     } // Nothing is valid.
 }
 
 void WhereClause::ValueExprIter::increment() {
-    while(1) {
-        _incrementBfTerm(); // Advance
-        if(_posStack.empty()) {
-            _wc = NULL; // Clear out WhereClause ptr
-            return; 
-        }
-        if(_checkForExpr()) return;
+    _incrementValueExpr(); // Advance
+    if(_posStack.empty()) {
+        _wc = NULL; // Clear out WhereClause ptr
+        return;
     }
+    if(_checkIfValid()) return;
 }
 
-qMaster::ValueExprTerm* WhereClause::ValueExprIter::_checkForExpr() {
-    BfTerm::Ptr b = *_bfIter;
-    ValueExprTerm* vet = dynamic_cast<ValueExprTerm*>(b.get());
-    return vet;
+bool WhereClause::ValueExprIter::_checkIfValid() const {
+    return _vIter != _vEnd;
 }
 
-qMaster::ValueExprTerm* WhereClause::ValueExprIter::_checkForExpr() const {
-    BfTerm::Ptr b = *_bfIter;
-    ValueExprTerm* vet = dynamic_cast<ValueExprTerm*>(b.get());
-    return vet;
+void WhereClause::ValueExprIter::_incrementValueExpr() {
+    assert(_vIter != _vEnd);
+    ++_vIter;
+    if(_vIter == _vEnd) {
+        _incrementBfTerm();
+        return;
+    }
 }
 
 void WhereClause::ValueExprIter::_incrementBfTerm() {
@@ -233,7 +267,9 @@ void WhereClause::ValueExprIter::_incrementBfTerm() {
     if(_bfIter == _bfEnd) {
         _incrementBterm();
         return;
-    } 
+    } else {
+        _updateValueExprIter();
+    }
 }
 
 void WhereClause::ValueExprIter::_incrementBterm() {
@@ -257,25 +293,23 @@ bool WhereClause::ValueExprIter::equal(WhereClause::ValueExprIter const& other) 
     // Compare the posStack (only .first) and the bfIter.
     if(this->_wc != other._wc) return false;
     if(!this->_wc) return true; // Both are NULL
-    return _posStack == other._posStack;
+    return (_posStack == other._posStack)
+        && (_bfIter == other._bfIter)
+        && (_vIter == other._vIter);
 }
 
-qMaster::ValueExprPtr & WhereClause::ValueExprIter::dereference() const {
-    static ValueExprPtr nullPtr;
-    ValueExprTerm * vet = _checkForExpr();
-    if(!vet) {
-        throw std::invalid_argument("Cannot dereference NULL ValueExprTerm");
+ValueExprPtr & WhereClause::ValueExprIter::dereference() const {
+    if(_vIter == _vEnd) {
+        throw std::invalid_argument("Cannot dereference end iterator");
     }
-    return vet->_expr;
+    return *_vIter;
 }
 
-qMaster::ValueExprPtr& WhereClause::ValueExprIter::dereference() {
-    static ValueExprPtr nullPtr;
-    ValueExprTerm* vet = _checkForExpr();
-    if(!vet) {
-        throw std::invalid_argument("Cannot dereference NULL ValueExprTerm");
+ValueExprPtr& WhereClause::ValueExprIter::dereference() {
+    if(_vIter == _vEnd) {
+        throw std::invalid_argument("Cannot dereference end iterator");
     }
-    return vet->_expr;
+    return *_vIter;
 }
 
 bool WhereClause::ValueExprIter::_findFactor() {
@@ -285,7 +319,7 @@ bool WhereClause::ValueExprIter::_findFactor() {
     while(true) {
         PosTuple& tuple = _posStack.top();
         BoolTerm::Ptr tptr = *tuple.first;
-        PosTuple p(tptr->iterBegin(), tptr->iterEnd()); 
+        PosTuple p(tptr->iterBegin(), tptr->iterEnd());
         if(p.first != p.second) { // Should go deeper
             _posStack.push(p); // Put it on the stack.
         } else { // Leaf BoolTerm, ready to setup BoolFactor.
@@ -308,12 +342,28 @@ bool WhereClause::ValueExprIter::_setupBfIter() {
     if(bf) {
         _bfIter = bf->_terms.begin();
         _bfEnd = bf->_terms.end();
+        _updateValueExprIter();
         return true;
     } else {
         // Try recursing deeper.
         // FIXME
         return false;
     }
+}
+void WhereClause::ValueExprIter::_updateValueExprIter() {
+    _vIter = _vEnd = ValueExprListIter();
+    if(_bfIter == _bfEnd) {
+        return;
+    }
+    BfTerm::Ptr b = *_bfIter;
+    assert(b);
+    Predicate* p = dynamic_cast<Predicate*>(b.get());
+    if(!p) {
+        return;
+    }
+    p->cacheValueExprList();
+    _vIter = p->valueExprCacheBegin();
+    _vEnd = p->valueExprCacheEnd();
 }
 
 }}} // namespace lsst::qserv::master

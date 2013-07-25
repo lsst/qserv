@@ -19,40 +19,58 @@
  * the GNU General Public License along with this program.  If not, 
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_TRANSACTION_H
-#define LSST_QSERV_MASTER_TRANSACTION_H
+#ifndef LSST_QSERV_MASTER_CONSTRAINT_H
+#define LSST_QSERV_MASTER_CONSTRAINT_H
 /**
-  * @file transaction.h
+  * @file 
   *
-  * @brief Value classes for SWIG-mediated interaction between Python
-  * and C++. Includes TransactionSpec.
+  * @brief Value class for query constraint
   *
   * @author Daniel L. Wang, SLAC
   */
 #include <string>
 #include <vector>
-#include <list>
 #include <boost/shared_ptr.hpp>
 
 namespace lsst { 
 namespace qserv { 
 namespace master {
-/// class TransactionSpec - A value class for the minimum
-/// specification of a subquery, as far as the xrootd layer is
-/// concerned.
-class TransactionSpec {
+/// A detected qserv constraint for C++ to Python 
+class Constraint {
 public:
- TransactionSpec() : chunkId(-1) {}
-    int chunkId;
-    std::string path;
-    std::string query;
-    int bufferSize;
-    std::string savePath;
-    
-    bool isNull() const { return path.length() == 0; }
-    
-    class Reader;  // defined in thread.h
+    std::string name;
+    std::vector<std::string> params;
+    std::string paramsGet(int i) const {
+        return params[i];
+    }
+    int paramsSize() const {
+        return params.size();
+    }
 };
+std::ostream& operator<<(std::ostream& os, Constraint const& c);
+typedef std::vector<Constraint> ConstraintVector;
+
+/// A SWIG-purposed wrapper of a ConstraintVector.
+class ConstraintVec { 
+public:
+    ConstraintVec(boost::shared_ptr<ConstraintVector > v)
+        : _vec(v) {}
+
+    // SWIG-friendly interface
+    Constraint const& get(int i) const {
+        return (*_vec)[i];
+    }
+    int size() const {
+        if(!_vec.get()) return 0; // NULL vector -> 0 size
+        return _vec->size();
+    }
+    // Internal vector
+    boost::shared_ptr<ConstraintVector> getVector() { return _vec; }
+
+private:
+    boost::shared_ptr<ConstraintVector> _vec;
+};
+
 }}} // namespace lsst::qserv::master
 
-#endif // LSST_QSERV_MASTER_TRANSACTION_H
+#endif // LSST_QSERV_MASTER_CONSTRAINT_H

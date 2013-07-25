@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,14 +10,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_MASTER_WHERECLAUSE_H
@@ -39,48 +39,35 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 // Qserv
-#include "lsst/qserv/master/ColumnRefList.h"
+#include "lsst/qserv/master/ColumnRefMap.h"
 #include "lsst/qserv/master/BoolTerm.h"
+#include "lsst/qserv/master/QsRestrictor.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 class BoolTerm; // Forward
 
-/// QsRestrictor is a Qserv spatial restrictor element. Also includes other
-/// qserv-specific restrictor directives, like qserv_objectid()
-class QsRestrictor {
-public:
-    typedef boost::shared_ptr<QsRestrictor> Ptr;
-    typedef std::list<Ptr> List;
-    typedef std::list<std::string> StringList;
-
-    class render {
-    public:
-        render(QueryTemplate& qt_) : qt(qt_) {}
-        void operator()(QsRestrictor::Ptr const& p);
-        QueryTemplate& qt;
-    };
-
-    std::string _name;
-    StringList _params;
-};
 /// WhereClause is a SQL WHERE containing QsRestrictors and a BoolTerm tree.
 class WhereClause {
 public:
-    WhereClause() : _columnRefList(new ColumnRefList()) {}
+    WhereClause() {}
     ~WhereClause() {}
     class ValueExprIter; // iteratable interface.
-    friend class ValueExprIter; 
+    friend class ValueExprIter;
 
-    boost::shared_ptr<ColumnRefList> getColumnRefList() { 
-        return _columnRefList; }
     boost::shared_ptr<QsRestrictor::List const> getRestrs() const {
         return _restrs; }
+    boost::shared_ptr<BoolTerm const> getRootTerm() const {
+        return _tree;
+    }
+    boost::shared_ptr<ColumnRefMap::List const> getColumnRefs() const;
+    boost::shared_ptr<AndTerm> getRootAndTerm();
+
     ValueExprIter vBegin();
     ValueExprIter vEnd();
-    
+
     std::string getGenerated() const;
     void renderTo(QueryTemplate& qt) const;
     boost::shared_ptr<WhereClause> copyDeep() const;
@@ -88,27 +75,26 @@ public:
 
     void resetRestrs();
     void prependAndTerm(boost::shared_ptr<BoolTerm> t);
-    
+
 private:
     friend std::ostream& operator<<(std::ostream& os, WhereClause const& wc);
     friend class WhereFactory;
-    
+
     std::string _original;
-    boost::shared_ptr<ColumnRefList> _columnRefList;
     boost::shared_ptr<BoolTerm> _tree;
     boost::shared_ptr<QsRestrictor::List> _restrs;
 
 };
 
 /// ValueExprIter facilitates iteration over value expressions in WhereClause
-/// objects for analysis and manipulation.  
+/// objects for analysis and manipulation.
 class WhereClause::ValueExprIter : public boost::iterator_facade <
     WhereClause::ValueExprIter, ValueExprPtr, boost::forward_traversal_tag> {
 public:
     ValueExprIter() : _wc() {}
 
 private:
-    explicit ValueExprIter(WhereClause* wc, 
+    explicit ValueExprIter(WhereClause* wc,
                            boost::shared_ptr<BoolTerm> bPos);
 
     friend class WhereClause;
@@ -119,13 +105,14 @@ private:
     ValueExprPtr& dereference() const;
     ValueExprPtr& dereference();
 
-    ValueExprTerm* _checkForExpr();
-    ValueExprTerm* _checkForExpr() const;
+    bool _checkIfValid() const;
+    void _incrementValueExpr();
     void _incrementBfTerm();
     void _incrementBterm();
     bool _findFactor();
     bool _setupBfIter();
-    
+    void _updateValueExprIter();
+
 
     WhereClause* _wc; // no shared_ptr available
     // A position tuple is: cursor, end
@@ -134,8 +121,10 @@ private:
     std::stack<PosTuple> _posStack;
     BfTerm::PtrList::iterator _bfIter;
     BfTerm::PtrList::iterator _bfEnd;
+    typedef ValueExprList::iterator ValueExprListIter;
+    ValueExprListIter _vIter;
+    ValueExprListIter _vEnd;
 };
 
 }}} // namespace lsst::qserv::master
 #endif // LSST_QSERV_MASTER_WHERECLAUSE_H
-

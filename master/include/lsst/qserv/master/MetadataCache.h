@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,21 +9,21 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
 /**
   * @file MetadataCache.h
   *
-  * @brief Transient metadata structure for qserv. 
+  * @brief Transient metadata structure for qserv.
   *
   * @Author Jacek Becla, SLAC
   */
@@ -52,11 +52,11 @@ class MetadataCache {
 public:
     class DbInfo; // Forward.
     enum { STATUS_OK = 0,
-           STATUS_ERR_DB_DOES_NOT_EXIST = -1, 
-           STATUS_ERR_DB_EXISTS = -2, 
+           STATUS_ERR_DB_DOES_NOT_EXIST = -1,
+           STATUS_ERR_DB_EXISTS = -2,
            STATUS_ERR_TABLE_EXISTS = -3
     };
-    
+
     typedef boost::shared_ptr<MetadataCache> Ptr;
 
     // modifiers
@@ -76,6 +76,7 @@ public:
     std::vector<std::string> getSubChunkedTables(std::string const&);
     std::vector<std::string> getPartitionCols(std::string const&, std::string const&);
     long getChunkLevel(std::string const& db, std::string const& table);
+    std::string getKeyColumn(std::string const& db, std::string const& table);
     DbInfo getDbInfo(std::string const& dbName);
 
     void printSelf();
@@ -116,7 +117,7 @@ public:
 
     /** The class DbInfo encapsulates metadata information about a single database.
       */
-    class DbInfo {        
+    class DbInfo {
     public:
         // constructors
         DbInfo();
@@ -136,6 +137,7 @@ public:
         std::vector<std::string> getChunkedTables() const;
         std::vector<std::string> getSubChunkedTables() const;
         std::vector<std::string> getPartitionCols(std::string const&) const;
+        std::string getKeyColumn(std::string const&) const;
 
     private:
         const bool _isPartitioned;

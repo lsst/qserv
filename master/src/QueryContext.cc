@@ -1,4 +1,3 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
@@ -20,29 +19,40 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_PARSEEXCEPTION_H
-#define LSST_QSERV_MASTER_PARSEEXCEPTION_H
 /**
-  * @file
+  * @file QueryContext.cc
+  *
+  * @brief QueryContext implementation.
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <map>
-#include <antlr/AST.hpp>
-#include <stdexcept>
+#include "lsst/qserv/master/QueryContext.h"
+#include "lsst/qserv/master/ColumnRef.h"
+
 namespace lsst {
 namespace qserv {
 namespace master {
 
-/// ParseException is a trivial exception for Qserv parse problems.
-/// ParseExceptions automatically retrieves basic information from the ANTLR
-/// parse node to be bundled with the exception for greater context.
-class ParseException : public std::runtime_error {
-public:
-    explicit ParseException(char const* msg, antlr::RefAST subTree);
-    explicit ParseException(std::string const& msg, antlr::RefAST subTree);
-};
+/// Resolve a column ref to a concrete (db,table)
+/// @return the concrete (db,table), based on current context.
+DbTablePair
+QueryContext::resolve(boost::shared_ptr<ColumnRef> cr) {
+    if(!cr) { return DbTablePair(); }
+
+    // If alias, retrieve real reference.
+    if(cr->db.empty() && !cr->table.empty()) {
+        DbTablePair concrete = tableAliases.get(cr->table);
+        if(!concrete.empty()) {
+            return concrete;
+        }
+    }
+    // Set default db and table.
+    DbTablePair p(defaultDb, anonymousTable);
+
+    // Extract db and table from ref if available
+    if(!cr->db.empty()) { p.db = cr->db; }
+    if(!cr->table.empty()) { p.table = cr->table; }
+    return p;
+}
 
 }}} // namespace lsst::qserv::master
-
-#endif // LSST_QSERV_MASTER_PARSEEXCEPTION_H

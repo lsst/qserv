@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,14 +10,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #ifndef LSST_QSERV_MASTER_SELECTLIST_H
@@ -34,14 +34,14 @@
 #include <boost/shared_ptr.hpp>
 
 #include "lsst/qserv/master/ColumnRef.h"
-#include "lsst/qserv/master/ColumnRefList.h"
+#include "lsst/qserv/master/ColumnRefMap.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 // Forward
-class ColumnRefMap;
+class ColumnRefNodeMap;
 class ColumnAliasMap;
 class QueryTemplate;
 class BoolTerm;
@@ -52,13 +52,13 @@ class GroupByClause;
 /// columns in the SELECT query's result.
 class SelectList {
 public:
-    SelectList() 
-        : _columnRefList(new ColumnRefList()) ,
+    SelectList()
+        : _columnRefMap(new ColumnRefMap()) ,
           _valueExprList(new ValueExprList())
         {}
     ~SelectList() {}
-    boost::shared_ptr<ColumnRefList> getColumnRefList() {
-        return _columnRefList;
+    boost::shared_ptr<ColumnRefMap> getColumnRefMap() {
+        return _columnRefMap;
     }
     void addStar(antlr::RefAST table);
     void dbgPrint() const;
@@ -68,17 +68,16 @@ public:
     boost::shared_ptr<SelectList> copySyntax();
 
     // non-const accessor for query manipulation.
-    boost::shared_ptr<ValueExprList> getValueExprList() 
+    boost::shared_ptr<ValueExprList> getValueExprList()
         { return _valueExprList; }
 
     friend class SelectListFactory;
 private:
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
-    boost::shared_ptr<ColumnRefList> _columnRefList;
+    boost::shared_ptr<ColumnRefMap> _columnRefMap;
     boost::shared_ptr<ValueExprList> _valueExprList;
-    boost::shared_ptr<ColumnRefMap const> _aliasMap;
+    boost::shared_ptr<ColumnRefNodeMap const> _aliasMap;
 };
 
 }}} // namespace lsst::qserv::master
 #endif // LSST_QSERV_MASTER_SELECTLIST_H
-

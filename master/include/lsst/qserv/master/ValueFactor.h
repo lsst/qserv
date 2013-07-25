@@ -1,8 +1,8 @@
 // -*- LSST-C++ -*-
-/* 
+/*
  * LSST Data Management System
  * Copyright 2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -10,14 +10,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // ValueFactor is a term in a ValueExpr's "term (term_op term)*" phrase
@@ -32,17 +32,17 @@
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include "lsst/qserv/master/ColumnRef.h"
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace master {
 // Forward
-class ColumnRef;
 class QueryTemplate;
 class FuncExpr;
 class ValueExpr; // To support nested expressions.
 
-class ValueFactor; 
+class ValueFactor;
 typedef boost::shared_ptr<ValueFactor> ValueFactorPtr;
 typedef std::list<ValueFactorPtr> ValueFactorList;
 
@@ -63,8 +63,11 @@ public:
 
     std::string const& getAlias() const { return _alias; }
     void setAlias(std::string const& a) { _alias = a; }
+    // TableStar is used for CONST literals as well.
     std::string const& getTableStar() const { return _tableStar; }
     void setTableStar(std::string const& a) { _tableStar = a; }
+
+    void findColumnRefs(ColumnRef::List& list);
 
     ValueFactorPtr clone() const;
 
@@ -93,9 +96,9 @@ class ValueFactor::render : public std::unary_function<ValueFactor, void> {
 public:
     render(QueryTemplate& qt) : _qt(qt) {}
     void operator()(ValueFactor const& ve);
-    void operator()(ValueFactor const* vep) { 
+    void operator()(ValueFactor const* vep) {
         if(vep) (*this)(*vep); }
-    void operator()(boost::shared_ptr<ValueFactor> const& vep) { 
+    void operator()(boost::shared_ptr<ValueFactor> const& vep) {
         (*this)(vep.get()); }
     QueryTemplate& _qt;
 };
