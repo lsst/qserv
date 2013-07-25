@@ -376,10 +376,16 @@ QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     wc.resetRestrs();
     // Merge in the implicit restrictors
     if(keyPreds) {
+        if(!context.restrictors) {
+            context.restrictors = keyPreds;
+        } else {
         context.restrictors->insert(context.restrictors->end(),
                                     keyPreds->begin(), keyPreds->end());
+        }
     }
-    if(context.restrictors->empty()) { context.restrictors.reset(); }
+    if(context.restrictors && context.restrictors->empty()) {
+        context.restrictors.reset();
+    }
     if(newTerm) { wc.prependAndTerm(newTerm); }
 }
 

@@ -98,7 +98,8 @@ boost::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
     if(_factorOps.size() != 1) { return cr; } // Empty or Not a single ColumnRef
     boost::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
     assert(factor);
-    cr.reset(new ColumnRef(*factor->getColumnRef()));
+    cr = factor->getColumnRef();
+    if(cr) { cr.reset(new ColumnRef(*cr)); } // Make a copy
     return cr;
 }
 
