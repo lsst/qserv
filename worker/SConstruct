@@ -45,8 +45,11 @@ if not conf.CheckLib("crypto"):
     print >> sys.stderr, "Could not locate crypto"
     Exit(1)
 
-if not conf.CheckLibWithHeader("XrdSys", "XrdSfs/XrdSfsInterface.hh", "C++"):
-    print >> sys.stderr, "Could not locate XrdSys"
+#if not conf.CheckLibWithHeader("XrdSys", "XrdSfs/XrdSfsInterface.hh", "C++"):
+#    print >> sys.stderr, "Could not locate XrdSys"
+#    Exit(1)
+if not conf.CheckCXXHeader("XrdSfs/XrdSfsInterface.hh"):
+    print >> sys.stderr, "Could not locate XrdSfs/XrdSfsInterface.hh"
     Exit(1)
 
 missingBoost = []
@@ -75,11 +78,11 @@ LSST Query Services worker package
 envNoXrd = env.Clone(CCFLAGS=["-g","-DNO_XROOTD_FS"])
 env.Append(CCFLAGS=['-g','-pedantic','-Wno-long-long'])
 # Hack to workaround missing XrdSfs library in xrootd.
-sfsObjs = map(lambda f: env.SharedObject(os.path.join("bld",f+".os"),
-                                         os.path.join(xrd_inc, "XrdSfs", f)),
-              ["XrdSfsCallBack.cc","XrdSfsNative.cc"])
-env.Append(sfsObjs=sfsObjs)
-envNoXrd.Append(sfsObjs=sfsObjs)
+#sfsObjs = map(lambda f: env.SharedObject(os.path.join("bld",f+".os"),
+#                                          os.path.join(xrd_inc, "XrdSfs", f)),
+#               ["XrdSfsCallBack.cc","XrdSfsNative.cc"])
+#env.Append(sfsObjs=sfsObjs)
+# envNoXrd.Append(sfsObjs=sfsObjs)
 
 for bldDir, expEnv in [['bld',env], ['bldNoXrd',envNoXrd]]:
 #for bldDir, expEnv in [['bld',env]]:

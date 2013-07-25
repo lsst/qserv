@@ -129,9 +129,25 @@ class XrdHelper:
             self.platforms.insert(0, os.environ['XRD_PLATFORM'])
         pass
 
+    def getXrdLibIncCmake(self):
+        lib = self._findXrdLibCmake()
+        print lib
+
+    def _findXrdLibCmake(self, path):
+        for lib in ["lib", "lib64"]:
+            libpath = os.path.join(path, lib)
+            if os.path.exists(os.path.join(libpath, "libXrdPosix.so")):
+                return libpath
+        return None
+    def _findXrdIncCmake(self, path):
+        neededFile = os.path.join(path, "include", "xrootd", "XrdPosix/XrdPosix.hh")
+        if os.path.exists(neededFile):
+            return p
+        return None
+        
     def getXrdLibInc(self):
         for c in self.cands:
-            (inc, lib) = (self._findXrdInc(c), self._findXrdLib(c))
+            (inc, lib) = (self._findXrdInc(c), self._findXrdLibCmake(c))
             if inc and lib:
                 return (inc, lib)
         return (None, None)
@@ -140,7 +156,10 @@ class XrdHelper:
         for p in self.platforms:
             libpath = os.path.join(path, "lib", p)
             if os.path.exists(libpath):
-                return libpath
+                print "Looking in ", libpath
+                ## FIXME: not platform independent
+                if os.path.exists(os.path.join(libpath, "libXrdPosix.so")):
+                    return libpath
         return None
 
     def _findXrdInc(self, path):
@@ -198,11 +217,18 @@ def checkAddMySql(conf):
     return found
 
 def checkAddXrdPosix(conf):
-    found = conf.CheckLibWithHeader("XrdPosix", 
-                                    "XrdPosix/XrdPosixLinkage.hh",
-                                    language="C++")
+    def require(conf, libName):
+        if not conf.CheckLib(libName, language="C++"):
+            print >> sys.stderr, "Could not find %s lib" % (libName)
+            return False
+        return True
+    found = (require(conf, "XrdUtils") and 
+             require(conf, "XrdClient") and 
+             require(conf, "XrdPosix") and
+             require(conf, "XrdPosixPreload"))
+    found = found and conf.CheckCXXHeader("XrdPosix/XrdPosixLinkage.hh")
     if not found:
-        print >> sys.stderr, "Could not find XrdPosix lib/header"
+        print >> sys.stderr, "Missing at least one xrootd lib/header"
     return found
 ########################################################################
 # dependency propagation tools

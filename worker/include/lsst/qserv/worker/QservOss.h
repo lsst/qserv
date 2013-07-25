@@ -73,23 +73,28 @@ public:
                     const char   *name);
 
     // XrdOss overrides (relevant)
-    virtual int Stat(const char* path, struct stat* buff, int opts=0);
-    virtual int StatVS(XrdOssVSInfo *sP, const char *sname=0, int updt=0);
+    virtual int Stat(const char* path, struct stat* buff, 
+                     int opts=0, XrdOucEnv*e=NULL);
+    virtual int StatVS(XrdOssVSInfo *sP, 
+                       const char *sname=0, 
+                       int updt=0, XrdOucEnv*e=NULL);
     
     virtual int Init(XrdSysLogger* log, const char* cfgFn);
     
     // XrdOss overrides (stubs)
     virtual XrdOssDF *newDir(const char *tident) { return new FakeOssDf(); }
     virtual XrdOssDF *newFile(const char *tident) { return new FakeOssDf(); }
-    virtual int Chmod(const char *, mode_t mode) { return -ENOTSUP;}
+    virtual int Chmod(const char *, mode_t mode, XrdOucEnv*) { return -ENOTSUP;}
     virtual int Create(const char *, const char *, mode_t, 
                        XrdOucEnv &, int opts=0) { return -ENOTSUP;}
-    virtual int Mkdir(const char *, mode_t mode, int mkpath=0) { 
+    virtual int Mkdir(const char *, mode_t mode, int, XrdOucEnv*) { 
         return -ENOTSUP;}
-    virtual int Remdir(const char *, int Opts=0) { return -ENOTSUP;}
-    virtual int Truncate(const char *, unsigned long long) { return -ENOTSUP;}
-    virtual int Unlink(const char *, int Opts=0) { return -ENOTSUP;}
-    virtual int Rename(const char*, const char*) { return -ENOTSUP;}
+    virtual int Remdir(const char *, int, XrdOucEnv*) { return -ENOTSUP;}
+    virtual int Truncate(const char *, unsigned long long, XrdOucEnv*) {
+        return -ENOTSUP;}
+    virtual int Unlink(const char *, int, XrdOucEnv*) { return -ENOTSUP;}
+    virtual int Rename(const char*, const char*, XrdOucEnv*, XrdOucEnv*) {
+        return -ENOTSUP;}
 
     void refresh();
 private:

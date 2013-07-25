@@ -49,8 +49,9 @@ public:
 
 // Object Allocation Functions
 //
-    XrdSfsDirectory* newDir(char* user = 0);
-    XrdSfsFile* newFile(char* user = 0);
+// No idea what MonID is for (undocumented in xrootd)
+    XrdSfsDirectory* newDir(char* user = 0, int MonID=0);
+    XrdSfsFile* newFile(char* user = 0, int MonID=0);
 
 // Other Functions
 //

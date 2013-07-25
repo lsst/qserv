@@ -24,6 +24,7 @@
 
 #include "XrdSec/XrdSecEntity.hh"
 #include "XrdSys/XrdSysError.hh"
+//#include "XrdOuc/XrdOucCallBack.hh" // For Open-callbacks(FinishListener)
 #include "XrdSfs/XrdSfsCallBack.hh" // For Open-callbacks(FinishListener)
 
 #include "lsst/qserv/worker/MySqlFsDirectory.h"
@@ -41,11 +42,21 @@
 #include <iostream>
 
 // Externally declare XrdSfs loader to cheat on Andy's suggestion.
-extern XrdSfsFileSystem*
+#if 1
+extern XrdSfsFileSystem* 
 XrdSfsGetDefaultFileSystem(XrdSfsFileSystem* nativeFS,
                            XrdSysLogger* sysLogger,
-                           const char* configFn);
+                           const char* configFn,
+                           XrdOucEnv* envInfo);
 
+#else
+XrdSfsFileSystem*
+XrdSfsGetDefaultFileSystem(XrdSfsFileSystem* nativeFS,
+                           XrdSysLogger* sysLogger,
+                           const char* configFn) {
+    return 0;
+}
+#endif
 
 namespace qWorker = lsst::qserv::worker;
 using namespace lsst::qserv::worker;
@@ -81,10 +92,12 @@ public:
         if(p.first == 0) {
             // std::cerr << "Callback=OK!\t" << (void*)_callback << std::endl;
             _callback->Reply_OK();
+            //_callback->Reply(SFS_OK, p.first, "ok");
         } else {
             //std::cerr << "Callback error! " << p.first 
             //	      << " desc=" << p.second << std::endl;
             _callback->Reply_Error(p.first, p.second.c_str());
+            //_callback->Reply(SFS_ERROR, p.first, p.second.c_str());
         }
         _callback = 0;
         // _callback will be auto-destructed after any Reply_* call.
@@ -100,10 +113,15 @@ public:
     virtual ~AddCallbackFunc() {}
     virtual void operator()(XrdSfsFile& caller, std::string const& filename) {
         XrdSfsCallBack * callback = XrdSfsCallBack::Create(&(caller.error));
+        //XrdOucCallBack * callback = new XrdOucCallBack();
+        //callback->Init(&(caller.error));
+
         // Register callback with opener.
         //std::cerr << "Callback reg!\t" << (void*)callback << std::endl;
         QueryRunner::getTracker().listenOnce(
-                           filename, FinishListener<XrdSfsCallBack>(callback));
+            filename, FinishListener<XrdSfsCallBack>(callback));
+        // QueryRunner::getTracker().listenOnce(
+        //     filename, FinishListener<XrdOucCallBack>(callback));
     }
 };
 #endif // ifndef NO_XROOTD_FS
@@ -161,8 +179,9 @@ MySqlFs::MySqlFs(boost::shared_ptr<Logger> log, XrdSysLogger* lp,
 #ifdef NO_XROOTD_FS
     _log->info("Skipping load of libXrdOfs.so (non xrootd build).");
 #else
+    // Passing NULL XrdOucEnv*. The XrdOucEnv* parameter was new in xrootd 3.3.x
     XrdSfsFileSystem* fs;
-    fs = XrdSfsGetDefaultFileSystem(0, lp, cFileName);
+    fs = XrdSfsGetDefaultFileSystem(0, lp, cFileName, 0);
     if(fs == 0) {
         _log->warn("Problem loading XrdSfsDefaultFileSystem. Clustering won't work.");
     }
@@ -187,11 +206,11 @@ MySqlFs::~MySqlFs(void) {
 
 // Object Allocation Functions
 //
-XrdSfsDirectory* MySqlFs::newDir(char* user) {
+XrdSfsDirectory* MySqlFs::newDir(char* user, int MonID) {
     return new MySqlFsDirectory(_log, user);
 }
 
-XrdSfsFile* MySqlFs::newFile(char* user) {
+XrdSfsFile* MySqlFs::newFile(char* user, int MonID) {
 #ifdef NO_XROOTD_FS
     return new MySqlFsFile(
         _log, user, 
