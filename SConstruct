@@ -69,6 +69,7 @@ env.Requires(env.Alias('perl-install'), env.Alias('download'))
 env.Requires(env.Alias('perl-install'), env.Alias('config'))
 env.Requires(env.Alias('perl-init-mysql-db'), env.Alias('templates'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
+env.Requires(env.Alias('python-tests'), env.Alias('python-qms'))
 env.Requires(env.Alias('admin-bin'), env.Alias('python-tests'))
 env.Requires(env.Alias('perl-install'), env.Alias('admin-bin'))
 
@@ -247,6 +248,24 @@ for f in bin_basename_lst:
     bin_target_lst.append(target)
 
 env.Alias("admin-bin", bin_target_lst)
+
+#########################
+#
+# Install qms 
+#
+#########################
+if config['qserv']['node_type'] in ['mono','master']:
+
+    # MySQL is required 
+    env.Requires(env.Alias('qms'), env.Alias('perl-install'))
+    env.Requires(env.Alias('install'), env.Alias('qms'))
+
+    qms_cmd=[] 
+    qms_install_sh = os.path.join(config['qserv']['base_dir'],'tmp','install', "qms.sh")
+    cmd = env.Command('qms-dummy-target', [], qms_install_sh)
+    qms_cmd.append(cmd)
+
+    env.Alias("qms", qms_cmd)
 
 #########################
 #

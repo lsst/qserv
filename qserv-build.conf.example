@@ -56,10 +56,10 @@ master=qserv-master-example-name.mydomain.edu
 # geometry_src_dir=/home/user/geom
 
 [qms]
-db = QMS
-user = qmsuser
-pass = changeme
-port = 7082
+#db = QMS
+#user = qmsuser
+#pass = changeme
+#port = 7082
 
 [xrootd]
 # cmsd_manager_port=2131
