@@ -540,7 +540,7 @@ class InbandQueryAction:
             count += 1
             if count >= chunkLimit: break
         if count == 0:
-            addChunk(dummyEmpty)
+            addChunk(dummyEmptyChunk)
         pass
 
     def _execAndJoin(self):
