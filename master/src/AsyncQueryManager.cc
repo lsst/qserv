@@ -55,8 +55,10 @@ namespace master {
 // Local Helpers --------------------------------------------------
 namespace { 
 
-static DynamicWorkQueue globalReadQueue(50, 5, 500, 0);
-static DynamicWorkQueue globalWriteQueue(100, 5, 500, 0);
+// TODO(smm): These should be created elsewhere, and the thread counts
+//            should come from a configuration file.
+static DynamicWorkQueue globalReadQueue(100, 10, 1100, 0);
+static DynamicWorkQueue globalWriteQueue(500, 3, 800, 0);
 
 // Doctors the query path to specify the async path.
 // Modifies the string in-place.
