@@ -226,7 +226,7 @@ dispatchSrcs = map(lambda x: os.path.join('src', x),
                     "dispatcher.cc", "xrootd.cc",
                     "AsyncQueryManager.cc",
                     "ChunkQuery.cc",
-                    "WorkQueue.cc",
+                    "DynamicWorkQueue.cc",
                     "TaskMsgFactory2.cc",
                     "Timer.cc"])
 
