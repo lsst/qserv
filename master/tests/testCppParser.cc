@@ -632,26 +632,42 @@ BOOST_AUTO_TEST_CASE(CountQuery) {
     BOOST_CHECK(!spr->getHasSubChunks());
     BOOST_CHECK(spr->getHasAggregate());
 }
+#endif // End: Tests to migrate to new parser framework (needs work in parser too)
 
 BOOST_AUTO_TEST_CASE(CountQuery2) {
-    std::string stmt = "SELECT count(*) from Source;";
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
-    BOOST_CHECK(spr->getHasChunks());
-    BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(spr->getHasAggregate());
+    std::string stmt = "SELECT count(*) from LSST.Source;";
+    std::string expected_100 = "SELECT count(*) AS QS1_COUNT FROM LSST.Source_100 AS QST_1_";
+
+
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(!context->restrictors);
+
+    qs->addChunk(makeChunkSpec(100,true));
+    QuerySession::Iter i = qs->cQueryBegin();
+    QuerySession::Iter e = qs->cQueryEnd();
+    BOOST_REQUIRE(i != e);
+    ChunkQuerySpec& first = *i;
+    BOOST_CHECK_EQUAL(first.queries.size(), 1);
+    BOOST_CHECK_EQUAL(first.queries[0], expected_100);
 }
 
 BOOST_AUTO_TEST_CASE(UnpartLimit) {
     std::string stmt = "SELECT * from Science_Ccd_Exposure limit 3;";
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
-    BOOST_CHECK(!spr->getHasChunks());
-    BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(!spr->getHasAggregate());
-}
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(!context->restrictors);
+    // BOOST_CHECK(!spr->getHasChunks());
+    // BOOST_CHECK(!spr->getHasSubChunks());
+    // BOOST_CHECK(!spr->getHasAggregate());
 
-#endif // End: Tests to migrate to new parser framework (needs work in parser too)
+}
 
 BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
     std::string stmt = "SELECT subQueryColumn FROM (SELECT * FROM Object WHERE filterId=4) WHERE rFlux_PS > 0.3;";
@@ -701,10 +717,18 @@ BOOST_AUTO_TEST_CASE(CountNew) {
     std::string stmt = "SELECT count(*), sum(Source.flux), flux2, Source.flux3 from Source where qserv_areaspec_box(0,0,1,1) and flux4=2 and Source.flux5=3;";
     testStmt3(qsTest, stmt);
 }
+BOOST_AUTO_TEST_CASE(FluxMag) {
+    std::string stmt = "SELECT count(*) FROM Object"
+        " WHERE  qserv_areaspec_box(1,3,2,4) AND"
+        "  scisql_fluxToAbMag(zFlux_PS) BETWEEN 21 AND 21.5;";
+    testStmt3(qsTest, stmt);
+}
+
 BOOST_AUTO_TEST_CASE(ArithTwoOp) {
     std::string stmt = "SELECT f(one)/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
     testStmt3(qsTest, stmt);
 }
+
 BOOST_AUTO_TEST_CASE(FancyArith) {
     std::string stmt = "SELECT (1+f(one))/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
     testStmt3(qsTest, stmt);

@@ -525,6 +525,7 @@ class InbandQueryAction:
         chunkLimit = self.chunkLimit
         for chunkId, subIter in self._intersectIter:
             if chunkId in self._emptyChunks:
+                print "Rejecting empty chunk:", chunkId
                 continue
             #prepare chunkspec
             c = ChunkSpec()
@@ -540,7 +541,10 @@ class InbandQueryAction:
             count += 1
             if count >= chunkLimit: break
         if count == 0:
-            addChunk(dummyEmptyChunk)
+            c = ChunkSpec()
+            c.chunkId = dummyEmptyChunk
+            scount=0
+            addChunk(self.sessionId, c)
         pass
 
     def _execAndJoin(self):

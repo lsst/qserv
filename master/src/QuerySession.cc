@@ -79,6 +79,8 @@ void QuerySession::setQuery(std::string const& q) {
         _showFinal(); // DEBUG
     } catch(ParseException& e) {
         _error = std::string("ParseException:") + e.what();
+    } catch(antlr::NoViableAltException& e) {
+        _error = std::string("ANTLR exception:") + e.what();
     }
 }
 
