@@ -39,7 +39,8 @@
 #include "lsst/qserv/master/FromList.h"
 #include "lsst/qserv/master/QueryMapping.h"
 #include "lsst/qserv/master/QueryContext.h"
-#include "lsst/qserv/master//MetadataCache.h"
+#include "lsst/qserv/master/MetadataCache.h"
+#include "lsst/qserv/master/ParseException.h"
 
 #define CHUNKTAG "%CC%"
 #define SUBCHUNKTAG "%SS%"
@@ -66,6 +67,7 @@ struct Tuple {
 };
 
 typedef std::deque<Tuple> Tuples;
+
 std::ostream& operator<<(std::ostream& os, Tuple const& t) {
 
     os << t.db << ".";
@@ -76,6 +78,7 @@ std::ostream& operator<<(std::ostream& os, Tuple const& t) {
     if(!t.allowed) { os << "ILLEGAL"; }
     return os;
 }
+
 inline void addChunkMap(lsst::qserv::master::QueryMapping& m) {
     m.insertEntry(CHUNKTAG, lsst::qserv::master::QueryMapping::CHUNK);
 }
@@ -125,9 +128,24 @@ int patchTuples(Tuples& tuples) {
     return chunkedCount;
 }
 
+} // anonymous namespace
+
+namespace lsst {
+namespace qserv {
+namespace master {
+class InvalidTableException : public ParseException {
+public:
+    InvalidTableException(char const* db, char const* table)
+        : ParseException(std::string("Invalid table: ") + db + "." + table)
+    {}
+    InvalidTableException(std::string const& db, std::string const& table)
+        : ParseException(std::string("Invalid table: ") + db + "." + table)
+    {}
+};
+
 class lookupTuple {
 public:
-    lookupTuple(lsst::qserv::master::MetadataCache& metadata_)
+    lookupTuple(MetadataCache& metadata_)
         : metadata(metadata_)
         {}
 
@@ -135,16 +153,14 @@ public:
         t.allowed = metadata.checkIfContainsDb(t.db);
         if(t.allowed) {
             t.chunkLevel = metadata.getChunkLevel(t.db, t.prePatchTable);
+            if(t.chunkLevel == -1) {
+                t.allowed = false; // No chunk level found: missing/illegal.
+                throw InvalidTableException(t.db, t.prePatchTable);
+            }
         }
     }
-    lsst::qserv::master::MetadataCache& metadata;
+    MetadataCache& metadata;
 };
-
-} // anonymous namespace
-
-namespace lsst {
-namespace qserv {
-namespace master {
 
 class SphericalBoxStrategy::Impl {
 public:

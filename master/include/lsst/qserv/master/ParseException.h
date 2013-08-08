@@ -39,8 +39,11 @@ namespace master {
 /// parse node to be bundled with the exception for greater context.
 class ParseException : public std::runtime_error {
 public:
-    explicit ParseException(char const* msg, antlr::RefAST subTree);
-    explicit ParseException(std::string const& msg, antlr::RefAST subTree);
+    ParseException(char const* msg, antlr::RefAST subTree);
+    ParseException(std::string const& msg, antlr::RefAST subTree);
+protected:
+    explicit ParseException(std::string const& msg) 
+        : std::runtime_error(msg) {}
 };
 
 }}} // namespace lsst::qserv::master

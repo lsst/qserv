@@ -34,6 +34,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include <antlr/NoViableAltException.hpp>
+
 #include "lsst/qserv/master/Constraint.h"
 #include "lsst/qserv/master/SelectParser.h"
 #include "lsst/qserv/master/SelectStmt.h"
@@ -80,7 +82,7 @@ void QuerySession::setQuery(std::string const& q) {
     } catch(ParseException& e) {
         _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {
-        _error = std::string("ANTLR exception:") + e.what();
+        _error = std::string("ANTLR exception:") + e.getMessage();
     }
 }
 
