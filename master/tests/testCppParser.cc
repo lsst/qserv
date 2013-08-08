@@ -144,7 +144,7 @@ struct ParserFixture {
                                        "ra_Test", "decl_Test", "objectIdObjTest",
                                        1, 2, 0,   // positions of the above columns
                                        2,         // 2-level chunking
-                                       0x0011);   // 1-level persisted
+                                       0x0021);   // 1-level persisted
         mc->addTbInfoPartitionedSphBox("LSST", "Source",
                                        0,         // actual overlap
                                        "raObjectTest", "declObjectTest", "objectIdSourceTest",
