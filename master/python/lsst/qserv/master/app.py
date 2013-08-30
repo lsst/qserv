@@ -371,8 +371,11 @@ class SecondaryIndex:
         db = Db()
         db.activate()
         cids = db.applySql(sql)
-        print "cids are ", cids
-        cids = map(lambda t: t[0], cids)
+        try:
+            print "cids are ", cids
+            cids = map(lambda t: t[0], cids)
+        except:
+            raise QueryHintError("mysqld error during index lookup q=" + sql)
         del db
         return cids
 
