@@ -44,6 +44,14 @@ public:
     std::string desc;
 };
 
+class UnknownAntlrError : public std::exception {
+public:
+    virtual ~UnknownAntlrError() throw() {}
+    virtual const char* what() const throw() {
+        return "Unknown ANTLR error"; }
+
+};
+
 }}} // lsst::qserv::master
 #endif // LSST_QSERV_MASTER_PARSEEXCEPTIONS_H
 // Local Variables:

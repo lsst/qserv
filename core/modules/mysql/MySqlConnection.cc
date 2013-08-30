@@ -49,8 +49,9 @@ MySqlConnection::MySqlConnection()
 
 MySqlConnection::MySqlConnection(SqlConfig const& sqlConfig,
                                  bool useThreadMgmt)
-    : _sqlConfig(new SqlConfig(sqlConfig)), _useThreadMgmt(useThreadMgmt),
-      _mysql(NULL), _mysql_res(NULL) {
+    : _mysql(NULL), _mysql_res(NULL), 
+      _sqlConfig(new SqlConfig(sqlConfig)), 
+      _useThreadMgmt(useThreadMgmt) {
     _initMySql();
 }
 

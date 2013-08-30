@@ -83,7 +83,7 @@ public:
 
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<OrderByClause> copyDeep();
+    boost::shared_ptr<OrderByClause> clone() const;
     boost::shared_ptr<OrderByClause> copySyntax();
 
 private:

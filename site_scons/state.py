@@ -131,6 +131,8 @@ def _initEnvironment(src_dir):
     if env['debug'] == 'yes':
         log.info("Debug build flag (-g) requested.")
         env.Append(CCFLAGS = ['-g'])
+    # Increase compiler strictness
+    env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-long-long'])
 
 # TODO : where to save this file ?
 def _saveState():

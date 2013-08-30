@@ -52,7 +52,7 @@ public:
     class WhereCondH;
     friend class WhereCondH;
 
-    WhereFactory(boost::shared_ptr<ValueExprFactory> vf);
+    explicit WhereFactory(boost::shared_ptr<ValueExprFactory> vf);
 
     boost::shared_ptr<WhereClause> getProduct();
     static boost::shared_ptr<WhereClause> newEmpty();

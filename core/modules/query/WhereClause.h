@@ -71,7 +71,7 @@ public:
 
     std::string getGenerated() const;
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<WhereClause> copyDeep() const;
+    boost::shared_ptr<WhereClause> clone() const;
     boost::shared_ptr<WhereClause> copySyntax();
 
     void resetRestrs();

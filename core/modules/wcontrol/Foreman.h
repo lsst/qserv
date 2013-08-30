@@ -76,7 +76,7 @@ public:
         typedef boost::shared_ptr<Scheduler> Ptr;
         virtual ~Scheduler() {}
 
-        virtual bool removeByHash(std::string const& hash) {}
+        virtual bool removeByHash(std::string const& hash) { return false; }
         virtual void queueTaskAct(Task::Ptr incoming) = 0;
         virtual TaskQueuePtr nopAct(TaskQueuePtr running) = 0;
         virtual TaskQueuePtr newTaskAct(Task::Ptr incoming,
@@ -85,7 +85,7 @@ public:
                                            TaskQueuePtr running) = 0;
     };
 
-    virtual bool squashByHash(std::string const& hash) {}
+    virtual bool squashByHash(std::string const& hash) { return false; }
 
     virtual bool accept(boost::shared_ptr<TaskMsg> msg) { return false; }
     virtual ~Foreman() {}

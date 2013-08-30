@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,8 +20,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file SelectFactory.cc
-  *
   * @brief Implementation of the SelectFactory, which is responsible
   * (through some delegated behavior) for constructing SelectStmt (and
   * SelectList, etc.) from an ANTLR parse tree.
@@ -30,81 +28,22 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include "parser/SelectFactory.h"
-
-// antlr
-#include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
+#include "parser/SelectListFactory.h"
 
 // Package
-#include "parser/ColumnRefH.h"
-#include "query/SelectStmt.h"
-#include "query/SelectList.h"
-#include "query/ValueFactor.h"
-// Delegate factories
-#include "parser/FromFactory.h"
-#include "parser/WhereFactory.h"
-#include "parser/ModFactory.h"
-#include "parser/SelectListFactory.h"
-#include "parser/ValueExprFactory.h"
-#include "parser/WhereFactory.h"
+#include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
 #include "parser/ParseAliasMap.h"
 #include "parser/ParseException.h"
+#include "parser/ValueExprFactory.h"
 #include "parser/parseTreeUtil.h"
-//#include "query/TableRef.h"
+#include "query/SelectList.h"
+#include "query/ValueFactor.h"
 
-#include "log/Logger.h"
 
-////////////////////////////////////////////////////////////////////////
-// SelectFactory
-////////////////////////////////////////////////////////////////////////
 namespace lsst {
 namespace qserv {
 namespace master {
-
-SelectFactory::SelectFactory()
-    : _columnAliases(new ParseAliasMap()),
-      _tableAliases(new ParseAliasMap()),
-      _columnRefNodeMap(new ColumnRefNodeMap()),
-      _vFactory(new ValueExprFactory(_columnRefNodeMap)) {
-
-    _fFactory.reset(new FromFactory(_tableAliases, _vFactory));
-    _slFactory.reset(new SelectListFactory(_columnAliases, _vFactory));
-    _mFactory.reset(new ModFactory(_vFactory));
-    _wFactory.reset(new WhereFactory(_vFactory));
-}
-
-void
-SelectFactory::attachTo(SqlSQL2Parser& p) {
-    _attachShared(p);
-
-    _slFactory->attachTo(p);
-    _fFactory->attachTo(p);
-    _wFactory->attachTo(p);
-    _mFactory->attachTo(p);
-}
-
-boost::shared_ptr<SelectStmt>
-SelectFactory::getStatement() {
-    boost::shared_ptr<SelectStmt> stmt(new SelectStmt());
-    stmt->_selectList = _slFactory->getProduct();
-    stmt->_fromList = _fFactory->getProduct();
-    stmt->_whereClause = _wFactory->getProduct();
-    stmt->_orderBy = _mFactory->getOrderBy();
-    stmt->_groupBy = _mFactory->getGroupBy();
-    stmt->_having = _mFactory->getHaving();
-    stmt->_limit = _mFactory->getLimit();
-    return stmt;
-}
-
-void
-SelectFactory::_attachShared(SqlSQL2Parser& p) {
-    boost::shared_ptr<ColumnRefH> crh(new ColumnRefH());
-    crh->setListener(_columnRefNodeMap);
-    p._columnRefHandler = crh;
-}
-
-#if 0
 ////////////////////////////////////////////////////////////////////////
 // SelectListFactory::SelectListH
 ////////////////////////////////////////////////////////////////////////
@@ -180,9 +119,6 @@ boost::shared_ptr<SelectList> SelectListFactory::getProduct() {
 
 void
 SelectListFactory::_import(RefAST selectRoot) {
-    //    LOGGER_INF << "Type of selectRoot is "
-    //              << selectRoot->getType() << std::endl;
-
     for(; selectRoot.get();
         selectRoot = selectRoot->getNextSibling()) {
         RefAST child = selectRoot->getFirstChild();
@@ -214,7 +150,7 @@ SelectListFactory::_import(RefAST selectRoot) {
 void
 SelectListFactory::_addSelectColumn(RefAST expr) {
     // Figure out what type of value expr, and create it properly.
-    // LOGGER_INF << "SelectCol Type of:" << expr->getText()
+    // std::cout << "SelectCol Type of:" << expr->getText()
     //           << "(" << expr->getType() << ")" << std::endl;
     if(!expr.get()) {
         throw std::invalid_argument("Attempted _addSelectColumn(NULL)");
@@ -226,7 +162,7 @@ SelectListFactory::_addSelectColumn(RefAST expr) {
     if(!child.get()) {
         throw ParseException("Missing VALUE_EXP child", expr);
     }
-    //    LOGGER_INF << "child is " << child->getType() << std::endl;
+    //    std::cout << "child is " << child->getType() << std::endl;
     ValueExprPtr ve = _vFactory->newExpr(child);
 
     // Annotate if alias found.
@@ -253,12 +189,9 @@ SelectListFactory::_addSelectStar(RefAST child) {
             throw ParseException("Missing name node.", child);
         }
         tableName = tokenText(table);
-        LOGGER_INF << "table ref'd for *: " << tableName << std::endl;
     }
     vt = ValueFactor::newStarFactor(tableName);
     _valueExprList->push_back(ValueExpr::newSimple(vt));
 }
-#endif
-//=======
-//>>>>>>> 1e80951... master: First pass support of <t1> JOIN <t2> ... syntax; minor cleanup.:master/src/SelectFactory.cc
+
 }}} // lsst::qserv::master

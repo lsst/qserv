@@ -187,8 +187,6 @@ BOOST_AUTO_TEST_CASE(Grouped_4) {
     // elements with the same key, and ensure that keys are grouped.
     std::set<int> seen;
 
-    int last = -1;
-
     gQueue = Gqueue(2); // Clique size=2
     for(int x=0; x < 3; ++x) { // insert 3x
         for(int i=0; i < eltSize; ++i ) {
@@ -243,7 +241,7 @@ BOOST_AUTO_TEST_CASE(Circle_2) {
         circle.insert(elts[(i*2) + 1]);
     }
     BOOST_CHECK_EQUAL(circle.size(), eltSize);
-    BOOST_REQUIRE(circle.size() == eltSize);
+    BOOST_REQUIRE((int)circle.size() == eltSize);
 
     // Now pull contents out.
     for(int i=0; i < eltSize; ++i ) {
@@ -263,7 +261,6 @@ BOOST_AUTO_TEST_CASE(Circle_2) {
 
 BOOST_AUTO_TEST_CASE(ChunkState) {
     int chunks[] = {2,3,5,7};
-    int count = 4;
 
     cState.addScan(chunks[0]);
     BOOST_CHECK(!cState.isCached(chunks[0]));

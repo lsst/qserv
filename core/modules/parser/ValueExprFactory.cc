@@ -63,7 +63,7 @@ ValueExprFactory::newExpr(antlr::RefAST a) {
         if(op.get()) { // No more ops?
             //LOGGER_INF << "expected op: " << tokenText(op) << std::endl;
             int eType = op->getType();
-            switch(op->getType()) {
+            switch(eType) {
             case SqlSQL2TokenTypes::PLUS_SIGN:
                 newFactorOp.op = ValueExpr::PLUS;
                 break;

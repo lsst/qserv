@@ -91,7 +91,7 @@ private:
             _cached.pop_front();
         }
     }
-    int _cacheMax;
+    unsigned _cacheMax;
     IntDeque _cached;
     IntSet _scan;
     int _last;
