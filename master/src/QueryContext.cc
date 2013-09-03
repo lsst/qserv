@@ -1,7 +1,6 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2013 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,42 +19,40 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_MASTER_COLUMNREF_H
-#define LSST_QSERV_MASTER_COLUMNREF_H
 /**
-  * @file ColumnRef.h
+  * @file QueryContext.cc
+  *
+  * @brief QueryContext implementation.
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <ostream>
-#include <string>
-#include <list>
-#include <boost/shared_ptr.hpp>
+#include "lsst/qserv/master/QueryContext.h"
+#include "lsst/qserv/master/ColumnRef.h"
 
 namespace lsst {
 namespace qserv {
 namespace master {
 
-class QueryTemplate; // Forward
+/// Resolve a column ref to a concrete (db,table)
+/// @return the concrete (db,table), based on current context.
+DbTablePair
+QueryContext::resolve(boost::shared_ptr<ColumnRef> cr) {
+    if(!cr) { return DbTablePair(); }
 
-/// ColumnRef is an abstract value class holding a parsed single column ref
-class ColumnRef {
-public:
-    typedef std::list<boost::shared_ptr<ColumnRef> > List;
+    // If alias, retrieve real reference.
+    if(cr->db.empty() && !cr->table.empty()) {
+        DbTablePair concrete = tableAliases.get(cr->table);
+        if(!concrete.empty()) {
+            return concrete;
+        }
+    }
+    // Set default db and table.
+    DbTablePair p(defaultDb, anonymousTable);
 
-    ColumnRef(std::string db_, std::string table_, std::string column_)
-        : db(db_), table(table_), column(column_) {}
+    // Extract db and table from ref if available
+    if(!cr->db.empty()) { p.db = cr->db; }
+    if(!cr->table.empty()) { p.table = cr->table; }
+    return p;
+}
 
-    std::string db;
-    std::string table;
-    std::string column;
-    friend std::ostream& operator<<(std::ostream& os, ColumnRef const& cr);
-    friend std::ostream& operator<<(std::ostream& os, ColumnRef const* cr);
-    void renderTo(QueryTemplate& qt) const;
-};
-
-// Should refactor most of this into a ColumnRef factory.
 }}} // namespace lsst::qserv::master
-
-#endif // LSST_QSERV_MASTER_COLUMNREF_H

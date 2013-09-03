@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2012-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,14 +9,14 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
@@ -30,7 +30,7 @@
   * SQL92 grammer.
   *
   * @author Daniel L. Wang, SLAC
-  */ 
+  */
 #include "lsst/qserv/master/ValueFactor.h"
 #include <iostream>
 #include <sstream>
@@ -40,11 +40,10 @@
 #include "lsst/qserv/master/FuncExpr.h"
 #include "lsst/qserv/master/ValueExpr.h"
 
-namespace qMaster=lsst::qserv::master;
-using lsst::qserv::master::ValueFactor;
-using lsst::qserv::master::ValueFactorPtr;
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace master {
 
 ValueFactorPtr ValueFactor::newColumnRefFactor(boost::shared_ptr<ColumnRef const> cr) {
     ValueFactorPtr term(new ValueFactor());
@@ -91,9 +90,29 @@ ValueFactor::newExprFactor(boost::shared_ptr<ValueExpr> ve) {
     return factor;
 }
 
+void ValueFactor::findColumnRefs(ColumnRef::List& list) {
+    switch(_type) {
+    case COLUMNREF:
+        list.push_back(_columnRef);
+        break;
+    case FUNCTION:
+    case AGGFUNC:
+        _funcExpr->findColumnRefs(list);
+        break;
+    case STAR:
+    case CONST:
+        break;
+    case EXPR:
+        _valueExpr->findColumnRefs(list);
+        break;
+    default: break;
+    }
+}
+
 ValueFactorPtr ValueFactor::clone() const{
     ValueFactorPtr expr(new ValueFactor(*this));
     // Clone refs.
+    // FIXME: not sure these are deep copies.
     if(_columnRef.get()) {
         expr->_columnRef.reset(new ColumnRef(*_columnRef));
     }
@@ -114,9 +133,9 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const& ve) {
     case ValueFactor::STAR:
         os << "<";
         if(!ve._tableStar.empty()) os << ve._tableStar << ".";
-        os << "*>"; 
+        os << "*>";
         break;
-    case ValueFactor::CONST: 
+    case ValueFactor::CONST:
         os << "CONST: " << ve._tableStar;
         break;
     case ValueFactor::EXPR: os << "EXPR: " << *(ve._valueExpr); break;
@@ -131,12 +150,12 @@ std::ostream& operator<<(std::ostream& os, ValueFactor const* ve) {
     return os << *ve;
 }
 
-void ValueFactor::render::operator()(qMaster::ValueFactor const& ve) {
+void ValueFactor::render::operator()(ValueFactor const& ve) {
     switch(ve._type) {
-    case ValueFactor::COLUMNREF: ve._columnRef->render(_qt); break;
-    case ValueFactor::FUNCTION: ve._funcExpr->render(_qt); break;
-    case ValueFactor::AGGFUNC: ve._funcExpr->render(_qt); break;
-    case ValueFactor::STAR: 
+    case ValueFactor::COLUMNREF: ve._columnRef->renderTo(_qt); break;
+    case ValueFactor::FUNCTION: ve._funcExpr->renderTo(_qt); break;
+    case ValueFactor::AGGFUNC: ve._funcExpr->renderTo(_qt); break;
+    case ValueFactor::STAR:
         if(!ve._tableStar.empty()) {
             _qt.append(ColumnRef("",ve._tableStar, "*"));
         } else {
@@ -144,10 +163,10 @@ void ValueFactor::render::operator()(qMaster::ValueFactor const& ve) {
         }
         break;
     case ValueFactor::CONST: _qt.append(ve._tableStar); break;
-    case ValueFactor::EXPR: 
+    case ValueFactor::EXPR:
         { ValueExpr::render r(_qt, false);
             r(ve._valueExpr);
-        } 
+        }
         break;
     default: break;
     }

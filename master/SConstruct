@@ -2,7 +2,7 @@
 #
 # SConstruct for qserv/master
 #
-#  
+#
 # Helpful envvars:
 #
 # SEARCH_ROOTS : Set the include/lib search path prefixes.
@@ -38,7 +38,7 @@ import detect_deps
 ### Distribution creation
 def makePythonDist():
     print 'dist', distutils.sysconfig.get_python_inc()
-    
+
 if 'install' in COMMAND_LINE_TARGETS:
     makePythonDist()
 
@@ -72,7 +72,7 @@ env['SWIGFLAGS'] = ['-python', '-c++', '-Iinclude'],
 env['CPPPATH'] = [distutils.sysconfig.get_python_inc(), 'include'],
 env['SHLIBPREFIX'] = ""
 env.Append(CPPPATH = ['../common/include'])
-env.Append(LIBPATH = ['../common/lib']) 
+env.Append(LIBPATH = ['../common/lib'])
 
 
 def importDeps(env, f):
@@ -100,13 +100,13 @@ if not mysqlRoots: # If not overridden, use general search roots.
     mysqlRoots = searchRoots
 
 # Look for mysql sub-directories. lib64 is important on RH/Fedora
-searchLibs += filter(os.path.exists, 
-                     [os.path.join(r, lb, "mysql") 
+searchLibs += filter(os.path.exists,
+                     [os.path.join(r, lb, "mysql")
                       for r in mysqlRoots for lb in ["lib","lib64"]])
 
-detect_deps.composeEnv(env, 
-                       roots=searchRoots, 
-                       includes=[xrd_inc], 
+detect_deps.composeEnv(env,
+                       roots=searchRoots,
+                       includes=[xrd_inc],
                        libs=searchLibs)
 env.Append(CPPPATH = ["../common/include"])
 env.Append(LIBPATH = ["../common/lib"])
@@ -114,7 +114,7 @@ env.Append(LIBPATH = ["../common/lib"])
 if hasXrootd:
     env.Append(CPPPATH = [xrd_inc])
     env.Append(LIBPATH = [xrd_lib])
-env.Append(CPPFLAGS = detect_deps.XRDFLAGS + 
+env.Append(CPPFLAGS = detect_deps.XRDFLAGS +
            [ "-g", "-pedantic", "-Wno-long-long", "-Wall"])
 
 # Start configuration tests
@@ -156,13 +156,13 @@ if not detect_deps.checkAddMySql(conf): canBuild = False
 if not detect_deps.checkAddXrdPosix(conf):
     hasXrootd = False
 
-env = conf.Finish()    
+env = conf.Finish()
 canBuild = canBuild and hasXrootd
 
 if foundAntlr:
     SConscript("SConscript.antlr", exports={'env' : env})
 
-parserSrcs = map(lambda x: os.path.join('src', x), 
+parserSrcs = map(lambda x: os.path.join('src', x),
                  ["AggregatePlugin.cc",
                   "AggOp.cc",
                   "parseTreeUtil.cc",
@@ -171,9 +171,10 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "Substitution.cc",
                   "ChunkMapping.cc",
                   "ChunkQuerySpec.cc",
-                  "SqlSQL2Lexer.cpp", 
+                  "SqlSQL2Lexer.cpp",
                   "SqlSQL2Parser.cpp",
                   "SelectParser.cc",
+                  "QueryContext.cc",
                   "QueryMapping.cc",
                   "QueryPlugin.cc",
                   "QuerySession.cc",
@@ -191,10 +192,14 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "GroupByClause.cc",
                   "HavingClause.cc",
                   "OrderByClause.cc",
-                  "ColumnRefList.cc",
+                  "ColumnRefMap.cc",
                   "ColumnRef.cc",
+                  "Constraint.cc",
                   "ChunkSpec.cc",
                   "ParseException.cc",
+                  "Predicate.cc",
+                  "PredicateFactory.cc",
+                  "QsRestrictor.cc",
                   "SelectStmt.cc",
                   "SelectFactory.cc",
                   "FromFactory.cc",
@@ -205,15 +210,15 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "ValueFactor.cc",
                   "FuncExpr.cc",
                   "WhereFactory.cc",
-                  "ifaceMeta.cc", 
+                  "ifaceMeta.cc",
                   "MetadataCache.cc"
 ])
 
 pyPath = 'python/lsst/qserv/master'
 pyLibName = os.path.join(pyPath, '_masterLib.so')
-dispatchSrcs = map(lambda x: os.path.join('src', x), 
-                   ["xrdfile.cc", 
-                    "thread.cc", 
+dispatchSrcs = map(lambda x: os.path.join('src', x),
+                   ["xrdfile.cc",
+                    "thread.cc",
                     "MmapFile.cc",
                     "TableMerger.cc",
                     "SqlInsertIter.cc",
@@ -221,15 +226,15 @@ dispatchSrcs = map(lambda x: os.path.join('src', x),
                     "dispatcher.cc", "xrootd.cc",
                     "AsyncQueryManager.cc",
                     "ChunkQuery.cc",
-                    "WorkQueue.cc",
+                    "DynamicWorkQueue.cc",
                     "TaskMsgFactory2.cc",
                     "Timer.cc"])
 
 srcPaths = dispatchSrcs + [os.path.join(pyPath, 'masterLib.i')] + parserSrcs
 
 runTrans = { 'bin' : os.path.join('bin', 'runTransactions'),
-             'srcPaths' : dispatchSrcs 
-             + map(lambda p: os.path.join('src',p), 
+             'srcPaths' : dispatchSrcs
+             + map(lambda p: os.path.join('src',p),
                    ["runTransactions.cc", "runTransactions_fake.cc"])
              }
 # Lexer and Parser cpp files should have been generated with
@@ -240,7 +245,7 @@ testParser = { 'bin' : os.path.join('bin', 'testCppParser'),
                }
 # testIter doesn't need all dispatchSrcs, but it's not worth optimizing.
 testIter = { 'bin' : os.path.join('bin', 'testIter'),
-               'srcPaths' : ( map(lambda x: os.path.join('src', x), 
+               'srcPaths' : ( map(lambda x: os.path.join('src', x),
                                   ["SqlInsertIter.cc",
                                    "PacketIter.cc",
                                    "Timer.cc",
@@ -248,9 +253,9 @@ testIter = { 'bin' : os.path.join('bin', 'testIter'),
                               [os.path.join("tests","testIter.cc")])}
 
 xrdPrecache = { 'bin' : os.path.join('bin', 'xrdPrecache'),
-                'srcPaths' : map(lambda x: os.path.join('src', x), 
-                                 ["xrdfile.cc", 
-                                  "xrootd.cc", 
+                'srcPaths' : map(lambda x: os.path.join('src', x),
+                                 ["xrdfile.cc",
+                                  "xrootd.cc",
                                   "WorkQueue.cc",
                                   "xrdPrecache.cc"])}
 
@@ -270,7 +275,7 @@ def installToDist(env, targetDir, pathList, pyLib):
         env.Alias("install", env.Install(pyDir, pyLib))
     # make sure path exists
     try: os.makedirs(pyDir)
-    except OSError, exc: # "as" syntax not available in Python <=2.5 
+    except OSError, exc: # "as" syntax not available in Python <=2.5
         if exc.errno == errno.EEXIST:
             pass
         else: raise
@@ -286,16 +291,16 @@ def installTo(env, targetDir, pyLib):
     installToDist(env, targetDir, ["lsst","qserv","meta"], None)
 
     #install bins
-    env.Alias("install", 
+    env.Alias("install",
               env.Install(targetDir, env.Glob(os.path.join("bin","*.py"))))
     #install proxy
     for f in ["mysqlProxy.lua", "startMySQLProxy"]:
         env.Alias("install", env.Install(targetDir, os.path.join("proxy",f)))
-    
+
 if canBuild:
     pylib = env.SharedLibrary(pyLibName, srcPaths)
     Depends(pylib, env["antlrdeps"]) # ANTLR
-    Depends(pylib, env["antlrdeps"]) # 
+    Depends(pylib, env["antlrdeps"]) #
     #env.Program(runTrans['bin'], runTrans["srcPaths"]) # Deprecated.
     parseEnv.Program(testParser['bin'], testParser["srcPaths"])
     installTo(env, "dist", pylib)
@@ -318,7 +323,7 @@ for d in Split("lib examples doc"):
 
 if not canBuild:
     print >>sys.stderr, "****** Fatal errors. Didn't build anything. ******"
-    
+
 
 # env['IgnoreFiles'] = r"(~$|\.pyc$|^\.svn$|\.o$)"
 

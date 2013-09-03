@@ -42,14 +42,11 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 
+#include "lsst/qserv/master/DynamicWorkQueue.h"
+
+
 namespace lsst {
 namespace qserv {
-
-// Forward
-namespace common {
-class WorkQueue;
-}
-
 namespace master {
 
 // Forward
@@ -61,6 +58,7 @@ class TableMerger;
 class TableMergerConfig;
 class TransactionSpec;
 class XrdTransResult;
+
 
 //////////////////////////////////////////////////////////////////////
 // class AsyncQueryManager 
@@ -78,17 +76,18 @@ public:
     typedef std::map<std::string, std::string> StringMap;
     typedef boost::shared_ptr<PacketIter> PacIterPtr;
     
-    explicit AsyncQueryManager(std::map<std::string,std::string> const& cfg) 
-        :_lastId(1000000000), 
+    explicit AsyncQueryManager(std::map<std::string,std::string> const& cfg)
+        :_lastId(1000000000),
         _isExecFaulty(false), _isSquashed(false),
         _queryCount(0),
         _shouldLimitResult(false), 
         _resultLimit(1024*1024*1024), _totalSize(0),
         _canRead(true), _reliefFiles(0)
-    { _readConfig(cfg); _initPool();}
+    {
+        _readConfig(cfg);
+    }
 
-    ~AsyncQueryManager()
-    { _destroyPool(); }
+    ~AsyncQueryManager() { }
 
     void configureMerger(TableMergerConfig const& c);
     void configureMerger(MergeFixup const& m, 
@@ -110,8 +109,9 @@ public:
     void signalTooManyFiles();
     void pauseReadTrans();
     void resumeReadTrans();
-    lsst::qserv::common::WorkQueue& getReadQueue() { return *_readQueue; }
-    lsst::qserv::common::WorkQueue& getWriteQueue() { return *_writeQueue; }
+
+    void addToReadQueue(DynamicWorkQueue::Callable * callable);
+    void addToWriteQueue(DynamicWorkQueue::Callable * callable);
     
     QuerySession& getQuerySession() { return *_qSession; }
 
@@ -128,8 +128,6 @@ private:
 	boost::lock_guard<boost::mutex> m(_idMutex); 
 	return ++_lastId;
     }
-    void _initPool();
-    void _destroyPool();
     void _readConfig(std::map<std::string,std::string> const& cfg);
     void _printState(std::ostream& os);
     void _addNewResult(ssize_t dumpSize, std::string const& dumpFile, 
@@ -167,8 +165,6 @@ private:
     std::string _xrootdHostPort;
     std::string _scratchPath;
     boost::shared_ptr<TableMerger> _merger;
-    boost::shared_ptr<lsst::qserv::common::WorkQueue> _readQueue;
-    boost::shared_ptr<lsst::qserv::common::WorkQueue> _writeQueue;
     boost::shared_ptr<QuerySession> _qSession;
 };
 }}} // lsst::qserv::master namespace

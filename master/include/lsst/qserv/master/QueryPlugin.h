@@ -84,7 +84,7 @@ public:
 /// A bundle of references to a components that form a "plan"
 class QueryPlugin::Plan { 
 public:
-    Plan(SelectStmt& stmtOriginal_, SelectStmt& stmtParallel_, 
+    Plan(SelectStmt& stmtOriginal_, SelectStmtList& stmtParallel_, 
          SelectStmt& stmtMerge_, bool& hasMerge_) 
         :  stmtOriginal(stmtOriginal_),
            stmtParallel(stmtParallel_), 
@@ -93,7 +93,7 @@ public:
 
     // Each of these should become a sequence for two-step queries.
     SelectStmt& stmtOriginal; 
-    SelectStmt& stmtParallel; 
+    SelectStmtList& stmtParallel; //< Group of parallel statements (not a sequence)
     SelectStmt& stmtMerge; 
     std::string dominantDb;
     boost::shared_ptr<QueryMapping> queryMapping;

@@ -520,11 +520,12 @@ delete_stmt :
 //{ Rule #291 <id> incorporates the rule #003 <actual_id> and <char_set_spec> is <char_set_name>
 //  The tricky semantic predicate {true}? for the non_reserved_word is just to make the generator
 //  effectively put the alternative to the "default" branch of "switch" statement and use a BitSet
+//  danielw: Force non_reserved word as REGULAR_ID to treat as char literal
 id :
 	(INTRODUCER char_set_name)? 
 	( REGULAR_ID 
 	| DELIMITED_ID 
-	| {true}? non_reserved_word 
+	| {true}? n:non_reserved_word { n_AST->setType(REGULAR_ID); }
 	) 
 ;
 //}
@@ -769,26 +770,33 @@ boolean_primary :
 
 //{ Rule #407 <predicate> was refined - left factoring
 predicate : 
-	  row_value_constructor 
-	    ( comp_predicate
-	    | ("not")? ( between_predicate 
-	               | in_predicate 
-	               | like_predicate 
-	               )
-	    | null_predicate 
-	    | quantified_comp_predicate 
-	    | match_predicate 
-	    | overlaps_predicate 
-	    ) 
+	  row_predicate 
 	| exists_predicate 
 	| unique_predicate 
 ;
 //}
 
+//{ <row_predicate> exists to factor the predicates that begin with a <row_value_constructor> 
+// danielw: Added to aid processing. 
+row_predicate : 
+	row_value_constructor
+        ( comp_predicate {#row_predicate = #([COMP_PREDICATE,"COMP_PREDICATE"],row_predicate);}
+        | ("not")? (between_predicate {#row_predicate = #([BETWEEN_PREDICATE, "BETWEEN_PREDICATE"], row_predicate);}
+            | in_predicate {#row_predicate = #([IN_PREDICATE, "IN_PREDICATE"], row_predicate);}
+            | like_predicate
+            )
+        | null_predicate 
+	    | quantified_comp_predicate 
+	    | match_predicate 
+	    | overlaps_predicate 
+	    )
+    ;
+//}
 //{ Rule #102 <comp_predicate>
 comp_predicate : 
-//	row_value_constructor 
-	comp_op row_value_constructor 
+//	row_value_constructor
+    b:comp_op c:row_value_constructor  
+//        {#comp_predicate = #([COMP_PREDICATE, "COMP_PREDICATE"], comp_predicate);}
 ;
 //}
 
@@ -807,15 +815,16 @@ comp_op :
 
 //{ Rule #034 <between_predicate>
 between_predicate : 
-//	row_value_constructor ("not")? 
-	"between" row_value_constructor "and" row_value_constructor 
+//	row_value_constructor ("not")?
+        "between" row_value_constructor "and" row_value_constructor 
 ;
 //}
 
 //{ Rule #320 <in_predicate>
 in_predicate : 
-//	row_value_constructor ("not")? 
-	"in" in_predicate_value 
+//	row_value_constructor ("not")?
+        "in" in_predicate_value 
+//        {#in_predicate = #([IN_PREDICATE, "IN_PREDICATE"], in_predicate);}
 ;
 //}
 
@@ -1019,9 +1028,10 @@ scalar_subquery :
 ;
 //}
 
+// danielw: Remove LEFT_PAREN and RIGHT_PAREN in favor of the tree structure 
 //{ Rule #568 <subquery>
 subquery : 
-	LEFT_PAREN query_exp RIGHT_PAREN 
+	LEFT_PAREN qe:query_exp RIGHT_PAREN {#subquery = #([SUBQUERY,"SUBQUERY"],qe);}
 ;
 //}
 
@@ -1744,7 +1754,9 @@ target_spec :
 
 //{ Rule #095 <column_ref> incorpotates <catalog_name>; <schema_name> and <table_name> to enable left_factoring
 column_ref : 
-	a:id (PERIOD b:id (PERIOD c:id (PERIOD d:id)?)?)?  {handleColumnRef(a_AST, b_AST, c_AST, d_AST);}
+	a:id (PERIOD b:id (PERIOD c:id (PERIOD d:id)?)?)?  {
+       #column_ref=#([COLUMN_REF,"COLUMN_REF"], column_ref);
+       handleColumnRef(a_AST, b_AST, c_AST, d_AST);}
 ;
 //}
 

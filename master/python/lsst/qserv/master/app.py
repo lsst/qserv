@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008-2013 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -29,14 +29,14 @@
 # for greater efficiency and maintainability. The dispatch and query
 # management has been migrated over to the C++ layer for efficiency, so
 # it makes sense to move closely-related code there to reduce the pain
-# of Python-C++ language boundary crossings. 
-# 
+# of Python-C++ language boundary crossings.
+#
 # This is the  "high-level application logic" and glue of the qserv
-# master/frontend.  
+# master/frontend.
 #
 # InBandQueryAction is the biggest actor in this module. Leftover code
 # from older parsing/manipulation/dispatch models may exist and should
-# be removed (please open a ticket). 
+# be removed (please open a ticket).
 #
 # The biggest ugliness here is due to the use of a Python geometry
 # module for computing the chunk numbers, given a RA/decl area
@@ -46,12 +46,12 @@
 # so that the chunk queries can be dispatched without language
 # crossings for each chunk query.
 #
-# Questions? Contact Daniel L. Wang, SLAC (danielw) 
+# Questions? Contact Daniel L. Wang, SLAC (danielw)
 #
 # Standard Python imports
 import errno
 import hashlib
-from itertools import chain, imap
+from itertools import chain, imap, ifilter
 import os
 import cProfile as profile
 import pstats
@@ -61,6 +61,7 @@ from subprocess import Popen, PIPE
 import sys
 import threading
 import time
+import traceback
 from string import Template
 
 # Package imports
@@ -89,7 +90,7 @@ from lsst.qserv.master import charArray_frompointer, charArray
 # transaction
 from lsst.qserv.master import TransactionSpec
 
-# Dispatcher 
+# Dispatcher
 from lsst.qserv.master import newSession, discardSession
 from lsst.qserv.master import setupQuery, getSessionError
 from lsst.qserv.master import getConstraints, addChunk, ChunkSpec
@@ -123,7 +124,7 @@ import code, traceback, signal
 
 # Constant, long-term, this should be defined differently
 dummyEmptyChunk = 1234567890
-
+CHUNK_COL = "chunkId"
 
 def debug(sig, frame):
     """Interrupt running process, and provide a python prompt for
@@ -173,7 +174,7 @@ def getResultTable(tableName):
 
     # Execute
     cmdList = [mysql, "--socket", socket, db]
-    p = Popen(cmdList, bufsize=0, 
+    p = Popen(cmdList, bufsize=0,
               stdin=PIPE, stdout=PIPE, close_fds=True)
     (outdata,errdummy) = p.communicate(sqlCmd)
     p.stdin.close()
@@ -188,15 +189,15 @@ def getResultTable(tableName):
 _defaultMetadataCacheSessionId = None
 
 class MetadataCacheIface:
-    """MetadataCacheIface encapsulates logic to prepare, metadata 
-       information by fetching it from qserv metadata server into 
+    """MetadataCacheIface encapsulates logic to prepare, metadata
+       information by fetching it from qserv metadata server into
        C++ memory structure. It is stateless. Throws exceptions on
        failure."""
 
     def getDefaultSessionId(self):
         """Returns default sessionId. It will initialize it if needed.
            Note: initialization involves contacting qserv metadata
-           server (qms). This is the only time qserv talks to qms. 
+           server (qms). This is the only time qserv talks to qms.
            This function throws QmsException if case of problems."""
         global _defaultMetadataCacheSessionId
         if _defaultMetadataCacheSessionId is None:
@@ -238,9 +239,9 @@ class MetadataCacheIface:
             #print "add partitioned, ", db, x
             ret = addDbInfoPartitionedSphBox(
                 sessionId, dbName,
-                int(x["stripes"]), 
-                int(x["subStripes"]), 
-                float(x["defaultOverlap_fuzziness"]), 
+                int(x["stripes"]),
+                int(x["subStripes"]),
+                float(x["defaultOverlap_fuzziness"]),
                 float(x["defaultOverlap_nearNeigh"]))
         elif x["partitioningStrategy"] == "None":
             #print "add non partitioned, ", db
@@ -262,9 +263,9 @@ class MetadataCacheIface:
         if partStrategy == "sphBox": # db is partitioned
             if "overlap" in x:       # but this table does not have to be
                 ret = addTbInfoPartitionedSphBox(
-                    sessionId, 
+                    sessionId,
                     dbName,
-                    tableName, 
+                    tableName,
                     float(x["overlap"]),
                     x["phiCol"],
                     x["thetaCol"],
@@ -300,7 +301,7 @@ class TaskTracker:
         taskId = self.pers.addTask((None, querytext))
         self.tasks[taskId] = {"task" : task}
         return taskId
-    
+
     def task(self, taskId):
         return self.tasks[taskId]["task"]
 
@@ -320,28 +321,65 @@ class QueryHintError(Exception):
         self.reason = reason
     def __str__(self):
         return repr(self.reason)
-
+class ParseError(Exception):
+    """An error in parsing the query"""
+    def __init__(self, reason):
+        self.reason = reason
+    def __str__(self):
+        return repr(self.reason)
+########################################################################
 def setupResultScratch():
-    """Prepare the configured scratch directory for use, creating if 
+    """Prepare the configured scratch directory for use, creating if
     necessary and checking for r/w access. """
     # Make sure scratch directory exists.
     cm = lsst.qserv.master.config
     c = lsst.qserv.master.config.config
-    
+
     scratchPath = c.get("frontend", "scratch_path")
     try: # Make sure the path is there
         os.makedirs(scratchPath)
-    except OSError, exc: 
+    except OSError, exc:
         if exc.errno == errno.EEXIST:
             pass
-        else: 
+        else:
             raise cm.ConfigError("Bad scratch_dir")
     # Make sure we can read/write the dir.
     if not os.access(scratchPath, os.R_OK | os.W_OK):
         raise cm.ConfigError("No access for scratch_path(%s)" % scratchPath)
     return scratchPath
 
-########################################################################    
+class IndexLookup:
+    def __init__(self, db, table, keyColumn, keyVals):
+        self.db = db
+        self.table = table
+        self.keyColumn = keyColumn
+        self.keyVals = keyVals
+        pass
+class SecondaryIndex:
+    def lookup(self, indexLookups):
+        sqls = []
+        for lookup in indexLookups:
+            table = metadata.getIndexNameForTable("%s.%s" % (lookup.db,
+                                                             lookup.table))
+            keys = ",".join(lookup.keyVals)
+            condition = "%s IN (%s)" % (lookup.keyColumn, keys)
+            sql = "SELECT %s FROM %s WHERE %s" % (CHUNK_COL, table, condition)
+            sqls.append(sql)
+        if not sqls:
+            return
+        sql = " UNION ".join(sqls)
+        db = Db()
+        db.activate()
+        cids = db.applySql(sql)
+        try:
+            print "cids are ", cids
+            cids = map(lambda t: t[0], cids)
+        except:
+            raise QueryHintError("mysqld error during index lookup q=" + sql)
+        del db
+        return cids
+
+########################################################################
 class InbandQueryAction:
     """InbandQueryAction is an action which represents a user-query
     that is executed using qserv in many pieces. It borrows a little
@@ -352,7 +390,7 @@ class InbandQueryAction:
         """Construct an InbandQueryAction
         @param query SQL query text (SELECT...)
         @param hints dict containing query hints and context
-        @param reportError unary function that accepts the description 
+        @param reportError unary function that accepts the description
                            of an encountered error.
         @param resultName name of result table for query results."""
         ## Fields with leading underscores are internal-only
@@ -360,7 +398,7 @@ class InbandQueryAction:
         self.queryStr = query.strip()# Pull trailing whitespace
         # Force semicolon to facilitate worker-side splitting
         if self.queryStr[-1] != ";":  # Add terminal semicolon
-            self.queryStr += ";" 
+            self.queryStr += ";"
 
         # queryHash identifies the top-level query.
         self.queryHash = self._computeHash(self.queryStr)[:18]
@@ -368,19 +406,28 @@ class InbandQueryAction:
         self.isValid = False
 
         self.hints = hints
+        self.hintList = [] # C++ parser-extracted hints only.
 
         self._importQconfig()
         self._invokeLock = threading.Semaphore()
         self._invokeLock.acquire() # Prevent res-retrieval before invoke
         self._resultName = resultName
         self._reportError = reportError
-        self.isValid = True
-        self.metaCacheSession = MetadataCacheIface().getDefaultSessionId()
+        try:
+            self.metaCacheSession = MetadataCacheIface().getDefaultSessionId()
+            self._prepareForExec()
+            self.isValid = True
+        except QueryHintError, e:
+            self._error = str(e)
+        except ParseError, e:
+            self._error = str(e)
+        except:
+            self._error = "Unexpected error: " + str(sys.exc_info())
+            print self._error, traceback.format_exc()
         pass
 
     def invoke(self):
         """Begin execution of the query"""
-        self._prepareForExec()
         self._execAndJoin()
         self._invokeLock.release()
 
@@ -392,7 +439,7 @@ class InbandQueryAction:
             return "Unknown error InbandQueryAction"
 
     def getResult(self):
-        """Wait for query to complete (as necessary) and then return 
+        """Wait for query to complete (as necessary) and then return
         a handle to the result.
         @return name of result table"""
         self._invokeLock.acquire()
@@ -415,34 +462,32 @@ class InbandQueryAction:
         self.sessionId = newSession(cfg)
         setupQuery(self.sessionId, self.queryStr, self._resultName)
         errorMsg = getSessionError(self.sessionId)
-        # TODO: Handle error more gracefully.
-        assert not getSessionError(self.sessionId)
+        if errorMsg: raise ParseError(errorMsg)
 
         self._applyConstraints()
         self._prepareMerger()
         pass
 
-    def _evaluateHints(self, hints, pmap):
-        """Modify self.fullSky and self.partitionCoverage according to 
+    def _evaluateHints(self, dominantDb, hintList, pmap):
+        """Modify self.fullSky and self.partitionCoverage according to
         spatial hints. This is copied from older parser model."""
         self._isFullSky = True
         self._intersectIter = pmap
-        if hints:
-            regions = self._computeRegions(hints)
-            self._dbContext = hints.get("db", "")
-            ids = hints.get("objectId", "")
+        if hintList:
+            regions = self._computeSpatialRegions(hintList)
+            indexRegions = self._computeIndexRegions(hintList)
+
             if regions != []:
                 # Remove the region portion from the intersection tuple
                 self._intersectIter = map(
                     lambda i: (i[0], map(lambda j:j[0], i[1])),
                     pmap.intersect(regions))
                 self._isFullSky = False
-            if ids:
-                chunkIds = self._getChunkIdsFromObjs(ids)
+            if indexRegions:
                 if regions != []:
-                    self._intersectIter = chain(self._intersectIter, chunkIds)
+                    self._intersectIter = chain(self._intersectIter, indexRegions)
                 else:
-                    self._intersectIter = map(lambda i: (i,[]), chunkIds)
+                    self._intersectIter = map(lambda i: (i,[]), indexRegions)
                 self._isFullSky = False
                 if not self._intersectIter:
                     self._intersectIter = [(dummyEmptyChunk, [])]
@@ -450,7 +495,7 @@ class InbandQueryAction:
         # However, if spatial tables are not found in the query, then
         # we should use the dummy chunk so the query can be dispatched
         # once to a node of the balancer's choosing.
-                    
+
         # If hints only apply when partitioned tables are in play.
         # FIXME: we should check if partitionined tables are being accessed,
         # and then act to support the heaviest need (e.g., if a chunked table
@@ -461,27 +506,29 @@ class InbandQueryAction:
     def _applyConstraints(self):
         """Extract constraints from parsed query(C++), re-marshall values,
         call evaluateHints, and add the chunkIds into the query(C++) """
-        # Retrieve constraints as (name, [param1,param2,param3,...])        
+        # Retrieve constraints as (name, [param1,param2,param3,...])
         self.constraints = getConstraints(self.sessionId)
         #print "Getting constraints", self.constraints, "size=",self.constraints.size()
         dominantDb = getDominantDb(self.sessionId)
         self.pmap = spatial.makePmap(dominantDb, self.metaCacheSession)
-        
+
         def iterateConstraints(constraintVec):
             for i in range(constraintVec.size()):
                 yield constraintVec.get(i)
         for constraint in iterateConstraints(self.constraints):
             print "constraint=", constraint
-            params = [constraint.paramsGet(i) 
+            params = [constraint.paramsGet(i)
                       for i in range(constraint.paramsSize())]
             self.hints[constraint.name] = params
-            pass 
-        self._evaluateHints(self.hints, self.pmap)
+            self.hintList.append((constraint.name, params))
+            pass
+        self._evaluateHints(dominantDb, self.hintList, self.pmap)
         self._emptyChunks = metadata.getEmptyChunks(dominantDb)
         count = 0
         chunkLimit = self.chunkLimit
         for chunkId, subIter in self._intersectIter:
             if chunkId in self._emptyChunks:
+                print "Rejecting empty chunk:", chunkId
                 continue
             #prepare chunkspec
             c = ChunkSpec()
@@ -497,7 +544,10 @@ class InbandQueryAction:
             count += 1
             if count >= chunkLimit: break
         if count == 0:
-            addChunk(dummyEmpty)
+            c = ChunkSpec()
+            c.chunkId = dummyEmptyChunk
+            scount=0
+            addChunk(self.sessionId, c)
         pass
 
     def _execAndJoin(self):
@@ -532,10 +582,10 @@ class InbandQueryAction:
             print "Using debugging chunklimit:",cfgLimit
 
         # Memory engine(unimplemented): Buffer results/temporaries in
-        # memory on the master. (no control over worker) 
+        # memory on the master. (no control over worker)
         self._useMemory = cModule.config.get("tuning", "memoryEngine")
         return True
-    
+
     def _prepareCppConfig(self):
         """Construct a C++ stringmap for passing settings and context
         to the C++ layer.
@@ -549,11 +599,27 @@ class InbandQueryAction:
         cfg["runtime.metaCacheSession"] = str(self.metaCacheSession)
         return cfg
 
-    def _computeRegions(self, hints):
+    def _computeIndexRegions(self, hintList):
+        """Compute spatial region coverage based on hints.
+        @return list of regions"""
+        print "Looking for indexhints in ", hintList
+        secIndexSpecs = ifilter(lambda t: t[0] == "sIndex", hintList)
+        lookups = []
+        for s in secIndexSpecs:
+            params = s[1]
+            lookup = IndexLookup(params[0], params[1], params[2], params[3:])
+            lookups.append(lookup)
+            pass
+        index = SecondaryIndex()
+        chunkIds = index.lookup(lookups)
+        print "lookup got chunks:", chunkIds
+        return chunkIds
+
+    def _computeSpatialRegions(self, hintList):
         """Compute spatial region coverage based on hints.
         @return list of regions"""
         r = spatial.getRegionFactory()
-        regs = r.getRegionFromHint(hints)
+        regs = r.getRegionFromHint(hintList)
         if regs != None:
             return regs
         else:
@@ -569,7 +635,7 @@ class InbandQueryAction:
         c = lsst.qserv.master.config.config
         dbSock = c.get("resultdb", "unix_socket")
         dbUser = c.get("resultdb", "user")
-        dbName = c.get("resultdb", "db")        
+        dbName = c.get("resultdb", "db")
         dropMem = c.get("resultdb","dropMem")
 
         mysqlBin = c.get("mysql", "mysqlclient")
@@ -578,28 +644,7 @@ class InbandQueryAction:
         configureSessionMerger3(self.sessionId)
         pass
 
-    def _getChunkIdsFromObjs(self, ids):
-        """ FIXME: objectID indexing not supported yet"""
-        table = metadata.getIndexNameForTable("LSST.Object")
-        objCol = "objectId"
-        chunkCol = "x_chunkId"
-        try:
-            test = ",".join(map(str, map(int, ids.split(","))))
-            chopped = filter(lambda c: not c.isspace(), ids)
-            assert test == chopped
-        except Exception, e:
-            print "Error converting objectId spec. ", ids, "Ignoring.",e
-            #print test,"---",chopped
-            return []
-        sql = "SELECT %s FROM %s WHERE %s IN (%s);" % (chunkCol, table,
-                                                       objCol, ids)
-        db = Db()
-        db.activate()
-        cids = db.applySql(sql)
-        cids = map(lambda t: t[0], cids)
-        del db
-        return cids
-        
+
     pass # class InbandQueryAction
 
 class CheckAction:
@@ -611,7 +656,7 @@ class CheckAction:
         self.results = None
         id = int(self.texthandle)
         t = self.tracker.task(id)
-        if t: 
+        if t:
             self.results = 50 # placeholder. 50%
 
 ########################################################################

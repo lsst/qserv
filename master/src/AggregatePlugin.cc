@@ -179,7 +179,12 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     // for the parallel and merge versions.
     // Set hasMerge to true if aggregation is detected.
     SelectList& oList = p.stmtOriginal.getSelectList();
-    SelectList& pList = p.stmtParallel.getSelectList();
+    
+    // Get the first out of the parallel statement select list. Assume
+    // that the select lists are the same for all statements. This is
+    // not necessarily true, unless the plugin is placed early enough
+    // to ensure that other fragmenting activity has not taken place yet.
+    SelectList& pList = p.stmtParallel.front()->getSelectList();
     SelectList& mList = p.stmtMerge.getSelectList();
     boost::shared_ptr<ValueExprList> vlist;
     vlist = oList.getValueExprList();
@@ -206,5 +211,22 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     // Also need to operate on GROUP BY.
     // update context.
     if(m.hasAggregate()) { context.needsMerge = true; }
+
+    // Make the select lists of other statements in the parallel
+    // portion the same.
+    typedef SelectStmtList::iterator Iter;
+    typedef ValueExprList::iterator Viter;
+    boost::shared_ptr<ValueExprList> veList = pList.getValueExprList();
+    for(Iter b=p.stmtParallel.begin(), i=b, e=p.stmtParallel.end(); 
+        i != e; 
+        ++i) {
+        if(i == b) continue;
+        SelectList& pList2 = (*i)->getSelectList();
+        boost::shared_ptr<ValueExprList> veList2 = pList2.getValueExprList();
+        veList2->clear();
+        for(Viter j=veList->begin(), je=veList->end(); j != je; ++j) {
+            veList2->push_back((**j).clone());
+        }
+    }
 }
 }}} // lsst::qserv::master

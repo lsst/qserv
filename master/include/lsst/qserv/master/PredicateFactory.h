@@ -20,42 +20,39 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+// PredicateFactory constructs Predicate instances from antlr nodes.
 
-#ifndef LSST_QSERV_MASTER_COLUMNREF_H
-#define LSST_QSERV_MASTER_COLUMNREF_H
+#ifndef LSST_QSERV_MASTER_PREDICATEFACTORY_H
+#define LSST_QSERV_MASTER_PREDICATEFACTORY_H
 /**
-  * @file ColumnRef.h
+  * @file PredicateFactory.h
+  *
+  * @brief PredicateFactory makes Predicate objects.
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <ostream>
-#include <string>
-#include <list>
 #include <boost/shared_ptr.hpp>
+#include <antlr/AST.hpp>
 
 namespace lsst {
 namespace qserv {
 namespace master {
+// Forward
+class CompPredicate;
+class BetweenPredicate;
+class InPredicate;
+class ValueExprFactory;
 
-class QueryTemplate; // Forward
-
-/// ColumnRef is an abstract value class holding a parsed single column ref
-class ColumnRef {
+/// PredicateFactory is a factory for making Predicate objects
+class PredicateFactory {
 public:
-    typedef std::list<boost::shared_ptr<ColumnRef> > List;
-
-    ColumnRef(std::string db_, std::string table_, std::string column_)
-        : db(db_), table(table_), column(column_) {}
-
-    std::string db;
-    std::string table;
-    std::string column;
-    friend std::ostream& operator<<(std::ostream& os, ColumnRef const& cr);
-    friend std::ostream& operator<<(std::ostream& os, ColumnRef const* cr);
-    void renderTo(QueryTemplate& qt) const;
+    explicit PredicateFactory(ValueExprFactory& vf)
+        : _vf(vf) {}
+    boost::shared_ptr<CompPredicate> newCompPredicate(antlr::RefAST a);
+    boost::shared_ptr<BetweenPredicate> newBetweenPredicate(antlr::RefAST a);
+    boost::shared_ptr<InPredicate> newInPredicate(antlr::RefAST a);
+private:
+    ValueExprFactory& _vf;
 };
-
-// Should refactor most of this into a ColumnRef factory.
 }}} // namespace lsst::qserv::master
-
-#endif // LSST_QSERV_MASTER_COLUMNREF_H
+#endif // LSST_QSERV_MASTER_PREDICATEFACTORY_H

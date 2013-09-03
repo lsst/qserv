@@ -20,30 +20,43 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file ColumnRef.cc
-  *
-  * @brief class ColumnRef implementation
+  * @file
   *
   * @author Daniel L. Wang, SLAC
   */
-#include "lsst/qserv/master/ColumnRef.h"
+#include "lsst/qserv/master/QsRestrictor.h"
+
 #include <iostream>
+#include <iterator>
 #include "lsst/qserv/master/QueryTemplate.h"
 
 namespace lsst {
 namespace qserv {
 namespace master {
-
-std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
-    return os << "(" << cr.db << "," << cr.table << "," << cr.column << ")";
+std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
+    os << "Restrictor " << q._name << "(";
+    std::copy(q._params.begin(), q._params.end(),
+              std::ostream_iterator<std::string>(os, ","));
+    os << ")";
+    return os;
+}
+////////////////////////////////////////////////////////////////////////
+// QsRestrictor::render
+////////////////////////////////////////////////////////////////////////
+void
+QsRestrictor::render::operator()(QsRestrictor::Ptr const& p) {
+    if(p.get()) {
+        qt.append(p->_name);
+        qt.append("(");
+        StringList::const_iterator i;
+        int c=0;
+        for(i=p->_params.begin(); i != p->_params.end(); ++i) {
+            if(++c > 1) qt.append(",");
+            qt.append(*i);
+        }
+        qt.append(")");
+    }
 }
 
-std::ostream& operator<<(std::ostream& os, ColumnRef const* cr) {
-    return os << *cr;
-}
 
-void ColumnRef::renderTo(QueryTemplate& qt) const {
-    qt.append(*this);
-}
-
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::master
