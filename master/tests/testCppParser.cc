@@ -171,15 +171,14 @@ struct ParserFixture {
                                        1,         // 1-level chunking
                                        0x0011);   // 1-level persisted
 
-    mc->addTbInfoPartitionedSphBox("LSST", "ObjectSub",
-                                   0.025,     // actual overlap
-                                   "ra", "decl", "objectId",  // warning: unsure if the objectId col is right
-                                   1, 2, 0,   // positions of the above columns, unsure if 0 is correct
-                                   2,         // 2-level chunking
-                                   0x0011);   // 1-level persisted
-    mc->addTbInfoNonPartitioned("LSST", "Filter");
-    mc->addTbInfoNonPartitioned("LSST", "Science_Ccd_Exposure");
-
+        mc->addTbInfoPartitionedSphBox("LSST", "ObjectSub",
+                                       0.025,     // actual overlap
+                                       "ra", "decl", "objectId",  // warning: unsure if the objectId col is right
+                                       1, 2, 0,   // positions of the above columns, unsure if 0 is correct
+                                       2,         // 2-level chunking
+                                       0x0011);   // 1-level persisted
+        mc->addTbInfoNonPartitioned("LSST", "Filter");
+        mc->addTbInfoNonPartitioned("LSST", "Science_Ccd_Exposure");
     };
     ~ParserFixture(void) { };
 
@@ -469,6 +468,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(!context->restrictors);
 }
 #if 0
 
@@ -785,11 +785,17 @@ BOOST_AUTO_TEST_CASE(Case01_0012) {
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1012) {
+    // This is unsupported by the SQL92 grammar, which rejects
+    // expressions in ORDER BY because it follows SQL92. Consider
+    // patching the grammar to support this. 
     std::string stmt = "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ABS(iE1_SG);";
     testStmt3(qsTest, stmt);
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1013) {
+    // This is unsupported by the SQL92 grammar, which rejects
+    // expressions in ORDER BY because it follows SQL92. Consider
+    // patching the grammar to support this. 
     std::string stmt = "SELECT objectId, ROUND(iE1_SG, 3), ROUND(ABS(iE1_SG), 3) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ROUND(ABS(iE1_SG), 3);";
     testStmt3(qsTest, stmt);
 }

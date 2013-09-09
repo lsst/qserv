@@ -45,6 +45,9 @@ public:
     boost::shared_ptr<ValueFactor> newFactor(antlr::RefAST a);
 
 private:
+    boost::shared_ptr<ValueFactor> _newColumnFactor(antlr::RefAST t);
+    boost::shared_ptr<ValueFactor> _newSetFctSpec(antlr::RefAST expr);
+
     boost::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
 };
 

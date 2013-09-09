@@ -184,9 +184,10 @@ def checkAddBoost(conf, lib):
     """Check for a boost lib with various suffixes and add it to a Configure
     if found. (e.g. 'boost_regex' or 'boost_thread')"""
     return (conf.CheckLib(lib + "-gcc34-mt", language="C++") 
-            or conf.CheckLib(lib + "-gcc41-mt", language="C++") \
-            or conf.CheckLib(lib, language="C++") \
-            or conf.CheckLib(lib + "-mt", language="C++"))
+            or conf.CheckLib(lib + "-gcc41-mt", language="C++") 
+            or conf.CheckLib(lib + "-mt", language="C++")
+            or conf.CheckLib(lib, language="C++") 
+            )
 
 def checkAddAntlr(conf):
     found = conf.CheckLibWithHeader("antlr", "antlr/AST.hpp", 

@@ -431,6 +431,8 @@ sort_spec :
 ;
 //}
 
+/// danielw: MySQL supports "ORDER BY ABS(iE1_SG);", need to support 
+/// value_exp_primary as sort_key if we ant to support this. 
 //{ Rule #518 <sort_key>
 sort_key : 
 	  column_ref {#sort_key = #([SORT_KEY,"SORT_KEY"], #sort_key);}

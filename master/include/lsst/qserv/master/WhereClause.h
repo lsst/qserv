@@ -110,6 +110,7 @@ private:
     void _incrementBfTerm();
     void _incrementBterm();
     bool _findFactor();
+    void _reset();
     bool _setupBfIter();
     void _updateValueExprIter();
 
