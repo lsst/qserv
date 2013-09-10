@@ -365,7 +365,7 @@ class QservDataLoader():
 	meta_table_name = meta_table_prefix + table
 
         sql = "USE qservMeta;"
-        sql += "CREATE TABLE {0} ({1}Id BIGINT NOT NULL PRIMARY KEY, x_chunkId INT, x_subChunkId INT);\n".format(meta_table_name, table.lower())
+        sql += "CREATE TABLE {0} ({1}Id BIGINT NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT);\n".format(meta_table_name, table.lower())
 
         # TODO : scan data on all workers here, with recovery on error
         insert_sql =  "INSERT INTO {0} SELECT {1}Id, chunkId, subChunkId FROM {2}.{3}_%s;".format(meta_table_name, table.lower(), self._dbName, table)
