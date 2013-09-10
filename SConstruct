@@ -129,8 +129,6 @@ def get_template_targets():
         '%\(QSERV_BASE_DIR\)s': config['qserv']['base_dir'],
         '%\(QSERV_SRC_DIR\)s': config['src_dir'],
         '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'],
-        '%\(QSERV_STRIPES\)s': config['qserv']['stripes'],
-        '%\(QSERV_SUBSTRIPES\)s': config['qserv']['substripes'],
         '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['base_dir'],'var/run'),
         '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
         '%\(QSERV_LUA_SHARE\)s': os.path.join(config['qserv']['base_dir'],"share","lua","5.1"),
