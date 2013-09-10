@@ -9,7 +9,6 @@ common/.sconf_temp/
 common/include/
 common/lib/
 common/python/
-master/dist/
 worker/dist/
 worker/bldNoXrd/
 common/config.log
@@ -19,8 +18,6 @@ common/proto/worker_pb2.py
 common/src/SqlConnection.hh.deps
 common/src/qserv_common.deps
 common/tests/SqlConnection_1
-master/bin/runTransactions
-master/bin/testCppParser
 master/python/lsst/qserv/master/_masterLib.so
 master/python/lsst/qserv/master/worker_pb2.py
 worker/tools/nulltool
