@@ -97,6 +97,7 @@ if( $opts{'status'} ) {
         sleep(2);
         # qms launch mysql queries at startup
         start_qms();
+	sleep(2);
         # xrootd will launch mysql queries at startup
 	start_xrootd();
 	start_qserv();
@@ -276,10 +277,7 @@ sub stop_qms {
 
 #stop the xrootd process
 sub stop_xrootd {
-    killpid("$install_dir/var/run/xrootd.pid");
-    if ($cluster_type ne "mono-node") {
-        killpid("$install_dir/var/run/cmsd.pid");
-    }
+    run_command("$init_dir/xrootd stop");
 }
 
 #stop the mysql server
@@ -346,7 +344,7 @@ sub start_mysqld {
 }
 
 sub start_qms {
-    my $startup_script = "$init_dir/qms start";
+        my $startup_script = "$init_dir/qms start";
         system($startup_script) == 0 or die "system $startup_script failed: $?";
 }
 
@@ -357,9 +355,8 @@ sub start_qserv {
 }
 
 sub start_xrootd {
-
-	system("$install_dir/start_xrootd");
-
+        my $startup_script = "$init_dir/xrootd start";
+        system($startup_script) == 0 or die "system $startup_script failed: $?";
 }
 
 sub set_stripes {
