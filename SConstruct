@@ -180,7 +180,9 @@ def get_template_targets():
             path = os.path.dirname(target_name)
             target_basename = os.path.basename(target_name)
             logger.debug("TARGET BASENAME : %s" % target_basename)
-            if os.path.basename(path) == "bin" or target_basename in [
+            if (os.path.basename(path) == "bin" or 
+                os.path.basename(path) == "init.d" or
+                target_basename in [
                 "start_xrootd",
                 "start_qserv",
                 "start_mysqlproxy",
@@ -188,8 +190,8 @@ def get_template_targets():
                 "qserv-core.sh",
                 "scisql.sh",
                 "qms.sh"
-
-                ]:
+                ]
+                ):
                 env.AddPostAction(target_node, Chmod("$TARGET", 0760))
             # all other files are configuration files
             else:

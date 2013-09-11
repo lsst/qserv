@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,20 +11,24 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# testAppInterface.py : A module with Python unittest code for testing
-# functionality available through the appInterface module.  Currently
-# only includes minimal fuzz testing and (unfinished) query replaying.
+""" This test tool :
+- loads multiple datasets in Qserv and MySQL,
+- launches queries against them
+- checks if results between both DB are the same
+"""
+
+__author__ = "Jacek Becla, Fabrice Jammes"
 
 import logging
 import optparse
@@ -42,9 +46,9 @@ from filecmp import dircmp
 
 class Benchmark():
 
-    def __init__(self, case_id, out_dirname_prefix, 
-                 config_dir=None, 
-                 log_file_prefix='qserv-tests',  
+    def __init__(self, case_id, out_dirname_prefix,
+                 config_dir=None,
+                 log_file_prefix='qserv-tests',
                  logging_level=logging.DEBUG ):
 
         self.logger = commons.console_logger(logging_level)
@@ -214,7 +218,7 @@ class Benchmark():
 
 	    if self._mode == 'qserv':
 	        self._dbName = "LSST"
-	    else:	
+	    else:
                 self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
 
             if load_data:
@@ -253,7 +257,7 @@ class Benchmark():
             for name in dcmp.diff_files:
                 self.logger.info("diff_file %s found in %s and %s" % (name, dcmp.left, dcmp.right))
             return False
-                       
+
 def parseOptions():
     op = optparse.OptionParser()
     op.add_option("-i", "--case-no", dest="case_no",

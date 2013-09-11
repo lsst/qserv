@@ -1,0 +1,104 @@
+#!/bin/bash
+#
+# qms		This shell script takes care of starting and stopping
+#		qms (Qserv Meta Service).
+#
+# description: qms is the Qserv Meta Service. \
+# It is used by Qserv master in order to get accurate informations \
+# about loaded dataset. \
+# Note that Qserv service won't start if QMS databse is empty.
+
+### BEGIN INIT INFO
+# Provides: qms
+# Short-Description: start and stop qms
+# Description: qms is the Qserv Meta Service. It is used by Qserv master
+#              in order to get accurate informations about loaded datasets.
+#              Note that Qserv service won't start if QMS databse is empty.
+### END INIT INFO
+
+SERVICE_NAME="Qserv Metadata Server (QMS)"
+
+QMS_BASE_DIR=%(QSERV_BASE_DIR)s/qserv/meta
+PYTHON=%(QSERV_BASE_DIR)s/bin/python
+QMS_START=${QMS_BASE_DIR}/bin/startQMS.py
+QMS_CONFIG=%(QSERV_BASE_DIR)s/etc/qms.cnf
+QMS_PIDFILE=%(QSERV_PID_DIR)s/qms.pid
+QMS_LOGFILE=%(QSERV_LOG_DIR)s/qms-startup.log
+
+start() {
+    echo
+    echo $"Starting ${SERVICE_NAME} :"
+    [ -x ${QMS_START} ] || exit 5
+    [ -f ${QMS_CONFIG} ] || exit 6
+    if [ -f ${QMS_PIDFILE} ]
+    then
+	echo $"${SERVICE_NAME} is already up (${QMS_PIDFILE} exists). Aborting start command."
+	exit 0
+    fi
+
+    ${PYTHON} ${QMS_START} -c ${QMS_CONFIG} &
+    PID=$!
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]
+    then
+	echo ${PID} > ${QMS_PIDFILE}
+	echo $"${SERVICE_NAME} started successfully (PID: ${PID})"
+    fi
+    return $RETVAL
+}
+
+stop() {
+    echo $"Stopping ${SERVICE_NAME} :"
+    if [ ! -f ${QMS_PIDFILE} ]
+    then
+	echo $"${SERVICE_NAME} is already down (${QMS_PIDFILE} doesn't exists). Aborting stop command."
+	exit 0
+    fi
+    PID=`cat ${QMS_PIDFILE}`
+    kill ${PID}
+    RETVAL=$?
+    if [ $RETVAL -eq 0 ]
+    then
+	rm -f ${QMS_PIDFILE}
+	echo $"${SERVICE_NAME} stopped successfully (PID: ${PID})"
+    fi
+    return $RETVAL
+}
+
+status() {
+ if [ -f ${QMS_PIDFILE} ]
+ then
+     PID=`cat ${QMS_PIDFILE}`
+     echo $"${SERVICE_NAME} is up, process : ${PID}"
+     exit 0
+ else
+     echo $"${SERVICE_NAME} is down"
+     exit 0
+ fi
+}
+
+# See how we were called.
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  status)
+	status $prog
+	;;
+  restart)
+	stop
+	start
+	;;
+  try-restart|condrestart)
+	if status $prog > /dev/null; then
+	    stop
+	    start
+	fi
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|try-restart}"
+	exit 2
+esac
