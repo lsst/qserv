@@ -1,0 +1,99 @@
+#!/bin/bash
+#
+# qserv-master  This shell script takes care of starting and stopping
+#	        Qserv master.
+#
+# description: qserv-master is the Qserv master service \
+# It receive SQL queries process it and send it to Qserv workers \
+# and then it returns the results it to mysql-proxy. \
+# Note that Qserv service won't start if QMS database is empty.
+
+### BEGIN INIT INFO
+# Provides: qserv-master
+# Short-Description: start and stop qserv master
+# Description: qserv-master is the Qserv master service \
+#              It receive SQL queries process it and send it to Qserv workers \
+#              and then it returns the results it to mysql-proxy. \
+#              Note that Qserv service won't start if QMS database is empty.
+### END INIT INFO
+
+. /etc/rc.d/init.d/functions
+
+SERVICE_NAME="Qserv master"
+prog="qserv-master"
+
+PYTHON=%(QSERV_BASE_DIR)s/bin/python
+
+START=%(QSERV_BASE_DIR)s/qserv/master/dist/startQserv.py
+CONFIG=%(QSERV_BASE_DIR)s/etc/local.qserv.cnf
+pidfile=%(QSERV_PID_DIR)s/${prog}.pid
+lockfile=%(QSERV_BASE_DIR)s/var/lock/subsys/${prog}
+LOGFILE=%(QSERV_LOG_DIR)s/${prog}-start.log
+
+export PATH=/%(QSERV_BASE_DIR)s/bin:$PATH
+export PYTHONPATH=%(QSERV_BASE_DIR)s/qserv/master/dist
+XRD_DIR=%(QSERV_BASE_DIR)s/xrootd
+PLATFORM=x86_64_linux_26_dbg
+export LD_LIBRARY_PATH=%(QSERV_BASE_DIR)s/lib:$XRD_DIR/lib/$PLATFORM
+export QSW_RESULTDIR=%(QSERV_BASE_DIR)s/qserv-run/tmp
+# Disabling buffering in python in order to enable "real-time" logging.
+export PYTHONUNBUFFERED=1
+
+qservd="${PYTHON} ${START} -c ${CONFIG} &> ${LOGFILE} &"
+
+start() {
+        local pid retval=2
+        echo -n $"Starting $prog: "
+        eval $qservd
+        pid=$!
+	sleep 1
+	checkpid ${pid} && retval=0
+	if [ ${retval} -eq 0 ]
+	then
+	    echo ${pid} > ${pidfile}
+	    touch ${lockfile}
+	    success $"$prog startup"
+	else
+	    failure $"$prog startup"
+	    # echo -n $"See startup logfile : ${LOGFILE}"
+	fi
+	return ${retval}
+}
+
+# When stopping httpd, a delay (of default 10 second) is required
+# before SIGKILLing the httpd parent; this gives enough time for the
+# httpd parent to SIGKILL any errant children.
+stop() {
+        echo -n $"Stopping $prog: "
+        killproc -p ${pidfile} $prog
+        RETVAL=$?
+        echo
+        [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
+}
+
+# See how we were called.
+case "$1" in
+  start)
+	start
+	;;
+  stop)
+	stop
+	;;
+  status)
+	status -p ${pidfile} $prog
+	RETVAL=$?
+	;;
+  restart)
+	stop
+	start
+	;;
+  try-restart|condrestart)
+	if status -p ${pidfile} $prog > /dev/null; then
+	    stop
+	    start
+	fi
+	;;
+  *)
+	echo $"Usage: $0 {start|stop|status|restart|try-restart}"
+	exit 2
+esac

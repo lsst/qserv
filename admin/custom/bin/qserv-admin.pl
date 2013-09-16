@@ -268,7 +268,7 @@ sub check_ps {
 
 #Stop the qserv process
 sub stop_qserv {
-    killpid("$install_dir/var/run/qserv.pid");
+    run_command("$init_dir/qserv-master stop");
 }
 
 sub stop_qms {
@@ -349,9 +349,8 @@ sub start_qms {
 }
 
 sub start_qserv {
-
-	system("$install_dir/start_qserv");
-
+        my $startup_script = "$init_dir/qserv-master start";
+        system($startup_script) == 0 or die "system $startup_script failed: $?";
 }
 
 sub start_xrootd {
