@@ -28,7 +28,7 @@ START=%(QSERV_BASE_DIR)s/qserv/master/dist/startQserv.py
 CONFIG=%(QSERV_BASE_DIR)s/etc/local.qserv.cnf
 pidfile=%(QSERV_PID_DIR)s/${prog}.pid
 lockfile=%(QSERV_BASE_DIR)s/var/lock/subsys/${prog}
-LOGFILE=%(QSERV_LOG_DIR)s/${prog}-start.log
+LOGFILE=%(QSERV_LOG_DIR)s/${prog}-startup.log
 
 export PATH=/%(QSERV_BASE_DIR)s/bin:$PATH
 export PYTHONPATH=%(QSERV_BASE_DIR)s/qserv/master/dist
@@ -39,12 +39,13 @@ export QSW_RESULTDIR=%(QSERV_BASE_DIR)s/qserv-run/tmp
 # Disabling buffering in python in order to enable "real-time" logging.
 export PYTHONUNBUFFERED=1
 
-qservd="${PYTHON} ${START} -c ${CONFIG} &> ${LOGFILE} &"
+cmd="${PYTHON} ${START} -c ${CONFIG} &> ${LOGFILE} &"
 
 start() {
+        echo
         local pid retval=2
         echo -n $"Starting $prog: "
-        eval $qservd
+        eval $cmd
         pid=$!
 	sleep 1
 	checkpid ${pid} && retval=0
@@ -55,15 +56,15 @@ start() {
 	    success $"$prog startup"
 	else
 	    failure $"$prog startup"
-	    # echo -n $"See startup logfile : ${LOGFILE}"
+	    echo
+	    echo -n $"See startup logfile : ${LOGFILE}"
 	fi
+	echo
 	return ${retval}
 }
 
-# When stopping httpd, a delay (of default 10 second) is required
-# before SIGKILLing the httpd parent; this gives enough time for the
-# httpd parent to SIGKILL any errant children.
 stop() {
+        echo
         echo -n $"Stopping $prog: "
         killproc -p ${pidfile} $prog
         RETVAL=$?
