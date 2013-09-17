@@ -17,7 +17,7 @@
 #              Note that Qserv service won't start if QMS database is empty.
 ### END INIT INFO
 
-. /etc/rc.d/init.d/functions
+. %(QSERV_BASE_DIR)s/etc/init.d/qserv-functions
 
 SERVICE_NAME="Qserv master"
 prog="qserv-master"
@@ -41,51 +41,20 @@ export PYTHONUNBUFFERED=1
 
 cmd="${PYTHON} ${START} -c ${CONFIG} &> ${LOGFILE} &"
 
-start() {
-        echo
-        local pid retval=2
-        echo -n $"Starting $prog: "
-        eval $cmd
-        pid=$!
-	sleep 1
-	checkpid ${pid} && retval=0
-	if [ ${retval} -eq 0 ]
-	then
-	    echo ${pid} > ${pidfile}
-	    touch ${lockfile}
-	    success $"$prog startup"
-	else
-	    failure $"$prog startup"
-	    echo
-	    echo -n $"See startup logfile : ${LOGFILE}"
-	fi
-	echo
-	return ${retval}
-}
-
-stop() {
-        echo
-        echo -n $"Stopping $prog: "
-        killproc -p ${pidfile} $prog
-        RETVAL=$?
-        echo
-        [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
-}
-
 # See how we were called.
 case "$1" in
   start)
-	start
+	start -p $pidfile -l $lockfile $prog "${cmd}"
 	;;
   stop)
-	stop
+	stop -p $pidfile -l $lockfile $prog
 	;;
   status)
 	status -p ${pidfile} $prog
 	RETVAL=$?
 	;;
   restart)
-	stop
+	stop -p $pidfile -f $lockfile $prog
 	start
 	;;
   try-restart|condrestart)
