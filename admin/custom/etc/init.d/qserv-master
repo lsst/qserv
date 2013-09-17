@@ -28,7 +28,7 @@ START=%(QSERV_BASE_DIR)s/qserv/master/dist/startQserv.py
 CONFIG=%(QSERV_BASE_DIR)s/etc/local.qserv.cnf
 pidfile=%(QSERV_PID_DIR)s/${prog}.pid
 lockfile=%(QSERV_BASE_DIR)s/var/lock/subsys/${prog}
-LOGFILE=%(QSERV_LOG_DIR)s/${prog}-startup.log
+LOGFILE=%(QSERV_LOG_DIR)s/${prog}.log
 
 export PATH=/%(QSERV_BASE_DIR)s/bin:$PATH
 export PYTHONPATH=%(QSERV_BASE_DIR)s/qserv/master/dist

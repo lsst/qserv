@@ -268,22 +268,22 @@ sub check_ps {
 
 #Stop the qserv process
 sub stop_qserv {
-    run_command("$init_dir/qserv-master stop");
+    system("$init_dir/qserv-master stop");
 }
 
 sub stop_qms {
-    run_command("$init_dir/qms stop");
+    system("$init_dir/qms stop");
 }
 
 #stop the xrootd process
 sub stop_xrootd {
-    run_command("$init_dir/xrootd stop");
+    system("$init_dir/xrootd stop");
 }
 
 #stop the mysql server
 sub stop_mysqld {
   my( $dbpass ) = $opts{'dbpass'};
-  run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass shutdown");
+  system("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass shutdown");
 }
 
 #stop the mysql proxy
