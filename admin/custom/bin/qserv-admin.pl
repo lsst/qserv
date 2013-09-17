@@ -79,15 +79,10 @@ if( $opts{'status'} ) {
 
 } elsif( $opts{'stop'} ) {
 
-	print "Stopping mysql-proxy\n";
 	stop_proxy();
-        print "Stopping QMS\n";
         stop_qms();
-	print "Stopping xrootd\n";
 	stop_xrootd();
-	print "Stopping mysqld\n";
 	stop_mysqld();
-	print "Stopping qserv\n";
 	stop_qserv();
 
 } elsif( $opts{'start'} ) {
@@ -282,8 +277,7 @@ sub stop_xrootd {
 
 #stop the mysql server
 sub stop_mysqld {
-  my( $dbpass ) = $opts{'dbpass'};
-  system("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass shutdown");
+    system("$init_dir/mysqld stop");
 }
 
 #stop the mysql proxy
@@ -338,9 +332,8 @@ sub start_proxy {
 }
 
 sub start_mysqld {
-
-	system("$install_dir/bin/mysqld_safe --defaults-file=$install_dir/etc/my.cnf &");
-
+	my $startup_script = "$init_dir/mysqld start";
+        system($startup_script) == 0 or die "system $startup_script failed: $?";
 }
 
 sub start_qms {
