@@ -19,7 +19,6 @@
 
 . %(QSERV_BASE_DIR)s/etc/init.d/qserv-functions
 
-SERVICE_NAME="Qserv master"
 prog="qserv-master"
 
 PYTHON=%(QSERV_BASE_DIR)s/bin/python

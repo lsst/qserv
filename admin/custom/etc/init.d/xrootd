@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # xrootd/cmsd	This shell script takes care of starting and stopping
 #		Qserv xrootd/cmsd instances.
@@ -16,23 +16,13 @@
 #              Note that Qserv service won't start if QMS databse is empty.
 ### END INIT INFO
 
+. %(QSERV_BASE_DIR)s/etc/init.d/qserv-functions
 
 XROOTD_CONFIG=%(QSERV_BASE_DIR)s/etc/lsp.cf
 XROOTD_INSTANCE_NAME="worker"
 
 PID_DIR=%(QSERV_PID_DIR)s/${XROOTD_INSTANCE_NAME}
-LOG_DIR=%(QSERV_LOG_DIR)s/
-
-SERVICES=(xrootd cmsd)
-
-declare -A SERVICE_NAMES
-SERVICE_NAMES=(["xrootd"]="Qserv xrootd" ["cmsd"]="Qserv cmsd")
-declare -A PIDFILES
-PIDFILES=(["xrootd"]=${PID_DIR}/xrootd.pid  ["cmsd"]=${PID_DIR}/cmsd.pid)
-declare -A BINARIES
-BINARIES=(["xrootd"]=%(QSERV_BASE_DIR)s/bin/xrootd  ["cmsd"]=%(QSERV_BASE_DIR)s/bin/cmsd)
-declare -A LOGFILES
-LOGFILES=(["xrootd"]=${LOG_DIR}/xrootd.log  ["cmsd"]=${LOG_DIR}/cmsd.log)
+LOG_DIR=%(QSERV_LOG_DIR)s
 
 
 export QSW_XRDQUERYPATH="/q"
@@ -45,98 +35,86 @@ export LD_LIBRARY_PATH="%(XROOTD_RUN_DIR)s;%(QSERV_BASE_DIR)s/lib"
 
 
 start_service() {
-    SERVICE=${SERVICE_NAMES[$1]}
-    PIDFILE=${PIDFILES[$1]}
-    BINARY=${BINARIES[$1]}
-    LOGFILE=${LOGFILES[$1]}
-    echo
-    echo $"Starting ${SERVICE} :"
-    [ -x ${XROOTD_START} ] || exit 5
-    [ -f ${XROOTD_CONFIG} ] || exit 6
 
-    if [ -f ${PIDFILE} ]
-    then
-	echo $"${SERVICE} is already up (${PIDFILE} exists). Aborting start command."
-	exit 0
-    fi
+        local prog
 
-    ${BINARY} -c ${XROOTD_CONFIG} -l ${LOGFILE} -n ${XROOTD_INSTANCE_NAME} &
-    PID=$!
-    RETVAL=$?
-    if [ $RETVAL -eq 0 ]
-    then
-	echo $"${SERVICE} started successfully (PID: ${PID})"
-    fi
-    return $RETVAL
+	prog=${1##*/}
+
+	pidfile=${PID_DIR}/${prog}.pid
+	lockfile=%(QSERV_BASE_DIR)s/var/lock/subsys/${prog}
+	BINARY=%(QSERV_BASE_DIR)s/bin/${prog}
+	LOGFILE=${LOG_DIR}/${prog}.log
+	[ -x ${BINARY} ] || exit 5
+	[ -f ${XROOTD_CONFIG} ] || exit 6
+
+	xrootd_cmd="\"${BINARY} -c ${XROOTD_CONFIG} -l ${LOGFILE} -n ${XROOTD_INSTANCE_NAME} &\""
+	# here pid files will be created twice time : one by xrootd/cmsd and one by start()
+	# but it works
+	eval start -p ${pidfile} -l ${lockfile} ${prog} ${xrootd_cmd}
+	retval=$?
+	return $retval
 }
 
 stop_service() {
-    SERVICE=${SERVICE_NAMES[$1]}
-    PIDFILE=${PIDFILES[$1]}
-    echo $"Stopping ${SERVICE} :"
-    if [ ! -f ${PIDFILE} ]
-    then
-	echo $"${SERVICE} is already down (${PIDFILE} doesn't exists). Aborting stop command."
-	exit 0
-    fi
-    PID=`cat ${PIDFILE}`
-    kill ${PID}
-    RETVAL=$?
-    if [ $RETVAL -eq 0 ]
-    then
-	rm -f ${PIDFILE}
-	echo $"${SERVICE} stopped successfully (PID: ${PID})"
-    fi
-    return $RETVAL
+
+        local prog
+
+        prog=${1##*/}
+
+	pidfile=${PID_DIR}/${prog}.pid
+	lockfile=%(QSERV_BASE_DIR)s/var/lock/subsys/${prog}
+
+	eval stop -p $pidfile -l $lockfile $prog
+	retval=$?
+	return $retval
 }
 
-status() {
-    for i in "${SERVICES[@]}"
-    do
-	SERVICE=${SERVICE_NAMES[$i]}
-	PIDFILE=${PIDFILES[$i]}
-	if [ -f ${PIDFILE} ]
-	then
-	    PID=`cat ${PIDFILE}`
-	    echo $"${SERVICE} is up, process : ${PID}"
-	else
-	    echo $"${SERVICE} is down"
-	fi
-    done
-    exit 0
+start_all() {
+        local xrootd_started cmsd_started=0 retval=1
+        start_service "xrootd"
+	xrootd_started=$?
+        %(COMMENT_MONO_NODE)sstart_service "cmsd"
+	%(COMMENT_MONO_NODE)scmsd_started=$?
+	[[ $xrootd_started && $cmsd_started ]] && retval=0
+	return $retval
 }
 
-start() {
-    start_service "xrootd"
-    # cmsd won't start if no manager is specified
-    %(COMMENT_MONO_NODE)s start_service "cmsd"
+stop_all() {
+        local xrootd_stopped cmsd_stopped=0 retval=1
+        stop_service "xrootd"
+	xrootd_stopped=$?
+	%(COMMENT_MONO_NODE)sstop_service "cmsd"
+	%(COMMENT_MONO_NODE)scmsd_stopped=$?
+	[[ $xrootd_stopped && $cmsd_stopped ]] && retval=0
+	return $retval
 }
 
-stop() {
-    stop_service "xrootd"
-    # cmsd won't start if no manager is specified
-    %(COMMENT_MONO_NODE)s stop_service "cmsd"
+status_all () {
+        RETVAL=eval "status \"xrootd\" && status \"cmsd\""
+	return $RETVAL
 }
+
+
 
 # See how we were called.
 case "$1" in
   start)
-	start
+	start_all
 	;;
   stop)
-	stop
+	stop_all
 	;;
   status)
-	status $prog
+	status_all
 	;;
   restart)
-	stop
-	start
+	stop_all
+	start_all
 	;;
   try-restart|condrestart)
-	if status $prog > /dev/null; then
-	    stop
-	    start
+	if status_all > /dev/null; then
+	    stop_all
+	    start_all
 	fi
 	;;
   *)

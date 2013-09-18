@@ -10,7 +10,7 @@ start() {
 
 	# Test syntax.
 	if [ "$#" = 0 ] ; then
-		echo $"Usage: start [-p pidfile] [-l lockfile] {program}"
+		echo $"Usage: start [-p pidfile] [-l lockfile] {program} {cmd}"
 		return 1
 	fi
 	if [ "$1" = "-p" ]; then
@@ -52,9 +52,8 @@ start() {
 			action $"Starting $prog: " /bin/true
 		else
 			action $"Starting $prog: " /bin/false
-	    		echo -n $"See startup logfile : ${LOGFILE}"
+			echo $"See startup logfile : ${LOGFILE}"
 		fi
-		echo
 	fi
 	return ${retval}
 }

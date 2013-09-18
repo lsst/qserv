@@ -52,7 +52,7 @@ user=%(QSERV_UNIX_USER)s
 start(){
     [ -x $exec ] || exit 5
     # check to see if it's already running
-    RESPONSE=`/usr/bin/mysqladmin --socket="$socketfile" --user=UNKNOWN_MYSQL_USER ping 2>&1`
+    RESPONSE=`%(QSERV_BASE_DIR)s/bin/mysqladmin --socket="$socketfile" --user=UNKNOWN_MYSQL_USER ping 2>&1`
     if [ $? = 0 ]; then
 	# already running, do nothing
 	action $"Starting $prog: " /bin/true
