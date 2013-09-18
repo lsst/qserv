@@ -89,10 +89,8 @@ if( $opts{'status'} ) {
 
 	start_proxy();
 	start_mysqld();
-        sleep(2);
         # qms launch mysql queries at startup
         start_qms();
-	sleep(2);
         # xrootd will launch mysql queries at startup
 	start_xrootd();
 	start_qserv();
@@ -263,26 +261,26 @@ sub check_ps {
 
 #Stop the qserv process
 sub stop_qserv {
-    system("$init_dir/qserv-master stop");
+    initd("qserv-master", "stop")
 }
 
 sub stop_qms {
-    system("$init_dir/qms stop");
+    initd("qms", "stop")
 }
 
 #stop the xrootd process
 sub stop_xrootd {
-    system("$init_dir/xrootd stop");
+    initd("xrootd", "stop")
 }
 
 #stop the mysql server
 sub stop_mysqld {
-    system("$init_dir/mysqld stop");
+    initd("mysqld", "stop")
 }
 
 #stop the mysql proxy
 sub stop_proxy {
-    killpid("$install_dir/var/run/mysql-proxy.pid");
+    initd("mysql-proxy", "stop")
 }
 
 # Kill a process based on a PID file
@@ -325,30 +323,30 @@ sub get_pid {
 	return $pid;
 }
 
+sub initd {
+        my ( $prog, $arg) = @_;
+        my $startup_script = "$init_dir/$prog $arg";
+	system($startup_script) == 0 or die "system $startup_script failed: $?";
+}
+
 sub start_proxy {
-
-	system("$install_dir/start_mysqlproxy");
-
+        initd("mysql-proxy", "start")
 }
 
 sub start_mysqld {
-	my $startup_script = "$init_dir/mysqld start";
-        system($startup_script) == 0 or die "system $startup_script failed: $?";
+        initd("mysqld", "start")
 }
 
 sub start_qms {
-        my $startup_script = "$init_dir/qms start";
-        system($startup_script) == 0 or die "system $startup_script failed: $?";
+        initd("qms", "start")
 }
 
 sub start_qserv {
-        my $startup_script = "$init_dir/qserv-master start";
-        system($startup_script) == 0 or die "system $startup_script failed: $?";
+        initd("qserv-master", "start")
 }
 
 sub start_xrootd {
-        my $startup_script = "$init_dir/xrootd start";
-        system($startup_script) == 0 or die "system $startup_script failed: $?";
+        initd("xrootd", "start")
 }
 
 sub set_stripes {

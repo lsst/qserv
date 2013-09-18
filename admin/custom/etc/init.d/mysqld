@@ -55,7 +55,7 @@ start(){
     RESPONSE=`%(QSERV_BASE_DIR)s/bin/mysqladmin --socket="$socketfile" --user=UNKNOWN_MYSQL_USER ping 2>&1`
     if [ $? = 0 ]; then
 	# already running, do nothing
-	action $"Starting $prog: " /bin/true
+	action $"Starting $prog: (already up)" /bin/true
 	ret=0
     elif echo "$RESPONSE" | grep -q "Access denied for user"
     then
@@ -132,7 +132,7 @@ start(){
 stop(){
 	if [ ! -f "$mypidfile" ]; then
 	    # not running; per LSB standards this is "ok"
-	    action $"Stopping $prog: " /bin/true
+	    action $"Stopping $prog: (already down)" /bin/true
 	    return 0
 	fi
 	MYSQLPID=`cat "$mypidfile"`

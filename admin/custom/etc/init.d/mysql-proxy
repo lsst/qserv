@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # mysql-proxy This script starts and stops the mysql-proxy daemon
 #
@@ -7,7 +7,8 @@
 # description: mysql-proxy is a proxy daemon for mysql
 
 # Source function library.
-. /etc/rc.d/init.d/functions
+
+. %(QSERV_BASE_DIR)s/etc/init.d/qserv-functions
 
 prog="mysql-proxy"
 
@@ -21,10 +22,10 @@ fi
 
 # Set default mysql-proxy configuration.
 PROXY_OPTIONS="--daemon"
-PROXY_PID=%(QSERV_BASE_DIR)s/var/run/mysql-proxy.pid
-PROXY_USER="mysql-proxy"
+pidfile=%(QSERV_BASE_DIR)s/var/run/mysql-proxy.pid
 PROXY_CONFIG=%(QSERV_BASE_DIR)s/etc/my-proxy.cnf
-PROXY_LOCK_FILE=%(QSERV_BASE_DIR)s/var/lock/subsys/$prog
+lockfile=%(QSERV_BASE_DIR)s/var/lock/subsys/$prog
+stoptimeout=1
 
 LUA_DEBUG_LEVEL=0
 LUA_LOG_FILE=%(QSERV_LOG_DIR)s/mysql-proxy-lua.log
@@ -37,62 +38,50 @@ if [ -f %(QSERV_BASE_DIR)s/etc/sysconfig/mysql-proxy ]; then
     . %(QSERV_BASE_DIR)s/etc/sysconfig/mysql-proxy
 fi
 
-RETVAL=0
+# WARNING : can only use the --user switch if running as root
+proxy_user_option=""
+if [ "$USER" = "root" ]; then
+    proxy_user=%(QSERV_UNIX_USER)s
+    proxy_user_option="--user=$proxy_user"
+fi
 
-start() {
-    local retval=2
-    # check to see if it's already running
-    if [ -f ${PROXY_PID} ]; then
-	action $"Starting $prog: (already up)" /bin/true
-	retval=0
-    else
-	echo -n $"Starting $prog: "
-    # daemon DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_MASTER_PORT} ${BINARY} $PROXY_OPTIONS --defaults-file=${PROXY_CONFIG} &> ${LUA_LOG_FILE} &
-	daemon DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_MASTER_PORT} ${BINARY} $PROXY_OPTIONS --pid-file=$PROXY_PID --defaults-file=${PROXY_CONFIG}
-	retval=$?
-	echo
-	if [ $retval -eq 0 ]; then
-            touch $PROXY_LOCK_FILE
-	fi
-    fi
+cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_MASTER_PORT} ${BINARY} $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option --defaults-file=${PROXY_CONFIG} &> ${LUA_LOG_FILE}"
+
+
+start_cmd() {
+    start -p $pidfile -l $lockfile $prog "${cmd}"
 }
 
-stop() {
-    echo -n $"Stopping $prog: "
-    killproc -p $PROXY_PID -d 3 $prog
-    RETVAL=$?
-    echo
-    if [ $RETVAL -eq 0 ]; then
-        rm -f $PROXY_LOCK_FILE
-        rm -f $PROXY_PID
-    fi
+stop_cmd() {
+    stop -p $pidfile -l $lockfile -t ${stoptimeout} $prog
 }
+
 # See how we were called.
 case "$1" in
     start)
-        start
+        start_cmd
         ;;
     stop)
-        stop
+        stop_cmd
         ;;
     restart)
-        stop
-        start
+        stop_cmd
+        start_cmd
         ;;
     condrestart|try-restart)
-        if status -p $PROXY_PID $prog >&/dev/null; then
-            stop
-            start
+        if status -p $pidfile $prog >&/dev/null; then
+            stop_cmd
+            start_cmd
         fi
         ;;
     status)
-        status -p $PROXY_PID $prog
+        status -p $pidfile $prog
         ;;
     *)
         echo "Usage: $0 {start|stop|restart|reload|status|condrestart|try-restart}"
-        RETVAL=1
+        exit 2
         ;;
 esac
 
-exit $RETVAL
+exit $?
 

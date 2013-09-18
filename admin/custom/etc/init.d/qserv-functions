@@ -6,11 +6,11 @@
 . /etc/rc.d/init.d/functions
 
 start() {
-	local prog lockfile= pidfile= pid retval=2 cmd=
+	local prog lockfile= pidfile= pid retval=2 cmd= timeout=0
 
 	# Test syntax.
 	if [ "$#" = 0 ] ; then
-		echo $"Usage: start [-p pidfile] [-l lockfile] {program} {cmd}"
+		echo $"Usage: start [-p pidfile] [-l lockfile] [-t timeout] {program} {cmd}"
 		return 1
 	fi
 	if [ "$1" = "-p" ]; then
@@ -19,6 +19,10 @@ start() {
 	fi
 	if [ "$1" = "-l" ]; then
 		lockfile=$2
+		shift 2
+	fi
+	if [ "$1" = "-t" ]; then
+		timeout=$2
 		shift 2
 	fi
 	prog=${1##*/}
@@ -32,20 +36,21 @@ start() {
 		pidfile=/var/run/${prog}.pid
 	fi
 
-	if [ -z "${timeout}" ]; then
-		timeout=1
-	fi
-
  	# check to see if it's already running
 	if [ -f ${pidfile} ]; then
 		action $"Starting $prog: (already up)" /bin/true
 		retval=0
 	else
-        	eval $cmd
-		# TODO if no delay is needed, use daemon ?
-        	pid=$!
-		sleep ${timeout}
-		checkpid ${pid} && retval=0
+		if [ ${timeout} == 0 ]; then
+		     	daemon ${cmd}
+			retval=$?
+		else
+			eval ${cmd}
+			# TODO if no delay is needed, use daemon ?
+        		pid=$!
+			sleep ${timeout}
+			checkpid ${pid} && retval=0
+		fi
 		if [ ${retval} -eq 0 ]
 		then
 			echo ${pid} > ${pidfile}
@@ -61,11 +66,11 @@ start() {
 
 
 stop() {
-       local prog lockfile= pidfile=
+       local prog lockfile= pidfile= timeout=0
 
 	# Test syntax.
 	if [ "$#" = 0 ] ; then
-		echo $"Usage: stop [-p pidfile] [-l lockfile] {program}"
+		echo $"Usage: stop [-p pidfile] [-l lockfile] [-t timeout] {program}"
 		return 1
 	fi
 	if [ "$1" = "-p" ]; then
@@ -74,6 +79,10 @@ stop() {
 	fi
 	if [ "$1" = "-l" ]; then
 		lockfile=$2
+		shift 2
+	fi
+	if [ "$1" = "-t" ]; then
+		timeout=$2
 		shift 2
 	fi
 	prog=${1##*/}
@@ -92,7 +101,7 @@ stop() {
 	    return 0
 	fi
 	echo -n $"Stopping $prog: "
-	killproc -p ${pidfile} $prog
+	killproc -p ${pidfile} -d ${timeout} $prog
 	RETVAL=$?
 	echo
         [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
