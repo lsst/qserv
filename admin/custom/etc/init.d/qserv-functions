@@ -42,6 +42,7 @@ start() {
 		retval=0
 	else
         	eval $cmd
+		# TODO if no delay is needed, use daemon ?
         	pid=$!
 		sleep ${timeout}
 		checkpid ${pid} && retval=0

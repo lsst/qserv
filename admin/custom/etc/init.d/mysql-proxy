@@ -1,0 +1,98 @@
+#!/bin/bash
+#
+# mysql-proxy This script starts and stops the mysql-proxy daemon
+#
+# chkconfig: - 78 30
+# processname: mysql-proxy
+# description: mysql-proxy is a proxy daemon for mysql
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+prog="mysql-proxy"
+
+# Source networking configuration.
+if [ -f /etc/sysconfig/network ]; then
+    . /etc/sysconfig/network
+fi
+
+# Check that networking is up.
+[ ${NETWORKING} = "no" ] && exit 0
+
+# Set default mysql-proxy configuration.
+PROXY_OPTIONS="--daemon"
+PROXY_PID=%(QSERV_BASE_DIR)s/var/run/mysql-proxy.pid
+PROXY_USER="mysql-proxy"
+PROXY_CONFIG=%(QSERV_BASE_DIR)s/etc/my-proxy.cnf
+PROXY_LOCK_FILE=%(QSERV_BASE_DIR)s/var/lock/subsys/$prog
+
+LUA_DEBUG_LEVEL=0
+LUA_LOG_FILE=%(QSERV_LOG_DIR)s/mysql-proxy-lua.log
+QSERV_MASTER_PORT=%(QSERV_RPC_PORT)s
+
+BINARY=%(QSERV_BASE_DIR)s/bin/$prog
+
+# Source mysql-proxy configuration.
+if [ -f %(QSERV_BASE_DIR)s/etc/sysconfig/mysql-proxy ]; then
+    . %(QSERV_BASE_DIR)s/etc/sysconfig/mysql-proxy
+fi
+
+RETVAL=0
+
+start() {
+    local retval=2
+    # check to see if it's already running
+    if [ -f ${PROXY_PID} ]; then
+	action $"Starting $prog: (already up)" /bin/true
+	retval=0
+    else
+	echo -n $"Starting $prog: "
+    # daemon DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_MASTER_PORT} ${BINARY} $PROXY_OPTIONS --defaults-file=${PROXY_CONFIG} &> ${LUA_LOG_FILE} &
+	daemon DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_MASTER_PORT} ${BINARY} $PROXY_OPTIONS --pid-file=$PROXY_PID --defaults-file=${PROXY_CONFIG}
+	retval=$?
+	echo
+	if [ $retval -eq 0 ]; then
+            touch $PROXY_LOCK_FILE
+	fi
+    fi
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc -p $PROXY_PID -d 3 $prog
+    RETVAL=$?
+    echo
+    if [ $RETVAL -eq 0 ]; then
+        rm -f $PROXY_LOCK_FILE
+        rm -f $PROXY_PID
+    fi
+}
+# See how we were called.
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    condrestart|try-restart)
+        if status -p $PROXY_PID $prog >&/dev/null; then
+            stop
+            start
+        fi
+        ;;
+    status)
+        status -p $PROXY_PID $prog
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|reload|status|condrestart|try-restart}"
+        RETVAL=1
+        ;;
+esac
+
+exit $RETVAL
+
