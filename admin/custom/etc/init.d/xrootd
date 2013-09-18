@@ -90,8 +90,15 @@ stop_all() {
 }
 
 status_all () {
-        RETVAL=eval "status \"xrootd\" && status \"cmsd\""
-	return $RETVAL
+        local xrootd_status cmsd_status=0 retval=1
+	pidfile=${PID_DIR}/"xrootd".pid
+        status -p $pidfile "xrootd"
+	xrootd_status=$?
+	%(COMMENT_MONO_NODE)spidfile=${PID_DIR}/"cmsd".pid
+	%(COMMENT_MONO_NODE)sstatus -p $pidfile "cmsd"
+	%(COMMENT_MONO_NODE)scmsd_status=$?
+	[[ $xrootd_status && $cmsd_status ]] && retval=0
+	return $retval
 }
 
 
