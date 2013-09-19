@@ -2,7 +2,6 @@
 #
 # xrootd/cmsd	This shell script takes care of starting and stopping
 #		Qserv xrootd/cmsd instances.
-#
 # description: xrootd is the filesystem which allow Qserv master to \
 # communicate with Qserv workers.\
 # It is composed of two services : xrootd and cmsd
@@ -39,6 +38,8 @@ start_service() {
         local prog
 
 	prog=${1##*/}
+
+        mkdir -p ${PID_DIR}
 
 	pidfile=${PID_DIR}/${prog}.pid
 	lockfile=%(QSERV_BASE_DIR)s/var/lock/subsys/${prog}
