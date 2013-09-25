@@ -2,10 +2,13 @@ import glob, os, re, sys
 import errno
 import shutil
 
+env = Environment(tools=['textfile', 'pymod'])
 srcDir = "python/lsst/qserv/meta"
 destDir = "dist"
 pList = ["lsst", "qserv", "meta"]
 
+env['python_path_prefix']=''
+SConscript('SConscript', exports = 'env')
 if not os.path.exists(destDir):
     os.mkdir(destDir)
 for p in pList:

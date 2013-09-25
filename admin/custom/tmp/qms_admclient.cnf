@@ -1,0 +1,7 @@
+# meta/bin/metaClientTool.py -a %(QSERV_BASE_DIR)s/etc/qmsadm.cnf
+
+[qmsConn]
+host: %(QMS_HOST)s
+port: %(QMS_PORT)s
+user: %(QMS_USER)s
+pass: %(QMS_PASS)s

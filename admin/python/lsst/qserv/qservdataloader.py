@@ -28,9 +28,85 @@ class QservDataLoader():
         self._sqlInterface = dict()
         self.chunk_id_list = None
 
+    def createMetaDatabase(self):
+
+        meta_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "meta", "bin", "metaClientTool.py")
+
+        install_meta_cmd = [
+            self.config['bin']['python'],
+            meta_scriptname,
+            'installMeta'
+            ]
+        out = commons.run_command(install_meta_cmd)
+
+        create_meta_cmd = [
+            self.config['bin']['python'],
+            meta_scriptname,
+            'createDb',
+            self._dbName,
+            'partitioning=on',
+            'partitioningStrategy=sphBox',
+            'defaultOverlap_fuzziness=0',
+            'defaultOverlap_nearNeighbor=0.025',
+            'nStripes=%s' % self.dataConfig['num-stripes'],
+            'nSubStripes=%s' % self.dataConfig['num-substripes']
+            ]
+        # partitioning=on partitioningStrategy=sphBox
+        # defaultOverlap_fuzziness=0 defaultOverlap_nearNeighbor=0.025
+        # nStripes=85 nSubStripes=12
+        out = commons.run_command(create_meta_cmd)
+        self.logger.info("Database %s created in QMS : %s" %
+        (self._dbName,out))
+
+
+
+    def createMetaTable(self, table_name, schema_filename):
+
+        self.logger.debug("Generating meta for table : %s" % table_name)
+        meta_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "meta", "bin", "metaClientTool.py")
+
+        create_meta_cmd = [
+            self.config['bin']['python'],
+            meta_scriptname,
+            'createTable',
+            self._dbName,
+#          '@%s' %  self.dataConfig[table_name]['meta-file'],
+
+            'tableName=%s' % table_name,
+            'schemaFile=%s' % schema_filename
+            ]
+
+        if table_name in self.dataConfig['partitionned-tables']:
+            partition_opts = [
+                'partitioning=on',
+                'phiColName=%s' % self.dataConfig[table_name]['phiColName'],
+                'thetaColName=%s' %
+                self.dataConfig[table_name]['thetaColName'],
+                'objIdColName=%s' %
+                self.dataConfig[table_name]['objIdColName'],
+                'overlap=%i' % self.dataConfig[table_name]['overlap'],
+                'logicalPart=1',
+                'physChunking=0x0021'
+                ]
+        else:
+            partition_opts = [
+                'partitioning=off'
+                ]
+
+        create_meta_cmd.extend(partition_opts)
+
+        # python ./meta/bin/metaClientTool.py createTable LSST
+        # tableName=RunDeepSource partitioning=on
+        # schemaFile=../testdata/case03/data/RunDeepSource.sql
+        # overlap=0.025 phiColName=coord_ra thetaColName=coord_decl
+        # logicalPart=1 physChunking=0x0021
+        out = commons.run_command(create_meta_cmd)
+        self.logger.info("Table %s created in QMS : %s" % (table_name,out))
+
+
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
         self.logger.info("QservDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
-        
+ 
         if table_name in self.dataConfig['partitionned-tables']:
             self.logger.info("Loading schema of partitionned table %s" % table_name)
             self.createPartitionedTable(table_name, schema_filename)
@@ -41,6 +117,7 @@ class QservDataLoader():
         else:
             self.logger.info("Creating and loading non-partitionned table %s" % table_name)
             self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
+        self.createMetaTable(table_name, schema_filename)
 
     def loadPartitionedTable(self, table, data_filename):
         ''' Duplicate, partition and load Qserv data like Source and Object
@@ -97,6 +174,7 @@ class QservDataLoader():
         cmd_connection_params =   self.sock_connection_params  
         cmd_connection_params['database'] = self._dbName
         self._sqlInterface['cmd'] = cmd.Cmd(**cmd_connection_params)
+        self.createMetaDatabase()
 
     def workerGetNonEmptyChunkIds(self):
         non_empty_chunk_list=[]
@@ -144,7 +222,7 @@ class QservDataLoader():
         self.logger.info("Making next placeholders %s" % xrootd_file_names )
         for chunk_id in xrootd_file_names:
             xrd_file = os.path.join(xrd_query_dir,str(chunk_id))
-            open(xrd_file, 'w').close() 
+            open(xrd_file, 'w').close()
 
         if os.path.exists(xrd_result_dir):
             self.logger.info("Emptying existing xrootd result dir : %s" % xrd_result_dir)
@@ -287,7 +365,7 @@ class QservDataLoader():
 	meta_table_name = meta_table_prefix + table
 
         sql = "USE qservMeta;"
-        sql += "CREATE TABLE {0} ({1}Id BIGINT NOT NULL PRIMARY KEY, x_chunkId INT, x_subChunkId INT);\n".format(meta_table_name, table.lower())
+        sql += "CREATE TABLE {0} ({1}Id BIGINT NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT);\n".format(meta_table_name, table.lower())
 
         # TODO : scan data on all workers here, with recovery on error
         insert_sql =  "INSERT INTO {0} SELECT {1}Id, chunkId, subChunkId FROM {2}.{3}_%s;".format(meta_table_name, table.lower(), self._dbName, table)
@@ -301,7 +379,7 @@ class QservDataLoader():
     def convertSchemaFile(self, tableName, schemaFile, newSchemaFile):
     
         self.logger.debug("Converting schema file for table : %s" % tableName)
-        mySchema = schema.SQLSchema(tableName, schemaFile)    
+        mySchema = schema.SQLSchema(tableName, schemaFile)
         mySchema.read()
 
         # TODO schema should be correct before
@@ -344,7 +422,7 @@ class QservDataLoader():
                 sql = 'ALTER TABLE %s ADD %s int(11) NOT NULL' % (table,field_name)
                 self._sqlInterface['sock']. execute(sql)
         # TODO add index creation w.r.t. dataConfig
-                
+ 
     def createPartitionedTable(self, table, schemaFile):
         self.logger.info("Creating partitionned table %s with schema %s" % (table, schemaFile))
         if table in self.dataConfig['partitionned-tables']:     

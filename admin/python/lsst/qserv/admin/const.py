@@ -38,6 +38,12 @@ stripes = 10
 # geometry will be then copied from this source directory
 # geometry_src_dir=/home/user/geom
 
+[qms]
+db = QMS
+user = qmsuser
+pass = changeme
+port = 7082
+
 [xrootd]
 cmsd_manager_port=2131
 xrootd_port=1094
@@ -86,7 +92,7 @@ mysql_proxy_url=%(repository)s/mysql-proxy-0.8.2.tar.gz
 protobuf_url=%(repository)s/protobuf-2.4.1.tar.gz
 scisql_url=https://launchpad.net/scisql/trunk/0.3.2/+download/scisql-0.3.2.tar.bz2
 virtualenv_url=%(repository)s/virtualenv-1.7.tar.gz
-xrootd_url=%(repository)s/xrootd-qsPatch2.tar.bz2
+xrootd_url=%(repository)s/xrootd-qs4.tar.gz
 """
 
 

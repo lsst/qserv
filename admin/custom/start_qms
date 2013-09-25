@@ -1,0 +1,9 @@
+#!/bin/bash
+
+QMS_BASE_DIR=%(QSERV_BASE_DIR)s/qserv/meta
+PYTHON=%(QSERV_BASE_DIR)s/bin/python
+QMS_START=${QMS_BASE_DIR}/bin/startQMS.py
+QMS_CONFIG=%(QSERV_BASE_DIR)s/etc/qms.cnf
+
+${PYTHON} ${QMS_START} -c ${QMS_CONFIG} &
+echo $! > %(QSERV_PID_DIR)s/qms.pid

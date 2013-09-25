@@ -69,6 +69,7 @@ env.Requires(env.Alias('perl-install'), env.Alias('download'))
 env.Requires(env.Alias('perl-install'), env.Alias('config'))
 env.Requires(env.Alias('perl-init-mysql-db'), env.Alias('templates'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
+env.Requires(env.Alias('python-tests'), env.Alias('python-qms'))
 env.Requires(env.Alias('admin-bin'), env.Alias('python-tests'))
 env.Requires(env.Alias('perl-install'), env.Alias('admin-bin'))
 
@@ -120,7 +121,13 @@ def get_template_targets():
     target_lst = []
 
     script_dict = {
+        '%\(QMS_HOST\)s': config['qserv']['master'],
+        '%\(QMS_DB\)s': config['qms']['db'],
+        '%\(QMS_USER\)s': config['qms']['user'],
+        '%\(QMS_PASS\)s': config['qms']['pass'],
+        '%\(QMS_PORT\)s': config['qms']['port'],
         '%\(QSERV_BASE_DIR\)s': config['qserv']['base_dir'],
+        '%\(QSERV_SRC_DIR\)s': config['src_dir'],
         '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'],
         '%\(QSERV_STRIPES\)s': config['qserv']['stripes'],
         '%\(QSERV_SUBSTRIPES\)s': config['qserv']['substripes'],
@@ -142,7 +149,8 @@ def get_template_targets():
         '%\(XROOTD_PORT\)s': config['xrootd']['xrootd_port'],
         '%\(XROOTD_RUN_DIR\)s': os.path.join(config['qserv']['base_dir'],'xrootd-run'),
         '%\(XROOTD_ADMIN_DIR\)s': os.path.join(config['qserv']['base_dir'],'tmp'),
-        '%\(CMSD_MANAGER_PORT\)s': config['xrootd']['cmsd_manager_port']
+        '%\(CMSD_MANAGER_PORT\)s': config['xrootd']['cmsd_manager_port'],
+        '%\(HOME\)s': os.path.expanduser("~") 
         }
 
     if config['qserv']['node_type']=='mono':
@@ -178,7 +186,11 @@ def get_template_targets():
                 "start_xrootd",
                 "start_qserv",
                 "start_mysqlproxy",
-                "scisql.sh"
+                "start_qms",
+                "qserv-core.sh",
+                "scisql.sh",
+                "qms.sh"
+
                 ]:
                 env.AddPostAction(target_node, Chmod("$TARGET", 0760))
             # all other files are configuration files
@@ -209,12 +221,16 @@ env.Alias("config", [env.Alias("templates"),make_user_config_cmd])
 #########################
 python_path_prefix=config['qserv']['base_dir']
 
+env['python_path_prefix']=python_path_prefix
+
 python_admin = env.InstallPythonModule(target=python_path_prefix, source='admin/python')
 #python_targets=utils.build_python_module(source='admin/python',target='/opt/qserv-dev',env=env)
 env.Alias("python-admin", python_admin)
 
 python_tests = env.InstallPythonModule(target=python_path_prefix, source='tests/python')
 env.Alias("python-tests", python_tests)
+
+SConscript('meta/SConscript', exports = 'env')
 
 #########################
 #
@@ -236,7 +252,25 @@ env.Alias("admin-bin", bin_target_lst)
 
 #########################
 #
-# Install scisql 
+# Install qms 
+#
+#########################
+if config['qserv']['node_type'] in ['mono','master']:
+
+    # MySQL is required 
+    env.Requires(env.Alias('qms'), env.Alias('perl-install'))
+    env.Requires(env.Alias('install'), env.Alias('qms'))
+
+    qms_cmd=[] 
+    qms_install_sh = os.path.join(config['qserv']['base_dir'],'tmp','install', "qms.sh")
+    cmd = env.Command('qms-dummy-target', [], qms_install_sh)
+    qms_cmd.append(cmd)
+
+    env.Alias("qms", qms_cmd)
+
+#########################
+#
+# Install scisql
 #
 #########################
 if config['qserv']['node_type'] in ['mono','worker']:
@@ -244,12 +278,12 @@ if config['qserv']['node_type'] in ['mono','worker']:
     # MySQL is required 
     env.Requires(env.Alias('scisql'), env.Alias('perl-install'))
     env.Requires(env.Alias('install'), env.Alias('scisql'))
-   
+
     scisql_cmd=[] 
     scisql_install_sh = os.path.join(config['qserv']['base_dir'],'tmp','install', "scisql.sh")
     cmd = env.Command('scisql-dummy-target', [], scisql_install_sh)
     scisql_cmd.append(cmd)
-    
+
     env.Alias("scisql", scisql_cmd)
 
 #########################
