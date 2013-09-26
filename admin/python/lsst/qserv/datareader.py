@@ -1,4 +1,4 @@
-from lsst.qserv.admin import commons
+from lsst.qserv.admin import commons, const
 import logging
 import os
 import tempfile
@@ -28,7 +28,7 @@ class DataReader():
         self.log.debug("DataReader.analyze() : Data name is : %s" %self.dataName )
 
         self.dataConfig['sql-views'] = []
-        self.dataConfig['meta-extension']='.params'        
+        self.dataConfig['meta-extension']='.params'
 
         if self.dataName=="case01":
 
@@ -61,7 +61,7 @@ class DataReader():
             self.dataConfig['Object']['phiColName'] = 'ra_PS'
             self.dataConfig['Object']['overlap'] = 0.025
             # TODO use in qservdataloader
-            self.dataConfig['Object']['logicalPart'] = 1
+            self.dataConfig['Object']['logicalPart'] = SUBCHUNK
             self.dataConfig['Object']['physChunking'] = 0x0021
 
             self.dataConfig['Source']['objIdColName'] =  "objectId",
@@ -69,7 +69,7 @@ class DataReader():
             self.dataConfig['Source']['thetaColName'] = 'declObject'
             self.dataConfig['Source']['phiColName'] = 'raObject'
             self.dataConfig['Source']['overlap'] = 0.025
-            self.dataConfig['Source']['logicalPart'] = 1
+            self.dataConfig['Source']['logicalPart'] = CHUNK
             self.dataConfig['Source']['physChunking'] = 0x0021
 
 
@@ -128,7 +128,7 @@ class DataReader():
                                                 "RefObject",
                                                 "RunDeepSource",
                                                 "RunDeepForcedSource"]
- 
+
             for table in self.dataConfig['partitionned-tables']:
                 self.dataConfig[table]=dict()
                 # chunkId and subChunkId will be added
@@ -144,7 +144,7 @@ class DataReader():
 
             self.dataConfig['AvgForcedPhotYearly']['ra-column'] = 2
             self.dataConfig['AvgForcedPhotYearly']['decl-column'] = 3
- 
+
             self.dataConfig['RefObject']['ra-column'] = 12
             self.dataConfig['RefObject']['decl-column'] = 13
 
@@ -162,16 +162,16 @@ class DataReader():
         elif self.dataName=="case04":
 
             self.dataConfig['partitionned-tables'] = ["Object", "Source"]
- 
+
             """ Fill column position (zero-based index) """
             self.dataConfig['Object']=dict()
-            self.dataConfig['Source']=dict() 
- 
+            self.dataConfig['Source']=dict()
+
             self.dataConfig['schema-extension']='.schema'
             self.dataConfig['data-extension']='.csv'
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
- 
+
             self.dataConfig['Object']['ra-fieldname'] = "ra_PS"
             self.dataConfig['Object']['decl-fieldname'] = "decl_PS"
             self.dataConfig['Source']['ra-fieldname'] = "ra"
@@ -183,7 +183,7 @@ class DataReader():
 
             # self.dataConfig['Source']['ra-column'] = 7
             # self.dataConfig['Source']['decl-column'] = 10
- 
+
             self.dataConfig['Source']['ra-column'] = 33
             self.dataConfig['Source']['decl-column'] = 34
 
@@ -197,18 +197,18 @@ class DataReader():
 
             """ Fill column position (zero-based index) """
             self.dataConfig['Object']=dict()
-            self.dataConfig['Source']=dict() 
-         
+            self.dataConfig['Source']=dict()
+
             self.dataConfig['schema-extension']='.schema'
             self.dataConfig['data-extension']='.csv'
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
-            
+
             self.dataConfig['Duplication'] = True
             self.dataConfig['nbNodes'] = 300
             self.dataConfig['currentNodeID'] = 42
             self.dataConfig['dataDirName'] = self.dataDirName
-            
+
             self.dataConfig['Object']['ra-fieldname'] = "ra_PS"
             self.dataConfig['Object']['decl-fieldname'] = "decl_PS"
             self.dataConfig['Source']['ra-fieldname'] = "ra"
@@ -220,14 +220,14 @@ class DataReader():
 
             # self.dataConfig['Source']['ra-column'] = 7
             # self.dataConfig['Source']['decl-column'] = 10
-            
+
             self.dataConfig['Source']['ra-column'] = 33
             self.dataConfig['Source']['decl-column'] = 34
 
             # chunkId and subChunkId will be added
             self.dataConfig['Source']['chunk-column-id'] = None
 
-        
+
     def readTableList(self):
         files = os.listdir(self.dataDirName)
         if self.tables==[]:

@@ -57,7 +57,7 @@ user=root
 pass=changeme
 
 # socket for local connection
-sock=%(base_dir)s/var/lib/mysql/mysql.sock 
+sock=%(base_dir)s/var/lib/mysql/mysql.sock
 
 #data_dir=/data/$(version)/mysql
 data_dir=%(base_dir)s/var/lib/mysql
@@ -90,4 +90,6 @@ virtualenv_url=%(repository)s/virtualenv-1.7.tar.gz
 xrootd_url=%(repository)s/xrootd-qs4.tar.gz
 """
 
-
+NO_CHUNK=0
+CHUNK=1
+SUBCHUNK=2
