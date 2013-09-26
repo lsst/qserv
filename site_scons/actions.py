@@ -129,7 +129,7 @@ def check_root_dirs(target, source, env):
                          )
             sys.exit(1)
 
-    for suffix in ('etc', 'build', 'var', 'var/lib', 'var/run', 'var/run/mysqld'):
+    for suffix in ('etc', 'build', 'var', 'var/lib', 'var/run', 'var/run/mysqld', 'var/lock/subsys'):
         dir = os.path.join(config['qserv']['base_dir'],suffix)
         if not utils.exists_and_is_writable(dir):
        	    logging.fatal("%s is not writable check/update permissions" % dir)

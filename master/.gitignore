@@ -24,3 +24,7 @@ src/expandedSqlSQL2.g
 # /tests/
 /tests/.tests
 /tests/*_[1-9]
+
+/dist
+/bin/testCppParser
+/bin/myWrapper

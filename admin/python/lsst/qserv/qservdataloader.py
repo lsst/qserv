@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import shutil
+from os.path import expanduser
 
 class QservDataLoader():
 
@@ -13,6 +14,8 @@ class QservDataLoader():
         self._dbName = db_name
 
         self._out_dirname = out_dirname
+
+        self._qms_config_file = os.path.join(expanduser("~"),".lsst","qmsadm")
 
         #self.logger = commons.console_logger(logging_level)
         #self.logger = commons.file_logger(
@@ -35,6 +38,7 @@ class QservDataLoader():
         install_meta_cmd = [
             self.config['bin']['python'],
             meta_scriptname,
+            '--auth=%s' % self._qms_config_file,
             'installMeta'
             ]
         out = commons.run_command(install_meta_cmd)
@@ -42,6 +46,7 @@ class QservDataLoader():
         create_meta_cmd = [
             self.config['bin']['python'],
             meta_scriptname,
+            '--auth=%s' % self._qms_config_file,
             'createDb',
             self._dbName,
             'partitioning=on',
@@ -68,6 +73,7 @@ class QservDataLoader():
         create_meta_cmd = [
             self.config['bin']['python'],
             meta_scriptname,
+            '--auth=%s' % self._qms_config_file,
             'createTable',
             self._dbName,
 #          '@%s' %  self.dataConfig[table_name]['meta-file'],

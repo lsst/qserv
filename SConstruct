@@ -127,6 +127,7 @@ def get_template_targets():
         '%\(QMS_PASS\)s': config['qms']['pass'],
         '%\(QMS_PORT\)s': config['qms']['port'],
         '%\(QSERV_BASE_DIR\)s': config['qserv']['base_dir'],
+        '%\(QSERV_UNIX_USER\)s': os.getlogin(),
         '%\(QSERV_SRC_DIR\)s': config['src_dir'],
         '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'],
         '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['base_dir'],'var/run'),
@@ -180,7 +181,9 @@ def get_template_targets():
             path = os.path.dirname(target_name)
             target_basename = os.path.basename(target_name)
             logger.debug("TARGET BASENAME : %s" % target_basename)
-            if os.path.basename(path) == "bin" or target_basename in [
+            if (os.path.basename(path) == "bin" or 
+                os.path.basename(path) == "init.d" or
+                target_basename in [
                 "start_xrootd",
                 "start_qserv",
                 "start_mysqlproxy",
@@ -188,8 +191,8 @@ def get_template_targets():
                 "qserv-core.sh",
                 "scisql.sh",
                 "qms.sh"
-
-                ]:
+                ]
+                ):
                 env.AddPostAction(target_node, Chmod("$TARGET", 0760))
             # all other files are configuration files
             else:
@@ -261,7 +264,7 @@ if config['qserv']['node_type'] in ['mono','master']:
 
     qms_cmd=[] 
     qms_install_sh = os.path.join(config['qserv']['base_dir'],'tmp','install', "qms.sh")
-    cmd = env.Command('qms-dummy-target', [], qms_install_sh)
+    cmd = env.Command('qms-only', [], qms_install_sh)
     qms_cmd.append(cmd)
 
     env.Alias("qms", qms_cmd)
@@ -279,7 +282,7 @@ if config['qserv']['node_type'] in ['mono','worker']:
 
     scisql_cmd=[] 
     scisql_install_sh = os.path.join(config['qserv']['base_dir'],'tmp','install', "scisql.sh")
-    cmd = env.Command('scisql-dummy-target', [], scisql_install_sh)
+    cmd = env.Command('scisql-only', [], scisql_install_sh)
     scisql_cmd.append(cmd)
 
     env.Alias("scisql", scisql_cmd)
