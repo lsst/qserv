@@ -44,11 +44,6 @@ base_dir = /opt/qserv-%(version)s
 # WARNING : do not use value localhost, but 127.0.0.1
 master=qserv-master-example-name.mydomain.edu
 
-# partitioning parameters
-# # will be used both by master and partition tool
-# substripes = 10
-# stripes = 10
-
 # OPTIONAL : If not already present in %(base_dir)s/qserv/master/python/lsst/qserv/master/geometry.py, geometry file will be downloaded by default
 # from  git master branch :http://dev.lsstcorp.org/cgit/LSST/DMS/geom.git/plain/python/lsst/geom/geometry.py
 # but a source directory may be specified  (it could be retrieved for exemple with : git clone git://dev.lsstcorp.org/LSST/DMS/geom)
