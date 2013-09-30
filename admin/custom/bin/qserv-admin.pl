@@ -4,6 +4,13 @@ use strict;
 use Getopt::Long;
 use Cwd;
 
+use constant false => 0;
+use constant true  => 1;
+
+use constant START => "start";
+use constant STOP  => "stop";
+use constant STATUS  => "status";
+
 Getopt::Long::config('bundling_override');
 my %opts = ();
 GetOptions( \%opts,
@@ -45,55 +52,20 @@ print "Using $install_dir install.\n" if( $debug );
 #mysql variables
 my $mysqld_sock = "$install_dir/var/lib/mysql/mysql.sock";
 
+
+
 if( $opts{'status'} ) {
 	print "Checking on the status.\n" if( $debug );
 
-	unless( $opts{'dbpass'} ) {
-		print "Error: you need to specify the mysql root password with the --dbpass option.\n";
-		exit(1);
-	}
-
-	if( check_mysqld( $opts{'dbpass'} ) ) {
-		print "Mysql server up and running.\n";
-	} else {
-		print "Mysql server not running.\n";
-	}
-
-	if( check_proxy() ) {
-		print "Mysql proxy up and running.\n";
-	} else {
-		print "Mysql proxy not running.\n";
-	}
-
-	if( check_xrootd() ) {
-		print "Xrootd server up and running.\n";
-	} else {
-		print "Xrootd server not running.\n";
-	}
-
-	if( check_qserv() ) {
-		print "Qserv server up and running.\n";
-	} else {
-		print "Qserv server not running.\n";
-	}
+        qserv_services(STATUS);
 
 } elsif( $opts{'stop'} ) {
 
-	stop_proxy();
-        stop_qms();
-	stop_xrootd();
-	stop_mysqld();
-	stop_qserv();
+        qserv_services(STOP);
 
 } elsif( $opts{'start'} ) {
 
-	start_proxy();
-	start_mysqld();
-        # qms launch mysql queries at startup
-        start_qms();
-        # xrootd will launch mysql queries at startup
-	start_xrootd();
-	start_qserv();
+        qserv_services(START);
 
 } elsif( $opts{'partition'} ) {
 
@@ -168,185 +140,25 @@ exit( 0 );
 
 #############################################################
 
-#Check the sql server status, if it is up or down by using
-#an sql command for input.
-sub check_sql_server {
-	my( $command ) = @_;
-
-	print "Testing sql with command $command\n" if( $debug );
-
-	my $testsql = "/tmp/tmp.sql";
-	create_test_sql( $testsql );
-
-	#try through the proxy to see if it can talk to mysql server.
-	my @reply = run_command("$command < $testsql 2>&1");
-
-	print "@reply\n" if( $debug );
-
-	if( $reply[0] =~ /Database/ ) {
-		return 1;
-	} else {
-		return 0;
-	}
-
-	unlink "$testsql";
-
-}
-
-#Create a test sql command to test the sql server.
-sub create_test_sql {
-	my( $testsql ) = @_;
-
-	#create tmp sql file
-	open TMPFILE, ">$testsql";
-	print TMPFILE "show databases;\n";
-	close TMPFILE;
-
-}
-
-#check the mysql proxy use.
-sub check_proxy {
-
-	return check_sql_server( "mysql --host 127.0.0.1 --port=$mysql_proxy_port --protocol=TCP --user qsmaster" );
-
-}
-
-#check the mysql server status.
-sub check_mysqld {
-
-	my( $dbpass ) = @_;
-	if( -e "$mysqld_sock" ) {
-		return check_sql_server( "mysql -S $mysqld_sock -u root -p$dbpass" );
-	} else {
-		return 0;
-	}
-}
-
-#check the xrootd process.
-sub check_xrootd {
-
-	if( check_ps( "xrootd -c" ) && check_ps( "cmsd -c" ) ) {
-		return 1;
-	} else {
-		return 0;
-	}
-
-}
-
-#check the qserv process.
-sub check_qserv {
-
-	return check_ps( "startQserv" );
-
-}
-
-#Check the existence of a process in the process table by a test
-#string in the command line used.
-sub check_ps {
-	my( $test_string ) = @_;
-	print "Check_ps : $test_string\n";
-
-	my @reply = run_command("ps x");
-	print "Reply : @reply\n";
-	my @stuff = grep /$test_string/, @reply;
-	print "Catched stuff : @stuff\n-----\n";
-
-	if( @stuff ) {
-		my( $pid ) = $stuff[0] =~ /^\s*(\d+) /;
-		return $pid;
-	} else {
-		return 0;
-	}
-}
-
-#Stop the qserv process
-sub stop_qserv {
-    initd("qserv-master", "stop")
-}
-
-sub stop_qms {
-    initd("qms", "stop")
-}
-
-#stop the xrootd process
-sub stop_xrootd {
-    initd("xrootd", "stop")
-}
-
-#stop the mysql server
-sub stop_mysqld {
-    initd("mysqld", "stop")
-}
-
-#stop the mysql proxy
-sub stop_proxy {
-    initd("mysql-proxy", "stop")
-}
-
-# Kill a process based on a PID file
-sub killpid {
-    my( $pidfile ) = @_;
-    if (-e $pidfile) {
-        print "Killing process pids from $pidfile \n";
-        open FILE, $pidfile;
-        while (<FILE>) {
-            kill 9, $_;
-        }
-        unlink $pidfile
-    } else {
-        print "killpid: Non existing PID file $pidfile \n";
-    }
-}
-
-#Stop a process given an id
-sub stop_ps {
-	my( $pid ) = @_;
-
-	#print "pid to stop -- $pid\n";
-	if( $opts{'test'} ) {
-		print "I would now kill process $pid.\n";
-	} else {
-		`kill $pid`;
-	}
-}
-
-#get the pid from a file
-sub get_pid {
-	my( $filename ) = @_;
-
-	open PIDFILE, "<$filename"
-		or warn "Sorry, can't open $filename\n";
-	my $pid = <PIDFILE>;
-	chomp $pid;
-	close PIDFILE;
-
-	return $pid;
-}
-
 sub initd {
-        my ( $prog, $arg) = @_;
-        my $startup_script = "$init_dir/$prog $arg";
-	system($startup_script) == 0 or die "system $startup_script failed: $?";
+        my ( $action, $prog) = @_;
+        my $startup_script = "$init_dir/$prog $action";
+	my $ret = system($startup_script);
+        if ($ret==0) {
+            return false;
+        } else {
+            return true;
+        }
 }
 
-sub start_proxy {
-        initd("mysql-proxy", "start")
-}
+sub qserv_services {
+        my ( $action ) = @_;
+        my @service_list = ('mysqld', 'mysql-proxy', 'xrootd', 'qms', 'qserv-master');
+        foreach my $service (@service_list)
+        {
+            initd($action, $service);
+        }
 
-sub start_mysqld {
-        initd("mysqld", "start")
-}
-
-sub start_qms {
-        initd("qms", "start")
-}
-
-sub start_qserv {
-        initd("qserv-master", "start")
-}
-
-sub start_xrootd {
-        initd("xrootd", "start")
 }
 
 sub set_stripes {
