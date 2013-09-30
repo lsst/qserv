@@ -32,9 +32,6 @@ port=0
 [partitioner]
 emptyChunkListFile=%(QSERV_BASE_DIR)s/etc/emptyChunks.txt
 
-[table]
-alloweddbs=LSST,qservTest_case01_qserv,qservTest_case02_qserv,qservTest_case03_qserv
-
 #[tuning]
 #memoryEngine=yes
 

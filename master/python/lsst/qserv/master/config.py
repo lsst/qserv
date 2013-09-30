@@ -75,9 +75,6 @@ dropMem=
 [partitioner]
 emptyChunkListFile=
 
-[table]
-alloweddbs=LSST
-
 [tuning]
 memoryEngine=yes
 
