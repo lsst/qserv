@@ -15,9 +15,10 @@ export SEARCH_ROOTS="${QSERV_BASE}";
 echo -e "\n"
 echo "Building Qserv commons libs"
 echo "---------------------------"
-cd "${QSERV_BASE}/qserv/common"
-scons
-scons master
+cd "${QSERV_BASE}/qserv/common" &&
+scons &&
+scons master ||
+exit 1
 
 DEST="${QSERV_BASE}/qserv/master/python/lsst/qserv/master/"
 if [ ! -f ${DEST}/geometry.py ]
@@ -29,12 +30,14 @@ fi
 echo -e "\n"
 echo "Building Qserv master (rpc server)"
 echo "----------------------------------"
-cd "${QSERV_BASE}/qserv/master/"
-scons
-scons install
+cd "${QSERV_BASE}/qserv/master/" &&
+scons &&
+scons install ||
+exit 1 
 
 echo -e "\n"
 echo "Building Qserv worker (xrootd plugin)"
 echo "-------------------------------------"
-cd "${QSERV_BASE}/qserv/worker/"
-scons
+cd "${QSERV_BASE}/qserv/worker/" &&
+scons &&
+exit 1
