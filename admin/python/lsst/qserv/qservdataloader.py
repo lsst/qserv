@@ -17,6 +17,13 @@ class QservDataLoader():
 
         self._qms_config_file = os.path.join(expanduser("~"),".lsst","qmsadm")
 
+        meta_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "meta", "bin", "metaClientTool.py")
+        self.meta_cmd = [
+            self.config['bin']['python'],
+            meta_scriptname,
+            '--auth=%s' % self._qms_config_file
+            ]
+
         #self.logger = commons.console_logger(logging_level)
         #self.logger = commons.file_logger(
         #    log_file_prefix,
@@ -33,20 +40,12 @@ class QservDataLoader():
 
     def createMetaDatabase(self):
 
-        meta_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "meta", "bin", "metaClientTool.py")
+        # TODO : refine meta loading management, destroyMeta erase everything
 
-        install_meta_cmd = [
-            self.config['bin']['python'],
-            meta_scriptname,
-            '--auth=%s' % self._qms_config_file,
-            'installMeta'
-            ]
-        out = commons.run_command(install_meta_cmd)
+        out = commons.run_command(self.meta_cmd + ['destroyMeta'])
+        out = commons.run_command(self.meta_cmd + ['installMeta'])
 
-        create_meta_cmd = [
-            self.config['bin']['python'],
-            meta_scriptname,
-            '--auth=%s' % self._qms_config_file,
+        create_meta_cmd = self.meta_cmd + [
             'createDb',
             self._dbName,
             'partitioning=on',
@@ -70,10 +69,7 @@ class QservDataLoader():
         self.logger.debug("Generating meta for table : %s" % table_name)
         meta_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "meta", "bin", "metaClientTool.py")
 
-        create_meta_cmd = [
-            self.config['bin']['python'],
-            meta_scriptname,
-            '--auth=%s' % self._qms_config_file,
+        create_meta_cmd = self.meta_cmd + [
             'createTable',
             self._dbName,
 #          '@%s' %  self.dataConfig[table_name]['meta-file'],
@@ -91,7 +87,7 @@ class QservDataLoader():
                 'objIdColName=%s' %
                 self.dataConfig[table_name]['objIdColName'],
                 'overlap=%i' % self.dataConfig[table_name]['overlap'],
-                'logicalPart=1',
+                'logicalPart=%i' % self.dataConfig[table_name]['logicalPart'],
                 'physChunking=0x0021'
                 ]
         else:
