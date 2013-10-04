@@ -226,12 +226,12 @@ class Benchmark():
                 self.loadData()
                 self.finalize()
 
-            # restart xrootd in order to reload  export paths w.r.t loaded chunks, cf. #2478
             if self._mode == 'qserv':
-                # TODO make a clean startup file for xrootd, in etc/init.d
-                xrootd_daemon_script = os.path.join(self.config['qserv']['base_dir'], 'etc','init.d', 'xrootd')
-                out = os.system("%s stop" % xrootd_daemon_script)
-                out = os.system("%s start" % xrootd_daemon_script)
+                # restart xrootd in order to reload  export paths w.r.t loaded chunks, cf. #2478
+                self.restart('xrootd')
+
+                # Qserv fails to start if QMS is empty, so starting it again may be required
+                self.restart('qserv-master')
 
             self.runQueries(stop_at_query)
 
@@ -250,6 +250,15 @@ class Benchmark():
             for name in dcmp.diff_files:
                 self.logger.info("diff_file %s found in %s and %s" % (name, dcmp.left, dcmp.right))
             return False
+    
+
+def restartService(self,service_name):
+        
+    initd_path = os.path.join(self.config['qserv']['base_dir'],'etc','init.d')
+    daemon_script = os.path.join(initd_path,service_name)
+    out = os.system("%s stop" % daemon_script)
+    out = os.system("%s start" % daemon_script)
+
 
 def parseOptions():
     op = optparse.OptionParser()
