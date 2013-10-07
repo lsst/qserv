@@ -47,6 +47,8 @@
 #include "lsst/qserv/master/ParseException.h"
 #include "lsst/qserv/master/ifaceMeta.h" // Retrieve metadata object
 
+#define DEBUG 2
+
 namespace lsst {
 namespace qserv {
 namespace master {
@@ -64,14 +66,14 @@ QuerySession::QuerySession(int metaCacheSession)
     : _metaCacheSession(metaCacheSession) {
 }
 
-void QuerySession::setQuery(std::string const& q) {
-    _original = q;
+void QuerySession::setQuery(std::string const& inputQuery) {
+    _original = inputQuery;
     _initContext();
     assert(_context.get());
 
     SelectParser::Ptr p;
     try {
-        p = SelectParser::newInstance(q);
+        p = SelectParser::newInstance(inputQuery);
         p->setup();
         _stmt = p->getSelectStmt();
         _preparePlugins();
@@ -164,7 +166,6 @@ QuerySession::Iter QuerySession::cQueryEnd() {
     return Iter(*this, _chunks.end());
 }
 
-
 void QuerySession::_initContext() {
     _context.reset(new QueryContext());
     _context->defaultDb = "LSST";
@@ -237,8 +238,8 @@ void QuerySession::_showFinal() {
     QueryTemplate par = _stmtParallel.front()->getTemplate();
     QueryTemplate mer = _stmtMerge->getTemplate();
 
-    std::cout << "parallel: " << par.dbgStr() << std::endl;
-    std::cout << "merge: " << mer.dbgStr() << std::endl;
+    std::cout << "QuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
+    std::cout << "QuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
 }
 
 std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) {
@@ -260,20 +261,55 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) {
     for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end();
         i != e; ++i) {
         tlist.push_back((**i).getTemplate());
+
+#ifdef DEBUG
+#if DEBUG > 1
+	std::cout << "QuerySession::_buildChunkQueries() : adding _stmtParallel diagnose() " << std::endl;
+#endif
+#endif
+
+	(**i).diagnose();
     }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
+        std::cout << "QuerySession::_buildChunkQueries() : Non-subchunked" << std::endl;
         for(TlistIter i=tlist.begin(), e=tlist.end(); i != e; ++i) {
             q.push_back(_context->queryMapping->apply(s, *i));
         }
     } else { // subchunked:
+        std::cout << "QuerySession::_buildChunkQueries() : subchunked " << std::endl;
         ChunkSpecSingle::List sList = ChunkSpecSingle::makeList(s);
+
+#ifdef DEBUG
+#if DEBUG > 1
+	std::cout << "QuerySession::_buildChunkQueries() : subchunks :";
+	std::copy(sList.begin(), sList.end(),
+              std::ostream_iterator<ChunkSpecSingle>(std::cout, ","));
+	std::cout << std::endl;
+#endif
+#endif
         typedef ChunkSpecSingle::List::const_iterator ChunkIter;
         for(ChunkIter i=sList.begin(), e=sList.end(); i != e; ++i) {
             for(TlistIter j=tlist.begin(), je=tlist.end(); j != je; ++j) {
+
+#ifdef DEBUG
+#if DEBUG > 2
+	      std::cout << "QuerySession::_buildChunkQueries() : adding query " << _context->queryMapping->apply(*i, *j) << std::endl;
+#endif
+#endif
                 q.push_back(_context->queryMapping->apply(*i, *j));
             }
         }
     }
+
+#ifdef DEBUG
+#if DEBUG > 2
+    std::cout << "QuerySession::_buildChunkQueries() : returning  queries : " << std::endl;
+    for(unsigned int t=0;t<q.size();t++){
+      std::cout<<q.at(t)<< std::endl;
+    }
+#endif
+#endif
+
     return q;
 }
 

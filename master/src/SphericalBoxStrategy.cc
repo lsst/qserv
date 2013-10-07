@@ -46,6 +46,8 @@
 #define SUBCHUNKTAG "%SS%"
 #define FULLOVERLAPSUFFIX "FullOverlap"
 
+#define DEBUG 1
+
 namespace qMaster=lsst::qserv::master;
 
 namespace { // File-scope helpers
@@ -295,13 +297,29 @@ SphericalBoxStrategy::SphericalBoxStrategy(FromList const& f,
 boost::shared_ptr<QueryMapping> SphericalBoxStrategy::getMapping() {
     assert(_impl.get());
     boost::shared_ptr<QueryMapping> qm(new QueryMapping());
+
+#ifdef DEBUG
+#if DEBUG > 2
+    std::cout << "SphericalBoxStrategy::getMapping() : _impl->chunkLevel : " << _impl->chunkLevel << std::endl;
+#endif
+#endif
     switch(_impl->chunkLevel) {
     case 0:
         break;
     case 1:
+#ifdef DEBUG
+#if DEBUG > 2
+        std::cout << "SphericalBoxStrategy::getMapping() : calling  addChunkMap() " << std::endl;
+#endif
+#endif
         addChunkMap(*qm);
         break;
     case 2:
+#ifdef DEBUG
+#if DEBUG > 2
+        std::cout << "SphericalBoxStrategy::getMapping() : calling  addSubChunkMap() " << std::endl;
+#endif
+#endif
         addChunkMap(*qm);
         addSubChunkMap(*qm);
         _impl->updateMapping(*qm);
@@ -423,17 +441,27 @@ void SphericalBoxStrategy::_import(FromList const& f) {
     }
     lookupTuple lookup(*_impl->context.metadata);
     std::for_each(_impl->tuples.begin(), _impl->tuples.end(), lookup);
-#if 0
+
+#if DEBUG
+#if DEBUG > 2
     std::cout << "Imported:::::";
     std::copy(_impl->tuples.begin(), _impl->tuples.end(),
               std::ostream_iterator<Tuple>(std::cout, ","));
     std::cout << std::endl;
 #endif
+#endif
+
     // Patch tuples in preparation for patching the FromList
-    int cTableCount = patchTuples(_impl->tuples);
-    if(cTableCount > 1) { _impl->chunkLevel = 2; }
-    else if(cTableCount == 1) { _impl->chunkLevel = 1; }
+    int chunkedTablesNumber = patchTuples(_impl->tuples);
+    if(chunkedTablesNumber > 1) { _impl->chunkLevel = 2; }
+    else if(chunkedTablesNumber == 1) { _impl->chunkLevel = 1; }
     else { _impl->chunkLevel = 0; }
+
+#if DEBUG
+#if DEBUG > 2
+    std::cout << "SphericalBoxStrategy::_import() : _impl->chunkLevel : " << _impl->chunkLevel << std::endl;
+#endif
+#endif
 
     // Patch context with mapping.
     if(_impl->context.queryMapping.get()) {

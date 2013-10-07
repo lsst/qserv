@@ -133,15 +133,22 @@ qMaster::MetadataCache::DbInfo::checkIfTableIsSubChunked(std::string const& tabl
 int
 qMaster::MetadataCache::DbInfo::getChunkLevel(std::string const& tableName) const {
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
+    int chunklevel=0;
     if (itr == _tables.end()) {
-        return -1;
+        chunklevel=-1;
     }
-    TableInfo const& ti = itr->second;
-    if(ti.getIsPartitioned()) {
-        return ti.getLogicalPart();
-    } else {
-        return 0;
+    else {
+      TableInfo const& ti = itr->second;
+      if(ti.getIsPartitioned()) {
+	chunklevel=ti.getLogicalPart();
+      }
     }
+#ifdef DEBUG
+#if DEBUG > 2
+    std::cout << "DbInfo::getChunkLevel() : tableName : " << tableName << ", chunkLevel : " << chunklevel << std::endl;
+#endif
+#endif
+    return chunklevel;
 }
 
 /** Gets chunked tables
