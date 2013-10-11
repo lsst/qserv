@@ -235,6 +235,15 @@ class Benchmark():
 
             self.runQueries(stop_at_query)
 
+
+
+    def restart(self,service_name):
+
+        initd_path = os.path.join(self.config['qserv']['base_dir'],'etc','init.d')
+        daemon_script = os.path.join(initd_path,service_name)
+        out = os.system("%s stop" % daemon_script)
+        out = os.system("%s start" % daemon_script)
+
     def areQueryResultsEquals(self):
 
         outputs_dir = os.path.join(self._out_dirname, "outputs")
@@ -250,15 +259,6 @@ class Benchmark():
             for name in dcmp.diff_files:
                 self.logger.info("diff_file %s found in %s and %s" % (name, dcmp.left, dcmp.right))
             return False
-    
-
-def restartService(self,service_name):
-        
-    initd_path = os.path.join(self.config['qserv']['base_dir'],'etc','init.d')
-    daemon_script = os.path.join(initd_path,service_name)
-    out = os.system("%s stop" % daemon_script)
-    out = os.system("%s start" % daemon_script)
-
 
 def parseOptions():
     op = optparse.OptionParser()
