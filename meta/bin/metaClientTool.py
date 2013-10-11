@@ -2,7 +2,7 @@
 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -10,14 +10,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 # The "metaClientTool" is a tool that sends commands to qserv metadata server
@@ -73,11 +73,11 @@ COMMANDS
         Prints all metadata.
 
   createDb
-        Creates metadata about new database to be managed 
+        Creates metadata about new database to be managed
         by qserv. Arguments can come in one of two forms:
-        a) file-based version: 
+        a) file-based version:
            <dbName> @<paramFile>
-        b) key/value-based version: 
+        b) key/value-based version:
            <dbName> <param1>=<value1> <param2>=<value2> ...
 
   dropDb
@@ -96,7 +96,7 @@ COMMANDS
         Lists database names registered for qserv use.
 
   createTable
-        Creates metadata about new table in qserv-managed 
+        Creates metadata about new table in qserv-managed
         database. Arguments can come in one of two forms:
         a) file-base version:
            <dbName> @<paramFile>
@@ -112,7 +112,7 @@ COMMANDS
         Arguments: <dbName>
 
   listPartitionedTables
-        Retrieves a list of all partitioned table names 
+        Retrieves a list of all partitioned table names
         in a given database.
         Arguments: <dbName>
 
@@ -124,7 +124,7 @@ COMMANDS
         Retrieves the name of internal qms database.
 
 EXAMPLES
-Example contents of the authorization file 
+Example contents of the authorization file
 (e.g., %(defaultAuthFile)s):
 
 [qmsConn]
@@ -352,7 +352,10 @@ if __name__ == '__main__':
         t = TheTool()
         t.parseAndRun()
     except QmsException as qe:
-        print "Error:", qe.getErrMsg()
+        errno = qe.getErrNo()
+        print "Error: %s (errno:%s)" % (qe.getErrMsg(), errno)
+        sys.exit(errno-2000)
         #traceback.print_exc(file=sys.stdout)
     except Exception, e:
         print "Error:", str(e)
+        sys.exit(1)

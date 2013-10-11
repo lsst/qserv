@@ -240,7 +240,7 @@ SConscript('meta/SConscript', exports = 'env')
 #########################
 bin_basename_lst=[
     "qserv-benchmark.py","qserv-testdata.py",
-    "qserv-testunit.py"
+    "qserv-testunit.py","qms_setup.sh"
 ]
 bin_target_lst = []
 for f in bin_basename_lst:
