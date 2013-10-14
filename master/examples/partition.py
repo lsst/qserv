@@ -870,7 +870,6 @@ class SpatialChunkMapper(object):
         elif (self.phiColumn >= len(row)):
             print "WRONG ROW: phi=%s row=%s" % (self.phiColumn, row)
         else:
-            print "ROW %s" % row
             # extract position from row
             theta = float(row[self.thetaColumn])
             phi = float(row[self.phiColumn])

@@ -204,7 +204,8 @@ class Benchmark():
 
     def finalize(self):
         if (self._mode=='qserv'):
-            self.dataLoader[self._mode].configureXrootdQservMetaEmptyChunk()
+            self.dataLoader[self._mode].createQmsDatabase()
+            self.dataLoader[self._mode].configureQservMetaEmptyChunk()
         # in order to close socket connections
         del(self.dataLoader[self._mode])
 

@@ -28,10 +28,9 @@ class DataReader():
         self.log.debug("DataReader.analyze() : Data name is : %s" %self.dataName )
 
         self.dataConfig['sql-views'] = []
-        self.dataConfig['meta-extension']='.params'
+        self.dataConfig['data-name']=self.dataName
 
         if self.dataName=="case01":
-
             self.dataConfig['partitionned-tables'] = ["Object", "Source"]
 
             """ Fill column position (zero-based index) """
@@ -43,6 +42,10 @@ class DataReader():
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']='\t'
 
+            # TODO : read from QMS db.params file
+            self.dataConfig['num-stripes'] = 85
+            self.dataConfig['num-substripes'] = 12
+
             self.dataConfig['Object']['ra-column'] = 2
             self.dataConfig['Object']['decl-column'] = 4
             self.dataConfig['Object']['chunk-column-id'] = 227
@@ -52,26 +55,6 @@ class DataReader():
 
             # chunkId and subChunkId will be added
             self.dataConfig['Source']['chunk-column-id'] = None
-
-            # for QMS
-            self.dataConfig['num-stripes'] = 85
-            self.dataConfig['num-substripes'] = 12
-            self.dataConfig['Object']['objIdColName'] =  "objectId",
-            self.dataConfig['Object']['thetaColName'] = 'decl_PS'
-            self.dataConfig['Object']['phiColName'] = 'ra_PS'
-            self.dataConfig['Object']['overlap'] = 0.025
-            # TODO use in qservdataloader
-            self.dataConfig['Object']['logicalPart'] = const.SUBCHUNK
-            self.dataConfig['Object']['physChunking'] = 0x0021
-
-            self.dataConfig['Source']['objIdColName'] =  "objectId",
-            # raObject and declObject management ?
-            self.dataConfig['Source']['thetaColName'] = 'declObject'
-            self.dataConfig['Source']['phiColName'] = 'raObject'
-            self.dataConfig['Source']['overlap'] = 0.025
-            self.dataConfig['Source']['logicalPart'] = const.CHUNK
-            self.dataConfig['Source']['physChunking'] = 0x0021
-
 
             self.log.debug("Data configuration : %s" % self.dataConfig)
 
@@ -98,24 +81,9 @@ class DataReader():
             # chunkId and subChunkId will be added
             self.dataConfig['Source']['chunk-column-id'] = None
 
-            # for QMS
+            # TODO : read from QMS db.params file
             self.dataConfig['num-stripes'] = 85
             self.dataConfig['num-substripes'] = 12
-            self.dataConfig['Object']['objIdColName'] =  "objectId",
-            self.dataConfig['Object']['thetaColName'] = 'decl_PS'
-            self.dataConfig['Object']['phiColName'] = 'ra_PS'
-            self.dataConfig['Object']['overlap'] = 0.025
-            # TODO use in qservdataloader
-            self.dataConfig['Object']['logicalPart'] = 1
-            self.dataConfig['Object']['physChunking'] = 0x0021
-
-            self.dataConfig['Source']['objIdColName'] =  "objectId",
-            # raObject and declObject management ?
-            self.dataConfig['Source']['thetaColName'] = 'declObject'
-            self.dataConfig['Source']['phiColName'] = 'raObject'
-            self.dataConfig['Source']['overlap'] = 0.025
-            self.dataConfig['Source']['logicalPart'] = 1
-            self.dataConfig['Source']['physChunking'] = 0x0021
 
             self.log.debug("Data configuration : %s" % self.dataConfig)
 

@@ -15,15 +15,6 @@ class QservDataLoader():
 
         self._out_dirname = out_dirname
 
-        self._qms_config_file = os.path.join(expanduser("~"),".lsst","qmsadm")
-
-        meta_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "meta", "bin", "metaClientTool.py")
-        self.meta_cmd = [
-            self.config['bin']['python'],
-            meta_scriptname,
-            '--auth=%s' % self._qms_config_file
-            ]
-
         #self.logger = commons.console_logger(logging_level)
         #self.logger = commons.file_logger(
         #    log_file_prefix,
@@ -36,75 +27,18 @@ class QservDataLoader():
             }
 
         self._sqlInterface = dict()
-        self.chunk_id_list = None
 
-    def createMetaDatabase(self):
+    def createQmsDatabase(self):
 
-        # TODO : refine meta loading management, destroyMeta erase everything
-
-        out = commons.run_command(self.meta_cmd + ['destroyMeta'])
-        out = commons.run_command(self.meta_cmd + ['installMeta'])
-
-        create_meta_cmd = self.meta_cmd + [
-            'createDb',
+        qms_script = os.path.join(self.config['qserv']['base_dir'],"qserv", "admin", "bin", "qms_setup.sh")
+        qms_setup_cmd = [
+            qms_script,
+            self.config['qserv']['base_dir'],
             self._dbName,
-            'partitioning=on',
-            'partitioningStrategy=sphBox',
-            'defaultOverlap_fuzziness=0',
-            'defaultOverlap_nearNeighbor=0.025',
-            'nStripes=%s' % self.dataConfig['num-stripes'],
-            'nSubStripes=%s' % self.dataConfig['num-substripes']
+            self.dataConfig['data-name']
             ]
-        # partitioning=on partitioningStrategy=sphBox
-        # defaultOverlap_fuzziness=0 defaultOverlap_nearNeighbor=0.025
-        # nStripes=85 nSubStripes=12
-        out = commons.run_command(create_meta_cmd)
-        self.logger.info("Database %s created in QMS : %s" %
-        (self._dbName,out))
-
-
-
-    def createMetaTable(self, table_name, schema_filename):
-
-        self.logger.debug("Generating meta for table : %s" % table_name)
-        meta_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "meta", "bin", "metaClientTool.py")
-
-        create_meta_cmd = self.meta_cmd + [
-            'createTable',
-            self._dbName,
-#          '@%s' %  self.dataConfig[table_name]['meta-file'],
-
-            'tableName=%s' % table_name,
-            'schemaFile=%s' % schema_filename
-            ]
-
-        if table_name in self.dataConfig['partitionned-tables']:
-            partition_opts = [
-                'partitioning=on',
-                'phiColName=%s' % self.dataConfig[table_name]['phiColName'],
-                'thetaColName=%s' %
-                self.dataConfig[table_name]['thetaColName'],
-                'objIdColName=%s' %
-                self.dataConfig[table_name]['objIdColName'],
-                'overlap=%i' % self.dataConfig[table_name]['overlap'],
-                'logicalPart=%i' % self.dataConfig[table_name]['logicalPart'],
-                'physChunking=0x0021'
-                ]
-        else:
-            partition_opts = [
-                'partitioning=off'
-                ]
-
-        create_meta_cmd.extend(partition_opts)
-
-        # python ./meta/bin/metaClientTool.py createTable LSST
-        # tableName=RunDeepSource partitioning=on
-        # schemaFile=../testdata/case03/data/RunDeepSource.sql
-        # overlap=0.025 phiColName=coord_ra thetaColName=coord_decl
-        # logicalPart=1 physChunking=0x0021
-        out = commons.run_command(create_meta_cmd)
-        self.logger.info("Table %s created in QMS : %s" % (table_name,out))
-
+        out = commons.run_command(qms_setup_cmd)
+        self.logger.info("QMS meta successfully loaded for db : %s" % self._dbName)
 
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
         self.logger.info("QservDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
@@ -119,7 +53,6 @@ class QservDataLoader():
         else:
             self.logger.info("Creating and loading non-partitionned table %s" % table_name)
             self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
-        self.createMetaTable(table_name, schema_filename)
 
     def loadPartitionedTable(self, table, data_filename):
         ''' Duplicate, partition and load Qserv data like Source and Object
@@ -141,12 +74,11 @@ class QservDataLoader():
         self.logger.info("-----\nQserv mono-node database filled with partitionned '%s' data. -----\n" % table)
 
 
-    def configureXrootdQservMetaEmptyChunk(self):
+    def configureQservMetaEmptyChunk(self):
         chunk_id_list=self.workerGetNonEmptyChunkIds()
         self.masterCreateMetaDatabase()
         for table in self.dataConfig['partitionned-tables']:
             self.workerCreateTable1234567890(table)
-            #self.workerCreateXrootdExportDirs(chunk_id_list)
             self.masterCreateAndFeedMetaTable(table,chunk_id_list)
 
         # Create etc/emptychunk.txt
@@ -175,7 +107,6 @@ class QservDataLoader():
         cmd_connection_params =   self.sock_connection_params
         cmd_connection_params['database'] = self._dbName
         self._sqlInterface['cmd'] = cmd.Cmd(**cmd_connection_params)
-        self.createMetaDatabase()
 
     def workerGetNonEmptyChunkIds(self):
         non_empty_chunk_list=[]
@@ -204,34 +135,6 @@ class QservDataLoader():
         for i in empty_chunks_list:
             f.write("%s\n" %i)
         f.close()
-
-    def workerCreateXrootdExportDirs(self, non_empty_chunk_id_list):
-
-        # match oss.localroot in etc/lsp.cf
-        xrootd_run_dir = os.path.join(self.config['qserv']['base_dir'],'xrootd-run')
-
-        # TODO : read 'q' and 'result' in etc/lsp.cf
-        xrd_query_dir = os.path.join(xrootd_run_dir, 'q', self._dbName)
-        xrd_result_dir = os.path.join(xrootd_run_dir, 'result')
-
-        if os.path.exists(xrd_query_dir):
-            self.logger.info("Emptying existing xrootd query dir : %s" % xrd_query_dir)
-            shutil.rmtree(xrd_query_dir)
-        os.makedirs(xrd_query_dir)
-
-        empty_chunk_alias = 1234567890
-
-        xrootd_file_names = non_empty_chunk_id_list + [empty_chunk_alias]
-        self.logger.info("Making next placeholders %s" % xrootd_file_names )
-        for chunk_id in xrootd_file_names:
-            xrd_file = os.path.join(xrd_query_dir,str(chunk_id))
-            open(xrd_file, 'w').close()
-
-        if os.path.exists(xrd_result_dir):
-            self.logger.info("Emptying existing xrootd result dir : %s" % xrd_result_dir)
-            shutil.rmtree(xrd_result_dir)
-        os.makedirs(xrd_result_dir)
-
 
     def duplicateAndPartitionData(self, table, data_filename):
         self.logger.info("Duplicating and partitioning table  '%s' from file '%s'\n" % (table, data_filename))
