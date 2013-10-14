@@ -70,6 +70,7 @@ env.Requires(env.Alias('perl-install'), env.Alias('config'))
 env.Requires(env.Alias('perl-init-mysql-db'), env.Alias('templates'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-qms'))
+# next target install all python files, usefull for development purposes
 env.Requires(env.Alias('admin-bin'), env.Alias('python-tests'))
 env.Requires(env.Alias('perl-install'), env.Alias('admin-bin'))
 
@@ -230,6 +231,14 @@ env.Alias("python-admin", python_admin)
 
 python_tests = env.InstallPythonModule(target=python_path_prefix, source='tests/python')
 env.Alias("python-tests", python_tests)
+
+env.Alias("python",
+    [
+        env.Alias("python-tests"),
+        env.Alias("python-admin"),
+        env.Alias("python-admin")
+    ]
+)
 
 SConscript('meta/SConscript', exports = 'env')
 
