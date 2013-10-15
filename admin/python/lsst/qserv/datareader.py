@@ -72,6 +72,10 @@ class DataReader():
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
 
+            # TODO : read from QMS db.params file
+            self.dataConfig['num-stripes'] = 85
+            self.dataConfig['num-substripes'] = 12
+
             self.dataConfig['Object']['ra-column'] = 2
             self.dataConfig['Object']['decl-column'] = 4
             self.dataConfig['Object']['chunk-column-id'] = 225
@@ -81,9 +85,6 @@ class DataReader():
             # chunkId and subChunkId will be added
             self.dataConfig['Source']['chunk-column-id'] = None
 
-            # TODO : read from QMS db.params file
-            self.dataConfig['num-stripes'] = 85
-            self.dataConfig['num-substripes'] = 12
 
             self.log.debug("Data configuration : %s" % self.dataConfig)
 
@@ -106,6 +107,10 @@ class DataReader():
             self.dataConfig['data-extension']='.txt'
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
+
+            # TODO : read from QMS db.params file
+            self.dataConfig['num-stripes'] = 85
+            self.dataConfig['num-substripes'] = 12
 
             self.dataConfig['AvgForcedPhot']['ra-column'] = 1
             self.dataConfig['AvgForcedPhot']['decl-column'] = 2

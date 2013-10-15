@@ -1,4 +1,6 @@
 #!/bin/bash
+# Loading of qms meta for test cases on small datasets
+# author Fabrice Jammes, fabrice.jammes@in2p3.fr
 
 if [ "$#" != 3 ] ; then
     SCRIPT=`basename $0`
@@ -61,9 +63,23 @@ fi
 run_cmd "${META_CMD} createDb ${DB_NAME} @${DATA_DIR}/db.params" "Creating meta db ${DB_NAME}"
 
 # needed to access schema files, specified with relative path in .params files
-cd ${DATA_DIR} && META_FILE_LST=`ls *.params| egrep -v "^db.params$"` || die "Error while looking for tables meta-files in ${DATA_DIR}"
+cd ${DATA_DIR} || die "Error while looking for tables meta-files in ${DATA_DIR}"
 
-for META_TABLE in $META_FILE_LST
+PARAMS_ORDER=${DATA_DIR}/params-loading-order.txt
+if [ -r ${PARAMS_ORDER} ]
+then
+    echo "Specific loading order required for meta files"
+    META_FILE_LST=`cat ${PARAMS_ORDER}`
+else
+    META_FILE_LST=`ls *.params | egrep -v "^db.params$"`
+fi
+
+if [ -z ${META_FILE_LST} ]
+then
+    die "Can't load qms meta : no params files found in ${DATA_DIR}"
+fi
+
+for META_TABLE in ${META_FILE_LST}
 do
     run_cmd "${META_CMD} createTable ${DB_NAME} @${DATA_DIR}/${META_TABLE}" "Creating meta table ${META_TABLE}"
 done
