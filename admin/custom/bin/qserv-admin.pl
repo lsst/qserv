@@ -282,28 +282,30 @@ sub stop_xrootd {
 
 #stop the mysql server
 sub stop_mysqld {
-  my( $dbpass ) = $opts{'dbpass'};
-  run_command("$install_dir/bin/mysqladmin -S $install_dir/var/lib/mysql/mysql.sock -u root -p$dbpass shutdown");
+	killpid("$install_dir/var/run/mysqld/mysqld.pid");
 }
 
 #stop the mysql proxy
 sub stop_proxy {
-    killpid("$install_dir/var/run/mysql-proxy.pid");
+	killpid("$install_dir/var/run/mysql-proxy.pid");
 }
 
 # Kill a process based on a PID file
 sub killpid {
-    my( $pidfile ) = @_;
-    if (-e $pidfile) {
-        print "Killing process pids from $pidfile \n";
-        open FILE, $pidfile;
-        while (<FILE>) {
-            kill 9, $_;
-        }
-        unlink $pidfile
-    } else {
-        print "killpid: Non existing PID file $pidfile \n";
-    }
+	my( $pidfile ) = @_;
+	if( -e $pidfile ) {
+		print "Killing process pids from $pidfile \n" if( $debug );
+		open FILE, $pidfile;
+		while( my $line = <FILE> ) {
+			chomp $line;
+			print "Killing pid $line.\n" if( $debug );
+			kill 9, $line;
+		}
+		close FILE;
+		unlink $pidfile
+	} else {
+		print "killpid: Non existing PID file $pidfile \n";
+	}
 }
 
 #Stop a process given an id
