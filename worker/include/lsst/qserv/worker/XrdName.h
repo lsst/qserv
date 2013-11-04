@@ -45,7 +45,7 @@ private:
         // Sanitize xrdname
         char* sanitized = strdup(rawName);
         for(char* cursor = sanitized; *rawName != '\0'; ++rawName) {
-            if(isalnum(*rawName)) { 
+            if(isalnum(*rawName) || *rawName == '_') { 
                 *cursor = *rawName; 
                 ++cursor;
             }
