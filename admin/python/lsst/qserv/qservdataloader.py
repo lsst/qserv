@@ -1,3 +1,14 @@
+# Loads partition and load data set and then configure Qserv
+# used by test procedure
+
+# WARNING : this procedure is redundant with :
+# - admin/bin/qserv-chunkload.py (which was used for data-loading on CC-IN2P3 cluster)
+# - admin/custom/bin/qserv-admin.pl also have a data loading procedure for
+# PT1.1 data set
+# it should be unified in a global data loading procedure :
+# https://dev.lsstcorp.org/trac/wiki/db/Qserv/DataLoading
+
+
 from  lsst.qserv.admin import commons
 from  lsst.qserv.sql import const, cmd, connection, schema
 import logging
