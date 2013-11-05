@@ -32,8 +32,8 @@
 
 #include <deque>
 #include <sstream>
+#include <stdexcept>
 
-#include <boost/regex.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include "lsst/qserv/master/ChunkSpec.h"
@@ -45,14 +45,32 @@ namespace master {
 
 class MapTuple {
 public:
-    MapTuple(std::string const& pat, 
-             std::string const target,
+    MapTuple(std::string const& pattern,
+             std::string const& target,
              QueryMapping::Parameter p) 
-        : reg(pat), tgt(target), param(p) {}
-    boost::regex reg;
+        : pat(pattern), tgt(target), param(p) {}
+    std::string pat;
     std::string tgt;
     QueryMapping::Parameter param;
 };
+
+std::string const replace(std::string const & s,
+                          std::string const & pat,
+                          std::string const & value)
+{
+    std::string result;
+    size_t i = 0;
+    while (i != std::string::npos) {
+        size_t j = s.find(pat, i);
+        result.append(s, i, j - i);
+        if (j == std::string::npos) {
+            break;
+        }
+        result.append(value);
+        i = j + pat.size();
+    }
+    return result;
+}
 
 class Mapping : public QueryTemplate::EntryMapping {
 public:
@@ -83,7 +101,7 @@ public:
         //if(!e.isDynamic()) {return newE; }
 
         for(i=_map.begin(); i != _map.end(); ++i) {
-            newE->s = boost::regex_replace(newE->s, i->reg, i->tgt);
+            newE->s = replace(newE->s, i->pat, i->tgt);
             if(i->param == QueryMapping::SUBCHUNK) {
                 // Remember that we mapped a subchunk,
                     // so we know to iterate over subchunks.
