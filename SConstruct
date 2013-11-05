@@ -70,8 +70,16 @@ env.Requires(env.Alias('perl-install'), env.Alias('config'))
 env.Requires(env.Alias('perl-init-mysql-db'), env.Alias('templates'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-qms'))
-# next target install all python files, usefull for development purposes
 env.Requires(env.Alias('admin-bin'), env.Alias('python-tests'))
+# next target install all python files, usefull for development purposes
+env.Requires(env.Alias('admin-bin'), env.Alias('python'))
+env.Alias("python",
+    [
+        env.Alias("python-admin"),
+        env.Alias("python-qms"),
+        env.Alias("python-tests"),
+    ]
+)
 env.Requires(env.Alias('perl-install'), env.Alias('admin-bin'))
 
 env.Alias('install',env.Alias('perl-install'))
@@ -110,11 +118,12 @@ for perl_option in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'):
     scons_target = "perl-%s" % perl_option
     env.Alias(scons_target, env.Command(scons_target+'-dummy-target', [], actions.build_cmd_with_opts(config,perl_option)))
 
-#########################
+######################################################
 #
-# Using templates files
+# Templating system
+# fill Qserv config files with qserv-build.conf values
 #
-#########################
+######################################################
 
 def get_template_targets():
 
@@ -139,7 +148,6 @@ def get_template_targets():
         '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'],
         '%\(MYSQLD_PORT\)s': config['mysqld']['port'],
         # used for mysql-proxy in mono-node
-        # '%(MYSQLD_HOST)': config['qserv']['master'],
         '%\(MYSQLD_HOST\)s': '127.0.0.1',
         '%\(MYSQLD_SOCK\)s': config['mysqld']['sock'],
         '%\(MYSQLD_USER\)s': config['mysqld']['user'],

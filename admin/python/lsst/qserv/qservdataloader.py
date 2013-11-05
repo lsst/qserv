@@ -41,7 +41,7 @@ class QservDataLoader():
         self.logger.info("QMS meta successfully loaded for db : %s" % self._dbName)
 
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
-        self.logger.info("QservDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
+        self.logger.debug("QservDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
 
         if table_name in self.dataConfig['partitionned-tables']:
             self.logger.info("Loading schema of partitionned table %s" % table_name)
@@ -61,7 +61,7 @@ class QservDataLoader():
         # TODO : create index and alter table with chunkId and subChunkId
         # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
 
-        self.logger.info("-----\nQserv Partitioning / Loading data for table  '%s' -----\n" % table)
+        self.logger.info("Partitioning and loading data for table  '%s' in Qserv mono-node database" % table)
 
         if ('Duplication' in self.dataConfig) and self.dataConfig['Duplication']:
             self.logger.info("-----\nQserv Duplicating data for table  '%s' -----\n" % table)
@@ -71,10 +71,12 @@ class QservDataLoader():
 
         self.loadPartitionedData(partition_dirname,table)
 
-        self.logger.info("-----\nQserv mono-node database filled with partitionned '%s' data. -----\n" % table)
-
 
     def configureQservMetaEmptyChunk(self):
+        
+        self.logger.info("Configuring Qserv mono-node database")
+
+        
         chunk_id_list=self.workerGetNonEmptyChunkIds()
         self.masterCreateMetaDatabase()
         for table in self.dataConfig['partitionned-tables']:
@@ -85,14 +87,12 @@ class QservDataLoader():
         empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
         self.masterCreateEmptyChunksFile(chunk_id_list,  empty_chunks_filename)
 
-        self.logger.info("-----\nQserv mono-node database configured\n")
-
 
     def connectAndInitDatabase(self):
 
         self._sqlInterface['sock'] = connection.Connection(**self.sock_connection_params)
 
-        self.logger.info("Initializing databases %s, qservMeta" % self._dbName)
+        self.logger.info("Initializing Qserv databases : %s, qservMeta" % self._dbName)
         sql_instructions= [
             "DROP DATABASE IF EXISTS %s" % self._dbName,
             "CREATE DATABASE %s" % self._dbName,
@@ -178,8 +178,7 @@ class QservDataLoader():
 
         out = commons.run_command(chunker_cmd)
 
-        self.logger.info("Working in DB : %s.  LSST %s data duplicated and partitioned : \n %s"
-                % (self._dbName, table,out))
+        self.logger.debug("Data for {0}.{1} duplicated and partitioned  (output :%s)" % (self._dbName, table,out))
 
         if data_filename_cleanup:
             commons.run_command(["gzip", data_filename])
@@ -216,8 +215,7 @@ class QservDataLoader():
 
         out = commons.run_command(partition_data_cmd)
 
-        self.logger.info("Working in DB : %s.  LSST %s data partitioned : \n %s"
-                % (self._dbName, table,out))
+        self.logger.debug("Data for {0}.{1} partitioned  (output :{2})".format(self._dbName, table,out))
 
         return partition_dirname
 
