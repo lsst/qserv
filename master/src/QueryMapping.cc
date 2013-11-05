@@ -60,7 +60,8 @@ std::string const replace(std::string const & s,
 {
     std::string result;
     size_t i = 0;
-    while (i != std::string::npos) {
+    result.reserve(s.size() + value.size());
+    while(true) {
         size_t j = s.find(pat, i);
         result.append(s, i, j - i);
         if (j == std::string::npos) {
