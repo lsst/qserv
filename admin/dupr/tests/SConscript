@@ -1,0 +1,48 @@
+# -*- python -*-
+from __future__ import with_statement
+import os, subprocess, sys
+Import('env')
+
+# If terminal supports colored text, use it for test-case PASS/FAIL messages.
+def _run(cmd):
+    try:
+        process = subprocess.Popen(args=cmd.split(), stdout=subprocess.PIPE)
+        output, _ = process.communicate()
+        return '' if process.poll() else output
+    except:
+        return ''
+_reset = _run('tput sgr0')
+_red   = _run('tput setaf 1')
+_green = _run('tput setaf 2')
+
+def red(text):
+    return _red + text + _reset
+def green(text):
+    return _green + text + _reset
+
+def runTest(target, source, env):
+    tgt = str(target[0])
+    with open(tgt + '.fail', 'w') as f:
+        retcode = subprocess.call(str(source[0]), stdout=f, stderr=f)
+    if retcode == 0:
+        os.rename(tgt + '.fail', tgt)
+        print green(str(source[0]) + ' : passed')
+    else:
+        print >>sys.stderr, red('%s : FAILED (see %s.fail)' % (source[0], tgt))
+    return retcode
+
+testEnv = env.Clone()
+if not GetOption('help') and not GetOption('clean'):
+    conf = Configure(testEnv)
+    if not (conf.CheckLib('boost_unit_test_framework-mt', language='C++') or
+            conf.CheckLib('boost_unit_test_framework', language='C++')):
+        print >> sys.stderr, 'Missing required boost library!'
+        Exit(1)
+    testEnv=conf.Finish()
+testEnv.Append(CPPPATH=['../src'])
+testEnv.Append(LIBPATH=['../src'])
+testEnv.Prepend(LIBS=['dupr'])
+testEnv.Append(BUILDERS={'Test': Builder(action=runTest, suffix='.test')})
+
+for source in testEnv.Glob('*.cc'):
+    testEnv.Test(testEnv.Program(source))

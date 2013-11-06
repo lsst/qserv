@@ -56,6 +56,10 @@ void BetweenPredicate::findColumnRefs(ColumnRefMap::List& list) {
     if(minValue) { minValue->findColumnRefs(list); }
     if(maxValue) { maxValue->findColumnRefs(list); }
 }
+void LikePredicate::findColumnRefs(ColumnRefMap::List& list) {
+    if(value) { value->findColumnRefs(list); }
+    if(charValue) { charValue->findColumnRefs(list); }
+}
 
 std::ostream& qMaster::CompPredicate::putStream(std::ostream& os) const {
     // FIXME
@@ -66,6 +70,10 @@ std::ostream& qMaster::InPredicate::putStream(std::ostream& os) const {
     return os;
 }
 std::ostream& qMaster::BetweenPredicate::putStream(std::ostream& os) const {
+    // FIXME
+    return os;
+}
+std::ostream& qMaster::LikePredicate::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
@@ -104,6 +112,12 @@ void qMaster::BetweenPredicate::renderTo(QueryTemplate& qt) const {
     qt.append("AND");
     r(maxValue);
 }
+void qMaster::LikePredicate::renderTo(QueryTemplate& qt) const {
+    ValueExpr::render r(qt, false);
+    r(value);
+    qt.append("LIKE");
+    r(charValue);
+}
 
 void CompPredicate::cacheValueExprList() {
     _cache.reset(new ValueExprList());
@@ -121,6 +135,13 @@ void BetweenPredicate::cacheValueExprList() {
     _cache->push_back(minValue);
     _cache->push_back(maxValue);
 }
+
+void LikePredicate::cacheValueExprList() {
+    _cache.reset(new ValueExprList());
+    _cache->push_back(value);
+    _cache->push_back(charValue);
+}
+
 
 // CompPredicate special function
 /// @return a parse token type that is the reversed operator of the
@@ -143,4 +164,42 @@ int CompPredicate::reverseOp(int op) {
         throw std::logic_error("Invalid op type for reversing");
     }
 }
+
+BfTerm::Ptr CompPredicate::copySyntax() const {
+    CompPredicate* p = new CompPredicate;
+    if(left) p->left = left->clone();
+    p->op = op;
+    if(right) p->right = right->clone();
+    return BfTerm::Ptr(p);
+}
+
+struct valueExprCopy {
+    inline ValueExprPtr operator()(ValueExprPtr const& p) {
+        return p ? p->clone() : ValueExprPtr();
+    }
+};
+
+BfTerm::Ptr InPredicate::copySyntax() const {
+    InPredicate* p = new InPredicate;
+    if(value) p->value = value->clone();
+    std::transform(cands.begin(), cands.end(),
+                   std::back_inserter(p->cands),
+                   valueExprCopy());
+    return BfTerm::Ptr(p);
+}
+BfTerm::Ptr BetweenPredicate::copySyntax() const {
+    BetweenPredicate* p = new BetweenPredicate;
+    if(value) p->value = value->clone();
+    if(minValue) p->minValue = minValue->clone();
+    if(maxValue) p->maxValue = maxValue->clone();
+    return BfTerm::Ptr(p);
+}
+
+BfTerm::Ptr LikePredicate::copySyntax() const {
+    LikePredicate* p = new LikePredicate;
+    if(value) p->value = value->clone();
+    if(charValue) p->charValue = charValue->clone();
+    return BfTerm::Ptr(p);
+}
+
 }}} // lsst::qserv::master

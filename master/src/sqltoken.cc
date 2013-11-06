@@ -61,14 +61,16 @@ bool qMaster::sqlShouldSeparate(std::string const& s, int last, int next) {
     bool lastAlnum = isalnum(last);
     bool nextAlnum = isalnum(next);
     return (lastAlnum && nextAlnum) // adjoining alnums
-	    || ((last == '*') && nextAlnum) // *saf
-	    || ((next == '*') && lastAlnum) // saf*
-	    || ((last == ')') && nextAlnum) // )asdf
-	    || ((last == '#') && nextAlnum) // #asdf
-	    || ((last == '%') && nextAlnum) // %asdf
-	    || ((next == '%') && lastAlnum) // asdf%
-	    || ((last == '_') && nextAlnum) // _asdf
-	    || ((next == '_') && lastAlnum) // asdf_
+        || ((last == '\'') && nextAlnum) // 'saf
+        || ((next == '\'') && lastAlnum) // saf'
+        || ((last == '*') && nextAlnum) // *saf
+        || ((next == '*') && lastAlnum) // saf*
+        || ((last == ')') && nextAlnum) // )asdf
+        || ((last == '#') && nextAlnum) // #asdf
+        || ((last == '%') && nextAlnum) // %asdf
+        || ((next == '%') && lastAlnum) // asdf%
+        || ((last == '_') && nextAlnum) // _asdf
+        || ((next == '_') && lastAlnum) // asdf_
 
-	    ;
+        ;
 }

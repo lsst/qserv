@@ -58,6 +58,7 @@ using lsst::qserv::master::QueryContext;
 using lsst::qserv::master::QuerySession;
 using lsst::qserv::master::SelectParser;
 using lsst::qserv::master::SelectStmt;
+using lsst::qserv::master::StringPair;
 namespace qMaster = lsst::qserv::master;
 
 namespace test = boost::test_tools;
@@ -209,63 +210,39 @@ struct ParserFixture {
 
 //BOOST_AUTO_TEST_CASE(SqlSubstitution) {
 
-#if 0 // FIXME: Need to migrate to new parser framework. For a later ticket.
-void tryAutoSubstitute() {
-    std::string stmt = "select * from LSST.Object as o1, LSST.Source where o1.id = 4 and LSST.Source.flux > 4 and ra < 5 and dista(ra,decl,ra,decl) < 1; select * from Temp;";
-    testStmt3(qsTest, stmt);
+std::string computeFirst(QuerySession& qs) {
+    qs.addChunk(makeChunkSpec(100,true));
+    QuerySession::Iter i = qs.cQueryBegin();
+    QuerySession::Iter e = qs.cQueryEnd();
+    BOOST_REQUIRE(i != e);
+    ChunkQuerySpec& first = *i;
+    return first.queries[0];
 }
-
-void tryNnSubstitute() {
-    std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2 where o1.id != o2.id and spdist(o1.ra,o1.decl,o2.ra,o2.decl) < 1;";
-    stmt = "select * from LSST.Object as o1, LSST.Object as o2 where o1.id != o2.id and LSST.spdist(o1.ra,o1.decl,o2.ra,o2.decl) < 1 AND o1.id != o2.id;";
-    testStmt3(qsTest, stmt);
-}
-
-void tryTriple() {
-    std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2, LSST.Source where o1.id != o2.id and dista(o1.ra,o1.decl,o2.ra,o2.decl) < 1 and Source.oid=o1.id;";
-    std::map<std::string,std::string> cfg; // dummy config
-    ChunkMeta c = newTestCmeta();
-    c.add("LSST", "ObjectSub", 2);
-    testStmt3(qsTest, stmt);
-}
-
-void tryAggregate() {
-    std::string stmt = "select sum(pm_declErr),sum(bMagF), count(bMagF2) bmf2 from LSST.Object where bMagF > 20.0;";
-    std::string stmt2 = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
-    std::map<std::string,std::string> cfg; // dummy config
-
-    ChunkMeta c = newTestCmeta();
-    testStmt3(qsTest, stmt);
-    testStmt3(qsTest, stmt2);
-}
-#endif
-
 ////////////////////////////////////////////////////////////////////////
 // CppParser basic tests
 ////////////////////////////////////////////////////////////////////////
 BOOST_FIXTURE_TEST_SUITE(CppParser, ParserFixture)
 
-#if 0 // Convert these to test new parser. Defer to a later ticket.
 BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
-    SqlParseRunner::Ptr spr = SqlParseRunner::newInstance(stmt,
-                                                          delimiter,
-                                                          config,
-                                                          metaCacheSessionId);
-    spr->setup(tableNames);
-    std::string parseResult = spr->getParseResult();
-    // std::cout << stmt << " is parsed into " << parseResult
-    //           << std::endl;
-    BOOST_CHECK(!parseResult.empty());
-    BOOST_CHECK(spr->getHasChunks());
-    BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(!spr->getHasAggregate());
+    std::string expected = "SELECT * FROM LSST.Object_100 AS QST_1_ WHERE someField>5.0";
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    SelectStmt const& ss = qs->getStmt();
+    BOOST_CHECK(context);
+    BOOST_CHECK(!context->restrictors);
+    BOOST_CHECK(context->hasChunks());
+    BOOST_CHECK(!context->hasSubChunks());
+    BOOST_CHECK(!ss.hasGroupBy());
+    BOOST_CHECK(!context->needsMerge);
+
+    std::string parallel = computeFirst(*qs);
+    BOOST_CHECK_EQUAL(expected, parallel);
 }
-#endif
 
 BOOST_AUTO_TEST_CASE(NoSub) {
     std::string stmt = "SELECT * FROM Filter WHERE filterId=4;";
-    std::string goodRes = "SELECT * FROM LSST.Filter WHERE filterId=4;";
+    std::string goodRes = "SELECT * FROM LSST.Filter AS QST_1_ WHERE filterId=4";
     boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
@@ -275,10 +252,14 @@ BOOST_AUTO_TEST_CASE(NoSub) {
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(!ss.hasGroupBy());
     BOOST_CHECK(!context->needsMerge);
+    std::string parallel = computeFirst(*qs);
+    BOOST_CHECK_EQUAL(goodRes, parallel);
 }
 
 BOOST_AUTO_TEST_CASE(Aggregate) {
     std::string stmt = "select sum(pm_declErr),chunkId, avg(bMagF2) bmf2 from LSST.Object where bMagF > 20.0 GROUP BY chunkId;";
+    std::string expPar = "SELECT sum(pm_declErr) AS QS1_SUM,chunkId AS QS2_PASS,COUNT(bMagF2) AS QS3_COUNT,SUM(bMagF2) AS QS4_SUM FROM LSST.Object_100 AS QST_1_ WHERE bMagF>20.0 GROUP BY chunkId";
+    std::string mer = "";
 
     boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -289,10 +270,8 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
     BOOST_CHECK(!context->hasSubChunks());
     BOOST_REQUIRE(ss.hasGroupBy());
 
-    // BOOST_CHECK_EQUAL(ss.getFixupSelect(),
-    //                   "sum(`sum(pm_declErr)`) AS `sum(pm_declErr)`, `chunkId`, SUM(avgs_bMagF2)/SUM(avgc_bMagF2) AS `bmf2`");
-    // BOOST_CHECK_EQUAL(ss.getFixupPost(), "GROUP BY `chunkId`");
-
+    std::string parallel = computeFirst(*qs);
+    BOOST_CHECK_EQUAL(expPar, parallel);
 }
 
 BOOST_AUTO_TEST_CASE(Limit) {
@@ -420,8 +399,17 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     BOOST_CHECK(first.queries.size() == 6);
     BOOST_CHECK_EQUAL(first.queries[1], expected_100_100000_core);
     BOOST_CHECK_EQUAL(first.queries[2], expected_100_100010_overlap);
+}
 
-
+BOOST_AUTO_TEST_CASE(Triple) {
+    std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2, LSST.Source where o1.id != o2.id and dista(o1.ra,o1.decl,o2.ra,o2.decl) < 1 and Source.oid=o1.id;";
+    std::string expected = "SELECT * FROM Subchunks_LSST_100.Object_100_100000 AS o1,Subchunks_LSST_100.Object_100_100000 AS o2,LSST.Source_100 AS QST_1_ WHERE o1.id!=o2.id AND dista(o1.ra,o1.decl,o2.ra,o2.decl)<1 AND QST_1_.oid=o1.id";
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    SelectStmt const& ss = qs->getStmt();
+    BOOST_CHECK(context);
+    std::string parallel = computeFirst(*qs);
+    BOOST_CHECK_EQUAL(parallel, expected);
 }
 
 BOOST_AUTO_TEST_CASE(BadDbAccess) {
@@ -438,6 +426,8 @@ BOOST_AUTO_TEST_CASE(BadDbAccess) {
     char const* params[] = {"LSST","Object", "objectIdObjTest", "2","3145","9999"};
     BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(), 
                                   params, params+6); 
+    std::string parallel = computeFirst(*qs);
+    BOOST_CHECK_EQUAL(parallel, ""); // FIXME
 }
 
 BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
@@ -655,6 +645,29 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     BOOST_CHECK_EQUAL(first.queries[0], expected_100);
 }
 
+BOOST_AUTO_TEST_CASE(SimpleScan) {
+    std::string stmt[] = {
+        "SELECT count(*) FROM Object WHERE iFlux < 0.4;",
+        "SELECT rFlux FROM Object WHERE iFlux < 0.4 ;",
+        "SELECT * FROM Object WHERE iRadius_SG between 0.02 AND 0.021 LIMIT 3;"
+    };
+    int const num=3;
+    for(int i=0; i < num; ++i) {
+        boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt[i]);
+        
+        boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+        BOOST_CHECK(context);
+        BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+        BOOST_CHECK(!context->restrictors);
+        BOOST_CHECK_EQUAL(context->scanTables.size(), 1);
+        if(context->scanTables.size() >= 1) {
+            StringPair p = context->scanTables.front();
+            BOOST_CHECK_EQUAL(p.first, "LSST");
+            BOOST_CHECK_EQUAL(p.second, "Object");
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(UnpartLimit) {
     std::string stmt = "SELECT * from Science_Ccd_Exposure limit 3;";
     boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
@@ -666,7 +679,6 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
     // BOOST_CHECK(!spr->getHasChunks());
     // BOOST_CHECK(!spr->getHasSubChunks());
     // BOOST_CHECK(!spr->getHasAggregate());
-
 }
 
 BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
@@ -740,6 +752,22 @@ BOOST_AUTO_TEST_CASE(Petasky1) {
         " FROM Source GROUP BY objectId HAVING  c > 1000 LIMIT 10;";
     testStmt3(qsTest, stmt);
 }
+
+BOOST_AUTO_TEST_CASE(Expression) {
+    // A query with some expressions
+    std::string stmt = "SELECT "
+        "ROUND(scisql_fluxToAbMag(uFlux_PS)-scisql_fluxToAbMag(gFlux_PS), 0) AS UG, "
+        "ROUND(scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS), 0) AS GR "
+        "FROM Object "
+        "WHERE scisql_fluxToAbMag(gFlux_PS) < 0.2 "
+        "AND scisql_fluxToAbMag(uFlux_PS)-scisql_fluxToAbMag(gFlux_PS) >=-0.27 "
+        "AND scisql_fluxToAbMag(gFlux_PS)-scisql_fluxToAbMag(rFlux_PS) >=-0.24 "
+        "AND scisql_fluxToAbMag(rFlux_PS)-scisql_fluxToAbMag(iFlux_PS) >=-0.27 "
+        "AND scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) >=-0.35 "
+        "AND scisql_fluxToAbMag(zFlux_PS)-scisql_fluxToAbMag(yFlux_PS) >=-0.40;";
+    testStmt3(qsTest, stmt);
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////

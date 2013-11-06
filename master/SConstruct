@@ -11,7 +11,7 @@
 # MYSQL_ROOT : Search a different root for MySQL. Useful if you have a
 #              MySQL build that isn't covered by SEARCH_ROOTS or if
 #              you'd like to override the version(s) found in system
-#              directories or SEARCH_ROOTS 
+#              directories or SEARCH_ROOTS
 # SWIG : The path to the swig binary to use.  Use this to specify a
 #        particular SWIG installation (1.3.29 is known to be faulty,
 #        and is shipped with RHEL5)
@@ -21,11 +21,11 @@
 # specified since the tree cannot be found automatically.
 # XRD_DIR : The path to the xrootd code checkout/clone (the top-level
 #           xrootd directory that holds src/, lib/, configure.classic,
-#           and others) 
+#           and others)
 # XRD_PLATFORM : The platform id used by xrootd for the
 #                os/machine. e.g., x86_64_linux_26_dbg.  The builder
 #                will check $XRD_DIR/lib/$XRD_PLATFORM for xrootd
-#                libraries. 
+#                libraries.
 
 
 import glob, os.path, re, sys
@@ -181,6 +181,7 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "QueryTemplate.cc",
                   "SelectList.cc",
                   "PostPlugin.cc",
+                  "ScanTablePlugin.cc",
                   "TablePlugin.cc",
                   "TableRefN.cc",
                   "QservRestrictorPlugin.cc",
@@ -210,6 +211,7 @@ parserSrcs = map(lambda x: os.path.join('src', x),
                   "ValueFactor.cc",
                   "FuncExpr.cc",
                   "WhereFactory.cc",
+                  "WherePlugin.cc",
                   "ifaceMeta.cc",
                   "MetadataCache.cc"
 ])

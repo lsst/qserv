@@ -143,6 +143,31 @@ void ValueExpr::findColumnRefs(ColumnRef::List& list) {
     }
 }
 
+/// @return true if holding a single ValueFactor, and that factor is a *
+bool ValueExpr::isStar() const {
+    if(!_factorOps.empty() && _factorOps.size() == 1) {
+        boost::shared_ptr<ValueFactor const> vf = getFactor();
+        if(!vf) {
+            throw std::invalid_argument("ValueExpr::isStar null ValueFactor");
+        }
+        return vf->getType() == ValueFactor::STAR;
+    }
+    return false;
+}
+
+/// @return true if holding a single ValueFactor
+bool ValueExpr::isFactor() const {
+    return _factorOps.size() == 1;
+}
+/// @return first ValueFactorPtr held. Useful when isFactor() == true
+boost::shared_ptr<ValueFactor const> ValueExpr::getFactor() const {
+    if(_factorOps.empty()) {
+        throw std::logic_error("ValueExpr::getFactor no factors");
+    }
+    return _factorOps.front().factor;
+}
+
+
 ValueExprPtr ValueExpr::clone() const {
     // First, make a shallow copy
     ValueExprPtr expr(new ValueExpr(*this));
