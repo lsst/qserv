@@ -41,8 +41,8 @@
 // package
 #include "lsst/qserv/SqlErrorObject.hh"
 #include "lsst/qserv/worker/Base.h"
+#include "lsst/qserv/worker/Task.h"
 #include "lsst/qserv/worker/ResultTracker.h"
-#include "lsst/qserv/worker/QueryRunnerManager.h"
 
 namespace lsst {
 namespace qserv {
@@ -53,8 +53,27 @@ namespace qserv {
 namespace lsst {
 namespace qserv {
 namespace worker {
+class Logger;
 class QuerySql;
 class QueryPhyResult; // Forward
+////////////////////////////////////////////////////////////////////////
+struct QueryRunnerArg {
+public:
+    QueryRunnerArg() {}
+
+    QueryRunnerArg(boost::shared_ptr<Logger> log_,
+                   Task::Ptr task_,
+                   std::string overrideDump_=std::string())
+        : log(log_), task(task_), overrideDump(overrideDump_) { }
+    boost::shared_ptr<Logger> log;
+    Task::Ptr task;
+    std::string overrideDump;
+};
+class ArgFunc {
+public:
+    virtual ~ArgFunc() {}
+    virtual void operator()(QueryRunnerArg const& )=0;
+};
 ////////////////////////////////////////////////////////////////////////
 class QueryRunner {
 public:
