@@ -96,9 +96,10 @@ std::string const qWorker::Task::defaultUser = "qsmaster";
 
 qWorker::Task::Task(qWorker::ScriptMeta const& s, std::string const& user_) {
     TaskMsgPtr t(new TaskMsg());
-    hash = s.hash;
-    dbName = s.dbName;
-    resultPath = s.resultPath;
+    // Try to force non copy-on-write
+    hash.assign(s.hash.c_str());
+    dbName.assign(s.dbName.c_str());
+    resultPath.assign(s.resultPath.c_str());
     t->set_chunkid(s.chunkId);
     lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
     updateSubchunks(s.script, *f);
@@ -106,15 +107,18 @@ qWorker::Task::Task(qWorker::ScriptMeta const& s, std::string const& user_) {
     f->add_query(s.script);
     needsCreate = false;
     msg = t;
+    timestr[0] = '\0';
 }
 
 qWorker::Task::Task(qWorker::Task::TaskMsgPtr t, std::string const& user_) {
     hash = hashTaskMsg(*t);
     dbName = "q_" + hash;
     resultPath = hashToResultPath(hash);
-    msg = t;
+    // Try to force non copy-on-write
+    msg.reset(new TaskMsg(*t));
     user = user_;
     needsCreate = true;
+    timestr[0] = '\0';
 }
 
 namespace lsst {
@@ -125,7 +129,9 @@ std::ostream& operator<<(std::ostream& os, qWorker::Task const& t) {
     os << "Task: " 
        << "msg: session=" << m.session() 
        << " chunk=" << m.chunkid()
-       << " db=" << m.db() << " ";
+       << " db=" << m.db() 
+       << " entry time=" << t.timestr
+       << " ";
     for(int i=0; i < m.fragment_size(); ++i) {
         dump(os, m.fragment(i));
         os << " ";

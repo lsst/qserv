@@ -31,6 +31,7 @@
 #include <string>
 #include <vector>
 #include <boost/shared_ptr.hpp>
+#include "lsst/qserv/master/common.h"
 
 namespace lsst {
 namespace qserv {
@@ -45,6 +46,7 @@ public:
     // Contents could change
     std::string db;
     int chunkId;
+    StringPairList scanTables;
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
     std::vector<std::string> subChunkTables;

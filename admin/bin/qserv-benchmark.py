@@ -26,10 +26,9 @@ def main():
         print "Test case%s succeed" % options.case_no
     else:
         print "Test case%s failed" % options.case_no
-        if options.load_data==False:
-            print ("Please check that corresponding data are loaded, "
-                   % "otherwise run test with -l option."
-                   % options.case_no)
+    
+    if options.load_data == False:
+            print ("Please check that corresponding data are loaded, otherwise run {0} with -l option.".format(os.path.basename(__file__)))
     
 if __name__ == '__main__':
     main()

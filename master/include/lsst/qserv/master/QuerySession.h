@@ -78,6 +78,8 @@ public:
 
     MergeFixup makeMergeFixup() const;
 
+    /// Finalize a query after chunk coverage has been updated
+    void finalize();
     // Iteration
     Iter cQueryBegin();
     Iter cQueryEnd();
@@ -116,6 +118,7 @@ private:
     std::string _tmpTable;
     std::string _resultTable;
     std::string _error;
+    int _isFinal;
 
     ChunkSpecList _chunks;
     boost::shared_ptr<PluginList> _plugins;

@@ -323,7 +323,7 @@ qMaster::submitQuery3(int session) {
     QuerySession& qs = qm.getQuerySession();
     TaskMsgFactory2 f(session);
 
-
+    qs.finalize();
     std::string const hp = qm.getXrootdHostPort();
     TmpTableName ttn(session, qs.getOriginal());
     std::ostringstream ss;

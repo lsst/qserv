@@ -43,15 +43,15 @@ class QservDataLoader():
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
         self.logger.debug("QservDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
 
-        if table_name in self.dataConfig['partitionned-tables']:
-            self.logger.info("Loading schema of partitionned table %s" % table_name)
+        if table_name in self.dataConfig['partitioned-tables']:
+            self.logger.info("Loading schema of partitioned table %s" % table_name)
             self.createPartitionedTable(table_name, schema_filename)
             self.loadPartitionedTable(table_name, input_filename)
         elif table_name in self.dataConfig['sql-views']:
             self.logger.info("Creating schema for table %s as a view" % table_name)
             self._sqlInterface['cmd'].executeFromFile(schema_filename)
         else:
-            self.logger.info("Creating and loading non-partitionned table %s" % table_name)
+            self.logger.info("Creating and loading non-partitioned table %s" % table_name)
             self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
 
     def loadPartitionedTable(self, table, data_filename):
@@ -79,10 +79,14 @@ class QservDataLoader():
         
         chunk_id_list=self.workerGetNonEmptyChunkIds()
         self.masterCreateMetaDatabase()
-        for table in self.dataConfig['partitionned-tables']:
+        for table in self.dataConfig['partitioned-tables']:
             self.workerCreateTable1234567890(table)
             self.masterCreateAndFeedMetaTable(table,chunk_id_list)
-
+            
+        for view in self.dataConfig['partitioned-sql-views']:
+            self.workerCreateView1234567890(view)
+            self.masterCreateAndFeedMetaTable(view,chunk_id_list)
+        
         # Create etc/emptychunk.txt
         empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
         self.masterCreateEmptyChunksFile(chunk_id_list,  empty_chunks_filename)
@@ -225,7 +229,7 @@ class QservDataLoader():
         load_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "loader.py")
 
     # TODO : remove hard-coded param : qservTest_caseXX_mysql => check why model table already exists in self._dbName
-        load_partitionned_data_cmd = [
+        load_partitioned_data_cmd = [
             self.config['bin']['python'],
             load_scriptname,
             '--user=%s' % self.config['mysqld']['user'],
@@ -233,10 +237,10 @@ class QservDataLoader():
             '--database=%s' % self._dbName
             ]
 
-        # if (table in self.dataConfig['partitionned-tables']):
-        #     load_partitionned_data_cmd.extend(['--drop-primary-key', 'Overlap'])
+        # if (table in self.dataConfig['partitioned-tables']):
+        #     load_partitioned_data_cmd.extend(['--drop-primary-key', 'Overlap'])
 
-        load_partitionned_data_cmd.extend( [
+        load_partitioned_data_cmd.extend( [
             "%s:%s" %
             ("127.0.0.1",self.config['mysqld']['port']),
             partition_dirname,
@@ -244,14 +248,23 @@ class QservDataLoader():
             ])
 
         # python master/examples/loader.py --verbose -u root -p changeme --database qservTest_case01_qserv -D clrlsst-dbmaster.in2p3.fr:13306 /opt/qserv-dev/tmp/Object_partition/ qservTest_case01_mysql.Object
-        out = commons.run_command(load_partitionned_data_cmd)
-        self.logger.info("Partitioned %s data loaded : %s" % (table,out))
+        out = commons.run_command(load_partitioned_data_cmd)
+        self.logger.info("Partitioned {0} data loaded (stdout : {1})".format(table,out))
 
     def workerCreateTable1234567890(self,table):
         sql =  "CREATE TABLE {0}.{1}_1234567890 LIKE {0}.{1};\n".format(self._dbName,table)
         self._sqlInterface['sock'].execute(sql)
 
         self.logger.info("%s table for empty chunk created" % table)
+        
+    def workerCreateView1234567890(self,table):
+        
+        create_view_sql="SELECT VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = '{0}' AND TABLE_NAME = '{1}';".format(self._dbName,table)
+        rename_view_sql =  "RENAME TABLE {0}.{1} TO {0}.{1}_1234567890;".format(self._dbName,table)
+        self._sqlInterface['sock'].execute(rename_view_sql)
+        self._sqlInterface['sock'].execute(create_view_sql)
+
+        self.logger.info("%s view for empty chunk created" % table)
 
     def masterCreateMetaDatabase(self):
         sql_instructions= [
@@ -328,8 +341,8 @@ class QservDataLoader():
         # TODO add index creation w.r.t. dataConfig
 
     def createPartitionedTable(self, table, schemaFile):
-        self.logger.info("Creating partitionned table %s with schema %s" % (table, schemaFile))
-        if table in self.dataConfig['partitionned-tables']:
+        self.logger.info("Creating partitioned table %s with schema %s" % (table, schemaFile))
+        if table in self.dataConfig['partitioned-tables']:
             self._sqlInterface['cmd'].executeFromFile(schemaFile)
             self.alterTable(table)
 

@@ -130,8 +130,9 @@ private:
 Semaphore WriteCallable::_sema(2);
 
 bool flushOrQueue(QueryRunnerArg const& a)  {
-    QueryRunner::Manager& mgr = QueryRunner::getMgr();
-    mgr.runOrEnqueue(a);
+    // Obsolete
+//    QueryRunner::Manager& mgr = QueryRunner::getMgr();
+//    mgr.runOrEnqueue(a);
     return true;
 }
 
@@ -231,7 +232,7 @@ int MySqlFsFile::_acceptFile(char const* fileName) {
         }
         _requestTaker.reset(new RequestTaker(_service->getAcceptor(),
                                              *_path));
-        
+        _chunkId = -1; // unused.
         return SFS_OK; // No other action is needed.
 
     case QservPath::RESULT:
@@ -512,11 +513,14 @@ bool MySqlFsFile::_flushWriteDetach() {
 }
 
 bool MySqlFsFile::_flushWriteSync() {
-    Task::Ptr t(new Task(ScriptMeta(_queryBuffer, _chunkId), _userName));
-    _setDumpNameAsChunkId(); // Because reads may get detached from writes.
-    //_eDest->Say((Pformat("db=%1%.") % s.dbName).str().c_str());
-    QueryRunner runner(_log, t, _dumpName);
-    return runner();
+    return false;
+
+    // No longer supported.
+    // Task::Ptr t(new Task(ScriptMeta(_queryBuffer, _chunkId), _userName));
+    // _setDumpNameAsChunkId(); // Because reads may get detached from writes.
+    // _eDest->Say((Pformat("No mdb=%1%.") % s.dbName).str().c_str());
+    // QueryRunner runner(_log, t, _dumpName);
+    // return runner();
 }
 
 bool MySqlFsFile::_hasPacketEof(

@@ -81,4 +81,17 @@ boost::shared_ptr<InPredicate> PredicateFactory::newInPredicate(antlr::RefAST a)
     return p;
 }
 
+boost::shared_ptr<LikePredicate> PredicateFactory::newLikePredicate(antlr::RefAST a) {
+    boost::shared_ptr<LikePredicate> p(new LikePredicate());
+    if(a->getType() == SqlSQL2TokenTypes::LIKE_PREDICATE) { a = a->getFirstChild(); }
+    RefAST value = a;
+    RefAST likeToken = value->getNextSibling();
+    RefAST pattern = likeToken->getNextSibling();
+
+    p->value = _vf.newExpr(value->getFirstChild());
+    p->charValue = _vf.newExpr(pattern->getFirstChild());
+    LikePredicate& lp = *p;
+    return p;
+}
+
 }}} // lsst::qserv::master

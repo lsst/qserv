@@ -96,6 +96,7 @@ public:
                  char const* opaque = 0);
 private:
     void _initExports();
+    bool _cleanup();
 
     XrdSysError* _eDest;
     int _isMysqlFail;

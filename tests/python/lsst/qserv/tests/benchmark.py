@@ -128,7 +128,7 @@ class Benchmark():
                         qText += ' '
                     outFile = os.path.join(myOutDir, qFN.replace('.sql', '.txt'))
                     #qText += " INTO OUTFILE '%s'" % outFile
-                    self.logger.info("Database : {0}, Query : {1}, SQL : {2}\n".format(self._mode,qFN, qText))
+                    self.logger.info("LAUNCHING QUERY : {1} against {0}, SQL : {2}\n".format(self._mode,qFN, qText))
                     self._sqlInterface['query'].execute(qText, outFile)
 
 
@@ -197,6 +197,13 @@ class Benchmark():
         if (self._mode=='qserv'):
             self.dataLoader[self._mode].createQmsDatabase()
             self.dataLoader[self._mode].configureQservMetaEmptyChunk()
+
+            # restart xrootd in order to reload  export paths w.r.t loaded chunks, cf. #2478
+            commons.restart('xrootd')
+
+            # Qserv fails to start if QMS is empty, so starting it again may be required
+            commons.restart('qserv-master')
+
         # in order to close socket connections
         del(self.dataLoader[self._mode])
 
@@ -218,21 +225,7 @@ class Benchmark():
                 self.loadData()
                 self.finalize()
 
-            if self._mode == 'qserv':
-                # restart xrootd in order to reload  export paths w.r.t loaded chunks, cf. #2478
-                self.restart('xrootd')
-
-                # Qserv fails to start if QMS is empty, so starting it again may be required
-                self.restart('qserv-master')
-
             self.runQueries(stop_at_query)
-
-    def restart(self,service_name):
-
-        initd_path = os.path.join(self.config['qserv']['base_dir'],'etc','init.d')
-        daemon_script = os.path.join(initd_path,service_name)
-        out = os.system("%s stop" % daemon_script)
-        out = os.system("%s start" % daemon_script)
 
     def analyzeQueryResults(self):
 

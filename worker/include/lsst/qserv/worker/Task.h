@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /* 
  * LSST Data Management System
  * Copyright 2011, 2012 LSST Corporation.
@@ -27,9 +28,11 @@
 #ifndef LSST_QSERV_WORKER_TASK_H
 #define LSST_QSERV_WORKER_TASK_H
 
+#include <deque>
 #include <boost/shared_ptr.hpp>
 #include "lsst/qserv/worker.pb.h"
 #include "lsst/qserv/worker/Base.h"
+
 
 namespace lsst {
 namespace qserv {
@@ -54,9 +57,15 @@ public:
     std::string resultPath;
     std::string user;
     bool needsCreate;
+    time_t entryTime;
+    char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
+    // Note that manpage spec of "26 bytes"  is insufficient
 
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 };
+typedef std::deque<Task::Ptr> TaskQueue;
+typedef boost::shared_ptr<TaskQueue> TaskQueuePtr;
+
 }}} // lsst::qserv::worker
 
 #endif // LSST_QSERV_WORKER_TASK_H

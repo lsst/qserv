@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
- * 
+ * Copyright 2011-2013 LSST Corporation.
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,16 +9,16 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
- */ 
+ */
 #define BOOST_TEST_MODULE Protocol_1
 #include "boost/test/included/unit_test.hpp"
 #include <cerrno>
@@ -43,10 +43,12 @@ struct ProtocolFixture {
         t->set_session(123456);
         t->set_chunkid(20 + counter);
         t->set_db("elephant");
+        t->add_scantables("orange");
+        t->add_scantables("plum");
         for(int i=0; i < 3; ++i) {
             lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
             f->add_query("Hello, this is a query.");
-            addSubChunk(*f, 100+i); 
+            addSubChunk(*f, 100+i);
             f->set_resulttable("r_341");
         }
         ++counter;
@@ -62,23 +64,28 @@ struct ProtocolFixture {
             subc.add_table("subtable");
             f.mutable_subchunks()->CopyFrom(subc);
             s = f.mutable_subchunks();
-        } else { 
-            s = f.mutable_subchunks(); 
+        } else {
+            s = f.mutable_subchunks();
         }
         s->add_id(scId);
     }
 
     bool compareTaskMsgs(lsst::qserv::TaskMsg& t1, lsst::qserv::TaskMsg& t2) {
-        bool nonFragEq = (t1.session() == t2.session()) 
+        bool nonFragEq = (t1.session() == t2.session())
             && (t1.chunkid() == t2.chunkid())
             && (t1.db() == t2.db());
-        
+
+        bool sTablesEq = t1.scantables_size() == t2.scantables_size();
+        for(int i=0; i < t1.scantables_size(); ++i) {
+            sTablesEq = sTablesEq && (t1.scantables(i) == t2.scantables(i));
+        }
+
         bool fEqual = (t1.fragment_size() == t2.fragment_size());
         for(int i=0; i < t1.fragment_size(); ++i) {
-            fEqual = fEqual && compareFragment(t1.fragment(i), 
+            fEqual = fEqual && compareFragment(t1.fragment(i),
                                                t2.fragment(i));
         }
-        return nonFragEq && fEqual;            
+        return nonFragEq && fEqual && sTablesEq;
     }
 
     lsst::qserv::ResultHeader* makeResultHeader() {
@@ -87,14 +94,14 @@ struct ProtocolFixture {
         for(int i=0; i < 4; ++i) {
             lsst::qserv::ResultHeader::Result* res = r->add_result();
             std::stringstream hash;
-            while(hash.tellp() < 16) { hash << counter; }            
+            while(hash.tellp() < 16) { hash << counter; }
             res->set_hash(hash.str().substr(0,16));
             res->set_resultsize(65536+counter);
-            res->set_chunkid(100+i+counter); 
+            res->set_chunkid(100+i+counter);
         }
         ++counter;
         return r;
-    }    
+    }
 
     bool compareSubchunk(lsst::qserv::TaskMsg_Subchunk const& s1,
                          lsst::qserv::TaskMsg_Subchunk const& s2) {
@@ -107,16 +114,16 @@ struct ProtocolFixture {
         for(int i=0; i < s1.id_size(); ++i) {
             if(s1.id(i) != s2.id(i)) return false;
         }
-        return true;        
+        return true;
     }
 
-    bool compareFragment(lsst::qserv::TaskMsg_Fragment const& f1, 
+    bool compareFragment(lsst::qserv::TaskMsg_Fragment const& f1,
                          lsst::qserv::TaskMsg_Fragment const& f2) {
         bool qEqual = true;
         if(f1.query_size() == f2.query_size()) {
             for(int i=0; i < f1.query_size(); ++i) {
                 if(f1.query(i) != f2.query(i)) return false;
-            }            
+            }
         } else { return false; }
         bool sEqual = true;
         if(f1.has_subchunks()) {
@@ -127,23 +134,23 @@ struct ProtocolFixture {
         return qEqual && sEqual;
     }
 
-    bool compareResultHeaders(lsst::qserv::ResultHeader const& r1, 
+    bool compareResultHeaders(lsst::qserv::ResultHeader const& r1,
                               lsst::qserv::ResultHeader const& r2) {
         bool same = r1.session() == r2.session();
         same = same && (r1.result_size() == r2.result_size());
         for(int i=0; i < r1.result_size(); ++i) {
-            same = same && compareResults(r1.result(i), 
+            same = same && compareResults(r1.result(i),
                                          r2.result(i));
         }
         return same;
-    } 
+    }
 
-    bool compareResults(lsst::qserv::ResultHeader_Result const& r1, 
+    bool compareResults(lsst::qserv::ResultHeader_Result const& r1,
                         lsst::qserv::ResultHeader_Result const& r2) {
-        return (r1.hash() == r2.hash()) 
-            && (r1.resultsize() == r2.resultsize()) 
+        return (r1.hash() == r2.hash())
+            && (r1.resultsize() == r2.resultsize())
             && (r1.chunkid() == r2.chunkid());
-    } 
+    }
 
 
     int counter;
@@ -177,7 +184,7 @@ BOOST_AUTO_TEST_CASE(ResultMsgSanity) {
     boost::scoped_ptr<lsst::qserv::ResultHeader> r2(new lsst::qserv::ResultHeader());
     BOOST_CHECK(r1.get());
     r2->ParseFromIstream(&ss2);
-    BOOST_CHECK(compareResultHeaders(*r1, *r2));    
+    BOOST_CHECK(compareResultHeaders(*r1, *r2));
 }
 
 BOOST_AUTO_TEST_CASE(MsgBuffer) {
@@ -185,9 +192,9 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
     boost::scoped_ptr<lsst::qserv::ResultHeader> r1(makeResultHeader());
     BOOST_CHECK(r1.get());
     r1->SerializeToOstream(&ss);
-    
+
     std::string raw(ss.str());
-    gio::ArrayInputStream input(raw.data(), 
+    gio::ArrayInputStream input(raw.data(),
                                 raw.size());
     gio::CodedInputStream coded(&input);
     boost::scoped_ptr<lsst::qserv::ResultHeader> r2(new lsst::qserv::ResultHeader());
@@ -199,7 +206,7 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
 BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
     boost::scoped_ptr<lsst::qserv::TaskMsg> t1(makeTaskMsg());
     std::string hash = hashTaskMsg(*t1);
-    std::string expected = "bdb5380e0cfd5696034c969ee3111785";
+    std::string expected = "4c6e5ad217891467addaa0db015eef80";
     BOOST_CHECK_EQUAL(hash, expected);
 }
 

@@ -33,7 +33,10 @@
   */
 #include "lsst/qserv/master/TaskMsgFactory2.h"
 
+#include <stdexcept>
+
 #include "lsst/qserv/master/ChunkQuerySpec.h"
+#include "lsst/qserv/master/common.h"
 #include "lsst/qserv/worker.pb.h"
 
 namespace qMaster=lsst::qserv::master;
@@ -44,6 +47,21 @@ namespace { // File-scope helpers
 namespace lsst {
 namespace qserv {
 namespace master {
+void flattenScanTables(StringList& outputList,
+                       StringPairList const& scanTables) {
+    std::string db;
+    outputList.clear();
+    for(StringPairList::const_iterator i=scanTables.begin(),
+            e=scanTables.end();
+        i != e; ++i) {
+        if(db.empty()) {
+            db = i->first;
+        } else if(db != i->first) {
+            throw std::logic_error("Multiple dbs prohibited");
+        }
+        outputList.push_back(db + "." + i->second);
+    }
+}
 ////////////////////////////////////////////////////////////////////////
 // class TaskMsgFactory2::Impl
 ////////////////////////////////////////////////////////////////////////
@@ -87,13 +105,20 @@ private:
 boost::shared_ptr<TaskMsg>
 TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
                                std::string const& chunkResultName) {
-
     std::string resultTable = _resultTable;
     if(!chunkResultName.empty()) { resultTable = chunkResultName; }
     _taskMsg.reset(new TaskMsg);
     // shared
     _taskMsg->set_session(_session);
     _taskMsg->set_db(s.db);
+    // scanTables (for shared scans)
+    StringList sTables;
+    flattenScanTables(sTables, s.scanTables);
+    for(StringList::const_iterator i=sTables.begin(), e=sTables.end();
+        i != e; ++i) {
+        _taskMsg->add_scantables(*i);
+    }
+
     // per-chunk
     _taskMsg->set_chunkid(s.chunkId);
     // per-fragment
@@ -132,6 +157,19 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
 	}
         addFragment(*_taskMsg, resultTable,
 		    s.subChunkTables, s.subChunkIds, s.queries);
+=======
+            // Linked fragments will not have valid subChunkTables vectors,
+            // So, we reuse the root fragment's vector.
+            addFragment(*_taskMsg, resultTable,
+                        s.subChunkTables,
+                        sPtr->subChunkIds,
+                        sPtr->queries);
+            sPtr = sPtr->nextFragment.get();
+        }
+    } else {
+        addFragment(*_taskMsg, resultTable,
+                    s.subChunkTables, s.subChunkIds, s.queries);
+>>>>>>> 459fb1d056035ef82402c2059d6a08af793e2794
     }
 
     return _taskMsg;
@@ -151,5 +189,4 @@ void TaskMsgFactory2::serializeMsg(ChunkQuerySpec const& s,
     boost::shared_ptr<TaskMsg> m = _impl->makeMsg(s, chunkResultName);
     m->SerializeToOstream(&os);
 }
-
 }}} // namespace lsst::qserv::master

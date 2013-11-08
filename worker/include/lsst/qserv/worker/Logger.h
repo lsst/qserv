@@ -54,6 +54,10 @@ public:
         : _log(log), _logLevel(LOG_EVERYTHING), _prefix("") {
         _init();
     }
+    explicit Logger(Logger::Ptr backend) 
+        : _log(0), _backend(backend), _logLevel(LOG_EVERYTHING) {        
+    }
+
     void setPrefix(std::string const& prefix) { _prefix = prefix; }
     std::string const& getPrefix(std::string const& prefix) const {
         return _prefix; }
@@ -82,6 +86,7 @@ private:
 
     std::string _prefix;
     XrdSysLogger* _log;
+    Logger::Ptr _backend;
     boost::shared_ptr<XrdSysError> _xrdSysError;
     LogLevel _logLevel;
 };

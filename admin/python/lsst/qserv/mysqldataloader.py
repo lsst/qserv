@@ -31,7 +31,7 @@ class MysqlDataLoader():
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
         self.logger.debug("MysqlDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
 
-        if (table_name in self.dataConfig['partitionned-tables']) and ('Duplication' in self.dataConfig) and self.dataConfig['Duplication']:
+        if (table_name in self.dataConfig['partitioned-tables']) and ('Duplication' in self.dataConfig) and self.dataConfig['Duplication']:
             self.logger.info("Loading schema of duplicated table %s" % table_name)
             self.createPartitionedTable(table_name, schema_filename)
             self.loadPartitionedTable(table_name, input_filename)
@@ -39,7 +39,7 @@ class MysqlDataLoader():
             self.logger.info("Creating schema for table %s as a view" % table_name)
             self._sqlInterface['cmd'].executeFromFile(schema_filename)
         else:
-            self.logger.info("Creating and loading non-partitionned table %s" % table_name)
+            self.logger.info("Creating and loading non-partitioned table %s" % table_name)
             self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
 
 
@@ -71,12 +71,12 @@ class MysqlDataLoader():
         self.logger.info("-----\nMySQL Duplicating data for table  '%s' -----\n" % table)
         partition_dirname = self.duplicateAndPartitionData(table, data_filename)
         self.loadPartitionedData(partition_dirname,table)
-        self.logger.info("-----\nMySQL database filled with partitionned '%s' data. -----\n" % table)
+        self.logger.info("-----\nMySQL database filled with partitioned '%s' data. -----\n" % table)
 
 
     def createPartitionedTable(self, table, schemaFile):
-        self.logger.info("Creating partitionned table %s with schema %s" % (table, schemaFile))
-        if table in self.dataConfig['partitionned-tables']:
+        self.logger.info("Creating partitioned table %s with schema %s" % (table, schemaFile))
+        if table in self.dataConfig['partitioned-tables']:
             self._sqlInterface['cmd'].executeFromFile(schemaFile)
             self.alterTable(table)
 
@@ -151,5 +151,5 @@ class MysqlDataLoader():
             for filename in filenames:
                 if filename.startswith(prefix):
                     datafile = os.path.join(root, filename)
-                    self.logger.info("Loading partitionned data from %s" % datafile)
+                    self.logger.info("Loading partitioned data from %s" % datafile)
                     self._sqlInterface['cmd'].loadData(datafile, table, self.dataConfig['delimiter'])

@@ -28,10 +28,11 @@ class DataReader():
         self.log.debug("DataReader.analyze() : Data name is : %s" %self.dataName )
 
         self.dataConfig['sql-views'] = []
+        self.dataConfig['partitioned-sql-views'] = []
         self.dataConfig['data-name']=self.dataName
 
         if self.dataName=="case01":
-            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+            self.dataConfig['partitioned-tables'] = ["Object", "Source"]
 
             """ Fill column position (zero-based index) """
             self.dataConfig['Object']=dict()
@@ -61,7 +62,7 @@ class DataReader():
         # for PT1.1
         elif self.dataName=="case02":
 
-            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+            self.dataConfig['partitioned-tables'] = ["Object", "Source"]
 
             """ Fill column position (zero-based index) """
             self.dataConfig['Object']=dict()
@@ -92,13 +93,20 @@ class DataReader():
         # for W13
         elif self.dataName=="case03":
 
-            self.dataConfig['partitionned-tables'] = ["AvgForcedPhot",
+            # TODO next params should be deduced from meta files
+            self.tables=['Science_Ccd_Exposure_Metadata_coadd_r', 'AvgForcedPhotYearly', 'Science_Ccd_Exposure_Metadata', 'RunDeepSource',  'RunDeepForcedSource', 'DeepForcedSource', 'ZZZ_Db_Description', 'RefObject', 'RefDeepSrcMatch', 'Science_Ccd_Exposure_coadd_r', 'Science_Ccd_Exposure', 'AvgForcedPhot', 'DeepCoadd_To_Htm10', 'Science_Ccd_Exposure_To_Htm10_coadd_r', 'LeapSeconds', 'DeepCoadd', 'DeepCoadd_Metadata', 'DeepSource', 'Filter']
+
+            self.dataConfig['sql-views'] = ['DeepForcedSource','DeepSource']
+            
+            self.dataConfig['partitioned-tables'] = ["AvgForcedPhot",
                                                 "AvgForcedPhotYearly",
                                                 "RefObject",
                                                 "RunDeepSource",
                                                 "RunDeepForcedSource"]
+            
+            self.dataConfig['partitioned-sql-views'] = ['DeepForcedSource','DeepSource']
 
-            for table in self.dataConfig['partitionned-tables']:
+            for table in self.dataConfig['partitioned-tables']:
                 self.dataConfig[table]=dict()
                 # chunkId and subChunkId will be added
                 self.dataConfig[table]['chunk-column-id'] = None
@@ -127,14 +135,11 @@ class DataReader():
             self.dataConfig['RunDeepForcedSource']['ra-column'] = 1
             self.dataConfig['RunDeepForcedSource']['decl-column'] = 2
 
-            self.tables=['Science_Ccd_Exposure_Metadata_coadd_r', 'AvgForcedPhotYearly', 'Science_Ccd_Exposure_Metadata', 'RunDeepSource',  'RunDeepForcedSource', 'DeepForcedSource', 'ZZZ_Db_Description', 'RefObject', 'RefDeepSrcMatch', 'Science_Ccd_Exposure_coadd_r', 'Science_Ccd_Exposure', 'AvgForcedPhot', 'DeepCoadd_To_Htm10', 'Science_Ccd_Exposure_To_Htm10_coadd_r', 'LeapSeconds', 'DeepCoadd', 'DeepCoadd_Metadata', 'DeepSource', 'Filter']
-
-            self.dataConfig['sql-views'] = ['DeepForcedSource','DeepSource']
 
         # for PT1.2
         elif self.dataName=="case04":
 
-            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+            self.dataConfig['partitioned-tables'] = ["Object", "Source"]
 
             """ Fill column position (zero-based index) """
             self.dataConfig['Object']=dict()
@@ -166,7 +171,7 @@ class DataReader():
         # for duplicated/replicated PT1.2
         elif self.dataName=="case05":
 
-            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+            self.dataConfig['partitioned-tables'] = ["Object", "Source"]
 
             """ Fill column position (zero-based index) """
             self.dataConfig['Object']=dict()
