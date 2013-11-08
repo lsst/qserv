@@ -1,3 +1,14 @@
+# Loads partition and load data set and then configure Qserv
+# used by test procedure
+
+# WARNING : this procedure is redundant with :
+# - admin/bin/qserv-chunkload.py (which was used for data-loading on CC-IN2P3 cluster)
+# - admin/custom/bin/qserv-admin.pl also have a data loading procedure for
+# PT1.1 data set
+# it should be unified in a global data loading procedure :
+# https://dev.lsstcorp.org/trac/wiki/db/Qserv/DataLoading
+
+
 from  lsst.qserv.admin import commons
 from  lsst.qserv.sql import const, cmd, connection, schema
 import logging
@@ -112,7 +123,7 @@ class QservDataLoader():
 
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
         self.logger.info("QservDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
- 
+
         if table_name in self.dataConfig['partitionned-tables']:
             self.logger.info("Loading schema of partitionned table %s" % table_name)
             self.createPartitionedTable(table_name, schema_filename)
@@ -133,13 +144,13 @@ class QservDataLoader():
         # "\nCREATE INDEX obj_objectid_idx on Object ( objectId );\n";
 
         self.logger.info("-----\nQserv Partitioning / Loading data for table  '%s' -----\n" % table)
-        
+
         if ('Duplication' in self.dataConfig) and self.dataConfig['Duplication']:
             self.logger.info("-----\nQserv Duplicating data for table  '%s' -----\n" % table)
             partition_dirname = self.duplicateAndPartitionData(table, data_filename)
         else:
             partition_dirname = self.partitionData(table, data_filename)
-        
+
         self.loadPartitionedData(partition_dirname,table)
 
         self.logger.info("-----\nQserv mono-node database filled with partitionned '%s' data. -----\n" % table)
@@ -158,10 +169,10 @@ class QservDataLoader():
         self.masterCreateEmptyChunksFile(chunk_id_list,  empty_chunks_filename)
 
         self.logger.info("-----\nQserv mono-node database configured\n")
-            
 
-    def connectAndInitDatabase(self): 
-        
+
+    def connectAndInitDatabase(self):
+
         self._sqlInterface['sock'] = connection.Connection(**self.sock_connection_params)
 
         self.logger.info("Initializing databases %s, qservMeta" % self._dbName)
@@ -172,11 +183,11 @@ class QservDataLoader():
             "GRANT ALL ON %s.* TO 'qsmaster'@'localhost'" % (self._dbName),
             "USE %s" %  self._dbName
             ]
-        
+
         for sql in sql_instructions:
             self._sqlInterface['sock'].execute(sql)
 
-        cmd_connection_params =   self.sock_connection_params  
+        cmd_connection_params =   self.sock_connection_params
         cmd_connection_params['database'] = self._dbName
         self._sqlInterface['cmd'] = cmd.Cmd(**cmd_connection_params)
         self.createMetaDatabase()
@@ -184,7 +195,7 @@ class QservDataLoader():
     def workerGetNonEmptyChunkIds(self):
         non_empty_chunk_list=[]
 
-        sql = "SHOW TABLES IN %s LIKE \"Object\_%%\";" % self._dbName 
+        sql = "SHOW TABLES IN %s LIKE \"Object\_%%\";" % self._dbName
         rows = self._sqlInterface['sock'].execute(sql)
 
         for row in rows:
@@ -215,14 +226,14 @@ class QservDataLoader():
         xrootd_run_dir = os.path.join(self.config['qserv']['base_dir'],'xrootd-run')
 
         # TODO : read 'q' and 'result' in etc/lsp.cf
-        xrd_query_dir = os.path.join(xrootd_run_dir, 'q', self._dbName) 
-        xrd_result_dir = os.path.join(xrootd_run_dir, 'result') 
+        xrd_query_dir = os.path.join(xrootd_run_dir, 'q', self._dbName)
+        xrd_result_dir = os.path.join(xrootd_run_dir, 'result')
 
         if os.path.exists(xrd_query_dir):
             self.logger.info("Emptying existing xrootd query dir : %s" % xrd_query_dir)
             shutil.rmtree(xrd_query_dir)
         os.makedirs(xrd_query_dir)
- 
+
         empty_chunk_alias = 1234567890
 
         xrootd_file_names = non_empty_chunk_id_list + [empty_chunk_alias]
@@ -239,14 +250,14 @@ class QservDataLoader():
 
     def duplicateAndPartitionData(self, table, data_filename):
         self.logger.info("Duplicating and partitioning table  '%s' from file '%s'\n" % (table, data_filename))
-        
+
         partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
         partition_dirname = os.path.join(self._out_dirname,table+"_partition")
-        
+
         if os.path.exists(partition_dirname):
             shutil.rmtree(partition_dirname)
         os.makedirs(partition_dirname)
-        
+
         schema_filename = os.path.join(self.dataConfig['dataDirName'], table + self.dataConfig['schema-extension'])
         data_filename = os.path.join(self.dataConfig['dataDirName'], table + self.dataConfig['data-extension'])
 
@@ -259,14 +270,14 @@ class QservDataLoader():
             raise Exception, "File: %s not found" % data_filename
 
         chunker_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "makeChunk.py")
-         
+
         chunker_cmd = [
             self.config['bin']['python'],
             chunker_scriptname,
             '--output-dir', partition_dirname,
             '--delimiter', self.dataConfig['delimiter'],
-            '-S', str(self.config['qserv']['stripes']), 
-            '-s', str(self.config['qserv']['substripes']),
+            '-S', str(self.dataConfig['num-stripes']),
+            '-s', str(self.dataConfig['num-substripes']),
             '--dupe',
             '--node-count', str(self.dataConfig['nbNodes']),
             '--node=' + str(self.dataConfig['currentNodeID']),
@@ -284,19 +295,19 @@ class QservDataLoader():
 
         if data_filename_cleanup:
             commons.run_command(["gzip", data_filename])
-        
+
         return partition_dirname
-    
-        
+
+
     def partitionData(self,table, data_filename):
-        # partition data          
-        
+        # partition data
+
         partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
         partition_dirname = os.path.join(self._out_dirname,table+"_partition")
         if os.path.exists(partition_dirname):
             shutil.rmtree(partition_dirname)
         os.makedirs(partition_dirname)
-            
+
             # python %s -PObject -t 2  -p 4 %s --delimiter '\t' -S 10 -s 2 --output-dir %s" % (self.partition_scriptname, data_filename, partition_dirname
         partition_data_cmd = [
             self.config['bin']['python'],
@@ -309,14 +320,14 @@ class QservDataLoader():
             '--num-sub-stripes=%s' % self.dataConfig['num-substripes'],
             '--delimiter', self.dataConfig['delimiter']
             ]
- 
+
         if self.dataConfig[table]['chunk-column-id'] != None :
             partition_data_cmd.extend(['--chunk-column', str(self.dataConfig[table]['chunk-column-id'])])
-            
+
         partition_data_cmd.append(data_filename)
-            
+
         out = commons.run_command(partition_data_cmd)
-        
+
         self.logger.info("Working in DB : %s.  LSST %s data partitioned : \n %s"
                 % (self._dbName, table,out))
 
@@ -329,9 +340,9 @@ class QservDataLoader():
 
     # TODO : remove hard-coded param : qservTest_caseXX_mysql => check why model table already exists in self._dbName
         load_partitionned_data_cmd = [
-            self.config['bin']['python'], 
+            self.config['bin']['python'],
             load_scriptname,
-            '--user=%s' % self.config['mysqld']['user'], 
+            '--user=%s' % self.config['mysqld']['user'],
             '--password=%s' % self.config['mysqld']['pass'],
             '--database=%s' % self._dbName
             ]
@@ -345,7 +356,7 @@ class QservDataLoader():
             partition_dirname,
             "%s.%s" % (self._dbName, table)
             ])
-                                           
+
         # python master/examples/loader.py --verbose -u root -p changeme --database qservTest_case01_qserv -D clrlsst-dbmaster.in2p3.fr:13306 /opt/qserv-dev/tmp/Object_partition/ qservTest_case01_mysql.Object
         out = commons.run_command(load_partitionned_data_cmd)
         self.logger.info("Partitioned %s data loaded : %s" % (table,out))
@@ -384,7 +395,7 @@ class QservDataLoader():
         self.logger.info("meta table created and loaded for %s" % table)
 
     def convertSchemaFile(self, tableName, schemaFile, newSchemaFile):
-    
+
         self.logger.debug("Converting schema file for table : %s" % tableName)
         mySchema = schema.SQLSchema(tableName, schemaFile)
         mySchema.read()
@@ -429,10 +440,10 @@ class QservDataLoader():
                 sql = 'ALTER TABLE %s ADD %s int(11) NOT NULL' % (table,field_name)
                 self._sqlInterface['sock']. execute(sql)
         # TODO add index creation w.r.t. dataConfig
- 
+
     def createPartitionedTable(self, table, schemaFile):
         self.logger.info("Creating partitionned table %s with schema %s" % (table, schemaFile))
-        if table in self.dataConfig['partitionned-tables']:     
+        if table in self.dataConfig['partitionned-tables']:
             self._sqlInterface['cmd'].executeFromFile(schemaFile)
             self.alterTable(table)
 

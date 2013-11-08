@@ -22,26 +22,15 @@ port=%(QSERV_RPC_PORT)s
 #user=qsmaster
 #passwd=
 #dropMem=
-passwd = 
+passwd =
 db=qservResult
 unix_socket=%(QSERV_BASE_DIR)s/var/lib/mysql/mysql.sock
-host= 
+host=
 user=qsmaster
 port=0
 
 [partitioner]
-# NOTE : stripes and substripes parameters are managed with QMS, 
-# for each dataset
 emptyChunkListFile=%(QSERV_BASE_DIR)s/etc/emptyChunks.txt
-
-[table]
-#chunked=Source,ForcedSource
-#subchunked=Object
-#alloweddbs=LSST
-chunked=Source,FaintSource
-subchunked=Object
-alloweddbs=LSST,qservTest_case01_qserv,qservTest_case02_qserv,qservTest_case03_qserv
-partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId
 
 #[tuning]
 #memoryEngine=yes
