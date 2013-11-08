@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2008-2013 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,25 +9,25 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  /**
-  * @file QueryRunner.cc  
+  * @file QueryRunner.cc
   *
   * @brief QueryRunner instances perform actual query execution on SQL
   * databases using SqlConnection objects to interact with dbms
   * instances.
   *
   * @author Daniel L. Wang, SLAC
-  */ 
+  */
 #include "lsst/qserv/worker/QueryRunner.h"
 #include <iostream>
 #include <fcntl.h>
@@ -55,7 +55,7 @@ using lsst::qserv::worker::QuerySql;
 
 namespace {
 bool
-runBatch(boost::shared_ptr<qWorker::Logger> log, 
+runBatch(boost::shared_ptr<qWorker::Logger> log,
          SqlConnection& sqlConn,
          SqlErrorObject& errObj,
          std::string const& scriptId,
@@ -70,13 +70,13 @@ runBatch(boost::shared_ptr<qWorker::Logger> log,
             // On error, the partial error is as good as the global.
             if(errObj.isSet() ) {
                 unsigned s=piece.size();
-                log->error((Pformat(">>%1%<<---Error with piece %2% complete (size=%3%).") 
-                            % errObj.errMsg() 
+                log->error((Pformat(">>%1%<<---Error with piece %2% complete (size=%3%).")
+                            % errObj.errMsg()
                             % batch.pos % batch.sequence.size()).str().c_str());
                 batchAborted = true;
                 break;
             } else if(checkAbort && (*checkAbort)()) {
-                log->error((Pformat("Aborting query by request (%1% complete).") 
+                log->error((Pformat("Aborting query by request (%1% complete).")
                             % batch.pos).str().c_str());
                 errObj.addErrMsg("Query poisoned by client request");
                 batchAborted = true;
@@ -88,7 +88,7 @@ runBatch(boost::shared_ptr<qWorker::Logger> log,
     log->info((Pformat("TIMING,%1%%2%Finish,%3%")
                % scriptId % batch.name % ::time(NULL)).str().c_str());
     if(batchAborted) {
-        errObj.addErrMsg("(during " + batch.name 
+        errObj.addErrMsg("(during " + batch.name
                          + ")\nQueryFragment: " + batch.current());
         log->info((Pformat("Broken! ,%1%%2%---%3%")
                    % scriptId % batch.name % errObj.errMsg()).str().c_str());
@@ -102,7 +102,7 @@ bool
 runScriptPieces(boost::shared_ptr<Logger> log,
                 SqlConnection& sqlConn,
                 SqlErrorObject& errObj,
-                std::string const& scriptId, 
+                std::string const& scriptId,
                 QuerySql const& qSql,
                 qWorker::CheckFlag* checkAbort) {
     QuerySql::Batch build("QueryBuildSub", qSql.buildList);
@@ -111,13 +111,13 @@ runScriptPieces(boost::shared_ptr<Logger> log,
     bool sequenceOk = false;
     if(runBatch(log, sqlConn, errObj, scriptId, build, checkAbort)) {
         if(!runBatch(log, sqlConn, errObj, scriptId, exec, checkAbort)) {
-            log->error((Pformat("Fail QueryExec phase for %1%: %2%") 
+            log->error((Pformat("Fail QueryExec phase for %1%: %2%")
                         % scriptId % errObj.errMsg()).str().c_str());
         } else {
             sequenceOk = true;
         }
     }
-    // Always destroy subchunks, no aborting (use NULL checkflag)    
+    // Always destroy subchunks, no aborting (use NULL checkflag)
     return sequenceOk && runBatch(log, sqlConn, errObj, scriptId, clean, NULL);
 }
 
@@ -126,12 +126,12 @@ std::string commasToSpaces(std::string const& s) {
     // Convert commas to spaces
     for(int i=0, e=r.size(); i < e; ++i) {
         char& c = r[i];
-        if(c == ',') 
+        if(c == ',')
             c = ' ';
     }
     return r;
 }
-    
+
 template <typename F>
 void forEachSubChunk(std::string const& script, F& func) {
     std::string firstLine = script.substr(0, script.find('\n'));
@@ -152,27 +152,14 @@ void forEachSubChunk(std::string const& script, F& func) {
 ////////////////////////////////////////////////////////////////////////
 // lsst::qserv::worker::QueryRunner
 ////////////////////////////////////////////////////////////////////////
-QueryRunner::QueryRunner(boost::shared_ptr<Logger> log, 
-                                  Task::Ptr task, 
-                                  std::string overrideDump) 
-    : _log(log), _pResult(new QueryPhyResult()),
-      _user(task->user.c_str()), _task(task), 
-      _poisonedMutex(new boost::mutex()) {
-    int rc = mysql_thread_init();
-    assert(rc == 0);
-    if(!overrideDump.empty()) {
-        _task->resultPath = overrideDump;   
-    }
-}
-
-QueryRunner::QueryRunner(QueryRunnerArg const& a) 
+QueryRunner::QueryRunner(QueryRunnerArg const& a)
     : _log(a.log), _pResult(new QueryPhyResult()),
       _user(a.task->user), _task(a.task),
       _poisonedMutex(new boost::mutex()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     if(!a.overrideDump.empty()) {
-        _task->resultPath = a.overrideDump;   
+        _task->resultPath = a.overrideDump;
     }
 }
 
@@ -181,30 +168,9 @@ QueryRunner::~QueryRunner() {
 }
 
 bool QueryRunner::operator()() {
-    bool haveWork = true;
-    Manager& mgr = getMgr();
-    boost::shared_ptr<ArgFunc> afPtr(getResetFunc());
-    mgr.addRunner(this);
-    _log->info((Pformat("(Queued: %1%, running: %2%)")
-             % mgr.getQueueLength() % mgr.getRunnerCount()).str().c_str());
-    while(haveWork) {
-        if(_checkPoisoned()) {
-            _poisonCleanup();
-        } else {
-            _act(); 
-            // Might be wise to clean up poison for the current hash anyway.
-        }
-        _log->info((Pformat("(Looking for work... Queued: %1%, running: %2%)")
-                % mgr.getQueueLength() 
-                % mgr.getRunnerCount()).str().c_str());
-        bool reused = mgr.recycleRunner(afPtr.get(), _task->msg->chunkid());
-        if(!reused) {
-            mgr.dropRunner(this);
-            haveWork = false;
-        }
-    } // finished with work.
-
-    return true;
+    // 6/11/2013: Note that query runners are not recycled right now.
+    // A Foreman::Runner thread constructs one and executes it once.
+    return _act();
 }
 
 
@@ -217,7 +183,7 @@ void QueryRunner::poison(std::string const& hash) {
 ////////////////////////////////////////////////////////////////////////
 bool QueryRunner::_checkPoisoned() {
     boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
-    StringDeque::const_iterator i = find(_poisoned.begin(), 
+    StringDeque::const_iterator i = find(_poisoned.begin(),
                                          _poisoned.end(), _task->hash);
     return i != _poisoned.end();
 }
@@ -228,7 +194,7 @@ void QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
     _task = a.task;
     _errObj.reset();
     if(!a.overrideDump.empty()) {
-        _task->resultPath = a.overrideDump;   
+        _task->resultPath = a.overrideDump;
     }
 }
 
@@ -246,9 +212,9 @@ bool QueryRunner::_act() {
     _log->info((Pformat("(fileobj:%1%) %2%")
             % (void*)(this) % dbDump).str());
 
-    // Result files shouldn't get reused right now 
+    // Result files shouldn't get reused right now
     // since we trash them after they are read once
-#if 0 
+#if 0
     if (dumpFileExists(_meta.resultPath)) {
         _log->info((Pformat("Reusing pre-existing dump = %1% (chk=%2%)")
                 % _task->resultPath % _task->chunkId).str());
@@ -256,7 +222,7 @@ bool QueryRunner::_act() {
         getTracker().notify(_task->hash, ResultError(0,""));
         return true;
     }
-#endif	
+#endif
     if (!_runTask(_task)) {
         _log->info((Pformat("(FinishFail:%1%) %2% hash=%3%")
                 % (void*)(this) % dbDump % _task->hash).str());
@@ -266,7 +232,7 @@ bool QueryRunner::_act() {
         return false;
     }
     _log->info((Pformat("(FinishOK:%1%) %2%")
-            % (void*)(this) % dbDump).str()); 
+            % (void*)(this) % dbDump).str());
     getTracker().notify(_task->hash, ResultError(0,""));
     return true;
 }
@@ -318,29 +284,30 @@ bool QueryRunner::_runTask(Task::Ptr t) {
     assert(t->msg.get());
     TaskMsg& m(*t->msg);
     if(!_sqlConn.connectToDb(_errObj)) {
-        _log->info((Pformat("Cfg error! connect MySQL as %1% using %2%") 
+        _log->info((Pformat("Cfg error! connect MySQL as %1% using %2%")
                 % getConfig().getString("mysqlSocket") % _user).str());
         return _errObj.addErrMsg("Unable to connect to MySQL as " + _user);
     }
+    int chunkId = 1234567890;
+    if(m.has_chunkid()) { chunkId = m.chunkid(); }
+    std::string defaultDb = "test";
+    if(m.has_db()) { defaultDb = m.db(); }
     QuerySql::Factory qf;
     for(int i=0; i < m.fragment_size(); ++i) {
         Task::Fragment const& f(m.fragment(i));
-        int chunkId = 1234567890;
-        std::string defaultDb = "test"; // should always get db from TaskMsg
-        if(m.has_chunkid()) { chunkId = m.chunkid(); }
-        if(m.has_db()) { defaultDb = m.db(); }
-        if(f.has_resulttable()) { resultTable = f.resulttable(); }
+
+            if(f.has_resulttable()) { resultTable = f.resulttable(); }
         assert(!resultTable.empty());
-        
+
         // Use SqlFragmenter to break up query portion into fragments.
         // If protocol gives us a query sequence, we won't need to
         // split fragments.
         bool first = t->needsCreate && (i==0);
-        boost::shared_ptr<QuerySql> qSql = qf.newQuerySql(defaultDb, chunkId, 
-                                                          m.fragment(i), 
+        boost::shared_ptr<QuerySql> qSql = qf.newQuerySql(defaultDb, chunkId,
+                                                          f,
                                                           first,
                                                           resultTable);
-        
+
         success = _runFragment(_sqlConn, *qSql);
         if(!success) return false;
         _pResult->addResultTable(resultTable);
@@ -359,15 +326,15 @@ bool QueryRunner::_runTask(Task::Ptr t) {
 bool qWorker::QueryRunner::_runFragment(SqlConnection& sqlConn,
                                         QuerySql const& qSql) {
     boost::shared_ptr<CheckFlag> check(_makeAbort());
-    
+
     if(!_prepareAndSelectResultDb(sqlConn)) {
         return false;
     }
     if(_checkPoisoned()) { // Check for poison
         _poisonCleanup(); // Clean it up.
-        return false; 
+        return false;
     }
-    if( !runScriptPieces(_log, sqlConn, _errObj, _scriptId, 
+    if( !runScriptPieces(_log, sqlConn, _errObj, _scriptId,
                          qSql, check.get()) ) {
         return false;
     }
@@ -376,9 +343,9 @@ bool qWorker::QueryRunner::_runFragment(SqlConnection& sqlConn,
     return true;
 }
 
-bool 
-QueryRunner::_prepareAndSelectResultDb(SqlConnection& sqlConn, 
-                                                std::string const& resultDb) {
+bool
+QueryRunner::_prepareAndSelectResultDb(SqlConnection& sqlConn,
+                                       std::string const& resultDb) {
     std::string result;
     std::string dbName(resultDb);
 
@@ -390,12 +357,12 @@ QueryRunner::_prepareAndSelectResultDb(SqlConnection& sqlConn,
         return false;
     }
     if(!sqlConn.createDb(dbName, _errObj, false)) {
-        _log->info((Pformat("Cfg error! couldn't create resultdb. %1%.") 
+        _log->info((Pformat("Cfg error! couldn't create resultdb. %1%.")
                 % result).str().c_str());
         return false;
     }
     if (!sqlConn.selectDb(dbName, _errObj)) {
-        _log->info((Pformat("Cfg error! couldn't select resultdb. %1%.") 
+        _log->info((Pformat("Cfg error! couldn't select resultdb. %1%.")
                 % result).str().c_str());
         return _errObj.addErrMsg("Unable to select database " + dbName);
     }
@@ -407,12 +374,12 @@ bool QueryRunner::_prepareScratchDb(SqlConnection& sqlConn) {
     std::string dbName = getConfig().getString("scratchDb");
 
     if ( !sqlConn.createDb(dbName, _errObj, false) ) {
-        _log->info((Pformat("Cfg error! couldn't create scratch db. %1%.") 
+        _log->info((Pformat("Cfg error! couldn't create scratch db. %1%.")
                 % _errObj.errMsg()).str().c_str());
         return false;
     }
     if ( !sqlConn.selectDb(dbName, _errObj) ) {
-        _log->info((Pformat("Cfg error! couldn't select scratch db. %1%.") 
+        _log->info((Pformat("Cfg error! couldn't select scratch db. %1%.")
                 % _errObj.errMsg()).str().c_str());
         return _errObj.addErrMsg("Unable to select database " + dbName);
     }
@@ -420,7 +387,7 @@ bool QueryRunner::_prepareScratchDb(SqlConnection& sqlConn) {
 }
 
 std::string QueryRunner::_getDumpTableList(std::string const& script) {
-    // Find resultTable prefix    
+    // Find resultTable prefix
     char const prefix[] = "-- RESULTTABLES:";
     int prefixLen = sizeof(prefix);
     std::string::size_type prefixOffset = script.find(prefix);
@@ -428,7 +395,7 @@ std::string QueryRunner::_getDumpTableList(std::string const& script) {
         return std::string();
     }
     prefixOffset += prefixLen - 1; // prefixLen includes null-termination.
-    std::string tables = script.substr(prefixOffset, 
+    std::string tables = script.substr(prefixOffset,
                                        script.find('\n', prefixOffset)
                                        - prefixOffset);
     return tables;
@@ -443,7 +410,7 @@ boost::shared_ptr<ArgFunc> QueryRunner::getResetFunc() {
         }
         QueryRunner* runner;
     };
-    ArgFunc* af = new ResetFunc(this); 
+    ArgFunc* af = new ResetFunc(this);
     return boost::shared_ptr<ArgFunc>(af);
 }
 

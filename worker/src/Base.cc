@@ -55,7 +55,7 @@ template <class T> struct offsetLess {
 }
 
 bool checkWritablePath(char const* path) {
-    return 0 == ::access(path, W_OK | X_OK);
+    return path && (0 == ::access(path, W_OK | X_OK));
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -74,9 +74,6 @@ std::string qWorker::CREATE_SUBCHUNK_SCRIPT =
     "CREATE DATABASE IF NOT EXISTS Subchunks_%1%_%4%;"
     "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%_%4%_%5% ENGINE = MEMORY "
     "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
-    "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%SelfOverlap_%4%_%5% "
-    "ENGINE = MEMORY "
-    "AS SELECT * FROM %1%.%2%SelfOverlap_%4% WHERE %3% = %5%;"
     "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%FullOverlap_%4%_%5% "
     "ENGINE = MEMORY "
     "AS SELECT * FROM %1%.%2%FullOverlap_%4% WHERE %3% = %5%;"
@@ -89,7 +86,7 @@ std::string qWorker::CREATE_SUBCHUNK_SCRIPT =
 // %4% subChunkId (e.g., 34)
 std::string qWorker::CLEANUP_SUBCHUNK_SCRIPT =
     "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%_%3%_%4%;"
-    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%SelfOverlap_%3%_%4%;"
+//    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%SelfOverlap_%3%_%4%;"
     "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%FullOverlap_%3%_%4%;"
     ;
 
@@ -136,7 +133,7 @@ std::string qWorker::hashQuery(char const* buffer, int bufferSize) {
 }
 
 void qWorker::updateResultPath(char const* resultPath) {
-    if(resultPath && checkWritablePath(resultPath)) {
+    if(checkWritablePath(resultPath)) {
         DUMP_BASE.assign(resultPath);
         return;
     } 
