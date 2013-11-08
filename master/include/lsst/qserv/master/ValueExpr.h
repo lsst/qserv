@@ -73,6 +73,10 @@ public:
 
     void findColumnRefs(ColumnRef::List& list);
 
+    bool isStar() const;
+    bool isFactor() const;
+    boost::shared_ptr<ValueFactor const> getFactor() const;
+
     ValueExprPtr clone() const;
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const& ve);
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const* ve);

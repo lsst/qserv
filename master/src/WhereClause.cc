@@ -67,14 +67,6 @@ void findColumnRefs(boost::shared_ptr<BoolFactor> f, ColumnRefMap::List& list) {
         f->findColumnRefs(list);
     }
 }
-
-void findColumnRefs(boost::shared_ptr<ValueExprTerm> vet, ColumnRefMap::List& list) {
-    if(vet) {
-        ValueExpr& expr = *vet->_expr;
-        expr.findColumnRefs(list);
-    }
-}
-
 void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRefMap::List& list) {
     if(!t) { return; }
     BoolTerm::PtrList::iterator i = t->iterBegin();
@@ -85,8 +77,7 @@ void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRefMap::List& list) {
         if(bf) {
             findColumnRefs(bf, list);
         } else {
-            boost::shared_ptr<ValueExprTerm> vet = boost::dynamic_pointer_cast<ValueExprTerm>(t);
-            findColumnRefs(vet, list);
+            throw std::logic_error("Unexpected non BoolFactor in BoolTerm");
         }
     } else {
         for(; i != e; ++i) {

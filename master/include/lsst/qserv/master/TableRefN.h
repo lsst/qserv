@@ -76,6 +76,7 @@ public:
     // apply f() over all all tableRefns in depth-first order (for compound
     // tablerefs)
     virtual void apply(Func& f) {}
+    virtual void apply(Func& f) const {}
 
     class render;
 protected:

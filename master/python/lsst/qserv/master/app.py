@@ -125,6 +125,7 @@ import code, traceback, signal
 # Constant, long-term, this should be defined differently
 dummyEmptyChunk = 1234567890
 CHUNK_COL = "chunkId"
+SUBCHUNK_COL = "subChunkId"
 
 def debug(sig, frame):
     """Interrupt running process, and provide a python prompt for
@@ -356,6 +357,9 @@ class IndexLookup:
         self.keyVals = keyVals
         pass
 class SecondaryIndex:
+## FIXME: subchunk index creation
+##    "SELECT DISTINCT %s, %s FROM %s" % (CHUNK_COL, SUBCHUNK_COL, table)
+
     def lookup(self, indexLookups):
         sqls = []
         for lookup in indexLookups:
@@ -524,11 +528,31 @@ class InbandQueryAction:
             pass
         self._evaluateHints(dominantDb, self.hintList, self.pmap)
         self._emptyChunks = metadata.getEmptyChunks(dominantDb)
+        class RangePrint:
+            def __init__(self):
+                self.last = -1
+                self.first = -1
+                pass
+            def add(self, chunkId):
+                if self.last != (chunkId -1):
+                    if(self.last != -1): self._print()
+                    self.first = chunkId
+                self.last = chunkId
+                pass
+            def _print(self):
+                        if(self.last - self.first > 1):
+                            print "Rejecting chunks: %d-%d" %(self.first,
+                                                              self.last)
+                        else: print "Rejecting chunk: %d" %(self.last)
+            def finish(self):
+                self._print()
+            pass
+        rPrint = RangePrint()
         count = 0
         chunkLimit = self.chunkLimit
         for chunkId, subIter in self._intersectIter:
             if chunkId in self._emptyChunks:
-                print "Rejecting empty chunk:", chunkId
+                rPrint.add(chunkId)
                 continue
             #prepare chunkspec
             c = ChunkSpec()
@@ -548,7 +572,9 @@ class InbandQueryAction:
             c.chunkId = dummyEmptyChunk
             scount=0
             addChunk(self.sessionId, c)
+        rPrint.finish()
         pass
+
 
     def _execAndJoin(self):
         """Signal dispatch to C++ layer and block until execution completes"""
@@ -594,7 +620,7 @@ class InbandQueryAction:
         cfg["frontend.scratchPath"] = setupResultScratch()
         cfg["table.defaultdb"] = self._dbContext
         cfg["query.hints"] = ";".join(
-            map(lambda (k,v): k + "," + v, self.hints.items()))
+            map(lambda (k,v): k + "," + str(v), self.hints.items()))
         cfg["table.result"] = self._resultName
         cfg["runtime.metaCacheSession"] = str(self.metaCacheSession)
         return cfg
@@ -646,6 +672,14 @@ class InbandQueryAction:
 
 
     pass # class InbandQueryAction
+
+class KillQueryAction:
+    def __init__(self, query):
+        self.query = query
+        pass
+    def invoke(self):
+        print "invoking kill query", self.query
+        return "Unimplemented"
 
 class CheckAction:
     def __init__(self, tracker, handle):

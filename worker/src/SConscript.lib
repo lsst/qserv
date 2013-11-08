@@ -66,7 +66,7 @@ env.Append(built_libpath=libEnv["LIBPATH"])
 env.Append(built_elibs=libEnv["LIBS"])
 
 schLib = libEnv.Library("qserv_schedtest", 
-                        ("Base.cc FifoScheduler.cc TodoList.cc Task.cc"
+                        ("Base.cc FifoScheduler.cc Task.cc"
                          + "").split())
 installedSchLib = libEnv.Install('lib', schLib)
 #export

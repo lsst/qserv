@@ -51,6 +51,7 @@ public:
     boost::shared_ptr<CompPredicate> newCompPredicate(antlr::RefAST a);
     boost::shared_ptr<BetweenPredicate> newBetweenPredicate(antlr::RefAST a);
     boost::shared_ptr<InPredicate> newInPredicate(antlr::RefAST a);
+    boost::shared_ptr<LikePredicate> newLikePredicate(antlr::RefAST a);
 private:
     ValueExprFactory& _vf;
 };

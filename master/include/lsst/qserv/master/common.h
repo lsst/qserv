@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,20 +9,20 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/* 
+/*
  * @file
- * 
- * @brief Common utilty functions for lsst::qserv::master
+ *
+ * @brief Common utilty functions for lsst::qserv::master. Only std C++ dependencies allowed.
  *
  */
 #ifndef LSST_QSERV_MASTER_COMMON_H
@@ -39,11 +39,12 @@ namespace master {
 
 typedef std::map<std::string, std::string> StringMap;
 typedef std::map<std::string, StringMap> StringMapMap;
-typedef std::list<std::pair<std::string, std::string> > StringPairList;
+typedef std::pair<std::string, std::string> StringPair;
+typedef std::list<StringPair> StringPairList;
 typedef std::list<std::string> StringList;
 
 template <class Map>
-typename Map::mapped_type const& getFromMap(Map const& m, 
+typename Map::mapped_type const& getFromMap(Map const& m,
                                             typename Map::key_type const& key,
                                             typename Map::mapped_type const& defValue) {
     typename Map::const_iterator i = m.find(key);
@@ -89,7 +90,7 @@ void forEachFirst(Map const& m, Func& f, Filter& filter) {
 
 template <class C>
 std::ostream& printList(std::ostream &os, char const* label, C const& c) {
-    typename C::const_iterator i; 
+    typename C::const_iterator i;
     os << label << ": ";
     for(i = c.begin(); i != c.end(); ++i) {
         os << **i << ", ";

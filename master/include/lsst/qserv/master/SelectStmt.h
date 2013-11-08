@@ -66,6 +66,7 @@ public:
 
     boost::shared_ptr<WhereClause const> getWhere() const;
     QueryTemplate getTemplate() const;
+    QueryTemplate getPostTemplate() const;
     boost::shared_ptr<SelectStmt> copyDeep() const;
     boost::shared_ptr<SelectStmt> copyMerge() const;
     boost::shared_ptr<SelectStmt> copySyntax() const;
@@ -83,6 +84,7 @@ public:
 
     int getLimit() const { return _limit; }
     bool hasOrderBy() const { return _orderBy; }
+    void hasOrderBy(bool shouldHave);
     OrderByClause const& getOrderBy() const { return *_orderBy; }
     OrderByClause& getOrderBy() { return *_orderBy; }
 

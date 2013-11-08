@@ -44,6 +44,9 @@
 #include "lsst/qserv/master/ValueExpr.h"
 #include "lsst/qserv/master/WhereClause.h"
 
+#include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
+
+
 namespace { // File-scope helpers
 std::string const UDF_PREFIX = "scisql_";
 } // anonymous
@@ -53,13 +56,28 @@ namespace qserv {
 namespace master {
 typedef std::pair<std::string,std::string> StringPair;
 
-ValueExprTerm::Ptr newColRef(std::string const& key) {
-    // FIXME: should apply QueryContext.
-    boost::shared_ptr<ColumnRef> cr(new ColumnRef("","", key));
-    ValueExprTerm::Ptr p(new ValueExprTerm);
-    p->_expr = ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr));
-    return p;
+boost::shared_ptr<ColumnRef>
+resolveAsColumnRef(QueryContext& context, ValueExprPtr vexpr) {
+    boost::shared_ptr<ColumnRef> cr = vexpr->copyAsColumnRef();
+    if(!cr) {
+        return cr;
+    }
+    DbTablePair p = context.resolve(cr);
+    cr->table = p.table;
+    cr->db = p.db;
+    return cr;
 }
+
+/// @return true if cr represents a valid key column.
+bool
+lookupKey(QueryContext& context, boost::shared_ptr<ColumnRef> cr) {
+    // Match cr as a column ref against the key column for a database's
+    // partitioning strategy.
+    if((!cr) || !context.metadata) { return false; }
+    std::string keyColumn = context.metadata->getKeyColumn(cr->db, cr->table);
+    return (!cr->column.empty()) && (keyColumn == cr->column);
+}
+
 PassTerm::Ptr newPass(std::string const& s) {
     PassTerm::Ptr p(new PassTerm);
     p->_text = s;
@@ -72,11 +90,28 @@ PassListTerm::Ptr newPassList(C& c) {
     return p;
 }
 
+InPredicate::Ptr
+newInPred(std::string const& aliasTable,
+          std::string const& keyColumn,
+          std::vector<std::string> const& params) {
+    InPredicate::Ptr p(new InPredicate());
+    boost::shared_ptr<ColumnRef> cr(new ColumnRef("", aliasTable, keyColumn));
+    p->value = ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr));
+
+    typedef std::vector<std::string>::const_iterator Iter;
+    for(Iter i=params.begin(), e=params.end(); i != e; ++i) {
+        ValueExprPtr vep;
+        vep = ValueExpr::newSimple(ValueFactor::newConstFactor(*i));
+        p->cands.push_back(vep);
+    }
+    return p;
+}
+
 template <typename C>
-ValueExprTerm::Ptr newFunc(char const fName[],
-                           std::string const& tableAlias,
-                           StringPair const& chunkColumns,
-                           C& c) {
+FuncExpr::Ptr newFuncExpr(char const fName[],
+                               std::string const& tableAlias,
+                               StringPair const& chunkColumns,
+                               C& c) {
     typedef boost::shared_ptr<ColumnRef> CrPtr;
     FuncExpr::Ptr fe(new FuncExpr);
     fe->name = UDF_PREFIX + fName;
@@ -95,10 +130,7 @@ ValueExprTerm::Ptr newFunc(char const fName[],
     for(i = c.begin(); i != c.end(); ++i) {
         fe->params.push_back(ValueExpr::newSimple(ValueFactor::newConstFactor(*i)));
     }
-
-    ValueExprTerm::Ptr p(new ValueExprTerm);
-    p->_expr = ValueExpr::newSimple(ValueFactor::newFuncFactor(fe));
-    return p;
+    return fe;
 }
 
 
@@ -172,7 +204,7 @@ private:
     BoolTerm::Ptr _makeCondition(boost::shared_ptr<QsRestrictor> const restr,
                                  RestrictorEntry const& restrictorEntry);
     boost::shared_ptr<QsRestrictor::List> _getKeyPreds(QueryContext& context, AndTerm::Ptr p);
-    bool _lookupKey(QueryContext& context, boost::shared_ptr<ColumnRef>  cr);
+
     QsRestrictor::Ptr _newKeyRestrictor(QueryContext& context,
                                         boost::shared_ptr<ColumnRef> cr,
                                         ValueExprList& vList);
@@ -218,9 +250,8 @@ private:
 
         virtual BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             BoolFactor::Ptr newFactor(new BoolFactor);
-            newFactor->_terms.push_back(newColRef(e.keyColumn));
-            newFactor->_terms.push_back(newPass("IN"));
-            newFactor->_terms.push_back(newPassList(params));
+            BfTerm::PtrList& terms = newFactor->_terms;
+            terms.push_back(newInPred(e.alias, e.keyColumn, params));
             return newFactor;
         }
         std::vector<std::string> params;
@@ -241,15 +272,16 @@ private:
         virtual BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             BoolFactor::Ptr newFactor(new BoolFactor);
             BfTerm::PtrList& terms = newFactor->_terms;
-
-            terms.push_back(newFunc(fName,
-                                    e.alias,
-                                    e.chunkColumns,
-                                    params));
-            terms.push_back(newPass("="));
-            terms.push_back(newPass("1"));
+            CompPredicate::Ptr cp(new CompPredicate());
+            boost::shared_ptr<FuncExpr> fe = newFuncExpr(fName,
+                                                         e.alias,
+                                                         e.chunkColumns,
+                                                         params);
+            cp->left = ValueExpr::newSimple(ValueFactor::newFuncFactor(fe));
+            cp->op = SqlSQL2TokenTypes::EQUALS_OP;
+            cp->right = ValueExpr::newSimple(ValueFactor::newConstFactor("1"));
+            terms.push_back(cp);
             return newFactor;
-
         }
         char const* const fName;
         int const paramCount;
@@ -401,19 +433,6 @@ QservRestrictorPlugin::_makeCondition(boost::shared_ptr<QsRestrictor> const rest
     return r.generate(restrictorEntry);
 }
 
-boost::shared_ptr<ColumnRef>
-resolveAsColumnRef(QueryContext& context, ValueExprPtr vexpr) {
-    boost::shared_ptr<ColumnRef> cr = vexpr->copyAsColumnRef();
-    if(!cr) {
-        return cr;
-    }
-    cr.reset(new ColumnRef(*cr));
-    DbTablePair p = context.resolve(cr);
-    cr->table = p.table;
-    cr->db = p.db;
-    return cr;
-}
-
 inline void
 addPred(boost::shared_ptr<QsRestrictor::List>& preds, QsRestrictor::Ptr p) {
     if(p) {
@@ -442,7 +461,7 @@ QservRestrictorPlugin::_getKeyPreds(QueryContext& context, AndTerm::Ptr p) {
             if(ip) {
                 boost::shared_ptr<ColumnRef> cr = resolveAsColumnRef(context,
                                                                      ip->value);
-                if(cr && _lookupKey(context, cr)) {
+                if(cr && lookupKey(context, cr)) {
                     QsRestrictor::Ptr p = _newKeyRestrictor(context,
                                                             cr,
                                                             ip->cands);
@@ -460,15 +479,6 @@ QservRestrictorPlugin::_getKeyPreds(QueryContext& context, AndTerm::Ptr p) {
     return keyPreds;
 }
 
-/// @return true if v represents a valid key column.
-bool
-QservRestrictorPlugin::_lookupKey(QueryContext& context, boost::shared_ptr<ColumnRef> cr) {
-    // Match v as a column ref against the key column for a database's
-    // partitioning strategy.
-    if((!cr) || !context.metadata) { return false; }
-    std::string keyColumn = context.metadata->getKeyColumn(cr->db, cr->table);
-    return (!cr->column.empty()) && (keyColumn == cr->column);
-}
 
 inline bool isValidLiteral(ValueExprPtr p) {
     return p && !p->copyAsLiteral().empty();
@@ -523,11 +533,11 @@ QservRestrictorPlugin::_newKeyRestrictor(QueryContext& context,
     int op = cp->op;
     ValueExprPtr literalValue = cp->right;
     // Find the key column ref: Is it on the rhs or lhs?
-    if(key && _lookupKey(context, key)) {
+    if(key && lookupKey(context, key)) {
         // go on.
     } else {
         key = resolveAsColumnRef(context, cp->right);
-        if(key && _lookupKey(context, key)) {
+        if(key && lookupKey(context, key)) {
             op = CompPredicate::reverseOp(op);
             literalValue = cp->left;
         } else {

@@ -1,7 +1,7 @@
-/* 
+/*
  * LSST Data Management System
  * Copyright 2008, 2009, 2010 LSST Corporation.
- * 
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *
@@ -9,17 +9,17 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
- * You should have received a copy of the LSST License Statement and 
- * the GNU General Public License along with this program.  If not, 
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
- 
+
 #include "lsst/qserv/worker/MySqlFs.h"
 
 #include "XrdSec/XrdSecEntity.hh"
@@ -37,13 +37,15 @@
 #include "lsst/qserv/worker/XrdName.h"
 
 
+#include "lsst/qserv/SqlConnection.hh"
 #include "lsst/qserv/QservPath.hh"
 #include <cerrno>
 #include <iostream>
+#include <iterator>
 
 // Externally declare XrdSfs loader to cheat on Andy's suggestion.
 #if 1
-extern XrdSfsFileSystem* 
+extern XrdSfsFileSystem*
 XrdSfsGetDefaultFileSystem(XrdSfsFileSystem* nativeFS,
                            XrdSysLogger* sysLogger,
                            const char* configFn,
@@ -62,7 +64,7 @@ namespace qWorker = lsst::qserv::worker;
 using namespace lsst::qserv::worker;
 using lsst::qserv::QservPath;
 
-namespace { 
+namespace {
 
 #ifdef NO_XROOTD_FS // Fake placeholder functions
 class FakeAddCallback : public AddCallbackFunction {
@@ -71,7 +73,7 @@ public:
     virtual ~FakeAddCallback() {}
     virtual void operator()(XrdSfsFile& caller, std::string const& filename) {
     }
-};    
+};
 
 class FakeFileValidator : public fs::FileValidator {
 public:
@@ -85,7 +87,7 @@ public:
 
 #else // "Real" helper functors
 template<class Callback>
-class FinishListener { 
+class FinishListener {
 public:
     FinishListener(Callback* cb) : _callback(cb) {}
     virtual void operator()(ResultError const& p) {
@@ -94,7 +96,7 @@ public:
             _callback->Reply_OK();
             //_callback->Reply(SFS_OK, p.first, "ok");
         } else {
-            //std::cerr << "Callback error! " << p.first 
+            //std::cerr << "Callback error! " << p.first
             //	      << " desc=" << p.second << std::endl;
             _callback->Reply_Error(p.first, p.second.c_str());
             //_callback->Reply(SFS_ERROR, p.first, p.second.c_str());
@@ -139,7 +141,7 @@ public:
         expanded += "/" + filename;
         struct stat statbuf;
         return ::stat(expanded.c_str(), &statbuf) == 0 &&
-            S_ISREG(statbuf.st_mode) && 
+            S_ISREG(statbuf.st_mode) &&
             (statbuf.st_mode & S_IRUSR) == S_IRUSR;
     }
 private:
@@ -169,11 +171,11 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // class MySqlFs
 ////////////////////////////////////////////////////////////////////////
-MySqlFs::MySqlFs(boost::shared_ptr<Logger> log, XrdSysLogger* lp, 
-                 char const* cFileName) 
+MySqlFs::MySqlFs(boost::shared_ptr<Logger> log, XrdSysLogger* lp,
+                 char const* cFileName)
     : XrdSfsFileSystem(), _log(log) {
     if(!getConfig().getIsValid()) {
-        log->error(("Configration invalid: " + getConfig().getError() 
+        log->error(("Configration invalid: " + getConfig().getError()
                      + " -- Behavior undefined.").c_str());
     }
 #ifdef NO_XROOTD_FS
@@ -192,9 +194,10 @@ MySqlFs::MySqlFs(boost::shared_ptr<Logger> log, XrdSysLogger* lp,
     if (!_localroot) {
         _log->warn("No XRDLCLROOT set. Bug in xrootd?");
         _localroot = "";
-    }   
+    }
     _initExports();
     assert(_exports.get());
+    _cleanup();
     _service.reset(new Service(_log));
 }
 
@@ -213,14 +216,14 @@ XrdSfsDirectory* MySqlFs::newDir(char* user, int MonID) {
 XrdSfsFile* MySqlFs::newFile(char* user, int MonID) {
 #ifdef NO_XROOTD_FS
     return new MySqlFsFile(
-        _log, user, 
+        _log, user,
         boost::make_shared<FakeAddCallback>(),
         boost::make_shared<FakeFileValidator>(),
         _service);
 #else
     assert(_exports.get());
     return new MySqlFsFile(
-        _log, user, 
+        _log, user,
         boost::make_shared<AddCallbackFunc>(),
         boost::make_shared<PathValidator>(*_exports),
         _service);
@@ -260,7 +263,7 @@ char const* MySqlFs::getVersion(void) {
 }
 
 int MySqlFs::mkdir(
-    char const* dirName, XrdSfsMode Mode, XrdOucErrInfo& outError, 
+    char const* dirName, XrdSfsMode Mode, XrdOucErrInfo& outError,
     XrdSecEntity const* client, char const* opaque) {
     outError.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
@@ -275,7 +278,7 @@ int MySqlFs::prepare(
 /// rem() : discard/squash a query result and the running/queued query
 ///  that would-have/has-had produced it.
 int MySqlFs::rem(
-    char const* path, XrdOucErrInfo& outError, XrdSecEntity const* client, 
+    char const* path, XrdOucErrInfo& outError, XrdSecEntity const* client,
     char const* opaque) {
     // Check for qserv result path
     fs::FileClass c = fs::computeFileClass(path);
@@ -285,8 +288,9 @@ int MySqlFs::rem(
     }
     std::string hash = fs::stripPath(path);
     // Signal query squashing
-    QueryRunner::Manager& mgr = QueryRunner::getMgr();
-    mgr.squashByHash(hash);
+    _service->squashByHash(hash);
+    //QueryRunner::Manager& mgr = QueryRunner::getMgr();
+    //mgr.squashByHash(hash);
     return SFS_OK;
 }
 
@@ -298,28 +302,28 @@ int MySqlFs::remdir(
 }
 
 int MySqlFs::rename(
-    char const* oldFileName, char const* newFileName, XrdOucErrInfo& outError, 
+    char const* oldFileName, char const* newFileName, XrdOucErrInfo& outError,
     XrdSecEntity const* client, char const* opaqueO, char const* opaqueN) {
     outError.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
 int MySqlFs::stat(
-    char const* Name, struct stat* buf, XrdOucErrInfo& outError, 
+    char const* Name, struct stat* buf, XrdOucErrInfo& outError,
     XrdSecEntity const* client, char const* opaque) {
     outError.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
 int MySqlFs::stat(
-    char const* Name, mode_t& mode, XrdOucErrInfo& outError, 
+    char const* Name, mode_t& mode, XrdOucErrInfo& outError,
     XrdSecEntity const* client, char const* opaque) {
     outError.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
 }
 
 int MySqlFs::truncate(
-    char const* Name, XrdSfsFileOffset fileOffset, XrdOucErrInfo& outError, 
+    char const* Name, XrdSfsFileOffset fileOffset, XrdOucErrInfo& outError,
     XrdSecEntity const* client, char const* opaque) {
     outError.setErrInfo(ENOTSUP, "Operation not supported");
     return SFS_ERROR;
@@ -333,7 +337,46 @@ void MySqlFs::_initExports() {
     XrdName x;
     MySqlExportMgr m(x.getName(), *_log);
     m.fillDbChunks(*_exports);
+    std::ostringstream os;
+    os << "Paths exported: ";
+    std::copy(_exports->begin(), _exports->end(),
+              std::ostream_iterator<std::string>(os, ","));
+    //boost::shared_ptr<Logger> log2 = log;
+    _log->info(os.str());
 }
+
+/// Cleanup scratch space and scratch dbs.
+/// This means that scratch db and scratch dirs CANNOT be shared among
+/// qserv workers. Take heed.
+/// @return true if cleanup was successful, false otherwise.
+bool MySqlFs::_cleanup() {
+    if(getConfig().getIsValid()) {
+        SqlConfig sqlConfig = getConfig().getSqlConfig();
+        // FIXME: Use qsmaster privileges for now.
+        sqlConfig.username = "qsmaster";
+        sqlConfig.dbName = "";
+        SqlConnection sc(sqlConfig, true);
+        SqlErrorObject errObj;
+        std::string dbName = getConfig().getString("scratchDb");
+        _log->info((Pformat("Cleaning up scratchDb: %1%.")
+                    % dbName).str());
+        if(!sc.dropDb(dbName, errObj, false)) {
+            _log->error((Pformat("Cfg error! couldn't drop scratchDb: %1% %2%.")
+                         % dbName % errObj.errMsg()).str());
+            return false;
+        }
+        errObj.reset();
+        if(!sc.createDb(dbName, errObj, true)) {
+            _log->error((Pformat("Cfg error! couldn't create scratchDb: %1% %2%.")
+                         % dbName % errObj.errMsg()).str());
+            return false;
+        }
+    } else {
+        return false;
+    }
+    return true;
+}
+
 class XrdSysLogger;
 
 extern "C" {
