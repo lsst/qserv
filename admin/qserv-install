@@ -222,27 +222,29 @@ sub check_and_install_qserv {
 	run_command("scons");
 	run_command("scons install");
 	
-	chdir "$install_dir/qserv/worker";
-	run_command("scons");
-	
 	#start mysql server and install init database
 	chdir "$install_dir";
 	print "Starting mysql server.\n";
-	system("$install_dir/bin/mysqld_safe --defaults-file=$install_dir/etc/my.cnf &");
+	system("$install_dir/etc/init.d/mysqld start");
 	sleep 5;
 	print "Setting up init databases.\n";
-        run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS LSST;\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservResult;\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservScratch;\"");
-        run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON LSST.* TO \'qsmaster\'\@\'localhost\';\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt < qserv/master/examples/qserv-master-perms.sql");
+        my $mysql_cmd="$install_dir/bin/mysql -S $install_dir/var/lib/mysql/mysql.sock -u root $pass_opt"; 
+        run_command("$mysql_cmd -e \"CREATE DATABASE IF NOT EXISTS LSST;\"");
+	run_command("$mysql_cmd -e \"CREATE DATABASE IF NOT EXISTS qservResult;\"");
+	run_command("$mysql_cmd -e \"CREATE DATABASE IF NOT EXISTS qservScratch;\"");
+        run_command("$mysql_cmd -e \"GRANT ALL ON LSST.* TO \'qsmaster\'\@\'localhost\';\"");
+	run_command("$mysql_cmd -e \"GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';\"");
+	run_command("$mysql_cmd -e \"GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';\"");
+	run_command("$mysql_cmd $pass_opt < qserv/master/examples/qserv-master-perms.sql");
         # TODO : only on workers
 	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt < tmp/qservw_workerid.sql");
 	
+        # Test on worker needs mysql db to initialized and running
+        chdir "$install_dir/qserv/worker";
+	run_command("scons");
+	
 	#shutdown mysql
-	run_command("./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root $pass_opt");
+	system("$install_dir/etc/init.d/mysqld stop");
 	
 }
 

@@ -1,5 +1,11 @@
 #!/usr/bin/perl -w
 
+
+# WARNING : this procedure is redundant with :
+# - admin/bin/qserv-chunkload.py (which was used for data-loading on CC-IN2P3 cluster)
+# - admin/python/lsst/qserv/qservdataloader.py (which load data for test cases)
+# it should be unified in a global data loading procedure : https://dev.lsstcorp.org/trac/wiki/db/Qserv/DataLoading
+
 use strict;
 use Getopt::Long;
 use Cwd;
