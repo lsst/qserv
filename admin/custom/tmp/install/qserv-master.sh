@@ -1,6 +1,9 @@
 #!/bin/bash
 
 QSERV_BASE_DIR=%(QSERV_BASE_DIR)s
+MYSQLD_SOCK=%(MYSQLD_SOCK)s
+MYSQLD_USER=%(MYSQLD_USER)s
+MYSQLD_PASS=%(MYSQLD_PASS)s
 
 rm -rf "${QSERV_BASE_DIR}/qserv/master/dist"
 
@@ -23,9 +26,15 @@ exit 1
 DEST="${QSERV_BASE_DIR}/qserv/master/python/lsst/qserv/master/"
 if [ ! -f ${DEST}/geometry.py ]
 then
-    echo "Downloading geometry.py" 
+    echo "Downloading geometry.py"
     wget -P ${DEST} http://dev.lsstcorp.org/cgit/LSST/DMS/geom.git/plain/python/lsst/geom/geometry.py
 fi
+
+echo -e "\n"
+echo "Initializing Qserv master database "
+echo "-----------------------------------"
+${QSERV_BASE_DIR}/bin/mysql --user=${MYSQLD_USER} --password=${MYSQLD_PASS} --sock=${MYSQLD_SOCK} < ${QSERV_BASE_DIR}/tmp/install/sql/qserv-master.sql ||
+exit 1
 
 echo -e "\n"
 echo "Building Qserv master (rpc server)"
@@ -33,12 +42,17 @@ echo "----------------------------------"
 cd "${QSERV_BASE_DIR}/qserv/master/" &&
 scons &&
 scons install ||
-exit 1 
+exit 1
 
 echo -e "\n"
 echo "Building Qserv worker (xrootd plugin)"
 echo "-------------------------------------"
+rm -rf "${QSERV_BASE_DIR}/qserv/worker/tests/.tests"
+# worker use next env variable to access mysql DB, and use hard-coded
+# login/password :
+# a configuration file containing mysql credentials would be welcome
+export QSW_DBSOCK=${MYSQLD_SOCK}
 cd "${QSERV_BASE_DIR}/qserv/worker/" &&
-scons || 
+scons ||
 exit 1
 
