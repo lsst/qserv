@@ -9,6 +9,8 @@ proxy-backend-addresses = %(MYSQLD_HOST)s:%(MYSQLD_PORT)s
 log-file=%(QSERV_LOG_DIR)s/mysql-proxy.log
 log-level=debug
 
+# WARNING : this option must be overload by a cmd line option 
+# when using mysql-proxy init.d startup script
 pid-file = %(QSERV_PID_DIR)s/mysql-proxy.pid
 
 lua-path=%(QSERV_LUA_SHARE)s/?.lua;%(QSERV_LUA_SHARE)s/?/init.lua;%(QSERV_LUA_SHARE)s/?/?.lua

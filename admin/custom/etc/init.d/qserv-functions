@@ -1,0 +1,108 @@
+#-------------------------------------------------------------------------------
+# Library for handling qserv daemons on Scientific Linux
+# Author: Fabrice Jammes <fabrice.jammes@in2p3.fr> (09.17.2013)
+#-------------------------------------------------------------------------------
+
+. /etc/rc.d/init.d/functions
+
+start() {
+	local prog lockfile= pidfile= pid retval=2 cmd= timeout=0
+
+	# Test syntax.
+	if [ "$#" = 0 ] ; then
+		echo $"Usage: start [-p pidfile] [-l lockfile] [-t timeout] {program} {cmd}"
+		return 1
+	fi
+	if [ "$1" = "-p" ]; then
+		pidfile=$2
+		shift 2
+	fi
+	if [ "$1" = "-l" ]; then
+		lockfile=$2
+		shift 2
+	fi
+	if [ "$1" = "-t" ]; then
+		timeout=$2
+		shift 2
+	fi
+	prog=${1##*/}
+	cmd=${2}
+
+	if [ -z "${lockfile}" ]; then
+		lockfile=/var/lock/subsys/${prog}
+	fi
+
+	if [ -z "${pidfile}" ]; then
+		pidfile=/var/run/${prog}.pid
+	fi
+
+ 	# check to see if it's already running
+	if [ -f ${pidfile} ]; then
+		action $"Starting $prog: (already up)" /bin/true
+		retval=0
+	else
+		if [ ${timeout} == 0 ]; then
+		     	daemon ${cmd}
+			retval=$?
+		else
+			eval ${cmd}
+			# TODO if no delay is needed, use daemon ?
+        		pid=$!
+			sleep ${timeout}
+			checkpid ${pid} && retval=0
+		fi
+		if [ ${retval} -eq 0 ]
+		then
+			echo ${pid} > ${pidfile}
+	    		touch ${lockfile}
+			action $"Starting $prog: " /bin/true
+		else
+			action $"Starting $prog: " /bin/false
+			echo $"See startup logfile : ${LOGFILE}"
+		fi
+	fi
+	return ${retval}
+}
+
+
+stop() {
+       local prog lockfile= pidfile= timeout=0
+
+	# Test syntax.
+	if [ "$#" = 0 ] ; then
+		echo $"Usage: stop [-p pidfile] [-l lockfile] [-t timeout] {program}"
+		return 1
+	fi
+	if [ "$1" = "-p" ]; then
+		pidfile=$2
+		shift 2
+	fi
+	if [ "$1" = "-l" ]; then
+		lockfile=$2
+		shift 2
+	fi
+	if [ "$1" = "-t" ]; then
+		timeout=$2
+		shift 2
+	fi
+	prog=${1##*/}
+
+	if [ -z "${lockfile}" ]; then
+		lockfile=/var/lock/subsys/${prog}
+	fi
+
+	if [ -z "${pidfile}" ]; then
+		pidfile=/var/run/${prog}.pid
+	fi
+
+        if [ ! -f "$pidfile" ]; then
+	    # not running; per LSB standards this is "ok"
+	    action $"Stopping $prog: (already down)" /bin/true
+	    return 0
+	fi
+	echo -n $"Stopping $prog: "
+	killproc -p ${pidfile} -d ${timeout} $prog
+	RETVAL=$?
+	echo
+        [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
+}

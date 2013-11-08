@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import shutil
+from os.path import expanduser
 
 class QservDataLoader():
 
@@ -13,6 +14,8 @@ class QservDataLoader():
         self._dbName = db_name
 
         self._out_dirname = out_dirname
+
+        self._qms_config_file = os.path.join(expanduser("~"),".lsst","qmsadm")
 
         #self.logger = commons.console_logger(logging_level)
         #self.logger = commons.file_logger(
@@ -35,6 +38,7 @@ class QservDataLoader():
         install_meta_cmd = [
             self.config['bin']['python'],
             meta_scriptname,
+            '--auth=%s' % self._qms_config_file,
             'installMeta'
             ]
         out = commons.run_command(install_meta_cmd)
@@ -42,6 +46,7 @@ class QservDataLoader():
         create_meta_cmd = [
             self.config['bin']['python'],
             meta_scriptname,
+            '--auth=%s' % self._qms_config_file,
             'createDb',
             self._dbName,
             'partitioning=on',
@@ -68,6 +73,7 @@ class QservDataLoader():
         create_meta_cmd = [
             self.config['bin']['python'],
             meta_scriptname,
+            '--auth=%s' % self._qms_config_file,
             'createTable',
             self._dbName,
 #          '@%s' %  self.dataConfig[table_name]['meta-file'],
@@ -149,8 +155,7 @@ class QservDataLoader():
 
         # Create etc/emptychunk.txt
         empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
-        stripes=self.config['qserv']['stripes']
-        self.masterCreateEmptyChunksFile(stripes, chunk_id_list,  empty_chunks_filename)
+        self.masterCreateEmptyChunksFile(chunk_id_list,  empty_chunks_filename)
 
         self.logger.info("-----\nQserv mono-node database configured\n")
             
@@ -194,10 +199,12 @@ class QservDataLoader():
         self.logger.info("Non empty data chunks list : %s " %  chunk_list)
         return chunk_list
 
-    def masterCreateEmptyChunksFile(self, stripes, chunk_id_list, empty_chunks_filename):
+    def masterCreateEmptyChunksFile(self, chunk_id_list, empty_chunks_filename):
         f=open(empty_chunks_filename,"w")
         # TODO : replace 7201 by an operation with stripes
-        empty_chunks_list=[i for i in range(0,7201) if i not in chunk_id_list]
+        stripes=self.dataConfig['num-stripes']
+        top_chunk = 2 * stripes * stripes
+        empty_chunks_list=[i for i in range(0,top_chunk) if i not in chunk_id_list]
         for i in empty_chunks_list:
             f.write("%s\n" %i)
         f.close()
@@ -298,11 +305,11 @@ class QservDataLoader():
             '--chunk-prefix', table,
             '--theta-column', str(self.dataConfig[table]['ra-column']),
             '--phi-column', str(self.dataConfig[table]['decl-column']),
-            '--num-stripes', self.config['qserv']['stripes'],
-            '--num-sub-stripes', self.config['qserv']['substripes'],
+            '--num-stripes=%s' % self.dataConfig['num-stripes'],
+            '--num-sub-stripes=%s' % self.dataConfig['num-substripes'],
             '--delimiter', self.dataConfig['delimiter']
             ]
-        
+ 
         if self.dataConfig[table]['chunk-column-id'] != None :
             partition_data_cmd.extend(['--chunk-column', str(self.dataConfig[table]['chunk-column-id'])])
             

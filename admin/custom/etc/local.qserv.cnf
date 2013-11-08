@@ -30,11 +30,8 @@ user=qsmaster
 port=0
 
 [partitioner]
-#stripes=18
-#substripes=10
-#emptyChunkListFile=
-substripes=%(QSERV_SUBSTRIPES)s
-stripes=%(QSERV_STRIPES)s
+# NOTE : stripes and substripes parameters are managed with QMS, 
+# for each dataset
 emptyChunkListFile=%(QSERV_BASE_DIR)s/etc/emptyChunks.txt
 
 [table]

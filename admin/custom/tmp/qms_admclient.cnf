@@ -1,4 +1,4 @@
-# meta/bin/metaClientTool.py -a %(QSERV_BASE_DIR)s/etc/qmsadm.cnf
+# meta/bin/metaClientTool.py -a ~/.lsst/qmsadm.cnf
 
 [qmsConn]
 host: %(QMS_HOST)s

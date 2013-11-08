@@ -220,7 +220,7 @@ class Master:
             ai.initMetadataCache()
         except QmsException as qe:
             print qe.getErrMsg()
-            return
+            raise
 
         # not sure I need the sub-pat http interface
         root.putChild(defaultPath, ClientResource(c))
