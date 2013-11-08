@@ -114,7 +114,7 @@ env.Alias('download', download_cmd_lst)
 #
 #########################
 
-for perl_option in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'):
+for perl_option in ('install', 'init-mysql-db', 'clean-all'):
     scons_target = "perl-%s" % perl_option
     env.Alias(scons_target, env.Command(scons_target+'-dummy-target', [], actions.build_cmd_with_opts(config,perl_option)))
 
@@ -240,14 +240,6 @@ env.Alias("python-admin", python_admin)
 python_tests = env.InstallPythonModule(target=python_path_prefix, source='tests/python')
 env.Alias("python-tests", python_tests)
 
-env.Alias("python",
-    [
-        env.Alias("python-tests"),
-        env.Alias("python-admin"),
-        env.Alias("python-admin")
-    ]
-)
-
 SConscript('meta/SConscript', exports = 'env')
 
 #########################
@@ -303,6 +295,23 @@ if config['qserv']['node_type'] in ['mono','worker']:
     scisql_cmd.append(cmd)
 
     env.Alias("scisql", scisql_cmd)
+
+#############################
+#
+# Install master and worker
+#
+#############################
+
+# MySQL is required 
+env.Requires(env.Alias('qserv'), env.Alias('perl-install'))
+env.Requires(env.Alias('install'), env.Alias('qserv'))
+
+qserv_cmd=[] 
+qserv_install_sh = os.path.join(config['qserv']['base_dir'],'tmp','install', "qserv-master.sh")
+cmd = env.Command('qserv-only', [], qserv_install_sh)
+qserv_cmd.append(cmd)
+
+env.Alias("qserv", qserv_cmd)
 
 #########################
 #

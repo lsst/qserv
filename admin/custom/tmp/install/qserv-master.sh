@@ -1,9 +1,13 @@
 #!/bin/bash
 
+echo "DEBUG $QSERV_SRC"
+
 QSERV_BASE_DIR=%(QSERV_BASE_DIR)s
 MYSQLD_SOCK=%(MYSQLD_SOCK)s
 MYSQLD_USER=%(MYSQLD_USER)s
 MYSQLD_PASS=%(MYSQLD_PASS)s
+
+MYSQL_CMD="${QSERV_BASE_DIR}/bin/mysql --user=${MYSQLD_USER} --password=${MYSQLD_PASS} --sock=${MYSQLD_SOCK}"
 
 rm -rf "${QSERV_BASE_DIR}/qserv/master/dist"
 
@@ -33,7 +37,9 @@ fi
 echo -e "\n"
 echo "Initializing Qserv master database "
 echo "-----------------------------------"
-${QSERV_BASE_DIR}/bin/mysql --user=${MYSQLD_USER} --password=${MYSQLD_PASS} --sock=${MYSQLD_SOCK} < ${QSERV_BASE_DIR}/tmp/install/sql/qserv-master.sql ||
+${QSERV_BASE_DIR}/etc/init.d/mysqld start &&
+${MYSQL_CMD} < ${QSERV_BASE_DIR}/tmp/install/sql/qserv-master.sql && 
+${MYSQL_CMD} < ${QSERV_BASE_DIR}/tmp/install/sql/qservw_workerid.sql || 
 exit 1
 
 echo -e "\n"
@@ -47,12 +53,12 @@ exit 1
 echo -e "\n"
 echo "Building Qserv worker (xrootd plugin)"
 echo "-------------------------------------"
-rm -rf "${QSERV_BASE_DIR}/qserv/worker/tests/.tests"
+rm -rf "${QSERV_BASE_DIR}/qserv/worker/tests/.tests" &&
 # worker use next env variable to access mysql DB, and use hard-coded
 # login/password :
 # a configuration file containing mysql credentials would be welcome
-export QSW_DBSOCK=${MYSQLD_SOCK}
+export QSW_DBSOCK=${MYSQLD_SOCK} &&
 cd "${QSERV_BASE_DIR}/qserv/worker/" &&
 scons ||
 exit 1
-
+${QSERV_BASE_DIR}/etc/init.d/mysqld stop
