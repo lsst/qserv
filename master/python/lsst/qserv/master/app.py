@@ -98,18 +98,11 @@ from lsst.qserv.master import getDominantDb
 from lsst.qserv.master import configureSessionMerger3, submitQuery3
 
 
-from lsst.qserv.master import submitQuery, submitQueryMsg
-from lsst.qserv.master import initDispatcher
-from lsst.qserv.master import tryJoinQuery, joinSession
+from lsst.qserv.master import joinSession
 from lsst.qserv.master import getQueryStateString, getErrorDesc
 from lsst.qserv.master import SUCCESS as QueryState_SUCCESS
-from lsst.qserv.master import pauseReadTrans, resumeReadTrans
 # Parser
 from lsst.qserv.master import ChunkMeta
-# Merger
-from lsst.qserv.master import TableMerger, TableMergerError, TableMergerConfig
-from lsst.qserv.master import configureSessionMerger, getSessionResultName
-
 # Metadata
 from lsst.qserv.master import newMetadataSession, discardMetadataSession
 from lsst.qserv.master import addDbInfoNonPartitioned
