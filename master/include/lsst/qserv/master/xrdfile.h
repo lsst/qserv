@@ -51,8 +51,6 @@ struct XrdTransResult {
     }
 };
 	
-void xrdInit(); // Perform some library initialization (call only once).
-
 int xrdOpen(const char *path, int oflag);
 int xrdOpenAsync(const char* path, int oflag, XrdPosixCallBack *cbP);
 
