@@ -1,0 +1,29 @@
+# -*- python -*-
+Import('env')
+Import('libProducts')
+Import('defaultTgts')
+Import('findLibs')
+Import('cacheObjs')
+
+import os
+import itertools
+
+
+programs = []
+# extDeps
+extDeps = "boost_regex boost_signals boost_thread mysqlclient_r protobuf ssl".split()
+
+modDeps = 'wlog mysql sql util wbase wconfig wcontrol wdb wsched'.split() # deps on other modules
+deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
+pDeps = itertools.chain(*map(lambda m: libProducts[m], ['proto']))
+pDeps = cacheObjs(env, pDeps, ".o")
+deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain
+deps.sort(key=str)
+
+p = env.Program(['testFifoScheduler.cc'] + deps, LIBS=findLibs(extDeps))
+programs.append(p)
+
+p = env.Program('testQueue.cc');
+programs.append(p)
+
+Return('programs')

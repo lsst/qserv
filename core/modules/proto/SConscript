@@ -1,0 +1,40 @@
+# -*- python -*-
+Import('env')
+Import('extraTgts')
+import os
+#import export_deps
+
+# Construct proto env (add protoc Builder)
+pFiles = env.Protoc(
+    ["worker.proto"],
+    PROTOC_PATH='#',
+    PROTOC_CCOUT='#',
+    PROTOC_PYOUT='#',
+    )
+
+# Handle non Protobufs sources
+sources = filter(lambda f: ("pb" not in str(f)) and (not str(f).startswith("test")),
+                 Glob("*.cc"))
+#print "sources", sources, type(sources)
+sourceObjs = []
+for s in sources:
+    #print "sources s=",s
+    #sObj = env.Object(s)
+    if str(s) == "TaskMsgDigest.cc":
+        headerDep = filter(lambda s: "worker.pb.h" in str(s), pFiles)
+        #print "headerDep", headerDep
+        env.Depends(s, headerDep)
+    sourceObjs.append(s)
+extraTgts["protoPy"] = filter(lambda s: "worker_pb2.py" in str(s), pFiles)
+extraTgts["protoHdr"] = filter(lambda s: "worker.pb.h" in str(s), pFiles)
+
+# Special handling because protobufs creates .pb.cc using
+# an include path relative to bld/..
+pbCC = filter(lambda s: "worker.pb.cc" in str(s), pFiles)[0]
+pbOs = env.SharedObject(pbCC, CPPPATH=env['CPPPATH'] + ['../..'])
+libObjs = sourceObjs + pbOs
+
+Return('libObjs')
+
+
+
