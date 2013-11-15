@@ -87,7 +87,7 @@ mysql_proxy_url=%(repository)s/mysql-proxy-0.8.2.tar.gz
 protobuf_url=%(repository)s/protobuf-2.4.1.tar.gz
 scisql_url=%(repository)s/scisql-0.3.2.tar.bz2
 virtualenv_url=%(repository)s/virtualenv-1.7.tar.gz
-xrootd_url=%(repository)s/xrootd-qs4.tar.gz
+xrootd_url=%(repository)s/xrootd-qs5.tar.gz
 """
 
 NO_CHUNK=0

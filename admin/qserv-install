@@ -127,7 +127,7 @@ sub list_build_dir {
 #check on the xrootd source tar, untar, compile, configure for use.
 sub check_and_install_xrootd {
         
-        my $xrootd_archive = "xrootd-qs4.tar.gz";
+        my $xrootd_archive = "xrootd-qs5.tar.gz";
 	
 	#check if it is already installed
 	if( -e "$install_dir/share/xrootd" ) {
