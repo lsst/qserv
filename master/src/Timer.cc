@@ -30,29 +30,20 @@ namespace master {
 std::ostream & Timer::write(std::ostream & os, struct ::timeval const & time) {
     char buf[64];
     // Make sure microseconds are in range [0, 1000000)
-    struct ::timeval t = time;
-    if (t.tv_usec >= 1000000) {
-        ::suseconds_t q = t.tv_usec / 1000000;
-        ::suseconds_t r = t.tv_usec % 1000000;
-        t.tv_sec += static_cast< ::time_t>(q);
-        t.tv_usec = r;
-    } else if (t.tv_usec < 0) {
-        ::suseconds_t q = -t.tv_usec / 1000000;
-        ::suseconds_t r = -t.tv_usec % 1000000;
-        if (r != 0) {
-            q += 1;
-            r = 1000000 - r;
-        }
-        t.tv_sec -= static_cast< ::time_t>(q);
-        t.tv_usec = r;
+    ::time_t s = static_cast<time_t>(time.tv_usec / 1000000);
+    ::suseconds_t u = time.tv_usec % 1000000;
+    if (u < 0) {
+        // round down
+        --s;
+        u += 1000000;
     }
+    s += time.tv_sec;
     struct ::tm breakdown;
-    ::gmtime_r(&t.tv_sec, &breakdown);
+    ::gmtime_r(&s, &breakdown);
     // Convert to ISO 8601 UTC date-time string
     size_t n = ::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &breakdown);
     // ...with microsecond precision.
-    std::snprintf(buf + n, sizeof(buf) - n, ".%06dZ",
-                  static_cast<int>(t.tv_usec));
+    std::snprintf(buf + n, sizeof(buf) - n, ".%06dZ", static_cast<int>(u));
     os << buf;
     return os;
 }
