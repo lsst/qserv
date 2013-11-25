@@ -199,6 +199,7 @@ def get_template_targets():
                 "start_qms",
                 "qserv-master.sh",
                 "scisql.sh",
+                "protobuf.sh",
                 "qms.sh"
                 ]
                 ):
