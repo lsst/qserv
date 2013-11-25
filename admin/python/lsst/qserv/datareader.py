@@ -28,11 +28,11 @@ class DataReader():
         self.log.debug("DataReader.analyze() : Data name is : %s" %self.dataName )
 
         self.dataConfig['sql-views'] = []
-        self.dataConfig['meta-extension']='.params'
+        self.dataConfig['partitioned-sql-views'] = []
+        self.dataConfig['data-name']=self.dataName
 
         if self.dataName=="case01":
-
-            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+            self.dataConfig['partitioned-tables'] = ["Object", "Source"]
 
             """ Fill column position (zero-based index) """
             self.dataConfig['Object']=dict()
@@ -42,6 +42,10 @@ class DataReader():
             self.dataConfig['data-extension']='.tsv'
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']='\t'
+
+            # TODO : read from QMS db.params file
+            self.dataConfig['num-stripes'] = 85
+            self.dataConfig['num-substripes'] = 12
 
             self.dataConfig['Object']['ra-column'] = 2
             self.dataConfig['Object']['decl-column'] = 4
@@ -53,32 +57,12 @@ class DataReader():
             # chunkId and subChunkId will be added
             self.dataConfig['Source']['chunk-column-id'] = None
 
-            # for QMS
-            self.dataConfig['num-stripes'] = 85
-            self.dataConfig['num-substripes'] = 12
-            self.dataConfig['Object']['objIdColName'] =  "objectId",
-            self.dataConfig['Object']['thetaColName'] = 'decl_PS'
-            self.dataConfig['Object']['phiColName'] = 'ra_PS'
-            self.dataConfig['Object']['overlap'] = 0.025
-            # TODO use in qservdataloader
-            self.dataConfig['Object']['logicalPart'] = const.SUBCHUNK
-            self.dataConfig['Object']['physChunking'] = 0x0021
-
-            self.dataConfig['Source']['objIdColName'] =  "objectId",
-            # raObject and declObject management ?
-            self.dataConfig['Source']['thetaColName'] = 'declObject'
-            self.dataConfig['Source']['phiColName'] = 'raObject'
-            self.dataConfig['Source']['overlap'] = 0.025
-            self.dataConfig['Source']['logicalPart'] = const.CHUNK
-            self.dataConfig['Source']['physChunking'] = 0x0021
-
-
             self.log.debug("Data configuration : %s" % self.dataConfig)
 
         # for PT1.1
         elif self.dataName=="case02":
 
-            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+            self.dataConfig['partitioned-tables'] = ["Object", "Source"]
 
             """ Fill column position (zero-based index) """
             self.dataConfig['Object']=dict()
@@ -89,6 +73,10 @@ class DataReader():
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
 
+            # TODO : read from QMS db.params file
+            self.dataConfig['num-stripes'] = 85
+            self.dataConfig['num-substripes'] = 12
+
             self.dataConfig['Object']['ra-column'] = 2
             self.dataConfig['Object']['decl-column'] = 4
             self.dataConfig['Object']['chunk-column-id'] = 225
@@ -98,24 +86,6 @@ class DataReader():
             # chunkId and subChunkId will be added
             self.dataConfig['Source']['chunk-column-id'] = None
 
-            # for QMS
-            self.dataConfig['num-stripes'] = 85
-            self.dataConfig['num-substripes'] = 12
-            self.dataConfig['Object']['objIdColName'] =  "objectId",
-            self.dataConfig['Object']['thetaColName'] = 'decl_PS'
-            self.dataConfig['Object']['phiColName'] = 'ra_PS'
-            self.dataConfig['Object']['overlap'] = 0.025
-            # TODO use in qservdataloader
-            self.dataConfig['Object']['logicalPart'] = 1
-            self.dataConfig['Object']['physChunking'] = 0x0021
-
-            self.dataConfig['Source']['objIdColName'] =  "objectId",
-            # raObject and declObject management ?
-            self.dataConfig['Source']['thetaColName'] = 'declObject'
-            self.dataConfig['Source']['phiColName'] = 'raObject'
-            self.dataConfig['Source']['overlap'] = 0.025
-            self.dataConfig['Source']['logicalPart'] = 1
-            self.dataConfig['Source']['physChunking'] = 0x0021
 
             self.log.debug("Data configuration : %s" % self.dataConfig)
 
@@ -123,13 +93,20 @@ class DataReader():
         # for W13
         elif self.dataName=="case03":
 
-            self.dataConfig['partitionned-tables'] = ["AvgForcedPhot",
+            # TODO next params should be deduced from meta files
+            self.tables=['Science_Ccd_Exposure_Metadata_coadd_r', 'AvgForcedPhotYearly', 'Science_Ccd_Exposure_Metadata', 'RunDeepSource',  'RunDeepForcedSource', 'DeepForcedSource', 'ZZZ_Db_Description', 'RefObject', 'RefDeepSrcMatch', 'Science_Ccd_Exposure_coadd_r', 'Science_Ccd_Exposure', 'AvgForcedPhot', 'DeepCoadd_To_Htm10', 'Science_Ccd_Exposure_To_Htm10_coadd_r', 'LeapSeconds', 'DeepCoadd', 'DeepCoadd_Metadata', 'DeepSource', 'Filter']
+
+            self.dataConfig['sql-views'] = ['DeepForcedSource','DeepSource']
+            
+            self.dataConfig['partitioned-tables'] = ["AvgForcedPhot",
                                                 "AvgForcedPhotYearly",
                                                 "RefObject",
                                                 "RunDeepSource",
                                                 "RunDeepForcedSource"]
+            
+            self.dataConfig['partitioned-sql-views'] = ['DeepForcedSource','DeepSource']
 
-            for table in self.dataConfig['partitionned-tables']:
+            for table in self.dataConfig['partitioned-tables']:
                 self.dataConfig[table]=dict()
                 # chunkId and subChunkId will be added
                 self.dataConfig[table]['chunk-column-id'] = None
@@ -138,6 +115,10 @@ class DataReader():
             self.dataConfig['data-extension']='.txt'
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
+
+            # TODO : read from QMS db.params file
+            self.dataConfig['num-stripes'] = 85
+            self.dataConfig['num-substripes'] = 12
 
             self.dataConfig['AvgForcedPhot']['ra-column'] = 1
             self.dataConfig['AvgForcedPhot']['decl-column'] = 2
@@ -154,14 +135,11 @@ class DataReader():
             self.dataConfig['RunDeepForcedSource']['ra-column'] = 1
             self.dataConfig['RunDeepForcedSource']['decl-column'] = 2
 
-            self.tables=['Science_Ccd_Exposure_Metadata_coadd_r', 'AvgForcedPhotYearly', 'Science_Ccd_Exposure_Metadata', 'RunDeepSource',  'RunDeepForcedSource', 'DeepForcedSource', 'ZZZ_Db_Description', 'RefObject', 'RefDeepSrcMatch', 'Science_Ccd_Exposure_coadd_r', 'Science_Ccd_Exposure', 'AvgForcedPhot', 'DeepCoadd_To_Htm10', 'Science_Ccd_Exposure_To_Htm10_coadd_r', 'LeapSeconds', 'DeepCoadd', 'DeepCoadd_Metadata', 'DeepSource', 'Filter']
-
-            self.dataConfig['sql-views'] = ['DeepForcedSource','DeepSource']
 
         # for PT1.2
         elif self.dataName=="case04":
 
-            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+            self.dataConfig['partitioned-tables'] = ["Object", "Source"]
 
             """ Fill column position (zero-based index) """
             self.dataConfig['Object']=dict()
@@ -193,7 +171,7 @@ class DataReader():
         # for duplicated/replicated PT1.2
         elif self.dataName=="case05":
 
-            self.dataConfig['partitionned-tables'] = ["Object", "Source"]
+            self.dataConfig['partitioned-tables'] = ["Object", "Source"]
 
             """ Fill column position (zero-based index) """
             self.dataConfig['Object']=dict()

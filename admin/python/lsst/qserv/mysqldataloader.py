@@ -29,9 +29,9 @@ class MysqlDataLoader():
         self.chunk_id_list = None
 
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
-        self.logger.info("MysqlDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
-        
-        if (table_name in self.dataConfig['partitionned-tables']) and ('Duplication' in self.dataConfig) and self.dataConfig['Duplication']:
+        self.logger.debug("MysqlDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
+
+        if (table_name in self.dataConfig['partitioned-tables']) and ('Duplication' in self.dataConfig) and self.dataConfig['Duplication']:
             self.logger.info("Loading schema of duplicated table %s" % table_name)
             self.createPartitionedTable(table_name, schema_filename)
             self.loadPartitionedTable(table_name, input_filename)
@@ -39,10 +39,10 @@ class MysqlDataLoader():
             self.logger.info("Creating schema for table %s as a view" % table_name)
             self._sqlInterface['cmd'].executeFromFile(schema_filename)
         else:
-            self.logger.info("Creating and loading non-partitionned table %s" % table_name)
+            self.logger.info("Creating and loading non-partitioned table %s" % table_name)
             self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
 
-            
+
     def alterTable(self, table):
         sql_statement = "SHOW COLUMNS FROM `%s` LIKE '%s'"
         for field_name in ["chunkId","subChunkId"]:
@@ -63,34 +63,34 @@ class MysqlDataLoader():
                 sql = 'ALTER TABLE %s ADD %s int(11) NOT NULL' % (table,field_name)
                 self._sqlInterface['sock']. execute(sql)
         # TODO add index creation w.r.t. dataConfig
-                
-            
+
+
     def loadPartitionedTable(self, table, data_filename):
         ''' Duplicate, partition and load MySQL data like Source and Object
         '''
         self.logger.info("-----\nMySQL Duplicating data for table  '%s' -----\n" % table)
         partition_dirname = self.duplicateAndPartitionData(table, data_filename)
         self.loadPartitionedData(partition_dirname,table)
-        self.logger.info("-----\nMySQL database filled with partitionned '%s' data. -----\n" % table)
+        self.logger.info("-----\nMySQL database filled with partitioned '%s' data. -----\n" % table)
 
 
     def createPartitionedTable(self, table, schemaFile):
-        self.logger.info("Creating partitionned table %s with schema %s" % (table, schemaFile))
-        if table in self.dataConfig['partitionned-tables']:     
+        self.logger.info("Creating partitioned table %s with schema %s" % (table, schemaFile))
+        if table in self.dataConfig['partitioned-tables']:
             self._sqlInterface['cmd'].executeFromFile(schemaFile)
             self.alterTable(table)
 
-            
+
     def duplicateAndPartitionData(self, table, data_filename):
         self.logger.info("Duplicating and partitioning table  '%s' from file '%s'\n" % (table, data_filename))
-        
+
         partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
         partition_dirname = os.path.join(self._out_dirname,table+"_partition")
-        
+
         if os.path.exists(partition_dirname):
             shutil.rmtree(partition_dirname)
         os.makedirs(partition_dirname)
-        
+
         schema_filename = os.path.join(self.dataConfig['dataDirName'], table + self.dataConfig['schema-extension'])
         data_filename = os.path.join(self.dataConfig['dataDirName'], table + self.dataConfig['data-extension'])
 
@@ -103,13 +103,13 @@ class MysqlDataLoader():
             raise Exception, "File: %s not found" % data_filename
 
         chunker_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "makeChunk.py")
-         
+
         chunker_cmd = [
             self.config['bin']['python'],
             chunker_scriptname,
             '--output-dir', partition_dirname,
             '--delimiter', self.dataConfig['delimiter'],
-            '-S', str(self.dataConfig['num-stripes']), 
+            '-S', str(self.dataConfig['num-stripes']),
             '-s', str(self.dataConfig['num-substripes']),
             '--dupe',
             '--node-count', str(self.dataConfig['nbNodes']),
@@ -128,17 +128,8 @@ class MysqlDataLoader():
 
         if data_filename_cleanup:
             commons.run_command(["gzip", data_filename])
-        
-        return partition_dirname
-    
-    
-    def old_createAndLoadTable(self, table_name, schema_filename, input_filename):
-        self.logger.info("MysqlDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
 
-        if table_name in self.dataConfig['sql-views']:
-            self._sqlInterface['cmd'].executeFromFile(schema_filename)
-        else:
-            self._sqlInterface['cmd'].createAndLoadTable(table_name, schema_filename, input_filename, self.dataConfig['delimiter'])
+        return partition_dirname
 
     def connectAndInitDatabase(self):
 
@@ -147,11 +138,11 @@ class MysqlDataLoader():
         self._sqlInterface['sock'].dropAndCreateDb(self._dbName)
         self._sqlInterface['sock'].setDb(self._dbName)
 
-        cmd_connection_params =   self.sock_connection_params  
+        cmd_connection_params =   self.sock_connection_params
         cmd_connection_params['database'] = self._dbName
         self._sqlInterface['cmd'] = cmd.Cmd(**cmd_connection_params)
 
-        
+
     def loadPartitionedData(self,partition_dirname,table):
         self.logger.info("MysqlDataLoader.loadPartitionedData(%s, %s)" % (partition_dirname,table))
 
@@ -160,5 +151,5 @@ class MysqlDataLoader():
             for filename in filenames:
                 if filename.startswith(prefix):
                     datafile = os.path.join(root, filename)
-                    self.logger.info("Loading partitionned data from %s" % datafile)
+                    self.logger.info("Loading partitioned data from %s" % datafile)
                     self._sqlInterface['cmd'].loadData(datafile, table, self.dataConfig['delimiter'])

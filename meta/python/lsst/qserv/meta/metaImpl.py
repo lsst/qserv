@@ -640,13 +640,19 @@ class MetaImpl:
     #### _printTable
     ###########################################################################
     def _printTable(self, s, tableName):
+        s.write("\n"+tableName)
         ret = self._mdb.execCommandN("SELECT * FROM %s" % tableName)
-        s.write(tableName)
         if len(ret) == 0:
             s.write(" is empty.\n")
         else: 
             s.write(':\n')
-            for r in ret: print >> s, "   ", r
+            s.write("  Data : \n")
+            for r in ret: 
+                print >> s, "   ", r
+        s.write("  Columns : \n")
+        ret = self._mdb.execCommandN("DESC %s" % tableName)
+        col_lst=[r[0] for r in ret]
+        print >> s, "   ", col_lst 
 
     ###########################################################################
     #### _getColumpPos

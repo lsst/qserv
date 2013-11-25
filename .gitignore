@@ -3,8 +3,9 @@
 *.log
 *.pyc
 *~
-.sconsign.dblite
-qserv-build.conf
+/.sconsign.dblite
+/qserv-build.conf
+/tmp/
 common/.sconf_temp/
 common/include/
 common/lib/

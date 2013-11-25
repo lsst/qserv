@@ -8,6 +8,8 @@ import sys
 import ConfigParser
 import const
 
+config = dict()
+
 def read_user_config():
     config_file=os.path.join(os.getenv("HOME"),".lsst","qserv.conf")
     config = read_config(config_file)
@@ -15,6 +17,7 @@ def read_user_config():
 
 def read_config(config_file):
 
+    global config
     logger = logging.getLogger()
     logger.debug("Reading build config file : %s" % config_file)
 
@@ -34,7 +37,6 @@ def read_config(config_file):
        for option in parser.options(section):
         logger.debug("'%s' = '%s'" % (option, parser.get(section,option)))
 
-    config = dict()
     section='qserv'
     config[section] = dict()
     for option in parser.options(section):
@@ -101,6 +103,9 @@ def read_config(config_file):
 
     return config
 
+def getConfig():
+    return config
+
 def is_readable(dir):
     """
     Test is a dir is readable.
@@ -138,13 +143,14 @@ def is_writable(dir):
         return False
 
 def init_default_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
-    console_logger(level)
-    logger = file_logger(log_file_prefix, level, log_path)
+    format = '%(asctime)s {%(pathname)s:%(lineno)d} %(levelname)s %(message)s'
+    add_console_logger(level, format)
+    logger = add_file_logger(log_file_prefix, level, log_path, format)
     return logger
 
-def console_logger(level=logging.DEBUG):
+def add_console_logger(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s'):
     logger = logging.getLogger()
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    formatter = logging.Formatter(format)
     logger.setLevel(level)
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
@@ -152,21 +158,31 @@ def console_logger(level=logging.DEBUG):
 
     return logger
 
-def file_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
+def add_file_logger(log_file_prefix, level=logging.DEBUG, log_path=".", format='%(asctime)s %(levelname)s %(message)s'):
 
     logger = logging.getLogger()
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    formatter = logging.Formatter(format)
     # this level can be reduce for each handler
     logger.setLevel(level)
-
-    file_handler = logging.FileHandler(os.path.join(log_path+os.sep,log_file_prefix+'.log'))
+    logfile = os.path.join(log_path,log_file_prefix+'.log')
+    file_handler = logging.FileHandler(logfile)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
     return logger
 
+def restart(service_name):
 
-def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None) :
+        config = getConfig()
+        if len(config)==0 :
+            raise RuntimeError("Qserv configuration is empty")
+        initd_path = os.path.join(config['qserv']['base_dir'],'etc','init.d')
+        daemon_script = os.path.join(initd_path,service_name)
+        out = os.system("%s stop" % daemon_script)
+        out = os.system("%s start" % daemon_script)
+
+
+def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, loglevel=logging.INFO) :
     """ Run a shell command
 
     Keyword arguments
@@ -178,7 +194,7 @@ def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None) :
     logger = logging.getLogger()
 
     cmd_str= " ".join(cmd_args)
-    logger.info("Running :\n---\n\t%s\n---" % cmd_str)
+    logger.log(loglevel, "cmd : {0}".format(cmd_str))
 
     sin = None
     if stdin_file != None:
@@ -220,52 +236,13 @@ def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None) :
         (stdoutdata, stderrdata) = process.communicate()
 
         if stdoutdata != None and len(stdoutdata)>0:
-            logger.info("Stdout : %s " % stdoutdata)
+            logger.info("\tstdout : %s " % stdoutdata)
         if stderrdata != None and len(stderrdata)>0:
-            logger.info("Stderr : %s " % stderrdata)
+            logger.info("\tstderr : %s " % stderrdata)
 
         if process.returncode!=0 :
             logger.fatal("Error code returned by command : %s " % cmd_str)
             sys.exit(1)
-
-    except OSError as e:
-        logger.fatal("Error : %s while running command : %s" %
-                     (e,cmd_str))
-        sys.exit(1)
-    except ValueError as e:
-        logger.fatal("Invalid parameter : '%s' for command : %s " % (e,cmd_str))
-        sys.exit(1)
-
-
-
-def run_backgroundCommand(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, logger_name=None):
-
-    logger = logging.getLogger(logger_name)
-
-    cmd_str= " ".join(cmd_args)
-    logger.info("Running :\n---\n\t%s\n---" % cmd_str)
-
-    sin = None
-    if stdin_file != None:
-        logger.debug("stdin file : %s" % stdout_file)
-        sin=open(stdin_file,"r")
-
-    sout = None
-    if stdout_file != None:
-        logger.debug("stdout file : %s" % stdout_file)
-        sout=open(stdout_file,"w")
-    else:
-        sout=subprocess.PIPE
-
-    serr = None
-    if stderr_file != None:
-        logger.debug("stderr file : %s" % stderr_file)
-        serr=open(stderr_file,"w")
-    else:
-        serr=subprocess.PIPE
-
-    try :
-        pid = subprocess.Popen( cmd_args, stdin=sin, stdout=sout, stderr=serr ).pid
 
     except OSError as e:
         logger.fatal("Error : %s while running command : %s" %

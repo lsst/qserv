@@ -41,7 +41,7 @@ class TestQservDataLoader(unittest.TestCase):
                 out_dir
                 )
             qservDataLoader.connectAndInitDatabase()
-            for table_name in dataReader.dataConfig['partitionned-tables']:
+            for table_name in dataReader.dataConfig['partitioned-tables']:
                 (schema_filename, data_filename, zipped_data_filename) =  dataReader.getSchemaAndDataFilenames(table_name)
                 qservDataLoader._sqlInterface['cmd'].executeFromFile(schema_filename)
                 qservDataLoader.alterTable(table_name)

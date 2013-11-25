@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -76,11 +76,11 @@ strategies = { 'round-robin': roundRobin }
 class SqlActions(object):
     """Higher level interface for database loading/cleanup tasks.
     """
-    
+
     def __init__(self, host, port, user, passwd, socket=None, database="LSST"):
         kw = dict()
         if socket is None:
-            kw['host'] = host 
+            kw['host'] = host
             for k in ((port, 'port'), (user, 'user'), (passwd, 'passwd'), (socket, 'unix_socket'), (database, 'db')):
                 if k[0] != None:
                     kw[k[1]] = k[0]
@@ -90,7 +90,7 @@ class SqlActions(object):
                     kw[k[1]] = k[0]
 
         print("SqlActions init : %s" % str(kw))
-        
+
         self.conn = sql.connect(**kw)
         self.cursor = self.conn.cursor()
 
@@ -99,7 +99,7 @@ class SqlActions(object):
         self.cursor.execute(stmt)
         self.cursor.fetchall()
 
-    def createDatabase(self, database):        
+    def createDatabase(self, database):
         self._exec("CREATE DATABASE IF NOT EXISTS %s ;" % database)
 
     def dropDatabase(self, database):
@@ -290,7 +290,7 @@ class SqlActions(object):
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print dedent("""\
-                    ERROR: found %d self-overlap records assigned to chunk 
+                    ERROR: found %d self-overlap records assigned to chunk
                            %d (%s) falling inside their sub-chunks.""" %
                     (nfailed, chunkId, selfTable))
             self.cursor.execute("""
@@ -322,7 +322,7 @@ class SqlActions(object):
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print dedent("""\
-                    WARNING: found %d self-overlap records assigned to chunk 
+                    WARNING: found %d self-overlap records assigned to chunk
                              %d (%s) falling outside the bounds of their
                              sub-chunk self-overlap regions.""" %
                     (nfailed, chunkId, selfTable))
@@ -339,7 +339,7 @@ class SqlActions(object):
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print dedent("""\
-                    ERROR: found %d full-overlap records assigned to chunk 
+                    ERROR: found %d full-overlap records assigned to chunk
                            %d (%s) falling inside their sub-chunks.""" %
                     (nfailed, chunkId, fullTable))
             self.cursor.execute("""
@@ -362,7 +362,7 @@ class SqlActions(object):
             nfailed = self.cursor.fetchone()[0]
             if nfailed > 0:
                 print dedent("""\
-                    WARNING: found %d full-overlap records assigned to chunk 
+                    WARNING: found %d full-overlap records assigned to chunk
                              %d (%s) falling outside the bounds of their
                              sub-chunk full-overlap regions.""" %
                     (nfailed, chunkId, fullTable))
@@ -401,7 +401,7 @@ def chunkIdFromPath(path):
     if m == None:
         raise RuntimeError("Unable to extract chunk id from path %s" % path)
     return int(m.group(1))
-    
+
 def tableFromPath(path, opts, prefix=''):
     table = os.path.splitext(os.path.basename(path))[0]
     return opts.database + '.' + prefix + table
@@ -569,7 +569,7 @@ def loadWorker(args):
     params, chunks = args
     act = SqlActions(params.host, params.port, params.user, params.password, params.socket, params.database)
     partTable = None
-    
+
     try:
         act.createDatabase(params.database)
         prototype = params.database + '.' + params.chunkPrefix + "Prototype"
@@ -665,7 +665,7 @@ def main():
         %default."""))
     parser.add_option(
         "--socket", dest="socket", default=None,
-        help="Socket to use for database connection.")        
+        help="Socket to use for database connection.")
     parser.add_option(
         "-c", "--clean", dest="clean", help=dedent("""\
         Table name prefix identifying the chunk tables, partition map,

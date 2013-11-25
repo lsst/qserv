@@ -113,10 +113,7 @@ check_and_install_lua() if( $build_opt eq "all" or $build_opt eq "lua" );
 #install mysql proxy
 check_and_install_myproxy() if( $build_opt eq "all" or $build_opt eq "mysql-proxy" );
 
-#setup the qserv code
-check_and_install_qserv() if( $build_opt eq "all" or $build_opt eq "qserv" );
-
-print "PROCESS SUCCESSFULLY COMPLETED\n";
+print "QSERV DEPENDENCIES SUCCESSFULLY INSTALLED\n";
 
 #############################################################
 
@@ -130,7 +127,7 @@ sub list_build_dir {
 #check on the xrootd source tar, untar, compile, configure for use.
 sub check_and_install_xrootd {
         
-        my $xrootd_archive = "xrootd-qs4.tar.gz";
+        my $xrootd_archive = "xrootd-qs5.tar.gz";
 	
 	#check if it is already installed
 	if( -e "$install_dir/share/xrootd" ) {
@@ -174,75 +171,6 @@ sub check_and_install_xrootd {
 	mkdir "xrootd-run";
 	mkdir "xrootd-run/result";
 	mkdir "xrootd-run/q";
-	
-}
-
-#check on qserv source tar, compile, install, and configure for use.
-sub check_and_install_qserv {
-	my $pass_opt = '';
-
-	if ( length($db_pass) > 0) {
-		$pass_opt = "-p'$db_pass'"
-	}
-
-	print "Installing Qserv from source.\n";
-	check_and_deploy_qserv();
-	
-	if( -e "$install_dir/qserv/master/dist" ) {	
-		#looks like qserv is already installed so, move on
-		print "WARNING: Not installing Qserv because it looks like it is already installed in $install_dir/qserv\n";
-		print "WARNING: Please remove $install_dir/qserv/master/dist in order to force installation.\n";
-		return;
-	}
-	
-	chdir "$install_dir/qserv/common";
-	$ENV{'XRD_DIR'} = "$install_dir";
-	$ENV{'XRD_PLATFORM'} = "x86_64_linux_26_dbg";
-	$ENV{'PROTOC'} = "$install_dir/bin/protoc";
-	$ENV{'PROTOC_INC'} = "$install_dir/include";
-	$ENV{'PROTOC_LIB'} = "$install_dir/lib";
-	$ENV{'MYSQL_ROOT'} = "$install_dir";
-	$ENV{'SEARCH_ROOTS'} = "$install_dir";
-	run_command("scons");
-	run_command("scons master");
-	
-	#install the geometry
-	if (not -e "$src_dir/master/python/lsst/qserv/master/geometry.py") {
-		if (not $geometry_dir) {
-			print "Downloading geometry file in geom master branch, Use --geometry-dir to specify a geometry source directory, get it with `git clone git://dev.lsstcorp.org/LSST/DMS/geom`"; 
-			chdir "$install_dir/qserv/master/python/lsst/qserv/master/" or die print "$!\n";
-			run_command("wget http://dev.lsstcorp.org/cgit/LSST/DMS/geom.git/plain/python/lsst/geom/geometry.py");
-		}
-		else {
-			print "Using --geometry-dir=$geometry_dir as geometry source directory";
-			run_command("cp -r $geometry_dir/python/lsst/geom/geometry.py $install_dir/qserv/master/python/lsst/qserv/master/geometry.py");
-		}
-	} 
-	chdir "$install_dir/qserv/master";
-	run_command("scons");
-	run_command("scons install");
-	
-	chdir "$install_dir/qserv/worker";
-	run_command("scons");
-	
-	#start mysql server and install init database
-	chdir "$install_dir";
-	print "Starting mysql server.\n";
-	system("$install_dir/bin/mysqld_safe --defaults-file=$install_dir/etc/my.cnf &");
-	sleep 5;
-	print "Setting up init databases.\n";
-        run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS LSST;\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservResult;\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"CREATE DATABASE IF NOT EXISTS qservScratch;\"");
-        run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON LSST.* TO \'qsmaster\'\@\'localhost\';\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON qservResult.* TO \'qsmaster\'\@\'localhost\';\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt -e \"GRANT ALL ON qservScratch.* TO \'qsmaster\'\@\'localhost\';\"");
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt < qserv/master/examples/qserv-master-perms.sql");
-        # TODO : only on workers
-	run_command("./bin/mysql -S var/lib/mysql/mysql.sock -u root $pass_opt < tmp/qservw_workerid.sql");
-	
-	#shutdown mysql
-	run_command("./bin/mysqladmin -S var/lib/mysql/mysql.sock shutdown -u root $pass_opt");
 	
 }
 

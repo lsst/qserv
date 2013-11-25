@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -172,7 +172,7 @@ except ImportError:
 
 # -- Working around pickle limitations --------
 pickleWorkaround = dict()
-pickleWorkaroundCounter = 0 
+pickleWorkaroundCounter = 0
 
 def addPickleWorkaround(obj):
     global pickleWorkaround, pickleWorkaroundCounter
@@ -186,11 +186,11 @@ def addPickleWorkaround(obj):
 def _csvArgs(conf, mode="r"):
     """Extract and return csv formatting arguments from conf.
     """
-    if mode=='w': 
+    if mode=='w':
         delimiter = conf.delimiter_out
     else:
         delimiter = conf.delimiter
-       
+
     return { 'delimiter': delimiter,
              'doublequote': conf.doublequote,
              'quoting': conf.quoting,
@@ -601,6 +601,9 @@ class ChunkWriter(object):
         assert len(paths) == 3
         self.writers = [CsvFileWriter(p, chunkId, conf) for p in paths]
         self.chunkId = chunkId
+        self.not_written = True
+        self.paths = paths
+
 
     def getId(self):
         return self.chunkId
@@ -609,6 +612,12 @@ class ChunkWriter(object):
         """Write row to the chunk file or its full-overlap or
         self-overlap file, allocating resources as necessary.
         """
+        # if chunk file isn't empty
+        # empty full-overlap or self-overlap will be created (even if empty)
+        if self.not_written :
+            [open(p, 'w').close() for p in self.paths]
+            self.not_written = False
+
         self.writers[which].writerow(row)
 
     def close(self):
@@ -814,7 +823,7 @@ class Chunker(object):
         print "Sub-stripe height: %.9g deg" % self.subStripeHeight,
         print "(%d min)" % (self.subStripeHeight * 60)
 
-        
+
 class SpatialChunkMapper(object):
     """Mapper which bucket sorts CSV records by chunk; map output is
     [(chunkId, {subChunkId: numRows})].
@@ -831,7 +840,7 @@ class SpatialChunkMapper(object):
         self._initRowCombiner(conf) # Init flexible row writer.
         if hasattr(conf, "chunkAcceptor"): # allow client to select chunks
             self.chunkAcceptor = pickleWorkaround[conf.chunkAcceptor]
-        else: 
+        else:
             self.chunkAcceptor = None
 
         # Build chunk writer arrays
@@ -846,11 +855,12 @@ class SpatialChunkMapper(object):
             for j in xrange(self.chunker.getNumChunks(i)):
                 # chunks are at least as wide as stripes are high, so j < ns*2
                 chunkId = i * ns * 2 + j
-                if self.chunkAcceptor and not self.chunkAcceptor(chunkId): 
+                if self.chunkAcceptor and not self.chunkAcceptor(chunkId):
                     self.writers[i].append(None)
                 else:
                     paths = [os.path.join(baseDir, p + ("_%d.csv" % chunkId))
                              for p in prefixes]
+                    # creatin chunk overlap file, even if empty
                     self.writers[i].append(ChunkWriter(paths, chunkId, conf))
 
     def map(self, row):
@@ -868,15 +878,17 @@ class SpatialChunkMapper(object):
             self.chunker.setBounds(self.coords, self.bounds)
             chunkId, subChunkId = self.chunker.getIds(self.coords)
             # Reject the unaccepted
-            if self.chunkAcceptor and not self.chunkAcceptor(chunkId): return 
+            if self.chunkAcceptor and not self.chunkAcceptor(chunkId): return
             # write row plus the chunkId and subChunkId to the appropriate file
             writer = self.writers[self.coords[0]][self.coords[2]]
             self.cache.update(writer)
             r = self._combineChunkWithRow(row, [chunkId, subChunkId])
             writer.writerow(r, ChunkWriter.CHUNK)
+
             # write to overlap files
             overlap = self.chunker.getOverlap(theta, phi, self.coords,
                                               self.bounds)
+
             for ids, coords, both in overlap:
                 w = self.writers[coords[0]][coords[1]]
                 if not w: continue
@@ -909,7 +921,7 @@ class SpatialChunkMapper(object):
             self._combineChunkWithRow = self._concatenateChunkToRow
 
     def _combineChunkWithRow(self, row, chunkAndSubChunkId):
-        """Add chunkId and subChunkId to a row. Defaults to 
+        """Add chunkId and subChunkId to a row. Defaults to
         _concatChunkToRow(self, row, chunkAndSubChunkId)"""
         return self._concatenateChunkToRow(row, chunkAndSubChunkId)
 
@@ -1734,9 +1746,9 @@ def makeGeneralOptGroup(parser):
     general.add_option(
         "--chunk-column", type="int", dest="chunkColumn", default=None,
         help=dedent("""\
-        0-based index of existing chunkId and subChunkId columns in the 
-        input data. If unspecified (default), concatenate chunkId and 
-        subChunkId columns at the end of the existing set. If specified, 
+        0-based index of existing chunkId and subChunkId columns in the
+        input data. If unspecified (default), concatenate chunkId and
+        subChunkId columns at the end of the existing set. If specified,
         the column and the next adjacent column are assumed to be chunkId
         and subChunkId columns that the partitioner should overwrite.
         (PT1.1: 225)."""))

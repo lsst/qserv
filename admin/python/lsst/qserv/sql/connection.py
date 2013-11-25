@@ -14,7 +14,7 @@ class Connection():
                  database=None):
       
         self.logger = logging.getLogger()
-        self.logger.info("SQLConnection creation ")
+        self.logger.debug("SQLConnection creation ")
         self.database = database
 
         socket_connection_params = { 
@@ -40,16 +40,16 @@ class Connection():
        
     # TODO the mysqldb destructor should close the connection when object is deleted
     def __del__(self):
-        self.logger.info("SQLConnection: Calling destructor, and closing connection")
+        self.logger.debug("SQLConnection: Calling destructor, and closing connection")
         self._connection.close()
 
     def disconnect(self):
-        self.logger.info("SQLConnection: disconnecting")
+        self.logger.debug("SQLConnection: disconnecting")
         self._connection.close()
         
     def execute(self, query):
         cursor = self._connection.cursor()
-        self.logger.info("SQLConnection.execute : %s" % query)
+        self.logger.debug("SQLConnection.execute : %s" % query)
         cursor.execute(query)
         result = cursor.fetchall()
         cursor.close()
@@ -58,7 +58,7 @@ class Connection():
     def executeFromFile(self, filename):
       if os.path.exists(filename):
         # What a pity: SOURCE doesn't work with MySQLdb !
-        self.logger.info("SQLConnection.executeFromFile:  %s" % filename)
+        self.logger.debug("SQLConnection.executeFromFile:  %s" % filename)
         sql = open(filename).read()
         return self.execute(sql)
       else:

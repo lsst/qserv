@@ -122,9 +122,20 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
     // per-chunk
     _taskMsg->set_chunkid(s.chunkId);
     // per-fragment
+    // TODO refactor to simplify
     if(s.nextFragment.get()) {
         ChunkQuerySpec const* sPtr = &s;
         while(sPtr) {
+
+#ifdef DEBUG
+#if DEBUG > 1
+	  std::cout << "TaskMsgFactory2::Impl::makeMsg() : nextFragment " << std::endl;
+	  for(unsigned int t=0;t<(sPtr->queries).size();t++){
+	      std::cout<<(sPtr->queries).at(t)<< std::endl;
+	  }
+#endif
+#endif
+
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
             addFragment(*_taskMsg, resultTable,
@@ -134,6 +145,16 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
             sPtr = sPtr->nextFragment.get();
         }
     } else {
+
+#ifdef DEBUG
+#if DEBUG > 1
+        std::cout << "TaskMsgFactory2::Impl::makeMsg() : no fragment " << std::endl;
+	for(unsigned int t=0;t<(s.queries).size();t++){
+	  std::cout<<(s.queries).at(t)<< std::endl;
+	}
+#endif
+#endif
+
         addFragment(*_taskMsg, resultTable,
                     s.subChunkTables, s.subChunkIds, s.queries);
     }

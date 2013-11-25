@@ -71,6 +71,15 @@ env.Requires(env.Alias('perl-init-mysql-db'), env.Alias('templates'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
 env.Requires(env.Alias('python-tests'), env.Alias('python-qms'))
 env.Requires(env.Alias('admin-bin'), env.Alias('python-tests'))
+# next target install all python files, usefull for development purposes
+env.Requires(env.Alias('admin-bin'), env.Alias('python'))
+env.Alias("python",
+    [
+        env.Alias("python-admin"),
+        env.Alias("python-qms"),
+        env.Alias("python-tests"),
+    ]
+)
 env.Requires(env.Alias('perl-install'), env.Alias('admin-bin'))
 
 env.Alias('install',env.Alias('perl-install'))
@@ -105,15 +114,16 @@ env.Alias('download', download_cmd_lst)
 #
 #########################
 
-for perl_option in ('install', 'init-mysql-db', 'qserv-only', 'clean-all'):
+for perl_option in ('install', 'init-mysql-db', 'clean-all'):
     scons_target = "perl-%s" % perl_option
     env.Alias(scons_target, env.Command(scons_target+'-dummy-target', [], actions.build_cmd_with_opts(config,perl_option)))
 
-#########################
+######################################################
 #
-# Using templates files
+# Templating system
+# fill Qserv config files with qserv-build.conf values
 #
-#########################
+######################################################
 
 def get_template_targets():
 
@@ -138,7 +148,6 @@ def get_template_targets():
         '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'],
         '%\(MYSQLD_PORT\)s': config['mysqld']['port'],
         # used for mysql-proxy in mono-node
-        # '%(MYSQLD_HOST)': config['qserv']['master'],
         '%\(MYSQLD_HOST\)s': '127.0.0.1',
         '%\(MYSQLD_SOCK\)s': config['mysqld']['sock'],
         '%\(MYSQLD_USER\)s': config['mysqld']['user'],
@@ -188,8 +197,9 @@ def get_template_targets():
                 "start_qserv",
                 "start_mysqlproxy",
                 "start_qms",
-                "qserv-core.sh",
+                "qserv-master.sh",
                 "scisql.sh",
+                "protobuf.sh",
                 "qms.sh"
                 ]
                 ):
@@ -240,7 +250,7 @@ SConscript('meta/SConscript', exports = 'env')
 #########################
 bin_basename_lst=[
     "qserv-benchmark.py","qserv-testdata.py",
-    "qserv-testunit.py"
+    "qserv-testunit.py","qms_setup.sh"
 ]
 bin_target_lst = []
 for f in bin_basename_lst:
@@ -286,6 +296,23 @@ if config['qserv']['node_type'] in ['mono','worker']:
     scisql_cmd.append(cmd)
 
     env.Alias("scisql", scisql_cmd)
+
+#############################
+#
+# Install master and worker
+#
+#############################
+
+# MySQL is required 
+env.Requires(env.Alias('qserv'), env.Alias('perl-install'))
+env.Requires(env.Alias('install'), env.Alias('qserv'))
+
+qserv_cmd=[] 
+qserv_install_sh = os.path.join(config['qserv']['base_dir'],'tmp','install', "qserv-master.sh")
+cmd = env.Command('qserv-only', [], qserv_install_sh)
+qserv_cmd.append(cmd)
+
+env.Alias("qserv", qserv_cmd)
 
 #########################
 #

@@ -1,7 +1,6 @@
 import distutils.sysconfig
 import logging
 import os
-from sets import Set
 import SCons.Action 
 from SCons.Script import Delete
 
@@ -37,7 +36,7 @@ def install_python_module(env, target, source):
 def clean_python_path_dir(target_lst,env):
     """ Delete directories relative to current targets in PYTHONPATH during cleaning
     """
-    empty_py_dirs = Set()
+    empty_py_dirs = set()
 
     bottom_up_target_list = map(str,target_lst)[::-1]
 

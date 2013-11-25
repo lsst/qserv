@@ -47,21 +47,15 @@ from filecmp import dircmp
 class Benchmark():
 
     def __init__(self, case_id, out_dirname_prefix,
-                 config_dir=None,
                  log_file_prefix='qserv-tests',
-                 logging_level=logging.DEBUG ):
+                 logging_level=logging.INFO ):
 
-        self.logger = commons.console_logger(logging_level)
         self.dataLoader = dict()
         self._sqlInterface = dict()
         self._mode=None
         self._dbName=None
 
-        if config_dir is None:
-            self.config = commons.read_user_config()
-        else:
-            config_file_name=os.path.join(config_dir,"qserv-build.conf")
-            self.config = commons.read_config(config_file_name)
+        self.config = commons.getConfig()
 
         self._case_id = case_id
         self._logFilePrefix = log_file_prefix
@@ -82,10 +76,7 @@ class Benchmark():
 
         self._queries_dirname = os.path.join(qserv_tests_dirname,"queries")
 
-        self.logger = commons.file_logger(
-            log_file_prefix,
-            log_path=self.config['qserv']['log_dir']
-            )
+        self.logger = logging.getLogger()
 
     def runQueries(self, stopAt):
         self.logger.debug("Running queries : (stop-at : %s)" % stopAt)
@@ -137,7 +128,7 @@ class Benchmark():
                         qText += ' '
                     outFile = os.path.join(myOutDir, qFN.replace('.sql', '.txt'))
                     #qText += " INTO OUTFILE '%s'" % outFile
-                    self.logger.info("Mode %s Running %s: %s\n" % (self._mode,qFN, qText))
+                    self.logger.info("LAUNCHING QUERY : {1} against {0}, SQL : {2}\n".format(self._mode,qFN, qText))
                     self._sqlInterface['query'].execute(qText, outFile)
 
 
@@ -149,7 +140,7 @@ class Benchmark():
         tmp_suffix = ("%s%s" % (table_name,self.dataReader.dataConfig['data-extension']))
         tmp_data_file = os.path.join(self._out_dirname,tmp_suffix)
 
-        self.logger.info(" ./Uncompressing: %s into %s" %  (zipped_data_filename, tmp_data_file))
+        self.logger.info("Unzipping: %s into %s" %  (zipped_data_filename, tmp_data_file))
         commons.run_command(["gunzip", "-c", zipped_data_filename], stdout_file=tmp_data_file)
         return tmp_data_file
 
@@ -182,7 +173,7 @@ class Benchmark():
 
 
     def connectAndInitDatabases(self):
-        self.logger.info("Creation of data loader for %s mode" % self._mode)
+        self.logger.debug("Creation of data loader for %s mode" % self._mode)
         if (self._mode=='mysql'):
             self.dataLoader[self._mode] = mysqldataloader.MysqlDataLoader(
                 self.config,
@@ -199,12 +190,20 @@ class Benchmark():
                 self._out_dirname,
                 self._logFilePrefix
             )
-        self.logger.info("Initializing database for %s mode" % self._mode)
+        self.logger.debug("Initializing database for %s mode" % self._mode)
         self.dataLoader[self._mode].connectAndInitDatabase()
 
     def finalize(self):
         if (self._mode=='qserv'):
-            self.dataLoader[self._mode].configureXrootdQservMetaEmptyChunk()
+            self.dataLoader[self._mode].createQmsDatabase()
+            self.dataLoader[self._mode].configureQservMetaEmptyChunk()
+
+            # restart xrootd in order to reload  export paths w.r.t loaded chunks, cf. #2478
+            commons.restart('xrootd')
+
+            # Qserv fails to start if QMS is empty, so starting it again may be required
+            commons.restart('qserv-master')
+
         # in order to close socket connections
         del(self.dataLoader[self._mode])
 
@@ -226,30 +225,26 @@ class Benchmark():
                 self.loadData()
                 self.finalize()
 
-            # restart xrootd in order to reload  export paths w.r.t loaded chunks, cf. #2478
-            if self._mode == 'qserv':
-                # TODO make a clean startup file for xrootd, in etc/init.d
-                xrootd_daemon_script = os.path.join(self.config['qserv']['base_dir'], 'etc','init.d', 'xrootd')
-                out = os.system("%s stop" % xrootd_daemon_script)
-                out = os.system("%s start" % xrootd_daemon_script)
-
             self.runQueries(stop_at_query)
 
-    def areQueryResultsEquals(self):
+    def analyzeQueryResults(self):
 
         outputs_dir = os.path.join(self._out_dirname, "outputs")
+        
+        failing_queries=[]
 
         mysql_out_dir = os.path.join(outputs_dir,"mysql")
         qserv_out_dir = os.path.join(outputs_dir,"qserv")
 
         dcmp = dircmp( mysql_out_dir, qserv_out_dir)
 
-        if len(dcmp.diff_files)==0:
-            return True
-        else:
-            for name in dcmp.diff_files:
-                self.logger.info("diff_file %s found in %s and %s" % (name, dcmp.left, dcmp.right))
-            return False
+        if len(dcmp.diff_files)!=0:
+            for query_name in dcmp.diff_files:
+                message="{0} and {1} differ".format(os.path.join(mysql_out_dir,query_name), os.path.join(qserv_out_dir,query_name))
+                self.logger.error(message)
+                failing_queries.append(query_name)
+        
+        return failing_queries
 
 def parseOptions():
     op = optparse.OptionParser()

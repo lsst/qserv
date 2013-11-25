@@ -31,6 +31,7 @@ def patch_environ(environ, libpaths):
     else: ldpath = ":".join(libpaths)
     newenv  = dict(environ)
     newenv["LD_LIBRARY_PATH"] = ldpath
+    print "DEBUG : %s" % newenv
     return newenv
  
 def run_test(target, source, env):

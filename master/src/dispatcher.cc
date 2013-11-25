@@ -256,12 +256,12 @@ void qMaster::resumeReadTrans(int session) {
     qm.resumeReadTrans();
 }
 
-void qMaster::setupQuery(int session, std::string const& query,
+void qMaster::setupQuery(int session, std::string const& inputQuery,
                          std::string const& resultTable) {
     AsyncQueryManager& qm = getAsyncManager(session);
     QuerySession& qs = qm.getQuerySession();
     qs.setResultTable(resultTable);
-    qs.setQuery(query);
+    qs.setQuery(inputQuery);
 }
 
 std::string const& qMaster::getSessionError(int session) {
@@ -329,6 +329,7 @@ qMaster::submitQuery3(int session) {
     std::ostringstream ss;
     QuerySession::Iter i;
     QuerySession::Iter e = qs.cQueryEnd();
+    // Writing query for each chunk
     for(i = qs.cQueryBegin(); i != e; ++i) {
         qMaster::ChunkQuerySpec& cs = *i;
         std::string chunkResultName = ttn.make(cs.chunkId);

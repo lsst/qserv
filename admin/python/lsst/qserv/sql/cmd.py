@@ -22,7 +22,7 @@ class Cmd():
         self.config = config
       
         self.logger = logging.getLogger()
-        self.logger.info("SQL cmd creation")
+        self.logger.debug("SQL cmd creation")
         
         self.buildMysqlCmd(mode,database)
         
@@ -72,24 +72,24 @@ class Cmd():
 
     def execute(self, query, stdout = None):
       """ Some queries cannot run correctly through MySQLdb, so we must use MySQL client instead """
-      self.logger.info("SQLCmd.execute:  %s" % query)
+      self.logger.debug("SQLCmd.execute:  %s" % query)
       commandLine = self._mysql_cmd + [query]
       commons.run_command(commandLine, stdout_file=stdout)
       
     def executeFromFile(self, filename, stdout = None):
       """ Some queries cannot run correctly through MySQLdb, so we must use MySQL client instead """
-      self.logger.info("SQLCmd.executeFromFile:  %s" % filename)
+      self.logger.debug("SQLCmd.executeFromFile:  %s" % filename)
       commandLine = self._mysql_cmd + ["SOURCE %s" % filename]
       commons.run_command(commandLine, stdout_file=stdout)
         
     def createAndLoadTable(self, tableName, schemaFile, dataFile, delimiter):
-        self.logger.info("CMD.createAndLoadTable(%s, %s, %s, %s)" % (tableName, schemaFile, dataFile, delimiter))
+        self.logger.debug("CMD.createAndLoadTable(%s, %s, %s, %s)" % (tableName, schemaFile, dataFile, delimiter))
         self.executeFromFile(schemaFile)
         self.loadData(dataFile, tableName, delimiter)
 
     def loadData(self, dataFile, tableName,delimiter):
         query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY '%s';" % (dataFile, tableName,delimiter)
-        self.logger.info("CMD.createAndLoadTable: Loading data  %s" % dataFile)
+        self.logger.debug("CMD.createAndLoadTable: Loading data  %s" % dataFile)
         self.execute(query)
         
 
