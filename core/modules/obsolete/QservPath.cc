@@ -23,13 +23,16 @@
 #include "QservPath.h"
 #include <iostream>
 #include <sstream>
-namespace qsrv = lsst::qserv;
+
+namespace lsst {
+namespace qserv {
+namespace obsolete {
 
 //////////////////////////////////////////////////////////////////////
 // qsrv::QservPath::Tokenizer
 // A simple class to tokenize paths.
 //////////////////////////////////////////////////////////////////////
-class qsrv::QservPath::Tokenizer {
+class QservPath::Tokenizer {
 public:
     Tokenizer(std::string s, char sep)
         : _cursor(0), _next(0), _s(s), _sep(sep) {
@@ -53,12 +56,13 @@ private:
 };
 
 //////////////////////////////////////////////////////////////////////
-qsrv::QservPath::QservPath(std::string const& path)
+QservPath::QservPath(std::string const& path)
     : _chunk(-1) {
     _setFromPath(path);
 }
 
-std::string qsrv::QservPath::path() const {
+std::string
+QservPath::path() const {
     std::stringstream ss;
     ss << _pathSep << prefix(_requestType);
     if(_requestType == CQUERY) {
@@ -70,7 +74,8 @@ std::string qsrv::QservPath::path() const {
     return ss.str();
 }
 
-std::string qsrv::QservPath::var(std::string const& key) const {
+std::string
+QservPath::var(std::string const& key) const {
     VarMap::const_iterator ci = _vars.find(key);
     if(ci != _vars.end()) {
         return ci->second;
@@ -78,7 +83,8 @@ std::string qsrv::QservPath::var(std::string const& key) const {
     return std::string();
 }
 
-std::string qsrv::QservPath::prefix(RequestType const& r) {
+std::string
+QservPath::prefix(RequestType const& r) {
     switch(r) {
     case CQUERY:
         return "q";
@@ -96,18 +102,21 @@ std::string qsrv::QservPath::prefix(RequestType const& r) {
     }
 }
 
-void qsrv::QservPath::setAsCquery(std::string const& db, int chunk) {
+void
+QservPath::setAsCquery(std::string const& db, int chunk) {
     _requestType = CQUERY;
     _db = db;
     _chunk = chunk;
 }
 
-void qsrv::QservPath::setAsCquery(std::string const& db) {
+void
+QservPath::setAsCquery(std::string const& db) {
     _requestType = CQUERY;
     _db = db;
 }
 
-void qsrv::QservPath::_setFromPath(std::string const& path) {
+void
+QservPath::_setFromPath(std::string const& path) {
     std::string rTypeString;
     Tokenizer t(path, _pathSep);
     if(!t.token().empty()) { // Expect leading separator (should start with /)
@@ -144,7 +153,8 @@ void qsrv::QservPath::_setFromPath(std::string const& path) {
     }
 }
 
-std::string qsrv::QservPath::_ingestKeys(std::string const& leafPlusKeys) {
+std::string
+QservPath::_ingestKeys(std::string const& leafPlusKeys) {
     std::string::size_type start;
     start = leafPlusKeys.find_first_of(_varSep, 0);
     _vars.clear();
@@ -159,7 +169,8 @@ std::string qsrv::QservPath::_ingestKeys(std::string const& leafPlusKeys) {
     }
 }
 
-std::string qsrv::QservPath::_ingestKeyStr(std::string const& keyStr) {
+std::string
+QservPath::_ingestKeyStr(std::string const& keyStr) {
     std::string::size_type equalsPos;
     equalsPos = keyStr.find_first_of('=');
     if(equalsPos == std::string::npos) { // No = clause, value-less key.
@@ -168,3 +179,5 @@ std::string qsrv::QservPath::_ingestKeyStr(std::string const& keyStr) {
         _vars[keyStr.substr(0,equalsPos)] = keyStr.substr(equalsPos+1);
     }
 }
+
+}}} // namespace lsst::qserv::obsolete

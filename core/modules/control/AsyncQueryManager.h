@@ -22,8 +22,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_MASTER_ASYNCQUERYMANAGER_H
-#define LSST_QSERV_MASTER_ASYNCQUERYMANAGER_H
+#ifndef LSST_QSERV_CONTROL_ASYNCQUERYMANAGER_H
+#define LSST_QSERV_CONTROL_ASYNCQUERYMANAGER_H
 /**
   * @file AsyncQueryManager.h
   *
@@ -47,16 +47,33 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace qdisp {
+    // Forward
+    class ChunkQuery;
+    class MessageStore;
+} // namespace qdisp
+
+namespace merger {
+    // Forwad        
+    class MergeFixup;
+    class TableMerger;
+    class TableMergerConfig;
+} // namespace merger
+
+namespace qproc {
+    // Forward
+    class QuerySession;
+} // namespace qproc
+
+namespace xrdc {
+    // Forward
+    class PacketIter;
+} // namespace xrdc
+    
+namespace control {
 
 // Forward
-class ChunkQuery;
-class MergeFixup;
-class MessageStore;
-class PacketIter;
-class QuerySession;
-class TableMerger;
-class TableMergerConfig;
 class TransactionSpec;
 
 //////////////////////////////////////////////////////////////////////
@@ -68,12 +85,12 @@ class TransactionSpec;
 //////////////////////////////////////////////////////////////////////
 class AsyncQueryManager {
 public:
-    typedef std::pair<int, XrdTransResult> Result;
+    typedef std::pair<int, xrdc::XrdTransResult> Result;
     typedef std::deque<Result> ResultDeque;
     typedef std::deque<Result>::const_iterator ResultDequeCItr;
     typedef boost::shared_ptr<AsyncQueryManager> Ptr;
     typedef std::map<std::string, std::string> StringMap;
-    typedef boost::shared_ptr<PacketIter> PacIterPtr;
+    typedef boost::shared_ptr<xrdc::PacketIter> PacIterPtr;
 
     explicit AsyncQueryManager(std::map<std::string,std::string> const& cfg)
         :_lastId(1000000000),
@@ -87,18 +104,18 @@ public:
 
     ~AsyncQueryManager() { }
 
-    void configureMerger(TableMergerConfig const& c);
-    void configureMerger(MergeFixup const& m,
+    void configureMerger(merger::TableMergerConfig const& c);
+    void configureMerger(merger::MergeFixup const& m,
                          std::string const& resultTable);
 
-    boost::shared_ptr<MessageStore> getMessageStore();
+    boost::shared_ptr<qdisp::MessageStore> getMessageStore();
 
     int add(TransactionSpec const& t, std::string const& resultName);
     void join(int id);
     bool tryJoin(int id);
     void joinEverything();
     ResultDeque const& getFinalState() { return _results; }
-    void finalizeQuery(int id,  XrdTransResult r, bool aborted);
+    void finalizeQuery(int id,  xrdc::XrdTransResult r, bool aborted);
     std::string getMergeResultName() const;
     std::string const& getXrootdHostPort() const { return _xrootdHostPort; };
     std::string const& getScratchPath() const { return _scratchPath; };
@@ -106,11 +123,11 @@ public:
     void addToReadQueue(DynamicWorkQueue::Callable * callable);
     void addToWriteQueue(DynamicWorkQueue::Callable * callable);
 
-    QuerySession& getQuerySession() { return *_qSession; }
+    qproc::QuerySession& getQuerySession() { return *_qSession; }
         
 private:
     // QuerySpec: ChunkQuery object + result name
-    typedef std::pair<boost::shared_ptr<ChunkQuery>, std::string> QuerySpec;
+    typedef std::pair<boost::shared_ptr<qdisp::ChunkQuery>, std::string> QuerySpec;
     typedef std::map<int, QuerySpec> QueryMap;
 
     // Functors for applying to queries
@@ -154,10 +171,10 @@ private:
 
     std::string _xrootdHostPort;
     std::string _scratchPath;
-    boost::shared_ptr<MessageStore> _messageStore;
-    boost::shared_ptr<TableMerger> _merger;
-    boost::shared_ptr<QuerySession> _qSession;
+    boost::shared_ptr<qdisp::MessageStore> _messageStore;
+    boost::shared_ptr<merger::TableMerger> _merger;
+    boost::shared_ptr<qproc::QuerySession> _qSession;
 };
-}}} // lsst::qserv::master namespace
+}}} // namespace lsst::qserv::control
 
-#endif // LSST_QSERV_MASTER_ASYNCQUERYMANAGER_H
+#endif // LSST_QSERV_CONTROL_ASYNCQUERYMANAGER_H

@@ -31,13 +31,17 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-namespace qWorker = lsst::qserv::worker;
 
 using std::string;
 using std::vector;
 
+
+namespace lsst {
+namespace qserv {
+namespace obsolete {
+    
 bool
-qWorker::QservPathStructure::insert(const vector<string>& paths) {
+QservPathStructure::insert(const vector<string>& paths) {
     _paths.clear();
     _uniqueDirs.clear();
 
@@ -61,7 +65,7 @@ qWorker::QservPathStructure::insert(const vector<string>& paths) {
 }
 
 bool
-qWorker::QservPathStructure::persist() {
+QservPathStructure::persist() {
     if ( isRegistered() ) {
         return false;
     }
@@ -75,7 +79,7 @@ qWorker::QservPathStructure::persist() {
 }
 
 bool
-qWorker::QservPathStructure::destroy(const std::string& thePath) {
+QservPathStructure::destroy(const std::string& thePath) {
     std::cout << "Destroying: " << thePath << std::endl;
     vector<string> files;
     if ( !listDir(thePath, files) ) {
@@ -95,7 +99,7 @@ qWorker::QservPathStructure::destroy(const std::string& thePath) {
 }
 
 void
-qWorker::QservPathStructure::rmFile(const char* p) {
+QservPathStructure::rmFile(const char* p) {
     std::cout << "   rm file: " << p << std::endl;
     if ( 0 != unlink(p) ) {
         std::cerr << "failed to rm " << p
@@ -104,7 +108,7 @@ qWorker::QservPathStructure::rmFile(const char* p) {
 }
 
 void
-qWorker::QservPathStructure::rmDir(const char* p) {
+QservPathStructure::rmDir(const char* p) {
     std::cout << "   rmdir: " << p << std::endl;
     if ( 0 != rmdir(p) ) {
         std::cerr << "failed to rmdir " << p
@@ -113,7 +117,7 @@ qWorker::QservPathStructure::rmDir(const char* p) {
 }
 
 bool
-qWorker::QservPathStructure::createDirectories() const {
+QservPathStructure::createDirectories() const {
     vector<string>::const_iterator dItr;
     for ( dItr=_uniqueDirs.begin(); dItr!=_uniqueDirs.end(); ++dItr) {
         const char* theDir = dItr->c_str();
@@ -136,7 +140,7 @@ qWorker::QservPathStructure::createDirectories() const {
 
 // returns true if at least one db is already registered
 bool
-qWorker::QservPathStructure::isRegistered() const {
+QservPathStructure::isRegistered() const {
     std::vector<std::string>::const_iterator i;
     for ( i=_uniqueDbDirs.begin(); i!=_uniqueDbDirs.end(); ++i) {
         if ( isDirectory(i->c_str()) ) {
@@ -148,7 +152,7 @@ qWorker::QservPathStructure::isRegistered() const {
 }
 
 bool
-qWorker::QservPathStructure::isDirectory(const char* path) {
+QservPathStructure::isDirectory(const char* path) {
     struct stat statbuf;
     if (0 == stat(path, &statbuf))
         if (statbuf.st_mode & S_IFDIR) return true;
@@ -156,7 +160,7 @@ qWorker::QservPathStructure::isDirectory(const char* path) {
 }
 
 bool
-qWorker::QservPathStructure::createPaths() const {
+QservPathStructure::createPaths() const {
     vector<string>::const_iterator itr;
     for ( itr=_paths.begin(); itr!=_paths.end(); ++itr) {
         const char* path = itr->c_str();
@@ -168,17 +172,17 @@ qWorker::QservPathStructure::createPaths() const {
 }
 
 const std::vector<std::string>
-qWorker::QservPathStructure::uniqueDirs() const {
+QservPathStructure::uniqueDirs() const {
     return _uniqueDirs;
 }
 
 const std::vector<std::string>
-qWorker::QservPathStructure::uniqueDbDirs() const {
+QservPathStructure::uniqueDbDirs() const {
     return _uniqueDbDirs;
 }
 
 void
-qWorker::QservPathStructure::printUniqueDirs() const {
+QservPathStructure::printUniqueDirs() const {
     std::vector<std::string>::const_iterator i;
     for ( i=_uniqueDirs.begin(); i!=_uniqueDirs.end(); ++i) {
         std::cout << "Unique dir: " << *i << std::endl;
@@ -186,7 +190,7 @@ qWorker::QservPathStructure::printUniqueDirs() const {
 }
 
 void
-qWorker::QservPathStructure::printUniqueDbDirs() const {
+QservPathStructure::printUniqueDbDirs() const {
     std::vector<std::string>::const_iterator i;
     for ( i=_uniqueDbDirs.begin(); i!=_uniqueDbDirs.end(); ++i) {
         std::cout << "Unique db dir: " << *i << std::endl;
@@ -194,7 +198,7 @@ qWorker::QservPathStructure::printUniqueDbDirs() const {
 }
 
 bool
-qWorker::QservPathStructure::processOneDir(const string& s,
+QservPathStructure::processOneDir(const string& s,
                                            bool isDbDir)
 {
     int pos = s.find_last_of('/');
@@ -217,7 +221,7 @@ qWorker::QservPathStructure::processOneDir(const string& s,
 }
 
 bool
-qWorker::QservPathStructure::pathsContains(const std::string& s) const {
+QservPathStructure::pathsContains(const std::string& s) const {
     vector<string>::const_iterator i;
     for (i=_paths.begin() ; i!=_paths.end(); ++i) {
         if (*i == s) {
@@ -228,7 +232,7 @@ qWorker::QservPathStructure::pathsContains(const std::string& s) const {
 }
 
 bool
-qWorker::QservPathStructure::uniqueDirsContains(const std::string& s) const {
+QservPathStructure::uniqueDirsContains(const std::string& s) const {
     vector<string>::const_iterator i;
     for (i=_uniqueDirs.begin() ; i!=_uniqueDirs.end(); ++i) {
         if (*i == s) {
@@ -239,7 +243,7 @@ qWorker::QservPathStructure::uniqueDirsContains(const std::string& s) const {
 }
 
 bool
-qWorker::QservPathStructure::uniqueDbDirsContains(const std::string& s) const {
+QservPathStructure::uniqueDbDirsContains(const std::string& s) const {
     vector<string>::const_iterator i;
     for (i=_uniqueDbDirs.begin() ; i!=_uniqueDbDirs.end(); ++i) {
         if (*i == s) {
@@ -250,8 +254,8 @@ qWorker::QservPathStructure::uniqueDbDirsContains(const std::string& s) const {
 }
 
 bool
-qWorker::QservPathStructure::listDir(const std::string& dir,
-                                     std::vector<std::string>& files) {
+QservPathStructure::listDir(const std::string& dir,
+                            std::vector<std::string>& files) {
     DIR *dp;
     struct dirent *dirp;
     if((dp = opendir(dir.c_str())) == NULL) {
@@ -266,3 +270,5 @@ qWorker::QservPathStructure::listDir(const std::string& dir,
     closedir(dp);
     return true;
 }
+
+}}} // namespace lsst::qserv::obsolete

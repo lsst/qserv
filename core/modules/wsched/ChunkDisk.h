@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_CHUNKDISK_H
-#define LSST_QSERV_WORKER_CHUNKDISK_H
+#ifndef LSST_QSERV_WSCHED_CHUNKDISK_H
+#define LSST_QSERV_WSCHED_CHUNKDISK_H
  /**
   * @file ChunkDisk.h
   *
@@ -38,17 +38,25 @@
 #include "wsched/ChunkState.h"
 #include "wcontrol/Task.h"
 
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
-namespace worker {
-class WLogger;
+namespace wlog {
+    class WLogger;
+}}}
+// End of forward declarations
+
+namespace lsst {
+namespace qserv {
+namespace wsched {
 
 class ChunkDisk {
 public:
-    typedef boost::shared_ptr<Task> TaskPtr;
-    typedef std::set<Task const*> TaskSet;
+    typedef boost::shared_ptr<wcontrol::Task> TaskPtr;
+    typedef std::set<wcontrol::Task const*> TaskSet;
 
-    ChunkDisk(boost::shared_ptr<WLogger> logger)
+    ChunkDisk(boost::shared_ptr<wlog::WLogger> logger)
         : _logger(logger), _chunkState(2) {}
     TaskSet getInflight() const;
 
@@ -79,7 +87,7 @@ private:
         typedef TaskPtr value_type;
         // pqueue takes "less" and provides a maxheap.
         // We want minheap, so provide "more"
-        typedef Task::ChunkIdGreater compare;
+        typedef wcontrol::Task::ChunkIdGreater compare;
 
         typedef std::vector<value_type> Container;
         Container& impl() { return _c; }
@@ -122,9 +130,9 @@ private:
     mutable boost::mutex _inflightMutex;
     TaskSet _inflight;
     bool _completed;
-    boost::shared_ptr<WLogger>_logger;
+    boost::shared_ptr<wlog::WLogger>_logger;
 };
 
+}}} // namespace lsst::qserv::wsched
 
-}}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_CHUNKDISK_H
+#endif // LSST_QSERV_WSCHED_CHUNKDISK_H

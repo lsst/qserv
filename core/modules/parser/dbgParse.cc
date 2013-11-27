@@ -25,14 +25,16 @@
 #include "parser/parseTreeUtil.h"
 #include "log/Logger.h"
 
-namespace qMaster = lsst::qserv::master;
 
+namespace lsst {
+namespace qserv {
+namespace parser {
+            
 class ColumnHandler : public VoidFourRefFunc {
 public:
     virtual ~ColumnHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b,
                             antlr::RefAST c, antlr::RefAST d) {
-        using lsst::qserv::master::tokenText;
         LOGGER_INF << "col _" << tokenText(a)
                    << "_ _" << tokenText(b)
                    << "_ _" << tokenText(c)
@@ -47,7 +49,6 @@ public:
     virtual ~TableHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b,
                             antlr::RefAST c)  {
-        using lsst::qserv::master::tokenText;
         LOGGER_INF << "qualname " << tokenText(a)
                    << " " << tokenText(b) << " "
                    << tokenText(c) << " ";
@@ -60,8 +61,8 @@ public:
     virtual ~TestAliasHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
         if(b.get()) {
-            LOGGER_INF << "Alias " << qMaster::tokenText(a)
-                       << " = " << qMaster::tokenText(b) << std::endl;
+            LOGGER_INF << "Alias " << tokenText(a)
+                       << " = " << tokenText(b) << std::endl;
         }
     }
 };
@@ -69,9 +70,9 @@ public:
 class TestSelectListHandler : public VoidOneRefFunc {
 public:
     virtual ~TestSelectListHandler() {}
-    virtual void operator()(antlr::RefAST a)  {
-        antlr::RefAST bound = qMaster::getLastSibling(a);
-        LOGGER_INF << "SelectList " << qMaster::walkTreeString(a)
+    virtual void operator()(antlr::RefAST a) {
+        antlr::RefAST bound = parser::getLastSibling(a);
+        LOGGER_INF << "SelectList " << walkTreeString(a)
                    << "--From " << a << " to " << bound << std::endl;
     }
 };
@@ -91,10 +92,10 @@ public:
     }
     virtual ~TestSetFuncHandler() {}
     virtual void operator()(antlr::RefAST a) {
-        LOGGER_INF << "Got setfunc " << qMaster::walkTreeString(a)
+        LOGGER_INF << "Got setfunc " << walkTreeString(a)
                    << std::endl;
         //verify aggregation cmd.
-        std::string origAgg = qMaster::tokenText(a);
+        std::string origAgg = tokenText(a);
         MapConstIter i = _map.find(origAgg); // case-sensitivity?
         if(i == _map.end()) {
             LOGGER_INF << origAgg << " is not an aggregate." << std::endl;
@@ -107,3 +108,5 @@ public:
     }
     Map _map;
 };
+
+}}} // namespace lsst::qserv::parser

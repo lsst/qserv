@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_WORKER_FORMAT_H
-#define LSST_QSERV_WORKER_FORMAT_H
+#ifndef LSST_QSERV_UTIL_FORMAT_H
+#define LSST_QSERV_UTIL_FORMAT_H
 
 #include <string>
 #include <vector>
@@ -30,7 +30,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace util {
 
     inline unsigned char hexChar(unsigned char i) {
         if(i < 10) return '0' + i;
@@ -143,6 +143,6 @@ std::ostream& operator<<(std::ostream& os, PosFormat const& pf) {
     return os;
 }
 
-}}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_WORKER_FORMAT_H
+#endif // LSST_QSERV_UTIL_FORMAT_H

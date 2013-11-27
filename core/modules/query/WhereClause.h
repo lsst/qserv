@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_WHERECLAUSE_H
-#define LSST_QSERV_MASTER_WHERECLAUSE_H
+#ifndef LSST_QSERV_QUERY_WHERECLAUSE_H
+#define LSST_QSERV_QUERY_WHERECLAUSE_H
 /**
   * @file WhereClause.h
   *
@@ -47,7 +47,14 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace parser {
+    // Forward
+    class WhereFactory;
+}   
+
+namespace query {
+
 class BoolTerm; // Forward
 
 /// WhereClause is a SQL WHERE containing QsRestrictors and a BoolTerm tree.
@@ -79,7 +86,7 @@ public:
 
 private:
     friend std::ostream& operator<<(std::ostream& os, WhereClause const& wc);
-    friend class WhereFactory;
+    friend class parser::WhereFactory;
 
     std::string _original;
     boost::shared_ptr<BoolTerm> _tree;
@@ -128,5 +135,6 @@ private:
     ValueExprListIter _vEnd;
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_WHERECLAUSE_H
+}}} // namespace lsst::qserv::query
+
+#endif // LSST_QSERV_QUERY_WHERECLAUSE_H

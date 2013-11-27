@@ -29,14 +29,13 @@
 
 #include "log/Logger.h"
 
-namespace qMaster = lsst::qserv::master;
 
 namespace {
 
 // Helpers to make regex's
 boost::regex makeLockInsertRegex(std::string const& tableName) {
     return boost::regex("LOCK TABLES `?" + tableName + "`? WRITE;"
-                            "(.*?)(INSERT INTO[^;]*?;)+(.*?)"
+                        "(.*?)(INSERT INTO[^;]*?;)+(.*?)"
                         "UNLOCK TABLES;");
 }
 
@@ -62,7 +61,8 @@ boost::regex makeNullInsertRegex(std::string const& tableName) {
 // Helpful debugging
 void printInserts(char const* buf, off_t bufSize,
                   std::string const& tableName)  {
-    for(qMaster::SqlInsertIter i(buf, bufSize, tableName, true); !i.isDone();
+    for(lsst::qserv::merger::SqlInsertIter i(buf, bufSize, tableName, true);
+        !i.isDone();
         ++i) {
         std::cout << "Sql[" << tableName << "]: "
                    << (void*)i->first << "  --->  "
@@ -76,23 +76,29 @@ void printInserts(char const* buf, off_t bufSize,
 
 } // anonymous namespace
 
+
+namespace lsst {
+namespace qserv {
+namespace merger {
+
+
 ////////////////////////////////////////////////////////////////////////
-// qMaster::SqlInsertIter
+// SqlInsertIter
 ////////////////////////////////////////////////////////////////////////
 // Static
-qMaster::SqlInsertIter::Iter qMaster::SqlInsertIter::_nullIter;
+SqlInsertIter::Iter SqlInsertIter::_nullIter;
 
-qMaster::SqlInsertIter::SqlInsertIter(char const* buf, off_t bufSize,
-                                      std::string const& tableName,
-                                      bool allowNull)
+SqlInsertIter::SqlInsertIter(char const* buf, off_t bufSize,
+                             std::string const& tableName,
+                             bool allowNull)
     : _allowNull(allowNull), _pBuffer(0) {
     _blockExpr = makeLockInsertRegex(tableName);
     _init(buf, bufSize, tableName);
 }
 
-qMaster::SqlInsertIter::SqlInsertIter(PacketIter::Ptr p,
-                                      std::string const& tableName,
-                                      bool allowNull)
+SqlInsertIter::SqlInsertIter(xrdc::PacketIter::Ptr p,
+                             std::string const& tableName,
+                             bool allowNull)
     : _allowNull(allowNull), _pacIterP(p) {
     // We will need to keep our own buffer.  This is because the regex
     // iterator needs a continuous piece of memory.
@@ -153,19 +159,19 @@ qMaster::SqlInsertIter::SqlInsertIter(PacketIter::Ptr p,
     _setupIter();
 }
 
-qMaster::SqlInsertIter::~SqlInsertIter() {
+SqlInsertIter::~SqlInsertIter() {
     if(_pBuffer) free(_pBuffer);
 }
 
-void qMaster::SqlInsertIter::_setupIter() {
+void SqlInsertIter::_setupIter() {
     _iter = Iter(_pBuffer + _pBufStart, _pBuffer + _pBufEnd, _insExpr);
 }
 
-bool qMaster::SqlInsertIter::_incrementFragment() {
+bool SqlInsertIter::_incrementFragment() {
     // Advance iterator.
     ++(*_pacIterP);
     if(_pacIterP->isDone()) return false; // Any more?
-    PacketIter::Value v = **_pacIterP;
+    xrdc::PacketIter::Value v = **_pacIterP;
     // Make sure there is room in the buffer
     BufOff keepSize = _pBufEnd - _pBufStart;
     BufOff needSize = v.second + keepSize;
@@ -190,13 +196,13 @@ bool qMaster::SqlInsertIter::_incrementFragment() {
     return true;
 }
 
-void qMaster::SqlInsertIter::_initRegex(std::string const& tableName) {
+void SqlInsertIter::_initRegex(std::string const& tableName) {
     _insExpr = makeInsertRegex(tableName);
     _nullExpr = makeNullInsertRegex(tableName);
 }
 
-void qMaster::SqlInsertIter::_init(char const* buf, off_t bufSize,
-                                   std::string const& tableName) {
+void SqlInsertIter::_init(char const* buf, off_t bufSize,
+                          std::string const& tableName) {
     boost::regex lockInsertRegex(makeLockInsertRegex(tableName));
     assert(buf < (buf+bufSize));
     _blockFound = boost::regex_search(buf, buf+bufSize,
@@ -208,20 +214,20 @@ void qMaster::SqlInsertIter::_init(char const* buf, off_t bufSize,
     }
 }
 
-bool qMaster::SqlInsertIter::isNullInsert() const {
+bool SqlInsertIter::isNullInsert() const {
     // Avoid constructing a string > 1MB just to check for null.
     if(_iter->length() > (1<<20)) return false;
     return boost::regex_match(_iter->str(), _nullExpr);
 }
 
-qMaster::SqlInsertIter& qMaster::SqlInsertIter::operator++() {
+SqlInsertIter& SqlInsertIter::operator++() {
     do {
         _increment();
     } while(!isDone() && (!_allowNull) && isNullInsert());
         return *this;
 }
 
-bool qMaster::SqlInsertIter::isDone() const {
+bool SqlInsertIter::isDone() const {
     if(_pacIterP) {
         return (_iter == _nullIter) || _pacIterP->isDone();
     } else {
@@ -234,7 +240,7 @@ bool qMaster::SqlInsertIter::isDone() const {
 /// can just advance the regex iterator _iter.  However, when we are
 /// iterating over the dump in "packets", we may need to advance
 /// the packet iterator.
-void qMaster::SqlInsertIter::_increment() {
+void SqlInsertIter::_increment() {
     if(_pacIterP) {
         // Set _pBufStart to end of last match.
         _pBufStart = static_cast<BufOff>((*_iter)[0].second - _pBuffer);
@@ -248,3 +254,5 @@ void qMaster::SqlInsertIter::_increment() {
         ++_iter;
     }
 }
+
+}}} // namespace lsst::qserv::merger

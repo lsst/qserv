@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_PARSEALIASMAP_H
-#define LSST_QSERV_MASTER_PARSEALIASMAP_H
+#ifndef LSST_QSERV_PARSER_PARSEALIASMAP_H
+#define LSST_QSERV_PARSER_PARSEALIASMAP_H
 /**
   * @file ParseAliasMap.h
   *
@@ -33,7 +33,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace parser {
 
 /// class ParseAliasMap - maintain mappings for aliasing in SQL statements
 /// in the parse node domain.
@@ -81,5 +81,6 @@ private:
 // cryptically implemented in FromFactory.cc for now.
 std::ostream& operator<<(std::ostream& os, ParseAliasMap const& m);
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_PARSEALIASMAP_H
+}}} // namespace lsst::qserv::parser
+
+#endif // LSST_QSERV_PARSER_PARSEALIASMAP_H

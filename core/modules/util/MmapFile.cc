@@ -27,12 +27,14 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-namespace qMaster = lsst::qserv::master;
+namespace lsst {
+namespace qserv {
+namespace util {
 
-typedef boost::shared_ptr<qMaster::MmapFile> MmapPtr;
+typedef boost::shared_ptr<MmapFile> MmapPtr;
 
-MmapPtr qMaster::MmapFile::newMap(std::string const& filename,
-                                  bool read, bool write) {
+MmapPtr
+MmapFile::newMap(std::string const& filename, bool read, bool write) {
     boost::shared_ptr<MmapFile> m(new MmapFile());
     assert(m.get());
     m->_init(filename, read, write);
@@ -42,7 +44,7 @@ MmapPtr qMaster::MmapFile::newMap(std::string const& filename,
     return m;
 }
 
-qMaster::MmapFile::~MmapFile() {
+MmapFile::~MmapFile() {
     if(_buf) {
         if(-1 == ::munmap(_buf, _fstat.st_size)) {
             // LOGGER_ERR << "Munmap failed (" << (void*)_buf
@@ -60,8 +62,8 @@ qMaster::MmapFile::~MmapFile() {
     }
 }
 
-void qMaster::MmapFile::_init(std::string const& filename,
-                              bool read_, bool write_) {
+void
+MmapFile::_init(std::string const& filename, bool read_, bool write_) {
     _filename = filename;
     int openFlags = 0;
     int mapProt = 0;
@@ -94,3 +96,5 @@ void qMaster::MmapFile::_init(std::string const& filename,
     }
     // _fd and _buf will get closed/munmapped as necessary in destructor.
 }
+
+}}} // namespace lsst::qserv::util

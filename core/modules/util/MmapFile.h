@@ -25,8 +25,8 @@
 // Initially used with TableMerger.
 //
 
-#ifndef LSST_QSERV_MASTER_MMAPFILE_H
-#define LSST_QSERV_MASTER_MMAPFILE_H
+#ifndef LSST_QSERV_UTIL_MMAPFILE_H
+#define LSST_QSERV_UTIL_MMAPFILE_H
 
 #include <boost/shared_ptr.hpp>
 #include <sys/stat.h>
@@ -39,7 +39,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace util {
 
 class MmapFile {
 public:
@@ -62,6 +62,6 @@ private:
     std::string _filename;
 };
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_MASTER_MMAPFILE_H
+#endif // LSST_QSERV_UTIL_MMAPFILE_H

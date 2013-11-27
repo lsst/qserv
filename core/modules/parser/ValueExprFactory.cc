@@ -40,7 +40,7 @@ using antlr::RefAST;
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace parser {
 ////////////////////////////////////////////////////////////////////////
 // ValueExprFactory implementation
 ////////////////////////////////////////////////////////////////////////
@@ -52,12 +52,12 @@ ValueExprFactory::ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap)
 // |      \                      //
 // TERM   (TERM_OP TERM)*        //
 /// @param first child of VALUE_EXP node.
-boost::shared_ptr<ValueExpr>
+boost::shared_ptr<query::ValueExpr>
 ValueExprFactory::newExpr(antlr::RefAST a) {
-    boost::shared_ptr<ValueExpr> expr(new ValueExpr);
+    boost::shared_ptr<query::ValueExpr> expr(new query::ValueExpr);
     //LOGGER_INF << walkIndentedString(a) << std::endl;
     while(a.get()) {
-        ValueExpr::FactorOp newFactorOp;
+        query::ValueExpr::FactorOp newFactorOp;
         RefAST op = a->getNextSibling();
         newFactorOp.factor = _valueFactorFactory->newFactor(a);
         if(op.get()) { // No more ops?
@@ -65,24 +65,24 @@ ValueExprFactory::newExpr(antlr::RefAST a) {
             int eType = op->getType();
             switch(op->getType()) {
             case SqlSQL2TokenTypes::PLUS_SIGN:
-                newFactorOp.op = ValueExpr::PLUS;
+                newFactorOp.op = query::ValueExpr::PLUS;
                 break;
             case SqlSQL2TokenTypes::MINUS_SIGN:
-                newFactorOp.op = ValueExpr::MINUS;
+                newFactorOp.op = query::ValueExpr::MINUS;
                 break;
             case SqlSQL2TokenTypes::ASTERISK:
-                newFactorOp.op = ValueExpr::MULTIPLY;
+                newFactorOp.op = query::ValueExpr::MULTIPLY;
                 break;
             case SqlSQL2TokenTypes::SOLIDUS:
-                newFactorOp.op = ValueExpr::DIVIDE;
+                newFactorOp.op = query::ValueExpr::DIVIDE;
                 break;
             default:
-                newFactorOp.op = ValueExpr::UNKNOWN;
+                newFactorOp.op = query::ValueExpr::UNKNOWN;
                 throw ParseException("unhandled factor_op type:", op);
             }
             a = op->getNextSibling();
         } else {
-            newFactorOp.op = ValueExpr::NONE;
+            newFactorOp.op = query::ValueExpr::NONE;
             a = RefAST(); // set to NULL.
         }
         expr->_factorOps.push_back(newFactorOp);
@@ -90,9 +90,9 @@ ValueExprFactory::newExpr(antlr::RefAST a) {
 #if 0
     LOGGER_INF << "Imported expr: ";
     std::copy(expr->_factorOps.begin(), expr->_factorOps.end(),
-              std::ostream_iterator<ValueExpr::FactorOp>(LOG_STRM(Info), ","));
+        std::ostream_iterator<query::ValueExpr::FactorOp>(LOG_STRM(Info), ","));
     LOGGER_INF << std::endl;
 #endif
     return expr;
 }
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::parser

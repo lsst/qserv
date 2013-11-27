@@ -29,10 +29,10 @@
 #include "wlog/WLogger.h"
 
 namespace { // File-scope helpers
-using lsst::qserv::SqlConnection;
-using lsst::qserv::SqlErrorObject;
-using lsst::qserv::SqlResultIter;
-using lsst::qserv::worker::WLogger;
+using lsst::qserv::sql::SqlConnection;
+using lsst::qserv::sql::SqlErrorObject;
+using lsst::qserv::sql::SqlResultIter;
+using lsst::qserv::wlog::WLogger;
 using lsst::qserv::wpublish::ChunkInventory;
 
 inline std::string getTableNameDbListing(std::string const& instanceName) {
@@ -41,9 +41,9 @@ inline std::string getTableNameDbListing(std::string const& instanceName) {
 
 template <class C>
 void fetchDbs(WLogger& log,
-            std::string const& instanceName,
-            SqlConnection& sc,
-            C& dbs) {
+              std::string const& instanceName,
+              SqlConnection& sc,
+              C& dbs) {
 
     // get list of tables
     // Assume table has schema that includes char column named "db"
@@ -150,12 +150,12 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-ChunkInventory::ChunkInventory(std::string const& name, worker::WLogger& log)
+ChunkInventory::ChunkInventory(std::string const& name, wlog::WLogger& log)
     : _name(name), _log(log) {
-    SqlConnection sc(worker::getConfig().getSqlConfig(), true);
+    SqlConnection sc(wconfig::getConfig().getSqlConfig(), true);
     _init(sc);
 }
-ChunkInventory::ChunkInventory(std::string const& name, worker::WLogger& log,
+ChunkInventory::ChunkInventory(std::string const& name, wlog::WLogger& log,
                                boost::shared_ptr<SqlConnection> sc) 
     : _name(name), _log(log) {
     _init(*sc);

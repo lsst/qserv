@@ -33,7 +33,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wsched {
 
 FifoScheduler::FifoScheduler(int maxRunning)
     : _maxRunning(maxRunning) {
@@ -46,22 +46,24 @@ FifoScheduler::FifoScheduler(int maxRunning)
     // https://dev.lsstcorp.org/trac/wiki/db/Qserv/WorkerParallelism
 }
 
-void FifoScheduler::queueTaskAct(Task::Ptr incoming) {
+void
+FifoScheduler::queueTaskAct(wcontrol::Task::Ptr incoming) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     _queue.push_back(incoming);
 }
 
-TaskQueuePtr FifoScheduler::nopAct(TaskQueuePtr running) {
+wcontrol::TaskQueuePtr
+FifoScheduler::nopAct(wcontrol::TaskQueuePtr running) {
     // For now, do nothing when there is no event.
 
     // Perhaps better: Check to see how many are running, and schedule
     // a task if the number of running jobs is below a threshold.
-    return TaskQueuePtr();
+    return wcontrol::TaskQueuePtr();
 }
 
-TaskQueuePtr FifoScheduler::newTaskAct(Task::Ptr incoming,
-                                       TaskQueuePtr running) {
-
+wcontrol::TaskQueuePtr
+FifoScheduler::newTaskAct(wcontrol::Task::Ptr incoming,
+                          wcontrol::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(running.get());
     assert(incoming.get());
@@ -70,13 +72,14 @@ TaskQueuePtr FifoScheduler::newTaskAct(Task::Ptr incoming,
     if(running->size() < _maxRunning) {
         return _fetchTask();
     }
-    return TaskQueuePtr();
+    return wcontrol::TaskQueuePtr();
 }
 
-TaskQueuePtr FifoScheduler::taskFinishAct(Task::Ptr finished,
-                                          TaskQueuePtr running) {
+wcontrol::TaskQueuePtr
+FifoScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
+                             wcontrol::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
-    TaskQueuePtr tq;
+    wcontrol::TaskQueuePtr tq;
     assert(running.get());
     assert(finished.get());
 
@@ -88,16 +91,17 @@ TaskQueuePtr FifoScheduler::taskFinishAct(Task::Ptr finished,
 
 /// Fetch a task from the queue
 /// precondition: Caller must have _mutex locked.
-TaskQueuePtr FifoScheduler::_fetchTask() {
-    TaskQueuePtr tq;
+wcontrol::TaskQueuePtr
+FifoScheduler::_fetchTask() {
+    wcontrol::TaskQueuePtr tq;
     if(!_queue.empty()) {
-        Task::Ptr t = _queue.front();
+        wcontrol::Task::Ptr t = _queue.front();
         _queue.pop_front();
         assert(t); // Memory corruption if t is null.
-        tq.reset(new TaskQueue());
+        tq.reset(new wcontrol::TaskQueue());
         tq->push_back(t);
     }
     return tq;
 }
 
-}}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::wsched

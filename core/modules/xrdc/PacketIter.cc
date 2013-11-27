@@ -34,13 +34,16 @@
 #include <errno.h>
 #include <iostream>
 
-namespace qMaster = lsst::qserv::master;
+namespace lsst {
+namespace qserv {
+namespace xrdc {
 
-qMaster::PacketIter::PacketIter()
+    
+PacketIter::PacketIter()
   : _xrdFd(-1), _current(0,0), _stop(false)
 {}
 
-qMaster::PacketIter::PacketIter(int xrdFd, int fragmentSize)
+PacketIter::PacketIter(int xrdFd, int fragmentSize)
     : _xrdFd(xrdFd),
       _fragSize(fragmentSize),
       _current(0,0),
@@ -48,8 +51,8 @@ qMaster::PacketIter::PacketIter(int xrdFd, int fragmentSize)
     _setup(false);
 }
 
-qMaster::PacketIter::PacketIter(std::string const& fileName, int fragmentSize,
-                                bool debug)
+PacketIter::PacketIter(std::string const& fileName, int fragmentSize,
+                       bool debug)
     : _xrdFd(0),
       _fileName(fileName),
       _fragSize(fragmentSize),
@@ -58,7 +61,7 @@ qMaster::PacketIter::PacketIter(std::string const& fileName, int fragmentSize,
     _setup(debug);
 }
 
-qMaster::PacketIter::~PacketIter() {
+PacketIter::~PacketIter() {
     if(_buffer != NULL) free(_buffer);
     if(_xrdFd != 0) {
         xrdClose(_xrdFd);
@@ -68,8 +71,9 @@ qMaster::PacketIter::~PacketIter() {
     }
 }
 
-bool qMaster::PacketIter::incrementExtend() {
-    LOGGER_DBG << "packetiter Realloc to " << _current.second + _fragSize << std::endl;
+bool PacketIter::incrementExtend() {
+    LOGGER_DBG << "packetiter Realloc to " 
+               << _current.second + _fragSize << std::endl;
     void* ptr = ::realloc(_current.first, _current.second + _fragSize);
     if(!ptr) {
         errno = ENOMEM;
@@ -87,9 +91,9 @@ bool qMaster::PacketIter::incrementExtend() {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// lsst::qserv::master::PacketIter private methods
+// PacketIter private methods
 ////////////////////////////////////////////////////////////////////////
-void qMaster::PacketIter::_setup(bool debug) {
+void PacketIter::_setup(bool debug) {
     _errno = 0; // Important to initialize for proper error handling.
     const int minFragment = 65536;
     _memo = false;
@@ -118,12 +122,12 @@ void qMaster::PacketIter::_setup(bool debug) {
     _fill(_current);
 }
 
-void qMaster::PacketIter::_increment() {
+void PacketIter::_increment() {
     _pos += _current.second;
     _fill(_current);
 }
 
-void qMaster::PacketIter::_fill(Value& v) {
+void PacketIter::_fill(Value& v) {
     int readRes = 0;
     if(_stop) {
         v.first = 0;
@@ -150,3 +154,5 @@ void qMaster::PacketIter::_fill(Value& v) {
     }
     v.second = readRes;
 }
+
+}}} // namespace lsst::qserv::xrdc

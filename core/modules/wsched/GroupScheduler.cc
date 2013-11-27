@@ -36,34 +36,37 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wsched {
 ////////////////////////////////////////////////////////////////////////
 // class GroupScheduler
 ////////////////////////////////////////////////////////////////////////
-GroupScheduler::GroupScheduler(WLogger::Ptr logger)
+GroupScheduler::GroupScheduler(wlog::WLogger::Ptr logger)
     : _maxRunning(4), // FIXME: set to some multiple of system proc count.
-      _logger(logger)
-{
+      _logger(logger) {
 }
+
 struct matchHash {
     explicit matchHash(std::string const& hash_) : hash(hash_) {}
-    bool operator()(Task::Ptr const& t) {
+    bool operator()(wcontrol::Task::Ptr const& t) {
         return t && (t->hash == hash);
     }
     std::string const hash;
 };
 
-bool GroupScheduler::removeByHash(std::string const& hash) {
+bool
+GroupScheduler::removeByHash(std::string const& hash) {
     int removed = _queue.removeIf(matchHash(hash));
     return removed > 0;
 }
 
-void GroupScheduler::queueTaskAct(Task::Ptr incoming) {
+void
+GroupScheduler::queueTaskAct(wcontrol::Task::Ptr incoming) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     _enqueueTask(incoming);
 }
 
-TaskQueuePtr GroupScheduler::nopAct(TaskQueuePtr running) {
+wcontrol::TaskQueuePtr
+GroupScheduler::nopAct(wcontrol::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
     return _getNextIfAvail(running->size());
@@ -71,8 +74,9 @@ TaskQueuePtr GroupScheduler::nopAct(TaskQueuePtr running) {
 
 /// @return a queue of all tasks ready to run.
 ///
-TaskQueuePtr GroupScheduler::newTaskAct(Task::Ptr incoming,
-                                       TaskQueuePtr running) {
+wcontrol::TaskQueuePtr
+GroupScheduler::newTaskAct(wcontrol::Task::Ptr incoming,
+                           wcontrol::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
     assert(running.get());
@@ -80,9 +84,9 @@ TaskQueuePtr GroupScheduler::newTaskAct(Task::Ptr incoming,
     return _getNextIfAvail(running->size());
 }
 
-TaskQueuePtr GroupScheduler::taskFinishAct(Task::Ptr finished,
-                                          TaskQueuePtr running) {
-
+wcontrol::TaskQueuePtr
+GroupScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
+                              wcontrol::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
 
@@ -94,14 +98,16 @@ TaskQueuePtr GroupScheduler::taskFinishAct(Task::Ptr finished,
 }
 
 /// @return true if data is okay.
-bool GroupScheduler::checkIntegrity() {
+bool
+GroupScheduler::checkIntegrity() {
     boost::lock_guard<boost::mutex> guard(_mutex);
     return _integrityHelper();
 }
 
 /// @return true if data is okay
 /// precondition: _mutex is locked.
-bool GroupScheduler::_integrityHelper() {
+bool
+GroupScheduler::_integrityHelper() {
     // FIXME
     return true;
 }
@@ -110,29 +116,31 @@ bool GroupScheduler::_integrityHelper() {
 /// @return new tasks to run
 /// TODO: preferential treatment for chunkId just run?
 /// or chunkId that are currently running?
-TaskQueuePtr GroupScheduler::_getNextIfAvail(int runCount) {
+wcontrol::TaskQueuePtr
+GroupScheduler::_getNextIfAvail(int runCount) {
     int available = _maxRunning - runCount;
     if(available <= 0) {
-        return TaskQueuePtr();
+        return wcontrol::TaskQueuePtr();
     }
     return _getNextTasks(available);
 }
 
 /// Precondition: _mutex is already locked.
 /// @return new tasks to run
-TaskQueuePtr GroupScheduler::_getNextTasks(int max) {
+wcontrol::TaskQueuePtr
+GroupScheduler::_getNextTasks(int max) {
     // FIXME: Select disk based on chunk location.
     if(max < 1) { throw std::invalid_argument("max < 1)"); }
     std::ostringstream os;
     os << "_getNextTasks(" << max << ")>->->";
     _logger->debug(os.str());
     os.str("");
-    TaskQueuePtr tq;
+    wcontrol::TaskQueuePtr tq;
     if(_queue.size() > 0) {
-        tq.reset(new TaskQueue());
+        tq.reset(new wcontrol::TaskQueue());
         for(int i=max; i >= 0; --i) {
             if(_queue.empty()) { break; }
-            Task::Ptr t = _queue.front();
+            wcontrol::Task::Ptr t = _queue.front();
             tq->push_back(t);
             _queue.pop_front();
         }
@@ -147,16 +155,17 @@ TaskQueuePtr GroupScheduler::_getNextTasks(int max) {
 }
 
 /// Precondition: _mutex is locked.
-void GroupScheduler::_enqueueTask(Task::Ptr incoming) {
+void
+GroupScheduler::_enqueueTask(wcontrol::Task::Ptr incoming) {
     if(!incoming) {
         throw std::invalid_argument("null task");
     }
     _queue.insert(incoming);
     std::ostringstream os;
-    TaskMsg const& msg = *(incoming->msg);
+    proto::TaskMsg const& msg = *(incoming->msg);
     os << "Adding new task: " << msg.chunkid()
        << " : " << msg.fragment(0).query(0);
     _logger->debug(os.str());
 }
 
-}}} // lsst::qserv::worker
+}}} // namespace lsst::qserv::wsched

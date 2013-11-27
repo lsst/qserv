@@ -33,11 +33,10 @@
 #include "proto/TaskMsgDigest.h"
 #include <boost/regex.hpp>
 
-namespace qWorker = lsst::qserv::worker;
 
 namespace {
     void updateSubchunks(std::string const& s,
-                         qWorker::Task::Fragment& f) {
+                         lsst::qserv::wcontrol::Task::Fragment& f) {
         // deprecated though...
         f.mutable_subchunks()->clear_id();
         std::stringstream ss;
@@ -55,7 +54,7 @@ namespace {
     }
 
     void updateResultTables(std::string const& script,
-                            qWorker::Task::Fragment& f) {
+                            lsst::qserv::wcontrol::Task::Fragment& f) {
         f.clear_resulttable();
         // Find resultTable prefix
         char const prefix[] = "-- RESULTTABLES:";
@@ -73,8 +72,9 @@ namespace {
         f.set_resulttable(tables);
     }
 
-    std::ostream& dump(std::ostream& os,
-                       lsst::qserv::TaskMsg_Fragment const& f) {
+    std::ostream& 
+    dump(std::ostream& os,
+         lsst::qserv::proto::TaskMsg_Fragment const& f) {
         os << "frag: "
            << "q=";
         for(int i=0; i < f.query_size(); ++i) {
@@ -89,11 +89,15 @@ namespace {
         os << " rt=" << f.resulttable();
         return os;
     }
-}
+} // annonymous namespace
+
+namespace lsst {
+namespace qserv {
+namespace wcontrol {
+
 // Task::ChunkEqual functor
 bool
-qWorker::Task::ChunkEqual::operator()(qWorker::Task::Ptr const& x, 
-                                      qWorker::Task::Ptr const& y) {
+Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if(!x || !y) { return false; }
     if((!x->msg) || (!y->msg)) { return false; }
     return x->msg->has_chunkid() && y->msg->has_chunkid()
@@ -101,8 +105,7 @@ qWorker::Task::ChunkEqual::operator()(qWorker::Task::Ptr const& x,
 }
 // Task::PtrChunkIdGreater functor
 bool 
-qWorker::Task::ChunkIdGreater::operator()(qWorker::Task::Ptr const& x, 
-                                          qWorker::Task::Ptr const& y) {
+Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if(!x || !y) { return false; }
     if((!x->msg) || (!y->msg)) { return false; }
     return x->msg->chunkid()  > y->msg->chunkid();
@@ -111,16 +114,17 @@ qWorker::Task::ChunkIdGreater::operator()(qWorker::Task::Ptr const& x,
 ////////////////////////////////////////////////////////////////////////
 // Task
 ////////////////////////////////////////////////////////////////////////
-std::string const qWorker::Task::defaultUser = "qsmaster";
+std::string const 
+Task::defaultUser = "qsmaster";
 
-qWorker::Task::Task(qWorker::ScriptMeta const& s, std::string const& user_) {
-    TaskMsgPtr t(new TaskMsg());
+Task::Task(wbase::ScriptMeta const& s, std::string const& user_) {
+    TaskMsgPtr t(new proto::TaskMsg());
     // Try to force non copy-on-write
     hash.assign(s.hash.c_str());
     dbName.assign(s.dbName.c_str());
     resultPath.assign(s.resultPath.c_str());
     t->set_chunkid(s.chunkId);
-    lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
+    proto::TaskMsg::Fragment* f = t->add_fragment();
     updateSubchunks(s.script, *f);
     updateResultTables(s.script, *f);
     f->add_query(s.script);
@@ -129,22 +133,19 @@ qWorker::Task::Task(qWorker::ScriptMeta const& s, std::string const& user_) {
     timestr[0] = '\0';
 }
 
-qWorker::Task::Task(qWorker::Task::TaskMsgPtr t, std::string const& user_) {
+Task::Task(Task::TaskMsgPtr t, std::string const& user_) {
     hash = hashTaskMsg(*t);
     dbName = "q_" + hash;
-    resultPath = hashToResultPath(hash);
+    resultPath = wbase::hashToResultPath(hash);
     // Try to force non copy-on-write
-    msg.reset(new TaskMsg(*t));
+    msg.reset(new proto::TaskMsg(*t));
     user = user_;
     needsCreate = true;
     timestr[0] = '\0';
 }
 
-namespace lsst {
-namespace qserv {
-namespace worker {
-std::ostream& operator<<(std::ostream& os, qWorker::Task const& t) {
-    lsst::qserv::TaskMsg& m = *t.msg;
+std::ostream& operator<<(std::ostream& os, Task const& t) {
+    proto::TaskMsg& m = *t.msg;
     os << "Task: "
        << "msg: session=" << m.session()
        << " chunk=" << m.chunkid()
@@ -157,4 +158,4 @@ std::ostream& operator<<(std::ostream& os, qWorker::Task const& t) {
     }
     return os;
 }
-}}} // lsst::qserv::worker
+}}} // namespace lsst::qserv::wcontrol

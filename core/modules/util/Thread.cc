@@ -22,7 +22,11 @@
 
 #include "util/Thread.h"
 
-namespace qWorker = lsst::qserv::worker;
+namespace lsst {
+namespace qserv {
+namespace util {
 
-XrdSysMutex qWorker::ThreadManager::_detailMutex;
-qWorker::ThreadManager::DetailSet qWorker::ThreadManager::_details;
+XrdSysMutex ThreadManager::_detailMutex;
+ThreadManager::DetailSet ThreadManager::_details;
+
+}}} // namespace lsst::qserv::util

@@ -46,10 +46,12 @@ inline std::string wrapHash(void const* buffer, int bufferSize) {
     // i.e. (boost::format("%02x") % static_cast<int>(hashVal[i])).str();
     return s.str();
 }
-} // anonymous
+} // anonymous namespace
 
 namespace lsst {
 namespace qserv {
+namespace util {
+        
 /// @return a hexadecimal representation of the MD5 hash of the input buffer
 /// 128 bits -> 16 bytes -> 32 hex digits
 std::string StringHash::getMd5Hex(char const* buffer, int bufferSize) {
@@ -67,4 +69,4 @@ std::string StringHash::getSha256Hex(char const* buffer, int bufferSize) {
     return wrapHash<SHA256, SHA256_DIGEST_LENGTH>(buffer, bufferSize);
 }
 
-}} // namespace lsst::qserv
+}}} // namespace lsst::qserv::util

@@ -26,25 +26,27 @@
 #include "boost/format.hpp"
 #include "util/xrootd.h"
 
-namespace qMaster = lsst::qserv::master;
+namespace lsst {
+namespace qserv {
+namespace util {
 
-std::string qMaster::makeUrl(char const* hostport, char const* typeStr,
-                             int chunk) {
+std::string
+makeUrl(char const* hostport, char const* typeStr, int chunk) {
     std::stringstream s;
     s << chunk;
     // boost::format version is 5x slower.
     //std::string s = (boost::format("%d") % chunk).str();
     return makeUrl(hostport, typeStr, s.str());
 }
-std::string qMaster::makeUrl(char const* hostport,
-                             std::string const& path) {
+
+std::string
+makeUrl(char const* hostport, std::string const& path) {
     return makeUrl(hostport, NULL, path);
 }
 
-std::string qMaster::makeUrl(char const* hostport,
-                             char const* typeStr, std::string const& s,
-                             char mode) {
-
+std::string
+makeUrl(char const* hostport, char const* typeStr, 
+        std::string const& s, char mode) {
     // typeStr is either "query" or "result"
     if(hostport == NULL) {
         hostport = ::getenv("QSERV_XRD");
@@ -85,3 +87,4 @@ std::string qMaster::makeUrl(char const* hostport,
 #endif
 }
 
+}}} // namespace lsst::qserv::util

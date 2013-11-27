@@ -20,24 +20,28 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_WORKER_QUERYPHYRESULT_H
-#define LSST_QSERV_WORKER_QUERYPHYRESULT_H
+#ifndef LSST_QSERV_WDB_QUERYPHYRESULT_H
+#define LSST_QSERV_WDB_QUERYPHYRESULT_H
 
 // C++
 #include <string>
 #include <set>
 
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
-    // Forward
+namespace sql {
     class SqlErrorObject;
-}}
+}
+namespace wlog {
+    class WLogger;
+}}} // End of forward declarations
 
 namespace lsst {
 namespace qserv {
-namespace worker {
-class WLogger; // Forward
-////////////////////////////////////////////////////////////////////////
+namespace wdb {
+        
 class QueryPhyResult {
 public:
     typedef std::set<std::string> StringSet;
@@ -51,10 +55,10 @@ public:
 
     void reset();
 
-    bool performMysqldump(WLogger& log,
+    bool performMysqldump(wlog::WLogger& log,
                           std::string const& user,
                           std::string const& dumpFile,
-                          SqlErrorObject&);
+                          sql::SqlErrorObject&);
 
 private:
     void _mkdirP(std::string const& filePath);
@@ -65,5 +69,6 @@ private:
     std::string _outDb;
 };
 
-}}}
-#endif // LSST_QSERV_WORKER_QUERYPHYRESULT _H
+}}} // namespace lsst::qserv::wdb
+
+#endif // LSST_QSERV_WDB_QUERYPHYRESULT_H

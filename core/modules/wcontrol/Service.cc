@@ -29,35 +29,36 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wcontrol {
 
-Service::Service(WLogger::Ptr log) {
+Service::Service(wlog::WLogger::Ptr log) {
     if(!log.get()) {
-        log.reset(new WLogger());
+        log.reset(new wlog::WLogger());
     }
-    WLogger::Ptr schedLog(new WLogger(log));
+    wlog::WLogger::Ptr schedLog(new wlog::WLogger(log));
 #if 0 // Shared scan only
     schedLog->setPrefix(ScanScheduler::getName() + ":");
     ScanScheduler::Ptr sch(new ScanScheduler(schedLog));
 #elif 0 // Group scan only (interactive)
-    schedLog->setPrefix(GroupScheduler::getName() + ":");
-    GroupScheduler::Ptr sch(new GroupScheduler(schedLog));
+    schedLog->setPrefix(wsched::GroupScheduler::getName() + ":");
+    wsched::GroupScheduler::Ptr sch(new wsched::GroupScheduler(schedLog));
 #else // Blend scheduler
-    WLogger::Ptr gLog(new WLogger(log));
-    gLog->setPrefix(GroupScheduler::getName() + ":");
-    GroupScheduler::Ptr gro(new GroupScheduler(gLog));
+    wlog::WLogger::Ptr gLog(new wlog::WLogger(log));
+    gLog->setPrefix(wsched::GroupScheduler::getName() + ":");
+    wsched::GroupScheduler::Ptr gro(new wsched::GroupScheduler(gLog));
 
-    WLogger::Ptr sLog(new WLogger(log));
-    sLog->setPrefix(ScanScheduler::getName() + ":");
-    ScanScheduler::Ptr sca(new ScanScheduler(sLog));
+    wlog::WLogger::Ptr sLog(new wlog::WLogger(log));
+    sLog->setPrefix(wsched::ScanScheduler::getName() + ":");
+    wsched::ScanScheduler::Ptr sca(new wsched::ScanScheduler(sLog));
 
-    schedLog->setPrefix(BlendScheduler::getName() + ":");
-    BlendScheduler::Ptr sch(new BlendScheduler(schedLog, gro, sca));
+    schedLog->setPrefix(wsched::BlendScheduler::getName() + ":");
+    wsched::BlendScheduler::Ptr sch(new wsched::BlendScheduler(schedLog, gro, sca));
 #endif
     _foreman = newForeman(sch, log);
 }
 
-TaskAcceptor::Ptr Service::getAcceptor() {
+wbase::TaskAcceptor::Ptr
+Service::getAcceptor() {
     return _foreman;
 }
 
@@ -65,4 +66,4 @@ void Service::squashByHash(std::string const& hash) {
     _foreman->squashByHash(hash);
 }
 
-}}} // lsst::qserv::worker
+}}} // namespace lsst::qserv::wcontrol

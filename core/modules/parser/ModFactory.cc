@@ -38,10 +38,10 @@
 
 // Package
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
-#include "parser/parserBase.h" // Handler base classes
+#include "parser/BoolTermFactory.h"
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
-#include "parser/BoolTermFactory.h"
+#include "parser/parserBase.h" // Handler base classes
 #include "parser/ValueExprFactory.h"
 #include "query/HavingClause.h" // Clauses
 #include "query/OrderByClause.h" // Clauses
@@ -51,7 +51,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace parser {
 
 ////////////////////////////////////////////////////////////////////////
 // ModFactory::LimitH
@@ -133,7 +133,7 @@ void ModFactory::_importLimit(antlr::RefAST a) {
 }
 
 void ModFactory::_importOrderBy(antlr::RefAST a) {
-    _orderBy.reset(new OrderByClause());
+    _orderBy.reset(new query::OrderByClause());
     // ORDER BY takes a column ref (expression)
     //LOGGER_INF << "orderby got " << walkTreeString(a) << std::endl;
     if(!a.get()) {
@@ -144,9 +144,9 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
             throw std::logic_error("Expected SORT_SPEC token)");
         }
         RefAST key = a->getFirstChild();
-        OrderByTerm ob;
-        ob._order = OrderByTerm::DEFAULT;
-        boost::shared_ptr<ValueExpr> ve;
+        query::OrderByTerm ob;
+        ob._order = query::OrderByTerm::DEFAULT;
+        boost::shared_ptr<query::ValueExpr> ve;
         if(key->getType() == SqlSQL2TokenTypes::SORT_KEY) {
             ob._expr = _vFactory->newExpr(key->getFirstChild());
             RefAST sib = key->getNextSibling();
@@ -160,10 +160,10 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
             if(sib.get()) {
                 switch(sib->getType()) {
                 case SqlSQL2TokenTypes::SQL2RW_asc:
-                    ob._order = OrderByTerm::ASC;
+                    ob._order = query::OrderByTerm::ASC;
                     break;
                 case SqlSQL2TokenTypes::SQL2RW_desc:
-                    ob._order = OrderByTerm::DESC;
+                    ob._order = query::OrderByTerm::DESC;
                     break;
                 default:
                     throw ParseException("unknown order-by syntax", a);
@@ -181,7 +181,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
 }
 
 void ModFactory::_importGroupBy(antlr::RefAST a) {
-    _groupBy = boost::make_shared<GroupByClause>();
+    _groupBy = boost::make_shared<query::GroupByClause>();
     // GROUP BY takes a column reference (expression?)
     //LOGGER_INF << "groupby got " << walkTreeString(a) << std::endl;
     if(!a.get()) {
@@ -191,9 +191,9 @@ void ModFactory::_importGroupBy(antlr::RefAST a) {
         if((a->getType() != SqlSQL2TokenTypes::GROUPING_COLUMN_REF)) {
             throw std::logic_error("Attempting _import of non-grouping column");
         }
-        GroupByTerm gb;
+        query::GroupByTerm gb;
         RefAST key = a->getFirstChild();
-        boost::shared_ptr<ValueExpr> ve;
+        boost::shared_ptr<query::ValueExpr> ve;
         if(key->getType() == SqlSQL2TokenTypes::COLUMN_REF) {
             gb._expr = _vFactory->newExpr(key->getFirstChild());
             RefAST sib = key->getNextSibling();
@@ -213,7 +213,7 @@ void ModFactory::_importGroupBy(antlr::RefAST a) {
 }
 
 void ModFactory::_importHaving(antlr::RefAST a) {
-    _having = boost::make_shared<HavingClause>();
+    _having = boost::make_shared<query::HavingClause>();
     // HAVING takes an boolean expression that is dependent on an
     // aggregation expression that was specified in the select list.
     // Online examples for SQL HAVING always have only one aggregation
@@ -247,4 +247,5 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     // FIXME: Log this at the WARNING level
     LOGGER_WRN << "Parse warning: HAVING clause unhandled." << std::endl;
 }
-}}} // lsst::qserv::master
+
+}}} // namespace lsst::qserv::parser

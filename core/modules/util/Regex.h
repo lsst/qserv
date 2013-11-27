@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_WORKER_REGEX_H
-#define LSST_QSERV_WORKER_REGEX_H
+#ifndef LSST_QSERV_UTIL_REGEX_H
+#define LSST_QSERV_UTIL_REGEX_H
 
 #include <string>
 #include <regex.h>
@@ -29,7 +29,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace util {
 
 class Regex {
 public:
@@ -110,6 +110,6 @@ private:
     regex_t _regex;
 };
 
-}}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_WORKER_REGEX_H
+#endif // LSST_QSERV_UTIL_REGEX_H

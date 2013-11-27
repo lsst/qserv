@@ -31,10 +31,9 @@
 #include "wsched/ChunkState.h"
 
 namespace test = boost::test_tools;
-namespace qWorker = lsst::qserv::worker;
-using lsst::qserv::worker::GroupedQueue;
-using lsst::qserv::worker::CirclePqueue;
-using lsst::qserv::worker::ChunkState;
+using lsst::qserv::wsched::GroupedQueue;
+using lsst::qserv::wsched::CirclePqueue;
+using lsst::qserv::wsched::ChunkState;
 
 int const compareLimit = 1000;
 

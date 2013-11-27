@@ -20,14 +20,24 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_BLENDSCHEDULER_H
-#define LSST_QSERV_WORKER_BLENDSCHEDULER_H
+#ifndef LSST_QSERV_WSCHED_BLENDSCHEDULER_H
+#define LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 
 #include "wcontrol/Foreman.h"
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wlog {
+    class WLogger;
+}}}
+// End of forward declarations
+
+namespace lsst {
+namespace qserv {
+namespace wsched {
+
+// Forward
 class GroupScheduler;
 class ScanScheduler;
 
@@ -37,42 +47,45 @@ class ScanScheduler;
 /// ScanScheduler; otherwise it uses the GroupScheduler.
 /// The GroupScheduler has concessions for chunk grouping as well, but
 /// it should be set for reduced concurrency limited I/O sharing.
-class BlendScheduler : public Foreman::Scheduler {
+class BlendScheduler : public wcontrol::Foreman::Scheduler {
 public:
     typedef boost::shared_ptr<BlendScheduler> Ptr;
 
-    BlendScheduler(boost::shared_ptr<WLogger> logger,
+    BlendScheduler(boost::shared_ptr<wlog::WLogger> logger,
                    boost::shared_ptr<GroupScheduler> group,
                    boost::shared_ptr<ScanScheduler> scan);
     virtual ~BlendScheduler() {}
 
-    virtual void queueTaskAct(Task::Ptr incoming);
-    virtual TaskQueuePtr nopAct(TaskQueuePtr running);
-    virtual TaskQueuePtr newTaskAct(Task::Ptr incoming,
-                                    TaskQueuePtr running);
-    virtual TaskQueuePtr taskFinishAct(Task::Ptr finished,
-                                       TaskQueuePtr running);
+    virtual void queueTaskAct(wcontrol::Task::Ptr incoming);
+    virtual wcontrol::TaskQueuePtr nopAct(wcontrol::TaskQueuePtr running);
+    virtual wcontrol::TaskQueuePtr newTaskAct(wcontrol::Task::Ptr incoming,
+                                              wcontrol::TaskQueuePtr running);
+    virtual wcontrol::TaskQueuePtr taskFinishAct(wcontrol::Task::Ptr finished,
+                                                 wcontrol::TaskQueuePtr running);
 
     // TaskWatcher interface
-    virtual void markStarted(Task::Ptr t);
-    virtual void markFinished(Task::Ptr t);
+    virtual void markStarted(wcontrol::Task::Ptr t);
+    virtual void markFinished(wcontrol::Task::Ptr t);
 
     static std::string getName()  { return std::string("BlendSched"); }
     bool checkIntegrity();
 
-    Foreman::Scheduler* lookup(Task::Ptr p);
+    wcontrol::Foreman::Scheduler* lookup(wcontrol::Task::Ptr p);
 private:
-    TaskQueuePtr _getNextIfAvail(TaskQueuePtr running);
+    wcontrol::TaskQueuePtr _getNextIfAvail(wcontrol::TaskQueuePtr running);
     bool _integrityHelper() const;
-    Foreman::Scheduler* _lookup(Task::Ptr p);
+    wcontrol::Foreman::Scheduler* _lookup(wcontrol::Task::Ptr p);
 
     boost::shared_ptr<GroupScheduler> _group;
     boost::shared_ptr<ScanScheduler> _scan;
-    boost::shared_ptr<WLogger> _logger;
-    typedef std::map<Task*, Foreman::Scheduler*> Map;
+    boost::shared_ptr<wlog::WLogger> _logger;
+    typedef std::map<wcontrol::Task*, wcontrol::Foreman::Scheduler*> Map;
     Map _map;
     boost::mutex _mapMutex;
 };
-}}} // lsst::qserv::worker
-extern lsst::qserv::worker::BlendScheduler* dbgBlendScheduler; //< A symbol for gdb
-#endif // LSST_QSERV_WORKER_BLENDSCHEDULER_H
+
+}}} // namespace lsst::qserv::wsched
+
+extern lsst::qserv::wsched::BlendScheduler* dbgBlendScheduler; //< A symbol for gdb
+
+#endif // LSST_QSERV_WSCHED_BLENDSCHEDULER_H

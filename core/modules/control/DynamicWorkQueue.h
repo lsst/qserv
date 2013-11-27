@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// @file
-#ifndef LSST_QSERV_MASTER_DYNAMICWORKQUEUE_H
-#define LSST_QSERV_MASTER_DYNAMICWORKQUEUE_H
+#ifndef LSST_QSERV_CONTROL_DYNAMICWORKQUEUE_H
+#define LSST_QSERV_CONTROL_DYNAMICWORKQUEUE_H
 
 #include <map>
 #include <set>
@@ -31,7 +31,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace control {
 
 /// A dynamic work queue is a pool of threads created with some initial
 /// number of threads (by default 0). As work is added, threads are created,
@@ -114,7 +114,7 @@ private:
     friend struct Runner;
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::control
 
-#endif // LSST_QSERV_MASTER_DYNAMICWORKQUEUE_H
+#endif // LSST_QSERV_CONTROL_DYNAMICWORKQUEUE_H
 

@@ -30,13 +30,10 @@
 #include "xrdc/PacketIter.h"
 
 namespace test = boost::test_tools;
-using lsst::qserv::master::PacketIter;
-using lsst::qserv::master::SqlInsertIter;
+using lsst::qserv::xrdc::PacketIter;
+using lsst::qserv::merger::SqlInsertIter;
 using std::string;
 
-namespace {
-
-} // anonymous namespace
 
 struct IterFixture {
     IterFixture(void) {

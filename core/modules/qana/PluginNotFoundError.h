@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_PLUGINNOTFOUNDERROR_H
-#define LSST_QSERV_MASTER_PLUGINNOTFOUNDERROR_H
+#ifndef LSST_QSERV_QANA_PLUGINNOTFOUNDERROR_H
+#define LSST_QSERV_QANA_PLUGINNOTFOUNDERROR_H
 /**
   * @file PluginNotFoundError.h
   *
@@ -33,7 +33,9 @@
 #include <string>
 #include <sstream>
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace qana {
 
 /// PluginNotFoundError is an exception class thrown when a plugin is requested
 /// by a name that has not been registered.
@@ -53,6 +55,7 @@ private:
     std::string _descr;
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_PLUGINNOTFOUNDERROR_H
+}}} // namespace lsst::qserv::qana
+
+#endif // LSST_QSERV_QANA_PLUGINNOTFOUNDERROR_H
 

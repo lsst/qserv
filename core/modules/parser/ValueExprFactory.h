@@ -22,8 +22,8 @@
  */
 // ValueExprFactory constructs ValueExpr instances from antlr nodes.
 
-#ifndef LSST_QSERV_MASTER_VALUEEXPRFACTORY_H
-#define LSST_QSERV_MASTER_VALUEEXPRFACTORY_H
+#ifndef LSST_QSERV_PARSER_VALUEEXPRFACTORY_H
+#define LSST_QSERV_PARSER_VALUEEXPRFACTORY_H
 /**
   * @file ValueExprFactory.h
   *
@@ -36,20 +36,28 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace query {
+    // Forward
+    class ValueExpr;
+}
+    
+namespace parser {
+
 // Forward
 class ColumnRefNodeMap;
-class ValueExpr;
 class ValueFactorFactory;
+
 /// ValueExprFactory is a factory for making ValueExpr objects
 class ValueExprFactory {
 public:
     ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap);
-    boost::shared_ptr<ValueExpr> newExpr(antlr::RefAST a);
+    boost::shared_ptr<query::ValueExpr> newExpr(antlr::RefAST a);
 
 private:
     boost::shared_ptr<ValueFactorFactory> _valueFactorFactory;
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_VALUEEXPRFACTORY_H
+}}} // namespace lsst::qserv::parser
+
+#endif // LSST_QSERV_PARSER_VALUEEXPRFACTORY_H

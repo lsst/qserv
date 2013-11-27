@@ -27,24 +27,25 @@
 namespace lsst {
 namespace qserv {
 
-namespace master { // Forward
-class QueryContext;
-class SelectStmt;
-}
 namespace css {
-class Facade;
+    class Facade; // Forward
 }
     
 namespace query {
+
+// Forward
+class QueryContext;
+class SelectStmt;
+
 
 /// TestFactory is a factory for non-parsed query representation objects
 class TestFactory {
 public:
     TestFactory() {}
-    boost::shared_ptr<master::QueryContext> newContext();
-    boost::shared_ptr<master::QueryContext> newContext(
+    boost::shared_ptr<QueryContext> newContext();
+    boost::shared_ptr<QueryContext> newContext(
                          boost::shared_ptr<css::Facade> cssFacade);
-    boost::shared_ptr<master::SelectStmt> newStmt();
+    boost::shared_ptr<SelectStmt> newStmt();
 };
 
 }}} // namespace lsst::qserv::query

@@ -19,14 +19,14 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_XRDLOGGER_H
-#define LSST_QSERV_WORKER_XRDLOGGER_H
+#ifndef LSST_QSERV_XRDFS_XRDLOGGER_H
+#define LSST_QSERV_XRDFS_XRDLOGGER_H
 #include "wbase/Base.h"
 #include "XrdSys/XrdSysError.hh"
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace xrdfs {
 
 class XrdLogger : public WLogger {
 public:
@@ -42,6 +42,7 @@ private:
     XrdSysError& _e;
 };
 
-}}} // lsst::qserv:worker
-#endif // LSST_QSERV_WORKER_XRDLOGGER_H
+}}} // namespace lsst::qserv:xrdfs
+
+#endif // LSST_QSERV_XRDFS_XRDLOGGER_H
 

@@ -30,12 +30,14 @@
   */
 #include "sql/SqlFragmenter.h"
 
-namespace qWorker = lsst::qserv::worker;
+namespace lsst {
+namespace qserv {
+namespace sql {
 
 // Constants
-const std::string qWorker::SqlFragmenter::_delimiter = ";\n";
+const std::string SqlFragmenter::_delimiter = ";\n";
 
-qWorker::SqlFragmenter::SqlFragmenter(std::string const& query)
+SqlFragmenter::SqlFragmenter(std::string const& query)
     : _query(query),
       _pNext(0),
       _qEnd(query.length()),
@@ -43,7 +45,8 @@ qWorker::SqlFragmenter::SqlFragmenter(std::string const& query)
       _count(0)
 {}
 
-qWorker::SqlFragmenter::Piece const& qWorker::SqlFragmenter::getNextPiece() {
+SqlFragmenter::Piece const& 
+SqlFragmenter::getNextPiece() {
     if(_pNext == _qEnd) {
         _current.first = 0;
         return _current;
@@ -52,7 +55,8 @@ qWorker::SqlFragmenter::Piece const& qWorker::SqlFragmenter::getNextPiece() {
     return _current;
 }
 
-void qWorker::SqlFragmenter::_advance() {
+void
+SqlFragmenter::_advance() {
     std::string::size_type begin = _pNext;
     std::string::size_type end;
     std::string::size_type searchTarget;
@@ -97,3 +101,4 @@ void qWorker::SqlFragmenter::_advance() {
     }
 }
 
+}}} // namespace lsst::qserv::sql

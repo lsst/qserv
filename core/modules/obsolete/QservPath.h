@@ -20,13 +20,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_QSERVPATH_H
-#define LSST_QSERV_QSERVPATH_H
+#ifndef LSST_QSERV_OBSOLETE_QSERVPATH_H
+#define LSST_QSERV_OBSOLETE_QSERVPATH_H
+
 #include <string>
 #include <map>
 
 namespace lsst {
 namespace qserv {
+namespace obsolete {
 
 class QservPath {
 public:
@@ -77,5 +79,6 @@ private:
 
 };
 
-}} // namespace lsst::qserv
-#endif // LSST_QSERV_QSERVPATH_H
+}}} // namespace lsst::qserv::obsolete
+
+#endif // LSST_QSERV_OBSOLETE_QSERVPATH_H

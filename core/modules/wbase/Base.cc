@@ -43,7 +43,6 @@
 // Myself:
 #include "wbase/Base.h"
 
-namespace qWorker = lsst::qserv::worker;
 
 // Local helpers
 namespace {
@@ -54,7 +53,7 @@ template <class T> struct ptrDestroy {
 template <class T> struct offsetLess {
     bool operator() (T const& x, T const& y) { return x.offset < y.offset;}
 };
-}
+} // annonymous namespace
 
 bool checkWritablePath(char const* path) {
     return path && (0 == ::access(path, W_OK | X_OK));
@@ -62,7 +61,8 @@ bool checkWritablePath(char const* path) {
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wbase {
+
 //////////////////////////////////////////////////////////////////////
 // Constants
 //////////////////////////////////////////////////////////////////////
@@ -169,7 +169,7 @@ std::string hashToResultPath(std::string const& hash) {
 //////////////////////////////////////////////////////////////////////
 ScriptMeta::ScriptMeta(StringBuffer const& b, int chunkId_) {
     script = b.getStr();
-    hash = StringHash::getMd5Hex(script.data(), script.length());
+    hash = util::StringHash::getMd5Hex(script.data(), script.length());
     dbName = "q_" + hash;
     resultPath = hashToResultPath(hash);
     chunkId = chunkId_;
@@ -177,7 +177,7 @@ ScriptMeta::ScriptMeta(StringBuffer const& b, int chunkId_) {
 
 ScriptMeta::ScriptMeta(StringBuffer2 const& b, int chunkId_) {
     script = b.getStr();
-    hash = StringHash::getMd5Hex(script.data(), script.length());
+    hash = util::StringHash::getMd5Hex(script.data(), script.length());
     dbName = "q_" + hash;
     resultPath = hashToResultPath(hash);
     chunkId = chunkId_;
@@ -389,4 +389,4 @@ void StringBuffer2::_setSize(unsigned size) {
     _bufferSize = size;
 }
 
-}}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::wbase

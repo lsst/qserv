@@ -42,7 +42,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qana {
+
 ////////////////////////////////////////////////////////////////////////
 // ScanTablePlugin declaration
 ////////////////////////////////////////////////////////////////////////
@@ -53,7 +54,7 @@ namespace master {
 /// scan table annotation is removed--the query is no longer
 /// considered a "scanning" query because it involves a small piece of
 /// the data set.
-class ScanTablePlugin : public lsst::qserv::master::QueryPlugin {
+class ScanTablePlugin : public QueryPlugin {
 public:
     // Types
     typedef boost::shared_ptr<ScanTablePlugin> Ptr;
@@ -62,18 +63,20 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(SelectStmt& stmt, QueryContext&);
-    virtual void applyFinal(QueryContext& context);
+    virtual void applyLogical(query::SelectStmt& stmt, 
+                              query::QueryContext&);
+    virtual void applyFinal(query::QueryContext& context);
 
 private:
-    StringPairList _findScanTables(SelectStmt& stmt, QueryContext& context);
-    StringPairList _scanTables;
+    util::StringPairList _findScanTables(query::SelectStmt& stmt, 
+                                         query::QueryContext& context);
+    util::StringPairList _scanTables;
 };
 
 ////////////////////////////////////////////////////////////////////////
 // ScanTablePluginFactory declaration+implementation
 ////////////////////////////////////////////////////////////////////////
-class ScanTablePluginFactory : public lsst::qserv::master::QueryPlugin::Factory {
+class ScanTablePluginFactory : public QueryPlugin::Factory {
 public:
     // Types
     typedef boost::shared_ptr<ScanTablePluginFactory> Ptr;
@@ -81,8 +84,8 @@ public:
     virtual ~ScanTablePluginFactory() {}
 
     virtual std::string getName() const { return "ScanTable"; }
-    virtual lsst::qserv::master::QueryPlugin::Ptr newInstance() {
-        return lsst::qserv::master::QueryPlugin::Ptr(new ScanTablePlugin());
+    virtual QueryPlugin::Ptr newInstance() {
+        return QueryPlugin::Ptr(new ScanTablePlugin());
     }
 };
 
@@ -98,19 +101,20 @@ struct registerPlugin {
 };
 // Static registration
 registerPlugin registerScanTablePlugin;
-}
+} // annonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
 // ScanTablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void
-ScanTablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
+ScanTablePlugin::applyLogical(query::SelectStmt& stmt, 
+                              query::QueryContext& context) {
     _scanTables = _findScanTables(stmt, context);
     context.scanTables = _scanTables;
 }
 
 void
-ScanTablePlugin::applyFinal(QueryContext& context) {
+ScanTablePlugin::applyFinal(query::QueryContext& context) {
     int const scanThreshold = 2;
     if(context.chunkCount < scanThreshold) {
         context.scanTables.clear();
@@ -119,15 +123,16 @@ ScanTablePlugin::applyFinal(QueryContext& context) {
     }
 }
 
-struct getPartitioned : public TableRefN::Func {
-    getPartitioned(StringPairList& sList_) : sList(sList_) {}
-    virtual void operator()(TableRefN& t) {
-        (*this)(const_cast<TableRefN const&>(t));
+struct getPartitioned : public query::TableRefN::Func {
+    getPartitioned(util::StringPairList& sList_) : sList(sList_) {}
+    virtual void operator()(query::TableRefN& t) {
+        (*this)(const_cast<query::TableRefN const&>(t));
     }
-    virtual void operator()(TableRefN const& tRef) {
-        SimpleTableN const* t = dynamic_cast<SimpleTableN const*>(&tRef);
+    virtual void operator()(query::TableRefN const& tRef) {
+        query::SimpleTableN const* t = 
+            dynamic_cast<query::SimpleTableN const*>(&tRef);
         if(t) {
-            StringPair entry(t->getDb(), t->getTable());
+            util::StringPair entry(t->getDb(), t->getTable());
             if(found.end() != found.find(entry)) return;
             sList.push_back(entry);
             found.insert(entry);
@@ -135,23 +140,25 @@ struct getPartitioned : public TableRefN::Func {
             throw std::logic_error("Unexpected non-simple table in apply()");
         }
     }
-    std::set<StringPair> found;
-    StringPairList& sList;
+    std::set<util::StringPair> found;
+    util::StringPairList& sList;
 };
 
 // helper
-StringPairList filterPartitioned(TableRefnList const& tList) {
-    StringPairList list;
+util::StringPairList 
+filterPartitioned(query::TableRefnList const& tList) {
+    util::StringPairList list;
     getPartitioned gp(list);
-    for(TableRefnList::const_iterator i=tList.begin(), e=tList.end();
+    for(query::TableRefnList::const_iterator i=tList.begin(), e=tList.end();
         i != e; ++i) {
         (**i).apply(gp);
     }
     return list;
 }
 
-StringPairList
-ScanTablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
+util::StringPairList
+ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, 
+                                 query::QueryContext& context) {
     // Might be better as a separate plugin
 
     // All tables of a query are scan tables if the statement both:
@@ -185,14 +192,14 @@ ScanTablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
                                   // or objectId IN (123,133) ?
 
     if(stmt.hasWhereClause()) {
-        WhereClause& wc = stmt.getWhereClause();
+        query::WhereClause& wc = stmt.getWhereClause();
         // Check WHERE for spatial select
-        boost::shared_ptr<QsRestrictor::List const> restrs = wc.getRestrs();
+        boost::shared_ptr<query::QsRestrictor::List const> restrs = wc.getRestrs();
         hasSpatialSelect = restrs && !restrs->empty();
 
 
         // Look for column refs
-        boost::shared_ptr<ColumnRef::List const> crl = wc.getColumnRefs();
+        boost::shared_ptr<query::ColumnRef::List const> crl = wc.getColumnRefs();
         if(crl) {
             hasWhereColumnRef = !crl->empty();
 #if 0
@@ -216,19 +223,19 @@ ScanTablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
 #endif
         }
     }
-    SelectList& sList = stmt.getSelectList();
-    boost::shared_ptr<ValueExprList> sVexpr = sList.getValueExprList();
+    query::SelectList& sList = stmt.getSelectList();
+    boost::shared_ptr<query::ValueExprList> sVexpr = sList.getValueExprList();
 
     if(sVexpr) {
-        ColumnRef::List cList; // For each expr, get column refs.
+        query::ColumnRef::List cList; // For each expr, get column refs.
 
-        typedef ValueExprList::const_iterator Iter;
+        typedef query::ValueExprList::const_iterator Iter;
         for(Iter i=sVexpr->begin(), e=sVexpr->end(); i != e; ++i) {
             (*i)->findColumnRefs(cList);
         }
         // Resolve column refs, see if they include partitioned
         // tables.
-        typedef ColumnRef::List::const_iterator ColIter;
+        typedef query::ColumnRef::List::const_iterator ColIter;
         for(ColIter i=cList.begin(), e=cList.end(); i != e; ++i) {
             // FIXME: Need to resolve and see if it's a partitioned table.
             hasSelectColumnRef = true;
@@ -236,7 +243,7 @@ ScanTablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
     }
     // FIXME hasSelectStar is not populated right now. Do we need it?
 
-    StringPairList scanTables;
+    util::StringPairList scanTables;
     // Right now, queries involving less than a threshold number of
     // chunks have their scanTables squashed as non-scanning in the
     // plugin's applyFinal
@@ -258,4 +265,4 @@ ScanTablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
     return scanTables;
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::qana

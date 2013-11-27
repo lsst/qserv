@@ -20,15 +20,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_QSERVPATHSTRUCTURE_H
-#define LSST_QSERV_QSERVPATHSTRUCTURE_H
+#ifndef LSST_QSERV_OBSOLETE_QSERVPATHSTRUCTURE_H
+#define LSST_QSERV_OBSOLETE_QSERVPATHSTRUCTURE_H
 
 #include <string>
 #include <vector>
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace obsolete {
 
 class QservPathStructure {
 
@@ -69,5 +69,6 @@ private:
     std::vector<std::string> _uniqueDbDirs;
 };
 
-}}} // namespace lsst::qserv::worker
-#endif // LSST_QSERV_QSERVPATHEXPORT_H
+}}} // namespace lsst::qserv::obsolete
+
+#endif // LSST_QSERV_OBSOLETE_QSERVPATHEXPORT_H

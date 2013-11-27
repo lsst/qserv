@@ -32,7 +32,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 std::ostream& operator<<(std::ostream& os, ColumnRef const& cr) {
     return os << "(" << cr.db << "," << cr.table << "," << cr.column << ")";
@@ -46,4 +46,4 @@ void ColumnRef::renderTo(QueryTemplate& qt) const {
     qt.append(*this);
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::query

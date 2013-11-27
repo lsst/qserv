@@ -84,9 +84,6 @@ class TestQservAdminImpl(unittest.TestCase):
         self._impl.dropDb("dbA")
 
 
-
-
-
 ####################################################################################
 def setLogging():
     logging.basicConfig(

@@ -24,20 +24,20 @@
 // class Logger -- A class that handles application-wide logging.
 //
 
-#ifndef LSST_QSERV_LOGGER_H
-#define LSST_QSERV_LOGGER_H
+#ifndef LSST_QSERV_LOG_LOGGER_H
+#define LSST_QSERV_LOG_LOGGER_H
 
 // These directives are for convenience.
-#define LOG_STRM(level) lsst::qserv::Logger::Instance(lsst::qserv::Logger::level)
-#define LOGGER(level) if (lsst::qserv::Logger::level >= \
-    lsst::qserv::Logger::Instance().getSeverityThreshold()) \
-    lsst::qserv::Logger::Instance(lsst::qserv::Logger::level)
+#define LOG_STRM(level) lsst::qserv::log::Logger::Instance(lsst::qserv::log::Logger::level)
+#define LOGGER(level) if (lsst::qserv::log::Logger::level >= \
+    lsst::qserv::log::Logger::Instance().getSeverityThreshold()) \
+    lsst::qserv::log::Logger::Instance(lsst::qserv::log::Logger::level)
 #define LOGGER_DBG LOGGER(Debug)
 #define LOGGER_INF LOGGER(Info)
 #define LOGGER_WRN LOGGER(Warning)
 #define LOGGER_ERR LOGGER(Error)
-#define LOGGER_THRESHOLD(level) lsst::qserv::Logger::Instance()\
-    .setSeverityThreshold(lsst::qserv::Logger::level);
+#define LOGGER_THRESHOLD(level) lsst::qserv::log::Logger::Instance()\
+    .setSeverityThreshold(lsst::qserv::log::Logger::level);
 #define LOGGER_THRESHOLD_DBG LOGGER_THRESHOLD(Debug)
 #define LOGGER_THRESHOLD_INF LOGGER_THRESHOLD(Info)
 #define LOGGER_THRESHOLD_WRN LOGGER_THRESHOLD(Warning)
@@ -55,6 +55,7 @@
 
 namespace lsst {
 namespace qserv {
+namespace log {
 
 class Logger : public boost::iostreams::filtering_ostream {
 public:
@@ -81,9 +82,8 @@ private:
 
     // Thread local storage to ensure one instance of Logger per thread.
     static boost::thread_specific_ptr<Logger> _instancePtr;
-
 };
 
-}} // lsst::qserv
+}}} // namespace lsst::qserv::log
 
-#endif // LSST_QSERV_LOGGER_H
+#endif // LSST_QSERV_LOG_LOGGER_H

@@ -43,7 +43,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 ValueFactorPtr ValueFactor::newColumnRefFactor(boost::shared_ptr<ColumnRef const> cr) {
     ValueFactorPtr term(new ValueFactor());
@@ -173,4 +173,4 @@ void ValueFactor::render::operator()(ValueFactor const& ve) {
     if(!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::query

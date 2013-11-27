@@ -32,7 +32,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 std::ostream& operator<<(std::ostream& os, Constraint const& c) {
     os << "Constraint "
        << c.name << ": (";
@@ -42,6 +43,5 @@ std::ostream& operator<<(std::ostream& os, Constraint const& c) {
     return os;
 }
 
-
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query
 

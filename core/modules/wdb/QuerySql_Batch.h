@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_QUERYSQL_BATCH_H
-#define LSST_QSERV_WORKER_QUERYSQL_BATCH_H
+#ifndef LSST_QSERV_WDB_QUERYSQL_BATCH_H
+#define LSST_QSERV_WDB_QUERYSQL_BATCH_H
  /**
   * @file QuerySql_Batch.h
   *
@@ -30,7 +30,10 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "wdb/QuerySql.h"
-namespace lsst { namespace qserv { namespace worker {
+
+namespace lsst {
+namespace qserv {
+namespace wdb {
 
 struct QuerySql::Batch {
     // Default to 10 SQL statements at a time.
@@ -76,6 +79,7 @@ struct QuerySql::Batch {
     int pos;
 };
 
-}}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_QUERYSQL_BATCH_H
+}}} // namespace lsst::qserv::wdb
+
+#endif // LSST_QSERV_WDB_QUERYSQL_BATCH_H
 

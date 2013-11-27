@@ -42,11 +42,10 @@
 #include "wlog/WLogger.h"
 
 namespace test = boost::test_tools;
-namespace qWorker = lsst::qserv::worker;
-using namespace lsst::qserv::worker;
 using boost::make_shared;
 
-boost::shared_ptr<WLogger> myLog = make_shared<WLogger>();
+boost::shared_ptr<lsst::qserv::wlog::WLogger> myLog = 
+    make_shared<lsst::qserv::wlog::WLogger>();
 
 
 // For chunk 9980, subchunks 1,3 (tuson26 right now)
@@ -60,8 +59,8 @@ std::string queryNonMagic =
 //SELECT COUNT(*) FROM (SELECT * FROM Subchunks_9880.Object_9880_1 UNION SELECT * FROM Subchunks_9880.Object_9880_3) AS _Obj_Subchunks;
 
 std::string query(queryNonMagic + std::string(4, '\0')); // Force magic EOF
-std::string queryHash = lsst::qserv::StringHash::getMd5Hex(query.c_str(), 
-                                                           query.size());
+std::string queryHash = lsst::qserv::util::StringHash::getMd5Hex(query.c_str(), 
+                                                                 query.size());
 std::string queryResultPath = "/result/"+queryHash;
 
 struct TrackerFixture {
@@ -70,67 +69,66 @@ struct TrackerFixture {
 	resultFile(myLog, "qsmaster", make_shared<AddCallbackFunc>()) {}
     class StrCallable {
     public:
-	StrCallable(std::string& s) : val(s), isNotified(false)  {}
-	void operator()(std::string const& s) {
-	    isNotified = true;
-	    val.assign(s);
-	}
-	std::string& val;
-	bool isNotified;
+        StrCallable(std::string& s) : val(s), isNotified(false)  {}
+        void operator()(std::string const& s) {
+            isNotified = true;
+            val.assign(s);
+        }
+        std::string& val;
+        bool isNotified;
     };
     class Listener {
     public:
-	Listener(std::string const& filename) :_filename(filename) {}
-	virtual ~Listener() {}
-	virtual void operator()(ResultError const& re) {
-	    std::cout << "notification received for file "
-		      << _filename << std::endl;
-	}
-	std::string _filename;
+        Listener(std::string const& filename) :_filename(filename) {}
+        virtual ~Listener() {}
+        virtual void operator()(lsst::qserv::wcontrol::ResultError const& re) {
+            std::cout << "notification received for file "
+                      << _filename << std::endl;
+        }
+        std::string _filename;
     };
-    class AddCallbackFunc : public AddCallbackFunction {
+    class AddCallbackFunc : public lsst::qserv::xrdfs::AddCallbackFunction {
     public:
-	typedef boost::shared_ptr<AddCallbackFunction> Ptr;
-	AddCallbackFunc() {}
+        typedef boost::shared_ptr<lsst::qserv::xrdfs::AddCallbackFunction> Ptr;
+        AddCallbackFunc() {}
 
-	virtual ~AddCallbackFunc() {}
-	virtual void operator()(XrdSfsFile& caller,
-				std::string const& filename) {
-	    std::cout << "Will listen for " << filename << ".\n";
-	    QueryRunner::getTracker().listenOnce(filename, Listener(filename));
-	}
+        virtual ~AddCallbackFunc() {}
+        virtual void operator()(XrdSfsFile& caller,
+                                std::string const& filename) {
+            std::cout << "Will listen for " << filename << ".\n";
+            lsst::qserv::wdb::QueryRunner::getTracker().listenOnce(
+                filename, Listener(filename));
+        }
     };
 
-    QueryRunner::Tracker& getTracker() { // alias.
-	return QueryRunner::getTracker();
+    lsst::qserv::wdb::QueryRunner::Tracker& getTracker() { // alias.
+        return lsst::qserv::wdb::QueryRunner::getTracker();
     }
 
     void printNews() { //
-
-	typedef QueryRunner::Tracker Tracker;
-	Tracker& t = getTracker();
-	Tracker::NewsMap& nm = t.debugGetNews();
-	Tracker::NewsMap::iterator i = nm.begin();
-	Tracker::NewsMap::iterator end = nm.end();
-	std::cout << "dumping newsmap " << std::endl;
-	for(; i != end; ++i) {
-	    std::cout << "str=" << i->first << " code="
-		      << i->second.first << std:: endl;
-	}
+        typedef lsst::qserv::wdb::QueryRunner::Tracker Tracker;
+        Tracker& t = getTracker();
+        Tracker::NewsMap& nm = t.debugGetNews();
+        Tracker::NewsMap::iterator i = nm.begin();
+        Tracker::NewsMap::iterator end = nm.end();
+        std::cout << "dumping newsmap " << std::endl;
+        for(; i != end; ++i) {
+            std::cout << "str=" << i->first << " code="
+                      << i->second.first << std:: endl;
+        }
     }
 
-
-    MySqlFsFile invokeFile;
-    MySqlFsFile resultFile;
+    lsst::qserv::xrdfs::MySqlFsFile invokeFile;
+    lsst::qserv::xrdfs::MySqlFsFile resultFile;
     int lastResult;
-    QueryRunner::Tracker* debugTrackerPtr;
+    lsst::qserv::wdb::QueryRunner::Tracker* debugTrackerPtr;
 };
 
 
 BOOST_FIXTURE_TEST_SUITE(ResultTrackerSuite, TrackerFixture)
 
 BOOST_AUTO_TEST_CASE(IntKey) {
-    ResultTracker<int, std::string> rt;
+    lsst::qserv::wcontrol::ResultTracker<int, std::string> rt;
     BOOST_CHECK(rt.getSignalCount() == 0);
     BOOST_CHECK(rt.getNewsCount() == 0);
     std::string msg;
@@ -205,7 +203,7 @@ BOOST_AUTO_TEST_CASE(QueryAttemptTwo) {
 	if(lastResult == SFS_OK) {
 	    break;
 	} else if(lastResult == SFS_STARTED) {
-	    ResultErrorPtr p;
+        lsst::qserv::wcontrol::ResultErrorPtr p;
 	    int i = 0;
 	    while(i < 10) {
 		p = getTracker().getNews(queryHash);

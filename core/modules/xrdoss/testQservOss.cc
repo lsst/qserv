@@ -27,7 +27,7 @@
 #include "XrdOuc/XrdOucEnv.hh"
 
 namespace test = boost::test_tools;
-using lsst::qserv::worker::QservOss;
+using lsst::qserv::xrdoss::QservOss;
 
 struct TestFixture {
     TestFixture(void) {

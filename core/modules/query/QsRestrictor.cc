@@ -32,7 +32,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 std::ostream& operator<<(std::ostream& os, QsRestrictor const& q) {
     os << "Restrictor " << q._name << "(";
     std::copy(q._params.begin(), q._params.end(),
@@ -58,5 +59,4 @@ QsRestrictor::render::operator()(QsRestrictor::Ptr const& p) {
     }
 }
 
-
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query

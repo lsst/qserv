@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_SELECTLISTFACTORY_H
-#define LSST_QSERV_MASTER_SELECTLISTFACTORY_H
+#ifndef LSST_QSERV_PARSER_SELECTLISTFACTORY_H
+#define LSST_QSERV_PARSER_SELECTLISTFACTORY_H
 /**
   * @file
   *
@@ -36,21 +36,28 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace query {
+    // Forward
+    class SelectList;
+    class ValueExpr;
+}
+    
+namespace parser {
+
 // Forward
 class ParseAliasMap;
-class ValueExpr;
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
+class ValueExprFactory;
+
+typedef boost::shared_ptr<query::ValueExpr> ValueExprPtr;
 typedef std::list<ValueExprPtr> ValueExprList;
 
-class SelectList;
-class ValueExprFactory;
 
 /// SelectListFactory maintains parse state so that a SelectList can be built
 /// from a ANTLR parse tree nodes. It populates some state for SelectFactory.
 class SelectListFactory {
 public:
-    boost::shared_ptr<SelectList> getProduct();
+    boost::shared_ptr<query::SelectList> getProduct();
 private:
     friend class SelectFactory;
 
@@ -83,7 +90,7 @@ private:
 
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::parser
 
-#endif // LSST_QSERV_MASTER_SELECTLISTFACTORY_H
+#endif // LSST_QSERV_PARSER_SELECTLISTFACTORY_H
 

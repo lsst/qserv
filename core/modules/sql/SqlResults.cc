@@ -23,7 +23,9 @@
 #include "sql/SqlResults.h"
 #include <sstream>
 
-using lsst::qserv::SqlResults;
+namespace lsst {
+namespace qserv {
+namespace sql {
 
 void
 SqlResults::freeResults() {
@@ -131,3 +133,5 @@ SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     freeResults();
     return true;
 }
+
+}}} // namespace lsst::qserv::sql

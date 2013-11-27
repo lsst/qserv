@@ -31,7 +31,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 /// Resolve a column ref to a concrete (db,table)
 /// @return the concrete (db,table), based on current context.
@@ -58,4 +58,4 @@ QueryContext::resolve(boost::shared_ptr<ColumnRef> cr) {
     return p;
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query

@@ -35,7 +35,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 ////////////////////////////////////////////////////////////////////////
 // BoolTerm section
 ////////////////////////////////////////////////////////////////////////
@@ -281,4 +282,5 @@ boost::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     copyTerms(bf->_terms, _terms);
     return bf;
 }
-}}} // lsst::qserv::master
+
+}}} // namespace lsst::qserv::query

@@ -27,11 +27,11 @@
 #include "sql/MockSql.h"
 
 namespace test = boost::test_tools;
-using lsst::qserv::worker::WLogger;
+using lsst::qserv::wlog::WLogger;
 using lsst::qserv::wpublish::ChunkInventory;
 using lsst::qserv::sql::MockSql;
-using lsst::qserv::SqlResultIter;
-using lsst::qserv::SqlErrorObject;
+using lsst::qserv::sql::SqlResultIter;
+using lsst::qserv::sql::SqlErrorObject;
 
 namespace {
 bool startswith(std::string const& a, std::string const& start) {

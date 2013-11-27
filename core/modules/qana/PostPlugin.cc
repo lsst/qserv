@@ -38,7 +38,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qana {
+
 ////////////////////////////////////////////////////////////////////////
 // PostPlugin declaration
 ////////////////////////////////////////////////////////////////////////
@@ -54,10 +55,10 @@ public:
     virtual void prepare() {}
 
     /// Apply the plugin's actions to the parsed, but not planned query
-    virtual void applyLogical(SelectStmt& stmt, QueryContext&);
+    virtual void applyLogical(query::SelectStmt&, query::QueryContext&);
 
     /// Apply the plugins's actions to the concrete query plan.
-    virtual void applyPhysical(QueryPlugin::Plan& p, QueryContext& context);
+    virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext&);
 
     int _limit;
 };
@@ -65,7 +66,7 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // PostPluginFactory declaration+implementation
 ////////////////////////////////////////////////////////////////////////
-class PostPluginFactory : public lsst::qserv::master::QueryPlugin::Factory {
+class PostPluginFactory : public QueryPlugin::Factory {
 public:
     // Types
     typedef boost::shared_ptr<PostPluginFactory> Ptr;
@@ -73,8 +74,8 @@ public:
     virtual ~PostPluginFactory() {}
 
     virtual std::string getName() const { return "Post"; }
-    virtual lsst::qserv::master::QueryPlugin::Ptr newInstance() {
-        return lsst::qserv::master::QueryPlugin::Ptr(new PostPlugin());
+    virtual QueryPlugin::Ptr newInstance() {
+        return QueryPlugin::Ptr(new PostPlugin());
     }
 };
 
@@ -90,25 +91,28 @@ struct registerPlugin {
 };
 // Static registration
 registerPlugin registerPostPlugin;
-}
+
+} // annonymous namespace
 
 ////////////////////////////////////////////////////////////////////////
 // PostPlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void
-PostPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
+PostPlugin::applyLogical(query::SelectStmt& stmt, 
+                         query::QueryContext& context) {
     _limit = stmt.getLimit();
 }
 
 void
-PostPlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
+PostPlugin::applyPhysical(QueryPlugin::Plan& p, 
+                          query::QueryContext& context) {
     // Idea: If a limit is available in the user query, compose a
     // merge statement (if one is not available) and turn on merge
     // fixup.
     if(_limit != -1) { // Make sure merge statement is setup for LIMIT
         // If empty select in merger, create one with *
-        SelectList& mList = p.stmtMerge.getSelectList();
-        boost::shared_ptr<ValueExprList> vlist;
+        query::SelectList& mList = p.stmtMerge.getSelectList();
+        boost::shared_ptr<query::ValueExprList> vlist;
         vlist = mList.getValueExprList();
         if(!vlist) {
             throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
@@ -121,4 +125,4 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
     } // if limit != -1
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::qana

@@ -25,30 +25,39 @@
 // (over-the-wire) additional concrete info related to physical
 // execution conditions.
 /// @author Daniel L. Wang (danielw)
-#ifndef LSST_QSERV_WORKER_TASK_H
-#define LSST_QSERV_WORKER_TASK_H
+#ifndef LSST_QSERV_WCONTROL_TASK_H
+#define LSST_QSERV_WCONTROL_TASK_H
 
 #include <deque>
 #include <string>
 #include <boost/shared_ptr.hpp>
 
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
-class TaskMsg;
-class TaskMsg_Fragment;
+namespace wbase {
+    class ScriptMeta;
+}
+namespace proto {
+    class TaskMsg;
+    class TaskMsg_Fragment;
+}}}
+// End of forward declarations
 
-namespace worker {
-class ScriptMeta;
 
+namespace lsst {
+namespace qserv {        
+namespace wcontrol {
 
 struct Task {
 public:
     static std::string const defaultUser;
 
     typedef boost::shared_ptr<Task> Ptr;
-    typedef lsst::qserv::TaskMsg_Fragment Fragment;
+    typedef proto::TaskMsg_Fragment Fragment;
     typedef boost::shared_ptr<Fragment> FragmentPtr;
-    typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
+    typedef boost::shared_ptr<proto::TaskMsg> TaskMsgPtr;
 
     struct ChunkEqual {
         bool operator()(Task::Ptr const& x, Task::Ptr const& y);
@@ -58,7 +67,7 @@ public:
     };
 
     explicit Task() {}
-    explicit Task(ScriptMeta const& s, std::string const& user_=defaultUser);
+    explicit Task(wbase::ScriptMeta const& s, std::string const& user_=defaultUser);
     explicit Task(TaskMsgPtr t, std::string const& user_=defaultUser);
 
     TaskMsgPtr msg;
@@ -76,6 +85,6 @@ public:
 typedef std::deque<Task::Ptr> TaskQueue;
 typedef boost::shared_ptr<TaskQueue> TaskQueuePtr;
 
-}}} // lsst::qserv::worker
+}}} // namespace lsst::qserv::wcontrol
 
-#endif // LSST_QSERV_WORKER_TASK_H
+#endif // LSST_QSERV_WCONTROL_TASK_H

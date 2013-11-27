@@ -59,7 +59,7 @@ inline RefAST walkToSiblingBefore(RefAST node, int typeId) {
 }
 
 inline std::string getSiblingStringBounded(RefAST left, RefAST right) {
-    lsst::qserv::master::CompactPrintVisitor<RefAST> p;
+    lsst::qserv::parser::CompactPrintVisitor<RefAST> p;
     for(; left.get(); left = left->getNextSibling()) {
         p(left);
         if(left == right) break;
@@ -70,11 +70,11 @@ inline std::string getSiblingStringBounded(RefAST left, RefAST right) {
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace parser {
 
-boost::shared_ptr<ValueFactor>
+boost::shared_ptr<query::ValueFactor>
 newConstFactor(RefAST t) {
-    return ValueFactor::newConstFactor(walkTreeString(t));
+    return query::ValueFactor::newConstFactor(walkTreeString(t));
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -88,12 +88,12 @@ ValueFactorFactory::ValueFactorFactory(boost::shared_ptr<ColumnRefNodeMap> cMap)
 /* VALUE_EXP               */
 /* |             \         */
 /* TERM   (TERM_OP TERM)*  */
-boost::shared_ptr<ValueFactor>
+boost::shared_ptr<query::ValueFactor>
 ValueFactorFactory::newFactor(antlr::RefAST a) {
     if(!_columnRefNodeMap) {
         throw std::logic_error("ValueFactorFactory missing _columnRefNodeMap");
     }
-    boost::shared_ptr<ValueFactor> vt;
+    boost::shared_ptr<query::ValueFactor> vt;
     int eType = a->getType();
     if(a->getType() == SqlSQL2TokenTypes::FACTOR) {
         a = a->getFirstChild(); // FACTOR is a parent placeholder element
@@ -122,7 +122,7 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
     return vt;
 }
 
-boost::shared_ptr<ValueFactor>
+boost::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
     assert(_columnRefNodeMap);
     ColumnRefNodeMap& cMap = *_columnRefNodeMap;
@@ -131,8 +131,8 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         t = child;
         child = t->getFirstChild();
     }
-    boost::shared_ptr<ValueFactor> vt(new ValueFactor());
-    boost::shared_ptr<FuncExpr> fe;
+    boost::shared_ptr<query::ValueFactor> vt(new query::ValueFactor());
+    boost::shared_ptr<query::FuncExpr> fe;
     RefAST last;
     // LOGGER_INF << "colterm: " << t->getType() << " "
     //           << t->getText() << std::endl;
@@ -151,17 +151,17 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
             }
             ColumnRefNodeMap::Ref r = it->second;
 
-            boost::shared_ptr<ColumnRef> newColumnRef;
-            newColumnRef.reset(new ColumnRef(tokenText(r.db),
+            boost::shared_ptr<query::ColumnRef> newColumnRef;
+            newColumnRef.reset(new query::ColumnRef(tokenText(r.db),
                                                       tokenText(r.table),
                                                       tokenText(r.column)));
-            vt = ValueFactor::newColumnRefFactor(newColumnRef);
+            vt = query::ValueFactor::newColumnRefFactor(newColumnRef);
         }
         return vt;
     case SqlSQL2TokenTypes::FUNCTION_SPEC:
         //LOGGER_INF << "col child (fct): " << child->getType() << " "
         //          << child->getText() << std::endl;
-        fe.reset(new FuncExpr());
+        fe.reset(new query::FuncExpr());
         last = walkToSiblingBefore(child, SqlSQL2TokenTypes::LEFT_PAREN);
         fe->name = getSiblingStringBounded(child, last);
         last = last->getNextSibling(); // Advance to LEFT_PAREN
@@ -172,7 +172,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         for(antlr::RefAST current = last->getNextSibling();
             current.get(); current = current->getNextSibling()) {
             // Should be a * or a value expr.
-            boost::shared_ptr<ValueFactor> pvt;
+            boost::shared_ptr<query::ValueFactor> pvt;
             //LOGGER_INF << "fctspec param: " << current->getType() << " "
             //          << current->getText() << std::endl;
 
@@ -189,9 +189,9 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
                     current);
                 break;
             }
-            fe->params.push_back(ValueExpr::newSimple(pvt));
+            fe->params.push_back(query::ValueExpr::newSimple(pvt));
         }
-        vt = ValueFactor::newFuncFactor(fe);
+        vt = query::ValueFactor::newFuncFactor(fe);
         return vt;
 
         break;
@@ -199,14 +199,14 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         throw ParseException("ValueFactorFactory::newColumnFactor with ", t);
         break;
     }
-    return boost::shared_ptr<ValueFactor>();
+    return boost::shared_ptr<query::ValueFactor>();
 }
 
-boost::shared_ptr<ValueFactor>
+boost::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     assert(_columnRefNodeMap);
     ColumnRefNodeMap& cMap = *_columnRefNodeMap;
-    boost::shared_ptr<FuncExpr> fe(new FuncExpr());
+    boost::shared_ptr<query::FuncExpr> fe(new query::FuncExpr());
     //    LOGGER_INF << "set_fct_spec " << walkTreeString(expr) << std::endl;
     RefAST nNode = expr->getFirstChild();
     if(!nNode.get()) {
@@ -221,13 +221,13 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     }
     current = current->getNextSibling();
     // Should be a * or a value expr.
-    boost::shared_ptr<ValueFactor> pvt;
+    boost::shared_ptr<query::ValueFactor> pvt;
     switch(current->getType()) {
     case SqlSQL2TokenTypes::VALUE_EXP:
         pvt = _newColumnFactor(current->getFirstChild());
         break;
     case SqlSQL2TokenTypes::ASTERISK:
-        pvt = ValueFactor::newStarFactor("");
+        pvt = query::ValueFactor::newStarFactor("");
         break;
     default: break;
     }
@@ -235,7 +235,8 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     if(current->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
         throw ParseException("Expected RIGHT_PAREN", current);
     }
-    fe->params.push_back(ValueExpr::newSimple(pvt));
-    return ValueFactor::newAggFactor(fe);
+    fe->params.push_back(query::ValueExpr::newSimple(pvt));
+    return query::ValueFactor::newAggFactor(fe);
 }
-}}} // lsst::qserv::master
+
+}}} // namespace lsst::qserv::parser

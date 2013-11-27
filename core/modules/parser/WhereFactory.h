@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_WHEREFACTORY_H
-#define LSST_QSERV_MASTER_WHEREFACTORY_H
+#ifndef LSST_QSERV_PARSER_WHEREFACTORY_H
+#define LSST_QSERV_PARSER_WHEREFACTORY_H
 /**
   * @file WhereFactory.h
   *
@@ -39,10 +39,16 @@ class SqlSQL2Parser;
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace query {
+    // Forward
+    class WhereClause;
+}
+    
+namespace parser {
+
 // Forward
 class SelectFactory;
-class WhereClause;
 class ValueExprFactory;
 
 /// WhereFactory is a factory for WhereClause parsed elements.
@@ -54,8 +60,8 @@ public:
 
     WhereFactory(boost::shared_ptr<ValueExprFactory> vf);
 
-    boost::shared_ptr<WhereClause> getProduct();
-    static boost::shared_ptr<WhereClause> newEmpty();
+    boost::shared_ptr<query::WhereClause> getProduct();
+    static boost::shared_ptr<query::WhereClause> newEmpty();
 private:
     void attachTo(SqlSQL2Parser& p);
     void _import(antlr::RefAST a);
@@ -63,10 +69,11 @@ private:
     void _addOrSibs(antlr::RefAST a);
 
     // Fields
-    boost::shared_ptr<WhereClause> _clause;
+    boost::shared_ptr<query::WhereClause> _clause;
     boost::shared_ptr<ValueExprFactory> _vf;
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_WHEREFACTORY_H
+}}} // namespace lsst::qserv::parser
+
+#endif // LSST_QSERV_PARSER_WHEREFACTORY_H
 

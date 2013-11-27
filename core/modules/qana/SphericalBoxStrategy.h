@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_SPHERICALBOXSTRATEGY_H
-#define LSST_QSERV_MASTER_SPHERICALBOXSTRATEGY_H
+#ifndef LSST_QSERV_QANA_SPHERICALBOXSTRATEGY_H
+#define LSST_QSERV_QANA_SPHERICALBOXSTRATEGY_H
 /**
   * @file
   *
@@ -30,12 +30,25 @@
 #include <list>
 #include <boost/shared_ptr.hpp>
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+    class FromList;
+    class QueryContext;
+}
+namespace query {
+    // Forward
+    class FromList;
+    class QueryContext;
+}}} // End of forward declarations
 
-class FromList;
-class QueryContext;
+    
+namespace lsst {
+namespace qserv {
+namespace qana {
+
+// Forward
 class QueryMapping;
 
 /// SphericalBoxStrategy is a class designed to abstract the
@@ -51,12 +64,12 @@ class QueryMapping;
 /// to a physical table name.
 class SphericalBoxStrategy {
 public:
-    SphericalBoxStrategy(FromList const& f,
-                         QueryContext& context);
+    SphericalBoxStrategy(query::FromList const& f,
+                         query::QueryContext& context);
     boost::shared_ptr<QueryMapping> getMapping();
-    void patchFromList(FromList& f);
+    void patchFromList(query::FromList& f);
     bool needsMultiple();
-    std::list<boost::shared_ptr<FromList> > computeNewFromLists();
+    std::list<boost::shared_ptr<query::FromList> > computeNewFromLists();
 
     static std::string makeSubChunkDbTemplate(std::string const& db);
     // Make full overlap for now.
@@ -66,11 +79,12 @@ public:
 
 private:
     class Impl;
-    void _import(FromList const& f);
+    void _import(query::FromList const& f);
 
     boost::shared_ptr<Impl> _impl;
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_SPHERICALBOXSTRATEGY_H
+}}} // namespace lsst::qserv::qana
+
+#endif // LSST_QSERV_QANA_SPHERICALBOXSTRATEGY_H
 

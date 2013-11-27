@@ -26,7 +26,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace util {
 
 std::ostream & Timer::write(std::ostream & os, struct ::timeval const & time) {
     char buf[64];
@@ -55,4 +55,4 @@ std::ostream & operator<<(std::ostream & os, Timer const & timer) {
     return os;
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::util

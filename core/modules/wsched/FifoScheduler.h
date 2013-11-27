@@ -19,36 +19,44 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_FIFOSCHEDULER_H
-#define LSST_QSERV_WORKER_FIFOSCHEDULER_H
+#ifndef LSST_QSERV_WSCHED_FIFOSCHEDULER_H
+#define LSST_QSERV_WSCHED_FIFOSCHEDULER_H
 
 #include <boost/thread/mutex.hpp>
 #include "wcontrol/Foreman.h"
 
 namespace lsst {
 namespace qserv {
-namespace worker {
 
-class FifoScheduler : public Foreman::Scheduler {
+namespace wcontrol {
+    // Forward
+    class Task;
+}
+   
+namespace wsched {
+
+class FifoScheduler : public wcontrol::Foreman::Scheduler {
 public:
     typedef boost::shared_ptr<FifoScheduler> Ptr;
 
     explicit FifoScheduler(int maxRunning=-1);
     virtual ~FifoScheduler() {}
 
-    virtual void queueTaskAct(Task::Ptr incoming);
-    virtual TaskQueuePtr nopAct(TaskQueuePtr running);
-    virtual TaskQueuePtr newTaskAct(Task::Ptr incoming,
-                                    TaskQueuePtr running);
-    virtual TaskQueuePtr taskFinishAct(Task::Ptr finished,
-                                       TaskQueuePtr running);
+    virtual void queueTaskAct(wcontrol::Task::Ptr incoming);
+    virtual wcontrol::TaskQueuePtr nopAct(wcontrol::TaskQueuePtr running);
+    virtual wcontrol::TaskQueuePtr newTaskAct(wcontrol::Task::Ptr incoming,
+                                              wcontrol::TaskQueuePtr running);
+    virtual wcontrol::TaskQueuePtr taskFinishAct(wcontrol::Task::Ptr finished,
+                                                 wcontrol::TaskQueuePtr running);
     static std::string getName() { return std::string("FifoSched"); }
 private:
-    TaskQueuePtr _fetchTask();
+    wcontrol::TaskQueuePtr _fetchTask();
 
     boost::mutex _mutex;
-    TaskQueue _queue;
+    wcontrol::TaskQueue _queue;
     int _maxRunning;
 };
-}}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_FIFOSCHEDULER_H
+
+}}} // namespace lsst::qserv::wsched
+
+#endif // LSST_QSERV_WSCHED_FIFOSCHEDULER_H

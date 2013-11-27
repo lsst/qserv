@@ -50,8 +50,6 @@
 
 #define DEBUG 1
 
-namespace qMaster=lsst::qserv::master;
-
 namespace { // File-scope helpers
 struct Tuple {
     Tuple(std::string const& db_,
@@ -83,15 +81,15 @@ std::ostream& operator<<(std::ostream& os, Tuple const& t) {
     return os;
 }
 
-inline void addChunkMap(lsst::qserv::master::QueryMapping& m) {
-    m.insertEntry(CHUNKTAG, lsst::qserv::master::QueryMapping::CHUNK);
+inline void addChunkMap(lsst::qserv::qana::QueryMapping& m) {
+    m.insertEntry(CHUNKTAG, lsst::qserv::qana::QueryMapping::CHUNK);
 }
-inline void addSubChunkMap(lsst::qserv::master::QueryMapping& m) {
-    m.insertEntry(SUBCHUNKTAG, lsst::qserv::master::QueryMapping::SUBCHUNK);
+inline void addSubChunkMap(lsst::qserv::qana::QueryMapping& m) {
+    m.insertEntry(SUBCHUNKTAG, lsst::qserv::qana::QueryMapping::SUBCHUNK);
 }
 /// @return count of chunked tables.
 int patchTuples(Tuples& tuples) {
-    using lsst::qserv::master::SphericalBoxStrategy;
+    using lsst::qserv::qana::SphericalBoxStrategy;
     // Are multiple subchunked tables involved? Then do
     // overlap... which requires creating a query sequence.
     // For now, skip the sequence part.
@@ -136,24 +134,25 @@ int patchTuples(Tuples& tuples) {
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qana {
 
-class InvalidTableException : public ParseException {
+class InvalidTableException : public parser::ParseException {
 public:
     InvalidTableException(char const* db, char const* table)
-        : ParseException(std::string("Invalid table: ") + db + "." + table)
+        : parser::ParseException(std::string("Invalid table: ") + db + "." + table)
     {}
     InvalidTableException(std::string const& db, std::string const& table)
-        : ParseException(std::string("Invalid table: ") + db + "." + table)
+        : parser::ParseException(std::string("Invalid table: ") + db + "." + table)
     {}
 };
-class InvalidDbException : public ParseException {
+
+class InvalidDbException : public parser::ParseException {
 public:
     InvalidDbException(char const* db)
-        : ParseException(std::string("Invalid db: ") + db)
+        : parser::ParseException(std::string("Invalid db: ") + db)
     {}
     InvalidDbException(std::string const& db)
-        : ParseException(std::string("Invalid db: ") + db)
+        : parser::ParseException(std::string("Invalid db: ") + db)
     {}
 };
 
@@ -181,7 +180,7 @@ public:
 class SphericalBoxStrategy::Impl {
 public:
     friend class SphericalBoxStrategy;
-    Impl(QueryContext& context_) : context(context_) {}
+    Impl(query::QueryContext& context_) : context(context_) {}
     template <class C>
     inline void getSubChunkTables(C& tables) {
         for(Tuples::const_iterator i=tuples.begin();
@@ -205,19 +204,19 @@ public:
             }
         }
     }
-    QueryContext& context;
-    FromList const* fromListPtr;
+    query::QueryContext& context;
+    query::FromList const* fromListPtr;
     Tuples tuples;
     int chunkLevel;
 };
 
 
 //template <typename G, typename A>
-class addTable : public TableRefN::Func {
+class addTable : public query::TableRefN::Func {
 public:
     addTable(Tuples& tuples) : _tuples(tuples) {
     }
-    virtual void operator()(TableRefN& t) {
+    virtual void operator()(query::TableRefN& t) {
         std::string table = t.getTable();
         if(table.empty()) return; // Don't add the compound-part of
                                   // compound ref.
@@ -227,7 +226,7 @@ private:
     Tuples& _tuples;
 };
 
-class patchTable : public TableRefN::Func {
+class patchTable : public query::TableRefN::Func {
 public:
     typedef Tuples::const_iterator TupleCiter;
     patchTable(Tuples& tuples)
@@ -235,7 +234,7 @@ public:
           _i(tuples.begin()),
           _end(tuples.end()) {
     }
-    virtual void operator()(TableRefN& t) {
+    virtual void operator()(query::TableRefN& t) {
         std::string table = t.getTable();
         if(table.empty()) return; // Ignore the compound-part of
                                   // compound ref.
@@ -265,8 +264,8 @@ private:
 class composeOverlap {
 public:
     composeOverlap()
-        : listCore(new TableRefnList()),
-          listOverlap(new TableRefnList()),
+        : listCore(new query::TableRefnList()),
+          listOverlap(new query::TableRefnList()),
           _firstSubChunkTable(true) {
     }
     virtual void operator()(Tuple const& t) {
@@ -274,14 +273,14 @@ public:
         typedef std::list<std::string>::const_iterator Iter;
         Iter i=t.tables.begin();
         Iter e=t.tables.end();
-        boost::shared_ptr<SimpleTableN> rn1;
-        boost::shared_ptr<SimpleTableN> rn2;
-        rn1.reset(new SimpleTableN(t.db, *i, t.alias));
+        boost::shared_ptr<query::SimpleTableN> rn1;
+        boost::shared_ptr<query::SimpleTableN> rn2;
+        rn1.reset(new query::SimpleTableN(t.db, *i, t.alias));
         ++i;
         if(_firstSubChunkTable || (i==e))  {
-            rn2.reset(new SimpleTableN(*rn1));
+            rn2.reset(new query::SimpleTableN(*rn1));
         } else {
-            rn2.reset(new SimpleTableN(t.db, *i, t.alias));
+            rn2.reset(new query::SimpleTableN(t.db, *i, t.alias));
             ++i;
             if(i != e) {
                 throw std::logic_error("Unexpected third table entry");
@@ -293,8 +292,8 @@ public:
         listCore->push_back(rn1);
         listOverlap->push_back(rn2);
     }
-    boost::shared_ptr<TableRefnList> listCore;
-    boost::shared_ptr<TableRefnList> listOverlap;
+    boost::shared_ptr<query::TableRefnList> listCore;
+    boost::shared_ptr<query::TableRefnList> listOverlap;
 private:
     bool _firstSubChunkTable;
 };
@@ -302,13 +301,14 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // SphericalBoxStrategy public
 ////////////////////////////////////////////////////////////////////////
-SphericalBoxStrategy::SphericalBoxStrategy(FromList const& f,
-                                           QueryContext& context)
+SphericalBoxStrategy::SphericalBoxStrategy(query::FromList const& f,
+                                           query::QueryContext& context)
     : _impl(new Impl(context)) {
-    _import(const_cast<FromList&>(f)); // FIXME: should make a copy.
+    _import(const_cast<query::FromList&>(f)); // FIXME: should make a copy.
 }
 
-boost::shared_ptr<QueryMapping> SphericalBoxStrategy::getMapping() {
+boost::shared_ptr<QueryMapping> 
+SphericalBoxStrategy::getMapping() {
     assert(_impl.get());
     boost::shared_ptr<QueryMapping> qm(new QueryMapping());
 
@@ -337,16 +337,17 @@ boost::shared_ptr<QueryMapping> SphericalBoxStrategy::getMapping() {
 
 /// Patch the FromList to add partitioning substitution strings.
 /// FromList should be the same as was used at construction
-void SphericalBoxStrategy::patchFromList(FromList& f) {
+void 
+SphericalBoxStrategy::patchFromList(query::FromList& f) {
     if(&f != _impl->fromListPtr) {
         throw std::logic_error("Attempted to patch a different FromList");
     }
 
-    TableRefnList& tList = f.getTableRefnList();
+    query::TableRefnList& tList = f.getTableRefnList();
 
     patchTable pt(_impl->tuples);
     std::for_each(tList.begin(), tList.end(),
-                  TableRefN::Fwrapper<patchTable>(pt));
+                  query::TableRefN::Fwrapper<patchTable>(pt));
 
     // Now, for each tableref, replace table name with substitutable
     // name and an appropriate mapping
@@ -374,13 +375,13 @@ SphericalBoxStrategy::needsMultiple() {
 /// SELECT ... FROM Table_x_y, Table_x_y WHERE...
 /// and
 /// SELECT ... FROM Table_x_y, TableFullOverlap_x_y WHERE...
-std::list<boost::shared_ptr<FromList> >
+std::list<boost::shared_ptr<query::FromList> >
 SphericalBoxStrategy::computeNewFromLists() {
     composeOverlap co;
     std::for_each(_impl->tuples.begin(), _impl->tuples.end(), co);
-    std::list<boost::shared_ptr<FromList> > froms;
-    boost::shared_ptr<FromList> core(new FromList(co.listCore));
-    boost::shared_ptr<FromList> overlap(new FromList(co.listOverlap));
+    std::list<boost::shared_ptr<query::FromList> > froms;
+    boost::shared_ptr<query::FromList> core(new query::FromList(co.listCore));
+    boost::shared_ptr<query::FromList> overlap(new query::FromList(co.listOverlap));
     froms.push_back(core);
     froms.push_back(overlap);
     return froms;
@@ -421,7 +422,8 @@ SphericalBoxStrategy::makeSubChunkTableTemplate(std::string const& table) {
 ////////////////////////////////////////////////////////////////////////
 // SphericalBoxStrategy private
 ////////////////////////////////////////////////////////////////////////
-void SphericalBoxStrategy::_import(FromList const& f) {
+void 
+SphericalBoxStrategy::_import(query::FromList const& f) {
     // Save the FromList ref for a later sanity check.
     _impl->fromListPtr = &f;
     // Idea:
@@ -431,7 +433,7 @@ void SphericalBoxStrategy::_import(FromList const& f) {
     // strategy.
 
     // Iterate over FromList elements
-    TableRefnList const& tList = f.getTableRefnList();
+    query::TableRefnList const& tList = f.getTableRefnList();
 
     // What we need to know:
     // Are there partitioned tables? If yes, then make chunked queries
@@ -439,7 +441,7 @@ void SphericalBoxStrategy::_import(FromList const& f) {
     //
     addTable a(_impl->tuples);;
     std::for_each(tList.begin(), tList.end(),
-                  TableRefN::Fwrapper<addTable>(a));
+                  query::TableRefN::Fwrapper<addTable>(a));
 
     if(!_impl->context.cssFacade) {
         throw std::logic_error("Missing context.cssFacade");
@@ -469,4 +471,4 @@ void SphericalBoxStrategy::_import(FromList const& f) {
     }
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::qana

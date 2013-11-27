@@ -41,14 +41,16 @@ template <class Sched>
 inline Sched* other(Sched* notThis, Sched* a, Sched* b) {
     return (notThis == a) ? b : a;
 }
-lsst::qserv::worker::BlendScheduler* dbgBlendScheduler=0; //< A symbol for gdb
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wsched {
+
+BlendScheduler* dbgBlendScheduler=0; //< A symbol for gdb
+
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler
 ////////////////////////////////////////////////////////////////////////
-BlendScheduler::BlendScheduler(boost::shared_ptr<WLogger> logger,
+BlendScheduler::BlendScheduler(boost::shared_ptr<wlog::WLogger> logger,
                                boost::shared_ptr<GroupScheduler> group,
                                boost::shared_ptr<ScanScheduler> scan)
     : _group(group),
@@ -59,14 +61,15 @@ BlendScheduler::BlendScheduler(boost::shared_ptr<WLogger> logger,
     if(!group || !scan) { throw std::invalid_argument("missing scheduler"); }
 }
 
-void BlendScheduler::queueTaskAct(Task::Ptr incoming) {
+void
+BlendScheduler::queueTaskAct(wcontrol::Task::Ptr incoming) {
     // Check for scan tables
     if(!incoming || !incoming->msg) {
         throw std::invalid_argument("null task");
     }
     assert(_group);
     assert(_scan);
-    Foreman::Scheduler* s = 0;
+    wcontrol::Foreman::Scheduler* s = 0;
     if(incoming->msg->scantables_size() > 0) {
         std::ostringstream ss;
         int size = incoming->msg->scantables_size();
@@ -86,29 +89,31 @@ void BlendScheduler::queueTaskAct(Task::Ptr incoming) {
     s->queueTaskAct(incoming);
 }
 
-TaskQueuePtr BlendScheduler::nopAct(TaskQueuePtr running) {
+wcontrol::TaskQueuePtr
+BlendScheduler::nopAct(wcontrol::TaskQueuePtr running) {
     // For now, do nothing when there is no event.
 
     // Perhaps better: Check to see how many are running, and schedule
     // a task if the number of running jobs is below a threshold.
-    return TaskQueuePtr();
+    return wcontrol::TaskQueuePtr();
 }
 
 /// @return a queue of all tasks ready to run.
 ///
-TaskQueuePtr BlendScheduler::newTaskAct(Task::Ptr incoming,
-                                       TaskQueuePtr running) {
+wcontrol::TaskQueuePtr
+BlendScheduler::newTaskAct(wcontrol::Task::Ptr incoming,
+                           wcontrol::TaskQueuePtr running) {
     queueTaskAct(incoming);
     assert(_integrityHelper());
     assert(running.get());
     return _getNextIfAvail(running);
 }
 
-TaskQueuePtr BlendScheduler::taskFinishAct(Task::Ptr finished,
-                                          TaskQueuePtr running) {
-
+wcontrol::TaskQueuePtr
+BlendScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
+                              wcontrol::TaskQueuePtr running) {
     assert(_integrityHelper());
-    Foreman::Scheduler* s = 0;
+    wcontrol::Foreman::Scheduler* s = 0;
     {
         boost::lock_guard<boost::mutex> guard(_mapMutex);
         Map::iterator i = _map.find(finished.get());
@@ -122,16 +127,18 @@ TaskQueuePtr BlendScheduler::taskFinishAct(Task::Ptr finished,
     os << "Completed: " << "(" << finished->msg->chunkid()
        << ")" << finished->msg->fragment(0).query(0);
     _logger->debug(os.str());
-    TaskQueuePtr t = s->taskFinishAct(finished, running);
+    wcontrol::TaskQueuePtr t = s->taskFinishAct(finished, running);
     if(!t) { // Try other scheduler.
         _logger->debug("Blend trying other sched.");
-        return other<Foreman::Scheduler>(s, _group.get(), _scan.get())->nopAct(running);
+        return other<wcontrol::Foreman::Scheduler>(s, _group.get(),
+                                                   _scan.get())->nopAct(running);
     }
     return t;
 }
 
-void BlendScheduler::markStarted(Task::Ptr t) {
-    Foreman::Scheduler* s = lookup(t);
+void
+BlendScheduler::markStarted(wcontrol::Task::Ptr t) {
+    wcontrol::Foreman::Scheduler* s = lookup(t);
     if(s == _group.get()) {
         _group->markStarted(t);
     } else {
@@ -139,8 +146,9 @@ void BlendScheduler::markStarted(Task::Ptr t) {
     }
 }
 
-void BlendScheduler::markFinished(Task::Ptr t) {
-    Foreman::Scheduler* s = lookup(t);
+void
+BlendScheduler::markFinished(wcontrol::Task::Ptr t) {
+    wcontrol::Foreman::Scheduler* s = lookup(t);
     if(s == _group.get()) {
         _group->markFinished(t);
     } else {
@@ -149,13 +157,15 @@ void BlendScheduler::markFinished(Task::Ptr t) {
 }
 
 /// @return true if data is okay.
-bool BlendScheduler::checkIntegrity() {
+bool
+BlendScheduler::checkIntegrity() {
     boost::lock_guard<boost::mutex> guard(_mapMutex);
     return _integrityHelper();
 }
 
 /// @return ptr to scheduler that is tracking p
-Foreman::Scheduler* BlendScheduler::lookup(Task::Ptr p) {
+wcontrol::Foreman::Scheduler*
+BlendScheduler::lookup(wcontrol::Task::Ptr p) {
     boost::lock_guard<boost::mutex> guard(_mapMutex);
     Map::iterator i = _map.find(p.get());
     return i->second;
@@ -163,7 +173,8 @@ Foreman::Scheduler* BlendScheduler::lookup(Task::Ptr p) {
 
 /// @return true if data is okay
 /// precondition: _mutex is locked.
-bool BlendScheduler::_integrityHelper() const {
+bool
+BlendScheduler::_integrityHelper() const {
     if(!_group) { return false; }
     else if(!_group->checkIntegrity()) { return false; }
 
@@ -177,16 +188,16 @@ bool BlendScheduler::_integrityHelper() const {
         if(i->second == _scan.get()) continue;
         return false;
     }
-
     return true;
 }
 
 /// Precondition: _mutex is already locked.
 /// @return new tasks to run
-TaskQueuePtr BlendScheduler::_getNextIfAvail(TaskQueuePtr running) {
+wcontrol::TaskQueuePtr
+BlendScheduler::_getNextIfAvail(wcontrol::TaskQueuePtr running) {
     // Get from interactive queue first
-    TaskQueuePtr tg = _group->nopAct(running);
-    TaskQueuePtr ts = _scan->nopAct(running);
+    wcontrol::TaskQueuePtr tg = _group->nopAct(running);
+    wcontrol::TaskQueuePtr ts = _scan->nopAct(running);
     // Merge
     if(tg) {
         if(ts) { tg->insert(tg->end(), ts->begin(), ts->end()); }
@@ -197,4 +208,4 @@ TaskQueuePtr BlendScheduler::_getNextIfAvail(TaskQueuePtr running) {
     }
 }
 
-}}} // lsst::qserv::worker
+}}} // namespace lsst::qserv::wsched

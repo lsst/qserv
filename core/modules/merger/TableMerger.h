@@ -31,8 +31,9 @@
 /// collected, a fixup step may be needed, as specified when
 /// configuring the TableMerger.
 
-#ifndef LSST_QSERV_MASTER_TABLE_MERGER_H
-#define LSST_QSERV_MASTER_TABLE_MERGER_H
+#ifndef LSST_QSERV_MERGER_TABLEMERGER_H
+#define LSST_QSERV_MERGER_TABLEMERGER_H
+
 #include <string>
 #include <boost/thread.hpp> // for mutex.
 #include <boost/shared_ptr.hpp> 
@@ -41,17 +42,26 @@
 
 namespace lsst {
 namespace qserv {
-// Forward
-class SqlConfig;
-class SqlConnection;
-}}
 
-namespace lsst {
-namespace qserv {
-namespace master {
+namespace mysql {
+    // Forward
+    class SqlConfig;
+}
+    
+namespace sql {
+    // Forward
+    class SqlConnection;
+}
+
+namespace xrdc {
+    // Forward
+    class PacketIter;
+} // namespace xrdc
+
+namespace merger {        
+
 // Forward
 class SqlInsertIter;
-class PacketIter;
 
 /// struct TableMergerError - value class for TableMerger error code.
 struct TableMergerError {
@@ -93,7 +103,7 @@ public:
 /// be called after each result is read back from the worker.
 class TableMerger {
 public:
-    typedef boost::shared_ptr<PacketIter> PacketIterPtr;
+    typedef boost::shared_ptr<xrdc::PacketIter> PacketIterPtr;
 
     explicit TableMerger(TableMergerConfig const& c);
 
@@ -138,8 +148,8 @@ private:
 
     TableMergerConfig _config;
     std::string _loadCmd;
-    boost::shared_ptr<SqlConfig> _sqlConfig;
-    boost::shared_ptr<SqlConnection> _sqlConn;
+    boost::shared_ptr<mysql::SqlConfig> _sqlConfig;
+    boost::shared_ptr<sql::SqlConnection> _sqlConn;
 
     std::string _mergeTable;
     TableMergerError _error;
@@ -150,10 +160,11 @@ private:
     boost::mutex _sqlMutex;
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::merger
+
 // Local Variables:
 // mode:c++
 // comment-column:0
 // End:
 
-#endif // LSST_QSERV_MASTER_TABLE_MERGER_H
+#endif // LSST_QSERV_MERGER_TABLEMERGER_H

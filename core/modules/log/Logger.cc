@@ -48,7 +48,8 @@ static std::ostream logStream(&syncBuffer);
 
 namespace lsst {
 namespace qserv {
-
+namespace log {
+        
 // Thread local storage to ensure one instance of Logger per thread.
 boost::thread_specific_ptr<Logger> Logger::_instancePtr;
 
@@ -205,4 +206,4 @@ std::string Logger::LogFilter::getSeverity() {
     }
 }
 
-}} // lsst::qserv
+}}} // namespace lsst::qserv::log

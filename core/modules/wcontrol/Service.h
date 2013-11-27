@@ -19,29 +19,42 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_SERVICE_H
-#define LSST_QSERV_WORKER_SERVICE_H
+#ifndef LSST_QSERV_WCONTROL_SERVICE_H
+#define LSST_QSERV_WCONTROL_SERVICE_H
 #include <boost/shared_ptr.hpp>
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wbase {
+    class TaskAcceptor;
+}
+namespace wcontrol {
+    class Foreman;
+}
+namespace wlog {
+    class WLogger;
+}}} // End of forward declarations
 
-class Foreman; // Forward
-class TaskAcceptor;
-class WLogger;
+
+namespace lsst {
+namespace qserv {
+namespace wcontrol {
 
 class Service {
 public:
     typedef boost::shared_ptr<Service> Ptr;
 
-    explicit Service(boost::shared_ptr<WLogger> log=boost::shared_ptr<WLogger>());
-    boost::shared_ptr<TaskAcceptor> getAcceptor();
+    explicit Service(boost::shared_ptr<wlog::WLogger> log=
+                          boost::shared_ptr<wlog::WLogger>());
+    boost::shared_ptr<wbase::TaskAcceptor> getAcceptor();
     void squashByHash(std::string const& hash);
 
 private:
-    boost::shared_ptr<Foreman> _foreman;
+    boost::shared_ptr<wcontrol::Foreman> _foreman;
 };
 
-}}} // lsst::qserv:worker
-#endif // LSST_QSERV_WORKER_SERVICE_H
+}}} // namespace lsst::qserv:wcontrol
+
+#endif // LSST_QSERV_WCONTROL_SERVICE_H
 

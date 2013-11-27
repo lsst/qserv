@@ -34,62 +34,60 @@
 
 namespace lsst {
 namespace qserv {
-
 namespace query {
 
-boost::shared_ptr<master::QueryContext>
+boost::shared_ptr<QueryContext>
 TestFactory::newContext() {
-    boost::shared_ptr<master::QueryContext> context(new master::QueryContext());
+    boost::shared_ptr<QueryContext> context(new QueryContext());
     context->defaultDb = "Somedb";
     context->username = "alice";
     return context;
 }
 
-boost::shared_ptr<master::QueryContext>
+boost::shared_ptr<QueryContext>
 TestFactory::newContext(boost::shared_ptr<css::Facade> cssFacade) {
-    boost::shared_ptr<master::QueryContext> context(new master::QueryContext());
+    boost::shared_ptr<QueryContext> context(new QueryContext());
     context->cssFacade = cssFacade;
     context->defaultDb = "Somedb";
     context->username = "alice";
     return context;
 }
 
-boost::shared_ptr<master::SelectStmt>
+boost::shared_ptr<SelectStmt>
 TestFactory::newStmt() {
     // Create a "SELECT foo f FROM Bar b WHERE b.baz=42;
-    boost::shared_ptr<master::SelectStmt> stmt(new master::SelectStmt());
+    boost::shared_ptr<SelectStmt> stmt(new SelectStmt());
 
     // SELECT foo f
-    master::SelectList::Ptr sl(new master::SelectList());
-    boost::shared_ptr<master::ColumnRef> cr(new master::ColumnRef("","","foo"));
-    master::ValueFactorPtr fact(master::ValueFactor::newColumnRefFactor(cr));
-    master::ValueExprPtr expr(new master::ValueExpr());
-    expr->getFactorOps().push_back(master::ValueExpr::FactorOp(fact));
+    SelectList::Ptr sl(new SelectList());
+    boost::shared_ptr<ColumnRef> cr(new ColumnRef("","","foo"));
+    ValueFactorPtr fact(ValueFactor::newColumnRefFactor(cr));
+    ValueExprPtr expr(new ValueExpr());
+    expr->getFactorOps().push_back(ValueExpr::FactorOp(fact));
         sl->getValueExprList()->push_back(expr);
     stmt->setSelectList(sl);
 
     // FROM Bar b
-    master::TableRefnListPtr refnp(new master::TableRefnList());
-    master::TableRefN::Ptr tr(new master::SimpleTableN("", "Bar", "b"));
+    TableRefnListPtr refnp(new TableRefnList());
+    TableRefN::Ptr tr(new SimpleTableN("", "Bar", "b"));
     refnp->push_back(tr);
-    master::FromList::Ptr fl(new master::FromList(refnp));
+    FromList::Ptr fl(new FromList(refnp));
     stmt->setFromList(fl);
 
     // WHERE b.baz=42
-    boost::shared_ptr<master::WhereClause> wc(new master::WhereClause());
-    master::CompPredicate::Ptr cp(new master::CompPredicate());
-    cp->left = master::ValueExprPtr(new master::ValueExpr()); // baz
-    fact = master::ValueFactor::newColumnRefFactor((master::ColumnRef::newShared("","b","baz")));
-    cp->left->getFactorOps().push_back(master::ValueExpr::FactorOp(fact));
-    cp->op = master::CompPredicate::lookupOp("==");
-    cp->right = master::ValueExprPtr(new master::ValueExpr()); // 42
-    fact = master::ValueFactor::newConstFactor("42");
-    cp->right->getFactorOps().push_back(master::ValueExpr::FactorOp(fact));
-    master::BoolFactor::Ptr bfactor(new master::BoolFactor());
+    boost::shared_ptr<WhereClause> wc(new WhereClause());
+    CompPredicate::Ptr cp(new CompPredicate());
+    cp->left = ValueExprPtr(new ValueExpr()); // baz
+    fact = ValueFactor::newColumnRefFactor((ColumnRef::newShared("","b","baz")));
+    cp->left->getFactorOps().push_back(ValueExpr::FactorOp(fact));
+    cp->op = CompPredicate::lookupOp("==");
+    cp->right = ValueExprPtr(new ValueExpr()); // 42
+    fact = ValueFactor::newConstFactor("42");
+    cp->right->getFactorOps().push_back(ValueExpr::FactorOp(fact));
+    BoolFactor::Ptr bfactor(new BoolFactor());
     bfactor->_terms.push_back(cp);
     wc->prependAndTerm(bfactor);
     return stmt;
 }
-
 
 }}} // lsst::qserv::query

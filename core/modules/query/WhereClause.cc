@@ -35,7 +35,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 BoolTerm::Ptr findAndTerm(BoolTerm::Ptr tree) {
     while(1) {
@@ -365,4 +365,4 @@ void WhereClause::ValueExprIter::_updateValueExprIter() {
     _vEnd = p->valueExprCacheEnd();
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query

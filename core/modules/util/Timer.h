@@ -21,8 +21,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_TIMER_H
-#define LSST_QSERV_MASTER_TIMER_H
+#ifndef LSST_QSERV_UTIL_TIMER_H
+#define LSST_QSERV_UTIL_TIMER_H
 
 #include <sys/time.h>
 #include <time.h>
@@ -31,7 +31,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace util {
 
 /// A dirt-simple class for instrumenting ops in qserv.
 struct Timer {
@@ -62,7 +62,7 @@ struct Timer {
 
 std::ostream& operator<<(std::ostream & os, Timer const & tm);
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_MASTER_TIMER_H
+#endif // LSST_QSERV_UTIL_TIMER_H
 

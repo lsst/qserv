@@ -36,7 +36,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 ////////////////////////////////////////////////////////////////////////
 // HavingClause
@@ -72,4 +72,4 @@ HavingClause::copySyntax() {
     return boost::make_shared<HavingClause>(*this);
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::query

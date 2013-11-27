@@ -21,25 +21,31 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_LSPEED_MYSQLFSDIRECTORY_H
-#define LSST_LSPEED_MYSQLFSDIRECTORY_H
+#ifndef LSST_QSERV_XRDFS_MYSQLFSDIRECTORY_H
+#define LSST_QSERV_XRDFS_MYSQLFSDIRECTORY_H
 
 #include "XrdSfs/XrdSfsInterface.hh"
 #include <boost/shared_ptr.hpp>
 
+// Forward declarations
 class XrdSysError;
+namespace lsst {
+namespace qserv {
+namespace wlog {
+    class WLogger;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-namespace worker {
-class WLogger; // Forward
+namespace xrdfs {
 
 /// MySqlFsDirectory is directory object returned by MySqlFs. It
 /// rejects directory operations because they have not been assigned
 /// any meaning in qserv.
 class MySqlFsDirectory : public XrdSfsDirectory {
 public:
-    MySqlFsDirectory(boost::shared_ptr<WLogger> log, char* user = 0);
+    MySqlFsDirectory(boost::shared_ptr<wlog::WLogger> log, char* user = 0);
     ~MySqlFsDirectory(void);
 
     int open(char const* dirName, XrdSecEntity const* client = 0,
@@ -49,9 +55,9 @@ public:
     char const* FName(void);
 
 private:
-    boost::shared_ptr<WLogger> _log;
+    boost::shared_ptr<wlog::WLogger> _log;
 };
 
-}}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::xrdfs
 
-#endif
+#endif // LSST_QSERV_XRDFS_MYSQLFSDIRECTORY_H

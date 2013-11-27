@@ -34,10 +34,10 @@
 #include <boost/make_shared.hpp>
 #include "query/QueryTemplate.h"
 
-using lsst::qserv::master::OrderByClause;
-namespace qMaster=lsst::qserv::master;
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace query {
 
 char const* getOrderStr(OrderByTerm::Order o) {
     switch(o) {
@@ -108,4 +108,4 @@ boost::shared_ptr<OrderByClause> OrderByClause::copySyntax() {
     return boost::make_shared<OrderByClause>(*this);
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::query

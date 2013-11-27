@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_FUNCEXPR_H
-#define LSST_QSERV_MASTER_FUNCEXPR_H
+#ifndef LSST_QSERV_QUERY_FUNCEXPR_H
+#define LSST_QSERV_QUERY_FUNCEXPR_H
 /**
   * @file FuncExpr.h
   *
@@ -37,7 +37,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 // Forward
 class QueryTemplate;
@@ -78,7 +78,6 @@ std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
 std::ostream& output(std::ostream& os, ValueExprList const& vel);
 void renderList(QueryTemplate& qt, ValueExprList const& vel);
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query
 
-
-#endif // LSST_QSERV_MASTER_FUNCEXPR_H
+#endif // LSST_QSERV_QUERY_FUNCEXPR_H

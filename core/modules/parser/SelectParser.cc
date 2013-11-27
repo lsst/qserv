@@ -58,7 +58,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace parser {
 
 ////////////////////////////////////////////////////////////////////////
 // AntlrParser -- Antlr parsing complex
@@ -107,7 +107,7 @@ SelectParser::SelectParser(std::string const& statement)
 
 void
 SelectParser::setup() {
-    _selectStmt.reset(new SelectStmt());
+    _selectStmt.reset(new query::SelectStmt());
     _aParser.reset(new AntlrParser(_statement));
     // model 3: parse tree construction to build intermediate expr.
     SelectFactory sf;
@@ -116,4 +116,5 @@ SelectParser::setup() {
     _selectStmt = sf.getStatement();
     _selectStmt->diagnose();
 }
-}}}
+
+}}} // namespace lsst::qserv::parser

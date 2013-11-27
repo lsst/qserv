@@ -40,21 +40,17 @@
 #include "qproc/ChunkQuerySpec.h"
 #include "proto/worker.pb.h"
 
-namespace qMaster=lsst::qserv::master;
-
-namespace { // File-scope helpers
-}
-
 namespace lsst {
 namespace qserv {
-namespace master {
-void flattenScanTables(StringList& outputList,
-                       StringPairList const& scanTables) {
+namespace qproc {
+
+void
+flattenScanTables(util::StringList& outputList,
+                  util::StringPairList const& scanTables) {
     std::string db;
     outputList.clear();
-    for(StringPairList::const_iterator i=scanTables.begin(),
-            e=scanTables.end();
-        i != e; ++i) {
+    for(util::StringPairList::const_iterator i=scanTables.begin(),
+        e=scanTables.end() ; i != e; ++i) {
         if(db.empty()) {
             db = i->first;
         } else if(db != i->first) {
@@ -71,22 +67,22 @@ public:
     Impl(int session, std::string const& resultTable)
         : _session(session), _resultTable(resultTable) {
     }
-    boost::shared_ptr<TaskMsg> makeMsg(ChunkQuerySpec const& s,
-                                       std::string const& chunkResultName);
+    boost::shared_ptr<proto::TaskMsg> makeMsg(ChunkQuerySpec const& s,
+                                              std::string const& chunkResultName);
 private:
     template <class C1, class C2, class C3>
-    void addFragment(TaskMsg& m, std::string const& resultName,
+    void addFragment(proto::TaskMsg& m, std::string const& resultName,
                      C1 const& subChunkTables,
                      C2 const& subChunkIds,
                      C3 const& queries) {
-        TaskMsg::Fragment* frag = m.add_fragment();
+        proto::TaskMsg::Fragment* frag = m.add_fragment();
         frag->set_resulttable(resultName);
         // For each query, apply: frag->add_query(q)
         for(typename C3::const_iterator i=queries.begin();
             i != queries.end(); ++i) {
             frag->add_query(*i);
         }
-        TaskMsg_Subchunk sc;
+        proto::TaskMsg_Subchunk sc;
         for(typename C1::const_iterator i=subChunkTables.begin();
             i != subChunkTables.end(); ++i) {
             sc.add_table(*i);
@@ -94,28 +90,28 @@ private:
         // For each int in subChunks, apply: sc.add_subchunk(1000000);
         std::for_each(
             subChunkIds.begin(), subChunkIds.end(),
-            std::bind1st(std::mem_fun(&TaskMsg_Subchunk::add_id), &sc));
+            std::bind1st(std::mem_fun(&proto::TaskMsg_Subchunk::add_id), &sc));
         frag->mutable_subchunks()->CopyFrom(sc);
     }
 
     int _session;
     std::string _resultTable;
-    boost::shared_ptr<TaskMsg> _taskMsg;
+    boost::shared_ptr<proto::TaskMsg> _taskMsg;
 };
 
-boost::shared_ptr<TaskMsg>
+boost::shared_ptr<proto::TaskMsg>
 TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
                                std::string const& chunkResultName) {
     std::string resultTable = _resultTable;
     if(!chunkResultName.empty()) { resultTable = chunkResultName; }
-    _taskMsg.reset(new TaskMsg);
+    _taskMsg.reset(new proto::TaskMsg);
     // shared
     _taskMsg->set_session(_session);
     _taskMsg->set_db(s.db);
     // scanTables (for shared scans)
-    StringList sTables;
+    util::StringList sTables;
     flattenScanTables(sTables, s.scanTables);
-    for(StringList::const_iterator i=sTables.begin(), e=sTables.end();
+    for(util::StringList::const_iterator i=sTables.begin(), e=sTables.end();
         i != e; ++i) {
         _taskMsg->add_scantables(*i);
     }
@@ -165,7 +161,8 @@ TaskMsgFactory2::TaskMsgFactory2(int session)
 void TaskMsgFactory2::serializeMsg(ChunkQuerySpec const& s,
                                    std::string const& chunkResultName,
                                    std::ostream& os) {
-    boost::shared_ptr<TaskMsg> m = _impl->makeMsg(s, chunkResultName);
+    boost::shared_ptr<proto::TaskMsg> m = _impl->makeMsg(s, chunkResultName);
     m->SerializeToOstream(&os);
 }
-}}} // namespace lsst::qserv::master
+
+}}} // namespace lsst::qserv::qproc

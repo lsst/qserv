@@ -20,8 +20,9 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_WORKER_RESULT_TRACKER_H
-#define LSST_QSERV_WORKER_RESULT_TRACKER_H
+#ifndef LSST_QSERV_WCONTROL_RESULTTRACKER_H
+#define LSST_QSERV_WCONTROL_RESULTTRACKER_H
+
 #include <deque>
 #include <iostream>
 
@@ -32,7 +33,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wcontrol {
 
 typedef std::pair<int,char const*> ResultItem;
 typedef std::pair<int, std::string> ResultError;
@@ -61,7 +62,7 @@ public:
     };
     // Wrap up a notification into a no-argument functor that can be queued.
     template <class C>
-    class ResultCallable : public WorkQueue::Callable {
+    class ResultCallable : public util::WorkQueue::Callable {
     public:
         typedef boost::shared_ptr<ResultCallable> Ptr;
         ResultCallable(C const& c, Item const& i) : _c(c), _i(i) {}
@@ -174,9 +175,9 @@ private:
     NewsMap _news;
     boost::mutex _signalsMutex;
     boost::mutex _newsMutex;
-    WorkQueue _workQueue;
+    util::WorkQueue _workQueue;
 };
 
-}}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::wcontrol
 
-#endif // LSST_QSERV_WORKER_RESULT_TRACKER_H
+#endif // LSST_QSERV_WCONTROL_RESULTTRACKER_H

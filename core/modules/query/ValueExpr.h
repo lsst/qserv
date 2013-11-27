@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_VALUEEXPR_H
-#define LSST_QSERV_MASTER_VALUEEXPR_H
+#ifndef LSST_QSERV_QUERY_VALUEEXPR_H
+#define LSST_QSERV_QUERY_VALUEEXPR_H
 /**
   * @file
   *
@@ -36,7 +36,14 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace parser {
+    // Forward
+    class ValueExprFactory;
+}
+    
+namespace query {
+
 // Forward
 class QueryTemplate;
 
@@ -86,7 +93,7 @@ public:
 
     static ValueExprPtr newSimple(boost::shared_ptr<ValueFactor> vt);
 
-    friend class ValueExprFactory;
+    friend class parser::ValueExprFactory;
     class render;
     friend class render;
 private:
@@ -108,6 +115,6 @@ public:
     int _count;
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query
 
-#endif // LSST_QSERV_MASTER_VALUEEXPR_H
+#endif // LSST_QSERV_QUERY_VALUEEXPR_H

@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_QUERYSQL_H
-#define LSST_QSERV_WORKER_QUERYSQL_H
+#ifndef LSST_QSERV_WDB_QUERYSQL_H
+#define LSST_QSERV_WDB_QUERYSQL_H
  /**
   * @file QuerySql.h
   *
@@ -35,20 +35,27 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
-class TaskMsg_Fragment;
+namespace proto {
+    class TaskMsg_Fragment;
+}
+namespace wdb {
+    class Task;
+}}} // End of forward declarations
 
-namespace worker {
 
-class Task;
+namespace lsst {
+namespace qserv {
+namespace wdb {
 
 class QuerySql {
 public:
     typedef std::deque<std::string> StringList;
     QuerySql() {}
-    typedef lsst::qserv::TaskMsg_Fragment Fragment;
-
+    typedef lsst::qserv::proto::TaskMsg_Fragment Fragment;
 
     StringList buildList;
     StringList executeList; // Consider using SqlFragmenter to break this up into fragments.
@@ -67,6 +74,7 @@ public:
                                             std::string const& defaultResultTable);
 };
 
-}}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_QUERYSQL_H
+}}} // namespace lsst::qserv::wdb
+
+#endif // LSST_QSERV_WDB_QUERYSQL_H
 

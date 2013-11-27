@@ -29,28 +29,32 @@
 #include "qdisp/MessageStore.h"
 
 
-namespace qMaster=lsst::qserv::master;
-
-int qMaster::queryMsgGetCount(int session) {
-    qMaster::AsyncQueryManager& qm = qMaster::getAsyncManager(session);
-    boost::shared_ptr<MessageStore> ms = qm.getMessageStore();
+namespace lsst {
+namespace qserv {
+namespace control {        
+    
+int queryMsgGetCount(int session) {
+    control::AsyncQueryManager& qm = getAsyncManager(session);
+    boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();
     return ms->messageCount();
 }
 
 // Python call: msg, chunkId, code, timestamp = queryMsgGetMsg(session, idx)
-std::string qMaster::queryMsgGetMsg(int session, int idx, int* chunkId, int* code, time_t* timestamp) {
-    qMaster::AsyncQueryManager& qm = qMaster::getAsyncManager(session);
-    boost::shared_ptr<MessageStore> ms = qm.getMessageStore();
-    QueryMessage msg = ms->getMessage(idx);
+std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, time_t* timestamp) {
+    control::AsyncQueryManager& qm = getAsyncManager(session);
+    boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();
+    qdisp::QueryMessage msg = ms->getMessage(idx);
     *chunkId = msg.chunkId;
     *code = msg.code;
     *timestamp = msg.timestamp;
     return msg.description;
 }
 
-void qMaster::queryMsgAddMsg(int session, int chunkId, int code,
+void queryMsgAddMsg(int session, int chunkId, int code,
                             std::string const& message) {
-    qMaster::AsyncQueryManager& qm = qMaster::getAsyncManager(session);
-    boost::shared_ptr<MessageStore> ms = qm.getMessageStore();
+    control::AsyncQueryManager& qm = getAsyncManager(session);
+    boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();
     ms->addMessage(chunkId, code, message);
 }
+
+}}} // namespace lsst::qserv::control

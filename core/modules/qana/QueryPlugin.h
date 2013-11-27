@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_QUERYPLUGIN_H
-#define LSST_QSERV_MASTER_QUERYPLUGIN_H
+#ifndef LSST_QSERV_QANA_QUERYPLUGIN_H
+#define LSST_QSERV_QANA_QUERYPLUGIN_H
 /**
   * @file
   *
@@ -31,13 +31,21 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
-namespace lsst { namespace qserv { namespace master {
-// Forward
-class QueryContext;
-class QueryMapping;
-class SelectStmt;
+namespace lsst {
+namespace qserv {
 
-typedef std::list<boost::shared_ptr<SelectStmt> > SelectStmtList;
+namespace query {
+    // Forward 
+    class SelectStmt;
+    class QueryContext;
+}
+   
+namespace qana {
+
+// Forward
+class QueryMapping;
+
+typedef std::list<boost::shared_ptr<query::SelectStmt> > SelectStmtList;
 
 /// QueryPlugin is an interface for classes which implement rewrite/optimization
 /// rules for incoming SQL queries by operating on query representations.
@@ -57,13 +65,13 @@ public:
     virtual void prepare() {}
 
     /// Apply the plugin's actions to the parsed, but not planned query
-    virtual void applyLogical(SelectStmt& stmt, QueryContext&) {}
+    virtual void applyLogical(query::SelectStmt& stmt, query::QueryContext&) {}
 
     /// Apply the plugins's actions to the concrete query plan.
-    virtual void applyPhysical(Plan& phy, QueryContext& context) {}
+    virtual void applyPhysical(Plan& phy, query::QueryContext& context) {}
 
     /// Apply the plugins's actions when coverage is known
-    virtual void applyFinal(QueryContext& context) {}
+    virtual void applyFinal(query::QueryContext& context) {}
 
     /// Lookup a factory for the named type of plugin and construct an instance
     static Ptr newInstance(std::string const& name);
@@ -87,21 +95,22 @@ public:
 /// A bundle of references to a components that form a "plan"
 class QueryPlugin::Plan {
 public:
-    Plan(SelectStmt& stmtOriginal_, SelectStmtList& stmtParallel_,
-         SelectStmt& stmtMerge_, bool hasMerge_)
+    Plan(query::SelectStmt& stmtOriginal_, SelectStmtList& stmtParallel_,
+         query::SelectStmt& stmtMerge_, bool hasMerge_)
         :  stmtOriginal(stmtOriginal_),
            stmtParallel(stmtParallel_),
           stmtMerge(stmtMerge_),
           hasMerge(hasMerge_) {}
 
     // Each of these should become a sequence for two-step queries.
-    SelectStmt& stmtOriginal;
+    query::SelectStmt& stmtOriginal;
     SelectStmtList& stmtParallel; //< Group of parallel statements (not a sequence)
-    SelectStmt& stmtMerge;
+    query::SelectStmt& stmtMerge;
     std::string dominantDb;
     boost::shared_ptr<QueryMapping> queryMapping;
     bool const hasMerge;
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_QUERYPLUGIN_H
+}}} // namespace lsst::qserv::qana
+
+#endif // LSST_QSERV_QANA_QUERYPLUGIN_H

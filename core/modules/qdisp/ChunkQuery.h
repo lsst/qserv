@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // class ChunkQuery represents a query regarding a single chunk.
-#ifndef LSST_QSERV_MASTER_CHUNKQUERY_H
-#define LSST_QSERV_MASTER_CHUNKQUERY_H
+#ifndef LSST_QSERV_QDISP_CHUNKQUERY_H
+#define LSST_QSERV_QDISP_CHUNKQUERY_H
 
 // Scalla/xrootd
 #include "XrdPosix/XrdPosixCallBack.hh"
@@ -34,11 +34,19 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
 
-// forward
-class AsyncQueryManager;
-class PacketIter;
+namespace control {
+    // Forward
+    class AsyncQueryManager;
+} // namespace control
+
+namespace xrdc {
+    // Forward
+    class PacketIter;
+} // namespace xrdc
+    
+namespace qdisp {
+
 
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery
@@ -50,11 +58,12 @@ class PacketIter;
 class ChunkQuery : public XrdPosixCallBack {
 public:
     static const int MAX_ATTEMPTS = 3;
-    enum WaitState {WRITE_QUEUE=100,
-                    WRITE_OPEN, WRITE_WRITE,
-                    READ_QUEUE,
-		    READ_OPEN, READ_READ,
-		    COMPLETE, CORRUPT, ABORTED};
+    enum WaitState {
+        WRITE_QUEUE=100,
+        WRITE_OPEN, WRITE_WRITE,
+        READ_QUEUE,
+        READ_OPEN, READ_READ,
+        COMPLETE, CORRUPT, ABORTED };
     static char const* getWaitStateStr(WaitState s);
 
     class ReadCallable;
@@ -63,19 +72,19 @@ public:
     friend class WriteCallable;
 
     virtual void Complete(int Result);
-    explicit ChunkQuery(TransactionSpec const& t, int id,
-			AsyncQueryManager* mgr);
+    explicit ChunkQuery(control::TransactionSpec const& t, int id,
+                        control::AsyncQueryManager* mgr);
     virtual ~ChunkQuery();
 
     void run();
-    XrdTransResult const& results() const { return _result; }
+    xrdc::XrdTransResult const& results() const { return _result; }
     std::string getDesc() const;
     std::string const& getSavePath() const { return _spec.savePath; }
     int getSaveSize() const {
         if(_result.read >= 0) return _result.localWrite;
         else return -1;
     }
-    boost::shared_ptr<PacketIter> getResultIter();
+    boost::shared_ptr<xrdc::PacketIter> getResultIter();
     // Attempt to squash this query's execution.  This implies that
     // nobody cares about this query's results anymore.
     void requestSquash();
@@ -90,27 +99,27 @@ private:
     void _unlinkResult(std::string const& url);
 
     int _id;
-    TransactionSpec _spec;
+    control::TransactionSpec _spec;
     WaitState _state;
-    XrdTransResult _result;
+    xrdc::XrdTransResult _result;
     boost::mutex _mutex;
     boost::shared_ptr<boost::mutex> _completeMutexP;
     std::string _hash;
     std::string _resultUrl;
     std::string _queryHostPort;
-    boost::shared_ptr<PacketIter> _packetIter;
-    AsyncQueryManager* _manager;
+    boost::shared_ptr<xrdc::PacketIter> _packetIter;
+    control::AsyncQueryManager* _manager;
     bool _shouldSquash;
-    Timer _writeOpenTimer;
-    Timer _writeTimer;
-    Timer _writeCloseTimer;
-    Timer _readOpenTimer;
-    Timer _readTimer;
-    Timer _readCloseTimer;
+    util::Timer _writeOpenTimer;
+    util::Timer _writeTimer;
+    util::Timer _writeCloseTimer;
+    util::Timer _readOpenTimer;
+    util::Timer _readTimer;
+    util::Timer _readCloseTimer;
     int _attempts;
 
 };// class ChunkQuery
 
-}}} // lsst::qserv::master namespace
+}}} // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_MASTER_CHUNKQUERY_H
+#endif // LSST_QSERV_QDISP_CHUNKQUERY_H

@@ -25,7 +25,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wsched {
+
 std::ostream& operator<<(std::ostream& os, ChunkState const& cs) {
     os << "(scan=";
     std::copy(cs._scan.begin(), cs._scan.end(),
@@ -37,4 +38,4 @@ std::ostream& operator<<(std::ostream& os, ChunkState const& cs) {
     return os;
 }
 
-}}} // lsst::qserv::worker
+}}} // namespace lsst::qserv::wsched

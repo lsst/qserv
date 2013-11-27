@@ -27,6 +27,9 @@ Access to the classes from the qserv_master library
 "
 %enddef
 
+%ignore lsst::qserv::query::operator<<;
+%ignore lsst::qserv::qproc::operator<<;
+
  //%feature("autodoc", "1");
  //%module("threads"=1, package="lsst.qserv.master", docstring=qserv_master_DOCSTRING) masterLib
 %module("threads"=1, package="lsst.qserv.master") masterLib

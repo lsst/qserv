@@ -38,14 +38,15 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 struct SpacedOutput {
     SpacedOutput(std::ostream& os_, std::string sep_=" ")
         : os(os_), sep(sep_), count(0) {}
     void operator()(std::string const& s) {
         if(s.empty()) return;
 
-        if(!last.empty() && sqlShouldSeparate(last, *(last.end()-1), s[0]))  {
+        if(!last.empty() && sql::sqlShouldSeparate(last, *(last.end()-1), s[0]))  {
             os << sep;
         }
         os << s;
@@ -72,7 +73,8 @@ std::string outputString(C& c) {
     return ss.str();
 }
 struct MappingWrapper {
-    MappingWrapper(QueryTemplate::EntryMapping const& em_, QueryTemplate& qt_)
+    MappingWrapper(QueryTemplate::EntryMapping const& em_, 
+                   QueryTemplate& qt_)
         : em(em_), qt(qt_) {}
     void operator()(boost::shared_ptr<QueryTemplate::Entry> e) {
             qt.append(em.mapEntry(*e));
@@ -86,7 +88,7 @@ struct MappingWrapper {
 ////////////////////////////////////////////////////////////////////////
 class TableEntry : public QueryTemplate::Entry {
 public:
-    TableEntry(TableRefN const& tr)
+    TableEntry(query::TableRefN const& tr)
         : db(tr.getDb()), table(tr.getTable()) {
     }
     virtual std::string getValue() const {
@@ -100,9 +102,10 @@ public:
     std::string db;
     std::string table;
 };
+
 class ColumnEntry : public QueryTemplate::Entry {
 public:
-    ColumnEntry(ColumnRef const& cr)
+    ColumnEntry(query::ColumnRef const& cr)
         : db(cr.db), table(cr.table), column(cr.column) {
     }
     virtual std::string getValue() const {
@@ -137,7 +140,8 @@ struct EntryMerger {
     void _mergeCurrent() {
         if(_candidates.size() > 1) {
             boost::shared_ptr<QueryTemplate::Entry> e;
-            e.reset(new QueryTemplate::StringEntry(outputString(_candidates)));
+            e.reset(
+                new QueryTemplate::StringEntry(outputString(_candidates)));
             _entries.push_back(e);
             _candidates.clear();
         } else if(!_candidates.empty()) {
@@ -153,41 +157,56 @@ struct EntryMerger {
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate
 ////////////////////////////////////////////////////////////////////////
-std::string QueryTemplate::dbgStr() const {
+std::string
+QueryTemplate::dbgStr() const {
     return outputString(_entries);
 }
-void QueryTemplate::append(std::string const& s) {
+
+void 
+QueryTemplate::append(std::string const& s) {
     boost::shared_ptr<Entry> e(new StringEntry(s));
     _entries.push_back(e);
 }
-void QueryTemplate::append(ColumnRef const& cr) {
+
+void 
+QueryTemplate::append(query::ColumnRef const& cr) {
     boost::shared_ptr<Entry> e(new ColumnEntry(cr));
     _entries.push_back(e);
 }
 
-void QueryTemplate::append(TableRefN const& tr) {
+void
+QueryTemplate::append(query::TableRefN const& tr) {
     boost::shared_ptr<Entry> e(new TableEntry(tr));
     _entries.push_back(e);
 }
-void QueryTemplate::append(boost::shared_ptr<QueryTemplate::Entry> const& e) {
+
+void 
+QueryTemplate::append(boost::shared_ptr<QueryTemplate::Entry> const& e) {
     _entries.push_back(e);
 }
-std::string QueryTemplate::generate() const {
+
+std::string 
+QueryTemplate::generate() const {
     return outputString(_entries);
 }
-std::string QueryTemplate::generate(EntryMapping const& em) const {
+
+std::string
+QueryTemplate::generate(EntryMapping const& em) const {
     QueryTemplate newQt;
     std::for_each(_entries.begin(), _entries.end(), MappingWrapper(em, newQt));
     return outputString(newQt._entries);
 }
-void QueryTemplate::clear() {
+
+void
+QueryTemplate::clear() {
     _entries.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate (private)
 ////////////////////////////////////////////////////////////////////////
-void QueryTemplate::optimize() {
+void
+QueryTemplate::optimize() {
     typedef std::list<boost::shared_ptr<Entry> >::const_iterator Iter;
 
     EntryMerger em;
@@ -201,4 +220,5 @@ void QueryTemplate::optimize() {
     //LOGGER_DBG << "was: " << outputString(_elements) << std::endl;
     //LOGGER_DBG << "now: " << outputString(em._entries) << std::endl;
 }
-}}} // lsst::qserv::master
+
+}}} // namespace lsst::qserv::query

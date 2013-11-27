@@ -37,12 +37,14 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace parser {
 
-boost::shared_ptr<CompPredicate>
+boost::shared_ptr<query::CompPredicate>
 PredicateFactory::newCompPredicate(antlr::RefAST a) {
-    boost::shared_ptr<CompPredicate> p(new CompPredicate());
-    if(a->getType() == SqlSQL2TokenTypes::COMP_PREDICATE) { a = a->getFirstChild(); }
+    boost::shared_ptr<query::CompPredicate> p(new query::CompPredicate());
+    if(a->getType() == SqlSQL2TokenTypes::COMP_PREDICATE) { 
+        a = a->getFirstChild();
+    }
     RefAST left = a;
     RefAST op = left->getNextSibling();
     RefAST right = op->getNextSibling();
@@ -51,9 +53,12 @@ PredicateFactory::newCompPredicate(antlr::RefAST a) {
     p->right = _vf.newExpr(right->getFirstChild());
     return p;
 }
-boost::shared_ptr<BetweenPredicate> PredicateFactory::newBetweenPredicate(antlr::RefAST a) {
-    boost::shared_ptr<BetweenPredicate> p(new BetweenPredicate());
-    if(a->getType() == SqlSQL2TokenTypes::BETWEEN_PREDICATE) { a = a->getFirstChild(); }
+
+boost::shared_ptr<query::BetweenPredicate> PredicateFactory::newBetweenPredicate(antlr::RefAST a) {
+    boost::shared_ptr<query::BetweenPredicate> p(new query::BetweenPredicate());
+    if(a->getType() == SqlSQL2TokenTypes::BETWEEN_PREDICATE) { 
+        a = a->getFirstChild();
+    }
     RefAST betweenToken = a->getNextSibling();
     RefAST minValue = betweenToken->getNextSibling();
     RefAST andToken = minValue->getNextSibling();
@@ -63,9 +68,13 @@ boost::shared_ptr<BetweenPredicate> PredicateFactory::newBetweenPredicate(antlr:
     p->maxValue = _vf.newExpr(maxValue->getFirstChild());
     return p;
 }
-boost::shared_ptr<InPredicate> PredicateFactory::newInPredicate(antlr::RefAST a) {
-    boost::shared_ptr<InPredicate> p(new InPredicate());
-    if(a->getType() == SqlSQL2TokenTypes::IN_PREDICATE) { a = a->getFirstChild(); }
+
+boost::shared_ptr<query::InPredicate>
+PredicateFactory::newInPredicate(antlr::RefAST a) {
+    boost::shared_ptr<query::InPredicate> p(new query::InPredicate());
+    if(a->getType() == SqlSQL2TokenTypes::IN_PREDICATE) {
+        a = a->getFirstChild();
+    }
     RefAST value = a;
     RefAST inToken = value->getNextSibling();
     RefAST leftParen = inToken->getNextSibling();
@@ -79,21 +88,24 @@ boost::shared_ptr<InPredicate> PredicateFactory::newInPredicate(antlr::RefAST a)
         }
         p->cands.push_back(_vf.newExpr(i->getFirstChild()));
     }
-    InPredicate& ip = *p;
+    query::InPredicate& ip = *p;
     return p;
 }
 
-boost::shared_ptr<LikePredicate> PredicateFactory::newLikePredicate(antlr::RefAST a) {
-    boost::shared_ptr<LikePredicate> p(new LikePredicate());
-    if(a->getType() == SqlSQL2TokenTypes::LIKE_PREDICATE) { a = a->getFirstChild(); }
+boost::shared_ptr<query::LikePredicate> 
+PredicateFactory::newLikePredicate(antlr::RefAST a) {
+    boost::shared_ptr<query::LikePredicate> p(new query::LikePredicate());
+    if(a->getType() == SqlSQL2TokenTypes::LIKE_PREDICATE) {
+        a = a->getFirstChild();
+    }
     RefAST value = a;
     RefAST likeToken = value->getNextSibling();
     RefAST pattern = likeToken->getNextSibling();
 
     p->value = _vf.newExpr(value->getFirstChild());
     p->charValue = _vf.newExpr(pattern->getFirstChild());
-    LikePredicate& lp = *p;
+    query::LikePredicate& lp = *p;
     return p;
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::parser

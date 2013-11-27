@@ -21,29 +21,36 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_LSPEED_MYSQLFS_H
-#define LSST_LSPEED_MYSQLFS_H
+#ifndef LSST_QSERV_XRDFS_MYSQLFS_H
+#define LSST_QSERV_XRDFS_MYSQLFS_H
 
 #include "XrdSfs/XrdSfsInterface.hh"
 #include <boost/shared_ptr.hpp>
 #include <set>
 
+// Forward declarations
 class XrdSysError;
 class XrdSysLogger;
+namespace lsst {
+namespace qserv {
+namespace wcontrol {
+    class Service;
+}
+namespace wlog {
+    class WLogger;
+}}}
+// End of forward declarations
 
 namespace lsst {
 namespace qserv {
-namespace worker {
- // Forward
-class WLogger;
-class Service;
+namespace xrdfs {
 
 /// MySqlFs is an xrootd fs plugin class
 class MySqlFs : public XrdSfsFileSystem {
 public:
     typedef std::set<std::string> StringSet;
 
-    MySqlFs(boost::shared_ptr<WLogger> log, XrdSysLogger* lp,
+    MySqlFs(boost::shared_ptr<wlog::WLogger> log, XrdSysLogger* lp,
             char const* cFileName);
     virtual ~MySqlFs(void);
 
@@ -101,12 +108,12 @@ private:
     XrdSysError* _eDest;
     int _isMysqlFail;
     char const* _localroot;
-    boost::shared_ptr<Service> _service;
+    boost::shared_ptr<wcontrol::Service> _service;
     boost::shared_ptr<StringSet> _exports;
-    boost::shared_ptr<WLogger> _log;
+    boost::shared_ptr<wlog::WLogger> _log;
 };
 
-}}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::xrdfs
 
 extern "C" {
 // Forward
@@ -117,4 +124,5 @@ XrdSfsFileSystem* XrdSfsGetFileSystem(XrdSfsFileSystem* native_fs,
                                       XrdSysLogger* lp,
                                       char const* fileName);
 }
-#endif
+
+#endif // LSST_QSERV_XRDFS_MYSQLFS_H

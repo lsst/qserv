@@ -32,14 +32,13 @@
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 // FIXME: should not depend on parser/, move logic to factory.
 
-namespace qMaster=lsst::qserv::master;
 
 namespace { // File-scope helpers
 }
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 void CompPredicate::findColumnRefs(ColumnRef::List& list) {
     if(left) { left->findColumnRefs(list); }
@@ -62,24 +61,24 @@ void LikePredicate::findColumnRefs(ColumnRef::List& list) {
     if(charValue) { charValue->findColumnRefs(list); }
 }
 
-std::ostream& qMaster::CompPredicate::putStream(std::ostream& os) const {
+std::ostream& CompPredicate::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-std::ostream& qMaster::InPredicate::putStream(std::ostream& os) const {
+std::ostream& InPredicate::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-std::ostream& qMaster::BetweenPredicate::putStream(std::ostream& os) const {
+std::ostream& BetweenPredicate::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
-std::ostream& qMaster::LikePredicate::putStream(std::ostream& os) const {
+std::ostream& LikePredicate::putStream(std::ostream& os) const {
     // FIXME
     return os;
 }
 
-void qMaster::CompPredicate::renderTo(QueryTemplate& qt) const {
+void CompPredicate::renderTo(QueryTemplate& qt) const {
 
     ValueExpr::render r(qt, false);
     r(left);
@@ -95,7 +94,7 @@ void qMaster::CompPredicate::renderTo(QueryTemplate& qt) const {
     r(right);
 }
 
-void qMaster::InPredicate::renderTo(QueryTemplate& qt) const {
+void InPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r(value);
     qt.append("IN");
@@ -105,7 +104,7 @@ void qMaster::InPredicate::renderTo(QueryTemplate& qt) const {
     qt.append(")");
 }
 
-void qMaster::BetweenPredicate::renderTo(QueryTemplate& qt) const {
+void BetweenPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r(value);
     qt.append("BETWEEN");
@@ -113,7 +112,7 @@ void qMaster::BetweenPredicate::renderTo(QueryTemplate& qt) const {
     qt.append("AND");
     r(maxValue);
 }
-void qMaster::LikePredicate::renderTo(QueryTemplate& qt) const {
+void LikePredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r(value);
     qt.append("LIKE");
@@ -239,4 +238,4 @@ BfTerm::Ptr LikePredicate::copySyntax() const {
     return BfTerm::Ptr(p);
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::query

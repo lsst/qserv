@@ -42,7 +42,6 @@
 
 // Namespace modifiers
 using boost::make_shared;
-namespace qMaster = lsst::qserv::master;
 
 // Local Helpers --------------------------------------------------
 namespace {
@@ -75,10 +74,14 @@ int seekMagic(int start, char* buffer, int term) {
 } // anonymous namespace
 
 
+namespace lsst {
+namespace qserv {
+namespace control {
+    
 //////////////////////////////////////////////////////////////////////
 // TransactionSpec
 //////////////////////////////////////////////////////////////////////
-qMaster::TransactionSpec::Reader::Reader(std::string const& file) {
+TransactionSpec::Reader::Reader(std::string const& file) {
     _mmapFd = -1;
     _mmapChunk = 0;
     _rawContents = NULL;
@@ -87,12 +90,12 @@ qMaster::TransactionSpec::Reader::Reader(std::string const& file) {
     _pos = 0;
 }
 
-qMaster::TransactionSpec::Reader::~Reader() {
+TransactionSpec::Reader::~Reader() {
     if(_rawContents != NULL) delete[] _rawContents; // cleanup
     _cleanupMmap();
 }
 
-void qMaster::TransactionSpec::Reader::_readWholeFile(std::string const& file) {
+void TransactionSpec::Reader::_readWholeFile(std::string const& file) {
     // Read the file into memory.  All of it.
     std::ifstream is;
     is.open(file.c_str(), std::ios::binary);
@@ -114,7 +117,7 @@ void qMaster::TransactionSpec::Reader::_readWholeFile(std::string const& file) {
     is.close();
  }
 
-void qMaster::TransactionSpec::Reader::_setupMmap(std::string const& file) {
+void TransactionSpec::Reader::_setupMmap(std::string const& file) {
     { // get length
         std::ifstream is;
         is.open(file.c_str(), std::ios::binary);
@@ -139,7 +142,7 @@ void qMaster::TransactionSpec::Reader::_setupMmap(std::string const& file) {
     assert(_mmapChunk != (void*)-1);
 }
 
-void qMaster::TransactionSpec::Reader::_advanceMmap() {
+void TransactionSpec::Reader::_advanceMmap() {
     int distToEnd = _rawLength - _mmapOffset;
     if(distToEnd > _mmapDefaultSize) { // Non-last chunk?
         int posInChunk = _pos - _mmapOffset;
@@ -160,7 +163,7 @@ void qMaster::TransactionSpec::Reader::_advanceMmap() {
     }
 }
 
-void qMaster::TransactionSpec::Reader::_cleanupMmap() {
+void TransactionSpec::Reader::_cleanupMmap() {
     if(_mmapChunk != NULL) {
         munmap(_mmapChunk, _mmapChunkSize);
     }
@@ -169,7 +172,7 @@ void qMaster::TransactionSpec::Reader::_cleanupMmap() {
     }
 }
 
-qMaster::TransactionSpec qMaster::TransactionSpec::Reader::getSpec() {
+TransactionSpec TransactionSpec::Reader::getSpec() {
     int beginPath;
     int endPath;
     int beginQuery;
@@ -178,7 +181,7 @@ qMaster::TransactionSpec qMaster::TransactionSpec::Reader::getSpec() {
     int bufEnd = _mmapChunkSize;;
 
     const int magicLength=4;
-    qMaster::TransactionSpec ts;
+    TransactionSpec ts;
 
     //beginPath = seekMagic(_pos, _rawContents, bufEnd);
     beginPath = seekMagic(_pos-_mmapOffset, _mmapChunk, bufEnd);
@@ -209,10 +212,10 @@ qMaster::TransactionSpec qMaster::TransactionSpec::Reader::getSpec() {
 // TransactionCallable
 //////////////////////////////////////////////////////////////////////
 // for now, two simultaneous writes (queries)
-qMaster::Semaphore qMaster::TransactionCallable::_sema(120);
+Semaphore TransactionCallable::_sema(120);
 
-void qMaster::TransactionCallable::operator()() {
-    using namespace lsst::qserv::master;
+void TransactionCallable::operator()() {
+    using namespace lsst::qserv::xrdc;
     LOGGER_INF << _spec.path << " in flight\n";
     _result = xrdOpenWriteReadSaveClose(_spec.path.c_str(),
                                         _spec.query.c_str(),
@@ -225,11 +228,11 @@ void qMaster::TransactionCallable::operator()() {
 //////////////////////////////////////////////////////////////////////
 // Manager
 //////////////////////////////////////////////////////////////////////
-void qMaster::Manager::setupFile(std::string const& file) {
+void Manager::setupFile(std::string const& file) {
     _file = file;
-    _reader = make_shared<qMaster::TransactionSpec::Reader>(file);
+    _reader = make_shared<TransactionSpec::Reader>(file);
 }
-void qMaster::Manager::_joinOne() {
+void Manager::_joinOne() {
     int oldsize = _threads.size();
     ThreadDeque newDeq;
     if(oldsize == 0) return;
@@ -250,7 +253,7 @@ void qMaster::Manager::_joinOne() {
     }
 }
 
-void qMaster::Manager::run() {
+void Manager::run() {
     int inFlight = 0;
     time_t lastReap;
     time_t thisReap;
@@ -259,9 +262,9 @@ void qMaster::Manager::run() {
     time(&thisReap);
     if(_reader.get() == 0) { return; }
     while(1) {
-        qMaster::TransactionSpec s = _reader->getSpec();
+        TransactionSpec s = _reader->getSpec();
         if(s.isNull()) { break; }
-        qMaster::TransactionCallable t(s);
+        TransactionCallable t(s);
         _threads.push_back(make_shared<boost::thread>(t));
         ++inFlight;
         thisSize = _threads.size();
@@ -293,13 +296,13 @@ void qMaster::Manager::run() {
 /// Generally, the query id is selected by the query manager, but may
 /// be presented by the caller.  Caller assumes responsibility for
 /// ensuring id uniqueness when doing this.
-int qMaster::QueryManager::add(TransactionSpec const& t, int id) {
+int QueryManager::add(TransactionSpec const& t, int id) {
     if(id == -1) {
         id = _getNextId();
     }
     assert(id >= 0);
     if(t.isNull()) { return -1; }
-    qMaster::TransactionCallable tc(t);
+    TransactionCallable tc(t);
     {
         boost::lock_guard<boost::mutex> lock(_waitingMutex);
         _waiting.push_back(IdCallable(id, ManagedCallable(*this, id, t)));
@@ -314,8 +317,8 @@ int qMaster::QueryManager::add(TransactionSpec const& t, int id) {
 /// @param id Id of completed transaction
 /// @param r Transaction result
 /// @return The next callable that can be executed.
-qMaster::QueryManager::ManagedCallable
-qMaster::QueryManager::completeAndFetch(int id, XrdTransResult const& r) {
+QueryManager::ManagedCallable
+QueryManager::completeAndFetch(int id, xrdc::XrdTransResult const& r) {
     TransactionSpec nullSpec;
     {
         boost::lock_guard<boost::mutex> rlock(_runningMutex);
@@ -335,8 +338,8 @@ qMaster::QueryManager::completeAndFetch(int id, XrdTransResult const& r) {
     }
 }
 
-boost::shared_ptr<qMaster::QueryManager::ManagedCallable>
-qMaster::QueryManager::_getNextCallable() {
+boost::shared_ptr<QueryManager::ManagedCallable>
+QueryManager::_getNextCallable() {
     boost::shared_ptr<ManagedCallable> mc;
     boost::lock_guard<boost::mutex> wlock(_waitingMutex);
     boost::lock_guard<boost::mutex> rlock(_runningMutex);
@@ -354,7 +357,7 @@ qMaster::QueryManager::_getNextCallable() {
     return mc;
 }
 
-int qMaster::QueryManager::_getNextId() {
+int QueryManager::_getNextId() {
     // FIXME(eventually) should track ids in use and recycle ids like pids.
     static int x = 0;
     static boost::mutex mutex;
@@ -362,7 +365,7 @@ int qMaster::QueryManager::_getNextId() {
     return ++x;
 }
 
-void qMaster::QueryManager::_addThreadIfSpace() {
+void QueryManager::_addThreadIfSpace() {
     {
         boost::lock_guard<boost::mutex> lock(_callablesMutex);
         if(_callables.size() >= (unsigned)_highWaterThreads) {
@@ -382,7 +385,7 @@ void qMaster::QueryManager::_addThreadIfSpace() {
     }
 }
 
-void qMaster::QueryManager::_tryJoinAll() {
+void QueryManager::_tryJoinAll() {
     boost::lock_guard<boost::mutex> lock(_threadsMutex);
     int oldsize = _threads.size();
     ThreadDeque newDeq;
@@ -399,7 +402,7 @@ void qMaster::QueryManager::_tryJoinAll() {
     }
 }
 
-void qMaster::QueryManager::joinEverything() {
+void QueryManager::joinEverything() {
     time_t now;
     time_t last;
     while(1) {
@@ -416,7 +419,7 @@ void qMaster::QueryManager::joinEverything() {
     }
 }
 
-boost::shared_ptr<boost::thread> qMaster::QueryManager::_startThread() {
+boost::shared_ptr<boost::thread> QueryManager::_startThread() {
     boost::shared_ptr<ManagedCallable> c(_getNextCallable());
     if(c.get() != 0) {
         return make_shared<boost::thread>(*c);
@@ -424,13 +427,13 @@ boost::shared_ptr<boost::thread> qMaster::QueryManager::_startThread() {
     return boost::shared_ptr<boost::thread>();
 }
 
-void qMaster::QueryManager::addCallable(ManagedCallable* c) {
+void QueryManager::addCallable(ManagedCallable* c) {
     boost::lock_guard<boost::mutex> lock(_callablesMutex);
     _callables.insert(c);
     // FIXME: is there something else to do?
 }
 
-void qMaster::QueryManager::dropCallable(ManagedCallable* c) {
+void QueryManager::dropCallable(ManagedCallable* c) {
     boost::lock_guard<boost::mutex> lock(_callablesMutex);
     _callables.erase(c);
     // FIXME: is there something else to do?
@@ -439,25 +442,25 @@ void qMaster::QueryManager::dropCallable(ManagedCallable* c) {
 //////////////////////////////////////////////////////////////////////
 // QueryManager::ManagedCallable
 //////////////////////////////////////////////////////////////////////
-qMaster::QueryManager::ManagedCallable::ManagedCallable()
+QueryManager::ManagedCallable::ManagedCallable()
     : _qm(0), _id(0), _c(TransactionCallable(TransactionSpec())) {
 }
 
-qMaster::QueryManager::ManagedCallable::ManagedCallable(
-    qMaster::QueryManager& qm, int id, qMaster::TransactionSpec const& t)
+QueryManager::ManagedCallable::ManagedCallable(
+    QueryManager& qm, int id, TransactionSpec const& t)
     :_qm(&qm), _id(id), _c(t) {
     assert(_qm != 0);
 }
 
-qMaster::QueryManager::ManagedCallable&
-qMaster::QueryManager::ManagedCallable::operator=(ManagedCallable const& m) {
+QueryManager::ManagedCallable&
+QueryManager::ManagedCallable::operator=(ManagedCallable const& m) {
     _qm = m._qm;
     _id = m._id;
     _c = m._c;
     return *this;
 }
 
-void qMaster::QueryManager::ManagedCallable::operator()() {
+void QueryManager::ManagedCallable::operator()() {
     _qm->addCallable(this);
     while(!_c.getSpec().isNull()) {
         _c(); /// Do the real work.
@@ -468,3 +471,5 @@ void qMaster::QueryManager::ManagedCallable::operator()() {
     // No more work. Die.
     _qm->dropCallable(this);
 }
+
+}}} // namespace lsst::qserv::control

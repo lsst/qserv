@@ -23,10 +23,12 @@
 /// msgCode.h maintains message codes used by the query messaging system
 /// within the C++ layer of Qesrv.
 
-#ifndef LSST_QSERV_MASTER_MSGCODE_H
-#define LSST_QSERV_MASTER_MSGCODE_H
+#ifndef LSST_QSERV_LOG_MSGCODE_H
+#define LSST_QSERV_LOG_MSGCODE_H
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace log {
 
 // Codes for C++ layer are >= 1000.
 // (<1000 reserved for Python layer.)
@@ -39,7 +41,7 @@ const int MSG_ERASED        = 1600;
 const int MSG_EXEC_SQUASHED = 1990;
 const int MSG_FINALIZED     = 2000;
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::log
 
-#endif // LSST_QSERV_MASTER_MSGCODE_H
+#endif // LSST_QSERV_LOG_MSGCODE_H
 

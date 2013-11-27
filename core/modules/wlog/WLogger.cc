@@ -28,7 +28,9 @@
 #include <sstream>
 #include <iostream>
 
-using lsst::qserv::worker::WLogger;
+namespace lsst {
+namespace qserv {
+namespace wlog {
 
 void WLogger::message(WLogger::LogLevel logLevel, char const* s) {
     if(logLevel <= _logLevel) { // Lower is higher priority
@@ -45,3 +47,5 @@ void WLogger::message(WLogger::LogLevel logLevel, char const* s) {
 
 void WLogger::_init() {
 }
+
+}}} // namespace lsst::qserv::wlog

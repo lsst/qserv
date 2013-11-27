@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_SELECTSTMT_H
-#define LSST_QSERV_MASTER_SELECTSTMT_H
+#ifndef LSST_QSERV_QUERY_SELECTSTMT_H
+#define LSST_QSERV_QUERY_SELECTSTMT_H
 /**
   * @file SelectStmt.h
   *
@@ -40,7 +40,13 @@ class SqlSQL2Parser;
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace parser {
+    // Forward
+    class SelectFactory;
+}
+
+namespace query {
 
 // Forward
 class SelectList;
@@ -99,7 +105,7 @@ public:
 
  private:
     // Declarations
-    friend class SelectFactory;
+    friend class parser::SelectFactory;
 
     // Helpers
     void _print();
@@ -118,5 +124,6 @@ public:
                            // sort, limit
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_SELECTSTMT_H
+}}} // namespace lsst::qserv::query
+
+#endif // LSST_QSERV_QUERY_SELECTSTMT_H

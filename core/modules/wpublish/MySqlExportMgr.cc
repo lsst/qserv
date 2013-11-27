@@ -28,8 +28,6 @@
 #include "wconfig/Config.h"
 #include "wlog/WLogger.h"
 
-using namespace lsst::qserv::worker;
-using namespace lsst::qserv;
 
 namespace { // File-scope helpers
 
@@ -38,17 +36,18 @@ inline std::string getTableNameDbListing(std::string const& instanceName) {
 }
 
 template <class C>
-void getDbs(WLogger& log,
+void getDbs(lsst::qserv::wlog::WLogger& log,
             std::string const& instanceName,
-            SqlConnection& sc,
+            lsst::qserv::sql::SqlConnection& sc,
             C& dbs) {
     // get list of tables
     // Assume table has schema that includes char column named "db"
-    SqlErrorObject sqlErrorObject;
+    lsst::qserv::sql::SqlErrorObject sqlErrorObject;
     std::string tableNameDbListing = getTableNameDbListing(instanceName);
     std::string listq = "SELECT db FROM " + tableNameDbListing;
     log.warn("Launching query : " + listq);
-    boost::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(listq);
+    boost::shared_ptr<lsst::qserv::sql::SqlResultIter> resultP =
+        sc.getQueryIter(listq);
     assert(resultP.get());
     bool nothing = true;
     for(; !resultP->done(); ++(*resultP)) {
@@ -61,7 +60,8 @@ void getDbs(WLogger& log,
 /// Functor to be called per-table name
 class doTable {
 public:
-    doTable(boost::regex& regex, MySqlExportMgr::ChunkMap& chunkMap)
+    doTable(boost::regex& regex, 
+            lsst::qserv::wpublish::MySqlExportMgr::ChunkMap& chunkMap)
         : _regex(regex), _chunkMap(chunkMap) {}
     void operator()(std::string const& tableName) {
         boost::smatch what;
@@ -71,22 +71,22 @@ public:
             // Get chunk# slot. Append/set table name.
             std::string chunkStr = what[2];
             int chunk = std::atoi(chunkStr.c_str());
-            MySqlExportMgr::StringSet& ss = _chunkMap[chunk];
+            lsst::qserv::wpublish::MySqlExportMgr::StringSet& ss = _chunkMap[chunk];
             ss.insert(what[1]);
         }
     }
 private:
     boost::regex _regex;
-    MySqlExportMgr::ChunkMap& _chunkMap;
+    lsst::qserv::wpublish::MySqlExportMgr::ChunkMap& _chunkMap;
 };
 
 /// Functor for iterating over a ChunkMap and printing out its contents.
 struct printChunk {
     printChunk(std::ostream& os) : _os(os) {}
-    void operator()(MySqlExportMgr::ChunkMap::value_type const& tuple) {
+    void operator()(lsst::qserv::wpublish::MySqlExportMgr::ChunkMap::value_type const& tuple) {
         std::stringstream ss;
         int chunkId = tuple.first;
-        MySqlExportMgr::StringSet const& s = tuple.second;
+        lsst::qserv::wpublish::MySqlExportMgr::StringSet const& s = tuple.second;
         ss << chunkId << "(";
         std::copy(s.begin(), s.end(),
                   std::ostream_iterator<std::string>(ss, ","));
@@ -98,22 +98,23 @@ struct printChunk {
 
 /// Functor for iterating over a ChunkMap and updating a StringSet.
 struct addDbItem {
-    addDbItem(std::string const& dbName, MySqlExportMgr::StringSet& stringSet)
+    addDbItem(std::string const& dbName, 
+              lsst::qserv::wpublish::MySqlExportMgr::StringSet& stringSet)
         : _dbName(dbName), _stringSet(stringSet) {}
-    void operator()(MySqlExportMgr::ChunkMap::value_type const& tuple) {
+    void operator()(lsst::qserv::wpublish::MySqlExportMgr::ChunkMap::value_type const& tuple) {
         // Ignore tuple.second (list of tables for this chunk)
-        _stringSet.insert(MySqlExportMgr::makeKey(_dbName, tuple.first));
+        _stringSet.insert(lsst::qserv::wpublish::MySqlExportMgr::makeKey(_dbName, tuple.first));
     }
     std::string const& _dbName;
-    MySqlExportMgr::StringSet& _stringSet;
+    lsst::qserv::wpublish::MySqlExportMgr::StringSet& _stringSet;
 };
 
 /// Functor to load db
 class doDb {
 public:
-    doDb(SqlConnection& conn,
+    doDb(lsst::qserv::sql::SqlConnection& conn,
          boost::regex& regex,
-         MySqlExportMgr::ExistMap& existMap)
+         lsst::qserv::wpublish::MySqlExportMgr::ExistMap& existMap)
         : _conn(conn),
           _regex(regex),
           _existMap(existMap)
@@ -122,13 +123,14 @@ public:
     void operator()(std::string const& dbName) {
         // get list of tables
         std::vector<std::string> tables;
-        SqlErrorObject sqlErrorObject;
+        lsst::qserv::sql::SqlErrorObject sqlErrorObject;
         bool ok = _conn.listTables(tables,  sqlErrorObject, "", dbName);
         if(!ok) {
             std::cout << "SQL error: " << sqlErrorObject.errMsg() << std::endl;
             assert(ok);
         }
-        MySqlExportMgr::ChunkMap& chunkMap = _existMap[dbName];
+        lsst::qserv::wpublish::MySqlExportMgr::ChunkMap& chunkMap =
+            _existMap[dbName];
         chunkMap.clear(); // Clear out stale entries to avoid mixing.
         std::for_each(tables.begin(), tables.end(),
                       doTable(_regex, chunkMap));
@@ -137,20 +139,23 @@ public:
         // TODO: Sanity check: do all tables have the same chunks represented?
     }
 private:
-    MySqlExportMgr::ExistMap& _existMap;
-    SqlConnection& _conn;
+    lsst::qserv::wpublish::MySqlExportMgr::ExistMap& _existMap;
+    lsst::qserv::sql::SqlConnection& _conn;
     boost::regex& _regex;
 };
 
 } // anonymous namespace
 
-
+namespace lsst {
+namespace qserv {
+namespace wpublish {
+        
 void MySqlExportMgr::_init() {
     std::string chunkedForm("(\\w+)_(\\d+)");
     boost::regex regex(chunkedForm);
     // Check metadata for databases to track
 
-    SqlConnection sc(getConfig().getSqlConfig(), true);
+    sql::SqlConnection sc(wconfig::getConfig().getSqlConfig(), true);
 
     std::deque<std::string> dbs;
 
@@ -176,4 +181,4 @@ void MySqlExportMgr::fillDbChunks(MySqlExportMgr::StringSet& s) {
     }
 }
 
-
+}}} // namespace lsst::qserv::wpublish

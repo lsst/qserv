@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_QUERYRUNNER_H
-#define LSST_QSERV_WORKER_QUERYRUNNER_H
+#ifndef LSST_QSERV_WDB_QUERYRUNNER_H
+#define LSST_QSERV_WDB_QUERYRUNNER_H
  /**
   * @file QueryRunner.h
   *
@@ -45,29 +45,37 @@
 #include "wcontrol/Task.h"
 #include "wcontrol/ResultTracker.h"
 
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
-    // Forward
+namespace sql {
     class SqlConnection;
-}}
+}
+namespace wdb {
+    class QuerySql;
+    class QueryPhyResult;
+}
+namespace wlog {
+    class WLogger;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-namespace worker {
-class WLogger;
-class QuerySql;
-class QueryPhyResult; // Forward
+namespace wdb {
+
 ////////////////////////////////////////////////////////////////////////
 struct QueryRunnerArg {
 public:
     QueryRunnerArg() {}
 
-    QueryRunnerArg(boost::shared_ptr<WLogger> log_,
-                   Task::Ptr task_,
+    QueryRunnerArg(boost::shared_ptr<wlog::WLogger> log_,
+                   wcontrol::Task::Ptr task_,
                    std::string overrideDump_=std::string())
         : log(log_), task(task_), overrideDump(overrideDump_) { }
-    boost::shared_ptr<WLogger> log;
-    Task::Ptr task;
+    boost::shared_ptr<wlog::WLogger> log;
+    wcontrol::Task::Ptr task;
     std::string overrideDump;
 };
 class ArgFunc {
@@ -82,7 +90,7 @@ class QueryRunner {
 // write a new one to leverage the new xrootd interface and new result
 // transfer. ResultTracker may be eliminated.
 public:
-    typedef ResultTracker<std::string, ResultError> Tracker;
+    typedef wcontrol::ResultTracker<std::string, wcontrol::ResultError> Tracker;
     QueryRunner(QueryRunnerArg const& a);
     ~QueryRunner();
     bool operator()(); // exec and loop as long as there are queries
@@ -104,14 +112,14 @@ private:
 
     bool _act();
     std::string _getDumpTableList(std::string const& script);
-    bool _runTask(Task::Ptr t);
-    bool _runFragment(SqlConnection& sqlConn,
-                      QuerySql const& qSql);
+    bool _runTask(wcontrol::Task::Ptr t);
+    bool _runFragment(sql::SqlConnection& sqlConn,
+                      wdb::QuerySql const& qSql);
     void _buildSubchunkScripts(std::string const& script,
                                std::string& build, std::string& cleanup);
-    bool _prepareAndSelectResultDb(SqlConnection& sqlConn,
+    bool _prepareAndSelectResultDb(sql::SqlConnection& sqlConn,
                                    std::string const& dbName=std::string());
-    bool _prepareScratchDb(SqlConnection& sqlConn);
+    bool _prepareScratchDb(sql::SqlConnection& sqlConn);
     bool _performMysqldump(std::string const& dbName,
                            std::string const& dumpFile,
                            std::string const& tables);
@@ -120,15 +128,15 @@ private:
     std::string _getErrorString() const;
     boost::shared_ptr<ArgFunc> getResetFunc();
     bool _checkPoisoned();
-    boost::shared_ptr<CheckFlag> _makeAbort();
+    boost::shared_ptr<wbase::CheckFlag> _makeAbort();
     bool _poisonCleanup();
 
     // Fields
-    boost::shared_ptr<WLogger> _log;
-    SqlErrorObject _errObj;
+    boost::shared_ptr<wlog::WLogger> _log;
+    sql::SqlErrorObject _errObj;
     std::string _user;
-    boost::shared_ptr<QueryPhyResult> _pResult;
-    Task::Ptr _task;
+    boost::shared_ptr<wdb::QueryPhyResult> _pResult;
+    wcontrol::Task::Ptr _task;
     std::string _scriptId;
     boost::shared_ptr<boost::mutex> _poisonedMutex;
     StringDeque _poisoned;
@@ -137,5 +145,6 @@ private:
 int dumpFileOpen(std::string const& dbName);
 bool dumpFileExists(std::string const& dumpFilename);
 
-}}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_QUERYRUNNER_H
+}}} // namespace lsst::qserv::wdb
+
+#endif // LSST_QSERV_WDB_QUERYRUNNER_H

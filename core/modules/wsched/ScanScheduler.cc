@@ -37,27 +37,28 @@
 #include "wcontrol/Foreman.h"
 #include "wlog/WLogger.h"
 
-lsst::qserv::worker::ScanScheduler* dbgScanScheduler = 0; //< A symbol for gdb
-lsst::qserv::worker::ChunkDisk* dbgChunkDisk1 = 0; //< A symbol for gdb
-
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wsched {
+
+ScanScheduler* dbgScanScheduler = 0; //< A symbol for gdb
+ChunkDisk* dbgChunkDisk1 = 0; //< A symbol for gdb
+
+
 ////////////////////////////////////////////////////////////////////////
 // class ScanScheduler
 ////////////////////////////////////////////////////////////////////////
-ScanScheduler::ScanScheduler(WLogger::Ptr logger)
+ScanScheduler::ScanScheduler(wlog::WLogger::Ptr logger)
     : _maxRunning(32), // FIXME: set to some multiple of system proc count.
-      _logger(logger)
-{
-
+      _logger(logger) {
     _disks.push_back(boost::make_shared<ChunkDisk>(logger));
     dbgChunkDisk1 = _disks.front().get();
     dbgScanScheduler = this;
     assert(!_disks.empty());
 }
 
-bool ScanScheduler::removeByHash(std::string const& hash) {
+bool
+ScanScheduler::removeByHash(std::string const& hash) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     int numRemoved = _disks.front()->removeByHash(hash);
     // Consider creating poisoned list, that is checked during later
@@ -66,12 +67,14 @@ bool ScanScheduler::removeByHash(std::string const& hash) {
     return numRemoved > 0;
 }
 
-void ScanScheduler::queueTaskAct(Task::Ptr incoming) {
+void
+ScanScheduler::queueTaskAct(wcontrol::Task::Ptr incoming) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     _enqueueTask(incoming);
 }
 
-TaskQueuePtr ScanScheduler::nopAct(TaskQueuePtr running) {
+wcontrol::TaskQueuePtr
+ScanScheduler::nopAct(wcontrol::TaskQueuePtr running) {
     if(!running) { throw std::invalid_argument("null run list"); }
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
@@ -81,8 +84,9 @@ TaskQueuePtr ScanScheduler::nopAct(TaskQueuePtr running) {
 
 /// @return a queue of all tasks ready to run.
 ///
-TaskQueuePtr ScanScheduler::newTaskAct(Task::Ptr incoming,
-                                       TaskQueuePtr running) {
+wcontrol::TaskQueuePtr
+ScanScheduler::newTaskAct(wcontrol::Task::Ptr incoming,
+                          wcontrol::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
     if(!running) { throw std::invalid_argument("null run list"); }
@@ -93,14 +97,14 @@ TaskQueuePtr ScanScheduler::newTaskAct(Task::Ptr incoming,
     // spindle.
     int available = _maxRunning - running->size();
     if(available <= 0) {
-        return TaskQueuePtr();
+        return wcontrol::TaskQueuePtr();
     }
     return _getNextTasks(available);
 }
 
-TaskQueuePtr ScanScheduler::taskFinishAct(Task::Ptr finished,
-                                          TaskQueuePtr running) {
-
+wcontrol::TaskQueuePtr
+ScanScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
+                             wcontrol::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
 
@@ -113,31 +117,36 @@ TaskQueuePtr ScanScheduler::taskFinishAct(Task::Ptr finished,
     _logger->debug(os.str());
     int available = _maxRunning - running->size();
     if(available <= 0) {
-        return TaskQueuePtr();
+        return wcontrol::TaskQueuePtr();
     }
     return _getNextTasks(available);
 }
 
-void ScanScheduler::markStarted(Task::Ptr t) {
+void
+ScanScheduler::markStarted(wcontrol::Task::Ptr t) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(!_disks.empty());
     _disks.front()->registerInflight(t);
 }
-void ScanScheduler::markFinished(Task::Ptr t) {
+
+void
+ScanScheduler::markFinished(wcontrol::Task::Ptr t) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(!_disks.empty());
     _disks.front()->removeInflight(t);
 }
 
 /// @return true if data is okay.
-bool ScanScheduler::checkIntegrity() {
+bool
+ScanScheduler::checkIntegrity() {
     boost::lock_guard<boost::mutex> guard(_mutex);
     return _integrityHelper();
 }
 
 /// @return true if data is okay
 /// precondition: _mutex is locked.
-bool ScanScheduler::_integrityHelper() {
+bool
+ScanScheduler::_integrityHelper() {
     ChunkDiskList::iterator i, e;
     for(i=_disks.begin(), e=_disks.end(); i != e; ++i) {
         if(!(**i).checkIntegrity()) return false;
@@ -149,7 +158,8 @@ bool ScanScheduler::_integrityHelper() {
 /// @return new tasks to run
 /// TODO: preferential treatment for chunkId just run?
 /// or chunkId that are currently running?
-TaskQueuePtr ScanScheduler::_getNextTasks(int max) {
+wcontrol::TaskQueuePtr
+ScanScheduler::_getNextTasks(int max) {
     // FIXME: Select disk based on chunk location.
     assert(!_disks.empty());
     assert(_disks.front());
@@ -157,7 +167,7 @@ TaskQueuePtr ScanScheduler::_getNextTasks(int max) {
     os << "_getNextTasks(" << max << ")>->->";
     _logger->debug(os.str());
     os.str("");
-    TaskQueuePtr tq;
+    wcontrol::TaskQueuePtr tq;
     ChunkDisk& disk = *_disks.front();
 
     // Check disks for candidate ones.
@@ -165,11 +175,11 @@ TaskQueuePtr ScanScheduler::_getNextTasks(int max) {
     // from both disks. (for multi-disk support)
     bool allowNewChunk = (!disk.busy() && !disk.empty());
     while(max > 0) {
-        Task::Ptr p = disk.getNext(allowNewChunk);
+        wcontrol::Task::Ptr p = disk.getNext(allowNewChunk);
         if(!p) { break; }
         allowNewChunk = false; // Only allow one new chunk
         if(!tq) {
-            tq.reset(new TaskQueue());
+            tq.reset(new wcontrol::TaskQueue());
         }
         tq->push_back(p);
 
@@ -188,17 +198,18 @@ TaskQueuePtr ScanScheduler::_getNextTasks(int max) {
 }
 
 /// Precondition: _mutex is locked.
-void ScanScheduler::_enqueueTask(Task::Ptr incoming) {
+void
+ScanScheduler::_enqueueTask(wcontrol::Task::Ptr incoming) {
     if(!incoming) { throw std::invalid_argument("No task to enqueue"); }
     // FIXME: Select disk based on chunk location.
     assert(!_disks.empty());
     assert(_disks.front());
     _disks.front()->enqueue(incoming);
     std::ostringstream os;
-    TaskMsg const& msg = *(incoming->msg);
+    proto::TaskMsg const& msg = *(incoming->msg);
     os << "Adding new task: " << msg.chunkid()
        << " : " << msg.fragment(0).query(0);
     _logger->debug(os.str());
 }
 
-}}} // lsst::qserv::worker
+}}} // namespace lsst::qserv::wsched

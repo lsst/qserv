@@ -33,9 +33,9 @@
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
-namespace qMaster=lsst::qserv::master;
-using lsst::qserv::master::GroupByTerm;
-using lsst::qserv::master::GroupByClause;
+namespace lsst {
+namespace qserv {
+namespace query {
 
 class GroupByTerm::render {
 public:
@@ -49,7 +49,7 @@ public:
 // GroupByTerm
 ////////////////////////////////////////////////////////////////////////
 std::ostream&
-qMaster::operator<<(std::ostream& os, qMaster::GroupByTerm const& t) {
+operator<<(std::ostream& os, GroupByTerm const& t) {
     os << *(t._expr);
     if(!t._collate.empty()) os << " COLLATE " << t._collate;
     return os;
@@ -59,11 +59,11 @@ qMaster::operator<<(std::ostream& os, qMaster::GroupByTerm const& t) {
 // GroupByClause
 ////////////////////////////////////////////////////////////////////////
 std::ostream&
-qMaster::operator<<(std::ostream& os, qMaster::GroupByClause const& c) {
+operator<<(std::ostream& os, GroupByClause const& c) {
     if(c._terms.get()) {
         os << "GROUP BY ";
         std::copy(c._terms->begin(),c._terms->end(),
-              std::ostream_iterator<qMaster::GroupByTerm>(os,", "));
+              std::ostream_iterator<GroupByTerm>(os,", "));
     }
     return os;
 }
@@ -75,7 +75,7 @@ GroupByClause::getGenerated() {
 }
 
 void
-GroupByClause::renderTo(qMaster::QueryTemplate& qt) const {
+GroupByClause::renderTo(QueryTemplate& qt) const {
    if(_terms.get() && _terms->size() > 0) {
         List const& terms = *_terms;
         std::for_each(terms.begin(), terms.end(), GroupByTerm::render(qt));
@@ -91,3 +91,5 @@ boost::shared_ptr<GroupByClause>
 GroupByClause::copySyntax() {
     return boost::make_shared<GroupByClause>(*this);
 }
+
+}}} // namespace lsst::qserv::query

@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_QUERYCONTEXT_H
-#define LSST_QSERV_MASTER_QUERYCONTEXT_H
+#ifndef LSST_QSERV_QUERY_QUERYCONTEXT_H
+#define LSST_QSERV_QUERY_QUERYCONTEXT_H
 /**
   * @file
   *
@@ -38,7 +38,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 class ColumnRef;
 class QsRestrictor;
@@ -65,14 +65,14 @@ public:
     std::string anonymousTable; ///< Implicit table context
     std::string username; ///< unused, but reserved.
 
-    StringPairList scanTables; // Tables scanned (for shared scans)
+    util::StringPairList scanTables; // Tables scanned (for shared scans)
 
     // Table aliasing
-    TableAlias tableAliases;
-    TableAliasReverse tableAliasReverses;
+    query::TableAlias tableAliases;
+    query::TableAliasReverse tableAliasReverses;
 
     // Owned QueryMapping and query restrictors
-    boost::shared_ptr<QueryMapping> queryMapping;
+    boost::shared_ptr<qana::QueryMapping> queryMapping;
     boost::shared_ptr<RestrList> restrictors;
 
     int chunkCount; //< -1: all, 0: none, N: #chunks
@@ -90,5 +90,6 @@ public:
     DbTablePair resolve(boost::shared_ptr<ColumnRef> cr);
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_QUERYCONTEXT_H
+}}} // namespace lsst::qserv::query
+
+#endif // LSST_QSERV_QUERY_QUERYCONTEXT_H

@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_MASTER_COLUMNREF_H
-#define LSST_QSERV_MASTER_COLUMNREF_H
+#ifndef LSST_QSERV_QUERY_COLUMNREF_H
+#define LSST_QSERV_QUERY_COLUMNREF_H
 /**
   * @file ColumnRef.h
   *
@@ -35,7 +35,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 class QueryTemplate; // Forward
 
@@ -61,6 +61,6 @@ public:
     void renderTo(QueryTemplate& qt) const;
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query
 
-#endif // LSST_QSERV_MASTER_COLUMNREF_H
+#endif // LSST_QSERV_QUERY_COLUMNREF_H

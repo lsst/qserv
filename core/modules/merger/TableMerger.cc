@@ -33,24 +33,29 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include "merger/TableMerger.h"
+
+// Standard library includes
 #include <sys/time.h>
 #include <sstream>
 #include <iostream>
+
+// Boost
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
-#include "sql/SqlConnection.h"
+
+
+// Local includes
 #include "log/Logger.h"
 #include "merger/SqlInsertIter.h"
+#include "merger/TableMerger.h"
+#include "sql/SqlConnection.h"
 #include "util/MmapFile.h"
-using lsst::qserv::SqlErrorObject;
-using lsst::qserv::SqlConfig;
-using lsst::qserv::SqlConnection;
-using lsst::qserv::master::TableMerger;
-using lsst::qserv::master::TableMergerError;
-using lsst::qserv::master::TableMergerConfig;
+
 
 namespace { // File-scope helpers
+
+using lsst::qserv::mysql::SqlConfig;
+using lsst::qserv::merger::TableMergerConfig;
 
 std::string getTimeStampId() {
     struct timeval now;
@@ -97,6 +102,7 @@ void inplaceReplace(std::string& s, std::string const& old,
     //LOGGER_DBG << "newnew: " << s.substr(pos-5, rplcSize+10) << std::endl;
     return;
 }
+
 std::string extractReplacedCreateStmt(char const* s, ::off_t size,
                                       std::string const& oldTable,
                                       std::string const& newTable,
@@ -131,6 +137,11 @@ std::string dropDbContext(std::string const& tableName,
 }
 
 } // anonymous namespace
+
+
+namespace lsst {
+namespace qserv {
+namespace merger {
 
 std::string const TableMerger::_dropSql("DROP TABLE IF EXISTS %s;");
 std::string const TableMerger::_createSql("CREATE TABLE IF NOT EXISTS %s SELECT * FROM %s;");
@@ -248,9 +259,9 @@ bool TableMerger::_applySql(std::string const& sql) {
 
 bool TableMerger::_applySqlLocal(std::string const& sql) {
     boost::lock_guard<boost::mutex> m(_sqlMutex);
-    SqlErrorObject errObj;
+    sql::SqlErrorObject errObj;
     if(!_sqlConn.get()) {
-        _sqlConn.reset(new SqlConnection(*_sqlConfig, true));
+        _sqlConn.reset(new sql::SqlConnection(*_sqlConfig, true));
         if(!_sqlConn->connectToDb(errObj)) {
             _error.status = TableMergerError::MYSQLCONNECT;
             _error.errorCode = errObj.errNo();
@@ -325,7 +336,8 @@ bool TableMerger::_importResult(std::string const& dumpFile) {
 
 bool TableMerger::merge2(std::string const& dumpFile,
                         std::string const& tableName) {
-    boost::shared_ptr<MmapFile> m = MmapFile::newMap(dumpFile, true, false);
+    boost::shared_ptr<util::MmapFile> m = 
+        util::MmapFile::newMap(dumpFile, true, false);
     if(!m.get()) {
         // Fallback to non-mmap version.
         return _slowImport(dumpFile, tableName);
@@ -352,7 +364,7 @@ bool TableMerger::merge2(std::string const& dumpFile,
 }
 
 bool TableMerger::_importBufferCreate(PacketIterPtr pacIter,
-                                     std::string const& tableName) {
+                                      std::string const& tableName) {
     // Make create statement
     std::string createStmt = _makeCreateStmt(pacIter, tableName);
     return _dropAndCreate(tableName, createStmt);
@@ -472,3 +484,5 @@ bool TableMerger::_slowImport(std::string const& dumpFile,
     sql = _buildMergeSql(tableName, false);
     return _applySql(sql);
 }
+
+}}} // namespace lsst::qserv::merger

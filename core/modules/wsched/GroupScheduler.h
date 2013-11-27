@@ -20,48 +20,51 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_GROUPSCHEDULER_H
-#define LSST_QSERV_WORKER_GROUPSCHEDULER_H
+#ifndef LSST_QSERV_WSCHED_GROUPSCHEDULER_H
+#define LSST_QSERV_WSCHED_GROUPSCHEDULER_H
 
 #include "wcontrol/Foreman.h"
 #include "wsched/GroupedQueue.h"
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wsched {
+
 /// GroupScheduler -- A scheduler that is a cross between FIFO and shared scan.
 /// Tasks are ordered as they come in, except that queries for the
 /// same chunks are grouped together.
-class GroupScheduler : public Foreman::Scheduler {
+class GroupScheduler : public wcontrol::Foreman::Scheduler {
 public:
     typedef boost::shared_ptr<GroupScheduler> Ptr;
 
-    GroupScheduler(boost::shared_ptr<WLogger> logger);
+    GroupScheduler(boost::shared_ptr<wlog::WLogger> logger);
     virtual ~GroupScheduler() {}
 
     virtual bool removeByHash(std::string const& hash);
-    virtual void queueTaskAct(Task::Ptr incoming);
-    virtual TaskQueuePtr nopAct(TaskQueuePtr running);
-    virtual TaskQueuePtr newTaskAct(Task::Ptr incoming,
-                                    TaskQueuePtr running);
-    virtual TaskQueuePtr taskFinishAct(Task::Ptr finished,
-                                       TaskQueuePtr running);
+    virtual void queueTaskAct(wcontrol::Task::Ptr incoming);
+    virtual wcontrol::TaskQueuePtr nopAct(wcontrol::TaskQueuePtr running);
+    virtual wcontrol::TaskQueuePtr newTaskAct(wcontrol::Task::Ptr incoming,
+                                              wcontrol::TaskQueuePtr running);
+    virtual wcontrol::TaskQueuePtr taskFinishAct(wcontrol::Task::Ptr finished,
+                                                 wcontrol::TaskQueuePtr running);
     static std::string getName()  { return std::string("GroupSched"); }
     bool checkIntegrity();
 
-    typedef GroupedQueue<Task::Ptr, Task::ChunkEqual> Queue;
+    typedef GroupedQueue<wcontrol::Task::Ptr, wcontrol::Task::ChunkEqual> Queue;
 
 private:
-    void _enqueueTask(Task::Ptr incoming);
+    void _enqueueTask(wcontrol::Task::Ptr incoming);
     bool _integrityHelper();
-    TaskQueuePtr _getNextIfAvail(int runCount);
-    TaskQueuePtr _getNextTasks(int max);
+    wcontrol::TaskQueuePtr _getNextIfAvail(int runCount);
+    wcontrol::TaskQueuePtr _getNextTasks(int max);
 
     boost::mutex _mutex;
 
     Queue _queue;
     int _maxRunning;
-    boost::shared_ptr<WLogger> _logger;
+    boost::shared_ptr<wlog::WLogger> _logger;
 };
-}}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_GROUPSCHEDULER_H
+
+}}} // namespace lsst::qserv::wsched
+
+#endif // LSST_QSERV_WSCHED_GROUPSCHEDULER_H

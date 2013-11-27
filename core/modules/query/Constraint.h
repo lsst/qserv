@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_CONSTRAINT_H
-#define LSST_QSERV_MASTER_CONSTRAINT_H
+#ifndef LSST_QSERV_QUERY_CONSTRAINT_H
+#define LSST_QSERV_QUERY_CONSTRAINT_H
 /**
   * @file
   *
@@ -34,7 +34,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 /// A detected qserv constraint for C++ to Python
 class Constraint {
 public:
@@ -47,7 +48,9 @@ public:
         return params.size();
     }
 };
-std::ostream& operator<<(std::ostream& os, Constraint const& c);
+
+std::ostream& 
+operator<<(std::ostream& os, Constraint const& c);
 typedef std::vector<Constraint> ConstraintVector;
 
 /// A SWIG-purposed wrapper of a ConstraintVector.
@@ -71,6 +74,6 @@ private:
     boost::shared_ptr<ConstraintVector> _vec;
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query
 
-#endif // LSST_QSERV_MASTER_CONSTRAINT_H
+#endif // LSST_QSERV_QUERY_CONSTRAINT_H

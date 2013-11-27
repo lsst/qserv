@@ -30,9 +30,10 @@
 #include <algorithm>
 #include <iterator>
 #include <iostream>
-namespace qMaster=lsst::qserv::master;
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace qproc {
 
 ////////////////////////////////////////////////////////////////////////
 // class ChunkQuerySpec
@@ -58,5 +59,5 @@ std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c) {
     return os;
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::qproc
 

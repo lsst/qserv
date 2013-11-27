@@ -32,17 +32,17 @@
 #include <cassert>
 #include <stdexcept>
 
-namespace qMaster=lsst::qserv::master;
 
 namespace { // File-scope helpers
 /// A "good" number of subchunks to include in a chunk query.  This is
 /// a guess. The best value is an open question
 int const GOOD_SUBCHUNK_COUNT = 20;
-}
+} // annonymous namespace
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qproc {
+
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
     os << "ChunkSpec["
        << "chunkId=" << c.chunkId
@@ -110,5 +110,5 @@ std::ostream& operator<<(std::ostream& os, ChunkSpecSingle const& c) {
     return os;
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::qproc
 

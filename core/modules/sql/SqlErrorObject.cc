@@ -23,8 +23,12 @@
 #include <sstream>
 #include "sql/SqlErrorObject.h"
 
+namespace lsst {
+namespace qserv {
+namespace sql {
+
 std::string
-lsst::qserv::SqlErrorObject::printErrMsg() const {
+SqlErrorObject::printErrMsg() const {
     if ( isSet() ) {
         std::stringstream ss;
         ss << "Error " << errNo() << ": " << errMsg() << std::endl;
@@ -32,3 +36,5 @@ lsst::qserv::SqlErrorObject::printErrMsg() const {
     }
     return "";
 }
+
+}}} // namespace lsst::qserv::sql

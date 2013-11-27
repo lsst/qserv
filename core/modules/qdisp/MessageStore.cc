@@ -25,9 +25,11 @@
 #include <boost/format.hpp>
 #include "qdisp/MessageStore.h"
 #include "log/Logger.h"
-using lsst::qserv::master::MessageStore;
 
-namespace qMaster=lsst::qserv::master;
+namespace lsst {
+namespace qserv {
+namespace qdisp {
+
 
 ////////////////////////////////////////////////////////////////////////
 // public
@@ -46,7 +48,7 @@ void MessageStore::addMessage(int chunkId, int code, std::string const& descript
     }
 }
 
-const qMaster::QueryMessage MessageStore::getMessage(int idx) {
+const QueryMessage MessageStore::getMessage(int idx) {
     return _queryMessages.at(idx);
 }
 
@@ -63,3 +65,4 @@ const int MessageStore::messageCount(int code) {
     return count;
 }
 
+}}} // namespace lsst::qserv::qdisp

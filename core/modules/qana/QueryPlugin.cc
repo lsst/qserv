@@ -35,11 +35,12 @@
 
 #include "qana/PluginNotFoundError.h"
 
-namespace qMaster=lsst::qserv::master;
-using lsst::qserv::master::QueryPlugin;
+namespace lsst {
+namespace qserv {
+namespace qana {
 
 namespace { // File-scope helpers
-typedef std::map<std::string, QueryPlugin::FactoryPtr> FactoryMap;
+    typedef std::map<std::string, lsst::qserv::qana::QueryPlugin::FactoryPtr> FactoryMap;
 
 //boost::once_flag factoryMapFlag = BOOST_ONCE_INIT;
 static boost::mutex factoryMapMutex;
@@ -70,3 +71,5 @@ QueryPlugin::registerClass(QueryPlugin::FactoryPtr f) {
     if(!f.get()) return;
     factoryMap()[f->getName()] = f;
 }
+
+}}} // namespace lsst::qserv::qana

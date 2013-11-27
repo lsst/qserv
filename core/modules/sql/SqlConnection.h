@@ -28,8 +28,9 @@
 // not all.
 // It is uncertain of how this usage conflicts with db usage via the
 // python MySQLdb api, but no problems have been detected so far.
-#ifndef LSST_QSERV_SQLCONNECTION_H
-#define LSST_QSERV_SQLCONNECTION_H
+
+#ifndef LSST_QSERV_SQL_SQLCONNECTION_H
+#define LSST_QSERV_SQL_SQLCONNECTION_H
 
 // Standard
 #include <string>
@@ -42,15 +43,22 @@
 
 namespace lsst {
 namespace qserv {
-// forward
-class MySqlConnection;
+
+namespace mysql {
+    // Forward
+    class MySqlConnection;
+}
+    
+namespace sql {
+
+// Forward
 class SqlResults;
 
 class SqlResultIter {
 public:
     typedef std::vector<std::string> List;
     SqlResultIter() {}
-    SqlResultIter(SqlConfig const& sc, std::string const& query);
+    SqlResultIter(mysql::SqlConfig const& sc, std::string const& query);
     virtual ~SqlResultIter() {}
     virtual SqlErrorObject& getErrorObject() { return _errObj; }
 
@@ -59,9 +67,9 @@ public:
     virtual bool done() const; // Would like to relax LSST standard 3-4 for iterator classes
 
 private:
-    bool _setup(SqlConfig const& sqlConfig, std::string const& query);
+    bool _setup(mysql::SqlConfig const& sqlConfig, std::string const& query);
 
-    boost::shared_ptr<MySqlConnection> _connection;
+    boost::shared_ptr<mysql::MySqlConnection> _connection;
     List _current;
     SqlErrorObject _errObj;
     int _columnCount;
@@ -71,9 +79,9 @@ private:
 class SqlConnection {
 public:
     SqlConnection();
-    SqlConnection(SqlConfig const& sc, bool useThreadMgmt=false);
+    SqlConnection(mysql::SqlConfig const& sc, bool useThreadMgmt=false);
     virtual ~SqlConnection();
-    virtual void reset(SqlConfig const& sc, bool useThreadMgmt=false);
+    virtual void reset(mysql::SqlConfig const& sc, bool useThreadMgmt=false);
     virtual bool connectToDb(SqlErrorObject&);
     virtual bool selectDb(std::string const& dbName, SqlErrorObject&);
     virtual bool runQuery(char const* query, int qSize,
@@ -106,21 +114,20 @@ public:
 
     virtual std::string getActiveDbName() const;
 
-
 private:
     friend class SqlResultIter;
     bool _init(SqlErrorObject&);
     bool _connect(SqlErrorObject&);
     bool _setErrorObject(SqlErrorObject&,
                          std::string const& details=std::string(""));
-    boost::shared_ptr<MySqlConnection> _connection;
+    boost::shared_ptr<mysql::MySqlConnection> _connection;
 }; // class SqlConnection
 
+}}} // namespace lsst::qserv::sql
 
-}} // namespace lsst::qserv
 // Local Variables:
 // mode:c++
 // comment-column:0
 // End:
 
-#endif // LSST_QSERV_SQLCONNECTION_H
+#endif // LSST_QSERV_SQL_SQLCONNECTION_H

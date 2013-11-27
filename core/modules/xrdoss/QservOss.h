@@ -28,26 +28,31 @@
 // the filesystem.
 
 
-#ifndef LSST_QSERV_WORKER_QSERVOSS_H
-#define LSST_QSERV_WORKER_QSERVOSS_H
+#ifndef LSST_QSERV_XRDOSS_QSERVOSS_H
+#define LSST_QSERV_XRDOSS_QSERVOSS_H
 #include "XrdOss/XrdOss.hh"
 #include <deque>
 #include <set>
 #include <string>
 #include <boost/shared_ptr.hpp>
 
-// Forward
+// Forward declarations
 class XrdOss;
 class XrdSysLogger;
 class XrdOucEnv;
-
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
 namespace wpublish {
-class ChunkInventory;
+    class ChunkInventory;
 }
-namespace worker {
-class WLogger;
+namespace wlog {
+    class WLogger;
+}}}
+// End of forward declarations
+
+namespace lsst {
+namespace qserv {
+namespace xrdoss {
 
 /// An XrdOssDF implementation that merely pays lip-service to incoming
 /// directory operations. QservOss objects must return XrdOssDF (or children)
@@ -115,11 +120,10 @@ private:
     std::string _cfgParams;
     std::string _name;
     XrdSysLogger* _xrdSysLogger;
-    boost::shared_ptr<WLogger> _log;
+    boost::shared_ptr<wlog::WLogger> _log;
     time_t _initTime;
 };
-}}} // namespace lsst::qserv::master
 
+}}} // namespace lsst::qserv::xrdoss
 
-#endif //  LSST_QSERV_WORKER_QSERVOSS_H
-
+#endif //  LSST_QSERV_XRDOSS_QSERVOSS_H

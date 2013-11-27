@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_CHUNKQUERYSPEC_H
-#define LSST_QSERV_MASTER_CHUNKQUERYSPEC_H
+#ifndef LSST_QSERV_QPROC_CHUNKQUERYSPEC_H
+#define LSST_QSERV_QPROC_CHUNKQUERYSPEC_H
 /**
   * @file
   *
@@ -35,7 +35,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qproc {
 
 /// ChunkQuerySpec is a value class that bundles a set of queries with their
 /// dependent db, chunkId, and set of subChunkIds. It has a pointer to another
@@ -46,7 +46,7 @@ public:
     // Contents could change
     std::string db;
     int chunkId;
-    StringPairList scanTables;
+    util::StringPairList scanTables;
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
     std::vector<std::string> subChunkTables;
@@ -58,8 +58,8 @@ public:
 };
 
 std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c);
-}}} // namespace lsst::qserv::master
 
+}}} // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_MASTER_CHUNKQUERYSPEC_H
+#endif // LSST_QSERV_QPROC_CHUNKQUERYSPEC_H
 

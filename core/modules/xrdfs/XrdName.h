@@ -20,15 +20,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_XRDNAME_H
-#define LSST_QSERV_WORKER_XRDNAME_H
+#ifndef LSST_QSERV_XRDFS_XRDNAME_H
+#define LSST_QSERV_XRDFS_XRDNAME_H
 #include <cctype>
 #include <cstdlib>
 #include <string>
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace xrdfs {
 
 /// XrdName is a small class that helps extract the name of a running xrootd (or
 /// cmsd) instance. It does this by checking an environment variable that is
@@ -54,6 +54,6 @@ private:
     std::string _name;
 };
 
-}}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::xrdfs
 
-#endif // LSST_QSERV_WORKER_XRDNAME_H
+#endif // LSST_QSERV_XRDFS_XRDNAME_H

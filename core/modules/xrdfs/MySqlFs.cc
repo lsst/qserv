@@ -61,14 +61,10 @@ XrdSfsGetDefaultFileSystem(XrdSfsFileSystem* nativeFS,
 }
 #endif
 
-namespace qWorker = lsst::qserv::worker;
-using namespace lsst::qserv::worker;
-using lsst::qserv::QservPath;
-
 namespace {
 
 #ifdef NO_XROOTD_FS // Fake placeholder functions
-class FakeAddCallback : public AddCallbackFunction {
+class FakeAddCallback : public lsst::qserv::xrdfs::AddCallbackFunction {
 public:
     typedef boost::shared_ptr<FakeAddCallback> Ptr;
     virtual ~FakeAddCallback() {}
@@ -76,7 +72,7 @@ public:
     }
 };
 
-class FakeFileValidator : public fs::FileValidator {
+class FakeFileValidator : public lsst::qserv::xrdfs::FileValidator {
 public:
     typedef boost::shared_ptr<FakeFileValidator> Ptr;
     FakeFileValidator() {}
@@ -91,7 +87,7 @@ template<class Callback>
 class FinishListener {
 public:
     FinishListener(Callback* cb) : _callback(cb) {}
-    virtual void operator()(ResultError const& p) {
+    virtual void operator()(lsst::qserv::wcontrol::ResultError const& p) {
         if(p.first == 0) {
             // std::cerr << "Callback=OK!\t" << (void*)_callback << std::endl;
             _callback->Reply_OK();
@@ -110,7 +106,7 @@ private:
 };
 
 /// An AddCallbackFunction implementation to provide xrootd-backed callbacks.
-class AddCallbackFunc : public AddCallbackFunction {
+class AddCallbackFunc : public lsst::qserv::xrdfs::AddCallbackFunction {
 public:
     typedef boost::shared_ptr<AddCallbackFunc> Ptr;
     virtual ~AddCallbackFunc() {}
@@ -121,62 +117,48 @@ public:
 
         // Register callback with opener.
         //std::cerr << "Callback reg!\t" << (void*)callback << std::endl;
-        QueryRunner::getTracker().listenOnce(
+        lsst::qserv::wdb::QueryRunner::getTracker().listenOnce(
             filename, FinishListener<XrdSfsCallBack>(callback));
-        // QueryRunner::getTracker().listenOnce(
+        // wdb::QueryRunner::getTracker().listenOnce(
         //     filename, FinishListener<XrdOucCallBack>(callback));
     }
 };
 #endif // ifndef NO_XROOTD_FS
 
-/// Filesystem-based file path validation. Deprecated in favor of the
-/// internal data-structure-backed PathValidator (populated via mysqld
-/// upon startup/initialization)
-class FileValidator : public fs::FileValidator {
-public:
-    typedef boost::shared_ptr<FileValidator> Ptr;
-    FileValidator(char const* localroot) : _localroot(localroot) {}
-    virtual ~FileValidator() {}
-    virtual bool operator()(std::string const& filename) {
-        std::string expanded(_localroot);
-        expanded += "/" + filename;
-        struct stat statbuf;
-        return ::stat(expanded.c_str(), &statbuf) == 0 &&
-            S_ISREG(statbuf.st_mode) &&
-            (statbuf.st_mode & S_IRUSR) == S_IRUSR;
-    }
-private:
-    char const* _localroot;
-};
-
-/// PathValidator
+/// ChunkValidator
 /// Uses exports data struct instead of hitting the filesystem.
-class PathValidator : public fs::FileValidator {
+class ChunkValidator : public lsst::qserv::xrdfs::FileValidator {
 public:
-    typedef boost::shared_ptr<PathValidator> Ptr;
-    PathValidator(MySqlExportMgr::StringSet const& exports)
+    typedef boost::shared_ptr<ChunkValidator> Ptr;
+    ChunkValidator(lsst::qserv::wpublish::MySqlExportMgr::StringSet const& exports)
         : _exports(exports) {}
-    virtual ~PathValidator() {}
+    virtual ~ChunkValidator() {}
     virtual bool operator()(std::string const& filename) {
-        QservPath qp(filename);
-        if(qp.requestType() != QservPath::CQUERY) {
+        lsst::qserv::obsolete::QservPath qp(filename);
+        if(qp.requestType() != lsst::qserv::obsolete::QservPath::CQUERY) {
             return false; // Don't validate non chunk-query paths now.
         }
-        return MySqlExportMgr::checkExist(_exports, qp.db(), qp.chunk());
+        return lsst::qserv::wpublish::MySqlExportMgr::checkExist(_exports, qp.db(),
+                                                                 qp.chunk());
     }
 private:
-    MySqlExportMgr::StringSet const& _exports;
+    lsst::qserv::wpublish::MySqlExportMgr::StringSet const& _exports;
 };
 } // anonymous namespace
+
+
+namespace lsst {
+namespace qserv {
+namespace xrdfs {
 
 ////////////////////////////////////////////////////////////////////////
 // class MySqlFs
 ////////////////////////////////////////////////////////////////////////
-MySqlFs::MySqlFs(boost::shared_ptr<WLogger> log, XrdSysLogger* lp,
+MySqlFs::MySqlFs(boost::shared_ptr<wlog::WLogger> log, XrdSysLogger* lp,
                  char const* cFileName)
     : XrdSfsFileSystem(), _log(log) {
-    if(!getConfig().getIsValid()) {
-        log->error(("Configuration invalid: " + getConfig().getError()
+    if(!wconfig::getConfig().getIsValid()) {
+        log->error(("Configuration invalid: " + wconfig::getConfig().getError()
                      + " -- Behavior undefined.").c_str());
     }
 #ifdef NO_XROOTD_FS
@@ -189,8 +171,8 @@ MySqlFs::MySqlFs(boost::shared_ptr<WLogger> log, XrdSysLogger* lp,
         _log->warn("Problem loading XrdSfsDefaultFileSystem. Clustering won't work.");
     }
 #endif
-    updateResultPath();
-    clearResultPath();
+    wbase::updateResultPath();
+    wbase::clearResultPath();
     _localroot = ::getenv("XRDLCLROOT");
     if (!_localroot) {
         _log->warn("No XRDLCLROOT set. Bug in xrootd?");
@@ -199,7 +181,7 @@ MySqlFs::MySqlFs(boost::shared_ptr<WLogger> log, XrdSysLogger* lp,
     _initExports();
     assert(_exports.get());
     _cleanup();
-    _service.reset(new Service(_log));
+    _service.reset(new wcontrol::Service(_log));
 }
 
 MySqlFs::~MySqlFs(void) {
@@ -210,11 +192,13 @@ MySqlFs::~MySqlFs(void) {
 
 // Object Allocation Functions
 //
-XrdSfsDirectory* MySqlFs::newDir(char* user, int MonID) {
+XrdSfsDirectory*
+MySqlFs::newDir(char* user, int MonID) {
     return new MySqlFsDirectory(_log, user);
 }
 
-XrdSfsFile* MySqlFs::newFile(char* user, int MonID) {
+XrdSfsFile*
+MySqlFs::newFile(char* user, int MonID) {
 #ifdef NO_XROOTD_FS
     return new MySqlFsFile(
         _log, user,
@@ -226,8 +210,7 @@ XrdSfsFile* MySqlFs::newFile(char* user, int MonID) {
     return new MySqlFsFile(
         _log, user,
         boost::make_shared<AddCallbackFunc>(),
-        boost::make_shared<PathValidator>(*_exports),
-        _service);
+        boost::make_shared<ChunkValidator>(*_exports), _service);
 #endif
 }
 
@@ -282,15 +265,15 @@ int MySqlFs::rem(
     char const* path, XrdOucErrInfo& outError, XrdSecEntity const* client,
     char const* opaque) {
     // Check for qserv result path
-    fs::FileClass c = fs::computeFileClass(path);
-    if(c != fs::TWO_READ) { // Only support removal of result files.
+    FileClass c = computeFileClass(path);
+    if(c != TWO_READ) { // Only support removal of result files.
         outError.setErrInfo(ENOTSUP, "Operation not supported");
         return SFS_ERROR;
     }
-    std::string hash = fs::stripPath(path);
+    std::string hash = stripPath(path);
     // Signal query squashing
     _service->squashByHash(hash);
-    //QueryRunner::Manager& mgr = QueryRunner::getMgr();
+    //wdb::QueryRunner::Manager& mgr = wdb::QueryRunner::getMgr();
     //mgr.squashByHash(hash);
     return SFS_OK;
 }
@@ -336,13 +319,13 @@ int MySqlFs::truncate(
 void MySqlFs::_initExports() {
     _exports.reset(new StringSet);
     XrdName x;
-    MySqlExportMgr m(x.getName(), *_log);
+    wpublish::MySqlExportMgr m(x.getName(), *_log);
     m.fillDbChunks(*_exports);
     std::ostringstream os;
     os << "Paths exported: ";
     std::copy(_exports->begin(), _exports->end(),
               std::ostream_iterator<std::string>(os, ","));
-    //boost::shared_ptr<WLogger> log2 = log;
+    //boost::shared_ptr<wlog::WLogger> log2 = log;
     _log->info(os.str());
 }
 
@@ -351,14 +334,14 @@ void MySqlFs::_initExports() {
 /// qserv workers. Take heed.
 /// @return true if cleanup was successful, false otherwise.
 bool MySqlFs::_cleanup() {
-    if(getConfig().getIsValid()) {
-        SqlConfig sqlConfig = getConfig().getSqlConfig();
+    if(wconfig::getConfig().getIsValid()) {
+        mysql::SqlConfig sqlConfig = wconfig::getConfig().getSqlConfig();
         // FIXME: Use qsmaster privileges for now.
         sqlConfig.username = "qsmaster";
         sqlConfig.dbName = "";
-        SqlConnection sc(sqlConfig, true);
-        SqlErrorObject errObj;
-        std::string dbName = getConfig().getString("scratchDb");
+        sql::SqlConnection sc(sqlConfig, true);
+        sql::SqlErrorObject errObj;
+        std::string dbName = wconfig::getConfig().getString("scratchDb");
         _log->info((Pformat("Cleaning up scratchDb: %1%.")
                     % dbName).str());
         if(!sc.dropDb(dbName, errObj, false)) {
@@ -378,18 +361,21 @@ bool MySqlFs::_cleanup() {
     return true;
 }
 
+}}} // namespace lsst::qserv::xrdfs
+
 class XrdSysLogger;
 
 extern "C" {
 
 XrdSfsFileSystem* XrdSfsGetFileSystem(
     XrdSfsFileSystem* native_fs, XrdSysLogger* lp, char const* fileName) {
-    static boost::shared_ptr<WLogger> log;
-    boost::shared_ptr<WLogger::Printer> p(new XrdPrinter(lp));
+    static boost::shared_ptr<lsst::qserv::wlog::WLogger> log;
+    boost::shared_ptr<lsst::qserv::wlog::WLogger::Printer> 
+        p(new lsst::qserv::xrdfs::XrdPrinter(lp));
     if(!log.get()) {
-        log.reset(new WLogger(p));
+        log.reset(new lsst::qserv::wlog::WLogger(p));
     }
-    static MySqlFs myFS(log, lp, fileName);
+    static lsst::qserv::xrdfs::MySqlFs myFS(log, lp, fileName);
 
     log->info("MySqlFs (MySQL File System)");
     log->info(myFS.getVersion());

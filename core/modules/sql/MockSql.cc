@@ -23,7 +23,7 @@
 namespace lsst {
 namespace qserv {
 
-typedef std::vector<SqlResultIter::List> VecList;
+typedef std::vector<sql::SqlResultIter::List> VecList;
 
 namespace { // anonymous
 VecList vec;

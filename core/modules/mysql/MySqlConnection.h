@@ -24,14 +24,18 @@
 // Each MySqlConnection object is not parallel, but multiple objects can be used
 // to achieve parallel query streams.
 
-#ifndef LSST_QSERV_MYSQLCONNECTION_H
-#define LSST_QSERV_MYSQLCONNECTION_H
+#ifndef LSST_QSERV_MYSQL_MYSQLCONNECTION_H
+#define LSST_QSERV_MYSQL_MYSQLCONNECTION_H
+
 #include <mysql/mysql.h>
 // Boost
 #include <boost/thread.hpp>
 #include <boost/utility.hpp>
 
-namespace lsst { namespace qserv {
+namespace lsst {
+namespace qserv {
+namespace mysql {
+
 // Forward
 class SqlConfig;
 
@@ -72,8 +76,7 @@ private:
     bool _useThreadMgmt;
 };
 
-}} // namespace lsst::qserv
+}}} // namespace lsst::qserv::mysql
 
-
-#endif // LSST_QSERV_MYSQLCONNECTION_H
+#endif // LSST_QSERV_MYSQL_MYSQLCONNECTION_H
 

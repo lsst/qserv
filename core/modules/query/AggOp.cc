@@ -37,7 +37,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 ////////////////////////////////////////////////////////////////////////
 // AggOp specializations
 // TODO: Refactor towards functions rather than functors
@@ -197,4 +198,5 @@ std::string AggOp::Mgr::getAggName(std::string const& name) {
     ss << "QS" << s << "_" << name;
     return ss.str();
 }
-}}} // lsst::qserv::master
+
+}}} // namespace lsst::qserv::query

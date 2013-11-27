@@ -20,12 +20,14 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_SQL_CONFIG_H
-#define LSST_QSERV_SQL_CONFIG_H
+#ifndef LSST_QSERV_MYSQL_SQLCONFIG_H
+#define LSST_QSERV_MYSQL_SQLCONFIG_H
 
 #include <string>
+
 namespace lsst {
 namespace qserv {
+namespace mysql {
 
 /// class SqlConfig : Value class for configuring the MySQL connection
 class SqlConfig {
@@ -46,6 +48,7 @@ public:
                       std::string const&, bool);
     std::string asString() const;
 };
-}} // namespace lsst::qserv
 
-#endif // LSST_QSERV_SQL_CONFIG_H
+}}} // namespace lsst::qserv::mysql
+
+#endif // LSST_QSERV_MYSQL_SQLCONFIG_H

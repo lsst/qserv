@@ -54,16 +54,17 @@ std::string const UDF_PREFIX = "scisql_";
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qana {
+
 typedef std::pair<std::string,std::string> StringPair;
 
-boost::shared_ptr<ColumnRef>
-resolveAsColumnRef(QueryContext& context, ValueExprPtr vexpr) {
-    boost::shared_ptr<ColumnRef> cr = vexpr->copyAsColumnRef();
+boost::shared_ptr<query::ColumnRef>
+resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
+    boost::shared_ptr<query::ColumnRef> cr = vexpr->copyAsColumnRef();
     if(!cr) {
         return cr;
     }
-    DbTablePair p = context.resolve(cr);
+    query::DbTablePair p = context.resolve(cr);
     cr->table = p.table;
     cr->db = p.db;
     return cr;
@@ -71,7 +72,7 @@ resolveAsColumnRef(QueryContext& context, ValueExprPtr vexpr) {
 
 /// @return true if cr represents a valid key column.
 bool
-lookupKey(QueryContext& context, boost::shared_ptr<ColumnRef> cr) {
+lookupKey(query::QueryContext& context, boost::shared_ptr<query::ColumnRef> cr) {
     // Match cr as a column ref against the key column for a database's
     // partitioning strategy.
     if((!cr) || !context.cssFacade) { return false; }
@@ -84,61 +85,59 @@ lookupKey(QueryContext& context, boost::shared_ptr<ColumnRef> cr) {
     return (!cr->column.empty()) && (keyColumn == cr->column);
 }
 
-PassTerm::Ptr newPass(std::string const& s) {
-    PassTerm::Ptr p(new PassTerm);
+query::PassTerm::Ptr newPass(std::string const& s) {
+    query::PassTerm::Ptr p(new query::PassTerm);
     p->_text = s;
     return p;
 }
 template <typename C>
-PassListTerm::Ptr newPassList(C& c) {
-    PassListTerm::Ptr p(new PassListTerm);
+query::PassListTerm::Ptr newPassList(C& c) {
+    query::PassListTerm::Ptr p(new query::PassListTerm);
     p->_terms.insert(p->_terms.begin(), c.begin(), c.end());
     return p;
 }
 
-InPredicate::Ptr
+query::InPredicate::Ptr
 newInPred(std::string const& aliasTable,
           std::string const& keyColumn,
           std::vector<std::string> const& params) {
-    InPredicate::Ptr p(new InPredicate());
-    boost::shared_ptr<ColumnRef> cr(new ColumnRef("", aliasTable, keyColumn));
-    p->value = ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr));
+    query::InPredicate::Ptr p(new query::InPredicate());
+    boost::shared_ptr<query::ColumnRef> cr(
+               new query::ColumnRef("", aliasTable, keyColumn));
+    p->value = 
+        query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(cr));
 
     typedef std::vector<std::string>::const_iterator Iter;
     for(Iter i=params.begin(), e=params.end(); i != e; ++i) {
-        ValueExprPtr vep;
-        vep = ValueExpr::newSimple(ValueFactor::newConstFactor(*i));
+        query::ValueExprPtr vep;
+        vep = query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(*i));
         p->cands.push_back(vep);
     }
     return p;
 }
 
 template <typename C>
-FuncExpr::Ptr newFuncExpr(char const fName[],
-                               std::string const& tableAlias,
-                               StringPair const& chunkColumns,
-                               C& c) {
-    typedef boost::shared_ptr<ColumnRef> CrPtr;
-    FuncExpr::Ptr fe(new FuncExpr);
+query::FuncExpr::Ptr newFuncExpr(char const fName[],
+                                 std::string const& tableAlias,
+                                 StringPair const& chunkColumns,
+                                 C& c) {
+    typedef boost::shared_ptr<query::ColumnRef> CrPtr;
+    query::FuncExpr::Ptr fe(new query::FuncExpr);
     fe->name = UDF_PREFIX + fName;
-    fe->params.push_back(ValueExpr::newSimple(
-                             ValueFactor::newColumnRefFactor(
-                                 CrPtr(new ColumnRef("", tableAlias,
-                                                     chunkColumns.first)))
-                             ));
-    fe->params.push_back(ValueExpr::newSimple(
-                             ValueFactor::newColumnRefFactor(
-                                 CrPtr(new ColumnRef("", tableAlias,
-                                                     chunkColumns.second)))
-                             ));
+    fe->params.push_back(
+          query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
+          CrPtr(new query::ColumnRef("", tableAlias, chunkColumns.first)))));
+    fe->params.push_back(
+          query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
+          CrPtr(new query::ColumnRef("", tableAlias, chunkColumns.second)))));
 
     typename C::const_iterator i;
     for(i = c.begin(); i != c.end(); ++i) {
-        fe->params.push_back(ValueExpr::newSimple(ValueFactor::newConstFactor(*i)));
+        fe->params.push_back(
+          query::ValueExpr::newSimple(query::ValueFactor::newConstFactor(*i)));
     }
     return fe;
 }
-
 
 struct RestrictorEntry {
     RestrictorEntry(std::string const& alias_,
@@ -159,7 +158,7 @@ public:
     explicit getTable(css::Facade& cssFacade, RestrictorEntries& entries)
         : _cssFacade(cssFacade),
           _entries(entries) {}
-    void operator()(TableRefN::Ptr t) {
+    void operator()(query::TableRefN::Ptr t) {
         if(!t) {
             throw qana::AnalysisBug("NULL TableRefN::Ptr");
         }
@@ -196,7 +195,7 @@ public:
 /// that can be executed on a qserv mysqld. This plugin should be
 /// execute after aliases for tables have been generates, so that the
 /// new restrictor function clauses/phrases can use the aliases.
-class QservRestrictorPlugin : public lsst::qserv::master::QueryPlugin {
+class QservRestrictorPlugin : public QueryPlugin {
 public:
     // Types
     typedef boost::shared_ptr<QservRestrictorPlugin> Ptr;
@@ -206,21 +205,26 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(SelectStmt& stmt, QueryContext&);
-    virtual void applyPhysical(QueryPlugin::Plan& p, QueryContext& context);
+    virtual void applyLogical(query::SelectStmt& stmt, query::QueryContext&);
+    virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext& context);
 
 private:
-    BoolTerm::Ptr _makeCondition(boost::shared_ptr<QsRestrictor> const restr,
-                                 RestrictorEntry const& restrictorEntry);
-    boost::shared_ptr<QsRestrictor::List> _getKeyPreds(QueryContext& context, AndTerm::Ptr p);
-
-    QsRestrictor::Ptr _newKeyRestrictor(QueryContext& context,
-                                        boost::shared_ptr<ColumnRef> cr,
-                                        ValueExprList& vList);
-    QsRestrictor::Ptr _newKeyRestrictor(QueryContext& context,
-                                        boost::shared_ptr<CompPredicate> cp);
-    QsRestrictor::Ptr _convertObjectId(QueryContext& context,
-                                       QsRestrictor const& original);
+    query::BoolTerm::Ptr 
+        _makeCondition(boost::shared_ptr<query::QsRestrictor> const restr,
+                       RestrictorEntry const& restrictorEntry);
+    boost::shared_ptr<query::QsRestrictor::List> 
+        _getKeyPreds(query::QueryContext&,
+                     query::AndTerm::Ptr);
+    query::QsRestrictor::Ptr
+        _newKeyRestrictor(query::QueryContext& context,
+                          boost::shared_ptr<query::ColumnRef> cr,
+                          query::ValueExprList& vList);
+    query::QsRestrictor::Ptr
+        _newKeyRestrictor(query::QueryContext& context,
+                          boost::shared_ptr<query::CompPredicate> cp);
+    query::QsRestrictor::Ptr 
+        _convertObjectId(query::QueryContext& context,
+                         query::QsRestrictor const& original);
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -230,11 +234,11 @@ private:
 ////////////////////////////////////////////////////////////////////////
 class QservRestrictorPlugin::Restriction {
 public:
-    Restriction(QsRestrictor const& r)
+    Restriction(query::QsRestrictor const& r)
         : _name(r._name) {
         _setGenerator(r);
     }
-    BoolFactor::Ptr generate(RestrictorEntry const& e) {
+    query::BoolFactor::Ptr generate(RestrictorEntry const& e) {
         return (*_generator)(e);
     }
 
@@ -248,18 +252,18 @@ public:
     class Generator {
     public:
         virtual ~Generator() {}
-        virtual BoolFactor::Ptr operator()(RestrictorEntry const& e) = 0;
+        virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) = 0;
     };
 private:
     class ObjectIdGenerator : public Generator {
     public:
-        ObjectIdGenerator(QsRestrictor::StringList const& params_)
+        ObjectIdGenerator(query::QsRestrictor::StringList const& params_)
             : params(params_.begin(), params_.end()) {
         }
 
-        virtual BoolFactor::Ptr operator()(RestrictorEntry const& e) {
-            BoolFactor::Ptr newFactor(new BoolFactor);
-            BfTerm::PtrList& terms = newFactor->_terms;
+        virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
+            query::BoolFactor::Ptr newFactor(new query::BoolFactor);
+            query::BfTerm::PtrList& terms = newFactor->_terms;
             terms.push_back(newInPred(e.alias, e.keyColumn, params));
             return newFactor;
         }
@@ -269,7 +273,7 @@ private:
     class AreaGenerator : public Generator {
     public:
         AreaGenerator(char const* fName_, int paramCount_,
-                      QsRestrictor::StringList const& params_)
+                      query::QsRestrictor::StringList const& params_)
             :  fName(fName_), paramCount(paramCount_), params(params_) {
             if(paramCount_ == USE_STRING) {
                 // Convert param list to one quoted string.
@@ -278,27 +282,27 @@ private:
             }
         }
 
-        virtual BoolFactor::Ptr operator()(RestrictorEntry const& e) {
-            BoolFactor::Ptr newFactor(new BoolFactor);
-            BfTerm::PtrList& terms = newFactor->_terms;
-            CompPredicate::Ptr cp(new CompPredicate());
-            boost::shared_ptr<FuncExpr> fe = newFuncExpr(fName,
-                                                         e.alias,
-                                                         e.chunkColumns,
-                                                         params);
-            cp->left = ValueExpr::newSimple(ValueFactor::newFuncFactor(fe));
+        virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
+            query::BoolFactor::Ptr newFactor(new query::BoolFactor);
+            query::BfTerm::PtrList& terms = newFactor->_terms;
+            query::CompPredicate::Ptr cp(new query::CompPredicate());
+            boost::shared_ptr<query::FuncExpr> fe = 
+                newFuncExpr(fName, e.alias, e.chunkColumns, params);
+            cp->left =
+                query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(fe));
             cp->op = SqlSQL2TokenTypes::EQUALS_OP;
-            cp->right = ValueExpr::newSimple(ValueFactor::newConstFactor("1"));
+            cp->right = query::ValueExpr::newSimple(
+                           query::ValueFactor::newConstFactor("1"));
             terms.push_back(cp);
             return newFactor;
         }
         char const* const fName;
         int const paramCount;
-        QsRestrictor::StringList const& params;
+        query::QsRestrictor::StringList const& params;
         static const int USE_STRING = -999;
     };
 
-    void _setGenerator(QsRestrictor const& r) {
+    void _setGenerator(query::QsRestrictor const& r) {
         if(r._name == "qserv_areaspec_box") {
             _generator.reset(static_cast<Generator*>
                              (new AreaGenerator("s2PtInBox",
@@ -332,7 +336,7 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // QservRestrictorPluginFactory declaration+implementation
 ////////////////////////////////////////////////////////////////////////
-class QservRestrictorPluginFactory : public lsst::qserv::master::QueryPlugin::Factory {
+class QservRestrictorPluginFactory : public QueryPlugin::Factory {
 public:
     // Types
     typedef boost::shared_ptr<QservRestrictorPluginFactory> Ptr;
@@ -340,8 +344,8 @@ public:
     virtual ~QservRestrictorPluginFactory() {}
 
     virtual std::string getName() const { return "QservRestrictor"; }
-    virtual lsst::qserv::master::QueryPlugin::Ptr newInstance() {
-        return lsst::qserv::master::QueryPlugin::Ptr(new QservRestrictorPlugin());
+    virtual QueryPlugin::Ptr newInstance() {
+        return QueryPlugin::Ptr(new QservRestrictorPlugin());
     }
 };
 
@@ -363,14 +367,15 @@ registerPlugin registerQservRestrictorPlugin;
 // QservRestrictorPlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void
-QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
+QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt, 
+                                    query::QueryContext& context) {
     // Idea: For each of the qserv restrictors in the WHERE clause,
     // rewrite in the context of whatever chunked tables exist in the
     // FROM list.
 
     // First, get a list of the chunked tables.
-    FromList& fList = stmt.getFromList();
-    TableRefnList& tList = fList.getTableRefnList();
+    query::FromList& fList = stmt.getFromList();
+    query::TableRefnList& tList = fList.getTableRefnList();
     RestrictorEntries entries;
     if(!context.cssFacade) {
         throw qana::AnalysisBug("Missing metadata in context");
@@ -381,22 +386,22 @@ QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     if(!stmt.hasWhereClause()) { return; }
 
     // Prepare to patch the WHERE clause
-    WhereClause& wc = stmt.getWhereClause();
+    query::WhereClause& wc = stmt.getWhereClause();
 
-    boost::shared_ptr<QsRestrictor::List const> rListP = wc.getRestrs();
-    AndTerm::Ptr originalAnd(wc.getRootAndTerm());
-    boost::shared_ptr<QsRestrictor::List> keyPreds;
+    boost::shared_ptr<query::QsRestrictor::List const> rListP = wc.getRestrs();
+    query::AndTerm::Ptr originalAnd(wc.getRootAndTerm());
+    boost::shared_ptr<query::QsRestrictor::List> keyPreds;
     keyPreds = _getKeyPreds(context, originalAnd);
-    AndTerm::Ptr newTerm;
+    query::AndTerm::Ptr newTerm;
     // Now handle the explicit restrictors
     if(rListP && !rListP->empty()) {
         // spatial restrictions
-        QsRestrictor::List const& rList = *rListP;
-        context.restrictors.reset(new QueryContext::RestrList);
-        newTerm.reset(new AndTerm);
+        query::QsRestrictor::List const& rList = *rListP;
+        context.restrictors.reset(new query::QueryContext::RestrList);
+        newTerm.reset(new query::AndTerm);
 
         // Now, for each of the qserv restrictors:
-        for(QsRestrictor::List::const_iterator i=rList.begin();
+        for(query::QsRestrictor::List::const_iterator i=rList.begin();
             i != rList.end(); ++i) {
             // for each restrictor entry
             // generate a restrictor condition.
@@ -406,7 +411,7 @@ QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
             }
             if((**i)._name == "qserv_objectId") {
                 // Convert to secIndex restrictor
-                QsRestrictor::Ptr p = _convertObjectId(context, **i);
+                query::QsRestrictor::Ptr p = _convertObjectId(context, **i);
                 context.restrictors->push_back(p);
             } else {
                 // Save restrictor in QueryContext.
@@ -431,55 +436,60 @@ QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
 }
 
 void
-QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
+QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p, 
+                                     query::QueryContext& context) {
     // Probably nothing is needed here...
 }
 
-BoolTerm::Ptr
-QservRestrictorPlugin::_makeCondition(boost::shared_ptr<QsRestrictor> const restr,
-                                      RestrictorEntry const& restrictorEntry) {
+query::BoolTerm::Ptr
+QservRestrictorPlugin::_makeCondition(
+             boost::shared_ptr<query::QsRestrictor> const restr,
+             RestrictorEntry const& restrictorEntry) {
     Restriction r(*restr);
     return r.generate(restrictorEntry);
 }
 
 inline void
-addPred(boost::shared_ptr<QsRestrictor::List>& preds, QsRestrictor::Ptr p) {
+addPred(boost::shared_ptr<query::QsRestrictor::List>& preds, 
+        query::QsRestrictor::Ptr p) {
     if(p) {
         if(!preds) {
-            preds.reset(new QsRestrictor::List());
+            preds.reset(new query::QsRestrictor::List());
         }
         preds->push_back(p);
     }
 }
 
-boost::shared_ptr<QsRestrictor::List>
-QservRestrictorPlugin::_getKeyPreds(QueryContext& context, AndTerm::Ptr p) {
-    typedef BoolTerm::PtrList::iterator TermIter;
-    typedef BfTerm::PtrList::iterator BfIter;
-    boost::shared_ptr<QsRestrictor::List> keyPreds;
+boost::shared_ptr<query::QsRestrictor::List>
+QservRestrictorPlugin::_getKeyPreds(query::QueryContext& context, 
+                                    query::AndTerm::Ptr p) {
+    typedef query::BoolTerm::PtrList::iterator TermIter;
+    typedef query::BfTerm::PtrList::iterator BfIter;
+    boost::shared_ptr<query::QsRestrictor::List> keyPreds;
 
     if(!p) return keyPreds;
 
     for(TermIter i = p->iterBegin(); i != p->iterEnd(); ++i) {
-        BoolFactor* factor = dynamic_cast<BoolFactor*>(i->get());
+        query::BoolFactor* factor = dynamic_cast<query::BoolFactor*>(i->get());
         if(!factor) continue;
         for(BfIter b = factor->_terms.begin();
             b != factor->_terms.end();
             ++b) {
-            InPredicate::Ptr ip = boost::dynamic_pointer_cast<InPredicate>(*b);
+            query::InPredicate::Ptr ip =
+                boost::dynamic_pointer_cast<query::InPredicate>(*b);
             if(ip) {
-                boost::shared_ptr<ColumnRef> cr = resolveAsColumnRef(context,
-                                                                     ip->value);
+                boost::shared_ptr<query::ColumnRef> cr 
+                    = resolveAsColumnRef(context, ip->value);
                 if(cr && lookupKey(context, cr)) {
-                    QsRestrictor::Ptr p = _newKeyRestrictor(context,
-                                                            cr,
-                                                            ip->cands);
+                    query::QsRestrictor::Ptr p = 
+                        _newKeyRestrictor(context, cr, ip->cands);
                     addPred(keyPreds, p);
                 }
             } else {
-                CompPredicate::Ptr cp = boost::dynamic_pointer_cast<CompPredicate>(*b);
+                query::CompPredicate::Ptr cp =
+                    boost::dynamic_pointer_cast<query::CompPredicate>(*b);
                 if(cp) {
-                    QsRestrictor::Ptr p = _newKeyRestrictor(context, cp);
+                    query::QsRestrictor::Ptr p = _newKeyRestrictor(context, cp);
                     addPred(keyPreds, p);
                 }
             }
@@ -488,39 +498,38 @@ QservRestrictorPlugin::_getKeyPreds(QueryContext& context, AndTerm::Ptr p) {
     return keyPreds;
 }
 
-
-inline bool isValidLiteral(ValueExprPtr p) {
+inline bool isValidLiteral(query::ValueExprPtr p) {
     return p && !p->copyAsLiteral().empty();
 }
 
 struct validateLiteral {
     validateLiteral(bool& isValid_) : isValid(isValid_) {}
-    inline void operator()(ValueExprPtr p) {
+    inline void operator()(query::ValueExprPtr p) {
         isValid = isValid && isValidLiteral(p);
     }
     bool& isValid;
 };
 
 struct extractLiteral {
-    inline std::string operator()(ValueExprPtr p) {
+    inline std::string operator()(query::ValueExprPtr p) {
         return p->copyAsLiteral();
     }
 };
 /// @return a new QsRestrictor from the column ref and the set of
 /// specified values or NULL if one of the values is a non-literal.
-QsRestrictor::Ptr
-QservRestrictorPlugin::_newKeyRestrictor(QueryContext& context,
-                                     boost::shared_ptr<ColumnRef> cr,
-                                     ValueExprList& vList) {
+query::QsRestrictor::Ptr
+QservRestrictorPlugin::_newKeyRestrictor(query::QueryContext& context,
+                                         boost::shared_ptr<query::ColumnRef> cr,
+                                         query::ValueExprList& vList) {
     // Extract the literals, bailing out if we see a non-literal
     bool isValid = true;
     std::for_each(vList.begin(), vList.end(), validateLiteral(isValid));
     if(!isValid) {
-        return QsRestrictor::Ptr();
+        return query::QsRestrictor::Ptr();
     }
 
     // Build the QsRestrictor
-    QsRestrictor::Ptr p(new QsRestrictor());
+    query::QsRestrictor::Ptr p(new query::QsRestrictor());
     p->_name = "sIndex";
     // sIndex has paramers as follows:
     // db, table, column, val1, val2, ...
@@ -533,21 +542,22 @@ QservRestrictorPlugin::_newKeyRestrictor(QueryContext& context,
 }
 
 /// @return a new QsRestrictor from a CompPredicate
-QsRestrictor::Ptr
-QservRestrictorPlugin::_newKeyRestrictor(QueryContext& context,
-                                         boost::shared_ptr<CompPredicate> cp) {
-    QsRestrictor::Ptr p;
-    boost::shared_ptr<ColumnRef> key = resolveAsColumnRef(context,
-                                                          cp->left);
+query::QsRestrictor::Ptr
+QservRestrictorPlugin::_newKeyRestrictor(
+                                  query::QueryContext& context,
+                                  boost::shared_ptr<query::CompPredicate> cp) {
+    query::QsRestrictor::Ptr p;
+    boost::shared_ptr<query::ColumnRef> key = 
+        resolveAsColumnRef(context, cp->left);
     int op = cp->op;
-    ValueExprPtr literalValue = cp->right;
+    query::ValueExprPtr literalValue = cp->right;
     // Find the key column ref: Is it on the rhs or lhs?
     if(key && lookupKey(context, key)) {
         // go on.
     } else {
         key = resolveAsColumnRef(context, cp->right);
         if(key && lookupKey(context, key)) {
-            op = CompPredicate::reverseOp(op);
+            op = query::CompPredicate::reverseOp(op);
             literalValue = cp->left;
         } else {
             return p; // No key column ref. Leave it alone.
@@ -558,15 +568,16 @@ QservRestrictorPlugin::_newKeyRestrictor(QueryContext& context,
     validateLiteral vl(isValid);
     vl(literalValue);
     if(!isValid) { return p; } // No key. Leave alone.
-    std::list<boost::shared_ptr<ValueExpr> > cands;
+    std::list<boost::shared_ptr<query::ValueExpr> > cands;
     cands.push_back(literalValue);
     return _newKeyRestrictor(context, key, cands);
 }
-QsRestrictor::Ptr
-QservRestrictorPlugin::_convertObjectId(QueryContext& context,
-                                    QsRestrictor const& original) {
+
+query::QsRestrictor::Ptr
+QservRestrictorPlugin::_convertObjectId(query::QueryContext& context,
+                                        query::QsRestrictor const& original) {
     // Build the QsRestrictor
-    QsRestrictor::Ptr p(new QsRestrictor());
+    query::QsRestrictor::Ptr p(new query::QsRestrictor());
     p->_name = "sIndex";
     // sIndex has paramers as follows:
     // db, table, column, val1, val2, ...
@@ -586,4 +597,4 @@ QservRestrictorPlugin::_convertObjectId(QueryContext& context,
     return p;
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::qana

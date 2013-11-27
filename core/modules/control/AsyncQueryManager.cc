@@ -55,8 +55,9 @@ using boost::make_shared;
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace control {
 
+    
 // Local Helpers --------------------------------------------------
 namespace {
 
@@ -105,7 +106,7 @@ public:
     squashQuery(boost::mutex& mutex_, QueryMap& queries_)
         :mutex(mutex_), queries(queries_) {}
     void operator()(QueryMap::value_type const& qv) {
-        boost::shared_ptr<ChunkQuery> cq = qv.second.first;
+        boost::shared_ptr<qdisp::ChunkQuery> cq = qv.second.first;
         if(!cq.get()) return;
         {
             boost::unique_lock<boost::mutex> lock(mutex);
@@ -121,7 +122,7 @@ public:
         }
         // Query may have been completed, and its memory freed,
         // but still exist briefly before it is deleted from the map.
-        Timer t;
+        util::Timer t;
         t.start();
         cq->requestSquash();
         t.stop();
@@ -151,7 +152,7 @@ int AsyncQueryManager::add(TransactionSpec const& t,
     TransactionSpec ts(t);
 
     doctorQueryPath(ts.path);
-    QuerySpec qs(boost::make_shared<ChunkQuery>(ts, id, this),
+    QuerySpec qs(boost::make_shared<qdisp::ChunkQuery>(ts, id, this),
                  resultName);
     {
         boost::lock_guard<boost::mutex> lock(_queriesMutex);
@@ -159,7 +160,7 @@ int AsyncQueryManager::add(TransactionSpec const& t,
         ++_queryCount;
     }
     std::string msg = std::string("Query Added: url=") + ts.path + ", savePath=" + ts.savePath;
-    getMessageStore()->addMessage(id, MSG_MGR_ADD, msg);
+    getMessageStore()->addMessage(id, log::MSG_MGR_ADD, msg);
     LOGGER_INF << "Added query id=" << id << " url=" << ts.path
                << " with save " << ts.savePath << "\n";
     qs.first->run();
@@ -167,10 +168,10 @@ int AsyncQueryManager::add(TransactionSpec const& t,
 }
 
 void AsyncQueryManager::finalizeQuery(int id,
-                                      XrdTransResult r,
+                                      xrdc::XrdTransResult r,
                                       bool aborted) {
     std::stringstream ss;
-    Timer t1;
+    util::Timer t1;
     t1.start();
     /// Finalize a query.
     /// Note that all parameters should be copies and not const references.
@@ -183,9 +184,9 @@ void AsyncQueryManager::finalizeQuery(int id,
     LOGGER_DBG << ((void*)this) << "Finalizing query (" << id << ")" << std::endl;
     if((!aborted) && (r.open >= 0) && (r.queryWrite >= 0)
        && (r.read >= 0)) {
-        Timer t2;
+        util::Timer t2;
         t2.start();
-        boost::shared_ptr<PacketIter> resIter;
+        boost::shared_ptr<xrdc::PacketIter> resIter;
         { // Lock scope for reading
             boost::lock_guard<boost::mutex> lock(_queriesMutex);
             QuerySpec& s = _queries[id];
@@ -195,7 +196,7 @@ void AsyncQueryManager::finalizeQuery(int id,
             dumpSize = s.first->getSaveSize();
             tableName = s.second;
             //assert(r.localWrite == dumpSize); // not valid when using iter
-            s.first.reset(); // clear out chunkquery.
+            s.first.reset(); // clear out ChunkQuery.
         }
         // Lock-free merge
         if(resIter) {
@@ -206,10 +207,10 @@ void AsyncQueryManager::finalizeQuery(int id,
         // Erase right before notifying.
         t2.stop();
         ss << id << " QmFinalizeMerge " << t2 << std::endl;
-        getMessageStore()->addMessage(id, MSG_MERGED, "Results Merged.");
+        getMessageStore()->addMessage(id, log::MSG_MERGED, "Results Merged.");
     } // end if
     else {
-        Timer t2e;
+        util::Timer t2e;
         t2e.start();
         if(!aborted) {
             _isExecFaulty = true;
@@ -224,21 +225,22 @@ void AsyncQueryManager::finalizeQuery(int id,
         t2e.stop();
         ss << id << " QmFinalizeError " << t2e << std::endl;
     }
-    Timer t3;
+    util::Timer t3;
     t3.start();
     {
         boost::lock_guard<boost::mutex> lock(_resultsMutex);
         _results.push_back(Result(id,r));
         if(aborted) ++_squashCount; // Borrow result mutex to protect counter.
         { // Lock again to erase.
-            Timer t2e1;
+            util::Timer t2e1;
             t2e1.start();
             boost::lock_guard<boost::mutex> lock(_queriesMutex);
             _queries.erase(id);
             if(_queries.empty()) _queriesEmpty.notify_all();
             t2e1.stop();
             ss << id << " QmFinalizeErase " << t2e1 << std::endl;
-            getMessageStore()->addMessage(id, MSG_ERASED, "Query Resources Erased.");
+            getMessageStore()->addMessage(id, log::MSG_ERASED, 
+                                          "Query Resources Erased.");
         }
     }
     t3.stop();
@@ -247,7 +249,7 @@ void AsyncQueryManager::finalizeQuery(int id,
     t1.stop();
     ss << id << " QmFinalize " << t1 << std::endl;
     LOGGER_INF << ss.str();
-    getMessageStore()->addMessage(id, MSG_FINALIZED, "Query Finalized.");
+    getMessageStore()->addMessage(id, log::MSG_FINALIZED, "Query Finalized.");
 }
 
 // FIXME: With squashing, we should be able to return the result earlier.
@@ -280,12 +282,11 @@ void AsyncQueryManager::joinEverything() {
     LOGGER_INF << "Query finish. " << _queryCount << " dispatched." << std::endl;
 }
 
-void AsyncQueryManager::configureMerger(TableMergerConfig const& c) {
-
-    _merger = boost::make_shared<TableMerger>(c);
+void AsyncQueryManager::configureMerger(merger::TableMergerConfig const& c) {
+    _merger = boost::make_shared<merger::TableMerger>(c);
 }
 
-void AsyncQueryManager::configureMerger(MergeFixup const& m,
+void AsyncQueryManager::configureMerger(merger::MergeFixup const& m,
                                         std::string const& resultTable) {
     // Can we configure the merger without involving settings
     // from the python layer? Historically, the Python layer was
@@ -293,15 +294,15 @@ void AsyncQueryManager::configureMerger(MergeFixup const& m,
     // creating them without Python.
     std::string mysqlBin="obsolete";
     std::string dropMem;
-    TableMergerConfig cfg(_resultDbDb,  // cfg result db
-                          resultTable, // cfg resultname
-                          m, // merge fixup obj
-                          _resultDbUser, // result db credentials
-                          _resultDbSocket, // result db credentials
-                          mysqlBin,  // Obsolete
-                          dropMem // cfg
-        );
-    _merger = boost::make_shared<TableMerger>(cfg);
+    merger::TableMergerConfig cfg(_resultDbDb,     // cfg result db
+                                  resultTable,     // cfg resultname
+                                  m,               // merge fixup obj
+                                  _resultDbUser,   // result db credentials
+                                  _resultDbSocket, // result db credentials
+                                  mysqlBin,        // Obsolete
+                                  dropMem          // cfg
+                                  );
+    _merger = boost::make_shared<merger::TableMerger>(cfg);
 }
 
 std::string AsyncQueryManager::getMergeResultName() const {
@@ -319,10 +320,11 @@ void AsyncQueryManager::addToWriteQueue(DynamicWorkQueue::Callable * callable) {
     globalWriteQueue.add(this, callable);
 }
 
-boost::shared_ptr<MessageStore> AsyncQueryManager::getMessageStore() {
+boost::shared_ptr<qdisp::MessageStore> 
+AsyncQueryManager::getMessageStore() {
     if (!_messageStore) {
         // Lazy instantiation of MessageStore.
-        _messageStore = boost::make_shared<MessageStore>();
+        _messageStore = boost::make_shared<qdisp::MessageStore>();
     }
     return _messageStore;
 }
@@ -397,16 +399,15 @@ void AsyncQueryManager::_initFacade(std::string const& cssTech,
     if (cssTech == "zoo") {
         LOGGER_INF << "Initializing zookeeper-based css, with " 
                    << cssConn << std::endl;
-        
         boost::shared_ptr<css::Facade> cssFPtr(
             css::FacadeFactory::createZooFacade(cssConn));
-        _qSession.reset(new QuerySession(cssFPtr));
+        _qSession.reset(new qproc::QuerySession(cssFPtr));
     } else if (cssTech == "mem") {
         LOGGER_INF << "Initializing memory-based css, with " 
                    << cssConn << std::endl;
         boost::shared_ptr<css::Facade> cssFPtr(
             css::FacadeFactory::createMemFacade(cssConn));
-        _qSession.reset(new QuerySession(cssFPtr));
+        _qSession.reset(new qproc::QuerySession(cssFPtr));
     } else {
         LOGGER_ERR << "Unable to determine css technology, check config file." 
                    << std::endl;
@@ -432,7 +433,7 @@ void AsyncQueryManager::_addNewResult(int id, PacIterPtr pacIter,
         _squashRemaining();
     }
     if(!mergeResult) {
-        TableMergerError e = _merger->getError();
+        merger::TableMergerError e = _merger->getError();
         getMessageStore()->addMessage(id, e.errorCode != 0 ? -abs(e.errorCode) : -1,
                                       "Failed to merge results.");
         if(e.resultTooBig()) {
@@ -464,7 +465,7 @@ void AsyncQueryManager::_addNewResult(int id, ssize_t dumpSize,
                        << " errno=" << errno << std::endl;
         }
         if(!mergeResult) {
-            TableMergerError e = _merger->getError();
+            merger::TableMergerError e = _merger->getError();
             getMessageStore()->addMessage(id, e.errorCode != 0 ? -abs(e.errorCode) : -1,
                                           "Failed to merge results.");
             if(e.resultTooBig()) {
@@ -479,7 +480,7 @@ void AsyncQueryManager::_addNewResult(int id, ssize_t dumpSize,
 }
 
 void AsyncQueryManager::_printState(std::ostream& os) {
-    typedef std::map<int, boost::shared_ptr<ChunkQuery> > QueryMap;
+    typedef std::map<int, boost::shared_ptr<qdisp::ChunkQuery> > QueryMap;
     std::for_each(_queries.begin(), _queries.end(), printQueryMapValue(os));
 }
 
@@ -491,7 +492,7 @@ void AsyncQueryManager::_squashExecution() {
     if(_isSquashed) return;
     _isSquashed = true; // Mark before acquiring lock--faster.
     LOGGER_DBG << "Squash requested by "<<(void*)this << std::endl;
-    Timer t;
+    util::Timer t;
     // Squashing is dependent on network latency and remote worker
     // responsiveness, so make a copy so others don't have to wait.
     std::vector<std::pair<int, QuerySpec> > myQueries;
@@ -511,12 +512,13 @@ void AsyncQueryManager::_squashExecution() {
     LOGGER_INF << "AsyncQM squashExec " << t << std::endl;
     _isSquashed = true; // Ensure that flag wasn't trampled.
 
-    getMessageStore()->addMessage(-1, MSG_EXEC_SQUASHED, "Query Execution Squashed.");
+    getMessageStore()->addMessage(-1, log::MSG_EXEC_SQUASHED, 
+                                  "Query Execution Squashed.");
 }
 
 void AsyncQueryManager::_squashRemaining() {
     _squashExecution();  // Not sure if this is right. FIXME
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::control
 

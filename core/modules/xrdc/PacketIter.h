@@ -28,15 +28,15 @@
 // both types input sources makes it easier to reduce buffering and
 // disk usage, theoretically improving overall latency.
 //
-#ifndef LSST_QSERV_MASTER_PACKETITER_H
-#define LSST_QSERV_MASTER_PACKETITER_H
+#ifndef LSST_QSERV_XRDC_PACKETITER_H
+#define LSST_QSERV_XRDC_PACKETITER_H
 #include <boost/shared_ptr.hpp>
 #include <string>
 #include <utility>
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace xrdc {
 
 class PacketIter {
 public:
@@ -100,6 +100,6 @@ private:
     int _realFd;
 };
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::xrdc
 
-#endif // LSST_QSERV_MASTER_PACKETITER_H
+#endif // LSST_QSERV_XRDC_PACKETITER_H

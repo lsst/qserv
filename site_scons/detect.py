@@ -220,7 +220,6 @@ def importCustom(env, extraTgts):
 
     # Automagically steal PYTHONPATH from envvar
     extraTgts["PYTHONPATH"] = env.get("PYTHONPATH", []) 
-
     return None 
 
 def checkTwisted():

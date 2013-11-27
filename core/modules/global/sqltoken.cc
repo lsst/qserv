@@ -30,7 +30,9 @@
 #include <set>
 #include <boost/algorithm/string/predicate.hpp>
 
-namespace qMaster=lsst::qserv::master;
+namespace lsst {
+namespace qserv {
+namespace sql {
 
 namespace { // File-scope helpers
 struct InsensitiveCompare {
@@ -57,7 +59,8 @@ CompareMap _cMap;
 
 } // anonymous namespace
 
-bool qMaster::sqlShouldSeparate(std::string const& s, int last, int next) {
+bool
+sqlShouldSeparate(std::string const& s, int last, int next) {
     if(_cMap.isSeparatingWord(s)) return true;
     bool lastAlnum = isalnum(last);
     bool nextAlnum = isalnum(next);
@@ -72,6 +75,7 @@ bool qMaster::sqlShouldSeparate(std::string const& s, int last, int next) {
         || ((next == '%') && lastAlnum) // asdf%
         || ((last == '_') && nextAlnum) // _asdf
         || ((next == '_') && lastAlnum) // asdf_
-
         ;
 }
+
+}}} // namespace lsst::qserv::sql

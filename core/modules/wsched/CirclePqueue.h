@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_CIRCLEPQUEUE_H
-#define LSST_QSERV_WORKER_CIRCLEPQUEUE_H
+#ifndef LSST_QSERV_WSCHED_CIRCLEPQUEUE_H
+#define LSST_QSERV_WSCHED_CIRCLEPQUEUE_H
  /**
   * @author Daniel L. Wang, SLAC
   */
@@ -31,7 +31,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wsched {
+
 /// CirclePqueue is a circular queue that provides key-ordered
 /// removal. Elements are removed in monotonically-increasing key
 /// order, until there are no more elements with "higher-valued" keys,
@@ -87,5 +88,6 @@ private:
     boost::scoped_ptr<Pos> _pos;
 };
 
-}}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_CIRCLEPQUEUE_H
+}}} // namespace lsst::qserv::wsched
+
+#endif // LSST_QSERV_WSCHED_CIRCLEPQUEUE_H

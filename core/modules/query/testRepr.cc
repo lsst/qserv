@@ -32,8 +32,8 @@
 
 namespace test = boost::test_tools;
 
-using lsst::qserv::master::QueryContext;
-using lsst::qserv::master::SelectStmt;
+using lsst::qserv::query::QueryContext;
+using lsst::qserv::query::SelectStmt;
 using lsst::qserv::query::TestFactory;
 
 struct TestFixture {

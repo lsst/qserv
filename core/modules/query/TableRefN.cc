@@ -29,9 +29,11 @@
 #include "query/TableRefN.h"
 #include <sstream>
 
-namespace qMaster=lsst::qserv::master;
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace query {
+
 ////////////////////////////////////////////////////////////////////////
 // TableRefN
 ////////////////////////////////////////////////////////////////////////
@@ -52,4 +54,4 @@ void JoinRefN::apply(TableRefN::Func& f) {
     // FIXME
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::query

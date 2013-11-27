@@ -47,7 +47,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 template <typename T>
 struct renderWithSep {
@@ -131,4 +131,5 @@ boost::shared_ptr<SelectList> SelectList::copySyntax() {
     // For the other fields, default-copied versions are okay.
     return newS;
 }
-}}} // lsst::qserv::master
+
+}}} // namespace lsst::qserv::query

@@ -41,11 +41,8 @@
 #include "parser/parseTreeUtil.h"
 #include "query/WhereClause.h"
 #include "parser/BoolTermFactory.h"
-
 #include "log/Logger.h"
 
-// namespace modifiers
-namespace qMaster = lsst::qserv::master;
 
 // Anonymous helpers
 namespace {
@@ -80,7 +77,7 @@ public:
             if(nextCache.get()) {
                 current = nextCache;
             } else {
-                current = qMaster::findSibling(current, c);
+                current = lsst::qserv::parser::findSibling(current, c);
                 if(current.get()) {
                     // Move to next value
                     current = current->getNextSibling();
@@ -94,7 +91,7 @@ public:
             if(!current) {
                 throw std::logic_error("Corrupted ParamGenerator::Iter");
             }
-            qMaster::CompactPrintVisitor<antlr::RefAST> p;
+            lsst::qserv::parser::CompactPrintVisitor<antlr::RefAST> p;
             for(;current.get() && !c(current);
                 current = current->getNextSibling()) {
                 p(current);
@@ -133,18 +130,24 @@ private:
 };
 } // anonymouse namespace
 
+
+namespace lsst {
+namespace qserv {
+namespace parser {
+
+
 ////////////////////////////////////////////////////////////////////////
 // WhereFactory::WhereCondH
 ////////////////////////////////////////////////////////////////////////
-class lsst::qserv::master::WhereFactory::WhereCondH : public VoidOneRefFunc {
+class WhereFactory::WhereCondH : public VoidOneRefFunc {
 public:
-    WhereCondH(lsst::qserv::master::WhereFactory& wf) : _wf(wf) {}
+    WhereCondH(WhereFactory& wf) : _wf(wf) {}
     virtual ~WhereCondH() {}
     virtual void operator()(antlr::RefAST where) {
         _wf._import(where);
     }
 private:
-    lsst::qserv::master::WhereFactory& _wf;
+    WhereFactory& _wf;
 };
 
 class FromWhereH : public VoidOneRefFunc {
@@ -152,26 +155,25 @@ public:
     FromWhereH() {}
     virtual ~FromWhereH() {}
     virtual void operator()(antlr::RefAST fw) {
-        qMaster::printDigraph("fromwhere", LOG_STRM(Info), fw);
+        printDigraph("fromwhere", LOG_STRM(Info), fw);
     }
 };
 ////////////////////////////////////////////////////////////////////////
 // WhereFactory
 ////////////////////////////////////////////////////////////////////////
-using qMaster::WhereClause;
-using qMaster::WhereFactory;
-using qMaster::ValueExprFactory;
 
 WhereFactory::WhereFactory(boost::shared_ptr<ValueExprFactory> vf)
     : _vf(vf) {
 }
 
-boost::shared_ptr<WhereClause> WhereFactory::getProduct() {
+boost::shared_ptr<query::WhereClause>
+WhereFactory::getProduct() {
     return _clause;
 }
 
-boost::shared_ptr<WhereClause> WhereFactory::newEmpty() {
-    return boost::shared_ptr<WhereClause>(new WhereClause());
+boost::shared_ptr<query::WhereClause>
+WhereFactory::newEmpty() {
+    return boost::shared_ptr<query::WhereClause>(new query::WhereClause());
 }
 
 void
@@ -182,8 +184,8 @@ WhereFactory::attachTo(SqlSQL2Parser& p) {
 
 void
 WhereFactory::_import(antlr::RefAST a) {
-    _clause.reset(new WhereClause());
-    _clause->_restrs.reset(new QsRestrictor::List);
+    _clause.reset(new query::WhereClause());
+    _clause->_restrs.reset(new query::QsRestrictor::List);
     // LOGGER_INF << "WHERE starts with: " << a->getText()
     //           << " (" << a->getType() << ")" << std::endl;
 
@@ -214,8 +216,8 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     LOGGER_INF << "Adding from " << r << " : ";
     ParamGenerator pg(a->getNextSibling());
 
-    QsRestrictor::Ptr restr(new QsRestrictor());
-    QsRestrictor::StringList& params = restr->_params;
+    query::QsRestrictor::Ptr restr(new query::QsRestrictor());
+    query::QsRestrictor::StringList& params = restr->_params;
 
     // for(ParamGenerator::Iter it = pg.begin();
     //     it != pg.end();
@@ -233,11 +235,11 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
 }
 
 template <typename Check>
-struct PrintExcept : public qMaster::PrintVisitor<antlr::RefAST> {
+struct PrintExcept : public PrintVisitor<antlr::RefAST> {
 public:
     PrintExcept(Check c_) : c(c_) {}
     void operator()(antlr::RefAST a) {
-        if(!c(a)) qMaster::PrintVisitor<antlr::RefAST>::operator()(a);
+        if(!c(a)) PrintVisitor<antlr::RefAST>::operator()(a);
     }
     Check& c;
 };
@@ -257,6 +259,7 @@ struct MetaCheck {
         return false;
     }
 };
+
 void
 WhereFactory::_addOrSibs(antlr::RefAST a) {
     MetaCheck mc;
@@ -278,3 +281,4 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
     // For now, reuse old templating scheme.
 }
 
+}}} // namespace lsst::qserv::parser

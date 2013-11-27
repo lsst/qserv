@@ -27,7 +27,10 @@
 
 #include "SqlConfig.h"
 
-using lsst::qserv::SqlConfig;
+namespace lsst {
+namespace qserv {
+namespace mysql {
+
 
 SqlConfig::SqlConfig(const SqlConfig& c)
     : hostname(c.hostname),
@@ -133,3 +136,5 @@ SqlConfig::asString() const {
     result += "]";
     return result;
 }
+
+}}} // namespace lsst::qserv::mysql

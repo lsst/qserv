@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_WORKER_THREAD_H
-#define LSST_QSERV_WORKER_THREAD_H
+#ifndef LSST_QSERV_UTIL_THREAD_H
+#define LSST_QSERV_UTIL_THREAD_H
 
 #include <set>
 
@@ -34,7 +34,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace util {
 
 #ifdef DO_NOT_USE_BOOST
 /// xrootd-dependent unique_lock
@@ -188,6 +188,6 @@ private:
     ThreadDetail* _detail;
 };
 
-}}} // namespace lsst.qserv.worker
+}}} // namespace lsst.qserv.util
 
-#endif // LSST_QSERV_WORKER_THREAD_H
+#endif // LSST_QSERV_UTIL_THREAD_H

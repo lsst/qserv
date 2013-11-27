@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_TASKMSGFACTORY2_H
-#define LSST_QSERV_MASTER_TASKMSGFACTORY2_H
+#ifndef LSST_QSERV_QPROC_TASKMSGFACTORY2_H
+#define LSST_QSERV_QPROC_TASKMSGFACTORY2_H
 /**
   * @file TaskMsgFactory2.h
   *
@@ -34,7 +34,10 @@
 #include <iostream>
 #include <boost/shared_ptr.hpp>
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace qproc {
+
 class ChunkQuerySpec;
 
 /// TaskMsgFactory2 is a factory for TaskMsg (protobuf) objects.
@@ -57,6 +60,7 @@ private:
     boost::shared_ptr<Impl> _impl;
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_TASKMSGFACTORY2_H
+}}} // namespace lsst::qserv::qproc
+
+#endif // LSST_QSERV_QPROC_TASKMSGFACTORY2_H
 

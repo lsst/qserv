@@ -25,8 +25,8 @@
 // It includes helper functions for checking the resulting data structure for
 // the existence of certain xrootd paths.
 
-#ifndef LSST_QSERV_WORKER_MYSQLEXPORTMGR_H
-#define LSST_QSERV_WORKER_MYSQLEXPORTMGR_H
+#ifndef LSST_QSERV_WPUBLISH_MYSQLEXPORTMGR_H
+#define LSST_QSERV_WPUBLISH_MYSQLEXPORTMGR_H
 #include <deque>
 #include <map>
 #include <set>
@@ -34,9 +34,19 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
-namespace lsst { namespace qserv { namespace worker {
 
-class WLogger; // Forward
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace wlog {
+    class WLogger;
+}}} // End of forward declarations
+
+
+namespace lsst {
+namespace qserv {
+namespace wpublish {
+
 
 class MySqlExportMgr {
 public:
@@ -46,7 +56,7 @@ public:
     typedef std::map<int,StringSet> ChunkMap;
     typedef std::map<std::string, ChunkMap> ExistMap;
 
-    MySqlExportMgr(std::string const& name, WLogger& log)
+    MySqlExportMgr(std::string const& name, wlog::WLogger& log)
         : _name(name), _log(log) {
         _init();
     }
@@ -67,10 +77,9 @@ private:
     void _init();
     ExistMap _existMap;
     std::string _name;
-    WLogger& _log;
-
+    wlog::WLogger& _log;
 };
-}}} // namespace lsst::qserv::worker
 
+}}} // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WORKER_MYSQLEXPORTMGR_H
+#endif // LSST_QSERV_WPUBLISH_MYSQLEXPORTMGR_H

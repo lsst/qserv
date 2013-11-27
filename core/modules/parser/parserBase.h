@@ -20,8 +20,9 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_SQL_PARSER_BASE
-#define LSST_QSERV_SQL_PARSER_BASE
+#ifndef LSST_QSERV_SQL_PARSERBASE_H
+#define LSST_QSERV_SQL_PARSERBASE_H
+
 #include "antlr/CommonAST.hpp"
 
 // parserBase.h Abstract types to be used in the SQL grammar.
@@ -55,7 +56,5 @@ public:
     virtual void operator()() = 0;
 };
 
-
-
-#endif // LSST_QSERV_SQL_PARSER_BASE
+#endif // LSST_QSERV_SQL_PARSERBASE_H
 

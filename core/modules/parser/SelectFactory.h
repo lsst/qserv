@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_SELECTFACTORY_H
-#define LSST_QSERV_MASTER_SELECTFACTORY_H
+#ifndef LSST_QSERV_PARSER_SELECTFACTORY_H
+#define LSST_QSERV_PARSER_SELECTFACTORY_H
 /**
   * @file SelectFactory.h
   *
@@ -43,7 +43,16 @@ class SqlSQL2Parser;
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace query {
+    // Forward
+    class FromList;
+    class SelectStmt;
+    class WhereClause;
+}
+        
+namespace parser {
+
 // Forward
 class ParseAliasMap;
 class ColumnRefNodeMap;
@@ -52,9 +61,6 @@ class FromFactory;
 class WhereFactory;
 class ModFactory;
 class ValueExprFactory;
-class SelectStmt;
-class FromList;
-class WhereClause;
 
 /// SelectFactory is responsible for constructing a SelectStmt (including
 /// SelectList, FromClause, WhereClause, etc.) from ANTLR parse actions
@@ -63,7 +69,7 @@ public:
     SelectFactory();
     void attachTo(SqlSQL2Parser& p);
 
-    boost::shared_ptr<SelectStmt> getStatement();
+    boost::shared_ptr<query::SelectStmt> getStatement();
 
     boost::shared_ptr<SelectListFactory> getSelectListFactory() {
         return _slFactory; }
@@ -88,6 +94,6 @@ private:
     boost::shared_ptr<ValueExprFactory> _vFactory;
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::parser
 
-#endif // LSST_QSERV_MASTER_SELECTFACTORY_H
+#endif // LSST_QSERV_PARSER_SELECTFACTORY_H

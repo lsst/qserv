@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_BOOLTERMFACTORY_H
-#define LSST_QSERV_MASTER_BOOLTERMFACTORY_H
+#ifndef LSST_QSERV_PARSER_BOOLTERMFACTORY_H
+#define LSST_QSERV_PARSER_BOOLTERMFACTORY_H
 /**
   * @file
   *
@@ -34,15 +34,22 @@
 
 namespace lsst { 
 namespace qserv { 
-namespace master {
-class ValueExprFactory; // Forward
-class BoolFactor;
-class BoolTerm;
-class BoolTermFactor;
-class OrTerm;
-class AndTerm;
-class UnknownTerm;
-class PassTerm;
+
+namespace query {
+    // Forward
+    class AndTerm;
+    class BoolFactor;
+    class BoolTerm;
+    class BoolTermFactor;
+    class PassTerm;
+    class OrTerm;
+    class UnknownTerm;
+} // namespace query
+
+
+namespace parser {
+
+// Forward
 class ValueExprFactory;
 
 /// BoolTermFactory is a factory class for BoolTerm objects that get
@@ -78,25 +85,25 @@ public:
     /// Import a node into the factory
     class bfImport {
     public:
-        bfImport(BoolTermFactory& bf, BoolFactor& bfr) : _bf(bf), _bfr(bfr)  {}
+        bfImport(BoolTermFactory& bf, query::BoolFactor& bfr) : 
+            _bf(bf), _bfr(bfr)  {}
         void operator()(antlr::RefAST a);
     private:
         BoolTermFactory& _bf;
-        BoolFactor& _bfr;
+        query::BoolFactor& _bfr;
     };
-    boost::shared_ptr<BoolTerm> newBoolTerm(antlr::RefAST a);
-    boost::shared_ptr<OrTerm> newOrTerm(antlr::RefAST a);
-    boost::shared_ptr<AndTerm> newAndTerm(antlr::RefAST a);
-    boost::shared_ptr<BoolFactor> newBoolFactor(antlr::RefAST a);
-    boost::shared_ptr<UnknownTerm> newUnknown(antlr::RefAST a);
-    boost::shared_ptr<PassTerm> newPassTerm(antlr::RefAST a);
-    boost::shared_ptr<BoolTermFactor> newBoolTermFactor(antlr::RefAST a);
+    boost::shared_ptr<query::BoolTerm> newBoolTerm(antlr::RefAST a);
+    boost::shared_ptr<query::OrTerm> newOrTerm(antlr::RefAST a);
+    boost::shared_ptr<query::AndTerm> newAndTerm(antlr::RefAST a);
+    boost::shared_ptr<query::BoolFactor> newBoolFactor(antlr::RefAST a);
+    boost::shared_ptr<query::UnknownTerm> newUnknown(antlr::RefAST a);
+    boost::shared_ptr<query::PassTerm> newPassTerm(antlr::RefAST a);
+    boost::shared_ptr<query::BoolTermFactor> newBoolTermFactor(antlr::RefAST a);
 
     boost::shared_ptr<ValueExprFactory> _vFactory;
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::parser
 
-
-#endif // LSST_QSERV_MASTER_BOOLTERMFACTORY_H
+#endif // LSST_QSERV_PARSER_BOOLTERMFACTORY_H
 

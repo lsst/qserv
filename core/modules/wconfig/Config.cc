@@ -31,9 +31,8 @@
 #include "mysql/SqlConfig.h"
 #include "sql/SqlConnection.h"
 
-namespace qWorker = lsst::qserv::worker;
-using lsst::qserv::worker::Config;
-using lsst::qserv::SqlConfig;
+using lsst::qserv::wconfig::Config;
+using lsst::qserv::mysql::SqlConfig;
 
 namespace {
 // Settings declaration ////////////////////////////////////////////////
@@ -71,8 +70,7 @@ bool isExecutable(std::string const& execFile) {
     return 0 == ::access(execFile.c_str(), X_OK);
 }
 
-std::string validateMysql(qWorker::Config const& c) {
-    using namespace lsst::qserv;
+std::string validateMysql(Config const& c) {
     // Check config
     SqlConfig sc;
     sc.hostname = "";
@@ -84,8 +82,8 @@ std::string validateMysql(qWorker::Config const& c) {
     if(!sc.isValid()) return "Invalid MySQL config:" + sc.asString();
 
     { // Check connection
-        SqlConnection scn(sc);
-        SqlErrorObject eo;
+        lsst::qserv::sql::SqlConnection scn(sc);
+        lsst::qserv::sql::SqlErrorObject eo;
         if(!scn.connectToDb(eo)) {
             return "Unable to connect to MySQL with config:" + sc.asString();
         }
@@ -99,6 +97,11 @@ std::string validateMysql(qWorker::Config const& c) {
     return std::string(); // All checks passed.
 }
 } // anonymous namespace
+
+
+namespace lsst {
+namespace qserv {
+namespace wconfig {
 
 ////////////////////////////////////////////////////////////////////////
 // class Config
@@ -136,7 +139,7 @@ SqlConfig const& Config::getSqlConfig() const {
 // class Config private
 ////////////////////////////////////////////////////////////////////////
 char const* Config::_getEnvDefault(char const* varName,
-                                            char const* defVal) {
+                                   char const* defVal) {
     char const* s = ::getenv(varName);
     if(s != (char const*)0) {
         return s;
@@ -169,7 +172,9 @@ void Config::_validate() {
 }
 
 ////////////////////////////////////////////////////////////////////////
-Config& qWorker::getConfig() {
+Config& getConfig() {
     boost::call_once(callOnceHelper, configHelperFlag);
     return getConfigHelper();
 }
+
+}}} // namespace lsst::qserv::wconfig

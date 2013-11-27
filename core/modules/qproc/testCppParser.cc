@@ -48,19 +48,18 @@
 #include "query/SelectStmt.h"
 #include "query/Constraint.h"
 
-using lsst::qserv::master::ChunkMeta;
-using lsst::qserv::master::ChunkSpec;
-using lsst::qserv::master::ChunkQuerySpec;
-using lsst::qserv::master::Constraint;
-using lsst::qserv::master::ConstraintVec;
-using lsst::qserv::master::ConstraintVector;
-using lsst::qserv::master::QsRestrictor;
-using lsst::qserv::master::QueryContext;
-using lsst::qserv::master::QuerySession;
-using lsst::qserv::master::SelectParser;
-using lsst::qserv::master::SelectStmt;
-using lsst::qserv::master::StringPair;
-namespace qMaster = lsst::qserv::master;
+using lsst::qserv::parser::SelectParser;
+using lsst::qserv::qdisp::ChunkMeta;
+using lsst::qserv::qproc::ChunkQuerySpec;
+using lsst::qserv::qproc::ChunkSpec;
+using lsst::qserv::qproc::QuerySession;
+using lsst::qserv::query::Constraint;
+using lsst::qserv::query::ConstraintVec;
+using lsst::qserv::query::ConstraintVector;
+using lsst::qserv::query::QsRestrictor;
+using lsst::qserv::query::QueryContext;
+using lsst::qserv::query::SelectStmt;
+using lsst::qserv::util::StringPair;
 
 namespace test = boost::test_tools;
 
@@ -108,7 +107,7 @@ void printChunkQuerySpecs(boost::shared_ptr<QuerySession> qs) {
     QuerySession::Iter i;
     QuerySession::Iter e = qs->cQueryEnd();
     for(i = qs->cQueryBegin(); i != e; ++i) {
-        qMaster::ChunkQuerySpec& cs = *i;
+        lsst::qserv::qproc::ChunkQuerySpec& cs = *i;
         std::cout << "Spec: " << cs << std::endl;
     }
 }
@@ -638,7 +637,7 @@ BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
 BOOST_AUTO_TEST_CASE(FromParen) { // Extra paren. Not supported by our grammar.
     std::string stmt = "SELECT * FROM (Object) WHERE rFlux_PS > 0.3;";
     SelectParser::Ptr p;
-    BOOST_CHECK_THROW(p = getParser(stmt), qMaster::ParseException);
+    BOOST_CHECK_THROW(p = getParser(stmt), lsst::qserv::parser::ParseException);
 }
 
 BOOST_AUTO_TEST_CASE(NewParser) {

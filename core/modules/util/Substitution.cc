@@ -28,16 +28,19 @@
 // Package
 #include "util/Substitution.h"
 
-namespace qMaster = lsst::qserv::master;
+namespace lsst {
+namespace qserv {
+namespace util {
 
-qMaster::Substitution::Substitution(std::string template_,
-                                    std::string const& delim,
-                                    bool shouldFinalize)
+Substitution::Substitution(std::string template_,
+                           std::string const& delim,
+                           bool shouldFinalize)
     : _template(template_), _shouldFinalize(shouldFinalize) {
     _build(delim);
 }
 
-std::string qMaster::Substitution::transform(Mapping const& m) {
+std::string
+Substitution::transform(Mapping const& m) {
     // This can be made more efficient by pre-sizing the result buffer
     // copying directly into it, rather than creating
     // intermediate string objects and appending.
@@ -79,7 +82,8 @@ std::string qMaster::Substitution::transform(Mapping const& m) {
 //         pos       endpos
 //           |-length--|
 //        name = Name
-void qMaster::Substitution::_build(std::string const& delim) {
+void
+Substitution::_build(std::string const& delim) {
     //int maxLength = _max(names.begin(), names.end());
     int delimLength = delim.length();
     for(unsigned pos=_template.find(delim);
@@ -104,3 +108,5 @@ void qMaster::Substitution::_build(std::string const& delim) {
         // Check to see if the name is in names.
     }
 }
+
+}}} // namespace lsst::qserv::util

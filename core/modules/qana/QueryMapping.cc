@@ -41,7 +41,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qana {
 
 class MapTuple {
 public:
@@ -73,12 +73,12 @@ std::string const replace(std::string const & s,
     return result;
 }
 
-class Mapping : public QueryTemplate::EntryMapping {
+class Mapping : public query::QueryTemplate::EntryMapping {
 public:
     typedef std::deque<int> IntDeque;
     typedef std::deque<MapTuple> Map;
 
-    Mapping(QueryMapping::ParameterMap const& m, ChunkSpec const& s)
+    Mapping(QueryMapping::ParameterMap const& m, qproc::ChunkSpec const& s)
         : _subChunks(s.subChunks.begin(), s.subChunks.end()) {
         _chunkString = boost::lexical_cast<std::string>(s.chunkId);
         if(!_subChunks.empty()) {
@@ -86,15 +86,17 @@ public:
         }
         _initMap(m);
     }
-    Mapping(QueryMapping::ParameterMap const& m, ChunkSpecSingle const& s) {
+    Mapping(QueryMapping::ParameterMap const& m, qproc::ChunkSpecSingle const& s) {
         _chunkString = boost::lexical_cast<std::string>(s.chunkId);
         _subChunkString = boost::lexical_cast<std::string>(s.subChunkId);
         _subChunks.push_back(s.subChunkId);
         _initMap(m);
     }
     virtual ~Mapping() {}
-    virtual boost::shared_ptr<QueryTemplate::Entry> mapEntry(QueryTemplate::Entry const& e) const {
-        typedef QueryTemplate::StringEntry StringEntry;
+
+    virtual boost::shared_ptr<query::QueryTemplate::Entry>
+    mapEntry(query::QueryTemplate::Entry const& e) const {
+        typedef query::QueryTemplate::StringEntry StringEntry;
         boost::shared_ptr<StringEntry> newE(new StringEntry(e.getValue()));
         Map::const_iterator i;
 
@@ -157,12 +159,14 @@ private:
 QueryMapping::QueryMapping() {}
 
 std::string
-QueryMapping::apply(ChunkSpec const& s, QueryTemplate const& t) const {
+QueryMapping::apply(qproc::ChunkSpec const& s, 
+                    query::QueryTemplate const& t) const {
     Mapping m(_subs, s);
     return t.generate(m);
 }
 std::string
-QueryMapping::apply(ChunkSpecSingle const& s, QueryTemplate const& t) const {
+QueryMapping::apply(qproc::ChunkSpecSingle const& s, 
+                    query::QueryTemplate const& t) const {
     Mapping m(_subs, s);
     return t.generate(m);
 }
@@ -196,4 +200,4 @@ QueryMapping::hasParameter(Parameter p) const {
     return false;
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::qana

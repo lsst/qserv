@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_DISPATCHER_H
-#define LSST_QSERV_MASTER_DISPATCHER_H
+#ifndef LSST_QSERV_CONTROL_DISPATCHER_H
+#define LSST_QSERV_CONTROL_DISPATCHER_H
 /**
   * @file dispatcher.h
   *
@@ -30,23 +30,29 @@
    *
   * @author Daniel L. Wang, SLAC
   */
-#include "util/common.h"
-#include "query/Constraint.h"
+
 #include "control/transaction.h"
 #include "css/StripingParams.h"
 #include "xrdc/xrdfile.h"
 #include "merger/TableMerger.h"
+#include "query/Constraint.h"
+#include "util/common.h"
+#include "xrdc/xrdfile.h"
+
 
 namespace lsst {
 namespace qserv {
-namespace master {
 
-class ChunkSpec; // Forward
+namespace qproc {
+    // Forward
+    class ChunkSpec;
+} // namespace qproc
+    
+namespace control {
 
 enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};
 
-
-int submitQuery(int session, lsst::qserv::master::TransactionSpec const& s,
+int submitQuery(int session, control::TransactionSpec const& s,
                 std::string const& resultName=std::string());
 
 // Parser model 3:
@@ -57,7 +63,7 @@ void setupQuery(int session,
 /// @return error description
 std::string const& getSessionError(int session);
 /// @return discovered constraints in the query
-lsst::qserv::master::ConstraintVec getConstraints(int session);
+lsst::qserv::query::ConstraintVec getConstraints(int session);
 /// @return the dominant db for the query
 std::string const& getDominantDb(int session);
 /// @return true if CSS contains given db
@@ -65,7 +71,7 @@ bool containsDb(int session, std::string const& dbName);
 /// @return number of stripes and substripes
 lsst::qserv::css::StripingParams getDbStriping(int session);
 /// Add a chunk spec for execution
-void addChunk(int session, lsst::qserv::master::ChunkSpec const& cs );
+void addChunk(int session, qproc::ChunkSpec const& cs );
 /// Dispatch all chunk queries for this query
 void submitQuery3(int session);
 // TODO: need pokes into running state for debugging.
@@ -75,10 +81,11 @@ std::string const& getQueryStateString(QueryState const& qs);
 std::string getErrorDesc(int session);
 int newSession(std::map<std::string,std::string> const& cfg);
 void configureSessionMerger(int session,
-                            lsst::qserv::master::TableMergerConfig const& c);
+                            lsst::qserv::merger::TableMergerConfig const& c);
 void configureSessionMerger3(int session);
 std::string getSessionResultName(int session);
 void discardSession(int session);
 
-}}} // namespace lsst::qserv:master
-#endif // LSST_QSERV_MASTER_DISPATCHER_H
+}}} // namespace lsst::qserv:control
+
+#endif // LSST_QSERV_CONTROL_DISPATCHER_H

@@ -33,7 +33,12 @@ namespace {
                         'c', 'd', 'e', 'f'};
 }
 
-std::string lsst::qserv::hashTaskMsg(TaskMsg const& m) {
+namespace lsst {
+namespace qserv {
+namespace proto {
+
+std::string
+hashTaskMsg(TaskMsg const& m) {
     unsigned char hashVal[MD5_DIGEST_LENGTH];
     char output[MD5_DIGEST_LENGTH*2 + 1];
     std::string str;
@@ -48,3 +53,5 @@ std::string lsst::qserv::hashTaskMsg(TaskMsg const& m) {
     output[MD5_DIGEST_LENGTH*2] = '\0';
     return std::string(output);
 }
+
+}}} // namespace lsst::qserv::proto

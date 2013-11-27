@@ -28,10 +28,14 @@
 #include "util/WorkQueue.h"
 #include <iostream>
 
+namespace lsst {
+namespace qserv {
+namespace util {
+        
 ////////////////////////////////////////////////////////////////////////
 // class WorkQueue::Runner
 ////////////////////////////////////////////////////////////////////////
-class lsst::qserv::WorkQueue::Runner {
+class WorkQueue::Runner {
 public:
     Runner(WorkQueue& w) : _w(w) {
     }
@@ -62,13 +66,13 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // class WorkQueue
 ////////////////////////////////////////////////////////////////////////
-lsst::qserv::WorkQueue::WorkQueue(int numRunners) : _isDead(false) {
+WorkQueue::WorkQueue(int numRunners) : _isDead(false) {
     for(int i = 0; i < numRunners; ++i) {
         _addRunner();
     }
 }
 
-lsst::qserv::WorkQueue::~WorkQueue() {
+WorkQueue::~WorkQueue() {
     _dropQueue(true);
     int poisonToMake = 2*_runners.size(); // double dose of poison
     for(int i = 0; i < poisonToMake; ++i) {
@@ -84,7 +88,7 @@ lsst::qserv::WorkQueue::~WorkQueue() {
 }
 
 void
-lsst::qserv::WorkQueue::add(boost::shared_ptr<lsst::qserv::WorkQueue::Callable> c) {
+WorkQueue::add(boost::shared_ptr<WorkQueue::Callable> c) {
     boost::lock_guard<boost::mutex> lock(_mutex);
     if(_isDead && !isPoison(c.get())) {
         //std::cerr << "Queue refusing work: dead" << std::endl;
@@ -94,7 +98,8 @@ lsst::qserv::WorkQueue::add(boost::shared_ptr<lsst::qserv::WorkQueue::Callable> 
     }
 }
 
-void lsst::qserv::WorkQueue::cancelQueued() {
+void
+WorkQueue::cancelQueued() {
     boost::unique_lock<boost::mutex> lock(_mutex);
     boost::shared_ptr<Callable> c;
     while(!_queue.empty()) {
@@ -106,8 +111,8 @@ void lsst::qserv::WorkQueue::cancelQueued() {
     }
 }
 
-boost::shared_ptr<lsst::qserv::WorkQueue::Callable>
-lsst::qserv::WorkQueue::getNextCallable() {
+boost::shared_ptr<WorkQueue::Callable>
+WorkQueue::getNextCallable() {
     boost::unique_lock<boost::mutex> lock(_mutex);
     while(_queue.empty()) {
         _queueNonEmpty.wait(lock);
@@ -117,13 +122,15 @@ lsst::qserv::WorkQueue::getNextCallable() {
     return c;
 }
 
-void lsst::qserv::WorkQueue::registerRunner(Runner* r) {
+void
+WorkQueue::registerRunner(Runner* r) {
     boost::lock_guard<boost::mutex> lock(_runnersMutex);
     _runners.push_back(r);
     _runnerRegistered.notify_all();
 }
 
-void lsst::qserv::WorkQueue::signalDeath(Runner* r) {
+void
+WorkQueue::signalDeath(Runner* r) {
     boost::lock_guard<boost::mutex> lock(_runnersMutex);
     RunnerDeque::iterator end = _runners.end();
     //LOGGER_INF << (void*) r << " dying" << std::endl;
@@ -137,25 +144,30 @@ void lsst::qserv::WorkQueue::signalDeath(Runner* r) {
     }
     //std::cerr << "couldn't find self to remove" << std::endl;
 }
-void lsst::qserv::WorkQueue::_addRunner() {
+
+void
+WorkQueue::_addRunner() {
     boost::unique_lock<boost::mutex> lock(_runnersMutex);
     boost::thread(Runner(*this));
     _runnerRegistered.wait(lock);
     //_runners.back()->run();
 }
 
-void lsst::qserv::WorkQueue::_dropQueue(bool final) {
+void
+WorkQueue::_dropQueue(bool final) {
     boost::lock_guard<boost::mutex> lock(_mutex);
     _queue.clear();
     if(final) _isDead = true;
 }
+
+}}} // namespace lsst::qserv:util
 
 //////////////////////////////////////////////////////////////////////
 // Test code
 //////////////////////////////////////////////////////////////////////
 
 namespace {
-class MyCallable : public lsst::qserv::WorkQueue::Callable {
+class MyCallable : public lsst::qserv::util::WorkQueue::Callable {
 public:
     typedef boost::shared_ptr<MyCallable> Ptr;
 
@@ -190,7 +202,7 @@ void test() {
     //ts.tv_sec = 10;
     //ts.tv_nsec=0;
     cout << "main started" << endl;
-    lsst::qserv::WorkQueue wq(10);
+    lsst::qserv::util::WorkQueue wq(10);
     cout << "wq started " << endl;
     for(int i=0; i < 50; ++i) {
         wq.add(MyCallable::Ptr(new MyCallable(i, 0.2)));

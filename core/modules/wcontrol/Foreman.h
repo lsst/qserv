@@ -46,18 +46,24 @@
 //  classes include at least: Task, QueryRunner. Those that
 //  depend on them would need tweaks, but should be able to escape
 //  templating or polymorphism.
-#ifndef LSST_QSERV_WORKER_FOREMAN_H
-#define LSST_QSERV_WORKER_FOREMAN_H
+#ifndef LSST_QSERV_WCONTROL_FOREMAN_H
+#define LSST_QSERV_WCONTROL_FOREMAN_H
 #include <boost/shared_ptr.hpp>
 #include "wbase/Base.h"
 #include "wcontrol/Task.h"
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
-namespace worker {
-class WLogger; // Forward
+namespace wlog {
+    class WLogger;
+}}} // End of forward declarations
 
-class Foreman : public TaskAcceptor {
+namespace lsst {
+namespace qserv {
+namespace wcontrol {
+
+class Foreman : public wbase::TaskAcceptor {
 public:
     typedef boost::shared_ptr<Foreman> Ptr;
 
@@ -87,15 +93,16 @@ public:
 
     virtual bool squashByHash(std::string const& hash) {}
 
-    virtual bool accept(boost::shared_ptr<TaskMsg> msg) { return false; }
+    virtual bool accept(boost::shared_ptr<proto::TaskMsg> msg) { return false; }
     virtual ~Foreman() {}
 
 protected:
     explicit Foreman() {}
 };
 
-Foreman::Ptr newForeman(Foreman::Scheduler::Ptr s, boost::shared_ptr<WLogger> log);
+    Foreman::Ptr 
+    newForeman(Foreman::Scheduler::Ptr s, boost::shared_ptr<wlog::WLogger> log);
 
-}}}  // namespace lsst::qserv::worker
+}}}  // namespace lsst::qserv::wcontrol
 
-#endif // LSST_QSERV_WORKER_FOREMAN_H
+#endif // LSST_QSERV_WCONTROL_FOREMAN_H

@@ -26,13 +26,20 @@
 #include "log/Logger.h"
 #include "log/loggerInterface.h"
 
-namespace qMaster=lsst::qserv::master;
+namespace lsst {
+namespace qserv {
+namespace log {
 
-void qMaster::logger_threshold(int severity) {
-    lsst::qserv::Logger::Instance()
-        .setSeverityThreshold(static_cast<lsst::qserv::Logger::Severity>(severity));
+void
+logger_threshold(int severity) {
+    Logger::Instance().setSeverityThreshold(
+                   static_cast<Logger::Severity>(severity));
 }
 
-void qMaster::logger(int severity, std::string const& s) {
-    lsst::qserv::Logger::Instance(static_cast<lsst::qserv::Logger::Severity>(severity)) << "<py> " << s << std::endl;
+void
+logger(int severity, std::string const& s) {
+    Logger::Instance(static_cast<Logger::Severity>(severity)) 
+        << "<py> " << s << std::endl;
 }
+
+}}} // namespace lsst::qserv::log

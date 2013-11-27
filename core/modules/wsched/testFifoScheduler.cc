@@ -27,17 +27,23 @@
   */
 #define BOOST_TEST_MODULE FifoScheduler_1
 #include "boost/test/included/unit_test.hpp"
+#include "wcontrol/Task.h"
 #include "wsched/FifoScheduler.h"
 #include "proto/worker.pb.h"
 
 namespace test = boost::test_tools;
-using namespace lsst::qserv::worker;
 
-Task::Ptr makeTask(boost::shared_ptr<lsst::qserv::TaskMsg> tm) {
+using lsst::qserv::proto::TaskMsg;
+using lsst::qserv::wcontrol::Task;
+using lsst::qserv::wcontrol::TaskQueue;
+using lsst::qserv::wcontrol::TaskQueuePtr;
+
+
+Task::Ptr makeTask(boost::shared_ptr<TaskMsg> tm) {
     return Task::Ptr(new Task(tm));
 }
 struct SchedulerFixture {
-    typedef boost::shared_ptr<lsst::qserv::TaskMsg> TaskMsgPtr;
+    typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
 
     SchedulerFixture(void)
         : fs(1) {
@@ -48,13 +54,13 @@ struct SchedulerFixture {
     ~SchedulerFixture(void) { }
 
     TaskMsgPtr newTaskMsg(int seq) {
-        lsst::qserv::TaskMsg* t;
-        t = new lsst::qserv::TaskMsg();
+        TaskMsg* t;
+        t = new TaskMsg();
         t->set_session(123456);
         t->set_chunkid(20 + seq);
         t->set_db("elephant");
         for(int i=0; i < 3; ++i) {
-            lsst::qserv::TaskMsg::Fragment* f = t->add_fragment();
+            TaskMsg::Fragment* f = t->add_fragment();
             f->add_query("Hello, this is a query.");
             f->mutable_subchunks()->add_id(100+i);
             f->set_resulttable("r_341");
@@ -70,7 +76,7 @@ struct SchedulerFixture {
     TaskQueuePtr tqp;
     TaskQueuePtr nullTqp;
     TaskQueuePtr emptyTqp;
-    FifoScheduler fs;
+    lsst::qserv::wsched::FifoScheduler fs;
 };
 
 

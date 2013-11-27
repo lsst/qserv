@@ -29,7 +29,12 @@
 #include <unistd.h> // for getpass
 
 namespace test = boost::test_tools;
-namespace qsrv = lsst::qserv;
+
+using lsst::qserv::sql::SqlConnection;
+using lsst::qserv::sql::SqlErrorObject;
+using lsst::qserv::sql::SqlResultIter;
+using lsst::qserv::mysql::SqlConfig;
+
 
 namespace {
 
@@ -46,8 +51,8 @@ inline std::string makeShowTables(std::string const& dbName=std::string()) {
 }
 class createIntTable {
 public:
-    createIntTable(qsrv::SqlConnection* sqlConn_,
-                   qsrv::SqlErrorObject& errObj_)
+    createIntTable(SqlConnection* sqlConn_,
+                   SqlErrorObject& errObj_)
         : sqlConn(sqlConn_), errObj(errObj_) {}
 
 
@@ -56,8 +61,8 @@ public:
             BOOST_FAIL(errObj.printErrMsg());
         }
     }
-    qsrv::SqlConnection* sqlConn;
-    qsrv::SqlErrorObject& errObj;
+    SqlConnection* sqlConn;
+    SqlErrorObject& errObj;
 };
 } // anonymous namespace
 
@@ -73,19 +78,19 @@ struct PerTestFixture {
             std::cout << "Enter mysql socket: ";
             std::cin >> sqlConfig.socket;
         }
-        sqlConn.reset(new qsrv::SqlConnection(sqlConfig));
+        sqlConn.reset(new SqlConnection(sqlConfig));
     }
     ~PerTestFixture () {}
-    boost::shared_ptr<qsrv::SqlConnection> sqlConn;
-    static qsrv::SqlConfig sqlConfig;
+    boost::shared_ptr<SqlConnection> sqlConn;
+    static SqlConfig sqlConfig;
 };
-qsrv::SqlConfig PerTestFixture::sqlConfig;
+SqlConfig PerTestFixture::sqlConfig;
 
 BOOST_FIXTURE_TEST_SUITE(SqlConnectionTestSuite, PerTestFixture)
 
 BOOST_AUTO_TEST_CASE(CreateAndDropDb) {
     std::string dbN = "one_xysdfed34d";
-    qsrv::SqlErrorObject errObj;
+    SqlErrorObject errObj;
 
     // this database should not exist
     BOOST_CHECK_EQUAL(sqlConn->dbExists(dbN, errObj), false);
@@ -111,7 +116,7 @@ BOOST_AUTO_TEST_CASE(TableExists) {
     std::string tNa = "object_a";
     std::string tNb = "object_b";
     std::stringstream ss;
-    qsrv::SqlErrorObject errObj;
+    SqlErrorObject errObj;
 
     // create 2 dbs
     if ( !sqlConn->createDb(dbN1, errObj) ) {
@@ -162,7 +167,7 @@ BOOST_AUTO_TEST_CASE(ListTables) {
         "object_1", "object_2", "object_3",
         "source_1", "source_2" };
     int const tListLen = 5;
-    qsrv::SqlErrorObject errObj;
+    SqlErrorObject errObj;
     std::vector<std::string> v;
 
     // create db and select it as default
@@ -210,14 +215,14 @@ BOOST_AUTO_TEST_CASE(ListTables) {
 }
 
 BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
-    sqlConn.reset(new qsrv::SqlConnection(sqlConfig, true));
+    sqlConn.reset(new SqlConnection(sqlConfig, true));
     // Setup for "list tables"
     std::string dbN = "one_xysdfed34d";
     std::string tList[] = {
         "object_1", "object_2", "object_3",
         "source_1", "source_2" };
     int const tListLen = 5;
-    qsrv::SqlErrorObject errObj;
+    SqlErrorObject errObj;
     std::vector<std::string> v;
 
     // create db and select it as default
@@ -229,7 +234,7 @@ BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
     std::for_each(tList, tList + tListLen,
                   createIntTable(sqlConn.get(), errObj));
 
-    boost::shared_ptr<qsrv::SqlResultIter> ri;
+    boost::shared_ptr<SqlResultIter> ri;
     ri = sqlConn->getQueryIter(makeShowTables());
     int i=0;
     for(; !ri->done(); ++*ri, ++i) { // Assume mysql is order-preserving.

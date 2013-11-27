@@ -42,7 +42,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 std::ostream&
 output(std::ostream& os, ValueExprList const& vel) {
@@ -226,4 +226,4 @@ void ValueExpr::render::operator()(ValueExpr const& ve) {
     if(!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::query

@@ -27,10 +27,13 @@
 
 #include <errno.h>
 
-using namespace lsst::qserv::worker;
+namespace lsst {
+namespace qserv {
+namespace xrdfs {
 
-MySqlFsDirectory::MySqlFsDirectory(boost::shared_ptr<WLogger> log,
-                                            char* user) :
+
+MySqlFsDirectory::MySqlFsDirectory(boost::shared_ptr<wlog::WLogger> log,
+                                   char* user) :
     XrdSfsDirectory(user), _log(log) {
 }
 
@@ -57,3 +60,5 @@ char const* MySqlFsDirectory::FName(void) {
     _log->info("In MySqlFsDirectory::Fname()");
     return 0;
 }
+
+}}} // namespace lsst::qserv::xrdfs

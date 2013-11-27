@@ -28,15 +28,17 @@
 /// The MessageStore classes are responsible for maintaining status and
 /// error messages associated with a query.
 
-#ifndef LSST_QSERV_MASTER_MESSAGE_STORE_H
-#define LSST_QSERV_MASTER_MESSAGE_STORE_H
+#ifndef LSST_QSERV_QDISP_MESSAGESTORE_H
+#define LSST_QSERV_QDISP_MESSAGESTORE_H
 
 #include <string>
 #include <ctime>
 #include <boost/thread.hpp> // for mutex.
 #include <boost/shared_ptr.hpp> // for mutex.
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace qdisp {
 
 struct QueryMessage {
     QueryMessage(int chunkId_,
@@ -68,6 +70,6 @@ private:
     std::vector<QueryMessage> _queryMessages;
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_MASTER_MESSAGE_STORE_H
+#endif // LSST_QSERV_QDISP_MESSAGESTORE_H

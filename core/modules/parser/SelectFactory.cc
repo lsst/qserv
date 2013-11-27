@@ -62,7 +62,7 @@
 ////////////////////////////////////////////////////////////////////////
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace parser {
 
 SelectFactory::SelectFactory()
     : _columnAliases(new ParseAliasMap()),
@@ -86,9 +86,9 @@ SelectFactory::attachTo(SqlSQL2Parser& p) {
     _mFactory->attachTo(p);
 }
 
-boost::shared_ptr<SelectStmt>
+boost::shared_ptr<query::SelectStmt>
 SelectFactory::getStatement() {
-    boost::shared_ptr<SelectStmt> stmt(new SelectStmt());
+    boost::shared_ptr<query::SelectStmt> stmt(new query::SelectStmt());
     stmt->_selectList = _slFactory->getProduct();
     stmt->_fromList = _fFactory->getProduct();
     stmt->_whereClause = _wFactory->getProduct();
@@ -173,8 +173,9 @@ SelectListFactory::attachTo(SqlSQL2Parser& p) {
     p._columnAliasHandler = _columnAliasH;
 }
 
-boost::shared_ptr<SelectList> SelectListFactory::getProduct() {
-    boost::shared_ptr<SelectList> slist(new SelectList());
+boost::shared_ptr<query::SelectList> 
+SelectListFactory::getProduct() {
+    boost::shared_ptr<query::SelectList> slist(new query::SelectList());
     slist->_valueExprList = _valueExprList;
     return slist;
 }
@@ -244,7 +245,7 @@ SelectListFactory::_addSelectStar(RefAST child) {
     // If child.get(), this means that it's in the form of
     // "table.*". There might be sibling handling (i.e., multiple
     // table.* expressions).
-    ValueFactorPtr vt;
+    query::ValueFactorPtr vt;
     std::string tableName;
     if(child.get()) {
         // child should be QUALIFIED_NAME, so its child should be a
@@ -256,8 +257,8 @@ SelectListFactory::_addSelectStar(RefAST child) {
         tableName = tokenText(table);
         LOGGER_INF << "table ref'd for *: " << tableName << std::endl;
     }
-    vt = ValueFactor::newStarFactor(tableName);
-    _valueExprList->push_back(ValueExpr::newSimple(vt));
+    vt = query::ValueFactor::newStarFactor(tableName);
+    _valueExprList->push_back(query::ValueExpr::newSimple(vt));
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::parser

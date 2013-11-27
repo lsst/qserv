@@ -20,15 +20,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_MASTER_STRINGUTIL_H
-#define LSST_QSERV_MASTER_STRINGUTIL_H
+#ifndef LSST_QSERV_UTIL_STRINGUTIL_H
+#define LSST_QSERV_UTIL_STRINGUTIL_H
 
 #include <sstream>
 #include <map>
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace util {
 
 class strToDoubleFunc {
 public:
@@ -79,9 +79,9 @@ Container& tokenizeInto(std::string const& s,
 }
 
 template <class Container>
-std::map<typename Container::value_type,int>& fillMapFromKeys(Container const& c,
-                                                            std::map<typename Container::value_type, int>& e) {
-
+std::map<typename Container::value_type,int>& 
+fillMapFromKeys(Container const& c,
+                std::map<typename Container::value_type, int>& e) {
     typedef std::map<typename Container::value_type,int> Map;
     typename Container::const_iterator i;
     typename Container::const_iterator ie = c.end();
@@ -109,5 +109,6 @@ public:
     bool first;
 };
 
-}}} // namesapce lsst::qserv::master
-#endif // LSST_QSERV_MASTER_STRINGUTIL_H
+}}} // namesapce lsst::qserv::util
+
+#endif // LSST_QSERV_UTIL_STRINGUTIL_H

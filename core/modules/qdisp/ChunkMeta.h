@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_MASTER_CHUNKMETA_H
-#define LSST_QSERV_MASTER_CHUNKMETA_H
+#ifndef LSST_QSERV_QDISP_CHUNKMETA_H
+#define LSST_QSERV_QDISP_CHUNKMETA_H
 
 // C++
 #include <list>
@@ -30,7 +30,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qdisp {
 
 struct ChunkMetaEntry {
     ChunkMetaEntry(std::string const& db_,
@@ -65,5 +65,6 @@ private:
     EntryList _entries;
 };
 
-}}} // lsst::qserv::master
-#endif // LSST_QSERV_MASTER_CHUNKMETA_H
+}}} // namespace lsst::qserv::qdisp
+
+#endif // LSST_QSERV_QDISP_CHUNKMETA_H

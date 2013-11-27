@@ -47,22 +47,15 @@
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
 
-using lsst::qserv::SqlErrorObject;
-using lsst::qserv::SqlConfig;
-using lsst::qserv::SqlConnection;
-
-using namespace lsst::qserv::worker;
-namespace qWorker = lsst::qserv::worker;
-using lsst::qserv::worker::QuerySql;
 
 namespace {
 bool
-runBatch(boost::shared_ptr<qWorker::WLogger> log,
-         SqlConnection& sqlConn,
-         SqlErrorObject& errObj,
+runBatch(boost::shared_ptr<lsst::qserv::wlog::WLogger> log,
+         lsst::qserv::sql::SqlConnection& sqlConn,
+         lsst::qserv::sql::SqlErrorObject& errObj,
          std::string const& scriptId,
-         QuerySql::Batch& batch,
-         qWorker::CheckFlag* checkAbort) {
+         lsst::qserv::wdb::QuerySql::Batch& batch,
+         lsst::qserv::wbase::CheckFlag* checkAbort) {
     log->info((Pformat("TIMING,%1%%2%Start,%3%")
                  % scriptId % batch.name % ::time(NULL)).str().c_str());
     bool batchAborted = false;
@@ -101,15 +94,15 @@ runBatch(boost::shared_ptr<qWorker::WLogger> log,
 
 // Newer, flexibly-batched system.
 bool
-runScriptPieces(boost::shared_ptr<WLogger> log,
-                SqlConnection& sqlConn,
-                SqlErrorObject& errObj,
+runScriptPieces(boost::shared_ptr<lsst::qserv::wlog::WLogger> log,
+                lsst::qserv::sql::SqlConnection& sqlConn,
+                lsst::qserv::sql::SqlErrorObject& errObj,
                 std::string const& scriptId,
-                QuerySql const& qSql,
-                qWorker::CheckFlag* checkAbort) {
-    QuerySql::Batch build("QueryBuildSub", qSql.buildList);
-    QuerySql::Batch exec("QueryExec", qSql.executeList);
-    QuerySql::Batch clean("QueryDestroySub", qSql.cleanupList);
+                lsst::qserv::wdb::QuerySql const& qSql,
+                lsst::qserv::wbase::CheckFlag* checkAbort) {
+    lsst::qserv::wdb::QuerySql::Batch build("QueryBuildSub", qSql.buildList);
+    lsst::qserv::wdb::QuerySql::Batch exec("QueryExec", qSql.executeList);
+    lsst::qserv::wdb::QuerySql::Batch clean("QueryDestroySub", qSql.cleanupList);
     bool sequenceOk = false;
     if(runBatch(log, sqlConn, errObj, scriptId, build, checkAbort)) {
         if(!runBatch(log, sqlConn, errObj, scriptId, exec, checkAbort)) {
@@ -135,7 +128,8 @@ std::string commasToSpaces(std::string const& s) {
 }
 
 template <typename F>
-void forEachSubChunk(std::string const& script, F& func) {
+void
+forEachSubChunk(std::string const& script, F& func) {
     std::string firstLine = script.substr(0, script.find('\n'));
     int subChunkCount = 0;
 
@@ -151,6 +145,10 @@ void forEachSubChunk(std::string const& script, F& func) {
 
 } // anonymous namespace
 
+namespace lsst {
+namespace qserv {
+namespace wdb {
+            
 ////////////////////////////////////////////////////////////////////////
 // lsst::qserv::worker::QueryRunner
 ////////////////////////////////////////////////////////////////////////
@@ -169,28 +167,31 @@ QueryRunner::~QueryRunner() {
     mysql_thread_end();
 }
 
-bool QueryRunner::operator()() {
+bool
+QueryRunner::operator()() {
     // 6/11/2013: Note that query runners are not recycled right now.
     // A Foreman::Runner thread constructs one and executes it once.
     return _act();
 }
 
-
-void QueryRunner::poison(std::string const& hash) {
+void
+QueryRunner::poison(std::string const& hash) {
     boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
     _poisoned.push_back(hash);
 }
 ////////////////////////////////////////////////////////////////////////
 // private:
 ////////////////////////////////////////////////////////////////////////
-bool QueryRunner::_checkPoisoned() {
+bool
+QueryRunner::_checkPoisoned() {
     boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
     StringDeque::const_iterator i = find(_poisoned.begin(),
                                          _poisoned.end(), _task->hash);
     return i != _poisoned.end();
 }
 
-void QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
+void
+QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
     //_e should be tied to the MySqlFs instance and constant(?)
     _user = a.task->user;
     _task = a.task;
@@ -200,11 +201,13 @@ void QueryRunner::_setNewQuery(QueryRunnerArg const& a) {
     }
 }
 
-bool QueryRunner::actOnce() {
+bool
+QueryRunner::actOnce() {
     return _act();
-
 }
-bool QueryRunner::_act() {
+
+bool
+QueryRunner::_act() {
     char msg[] = "Exec in flight for Db = %1%, dump = %2%";
     _log->info((Pformat(msg) % _task->dbName % _task->resultPath).str());
 
@@ -221,7 +224,7 @@ bool QueryRunner::_act() {
         _log->info((Pformat("Reusing pre-existing dump = %1% (chk=%2%)")
                 % _task->resultPath % _task->chunkId).str());
         // The system should probably catch this earlier.
-        getTracker().notify(_task->hash, ResultError(0,""));
+        getTracker().notify(_task->hash, wcontrol::ResultError(0,""));
         return true;
     }
 #endif
@@ -229,17 +232,18 @@ bool QueryRunner::_act() {
         _log->info((Pformat("(FinishFail:%1%) %2% hash=%3%")
                 % (void*)(this) % dbDump % _task->hash).str());
         getTracker().notify(_task->hash,
-                            ResultError(-1,"Script exec failure "
-                                        + _getErrorString()));
+                            wcontrol::ResultError(-1,"Script exec failure "
+                                                  + _getErrorString()));
         return false;
     }
     _log->info((Pformat("(FinishOK:%1%) %2%")
             % (void*)(this) % dbDump).str());
-    getTracker().notify(_task->hash, ResultError(0,""));
+    getTracker().notify(_task->hash, wcontrol::ResultError(0,""));
     return true;
 }
 
-bool QueryRunner::_poisonCleanup() {
+bool
+QueryRunner::_poisonCleanup() {
     StringDeque::iterator i;
     boost::lock_guard<boost::mutex> lock(*_poisonedMutex);
     i = find(_poisoned.begin(), _poisoned.end(), _task->hash);
@@ -250,7 +254,8 @@ bool QueryRunner::_poisonCleanup() {
     return true;
 }
 
-std::string QueryRunner::_getErrorString() const {
+std::string
+QueryRunner::_getErrorString() const {
     return (Pformat("%1%: %2%") % _errObj.errNo() % _errObj.errMsg()).str();
 }
 
@@ -271,10 +276,11 @@ std::string QueryRunner::_getErrorString() const {
   return false;
   }
 */
-bool QueryRunner::_runTask(Task::Ptr t) {
-    SqlConfig sc(getConfig().getSqlConfig());
+bool
+QueryRunner::_runTask(wcontrol::Task::Ptr t) {
+    mysql::SqlConfig sc(wconfig::getConfig().getSqlConfig());
     sc.username = _user.c_str(); // Override with master-passed username.
-    SqlConnection _sqlConn(sc, true);
+    sql::SqlConnection _sqlConn(sc, true);
     bool success = true;
     _scriptId = t->dbName.substr(0, 6);
     _log->info((Pformat("TIMING,%1%ScriptStart,%2%")
@@ -284,19 +290,19 @@ bool QueryRunner::_runTask(Task::Ptr t) {
     _pResult->reset();
     assert(t.get());
     assert(t->msg.get());
-    TaskMsg& m(*t->msg);
+    proto::TaskMsg& m(*t->msg);
     if(!_sqlConn.connectToDb(_errObj)) {
         _log->info((Pformat("Cfg error! connect MySQL as %1% using %2%")
-                % getConfig().getString("mysqlSocket") % _user).str());
+                    % wconfig::getConfig().getString("mysqlSocket") % _user).str());
         return _errObj.addErrMsg("Unable to connect to MySQL as " + _user);
     }
     int chunkId = 1234567890;
     if(m.has_chunkid()) { chunkId = m.chunkid(); }
     std::string defaultDb = "test";
     if(m.has_db()) { defaultDb = m.db(); }
-    QuerySql::Factory qf;
+    wdb::QuerySql::Factory qf;
     for(int i=0; i < m.fragment_size(); ++i) {
-        Task::Fragment const& f(m.fragment(i));
+        wcontrol::Task::Fragment const& f(m.fragment(i));
 
             if(f.has_resulttable()) { resultTable = f.resulttable(); }
         assert(!resultTable.empty());
@@ -305,10 +311,10 @@ bool QueryRunner::_runTask(Task::Ptr t) {
         // If protocol gives us a query sequence, we won't need to
         // split fragments.
         bool first = t->needsCreate && (i==0);
-        boost::shared_ptr<QuerySql> qSql = qf.newQuerySql(defaultDb, chunkId,
-                                                          f,
-                                                          first,
-                                                          resultTable);
+        boost::shared_ptr<wdb::QuerySql> qSql = qf.newQuerySql(defaultDb, chunkId,
+                                                               f,
+                                                               first,
+                                                               resultTable);
 
         success = _runFragment(_sqlConn, *qSql);
         if(!success) return false;
@@ -325,9 +331,10 @@ bool QueryRunner::_runTask(Task::Ptr t) {
     return true;
 }
 
-bool qWorker::QueryRunner::_runFragment(SqlConnection& sqlConn,
-                                        QuerySql const& qSql) {
-    boost::shared_ptr<CheckFlag> check(_makeAbort());
+bool
+QueryRunner::_runFragment(sql::SqlConnection& sqlConn,
+                          wdb::QuerySql const& qSql) {
+    boost::shared_ptr<wbase::CheckFlag> check(_makeAbort());
 
     if(!_prepareAndSelectResultDb(sqlConn)) {
         return false;
@@ -346,13 +353,13 @@ bool qWorker::QueryRunner::_runFragment(SqlConnection& sqlConn,
 }
 
 bool
-QueryRunner::_prepareAndSelectResultDb(SqlConnection& sqlConn,
+QueryRunner::_prepareAndSelectResultDb(sql::SqlConnection& sqlConn,
                                        std::string const& resultDb) {
     std::string result;
     std::string dbName(resultDb);
 
     if(dbName.empty()) {
-        dbName = getConfig().getString("scratchDb");
+        dbName = wconfig::getConfig().getString("scratchDb");
     } else if(sqlConn.dropDb(dbName, _errObj, false)) {
         _log->info((Pformat("Cfg error! couldn't drop resultdb. %1%.")
                 % result).str().c_str());
@@ -372,8 +379,9 @@ QueryRunner::_prepareAndSelectResultDb(SqlConnection& sqlConn,
     return true;
 }
 
-bool QueryRunner::_prepareScratchDb(SqlConnection& sqlConn) {
-    std::string dbName = getConfig().getString("scratchDb");
+bool
+QueryRunner::_prepareScratchDb(sql::SqlConnection& sqlConn) {
+    std::string dbName = wconfig::getConfig().getString("scratchDb");
 
     if ( !sqlConn.createDb(dbName, _errObj, false) ) {
         _log->info((Pformat("Cfg error! couldn't create scratch db. %1%.")
@@ -388,7 +396,8 @@ bool QueryRunner::_prepareScratchDb(SqlConnection& sqlConn) {
     return true;
 }
 
-std::string QueryRunner::_getDumpTableList(std::string const& script) {
+std::string
+QueryRunner::_getDumpTableList(std::string const& script) {
     // Find resultTable prefix
     char const prefix[] = "-- RESULTTABLES:";
     int prefixLen = sizeof(prefix);
@@ -403,7 +412,8 @@ std::string QueryRunner::_getDumpTableList(std::string const& script) {
     return tables;
 }
 
-boost::shared_ptr<ArgFunc> QueryRunner::getResetFunc() {
+boost::shared_ptr<ArgFunc>
+QueryRunner::getResetFunc() {
     class ResetFunc : public ArgFunc {
     public:
         ResetFunc(QueryRunner* r) : runner(r) {}
@@ -416,27 +426,32 @@ boost::shared_ptr<ArgFunc> QueryRunner::getResetFunc() {
     return boost::shared_ptr<ArgFunc>(af);
 }
 
-boost::shared_ptr<CheckFlag> QueryRunner::_makeAbort() {
-    class Check : public CheckFlag {
+boost::shared_ptr<wbase::CheckFlag>
+QueryRunner::_makeAbort() {
+    class Check : public wbase::CheckFlag {
     public:
         Check(QueryRunner& qr) : runner(qr) {}
         virtual ~Check() {}
         bool operator()() { return runner._checkPoisoned(); }
         QueryRunner& runner;
     };
-    CheckFlag* cf = new Check(*this);
-    return boost::shared_ptr<CheckFlag>(cf);
+    wbase::CheckFlag* cf = new Check(*this);
+    return boost::shared_ptr<wbase::CheckFlag>(cf);
 }
 
 ////////////////////////////////////////////////////////////////////////
 // Helpers
 ////////////////////////////////////////////////////////////////////////
-int qWorker::dumpFileOpen(std::string const& dbName) {
+int
+dumpFileOpen(std::string const& dbName) {
     return ::open(dbName.c_str(), O_RDONLY);
 }
 
-bool qWorker::dumpFileExists(std::string const& dumpFilename) {
+bool
+dumpFileExists(std::string const& dumpFilename) {
     struct stat statbuf;
     return ::stat(dumpFilename.c_str(), &statbuf) == 0 &&
         S_ISREG(statbuf.st_mode) && (statbuf.st_mode & S_IRUSR) == S_IRUSR;
 }
+
+}}} // namespace lsst::qserv::wdb

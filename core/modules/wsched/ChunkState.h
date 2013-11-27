@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_CHUNKSTATE_H
-#define LSST_QSERV_WORKER_CHUNKSTATE_H
+#ifndef LSST_QSERV_WSCHED_CHUNKSTATE_H
+#define LSST_QSERV_WSCHED_CHUNKSTATE_H
  /**
   *
   * @brief ChunkState is a way to track which chunks are being scanned
@@ -37,7 +37,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wsched {
+
 class ChunkState {
 public:
     typedef std::set<int> IntSet;
@@ -97,7 +98,7 @@ private:
     int _last;
 };
 
+}}} // namespace lsst::qserv::wsched
 
-}}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_CHUNKSTATE_H
+#endif // LSST_QSERV_WSCHED_CHUNKSTATE_H
 

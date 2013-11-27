@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_CHUNKSPEC_H
-#define LSST_QSERV_MASTER_CHUNKSPEC_H
+#ifndef LSST_QSERV_QPROC_CHUNKSPEC_H
+#define LSST_QSERV_QPROC_CHUNKSPEC_H
 /**
   * @file
   *
@@ -34,7 +34,9 @@
 #include <vector>
 #include <stdint.h>
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace qproc {
 
 /// ChunkSpec is a value class that bundles the per-chunk information that is
 /// used to compose a concrete chunk query for a specific chunk from an input
@@ -78,6 +80,7 @@ public:
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpecSingle const& c);
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_CHUNKSPEC_H
+}}} // namespace lsst::qserv::qproc
+
+#endif // LSST_QSERV_QPROC_CHUNKSPEC_H
 

@@ -25,8 +25,8 @@
  * @brief Common utilty functions for lsst::qserv::master. Only std C++ dependencies allowed.
  *
  */
-#ifndef LSST_QSERV_MASTER_COMMON_H
-#define LSST_QSERV_MASTER_COMMON_H
+#ifndef LSST_QSERV_UTIL_COMMON_H
+#define LSST_QSERV_UTIL_COMMON_H
 
 #include <list>
 #include <map>
@@ -35,7 +35,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace util {
 
 typedef std::map<std::string, std::string> StringMap;
 typedef std::map<std::string, StringMap> StringMapMap;
@@ -44,9 +44,10 @@ typedef std::list<StringPair> StringPairList;
 typedef std::list<std::string> StringList;
 
 template <class Map>
-typename Map::mapped_type const& getFromMap(Map const& m,
-                                            typename Map::key_type const& key,
-                                            typename Map::mapped_type const& defValue) {
+typename Map::mapped_type const& 
+getFromMap(Map const& m,
+           typename Map::key_type const& key,
+           typename Map::mapped_type const& defValue) {
     typename Map::const_iterator i = m.find(key);
     if(i == m.end()) {
         return defValue;
@@ -64,7 +65,6 @@ void forEachMapped(Map const& m, Func& f) {
         f(i->second);
     }
 }
-
 
 template <class Map, class Func>
 void forEachFirst(Map const& m, Func& f) {
@@ -98,6 +98,6 @@ std::ostream& printList(std::ostream &os, char const* label, C const& c) {
     return os;
 }
 
+}}} // namesapce lsst::qserv::util
 
-}}} // namesapce lsst::qserv::master
-#endif // LSST_QSERV_MASTER_COMMON_H
+#endif // LSST_QSERV_UTIL_COMMON_H

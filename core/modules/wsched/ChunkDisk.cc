@@ -54,13 +54,13 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wsched {
 ////////////////////////////////////////////////////////////////////////
 // Helpers
 ////////////////////////////////////////////////////////////////////////
 
 /// @return chunkId of task
-inline int taskChunkId(Task const& e) {
+inline int taskChunkId(wcontrol::Task const& e) {
     assert(e.msg);
     assert(e.msg->has_chunkid());
     return e.msg->chunkid();
@@ -265,4 +265,4 @@ bool ChunkDisk::checkIntegrity() {
     return checkQueueOk(_activeTasks) && checkQueueOk(_pendingTasks);
 }
 
-}}} // lsst::qserv::worker
+}}} // namespace lsst::qserv::wsched

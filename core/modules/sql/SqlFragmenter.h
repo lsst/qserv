@@ -19,13 +19,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_SQLFRAGMENTER_H
-#define LSST_QSERV_WORKER_SQLFRAGMENTER_H
+#ifndef LSST_QSERV_SQL_SQLFRAGMENTER_H
+#define LSST_QSERV_SQL_SQLFRAGMENTER_H
+
 #include <string>
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace sql {
+
 // SqlFragmenter: Simple iteration over pieces of a longer batch
 // of sql statements.
 class SqlFragmenter {
@@ -51,7 +53,7 @@ private:
     unsigned _count;
     Piece _current;
 };
-}}} // lsst::qserv::worker
 
+}}} // namespace lsst::qserv::sql
 
-#endif // LSST_QSERV_WORKER_SQLFRAGMENTER_H
+#endif // LSST_QSERV_SQL_SQLFRAGMENTER_H

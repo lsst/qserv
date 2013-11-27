@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_WORKER_BASE_H
-#define LSST_QSERV_WORKER_BASE_H
+#ifndef LSST_QSERV_WBASE_BASE_H
+#define LSST_QSERV_WBASE_BASE_H
 
 // Std
 #include <deque>
@@ -31,18 +31,26 @@
 #include <boost/thread.hpp>
 #include <boost/format.hpp>
 
+
+// Forward declarations
 class XrdSysError;
 class XrdSysLogger;
 class XrdSfsAio;
+namespace lsst {
+namespace qserv {
+namespace proto {
+    class TaskMsg;
+}
+namespace wbase {
+    class StringBuffer;
+    class StringBuffer2;
+}}}
+// End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-class TaskMsg;
-
-namespace worker {
-// Forward:
-class StringBuffer;
-class StringBuffer2;
+namespace wbase {
 
 typedef long long StringBufferOffset;
 typedef int StringBufferSize;
@@ -136,10 +144,10 @@ public:
     typedef boost::shared_ptr<TaskAcceptor> Ptr;
 
     TaskAcceptor() {}
-    virtual bool accept(boost::shared_ptr<TaskMsg> msg) = 0;
+    virtual bool accept(boost::shared_ptr<proto::TaskMsg> msg) = 0;
 };
 
-}}}
+}}} // namespace lsst::qserv::wbase
 
 #if DO_NOT_USE_BOOST
 typedef lsst::qserv::worker::PosFormat Pformat;
@@ -147,4 +155,4 @@ typedef lsst::qserv::worker::PosFormat Pformat;
 typedef boost::format Pformat;
 #endif
 
-#endif // LSST_QSERV_WORKER_BASE_H
+#endif // LSST_QSERV_WBASE_BASE_H

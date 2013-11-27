@@ -25,27 +25,37 @@
 /// is less dependent on Xrootd. (some dependencies still exist in
 /// MySqlFs.)
 /// @author Daniel L. Wang (danielw)
-#ifndef LSST_QSERV_WORKER_ORDERTAKER_H
-#define LSST_QSERV_WORKER_ORDERTAKER_H
+#ifndef LSST_QSERV_WCONTROL_REQUESTTAKER_H
+#define LSST_QSERV_WCONTROL_REQUESTTAKER_H
+
 #include "wbase/Base.h" // StringBuffer2
+
 namespace lsst {
 namespace qserv {
-class QservPath; // Forward
-namespace worker {
+
+namespace obsolete {
+    // Forward
+    class QservPath;
+}
+    
+namespace wcontrol {
+
 
 class RequestTaker {
 public:
     typedef int64_t Size;
 
-    explicit RequestTaker(TaskAcceptor::Ptr acceptor, QservPath const& path);
+    explicit RequestTaker(wbase::TaskAcceptor::Ptr acceptor, 
+                          obsolete::QservPath const& path);
     bool receive(Size offset, char const* buffer, Size bufferSize);
     bool complete();
 private:
-    TaskAcceptor::Ptr _acceptor;
-    StringBuffer2 _queryBuffer;
+    wbase::TaskAcceptor::Ptr _acceptor;
+    wbase::StringBuffer2 _queryBuffer;
     std::string _db;
     int _chunk;
 };
 
-}}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_ORDERTAKER_H
+}}} // namespace lsst::qserv::wcontrol
+
+#endif // LSST_QSERV_WCONTROL_REQUESTTAKER_H

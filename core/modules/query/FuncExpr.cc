@@ -34,8 +34,10 @@
 #include "query/ValueFactor.h"
 #include "query/QueryTemplate.h"
 #include <iostream>
-namespace qMaster=lsst::qserv::master;
-using lsst::qserv::master::FuncExpr;
+
+namespace lsst {
+namespace qserv {
+namespace query {
 
 FuncExpr::Ptr
 FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
@@ -70,20 +72,25 @@ FuncExpr::findColumnRefs(ColumnRef::List& list) {
     }
 }
 
-
-std::ostream& qMaster::operator<<(std::ostream& os, FuncExpr const& fe) {
+std::ostream& 
+operator<<(std::ostream& os, FuncExpr const& fe) {
     os << "(" << fe.name << ",";
     output(os, fe.params);
     os << ")";
     return os;
 }
-std::ostream& qMaster::operator<<(std::ostream& os, FuncExpr const* fe) {
+
+std::ostream& 
+operator<<(std::ostream& os, FuncExpr const* fe) {
     return os << *fe;
 }
 
-void qMaster::FuncExpr::renderTo(qMaster::QueryTemplate& qt) const {
+void 
+FuncExpr::renderTo(QueryTemplate& qt) const {
     qt.append(name);
     qt.append("(");
     renderList(qt, params);
     qt.append(")");
 }
+
+}}} // namespace lsst::qserv::query

@@ -20,14 +20,14 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_MASTER_SUBSTITUTION_H
-#define LSST_QSERV_MASTER_SUBSTITUTION_H
+#ifndef LSST_QSERV_UTIL_SUBSTITUTION_H
+#define LSST_QSERV_UTIL_SUBSTITUTION_H
 
 #include <string>
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace util {
 
 /// class Substitution : Simply performs substitution on a template
 /// string using a supplied string-to-string mapping.  Optimized for
@@ -66,6 +66,7 @@ private:
     bool _shouldFinalize;
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_SUBSTITUTION_H
+}}} // namespace lsst::qserv::util
+
+#endif // LSST_QSERV_UTIL_SUBSTITUTION_H
 

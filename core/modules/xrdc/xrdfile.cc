@@ -54,7 +54,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace xrdc {
 
 int xrdOpen(const char *path, int oflag) {
     static int fakeDes=50;
@@ -92,7 +92,7 @@ long long xrdLseekSet(int fildes, off_t offset) {
     return offset; // Always pretend to succeed
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::xrdc
 
 #else // Not faked: choose the real XrdPosix implementation.
 
@@ -147,7 +147,6 @@ namespace {
             ::close(fd);
         }
     }
-
 }
 
 #if QSM_PROFILE_XRD
@@ -168,7 +167,7 @@ namespace {
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace xrdc {
 
 int xrdOpen(const char *path, int oflag) {
 #ifdef DBG_TEST_OPEN_FAILURE_1
@@ -502,7 +501,7 @@ XrdTransResult xrdOpenWriteReadSave(
     return r;
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::xrdc
 
 #endif
 

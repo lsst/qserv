@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_GROUPEDQUEUE_H
-#define LSST_QSERV_WORKER_GROUPEDQUEUE_H
+#ifndef LSST_QSERV_WSCHED_GROUPEDQUEUE_H
+#define LSST_QSERV_WSCHED_GROUPEDQUEUE_H
  /**
   * @author Daniel L. Wang, SLAC
   */
@@ -30,7 +30,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace worker {
+namespace wsched {
+
 /// GroupedQueue is a queue of elements grouped by a key
 /// value. New elements are inserted by finding the right-most element
 /// that shares its key with the new element and inserting the new
@@ -121,5 +122,6 @@ private:
     int _maxClique;
 };
 
-}}} // lsst::qserv::worker
-#endif // LSST_QSERV_WORKER_GROUPEDQUEUE_H
+}}} // namespace lsst::qserv::wsched
+
+#endif // LSST_QSERV_WSCHED_GROUPEDQUEUE_H

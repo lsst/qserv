@@ -31,7 +31,9 @@
 #include "wbase/Base.h"
 #include "wlog/WLogger.h"
 
-using namespace lsst::qserv::worker;
+namespace lsst {
+namespace qserv {
+namespace wdb {            
 
 ////////////////////////////////////////////////////////////////////////
 void QueryPhyResult::addResultTable(std::string const& t) {
@@ -64,23 +66,22 @@ std::string QueryPhyResult::_getSpaceResultTables() const {
     return ss.str();
 }
 
-
-bool QueryPhyResult::performMysqldump(WLogger& log,
+bool QueryPhyResult::performMysqldump(wlog::WLogger& log,
                                       std::string const& user,
                                       std::string const& dumpFile,
-                                      SqlErrorObject& errObj) {
+                                      sql::SqlErrorObject& errObj) {
     // Dump a database to a dumpfile.
 
     // Make sure the path exists
     _mkdirP(dumpFile);
 
-    std::string cmd = getConfig().getString("mysqlDump") +
+    std::string cmd = wconfig::getConfig().getString("mysqlDump") +
         (Pformat(
             " --compact --add-locks --create-options --skip-lock-tables"
 	    " --socket=%1%"
             " -u %2%"
             " --result-file=%3% %4% %5%")
-         % getConfig().getString("mysqlSocket")
+         % wconfig::getConfig().getString("mysqlSocket")
          % user
          % dumpFile % _outDb
          % _getSpaceResultTables()).str();
@@ -115,4 +116,4 @@ void QueryPhyResult::_mkdirP(std::string const& filePath) {
     }
 }
 
-
+}}} // namespace lsst::qserv::wdb

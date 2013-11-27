@@ -20,14 +20,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_SQL_ERROR_OBJECT_H
-#define LSST_QSERV_SQL_ERROR_OBJECT_H
+#ifndef LSST_QSERV_SQL_SQLERROROBJECT_H
+#define LSST_QSERV_SQL_SQLERROROBJECT_H
 
 // Standard
 #include <string>
 
 namespace lsst {
 namespace qserv {
+namespace sql {
 
 class SqlErrorObject {
 public:
@@ -52,10 +53,11 @@ private:
     std::string _errMsg;  // error message
 };
 
-}} // namespace lsst::qserv
+}}} // namespace lsst::qserv::sql
+
 // Local Variables:
 // mode:c++
 // comment-column:0
 // End:
 
-#endif // LSST_QSERV_SQL_ERROR_OBJECT_H
+#endif // LSST_QSERV_SQL_SQLERROROBJECT_H

@@ -26,7 +26,7 @@
 #include "QservPath.h"
 
 namespace test = boost::test_tools;
-namespace qsrv = lsst::qserv;
+namespace qsrv = lsst::qserv::obsolete;
 
 struct PathFixture {
     PathFixture(void) {}

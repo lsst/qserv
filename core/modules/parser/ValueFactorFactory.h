@@ -20,8 +20,10 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_VALUETERMFACTORY_H
-#define LSST_QSERV_MASTER_VALUETERMFACTORY_H
+
+#ifndef LSST_QSERV_PARSER_VALUEFACTORFACTORY_H
+#define LSST_QSERV_PARSER_VALUEFACTORFACTORY_H
+
 /**
   * @file ValueFactor.h
   *
@@ -32,24 +34,30 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace query {
+    // Forward
+    class ValueFactor;
+}
+
+namespace parser {
 
 // Forward
 class ColumnRefNodeMap;
-class ValueFactor;
 
 /// ValueFactorFactory constructs ValueFactor instances from antlr nodes.
 class ValueFactorFactory {
 public:
     ValueFactorFactory(boost::shared_ptr<ColumnRefNodeMap> cMap);
-    boost::shared_ptr<ValueFactor> newFactor(antlr::RefAST a);
+    boost::shared_ptr<query::ValueFactor> newFactor(antlr::RefAST a);
 
 private:
-    boost::shared_ptr<ValueFactor> _newColumnFactor(antlr::RefAST t);
-    boost::shared_ptr<ValueFactor> _newSetFctSpec(antlr::RefAST expr);
+    boost::shared_ptr<query::ValueFactor> _newColumnFactor(antlr::RefAST t);
+    boost::shared_ptr<query::ValueFactor> _newSetFctSpec(antlr::RefAST expr);
 
     boost::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_VALUETERMFACTORY_H
+}}} // namespace lsst::qserv::parser
+
+#endif // LSST_QSERV_PARSER_VALUEFACTORFACTORY_H

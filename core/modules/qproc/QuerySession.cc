@@ -41,7 +41,7 @@
 #include "parser/SelectParser.h"
 #include "query/SelectStmt.h"
 #include "query/SelectList.h"
-#include "query/WhereClause.h"
+#include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
 #include "qana/AnalysisError.h"
 #include "qana/QueryMapping.h"
@@ -53,12 +53,11 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qproc {
 
-void printConstraints(ConstraintVector const& cv) {
+void printConstraints(query::ConstraintVector const& cv) {
     std::copy(cv.begin(), cv.end(),
-              std::ostream_iterator<Constraint>(LOG_STRM(Info), ","));
-
+              std::ostream_iterator<query::Constraint>(LOG_STRM(Info), ","));
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -74,9 +73,9 @@ void QuerySession::setQuery(std::string const& inputQuery) {
     _initContext();
     assert(_context.get());
 
-    SelectParser::Ptr p;
+    parser::SelectParser::Ptr p;
     try {
-        p = SelectParser::newInstance(inputQuery);
+        p = parser::SelectParser::newInstance(inputQuery);
         p->setup();
         _stmt = p->getSelectStmt();
         _preparePlugins();
@@ -86,7 +85,7 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         _showFinal(); // DEBUG
     } catch(qana::AnalysisError& e) {
         _error = std::string("AnalysisError:") + e.what();
-    } catch(ParseException& e) {
+    } catch(parser::ParseException& e) {
         _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {
         _error = std::string("ANTLR exception:") + e.getMessage();
@@ -105,19 +104,19 @@ bool QuerySession::hasAggregate() const {
     return false;
 }
 
-boost::shared_ptr<ConstraintVector> QuerySession::getConstraints() const {
-    boost::shared_ptr<ConstraintVector> cv;
-    boost::shared_ptr<QsRestrictor::List const> p = _context->restrictors;
+boost::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
+    boost::shared_ptr<query::ConstraintVector> cv;
+    boost::shared_ptr<query::QsRestrictor::List const> p = _context->restrictors;
 
     if(p.get()) {
-        cv.reset(new ConstraintVector(p->size()));
+        cv.reset(new query::ConstraintVector(p->size()));
         int i=0;
-        QsRestrictor::List::const_iterator li;
+        query::QsRestrictor::List::const_iterator li;
         for(li = p->begin(); li != p->end(); ++li) {
-            Constraint c;
-            QsRestrictor const& r = **li;
+            query::Constraint c;
+            query::QsRestrictor const& r = **li;
             c.name = r._name;
-            StringList::const_iterator si;
+            util::StringList::const_iterator si;
             for(si = r._params.begin(); si != r._params.end(); ++si) {
                 c.params.push_back(*si);
             }
@@ -138,7 +137,6 @@ void QuerySession::addChunk(ChunkSpec const& cs) {
     _chunks.push_back(cs);
 }
 
-
 void QuerySession::setResultTable(std::string const& resultTable) {
     _resultTable = resultTable;
 }
@@ -156,22 +154,23 @@ QuerySession::getDbStriping() {
     return _context->getDbStriping();
 }
 
-MergeFixup QuerySession::makeMergeFixup() const {
+merger::MergeFixup 
+QuerySession::makeMergeFixup() const {
     // Make MergeFixup to adapt new query parser/generation framework
     // to older merging code.
     if(!_stmt) {
         throw std::invalid_argument("Cannot makeMergeFixup() with NULL _stmt");
     }
-    SelectList const& mergeSelect = _stmtMerge->getSelectList();
-    QueryTemplate t;
+    query::SelectList const& mergeSelect = _stmtMerge->getSelectList();
+    query::QueryTemplate t;
     mergeSelect.renderTo(t);
     std::string select = t.generate();
     t = _stmtMerge->getPostTemplate();
     std::string post = t.generate();
     std::string orderBy; // TODO
     bool needsMerge = _context->needsMerge;
-    return MergeFixup(select, post, orderBy,
-                      _stmtMerge->getLimit(), needsMerge);
+    return merger::MergeFixup(select, post, orderBy,
+                              _stmtMerge->getLimit(), needsMerge);
 }
 
 void QuerySession::finalize() {
@@ -192,7 +191,7 @@ QuerySession::Iter QuerySession::cQueryEnd() {
 }
 
 void QuerySession::_initContext() {
-    _context.reset(new QueryContext());
+    _context.reset(new query::QueryContext());
     _context->defaultDb = "LSST";
     _context->username = "default";
     _context->needsMerge = false;
@@ -203,12 +202,12 @@ void QuerySession::_initContext() {
 void QuerySession::_preparePlugins() {
     _plugins.reset(new PluginList);
 
-    _plugins->push_back(QueryPlugin::newInstance("Where"));
-    _plugins->push_back(QueryPlugin::newInstance("Aggregate"));
-    _plugins->push_back(QueryPlugin::newInstance("Table"));
-    _plugins->push_back(QueryPlugin::newInstance("QservRestrictor"));
-    _plugins->push_back(QueryPlugin::newInstance("Post"));
-    _plugins->push_back(QueryPlugin::newInstance("ScanTable"));
+    _plugins->push_back(qana::QueryPlugin::newInstance("Where"));
+    _plugins->push_back(qana::QueryPlugin::newInstance("Aggregate"));
+    _plugins->push_back(qana::QueryPlugin::newInstance("Table"));
+    _plugins->push_back(qana::QueryPlugin::newInstance("QservRestrictor"));
+    _plugins->push_back(qana::QueryPlugin::newInstance("Post"));
+    _plugins->push_back(qana::QueryPlugin::newInstance("ScanTable"));
     PluginList::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).prepare();
@@ -249,24 +248,23 @@ void QuerySession::_generateConcrete() {
 
 
 void QuerySession::_applyConcretePlugins() {
-    QueryPlugin::Plan p(*_stmt, _stmtParallel, *_stmtMerge, _hasMerge);
+    qana::QueryPlugin::Plan p(*_stmt, _stmtParallel, *_stmtMerge, _hasMerge);
     PluginList::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyPhysical(p, *_context);
     }
 }
 
-
 /// Some code useful for debugging.
 void QuerySession::_showFinal() {
     // Print out the end result.
-    QueryTemplate par = _stmtParallel.front()->getTemplate();
-    QueryTemplate mer = _stmtMerge->getTemplate();
+    query::QueryTemplate par = _stmtParallel.front()->getTemplate();
+    query::QueryTemplate mer = _stmtMerge->getTemplate();
 
     LOGGER_INF << "QuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
     LOGGER_INF << "QuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
     if(!_context->scanTables.empty()) {
-        StringPairList::const_iterator i,e;
+        util::StringPairList::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();
             i != e; ++i) {
             LOGGER_INF << "ScanTable: " << i->first << "." << i->second
@@ -285,10 +283,10 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) {
     if(!_context->queryMapping) {
         throw std::logic_error("Missing QueryMapping in _context");
     }
-    QueryMapping const& queryMapping = *_context->queryMapping;
+    qana::QueryMapping const& queryMapping = *_context->queryMapping;
 
-    typedef std::list<boost::shared_ptr<SelectStmt> >::const_iterator Iter;
-    typedef std::list<QueryTemplate> Tlist;
+    typedef std::list<boost::shared_ptr<query::SelectStmt> >::const_iterator Iter;
+    typedef std::list<query::QueryTemplate> Tlist;
     typedef Tlist::const_iterator TlistIter;
     Tlist tlist;
     for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end();
@@ -361,8 +359,8 @@ void QuerySession::Iter::_buildCache() const {
     _cache.chunkId = _pos->chunkId;
     _cache.nextFragment.reset();
     _cache.subChunkTables.clear();
-    QueryMapping const& queryMapping = *(_qs->_context->queryMapping);
-    QueryMapping::StringSet const& sTables = queryMapping.getSubChunkTables();
+    qana::QueryMapping const& queryMapping = *(_qs->_context->queryMapping);
+    qana::QueryMapping::StringSet const& sTables = queryMapping.getSubChunkTables();
     _cache.subChunkTables.insert(_cache.subChunkTables.begin(),
                                  sTables.begin(), sTables.end());
     if(_hasSubChunks) {
@@ -399,4 +397,4 @@ QuerySession::Iter::_buildFragment(ChunkSpecFragmenter& f) const {
     return first;
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::qproc

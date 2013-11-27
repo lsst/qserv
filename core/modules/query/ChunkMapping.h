@@ -20,8 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_MASTER_CHUNKMAPPING_H
-#define LSST_QSERV_MASTER_CHUNKMAPPING_H
+#ifndef LSST_QSERV_QUERY_CHUNKMAPPING_H
+#define LSST_QSERV_QUERY_CHUNKMAPPING_H
 
 // C++
 #include <map>
@@ -35,15 +35,21 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
-class ChunkMeta; // forward
+
+namespace qdisp {
+    // Forward
+    class ChunkMeta;
+}
+
+namespace query {
+
 
 // class ChunkMapping is a helper class that generates mappings from
 // placeholder table references to physical table names.
 //
 class ChunkMapping {
 public:
-    typedef StringMap Map;
+    typedef util::StringMap Map;
     typedef Map::value_type MapValue;
 
     ChunkMapping() :_subPrefix("_sc") {}
@@ -59,7 +65,7 @@ public:
     // SubChunkKeys: tables partitioned into chunks and subchunks.
     void addChunkKey(std::string const& key) { _map[key] = CHUNK; }
     void addSubChunkKey(std::string const& key) { _map[key] = CHUNK_WITH_SUB; }
-    void setFromMeta(lsst::qserv::master::ChunkMeta const& m);
+    void setFromMeta(qdisp::ChunkMeta const& m);
 
 private:
     enum Mode {UNKNOWN, CHUNK, CHUNK_WITH_SUB};
@@ -78,6 +84,6 @@ private:
     std::string _subPrefix;
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query
 
-#endif // LSST_QSERV_MASTER_CHUNKMAPPING_H
+#endif // LSST_QSERV_QUERY_CHUNKMAPPING_H

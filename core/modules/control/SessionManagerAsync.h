@@ -23,14 +23,15 @@
 // This interface provides static instance retrieval that was formerly
 // buried in dispatcher.cc
 
-#ifndef LSST_QSERV_MASTER_SESSIONMANAGERASYNC_H
-#define LSST_QSERV_MASTER_SESSIONMANAGERASYNC_H
+#ifndef LSST_QSERV_CONTROL_SESSIONMANAGERASYNC_H
+#define LSST_QSERV_CONTROL_SESSIONMANAGERASYNC_H
 #include "control/SessionManager.h"
 #include <boost/shared_ptr.hpp>
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace control {
+
 class AsyncQueryManager;
 
 typedef SessionManager<boost::shared_ptr<AsyncQueryManager> > SessionManagerAsync;
@@ -39,6 +40,6 @@ typedef boost::shared_ptr<SessionManagerAsync> SessionManagerAsyncPtr;
 SessionManagerAsync& getSessionManagerAsync();
 AsyncQueryManager& getAsyncManager(int session);
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::control
 
-#endif // LSST_QSERV_MASTER_SESSIONMANAGERASYNC_H
+#endif // LSST_QSERV_CONTROL_SESSIONMANAGERASYNC_H

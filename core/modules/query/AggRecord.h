@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_AGGRECORD_H
-#define LSST_QSERV_MASTER_AGGRECORD_H
+#ifndef LSST_QSERV_QUERY_AGGRECORD_H
+#define LSST_QSERV_QUERY_AGGRECORD_H
 /**
   * @file
   *
@@ -30,7 +30,9 @@
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace query {
 
 /// AggRecord is a value class for the information needed to successfully
 /// perform aggregation of distributed queries.  lbl and meaning record the
@@ -41,18 +43,18 @@ struct AggRecord {
 public:
     typedef boost::shared_ptr<AggRecord> Ptr;
     /// Original ValueFactor representing the call (e.g., COUNT(ra_PS))
-    lsst::qserv::master::ValueFactorPtr orig;
+    query::ValueFactorPtr orig;
     /// List of expressions to pass for parallel execution.
     /// Some aggregations need more than one aggregation to be computed (per
     /// chunk) in order to compute the final aggregation value (e.g., AVG)
-    lsst::qserv::master::ValueExprList parallel;
+    query::ValueExprList parallel;
     /// ValueFactor representing merge step. Not a list, because the original
     /// wasn't a list and we want the final result to correspond.
-    lsst::qserv::master::ValueFactorPtr merge;
+    query::ValueFactorPtr merge;
     std::ostream& printTo(std::ostream& os);
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query
 
-#endif // LSST_QSERV_MASTER_AGGRECORD_H
+#endif // LSST_QSERV_QUERY_AGGRECORD_H
 

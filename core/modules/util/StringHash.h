@@ -21,12 +21,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_STRINGHASH_H
-#define LSST_QSERV_STRINGHASH_H
+#ifndef LSST_QSERV_UTIL_STRINGHASH_H
+#define LSST_QSERV_UTIL_STRINGHASH_H
+
 #include <string>
 
 namespace lsst {
 namespace qserv {
+namespace util {
+
 /// Small wrappers for computing hashes
 class StringHash {
 public:
@@ -34,5 +37,7 @@ public:
     static std::string getSha1Hex(char const* buffer, int bufferSize);
     static std::string getSha256Hex(char const* buffer, int bufferSize);
 };
-}} // lsst::qserv
-#endif // LSST_QSERV_STRINGHASH_H
+
+}}} // namespace lsst::qserv::util
+
+#endif // LSST_QSERV_UTIL_STRINGHASH_H

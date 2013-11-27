@@ -48,25 +48,13 @@
 #include "query/WhereClause.h"
 #include "log/Logger.h"
 
-// myself
-
-
-// namespace modifiers
-namespace qMaster = lsst::qserv::master;
-
-
-////////////////////////////////////////////////////////////////////////
-// Experimental
-////////////////////////////////////////////////////////////////////////
-
-// forward
 
 ////////////////////////////////////////////////////////////////////////
 // anonymous
 ////////////////////////////////////////////////////////////////////////
 namespace {
 template <typename T>
-inline void renderTemplate(qMaster::QueryTemplate& qt,
+inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
                            char const prefix[],
                            boost::shared_ptr<T> t) {
     if(t.get()) {
@@ -85,22 +73,28 @@ copySyntaxIf(boost::shared_ptr<T>& dest, boost::shared_ptr<T> source) {
     if(source.get()) dest = source->copySyntax();
 }
 } // namespace
+
+
+namespace lsst {
+namespace qserv {
+namespace query {
+            
 ////////////////////////////////////////////////////////////////////////
 // class SelectStmt
 ////////////////////////////////////////////////////////////////////////
 
-qMaster::SelectStmt::SelectStmt() {
+SelectStmt::SelectStmt() {
 }
 
-void qMaster::SelectStmt::diagnose() {
+void SelectStmt::diagnose() {
     //_selectList->getColumnRefList()->printRefs();
     _selectList->dbgPrint();
     _generate();
 
 }
 
-qMaster::QueryTemplate
-qMaster::SelectStmt::getTemplate() const {
+QueryTemplate
+SelectStmt::getTemplate() const {
     QueryTemplate qt;
     renderTemplate(qt, "SELECT", _selectList);
     renderTemplate(qt, "FROM", _fromList);
@@ -122,8 +116,8 @@ qMaster::SelectStmt::getTemplate() const {
 /// "post" string for the aggregating table merger MergeFixup
 /// object. Hopefully, we will port the merger to use the merging
 /// statement more as-is (just patching the FROM part).
-qMaster::QueryTemplate
-qMaster::SelectStmt::getPostTemplate() const {
+QueryTemplate
+SelectStmt::getPostTemplate() const {
     QueryTemplate qt;
     renderTemplate(qt, "GROUP BY", _groupBy);
     renderTemplate(qt, "HAVING", _having);
@@ -131,13 +125,13 @@ qMaster::SelectStmt::getPostTemplate() const {
     return qt;
 }
 
-boost::shared_ptr<qMaster::WhereClause const>
-qMaster::SelectStmt::getWhere() const {
+boost::shared_ptr<WhereClause const>
+SelectStmt::getWhere() const {
     return _whereClause;
 }
 
-boost::shared_ptr<qMaster::SelectStmt>
-qMaster::SelectStmt::copyDeep() const {
+boost::shared_ptr<SelectStmt>
+SelectStmt::copyDeep() const {
     boost::shared_ptr<SelectStmt> newS(new SelectStmt(*this));
     // Starting from a shallow copy, make a copy of the syntax portion.
     copyDeepIf(newS->_fromList, _fromList);
@@ -150,8 +144,8 @@ qMaster::SelectStmt::copyDeep() const {
     return newS;
 }
 
-boost::shared_ptr<qMaster::SelectStmt>
-qMaster::SelectStmt::copyMerge() const {
+boost::shared_ptr<SelectStmt>
+SelectStmt::copyMerge() const {
     boost::shared_ptr<SelectStmt> newS(new SelectStmt(*this));
     // Starting from a shallow copy, copy only the pieces that matter
     // for the merge clause.
@@ -165,8 +159,8 @@ qMaster::SelectStmt::copyMerge() const {
     return newS;
 }
 
-boost::shared_ptr<qMaster::SelectStmt>
-qMaster::SelectStmt::copySyntax() const {
+boost::shared_ptr<SelectStmt>
+SelectStmt::copySyntax() const {
     boost::shared_ptr<SelectStmt> newS(new SelectStmt(*this));
     // Starting from a shallow copy, make a copy of the syntax portion.
     copySyntaxIf(newS->_fromList, _fromList);
@@ -199,7 +193,7 @@ inline OS& generate(OS& os, char const label[], boost::shared_ptr<T> t) {
 }
 } // anonymous
 
-void qMaster::SelectStmt::_print() {
+void SelectStmt::_print() {
     //_selectList->getColumnRefList()->printRefs();
     print(LOG_STRM(Info), "from", _fromList);
     print(LOG_STRM(Info), "select", _selectList);
@@ -210,6 +204,8 @@ void qMaster::SelectStmt::_print() {
     if(_limit != -1) { LOGGER_INF << " LIMIT " << _limit; }
 }
 
-void qMaster::SelectStmt::_generate() {
+void SelectStmt::_generate() {
     LOGGER_INF << getTemplate().dbgStr() << std::endl;
 }
+
+}}} // namespace lsst::qserv::query

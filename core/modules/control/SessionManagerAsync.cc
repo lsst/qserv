@@ -25,10 +25,12 @@
 #include "control/SessionManagerAsync.h"
 #include <boost/make_shared.hpp>
 
-namespace qMaster=lsst::qserv::master;
-
-qMaster::SessionManagerAsync&
-qMaster::getSessionManagerAsync() {
+namespace lsst {
+namespace qserv {
+namespace control {
+            
+SessionManagerAsync&
+getSessionManagerAsync() {
 
     // Singleton for now.
     static SessionManagerAsyncPtr sm;
@@ -39,8 +41,9 @@ qMaster::getSessionManagerAsync() {
     return *sm;
 }
 
-qMaster::AsyncQueryManager&
-qMaster::getAsyncManager(int session) {
+AsyncQueryManager&
+getAsyncManager(int session) {
     return *(getSessionManagerAsync().getSession(session));
 }
 
+}}} // namespace lsst::qserv::control

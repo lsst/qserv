@@ -21,13 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // Callback: generic callback interface class.
-#ifndef LSST_QSERV_MASTER_CALLBACK_H
-#define LSST_QSERV_MASTER_CALLBACK_H
+#ifndef LSST_QSERV_CONTROL_CALLBACK_H
+#define LSST_QSERV_CONTROL_CALLBACK_H
 #include <boost/shared_ptr.hpp>
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace control {
 
 class Callback {
 public:
@@ -36,5 +36,6 @@ public:
     void operator()() {}
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_CALLBACK_H
+}}} // namespace lsst::qserv::control
+
+#endif // LSST_QSERV_CONTROL_CALLBACK_H

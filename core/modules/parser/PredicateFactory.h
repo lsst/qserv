@@ -22,8 +22,8 @@
  */
 // PredicateFactory constructs Predicate instances from antlr nodes.
 
-#ifndef LSST_QSERV_MASTER_PREDICATEFACTORY_H
-#define LSST_QSERV_MASTER_PREDICATEFACTORY_H
+#ifndef LSST_QSERV_PARSER_PREDICATEFACTORY_H
+#define LSST_QSERV_PARSER_PREDICATEFACTORY_H
 /**
   * @file PredicateFactory.h
   *
@@ -36,11 +36,19 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace query {
+    // Forward
+    class CompPredicate;
+    class BetweenPredicate;
+    class InPredicate;
+    class LikePredicate;
+} // namespace query
+
+
+namespace parser {
+
 // Forward
-class CompPredicate;
-class BetweenPredicate;
-class InPredicate;
 class ValueExprFactory;
 
 /// PredicateFactory is a factory for making Predicate objects
@@ -48,12 +56,14 @@ class PredicateFactory {
 public:
     explicit PredicateFactory(ValueExprFactory& vf)
         : _vf(vf) {}
-    boost::shared_ptr<CompPredicate> newCompPredicate(antlr::RefAST a);
-    boost::shared_ptr<BetweenPredicate> newBetweenPredicate(antlr::RefAST a);
-    boost::shared_ptr<InPredicate> newInPredicate(antlr::RefAST a);
-    boost::shared_ptr<LikePredicate> newLikePredicate(antlr::RefAST a);
+    boost::shared_ptr<query::CompPredicate> newCompPredicate(antlr::RefAST a);
+    boost::shared_ptr<query::BetweenPredicate> newBetweenPredicate(antlr::RefAST a);
+    boost::shared_ptr<query::InPredicate> newInPredicate(antlr::RefAST a);
+    boost::shared_ptr<query::LikePredicate> newLikePredicate(antlr::RefAST a);
 private:
     ValueExprFactory& _vf;
 };
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_PREDICATEFACTORY_H
+
+}}} // namespace lsst::qserv::parser
+
+#endif // LSST_QSERV_PARSER_PREDICATEFACTORY_H

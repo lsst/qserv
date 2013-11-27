@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_PARSEEXCEPTION_H
-#define LSST_QSERV_MASTER_PARSEEXCEPTION_H
+#ifndef LSST_QSERV_PARSER_PARSEEXCEPTION_H
+#define LSST_QSERV_PARSER_PARSEEXCEPTION_H
 /**
   * @file
   *
@@ -30,9 +30,10 @@
 #include <map>
 #include <antlr/AST.hpp>
 #include <stdexcept>
+
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace parser {
 
 /// ParseException is a trivial exception for Qserv parse problems.
 /// ParseExceptions automatically retrieves basic information from the ANTLR
@@ -46,6 +47,6 @@ protected:
         : std::runtime_error(msg) {}
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::parser
 
-#endif // LSST_QSERV_MASTER_PARSEEXCEPTION_H
+#endif // LSST_QSERV_PARSER_PARSEEXCEPTION_H

@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_MODFACTORY_H
-#define LSST_QSERV_MASTER_MODFACTORY_H
+#ifndef LSST_QSERV_PARSER_MODFACTORY_H
+#define LSST_QSERV_PARSER_MODFACTORY_H
 /**
   * @file ModFactory.h
   *
@@ -37,13 +37,22 @@
 // Forward
 class SqlSQL2Parser;
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+
+namespace query {
+    // Forward
+    class SelectFactory;
+    class OrderByClause;
+    class GroupByClause;
+    class HavingClause;
+} // namespace query
+    
+
+namespace parser {
+
 // Forward
-class SelectFactory;
 class ValueExprFactory;
-class OrderByClause;
-class GroupByClause;
-class HavingClause;
 
 class ModFactory {
 public:
@@ -61,9 +70,9 @@ public:
     ModFactory(boost::shared_ptr<ValueExprFactory> vf);
 
     int getLimit() { return _limit; } // -1: not specified.
-    boost::shared_ptr<OrderByClause> getOrderBy() { return _orderBy; }
-    boost::shared_ptr<GroupByClause> getGroupBy() { return _groupBy; }
-    boost::shared_ptr<HavingClause> getHaving() { return _having; }
+    boost::shared_ptr<query::OrderByClause> getOrderBy() { return _orderBy; }
+    boost::shared_ptr<query::GroupByClause> getGroupBy() { return _groupBy; }
+    boost::shared_ptr<query::HavingClause> getHaving() { return _having; }
 
 private:
     void attachTo(SqlSQL2Parser& p);
@@ -75,10 +84,11 @@ private:
     // Fields
     boost::shared_ptr<ValueExprFactory> _vFactory;
     int _limit;
-    boost::shared_ptr<OrderByClause> _orderBy;
-    boost::shared_ptr<GroupByClause> _groupBy;
-    boost::shared_ptr<HavingClause> _having;
+    boost::shared_ptr<query::OrderByClause> _orderBy;
+    boost::shared_ptr<query::GroupByClause> _groupBy;
+    boost::shared_ptr<query::HavingClause> _having;
 };
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_MODFACTORY_H
 
+}}} // namespace lsst::qserv::parser
+
+#endif // LSST_QSERV_PARSER_MODFACTORY_H

@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_QUERYTEMPLATE_H
-#define LSST_QSERV_MASTER_QUERYTEMPLATE_H
+#ifndef LSST_QSERV_QUERY_QUERYTEMPLATE_H
+#define LSST_QSERV_QUERY_QUERYTEMPLATE_H
 /**
   * @file
   *
@@ -31,7 +31,10 @@
 #include <list>
 #include <boost/shared_ptr.hpp>
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace query {
+
 // Forward
 class ColumnRef;
 class TableRefN;
@@ -105,5 +108,6 @@ private:
 };
 typedef std::list<boost::shared_ptr<QueryTemplate> >QueryTemplateList;
 
-}}} // lsst::qserv::master
-#endif // LSST_QSERV_MASTER_QUERYTEMPLATE_H
+}}} // namespace lsst::qserv::query
+
+#endif // LSST_QSERV_QUERY_QUERYTEMPLATE_H

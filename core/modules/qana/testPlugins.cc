@@ -35,9 +35,9 @@
 
 namespace test = boost::test_tools;
 
-using lsst::qserv::master::QueryContext;
-using lsst::qserv::master::SelectStmt;
-using lsst::qserv::master::QueryPlugin;
+using lsst::qserv::query::QueryContext;
+using lsst::qserv::query::SelectStmt;
+using lsst::qserv::qana::QueryPlugin;
 using lsst::qserv::query::TestFactory;
 using lsst::qserv::qana::AnalysisError;
 

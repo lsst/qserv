@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_ORDERBYCLAUSE_H
-#define LSST_QSERV_MASTER_ORDERBYCLAUSE_H
+#ifndef LSST_QSERV_QUERY_ORDERBYCLAUSE_H
+#define LSST_QSERV_QUERY_ORDERBYCLAUSE_H
 /**
   * @file OrderByClause.h
   *
@@ -35,7 +35,16 @@
 #include <boost/shared_ptr.hpp>
 #include "query/ValueExpr.h"
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+
+namespace parser {
+    // Forward
+    class ModFactory;
+}
+    
+        
+namespace query {
 
 /// OrderByTerm is an element of an OrderByClause
 class OrderByTerm {
@@ -57,7 +66,7 @@ public:
 
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByTerm const& ob);
-    friend class ModFactory;
+    friend class parser::ModFactory;
 
     boost::shared_ptr<ValueExpr> _expr;
     Order _order;
@@ -88,11 +97,13 @@ public:
 
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const& oc);
-    friend class ModFactory;
+    friend class parser::ModFactory;
 
     void _addTerm(OrderByTerm const& t) {_terms->push_back(t); }
     boost::shared_ptr<List> _terms;
 };
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_ORDERBYCLAUSE_H
+
+}}} // namespace lsst::qserv::query
+
+#endif // LSST_QSERV_QUERY_ORDERBYCLAUSE_H
 

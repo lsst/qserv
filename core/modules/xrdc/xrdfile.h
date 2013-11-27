@@ -27,8 +27,8 @@
 /// coherent layer that abstracts the rest of qserv from
 /// xrootd-specific semantics.
 
-#ifndef LSST_QSERV_MASTER_XRDFILE_H
-#define LSST_QSERV_MASTER_XRDFILE_H
+#ifndef LSST_QSERV_XRDC_XRDFILE_H
+#define LSST_QSERV_XRDC_XRDFILE_H
 
 #include <string>
 
@@ -36,7 +36,7 @@ class XrdPosixCallBack; // Forward.
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace xrdc {
 
 struct XrdTransResult {
     int open;
@@ -80,7 +80,6 @@ XrdTransResult xrdOpenWriteReadSave(const char *path,
                                     int fragmentSize,
                                     const char* outfile);
 
+}}} // namespace lsst::qserv::xrdc
 
-}}} // namespace lsst::qserv::master
-
-#endif // #ifndef LSST_QSERV_MASTER_XRDFILE_H
+#endif // #ifndef LSST_QSERV_XRDC_XRDFILE_H

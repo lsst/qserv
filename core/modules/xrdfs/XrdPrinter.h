@@ -20,24 +20,26 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_WORKER_XRDPRINTER_H
-#define LSST_QSERV_WORKER_XRDPRINTER_H
+#ifndef LSST_QSERV_XRDFS_XRDPRINTER_H
+#define LSST_QSERV_XRDFS_XRDPRINTER_H
 #include "wlog/WLogger.h"
 #include "XrdSys/XrdSysLogger.hh"
 #include "XrdSys/XrdSysError.hh"
 
 namespace lsst {
 namespace qserv {
-namespace worker {
-    class XrdPrinter : public WLogger::Printer {
-    public:
-        XrdPrinter(XrdSysLogger* log) : xrdSysError(log) {}
-        virtual WLogger::Printer& operator()(char const* s) {
-            xrdSysError.Say(s);
-            return *this;
-        }
-        XrdSysError xrdSysError;
-    };
-}}} // namespace lsst::qserv::worker
+namespace xrdfs {
 
-#endif // LSST_QSERV_WORKER_XRDPRINTER_H
+class XrdPrinter : public wlog::WLogger::Printer {
+public:
+    XrdPrinter(XrdSysLogger* log) : xrdSysError(log) {}
+    virtual wlog::WLogger::Printer& operator()(char const* s) {
+        xrdSysError.Say(s);
+        return *this;
+    }
+    XrdSysError xrdSysError;
+};
+
+}}} // namespace lsst::qserv::xrdfs
+
+#endif // LSST_QSERV_XRDFS_XRDPRINTER_H

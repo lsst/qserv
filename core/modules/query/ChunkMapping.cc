@@ -28,10 +28,13 @@
 
 #include "query/ChunkMapping.h"
 #include "qdisp/ChunkMeta.h"
-namespace qMaster = lsst::qserv::master;
 
-qMaster::ChunkMapping::Map
-qMaster::ChunkMapping::getMapping(int chunk, int subChunk) {
+namespace lsst {
+namespace qserv {
+namespace query {
+
+ChunkMapping::Map
+ChunkMapping::getMapping(int chunk, int subChunk) {
     Map m;
     ModeMap::const_iterator end = _map.end();
     std::string chunkStr = _toString(chunk);
@@ -71,16 +74,16 @@ qMaster::ChunkMapping::getMapping(int chunk, int subChunk) {
     return m;
 }
 
-qMaster::ChunkMapping::Map const&
-qMaster::ChunkMapping::getMapReference(int chunk, int subChunk) {
+ChunkMapping::Map const&
+ChunkMapping::getMapReference(int chunk, int subChunk) {
     _instanceMap = getMapping(chunk, subChunk);
     return _instanceMap;
 }
 
 void
-qMaster::ChunkMapping::setFromMeta(qMaster::ChunkMeta const& m) {
-    ChunkMeta::EntryList const& elist = m.getEntries();
-    typedef ChunkMeta::EntryList::const_iterator Citer;
+ChunkMapping::setFromMeta(qdisp::ChunkMeta const& m) {
+    qdisp::ChunkMeta::EntryList const& elist = m.getEntries();
+    typedef qdisp::ChunkMeta::EntryList::const_iterator Citer;
     Citer begin = elist.begin();
     Citer end = elist.end();
     for(Citer i = begin; i != end; ++i) {
@@ -91,3 +94,5 @@ qMaster::ChunkMapping::setFromMeta(qMaster::ChunkMeta const& m) {
         else if(i->chunkLevel == 2) addSubChunkKey(i->table);
     }
 }
+
+}}} // namespace lsst::qserv::query

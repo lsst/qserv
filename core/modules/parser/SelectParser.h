@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_SELECTPARSER_H
-#define LSST_QSERV_MASTER_SELECTPARSER_H
+#ifndef LSST_QSERV_PARSER_SELECTPARSER_H
+#define LSST_QSERV_PARSER_SELECTPARSER_H
 /**
   * @file SelectParser.h
   *
@@ -38,13 +38,19 @@
 #include <boost/shared_ptr.hpp>
 // package
 #include "util/common.h"
+
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace query {
+    // Forward
+    class SelectStmt;
+}
+
+namespace parser {
 
 // Forward
 class AntlrParser; // Internally-defined in SelectParser.cc
-class SelectStmt;
 
 /// class SelectParser - drives the ANTLR-generated SQL parser for a
 /// SELECT statement. Attaches some simple handlers that populate a
@@ -66,14 +72,16 @@ public:
     // @return Original select statement
     std::string const& getStatement() const { return _statement; }
 
-    boost::shared_ptr<SelectStmt> getSelectStmt() { return _selectStmt; }
+    boost::shared_ptr<query::SelectStmt> getSelectStmt() { return _selectStmt; }
 
 private:
     SelectParser(std::string const& statement);
 
     std::string const _statement;
-    boost::shared_ptr<SelectStmt> _selectStmt;
+    boost::shared_ptr<query::SelectStmt> _selectStmt;
     boost::shared_ptr<AntlrParser> _aParser;
 };
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_SELECTPARSER_H
+
+}}} // namespace lsst::qserv::parser
+
+#endif // LSST_QSERV_PARSER_SELECTPARSER_H

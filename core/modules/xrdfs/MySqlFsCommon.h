@@ -20,21 +20,24 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_LSPEED_MYSQLFSCOMMON_H
-#define LSST_LSPEED_MYSQLFSCOMMON_H
+#ifndef LSST_QSERV_XRDFS_MYSQLFSCOMMON_H
+#define LSST_QSERV_XRDFS_MYSQLFSCOMMON_H
 
 #include <string>
 #include <boost/shared_ptr.hpp>
 
+// Forward declarations
 class XrdSysError;
+namespace lsst {
+namespace qserv {
+namespace obsolete {
+    class QservPath;
+}}} // End of forward declarations
 
 namespace lsst {
 namespace qserv {
-class QservPath; // Forward
-
-namespace worker {
-namespace fs {
-
+namespace xrdfs {
+        
 enum FileClass {COMBO, TWO_WRITE, TWO_READ, UNKNOWN};
 
 // Xrootd file path functionality
@@ -52,8 +55,9 @@ class PathValidator {
 public:
     typedef boost::shared_ptr<PathValidator> Ptr;
     virtual ~PathValidator() {}
-    virtual bool operator()(QservPath const& qp) = 0;
+    virtual bool operator()(obsolete::QservPath const& qp) = 0;
 };
 
-}}}} // lsst::qserv:worker::fs
-#endif
+}}} // namespace lsst::qserv:xrdfs
+
+#endif // LSST_QSERV_XRDFS_MYSQLFSCOMMON_H

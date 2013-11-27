@@ -24,11 +24,12 @@
 
 #include <string>
 
-namespace qWorker = lsst::qserv::worker;
+namespace lsst {
+namespace qserv {
+namespace xrdfs {
 
-
-qWorker::fs::FileClass
-qWorker::fs::computeFileClass(std::string const& filename) {
+FileClass
+computeFileClass(std::string const& filename) {
     if(std::string::npos != filename.find("/query2/")) {
         return TWO_WRITE;
     } else if(std::string::npos != filename.find("/result/")) {
@@ -40,7 +41,8 @@ qWorker::fs::computeFileClass(std::string const& filename) {
     }
 }
 
-std::string qWorker::fs::stripPath(std::string const& filename) {
+std::string
+stripPath(std::string const& filename) {
     // Expecting something like "/results/0123aeb31b1c29a"
     // Strip out everything before and including the last /
     std::string::size_type pos = filename.rfind("/");
@@ -49,3 +51,5 @@ std::string qWorker::fs::stripPath(std::string const& filename) {
     }
     return filename.substr(1+pos, std::string::npos);
 }
+
+}}} // namespace lsst::qserv::xrdfs

@@ -29,10 +29,13 @@
 #include "query/FromList.h"
 #include <iterator>
 
-namespace qMaster=lsst::qserv::master;
+
+namespace lsst {
+namespace qserv {
+namespace query {
 
 std::ostream&
-qMaster::operator<<(std::ostream& os, qMaster::FromList const& fl) {
+operator<<(std::ostream& os, FromList const& fl) {
     os << "FROM ";
     if(fl._tableRefns.get() && fl._tableRefns->size() > 0) {
         TableRefnList const& refList = *(fl._tableRefns);
@@ -45,21 +48,21 @@ qMaster::operator<<(std::ostream& os, qMaster::FromList const& fl) {
 }
 
 std::string
-qMaster::FromList::getGenerated() {
+FromList::getGenerated() {
     QueryTemplate qt;
     renderTo(qt);
     return qt.dbgStr();
 }
 
 void
-qMaster::FromList::renderTo(qMaster::QueryTemplate& qt) const {
+FromList::renderTo(QueryTemplate& qt) const {
     if(_tableRefns.get() && _tableRefns->size() > 0) {
         TableRefnList const& refList = *_tableRefns;
         std::for_each(refList.begin(), refList.end(), TableRefN::render(qt));
     }
 }
 
-boost::shared_ptr<qMaster::FromList> qMaster::FromList::copySyntax() {
+boost::shared_ptr<FromList> FromList::copySyntax() {
     boost::shared_ptr<FromList> newL(new FromList(*this));
     // Shallow copy of expr list is okay.
     newL->_tableRefns.reset(new TableRefnList(*_tableRefns));
@@ -67,7 +70,7 @@ boost::shared_ptr<qMaster::FromList> qMaster::FromList::copySyntax() {
     return newL;
 }
 
-boost::shared_ptr<qMaster::FromList> qMaster::FromList::copyDeep() const {
+boost::shared_ptr<FromList> FromList::copyDeep() const {
     // FIXME
     boost::shared_ptr<FromList> newL(new FromList(*this));
     // Shallow copy of expr list is okay.
@@ -75,3 +78,5 @@ boost::shared_ptr<qMaster::FromList> qMaster::FromList::copyDeep() const {
     // For the other fields, default-copied versions are okay.
     return newL;
 }
+
+}}} // namespace lsst::qserv::query

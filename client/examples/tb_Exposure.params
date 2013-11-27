@@ -2,5 +2,3 @@
 tableName:      Exposure
 partitioning:   0
 schemaFile:     /u1/qserv/sandbox/qserv/meta/examples/tb_Exposure.sql
-
-

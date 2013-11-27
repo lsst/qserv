@@ -96,7 +96,6 @@ from lsst.qserv.master import getDbStriping
 from lsst.qserv.master import containsDb
 from lsst.qserv.master import configureSessionMerger3, submitQuery3
 
-
 from lsst.qserv.master import joinSession
 from lsst.qserv.master import getQueryStateString, getErrorDesc
 from lsst.qserv.master import SUCCESS as QueryState_SUCCESS

@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_TABLEREFN_H
-#define LSST_QSERV_MASTER_TABLEREFN_H
+#ifndef LSST_QSERV_QUERY_TABLEREFN_H
+#define LSST_QSERV_QUERY_TABLEREFN_H
 /**
   * @file TableRefN.h
   *
@@ -38,7 +38,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 class QueryTemplate; // Forward
 
 /// TableRefN is a parsed table reference node
@@ -198,7 +199,6 @@ protected:
 typedef std::list<TableRefN::Ptr> TableRefnList;
 typedef boost::shared_ptr<TableRefnList> TableRefnListPtr;
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query
 
-
-#endif // LSST_QSERV_MASTER_TABLEREFN_H
+#endif // LSST_QSERV_QUERY_TABLEREFN_H

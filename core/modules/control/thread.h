@@ -26,8 +26,8 @@
 /// provided thread management for subquery threads.  Much of this is
 /// no longer needed since we have switched to asynchronous
 /// (non-blocking) usage of the Xrootd client libraries.
-#ifndef LSST_QSERV_MASTER_THREAD_H
-#define LSST_QSERV_MASTER_THREAD_H
+#ifndef LSST_QSERV_CONTROL_THREAD_H
+#define LSST_QSERV_CONTROL_THREAD_H
 
 // Standard
 #include <map>
@@ -43,7 +43,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace control {
 
 template<class T> struct joinBoostThread  {
     joinBoostThread() {}
@@ -118,16 +118,15 @@ private:
     int _pos;
 };
 
-
 class TransactionCallable {
 public:
     TransactionCallable(TransactionSpec s) : _spec(s) {}
     TransactionSpec const& getSpec() const { return _spec; }
-    XrdTransResult const& getResult() const { return _result; }
+    xrdc::XrdTransResult const& getResult() const { return _result; }
     void operator()();
 private:
     TransactionSpec _spec;
-    XrdTransResult _result;
+    xrdc::XrdTransResult _result;
     static Semaphore _sema;
 };
 
@@ -161,8 +160,8 @@ public:
         ManagedCallable& operator=(ManagedCallable const& m);
 
 	void operator()();
-        void setResult(XrdTransResult const& r);
-        void getResult(XrdTransResult const& r);
+        void setResult(xrdc::XrdTransResult const& r);
+        void getResult(xrdc::XrdTransResult const& r);
         int getId() const { return _id;}
     private:
 	QueryManager* _qm;
@@ -177,11 +176,11 @@ public:
     int add(TransactionSpec const& t, int id=-1);
     void join(int id);
     bool tryJoin(int id);
-    XrdTransResult const& status(int id) const;
+    xrdc::XrdTransResult const& status(int id) const;
     void joinEverything();
 
 
-    ManagedCallable completeAndFetch(int id, XrdTransResult const& r);
+    ManagedCallable completeAndFetch(int id, xrdc::XrdTransResult const& r);
     void addCallable(ManagedCallable* c);
     void dropCallable(ManagedCallable* c);
 private:
@@ -196,7 +195,7 @@ private:
     typedef std::deque<boost::shared_ptr<boost::thread> > ThreadDeque;
     typedef std::deque<IdCallable> CallableDeque;
     typedef std::map<int, ManagedCallable> CallableMap;
-    typedef std::map<int, XrdTransResult> ResultMap;
+    typedef std::map<int, xrdc::XrdTransResult> ResultMap;
 
     ThreadDeque _threads;
     int _highWaterThreads;
@@ -211,6 +210,6 @@ private:
     std::set<ManagedCallable*> _callables;
 };
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::control
 
-#endif // LSST_QSERV_MASTER_THREAD_H
+#endif // LSST_QSERV_CONTROL_THREAD_H

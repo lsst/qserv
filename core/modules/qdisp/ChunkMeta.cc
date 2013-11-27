@@ -23,5 +23,4 @@
 // Please see ChunkMeta.h
 #include "qdisp/ChunkMeta.h"
 
-namespace qMaster = lsst::qserv::master;
 

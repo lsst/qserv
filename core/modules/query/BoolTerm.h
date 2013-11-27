@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_BOOLTERM_H
-#define LSST_QSERV_MASTER_BOOLTERM_H
+#ifndef LSST_QSERV_QUERY_BOOLTERM_H
+#define LSST_QSERV_QUERY_BOOLTERM_H
 /**
   * @file BoolTerm.h
   *
@@ -39,7 +39,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 class QueryTemplate; // Forward
 class ValueExpr;
@@ -179,6 +179,7 @@ public:
     virtual void findColumnRefs(ColumnRef::List& list);
     boost::shared_ptr<BoolTerm> _term;
 };
-}}} // namespace lsst::qserv::master
 
-#endif // LSST_QSERV_MASTER_BOOLTERM_H
+}}} // namespace lsst::qserv::query
+
+#endif // LSST_QSERV_QUERY_BOOLTERM_H

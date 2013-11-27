@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_PARSETREEUTIL_H
-#define LSST_QSERV_MASTER_PARSETREEUTIL_H
+#ifndef LSST_QSERV_PARSER_PARSETREEUTIL_H
+#define LSST_QSERV_PARSER_PARSETREEUTIL_H
 /**
   * @file parseTreeUtil.h
   *
@@ -45,7 +45,9 @@ namespace antlr {
 class ASTFactory;
 }
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace parser {
 
 template <typename AnAst>
 std::string tokenText(AnAst r) {
@@ -79,11 +81,11 @@ template <typename AnAst>
 struct PrintVisitor {
 public:
     void operator()(AnAst a) {
-	if(!result.empty()) {
-	    result += " " + a->getText();
-	} else {
-	    result = a->getText();
-	}
+        if(!result.empty()) {
+            result += " " + a->getText();
+        } else {
+            result = a->getText();
+        }
     }
     std::string result;
 };
@@ -96,7 +98,7 @@ public:
 	if(!s.empty() && !result.empty()) {
 	    int last = result[result.size()-1];
 	    int next = s[0];
-	    if(sqlShouldSeparate(lastToken, last,next)) {
+	    if(sql::sqlShouldSeparate(lastToken, last,next)) {
 		result += " ";
 	    }
 	}
@@ -348,6 +350,6 @@ antlr::RefAST insertTextNodeBefore(antlr::ASTFactory* factory,
 
 void printDigraph(std::string lbl, std::ostream& o, antlr::RefAST n);
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::parser
 
-#endif // LSST_QSERV_MASTER_PARSETREEUTIL_H
+#endif // LSST_QSERV_PARSER_PARSETREEUTIL_H

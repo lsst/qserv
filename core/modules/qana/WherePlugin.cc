@@ -31,12 +31,13 @@
 
 #include "query/BoolTerm.h"
 #include "qana/QueryPlugin.h"
+#include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/WhereClause.h"
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qana {
 
 ////////////////////////////////////////////////////////////////////////
 // WherePlugin declaration
@@ -52,8 +53,8 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(SelectStmt& stmt, QueryContext&);
-    virtual void applyPhysical(QueryPlugin::Plan& p, QueryContext&) {}
+    virtual void applyLogical(query::SelectStmt& stmt, query::QueryContext&);
+    virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext&) {}
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -67,8 +68,8 @@ public:
     virtual ~WherePluginFactory() {}
 
     virtual std::string getName() const { return "Where"; }
-    virtual lsst::qserv::master::QueryPlugin::Ptr newInstance() {
-        return lsst::qserv::master::QueryPlugin::Ptr(new WherePlugin());
+    virtual QueryPlugin::Ptr newInstance() {
+        return QueryPlugin::Ptr(new WherePlugin());
     }
 };
 
@@ -79,29 +80,29 @@ namespace {
 struct registerPlugin {
     registerPlugin() {
         WherePluginFactory::Ptr f(new WherePluginFactory());
-        lsst::qserv::master::QueryPlugin::registerClass(f);
+        QueryPlugin::registerClass(f);
     }
 };
 // Static registration
 registerPlugin registerWherePlugin;
-}
+} // annonymous namespace
 
-void WherePlugin::applyLogical(SelectStmt& stmt, QueryContext&) {
+void
+WherePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext&) {
     // Go to the WhereClause and remove extraneous OR_OP and AND_OP,
     // except for the root AND.
     if(!stmt.hasWhereClause()) { return; }
 
-    WhereClause& wc = stmt.getWhereClause();
-    boost::shared_ptr<AndTerm> at = wc.getRootAndTerm();
+    query::WhereClause& wc = stmt.getWhereClause();
+    boost::shared_ptr<query::AndTerm> at = wc.getRootAndTerm();
     if(!at) { return; }
-    typedef BoolTerm::PtrList::iterator Iter;
+    typedef query::BoolTerm::PtrList::iterator Iter;
     for(Iter i=at->iterBegin(), e=at->iterEnd(); i != e; ++i) {
-        boost::shared_ptr<BoolTerm> reduced = (**i).getReduced();
+        boost::shared_ptr<query::BoolTerm> reduced = (**i).getReduced();
         if(reduced) {
             *i = reduced;
         }
     }
-
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::qana

@@ -38,7 +38,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace parser {
 ////////////////////////////////////////////////////////////////////////
 // BoolTermFactory helper
 ////////////////////////////////////////////////////////////////////////
@@ -130,9 +130,9 @@ BoolTermFactory::BoolTermFactory(boost::shared_ptr<ValueExprFactory> vf)
     : _vFactory(vf) {
 }
 /// Construct a new BoolTerm from a node (delegates according to type)
-BoolTerm::Ptr
+query::BoolTerm::Ptr
 BoolTermFactory::newBoolTerm(antlr::RefAST a) {
-    BoolTerm::Ptr b;
+    query::BoolTerm::Ptr b;
     antlr::RefAST child = a->getFirstChild();
     switch(a->getType()) {
     case SqlSQL2TokenTypes::OR_OP: b = newOrTerm(child); break;
@@ -147,27 +147,27 @@ BoolTermFactory::newBoolTerm(antlr::RefAST a) {
 }
 
 /// Construct a new OrTerm from a node
-OrTerm::Ptr
+query::OrTerm::Ptr
 BoolTermFactory::newOrTerm(antlr::RefAST a) {
-    OrTerm::Ptr p(new OrTerm());
-    multiImport<OrTerm> oi(*this, *p);
+    query::OrTerm::Ptr p(new query::OrTerm());
+    multiImport<query::OrTerm> oi(*this, *p);
     matchType matchOr(SqlSQL2TokenTypes::SQL2RW_or);
-    applyExcept<multiImport<OrTerm>,matchType> ae(oi, matchOr);
+    applyExcept<multiImport<query::OrTerm>,matchType> ae(oi, matchOr);
     forEachSibs(a, ae);
     return p;
 }
 /// Construct a new AndTerm from a node
-AndTerm::Ptr
+query::AndTerm::Ptr
 BoolTermFactory::newAndTerm(antlr::RefAST a) {
-    AndTerm::Ptr p(new AndTerm());
-    multiImport<AndTerm> ai(*this, *p);
+    query::AndTerm::Ptr p(new query::AndTerm());
+    multiImport<query::AndTerm> ai(*this, *p);
     matchType matchAnd(SqlSQL2TokenTypes::SQL2RW_and);
-    applyExcept<multiImport<AndTerm>,matchType> ae(ai, matchAnd);
+    applyExcept<multiImport<query::AndTerm>,matchType> ae(ai, matchAnd);
     forEachSibs(a, ae);
     return p;
 }
 /// Construct a new BoolFactor
-BoolFactor::Ptr
+query::BoolFactor::Ptr
 BoolTermFactory::newBoolFactor(antlr::RefAST a) {
 #if 0
     LOGGER_INF << "bool factor:";
@@ -175,31 +175,31 @@ BoolTermFactory::newBoolFactor(antlr::RefAST a) {
     forEachSibs(a, sp);
     LOGGER_INF << std::endl;
 #endif
-    BoolFactor::Ptr bf(new BoolFactor());
+    query::BoolFactor::Ptr bf(new query::BoolFactor());
     bfImport bfi(*this, *bf);
     forEachSibs(a, bfi);
     return bf;
 }
 /// Construct an UnknownTerm(BoolTerm)
-UnknownTerm::Ptr
+query::UnknownTerm::Ptr
 BoolTermFactory::newUnknown(antlr::RefAST a) {
     LOGGER_INF << "unknown term:" << walkTreeString(a) << std::endl;
-    return UnknownTerm::Ptr(new UnknownTerm());
+    return query::UnknownTerm::Ptr(new query::UnknownTerm());
 }
 /// Construct an PassTerm
-PassTerm::Ptr
+query::PassTerm::Ptr
 BoolTermFactory::newPassTerm(antlr::RefAST a) {
-    PassTerm::Ptr p(new PassTerm());
+    query::PassTerm::Ptr p(new query::PassTerm());
     p->_text = tokenText(a); // FIXME: Should this be a tree walk?
     return p;
 }
 
 /// Construct an BoolTermFactor
-BoolTermFactor::Ptr
+query::BoolTermFactor::Ptr
 BoolTermFactory::newBoolTermFactor(antlr::RefAST a) {
-    BoolTermFactor::Ptr p(new BoolTermFactor());
+    query::BoolTermFactor::Ptr p(new query::BoolTermFactor());
     p->_term = newBoolTerm(a);
     return p;
 }
 
-}}} // lsst::qserv::master
+}}} // namespace lsst::qserv::parser

@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_QUERYMAPPING_H
-#define LSST_QSERV_MASTER_QUERYMAPPING_H
+#ifndef LSST_QSERV_QANA_QUERYMAPPING_H
+#define LSST_QSERV_QANA_QUERYMAPPING_H
 /**
   * @file
   *
@@ -31,10 +31,21 @@
 #include <set>
 #include <map>
 
-namespace lsst { namespace qserv { namespace master {
-class ChunkSpec;
-class ChunkSpecSingle;
-class QueryTemplate;
+namespace lsst {
+namespace qserv {
+
+namespace query {
+    // Forward
+    class QueryTemplate;
+}
+
+namespace qproc {
+    // Forward
+    class ChunkSpec;
+    class ChunkSpecSingle;
+}
+
+namespace qana {
 
 /// QueryMapping is a value class that stores a mapping that can be
 /// consulted for a partitioning-strategy-agnostic query generation
@@ -65,8 +76,10 @@ public:
 
     QueryMapping();
 
-    std::string apply(ChunkSpec const& s, QueryTemplate const& t) const;
-    std::string apply(ChunkSpecSingle const& s, QueryTemplate const& t) const;
+    std::string apply(qproc::ChunkSpec const& s, 
+                      query::QueryTemplate const& t) const;
+    std::string apply(qproc::ChunkSpecSingle const& s, 
+                      query::QueryTemplate const& t) const;
 
     // Modifiers
     void insertSubChunkTable(std::string const& table) {
@@ -84,7 +97,8 @@ private:
     ParameterMap _subs;
     StringSet _subChunkTables;
 };
-}}} // namespace lsst::qserv::master
 
-#endif // LSST_QSERV_MASTER_QUERYMAPPING_H
+}}} // namespace lsst::qserv::qana
+
+#endif // LSST_QSERV_QANA_QUERYMAPPING_H
 

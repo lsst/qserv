@@ -22,7 +22,7 @@
 /// worker.proto
 /// This defines the wire-messages sent between master and worker.
 
-package lsst.qserv;
+package lsst.qserv.proto;
 
 // Query message sent to worker
 // One of these Task objects should be sent.

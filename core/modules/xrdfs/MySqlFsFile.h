@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_LSPEED_MYSQLFSFILE_H
-#define LSST_LSPEED_MYSQLFSFILE_H
+#ifndef LSST_LSST_QSERV_XRDFS_MYSQLFSFILE_H
+#define LSST_LSST_QSERV_XRDFS_MYSQLFSFILE_H
 
 #include <sys/types.h>
 
@@ -37,18 +37,23 @@
 #include "xrdfs/MySqlFsCommon.h"
 #include "wcontrol/Service.h"
 
-// Forward
+// Forward declarations
 class XrdSysError;
 class XrdSysLogger;
 class XrdSfsAio;
+namespace lsst {
+namespace qserv {
+namespace obsolete {
+    class QservPath;
+}
+namespace wcontrol {
+    class RequestTaker;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-class QservPath;
-
-namespace worker {
-class RequestTaker;
-class WLogger;
+namespace xrdfs {        
 
 /// A factory functor that exists for the MySqlFsFile to register a callback for
 /// a completed query operation. The callback object is constructed with a
@@ -69,10 +74,11 @@ public:
 /// in the "file".
 class MySqlFsFile : public XrdSfsFile {
 public:
-    MySqlFsFile(boost::shared_ptr<WLogger> log, char const* user = 0,
+    MySqlFsFile(boost::shared_ptr<wlog::WLogger> log, char const* user = 0,
                 AddCallbackFunction::Ptr acf = AddCallbackFunction::Ptr(),
-                fs::FileValidator::Ptr fv = fs::FileValidator::Ptr(),
-                boost::shared_ptr<Service> service = Service::Ptr());
+                FileValidator::Ptr fv = FileValidator::Ptr(),
+                boost::shared_ptr<wcontrol::Service> service =
+                    wcontrol::Service::Ptr());
     virtual ~MySqlFsFile(void);
 
     int open(char const* fileName, XrdSfsFileOpenMode openMode,
@@ -116,24 +122,23 @@ private:
     int _handleTwoReadOpen(char const* fileName);
     int _checkForHash(std::string const& hash);
 
-    ResultErrorPtr _getResultState(std::string const& physFilename);
+    wcontrol::ResultErrorPtr _getResultState(std::string const& physFilename);
 
     void _setDumpNameAsChunkId();
 
-    boost::shared_ptr<WLogger> _log;
+    boost::shared_ptr<wlog::WLogger> _log;
     AddCallbackFunction::Ptr _addCallbackF;
-    fs::FileValidator::Ptr _validator;
+    FileValidator::Ptr _validator;
     int _chunkId;
     std::string _userName;
     std::string _dumpName;
     bool _hasRead;
-    StringBuffer2 _queryBuffer;
-    boost::shared_ptr<QservPath> _path;
-    boost::shared_ptr<RequestTaker> _requestTaker;
-    boost::shared_ptr<Service> _service;
-
+    wbase::StringBuffer2 _queryBuffer;
+    boost::shared_ptr<obsolete::QservPath> _path;
+    boost::shared_ptr<wcontrol::RequestTaker> _requestTaker;
+    boost::shared_ptr<wcontrol::Service> _service;
 };
 
-}}} // namespace lsst::qserv::worker
+}}} // namespace lsst::qserv::xrdfs
 
-#endif
+#endif // LSST_LSST_QSERV_XRDFS_MYSQLFSFILE_H

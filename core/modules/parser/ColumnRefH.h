@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_COLUMNREFH_H
-#define LSST_QSERV_MASTER_COLUMNREFH_H
+#ifndef LSST_QSERV_PARSER_COLUMNREFH_H
+#define LSST_QSERV_PARSER_COLUMNREFH_H
 /**
   * @file ColumnRefH.h
   *
@@ -44,7 +44,7 @@ class SqlSQL2Parser;
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace parser {
 
 /// ColumnRefH is a parse action for column_ref tokens in the grammar
 class ColumnRefH : public VoidFourRefFunc {
@@ -115,15 +115,12 @@ public:
 /// Redirect a normalized ref to a listener, if available
 inline void
 ColumnRefH::_process(antlr::RefAST d, antlr::RefAST t, antlr::RefAST c) {
-    using lsst::qserv::master::tokenText;
     // std::cout << "columnref: db:" << tokenText(d)
     //           << " table:" << tokenText(t)
     //           << " column:" << tokenText(c) << std::endl;
     if(_listener.get()) { _listener->acceptColumnRef(d, t, c); }
 }
 
+}}} // namespace lsst::qserv::parser
 
-}}} // namespace lsst::qserv::master
-
-
-#endif // LSST_QSERV_MASTER_COLUMNREFH_H
+#endif // LSST_QSERV_PARSER_COLUMNREFH_H

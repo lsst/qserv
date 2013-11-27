@@ -50,7 +50,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qdisp {
 
 #define DEBUG 2
 
@@ -71,7 +71,7 @@ namespace {
         LOGGER_INF << (std::string() + "Close (" + desc + ") of "
                       + boost::lexical_cast<std::string>(fd)  + " "
                       + comment) << std::endl;
-        int res = xrdClose(fd);
+        int res = xrdc::xrdClose(fd);
         if (res != 0) {
             errnoComplain(("Faulty close " + comment2).c_str(), fd, errno);
         }
@@ -83,7 +83,7 @@ namespace {
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery::WriteCallable
 //////////////////////////////////////////////////////////////////////
-class ChunkQuery::WriteCallable : public DynamicWorkQueue::Callable {
+class ChunkQuery::WriteCallable : public control::DynamicWorkQueue::Callable {
 public:
     explicit WriteCallable(ChunkQuery& cq) :
         _cq(cq)
@@ -99,7 +99,7 @@ public:
             int result;
             while (tries > 0) {
                 --tries;
-                result = xrdOpen(_cq._spec.path.c_str(), O_WRONLY);
+                result = xrdc::xrdOpen(_cq._spec.path.c_str(), O_WRONLY);
                 if (result == -1) {
                     if (errno == ENOENT) {
                         std::stringstream msgStrm;
@@ -107,7 +107,7 @@ public:
                                 << _cq._spec.path << " , "
                                 << tries << " tries left ";
                         _cq._manager->getMessageStore()->addMessage(_cq._id,
-                            MSG_XRD_OPEN_FAIL, msgStrm.str());
+                                          log::MSG_XRD_OPEN_FAIL, msgStrm.str());
                         continue;
                     }
                     _cq._manager->getMessageStore()->addMessage(_cq._id,
@@ -136,7 +136,7 @@ private:
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery::ReadCallable
 //////////////////////////////////////////////////////////////////////
-class lsst::qserv::master::ChunkQuery::ReadCallable : public DynamicWorkQueue::Callable {
+class ChunkQuery::ReadCallable : public control::DynamicWorkQueue::Callable {
 public:
     explicit ReadCallable(ChunkQuery& cq) :
         _cq(cq), _isRunning(false)
@@ -150,7 +150,7 @@ public:
             _cq._state = ChunkQuery::READ_OPEN;
             _cq._readOpenTimer.start();
             _isRunning = true;
-            int result = xrdOpen(_cq._resultUrl.c_str(), O_RDONLY);
+            int result = xrdc::xrdOpen(_cq._resultUrl.c_str(), O_RDONLY);
             if(result == -1 ) {
                 LOGGER_WRN << "XRD open returned error." << std::endl;
                 if(errno == EINPROGRESS) {
@@ -270,8 +270,8 @@ void ChunkQuery::Complete(int Result) {
     LOGGER_INF << ss.str();
 }
 
-ChunkQuery::ChunkQuery(TransactionSpec const& t, int id,
-                       AsyncQueryManager* mgr)
+ChunkQuery::ChunkQuery(control::TransactionSpec const& t, int id,
+                       control::AsyncQueryManager* mgr)
     : XrdPosixCallBack(),
       _id(id), _spec(t),
       _manager(mgr),
@@ -284,8 +284,8 @@ ChunkQuery::ChunkQuery(TransactionSpec const& t, int id,
     _result.read = 0;
     _result.localWrite = 0;
     _attempts = 0;
-    _hash = lsst::qserv::StringHash::getMd5Hex(_spec.query.c_str(), 
-                                               _spec.query.size());
+    _hash = lsst::qserv::util::StringHash::getMd5Hex(_spec.query.c_str(), 
+                                                     _spec.query.size());
     // Patch the spec to include the magic query terminator.
     _spec.query.append(4,0); // four null bytes.
     _completeMutexP.reset(new boost::mutex);
@@ -306,7 +306,7 @@ void ChunkQuery::run() {
 #if 0
     int result = 0;
     while(true) {
-        result = xrdOpenAsync(_spec.path.c_str(), O_WRONLY, this);
+        result = xrdc::xrdOpenAsync(_spec.path.c_str(), O_WRONLY, this);
         if(result == -EMFILE) {
             _manager->signalTooManyFiles();
             _manager->getWritePermission();
@@ -329,7 +329,7 @@ void ChunkQuery::run() {
     _state = WRITE_QUEUE;
     _manager->addToWriteQueue(new WriteCallable(*this));
 #else     //synchronous open:
-    result = xrdOpen(_spec.path.c_str(), O_WRONLY);
+    result = xrdc::xrdOpen(_spec.path.c_str(), O_WRONLY);
     if (result == -1) {
         result = -errno;
     }
@@ -377,7 +377,8 @@ std::string ChunkQuery::getDesc() const {
     return ss.str();
 }
 
-boost::shared_ptr<PacketIter> ChunkQuery::getResultIter() {
+boost::shared_ptr<xrdc::PacketIter> 
+ChunkQuery::getResultIter() {
     return _packetIter;
 }
 
@@ -437,7 +438,7 @@ void ChunkQuery::_squashAtCallback(int result) {
         ss << _hash << " WriteOpen* " << _writeOpenTimer << std::endl;
         // Just close the channel w/o sending a query.
         _writeCloseTimer.start();
-        res = xrdClose(result);
+        res = xrdc::xrdClose(result);
         _writeCloseTimer.stop();
         ss << _hash << " WriteClose* " << _writeCloseTimer << std::endl;
         if(res != 0) {
@@ -451,7 +452,7 @@ void ChunkQuery::_squashAtCallback(int result) {
     case READ_OPEN:
         // Close the channel w/o reading the result (which might be faulty)
         _readCloseTimer.start();
-        res = xrdClose(result);
+        res = xrdc::xrdClose(result);
         _readCloseTimer.stop();
         ss << _hash << " ReadClose* " << _readCloseTimer << std::endl;
         if(res != 0) {
@@ -487,7 +488,7 @@ bool ChunkQuery::_openForRead(std::string const& url) {
     _state = READ_OPEN;
     LOGGER_DBG << "opening async read to " << url << "\n";
     _readOpenTimer.start();
-    _result.read = xrdOpenAsync(url.c_str(), O_RDONLY, this);
+    _result.read = xrdc::xrdOpenAsync(url.c_str(), O_RDONLY, this);
     LOGGER_DBG << "Async read for " << _hash << " got " << _result.read
                << " --> "
                << ((_result.read == -EINPROGRESS) ? "ASYNC OK" : "fail?")
@@ -501,13 +502,14 @@ void ChunkQuery::_sendQuery(int fd) {
     // Now write
     int len = _spec.query.length();
     _writeTimer.start();
-    int writeCount = xrdWrite(fd, _spec.query.c_str(), len);
+    int writeCount = xrdc::xrdWrite(fd, _spec.query.c_str(), len);
     if (writeCount < 0) {
         throw "Remote I/O error during XRD write.";
     }
     _writeTimer.stop();
     ss << _hash << " WriteQuery " << _writeTimer << std::endl;
-    _manager->getMessageStore()->addMessage(_id, MSG_XRD_WRITE, "Query Written.");
+    _manager->getMessageStore()->addMessage(_id, log::MSG_XRD_WRITE, 
+                                            "Query Written.");
 
     if(writeCount != len) {
         _result.queryWrite = -errno;
@@ -521,8 +523,8 @@ void ChunkQuery::_sendQuery(int fd) {
         ss << _hash << " WriteClose " << _writeTimer << std::endl;
     } else {
         _result.queryWrite = writeCount;
-        _queryHostPort = xrdGetEndpoint(fd);
-        _resultUrl = makeUrl(_queryHostPort.c_str(), "result", _hash, 'r');
+        _queryHostPort = xrdc::xrdGetEndpoint(fd);
+        _resultUrl = util::makeUrl(_queryHostPort.c_str(), "result", _hash, 'r');
         _writeCloseTimer.start();
         closeFd(fd, "Normal", "dumpPath " + _spec.savePath,
                 "post-dispatch");
@@ -560,11 +562,12 @@ void ChunkQuery::_readResultsDefer(int fd) {
 
     // Now read.
     // packetIter will close fd
-    _packetIter.reset(new PacketIter(fd, fragmentSize));
+    _packetIter.reset(new xrdc::PacketIter(fd, fragmentSize));
     _result.localWrite = 1; // MAGIC: stuff the result so that it doesn't
     // look like an error to skip the local write.
     _state = COMPLETE;
-    _manager->getMessageStore()->addMessage(_id, MSG_XRD_READ, "Results Read.");
+    _manager->getMessageStore()->addMessage(_id, log::MSG_XRD_READ, 
+                                            "Results Read.");
     LOGGER_INF << _hash << " ReadResults defer " << std::endl;
     _notifyManager();
 }
@@ -576,12 +579,13 @@ void ChunkQuery::_readResults(int fd) {
 
     // Now read.
     _readTimer.start();
-    xrdReadToLocalFile(fd, fragmentSize, _spec.savePath.c_str(),
-                       &_shouldSquash, &(_result.localWrite), &(_result.read));
+    xrdc::xrdReadToLocalFile(fd, fragmentSize, _spec.savePath.c_str(),
+                             &_shouldSquash, &(_result.localWrite), 
+                             &(_result.read));
     _readTimer.stop();
     LOGGER_INF << _hash << " ReadResults " << _readTimer << std::endl;
     _readCloseTimer.start();
-    int res = xrdClose(fd);
+    int res = xrdc::xrdClose(fd);
     _readCloseTimer.stop();
     LOGGER_INF << _hash << " ReadClose " << _readTimer << std::endl;
     if(res != 0) {
@@ -612,5 +616,5 @@ void ChunkQuery::_unlinkResult(std::string const& url) {
     }
 }
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::qdisp
 

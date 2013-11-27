@@ -20,8 +20,10 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #ifndef LSST_QSERV_GLOBAL_SQLTOKEN_H
 #define LSST_QSERV_GLOBAL_SQLTOKEN_H
+
 /**
   * @file
   *
@@ -33,11 +35,12 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace sql {
+
 /// @return true if a string should be space-separated,
 ///         given the preceding and following characters.
 bool sqlShouldSeparate(std::string const& s, int last, int next);
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_GLOBAL_SQLTOKEN_H
+}}} // namespace lsst::qserv::sql
 
+#endif // LSST_QSERV_GLOBAL_SQLTOKEN_H

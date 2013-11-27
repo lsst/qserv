@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_SELECTLIST_H
-#define LSST_QSERV_MASTER_SELECTLIST_H
+#ifndef LSST_QSERV_QUERY_SELECTLIST_H
+#define LSST_QSERV_QUERY_SELECTLIST_H
 /**
   * @file SelectList.h
   *
@@ -37,7 +37,14 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+
+namespace parser {
+    // Forward
+    class SelectListFactory;
+}
+
+namespace query {
+
 // Forward
 class ColumnRefNodeMap;
 class ColumnAliasMap;
@@ -67,12 +74,13 @@ public:
     boost::shared_ptr<ValueExprList> getValueExprList()
         { return _valueExprList; }
 
-    friend class SelectListFactory;
+    friend class parser::SelectListFactory;
 private:
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
     boost::shared_ptr<ValueExprList> _valueExprList;
     boost::shared_ptr<ColumnRefNodeMap const> _aliasMap;
 };
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_SELECTLIST_H
+}}} // namespace lsst::qserv::query
+
+#endif // LSST_QSERV_QUERY_SELECTLIST_H

@@ -31,11 +31,10 @@
 #include "proto/worker.pb.h"
 
 namespace test = boost::test_tools;
-namespace qWorker = lsst::qserv::worker;
 
-using lsst::qserv::worker::QuerySql;
-using lsst::qserv::TaskMsg_Subchunk;
-using lsst::qserv::TaskMsg_Fragment;
+using lsst::qserv::wdb::QuerySql;
+using lsst::qserv::proto::TaskMsg_Subchunk;
+using lsst::qserv::proto::TaskMsg_Fragment;
 
 struct Fixture {
 

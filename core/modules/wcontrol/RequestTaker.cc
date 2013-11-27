@@ -38,21 +38,25 @@
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 namespace gio = google::protobuf::io;
-namespace qWorker = lsst::qserv::worker;
 
+namespace lsst {
+namespace qserv {
+namespace wcontrol {
 
-qWorker::RequestTaker::RequestTaker(TaskAcceptor::Ptr acceptor, QservPath const& path)
+RequestTaker::RequestTaker(wbase::TaskAcceptor::Ptr acceptor, 
+                           obsolete::QservPath const& path)
     : _acceptor(acceptor), _chunk(path.chunk()), _db(path.db()) {
 }
 
-bool qWorker::RequestTaker::receive(Size offset, char const* buffer,
-                                    Size bufferSize) {
+bool
+RequestTaker::receive(Size offset, char const* buffer, Size bufferSize) {
     _queryBuffer.addBuffer(offset, buffer, bufferSize);
     return true;
 }
 
-bool qWorker::RequestTaker::complete() {
-    boost::shared_ptr<TaskMsg> tm(new TaskMsg());
+bool
+RequestTaker::complete() {
+    boost::shared_ptr<proto::TaskMsg> tm(new proto::TaskMsg());
     gio::ArrayInputStream input(_queryBuffer.getData(),
                                 _queryBuffer.getLength());
     gio::CodedInputStream coded(&input);
@@ -64,3 +68,5 @@ bool qWorker::RequestTaker::complete() {
         return true;
     } else return false;
 }
+
+}}} // namespace lsst::qserv::wcontrol

@@ -34,15 +34,19 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
+namespace sql {
+    class SqlConnection;
+}
+namespace wlog {
+    class WLogger;
+}}} // End of forward declarations
 
-class SqlConnection;
 
-namespace worker {
-class WLogger; // Forward
-} // namespace worker
-
+namespace lsst {
+namespace qserv {
 namespace wpublish {
 
 class ChunkInventory {
@@ -53,9 +57,9 @@ public:
     typedef std::map<int,StringSet> ChunkMap;
     typedef std::map<std::string, ChunkMap> ExistMap;
 
-    ChunkInventory(std::string const& name, worker::WLogger& log);
-    ChunkInventory(std::string const& name, worker::WLogger& log,
-                   boost::shared_ptr<SqlConnection> sc);
+    ChunkInventory(std::string const& name, wlog::WLogger& log);
+    ChunkInventory(std::string const& name, wlog::WLogger& log,
+                   boost::shared_ptr<sql::SqlConnection> sc);
 
     static inline std::string makeKey(std::string const& db, int chunk) {
         std::stringstream ss;
@@ -65,13 +69,14 @@ public:
     bool has(std::string const& db, int chunk, std::string table=std::string());
     void dbgPrint(std::ostream& os);
 private:
-    void _init(SqlConnection& sc);
+    void _init(sql::SqlConnection& sc);
     void _fillDbChunks(ChunkInventory::StringSet& s);
 
     ExistMap _existMap;
     std::string _name;
-    worker::WLogger& _log;
+    wlog::WLogger& _log;
 };
+
 }}} // namespace lsst::qserv::wpublish
 
 #endif // LSST_QSERV_WPUBLISH_CHUNKINVENTORY_H

@@ -31,7 +31,6 @@
 #include <stdexcept>
 #include <antlr/ASTFactory.hpp>
 
-namespace qMaster=lsst::qserv::master;
 
 namespace {
 template <typename AnAst, typename C>
@@ -49,7 +48,7 @@ public:
         typename AstMap::const_iterator e(ids.end());
         if(ids.find(a) == e) {
             std::stringstream t;
-            t << qMaster::tokenText(a) << "[" << ++i << "]";
+            t << lsst::qserv::parser::tokenText(a) << "[" << ++i << "]";
             ids[a] = t.str();
         }
         return ids[a];
@@ -66,11 +65,16 @@ public:
 };
 } // anonymous namespace
 
+namespace lsst {
+namespace qserv {
+namespace parser {
+        
 // Creates a new text node and and puts it into the tree
 // after the specified node, but before the node's next sibling.
-antlr::RefAST qMaster::insertTextNodeAfter(antlr::ASTFactory* factory,
-                                           std::string const& s,
-                                           antlr::RefAST n) {
+antlr::RefAST
+insertTextNodeAfter(antlr::ASTFactory* factory,
+                    std::string const& s,
+                    antlr::RefAST n) {
     antlr::RefAST newChild = factory->create();
     newChild->setText(s);
     newChild->setNextSibling(n->getNextSibling());
@@ -81,9 +85,10 @@ antlr::RefAST qMaster::insertTextNodeAfter(antlr::ASTFactory* factory,
 // Overwrites the text for the specified node, putting the old text into
 // a new text node placed after the specified node but before the
 // node's next sibling.
-antlr::RefAST qMaster::insertTextNodeBefore(antlr::ASTFactory* factory,
-                                            std::string const& s,
-                                            antlr::RefAST n) {
+antlr::RefAST
+insertTextNodeBefore(antlr::ASTFactory* factory,
+                     std::string const& s,
+                     antlr::RefAST n) {
    antlr::RefAST newChild = factory->create();
    newChild->setText(n->getText());
    newChild->setNextSibling(n->getNextSibling());
@@ -93,7 +98,8 @@ antlr::RefAST qMaster::insertTextNodeBefore(antlr::ASTFactory* factory,
    return n;
 }
 
-void qMaster::printDigraph(std::string lbl, std::ostream& o, antlr::RefAST n) {
+void 
+printDigraph(std::string lbl, std::ostream& o, antlr::RefAST n) {
     DigraphVisitor<antlr::RefAST, std::list<antlr::RefAST> > dv;
     std::list<antlr::RefAST> c;
     visitTreeRooted(n, dv, c);
@@ -101,9 +107,9 @@ void qMaster::printDigraph(std::string lbl, std::ostream& o, antlr::RefAST n) {
 }
 
 bool
-qMaster::substituteWithMap(std::string& s,
-                           std::map<std::string, std::string>  const& m,
-                           int minMatch) {
+substituteWithMap(std::string& s,
+                  std::map<std::string, std::string>  const& m,
+                  int minMatch) {
     if(s.empty()) return false;
     if(minMatch < 0) {
         throw std::invalid_argument("substituteWithMap needs minMatch >= 0");
@@ -129,3 +135,5 @@ qMaster::substituteWithMap(std::string& s,
     } // if original substitute failed.
     return did;
 }
+
+}}} // namespace lsst::qserv::parser
