@@ -159,7 +159,10 @@ sub initd {
 
 sub qserv_services {
         my ( $action ) = @_;
-        my @service_list = ('mysqld', 'mysql-proxy', 'xrootd', 'qms', 'qserv-master');
+        my @service_list = ('mysqld', 'xrootd', 'qms', 'qserv-master', 'mysql-proxy');
+        if ($action =~ /stop/) {
+            @service_list = reverse(@service_list);
+        }
         foreach my $service (@service_list)
         {
             initd($action, $service);
