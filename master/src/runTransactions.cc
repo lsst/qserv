@@ -48,7 +48,6 @@ void alternative() {
 
     // alternate harness.
     using qMaster::QueryState;
-    qMaster::initDispatcher();
     int session = qMaster::newSession(dumbMap);
     qMaster::TransactionSpec::Reader r("xrdTransaction.trace");
     int i = 0;

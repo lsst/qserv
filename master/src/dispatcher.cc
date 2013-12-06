@@ -26,8 +26,6 @@
   * @brief SWIG-exported interface to dispatching queries.
   * Basic usage:
   *
-  * initDispatcher() // Set things up.
-  *
   * newSession() // Init a new session
   *
   * setupQuery(int session, std::string const& query) // setup the session with
@@ -121,100 +119,11 @@ private:
 
 } // anonymous namespace
 
-void qMaster::initDispatcher() {
-    xrdInit();
-}
-
-/// @param session Int for the session (the top-level query)
-/// @param chunk Chunk number within this session (query)
-/// @param str Query string (c-string)
-/// @param len Query string length
-/// @param savePath File path (with name) which will store the result (file, not dir)
-/// @return a token identifying the session
-int qMaster::submitQuery(int session, int chunk, char* str, int len,
-                         char* savePath, std::string const& resultName) {
-    TransactionSpec t;
-    AsyncQueryManager& qm = getAsyncManager(session);
-    std::string const hp = qm.getXrootdHostPort();
-    t.chunkId = chunk;
-    t.query = std::string(str, len);
-    t.bufferSize = 8192000;
-    t.path = qMaster::makeUrl(hp.c_str(), "query", chunk);
-    t.savePath = savePath;
-    return submitQuery(session, TransactionSpec(t), resultName);
-}
-
-/// @param session Int for the session (the top-level query)
-/// @param chunk Chunk number within this session (query)
-/// @param str Query string (c-string)
-/// @param len Query string length
-/// @param savePath File path (with name) which will store the result (file, not dir)
-/// @return a token identifying the session
-int qMaster::submitQueryMsg(int session, char* dbName, int chunk,
-                            char* str, int len,
-                            char* savePath, std::string const& resultName) {
-    // Most dbName, chunk, resultName can be derived from msg,
-    // but we avoid unpacking it here.  Not sure how safe it is to
-    // pass a python Protobuf msg through SWIG for use in c++.
-    TransactionSpec t;
-    AsyncQueryManager& qm = getAsyncManager(session);
-    std::string const hp = qm.getXrootdHostPort();
-    QservPath qp;
-    qp.setAsCquery(dbName, chunk);
-    std::string path=qp.path();
-    t.chunkId = chunk;
-    t.query = std::string(str, len);
-    t.bufferSize = 8192000;
-    t.path = qMaster::makeUrl(hp.c_str(), qp.path());
-    t.savePath = savePath;
-    return submitQuery(session, TransactionSpec(t), resultName);
-}
-
 int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s,
                          std::string const& resultName) {
-    int queryId = 0;
-#if 1
     AsyncQueryManager& qm = getAsyncManager(session);
     qm.add(s, resultName);
-    //std::cout << "Dispatcher added  " << s.chunkId << std::endl;
-#else
-    QueryManager& qm = getManager(session);
-    qm.add(s);
-#endif
-    /* queryId = */
-    return queryId;
-}
-
-qMaster::QueryState qMaster::joinQuery(int session, int id) {
-    // Block until specific query id completes.
-#if 1
-    //AsyncQueryManager& qm = getAsyncManager(session);
-#else
-    //QueryManager& qm = getManager(session);
-#endif
-    //qm.join(id);
-    //qm.status(id); // get status
-    // If error, report
-    return UNKNOWN; // FIXME: convert status to querystate.
-}
-
-qMaster::QueryState qMaster::tryJoinQuery(int session, int id) {
-#if 0 // Not implemented yet
-    // Just get the status and return it.
-#if 1
-    AsyncQueryManager& qm = getAsyncManager(session);
-#else
-    QueryManager& qm = getManager(session);
-#endif
-    if(qm.tryJoin(id)) {
-        return SUCCESS;
-    } else {
-        return ERROR;
-    }
-#endif
-    // FIXME...consider dropping this.
-    // need return val.
-    return UNKNOWN;
+    return 0;
 }
 
 struct mergeStatus {
@@ -246,22 +155,12 @@ struct mergeStatus {
     int firstN;
 };
 
-void qMaster::pauseReadTrans(int session) {
-    AsyncQueryManager& qm = getAsyncManager(session);
-    qm.pauseReadTrans();
-}
-
-void qMaster::resumeReadTrans(int session) {
-    AsyncQueryManager& qm = getAsyncManager(session);
-    qm.resumeReadTrans();
-}
-
-void qMaster::setupQuery(int session, std::string const& inputQuery,
+void qMaster::setupQuery(int session, std::string const& query,
                          std::string const& resultTable) {
     AsyncQueryManager& qm = getAsyncManager(session);
     QuerySession& qs = qm.getQuerySession();
     qs.setResultTable(resultTable);
-    qs.setQuery(inputQuery);
+    qs.setQuery(query);
 }
 
 std::string const& qMaster::getSessionError(int session) {
@@ -347,7 +246,7 @@ qMaster::submitQuery3(int session) {
         t.path = qMaster::makeUrl(hp.c_str(), qp.path());
         t.savePath = makeSavePath(qm.getScratchPath(), session, cs.chunkId);
         ss.str(""); // reset stream
-        submitQuery(session, t, chunkResultName);
+        qm.add(t, chunkResultName);
     }
 }
 
@@ -470,6 +369,3 @@ void qMaster::discardSession(int session) {
     getSessionManager().discardSession(session);
 }
 
-qMaster::XrdTransResult qMaster::getQueryResult(int session, int chunk) {
-    return XrdTransResult();    // FIXME
-}

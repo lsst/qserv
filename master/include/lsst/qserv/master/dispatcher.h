@@ -30,10 +30,8 @@
    *
   * @author Daniel L. Wang, SLAC
   */
-#include "lsst/qserv/master/common.h"
 #include "lsst/qserv/master/Constraint.h" 
-#include "lsst/qserv/master/transaction.h" 
-#include "lsst/qserv/master/xrdfile.h"
+#include "lsst/qserv/master/transaction.h"
 #include "lsst/qserv/master/TableMerger.h"
 
 namespace lsst { namespace qserv { namespace master {
@@ -41,17 +39,9 @@ class ChunkSpec; // Forward
 
 enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};
 
-void initDispatcher();
-// TODO: Eliminate obsolete code.
-int submitQuery(int session, int chunk, char* str, int len, char* savePath,
+
+int submitQuery(int session, lsst::qserv::master::TransactionSpec const& s,
                 std::string const& resultName=std::string());
-int submitQueryMsg(int session, char* dbName, int chunk,
-                   char* str, int len, char* savePath,
-                   std::string const& resultName=std::string());
-int submitQuery(int session, lsst::qserv::master::TransactionSpec const& s, 
-                std::string const& resultName=std::string());
-void pauseReadTrans(int session);
-void resumeReadTrans(int session);
 
 // Parser model 3:
 /// Setup a query for execution.
@@ -70,8 +60,6 @@ void addChunk(int session, lsst::qserv::master::ChunkSpec const& cs );
 void submitQuery3(int session);
 // TODO: need pokes into running state for debugging.
 
-QueryState joinQuery(int session, int id);
-QueryState tryJoinQuery(int session, int id);
 QueryState joinSession(int session);
 std::string const& getQueryStateString(QueryState const& qs);
 std::string getErrorDesc(int session);
@@ -81,7 +69,6 @@ void configureSessionMerger(int session,
 void configureSessionMerger3(int session);
 std::string getSessionResultName(int session);
 void discardSession(int session);
-lsst::qserv::master::XrdTransResult getQueryResult(int session, int chunk);
 
 }}} // namespace lsst::qserv:master
 #endif // LSST_QSERV_MASTER_DISPATCHER_H

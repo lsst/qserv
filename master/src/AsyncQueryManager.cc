@@ -57,8 +57,8 @@ namespace {
 
 // TODO(smm): These should be created elsewhere, and the thread counts
 //            should come from a configuration file.
-static DynamicWorkQueue globalReadQueue(100, 10, 1100, 0);
-static DynamicWorkQueue globalWriteQueue(500, 3, 800, 0);
+static DynamicWorkQueue globalReadQueue(25, 5, 50, 0);
+static DynamicWorkQueue globalWriteQueue(50, 2, 60, 0);
 
 // Doctors the query path to specify the async path.
 // Modifies the string in-place.
@@ -300,44 +300,6 @@ std::string AsyncQueryManager::getMergeResultName() const {
     return std::string();
 }
 
-void AsyncQueryManager::getReadPermission() {
-    boost::unique_lock<boost::mutex> lock(_canReadMutex);
-    if(!_canRead) {
-        while(!_canRead) {
-            _canReadCondition.timed_wait(lock, 
-                                         boost::posix_time::seconds(5));
-            if(_reliefFiles > 0)
-                break; // Allow "relief" from too many open files
-        }
-    }
-}
-
-void AsyncQueryManager::getWritePermission() {
-    boost::unique_lock<boost::mutex> lock(_canReadMutex);
-    while(!_canRead) { // only wait up to 5 seconds before continuing.
-        _canReadCondition.timed_wait(lock, 
-                                     boost::posix_time::seconds(5));
-    }
-}
-
-void AsyncQueryManager::signalTooManyFiles() {
-    boost::unique_lock<boost::mutex> lock(_canReadMutex);
-    std::cout << "Too many files! relieving." << std::endl;
-    _reliefFiles = 500;
-    _canReadCondition.notify_all();
-}
-
-void AsyncQueryManager::pauseReadTrans() {
-    boost::unique_lock<boost::mutex> lock(_canReadMutex);
-    _canRead = false;
-}
-
-void AsyncQueryManager::resumeReadTrans() {
-    boost::unique_lock<boost::mutex> lock(_canReadMutex);
-    _canRead = true;
-    _canReadCondition.notify_all();
-}
-
 void AsyncQueryManager::addToReadQueue(DynamicWorkQueue::Callable * callable) {
     globalReadQueue.add(this, callable);
 }
@@ -411,8 +373,12 @@ void AsyncQueryManager::_readConfig(std::map<std::string,
 void AsyncQueryManager::_addNewResult(PacIterPtr pacIter,
                                       std::string const& tableName) {
     bool mergeResult = _merger->merge(pacIter, tableName);
-    _totalSize += pacIter->getTotalSize();
-    
+    ssize_t sz = pacIter->getTotalSize();
+    {
+        boost::lock_guard<boost::mutex> lock(_totalSizeMutex);
+        _totalSize += sz;
+    }
+
     if(_shouldLimitResult && (_totalSize > _resultLimit)) {
         _squashRemaining();
     }
