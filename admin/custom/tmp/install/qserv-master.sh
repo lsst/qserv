@@ -1,8 +1,7 @@
 #!/bin/bash
 
-echo "DEBUG $QSERV_SRC"
-
 QSERV_BASE_DIR=%(QSERV_BASE_DIR)s
+QSERV_SRC_DIR=%(QSERV_SRC_DIR)s
 MYSQLD_SOCK=%(MYSQLD_SOCK)s
 MYSQLD_USER=%(MYSQLD_USER)s
 MYSQLD_PASS=%(MYSQLD_PASS)s
@@ -10,6 +9,11 @@ MYSQLD_PASS=%(MYSQLD_PASS)s
 MYSQL_CMD="${QSERV_BASE_DIR}/bin/mysql --user=${MYSQLD_USER} --password=${MYSQLD_PASS} --sock=${MYSQLD_SOCK}"
 
 rm -rf "${QSERV_BASE_DIR}/qserv/master/dist"
+
+# TODO : isolate Qserv binaries from source
+# in order to avoid symlink creation
+rm -f ${QSERV_BASE_DIR}/qserv
+ln -s ${QSERV_SRC_DIR} ${QSERV_BASE_DIR}/qserv
 
 export XRD_DIR="${QSERV_BASE_DIR}/xrootd";
 export XRD_PLATFORM="x86_64_linux_26_dbg";
@@ -58,6 +62,7 @@ rm -rf "${QSERV_BASE_DIR}/qserv/worker/tests/.tests" &&
 # login/password :
 # a configuration file containing mysql credentials would be welcome
 export QSW_DBSOCK=${MYSQLD_SOCK} &&
+export QSW_MYSQLDUMP=${QSERV_BASE_DIR}/bin/mysqldump &&
 cd "${QSERV_BASE_DIR}/qserv/worker/" &&
 scons ||
 exit 1

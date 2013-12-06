@@ -74,7 +74,7 @@ else
     META_FILE_LST=`ls *.params | egrep -v "^db.params$"`
 fi
 
-if [ -z ${META_FILE_LST} ]
+if [ -z "${META_FILE_LST}" ]
 then
     die "Can't load qms meta : no params files found in ${DATA_DIR}"
 fi

@@ -21,7 +21,8 @@
 SERVICE_NAME="Qserv Metadata Server (QMS)"
 prog="qms"
 
-PYTHON=%(QSERV_BASE_DIR)s/bin/python
+PATH="%(QSERV_BASE_DIR)s/bin/:$PATH"
+export PATH
 
 START=%(QSERV_BASE_DIR)s/qserv/meta/bin/startQMS.py
 CONFIG=%(QSERV_BASE_DIR)s/etc/qms.cnf

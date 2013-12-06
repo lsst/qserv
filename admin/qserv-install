@@ -88,9 +88,6 @@ if( $opts{'clean-all'} ) {
 	exit(0);
 }
 
-# qserv templates configuration files will be used by other installs
-check_and_deploy_qserv();
-
 #setup the python env.
 check_and_setup_python();
 
@@ -463,48 +460,6 @@ sub create_symlink {
 	-e $link and rmtree($link);
 	symlink ($target,$link) or die print "Error creating symlink $link : $!\n";
 
-}
-
-sub check_and_deploy_qserv {
-
-	chdir "$install_dir";
-
-	if (length($src_dir) > 0) {
-		if (-e "$src_dir")  {
-			create_symlink ($src_dir,"$install_dir/qserv");
-		}
-		else {
-			die print "Invalid path to Qserv source dir : $src_dir";
-		}
-	}
-
-	#check if things are already untarred
-	unless( -e "$install_dir/qserv" ) { 
-
-		#check on version of qserv, and get last version
-		my @tmplist = sort grep /qserv/, @buildfiles;
-		my $qserv_tar = '';
-		foreach my $file ( sort @tmplist ) {
-			if( $file =~ /tar.gz/ ) {
-				$qserv_tar = $file;
-			}
-		}
-
-		#untar the qserv code
-		if( -e "$build_dir/$qserv_tar" ) {
-			if( $opts{'test'} ) {
-				print "I would untar $qserv_tar here.\n";
-			} else {
-				print "Untarring qserv...\n";
-				run_command("tar zxf $build_dir/$qserv_tar");
-				my( $tmp_qserv ) = $qserv_tar =~ /^(\S+).tar.gz/;
-				rename "$tmp_qserv", "qserv";
-			}
-		} else {
-			print "Sorry - I can't find the qserv####.tar.gz in the build dir.\n";
-			exit(0);
-		}
-	}
 }
 
 #remove all sub dir created, and revert back to before install with only
