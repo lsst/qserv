@@ -42,6 +42,8 @@
 #include "lsst/qserv/master/MetadataCache.h"
 #include "lsst/qserv/master/ParseException.h"
 
+#include "lsst/qserv/Logger.h"
+
 #define CHUNKTAG "%CC%"
 #define SUBCHUNKTAG "%SS%"
 #define FULLOVERLAPSUFFIX "FullOverlap"
@@ -228,7 +230,7 @@ public:
         if(_i == _end) {
             throw std::invalid_argument("TableRefN missing table.");
         }
-        // std::cout << "Patching tablerefn:" << t << std::endl;
+        // LOGGER_INF << "Patching tablerefn:" << t << std::endl;
         t.setDb(_i->db);
         // Always use the first table. A different function will be
         // used when multiple tables are involved.
@@ -298,28 +300,19 @@ boost::shared_ptr<QueryMapping> SphericalBoxStrategy::getMapping() {
     assert(_impl.get());
     boost::shared_ptr<QueryMapping> qm(new QueryMapping());
 
-#ifdef DEBUG
-#if DEBUG > 2
-    std::cout << "SphericalBoxStrategy::getMapping() : _impl->chunkLevel : " << _impl->chunkLevel << std::endl;
-#endif
-#endif
+    LOGGER_DBG << "SphericalBoxStrategy::getMapping() : _impl->chunkLevel : "
+               << _impl->chunkLevel << std::endl;
     switch(_impl->chunkLevel) {
     case 0:
         break;
     case 1:
-#ifdef DEBUG
-#if DEBUG > 2
-        std::cout << "SphericalBoxStrategy::getMapping() : calling  addChunkMap() " << std::endl;
-#endif
-#endif
+        LOGGER_DBG << "SphericalBoxStrategy::getMapping() : calling  addChunkMap()"
+                   << std::endl;
         addChunkMap(*qm);
         break;
     case 2:
-#ifdef DEBUG
-#if DEBUG > 2
-        std::cout << "SphericalBoxStrategy::getMapping() : calling  addSubChunkMap() " << std::endl;
-#endif
-#endif
+        LOGGER_DBG << "SphericalBoxStrategy::getMapping() : calling  addSubChunkMap()"
+                   << std::endl;
         addChunkMap(*qm);
         addSubChunkMap(*qm);
         _impl->updateMapping(*qm);
@@ -441,15 +434,11 @@ void SphericalBoxStrategy::_import(FromList const& f) {
     }
     lookupTuple lookup(*_impl->context.metadata);
     std::for_each(_impl->tuples.begin(), _impl->tuples.end(), lookup);
+    LOGGER_DBG << "Imported:::::";
 
-#if DEBUG
-#if DEBUG > 2
-    std::cout << "Imported:::::";
     std::copy(_impl->tuples.begin(), _impl->tuples.end(),
-              std::ostream_iterator<Tuple>(std::cout, ","));
-    std::cout << std::endl;
-#endif
-#endif
+              std::ostream_iterator<Tuple>(LOG_STRM(Debug), ","));
+    LOGGER_DBG << std::endl;
 
     // Patch tuples in preparation for patching the FromList
     int chunkedTablesNumber = patchTuples(_impl->tuples);
@@ -457,11 +446,8 @@ void SphericalBoxStrategy::_import(FromList const& f) {
     else if(chunkedTablesNumber == 1) { _impl->chunkLevel = 1; }
     else { _impl->chunkLevel = 0; }
 
-#if DEBUG
-#if DEBUG > 2
-    std::cout << "SphericalBoxStrategy::_import() : _impl->chunkLevel : " << _impl->chunkLevel << std::endl;
-#endif
-#endif
+    LOGGER_DBG << "SphericalBoxStrategy::_import() : _impl->chunkLevel : "
+               << _impl->chunkLevel << std::endl;
 
     // Patch context with mapping.
     if(_impl->context.queryMapping.get()) {

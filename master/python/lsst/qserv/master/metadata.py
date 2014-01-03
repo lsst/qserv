@@ -28,6 +28,7 @@
 # to be re-thought, now that the Qms is available. 
 
 # Pkg imports
+import logger
 import config
 import string
 
@@ -39,7 +40,7 @@ class Runtime:
         self.emptyChunkInfo = {}
         self.defaultEmptyChunks = config.config.get("partitioner", 
                                         "emptyChunkListFile")
-        print "Using %s as default empty chunks file." % (self.defaultEmptyChunks)
+        logger.inf("Using %s as default empty chunks file." % (self.defaultEmptyChunks))
         self.emptyChunkInfo[""] = self.loadIntsFromFile(self.defaultEmptyChunks)
         pass
 
@@ -52,14 +53,14 @@ class Runtime:
                                  (c in string.digits) or (c in ["_"]), 
                                  dbName)
         if sanitizedDbName != dbName:
-            print "WARNING, dbName=", dbName,
-            print "contains questionable characters. sanitized=",
-            print sanitizedDbName
+            logger.wrn("WARNING, dbName=", dbName,
+                       "contains questionable characters. sanitized=",
+                       sanitizedDbName)
         name = "empty_%s.txt" % sanitizedDbName
         info = self.loadIntsFromFile(name)
         if info == None:
-            print "Couldn't find %s, using %s." % (name, 
-                                                   self.defaultEmptyChunks)
+            logger.inf("Couldn't find %s, using %s." % (name, 
+                       self.defaultEmptyChunks))
             self.emptyChunkInfo[dbName] = self.emptyChunkInfo[""]
         else:
             self.emptyChunkInfo[dbName] = info
@@ -81,7 +82,7 @@ class Runtime:
                 s = open(filename).read()
                 empty = set(map(tolerantInt, s.split("\n")))
         except:
-            print filename, "not found while loading empty chunks file."
+            logger.inf(filename, "not found while loading empty chunks file.")
             return None
         return empty
 

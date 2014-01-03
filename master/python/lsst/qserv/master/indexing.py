@@ -42,6 +42,7 @@
 import app
 import config
 import metadata
+import logger
 from db import Db
 
 class Indexer:
@@ -53,7 +54,7 @@ class Indexer:
         db = Db()
         db.activate()
         db.makeIfNotExist(db=metadata.getMetaDbName())
-        #print p.tables
+        #logger.inf(p.tables)
         for (t,d) in p.tables.items():
             if d.has_key("index"):
                 self._makeIndex(t, p.partitionCols, d["index"])
@@ -77,19 +78,19 @@ class Indexer:
                                   lambda e: None, indexName)
         
         assert a.getIsValid()
-        print "Gathering objectId/chunkId locality from workers"
-        print a.invoke() 
-        print a.getResult()
-        print "Retrieved result."
+        logger.inf("Gathering objectId/chunkId locality from workers")
+        logger.inf(a.invoke())
+        logger.inf(a.getResult())
+        logger.inf("Retrieved result.")
         for i in iCols:
             if i in pCols: continue
-            print "creating index for", i
+            logger.inf("creating index for", i)
             iq = "ALTER TABLE %s ADD INDEX (%s);" % (indexName, i)
-            print iq
+            logger.inf(iq)
             cids = db.applySql(iq)
             cids = map(lambda t: t[0], cids)
             del db
-            print cids
+            logger.inf(cids)
     pass
     
 def makeQservIndexes():

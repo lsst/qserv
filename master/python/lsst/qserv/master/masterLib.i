@@ -40,8 +40,10 @@ Access to the classes from the qserv_master library
 #include "lsst/qserv/master/ChunkSpec.h"
 #include "lsst/qserv/master/TableMerger.h"
 #include "lsst/qserv/master/common.h"
-#include "lsst/qserv/master/ifaceMeta.h"%}
-
+#include "lsst/qserv/master/ifaceMeta.h"
+#include "lsst/qserv/master/queryMsg.h"
+#include "lsst/qserv/master/loggerInterface.h"
+%}
 
 // %include "lsst/p_lsstSwig.i"
 %include typemaps.i
@@ -112,6 +114,8 @@ namespace std {
 %apply (char *STRING, int LENGTH) { (char *str, int len) };
 //%apply (const char *STRING, int LENGTH) { (const char *str, int len) };
 %apply int *OUTPUT { int *write, int *read };
+%apply int *OUTPUT { int* chunkId, int* code, time_t* timestamp };
+
 %include "lsst/qserv/master/transaction.h"
 %include "lsst/qserv/master/xrdfile.h"
 %include "lsst/qserv/master/mergeTypes.h"
@@ -122,6 +126,8 @@ namespace std {
 %include "lsst/qserv/master/ChunkSpec.h"
 %include "lsst/qserv/master/TableMerger.h"
 %include "lsst/qserv/master/ifaceMeta.h"
+%include "lsst/qserv/master/queryMsg.h"
+%include "lsst/qserv/master/loggerInterface.h"
 
 // Instantiate any templates here:
 // %template(setBool) lsst::daf::base::PropertySet::set<bool>;

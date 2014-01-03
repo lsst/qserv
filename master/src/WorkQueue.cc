@@ -26,6 +26,7 @@
 // all threads have died before returning.
 //
 #include "lsst/qserv/common/WorkQueue.h"
+#include "lsst/qserv/Logger.h"
 #include <iostream>
 namespace qCommon = lsst::qserv::common;
 
@@ -79,7 +80,7 @@ qCommon::WorkQueue::~WorkQueue() {
 
     while(_runners.size() > 0) {
         _runnersEmpty.wait(lock);
-        std::cout << "signalled... " << _runners.size() 
+        LOGGER_INF << "signalled... " << _runners.size() 
                   << " remain" << std::endl;
     }
 }
@@ -88,7 +89,7 @@ void
 qCommon::WorkQueue::add(boost::shared_ptr<qCommon::WorkQueue::Callable> c) {
     boost::lock_guard<boost::mutex> lock(_mutex);
     if(_isDead && !isPoison(c.get())) {
-        std::cout << "Queue refusing work: dead" << std::endl;
+        LOGGER_INF << "Queue refusing work: dead" << std::endl;
     } else {
         _queue.push_back(c);
         _queueNonEmpty.notify_all();
@@ -127,16 +128,16 @@ void qCommon::WorkQueue::registerRunner(Runner* r) {
 void qCommon::WorkQueue::signalDeath(Runner* r) {
     boost::lock_guard<boost::mutex> lock(_runnersMutex); 
     RunnerDeque::iterator end = _runners.end();
-    //std::cout << (void*) r << " dying" << std::endl;
+    //LOGGER_INF << (void*) r << " dying" << std::endl;
     for(RunnerDeque::iterator i = _runners.begin(); i != end; ++i) {
         if(*i == r) {
             _runners.erase(i);
             _runnersEmpty.notify_all();
-            //std::cout << _runners.size() << " runners left" << std::endl;
+            //LOGGER_INF << _runners.size() << " runners left" << std::endl;
             return;
         }
     }
-    std::cout << "couldn't find self to remove" << std::endl;
+    LOGGER_INF << "couldn't find self to remove" << std::endl;
 }
 void qCommon::WorkQueue::_addRunner() {
     boost::unique_lock<boost::mutex> lock(_runnersMutex); 
@@ -168,7 +169,7 @@ public:
 
         ss << "MyCallable " << _myId << " (" << _spinTime
            << ") STARTED spinning" << std::endl;
-        std::cout << ss.str();
+        LOGGER_INF << ss.str();
         ss.str() = "";
         ts.tv_sec = (long)_spinTime;
         ts.tv_nsec = (long)((1e9)*(_spinTime - ts.tv_sec));
@@ -178,7 +179,7 @@ public:
 
         ss << "MyCallable " << _myId << " (" << _spinTime
            << ") STOPPED spinning" << std::endl;
-        std::cout << ss.str();
+        LOGGER_INF << ss.str();
     }
     int _myId;
     float _spinTime;

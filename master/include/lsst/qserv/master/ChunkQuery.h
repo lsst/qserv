@@ -49,6 +49,7 @@ class PacketIter;
 //////////////////////////////////////////////////////////////////////
 class ChunkQuery : public XrdPosixCallBack {
 public:
+    static const int MAX_ATTEMPTS = 3;
     enum WaitState {WRITE_QUEUE=100,
                     WRITE_OPEN, WRITE_WRITE, 
                     READ_QUEUE,
@@ -106,6 +107,7 @@ private:
     Timer _readOpenTimer;
     Timer _readTimer;
     Timer _readCloseTimer;
+    int _attempts;
     
 };// class ChunkQuery
 

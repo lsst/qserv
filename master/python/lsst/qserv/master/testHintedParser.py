@@ -39,6 +39,7 @@ import time
 import lsst.qserv.master
 from lsst.qserv.master import appInterface as app
 from lsst.qserv.master import config
+from lsst.qserv.master import logger
 
 
 class TestHintedParser(unittest.TestCase):
@@ -98,8 +99,8 @@ WHERE o1.objectId=s.objectId AND o1.rRadius_SG > 600;""",
     def _performTestQueryAction(self, queryTuple):
         a = app.AppInterface()
         result = a.queryNow(*queryTuple)
-        print "Done Query."
-        print result
+        logger.inf("Done Query.")
+        logger.inf(result)
         pass
         
     def testBasic(self):
@@ -125,31 +126,31 @@ WHERE o1.objectId=s.objectId AND o1.rRadius_SG > 600;""",
         id1 = a.query(*self.hintQuery)
         id2 = a.query(*self.hintQuery2)
         r1 = a.joinQuery(id1)
-        print "Done hinted query."
-        print a.resultTableString(r1)
+        logger.inf("Done hinted query.")
+        logger.inf(a.resultTableString(r1))
 
         r2 = a.joinQuery(id2)
-        print "Done hinted query."
-        print a.resultTableString(r2)
+        logger.inf("Done hinted query.")
+        logger.inf(a.resultTableString(r2))
         
     def testParallelQuery2(self):
         a = app.AppInterface()
         id1 = a.query(*self.basicQuery)
         id2 = a.query(*self.hintQuery2)
         r1 = a.joinQuery(id1)
-        print "Done fullsky query."
-        print a.resultTableString(r1)
+        logger.inf("Done fullsky query.")
+        logger.inf(a.resultTableString(r1))
 
         r2 = a.joinQuery(id2)
-        print "Done hinted query."
-        print a.resultTableString(r2)
+        logger.inf("Done hinted query.")
+        logger.inf(a.resultTableString(r2))
         
     def testAggQuery(self):
         a = app.AppInterface()
         id1 = a.query(*self.aggQuery1)
         r1 = a.joinQuery(id1)
-        print "Done aggregate query."
-        print a.resultTableString(r1)
+        logger.inf("Done aggregate query.")
+        logger.inf(a.resultTableString(r1))
 
     def testAvgQuery(self):
         a = app.AppInterface()
@@ -157,23 +158,23 @@ WHERE o1.objectId=s.objectId AND o1.rRadius_SG > 600;""",
         id2 = a.query(*self.aggQuery2)
         r1 = a.joinQuery(id1)
         r2 = a.joinQuery(id2)
-        print "Done aggregate query."
-        print a.resultTableString(r1)
-        print a.resultTableString(r2)
+        logger.inf("Done aggregate query.")
+        logger.inf(a.resultTableString(r1))
+        logger.inf(a.resultTableString(r2))
         
     def testGroupByQuery(self):
         a = app.AppInterface()
         id1 = a.query(*self.groupByQuery1)
         r1 = a.joinQuery(id1)
-        print "Done avg groupby query."
-        print a.resultTableString(r1)
+        logger.inf("Done avg groupby query.")
+        logger.inf(a.resultTableString(r1))
 
     def testNnQuery(self):
         a = app.AppInterface()
         id1 = a.query(*self.nearNeighQuery1)
         r1 = a.joinQuery(id1)
-        print "Done near neighbor query."
-        print a.resultTableString(r1)
+        logger.inf("Done near neighbor query.")
+        logger.inf(a.resultTableString(r1))
 
     def testAllskyPt1(self):
         """This is a non spatially-restricted query that uses PT1 

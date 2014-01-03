@@ -31,6 +31,8 @@
 // No public interface (no TablePlugin.h)
 #include <string>
 
+#include "lsst/qserv/Logger.h"
+
 #include "lsst/qserv/master/QueryPlugin.h"
 
 #include "lsst/qserv/master/common.h"
@@ -57,7 +59,7 @@ public:
         : _tableAlias(t), _tableAliasReverse(r) {}
     void operator()(std::string const& alias,
                     std::string const& db, std::string const& table) {
-        // std::cout << "set: " << alias << "->"
+        // LOGGER_INF << "set: " << alias << "->"
         //           << db << "." << table << std::endl;
         _tableAlias.set(db, table, alias);
         _tableAliasReverse.set(db, table, alias);
@@ -104,9 +106,9 @@ class addAlias {
 public:
     addAlias(G g, A a) : _generate(g), _addMap(a) {}
     void operator()(TableRefN::Ptr t) {
-        // std::cout << "tableref:";
-        // t->putStream(std::cout);
-        // std::cout << std::endl;
+        // LOGGER_INF << "tableref:";
+        // t->putStream(LOG_STRM(Info));
+        // LOGGER_INF << std::endl;
         // If no alias, then add one.
         std::string alias = t->getAlias();
         if(alias.empty()) {
@@ -144,7 +146,7 @@ public:
                 throw std::logic_error("Bad ValueExpr::FactorOps");
             }
             ValueFactor& t = *i->factor;
-            //std::cout << "fixing factor: " << *vep << std::endl;
+            //LOGGER_INF << "fixing factor: " << *vep << std::endl;
             std::string newAlias;
 
             switch(t.getType()) {
@@ -191,7 +193,7 @@ private:
 
     inline std::string _getAlias(std::string const& db,
                                  std::string const& table) {
-        //std::cout << "lookup: " << db << "." << table << std::endl;
+        //LOGGER_INF << "lookup: " << db << "." << table << std::endl;
         return _tableAliasReverse.get(db, table);
     }
 
@@ -265,7 +267,7 @@ TablePlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
     // from-list so that the later table-name substitution is confined
     // to modifying the from-list.
     FromList& fList = stmt.getFromList();
-    // std::cout << "TABLE:Logical:orig fromlist "
+    // LOGGER_INF << "TABLE:Logical:orig fromlist "
     //           << fList.getGenerated() << std::endl;
     TableRefnList& tList = fList.getTableRefnList();
 
@@ -349,7 +351,7 @@ int TablePlugin::_rewriteTables(SelectStmtList& outList,
     // the logical plugin stage so that real table refs should only
     // exist in the from-list.
     FromList& fList = in.getFromList();
-    //    std::cout << "orig fromlist " << fList.getGenerated() << std::endl;
+    //    LOGGER_INF << "orig fromlist " << fList.getGenerated() << std::endl;
 
     // TODO: Better join handling by leveraging JOIN...ON syntax.
     // Before rewriting, compute the need for chunking and subchunking
@@ -379,7 +381,7 @@ int TablePlugin::_rewriteTables(SelectStmtList& outList,
         }
     } else {
         s.patchFromList(fList);
-        // std::cout << "post-patched fromlist " << fList.getGenerated() << std::endl;
+        // LOGGER_INF << "post-patched fromlist " << fList.getGenerated() << std::endl;
     }
     // Now add/merge the mapping to the Plan
     if(!mapping.get()) {
@@ -398,9 +400,8 @@ int TablePlugin::_rewriteTables(SelectStmtList& outList,
 
 bool testIfSecondary(BoolTerm& t) {
     // FIXME: Look for secondary key in the bool term.
-    std::cout << "Testing ";
-    t.putStream(std::cout) << std::endl;
-
+    LOGGER_INF << "Testing ";
+    t.putStream(LOG_STRM(Info)) << std::endl;
     return false;
 }
 

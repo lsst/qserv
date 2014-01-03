@@ -36,31 +36,33 @@ import lsst.qserv.master.db
 import time
 import thread
 
+from lsst.qserv.master import queryMsgGetCount, queryMsgGetMsg
+
+
 class Lock:
-    createTmpl = "CREATE TABLE IF NOT EXISTS %s (err CHAR(255), dummy FLOAT) ENGINE=MEMORY;"
+    createTmpl = "CREATE TABLE IF NOT EXISTS %s (chunkId SMALLINT, code SMALLINT, message CHAR(255), timeStamp FLOAT) ENGINE=MEMORY;"
     lockTmpl = "LOCK TABLES %s WRITE;"
-    writeTmpl = "INSERT INTO %s VALUES ('%s', %f);"
+    writeTmpl = "INSERT INTO %s VALUES (%d, %d, '%s', %f);"
     unlockTmpl = "UNLOCK TABLES;"
 
     def __init__(self, tablename):
         self._tableName = tablename
+        self._sessionId = None
         pass
     def lock(self):
         self.db = lsst.qserv.master.db.Db()
         if not self.db.check(): # Can't lock.
             return False
         self.db.applySql((Lock.createTmpl % self._tableName) 
-                         + (Lock.lockTmpl % self._tableName)
-                         + (Lock.writeTmpl % (self._tableName, "dummy", 
-                                              time.time())))
+                         + (Lock.lockTmpl % self._tableName))
         return True
 
-    def addError(self, error):
-        self.db.applySql(Lock.writeTmpl % (self._tableName, "ERR "+ error, 
-                                           time.time()))
+    def setSessionId(self, sessionId):
+        self._sessionId = sessionId
         pass
 
     def unlock(self):
+        self._saveQueryMessages()
         self.db.applySql(Lock.unlockTmpl)
         pass
 
@@ -71,6 +73,13 @@ class Lock:
             lock.unlock()
         threadid = thread.start_new_thread(waitAndUnlock, tuple())
 
+    def _saveQueryMessages(self):
+        if not self._sessionId: # No object to read.
+            return
+        msgCount = queryMsgGetCount(self._sessionId)
+        for i in range(msgCount):
+            msg, chunkId, code, timestamp = queryMsgGetMsg(self._sessionId, i)
+            self.db.applySql(Lock.writeTmpl % (self._tableName, chunkId, code, msg, timestamp))
     pass
 
 def clearLocks():

@@ -24,6 +24,9 @@
 // mysqldump output and iterates over them.
 #include "lsst/qserv/master/SqlInsertIter.h"
 #include <iostream>
+#include <errno.h>
+
+#include "lsst/qserv/Logger.h"
 
 namespace qMaster = lsst::qserv::master;
 
@@ -41,6 +44,10 @@ boost::regex makeLockInsertOpenRegex(std::string const& tableName) {
                         "(.*?)(INSERT INTO[^;]*?;)+");
 }
     
+boost::regex makeLockOpenRegex(std::string const& tableName) {
+    return boost::regex("LOCK TABLES `?" + tableName + "`? WRITE;");
+}
+
 boost::regex makeInsertRegex(std::string const& tableName) {
     return boost::regex("(INSERT INTO `?" + tableName + 
                         "`? [^;]+?;)");// [~;]*?;)");
@@ -56,13 +63,13 @@ void printInserts(char const* buf, off_t bufSize,
                   std::string const& tableName)  {
     for(qMaster::SqlInsertIter i(buf, bufSize, tableName, true); !i.isDone(); 
         ++i) {
-        std::cout << "Sql[" << tableName << "]: " 
-                  << (void*)i->first << "  --->  " 
-                  << (void*)i->second << "  "
-                  << *i;
+        LOGGER_INF << "Sql[" << tableName << "]: " 
+                   << (void*)i->first << "  --->  " 
+                   << (void*)i->second << "  "
+                   << *i;
         if(i.isNullInsert()) {
-            std::cout << "Null match" << std::endl;
-        } else { std::cout << std::endl; }
+            LOGGER_INF << "Null match" << std::endl;
+        } else { LOGGER_INF << std::endl; }
     }
 }
 
@@ -101,6 +108,8 @@ qMaster::SqlInsertIter::SqlInsertIter(PacketIter::Ptr p,
     // data into our buffer, and setup the regex match again.
     // Continue.  
     //
+    LOGGER_DBG << "EXECUTING SqlInsertIter(PacketIter::Ptr, " << tableName << 
+                  ", " << allowNull << ")" << std::endl;
     assert(!(*p).isDone());
     _pBufStart = 0;
     _pBufEnd = (*p)->second;
@@ -109,18 +118,31 @@ qMaster::SqlInsertIter::SqlInsertIter(PacketIter::Ptr p,
     _pBuffer = static_cast<char*>(malloc(_pBufSize));
 
     memcpy(_pBuffer,(*p)->first, _pBufEnd);  
-    boost::regex lockExpr(makeLockInsertOpenRegex(tableName));
+    boost::regex lockInsertExpr(makeLockInsertOpenRegex(tableName));
+    boost::regex lockExpr(makeLockOpenRegex(tableName));
     bool found = false;
     while(!found) {
         char const* buf = _pBuffer; // need to add const to help compiler
         found = boost::regex_search(buf, 
                                     buf + _pBufEnd, 
-                                    _blockMatch, lockExpr);
-        if(found) break;
+                                    _blockMatch, lockInsertExpr);
+        if(found) {
+            LOGGER_DBG << "Matched Lock statement within SqlInsertIter" << std::endl;
+            break;
+        } else {
+            LOGGER_DBG << "Did not match Lock statement within SqlInsertIter" << std::endl;
+        }
 
         //Add next fragment, if available.
         if(!_incrementFragment()) {
-            return;
+            // Verify presence of Lock statement.
+            if(boost::regex_search(buf, buf + _pBufEnd, _blockMatch,
+                                   lockExpr)) {
+                return;
+            } else {
+                errno = ENOTRECOVERABLE;
+                throw "Failed to match Lock statement within SqlInsertIter.";
+            }
         }
     }
     _blockFound = found;
@@ -147,10 +169,13 @@ bool qMaster::SqlInsertIter::_incrementFragment() {
     BufOff needSize = v.second + keepSize;
     if(needSize > (_pBufSize - _pBufEnd)) {
         if(needSize > _pBufSize) {
-            // std::cout << _pBufSize << " is too small" << std::endl
-            //           << "sqliter Realloc to " << needSize << std::endl;
+            LOGGER_DBG << _pBufSize << " is too small" << std::endl
+                       << "sqliter Realloc to " << needSize << std::endl;
             void* res = realloc(_pBuffer, needSize);
-            assert(res);
+            if (!res) {
+                errno = ENOMEM;
+                throw "Failed to realloc for SqlInsertIter.";
+            }
             _pBufSize = needSize;
             _pBuffer = static_cast<char*>(res);
         }
@@ -195,9 +220,8 @@ qMaster::SqlInsertIter& qMaster::SqlInsertIter::operator++() {
 }
 
 bool qMaster::SqlInsertIter::isDone() const {
-
     if(_pacIterP) {
-        return (_iter == _nullIter) && _pacIterP->isDone();
+        return (_iter == _nullIter) || _pacIterP->isDone();
     } else {
         return _iter == _nullIter;
     }

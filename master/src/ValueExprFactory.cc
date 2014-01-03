@@ -34,6 +34,8 @@
 #include "lsst/qserv/master/ParseException.h" //
 #include "SqlSQL2TokenTypes.hpp" // antlr-generated
 
+#include "lsst/qserv/Logger.h"
+
 using antlr::RefAST;
 
 namespace lsst {
@@ -53,13 +55,13 @@ ValueExprFactory::ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap)
 boost::shared_ptr<ValueExpr>
 ValueExprFactory::newExpr(antlr::RefAST a) {
     boost::shared_ptr<ValueExpr> expr(new ValueExpr);
-    //std::cout << walkIndentedString(a) << std::endl;
+    //LOGGER_INF << walkIndentedString(a) << std::endl;
     while(a.get()) {
         ValueExpr::FactorOp newFactorOp;
         RefAST op = a->getNextSibling();
         newFactorOp.factor = _valueFactorFactory->newFactor(a);
         if(op.get()) { // No more ops?
-            //std::cout << "expected op: " << tokenText(op) << std::endl;
+            //LOGGER_INF << "expected op: " << tokenText(op) << std::endl;
             int eType = op->getType();
             switch(op->getType()) {
             case SqlSQL2TokenTypes::PLUS_SIGN:
@@ -86,10 +88,10 @@ ValueExprFactory::newExpr(antlr::RefAST a) {
         expr->_factorOps.push_back(newFactorOp);
     }
 #if 0
-    std::cout << "Imported expr: ";
+    LOGGER_INF << "Imported expr: ";
     std::copy(expr->_factorOps.begin(), expr->_factorOps.end(),
-              std::ostream_iterator<ValueExpr::FactorOp>(std::cout, ","));
-    std::cout << std::endl;
+              std::ostream_iterator<ValueExpr::FactorOp>(LOG_STRM(Info), ","));
+    LOGGER_INF << std::endl;
 #endif
     return expr;
 }

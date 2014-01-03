@@ -30,6 +30,7 @@
 // No public interface
 #include "lsst/qserv/master/QueryPlugin.h" // Parent class
 
+#include "lsst/qserv/Logger.h"
 #include "lsst/qserv/master/common.h"
 #include "lsst/qserv/master/ColumnRefMap.h"
 #include "lsst/qserv/master/FromList.h"
@@ -113,8 +114,8 @@ ScanTablePlugin::applyFinal(QueryContext& context) {
     int const scanThreshold = 2;
     if(context.chunkCount < scanThreshold) {
         context.scanTables.clear();
-        std::cout << "Squash scan tables: <" << scanThreshold
-                  << " chunks." << std::endl;
+        LOGGER_INF << "Squash scan tables: <" << scanThreshold
+                   << " chunks." << std::endl;
     }
 }
 
@@ -241,17 +242,17 @@ ScanTablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
     // plugin's applyFinal
     if(hasSelectColumnRef || hasSelectStar) {
         if(hasSecondaryKey) {
-            std::cout << "**** Not a scan ****" << std::endl;
+            LOGGER_INF << "**** Not a scan ****" << std::endl;
             // Not a scan? Leave scanTables alone
         } else {
-            std::cout << "**** SCAN (column ref, non-spatial-idx)****" << std::endl;
+            LOGGER_INF << "**** SCAN (column ref, non-spatial-idx)****" << std::endl;
             // Scan tables = all partitioned tables
             scanTables = filterPartitioned(stmt.getFromList().getTableRefnList());
         }
     } else if(hasWhereColumnRef) {
         // No column ref in SELECT, still a scan for non-trivial WHERE
         // count(*): still a scan with a non-trivial where.
-        std::cout << "**** SCAN (filter) ****" << std::endl;
+        LOGGER_INF << "**** SCAN (filter) ****" << std::endl;
         scanTables = filterPartitioned(stmt.getFromList().getTableRefnList());
     }
     return scanTables;

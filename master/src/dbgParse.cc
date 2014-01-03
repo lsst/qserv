@@ -23,6 +23,7 @@
 #include <map>
 #include "lsst/qserv/master/parserBase.h"
 #include "lsst/qserv/master/parseTreeUtil.h"
+#include "lsst/qserv/Logger.h"
 
 namespace qMaster = lsst::qserv::master;
 
@@ -32,11 +33,11 @@ public:
     virtual void operator()(antlr::RefAST a, antlr::RefAST b, 
                             antlr::RefAST c, antlr::RefAST d) {
         using lsst::qserv::master::tokenText;
-        std::cout << "col _" << tokenText(a) 
-                  << "_ _" << tokenText(b) 
-                  << "_ _" << tokenText(c) 
-                  << "_ _" << tokenText(d) 
-                  << "_ "; 
+        LOGGER_INF << "col _" << tokenText(a) 
+                   << "_ _" << tokenText(b) 
+                   << "_ _" << tokenText(c) 
+                   << "_ _" << tokenText(d) 
+                   << "_ "; 
         a->setText("AWESOMECOLUMN");
     }
 };
@@ -47,9 +48,9 @@ public:
     virtual void operator()(antlr::RefAST a, antlr::RefAST b,
                             antlr::RefAST c)  {
         using lsst::qserv::master::tokenText;
-        std::cout << "qualname " << tokenText(a) 
-                  << " " << tokenText(b) << " " 
-                  << tokenText(c) << " "; 
+        LOGGER_INF << "qualname " << tokenText(a) 
+                   << " " << tokenText(b) << " " 
+                   << tokenText(c) << " "; 
         a->setText("AwesomeTable");
     }
 };
@@ -59,8 +60,8 @@ public:
     virtual ~TestAliasHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
         if(b.get()) {
-            std::cout << "Alias " << qMaster::tokenText(a) 
-                      << " = " << qMaster::tokenText(b) << std::endl;
+            LOGGER_INF << "Alias " << qMaster::tokenText(a) 
+                       << " = " << qMaster::tokenText(b) << std::endl;
         }
     }
 };
@@ -70,8 +71,8 @@ public:
     virtual ~TestSelectListHandler() {}
     virtual void operator()(antlr::RefAST a)  {
         antlr::RefAST bound = qMaster::getLastSibling(a);
-        std::cout << "SelectList " << qMaster::walkTreeString(a) 
-                  << "--From " << a << " to " << bound << std::endl;
+        LOGGER_INF << "SelectList " << qMaster::walkTreeString(a) 
+                   << "--From " << a << " to " << bound << std::endl;
     }
 };
 
@@ -90,13 +91,13 @@ public:
     }
     virtual ~TestSetFuncHandler() {}
     virtual void operator()(antlr::RefAST a) {
-        std::cout << "Got setfunc " << qMaster::walkTreeString(a)
-                  << std::endl;
+        LOGGER_INF << "Got setfunc " << qMaster::walkTreeString(a)
+                   << std::endl;
         //verify aggregation cmd.
         std::string origAgg = qMaster::tokenText(a);
         MapConstIter i = _map.find(origAgg); // case-sensitivity?
         if(i == _map.end()) {
-            std::cout << origAgg << " is not an aggregate." << std::endl;
+            LOGGER_INF << origAgg << " is not an aggregate." << std::endl;
             return; // Skip.  Actually, this would be an parser bug.
         }
         // Extract meaning and label parts.

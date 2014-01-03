@@ -44,17 +44,20 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+#include "lsst/qserv/Logger.h"
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/dispatcher.h"
 #include "lsst/qserv/master/thread.h"
 #include "lsst/qserv/master/xrootd.h"
-#include "lsst/qserv/master/SessionManager.h"
+#include "lsst/qserv/master/SessionManagerAsync.h"
 #include "lsst/qserv/master/AsyncQueryManager.h"
 #include "lsst/qserv/master/ChunkSpec.h"
 #include "lsst/qserv/master/QuerySession.h"
 #include "lsst/qserv/QservPath.hh"
 #include "lsst/qserv/master/TaskMsgFactory2.h"
 #include <sstream>
+
+#include <fstream>
 
 namespace qMaster = lsst::qserv::master;
 
@@ -121,8 +124,11 @@ private:
 
 int qMaster::submitQuery(int session, qMaster::TransactionSpec const& s,
                          std::string const& resultName) {
+    LOGGER_DBG << "EXECUTING submitQuery(" << session << ", TransactionSpec s, "
+               << resultName << ")" << std::endl;
     AsyncQueryManager& qm = getAsyncManager(session);
     qm.add(s, resultName);
+    LOGGER_DBG << "Dispatcher added  " << s.chunkId << std::endl;
     return 0;
 }
 
@@ -135,18 +141,18 @@ struct mergeStatus {
     void operator() (qMaster::AsyncQueryManager::Result const& x) {
         if(!x.second.isSuccessful()) {
             if(shouldPrint || (firstN > 0)) {
-                std::cout << "Chunk " << x.first << " error " << std::endl
-                          << "open: " << x.second.open
-                          << " qWrite: " << x.second.queryWrite
-                          << " read: " << x.second.read
-                          << " lWrite: " << x.second.localWrite << std::endl;
+                LOGGER_INF << "Chunk " << x.first << " error " << std::endl
+                           << "open: " << x.second.open
+                           << " qWrite: " << x.second.queryWrite
+                           << " read: " << x.second.read
+                           << " lWrite: " << x.second.localWrite << std::endl;
                 --firstN;
             }
             isSuccessful = false;
         } else {
             if(shouldPrint) {
-                std::cout << "Chunk " << x.first << " OK ("
-                          << x.second.localWrite << ")\t";
+                LOGGER_INF << "Chunk " << x.first << " OK ("
+                           << x.second.localWrite << ")\t";
             }
         }
     }
@@ -198,15 +204,15 @@ lsst::qserv::master::getDominantDb(int session) {
 void
 qMaster::addChunk(int session, lsst::qserv::master::ChunkSpec const& cs ) {
 #if 0 // SWIG plumbing debug
-    std::cout << "Received chunk=" << cs.chunkId << " ";
+    LOGGER_INF << "Received chunk=" << cs.chunkId << " ";
     typedef std::vector<int> Vect;
     int count=0;
     for(Vect::const_iterator i = cs.subChunks.begin();
         i != cs.subChunks.end(); ++i) {
-        if(++count > 1) std::cout << ", ";
-        std::cout << *i;
+        if(++count > 1) LOGGER_INF << ", ";
+         LOGGER_INF << *i;
     }
-    std::cout << std::endl;
+     LOGGER_INF << std::endl;
 #endif
     AsyncQueryManager& qm = getAsyncManager(session);
     QuerySession& qs = qm.getQuerySession();
@@ -216,6 +222,7 @@ qMaster::addChunk(int session, lsst::qserv::master::ChunkSpec const& cs ) {
 /// Submit the query.
 void
 qMaster::submitQuery3(int session) {
+    LOGGER_DBG << "EXECUTING submitQuery3(" << session << ")" << std::endl;
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
     // create query messages and send them to the async query manager.
     AsyncQueryManager& qm = getAsyncManager(session);
@@ -240,8 +247,8 @@ qMaster::submitQuery3(int session) {
         std::string path=qp.path();
         t.chunkId = cs.chunkId;
         t.query = ss.str();
-        std::cout << "Msg cid=" << cs.chunkId << " with size="
-                  << t.query.size() << std::endl;
+        LOGGER_INF << "Msg cid=" << cs.chunkId << " with size="
+                   << t.query.size() << std::endl;
         t.bufferSize = 8192000;
         t.path = qMaster::makeUrl(hp.c_str(), qp.path());
         t.savePath = makeSavePath(qm.getScratchPath(), session, cs.chunkId);
@@ -258,10 +265,10 @@ qMaster::QueryState qMaster::joinSession(int session) {
     std::for_each(d.begin(), d.end(), mergeStatus(successful));
 
     if(successful) {
-        std::cout << "Joined everything (success)" << std::endl;
+        LOGGER_INF << "Joined everything (success)" << std::endl;
         return SUCCESS;
     } else {
-        std::cout << "Joined everything (failure!)" << std::endl;
+        LOGGER_ERR << "Joined everything (failure!)" << std::endl;
         return ERROR;
     }
 }
@@ -346,7 +353,7 @@ qMaster::getErrorDesc(int session) {
 int qMaster::newSession(std::map<std::string,std::string> const& config) {
     AsyncQueryManager::Ptr m =
         boost::make_shared<qMaster::AsyncQueryManager>(config);
-    int id = getSessionManager().newSession(m);
+    int id = getSessionManagerAsync().newSession(m);
     return id;
 }
 
@@ -366,6 +373,6 @@ std::string qMaster::getSessionResultName(int session) {
 }
 
 void qMaster::discardSession(int session) {
-    getSessionManager().discardSession(session);
+    getSessionManagerAsync().discardSession(session);
 }
 

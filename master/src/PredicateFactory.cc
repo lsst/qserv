@@ -33,6 +33,8 @@
 #include "lsst/qserv/master/ValueExprFactory.h"
 #include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
+#include "lsst/qserv/Logger.h"
+
 namespace lsst {
 namespace qserv {
 namespace master {

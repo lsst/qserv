@@ -22,11 +22,15 @@
 // xrdfile.h -- Wrapper for xrootd client API functions
 
 #include "lsst/qserv/master/xrdfile.h"
+#include "lsst/qserv/Logger.h"
 
 //#define FAKE_XRD 1
 //#define QSM_PROFILE_XRD 1
 #include <iostream>
 #include <string>
+
+// Boost
+#include <boost/thread/thread.hpp>
 
 #if !FAKE_XRD
 #include <sys/types.h>
@@ -54,15 +58,15 @@ namespace master {
 
 int xrdOpen(const char *path, int oflag) {
     static int fakeDes=50;
-    std::cout << "xrd openfile " << path << " returning ("
-              << fakeDes << ")" << std::endl;
+    LOGGER_DBG << "xrd openfile " << path << " returning ("
+               << fakeDes << ")" << std::endl;
     return fakeDes;
 }
 
 long long xrdRead(int fildes, void *buf, unsigned long long nbyte) {
     static char fakeResults[] = "This is totally fake.";
     int len=strlen(fakeResults);
-    std::cout << "xrd read " << fildes << ": faked" << std::endl;
+    LOGGER_DBG << "xrd read " << fildes << ": faked" << std::endl;
     if(nbyte > static_cast<unsigned long long>(len)) {
         nbyte = len+1;
     }
@@ -74,13 +78,13 @@ long long xrdWrite(int fildes, const void *buf,
                    unsigned long long nbyte) {
     std::string s;
     s.assign(static_cast<const char*>(buf), nbyte);
-    std::cout << "xrd write (" <<  fildes << ") \""
+    LOGGER_DBG << "xrd write (" <<  fildes << ") \""
               << s << std::endl;
     return nbyte;
 }
 
 int xrdClose(int fildes) {
-    std::cout << "xrd close (" << fildes << ")" << std::endl;
+    LOGGER_DBG << "xrd close (" << fildes << ")" << std::endl;
     return 0; // Always pretend to succeed.
 }
 
@@ -150,13 +154,13 @@ namespace {
 #   define QSM_TIMESTART(name, extra) \
     Timer t; \
     t.start(); \
-    Timer::write(std::cout, t.startTime); \
-    std::cout << ' ' << name << ' ' << extra << " in flight\n";
+    Timer::write(LOG_STRM(Info), t.startTime); \
+    LOGGER_INF << ' ' << name << ' ' << extra << " in flight\n";
 #   define QSM_TIMESTOP(name, extra) \
     t.stop(); \
-    Timer::write(std::cout, t.stopTime); \
-    std::cout << " (" << t.getElapsed() << " s) " \
-              << name << ' ' << extra << " finished\n";
+    Timer::write(LOG_STRM(Info), t.stopTime); \
+    LOGGER_INF << " (" << t.getElapsed() << " s) " \
+               << name << ' ' << extra << " finished\n";
 #else // Turn off xrd call timing
 #   define QSM_TIMESTART(name, path)
 #   define QSM_TIMESTOP(name, path)
@@ -167,10 +171,41 @@ namespace qserv {
 namespace master {
 
 int xrdOpen(const char *path, int oflag) {
+#ifdef DBG_TEST_OPEN_FAILURE_1
+    /*************************************************************
+     * TEST FAILURE MODE: Intermittent XRD Open for Read Failure
+     * ***********************************************************/
+    if (oflag == O_RDONLY) {
+        int coinToss = rand()%5;
+        if (coinToss == 0) {
+            LOGGER_WRN << "YOU ARE UNLUCKY (coin=" << coinToss
+                       << "), SABOTAGING XRD OPEN!!!!" << std::endl;
+            return -1;
+        } else {
+            LOGGER_WRN << "YOU DODGED A BULLET (coin=" << coinToss
+                       << "), NO SABOTAGE THIS TIME!!" << std::endl;
+        }
+    }
+    /*************************************************/
+#elif defined DBG_TEST_OPEN_FAILURE_2
+    /*************************************************************
+     * TEST FAILURE MODE: Delay before XRD Open for Read
+     * (Provides time to manually kill worker process for testing
+     * chunk-level failure recovery.)
+     * ***********************************************************/
+    if (oflag == O_RDONLY) {
+        LOGGER_WRN << "SLEEPING FOR 10 SECONDS" << std::endl;
+        boost::this_thread::sleep(boost::posix_time::seconds(10));
+    }
+    /*************************************************/
+#endif
     char const* abbrev = path;
     while((abbrev[0] != '\0') && *abbrev++ != '/');
     QSM_TIMESTART("Open", abbrev);
+    LOGGER_DBG << "CALLING XrdPosixXrootd::Open(path =" << path << ", oflag ="
+               << oflag << ")" << std::endl;
     int res = XrdPosixXrootd::Open(path,oflag);
+    LOGGER_DBG << "XrdPosixXrootd::Open() returned " << res << std::endl;
     QSM_TIMESTOP("Open", abbrev);
     return res;
 }
@@ -181,6 +216,7 @@ int xrdOpenAsync(const char* path, int oflag, XrdPosixCallBack *cbP) {
     while((abbrev[0] != '\0') && *abbrev++ != '/');
     while((abbrev[0] != '\0') && *abbrev++ != '/');
     QSM_TIMESTART("OpenAsy", abbrev);
+    LOGGER_DBG << "CALLING XrdPosixXrootd::Open()" << std::endl;
     int res = XrdPosixXrootd::Open(path, oflag, 0, cbP);
     // not sure what to do with mode, so set to 0 right now.
     QSM_TIMESTOP("OpenAsy", abbrev);
@@ -189,29 +225,106 @@ int xrdOpenAsync(const char* path, int oflag, XrdPosixCallBack *cbP) {
 }
 
 long long xrdRead(int fildes, void *buf, unsigned long long nbyte) {
+    LOGGER_DBG << "xrd trying to read (" <<  fildes << ") "
+               << nbyte << " bytes" << std::endl;
     QSM_TIMESTART("Read", fildes);
     long long readCount;
+    LOGGER_DBG << "CALLING XrdPosixXrootd::Read()" << std::endl;
     readCount = XrdPosixXrootd::Read(fildes, buf, nbyte);
     QSM_TIMESTOP("Read", fildes);
+
+#ifdef DBG_TEST_READ_FAILURE_1
+    /*************************************************
+     * TEST FAILURE MODE: Reading query result fails.
+     * ***********************************************/
+    LOGGER_WRN << "SABOTAGING XRD READ!!!!" << std::endl;
+    readCount = -1;
+    /*************************************************/
+#endif
+
+#ifdef DBG_TEST_READ_FAILURE_2
+    /*************************************************
+     * TEST FAILURE MODE: Fuzz testing - simulate incomplete results.
+     * ***********************************************/
+    LOGGER_WRN << "SABOTAGING XRD READ!!!!" << std::endl;
+    LOGGER_WRN << "XrdPosixXrootd::Read() returned: " << readCount << std::endl;
+    readCount = rand()%readCount;
+    LOGGER_WRN << "Set readCount = " << readCount << std::endl;
+    /*************************************************/
+#endif
+
+#ifdef DBG_TEST_READ_FAILURE_3
+    /*************************************************
+     * TEST FAILURE MODE: Fuzz testing - simulate corrupted byte.
+     * ***********************************************/
+    LOGGER_WRN << "SABOTAGING XRD READ!!!!" << std::endl;
+    LOGGER_WRN << "XrdPosixXrootd::Read() returned: " << readCount << std::endl;
+    int position = rand()%readCount;
+    char value = (char)(rand()%256);
+    *((char *)buf + position) = value;
+    /*************************************************/
+#endif
+
+#ifdef DBG_TEST_READ_FAILURE_4
+    /*************************************************
+     * TEST FAILURE MODE: Intermittent Read Failure
+     * ***********************************************/
+    int coinToss = rand()%10;
+    if (coinToss == 0) {
+        LOGGER_WRN << "YOU ARE UNLUCKY, SABOTAGING XRD READ!!!!" << std::endl;
+        readCount = -1;
+    } else {
+        LOGGER_WRN << "YOU DODGED A BULLET, NO SABOTAGE THIS TIME!!" << std::endl;
+    }
+    /*************************************************/
+#endif
+
+    if (readCount < 0) {
+         if (errno == 0) errno = EREMOTEIO;
+         return -1;
+    }
+
     return readCount;
 }
 
 long long xrdWrite(int fildes, const void *buf,
                    unsigned long long nbyte) {
+    std::string s;
+    s.assign(static_cast<const char*>(buf), nbyte);
+    LOGGER_DBG << "xrd write (" <<  fildes << ") \""
+               << s << "\"" << std::endl;
     QSM_TIMESTART("Write", fildes);
+    LOGGER_DBG << "CALLING XrdPosixXrootd::Write()" << std::endl;
     long long res = XrdPosixXrootd::Write(fildes, buf, nbyte);
     QSM_TIMESTOP("Write", fildes);
+
+#ifdef DBG_TEST_WRITE_FAILURE_1
+    /*************************************************
+     * TEST FAILURE MODE: Writing query result fails.
+     * ***********************************************/
+    LOGGER_WRN << "SABOTAGING XRD WRITE!!!!" << std::endl;
+    res = -1;
+    /*************************************************/
+#endif
+
+    if (res < 0) {
+         if (errno == 0) errno = EREMOTEIO;
+         return -1;
+    }
+
     return res;
 }
 
 int xrdClose(int fildes) {
     QSM_TIMESTART("Close", fildes);
+    LOGGER_DBG << "CALLING XrdPosixXrootd::Close()" << std::endl;
     int result = XrdPosixXrootd::Close(fildes);
     QSM_TIMESTOP("Close", fildes);
     return result;
 }
 
 long long xrdLseekSet(int fildes, unsigned long long offset) {
+    LOGGER_DBG << "CALLING XrdPosixXrootd::Lseek()" << std::endl;
     return XrdPosixXrootd::Lseek(fildes, offset, SEEK_SET);
 }
 
@@ -225,6 +338,7 @@ std::string xrdGetEndpoint(int fildes) {
     // "the max you will ever need is 264 bytes"
     const int maxSize=265;
     char buffer[maxSize];
+    LOGGER_DBG << "CALLING XrdPosixXrootd::endPoint()" << std::endl;
     int port = XrdPosixXrootd::endPoint(fildes, buffer, maxSize);
     if(port > 0) { // valid port?
         return std::string(buffer);
@@ -270,7 +384,7 @@ void xrdReadToLocalFile(int fildes, int fragmentSize,
                              S_IRUSR|S_IWUSR);
     if(localFileDesc == -1) {
         while(errno == -EMFILE) {
-            std::cout << "EMFILE while trying to write locally." << std::endl;
+            LOGGER_WRN << "EMFILE while trying to write locally." << std::endl;
             sleep(1);
             localFileDesc = open(filename,
                                  O_CREAT|O_WRONLY|O_TRUNC,
@@ -311,8 +425,8 @@ void xrdReadToLocalFile(int fildes, int fragmentSize,
     if(localFileDesc != -1) {
         int res = close(localFileDesc);
         if((res == -1) && (writeRes >= 0)) {
-            std::cout << "Bad local close for descriptor " << localFileDesc
-                      << std::endl;
+            LOGGER_ERR << "Bad local close for descriptor " << localFileDesc
+                       << std::endl;
             writeRes = -errno;
         } else {
             writeRes = bytesWritten; // Update successful result.

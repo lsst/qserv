@@ -46,6 +46,8 @@
 
 #include "SqlSQL2TokenTypes.hpp" // For ANTLR typing.
 
+#include "lsst/qserv/Logger.h"
+
 namespace lsst { 
 namespace qserv {
 namespace master {
@@ -83,10 +85,10 @@ SelectList::dbgPrint() const {
     if(!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
-    std::cout << "Parsed value expression for select list." << std::endl;
+    LOGGER_INF << "Parsed value expression for select list." << std::endl;
     std::copy(_valueExprList->begin(),
               _valueExprList->end(),
-              std::ostream_iterator<ValueExprPtr>(std::cout, "\n"));    
+              std::ostream_iterator<ValueExprPtr>(LOG_STRM(Info), "\n"));    
 }
 
 std::ostream& 

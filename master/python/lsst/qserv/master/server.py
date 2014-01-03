@@ -27,7 +27,6 @@
 
 # Standard Python imports
 from itertools import ifilter
-import logging
 import os
 import sys
 import time
@@ -41,6 +40,7 @@ import twisted.web.server
 from twisted.web import xmlrpc
 
 # Package imports
+import logger
 from appInterface import AppInterface
 import config
 from lsst.qserv.meta.status import QmsException
@@ -58,7 +58,7 @@ class ClientResource(twisted.web.resource.Resource):
         self.interface = interface
 
     def render_GET(self, request):
-        print "rendering get"
+        logger.inf("rendering get")
         if "action" in request.args:
             action = request.args["action"][0]
             flattenedargs = dict(map(lambda t:(t[0],t[1][0]), request.args.items()))
@@ -66,7 +66,7 @@ class ClientResource(twisted.web.resource.Resource):
         return "Error, no action found"
 
     def getChild(self, name, request):
-        print "trying to get child ", name
+        logger.inf("trying to get child ", name)
         if name == '':
             return self
 
@@ -75,7 +75,7 @@ class ClientResource(twisted.web.resource.Resource):
 
 def printdir(obj):
     for f in dir(obj):
-        print "%s -- %s" % (f, getattr(obj,f))
+        logger.inf("%s -- %s" % (f, getattr(obj,f)))
 
 class FunctionResource(twisted.web.resource.Resource):
     isLeaf = True
@@ -84,8 +84,8 @@ class FunctionResource(twisted.web.resource.Resource):
         self.function = func
 
     def render_GET(self, request):
-        print "rendering get, args are", request.args
-        print "postpath is", request.postpath
+        logger.inf("rendering get, args are", request.args)
+        logger.inf("postpath is", request.postpath)
         return self.function(request)
 
     def getChild(self, name, request):
@@ -107,7 +107,7 @@ class XmlRpcInterface(xmlrpc.XMLRPC):
         map(lambda x: setattr(self, "_".join([prefix,x]),
                               getattr(self.appInterface, x)),
             self.appInterface.publishable)
-        print "contents:"," ".join(filter(lambda x:"xmlrpc_" in x, dir(self)))
+        logger.inf("contents:"," ".join(filter(lambda x:"xmlrpc_" in x, dir(self))))
         pass
 
     def xmlrpc_echo(self, echostr):
@@ -124,7 +124,7 @@ class HttpInterface:
                                   okname)
     def query(self, req):
         "Issue a query. Params: q=querystring, h=hintstring"
-        print req
+        logger.inf(req)
         flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
         #printdir(arg)
 
@@ -135,7 +135,7 @@ class HttpInterface:
                 warning = "FIXME: No unmarshalling code for hints."
                 warning += "WARNING, no partitions will be used."
                 resp += warning
-                print warning
+                logger.wrn(warning)
                 h = None
 
             taskId = self.appInterface.query(flatargs('q'), h)
@@ -158,7 +158,7 @@ class HttpInterface:
 
     def check(self, req):
         "Check status of query or task. Params: h=handle"
-        print req
+        logger.inf(req)
         key = 'id'
         flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
         if key in req.args and int(flatargs[key]):
@@ -172,7 +172,7 @@ class HttpInterface:
                                "where <taskId> was returned from the initial query."])
     def results(self, req):
         "Get results location for a query or task. Params: h=handle"
-        print req
+        logger.inf(req)
         flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
         key = 'id'
         if key in req.args:
@@ -202,7 +202,7 @@ class Master:
             cfg = config.config
             self.port = cfg.getint("frontend","port")
         except:
-            print "Bad or missing port for server. Using",defaultPort
+            logger.wrn("Bad or missing port for server. Using",defaultPort)
             self.port = defaultPort
         pass
 
@@ -219,8 +219,8 @@ class Master:
         try:
             ai.initMetadataCache()
         except QmsException as qe:
-            print qe.getErrMsg()
-            raise
+            logger.err(qe.getErrMsg())
+            return
 
         # not sure I need the sub-pat http interface
         root.putChild(defaultPath, ClientResource(c))
@@ -233,7 +233,7 @@ class Master:
         # init listening
         reactor.listenTCP(self.port, twisted.web.server.Site(root))
 
-        print "Starting Qserv interface on port: %d"% self.port
+        logger.inf("Starting Qserv interface on port: %d"% self.port)
 
         # Insert a memento so we can check if the reactor is running.
         reactor.lsstRunning = True

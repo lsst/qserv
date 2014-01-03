@@ -41,9 +41,10 @@
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/TableRefN.h"
 #include "lsst/qserv/master/QueryTemplate.h"
+#include "lsst/qserv/Logger.h"
+
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
-
 
 ////////////////////////////////////////////////////////////////////////
 // Anonymous helpers
@@ -87,13 +88,13 @@ public:
         RefAST current;
         RefAST nextCache;
         Iter operator++(int) {
-            //std::cout << "advancingX..: " << current->getText() << std::endl;
+            //LOGGER_INF << "advancingX..: " << current->getText() << std::endl;
             Iter tmp = *this;
             ++*this;
             return tmp;
         }
         Iter& operator++() {
-            //std::cout << "advancing..: " << current->getText() << std::endl;
+            //LOGGER_INF << "advancing..: " << current->getText() << std::endl;
             Check c;
             if(nextCache.get()) {
                 current = nextCache;
@@ -232,7 +233,7 @@ public:
     RefGenerator(antlr::RefAST firstRef,
                  boost::shared_ptr<ParseAliasMap> aliases)
         : _cursor(firstRef), _aliases(aliases) {
-        std::cout << *_aliases << std::endl;
+        LOGGER_INF << *_aliases << std::endl;
 
     }
     TableRefN::Ptr get() const {
@@ -271,7 +272,7 @@ public:
             next();
             break;
         default:
-            // std::cout << "next type is:" << _cursor->getType()
+            // LOGGER_INF << "next type is:" << _cursor->getType()
             //           << " and text is:" << _cursor->getText() << std::endl;
             break;
         }
@@ -334,10 +335,10 @@ FromFactory::_import(antlr::RefAST a) {
     _list.reset(new FromList());
     _list->_tableRefns.reset(new TableRefnList());
 
-    // std::cout << "FROM starts with: " << a->getText()
+    // LOGGER_INF << "FROM starts with: " << a->getText()
     //           << " (" << a->getType() << ")" << std::endl;
     std::stringstream ss;
-    //std::cout << "FROM indented: " << walkIndentedString(a) << std::endl;
+    //LOGGER_INF << "FROM indented: " << walkIndentedString(a) << std::endl;
     for(RefGenerator refGen(a, _aliases); !refGen.isDone(); refGen.next()) {
         TableRefN::Ptr p = refGen.get();
         ss << "Found ref:" ;
@@ -346,5 +347,5 @@ FromFactory::_import(antlr::RefAST a) {
         _list->_tableRefns->push_back(p);
     }
     std::string s(ss.str());
-    if(s.size() > 0) { std::cout << s << std::endl; }
+    if(s.size() > 0) { LOGGER_INF << s << std::endl; }
 }

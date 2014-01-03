@@ -27,6 +27,7 @@
 
 // Package
 #include "lsst/qserv/master/Substitution.h"
+#include "lsst/qserv/Logger.h"
 
 namespace qMaster = lsst::qserv::master;
 
@@ -49,7 +50,7 @@ std::string qMaster::Substitution::transform(Mapping const& m) {
 
 #if 0
     for(Mapping::const_iterator i = m.begin(); i != m.end(); ++i) {
-        std::cout << "mapping " << i->first << " " << i->second << std::endl;
+        LOGGER_INF << "mapping " << i->first << " " << i->second << std::endl;
     }
 #endif
     for(std::vector<Item>::const_iterator i = _index.begin();

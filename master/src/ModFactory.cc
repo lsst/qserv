@@ -47,6 +47,8 @@
 #include "lsst/qserv/master/OrderByClause.h" // Clauses
 #include "lsst/qserv/master/GroupByClause.h" // Clauses
 
+#include "lsst/qserv/Logger.h"
+
 namespace lsst {
 namespace qserv {
 namespace master {
@@ -71,7 +73,7 @@ public:
     OrderByH(ModFactory& mf) : _mf(mf) {}
     virtual void operator()(antlr::RefAST n) {
         // Log this.
-        //std::cout << "Importing Orderby:" << walkIndentedString(n) << std::endl;
+        //LOGGER_INF << "Importing Orderby:" << walkIndentedString(n) << std::endl;
         _mf._importOrderBy(n);
     }
 private:
@@ -122,7 +124,7 @@ void ModFactory::attachTo(SqlSQL2Parser& p) {
 
 void ModFactory::_importLimit(antlr::RefAST a) {
     // Limit always has an int.
-    std::cout << "Limit got " << walkTreeString(a) << std::endl;
+    LOGGER_INF << "Limit got " << walkTreeString(a) << std::endl;
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importLimit(NULL)");
     }
@@ -133,7 +135,7 @@ void ModFactory::_importLimit(antlr::RefAST a) {
 void ModFactory::_importOrderBy(antlr::RefAST a) {
     _orderBy.reset(new OrderByClause());
     // ORDER BY takes a column ref (expression)
-    //std::cout << "orderby got " << walkTreeString(a) << std::endl;
+    //LOGGER_INF << "orderby got " << walkTreeString(a) << std::endl;
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importOrderBy(NULL)");
     }
@@ -181,7 +183,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
 void ModFactory::_importGroupBy(antlr::RefAST a) {
     _groupBy = boost::make_shared<GroupByClause>();
     // GROUP BY takes a column reference (expression?)
-    //std::cout << "groupby got " << walkTreeString(a) << std::endl;
+    //LOGGER_INF << "groupby got " << walkTreeString(a) << std::endl;
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importGroupBy(NULL)");
     }
@@ -221,7 +223,7 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importHaving(NULL)");
     }
-    //std::cout << "having got " << walkTreeString(a) << std::endl;
+    //LOGGER_INF << "having got " << walkTreeString(a) << std::endl;
     // For now, we will silently traverse and recognize but ignore.
 
     // TODO:
@@ -243,6 +245,6 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     _having->_tree.reset(); // NULL-out. Unhandled syntax.
 
     // FIXME: Log this at the WARNING level
-    std::cout << "Parse warning: HAVING clause unhandled." << std::endl;
+    LOGGER_WRN << "Parse warning: HAVING clause unhandled." << std::endl;
 }
 }}} // lsst::qserv::master

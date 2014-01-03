@@ -30,6 +30,7 @@
 #include "lsst/qserv/master/ColumnRefMap.h"
 #include <stdexcept>
 #include "lsst/qserv/master/ColumnRef.h"
+#include "lsst/qserv/Logger.h"
 
 namespace lsst {
 namespace qserv {
@@ -53,8 +54,8 @@ boost::shared_ptr<ColumnRef const>
 ColumnRefMap::getRef(antlr::RefAST r) const {
     RefMap::const_iterator ref = _refs.find(r);
     if(ref == _refs.end()) {
-        std::cout << "couldn't find " << tokenText(r) << " in";
-        printRefs(std::cout);
+         LOGGER_ERR << "couldn't find " << tokenText(r) << " in";
+        printRefs(LOG_STRM(Error));
         throw std::invalid_argument("Node not tracked in _refs.");
     }
     return ref->second;
