@@ -34,6 +34,7 @@
 #include "lsst/qserv/master/sqltoken.h" // sqlShouldSeparate
 #include "lsst/qserv/master/ColumnRef.h"
 #include "lsst/qserv/master/TableRefN.h"
+#include "lsst/qserv/Logger.h"
 
 namespace lsst {
 namespace qserv {
@@ -195,11 +196,9 @@ void QueryTemplate::optimize() {
     }
     em.pack();
     _entries.swap(em._entries);
-#if 0 // Debugging.
-    std::cout << "merged " << _entries.size() << " entries to "
-              << em._entries.size() << std::endl;
-    std::cout << "was: " << outputString(_elements) << std::endl;
-    std::cout << "now: " << outputString(em._entries) << std::endl;
-#endif
+    //LOGGER_DBG << "merged " << _entries.size() << " entries to "
+    //           << em._entries.size() << std::endl;
+    //LOGGER_DBG << "was: " << outputString(_elements) << std::endl;
+    //LOGGER_DBG << "now: " << outputString(em._entries) << std::endl;
 }
 }}} // lsst::qserv::master

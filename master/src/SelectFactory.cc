@@ -55,6 +55,8 @@
 #include "lsst/qserv/master/parseTreeUtil.h"
 #include "lsst/qserv/master/TableRefN.h"
 
+#include "lsst/qserv/Logger.h"
+
 ////////////////////////////////////////////////////////////////////////
 // SelectFactory
 ////////////////////////////////////////////////////////////////////////
@@ -179,7 +181,7 @@ boost::shared_ptr<SelectList> SelectListFactory::getProduct() {
 
 void
 SelectListFactory::_import(RefAST selectRoot) {
-    //    std::cout << "Type of selectRoot is "
+    //    LOGGER_INF << "Type of selectRoot is "
     //              << selectRoot->getType() << std::endl;
 
     for(; selectRoot.get();
@@ -213,7 +215,7 @@ SelectListFactory::_import(RefAST selectRoot) {
 void
 SelectListFactory::_addSelectColumn(RefAST expr) {
     // Figure out what type of value expr, and create it properly.
-    // std::cout << "SelectCol Type of:" << expr->getText()
+    // LOGGER_INF << "SelectCol Type of:" << expr->getText()
     //           << "(" << expr->getType() << ")" << std::endl;
     if(!expr.get()) {
         throw std::invalid_argument("Attempted _addSelectColumn(NULL)");
@@ -225,7 +227,7 @@ SelectListFactory::_addSelectColumn(RefAST expr) {
     if(!child.get()) {
         throw ParseException("Missing VALUE_EXP child", expr);
     }
-    //    std::cout << "child is " << child->getType() << std::endl;
+    //    LOGGER_INF << "child is " << child->getType() << std::endl;
     ValueExprPtr ve = _vFactory->newExpr(child);
 
     // Annotate if alias found.
@@ -252,7 +254,7 @@ SelectListFactory::_addSelectStar(RefAST child) {
             throw ParseException("Missing name node.", child);
         }
         tableName = tokenText(table);
-        std::cout << "table ref'd for *: " << tableName << std::endl;
+        LOGGER_INF << "table ref'd for *: " << tableName << std::endl;
     }
     vt = ValueFactor::newStarFactor(tableName);
     _valueExprList->push_back(ValueExpr::newSimple(vt));

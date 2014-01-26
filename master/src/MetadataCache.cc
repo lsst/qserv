@@ -33,6 +33,7 @@
   */
 
 #include "lsst/qserv/master/MetadataCache.h"
+#include "lsst/qserv/Logger.h"
 
 namespace qMaster = lsst::qserv::master;
 
@@ -143,11 +144,8 @@ qMaster::MetadataCache::DbInfo::getChunkLevel(std::string const& tableName) cons
 	chunklevel=ti.getLogicalPart();
       }
     }
-#ifdef DEBUG
-#if DEBUG > 2
-    std::cout << "DbInfo::getChunkLevel() : tableName : " << tableName << ", chunkLevel : " << chunklevel << std::endl;
-#endif
-#endif
+    LOGGER_DBG << "DbInfo::getChunkLevel() : tableName : " << tableName
+               << ", chunkLevel : " << chunklevel << std::endl;
     return chunklevel;
 }
 
@@ -570,13 +568,13 @@ qMaster::MetadataCache::getDbInfo(std::string const& dbName) {
   */
 void
 qMaster::MetadataCache::printSelf() {
-    std::cout << "\n\nMetadata Cache in C++:" << std::endl;
+    LOGGER_INF << "\n\nMetadata Cache in C++:" << std::endl;
     std::map<std::string, DbInfo>::const_iterator itr;
     boost::lock_guard<boost::mutex> m(_mutex);
     for (itr=_dbs.begin() ; itr!=_dbs.end() ; ++itr) {
-        std::cout << "db: " << itr->first << ": " << itr->second << "\n";
+        LOGGER_INF << "db: " << itr->first << ": " << itr->second << "\n";
     }
-    std::cout << std::endl;
+    LOGGER_INF << std::endl;
 }
 
 /** Operator<< for printing DbInfo object

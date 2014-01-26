@@ -34,6 +34,7 @@
 #include "XrdPosix/XrdPosixXrootd.hh"
 
 // Package
+#include "lsst/qserv/Logger.h"
 #include "lsst/qserv/common/WorkQueue.h"
 #include "lsst/qserv/master/xrootd.h"
 #include "lsst/qserv/master/xrdfile.h"
@@ -60,14 +61,14 @@ public:
             ++unitsDone;
         }
         if(result < 0) {
-            std::cout << "error " << result << " " << errno 
-                      << " with path " 
-                      << _url << std::endl;
+            LOGGER_ERR << "error " << result << " " << errno 
+                       << " with path " 
+                       << _url << std::endl;
             return;
         }
         result = qMaster::xrdClose(result);
         if(result < 0) {
-            std::cout << "error closing path " << _url << std::endl;
+            LOGGER_ERR << "error closing path " << _url << std::endl;
             return;
         }
         
@@ -100,8 +101,8 @@ public:
     
     void run() {
         int const poolSize = 1000;
-        std::cout << "Using host=" << _hostport 
-                  << " range: " << _low << " " << _high << std::endl;
+        LOGGER_INF << "Using host=" << _hostport 
+                   << " range: " << _low << " " << _high << std::endl;
 
         WorkQueue wq(poolSize);
         for(int i=_low; i < _high; ++i) {

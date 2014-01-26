@@ -46,6 +46,7 @@
 #include "lsst/qserv/master/QueryPlugin.h"
 #include "lsst/qserv/master/ParseException.h"
 #include "lsst/qserv/master/ifaceMeta.h" // Retrieve metadata object
+#include "lsst/qserv/Logger.h"
 
 #define DEBUG 0
 
@@ -55,7 +56,7 @@ namespace master {
 
 void printConstraints(ConstraintVector const& cv) {
     std::copy(cv.begin(), cv.end(),
-              std::ostream_iterator<Constraint>(std::cout, ","));
+              std::ostream_iterator<Constraint>(LOG_STRM(Info), ","));
 
 }
 
@@ -123,7 +124,7 @@ boost::shared_ptr<ConstraintVector> QuerySession::getConstraints() const {
         //printConstraints(*cv);
         return cv;
     } else {
-        //std::cout << "No constraints." << std::endl;
+        //LOGGER_INF << "No constraints." << std::endl;
     }
     // No constraint vector
     return cv;
@@ -253,14 +254,14 @@ void QuerySession::_showFinal() {
     QueryTemplate par = _stmtParallel.front()->getTemplate();
     QueryTemplate mer = _stmtMerge->getTemplate();
 
-    std::cout << "QuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
-    std::cout << "QuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
+    LOGGER_INF << "QuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
+    LOGGER_INF << "QuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
     if(!_context->scanTables.empty()) {
         StringPairList::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();
             i != e; ++i) {
-            std::cout << "ScanTable: " << i->first << "." << i->second
-                      << std::endl;
+            LOGGER_INF << "ScanTable: " << i->first << "." << i->second
+                       << std::endl;
         }
     }
 }
@@ -285,53 +286,39 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) {
         i != e; ++i) {
         tlist.push_back((**i).getTemplate());
 
-#ifdef DEBUG
-#if DEBUG > 1
-	std::cout << "QuerySession::_buildChunkQueries() : adding _stmtParallel diagnose() " << std::endl;
-#endif
-#endif
+	LOGGER_DBG << "QuerySession::_buildChunkQueries() : adding _stmtParallel diagnose()"
+                   << std::endl;
 
 	(**i).diagnose();
     }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
-        std::cout << "QuerySession::_buildChunkQueries() : Non-subchunked" << std::endl;
+        LOGGER_INF << "QuerySession::_buildChunkQueries() : Non-subchunked" << std::endl;
         for(TlistIter i=tlist.begin(), e=tlist.end(); i != e; ++i) {
             q.push_back(_context->queryMapping->apply(s, *i));
         }
     } else { // subchunked:
-        std::cout << "QuerySession::_buildChunkQueries() : subchunked " << std::endl;
+        LOGGER_INF << "QuerySession::_buildChunkQueries() : subchunked " << std::endl;
         ChunkSpecSingle::List sList = ChunkSpecSingle::makeList(s);
 
-#ifdef DEBUG
-#if DEBUG > 1
-	std::cout << "QuerySession::_buildChunkQueries() : subchunks :";
-	std::copy(sList.begin(), sList.end(),
-              std::ostream_iterator<ChunkSpecSingle>(std::cout, ","));
-	std::cout << std::endl;
-#endif
-#endif
+        LOGGER_DBG << "QuerySession::_buildChunkQueries() : subchunks :";
+        std::copy(sList.begin(), sList.end(),
+            std::ostream_iterator<ChunkSpecSingle>(LOG_STRM(Debug), ","));
+        LOGGER_DBG << std::endl;
         typedef ChunkSpecSingle::List::const_iterator ChunkIter;
         for(ChunkIter i=sList.begin(), e=sList.end(); i != e; ++i) {
             for(TlistIter j=tlist.begin(), je=tlist.end(); j != je; ++j) {
 
-#ifdef DEBUG
-#if DEBUG > 2
-	      std::cout << "QuerySession::_buildChunkQueries() : adding query " << _context->queryMapping->apply(*i, *j) << std::endl;
-#endif
-#endif
-                q.push_back(_context->queryMapping->apply(*i, *j));
+	      LOGGER_DBG << "QuerySession::_buildChunkQueries() : adding query "
+                         << _context->queryMapping->apply(*i, *j) << std::endl;
+              q.push_back(_context->queryMapping->apply(*i, *j));
             }
         }
     }
 
-#ifdef DEBUG
-#if DEBUG > 2
-    std::cout << "QuerySession::_buildChunkQueries() : returning  queries : " << std::endl;
+    LOGGER_DBG << "QuerySession::_buildChunkQueries() : returning  queries : " << std::endl;
     for(unsigned int t=0;t<q.size();t++){
-      std::cout<<q.at(t)<< std::endl;
+        LOGGER_DBG << q.at(t) << std::endl;
     }
-#endif
-#endif
 
     return q;
 }
@@ -356,9 +343,9 @@ ChunkQuerySpec& QuerySession::Iter::dereference() const {
 void QuerySession::Iter::_buildCache() const {
     assert(_qs != NULL);
     _cache.db = _qs->_context->defaultDb;
-    std::cout << "scantables "
-              << (_qs->_context->scanTables.empty() ? "is " : "is not ")
-              << " empty" << std::endl;
+    LOGGER_INF << "scantables "
+               << (_qs->_context->scanTables.empty() ? "is " : "is not ")
+               << " empty" << std::endl;
 
     _cache.scanTables = _qs->_context->scanTables;
     _cache.queries = _qs->_buildChunkQueries(*_pos);

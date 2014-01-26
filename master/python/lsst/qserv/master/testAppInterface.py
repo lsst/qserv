@@ -37,6 +37,7 @@ import lsst.qserv.master
 from lsst.qserv.master import appInterface as appI
 from lsst.qserv.master.app import HintedQueryAction, makePmap
 from lsst.qserv.master import config
+from lsst.qserv.master import logger
 from db import Db
 
 def tryCountQuery():
@@ -55,10 +56,10 @@ def tryCountQuery():
 
     assert a.getIsValid()
     a.chunkLimit = 6
-    print "Trying q=",q
+    logger.inf("Trying q=", q)
     clear(tableName)
-    print a.invoke() 
-    print a.getResult()
+    logger.inf(a.invoke())
+    logger.inf(a.getResult())
     db = Db()
     db.activate()
     db.applySql("select * from %s;" % tableName) #could print this
@@ -101,7 +102,7 @@ class TestAppInterface(unittest.TestCase):
             a = appI.AppInterface()
             q = x
             result = a.queryNow(q, self._makeBadHint())
-        print result
+        logger.inf(result)
 
     def _readFile(self, filename):
         try:

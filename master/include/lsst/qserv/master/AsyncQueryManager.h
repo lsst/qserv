@@ -43,7 +43,8 @@
 #include <boost/thread.hpp>
 
 #include "lsst/qserv/master/DynamicWorkQueue.h"
-
+#include "lsst/qserv/master/xrdfile.h"
+#include "lsst/qserv/master/MessageStore.h"
 
 namespace lsst {
 namespace qserv {
@@ -57,8 +58,6 @@ class QuerySession;
 class TableMerger;
 class TableMergerConfig;
 class TransactionSpec;
-class XrdTransResult;
-
 
 //////////////////////////////////////////////////////////////////////
 // class AsyncQueryManager
@@ -92,6 +91,8 @@ public:
     void configureMerger(MergeFixup const& m,
                          std::string const& resultTable);
 
+    boost::shared_ptr<MessageStore> getMessageStore();
+
     int add(TransactionSpec const& t, std::string const& resultName);
     void join(int id);
     bool tryJoin(int id);
@@ -122,9 +123,9 @@ private:
     }
     void _readConfig(std::map<std::string,std::string> const& cfg);
     void _printState(std::ostream& os);
-    void _addNewResult(ssize_t dumpSize, std::string const& dumpFile,
+    void _addNewResult(int id, ssize_t dumpSize, std::string const& dumpFile,
                        std::string const& tableName);
-    void _addNewResult(PacIterPtr pacIter, std::string const& tableName);
+    void _addNewResult(int id, PacIterPtr pacIter, std::string const& tableName);
     void _squashExecution();
     void _squashRemaining();
 
@@ -152,6 +153,7 @@ private:
 
     std::string _xrootdHostPort;
     std::string _scratchPath;
+    boost::shared_ptr<MessageStore> _messageStore;
     boost::shared_ptr<TableMerger> _merger;
     boost::shared_ptr<QuerySession> _qSession;
 };

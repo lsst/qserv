@@ -31,6 +31,7 @@
 // Boost
 #include <boost/make_shared.hpp>
 // LSST 
+#include "lsst/qserv/Logger.h"
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/thread.h"
 #include "lsst/qserv/master/xrootd.h"
@@ -211,13 +212,13 @@ qMaster::Semaphore qMaster::TransactionCallable::_sema(120);
 
 void qMaster::TransactionCallable::operator()() {
     using namespace lsst::qserv::master;
-    std::cout << _spec.path << " in flight\n";
+    LOGGER_INF << _spec.path << " in flight\n";
     _result = xrdOpenWriteReadSaveClose(_spec.path.c_str(),
                                         _spec.query.c_str(),
                                         _spec.query.length(),
                                         _spec.bufferSize,
                                         _spec.savePath.c_str());
-    std::cout << _spec.path << " finished\n";
+    LOGGER_INF << _spec.path << " finished\n";
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -265,18 +266,18 @@ void qMaster::Manager::run() {
         thisSize = _threads.size();
         if(thisSize > _highWaterThreads) {
             lastReap = thisReap;
-            std::cout << "Reaping, "<< inFlight << " dispatched.\n";
+            LOGGER_INF << "Reaping, "<< inFlight << " dispatched.\n";
             _joinOne();
             time(&thisReap);
             reapSize = _threads.size();
-            std::cout << thisReap << " Done reaping, " << reapSize
+            LOGGER_INF << thisReap << " Done reaping, " << reapSize
                       << " still flying, completion rate=" 
                       << (1.0+thisSize - reapSize)*1.0/(1.0+thisReap - lastReap)
                       << "\n"  ;
         }
         if(_threads.size() > 1000) break; // DEBUG early exit.
     }
-    std::cout << "Joining\n";
+    LOGGER_INF << "Joining\n";
     std::for_each(_threads.begin(), _threads.end(), 
                   joinBoostThread<boost::shared_ptr<boost::thread> >());
 }
@@ -401,11 +402,11 @@ void qMaster::QueryManager::joinEverything() {
     time_t now;
     time_t last;
     while(1) {
-        std::cout << "Threads left:" << _threads.size() << std::endl;
+        LOGGER_INF << "Threads left:" << _threads.size() << std::endl;
         time(&last);
         _tryJoinAll();
         time(&now);
-        std::cout << "Joinloop took:" << now-last << std::endl;
+        LOGGER_INF << "Joinloop took:" << now-last << std::endl;
         if(_threads.size() > 0) {
             sleep(1);
         } else {

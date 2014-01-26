@@ -28,6 +28,7 @@
 
 #include "lsst/qserv/master/PacketIter.h"
 #include "lsst/qserv/master/xrdfile.h"
+#include "lsst/qserv/Logger.h"
 #include <fcntl.h>
 #include <errno.h>
 #include <iostream>
@@ -67,12 +68,11 @@ qMaster::PacketIter::~PacketIter() {
 }
 
 bool qMaster::PacketIter::incrementExtend() {
-    //std::cout << "packetiter Realloc to " << _current.second + _fragSize << std::endl;
+    LOGGER_DBG << "packetiter Realloc to " << _current.second + _fragSize << std::endl;
     void* ptr = ::realloc(_current.first, _current.second + _fragSize);
     if(!ptr) {
-        std::cerr << "Can't realloc for PacketIter. Raising exception." 
-                  << std::endl;
-        assert(ptr);
+        errno = ENOMEM;
+        throw "Failed to realloc for PacketIter.";
     }    
     _buffer = ptr;
     _current.first = static_cast<char*>(ptr);
@@ -89,6 +89,7 @@ bool qMaster::PacketIter::incrementExtend() {
 // lsst::qserv::master::PacketIter private methods
 ////////////////////////////////////////////////////////////////////////
 void qMaster::PacketIter::_setup(bool debug) {
+    _errno = 0; // Important to initialize for proper error handling.
     const int minFragment = 65536;
     _memo = false;
     if(!debug && (_fragSize < minFragment)) _fragSize = minFragment;
@@ -96,11 +97,12 @@ void qMaster::PacketIter::_setup(bool debug) {
     assert(sizeof(char) == 1);
     assert(_current.first == 0);
     assert(_fragSize > 0);
+    // malloc() is used here rather than the "new" operator because a low-level
+    // bucket of bytes is desired.
     _buffer = malloc(_fragSize); 
     if(_buffer == NULL) {
-        std::cerr << "Can't malloc for PacketIter. Raising exception." 
-                  << std::endl;
-        assert(_buffer != NULL);
+        errno = ENOMEM;
+        throw "Failed to malloc for PacketIter.";
     }
     if(!_fileName.empty()) {
         _realFd = open(_fileName.c_str(), O_RDONLY);
@@ -122,24 +124,26 @@ void qMaster::PacketIter::_increment() {
 
 void qMaster::PacketIter::_fill(Value& v) {
     int readRes = 0;
-    if(_stop) { 
-        v.first = 0; 
+    if(_stop) {
+        v.first = 0;
         v.second = 0;
         return;
     }
     if(_xrdFd != 0) {
-        readRes = xrdRead(_xrdFd, v.first, 
-                          static_cast<unsigned long long>(v.second));
+        readRes = xrdRead(_xrdFd, v.first, static_cast<unsigned long long>(v.second));
+        if (readRes < 0) {
+            throw "Remote I/O error during XRD read.";
+        }
     } else if(!_fileName.empty()) {
         readRes = ::read(_realFd, v.first, v.second);
     } else {
         readRes = 0;
     }
-     
+
     if(readRes < 0) {
         //Report error somehow
         _errno = errno;
-    } 
+    }
     if(readRes < static_cast<int>(v.second)) {
         _stop = true;
     }

@@ -36,13 +36,14 @@ import xmlrpclib
 
 # Local package imports
 import server 
+import logger
 
 def runSanityClient(): 
     """Top-level function that checks the running server.
     Meant to be invoked from the driver program."""
     url = "http://localhost:%d/%s" % (server.defaultPort, server.defaultXmlPath)
     res = sanityCheckServer(url)
-    print "Sanity check okay? ", str(res)
+    logger.inf("Sanity check okay? ", str(res))
 
 
 def sanityCheckServer(url):
@@ -50,6 +51,6 @@ def sanityCheckServer(url):
     s = xmlrpclib.Server(url)
     ret = s.echo(echostring)
     if ret != echostring:
-        print "Expected %s, got %s" % (echostring, ret)
+        logger.inf("Expected %s, got %s" % (echostring, ret))
         return False
     return True

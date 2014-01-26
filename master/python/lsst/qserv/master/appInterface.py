@@ -25,6 +25,7 @@ from itertools import ifilter
 import time
 
 # Package imports
+import logger
 import app
 import proxy
 import lsst.qserv.master.config as config
@@ -93,8 +94,8 @@ class AppInterface:
         raise StandardError("Unimplemented")
 
     def submitQueryWithLock(self, query, conditions):
-        """Simplified mysqlproxy version.
-        @returns result table name, lock table name, but before completion."""
+        """Simplified mysqlproxy version.  
+        @returns result table name, lock/message table name, but before completion."""
         proxyName = conditions["client_dst_name"]
         proxyThread = conditions["server_thread_id"]
         ## FIXME: Use the proxyId to match up
@@ -109,13 +110,13 @@ class AppInterface:
         # shorter than intermediate table names.
         # This allows in-place name replacement optimization while merging.
         resultName = "%s.result_%d" % (self._resultDb, taskId)
-        lockName = "%s.lock_%d" % (self._resultDb, taskId)
+        lockName = "%s.message_%d" % (self._resultDb, taskId)
         lock = proxy.Lock(lockName)
         if not lock.lock():
             return ("error", "error",
                     "error locking result, check qserv/db config.")
-        a = app.InbandQueryAction(query, conditions,
-                                  lambda e: lock.addError(e), resultName)
+        a = app.InbandQueryAction(query, conditions, 
+                                  lock.setSessionId, resultName)
         if a.getIsValid():
             self._callWithThread(a.invoke)
             lock.unlockAfter(self._getThreadFunc(), a.getResult)
@@ -187,10 +188,10 @@ class AppInterface:
             args = sys.argv #take the original arguments
             args.insert(0, sys.executable) # add python
             os.execv(sys.executable, args) # replace self with new python.
-            print "Reset failed:",sys.executable, str(args)
+            logger.err("Reset failed:", sys.executable, str(args))
             return # This will not return.  os.execv should overwrite us.
         else:
-            print "<Not resetting: no reactor>"
+            logger.err("<Not resetting: no reactor>")
         pass
 
     def stop(self):

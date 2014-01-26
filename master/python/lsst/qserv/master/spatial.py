@@ -26,6 +26,7 @@
 import lsst.qserv.master.config
 from lsst.qserv.master.geometry import SphericalBoxPartitionMap, SphericalBox
 from lsst.qserv.master import getDbStriping
+from lsst.qserv.master import logger
 
 def makePmap(dominantDb, metaCacheSession):
     dbStriping = getDbStriping(metaCacheSession, dominantDb)
@@ -33,8 +34,8 @@ def makePmap(dominantDb, metaCacheSession):
         msg = "Partitioner's stripes and substripes must be natural numbers."
         raise lsst.qserv.master.config.ConfigError(msg)
     p = SphericalBoxPartitionMap(dbStriping.stripes, dbStriping.subStripes)
-    print "Using %d stripes and %d substripes." % (dbStriping.stripes,
-                                                   dbStriping.subStripes)
+    logger.inf("Using %d stripes and %d substripes." % (dbStriping.stripes,
+                                                        dbStriping.subStripes))
     return p
 
 
@@ -70,7 +71,7 @@ class PartitioningConfig:
             self.subchunked.update(subchk.split(","))
             self.allowedDbs.update(adb.split(","))
         except:
-            print "Error: Bad or missing chunked/subchunked spec."
+            logger.err("Error: Bad or missing chunked/subchunked spec.")
         self._updateMeta()
         pass
 

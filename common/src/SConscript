@@ -44,6 +44,7 @@ env.Append(built_libs=[tup[0]])
 
 env.Install('../include/lsst/qserv', 'QservPath.hh')
 env.Install('../include/lsst/qserv', 'SqlConnection.hh')
+env.Install('../include/lsst/qserv', 'Logger.h')
 deps = {'CPPPATH' : [linc]}
 tup = export_deps.installWithDeps(env, "SqlConnection.hh", "SqlConnection.hh",
                                   "../include/lsst/qserv", deps)

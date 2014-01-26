@@ -22,6 +22,7 @@
 // MmapFile is a lightweight wrapper for a mmap'd file.
 
 #include "lsst/qserv/master/MmapFile.h"
+#include "lsst/qserv/Logger.h"
 #include <iostream>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -44,16 +45,16 @@ MmapPtr qMaster::MmapFile::newMap(std::string const& filename,
 qMaster::MmapFile::~MmapFile() {
     if(_buf) {
         if(-1 == ::munmap(_buf, _fstat.st_size)) {
-            std::cout << "Munmap failed (" << (void*)_buf
-                      << ", " << _fstat.st_size 
-                      << "). Memory corruption likely." << std::endl;
+            LOGGER_ERR << "Munmap failed (" << (void*)_buf
+                       << ", " << _fstat.st_size 
+                       << "). Memory corruption likely." << std::endl;
         }
         _buf = 0;
     }
     if(_fd > 0) {
         if(-1 == close(_fd)) {
-            std::cout << "Warning, broken close of " << _filename
-                      << " (fd=" << _fd << ")" << std::endl;
+            LOGGER_WRN << "Warning, broken close of " << _filename
+                       << " (fd=" << _fd << ")" << std::endl;
         }
         _fd = 0;
     }
@@ -78,7 +79,7 @@ void qMaster::MmapFile::_init(std::string const& filename,
     }
     _fd = ::open(_filename.c_str(), openFlags);
     if(_fd == -1) {
-        std::cout << "DEBUG: Error opening file." << std::endl;
+        LOGGER_WRN << "Error opening file." << std::endl;
         _fd = 0;
     }
     if((-1 == ::fstat(_fd, &_fstat)) || // get filesize
@@ -87,8 +88,7 @@ void qMaster::MmapFile::_init(std::string const& filename,
         )
        ) {
         if((MAP_FAILED == _buf) && _fstat.st_size > ((off_t)1ULL << 30)) {
-            std::cout << "DEBUG: file too big? (mmap failed) "
-                      << std::endl;
+            LOGGER_WRN << "file too big? (mmap failed) " << std::endl;
         }
         _buf = 0; // reset buffer.
     }

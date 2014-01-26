@@ -41,6 +41,7 @@
 #include "lsst/qserv/master/WhereClause.h" 
 #include "lsst/qserv/master/BoolTermFactory.h"
 
+#include "lsst/qserv/Logger.h"
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
@@ -67,13 +68,13 @@ public:
         RefAST current;
         RefAST nextCache;
         Iter operator++(int) {
-            //std::cout << "advancingX..: " << current->getText() << std::endl;
+            //LOGGER_INF << "advancingX..: " << current->getText() << std::endl;
             Iter tmp = *this;
             ++*this;
             return tmp;
         }
         Iter& operator++() {
-            //std::cout << "advancing..: " << current->getText() << std::endl;
+            //LOGGER_INF << "advancing..: " << current->getText() << std::endl;
             Check c;
             if(nextCache.get()) { 
                 current = nextCache; 
@@ -150,7 +151,7 @@ public:
     FromWhereH() {}
     virtual ~FromWhereH() {}
     virtual void operator()(antlr::RefAST fw) {
-        qMaster::printDigraph("fromwhere", std::cout, fw);
+        qMaster::printDigraph("fromwhere", LOG_STRM(Info), fw);
     }
 };
 ////////////////////////////////////////////////////////////////////////
@@ -182,10 +183,10 @@ void
 WhereFactory::_import(antlr::RefAST a) {
     _clause.reset(new WhereClause());
     _clause->_restrs.reset(new QsRestrictor::List);
-    // std::cout << "WHERE starts with: " << a->getText() 
+    // LOGGER_INF << "WHERE starts with: " << a->getText() 
     //           << " (" << a->getType() << ")" << std::endl;    
 
-    // std::cout << "WHERE indented: " << walkIndentedString(a) << std::endl;
+    // LOGGER_INF << "WHERE indented: " << walkIndentedString(a) << std::endl;
     if(a->getType() != SqlSQL2TokenTypes::SQL2RW_where) {
         throw ParseException("Bug: _import expected WHERE node", a);
     }
@@ -209,7 +210,7 @@ WhereFactory::_import(antlr::RefAST a) {
 void 
 WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     std::string r(a->getText()); // e.g. qserv_areaspec_box
-    std::cout << "Adding from " << r << " : ";
+    LOGGER_INF << "Adding from " << r << " : ";
     ParamGenerator pg(a->getNextSibling());
 
     QsRestrictor::Ptr restr(new QsRestrictor());
@@ -218,11 +219,11 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     // for(ParamGenerator::Iter it = pg.begin();
     //     it != pg.end();
     //     ++it) {
-    //     std::cout << "iterating:" << *it << std::endl;
+    //     LOGGER_INF << "iterating:" << *it << std::endl;
     // }
     std::copy(pg.begin(), pg.end(), std::back_inserter(params));
     std::copy(params.begin(), params.end(),
-              std::ostream_iterator<std::string>(std::cout,", "));
+              std::ostream_iterator<std::string>(LOG_STRM(Info),", "));
     if(!_clause->_restrs) {
         throw std::logic_error("Invalid WhereClause._restrs");
     }
@@ -265,8 +266,8 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
     }
 
     walkTreeVisit(a, p);
-    std::cout << "Adding orsibs: " << p.result << std::endl;
-    // BoolTermFactory::tagPrint tp(std::cout, "addOr");
+    LOGGER_INF << "Adding orsibs: " << p.result << std::endl;
+    // BoolTermFactory::tagPrint tp(LOG_STRM(Info), "addOr");
     // forEachSibs(a, tp);
     BoolTermFactory f(_vf);
     _clause->_tree = f.newOrTerm(a);

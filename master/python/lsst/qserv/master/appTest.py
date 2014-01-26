@@ -38,6 +38,7 @@ import time
 # Package imports
 import app
 import server
+import logger
 
 distFuncStr = "scisql_angSep(%s,%s,%s,%s)"
 def nnDist(t1, t2, ra, decl):
@@ -96,16 +97,16 @@ def randomBoundedNearNeigbor(raSize=1.0, declSize=1.0, seed=None):
 
 def flatten(someList):
     if(type(someList) == type([])):
-        print someList, "is a list outer"
+        logger.inf(someList, "is a list outer")
         r = []
         for e in someList:
             if(type(e) == type([])):
-                print e, "is a list"
+                logger.inf(e, "is a list")
                 r.extend(flatten(e))
             else:
                 r.append(e)
         return r
-    print someList, "isn't a list"
+    logger.inf(someList, "isn't a list")
     return "Error"
         
 class TestAppFunctions(unittest.TestCase):
@@ -120,7 +121,7 @@ class TestAppFunctions(unittest.TestCase):
         qtext = "select * from blah;"
         task = app.QueryAction(qtext)
         id = t.track("myquery", task, qtext)
-        print "persisted as id ", id
+        logger.inf("persisted as id ", id)
         self.assert_(True) # placeholder
 
     def testServerQuery(self):
@@ -175,12 +176,12 @@ class TestAppFunctions(unittest.TestCase):
         arg.args = {'q':[q]}
         stats["clientInterfaceInitFinish"] = time.time()
         stats["interfaceQueryStart"] = time.time()
-        print ci.query(arg, None)
+        logger.inf(ci.query(arg, None))
         stats["interfaceQueryFinish"] = time.time()
         stats["overallFinish"] = time.time()
         out = open("qservMaster_timing.py","a")
         out.write(time.strftime("timing_%y%m%d_%H%M=" + str(queryTimer)+"\n"))
-        #print queryTimer
+        #logger.inf(queryTimer)
         self.assert_(True) # placeholder
     
     pass

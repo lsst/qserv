@@ -32,6 +32,7 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "lsst/qserv/master/TaskMsgFactory2.h"
+#include "lsst/qserv/Logger.h"
 
 #include <stdexcept>
 
@@ -127,14 +128,10 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
         ChunkQuerySpec const* sPtr = &s;
         while(sPtr) {
 
-#ifdef DEBUG
-#if DEBUG > 1
-	  std::cout << "TaskMsgFactory2::Impl::makeMsg() : nextFragment " << std::endl;
+	  LOGGER_DBG << "TaskMsgFactory2::Impl::makeMsg() : nextFragment " << std::endl;
 	  for(unsigned int t=0;t<(sPtr->queries).size();t++){
-	      std::cout<<(sPtr->queries).at(t)<< std::endl;
+	      LOGGER_DBG << (sPtr->queries).at(t) << std::endl;
 	  }
-#endif
-#endif
 
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
@@ -146,14 +143,10 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
         }
     } else {
 
-#ifdef DEBUG
-#if DEBUG > 1
-        std::cout << "TaskMsgFactory2::Impl::makeMsg() : no fragment " << std::endl;
+        LOGGER_DBG << "TaskMsgFactory2::Impl::makeMsg() : no fragment " << std::endl;
 	for(unsigned int t=0;t<(s.queries).size();t++){
-	  std::cout<<(s.queries).at(t)<< std::endl;
+	    LOGGER_DBG << (s.queries).at(t) << std::endl;
 	}
-#endif
-#endif
 
         addFragment(*_taskMsg, resultTable,
                     s.subChunkTables, s.subChunkIds, s.queries);

@@ -28,6 +28,7 @@
 #include <deque>
 #include <fstream>
 #include <iostream>
+#include "lsst/qserv/Logger.h"
 #include "lsst/qserv/master/xrdfile.h"
 #include "lsst/qserv/master/thread.h"
 #include "lsst/qserv/master/dispatcher.h"
@@ -63,9 +64,9 @@ void alternative() {
 
 void original() {
     qMaster::Manager m;
-    std::cout << "Setting up file\n";
+    LOGGER_INF << "Setting up file\n";
     m.setupFile("xrdTransaction.trace");
-    std::cout << "Running\n";
+    LOGGER_INF << "Running\n";
     m.run();
 }
 

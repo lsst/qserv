@@ -36,6 +36,7 @@ import _mysql_exceptions
 
 # Package
 import lsst.qserv.master.config
+from lsst.qserv.master import logger
 
 class Db:
     def __init__(self):
@@ -58,7 +59,7 @@ class Db:
         host = config.get("resultdb", "host")
         port = config.getint("resultdb", "port")
         db = config.get("resultdb", "db")
-        #print "DB CONNECT: ", user, " p=", passwd, " sock=", socket, " db=", db
+        #logger.inf("DB CONNECT: ", user, " p=", passwd, " sock=", socket, " db=", db)
         try: # Socket file first
             self._conn = sql.connect(user=user,
                                      passwd=passwd,
@@ -72,9 +73,9 @@ class Db:
                                          port=port,
                                          db=db)
             except Exception, e2:
-                print >>sys.stderr, "Couldn't connect using file", socket, e
+                logger.err("Couldn't connect using file", socket, e)
                 msg = "Couldn't connect using %s:%s" %(host,port)
-                print >>sys.stderr, msg, e2
+                logger.err(msg, e2)
                 self._conn = None
                 return
         c = self._conn.cursor()
@@ -96,10 +97,10 @@ class Db:
             except _mysql_exceptions.OperationalError, e:
                 failures += 1
                 if failures > 5: # MAGIC 5 
-                    print "Too many SQL failures, not retrying."
+                    logger.wrn("Too many SQL failures, not retrying.")
                     self._conn = None
                     return None
-                print "operational error, retrying", e
+                logger.err("operational error, retrying", e)
             pass # Try again
         return c.fetchall()    
 
@@ -204,7 +205,7 @@ class TaskDb:
             taskparam = tuple(a)
         taskstr = str(taskparam)
         sqlstr = 'INSERT INTO tasks VALUES %s' % taskstr
-        print "---",sqlstr
+        logger.inf("---",sqlstr)
         self._db.getCursor().execute(sqlstr)
         return a[0]
 

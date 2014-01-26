@@ -27,6 +27,7 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "lsst/qserv/master/BoolTerm.h"
+#include "lsst/qserv/Logger.h"
 #include <stdexcept>
 #include <algorithm>
 #include "lsst/qserv/master/QueryTemplate.h"
@@ -244,7 +245,7 @@ boost::shared_ptr<BoolTerm> BoolFactor::getReduced() {
 #if 0
         QueryTemplate qt;
         bf->renderTo(qt);
-        std::cout << "reduced. " << qt.generate() << std::endl;
+        LOGGER_DBG << "reduced. " << qt.generate() << std::endl;
 #endif
         return boost::shared_ptr<BoolFactor>(bf);
     } else {
