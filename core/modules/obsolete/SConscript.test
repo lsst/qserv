@@ -1,0 +1,14 @@
+# -*- python -*-
+Import('env')
+Import('libProducts')
+
+import os
+import itertools
+
+
+programs = []
+# testSimple
+p = env.Program(['testQservPath.cc', 'QservPath.cc'])
+programs.append(p)
+
+Return('programs')

@@ -1,0 +1,24 @@
+# -*- python -*-
+Import('env')
+Import('libProducts')
+Import('defaultTgts')
+Import('findLibs')
+
+import os
+import itertools
+
+
+programs = []
+# extDeps
+extDeps = "boost_regex boost_thread mysqlclient_r ssl XrdClient XrdOuc XrdSys XrdUtils".split()
+
+modDeps = 'wlog mysql obsolete sql wbase wconfig wpublish util'.split() # deps on other modules
+deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
+pDeps = itertools.chain(*map(lambda m: libProducts[m], ['xrdoss']))
+deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain
+deps.sort(key=str)
+
+p = env.Program(['testQservOss.cc']+ deps, LIBS=findLibs(extDeps))
+programs.append(p)
+
+Return('programs')

@@ -1,0 +1,84 @@
+# -*- python -*-
+import distutils.sysconfig
+import errno
+import os
+Import('env')
+Import('extraTgts')
+#env.Tool('swig')
+#env['SWIGFLAGS'] = ['-python', '-c++', '-Iinclude'],
+#env.Append(CPPPATH = [distutils.sysconfig.get_python_inc()])
+#env['SHLIBPREFIX'] = "" # Pushed to higher level SConscript
+
+# Manual dependencies for masterLib.i, because the SCons SWIG builder
+# isn't knowledgeable enough to ensure their presence when using VariantDir
+depends = ['control/transaction.h',
+           'control/dispatcher.h',
+           'merger/TableMerger.h',
+           'merger/mergeTypes.h',
+           'meta/ifaceMeta.h',
+           'query/Constraint.h',
+           'qdisp/ChunkMeta.h',
+           'qproc/ChunkSpec.h',
+           'util/Substitution.h',
+           'xrdc/xrdfile.h']
+depends = map(lambda f: env.File("../"+f), depends)
+
+localCpppath = env['CPPPATH']
+if type(localCpppath) == type(""): localCpppath = [localCpppath]
+localCpppath.append(distutils.sysconfig.get_python_inc())
+swigged = env.SharedObject(source="masterLib.i",
+                           SWIGFLAGS=['-python', '-c++', '-Iinclude'],
+                           SWIGPATH=['..',
+                                     distutils.sysconfig.get_python_inc()],
+                           CPPPATH=localCpppath,
+                           LDMODULEPREFIX='_', LDMODULESUFFIX = '.so'
+                           )
+# swigged = env.swig(source="masterLib.i",
+#                    SWIGPATH=['..',
+#                              distutils.sysconfig.get_python_inc()],
+#                    LDMODULEPREFIX='_', LDMODULESUFFIX = '.so'
+#                    )
+
+#env.Append(SWIGPATH=['..', distutils.sysconfig.get_python_inc()])
+#swigged = [env.File("masterLib.i")]
+
+# print swigged # prints ['masterLib_wrap.os']
+env.Depends(swigged, depends)
+tgt = swigged
+
+# Create entry for python file, which SCons SWIG builder ignores
+pySwig = env.File('masterLib.py')
+#env.Depends(pySwig, swigged[0]) # This causes a cycle (why?),
+# but "scons --tree=all" shows that a sufficient dep
+# is already there (on masterLib.i)
+extraTgts["masterLib.py"] = pySwig
+
+
+
+def markForInstall(env, pathList, extras):
+    pyDir = os.path.join(*pathList)
+    srcPyDir = os.path.join(*pathList)
+
+    # install py files
+    for s in env.Glob(os.path.join(srcPyDir,"*.py")):
+        extraTgts['dist'].append((pyDir, s))
+        #env.Alias("install", env.Install(pyDir, s))
+    for s in extras:
+        extraTgts['dist'].append((pyDir, s))
+    # touch init files
+    for p in range(1,len(pathList)):
+        plist = pathList[:p] + ["__init__.py"]
+        fname = os.path.join(*plist)
+        f = env.Command(fname, None, [Touch("$TARGET")])
+
+        extraTgts['dist'].append((os.path.join(*pathList[:p]), f))
+distDir = "../dist"
+distTgts = [swigged, pySwig]
+markForInstall(env, ["lsst","qserv","master"], distTgts)
+
+for f in env.Glob("bin/*py"):
+    extraTgts['dist'].append(('bin', f))
+    #env.Install(distDir, f)
+
+extraTgts["czarPy"] = distTgts
+Return('tgt')

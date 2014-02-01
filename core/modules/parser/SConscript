@@ -1,0 +1,26 @@
+# -*- python -*-
+Import('env')
+Import('extraTgts')
+import os
+#import export_deps
+
+myDeps = filter(lambda i: not str(i).startswith("test"), env.Glob("*.cc"))
+
+# Construct proto env (add ANTLR Builder)
+glib=File('DmlSQL2.g')
+
+antlrTgts = env.Antlr(['SqlSQL2.g'],
+    ANTLR_GLIB=env.File('DmlSQL2.g'),
+    ANTLR_OUT='.',
+    )
+
+antlrSrcs = filter(lambda f: str(f).endswith(env.subst('$ANTLR_CCSUFFIX')), antlrTgts)
+antlrHdrs = filter(lambda f: str(f).endswith(env.subst('$ANTLR_HSUFFIX')), antlrTgts)
+
+env.Depends(antlrSrcs[0], 'DmlSQL2.g')
+extraTgts['antlrHdrs'] = antlrHdrs
+#print "ANTLR srcs=", map(str, antlrSrcs)
+#print "ANTLR hdrs=", antlrHdrs
+# Ignore output antlr .txt files for now.
+outs = antlrSrcs + myDeps
+Return('outs')

@@ -1,0 +1,29 @@
+# -*- python -*-
+Import('env')
+Import('libProducts')
+Import('defaultTgts')
+Import('findLibs')
+Import('cacheObjs')
+
+import os
+import itertools
+
+
+programs = []
+# extDeps
+extDeps = "mysqlclient_r boost_signals boost_regex boost_thread protobuf ssl XrdClient XrdOfs XrdServer XrdSfs XrdSys XrdUtils".split()
+
+modDeps = 'wlog mysql obsolete sql util wbase wconfig wcontrol wdb wpublish wsched xrdfs'.split() # deps on other modules
+deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
+pDeps = itertools.chain(*map(lambda m: libProducts[m], ["proto"]))
+pDeps = cacheObjs(env, pDeps, ".o")
+deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain
+deps.sort(key=str)
+
+p = env.Program('testMySqlFs_1.cc')
+programs.append(p)
+
+p =env.Program(['testMySqlFs_2.cc'] + deps, LIBS=findLibs(extDeps))
+programs.append(p)
+
+Return('programs')

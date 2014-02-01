@@ -1,0 +1,21 @@
+# -*- python -*-
+Import('env')
+Import('libProducts')
+
+import os
+import itertools
+
+
+programs = []
+obj = env.Object("testProtocol.cc")
+def convertObj(o):
+    oStr = str(o)
+    # Avoid questionable conflict with .o for SharedLibrary
+    # production by using an alt name.
+    if oStr.endswith(".cc"): return env.Object(oStr+".staticobj", o)
+    return o
+libObjs = map(convertObj, libProducts['proto'])
+p = env.Program(source=[obj], LIBS=['protobuf', 'libssl'] + libObjs)
+programs.append(p)
+
+Return('programs')
