@@ -54,7 +54,6 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const* cr);
     void renderTo(QueryTemplate& qt) const;
 };
-
 // Should refactor most of this into a ColumnRef factory.
 }}} // namespace lsst::qserv::master
 

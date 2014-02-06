@@ -72,7 +72,7 @@ public:
     virtual ValueExprList::iterator valueExprCacheBegin() { return ValueExprList::iterator(); }
     virtual ValueExprList::iterator valueExprCacheEnd() { return ValueExprList::iterator(); }
 
-    virtual void findColumnRefs(ColumnRefMap::List& list) {}
+    virtual void findColumnRefs(ColumnRef::List& list) {}
 
     friend std::ostream& operator<<(std::ostream& os, Predicate const& bt);
     virtual std::ostream& putStream(std::ostream& os) const = 0;
@@ -117,7 +117,7 @@ public:
     virtual void cacheValueExprList();
     virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
     virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
-    virtual void findColumnRefs(ColumnRefMap::List& list);
+    virtual void findColumnRefs(ColumnRef::List& list);
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
@@ -145,7 +145,7 @@ public:
     virtual void cacheValueExprList();
     virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
     virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
-    virtual void findColumnRefs(ColumnRefMap::List& list);
+    virtual void findColumnRefs(ColumnRef::List& list);
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
@@ -170,7 +170,7 @@ public:
     virtual void cacheValueExprList();
     virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
     virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
-    virtual void findColumnRefs(ColumnRefMap::List& list);
+    virtual void findColumnRefs(ColumnRef::List& list);
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
@@ -196,7 +196,7 @@ public:
     virtual void cacheValueExprList();
     virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
     virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
-    virtual void findColumnRefs(ColumnRefMap::List& list);
+    virtual void findColumnRefs(ColumnRef::List& list);
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;

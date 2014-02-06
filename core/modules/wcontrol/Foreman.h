@@ -49,6 +49,7 @@
 #ifndef LSST_QSERV_WORKER_FOREMAN_H
 #define LSST_QSERV_WORKER_FOREMAN_H
 #include <boost/shared_ptr.hpp>
+#include "wbase/Base.h"
 #include "wcontrol/Task.h"
 
 namespace lsst {

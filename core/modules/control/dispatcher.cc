@@ -49,6 +49,7 @@
 #include "control/dispatcher.h"
 #include "control/thread.h"
 #include "util/xrootd.h"
+#include "util/StringHash.h"
 #include "control/SessionManagerAsync.h"
 #include "control/AsyncQueryManager.h"
 #include "qproc/ChunkSpec.h"
@@ -76,7 +77,7 @@ public:
     TmpTableName(int sessionId, std::string const& query) {
         std::stringstream ss;
         ss << "r_" << sessionId
-           << qMaster::hashQuery(query.data(), query.size())
+           << lsst::qserv::StringHash::getMd5Hex(query.data(), query.size())
            << "_";
         _prefix = ss.str();
     }

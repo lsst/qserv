@@ -22,6 +22,7 @@
 
 // class SqlInsertIter -- A class that finds INSERT statements in
 // mysqldump output and iterates over them.
+// Should become obsolete with new  dump-less result transfer processing 
 #include "merger/SqlInsertIter.h"
 #include <iostream>
 #include <errno.h>
@@ -63,13 +64,13 @@ void printInserts(char const* buf, off_t bufSize,
                   std::string const& tableName)  {
     for(qMaster::SqlInsertIter i(buf, bufSize, tableName, true); !i.isDone();
         ++i) {
-        LOGGER_INF << "Sql[" << tableName << "]: "
+        std::cout << "Sql[" << tableName << "]: "
                    << (void*)i->first << "  --->  "
                    << (void*)i->second << "  "
                    << *i;
         if(i.isNullInsert()) {
-            LOGGER_INF << "Null match" << std::endl;
-        } else { LOGGER_INF << std::endl; }
+            std::cout << "Null match" << std::endl;
+        } else { std::cout << std::endl; }
     }
 }
 
@@ -141,6 +142,7 @@ qMaster::SqlInsertIter::SqlInsertIter(PacketIter::Ptr p,
                 return;
             } else {
                 errno = ENOTRECOVERABLE;
+                // FIXME need a real exception here
                 throw "Failed to match Lock statement within SqlInsertIter.";
             }
         }

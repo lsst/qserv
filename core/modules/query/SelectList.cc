@@ -40,11 +40,8 @@
 #include "query/SelectList.h"
 #include <iterator>
 #include <stdexcept>
-#include "query/FuncExpr.h"
 #include "query/ValueFactor.h"
 #include "query/QueryTemplate.h"
-
-#include "parser/SqlSQL2TokenTypes.hpp" // For ANTLR typing.
 
 #include "log/Logger.h"
 
@@ -66,17 +63,13 @@ struct renderWithSep {
 };
 
 void
-SelectList::addStar(antlr::RefAST table) {
+SelectList::addStar(std::string const& table) {
     if(!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
 
     ValueExprPtr ve;
-    std::string tParam;
-    if(table.get()) {
-        tParam = tokenText(table);
-    }
-    ve = ValueExpr::newSimple(ValueFactor::newStarFactor(tParam));
+    ve = ValueExpr::newSimple(ValueFactor::newStarFactor(table));
     _valueExprList->push_back(ve);
 }
 

@@ -77,6 +77,10 @@ public:
 };
 ////////////////////////////////////////////////////////////////////////
 class QueryRunner {
+// The interface of QueryRunner is too cluttered with implementation detail,
+// whiich means that all users of it are exposed to its ugly details. We will
+// write a new one to leverage the new xrootd interface and new result
+// transfer. ResultTracker may be eliminated.
 public:
     typedef ResultTracker<std::string, ResultError> Tracker;
     QueryRunner(QueryRunnerArg const& a);

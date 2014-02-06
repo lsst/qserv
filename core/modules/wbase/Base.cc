@@ -38,6 +38,8 @@
 // Boost
 #include <boost/format.hpp>
 
+#include "util/StringHash.h"
+
 // Myself:
 #include "wbase/Base.h"
 
@@ -121,20 +123,6 @@ namespace {
 }
 #endif
 
-std::string hashQuery(char const* buffer, int bufferSize) {
-    unsigned char hashVal[MD5_DIGEST_LENGTH];
-    MD5(reinterpret_cast<unsigned char const*>(buffer), bufferSize, hashVal);
-#ifdef DO_NOT_USE_BOOST
-    return hashFormat(hashVal, MD5_DIGEST_LENGTH);
-#else
-    std::string result;
-    for (int i = 0; i < MD5_DIGEST_LENGTH; ++i) {
-        result += (boost::format("%02x") % static_cast<int>(hashVal[i])).str();
-    }
-    return result;
-#endif
-}
-
 void updateResultPath(char const* resultPath) {
     if(checkWritablePath(resultPath)) {
         DUMP_BASE.assign(resultPath);
@@ -181,7 +169,7 @@ std::string hashToResultPath(std::string const& hash) {
 //////////////////////////////////////////////////////////////////////
 ScriptMeta::ScriptMeta(StringBuffer const& b, int chunkId_) {
     script = b.getStr();
-    hash = hashQuery(script.data(), script.length());
+    hash = StringHash::getMd5Hex(script.data(), script.length());
     dbName = "q_" + hash;
     resultPath = hashToResultPath(hash);
     chunkId = chunkId_;
@@ -189,7 +177,7 @@ ScriptMeta::ScriptMeta(StringBuffer const& b, int chunkId_) {
 
 ScriptMeta::ScriptMeta(StringBuffer2 const& b, int chunkId_) {
     script = b.getStr();
-    hash = hashQuery(script.data(), script.length());
+    hash = StringHash::getMd5Hex(script.data(), script.length());
     dbName = "q_" + hash;
     resultPath = hashToResultPath(hash);
     chunkId = chunkId_;

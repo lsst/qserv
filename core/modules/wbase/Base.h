@@ -27,10 +27,9 @@
 #include <deque>
 #include <string>
 #include <sstream>
-// Xrootd
 
-#include "boost/thread.hpp"
-#include "boost/format.hpp"
+#include <boost/thread.hpp>
+#include <boost/format.hpp>
 
 class XrdSysError;
 class XrdSysLogger;
@@ -39,6 +38,7 @@ class XrdSfsAio;
 namespace lsst {
 namespace qserv {
 class TaskMsg;
+
 namespace worker {
 // Forward:
 class StringBuffer;
@@ -57,7 +57,6 @@ void updateResultPath(char const* resultPath=0);
 void clearResultPath();
 
 // Hashing-related
-std::string hashQuery(char const* buffer, int bufferSize);
 std::string hashToPath(std::string const& hash);
 std::string hashToResultPath(std::string const& hash);
 

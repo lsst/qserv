@@ -567,14 +567,14 @@ qMaster::MetadataCache::getDbInfo(std::string const& dbName) {
   * handy for debugging.
   */
 void
-qMaster::MetadataCache::printSelf() {
-    LOGGER_INF << "\n\nMetadata Cache in C++:" << std::endl;
+qMaster::MetadataCache::printSelf(std::ostream& os) {
+    os << "\n\nMetadata Cache in C++:" << std::endl;
     std::map<std::string, DbInfo>::const_iterator itr;
     boost::lock_guard<boost::mutex> m(_mutex);
     for (itr=_dbs.begin() ; itr!=_dbs.end() ; ++itr) {
-        LOGGER_INF << "db: " << itr->first << ": " << itr->second << "\n";
+        os << "db: " << itr->first << ": " << itr->second << "\n";
     }
-    LOGGER_INF << std::endl;
+    os << std::endl;
 }
 
 /** Operator<< for printing DbInfo object

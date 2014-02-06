@@ -132,18 +132,18 @@ void PassListTerm::renderTo(QueryTemplate& qt) const {
 void BoolTermFactor::renderTo(QueryTemplate& qt) const {
     if(_term) { _term->renderTo(qt); }
 }
-void BoolFactor::findColumnRefs(ColumnRefMap::List& list) {
+void BoolFactor::findColumnRefs(ColumnRef::List& list) {
     BfTerm::PtrList::const_iterator i;
     for(i = _terms.begin(); i != _terms.end(); ++i) {
         (**i).findColumnRefs(list);
     }
 }
 
-void BoolTermFactor::findColumnRefs(ColumnRefMap::List& cList) {
+void BoolTermFactor::findColumnRefs(ColumnRef::List& cList) {
     struct btFind : public BfTerm::Op {
-        btFind(ColumnRefMap::List& cList_) : cList(cList_) {}
+        btFind(ColumnRef::List& cList_) : cList(cList_) {}
         virtual void operator()(BfTerm& t) { t.findColumnRefs(cList); }
-        ColumnRefMap::List& cList;
+        ColumnRef::List& cList;
     };
     if(_term) {
         btFind find(cList);

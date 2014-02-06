@@ -35,6 +35,7 @@
 #include "boost/shared_ptr.hpp"
 #include "boost/make_shared.hpp"
 
+#include "util/StringHash.h"
 #include "wcontrol/ResultTracker.h"
 #include "wdb/QueryRunner.h"
 #include "xrdfs/MySqlFsFile.h"
@@ -59,7 +60,8 @@ std::string queryNonMagic =
 //SELECT COUNT(*) FROM (SELECT * FROM Subchunks_9880.Object_9880_1 UNION SELECT * FROM Subchunks_9880.Object_9880_3) AS _Obj_Subchunks;
 
 std::string query(queryNonMagic + std::string(4, '\0')); // Force magic EOF
-std::string queryHash = hashQuery(query.c_str(), query.size());
+std::string queryHash = lsst::qserv::StringHash::getMd5Hex(query.c_str(), 
+                                                           query.size());
 std::string queryResultPath = "/result/"+queryHash;
 
 struct TrackerFixture {

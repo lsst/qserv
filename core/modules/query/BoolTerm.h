@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,7 +35,7 @@
 #include <list>
 #include <string>
 #include <boost/shared_ptr.hpp>
-#include "parser/ColumnRefMap.h"
+#include "query/ColumnRef.h"
 
 namespace lsst {
 namespace qserv {
@@ -52,7 +52,7 @@ public:
     virtual Ptr copySyntax() const = 0;
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
-    virtual void findColumnRefs(ColumnRefMap::List& list) {}
+    virtual void findColumnRefs(ColumnRef::List& list) {}
     class ConstOp { public: virtual void operator()(BfTerm const& t) = 0; };
     class Op { public: virtual void operator()(BfTerm& t) = 0; };
 };
@@ -131,7 +131,7 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     virtual boost::shared_ptr<BoolTerm> copySyntax() const;
-    virtual void findColumnRefs(ColumnRefMap::List& list);
+    virtual void findColumnRefs(ColumnRef::List& list);
 
     BfTerm::PtrList _terms;
 private:
@@ -176,7 +176,7 @@ public:
     virtual BfTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    virtual void findColumnRefs(ColumnRefMap::List& list);
+    virtual void findColumnRefs(ColumnRef::List& list);
     boost::shared_ptr<BoolTerm> _term;
 };
 }}} // namespace lsst::qserv::master

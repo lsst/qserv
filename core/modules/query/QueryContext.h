@@ -46,6 +46,10 @@ class MetadataCache;
 /// rewriting, and generating queries. It is the primary mechanism for
 /// QueryPlugin instances to share information. It contains the user context of
 /// a query, but not the query itself.
+/// 
+/// TODO: Think about QueryMapping's home. It is used during query manipulation,
+/// contains information derived during analysis, and is used to generate
+/// materialized query text.
 class QueryContext {
 public:
     QueryContext() : metadata(NULL) {}

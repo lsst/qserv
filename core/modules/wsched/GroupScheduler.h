@@ -49,15 +49,7 @@ public:
     static std::string getName()  { return std::string("GroupSched"); }
     bool checkIntegrity();
 
-    struct ChunkEqual {
-        bool operator()(Task::Ptr const& x, Task::Ptr const& y) {
-            if(!x || !y) { return false; }
-            if((!x->msg) || (!y->msg)) { return false; }
-            return x->msg->has_chunkid() && y->msg->has_chunkid()
-                && x->msg->chunkid()  == y->msg->chunkid();
-        }
-    };
-    typedef GroupedQueue<Task::Ptr, ChunkEqual> Queue;
+    typedef GroupedQueue<Task::Ptr, Task::ChunkEqual> Queue;
 
 private:
     void _enqueueTask(Task::Ptr incoming);

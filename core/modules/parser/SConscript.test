@@ -8,10 +8,10 @@ import itertools
 
 programs = []
 # testSimple
-modDeps = ["global"] # deps on other modules
-deps = itertools.chain(map(lambda m: libProducts[m], modDeps))
-deps = map(lambda i:i, deps) # un-chain
-p = env.Program(['testSimple.cc'] + deps)
-programs.append(p)
+#modDeps = ["global"] # deps on other modules
+#deps = itertools.chain(map(lambda m: libProducts[m], modDeps))
+#deps = map(lambda i:i, deps) # un-chain
+#p = env.Program(['testSimple.cc'] + deps)
+#programs.append(p)
 
 Return('programs')

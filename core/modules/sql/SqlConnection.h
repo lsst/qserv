@@ -37,7 +37,7 @@
 
 #include <boost/shared_ptr.hpp>
 
-#include "mysql/SqlConfig.hh"
+#include "mysql/SqlConfig.h"
 #include "sql/SqlErrorObject.h"
 
 namespace lsst {
