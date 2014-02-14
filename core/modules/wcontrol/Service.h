@@ -21,12 +21,13 @@
  */
 #ifndef LSST_QSERV_WORKER_SERVICE_H
 #define LSST_QSERV_WORKER_SERVICE_H
-#include "wbase/Base.h"
+#include <boost/shared_ptr.hpp>
 namespace lsst {
 namespace qserv {
 namespace worker {
 
 class Foreman; // Forward
+class TaskAcceptor;
 class WLogger;
 
 class Service {
@@ -34,7 +35,7 @@ public:
     typedef boost::shared_ptr<Service> Ptr;
 
     explicit Service(boost::shared_ptr<WLogger> log=boost::shared_ptr<WLogger>());
-    TaskAcceptor::Ptr getAcceptor();
+    boost::shared_ptr<TaskAcceptor> getAcceptor();
     void squashByHash(std::string const& hash);
 
 private:

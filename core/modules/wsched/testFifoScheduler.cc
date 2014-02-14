@@ -28,6 +28,7 @@
 #define BOOST_TEST_MODULE FifoScheduler_1
 #include "boost/test/included/unit_test.hpp"
 #include "wsched/FifoScheduler.h"
+#include "proto/worker.pb.h"
 
 namespace test = boost::test_tools;
 using namespace lsst::qserv::worker;

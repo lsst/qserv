@@ -27,6 +27,7 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "query/FromList.h"
+#include <iterator>
 
 namespace qMaster=lsst::qserv::master;
 

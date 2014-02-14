@@ -38,8 +38,6 @@ std::string makeUrl(char const* hostport, char const* typeStr,
                     std::string const& s, char mode=0);
 std::string makeUrl(char const* hostport, std::string const& path);
 
-std::string hashQuery(char const* buffer, int bufferSize);
-
 }}}
 
 #endif // LSST_QSERV_MASTER_XROOTD_H

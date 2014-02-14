@@ -40,19 +40,12 @@
 // Boost
 #include <boost/algorithm/string/predicate.hpp> // string iequal
 
-// Local (placed in src/)
-#include "parser/SqlSQL2Parser.hpp"
-#include "parser/SqlSQL2TokenTypes.hpp"
-
-#include "parser/parseTreeUtil.h"
-#include "parser/ColumnRefH.h"
 #include "query/SelectList.h"
 #include "query/FromList.h"
 #include "query/GroupByClause.h"
 #include "query/OrderByClause.h"
 #include "query/HavingClause.h"
 #include "query/WhereClause.h"
-#include "parser/WhereFactory.h"
 #include "log/Logger.h"
 
 // myself
@@ -96,7 +89,6 @@ copySyntaxIf(boost::shared_ptr<T>& dest, boost::shared_ptr<T> source) {
 // class SelectStmt
 ////////////////////////////////////////////////////////////////////////
 
-// Hook into parser to get populated.
 qMaster::SelectStmt::SelectStmt() {
 }
 

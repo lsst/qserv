@@ -1,8 +1,7 @@
 // -*- LSST-C++ -*-
-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,7 +22,6 @@
  */
 // xrootd.h -- Helper funcitons for xrootd-based dispatch
 
-#include <openssl/md5.h>
 #include <sstream>
 #include "boost/format.hpp"
 #include "util/xrootd.h"
@@ -87,19 +85,3 @@ std::string qMaster::makeUrl(char const* hostport,
 #endif
 }
 
-// hashQuery
-// a query hasher.
-// This must match the version in lsst/qserv/worker/src/MySqlFsFile.cc
-std::string qMaster::hashQuery(char const* buffer, int bufferSize) {
-    unsigned char hashVal[MD5_DIGEST_LENGTH];
-    MD5(reinterpret_cast<unsigned char const*>(buffer), bufferSize, hashVal);
-    std::stringstream s;
-    s.flags(std::ios::hex);
-    s.fill('0');
-    for (int i = 0; i < MD5_DIGEST_LENGTH; ++i) {
-        s.width(2);
-        s << static_cast<unsigned int>(hashVal[i]);
-    }
-    // C++ stream version is ~30x faster than boost::format version.
-    return s.str();
-}

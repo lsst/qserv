@@ -43,6 +43,7 @@
 #include "wdb/QuerySql.h"
 #include "wdb/QuerySql_Batch.h"
 #include "wdb/QueryPhyResult.h"
+#include "proto/worker.pb.h"
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
 

@@ -27,7 +27,9 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "wcontrol/Task.h"
+
 #include "wbase/Base.h"
+#include "proto/worker.pb.h"
 #include "proto/TaskMsgDigest.h"
 #include <boost/regex.hpp>
 
@@ -87,6 +89,23 @@ namespace {
         os << " rt=" << f.resulttable();
         return os;
     }
+}
+// Task::ChunkEqual functor
+bool
+qWorker::Task::ChunkEqual::operator()(qWorker::Task::Ptr const& x, 
+                                      qWorker::Task::Ptr const& y) {
+    if(!x || !y) { return false; }
+    if((!x->msg) || (!y->msg)) { return false; }
+    return x->msg->has_chunkid() && y->msg->has_chunkid()
+        && x->msg->chunkid()  == y->msg->chunkid();
+}
+// Task::PtrChunkIdGreater functor
+bool 
+qWorker::Task::ChunkIdGreater::operator()(qWorker::Task::Ptr const& x, 
+                                          qWorker::Task::Ptr const& y) {
+    if(!x || !y) { return false; }
+    if((!x->msg) || (!y->msg)) { return false; }
+    return x->msg->chunkid()  > y->msg->chunkid();
 }
 
 ////////////////////////////////////////////////////////////////////////

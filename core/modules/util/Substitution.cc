@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,9 +26,7 @@
 #include <vector>
 
 // Package
-
 #include "util/Substitution.h"
-#include "log/Logger.h"
 
 namespace qMaster = lsst::qserv::master;
 
@@ -51,7 +49,7 @@ std::string qMaster::Substitution::transform(Mapping const& m) {
 
 #if 0
     for(Mapping::const_iterator i = m.begin(); i != m.end(); ++i) {
-        LOGGER_INF << "mapping " << i->first << " " << i->second << std::endl;
+        std::cerr << "mapping " << i->first << " " << i->second << std::endl;
     }
 #endif
     for(std::vector<Item>::const_iterator i = _index.begin();

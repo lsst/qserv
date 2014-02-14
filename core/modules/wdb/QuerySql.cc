@@ -32,6 +32,7 @@
 #include "wdb/QuerySql.h"
 #include "wbase/Base.h"
 #include "global/constants.h"
+#include "proto/worker.pb.h"
 #include <iostream>
 
 namespace qWorker = lsst::qserv::worker;

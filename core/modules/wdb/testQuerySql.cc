@@ -28,6 +28,7 @@
 #include "boost/test/included/unit_test.hpp"
 #include "wdb/QuerySql.h"
 #include "wdb/QuerySql_Batch.h"
+#include "proto/worker.pb.h"
 
 namespace test = boost::test_tools;
 namespace qWorker = lsst::qserv::worker;

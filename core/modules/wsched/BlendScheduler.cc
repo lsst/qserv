@@ -31,10 +31,11 @@
 #include <iostream>
 #include <sstream>
 #include <boost/thread.hpp>
+#include "proto/worker.pb.h"
 #include "wcontrol/Foreman.h"
-#include "wlog/WLogger.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
+#include "wlog/WLogger.h"
 
 template <class Sched>
 inline Sched* other(Sched* notThis, Sched* a, Sched* b) {

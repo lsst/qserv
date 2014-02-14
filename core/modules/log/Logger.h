@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -58,20 +58,6 @@ namespace qserv {
 
 class Logger : public boost::iostreams::filtering_ostream {
 public:
-    // Sink class responsible for synchronization.
-    class SyncSink : public boost::iostreams::sink {
-    public:
-        SyncSink(std::ostream* os);
-        std::streamsize write(const char *s, std::streamsize n);
-    private:
-        std::ostream* _os;
-        static boost::mutex _mutex;
-    };
-
-    static SyncSink syncSink;
-    static boost::iostreams::stream_buffer<SyncSink> syncBuffer;
-    static std::ostream logStream;
-
     enum Severity { Debug = 0, Info, Warning, Error };
     static Logger& Instance();
     static Logger& Instance(Severity severity);
@@ -81,27 +67,8 @@ public:
     Severity getSeverityThreshold() const;
 
 private:
-    // Filter class responsible for enforcing severity level.
-    class SeverityFilter : public boost::iostreams::multichar_output_filter {
-    public:
-        SeverityFilter(Logger* loggerPtr);
-        template<typename Sink>
-        std::streamsize write(Sink& dest, const char* s, std::streamsize n);
-    private:
-        Logger* _loggerPtr;
-    };
-
-    // Filter class responsible for formatting Logger output.
-    class LogFilter : public boost::iostreams::line_filter {
-    public:
-        LogFilter(Logger* loggerPtr);
-    private:
-        std::string do_filter(const std::string& line);
-        std::string getTimeStamp();
-        std::string getThreadId();
-        std::string getSeverity();
-        Logger* _loggerPtr;
-    };
+    class SeverityFilter;
+    class LogFilter;
 
     // Private constructor, etc. as per singleton pattern.
     Logger();

@@ -31,11 +31,14 @@
   * @author Daniel L. Wang, SLAC
   */
 #include <deque>
+#include <ostream>
+#include <string>
 #include <boost/shared_ptr.hpp>
-#include "proto/worker.pb.h"
 
 namespace lsst {
 namespace qserv {
+class TaskMsg_Fragment;
+
 namespace worker {
 
 class Task;

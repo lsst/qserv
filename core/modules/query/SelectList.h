@@ -34,7 +34,6 @@
 #include <boost/shared_ptr.hpp>
 
 #include "query/ColumnRef.h"
-#include "parser/ColumnRefMap.h"
 #include "query/ValueExpr.h"
 
 namespace lsst {
@@ -53,14 +52,10 @@ class GroupByClause;
 class SelectList {
 public:
     SelectList()
-        : _columnRefMap(new ColumnRefMap()) ,
-          _valueExprList(new ValueExprList())
+        : _valueExprList(new ValueExprList())
         {}
     ~SelectList() {}
-    boost::shared_ptr<ColumnRefMap> getColumnRefMap() {
-        return _columnRefMap;
-    }
-    void addStar(antlr::RefAST table);
+    void addStar(std::string const& table);
     void dbgPrint() const;
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
@@ -74,7 +69,6 @@ public:
     friend class SelectListFactory;
 private:
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
-    boost::shared_ptr<ColumnRefMap> _columnRefMap;
     boost::shared_ptr<ValueExprList> _valueExprList;
     boost::shared_ptr<ColumnRefNodeMap const> _aliasMap;
 };

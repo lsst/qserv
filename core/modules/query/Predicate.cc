@@ -41,23 +41,23 @@ namespace lsst {
 namespace qserv {
 namespace master {
 
-void CompPredicate::findColumnRefs(ColumnRefMap::List& list) {
+void CompPredicate::findColumnRefs(ColumnRef::List& list) {
     if(left) { left->findColumnRefs(list); }
     if(right) { right->findColumnRefs(list); }
 }
-void InPredicate::findColumnRefs(ColumnRefMap::List& list) {
+void InPredicate::findColumnRefs(ColumnRef::List& list) {
     if(value) { value->findColumnRefs(list); }
     std::list<boost::shared_ptr<ValueExpr> >::iterator i;
     for(i=cands.begin(); i != cands.end(); ++i) {
         (**i).findColumnRefs(list);
     }
 }
-void BetweenPredicate::findColumnRefs(ColumnRefMap::List& list) {
+void BetweenPredicate::findColumnRefs(ColumnRef::List& list) {
     if(value) { value->findColumnRefs(list); }
     if(minValue) { minValue->findColumnRefs(list); }
     if(maxValue) { maxValue->findColumnRefs(list); }
 }
-void LikePredicate::findColumnRefs(ColumnRefMap::List& list) {
+void LikePredicate::findColumnRefs(ColumnRef::List& list) {
     if(value) { value->findColumnRefs(list); }
     if(charValue) { charValue->findColumnRefs(list); }
 }

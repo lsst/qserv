@@ -23,7 +23,31 @@
 
 #include "Logger.h"
 
-using namespace lsst::qserv;
+namespace {
+
+/// Sink class responsible for synchronization.
+class SyncSink : public boost::iostreams::sink {
+public:
+    SyncSink(std::ostream* os) : _os(os) {}
+    std::streamsize write(const char *s, std::streamsize n) {
+        boost::mutex::scoped_lock lock(_mutex);
+        std::string message(s, n);
+        *_os << message << std::flush;
+        return n;
+    }
+private:
+    std::ostream* _os;
+    static boost::mutex _mutex;
+};
+boost::mutex SyncSink::_mutex;
+static SyncSink syncSink(&std::cout);
+static boost::iostreams::stream_buffer<SyncSink> syncBuffer(syncSink);
+static std::ostream logStream(&syncBuffer);
+
+} // Anonymous namespace
+
+namespace lsst {
+namespace qserv {
 
 // Thread local storage to ensure one instance of Logger per thread.
 boost::thread_specific_ptr<Logger> Logger::_instancePtr;
@@ -32,25 +56,47 @@ boost::thread_specific_ptr<Logger> Logger::_instancePtr;
 Logger::Severity Logger::_severityThreshold = Info;
 boost::mutex Logger::_mutex;
 
-boost::mutex Logger::SyncSink::_mutex;
-Logger::SyncSink Logger::syncSink(&(std::cout));
-boost::iostreams::stream_buffer<Logger::SyncSink> Logger::syncBuffer(syncSink);
-std::ostream Logger::logStream(&syncBuffer);
+
+//Logger::SyncSink Logger::syncSink(&(std::cout));
+//boost::iostreams::stream_buffer<Logger::SyncSink> Logger::syncBuffer(syncSink);
+//std::ostream Logger::logStream(&syncBuffer);
+
+////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////
+// Filters
+////////////////////////////////////////////////////////////////////////
+/// Filter class responsible for enforcing severity level.
+class Logger::SeverityFilter : public boost::iostreams::multichar_output_filter {
+public:
+    SeverityFilter(Logger* loggerPtr);
+    template<typename Sink>
+    std::streamsize write(Sink& dest, const char* s, std::streamsize n);
+private:
+    Logger* _loggerPtr;
+};
+
+/// Filter class responsible for formatting Logger output.
+class Logger::LogFilter : public boost::iostreams::line_filter {
+public:
+    LogFilter(Logger* loggerPtr);
+private:
+    std::string do_filter(const std::string& line);
+    std::string getTimeStamp();
+    std::string getThreadId();
+    std::string getSeverity();
+    Logger* _loggerPtr;
+};
+
 
 ////////////////////////////////////////////////////////////////////////
 // public
 ////////////////////////////////////////////////////////////////////////
-
+#if 0
 Logger::SyncSink::SyncSink(std::ostream* os) : boost::iostreams::sink() {
     _os = os;
 }
-
-std::streamsize Logger::SyncSink::write(const char *s, std::streamsize n) {
-    boost::mutex::scoped_lock lock(Logger::SyncSink::_mutex);
-    std::string message(s, n);
-    *_os << message << std::flush;
-    return n;
-}
+#endif
 
 Logger& Logger::Instance() {
     if (_instancePtr.get() == NULL) _instancePtr.reset(new Logger);
@@ -158,3 +204,5 @@ std::string Logger::LogFilter::getSeverity() {
         return NULL;
     }
 }
+
+}} // lsst::qserv

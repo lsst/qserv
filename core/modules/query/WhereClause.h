@@ -38,8 +38,9 @@
 // Boost
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/iterator_adaptors.hpp>
 // Qserv
-#include "parser/ColumnRefMap.h"
+#include "query/ColumnRef.h"
 #include "query/BoolTerm.h"
 #include "query/QsRestrictor.h"
 #include "query/ValueExpr.h"
@@ -62,7 +63,7 @@ public:
     boost::shared_ptr<BoolTerm const> getRootTerm() const {
         return _tree;
     }
-    boost::shared_ptr<ColumnRefMap::List const> getColumnRefs() const;
+    boost::shared_ptr<ColumnRef::List const> getColumnRefs() const;
     boost::shared_ptr<AndTerm> getRootAndTerm();
 
     ValueExprIter vBegin();

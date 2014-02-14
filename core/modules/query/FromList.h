@@ -28,7 +28,6 @@
   * @author Daniel L. Wang, SLAC
   */
 #include <boost/shared_ptr.hpp>
-#include "parser/ColumnRefMap.h"
 #include "query/TableRefN.h"
 
 namespace lsst {
@@ -38,12 +37,10 @@ namespace master {
 // FromList is a representation of SQL FROM.
 class FromList {
 public:
-    FromList() : _columnRefMap(new ColumnRefMap()) {}
+    FromList() {}
     explicit FromList(TableRefnListPtr p) : _tableRefns(p) {}
     ~FromList() {}
-    boost::shared_ptr<ColumnRefMap> getColumnRefMap() {
-        return _columnRefMap;
-    }
+
     /// @return a list of TableRefN that occur
     TableRefnList& getTableRefnList() { return *_tableRefns; }
     /// @return a list of TableRefN that occur
@@ -61,7 +58,6 @@ private:
     friend std::ostream& operator<<(std::ostream& os, FromList const& fl);
     friend class FromFactory;
 
-    boost::shared_ptr<ColumnRefMap> _columnRefMap;
     TableRefnListPtr _tableRefns;
 };
 }}} // namespace lsst::qserv::master
