@@ -34,6 +34,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 
+#include "proto/worker.pb.h"
 #include "wsched/ChunkState.h"
 #include "wcontrol/Task.h"
 
@@ -66,8 +67,6 @@ public:
 
 private:
     class TaskPtrCompare {
-        // pqueue takes "less" and provides a maxheap.
-        // We want minheap, so provide "more"
     public:
         bool operator()(TaskPtr const& x, TaskPtr const& y) {
             if(!x || !y) { return false; }
@@ -78,7 +77,10 @@ private:
     class IterablePq {
     public:
         typedef TaskPtr value_type;
-        typedef TaskPtrCompare compare;
+        // pqueue takes "less" and provides a maxheap.
+        // We want minheap, so provide "more"
+        typedef Task::ChunkIdGreater compare;
+
         typedef std::vector<value_type> Container;
         Container& impl() { return _c; }
 

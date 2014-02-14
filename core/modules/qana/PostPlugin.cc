@@ -114,7 +114,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p, QueryContext& context) {
             throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
         }
         if(vlist->size() == 0) {
-            mList.addStar(antlr::RefAST());
+            mList.addStar(std::string());
         }
         // Patch MergeFixup.
         context.needsMerge = true;

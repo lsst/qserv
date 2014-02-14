@@ -38,6 +38,7 @@
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 #include "parser/parserBase.h" // Handler base classes
 #include "parser/ParseException.h"
+#include "parser/parseTreeUtil.h"
 #include "query/WhereClause.h"
 #include "parser/BoolTermFactory.h"
 

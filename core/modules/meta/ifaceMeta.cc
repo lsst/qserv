@@ -183,7 +183,7 @@ qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
   */
 void
 qMaster::printMetadataCache(int metaSessionId) {
-    getMetadataCache(metaSessionId)->printSelf();
+    getMetadataCache(metaSessionId)->printSelf(std::cout);
 }
 
 /** Retrieve the minimal striping info for a particular db.

@@ -28,11 +28,22 @@
   * @author Daniel L. Wang, SLAC
   */
 
-#include "query/WhereClause.h"
+#include <iostream>
+#include <boost/shared_ptr.hpp>
 #include <antlr/AST.hpp>
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst { 
+namespace qserv { 
+namespace master {
 class ValueExprFactory; // Forward
+class BoolFactor;
+class BoolTerm;
+class BoolTermFactor;
+class OrTerm;
+class AndTerm;
+class UnknownTerm;
+class PassTerm;
+class ValueExprFactory;
 
 /// BoolTermFactory is a factory class for BoolTerm objects that get
 /// placed (typically) in WhereClause objects.
@@ -73,34 +84,13 @@ public:
         BoolTermFactory& _bf;
         BoolFactor& _bfr;
     };
-    /// Print tagged tokens to a stream
-    struct tagPrint {
-        tagPrint(std::ostream& os_, std::string const& tag_)
-            : os(os_), tag(tag_) {}
-        void operator()(antlr::RefAST a) {
-            os << tag << ": " << tokenText(a) << std::endl;
-        }
-        std::ostream& os;
-        std::string tag;
-    };
-    // Print tokens with spacing.
-    struct spacePrint {
-        spacePrint(std::ostream& os_) : os(os_), count(0) {}
-        void operator()(antlr::RefAST a) {
-            if(++count > 1) os << " ";
-            os << tokenText(a);
-        }
-        std::ostream& os;
-        int count;
-    };
-
-    BoolTerm::Ptr newBoolTerm(antlr::RefAST a);
-    OrTerm::Ptr newOrTerm(antlr::RefAST a);
-    AndTerm::Ptr newAndTerm(antlr::RefAST a);
-    BoolFactor::Ptr newBoolFactor(antlr::RefAST a);
-    UnknownTerm::Ptr newUnknown(antlr::RefAST a);
-    PassTerm::Ptr newPassTerm(antlr::RefAST a);
-    BoolTermFactor::Ptr newBoolTermFactor(antlr::RefAST a);
+    boost::shared_ptr<BoolTerm> newBoolTerm(antlr::RefAST a);
+    boost::shared_ptr<OrTerm> newOrTerm(antlr::RefAST a);
+    boost::shared_ptr<AndTerm> newAndTerm(antlr::RefAST a);
+    boost::shared_ptr<BoolFactor> newBoolFactor(antlr::RefAST a);
+    boost::shared_ptr<UnknownTerm> newUnknown(antlr::RefAST a);
+    boost::shared_ptr<PassTerm> newPassTerm(antlr::RefAST a);
+    boost::shared_ptr<BoolTermFactor> newBoolTermFactor(antlr::RefAST a);
 
     boost::shared_ptr<ValueExprFactory> _vFactory;
 };

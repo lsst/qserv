@@ -32,7 +32,7 @@
 
 #include "log/Logger.h"
 #include "util/common.h"
-#include "parser/ColumnRefMap.h"
+#include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
@@ -192,7 +192,7 @@ ScanTablePlugin::_findScanTables(SelectStmt& stmt, QueryContext& context) {
 
 
         // Look for column refs
-        boost::shared_ptr<ColumnRefMap::List const> crl = wc.getColumnRefs();
+        boost::shared_ptr<ColumnRef::List const> crl = wc.getColumnRefs();
         if(crl) {
             hasWhereColumnRef = !crl->empty();
 #if 0

@@ -29,13 +29,17 @@
 #define LSST_QSERV_WORKER_TASK_H
 
 #include <deque>
+#include <string>
 #include <boost/shared_ptr.hpp>
-#include "proto/worker.pb.h"
-#include "wbase/Base.h"
 
 namespace lsst {
 namespace qserv {
+class TaskMsg;
+class TaskMsg_Fragment;
+
 namespace worker {
+class ScriptMeta;
+
 
 struct Task {
 public:
@@ -45,6 +49,13 @@ public:
     typedef lsst::qserv::TaskMsg_Fragment Fragment;
     typedef boost::shared_ptr<Fragment> FragmentPtr;
     typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
+
+    struct ChunkEqual {
+        bool operator()(Task::Ptr const& x, Task::Ptr const& y);
+    };
+    struct ChunkIdGreater {
+        bool operator()(Ptr const& x, Ptr const& y);
+    };
 
     explicit Task() {}
     explicit Task(ScriptMeta const& s, std::string const& user_=defaultUser);

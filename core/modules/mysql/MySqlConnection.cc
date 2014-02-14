@@ -24,7 +24,7 @@
 // function invocations should move into this class (and perhaps its
 // delegates).
 
-#include "mysql/MySqlConnection.h" // FIXME: switch to lsst/... namespace
+#include "mysql/MySqlConnection.h"
 #include "SqlConfig.h"
 
 using namespace lsst::qserv;

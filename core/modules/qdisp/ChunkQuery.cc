@@ -42,6 +42,7 @@
 #include "control/AsyncQueryManager.h"
 #include "xrdc/PacketIter.h"
 #include "util/xrootd.h"
+#include "util/StringHash.h"
 #include "control/DynamicWorkQueue.h"
 #include "qdisp/MessageStore.h"
 #include "log/msgCode.h"
@@ -283,7 +284,8 @@ ChunkQuery::ChunkQuery(TransactionSpec const& t, int id,
     _result.read = 0;
     _result.localWrite = 0;
     _attempts = 0;
-    _hash = hashQuery(_spec.query.c_str(), _spec.query.size());
+    _hash = lsst::qserv::StringHash::getMd5Hex(_spec.query.c_str(), 
+                                               _spec.query.size());
     // Patch the spec to include the magic query terminator.
     _spec.query.append(4,0); // four null bytes.
     _completeMutexP.reset(new boost::mutex);

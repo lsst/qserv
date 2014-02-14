@@ -62,12 +62,12 @@ operator<<(std::ostream& os, WhereClause const& wc) {
     os << "WHERE " << wc.getGenerated();
     return os;
 }
-void findColumnRefs(boost::shared_ptr<BoolFactor> f, ColumnRefMap::List& list) {
+void findColumnRefs(boost::shared_ptr<BoolFactor> f, ColumnRef::List& list) {
     if(f) {
         f->findColumnRefs(list);
     }
 }
-void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRefMap::List& list) {
+void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRef::List& list) {
     if(!t) { return; }
     BoolTerm::PtrList::iterator i = t->iterBegin();
     BoolTerm::PtrList::iterator e = t->iterEnd();
@@ -86,9 +86,9 @@ void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRefMap::List& list) {
     }
 }
 
-boost::shared_ptr<ColumnRefMap::List const>
+boost::shared_ptr<ColumnRef::List const>
 WhereClause::getColumnRefs() const {
-    boost::shared_ptr<ColumnRefMap::List> list(new ColumnRefMap::List());
+    boost::shared_ptr<ColumnRef::List> list(new ColumnRef::List());
 
     // Idea: Walk the expression tree and add all column refs to the
     // list. We will walk in depth-first order, but the interface spec

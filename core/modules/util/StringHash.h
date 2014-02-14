@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,21 +20,19 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_CONSTANTS_H
-#define LSST_QSERV_CONSTANTS_H
- /**
-  * @brief  Global constants. 
-  *
-  */
+
+#ifndef LSST_QSERV_STRINGHASH_H
+#define LSST_QSERV_STRINGHASH_H
+#include <string>
 
 namespace lsst {
 namespace qserv {
-const char CHUNK_COLUMN[] = "chunkId";
-const char SUB_CHUNK_COLUMN[] = "subChunkId";
-
-const char USER_DEFAULT[] = "qsmaster";
-
-const char ENV_WRESULTPATH[] = "QSW_RESULTPATH";
-const char ENV_XRDID[] = "XRDNAME";
-}}
-#endif // LSST_QSERV_CONSTANTS_H
+/// Small wrappers for computing hashes
+class StringHash {
+public:
+    static std::string getMd5Hex(char const* buffer, int bufferSize);
+    static std::string getSha1Hex(char const* buffer, int bufferSize);
+    static std::string getSha256Hex(char const* buffer, int bufferSize);
+};
+}} // lsst::qserv
+#endif // LSST_QSERV_STRINGHASH_H

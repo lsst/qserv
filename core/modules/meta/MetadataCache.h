@@ -79,7 +79,7 @@ public:
     std::string getKeyColumn(std::string const& db, std::string const& table);
     DbInfo getDbInfo(std::string const& dbName);
 
-    void printSelf();
+    void printSelf(std::ostream& os);
 
     /** The class TableInfo encapsulates metadata information about single table.
       */

@@ -31,6 +31,7 @@
 #include "parser/ValueExprFactory.h"
 #include "query/Predicate.h"
 #include "parser/PredicateFactory.h"
+#include "parser/parseTreeUtil.h"
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
 #include "log/Logger.h"
@@ -66,6 +67,27 @@ void forEachSibs(antlr::RefAST a, F& f) {
         f(a);
     }
 }
+    /// Print tagged tokens to a stream
+    struct tagPrint {
+        tagPrint(std::ostream& os_, std::string const& tag_)
+            : os(os_), tag(tag_) {}
+        void operator()(antlr::RefAST a) {
+            os << tag << ": " << tokenText(a) << std::endl;
+        }
+        std::ostream& os;
+        std::string tag;
+    };
+    // Print tokens with spacing.
+    struct spacePrint {
+        spacePrint(std::ostream& os_) : os(os_), count(0) {}
+        void operator()(antlr::RefAST a) {
+            if(++count > 1) os << " ";
+            os << tokenText(a);
+        }
+        std::ostream& os;
+        int count;
+    };
+
 
 ////////////////////////////////////////////////////////////////////////
 // BoolTermFactory::bfImport

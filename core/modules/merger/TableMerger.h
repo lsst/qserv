@@ -35,7 +35,7 @@
 #define LSST_QSERV_MASTER_TABLE_MERGER_H
 #include <string>
 #include <boost/thread.hpp> // for mutex.
-#include <boost/shared_ptr.hpp> // for mutex.
+#include <boost/shared_ptr.hpp> 
 
 #include "merger/mergeTypes.h"
 

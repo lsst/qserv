@@ -31,6 +31,7 @@
 #include <iostream>
 #include <sstream>
 #include <boost/thread.hpp>
+#include "proto/worker.pb.h"
 #include "wlog/WLogger.h"
 
 namespace lsst {
