@@ -99,7 +99,7 @@ def checkLibs(context, libList):
 
 ## Look for xrootd headers
 def findXrootdInclude(env):
-    hdrName = "XrdPosix/XrdPosixLinkage.hh"
+    hdrName = os.path.join("XrdPosix","XrdPosixLinkage.hh")
     conf = env.Configure()
     foundPath = None
 
@@ -139,9 +139,11 @@ def checkXrootdLink(env, autoadd=0):
 
 
 def setXrootd(env):
-    found = findXrootdInclude(env)
-    if found and found[1]: env.Append(CPPPATH=[found[1]])
-    else: print >> sys.stderr, "Missing Xrootd Include"
+    (found, path) = findXrootdInclude(env)
+    if not found :
+        print >> sys.stderr, "Missing Xrootd include path"    
+    elif found and path: 
+        env.Append(CPPPATH=[found[1]])
     return found
 
 
