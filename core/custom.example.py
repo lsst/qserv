@@ -15,4 +15,3 @@ XROOTD_LIB = os.path.join(XROOTD_DIR,"lib64")
 PROTOBUF_LIB = os.path.join(PROTOBUF_DIR,"lib")
 
 PROTOC=os.path.join(PROTOBUF_DIR,"bin","protoc")
-MYSQL_ROOT=MYSQL_DIR
