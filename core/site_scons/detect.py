@@ -122,7 +122,7 @@ def findXrootdInclude(env):
             conf.Finish()
             return (True, path)
     conf.Finish()
-    return False
+    return (False,None)
 
 def checkXrootdLink(env, autoadd=0):
     libList = "XrdUtils XrdClient XrdPosix XrdPosixPreload".split()
