@@ -30,6 +30,8 @@ def checkMySql(env):
     * a built MySQL directory specified by the env var MYSQL_ROOT
     """
     conf = env.Configure()
+    print "DEBUG checkMySql() %s %s" % (env["LIBPATH"], env["CPPPATH"])
+
     if conf.CheckLibWithHeader("mysqlclient_r", "mysql/mysql.h",
                                    language="C++", autoadd=0):
         if conf.CheckDeclaration("mysql_next_result",
@@ -89,7 +91,8 @@ int main(int argc, char **argv) {
 
 def checkLibs(context, libList):
     lastLIBS = context.env['LIBS']
-    context.Message('Checking for %s...' % ",".join(libList))
+    print "DEBUG : checkLibs() %s" % lastLIBS
+    context.Message('checkLibs() : Checking for %s...' % ",".join(libList))
     context.env.Append(LIBS=libList)
     result = context.TryLink(null_source_file, '.cc')
     context.Result(result)
@@ -99,7 +102,7 @@ def checkLibs(context, libList):
 
 ## Look for xrootd headers
 def findXrootdInclude(env):
-    hdrName = "XrdPosix/XrdPosixLinkage.hh"
+    hdrName = os.path.join("XrdPosix","XrdPosixLinkage.hh")
     conf = env.Configure()
     foundPath = None
 
@@ -122,7 +125,7 @@ def findXrootdInclude(env):
             conf.Finish()
             return (True, path)
     conf.Finish()
-    return False
+    return (False,None)
 
 def checkXrootdLink(env, autoadd=0):
     libList = "XrdUtils XrdClient XrdPosix XrdPosixPreload".split()
@@ -139,9 +142,11 @@ def checkXrootdLink(env, autoadd=0):
 
 
 def setXrootd(env):
-    found = findXrootdInclude(env)
-    if found and found[1]: env.Append(CPPPATH=[found[1]])
-    else: print >> sys.stderr, "Missing Xrootd Include"
+    (found, path) = findXrootdInclude(env)
+    if not found :
+        print >> sys.stderr, "Missing Xrootd include path"    
+    elif found and path: 
+        env.Append(CPPPATH=[found[1]])
     return found
 
 
@@ -185,8 +190,9 @@ def importCustom(env, extraTgts):
 
     # Automagically steal PYTHONPATH from envvar
     ppDirs = getExt("PYTHONPATH")
-    existPp = os.getenv("PYTHONPATH", None)
-    if existPp: ppDirs.prepend(existPp)
+    #existPp = os.getenv("PYTHONPATH", None)
+    #print "DEBUG : %s %s" % (existPp, ppDirs)
+    #if existPp: ppDirs.prepend(existPp)
     pp = env.get("PYTHONPATH", [])
     pp.extend(ppDirs)
     extraTgts["PYTHONPATH"] = ppDirs
