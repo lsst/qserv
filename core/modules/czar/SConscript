@@ -53,10 +53,9 @@ pySwig = env.File('masterLib.py')
 # is already there (on masterLib.i)
 extraTgts["masterLib.py"] = pySwig
 
-
-
 def markForInstall(env, pathList, extras):
-    pyDir = os.path.join(*pathList)
+    python_libpath=os.path.join("lib","python")
+    pyDir = os.path.join(python_libpath,*pathList)
     srcPyDir = os.path.join(*pathList)
 
     # install py files
@@ -68,17 +67,20 @@ def markForInstall(env, pathList, extras):
     # touch init files
     for p in range(1,len(pathList)):
         plist = pathList[:p] + ["__init__.py"]
-        fname = os.path.join(*plist)
+        fname = os.path.join(python_libpath, *plist)
         f = env.Command(fname, None, [Touch("$TARGET")])
 
-        extraTgts['dist'].append((os.path.join(*pathList[:p]), f))
-distDir = "../dist"
+        extraTgts['dist'].append((os.path.join(python_libpath, *pathList[:p]), f))
+
 distTgts = [swigged, pySwig]
+
 markForInstall(env, ["lsst","qserv","master"], distTgts)
 
 for f in env.Glob("bin/*py"):
     extraTgts['dist'].append(('bin', f))
-    #env.Install(distDir, f)
+
+print "DEBUG extraTgts['dist'] %s" % extraTgts['dist']
+print "DEBUG tgt %s" % tgt
 
 extraTgts["czarPy"] = distTgts
 Return('tgt')

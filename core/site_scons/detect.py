@@ -30,6 +30,8 @@ def checkMySql(env):
     * a built MySQL directory specified by the env var MYSQL_ROOT
     """
     conf = env.Configure()
+    print "DEBUG checkMySql() %s %s" % (env["LIBPATH"], env["CPPPATH"])
+
     if conf.CheckLibWithHeader("mysqlclient_r", "mysql/mysql.h",
                                    language="C++", autoadd=0):
         if conf.CheckDeclaration("mysql_next_result",
@@ -89,7 +91,8 @@ int main(int argc, char **argv) {
 
 def checkLibs(context, libList):
     lastLIBS = context.env['LIBS']
-    context.Message('Checking for %s...' % ",".join(libList))
+    print "DEBUG : checkLibs() %s" % lastLIBS
+    context.Message('checkLibs() : Checking for %s...' % ",".join(libList))
     context.env.Append(LIBS=libList)
     result = context.TryLink(null_source_file, '.cc')
     context.Result(result)

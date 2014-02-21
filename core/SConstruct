@@ -1,28 +1,73 @@
 # -*- python -*-
 # top level
+import os
 
 ## Include the protoc, antlr, and swig builder tools
 env = Environment(tools=['default', 'protoc', 'antlr', 'swig'])
+env.Default(env.Alias("build"))
+Depends(env.Alias("install"), env.Alias("build"))
 
 # Setup the #include paths
 env.Append(CPPPATH="modules")
 
+# Set the build directory using "scons build=path/to/builddir"
 
-# Set the build directory using "scons bld=path/to/builddir"
-buildDir = ARGUMENTS.get('bld', 'bld')
+#####################
+#
+# Build dir
+#
+#####################
+AddOption('--build',
+        dest='buildDir',
+        type='string',
+        nargs=1,
+        action='store',
+        metavar='DIR',
+        default= 'build',
+        help='Qserv build dir')
+
+buildDir = GetOption('buildDir')
 print "Building into", buildDir
 
-# Trigger the modules build.
-SConscript('modules/SConscript', variant_dir=buildDir, duplicate=1,
-           exports=['env', 'ARGUMENTS'])
+#####################
+#
+# Install prefix
+#
+#####################
+AddOption('--prefix',
+        dest='prefix',
+        type='string',
+        nargs=1,
+        action='store',
+        metavar='DIR',
+        default= os.path.join(buildDir,'dist'),
+        help='Qserv installation prefix')
 
+prefix = GetOption('prefix')
+env.Replace(PYTHON_PREFIX = os.path.join(prefix, "lib", "python"))
 
-# Alias("install", [env.Install(env['prefix'], "python"),
-#                   env.Install(env['prefix'], "include"),
-#                   env.Install(env['prefix'], "lib"),
-#                   env.InstallAs(os.path.join(env['prefix'], "doc", "doxygen"),
-#                                 os.path.join("doc", "htmlDir")),
-#                   env.InstallEups(os.path.join(env['prefix'], "ups"))])
+############################
+#
+# Trigger the modules build
+#
+############################
+filesToInstall = SConscript('modules/SConscript', variant_dir=buildDir, duplicate=1,
+        exports=['env', 'ARGUMENTS'])
+
+############################
+#
+# Defining install target
+#
+############################
+def get_install_targets(prefix, filesToInstall) :
+    targetDirSet = set()
+    for (path, f) in filesToInstall :
+        targetDir = os.path.join(prefix, path)
+        env.Install(targetDir, f)
+        targetDirSet.add(targetDir)
+    return list(targetDirSet)
+
+env.Alias("install", get_install_targets(prefix,filesToInstall))
 
 # #
 # # Build TAGS files
