@@ -62,8 +62,7 @@ env.Alias('init', init_target_lst)
 #
 #########################
 
-env.Requires(env.Alias('download'), env.Alias('init'))
-env.Requires(env.Alias('perl-install'), env.Alias('download'))
+env.Requires(env.Alias('perl-install'), env.Alias('init'))
 # templates must be applied before installation in order to
 # initialize mysqld
 env.Requires(env.Alias('perl-install'), env.Alias('config'))
@@ -85,28 +84,6 @@ env.Requires(env.Alias('perl-install'), env.Alias('admin-bin'))
 env.Alias('install',env.Alias('perl-install'))
 
 env.Default(env.Alias('install'))
-
-###########################
-#
-# Defining Download Alias
-#
-###########################
-
-source_urls = []
-target_files = []
-
-download_cmd_lst = []
-output_dir = os.path.join(config['qserv']['base_dir'],"build")
-# Add a command for each file to download
-for app in config['dependencies']:
-    if re.match(".*_url",app):
-        app_url=config['dependencies'][app]
-        base_file_name = os.path.basename(app_url)
-        output_file = os.path.join(output_dir,base_file_name)
-        # Command to use in order to download source tarball
-        cmd = env.Command(output_file, Value(app_url), actions.download)
-	download_cmd_lst.append(cmd)
-env.Alias('download', download_cmd_lst)
 
 #########################
 #
