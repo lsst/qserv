@@ -150,11 +150,6 @@ def setXrootd(env):
     return found
 
 
-def findMeta(env):
-    metaFiles = "../../meta/python/lsst/qserv/meta/*py"
-    files = env.Glob(metaFiles)
-    return files
-
 # --extern root handling
 def _addInst(env, root):
     iPath = os.path.join(root, "include")

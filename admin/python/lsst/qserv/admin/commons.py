@@ -1,6 +1,6 @@
 import io
 import os
-import hashlib 
+import hashlib
 import logging
 import re
 import subprocess
@@ -51,7 +51,7 @@ def read_config(config_file):
                                     )
 
     section='qms'
-    config[section] = dict()    
+    config[section] = dict()
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)
 
@@ -81,11 +81,6 @@ def read_config(config_file):
         config[section][option] = parser.get(section,option)
 
     section='xrootd'
-    config[section] = dict()
-    for option in parser.options(section):
-        config[section][option] = parser.get(section,option)
-
-    section='dependencies'
     config[section] = dict()
     for option in parser.options(section):
         config[section][option] = parser.get(section,option)

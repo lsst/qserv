@@ -28,8 +28,7 @@ rm -rf sources &&
 mkdir sources &&
 cd sources &&
 # install eups latest version
-# git clone git@github.com:RobertLuptonTheGood/eups.git
-git clone ${EUPS_GIT_URL} &&
+${EUPS_GIT_CLONE_CMD} &&
 cd eups/ &&
 ./configure --prefix="${INSTALL_DIR}/eups" \
 --with-eups="${INSTALL_DIR}/stack"&&
@@ -42,18 +41,15 @@ make install ||
 
 # install git latest version
 source "${INSTALL_DIR}/eups/bin/setups.sh"
-export EUPS_PKGROOT="http://lsst-web.ncsa.illinois.edu/~mjuric/pkgs"
 
 # If you don't have git > v1.8.4, do:
-eups distrib install git_scm
+eups distrib install git --repository="http://lsst-web.ncsa.illinois.edu/~mjuric/pkgs"
 
-setup git_scm
+setup git
 
 echo
 echo "INSTALLING PACKAGES : $PWD"
 echo
-export EUPS_PKGROOT=${QSERV_EUPS_PKGROOT}
-eups distrib install virtualenv_python
-setup virtualenv_python
+eups declare python system -r none -m none
 
 time eups distrib install qserv 

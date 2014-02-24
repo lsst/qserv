@@ -31,8 +31,6 @@ else:
     print "(e.g., set  GEOMETRY=/u1/lsst/stack/geom/python/lsst/geom/geometry.py )"
 if not detect.checkTwisted():
     print "Couldn't find Twisted. Be sure that Twisted is configured for Qserv Czar startup."
-metaFiles = detect.findMeta(env)
-for f in metaFiles: extraTgts['dist'].append(('lib/python/lsst/qserv/meta', f))
 
 hasMysql = detect.checkMySql(env)
 

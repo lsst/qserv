@@ -14,14 +14,13 @@ def install_python_module(env, target, source):
 
     python_path_prefix=target
     source_dir_path=source 
-    env['pythonpath'] =distutils.sysconfig.get_python_lib(prefix=python_path_prefix)
     target_lst = []
     clean_target_lst = []
 
     source_lst = utils.recursive_glob(source_dir_path,'*.py',env)
 
     for f in source_lst :
-        target = utils.replace_base_path(source_dir_path,env['pythonpath'],f,env)
+        target = utils.replace_base_path(source_dir_path,python_path_prefix,f,env)
         env.InstallAs(target, f)
         target_lst.append(target)
         # .pyc files will also be removed
