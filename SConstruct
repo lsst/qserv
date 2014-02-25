@@ -14,7 +14,7 @@ import utils
 
 logger = commons.init_default_logger(log_file_prefix="scons-qserv", level=logging.DEBUG)
 
-env = Environment(tools=['default', 'pymod', 'protoc', 'antlr', 'swig'])
+env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'swig'])
 
 #####################
 #
@@ -48,6 +48,7 @@ AddOption('--prefix',
         help='Qserv installation prefix')
 
 PREFIX = GetOption('prefix')
+
 PYTHON_PREFIX = os.path.join(PREFIX, "lib", "python")
 
 #########################
@@ -68,14 +69,22 @@ PYTHON_PREFIX = os.path.join(PREFIX, "lib", "python")
 env.Default(env.Alias("build"))
 env.Depends(env.Alias("install"), env.Alias("build"))
 
-env.Requires(env.Alias('python-tests'), env.Alias('python-admin'))
-env.Requires(env.Alias('python-tests'), env.Alias('python-qms'))
-env.Requires(env.Alias('admin-bin'), env.Alias('python'))
+env.Depends(env.Alias('python-tests'), env.Alias('python-admin'))
+env.Depends(env.Alias('python-tests'), env.Alias('python-qms'))
+env.Depends(env.Alias('admin-bin'), env.Alias('python'))
+
 env.Alias("python",
     [
         env.Alias("python-admin"),
         env.Alias("python-qms"),
         env.Alias("python-tests"),
+    ]
+)
+
+env.Alias("install",
+    [
+        env.Alias("dist"),
+        env.Alias("config")
     ]
 )
 
@@ -137,7 +146,30 @@ def get_install_targets(prefix, filesToInstall) :
         targetDirSet.add(targetDir)
     return list(targetDirSet)
 
-env.Alias("install", get_install_targets(PREFIX,filesToInstall))
+env.Alias("dist", get_install_targets(PREFIX,filesToInstall))
+
+############################
+#
+# Fill configuration files
+#
+############################
+
+src_dir=Dir('.').srcnode().abspath
+config_file_name=os.path.join(src_dir, "qserv-build.conf")
+homedir=os.path.expanduser("~")
+user_config_dir=os.path.join(homedir,".lsst")
+user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
+
+script_dict = {
+    '%\(QSERV_DIR\)s': PREFIX,
+    '%\(XROOTD_DIR\)s': env['XROOTD_DIR'],
+    '%\(MYSQL_DIR\)s': env['MYSQL_DIR'],
+    '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR']
+}
+
+make_user_config_cmd = env.Substfile(user_config_file_name, config_file_name, SUBST_DICT=script_dict)
+
+env.Alias("config", [make_user_config_cmd])
 
 # List all aliases
 try:

@@ -1,4 +1,0 @@
-#!/bin/bash
-
-#start_mysqlproxy
-DEBUG=0 QSERV_RPC_PORT=%(QSERV_RPC_PORT)s %(QSERV_BASE_DIR)s/bin/mysql-proxy --defaults-file=%(QSERV_BASE_DIR)s/etc/my-proxy.cnf &> %(QSERV_LOG_DIR)s/mysql-proxy-lua.log &

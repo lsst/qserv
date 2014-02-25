@@ -28,7 +28,7 @@ if geomLib:
     extraTgts['dist'].append(('lib/python/lsst/qserv/master', env.File(geomLib)))
 else:
     print "Missing geom.py specification. Distribution won't be runnable"
-    print "(e.g., set  GEOMETRY=/u1/lsst/stack/geom/python/lsst/geom/geometry.py )"
+    print "(e.g., set  GEOMETRY=/u1/lsst/stack/geom/python/lsst/geom/geometry.py in custom.py)"
 if not detect.checkTwisted():
     print "Couldn't find Twisted. Be sure that Twisted is configured for Qserv Czar startup."
 

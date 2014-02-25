@@ -144,8 +144,8 @@ def checkXrootdLink(env, autoadd=0):
 def setXrootd(env):
     (found, path) = findXrootdInclude(env)
     if not found :
-        print >> sys.stderr, "Missing Xrootd include path"    
-    elif found and path: 
+        print >> sys.stderr, "Missing Xrootd include path"
+    elif found and path:
         env.Append(CPPPATH=[found[1]])
     return found
 
@@ -176,25 +176,33 @@ def importCustom(env, extraTgts):
         return # Couldn't find module to import
 
     print "using custom.py"
+
     def getExt(ext):
         varNames = filter(lambda s: s.endswith(ext), dir(custom))
         vals = map(lambda i: getattr(custom, i), varNames)
         return vals
+
+    def customAttrToEnv(attrName,env):
+        print "Looking for %s in custom.py " % attrName
+        if attrName in dir(custom):
+            env[attrName] = getattr(custom,attrName)
+        else:
+            print "didn't find %s in custom." % attrName
+
     env.Append(LIBPATH=getExt("LIB")) ## *LIB --> LIBPATH
     env.Append(CPPPATH=getExt("INC")) ## *INC --> CPPPATH
 
     # Automagically steal PYTHONPATH from envvar
     ppDirs = getExt("PYTHONPATH")
-    #existPp = os.getenv("PYTHONPATH", None)
-    #print "DEBUG : %s %s" % (existPp, ppDirs)
-    #if existPp: ppDirs.prepend(existPp)
     pp = env.get("PYTHONPATH", [])
     pp.extend(ppDirs)
     extraTgts["PYTHONPATH"] = ppDirs
-    print "Looking for protoc in custom"
-    # Import PROTOC
-    if "PROTOC" in dir(custom): env['PROTOC'] = custom.PROTOC
-    else: print "didn't find protoc in custom."
+
+    customAttrToEnv('XROOTD_DIR',env)
+    customAttrToEnv('MYSQL_DIR',env)
+    customAttrToEnv('MYSQLPROXY_DIR',env)
+    customAttrToEnv('PROTOC',env)
+
     return custom
 
 def extractGeometry(custom):
@@ -215,8 +223,3 @@ def checkTwisted():
     except ImportError, e:
         return None
     pass
-
-########################################################################
-# obsolete
-########################################################################
-
