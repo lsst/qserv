@@ -16,49 +16,32 @@ logger = commons.init_default_logger(log_file_prefix="scons-qserv", level=loggin
 
 env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'swig'])
 
+# TODO : manage custom.py
+vars = Variables('custom.py')
+
 #####################
 #
 # Build dir
 #
 #####################
-AddOption('--build',
-        dest='buildDir',
-        type='string',
-        nargs=1,
-        action='store',
-        metavar='DIR',
-        default= 'build',
-        help='Qserv build dir')
-
-buildDir = GetOption('buildDir')
-print "Building into", buildDir
+vars.Add(PathVariable('builddir',
+            'Qserv build dir',
+            'build',
+            PathVariable.PathIsDirCreate))
+vars.Update(env)
 
 #####################
 #
 # Install prefix
 #
 #####################
-AddOption('--prefix',
-        dest='prefix',
-        type='string',
-        nargs=1,
-        action='store',
-        metavar='DIR',
-        default= os.path.join(buildDir,'dist'),
-        help='Qserv installation prefix')
+vars.Add(PathVariable('prefix',
+            'Qserv install dir',
+            os.path.join(env['builddir'],'dist'),
+            PathVariable.PathIsDirCreate))
+vars.Update(env)
 
-PREFIX = GetOption('prefix')
-
-PYTHON_PREFIX = os.path.join(PREFIX, "lib", "python")
-
-#########################
-#
-# Reading config file
-#
-#########################
-
-# config['qserv']['base_dir']=
-# env['config']=config
+PYTHON_PREFIX = os.path.join(env['prefix'], "lib", "python")
 
 #########################
 #
@@ -116,7 +99,7 @@ bin_basename_lst=[
 bin_target_lst = []
 for f in bin_basename_lst:
     source = os.path.join("admin","bin",f)
-    target = os.path.join(PREFIX,"bin",f)
+    target = os.path.join(env['prefix'],"bin",f)
     Command(target, source, Copy("$TARGET", "$SOURCE"))
     bin_target_lst.append(target)
 
@@ -133,7 +116,7 @@ env.Alias("admin-bin", bin_target_lst)
 # Setup the #include paths
 env.Append(CPPPATH="modules")
 
-filesToInstall = SConscript('core/modules/SConscript', variant_dir=buildDir, duplicate=1,
+filesToInstall = SConscript('core/modules/SConscript', variant_dir=env['builddir'], duplicate=1,
         exports=['env', 'ARGUMENTS'])
 
 # computing install target paths
@@ -146,7 +129,7 @@ def get_install_targets(prefix, filesToInstall) :
         targetDirSet.add(targetDir)
     return list(targetDirSet)
 
-env.Alias("dist", get_install_targets(PREFIX,filesToInstall))
+env.Alias("dist", get_install_targets(env['prefix'],filesToInstall))
 
 ############################
 #
@@ -161,7 +144,7 @@ user_config_dir=os.path.join(homedir,".lsst")
 user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
 
 script_dict = {
-    '%\(QSERV_DIR\)s': PREFIX,
+    '%\(QSERV_DIR\)s': env['prefix'],
     '%\(XROOTD_DIR\)s': env['XROOTD_DIR'],
     '%\(MYSQL_DIR\)s': env['MYSQL_DIR'],
     '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR']
