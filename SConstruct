@@ -155,7 +155,7 @@ env.Alias("dist", get_install_targets(PREFIX,filesToInstall))
 ############################
 
 src_dir=Dir('.').srcnode().abspath
-config_file_name=os.path.join(src_dir, "qserv-build.conf")
+config_file_name=os.path.join(src_dir, "admin", "templates", "client", "qserv.conf")
 homedir=os.path.expanduser("~")
 user_config_dir=os.path.join(homedir,".lsst")
 user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
