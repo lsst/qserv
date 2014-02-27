@@ -1,5 +1,5 @@
 # -*- python -*-
-import commons
+import logger 
 import ConfigParser
 import errno
 import io
@@ -10,11 +10,10 @@ import re
 import SCons.Node.FS
 from SCons.Script import Mkdir,Chmod,Copy,WhereIs
 import shutil
-import utils
 
-logger = commons.init_default_logger(log_file_prefix="scons-qserv", level=logging.DEBUG)
+logger = logger.init_default_logger(log_file_prefix="scons-qserv", level=logging.DEBUG)
 
-env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'swig'])
+env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'swig', 'recinstall'])
 
 # TODO : manage custom.py
 vars = Variables('custom.py')
@@ -54,7 +53,7 @@ env.Depends(env.Alias("install"), env.Alias("build"))
 
 env.Depends(env.Alias('python-tests'), env.Alias('python-admin'))
 env.Depends(env.Alias('python-tests'), env.Alias('python-qms'))
-env.Depends(env.Alias('admin-bin'), env.Alias('python'))
+env.Depends(env.Alias('admin'), env.Alias('python'))
 
 env.Alias("python",
     [
@@ -67,7 +66,8 @@ env.Alias("python",
 env.Alias("install",
     [
         env.Alias("dist"),
-        env.Alias("config")
+        env.Alias("admin"),
+        env.Alias("userconfig")
     ]
 )
 
@@ -103,7 +103,20 @@ for f in bin_basename_lst:
     Command(target, source, Copy("$TARGET", "$SOURCE"))
     bin_target_lst.append(target)
 
-env.Alias("admin-bin", bin_target_lst)
+template_target = os.path.join(env['prefix'],"admin","templates")
+env.RecursiveInstall(template_target, os.path.join("admin","templates"))
+
+sitescons_target = os.path.join(env['prefix'],"admin","site_scons")
+env.RecursiveInstall(sitescons_target, os.path.join("admin","site_scons"))
+
+env.Alias("admin", 
+        [
+        bin_target_lst,
+        template_target,
+        sitescons_target,
+        env.Install(os.path.join(env['prefix'],"admin"), os.path.join("admin","SConstruct"))
+        ]
+)
 
 #############################
 #
@@ -152,7 +165,7 @@ script_dict = {
 
 make_user_config_cmd = env.Substfile(user_config_file_name, config_file_name, SUBST_DICT=script_dict)
 
-env.Alias("config", [make_user_config_cmd])
+env.Alias("userconfig", [make_user_config_cmd])
 
 # List all aliases
 try:

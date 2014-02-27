@@ -1,7 +1,8 @@
 import logging
 import os
-import path 
 import time
+
+import commons 
 
 from SCons.Script import Execute, Mkdir, Chmod, Copy, WhereIs   # for Execute and Mkdir
 import SCons.Node.FS
@@ -17,7 +18,7 @@ def exists_and_is_writable(dir) :
     	if Execute(Mkdir(dir)):
             logger.debug("Unable to create dir : %s " % dir)
             return False 
-    elif not path.is_writable(dir):
+    elif not commons.is_writable(dir):
         return False
     
     return True	 
