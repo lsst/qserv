@@ -1,22 +1,27 @@
-MYSQL_DIR=%(MYSQLD_DIR)s
+#!/usr/bin/env bash
+
+QSERV_DIR=%(QSERV_DIR)s
+MYSQL_DIR=%(MYSQL_DIR)s
+MYSQLD_SOCK=%(MYSQLD_SOCK)s
 MYSQLD_DATA_DIR=%(MYSQLD_DATA_DIR)s
 MYSQLD_HOST=%(MYSQLD_HOST)s
 MYSQLD_PASS=%(MYSQLD_PASS)s
 
-killall mysqld mysqld_safe
-rm -rf ${MYSQLD_DATA_DIR}/*
-    
-${MYSQL_DIR}/bin/mysql_install_db --defaults-file=${MYSQL_DIR}/etc/my.cnf --user=$prod_user
-    
-echo "Starting mysql server."
-${MYSQL_DIR}/bin/mysqld_safe --defaults-file=${MYSQL_DIR}/etc/my.cnf &
-sleep 5;
+SQL_DIR=${QSERV_DIR}/tmp/configure/sql
 
-echo "Changing mysql root password."
-${MYSQL_DIR}/bin/mysql -S ${MYSQL_DIR}/var/lib/mysql/mysql.sock -u root < ${QSERV_DIR}/tmp/mysql-password.sql &&
-rm ${QSERV_DIR}/tmp/mysql-password.sql &&
-echo "Shutting down mysql server."
-${MYSQL_DIR}/bin/mysqladmin -S ${MYSQL_DIR}/var/lib/mysql/mysql.sock shutdown -u root -p'%(MYSQLD_PASS)s' || 
+${QSERV_DIR}/etc/init.d/mysqld stop &&
+echo "-- Removing previous data." &&
+rm -rf ${MYSQLD_DATA_DIR}/* &&
+echo "-- ." &&
+${MYSQL_DIR}/bin/mysql_install_db --defaults-file=${QSERV_DIR}/etc/my.cnf --user=${USER} &&
+echo "-- Starting mysql server." &&
+${QSERV_DIR}/etc/init.d/mysqld start &&
+sleep 5 &&
+echo "-- Changing mysql root password." &&
+${MYSQL_DIR}/bin/mysql -S ${MYSQLD_SOCK} -u root < ${SQL_DIR}/mysql-password.sql &&
+rm ${SQL_DIR}/mysql-password.sql &&
+echo "-- Shutting down mysql server." &&
+${MYSQL_DIR}/bin/mysqladmin -S ${MYSQLD_SOCK} shutdown -u root -p'%(MYSQLD_PASS)s' || 
 {
     echo -n "Failed to set mysql root user password."
     echo "Please set the mysql root user password with : "

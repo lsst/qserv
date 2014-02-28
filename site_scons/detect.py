@@ -182,13 +182,6 @@ def importCustom(env, extraTgts):
         vals = map(lambda i: getattr(custom, i), varNames)
         return vals
 
-    def customAttrToEnv(attrName,env):
-        print "Looking for %s in custom.py " % attrName
-        if attrName in dir(custom):
-            env[attrName] = getattr(custom,attrName)
-        else:
-            print "didn't find %s in custom." % attrName
-
     env.Append(LIBPATH=getExt("LIB")) ## *LIB --> LIBPATH
     env.Append(CPPPATH=getExt("INC")) ## *INC --> CPPPATH
 
@@ -197,11 +190,6 @@ def importCustom(env, extraTgts):
     pp = env.get("PYTHONPATH", [])
     pp.extend(ppDirs)
     extraTgts["PYTHONPATH"] = ppDirs
-
-    customAttrToEnv('XROOTD_DIR',env)
-    customAttrToEnv('MYSQL_DIR',env)
-    customAttrToEnv('MYSQLPROXY_DIR',env)
-    customAttrToEnv('PROTOC',env)
 
     return custom
 

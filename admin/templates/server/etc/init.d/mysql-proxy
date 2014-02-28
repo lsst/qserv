@@ -8,7 +8,7 @@
 
 # Source function library.
 
-. %(QSERV_BASE_DIR)s/etc/init.d/qserv-functions
+. %(QSERV_DIR)s/etc/init.d/qserv-functions
 
 prog="mysql-proxy"
 
@@ -22,20 +22,20 @@ fi
 
 # Set default mysql-proxy configuration.
 PROXY_OPTIONS="--daemon"
-pidfile=%(QSERV_BASE_DIR)s/var/run/mysql-proxy.pid
-PROXY_CONFIG=%(QSERV_BASE_DIR)s/etc/my-proxy.cnf
-lockfile=%(QSERV_BASE_DIR)s/var/lock/subsys/$prog
+pidfile=%(QSERV_DIR)s/var/run/mysql-proxy.pid
+PROXY_CONFIG=%(QSERV_DIR)s/etc/my-proxy.cnf
+lockfile=%(QSERV_DIR)s/var/lock/subsys/$prog
 stoptimeout=1
 
 LUA_DEBUG_LEVEL=0
 LUA_LOG_FILE=%(QSERV_LOG_DIR)s/mysql-proxy-lua.log
 QSERV_MASTER_PORT=%(QSERV_RPC_PORT)s
 
-BINARY=%(QSERV_BASE_DIR)s/bin/$prog
+BINARY=%(QSERV_DIR)s/bin/$prog
 
 # Source mysql-proxy configuration.
-if [ -f %(QSERV_BASE_DIR)s/etc/sysconfig/mysql-proxy ]; then
-    . %(QSERV_BASE_DIR)s/etc/sysconfig/mysql-proxy
+if [ -f %(QSERV_DIR)s/etc/sysconfig/mysql-proxy ]; then
+    . %(QSERV_DIR)s/etc/sysconfig/mysql-proxy
 fi
 
 # WARNING : can only use the --user switch if running as root

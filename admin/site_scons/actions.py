@@ -9,50 +9,7 @@ from urllib2 import Request, urlopen, URLError, HTTPError
 import utils
 import commons
 
-# TODO : add and test fail on error
-#    if not os.path.isfile(file_name):
-#        logger.fatal("Retrieval failed for file : %s " % file_name)
-#        sys.exit(1)
-
-def build_cmd_with_opts( config, target='install'):
-
-    logger = logging.getLogger('scons-qserv')
-
-    install_opts="--install-dir=\"%s\"" % config['qserv']['base_dir']
-    install_opts="%s --log-dir=\"%s\"" % (install_opts, config['qserv']['log_dir'])
-    install_opts="%s --mysql-data-dir=\"%s\"" % (install_opts, config['mysqld']['data_dir'])
-    install_opts="%s --mysql-port=%s" % (install_opts, config['mysqld']['port'])
-    install_opts="%s --mysql-pass=\"%s\"" % (install_opts,config['mysqld']['pass'])
-
-    if config.has_key('geometry_src_dir') :
-        if commons.is_readable(configi['qserv']['geometry_src_dir']) :
-            install_opts=("%s --geometry-dir=\"%s\"" %
-                            (install_opts,config['qserv']['geometry_src_dir'])
-                    )
-        else :
-            logger.fatal("Error while accessing geometry src dir : '%s' for reading." % config['qserv']['geometry_src_dir'])
-            exit(1)
-
-    log_file_prefix = config['qserv']['log_dir']
-    if target=='qserv-only' :
-        install_opts="%s --qserv" % install_opts
-        log_file_prefix += "/QSERV-ONLY"
-    elif target == 'clean-all' :
-        install_opts="%s --clean-all" % install_opts
-        log_file_prefix = "~/QSERV-CLEAN"
-    elif target == 'init-mysql-db' :
-        install_opts="%s --init-mysql-db" % install_opts
-        log_file_prefix += "/QSERV-INIT-MYSQL-DB"
-    else :
-        log_file_prefix += "/INSTALL"
-    log_file_name = log_file_prefix + "-" + datetime.now().strftime("%Y-%m-%d-%H:%M:%S") + ".log"
-
-    command_str = os.path.join(config['src_dir' ], "admin", "qserv-install")
-    command_str += " "+install_opts + " &> " + log_file_name
-
-    #logger.debug("Launching perl install script with next command : %s" % command_str)
-    return command_str
-
+# TODO : put in a shell script
 def check_root_dirs(target, source, env):
 
     logger = logging.getLogger()

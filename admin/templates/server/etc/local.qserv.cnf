@@ -24,13 +24,13 @@ port=%(QSERV_RPC_PORT)s
 #dropMem=
 passwd =
 db=qservResult
-unix_socket=%(QSERV_BASE_DIR)s/var/lib/mysql/mysql.sock
+unix_socket=%(QSERV_DIR)s/var/lib/mysql/mysql.sock
 host=
 user=qsmaster
 port=0
 
 [partitioner]
-emptyChunkListFile=%(QSERV_BASE_DIR)s/etc/emptyChunks.txt
+emptyChunkListFile=%(QSERV_DIR)s/etc/emptyChunks.txt
 
 #[tuning]
 #memoryEngine=yes

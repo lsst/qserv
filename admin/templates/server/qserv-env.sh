@@ -1,8 +1,8 @@
-export QSERV_BASE=%(QSERV_BASE_DIR)s
+export QSERV_BASE=%(QSERV_DIR)s
 
 # qserv 
 # WARNING : set qserv binary directory before running qserv in order to use
-# %(QSERV_BASE_DIR)s/bin/python
+# %(QSERV_DIR)s/bin/python
 
 if [ -z "${QSERV_ENV_SETTED}" ]; then
 	export PATH=${QSERV_BASE}/bin:${PATH}

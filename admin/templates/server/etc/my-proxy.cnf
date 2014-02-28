@@ -15,4 +15,4 @@ pid-file = %(QSERV_PID_DIR)s/mysql-proxy.pid
 
 lua-path=%(QSERV_LUA_SHARE)s/?.lua;%(QSERV_LUA_SHARE)s/?/init.lua;%(QSERV_LUA_SHARE)s/?/?.lua
 lua-cpath=%(QSERV_LUA_LIB)s/?.so;%(QSERV_LUA_LIB)s/?/?.so
-proxy-lua-script = %(QSERV_BASE_DIR)s/qserv/master/proxy/mysqlProxy.lua
+proxy-lua-script = %(QSERV_DIR)s/qserv/master/proxy/mysqlProxy.lua

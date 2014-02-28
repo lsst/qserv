@@ -29,11 +29,16 @@ env = Environment(tools=['textfile'])
 # initialize mysqld
 env.Requires(env.Alias('configure'), env.Alias('mkdir'))
 env.Requires(env.Alias('configure'), env.Alias('mysql'))
-# TODO : cf. qserv-install
-# env.Requires(env.Alias('configure'), env.Alias('init-mysql-db'))
 env.Requires(env.Alias('configure'), env.Alias('scisql'))
 env.Requires(env.Alias('configure'), env.Alias('qms'))
 env.Requires(env.Alias('configure'), env.Alias('qserv'))
+
+env.Requires(env.Alias('mysql'), env.Alias('templates'))
+env.Requires(env.Alias('scisql'), env.Alias('templates'))
+env.Requires(env.Alias('qms'), env.Alias('templates'))
+env.Requires(env.Alias('qserv'), env.Alias('templates'))
+
+
 
 env.Default(env.Alias('configure'))
 
@@ -96,16 +101,17 @@ def get_template_targets():
         '%\(QMS_USER\)s': config['qms']['user'],
         '%\(QMS_PASS\)s': config['qms']['pass'],
         '%\(QMS_PORT\)s': config['qms']['port'],
-        '%\(QSERV_BASE_DIR\)s': config['qserv']['base_dir'],
+        '%\(QSERV_DIR\)s': config['qserv']['base_dir'],
+        '%\(QSERV_RUN_DIR\)s': config['qserv']['run_base_dir'],
         '%\(QSERV_UNIX_USER\)s': os.getlogin(),
         '%\(QSERV_SRC_DIR\)s': config['src_dir'],
         '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'],
-        '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['base_dir'],'var/run'),
+        '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['run_base_dir'],'var/run'),
         '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
-        '%\(QSERV_LUA_SHARE\)s': os.path.join(config['qserv']['base_dir'],"share","lua","5.1"),
-        '%\(QSERV_LUA_LIB\)s': os.path.join(config['qserv']['base_dir'],"lib","lua","5.1"),
+        '%\(QSERV_LUA_SHARE\)s': os.path.join(config['lua']['base_dir'],"share","lua","5.1"),
+        '%\(QSERV_LUA_LIB\)s': os.path.join(config['lua']['base_dir'],"lib","lua","5.1"),
         '%\(QSERV_SCRATCH_DIR\)s': config['qserv']['scratch_dir'],
-        '%\(MYSQLD_DIR\)s': config['mysqld']['base_dir'],
+        '%\(MYSQL_DIR\)s': config['mysqld']['base_dir'],
         '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'],
         '%\(MYSQLD_PORT\)s': config['mysqld']['port'],
         # used for mysql-proxy in mono-node
@@ -150,7 +156,6 @@ def get_template_targets():
 
             path = os.path.dirname(target_name)
             target_basename = os.path.basename(target_name)
-            logger.debug("TARGET BASENAME : %s" % target_basename)
             if (os.path.basename(path) == "bin" or
                 os.path.basename(path) == "init.d" or
                 target_basename in [
@@ -175,9 +180,6 @@ env.Alias("templates", get_template_targets())
 # Configure MySQL
 #
 #########################
-
-env.Requires(env.Alias('mysql'), env.Alias('templates'))
-
 install_sh = os.path.join(configuration_scripts_dir, "mysql.sh")
 cmd = env.Command('mysql-cmd', [], install_sh)
 
@@ -189,10 +191,6 @@ env.Alias("mysql", cmd)
 #
 #########################
 if config['qserv']['node_type'] in ['mono','master']:
-
-    # MySQL is required
-    env.Requires(env.Alias('qms'), env.Alias('perl-install'))
-    env.Requires(env.Alias('install'), env.Alias('qms'))
 
     install_sh = os.path.join(configuration_scripts_dir, "qms.sh")
     cmd = env.Command('qms-cmd', [], install_sh)
@@ -206,8 +204,6 @@ if config['qserv']['node_type'] in ['mono','master']:
 #########################
 if config['qserv']['node_type'] in ['mono','worker']:
 
-    env.Requires(env.Alias('configure'), env.Alias('scisql'))
-
     install_sh = os.path.join(configuration_scripts_dir, "scisql.sh")
     cmd = env.Command('scisql-cmd', [], install_sh)
 
@@ -218,9 +214,6 @@ if config['qserv']['node_type'] in ['mono','worker']:
 # Configure Qserv core 
 #
 #############################
-
-env.Requires(env.Alias('configure'), env.Alias('qserv'))
-
 install_sh = os.path.join(configuration_scripts_dir, "qserv-master.sh")
 cmd = env.Command('qserv-cmd', [], install_sh)
 

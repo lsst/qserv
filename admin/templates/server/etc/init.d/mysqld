@@ -6,11 +6,15 @@
 # chkconfig: - 64 36
 # description:	MySQL database server.
 # processname: mysqld
-# config: ${MYSQL_DIR}/etc/my.cnf
-# pidfile: ${MYSQL_DIR}/var/run/mysqld/mysqld.pid
+# config: ${QSERV_DIR}/etc/my.cnf
+# pidfile: ${QSERV_RUN_DIR}/var/run/mysqld/mysqld.pid
 
 # Source function library.
 . /etc/rc.d/init.d/functions
+
+MYSQL_DIR=%(MYSQL_DIR)s
+QSERV_DIR=%(QSERV_DIR)s
+QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
 
 exec="${MYSQL_DIR}/bin/mysqld_safe"
 prog="mysqld"
@@ -19,9 +23,9 @@ prog="mysqld"
 STARTTIMEOUT=120
 STOPTIMEOUT=60
 
-[ -e ${MYSQL_DIR}/etc/sysconfig/$prog ] && . %(QSERV_BASE_DIR)s/etc/sysconfig/$prog
+[ -e ${MYSQL_DIR}/etc/sysconfig/$prog ] && . %(QSERV_DIR)s/etc/sysconfig/$prog
 
-lockfile=${MYSQL_DIR}/var/lock/subsys/$prog
+lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$prog
 
 
 # extract value of a MySQL option from config files
@@ -43,7 +47,7 @@ get_mysql_option mysqld socket "$datadir/mysql.sock"
 socketfile="$result"
 get_mysql_option mysqld_safe log-error "%(QSERV_LOG_DIR)s/mysqld.log"
 errlogfile="$result"
-get_mysql_option mysqld_safe pid-file "${MYSQL_DIR}/var/run/mysqld/mysqld.pid"
+get_mysql_option mysqld_safe pid-file "${QSERV_RUN_DIR}/var/run/mysqld/mysqld.pid"
 mypidfile="$result"
 
 user=%(QSERV_UNIX_USER)s

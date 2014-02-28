@@ -26,7 +26,7 @@ def read_config(config_file):
         exit(1)
 
     parser = ConfigParser.SafeConfigParser()
-    parser.readfp(io.BytesIO(const.DEFAULT_CONFIG))
+    #parser.readfp(io.BytesIO(const.DEFAULT_CONFIG))
     parser.read(config_file)
 
     logger.debug("Build configuration : ")
@@ -34,32 +34,23 @@ def read_config(config_file):
        logger.debug("===")
        logger.debug("[%s]" % section)
        logger.debug("===")
+       config[section] = dict() 
        for option in parser.options(section):
         logger.debug("'%s' = '%s'" % (option, parser.get(section,option)))
-
-    section='qserv'
-    config[section] = dict()
-    for option in parser.options(section):
         config[section][option] = parser.get(section,option)
+
+    # normalize directories names
+    for section in config.keys():
+        for option in config[section].keys():
+            if re.match(".*_dir",option):
+                config[section][option] = os.path.normpath(config[section][option])
+
     # computable configuration parameters
-    for dir in ['base_dir', 'tmp_dir', 'log_dir']:
-        config['qserv'][dir] = os.path.normpath(config['qserv'][dir])
     config['qserv']['bin_dir'] = os.path.join(config['qserv']['base_dir'], "bin")
     config['qserv']['scratch_dir'] = os.path.join( "/dev", "shm", "qserv-%s-%s" %
                                         (os.getlogin(),
                                         hashlib.sha224(config['qserv']['base_dir']).hexdigest())
                                     )
-
-    section='qms'
-    config[section] = dict()
-    for option in parser.options(section):
-        config[section][option] = parser.get(section,option)
-
-    section='mysqld'
-    config[section] = dict()
-    options = [option for option in parser.options(section) if option not in ['pass','port'] ]
-    for option in options:
-        config[section][option] = parser.get(section,option)
 
     # TODO : manage special characters for pass (see config file comments for additional information)
     config['mysqld']['pass']    = parser.get("mysqld","pass",raw=True)
@@ -67,34 +58,7 @@ def read_config(config_file):
     # computable configuration parameter
     config['mysqld']['sock']    = os.path.join(config['qserv']['base_dir'], "var","lib","mysql","mysql.sock")
 
-    section='mysql_proxy'
-    config[section] = dict()
-    options = [option for option in parser.options(section) if option != 'port']
-    for option in parser.options(section):
-        config[section][option] = parser.get(section,option)
-
     config['mysql_proxy']['port'] = parser.getint('mysql_proxy','port')
-
-    section='lsst'
-    config[section] = dict()
-    for option in parser.options(section):
-        config[section][option] = parser.get(section,option)
-
-    section='xrootd'
-    config[section] = dict()
-    for option in parser.options(section):
-        config[section][option] = parser.get(section,option)
-
-    # normalize directories names
-    # TODO duplicate normpath() call
-    for section in config.keys():
-        for option in config[section].keys():
-            if re.match(".*_dir",option):
-                config[section][option] = os.path.normpath(config[section][option])
-
-    config['bin'] = dict()
-    config['bin']['mysql'] = os.path.join(config['qserv']['bin_dir'],'mysql')
-    config['bin']['python'] = os.path.join(config['qserv']['bin_dir'],'python')
 
     return config
 

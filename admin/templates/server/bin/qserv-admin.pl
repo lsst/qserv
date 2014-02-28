@@ -48,7 +48,7 @@ my $debug = $opts{'debug'} || 0;
 # It  would  be  better  to  read  config files  instead  to  have  it
 # hard-coded here. see https://dev.lsstcorp.org/trac/ticket/2566
 
-my $install_dir = "%(QSERV_BASE_DIR)s";
+my $install_dir = "%(QSERV_DIR)s";
 my $init_dir = "$install_dir/etc/init.d";
 my $mysql_proxy_port = "%(MYSQL_PROXY_PORT)s" || $opts{'mysql-proxy-port'} || 4040;
 my $cluster_type = $opts{'mono-node'} || "mono-node" ;

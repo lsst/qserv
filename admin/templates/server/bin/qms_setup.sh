@@ -4,7 +4,7 @@
 
 if [ "$#" != 3 ] ; then
     SCRIPT=`basename $0`
-    echo $"Usage: ${SCRIPT} {QSERV_BASE_DIR} {DB_NAME} {TEST_ID}"
+    echo $"Usage: ${SCRIPT} {QSERV_DIR} {DB_NAME} {TEST_ID}"
     exit 1
 fi
 

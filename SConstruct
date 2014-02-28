@@ -15,32 +15,30 @@ logger = logger.init_default_logger(log_file_prefix="scons-qserv", level=logging
 
 env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'swig', 'recinstall'])
 
-# TODO : manage custom.py
-vars = Variables('custom.py')
+# TODO : manage custom.py, with ARGUMENTS
+opts = Variables('custom.py')
+
 
 #####################
 #
-# Build dir
+# Option management 
 #
 #####################
-vars.Add(PathVariable('builddir',
-            'Qserv build dir',
-            'build',
-            PathVariable.PathIsDirCreate))
-vars.Update(env)
+opts.AddVariables(
+        (PathVariable('build_dir','Qserv build dir','build',PathVariable.PathIsDirCreate)),
+        (PathVariable('XROOTD_DIR','xrootd install dir',os.getenv("XROOTD_DIR"),PathVariable.PathIsDir)),
+        (PathVariable('MYSQL_DIR','mysql install dir',os.getenv("MYSQL_DIR"),PathVariable.PathIsDir)),
+        (PathVariable('MYSQLPROXY_DIR','mysqlproxy install dir',os.getenv("MYSQLPROXY_DIR"),PathVariable.PathIsDir)),
+        (PathVariable('PROTOBUF_DIR', 'protobuf install dir',os.getenv("PROTOBUF_DIR"),PathVariable.PathIsDir)),
+        (PathVariable('LUA_DIR', 'lua install dir',os.getenv("LUA_DIR"),PathVariable.PathIsDir)),
+        (PathVariable('PROTOC', 'protoc install dir',os.path.join("$PROTOBUF_DIR","bin","protoc"),PathVariable.PathIsFile)),
+        (PathVariable('prefix', 'qserv install dir',os.path.join("$build_dir","dist"),PathVariable.PathIsDirCreate)),
+        (PathVariable('python_prefix', 'qserv install dir for python modules',os.path.join("$prefix","lib","python"),PathVariable.PathIsDirCreate))
+)
 
-#####################
-#
-# Install prefix
-#
-#####################
-vars.Add(PathVariable('prefix',
-            'Qserv install dir',
-            os.path.join(env['builddir'],'dist'),
-            PathVariable.PathIsDirCreate))
-vars.Update(env)
+opts.Update(env)
 
-PYTHON_PREFIX = os.path.join(env['prefix'], "lib", "python")
+Help(opts.GenerateHelpText(env))
 
 #########################
 #
@@ -76,15 +74,15 @@ env.Alias("install",
 # Install python modules
 #
 #########################
-python_admin = env.InstallPythonModule(target=PYTHON_PREFIX, source='admin/python')
+python_admin = env.InstallPythonModule(target=env['python_prefix'], source='admin/python')
 env.Alias("python-admin", python_admin)
 
-python_tests = env.InstallPythonModule(target=PYTHON_PREFIX, source='tests/python')
+python_tests = env.InstallPythonModule(target=env['python_prefix'], source='tests/python')
 env.Alias("python-tests", python_tests)
 
 # Install qms
 #########################
-python_qms = env.InstallPythonModule(target=PYTHON_PREFIX, source='meta/python')
+python_qms = env.InstallPythonModule(target=env['python_prefix'], source='meta/python')
 env.Alias("qms", python_qms)
 
 #########################
@@ -92,17 +90,6 @@ env.Alias("qms", python_qms)
 # Install admin commands
 #
 #########################
-bin_basename_lst=[
-    "qserv-benchmark.py","qserv-testdata.py",
-    "qserv-testunit.py","qms_setup.sh"
-]
-bin_target_lst = []
-for f in bin_basename_lst:
-    source = os.path.join("admin","bin",f)
-    target = os.path.join(env['prefix'],"bin",f)
-    Command(target, source, Copy("$TARGET", "$SOURCE"))
-    bin_target_lst.append(target)
-
 template_target = os.path.join(env['prefix'],"admin","templates")
 env.RecursiveInstall(template_target, os.path.join("admin","templates"))
 
@@ -111,7 +98,6 @@ env.RecursiveInstall(sitescons_target, os.path.join("admin","site_scons"))
 
 env.Alias("admin", 
         [
-        bin_target_lst,
         template_target,
         sitescons_target,
         env.Install(os.path.join(env['prefix'],"admin"), os.path.join("admin","SConstruct"))
@@ -129,7 +115,7 @@ env.Alias("admin",
 # Setup the #include paths
 env.Append(CPPPATH="modules")
 
-filesToInstall = SConscript('core/modules/SConscript', variant_dir=env['builddir'], duplicate=1,
+filesToInstall = SConscript('core/modules/SConscript', variant_dir=env['build_dir'], duplicate=1,
         exports=['env', 'ARGUMENTS'])
 
 # computing install target paths
@@ -157,8 +143,9 @@ user_config_dir=os.path.join(homedir,".lsst")
 user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
 
 script_dict = {
-    '%\(QSERV_DIR\)s': env['prefix'],
+    '%\(QSERV_DIR\)s': os.path.join(src_dir,env['prefix']),
     '%\(XROOTD_DIR\)s': env['XROOTD_DIR'],
+    '%\(LUA_DIR\)s': env['LUA_DIR'],
     '%\(MYSQL_DIR\)s': env['MYSQL_DIR'],
     '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR']
 }

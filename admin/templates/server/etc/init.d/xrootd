@@ -15,9 +15,9 @@
 #              Note that Qserv service won't start if QMS databse is empty.
 ### END INIT INFO
 
-. %(QSERV_BASE_DIR)s/etc/init.d/qserv-functions
+. %(QSERV_DIR)s/etc/init.d/qserv-functions
 
-XROOTD_CONFIG=%(QSERV_BASE_DIR)s/etc/lsp.cf
+XROOTD_CONFIG=%(QSERV_DIR)s/etc/lsp.cf
 XROOTD_INSTANCE_NAME="worker"
 
 PID_DIR=%(QSERV_PID_DIR)s/${XROOTD_INSTANCE_NAME}
@@ -26,11 +26,11 @@ LOG_DIR=%(QSERV_LOG_DIR)s
 
 export QSW_XRDQUERYPATH="/q"
 export QSW_DBSOCK="%(MYSQLD_SOCK)s"
-export QSW_MYSQLDUMP="%(QSERV_BASE_DIR)s/bin/mysqldump"
-QSW_SCRATCHPATH="%(QSERV_BASE_DIR)s/tmp"
+export QSW_MYSQLDUMP="%(QSERV_DIR)s/bin/mysqldump"
+QSW_SCRATCHPATH="%(QSERV_DIR)s/tmp"
 QSW_SCRATCHDB="qservScratch"
 export QSW_RESULTPATH="%(XROOTD_RUN_DIR)s/result"
-export LD_LIBRARY_PATH="%(XROOTD_RUN_DIR)s;%(QSERV_BASE_DIR)s/lib"
+export LD_LIBRARY_PATH="%(XROOTD_RUN_DIR)s;%(QSERV_DIR)s/lib"
 
 
 start_service() {
@@ -42,8 +42,8 @@ start_service() {
         mkdir -p ${PID_DIR}
 
 	pidfile=${PID_DIR}/${prog}.pid
-	lockfile=%(QSERV_BASE_DIR)s/var/lock/subsys/${prog}
-	BINARY=%(QSERV_BASE_DIR)s/bin/${prog}
+	lockfile=%(QSERV_DIR)s/var/lock/subsys/${prog}
+	BINARY=%(QSERV_DIR)s/bin/${prog}
 	LOGFILE=${LOG_DIR}/${prog}.log
 	[ -x ${BINARY} ] || exit 5
 	[ -f ${XROOTD_CONFIG} ] || exit 6
@@ -63,7 +63,7 @@ stop_service() {
         prog=${1##*/}
 
 	pidfile=${PID_DIR}/${prog}.pid
-	lockfile=%(QSERV_BASE_DIR)s/var/lock/subsys/${prog}
+	lockfile=%(QSERV_DIR)s/var/lock/subsys/${prog}
 
 	eval stop -p $pidfile -l $lockfile $prog
 	retval=$?

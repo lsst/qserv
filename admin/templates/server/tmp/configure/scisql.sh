@@ -1,14 +1,23 @@
 #!/bin/bash
+
+QSERV_DIR=%(QSERV_DIR)s
+MYSQL_DIR=%(MYSQL_DIR)s
+MYSQLD_SOCK=%(MYSQLD_SOCK)s
+MYSQLD_USER=%(MYSQLD_USER)s
+MYSQLD_PASS=%(MYSQLD_PASS)s
+
 # TODO manage scisql version in templating system
-PATH=%(QSERV_BASE_DIR)s/bin:${PATH}
 SCISQL_VERSION=scisql-0.3.2
 
-mysqld_safe --defaults-file=%(QSERV_BASE_DIR)s/etc/my.cnf &
+${QSERV_DIR}/etc/init.d/mysqld start &&
 
-cd %(QSERV_BASE_DIR)s/build &&
+cd ${QSERV_DIR}/tmp &&
+wget https://launchpad.net/scisql/trunk/0.3.2/+download/${SCISQL_VERSION}.tar.bz2 &&
 tar jxvf ${SCISQL_VERSION}.tar.bz2 &&
 cd ${SCISQL_VERSION} &&
-./configure --prefix %(QSERV_BASE_DIR)s --mysql-user=root --mysql-password='%(MYSQLD_PASS)s' --mysql-socket=%(MYSQLD_SOCK)s  &&
+echo "-- Installing scisql $PYTHONPATH"
+./configure --prefix=${MYSQL_DIR} --mysql-user=root --mysql-password="${MYSQLD_PASS}" --mysql-socket=${MYSQLD_SOCK}  &&
 make &&
 make install &&
-mysqladmin -S %(MYSQLD_SOCK)s shutdown -u root -p'%(MYSQLD_PASS)s'
+${QSERV_DIR}/etc/init.d/mysqld stop ||
+exit 1
