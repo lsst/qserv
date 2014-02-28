@@ -9,6 +9,7 @@ import sys
 import re
 import SCons.Node.FS
 from SCons.Script import Mkdir,Chmod,Copy,WhereIs
+from twisted.python.procutils import which
 import shutil
 
 logger = logger.init_default_logger(log_file_prefix="scons-qserv", level=logging.DEBUG)
@@ -26,15 +27,20 @@ opts = Variables('custom.py')
 #####################
 opts.AddVariables(
         (PathVariable('build_dir','Qserv build dir','build',PathVariable.PathIsDirCreate)),
+        (PathVariable('prefix', 'qserv install dir',os.path.join("$build_dir","dist"),PathVariable.PathIsDirCreate)),
         (PathVariable('XROOTD_DIR','xrootd install dir',os.getenv("XROOTD_DIR"),PathVariable.PathIsDir)),
         (PathVariable('MYSQL_DIR','mysql install dir',os.getenv("MYSQL_DIR"),PathVariable.PathIsDir)),
         (PathVariable('MYSQLPROXY_DIR','mysqlproxy install dir',os.getenv("MYSQLPROXY_DIR"),PathVariable.PathIsDir)),
         (PathVariable('PROTOBUF_DIR', 'protobuf install dir',os.getenv("PROTOBUF_DIR"),PathVariable.PathIsDir)),
         (PathVariable('LUA_DIR', 'lua install dir',os.getenv("LUA_DIR"),PathVariable.PathIsDir)),
-        (PathVariable('PROTOC', 'protoc install dir',os.path.join("$PROTOBUF_DIR","bin","protoc"),PathVariable.PathIsFile)),
-        (PathVariable('prefix', 'qserv install dir',os.path.join("$build_dir","dist"),PathVariable.PathIsDirCreate)),
-        (PathVariable('python_prefix', 'qserv install dir for python modules',os.path.join("$prefix","lib","python"),PathVariable.PathIsDirCreate))
+        (PathVariable('PROTOC', 'protoc binary path',os.path.join("$PROTOBUF_DIR","bin","protoc"),PathVariable.PathIsFile)),
+        (PathVariable('PYTHON', 'python binary path',which("python")[0],PathVariable.PathIsFile)),
+        ('PYTHONPATH', 'pythonpath',os.getenv("PYTHONPATH"))
 )
+
+opts.Update(env)
+
+opts.Add(PathVariable('python_prefix', 'qserv install dir for python modules',os.path.join(env['prefix'],"lib","python"),PathVariable.PathIsDirCreate))
 
 opts.Update(env)
 
@@ -147,7 +153,10 @@ script_dict = {
     '%\(XROOTD_DIR\)s': env['XROOTD_DIR'],
     '%\(LUA_DIR\)s': env['LUA_DIR'],
     '%\(MYSQL_DIR\)s': env['MYSQL_DIR'],
-    '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR']
+    '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR'],
+    '%\(PYTHON_BIN\)s': env['PYTHON'],
+    '%\(PYTHONPATH\)s': env['PYTHONPATH']
+    
 }
 
 make_user_config_cmd = env.Substfile(user_config_file_name, config_file_name, SUBST_DICT=script_dict)

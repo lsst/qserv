@@ -50,8 +50,7 @@ def replace_base_path(path_to_remove, path_to_add, scons_fs_node,env):
         raise Exception("replace_base_path() input error : '%s' has to start with"
                         "'%s'" % path_to_remove)
     else:
-        index = len(path_to_remove+os.sep)
-        target_node_name = os.path.join(path_to_add,source_node_name[index:])
+        target_node_name = source_node_name.replace(path_to_remove,path_to_add)
         if isinstance(scons_fs_node,SCons.Node.FS.File):
             return env.File(target_node_name) 
         elif isinstance(scons_fs_node,SCons.Node.FS.Dir):

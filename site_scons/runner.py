@@ -38,12 +38,11 @@ $*
 
 def makeRunner(target=None, source=None, env=None):
     libpath = filter(None, env["LIBPATH"])
-    ppEnv = env.get("PYTHONPATH",[])
-    ppEnv.append(os.path.join(os.curdir,"dist"))
+    ppEnv = env.get("python_prefix","") + ":" + env.get("PYTHONPATH","") 
     fname = str(target[0])
     s = scriptTemplate % {
         "ldpath" : ":".join(map(str, libpath)), #commaReplace(env["LIBPATH"]),
-        "pythonpath" : ":".join(map(str,ppEnv)),
+        "pythonpath" : ppEnv,
         "sname" : os.path.basename(fname)
         }
     open(fname, "w").write(s)

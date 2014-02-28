@@ -186,10 +186,7 @@ def importCustom(env, extraTgts):
     env.Append(CPPPATH=getExt("INC")) ## *INC --> CPPPATH
 
     # Automagically steal PYTHONPATH from envvar
-    ppDirs = getExt("PYTHONPATH")
-    pp = env.get("PYTHONPATH", [])
-    pp.extend(ppDirs)
-    extraTgts["PYTHONPATH"] = ppDirs
+    extraTgts["PYTHONPATH"] = env.get("PYTHONPATH", []) 
 
     return custom
 
