@@ -186,7 +186,7 @@ def importCustom(env, extraTgts):
     # Automagically steal PYTHONPATH from envvar
     ppDirs = getExt("PYTHONPATH")
     existPp = os.getenv("PYTHONPATH", None)
-    if existPp: ppDirs.prepend(existPp)
+    if existPp: ppDirs = existPp.split(":") + ppDirs
     pp = env.get("PYTHONPATH", [])
     pp.extend(ppDirs)
     extraTgts["PYTHONPATH"] = ppDirs
