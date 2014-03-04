@@ -59,7 +59,6 @@ def RecursiveInstall(env, target, dir):
 
     relnodes = [ n.abspath[l:] for n in nodes ]
 
-    
     for n in relnodes:
         t = os.path.join(target, n)
         s = os.path.join(dir, n)

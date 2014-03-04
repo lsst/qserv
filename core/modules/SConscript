@@ -108,7 +108,7 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                       boost_regex boost_thread
                                       boost_signals""".split(),
                                'SHLIBPREFIX' : '',
-                               'distDir' : os.path.join("lib","python","lsst","qserv","master")}
+                               'distDir' : os.path.join(env['python_prefix'],"lsst","qserv","master")}
                }
 # modules used in shProducts
 modList = [m for m in chain(*map(lambda d: d['mods'],
@@ -191,7 +191,7 @@ print "DEBUG before getTgts() : extraTgts['dist'] %s" % extraTgts['dist']
 # Gather up source files
 for mod in allModules:
     libProducts[mod] = getTgts(mod)
-print "DEBUG extraTgts['dist'] %s" % extraTgts['dist']
+print "DEBUG after getTgts() : extraTgts['dist'] %s" % extraTgts['dist']
 
 # Compute non-custom shared objects
 for m in defaultTgts:
@@ -226,13 +226,15 @@ for (pkg, opts) in shProducts.items():
     else:
         out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs)
     env.Alias("build",out)
-    extraTgts['dist'].append((opts['distDir'], out))
+    for f in out:
+        extraTgts['dist'].append((opts['distDir'], f))
 
 #Runner wrapper
 import runner
 env["PYTHONPATH"] = extraTgts["PYTHONPATH"]
-f = runner.WrapperScript(env, "qsEnv.sh")
-extraTgts['dist'].append(('bin', f))
+target = "qsEnv.sh"
+env.Command(target, None, runner.makeRunner)
+extraTgts['dist'].append(('bin', env.File(target)))
 
 # Tests
 

@@ -43,8 +43,12 @@ swigged = env.SharedObject(source="masterLib.i",
 #swigged = [env.File("masterLib.i")]
 
 # print swigged # prints ['masterLib_wrap.os']
-env.Depends(swigged, depends)
-tgt = swigged
+
+swigged_tgt = []
+for f in swigged:
+    swigged_tgt.append(env.File(f))
+
+env.Depends(swigged_tgt, depends)
 
 # Create entry for python file, which SCons SWIG builder ignores
 pySwig = env.File('masterLib.py')
@@ -52,6 +56,8 @@ pySwig = env.File('masterLib.py')
 # but "scons --tree=all" shows that a sufficient dep
 # is already there (on masterLib.i)
 extraTgts["masterLib.py"] = pySwig
+
+print "DEBUG extraTgts['dist'] %s" % extraTgts['dist']
 
 def markForInstall(env, pathList, extras):
     python_libpath=os.path.join("lib","python")
@@ -62,25 +68,33 @@ def markForInstall(env, pathList, extras):
     for s in env.Glob(os.path.join(srcPyDir,"*.py")):
         extraTgts['dist'].append((pyDir, s))
         #env.Alias("install", env.Install(pyDir, s))
+    for (path,f) in extraTgts['dist']:
+        print "DEBUG 1 %s, %s" % (path,str(f))
     for s in extras:
+        print "DEBUG markForInstall %s" % s
         extraTgts['dist'].append((pyDir, s))
     # touch init files
+    for (path,f) in extraTgts['dist']:
+        print "DEBUG 2 %s, %s" % (path,str(f))
     for p in range(1,len(pathList)):
         plist = pathList[:p] + ["__init__.py"]
         fname = os.path.join(python_libpath, *plist)
-        f = env.Command(fname, None, [Touch("$TARGET")])
+        print "DEBUG fname %s" % fname 
+        env.Command(fname, None, [Touch("$TARGET")])
 
-        extraTgts['dist'].append((os.path.join(python_libpath, *pathList[:p]), f))
+        print "DEBUG add2dist %s %s " % (os.path.join(python_libpath, *pathList[:p]), fname)
 
-distTgts = [swigged, pySwig]
+        extraTgts['dist'].append((os.path.join(python_libpath, *pathList[:p]), env.File(fname)))
+
+distTgts = swigged_tgt + [pySwig]
 
 markForInstall(env, ["lsst","qserv","master"], distTgts)
 
 for f in env.Glob("bin/*py"):
     extraTgts['dist'].append(('bin', f))
 
-print "DEBUG extraTgts['dist'] %s" % extraTgts['dist']
-print "DEBUG tgt %s" % tgt
+for (path,f) in extraTgts['dist']:
+    print "DEBUG 3 %s, %s" % (path,str(f))
 
 extraTgts["czarPy"] = distTgts
-Return('tgt')
+Return('swigged_tgt')

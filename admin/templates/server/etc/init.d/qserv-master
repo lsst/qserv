@@ -21,21 +21,17 @@
 
 prog="qserv-master"
 
-PYTHON=%(QSERV_DIR)s/bin/python
-
-START=%(QSERV_DIR)s/qserv/master/dist/startQserv.py
+START=startQserv.py
 CONFIG=%(QSERV_DIR)s/etc/local.qserv.cnf
 pidfile=%(QSERV_PID_DIR)s/${prog}.pid
-lockfile=%(QSERV_DIR)s/var/lock/subsys/${prog}
+lockfile=%(QSERV_RUN_DIR)s/var/lock/subsys/${prog}
 LOGFILE=%(QSERV_LOG_DIR)s/${prog}.log
 starttimeout=1
 
-export PATH=/%(QSERV_DIR)s/bin:$PATH
-export PYTHONPATH=%(QSERV_DIR)s/qserv/master/dist
-XRD_DIR=%(QSERV_DIR)s/xrootd
-PLATFORM=x86_64_linux_26_dbg
-export LD_LIBRARY_PATH=%(QSERV_DIR)s/lib:$XRD_DIR/lib/$PLATFORM
-export QSW_RESULTDIR=%(QSERV_DIR)s/qserv-run/tmp
+export PATH=%(PATH)s
+export PYTHONPATH=%(PYTHONPATH)s
+
+export QSW_RESULTDIR=%(QSERV_RUN_DIR)s/qserv-run/tmp
 # Disabling buffering in python in order to enable "real-time" logging.
 export PYTHONUNBUFFERED=1
 

@@ -16,19 +16,24 @@
 #              Note that Qserv service won't start if QMS databse is empty.
 ### END INIT INFO
 
-. %(QSERV_DIR)s/etc/init.d/qserv-functions
+. ${QSERV_DIR}/etc/init.d/qserv-functions
+
+PATH=%(PATH)s
+QSERV_DIR=%(QSERV_DIR)s
+QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
+QSERV_PID_DIR=%(QSERV_PID_DIR)s
+QSERV_LOG_DIR=%(QSERV_LOG_DIR)s
 
 SERVICE_NAME="Qserv Metadata Server (QMS)"
 prog="qms"
 
-PATH="%(QSERV_DIR)s/bin/:$PATH"
 export PATH
 
-START=%(QSERV_DIR)s/qserv/meta/bin/startQMS.py
-CONFIG=%(QSERV_DIR)s/etc/qms.cnf
-pidfile=%(QSERV_PID_DIR)s/${prog}.pid
-lockfile=%(QSERV_DIR)s/var/lock/subsys/${prog}
-LOGFILE=%(QSERV_LOG_DIR)s/${prog}-startup.log
+START=${QSERV_DIR}/bin/startQMS.py
+CONFIG=${QSERV_DIR}/etc/qms.cnf
+pidfile=${QSERV_PID_DIR}/${prog}.pid
+lockfile=${QSERV_DIR}/var/lock/subsys/${prog}
+LOGFILE=${QSERV_LOG_DIR}/${prog}-startup.log
 starttimeout=1
 
 cmd="${PYTHON} ${START} -c ${CONFIG} &> ${LOGFILE} &"

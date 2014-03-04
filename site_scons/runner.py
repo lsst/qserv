@@ -53,8 +53,3 @@ def makeRunner(target=None, source=None, env=None):
              |  stat.S_IROTH | stat.S_IXOTH)
     return None # Successful
 
-def WrapperScript(env, target):
-    return env.Command(target, None, [env.Action(makeRunner)])
-
-
-#makeRunner(env, "bin/myWrapper")

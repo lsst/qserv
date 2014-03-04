@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 QSERV_DIR=%(QSERV_DIR)s
-MYSQL_DIR=%(MYSQL_DIR)s
+PATH=%(PATH)s
 MYSQLD_SOCK=%(MYSQLD_SOCK)s
 MYSQLD_DATA_DIR=%(MYSQLD_DATA_DIR)s
 MYSQLD_HOST=%(MYSQLD_HOST)s
@@ -13,15 +13,15 @@ ${QSERV_DIR}/etc/init.d/mysqld stop &&
 echo "-- Removing previous data." &&
 rm -rf ${MYSQLD_DATA_DIR}/* &&
 echo "-- ." &&
-${MYSQL_DIR}/bin/mysql_install_db --defaults-file=${QSERV_DIR}/etc/my.cnf --user=${USER} &&
+mysql_install_db --defaults-file=${QSERV_DIR}/etc/my.cnf --user=${USER} &&
 echo "-- Starting mysql server." &&
 ${QSERV_DIR}/etc/init.d/mysqld start &&
 sleep 5 &&
 echo "-- Changing mysql root password." &&
-${MYSQL_DIR}/bin/mysql -S ${MYSQLD_SOCK} -u root < ${SQL_DIR}/mysql-password.sql &&
+mysql -S ${MYSQLD_SOCK} -u root < ${SQL_DIR}/mysql-password.sql &&
 rm ${SQL_DIR}/mysql-password.sql &&
 echo "-- Shutting down mysql server." &&
-${MYSQL_DIR}/bin/mysqladmin -S ${MYSQLD_SOCK} shutdown -u root -p'%(MYSQLD_PASS)s' || 
+mysqladmin -S ${MYSQLD_SOCK} shutdown -u root -p'%(MYSQLD_PASS)s' || 
 {
     echo -n "Failed to set mysql root user password."
     echo "Please set the mysql root user password with : "

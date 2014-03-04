@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 QSERV_DIR=%(QSERV_DIR)s
 MYSQL_DIR=%(MYSQL_DIR)s

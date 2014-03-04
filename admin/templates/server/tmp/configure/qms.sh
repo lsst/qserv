@@ -1,8 +1,14 @@
-#!/bin/bash
-%(QSERV_DIR)s/etc/init.d/mysqld start && 
-cd %(QSERV_SRC_DIR)s/meta &&
-scons --site-dir=%(QSERV_SRC_DIR)s/site_scons &&
-%(QSERV_DIR)s/bin/mysql -vvv --socket %(MYSQLD_SOCK)s --user=%(MYSQLD_USER)s --pass=%(MYSQLD_PASS)s < %(QSERV_DIR)s/tmp/qms_qmsdb.sql &&
-# %(QSERV_DIR)s/bin/mysqladmin -S %(MYSQLD_SOCK)s --user=%(MYSQLD_USER)s --pass=%(MYSQLD_PASS)s shutdown &&
-cp %(QSERV_DIR)s/tmp/qms_admclient.cnf %(HOME)s/.lsst/qmsadm
-%(QSERV_DIR)s/etc/init.d/mysqld stop 
+#!/usr/bin/env sh
+
+PATH=%(PATH)s
+QSERV_DIR=%(QSERV_DIR)s
+HOME=%(HOME)s
+MYSQLD_SOCK=%(MYSQLD_SOCK)s
+MYSQLD_USER=%(MYSQLD_USER)s
+MYSQLD_PASS=%(MYSQLD_PASS)s
+SQL_DIR=${QSERV_DIR}/tmp/configure/sql
+
+${QSERV_DIR}/etc/init.d/mysqld start && 
+
+mysql -vvv --socket=${MYSQLD_SOCK} --user=${MYSQLD_USER} --pass=${MYSQLD_PASS} < ${SQL_DIR}/qms_qmsdb.sql &&
+${QSERV_DIR}/etc/init.d/mysqld stop 

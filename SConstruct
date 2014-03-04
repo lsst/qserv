@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import re
+import utils 
 import SCons.Node.FS
 from SCons.Script import Mkdir,Chmod,Copy,WhereIs
 from twisted.python.procutils import which
@@ -18,7 +19,6 @@ env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'swi
 
 # TODO : manage custom.py, with ARGUMENTS
 opts = Variables('custom.py')
-
 
 #####################
 #
@@ -37,11 +37,9 @@ opts.AddVariables(
         (PathVariable('PYTHON', 'python binary path',which("python")[0],PathVariable.PathIsFile)),
         ('PYTHONPATH', 'pythonpath',os.getenv("PYTHONPATH"))
 )
-
 opts.Update(env)
 
-opts.Add(PathVariable('python_prefix', 'qserv install dir for python modules',os.path.join(env['prefix'],"lib","python"),PathVariable.PathIsDirCreate))
-
+opts.Add(PathVariable('python_prefix', 'qserv install directory for python modules',os.path.join(env['prefix'],"lib","python"),PathVariable.PathIsDirCreate))
 opts.Update(env)
 
 Help(opts.GenerateHelpText(env))
@@ -88,8 +86,15 @@ env.Alias("python-tests", python_tests)
 
 # Install qms
 #########################
-python_qms = env.InstallPythonModule(target=env['python_prefix'], source='meta/python')
-env.Alias("qms", python_qms)
+qmsbin_target = os.path.join(env['prefix'],"bin")
+env.RecursiveInstall(qmsbin_target, os.path.join("meta","bin"))
+python_qms = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("meta","python"))
+env.Alias("qms", 
+    [
+    python_qms,
+    qmsbin_target
+    ]
+)
 
 #########################
 #
@@ -103,11 +108,11 @@ sitescons_target = os.path.join(env['prefix'],"admin","site_scons")
 env.RecursiveInstall(sitescons_target, os.path.join("admin","site_scons"))
 
 env.Alias("admin", 
-        [
-        template_target,
-        sitescons_target,
-        env.Install(os.path.join(env['prefix'],"admin"), os.path.join("admin","SConstruct"))
-        ]
+    [
+    template_target,
+    sitescons_target,
+    env.Install(os.path.join(env['prefix'],"admin"), os.path.join("admin","SConstruct"))
+    ]
 )
 
 #############################
@@ -127,12 +132,14 @@ filesToInstall = SConscript('core/modules/SConscript', variant_dir=env['build_di
 # computing install target paths
 #################################
 def get_install_targets(prefix, filesToInstall) :
-    targetDirSet = set()
+    targetFiles = []
     for (path, f) in filesToInstall :
-        targetDir = os.path.join(prefix, path)
-        env.Install(targetDir, f)
-        targetDirSet.add(targetDir)
-    return list(targetDirSet)
+        installPath=os.path.join(env['prefix'],path)
+        print "DEBUG : %s %s" % (installPath, f)
+        targetFile = utils.replace_base_path(None,installPath,f,env)
+        env.InstallAs(targetFile, f)
+        targetFiles.append(targetFile)
+    return targetFiles
 
 env.Alias("dist", get_install_targets(env['prefix'],filesToInstall))
 

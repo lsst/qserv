@@ -10,6 +10,14 @@
 
 . %(QSERV_DIR)s/etc/init.d/qserv-functions
 
+PATH=%(PATH)s
+QSERV_DIR=%(QSERV_DIR)s
+QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
+QSERV_PID_DIR=%(QSERV_PID_DIR)s
+QSERV_LOG_DIR=%(QSERV_LOG_DIR)s
+QSERV_UNIX_USER=%(QSERV_UNIX_USER)s
+QSERV_RPC_PORT=%(QSERV_RPC_PORT)s
+
 prog="mysql-proxy"
 
 # Source networking configuration.
@@ -22,30 +30,30 @@ fi
 
 # Set default mysql-proxy configuration.
 PROXY_OPTIONS="--daemon"
-pidfile=%(QSERV_DIR)s/var/run/mysql-proxy.pid
-PROXY_CONFIG=%(QSERV_DIR)s/etc/my-proxy.cnf
-lockfile=%(QSERV_DIR)s/var/lock/subsys/$prog
+pidfile=${QSERV_PID_DIR}/mysql-proxy.pid
+PROXY_CONFIG=${QSERV_DIR}/etc/my-proxy.cnf
+lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$prog
 stoptimeout=1
 
 LUA_DEBUG_LEVEL=0
-LUA_LOG_FILE=%(QSERV_LOG_DIR)s/mysql-proxy-lua.log
-QSERV_MASTER_PORT=%(QSERV_RPC_PORT)s
+LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
+QSERV_RPC_PORT=${QSERV_RPC_PORT}
 
-BINARY=%(QSERV_DIR)s/bin/$prog
+BINARY=$prog
 
 # Source mysql-proxy configuration.
-if [ -f %(QSERV_DIR)s/etc/sysconfig/mysql-proxy ]; then
-    . %(QSERV_DIR)s/etc/sysconfig/mysql-proxy
+if [ -f ${QSERV_DIR}/etc/sysconfig/mysql-proxy ]; then
+    . ${QSERV_DIR}/etc/sysconfig/mysql-proxy
 fi
 
 # WARNING : can only use the --user switch if running as root
 proxy_user_option=""
 if [ "$USER" = "root" ]; then
-    proxy_user=%(QSERV_UNIX_USER)s
+    proxy_user=${QSERV_UNIX_USER}
     proxy_user_option="--user=$proxy_user"
 fi
 
-cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_MASTER_PORT} ${BINARY} $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option --defaults-file=${PROXY_CONFIG} &> ${LUA_LOG_FILE}"
+cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_RPC_PORT} ${BINARY} $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option --defaults-file=${PROXY_CONFIG} &> ${LUA_LOG_FILE}"
 
 
 start_cmd() {
