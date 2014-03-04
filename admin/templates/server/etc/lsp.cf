@@ -31,8 +31,8 @@ all.role server
 
 # Use qserv worker filesystem plugin
 # default path is %(QSERV_DIR)s/xrootd-run/
-xrootd.fslib %(QSERV_DIR)s/qserv/worker/dist/libqserv_worker.so
-ofs.osslib %(QSERV_DIR)s/qserv/worker/dist/libqserv_workerCmsd.so
+xrootd.fslib %(QSERV_DIR)s/lib/libxrdfs.so
+ofs.osslib %(QSERV_DIR)s/lib/libxrdoss.so
 
 # Set %(pathname)s for file location resolution.
 # i.e., %(pathname)s/somefile will be exported in the xroot URL:

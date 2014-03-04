@@ -34,9 +34,9 @@ import logging
 import optparse
 import shutil
 
-from lsst.qserv import qservdataloader, mysqldataloader, datareader
+from lsst.qserv.tests import qservdataloader, mysqldataloader, datareader
 from lsst.qserv.admin import commons
-from lsst.qserv.sql import cmd, connection, const
+from lsst.qserv.tests.sql import cmd, connection, const
 import os
 import re
 import stat
@@ -66,7 +66,7 @@ class Benchmark():
 
         qserv_tests_dirname = os.path.join(
             self.config['qserv']['base_dir'],
-            'qserv','tests', 'testdata',
+            'tests', 'testdata',
             "case%s" % self._case_id
             )
 

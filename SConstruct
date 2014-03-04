@@ -78,10 +78,10 @@ env.Alias("install",
 # Install python modules
 #
 #########################
-python_admin = env.InstallPythonModule(target=env['python_prefix'], source='admin/python')
+python_admin = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("admin", "python"))
 env.Alias("python-admin", python_admin)
 
-python_tests = env.InstallPythonModule(target=env['python_prefix'], source='tests/python')
+python_tests = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("tests", "python"))
 env.Alias("python-tests", python_tests)
 
 # Install qms

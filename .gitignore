@@ -2,3 +2,5 @@ build/
 .sconf_temp/
 .sconsign.dblite
 *.pyc
+scons-qserv.log
+config.log

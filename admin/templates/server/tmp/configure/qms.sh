@@ -10,5 +10,6 @@ SQL_DIR=${QSERV_DIR}/tmp/configure/sql
 
 ${QSERV_DIR}/etc/init.d/mysqld start && 
 
+cp ${QSERV_DIR}/tmp/configure/qms_admclient.cnf ${HOME}/.lsst/qmsadm &&
 mysql -vvv --socket=${MYSQLD_SOCK} --user=${MYSQLD_USER} --pass=${MYSQLD_PASS} < ${SQL_DIR}/qms_qmsdb.sql &&
 ${QSERV_DIR}/etc/init.d/mysqld stop 

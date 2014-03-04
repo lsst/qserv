@@ -1,5 +1,5 @@
 from  lsst.qserv.admin import commons
-from  lsst.qserv.sql import const, cmd, connection, schema
+from  lsst.qserv.tests.sql import const, cmd, connection, schema
 import logging
 import os
 import re
@@ -84,7 +84,7 @@ class MysqlDataLoader():
     def duplicateAndPartitionData(self, table, data_filename):
         self.logger.info("Duplicating and partitioning table  '%s' from file '%s'\n" % (table, data_filename))
 
-        partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
+        partition_scriptname = "partition.py"
         partition_dirname = os.path.join(self._out_dirname,table+"_partition")
 
         if os.path.exists(partition_dirname):
@@ -102,7 +102,7 @@ class MysqlDataLoader():
         if not os.path.exists(data_filename):
             raise Exception, "File: %s not found" % data_filename
 
-        chunker_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "makeChunk.py")
+        chunker_scriptname = "makeChunk.py"
 
         chunker_cmd = [
             self.config['bin']['python'],

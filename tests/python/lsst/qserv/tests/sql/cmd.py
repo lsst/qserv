@@ -27,9 +27,7 @@ class Cmd():
         self.buildMysqlCmd(mode,database)
         
     def buildMysqlCmd(self,mode,database):
-        self._mysql_cmd = []
-        
-        self._mysql_cmd.append(self.config['bin']['mysql']) 
+        self._mysql_cmd = ["mysql"]
         
         if mode==const.MYSQL_PROXY :
             self._addQservCmdParams()

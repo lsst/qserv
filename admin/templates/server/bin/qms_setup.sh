@@ -14,14 +14,14 @@ TEST_ID=$3
 
 ERR_NO_META=25
 
-DATA_DIR=${BASE_DIR}/qserv/tests/testdata/${TEST_ID}/data
+DATA_DIR=${BASE_DIR}/tests/testdata/${TEST_ID}/data
 
 if [ ! -d ${DATA_DIR} ]; then
     echo "Directory containing test dataset (${DATA_DIR}) doesn't exists."
     exit 1
 fi
 
-META_CMD="${BASE_DIR}/bin/python ${BASE_DIR}/qserv/meta/bin/metaClientTool.py --auth=${HOME}/.lsst/qmsadm"
+META_CMD="metaClientTool.py --auth=${HOME}/.lsst/qmsadm"
 
 die() { echo "$@" 1>&2 ; exit 1; }
 

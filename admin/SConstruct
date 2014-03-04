@@ -97,6 +97,7 @@ def get_template_targets():
 
     script_dict = {
         '%\(PATH\)s': os.environ['PATH'],
+        '%\(LD_LIBRARY_PATH\)s': os.environ['LD_LIBRARY_PATH'],
         '%\(QMS_HOST\)s': config['qserv']['master'],
         '%\(QMS_DB\)s': config['qms']['db'],
         '%\(QMS_USER\)s': config['qms']['user'],
@@ -121,6 +122,7 @@ def get_template_targets():
         '%\(MYSQLD_USER\)s': config['mysqld']['user'],
         '%\(MYSQLD_PASS\)s': config['mysqld']['pass'],
         '%\(MYSQL_PROXY_PORT\)s': config['mysql_proxy']['port'],
+        '%\(XROOTD_DIR\)s': config['xrootd']['base_dir'],
         '%\(XROOTD_MANAGER_HOST\)s': config['qserv']['master'],
         '%\(XROOTD_PORT\)s': config['xrootd']['xrootd_port'],
         '%\(XROOTD_RUN_DIR\)s': os.path.join(config['qserv']['run_base_dir'],"xrootd-run"),
@@ -162,7 +164,7 @@ def get_template_targets():
             if (os.path.basename(path) == "bin" or
                 os.path.basename(path) == "init.d" or
                 target_basename in [
-                "scisql.sh",
+                "xrootd.sh",
                 "mysql.sh",
                 "qms.sh",
                 "scisql.sh",
@@ -211,6 +213,16 @@ if config['qserv']['node_type'] in ['mono','worker']:
     cmd = env.Command('scisql-cmd', [], install_sh)
 
     env.Alias("scisql", cmd)
+
+#########################
+#
+# Configure xrootd 
+#
+#########################
+install_sh = os.path.join(configuration_scripts_dir, "xrootd.sh")
+cmd = env.Command('xrootd-cmd', [], install_sh)
+
+env.Alias("xrootd", cmd)
 
 #############################
 #

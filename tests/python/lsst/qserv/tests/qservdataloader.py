@@ -10,7 +10,7 @@
 
 
 from  lsst.qserv.admin import commons
-from  lsst.qserv.sql import const, cmd, connection, schema
+from  lsst.qserv.tests.sql import const, cmd, connection, schema
 import logging
 import os
 import re
@@ -41,7 +41,7 @@ class QservDataLoader():
 
     def createQmsDatabase(self):
 
-        qms_script = os.path.join(self.config['qserv']['base_dir'],"qserv", "admin", "bin", "qms_setup.sh")
+        qms_script = "qms_setup.sh"
         qms_setup_cmd = [
             qms_script,
             self.config['qserv']['base_dir'],
@@ -154,7 +154,7 @@ class QservDataLoader():
     def duplicateAndPartitionData(self, table, data_filename):
         self.logger.info("Duplicating and partitioning table  '%s' from file '%s'\n" % (table, data_filename))
 
-        partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
+        partition_scriptname = "partition.py"
         partition_dirname = os.path.join(self._out_dirname,table+"_partition")
 
         if os.path.exists(partition_dirname):
@@ -172,10 +172,9 @@ class QservDataLoader():
         if not os.path.exists(data_filename):
             raise Exception, "File: %s not found" % data_filename
 
-        chunker_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "makeChunk.py")
+        chunker_scriptname = "makeChunk.py"
 
         chunker_cmd = [
-            self.config['bin']['python'],
             chunker_scriptname,
             '--output-dir', partition_dirname,
             '--delimiter', self.dataConfig['delimiter'],
@@ -204,7 +203,7 @@ class QservDataLoader():
     def partitionData(self,table, data_filename):
         # partition data
 
-        partition_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "partition.py")
+        partition_scriptname = "partition.py"
         partition_dirname = os.path.join(self._out_dirname,table+"_partition")
         if os.path.exists(partition_dirname):
             shutil.rmtree(partition_dirname)
@@ -212,7 +211,6 @@ class QservDataLoader():
 
             # python %s -PObject -t 2  -p 4 %s --delimiter '\t' -S 10 -s 2 --output-dir %s" % (self.partition_scriptname, data_filename, partition_dirname
         partition_data_cmd = [
-            self.config['bin']['python'],
             partition_scriptname,
             '--output-dir', partition_dirname,
             '--chunk-prefix', table,
@@ -237,11 +235,10 @@ class QservDataLoader():
 
     def loadPartitionedData(self,partition_dirname,table):
 
-        load_scriptname = os.path.join(self.config['qserv']['base_dir'],"qserv", "master", "examples", "loader.py")
+        load_scriptname = "loader.py"
 
     # TODO : remove hard-coded param : qservTest_caseXX_mysql => check why model table already exists in self._dbName
         load_partitioned_data_cmd = [
-            self.config['bin']['python'],
             load_scriptname,
             '--user=%s' % self.config['mysqld']['user'],
             '--password=%s' % self.config['mysqld']['pass'],

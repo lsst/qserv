@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 #
 # xrootd/cmsd	This shell script takes care of starting and stopping
 #		Qserv xrootd/cmsd instances.
@@ -17,6 +17,7 @@
 
 . %(QSERV_DIR)s/etc/init.d/qserv-functions
 
+XROOTD_DIR=%(XROOTD_DIR)s
 XROOTD_CONFIG=%(QSERV_DIR)s/etc/lsp.cf
 XROOTD_INSTANCE_NAME="worker"
 
@@ -24,14 +25,14 @@ PID_DIR=%(QSERV_PID_DIR)s/${XROOTD_INSTANCE_NAME}
 LOG_DIR=%(QSERV_LOG_DIR)s
 
 
+export PATH=%(PATH)s
+export LD_LIBRARY_PATH=%(LD_LIBRARY_PATH)s
 export QSW_XRDQUERYPATH="/q"
 export QSW_DBSOCK="%(MYSQLD_SOCK)s"
-export QSW_MYSQLDUMP="%(QSERV_DIR)s/bin/mysqldump"
+export QSW_MYSQLDUMP="mysqldump"
 QSW_SCRATCHPATH="%(QSERV_DIR)s/tmp"
 QSW_SCRATCHDB="qservScratch"
 export QSW_RESULTPATH="%(XROOTD_RUN_DIR)s/result"
-export LD_LIBRARY_PATH="%(XROOTD_RUN_DIR)s;%(QSERV_DIR)s/lib"
-
 
 start_service() {
 
@@ -43,7 +44,7 @@ start_service() {
 
 	pidfile=${PID_DIR}/${prog}.pid
 	lockfile=%(QSERV_DIR)s/var/lock/subsys/${prog}
-	BINARY=%(QSERV_DIR)s/bin/${prog}
+	BINARY=${XROOTD_DIR}/bin/${prog}
 	LOGFILE=${LOG_DIR}/${prog}.log
 	[ -x ${BINARY} ] || exit 5
 	[ -f ${XROOTD_CONFIG} ] || exit 6
