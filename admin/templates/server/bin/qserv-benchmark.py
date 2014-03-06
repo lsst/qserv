@@ -7,7 +7,6 @@ from lsst.qserv.tests.benchmark import Benchmark, parseOptions
 def main():
     
     options = parseOptions()
-    
     config = commons.read_user_config()
 
     logger.init_default_logger(
@@ -17,9 +16,7 @@ def main():
             )
     
     bench = Benchmark(options.case_no, options.out_dirname)
-
     bench.run(options.mode_list, options.load_data, options.stop_at_query)
-
     failed_queries = bench.analyzeQueryResults()
 
     if len(failed_queries) == 0:
