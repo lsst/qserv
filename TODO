@@ -1,0 +1,5 @@
+- manage geometry.py
+- better custom.py/Variables() management
+- package new Qser version
+- Debugging messages, TODO : replace with log messages
+- get Daniel remarks from Trac : tickets/3153
