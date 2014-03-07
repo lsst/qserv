@@ -7,7 +7,7 @@ def is_readable(dir):
     Test is a dir is readable.
     Return a boolean
     """
-    logger = logging.getLogger('scons-qserv')
+    logger = logging.getLogger()
 
     logger.debug("Checking read access for : %s", dir)
     try:
@@ -22,7 +22,7 @@ def is_writable(dir):
     Test if a dir is writeable.
     Return a boolean
     """
-    logger = logging.getLogger('scons-qserv')
+    logger = logging.getLogger()
     try:
         tmp_prefix = "write_tester";
         count = 0

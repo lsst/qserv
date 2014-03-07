@@ -27,19 +27,31 @@ opts = Variables('custom.py')
 #####################
 opts.AddVariables(
         (PathVariable('build_dir','Qserv build dir','build',PathVariable.PathIsDirCreate)),
-        (PathVariable('prefix', 'qserv install dir',os.path.join("$build_dir","dist"),PathVariable.PathIsDirCreate)),
         (PathVariable('XROOTD_DIR','xrootd install dir',os.getenv("XROOTD_DIR"),PathVariable.PathIsDir)),
         (PathVariable('MYSQL_DIR','mysql install dir',os.getenv("MYSQL_DIR"),PathVariable.PathIsDir)),
         (PathVariable('MYSQLPROXY_DIR','mysqlproxy install dir',os.getenv("MYSQLPROXY_DIR"),PathVariable.PathIsDir)),
         (PathVariable('PROTOBUF_DIR', 'protobuf install dir',os.getenv("PROTOBUF_DIR"),PathVariable.PathIsDir)),
         (PathVariable('LUA_DIR', 'lua install dir',os.getenv("LUA_DIR"),PathVariable.PathIsDir)),
-        (PathVariable('PROTOC', 'protoc binary path',os.path.join("$PROTOBUF_DIR","bin","protoc"),PathVariable.PathIsFile)),
         (PathVariable('PYTHON', 'python binary path',which("python")[0],PathVariable.PathIsFile)),
+        (PathVariable('GEOMETRY', 'path to geometry.py',os.getenv("GEOMETRY_LIB"),PathVariable.PathAccept)),
         ('PYTHONPATH', 'pythonpath',os.getenv("PYTHONPATH"))
 )
 opts.Update(env)
 
-opts.Add(PathVariable('python_prefix', 'qserv install directory for python modules',os.path.join(env['prefix'],"lib","python"),PathVariable.PathIsDirCreate))
+opts.AddVariables(
+        (PathVariable('prefix', 'qserv install dir',os.path.join(env['build_dir'],"dist"),PathVariable.PathIsDirCreate)),
+        (PathVariable('PROTOC', 'protoc binary path',os.path.join(env['PROTOBUF_DIR'],"bin","protoc"),PathVariable.PathIsFile)),
+        (PathVariable('XROOTD_INC', 'xrootd include path',os.path.join(env['XROOTD_DIR'],"include","xrootd"),PathVariable.PathIsDir)),
+        (PathVariable('XROOTD_LIB', 'xrootd libraries path',os.path.join(env['XROOTD_DIR'],"lib"),PathVariable.PathIsDir)),
+        (PathVariable('MYSQL_INC', 'mysql include path',os.path.join(env['MYSQL_DIR'],"include"),PathVariable.PathIsDir)),
+        (PathVariable('MYSQL_LIB', 'mysql libraries path',os.path.join(env['MYSQL_DIR'],"lib"),PathVariable.PathIsDir)),
+        (PathVariable('PROTOBUF_LIB', 'protobuf libraries path',os.path.join(env['PROTOBUF_DIR'],"lib"),PathVariable.PathIsDir))
+)
+opts.Update(env)
+
+opts.AddVariables(
+        (PathVariable('python_prefix', 'qserv install directory for python modules',os.path.join(env['prefix'],"lib","python"),PathVariable.PathIsDirCreate))
+)
 opts.Update(env)
 
 Help(opts.GenerateHelpText(env))
@@ -53,34 +65,24 @@ Help(opts.GenerateHelpText(env))
 env.Default(env.Alias("build"))
 env.Depends(env.Alias("install"), env.Alias("build"))
 
-env.Depends(env.Alias('python-tests'), env.Alias('python-admin'))
-env.Depends(env.Alias('python-tests'), env.Alias('python-qms'))
-env.Depends(env.Alias('admin'), env.Alias('python'))
-
-env.Alias("python",
-    [
-        env.Alias("python-admin"),
-        env.Alias("python-qms"),
-        env.Alias("python-tests"),
-    ]
-)
+env.Requires(env.Alias('python-tests'), env.Alias('admin'))
+env.Requires(env.Alias('python-tests'), env.Alias('dist-qms'))
 
 env.Alias("install",
     [
-        env.Alias("dist"),
+        env.Alias("dist-core"),
+        env.Alias("dist-qms"),
         env.Alias("admin"),
-        env.Alias("userconfig")
+        env.Alias("userconfig"),
+        env.Alias("python-tests")
     ]
 )
 
-#########################
+################################
 #
-# Install python modules
+# Install tests python modules
 #
-#########################
-python_admin = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("admin", "python"))
-env.Alias("python-admin", python_admin)
-
+################################
 python_tests = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("tests", "python"))
 env.Alias("python-tests", python_tests)
 
@@ -89,7 +91,7 @@ env.Alias("python-tests", python_tests)
 qmsbin_target = os.path.join(env['prefix'],"bin")
 env.RecursiveInstall(qmsbin_target, os.path.join("meta","bin"))
 python_qms = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("meta","python"))
-env.Alias("qms", 
+env.Alias("dist-qms", 
     [
     python_qms,
     qmsbin_target
@@ -101,6 +103,8 @@ env.Alias("qms",
 # Install admin commands
 #
 #########################
+python_admin = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("admin", "python"))
+
 template_target = os.path.join(env['prefix'],"admin","templates")
 env.RecursiveInstall(template_target, os.path.join("admin","templates"))
 
@@ -109,6 +113,7 @@ env.RecursiveInstall(sitescons_target, os.path.join("admin","site_scons"))
 
 env.Alias("admin", 
     [
+    python_admin,
     template_target,
     sitescons_target,
     env.Install(os.path.join(env['prefix'],"admin"), os.path.join("admin","SConstruct"))
@@ -141,7 +146,7 @@ def get_install_targets(prefix, filesToInstall) :
         targetFiles.append(targetFile)
     return targetFiles
 
-env.Alias("dist", get_install_targets(env['prefix'],filesToInstall))
+env.Alias("dist-core", get_install_targets(env['prefix'],filesToInstall))
 
 ############################
 #

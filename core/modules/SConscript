@@ -23,7 +23,7 @@ extraTgts = {}
 extraTgts['dist'] = []
 canBuild = True
 custom = detect.importCustom(env, extraTgts)
-geomLib = detect.extractGeometry(custom)
+geomLib = env.get('GEOMETRY',None)
 if geomLib:
     extraTgts['dist'].append(('lib/python/lsst/qserv/master', env.File(geomLib)))
 else:
@@ -59,10 +59,10 @@ if not env.GetOption('clean'):
     else: 
         canBuild = False
     env.Append(CPPPATH=[os.getcwd()]) # top level
-    env.Append(CPPPATH=[env['PROTOC_INC']])
+    print "DEBUG " + env.Dump()
+    print "DEBUG " + str(canBuild)
 
     env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC"])
-    env.Append(CPPPATH=env["PROTOC_INC"])
     env.Append(CPPPATH=["modules"])
 
 if not canBuild:

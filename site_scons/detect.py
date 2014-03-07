@@ -32,6 +32,8 @@ def checkMySql(env):
     conf = env.Configure()
     print "DEBUG checkMySql() %s %s" % (env["LIBPATH"], env["CPPPATH"])
 
+    conf.CheckCXXHeader('mysql/mysql.h')
+    
     if conf.CheckLibWithHeader("mysqlclient_r", "mysql/mysql.h",
                                    language="C++", autoadd=0):
         if conf.CheckDeclaration("mysql_next_result",
@@ -170,35 +172,19 @@ def addExtern(env, externPaths):
 # custom.py mechanism
 ########################################################################
 def importCustom(env, extraTgts):
-    try:
-        import custom
-    except ImportError, e:
-        return # Couldn't find module to import
-
-    print "using custom.py"
 
     def getExt(ext):
-        varNames = filter(lambda s: s.endswith(ext), dir(custom))
-        vals = map(lambda i: getattr(custom, i), varNames)
+        varNames = filter(lambda s: s.endswith(ext), env.Dictionary())
+        vals = map(lambda varName: env[varName], varNames)
         return vals
 
-    env.Append(LIBPATH=getExt("LIB")) ## *LIB --> LIBPATH
-    env.Append(CPPPATH=getExt("INC")) ## *INC --> CPPPATH
+    env.Append(LIBPATH=getExt("_LIB")) ## *LIB --> LIBPATH
+    env.Append(CPPPATH=getExt("_INC")) ## *INC --> CPPPATH
 
     # Automagically steal PYTHONPATH from envvar
     extraTgts["PYTHONPATH"] = env.get("PYTHONPATH", []) 
 
-    return custom
-
-def extractGeometry(custom):
-    geomLib = getattr(custom, "GEOMETRY", None)
-    if geomLib:
-        if os.access(geomLib, os.R_OK):
-            return geomLib
-        else:
-            print "Invalid GEOMETRY entry in custom.py"
-            Abort(1)
-    pass
+    return None 
 
 def checkTwisted():
     try:

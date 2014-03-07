@@ -27,18 +27,20 @@ env = Environment(tools=['textfile'])
 
 # templates must be applied before installation in order to
 # initialize mysqld
-env.Requires(env.Alias('configure'), env.Alias('mkdir'))
-env.Requires(env.Alias('configure'), env.Alias('mysql'))
-env.Requires(env.Alias('configure'), env.Alias('scisql'))
-env.Requires(env.Alias('configure'), env.Alias('qms'))
-env.Requires(env.Alias('configure'), env.Alias('qserv'))
-
 env.Requires(env.Alias('mysql'), env.Alias('templates'))
 env.Requires(env.Alias('scisql'), env.Alias('templates'))
 env.Requires(env.Alias('qms'), env.Alias('templates'))
 env.Requires(env.Alias('qserv'), env.Alias('templates'))
 
-
+env.Alias('configure', 
+        [
+        env.Alias('mkdir'),
+        env.Alias('mysql'),
+        env.Alias('scisql'),
+        env.Alias('qms'),
+        env.Alias('qserv')
+        ]
+        )
 
 env.Default(env.Alias('configure'))
 
