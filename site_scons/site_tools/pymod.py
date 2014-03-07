@@ -21,6 +21,7 @@ def install_python_module(env, target, source):
 
     for f in source_lst :
         target = utils.replace_base_path(source_dir_path,python_path_prefix,f,env)
+        print "DEBUG install_python_module() %s %s" % (target, f)
         env.InstallAs(target, f)
         target_lst.append(target)
         # .pyc files will also be removed
