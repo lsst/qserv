@@ -74,6 +74,11 @@ lookupKey(QueryContext& context, boost::shared_ptr<ColumnRef> cr) {
     // Match cr as a column ref against the key column for a database's
     // partitioning strategy.
     if((!cr) || !context.metadata) { return false; }
+    if(!context.metadata->checkIfContainsDb(cr->db)
+       || !context.metadata->checkIfContainsTable(cr->db, cr->table)) {
+            throw std::logic_error("Invalid db/table:" + cr->db + "." + cr->table);
+        }
+
     std::string keyColumn = context.metadata->getKeyColumn(cr->db, cr->table);
     return (!cr->column.empty()) && (keyColumn == cr->column);
 }
@@ -159,7 +164,10 @@ public:
         }
         std::string const& db = t->getDb();
         std::string const& table = t->getTable();
-
+        if(!_metadata.checkIfContainsDb(db)
+           || !_metadata.checkIfContainsTable(db, table)) {
+            throw std::logic_error("Invalid db/table:" + db + "." + table);
+        }
         // Is table chunked?
         if(!_metadata.checkIfTableIsChunked(db, table)) {
             return; // Do nothing for non-chunked tables
@@ -563,6 +571,10 @@ QservRestrictorPlugin::_convertObjectId(QueryContext& context,
     // db, table, column, val1, val2, ...
     p->_params.push_back(context.dominantDb);
     p->_params.push_back(context.anonymousTable);
+    if(!context.metadata->checkIfContainsDb(context.dominantDb)
+       || !context.metadata->checkIfContainsTable(context.dominantDb, context.anonymousTable) ) {
+        throw std::logic_error("Invalid db/table: " + context.dominantDb + "." + context.anonymousTable);
+    }
     std::string keyColumn = context.metadata->getKeyColumn(context.dominantDb,
                                                            context.anonymousTable);
     p->_params.push_back(keyColumn);

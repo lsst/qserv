@@ -43,6 +43,9 @@ QueryContext::resolve(boost::shared_ptr<ColumnRef> cr) {
     if(cr->db.empty() && !cr->table.empty()) {
         DbTablePair concrete = tableAliases.get(cr->table);
         if(!concrete.empty()) {
+            if(concrete.db.empty()) {
+                concrete.db = defaultDb;
+            }
             return concrete;
         }
     }
