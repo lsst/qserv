@@ -149,11 +149,11 @@ qMaster::addTbInfoNonPartitioned(int metaSessionId,
   * @param dbName database name
   * @param tableName table name
   * @param overlap used for this table (overwrites overlaps from dbInfo)
-  * @param phiCol name of the phi column (right ascention)
-  * @param thetaCol name of the theta column (declination)
+  * @param lonCol name of the longitude column (right ascension)
+  * @param latCol name of the latitude column (declination)
   * @param objIdCol name of the objId column
-  * @param phiColNo position of the phi column in the table, counting from zero
-  * @param thetaColNo position of the theta column in the table, counting from zero
+  * @param lonColNo position of the longitude column in the table, counting from zero
+  * @param latColNo position of the latitude column in the table, counting from zero
   * @param objIdColNo position of the objId column in the table, counting from zero
   * @param logicalPart definition how the table is partitioned logically
   * @param physChunking definition how the table is chunked physically
@@ -165,17 +165,17 @@ qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
                                     const char* dbName,
                                     const char* tbName,
                                     float overlap,
-                                    const char* phiCol,
-                                    const char* thetaCol,
+                                    const char* lonCol,
+                                    const char* latCol,
                                     const char* objIdCol,
-                                    int phiColNo,
-                                    int thetaColNo,
+                                    int lonColNo,
+                                    int latColNo,
                                     int objIdColNo,
                                     int logicalPart,
                                     int physChunking) {
     return getMetadataCache(metaSessionId)->addTbInfoPartitionedSphBox(
-                 dbName, tbName, overlap, phiCol, thetaCol, objIdCol,
-                 phiColNo, thetaColNo, objIdColNo, logicalPart, physChunking);
+                 dbName, tbName, overlap, lonCol, latCol, objIdCol,
+                 lonColNo, latColNo, objIdColNo, logicalPart, physChunking);
 }
 
 /** Prints the contents of the qserv metadata cache. This is
