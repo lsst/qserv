@@ -16,8 +16,8 @@ clusteredIndex: IDX_objectId
 
 [sphBox]
 overlap:        0
-phiColName:     ra
-thetaColName:   decl
+lonColName:     ra
+latColName:   decl
 objIdColName:   sourceId
 
 # 0: none, 1: 1-level, 2: 2-level

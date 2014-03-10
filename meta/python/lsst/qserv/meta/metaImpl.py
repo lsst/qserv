@@ -2,7 +2,7 @@
 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -10,14 +10,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 """
@@ -36,13 +36,13 @@ from db import Db
 from status import Status, getErrMsg, QmsException
 
 internalTables = [
-    # The DbMeta table keeps the list of databases managed through 
-    # qserv. Databases not entered into that table will be ignored 
+    # The DbMeta table keeps the list of databases managed through
+    # qserv. Databases not entered into that table will be ignored
     # by qserv.
     ['DbMeta', '''(
    dbId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
    dbName VARCHAR(255) NOT NULL,
-   dbUuid VARCHAR(255) NOT NULL, -- note: this has to be the same across 
+   dbUuid VARCHAR(255) NOT NULL, -- note: this has to be the same across
                                  -- all worker nodes
 
    psName VARCHAR(255), -- partition strategy used for tables
@@ -60,42 +60,42 @@ internalTables = [
    tbUuid VARCHAR(255),       -- uuid of this table
    dbId INT NOT NULL,         -- id of database this table belongs to
    psId INT,                  -- foreign key to the PS_Tb_* table
-   clusteredIdx VARCHAR(255), -- name of the clustered index, 
+   clusteredIdx VARCHAR(255), -- name of the clustered index,
                               -- Null if no clustered index.
    isRefMatch TINYINT DEFAULT 0, -- flag indicating if the table is a "RefMatch"
    isView TINYINT DEFAULT 0      -- flag inidcating if the table is a view or not
 )'''],
     # -----------------------------------------------------------------
-    # Partitioning strategy, database-specific parameters 
+    # Partitioning strategy, database-specific parameters
     # for sphBox partitioning
     ["PS_Db_sphBox", '''(
    psId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-   stripes INT,    -- base number of stripes. 
-                   -- Large tables might overwrite that and have 
+   stripes INT,    -- base number of stripes.
+                   -- Large tables might overwrite that and have
                    -- finer-grain division.
    subStripes INT, -- base number of subStripes per stripe.
-                   -- Large tables might overwrite that and have 
+                   -- Large tables might overwrite that and have
                    -- finer-grain division.
    defaultOverlap_fuzzyness FLOAT, -- in degrees, for fuzziness
    defaultOverlap_nearNeigh FLOAT  -- in degrees, for real neighbor query
 )'''],
     # -----------------------------------------------------------------
-    # Partitioning strategy, table-specific parameters 
+    # Partitioning strategy, table-specific parameters
     # for sphBox partitioning
     ["PS_Tb_sphBox", '''(
    psId INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
    overlap FLOAT,         -- in degrees, 0 if not set
-   phiCol VARCHAR(255),   -- Null if table not partitioned
-   thetaCol VARCHAR(255), -- Null if table not partitioned
+   lonCol VARCHAR(255),   -- Null if table not partitioned
+   latCol VARCHAR(255), -- Null if table not partitioned
    objIdCol VARCHAR(255), -- Null if table not partitioned
-   phiColNo INT,          -- Position of the phiCol in the table, counting from zero
-   thetaColNo INT,        -- Position of the thetaCol in the table, counting from zero
+   lonColNo INT,          -- Position of the lonCol in the table, counting from zero
+   latColNo INT,        -- Position of the latCol in the table, counting from zero
    objIdColNo INT,        -- Position of the objIdCol in the table, counting from zero
    logicalPart SMALLINT,  -- logical partitioning flag:
                           -- 0: no chunks
                           -- 1: one-level chunking
                           -- 2: two-level chunking (chunks and subchunks)
-   physChunking INT       -- physical storage flag:                        
+   physChunking INT       -- physical storage flag:
             -- least significant bit: 0-not persisted, 1-persisted in RDBMS
             -- second-least significant bit indicates partitioning level,eg
             -- 0x0010: 1st-level partitioning, not persistent
@@ -107,7 +107,7 @@ internalTables = [
     ["EmptyChunks", '''(
    dbId INT,
    chunkId INT
-)'''], 
+)'''],
     # -----------------------------------------------------------------
     ["TableStats", '''(
    tableId INT NOT NULL PRIMARY KEY,
@@ -124,10 +124,10 @@ internalTables = [
    lockKey BIGINT,             -- key required to bypass the lock
    lockedBy VARCHAR(255),      -- name of user who locked the database
    lockDate DATETIME,          -- date/time when lock was created
-   estDur INT,                 -- estimated duration in hours 
+   estDur INT,                 -- estimated duration in hours
                                -- (for message facing users, -1: unknown)
-   comments TEXT DEFAULT NULL  -- any comments the lock creator wants 
-                               -- to attach to this lock 
+   comments TEXT DEFAULT NULL  -- any comments the lock creator wants
+                               -- to attach to this lock
 )'''],
     # -----------------------------------------------------------------
     ["LockTable", '''(
@@ -136,10 +136,10 @@ internalTables = [
    lockKey BIGINT,             -- key required to bypass the lock
    lockedBy VARCHAR(255),      -- name of user who locked the database
    lockDate DATETIME,          -- date/time when lock was created
-   estDur INT,                 -- estimated duration in hours 
+   estDur INT,                 -- estimated duration in hours
                                -- (for message facing users, -1: unknown)
-   comments TEXT DEFAULT NULL  -- any comments the lock creator wants 
-                               -- to attach to this lock 
+   comments TEXT DEFAULT NULL  -- any comments the lock creator wants
+                               -- to attach to this lock
 )''']]
 
 
@@ -180,7 +180,7 @@ class MetaImpl:
     def destroyMeta(self):
         """This method permanently destroys qserv metadata."""
         self._mdb.selectMetaDb()
-        cmd = "SHOW DATABASES LIKE '%s%%'" % self._mdb.getServerPrefix() 
+        cmd = "SHOW DATABASES LIKE '%s%%'" % self._mdb.getServerPrefix()
         qmsDbs = self._mdb.execCommandN(cmd)
         for qmsDb in qmsDbs:
             self._mdb.execCommand0("DROP DATABASE %s" % qmsDb)
@@ -194,7 +194,7 @@ class MetaImpl:
         """This method prints all metadata into a string."""
         self._mdb.selectMetaDb()
         s = StringIO.StringIO()
-        for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox", 
+        for t in ["DbMeta", "PS_Db_sphBox", "TableMeta", "PS_Tb_sphBox",
                   "EmptyChunks", "TableStats", "LockDb"]:
             self._printTable(s, t)
         return s.getvalue()
@@ -207,14 +207,14 @@ class MetaImpl:
             self._logger.error("Can't find required param 'partitioning'")
             raise QmsException(Status.ERR_MISSING_OPTION)
 
-        partOff = x["partitioning"] == "off" 
+        partOff = x["partitioning"] == "off"
         for (theName, theOpts) in xxOpts.items():
             for o in theOpts:
                 # skip optional parameters
                 if o == "partitioning":
                     continue
-                # if partitioning is "off", partitioningStrategy does not 
-                # need to be specified 
+                # if partitioning is "off", partitioningStrategy does not
+                # need to be specified
                 if not (o == "partitiongStrategy" and partOff):
                     continue
                 if not x.has_key(o):
@@ -265,8 +265,8 @@ class MetaImpl:
         # these are required options for createDb
         _crDbOpts = { "db_info":("partitioning", "partitioningStrategy")}
         _crDbPSOpts = {
-            "sphBox":("nStripes", 
-                      "nSubStripes", 
+            "sphBox":("nStripes",
+                      "nSubStripes",
                       "defaultOverlap_fuzziness",
                       "defaultOverlap_nearNeighbor")}
         # validate the options
@@ -413,8 +413,8 @@ class MetaImpl:
                           "isView")}
         _crTbPSOpts = {
             "sphBox":("overlap",
-                      "phiColName", 
-                      "thetaColName", 
+                      "lonColName",
+                      "latColName",
                       "objIdColName",
                       "logicalPart",
                       "physChunking")}
@@ -479,8 +479,8 @@ class MetaImpl:
 
             self._logger.debug("persisting for sphBox")
             ov = crTbOptions["overlap"]
-            pCN = crTbOptions["phiColName"]
-            tCN = crTbOptions["thetaColName"]
+            pCN = crTbOptions["lonColName"]
+            tCN = crTbOptions["latColName"]
             oCN = crTbOptions["objIdColName"]
             if not self._checkColumnExists(dbName, tableName, pCN) or \
                not self._checkColumnExists(dbName, tableName, tCN) or \
@@ -491,7 +491,7 @@ class MetaImpl:
             oN = self._getColumnPos(dbName, tableName, oCN)
             lP = int(crTbOptions["logicalPart"])
             pC = int(crTbOptions["physChunking"], 16)
-            cmd = "INSERT INTO PS_Tb_sphBox(overlap, phiCol, thetaCol, objIdCol, phiColNo, thetaColNo, objIdColNo, logicalPart, physChunking) VALUES(%s, '%s', '%s', '%s', %d, %d, %d, %d, %d)" % (ov, pCN, tCN, oCN, pN, tN, oN, lP, pC)
+            cmd = "INSERT INTO PS_Tb_sphBox(overlap, lonCol, latCol, objIdCol, lonColNo, latColNo, objIdColNo, logicalPart, physChunking) VALUES(%s, '%s', '%s', '%s', %d, %d, %d, %d, %d)" % (ov, pCN, tCN, oCN, pN, tN, oN, lP, pC)
             self._mdb.execCommand0(cmd)
             psId = (self._mdb.execCommand1("SELECT LAST_INSERT_ID()"))[0]
         # create entry in TableMeta
@@ -596,16 +596,16 @@ class MetaImpl:
         # retrieve table info
         values = dict()
         if psId and psName == "sphBox":
-            ret = self._mdb.execCommand1("SELECT clusteredIdx, isRefMatch, isView, overlap, phiCol, thetaCol, objIdCol, phiColNo, thetaColNo, objIdColNo, logicalPart, physChunking FROM TableMeta JOIN PS_Tb_sphBox USING(psId) WHERE tableId=%s" % tableId)
+            ret = self._mdb.execCommand1("SELECT clusteredIdx, isRefMatch, isView, overlap, lonCol, latCol, objIdCol, lonColNo, latColNo, objIdColNo, logicalPart, physChunking FROM TableMeta JOIN PS_Tb_sphBox USING(psId) WHERE tableId=%s" % tableId)
             values["clusteredIdx"] = ret[0]
             values["isRefMatch"]   = ret[1]
             values["isView"]       = ret[2]
             values["overlap"]      = ret[3]
-            values["phiCol"]       = ret[4]
-            values["thetaCol"]     = ret[5]
+            values["lonCol"]       = ret[4]
+            values["latCol"]     = ret[5]
             values["objIdCol"]     = ret[6]
-            values["phiColNo"]     = ret[7]
-            values["thetaColNo"]   = ret[8]
+            values["lonColNo"]     = ret[7]
+            values["latColNo"]   = ret[8]
             values["objIdColNo"]   = ret[9]
             values["logicalPart"]  = ret[10]
             values["physChunking"] = ret[11]
@@ -644,19 +644,19 @@ class MetaImpl:
         ret = self._mdb.execCommandN("SELECT * FROM %s" % tableName)
         if len(ret) == 0:
             s.write(" is empty.\n")
-        else: 
+        else:
             s.write(':\n')
             s.write("  Data : \n")
-            for r in ret: 
+            for r in ret:
                 print >> s, "   ", r
         s.write("  Columns : \n")
         ret = self._mdb.execCommandN("DESC %s" % tableName)
         col_lst=[r[0] for r in ret]
-        print >> s, "   ", col_lst 
+        print >> s, "   ", col_lst
 
     ###########################################################################
     #### _getColumpPos
     ###########################################################################
     def _getColumnPos(self, dbName, tableName, columnName):
         # note: this function is mysql-specific!
-        return self._mdb.execCommand1("SELECT ordinal_position FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (self._mdb.getServerPrefix(), dbName, tableName, columnName))[0] -1 
+        return self._mdb.execCommand1("SELECT ordinal_position FROM information_schema.COLUMNS WHERE table_schema='%s%s' and table_name='%s' and column_name='%s'" % (self._mdb.getServerPrefix(), dbName, tableName, columnName))[0] -1
