@@ -21,7 +21,6 @@ Qserv core code
 ###
 extraTgts = {}
 extraTgts['dist'] = []
-canBuild = True
 custom = detect.importCustom(env, extraTgts)
 geomLib = env.get('GEOMETRY',None)
 if geomLib:
@@ -32,41 +31,28 @@ else:
 if not detect.checkTwisted():
     print "Couldn't find Twisted. Be sure that Twisted is configured for Qserv Czar startup."
 
-hasMysql = detect.checkMySql(env)
-
 # Handle debug
 debug = ARGUMENTS.get('debug', 0)
 if int(debug):
     print "Debug build flag (-g) requested."
     env.Append(CCFLAGS = '-g')
 
-## import via eups if directed
-## eups sets LD_LIBRARY_PATH and PATH, so libs should get detected automagically and
-if 'eups' in ARGUMENTS:
-    import eupsLib
-    i = eupsLib.Importer()
-    incs = i.getIncludes()
-    if incs: env.Append(CPPPATH=incs)
-
 # Environment
 # Must do all env modifiers here, otherwise SCons complains
 # about different environments used to build files in shared components.
 if not env.GetOption('clean'):
-    canBuild = hasMysql 
+
     detect.addExtern(env, ARGUMENTS.get('extern', None))
-    if detect.setXrootd(env):
-        canBuild = canBuild and detect.checkXrootdLink(env)
-    else: 
-        canBuild = False
+
+    canBuild = detect.checkMySql(env) and detect.setXrootd(env) and detect.checkXrootdLink(env)
+    if not canBuild:
+        raise StandardError("Can't build")
+
     env.Append(CPPPATH=[os.getcwd()]) # top level
     print "DEBUG " + env.Dump()
     print "DEBUG " + str(canBuild)
 
     env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC"])
-    env.Append(CPPPATH=["modules"])
-
-if not canBuild:
-    raise StandardError("can't build")
 
 # all modules
 allModules = """control czar global log merger meta mysql obsolete
@@ -225,7 +211,7 @@ for (pkg, opts) in shProducts.items():
                                 SHLIBPREFIX=opts['SHLIBPREFIX'])
     else:
         out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs)
-    env.Alias("build",out)
+    env.Alias("build", out)
     for f in out:
         extraTgts['dist'].append((opts['distDir'], f))
 
