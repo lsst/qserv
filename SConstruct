@@ -20,6 +20,30 @@ env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'swi
 # TODO : manage custom.py, with ARGUMENTS
 opts = Variables('custom.py')
 
+def findPrefix(product, binName=None):
+    """ returns install prefix for  a dependency named 'product'
+    - if the dependency binary is PREFIX/bin/binName then PREFIX is used
+    - else env var PRODUCT_DIR is used
+    - if no prefix is detected, exit with an error message
+    """
+    prefix = None
+ 
+    if binName:
+        (binpath, binname) = os.path.split(binName)
+        (basepath, bin) = os.path.split(binpath)
+        if bin.lower() == "bin":
+           prefix = basepath
+
+    if not prefix:
+        prefix = os.getenv("%s_DIR" % product.upper())
+
+    if not prefix:
+        print >> sys.stderr, "Could not locate %s install prefix" % product 
+        sys.exit(1)
+
+    return prefix 
+
+
 #####################
 #
 # Option management
@@ -28,11 +52,11 @@ opts = Variables('custom.py')
 opts.AddVariables(
         (PathVariable('build_dir', 'Qserv build dir', 'build', PathVariable.PathIsDirCreate)),
         (EnumVariable('debug', 'debug output and symbols', 'no', allowed_values=('yes', 'no', 'full'))),
-        (PathVariable('XROOTD_DIR', 'xrootd install dir', os.getenv("XROOTD_DIR"), PathVariable.PathIsDir)),
-        (PathVariable('MYSQL_DIR', 'mysql install dir', os.getenv("MYSQL_DIR"), PathVariable.PathIsDir)),
-        (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', os.getenv("MYSQLPROXY_DIR"), PathVariable.PathIsDir)),
-        (PathVariable('PROTOBUF_DIR', 'protobuf install dir', os.getenv("PROTOBUF_DIR"), PathVariable.PathIsDir)),
-        (PathVariable('LUA_DIR', 'lua install dir', os.getenv("LUA_DIR"), PathVariable.PathIsDir)),
+        (PathVariable('XROOTD_DIR', 'xrootd install dir', findPrefix("XROOTD", "xrootd"), PathVariable.PathIsDir)),
+        (PathVariable('MYSQL_DIR', 'mysql install dir', findPrefix("MYSQL", "mysql"), PathVariable.PathIsDir)),
+        (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', findPrefix("MYSQLPROXY", "mysql-proxy"), PathVariable.PathIsDir)),
+        (PathVariable('PROTOBUF_DIR', 'protobuf install dir', findPrefix("PROTOBUF", "protoc"), PathVariable.PathIsDir)),
+        (PathVariable('LUA_DIR', 'lua install dir', findPrefix("LUA", "lua"), PathVariable.PathIsDir)),
         (PathVariable('PYTHON', 'python binary path', SCons.Util.WhereIs("python"), PathVariable.PathIsFile)),
         (PathVariable('GEOMETRY', 'path to geometry.py', os.getenv("GEOMETRY_LIB"), PathVariable.PathAccept)),
         ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH"))
@@ -46,6 +70,7 @@ opts.AddVariables(
         (PathVariable('XROOTD_LIB', 'xrootd libraries path', os.path.join(env['XROOTD_DIR'], "lib"), PathVariable.PathIsDir)),
         (PathVariable('MYSQL_INC', 'mysql include path', os.path.join(env['MYSQL_DIR'], "include"), PathVariable.PathIsDir)),
         (PathVariable('MYSQL_LIB', 'mysql libraries path', os.path.join(env['MYSQL_DIR'], "lib"), PathVariable.PathIsDir)),
+        (PathVariable('PROTOBUF_INC', 'protobuf include path', os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
         (PathVariable('PROTOBUF_LIB', 'protobuf libraries path', os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir))
 )
 opts.Update(env)

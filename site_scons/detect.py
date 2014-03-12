@@ -148,7 +148,7 @@ def setXrootd(env):
     if not found :
         print >> sys.stderr, "Missing Xrootd include path"
     elif found and path:
-        env.Append(CPPPATH=[found[1]])
+        env.Append(CPPPATH=[path])
     return found
 
 
@@ -176,10 +176,13 @@ def importCustom(env, extraTgts):
     def getExt(ext):
         varNames = filter(lambda s: s.endswith(ext), env.Dictionary())
         vals = map(lambda varName: env[varName], varNames)
+        print "DEBUG varNames : %s, vals %s" % (varNames, vals)
         return vals
 
     env.Append(LIBPATH=getExt("_LIB")) ## *LIB --> LIBPATH
     env.Append(CPPPATH=getExt("_INC")) ## *INC --> CPPPATH
+
+    print "DEBUG CPPPATH : %s" % env['CPPPATH']
 
     # Automagically steal PYTHONPATH from envvar
     extraTgts["PYTHONPATH"] = env.get("PYTHONPATH", []) 

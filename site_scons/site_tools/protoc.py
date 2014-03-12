@@ -139,15 +139,6 @@ def _protoc_emitter(target, source, env):
 
     return target, source
 
-def _findBase(binName):
-    """Example if binName == '/usr/bin/protoc', return '/usr'
-    """
-    (binpath, binname) = os.path.split(binName)
-    (basepath, bin) = os.path.split(binpath)
-    if bin.lower() == "bin":
-        return basepath
-    return binpath        
-
 _protoc_builder = Builder(
         action = Action('$PROTOC_COM', '$PROTOC_COMSTR'),
         suffix = '$PROTOC_CCSUFFIX',
@@ -159,7 +150,6 @@ def generate(env):
     """Add Builders and construction variables."""
     
     env['PROTOC'] = _detect(env)
-    base = _findBase(env['PROTOC'])
 
     env.SetDefault(
 
@@ -168,8 +158,6 @@ def generate(env):
 
         # Source path(s)
         PROTOC_PATH = SCons.Util.CLVar(''),
-        # include path
-        PROTOC_INC = os.path.join(base, 'include'),
 
         # Output path
         PROTOC_CCOUT = '',
