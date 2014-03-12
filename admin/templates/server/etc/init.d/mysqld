@@ -10,7 +10,7 @@
 # pidfile: ${QSERV_RUN_DIR}/var/run/mysqld/mysqld.pid
 
 # Source function library.
-. /etc/rc.d/init.d/functions
+. %(QSERV_DIR)s/etc/init.d/qserv-functions
 
 PATH=%(PATH)s
 QSERV_DIR=%(QSERV_DIR)s
@@ -41,7 +41,7 @@ lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$prog
 # We use my_print_defaults which prints all options from multiple files,
 # with the more specific ones later; hence take the last match.
 get_mysql_option(){
-	result=`my_print_defaults "$1" | sed -n "s/^--$2=//p" | tail -n 1`
+	result=`my_print_defaults --defaults-file=${QSERV_DIR}/etc/my.cnf "$1" | sed -n "s/^--$2=//p" | tail -n 1`
 	if [ -z "$result" ]; then
 	    # not found, use default
 	    result="$3"
