@@ -145,11 +145,14 @@ def cacheObjs(env, depList, oType):
     return result
 
 boostChecker = detect.BoostChecker(env)
+antlrChecker = detect.AntlrChecker(env)
 
 def findLibs(libList):
     def cheapCheckLib(libName):
         if libName.startswith("boost"):
             return boostChecker.getLibName(libName)
+        if libName.startswith("antlr"):
+            return antlrChecker.getLibName(libName)
         else: return libName
     return map(cheapCheckLib, libList)
 

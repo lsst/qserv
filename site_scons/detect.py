@@ -84,6 +84,39 @@ class BoostChecker:
         return libName + self.suffix
     pass # BoostChecker
 
+class AntlrChecker:
+    def __init__(self, env):
+        self.env = env
+        self.suffix = None
+        self.suffixes = ["-pic", ""]
+        self.cache = {}
+        pass
+
+    def getLibName(self, libName):
+        if libName in self.cache:
+            return self.cache[libName]
+
+        r = self._getLibName(libName)
+        self.cache[libName] = r
+        return r
+
+    def _getLibName(self, libName):
+        if self.suffix == None:
+            conf = self.env.Configure()
+
+            def checkSuffix(sfx):
+                return conf.CheckLib(libName + sfx, language="C++", autoadd=0)
+            for i in self.suffixes:
+                if checkSuffix(i):
+                    self.suffix = i
+                    break
+            if self.suffix == None:
+                print "Can't find libantlr : " + libName
+                assert self.suffix != None
+            conf.Finish()
+            pass
+        return libName + self.suffix
+    pass # AntlrChecker
 
 null_source_file = """
 int main(int argc, char **argv) {
