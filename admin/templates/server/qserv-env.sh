@@ -1,35 +1,32 @@
-export QSERV_BASE=%(QSERV_DIR)s
-
-# qserv 
-# WARNING : set qserv binary directory before running qserv in order to use
-# %(QSERV_DIR)s/bin/python
-
 if [ -z "${QSERV_ENV_SETTED}" ]; then
-	export PATH=${QSERV_BASE}/bin:${PATH}
 	# in order to load numpy
 	export PYTHONPATH=${PYTHONPATH}:/usr/lib64/python2.6/site-packages/
 	export QSERV_ENV_SETTED=1
 fi 
+    
+QSERV_DIR=%(QSERV_DIR)s
+SERVICES="mysqld xrootd qms mysql-proxy qserv-master"
 
-alias qserv-start="qserv-admin --start"
-alias qserv-stop="qserv-admin --stop  --dbpass \"%(MYSQLD_PASS)s\"; rm -f ${QSERV_BASE}/xrootd-run/result/*"
-# TODO : manage MySQL pass correctly
-alias qserv-status="qserv-admin --status --dbpass \"%(MYSQLD_PASS)s\""
+qserv-start() {
+    for service in ${SERVICES}; do
+        ${QSERV_DIR}/etc/init.d/$service start
+    done
+}
 
-if [[ $1 ]]
-then
-case $1 in 
-start)
-qserv-start
-;;
-stop)
-qserv-stop
-;;
-status)
-qserv-status
-;;
-*)
-exit 1
-;;
-esac
-fi
+
+qserv-status() {
+    services="mysqld xrootd qms mysql-proxy qserv"
+    for service in ${SERVICES}; do
+        ${QSERV_DIR}/etc/init.d/$service status
+    done
+}
+
+qserv-stop() {
+    services_rev=`echo ${SERVICES} | tr ' ' '\n' | tac`
+    for service in $services_rev; do
+        ${QSERV_DIR}/etc/init.d/$service stop
+    done
+    # still usefull ?
+    rm -f ${QSERV_RUN}/xrootd-run/result/*
+}
+

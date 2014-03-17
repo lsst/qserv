@@ -129,6 +129,8 @@ env.Alias("dist-qms",
 # Install admin commands
 #
 #########################
+adminbin_target = os.path.join(env['prefix'], "bin")
+env.RecursiveInstall(adminbin_target, os.path.join("admin", "bin"))
 python_admin = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("admin", "python"))
 
 template_target = os.path.join(env['prefix'], "admin", "templates")
@@ -142,6 +144,7 @@ env.Alias("admin",
         python_admin,
         template_target,
         sitescons_target,
+        adminbin_target,
         env.Install(os.path.join(env['prefix'], "admin"), os.path.join("admin", "SConstruct"))
         ]
 )
