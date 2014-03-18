@@ -132,6 +132,7 @@ def _initEnvironment():
         log.info("Debug build flag (-g) requested.")
         env.Append(CCFLAGS = ['-g'])
 
+# TODO : where to save this file ?
 def _saveState():
     """Save state such as optimization level used.  The scons mailing lists were unable to tell
     RHL how to get this back from .sconsign.dblite
@@ -159,5 +160,5 @@ def init():
     _initOptions()
     _initLog()
     _initEnvironment()
-    _saveState()
+#    _saveState()
 ## @endcond

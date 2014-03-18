@@ -46,17 +46,16 @@ def read_config(config_file):
                 config[section][option] = os.path.normpath(config[section][option])
 
     # computable configuration parameters
-    config['qserv']['bin_dir'] = os.path.join(config['qserv']['base_dir'], "bin")
     config['qserv']['scratch_dir'] = os.path.join( "/dev", "shm", "qserv-%s-%s" %
                                         (os.getlogin(),
-                                        hashlib.sha224(config['qserv']['base_dir']).hexdigest())
+                                        hashlib.sha224(config['qserv']['run_base_dir']).hexdigest())
                                     )
 
     # TODO : manage special characters for pass (see config file comments for additional information)
     config['mysqld']['pass']    = parser.get("mysqld","pass",raw=True)
     config['mysqld']['port'] = parser.getint('mysqld','port')
     # computable configuration parameter
-    config['mysqld']['sock']    = os.path.join(config['qserv']['base_dir'], "var","lib","mysql","mysql.sock")
+    config['mysqld']['sock']    = os.path.join(config['qserv']['run_base_dir'], "var","lib","mysql","mysql.sock")
 
     config['mysql_proxy']['port'] = parser.getint('mysql_proxy','port')
 

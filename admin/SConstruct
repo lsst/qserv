@@ -25,8 +25,7 @@ env = Environment(tools=['textfile'])
 #
 #########################
 
-# templates must be applied before installation in order to
-# initialize mysqld
+env.Requires(env.Alias('templates'), env.Alias('mkdir'))
 env.Requires(env.Alias('mysql'), env.Alias('templates'))
 env.Requires(env.Alias('scisql'), env.Alias('templates'))
 env.Requires(env.Alias('qms'), env.Alias('templates'))
@@ -91,48 +90,48 @@ env.Alias('mkdir', mkdir_target_lst)
 #
 ######################################################
 
+script_dict = {
+    '%\(PATH\)s': os.environ['PATH'],
+    '%\(LD_LIBRARY_PATH\)s': os.environ['LD_LIBRARY_PATH'],
+    '%\(QMS_HOST\)s': config['qserv']['master'],
+    '%\(QMS_DB\)s': config['qms']['db'],
+    '%\(QMS_USER\)s': config['qms']['user'],
+    '%\(QMS_PASS\)s': config['qms']['pass'],
+    '%\(QMS_PORT\)s': config['qms']['port'],
+    '%\(QSERV_DIR\)s': config['qserv']['base_dir'],
+    '%\(QSERV_RUN_DIR\)s': config['qserv']['run_base_dir'],
+    '%\(QSERV_UNIX_USER\)s': os.getlogin(),
+    '%\(QSERV_SRC_DIR\)s': config['src_dir'],
+    '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'],
+    '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['run_base_dir'],"var", "run"),
+    '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
+    '%\(QSERV_LUA_SHARE\)s': os.path.join(config['lua']['base_dir'],"share","lua","5.1"),
+    '%\(QSERV_LUA_LIB\)s': os.path.join(config['lua']['base_dir'],"lib","lua","5.1"),
+    '%\(QSERV_SCRATCH_DIR\)s': config['qserv']['scratch_dir'],
+    '%\(MYSQL_DIR\)s': config['mysqld']['base_dir'],
+    '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'],
+    '%\(MYSQLD_PORT\)s': config['mysqld']['port'],
+    # used for mysql-proxy in mono-node
+    '%\(MYSQLD_HOST\)s': '127.0.0.1',
+    '%\(MYSQLD_SOCK\)s': config['mysqld']['sock'],
+    '%\(MYSQLD_USER\)s': config['mysqld']['user'],
+    '%\(MYSQLD_PASS\)s': config['mysqld']['pass'],
+    '%\(MYSQL_PROXY_PORT\)s': config['mysql_proxy']['port'],
+    '%\(XROOTD_DIR\)s': config['xrootd']['base_dir'],
+    '%\(XROOTD_MANAGER_HOST\)s': config['qserv']['master'],
+    '%\(XROOTD_PORT\)s': config['xrootd']['xrootd_port'],
+    '%\(XROOTD_RUN_DIR\)s': os.path.join(config['qserv']['run_base_dir'],"xrootd-run"),
+    '%\(XROOTD_ADMIN_DIR\)s': os.path.join(config['qserv']['base_dir'],'tmp'),
+    '%\(CMSD_MANAGER_PORT\)s': config['xrootd']['cmsd_manager_port'],
+    '%\(PYTHON_BIN\)s': config['python']['bin'],
+    '%\(PYTHONPATH\)s': config['python']['pythonpath'],
+    '%\(HOME\)s': os.path.expanduser("~")
+}
+
 def get_template_targets():
 
     template_dir_path= os.path.join("templates", "server")
     target_lst = []
-
-    script_dict = {
-        '%\(PATH\)s': os.environ['PATH'],
-        '%\(LD_LIBRARY_PATH\)s': os.environ['LD_LIBRARY_PATH'],
-        '%\(QMS_HOST\)s': config['qserv']['master'],
-        '%\(QMS_DB\)s': config['qms']['db'],
-        '%\(QMS_USER\)s': config['qms']['user'],
-        '%\(QMS_PASS\)s': config['qms']['pass'],
-        '%\(QMS_PORT\)s': config['qms']['port'],
-        '%\(QSERV_DIR\)s': config['qserv']['base_dir'],
-        '%\(QSERV_RUN_DIR\)s': config['qserv']['run_base_dir'],
-        '%\(QSERV_UNIX_USER\)s': os.getlogin(),
-        '%\(QSERV_SRC_DIR\)s': config['src_dir'],
-        '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'],
-        '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['run_base_dir'],"var", "run"),
-        '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
-        '%\(QSERV_LUA_SHARE\)s': os.path.join(config['lua']['base_dir'],"share","lua","5.1"),
-        '%\(QSERV_LUA_LIB\)s': os.path.join(config['lua']['base_dir'],"lib","lua","5.1"),
-        '%\(QSERV_SCRATCH_DIR\)s': config['qserv']['scratch_dir'],
-        '%\(MYSQL_DIR\)s': config['mysqld']['base_dir'],
-        '%\(MYSQLD_DATA_DIR\)s': config['mysqld']['data_dir'],
-        '%\(MYSQLD_PORT\)s': config['mysqld']['port'],
-        # used for mysql-proxy in mono-node
-        '%\(MYSQLD_HOST\)s': '127.0.0.1',
-        '%\(MYSQLD_SOCK\)s': config['mysqld']['sock'],
-        '%\(MYSQLD_USER\)s': config['mysqld']['user'],
-        '%\(MYSQLD_PASS\)s': config['mysqld']['pass'],
-        '%\(MYSQL_PROXY_PORT\)s': config['mysql_proxy']['port'],
-        '%\(XROOTD_DIR\)s': config['xrootd']['base_dir'],
-        '%\(XROOTD_MANAGER_HOST\)s': config['qserv']['master'],
-        '%\(XROOTD_PORT\)s': config['xrootd']['xrootd_port'],
-        '%\(XROOTD_RUN_DIR\)s': os.path.join(config['qserv']['run_base_dir'],"xrootd-run"),
-        '%\(XROOTD_ADMIN_DIR\)s': os.path.join(config['qserv']['base_dir'],'tmp'),
-        '%\(CMSD_MANAGER_PORT\)s': config['xrootd']['cmsd_manager_port'],
-        '%\(PYTHON_BIN\)s': config['python']['bin'],
-        '%\(PYTHONPATH\)s': config['python']['pythonpath'],
-        '%\(HOME\)s': os.path.expanduser("~")
-        }
 
     if config['qserv']['node_type']=='mono':
         script_dict['%\(COMMENT_MONO_NODE\)s']='#MONO-NODE# '
@@ -242,14 +241,10 @@ env.Alias("qserv", cmd)
 ################################
 
 src_dir=Dir('.').srcnode().abspath
-config_file_name=os.path.join(src_dir, "admin", "templates", "client",
-"qserv.conf")
+config_file_name=os.path.join(src_dir, "templates", "client", "qserv.conf")
 homedir=os.path.expanduser("~")
 user_config_dir=os.path.join(homedir, ".lsst")
 user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
-
-script_dict = {
-}
 
 make_user_config_cmd = env.Substfile(user_config_file_name, config_file_name,
 SUBST_DICT=script_dict)

@@ -5,11 +5,23 @@ PATH=%(PATH)s
 MYSQLD_SOCK=%(MYSQLD_SOCK)s
 MYSQLD_DATA_DIR=%(MYSQLD_DATA_DIR)s
 MYSQLD_HOST=%(MYSQLD_HOST)s
-MYSQLD_PASS=%(MYSQLD_PASS)s
 
 SQL_DIR=${QSERV_DIR}/tmp/configure/sql
 
-${QSERV_DIR}/etc/init.d/mysqld stop &&
+function stop_if_up {
+    ${QSERV_DIR}/etc/init.d/mysqld status > /dev/null
+    up=$?
+    if [ ${up} == 0 ]; then
+        ${QSERV_DIR}/etc/init.d/mysqld stop
+        status=$?
+    else
+        echo "MySQL isn't running"
+        status=0
+    fi
+    return ${status}
+}
+
+stop_if_up &&
 echo "-- Removing previous data." &&
 rm -rf ${MYSQLD_DATA_DIR}/* &&
 echo "-- ." &&
@@ -21,7 +33,7 @@ echo "-- Changing mysql root password." &&
 mysql -S ${MYSQLD_SOCK} -u root < ${SQL_DIR}/mysql-password.sql &&
 rm ${SQL_DIR}/mysql-password.sql &&
 echo "-- Shutting down mysql server." &&
-mysqladmin -S ${MYSQLD_SOCK} shutdown -u root -p'%(MYSQLD_PASS)s' || 
+${QSERV_DIR}/etc/init.d/mysqld stop || 
 {
     echo -n "Failed to set mysql root user password."
     echo "Please set the mysql root user password with : "
