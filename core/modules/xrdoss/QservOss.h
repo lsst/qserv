@@ -35,12 +35,18 @@
 #include <set>
 #include <string>
 #include <boost/shared_ptr.hpp>
+
 // Forward
 class XrdOss;
 class XrdSysLogger;
 class XrdOucEnv;
 
-namespace lsst { namespace qserv { namespace worker {
+namespace lsst { 
+namespace qserv { 
+namespace wpublish {
+class ChunkInventory;
+}
+namespace worker {
 class WLogger;
 
 /// An XrdOssDF implementation that merely pays lip-service to incoming
@@ -104,6 +110,7 @@ private:
 
     // fields (non-static)
     boost::shared_ptr<StringSet> _pathSet;
+    boost::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
     std::string _cfgFn;
     std::string _cfgParams;
     std::string _name;

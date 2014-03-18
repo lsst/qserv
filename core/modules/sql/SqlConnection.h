@@ -51,11 +51,12 @@ public:
     typedef std::vector<std::string> List;
     SqlResultIter() {}
     SqlResultIter(SqlConfig const& sc, std::string const& query);
-    SqlErrorObject& getErrorObject() { return _errObj; }
+    virtual ~SqlResultIter() {}
+    virtual SqlErrorObject& getErrorObject() { return _errObj; }
 
-    List const& operator*() const { return _current; }
-    SqlResultIter& operator++(); // pre-increment iterator advance.
-    bool done() const; // Would like to relax LSST standard 3-4 for iterator classes
+    virtual List const& operator*() const { return _current; }
+    virtual SqlResultIter& operator++(); // pre-increment iterator advance.
+    virtual bool done() const; // Would like to relax LSST standard 3-4 for iterator classes
 
 private:
     bool _setup(SqlConfig const& sqlConfig, std::string const& query);
@@ -71,41 +72,40 @@ class SqlConnection {
 public:
     SqlConnection();
     SqlConnection(SqlConfig const& sc, bool useThreadMgmt=false);
-    ~SqlConnection();
-    void reset(SqlConfig const& sc, bool useThreadMgmt=false);
-    bool connectToDb(SqlErrorObject&);
-    bool selectDb(std::string const& dbName, SqlErrorObject&);
-    bool runQuery(char const* query, int qSize,
-                  SqlResults& results, SqlErrorObject&);
-    bool runQuery(char const* query, int qSize, SqlErrorObject&);
-    bool runQuery(std::string const query, SqlResults&, SqlErrorObject&);
+    virtual ~SqlConnection();
+    virtual void reset(SqlConfig const& sc, bool useThreadMgmt=false);
+    virtual bool connectToDb(SqlErrorObject&);
+    virtual bool selectDb(std::string const& dbName, SqlErrorObject&);
+    virtual bool runQuery(char const* query, int qSize,
+                          SqlResults& results, SqlErrorObject&);
+    virtual bool runQuery(char const* query, int qSize, SqlErrorObject&);
+    virtual bool runQuery(std::string const query, SqlResults&, 
+                          SqlErrorObject&);
     /// with runQueryIter SqlConnection is busy until SqlResultIter is closed
-    boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
-    bool runQuery(std::string const query, SqlErrorObject&);
-    bool dbExists(std::string const& dbName, SqlErrorObject&);
-    bool createDb(std::string const& dbName, SqlErrorObject&,
-                  bool failIfExists=true);
-    bool createDbAndSelect(std::string const& dbName,
+    virtual boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
+    virtual bool runQuery(std::string const query, SqlErrorObject&);
+    virtual bool dbExists(std::string const& dbName, SqlErrorObject&);
+    virtual bool createDb(std::string const& dbName, SqlErrorObject&,
+                          bool failIfExists=true);
+    virtual bool createDbAndSelect(std::string const& dbName,
+                                   SqlErrorObject&,
+                                   bool failIfExists=true);
+    virtual bool dropDb(std::string const& dbName, SqlErrorObject&,
+                        bool failIfDoesNotExist=true);
+    virtual bool tableExists(std::string const& tableName,
+                             SqlErrorObject&,
+                             std::string const& dbName="");
+    virtual bool dropTable(std::string const& tableName,
                            SqlErrorObject&,
-                           bool failIfExists=true);
-    bool dropDb(std::string const& dbName, SqlErrorObject&,
-                bool failIfDoesNotExist=true);
-    bool tableExists(std::string const& tableName,
-                     SqlErrorObject&,
-                     std::string const& dbName="");
-    bool dropTable(std::string const& tableName,
-                   SqlErrorObject&,
-                   bool failIfDoesNotExist=true,
-                   std::string const& dbName="");
-    bool listTables(std::vector<std::string>&,
-                    SqlErrorObject&,
-                    std::string const& prefixed="",
-                    std::string const& dbName="");
+                           bool failIfDoesNotExist=true,
+                           std::string const& dbName="");
+    virtual bool listTables(std::vector<std::string>&,
+                            SqlErrorObject&,
+                            std::string const& prefixed="",
+                            std::string const& dbName="");
 
-    std::string getActiveDbName() const;
+    virtual std::string getActiveDbName() const;
 
-    // Static helpers
-    static void populateErrorObject(MySqlConnection& m, SqlErrorObject& o);
 
 private:
     friend class SqlResultIter;
@@ -113,7 +113,6 @@ private:
     bool _connect(SqlErrorObject&);
     bool _setErrorObject(SqlErrorObject&,
                          std::string const& details=std::string(""));
-
     boost::shared_ptr<MySqlConnection> _connection;
 }; // class SqlConnection
 
