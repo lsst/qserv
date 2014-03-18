@@ -28,6 +28,7 @@
 # and target files within each directory.
 #
 import os
+import state
 
 def recursive_install(env, path ):
     nodes = env.Glob \
@@ -59,11 +60,11 @@ def RecursiveInstall(env, target, dir):
 
     relnodes = [ n.abspath[l:] for n in nodes ]
 
-    print "DEBUG RecursiveInstall()"
+    state.log.debug('RecursiveInstall()')
     for n in relnodes:
         t = os.path.join(target, n)
         s = os.path.join(dir, n)
-        print "DEBUG RecursiveInstall() : %s %s" % (s,t)
+        state.log.debug("RecursiveInstall() : source %s, target %s" % (s,t))
         env.InstallAs( env.File(t), env.File(s))
 
 def generate(env):

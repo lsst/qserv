@@ -4,6 +4,7 @@
 #
 Import('*')
 import glob, os, re, sys
+import state
 from itertools import chain, izip, repeat
 from collections import defaultdict
 import SCons.Util
@@ -26,16 +27,10 @@ geomLib = env.get('GEOMETRY',None)
 if geomLib:
     extraTgts['dist'].append(('lib/python/lsst/qserv/master', env.File(geomLib)))
 else:
-    print "Missing geom.py specification. Distribution won't be runnable"
-    print "(e.g., set  GEOMETRY=/u1/lsst/stack/geom/python/lsst/geom/geometry.py in custom.py)"
+    state.log.warn("Missing geom.py specification. Distribution won't be runnable")
+    state.log.warn("(e.g., set  GEOMETRY=/path/to/geom/python/lsst/geom/geometry.py in custom.py, or add this file to PYTHONPATH)")
 if not detect.checkTwisted():
-    print "Couldn't find Twisted. Be sure that Twisted is configured for Qserv Czar startup."
-
-# Handle debug
-debug = ARGUMENTS.get('debug', 0)
-if int(debug):
-    print "Debug build flag (-g) requested."
-    env.Append(CCFLAGS = '-g')
+    state.log.warn("Couldn't find Twisted. Check that Twisted is configured for Qserv Czar startup.")
 
 # Environment
 # Must do all env modifiers here, otherwise SCons complains
@@ -49,8 +44,7 @@ if not env.GetOption('clean'):
         raise StandardError("Can't build")
 
     env.Append(CPPPATH=[os.getcwd()]) # top level
-    print "DEBUG " + env.Dump()
-    print "DEBUG " + str(canBuild)
+    state.log.debug("Scons env : " + env.Dump())
 
     env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC"])
 
@@ -176,11 +170,9 @@ def getTests(env, mName):
 ## Real work now.
 ########################################################################
 
-print "DEBUG before getTgts() : extraTgts['dist'] %s" % extraTgts['dist']
 # Gather up source files
 for mod in allModules:
     libProducts[mod] = getTgts(mod)
-print "DEBUG after getTgts() : extraTgts['dist'] %s" % extraTgts['dist']
 
 # Compute non-custom shared objects
 for m in defaultTgts:

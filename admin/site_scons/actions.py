@@ -6,7 +6,7 @@ import sys
 from SCons.Script import Delete
 from urllib2 import Request, urlopen, URLError, HTTPError
 
-import utils
+import fileutils
 import commons
 
 # TODO : put in a shell script
@@ -20,7 +20,7 @@ def check_root_dirs(target, source, env):
 
     for (section,option) in (('qserv','base_dir'),('qserv','log_dir'),('qserv','tmp_dir'),('mysqld','data_dir')):
         dir = config[section][option]
-        if not utils.exists_and_is_writable(dir):
+        if not fileutils.exists_and_is_writable(dir):
        	    logging.fatal(  ("%s is not writable check/update permissions or"
                             " change config['%s']['%s']") %
                             (dir,section,option)
@@ -29,13 +29,13 @@ def check_root_dirs(target, source, env):
 
     for suffix in ('etc', 'build', 'var', 'var/lib', 'var/run', 'var/run/mysqld', 'var/lock/subsys'):
         dir = os.path.join(config['qserv']['base_dir'],suffix)
-        if not utils.exists_and_is_writable(dir):
+        if not fileutils.exists_and_is_writable(dir):
        	    logging.fatal("%s is not writable check/update permissions" % dir)
             sys.exit(1)
 
     # user config
     user_config_dir=os.path.join(os.getenv("HOME"),".lsst")
-    if not utils.exists_and_is_writable(user_config_dir):
+    if not fileutils.exists_and_is_writable(user_config_dir):
        	    logging.fatal("%s is not writable check/update permissions" % dir)
             sys.exit(1)
 

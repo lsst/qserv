@@ -2,12 +2,20 @@
 import distutils.sysconfig
 import errno
 import os
+import state
 Import('env')
 Import('extraTgts')
 #env.Tool('swig')
 #env['SWIGFLAGS'] = ['-python', '-c++', '-Iinclude'],
 #env.Append(CPPPATH = [distutils.sysconfig.get_python_inc()])
 #env['SHLIBPREFIX'] = "" # Pushed to higher level SConscript
+
+def _debug_dist_target():
+    if state.log.verbose:
+        state.log.debug("extraTgts['dist']")
+        for (path,f) in extraTgts['dist']:
+            state.log.debug("   path : s, file : %s" % (path,str(f)))
+
 
 # Manual dependencies for masterLib.i, because the SCons SWIG builder
 # isn't knowledgeable enough to ensure their presence when using VariantDir
@@ -57,9 +65,11 @@ pySwig = env.File('masterLib.py')
 # is already there (on masterLib.i)
 extraTgts["masterLib.py"] = pySwig
 
-print "DEBUG extraTgts['dist'] %s" % extraTgts['dist']
+state.log.debug("extraTgts['dist'] %s" % extraTgts['dist'])
 
 def markForInstall(env, pathList, extras):
+    state.log.debug("markForInstall()")
+    _debug_dist_target()
     python_libpath=os.path.join("lib","python")
     pyDir = os.path.join(python_libpath,*pathList)
     srcPyDir = os.path.join(*pathList)
@@ -68,21 +78,19 @@ def markForInstall(env, pathList, extras):
     for s in env.Glob(os.path.join(srcPyDir,"*.py")):
         extraTgts['dist'].append((pyDir, s))
         #env.Alias("install", env.Install(pyDir, s))
-    for (path,f) in extraTgts['dist']:
-        print "DEBUG 1 %s, %s" % (path,str(f))
+    _debug_dist_target()
     for s in extras:
-        print "DEBUG markForInstall %s" % s
+        state.log.debug("extra %s" % s)
         extraTgts['dist'].append((pyDir, s))
     # touch init files
     for (path,f) in extraTgts['dist']:
-        print "DEBUG 2 %s, %s" % (path,str(f))
+        state.log.debug("%s, %s" % (path,str(f)))
     for p in range(1,len(pathList)):
         plist = pathList[:p] + ["__init__.py"]
         fname = os.path.join(python_libpath, *plist)
-        print "DEBUG fname %s" % fname 
         env.Command(fname, None, [Touch("$TARGET")])
 
-        print "DEBUG add2dist %s %s " % (os.path.join(python_libpath, *pathList[:p]), fname)
+        state.log.debug("adding to extraTgts['dist'] : path %s file %s " % (os.path.join(python_libpath, *pathList[:p]), fname))
 
         extraTgts['dist'].append((os.path.join(python_libpath, *pathList[:p]), env.File(fname)))
 
@@ -93,8 +101,7 @@ markForInstall(env, ["lsst","qserv","master"], distTgts)
 for f in env.Glob("bin/*py"):
     extraTgts['dist'].append(('bin', f))
 
-for (path,f) in extraTgts['dist']:
-    print "DEBUG 3 %s, %s" % (path,str(f))
+_debug_dist_target()
 
 extraTgts["czarPy"] = distTgts
 Return('swigged_tgt')

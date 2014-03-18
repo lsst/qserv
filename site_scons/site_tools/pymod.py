@@ -1,27 +1,23 @@
-import distutils.sysconfig
-import logging
+import fileutils
 import os
+import state
 import SCons.Action 
 from SCons.Script import Delete
-
-import utils
 
 def install_python_module(env, target, source):
     """ Define targets which will install all python file contained in 
         source_dir_path and sub-directories in python_path_prefix.
     """  
-    log = logging.getLogger()
-
     python_path_prefix=target
     source_dir_path=source 
     target_lst = []
     clean_target_lst = []
 
-    source_lst = utils.recursive_glob(source_dir_path,'*.py',env)
+    source_lst = fileutils.recursive_glob(source_dir_path,'*.py',env)
 
     for f in source_lst :
-        target = utils.replace_base_path(source_dir_path,python_path_prefix,f,env)
-        print "DEBUG install_python_module() %s %s" % (target, f)
+        target = fileutils.replace_base_path(source_dir_path,python_path_prefix,f,env)
+        state.log.debug("install_python_module() : source %s, target %s" % (f, target))
         env.InstallAs(target, f)
         target_lst.append(target)
         # .pyc files will also be removed

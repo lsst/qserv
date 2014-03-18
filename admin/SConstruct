@@ -13,7 +13,7 @@ import re
 import SCons.Node.FS
 from SCons.Script import Mkdir,Chmod,Copy,WhereIs
 import shutil
-import utils
+import fileutils
 
 logger = logger.init_default_logger(log_file_prefix="qserv-configuration", level=logging.DEBUG)
 
@@ -38,7 +38,8 @@ env.Alias('configure',
         env.Alias('mysql'),
         env.Alias('scisql'),
         env.Alias('qms'),
-        env.Alias('qserv')
+        env.Alias('qserv'),
+        env.Alias("userconfig")
         ]
         )
 
@@ -49,9 +50,7 @@ env.Default(env.Alias('configure'))
 # Reading config file
 #
 #########################
-homedir=os.path.expanduser("~")
-user_config_dir=os.path.join(homedir,".lsst")
-config_file_name=os.path.join(user_config_dir, "qserv.conf")
+config_file_name=os.path.join("qserv.conf")
 
 if not os.path.exists(config_file_name):
     logging.fatal("Your configuration file is missing: %s" % config_file_name)
@@ -142,9 +141,9 @@ def get_template_targets():
 
     logger.info("Applying configuration information via templates files ")
 
-    for src_node in utils.recursive_glob(template_dir_path,"*",env):
+    for src_node in fileutils.recursive_glob(template_dir_path,"*",env):
 
-        target_node = utils.replace_base_path(template_dir_path,config['qserv']['base_dir'],src_node,env)
+        target_node = fileutils.replace_base_path(template_dir_path,config['qserv']['base_dir'],src_node,env)
 
         if isinstance(src_node, SCons.Node.FS.File) :
 
@@ -235,6 +234,28 @@ install_sh = os.path.join(configuration_scripts_dir, "qserv-master.sh")
 cmd = env.Command('qserv-cmd', [], install_sh)
 
 env.Alias("qserv", cmd)
+
+################################
+#
+# TODO Fill user configuration file
+#
+################################
+
+src_dir=Dir('.').srcnode().abspath
+config_file_name=os.path.join(src_dir, "admin", "templates", "client",
+"qserv.conf")
+homedir=os.path.expanduser("~")
+user_config_dir=os.path.join(homedir, ".lsst")
+user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
+
+script_dict = {
+}
+
+make_user_config_cmd = env.Substfile(user_config_file_name, config_file_name,
+SUBST_DICT=script_dict)
+
+env.Alias("userconfig", [make_user_config_cmd])
+
 
 #########################
 #
