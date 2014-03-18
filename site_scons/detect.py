@@ -23,6 +23,7 @@
 
 import SCons
 import os, subprocess, sys
+import state
 
 def checkMySql(env):
     """Checks for MySQL includes and libraries in the following directories:
@@ -30,7 +31,7 @@ def checkMySql(env):
     * a built MySQL directory specified by the env var MYSQL_ROOT
     """
     conf = env.Configure()
-    print "DEBUG checkMySql() %s %s" % (env["LIBPATH"], env["CPPPATH"])
+    state.log.debug("checkMySql() %s %s" % (env["LIBPATH"], env["CPPPATH"]))
 
     conf.CheckCXXHeader('mysql/mysql.h')
     
@@ -41,11 +42,11 @@ def checkMySql(env):
             conf.Finish()
             return True
         else:
-            print >> sys.stderr, "mysqlclient too old. (check MYSQL_ROOT)."
+            state.log.fails("mysqlclient too old")
     else:
         # MySQL support not found or inadequate.
-        print >> sys.stderr, "Could not locate MySQL headers (mysql/mysql.h)"\
-            + " or find multithreaded mysql lib(mysqlclient_r)"
+        state.log.fails("Could not locate MySQL headers (mysql/mysql.h)"\
+            + " or find multithreaded mysql lib (mysqlclient_r)")
 
     conf.Finish()
     return None
@@ -126,7 +127,7 @@ int main(int argc, char **argv) {
 
 def checkLibs(context, libList):
     lastLIBS = context.env['LIBS']
-    print "DEBUG : checkLibs() %s" % lastLIBS
+    state.log.debug("checkLibs() %s" % lastLIBS)
     context.Message('checkLibs() : Checking for %s...' % ",".join(libList))
     context.env.Append(LIBS=libList)
     result = context.TryLink(null_source_file, '.cc')
@@ -172,14 +173,14 @@ def checkXrootdLink(env, autoadd=0):
     found = conf.CheckLibs() and conf.CheckCXXHeader(header)
     conf.Finish()
     if not found:
-        print >> sys.stderr, "Missing at least one xrootd lib/header"
+        state.log.fails("Missing at least one xrootd lib or header file")
     return found
 
 
 def setXrootd(env):
     (found, path) = findXrootdInclude(env)
     if not found :
-        print >> sys.stderr, "Missing Xrootd include path"
+        state.log.fails("Missing Xrootd include path")
     elif found and path:
         env.Append(CPPPATH=[path])
     return found
@@ -209,13 +210,13 @@ def importCustom(env, extraTgts):
     def getExt(ext):
         varNames = filter(lambda s: s.endswith(ext), env.Dictionary())
         vals = map(lambda varName: env[varName], varNames)
-        print "DEBUG varNames : %s, vals %s" % (varNames, vals)
+        state.log.debug("varNames : %s, vals %s" % (varNames, vals))
         return vals
 
     env.Append(LIBPATH=getExt("_LIB")) ## *LIB --> LIBPATH
     env.Append(CPPPATH=getExt("_INC")) ## *INC --> CPPPATH
 
-    print "DEBUG CPPPATH : %s" % env['CPPPATH']
+    state.log.debug("CPPPATH : %s" % env['CPPPATH'])
 
     # Automagically steal PYTHONPATH from envvar
     extraTgts["PYTHONPATH"] = env.get("PYTHONPATH", []) 
@@ -225,7 +226,7 @@ def importCustom(env, extraTgts):
 def checkTwisted():
     try:
         import twisted.internet
-        print "twisted ok!"
+        state.log.info("Twisted python library found")
         return True
     except ImportError, e:
         return None
