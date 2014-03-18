@@ -33,7 +33,8 @@ env.Alias("install",
         env.Alias("dist-core"),
         env.Alias("dist-qms"),
         env.Alias("admin"),
-        env.Alias("python-tests")
+        env.Alias("python-tests"),
+        env.Alias("config-example")
         ]
 )
 
@@ -110,6 +111,33 @@ def get_install_targets() :
   return targetFiles
 
 env.Alias("dist-core", get_install_targets())
+
+################################
+#
+# Fill user configuration file
+#
+################################
+
+src_dir=Dir('.').srcnode().abspath
+file_name="qserv.conf"
+config_file_name=os.path.join(src_dir, "admin", "templates", "install", file_name)
+user_config_file_name=os.path.join(env['prefix'], "admin", file_name)
+
+script_dict = {
+  '%\(QSERV_DIR\)s': os.path.join(src_dir, env['prefix']),
+  '%\(XROOTD_DIR\)s': env['XROOTD_DIR'],
+  '%\(LUA_DIR\)s': env['LUA_DIR'],
+  '%\(MYSQL_DIR\)s': env['MYSQL_DIR'],
+  '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR'],
+  '%\(PYTHON_BIN\)s': env['PYTHON'],
+  '%\(PYTHONPATH\)s': env['PYTHONPATH']
+
+}
+
+make_config_example_cmd = env.Substfile(user_config_file_name, config_file_name,
+SUBST_DICT=script_dict)
+
+env.Alias("config-example", [make_config_example_cmd])
 
 # List all aliases
 try:
