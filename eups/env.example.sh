@@ -1,4 +1,4 @@
-export INSTALL_DIR=/opt/qserv
+export INSTALL_DIR=/opt/qserv-dev
 export EUPS_PKGROOT="http://datasky.in2p3.fr/qserv/distserver/"
 
 # export EUPS_GIT_URL=https://github.com/RobertLuptonTheGood/eups.git
