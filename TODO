@@ -1,4 +1,7 @@
-- add swwiged target to build alias (run scons install to see)
+- add swiged target to build alias (run scons install to see)
 - manage geometry.py
 - package new Qserv version
-- ubuntu : porting SL6 /etc/rc.d/init.d/functions to ubuntu ?
+- reduce and comment client configuration file, use templates in it
+- manage default for server configuration file ?
+- ubuntu : porting SL6 /etc/rc.d/init.d/functions to ubuntu ? use LSB
+- state.py : where to save state ? print it to sdtout ?

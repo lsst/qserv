@@ -98,6 +98,7 @@ script_dict = {
     '%\(QMS_USER\)s': config['qms']['user'],
     '%\(QMS_PASS\)s': config['qms']['pass'],
     '%\(QMS_PORT\)s': config['qms']['port'],
+    '%\(QSERV_MASTER\)s': config['qserv']['master'],
     '%\(QSERV_DIR\)s': config['qserv']['base_dir'],
     '%\(QSERV_RUN_DIR\)s': config['qserv']['run_base_dir'],
     '%\(QSERV_UNIX_USER\)s': os.getlogin(),
