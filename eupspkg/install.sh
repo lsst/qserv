@@ -1,5 +1,5 @@
 mkdir -p ${HOME}/.lsst/
-cp eups/env.sh ${HOME}/.lsst/
+cp env.sh ${HOME}/.lsst/
 source ${HOME}/.lsst/env.sh
 
 
@@ -10,7 +10,7 @@ then
 fi
 
 mkdir -p ${INSTALL_DIR}/.eups/
-cp eups/functions.sh ${INSTALL_DIR}/.eups/
+cp functions.sh ${INSTALL_DIR}/.eups/
 source ${INSTALL_DIR}/.eups/functions.sh
 
 if [ -e "${INSTALL_DIR}/eups/bin/setups.sh" ]
