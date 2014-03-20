@@ -1,17 +1,12 @@
-mkdir -p ${HOME}/.lsst/
-cp env.sh ${HOME}/.lsst/
-source ${HOME}/.lsst/env.sh
-
+export INSTALL_DIR=/opt/qserv-dev
+export EUPS_PKGROOT="http://datasky.in2p3.fr/qserv/distserver/"
+export EUPS_GIT_CLONE_CMD="git clone https://github.com/RobertLuptonTheGood/eups.git"
 
 if [ ! -w ${INSTALL_DIR} ]
 then   
     echo "cannot write in ${INSTALL_DIR}: Permission denied" >&2
     exit 1
 fi
-
-mkdir -p ${INSTALL_DIR}/.eups/
-cp functions.sh ${INSTALL_DIR}/.eups/
-source ${INSTALL_DIR}/.eups/functions.sh
 
 if [ -e "${INSTALL_DIR}/eups/bin/setups.sh" ]
 then   

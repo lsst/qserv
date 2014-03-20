@@ -1,0 +1,222 @@
+
+
+Dear all,
+	I've just pushed a pull request for EUPS to Robert for a review of
+EupsPkg. The pull request is at:
+
+	https://github.com/RobertLuptonTheGood/eups/pull/2
+
+(note that this goes through github and not Trac, since EUPS is
+technically not an "LSST-owned" package). Most of the documentation is
+in the docstring of the eupspkg module, and at the end of this e-mail
+are instructions on how to install and try it all out. I'll be in
+Princeton next week and hope to go through this with Robert & co. in
+person, but everyone else who's interested (and/or affected) should take
+a look and comment.
+
+Along the way, I fixed a few EUPS bugs (sorry, didn't have time to look
+into locking, though I was tempted), and spruced up the UI of `eups
+distrib install' (though whether that's better or worse is likely in the
+eye of the beholder).
+
+Some interesting changes and new features (compared to the last e-mail
+on EupsPkg):
+
+* The build specification file has been renamed to 'eupspkg' (from
+'pkgbuild'). The pkgbuild name is already used on Darwin and for other
+build systems.
+
+* All parameter-passing is now via the command line, instead of
+environment variables:
+
+   ./ups/eupspkg [KEY1=VAL1 [KEY2=VAL2 [...]]] <verb>
+
+This ensures that command line can override whatever is in pkginfo. See
+the docs for details.
+
+* The build system should now work both on Linux and Darwin, with no
+need to be explicit with CC=clang tricks the way we had to be before.
+
+I got it to do this by simply defaulting to building C/C++ code with
+cc/c++ executables (on Linux, these are symlinks to GCC, on OS X to
+clang). This is how it always was in the UNIX world until autoconf
+started preferring gcc over /usr/bin/cc a decade ago, and now needs to
+be explicitly told not to do that.
+
+I had to add code to sconsUtils to make sconsUtils aware of this as well
+(n.b., all changes to LSST packages related to eupspkg are on
+u/mjuric/eupspkg branches; there were a few other bugs in various
+packages I fixed along the way; I'll be sending those out for review soon).
+
+* With the above, I believe it should now be possible to have the LSST
+stack a) hosted in the same EUPS repository as other products (e.g., DES
+stack), and b) setup-ed at the same time (assuming there are no
+dependency collisions).
+
+* eupspkg autodetects the number of cores and passes the appropriate -j
+flags to make & scons when products are being installed. In buildbot
+builds, the whole stack builds in 22 minutes on lsst-dev (less so when
+external packages aren't rebuild). It can still be made _much_ faster,
+since typical processor utilization is only ~10-15% (most of the build
+time is spent running swig and tests).
+
+* eupspkg now knows about "tarball-and-patch" (TaP) packages. These are
+git repositories that contain tarballs of external packages, with
+(optionally) some patches that need to be applied to them to make them
+build in LSST environment. See astrometry.net:
+
+https://dev.lsstcorp.org/cgit/personal/mjuric/eupspkg/external/astrometry_net.git/tree/
+
+for an example. The reason why one would wrap external packages in this
+way, rather than expanding them into the git repository, is that git
+doesn't preserve timestamps. That makes autoconf-based code
+(non-deterministically) conclude that ./configure is out of date and
+aclocal & friends need to be rerun. That wreaks havoc more often than not.
+
+An alternative way to handle this is to set the timestamps from eupspkg
+at build time. That's also implemented (see fix_autoconf_timestamps() in
+eupspkg.sh), but is more fragile than the tarball solution. To those who
+worked with RPM .spec files, tarballs+patches will look familiar.
+
+* eupspkg knows (automatically) how to remove the cringe-inducing
+PYTHONPATH manipulation that setuptools do in .pth files. We have only a
+few of these (in external packages), but they still need to be handled.
+See evil_setuptools_pth_fix() in eupspkg.sh.
+
+* All "debug verbs" beginning with 'x' are gone now; they're replaced by
+"developer mode" that's activated with a -e switch. It's a _much_ more
+elegant solution (IMHO), and the package developer support is now much
+better (again, IMHO). See the docs for details.
+
+* Automatic version detection is significantly smarter, and can
+deterministically handle cases where there are multiple tags on the same
+commit. Also, it's been split out into a separate executable
+(pkgautoversion), so other codes can use it.
+
+* The auto-generated version is of the form <tag>_<n>_g<sha1>, where the
+first three are, basically, the output of git-describe with s/-/_/g;.
+When buildbot does the build, there's also a "+<sha1_deps>" part, which
+is just the SHA1 of the (sorted) versions of all dependencies. I'm using
+10-character SHA1 abbrevs, which gives a probability of collision of
+~5e-5 for a repository with 10k commits (note: in case of collision,
+nothing catastrophic happens -- git will just tell us about it and
+refuse to proceed).
+
+* One annoyance is that to use automatic version deduction with EupsPkg
+one needs a relatively recent version of git (1.8.4, when --first-parent
+argument was introduced to git-describe). I built an EUPS package for
+it, to make it easy to get. I think there's a way to remove this
+requirement (at a cost of some minor functionality loss), if there are
+strong feelings about it.
+
+* Finally, the distribution server layout now has the .list files (the
+tags) in a separate directory, named tags. This unclutters the distserv
+root directory.
+
+
+I've also converted all our external packages to eupspkg. They're
+currently in:
+
+    https://dev.lsstcorp.org/cgit/personal/mjuric/eupspkg/external/
+
+. These make a good example of how to do the wrapping for other software
+in LSST and DM as well (e.g., Qserv). The neat thing is that, from the
+point of view of both buildbot and the distribution server, there is now
+no difference between our and external packages -- identical mechanisms
+handle both.
+
+One big change is the treatment of Python, numpy, and matplotlib. I'm
+proposing to remove them from the distribution, and instead require the
+user to have them. The eponymous products that remain are now just tiny
+stubs that check whether the user-provided versions are sufficiently
+recent (and refuse to install otherwise). Going forward, I'd propose we
+start doing this for *all* external packages. We could still provide
+EUPS-packaged versions for users who don't want (or can't) use their
+system-provided ones, but `eups distrib lsst_distrib' shouldn't install
+(e.g.) boost by default.
+
+Having the required versions of Python/numpy/matplotlib should not be a
+problem for most recent Linux distributions. For OS X, Python 2.7 and
+numpy come standard, while matplotlib doesn't. For RHEL 5 and 6, python
+is too old.
+
+To solve this problem, I propose we internally standardize on the
+Anaconda Scientific Python distribution
+(https://store.continuum.io/cshop/anaconda/), though not depend on any
+of its specifics. Anaconda is a distro of Python and 100+ popular data
+analysis and science packages (including numpy, scipy, matplotlib, and
+many others). Many people already use it, so I think it will be a
+welcome change. For the lazy (i.e., me), I've also built an EUPS package
+that installs anaconda with `eups distrib install anaconda'.
+
+
+PS: The buildbot backend is also practically done (the distserver used
+in the example below has been populated by it), but I still need to
+write the docs and tie up some lose ends before asking for a review.
+
+PPS: Happy new year everyone!!
+
+===============
+
+# create a temporary directory for testing and enter it
+mkdir eupstest
+cd eupstest
+RD="$PWD"
+
+# Install mjuric's EUPS fork with EupsPkg (branch: eupspkg)
+mkdir sources
+cd sources
+git clone https://github.com/mjuric/eups.git
+cd eups/
+git checkout eupspkg
+
+./configure --prefix="$RD/eups" --with-eups="$RD/stack"
+make
+make install
+cd ../..
+
+source "$RD/eups/bin/setups.sh"
+export EUPS_PKGROOT="http://lsst-web.ncsa.illinois.edu/~mjuric/pkgs"
+
+# If you don't have git > v1.8.4, do:
+eups distrib install git_scm
+setup git_scm
+
+# If you don't have python >= 2.7 with numpy >= 1.5.1 and
+# matplotlib >=1.2.0, use Anaconda python distribution by installing
+# it manually, or use the LSST-packaged one.
+eups distrib install anaconda
+setup anaconda
+
+# Install the stack
+eups distrib install lsst_distrib
+
+# Now, republish pex_config (and its dependencies) from the
+# newly installed stack
+mkdir distserver
+
+REPOSITORY_PATH='git://git.lsstcorp.org/LSST/DMS/$PRODUCT.git|git://git.lsstcorp.org/LSST/DMS/devenv/$PRODUCT.git|git://git.lsstcorp.org/LSST/DMS/testdata/$PRODUCT.git|git://git.lsstcorp.org/personal/mjuric/eupspkg/external/$PRODUCT'
+
+export EUPS_PKGROOT="$RD/distserver"
+eups distrib create \
+	--server-dir=$RD/distserver -f generic -d eupspkg \
+	-t current \
+        -S SOURCE=git -S REPOSITORY_PATH="$REPOSITORY_PATH" \
+	pex_config
+eups distrib declare --server-dir=$RD/distserver -t current
+
+# Now check that we can install from the new distserver
+eups remove pex_config -t current --force
+eups distrib install pex_config
+
+=================
+
+
+-- Mario Juric,
+Data Mgmt. Project Scientist, Large Synoptic Survey Telescope
+Web : http://research.majuric.org     Phone : +1 617 744 9003
+_______________________________________________
+LSST-data mailing list
+LSST-data@lsstcorp.org
+http://listserv.lsstcorp.org/mailman/listinfo/lsst-data
+

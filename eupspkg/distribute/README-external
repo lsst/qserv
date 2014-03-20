@@ -1,0 +1,51 @@
+# create eups pkg external dependency
+# TODO : verify that virtualenv need
+# to export its python, it isn't done at the moment
+
+#PRODUCT=virtualenv
+#VERSION=1.10.1
+
+#PRODUCT=python
+#VERSION=virtualenv
+
+#PRODUCT=protobuf
+#VERSION=2.4.1
+
+#PRODUCT=mysqlpython
+#VERSION=1.2.3
+
+PRODUCT=zopeinterface 
+VERSION=3.8.0
+
+PRODUCT=libevent
+VERSION=2.0.16-stable
+
+PRODUCT=mysqlproxy 
+VERSION=0.8.2
+
+PRODUCT=twisted
+VERSION=12.0.0
+
+cd ~/eupspkg/external
+cp -r lua/ ${PRODUCT}
+rm -rf ${PRODUCT}/.git/
+rm ${PRODUCT}/upstream/lua-5.1.4.tar.gz
+rm ${PRODUCT}/ups/lua.table
+cd ${PRODUCT}
+git init
+git remote rm origin
+git remote add origin ssh://git@dev.lsstcorp.org/personal/fjammes/eupspkg/external/${PRODUCT}
+
+# update build procedure
+#
+cp /home/eups/src/eups-qserv/tarballs/${PRODUCT}-${VERSION}.tar.gz upstream/
+cp /home/eups/src/eups-qserv/pkg/${PRODUCT}/${VERSION}/ups/${PRODUCT}.table ups
+cp /home/eups/src/eups-qserv/pkg/${PRODUCT}/${VERSION}/ups/${PRODUCT}.build ups
+# edit eupspkg ...
+
+git add ups upstream
+git commit -a -m "eupspkg build procedure for ${PRODUCT}"
+git pom
+git tag -f ${VERSION} 
+git push -f --tags
+# git tag | head -1 | xargs git tag -f; git push --tags
