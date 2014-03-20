@@ -34,6 +34,10 @@
 
 #include "log/Logger.h"
 #include "meta/MetadataCache.h"
+#include <stdexcept>
+#include <boost/lexical_cast.hpp>
+
+#define __SLINE__ boost::lexical_cast<std::string>(__LINE__)
 
 namespace qMaster = lsst::qserv::master;
 
@@ -97,13 +101,13 @@ qMaster::MetadataCache::DbInfo::checkIfContainsTable(std::string const& tableNam
   *
   * @param tableName table name
   *
-  * @return returns true or false (false if the table does not exist)
+  * @return returns true or false (throw exception if the table does not exist)
   */
 bool
 qMaster::MetadataCache::DbInfo::checkIfTableIsChunked(std::string const& tableName) const {
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
     if (itr == _tables.end()) {
-        return false;
+        throw std::invalid_argument(__FILE__ ":"+__SLINE__+":Invalid table.");
     }
     return itr->second.getIsPartitioned();
 }
@@ -112,13 +116,13 @@ qMaster::MetadataCache::DbInfo::checkIfTableIsChunked(std::string const& tableNa
   *
   * @param tableName table name
   *
-  * @return returns true or false (false if the table does not exist)
+  * @return returns true or false (throw exception if the table does not exist)
   */
 bool
 qMaster::MetadataCache::DbInfo::checkIfTableIsSubChunked(std::string const& tableName) const {
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
     if (itr == _tables.end()) {
-        return false;
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid table");
     }
     // why 2? See meta/python/lsst/qserv/meta/metaImpl.py,
     // schema for PS_Tb_sphBox, explaination of bits for logicalPart
@@ -136,7 +140,7 @@ qMaster::MetadataCache::DbInfo::getChunkLevel(std::string const& tableName) cons
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
     int chunklevel=0;
     if (itr == _tables.end()) {
-        chunklevel=-1;
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid table.");
     }
     else {
       TableInfo const& ti = itr->second;
@@ -184,20 +188,17 @@ qMaster::MetadataCache::DbInfo::getSubChunkedTables() const {
 /** Gets names of partition columns (ra, decl, objectId) for a given table.
   *
   * @return returns a 3-element vector with column names: ra, decl, objectId
-  * (theta, phi, key) column
+  * (longitude, latitude, key) column
   */
 std::vector<std::string>
 qMaster::MetadataCache::DbInfo::getPartitionCols(std::string const& tableName) const {
     std::vector<std::string> v;
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(tableName);
     if (itr == _tables.end()) {
-        v.push_back("");
-        v.push_back("");
-        v.push_back("");
-        return v;
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid table");
     }
-    v.push_back(itr->second.getPhiCol());
-    v.push_back(itr->second.getThetaCol());
+    v.push_back(itr->second.getLonCol());
+    v.push_back(itr->second.getLatCol());
     v.push_back(itr->second.getObjIdCol());
     return v;
 }
@@ -214,7 +215,7 @@ std::string
 qMaster::MetadataCache::DbInfo::getKeyColumn(std::string const& table) const {
     std::map<std::string, TableInfo>::const_iterator itr = _tables.find(table);
     if (itr == _tables.end()) {
-        return std::string();
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid table.");
     }
     return itr->second.getObjIdCol();
 }
@@ -224,11 +225,11 @@ qMaster::MetadataCache::DbInfo::getKeyColumn(std::string const& table) const {
 qMaster::MetadataCache::TableInfo::TableInfo() :
     _isPartitioned(false),
     _overlap(-1),
-    _phiCol("invalid"),
-    _thetaCol("invalid"),
+    _lonCol("invalid"),
+    _latCol("invalid"),
     _objIdCol("invalid"),
-    _phiColNo(-1),
-    _thetaColNo(-1),
+    _lonColNo(-1),
+    _latColNo(-1),
     _objIdColNo(-1),
     _logicalPart(-1),
     _physChunking(-1) {
@@ -238,31 +239,31 @@ qMaster::MetadataCache::TableInfo::TableInfo() :
   * which use spherical partitioning mode.
   *
   * @param overlap used for this table (overwrites overlaps from dbInfo)
-  * @param phiCol name of the phi column (right ascention)
-  * @param thetaCol name of the theta column (declination)
+  * @param lonCol name of the longitude column (declination)
+  * @param latCol name of the latitude column (right ascention)
   * @param objIdCol name of the objectId column
-  * @param phiColNo position of the phi column in the table, counting from zero
-  * @param thetaColNo position of the theta column in the table, counting from zero
+  * @param lonColNo position of the longitude column in the table, counting from zero
+  * @param latColNo position of the latitude column in the table, counting from zero
   * @param objIdColNo position of the objectId column in the table, counting from zero
   * @param logicalPart definition how the table is partitioned logically
   * @param physChunking definition how the table is chunked physically
   */
 qMaster::MetadataCache::TableInfo::TableInfo(float overlap,
-                                             std::string const& phiCol,
-                                             std::string const& thetaCol,
+                                             std::string const& lonCol,
+                                             std::string const& latCol,
                                              std::string const& objIdCol,
-                                             int phiColNo,
-                                             int thetaColNo,
+                                             int lonColNo,
+                                             int latColNo,
                                              int objIdColNo,
                                              int logicalPart,
                                              int physChunking) :
     _isPartitioned(true),
     _overlap(overlap),
-    _phiCol(phiCol),
-    _thetaCol(thetaCol),
+    _lonCol(lonCol),
+    _latCol(latCol),
     _objIdCol(objIdCol),
-    _phiColNo(phiColNo),
-    _thetaColNo(thetaColNo),
+    _lonColNo(lonColNo),
+    _latColNo(latColNo),
     _objIdColNo(objIdColNo),
     _logicalPart(logicalPart),
     _physChunking(physChunking) {
@@ -335,11 +336,11 @@ qMaster::MetadataCache::addTbInfoNonPartitioned(std::string const& dbName,
   * @param dbName database name
   * @param tableName table name
   * @param overlap used for this table (overwrites overlaps from dbInfo)
-  * @param phiCol name of the phi column (right ascention)
-  * @param thetaCol name of the theta column (declination)
+  * @param lonCol name of the longitude column (declination)
+  * @param latCol name of the latitude column (right ascention)
   * @param objIdCol name of the objId column
-  * @param phiColNo position of the phi column in the table, counting from zero
-  * @param thetaColNo position of the theta column in the table, counting from zero
+  * @param lonColNo position of the longitude column in the table, counting from zero
+  * @param latColNo position of the latitude column in the table, counting from zero
   * @param objIdColNo position of the objId column in the table, counting from zero
   * @param logicalPart definition how the table is partitioned logically
   * @param physChunking definition how the table is chunked physically
@@ -350,11 +351,11 @@ int
 qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
                                                    std::string const& tbName,
                                                    float overlap,
-                                                   std::string const& phiCol,
-                                                   std::string const& thetaCol,
+                                                   std::string const& lonCol,
+                                                   std::string const& latCol,
                                                    std::string const& objIdCol,
-                                                   int phiColNo,
-                                                   int thetaColNo,
+                                                   int lonColNo,
+                                                   int latColNo,
                                                    int objIdColNo,
                                                    int logicalPart,
                                                    int physChunking) {
@@ -364,8 +365,9 @@ qMaster::MetadataCache::addTbInfoPartitionedSphBox(std::string const& dbName,
         return MetadataCache::STATUS_ERR_DB_DOES_NOT_EXIST;
     }
     const qMaster::MetadataCache::TableInfo tInfo(
-                          overlap, phiCol, thetaCol, objIdCol, phiColNo,
-                          thetaColNo, objIdColNo, logicalPart, physChunking);
+                          overlap, lonCol, latCol, objIdCol,
+                          lonColNo, latColNo, objIdColNo,
+                          logicalPart, physChunking);
     return itr->second.addTable(tbName, tInfo);
 }
 
@@ -413,7 +415,7 @@ qMaster::MetadataCache::checkIfTableIsChunked(std::string const& dbName,
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
-        return false;
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid table.");
     }
     return itr->second.checkIfTableIsChunked(tableName);
 }
@@ -431,7 +433,7 @@ qMaster::MetadataCache::checkIfTableIsSubChunked(std::string const& dbName,
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
-        return false;
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid table.");
     }
     return itr->second.checkIfTableIsSubChunked(tableName);
 }
@@ -462,8 +464,7 @@ qMaster::MetadataCache::getChunkedTables(std::string const& dbName) {
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
-        std::vector<std::string> v;
-        return v;
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid db.");
     }
     return itr->second.getChunkedTables();
 }
@@ -479,8 +480,7 @@ qMaster::MetadataCache::getSubChunkedTables(std::string const& dbName) {
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
-        std::vector<std::string> v;
-        return v;
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid db.");
     }
     return itr->second.getSubChunkedTables();
 }
@@ -498,11 +498,7 @@ qMaster::MetadataCache::getPartitionCols(std::string const& dbName,
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
-        std::vector<std::string> v;
-        v.push_back("");
-        v.push_back("");
-        v.push_back("");
-        return v;
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid db/table");
     }
     return itr->second.getPartitionCols(tableName);
 }
@@ -520,7 +516,7 @@ qMaster::MetadataCache::getChunkLevel(std::string const& dbName,
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) {
-        return -1;
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid db/table.");
     }
     return itr->second.getChunkLevel(tableName);
 }
@@ -539,7 +535,7 @@ qMaster::MetadataCache::getKeyColumn(std::string const& db, std::string const& t
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(db);
     if (itr == _dbs.end()) {
-        return std::string();
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid db/table.");
     }
     return itr->second.getKeyColumn(table);
 }
@@ -557,8 +553,7 @@ qMaster::MetadataCache::getDbInfo(std::string const& dbName) {
     boost::lock_guard<boost::mutex> m(_mutex);
     std::map<std::string, DbInfo>::const_iterator itr = _dbs.find(dbName);
     if (itr == _dbs.end()) { // Better to crash?
-        static DbInfo dummy;
-        return dummy;
+        throw std::invalid_argument(__FILE__":"+__SLINE__+":Invalid db.");
     }
     return itr->second;
 }
@@ -613,11 +608,11 @@ std::ostream &
 qMaster::operator<<(std::ostream &s, const qMaster::MetadataCache::TableInfo &tableInfo) {
     if (tableInfo.getIsPartitioned()) {
         s << "is partitioned (overlap=" << tableInfo.getOverlap()
-          << ", phiCol=" << tableInfo.getPhiCol()
-          << ", thetaCol=" << tableInfo.getThetaCol()
+          << ", lonCol=" << tableInfo.getLonCol()
+          << ", latCol=" << tableInfo.getLatCol()
           << ", objIdCol=" << tableInfo.getObjIdCol()
-          << ", phiColNo=" << tableInfo.getPhiColNo()
-          << ", thetaColNo=" << tableInfo.getThetaColNo()
+          << ", lonColNo=" << tableInfo.getLonColNo()
+          << ", latColNo=" << tableInfo.getLatColNo()
           << ", objIdColNo=" << tableInfo.getObjIdColNo()
           << ", logPart=" << tableInfo.getLogicalPart()
           << ", physChunking=" << tableInfo.getPhysChunking() << ").\n";

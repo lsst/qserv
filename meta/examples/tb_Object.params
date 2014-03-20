@@ -23,8 +23,8 @@ isRefMatch: No
 
 [sphBox]
 overlap:        0.025
-phiColName:     ra_PS
-thetaColName:   decl_PS
+lonColName:     ra_PS
+latColName:   decl_PS
 objIdColName:   objectId
 
 # 0: none, 1: 1-level, 2: 2-level
