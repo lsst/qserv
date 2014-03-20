@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,6 +42,7 @@
 #include "query/SelectList.h"
 #include "query/WhereClause.h"
 #include "query/QueryContext.h"
+#include "qana/AnalysisError.h"
 #include "qana/QueryMapping.h"
 #include "qana/QueryPlugin.h"
 #include "parser/ParseException.h"
@@ -83,6 +84,8 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         _generateConcrete();
         _applyConcretePlugins();
         _showFinal(); // DEBUG
+    } catch(qana::AnalysisError& e) {
+        _error = std::string("AnalysisError:") + e.what();
     } catch(ParseException& e) {
         _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {

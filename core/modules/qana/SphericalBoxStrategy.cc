@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -146,6 +146,15 @@ public:
         : ParseException(std::string("Invalid table: ") + db + "." + table)
     {}
 };
+class InvalidDbException : public ParseException {
+public:
+    InvalidDbException(char const* db)
+        : ParseException(std::string("Invalid db: ") + db)
+    {}
+    InvalidDbException(std::string const& db)
+        : ParseException(std::string("Invalid db: ") + db)
+    {}
+};
 
 class lookupTuple {
 public:
@@ -161,6 +170,8 @@ public:
                 t.allowed = false; // No chunk level found: missing/illegal.
                 throw InvalidTableException(t.db, t.prePatchTable);
             }
+        } else {
+            throw InvalidDbException(t.db);
         }
     }
     MetadataCache& metadata;

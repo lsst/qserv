@@ -2,7 +2,7 @@
 
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -184,6 +184,19 @@ qMaster::addTbInfoPartitionedSphBox(int metaSessionId,
 void
 qMaster::printMetadataCache(int metaSessionId) {
     getMetadataCache(metaSessionId)->printSelf(std::cout);
+}
+
+/** Check to see if a db exists
+  *
+  * @param metaSessionId id of the metadata session
+  * @param dbName name of database
+  *
+  * @return returns true if the db exists
+  */
+bool
+qMaster::checkIfContainsDb(int metaSessionId, char const* dbName) {
+    std::string name(dbName);
+    return getMetadataCache(metaSessionId)->checkIfContainsDb(name);
 }
 
 /** Retrieve the minimal striping info for a particular db.
