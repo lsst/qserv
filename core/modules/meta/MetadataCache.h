@@ -92,22 +92,22 @@ public:
         // accessors
         bool getIsPartitioned() const { return _isPartitioned; }
         float getOverlap() const { return _overlap; }
-        std::string getPhiCol() const { return _phiCol; }
-        std::string getThetaCol() const { return _thetaCol; }
+        std::string getLonCol() const { return _lonCol; }
+        std::string getLatCol() const { return _latCol; }
         std::string getObjIdCol() const { return _objIdCol; }
-        int getPhiColNo() const { return _phiColNo; }
-        int getThetaColNo() const { return _thetaColNo; }
+        int getLonColNo() const { return _lonColNo; }
+        int getLatColNo() const { return _latColNo; }
         int getObjIdColNo() const { return _objIdColNo; }
         long getLogicalPart() const { return _logicalPart; }
         long getPhysChunking() const { return _physChunking; }
     private:
         const bool _isPartitioned;
         const float _overlap;        // invalid for non partitioned tables
-        const std::string _phiCol;   // invalid for non partitioned tables
-        const std::string _thetaCol; // invalid for non partitioned tables
+        const std::string _lonCol; // invalid for non partitioned tables
+        const std::string _latCol;   // invalid for non partitioned tables
         const std::string _objIdCol; // invalid for non partitioned tables
-        const int _phiColNo;         // invalid for non partitioned tables
-        const int _thetaColNo;       // invalid for non partitioned tables
+        const int _lonColNo;       // invalid for non partitioned tables
+        const int _latColNo;         // invalid for non partitioned tables
         const int _objIdColNo;       // invalid for non partitioned tables
         const long _logicalPart;     // invalid for non partitioned tables
         const long _physChunking;    // invalid for non partitioned tables

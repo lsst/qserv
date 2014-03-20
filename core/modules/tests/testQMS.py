@@ -166,24 +166,24 @@ class QmsTest(unittest.TestCase):
                           {'partitioning': 'on',
                            'partitioningStrategy': 'sphBox',
                            'logicalPart': '2',
-                           'thetaColName': 'decl_PS',
+                           'latColName': 'decl_PS',
                            'tableName': 'Object',
                            'clusteredIndex': 'IDX_objectId',
                            'overlap': '0.025',
                            'physChunking': '0x0021',
-                           'phiColName': 'ra_PS'},
+                           'lonColName': 'ra_PS'},
                           objectSchemaFile,
                           True)
         self._createTable('Summer2012',
                           {'partitioning': 'on',
                            'partitioningStrategy': 'sphBox',
                            'logicalPart': '2',
-                           'thetaColName': 'decl_PS',
+                           'latColName': 'decl_PS',
                            'tableName': 'Object',
                            'clusteredIndex': 'IDX_objectId',
                            'overlap': '0.025',
                            'physChunking': '0x0021',
-                           'phiColName': 'ra_PS'},
+                           'lonColName': 'ra_PS'},
                           objectSchemaFile,
                           False) # this table already exists, should fail
 
@@ -191,12 +191,12 @@ class QmsTest(unittest.TestCase):
         #                  {'partitioning': 'on',
         #                   'partitioningStrategy': 'sthElse',
         #                   'logicalPart': '2',
-        #                   'thetaColName': 'decl_PS',
+        #                   'latColName': 'decl_PS',
         #                   'tableName': 'Object1',
         #                   'clusteredIndex': 'IDX_objectId',
         #                   'overlap': '0.025',
         #                   'physChunking': '0x0021',
-        #                   'phiColName': 'ra_PS'},
+        #                   'lonColName': 'ra_PS'},
         #                  objectSchemaFile,
         #                  False) # wrong partitioningStrategy, should fail
 
@@ -208,9 +208,9 @@ class QmsTest(unittest.TestCase):
         #                   'clusteredIndex': 'IDX_objectId',
         #                   'overlap': '0.025',
         #                   'physChunking': '0x0021',
-        #                   'phiColName': 'ra_PS'},
+        #                   'lonColName': 'ra_PS'},
         #                  objectSchemaFile,
-        #                  False) # missing thetaColName, should fail
+        #                  False) # missing latColName, should fail
 
         self._retrieveTableInfo('Summer2012', 'Object', True)
         self._retrieveTableInfo('NonPart', 'Object', False)

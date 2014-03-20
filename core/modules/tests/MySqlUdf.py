@@ -32,18 +32,18 @@ def ptInSphEllipse(ra, dec, ra_cen, dec_cen, smaa, smia, ang):
     v = (math.cos(ra) * math.cos(dec),
          math.sin(ra) * math.cos(dec),
          math.sin(dec))
-    theta = math.radians(ra_cen)
-    phi = math.radians(dec_cen)
+    lon = math.radians(ra_cen)
+    lat = math.radians(dec_cen)
     ang = math.radians(ang)
-    sinTheta = math.sin(theta)
-    cosTheta = math.cos(theta)
-    sinPhi = math.sin(phi)
-    cosPhi = math.cos(phi)
+    sinLon = math.sin(lon)
+    cosLon = math.cos(lon)
+    sinLat = math.sin(lat)
+    cosLat = math.cos(lat)
     sinAng = math.sin(ang)
     cosAng = math.cos(ang)
     # get coords of input point in (N,E) basis
-    n = cosPhi * v[2] - sinPhi * (sinTheta * v[1] + cosTheta * v[0])
-    e = cosTheta * v[1] - sinTheta * v[0]
+    n = cosLat * v[2] - sinLat * (sinLon * v[1] + cosLon * v[0])
+    e = cosLon * v[1] - sinLon * v[0]
     # rotate by negated major axis angle
     x = sinAng * e + cosAng * n
     y = cosAng * e - sinAng * n
