@@ -6,6 +6,8 @@ cd -
 QSERV_REPO=ssh://git@dev.lsstcorp.org/LSST/DMS/qserv
 QSERV_BRANCH=tickets/3100
 
+DATA_REPO=ssh://git@dev.lsstcorp.org/LSST/DMS/testdata/qservdata.git
+
 QSERV_REPO_PATH=${DEPS_DIR}/qserv
 
 rm -f ${LOCAL_PKGROOT}/tables/qserv-${VERSION}.table
@@ -25,5 +27,8 @@ git push origin master -f --tags
 cd -
 setup git
 eups_dist qserv ${VERSION} 
+
+# prepare tests
+git archive --remote=${DATA_REPO} --format=tar --prefix=testdata/ | gzip > ${LOCAL_PKGROOT}/tarballs/testdata-${VERSION}.tar.gz
 
 ${BASEDIR}/upload-to-distserver.sh 

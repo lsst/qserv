@@ -6,5 +6,4 @@ if [ ! -f ${LOCAL_PKGROOT}/tarballs/${SCISQL_ARCHIVE} ]; then
 fi
 
 cp .htaccess ${LOCAL_PKGROOT}
-cp ~/tarballs/testdata-${VERSION}.tar.gz ${DISTSERVER}/tarballs
 lftp -e lftp -e "mirror -R ${LOCAL_PKGROOT} ~/htdocs/qserv/distserver" sftp://datasky:od39yW0e@datasky.in2p3.fr/
