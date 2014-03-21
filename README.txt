@@ -1,6 +1,14 @@
 Quick install guide :
 ---------------------
 
+# Install system dependencies :
+#   for Scientific Linux 6
+$ admin/bootstrap/qserv-install-deps-sl6.sh
+#   for Debian 
+$ admin/bootstrap/qserv-install-debian-wheezy.sh
+#   for Ubuntu
+$ admin/bootstrap/qserv-install-ubuntu-13.10.sh
+
 # edit INSTALL_DIR variable in eupspkg/install.sh
 # run :
 $ eupspkg/install.sh
