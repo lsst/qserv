@@ -1,4 +1,9 @@
-source setup-eups.sh
+BASEDIR=$(dirname $0)
+cd ${BASEDIR}/..
+source ${BASEDIR}/setup-dist.sh
+cd -
+
+eups_install
 
 # If you don't have python >= 2.7 with numpy >= 1.5.1 and
 # matplotlib >=1.2.0, use Anaconda python distribution by installing
@@ -10,7 +15,7 @@ setup git
 
 
 eups_remove_all
-rm -rf EUPS_PKGROOT/*
+rm -rf LOCAL_PKGROOT/*
 eups declare python system -r none -m none
 eups_dist mysql 5.1.65 && 
 eups_dist xrootd qs5 &&
@@ -29,11 +34,9 @@ eups_dist twisted 12.0.0 &&
 eups_dist qserv 6.0.0rc1 ||
 exit -1
 
-echo
-echo "DECLARING PACKAGES : $PWD"
-echo
+echo "Declaring Qserv packages"
 # will allow to use eups distrib install pkg, without version
-eups distrib declare --server-dir=${EUPS_PKGROOT} -t current
+eups distrib declare --server-dir=${LOCAL_PKGROOT} -t current
 
 # Now check that we can install from the new distserver
 echo
@@ -42,18 +45,3 @@ echo
 # ${INSTALL_DIR}/tmp/${product} will be removed during post processing
 cd ${INSTALL_DIR}
 # eups_remove_all
-echo
-echo "INSTALLING PACKAGES : $PWD"
-echo
-# edit ~/.eups/manifest.remap (try with $EUPS_DIR/site/manifest.remap)
-eups declare python system -r none -m none
-
-#eups distrib install virtualenv_python
-#setup virtualenv_python
-
-#time eups distrib install qserv 
-#eups distrib install mysqlpython
-
-# NOTE : this pkgroot isn't usable as it force to install python2.7 and
-# mysqlclient :
-#export EUPS_PKGROOT="http://lsst-web.ncsa.illinois.edu/~mjuric/pkgs"

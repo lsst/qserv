@@ -1,12 +1,48 @@
+eups_install() {
+
+    echo  "Installing eups using : '$EUPS_GIT_CLONE_CMD'"
+
+    # cleaning
+    if [ -e "${INSTALL_DIR}/eups/bin/setups.sh" ]
+    then   
+        echo "Removing previous install"
+        source "${INSTALL_DIR}/eups/bin/setups.sh"
+        eups_unsetup_all
+        eups_remove_all
+    fi
+
+    rm -rf ~/.eups/ups_db ~/.eups/_caches_
+
+    # installing eups latest version
+    cd ${INSTALL_DIR}
+    rm -rf sources &&
+    mkdir sources &&
+    cd sources &&
+    ${EUPS_GIT_CLONE_CMD} &&
+    cd eups/ &&
+    ${EUPS_GIT_CHECKOUT_CMD} &&
+    ./configure --prefix="${INSTALL_DIR}/eups" \
+    --with-eups="${INSTALL_DIR}/stack"&&
+    make &&
+    make install ||
+    {
+        echo "Failed to install eups" >&2
+        exit 1
+    }
+}
+
 eups_dist() {
     if [ -z "$1" -o -z "$2" ]; then
         echo "eups_dist requires two arguments"
         exit 1
     fi
-    product=$1
-    version=$2
+    
+    product=$1 &&
+    version=$2 &&
     CWD=${PWD} &&
-    cd ${INSTALL_DIR}/tmp &&
+    TMP_DIR=${INSTALL_DIR}/tmp &&
+    mkdir -p ${TMP_DIR} &&
+    cd ${TMP_DIR} &&
     rm -rf ${product} &&
     git clone ${REPOSITORY_BASE}/${product} &&
     cd ${product} &&
@@ -14,8 +50,8 @@ eups_dist() {
     cmd="eups declare ${product} ${version} -r ." &&
     echo "CMD : $cmd" &&
     $cmd &&
-    cmd="eups distrib create --server-dir=${INSTALL_DIR}/distserver -f generic -d eupspkg -t current -S SOURCE=git -S REPOSITORY_PATH=$REPOSITORY_PATH ${product}" &&
-    echo "CMD : $cmd" &&
+    cmd="eups distrib create --nodepend --server-dir=${INSTALL_DIR}/distserver -f generic -d eupspkg -t current ${product}"
+    echo "Running : $cmd" &&
     $cmd &&
     # for debug purpose only : build file generation
     # eups expandbuild -V ${version} ups/${product}.build > ${product}-${version}.build

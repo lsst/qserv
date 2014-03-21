@@ -1,3 +1,10 @@
-export INSTALL_DIR=/opt/qserv-dev
-export EUPS_PKGROOT="http://datasky.in2p3.fr/qserv/distserver/"
-source ${INSTALL_DIR}/eups/bin/setups.sh
+source env.sh
+source functions.sh
+
+if [ -e "${INSTALL_DIR}/eups/bin/setups.sh" ]
+then   
+    echo "Setting up eups"
+    source "${INSTALL_DIR}/eups/bin/setups.sh"
+else
+    echo "eups isn't installed in standard location"
+fi

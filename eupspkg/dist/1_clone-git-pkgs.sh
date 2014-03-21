@@ -1,8 +1,11 @@
+BASEDIR=$(dirname $0)
+cd ${BASEDIR}/..
+source ${BASEDIR}/setup-dist.sh
+cd -
+
 DEPS="expat libevent lua luaexpat luasocket luaxmlrpc mysql mysqlproxy
 mysqlpython protobuf python qserv twisted virtualenv_python xrootd
 zopeinterface"
-
-DEPS_DIR=dependencies
 
 rm -rf ${DEPS_DIR}
 mkdir ${DEPS_DIR}
