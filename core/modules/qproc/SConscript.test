@@ -9,7 +9,7 @@ import itertools
 programs = []
 
 # deps on other modules
-modDeps = """log meta merger qana query parser proto mysql sql util xrdc""".split()
+modDeps = """global log meta merger qana query parser proto mysql sql util xrdc""".split()
 deps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
 deps = cacheObjs(env, deps, ".o")
 deps = map(lambda i:i, deps) # un-chain

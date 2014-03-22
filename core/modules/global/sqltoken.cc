@@ -26,8 +26,9 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include "sql/sqltoken.h"
+#include "global/sqltoken.h"
 #include <set>
+#include <boost/algorithm/string/predicate.hpp>
 
 namespace qMaster=lsst::qserv::master;
 

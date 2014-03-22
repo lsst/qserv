@@ -77,8 +77,9 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                        mysqlclient_r ssl crypto""".split(),
                            'distDir' : 'lib'
                            },
-               "_masterLib" : {'mods' : """czar control parser query
+               "_masterLib" : {'mods' : """czar control global
                                            log merger meta mysql
+                                           parser query
                                            sql util xrdc
                                            obsolete proto
                                            qana qdisp qproc""".split(),
