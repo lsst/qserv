@@ -7,7 +7,7 @@ then
     exit 1
 fi
 
-if [ -n ${INSTALL_DIR} ]; then
+if [ -n "${INSTALL_DIR}" ]; then
     chmod -R u+rwx ${INSTALL_DIR}/*
     rm -rf ${INSTALL_DIR}/*
 fi
