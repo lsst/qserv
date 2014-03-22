@@ -1,5 +1,4 @@
 import logging
-import logger
 import os
 
 def is_readable(dir):
