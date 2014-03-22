@@ -1,3 +1,5 @@
+echo "Setting up install environment"
+
 source env.sh
 source functions.sh
 

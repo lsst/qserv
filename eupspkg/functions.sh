@@ -67,3 +67,8 @@ eups_unsetup_all() {
     echo "INFO : unsetup of all packages"
     eups list | grep -w setup | cut -f1 |  awk '{print "unsetup "$1}' | bash
 }
+
+upload_to_distserver() {
+    cp ${SRC_DIR}/eupspkg/dist/.htaccess ${LOCAL_PKGROOT}
+    lftp -e "mirror -R ${LOCAL_PKGROOT} www/htdocs/qserv/distserver/; quit" sftp://datasky:od39yW0e@datasky.in2p3.fr/
+}
