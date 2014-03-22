@@ -1,7 +1,4 @@
-BASEDIR=$(dirname $0)
-cd ${BASEDIR}/..
-source ${BASEDIR}/setup-dist.sh
-cd -
+source ${QSERV_SRC_DIR}/eupspkg/setup-dist.sh
 
 eups_install
 
