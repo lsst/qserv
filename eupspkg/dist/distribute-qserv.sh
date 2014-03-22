@@ -3,6 +3,11 @@ cd ${BASEDIR}/..
 source ${BASEDIR}/setup-dist.sh
 cd -
 
+if [ ! -e "${INSTALL_DIR}/eups/bin/setups.sh" ]
+then
+    eups_install
+fi
+
 QSERV_REPO=ssh://git@dev.lsstcorp.org/LSST/DMS/qserv
 QSERV_BRANCH=tickets/3100
 
