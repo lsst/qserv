@@ -8,8 +8,9 @@ MYSQLD_PASS=%(MYSQLD_PASS)s
 PYTHON_BIN=%(PYTHON_BIN)s
 export PYTHONPATH=%(PYTHONPATH)s
 
-PYTHON_DIR=`dirname ${PYTHON_BIN}`:
+PYTHON_DIR=`dirname ${PYTHON_BIN}`
 export PATH=${PYTHON_DIR}:${PATH}
+export LD_LIBRARY_PATH=%(LD_LIBRARY_PATH)s
 
 # TODO manage scisql version in templating system
 SCISQL_VERSION=scisql-0.3.2
