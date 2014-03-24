@@ -91,9 +91,7 @@ def _initVariables():
             (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', _findPrefix("MYSQLPROXY", "mysql-proxy"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_DIR', 'protobuf install dir', _findPrefix("PROTOBUF", "protoc"), PathVariable.PathIsDir)),
             (PathVariable('LUA_DIR', 'lua install dir', _findPrefix("LUA", "lua"), PathVariable.PathIsDir)),
-            (PathVariable('PYTHON', 'python binary path', SCons.Util.WhereIs("python"), PathVariable.PathIsFile)),
             (PathVariable('GEOMETRY', 'path to geometry.py', os.getenv("GEOMETRY_LIB"), PathVariable.PathAccept)),
-            ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH"))
             )
     opts.Update(env)
 

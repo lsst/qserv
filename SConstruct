@@ -128,10 +128,7 @@ script_dict = {
   '%\(XROOTD_DIR\)s': env['XROOTD_DIR'],
   '%\(LUA_DIR\)s': env['LUA_DIR'],
   '%\(MYSQL_DIR\)s': env['MYSQL_DIR'],
-  '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR'],
-  '%\(PYTHON_BIN\)s': env['PYTHON'],
-  '%\(PYTHONPATH\)s': env['PYTHONPATH']
-
+  '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR']
 }
 
 make_config_example_cmd = env.Substfile(user_config_file_name, config_file_name,

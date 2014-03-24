@@ -3,7 +3,7 @@ import os
 import path 
 import time
 
-from SCons.Script import Execute, Mkdir, Chmod, Copy, WhereIs   # for Execute and Mkdir
+from SCons.Script import Execute, Mkdir # for Execute and Mkdir
 import SCons.Node.FS
 
 def exists_and_is_writable(dir) :

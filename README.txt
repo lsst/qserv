@@ -38,4 +38,4 @@ Integration tests :
 # launch integration for dataset 01
 $ source $QSERV_DIR/qserv-env.sh
 $ qserv-start
-$ qserv-benchmark -l --case=01
+$ qserv-testdata.py
