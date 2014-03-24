@@ -70,5 +70,5 @@ eups_unsetup_all() {
 
 upload_to_distserver() {
     cp ${QSERV_SRC_DIR}/eupspkg/dist/.htaccess ${LOCAL_PKGROOT}
-    lftp -e "mirror -R ${LOCAL_PKGROOT} www/htdocs/qserv/; quit" sftp://datasky:od39yW0e@datasky.in2p3.fr/
+    lftp -e "mirror -Re ${LOCAL_PKGROOT} www/htdocs/qserv/; quit" sftp://datasky:od39yW0e@datasky.in2p3.fr/
 }
