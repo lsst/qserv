@@ -5,10 +5,10 @@ then
     eups_install
 fi
 
-QSERV_REPO=ssh://git@dev.lsstcorp.org/LSST/DMS/qserv
+QSERV_REPO=git://dev.lsstcorp.org/LSST/DMS/qserv
 QSERV_BRANCH=tickets/3100
 
-DATA_REPO=ssh://git@dev.lsstcorp.org/LSST/DMS/testdata/qservdata.git
+DATA_REPO=git://dev.lsstcorp.org/LSST/DMS/testdata/qservdata.git
 DATA_BRANCH=master
 
 QSERV_REPO_PATH=${DEPS_DIR}/qserv
