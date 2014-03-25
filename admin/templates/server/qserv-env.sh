@@ -1,9 +1,3 @@
-if [ -z "${QSERV_ENV_SETTED}" ]; then
-	# in order to load numpy
-	export PYTHONPATH=${PYTHONPATH}:/usr/lib64/python2.6/site-packages/
-	export QSERV_ENV_SETTED=1
-fi 
-    
 QSERV_DIR=%(QSERV_DIR)s
 SERVICES="mysqld xrootd qms mysql-proxy qserv-master"
 
