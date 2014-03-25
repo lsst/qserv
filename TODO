@@ -1,10 +1,9 @@
+- implement Andy S. point 1 and 2 from https://jira.lsstcorp.org/browse/DM-269
 - check if qserv is running before launching "scons configure"
 - add swigged target to build alias (run scons install to see)
 - manage geometry.py
-- package new Qserv version : tests and qserv and upload on distserver
 - reduce and comment client configuration file, use templates in it
-- manage default for server configuration file ?
+- manage default (i.e. const.py) for server configuration file ?
 - ubuntu : porting SL6 /etc/rc.d/init.d/functions to ubuntu ? use LSB
 - state.py : where to save state ? print it to sdtout ?
-- in qserv-env.sh : avoid to add PYTHONPATH to system numpy : manage with eups (when doing eups declare python system -m tablefile)?
 - download eups tarball on distserver instead of git clone
