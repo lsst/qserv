@@ -13,7 +13,8 @@ from SCons.Script import Mkdir, Chmod, Copy, WhereIs
 import shutil
 import state
 
-state.init()
+src_dir=Dir('.').srcnode().abspath
+state.init(src_dir)
 env = state.env 
 
 #########################
@@ -122,22 +123,22 @@ env.Alias("dist-core", get_install_targets())
 
 def get_template_targets():
 
-    template_dir_path= os.path.join("templates", "install")
+    template_dir_path= os.path.join("admin","templates", "install")
     target_lst = []
 
-    logger.info("Applying configuration information via templates files ")
+    state.log.info("Applying configuration information via templates files ")
 
     script_dict = {
-        '%\(QSERV_DIR\)s': os.path.join(src_dir, env['prefix']),
+        '%\(QSERV_DIR\)s': env['prefix'],
         '%\(XROOTD_DIR\)s': env['XROOTD_DIR'],
         '%\(LUA_DIR\)s': env['LUA_DIR'],
         '%\(MYSQL_DIR\)s': env['MYSQL_DIR'],
         '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR']
     }
 
-    for src_node in fileutils.recursive_glob(template_dir_path,"*",env):
+    for src_node in fileutils.recursive_glob(template_dir_path, "*", env):
 
-        target_node = fileutils.replace_base_path(template_dir_path,config['qserv']['base_dir'],src_node,env)
+        target_node = fileutils.replace_base_path(template_dir_path, env['prefix'], src_node,env)
 
         if isinstance(src_node, SCons.Node.FS.File) :
 

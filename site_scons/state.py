@@ -81,10 +81,10 @@ def _initLog():
     log.verbose = SCons.Script.GetOption('verbose')
     log.traceback = SCons.Script.GetOption('traceback')
 
-def _initVariables():
+def _initVariables(src_dir):
     opts = SCons.Script.Variables("custom.py")
     opts.AddVariables(
-            (PathVariable('build_dir', 'Qserv build dir', 'build', PathVariable.PathIsDirCreate)),
+            (PathVariable('build_dir', 'Qserv build dir', os.path.join(src_dir,'build'), PathVariable.PathIsDirCreate)),
             (EnumVariable('debug', 'debug gcc output and symbols', 'no', allowed_values=('yes', 'no'))),
             (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefix("XROOTD", "xrootd"), PathVariable.PathIsDir)),
             (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefix("MYSQL", "mysql"), PathVariable.PathIsDir)),
@@ -119,13 +119,13 @@ def _initVariables():
     SCons.Script.Help(opts.GenerateHelpText(env))
 
 
-def _initEnvironment():
+def _initEnvironment(src_dir):
     """Construction and basic setup of the state.env variable."""
 
     global env
     env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'swig', 'recinstall'])
 
-    _initVariables()
+    _initVariables(src_dir)
 
     if env['debug'] == 'yes':
         log.info("Debug build flag (-g) requested.")
@@ -155,9 +155,9 @@ def _saveState():
     except Exception, e:
         log.warn("Unexpected exception in _saveState: %s" % e)
 
-def init():
+def init(src_dir):
     _initOptions()
     _initLog()
-    _initEnvironment()
+    _initEnvironment(src_dir)
 #    _saveState()
 ## @endcond

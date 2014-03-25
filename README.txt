@@ -10,7 +10,7 @@ $ sudo admin/bootstrap/qserv-install-debian-wheezy.sh
 $ sudo admin/bootstrap/qserv-install-ubuntu-13.10.sh
 
 # in current directory
-$ export ${QSERV_SRC_DIR}=${PWD}
+$ export QSERV_SRC_DIR=${PWD}
 # WARN : copy eupspkg/example.env.sh to eupspkg/env.sh
 # WARN : edit INSTALL_DIR variable in eupspkg/env.sh
 # WARN : qserv core install may fails, deps install should always work 
