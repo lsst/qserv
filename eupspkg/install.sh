@@ -15,7 +15,7 @@ fi
 if [ -n "${INSTALL_DIR}" ]; then
     echo "Erasing existing Qserv install"
     chmod -R u+rwx ${INSTALL_DIR}/*
-    find ${INSTALL_DIR}/* -not -name "newinstall-qserv.sh" -delete
+    find ${INSTALL_DIR}/* -not -name "newinstall-qserv-*.sh" -delete
 fi
 
 eups_install
@@ -27,7 +27,7 @@ source "${INSTALL_DIR}/eups/bin/setups.sh"
 eups distrib install git --repository="http://lsst-web.ncsa.illinois.edu/~mjuric/pkgs"
 setup git
 
-echo "Installing Qserv in $PWD"
+echo "Installing Qserv in ${INSTALL_DIR}"
 # Try to use system python, if a compatible version is available
 CHECK_SYSTEM_PYTHON='import sys; exit(1) if sys.version_info < (2, 4) or sys.version_info > (2, 8) else exit(0)'
 python -c "$CHECK_SYSTEM_PYTHON"
@@ -79,11 +79,19 @@ time eups distrib install qserv || {
     exit 2
 }
 
+setup qserv
+
+SETUP_SCRIPT=${INSTALL_DIR}/setup-qserv.sh
+cat > ${SETUP_SCRIPT} <<-EOF
+source ${INSTALL_DIR}/eups/bin/setup.sh
+setup qserv
+source ${QSERV_DIR}/qserv-env.sh
+EOF
+
 echo "Installation complete"
 echo "Now type "
 echo 
-echo "  source $QSERV_SRC_DIR/eupspkg/setup.sh"
-echo "  setup qserv"
+echo "  source ${INSTALL_DIR}/setup-qserv.sh"
 echo 
 echo "to enable Qserv and its dependencies"
 echo "and"

@@ -63,5 +63,7 @@ if [ ! -f ${LOCAL_PKGROOT}/tarballs/${SCISQL_ARCHIVE} ]; then
     echo "WARN : unable to download scisql from ${SCISQL_URL}"
 fi
  
+cp ${QSERV_SRC_DIR}/eupspkg/newinstall-qserv.sh ${LOCAL_PKGROOT}/newinstall-qserv-$VERSION.sh
+ln -s ${LOCAL_PKGROOT}/newinstall-qserv-$VERSION.sh ${LOCAL_PKGROOT}/newinstall-qserv.sh
 
 upload_to_distserver
