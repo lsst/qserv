@@ -19,5 +19,6 @@ then
   fi
 else
   echo "QSERV_SRC_DIR is not set"
+  SETUP=FAIL
 fi
 
