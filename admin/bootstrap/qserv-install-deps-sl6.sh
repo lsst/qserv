@@ -3,14 +3,22 @@
 shopt -s expand_aliases
 alias yum="yum -y"
 
-yum install scons
-
+#
 # Scientific Linux 6 dependencies
+#
+yum install scons gettext
+
 # data partitioning dependency
-yum install numpy;
+yum install numpy
+            
+# redhat-lsb ?
+yum install perl-ExtUtils-MakeMaker
+
+# eups
+yum install patch bzip2 bzip2-devel
 
 # xrootd
-yum install gcc-c++ git zlib-devel cmake
+yum install gcc gcc-c++ git zlib-devel cmake
 
 # zope_interface
 yum install python-devel
