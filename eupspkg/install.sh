@@ -83,7 +83,7 @@ setup qserv
 
 SETUP_SCRIPT=${INSTALL_DIR}/setup-qserv.sh
 cat > ${SETUP_SCRIPT} <<-EOF
-source ${INSTALL_DIR}/eups/bin/setup.sh
+source ${INSTALL_DIR}/eups/bin/setups.sh
 setup qserv
 source ${QSERV_DIR}/qserv-env.sh
 EOF

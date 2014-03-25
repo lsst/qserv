@@ -34,7 +34,7 @@ env.Alias("install",
         env.Alias("dist-qms"),
         env.Alias("admin"),
         env.Alias("python-tests"),
-        env.Alias("config-example")
+        env.Alias("templates")
         ]
 )
 
@@ -112,29 +112,42 @@ def get_install_targets() :
 
 env.Alias("dist-core", get_install_targets())
 
-################################
+#########################################
 #
-# Fill user configuration file
+# Templates : 
+# - fill user configuration file
+# - alias for Qserv start/stop commands
 #
-################################
+#########################################
 
-src_dir=Dir('.').srcnode().abspath
-file_name="qserv.conf"
-config_file_name=os.path.join(src_dir, "admin", "templates", "install", file_name)
-user_config_file_name=os.path.join(env['prefix'], "admin", file_name)
+def get_template_targets():
 
-script_dict = {
-  '%\(QSERV_DIR\)s': os.path.join(src_dir, env['prefix']),
-  '%\(XROOTD_DIR\)s': env['XROOTD_DIR'],
-  '%\(LUA_DIR\)s': env['LUA_DIR'],
-  '%\(MYSQL_DIR\)s': env['MYSQL_DIR'],
-  '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR']
-}
+    template_dir_path= os.path.join("templates", "install")
+    target_lst = []
 
-make_config_example_cmd = env.Substfile(user_config_file_name, config_file_name,
-SUBST_DICT=script_dict)
+    logger.info("Applying configuration information via templates files ")
 
-env.Alias("config-example", [make_config_example_cmd])
+    script_dict = {
+        '%\(QSERV_DIR\)s': os.path.join(src_dir, env['prefix']),
+        '%\(XROOTD_DIR\)s': env['XROOTD_DIR'],
+        '%\(LUA_DIR\)s': env['LUA_DIR'],
+        '%\(MYSQL_DIR\)s': env['MYSQL_DIR'],
+        '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR']
+    }
+
+    for src_node in fileutils.recursive_glob(template_dir_path,"*",env):
+
+        target_node = fileutils.replace_base_path(template_dir_path,config['qserv']['base_dir'],src_node,env)
+
+        if isinstance(src_node, SCons.Node.FS.File) :
+
+            state.log.debug("Template SOURCE : %s, TARGET : %s" % (src_node, target_node))
+            env.Substfile(target_node, src_node, SUBST_DICT=script_dict)
+            target_lst.append(target_node)
+
+    return target_lst
+
+env.Alias("templates", get_template_targets())
 
 # List all aliases
 try:
