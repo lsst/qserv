@@ -96,6 +96,12 @@ echo
 echo "to enable Qserv and its dependencies"
 echo "and"
 echo 
+echo "  cd $QSERV_DIR/admin"
+echo "  scons"
+echo 
+echo "to configure a Qserv mono-node instance"
+echo "and"
+echo 
 echo "  qserv-start"
 echo "  qserv-testdata.py"
 echo 
