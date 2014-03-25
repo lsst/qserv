@@ -1,5 +1,10 @@
 BASEDIR=$(dirname $0)
 source ${BASEDIR}/setup.sh
+if [ -n "${SETUP}" ]
+then
+    exit 1
+fi
+
 
 if [ ! -w ${INSTALL_DIR} ]
 then   

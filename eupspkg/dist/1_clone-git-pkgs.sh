@@ -1,4 +1,10 @@
-source ${QSERV_SRC_DIR}/eupspkg/setup-dist.sh
+BASEDIR=$(dirname $0)
+source ${BASEDIR}/setup-dist.sh
+if [ -n "${SETUP_DIST}" ]
+then
+    exit 1
+fi
+
 
 DEPS="expat libevent lua luaexpat luasocket luaxmlrpc mysql mysqlproxy
 mysqlpython protobuf python qserv twisted virtualenv_python xrootd

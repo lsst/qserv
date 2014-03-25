@@ -4,11 +4,12 @@ then
   then
     source ${QSERV_SRC_DIR}/eupspkg/setup.sh
     echo "Setting up distribution environment"
-    source ${QSERV_SRC_DIR}/eupspkg/env-dist.sh
+    source ${QSERV_SRC_DIR}/eupspkg/dist/env-dist.sh
   else
     echo "QSERV_SRC_DIR=${QSERV_SRC_DIR} is not set is not readable"
   fi
 else
   echo "QSERV_SRC_DIR is not set"
+  SETUP_DIST=FAIL
 fi
 

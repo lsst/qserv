@@ -1,4 +1,11 @@
-source ${QSERV_SRC_DIR}/eupspkg/setup-dist.sh
+BASEDIR=$(dirname $0)
+source ${BASEDIR}/setup-dist.sh
+if [ -n "${SETUP_DIST}" ]
+then
+    
+    exit 1
+fi
+ 
 
 if [ ! -e "${INSTALL_DIR}/eups/bin/setups.sh" ]
 then
