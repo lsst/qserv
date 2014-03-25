@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,12 +46,14 @@ class MetadataCache;
 /// rewriting, and generating queries. It is the primary mechanism for
 /// QueryPlugin instances to share information. It contains the user context of
 /// a query, but not the query itself.
-/// 
+///
 /// TODO: Think about QueryMapping's home. It is used during query manipulation,
 /// contains information derived during analysis, and is used to generate
 /// materialized query text.
 class QueryContext {
 public:
+    typedef boost::shared_ptr<QueryContext> Ptr;
+
     QueryContext() : metadata(NULL) {}
     typedef std::list<boost::shared_ptr<QsRestrictor> > RestrList;
 

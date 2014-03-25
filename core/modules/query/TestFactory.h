@@ -20,25 +20,29 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_ANALYSISERROR_H
-#define LSST_QSERV_MASTER_ANALYSISERROR_H
-#include <stdexcept>
+#ifndef LSST_QSERV_QUERY_TESTFACTORY_H
+#define LSST_QSERV_QUERY_TESTFACTORY_H
+#include <boost/shared_ptr.hpp>
+
 namespace lsst {
 namespace qserv {
-namespace qana {
 
-/// AnalysisError is a trivial exception for query analys problems
-class AnalysisError : public std::runtime_error {
+namespace master { // Forward
+class QueryContext;
+class SelectStmt;
+class MetadataCache;
+}
+
+namespace query {
+
+/// TestFactory is a factory for non-parsed query representation objects
+class TestFactory {
 public:
-    explicit AnalysisError(char const* msg) : std::runtime_error(msg) {}
-    explicit AnalysisError(std::string const& msg) : std::runtime_error(msg) {}
+    TestFactory() {}
+    boost::shared_ptr<master::QueryContext> newContext(master::MetadataCache* mc=NULL);
+    boost::shared_ptr<master::SelectStmt> newStmt();
 };
 
-class AnalysisBug : public AnalysisError {
-public:
-    explicit AnalysisBug(std::string const& msg)
-        : AnalysisError("Bug:" + msg) {}
-};
-}}} // namespace lsst::qserv::qana
+}}} // namespace lsst::qserv::query
 
-#endif // LSST_QSERV_MASTER_ANALYSISERROR_H
+#endif // LSST_QSERV_QUERY_TESTFACTORY_H

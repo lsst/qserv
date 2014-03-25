@@ -1,4 +1,3 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2014 LSST Corporation.
@@ -20,25 +19,39 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_ANALYSISERROR_H
-#define LSST_QSERV_MASTER_ANALYSISERROR_H
-#include <stdexcept>
-namespace lsst {
-namespace qserv {
-namespace qana {
+  /**
+  *
+  * @brief Simple testing for query representation
+  *
+  */
+#define BOOST_TEST_MODULE QueryRepr_1
+#include "boost/test/included/unit_test.hpp"
+#include "query/QueryContext.h"
+#include "query/SelectStmt.h"
+#include "query/TestFactory.h"
 
-/// AnalysisError is a trivial exception for query analys problems
-class AnalysisError : public std::runtime_error {
-public:
-    explicit AnalysisError(char const* msg) : std::runtime_error(msg) {}
-    explicit AnalysisError(std::string const& msg) : std::runtime_error(msg) {}
+namespace test = boost::test_tools;
+
+using lsst::qserv::master::QueryContext;
+using lsst::qserv::master::SelectStmt;
+using lsst::qserv::query::TestFactory;
+
+struct TestFixture {
+    TestFixture(void) {}
+
+    ~TestFixture(void) {}
 };
 
-class AnalysisBug : public AnalysisError {
-public:
-    explicit AnalysisBug(std::string const& msg)
-        : AnalysisError("Bug:" + msg) {}
-};
-}}} // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_MASTER_ANALYSISERROR_H
+BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
+
+BOOST_AUTO_TEST_CASE(Factory) {
+    TestFactory tf;
+    SelectStmt::Ptr stmt = tf.newStmt();
+    QueryContext::Ptr context = tf.newContext();
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+
+

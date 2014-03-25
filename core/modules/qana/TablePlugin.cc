@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -374,7 +374,7 @@ int TablePlugin::_rewriteTables(SelectStmtList& outList,
         FromListList newFroms = s.computeNewFromLists();
         for(Iter i=newFroms.begin(), e=newFroms.end(); i != e; ++i) {
             boost::shared_ptr<SelectStmt> stmt = in.copyDeep();
-            stmt->replaceFromList(*i);
+            stmt->setFromList(*i);
             outList.push_back(stmt);
             ++added;
         }
