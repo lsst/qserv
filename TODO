@@ -1,3 +1,5 @@
+- during scons configure : check a service isn't already running on the same
+  port
 - "client config file should retrieve templated values from mother config
   file"
 - implement Andy S. point 1 and 2 from https://jira.lsstcorp.org/browse/DM-269
