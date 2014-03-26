@@ -23,6 +23,9 @@ setup qserv $VERSION
 cd $QSERV_SRC_DIR
 scons install prefix=$PREFIX
 
+# load startup scripts
+source $PREFIX/qserv-env.sh
+
 # and then configure Qserv following instructions in README.txt
 # and run integration tests if you want to check your install
 
