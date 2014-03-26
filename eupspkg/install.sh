@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 BASEDIR=$(dirname $0)
 source ${BASEDIR}/setup.sh
 if [ -n "${SETUP}" ]
@@ -85,7 +87,6 @@ SETUP_SCRIPT=${INSTALL_DIR}/setup-qserv.sh
 cat > ${SETUP_SCRIPT} <<-EOF
 source ${INSTALL_DIR}/eups/bin/setups.sh
 setup qserv
-source ${QSERV_DIR}/qserv-env.sh
 EOF
 
 echo "Installation complete"
