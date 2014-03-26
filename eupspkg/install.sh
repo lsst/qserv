@@ -103,7 +103,7 @@ echo
 echo "to configure a Qserv mono-node instance"
 echo "and"
 echo 
-echo "  qserv-start"
+echo "  qserv-start.sh"
 echo "  qserv-testdata.py"
 echo 
 echo "to launch integration tests"
