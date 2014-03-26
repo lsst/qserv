@@ -35,5 +35,5 @@ Integration tests :
 -------------------
 
 # launch integration for dataset 01
-qserv-start
+qserv-start.sh
 qserv-testdata.py
