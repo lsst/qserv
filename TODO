@@ -1,9 +1,11 @@
 - during scons configure : check a service isn't already running on the same
-  port
+  port, i.e. in each step of "scons configure", check
+  is concerned service is running.
 - "client config file should retrieve templated values from mother config
   file"
 - implement Andy S. point 1 and 2 from https://jira.lsstcorp.org/browse/DM-269
-- check if qserv is running before launching "scons configure"
+- in each step of "scons configure", check
+  is concerned service is running.
 - add swigged target to build alias (run scons install to see)
 - manage geometry.py
 - reduce and comment client configuration file, use templates in it
