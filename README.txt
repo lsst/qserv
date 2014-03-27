@@ -1,5 +1,9 @@
-Quick install guide :
----------------------
+# Quick install guide :
+# ---------------------
+
+# WARN : The install procedure described in README.txt doesn't install Qserv 
+# from current source code, but from Qserv distribution server, see README-devel.txt 
+# to install Qserv from current source code.
 
 # Install system dependencies :
 #   for Scientific Linux 6
@@ -9,20 +13,16 @@ sudo admin/bootstrap/qserv-install-debian-wheezy.sh
 #   for Ubuntu
 sudo admin/bootstrap/qserv-install-ubuntu-13.10.sh
 
-# in current directory
-export QSERV_SRC_DIR=${PWD}
-# WARN : copy eupspkg/example.env.sh to eupspkg/env.sh
-# WARN : edit INSTALL_DIR variable in eupspkg/env.sh
-# WARN : qserv core install may fails, deps install should always work 
-eupspkg/install.sh
+# Then run  :
+INSTALL_DIR=/opt/example-qserv-install/
+eupspkg/newinstall-qserv.sh -H ${INSTALL_DIR} 
+# and follow instructions displayed at the end of install process.
+# i.e.
 
-# setup qserv and its deps in eups :
-source eupspkg/setup.sh
-setup qserv
-eups list
+source ${INSTALL_DIR}/setup-qserv.sh
 
-Configuration :
----------------
+# Configuration :
+# ---------------
 
 cd $QSERV_DIR/admin
 # edit qserv.conf, which is the "mother" configuration file from which
@@ -31,8 +31,8 @@ cd $QSERV_DIR/admin
 # for a minimalist single node install just leave default 
 scons
 
-Integration tests :
--------------------
+# Integration tests :
+# -------------------
 
 # launch integration for dataset 01
 qserv-start.sh

@@ -16,6 +16,7 @@ while [ $# -gt 0 ]; do
     case "$1" in 
         -H) INSTALL_DIR="$2"; shift;;
         -r) EUPS_PKGROOT="$2"; shift;;
+        --force) FORCE_INSTALL="--force"; shift;;
         *)  break;;
     esac
     shift
@@ -40,7 +41,7 @@ EOM
 
 # TODO rename QSERV_SRC_DIR ?
 export QSERV_SRC_DIR=${INSTALLSCRIPT_DIR}
-${INSTALLSCRIPT_DIR}/eupspkg/install.sh || {
+${INSTALLSCRIPT_DIR}/eupspkg/install.sh ${FORCE_INSTALL} || {
     echo "Failed to install Qserv using eups"
     exit 2
 }

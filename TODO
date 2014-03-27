@@ -1,6 +1,7 @@
+- look at table problem : https://jira.lsstcorp.org/browse/DM-269
 - "client config file should retrieve templated values from mother config
   file"
-- implement Andy S. point 1 and 2 from https://jira.lsstcorp.org/browse/DM-269
+- implement Andy S. point 2 from https://jira.lsstcorp.org/browse/DM-269
 - in each step of "scons configure", check
   is concerned service is running.
 - add swigged target to build alias (run scons install to see)
