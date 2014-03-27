@@ -21,12 +21,12 @@ then
     exit 1
 fi
 
-INSTALL_DIR_INODES=$(find ${INSTALL_DIR} -mindepth 1 -maxdepth 1  -not -name "newinstall-qserv-*.sh")
+INSTALL_DIR_INODES=$(find ${INSTALL_DIR} -mindepth 1 -maxdepth 1  -not -name "newinstall-qserv-*.sh" -not -name ".qserv_install_scripts")
 if [ -n "${INSTALL_DIR_INODES}" ]; then
     if [ ${FORCE_INSTALL} ]; then
         echo "Erasing existing Qserv install"
         chmod -R u+rwx ${INSTALL_DIR}/*
-        find ${INSTALL_DIR}/* -not -name "newinstall-qserv-*.sh" -delete
+        find ${INSTALL_DIR}/* -not -name "newinstall-qserv-*.sh" -not -name ".qserv_install_scripts" -delete
     else
         echo "Install directory (${INSTALL_DIR}) has to be empty. Aborting installation."
         echo "Please remove :"
