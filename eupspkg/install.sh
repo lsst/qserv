@@ -15,9 +15,18 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-if [ ! -w ${INSTALL_DIR} ]
+MSG_ABORT="Aborting installation."
+
+if [ ! -d ${INSTALL_DIR} ]
 then   
-    echo "cannot write in ${INSTALL_DIR}: Permission denied" >&2
+    echo "Install directory (${INSTALL_DIR}) doesn't exists."
+    mkdir -p ${INSTALL_DIR} || {
+        echo "Unable to create install directory (${INSTALL_DIR}). ${MSG_ABORT}">&2
+        exit 1
+    }
+elif [ ! -w ${INSTALL_DIR} ]
+then   
+    echo "Cannot write in ${INSTALL_DIR}: Permission denied. ${MSG_ABORT}" >&2
     exit 1
 fi
 
@@ -28,9 +37,9 @@ if [ -n "${INSTALL_DIR_INODES}" ]; then
         chmod -R u+rwx ${INSTALL_DIR}/*
         find ${INSTALL_DIR}/* -not -name "newinstall-qserv-*.sh" -not -name ".qserv_install_scripts" -delete
     else
-        echo "Install directory (${INSTALL_DIR}) has to be empty. Aborting installation."
-        echo "Please remove :"
-        echo "$INSTALL_DIR_INODES"
+        echo "Install directory (${INSTALL_DIR}) has to be empty. ${MSG_ABORT}" >&2
+        echo "Please remove :" >&2
+        echo "$INSTALL_DIR_INODES" >&2
         exit 2
     fi 
 fi
@@ -59,7 +68,7 @@ then
 python  system
 EOF
 else
-    echo "Qserv depends on system python 2.6 or 2.7"
+    echo "Qserv depends on system python 2.6 or 2.7. Please install it. ${MSG_ABORT}" >&2
     exit 2  
 fi    
 
@@ -70,7 +79,8 @@ python -c "$CHECK_NUMPY" && {
     then    
         SYSPATH=`python -c "import inspect,sys, numpy; modulepath=inspect.getfile(numpy); paths=[path for path in sys.path if modulepath.startswith(path)]; print sorted(paths)[-1]"`
         [ -d ${SYSPATH} ] || {
-            echo "Unable to detect system numpy PYTHONPATH. Aborting installation."
+            echo "Unable to detect system numpy PYTHONPATH. ${MSG_ABORT}" >&2
+            exit 2
         }
         echo "Detected Qserv-compatible sytem numpy version in ${SYSPATH}; will use it."
         EUPS_NUMPY=$EUPS_PATH/$(eups flavor)/numpy/system
@@ -85,8 +95,8 @@ EOF
 numpy  system
 EOF
     else        
-        echo "Unable to detect system numpy library. Aborting installation."
-        exit 1
+        echo "Unable to detect system numpy library. ${MSG_ABORT}" >&2
+        exit 2
     fi
 }
 
