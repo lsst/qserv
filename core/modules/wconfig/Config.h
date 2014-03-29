@@ -48,7 +48,11 @@ public:
     std::string const& getString(std::string const& key) const;
     bool getIsValid() const { return _isValid; }
     std::string const& getError() const { return _error; }
+<<<<<<< HEAD
     mysql::SqlConfig const& getSqlConfig() const;
+=======
+    MySqlConfig const& getSqlConfig() const;
+>>>>>>> DM-304: renamed SqlConfig to MySqlConfig
 
 private:
     typedef std::map<std::string, std::string> StringMap;
@@ -59,7 +63,11 @@ private:
     StringMap _map;
     bool _isValid;
     std::string _error;
+<<<<<<< HEAD
     boost::shared_ptr<mysql::SqlConfig> _sqlConfig;
+=======
+    boost::shared_ptr<MySqlConfig> _sqlConfig;
+>>>>>>> DM-304: renamed SqlConfig to MySqlConfig
 };
 
 Config& getConfig();

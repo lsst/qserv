@@ -148,7 +148,7 @@ private:
 
     TableMergerConfig _config;
     std::string _loadCmd;
-    boost::shared_ptr<mysql::SqlConfig> _sqlConfig;
+    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig;
     boost::shared_ptr<sql::SqlConnection> _sqlConn;
 
     std::string _mergeTable;

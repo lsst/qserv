@@ -43,7 +43,6 @@
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
 
-
 // Local includes
 #include "log/Logger.h"
 #include "merger/SqlInsertIter.h"
@@ -68,8 +67,8 @@ std::string getTimeStampId() {
     // FIXME: is there a better idea?
 }
 
-boost::shared_ptr<SqlConfig> makeSqlConfig(TableMergerConfig const& c) {
-    boost::shared_ptr<SqlConfig> sc(new SqlConfig());
+boost::shared_ptr<MySqlConfig> makeSqlConfig(TableMergerConfig const& c) {
+    boost::shared_ptr<MySqlConfig> sc(new MySqlConfig());
     assert(sc.get());
     sc->username = c.user;
     sc->dbName = c.targetDb;

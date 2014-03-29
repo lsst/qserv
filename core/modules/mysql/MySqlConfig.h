@@ -29,11 +29,11 @@ namespace lsst {
 namespace qserv {
 namespace mysql {
 
-/// class SqlConfig : Value class for configuring the MySQL connection
-class SqlConfig {
+/// class MySqlConfig : Value class for configuring the MySQL connection
+class MySqlConfig {
 public:
-    SqlConfig() : port(0) {}
-    SqlConfig(const SqlConfig&);
+    MySqlConfig() : port(0) {}
+    MySqlConfig(const MySqlConfig&);
     std::string hostname;
     std::string username;
     std::string password;

@@ -54,7 +54,7 @@ populateErrorObject(mysql::MySqlConnection& m, SqlErrorObject& o) {
 ////////////////////////////////////////////////////////////////////////
 // class SqlResultIter
 ////////////////////////////////////////////////////////////////////////
-SqlResultIter::SqlResultIter(mysql::SqlConfig const& sqlConfig,
+SqlResultIter::SqlResultIter(mysql::MySqlConfig const& sqlConfig,
                              std::string const& query) {
     if(!_setup(sqlConfig, query)) { return; }
     // if not error, prime the iterator
@@ -85,7 +85,8 @@ SqlResultIter::done() const {
 }
 
 bool
-SqlResultIter::_setup(mysql::SqlConfig const& sqlConfig, std::string const& query) {
+SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig, 
+                      std::string const& query) {
     _columnCount = 0;
     _connection.reset(new mysql::MySqlConnection(sqlConfig, true));
     if(!_connection->connect()) {
@@ -106,12 +107,12 @@ SqlConnection::SqlConnection()
     : _connection() {
 }
 
-SqlConnection::SqlConnection(mysql::SqlConfig const& sc, bool useThreadMgmt)
+SqlConnection::SqlConnection(mysql::MySqlConfig const& sc, bool useThreadMgmt)
     : _connection(new mysql::MySqlConnection(sc, useThreadMgmt)) {
 }
 
 void
-SqlConnection::reset(mysql::SqlConfig const& sc, bool useThreadMgmt) {
+SqlConnection::reset(mysql::MySqlConfig const& sc, bool useThreadMgmt) {
     _connection.reset(new mysql::MySqlConnection(sc, useThreadMgmt));
 }
 

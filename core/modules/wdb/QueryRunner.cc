@@ -278,7 +278,7 @@ QueryRunner::_getErrorString() const {
 */
 bool
 QueryRunner::_runTask(wcontrol::Task::Ptr t) {
-    mysql::SqlConfig sc(wconfig::getConfig().getSqlConfig());
+    mysql::MySqlConfig sc(wconfig::getConfig().getSqlConfig());
     sc.username = _user.c_str(); // Override with master-passed username.
     sql::SqlConnection _sqlConn(sc, true);
     bool success = true;

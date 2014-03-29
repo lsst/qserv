@@ -82,7 +82,7 @@ struct PerTestFixture {
     }
     ~PerTestFixture () {}
     boost::shared_ptr<SqlConnection> sqlConn;
-    static SqlConfig sqlConfig;
+    static MySqlConfig sqlConfig;
 };
 SqlConfig PerTestFixture::sqlConfig;
 
