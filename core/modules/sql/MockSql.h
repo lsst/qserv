@@ -29,7 +29,7 @@ class MockSql : public SqlConnection {
 public:
     MockSql() {}
     ~MockSql() {}
-    virtual void reset(mysql::SqlConfig const& sc, bool useThreadMgmt=false) {}
+    virtual void reset(mysql::MySqlConfig const& sc, bool useThreadMgmt=false) {}
     virtual bool connectToDb(SqlErrorObject&) { return false; }
     virtual bool selectDb(std::string const& dbName, SqlErrorObject&) {
         return false; }

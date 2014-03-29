@@ -33,7 +33,7 @@ namespace test = boost::test_tools;
 using lsst::qserv::sql::SqlConnection;
 using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResultIter;
-using lsst::qserv::mysql::SqlConfig;
+using lsst::qserv::mysql::MySqlConfig;
 
 
 namespace {
@@ -82,9 +82,9 @@ struct PerTestFixture {
     }
     ~PerTestFixture () {}
     boost::shared_ptr<SqlConnection> sqlConn;
-    static SqlConfig sqlConfig;
+    static lsst::qserv::mysql::MySqlConfig sqlConfig;
 };
-SqlConfig PerTestFixture::sqlConfig;
+MySqlConfig PerTestFixture::sqlConfig;
 
 BOOST_FIXTURE_TEST_SUITE(SqlConnectionTestSuite, PerTestFixture)
 

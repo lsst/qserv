@@ -38,7 +38,7 @@
 
 #include <boost/shared_ptr.hpp>
 
-#include "mysql/SqlConfig.h"
+#include "mysql/MySqlConfig.h"
 #include "sql/SqlErrorObject.h"
 
 namespace lsst {
@@ -58,7 +58,7 @@ class SqlResultIter {
 public:
     typedef std::vector<std::string> List;
     SqlResultIter() {}
-    SqlResultIter(mysql::SqlConfig const& sc, std::string const& query);
+    SqlResultIter(mysql::MySqlConfig const& sc, std::string const& query);
     virtual ~SqlResultIter() {}
     virtual SqlErrorObject& getErrorObject() { return _errObj; }
 
@@ -67,7 +67,7 @@ public:
     virtual bool done() const; // Would like to relax LSST standard 3-4 for iterator classes
 
 private:
-    bool _setup(mysql::SqlConfig const& sqlConfig, std::string const& query);
+    bool _setup(mysql::MySqlConfig const& sqlConfig, std::string const& query);
 
     boost::shared_ptr<mysql::MySqlConnection> _connection;
     List _current;
@@ -79,9 +79,9 @@ private:
 class SqlConnection {
 public:
     SqlConnection();
-    SqlConnection(mysql::SqlConfig const& sc, bool useThreadMgmt=false);
+    SqlConnection(mysql::MySqlConfig const& sc, bool useThreadMgmt=false);
     virtual ~SqlConnection();
-    virtual void reset(mysql::SqlConfig const& sc, bool useThreadMgmt=false);
+    virtual void reset(mysql::MySqlConfig const& sc, bool useThreadMgmt=false);
     virtual bool connectToDb(SqlErrorObject&);
     virtual bool selectDb(std::string const& dbName, SqlErrorObject&);
     virtual bool runQuery(char const* query, int qSize,

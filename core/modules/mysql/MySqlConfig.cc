@@ -25,14 +25,14 @@
 #include <sstream>
 #include <stdlib.h> // atoi
 
-#include "SqlConfig.h"
+#include "MySqlConfig.h"
 
 namespace lsst {
 namespace qserv {
 namespace mysql {
 
 
-SqlConfig::SqlConfig(const SqlConfig& c)
+MySqlConfig::MySqlConfig(const MySqlConfig& c)
     : hostname(c.hostname),
       username(c.username),
       password(c.password),
@@ -42,7 +42,7 @@ SqlConfig::SqlConfig(const SqlConfig& c)
 }
 
 void
-SqlConfig::throwIfNotSet(std::string const& fName) const {
+MySqlConfig::throwIfNotSet(std::string const& fName) const {
     bool allSet = true;
     std::stringstream s;
     s << "Value for ";
@@ -63,14 +63,14 @@ SqlConfig::throwIfNotSet(std::string const& fName) const {
 /// To ignore unrecognized tokens, set the flag to false.
 /// This is handy for reading a subset of a file.
 void
-SqlConfig::initFromFile(std::string const& fName,
-                        std::string const& hostToken,
-                        std::string const& portToken,
-                        std::string const& userToken,
-                        std::string const& passToken,
-                        std::string const& dbNmToken,
-                        std::string const& sockToken,
-                        bool ignoreUnrecognizedTokens) {
+MySqlConfig::initFromFile(std::string const& fName,
+                          std::string const& hostToken,
+                          std::string const& portToken,
+                          std::string const& userToken,
+                          std::string const& passToken,
+                          std::string const& dbNmToken,
+                          std::string const& sockToken,
+                          bool ignoreUnrecognizedTokens) {
     std::ifstream f;
     f.open(fName.c_str());
     if (!f) {
@@ -123,7 +123,7 @@ SqlConfig::initFromFile(std::string const& fName,
 }
 
 std::string
-SqlConfig::asString() const {
+MySqlConfig::asString() const {
     std::string result(500, 0);
     std::ostringstream os;
     os << port;

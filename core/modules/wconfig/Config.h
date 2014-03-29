@@ -32,7 +32,7 @@ namespace qserv {
 
 namespace mysql {
     // Forward
-    class SqlConfig;
+    class MySqlConfig;
 }
 
 namespace wconfig {
@@ -48,7 +48,7 @@ public:
     std::string const& getString(std::string const& key) const;
     bool getIsValid() const { return _isValid; }
     std::string const& getError() const { return _error; }
-    mysql::SqlConfig const& getSqlConfig() const;
+    mysql::MySqlConfig const& getSqlConfig() const;
 
 private:
     typedef std::map<std::string, std::string> StringMap;
@@ -59,7 +59,7 @@ private:
     StringMap _map;
     bool _isValid;
     std::string _error;
-    boost::shared_ptr<mysql::SqlConfig> _sqlConfig;
+    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig;
 };
 
 Config& getConfig();
