@@ -1,3 +1,11 @@
+# This file can be used to overload include and lib path
+# to Qserv dependencies
+#
+# please run scons -h to see all overloadable
+# build configuration variables.
+# Note that default behaviour should work
+# in most of the cases.
+# Here's an example above :
 import os
 import distutils.sysconfig as ds
 
