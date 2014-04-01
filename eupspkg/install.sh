@@ -50,7 +50,7 @@ eups_install
 source "${INSTALL_DIR}/eups/bin/setups.sh"
 
 # If you don't have git > v1.8.4, do:
-eups distrib install git --repository="http://lsst-web.ncsa.illinois.edu/~mjuric/pkgs"
+eups distrib install git --repository="http://sw.lsstcorp.org/eupspkg"
 setup git
 
 echo "Installing Qserv in ${INSTALL_DIR}"
