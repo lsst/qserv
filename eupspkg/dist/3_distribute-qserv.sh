@@ -38,6 +38,7 @@ git tag | head -1 | xargs git tag -f &&
 git push origin master -f --tags &&
 
 echo "INFO : Retrieving Qserv tests dataset"
+mkdir -p ${LOCAL_PKGROOT}/tarballs &&
 git archive --remote=${DATA_REPO} --format=tar --prefix=testdata/ ${DATA_BRANCH} | gzip > ${LOCAL_PKGROOT}/tarballs/testdata-${VERSION}.tar.gz || 
 {
     echo "ERROR : Unable to download tests dataset" && 
@@ -46,7 +47,7 @@ git archive --remote=${DATA_REPO} --format=tar --prefix=testdata/ ${DATA_BRANCH}
 
 echo "INFO : Distributing Qserv"
 cd - &&
-eups distrib install git --repository="http://lsst-web.ncsa.illinois.edu/~mjuric/pkgs" &&
+eups distrib install git --repository="http://sw.lsstcorp.org/eupspkg" &&
 setup git &&
 eups_dist qserv ${VERSION} ||
 {
@@ -58,7 +59,6 @@ echo "INFO : Downloading scisql"
 SCISQL_ARCHIVE=scisql-0.3.2.tar.bz2
 if [ ! -f ${LOCAL_PKGROOT}/tarballs/${SCISQL_ARCHIVE} ]; then
     SCISQL_URL=https://launchpad.net/scisql/trunk/0.3.2/+download/${SCISQL_ARCHIVE}
-    mkdir -p ${LOCAL_PKGROOT}/tarballs &&
     wget ${SCISQL_URL} --directory-prefix=${LOCAL_PKGROOT}/tarballs ||
     echo "WARN : unable to download scisql from ${SCISQL_URL}"
 fi
