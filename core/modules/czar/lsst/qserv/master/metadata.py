@@ -25,7 +25,7 @@
 # The metadata module contains functions, constants, and data related
 # strictly to qserv's runtime metadata.  This includes the objectId
 # index (secondary indexing) and the empty chunks file(s). This needs
-# to be re-thought, now that the Qms is available.
+# to be re-thought, now that the CSS is available.
 
 # Pkg imports
 import logger

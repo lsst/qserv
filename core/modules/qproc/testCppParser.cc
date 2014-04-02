@@ -31,6 +31,8 @@
 
 #define BOOST_TEST_MODULE testCppParser
 #include "boost/test/included/unit_test.hpp"
+#include <boost/algorithm/string.hpp>
+#include <iostream>
 #include <list>
 #include <map>
 #include <string>
@@ -38,9 +40,8 @@
 #include <algorithm>
 #include <antlr/NoViableAltException.hpp>
 
+#include "css/Facade.h"
 #include "qdisp/ChunkMeta.h"
-#include "meta/ifaceMeta.h"
-#include "meta/MetadataCache.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
 #include "qproc/QuerySession.h"
@@ -65,14 +66,6 @@ namespace qMaster = lsst::qserv::master;
 
 namespace test = boost::test_tools;
 
-// Forward declarations
-namespace lsst {
-namespace qserv {
-namespace master {
-    boost::shared_ptr<lsst::qserv::master::MetadataCache> getMetadataCache(int);
-}}}
-
-
 namespace {
 ChunkMeta newTestCmeta(bool withSubchunks=true) {
     ChunkMeta m;
@@ -96,7 +89,7 @@ void testParse(SelectParser::Ptr p) {
     p->setup();
 }
 
-boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,
+    boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,
                                           std::string const& stmt,
                                           char const* expectedErr="") {
     boost::shared_ptr<QuerySession> qs(new QuerySession(t));
@@ -105,7 +98,8 @@ boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,
     ConstraintVec cv(qs->getConstraints());
     boost::shared_ptr<ConstraintVector> cvRaw = cv.getVector();
     if(false && cvRaw) { // DEBUG
-        std::copy(cvRaw->begin(), cvRaw->end(), std::ostream_iterator<Constraint>(std::cout, ","));
+        std::copy(cvRaw->begin(), cvRaw->end(),
+                  std::ostream_iterator<Constraint>(std::cout, ","));
         typedef ConstraintVector::iterator Iter;
         for(Iter i=cvRaw->begin(), e=cvRaw->end(); i != e; ++i) {
             std::cout << *i << ",";
@@ -153,72 +147,14 @@ struct ParserFixture {
         config["table.defaultdb"] ="LSST";
         config["table.partitioncols"] = "Object:ra_Test,decl_Test,objectIdObjTest;"
             "Source:raObjectTest,declObjectTest,objectIdSourceTest";
+
         qsTest.cfgNum = 0;
         qsTest.defaultDb = "LSST";
-
-        qsTest.metaSession = lsst::qserv::master::newMetadataSession();
-        boost::shared_ptr<lsst::qserv::master::MetadataCache> mc =
-            lsst::qserv::master::getMetadataCache(qsTest.metaSession);
-        mc->addDbInfoPartitionedSphBox("LSST",
-                                       60,        // number of stripes
-                                       18,        // number of substripes
-                                       0.01,      // default overlap fuzziness
-                                       0.025);    // default overlap near neighbor
-        mc->addTbInfoPartitionedSphBox("LSST", "Object",
-                                       0.025,     // actual overlap
-                                       "ra_Test", "decl_Test", "objectIdObjTest",
-                                       1, 2, 0,   // positions of the above columns
-                                       2,         // 2-level chunking
-                                       0x0021);   // 1-level persisted
-        mc->addTbInfoPartitionedSphBox("LSST", "Source",
-                                       0,         // actual overlap
-                                       "raObjectTest", "declObjectTest", "objectIdSourceTest",
-                                       1, 2, 0,   // positions of the above columns
-                                       1,         // 1-level chunking
-                                       0x0011);   // 1-level persisted
-
-        mc->addTbInfoPartitionedSphBox("LSST", "RefObjMatch", // FIXME (bogus)
-                                       0.025,     // actual overlap
-                                       "ra", "decl", "objectId",  // warning: unsure if the objectId col is right
-                                       1, 2, 0,   // positions of the above columns, unsure if 0 is correct
-                                       1,         // 1-level chunking
-                                       0x0011);   // 1-level persisted
-
-        mc->addTbInfoPartitionedSphBox("LSST", "SimRefObject", // FIXME (bogus)
-                                       0.025,     // actual overlap
-                                       "ra", "decl", "objectId",  // warning: unsure if the objectId col is right
-                                       1, 2, 0,   // positions of the above columns, unsure if 0 is correct
-                                       1,         // 1-level chunking
-                                       0x0011);   // 1-level persisted
-
-        mc->addDbInfoPartitionedSphBox("rplante_PT1_2_u_pt12prod_im3000_qserv",
-                                       60,        // number of stripes
-                                       18,        // number of substripes
-                                       0.01,      // default overlap fuzziness
-                                       0.025);    // default overlap near neighbor
-        mc->addTbInfoPartitionedSphBox("rplante_PT1_2_u_pt12prod_im3000_qserv", "Object",
-                                       0.025,     // actual overlap
-                                       "ra", "decl", "objectIdSourceTest",
-                                       1, 2, 0,   // positions of above columns
-                                       2,         // 2-level chunking
-                                       0x0011);   // 1-level persisted
-        mc->addTbInfoPartitionedSphBox("rplante_PT1_2_u_pt12prod_im3000_qserv", "Source",
-                                       0,         // actual overlap
-                                       "raObjectTest", "declObjectTest", "objectIdSourceTest",
-                                       1, 2, 0,   // positions of the above columns
-                                       1,         // 1-level chunking
-                                       0x0011);   // 1-level persisted
-
-        mc->addTbInfoPartitionedSphBox("LSST", "ObjectSub",
-                                       0.025,     // actual overlap
-                                       "ra", "decl", "objectId",  // warning: unsure if the objectId col is right
-                                       1, 2, 0,   // positions of the above columns, unsure if 0 is correct
-                                       2,         // 2-level chunking
-                                       0x0011);   // 1-level persisted
-        mc->addTbInfoNonPartitioned("LSST", "Filter");
-        mc->addTbInfoNonPartitioned("LSST", "Science_Ccd_Exposure");
-        mc->addTbInfoNonPartitioned("LSST", "Exposure");
-        mc->addTbInfoNonPartitioned("LSST", "LeapSeconds");
+        // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
+        // Use client/examples/testCppParser_generateMap
+        std::string kvMapPath = "./modules/qproc/testCppParser.kvmap"; // FIXME
+        qsTest.cssFacade =
+            lsst::qserv::css::FacadeFactory::createMemFacade(kvMapPath);
     };
     ~ParserFixture(void) { };
 
@@ -1001,7 +937,6 @@ BOOST_AUTO_TEST_CASE(Case01_1012) {
     std::string stmt = "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ABS(iE1_SG);";
     testStmt3(qsTest, stmt,
               "ParseException:ANTLR parse error:unexpected token: (:");
-
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1013) {

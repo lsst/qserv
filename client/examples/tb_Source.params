@@ -1,0 +1,11 @@
+[table_info]
+tableName:    Source
+partitioning: 1
+schemaFile:   /u1/qserv/sandbox/qserv/meta/examples/tb_Source.sql
+compression:  0
+isRefMatch:   0
+subChunks:    0
+drivingTable: Object
+latColName:   ra
+lonColName:   decl
+keyColName:   objId

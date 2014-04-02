@@ -33,10 +33,14 @@
 #include "util/common.h"
 #include "query/Constraint.h"
 #include "control/transaction.h"
+#include "css/StripingParams.h"
 #include "xrdc/xrdfile.h"
 #include "merger/TableMerger.h"
 
-namespace lsst { namespace qserv { namespace master {
+namespace lsst {
+namespace qserv {
+namespace master {
+
 class ChunkSpec; // Forward
 
 enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};
@@ -56,6 +60,10 @@ std::string const& getSessionError(int session);
 lsst::qserv::master::ConstraintVec getConstraints(int session);
 /// @return the dominant db for the query
 std::string const& getDominantDb(int session);
+/// @return true if CSS contains given db
+bool containsDb(int session, std::string const& dbName);
+/// @return number of stripes and substripes
+lsst::qserv::css::StripingParams getDbStriping(int session);
 /// Add a chunk spec for execution
 void addChunk(int session, lsst::qserv::master::ChunkSpec const& cs );
 /// Dispatch all chunk queries for this query

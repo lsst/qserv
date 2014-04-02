@@ -1,0 +1,13 @@
+diff --git core/modules/proto/SConscript.test core/modules/proto/SConscript.test
+index 4c0d96d..2fefeb0 100644
+--- core/modules/proto/SConscript.test
++++ core/modules/proto/SConscript.test
+@@ -15,7 +15,7 @@ def convertObj(o):
+     if oStr.endswith(".cc"): return env.Object(oStr+".staticobj", o)
+     return o
+ libObjs = map(convertObj, libProducts['proto'])
+-p = env.Program(source=[obj], LIBS=['protobuf', 'libssl'] + libObjs)
++p = env.Program(source=[obj], LIBS=['protobuf', 'libssl'] + libObjs + ['libcrypto'])
+ programs.append(p)
+ 
+ Return('programs')

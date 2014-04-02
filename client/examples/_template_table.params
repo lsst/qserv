@@ -1,0 +1,55 @@
+[table_info]
+tableName:  <tableName>
+
+
+# by default, every table inherits partitioningStrategy
+# from its database. If table is not partitioned, we
+# turn it off by specifying 0 here.
+# Allowed values are: 0, 1
+# In this example partitioning is turned on
+partitioning: 1
+
+
+# note that the file must be accessible on the client side
+schemaFile: /full/path/to/the/schema/file
+
+
+# Is this table compressed? 
+# Allowed values: 0, 1
+compression: 0
+
+
+# *RefMatch tables need special handling.
+# Allowed values: 0, 1
+isRefMatch: 0
+# uncomment the lines below and fill if this is refmatch table
+# keyColInTable1: <colName>
+# keyColInTable2: <colName>
+
+
+# is this table subchunked?
+# Allowed values: 0, 1
+subChunks: 1
+
+
+# name of column used as secondary index (if any)
+secIndexColName: <columnName>
+
+
+# name of the table that is a driving table.
+# It can be name of the current table, or other table
+# If there is no driving table, use current table name
+drivingTable: <tableName>
+
+
+# this must be set for driving table
+# it might be set for non-driving tables.
+# For non driving tables, it will be used if keyColName
+# does not make sense (eg, for sources that don't match objects).
+latColName: <decl col name>
+lonColName: <ra col name>
+
+
+# name of the column used to join with the driving table.
+# uncomment and set for non-driving tables.
+#keyColName: <columnName>

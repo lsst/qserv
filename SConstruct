@@ -47,17 +47,19 @@ env.Alias("install",
 python_tests = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("tests", "python"))
 env.Alias("python-tests", python_tests)
 
-# Install qms
+# Install css
 #########################
-qmsbin_target = os.path.join(env['prefix'], "bin")
-env.RecursiveInstall(qmsbin_target, os.path.join("meta", "bin"))
-python_qms = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("meta", "python"))
-env.Alias("dist-qms",
-        [
-        python_qms,
-        qmsbin_target
-        ]
-)
+
+# FIXME!!!
+# qmsbin_target = os.path.join(env['prefix'], "bin")
+# env.RecursiveInstall(qmsbin_target, os.path.join("meta", "bin"))
+# python_qms = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("meta", "python"))
+# env.Alias("dist-qms",
+#         [
+#         python_qms,
+#         qmsbin_target
+#         ]
+# )
 
 #########################
 #

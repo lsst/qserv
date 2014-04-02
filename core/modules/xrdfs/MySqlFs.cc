@@ -176,7 +176,7 @@ MySqlFs::MySqlFs(boost::shared_ptr<WLogger> log, XrdSysLogger* lp,
                  char const* cFileName)
     : XrdSfsFileSystem(), _log(log) {
     if(!getConfig().getIsValid()) {
-        log->error(("Configration invalid: " + getConfig().getError()
+        log->error(("Configuration invalid: " + getConfig().getError()
                      + " -- Behavior undefined.").c_str());
     }
 #ifdef NO_XROOTD_FS

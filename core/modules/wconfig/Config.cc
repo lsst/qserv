@@ -20,6 +20,7 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 /// Includes Config class implementation and declarations of key
 /// environment variables for qserv worker instances.
 #include "wconfig/Config.h"

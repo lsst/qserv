@@ -1,0 +1,13 @@
+diff --git core/modules/sql/SConscript.test core/modules/sql/SConscript.test
+index 3d31fbf..1734a4a 100644
+--- core/modules/sql/SConscript.test
++++ core/modules/sql/SConscript.test
+@@ -10,7 +10,7 @@ import itertools
+ 
+ programs = []
+ # extDeps
+-extDeps = "mysqlclient_r boost_thread ssl".split()
++extDeps = "mysqlclient_r boost_thread ssl crypto".split()
+ 
+ modDeps = 'mysql sql'.split() # deps on other modules
+ deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))

@@ -1,0 +1,26 @@
+[db_info]
+
+# For LSST, this represents L1, L2, L3
+dbGroup: L2
+
+# Allowed values are: 0, 1
+# In this example partitioning is turned on
+partitioning: 1
+
+# If partitioning is on, you must specific partitioning strategy
+# partitioningStrategy: <PSName>
+# Currently supported partitioningStrategies are: sphBox
+# You must also create [<PSName>] section.
+
+# Partitioning for individual tables can be turn
+# off on table-by-table bases, see createTable
+# config file for details.
+
+partitioning: 1
+partitioningStrategy: sphBox
+
+[sphBox]
+nStripes: 85
+nSubStripes: 12
+overlap: 0.0001
+objIdIndex: objectId

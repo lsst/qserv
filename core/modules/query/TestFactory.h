@@ -30,16 +30,20 @@ namespace qserv {
 namespace master { // Forward
 class QueryContext;
 class SelectStmt;
-class MetadataCache;
 }
-
+namespace css {
+class Facade;
+}
+    
 namespace query {
 
 /// TestFactory is a factory for non-parsed query representation objects
 class TestFactory {
 public:
     TestFactory() {}
-    boost::shared_ptr<master::QueryContext> newContext(master::MetadataCache* mc=NULL);
+    boost::shared_ptr<master::QueryContext> newContext();
+    boost::shared_ptr<master::QueryContext> newContext(
+                         boost::shared_ptr<css::Facade> cssFacade);
     boost::shared_ptr<master::SelectStmt> newStmt();
 };
 

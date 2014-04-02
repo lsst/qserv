@@ -24,8 +24,8 @@
 #include <string>
 #include <boost/lexical_cast.hpp>
 #include <boost/pointer_cast.hpp>
+#include "css/Facade.h"
 #include "log/Logger.h"
-#include "meta/MetadataCache.h"
 #include "query/FromList.h"
 #include "query/TableRef.h"
 #include "query/JoinRef.h"
@@ -234,17 +234,17 @@ private:
 };
 class updateChunkLevel {
 public:
-    updateChunkLevel(MetadataCache& metadata_)
-        : metadata(metadata_)
+    updateChunkLevel(boost::shared_ptr<lsst::qserv::css::Facade> cssFacade_)
+        : cssFacade(cssFacade_)
         {}
 
     void operator()(Tuple& t) {
-        t.allowed = metadata.checkIfContainsDb(t.db); // Db exists?
+        t.allowed = cssFacade->containsDb(t.db); // Db exists?
         if(t.allowed) { // Check table as well.
-            t.allowed = metadata.checkIfContainsTable(t.db, t.prePatchTable);
+            t.allowed = cssFacade->containsTable(t.db, t.prePatchTable);
         }
         if(t.allowed) {
-            t.chunkLevel = metadata.getChunkLevel(t.db, t.prePatchTable);
+            t.chunkLevel = cssFacade->getChunkLevel(t.db, t.prePatchTable);
             if(t.chunkLevel == -1) {
                 t.allowed = false; // No chunk level found: missing/illegal.
                 throw InvalidTableException(t.db, t.prePatchTable);
@@ -253,7 +253,7 @@ public:
             throw InvalidTableException(t.db, t.prePatchTable);
         }
     }
-    MetadataCache& metadata;
+    boost::shared_ptr<lsst::qserv::css::Facade> cssFacade;
 };
 class inplaceComputeTable : public TableRef::Func {
 public:
@@ -410,14 +410,14 @@ void TableStrategy::_import(FromList const& f) {
     TableRefList const& tList = f.getTableRefList();
     addTable a(_impl->tuples);
     std::for_each(tList.begin(), tList.end(), a);
-    updateChunkLevel ucl(*_impl->context.metadata);
+    updateChunkLevel ucl(_impl->context.cssFacade);
     std::for_each(_impl->tuples.begin(), _impl->tuples.end(), ucl);
 
     _impl->chunkLevel = TableNamer::patchTuples(_impl->tuples);
     LOGGER_DBG << "TableStrategy::_import() : _impl->chunkLevel : "
                << _impl->chunkLevel << std::endl;
-    if(!_impl->context.metadata) {
-        throw std::logic_error("Missing context.metadata");
+    if(!_impl->context.cssFacade) {
+        throw std::logic_error("Missing context.cssFacade");
     }
     _updateContext();
 }
