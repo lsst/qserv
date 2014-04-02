@@ -36,6 +36,7 @@
 
 #include <antlr/NoViableAltException.hpp>
 
+#include "css/Facade.h"
 #include "query/Constraint.h"
 #include "parser/SelectParser.h"
 #include "query/SelectStmt.h"
@@ -46,7 +47,6 @@
 #include "qana/QueryMapping.h"
 #include "qana/QueryPlugin.h"
 #include "parser/ParseException.h"
-#include "meta/ifaceMeta.h" // Retrieve metadata object
 #include "log/Logger.h"
 
 #define DEBUG 0
@@ -64,8 +64,8 @@ void printConstraints(ConstraintVector const& cv) {
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
-QuerySession::QuerySession(int metaCacheSession)
-    : _metaCacheSession(metaCacheSession) {
+QuerySession::QuerySession(boost::shared_ptr<css::Facade> cssFacade) : 
+    _cssFacade(cssFacade) {
 }
 
 void QuerySession::setQuery(std::string const& inputQuery) {
@@ -147,6 +147,15 @@ std::string const& QuerySession::getDominantDb() const {
     return _context->dominantDb; // parsed query's dominant db (via TablePlugin)
 }
 
+bool QuerySession::containsDb(std::string const& dbName) const {
+    return _context->containsDb(dbName);
+}
+
+css::StripingParams
+QuerySession::getDbStriping() {
+    return _context->getDbStriping();
+}
+
 MergeFixup QuerySession::makeMergeFixup() const {
     // Make MergeFixup to adapt new query parser/generation framework
     // to older merging code.
@@ -188,12 +197,9 @@ void QuerySession::_initContext() {
     _context->username = "default";
     _context->needsMerge = false;
     _context->chunkCount = 0;
-    MetadataCache* metadata = getMetadataCache(_metaCacheSession).get();
-    _context->metadata = metadata;
-    if(!metadata) {
-        throw std::logic_error("Couldn't retrieve MetadataCache");
-    }
+    _context->cssFacade = _cssFacade;
 }
+
 void QuerySession::_preparePlugins() {
     _plugins.reset(new PluginList);
 

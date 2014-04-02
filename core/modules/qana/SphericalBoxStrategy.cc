@@ -36,10 +36,10 @@
 #include <deque>
 #include <boost/lexical_cast.hpp>
 
+#include "css/Facade.h"
 #include "query/FromList.h"
 #include "qana/QueryMapping.h"
 #include "query/QueryContext.h"
-#include "meta/MetadataCache.h"
 #include "parser/ParseException.h"
 
 #include "log/Logger.h"
@@ -137,6 +137,7 @@ int patchTuples(Tuples& tuples) {
 namespace lsst {
 namespace qserv {
 namespace master {
+
 class InvalidTableException : public ParseException {
 public:
     InvalidTableException(char const* db, char const* table)
@@ -158,14 +159,14 @@ public:
 
 class lookupTuple {
 public:
-    lookupTuple(MetadataCache& metadata_)
-        : metadata(metadata_)
+    lookupTuple(css::Facade& cssFacade_)
+        : cssFacade(cssFacade_)
         {}
 
     void operator()(Tuple& t) {
-        t.allowed = metadata.checkIfContainsDb(t.db);
+        t.allowed = cssFacade.containsDb(t.db);
         if(t.allowed) {
-            t.chunkLevel = metadata.getChunkLevel(t.db, t.prePatchTable);
+            t.chunkLevel = cssFacade.getChunkLevel(t.db, t.prePatchTable);
             if(t.chunkLevel == -1) {
                 t.allowed = false; // No chunk level found: missing/illegal.
                 throw InvalidTableException(t.db, t.prePatchTable);
@@ -174,7 +175,7 @@ public:
             throw InvalidDbException(t.db);
         }
     }
-    MetadataCache& metadata;
+    css::Facade& cssFacade;
 };
 
 class SphericalBoxStrategy::Impl {
@@ -440,10 +441,10 @@ void SphericalBoxStrategy::_import(FromList const& f) {
     std::for_each(tList.begin(), tList.end(),
                   TableRefN::Fwrapper<addTable>(a));
 
-    if(!_impl->context.metadata) {
-        throw std::logic_error("Missing context.metadata");
+    if(!_impl->context.cssFacade) {
+        throw std::logic_error("Missing context.cssFacade");
     }
-    lookupTuple lookup(*_impl->context.metadata);
+    lookupTuple lookup(*_impl->context.cssFacade);
     std::for_each(_impl->tuples.begin(), _impl->tuples.end(), lookup);
     LOGGER_DBG << "Imported:::::";
 

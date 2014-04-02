@@ -1,0 +1,13 @@
+diff --git core/modules/wdb/SConscript.test core/modules/wdb/SConscript.test
+index 9c3699d..23f25f2 100644
+--- core/modules/wdb/SConscript.test
++++ core/modules/wdb/SConscript.test
+@@ -11,7 +11,7 @@ import itertools
+ 
+ programs = []
+ # extDeps
+-extDeps = "boost_signals boost_thread mysqlclient_r protobuf ssl".split()
++extDeps = "boost_signals boost_thread mysqlclient_r protobuf ssl crypto".split()
+ 
+ modDeps = 'wlog mysql sql util wbase wconfig wdb'.split() # deps on other modules
+ #modDeps = 'wbase wconfig wdb'.split() # deps on other modules

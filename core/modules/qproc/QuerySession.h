@@ -32,6 +32,7 @@
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include "css/Facade.h"
 #include "query/Constraint.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
@@ -55,6 +56,8 @@ public:
     friend class Iter;
     friend class AsyncQueryManager; // factory for QuerySession.
 
+    explicit QuerySession(boost::shared_ptr<css::Facade>);
+
     std::string const& getOriginal() const { return _original; }
     void setQuery(std::string const& q);
     bool hasAggregate() const;
@@ -74,6 +77,8 @@ public:
     /// dispatch. This is distinct from the default database, which is what is
     /// used for unqualified table and column references
     std::string const& getDominantDb() const;
+    bool containsDb(std::string const& dbName) const;
+    css::StripingParams getDbStriping();
     std::string const& getError() const { return _error; }
 
     MergeFixup makeMergeFixup() const;
@@ -85,15 +90,10 @@ public:
     Iter cQueryEnd();
 
     // For test harnesses.
-    struct Test { int cfgNum; int metaSession; };
-    explicit QuerySession(Test& t)
-        : _metaCacheSession(t.metaSession) { _initContext(); }
     boost::shared_ptr<QueryContext> dbgGetContext() { return _context; }
 
 private:
     typedef std::list<QueryPlugin::Ptr> PluginList;
-
-    explicit QuerySession(int metaCacheSession);
 
     // Pipeline helpers
     void _initContext();
@@ -107,7 +107,7 @@ private:
     std::vector<std::string> _buildChunkQueries(ChunkSpec const& s);
 
     // Fields
-    int _metaCacheSession;
+    boost::shared_ptr<css::Facade> _cssFacade;
     std::string _original;
     boost::shared_ptr<QueryContext> _context;
     boost::shared_ptr<SelectStmt> _stmt;

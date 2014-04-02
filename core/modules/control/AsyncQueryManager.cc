@@ -39,6 +39,7 @@
 #include "boost/date_time/posix_time/posix_time_types.hpp"
 
 #include "control/AsyncQueryManager.h"
+#include "css/Facade.h"
 #include "qdisp/ChunkQuery.h"
 #include "log/Logger.h"
 #include "qdisp/MessageStore.h"
@@ -264,8 +265,7 @@ void AsyncQueryManager::joinEverything() {
     while(!_queries.empty()) {
         count = _queries.size();
         if(count != lastCount) {
-            LOGGER_INF << "Still " << count
-                       << " in flight." << std::endl;
+            LOGGER_INF << "Still " << count << " in flight." << std::endl;
             count = lastCount;
             ++complainCount;
             if(complainCount > moreDetailThreshold) {
@@ -380,13 +380,41 @@ void AsyncQueryManager::_readConfig(std::map<std::string,
         cfg, "resultdb.db",
         "Error, resultdb.db not found. Using qservResult.",
         "qservResult");
-    std::string metaStr =  getConfigElement(
-        cfg, "runtime.metaCacheSession",
-        "No runtime.metaCacheSession. using default.",
+
+    std::string cssTech = getConfigElement(
+        cfg, "css.technology",
+        "Error, css.technology not found.",
+        "invalid");
+    std::string cssConn = getConfigElement(
+        cfg, "css.connection",
+        "Error, css.connection not found.",
         "");
-    int metaCacheSession = coerceInt(metaStr, -1);
-    // Setup session
-    _qSession.reset(new QuerySession(metaCacheSession));
+    _initFacade(cssTech, cssConn);
+}
+
+void AsyncQueryManager::_initFacade(std::string const& cssTech, 
+                                    std::string const& cssConn) {
+    if (cssTech == "zoo") {
+        LOGGER_INF << "Initializing zookeeper-based css, with " 
+                   << cssConn << std::endl;
+        
+        boost::shared_ptr<css::Facade> cssFPtr(
+            css::FacadeFactory::createZooFacade(cssConn));
+        _qSession.reset(new QuerySession(cssFPtr));
+    } else if (cssTech == "mem") {
+        LOGGER_INF << "Initializing memory-based css, with " 
+                   << cssConn << std::endl;
+        boost::shared_ptr<css::Facade> cssFPtr(
+            css::FacadeFactory::createMemFacade(cssConn));
+        _qSession.reset(new QuerySession(cssFPtr));
+    } else {
+        LOGGER_ERR << "Unable to determine css technology, check config file." 
+                   << std::endl;
+        // FIXME, throw proper exception here. See DM-278 in Jira
+        // Also, make sure to validate the cssConn to the extend possible.
+        throw std::invalid_argument(
+                     "Unable to determine css technology, check config file..");
+    }
 }
 
 void AsyncQueryManager::_addNewResult(int id, PacIterPtr pacIter,

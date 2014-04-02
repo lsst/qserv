@@ -72,7 +72,7 @@ public:
     static void registerClass(FactoryPtr f);
 };
 
-/// Factory is an abstract class for specific QueryPlugin Factories
+/// Factory is a base class for specific QueryPlugin Factories
 class QueryPlugin::Factory {
 public:
     // Types

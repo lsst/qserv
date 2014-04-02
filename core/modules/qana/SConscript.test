@@ -11,9 +11,9 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "antlr boost_thread".split()
+extDeps = "antlr boost_thread zookeeper_mt".split()
 
-modDeps = 'global log meta query'.split() # deps on other modules
+modDeps = 'css global log query'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
 deps = map(lambda s: s, deps) # unchain
 deps.sort(key=str)
