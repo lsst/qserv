@@ -21,6 +21,7 @@ git push origin -f ${VERSION} &&
 echo "INFO : Distributing Qserv" &&
 eups distrib install git --repository="${EUPS_PKGROOT_LSST}" &&
 setup git &&
+export EUPSPKG_REPOSITORY_PATH=${QSERV_REPO} &&
 eups_dist_create qserv ${VERSION} ||
 {
     echo "ERROR : Unable to distribute Qserv" && 

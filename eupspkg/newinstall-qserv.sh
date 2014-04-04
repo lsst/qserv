@@ -7,7 +7,7 @@
 # set -x
 SHELL=/bin/bash
 INSTALL_DIR=$PWD
-TICKET="DM-58"
+TICKET="master"
 export EUPS_PKGROOT="http://datasky.in2p3.fr/qserv/distserver-${TICKET}"
 
 QSERV_REPO=git://dev.lsstcorp.org/LSST/DMS/qserv
