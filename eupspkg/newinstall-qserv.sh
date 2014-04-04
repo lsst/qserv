@@ -7,10 +7,11 @@
 # set -x
 SHELL=/bin/bash
 INSTALL_DIR=$PWD
-export EUPS_PKGROOT="http://datasky.in2p3.fr/qserv/distserver"
+TICKET="DM-58"
+export EUPS_PKGROOT="http://datasky.in2p3.fr/qserv/distserver-${TICKET}"
 
 QSERV_REPO=git://dev.lsstcorp.org/LSST/DMS/qserv
-QSERV_BRANCH=tickets/3100
+QSERV_BRANCH=tickets/${TICKET}
 
 while [ $# -gt 0 ]; do
     case "$1" in 
@@ -34,7 +35,9 @@ INSTALLSCRIPT_DIR=${INSTALL_DIR}/${PREFIX}
 CFG_FILE="${INSTALLSCRIPT_DIR}/eupspkg/env.sh"
 /bin/cat <<EOM >$CFG_FILE
 export INSTALL_DIR=${INSTALL_DIR}
+export TICKET=${TICKET}
 export EUPS_PKGROOT=${EUPS_PKGROOT}
+export EUPS_PKGROOT_LSST=http://sw.lsstcorp.org/eupspkg
 export EUPS_GIT_CLONE_CMD="git clone https://github.com/RobertLuptonTheGood/eups.git"
 export EUPS_GIT_CHECKOUT_CMD="git checkout 1.3.0"
 EOM
