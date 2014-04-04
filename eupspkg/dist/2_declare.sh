@@ -14,6 +14,7 @@ eups_install
 # eups distrib install anaconda
 # setup anaconda
 
+eups distrib install git --repository="http://sw.lsstcorp.org/eupspkg" &&
 setup git
 
 
