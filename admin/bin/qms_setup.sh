@@ -4,7 +4,7 @@
 
 if [ "$#" != 3 ] ; then
     SCRIPT=`basename $0`
-    echo $"Usage: ${SCRIPT} {QSERV_BASE_DIR} {DB_NAME} {TEST_ID}"
+    echo $"Usage: ${SCRIPT} {QSERV_DIR} {DB_NAME} {TEST_ID}"
     exit 1
 fi
 
@@ -14,14 +14,14 @@ TEST_ID=$3
 
 ERR_NO_META=25
 
-DATA_DIR=${BASE_DIR}/qserv/tests/testdata/${TEST_ID}/data
+DATA_DIR=${BASE_DIR}/tests/testdata/${TEST_ID}/data
 
 if [ ! -d ${DATA_DIR} ]; then
     echo "Directory containing test dataset (${DATA_DIR}) doesn't exists."
     exit 1
 fi
 
-META_CMD="${BASE_DIR}/bin/python ${BASE_DIR}/qserv/meta/bin/metaClientTool.py --auth=${HOME}/.lsst/qmsadm"
+META_CMD="metaClientTool.py --auth=${HOME}/.lsst/qmsadm"
 
 die() { echo "$@" 1>&2 ; exit 1; }
 

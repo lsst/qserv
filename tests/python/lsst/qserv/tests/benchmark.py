@@ -33,10 +33,11 @@ __author__ = "Jacek Becla, Fabrice Jammes"
 import logging
 import optparse
 import shutil
+import tarfile
 
-from lsst.qserv import qservdataloader, mysqldataloader, datareader
-from lsst.qserv.admin import commons
-from lsst.qserv.sql import cmd, connection, const
+from lsst.qserv.tests import qservdataloader, mysqldataloader, datareader
+from lsst.qserv.admin import commons, download
+from lsst.qserv.tests.sql import cmd, connection, const
 import os
 import re
 import stat
@@ -64,11 +65,18 @@ class Benchmark():
             out_dirname_prefix = self.config['qserv']['tmp_dir']
         self._out_dirname = os.path.join(out_dirname_prefix, "qservTest_case%s" % case_id)
 
+        self.test_dir = os.path.join(
+            self.config['qserv']['base_dir'],'tests'
+        ) 
+        self.testdata_dir = os.path.join(
+            self.test_dir,'testdata'
+        ) 
+        self._downloadTestdata()
+
         qserv_tests_dirname = os.path.join(
-            self.config['qserv']['base_dir'],
-            'qserv','tests', 'testdata',
+            self.testdata_dir,
             "case%s" % self._case_id
-            )
+        )
 
         self._input_dirname = os.path.join(qserv_tests_dirname,'data')
 
@@ -77,6 +85,22 @@ class Benchmark():
         self._queries_dirname = os.path.join(qserv_tests_dirname,"queries")
 
         self.logger = logging.getLogger()
+
+    def _downloadTestdata(self):
+        log = logging.getLogger()
+        testdata_url = self.config['tests']['archive']
+        
+        if not os.path.isdir(self.testdata_dir):
+            testdata_archive = os.path.basename(testdata_url)
+            log.debug("downloading test data %s" % testdata_url)
+            if not os.path.exists(self.test_dir):
+                os.makedirs(self.test_dir)
+            testdata_file=os.path.join(self.test_dir,testdata_archive)
+            download.download(testdata_file,testdata_url)
+            tar = tarfile.open(testdata_file)
+            tar.extractall(self.test_dir)
+            tar.close()
+
 
     def runQueries(self, stopAt):
         self.logger.debug("Running queries : (stop-at : %s)" % stopAt)

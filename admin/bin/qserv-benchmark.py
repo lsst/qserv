@@ -1,25 +1,24 @@
 #!/usr/bin/env python
 
-from lsst.qserv.admin import commons
+from lsst.qserv.admin import commons, logger
 import logging
 from lsst.qserv.tests.benchmark import Benchmark, parseOptions
+import os
+import tarfile
 
 def main():
     
     options = parseOptions()
-    
     config = commons.read_user_config()
-
-    commons.init_default_logger(
-                                "qserv-test-dataset{0}".format(options.case_no),
-                                logging.INFO,
-                                log_path=config['qserv']['log_dir']
-                                )
     
+    logger.init_default_logger(
+            "qserv-test-dataset{0}".format(options.case_no),
+            logging.DEBUG,
+            log_path=config['qserv']['log_dir']
+            )
+
     bench = Benchmark(options.case_no, options.out_dirname)
-
     bench.run(options.mode_list, options.load_data, options.stop_at_query)
-
     failed_queries = bench.analyzeQueryResults()
 
     if len(failed_queries) == 0:

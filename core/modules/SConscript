@@ -4,6 +4,7 @@
 #
 Import('*')
 import glob, os, re, sys
+import state
 from itertools import chain, izip, repeat
 from collections import defaultdict
 import SCons.Util
@@ -21,57 +22,31 @@ Qserv core code
 ###
 extraTgts = {}
 extraTgts['dist'] = []
-canBuild = True
 custom = detect.importCustom(env, extraTgts)
-geomLib = detect.extractGeometry(custom)
+geomLib = env.get('GEOMETRY',None)
 if geomLib:
-    extraTgts['dist'].append(('lsst/qserv/master', env.File(geomLib)))
+    extraTgts['dist'].append(('lib/python/lsst/qserv/master', env.File(geomLib)))
 else:
-    print "Missing geom.py specification. Distribution won't be runnable"
-    print "(e.g., set  GEOMETRY=/u1/lsst/stack/geom/python/lsst/geom/geometry.py )"
+    state.log.warn("Missing geom.py specification. Distribution won't be runnable")
+    state.log.warn("(e.g., set  GEOMETRY=/path/to/geom/python/lsst/geom/geometry.py in custom.py, or add this file to PYTHONPATH)")
 if not detect.checkTwisted():
-    print "Couldn't find Twisted. Be sure that Twisted is configured for Qserv Czar startup."
-metaFiles = detect.findMeta(env)
-for f in metaFiles: extraTgts['dist'].append(('lsst/qserv/meta', f))
-
-hasMysql = detect.checkMySql(env)
-
-
-# Handle debug
-debug = ARGUMENTS.get('debug', 0)
-print "debug is", debug
-if int(debug):
-    print "Debug build requested."
-    env.Append(CCFLAGS = '-g')
-
-## import via eups if directed
-## eups sets LD_LIBRARY_PATH and PATH, so libs should get detected automagically and
-if 'eups' in ARGUMENTS:
-    import eupsLib
-    i = eupsLib.Importer()
-    incs = i.getIncludes()
-    if incs: env.Append(CPPPATH=incs)
-
-
+    state.log.warn("Couldn't find Twisted. Check that Twisted is configured for Qserv Czar startup.")
 
 # Environment
 # Must do all env modifiers here, otherwise SCons complains
 # about different environments used to build files in shared components.
 if not env.GetOption('clean'):
-    canBuild = canBuild and detect.checkMySql(env)
+
     detect.addExtern(env, ARGUMENTS.get('extern', None))
-    if detect.setXrootd(env):
-        canBuild = canBuild and detect.checkXrootdLink(env)
-    else: canBuild = False
+
+    canBuild = detect.checkMySql(env) and detect.setXrootd(env) and detect.checkXrootdLink(env)
+    if not canBuild:
+        raise StandardError("Can't build")
+
     env.Append(CPPPATH=[os.getcwd()]) # top level
-    env.Append(CPPPATH=[env['PROTOC_INC']])
+    state.log.debug("Scons env : " + env.Dump())
 
     env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC"])
-    env.Append(CPPPATH=env["PROTOC_INC"])
-    env.Append(CPPPATH=["modules"])
-
-if not canBuild:
-    raise StandardError("can't build")
 
 # all modules
 allModules = """control czar global log merger meta mysql obsolete
@@ -113,7 +88,7 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                       boost_regex boost_thread
                                       boost_signals""".split(),
                                'SHLIBPREFIX' : '',
-                               'distDir' : 'lsst/qserv/master'}
+                               'distDir' : os.path.join(env['python_prefix'],"lsst","qserv","master")}
                }
 # modules used in shProducts
 modList = [m for m in chain(*map(lambda d: d['mods'],
@@ -164,10 +139,14 @@ def cacheObjs(env, depList, oType):
     return result
 
 boostChecker = detect.BoostChecker(env)
+antlrChecker = detect.AntlrChecker(env)
+
 def findLibs(libList):
     def cheapCheckLib(libName):
         if libName.startswith("boost"):
             return boostChecker.getLibName(libName)
+        if libName.startswith("antlr"):
+            return antlrChecker.getLibName(libName)
         else: return libName
     return map(cheapCheckLib, libList)
 
@@ -186,6 +165,7 @@ def getTests(env, mName):
         return tgts
     else:
         return None
+
 ########################################################################
 ## Real work now.
 ########################################################################
@@ -226,19 +206,16 @@ for (pkg, opts) in shProducts.items():
                                 SHLIBPREFIX=opts['SHLIBPREFIX'])
     else:
         out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs)
-    extraTgts['dist'].append((opts['distDir'], out))
+    env.Alias("build", out)
+    for f in out:
+        extraTgts['dist'].append((opts['distDir'], f))
 
 #Runner wrapper
 import runner
 env["PYTHONPATH"] = extraTgts["PYTHONPATH"]
-f = runner.WrapperScript(env, "qsEnv.sh")
-extraTgts['dist'].append(('bin', f))
-
-# Install targets
-distDir = 'dist'
-for (path, f) in extraTgts['dist']:
-    env.Install(os.path.join(distDir, path), f)
-
+target = "qsEnv.sh"
+env.Command(target, None, runner.makeRunner)
+extraTgts['dist'].append(('bin', env.File(target)))
 
 # Tests
 
@@ -248,3 +225,7 @@ for m in libProducts.keys():
     if tgts: print tgts
     # FIXME: run tests.
 #
+
+installTgts = extraTgts['dist']
+
+Return('installTgts')

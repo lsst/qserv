@@ -1,3 +1,0 @@
-Import( 'env' )
-python_qms = env.InstallPythonModule(target=env['python_path_prefix'], source='python')
-env.Alias("python-qms", python_qms)

@@ -1,6 +1,6 @@
 import io
 import os
-import hashlib 
+import hashlib
 import logging
 import re
 import subprocess
@@ -26,7 +26,7 @@ def read_config(config_file):
         exit(1)
 
     parser = ConfigParser.SafeConfigParser()
-    parser.readfp(io.BytesIO(const.DEFAULT_CONFIG))
+    #parser.readfp(io.BytesIO(const.DEFAULT_CONFIG))
     parser.read(config_file)
 
     logger.debug("Build configuration : ")
@@ -34,142 +34,35 @@ def read_config(config_file):
        logger.debug("===")
        logger.debug("[%s]" % section)
        logger.debug("===")
+       config[section] = dict() 
        for option in parser.options(section):
         logger.debug("'%s' = '%s'" % (option, parser.get(section,option)))
-
-    section='qserv'
-    config[section] = dict()
-    for option in parser.options(section):
-        config[section][option] = parser.get(section,option)
-    # computable configuration parameters
-    for dir in ['base_dir', 'tmp_dir', 'log_dir']:
-        config['qserv'][dir] = os.path.normpath(config['qserv'][dir])
-    config['qserv']['bin_dir'] = os.path.join(config['qserv']['base_dir'], "bin")
-    config['qserv']['scratch_dir'] = os.path.join( "/dev", "shm", "qserv-%s-%s" %
-                                        (os.getlogin(),
-                                        hashlib.sha224(config['qserv']['base_dir']).hexdigest())
-                                    )
-
-    section='qms'
-    config[section] = dict()    
-    for option in parser.options(section):
-        config[section][option] = parser.get(section,option)
-
-    section='mysqld'
-    config[section] = dict()
-    options = [option for option in parser.options(section) if option not in ['pass','port'] ]
-    for option in options:
-        config[section][option] = parser.get(section,option)
-
-    # TODO : manage special characters for pass (see config file comments for additional information)
-    config['mysqld']['pass']    = parser.get("mysqld","pass",raw=True)
-    config['mysqld']['port'] = parser.getint('mysqld','port')
-    # computable configuration parameter
-    config['mysqld']['sock']    = os.path.join(config['qserv']['base_dir'], "var","lib","mysql","mysql.sock")
-
-    section='mysql_proxy'
-    config[section] = dict()
-    options = [option for option in parser.options(section) if option != 'port']
-    for option in parser.options(section):
-        config[section][option] = parser.get(section,option)
-
-    config['mysql_proxy']['port'] = parser.getint('mysql_proxy','port')
-
-    section='lsst'
-    config[section] = dict()
-    for option in parser.options(section):
-        config[section][option] = parser.get(section,option)
-
-    section='xrootd'
-    config[section] = dict()
-    for option in parser.options(section):
-        config[section][option] = parser.get(section,option)
-
-    section='dependencies'
-    config[section] = dict()
-    for option in parser.options(section):
         config[section][option] = parser.get(section,option)
 
     # normalize directories names
-    # TODO duplicate normpath() call
     for section in config.keys():
         for option in config[section].keys():
             if re.match(".*_dir",option):
                 config[section][option] = os.path.normpath(config[section][option])
 
-    config['bin'] = dict()
-    config['bin']['mysql'] = os.path.join(config['qserv']['bin_dir'],'mysql')
-    config['bin']['python'] = os.path.join(config['qserv']['bin_dir'],'python')
+    # computable configuration parameters
+    config['qserv']['scratch_dir'] = os.path.join( "/dev", "shm", "qserv-%s-%s" %
+                                        (os.getlogin(),
+                                        hashlib.sha224(config['qserv']['run_base_dir']).hexdigest())
+                                    )
+
+    # TODO : manage special characters for pass (see config file comments for additional information)
+    config['mysqld']['pass']    = parser.get("mysqld","pass",raw=True)
+    config['mysqld']['port'] = parser.getint('mysqld','port')
+    # computable configuration parameter
+    config['mysqld']['sock']    = os.path.join(config['qserv']['run_base_dir'], "var","lib","mysql","mysql.sock")
+
+    config['mysql_proxy']['port'] = parser.getint('mysql_proxy','port')
 
     return config
 
 def getConfig():
     return config
-
-def is_readable(dir):
-    """
-    Test is a dir is readable.
-    Return a boolean
-    """
-    logger = logging.getLogger('scons-qserv')
-
-    logger.debug("Checking read access for : %s", dir)
-    try:
-        os.listdir(dir)
-        return True
-    except Exception as e:
-        logger.debug("No read access to dir %s : %s" % (dir,e))
-        return False
-
-def is_writable(dir):
-    """
-    Test if a dir is writeable.
-    Return a boolean
-    """
-    logger = logging.getLogger('scons-qserv')
-    try:
-        tmp_prefix = "write_tester";
-        count = 0
-        filename = os.path.join(dir, tmp_prefix)
-        while(os.path.exists(filename)):
-            filename = "{}.{}".format(os.path.join(dir, tmp_prefix),count)
-            count = count + 1
-        f = open(filename,"w")
-        f.close()
-        os.remove(filename)
-        return True
-    except Exception as e:
-        logger.info("No write access to dir %s : %s" % (dir,e))
-        return False
-
-def init_default_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
-    format = '%(asctime)s {%(pathname)s:%(lineno)d} %(levelname)s %(message)s'
-    add_console_logger(level, format)
-    logger = add_file_logger(log_file_prefix, level, log_path, format)
-    return logger
-
-def add_console_logger(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s'):
-    logger = logging.getLogger()
-    formatter = logging.Formatter(format)
-    logger.setLevel(level)
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-
-    return logger
-
-def add_file_logger(log_file_prefix, level=logging.DEBUG, log_path=".", format='%(asctime)s %(levelname)s %(message)s'):
-
-    logger = logging.getLogger()
-    formatter = logging.Formatter(format)
-    # this level can be reduce for each handler
-    logger.setLevel(level)
-    logfile = os.path.join(log_path,log_file_prefix+'.log')
-    file_handler = logging.FileHandler(logfile)
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-
-    return logger
 
 def restart(service_name):
 

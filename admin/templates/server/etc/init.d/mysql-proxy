@@ -1,0 +1,95 @@
+#!/bin/sh
+#
+# mysql-proxy This script starts and stops the mysql-proxy daemon
+#
+# chkconfig: - 78 30
+# processname: mysql-proxy
+# description: mysql-proxy is a proxy daemon for mysql
+
+# Source function library.
+
+. %(QSERV_DIR)s/etc/init.d/qserv-functions
+
+PATH=%(PATH)s
+QSERV_DIR=%(QSERV_DIR)s
+QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
+QSERV_PID_DIR=%(QSERV_PID_DIR)s
+QSERV_LOG_DIR=%(QSERV_LOG_DIR)s
+QSERV_UNIX_USER=%(QSERV_UNIX_USER)s
+QSERV_RPC_PORT=%(QSERV_RPC_PORT)s
+
+prog="mysql-proxy"
+
+# Source networking configuration.
+if [ -f /etc/sysconfig/network ]; then
+    . /etc/sysconfig/network
+fi
+
+# Check that networking is up.
+[ ${NETWORKING} = "no" ] && exit 0
+
+# Set default mysql-proxy configuration.
+PROXY_OPTIONS="--daemon"
+pidfile=${QSERV_PID_DIR}/mysql-proxy.pid
+PROXY_CONFIG=${QSERV_DIR}/etc/my-proxy.cnf
+lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$prog
+stoptimeout=1
+
+LUA_DEBUG_LEVEL=0
+LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
+QSERV_RPC_PORT=${QSERV_RPC_PORT}
+
+BINARY=$prog
+
+# Source mysql-proxy configuration.
+if [ -f ${QSERV_DIR}/etc/sysconfig/mysql-proxy ]; then
+    . ${QSERV_DIR}/etc/sysconfig/mysql-proxy
+fi
+
+# WARNING : can only use the --user switch if running as root
+proxy_user_option=""
+if [ "$USER" = "root" ]; then
+    proxy_user=${QSERV_UNIX_USER}
+    proxy_user_option="--user=$proxy_user"
+fi
+
+cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_RPC_PORT} ${BINARY} $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option --defaults-file=${PROXY_CONFIG} &> ${LUA_LOG_FILE}"
+
+
+start_cmd() {
+    start -p $pidfile -l $lockfile $prog "${cmd}"
+}
+
+stop_cmd() {
+    stop -p $pidfile -l $lockfile -t ${stoptimeout} $prog
+}
+
+# See how we were called.
+case "$1" in
+    start)
+        start_cmd
+        ;;
+    stop)
+        stop_cmd
+        ;;
+    restart)
+        stop_cmd
+        start_cmd
+        ;;
+    condrestart|try-restart)
+        if status -p $pidfile $prog >&/dev/null; then
+            stop_cmd
+            start_cmd
+        fi
+        ;;
+    status)
+        status -p $pidfile $prog
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|reload|status|condrestart|try-restart}"
+        exit 2
+        ;;
+esac
+
+exit $?
+
