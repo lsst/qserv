@@ -5,13 +5,15 @@
 #  Set up some initial environment variables
 #
 # set -x
+
+VERSIONTAG=%VERSIONTAG%
+DISTSERVERNAME=%DISTSERVERNAME%
+
 SHELL=/bin/bash
 INSTALL_DIR=$PWD
-TICKET="master"
-export EUPS_PKGROOT="http://datasky.in2p3.fr/qserv/distserver-${TICKET}"
+export EUPS_PKGROOT="http://datasky.in2p3.fr/qserv/${DISTSERVERNAME}"
 
 QSERV_REPO=git://dev.lsstcorp.org/LSST/DMS/qserv
-QSERV_BRANCH=tickets/${TICKET}
 
 while [ $# -gt 0 ]; do
     case "$1" in 
@@ -25,7 +27,7 @@ done
 cd $INSTALL_DIR
 
 export PREFIX=.qserv_install_scripts
-git archive --remote=${QSERV_REPO} --format=tar --prefix=${PREFIX}/ ${QSERV_BRANCH} eupspkg | tar xf - || {
+git archive --remote=${QSERV_REPO} --format=tar --prefix=${PREFIX}/ ${VERSIONTAG} eupspkg | tar xf - || {
     echo "Failed to download Qserv install scripts"
     exit 2
 }
@@ -35,7 +37,7 @@ INSTALLSCRIPT_DIR=${INSTALL_DIR}/${PREFIX}
 CFG_FILE="${INSTALLSCRIPT_DIR}/eupspkg/env.sh"
 /bin/cat <<EOM >$CFG_FILE
 export INSTALL_DIR=${INSTALL_DIR}
-export TICKET=${TICKET}
+export VERSIONTAG=${VERSIONTAG}
 export EUPS_PKGROOT=${EUPS_PKGROOT}
 export EUPS_PKGROOT_LSST=http://sw.lsstcorp.org/eupspkg
 export EUPS_GIT_CLONE_CMD="git clone https://github.com/RobertLuptonTheGood/eups.git"
