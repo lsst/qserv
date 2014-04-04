@@ -14,15 +14,15 @@ fi
 
 cd ${QSERV_SRC_DIR} &&
 
-git tag -f ${VERSION} &&
-git push origin -f ${VERSION} &&
+git tag -f ${VERSIONTAG} &&
+git push origin -f ${VERSIONTAG} &&
 
 
 echo "INFO : Distributing Qserv" &&
 eups distrib install git --repository="${EUPS_PKGROOT_LSST}" &&
 setup git &&
 export EUPSPKG_REPOSITORY_PATH=${QSERV_REPO} &&
-eups_dist_create qserv ${VERSION} ||
+eups_dist_create qserv ${VERSIONTAG} ||
 {
     echo "ERROR : Unable to distribute Qserv" && 
     exit 1
@@ -32,7 +32,7 @@ cd - &&
 
 # TODO : package in eups ?
 mkdir -p ${LOCAL_PKGROOT}/tarballs &&
-TESTDATA_ARCHIVE=testdata-${VERSION}.tar.gz &&
+TESTDATA_ARCHIVE=testdata-${VERSIONTAG}.tar.gz &&
 if [ ! -f ${LOCAL_PKGROOT}/tarballs/${TESTDATA_ARCHIVE} ]; then
     echo "INFO : Retrieving Qserv tests dataset"
     git archive --remote=${DATA_REPO} --format=tar --prefix=testdata/ ${DATA_BRANCH} | gzip > ${LOCAL_PKGROOT}/tarballs/${TESTDATA_ARCHIVE} || 
@@ -50,8 +50,8 @@ echo "INFO : Downloading scisql"
     wget ${SCISQL_URL} --directory-prefix=${LOCAL_PKGROOT}/tarballs ||
     echo "WARN : unable to download scisql from ${SCISQL_URL}"
 fi
- 
-cp ${QSERV_SRC_DIR}/eupspkg/newinstall-qserv.sh ${LOCAL_PKGROOT}/newinstall-qserv-$VERSION.sh
-#ln -s ${LOCAL_PKGROOT}/newinstall-qserv-$VERSION.sh ${LOCAL_PKGROOT}/newinstall-qserv.sh
+
+sed 's/%VERSIONTAG%/${VERSIONTAG}/g' ${QSERV_SRC_DIR}/eupspkg/newinstall-qserv-template.sh | sed 's/%DISTSERVERNAME%/${DISTSERVERNAME}/g' > ${LOCAL_PKGROOT}/newinstall-qserv-${VERSION}.sh 
+#ln -s ${LOCAL_PKGROOT}/newinstall-qserv-$VERSIONTAG.sh ${LOCAL_PKGROOT}/newinstall-qserv.sh
 
 upload_to_distserver
