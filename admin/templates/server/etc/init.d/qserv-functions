@@ -53,7 +53,11 @@ start() {
 		fi
 		if [ ${retval} -eq 0 ]
 		then
-			echo ${pid} > ${pidfile}
+                        # Create pid file only if service hasn't done it itself
+                        if [ ! -f ${pidfile} ]; then
+                            echo ${pid} > ${pidfile}
+                        fi
+
 	    		touch ${lockfile}
 			action $"Starting $prog: " /bin/true
 		else

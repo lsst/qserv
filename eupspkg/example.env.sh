@@ -1,6 +1,5 @@
 export INSTALL_DIR=/opt/eupspkg-qserv
-export VERSION=6.0.0rc1-master 
-export VERSIONTAG=u/fjammes/${VERSION}
+export VERSIONTAG=6.0.0rc1-master 
 export DISTSERVERNAME=distserver-master 
 export EUPS_PKGROOT="http://datasky.in2p3.fr/qserv/${DISTSERVERNAME}"
 export EUPS_PKGROOT_LSST="http://sw.lsstcorp.org/eupspkg"
