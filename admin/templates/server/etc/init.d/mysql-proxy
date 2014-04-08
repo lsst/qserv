@@ -37,6 +37,7 @@ stoptimeout=1
 
 LUA_DEBUG_LEVEL=0
 LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
+LOGFILE=${QSERV_LOG_DIR}/mysql-proxy.log
 QSERV_RPC_PORT=${QSERV_RPC_PORT}
 
 BINARY=$prog
