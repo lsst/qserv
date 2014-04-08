@@ -68,7 +68,7 @@ wait_for_pid () {
         fi
 
         # there's nothing that will affect the file.
-        log_failure_msg "Manager of pid-file quit without updating file."
+        log_failure_msg " : Manager of pid-file quit without updating file."
         return 1  # not waiting any more.
       fi
     fi
@@ -120,9 +120,9 @@ start() {
 	fi
 
  	# check to see if it's already running
- 	echo -n "Starting $prog : "
+ 	echo -n "Starting $prog"
 	if [ -f ${pidfile} ]; then
-                log_success_msg "(already up)" 
+                log_success_msg " : (already up)" 
 		retval=0
 	else
             if [ ${timeout} == 0 ]; then 
@@ -149,11 +149,9 @@ start() {
                     pid=$!
                     sleep ${timeout}
                     checkpid ${pid} && retval=0
-                    # Create pid file only if service hasn't done it itself
+                    # Create pid file
                     if [ ${retval} -eq 0 ]; then
-                        if [ ! -f ${pidfile} ]; then
                             echo ${pid} > ${pidfile}
-                        fi
                     fi
                     ;;
             esac
@@ -200,10 +198,10 @@ stop() {
 		pidfile=/var/run/${prog}.pid
 	fi
 
-        echo -n "Stopping $prog : "
+        echo -n "Stopping $prog"
         if [ ! -f "$pidfile" ]; then
 	    # not running; per LSB standards this is "ok"
-            log_failure_msg "PID file could not be found"
+            log_failure_msg " : PID file could not be found"
 	    retval=999
         else	
 	    log_success_msg
