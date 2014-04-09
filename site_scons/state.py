@@ -85,7 +85,7 @@ def _initVariables(src_dir):
     opts = SCons.Script.Variables("custom.py")
     opts.AddVariables(
             (PathVariable('build_dir', 'Qserv build dir', os.path.join(src_dir,'build'), PathVariable.PathIsDirCreate)),
-            (EnumVariable('debug', 'debug gcc output and symbols', 'no', allowed_values=('yes', 'no'))),
+            (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
             (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefix("XROOTD", "xrootd"), PathVariable.PathIsDir)),
             (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefix("MYSQL", "mysql"), PathVariable.PathIsDir)),
             (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', _findPrefix("MYSQLPROXY", "mysql-proxy"), PathVariable.PathIsDir)),
