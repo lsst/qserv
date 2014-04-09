@@ -125,7 +125,7 @@ start() {
                 log_success_msg " : (already up)" 
 		retval=0
 	else
-            if [ ${timeout} == 0 ]; then 
+            if [ ${timeout} = 0 ]; then 
                 start_mode='manage-pid'
             else
                 start_mode='timeout'
@@ -161,7 +161,7 @@ start() {
                 log_success_msg
 	    else
                 log_failure_msg
-		echo $"See startup logfile : ${LOGFILE}"
+		echo "See startup logfile : ${LOGFILE}"
 	    fi
 	fi
 	return ${retval}
@@ -173,7 +173,7 @@ stop() {
 
 	# Test syntax.
 	if [ "$#" = 0 ] ; then
-		echo $"Usage: stop [-p pidfile] [-l lockfile] [-t timeout] {program}"
+		echo $"Usage: stop [-p pidfile] [-l lockfile] {program}"
 		return 1
 	fi
 	if [ "$1" = "-p" ]; then
@@ -182,10 +182,6 @@ stop() {
 	fi
 	if [ "$1" = "-l" ]; then
 		lockfile=$2
-		shift 2
-	fi
-	if [ "$1" = "-t" ]; then
-		timeout=$2
 		shift 2
 	fi
 	prog=${1##*/}
@@ -205,7 +201,7 @@ stop() {
 	    retval=999
         else	
 	    log_success_msg
-	    killproc -p ${pidfile} -d ${timeout} $prog
+	    killproc -p ${pidfile} $prog
 	    retval=$?
             [ ${retval} = 0 ] && rm -f ${lockfile} ${pidfile}
         fi
