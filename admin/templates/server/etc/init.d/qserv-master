@@ -68,7 +68,7 @@ case "$1" in
         ;;
     status)
         status_of_proc -p ${pidfile} "$DAEMON" "$NAME" && exit 0 || exit $?
-        ;
+        ;;
     *)
         echo "Usage: $0 {start|stop|restart|reload|status|condrestart|try-restart}"
         exit 2

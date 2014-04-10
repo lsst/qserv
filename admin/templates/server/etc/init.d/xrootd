@@ -40,8 +40,6 @@ start_service() {
 
 	prog=${1##*/}
 
-        mkdir -p ${PID_DIR}
-
 	pidfile=${PID_DIR}/${prog}.pid
 	lockfile=%(QSERV_DIR)s/var/lock/subsys/${prog}
 	BINARY=${XROOTD_DIR}/bin/${prog}
@@ -73,6 +71,15 @@ stop_service() {
 
 start_all() {
         local xrootd_started cmsd_started=0 retval=1
+        mkdir -p ${QSW_RESULTPATH} || {
+           log_failure_msg "Failed to create ${QSW_RESULTPATH}"
+           return 1 
+        }
+         mkdir -p ${PID_DIR} || {
+           log_failure_msg "Failed to create ${PID_DIR}"
+           return 1
+        }
+
         start_service "xrootd"
 	xrootd_started=$?
         %(COMMENT_MONO_NODE)sstart_service "cmsd"
