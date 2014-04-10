@@ -25,25 +25,27 @@ QSERV_PID_DIR=%(QSERV_PID_DIR)s
 QSERV_LOG_DIR=%(QSERV_LOG_DIR)s
 
 SERVICE_NAME="Qserv Metadata Server (QMS)"
-prog="qms"
+
+NAME="qms"
+DAEMON=${NAME}
 
 export PATH
 
 START=${QSERV_DIR}/bin/startQMS.py
 CONFIG=${QSERV_DIR}/etc/qms.cnf
-pidfile=${QSERV_PID_DIR}/${prog}.pid
-lockfile=${QSERV_DIR}/var/lock/subsys/${prog}
-LOGFILE=${QSERV_LOG_DIR}/${prog}-startup.log
+pidfile=${QSERV_PID_DIR}/${NAME}.pid
+lockfile=${QSERV_DIR}/var/lock/subsys/${NAME}
+LOGFILE=${QSERV_LOG_DIR}/${NAME}-startup.log
 starttimeout=1
 
 cmd="${PYTHON} ${START} -c ${CONFIG} > ${LOGFILE} 2>&1 &"
 
 start_cmd() {
-    start -p $pidfile -l $lockfile -t ${starttimeout} $prog "${cmd}"
+    start -p $pidfile -l $lockfile -t ${starttimeout} $NAME "${cmd}"
 }
 
 stop_cmd() {
-    stop -p $pidfile -l $lockfile $prog
+    stop -p $pidfile -l $lockfile $NAME
 }
 
 # See how we were called.
@@ -59,13 +61,13 @@ case "$1" in
         start_cmd
         ;;
     condrestart|try-restart)
-        if status -p $pidfile $prog >&/dev/null; then
+        if status_of_proc -p $pidfile "$DAEMON" "$NAME" >&/dev/null; then
             stop_cmd
             start_cmd
         fi
         ;;
     status)
-        status -p $pidfile $prog
+	status_of_proc -p $pidfile "$DAEMON" "$NAME"	
         ;;
     *)
         echo "Usage: $0 {start|stop|restart|reload|status|condrestart|try-restart}"

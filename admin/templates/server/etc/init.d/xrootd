@@ -92,15 +92,21 @@ stop_all() {
 }
 
 status_all () {
-        local xrootd_status cmsd_status=0 retval=1
-	pidfile=${PID_DIR}/"xrootd".pid
-        status -p $pidfile "xrootd"
-	xrootd_status=$?
-	%(COMMENT_MONO_NODE)spidfile=${PID_DIR}/"cmsd".pid
-	%(COMMENT_MONO_NODE)sstatus -p $pidfile "cmsd"
-	%(COMMENT_MONO_NODE)scmsd_status=$?
-	[ $xrootd_status -a $cmsd_status ] && retval=0
-	return $retval
+        local xrootd_status cmsd_status
+	NAME="xrootd"
+       	DAEMON=$(which ${NAME})
+       	pidfile=${PID_DIR}/${NAME}.pid
+       	status_of_proc -p $pidfile "$DAEMON" "$NAME"
+	[ ! $xrootd_status ] && return 1
+
+ 	#MONO-NODE# NAME="cmsd"
+       	#MONO-NODE# DAEMON=$(which ${NAME})
+       	#MONO-NODE# pidfile=${PID_DIR}/${NAME}.pid
+       	#MONO-NODE# status_of_proc -p $pidfile "$DAEMON" "$NAME"
+       	#MONO-NODE# cmsd_status=$?
+       	#MONO-NODE# [ ! $cmsd_status ] && return 1
+ 
+       	return 0 
 }
 
 

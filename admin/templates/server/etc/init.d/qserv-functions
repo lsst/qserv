@@ -122,10 +122,10 @@ start() {
  	# check to see if it's already running
  	echo -n "Starting $prog"
 	if [ -f ${pidfile} ]; then
-                log_success_msg " : (already up)" 
+                log_success_msg " : (already up)"
 		retval=0
 	else
-            if [ ${timeout} = 0 ]; then 
+            if [ ${timeout} = 0 ]; then
                 start_mode='manage-pid'
             else
                 start_mode='timeout'
@@ -139,7 +139,7 @@ start() {
                     # Default value, in seconds, afterwhich the script should timeout waiting
                     # for server start.
                     service_startup_timeout=900
-                    wait_for_pid created $pid 
+                    wait_for_pid created $pid
                     retval=$?
                     ;;
                 'timeout')
@@ -199,11 +199,44 @@ stop() {
 	    # not running; per LSB standards this is "ok"
             log_failure_msg " : PID file could not be found"
 	    retval=999
-        else	
+        else
 	    log_success_msg
 	    killproc -p ${pidfile} $prog
 	    retval=$?
             [ ${retval} = 0 ] && rm -f ${lockfile} ${pidfile}
         fi
         return ${retval}
+}
+
+# Return LSB status
+status_of_proc () {
+    local pidfile daemon name status OPTIND
+
+    pidfile=
+    OPTIND=1
+    while getopts p: opt ; do
+        case "$opt" in
+            p)  pidfile="$OPTARG";;
+        esac
+    done
+    shift $(($OPTIND - 1))
+
+    if [ -n "$pidfile" ]; then
+        pidfile="-p $pidfile"
+    fi
+    daemon="$1"
+    name="$2"
+
+    status="0"
+    pidofproc $pidfile $daemon >/dev/null || status="$?"
+    if [ "$status" = 0 ]; then
+        log_success_msg "$name is running"
+        return 0
+    elif [ "$status" = 4 ]; then
+        log_failure_msg "could not access PID file for $name"
+        return $status
+    else
+        log_failure_msg "$name is not running"
+        return $status
+    fi
 }

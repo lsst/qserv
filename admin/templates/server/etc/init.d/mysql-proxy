@@ -18,7 +18,7 @@ QSERV_LOG_DIR=%(QSERV_LOG_DIR)s
 QSERV_UNIX_USER=%(QSERV_UNIX_USER)s
 QSERV_RPC_PORT=%(QSERV_RPC_PORT)s
 
-prog="mysql-proxy"
+NAME="mysql-proxy"
 
 # Source networking configuration.
 if [ -f /etc/sysconfig/network ]; then
@@ -34,14 +34,14 @@ fi
 PROXY_OPTIONS="--daemon"
 pidfile=${QSERV_PID_DIR}/mysql-proxy.pid
 PROXY_CONFIG=${QSERV_DIR}/etc/my-proxy.cnf
-lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$prog
+lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$NAME
 
 LUA_DEBUG_LEVEL=0
 LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
 LOGFILE=${QSERV_LOG_DIR}/mysql-proxy.log
 QSERV_RPC_PORT=${QSERV_RPC_PORT}
 
-BINARY=$prog
+DAEMON=$NAME
 
 # Source mysql-proxy configuration.
 if [ -f ${QSERV_DIR}/etc/sysconfig/mysql-proxy ]; then
@@ -55,15 +55,14 @@ if [ "$USER" = "root" ]; then
     proxy_user_option="--user=$proxy_user"
 fi
 
-cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_RPC_PORT} ${BINARY} $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option --defaults-file=${PROXY_CONFIG} &> ${LUA_LOG_FILE}"
-
+cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_RPC_PORT} ${DAEMON} $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option --defaults-file=${PROXY_CONFIG} &> ${LUA_LOG_FILE}"
 
 start_cmd() {
-    start -p $pidfile -l $lockfile $prog "${cmd}"
+    start -p $pidfile -l $lockfile $NAME "${cmd}"
 }
 
 stop_cmd() {
-    stop -p $pidfile -l $lockfile $prog
+    stop -p $pidfile -l $lockfile $NAME
 }
 
 # See how we were called.
@@ -79,13 +78,13 @@ case "$1" in
         start_cmd
         ;;
     condrestart|try-restart)
-        if status -p $pidfile $prog >&/dev/null; then
+        if status_of_proc -p $pidfile "$DAEMON" "$NAME" >&/dev/null; then
             stop_cmd
             start_cmd
         fi
         ;;
     status)
-        status -p $pidfile $prog
+        status_of_proc -p $pidfile "$DAEMON" "$NAME" && exit 0 || exit $?
         ;;
     *)
         echo "Usage: $0 {start|stop|restart|reload|status|condrestart|try-restart}"

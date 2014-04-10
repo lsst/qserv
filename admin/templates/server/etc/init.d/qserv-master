@@ -19,30 +19,33 @@
 
 . %(QSERV_DIR)s/etc/init.d/qserv-functions
 
-prog="qserv-master"
+NAME="qserv-master"
+DAEMON=${NAME}
+
+QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
 
 START=startQserv.py
 CONFIG=%(QSERV_DIR)s/etc/local.qserv.cnf
-pidfile=%(QSERV_PID_DIR)s/${prog}.pid
-lockfile=%(QSERV_RUN_DIR)s/var/lock/subsys/${prog}
-LOGFILE=%(QSERV_LOG_DIR)s/${prog}.log
+pidfile=%(QSERV_PID_DIR)s/${NAME}.pid
+lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${NAME}
+LOGFILE=%(QSERV_LOG_DIR)s/${NAME}.log
 starttimeout=1
 
 export PATH=%(PATH)s
 export PYTHONPATH=%(PYTHONPATH)s
 
-export QSW_RESULTDIR=%(QSERV_RUN_DIR)s/qserv-run/tmp
+export QSW_RESULTDIR=${QSERV_RUN_DIR}/qserv-run/tmp
 # Disabling buffering in python in order to enable "real-time" logging.
 export PYTHONUNBUFFERED=1
 
 cmd="${PYTHON} ${START} -c ${CONFIG} > ${LOGFILE} 2>&1 &"
 
 start_cmd() {
-    start -p $pidfile -l $lockfile -t ${starttimeout} $prog "${cmd}"
+    start -p $pidfile -l $lockfile -t ${starttimeout} $NAME "${cmd}"
 }
 
 stop_cmd() {
-    stop -p $pidfile -l $lockfile $prog
+    stop -p $pidfile -l $lockfile $NAME
 }
 
 # See how we were called.
@@ -58,14 +61,14 @@ case "$1" in
         start_cmd
         ;;
     condrestart|try-restart)
-        if status -p $pidfile $prog >&/dev/null; then
+        if status_of_proc -p ${pidfile} "$DAEMON" "$NAME" >&/dev/null; then
             stop_cmd
             start_cmd
         fi
         ;;
     status)
-        status -p $pidfile $prog
-        ;;
+        status_of_proc -p ${pidfile} "$DAEMON" "$NAME" && exit 0 || exit $?
+        ;
     *)
         echo "Usage: $0 {start|stop|restart|reload|status|condrestart|try-restart}"
         exit 2
