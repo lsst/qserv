@@ -1,7 +1,7 @@
 #!/bin/sh
 
 QSERV_DIR=%(QSERV_DIR)s
-source ${QSERV_DIR}/bin/env.sh
+. ${QSERV_DIR}/bin/env.sh
 
 services_rev=`echo ${SERVICES} | tr ' ' '\n' | tac`
 for service in $services_rev; do

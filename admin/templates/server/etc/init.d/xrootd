@@ -77,7 +77,7 @@ start_all() {
 	xrootd_started=$?
         %(COMMENT_MONO_NODE)sstart_service "cmsd"
 	%(COMMENT_MONO_NODE)scmsd_started=$?
-	[[ $xrootd_started && $cmsd_started ]] && retval=0
+	[ $xrootd_started -a $cmsd_started ] && retval=0
 	return $retval
 }
 
@@ -87,7 +87,7 @@ stop_all() {
 	xrootd_stopped=$?
 	%(COMMENT_MONO_NODE)sstop_service "cmsd"
 	%(COMMENT_MONO_NODE)scmsd_stopped=$?
-	[[ $xrootd_stopped && $cmsd_stopped ]] && retval=0
+	[ $xrootd_stopped -a $cmsd_stopped ] && retval=0
 	return $retval
 }
 
@@ -99,7 +99,7 @@ status_all () {
 	%(COMMENT_MONO_NODE)spidfile=${PID_DIR}/"cmsd".pid
 	%(COMMENT_MONO_NODE)sstatus -p $pidfile "cmsd"
 	%(COMMENT_MONO_NODE)scmsd_status=$?
-	[[ $xrootd_status && $cmsd_status ]] && retval=0
+	[ $xrootd_status -a $cmsd_status ] && retval=0
 	return $retval
 }
 

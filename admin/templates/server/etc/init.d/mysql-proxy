@@ -26,14 +26,15 @@ if [ -f /etc/sysconfig/network ]; then
 fi
 
 # Check that networking is up.
-[ ${NETWORKING} = "no" ] && exit 0
+if [ "${NETWORKING}" = "no" ]; then 
+    exit 0
+fi
 
 # Set default mysql-proxy configuration.
 PROXY_OPTIONS="--daemon"
 pidfile=${QSERV_PID_DIR}/mysql-proxy.pid
 PROXY_CONFIG=${QSERV_DIR}/etc/my-proxy.cnf
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$prog
-stoptimeout=1
 
 LUA_DEBUG_LEVEL=0
 LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
@@ -62,7 +63,7 @@ start_cmd() {
 }
 
 stop_cmd() {
-    stop -p $pidfile -l $lockfile -t ${stoptimeout} $prog
+    stop -p $pidfile -l $lockfile $prog
 }
 
 # See how we were called.

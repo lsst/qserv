@@ -36,7 +36,7 @@ lockfile=${QSERV_DIR}/var/lock/subsys/${prog}
 LOGFILE=${QSERV_LOG_DIR}/${prog}-startup.log
 starttimeout=1
 
-cmd="${PYTHON} ${START} -c ${CONFIG} &> ${LOGFILE} &"
+cmd="${PYTHON} ${START} -c ${CONFIG} > ${LOGFILE} 2>&1 &"
 
 start_cmd() {
     start -p $pidfile -l $lockfile -t ${starttimeout} $prog "${cmd}"
