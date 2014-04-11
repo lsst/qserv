@@ -12,58 +12,68 @@ then
     eups_install
 fi
 
-QSERV_REPO=git://dev.lsstcorp.org/LSST/DMS/qserv
-QSERV_BRANCH=tickets/3100
+echo "INFO : Distributing Qserv" &&
+eups distrib install git --repository="${EUPS_PKGROOT_LSST}" &&
+setup git &&
+cd ${QSERV_SRC_DIR} &&
 
-DATA_REPO=git://dev.lsstcorp.org/LSST/DMS/testdata/qservdata.git
-DATA_BRANCH=master
+echo "INFO : Creating eups TaP with current Qserv commit"
+HASH_COMMIT=$(git rev-parse --verify HEAD)
 
-QSERV_REPO_PATH=${DEPS_DIR}/qserv
-
-rm -f ${LOCAL_PKGROOT}/tables/qserv-${VERSION}.table &&
-
-echo "INFO : Retrieving Qserv archive"
-git archive --remote=${QSERV_REPO} --format=tar --prefix=qserv/ ${QSERV_BRANCH} | gzip > ${QSERV_REPO_PATH}/upstream/qserv-${VERSION}.tar.gz ||
+QSERV_TAP_REPO_PATH=${DEPS_DIR}/qserv
+rm -f ${QSERV_TAP_REPO_PATH}/upstream/*
+git archive --format=tar --prefix=qserv/ HEAD | gzip > ${QSERV_TAP_REPO_PATH}/upstream/qserv-${VERSIONTAG}.tar.gz ||
 {
-    echo "ERROR : Unable to download qserv archive" && 
+    echo "ERROR : Unable to build qserv archive" && 
     exit 1
 }
 
-cd ${QSERV_REPO_PATH} &&
+rm -rf ${QSERV_TAP_REPO_PATH}/ups/*
+git archive --format=tar HEAD ups | tar -x -C ${QSERV_TAP_REPO_PATH} ||
+{
+    echo "ERROR : Unable to build qserv archive" && 
+    exit 1
+}
+
+cd ${QSERV_TAP_REPO_PATH} &&
 
 # update repos
-git add upstream/qserv-${VERSION}.tar.gz &&
-git commit -m "Packaging qserv-${VERSION}" &&
-git tag | head -1 | xargs git tag -f &&
-git push origin master -f --tags &&
+git add upstream/qserv-${VERSIONTAG}.tar.gz &&
+git add ups/* &&
+git commit -m "Packaging qserv-${VERSIONTAG} with ${HASH_COMMIT}" &&
+git tag -f ${VERSIONTAG} &&
+git push origin -f ${VERSIONTAG} &&
 
-echo "INFO : Retrieving Qserv tests dataset"
-mkdir -p ${LOCAL_PKGROOT}/tarballs &&
-git archive --remote=${DATA_REPO} --format=tar --prefix=testdata/ ${DATA_BRANCH} | gzip > ${LOCAL_PKGROOT}/tarballs/testdata-${VERSION}.tar.gz || 
-{
-    echo "ERROR : Unable to download tests dataset" && 
-    exit 1
-}
-
-echo "INFO : Distributing Qserv"
-cd - &&
-eups distrib install git --repository="http://sw.lsstcorp.org/eupspkg" &&
-setup git &&
-eups_dist qserv ${VERSION} ||
+rm -f ${LOCAL_PKGROOT}/tables/qserv-${VERSIONTAG}.table &&
+eups_dist qserv ${VERSIONTAG} ||
 {
     echo "ERROR : Unable to distribute Qserv" && 
     exit 1
 }
+eups distrib declare --server-dir=${LOCAL_PKGROOT} -t current
  
-echo "INFO : Downloading scisql"
+# TODO : package in eups ?
+mkdir -p ${LOCAL_PKGROOT}/tarballs &&
+TESTDATA_ARCHIVE=testdata-${VERSIONTAG}.tar.gz &&
+if [ ! -f ${LOCAL_PKGROOT}/tarballs/${TESTDATA_ARCHIVE} ]; then
+    echo "INFO : Retrieving Qserv tests dataset"
+    git archive --remote=${DATA_REPO} --format=tar --prefix=testdata/ ${DATA_BRANCH} | gzip > ${LOCAL_PKGROOT}/tarballs/${TESTDATA_ARCHIVE} || 
+    {
+        echo "ERROR : Unable to download tests dataset" && 
+        exit 1
+    }
+fi
+
+# TODO : package in eups ?
 SCISQL_ARCHIVE=scisql-0.3.2.tar.bz2
 if [ ! -f ${LOCAL_PKGROOT}/tarballs/${SCISQL_ARCHIVE} ]; then
+echo "INFO : Downloading scisql"
     SCISQL_URL=https://launchpad.net/scisql/trunk/0.3.2/+download/${SCISQL_ARCHIVE}
     wget ${SCISQL_URL} --directory-prefix=${LOCAL_PKGROOT}/tarballs ||
     echo "WARN : unable to download scisql from ${SCISQL_URL}"
 fi
- 
-cp ${QSERV_SRC_DIR}/eupspkg/newinstall-qserv.sh ${LOCAL_PKGROOT}/newinstall-qserv-$VERSION.sh
-ln -s ${LOCAL_PKGROOT}/newinstall-qserv-$VERSION.sh ${LOCAL_PKGROOT}/newinstall-qserv.sh
+
+sed "s/%VERSIONTAG%/${VERSIONTAG}/g" ${QSERV_SRC_DIR}/eupspkg/newinstall-qserv-template.sh | sed "s/%DISTSERVERNAME%/${DISTSERVERNAME}/g" > ${LOCAL_PKGROOT}/newinstall-qserv-${VERSIONTAG}.sh 
+#ln -s ${LOCAL_PKGROOT}/newinstall-qserv-$VERSIONTAG.sh ${LOCAL_PKGROOT}/newinstall-qserv.sh
 
 upload_to_distserver
