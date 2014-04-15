@@ -6,8 +6,19 @@
 # processname: mysql-proxy
 # description: mysql-proxy is a proxy daemon for mysql
 
-# Source function library.
+### BEGIN INIT INFO
+# Provides: mysql-proxy 
+# Short-Description: start and stop mysql proxy
+# Description: mysql-proxy is the user (i.e. mysql-client) frontend for \
+#              Qserv master service. \
+#              It receive SQL queries, process it using lua plugin, \
+#              and send it to Qserv master via xmlrpc. \
+#              Once Qserv master have returned the results, mysql-proxy \
+#              sends it to mysql-client. \
+### END INIT INFO
 
+# Source functions library.
+# WARN : this may clean environment
 . %(QSERV_DIR)s/etc/init.d/qserv-functions
 
 PATH=%(PATH)s

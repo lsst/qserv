@@ -10,9 +10,9 @@
 ### BEGIN INIT INFO
 # Provides: xrootd cmsd
 # Short-Description: start and stop xrootd/cmsd
-# Description: qms is the Qserv Meta Service. It is used by Qserv master
-#              in order to get accurate informations about loaded datasets.
-#              Note that Qserv service won't start if QMS databse is empty.
+# Description: XRootD software framework is a fully generic suite for fast, \
+#              low latency and scalable data access. It's the communication \
+#              middleware used between Qserv master and nodes. \ 
 ### END INIT INFO
 
 . %(QSERV_DIR)s/etc/init.d/qserv-functions

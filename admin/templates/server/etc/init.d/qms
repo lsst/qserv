@@ -16,7 +16,9 @@
 #              Note that Qserv service won't start if QMS databse is empty.
 ### END INIT INFO
 
-. ${QSERV_DIR}/etc/init.d/qserv-functions
+# Source functions library.
+# WARN : this may clean environment
+. %(QSERV_DIR)s/etc/init.d/qserv-functions
 
 PATH=%(PATH)s
 QSERV_DIR=%(QSERV_DIR)s
