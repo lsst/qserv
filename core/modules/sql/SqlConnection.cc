@@ -35,6 +35,19 @@
 
 using namespace lsst::qserv;
 
+namespace { 
+void
+populateErrorObject(MySqlConnection& m, SqlErrorObject& o) {
+    MYSQL* mysql = m.getMySql();
+    if(mysql == NULL) {
+        o.setErrNo(-999);
+    } else {
+        o.setErrNo( mysql_errno(mysql) );
+        o.addErrMsg( mysql_error(mysql) );
+    }
+}
+} // anonymous namespace
+
 ////////////////////////////////////////////////////////////////////////
 // class SqlResultIter
 ////////////////////////////////////////////////////////////////////////
@@ -73,11 +86,11 @@ SqlResultIter::_setup(SqlConfig const& sqlConfig, std::string const& query) {
     _columnCount = 0;
     _connection.reset(new MySqlConnection(sqlConfig, true));
     if(!_connection->connect()) {
-        SqlConnection::populateErrorObject(*_connection, _errObj);
+        populateErrorObject(*_connection, _errObj);
         return false;
     }
     if(!_connection->queryUnbuffered(query)) {
-        SqlConnection::populateErrorObject(*_connection, _errObj);
+        populateErrorObject(*_connection, _errObj);
         return false;
     }
     return true;
@@ -352,17 +365,6 @@ SqlConnection::listTables(std::vector<std::string>& v,
 std::string
 SqlConnection::getActiveDbName() const {
     return _connection->getConfig().dbName;
-}
-
-void
-SqlConnection::populateErrorObject(MySqlConnection& m, SqlErrorObject& o) {
-    MYSQL* mysql = m.getMySql();
-    if(mysql == NULL) {
-        o.setErrNo(-999);
-    } else {
-        o.setErrNo( mysql_errno(mysql) );
-        o.addErrMsg( mysql_error(mysql) );
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////
