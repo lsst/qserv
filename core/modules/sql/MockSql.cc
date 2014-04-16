@@ -19,15 +19,25 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #include "sql/MockSql.h"
-using lsst::qserv::sql::MockSql;
-using lsst::qserv::SqlResultIter;
+
+namespace lsst {
+namespace qserv {
 
 typedef std::vector<SqlResultIter::List> VecList;
-VecList vec;
 
-boost::shared_ptr<SqlResultIter> 
+namespace { // anonymous
+VecList vec;
+}
+
+namespace sql {
+// class MockSql Implementation
+
+boost::shared_ptr<SqlResultIter>
 MockSql::getQueryIter(std::string const& query) {
     typedef VecList::const_iterator SubIter;
     boost::shared_ptr<Iter<SubIter> > iter(new Iter<SubIter>(vec.begin(), vec.end()));
     return iter;
 }
+
+} // namespace sql
+}} // namespace lsst::qserv

@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MOCKSQL_H
-#define LSST_QSERV_MOCKSQL_H
+#ifndef LSST_QSERV_SQL_MOCKSQL_H
+#define LSST_QSERV_SQL_MOCKSQL_H
 #include "sql/SqlConnection.h"
 namespace lsst {
 namespace qserv {
@@ -31,15 +31,15 @@ public:
     ~MockSql() {}
     virtual void reset(SqlConfig const& sc, bool useThreadMgmt=false) {}
     virtual bool connectToDb(SqlErrorObject&) { return false; }
-    virtual bool selectDb(std::string const& dbName, SqlErrorObject&) { 
+    virtual bool selectDb(std::string const& dbName, SqlErrorObject&) {
         return false; }
     virtual bool runQuery(char const* query, int qSize,
-                          SqlResults& results, SqlErrorObject&) { 
+                          SqlResults& results, SqlErrorObject&) {
         return false; }
-    virtual bool runQuery(char const* query, int qSize, SqlErrorObject&) { 
+    virtual bool runQuery(char const* query, int qSize, SqlErrorObject&) {
         return false; }
-    virtual bool runQuery(std::string const query, SqlResults&, 
-                          SqlErrorObject&) { 
+    virtual bool runQuery(std::string const query, SqlResults&,
+                          SqlErrorObject&) {
         return false; }
     virtual boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);
     virtual bool runQuery(std::string const query, SqlErrorObject&) {
@@ -85,10 +85,10 @@ public:
         virtual List const& operator*() const { return *_cursor; }
         virtual SqlResultIter& operator++() { ++_cursor; }
         virtual bool done() const { return _cursor == _end; }
-        
+
         SqlErrorObject _errObj;
         TupleListIter _cursor;
-        TupleListIter _end;    
+        TupleListIter _end;
     };
 
 private:
@@ -99,4 +99,4 @@ private:
 // mode:c++
 // comment-column:0
 // End:
-#endif // LSST_QSERV_MOCKSQL_H
+#endif // LSST_QSERV_SQL_MOCKSQL_H

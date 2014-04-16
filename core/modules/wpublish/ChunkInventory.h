@@ -25,8 +25,8 @@
 // It includes helper functions for checking the resulting data structure for
 // the existence of certain xrootd paths.
 
-#ifndef LSST_QSERV_WORKER_CHUNKINVENTORY_H
-#define LSST_QSERV_WORKER_CHUNKINVENTORY_H
+#ifndef LSST_QSERV_WPUBLISH_CHUNKINVENTORY_H
+#define LSST_QSERV_WPUBLISH_CHUNKINVENTORY_H
 #include <deque>
 #include <map>
 #include <set>
@@ -34,9 +34,11 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
-namespace lsst { 
-namespace qserv { 
+namespace lsst {
+namespace qserv {
+
 class SqlConnection;
+
 namespace worker {
 class WLogger; // Forward
 } // namespace worker
@@ -52,9 +54,9 @@ public:
     typedef std::map<std::string, ChunkMap> ExistMap;
 
     ChunkInventory(std::string const& name, worker::WLogger& log);
-    ChunkInventory(std::string const& name, worker::WLogger& log, 
+    ChunkInventory(std::string const& name, worker::WLogger& log,
                    boost::shared_ptr<SqlConnection> sc);
-    
+
     static inline std::string makeKey(std::string const& db, int chunk) {
         std::stringstream ss;
         ss << db << chunk << "**key";
@@ -72,4 +74,4 @@ private:
 };
 }}} // namespace lsst::qserv::wpublish
 
-#endif // LSST_QSERV_WORKER_CHUNKINVENTORY_H
+#endif // LSST_QSERV_WPUBLISH_CHUNKINVENTORY_H
