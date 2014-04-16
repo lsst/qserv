@@ -162,7 +162,7 @@ def getTests(env, mName):
                                                 'defaultTgts' : defaultTgts,
                                                 'findLibs' : findLibs,
                                                 'cacheObjs' : cacheObjs})
-        return tgts
+        return tests
     else:
         return None
 
@@ -220,10 +220,13 @@ extraTgts['dist'].append(('bin', env.File(target)))
 # Tests
 
 # module tests
+testTgts = []
 for m in libProducts.keys():
     tgts = getTests(env, m)
-    if tgts: print tgts
+    if tgts: testTgts.append(tgts)
     # FIXME: run tests.
+
+env.Alias("build", testTgts)
 #
 
 installTgts = extraTgts['dist']

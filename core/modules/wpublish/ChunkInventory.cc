@@ -51,7 +51,7 @@ void fetchDbs(WLogger& log,
     std::string tableNameDbListing = getTableNameDbListing(instanceName);
 
     std::string listq = "SELECT db FROM " + tableNameDbListing;
-    log.warn("Launching query : " + listq);
+    log.debug("Launching query : " + listq);
     boost::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(listq);
     assert(resultP.get());
     bool nothing = true;
