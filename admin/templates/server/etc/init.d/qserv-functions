@@ -121,9 +121,26 @@ start() {
 
  	# check to see if it's already running
  	echo -n "Starting $prog"
-	if [ -f ${pidfile} ]; then
-                log_success_msg " : (already up)"
+    	if [ -n "$pidfile" ]; then
+        	pidfileopt="-p $pidfile"
+    	fi
+	pidofproc $pidfileopt $prog >/dev/null 
+	status="$?"
+	if [ "$status" = 0 ]; then
+		read pid < $pidfile	
+                log_success_msg " : (already up : pid=${pid})"
 		retval=0
+	elif [ "$status" = 1 ]; then
+		log_failure_msg " : service is dead but PID file exists"
+		echo "  see $pidfile"
+		retval=$status
+	elif [ "$status" = 2 ]; then
+		log_failure_msg " : service is dead but lockfile exists"
+		retval=$status
+	# TODO : use fgrep
+	elif [ "$status" = 4 ]; then
+		log_failure_msg " : could not access PID file"
+		retval=$status
 	else
             if [ ${timeout} = 0 ]; then
                 start_mode='manage-pid'
@@ -209,6 +226,13 @@ stop() {
 }
 
 # Return LSB status
+# If the status action is requested, the init script will return the following exit status codes.
+#
+# 0	program is running or service is OK
+# 1	program is dead and /var/run pid file exists
+# 2	program is dead and /var/lock lock file exists
+# 3	program is not running
+# 4	program or service status is unknown
 status_of_proc () {
     local pidfile daemon name status OPTIND
 
@@ -222,16 +246,24 @@ status_of_proc () {
     shift $(($OPTIND - 1))
 
     if [ -n "$pidfile" ]; then
-        pidfile="-p $pidfile"
+        pidfileopt="-p $pidfile"
     fi
     daemon="$1"
     name="$2"
 
-    status="0"
-    pidofproc $pidfile $daemon >/dev/null || status="$?"
+    pidofproc $pidfileopt $daemon >/dev/null 
+    status="$?"
     if [ "$status" = 0 ]; then
-        log_success_msg "$name is running"
+	read pid < $pidfile	
+        log_success_msg "$name is running (${pid})"
         return 0
+    elif [ "$status" = 1 ]; then
+        log_failure_msg "$name is dead but PID file exists"
+        echo "  see $pidfile"
+        return $status
+    elif [ "$status" = 2 ]; then
+        log_failure_msg "$name is dead but lockfile exists"
+        return $status
     elif [ "$status" = 4 ]; then
         log_failure_msg "could not access PID file for $name"
         return $status

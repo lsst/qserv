@@ -27,15 +27,15 @@ QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
 export PATH=%(PATH)s
 export PYTHONPATH=%(PYTHONPATH)s
 
+NAME="qserv-master"
+DAEMON=${NAME}
+
 START=startQserv.py
 CONFIG=${QSERV_DIR}/etc/local.qserv.cnf
 pidfile=%(QSERV_PID_DIR)s/${NAME}.pid
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${NAME}
 LOGFILE=%(QSERV_LOG_DIR)s/${NAME}.log
 starttimeout=1
-
-NAME="qserv-master"
-DAEMON=${NAME}
 
 export QSW_RESULTDIR=${QSERV_RUN_DIR}/qserv-run/tmp
 # Disabling buffering in python in order to enable "real-time" logging.
