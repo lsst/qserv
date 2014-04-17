@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -83,7 +83,7 @@ ValueExprPtr ValueExpr::newSimple(boost::shared_ptr<ValueFactor> vt)  {
         throw std::invalid_argument("Unexpected NULL ValueFactor");
     }
     boost::shared_ptr<ValueExpr> ve(new ValueExpr);
-    FactorOp t = {vt, NONE};
+    FactorOp t(vt, NONE);
     ve->_factorOps.push_back(t);
     return ve;
 }

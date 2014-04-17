@@ -20,9 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-#ifndef LSST_QSERV_MASTER_SQLTOKEN_H
-#define LSST_QSERV_MASTER_SQLTOKEN_H
+#ifndef LSST_QSERV_GLOBAL_SQLTOKEN_H
+#define LSST_QSERV_GLOBAL_SQLTOKEN_H
 /**
   * @file
   *
@@ -30,7 +29,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <boost/algorithm/string/predicate.hpp>
+#include <string>
 
 namespace lsst {
 namespace qserv {
@@ -40,5 +39,5 @@ namespace master {
 bool sqlShouldSeparate(std::string const& s, int last, int next);
 
 }}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_XXXX_H
+#endif // LSST_QSERV_GLOBAL_SQLTOKEN_H
 

@@ -110,7 +110,7 @@ from lsst.qserv.master import addDbInfoPartitionedSphBox
 from lsst.qserv.master import addTbInfoNonPartitioned
 from lsst.qserv.master import addTbInfoPartitionedSphBox
 from lsst.qserv.master import printMetadataCache
-
+from lsst.qserv.master import checkIfContainsDb
 # queryMsg
 from lsst.qserv.master import msgCode
 from lsst.qserv.master import queryMsgAddMsg
@@ -483,7 +483,9 @@ class InbandQueryAction:
         setupQuery(self.sessionId, self.queryStr, self._resultName)
         errorMsg = getSessionError(self.sessionId)
         if errorMsg: raise ParseError(errorMsg)
-
+        self.dominantDb = getDominantDb(self.sessionId)
+        if not checkIfContainsDb(self.metaCacheSession, self.dominantDb):
+            raise ParseError("Illegal db")
         self._applyConstraints()
         self._prepareMerger()
         pass

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,11 +22,6 @@
  */
 #ifndef LSST_QSERV_MASTER_FROMLIST_H
 #define LSST_QSERV_MASTER_FROMLIST_H
-/**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
 #include <boost/shared_ptr.hpp>
 #include "query/TableRefN.h"
 
@@ -37,6 +32,7 @@ namespace master {
 // FromList is a representation of SQL FROM.
 class FromList {
 public:
+    typedef boost::shared_ptr<FromList> Ptr;
     FromList() {}
     explicit FromList(TableRefnListPtr p) : _tableRefns(p) {}
     ~FromList() {}
@@ -45,6 +41,7 @@ public:
     TableRefnList& getTableRefnList() { return *_tableRefns; }
     /// @return a list of TableRefN that occur
     TableRefnList const& getTableRefnList() const { return *_tableRefns; }
+
     /// @return a flattened string representation.
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;

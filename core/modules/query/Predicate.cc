@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -163,6 +163,42 @@ int CompPredicate::reverseOp(int op) {
         return SqlSQL2TokenTypes::EQUALS_OP;
     default:
         throw std::logic_error("Invalid op type for reversing");
+    }
+}
+char const* CompPredicate::lookupOp(int op) {
+    switch(op) {
+    case SqlSQL2TokenTypes::NOT_EQUALS_OP:
+        return "<>";
+    case SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP:
+        return "<=";
+    case  SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP:
+        return ">=";
+    case SqlSQL2TokenTypes::LESS_THAN_OP:
+        return "<";
+    case  SqlSQL2TokenTypes::GREATER_THAN_OP:
+        return ">";
+    case SqlSQL2TokenTypes::EQUALS_OP:
+        return "==";
+    default:
+        throw std::invalid_argument("Invalid op type");
+    }
+}
+
+int CompPredicate::lookupOp(char const* op) {
+    switch(op[0]) {
+    case '<':
+        if(op[1] == '\0') { return SqlSQL2TokenTypes::LESS_THAN_OP; }
+        else if(op[1] == '>') { return SqlSQL2TokenTypes::NOT_EQUALS_OP; }
+        else if(op[1] == '=') { return SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP; }
+        else { throw std::invalid_argument("Invalid op string <?"); }
+    case '>':
+        if(op[1] == '\0') { return SqlSQL2TokenTypes::GREATER_THAN_OP; }
+        else if(op[1] == '=') { return SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP; }
+        else { throw std::invalid_argument("Invalid op string >?"); }
+    case '=':
+        return SqlSQL2TokenTypes::EQUALS_OP;
+    default:
+        throw std::invalid_argument("Invalid op string ?");
     }
 }
 

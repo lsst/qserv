@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -53,6 +53,7 @@ int addTbInfoPartitionedSphBox(int, const char*, const char*, float,
 void printMetadataCache(int);
 
 boost::shared_ptr<MetadataCache> getMetadataCache(int);
+bool checkIfContainsDb(int metaSessionId, char const* dbName);
 DbStriping getDbStriping(int metaSessionId, char const* dbName);
 }}}
 

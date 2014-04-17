@@ -73,24 +73,29 @@ public:
 
     SelectList const& getSelectList() const { return *_selectList; }
     SelectList& getSelectList() { return *_selectList; }
+    void setSelectList(boost::shared_ptr<SelectList> s) { _selectList = s; }
 
     FromList const& getFromList() const { return *_fromList; }
     FromList& getFromList() { return *_fromList; }
-    void replaceFromList(boost::shared_ptr<FromList> f) { _fromList = f; }
+    void setFromList(boost::shared_ptr<FromList> f) { _fromList = f; }
 
-    bool hasWhereClause() { return _whereClause.get(); }
+    bool hasWhereClause() const { return _whereClause; }
     WhereClause const& getWhereClause() const { return *_whereClause; }
     WhereClause& getWhereClause() { return *_whereClause; }
+    void setWhereClause(boost::shared_ptr<WhereClause> w) { _whereClause = w; }
 
     int getLimit() const { return _limit; }
+    void setLimit(int limit) { _limit = limit; }
+
     bool hasOrderBy() const { return _orderBy; }
-    void hasOrderBy(bool shouldHave);
     OrderByClause const& getOrderBy() const { return *_orderBy; }
     OrderByClause& getOrderBy() { return *_orderBy; }
+    void setOrderBy(boost::shared_ptr<OrderByClause> o) { _orderBy = o; }
 
     bool hasGroupBy() const { return _groupBy; }
     GroupByClause const& getGroupBy() const { return *_groupBy; }
     GroupByClause& getGroupBy() { return *_groupBy; }
+    void setGroupBy(boost::shared_ptr<GroupByClause> g) { _groupBy = g; }
 
  private:
     // Declarations

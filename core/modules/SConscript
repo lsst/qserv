@@ -77,8 +77,9 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                        mysqlclient_r ssl crypto""".split(),
                            'distDir' : 'lib'
                            },
-               "_masterLib" : {'mods' : """czar control parser query
+               "_masterLib" : {'mods' : """czar control global
                                            log merger meta mysql
+                                           parser query
                                            sql util xrdc
                                            obsolete proto
                                            qana qdisp qproc""".split(),
@@ -90,6 +91,7 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                'SHLIBPREFIX' : '',
                                'distDir' : os.path.join(env['python_prefix'],"lsst","qserv","master")}
                }
+
 # modules used in shProducts
 modList = [m for m in chain(*map(lambda d: d['mods'],
                                 shProducts.values()))]
