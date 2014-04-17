@@ -108,11 +108,11 @@ def _initVariables(src_dir):
             )
     opts.Update(env)
 
-    print "DEBUG " + str(opts)
-    print "DEBUG " + env.Dump()
+    # print "DEBUG " + str(opts)
+    # print "DEBUG " + env.Dump() 
 
     opts.AddVariables(
-            (PathVariable('python_prefix', 'qserv install directory for python modules', os.path.join("lib", "python"), PathVariable.PathIsDirCreate))
+            (PathVariable('python_prefix', 'qserv install directory for python modules', os.path.join(env['prefix'], "lib", "python"), PathVariable.PathIsDirCreate))
             )
     opts.Update(env)
 
