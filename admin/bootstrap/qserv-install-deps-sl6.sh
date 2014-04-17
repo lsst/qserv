@@ -6,7 +6,10 @@ alias yum="yum -y"
 #
 # Scientific Linux 6 dependencies
 #
-yum install scons gettext
+
+# sconsUtils
+yum install scons gettext flex bison
+
 
 # data partitioning dependency
 yum install numpy
@@ -34,4 +37,3 @@ yum install readline-devel
 
 # mysql-proxy
 yum install glib2-devel
-
