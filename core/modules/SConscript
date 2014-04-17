@@ -86,7 +86,7 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                'libs' : """ssl crypto antlr
                                       mysqlclient_r protobuf
                                       XrdPosix XrdPosixPreload XrdUtils
-                                      boost_regex boost_thread
+                                      boost_regex boost_thread boost_system
                                       boost_signals""".split(),
                                'SHLIBPREFIX' : '',
                                'distDir' : os.path.join(env['python_prefix'],"lsst","qserv","master")}

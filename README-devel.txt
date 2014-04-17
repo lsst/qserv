@@ -9,7 +9,7 @@ QSERV_SRC_DIR=${HOME}/src/qserv/
 
 # declare your Qserv dev version in eups
 # Copy and modify table file if you want to modify Qserv dependencies
-eups declare qserv $VERSION -r $PREFIX -m $QSERV_DIR/ups/qserv.table 
+eups declare qserv $VERSION -r $PREFIX -m $QSERV_SRC_DIR/ups/qserv.table 
 
 # unsetup Qserv version issued from distribution server
 unsetup qserv
