@@ -128,7 +128,7 @@ start() {
 	status="$?"
 	if [ "$status" = 0 ]; then
 		read pid < $pidfile	
-                log_success_msg " : (already up : pid=${pid})"
+                log_success_msg " : already up : pid=${pid}"
 		retval=0
 	elif [ "$status" = 1 ]; then
 		log_failure_msg " : service is dead but PID file exists"
@@ -212,16 +212,28 @@ stop() {
 	fi
 
         echo -n "Stopping $prog"
-        if [ ! -f "$pidfile" ]; then
-	    # not running; per LSB standards this is "ok"
-            log_failure_msg " : PID file could not be found"
-	    retval=999
-        else
-	    log_success_msg
-	    killproc -p ${pidfile} $prog
-	    retval=$?
-            [ ${retval} = 0 ] && rm -f ${lockfile} ${pidfile}
-        fi
+    	if [ -n "$pidfile" ]; then
+        	pidfileopt="-p $pidfile"
+    	fi
+	pidofproc $pidfileopt $prog >/dev/null 
+	status="$?"
+	if [ "$status" = 1 ]; then
+	    echo -n " : service is down (removing PID file)"
+	elif [ "$status" = 2 ]; then
+            echo -n " : service is down (removing lockfile)"
+	elif [ "$status" = 3 ]; then
+            echo -n " : already down"
+	# TODO : use fgrep
+	elif [ "$status" = 4 ]; then
+            echo -n " : could not access PID file"
+	    return $status
+	fi
+
+        log_success_msg
+	killproc -p ${pidfile} $prog
+	retval=$?
+        [ ${retval} = 0 ] && rm -f ${lockfile} ${pidfile}
+
         return ${retval}
 }
 
