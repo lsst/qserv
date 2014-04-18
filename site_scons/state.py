@@ -92,6 +92,7 @@ def _initVariables(src_dir):
             (PathVariable('PROTOBUF_DIR', 'protobuf install dir', _findPrefix("PROTOBUF", "protoc"), PathVariable.PathIsDir)),
             (PathVariable('LUA_DIR', 'lua install dir', _findPrefix("LUA", "lua"), PathVariable.PathIsDir)),
             (PathVariable('GEOMETRY', 'path to geometry.py', os.getenv("GEOMETRY_LIB"), PathVariable.PathAccept)),
+            (PathVariable('python_relative_prefix', 'qserv install directory for python modules, relative to prefix', os.path.join("lib", "python"), PathVariable.PathIsDirCreate)),
             ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH"))
             )
     opts.Update(env)
@@ -112,8 +113,8 @@ def _initVariables(src_dir):
     # print "DEBUG " + env.Dump() 
 
     opts.AddVariables(
-            (PathVariable('python_prefix', 'qserv install directory for python modules', os.path.join(env['prefix'], "lib", "python"), PathVariable.PathIsDirCreate))
-            )
+            (PathVariable('python_prefix', 'qserv install directory for python modules', os.path.join(env['prefix'], env['python_relative_prefix']), PathVariable.PathIsDirCreate))
+	    )
     opts.Update(env)
 
     SCons.Script.Help(opts.GenerateHelpText(env))
