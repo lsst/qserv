@@ -125,23 +125,22 @@ start() {
         	pidfileopt="-p $pidfile"
     	fi
 	pidofproc $pidfileopt $prog >/dev/null 
-	status="$?"
+	status=$?
 	if [ "$status" = 0 ]; then
 		read pid < $pidfile	
                 log_success_msg " : already up : pid=${pid}"
 		retval=0
-	elif [ "$status" = 1 ]; then
-		log_failure_msg " : service is dead but PID file exists"
-		echo "  see $pidfile"
-		retval=$status
 	elif [ "$status" = 2 ]; then
-		log_failure_msg " : service is dead but lockfile exists"
+		log_failure_msg " : was dead but lockfile existed"
 		retval=$status
 	# TODO : use fgrep
 	elif [ "$status" = 4 ]; then
 		log_failure_msg " : could not access PID file"
 		retval=$status
 	else
+	    if [ "$status" = 1 ]; then
+		echo -n " : was dead but PID file existed"
+            fi
             if [ ${timeout} = 0 ]; then
                 start_mode='manage-pid'
             else
@@ -165,7 +164,8 @@ start() {
                     eval ${cmd}
                     pid=$!
                     sleep ${timeout}
-                    checkpid ${pid} && retval=0
+                    checkpid ${pid}
+                    retval=$?
                     # Create pid file
                     if [ ${retval} -eq 0 ]; then
                             echo ${pid} > ${pidfile}
@@ -267,7 +267,7 @@ status_of_proc () {
     status="$?"
     if [ "$status" = 0 ]; then
 	read pid < $pidfile	
-        log_success_msg "$name is running (${pid})"
+        log_success_msg "$name is running (pid=${pid})"
         return 0
     elif [ "$status" = 1 ]; then
         log_failure_msg "$name is dead but PID file exists"
