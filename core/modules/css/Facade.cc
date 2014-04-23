@@ -280,11 +280,8 @@ Facade::getKeyColumn(string const& dbName, string const& tableName) const {
                     "/partitioning/secIndexColName";
     try {
         ret = _kvI->get(p);
-    } catch (CssException& e) {
-        if (e.errCode()==CssException::KEY_DOES_NOT_EXIST) {
-            ret = "";
-        }
-        throw;
+    } catch (CssException_KeyDoesNotExist& e) {
+        ret = "";
     }
     LOGGER_INF << "Facade::getKeyColumn, returning: " << ret << endl;
     return ret;
@@ -318,7 +315,7 @@ void
 Facade::_throwIfNotDbExists(string const& dbName) const {
     if (!containsDb(dbName)) {
         LOGGER_INF << "db " << dbName << " not found" << endl;
-        throw CssException(CssException::DB_DOES_NOT_EXIST, dbName);
+        throw CssException_DbDoesNotExist(dbName);
     }
 }
 
@@ -330,7 +327,7 @@ Facade::_throwIfNotTbExists(string const& dbName, string const& tableName) const
     if (!containsTable(dbName, tableName)) {
         LOGGER_INF << "table " << dbName << "." << tableName << " not found" 
                    << endl;
-        throw CssException(CssException::TB_DOES_NOT_EXIST, dbName+"."+tableName);
+        throw CssException_TableDoesNotExist(dbName+"."+tableName);
     }
 }
 

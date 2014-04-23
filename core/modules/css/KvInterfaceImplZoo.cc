@@ -175,15 +175,15 @@ KvInterfaceImplZoo::_throwZooFailure(int rc, string const& fName,
     string ffName = "*** css::KvInterfaceImplZoo::" + fName + "(). ";
     if (rc==ZNONODE) {
         LOGGER_INF << ffName << "Key '" << extraMsg << "' does not exist." << endl;
-        throw CssException(CssException::KEY_DOES_NOT_EXIST, extraMsg);
+        throw CssException_KeyDoesNotExist(extraMsg);
     }
     if (rc==ZCONNECTIONLOSS) {
         LOGGER_INF << ffName << "Can't connect to zookeeper." << endl;
-        throw CssException(CssException::CONN_FAILURE, extraMsg);
+        throw CssException_ConnFailure();
     }
     if (rc==ZNOAUTH) {
         LOGGER_INF << ffName << "Zookeeper authorization failure." << endl;
-        throw CssException(CssException::AUTH_FAILURE, extraMsg);
+        throw CssException_AuthFailure();
     }
     ostringstream s;
     s << ffName << "Zookeeper error #" << rc << ".";
@@ -191,7 +191,7 @@ KvInterfaceImplZoo::_throwZooFailure(int rc, string const& fName,
         s << " (" << extraMsg << ")";
     }
     LOGGER_INF << s.str() << endl;
-    throw CssException(CssException::INTERNAL_ERROR, s.str());
+    throw CssException_InternalRunTimeError(s.str());
 }
 
 }}} // namespace lsst::qserv::css

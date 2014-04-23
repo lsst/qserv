@@ -62,7 +62,7 @@ BOOST_FIXTURE_TEST_SUITE(CssExTest, CssExFixture)
 
 BOOST_AUTO_TEST_CASE(testAll) {
     try {    
-        throw CssException(CssException::KEY_DOES_NOT_EXIST);
+        throw CssException_KeyDoesNotExist();
     } catch (CssException& e) {
         BOOST_CHECK_EQUAL(e.errCode(), CssException::KEY_DOES_NOT_EXIST);
     }

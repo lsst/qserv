@@ -111,7 +111,7 @@ KvInterfaceImplMem::create(string const& key, string const& value) {
     LOGGER_INF << "*** KvInterfaceImplMem::create(), " << key << " --> " 
                << value << endl;
     if (exists(key)) {
-        throw CssException(CssException::KEY_EXISTS, key);
+        throw CssException_KeyDoesNotExist(key);
     }
     _kvMap[key] = value;
 }
@@ -128,7 +128,7 @@ string
 KvInterfaceImplMem::get(string const& key) {
     LOGGER_INF << "*** KvInterfaceImplMem::get(), key: " << key << endl;
     if ( ! exists(key) ) {
-        throw CssException(CssException::KEY_DOES_NOT_EXIST, key);
+        throw CssException_KeyDoesNotExist(key);
     }
     string s = _kvMap[key];
     LOGGER_INF << "*** got: '" << s << "'" << endl;
@@ -139,7 +139,7 @@ vector<string>
 KvInterfaceImplMem::getChildren(string const& key) {
     LOGGER_INF << "*** KvInterfaceImplMem::getChildren(), key: " << key << endl;
     if ( ! exists(key) ) {
-        throw CssException(CssException::KEY_DOES_NOT_EXIST, key);
+        throw CssException_KeyDoesNotExist(key);
     }
     vector<string> retV;
     map<string, string>::const_iterator itrM;
@@ -167,7 +167,7 @@ void
 KvInterfaceImplMem::deleteKey(string const& key) {
     LOGGER_INF << "*** KvInterfaceImplMem::deleteKey, key: " << key << endl;
     if ( ! exists(key) ) {
-        throw CssException(CssException::KEY_DOES_NOT_EXIST, key);
+        throw CssException_KeyDoesNotExist(key);
     }
     _kvMap.erase(key);
 }

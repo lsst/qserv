@@ -23,7 +23,7 @@
 /**
   * @file CssException.h
   *
-  * @brief Exception class for KvInterface.
+  * @brief Exception class for CssInterface.
   *
   * @Author Jacek Becla, SLAC
   */

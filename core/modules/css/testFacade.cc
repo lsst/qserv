@@ -143,11 +143,8 @@ BOOST_AUTO_TEST_CASE(containsTable) {
     BOOST_CHECK_EQUAL(facade->containsTable("dbA", "NotHere"), false);
 
     // for non-existing db
-    try {
-        facade->containsTable("Dummy", "NotHere");
-    } catch (CssException& e) {
-        BOOST_CHECK_EQUAL(e.errCode(), CssException::DB_DOES_NOT_EXIST);
-    }
+    BOOST_CHECK_THROW(facade->containsTable("Dummy", "NotHere"),
+                      CssException_DbDoesNotExist);
 }
 
 BOOST_AUTO_TEST_CASE(tableIsChunked) {
@@ -157,18 +154,12 @@ BOOST_AUTO_TEST_CASE(tableIsChunked) {
     BOOST_CHECK_EQUAL(facade->tableIsChunked("dbA", "Exposure"), false);
 
     // normal, table does not exist
-    try {
-        facade->tableIsChunked("dbA", "NotHere");
-    } catch (CssException& e) {
-        BOOST_CHECK_EQUAL(e.errCode(), CssException::TB_DOES_NOT_EXIST);
-    }
+    BOOST_CHECK_THROW(facade->tableIsChunked("dbA", "NotHere"),
+                      CssException_TableDoesNotExist);
 
     // for non-existing db
-    try {
-        facade->tableIsChunked("Dummy", "NotHere");
-    } catch (CssException& e) {
-        BOOST_CHECK_EQUAL(e.errCode(), CssException::DB_DOES_NOT_EXIST);
-    }
+    BOOST_CHECK_THROW(facade->tableIsChunked("Dummy", "NotHere"),
+                      CssException_DbDoesNotExist);
 }
 
 BOOST_AUTO_TEST_CASE(tableIsSubChunked) {
@@ -178,18 +169,12 @@ BOOST_AUTO_TEST_CASE(tableIsSubChunked) {
     BOOST_CHECK_EQUAL(facade->tableIsSubChunked("dbA", "Exposure"), false);
 
     // normal, table does not exist
-    try {
-        facade->tableIsSubChunked("dbA", "NotHere");
-    } catch (CssException& e) {
-        BOOST_CHECK_EQUAL(e.errCode(), CssException::TB_DOES_NOT_EXIST);
-    }
+    BOOST_CHECK_THROW(facade->tableIsSubChunked("dbA", "NotHere"),
+                      CssException_TableDoesNotExist);
 
     // for non-existing db
-    try {
-        facade->tableIsSubChunked("Dummy", "NotHere");
-    } catch (CssException& e) {
-        BOOST_CHECK_EQUAL(e.errCode(), CssException::DB_DOES_NOT_EXIST);
-    }
+    BOOST_CHECK_THROW(facade->tableIsSubChunked("Dummy", "NotHere"),
+                      CssException_DbDoesNotExist);
 }
 
 BOOST_AUTO_TEST_CASE(getAllowedDbs) {
@@ -215,11 +200,8 @@ BOOST_AUTO_TEST_CASE(getChunkedTables) {
     BOOST_CHECK_EQUAL(0, v.size());
 
     // for non-existing db
-    try {
-        facade->getChunkedTables("Dummy");
-    } catch (CssException& e) {
-        BOOST_CHECK_EQUAL(e.errCode(), CssException::DB_DOES_NOT_EXIST);
-    }
+    BOOST_CHECK_THROW(facade->getChunkedTables("Dummy"),
+                      CssException_DbDoesNotExist);
 }
 
 BOOST_AUTO_TEST_CASE(getSubChunkedTables) {
@@ -234,11 +216,8 @@ BOOST_AUTO_TEST_CASE(getSubChunkedTables) {
     BOOST_CHECK_EQUAL(0, v.size());
 
     // for non-existing db
-    try {
-        facade->getSubChunkedTables("Dummy");
-    } catch (CssException& e) {
-        BOOST_CHECK_EQUAL(e.errCode(), CssException::DB_DOES_NOT_EXIST);
-    }
+    BOOST_CHECK_THROW(facade->getSubChunkedTables("Dummy"),
+                      CssException_DbDoesNotExist);
 }
 
 BOOST_AUTO_TEST_CASE(getPartitionCols) {
@@ -256,11 +235,8 @@ BOOST_AUTO_TEST_CASE(getPartitionCols) {
     BOOST_CHECK_EQUAL(v[2], "");
 
     // for non-existing db
-    try {
-        facade->getPartitionCols("Dummy", "x");
-    } catch (CssException& e) {
-        BOOST_CHECK_EQUAL(e.errCode(), CssException::DB_DOES_NOT_EXIST);
-    }
+    BOOST_CHECK_THROW(facade->getPartitionCols("Dummy", "x"),
+                      CssException_DbDoesNotExist);
 }
 
 BOOST_AUTO_TEST_CASE(getChunkLevel) {
@@ -277,11 +253,8 @@ BOOST_AUTO_TEST_CASE(getKeyColumn) {
     BOOST_CHECK_EQUAL(facade->getKeyColumn("dbA", "Source"), "");
 
     // for non-existing db
-    try {
-        facade->getKeyColumn("Dummy", "x");
-    } catch (CssException& e) {
-        BOOST_CHECK_EQUAL(e.errCode(), CssException::DB_DOES_NOT_EXIST);
-    }
+    BOOST_CHECK_THROW(facade->getKeyColumn("Dummy", "x"),
+                      CssException_DbDoesNotExist);
 }
 
 BOOST_AUTO_TEST_CASE(getDbStriping) {
