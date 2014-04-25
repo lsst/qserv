@@ -267,7 +267,7 @@ WhereFactory::_addOrSibs(antlr::RefAST a) {
     }
 
     walkTreeVisit(a, p);
-    LOGGER_INF << "Adding orsibs: " << p.result << std::endl;
+    //LOGGER_INF << "Adding orsibs: " << p.result << std::endl;
     // BoolTermFactory::tagPrint tp(LOG_STRM(Info), "addOr");
     // forEachSibs(a, tp);
     BoolTermFactory f(_vf);

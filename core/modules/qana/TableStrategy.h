@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,40 +20,41 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_HAVINGCLAUSE_H
-#define LSST_QSERV_MASTER_HAVINGCLAUSE_H
-/**
-  * @file HavingClause.h
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+#ifndef LSST_QSERV_MASTER_TABLESTRATEGY_H
+#define LSST_QSERV_MASTER_TABLESTRATEGY_H
+#include <list>
 #include <boost/shared_ptr.hpp>
+#include "query/TableRef.h"
 
 namespace lsst {
 namespace qserv {
 namespace master {
 
-class QueryTemplate;
-class BoolTerm;
+class FromList;
+class QueryContext;
+class QueryMapping;
 
-/// HavingClause: a representation of SQL HAVING. Support for this construct is
-/// incomplete.
-class HavingClause {
+/// TableStrategy provides a structure for processing the FromList in
+/// a way that facilitates the retention of the original structure
+/// after processing.
+class TableStrategy {
 public:
-    HavingClause() {}
-    ~HavingClause() {}
-
-    std::string getGenerated() const;
-    void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<HavingClause> clone() const;
-    boost::shared_ptr<HavingClause> copySyntax();
+    TableStrategy(FromList const& f,
+                  QueryContext& context);
+    boost::shared_ptr<QueryMapping> exportMapping();
+    //void scan(FromList const& f);
+    int getPermutationCount() const;
+    boost::shared_ptr<TableRefList> getPermutation(int permutation, TableRefList const& tList);
+    void setToPermutation(int permutation, TableRefList& p);
 
 private:
-    friend std::ostream& operator<<(std::ostream& os, HavingClause const& h);
-    friend class ModFactory;
-    boost::shared_ptr<BoolTerm> _tree;
+    class Impl;
+    void _import(FromList const& f);
+    void _updateContext();
+
+    boost::shared_ptr<Impl> _impl;
 };
 
 }}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_HAVINGCLAUSE_H
+#endif // LSST_QSERV_MASTER_SPHERICALBOXSTRATEGY_H
 

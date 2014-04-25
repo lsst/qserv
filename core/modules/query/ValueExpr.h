@@ -80,6 +80,9 @@ public:
     bool isFactor() const;
     boost::shared_ptr<ValueFactor const> getFactor() const;
 
+    // Convenience checkers
+    bool isColumnRef() const;
+
     ValueExprPtr clone() const;
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const& ve);
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const* ve);

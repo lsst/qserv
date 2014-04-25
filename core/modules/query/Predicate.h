@@ -77,7 +77,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, Predicate const& bt);
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
-    /// Deep copy this term.
+
     virtual BfTerm::Ptr copySyntax() const {
         return BfTerm::Ptr(); }
 };
@@ -97,11 +97,11 @@ public:
     /// @return the terminal iterator
     //virtual PtrList::iterator iterEnd() { return PtrList::iterator(); }
 
-    virtual std::ostream& putStream(std::ostream& os) const = 0;
+    virtual std::ostream& putStream(std::ostream& os) = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
-    /// Deep copy this term.
+    virtual BfTerm::Ptr clone() const;
     virtual BfTerm::Ptr copySyntax() const {
-        return BfTerm::Ptr(); }
+        return clone(); }
 };
 
 /// CompPredicate is a Predicate involving a row value compared to another row value.
@@ -122,7 +122,8 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
-    virtual BfTerm::Ptr copySyntax() const;
+    virtual BfTerm::Ptr clone() const;
+    virtual BfTerm::Ptr copySyntax() const { return clone(); }
 
     static int reverseOp(int op); // Reverses operator token
     static char const* lookupOp(int op);
@@ -152,7 +153,8 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
-    virtual BfTerm::Ptr copySyntax() const;
+    virtual BfTerm::Ptr clone() const;
+    virtual BfTerm::Ptr copySyntax() const { return clone();}
 
     boost::shared_ptr<ValueExpr> value;
 
@@ -176,7 +178,8 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
-    virtual BfTerm::Ptr copySyntax() const;
+    virtual BfTerm::Ptr clone() const;
+    virtual BfTerm::Ptr copySyntax() const { return clone(); }
 
     boost::shared_ptr<ValueExpr> value;
     boost::shared_ptr<ValueExpr> minValue;
@@ -202,13 +205,38 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    /// Deep copy this term.
-    virtual BfTerm::Ptr copySyntax() const;
+    virtual BfTerm::Ptr clone() const;
+    virtual BfTerm::Ptr copySyntax() const { return clone(); }
+
+    boost::shared_ptr<ValueExpr> value;
+    boost::shared_ptr<ValueExpr> charValue;
+private:
+    boost::shared_ptr<Predicate::ValueExprList> _cache;
+};
+
+/// NullPredicate is a Predicate involving a row value compared to NULL
+class NullPredicate : public Predicate {
+public:
+    typedef boost::shared_ptr<NullPredicate> Ptr;
+    typedef std::list<Ptr> PtrList;
+
+    virtual ~NullPredicate() {}
+    virtual char const* getName() const { return "NullPredicate"; }
+
+    virtual void cacheValueExprList();
+    virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
+    virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
+    virtual void findColumnRefs(ColumnRef::List& list);
+
+    virtual std::ostream& putStream(std::ostream& os) const;
+    virtual void renderTo(QueryTemplate& qt) const;
+    virtual BfTerm::Ptr clone() const;
+    virtual BfTerm::Ptr copySyntax() const { return clone(); }
 
     static int reverseOp(int op); // Reverses operator token
 
     boost::shared_ptr<ValueExpr> value;
-    boost::shared_ptr<ValueExpr> charValue;
+    bool hasNot;
 private:
     boost::shared_ptr<Predicate::ValueExprList> _cache;
 };

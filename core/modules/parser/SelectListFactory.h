@@ -34,6 +34,7 @@
 #include <boost/shared_ptr.hpp>
 #include <stdexcept>
 
+class SqlSQL2Parser;// forward
 namespace lsst {
 namespace qserv {
 namespace master {
@@ -65,12 +66,12 @@ private:
     void attachTo(SqlSQL2Parser& p);
 
     // Really private
-    void _import(RefAST selectRoot);
-
-    void _addSelectColumn(RefAST expr);
-    void _addSelectStar(RefAST child=RefAST());
-    ValueExprPtr _newColumnExpr(RefAST expr);
-    ValueExprPtr _newSetFctSpec(RefAST expr);
+    void _import(antlr::RefAST selectRoot);
+    
+    void _addSelectColumn(antlr::RefAST expr);
+    void _addSelectStar(antlr::RefAST child=antlr::RefAST());
+    ValueExprPtr _newColumnExpr(antlr::RefAST expr);
+    ValueExprPtr _newSetFctSpec(antlr::RefAST expr);
 
     // Delegate handlers
     boost::shared_ptr<SelectListH> _selectListH;

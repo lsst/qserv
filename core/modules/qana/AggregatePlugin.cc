@@ -73,7 +73,6 @@ private:
         }
         bool& hasAgg;
     };
-
     void _makeRecord(ValueExpr const& e) {
         bool hasAgg = false;
         checkAgg ca(hasAgg);
@@ -82,11 +81,15 @@ private:
         std::for_each(factorOps.begin(), factorOps.end(), ca);
 
         if(!ca.hasAgg) {
-            std::string interName;
-            if(origAlias.empty() && !e.isStar()) {
-                interName = aMgr.getAggName("PASS");}
-            else { // Leave "*" alone
-                interName = origAlias;
+            // Compute aliases as necessary to protect select list
+            // elements so that result tables can be dumped and the
+            // columns can be re-referenced in merge queries.
+            std::string interName = origAlias;
+            // If there is no user alias, the expression is unprotected
+            // * cannot be protected--can't alias a set of columns
+            // simple column names are already legal column names
+            if(origAlias.empty() && !e.isStar() && !e.isColumnRef()) {
+                    interName = aMgr.getAggName("PASS");
             }
             ValueExprPtr par(e.clone());
             par->setAlias(interName);
@@ -218,7 +221,7 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
         throw std::invalid_argument("No select list in original SelectStmt");
     }
 
-    printList(LOG_STRM(Info), "aggr origlist", *vlist) << std::endl;
+    //printList(LOG_STRM(Info), "aggr origlist", *vlist) << std::endl;
     // Clear out select lists, since we are rewriting them.
     pList.getValueExprList()->clear();
     mList.getValueExprList()->clear();
@@ -229,10 +232,10 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     std::for_each(vlist->begin(), vlist->end(), ca);
     QueryTemplate qt;
     pList.renderTo(qt);
-    LOGGER_INF << "pass: " << qt.dbgStr() << std::endl;
+    //LOGGER_INF << "pass: " << qt.dbgStr() << std::endl;
     qt.clear();
     mList.renderTo(qt);
-    LOGGER_INF << "fixup: " << qt.dbgStr() << std::endl;
+    //LOGGER_INF << "fixup: " << qt.dbgStr() << std::endl;
 
     // Also need to operate on GROUP BY.
     // update context.

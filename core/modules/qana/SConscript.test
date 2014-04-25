@@ -18,7 +18,7 @@ deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
 deps = map(lambda s: s, deps) # unchain
 deps.sort(key=str)
 
-localdeps = map(env.Object, 'QueryPlugin.cc QueryTemplate.cc QservRestrictorPlugin.cc'.split())
+localdeps = map(env.Object, 'QueryPlugin.cc QservRestrictorPlugin.cc'.split())
 p = env.Program(['testPlugins.cc'] + localdeps + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 

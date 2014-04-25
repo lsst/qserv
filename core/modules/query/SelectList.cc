@@ -43,8 +43,6 @@
 #include "query/ValueFactor.h"
 #include "query/QueryTemplate.h"
 
-#include "log/Logger.h"
-
 namespace lsst {
 namespace qserv {
 namespace master {
@@ -74,14 +72,14 @@ SelectList::addStar(std::string const& table) {
 }
 
 void
-SelectList::dbgPrint() const {
+SelectList::dbgPrint(std::ostream& os) const {
     if(!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
-    LOGGER_INF << "Parsed value expression for select list." << std::endl;
+    os << "Parsed value expression for select list." << std::endl;
     std::copy(_valueExprList->begin(),
               _valueExprList->end(),
-              std::ostream_iterator<ValueExprPtr>(LOG_STRM(Info), "\n"));
+              std::ostream_iterator<ValueExprPtr>(os, "\n"));
 }
 
 std::ostream&
@@ -111,7 +109,7 @@ struct copyValueExpr {
         return p->clone();
     }
 };
-boost::shared_ptr<SelectList> SelectList::copyDeep() {
+boost::shared_ptr<SelectList> SelectList::clone() {
     boost::shared_ptr<SelectList> newS(new SelectList(*this));
     newS->_valueExprList.reset(new ValueExprList());
     ValueExprList& src = *_valueExprList;

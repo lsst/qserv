@@ -73,8 +73,8 @@ public:
     private:
         RunnerMgr& _rm;
         Task::Ptr _task;
-        WLogger::Ptr _log;
         bool _isPoisoned;
+        WLogger::Ptr _log;
     };
     // For use by runners.
     class RunnerMgr {

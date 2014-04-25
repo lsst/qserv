@@ -34,17 +34,17 @@
 
 #include "qana/QueryPlugin.h" // Parent class
 #include "qana/AnalysisError.h"
+#include "meta/MetadataCache.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
 #include "query/QueryContext.h"
-#include "meta/MetadataCache.h"
+#include "query/JoinRef.h"
 #include "query/Predicate.h"
 #include "query/SelectStmt.h"
 #include "query/ValueFactor.h"
 #include "query/ValueExpr.h"
 #include "query/WhereClause.h"
-
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
 
@@ -63,7 +63,7 @@ resolveAsColumnRef(QueryContext& context, ValueExprPtr vexpr) {
     if(!cr) {
         return cr;
     }
-    DbTablePair p = context.resolve(cr);
+    query::DbTablePair p = context.resolve(cr);
     cr->table = p.table;
     cr->db = p.db;
     return cr;
@@ -154,18 +154,25 @@ struct RestrictorEntry {
     std::string keyColumn;
 };
 typedef std::deque<RestrictorEntry> RestrictorEntries;
-class getTable {
+class getTable : public TableRef::Func {
 public:
 
-    explicit getTable(MetadataCache& metadata, RestrictorEntries& entries)
+    getTable(MetadataCache& metadata, RestrictorEntries& entries)
         : _metadata(metadata),
           _entries(entries) {}
-    void operator()(TableRefN::Ptr t) {
+
+
+    void operator()(TableRef::Ptr t) {
+        // FIXME: Modify so we can use TableRef::apply()
         if(!t) {
             throw qana::AnalysisBug("NULL TableRefN::Ptr");
         }
-        std::string const& db = t->getDb();
-        std::string const& table = t->getTable();
+        (*this)(*t);
+    }
+    virtual void operator()(TableRef& t) {
+        std::string const& db = t.getDb();
+        std::string const& table = t.getTable();
+
         if(!_metadata.checkIfContainsDb(db)
            || !_metadata.checkIfContainsTable(db, table)) {
             throw qana::AnalysisError("Invalid db/table:" + db + "." + table);
@@ -175,7 +182,7 @@ public:
             return; // Do nothing for non-chunked tables
         }
         // Now save an entry for WHERE clause processing.
-        std::string alias = t->getAlias();
+        std::string alias = t.getAlias();
         if(alias.empty()) {
             // For now, only accept aliased tablerefs (should have
             // been done earlier)
@@ -183,9 +190,14 @@ public:
         }
         std::vector<std::string> pCols = _metadata.getPartitionCols(db, table);
         RestrictorEntry se(alias,
-                        StringPair(pCols[0], pCols[1]),
-                        pCols[2]);
+                           StringPair(pCols[0], pCols[1]),
+                           pCols[2]);
         _entries.push_back(se);
+        JoinRefList& jList = t.getJoins();
+        typedef JoinRefList::iterator Iter;
+        for(Iter i=jList.begin(), e=jList.end(); i != e; ++i) {
+            (*this)((**i).getRight());
+        }
     }
     MetadataCache& _metadata;
     RestrictorEntries& _entries;
@@ -371,7 +383,7 @@ QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
 
     // First, get a list of the chunked tables.
     FromList& fList = stmt.getFromList();
-    TableRefnList& tList = fList.getTableRefnList();
+    TableRefList& tList = fList.getTableRefList();
     RestrictorEntries entries;
     if(!context.metadata) {
         throw qana::AnalysisBug("Missing metadata in context");

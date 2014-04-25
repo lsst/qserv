@@ -45,26 +45,22 @@ class Task;
 
 class QuerySql {
 public:
-    typedef std::deque<std::string> StringList;
-    QuerySql() {}
+    typedef boost::shared_ptr<QuerySql> Ptr;
+    typedef std::deque<std::string> StringDeque;
     typedef lsst::qserv::TaskMsg_Fragment Fragment;
 
+    QuerySql() {}
+    QuerySql(std::string const& db,
+             int chunkId,
+             TaskMsg_Fragment const& f,
+             bool needCreate,
+             std::string const& defaultResultTable);
 
-    StringList buildList;
-    StringList executeList; // Consider using SqlFragmenter to break this up into fragments.
-    StringList cleanupList;
-    class Factory;
+    StringDeque buildList;
+    StringDeque executeList; // Consider using SqlFragmenter to break this up into fragments.
+    StringDeque cleanupList;
     class Batch;
     friend std::ostream& operator<<(std::ostream& os, QuerySql const& q);
-};
-
-class QuerySql::Factory {
-public:
-    boost::shared_ptr<QuerySql> newQuerySql(std::string const& db,
-                                            int chunkId,
-                                            Fragment const& f,
-                                            bool needCreate,
-                                            std::string const& defaultResultTable);
 };
 
 }}} // lsst::qserv::worker

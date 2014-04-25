@@ -144,13 +144,13 @@ void qsrv::QservPath::_setFromPath(std::string const& path) {
     }
 }
 
-std::string qsrv::QservPath::_ingestKeys(std::string const& leafPlusKeys) {
+void qsrv::QservPath::_ingestKeys(std::string const& leafPlusKeys) {
     std::string::size_type start;
     start = leafPlusKeys.find_first_of(_varSep, 0);
     _vars.clear();
 
     if(start == std::string::npos) { // No keys found
-        return leafPlusKeys;
+        return; //leafPlusKeys;
     }
     ++start;
     Tokenizer t(leafPlusKeys.substr(start), _varDelim);
@@ -159,7 +159,7 @@ std::string qsrv::QservPath::_ingestKeys(std::string const& leafPlusKeys) {
     }
 }
 
-std::string qsrv::QservPath::_ingestKeyStr(std::string const& keyStr) {
+void qsrv::QservPath::_ingestKeyStr(std::string const& keyStr) {
     std::string::size_type equalsPos;
     equalsPos = keyStr.find_first_of('=');
     if(equalsPos == std::string::npos) { // No = clause, value-less key.
