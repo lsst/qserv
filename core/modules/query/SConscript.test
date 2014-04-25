@@ -18,9 +18,9 @@ modDeps = 'global log'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
 deps = map(lambda s: s, deps) # unchain
 deps.sort(key=str)
-qtObj = env.Object('../qana/QueryTemplate.cc') ## FIXME
+##qtObj = env.Object('../qana/QueryTemplate.cc') ## FIXME
 localdeps = map(env.Object, libProducts['query'])
-p = env.Program(['testRepr.cc', ] + localdeps + qtObj + deps,
+p = env.Program(['testRepr.cc', ] + localdeps + deps,
                 LIBS=findLibs(extDeps))
 programs.append(p)
 

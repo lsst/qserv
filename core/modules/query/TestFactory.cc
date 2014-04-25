@@ -26,7 +26,7 @@
 #include "query/SelectStmt.h"
 #include "query/SelectList.h"
 #include "query/FromList.h"
-#include "query/TableRefN.h"
+#include "query/TableRef.h"
 #include "query/QueryContext.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
@@ -68,10 +68,10 @@ TestFactory::newStmt() {
     stmt->setSelectList(sl);
 
     // FROM Bar b
-    TableRefnListPtr refnp(new TableRefnList());
-    TableRefN::Ptr tr(new SimpleTableN("", "Bar", "b"));
-    refnp->push_back(tr);
-    FromList::Ptr fl(new FromList(refnp));
+    TableRefListPtr refp(new TableRefList());
+    TableRef::Ptr tr(new TableRef("", "Bar", "b"));
+    refp->push_back(tr);
+    FromList::Ptr fl(new FromList(refp));
     stmt->setFromList(fl);
 
     // WHERE b.baz=42

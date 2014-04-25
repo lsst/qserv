@@ -47,6 +47,7 @@
 #include "qana/QueryMapping.h"
 #include "qana/QueryPlugin.h"
 #include "parser/ParseException.h"
+#include "parser/parseExceptions.h"
 #include "log/Logger.h"
 
 #define DEBUG 0
@@ -67,6 +68,10 @@ QuerySession::QuerySession(boost::shared_ptr<css::Facade> cssFacade) :
     _cssFacade(cssFacade) {
 }
 
+void QuerySession::setDefaultDb(std::string const& defaultDb) {
+    _defaultDb = defaultDb;
+}
+
 void QuerySession::setQuery(std::string const& inputQuery) {
     _original = inputQuery;
     _isFinal = false;
@@ -82,13 +87,15 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         _applyLogicPlugins();
         _generateConcrete();
         _applyConcretePlugins();
-        _showFinal(); // DEBUG
+        //_showFinal(std::cout); // DEBUG
     } catch(qana::AnalysisError& e) {
         _error = std::string("AnalysisError:") + e.what();
     } catch(parser::ParseException& e) {
         _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {
         _error = std::string("ANTLR exception:") + e.getMessage();
+    } catch(parser::UnknownAntlrError& e) {
+        _error = e.what();
     }
 }
 
@@ -154,7 +161,7 @@ QuerySession::getDbStriping() {
     return _context->getDbStriping();
 }
 
-merger::MergeFixup 
+merger::MergeFixup
 QuerySession::makeMergeFixup() const {
     // Make MergeFixup to adapt new query parser/generation framework
     // to older merging code.
@@ -189,10 +196,14 @@ QuerySession::Iter QuerySession::cQueryBegin() {
 QuerySession::Iter QuerySession::cQueryEnd() {
     return Iter(*this, _chunks.end());
 }
+QuerySession::QuerySession(Test& t)
+    : _cssFacade(t.cssFacade), _defaultDb(t.defaultDb) {
+    _initContext();
+}
 
 void QuerySession::_initContext() {
     _context.reset(new query::QueryContext());
-    _context->defaultDb = "LSST";
+    _context->defaultDb = _defaultDb;
     _context->username = "default";
     _context->needsMerge = false;
     _context->chunkCount = 0;
@@ -236,7 +247,7 @@ void QuerySession::_generateConcrete() {
     // Needs to copy SelectList, since the parallel statement's
     // version will get updated by plugins. Plugins probably need
     // access to the original as a reference.
-    _stmtParallel.push_back(_stmt->copyDeep());
+    _stmtParallel.push_back(_stmt->clone());
 
     // Copy SelectList and Mods, but not FROM, and perhaps not
     // WHERE(???). Conceptually, we want to copy the parts that are
@@ -256,24 +267,24 @@ void QuerySession::_applyConcretePlugins() {
 }
 
 /// Some code useful for debugging.
-void QuerySession::_showFinal() {
+void QuerySession::_showFinal(std::ostream& os) {
     // Print out the end result.
     query::QueryTemplate par = _stmtParallel.front()->getTemplate();
     query::QueryTemplate mer = _stmtMerge->getTemplate();
 
-    LOGGER_INF << "QuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
-    LOGGER_INF << "QuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
+    os << "QuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
+    os << "QuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
     if(!_context->scanTables.empty()) {
         util::StringPairList::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();
             i != e; ++i) {
-            LOGGER_INF << "ScanTable: " << i->first << "." << i->second
+            os << "ScanTable: " << i->first << "." << i->second
                        << std::endl;
         }
     }
 }
 
-std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) {
+std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) const {
     std::vector<std::string> q;
     // This logic may be pushed over to the qserv worker in the future.
     if(_stmtParallel.empty() || !_stmtParallel.front()) {
@@ -289,14 +300,10 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) {
     typedef std::list<query::QueryTemplate> Tlist;
     typedef Tlist::const_iterator TlistIter;
     Tlist tlist;
+
     for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end();
         i != e; ++i) {
         tlist.push_back((**i).getTemplate());
-
-	LOGGER_DBG << "QuerySession::_buildChunkQueries() : adding _stmtParallel diagnose()"
-                   << std::endl;
-
-	(**i).diagnose();
     }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
         LOGGER_INF << "QuerySession::_buildChunkQueries() : Non-subchunked" << std::endl;
@@ -349,21 +356,24 @@ ChunkQuerySpec& QuerySession::Iter::dereference() const {
 
 void QuerySession::Iter::_buildCache() const {
     assert(_qs != NULL);
-    _cache.db = _qs->_context->defaultDb;
-    LOGGER_INF << "scantables "
-               << (_qs->_context->scanTables.empty() ? "is " : "is not ")
-               << " empty" << std::endl;
+    _cache.db = _qs->_context->dominantDb;
+    // LOGGER_INF << "scantables "
+    //            << (_qs->_context->scanTables.empty() ? "is " : "is not ")
+    //            << " empty" << std::endl;
 
     _cache.scanTables = _qs->_context->scanTables;
-    _cache.queries = _qs->_buildChunkQueries(*_pos);
     _cache.chunkId = _pos->chunkId;
     _cache.nextFragment.reset();
+    // Reset subChunkTables
     _cache.subChunkTables.clear();
     qana::QueryMapping const& queryMapping = *(_qs->_context->queryMapping);
     qana::QueryMapping::StringSet const& sTables = queryMapping.getSubChunkTables();
     _cache.subChunkTables.insert(_cache.subChunkTables.begin(),
                                  sTables.begin(), sTables.end());
-    if(_hasSubChunks) {
+    // Build queries.
+    if(!_hasSubChunks) {
+        _cache.queries = _qs->_buildChunkQueries(*_pos);
+    } else {
         if(_pos->shouldSplit()) {
             ChunkSpecFragmenter frag(*_pos);
             ChunkSpec s = frag.get();
@@ -372,6 +382,7 @@ void QuerySession::Iter::_buildCache() const {
             frag.next();
             _cache.nextFragment = _buildFragment(frag);
         } else {
+            _cache.queries = _qs->_buildChunkQueries(*_pos);
             _cache.subChunkIds.assign(_pos->subChunks.begin(),
                                       _pos->subChunks.end());
         }

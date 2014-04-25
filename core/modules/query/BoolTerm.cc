@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,34 +44,14 @@ std::ostream& operator<<(std::ostream& os, BoolTerm const& bt) {
     return bt.putStream(os);
 }
 
-BfTerm::Ptr PassTerm::copySyntax() const {
-    PassTerm* p = new PassTerm;
-    p->_text = _text;
-    return BfTerm::Ptr(p);
-}
-
-BfTerm::Ptr PassListTerm::copySyntax() const {
-    PassListTerm* p = new PassListTerm;
-    p->_terms = _terms;
-    return BfTerm::Ptr(p);
-}
-BfTerm::Ptr BoolTermFactor::copySyntax() const {
-    BoolTermFactor* p = new BoolTermFactor;
-    if(_term) { p->_term = _term->copySyntax(); }
-    return BfTerm::Ptr(p);
-}
-
 std::ostream& OrTerm::putStream(std::ostream& os) const {
-    // FIXME
-    return os;
+    return QueryTemplate::renderDbg(os, *this);
 }
 std::ostream& AndTerm::putStream(std::ostream& os) const {
-    // FIXME
-    return os;
+    return QueryTemplate::renderDbg(os, *this);
 }
 std::ostream& BoolFactor::putStream(std::ostream& os) const {
-    // FIXME
-    return os;
+    return QueryTemplate::renderDbg(os, *this);
 }
 std::ostream& UnknownTerm::putStream(std::ostream& os) const {
     return os << "--UNKNOWNTERM--";
@@ -80,7 +60,8 @@ std::ostream& PassTerm::putStream(std::ostream& os) const {
     return os << _text;
 }
 std::ostream& PassListTerm::putStream(std::ostream& os) const {
-    // FIXME
+    std::copy(_terms.begin(), _terms.end(),
+              std::ostream_iterator<std::string>(os, " "));
     return os;
 }
 std::ostream& BoolTermFactor::putStream(std::ostream& os) const {
@@ -254,7 +235,7 @@ boost::shared_ptr<BoolTerm> BoolFactor::getReduced() {
     }
 }
 
-struct deepCopy {
+struct syntaxCopy {
     inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) {
         return t ? t->copySyntax() : BoolTerm::Ptr();
     }
@@ -262,25 +243,82 @@ struct deepCopy {
         return t ? t->copySyntax() : BfTerm::Ptr();
     }
 };
-template <typename List>
+struct deepCopy {
+    inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) {
+        return t ? t->clone() : BoolTerm::Ptr();
+    }
+    inline BfTerm::Ptr operator()(BfTerm::Ptr const& t) {
+        return t ? t->clone() : BfTerm::Ptr();
+    }
+};
+template <typename List, class Copy>
 inline void copyTerms(List& dest, List const& src) {
-    std::transform(src.begin(), src.end(), std::back_inserter(dest), deepCopy());
+    std::transform(src.begin(), src.end(), std::back_inserter(dest), Copy());
 }
 
+boost::shared_ptr<BoolTerm> OrTerm::clone() const {
+    boost::shared_ptr<OrTerm> ot(new OrTerm());
+    copyTerms<BoolTerm::PtrList, deepCopy>(ot->_terms, _terms);
+    return ot;
+}
+boost::shared_ptr<BoolTerm> AndTerm::clone() const {
+    boost::shared_ptr<AndTerm> t(new AndTerm());
+    copyTerms<BoolTerm::PtrList, deepCopy>(t->_terms, _terms);
+    return t;
+}
+boost::shared_ptr<BoolTerm> BoolFactor::clone() const {
+    boost::shared_ptr<BoolFactor> t(new BoolFactor());
+    copyTerms<BfTerm::PtrList, deepCopy>(t->_terms, _terms);
+    return t;
+}
+
+boost::shared_ptr<BoolTerm> UnknownTerm::clone() const {
+    return BoolTerm::Ptr(new UnknownTerm); // TODO what is unknown now?
+}
+
+BfTerm::Ptr PassListTerm::clone() const {
+    PassListTerm* p = new PassListTerm;
+    std::copy(_terms.begin(), _terms.end(), std::back_inserter(p->_terms));
+    return BfTerm::Ptr(p);
+}
+BfTerm::Ptr BoolTermFactor::clone() const {
+    BoolTermFactor* p = new BoolTermFactor;
+    if(_term) { p->_term = _term->clone(); }
+    return BfTerm::Ptr(p);
+}
+
+// copySyntax
 boost::shared_ptr<BoolTerm> OrTerm::copySyntax() const {
     boost::shared_ptr<OrTerm> ot(new OrTerm());
-    copyTerms(ot->_terms, _terms);
+    copyTerms<BoolTerm::PtrList, syntaxCopy>(ot->_terms, _terms);
     return ot;
 }
 boost::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
     boost::shared_ptr<AndTerm> at(new AndTerm());
-    copyTerms(at->_terms, _terms);
+    copyTerms<BoolTerm::PtrList, syntaxCopy>(at->_terms, _terms);
     return at;
 }
 boost::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     boost::shared_ptr<BoolFactor> bf(new BoolFactor());
-    copyTerms(bf->_terms, _terms);
+    copyTerms<BfTerm::PtrList, syntaxCopy>(bf->_terms, _terms);
     return bf;
+}
+
+BfTerm::Ptr PassTerm::copySyntax() const {
+    PassTerm* p = new PassTerm;
+    p->_text = _text;
+    return BfTerm::Ptr(p);
+}
+
+BfTerm::Ptr PassListTerm::copySyntax() const {
+    PassListTerm* p = new PassListTerm;
+    p->_terms = _terms;
+    return BfTerm::Ptr(p);
+}
+BfTerm::Ptr BoolTermFactor::copySyntax() const {
+    BoolTermFactor* p = new BoolTermFactor;
+    if(_term) { p->_term = _term->copySyntax(); }
+    return BfTerm::Ptr(p);
 }
 
 }}} // namespace lsst::qserv::query

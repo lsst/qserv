@@ -53,13 +53,13 @@ struct ChunkSql : public MockSql {
         _selectDbTuples.push_back(t);
 
     }
-    virtual bool listTables(std::vector<std::string>& v, 
-                            SqlErrorObject& errObj, 
-                            std::string const& prefixed, 
+    virtual bool listTables(std::vector<std::string>& v,
+                            SqlErrorObject& errObj,
+                            std::string const& prefixed,
                             std::string const& dbName) {
         char const* tables[] = {"Object_31415", "Source_31415"};
         if(dbName == "LSST") {
-            v.insert(v.begin(), 
+            v.insert(v.begin(),
                      tables, tables + sizeof(tables)/sizeof(tables[0]));
             return true;
         } else {
@@ -72,19 +72,19 @@ struct ChunkSql : public MockSql {
     virtual boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query) {
         if(startswith(query, "SELECT db FROM")) {
             boost::shared_ptr<SqlIter> it;
-            it.reset(new SqlIter(_selectDbTuples.begin(), 
+            it.reset(new SqlIter(_selectDbTuples.begin(),
                                  _selectDbTuples.end()));
             return it;
         }
         return boost::shared_ptr<SqlIter>();
     }
 
-    typedef std::vector<std::string> Tuple;;
+    typedef std::vector<std::string> Tuple;
     typedef std::list<Tuple> TupleList;
     typedef TupleList::const_iterator TupleListIter;
     typedef MockSql::Iter<TupleListIter> SqlIter;
-    
-    TupleList _selectDbTuples;;
+
+    TupleList _selectDbTuples;
     TupleList _nullTuples;
 };
 

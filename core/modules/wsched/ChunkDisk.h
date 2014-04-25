@@ -57,7 +57,7 @@ public:
     typedef std::set<wcontrol::Task const*> TaskSet;
 
     ChunkDisk(boost::shared_ptr<wlog::WLogger> logger)
-        : _logger(logger), _chunkState(2) {}
+        : _chunkState(2), _logger(logger) {}
     TaskSet getInflight() const;
 
     // Queue management

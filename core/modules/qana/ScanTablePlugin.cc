@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -123,33 +123,24 @@ ScanTablePlugin::applyFinal(query::QueryContext& context) {
     }
 }
 
-struct getPartitioned : public query::TableRefN::Func {
+struct getPartitioned : public query::TableRef::FuncC {
     getPartitioned(util::StringPairList& sList_) : sList(sList_) {}
-    virtual void operator()(query::TableRefN& t) {
-        (*this)(const_cast<query::TableRefN const&>(t));
-    }
-    virtual void operator()(query::TableRefN const& tRef) {
-        query::SimpleTableN const* t = 
-            dynamic_cast<query::SimpleTableN const*>(&tRef);
-        if(t) {
-            util::StringPair entry(t->getDb(), t->getTable());
-            if(found.end() != found.find(entry)) return;
-            sList.push_back(entry);
-            found.insert(entry);
-        } else {
-            throw std::logic_error("Unexpected non-simple table in apply()");
-        }
+    virtual void operator()(query::TableRef const& tRef) {
+        util::StringPair entry(tRef.getDb(), tRef.getTable());
+        if(found.end() != found.find(entry)) return;
+        sList.push_back(entry);
+        found.insert(entry);
     }
     std::set<util::StringPair> found;
     util::StringPairList& sList;
 };
 
 // helper
-util::StringPairList 
-filterPartitioned(query::TableRefnList const& tList) {
+util::StringPairList
+filterPartitioned(query::TableRefList const& tList) {
     util::StringPairList list;
     getPartitioned gp(list);
-    for(query::TableRefnList::const_iterator i=tList.begin(), e=tList.end();
+    for(query::TableRefList::const_iterator i=tList.begin(), e=tList.end();
         i != e; ++i) {
         (**i).apply(gp);
     }
@@ -254,13 +245,13 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
         } else {
             LOGGER_INF << "**** SCAN (column ref, non-spatial-idx)****" << std::endl;
             // Scan tables = all partitioned tables
-            scanTables = filterPartitioned(stmt.getFromList().getTableRefnList());
+            scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
         }
     } else if(hasWhereColumnRef) {
         // No column ref in SELECT, still a scan for non-trivial WHERE
         // count(*): still a scan with a non-trivial where.
         LOGGER_INF << "**** SCAN (filter) ****" << std::endl;
-        scanTables = filterPartitioned(stmt.getFromList().getTableRefnList());
+        scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
     }
     return scanTables;
 }

@@ -5,23 +5,22 @@ PATH=%(PATH)s
 MYSQLD_SOCK=%(MYSQLD_SOCK)s
 MYSQLD_DATA_DIR=%(MYSQLD_DATA_DIR)s
 MYSQLD_HOST=%(MYSQLD_HOST)s
+MYSQLD_PORT=%(MYSQLD_PORT)s
 
 SQL_DIR=${QSERV_DIR}/tmp/configure/sql
 
-function stop_if_up {
-    ${QSERV_DIR}/etc/init.d/mysqld status > /dev/null
-    up=$?
-    if [ ${up} == 0 ]; then
-        ${QSERV_DIR}/etc/init.d/mysqld stop
-        status=$?
-    else
-        echo "MySQL isn't running"
-        status=0
-    fi
+function is_up {
+    timeout 1 cat < /dev/null > /dev/tcp/${MYSQLD_HOST}/${MYSQLD_PORT}
     return ${status}
 }
 
-stop_if_up &&
+is_up &&
+{
+    echo "-- Service already running on ${MYSQLD_HOST}:${MYSQLD_PORT}"
+    echo "-- Please stop it and relaunch configuration procedure}"
+    exit 1
+}
+
 echo "-- Removing previous data." &&
 rm -rf ${MYSQLD_DATA_DIR}/* &&
 echo "-- ." &&
