@@ -269,15 +269,15 @@ public:
         return !_cursor.get();
     }
 private:
-    inline TableRef::Ptr _generate(RefAST node) const {
-        TableRef::Ptr tn;
+    inline query::TableRef::Ptr _generate(RefAST node) const {
+        query::TableRef::Ptr tn;
         if(node->getType() == SqlSQL2TokenTypes::TABLE_REF_AUX) {
             tn = _processTableRefAux(node->getFirstChild());
         } else {
             throw ParseException("Expected TABLE_REF_AUX, got", node);
         }
         node = node->getNextSibling();
-        JoinRef::Ptr jr;
+        query::JoinRef::Ptr jr;
         while(node.get()) {
             //std::cout << "GENERATE join from " << walkIndentedString(node);
             switch(node->getType()) {
@@ -309,7 +309,7 @@ private:
             _cursor = RefAST(); // Clear out cursor so that isDone == true
         }
     }
-    TableRef::Ptr _processTableRefAux(RefAST firstSib) const {
+    query::TableRef::Ptr _processTableRefAux(RefAST firstSib) const {
         switch(firstSib->getType()) {
         case SqlSQL2TokenTypes::QUALIFIED_NAME:
             return _processQualifiedName(firstSib);
@@ -318,37 +318,37 @@ private:
         default:
             throw ParseException("No TABLE_REF_AUX", firstSib);
         }
-        return TableRef::Ptr();
+        return query::TableRef::Ptr();
     }
     /// ( "inner" | outer_join_type ("outer")? )? "join" table_ref join_spec
     // Takes ownership of @param left
-    JoinRef::Ptr _makeJoinWithSpec(RefAST sib) const {
+    query::JoinRef::Ptr _makeJoinWithSpec(RefAST sib) const {
         if(!sib.get()) {
             throw ParseException("Null JOIN_WITH_SPEC sibling", sib); }
 
-        JoinRef::Type j = _convertToJoinType(sib);
+        query::JoinRef::Type j = _convertToJoinType(sib);
         // Fast forward past the join types we already processed
         while(sib->getType() != SqlSQL2TokenTypes::SQL2RW_join) {
             sib = sib->getNextSibling();
         }
         sib = sib->getNextSibling();
         RefAST tableChild = sib->getFirstChild();
-        TableRef::Ptr right = _generate(tableChild);
+        query::TableRef::Ptr right = _generate(tableChild);
         sib = sib->getNextSibling();
-        boost::shared_ptr<JoinSpec> js = _processJoinSpec(sib);
+        boost::shared_ptr<query::JoinSpec> js = _processJoinSpec(sib);
 
-        return JoinRef::Ptr(new JoinRef(right,
-                                        j,
-                                        false,
-                                        js));
+        return query::JoinRef::Ptr(new query::JoinRef(right,
+                                                      j,
+                                                      false,
+                                                      js));
     }
     /// "natural" ( "inner" | outer_join_type ("outer")? )? "join" table_ref
-    JoinRef::Ptr _makeJoinNoSpec(RefAST sib) const {
+    query::JoinRef::Ptr _makeJoinNoSpec(RefAST sib) const {
         if(!sib.get()
            || sib->getType() != SqlSQL2TokenTypes::SQL2RW_natural) {
             throw ParseException("Invalid NATURAL token", sib); }
         sib = sib->getNextSibling();
-        JoinRef::Type j = _convertToJoinType(sib);
+        query::JoinRef::Type j = _convertToJoinType(sib);
         // Fast forward past the join types we already processed
         while(sib->getType() != SqlSQL2TokenTypes::SQL2RW_join) {
             sib = sib->getNextSibling();
@@ -359,15 +359,15 @@ private:
             throw ParseException("Invalid token, expected TABLE_REF", sib);
         }
         RefAST tableChild = sib->getFirstChild();
-        TableRef::Ptr right = _generate(tableChild);
-        return JoinRef::Ptr(new JoinRef(
-                                right,
-                                j,
-                                true, // Natural join, no conditions
-                                JoinSpec::Ptr()));
+        query::TableRef::Ptr right = _generate(tableChild);
+        return query::JoinRef::Ptr(new query::JoinRef(
+                                     right,
+                                     j,
+                                     true, // Natural join, no conditions
+                                     query::JoinSpec::Ptr()));
     }
     /// "union" "join" table_ref
-    JoinRef::Ptr _makeUnionJoin(RefAST sib) const {
+    query::JoinRef::Ptr _makeUnionJoin(RefAST sib) const {
         if(!sib.get()
            || sib->getType() != SqlSQL2TokenTypes::SQL2RW_union) {
             throw ParseException("Invalid UNION token", sib); }
@@ -381,15 +381,15 @@ private:
             throw ParseException("Invalid token, expected TABLE_REF", sib);
         }
         RefAST tableChild = sib->getFirstChild();
-        TableRef::Ptr right = _generate(tableChild);
-        return JoinRef::Ptr(new JoinRef(
-                                right,
-                                JoinRef::UNION,
-                                false, // union join: no condititons
-                                JoinSpec::Ptr()));
+        query::TableRef::Ptr right = _generate(tableChild);
+        return query::JoinRef::Ptr(
+            new query::JoinRef(right,
+                               query::JoinRef::UNION,
+                               false, // union join: no condititons
+                               query::JoinSpec::Ptr()));
     }
     /// "cross" "join" table_ref
-    JoinRef::Ptr _makeCrossJoin(RefAST sib) const {
+    query::JoinRef::Ptr _makeCrossJoin(RefAST sib) const {
         if(!sib.get()
            || sib->getType() != SqlSQL2TokenTypes::SQL2RW_cross) {
             throw ParseException("Invalid CROSS token", sib); }
@@ -403,25 +403,25 @@ private:
             throw ParseException("Invalid token, expected TABLE_REF", sib);
         }
         RefAST tableChild = sib->getFirstChild();
-        TableRef::Ptr right = _generate(tableChild);
-        return JoinRef::Ptr(new JoinRef(
-                                right,
-                                JoinRef::CROSS,
-                                false, // cross join: no conditions
-                                JoinSpec::Ptr()));
+        query::TableRef::Ptr right = _generate(tableChild);
+        return query::JoinRef::Ptr(new query::JoinRef(
+                                    right,
+                                    query::JoinRef::CROSS,
+                                    false, // cross join: no conditions
+                                    query::JoinSpec::Ptr()));
     }
 
     /// USING_SPEC:
     /// "using" LEFT_PAREN column_name_list  RIGHT_PAREN
-    boost::shared_ptr<JoinSpec>  _processJoinSpec(RefAST specToken) const {
-        boost::shared_ptr<JoinSpec> js;
+    boost::shared_ptr<query::JoinSpec>  _processJoinSpec(RefAST specToken) const {
+        boost::shared_ptr<query::JoinSpec> js;
         // std::cout << "remaining join spec: " << walkIndentedString(specToken)
         // << std::endl;
         if(!specToken.get()) {
             throw ParseException("Null join spec", specToken);
         }
         RefAST token = specToken;
-        boost::shared_ptr<BoolTerm> bt;
+        boost::shared_ptr<query::BoolTerm> bt;
         switch(specToken->getType()) {
         case SqlSQL2TokenTypes::USING_SPEC:
             token = specToken->getFirstChild(); // Descend to "using"
@@ -437,7 +437,7 @@ private:
                || token->getType() != SqlSQL2TokenTypes::COLUMN_NAME_LIST) {
                 break;
             }
-            js.reset(new JoinSpec(_processColumn(token->getFirstChild())));
+            js.reset(new query::JoinSpec(_processColumn(token->getFirstChild())));
             token = token->getNextSibling();
             if(!token.get()
                || token->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
@@ -456,37 +456,37 @@ private:
                 throw ParseException("Expected OR_OP in join condition", specToken);
             }
             bt = _bFactory.newOrTerm(token);
-            return JoinSpec::Ptr(new JoinSpec(bt->getReduced()));
+            return query::JoinSpec::Ptr(new query::JoinSpec(bt->getReduced()));
 
         default:
             break;
         }
         throw ParseException("Invalid join spec token", token);
-        return boost::shared_ptr<JoinSpec>(); // should never reach
+        return boost::shared_ptr<query::JoinSpec>(); // should never reach
     }
     void  _processJoinCondition(RefAST joinCondition) const {
         std::cout << "Join condition: " << walkIndentedString(joinCondition)
                   << std::endl;
     }
 
-    JoinRef::Type _convertToJoinType(RefAST joinSequence) const {
+    query::JoinRef::Type _convertToJoinType(RefAST joinSequence) const {
         while(1) {
             if(!joinSequence.get()) {
                 throw ParseException("Null token for join type", joinSequence);
             }
             switch(joinSequence->getType()) {
             case SqlSQL2TokenTypes::SQL2RW_inner:
-                return JoinRef::INNER;
+                return query::JoinRef::INNER;
             case SqlSQL2TokenTypes::SQL2RW_left:
-                return JoinRef::LEFT;
+                return query::JoinRef::LEFT;
             case SqlSQL2TokenTypes::SQL2RW_right:
-                return JoinRef::RIGHT;
+                return query::JoinRef::RIGHT;
             case SqlSQL2TokenTypes::SQL2RW_full:
-                return JoinRef::FULL;
+                return query::JoinRef::FULL;
             case SqlSQL2TokenTypes::SQL2RW_outer:
                 continue; // Implied by left, right, full
             case SqlSQL2TokenTypes::SQL2RW_join:
-                return JoinRef::DEFAULT; // No join type specified
+                return query::JoinRef::DEFAULT; // No join type specified
             default:
                 throw ParseException("Unexpected token for join type",
                                      joinSequence);
@@ -498,25 +498,26 @@ private:
     /// column_name_list :
     ///    column_name (COMMA column_name)*
     /// ;
-    boost::shared_ptr<ColumnRef> _processColumn(RefAST sib) const {
+    boost::shared_ptr<query::ColumnRef> _processColumn(RefAST sib) const {
         if(!sib.get()) {
             throw ParseException("NULL column node", sib); }
         if(sib->getType() != SqlSQL2TokenTypes::REGULAR_ID) {
             throw ParseException("Bad column node for USING", sib); }
-        return boost::shared_ptr<ColumnRef>(new ColumnRef("", "",
-                                                          tokenText(sib)));
+        return boost::shared_ptr<query::ColumnRef>(
+            new query::ColumnRef("", "", tokenText(sib)));
     }
-    TableRef::Ptr _processQualifiedName(RefAST n) const {
+    query::TableRef::Ptr _processQualifiedName(RefAST n) const {
         RefAST qnStub = n;
         RefAST aliasN = _aliases->getAlias(qnStub);
         std::string alias;
         if(aliasN.get()) alias = aliasN->getText();
         QualifiedName qn(n->getFirstChild());
         if(qn.names.size() > 1) {
-            return query::TableRef::Ptr(new TableRef(qn.getQual(1),
-                                                     qn.getName(), alias));
+            return query::TableRef::Ptr(new query::TableRef(qn.getQual(1),
+                                                            qn.getName(), alias));
         } else {
-            return query::TableRef::Ptr(new TableRef("", qn.getName(), alias));
+            return query::TableRef::Ptr(new query::TableRef("", 
+                                                            qn.getName(), alias));
         }
     }
     query::TableRef::Ptr _processSubquery(RefAST n) const {

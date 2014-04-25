@@ -60,7 +60,7 @@ typedef boost::shared_ptr<QuerySql> Ptr;
     QuerySql() {}
     QuerySql(std::string const& db,
              int chunkId,
-             lsst::qserv::proto::TaskMsg_Fragment const& f,
+             proto::TaskMsg_Fragment const& f,
              bool needCreate,
              std::string const& defaultResultTable);
 

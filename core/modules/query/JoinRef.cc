@@ -23,7 +23,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
 
 std::ostream& JoinRef::putStream(std::ostream& os) const {
     QueryTemplate t;
@@ -73,4 +73,4 @@ std::ostream& operator<<(std::ostream& os, JoinRef const* js) {
     return js->putStream(os);
 }
 
-}}} // lsst::qserv::master
+}}} // lsst::qserv::query

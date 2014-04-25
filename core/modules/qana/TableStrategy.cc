@@ -43,7 +43,8 @@ namespace { // File-scope helpers
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace qana {
+
 class InvalidTableException : public std::logic_error {
 public:
     InvalidTableException(char const* db, char const* table)
@@ -58,7 +59,7 @@ struct Tuple {
     Tuple(std::string const& db_,
           std::string const& prePatchTable_,
           std::string const& alias_,
-          TableRef const* node_)
+          query::TableRef const* node_)
         : db(db_),
           prePatchTable(prePatchTable_),
           alias(alias_),
@@ -70,7 +71,7 @@ struct Tuple {
     std::string alias;
     int allowed;
     int chunkLevel;
-    TableRef const* node;
+    query::TableRef const* node;
 };
 std::ostream& operator<<(std::ostream& s, Tuple const& t) {
     s << "Tuple("
@@ -88,7 +89,7 @@ std::ostream& operator<<(std::ostream& s, Tuple const& t) {
     return s;
 }
 typedef std::deque<Tuple> Tuples;
-Tuple const&  tuplesFindByRefRO(Tuples const& tuples, TableRef const& t) {
+Tuple const&  tuplesFindByRefRO(Tuples const& tuples, query::TableRef const& t) {
     // FIXME: Switch to map and rethink the system
     typedef Tuples::const_iterator Iter;
     for(Iter i=tuples.begin(),e=tuples.end(); i != e; ++i) {
@@ -96,7 +97,7 @@ Tuple const&  tuplesFindByRefRO(Tuples const& tuples, TableRef const& t) {
     }
     throw std::logic_error("Not found in tuples (inplace)");
 }
-Tuple&  tuplesFindByRef(Tuples& tuples, TableRef const& t) {
+Tuple&  tuplesFindByRef(Tuples& tuples, query::TableRef const& t) {
     // FIXME: Switch to map and rethink the system
     typedef Tuples::iterator Iter;
     for(Iter i=tuples.begin(),e=tuples.end(); i != e; ++i) {
@@ -189,7 +190,8 @@ public:
     }
 };
 
-inline void updateMappingFromTuples(QueryMapping& m, Tuples const& tuples) {
+inline void updateMappingFromTuples(qana::QueryMapping& m, 
+                                    Tuples const& tuples) {
     // Look for subChunked tables
     for(Tuples::const_iterator i=tuples.begin();
         i != tuples.end(); ++i) {
@@ -206,21 +208,21 @@ inline void updateMappingFromTuples(QueryMapping& m, Tuples const& tuples) {
 
 class TableStrategy::Impl {
 public:
-    Impl(QueryContext& context_) : context(context_) {}
+    Impl(query::QueryContext& context_) : context(context_) {}
     ~Impl() {}
 
-    QueryContext& context;
+    query::QueryContext& context;
     Tuples tuples;
     int chunkLevel;
 };
 
-class addTable : public TableRef::Func {
+class addTable : public query::TableRef::Func {
 public:
     addTable(Tuples& tuples) : _tuples(tuples) { }
-    void operator()(TableRef::Ptr t) {
+    void operator()(query::TableRef::Ptr t) {
         if(t.get()) { t->apply(*this); }
     }
-    virtual void operator()(TableRef& t) {
+    virtual void operator()(query::TableRef& t) {
         std::string table = t.getTable();
         if(table.empty()) {
             throw std::logic_error("Missing table in TableRef");
@@ -255,15 +257,15 @@ public:
     }
     boost::shared_ptr<lsst::qserv::css::Facade> cssFacade;
 };
-class inplaceComputeTable : public TableRef::Func {
+class inplaceComputeTable : public query::TableRef::Func {
 public:
     // FIXME: How can we consolidate with computeTable?
     inplaceComputeTable(Tuples& tuples) :_tuples(tuples) {
     }
-    virtual void operator()(TableRef::Ptr t) {
+    virtual void operator()(query::TableRef::Ptr t) {
         t->apply(*this);
     }
-    virtual void operator()(TableRef& t) {
+    virtual void operator()(query::TableRef& t) {
         Tuple const& tuple = tuplesFindByRefRO(_tuples, t);
         t.setDb(tuple.db);
         t.setTable(tuple.tables.front());
@@ -276,7 +278,7 @@ public:
         : _tuples(tuples), _permutation(permutation) {
         // Should already know how many permutations. 0 - (n-1)
     }
-    TableRef::Ptr operator()(TableRef::Ptr t) {
+    query::TableRef::Ptr operator()(query::TableRef::Ptr t) {
         return visit(*t);
         // See if tuple matches table.
         // if t in tuples,
@@ -287,25 +289,25 @@ public:
         // visit both sides of the join.
     }
 
-    inline TableRef::Ptr visit(TableRef const& t) {
-        TableRef::Ptr newT = lookup(t, _permutation);
+    inline query::TableRef::Ptr visit(query::TableRef const& t) {
+        query::TableRef::Ptr newT = lookup(t, _permutation);
         if(!newT) {
-            newT.reset(new TableRef(t.getDb(), t.getTable(), t.getAlias()));
+            newT.reset(new query::TableRef(t.getDb(), t.getTable(), t.getAlias()));
             std::cout << "passthrough table: " << t.getTable() << std::endl;
         }
-        JoinRefList const& jList = t.getJoins();
-        typedef JoinRefList::const_iterator Iter;
+        query::JoinRefList const& jList = t.getJoins();
+        typedef query::JoinRefList::const_iterator Iter;
         for(Iter i=jList.begin(), e=jList.end(); i != e; ++i) {
-            JoinRef const& j = **i;
-            TableRef::Ptr right = visit(*j.getRight());
-            JoinRef::Ptr r(new JoinRef(right, j.getJoinType(),
-                                       j.isNatural(),
-                                       j.getSpec()->clone()));
+            query::JoinRef const& j = **i;
+            query::TableRef::Ptr right = visit(*j.getRight());
+            query::JoinRef::Ptr r(new query::JoinRef(right, j.getJoinType(),
+                                                     j.isNatural(),
+                                                     j.getSpec()->clone()));
             newT->addJoin(r);
         }
         return newT;
     }
-    TableRef::Ptr lookup(TableRef const& t, int permutation) {
+    query::TableRef::Ptr lookup(query::TableRef const& t, int permutation) {
         Tuple const& tuple = tuplesFindByRefRO(_tuples, t);
         // Probably select one bit out of permutation, based on which
         // which subchunked table this is in the query.
@@ -317,14 +319,14 @@ public:
         } else {
             table = tuple.tables.back();
         }
-        TableRef::Ptr newT(new TableRef(tuple.db,
-                                        table,
-                                        t.getAlias()));
+        query::TableRef::Ptr newT(new query::TableRef(tuple.db,
+                                                      table,
+                                                      t.getAlias()));
 
         return newT;
     }
 
-    TableRefListPtr _tableRefnList;
+    query::TableRefListPtr _tableRefnList;
     Tuples& _tuples;
     int _permutation;
 };
@@ -332,14 +334,14 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // TableStrategy public
 ////////////////////////////////////////////////////////////////////////
-TableStrategy::TableStrategy(FromList const& f,
-                             QueryContext& context)
+TableStrategy::TableStrategy(query::FromList const& f,
+                             query::QueryContext& context)
     : _impl(new Impl(context)) {
     _import(f);
 }
 
-boost::shared_ptr<QueryMapping> TableStrategy::exportMapping() {
-    boost::shared_ptr<QueryMapping> qm(new QueryMapping());
+boost::shared_ptr<qana::QueryMapping> TableStrategy::exportMapping() {
+    boost::shared_ptr<qana::QueryMapping> qm(new qana::QueryMapping());
 
     LOGGER_DBG << __FILE__ ": _impl->chunkLevel : "
                << _impl->chunkLevel << std::endl;
@@ -384,14 +386,17 @@ int TableStrategy::getPermutationCount() const {
 
 }
 
-TableRefListPtr TableStrategy::getPermutation(int permutation, TableRefList const& tList) {
-    TableRefListPtr oList(new TableRefList()); //tList.size()));
-    std::transform(tList.begin(), tList.end(),
-                   std::back_inserter(*oList), computeTable(_impl->tuples, permutation));
+query::TableRefListPtr 
+TableStrategy::getPermutation(int permutation, query::TableRefList const& tList) {
+    query::TableRefListPtr oList(new query::TableRefList()); //tList.size()));
+    std::transform(tList.begin(), 
+                   tList.end(),
+                   std::back_inserter(*oList), 
+                   computeTable(_impl->tuples, permutation));
     return oList;
 }
 
-void TableStrategy::setToPermutation(int permutation, TableRefList& p) {
+void TableStrategy::setToPermutation(int permutation, query::TableRefList& p) {
     // ignore permutation for now.
     inplaceComputeTable ict(_impl->tuples);
     std::for_each(p.begin(), p.end(), ict);
@@ -400,14 +405,14 @@ void TableStrategy::setToPermutation(int permutation, TableRefList& p) {
 ////////////////////////////////////////////////////////////////////////
 // TableStrategy private
 ////////////////////////////////////////////////////////////////////////
-void TableStrategy::_import(FromList const& f) {
+void TableStrategy::_import(query::FromList const& f) {
     // Read into tuples. Why is the original structure insufficient?
     // Because I want to annotate! The annotations make subsequent
     // reasonaing and analysis possible. So the point will be to
     // populate a data structure of annotations.
 
     // Iterate over FromList elements
-    TableRefList const& tList = f.getTableRefList();
+    query::TableRefList const& tList = f.getTableRefList();
     addTable a(_impl->tuples);
     std::for_each(tList.begin(), tList.end(), a);
     updateChunkLevel ucl(_impl->context.cssFacade);
@@ -430,4 +435,5 @@ void TableStrategy::_updateContext() {
         _impl->context.queryMapping = exportMapping();
     }
 }
-}}} // lsst::qserv::master
+
+}}} // lsst::qserv::qana

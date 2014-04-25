@@ -174,7 +174,8 @@ struct ParserFixture {
     std::map<std::string, std::string> config;
     std::map<std::string, int> whiteList;
     std::string defaultDb;
-    boost::shared_ptr<lsst::qserv::css::Facade> cssFacade;
+
+    QuerySession::Test qsTest;
 };
 
 
@@ -191,7 +192,7 @@ BOOST_FIXTURE_TEST_SUITE(CppParser, ParserFixture)
 BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
     std::string expected = "SELECT * FROM LSST.Object_100 AS QST_1_ WHERE someField>5.0";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
@@ -215,7 +216,7 @@ BOOST_AUTO_TEST_CASE(NoContext) {
 BOOST_AUTO_TEST_CASE(NoSub) {
     std::string stmt = "SELECT * FROM Filter WHERE filterId=4;";
     std::string goodRes = "SELECT * FROM LSST.Filter AS QST_1_ WHERE filterId=4";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
@@ -233,7 +234,7 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
     std::string expPar = "SELECT sum(pm_declErr) AS QS1_SUM,chunkId,COUNT(bMagF2) AS QS2_COUNT,SUM(bMagF2) AS QS3_SUM FROM LSST.Object_100 AS QST_1_ WHERE bMagF>20.0 GROUP BY chunkId";
 
 
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
@@ -249,7 +250,7 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
 BOOST_AUTO_TEST_CASE(Limit) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 limit 2;";
 
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
@@ -265,7 +266,7 @@ BOOST_AUTO_TEST_CASE(Limit) {
 BOOST_AUTO_TEST_CASE(OrderBy) {
     std::string stmt = "select * from LSST.Object WHERE ra_PS BETWEEN 150 AND 150.2 and decl_PS between 1.6 and 1.7 ORDER BY objectId;";
 
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
@@ -277,7 +278,7 @@ BOOST_AUTO_TEST_CASE(OrderBy) {
 
 BOOST_AUTO_TEST_CASE(RestrictorBox) {
     std::string stmt = "select * from Object where qserv_areaspec_box(0,0,1,1);";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_REQUIRE(context->restrictors);
@@ -294,7 +295,7 @@ BOOST_AUTO_TEST_CASE(RestrictorBox) {
 }
 BOOST_AUTO_TEST_CASE(RestrictorObjectId) {
     std::string stmt = "select * from Object where qserv_objectId(2,3145,9999);";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, "LSST");
@@ -310,7 +311,7 @@ BOOST_AUTO_TEST_CASE(RestrictorObjectId) {
 }
 BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::string stmt = "select * from Object where objectIdObjTest in (2,3145,9999);";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
@@ -326,7 +327,7 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
 
 BOOST_AUTO_TEST_CASE(RestrictorObjectIdAlias) {
     std::string stmt = "select * from Object as o1 where qserv_objectId(2,3145,9999);";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
@@ -349,7 +350,7 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     std::string expected_100_100010_overlap =
         "SELECT count(*) AS QS1_COUNT FROM Subchunks_LSST_100.Object_100_100010 AS o1,Subchunks_LSST_100.Object_100_100010 AS o2 "
         "WHERE scisql_s2PtInBox(o1.ra_Test,o1.decl_Test,6,6,7,7)=1 AND scisql_s2PtInBox(o2.ra_Test,o2.decl_Test,6,6,7,7)=1 AND rFlux_PS<0.005";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
 
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -381,7 +382,7 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
 BOOST_AUTO_TEST_CASE(Triple) {
     std::string stmt = "select * from LSST.Object as o1, LSST.Object as o2, LSST.Source where o1.id != o2.id and dista(o1.ra,o1.decl,o2.ra,o2.decl) < 1 and Source.oid=o1.id;";
     std::string expected = "SELECT * FROM Subchunks_LSST_100.Object_100_100000 AS o1,Subchunks_LSST_100.Object_100_100000 AS o2,LSST.Source_100 AS QST_1_ WHERE o1.id!=o2.id AND dista(o1.ra,o1.decl,o2.ra,o2.decl)<1 AND QST_1_.oid=o1.id";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
@@ -408,7 +409,7 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
         "AND scisql_s2PtInBox(s.raObjectTest,s.declObjectTest,2,2,3,3)=1 "
         "AND o.objectId=s.objectId";
 
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
 
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -428,7 +429,7 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
 BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
     std::string stmt = "select count(*) from Object as o1, Object as o2;";
     std::string expected = "select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sc2%$# as o2 UNION select count(*) from LSST.%$#Object_sc1%$# as o1,LSST.%$#Object_sfo%$# as o2;";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
 
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -683,7 +684,7 @@ BOOST_AUTO_TEST_CASE(SimpleScan) {
     };
     int const num=3;
     for(int i=0; i < num; ++i) {
-        boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt[i]);
+        boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt[i]);
 
         boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
         BOOST_CHECK(context);
@@ -700,7 +701,7 @@ BOOST_AUTO_TEST_CASE(SimpleScan) {
 
 BOOST_AUTO_TEST_CASE(UnpartLimit) {
     std::string stmt = "SELECT * from Science_Ccd_Exposure limit 3;";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
 
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -752,36 +753,36 @@ BOOST_AUTO_TEST_CASE(Mods) {
     };
     for(int i=0; i < 3; ++i) {
         std::string stmt = stmts[i];
-        testStmt3(cssFacade, stmt);
+        testStmt3(qsTest, stmt);
     }
  }
 
 BOOST_AUTO_TEST_CASE(CountNew) {
     std::string stmt = "SELECT count(*), sum(Source.flux), flux2, Source.flux3 from Source where qserv_areaspec_box(0,0,1,1) and flux4=2 and Source.flux5=3;";
-    testStmt3(cssFacade, stmt);
+    testStmt3(qsTest, stmt);
 }
 BOOST_AUTO_TEST_CASE(FluxMag) {
     std::string stmt = "SELECT count(*) FROM Object"
         " WHERE  qserv_areaspec_box(1,3,2,4) AND"
         "  scisql_fluxToAbMag(zFlux_PS) BETWEEN 21 AND 21.5;";
-    testStmt3(cssFacade, stmt);
+    testStmt3(qsTest, stmt);
 }
 
 BOOST_AUTO_TEST_CASE(ArithTwoOp) {
     std::string stmt = "SELECT f(one)/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
-    testStmt3(cssFacade, stmt);
+    testStmt3(qsTest, stmt);
 }
 
 BOOST_AUTO_TEST_CASE(FancyArith) {
     std::string stmt = "SELECT (1+f(one))/f2(two) FROM  Object where qserv_areaspec_box(0,0,1,1);";
-    testStmt3(cssFacade, stmt);
+    testStmt3(qsTest, stmt);
 }
 
 BOOST_AUTO_TEST_CASE(Petasky1) {
     // An example slow query from French Petasky colleagues
     std::string stmt = "SELECT objectId as id, COUNT(sourceId) AS c"
         " FROM Source GROUP BY objectId HAVING  c > 1000 LIMIT 10;";
-    testStmt3(cssFacade, stmt);
+    testStmt3(qsTest, stmt);
 }
 
 BOOST_AUTO_TEST_CASE(Expression) {
@@ -796,7 +797,7 @@ BOOST_AUTO_TEST_CASE(Expression) {
         "AND scisql_fluxToAbMag(rFlux_PS)-scisql_fluxToAbMag(iFlux_PS) >=-0.27 "
         "AND scisql_fluxToAbMag(iFlux_PS)-scisql_fluxToAbMag(zFlux_PS) >=-0.35 "
         "AND scisql_fluxToAbMag(zFlux_PS)-scisql_fluxToAbMag(yFlux_PS) >=-0.40;";
-    testStmt3(cssFacade, stmt);
+    testStmt3(qsTest, stmt);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -894,7 +895,7 @@ BOOST_FIXTURE_TEST_SUITE(Case01Parse, ParserFixture)
 BOOST_AUTO_TEST_CASE(Case01_0002) {
     std::string stmt = "SELECT * FROM Object WHERE objectIdObjTest = 430213989000;";
     //std::string expected = "SELECT * FROM LSST.%$#Object%$# WHERE objectId=430213989000;";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
@@ -916,7 +917,7 @@ BOOST_AUTO_TEST_CASE(Case01_0012) {
         "WHERE (sce.visit = 887404831) "
         "AND (sce.raftName = '3,3') "
         "AND (sce.ccdName LIKE '%')";
-    boost::shared_ptr<QuerySession> qs = testStmt3(cssFacade, stmt);
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));

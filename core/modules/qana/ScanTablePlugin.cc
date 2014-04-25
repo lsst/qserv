@@ -125,7 +125,7 @@ ScanTablePlugin::applyFinal(query::QueryContext& context) {
 
 struct getPartitioned : public query::TableRef::FuncC {
     getPartitioned(util::StringPairList& sList_) : sList(sList_) {}
-    virtual void operator()(TableRef const& tRef) {
+    virtual void operator()(query::TableRef const& tRef) {
         util::StringPair entry(tRef.getDb(), tRef.getTable());
         if(found.end() != found.find(entry)) return;
         sList.push_back(entry);
@@ -140,7 +140,7 @@ util::StringPairList
 filterPartitioned(query::TableRefList const& tList) {
     util::StringPairList list;
     getPartitioned gp(list);
-    for(TableRefList::const_iterator i=tList.begin(), e=tList.end();
+    for(query::TableRefList::const_iterator i=tList.begin(), e=tList.end();
         i != e; ++i) {
         (**i).apply(gp);
     }

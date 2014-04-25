@@ -30,7 +30,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 inline bool isInconsistent(JoinSpec const& s) {
     return s.getOn() && s.getUsing();
 }
@@ -78,4 +79,4 @@ JoinSpec::Ptr JoinSpec::clone() const {
 
 }
 
-}}} // lsst::qserv::master
+}}} // lsst::qserv::query

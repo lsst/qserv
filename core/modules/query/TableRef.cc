@@ -32,11 +32,10 @@
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
 
-namespace qMaster=lsst::qserv::master;
-
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 ////////////////////////////////////////////////////////////////////////
 // TableRef
 ////////////////////////////////////////////////////////////////////////
@@ -122,6 +121,4 @@ TableRef::Ptr TableRef::clone() const {
     return newCopy;
 }
 
-
-
-}}} // lsst::qserv::master
+}}} // Namespace lsst::qserv::query

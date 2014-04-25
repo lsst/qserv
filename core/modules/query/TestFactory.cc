@@ -53,15 +53,6 @@ TestFactory::newContext(boost::shared_ptr<css::Facade> cssFacade) {
     return context;
 }
 
-boost::shared_ptr<QueryContext>
-TestFactory::newContext(boost::shared_ptr<css::Facade> cssFacade) {
-    boost::shared_ptr<QueryContext> context(new QueryContext());
-    context->cssFacade = cssFacade;
-    context->defaultDb = "Somedb";
-    context->username = "alice";
-    return context;
-}
-
 boost::shared_ptr<SelectStmt>
 TestFactory::newStmt() {
     // Create a "SELECT foo f FROM Bar b WHERE b.baz=42;

@@ -48,11 +48,14 @@ namespace qserv {
 namespace query {
     // Forward
     class FromList;
-    class BoolTermFactory;
-    class ValueExprFactory;
 }
     
 namespace parser {
+
+// Forward
+class ParseAliasMap;
+class BoolTermFactory;
+class ValueExprFactory;
 
 
 class FromFactory {
@@ -72,7 +75,7 @@ private:
     void _import(antlr::RefAST a);
 
     boost::shared_ptr<ParseAliasMap> _aliases;
-    boost::shared_ptr<query::BoolTermFactory> _bFactory;
+    boost::shared_ptr<BoolTermFactory> _bFactory;
     boost::shared_ptr<query::FromList> _list;
 };
 

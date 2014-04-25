@@ -152,7 +152,7 @@ struct RestrictorEntry {
     std::string keyColumn;
 };
 typedef std::deque<RestrictorEntry> RestrictorEntries;
-class getTable : public TableRef::Func {
+class getTable : public query::TableRef::Func {
 public:
 
     getTable(css::Facade& cssFacade, RestrictorEntries& entries)
@@ -190,8 +190,8 @@ public:
                            StringPair(pCols[0], pCols[1]),
                            pCols[2]);
         _entries.push_back(se);
-        JoinRefList& jList = t.getJoins();
-        typedef JoinRefList::iterator Iter;
+        query::JoinRefList& jList = t.getJoins();
+        typedef query::JoinRefList::iterator Iter;
         for(Iter i=jList.begin(), e=jList.end(); i != e; ++i) {
             (*this)((**i).getRight());
         }

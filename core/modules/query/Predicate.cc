@@ -122,7 +122,7 @@ void LikePredicate::renderTo(QueryTemplate& qt) const {
     r(charValue);
 }
 
-void qMaster::NullPredicate::renderTo(QueryTemplate& qt) const {
+void NullPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r(value);
     qt.append("IS");

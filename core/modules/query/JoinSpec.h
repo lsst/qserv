@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_JOINSPEC_H
-#define LSST_QSERV_MASTER_JOINSPEC_H
+#ifndef LSST_QSERV_QUERY_JOINSPEC_H
+#define LSST_QSERV_QUERY_JOINSPEC_H
 /**
   * @file TableRefN.h
   *
@@ -34,7 +34,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 class QueryTemplate; // Forward
 class BoolTerm;
 class ColumnRef;
@@ -79,7 +80,7 @@ private:
 std::ostream& operator<<(std::ostream& os, JoinSpec const& js);
 std::ostream& operator<<(std::ostream& os, JoinSpec const* js);
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query
 
 
 #endif // LSST_QSERV_MASTER_JOINSPEC_H

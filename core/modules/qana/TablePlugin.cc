@@ -105,7 +105,7 @@ public:
 };
 
 template <typename G, typename A>
-class addAlias : public TableRef::Func {
+class addAlias : public query::TableRef::Func {
 public:
     addAlias(G g, A a) : _generate(g), _addMap(a) {}
     void operator()(query::TableRef::Ptr t) {
@@ -167,7 +167,7 @@ public:
                 // Patch db/table name if applicable
                 _patchStar(t);
                 break;
-            case ValueFactor::CONST:
+            case query::ValueFactor::CONST:
                 break; // Constants don't need patching.
             default:
                 LOGGER_WRN << "Unhandled ValueFactor:" << t << std::endl;
@@ -284,7 +284,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     //           << (fList.isJoin() ? " is join" : "")
     //           << std::endl;
 
-    TableRefList& tList = fList.getTableRefList();
+    query::TableRefList& tList = fList.getTableRefList();
 
     // For each tableref, modify to add alias.
     int seq=0;
@@ -400,9 +400,10 @@ int TablePlugin::_rewriteTables(qana::SelectStmtList& outList,
     int permutationCount = ts.getPermutationCount();
     if(permutationCount > 1)
         for(int i=0; i < permutationCount; ++i) {
-            boost::shared_ptr<SelectStmt> stmt = in.clone();
-            TableRefListPtr trl = ts.getPermutation(i, fList.getTableRefList());
-            FromList::Ptr f(new FromList(trl));
+            boost::shared_ptr<query::SelectStmt> stmt = in.clone();
+            query::TableRefListPtr trl = 
+                ts.getPermutation(i, fList.getTableRefList());
+            query::FromList::Ptr f(new query::FromList(trl));
             stmt->setFromList(f);
             outList.push_back(stmt);
             ++added;
@@ -416,11 +417,11 @@ int TablePlugin::_rewriteTables(qana::SelectStmtList& outList,
     // Compute the new fromLists, and if there are more than one, then
     // clone the selectstmt for each copy.
     if(ts.needsMultiple()) {
-        typedef std::list<boost::shared_ptr<FromList> > FromListList;
+        typedef std::list<boost::shared_ptr<query::FromList> > FromListList;
         typedef FromListList::iterator Iter;
         FromListList newFroms = s.computeNewFromLists();
         for(Iter i=newFroms.begin(), e=newFroms.end(); i != e; ++i) {
-            boost::shared_ptr<SelectStmt> stmt = in.clone();
+            boost::shared_ptr<query::SelectStmt> stmt = in.clone();
             stmt->setFromList(*i);
             outList.push_back(stmt);
             ++added;

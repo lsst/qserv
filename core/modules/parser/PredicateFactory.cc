@@ -110,8 +110,9 @@ PredicateFactory::newLikePredicate(antlr::RefAST a) {
     return p;
 }
 
-boost::shared_ptr<NullPredicate> PredicateFactory::newNullPredicate(antlr::RefAST a) {
-    boost::shared_ptr<NullPredicate> p(new NullPredicate());
+boost::shared_ptr<query::NullPredicate>
+PredicateFactory::newNullPredicate(antlr::RefAST a) {
+    boost::shared_ptr<query::NullPredicate> p(new query::NullPredicate());
 
     if(a->getType() == SqlSQL2TokenTypes::NULL_PREDICATE) { a = a->getFirstChild(); }
     RefAST value = a;
@@ -127,8 +128,7 @@ boost::shared_ptr<NullPredicate> PredicateFactory::newNullPredicate(antlr::RefAS
     }
 
     p->value = _vf.newExpr(value->getFirstChild());
-    // NullPredicate& np = *p; // for gdb
->>>>>>> master
+    // query::NullPredicate& np = *p; // for gdb
     return p;
 }
 

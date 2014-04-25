@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_JOINREF_H
-#define LSST_QSERV_MASTER_JOINREF_H
+#ifndef LSST_QSERV_QUERY_JOINREF_H
+#define LSST_QSERV_QUERY_JOINREF_H
 #include <iostream>
 #include <boost/shared_ptr.hpp>
 
@@ -29,7 +29,8 @@
 #include "query/TableRef.h"
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 class QueryTemplate; // Forward
 class BoolTerm;
 class ColumnRef;
@@ -80,7 +81,7 @@ std::ostream& operator<<(std::ostream& os, JoinRef const& js);
 std::ostream& operator<<(std::ostream& os, JoinRef const* js);
 
 
-}}} // namespace lsst::qserv::master
+}}} // namespace lsst::qserv::query
 
 
-#endif // LSST_QSERV_MASTER_JOINREF_H
+#endif // LSST_QSERV_MASTER_QUERY_JOINREF_H

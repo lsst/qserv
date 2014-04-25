@@ -88,7 +88,7 @@ std::ostream& operator<<(std::ostream& os, QuerySql const& q) {
 ////////////////////////////////////////////////////////////////////////
 QuerySql::QuerySql(std::string const& db,
                    int chunkId,
-                   TaskMsg_Fragment const& f,
+                   proto::TaskMsg_Fragment const& f,
                    bool needCreate,
                    std::string const& defaultResultTable) {
 

@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_TABLEREF_H
-#define LSST_QSERV_MASTER_TABLEREF_H
+#ifndef LSST_QSERV_QUERY_TABLEREF_H
+#define LSST_QSERV_QUERY_TABLEREF_H
 /**
   * @file TableRef.h
   *
@@ -40,7 +40,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace master {
+namespace query {
+
 class QueryTemplate; // Forward
 class JoinSpec;
 class JoinRef;
@@ -131,5 +132,5 @@ std::ostream& operator<<(std::ostream& os, TableRef const* refN);
 typedef std::vector<TableRef::Ptr> TableRefList;
 typedef boost::shared_ptr<TableRefList> TableRefListPtr;
 
-}}} // namespace lsst::qserv::master
-#endif // LSST_QSERV_MASTER_TABLEREF_H
+}}} // namespace lsst::qserv::query
+#endif // LSST_QSERV_QUERY_TABLEREF_H

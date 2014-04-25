@@ -47,6 +47,7 @@
 #include "qana/QueryMapping.h"
 #include "qana/QueryPlugin.h"
 #include "parser/ParseException.h"
+#include "parser/parseExceptions.h"
 #include "log/Logger.h"
 
 #define DEBUG 0
@@ -65,6 +66,7 @@ void printConstraints(query::ConstraintVector const& cv) {
 ////////////////////////////////////////////////////////////////////////
 QuerySession::QuerySession(boost::shared_ptr<css::Facade> cssFacade) : 
     _cssFacade(cssFacade) {
+}
 
 void QuerySession::setDefaultDb(std::string const& defaultDb) {
     _defaultDb = defaultDb;
@@ -92,7 +94,7 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {
         _error = std::string("ANTLR exception:") + e.getMessage();
-    } catch(UnknownAntlrError& e) {
+    } catch(parser::UnknownAntlrError& e) {
         _error = e.what();
     }
 }
