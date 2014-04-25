@@ -49,6 +49,7 @@ public:
     typedef boost::shared_ptr<BfTerm> Ptr;
     typedef std::list<Ptr> PtrList;
     virtual ~BfTerm() {}
+    virtual Ptr clone() const = 0;
     virtual Ptr copySyntax() const = 0;
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
@@ -81,6 +82,8 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
     /// Deep copy this term.
+    virtual boost::shared_ptr<BoolTerm> clone() const = 0;
+
     virtual boost::shared_ptr<BoolTerm> copySyntax() const {
         return boost::shared_ptr<BoolTerm>(); }
 };
@@ -97,6 +100,7 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
+    virtual boost::shared_ptr<BoolTerm> clone() const;
     virtual boost::shared_ptr<BoolTerm> copySyntax() const;
 
     BoolTerm::PtrList _terms;
@@ -116,6 +120,7 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
 
+    virtual boost::shared_ptr<BoolTerm> clone() const;
     virtual boost::shared_ptr<BoolTerm> copySyntax() const;
     BoolTerm::PtrList _terms;
 };
@@ -130,6 +135,7 @@ public:
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
+    virtual boost::shared_ptr<BoolTerm> clone() const;
     virtual boost::shared_ptr<BoolTerm> copySyntax() const;
     virtual void findColumnRefs(ColumnRef::List& list);
 
@@ -145,15 +151,19 @@ public:
     typedef boost::shared_ptr<UnknownTerm> Ptr;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
+    virtual boost::shared_ptr<BoolTerm> clone() const;
 };
 /// PassTerm is a catch-all boolean factor term that can be safely passed
 /// without further analysis or manipulation.
 class PassTerm : public BfTerm {
 public: // text
     typedef boost::shared_ptr<PassTerm> Ptr;
+
+    virtual BfTerm::Ptr clone() const { return copySyntax(); }
     virtual BfTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
+
     std::string _text;
 };
 /// PassListTerm is like a PassTerm, but holds a list of passing strings
@@ -161,6 +171,8 @@ class PassListTerm : public BfTerm {
 public: // ( term, term, term )
     typedef std::list<std::string> StringList;
     typedef boost::shared_ptr<PassListTerm> Ptr;
+
+    virtual BfTerm::Ptr clone() const;
     virtual BfTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
@@ -173,6 +185,8 @@ public: // ( term, term, term )
 class BoolTermFactor : public BfTerm {
 public:
     typedef boost::shared_ptr<BoolTermFactor> Ptr;
+
+    virtual BfTerm::Ptr clone() const;
     virtual BfTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;

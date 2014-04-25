@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -57,7 +57,10 @@ public:
     ~GroupByTerm() {}
 
     boost::shared_ptr<const ValueExpr> getExpr();
-    std::string getCollate() const;
+    std::string getCollate() const { return _collate; }
+    GroupByTerm cloneValue() const;
+
+    GroupByTerm& operator=(GroupByTerm const& gb);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByTerm const& gb);
@@ -69,6 +72,7 @@ private:
 /// GroupByClause is a parsed GROUP BY ... element.
 class GroupByClause {
 public:
+    typedef boost::shared_ptr<GroupByClause> Ptr;
     typedef std::deque<GroupByTerm> List;
 
     GroupByClause() : _terms(new List()) {}
@@ -76,7 +80,7 @@ public:
 
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<GroupByClause> copyDeep();
+    boost::shared_ptr<GroupByClause> clone() const;
     boost::shared_ptr<GroupByClause> copySyntax();
 
 private:

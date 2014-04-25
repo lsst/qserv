@@ -1,6 +1,7 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,39 +20,29 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/**
-  * @file TableRefN.cc
-  *
-  * @brief TableRefN, SimpleTableN, JoinRefN implementations
-  *
-  * @author Daniel L. Wang, SLAC
-  */
-#include "query/TableRefN.h"
-#include <sstream>
-
-
+#ifndef LSST_QSERV_QUERY_DBTABLEPAIR_H
+#define LSST_QSERV_QUERY_DBTABLEPAIR_H
+#include <vector>
 namespace lsst {
 namespace qserv {
 namespace query {
+struct DbTablePair {
+    DbTablePair(std::string const& db_, std::string const& table_)
+        : db(db_), table(table_) {}
+    DbTablePair() {}
+    bool empty() const { return db.empty() && table.empty(); }
+    bool operator<(DbTablePair const& rhs) const {
+        if(db < rhs.db) return true;
+        else if(db == rhs.db) { return table < rhs.table; }
+        else return false;
+    }
+    std::string db;
+    std::string table;
+};
+typedef std::vector<DbTablePair> DbTableVector;
 
-////////////////////////////////////////////////////////////////////////
-// TableRefN
-////////////////////////////////////////////////////////////////////////
-std::ostream& operator<<(std::ostream& os, TableRefN const& refN) {
-    return refN.putStream(os);
-}
-std::ostream& operator<<(std::ostream& os, TableRefN const* refN) {
-    return refN->putStream(os);
-}
-
-void TableRefN::render::operator()(TableRefN const& refN) {
-    if(_count++ > 0) _qt.append(",");
-    refN.putTemplate(_qt);
-}
-
-void JoinRefN::apply(TableRefN::Func& f) {
-    // Apply over myself and my join tables.
-    // FIXME
-}
 
 }}} // namespace lsst::qserv::query
+
+
+#endif // LSST_QSERV_QUERY_DBTABLEPAIR_H

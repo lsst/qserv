@@ -141,9 +141,9 @@ public:
         // TODO: Sanity check: do all tables have the same chunks represented?
     }
 private:
-    ChunkInventory::ExistMap& _existMap;
     SqlConnection& _conn;
     boost::regex& _regex;
+    ChunkInventory::ExistMap& _existMap;
 };
 }
 namespace lsst {

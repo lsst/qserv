@@ -85,6 +85,8 @@ public:
     void insertSubChunkTable(std::string const& table) {
         _subChunkTables.insert(table); }
     void insertEntry(std::string const& s, Parameter p) { _subs[s] = p; }
+    void insertChunkEntry(std::string const& tag) { _subs[tag] = CHUNK; }
+    void insertSubChunkEntry(std::string const& tag) { _subs[tag] = SUBCHUNK; }
     void update(QueryMapping const& qm);
 
     // Accessors

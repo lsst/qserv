@@ -68,12 +68,12 @@ public:
 
     SelectStmt();
 
-    void diagnose(); // for debugging
+    std::string diagnose(); // for debugging
 
     boost::shared_ptr<WhereClause const> getWhere() const;
     QueryTemplate getTemplate() const;
     QueryTemplate getPostTemplate() const;
-    boost::shared_ptr<SelectStmt> copyDeep() const;
+    boost::shared_ptr<SelectStmt> clone() const;
     boost::shared_ptr<SelectStmt> copyMerge() const;
     boost::shared_ptr<SelectStmt> copySyntax() const;
 
@@ -109,7 +109,7 @@ public:
 
     // Helpers
     void _print();
-    void _generate();
+    std::string _generateDbg();
 
     // Fields
     boost::shared_ptr<FromList> _fromList; // Data sources

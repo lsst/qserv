@@ -44,7 +44,7 @@ class CirclePqueue {
 public:
     /// Invert Less so we have a minheap rather than a maxheap.
     struct Greater {
-        inline bool operator()(T const& a, T const& b) { less(b, a); }
+        inline bool operator()(T const& a, T const& b) { return less(b, a); }
         Less less;
     };
     typedef std::priority_queue<T, std::vector<T>, Greater> Queue;

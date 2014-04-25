@@ -74,8 +74,8 @@ public:
     private:
         RunnerMgr& _rm;
         wcontrol::Task::Ptr _task;
-        wlog::WLogger::Ptr _log;
         bool _isPoisoned;
+        wlog::WLogger::Ptr _log;
     };
     // For use by runners.
     class RunnerMgr {

@@ -153,8 +153,10 @@ namespace wdb {
 // lsst::qserv::worker::QueryRunner
 ////////////////////////////////////////////////////////////////////////
 QueryRunner::QueryRunner(QueryRunnerArg const& a)
-    : _log(a.log), _pResult(new QueryPhyResult()),
-      _user(a.task->user), _task(a.task),
+    : _log(a.log),
+      _user(a.task->user),
+      _pResult(new QueryPhyResult()),
+      _task(a.task),
       _poisonedMutex(new boost::mutex()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
@@ -300,21 +302,20 @@ QueryRunner::_runTask(wcontrol::Task::Ptr t) {
     if(m.has_chunkid()) { chunkId = m.chunkid(); }
     std::string defaultDb = "test";
     if(m.has_db()) { defaultDb = m.db(); }
-    wdb::QuerySql::Factory qf;
     for(int i=0; i < m.fragment_size(); ++i) {
         wcontrol::Task::Fragment const& f(m.fragment(i));
 
-            if(f.has_resulttable()) { resultTable = f.resulttable(); }
+        if(f.has_resulttable()) { resultTable = f.resulttable(); }
         assert(!resultTable.empty());
 
         // Use SqlFragmenter to break up query portion into fragments.
         // If protocol gives us a query sequence, we won't need to
         // split fragments.
         bool first = t->needsCreate && (i==0);
-        boost::shared_ptr<wdb::QuerySql> qSql = qf.newQuerySql(defaultDb, chunkId,
-                                                               f,
-                                                               first,
-                                                               resultTable);
+        boost::shared_ptr<wdb::QuerySql> qSql(new QuerySql(defaultDb, chunkId,
+                                                           f,
+                                                           first,
+                                                           resultTable));
 
         success = _runFragment(_sqlConn, *qSql);
         if(!success) return false;

@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,19 +29,22 @@
 #include "query/QueryContext.h"
 #include "query/ColumnRef.h"
 
+using lsst::qserv::query::DbTablePair;
+using lsst::qserv::query::DbTableVector;
+
 namespace lsst {
 namespace qserv {
 namespace query {
 
 /// Resolve a column ref to a concrete (db,table)
 /// @return the concrete (db,table), based on current context.
-DbTablePair
+query::DbTablePair
 QueryContext::resolve(boost::shared_ptr<ColumnRef> cr) {
-    if(!cr) { return DbTablePair(); }
+    if(!cr) { return query::DbTablePair(); }
 
     // If alias, retrieve real reference.
     if(cr->db.empty() && !cr->table.empty()) {
-        DbTablePair concrete = tableAliases.get(cr->table);
+        query::DbTablePair concrete = tableAliases.get(cr->table);
         if(!concrete.empty()) {
             if(concrete.db.empty()) {
                 concrete.db = defaultDb;
@@ -50,11 +53,30 @@ QueryContext::resolve(boost::shared_ptr<ColumnRef> cr) {
         }
     }
     // Set default db and table.
-    DbTablePair p(defaultDb, anonymousTable);
-
-    // Extract db and table from ref if available
-    if(!cr->db.empty()) { p.db = cr->db; }
-    if(!cr->table.empty()) { p.table = cr->table; }
+    DbTablePair p;
+    if(cr->table.empty()) { // No db or table: choose first resolver pair
+        p = resolverTables[0];
+        // TODO: We can be fancy and check the column name against the
+        // schema for the entries on the resolverTables, and choose
+        // the matching entry.
+    } else if(cr->db.empty()) { // Table, but not alias.
+        // Match against resolver stack
+        for(DbTableVector::const_iterator i=resolverTables.begin(),
+                e=resolverTables.end();
+            i != e; ++i) {
+            if(i->table == cr->table) {
+                p = *i;
+                break;
+            }
+        }
+        return DbTablePair(); // No resolution.
+    } else { // both table and db exist, so return them
+        return DbTablePair(cr->db, cr->table);
+    }
+    if(p.db.empty()) {
+        // Fill partially-resolved empty db with user db context
+        p.db = defaultDb;
+    }
     return p;
 }
 

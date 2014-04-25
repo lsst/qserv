@@ -26,7 +26,7 @@
 #include "query/SelectStmt.h"
 #include "query/SelectList.h"
 #include "query/FromList.h"
-#include "query/TableRefN.h"
+#include "query/TableRef.h"
 #include "query/QueryContext.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
@@ -39,6 +39,15 @@ namespace query {
 boost::shared_ptr<QueryContext>
 TestFactory::newContext() {
     boost::shared_ptr<QueryContext> context(new QueryContext());
+    context->defaultDb = "Somedb";
+    context->username = "alice";
+    return context;
+}
+
+boost::shared_ptr<QueryContext>
+TestFactory::newContext(boost::shared_ptr<css::Facade> cssFacade) {
+    boost::shared_ptr<QueryContext> context(new QueryContext());
+    context->cssFacade = cssFacade;
     context->defaultDb = "Somedb";
     context->username = "alice";
     return context;
@@ -68,10 +77,10 @@ TestFactory::newStmt() {
     stmt->setSelectList(sl);
 
     // FROM Bar b
-    TableRefnListPtr refnp(new TableRefnList());
-    TableRefN::Ptr tr(new SimpleTableN("", "Bar", "b"));
-    refnp->push_back(tr);
-    FromList::Ptr fl(new FromList(refnp));
+    TableRefListPtr refp(new TableRefList());
+    TableRef::Ptr tr(new TableRef("", "Bar", "b"));
+    refp->push_back(tr);
+    FromList::Ptr fl(new FromList(refp));
     stmt->setFromList(fl);
 
     // WHERE b.baz=42

@@ -52,8 +52,8 @@ public:
 private:
     wbase::TaskAcceptor::Ptr _acceptor;
     wbase::StringBuffer2 _queryBuffer;
-    std::string _db;
     int _chunk;
+    std::string _db;
 };
 
 }}} // namespace lsst::qserv::wcontrol

@@ -64,8 +64,8 @@ inline void renderTemplate(lsst::qserv::query::QueryTemplate& qt,
 }
 template <typename T>
 inline void
-copyDeepIf(boost::shared_ptr<T>& dest, boost::shared_ptr<T> source) {
-    if(source.get()) dest = source->copyDeep();
+cloneIf(boost::shared_ptr<T>& dest, boost::shared_ptr<T> source) {
+    if(source.get()) dest = source->clone();
 }
 template <typename T>
 inline void
@@ -86,11 +86,10 @@ namespace query {
 SelectStmt::SelectStmt() {
 }
 
-void SelectStmt::diagnose() {
+std::string SelectStmt::diagnose() {
     //_selectList->getColumnRefList()->printRefs();
-    _selectList->dbgPrint();
-    _generate();
-
+    //_selectList->dbgPrint(std::cout);
+    return _generateDbg();
 }
 
 QueryTemplate
@@ -131,15 +130,15 @@ SelectStmt::getWhere() const {
 }
 
 boost::shared_ptr<SelectStmt>
-SelectStmt::copyDeep() const {
+SelectStmt::clone() const {
     boost::shared_ptr<SelectStmt> newS(new SelectStmt(*this));
     // Starting from a shallow copy, make a copy of the syntax portion.
-    copyDeepIf(newS->_fromList, _fromList);
-    copyDeepIf(newS->_selectList, _selectList);
-    copyDeepIf(newS->_whereClause, _whereClause);
-    copyDeepIf(newS->_orderBy, _orderBy);
-    copyDeepIf(newS->_groupBy, _groupBy);
-    copyDeepIf(newS->_having, _having);
+    cloneIf(newS->_fromList, _fromList);
+    cloneIf(newS->_selectList, _selectList);
+    cloneIf(newS->_whereClause, _whereClause);
+    cloneIf(newS->_orderBy, _orderBy);
+    cloneIf(newS->_groupBy, _groupBy);
+    cloneIf(newS->_having, _having);
     // For the other fields, default-copied versions are okay.
     return newS;
 }
@@ -204,8 +203,8 @@ void SelectStmt::_print() {
     if(_limit != -1) { LOGGER_INF << " LIMIT " << _limit; }
 }
 
-void SelectStmt::_generate() {
-    LOGGER_INF << getTemplate().dbgStr() << std::endl;
+std::string SelectStmt::_generateDbg() {
+    return getTemplate().dbgStr();
 }
 
 }}} // namespace lsst::qserv::query

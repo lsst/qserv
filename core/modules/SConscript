@@ -89,7 +89,7 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                       boost_regex boost_thread boost_system
                                       boost_signals zookeeper_mt""".split(),
                                'SHLIBPREFIX' : '',
-                               'distDir' : os.path.join(env['python_prefix'],"lsst","qserv","master")}
+                               'distDir' : os.path.join(env['python_relative_prefix'],"lsst","qserv","master")}
                }
 
 # modules used in shProducts

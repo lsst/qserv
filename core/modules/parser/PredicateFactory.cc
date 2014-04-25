@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,8 +29,10 @@
   */
 
 #include "query/Predicate.h"
+#include <boost/algorithm/string.hpp>
 #include "parser/PredicateFactory.h"
 #include "parser/ValueExprFactory.h"
+#include "parser/parseTreeUtil.h"
 #include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
 #include "log/Logger.h"
@@ -88,7 +90,7 @@ PredicateFactory::newInPredicate(antlr::RefAST a) {
         }
         p->cands.push_back(_vf.newExpr(i->getFirstChild()));
     }
-    query::InPredicate& ip = *p;
+    // query::InPredicate& ip = *p; // for gdb
     return p;
 }
 
@@ -104,7 +106,29 @@ PredicateFactory::newLikePredicate(antlr::RefAST a) {
 
     p->value = _vf.newExpr(value->getFirstChild());
     p->charValue = _vf.newExpr(pattern->getFirstChild());
-    query::LikePredicate& lp = *p;
+    // query::LikePredicate& lp = *p; // for gdb
+    return p;
+}
+
+boost::shared_ptr<NullPredicate> PredicateFactory::newNullPredicate(antlr::RefAST a) {
+    boost::shared_ptr<NullPredicate> p(new NullPredicate());
+
+    if(a->getType() == SqlSQL2TokenTypes::NULL_PREDICATE) { a = a->getFirstChild(); }
+    RefAST value = a;
+    RefAST isToken = value->getNextSibling();
+    RefAST nullToken = isToken->getNextSibling();
+    std::string notCand = tokenText(nullToken);
+    boost::to_upper(notCand);
+    if(notCand == "NOT") {
+        p->hasNot = true;
+        nullToken = nullToken->getNextSibling();
+    } else {
+        p->hasNot = false;
+    }
+
+    p->value = _vf.newExpr(value->getFirstChild());
+    // NullPredicate& np = *p; // for gdb
+>>>>>>> master
     return p;
 }
 

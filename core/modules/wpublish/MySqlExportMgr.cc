@@ -139,9 +139,9 @@ public:
         // TODO: Sanity check: do all tables have the same chunks represented?
     }
 private:
-    lsst::qserv::wpublish::MySqlExportMgr::ExistMap& _existMap;
     lsst::qserv::sql::SqlConnection& _conn;
     boost::regex& _regex;
+    lsst::qserv::wpublish::MySqlExportMgr::ExistMap& _existMap;
 };
 
 } // anonymous namespace

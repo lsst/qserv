@@ -45,7 +45,6 @@
 #include "query/Constraint.h"
 
 
-
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -75,6 +74,7 @@ public:
     explicit QuerySession(boost::shared_ptr<css::Facade>);
 
     std::string const& getOriginal() const { return _original; }
+    void setDefaultDb(std::string const& db);
     void setQuery(std::string const& q);
     bool hasAggregate() const;
 
@@ -106,6 +106,12 @@ public:
     Iter cQueryEnd();
 
     // For test harnesses.
+    struct Test { 
+        int cfgNum; 
+        boost::shared_ptr<css::Facade> cssFacade;
+        std::string defaultDb;
+    };
+    explicit QuerySession(Test& t);
     boost::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
 
 private:
@@ -117,13 +123,14 @@ private:
     void _applyLogicPlugins();
     void _generateConcrete();
     void _applyConcretePlugins();
-    void _showFinal(); // Debug
+    void _showFinal(std::ostream& os); // Debug
 
     // Iterator help
-    std::vector<std::string> _buildChunkQueries(ChunkSpec const& s);
+    std::vector<std::string> _buildChunkQueries(ChunkSpec const& s) const;
 
     // Fields
     boost::shared_ptr<css::Facade> _cssFacade;
+    std::string _defaultDb;
     std::string _original;
     boost::shared_ptr<query::QueryContext> _context;
     boost::shared_ptr<query::SelectStmt> _stmt;

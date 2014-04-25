@@ -39,12 +39,12 @@
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
 #include "query/QueryContext.h"
+#include "query/JoinRef.h"
 #include "query/Predicate.h"
 #include "query/SelectStmt.h"
 #include "query/ValueFactor.h"
 #include "query/ValueExpr.h"
 #include "query/WhereClause.h"
-
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
 
@@ -152,18 +152,24 @@ struct RestrictorEntry {
     std::string keyColumn;
 };
 typedef std::deque<RestrictorEntry> RestrictorEntries;
-class getTable {
+class getTable : public TableRef::Func {
 public:
 
-    explicit getTable(css::Facade& cssFacade, RestrictorEntries& entries)
+    getTable(css::Facade& cssFacade, RestrictorEntries& entries)
         : _cssFacade(cssFacade),
           _entries(entries) {}
-    void operator()(query::TableRefN::Ptr t) {
+
+    void operator()(query::TableRef::Ptr t) {
+        // FIXME: Modify so we can use TableRef::apply()
         if(!t) {
             throw qana::AnalysisBug("NULL TableRefN::Ptr");
         }
-        std::string const& db = t->getDb();
-        std::string const& table = t->getTable();
+        (*this)(*t);
+    }
+    virtual void operator()(query::TableRef& t) {
+        std::string const& db = t.getDb();
+        std::string const& table = t.getTable();
+
         if(!_cssFacade.containsDb(db)
            || !_cssFacade.containsTable(db, table)) {
             throw qana::AnalysisError("Invalid db/table:" + db + "." + table);
@@ -173,7 +179,7 @@ public:
             return; // Do nothing for non-chunked tables
         }
         // Now save an entry for WHERE clause processing.
-        std::string alias = t->getAlias();
+        std::string alias = t.getAlias();
         if(alias.empty()) {
             // For now, only accept aliased tablerefs (should have
             // been done earlier)
@@ -181,9 +187,14 @@ public:
         }
         std::vector<std::string> pCols = _cssFacade.getPartitionCols(db, table);
         RestrictorEntry se(alias,
-                        StringPair(pCols[0], pCols[1]),
-                        pCols[2]);
+                           StringPair(pCols[0], pCols[1]),
+                           pCols[2]);
         _entries.push_back(se);
+        JoinRefList& jList = t.getJoins();
+        typedef JoinRefList::iterator Iter;
+        for(Iter i=jList.begin(), e=jList.end(); i != e; ++i) {
+            (*this)((**i).getRight());
+        }
     }
     css::Facade& _cssFacade;
     RestrictorEntries& _entries;
@@ -375,7 +386,7 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
 
     // First, get a list of the chunked tables.
     query::FromList& fList = stmt.getFromList();
-    query::TableRefnList& tList = fList.getTableRefnList();
+    query::TableRefList& tList = fList.getTableRefList();
     RestrictorEntries entries;
     if(!context.cssFacade) {
         throw qana::AnalysisBug("Missing metadata in context");

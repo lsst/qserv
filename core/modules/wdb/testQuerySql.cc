@@ -62,7 +62,6 @@ struct Fixture {
     void printQsql(QuerySql const& q) {
         std::cout << "qsql=" << q << std::endl;
     }
-    QuerySql::Factory factory;
     std::string defaultDb;
     std::string defaultResult;
 };
@@ -73,7 +72,7 @@ BOOST_FIXTURE_TEST_SUITE(QuerySqlSuite, Fixture)
 BOOST_AUTO_TEST_CASE(Basic) {
     boost::shared_ptr<QuerySql>  qSql;
     TaskMsg_Fragment frag = makeFragment();
-    qSql = factory.newQuerySql(defaultDb, 1001, frag, true, defaultResult);
+    qSql.reset(new QuerySql(defaultDb, 1001, frag, true, defaultResult));
     BOOST_CHECK(qSql.get());
     printQsql(*qSql);
 }
@@ -81,7 +80,7 @@ BOOST_AUTO_TEST_CASE(Basic) {
 BOOST_AUTO_TEST_CASE(QueryBatch) {
     boost::shared_ptr<QuerySql>  qSql;
     TaskMsg_Fragment frag = makeFragment();
-    qSql = factory.newQuerySql(defaultDb, 1001, frag, true, defaultResult);
+    qSql.reset(new QuerySql(defaultDb, 1001, frag, true, defaultResult));
     BOOST_CHECK(qSql.get());
 
     QuerySql::Batch build("QueryBuildSub", qSql->buildList);

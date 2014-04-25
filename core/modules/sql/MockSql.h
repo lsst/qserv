@@ -83,7 +83,7 @@ public:
         virtual ~Iter() {}
         virtual SqlErrorObject& getErrorObject() { return _errObj; }
         virtual List const& operator*() const { return *_cursor; }
-        virtual SqlResultIter& operator++() { ++_cursor; }
+        virtual SqlResultIter& operator++() { ++_cursor; return *this; }
         virtual bool done() const { return _cursor == _end; }
 
         SqlErrorObject _errObj;

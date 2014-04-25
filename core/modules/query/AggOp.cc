@@ -164,7 +164,7 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // class AggOp::Mgr
 ////////////////////////////////////////////////////////////////////////
-AggOp::Mgr::Mgr() {
+AggOp::Mgr::Mgr() : _hasAggregate(false) {
     // Load the map
     _map["COUNT"].reset(new CountAggOp(*this));
     _map["AVG"].reset(new AvgAggOp(*this));
@@ -189,6 +189,7 @@ AggOp::Mgr::applyOp(std::string const& name, ValueFactor const& orig) {
     if(!p) {
         throw std::invalid_argument("Missing AggOp in applyOp()");
     }
+    _hasAggregate = true; // Mark existence of real aggregation record
     return (*p)(orig);
 }
 

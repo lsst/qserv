@@ -59,11 +59,11 @@ public:
         _init();
     }
     explicit WLogger(boost::shared_ptr<Printer> p)
-        : _printer(p), _logLevel(LOG_EVERYTHING), _prefix("") {
+        : _logLevel(LOG_EVERYTHING), _prefix(""), _printer(p) {
         _init();
     }
     explicit WLogger(WLogger::Ptr backend)
-        : _backend(backend), _logLevel(LOG_EVERYTHING) {
+        : _logLevel(LOG_EVERYTHING), _backend(backend) {
     }
 
     void setPrefix(std::string const& prefix) { _prefix = prefix; }
@@ -92,10 +92,11 @@ public:
 private:
     void _init();
 
+    LogLevel _logLevel;
     std::string _prefix;
     boost::shared_ptr<Printer> _printer;
     WLogger::Ptr _backend;
-    LogLevel _logLevel;
+
 };
 
 }}} // namespace lsst::qserv::wlog

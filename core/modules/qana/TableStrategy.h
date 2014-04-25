@@ -20,33 +20,41 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QUERY_TESTFACTORY_H
-#define LSST_QSERV_QUERY_TESTFACTORY_H
+#ifndef LSST_QSERV_MASTER_TABLESTRATEGY_H
+#define LSST_QSERV_MASTER_TABLESTRATEGY_H
+#include <list>
 #include <boost/shared_ptr.hpp>
+#include "query/TableRef.h"
 
 namespace lsst {
 namespace qserv {
+namespace master {
 
-namespace css {
-    class Facade; // Forward
-}
-    
-namespace query {
-
-// Forward
+class FromList;
 class QueryContext;
-class SelectStmt;
+class QueryMapping;
 
-/// TestFactory is a factory for non-parsed query representation objects
-class TestFactory {
+/// TableStrategy provides a structure for processing the FromList in
+/// a way that facilitates the retention of the original structure
+/// after processing.
+class TableStrategy {
 public:
-    TestFactory() {}
-    boost::shared_ptr<QueryContext> newContext();
-    boost::shared_ptr<QueryContext> newContext(
-                         boost::shared_ptr<css::Facade> cssFacade);
-    boost::shared_ptr<SelectStmt> newStmt();
+    TableStrategy(FromList const& f,
+                  QueryContext& context);
+    boost::shared_ptr<QueryMapping> exportMapping();
+    //void scan(FromList const& f);
+    int getPermutationCount() const;
+    boost::shared_ptr<TableRefList> getPermutation(int permutation, TableRefList const& tList);
+    void setToPermutation(int permutation, TableRefList& p);
+
+private:
+    class Impl;
+    void _import(FromList const& f);
+    void _updateContext();
+
+    boost::shared_ptr<Impl> _impl;
 };
 
-}}} // namespace lsst::qserv::query
+}}} // namespace lsst::qserv::master
+#endif // LSST_QSERV_MASTER_SPHERICALBOXSTRATEGY_H
 
-#endif // LSST_QSERV_QUERY_TESTFACTORY_H

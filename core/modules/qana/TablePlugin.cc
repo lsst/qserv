@@ -40,12 +40,14 @@
 #include "query/WhereClause.h"
 #include "query/FuncExpr.h"
 #include "qana/SphericalBoxStrategy.h"
+#include "qana/TableStrategy.h"
 #include "qana/QueryMapping.h"
 #include "query/QueryContext.h"
 #include "query/TableAlias.h"
 #include "query/ValueFactor.h"
 #include "log/Logger.h"
 
+using lsst::qserv::query::DbTableVector;
 namespace lsst {
 namespace qserv {
 namespace qana {
@@ -80,19 +82,19 @@ public:
     int& _seqN;
 };
 
-class addDbContext : public query::TableRefN::Func {
+class addDbContext : public query::TableRef::Func {
 public:
     addDbContext(query::QueryContext const& c,
                  std::string& firstDb_,
                  std::string& firstTable_)
         : context(c), firstDb(firstDb_), firstTable(firstTable_)
         {}
-    void operator()(query::TableRefN::Ptr t) {
+    void operator()(query::TableRef::Ptr t) {
         if(t.get()) { t->apply(*this); }
     }
-    void operator()(query::TableRefN& t) {
+    void operator()(query::TableRef& t) {
         std::string table = t.getTable();
-        if(table.empty()) return; // Add context only to concrete refs
+        if(table.empty()) { throw std::logic_error("No table in TableRef"); }
         if(t.getDb().empty()) { t.setDb(context.defaultDb); }
         if(firstDb.empty()) { firstDb = t.getDb(); }
         if(firstTable.empty()) { firstTable = table; }
@@ -103,21 +105,24 @@ public:
 };
 
 template <typename G, typename A>
-class addAlias {
+class addAlias : public TableRef::Func {
 public:
     addAlias(G g, A a) : _generate(g), _addMap(a) {}
-    void operator()(query::TableRefN::Ptr t) {
+    void operator()(query::TableRef::Ptr t) {
+        if(t.get()) { t->apply(*this); }
+    }
+    void operator()(query::TableRef& t) {
         // LOGGER_INF << "tableref:";
         // t->putStream(LOG_STRM(Info));
         // LOGGER_INF << std::endl;
         // If no alias, then add one.
-        std::string alias = t->getAlias();
+        std::string alias = t.getAlias();
         if(alias.empty()) {
             alias = _generate();
-            t->setAlias(alias);
+            t.setAlias(alias);
         }
         // Save ref
-        _addMap(alias, t->getDb(), t->getTable());
+        _addMap(alias, t.getDb(), t.getTable());
     }
 private:
     G _generate; // Functor that creates a new alias name
@@ -148,8 +153,6 @@ public:
             }
             query::ValueFactor& t = *i->factor;
             //LOGGER_INF << "fixing factor: " << *vep << std::endl;
-            std::string newAlias;
-
             switch(t.getType()) {
             case query::ValueFactor::COLUMNREF:
                 // check columnref.
@@ -164,7 +167,11 @@ public:
                 // Patch db/table name if applicable
                 _patchStar(t);
                 break;
-            default: break;
+            case ValueFactor::CONST:
+                break; // Constants don't need patching.
+            default:
+                LOGGER_WRN << "Unhandled ValueFactor:" << t << std::endl;
+                break;
             }
         }
     }
@@ -173,6 +180,7 @@ private:
         std::string newAlias = _getAlias(ref.db, ref.table);
         if(newAlias.empty()) { return; } //  Ignore if no replacement
                                          //  exists.
+
         // Eliminate db. Replace table with aliased table.
         ref.db.assign("");
         ref.table.assign(newAlias);
@@ -271,9 +279,12 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
     // from-list so that the later table-name substitution is confined
     // to modifying the from-list.
     query::FromList& fList = stmt.getFromList();
-    // LOGGER_INF << "TABLE:Logical:orig fromlist "
-    //           << fList.getGenerated() << std::endl;
-    query::TableRefnList& tList = fList.getTableRefnList();
+    // std::cout << "TABLE:Logical:orig fromlist "
+    //           << fList.getGenerated()
+    //           << (fList.isJoin() ? " is join" : "")
+    //           << std::endl;
+
+    TableRefList& tList = fList.getTableRefList();
 
     // For each tableref, modify to add alias.
     int seq=0;
@@ -298,6 +309,8 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
         std::for_each(veI, veEnd, fixExprAlias(context.tableAliasReverses));
     }
     // Fill-in default db context.
+    DbTableVector v = fList.computeResolverTables();
+    context.resolverTables.swap(v);
 
     query::DbTablePair p;
     addDbContext adc(context, p.db, p.table);
@@ -370,16 +383,44 @@ int TablePlugin::_rewriteTables(qana::SelectStmtList& outList,
     // The QueryMapping abstraction provides a symbolic mapping so
     // that a later query generation stage can generate queries from
     // templatable queries a list of partition tuples.
-    qana::SphericalBoxStrategy s(fList, context);
+
+    // In order for this to work while preserving join syntax, we
+    // probably need to change the model. Previously, we did:
+    // 1. Ingest a flattened sequence of tables.
+    // 2. Look them up.
+    // 3. (decide on subchunking)
+    // 4. Create the new FromList entirely from the sequence.
+    // We can ingest in a way that allows step 4 to create not from
+    // scratch, but by doing a filter-copy of the original FromList,
+    // and replacing each table ref one at a time.  This preserves the
+    // structure. It might be desirable to alter the structure as an
+    // optimization, but this can come later.
+#if 1
+    TableStrategy ts(fList, context);
+    int permutationCount = ts.getPermutationCount();
+    if(permutationCount > 1)
+        for(int i=0; i < permutationCount; ++i) {
+            boost::shared_ptr<SelectStmt> stmt = in.clone();
+            TableRefListPtr trl = ts.getPermutation(i, fList.getTableRefList());
+            FromList::Ptr f(new FromList(trl));
+            stmt->setFromList(f);
+            outList.push_back(stmt);
+            ++added;
+    } else {
+        ts.setToPermutation(0, fList.getTableRefList());
+    }
+    qana::QueryMapping::Ptr qm = ts.exportMapping();
+#else
+    SphericalBoxStrategy s(fList, context);
     qana::QueryMapping::Ptr qm = s.getMapping();
     // Compute the new fromLists, and if there are more than one, then
     // clone the selectstmt for each copy.
-    if(s.needsMultiple()) {
-        typedef std::list<boost::shared_ptr<query::FromList> > FromListList;
+    if(ts.needsMultiple()) {
+        typedef std::list<boost::shared_ptr<FromList> > FromListList;
         typedef FromListList::iterator Iter;
         FromListList newFroms = s.computeNewFromLists();
         for(Iter i=newFroms.begin(), e=newFroms.end(); i != e; ++i) {
-            boost::shared_ptr<query::SelectStmt> stmt = in.copyDeep();
+            boost::shared_ptr<SelectStmt> stmt = in.clone();
             stmt->setFromList(*i);
             outList.push_back(stmt);
             ++added;
@@ -388,6 +429,7 @@ int TablePlugin::_rewriteTables(qana::SelectStmtList& outList,
         s.patchFromList(fList);
         // LOGGER_INF << "post-patched fromlist " << fList.getGenerated() << std::endl;
     }
+#endif
     // Now add/merge the mapping to the Plan
     if(!mapping.get()) {
         mapping = qm;

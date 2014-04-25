@@ -64,8 +64,8 @@ public:
 private:
     class Tokenizer;
     void _setFromPath(std::string const& path);
-    std::string _ingestKeys(std::string const& leafPlusKeys);
-    std::string _ingestKeyStr(std::string const& keyStr);
+    void _ingestKeys(std::string const& leafPlusKeys);
+    void _ingestKeyStr(std::string const& keyStr);
 
     RequestType _requestType;
     std::string _db;

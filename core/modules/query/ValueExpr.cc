@@ -167,6 +167,16 @@ boost::shared_ptr<ValueFactor const> ValueExpr::getFactor() const {
     return _factorOps.front().factor;
 }
 
+/// @return true if holding a single ValueFactor
+bool ValueExpr::isColumnRef() const {
+    if(_factorOps.size() == 1) {
+        ValueFactor const& factor = *_factorOps.front().factor;
+        if(factor.getType() == ValueFactor::COLUMNREF) {
+            return true;
+        }
+    }
+    return false;
+}
 
 ValueExprPtr ValueExpr::clone() const {
     // First, make a shallow copy

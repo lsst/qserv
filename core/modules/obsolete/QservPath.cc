@@ -153,14 +153,14 @@ QservPath::_setFromPath(std::string const& path) {
     }
 }
 
-std::string
+void
 QservPath::_ingestKeys(std::string const& leafPlusKeys) {
     std::string::size_type start;
     start = leafPlusKeys.find_first_of(_varSep, 0);
     _vars.clear();
 
     if(start == std::string::npos) { // No keys found
-        return leafPlusKeys;
+        return; //leafPlusKeys;
     }
     ++start;
     Tokenizer t(leafPlusKeys.substr(start), _varDelim);
@@ -169,7 +169,7 @@ QservPath::_ingestKeys(std::string const& leafPlusKeys) {
     }
 }
 
-std::string
+void
 QservPath::_ingestKeyStr(std::string const& keyStr) {
     std::string::size_type equalsPos;
     equalsPos = keyStr.find_first_of('=');
