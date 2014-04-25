@@ -75,9 +75,6 @@ from lsst.qserv.master.geometry import SphericalConvexPolygon, convexHull
 from lsst.qserv.master.db import TaskDb as Persistence
 from lsst.qserv.master.db import Db
 
-from lsst.qserv.meta.status import Status, QmsException
-from lsst.qserv.meta.client import Client
-
 # SWIG'd functions
 
 # xrdfile - raw xrootd access
@@ -95,6 +92,8 @@ from lsst.qserv.master import newSession, discardSession
 from lsst.qserv.master import setupQuery, getSessionError
 from lsst.qserv.master import getConstraints, addChunk, ChunkSpec
 from lsst.qserv.master import getDominantDb
+from lsst.qserv.master import getDbStriping
+from lsst.qserv.master import containsDb
 from lsst.qserv.master import configureSessionMerger3, submitQuery3
 
 
@@ -103,14 +102,7 @@ from lsst.qserv.master import getQueryStateString, getErrorDesc
 from lsst.qserv.master import SUCCESS as QueryState_SUCCESS
 # Parser
 from lsst.qserv.master import ChunkMeta
-# Metadata
-from lsst.qserv.master import newMetadataSession, discardMetadataSession
-from lsst.qserv.master import addDbInfoNonPartitioned
-from lsst.qserv.master import addDbInfoPartitionedSphBox
-from lsst.qserv.master import addTbInfoNonPartitioned
-from lsst.qserv.master import addTbInfoPartitionedSphBox
-from lsst.qserv.master import printMetadataCache
-from lsst.qserv.master import checkIfContainsDb
+
 # queryMsg
 from lsst.qserv.master import msgCode
 from lsst.qserv.master import queryMsgAddMsg
@@ -183,110 +175,6 @@ def getResultTable(tableName):
 ######################################################################
 ## Classes
 ######################################################################
-
-_defaultMetadataCacheSessionId = None
-
-class MetadataCacheIface:
-    """MetadataCacheIface encapsulates logic to prepare, metadata
-       information by fetching it from qserv metadata server into
-       C++ memory structure. It is stateless. Throws exceptions on
-       failure."""
-
-    def getDefaultSessionId(self):
-        """Returns default sessionId. It will initialize it if needed.
-           Note: initialization involves contacting qserv metadata
-           server (qms). This is the only time qserv talks to qms.
-           This function throws QmsException if case of problems."""
-        global _defaultMetadataCacheSessionId
-        if _defaultMetadataCacheSessionId is None:
-            _defaultMetadataCacheSessionId = self.newSession()
-            self.printSession(_defaultMetadataCacheSessionId)
-        return _defaultMetadataCacheSessionId
-
-    def newSession(self):
-        """Creates a new session: assigns sessionId, populates the C++
-           cache and returns the sessionId."""
-        sessionId = newMetadataSession()
-        qmsClient = Client(
-            lsst.qserv.master.config.config.get("metaServer", "host"),
-            int(lsst.qserv.master.config.config.get("metaServer", "port")),
-            lsst.qserv.master.config.config.get("metaServer", "user"),
-            lsst.qserv.master.config.config.get("metaServer", "passwd"))
-        self._fetchAllData(sessionId, qmsClient)
-        return sessionId
-
-    def printSession(self, sessionId):
-        printMetadataCache(sessionId)
-
-    def discardSession(self, sessionId):
-        discardMetadataSession(sessionId)
-
-    def _fetchAllData(self, sessionId, qmsClient):
-        dbs = qmsClient.listDbs()
-        for dbName in dbs:
-            partStrategy = self._addDb(dbName, sessionId, qmsClient);
-            tables = qmsClient.listTables(dbName)
-            for tableName in tables:
-                self._addTable(dbName, tableName, partStrategy, sessionId, qmsClient)
-
-    def _addDb(self, dbName, sessionId, qmsClient):
-        # retrieve info about each db
-        x = qmsClient.retrieveDbInfo(dbName)
-        # call the c++ function
-        if x["partitioningStrategy"] == "sphBox":
-            logger.dbg("add partitioned, ", dbName, x)
-            ret = addDbInfoPartitionedSphBox(
-                sessionId, dbName,
-                int(x["stripes"]),
-                int(x["subStripes"]),
-                float(x["defaultOverlap_fuzziness"]),
-                float(x["defaultOverlap_nearNeigh"]))
-        elif x["partitioningStrategy"] == "None":
-            logger.dbg("add non partitioned, ", db)
-            ret = addDbInfoNonPartitioned(sessionId, dbName)
-        else:
-            raise QmsException(Status.ERR_INVALID_PART)
-        if ret != 0:
-            if ret == -1: # the dbInfo does not exist
-                raise QmsException(Status.ERR_DB_NOT_EXISTS)
-            if ret == -2: # the table is already there
-                raise QmsException(Status.ERR_TABLE_EXISTS)
-            raise QmsException(Status.ERR_INTERNAL)
-        return x["partitioningStrategy"]
-
-    def _addTable(self, dbName, tableName, partStrategy, sessionId, qmsClient):
-        # retrieve info about each db
-        x = qmsClient.retrieveTableInfo(dbName, tableName)
-        # call the c++ function
-        if partStrategy == "sphBox": # db is partitioned
-            if "overlap" in x:       # but this table does not have to be
-                ret = addTbInfoPartitionedSphBox(
-                    sessionId,
-                    dbName,
-                    tableName,
-                    float(x["overlap"]),
-                    x["lonCol"],
-                    x["latCol"],
-                    x["objIdCol"],
-                    int(x["lonColNo"]),
-                    int(x["latColNo"]),
-                    int(x["objIdColNo"]),
-                    int(x["logicalPart"]),
-                    int(x["physChunking"]))
-            else:                    # db is not partitioned
-                ret = addTbInfoNonPartitioned(sessionId, dbName, tableName)
-        elif partStrategy == "None":
-            ret = addTbInfoNonPartitioned(sessionId, dbName, tableName)
-        else:
-            raise QmsException(Status.ERR_INVALID_PART)
-        if ret != 0:
-            if ret == -1: # the dbInfo does not exist
-                raise QmsException(Status.ERR_DB_NOT_EXISTS)
-            if ret == -2: # the table is already there
-                raise QmsException(Status.ERR_TABLE_EXISTS)
-            raise QmsException(Status.ERR_INTERNAL)
-
-########################################################################
 
 class TaskTracker:
     def __init__(self):
@@ -426,7 +314,6 @@ class InbandQueryAction:
         self._invokeLock.acquire() # Prevent res-retrieval before invoke
         self._resultName = resultName
         try:
-            self.metaCacheSession = MetadataCacheIface().getDefaultSessionId()
             self._prepareForExec()
             # Pass up the sessionId for query messages access.
             setSessionId(self.sessionId)
@@ -484,7 +371,7 @@ class InbandQueryAction:
         errorMsg = getSessionError(self.sessionId)
         if errorMsg: raise ParseError(errorMsg)
         self.dominantDb = getDominantDb(self.sessionId)
-        if not checkIfContainsDb(self.metaCacheSession, self.dominantDb):
+        if not containsDb(self.sessionId, self.dominantDb):
             raise ParseError("Illegal db")
         self._applyConstraints()
         self._prepareMerger()
@@ -530,9 +417,16 @@ class InbandQueryAction:
         call evaluateHints, and add the chunkIds into the query(C++) """
         # Retrieve constraints as (name, [param1,param2,param3,...])
         self.constraints = getConstraints(self.sessionId)
-        logger.dbg("Getting constraints", self.constraints, "size=",self.constraints.size())
+        logger.dbg("Getting constraints", self.constraints, "size=",
+                   self.constraints.size())
         dominantDb = getDominantDb(self.sessionId)
-        self.pmap = spatial.makePmap(dominantDb, self.metaCacheSession)
+        dbStriping = getDbStriping(self.sessionId)
+        if (dbStriping.stripes < 1) or (dbStriping.subStripes < 1):
+            msg = "Partitioner's stripes and substripes must be natural numbers."
+            raise lsst.qserv.master.config.ConfigError(msg)
+        self.pmap = spatial.makePmap(dominantDb, 
+                                     dbStriping.stripes, 
+                                     dbStriping.subStripes)
 
         def iterateConstraints(constraintVec):
             for i in range(constraintVec.size()):
@@ -621,7 +515,6 @@ class InbandQueryAction:
         cfg["query.hints"] = ";".join(
             map(lambda (k,v): k + "," + str(v), self.hints.items()))
         cfg["table.result"] = self._resultName
-        cfg["runtime.metaCacheSession"] = str(self.metaCacheSession)
         return cfg
 
     def _computeIndexRegions(self, hintList):

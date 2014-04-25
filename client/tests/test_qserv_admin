@@ -1,0 +1,17 @@
+create database db1a client/examples/dbPartitioned.params;
+create database db1b like db1a;
+create database db2 client/examples/dbPartitioned.params;
+create table db2.Object client/examples/tb_Object.params;
+dump everything;
+drop database db1a;
+dump everything;
+drop database db1b;
+drop database db2;
+create database dbA client/examples/dbPartitioned.params;
+drop database dbA;
+create database dbA client/examples/dbPartitioned.params;
+drop database dbA;
+create database dbA client/examples/dbPartitioned.params;
+drop database dbA;
+exit;
+

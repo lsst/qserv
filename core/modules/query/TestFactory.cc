@@ -38,9 +38,17 @@ namespace qserv {
 namespace query {
 
 boost::shared_ptr<master::QueryContext>
-TestFactory::newContext(master::MetadataCache* mc) {
+TestFactory::newContext() {
     boost::shared_ptr<master::QueryContext> context(new master::QueryContext());
-    context->metadata = mc;
+    context->defaultDb = "Somedb";
+    context->username = "alice";
+    return context;
+}
+
+boost::shared_ptr<master::QueryContext>
+TestFactory::newContext(boost::shared_ptr<css::Facade> cssFacade) {
+    boost::shared_ptr<master::QueryContext> context(new master::QueryContext());
+    context->cssFacade = cssFacade;
     context->defaultDb = "Somedb";
     context->username = "alice";
     return context;

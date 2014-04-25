@@ -145,7 +145,7 @@ std::string const& qMaster::getSessionError(int session) {
     return qs.getError();
 }
 
-lsst::qserv::master::Constraint getC(int base) {
+qMaster::Constraint getC(int base) {
     // SWIG test.
     std::stringstream ss;
     qMaster::Constraint c;
@@ -157,22 +157,32 @@ lsst::qserv::master::Constraint getC(int base) {
     return c; // SWIG test.
  }
 
-lsst::qserv::master::ConstraintVec
-lsst::qserv::master::getConstraints(int session) {
+qMaster::ConstraintVec
+qMaster::getConstraints(int session) {
     AsyncQueryManager& qm = getAsyncManager(session);
     QuerySession& qs = qm.getQuerySession();
     return ConstraintVec(qs.getConstraints());
 }
 
 std::string const&
-lsst::qserv::master::getDominantDb(int session) {
+qMaster::getDominantDb(int session) {
     AsyncQueryManager& qm = getAsyncManager(session);
     QuerySession& qs = qm.getQuerySession();
     return qs.getDominantDb();
 }
 
+bool
+qMaster::containsDb(int session, std::string const& dbName) {
+    return getAsyncManager(session).getQuerySession().containsDb(dbName);
+}
+
+lsst::qserv::css::StripingParams
+qMaster::getDbStriping(int session) {
+    return getAsyncManager(session).getQuerySession().getDbStriping();
+}
+
 void
-qMaster::addChunk(int session, lsst::qserv::master::ChunkSpec const& cs ) {
+qMaster::addChunk(int session, qMaster::ChunkSpec const& cs ) {
 #if 0 // SWIG plumbing debug
     LOGGER_INF << "Received chunk=" << cs.chunkId << " ";
     typedef std::vector<int> Vect;

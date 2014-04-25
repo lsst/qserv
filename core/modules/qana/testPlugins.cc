@@ -26,17 +26,15 @@
   */
 #define BOOST_TEST_MODULE QueryPlugins_1
 #include "boost/test/included/unit_test.hpp"
+#include "css/Facade.h"
 #include "qana/QueryPlugin.h"
 #include "query/TestFactory.h"
 #include "query/SelectStmt.h"
 #include "query/QueryContext.h"
-#include "meta/ifaceMeta.h"
-#include "meta/MetadataCache.h"
 #include "qana/AnalysisError.h"
 
 namespace test = boost::test_tools;
 
-using lsst::qserv::master::MetadataCache;
 using lsst::qserv::master::QueryContext;
 using lsst::qserv::master::SelectStmt;
 using lsst::qserv::master::QueryPlugin;
@@ -45,43 +43,15 @@ using lsst::qserv::qana::AnalysisError;
 
 struct TestFixture {
     TestFixture(void) {
-        prepareMetadata();
+        // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
+        // Use client/examples/testCppParser_generateMap
+        std::string kvMapPath = "./modules/qana/testPlugins.kvmap"; // FIXME
+        cssFacade = lsst::qserv::css::FacadeFactory::createMemFacade(kvMapPath);
     }
-    void prepareMetadata() {
-        metaSession = lsst::qserv::master::newMetadataSession();
-        metadataCache =
-            lsst::qserv::master::getMetadataCache(metaSession);
-        boost::shared_ptr<MetadataCache> mc = metadataCache;
-        mc->addDbInfoPartitionedSphBox("Somedb",
-                                       60,        // number of stripes
-                                       18,        // number of substripes
-                                       0.01,      // default overlap fuzziness
-                                       0.025);    // default overlap near neighbor
-
-        mc->addTbInfoNonPartitioned("Somedb", "Bar");
-        mc->addDbInfoPartitionedSphBox("LSST",
-                                       60,        // number of stripes
-                                       18,        // number of substripes
-                                       0.01,      // default overlap fuzziness
-                                       0.025);    // default overlap near neighbor
-        mc->addTbInfoPartitionedSphBox("LSST", "Object",
-                                       0.025,     // actual overlap
-                                       "ra_Test", "decl_Test", "objectIdObjTest",
-                                       1, 2, 0,   // positions of the above columns
-                                       2,         // 2-level chunking
-                                       0x0021);   // 1-level persisted
-        mc->addTbInfoPartitionedSphBox("LSST", "Source",
-                                       0,         // actual overlap
-                                       "raObjectTest", "declObjectTest", "objectIdSourceTest",
-                                       1, 2, 0,   // positions of the above columns
-                                       1,         // 1-level chunking
-                                       0x0011);   // 1-level persisted
-    }
-
 
     ~TestFixture(void) {}
 
-    boost::shared_ptr<lsst::qserv::master::MetadataCache> metadataCache;
+    boost::shared_ptr<lsst::qserv::css::Facade> cssFacade;
     int metaSession;
 };
 
@@ -93,7 +63,7 @@ BOOST_AUTO_TEST_CASE(Exceptions) {
     // Under normal operation, the columnref is patched by the TablePlugin
     QueryPlugin::Ptr qp = QueryPlugin::newInstance("QservRestrictor");
     TestFactory factory;
-    boost::shared_ptr<QueryContext> qc = factory.newContext(metadataCache.get());
+    boost::shared_ptr<QueryContext> qc = factory.newContext(cssFacade);
     boost::shared_ptr<SelectStmt> stmt = factory.newStmt();
     qp->prepare();
     BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);

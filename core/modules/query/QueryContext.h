@@ -31,17 +31,18 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
+#include "css/Facade.h"
 #include "qana/QueryMapping.h"
 #include "query/DbTablePair.h"
 #include "query/TableAlias.h"
 #include "util/common.h"
+
 namespace lsst {
 namespace qserv {
 namespace master {
 
 class ColumnRef;
 class QsRestrictor;
-class MetadataCache;
 
 /// QueryContext is a value container for query state related to analyzing,
 /// rewriting, and generating queries. It is the primary mechanism for
@@ -55,15 +56,16 @@ class QueryContext {
 public:
     typedef boost::shared_ptr<QueryContext> Ptr;
 
-    QueryContext() : metadata(NULL) {}
+    QueryContext() {}
     typedef std::list<boost::shared_ptr<QsRestrictor> > RestrList;
 
-    MetadataCache* metadata; ///< Unowned, assumed to be alive for this lifetime.
+    boost::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive 
+                                              ///  for this lifetime.
     std::string defaultDb; ///< User session db context
     std::string dominantDb; ///< "dominant" database for this query
     std::string anonymousTable; ///< Implicit table context
     std::string username; ///< unused, but reserved.
-    std::vector<query::DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
+    std::vector<lsst::qserv::query::DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
 
     StringPairList scanTables; // Tables scanned (for shared scans)
 
@@ -79,12 +81,15 @@ public:
 
     bool needsMerge; ///< Does this query require a merge/post-processing step?
 
+    lsst::qserv::css::StripingParams getDbStriping() {
+        return cssFacade->getDbStriping(dominantDb); }
+    bool containsDb(std::string const& dbName) {
+        return cssFacade->containsDb(dbName); }
     bool hasChunks() const {
         return queryMapping.get() && queryMapping->hasChunks(); }
     bool hasSubChunks() const {
         return queryMapping.get() && queryMapping->hasSubChunks(); }
-    query::DbTablePair resolve(boost::shared_ptr<ColumnRef> cr);
-
+    lsst::qserv::query::DbTablePair resolve(boost::shared_ptr<ColumnRef> cr);
 };
 
 }}} // namespace lsst::qserv::master
