@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,10 +42,16 @@ class QueryTemplate; // Forward
 /// ColumnRef is an abstract value class holding a parsed single column ref
 class ColumnRef {
 public:
-    typedef std::list<boost::shared_ptr<ColumnRef> > List;
+    typedef boost::shared_ptr<ColumnRef>  Ptr;
+    typedef std::list<Ptr> List;
 
     ColumnRef(std::string db_, std::string table_, std::string column_)
         : db(db_), table(table_), column(column_) {}
+    static Ptr newShared(std::string const& db_,
+                         std::string const& table_,
+                         std::string const& column_) {
+        return Ptr(new ColumnRef(db_, table_, column_));
+    }
 
     std::string db;
     std::string table;
@@ -54,7 +60,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, ColumnRef const* cr);
     void renderTo(QueryTemplate& qt) const;
 };
-// Should refactor most of this into a ColumnRef factory.
+
 }}} // namespace lsst::qserv::master
 
 #endif // LSST_QSERV_MASTER_COLUMNREF_H

@@ -14,6 +14,17 @@ port=%(QSERV_RPC_PORT)s
 #db=qservMeta
 # Steal resultdb settings for now.
 
+[css]
+# allowed values:zoo, mem. Default is zoo
+technology=zoo
+
+# For zoo, provide zookeeper connection information
+# For local zookeeper installation, use "localhost:2181"
+# For mem, provide location of file containing key-value pairs
+# (to learn how to dump key-value pairs, see
+# qserv/core/modules/css/KvInterfaceImplMem.cc)
+connection=localhost:2181
+
 [resultdb]
 #host=
 #port=0

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -52,6 +52,9 @@ public:
     ValueExpr();
     enum Op {NONE=200, UNKNOWN, PLUS, MINUS, MULTIPLY, DIVIDE};
     struct FactorOp {
+        explicit FactorOp(boost::shared_ptr<ValueFactor> factor_, Op op_=NONE)
+            : factor(factor_), op(op_) {}
+        FactorOp() {}
         boost::shared_ptr<ValueFactor> factor;
         Op op;
     };
@@ -76,6 +79,9 @@ public:
     bool isStar() const;
     bool isFactor() const;
     boost::shared_ptr<ValueFactor const> getFactor() const;
+
+    // Convenience checkers
+    bool isColumnRef() const;
 
     ValueExprPtr clone() const;
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const& ve);

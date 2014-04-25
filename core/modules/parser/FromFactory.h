@@ -48,6 +48,8 @@ namespace master {
 // Forward
 class ParseAliasMap;
 class FromList;
+class BoolTermFactory;
+class ValueExprFactory;
 
 class FromFactory {
 public:
@@ -57,14 +59,18 @@ public:
     friend class TableRefListH;
     class RefGenerator;
 
-    FromFactory(boost::shared_ptr<ParseAliasMap> aliases);
+    FromFactory(boost::shared_ptr<ParseAliasMap> aliases, 
+                boost::shared_ptr<ValueExprFactory> vf);
+
     boost::shared_ptr<FromList> getProduct();
 private:
     void attachTo(SqlSQL2Parser& p);
     void _import(antlr::RefAST a);
 
     boost::shared_ptr<ParseAliasMap> _aliases;
+    boost::shared_ptr<BoolTermFactory> _bFactory;
     boost::shared_ptr<FromList> _list;
+    
 };
 
 }}} // namespace lsst::qserv::master

@@ -59,9 +59,9 @@ private:
     bool _integrityHelper();
 
     ChunkDiskList _disks;
-    boost::shared_ptr<WLogger> _logger;
     boost::mutex _mutex;
     int _maxRunning;
+    boost::shared_ptr<WLogger> _logger;
 };
 }}} // lsst::qserv::worker
 extern lsst::qserv::worker::ScanScheduler* dbgScanScheduler; //< A symbol for gdb

@@ -1,0 +1,25 @@
+# -*- python -*-
+Import('env')
+Import('libProducts')
+Import('defaultTgts')
+Import('findLibs')
+
+import os
+import itertools
+
+
+programs = []
+# extDeps
+extDeps = "boost_regex boost_thread mysqlclient_r ssl".split()
+
+modDeps = 'mysql obsolete sql wconfig wlog'.split() # deps on other modules
+deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
+#pDeps = itertools.chain(*map(lambda m: libProducts[m], ['xrdoss']))
+#deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain
+deps = map(lambda i:i, deps)  # un-chain
+deps.sort(key=str)
+
+p = env.Program(['testChunkInventory.cc', 'ChunkInventory.cc']+ deps, LIBS=findLibs(extDeps))
+programs.append(p)
+
+Return('programs')

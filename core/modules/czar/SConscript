@@ -14,16 +14,16 @@ def _debug_dist_target():
     if state.log.verbose:
         state.log.debug("extraTgts['dist']")
         for (path,f) in extraTgts['dist']:
-            state.log.debug("   path : s, file : %s" % (path,str(f)))
+            state.log.debug("   path : %s, file : %s" % (path,str(f)))
 
 
 # Manual dependencies for masterLib.i, because the SCons SWIG builder
 # isn't knowledgeable enough to ensure their presence when using VariantDir
 depends = ['control/transaction.h',
            'control/dispatcher.h',
+           'css/StripingParams.h',
            'merger/TableMerger.h',
            'merger/mergeTypes.h',
-           'meta/ifaceMeta.h',
            'query/Constraint.h',
            'qdisp/ChunkMeta.h',
            'qproc/ChunkSpec.h',

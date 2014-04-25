@@ -1,0 +1,8 @@
+[db_info]
+dbGroup:      L2
+partitioning: 1
+partitioningStrategy: sphBox
+nStripes:     85
+nSubStripes:  12
+overlap:      0.0001
+objIdIndex:   objectId

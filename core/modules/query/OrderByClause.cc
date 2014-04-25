@@ -101,7 +101,7 @@ OrderByClause::renderTo(QueryTemplate& qt) const {
     }
 }
 
-boost::shared_ptr<OrderByClause> OrderByClause::copyDeep() {
+boost::shared_ptr<OrderByClause> OrderByClause::clone() const {
     return boost::make_shared<OrderByClause>(*this); // FIXME
 }
 boost::shared_ptr<OrderByClause> OrderByClause::copySyntax() {

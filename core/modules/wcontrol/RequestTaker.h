@@ -43,8 +43,8 @@ public:
 private:
     TaskAcceptor::Ptr _acceptor;
     StringBuffer2 _queryBuffer;
-    std::string _db;
     int _chunk;
+    std::string _db;
 };
 
 }}} // lsst::qserv::worker

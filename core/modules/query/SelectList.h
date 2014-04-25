@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,7 +30,6 @@
 #include <list>
 #include <map>
 #include <deque>
-#include <antlr/AST.hpp>
 #include <boost/shared_ptr.hpp>
 
 #include "query/ColumnRef.h"
@@ -51,15 +50,18 @@ class GroupByClause;
 /// columns in the SELECT query's result.
 class SelectList {
 public:
+    typedef boost::shared_ptr<SelectList> Ptr;
+
     SelectList()
         : _valueExprList(new ValueExprList())
         {}
     ~SelectList() {}
     void addStar(std::string const& table);
-    void dbgPrint() const;
+    void dbgPrint(std::ostream& os) const;
+
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<SelectList> copyDeep();
+    boost::shared_ptr<SelectList> clone();
     boost::shared_ptr<SelectList> copySyntax();
 
     // non-const accessor for query manipulation.

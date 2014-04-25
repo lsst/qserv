@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -48,8 +48,6 @@
 #include "query/WhereClause.h"
 #include "log/Logger.h"
 
-// myself
-
 
 // namespace modifiers
 namespace qMaster = lsst::qserv::master;
@@ -76,8 +74,8 @@ inline void renderTemplate(qMaster::QueryTemplate& qt,
 }
 template <typename T>
 inline void
-copyDeepIf(boost::shared_ptr<T>& dest, boost::shared_ptr<T> source) {
-    if(source.get()) dest = source->copyDeep();
+cloneIf(boost::shared_ptr<T>& dest, boost::shared_ptr<T> source) {
+    if(source.get()) dest = source->clone();
 }
 template <typename T>
 inline void
@@ -92,11 +90,10 @@ copySyntaxIf(boost::shared_ptr<T>& dest, boost::shared_ptr<T> source) {
 qMaster::SelectStmt::SelectStmt() {
 }
 
-void qMaster::SelectStmt::diagnose() {
+std::string qMaster::SelectStmt::diagnose() {
     //_selectList->getColumnRefList()->printRefs();
-    _selectList->dbgPrint();
-    _generate();
-
+    //_selectList->dbgPrint(std::cout);
+    return _generateDbg();
 }
 
 qMaster::QueryTemplate
@@ -137,15 +134,15 @@ qMaster::SelectStmt::getWhere() const {
 }
 
 boost::shared_ptr<qMaster::SelectStmt>
-qMaster::SelectStmt::copyDeep() const {
+qMaster::SelectStmt::clone() const {
     boost::shared_ptr<SelectStmt> newS(new SelectStmt(*this));
     // Starting from a shallow copy, make a copy of the syntax portion.
-    copyDeepIf(newS->_fromList, _fromList);
-    copyDeepIf(newS->_selectList, _selectList);
-    copyDeepIf(newS->_whereClause, _whereClause);
-    copyDeepIf(newS->_orderBy, _orderBy);
-    copyDeepIf(newS->_groupBy, _groupBy);
-    copyDeepIf(newS->_having, _having);
+    cloneIf(newS->_fromList, _fromList);
+    cloneIf(newS->_selectList, _selectList);
+    cloneIf(newS->_whereClause, _whereClause);
+    cloneIf(newS->_orderBy, _orderBy);
+    cloneIf(newS->_groupBy, _groupBy);
+    cloneIf(newS->_having, _having);
     // For the other fields, default-copied versions are okay.
     return newS;
 }
@@ -179,13 +176,6 @@ qMaster::SelectStmt::copySyntax() const {
     return newS;
 }
 
-void
-qMaster::SelectStmt::hasOrderBy(bool shouldHave) {
-    if(!shouldHave) { _orderBy.reset(); } // Get rid of it
-    // Make it if we want one.
-    else if(!_orderBy) { _orderBy.reset(new OrderByClause()); }
-}
-
 ////////////////////////////////////////////////////////////////////////
 // class SelectStmt (private)
 ////////////////////////////////////////////////////////////////////////
@@ -217,6 +207,6 @@ void qMaster::SelectStmt::_print() {
     if(_limit != -1) { LOGGER_INF << " LIMIT " << _limit; }
 }
 
-void qMaster::SelectStmt::_generate() {
-    LOGGER_INF << getTemplate().dbgStr() << std::endl;
+std::string qMaster::SelectStmt::_generateDbg() {
+    return getTemplate().dbgStr();
 }

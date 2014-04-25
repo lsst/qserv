@@ -37,6 +37,7 @@
 #include <sys/time.h>
 #include "XrdSys/XrdSysLogger.hh"
 #include "wpublish/MySqlExportMgr.h"
+#include "wpublish/ChunkInventory.h"
 #include "xrdfs/XrdName.h"
 #include "xrdfs/XrdPrinter.h"
 
@@ -158,8 +159,12 @@ void QservOss::_fillQueryFileStat(struct stat &buf) {
 }
 
 bool QservOss::_checkExist(std::string const& db, int chunk) {
+#if 0
     assert(_pathSet.get());
     return MySqlExportMgr::checkExist(*_pathSet, db, chunk);
+#else 
+    return _chunkInventory->has(db, chunk);
+#endif
 }
 /******************************************************************************/
 /*                                 s t a t                                    */
@@ -258,13 +263,20 @@ int QservOss::Init(XrdSysLogger* log, const char* cfgFn) {
         _cfgFn = cfgFn;
     }
     _log->info("QservOss Init");
+#if 1
     _pathSet.reset(new StringSet);
     MySqlExportMgr m(_name, *_log);
     m.fillDbChunks(*_pathSet);
     // Print out diags.
-    std::stringstream ss;
+    std::ostringstream ss;
     ss << "Valid paths: ";
     print(ss, *_pathSet);
+    _log->info(ss.str());
+#endif
+    ss.str("");
+    ss << "Valid paths(ci): ";
+    _chunkInventory.reset(new wpublish::ChunkInventory(_name, *_log));
+    _chunkInventory->dbgPrint(ss);
     _log->info(ss.str());
     // TODO: update self with new config?
     return 0;

@@ -153,8 +153,8 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
 
             boost::shared_ptr<ColumnRef> newColumnRef;
             newColumnRef.reset(new ColumnRef(tokenText(r.db),
-                                                      tokenText(r.table),
-                                                      tokenText(r.column)));
+                                             tokenText(r.table),
+                                             tokenText(r.column)));
             vt = ValueFactor::newColumnRefFactor(newColumnRef);
         }
         return vt;
@@ -205,7 +205,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
 boost::shared_ptr<ValueFactor>
 ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     assert(_columnRefNodeMap);
-    ColumnRefNodeMap& cMap = *_columnRefNodeMap;
+    // ColumnRefNodeMap& cMap = *_columnRefNodeMap; // for gdb
     boost::shared_ptr<FuncExpr> fe(new FuncExpr());
     //    LOGGER_INF << "set_fct_spec " << walkTreeString(expr) << std::endl;
     RefAST nNode = expr->getFirstChild();

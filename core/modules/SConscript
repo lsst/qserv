@@ -49,7 +49,7 @@ if not env.GetOption('clean'):
     env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC"])
 
 # all modules
-allModules = """control czar global log merger meta mysql obsolete
+allModules = """control css czar global log merger mysql obsolete
                 parser proto proxy qana qdisp qproc query sql
                 tests util
                 wbase wconfig wcontrol wdb wlog wpublish wsched
@@ -77,19 +77,21 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                        mysqlclient_r ssl crypto""".split(),
                            'distDir' : 'lib'
                            },
-               "_masterLib" : {'mods' : """czar control parser query
-                                           log merger meta mysql
+               "_masterLib" : {'mods' : """css czar control global
+                                           log merger mysql
+                                           parser query
                                            sql util xrdc
                                            obsolete proto
                                            qana qdisp qproc""".split(),
                                'libs' : """ssl crypto antlr
                                       mysqlclient_r protobuf
                                       XrdPosix XrdPosixPreload XrdUtils
-                                      boost_regex boost_thread
-                                      boost_signals""".split(),
+                                      boost_regex boost_thread boost_system
+                                      boost_signals zookeeper_mt""".split(),
                                'SHLIBPREFIX' : '',
-                               'distDir' : os.path.join(env['python_prefix'],"lsst","qserv","master")}
+                               'distDir' : os.path.join(env['python_relative_prefix'],"lsst","qserv","master")}
                }
+
 # modules used in shProducts
 modList = [m for m in chain(*map(lambda d: d['mods'],
                                 shProducts.values()))]
@@ -162,7 +164,7 @@ def getTests(env, mName):
                                                 'defaultTgts' : defaultTgts,
                                                 'findLibs' : findLibs,
                                                 'cacheObjs' : cacheObjs})
-        return tgts
+        return tests
     else:
         return None
 
@@ -220,10 +222,13 @@ extraTgts['dist'].append(('bin', env.File(target)))
 # Tests
 
 # module tests
+testTgts = []
 for m in libProducts.keys():
     tgts = getTests(env, m)
-    if tgts: print tgts
+    if tgts: testTgts.append(tgts)
     # FIXME: run tests.
+
+env.Alias("build", testTgts)
 #
 
 installTgts = extraTgts['dist']

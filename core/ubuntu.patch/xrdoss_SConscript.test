@@ -1,0 +1,13 @@
+diff --git core/modules/xrdoss/SConscript.test core/modules/xrdoss/SConscript.test
+index e225980..b5abc31 100644
+--- core/modules/xrdoss/SConscript.test
++++ core/modules/xrdoss/SConscript.test
+@@ -10,7 +10,7 @@ import itertools
+ 
+ programs = []
+ # extDeps
+-extDeps = "boost_regex boost_thread mysqlclient_r ssl XrdClient XrdOuc XrdSys XrdUtils".split()
++extDeps = "boost_regex boost_thread mysqlclient_r ssl crypto XrdClient XrdOuc XrdSys XrdUtils".split()
+ 
+ modDeps = 'wlog mysql obsolete sql wbase wconfig wpublish util'.split() # deps on other modules
+ deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))

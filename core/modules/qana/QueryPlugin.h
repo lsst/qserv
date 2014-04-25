@@ -72,7 +72,7 @@ public:
     static void registerClass(FactoryPtr f);
 };
 
-/// Factory is an abstract class for specific QueryPlugin Factories
+/// Factory is a base class for specific QueryPlugin Factories
 class QueryPlugin::Factory {
 public:
     // Types
@@ -88,7 +88,7 @@ public:
 class QueryPlugin::Plan {
 public:
     Plan(SelectStmt& stmtOriginal_, SelectStmtList& stmtParallel_,
-         SelectStmt& stmtMerge_, bool& hasMerge_)
+         SelectStmt& stmtMerge_, bool hasMerge_)
         :  stmtOriginal(stmtOriginal_),
            stmtParallel(stmtParallel_),
           stmtMerge(stmtMerge_),
@@ -100,7 +100,7 @@ public:
     SelectStmt& stmtMerge;
     std::string dominantDb;
     boost::shared_ptr<QueryMapping> queryMapping;
-    bool hasMerge;
+    bool const hasMerge;
 };
 
 }}} // namespace lsst::qserv::master

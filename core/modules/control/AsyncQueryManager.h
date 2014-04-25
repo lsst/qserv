@@ -107,7 +107,7 @@ public:
     void addToWriteQueue(DynamicWorkQueue::Callable * callable);
 
     QuerySession& getQuerySession() { return *_qSession; }
-
+        
 private:
     // QuerySpec: ChunkQuery object + result name
     typedef std::pair<boost::shared_ptr<ChunkQuery>, std::string> QuerySpec;
@@ -122,6 +122,7 @@ private:
 	return ++_lastId;
     }
     void _readConfig(std::map<std::string,std::string> const& cfg);
+    void _initFacade(std::string const& cssTech, std::string const& cssConn);
     void _printState(std::ostream& os);
     void _addNewResult(int id, ssize_t dumpSize, std::string const& dumpFile,
                        std::string const& tableName);

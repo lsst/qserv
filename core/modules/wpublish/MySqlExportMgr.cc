@@ -137,9 +137,9 @@ public:
         // TODO: Sanity check: do all tables have the same chunks represented?
     }
 private:
-    MySqlExportMgr::ExistMap& _existMap;
     SqlConnection& _conn;
     boost::regex& _regex;
+    MySqlExportMgr::ExistMap& _existMap;
 };
 
 } // anonymous namespace

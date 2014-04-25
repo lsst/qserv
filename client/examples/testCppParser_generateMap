@@ -1,0 +1,12 @@
+drop everything;
+create database LSST                   client/examples/testCppParser_dbPt.params;
+create table LSST.Object               client/examples/testCppParser_tbObject.params;
+create table LSST.Source               client/examples/testCppParser_tbSource.params;
+create table LSST.Science_Ccd_Exposure client/examples/testCppParser_tbExposure.params;
+create table LSST.Filter               client/examples/testCppParser_tbFilter.params;
+
+create database rplante_PT1_2_u_pt12prod_im3000_qserv     client/examples/testCppParser_dbPt.params;
+create table rplante_PT1_2_u_pt12prod_im3000_qserv.Object client/examples/testCppParser_tbObject.params;
+create table rplante_PT1_2_u_pt12prod_im3000_qserv.Source client/examples/testCppParser_tbSource.params;
+
+dump everything /tmp/testCppParser.kvmap;

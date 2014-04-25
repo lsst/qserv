@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -75,6 +75,7 @@ public:
 /// OrderByClause is a parsed SQL ORDER BY ... clause
 class OrderByClause {
 public:
+    typedef boost::shared_ptr<OrderByClause> Ptr;
     typedef std::deque<OrderByTerm> List;
 
     OrderByClause() : _terms (new List()) {}
@@ -82,7 +83,7 @@ public:
 
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<OrderByClause> copyDeep();
+    boost::shared_ptr<OrderByClause> clone() const;
     boost::shared_ptr<OrderByClause> copySyntax();
 
 private:

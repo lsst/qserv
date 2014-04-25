@@ -132,7 +132,7 @@ void WhereClause::renderTo(QueryTemplate& qt) const {
     }
 }
 
-boost::shared_ptr<WhereClause> WhereClause::copyDeep() const {
+boost::shared_ptr<WhereClause> WhereClause::clone() const {
     // FIXME
     boost::shared_ptr<WhereClause> newC(new WhereClause(*this));
     // Shallow copy of expr list is okay.

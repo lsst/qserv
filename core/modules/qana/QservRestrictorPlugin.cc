@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,17 +33,18 @@
 #include <boost/pointer_cast.hpp>
 
 #include "qana/QueryPlugin.h" // Parent class
+#include "qana/AnalysisError.h"
+#include "css/Facade.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
 #include "query/QueryContext.h"
-#include "meta/MetadataCache.h"
+#include "query/JoinRef.h"
 #include "query/Predicate.h"
 #include "query/SelectStmt.h"
 #include "query/ValueFactor.h"
 #include "query/ValueExpr.h"
 #include "query/WhereClause.h"
-
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
 
@@ -62,7 +63,7 @@ resolveAsColumnRef(QueryContext& context, ValueExprPtr vexpr) {
     if(!cr) {
         return cr;
     }
-    DbTablePair p = context.resolve(cr);
+    query::DbTablePair p = context.resolve(cr);
     cr->table = p.table;
     cr->db = p.db;
     return cr;
@@ -73,13 +74,13 @@ bool
 lookupKey(QueryContext& context, boost::shared_ptr<ColumnRef> cr) {
     // Match cr as a column ref against the key column for a database's
     // partitioning strategy.
-    if((!cr) || !context.metadata) { return false; }
-    if(!context.metadata->checkIfContainsDb(cr->db)
-       || !context.metadata->checkIfContainsTable(cr->db, cr->table)) {
-            throw std::logic_error("Invalid db/table:" + cr->db + "." + cr->table);
+    if((!cr) || !context.cssFacade) { return false; }
+    if(!context.cssFacade->containsDb(cr->db)
+       || !context.cssFacade->containsTable(cr->db, cr->table)) {
+        throw qana::AnalysisError("Invalid db/table:"
+                                  + cr->db + "." + cr->table);
         }
-
-    std::string keyColumn = context.metadata->getKeyColumn(cr->db, cr->table);
+    std::string keyColumn = context.cssFacade->getKeyColumn(cr->db, cr->table);
     return (!cr->column.empty()) && (keyColumn == cr->column);
 }
 
@@ -152,40 +153,51 @@ struct RestrictorEntry {
     std::string keyColumn;
 };
 typedef std::deque<RestrictorEntry> RestrictorEntries;
-class getTable {
+class getTable : public TableRef::Func {
 public:
 
-    explicit getTable(MetadataCache& metadata, RestrictorEntries& entries)
-        : _metadata(metadata),
+    getTable(css::Facade& cssFacade, RestrictorEntries& entries)
+        : _cssFacade(cssFacade),
           _entries(entries) {}
-    void operator()(TableRefN::Ptr t) {
+
+    void operator()(TableRef::Ptr t) {
+        // FIXME: Modify so we can use TableRef::apply()
         if(!t) {
-            throw std::invalid_argument("NULL TableRefN::Ptr");
+            throw qana::AnalysisBug("NULL TableRefN::Ptr");
         }
-        std::string const& db = t->getDb();
-        std::string const& table = t->getTable();
-        if(!_metadata.checkIfContainsDb(db)
-           || !_metadata.checkIfContainsTable(db, table)) {
-            throw std::logic_error("Invalid db/table:" + db + "." + table);
+        (*this)(*t);
+    }
+    virtual void operator()(TableRef& t) {
+        std::string const& db = t.getDb();
+        std::string const& table = t.getTable();
+
+        if(!_cssFacade.containsDb(db)
+           || !_cssFacade.containsTable(db, table)) {
+            throw qana::AnalysisError("Invalid db/table:" + db + "." + table);
         }
         // Is table chunked?
-        if(!_metadata.checkIfTableIsChunked(db, table)) {
+        if(!_cssFacade.tableIsChunked(db, table)) {
             return; // Do nothing for non-chunked tables
         }
         // Now save an entry for WHERE clause processing.
-        std::string alias = t->getAlias();
+        std::string alias = t.getAlias();
         if(alias.empty()) {
             // For now, only accept aliased tablerefs (should have
             // been done earlier)
-            throw std::logic_error("Unexpected unaliased table reference");
+            throw qana::AnalysisBug("Unexpected unaliased table reference");
         }
-        std::vector<std::string> pCols = _metadata.getPartitionCols(db, table);
+        std::vector<std::string> pCols = _cssFacade.getPartitionCols(db, table);
         RestrictorEntry se(alias,
-                        StringPair(pCols[0], pCols[1]),
-                        pCols[2]);
+                           StringPair(pCols[0], pCols[1]),
+                           pCols[2]);
         _entries.push_back(se);
+        JoinRefList& jList = t.getJoins();
+        typedef JoinRefList::iterator Iter;
+        for(Iter i=jList.begin(), e=jList.end(); i != e; ++i) {
+            (*this)((**i).getRight());
+        }
     }
-    MetadataCache& _metadata;
+    css::Facade& _cssFacade;
     RestrictorEntries& _entries;
 };
 ////////////////////////////////////////////////////////////////////////
@@ -319,7 +331,7 @@ private:
             ObjectIdGenerator* g = new ObjectIdGenerator(r._params);
             _generator.reset(static_cast<Generator*>(g));
         } else {
-            throw std::runtime_error("Unmatched restriction spec: " + _name);
+            throw qana::AnalysisBug("Unmatched restriction spec: " + _name);
         }
     }
     std::string _name;
@@ -369,12 +381,12 @@ QservRestrictorPlugin::applyLogical(SelectStmt& stmt, QueryContext& context) {
 
     // First, get a list of the chunked tables.
     FromList& fList = stmt.getFromList();
-    TableRefnList& tList = fList.getTableRefnList();
+    TableRefList& tList = fList.getTableRefList();
     RestrictorEntries entries;
-    if(!context.metadata) {
-        throw std::logic_error("Missing metadata in context");
+    if(!context.cssFacade) {
+        throw qana::AnalysisBug("Missing metadata in context");
     }
-    getTable gt(*context.metadata, entries);
+    getTable gt(*context.cssFacade, entries);
     std::for_each(tList.begin(), tList.end(), gt);
 
     if(!stmt.hasWhereClause()) { return; }
@@ -571,12 +583,14 @@ QservRestrictorPlugin::_convertObjectId(QueryContext& context,
     // db, table, column, val1, val2, ...
     p->_params.push_back(context.dominantDb);
     p->_params.push_back(context.anonymousTable);
-    if(!context.metadata->checkIfContainsDb(context.dominantDb)
-       || !context.metadata->checkIfContainsTable(context.dominantDb, context.anonymousTable) ) {
-        throw std::logic_error("Invalid db/table: " + context.dominantDb + "." + context.anonymousTable);
+    if(!context.cssFacade->containsDb(context.dominantDb)
+       || !context.cssFacade->containsTable(context.dominantDb,
+                                            context.anonymousTable) ) {
+        throw qana::AnalysisError("Invalid db/table: " + context.dominantDb 
+                                  + "." + context.anonymousTable);
     }
-    std::string keyColumn = context.metadata->getKeyColumn(context.dominantDb,
-                                                           context.anonymousTable);
+    std::string keyColumn = context.cssFacade->getKeyColumn(context.dominantDb,
+                                                            context.anonymousTable);
     p->_params.push_back(keyColumn);
     std::copy(original._params.begin(), original._params.end(),
               std::back_inserter(p->_params));

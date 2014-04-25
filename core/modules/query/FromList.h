@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,13 +22,9 @@
  */
 #ifndef LSST_QSERV_MASTER_FROMLIST_H
 #define LSST_QSERV_MASTER_FROMLIST_H
-/**
-  * @file
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+#include <list>
 #include <boost/shared_ptr.hpp>
-#include "query/TableRefN.h"
+#include "query/TableRef.h"
 
 namespace lsst {
 namespace qserv {
@@ -37,28 +33,34 @@ namespace master {
 // FromList is a representation of SQL FROM.
 class FromList {
 public:
-    FromList() {}
-    explicit FromList(TableRefnListPtr p) : _tableRefns(p) {}
+    typedef boost::shared_ptr<FromList> Ptr;
+    typedef std::list<Ptr> PtrList;
+    explicit FromList(TableRefListPtr p) : _tableRefs(p) {}
     ~FromList() {}
+    /// @return a list of TableRef that occur
+    TableRefList& getTableRefList() { return *_tableRefs; }
+    /// @return a list of TableRef that occur
+    TableRefList const& getTableRefList() const { return *_tableRefs; }
 
-    /// @return a list of TableRefN that occur
-    TableRefnList& getTableRefnList() { return *_tableRefns; }
-    /// @return a list of TableRefN that occur
-    TableRefnList const& getTableRefnList() const { return *_tableRefns; }
+    bool isJoin() const;
+    std::vector<query::DbTablePair> computeResolverTables() const;
+
     /// @return a flattened string representation.
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
 
     /// Deep-copy this node
-    boost::shared_ptr<FromList> copyDeep() const;
+    boost::shared_ptr<FromList> clone() const;
     /// Shallow copy this node, sharing its linked objects.
     boost::shared_ptr<FromList> copySyntax();
+    /// Compute all possible FromLists from the permutation function
+    PtrList computePermutations(TableRef::PermuteFunc& f);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, FromList const& fl);
     friend class FromFactory;
 
-    TableRefnListPtr _tableRefns;
+    TableRefListPtr _tableRefs;
 };
 }}} // namespace lsst::qserv::master
 #endif // LSST_QSERV_MASTER_FROMLIST_H
