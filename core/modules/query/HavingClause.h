@@ -51,7 +51,7 @@ public:
 
     std::string getGenerated() const;
     void renderTo(QueryTemplate& qt) const;
-    boost::shared_ptr<HavingClause> copyDeep();
+    boost::shared_ptr<HavingClause> clone() const;
     boost::shared_ptr<HavingClause> copySyntax();
 
 private:

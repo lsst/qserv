@@ -3,7 +3,90 @@
 # Author: Fabrice Jammes <fabrice.jammes@in2p3.fr> (09.17.2013)
 #-------------------------------------------------------------------------------
 
-. /etc/rc.d/init.d/functions
+
+#
+# Use LSB init script functions for printing messages, if possible
+#
+lsb_functions="/lib/lsb/init-functions"
+if test -f $lsb_functions ; then
+  . $lsb_functions
+else
+  log_success_msg()
+  {
+    echo " SUCCESS! $@"
+  }
+  log_failure_msg()
+  {
+    echo " ERROR! $@"
+  }
+fi
+
+# Check if any of $pid (could be plural) are running
+checkpid() {
+    local i
+
+    for i in $* ; do
+        [ -d "/proc/$i" ] && return 0
+    done
+    return 1
+}
+
+# used for service launched in background (i.e. with "$cmd&" ) :
+# - wait for the service to create its pid file during $service_startup_timeout
+# - return success once pid file is created, failure otherwise
+wait_for_pid () {
+  verb="$1"
+  manager_pid="$2"  # process ID of the program operating on the pid-file
+  i=0
+  avoid_race_condition="by checking again"
+  while test $i -ne $service_startup_timeout ; do
+
+    case "$verb" in
+      'created')
+        # wait for a PID-file to pop into existence.
+        test -s $pidfile && i='' && break
+        ;;
+      'removed')
+        # wait for this PID-file to disappear
+        test ! -s $pidfile && i='' && break
+        ;;
+      *)
+        echo "wait_for_pid () usage: wait_for_pid created|removed manager_pid"
+        exit 1
+        ;;
+    esac
+
+    # if manager isn't running, then pid-file will never be updated
+    if test -n "$manager_pid"; then
+      if kill -0 "$manager_pid" 2>/dev/null; then
+        :  # the manager still runs
+      else
+        # The manager may have exited between the last pid-file check and now.
+        if test -n "$avoid_race_condition"; then
+          avoid_race_condition=""
+          continue  # Check again.
+        fi
+
+        # there's nothing that will affect the file.
+        log_failure_msg " : Manager of pid-file quit without updating file."
+        return 1  # not waiting any more.
+      fi
+    fi
+
+    echo -n "."
+    i=`expr $i + 1`
+    sleep 1
+  done
+
+  if test -z "$i" ; then
+    # success
+    return 0
+  else
+    # failure
+    return 1
+  fi
+}
+
 
 start() {
 	local prog lockfile= pidfile= pid retval=2 cmd= timeout=0
@@ -37,33 +120,66 @@ start() {
 	fi
 
  	# check to see if it's already running
-	if [ -f ${pidfile} ]; then
-		action $"Starting $prog: (already up)" /bin/true
+ 	echo -n "Starting $prog"
+    	if [ -n "$pidfile" ]; then
+        	pidfileopt="-p $pidfile"
+    	fi
+	pidofproc $pidfileopt $prog >/dev/null 
+	status=$?
+	if [ "$status" = 0 ]; then
+		read pid < $pidfile	
+                log_success_msg " : already up : pid=${pid}"
 		retval=0
+	elif [ "$status" = 2 ]; then
+		log_failure_msg " : was dead but lockfile existed"
+		retval=$status
+	# TODO : use fgrep
+	elif [ "$status" = 4 ]; then
+		log_failure_msg " : could not access PID file"
+		retval=$status
 	else
-		if [ ${timeout} == 0 ]; then
-		     	daemon ${cmd}
-			retval=$?
-		else
-			eval ${cmd}
-			# TODO if no delay is needed, use daemon ?
-        		pid=$!
-			sleep ${timeout}
-			checkpid ${pid} && retval=0
-		fi
-		if [ ${retval} -eq 0 ]
-		then
-                        # Create pid file only if service hasn't done it itself
-                        if [ ! -f ${pidfile} ]; then
+	    if [ "$status" = 1 ]; then
+		echo -n " : was dead but PID file existed"
+            fi
+            if [ ${timeout} = 0 ]; then
+                start_mode='manage-pid'
+            else
+                start_mode='timeout'
+            fi
+            case "$start_mode" in
+                'manage-pid')
+                    # $prog manages its pidfile
+                    # inspired by mysqld
+                    eval ${cmd}
+                    pid=$!
+                    # Default value, in seconds, afterwhich the script should timeout waiting
+                    # for server start.
+                    service_startup_timeout=900
+                    wait_for_pid created $pid
+                    retval=$?
+                    ;;
+                'timeout')
+                    # $prog doesn't manage its pidfile : weak
+                    # used by qserv-master
+                    eval ${cmd}
+                    pid=$!
+                    sleep ${timeout}
+                    checkpid ${pid}
+                    retval=$?
+                    # Create pid file
+                    if [ ${retval} -eq 0 ]; then
                             echo ${pid} > ${pidfile}
-                        fi
+                    fi
+                    ;;
+            esac
 
-	    		touch ${lockfile}
-			action $"Starting $prog: " /bin/true
-		else
-			action $"Starting $prog: " /bin/false
-			echo $"See startup logfile : ${LOGFILE}"
-		fi
+	    if [ ${retval} -eq 0 ]; then
+	        touch ${lockfile}
+                log_success_msg
+	    else
+                log_failure_msg
+		echo "See startup logfile : ${LOGFILE}"
+	    fi
 	fi
 	return ${retval}
 }
@@ -74,7 +190,7 @@ stop() {
 
 	# Test syntax.
 	if [ "$#" = 0 ] ; then
-		echo $"Usage: stop [-p pidfile] [-l lockfile] [-t timeout] {program}"
+		echo $"Usage: stop [-p pidfile] [-l lockfile] {program}"
 		return 1
 	fi
 	if [ "$1" = "-p" ]; then
@@ -83,10 +199,6 @@ stop() {
 	fi
 	if [ "$1" = "-l" ]; then
 		lockfile=$2
-		shift 2
-	fi
-	if [ "$1" = "-t" ]; then
-		timeout=$2
 		shift 2
 	fi
 	prog=${1##*/}
@@ -99,14 +211,76 @@ stop() {
 		pidfile=/var/run/${prog}.pid
 	fi
 
-        if [ ! -f "$pidfile" ]; then
-	    # not running; per LSB standards this is "ok"
-	    action $"Stopping $prog: (already down)" /bin/true
-	    return 0
+        echo -n "Stopping $prog"
+    	if [ -n "$pidfile" ]; then
+        	pidfileopt="-p $pidfile"
+    	fi
+	pidofproc $pidfileopt $prog >/dev/null 
+	status="$?"
+	if [ "$status" = 1 ]; then
+	    echo -n " : service is down (removing PID file)"
+	elif [ "$status" = 2 ]; then
+            echo -n " : service is down (removing lockfile)"
+	elif [ "$status" = 3 ]; then
+            echo -n " : already down"
+	# TODO : use fgrep
+	elif [ "$status" = 4 ]; then
+            echo -n " : could not access PID file"
+	    return $status
 	fi
-	echo -n $"Stopping $prog: "
-	killproc -p ${pidfile} -d ${timeout} $prog
-	RETVAL=$?
-	echo
-        [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
+
+        log_success_msg
+	killproc -p ${pidfile} $prog
+	retval=$?
+        [ ${retval} = 0 ] && rm -f ${lockfile} ${pidfile}
+
+        return ${retval}
+}
+
+# Return LSB status
+# If the status action is requested, the init script will return the following exit status codes.
+#
+# 0	program is running or service is OK
+# 1	program is dead and /var/run pid file exists
+# 2	program is dead and /var/lock lock file exists
+# 3	program is not running
+# 4	program or service status is unknown
+status_of_proc () {
+    local pidfile daemon name status OPTIND
+
+    pidfile=
+    OPTIND=1
+    while getopts p: opt ; do
+        case "$opt" in
+            p)  pidfile="$OPTARG";;
+        esac
+    done
+    shift $(($OPTIND - 1))
+
+    if [ -n "$pidfile" ]; then
+        pidfileopt="-p $pidfile"
+    fi
+    daemon="$1"
+    name="$2"
+
+    pidofproc $pidfileopt $daemon >/dev/null 
+    status="$?"
+    if [ "$status" = 0 ]; then
+	read pid < $pidfile	
+        log_success_msg "$name is running (pid=${pid})"
+        return 0
+    elif [ "$status" = 1 ]; then
+        log_failure_msg "$name is dead but PID file exists"
+        echo "  see $pidfile"
+        return $status
+    elif [ "$status" = 2 ]; then
+        log_failure_msg "$name is dead but lockfile exists"
+        return $status
+    elif [ "$status" = 4 ]; then
+        log_failure_msg "could not access PID file for $name"
+        return $status
+    else
+        log_failure_msg "$name is not running"
+        return $status
+    fi
 }

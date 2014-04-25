@@ -60,6 +60,7 @@ public:
     boost::shared_ptr<query::BetweenPredicate> newBetweenPredicate(antlr::RefAST a);
     boost::shared_ptr<query::InPredicate> newInPredicate(antlr::RefAST a);
     boost::shared_ptr<query::LikePredicate> newLikePredicate(antlr::RefAST a);
+    boost::shared_ptr<query::NullPredicate> newNullPredicate(antlr::RefAST a);
 private:
     ValueExprFactory& _vf;
 };

@@ -22,7 +22,7 @@
 /**
   * @file Predicate.cc
   *
-  * @brief Predicate, CompPredicate, InPredicate, BetweenPredicate implementations.
+  * @brief Predicate, CompPredicate, InPredicate, BetweenPredicate, LikePredicate, and NullPredicate implementations.
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -61,21 +61,24 @@ void LikePredicate::findColumnRefs(ColumnRef::List& list) {
     if(charValue) { charValue->findColumnRefs(list); }
 }
 
+void NullPredicate::findColumnRefs(ColumnRef::List& list) {
+    if(value) { value->findColumnRefs(list); }
+}
+
 std::ostream& CompPredicate::putStream(std::ostream& os) const {
-    // FIXME
-    return os;
+    return QueryTemplate::renderDbg(os, *this);
 }
 std::ostream& InPredicate::putStream(std::ostream& os) const {
-    // FIXME
-    return os;
+    return QueryTemplate::renderDbg(os, *this);
 }
 std::ostream& BetweenPredicate::putStream(std::ostream& os) const {
-    // FIXME
-    return os;
+    return QueryTemplate::renderDbg(os, *this);
 }
 std::ostream& LikePredicate::putStream(std::ostream& os) const {
-    // FIXME
-    return os;
+    return QueryTemplate::renderDbg(os, *this);
+}
+std::ostream& NullPredicate::putStream(std::ostream& os) const {
+    return QueryTemplate::renderDbg(os, *this);
 }
 
 void CompPredicate::renderTo(QueryTemplate& qt) const {
@@ -119,6 +122,14 @@ void LikePredicate::renderTo(QueryTemplate& qt) const {
     r(charValue);
 }
 
+void NullPredicate::renderTo(QueryTemplate& qt) const {
+    ValueExpr::render r(qt, false);
+    r(value);
+    qt.append("IS");
+    if(hasNot) { qt.append("NOT"); }
+    qt.append("NULL");
+}
+
 void CompPredicate::cacheValueExprList() {
     _cache.reset(new ValueExprList());
     _cache->push_back(left);
@@ -140,6 +151,10 @@ void LikePredicate::cacheValueExprList() {
     _cache.reset(new ValueExprList());
     _cache->push_back(value);
     _cache->push_back(charValue);
+}
+void NullPredicate::cacheValueExprList() {
+    _cache.reset(new ValueExprList());
+    _cache->push_back(value);
 }
 
 
@@ -201,12 +216,16 @@ int CompPredicate::lookupOp(char const* op) {
     }
 }
 
-BfTerm::Ptr CompPredicate::copySyntax() const {
+BfTerm::Ptr CompPredicate::clone() const {
     CompPredicate* p = new CompPredicate;
     if(left) p->left = left->clone();
     p->op = op;
     if(right) p->right = right->clone();
     return BfTerm::Ptr(p);
+}
+BfTerm::Ptr GenericPredicate::clone() const {
+    //return BfTerm::Ptr(new GenericPredicate());
+    return BfTerm::Ptr();
 }
 
 struct valueExprCopy {
@@ -215,26 +234,33 @@ struct valueExprCopy {
     }
 };
 
-BfTerm::Ptr InPredicate::copySyntax() const {
-    InPredicate* p = new InPredicate;
+BfTerm::Ptr InPredicate::clone() const {
+    InPredicate::Ptr p(new InPredicate);
     if(value) p->value = value->clone();
     std::transform(cands.begin(), cands.end(),
                    std::back_inserter(p->cands),
                    valueExprCopy());
     return BfTerm::Ptr(p);
 }
-BfTerm::Ptr BetweenPredicate::copySyntax() const {
-    BetweenPredicate* p = new BetweenPredicate;
+BfTerm::Ptr BetweenPredicate::clone() const {
+    BetweenPredicate::Ptr p(new BetweenPredicate);
     if(value) p->value = value->clone();
     if(minValue) p->minValue = minValue->clone();
     if(maxValue) p->maxValue = maxValue->clone();
     return BfTerm::Ptr(p);
 }
 
-BfTerm::Ptr LikePredicate::copySyntax() const {
-    LikePredicate* p = new LikePredicate;
+BfTerm::Ptr LikePredicate::clone() const {
+    LikePredicate::Ptr p(new LikePredicate);
     if(value) p->value = value->clone();
     if(charValue) p->charValue = charValue->clone();
+    return BfTerm::Ptr(p);
+}
+
+BfTerm::Ptr NullPredicate::clone() const {
+    NullPredicate::Ptr p(new NullPredicate);
+    if(value) p->value = value->clone();
+    p->hasNot = hasNot;
     return BfTerm::Ptr(p);
 }
 

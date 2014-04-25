@@ -33,6 +33,7 @@
 
 #include "css/Facade.h"
 #include "qana/QueryMapping.h"
+#include "query/DbTablePair.h"
 #include "query/TableAlias.h"
 #include "util/common.h"
 
@@ -60,10 +61,11 @@ public:
 
     boost::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive 
                                               ///  for this lifetime.
-    std::string defaultDb; ///< Implicit db context
+    std::string defaultDb; ///< User session db context
     std::string dominantDb; ///< "dominant" database for this query
     std::string anonymousTable; ///< Implicit table context
     std::string username; ///< unused, but reserved.
+    std::vector<lsst::qserv::query::DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
 
     util::StringPairList scanTables; // Tables scanned (for shared scans)
 

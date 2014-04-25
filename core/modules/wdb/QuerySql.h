@@ -53,28 +53,24 @@ namespace wdb {
 
 class QuerySql {
 public:
-    typedef std::deque<std::string> StringList;
-    QuerySql() {}
+typedef boost::shared_ptr<QuerySql> Ptr;
+    typedef std::deque<std::string> StringDeque;
     typedef lsst::qserv::proto::TaskMsg_Fragment Fragment;
 
-    StringList buildList;
-    StringList executeList; // Consider using SqlFragmenter to break this up into fragments.
-    StringList cleanupList;
-    class Factory;
+    QuerySql() {}
+    QuerySql(std::string const& db,
+             int chunkId,
+             proto::TaskMsg_Fragment const& f,
+             bool needCreate,
+             std::string const& defaultResultTable);
+
+    StringDeque buildList;
+    StringDeque executeList; // Consider using SqlFragmenter to break this up into fragments.
+    StringDeque cleanupList;
     class Batch;
     friend std::ostream& operator<<(std::ostream& os, QuerySql const& q);
-};
-
-class QuerySql::Factory {
-public:
-    boost::shared_ptr<QuerySql> newQuerySql(std::string const& db,
-                                            int chunkId,
-                                            Fragment const& f,
-                                            bool needCreate,
-                                            std::string const& defaultResultTable);
 };
 
 }}} // namespace lsst::qserv::wdb
 
 #endif // LSST_QSERV_WDB_QUERYSQL_H
-

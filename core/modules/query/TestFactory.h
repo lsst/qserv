@@ -37,7 +37,6 @@ namespace query {
 class QueryContext;
 class SelectStmt;
 
-
 /// TestFactory is a factory for non-parsed query representation objects
 class TestFactory {
 public:

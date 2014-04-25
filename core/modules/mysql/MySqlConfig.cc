@@ -124,7 +124,8 @@ MySqlConfig::initFromFile(std::string const& fName,
 
 std::string
 MySqlConfig::asString() const {
-    std::string result(500, 0);
+    std::string result;
+    result.reserve(500);
     std::ostringstream os;
     os << port;
     result += "[host="; result += hostname;

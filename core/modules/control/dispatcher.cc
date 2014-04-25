@@ -287,9 +287,9 @@ getQueryStateString(QueryState const& qs) {
 std::string
 getErrorDesc(int session) {
 
-    class _ErrMsgStr_ {
+    class ErrMsgStr_ {
     public:
-        _ErrMsgStr_(const std::string& name): _name(name) {}
+        ErrMsgStr_(const std::string& name): _name(name) {}
 
         void add(int x) {
             if (_ss.str().length() == 0) {
@@ -309,10 +309,10 @@ getErrorDesc(int session) {
     AsyncQueryManager& qm = getAsyncManager(session);
     AsyncQueryManager::ResultDeque const& d = qm.getFinalState();
     AsyncQueryManager::ResultDequeCItr itr;
-    _ErrMsgStr_ openV("open");
-    _ErrMsgStr_ qwrtV("queryWrite");
-    _ErrMsgStr_ readV("read");
-    _ErrMsgStr_ lwrtV("localWrite");
+    ErrMsgStr_ openV("open");
+    ErrMsgStr_ qwrtV("queryWrite");
+    ErrMsgStr_ readV("read");
+    ErrMsgStr_ lwrtV("localWrite");
 
     for (itr=d.begin() ; itr!=d.end(); ++itr) {
         if (itr->second.open <= 0) {

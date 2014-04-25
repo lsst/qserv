@@ -10,9 +10,9 @@
 ### BEGIN INIT INFO
 # Provides: xrootd cmsd
 # Short-Description: start and stop xrootd/cmsd
-# Description: qms is the Qserv Meta Service. It is used by Qserv master
-#              in order to get accurate informations about loaded datasets.
-#              Note that Qserv service won't start if QMS databse is empty.
+# Description: XRootD software framework is a fully generic suite for fast, \
+#              low latency and scalable data access. It's the communication \
+#              middleware used between Qserv master and nodes. \ 
 ### END INIT INFO
 
 . %(QSERV_DIR)s/etc/init.d/qserv-functions
@@ -39,8 +39,6 @@ start_service() {
         local prog
 
 	prog=${1##*/}
-
-        mkdir -p ${PID_DIR}
 
 	pidfile=${PID_DIR}/${prog}.pid
 	lockfile=%(QSERV_DIR)s/var/lock/subsys/${prog}
@@ -73,11 +71,20 @@ stop_service() {
 
 start_all() {
         local xrootd_started cmsd_started=0 retval=1
+        mkdir -p ${QSW_RESULTPATH} || {
+           log_failure_msg "Failed to create ${QSW_RESULTPATH}"
+           return 1 
+        }
+         mkdir -p ${PID_DIR} || {
+           log_failure_msg "Failed to create ${PID_DIR}"
+           return 1
+        }
+
         start_service "xrootd"
 	xrootd_started=$?
         %(COMMENT_MONO_NODE)sstart_service "cmsd"
 	%(COMMENT_MONO_NODE)scmsd_started=$?
-	[[ $xrootd_started && $cmsd_started ]] && retval=0
+	[ $xrootd_started -a $cmsd_started ] && retval=0
 	return $retval
 }
 
@@ -87,20 +94,26 @@ stop_all() {
 	xrootd_stopped=$?
 	%(COMMENT_MONO_NODE)sstop_service "cmsd"
 	%(COMMENT_MONO_NODE)scmsd_stopped=$?
-	[[ $xrootd_stopped && $cmsd_stopped ]] && retval=0
+	[ $xrootd_stopped -a $cmsd_stopped ] && retval=0
 	return $retval
 }
 
 status_all () {
-        local xrootd_status cmsd_status=0 retval=1
-	pidfile=${PID_DIR}/"xrootd".pid
-        status -p $pidfile "xrootd"
-	xrootd_status=$?
-	%(COMMENT_MONO_NODE)spidfile=${PID_DIR}/"cmsd".pid
-	%(COMMENT_MONO_NODE)sstatus -p $pidfile "cmsd"
-	%(COMMENT_MONO_NODE)scmsd_status=$?
-	[[ $xrootd_status && $cmsd_status ]] && retval=0
-	return $retval
+        local xrootd_status cmsd_status
+	NAME="xrootd"
+       	DAEMON=$(which ${NAME})
+       	pidfile=${PID_DIR}/${NAME}.pid
+       	status_of_proc -p $pidfile "$DAEMON" "$NAME"
+	[ ! $xrootd_status ] && return 1
+
+ 	#MONO-NODE# NAME="cmsd"
+       	#MONO-NODE# DAEMON=$(which ${NAME})
+       	#MONO-NODE# pidfile=${PID_DIR}/${NAME}.pid
+       	#MONO-NODE# status_of_proc -p $pidfile "$DAEMON" "$NAME"
+       	#MONO-NODE# cmsd_status=$?
+       	#MONO-NODE# [ ! $cmsd_status ] && return 1
+ 
+       	return 0 
 }
 
 

@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,7 +33,7 @@
 #include <iostream>
 #include "global/sqltoken.h" // sqlShouldSeparate
 #include "query/ColumnRef.h"
-#include "query/TableRefN.h"
+#include "query/TableRef.h"
 #include "log/Logger.h"
 
 namespace lsst {
@@ -86,22 +86,12 @@ struct MappingWrapper {
 ////////////////////////////////////////////////////////////////////////
 // QueryTemplate::Entry subclasses
 ////////////////////////////////////////////////////////////////////////
-class TableEntry : public QueryTemplate::Entry {
-public:
-    TableEntry(query::TableRefN const& tr)
-        : db(tr.getDb()), table(tr.getTable()) {
-    }
-    virtual std::string getValue() const {
-        std::stringstream ss;
-        if(!db.empty()) { ss << db << "."; }
-        ss << table;
-        return ss.str();
-    }
-    virtual bool isDynamic() const { return true; }
-
-    std::string db;
-    std::string table;
-};
+std::string QueryTemplate::TableEntry::getValue() const {
+    std::stringstream ss;
+    if(!db.empty()) { ss << db << "."; }
+    ss << table;
+    return ss.str();
+}
 
 class ColumnEntry : public QueryTemplate::Entry {
 public:
@@ -175,12 +165,12 @@ QueryTemplate::append(query::ColumnRef const& cr) {
 }
 
 void
-QueryTemplate::append(query::TableRefN const& tr) {
-    boost::shared_ptr<Entry> e(new TableEntry(tr));
+QueryTemplate::append(TableEntry const& te) {
+    boost::shared_ptr<Entry> e(new TableEntry(te));
     _entries.push_back(e);
 }
 
-void 
+void
 QueryTemplate::append(boost::shared_ptr<QueryTemplate::Entry> const& e) {
     _entries.push_back(e);
 }
