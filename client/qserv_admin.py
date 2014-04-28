@@ -27,17 +27,6 @@ corresponding function.
 
 @author  Jacek Becla, SLAC
 
-<<<<<<< HEAD
-
-Known issues and todos:
- - !!!!!! 
-
-need to catch exceptions from impl and handle them correctly!!!!!!!!
-
-
-=======
-Known issues and todos:
->>>>>>> master
  - deal with user authentication
  - many commands still need to be implemented
  - need to separate dangerous admin commands like DROP EVERYTHING
@@ -379,10 +368,6 @@ class CommandParser(object):
                       "latColName")}
         return opts
 
-<<<<<<< HEAD
-=======
-
->>>>>>> master
     def _initLogging(self):
         self._logger = logging.getLogger("QADM")
         kL = os.getenv('KAZOO_LOGGING')

@@ -83,13 +83,6 @@ class TestQservAdminImpl(unittest.TestCase):
         self._impl.dumpEverything()
         self._impl.dropDb("dbA")
 
-
-<<<<<<< HEAD
-=======
-
-
-
->>>>>>> master
 ####################################################################################
 def setLogging():
     logging.basicConfig(

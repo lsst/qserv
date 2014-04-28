@@ -1,15 +1,4 @@
 [db_info]
-<<<<<<< HEAD
-dbGroup: L2
-partitioning: on
-partitioningStrategy: sphBox
-
-[sphBox]
-nStripes: 60
-nSubStripes: 18
-overlap: 0.025
-objIdIndex: objectId
-=======
 dbGroup:      L2
 partitioning: 1
 partitioningStrategy: sphBox
@@ -17,4 +6,3 @@ nStripes:     60
 nSubStripes:  18
 overlap:      0.025
 objIdIndex:   objectId
->>>>>>> master
