@@ -11,7 +11,7 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "boost_signals boost_thread mysqlclient_r protobuf ssl".split()
+extDeps = "boost_signals boost_thread mysqlclient_r protobuf ssl crypto".split()
 
 modDeps = 'wlog mysql sql util wbase wconfig wdb'.split() # deps on other modules
 #modDeps = 'wbase wconfig wdb'.split() # deps on other modules

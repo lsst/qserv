@@ -11,7 +11,7 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "mysqlclient_r boost_signals boost_regex boost_thread protobuf ssl XrdClient XrdOfs XrdServer XrdSfs XrdSys XrdUtils".split()
+extDeps = "mysqlclient_r boost_signals boost_regex boost_thread protobuf ssl crypto XrdClient XrdOfs XrdServer XrdSfs XrdSys XrdUtils".split()
 
 modDeps = 'wlog mysql obsolete sql util wbase wconfig wcontrol wdb wpublish wsched xrdfs'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
