@@ -8,25 +8,22 @@ b) db package. Hacky way to get it for now:
     2) cd db
     3) git checkout u/jbecla/ticket3133
 
+The eups-based install procedure sets up these dependencies automatically
 
-##### Building core/modules/css #####
+##### Building  and installing core/modules/css #####
 
-Build core, as you normally would (create custom.py and run
-scons from core/ directory)
-
+Follow the Qserv install procedure, described in top-level README.txt
 
 ##### Starting zookeeper #####
 
-zookeeper-3.4.5/bin/zkServer.sh start
-
+$QSERV_DIR/etc/init.d/zookeeper start
 
 ##### Testing C bindings #####
 
 export LD_LIBRARY_PATH=<path>/lib:<path>/lib/mysql
-core/bld/css/testCssException
-core/bld/css/dist/testKvInterfaceImplDummy
-core/bld/css/dist/testKvInterfaceImplZoo
-core/bld/css/dist/testStore
+build/css/testCssException
+build/css/testKvInterfaceImpl
+build/css/dist/testFacade
 
 
 ##### Testing python bindings and qserv_admin_client #####
