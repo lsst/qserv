@@ -64,7 +64,6 @@ runBatch(boost::shared_ptr<lsst::qserv::wlog::WLogger> log,
         if(!sqlConn.runQuery(piece.data(), piece.size(), errObj) ) {
             // On error, the partial error is as good as the global.
             if(errObj.isSet() ) {
-                unsigned s=piece.size();
                 log->error((Pformat(">>%1%<<---Error with piece %2% complete (size=%3%).")
                             % errObj.errMsg()
                             % batch.pos % batch.sequence.size()).str().c_str());

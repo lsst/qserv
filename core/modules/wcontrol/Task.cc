@@ -42,7 +42,6 @@ namespace {
         std::stringstream ss;
         int sc;
         std::string firstLine = s.substr(0, s.find('\n'));
-        int subChunkCount = 0;
         boost::regex re("\\d+");
         boost::sregex_iterator i;
         for(i = boost::make_regex_iterator(firstLine, re);

@@ -124,7 +124,7 @@ KvInterfaceImplZoo::get(string const& key) {
     struct Stat stat;
     memset(&stat, 0, sizeof(Stat));
     int rc = zoo_get(_zh, key.c_str(), 0, buffer, &bufLen, &stat);
-    if (rc=ZOK) {
+    if (rc!=ZOK) {
         _throwZooFailure(rc, "get", key);
     }
     LOGGER_INF << "*** got: '" << buffer << "'" << endl;
