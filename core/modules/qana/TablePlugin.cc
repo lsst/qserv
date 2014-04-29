@@ -39,7 +39,6 @@
 #include "query/FromList.h"
 #include "query/WhereClause.h"
 #include "query/FuncExpr.h"
-#include "qana/SphericalBoxStrategy.h"
 #include "qana/TableStrategy.h"
 #include "qana/QueryMapping.h"
 #include "query/QueryContext.h"
@@ -395,7 +394,6 @@ int TablePlugin::_rewriteTables(qana::SelectStmtList& outList,
     // and replacing each table ref one at a time.  This preserves the
     // structure. It might be desirable to alter the structure as an
     // optimization, but this can come later.
-#if 1
     TableStrategy ts(fList, context);
     int permutationCount = ts.getPermutationCount();
     if(permutationCount > 1)
@@ -411,26 +409,6 @@ int TablePlugin::_rewriteTables(qana::SelectStmtList& outList,
         ts.setToPermutation(0, fList.getTableRefList());
     }
     qana::QueryMapping::Ptr qm = ts.exportMapping();
-#else
-    SphericalBoxStrategy s(fList, context);
-    qana::QueryMapping::Ptr qm = s.getMapping();
-    // Compute the new fromLists, and if there are more than one, then
-    // clone the selectstmt for each copy.
-    if(ts.needsMultiple()) {
-        typedef std::list<boost::shared_ptr<query::FromList> > FromListList;
-        typedef FromListList::iterator Iter;
-        FromListList newFroms = s.computeNewFromLists();
-        for(Iter i=newFroms.begin(), e=newFroms.end(); i != e; ++i) {
-            boost::shared_ptr<query::SelectStmt> stmt = in.clone();
-            stmt->setFromList(*i);
-            outList.push_back(stmt);
-            ++added;
-        }
-    } else {
-        s.patchFromList(fList);
-        // LOGGER_INF << "post-patched fromlist " << fList.getGenerated() << std::endl;
-    }
-#endif
     // Now add/merge the mapping to the Plan
     if(!mapping.get()) {
         mapping = qm;
