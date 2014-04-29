@@ -44,7 +44,7 @@ import sys
 
 # local imports
 from lsst.db.exception import produceExceptionClass
-from kvInterface import CssException
+from lsst.qserv.css.kvInterface import CssException
 from qserv_admin_impl import QservAdminImpl
 
 ####################################################################################
