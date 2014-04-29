@@ -37,7 +37,7 @@ Known issues and todos:
 import logging
 import uuid
 
-from kvInterface import KvInterface, CssException
+from lsst.qserv.css.kvInterface import KvInterface, CssException
 
 class QservAdminImpl(object):
     """

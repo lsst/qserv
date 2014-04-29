@@ -30,7 +30,6 @@ QSERV_UNIX_USER=%(QSERV_UNIX_USER)s
 QSERV_RPC_PORT=%(QSERV_RPC_PORT)s
 
 NAME="mysql-proxy"
-DAEMON=$(which $NAME)
 
 # Source networking configuration.
 if [ -f /etc/sysconfig/network ]; then
@@ -52,6 +51,8 @@ LUA_DEBUG_LEVEL=0
 LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
 LOGFILE=${QSERV_LOG_DIR}/mysql-proxy.log
 QSERV_RPC_PORT=${QSERV_RPC_PORT}
+
+DAEMON=$NAME
 
 # Source mysql-proxy configuration.
 if [ -f ${QSERV_DIR}/etc/sysconfig/mysql-proxy ]; then

@@ -37,3 +37,6 @@ yum install readline-devel
 
 # mysql-proxy
 yum install glib2-devel
+
+# css
+yum install python-argparse

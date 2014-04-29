@@ -1,7 +1,0 @@
-# meta/bin/metaClientTool.py -a ~/.lsst/qmsadm.cnf
-
-[qmsConn]
-host: %(QMS_HOST)s
-port: %(QMS_PORT)s
-user: %(QMS_USER)s
-pass: %(QMS_PASS)s

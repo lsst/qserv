@@ -121,14 +121,8 @@ start() {
 
  	# check to see if it's already running
  	echo -n "Starting $prog"
-    	if [ -n "$pidfile" ]; then
-        	pidfileopt="-p $pidfile"
-    	fi
-	pidofproc $pidfileopt $prog >/dev/null 
-	status=$?
-	if [ "$status" = 0 ]; then
-		read pid < $pidfile	
-                log_success_msg " : already up : pid=${pid}"
+	if [ -f ${pidfile} ]; then
+                log_success_msg " : (already up)"
 		retval=0
 	elif [ "$status" = 2 ]; then
 		log_failure_msg " : was dead but lockfile existed"
@@ -138,9 +132,6 @@ start() {
 		log_failure_msg " : could not access PID file"
 		retval=$status
 	else
-	    if [ "$status" = 1 ]; then
-		echo -n " : was dead but PID file existed"
-            fi
             if [ ${timeout} = 0 ]; then
                 start_mode='manage-pid'
             else
@@ -164,8 +155,7 @@ start() {
                     eval ${cmd}
                     pid=$!
                     sleep ${timeout}
-                    checkpid ${pid}
-                    retval=$?
+                    checkpid ${pid} && retval=0
                     # Create pid file
                     if [ ${retval} -eq 0 ]; then
                             echo ${pid} > ${pidfile}
@@ -212,28 +202,16 @@ stop() {
 	fi
 
         echo -n "Stopping $prog"
-    	if [ -n "$pidfile" ]; then
-        	pidfileopt="-p $pidfile"
-    	fi
-	pidofproc $pidfileopt $prog >/dev/null 
-	status="$?"
-	if [ "$status" = 1 ]; then
-	    echo -n " : service is down (removing PID file)"
-	elif [ "$status" = 2 ]; then
-            echo -n " : service is down (removing lockfile)"
-	elif [ "$status" = 3 ]; then
-            echo -n " : already down"
-	# TODO : use fgrep
-	elif [ "$status" = 4 ]; then
-            echo -n " : could not access PID file"
-	    return $status
-	fi
-
-        log_success_msg
-	killproc -p ${pidfile} $prog
-	retval=$?
-        [ ${retval} = 0 ] && rm -f ${lockfile} ${pidfile}
-
+        if [ ! -f "$pidfile" ]; then
+	    # not running; per LSB standards this is "ok"
+            log_failure_msg " : PID file could not be found"
+	    retval=999
+        else
+	    log_success_msg
+	    killproc -p ${pidfile} $prog
+	    retval=$?
+            [ ${retval} = 0 ] && rm -f ${lockfile} ${pidfile}
+        fi
         return ${retval}
 }
 
@@ -263,11 +241,11 @@ status_of_proc () {
     daemon="$1"
     name="$2"
 
-    pidofproc $pidfileopt $daemon >/dev/null 
-    status="$?"
+    status="0"
+    pidofproc $pidfileopt $daemon >/dev/null || status="$?"
     if [ "$status" = 0 ]; then
 	read pid < $pidfile	
-        log_success_msg "$name is running (pid=${pid})"
+        log_success_msg "$name is running (${pid})"
         return 0
     elif [ "$status" = 1 ]; then
         log_failure_msg "$name is dead but PID file exists"

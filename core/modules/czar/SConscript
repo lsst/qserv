@@ -74,6 +74,8 @@ def markForInstall(env, pathList, extras):
     pyDir = os.path.join(python_libpath,*pathList)
     srcPyDir = os.path.join(*pathList)
 
+    state.log.debug("pathList, %s" % pathList)
+    state.log.debug("srcPyDir %s" % srcPyDir)
     # install py files
     for s in env.Glob(os.path.join(srcPyDir,"*.py")):
         extraTgts['dist'].append((pyDir, s))
@@ -82,17 +84,9 @@ def markForInstall(env, pathList, extras):
     for s in extras:
         state.log.debug("extra %s" % s)
         extraTgts['dist'].append((pyDir, s))
-    # touch init files
-    for (path,f) in extraTgts['dist']:
-        state.log.debug("%s, %s" % (path,str(f)))
-    for p in range(1,len(pathList)):
-        plist = pathList[:p] + ["__init__.py"]
-        fname = os.path.join(python_libpath, *plist)
-        env.Command(fname, None, [Touch("$TARGET")])
-
-        state.log.debug("adding to extraTgts['dist'] : path %s file %s " % (os.path.join(python_libpath, *pathList[:p]), fname))
-
-        extraTgts['dist'].append((os.path.join(python_libpath, *pathList[:p]), env.File(fname)))
+    # touch init files will be done by python builder used 
+    # for deploying others python/lsst/qserv package. See
+    # InstallPythonModule() in main SConstruct
 
 distTgts = swigged_tgt + [pySwig]
 

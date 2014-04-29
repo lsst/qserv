@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# 
+# ZooKeeper
+# 
+# chkconfig: 2345 89 9 
+# description: zookeeper
+
+. %(QSERV_DIR)s/etc/init.d/qserv-functions
+
+PATH=%(PATH)s
+QSERV_DIR=%(QSERV_DIR)s
+QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
+QSERV_PID_DIR=%(QSERV_PID_DIR)s
+QSERV_LOG_DIR=%(QSERV_LOG_DIR)s
+QSERV_UNIX_USER=%(QSERV_UNIX_USER)s
+
+export ZOOCFGDIR=${QSERV_DIR}/etc
+export ZOO_LOG_DIR=${QSERV_LOG_DIR}
+export ZOOPIDFILE=${QSERV_PID_DIR}/zookeeper.pid
+export ZOO_LOG4J_PROP="DEBUG, ROLLINGFILE"
+
+DAEMON=$(which zkServer.sh)
+
+RETVAL=0
+PIDFILE="${ZOOPIDFILE}"
+desc="ZooKeeper daemon"
+
+start() {
+  mkdir -p ${QSERV_RUN_DIR}/zookeeper-run
+  echo -n $"Starting $desc (zookeeper): "
+  start_daemon ${DAEMON} start
+  RETVAL=$?
+  echo
+  [ $RETVAL -eq 0 ] && touch ${QSERV_RUN_DIR}/var/lock/subsys/zookeeper
+  return $RETVAL
+}
+
+stop() {
+  echo -n $"Stopping $desc (zookeeper): "
+  start_daemon ${DAEMON} stop
+  RETVAL=$?
+  sleep 5
+  echo
+  [ $RETVAL -eq 0 ] && rm -f ${QSERV_RUN_DIR}/var/lock/subsys/zookeeper $PIDFILE
+}
+
+restart() {
+  stop
+  start
+}
+
+checkstatus(){
+  DAEMON=$(which java)
+  status_of_proc -p $PIDFILE "$DAEMON" "$desc"
+  RETVAL=$?
+}
+
+condrestart(){
+  [ -e ${QSERV_RUN_DIR}/var/lock/subsys/zookeeper ] && restart || :
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  status)
+    checkstatus
+    ;;
+  restart)
+    restart
+    ;;
+  condrestart)
+    condrestart
+    ;;
+  *)
+    echo $"Usage: $0 {start|stop|status|restart|condrestart}"
+    exit 1
+esac
+
+exit $RETVAL

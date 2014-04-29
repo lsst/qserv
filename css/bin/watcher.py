@@ -44,7 +44,7 @@ import os
 import time
 import threading
 
-from kvInterface import KvInterface
+from lsst.qserv.css.kvInterface import KvInterface
 from lsst.db.db import Db, DbException
 
 

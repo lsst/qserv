@@ -27,12 +27,12 @@ env.Default(env.Alias("build"))
 env.Depends("install", env.Alias("build"))
 
 env.Requires(env.Alias('python-tests'), env.Alias('admin'))
-env.Requires(env.Alias('python-tests'), env.Alias('dist-qms'))
+env.Requires(env.Alias('python-tests'), env.Alias('dist-css'))
 
 env.Alias("install",
         [
         env.Alias("dist-core"),
-        env.Alias("dist-qms"),
+        env.Alias("dist-css"),
         env.Alias("admin"),
         env.Alias("python-tests"),
         env.Alias("templates")
@@ -49,17 +49,15 @@ env.Alias("python-tests", python_tests)
 
 # Install css
 #########################
-
-# FIXME!!!
-# qmsbin_target = os.path.join(env['prefix'], "bin")
-# env.RecursiveInstall(qmsbin_target, os.path.join("meta", "bin"))
-# python_qms = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("meta", "python"))
-# env.Alias("dist-qms",
-#         [
-#         python_qms,
-#         qmsbin_target
-#         ]
-# )
+cssbin_target = os.path.join(env['prefix'], "bin")
+env.RecursiveInstall(cssbin_target, os.path.join("client", "bin"))
+python_css = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("css", "python"))
+env.Alias("dist-css",
+        [
+        python_css,
+        cssbin_target
+        ]
+)
 
 #########################
 #
@@ -102,8 +100,11 @@ def get_install_targets() :
   # Setup the #include paths
   # env.Append(CPPPATH="modules")
 
-  coreFilesToInstall = SConscript('core/modules/SConscript', variant_dir=env['build_dir'], duplicate=1,
-    exports=['env', 'ARGUMENTS'])
+  (coreFilesToInstall, testTargets) = SConscript('core/modules/SConscript', 
+    variant_dir=env['build_dir'], 
+    duplicate=1,
+    exports=['env', 'ARGUMENTS']
+    )
   targetFiles = []
   for (path, sourceNode) in coreFilesToInstall :
     installPath=os.path.join(env['prefix'], path)
@@ -111,7 +112,11 @@ def get_install_targets() :
     targetFile = fileutils.replace_base_path(None, installPath, sourceNode, env)
     env.InstallAs(targetFile, sourceNode)
     targetFiles.append(targetFile)
-  return targetFiles
+
+  installTargets = targetFiles + testTargets
+  state.log.debug("%s " % installTargets)
+    
+  return installTargets
 
 env.Alias("dist-core", get_install_targets())
 

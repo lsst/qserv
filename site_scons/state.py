@@ -46,20 +46,18 @@ def _findPrefix(product, binName=None):
     - else env var PRODUCT_DIR is used
     - if no prefix is detected, exit with an error message
     """
-    prefix = None
-
+    prefix = os.getenv("%s_DIR" % product.upper())
     if binName:
         binFullPath = SCons.Util.WhereIs(binName)
+        if not binFullPath :
+            log.fail("Unable to locate executable : \"%s\"" % binName)
         (binpath, binname) = os.path.split(binFullPath)
         (basepath, bin) = os.path.split(binpath)
         if bin.lower() == "bin":
            prefix = basepath
 
     if not prefix:
-        prefix = os.getenv("%s_DIR" % product.upper())
-
-    if not prefix:
-        log.fails("Could not locate %s install prefix" % product)
+        log.fail("Could not locate %s install prefix" % product)
 
     return prefix
 
@@ -91,6 +89,7 @@ def _initVariables(src_dir):
             (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', _findPrefix("MYSQLPROXY", "mysql-proxy"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_DIR', 'protobuf install dir', _findPrefix("PROTOBUF", "protoc"), PathVariable.PathIsDir)),
             (PathVariable('LUA_DIR', 'lua install dir', _findPrefix("LUA", "lua"), PathVariable.PathIsDir)),
+            (PathVariable('ZOOKEEPER_DIR', 'zookeeper install dir', _findPrefix("ZOOKEEPER", "zkEnv.sh"), PathVariable.PathIsDir)),
             (PathVariable('GEOMETRY', 'path to geometry.py', os.getenv("GEOMETRY_LIB"), PathVariable.PathAccept)),
             (PathVariable('python_relative_prefix', 'qserv install directory for python modules, relative to prefix', os.path.join("lib", "python"), PathVariable.PathIsDirCreate)),
             ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH"))
@@ -105,12 +104,11 @@ def _initVariables(src_dir):
             (PathVariable('MYSQL_INC', 'mysql include path', os.path.join(env['MYSQL_DIR'], "include"), PathVariable.PathIsDir)),
             (PathVariable('MYSQL_LIB', 'mysql libraries path', os.path.join(env['MYSQL_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_INC', 'protobuf include path', os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
-            (PathVariable('PROTOBUF_LIB', 'protobuf libraries path', os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir))
+            (PathVariable('PROTOBUF_LIB', 'protobuf libraries path', os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir)),
+            (PathVariable('ZOOKEEPER_INC', 'zookeeper c-binding include path', os.path.join(env['ZOOKEEPER_DIR'], "c-binding", "include", "zookeeper"), PathVariable.PathIsDir)),
+            (PathVariable('ZOOKEEPER_LIB', 'zookeeper c-binding libraries path', os.path.join(env['ZOOKEEPER_DIR'], "c-binding", "lib"), PathVariable.PathIsDir))
             )
     opts.Update(env)
-
-    # print "DEBUG " + str(opts)
-    # print "DEBUG " + env.Dump() 
 
     opts.AddVariables(
             (PathVariable('python_prefix', 'qserv install directory for python modules', os.path.join(env['prefix'], env['python_relative_prefix']), PathVariable.PathIsDirCreate))
