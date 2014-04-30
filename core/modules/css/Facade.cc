@@ -214,8 +214,9 @@ Facade::getSubChunkedTables(string const& dbName) const {
   * @param dbName database name
   * @param tableName table name
   *
-  * @return Returns a 3-element vector with column names: ra, decl, objectId.
-  *         or empty string(s) if the keys do not exist.
+  * @return Returns a 3-element vector with column names for the lon, lat, 
+  *         and secIndex column names (e.g. [ra, decl, objectId]).
+  *         or empty string(s) for columns that do not exist.
   */
 vector<string>
 Facade::getPartitionCols(string const& dbName, string const& tableName) const {
@@ -270,8 +271,8 @@ Facade::getChunkLevel(string const& dbName, string const& tableName) const {
   * @param db database name
   * @param table table name
   *
-  * @return the name of the partitioning key column, or an empty string if the
-  * key does not exist.
+  * @return the name of the partitioning key column, or an empty string if
+  * there is no key column.
   */
 string
 Facade::getKeyColumn(string const& dbName, string const& tableName) const {
@@ -286,7 +287,7 @@ Facade::getKeyColumn(string const& dbName, string const& tableName) const {
 }
 
 /** Retrieve # stripes and subStripes for a database. Throws exception if 
-  * the database does not exist.
+  * the database does not exist. Returns (0,0) for non-partitioned databases.
   *
   * @param db database name
   */
