@@ -103,7 +103,7 @@ Facade::~Facade() {
   */
 bool
 Facade::containsDb(string const& dbName) const {
-    if (dbName == "") {
+    if (dbName.empty()) {
         LOGGER_INF << "Empty database name passed." << endl;
         throw CssException_DbDoesNotExist("<empty>");
     }
