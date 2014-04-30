@@ -1,0 +1,6 @@
+[table_info]
+tableName:      LeapSeconds
+partitioning:   0
+schemaFile:     /u1/qserv/sandbox/qserv/meta/examples/tbSchema_LeapSeconds.sql
+compression:    0
+isRefMatch:     0
