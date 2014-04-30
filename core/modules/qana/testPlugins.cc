@@ -44,7 +44,7 @@ using lsst::qserv::qana::AnalysisError;
 struct TestFixture {
     TestFixture(void) {
         // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
-        // Use client/examples/testCppParser_generateMap
+        // Use client/examples/testMap_generateMap
         std::string kvMapPath = "./modules/qana/testPlugins.kvmap"; // FIXME
         cssFacade = lsst::qserv::css::FacadeFactory::createMemFacade(kvMapPath);
     }

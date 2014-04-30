@@ -70,12 +70,12 @@ KvInterfaceImplZoo::KvInterfaceImplZoo(string const& connInfo) {
     zoo_set_debug_level(ZOO_LOG_LEVEL_ERROR);
     _zh = zookeeper_init(connInfo.c_str(), 0, 10000, 0, 0, 0);
     if ( !_zh ) {
-        throw std::runtime_error("Failed to connect");
+        throw CssException_ConnFailure();
     }
 }
 
 KvInterfaceImplZoo::~KvInterfaceImplZoo() {
-    try {    
+    try {
         int rc = zookeeper_close(_zh);
         if ( rc != ZOK ) {
             LOGGER_ERR << "*** ~KvInterfaceImplZoo - zookeeper error " << rc
@@ -89,10 +89,10 @@ KvInterfaceImplZoo::~KvInterfaceImplZoo() {
 
 void
 KvInterfaceImplZoo::create(string const& key, string const& value) {
-    LOGGER_INF << "*** KvInterfaceImplZoo::create(), " << key << " --> " 
+    LOGGER_INF << "*** KvInterfaceImplZoo::create(), " << key << " --> "
                << value << endl;
     char buffer[512];
-    int rc = zoo_create(_zh, key.c_str(), value.c_str(), value.length(), 
+    int rc = zoo_create(_zh, key.c_str(), value.c_str(), value.length(),
                         &ZOO_OPEN_ACL_UNSAFE, 0, buffer, sizeof(buffer)-1);
     if (rc!=ZOK) {
         _throwZooFailure(rc, "create", key);
@@ -151,7 +151,7 @@ KvInterfaceImplZoo::get(string const& key, string const& defaultValue) {
     return string(buffer);
 }
 
-vector<string> 
+vector<string>
 KvInterfaceImplZoo::getChildren(string const& key) {
     LOGGER_INF << "*** KvInterfaceImplZoo::getChildren(), key: " << key << endl;
     struct String_vector strings;
@@ -162,7 +162,7 @@ KvInterfaceImplZoo::getChildren(string const& key) {
     }
     LOGGER_INF << "got " << strings.count << " children" << endl;
     vector<string> v;
-    try {    
+    try {
         int i;
         for (i=0 ; i<strings.count ; i++) {
             LOGGER_INF << "   " << i+1 << ": " << strings.data[i] << endl;
@@ -181,7 +181,7 @@ KvInterfaceImplZoo::deleteKey(string const& key) {
     int rc = zoo_delete(_zh, key.c_str(), -1);
     if (rc!=ZOK) {
         _throwZooFailure(rc, "deleteKey", key);
-    }   
+    }
 }
 
 /**
@@ -190,7 +190,7 @@ KvInterfaceImplZoo::deleteKey(string const& key) {
   * @param extraMsg optional extra message to include in the error message
   */
 void
-KvInterfaceImplZoo::_throwZooFailure(int rc, string const& fName, 
+KvInterfaceImplZoo::_throwZooFailure(int rc, string const& fName,
                                      string const& key) {
     string ffName = "*** css::KvInterfaceImplZoo::" + fName + "(). ";
     if (rc==ZNONODE) {

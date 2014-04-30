@@ -71,20 +71,22 @@ namespace css {
   * @param mapPath path to the map dumped using ./client/qserv_admin.py
   *
   * To generate the key/value map, follow this recipe:
-  * 1) cleanup everything in zookeeper. careful, this will wipe out 
+  * 1) cleanup everything in zookeeper. careful, this will wipe out
   *    everyting in zookeeper!
   *    echo "drop everything;" | ./client/qserv_admin.py
   * 2) generate the clean set:
   *    ./client/qserv_admin.py <  <commands>
-  *    (example commands can be found in client/examples/testCppParser_generateMap)
+  *    (example commands can be found in client/examples/testMap_generateMap)
   * 3) then copy the generate file to final destination:
-  *    mv /tmp/testCppParser.kvmap <destination>
+  *    mv /tmp/testMap.kvmap <destination>
   */
-KvInterfaceImplMem::KvInterfaceImplMem(string const& mapPath) {
-    std::ifstream f(mapPath.c_str());
+KvInterfaceImplMem::KvInterfaceImplMem(std::istream& mapStream) {
+    if(mapStream.fail()) {
+        throw CssException_ConnFailure();
+    }
     string line;
     vector<string> strs;
-    while ( std::getline(f, line) ) {
+    while ( std::getline(mapStream, line) ) {
         boost::split(strs, line, boost::is_any_of("\t"));
         string theKey = strs[0];
         string theVal = strs[1];
@@ -108,7 +110,7 @@ KvInterfaceImplMem::~KvInterfaceImplMem() {
 
 void
 KvInterfaceImplMem::create(string const& key, string const& value) {
-    LOGGER_INF << "*** KvInterfaceImplMem::create(), " << key << " --> " 
+    LOGGER_INF << "*** KvInterfaceImplMem::create(), " << key << " --> "
                << value << endl;
     if (exists(key)) {
         throw CssException_KeyDoesNotExist(key);
@@ -119,7 +121,7 @@ KvInterfaceImplMem::create(string const& key, string const& value) {
 bool
 KvInterfaceImplMem::exists(string const& key) {
     bool ret = _kvMap.find(key) != _kvMap.end();
-    LOGGER_INF << "*** KvInterfaceImplMem::exists(), key: " << key 
+    LOGGER_INF << "*** KvInterfaceImplMem::exists(), key: " << key
                << ": " << ret << endl;
     return ret;
 }
@@ -146,7 +148,7 @@ KvInterfaceImplMem::get(string const& key, string const& defaultValue) {
     return s;
 }
 
-vector<string> 
+vector<string>
 KvInterfaceImplMem::getChildren(string const& key) {
     LOGGER_INF << "*** KvInterfaceImplMem::getChildren(), key: " << key << endl;
     if ( ! exists(key) ) {

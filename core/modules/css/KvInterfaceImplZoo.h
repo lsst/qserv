@@ -36,7 +36,7 @@
 #include <string>
 
 // third-party imports
-#include "zookeeper.h"
+#include "zookeeper/zookeeper.h"
 
 // local imports
 #include "KvInterface.h"
@@ -53,14 +53,14 @@ public:
     virtual void create(std::string const& key, std::string const& value);
     virtual bool exists(std::string const& key);
     virtual std::string get(std::string const& key);
-    virtual std::string get(std::string const& key, 
+    virtual std::string get(std::string const& key,
                             std::string const& defaultValue);
     virtual std::vector<std::string> getChildren(std::string const& key);
     virtual void deleteKey(std::string const& key);
 
 private:
     void _throwZooFailure(int, std::string const& fName, std::string const& key);
-    
+
 private:
     zhandle_t *_zh; // zhookeeper handle
 };
