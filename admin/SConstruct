@@ -104,6 +104,7 @@ script_dict = {
     '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'],
     '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['run_base_dir'],"var", "run"),
     '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
+    '%\(QSERV_USER\)s': config['qserv']['user'],
     '%\(QSERV_LUA_SHARE\)s': os.path.join(config['lua']['base_dir'],"share","lua","5.1"),
     '%\(QSERV_LUA_LIB\)s': os.path.join(config['lua']['base_dir'],"lib","lua","5.1"),
     '%\(QSERV_SCRATCH_DIR\)s': config['qserv']['scratch_dir'],

@@ -19,11 +19,12 @@ port=%(QSERV_RPC_PORT)s
 technology=zoo
 
 # For zoo, provide zookeeper connection information
-# For local zookeeper installation, use "localhost:2181"
+# For local zookeeper installation, use "localhost:%(ZOOKEEPER_PORT)s"
 # For mem, provide location of file containing key-value pairs
 # (to learn how to dump key-value pairs, see
 # qserv/core/modules/css/KvInterfaceImplMem.cc)
-connection=localhost:2181
+# TODO : localhost doesn't work on Ubuntu 14.04, why ?
+connection=127.0.0.1:%(ZOOKEEPER_PORT)s
 
 [resultdb]
 #host=
