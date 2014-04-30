@@ -2,6 +2,7 @@
 Import("env")
 Import("libProducts")
 Import("defaultTgts")
+Import('findLibs')
 import glob
 import itertools
 
@@ -22,7 +23,7 @@ deps.sort(key=lambda n: n.str_for_display())
 
 myDeps = filter(lambda i: not str(i).startswith("test"), env.Glob("*.cc"))
 extDeps = "boost_regex mysqlclient_r boost_thread boost_system crypto XrdPosix XrdPosixPreload XrdClient XrdUtils".split()
-p = env.Program(["testIter.cc"] + deps, LIBS=extDeps)
+p = env.Program(["testIter.cc"] + deps, LIBS=findLibs(extDeps))
 
 programs.append(p)
 
