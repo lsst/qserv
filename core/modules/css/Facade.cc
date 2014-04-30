@@ -300,14 +300,19 @@ Facade::getDbStriping(string const& dbName) const {
         return striping;
     }
     string p = _prefix + "/DATABASE_PARTITIONING/_" + v + "/";
-    striping.stripes = _getIntValue(p+"nStripes", "0");
-    striping.subStripes = _getIntValue(p+"nSubStripes", "0");
+    striping.stripes = _getIntValue(p+"nStripes", 0);
+    striping.subStripes = _getIntValue(p+"nSubStripes", 0);
     return striping;
 }
 
 int
-Facade::_getIntValue(string const& key, string const& defaultValue) const {
-    return boost::lexical_cast<int>( _kvI->get(key, defaultValue) );
+Facade::_getIntValue(string const& key, int defaultValue) const {
+    static const string defaultValueS = "!@#$%^&*()";
+    string ret = _kvI->get(key, defaultValueS);
+    if (ret == defaultValueS) {
+        return defaultValue;
+    }
+    return boost::lexical_cast<int>(ret);
 }
 
 /** Validates if database exists. Throw exception if it does not.

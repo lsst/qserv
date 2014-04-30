@@ -93,7 +93,7 @@ private:
                          std::string const& tableName) const;
     bool _tableIsSubChunked(std::string const& dbName, 
                             std::string const& tableName) const;
-    int _getIntValue(std::string const& key, std::string const& defaultValue) const;
+    int _getIntValue(std::string const& key, int defaultValue) const;
 
     friend class FacadeFactory;
     
