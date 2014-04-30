@@ -201,7 +201,7 @@ Facade::getSubChunkedTables(string const& dbName) const {
     vector<string> ret, v = _kvI->getChildren(p);
     vector<string>::const_iterator itr;
     for (itr = v.begin() ; itr != v.end(); ++itr) {
-        if (tableIsSubChunked(dbName, *itr)) {
+        if (_tableIsSubChunked(dbName, *itr)) {
             LOGGER_INF << "*** getSubChunkedTables: " << *itr << endl;
             ret.push_back(*itr);
         }
@@ -215,6 +215,7 @@ Facade::getSubChunkedTables(string const& dbName) const {
   * @param tableName table name
   *
   * @return Returns a 3-element vector with column names: ra, decl, objectId.
+  *         or empty string(s) if the keys do not exist.
   */
 vector<string>
 Facade::getPartitionCols(string const& dbName, string const& tableName) const {
@@ -230,11 +231,11 @@ Facade::getPartitionCols(string const& dbName, string const& tableName) const {
     vector<string>::const_iterator itr;
     for (itr = v.begin() ; itr != v.end(); ++itr) {
         string p1 = p + *itr;
-        string s = _kvI->get(p1);
+        string s = _kvI->get(p1, "");
         ret.push_back(s);
     }
     LOGGER_INF << "*** getPartitionCols: " << v[0] << ", " << v[1] << ", " 
-         << v[2] << endl;
+               << v[2] << endl;
     return ret;
 }
 
@@ -269,7 +270,8 @@ Facade::getChunkLevel(string const& dbName, string const& tableName) const {
   * @param db database name
   * @param table table name
   *
-  * @return the name of the partitioning key column
+  * @return the name of the partitioning key column, or an empty string if the
+  * key does not exist.
   */
 string
 Facade::getKeyColumn(string const& dbName, string const& tableName) const {
@@ -278,11 +280,7 @@ Facade::getKeyColumn(string const& dbName, string const& tableName) const {
     _throwIfNotDbTbExists(dbName, tableName);
     string ret, p = _prefix + "/DATABASES/" + dbName + "/TABLES/" + tableName +
                     "/partitioning/secIndexColName";
-    try {
-        ret = _kvI->get(p);
-    } catch (CssException_KeyDoesNotExist& e) {
-        ret = "";
-    }
+    ret = _kvI->get(p, "");
     LOGGER_INF << "Facade::getKeyColumn, returning: " << ret << endl;
     return ret;
 }
@@ -296,17 +294,20 @@ StripingParams
 Facade::getDbStriping(string const& dbName) const {
     LOGGER_INF << "*** getDbStriping(" << dbName << ")" << endl;
     _throwIfNotDbExists(dbName);
-    string v = _kvI->get(_prefix + "/DATABASES/" + dbName + "/partitioningId");
-    string p = _prefix + "/DATABASE_PARTITIONING/_" + v + "/";
     StripingParams striping;
-    striping.stripes = _getIntValue(p+"nStripes");
-    striping.subStripes = _getIntValue(p+"nSubStripes");
+    string v = _kvI->get(_prefix + "/DATABASES/" + dbName + "/partitioningId", "");
+    if (v == "") {
+        return striping;
+    }
+    string p = _prefix + "/DATABASE_PARTITIONING/_" + v + "/";
+    striping.stripes = _getIntValue(p+"nStripes", "0");
+    striping.subStripes = _getIntValue(p+"nSubStripes", "0");
     return striping;
 }
 
 int
-Facade::_getIntValue(string const& key) const {
-    return boost::lexical_cast<int>( _kvI->get(key) );
+Facade::_getIntValue(string const& key, string const& defaultValue) const {
+    return boost::lexical_cast<int>( _kvI->get(key, defaultValue) );
 }
 
 /** Validates if database exists. Throw exception if it does not.
@@ -314,7 +315,7 @@ Facade::_getIntValue(string const& key) const {
 void
 Facade::_throwIfNotDbExists(string const& dbName) const {
     if (!containsDb(dbName)) {
-        LOGGER_INF << "db " << dbName << " not found" << endl;
+        LOGGER_INF << "Db " << dbName << " not found." << endl;
         throw CssException_DbDoesNotExist(dbName);
     }
 }
@@ -383,7 +384,7 @@ Facade::_tableIsSubChunked(string const& dbName,
                            string const& tableName) const {
     string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" + 
                tableName + "/partitioning/" + "subChunks";
-    string retS = _kvI->get(p);
+    string retS = _kvI->get(p, "0");
     bool retV = (retS == "1");
     LOGGER_INF << "*** " << dbName << "." << tableName << " is ";
     if (!retV) LOGGER_INF << "NOT ";

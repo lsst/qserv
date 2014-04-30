@@ -131,6 +131,26 @@ KvInterfaceImplZoo::get(string const& key) {
     return string(buffer);
 }
 
+string
+KvInterfaceImplZoo::get(string const& key, string const& defaultValue) {
+    LOGGER_INF << "*** KvInterfaceImplZoo::get2(), key: " << key << endl;
+    char buffer[512];
+    int bufLen = static_cast<int>(sizeof(buffer));
+    memset(buffer, 0, bufLen);
+    struct Stat stat;
+    memset(&stat, 0, sizeof(Stat));
+    int rc = zoo_get(_zh, key.c_str(), 0, buffer, &bufLen, &stat);
+    if (rc!=ZOK) {
+        if (rc==ZNONODE) {
+            return defaultValue;
+        } else {
+            _throwZooFailure(rc, "get", key);
+        }
+    }
+    LOGGER_INF << "*** got: '" << buffer << "'" << endl;
+    return string(buffer);
+}
+
 vector<string> 
 KvInterfaceImplZoo::getChildren(string const& key) {
     LOGGER_INF << "*** KvInterfaceImplZoo::getChildren(), key: " << key << endl;

@@ -63,6 +63,14 @@ public:
     virtual std::string get(std::string const& key) = 0;
 
     /**
+     * Returns value for a given key, defaultValue if the key does not exist.
+     * Throws CssException if there are any other problems, e.g., a connection
+     * error is detected).
+     */
+    virtual std::string get(std::string const& key, 
+                            std::string const& defaultValue) = 0;
+
+    /**
      * Returns children (vector of strings) for a given key.
      * Throws CssException if the key does not exist (or if any other problem,
      * e.g., a connection error is detected)

@@ -135,6 +135,17 @@ KvInterfaceImplMem::get(string const& key) {
     return s;
 }
 
+string
+KvInterfaceImplMem::get(string const& key, string const& defaultValue) {
+    LOGGER_INF << "*** KvInterfaceImplMem::get2(), key: " << key << endl;
+    if ( ! exists(key) ) {
+        return defaultValue;
+    }
+    string s = _kvMap[key];
+    LOGGER_INF << "*** got: '" << s << "'" << endl;
+    return s;
+}
+
 vector<string> 
 KvInterfaceImplMem::getChildren(string const& key) {
     LOGGER_INF << "*** KvInterfaceImplMem::getChildren(), key: " << key << endl;

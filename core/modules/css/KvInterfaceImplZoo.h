@@ -53,6 +53,8 @@ public:
     virtual void create(std::string const& key, std::string const& value);
     virtual bool exists(std::string const& key);
     virtual std::string get(std::string const& key);
+    virtual std::string get(std::string const& key, 
+                            std::string const& defaultValue);
     virtual std::vector<std::string> getChildren(std::string const& key);
     virtual void deleteKey(std::string const& key);
 

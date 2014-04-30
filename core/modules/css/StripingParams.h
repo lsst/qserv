@@ -35,7 +35,9 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
-struct StripingParams {
+class StripingParams {
+public:
+    StripingParams() : stripes(0), subStripes(0) {}
     int stripes;
     int subStripes;
 };
