@@ -17,7 +17,7 @@ function is_up {
 is_up &&
 {
     echo "-- Service already running on ${MYSQLD_HOST}:${MYSQLD_PORT}"
-    echo "-- Please stop it and relaunch configuration procedure}"
+    echo "-- Please stop it and relaunch configuration procedure"
     exit 1
 }
 

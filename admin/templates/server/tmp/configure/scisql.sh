@@ -14,12 +14,20 @@ export LD_LIBRARY_PATH=%(LD_LIBRARY_PATH)s
 
 # TODO manage scisql version in templating system
 SCISQL_VERSION=scisql-0.3.2
+SCISQL_ARCHIVE=${SCISQL_VERSION}.tar.bz2
 
 ${QSERV_DIR}/etc/init.d/mysqld start &&
 
 cd ${QSERV_DIR}/tmp &&
-wget https://launchpad.net/scisql/trunk/0.3.2/+download/${SCISQL_VERSION}.tar.bz2 &&
-tar jxvf ${SCISQL_VERSION}.tar.bz2 &&
+if [ ! -s ${SCISQL_ARCHIVE} ]; then
+    wget https://launchpad.net/scisql/trunk/0.3.2/+download/${SCISQL_ARCHIVE} ||
+    {
+        echo "Unable to download ${SCISQL_ARCHIVE}"
+        echo "Please copy it manually in ${QSERV_DIR}/tmp"
+        exit 1
+    }
+fi
+tar jxvf ${SCISQL_ARCHIVE} &&
 cd ${SCISQL_VERSION} &&
 echo "-- Installing scisql $PYTHONPATH"
 ./configure --prefix=${MYSQL_DIR} --mysql-user=root --mysql-password="${MYSQLD_PASS}" --mysql-socket=${MYSQLD_SOCK}  &&

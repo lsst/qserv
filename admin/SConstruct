@@ -29,7 +29,7 @@ env = Environment(tools=['textfile'])
 env.Requires(env.Alias('templates'), env.Alias('mkdir'))
 env.Requires(env.Alias('mysql'), env.Alias('templates'))
 env.Requires(env.Alias('scisql'), env.Alias('templates'))
-env.Requires(env.Alias('qms'), env.Alias('templates'))
+env.Requires(env.Alias('css'), env.Alias('templates'))
 env.Requires(env.Alias('qserv'), env.Alias('templates'))
 
 env.Alias('configure', 
@@ -37,7 +37,7 @@ env.Alias('configure',
         env.Alias('mkdir'),
         env.Alias('mysql'),
         env.Alias('scisql'),
-        env.Alias('qms'),
+        env.Alias('css'),
         env.Alias('qserv'),
         env.Alias("userconfig")
         ]
@@ -122,6 +122,7 @@ script_dict = {
     '%\(XROOTD_RUN_DIR\)s': os.path.join(config['qserv']['run_base_dir'],"xrootd-run"),
     '%\(XROOTD_ADMIN_DIR\)s': os.path.join(config['qserv']['base_dir'],'tmp'),
     '%\(CMSD_MANAGER_PORT\)s': config['xrootd']['cmsd_manager_port'],
+    '%\(ZOOKEEPER_PORT\)s': config['zookeeper']['port'],
     '%\(HOME\)s': os.path.expanduser("~")
 }
 
@@ -189,7 +190,7 @@ env.Alias("mysql", cmd)
 
 #########################
 #
-# Configure qms
+# Configure css
 #
 #########################
 if config['qserv']['node_type'] in ['mono','master']:
