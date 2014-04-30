@@ -50,7 +50,7 @@ env.Alias("python-tests", python_tests)
 # Install css
 #########################
 cssbin_target = os.path.join(env['prefix'], "bin")
-env.RecursiveInstall(cssbin_target, os.path.join("client", "bin"))
+env.RecursiveInstall(cssbin_target, os.path.join("css", "bin"))
 python_css = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("css", "python"))
 env.Alias("dist-css",
         [
