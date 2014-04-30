@@ -170,7 +170,8 @@ public:
         std::string const& db = t.getDb();
         std::string const& table = t.getTable();
 
-        if(!_cssFacade.containsDb(db)
+        if(db.empty() 
+           || !_cssFacade.containsDb(db)
            || !_cssFacade.containsTable(db, table)) {
             throw qana::AnalysisError("Invalid db/table:" + db + "." + table);
         }

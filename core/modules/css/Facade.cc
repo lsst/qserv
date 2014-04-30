@@ -103,6 +103,10 @@ Facade::~Facade() {
   */
 bool
 Facade::containsDb(string const& dbName) const {
+    if (dbName == "") {
+        LOGGER_INF << "Empty database name passed." << endl;
+        throw CssException_DbDoesNotExist("<empty>");
+    }
     string p = _prefix + "/DATABASES/" + dbName;
     bool ret =  _kvI->exists(p);
     LOGGER_INF << "*** containsDb(" << dbName << "): " << ret << endl;
@@ -321,7 +325,7 @@ Facade::_getIntValue(string const& key, int defaultValue) const {
 void
 Facade::_throwIfNotDbExists(string const& dbName) const {
     if (!containsDb(dbName)) {
-        LOGGER_INF << "Db " << dbName << " not found." << endl;
+        LOGGER_INF << "Db '" << dbName << "' not found." << endl;
         throw CssException_DbDoesNotExist(dbName);
     }
 }

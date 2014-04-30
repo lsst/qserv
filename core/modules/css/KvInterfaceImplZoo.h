@@ -59,7 +59,7 @@ public:
     virtual void deleteKey(std::string const& key);
 
 private:
-    void _throwZooFailure(int, std::string const&, std::string const& extraMsg="");
+    void _throwZooFailure(int, std::string const& fName, std::string const& key);
     
 private:
     zhandle_t *_zh; // zhookeeper handle

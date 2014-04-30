@@ -95,7 +95,7 @@ KvInterfaceImplZoo::create(string const& key, string const& value) {
     int rc = zoo_create(_zh, key.c_str(), value.c_str(), value.length(), 
                         &ZOO_OPEN_ACL_UNSAFE, 0, buffer, sizeof(buffer)-1);
     if (rc!=ZOK) {
-        _throwZooFailure(rc, "create");
+        _throwZooFailure(rc, "create", key);
     }
 }
 
@@ -191,25 +191,23 @@ KvInterfaceImplZoo::deleteKey(string const& key) {
   */
 void
 KvInterfaceImplZoo::_throwZooFailure(int rc, string const& fName, 
-                                     string const& extraMsg) {
+                                     string const& key) {
     string ffName = "*** css::KvInterfaceImplZoo::" + fName + "(). ";
     if (rc==ZNONODE) {
-        LOGGER_INF << ffName << "Key '" << extraMsg << "' does not exist." << endl;
-        throw CssException_KeyDoesNotExist(extraMsg);
-    }
-    if (rc==ZCONNECTIONLOSS) {
+        LOGGER_INF << ffName << "Key '" << key << "' does not exist." << endl;
+        throw CssException_KeyDoesNotExist(key);
+    } else if (rc==ZCONNECTIONLOSS) {
         LOGGER_INF << ffName << "Can't connect to zookeeper." << endl;
         throw CssException_ConnFailure();
-    }
-    if (rc==ZNOAUTH) {
+    } else if (rc==ZNOAUTH) {
         LOGGER_INF << ffName << "Zookeeper authorization failure." << endl;
         throw CssException_AuthFailure();
+    } else if (rc==ZBADARGUMENTS) {
+        LOGGER_INF << ffName << "Invalid key passed to zookeeper." << endl;
+        throw CssException_KeyDoesNotExist(key);
     }
     ostringstream s;
-    s << ffName << "Zookeeper error #" << rc << ".";
-    if (extraMsg != "") {
-        s << " (" << extraMsg << ")";
-    }
+    s << ffName << "Zookeeper error #" << rc << ". Key: '" << key << "'.";
     LOGGER_INF << s.str() << endl;
     throw CssException_InternalRunTimeError(s.str());
 }
