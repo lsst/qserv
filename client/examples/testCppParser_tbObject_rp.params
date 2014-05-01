@@ -1,0 +1,11 @@
+[table_info]
+tableName:       Object
+partitioning:    1
+schemaFile:      /u1/qserv/sandbox/qserv/meta/examples/tbSchema_Object.sql
+compression:     0
+isRefMatch:      0
+subChunks:       1
+secIndexColName: objectIdObjTest
+drivingTable:    Object
+latColName:      decl
+lonColName:      ra

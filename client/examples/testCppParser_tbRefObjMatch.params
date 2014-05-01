@@ -1,0 +1,7 @@
+[table_info]
+tableName:       RefObjMatch
+partitioning:    1
+schemaFile:      /u1/qserv/sandbox/qserv/meta/examples/tbSchema_RefObjMatch.sql
+compression:     0
+isRefMatch:      1
+subChunks:       0

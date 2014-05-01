@@ -7,5 +7,5 @@ isRefMatch:      0
 subChunks:       0
 secIndexColName: objectIdSourceTest
 drivingTable:    Object
-latColName:      decl
-lonColName:      ra
+latColName:      declObjectTest
+lonColName:      raObjectTest
