@@ -47,7 +47,7 @@ namespace css {
 class KvInterfaceImplMem : public KvInterface {
 public:
     KvInterfaceImplMem() {}
-    KvInterfaceImplMem(std::string const&);
+    KvInterfaceImplMem(std::istream& mapStream);
     virtual ~KvInterfaceImplMem();
 
     virtual void create(std::string const& key, std::string const& value);

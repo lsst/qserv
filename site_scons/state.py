@@ -105,7 +105,7 @@ def _initVariables(src_dir):
             (PathVariable('MYSQL_LIB', 'mysql libraries path', os.path.join(env['MYSQL_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_INC', 'protobuf include path', os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_LIB', 'protobuf libraries path', os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir)),
-            (PathVariable('ZOOKEEPER_INC', 'zookeeper c-binding include path', os.path.join(env['ZOOKEEPER_DIR'], "c-binding", "include", "zookeeper"), PathVariable.PathIsDir)),
+            (PathVariable('ZOOKEEPER_INC', 'zookeeper c-binding include path', os.path.join(env['ZOOKEEPER_DIR'], "c-binding", "include"), PathVariable.PathIsDir)),
             (PathVariable('ZOOKEEPER_LIB', 'zookeeper c-binding libraries path', os.path.join(env['ZOOKEEPER_DIR'], "c-binding", "lib"), PathVariable.PathIsDir))
             )
     opts.Update(env)

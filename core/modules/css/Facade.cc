@@ -33,6 +33,7 @@
 
 
 // Standard library imports
+#include <fstream>
 #include <iostream>
 
 // Boost
@@ -60,7 +61,7 @@ namespace css {
   * for production use.
   *
   * @param connInfo connection information in a form supported by Zookeeper:
-  *                 comma separated host:port pairs, each corresponding to 
+  *                 comma separated host:port pairs, each corresponding to
   *                 a Zookeeper server.
   */
 Facade::Facade(string const& connInfo) {
@@ -72,7 +73,7 @@ Facade::Facade(string const& connInfo) {
   * place all data in some non-standard location, use this constructor for testing.
   *
   * @param connInfo connection information in a form supported by Zookeeper:
-  *                 comma separated host:port pairs, each corresponding to 
+  *                 comma separated host:port pairs, each corresponding to
   *                 a Zookeeper server.
   * @param prefix, for testing, to avoid polluting production setup
   */
@@ -87,8 +88,8 @@ Facade::Facade(string const& connInfo, string const& prefix) :
   * @param mapPath path to the map dumped using ./client/qserv_admin.py
   * @param isMap   unusued argument to differentiate between different c'tors
   */
-Facade::Facade(string const& mapPath, bool isMap) {
-    _kvI = new KvInterfaceImplMem(mapPath);
+Facade::Facade(std::istream& mapStream) {
+    _kvI = new KvInterfaceImplMem(mapStream);
 }
 
 Facade::~Facade() {
@@ -123,7 +124,7 @@ Facade::containsDb(string const& dbName) const {
   */
 bool
 Facade::containsTable(string const& dbName, string const& tableName) const {
-    LOGGER_INF << "*** containsTable(" << dbName << ", " << tableName 
+    LOGGER_INF << "*** containsTable(" << dbName << ", " << tableName
                << ")" << endl;
     _throwIfNotDbExists(dbName);
     return _containsTable(dbName, tableName);
@@ -152,8 +153,8 @@ Facade::tableIsChunked(string const& dbName, string const& tableName) const {
   * @return returns true if the table is subchunked.
   */
 bool
-Facade::tableIsSubChunked(string const&dbName, 
-                          string const&tableName) const {
+Facade::tableIsSubChunked(string const& dbName,
+                          string const& tableName) const {
     LOGGER_INF << "tableIsSubChunked(" << dbName << ", " << tableName << ")" <<endl;
     _throwIfNotDbTbExists(dbName, tableName);
     return _tableIsSubChunked(dbName, tableName);
@@ -218,16 +219,16 @@ Facade::getSubChunkedTables(string const& dbName) const {
   * @param dbName database name
   * @param tableName table name
   *
-  * @return Returns a 3-element vector with column names for the lon, lat, 
+  * @return Returns a 3-element vector with column names for the lon, lat,
   *         and secIndex column names (e.g. [ra, decl, objectId]).
   *         or empty string(s) for columns that do not exist.
   */
 vector<string>
 Facade::getPartitionCols(string const& dbName, string const& tableName) const {
-    LOGGER_INF << "*** getPartitionCols(" << dbName << ", " << tableName << ")" 
+    LOGGER_INF << "*** getPartitionCols(" << dbName << ", " << tableName << ")"
                << endl;
     _throwIfNotDbTbExists(dbName, tableName);
-    string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" + 
+    string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" +
                tableName + "/partitioning/";
     vector<string> v, ret;
     v.push_back("lonColName");
@@ -239,7 +240,7 @@ Facade::getPartitionCols(string const& dbName, string const& tableName) const {
         string s = _kvI->get(p1, "");
         ret.push_back(s);
     }
-    LOGGER_INF << "*** getPartitionCols: " << v[0] << ", " << v[1] << ", " 
+    LOGGER_INF << "*** getPartitionCols: " << v[0] << ", " << v[1] << ", "
                << v[2] << endl;
     return ret;
 }
@@ -280,7 +281,7 @@ Facade::getChunkLevel(string const& dbName, string const& tableName) const {
   */
 string
 Facade::getKeyColumn(string const& dbName, string const& tableName) const {
-    LOGGER_INF << "*** Facade::getKeyColumn(" << dbName << ", " << tableName 
+    LOGGER_INF << "*** Facade::getKeyColumn(" << dbName << ", " << tableName
                << ")" << endl;
     _throwIfNotDbTbExists(dbName, tableName);
     string ret, p = _prefix + "/DATABASES/" + dbName + "/TABLES/" + tableName +
@@ -290,7 +291,7 @@ Facade::getKeyColumn(string const& dbName, string const& tableName) const {
     return ret;
 }
 
-/** Retrieve # stripes and subStripes for a database. Throws exception if 
+/** Retrieve # stripes and subStripes for a database. Throws exception if
   * the database does not exist. Returns (0,0) for non-partitioned databases.
   *
   * @param db database name
@@ -336,13 +337,13 @@ Facade::_throwIfNotDbExists(string const& dbName) const {
 void
 Facade::_throwIfNotTbExists(string const& dbName, string const& tableName) const {
     if (!containsTable(dbName, tableName)) {
-        LOGGER_INF << "table " << dbName << "." << tableName << " not found" 
+        LOGGER_INF << "table " << dbName << "." << tableName << " not found"
                    << endl;
         throw CssException_TableDoesNotExist(dbName+"."+tableName);
     }
 }
 
-/** Validate if database and table exist. Throw exception if either of them 
+/** Validate if database and table exist. Throw exception if either of them
     does not.
   */
 void
@@ -372,7 +373,7 @@ Facade::_containsTable(string const& dbName, string const& tableName) const {
   */
 bool
 Facade::_tableIsChunked(string const& dbName, string const& tableName) const{
-    string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" + 
+    string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" +
                tableName + "/partitioning";
     bool ret = _kvI->exists(p);
     LOGGER_INF << "*** " << dbName << "." << tableName << " is ";
@@ -390,9 +391,9 @@ Facade::_tableIsChunked(string const& dbName, string const& tableName) const{
   * @return returns true if the table is subchunked, false otherwise.
   */
 bool
-Facade::_tableIsSubChunked(string const& dbName, 
+Facade::_tableIsSubChunked(string const& dbName,
                            string const& tableName) const {
-    string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" + 
+    string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" +
                tableName + "/partitioning/" + "subChunks";
     string retS = _kvI->get(p, "0");
     bool retV = (retS == "1");
@@ -409,8 +410,17 @@ FacadeFactory::createZooFacade(string const& connInfo) {
 }
 
 boost::shared_ptr<Facade>
-FacadeFactory::createMemFacade(string const& connInfo) {
-    boost::shared_ptr<css::Facade> cssFPtr(new css::Facade(connInfo, true));
+FacadeFactory::createMemFacade(string const& mapPath) {
+    std::ifstream f(mapPath.c_str());
+    if(f.fail()) {
+        throw CssException_ConnFailure();
+    }
+    return FacadeFactory::createMemFacade(f);
+}
+
+boost::shared_ptr<Facade>
+FacadeFactory::createMemFacade(std::istream& mapStream) {
+    boost::shared_ptr<css::Facade> cssFPtr(new css::Facade(mapStream));
     return cssFPtr;
 }
 
@@ -419,5 +429,5 @@ FacadeFactory::createZooTestFacade(string const& connInfo, string const& prefix)
     boost::shared_ptr<css::Facade> cssFPtr(new css::Facade(connInfo, prefix));
     return cssFPtr;
 }
-    
+
 }}} // namespace lsst::qserv::css
