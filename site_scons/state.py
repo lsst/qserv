@@ -115,6 +115,16 @@ def _initVariables(src_dir):
 	    )
     opts.Update(env)
 
+    # Allow one to specify where boost is
+    boost_dir = os.getenv("BOOST_DIR")
+    if boost_dir:
+        opts.AddVariables(
+            (PathVariable('BOOST_DIR', 'boost install dir', _findPrefix("BOOST"), PathVariable.PathIsDir)),
+            (PathVariable('BOOST_INC', 'boost include path', os.path.join(boost_dir, "include"), PathVariable.PathIsDir)),
+            (PathVariable('BOOST_LIB', 'boost libraries path', os.path.join(boost_dir, "lib"), PathVariable.PathIsDir)),
+            )
+        opts.Update(env)
+
     SCons.Script.Help(opts.GenerateHelpText(env))
 
 
