@@ -1,1 +1,0 @@
-../admin/bin/qserv_admin_impl.py

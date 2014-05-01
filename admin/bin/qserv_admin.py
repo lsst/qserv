@@ -45,7 +45,7 @@ import sys
 # local imports
 from lsst.db.exception import produceExceptionClass
 from lsst.qserv.css.kvInterface import CssException
-from qserv_admin_impl import QservAdminImpl
+from lsst.qserv.admin.qserv_admin_impl import QservAdminImpl
 
 ####################################################################################
 QAdmException = produceExceptionClass('QAdmException', [
@@ -430,7 +430,7 @@ OPTIONS
     parser = OptionParser(usage=usage)
     parser.add_option("-v", dest="verbT", default=40) # default is ERROR
     parser.add_option("-f", dest="logF", default=None)
-    parser.add_option("-c", dest="connI", default = '127.0.0.1:2181')
+    parser.add_option("-c", dest="connI", default = '127.0.0.1:12181')
                       # default for kazoo (single node, local))
     (options, args) = parser.parse_args()
     if options.verbT > 50: options.verbT = 50
