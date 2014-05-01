@@ -78,9 +78,9 @@ class Benchmark():
             "case%s" % self._case_id
         )
 
-        self._input_dirname = os.path.join(qserv_tests_dirname,'data')
+        self._in_dirname = os.path.join(qserv_tests_dirname,'data')
 
-        self.dataReader = datareader.DataReader(self._input_dirname, "case%s" % self._case_id)
+        self.dataReader = datareader.DataReader(self._in_dirname, "case%s" % self._case_id)
 
         self._queries_dirname = os.path.join(qserv_tests_dirname,"queries")
 
@@ -172,7 +172,7 @@ class Benchmark():
         """
         Creates tables and load data for input file located in caseXX/data/
         """
-        self.logger.info("Loading data from %s (%s mode)" % (self._input_dirname, self._mode))
+        self.logger.info("Loading data from %s (%s mode)" % (self._in_dirname, self._mode))
 
         for table_name in  self.dataReader.tables:
             self.logger.debug("Using data of %s" % table_name)
@@ -211,6 +211,7 @@ class Benchmark():
                 self.config,
                 self.dataReader.dataConfig,
                 self._dbName,
+                self._in_dirname,
                 self._out_dirname,
                 self._logFilePrefix
             )
@@ -219,8 +220,8 @@ class Benchmark():
 
     def finalize(self):
         if (self._mode=='qserv'):
-            self.dataLoader[self._mode].createQmsDatabase()
-            self.dataLoader[self._mode].configureQservMetaEmptyChunk()
+            self.dataLoader['qserv'].createCssDatabase()
+            self.dataLoader['qserv'].configureQservMetaEmptyChunk()
 
             # restart xrootd in order to reload  export paths w.r.t loaded chunks, cf. #2478
             commons.restart('xrootd')
@@ -239,9 +240,9 @@ class Benchmark():
         for mode in mode_list:
             self._mode = mode
 
-	    if self._mode == 'qserv':
-	        self._dbName = "LSST"
-	    else:
+            if self._mode == 'qserv':
+                self._dbName = "LSST"
+            else:
                 self._dbName = "qservTest_case%s_%s" % (self._case_id, self._mode)
 
             if load_data:

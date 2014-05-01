@@ -91,7 +91,7 @@ def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, l
 
     sin = None
     if stdin_file != None:
-        logger.debug("stdin file : %s" % stdout_file)
+        logger.debug("stdin file : %s" % stdin_file)
         sin=open(stdin_file,"r")
 
     sout = None

@@ -19,11 +19,12 @@ from os.path import expanduser
 
 class QservDataLoader():
 
-    def __init__(self, config, data_config, db_name, out_dirname, log_file_prefix='qserv-loader', logging_level=logging.DEBUG):
+    def __init__(self, config, data_config, db_name, in_dirname, out_dirname, log_file_prefix='qserv-loader', logging_level=logging.DEBUG):
         self.config = config
         self.dataConfig = data_config
         self._dbName = db_name
 
+        self._in_dirname = in_dirname
         self._out_dirname = out_dirname
 
         #self.logger = commons.console_logger(logging_level)
@@ -39,17 +40,21 @@ class QservDataLoader():
 
         self._sqlInterface = dict()
 
-    def createQmsDatabase(self):
+    def createCssDatabase(self):
 
-        qms_script = "qms_setup.sh"
-        qms_setup_cmd = [
-            qms_script,
-            self.config['qserv']['base_dir'],
-            self._dbName,
-            self.dataConfig['data-name']
+        script = "qserv_admin.py"
+        css_load_cmd = [
+            script,
+            "-c",
+            "localhost:%s" % self.config['zookeeper']['port'],
+            "-v",
+             str(self.logger.getEffectiveLevel()),
+            "-f", 
+            os.path.join(self.config['qserv']['log_dir'], "qadm-%s.log" % self.dataConfig['data-name'])
             ]
-        out = commons.run_command(qms_setup_cmd)
-        self.logger.info("QMS meta successfully loaded for db : %s" % self._dbName)
+        os.chdir(self._in_dirname)
+        out = commons.run_command(css_load_cmd, "loadMetadata.kv")
+        self.logger.info("CSS meta successfully loaded for db : %s" % self._dbName)
 
     def createAndLoadTable(self, table_name, schema_filename, input_filename):
         self.logger.debug("QservDataLoader.createAndLoadTable(%s, %s, %s)" % (table_name, schema_filename, input_filename))
@@ -284,10 +289,10 @@ class QservDataLoader():
 
     def masterCreateAndFeedMetaTable(self,table,chunk_id_list):
 
-	meta_table_prefix = "LSST__"
-	#meta_table_prefix = "%s__" % self._dbName
+        meta_table_prefix = "LSST__"
+        #meta_table_prefix = "%s__" % self._dbName
 
-	meta_table_name = meta_table_prefix + table
+        meta_table_name = meta_table_prefix + table
 
         sql = "USE qservMeta;"
         sql += "CREATE TABLE {0} ({1}Id BIGINT NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT);\n".format(meta_table_name, table.lower())

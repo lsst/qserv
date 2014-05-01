@@ -10,6 +10,7 @@ class DataReader():
         self.dataDirName = data_dir_name
         self.dataName = data_name
         self.dataConfig = dict()
+        self.dataConfig['data-name'] = data_name
 
         self.tables = []
 
