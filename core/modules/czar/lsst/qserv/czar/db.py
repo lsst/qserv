@@ -21,7 +21,7 @@
 #
 
 #
-# lsst.qserv.master.db - Package for direct-db interaction.
+# lsst.qserv.czar.db - Package for direct-db interaction.
 #
 # This package is meant to abstract database interaction so that
 # efforts to port qserv to other database implementations can be
@@ -35,8 +35,8 @@ import MySQLdb as sql
 import _mysql_exceptions
 
 # Package
-import lsst.qserv.master.config
-from lsst.qserv.master import logger
+import lsst.qserv.czar.config
+from lsst.qserv.czar import logger
 
 class Db:
     def __init__(self):
@@ -51,7 +51,7 @@ class Db:
         return True
 
     def activate(self):
-        config = lsst.qserv.master.config.config
+        config = lsst.qserv.czar.config.config
          #os.getenv("QSM_DBSOCK", "/data/lsst/run/mysql.sock")
         socket = config.get("resultdb", "unix_socket")
         user = config.get("resultdb", "user")

@@ -20,7 +20,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# metadata module for lsst.qserv.master
+# metadata module for lsst.qserv.czar
 #
 # The metadata module contains functions, constants, and data related
 # strictly to qserv's runtime metadata.  This includes the objectId

@@ -280,7 +280,7 @@ QueryRunner::_getErrorString() const {
 bool
 QueryRunner::_runTask(wcontrol::Task::Ptr t) {
     mysql::MySqlConfig sc(wconfig::getConfig().getSqlConfig());
-    sc.username = _user.c_str(); // Override with master-passed username.
+    sc.username = _user.c_str(); // Override with czar-passed username.
     sql::SqlConnection _sqlConn(sc, true);
     bool success = true;
     _scriptId = t->dbName.substr(0, 6);

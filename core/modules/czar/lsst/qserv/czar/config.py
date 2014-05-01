@@ -23,7 +23,7 @@
 # config.py : a module for qserv configuration file parsing and defaults
 # 
 # The config module should contain all possible configuration options
-# and parameters for the qserv master's operation.  Currently, it does
+# and parameters for the qserv czar's operation.  Currently, it does
 # not include configuration of the xrootd system, nor does it include
 # configuration of workers (which are configured via environment
 # variables). 
@@ -42,7 +42,7 @@ import os
 import sys
 
 # Package
-from lsst.qserv.master import StringMap # C++ STL map<string,string>
+from lsst.qserv.czar import StringMap # C++ STL map<string,string>
 
 
 # Defaults for the configuration itself

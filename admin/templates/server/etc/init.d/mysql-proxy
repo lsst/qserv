@@ -10,10 +10,10 @@
 # Provides: mysql-proxy 
 # Short-Description: start and stop mysql proxy
 # Description: mysql-proxy is the user (i.e. mysql-client) frontend for \
-#              Qserv master service. \
+#              Qserv czar service. \
 #              It receive SQL queries, process it using lua plugin, \
-#              and send it to Qserv master via xmlrpc. \
-#              Once Qserv master have returned the results, mysql-proxy \
+#              and send it to Qserv czar via xmlrpc. \
+#              Once Qserv czar have returned the results, mysql-proxy \
 #              sends it to mysql-client. \
 ### END INIT INFO
 

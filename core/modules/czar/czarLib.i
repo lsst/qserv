@@ -21,9 +21,9 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-%define qserv_master_DOCSTRING
+%define qserv_czar_DOCSTRING
 "
-Access to the classes from the qserv_master library
+Access to the classes from the qserv_czar library
 "
 %enddef
 
@@ -31,8 +31,8 @@ Access to the classes from the qserv_master library
 %ignore lsst::qserv::qproc::operator<<;
 
  //%feature("autodoc", "1");
- //%module("threads"=1, package="lsst.qserv.master", docstring=qserv_master_DOCSTRING) masterLib
-%module("threads"=1, package="lsst.qserv.master") masterLib
+ //%module("threads"=1, package="lsst.qserv.czar", docstring=qserv_czar_DOCSTRING) czarLib
+%module("threads"=1, package="lsst.qserv.czar") czarLib
 %{
 #define SWIG_FILE_WITH_INIT
 #include "xrdc/xrdfile.h"
@@ -111,7 +111,7 @@ namespace std {
 // SWIG_SHARED_PTR_DERIVED(PropertySet, lsst::daf::base::Persistable, lsst::daf::base::PropertySet)
 
 // Include all classes to wrap:
-// %include "lsst/qserv/master/Master.h"
+// %include "lsst/qserv/czar/Master.h"
 
  //%apply (void *STRING, unsigned long long LENGTH) { (void *buf, unsigned long long nbyte) };
 %apply (char *STRING, int LENGTH) { (char *str, int len) };

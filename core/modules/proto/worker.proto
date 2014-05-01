@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// worker.proto
-/// This defines the wire-messages sent between master and worker.
+/// This defines the wire-messages sent between czar and worker.
 
 package lsst.qserv.proto;
 
@@ -54,7 +54,7 @@ message TaskMsg {
 }
 
 // Result message received from worker
-// One of these headers is sent, if the master requests result bundling.
+// One of these headers is sent, if the czar requests result bundling.
 // If sent, an int64 size (network-byte-ordered) is always sent before
 // the ResultHeader message, indicating the size of the ResultHeader
 // object.

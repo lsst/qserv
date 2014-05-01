@@ -28,8 +28,8 @@ import time
 import logger
 import app
 import proxy
-import lsst.qserv.master.config as config
-import lsst.qserv.master.spatial as spatial
+import lsst.qserv.czar.config as config
+import lsst.qserv.czar.spatial as spatial
 
 # Main AppInterface class
 #
@@ -43,9 +43,9 @@ import lsst.qserv.master.spatial as spatial
 #
 # Ideally, AppInterface objects can be used from standalone Python
 # programs, facilitating testing and usage without bringing up a qserv
-# master daemon. It is unclear whether this still works.
+# czar daemon. It is unclear whether this still works.
 class AppInterface:
-    """An implemented interface to the Qserv master application logic. """
+    """An implemented interface to the Qserv czar application logic. """
     def __init__(self, reactor=None):
         self.tracker = app.TaskTracker()
         okname = ifilter(lambda x: "_" not in x, dir(self))

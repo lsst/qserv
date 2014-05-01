@@ -1,17 +1,17 @@
 #!/bin/sh
 #
-# qserv-master  This shell script takes care of starting and stopping
-#	        Qserv master.
+# qserv-czar  This shell script takes care of starting and stopping
+#	      Qserv czar.
 #
-# description: qserv-master is the Qserv master service \
+# description: qserv-czar is the Qserv czar service \
 # It receive SQL queries process it and send it to Qserv workers \
 # and then it returns the results it to mysql-proxy. \
 # Note that Qserv service won't start if QMS database is empty.
 
 ### BEGIN INIT INFO
-# Provides: qserv-master
-# Short-Description: start and stop qserv master
-# Description: qserv-master is the Qserv master service \
+# Provides: qserv-czar
+# Short-Description: start and stop qserv czar
+# Description: qserv-czar is the Qserv czar service \
 #              It receive SQL queries process it and send it to Qserv workers \
 #              and then it returns the results it to mysql-proxy. \
 #              Note that Qserv service won't start if QMS database is empty.
@@ -21,12 +21,12 @@
 # WARN : this may clean environment
 . %(QSERV_DIR)s/etc/init.d/qserv-functions
 
-NAME="qserv-master"
+NAME="qserv-czar"
 DAEMON=${NAME}
 
 QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
 
-START=startQserv.py
+START=startCzar.py
 CONFIG=%(QSERV_DIR)s/etc/local.qserv.cnf
 pidfile=%(QSERV_PID_DIR)s/${NAME}.pid
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${NAME}

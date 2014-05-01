@@ -167,7 +167,7 @@ def get_template_targets():
                 "mysql.sh",
                 "css.sh",
                 "scisql.sh",
-                "qserv-master.sh"
+                "qserv-czar.sh"
                 ]
                 ):
                 env.AddPostAction(target_node, Chmod("$TARGET", 0760))
@@ -228,7 +228,7 @@ env.Alias("xrootd", cmd)
 # Configure Qserv core 
 #
 #############################
-install_sh = os.path.join(configuration_scripts_dir, "qserv-master.sh")
+install_sh = os.path.join(configuration_scripts_dir, "qserv-czar.sh")
 cmd = env.Command('qserv-cmd', [], install_sh)
 
 env.Alias("qserv", cmd)

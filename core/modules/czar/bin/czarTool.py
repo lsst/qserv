@@ -36,10 +36,10 @@ from optparse import OptionParser
 import sys
 
 # Package imports
-from lsst.qserv.master import appInterface as app
-from lsst.qserv.master import config
-from lsst.qserv.master.testHintedParser import TestHintedParser
-from lsst.qserv.master.testAppInterface import TestAppInterface
+from lsst.qserv.czar import appInterface as app
+from lsst.qserv.czar import config
+from lsst.qserv.czar.testHintedParser import TestHintedParser
+from lsst.qserv.czar.testAppInterface import TestAppInterface
 
 def main():    
 
@@ -106,7 +106,7 @@ def main():
         unittest.TextTestRunner(verbosity=2).run(suite)
 
     elif options.hintTest:
-        # from lsst.qserv.master import testHintedParser
+        # from lsst.qserv.czar import testHintedParser
         # t = testHintedParser.TestHintedParser()
         suite = unittest.TestSuite()
         suite.addTest(TestHintedParser('test' + options.hintTest))

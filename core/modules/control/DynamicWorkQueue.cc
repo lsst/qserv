@@ -140,7 +140,7 @@ void DynamicWorkQueue::Runner::operator()() {
         // Unfortunately, this means that q may have to be reinserted
         // later. While this breaks the exception safety of the code, it only
         // does so when the insert fails to allocate memory, in which case it
-        // is probably OK to terminate() the master.
+        // is probably OK to terminate() the czar.
         wq._nonEmptyQueues.erase(q);
         assert(q && !q->empty());
 

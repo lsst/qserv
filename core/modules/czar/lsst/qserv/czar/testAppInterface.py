@@ -33,11 +33,11 @@ import sys
 import time
 
 # Package imports
-import lsst.qserv.master
-from lsst.qserv.master import appInterface as appI
-from lsst.qserv.master.app import HintedQueryAction, makePmap
-from lsst.qserv.master import config
-from lsst.qserv.master import logger
+import lsst.qserv.czar
+from lsst.qserv.czar import appInterface as appI
+from lsst.qserv.czar.app import HintedQueryAction, makePmap
+from lsst.qserv.czar import config
+from lsst.qserv.czar import logger
 from db import Db
 
 def tryCountQuery():

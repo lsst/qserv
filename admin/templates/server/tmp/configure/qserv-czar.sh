@@ -10,7 +10,7 @@ SQL_DIR=${QSERV_DIR}/tmp/configure/sql
 
 MYSQL_CMD="${MYSQL_DIR}/bin/mysql -vvv --user=${MYSQLD_USER} --password=${MYSQLD_PASS} --sock=${MYSQLD_SOCK}"
 
-DEST="${QSERV_DIR}/lib/python/lsst/qserv/master/"
+DEST="${QSERV_DIR}/lib/python/lsst/qserv/czar/"
 if [ ! -f ${DEST}/geometry.py ]
 then
     echo "Downloading geometry.py"
@@ -18,10 +18,10 @@ then
 fi
 
 echo 
-echo "-- Initializing Qserv master database "
+echo "-- Initializing Qserv czar database "
 ${QSERV_DIR}/etc/init.d/mysqld start &&
 echo "-- Inserting data"
-${MYSQL_CMD} < ${SQL_DIR}/qserv-master.sql && 
+${MYSQL_CMD} < ${SQL_DIR}/qserv-czar.sql && 
 ${MYSQL_CMD} < ${SQL_DIR}/qservw_workerid.sql && 
 ${QSERV_DIR}/etc/init.d/mysqld stop ||
 exit 1

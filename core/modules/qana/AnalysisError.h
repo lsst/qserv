@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_MASTER_ANALYSISERROR_H
-#define LSST_QSERV_MASTER_ANALYSISERROR_H
+#ifndef LSST_QSERV_QANA_ANALYSISERROR_H
+#define LSST_QSERV_QANA_ANALYSISERROR_H
 #include <stdexcept>
 namespace lsst {
 namespace qserv {
@@ -41,4 +41,4 @@ public:
 };
 }}} // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_MASTER_ANALYSISERROR_H
+#endif // LSST_QSERV_QANA_ANALYSISERROR_H

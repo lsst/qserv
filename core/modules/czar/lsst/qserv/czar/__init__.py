@@ -20,32 +20,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# protocol module for lsst.qserv.master
-# Manages wire-protocol-related operations for qserv.
-import worker_pb2
+# lsst.qserv.czar module initialization
 
-class TaskMsgFactory:
-    def __init__(self, session, db):
-        msg = worker_pb2.TaskMsg()
-        msg.session = session
-        msg.db = db
-        self.msg = msg
-
-    def newChunk(self, resulttable, chunkid):
-        msg = self.msg
-        msg.chunkid = chunkid
-        self.resulttable = resulttable
-        del msg.fragment[:] # clear out fragments
-        
-    def fillFragment(self, query, subchunks):
-        frag = self.msg.fragment.add()
-        frag.query = query
-        frag.resulttable = self.resulttable
-        if subchunks:
-            frag.subchunk.extend(subchunks)
-        pass
-
-    def getBytes(self):
-        s = self.msg.SerializeToString()
-        return s
-
+# Import SWIG'd C++ code
+from czarLib import *

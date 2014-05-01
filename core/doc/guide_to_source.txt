@@ -74,8 +74,8 @@ xrootd.h -- Helper functions for dealing with specifics of
 xrootd-based dispatch.
 xrootd.cc -- impl of helper functions with xrootd.
 
-python/lsst/qserv/master/
-__init__.py -- module initialization for lsst.qserv.master
+python/lsst/qserv/czar/
+__init__.py -- module initialization for lsst.qserv.czar
 app.py -- Top-level for master functionality
 appInterface.py -- narrow API for qserv master clients
 appTest.py -- Test code for appInterface (and app.py underneath)

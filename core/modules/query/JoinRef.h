@@ -80,8 +80,6 @@ private:
 std::ostream& operator<<(std::ostream& os, JoinRef const& js);
 std::ostream& operator<<(std::ostream& os, JoinRef const* js);
 
-
 }}} // namespace lsst::qserv::query
 
-
-#endif // LSST_QSERV_MASTER_QUERY_JOINREF_H
+#endif // LSST_QSERV_QUERY_JOINREF_H

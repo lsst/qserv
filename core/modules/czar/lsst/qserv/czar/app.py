@@ -20,7 +20,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# app module for lsst.qserv.master
+# app module for lsst.qserv.czar
 #
 # The app module can be thought-of as the top-level code module for
 # the qserv frontend's functionality.  It implements the "interesting"
@@ -32,7 +32,7 @@
 # of Python-C++ language boundary crossings.
 #
 # This is the  "high-level application logic" and glue of the qserv
-# master/frontend.
+# czar/frontend.
 #
 # InBandQueryAction is the biggest actor in this module. Leftover code
 # from older parsing/manipulation/dispatch models may exist and should
@@ -68,43 +68,43 @@ from string import Template
 import logger
 import metadata
 import spatial
-import lsst.qserv.master.config
-from lsst.qserv.master import geometry
-from lsst.qserv.master.geometry import SphericalBox
-from lsst.qserv.master.geometry import SphericalConvexPolygon, convexHull
-from lsst.qserv.master.db import TaskDb as Persistence
-from lsst.qserv.master.db import Db
+import lsst.qserv.czar.config
+from lsst.qserv.czar import geometry
+from lsst.qserv.czar.geometry import SphericalBox
+from lsst.qserv.czar.geometry import SphericalConvexPolygon, convexHull
+from lsst.qserv.czar.db import TaskDb as Persistence
+from lsst.qserv.czar.db import Db
 
 # SWIG'd functions
 
 # xrdfile - raw xrootd access
-from lsst.qserv.master import xrdOpen, xrdClose, xrdRead, xrdWrite
-from lsst.qserv.master import xrdLseekSet, xrdReadStr
-from lsst.qserv.master import xrdReadToLocalFile, xrdOpenWriteReadSaveClose
+from lsst.qserv.czar import xrdOpen, xrdClose, xrdRead, xrdWrite
+from lsst.qserv.czar import xrdLseekSet, xrdReadStr
+from lsst.qserv.czar import xrdReadToLocalFile, xrdOpenWriteReadSaveClose
 
-from lsst.qserv.master import charArray_frompointer, charArray
+from lsst.qserv.czar import charArray_frompointer, charArray
 
 # transaction
-from lsst.qserv.master import TransactionSpec
+from lsst.qserv.czar import TransactionSpec
 
 # Dispatcher
-from lsst.qserv.master import newSession, discardSession
-from lsst.qserv.master import setupQuery, getSessionError
-from lsst.qserv.master import getConstraints, addChunk, ChunkSpec
-from lsst.qserv.master import getDominantDb
-from lsst.qserv.master import getDbStriping
-from lsst.qserv.master import containsDb
-from lsst.qserv.master import configureSessionMerger3, submitQuery3
+from lsst.qserv.czar import newSession, discardSession
+from lsst.qserv.czar import setupQuery, getSessionError
+from lsst.qserv.czar import getConstraints, addChunk, ChunkSpec
+from lsst.qserv.czar import getDominantDb
+from lsst.qserv.czar import getDbStriping
+from lsst.qserv.czar import containsDb
+from lsst.qserv.czar import configureSessionMerger3, submitQuery3
 
-from lsst.qserv.master import joinSession
-from lsst.qserv.master import getQueryStateString, getErrorDesc
-from lsst.qserv.master import SUCCESS as QueryState_SUCCESS
+from lsst.qserv.czar import joinSession
+from lsst.qserv.czar import getQueryStateString, getErrorDesc
+from lsst.qserv.czar import SUCCESS as QueryState_SUCCESS
 # Parser
-from lsst.qserv.master import ChunkMeta
+from lsst.qserv.czar import ChunkMeta
 
 # queryMsg
-from lsst.qserv.master import msgCode
-from lsst.qserv.master import queryMsgAddMsg
+from lsst.qserv.czar import msgCode
+from lsst.qserv.czar import queryMsgAddMsg
 
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
@@ -154,7 +154,7 @@ def getResultTable(tableName):
     sqlCmd = "SELECT * FROM %s;" % tableName
 
     # Get config
-    config = lsst.qserv.master.config.config
+    config = lsst.qserv.czar.config.config
     socket = config.get("resultdb", "unix_socket")
     db = config.get("resultdb", "db")
     mysql = config.get("mysql", "mysqlclient")
@@ -224,8 +224,8 @@ def setupResultScratch():
     """Prepare the configured scratch directory for use, creating if
     necessary and checking for r/w access. """
     # Make sure scratch directory exists.
-    cm = lsst.qserv.master.config
-    c = lsst.qserv.master.config.config
+    cm = lsst.qserv.czar.config
+    c = lsst.qserv.czar.config.config
 
     scratchPath = c.get("frontend", "scratch_path")
     try: # Make sure the path is there
@@ -422,7 +422,7 @@ class InbandQueryAction:
         dbStriping = getDbStriping(self.sessionId)
         if (dbStriping.stripes < 1) or (dbStriping.subStripes < 1):
             msg = "Partitioner's stripes and substripes must be natural numbers."
-            raise lsst.qserv.master.config.ConfigError(msg)
+            raise lsst.qserv.czar.config.ConfigError(msg)
         self.pmap = spatial.makePmap(dominantDb, 
                                      dbStriping.stripes, 
                                      dbStriping.subStripes)
@@ -491,7 +491,7 @@ class InbandQueryAction:
     def _importQconfig(self):
         """Import config file settings into self"""
         # Config preparation
-        cModule = lsst.qserv.master.config
+        cModule = lsst.qserv.czar.config
 
         # chunk limit: For debugging
         cfgLimit = int(cModule.config.get("debug", "chunkLimit"))
@@ -500,7 +500,7 @@ class InbandQueryAction:
             logger.inf("Using debugging chunklimit:", cfgLimit)
 
         # Memory engine(unimplemented): Buffer results/temporaries in
-        # memory on the master. (no control over worker)
+        # memory on the czar. (no control over worker)
         self._useMemory = cModule.config.get("tuning", "memoryEngine")
         return True
 
@@ -508,7 +508,7 @@ class InbandQueryAction:
         """Construct a C++ stringmap for passing settings and context
         to the C++ layer.
         @return the C++ StringMap object """
-        cfg = lsst.qserv.master.config.getStringMap()
+        cfg = lsst.qserv.czar.config.getStringMap()
         cfg["frontend.scratchPath"] = setupResultScratch()
         cfg["table.defaultdb"] = self._dbContext
         cfg["query.hints"] = ";".join(
@@ -549,7 +549,7 @@ class InbandQueryAction:
 
     def _prepareMerger(self):
         """Prepare session merger to handle incoming results."""
-        c = lsst.qserv.master.config.config
+        c = lsst.qserv.czar.config.config
         dbSock = c.get("resultdb", "unix_socket")
         dbUser = c.get("resultdb", "user")
         dbName = c.get("resultdb", "db")

@@ -19,18 +19,18 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
-# lsst.qserv.master.spatial
+# lsst.qserv.czar.spatial
 # This module contains the spatial indexing/partitioning logic needed
-# at the Python master/frontend level. This contains only the parts
+# at the Python czar/frontend level. This contains only the parts
 # needed to prepare the lower C++ code to rewrite the query properly.
-import lsst.qserv.master.config
-from lsst.qserv.master.geometry import SphericalBoxPartitionMap, SphericalBox
-from lsst.qserv.master import logger
+import lsst.qserv.czar.config
+from lsst.qserv.czar.geometry import SphericalBoxPartitionMap, SphericalBox
+from lsst.qserv.czar import logger
 
 def makePmap(dominantDb, stripes, subStripes):
     if (stripes < 1) or (subStripes < 1):
         msg = "Partitioner's stripes and substripes must be natural numbers."
-        raise lsst.qserv.master.config.ConfigError(msg)
+        raise lsst.qserv.czar.config.ConfigError(msg)
     p = SphericalBoxPartitionMap(stripes, subStripes)
     logger.inf("Using %d stripes and %d substripes." % (stripes, subStripes))
     return p
@@ -59,7 +59,7 @@ class PartitioningConfig:
 
     def applyConfig(self):
         """Load configuration parameters from the global configuration"""
-        c = lsst.qserv.master.config.config
+        c = lsst.qserv.czar.config.config
         try:
             chk = c.get("table", "chunked")
             subchk = c.get("table", "subchunked")

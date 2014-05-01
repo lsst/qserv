@@ -22,7 +22,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# startQserv.py -- This is a "driver" program that provides a
+# startCzar.py -- This is a "driver" program that provides a
 # command-line interface to start qserv or its tests.  Specifically,
 # you can:
 # * Run tests (invoke cases in testHintedParser.py and testAppInterface.py)
@@ -33,15 +33,15 @@ import unittest
 from optparse import OptionParser
 import sys
 
-from lsst.qserv.master.appTest import TestAppFunctions
-from lsst.qserv.master import server
-from lsst.qserv.master import app
-from lsst.qserv.master import client
-from lsst.qserv.master import config
-from lsst.qserv.master import indexing
+from lsst.qserv.czar.appTest import TestAppFunctions
+from lsst.qserv.czar import server
+from lsst.qserv.czar import app
+from lsst.qserv.czar import client
+from lsst.qserv.czar import config
+from lsst.qserv.czar import indexing
 
 def runParserTest():
-    """Invokes the test cases in the lsst.qserv.master.testparser module
+    """Invokes the test cases in the lsst.qserv.czar.testparser module
     """
     suite = unittest.TestLoader().loadTestsFromTestCase(TestAppFunctions)
     unittest.TextTestRunner(verbosity=2).run(suite)

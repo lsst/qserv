@@ -195,4 +195,4 @@ SelectListFactory::_addSelectStar(RefAST child) {
     _valueExprList->push_back(query::ValueExpr::newSimple(vt));
 }
 
-}}} // lsst::qserv::master
+}}} // Namespace lsst::qserv::parser

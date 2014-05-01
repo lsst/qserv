@@ -20,7 +20,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# indexing module for lsst.qserv.master
+# indexing module for lsst.qserv.czar
 #
 # The indexing module handles non-spatial column indexing. Non-spatial
 # column indexing allows qserv to convert non-spatial conditions in

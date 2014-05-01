@@ -200,7 +200,7 @@ MySqlFsFile::MySqlFsFile(boost::shared_ptr<wlog::WLogger> log,
     // Capture userName at this point.
     // Param user is: user.pid:fd@host
     // (See XRootd Protocol spec: 4.2.1.1 Connection name format)
-    // Actually, master will pre-munge user as user.<mode>
+    // Actually, czar will pre-munge user as user.<mode>
     // where <mode> is "r" or "w".
     char const* cursor = user;
     while(cursor && (*cursor != '.')) ++cursor;

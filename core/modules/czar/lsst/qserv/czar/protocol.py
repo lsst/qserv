@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # 
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
@@ -22,33 +20,32 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# logger.py : A module with a logging interface that utilizes SWIG
-# enabled Logger class.
+# protocol module for lsst.qserv.czar
+# Manages wire-protocol-related operations for qserv.
+import worker_pb2
 
-# Package imports
-from lsst.qserv.master import logger_threshold
-from lsst.qserv.master import logger
+class TaskMsgFactory:
+    def __init__(self, session, db):
+        msg = worker_pb2.TaskMsg()
+        msg.session = session
+        msg.db = db
+        self.msg = msg
 
-def threshold_dbg():
-    logger_threshold(0)
+    def newChunk(self, resulttable, chunkid):
+        msg = self.msg
+        msg.chunkid = chunkid
+        self.resulttable = resulttable
+        del msg.fragment[:] # clear out fragments
+        
+    def fillFragment(self, query, subchunks):
+        frag = self.msg.fragment.add()
+        frag.query = query
+        frag.resulttable = self.resulttable
+        if subchunks:
+            frag.subchunk.extend(subchunks)
+        pass
 
-def threshold_inf():
-    logger_threshold(1)
+    def getBytes(self):
+        s = self.msg.SerializeToString()
+        return s
 
-def threshold_wrn():
-    logger_threshold(2)
-
-def threshold_err():
-    logger_threshold(3)
-
-def dbg(*args):
-    logger(0, ' '.join(map(str, args)))
-
-def inf(*args):
-    logger(1, ' '.join(map(str, args)))
-
-def wrn(*args):
-    logger(2, ' '.join(map(str, args)))
-
-def err(*args):
-    logger(3, ' '.join(map(str, args)))

@@ -83,4 +83,4 @@ std::ostream& operator<<(std::ostream& os, JoinSpec const* js);
 }}} // namespace lsst::qserv::query
 
 
-#endif // LSST_QSERV_MASTER_JOINSPEC_H
+#endif // LSST_QSERV_QUERY_JOINSPEC_H

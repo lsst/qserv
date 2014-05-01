@@ -17,7 +17,7 @@ def _debug_dist_target():
             state.log.debug("   path : %s, file : %s" % (path,str(f)))
 
 
-# Manual dependencies for masterLib.i, because the SCons SWIG builder
+# Manual dependencies for czarLib.i, because the SCons SWIG builder
 # isn't knowledgeable enough to ensure their presence when using VariantDir
 depends = ['control/transaction.h',
            'control/dispatcher.h',
@@ -34,23 +34,23 @@ depends = map(lambda f: env.File("../"+f), depends)
 localCpppath = env['CPPPATH']
 if type(localCpppath) == type(""): localCpppath = [localCpppath]
 localCpppath.append(distutils.sysconfig.get_python_inc())
-swigged = env.SharedObject(source="masterLib.i",
+swigged = env.SharedObject(source="czarLib.i",
                            SWIGFLAGS=['-python', '-c++', '-Iinclude'],
                            SWIGPATH=['..',
                                      distutils.sysconfig.get_python_inc()],
                            CPPPATH=localCpppath,
                            LDMODULEPREFIX='_', LDMODULESUFFIX = '.so'
                            )
-# swigged = env.swig(source="masterLib.i",
+# swigged = env.swig(source="czarLib.i",
 #                    SWIGPATH=['..',
 #                              distutils.sysconfig.get_python_inc()],
 #                    LDMODULEPREFIX='_', LDMODULESUFFIX = '.so'
 #                    )
 
 #env.Append(SWIGPATH=['..', distutils.sysconfig.get_python_inc()])
-#swigged = [env.File("masterLib.i")]
+#swigged = [env.File("czarLib.i")]
 
-# print swigged # prints ['masterLib_wrap.os']
+# print swigged # prints ['czarLib_wrap.os']
 
 swigged_tgt = []
 for f in swigged:
@@ -59,11 +59,11 @@ for f in swigged:
 env.Depends(swigged_tgt, depends)
 
 # Create entry for python file, which SCons SWIG builder ignores
-pySwig = env.File('masterLib.py')
+pySwig = env.File('czarLib.py')
 #env.Depends(pySwig, swigged[0]) # This causes a cycle (why?),
 # but "scons --tree=all" shows that a sufficient dep
-# is already there (on masterLib.i)
-extraTgts["masterLib.py"] = pySwig
+# is already there (on czarLib.i)
+extraTgts["czarLib.py"] = pySwig
 
 state.log.debug("extraTgts['dist'] %s" % extraTgts['dist'])
 
@@ -90,7 +90,7 @@ def markForInstall(env, pathList, extras):
 
 distTgts = swigged_tgt + [pySwig]
 
-markForInstall(env, ["lsst","qserv","master"], distTgts)
+markForInstall(env, ["lsst","qserv","czar"], distTgts)
 
 for f in env.Glob("bin/*py"):
     extraTgts['dist'].append(('bin', f))
