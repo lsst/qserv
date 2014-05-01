@@ -24,7 +24,7 @@ class QservDataLoader():
         self.dataConfig = data_config
         self._dbName = db_name
 
-	self._in_dirname = in_dirname
+        self._in_dirname = in_dirname
         self._out_dirname = out_dirname
 
         #self.logger = commons.console_logger(logging_level)
@@ -45,14 +45,14 @@ class QservDataLoader():
         script = "qserv_admin.py"
         css_load_cmd = [
             script,
-	    "-c",
-	    "localhost:%s" % self.config['zookeeper']['port'],
-	    "-v",
- 	    str(self.logger.getEffectiveLevel()),
-	    "-f", 
-	    os.path.join(self.config['qserv']['log_dir'], "qadm-%s.log" % self.dataConfig['data-name'])
+            "-c",
+            "localhost:%s" % self.config['zookeeper']['port'],
+            "-v",
+             str(self.logger.getEffectiveLevel()),
+            "-f", 
+            os.path.join(self.config['qserv']['log_dir'], "qadm-%s.log" % self.dataConfig['data-name'])
             ]
-	os.chdir(self._in_dirname)
+        os.chdir(self._in_dirname)
         out = commons.run_command(css_load_cmd, "loadMetadata.kv")
         self.logger.info("CSS meta successfully loaded for db : %s" % self._dbName)
 
@@ -289,10 +289,10 @@ class QservDataLoader():
 
     def masterCreateAndFeedMetaTable(self,table,chunk_id_list):
 
-	meta_table_prefix = "LSST__"
-	#meta_table_prefix = "%s__" % self._dbName
+        meta_table_prefix = "LSST__"
+        #meta_table_prefix = "%s__" % self._dbName
 
-	meta_table_name = meta_table_prefix + table
+        meta_table_name = meta_table_prefix + table
 
         sql = "USE qservMeta;"
         sql += "CREATE TABLE {0} ({1}Id BIGINT NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT);\n".format(meta_table_name, table.lower())
