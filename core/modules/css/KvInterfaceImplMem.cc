@@ -68,14 +68,14 @@ namespace css {
 /**
   * Initialize the interface.
   *
-  * @param mapPath path to the map dumped using ./client/qserv_admin.py
+  * @param mapPath path to the map dumped using ./admin/bin/qserv-admin.py
   *
   * To generate the key/value map, follow this recipe:
   * 1) cleanup everything in zookeeper. careful, this will wipe out
   *    everyting in zookeeper!
-  *    echo "drop everything;" | ./client/qserv_admin.py
+  *    echo "drop everything;" | ./admin/bin/qserv-admin.py
   * 2) generate the clean set:
-  *    ./client/qserv_admin.py <  <commands>
+  *    ./admin/bin//qserv-admin.py <  <commands>
   *    (example commands can be found in client/examples/testMap_generateMap)
   * 3) then copy the generate file to final destination:
   *    mv /tmp/testMap.kvmap <destination>

@@ -35,7 +35,7 @@ Known issues and todos:
  * If all metadata is deleted when the watcher is running, the watcher will die
    with: ERROR:kazoo.handlers.threading:Exception in worker queue thread.
    To reproduce, just run (when watcher is running): 
-       echo "drop everything;" | ./qserv_admin.py
+       echo "drop everything;" | ./admin/bin/qserv-admin.py
 """
 
 import logging

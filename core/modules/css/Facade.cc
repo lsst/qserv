@@ -85,7 +85,7 @@ Facade::Facade(string const& connInfo, string const& prefix) :
 /**
   * Initialize the Facade with dummy interface, use this constructor for testing.
   *
-  * @param mapPath path to the map dumped using ./client/qserv_admin.py
+  * @param mapPath path to the map dumped using ./admin/bin/qserv-admin.py
   * @param isMap   unusued argument to differentiate between different c'tors
   */
 Facade::Facade(std::istream& mapStream) {
