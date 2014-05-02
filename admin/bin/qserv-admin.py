@@ -45,7 +45,7 @@ import sys
 # local imports
 from lsst.db.exception import produceExceptionClass
 from lsst.qserv.css.kvInterface import CssException
-from lsst.qserv.admin.qserv-admin_impl import QservAdminImpl
+from lsst.qserv.admin.qservAdminImpl import QservAdminImpl
 
 ####################################################################################
 QAdmException = produceExceptionClass('QAdmException', [
@@ -62,7 +62,7 @@ QAdmException = produceExceptionClass('QAdmException', [
 ####################################################################################
 class CommandParser(object):
     """
-    Parse commands and calls appropriate function from qserv-admin_impl.
+    Parse commands and calls appropriate function from qservAdminImpl.
     """
 
     def __init__(self, connInfo):
