@@ -46,8 +46,8 @@
 #include <string.h> // for memset
 
 // local imports
-#include "KvInterfaceImplZoo.h"
-#include "CssException.h"
+#include "css/KvInterfaceImplZoo.h"
+#include "css/CssException.h"
 #include "log/Logger.h"
 
 using std::endl;

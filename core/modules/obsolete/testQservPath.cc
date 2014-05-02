@@ -23,7 +23,7 @@
 #include "boost/test/included/unit_test.hpp"
 #include <iostream>
 #include "boost/scoped_ptr.hpp"
-#include "QservPath.h"
+#include "obsolete/QservPath.h"
 
 namespace test = boost::test_tools;
 namespace qsrv = lsst::qserv::obsolete;

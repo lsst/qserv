@@ -40,10 +40,10 @@
 #include <boost/lexical_cast.hpp>
 
 // Local imports
-#include "Facade.h"
-#include "CssException.h"
-#include "KvInterfaceImplMem.h"
-#include "KvInterfaceImplZoo.h"
+#include "css/Facade.h"
+#include "css/CssException.h"
+#include "css/KvInterfaceImplMem.h"
+#include "css/KvInterfaceImplZoo.h"
 #include "log/Logger.h"
 
 using std::endl;
