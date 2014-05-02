@@ -21,7 +21,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 """
-This is a unittest for qserv_admin_impl
+This is a unittest for qserv-admin_impl
 
 @author  Jacek Becla, SLAC
 
@@ -31,7 +31,7 @@ import logging
 import unittest
 
 from lsst.qserv.css.kvInterface import CssException
-from qserv_admin_impl import QservAdminImpl
+from qserv-admin_impl import QservAdminImpl
 
 
 class TestQservAdminImpl(unittest.TestCase):

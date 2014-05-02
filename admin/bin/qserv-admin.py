@@ -45,7 +45,7 @@ import sys
 # local imports
 from lsst.db.exception import produceExceptionClass
 from lsst.qserv.css.kvInterface import CssException
-from lsst.qserv.admin.qserv_admin_impl import QservAdminImpl
+from lsst.qserv.admin.qserv-admin_impl import QservAdminImpl
 
 ####################################################################################
 QAdmException = produceExceptionClass('QAdmException', [
@@ -62,7 +62,7 @@ QAdmException = produceExceptionClass('QAdmException', [
 ####################################################################################
 class CommandParser(object):
     """
-    Parse commands and calls appropriate function from qserv_admin_impl.
+    Parse commands and calls appropriate function from qserv-admin_impl.
     """
 
     def __init__(self, connInfo):
@@ -411,10 +411,10 @@ def getOptions():
 """
 
 NAME
-        qserv_admin - the client program for Central State System (CSS)
+        qserv-admin - the client program for Central State System (CSS)
 
 SYNOPSIS
-        qserv_admin [OPTIONS]
+        qserv-admin [OPTIONS]
 
 OPTIONS
    -v

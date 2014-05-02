@@ -26,7 +26,7 @@ build/css/testKvInterfaceImpl
 build/css/dist/testFacade
 
 
-##### Testing python bindings and qserv_admin_client #####
+##### Testing python bindings and qserv-admin_client #####
 
 
 ### set PYTHONPATH
@@ -40,7 +40,7 @@ export KAZOO_LOGGING=50
 
 
 ### clean up everything
-echo "drop everything;" | ./client/qserv_admin.py
+echo "drop everything;" | ./admin/bin/qserv-admin.py
 
 
 ### create ~/.my.cnf with connection and credential parameters, eg
@@ -62,9 +62,9 @@ socket   = /var/run/mysqld/mysqld.sock
 
 ### in second window, run the test:
   # this is without logging:
-  ./client/qserv_admin.py  < ./client/tests/test_qserv_admin
+  ./admin/bin/qserv-admin.py  < ./client/tests/test_qserv-admin
   # this is with logging:
-  ./client/qserv_admin.py -v 10 -f qadm.log < ./client/tests/test_qserv_admin
+  ./admin/bin/qserv-admin.py -v 10 -f qadm.log < ./admin/tests/test_qserv-admin
 
 
-  ./client/tests/test_qserv_admin_impl.py
+  ./admin/tests/test_qserv-admin_impl.py
