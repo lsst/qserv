@@ -6,7 +6,6 @@ setupRequired(mysqlpython)
 setupRequired(numpy)
 setupRequired(protobuf)
 setupRequired(twisted)
-setupRequired(virtualenv_python)
 setupRequired(xrootd)
 setupRequired(zookeeper)
 
