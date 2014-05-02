@@ -42,7 +42,7 @@ class QservDataLoader():
 
     def createCssDatabase(self):
 
-        script = "qserv_admin.py"
+        script = "qserv-admin.py"
         css_load_cmd = [
             script,
             "-c",
