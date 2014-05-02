@@ -39,7 +39,7 @@
 #include "zookeeper/zookeeper.h"
 
 // local imports
-#include "KvInterface.h"
+#include "css/KvInterface.h"
 
 namespace lsst {
 namespace qserv {

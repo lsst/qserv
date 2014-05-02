@@ -45,8 +45,8 @@
 #include <boost/lexical_cast.hpp>
 
 // local imports
-#include "KvInterfaceImplMem.h"
-#include "KvInterfaceImplZoo.h"
+#include "css/KvInterfaceImplMem.h"
+#include "css/KvInterfaceImplZoo.h"
 
 using std::cout;
 using std::endl;

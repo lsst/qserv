@@ -41,8 +41,8 @@
 #include <boost/thread.hpp>     // for mutex
 
 // Local imports
-#include "KvInterface.h"
-#include "StripingParams.h"
+#include "css/KvInterface.h"
+#include "css/StripingParams.h"
 
 namespace lsst {
 namespace qserv {

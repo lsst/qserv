@@ -26,8 +26,8 @@
 #include <cstring>
 #include <iostream>
 #include "boost/scoped_ptr.hpp"
-#include "worker.pb.h"
-#include "TaskMsgDigest.h"
+#include "proto/worker.pb.h"
+#include "proto/TaskMsgDigest.h"
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
 namespace test = boost::test_tools;

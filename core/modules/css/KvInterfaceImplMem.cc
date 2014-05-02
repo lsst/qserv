@@ -51,8 +51,8 @@
 #include <boost/algorithm/string.hpp>
 
 // local imports
-#include "KvInterfaceImplMem.h"
-#include "CssException.h"
+#include "css/KvInterfaceImplMem.h"
+#include "css/CssException.h"
 #include "log/Logger.h"
 
 using std::endl;

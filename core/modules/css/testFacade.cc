@@ -44,9 +44,9 @@
 #include <boost/shared_ptr.hpp>
 
 // local imports
-#include "Facade.h"
-#include "KvInterfaceImplZoo.h"
-#include "CssException.h"
+#include "css/Facade.h"
+#include "css/KvInterfaceImplZoo.h"
+#include "css/CssException.h"
 
 using std::cout;
 using std::endl;
