@@ -108,7 +108,7 @@ Facade::containsDb(string const& dbName) const {
         LOGGER_INF << "Empty database name passed." << endl;
         throw CssException_DbDoesNotExist("<empty>");
     }
-    string p = _prefix + "/DATABASES/" + dbName;
+    string p = _prefix + "/DBS/" + dbName;
     bool ret =  _kvI->exists(p);
     LOGGER_INF << "*** containsDb(" << dbName << "): " << ret << endl;
     return ret;
@@ -166,7 +166,7 @@ Facade::tableIsSubChunked(string const& dbName,
   */
 vector<string>
 Facade::getAllowedDbs() const {
-    string p = _prefix + "/DATABASES";
+    string p = _prefix + "/DBS";
     return _kvI->getChildren(p);
 }
 
@@ -180,7 +180,7 @@ vector<string>
 Facade::getChunkedTables(string const& dbName) const {
     LOGGER_INF << "*** getChunkedTables(" << dbName << ")" << endl;
     _throwIfNotDbExists(dbName);
-    string p = _prefix + "/DATABASES/" + dbName + "/TABLES";
+    string p = _prefix + "/DBS/" + dbName + "/TABLES";
     vector<string> ret, v = _kvI->getChildren(p);
     vector<string>::const_iterator itr;
     for (itr = v.begin() ; itr != v.end(); ++itr) {
@@ -202,7 +202,7 @@ vector<string>
 Facade::getSubChunkedTables(string const& dbName) const {
     LOGGER_INF << "*** getSubChunkedTables(" << dbName << ")" << endl;
     _throwIfNotDbExists(dbName);
-    string p = _prefix + "/DATABASES/" + dbName + "/TABLES";
+    string p = _prefix + "/DBS/" + dbName + "/TABLES";
     vector<string> ret, v = _kvI->getChildren(p);
     vector<string>::const_iterator itr;
     for (itr = v.begin() ; itr != v.end(); ++itr) {
@@ -228,7 +228,7 @@ Facade::getPartitionCols(string const& dbName, string const& tableName) const {
     LOGGER_INF << "*** getPartitionCols(" << dbName << ", " << tableName << ")"
                << endl;
     _throwIfNotDbTbExists(dbName, tableName);
-    string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" +
+    string p = _prefix + "/DBS/" + dbName + "/TABLES/" +
                tableName + "/partitioning/";
     vector<string> v, ret;
     v.push_back("lonColName");
@@ -284,7 +284,7 @@ Facade::getKeyColumn(string const& dbName, string const& tableName) const {
     LOGGER_INF << "*** Facade::getKeyColumn(" << dbName << ", " << tableName
                << ")" << endl;
     _throwIfNotDbTbExists(dbName, tableName);
-    string ret, p = _prefix + "/DATABASES/" + dbName + "/TABLES/" + tableName +
+    string ret, p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName +
                     "/partitioning/secIndexColName";
     ret = _kvI->get(p, "");
     LOGGER_INF << "Facade::getKeyColumn, returning: " << ret << endl;
@@ -301,11 +301,11 @@ Facade::getDbStriping(string const& dbName) const {
     LOGGER_INF << "*** getDbStriping(" << dbName << ")" << endl;
     _throwIfNotDbExists(dbName);
     StripingParams striping;
-    string v = _kvI->get(_prefix + "/DATABASES/" + dbName + "/partitioningId", "");
+    string v = _kvI->get(_prefix + "/DBS/" + dbName + "/partitioningId", "");
     if (v == "") {
         return striping;
     }
-    string p = _prefix + "/DATABASE_PARTITIONING/_" + v + "/";
+    string p = _prefix + "/PARTITIONING/_" + v + "/";
     striping.stripes = _getIntValue(p+"nStripes", 0);
     striping.subStripes = _getIntValue(p+"nSubStripes", 0);
     return striping;
@@ -357,7 +357,7 @@ Facade::_throwIfNotDbTbExists(string const& dbName, string const& tableName) con
   */
 bool
 Facade::_containsTable(string const& dbName, string const& tableName) const {
-    string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" + tableName;
+    string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
     bool ret = _kvI->exists(p);
     LOGGER_INF << "*** containsTable returns: " << ret << endl;
     return ret;
@@ -373,7 +373,7 @@ Facade::_containsTable(string const& dbName, string const& tableName) const {
   */
 bool
 Facade::_tableIsChunked(string const& dbName, string const& tableName) const{
-    string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" +
+    string p = _prefix + "/DBS/" + dbName + "/TABLES/" +
                tableName + "/partitioning";
     bool ret = _kvI->exists(p);
     LOGGER_INF << "*** " << dbName << "." << tableName << " is ";
@@ -393,7 +393,7 @@ Facade::_tableIsChunked(string const& dbName, string const& tableName) const{
 bool
 Facade::_tableIsSubChunked(string const& dbName,
                            string const& tableName) const {
-    string p = _prefix + "/DATABASES/" + dbName + "/TABLES/" +
+    string p = _prefix + "/DBS/" + dbName + "/TABLES/" +
                tableName + "/partitioning/" + "subChunks";
     string retS = _kvI->get(p, "0");
     bool retV = (retS == "1");

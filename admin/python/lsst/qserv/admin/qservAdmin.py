@@ -73,11 +73,11 @@ class QservAdmin(object):
             if x not in options:
                 self._logger.error("Required option '%s' missing" % x)
                 raise KvException(KvException.MISSING_PARAM, x)
-        dbP = "/DATABASES/%s" % dbName
+        dbP = "/DBS/%s" % dbName
         ptP = None
         try:
             self._kvI.create(dbP, "PENDING")
-            ptP = self._kvI.create("/DATABASE_PARTITIONING/_", sequence=True)
+            ptP = self._kvI.create("/PARTITIONING/_", sequence=True)
             options["uuid"] = str(uuid.uuid4())
             for x in ["nStripes", "nSubStripes", "overlap", "uuid"]:
                 self._kvI.create("%s/%s" % (ptP, x), options[x])
@@ -111,7 +111,7 @@ class QservAdmin(object):
         if not self._dbExists(dbName2):
             self._logger.error("Database '%s' does not exist." % dbName2)
             raise QservAdminException(QservAdminException.DB_DOES_NOT_EXIST, dbName2)
-        dbP = "/DATABASES/%s" % dbName
+        dbP = "/DBS/%s" % dbName
         try:
             self._kvI.create(dbP, "PENDING")
             self._kvI.create("%s/uuid" % dbP, str(uuid.uuid4()))
@@ -136,16 +136,16 @@ class QservAdmin(object):
         if not self._dbExists(dbName):
             self._logger.error("Database '%s' does not exist." % dbName)
             raise QservAdminException(QservAdminException.DB_DOES_NOT_EXIST, dbName)
-        self._kvI.delete("/DATABASES/%s" % dbName, recursive=True)
+        self._kvI.delete("/DBS/%s" % dbName, recursive=True)
 
     def showDatabases(self):
         """
         Print to stdout the list of databases registered for Qserv use.
         """
-        if not self._kvI.exists("/DATABASES"):
+        if not self._kvI.exists("/DBS"):
             print "No databases found."
         else:
-            print self._kvI.getChildren("/DATABASES")
+            print self._kvI.getChildren("/DBS")
 
     #### TABLES ####################################################################
     def createTable(self, dbName, tableName, options):
@@ -179,7 +179,7 @@ class QservAdmin(object):
             self._logger.error("Table '%s.%s' exists." % (dbName, tableName))
             raise QservAdminException(QservAdminException.TB_EXISTS, 
                                       "%s.%s" % (dbName,tableName))
-        tbP = "/DATABASES/%s/TABLES/%s" % (dbName, tableName)
+        tbP = "/DBS/%s/TABLES/%s" % (dbName, tableName)
         options["uuid"] = str(uuid.uuid4())
         try:
             self._kvI.create(tbP, "PENDING")
@@ -222,7 +222,7 @@ class QservAdmin(object):
 
         @param dbName    Database name.
         """
-        p = "/DATABASES/%s" % dbName
+        p = "/DBS/%s" % dbName
         return self._kvI.exists(p)
 
     def _tableExists(self, dbName, tableName):
@@ -232,7 +232,7 @@ class QservAdmin(object):
         @param dbName    Database name.
         @param tableName Table name.
         """
-        p = "/DATABASES/%s/TABLES/%s" % (dbName, tableName)
+        p = "/DBS/%s/TABLES/%s" % (dbName, tableName)
         return self._kvI.exists(p)
 
     def _copyKeyValue(self, dbDest, dbSrc, theList):
@@ -243,8 +243,8 @@ class QservAdmin(object):
         @param dbSrc     Source database name
         @param theList   The list of elements to copy.
         """
-        dbS  = "/DATABASES/%s" % dbSrc
-        dbD = "/DATABASES/%s" % dbDest
+        dbS  = "/DBS/%s" % dbSrc
+        dbD = "/DBS/%s" % dbDest
         for x in theList:
             v = self._kvI.get("%s/%s" % (dbS, x))
             self._kvI.create("%s/%s" % (dbD, x), v)
