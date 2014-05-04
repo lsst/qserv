@@ -227,7 +227,7 @@ class Benchmark():
             commons.restart('xrootd')
 
             # Qserv fails to start if QMS is empty, so starting it again may be required
-            commons.restart('qserv-master')
+            commons.restart('qserv-czar')
 
         # in order to close socket connections
         del(self.dataLoader[self._mode])
