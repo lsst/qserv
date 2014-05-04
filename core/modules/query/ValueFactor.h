@@ -28,9 +28,15 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <list>
 #include <string>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+
+// Local headers
 #include "query/ColumnRef.h"
 
 namespace lsst {

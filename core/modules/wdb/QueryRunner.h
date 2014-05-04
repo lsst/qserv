@@ -31,15 +31,15 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-// C++
+
+// System headers
 #include <deque>
 
-// boost
+// Third-party headers
 #include "boost/thread.hpp" // for mutex support
 
+// Local headers
 #include "mysql/mysql.h"
-
-// package
 #include "sql/SqlErrorObject.h"
 #include "wbase/Base.h"
 #include "wcontrol/Task.h"

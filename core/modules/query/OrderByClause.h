@@ -30,9 +30,15 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <deque>
 #include <string>
+
+// Third party headers
 #include <boost/shared_ptr.hpp>
+
+// Local headers
 #include "query/ValueExpr.h"
 
 namespace lsst {
@@ -42,7 +48,6 @@ namespace parser {
     // Forward
     class ModFactory;
 }
-    
         
 namespace query {
 

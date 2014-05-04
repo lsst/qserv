@@ -28,6 +28,7 @@
 #ifndef LSST_QSERV_WCONTROL_REQUESTTAKER_H
 #define LSST_QSERV_WCONTROL_REQUESTTAKER_H
 
+// Local headers
 #include "wbase/Base.h" // StringBuffer2
 
 namespace lsst {

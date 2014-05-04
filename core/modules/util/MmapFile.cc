@@ -23,8 +23,9 @@
 
 #include "util/MmapFile.h"
 
-#include <iostream>
+// System headers
 #include <fcntl.h>
+#include <iostream>
 #include <sys/mman.h>
 
 namespace lsst {

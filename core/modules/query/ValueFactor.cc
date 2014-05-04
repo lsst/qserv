@@ -31,13 +31,18 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/ValueFactor.h"
+
+// System headers
 #include <iostream>
-#include <sstream>
 #include <iterator>
+#include <sstream>
+
+// Local headers
 #include "query/ColumnRef.h"
-#include "query/QueryTemplate.h"
 #include "query/FuncExpr.h"
+#include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
 

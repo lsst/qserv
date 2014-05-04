@@ -34,34 +34,36 @@
 #ifndef LSST_QSERV_MERGER_TABLEMERGER_H
 #define LSST_QSERV_MERGER_TABLEMERGER_H
 
+// System headers
 #include <string>
+
+// Third-party headers
 #include <boost/thread.hpp> // for mutex.
 #include <boost/shared_ptr.hpp> 
 
+// Local headers
 #include "merger/mergeTypes.h"
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace merger {
+    class SqlInsertIter;
+}
+namespace mysql {
+    class MySqlConfig;
+}    
+namespace sql {
+    class SqlConnection;
+}
+namespace xrdc {
+    class PacketIter;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace mysql {
-    // Forward
-    class MySqlConfig;
-}
-    
-namespace sql {
-    // Forward
-    class SqlConnection;
-}
-
-namespace xrdc {
-    // Forward
-    class PacketIter;
-} // namespace xrdc
-
-namespace merger {        
-
-// Forward
-class SqlInsertIter;
+namespace merger {
 
 /// struct TableMergerError - value class for TableMerger error code.
 struct TableMergerError {

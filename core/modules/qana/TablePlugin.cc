@@ -30,23 +30,26 @@
   */
 // No public interface (no TablePlugin.h)
 
-#include "qana/QueryPlugin.h"
+// System headers
 #include <string>
 
-#include "util/common.h"
+// Local headers
+#include "log/Logger.h"
+#include "qana/QueryMapping.h"
+#include "qana/QueryPlugin.h"
+#include "qana/TableStrategy.h"
+#include "query/FromList.h"
+#include "query/FuncExpr.h"
+#include "query/QueryContext.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
-#include "query/FromList.h"
-#include "query/WhereClause.h"
-#include "query/FuncExpr.h"
-#include "qana/TableStrategy.h"
-#include "qana/QueryMapping.h"
-#include "query/QueryContext.h"
 #include "query/TableAlias.h"
 #include "query/ValueFactor.h"
-#include "log/Logger.h"
+#include "query/WhereClause.h"
+#include "util/common.h"
 
 using lsst::qserv::query::DbTableVector;
+
 namespace lsst {
 namespace qserv {
 namespace qana {

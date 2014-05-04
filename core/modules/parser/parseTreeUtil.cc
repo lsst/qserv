@@ -27,8 +27,13 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/parseTreeUtil.h"
+
+// System headers
 #include <stdexcept>
+
+// Third-party headers
 #include <antlr/ASTFactory.hpp>
 
 

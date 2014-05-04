@@ -26,8 +26,11 @@
   */
 #include "query/QsRestrictor.h"
 
+// System headers
 #include <iostream>
 #include <iterator>
+
+// Local headers
 #include "query/QueryTemplate.h"
 
 namespace lsst {

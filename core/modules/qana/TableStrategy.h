@@ -22,22 +22,32 @@
  */
 #ifndef LSST_QSERV_QANA_TABLESTRATEGY_H
 #define LSST_QSERV_QANA_TABLESTRATEGY_H
+
+// System headers
 #include <list>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+
+// Local headers
 #include "query/TableRef.h"
 
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
-
-// Forward
 namespace query {
     class QueryContext;
     class FromList;
 }
-    
 namespace qana {
+    class QueryMapping;
+}}} // End of forward declarations
 
-    class QueryMapping; // Forward
+
+namespace lsst {
+namespace qserv {
+namespace qana {
 
 /// TableStrategy provides a structure for processing the FromList in
 /// a way that facilitates the retention of the original structure

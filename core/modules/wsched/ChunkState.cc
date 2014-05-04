@@ -20,8 +20,12 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#include "wsched/ChunkState.h"
+
+// System headers
 #include <iterator>
+
+// Local headers
+#include "wsched/ChunkState.h"
 
 namespace lsst {
 namespace qserv {

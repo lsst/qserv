@@ -29,11 +29,14 @@
   */
 #include "query/FuncExpr.h"
 
+// System headers
+#include <iostream>
+
+// Local headers
 #include "query/ColumnRef.h"
+#include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
-#include "query/QueryTemplate.h"
-#include <iostream>
 
 namespace lsst {
 namespace qserv {

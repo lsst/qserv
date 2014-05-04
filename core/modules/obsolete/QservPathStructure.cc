@@ -21,6 +21,8 @@
  */
 
 #include "obsolete/QservPathStructure.h"
+
+// System headers
 #include <dirent.h>
 #include <errno.h>
 #include <fstream>

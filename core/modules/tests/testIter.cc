@@ -22,16 +22,20 @@
 
 #define BOOST_TEST_MODULE testIter
 #include "boost/test/included/unit_test.hpp"
+
+// System headers
+#include <cstring>
 #include <list>
 #include <map>
 #include <string>
-#include <cstring>
+
+// Local headers
 #include "merger/SqlInsertIter.h"
 #include "xrdc/PacketIter.h"
 
 namespace test = boost::test_tools;
-using lsst::qserv::xrdc::PacketIter;
 using lsst::qserv::merger::SqlInsertIter;
+using lsst::qserv::xrdc::PacketIter;
 using std::string;
 
 

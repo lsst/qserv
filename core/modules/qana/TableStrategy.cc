@@ -20,26 +20,29 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #include "qana/TableStrategy.h"
+
+// System headers
 #include <deque>
 #include <string>
+
+// Third-party headers
 #include <boost/lexical_cast.hpp>
 #include <boost/pointer_cast.hpp>
+
+// Local headers
 #include "css/Facade.h"
 #include "log/Logger.h"
 #include "query/FromList.h"
-#include "query/TableRef.h"
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
 #include "query/QueryContext.h"
+#include "query/TableRef.h"
 
 #define CHUNKTAG "%CC%"
 #define SUBCHUNKTAG "%SS%"
 #define FULLOVERLAPSUFFIX "FullOverlap"
 
 #define DEBUG 1
-
-namespace { // File-scope helpers
-}
 
 namespace lsst {
 namespace qserv {

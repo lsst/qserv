@@ -22,14 +22,17 @@
 /// QueryPhyResult instances contain and manage result table operations
 #include "wdb/QueryPhyResult.h"
 
+// System headers
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <iterator>
+#include <sys/stat.h>
 
+// Local headers
 #include "sql/SqlErrorObject.h"
-#include "wconfig/Config.h"
 #include "wbase/Base.h"
+#include "wconfig/Config.h"
 #include "wlog/WLogger.h"
+
 
 namespace lsst {
 namespace qserv {

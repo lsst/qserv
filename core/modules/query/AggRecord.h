@@ -27,6 +27,8 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// Local headers
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
 

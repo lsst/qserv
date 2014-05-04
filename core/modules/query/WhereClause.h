@@ -31,31 +31,37 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Standard
+// System headers
 #include <iostream>
 #include <list>
 #include <stack>
-// Boost
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/iterator_adaptors.hpp>
-// Qserv
-#include "query/ColumnRef.h"
+
+// Local headers
 #include "query/BoolTerm.h"
+#include "query/ColumnRef.h"
 #include "query/QsRestrictor.h"
 #include "query/ValueExpr.h"
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
-
 namespace parser {
-    // Forward
     class WhereFactory;
 }   
+namespace query {
+    class BoolTerm;
+}}} // End of forward declarations
 
+        
+namespace lsst {
+namespace qserv {
 namespace query {
 
-class BoolTerm; // Forward
 
 /// WhereClause is a SQL WHERE containing QsRestrictors and a BoolTerm tree.
 class WhereClause {

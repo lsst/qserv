@@ -20,12 +20,18 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// Implements MySqlFsDirectory, which rejects directory modification ops.
+
 #include "xrdfs/MySqlFsDirectory.h"
 
+// System headers
+#include <errno.h>
+
+// Third-party headers
 #include "XrdSys/XrdSysError.hh"
+
+// Local headers
 #include "wlog/WLogger.h"
 
-#include <errno.h>
 
 namespace lsst {
 namespace qserv {

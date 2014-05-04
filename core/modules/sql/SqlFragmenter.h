@@ -22,6 +22,7 @@
 #ifndef LSST_QSERV_SQL_SQLFRAGMENTER_H
 #define LSST_QSERV_SQL_SQLFRAGMENTER_H
 
+// System headers
 #include <string>
 
 namespace lsst {

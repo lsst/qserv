@@ -23,6 +23,8 @@
 // AsyncQueryManager-type of SessionManager.
 
 #include "control/SessionManagerAsync.h"
+
+// Third-party headers
 #include <boost/make_shared.hpp>
 
 namespace lsst {

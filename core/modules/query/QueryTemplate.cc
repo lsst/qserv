@@ -29,12 +29,17 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "query/QueryTemplate.h"
-#include <sstream>
+
+// System headers
 #include <iostream>
+#include <sstream>
+
+// Local headers
 #include "global/sqltoken.h" // sqlShouldSeparate
+#include "log/Logger.h"
 #include "query/ColumnRef.h"
 #include "query/TableRef.h"
-#include "log/Logger.h"
+
 
 namespace lsst {
 namespace qserv {

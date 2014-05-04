@@ -27,25 +27,34 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <iostream>
 #include <list>
 #include <sstream>
 #include <string>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+
+// Local headers
 #include "query/ColumnRef.h"
+
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace parser {
+    class ValueExprFactory;
+}
+namespace query {
+    class QueryTemplate;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace parser {
-    // Forward
-    class ValueExprFactory;
-}
-    
 namespace query {
-
-// Forward
-class QueryTemplate;
 
 class ValueExpr;
 typedef boost::shared_ptr<ValueExpr> ValueExprPtr;

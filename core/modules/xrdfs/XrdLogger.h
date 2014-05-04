@@ -21,8 +21,12 @@
  */
 #ifndef LSST_QSERV_XRDFS_XRDLOGGER_H
 #define LSST_QSERV_XRDFS_XRDLOGGER_H
-#include "wbase/Base.h"
+
+// Third-party headers
 #include "XrdSys/XrdSysError.hh"
+
+// Local headers
+#include "wbase/Base.h"
 
 namespace lsst {
 namespace qserv {

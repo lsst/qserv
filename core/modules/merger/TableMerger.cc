@@ -34,16 +34,16 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Standard library includes
-#include <sys/time.h>
-#include <sstream>
+// System headers
 #include <iostream>
+#include <sstream>
+#include <sys/time.h>
 
-// Boost
+// Third-party headers
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
 
-// Local includes
+// Local headers
 #include "log/Logger.h"
 #include "merger/SqlInsertIter.h"
 #include "merger/TableMerger.h"

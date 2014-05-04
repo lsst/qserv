@@ -26,22 +26,23 @@
 //  Should parameterize things to stop hardcoding table names
 // and column names.
 
-// Std
+#include "wbase/Base.h"
+
+// System headers
 #ifdef __SUNPRO_CC
 #include <sys/md5.h>
 #else // Linux?
 #include <openssl/md5.h>
 #endif
+#include <fstream>
 #include <glob.h>
 #include <iostream>
-#include <fstream>
-// Boost
+
+// Third-party headers
 #include <boost/format.hpp>
 
+// Local headers
 #include "util/StringHash.h"
-
-// Myself:
-#include "wbase/Base.h"
 
 
 // Local helpers

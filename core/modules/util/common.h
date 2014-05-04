@@ -28,10 +28,12 @@
 #ifndef LSST_QSERV_UTIL_COMMON_H
 #define LSST_QSERV_UTIL_COMMON_H
 
+// System headers
+#include <iostream>
 #include <list>
 #include <map>
 #include <string>
-#include <iostream>
+
 
 namespace lsst {
 namespace qserv {

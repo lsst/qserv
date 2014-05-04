@@ -23,9 +23,13 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "query/JoinSpec.h"
+
+// System headers
 #include <stdexcept>
-#include "query/ColumnRef.h"
+
+// Local headers
 #include "query/BoolTerm.h"
+#include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
 
 namespace lsst {

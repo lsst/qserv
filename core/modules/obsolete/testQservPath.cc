@@ -21,8 +21,14 @@
  */
 #define BOOST_TEST_MODULE Path_1
 #include "boost/test/included/unit_test.hpp"
+
+// System headers
 #include <iostream>
+
+// Third-party headers
 #include "boost/scoped_ptr.hpp"
+
+// Local headers
 #include "obsolete/QservPath.h"
 
 namespace test = boost::test_tools;

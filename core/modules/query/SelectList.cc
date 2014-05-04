@@ -38,10 +38,14 @@
 // map them?
 // For now, just build the syntax tree without evaluating.
 #include "query/SelectList.h"
+
+// System headers
 #include <iterator>
 #include <stdexcept>
-#include "query/ValueFactor.h"
+
+// Local headers
 #include "query/QueryTemplate.h"
+#include "query/ValueFactor.h"
 
 namespace lsst {
 namespace qserv {

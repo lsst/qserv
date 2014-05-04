@@ -31,23 +31,24 @@
   */
 #include "parser/ModFactory.h"
 
-// Std
+// System headers
 #include <iterator>
 
+// Third-party headers
 #include <boost/make_shared.hpp>
-
-// Package
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
+
+// Local headers
+#include "log/Logger.h"
 #include "parser/BoolTermFactory.h"
+#include "parser/parserBase.h"   // Handler base classes
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
-#include "parser/parserBase.h" // Handler base classes
 #include "parser/ValueExprFactory.h"
-#include "query/HavingClause.h" // Clauses
-#include "query/OrderByClause.h" // Clauses
 #include "query/GroupByClause.h" // Clauses
+#include "query/HavingClause.h"  // Clauses
+#include "query/OrderByClause.h" // Clauses
 
-#include "log/Logger.h"
 
 namespace lsst {
 namespace qserv {

@@ -33,29 +33,27 @@
   */
 #include "parser/SelectParser.h"
 
-// Standard
-#include <functional>
+// System headers
 #include <cstdio>
+#include <functional>
 #include <strings.h>
 
-// Boost
-#include <boost/make_shared.hpp>
-#include <boost/bind.hpp>
-
-// ANTLR
+// Third-party headers
+#include <antlr/CommonAST.hpp>
 #include <antlr/NoViableAltException.hpp>
+#include <boost/bind.hpp>
+#include <boost/make_shared.hpp>
 
-// Local (placed in src/)
-#include "SqlSQL2Parser.hpp"
-#include "SqlSQL2Lexer.hpp"
-#include "SqlSQL2TokenTypes.hpp"
-#include "parser/SelectFactory.h"
-#include "query/SelectStmt.h"
+// Local headers
 #include "parser/ParseException.h"
 #include "parser/parseExceptions.h"
 #include "parser/parseTreeUtil.h"
+#include "parser/SelectFactory.h"
+#include "query/SelectStmt.h"
+#include "SqlSQL2Parser.hpp"
+#include "SqlSQL2Lexer.hpp"
+#include "SqlSQL2TokenTypes.hpp"
 
-#include <antlr/CommonAST.hpp>
 
 namespace lsst {
 namespace qserv {

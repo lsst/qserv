@@ -27,23 +27,29 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <list>
 #include <string>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace qana {
+    class QueryMapping;
+}
+namespace query {
+    class SelectStmt;
+    class QueryContext;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace query {
-    // Forward 
-    class SelectStmt;
-    class QueryContext;
-}
-   
 namespace qana {
-
-// Forward
-class QueryMapping;
 
 typedef std::list<boost::shared_ptr<query::SelectStmt> > SelectStmtList;
 

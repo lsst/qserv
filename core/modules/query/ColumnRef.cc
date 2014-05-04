@@ -27,7 +27,11 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "query/ColumnRef.h"
+
+// System headers
 #include <iostream>
+
+// Local headers
 #include "query/QueryTemplate.h"
 
 namespace lsst {

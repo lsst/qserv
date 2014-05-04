@@ -27,11 +27,16 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "query/BoolTerm.h"
-#include "log/Logger.h"
-#include <stdexcept>
+
+// System headers
 #include <algorithm>
+#include <stdexcept>
+
+// Local headers
+#include "log/Logger.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
+
 
 namespace lsst {
 namespace qserv {

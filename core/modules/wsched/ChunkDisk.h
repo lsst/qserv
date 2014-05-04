@@ -29,11 +29,16 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <vector>
+
+// System headers
 #include <set>
+#include <vector>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 
+// Local headers
 #include "proto/worker.pb.h"
 #include "wsched/ChunkState.h"
 #include "wcontrol/Task.h"

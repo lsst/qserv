@@ -25,14 +25,18 @@
 /// environment variables for qserv worker instances.
 #include "wconfig/Config.h"
 
+// System headers
 #include <sstream>
+
+// Third-party headers
 #include <boost/thread/once.hpp>
 
+// Local headers
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlConnection.h"
 
-using lsst::qserv::wconfig::Config;
 using lsst::qserv::mysql::MySqlConfig;
+using lsst::qserv::wconfig::Config;
 
 namespace {
 // Settings declaration ////////////////////////////////////////////////

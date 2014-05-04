@@ -28,19 +28,24 @@
   */
 
 // No public interface (no QservRestrictorPlugin.h)
+
+// System headers
 #include <deque>
 #include <string>
+
+// Third-party headers
 #include <boost/pointer_cast.hpp>
 
-#include "qana/QueryPlugin.h" // Parent class
-#include "qana/AnalysisError.h"
+// Local headers
 #include "css/Facade.h"
+#include "qana/AnalysisError.h"
+#include "qana/QueryPlugin.h" // Parent class
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
-#include "query/QueryContext.h"
 #include "query/JoinRef.h"
 #include "query/Predicate.h"
+#include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/ValueFactor.h"
 #include "query/ValueExpr.h"

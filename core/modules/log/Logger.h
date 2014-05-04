@@ -43,9 +43,12 @@
 #define LOGGER_THRESHOLD_WRN LOGGER_THRESHOLD(Warning)
 #define LOGGER_THRESHOLD_ERR LOGGER_THRESHOLD(Error)
 
+// System headers
+#include <iostream>
 #include <stdio.h>
 #include <sys/time.h>
-#include <iostream>
+
+// Third-party headers
 #include <boost/iostreams/concepts.hpp>
 #include <boost/iostreams/operations.hpp>
 #include <boost/iostreams/filtering_stream.hpp>

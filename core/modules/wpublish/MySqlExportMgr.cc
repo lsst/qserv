@@ -20,10 +20,17 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // MySqlExportMgr implementation.
+
 #include "wpublish/MySqlExportMgr.h"
-#include <sstream>
+
+// System headers
 #include <iostream>
+#include <sstream>
+
+// Third-party headers
 #include <boost/regex.hpp>
+
+// Local headers
 #include "sql/SqlConnection.h"
 #include "wconfig/Config.h"
 #include "wlog/WLogger.h"

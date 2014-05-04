@@ -25,21 +25,23 @@
   * @author Daniel L. Wang, SLAC
   */
 // No public interface (no AggregatePlugin.h)
+
+// System headers
 #include <string>
 #include <stdexcept>
-#include "util/common.h"
-#include "query/QueryContext.h"
-#include "qana/QueryPlugin.h"
-#include "query/QueryTemplate.h"
-#include "query/ValueExpr.h"
-#include "query/ValueFactor.h"
-#include "query/FuncExpr.h"
 
+// Local headers
+#include "log/Logger.h"
+#include "qana/QueryPlugin.h"
+#include "query/AggOp.h"
+#include "query/FuncExpr.h"
+#include "query/QueryContext.h"
+#include "query/QueryTemplate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
-#include "query/AggOp.h"
-
-#include "log/Logger.h"
+#include "query/ValueExpr.h"
+#include "query/ValueFactor.h"
+#include "util/common.h"
 
 namespace lsst {
 namespace qserv {

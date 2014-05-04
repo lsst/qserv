@@ -38,15 +38,15 @@
  *  - perhaps switch to async (seems to be recommended by zookeeper)
  */
 
+#include "css/KvInterfaceImplZoo.h"
 
-// standard library imports
+// System headers
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string.h> // for memset
 
-// local imports
-#include "css/KvInterfaceImplZoo.h"
+// Local headers
 #include "css/CssException.h"
 #include "log/Logger.h"
 

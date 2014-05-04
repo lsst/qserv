@@ -23,6 +23,7 @@
 #ifndef LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 #define LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 
+// Local headers
 #include "wcontrol/Foreman.h"
 
 // Forward declarations
@@ -30,16 +31,16 @@ namespace lsst {
 namespace qserv {
 namespace wlog {
     class WLogger;
-}}}
-// End of forward declarations
+}
+namespace wsched {
+    class GroupScheduler;
+    class ScanScheduler;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
 namespace wsched {
-
-// Forward
-class GroupScheduler;
-class ScanScheduler;
 
 /// BlendScheduler -- A scheduler that switches between two underlying
 /// schedulers based on the incoming task properties. If the incoming

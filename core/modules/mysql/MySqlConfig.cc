@@ -20,12 +20,14 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "MySqlConfig.h"
+
+// System headers
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <stdlib.h> // atoi
 
-#include "MySqlConfig.h"
 
 namespace lsst {
 namespace qserv {

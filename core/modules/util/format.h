@@ -23,10 +23,11 @@
 #ifndef LSST_QSERV_UTIL_FORMAT_H
 #define LSST_QSERV_UTIL_FORMAT_H
 
+// System headers 
+#include <assert.h>
+#include <regex.h>
 #include <string>
 #include <vector>
-#include <regex.h>
-#include <assert.h>
 
 namespace lsst {
 namespace qserv {

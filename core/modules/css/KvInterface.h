@@ -31,9 +31,9 @@
 #ifndef LSST_QSERV_CSS_INTERFACE_HH
 #define LSST_QSERV_CSS_INTERFACE_HH
 
-// standard library imports
-#include <vector>
+// System imports
 #include <string>
+#include <vector>
 
 namespace lsst {
 namespace qserv {

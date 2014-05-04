@@ -22,8 +22,10 @@
 #define BOOST_TEST_MODULE PathStructure_1
 #include "boost/test/included/unit_test.hpp"
 
+// System headers
 #include <iostream>
 
+// Local headers
 #include "obsolete/QservPathStructure.h"
 
 namespace test = boost::test_tools;

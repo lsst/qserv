@@ -23,7 +23,10 @@
 #ifndef LSST_QSERV_XRDFS_MYSQLFSCOMMON_H
 #define LSST_QSERV_XRDFS_MYSQLFSCOMMON_H
 
+// System headers
 #include <string>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
 // Forward declarations
@@ -33,6 +36,7 @@ namespace qserv {
 namespace obsolete {
     class QservPath;
 }}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {

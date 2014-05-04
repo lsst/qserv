@@ -28,7 +28,7 @@
   */
 #include "parser/ParseException.h"
 
-// Package
+// Local headers
 #include "parser/parseTreeUtil.h"
 
 ////////////////////////////////////////////////////////////////////////

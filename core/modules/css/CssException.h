@@ -31,7 +31,7 @@
 #ifndef LSST_QSERV_CSS_EXCEPTION_HH
 #define LSST_QSERV_CSS_EXCEPTION_HH
 
-// Standard library
+// System headers
 #include <map>
 #include <stdexcept>
 #include <string>

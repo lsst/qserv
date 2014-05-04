@@ -21,11 +21,11 @@
  */
 /// See Substitution.h
 
-// C++
+// System headers
 #include <map>
 #include <vector>
 
-// Package
+// Local headers
 #include "util/Substitution.h"
 
 namespace lsst {

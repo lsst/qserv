@@ -23,6 +23,7 @@
 #ifndef LSST_QSERV_OBSOLETE_QSERVPATHSTRUCTURE_H
 #define LSST_QSERV_OBSOLETE_QSERVPATHSTRUCTURE_H
 
+// System headers
 #include <string>
 #include <vector>
 

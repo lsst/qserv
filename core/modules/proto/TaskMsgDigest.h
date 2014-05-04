@@ -23,6 +23,7 @@
 #ifndef LSST_QSERV_PROTO_TASKMSGDIGEST_H
 #define LSST_QSERV_PROTO_TASKMSGDIGEST_H
 
+// System headers
 #include <string>
 
 namespace lsst {

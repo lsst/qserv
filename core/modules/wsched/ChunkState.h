@@ -30,10 +30,12 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
 #include <algorithm>
 #include <deque>
 #include <ostream>
 #include <set>
+
 
 namespace lsst {
 namespace qserv {

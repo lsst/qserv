@@ -31,7 +31,7 @@
   */
 
 
-// standard library imports
+// System headers
 #include <algorithm> // sort
 #include <cstdlib>   // rand
 #include <iostream>
@@ -39,12 +39,12 @@
 #include <stdexcept>
 #include <string.h>  // memset
 
-// boost
+// Third-party headers
 #define BOOST_TEST_MODULE MyTest
 #include <boost/test/included/unit_test.hpp>
 #include <boost/lexical_cast.hpp>
 
-// local imports
+// Kocal headers
 #include "css/KvInterfaceImplMem.h"
 #include "css/KvInterfaceImplZoo.h"
 

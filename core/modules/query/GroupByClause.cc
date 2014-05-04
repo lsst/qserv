@@ -27,9 +27,15 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "query/GroupByClause.h"
+
+// System headers
 #include <iostream>
 #include <iterator>
+
+// Third-party headers
 #include <boost/make_shared.hpp>
+
+// Local headers
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 

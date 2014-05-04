@@ -38,20 +38,20 @@
  *  - perhaps switch to async (seems to be recommended by zookeeper)
  */
 
+#include "css/KvInterfaceImplMem.h"
 
-// standard library imports
+// System headers
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string.h> // for memset
 
-// boost
-#include <boost/algorithm/string/predicate.hpp>
+// Third-party headers
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
-// local imports
-#include "css/KvInterfaceImplMem.h"
+// Local headers
 #include "css/CssException.h"
 #include "log/Logger.h"
 

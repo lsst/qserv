@@ -31,10 +31,16 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
 #include <map>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+
+// Local headers
 #include "query/AggRecord.h"
 #include "query/ValueExpr.h"
+
 
 namespace lsst {
 namespace qserv {

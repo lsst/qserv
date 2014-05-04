@@ -26,27 +26,25 @@
 // ReadCallable and WriteCallable are workqueue object callbacks that
 // allow chunkQuery work to be done in a workqueue(thread pool).
 
-// Standard
-#include <iostream>
+// System headers
 #include <fcntl.h> // for O_RDONLY, O_WRONLY, etc.
+#include <iostream>
 
-// Boost
-#include <boost/thread.hpp>
+// Third-party headers
 #include <boost/lexical_cast.hpp>
-
-// Xrootd
+#include <boost/thread.hpp>
 #include "XrdPosix/XrdPosixXrootd.hh"
 
-// Package
-#include "qdisp/ChunkQuery.h"
+// Local headers
 #include "control/AsyncQueryManager.h"
-#include "xrdc/PacketIter.h"
-#include "util/xrootd.h"
-#include "util/StringHash.h"
 #include "control/DynamicWorkQueue.h"
-#include "qdisp/MessageStore.h"
 #include "log/msgCode.h"
 #include "log/Logger.h"
+#include "qdisp/ChunkQuery.h"
+#include "qdisp/MessageStore.h"
+#include "util/xrootd.h"
+#include "util/StringHash.h"
+#include "xrdc/PacketIter.h"
 
 namespace lsst {
 namespace qserv {

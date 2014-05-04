@@ -23,8 +23,11 @@
 // StringHash -- Little wrappers for OpenSSL hashing.
 #include "util/StringHash.h"
 
+// System headers
 #include <iostream>
 #include <sstream>
+
+// Third-party headers
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 

@@ -31,13 +31,17 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
 #include <cassert>
 #include <iostream>
-#include <sstream>
-#include <map>
 #include <list>
+#include <map>
+#include <sstream>
 
+// Third-party headers
 #include "antlr/AST.hpp"
+
+// Local headers
 #include "global/sqltoken.h"
 
 // Forward

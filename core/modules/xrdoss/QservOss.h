@@ -27,28 +27,30 @@
 // calls and qserv no longer requires tools to maintain an "export directory" in
 // the filesystem.
 
-
 #ifndef LSST_QSERV_XRDOSS_QSERVOSS_H
 #define LSST_QSERV_XRDOSS_QSERVOSS_H
-#include "XrdOss/XrdOss.hh"
+
+// System headers
 #include <deque>
 #include <set>
 #include <string>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+#include "XrdOss/XrdOss.hh"
 
 // Forward declarations
 class XrdOss;
-class XrdSysLogger;
 class XrdOucEnv;
+class XrdSysLogger;
 namespace lsst {
 namespace qserv {
-namespace wpublish {
-    class ChunkInventory;
-}
 namespace wlog {
     class WLogger;
-}}}
-// End of forward declarations
+}
+namespace wpublish {
+    class ChunkInventory;
+}}} // End of forward declarations
 
 namespace lsst {
 namespace qserv {

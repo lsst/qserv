@@ -32,28 +32,25 @@
   */
 #include "parser/SelectFactory.h"
 
-// antlr
+// Third-party headers
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
-// Package
+// Local headers
+#include "log/Logger.h"
 #include "parser/ColumnRefH.h"
-#include "query/SelectStmt.h"
-#include "query/SelectList.h"
-#include "query/ValueFactor.h"
-// Delegate factories
 #include "parser/FromFactory.h"
+#include "parser/SelectListFactory.h"
 #include "parser/WhereFactory.h"
 #include "parser/ModFactory.h"
-#include "parser/SelectListFactory.h"
-#include "parser/ValueExprFactory.h"
-#include "parser/WhereFactory.h"
-
 #include "parser/ParseAliasMap.h"
 #include "parser/ParseException.h"
 #include "parser/parseTreeUtil.h"
-//#include "query/TableRef.h"
+#include "parser/ValueExprFactory.h"
+#include "parser/WhereFactory.h"
+#include "query/SelectList.h"
+#include "query/SelectStmt.h"
+#include "query/ValueFactor.h"
 
-#include "log/Logger.h"
 
 ////////////////////////////////////////////////////////////////////////
 // SelectFactory

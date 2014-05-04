@@ -32,21 +32,26 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <iostream>
-
-#include <boost/format.hpp>
-#include <boost/make_shared.hpp>
-#include "boost/date_time/posix_time/posix_time_types.hpp"
 
 #include "control/AsyncQueryManager.h"
+
+// System headers
+#include <iostream>
+
+// Third-party headers
+#include "boost/date_time/posix_time/posix_time_types.hpp"
+#include <boost/format.hpp>
+#include <boost/make_shared.hpp>
+
+// Local headers
 #include "css/Facade.h"
-#include "qdisp/ChunkQuery.h"
 #include "log/Logger.h"
-#include "qdisp/MessageStore.h"
 #include "log/msgCode.h"
 #include "merger/TableMerger.h"
-#include "util/Timer.h"
+#include "qdisp/ChunkQuery.h"
+#include "qdisp/MessageStore.h"
 #include "qproc/QuerySession.h"
+#include "util/Timer.h"
 #include "util/WorkQueue.h"
 #include "xrdc/PacketIter.h"
 
@@ -404,8 +409,7 @@ void AsyncQueryManager::_initFacade(std::string const& cssTech,
                                     std::string const& cssConn) {
     if (cssTech == "zoo") {
         LOGGER_INF << "Initializing zookeeper-based css, with " 
-                   << cssConn << std::endl;
-        
+                   << cssConn << std::endl;        
         boost::shared_ptr<css::Facade> cssFPtr(
             css::FacadeFactory::createZooFacade(cssConn));
         _qSession.reset(new qproc::QuerySession(cssFPtr));

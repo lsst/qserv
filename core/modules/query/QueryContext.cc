@@ -27,6 +27,8 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "query/QueryContext.h"
+
+// Local headers
 #include "query/ColumnRef.h"
 
 using lsst::qserv::query::DbTablePair;

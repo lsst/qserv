@@ -45,20 +45,23 @@
   * @author Daniel L. Wang, SLAC
   */
 
+#include "control/dispatcher.h"
+
+// System headers
 #include <fstream>
 #include <sstream>
 
+// Local headers
 #include "control/AsyncQueryManager.h"
-#include "control/dispatcher.h"
-#include "control/thread.h"
 #include "control/SessionManagerAsync.h"
+#include "control/thread.h"
 #include "log/Logger.h"
 #include "obsolete/QservPath.h"
 #include "qproc/ChunkSpec.h"
 #include "qproc/QuerySession.h"
 #include "qproc/TaskMsgFactory2.h"
-#include "util/xrootd.h"
 #include "util/StringHash.h"
+#include "util/xrootd.h"
 #include "xrdc/xrdfile.h"
 
 namespace {

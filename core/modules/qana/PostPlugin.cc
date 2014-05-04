@@ -28,11 +28,14 @@
   * @author Daniel L. Wang, SLAC
   */
 // No public interface (no PostPlugin.h)
+
+// System headers
 #include <stdexcept>
 #include <string>
 
-#include "query/QueryContext.h"
+// Local headers
 #include "qana/QueryPlugin.h"
+#include "query/QueryContext.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 

@@ -24,10 +24,10 @@
 #ifndef LSST_QSERV_UTIL_TIMER_H
 #define LSST_QSERV_UTIL_TIMER_H
 
+// System headers
+#include <ostream>
 #include <sys/time.h>
 #include <time.h>
-
-#include <ostream>
 
 namespace lsst {
 namespace qserv {

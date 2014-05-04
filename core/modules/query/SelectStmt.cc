@@ -34,17 +34,17 @@
 
 #include "query/SelectStmt.h"
 
-// Standard
+// System headers
 #include <map>
 
-// Boost
+// Third-party headers
 #include <boost/algorithm/string/predicate.hpp> // string iequal
 
-#include "query/SelectList.h"
 #include "query/FromList.h"
 #include "query/GroupByClause.h"
-#include "query/OrderByClause.h"
 #include "query/HavingClause.h"
+#include "query/OrderByClause.h"
+#include "query/SelectList.h"
 #include "query/WhereClause.h"
 #include "log/Logger.h"
 

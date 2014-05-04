@@ -25,15 +25,19 @@
   * @author Daniel L. Wang, SLAC
   */
 // No public interface (no WherePlugin.h)
-#include <string>
+
+// System headers 
 #include <stdexcept>
+#include <string>
 #include "util/common.h"
 
-#include "query/BoolTerm.h"
+// Local headers
 #include "qana/QueryPlugin.h"
+#include "query/BoolTerm.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/WhereClause.h"
+
 
 namespace lsst {
 namespace qserv {

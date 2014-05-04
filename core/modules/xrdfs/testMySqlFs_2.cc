@@ -25,21 +25,25 @@
 #define BOOST_TEST_MODULE MySqlFs_2
 #include "boost/test/included/unit_test.hpp"
 
-#include "XrdSys/XrdSysLogger.hh"
-#include "XrdSys/XrdSysError.hh"
+// System headers
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+
+// Third-party headers
+#include "boost/make_shared.hpp"
 #include "boost/scoped_ptr.hpp"
 #include "boost/shared_ptr.hpp"
-#include "boost/make_shared.hpp"
+#include "XrdSys/XrdSysError.hh"
+#include "XrdSys/XrdSysLogger.hh"
 
+// Local headers
 #include "util/StringHash.h"
 #include "wcontrol/ResultTracker.h"
 #include "wdb/QueryRunner.h"
-#include "xrdfs/MySqlFsFile.h"
 #include "wlog/WLogger.h"
+#include "xrdfs/MySqlFsFile.h"
 
 namespace test = boost::test_tools;
 using boost::make_shared;

@@ -31,22 +31,26 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <boost/shared_ptr.hpp>
+
+// Third-party headers
 #include <antlr/AST.hpp>
+#include <boost/shared_ptr.hpp>
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class ValueExpr;
+}
+namespace parser {
+    class ColumnRefNodeMap;
+    class ValueFactorFactory;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace query {
-    // Forward
-    class ValueExpr;
-}
-    
 namespace parser {
-
-// Forward
-class ColumnRefNodeMap;
-class ValueFactorFactory;
 
 /// ValueExprFactory is a factory for making ValueExpr objects
 class ValueExprFactory {

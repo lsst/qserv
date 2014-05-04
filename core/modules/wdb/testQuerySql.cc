@@ -26,9 +26,11 @@
   */
 #define BOOST_TEST_MODULE QuerySql_1
 #include "boost/test/included/unit_test.hpp"
+
+// Local headers
+#include "proto/worker.pb.h"
 #include "wdb/QuerySql.h"
 #include "wdb/QuerySql_Batch.h"
-#include "proto/worker.pb.h"
 
 namespace test = boost::test_tools;
 

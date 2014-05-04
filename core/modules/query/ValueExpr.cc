@@ -31,14 +31,21 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "query/ValueExpr.h"
+
+// System headers
 #include <iostream>
 #include <iterator>
 #include <sstream>
 #include <stdexcept>
+
+// Third-party headers
 #include <boost/make_shared.hpp>
-#include "query/ValueFactor.h"
-#include "query/QueryTemplate.h"
+
+// Local headers
 #include "query/FuncExpr.h"
+#include "query/QueryTemplate.h"
+#include "query/ValueFactor.h"
+
 
 namespace lsst {
 namespace qserv {

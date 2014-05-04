@@ -32,13 +32,16 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "qproc/TaskMsgFactory2.h"
-#include "log/Logger.h"
 
+// System headers
 #include <stdexcept>
 
-#include "util/common.h"
-#include "qproc/ChunkQuerySpec.h"
+// Local headers
+#include "log/Logger.h"
 #include "proto/worker.pb.h"
+#include "qproc/ChunkQuerySpec.h"
+#include "util/common.h"
+
 
 namespace lsst {
 namespace qserv {

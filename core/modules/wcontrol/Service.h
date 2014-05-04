@@ -21,6 +21,8 @@
  */
 #ifndef LSST_QSERV_WCONTROL_SERVICE_H
 #define LSST_QSERV_WCONTROL_SERVICE_H
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
 // Forward declarations

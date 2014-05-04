@@ -31,16 +31,16 @@
 #ifndef LSST_QSERV_CSS_FACADE_H
 #define LSST_QSERV_CSS_FACADE_H
 
-// Standard
+// System headers
 #include <iostream>
 #include <string>
 #include <vector>
 
-// Boost
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>     // for mutex
 
-// Local imports
+// Local headers
 #include "css/KvInterface.h"
 #include "css/StripingParams.h"
 

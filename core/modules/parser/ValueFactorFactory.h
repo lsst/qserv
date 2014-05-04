@@ -29,21 +29,26 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <boost/shared_ptr.hpp>
+
+// Third-party headers
 #include <antlr/AST.hpp>
+#include <boost/shared_ptr.hpp>
+
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class ValueFactor;
+}
+namespace parser {
+    class ColumnRefNodeMap;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace query {
-    // Forward
-    class ValueFactor;
-}
-
 namespace parser {
-
-// Forward
-class ColumnRefNodeMap;
 
 /// ValueFactorFactory constructs ValueFactor instances from antlr nodes.
 class ValueFactorFactory {

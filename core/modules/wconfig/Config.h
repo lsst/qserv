@@ -23,8 +23,12 @@
 
 #ifndef LSST_QSERV_WCONFIG_CONFIG_H
 #define LSST_QSERV_WCONFIG_CONFIG_H
+
+// System headers
 #include <map>
 #include <string>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
 namespace lsst {

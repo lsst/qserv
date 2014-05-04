@@ -22,10 +22,15 @@
  */
 #ifndef LSST_QSERV_QUERY_DBTABLEPAIR_H
 #define LSST_QSERV_QUERY_DBTABLEPAIR_H
+
+// System headers
 #include <vector>
+
+
 namespace lsst {
 namespace qserv {
 namespace query {
+
 struct DbTablePair {
     DbTablePair(std::string const& db_, std::string const& table_)
         : db(db_), table(table_) {}
@@ -39,10 +44,9 @@ struct DbTablePair {
     std::string db;
     std::string table;
 };
+
 typedef std::vector<DbTablePair> DbTableVector;
 
-
 }}} // namespace lsst::qserv::query
-
 
 #endif // LSST_QSERV_QUERY_DBTABLEPAIR_H

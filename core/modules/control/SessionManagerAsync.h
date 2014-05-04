@@ -25,8 +25,12 @@
 
 #ifndef LSST_QSERV_CONTROL_SESSIONMANAGERASYNC_H
 #define LSST_QSERV_CONTROL_SESSIONMANAGERASYNC_H
-#include "control/SessionManager.h"
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+
+// Local headers
+#include "control/SessionManager.h"
 
 namespace lsst {
 namespace qserv {

@@ -24,8 +24,9 @@
 #ifndef LSST_QSERV_XRDFS_MYSQLFSDIRECTORY_H
 #define LSST_QSERV_XRDFS_MYSQLFSDIRECTORY_H
 
-#include "XrdSfs/XrdSfsInterface.hh"
+// Third-party include
 #include <boost/shared_ptr.hpp>
+#include "XrdSfs/XrdSfsInterface.hh"
 
 // Forward declarations
 class XrdSysError;

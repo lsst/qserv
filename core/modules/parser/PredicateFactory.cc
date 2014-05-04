@@ -28,14 +28,18 @@
   * @author Daniel L. Wang, SLAC
   */
 
-#include "query/Predicate.h"
-#include <boost/algorithm/string.hpp>
 #include "parser/PredicateFactory.h"
-#include "parser/ValueExprFactory.h"
-#include "parser/parseTreeUtil.h"
+
+// Third-party headers
+#include <boost/algorithm/string.hpp>
 #include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
+// Local headers
 #include "log/Logger.h"
+#include "parser/parseTreeUtil.h"
+#include "parser/ValueExprFactory.h"
+#include "query/Predicate.h"
+
 
 namespace lsst {
 namespace qserv {

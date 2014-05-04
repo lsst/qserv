@@ -31,17 +31,17 @@
   */
 #include "parser/WhereFactory.h"
 
-// Std
+// System headers
 #include<iterator>
 
-// Package
-#include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
-#include "parser/parserBase.h" // Handler base classes
-#include "parser/ParseException.h"
-#include "parser/parseTreeUtil.h"
-#include "query/WhereClause.h"
-#include "parser/BoolTermFactory.h"
+// Local headers
 #include "log/Logger.h"
+#include "parser/BoolTermFactory.h"
+#include "parser/parserBase.h" // Handler base classes
+#include "parser/parseTreeUtil.h"
+#include "parser/ParseException.h"
+#include "query/WhereClause.h"
+#include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
 
 // Anonymous helpers

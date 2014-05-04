@@ -31,10 +31,14 @@
 #ifndef LSST_QSERV_QDISP_MESSAGESTORE_H
 #define LSST_QSERV_QDISP_MESSAGESTORE_H
 
-#include <string>
+// System headers
 #include <ctime>
+#include <string>
+
+// Third-party headers
 #include <boost/thread.hpp> // for mutex.
 #include <boost/shared_ptr.hpp> // for mutex.
+
 
 namespace lsst {
 namespace qserv {
@@ -48,8 +52,7 @@ struct QueryMessage {
         :  chunkId(chunkId_),
            code(code_),
            description(description_),
-           timestamp(timestamp_)
-    {
+           timestamp(timestamp_) {
     }
 
     int chunkId;

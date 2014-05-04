@@ -31,22 +31,22 @@
   */
 
 
-// standard library imports
+// system headers
 #include <algorithm> // sort
 #include <cstdlib>   // rand
 #include <iostream>
 #include <stdexcept>
 
-// boost
+// Third-party headers
 #define BOOST_TEST_MODULE TestFacade
 #include <boost/test/included/unit_test.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 
-// local imports
+// Local headers
+#include "css/CssException.h"
 #include "css/Facade.h"
 #include "css/KvInterfaceImplZoo.h"
-#include "css/CssException.h"
 
 using std::cout;
 using std::endl;

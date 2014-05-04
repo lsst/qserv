@@ -28,10 +28,10 @@
 #ifndef LSST_QSERV_MERGER_SQLINSERTITER_H
 #define LSST_QSERV_MERGER_SQLINSERTITER_H
 
-// Boost
+// Third-party headers
 #include <boost/regex.hpp>
 
-// Local includes
+// Local headers
 #include "xrdc/PacketIter.h"
 
 namespace lsst {

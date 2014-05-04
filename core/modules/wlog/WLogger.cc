@@ -24,9 +24,12 @@
 // xrootd system log so that qserv worker code can be debugged outside
 // of a running xrootd instance. It also provides levels of logging
 // priority as a mechanism for reducing logging clutter.
+
 #include "wlog/WLogger.h"
-#include <sstream>
+
+// System headers
 #include <iostream>
+#include <sstream>
 
 namespace lsst {
 namespace qserv {

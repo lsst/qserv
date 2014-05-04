@@ -27,11 +27,18 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <ostream>
 #include <string>
 #include <vector>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+
+// Local headers
 #include "util/common.h"
+
 
 namespace lsst {
 namespace qserv {

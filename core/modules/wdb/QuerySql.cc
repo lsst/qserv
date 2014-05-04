@@ -29,11 +29,15 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include "wdb/QuerySql.h"
-#include "wbase/Base.h"
+
+// System headers
+#include <iostream>
+
+// Local headers
 #include "global/constants.h"
 #include "proto/worker.pb.h"
-#include <iostream>
+#include "wbase/Base.h"
+#include "wdb/QuerySql.h"
 
 
 namespace {

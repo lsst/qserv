@@ -31,9 +31,9 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Local headers
 #include "control/transaction.h"
 #include "css/StripingParams.h"
-#include "xrdc/xrdfile.h"
 #include "merger/TableMerger.h"
 #include "query/Constraint.h"
 #include "util/common.h"

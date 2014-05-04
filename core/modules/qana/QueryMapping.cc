@@ -30,12 +30,15 @@
   */
 #include "qana/QueryMapping.h"
 
+// System headers
 #include <deque>
 #include <sstream>
 #include <stdexcept>
 
+// Third-party headers
 #include <boost/lexical_cast.hpp>
 
+// Local headers
 #include "qproc/ChunkSpec.h"
 #include "query/QueryTemplate.h"
 

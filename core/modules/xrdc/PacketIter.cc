@@ -27,12 +27,16 @@
 // latency.
 
 #include "xrdc/PacketIter.h"
-#include "xrdc/xrdfile.h"
-#include "log/Logger.h"
 
-#include <fcntl.h>
+// System headers
 #include <errno.h>
+#include <fcntl.h>
 #include <iostream>
+
+// Local headers
+#include "log/Logger.h"
+#include "xrdc/xrdfile.h"
+
 
 namespace lsst {
 namespace qserv {

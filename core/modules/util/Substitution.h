@@ -23,6 +23,7 @@
 #ifndef LSST_QSERV_UTIL_SUBSTITUTION_H
 #define LSST_QSERV_UTIL_SUBSTITUTION_H
 
+// System headers
 #include <string>
 
 namespace lsst {

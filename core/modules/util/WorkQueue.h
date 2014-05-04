@@ -29,10 +29,13 @@
 #ifndef LSST_QSERV_UTIL_WORKQUEUE_H
 #define LSST_QSERV_UTIL_WORKQUEUE_H
 
+// System headers
+#include <deque>
+
+// Third-party headers
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 
-#include <deque>
 
 namespace lsst {
 namespace qserv {

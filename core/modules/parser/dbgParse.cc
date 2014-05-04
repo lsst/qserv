@@ -20,10 +20,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// System headers
 #include <map>
+
+// Third-party headers
+#include "log/Logger.h"
 #include "parser/parserBase.h"
 #include "parser/parseTreeUtil.h"
-#include "log/Logger.h"
 
 
 namespace lsst {

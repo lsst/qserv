@@ -23,19 +23,20 @@
 /// class Foreman implementation
 #include "wcontrol/Foreman.h"
 
-// Std C++
+// System headers
 #include <deque>
 #include <iostream>
 
-// Boost
-#include <boost/thread.hpp>
+// Third-party headers
 #include <boost/make_shared.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/thread.hpp>
 
-#include "wsched/FifoScheduler.h"
-#include "wdb/QueryRunner.h"
+// Local headers
 #include "wbase/Base.h"
+#include "wdb/QueryRunner.h"
 #include "wlog/WLogger.h"
+#include "wsched/FifoScheduler.h"
 
 ////////////////////////////////////////////////////////////////////////
 // anonymous helpers

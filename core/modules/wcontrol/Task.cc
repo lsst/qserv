@@ -28,10 +28,13 @@
   */
 #include "wcontrol/Task.h"
 
-#include "wbase/Base.h"
-#include "proto/worker.pb.h"
-#include "proto/TaskMsgDigest.h"
+// Third-party headers
 #include <boost/regex.hpp>
+
+// Local headers
+#include "proto/TaskMsgDigest.h"
+#include "proto/worker.pb.h"
+#include "wbase/Base.h"
 
 
 namespace {

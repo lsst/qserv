@@ -29,17 +29,18 @@
 #ifndef LSST_QSERV_CONTROL_THREAD_H
 #define LSST_QSERV_CONTROL_THREAD_H
 
-// Standard
+// System headers
 #include <map>
 #include <set>
 
-// Boost
-#include "boost/thread.hpp"
-#include "boost/make_shared.hpp"
+// Third-party headers
 #include "boost/date_time/posix_time/posix_time.hpp"
+#include "boost/make_shared.hpp"
+#include "boost/thread.hpp"
 
-// Package
+// Local headers
 #include "control/transaction.h"
+#include "xrdc/xrdfile.h"
 
 namespace lsst {
 namespace qserv {

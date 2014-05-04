@@ -23,7 +23,10 @@
 #ifndef LSST_QSERV_WSCHED_SCANSCHEDULER_H
 #define LSST_QSERV_WSCHED_SCANSCHEDULER_H
 
+// Third party headers
 #include <boost/thread/mutex.hpp>
+
+// Local headers
 #include "wcontrol/Foreman.h"
 
 // Forward declarations

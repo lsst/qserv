@@ -24,9 +24,13 @@
 #ifndef LSST_QSERV_XRDFS_MYSQLFS_H
 #define LSST_QSERV_XRDFS_MYSQLFS_H
 
-#include "XrdSfs/XrdSfsInterface.hh"
-#include <boost/shared_ptr.hpp>
+// System headers
 #include <set>
+
+// Third-party headers
+#include <boost/shared_ptr.hpp>
+#include "XrdSfs/XrdSfsInterface.hh"
+
 
 // Forward declarations
 class XrdSysError;
@@ -38,8 +42,8 @@ namespace wcontrol {
 }
 namespace wlog {
     class WLogger;
-}}}
-// End of forward declarations
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {

@@ -26,6 +26,8 @@
 // all threads have died before returning.
 //
 #include "util/WorkQueue.h"
+
+// System headers
 #include <iostream>
 
 namespace lsst {

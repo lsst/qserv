@@ -20,8 +20,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include <sstream>
 #include "sql/SqlErrorObject.h"
+
+// System headers
+#include <sstream>
 
 namespace lsst {
 namespace qserv {

@@ -27,9 +27,16 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include "wsched/FifoScheduler.h"
-#include <boost/thread.hpp>
+
+// System headers
 // #include <iostream> // Enable for debugging.
+
+// Third-party headers
+#include <boost/thread.hpp>
+
+// Local headers
+#include "wsched/FifoScheduler.h"
+
 
 namespace lsst {
 namespace qserv {

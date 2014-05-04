@@ -21,7 +21,10 @@
  */
 #ifndef LSST_QSERV_SQL_MOCKSQL_H
 #define LSST_QSERV_SQL_MOCKSQL_H
+
+// Local headers
 #include "sql/SqlConnection.h"
+
 namespace lsst {
 namespace qserv {
 namespace sql {

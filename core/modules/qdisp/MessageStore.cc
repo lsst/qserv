@@ -21,15 +21,20 @@
  */
 // See MessageStore.h
 
+// System headers
 #include <iostream>
+
+// Third-party headers
 #include <boost/format.hpp>
-#include "qdisp/MessageStore.h"
+
+// Local headers
 #include "log/Logger.h"
+#include "qdisp/MessageStore.h"
+
 
 namespace lsst {
 namespace qserv {
 namespace qdisp {
-
 
 ////////////////////////////////////////////////////////////////////////
 // public

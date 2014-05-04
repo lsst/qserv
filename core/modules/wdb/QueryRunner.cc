@@ -28,24 +28,30 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "wdb/QueryRunner.h"
-#include <iostream>
+
+// System headers
 #include <fcntl.h>
+#include <iostream>
 #include <sys/stat.h>
 
+// Third-party headers
 #include <boost/regex.hpp>
+
+// Local headers
 #include "global/constants.h"
-#include "wlog/WLogger.h"
 #include "mysql/mysql.h"
+#include "proto/worker.pb.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlErrorObject.h"
 #include "sql/SqlFragmenter.h"
-#include "wdb/QuerySql.h"
-#include "wdb/QuerySql_Batch.h"
-#include "wdb/QueryPhyResult.h"
-#include "proto/worker.pb.h"
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
+#include "wdb/QueryPhyResult.h"
+#include "wdb/QuerySql.h"
+#include "wdb/QuerySql_Batch.h"
+#include "wlog/WLogger.h"
 
 
 namespace {

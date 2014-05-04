@@ -28,8 +28,11 @@
   */
 #include "query/WhereClause.h"
 
+// System headers
 #include <iostream>
 #include <stdexcept>
+
+// Local headers
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 

@@ -23,10 +23,9 @@
 #ifndef LSST_QSERV_WDB_QUERYPHYRESULT_H
 #define LSST_QSERV_WDB_QUERYPHYRESULT_H
 
-// C++
-#include <string>
+// System headers
 #include <set>
-
+#include <string>
 
 // Forward declarations
 namespace lsst {

@@ -28,11 +28,15 @@
   */
 #include "qana/QueryPlugin.h"
 
+// System headers
 #include <map>
+
+// Third-party headers
 #include <boost/thread/locks.hpp>
 #include <boost/thread/mutex.hpp>
 //#include <boost/thread/call_once.hpp>
 
+// Local headers
 #include "qana/PluginNotFoundError.h"
 
 namespace lsst {

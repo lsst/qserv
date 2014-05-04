@@ -27,6 +27,8 @@
 // tree.
 
 #include "query/ChunkMapping.h"
+
+// Local headers
 #include "qdisp/ChunkMeta.h"
 
 namespace lsst {

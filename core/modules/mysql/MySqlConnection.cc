@@ -25,6 +25,8 @@
 // delegates).
 
 #include "mysql/MySqlConnection.h"
+
+// Local headers
 #include "mysql/MySqlConfig.h"
 
 

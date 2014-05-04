@@ -29,14 +29,20 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
+#include <iostream>
+#include <list>
 #include <stdexcept>
 #include <string>
-#include <list>
 #include <vector>
-#include <iostream>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
-#include "query/QueryTemplate.h"
+
+// Local headers
 #include "query/DbTablePair.h"
+#include "query/QueryTemplate.h"
 
 namespace lsst {
 namespace qserv {

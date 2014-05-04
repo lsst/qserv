@@ -27,10 +27,15 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "query/TableRef.h"
-#include <sstream>
+
+// System headers
 #include <algorithm>
+#include <sstream>
+
+// Local headers
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
+
 
 namespace lsst {
 namespace qserv {

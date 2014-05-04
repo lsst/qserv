@@ -23,8 +23,10 @@
 #ifndef LSST_QSERV_UTIL_THREAD_H
 #define LSST_QSERV_UTIL_THREAD_H
 
+// System headers
 #include <set>
 
+// Third-party headers
 #include "XrdSys/XrdSysPthread.hh"
 
 #ifdef DO_NOT_USE_BOOST

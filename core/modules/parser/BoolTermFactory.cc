@@ -28,14 +28,15 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "parser/BoolTermFactory.h"
-#include "parser/ValueExprFactory.h"
-#include "query/Predicate.h"
+
+// Local headers
+#include "log/Logger.h"
 #include "parser/PredicateFactory.h"
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
-
-#include "log/Logger.h"
+#include "parser/ValueExprFactory.h"
+#include "query/Predicate.h"
 
 namespace lsst {
 namespace qserv {

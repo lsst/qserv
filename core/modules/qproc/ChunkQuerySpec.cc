@@ -27,9 +27,11 @@
   * @author Daniel L. Wang, SLAC
   */
 #include "qproc/ChunkQuerySpec.h"
+
+// System headers
 #include <algorithm>
-#include <iterator>
 #include <iostream>
+#include <iterator>
 
 namespace lsst {
 namespace qserv {

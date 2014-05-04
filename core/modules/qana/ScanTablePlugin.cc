@@ -31,7 +31,6 @@
 #include "qana/QueryPlugin.h" // Parent class
 
 #include "log/Logger.h"
-#include "util/common.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/QsRestrictor.h"
@@ -39,6 +38,7 @@
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/WhereClause.h"
+#include "util/common.h"
 
 namespace lsst {
 namespace qserv {

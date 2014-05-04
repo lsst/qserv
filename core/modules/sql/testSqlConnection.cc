@@ -24,16 +24,17 @@
 
 #include "SqlConnection.h"
 
+// System headers
 #include <iostream>
 #include <string>
 #include <unistd.h> // for getpass
 
 namespace test = boost::test_tools;
 
+using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::sql::SqlConnection;
 using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResultIter;
-using lsst::qserv::mysql::MySqlConfig;
 
 
 namespace {

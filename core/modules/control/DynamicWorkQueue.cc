@@ -20,11 +20,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// @file
+
 #include "control/DynamicWorkQueue.h"
 
-#include <sys/time.h>
-#include <stdexcept>
 
+// System headers
+#include <stdexcept>
+#include <sys/time.h>
 
 namespace lsst {
 namespace qserv {

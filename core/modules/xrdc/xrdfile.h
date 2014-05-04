@@ -30,6 +30,7 @@
 #ifndef LSST_QSERV_XRDC_XRDFILE_H
 #define LSST_QSERV_XRDC_XRDFILE_H
 
+// System headers
 #include <string>
 
 class XrdPosixCallBack; // Forward.

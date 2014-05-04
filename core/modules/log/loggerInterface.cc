@@ -22,9 +22,14 @@
 // loggerInterface.cc houses the implementation of
 // loggerInterface.h (SWIG-exported functions for writing to log.)
 
-#include <iostream>
-#include "log/Logger.h"
+
 #include "log/loggerInterface.h"
+
+// System headers
+#include <iostream>
+
+// Local headers
+#include "log/Logger.h"
 
 namespace lsst {
 namespace qserv {

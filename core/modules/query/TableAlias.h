@@ -29,8 +29,12 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <sstream>
 #include <stdexcept>
+
+// Local headers
 #include "query/DbTablePair.h"
 
 namespace lsst {
