@@ -67,7 +67,8 @@ class QservAdminImpl(object):
             self._logger.error("Database '%s' already exists." % dbName)
             raise CssException(CssException.DB_EXISTS, dbName)
         # double check if all required options are specified
-        for x in ["nStripes", "nSubStripes", "overlap", "dbGroup", "objIdIndex"]:
+        for x in ["nStripes", "nSubStripes", "overlap", "storageClass",
+                  "objIdIndex"]:
             if x not in options:
                 self._logger.error("Required option '%s' missing" % x)
                 raise CssException(CssException.MISSING_PARAM, x)
@@ -83,7 +84,7 @@ class QservAdminImpl(object):
             pId = ptP[-10:] # the partitioning id is always 10 digit, 0 padded
             self._kvI.create("%s/partitioningId" % dbP, str(pId))
             self._kvI.create("%s/releaseStatus" % dbP,"UNRELEASED")
-            for x in ["dbGroup", "objIdIndex"]:
+            for x in ["storageClass", "objIdIndex"]:
                 self._kvI.create("%s/%s" % (dbP, x), options[x])
             self._createDbLockSection(dbP)
             self._kvI.set(dbP, "READY")
@@ -114,7 +115,7 @@ class QservAdminImpl(object):
             self._kvI.create(dbP, "PENDING")
             self._kvI.create("%s/uuid" % dbP, str(uuid.uuid4()))
             self._copyKeyValue(dbName, dbName2, 
-                               ("dbGroup", "partitioningId", 
+                               ("storageClass", "partitioningId", 
                                 "releaseStatus", "objIdIndex"))
             self._createDbLockSection(dbP)
             self._kvI.set(dbP, "READY")

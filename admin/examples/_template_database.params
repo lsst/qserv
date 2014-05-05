@@ -1,7 +1,7 @@
 [db_info]
 
 # For LSST, this represents L1, L2, L3
-dbGroup: L2
+storageClass: L2
 
 # Allowed values are: 0, 1
 # In this example partitioning is turned on
