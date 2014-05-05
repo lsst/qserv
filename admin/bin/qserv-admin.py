@@ -334,7 +334,7 @@ class CommandParser(object):
             opts["objIdIndex"] = ''
         # these are required options for createDb
         _crDbOpts = { 
-            "db_info": ("dbGroup", 
+            "db_info": ("storageClass", 
                         "partitioning", 
                         "partitioningStrategy")}
         _crDbPSOpts = {

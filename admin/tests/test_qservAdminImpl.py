@@ -30,18 +30,18 @@ This is a unittest for qservAdminImpl
 import logging
 import unittest
 
+from lsst.qserv.admin.qservAdminImpl import QservAdminImpl
 from lsst.qserv.css.kvInterface import CssException
-from qservAdminImpl import QservAdminImpl
 
 
 class TestQservAdminImpl(unittest.TestCase):
     def setUp(self):
-        self._impl = QservAdminImpl('127.0.0.1:2181')
+        self._impl = QservAdminImpl('127.0.0.1:12181')
         self._baseDir = "admin/examples"
 
     def testCreateDb(self):
-        dd = {"dbGroup": "L2",
-              "partitioning": "on",
+        dd = {"storageClass": "L2",
+              "partitioning": "1",
               "partitioningStrategy": "sphBox",
               "nStripes": "10",
               "nSubStripes": "23",
