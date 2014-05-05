@@ -1,4 +1,4 @@
 drop database LSST;
-create database LSST               client/examples/dbPartitioned.params;
-create table LSST.DeepSource       client/examples/testQserv_tbDeepSource.params;
-create table LSST.DeepForcedSource client/examples/testQserv_tbDeepFSource.params;
+create database LSST               admin/examples/dbPartitioned.params;
+create table LSST.DeepSource       admin/examples/testQserv_tbDeepSource.params;
+create table LSST.DeepForcedSource admin/examples/testQserv_tbDeepFSource.params;
