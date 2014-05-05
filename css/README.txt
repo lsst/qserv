@@ -55,9 +55,9 @@ socket   = /var/run/mysqld/mysqld.sock
 
 ### in one window, start the watcher
   # this is without logging
-  ./css/watcher.py
+  ./admin/bin/watcher.py
   # this is with logging going to a file
-  ./css/watcher.py  -v 10 -f watcher.log
+  ./admin/bin/watcher.py  -v 10 -f watcher.log
 
 
 ### in second window, run the test:

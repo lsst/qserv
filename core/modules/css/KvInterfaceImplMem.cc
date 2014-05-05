@@ -75,8 +75,8 @@ namespace css {
   *    everyting in zookeeper!
   *    echo "drop everything;" | ./admin/bin/qserv-admin.py
   * 2) generate the clean set:
-  *    ./admin/bin//qserv-admin.py <  <commands>
-  *    (example commands can be found in client/examples/testMap_generateMap)
+  *    ./admin/bin/qserv-admin.py <  <commands>
+  *    (example commands can be found in admin/examples/testMap_generateMap)
   * 3) then copy the generate file to final destination:
   *    mv /tmp/testMap.kvmap <destination>
   */

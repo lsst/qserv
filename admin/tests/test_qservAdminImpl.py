@@ -37,7 +37,7 @@ from qservAdminImpl import QservAdminImpl
 class TestQservAdminImpl(unittest.TestCase):
     def setUp(self):
         self._impl = QservAdminImpl('127.0.0.1:2181')
-        self._baseDir = "client/examples"
+        self._baseDir = "admin/examples"
 
     def testCreateDb(self):
         dd = {"dbGroup": "L2",

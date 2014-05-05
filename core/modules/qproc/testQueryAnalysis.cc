@@ -153,7 +153,7 @@ struct ParserFixture {
         qsTest.cfgNum = 0;
         qsTest.defaultDb = "LSST";
         // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
-        // Use client/examples/testMap_generateMap
+        // Use admin/examples/testMap_generateMap
         std::string mapBuffer(reinterpret_cast<char const*>(testMap),
                               testMap_length);
         std::istringstream mapStream(mapBuffer);
