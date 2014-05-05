@@ -48,15 +48,11 @@ from lsst.db.exception import produceExceptionClass
 
 ####################################################################################
 CssException = produceExceptionClass('CssException', [
-        (2001, "DB_EXISTS",          "Database already exists."),
-        (2005, "DB_DOES_NOT_EXIST",  "Database does not exist."),
         (2010, "INVALID_CONNECTION", "Invalid connection information."),
         (2015, "KEY_EXISTS",         "Key already exists."),
         (2020, "KEY_DOES_NOT_EXIST", "Key does not exist."),
         (2025, "KEY_INVALID",        "Key Invalid key."),
         (2030, "MISSING_PARAM",      "Missing parameter."),
-        (2035, "TB_EXISTS",          "Table already exists."),
-        (2040, "TB_DOES_NOT_EXIST",  "Table does not exist."),
         (9998, "NOT_IMPLEMENTED",    "Feature not implemented yet."),
         (9999, "INTERNAL",           "Internal error.")])
 
