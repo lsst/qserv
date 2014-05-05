@@ -37,7 +37,26 @@ Known issues and todos:
 import logging
 import uuid
 
-from lsst.qserv.css.kvInterface import KvInterface, CssException
+from lsst.db.exception import produceExceptionClass
+from lsst.qserv.css.kvInterface import KvInterface, KvException
+
+####################################################################################
+QAdmException = produceExceptionClass('QAdmException', [
+    (3001, "AUTH_PROBLEM",      "Can't access the config file."),
+    (3005, "BAD_CMD",           "Bad command, see HELP for details."),
+    (3010, "CONFIG_NOT_FOUND",  "Config file not found."),
+    (3015, "DB_EXISTS",         "Database already exists."),
+    (3020, "DB_DOES_NOT_EXIST", "Database does not exist."),
+    (3025, "MISSING_PARAM",     "Missing parameter."),
+    (3030, "TB_EXISTS",         "Table already exists."),
+    (3035, "TB_DOES_NOT_EXIST", "Table does not exist."),
+    (3040, "WRONG_PARAM",       "Unrecognized parameter."),
+    (3045, "WRONG_PARAM_VAL",   "Unrecognized value for parameter."),
+    (9997, "CSSERR",            "CSS error."),
+    (9998, "NOT_IMPLEMENTED",   "Feature not implemented yet."),
+    (9999, "INTERNAL",          "Internal error.")])
+
+####################################################################################
 
 class QservAdminImpl(object):
     """
@@ -65,13 +84,13 @@ class QservAdminImpl(object):
                                (dbName, str(options)))
         if self._dbExists(dbName):
             self._logger.error("Database '%s' already exists." % dbName)
-            raise CssException(CssException.DB_EXISTS, dbName)
+            raise QAdmException(QAdmException.DB_EXISTS, dbName)
         # double check if all required options are specified
         for x in ["nStripes", "nSubStripes", "overlap", "storageClass",
                   "objIdIndex"]:
             if x not in options:
                 self._logger.error("Required option '%s' missing" % x)
-                raise CssException(CssException.MISSING_PARAM, x)
+                raise KvException(KvException.MISSING_PARAM, x)
         dbP = "/DATABASES/%s" % dbName
         ptP = None
         try:
@@ -88,7 +107,7 @@ class QservAdminImpl(object):
                 self._kvI.create("%s/%s" % (dbP, x), options[x])
             self._createDbLockSection(dbP)
             self._kvI.set(dbP, "READY")
-        except CssException as e:
+        except KvException as e:
             self._logger.error("Failed to create database '%s', " % dbName +
                                "error was: " + e.__str__())
             self._kvI.delete(dbP, recursive=True)
@@ -106,10 +125,10 @@ class QservAdminImpl(object):
         self._logger.info("Creating db '%s' like '%s'" % (dbName, dbName2))
         if self._dbExists(dbName):
             self._logger.error("Database '%s' already exists." % dbName)
-            raise CssException(CssException.DB_EXISTS, dbName)
+            raise QAdmException(QAdmException.DB_EXISTS, dbName)
         if not self._dbExists(dbName2):
             self._logger.error("Database '%s' does not exist." % dbName2)
-            raise CssException(CssException.DB_DOES_NOT_EXIST, dbName2)
+            raise QAdmException(QAdmException.DB_DOES_NOT_EXIST, dbName2)
         dbP = "/DATABASES/%s" % dbName
         try:
             self._kvI.create(dbP, "PENDING")
@@ -119,7 +138,7 @@ class QservAdminImpl(object):
                                 "releaseStatus", "objIdIndex"))
             self._createDbLockSection(dbP)
             self._kvI.set(dbP, "READY")
-        except CssException as e:
+        except KvException as e:
             self._logger.error("Failed to create database '%s', " % dbName +
                                "error was: " + e.__str__())
             self._kvI.delete(dbP, recursive=True)
@@ -134,7 +153,7 @@ class QservAdminImpl(object):
         self._logger.info("Drop database '%s'" % dbName)
         if not self._dbExists(dbName):
             self._logger.error("Database '%s' does not exist." % dbName)
-            raise CssException(CssException.DB_DOES_NOT_EXIST, dbName)
+            raise QAdmException(QAdmException.DB_DOES_NOT_EXIST, dbName)
         self._kvI.delete("/DATABASES/%s" % dbName, recursive=True)
 
     def showDatabases(self):
@@ -173,10 +192,11 @@ class QservAdminImpl(object):
                                (dbName, tableName, str(options)))
         if not self._dbExists(dbName):
             self._logger.error("Database '%s' does not exist." % dbName)
-            raise CssException(CssException.DB_DOES_NOT_EXIST, dbName)
+            raise QAdmException(QAdmException.DB_DOES_NOT_EXIST, dbName)
         if self._tableExists(dbName, tableName):
             self._logger.error("Table '%s.%s' exists." % (dbName, tableName))
-            raise CssException(CssException.TB_EXISTS, "%s.%s" % (dbName,tableName))
+            raise QAdmException(QAdmException.TB_EXISTS, 
+                                "%s.%s" % (dbName,tableName))
         tbP = "/DATABASES/%s/TABLES/%s" % (dbName, tableName)
         options["uuid"] = str(uuid.uuid4())
         try:
@@ -189,7 +209,7 @@ class QservAdminImpl(object):
                 else:
                     self._logger.info("'%s' not provided" % o[0])
             self._kvI.set(tbP, "READY")
-        except CssException as e:
+        except KvException as e:
             self._logger.error("Failed to create table '%s.%s', " % \
                                 (dbName, tableName) + "error was: " + e.__str__())
             self._kvI.delete(tbP, recursive=True)

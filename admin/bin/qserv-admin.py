@@ -43,21 +43,8 @@ import readline
 import sys
 
 # local imports
-from lsst.db.exception import produceExceptionClass
-from lsst.qserv.css.kvInterface import CssException
-from lsst.qserv.admin.qservAdminImpl import QservAdminImpl
-
-####################################################################################
-QAdmException = produceExceptionClass('QAdmException', [
-    (3001, "AUTH_PROBLEM",      "Can't access the config file."),
-    (3002, "BAD_CMD",          "Bad command, see HELP for details."),
-    (3003, "CONFIG_NOT_FOUND", "Config file not found."),
-    (3004, "MISSING_PARAM",    "Missing parameter."),
-    (3005, "WRONG_PARAM",      "Unrecognized parameter."),
-    (3006, "WRONG_PARAM_VAL",  "Unrecognized value for parameter."),
-    (9997, "CSSERR",           "CSS error."),
-    (9998, "NOT_IMPLEMENTED",  "Feature not implemented yet."),
-    (9999, "INTERNAL",         "Internal error.")])
+from lsst.qserv.css.kvInterface import KvException
+from lsst.qserv.admin.qservAdminImpl import QservAdminImpl, QAdmException
 
 ####################################################################################
 class CommandParser(object):
@@ -159,7 +146,7 @@ class CommandParser(object):
             options = self._processDbOptions(options)
             try:
                 self._impl.createDb(dbName, options)
-            except CssException as e:
+            except KvException as e:
                 raise QAdmException(QAdmException.CSSERR, 
                                     "Failed to create database '" + dbName + \
                                     "', error was: " +  e.__str__())
@@ -171,7 +158,7 @@ class CommandParser(object):
             dbName2 = tokens[2]
             try:
                 self._impl.createDbLike(dbName, dbName2)
-            except CssException as e:
+            except KvException as e:
                 raise QAdmException(QAdmException.CSSERR, 
                              "Failed to create database '" + dbName + "' like '" + \
                              dbName2 + "', error was: ", e.__str__())
@@ -194,7 +181,7 @@ class CommandParser(object):
             options = self._processTbOptions(options)
             try:
                 self._impl.createTable(dbName, tbName, options)
-            except CssException as e:
+            except KvException as e:
                 raise QAdmException(QAdmException.CSSERR, 
                           "Failed to create table '" + dbName + "." + tbName + \
                           "', error was: " +  e.__str__())
@@ -215,7 +202,7 @@ class CommandParser(object):
                 # FIXME, createTableLike is not implemented!
                 self._impl.createTableLike(dbName, tableName, dbName2, tableName2,
                                            options)
-            except CssException as e:
+            except KvException as e:
                 raise QAdmException(QAdmException.CSSERR, 
                          "Failed to create table '" + dbName + "." + tbName + \
                          "' LIKE '" + dbName2 + "." + tbName2 + "', " + \
@@ -236,7 +223,7 @@ class CommandParser(object):
                                     "unexpected number of arguments")
             try:
                 self._impl.dropDb(tokens[1])
-            except CssException as e:
+            except KvException as e:
                 raise QAdmException(QAdmException.CSSERR, 
                                     "Failed to drop database '" + tokens[1] + 
                                     ", error was: ", e.__str__())
@@ -246,7 +233,7 @@ class CommandParser(object):
         elif t == 'EVERYTHING':
             try:
                 self._impl.dropEverything()
-            except CssException as e:
+            except KvException as e:
                 raise QAdmException(QAdmException.CSSERR, 
                              "Failed to drop everything, error was: ", e.__str__())
         else:

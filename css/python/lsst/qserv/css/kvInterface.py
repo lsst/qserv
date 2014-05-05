@@ -47,16 +47,12 @@ from kazoo.exceptions import NodeExistsError, NoNodeError
 from lsst.db.exception import produceExceptionClass
 
 ####################################################################################
-CssException = produceExceptionClass('CssException', [
-        (2001, "DB_EXISTS",          "Database already exists."),
-        (2005, "DB_DOES_NOT_EXIST",  "Database does not exist."),
+KvException = produceExceptionClass('KvException', [
         (2010, "INVALID_CONNECTION", "Invalid connection information."),
         (2015, "KEY_EXISTS",         "Key already exists."),
         (2020, "KEY_DOES_NOT_EXIST", "Key does not exist."),
         (2025, "KEY_INVALID",        "Key Invalid key."),
         (2030, "MISSING_PARAM",      "Missing parameter."),
-        (2035, "TB_EXISTS",          "Table already exists."),
-        (2040, "TB_DOES_NOT_EXIST",  "Table does not exist."),
         (9998, "NOT_IMPLEMENTED",    "Feature not implemented yet."),
         (9999, "INTERNAL",           "Internal error.")])
 
@@ -74,7 +70,7 @@ class KvInterface(object):
         """
         self._logger = logging.getLogger("CSS")
         if connInfo is None:
-            raise CssException(CssException.INVALID_CONNECTION, "<None>")
+            raise KvException(KvException.INVALID_CONNECTION, "<None>")
         self._logger.info("conn is: %s" % connInfo)
         self._zk = KazooClient(hosts=connInfo)
         self._zk.start()
@@ -88,14 +84,14 @@ class KvInterface(object):
 
         @return string   Real path to the just created node.
 
-        @raise     CssException if the key k already exists.
+        @raise     KvException if the key k already exists.
         """
         self._logger.info("CREATE '%s' --> '%s'" % (k, v))
         try:
             return self._zk.create(k, v, sequence=sequence, makepath=True)
         except NodeExistsError:
             self._logger.error("in create(), key %s exists" % k)
-            raise CssException(CssException.KEY_EXISTS, k)
+            raise KvException(KvException.KEY_EXISTS, k)
 
     def exists(self, k):
         """
@@ -115,7 +111,7 @@ class KvInterface(object):
 
         @return string  Value for a given key. 
 
-        @raise     Raise CssException if the key doesn't exist.
+        @raise     Raise KvException if the key doesn't exist.
         """
         try:
             v, stat = self._zk.get(k)
@@ -123,7 +119,7 @@ class KvInterface(object):
             return v
         except NoNodeError:
             self._logger.error("in get(), key %s does not exist" % k)
-            raise CssException(CssException.KEY_DOES_NOT_EXIST, k)
+            raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
 
     def getChildren(self, k):
         """
@@ -133,14 +129,14 @@ class KvInterface(object):
 
         @return    List_of_children of the node k. 
 
-        @raise     Raise CssException if the key does not exists.
+        @raise     Raise KvException if the key does not exists.
         """
         try:
             self._logger.info("GETCHILDREN '%s'" % (k))
             return self._zk.get_children(k)
         except NoNodeError:
             self._logger.error("in getChildren(), key %s does not exist" % k)
-            raise CssException(CssException.KEY_DOES_NOT_EXIST, k)
+            raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
 
     def set(self, k, v):
         """
@@ -149,14 +145,14 @@ class KvInterface(object):
         @param k  Key.
         @param v  Value.
 
-        @raise     Raise CssException if the key doesn't exist.
+        @raise     Raise KvException if the key doesn't exist.
         """
         try:
             self._logger.info("SET '%s' --> '%s'" % (k, v))
             self._zk.set(k, v)
         except NoNodeError:
             self._logger.error("in set(), key %s does not exist" % k)
-            raise CssException(CssException.KEY_DOES_NOT_EXIST, k)
+            raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
 
     def delete(self, k, recursive=False):
         """
@@ -166,7 +162,7 @@ class KvInterface(object):
         @param recursive Flag. If set, all existing children nodes will be
                          deleted.
 
-        @raise     Raise CssException if the key doesn't exist.
+        @raise     Raise KvException if the key doesn't exist.
         """
         try:
             if k == "/": # zookeeper will fail badly if we try to delete root node
@@ -182,7 +178,7 @@ class KvInterface(object):
                 self._zk.delete(k, recursive=recursive)
         except NoNodeError:
             self._logger.error("in delete(), key %s does not exist" % k)
-            raise CssException(CssException.KEY_DOES_NOT_EXIST, k)
+            raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
 
     def dumpAll(self, fileH=sys.stdout):
         """

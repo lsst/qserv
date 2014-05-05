@@ -31,7 +31,7 @@ import logging
 import os
 import time
 import unittest
-from kvInterface import KvInterface, CssException
+from kvInterface import KvInterface, KvException
 
 class TestKvInterface(unittest.TestCase):
     def setUp(self):
@@ -55,7 +55,7 @@ class TestKvInterface(unittest.TestCase):
         v1a = self._kvI.get(k1)
         assert(v1a == v1)
         # try to create it again, this should fail
-        self.assertRaises(CssException, self._kvI.create, k1, v1)
+        self.assertRaises(KvException, self._kvI.create, k1, v1)
         # set the value to something else
         self._kvI.set(k1, v2)
         # get it
@@ -64,21 +64,21 @@ class TestKvInterface(unittest.TestCase):
         # delete it
         self._kvI.delete(k1)
         # try deleting it again, this should fail
-        self.assertRaises(CssException, self._kvI.delete, k1)
+        self.assertRaises(KvException, self._kvI.delete, k1)
         # try to get it, it should fail
-        self.assertRaises(CssException, self._kvI.get, k1)
+        self.assertRaises(KvException, self._kvI.get, k1)
         # try to set it, it should fail
-        self.assertRaises(CssException, self._kvI.set, k1, v1)
+        self.assertRaises(KvException, self._kvI.set, k1, v1)
         # get the second key
         v2a = self._kvI.get(k2)
         assert(v2a == v2)
         # test getChildren
         self._kvI.getChildren("/unittest/")
-        self.assertRaises(CssException, self._kvI.getChildren, "/whatever")
+        self.assertRaises(KvException, self._kvI.getChildren, "/whatever")
         # try to set for invalid key
-        self.assertRaises(CssException, self._kvI.set, "/whatever", "value")
+        self.assertRaises(KvException, self._kvI.set, "/whatever", "value")
         # try to delete invalid key
-        self.assertRaises(CssException, self._kvI.delete, "/whatever")
+        self.assertRaises(KvException, self._kvI.delete, "/whatever")
         # print everything
         self._kvI.dumpAll()
 
