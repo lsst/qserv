@@ -44,7 +44,7 @@ class DataReader():
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']='\t'
 
-            # TODO : read from QMS db.params file
+            # TODO : read from CSS db.params file
             self.dataConfig['num-stripes'] = 85
             self.dataConfig['num-substripes'] = 12
 
@@ -74,7 +74,7 @@ class DataReader():
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
 
-            # TODO : read from QMS db.params file
+            # TODO : read from CSS db.params file
             self.dataConfig['num-stripes'] = 85
             self.dataConfig['num-substripes'] = 12
 
@@ -117,7 +117,7 @@ class DataReader():
             self.dataConfig['zip-extension']='.gz'
             self.dataConfig['delimiter']=','
 
-            # TODO : read from QMS db.params file
+            # TODO : read from CSS db.params file
             self.dataConfig['num-stripes'] = 85
             self.dataConfig['num-substripes'] = 12
 

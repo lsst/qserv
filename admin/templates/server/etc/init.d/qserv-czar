@@ -6,7 +6,7 @@
 # description: qserv-czar is the Qserv czar service \
 # It receive SQL queries process it and send it to Qserv workers \
 # and then it returns the results it to mysql-proxy. \
-# Note that Qserv service won't start if QMS database is empty.
+# Note that Qserv service won't start if CSS database is empty.
 
 ### BEGIN INIT INFO
 # Provides: qserv-czar
@@ -14,7 +14,7 @@
 # Description: qserv-czar is the Qserv czar service \
 #              It receive SQL queries process it and send it to Qserv workers \
 #              and then it returns the results it to mysql-proxy. \
-#              Note that Qserv service won't start if QMS database is empty.
+#              Note that Qserv service won't start if CSS database is empty.
 ### END INIT INFO
 
 # Source functions library.
