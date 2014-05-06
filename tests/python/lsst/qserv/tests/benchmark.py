@@ -38,9 +38,11 @@ import tarfile
 from lsst.qserv.tests import qservdataloader, mysqldataloader, datareader
 from lsst.qserv.admin import commons, download
 from lsst.qserv.tests.sql import cmd, connection, const
+import errno 
 import os
 import re
 import stat
+import sys
 
 from filecmp import dircmp
 
@@ -51,6 +53,7 @@ class Benchmark():
                  log_file_prefix='qserv-tests',
                  logging_level=logging.INFO ):
 
+        self.logger = logging.getLogger()
         self.dataLoader = dict()
         self._sqlInterface = dict()
         self._mode=None
@@ -64,14 +67,22 @@ class Benchmark():
         if out_dirname_prefix == None :
             out_dirname_prefix = self.config['qserv']['tmp_dir']
         self._out_dirname = os.path.join(out_dirname_prefix, "qservTest_case%s" % case_id)
-
-        self.test_dir = os.path.join(
-            self.config['qserv']['base_dir'],'tests'
-        ) 
-        self.testdata_dir = os.path.join(
-            self.test_dir,'testdata'
-        ) 
-        self._downloadTestdata()
+        
+        # TODO : check existence and "consistency"
+        if ( not 'testdata_dir' in self.config['qserv'].keys()
+            or self.config['qserv']['testdata_dir'] == None
+            or not os.path.isdir(self.config['qserv']['testdata_dir'])
+            ) :
+            self.logger.critical("Unable to find tests datasets.\n" +
+                    "Please fill 'testdata_dir' value in "+
+                    "~/.lsst/qserv.conf with the path of the directory " +
+                    "containing tests datasets.\n" +
+                    "FOR EXPERIMENTED USERS : You can also edit centralized "+
+                    "configuration file (qserv.conf) in $QSERV_DIR/admin and "+
+                    "reconfigure client by running 'scons client'")
+            sys.exit(errno.EIO)        
+        else :
+            self.testdata_dir = self.config['qserv']['testdata_dir'] 
 
         qserv_tests_dirname = os.path.join(
             self.testdata_dir,
@@ -83,24 +94,6 @@ class Benchmark():
         self.dataReader = datareader.DataReader(self._in_dirname, "case%s" % self._case_id)
 
         self._queries_dirname = os.path.join(qserv_tests_dirname,"queries")
-
-        self.logger = logging.getLogger()
-
-    def _downloadTestdata(self):
-        log = logging.getLogger()
-        testdata_url = self.config['tests']['archive']
-        
-        if not os.path.isdir(self.testdata_dir):
-            testdata_archive = os.path.basename(testdata_url)
-            log.debug("downloading test data %s" % testdata_url)
-            if not os.path.exists(self.test_dir):
-                os.makedirs(self.test_dir)
-            testdata_file=os.path.join(self.test_dir,testdata_archive)
-            download.download(testdata_file,testdata_url)
-            tar = tarfile.open(testdata_file)
-            tar.extractall(self.test_dir)
-            tar.close()
-
 
     def runQueries(self, stopAt):
         self.logger.debug("Running queries : (stop-at : %s)" % stopAt)
