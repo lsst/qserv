@@ -10,6 +10,8 @@ setupRequired(twisted)
 setupRequired(xrootd)
 setupRequired(zookeeper)
 
+setupOptional(qservdata)
+
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/lib/python)
 envPrepend(LD_LIBRARY_PATH, ${PRODUCT_DIR}/lib)
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
