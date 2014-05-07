@@ -37,6 +37,7 @@ from lsst.qserv.css.kvInterface import KvException
 
 class TestQservAdmin(unittest.TestCase):
     def setUp(self):
+        self._impl = QservAdmin('127.0.0.1:12181')
         self._baseDir = "admin/examples"
 
     def testCreateDb(self):
