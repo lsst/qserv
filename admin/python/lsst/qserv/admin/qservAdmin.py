@@ -37,26 +37,8 @@ Known issues and todos:
 import logging
 import uuid
 
-from lsst.db.exception import produceExceptionClass
 from lsst.qserv.css.kvInterface import KvInterface, KvException
-
-####################################################################################
-QAdmException = produceExceptionClass('QAdmException', [
-    (3001, "AUTH_PROBLEM",      "Can't access the config file."),
-    (3005, "BAD_CMD",           "Bad command, see HELP for details."),
-    (3010, "CONFIG_NOT_FOUND",  "Config file not found."),
-    (3015, "DB_EXISTS",         "Database already exists."),
-    (3020, "DB_DOES_NOT_EXIST", "Database does not exist."),
-    (3025, "MISSING_PARAM",     "Missing parameter."),
-    (3030, "TB_EXISTS",         "Table already exists."),
-    (3035, "TB_DOES_NOT_EXIST", "Table does not exist."),
-    (3040, "WRONG_PARAM",       "Unrecognized parameter."),
-    (3045, "WRONG_PARAM_VAL",   "Unrecognized value for parameter."),
-    (9997, "CSSERR",            "CSS error."),
-    (9998, "NOT_IMPLEMENTED",   "Feature not implemented yet."),
-    (9999, "INTERNAL",          "Internal error.")])
-
-####################################################################################
+from lsst.qserv.admin.qservAdminException import QservAdminException
 
 class QservAdmin(object):
     """
@@ -84,7 +66,7 @@ class QservAdmin(object):
                                (dbName, str(options)))
         if self._dbExists(dbName):
             self._logger.error("Database '%s' already exists." % dbName)
-            raise QAdmException(QAdmException.DB_EXISTS, dbName)
+            raise QservAdminException(QservAdminException.DB_EXISTS, dbName)
         # double check if all required options are specified
         for x in ["nStripes", "nSubStripes", "overlap", "storageClass",
                   "objIdIndex"]:
@@ -125,10 +107,10 @@ class QservAdmin(object):
         self._logger.info("Creating db '%s' like '%s'" % (dbName, dbName2))
         if self._dbExists(dbName):
             self._logger.error("Database '%s' already exists." % dbName)
-            raise QAdmException(QAdmException.DB_EXISTS, dbName)
+            raise QservAdminException(QservAdminException.DB_EXISTS, dbName)
         if not self._dbExists(dbName2):
             self._logger.error("Database '%s' does not exist." % dbName2)
-            raise QAdmException(QAdmException.DB_DOES_NOT_EXIST, dbName2)
+            raise QservAdminException(QservAdminException.DB_DOES_NOT_EXIST, dbName2)
         dbP = "/DATABASES/%s" % dbName
         try:
             self._kvI.create(dbP, "PENDING")
@@ -153,7 +135,7 @@ class QservAdmin(object):
         self._logger.info("Drop database '%s'" % dbName)
         if not self._dbExists(dbName):
             self._logger.error("Database '%s' does not exist." % dbName)
-            raise QAdmException(QAdmException.DB_DOES_NOT_EXIST, dbName)
+            raise QservAdminException(QservAdminException.DB_DOES_NOT_EXIST, dbName)
         self._kvI.delete("/DATABASES/%s" % dbName, recursive=True)
 
     def showDatabases(self):
@@ -192,11 +174,11 @@ class QservAdmin(object):
                                (dbName, tableName, str(options)))
         if not self._dbExists(dbName):
             self._logger.error("Database '%s' does not exist." % dbName)
-            raise QAdmException(QAdmException.DB_DOES_NOT_EXIST, dbName)
+            raise QservAdminException(QservAdminException.DB_DOES_NOT_EXIST, dbName)
         if self._tableExists(dbName, tableName):
             self._logger.error("Table '%s.%s' exists." % (dbName, tableName))
-            raise QAdmException(QAdmException.TB_EXISTS, 
-                                "%s.%s" % (dbName,tableName))
+            raise QservAdminException(QservAdminException.TB_EXISTS, 
+                                      "%s.%s" % (dbName,tableName))
         tbP = "/DATABASES/%s/TABLES/%s" % (dbName, tableName)
         options["uuid"] = str(uuid.uuid4())
         try:
