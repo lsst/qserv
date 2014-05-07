@@ -30,7 +30,8 @@ This is a unittest for qservAdmin
 import logging
 import unittest
 
-from lsst.qserv.admin.qservAdmin import QservAdmin, QAdmException
+from lsst.qserv.admin.qservAdmin import QservAdmin
+from lsst.qserv.admin.qservAdminException import QservAdminException
 from lsst.qserv.css.kvInterface import KvException
 
 
@@ -47,15 +48,19 @@ class TestQservAdmin(unittest.TestCase):
               "overlap": "0.0001",
               "objIdIndex": "0.25"}
         self._impl.createDb("db1a", dd)
-        self.assertRaises(QAdmException, self._impl.createDb, "db1a", dd)
+        self.assertRaises(QservAdminException, self._impl.createDb, "db1a", dd)
         self._impl.createDbLike("db1b", "db1a")
         # attempt to create db that already exists
-        self.assertRaises(QAdmException, self._impl.createDbLike, "db1b", "db1a")
+        self.assertRaises(QservAdminException, self._impl.createDbLike, 
+                          "db1b", "db1a")
         # attempt to create db like non-existing db
-        self.assertRaises(QAdmException, self._impl.createDbLike, "db1b", "xxxx")
+        self.assertRaises(QservAdminException, self._impl.createDbLike, 
+                          "db1b", "xxxx")
         # attempt to create db like self
-        self.assertRaises(QAdmException, self._impl.createDbLike, "db1a", "db1a")
-        self.assertRaises(QAdmException, self._impl.createDbLike, "xxxx", "xxxx")
+        self.assertRaises(QservAdminException, self._impl.createDbLike, 
+                          "db1a", "db1a")
+        self.assertRaises(QservAdminException, self._impl.createDbLike, 
+                          "xxxx", "xxxx")
 
         self._impl.createDb("db2", dd)
         self._impl.dumpEverything()
