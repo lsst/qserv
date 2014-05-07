@@ -4,29 +4,18 @@
 # Once Qserv is installed (cf. README.txt), in order to install your Qserv development 
 # version please use next commands,
 
-# installdir for your Qserv development version.
-PREFIX=/opt/qserv-core-dev
-# version number, you can use you JIRA ticket id here.
-VERSION=DM-xxx
 # path to your Qserv git repository
 QSERV_SRC_DIR=${HOME}/src/qserv/
-
-# declare your Qserv dev version in eups
-# Copy and modify table file if you want to modify Qserv dependencies
-eups declare qserv $VERSION -r $PREFIX -m $QSERV_SRC_DIR/ups/qserv.table 
-
-# unsetup Qserv version issued from distribution server
-unsetup qserv
+#
+# # Build and install your Qserv version
+cd $QSERV_SRC_DIR
+setup -r .
+eupspkg -er build               # build
+eupspkg -er install             # install to EUPS stack directory
+eupspkg -er decl                # declare it to EUPS
 
 # Enable your Qserv version, and dependencies, in eups
 setup qserv $VERSION
-
-# Build and install your Qserv version
-cd $QSERV_SRC_DIR
-scons install prefix=$PREFIX
-
-# and then configure Qserv following instructions in README.txt
-# and run integration tests if you want to check your install
 
 # Test cases :
 # ------------ 
