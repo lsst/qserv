@@ -44,7 +44,8 @@ import sys
 
 # local imports
 from lsst.qserv.css.kvInterface import KvException
-from lsst.qserv.admin.qservAdmin import QservAdmin, QAdmException
+from lsst.qserv.admin.qservAdmin import QservAdmin
+from lsst.qserv.admin.qservAdminException import QservAdminException
 
 ####################################################################################
 class CommandParser(object):
@@ -102,7 +103,7 @@ class CommandParser(object):
                 pos = cmd.index(';')
                 try:
                     self._parse(cmd[:pos])
-                except QAdmException as e:
+                except QservAdminException as e:
                     self._logger.error(e.__str__())
                     print "ERROR: ", e.__str__()
                 cmd = cmd[pos+1:]
@@ -120,7 +121,7 @@ class CommandParser(object):
         if t in self._funcMap:
             self._funcMap[t](tokens[1:])
         else:
-            raise QAdmException(QAdmException.NOT_IMPLEMENTED, cmd)
+            raise QservAdminException(QservAdminException.NOT_IMPLEMENTED, cmd)
 
     def _parseCreate(self, tokens):
         """
@@ -132,7 +133,7 @@ class CommandParser(object):
         elif t == 'TABLE':
             self._parseCreateTable(tokens[1:])
         else:
-            raise QAdmException(QAdmException.BAD_CMD)
+            raise QservAdminException(QservAdminException.BAD_CMD)
 
     def _parseCreateDatabase(self, tokens):
         """
@@ -147,23 +148,23 @@ class CommandParser(object):
             try:
                 self._impl.createDb(dbName, options)
             except KvException as e:
-                raise QAdmException(QAdmException.CSSERR, 
+                raise QservAdminException(QservAdminException.CSSERR, 
                                     "Failed to create database '" + dbName + \
                                     "', error was: " +  e.__str__())
         elif l == 3:
             if tokens[1].upper() != 'LIKE':
-                raise QAdmException(QAdmException.BAD_CMD, 
+                raise QservAdminException(QservAdminException.BAD_CMD, 
                                     "Expected 'LIKE', found: '%s'." % tokens[1])
             dbName = tokens[0]
             dbName2 = tokens[2]
             try:
                 self._impl.createDbLike(dbName, dbName2)
             except KvException as e:
-                raise QAdmException(QAdmException.CSSERR, 
+                raise QservAdminException(QservAdminException.CSSERR, 
                              "Failed to create database '" + dbName + "' like '" + \
                              dbName2 + "', error was: ", e.__str__())
         else:
-            raise QAdmException(QAdmException.BAD_CMD, 
+            raise QservAdminException(QservAdminException.BAD_CMD, 
                                 "Unexpected number of arguments.")
 
     def _parseCreateTable(self, tokens):
@@ -174,7 +175,7 @@ class CommandParser(object):
         if l == 2:
             (dbTbName, configFile) = tokens
             if '.' not in dbTbName:
-                raise QAdmException(QAdmException.BAD_CMD, 
+                raise QservAdminException(QservAdminException.BAD_CMD, 
                    "Invalid argument '%s', should be <dbName>.<tbName>" % dbTbName)
             (dbName, tbName) = dbTbName.split('.')
             options = self._fetchOptionsFromConfigFile(configFile)
@@ -182,20 +183,20 @@ class CommandParser(object):
             try:
                 self._impl.createTable(dbName, tbName, options)
             except KvException as e:
-                raise QAdmException(QAdmException.CSSERR, 
+                raise QservAdminException(QservAdminException.CSSERR, 
                           "Failed to create table '" + dbName + "." + tbName + \
                           "', error was: " +  e.__str__())
         elif l == 3:
             (dbTbName, likeToken, dbTbName2) = tokens
             if likeToken.upper() != 'LIKE':
-                raise QAdmException(QAdmException.BAD_CMD, 
+                raise QservAdminException(QservAdminException.BAD_CMD, 
                                     "Expected 'LIKE', found: '%s'." % tokens[2])
             if '.' not in dbTbName:
-                raise QAdmException(QAdmException.BAD_CMD, 
+                raise QservAdminException(QservAdminException.BAD_CMD, 
                    "Invalid argument '%s', should be <dbName>.<tbName>" % dbTbName)
             (dbName, tbName) = dbTbName.split('.')
             if '.' not in dbTbName2:
-                raise QAdmException(QAdmException.BAD_CMD, 
+                raise QservAdminException(QservAdminException.BAD_CMD, 
                    "Invalid argument '%s', should be <dbName>.<tbName>" % dbTbName2)
             (dbName2, tbName2) = dbTbName2.split('.')
             try:
@@ -203,12 +204,12 @@ class CommandParser(object):
                 self._impl.createTableLike(dbName, tableName, dbName2, tableName2,
                                            options)
             except KvException as e:
-                raise QAdmException(QAdmException.CSSERR, 
+                raise QservAdminException(QservAdminException.CSSERR, 
                          "Failed to create table '" + dbName + "." + tbName + \
                          "' LIKE '" + dbName2 + "." + tbName2 + "', " + \
                          "'error was: ", e.__str__())
         else:
-            raise QAdmException(QAdmException.BAD_CMD, 
+            raise QservAdminException(QservAdminException.BAD_CMD, 
                                 "Unexpected number of arguments.")
 
     def _parseDrop(self, tokens):
@@ -219,25 +220,25 @@ class CommandParser(object):
         l = len(tokens)
         if t == 'DATABASE':
             if l != 2:
-                raise QAdmException(QAdmException.BAD_CMD,  
+                raise QservAdminException(QservAdminException.BAD_CMD,  
                                     "unexpected number of arguments")
             try:
                 self._impl.dropDb(tokens[1])
             except KvException as e:
-                raise QAdmException(QAdmException.CSSERR, 
+                raise QservAdminException(QservAdminException.CSSERR, 
                                     "Failed to drop database '" + tokens[1] + 
                                     ", error was: ", e.__str__())
         elif t == 'TABLE':
-            raise QAdmException(QAdmException.NOT_IMPLEMENTED, "DROP TABLE")
+            raise QservAdminException(QservAdminException.NOT_IMPLEMENTED, "DROP TABLE")
 
         elif t == 'EVERYTHING':
             try:
                 self._impl.dropEverything()
             except KvException as e:
-                raise QAdmException(QAdmException.CSSERR, 
+                raise QservAdminException(QservAdminException.CSSERR, 
                              "Failed to drop everything, error was: ", e.__str__())
         else:
-            raise QAdmException(QAdmException.BAD_CMD)
+            raise QservAdminException(QservAdminException.BAD_CMD)
 
     def _parseDump(self, tokens):
         """
@@ -248,7 +249,7 @@ class CommandParser(object):
         if t == 'EVERYTHING':
             self._impl.dumpEverything(dest)
         else:
-            raise QAdmException(QAdmException.BAD_CMD)
+            raise QservAdminException(QservAdminException.BAD_CMD)
 
     def _justExit(self, tokens):
         raise SystemExit()
@@ -263,7 +264,7 @@ class CommandParser(object):
         """
         Subparser - handles all RELEASE requests.
         """
-        raise QAdmException(QAdmException.NOT_IMPLEMENTED, "RELEASE")
+        raise QservAdminException(QservAdminException.NOT_IMPLEMENTED, "RELEASE")
 
     def _parseShow(self, tokens):
         """
@@ -273,7 +274,7 @@ class CommandParser(object):
         if t == 'DATABASES':
             self._impl.showDatabases()
         else:
-            raise QAdmException(QAdmException.BAD_CMD)
+            raise QservAdminException(QservAdminException.BAD_CMD)
 
     def _createDb(self, dbName, configFile):
         """
@@ -290,9 +291,9 @@ class CommandParser(object):
         key-value pair dictionary (flat, e.g., sections are ignored.)
         """
         if not os.path.exists(fName):
-            raise QAdmException(QAdmException.CONFIG_NOT_FOUND, fName)
+            raise QservAdminException(QservAdminException.CONFIG_NOT_FOUND, fName)
         if not os.access(fName, os.R_OK):
-            raise QAdmException(QAdmException.AUTH_PROBLEM, fName)
+            raise QservAdminException(QservAdminException.AUTH_PROBLEM, fName)
         config = ConfigParser.ConfigParser()
         config.optionxform = str # case sensitive
         config.read(fName)
