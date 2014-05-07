@@ -44,12 +44,12 @@ import sys
 
 # local imports
 from lsst.qserv.css.kvInterface import KvException
-from lsst.qserv.admin.qservAdminImpl import QservAdminImpl, QAdmException
+from lsst.qserv.admin.qservAdmin import QservAdmin, QAdmException
 
 ####################################################################################
 class CommandParser(object):
     """
-    Parse commands and calls appropriate function from qservAdminImpl.
+    Parse commands and calls appropriate function from qservAdmin.
     """
 
     def __init__(self, connInfo):
@@ -69,7 +69,7 @@ class CommandParser(object):
             'RELEASE': self._parseRelease,
             'SHOW':    self._parseShow
             }
-        self._impl = QservAdminImpl(connInfo)
+        self._impl = QservAdmin(connInfo)
         self._supportedCommands = """
   Supported commands:
     CREATE DATABASE <dbName> <configFile>;

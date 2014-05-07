@@ -21,7 +21,7 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 """
-This is a unittest for qservAdminImpl
+This is a unittest for qservAdmin
 
 @author  Jacek Becla, SLAC
 
@@ -30,13 +30,12 @@ This is a unittest for qservAdminImpl
 import logging
 import unittest
 
-from lsst.qserv.admin.qservAdminImpl import QservAdminImpl, QAdmException
+from lsst.qserv.admin.qservAdmin import QservAdmin, QAdmException
 from lsst.qserv.css.kvInterface import KvException
 
 
-class TestQservAdminImpl(unittest.TestCase):
+class TestQservAdmin(unittest.TestCase):
     def setUp(self):
-        self._impl = QservAdminImpl('127.0.0.1:12181')
         self._baseDir = "admin/examples"
 
     def testCreateDb(self):
@@ -86,7 +85,6 @@ class TestQservAdminImpl(unittest.TestCase):
 ####################################################################################
 def setLogging():
     logging.basicConfig(
-        #filename="/tmp/testQservAdminImpl.log",
         format='%(asctime)s %(name)s %(levelname)s: %(message)s', 
         datefmt='%m/%d/%Y %I:%M:%S', 
         level=logging.DEBUG)

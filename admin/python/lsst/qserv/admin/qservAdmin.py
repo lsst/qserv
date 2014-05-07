@@ -58,9 +58,9 @@ QAdmException = produceExceptionClass('QAdmException', [
 
 ####################################################################################
 
-class QservAdminImpl(object):
+class QservAdmin(object):
     """
-    QservAdminImpl implements functions needed by qserv_admin client program.
+    QservAdmin implements functions needed by qserv_admin client program.
     """
 
     def __init__(self, connInfo):
