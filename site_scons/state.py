@@ -132,7 +132,7 @@ def _initEnvironment(src_dir):
     """Construction and basic setup of the state.env variable."""
 
     global env
-    env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'swig', 'recinstall'])
+    env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'recinstall', 'swig_scanner'])
 
     _initVariables(src_dir)
 
