@@ -63,6 +63,17 @@ port=7080
 db=qservMeta
 # Steal resultdb settings for now.
 
+[css]
+# allowed values:zoo, mem. Default is zoo
+technology=zoo
+
+# For zoo, provide zookeeper connection information
+# For mem, provide location of file containing key-value pairs
+# (to learn how to dump key-value pairs, see
+# qserv/core/modules/css/KvInterfaceImplMem.cc)
+# TODO : localhost doesn't work on Ubuntu 14.04, why ?
+connection=127.0.0.1:2181
+
 [resultdb]
 host=
 port=0
@@ -83,12 +94,6 @@ chunkLimit=-1
 
 [mysql]
 mysqlclient=
-
-[metaServer]
-host=localhost
-port=7082
-user=qms
-passwd=qmsPass
 
 """)
 

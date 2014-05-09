@@ -226,7 +226,7 @@ class Benchmark():
             # restart xrootd in order to reload  export paths w.r.t loaded chunks, cf. #2478
             commons.restart('xrootd')
 
-            # Qserv fails to start if QMS is empty, so starting it again may be required
+            # Qserv fails to start if CSS db is empty, so starting it again may be required
             commons.restart('qserv-czar')
 
         # in order to close socket connections

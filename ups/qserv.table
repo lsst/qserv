@@ -1,3 +1,4 @@
+setupRequired(antlr)
 setupRequired(db)
 setupRequired(kazoo)
 setupRequired(luaxmlrpc)
