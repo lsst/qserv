@@ -9,7 +9,7 @@ def _detect(env):
     except KeyError:
         pass
     # antlr is named runantlr on Ubuntu 13.10 and Debian Wheezy
-    antlr = env.WhereIs('antlr') or env.WhereIs('runantlr')
+    antlr = SCons.Util.WhereIs('antlr') or SCons.Util.WhereIs('runantlr')
     if antlr:
         return antlr
     raise SCons.Errors.StopError(

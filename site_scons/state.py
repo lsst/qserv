@@ -84,6 +84,7 @@ def _initVariables(src_dir):
     opts.AddVariables(
             (PathVariable('build_dir', 'Qserv build dir', os.path.join(src_dir,'build'), PathVariable.PathIsDirCreate)),
             (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
+            (PathVariable('ANTLR_DIR', 'antlr install dir', _findPrefix("ANTLR", "antlr"), PathVariable.PathIsDir)),
             (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefix("XROOTD", "xrootd"), PathVariable.PathIsDir)),
             (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefix("MYSQL", "mysqld_safe"), PathVariable.PathIsDir)),
             (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', _findPrefix("MYSQLPROXY", "mysql-proxy"), PathVariable.PathIsDir)),
@@ -99,6 +100,9 @@ def _initVariables(src_dir):
     opts.AddVariables(
             (PathVariable('prefix', 'qserv install dir', os.path.join(env['build_dir'], "dist"), PathVariable.PathIsDirCreate)),
             (PathVariable('PROTOC', 'protoc binary path', None, PathVariable.PathIsFile)),
+            (PathVariable('ANTLR', 'antlr binary path', None, PathVariable.PathIsFile)),
+            (PathVariable('ANTLR_INC', 'antlr include path', os.path.join(env['ANTLR_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('ANTLR_LIB', 'antlr libraries path', os.path.join(env['ANTLR_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('XROOTD_INC', 'xrootd include path', os.path.join(env['XROOTD_DIR'], "include", "xrootd"), PathVariable.PathIsDir)),
             (PathVariable('XROOTD_LIB', 'xrootd libraries path', os.path.join(env['XROOTD_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('MYSQL_INC', 'mysql include path', os.path.join(env['MYSQL_DIR'], "include"), PathVariable.PathIsDir)),
