@@ -219,7 +219,7 @@ ForemanImpl::RunnerMgr::getNextTask(Runner* r, wcontrol::Task::Ptr previous) {
     return tq->front();
 }
 
-wlog::WLogger::Ptr 
+wlog::WLogger::Ptr
 ForemanImpl::RunnerMgr::getLog() {
     return _f._log;
 }

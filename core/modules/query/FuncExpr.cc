@@ -75,7 +75,7 @@ FuncExpr::findColumnRefs(ColumnRef::List& list) {
     }
 }
 
-std::ostream& 
+std::ostream&
 operator<<(std::ostream& os, FuncExpr const& fe) {
     os << "(" << fe.name << ",";
     output(os, fe.params);
@@ -83,12 +83,12 @@ operator<<(std::ostream& os, FuncExpr const& fe) {
     return os;
 }
 
-std::ostream& 
+std::ostream&
 operator<<(std::ostream& os, FuncExpr const* fe) {
     return os << *fe;
 }
 
-void 
+void
 FuncExpr::renderTo(QueryTemplate& qt) const {
     qt.append(name);
     qt.append("(");

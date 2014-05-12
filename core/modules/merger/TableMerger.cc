@@ -335,7 +335,7 @@ bool TableMerger::_importResult(std::string const& dumpFile) {
 
 bool TableMerger::merge2(std::string const& dumpFile,
                         std::string const& tableName) {
-    boost::shared_ptr<util::MmapFile> m = 
+    boost::shared_ptr<util::MmapFile> m =
         util::MmapFile::newMap(dumpFile, true, false);
     if(!m.get()) {
         // Fallback to non-mmap version.

@@ -26,7 +26,7 @@
   */
 // No public interface (no WherePlugin.h)
 
-// System headers 
+// System headers
 #include <stdexcept>
 #include <string>
 #include "util/common.h"

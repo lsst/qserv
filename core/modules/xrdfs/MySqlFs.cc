@@ -372,7 +372,7 @@ extern "C" {
 XrdSfsFileSystem* XrdSfsGetFileSystem(
     XrdSfsFileSystem* native_fs, XrdSysLogger* lp, char const* fileName) {
     static boost::shared_ptr<lsst::qserv::wlog::WLogger> log;
-    boost::shared_ptr<lsst::qserv::wlog::WLogger::Printer> 
+    boost::shared_ptr<lsst::qserv::wlog::WLogger::Printer>
         p(new lsst::qserv::xrdfs::XrdPrinter(lp));
     if(!log.get()) {
         log.reset(new lsst::qserv::wlog::WLogger(p));

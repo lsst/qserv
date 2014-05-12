@@ -40,7 +40,7 @@ namespace lsst {
 namespace qserv {
 namespace sql {
 
-namespace { 
+namespace {
 void
 populateErrorObject(mysql::MySqlConnection& m, SqlErrorObject& o) {
     MYSQL* mysql = m.getMySql();
@@ -87,7 +87,7 @@ SqlResultIter::done() const {
 }
 
 bool
-SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig, 
+SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig,
                       std::string const& query) {
     _columnCount = 0;
     _connection.reset(new mysql::MySqlConnection(sqlConfig, true));

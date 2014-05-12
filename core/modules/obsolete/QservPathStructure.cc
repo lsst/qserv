@@ -41,7 +41,7 @@ using std::vector;
 namespace lsst {
 namespace qserv {
 namespace obsolete {
-    
+
 bool
 QservPathStructure::insert(const vector<string>& paths) {
     _paths.clear();

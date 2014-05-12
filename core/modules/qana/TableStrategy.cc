@@ -193,7 +193,7 @@ public:
     }
 };
 
-inline void updateMappingFromTuples(qana::QueryMapping& m, 
+inline void updateMappingFromTuples(qana::QueryMapping& m,
                                     Tuples const& tuples) {
     // Look for subChunked tables
     for(Tuples::const_iterator i=tuples.begin();
@@ -389,12 +389,12 @@ int TableStrategy::getPermutationCount() const {
 
 }
 
-query::TableRefListPtr 
+query::TableRefListPtr
 TableStrategy::getPermutation(int permutation, query::TableRefList const& tList) {
     query::TableRefListPtr oList(new query::TableRefList()); //tList.size()));
-    std::transform(tList.begin(), 
+    std::transform(tList.begin(),
                    tList.end(),
-                   std::back_inserter(*oList), 
+                   std::back_inserter(*oList),
                    computeTable(_impl->tuples, permutation));
     return oList;
 }

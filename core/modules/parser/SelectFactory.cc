@@ -169,7 +169,7 @@ SelectListFactory::attachTo(SqlSQL2Parser& p) {
     p._columnAliasHandler = _columnAliasH;
 }
 
-boost::shared_ptr<query::SelectList> 
+boost::shared_ptr<query::SelectList>
 SelectListFactory::getProduct() {
     boost::shared_ptr<query::SelectList> slist(new query::SelectList());
     slist->_valueExprList = _valueExprList;

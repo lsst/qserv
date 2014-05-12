@@ -48,7 +48,7 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-RequestTaker::RequestTaker(wbase::TaskAcceptor::Ptr acceptor, 
+RequestTaker::RequestTaker(wbase::TaskAcceptor::Ptr acceptor,
                            obsolete::QservPath const& path)
     : _acceptor(acceptor), _chunk(path.chunk()), _db(path.db()) {
 }

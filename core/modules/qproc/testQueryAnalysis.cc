@@ -24,7 +24,7 @@
   *
   * @brief Test C++ parsing and query analysis logic.
   *
-  * Note: All tests should have been migrated to the current parsing model. 
+  * Note: All tests should have been migrated to the current parsing model.
   * 5 test cases should fail with the current state of functionality.
   *
   * @author Daniel L. Wang, SLAC

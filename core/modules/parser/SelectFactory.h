@@ -64,7 +64,7 @@ namespace query {
 namespace lsst {
 namespace qserv {
 namespace parser {
-        
+
 /// SelectFactory is responsible for constructing a SelectStmt (including
 /// SelectList, FromClause, WhereClause, etc.) from ANTLR parse actions
 class SelectFactory {

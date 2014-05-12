@@ -53,7 +53,7 @@ public:
     }
 };
 
-std::ostream& 
+std::ostream&
 operator<<(std::ostream& os, Constraint const& c);
 typedef std::vector<Constraint> ConstraintVector;
 

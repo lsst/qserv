@@ -101,13 +101,13 @@ registerPlugin registerPostPlugin;
 // PostPlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void
-PostPlugin::applyLogical(query::SelectStmt& stmt, 
+PostPlugin::applyLogical(query::SelectStmt& stmt,
                          query::QueryContext& context) {
     _limit = stmt.getLimit();
 }
 
 void
-PostPlugin::applyPhysical(QueryPlugin::Plan& p, 
+PostPlugin::applyPhysical(QueryPlugin::Plan& p,
                           query::QueryContext& context) {
     // Idea: If a limit is available in the user query, compose a
     // merge statement (if one is not available) and turn on merge

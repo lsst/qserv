@@ -39,7 +39,7 @@
 
 // Third-party headers
 #include <boost/thread.hpp> // for mutex.
-#include <boost/shared_ptr.hpp> 
+#include <boost/shared_ptr.hpp>
 
 // Local headers
 #include "merger/mergeTypes.h"
@@ -52,7 +52,7 @@ namespace merger {
 }
 namespace mysql {
     class MySqlConfig;
-}    
+}
 namespace sql {
     class SqlConnection;
 }

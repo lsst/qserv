@@ -49,7 +49,7 @@ static std::ostream logStream(&syncBuffer);
 namespace lsst {
 namespace qserv {
 namespace log {
-        
+
 // Thread local storage to ensure one instance of Logger per thread.
 boost::thread_specific_ptr<Logger> Logger::_instancePtr;
 

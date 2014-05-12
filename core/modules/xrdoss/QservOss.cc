@@ -171,7 +171,7 @@ bool QservOss::_checkExist(std::string const& db, int chunk) {
 #if 0
     assert(_pathSet.get());
     return wpublish::MySqlExportMgr::checkExist(*_pathSet, db, chunk);
-#else 
+#else
     return _chunkInventory->has(db, chunk);
 #endif
 }

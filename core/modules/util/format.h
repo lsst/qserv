@@ -23,7 +23,7 @@
 #ifndef LSST_QSERV_UTIL_FORMAT_H
 #define LSST_QSERV_UTIL_FORMAT_H
 
-// System headers 
+// System headers
 #include <assert.h>
 #include <regex.h>
 #include <string>

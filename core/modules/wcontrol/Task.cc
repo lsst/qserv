@@ -74,7 +74,7 @@ namespace {
         f.set_resulttable(tables);
     }
 
-    std::ostream& 
+    std::ostream&
     dump(std::ostream& os,
          lsst::qserv::proto::TaskMsg_Fragment const& f) {
         os << "frag: "
@@ -106,7 +106,7 @@ Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
         && x->msg->chunkid()  == y->msg->chunkid();
 }
 // Task::PtrChunkIdGreater functor
-bool 
+bool
 Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if(!x || !y) { return false; }
     if((!x->msg) || (!y->msg)) { return false; }
@@ -116,7 +116,7 @@ Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
 ////////////////////////////////////////////////////////////////////////
 // Task
 ////////////////////////////////////////////////////////////////////////
-std::string const 
+std::string const
 Task::defaultUser = "qsmaster";
 
 Task::Task(wbase::ScriptMeta const& s, std::string const& user_) {

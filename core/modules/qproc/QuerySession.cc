@@ -67,7 +67,7 @@ void printConstraints(query::ConstraintVector const& cv) {
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
-QuerySession::QuerySession(boost::shared_ptr<css::Facade> cssFacade) : 
+QuerySession::QuerySession(boost::shared_ptr<css::Facade> cssFacade) :
     _cssFacade(cssFacade) {
 }
 

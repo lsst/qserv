@@ -28,7 +28,7 @@
   */
 #include "query/Predicate.h"
 
-// 
+//
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"

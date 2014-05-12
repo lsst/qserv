@@ -91,7 +91,7 @@ public:
     virtual bool runQuery(char const* query, int qSize,
                           SqlResults& results, SqlErrorObject&);
     virtual bool runQuery(char const* query, int qSize, SqlErrorObject&);
-    virtual bool runQuery(std::string const query, SqlResults&, 
+    virtual bool runQuery(std::string const query, SqlResults&,
                           SqlErrorObject&);
     /// with runQueryIter SqlConnection is busy until SqlResultIter is closed
     virtual boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);

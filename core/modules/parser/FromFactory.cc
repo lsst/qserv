@@ -63,7 +63,7 @@ inline RefAST walkToSiblingBefore(RefAST node, int typeId) {
     return RefAST();
 }
 
-inline std::string 
+inline std::string
 getSiblingStringBounded(RefAST left, RefAST right) {
     lsst::qserv::parser::CompactPrintVisitor<RefAST> p;
     for(; left.get(); left = left->getNextSibling()) {
@@ -166,7 +166,7 @@ namespace parser {
 ////////////////////////////////////////////////////////////////////////
 // ParseAliasMap misc impl. (to be placed in ParseAliasMap.cc later)
 ////////////////////////////////////////////////////////////////////////
-std::ostream& 
+std::ostream&
 operator<<(std::ostream& os, ParseAliasMap const& m) {
     typedef ParseAliasMap::Miter Miter;
     os << "AliasMap fwd(";
@@ -517,7 +517,7 @@ private:
             return query::TableRef::Ptr(new query::TableRef(qn.getQual(1),
                                                             qn.getName(), alias));
         } else {
-            return query::TableRef::Ptr(new query::TableRef("", 
+            return query::TableRef::Ptr(new query::TableRef("",
                                                             qn.getName(), alias));
         }
     }

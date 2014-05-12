@@ -22,7 +22,7 @@
 
 // class SqlInsertIter -- A class that finds INSERT statements in
 // mysqldump output and iterates over them.
-// Should become obsolete with new  dump-less result transfer processing 
+// Should become obsolete with new  dump-less result transfer processing
 
 #include "merger/SqlInsertIter.h"
 

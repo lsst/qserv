@@ -53,7 +53,7 @@ namespace parser {
     class ValueExprFactory;
 }}} // End of forward declarations
 
-    
+
 namespace lsst {
 namespace qserv {
 namespace parser {
@@ -66,7 +66,7 @@ public:
     friend class TableRefListH;
     class RefGenerator;
 
-    FromFactory(boost::shared_ptr<ParseAliasMap> aliases, 
+    FromFactory(boost::shared_ptr<ParseAliasMap> aliases,
                 boost::shared_ptr<ValueExprFactory> vf);
 
     boost::shared_ptr<query::FromList> getProduct();

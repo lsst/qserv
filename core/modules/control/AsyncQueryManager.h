@@ -121,7 +121,7 @@ public:
     void addToWriteQueue(DynamicWorkQueue::Callable * callable);
 
     qproc::QuerySession& getQuerySession() { return *_qSession; }
-        
+
 private:
     // QuerySpec: ChunkQuery object + result name
     typedef std::pair<boost::shared_ptr<qdisp::ChunkQuery>, std::string> QuerySpec;

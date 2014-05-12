@@ -66,7 +66,7 @@
 #define QSERV_USE_STUPID_STRING 1
 
 namespace {
-    
+
 // Boost launching helper
 template <typename Callable>
 void launchThread(Callable const& c) {

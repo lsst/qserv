@@ -73,7 +73,7 @@ public:
 namespace lsst {
 namespace qserv {
 namespace parser {
-        
+
 // Creates a new text node and and puts it into the tree
 // after the specified node, but before the node's next sibling.
 antlr::RefAST
@@ -103,7 +103,7 @@ insertTextNodeBefore(antlr::ASTFactory* factory,
    return n;
 }
 
-void 
+void
 printDigraph(std::string lbl, std::ostream& o, antlr::RefAST n) {
     DigraphVisitor<antlr::RefAST, std::list<antlr::RefAST> > dv;
     std::list<antlr::RefAST> c;

@@ -225,9 +225,9 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(query::SelectStmt& stmt, 
+    virtual void applyLogical(query::SelectStmt& stmt,
                               query::QueryContext& context);
-    virtual void applyPhysical(QueryPlugin::Plan& p, 
+    virtual void applyPhysical(QueryPlugin::Plan& p,
                                query::QueryContext& context);
 private:
     int _rewriteTables(qana::SelectStmtList& outList,
@@ -272,7 +272,7 @@ registerPlugin registerTablePlugin;
 // TablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void
-TablePlugin::applyLogical(query::SelectStmt& stmt, 
+TablePlugin::applyLogical(query::SelectStmt& stmt,
                           query::QueryContext& context) {
     // Idea: Add aliases to all table references in the from-list (if
     // they don't exist already) and then patch the other clauses so
@@ -327,7 +327,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
 }
 
 void
-TablePlugin::applyPhysical(QueryPlugin::Plan& p, 
+TablePlugin::applyPhysical(QueryPlugin::Plan& p,
                            query::QueryContext& context) {
     // For each entry in original's SelectList, modify the SelectList
     // for the parallel and merge versions.
@@ -402,7 +402,7 @@ int TablePlugin::_rewriteTables(qana::SelectStmtList& outList,
     if(permutationCount > 1)
         for(int i=0; i < permutationCount; ++i) {
             boost::shared_ptr<query::SelectStmt> stmt = in.clone();
-            query::TableRefListPtr trl = 
+            query::TableRefListPtr trl =
                 ts.getPermutation(i, fList.getTableRefList());
             query::FromList::Ptr f(new query::FromList(trl));
             stmt->setFromList(f);

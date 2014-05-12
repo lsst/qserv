@@ -28,7 +28,7 @@
 #ifndef LSST_QSERV_WCONTROL_TASK_H
 #define LSST_QSERV_WCONTROL_TASK_H
 
-// System headers 
+// System headers
 #include <deque>
 #include <string>
 
@@ -49,7 +49,7 @@ namespace proto {
 
 
 namespace lsst {
-namespace qserv {        
+namespace qserv {
 namespace wcontrol {
 
 struct Task {

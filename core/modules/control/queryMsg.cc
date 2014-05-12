@@ -35,8 +35,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace control {        
-    
+namespace control {
+
 int queryMsgGetCount(int session) {
     control::AsyncQueryManager& qm = getAsyncManager(session);
     boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();

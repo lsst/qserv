@@ -67,7 +67,7 @@ void getDbs(lsst::qserv::wlog::WLogger& log,
 /// Functor to be called per-table name
 class doTable {
 public:
-    doTable(boost::regex& regex, 
+    doTable(boost::regex& regex,
             lsst::qserv::wpublish::MySqlExportMgr::ChunkMap& chunkMap)
         : _regex(regex), _chunkMap(chunkMap) {}
     void operator()(std::string const& tableName) {
@@ -105,7 +105,7 @@ struct printChunk {
 
 /// Functor for iterating over a ChunkMap and updating a StringSet.
 struct addDbItem {
-    addDbItem(std::string const& dbName, 
+    addDbItem(std::string const& dbName,
               lsst::qserv::wpublish::MySqlExportMgr::StringSet& stringSet)
         : _dbName(dbName), _stringSet(stringSet) {}
     void operator()(lsst::qserv::wpublish::MySqlExportMgr::ChunkMap::value_type const& tuple) {
@@ -156,7 +156,7 @@ private:
 namespace lsst {
 namespace qserv {
 namespace wpublish {
-        
+
 void MySqlExportMgr::_init() {
     std::string chunkedForm("(\\w+)_(\\d+)");
     boost::regex regex(chunkedForm);

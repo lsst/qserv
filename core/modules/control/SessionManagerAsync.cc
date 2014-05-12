@@ -30,7 +30,7 @@
 namespace lsst {
 namespace qserv {
 namespace control {
-            
+
 SessionManagerAsync&
 getSessionManagerAsync() {
 

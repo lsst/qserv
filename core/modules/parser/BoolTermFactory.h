@@ -36,7 +36,7 @@
 #include <boost/shared_ptr.hpp>
 
 // Forward declarations
-namespace lsst { 
+namespace lsst {
 namespace qserv {
 namespace parser {
     class ValueExprFactory;
@@ -52,7 +52,7 @@ namespace query {
 }}} // End of forward declarations
 
 
-namespace lsst { 
+namespace lsst {
 namespace qserv {
 namespace parser {
 
@@ -89,7 +89,7 @@ public:
     /// Import a node into the factory
     class bfImport {
     public:
-        bfImport(BoolTermFactory& bf, query::BoolFactor& bfr) : 
+        bfImport(BoolTermFactory& bf, query::BoolFactor& bfr) :
             _bf(bf), _bfr(bfr)  {}
         void operator()(antlr::RefAST a);
     private:

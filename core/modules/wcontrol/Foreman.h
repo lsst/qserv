@@ -104,7 +104,7 @@ protected:
     explicit Foreman() {}
 };
 
-    Foreman::Ptr 
+    Foreman::Ptr
     newForeman(Foreman::Scheduler::Ptr s, boost::shared_ptr<wlog::WLogger> log);
 
 }}}  // namespace lsst::qserv::wcontrol

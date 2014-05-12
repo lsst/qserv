@@ -64,7 +64,7 @@ public:
     QueryContext() {}
     typedef std::list<boost::shared_ptr<QsRestrictor> > RestrList;
 
-    boost::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive 
+    boost::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive
                                               ///  for this lifetime.
     std::string defaultDb; ///< User session db context
     std::string dominantDb; ///< "dominant" database for this query

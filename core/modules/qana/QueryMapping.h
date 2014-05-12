@@ -80,9 +80,9 @@ public:
 
     QueryMapping();
 
-    std::string apply(qproc::ChunkSpec const& s, 
+    std::string apply(qproc::ChunkSpec const& s,
                       query::QueryTemplate const& t) const;
-    std::string apply(qproc::ChunkSpecSingle const& s, 
+    std::string apply(qproc::ChunkSpecSingle const& s,
                       query::QueryTemplate const& t) const;
 
     // Modifiers

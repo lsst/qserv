@@ -36,7 +36,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace wdb {            
+namespace wdb {
 
 ////////////////////////////////////////////////////////////////////////
 void QueryPhyResult::addResultTable(std::string const& t) {

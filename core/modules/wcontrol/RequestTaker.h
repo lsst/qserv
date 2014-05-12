@@ -38,7 +38,7 @@ namespace obsolete {
     // Forward
     class QservPath;
 }
-    
+
 namespace wcontrol {
 
 
@@ -46,7 +46,7 @@ class RequestTaker {
 public:
     typedef int64_t Size;
 
-    explicit RequestTaker(wbase::TaskAcceptor::Ptr acceptor, 
+    explicit RequestTaker(wbase::TaskAcceptor::Ptr acceptor,
                           obsolete::QservPath const& path);
     bool receive(Size offset, char const* buffer, Size bufferSize);
     bool complete();

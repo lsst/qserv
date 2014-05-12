@@ -44,7 +44,7 @@ public:
     virtual ~KvInterface() {};
 
     /**
-     * Create a key/value pair. 
+     * Create a key/value pair.
      * Throws CssException if the key already exists (or if any other problem,
      * e.g., a connection error is detected).
      */
@@ -57,7 +57,7 @@ public:
 
     /**
      * Returns value for a given key.
-     * Throws CssException if the key does not exist (or if any other problem, 
+     * Throws CssException if the key does not exist (or if any other problem,
      * e.g., a connection error is detected).
      */
     virtual std::string get(std::string const& key) = 0;
@@ -67,7 +67,7 @@ public:
      * Throws CssException if there are any other problems, e.g., a connection
      * error is detected).
      */
-    virtual std::string get(std::string const& key, 
+    virtual std::string get(std::string const& key,
                             std::string const& defaultValue) = 0;
 
     /**

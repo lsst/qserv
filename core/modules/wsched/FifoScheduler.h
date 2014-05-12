@@ -35,7 +35,7 @@ namespace wcontrol {
     // Forward
     class Task;
 }
-   
+
 namespace wsched {
 
 class FifoScheduler : public wcontrol::Foreman::Scheduler {

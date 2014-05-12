@@ -41,7 +41,7 @@ namespace obsolete {
 namespace lsst {
 namespace qserv {
 namespace xrdfs {
-        
+
 enum FileClass {COMBO, TWO_WRITE, TWO_READ, UNKNOWN};
 
 // Xrootd file path functionality

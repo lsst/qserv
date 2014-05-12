@@ -47,7 +47,7 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-inline query::ValueExprPtr 
+inline query::ValueExprPtr
 newExprFromAlias(std::string const& alias) {
     boost::shared_ptr<query::ColumnRef> cr(new query::ColumnRef("", "", alias));
     boost::shared_ptr<query::ValueFactor> vf;
@@ -167,9 +167,9 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(query::SelectStmt& stmt, 
+    virtual void applyLogical(query::SelectStmt& stmt,
                               query::QueryContext&) {}
-    virtual void applyPhysical(QueryPlugin::Plan& p, 
+    virtual void applyPhysical(QueryPlugin::Plan& p,
                                query::QueryContext&);
 private:
     query::AggOp::Mgr _aMgr;

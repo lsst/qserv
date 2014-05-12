@@ -47,7 +47,7 @@ namespace qproc {
     // Forward
     class ChunkSpec;
 } // namespace qproc
-    
+
 namespace control {
 
 enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};

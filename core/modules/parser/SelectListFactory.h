@@ -78,7 +78,7 @@ private:
 
     // Really private
     void _import(antlr::RefAST selectRoot);
-    
+
     void _addSelectColumn(antlr::RefAST expr);
     void _addSelectStar(antlr::RefAST child=antlr::RefAST());
     ValueExprPtr _newColumnExpr(antlr::RefAST expr);

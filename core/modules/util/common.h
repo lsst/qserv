@@ -46,7 +46,7 @@ typedef std::list<StringPair> StringPairList;
 typedef std::list<std::string> StringList;
 
 template <class Map>
-typename Map::mapped_type const& 
+typename Map::mapped_type const&
 getFromMap(Map const& m,
            typename Map::key_type const& key,
            typename Map::mapped_type const& defValue) {

@@ -40,7 +40,7 @@ namespace wlog {
 namespace lsst {
 namespace qserv {
 namespace wdb {
-        
+
 class QueryPhyResult {
 public:
     typedef std::set<std::string> StringSet;

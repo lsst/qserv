@@ -63,12 +63,12 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(query::SelectStmt& stmt, 
+    virtual void applyLogical(query::SelectStmt& stmt,
                               query::QueryContext&);
     virtual void applyFinal(query::QueryContext& context);
 
 private:
-    util::StringPairList _findScanTables(query::SelectStmt& stmt, 
+    util::StringPairList _findScanTables(query::SelectStmt& stmt,
                                          query::QueryContext& context);
     util::StringPairList _scanTables;
 };
@@ -107,7 +107,7 @@ registerPlugin registerScanTablePlugin;
 // ScanTablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void
-ScanTablePlugin::applyLogical(query::SelectStmt& stmt, 
+ScanTablePlugin::applyLogical(query::SelectStmt& stmt,
                               query::QueryContext& context) {
     _scanTables = _findScanTables(stmt, context);
     context.scanTables = _scanTables;
@@ -148,7 +148,7 @@ filterPartitioned(query::TableRefList const& tList) {
 }
 
 util::StringPairList
-ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, 
+ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
                                  query::QueryContext& context) {
     // Might be better as a separate plugin
 

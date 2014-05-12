@@ -42,7 +42,7 @@ namespace lsst {
 namespace qserv {
 namespace xrdc {
 
-    
+
 PacketIter::PacketIter()
   : _xrdFd(-1), _current(0,0), _stop(false)
 {}
@@ -76,7 +76,7 @@ PacketIter::~PacketIter() {
 }
 
 bool PacketIter::incrementExtend() {
-    LOGGER_DBG << "packetiter Realloc to " 
+    LOGGER_DBG << "packetiter Realloc to "
                << _current.second + _fragSize << std::endl;
     void* ptr = ::realloc(_current.first, _current.second + _fragSize);
     if(!ptr) {

@@ -48,7 +48,7 @@
 namespace test = boost::test_tools;
 using boost::make_shared;
 
-boost::shared_ptr<lsst::qserv::wlog::WLogger> myLog = 
+boost::shared_ptr<lsst::qserv::wlog::WLogger> myLog =
     make_shared<lsst::qserv::wlog::WLogger>();
 
 
@@ -63,7 +63,7 @@ std::string queryNonMagic =
 //SELECT COUNT(*) FROM (SELECT * FROM Subchunks_9880.Object_9880_1 UNION SELECT * FROM Subchunks_9880.Object_9880_3) AS _Obj_Subchunks;
 
 std::string query(queryNonMagic + std::string(4, '\0')); // Force magic EOF
-std::string queryHash = lsst::qserv::util::StringHash::getMd5Hex(query.c_str(), 
+std::string queryHash = lsst::qserv::util::StringHash::getMd5Hex(query.c_str(),
                                                                  query.size());
 std::string queryResultPath = "/result/"+queryHash;
 

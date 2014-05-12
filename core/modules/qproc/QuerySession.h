@@ -72,7 +72,7 @@ public:
     friend class AsyncQueryManager; // factory for QuerySession.
 
     explicit QuerySession(boost::shared_ptr<css::Facade>);
-    
+
     std::string const& getOriginal() const { return _original; }
     void setDefaultDb(std::string const& db);
     void setQuery(std::string const& q);
@@ -106,8 +106,8 @@ public:
     Iter cQueryEnd();
 
     // For test harnesses.
-    struct Test { 
-        int cfgNum; 
+    struct Test {
+        int cfgNum;
         boost::shared_ptr<css::Facade> cssFacade;
         std::string defaultDb;
     };

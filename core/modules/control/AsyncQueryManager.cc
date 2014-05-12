@@ -62,7 +62,7 @@ namespace lsst {
 namespace qserv {
 namespace control {
 
-    
+
 // Local Helpers --------------------------------------------------
 namespace {
 
@@ -244,7 +244,7 @@ void AsyncQueryManager::finalizeQuery(int id,
             if(_queries.empty()) _queriesEmpty.notify_all();
             t2e1.stop();
             ss << id << " QmFinalizeErase " << t2e1 << std::endl;
-            getMessageStore()->addMessage(id, log::MSG_ERASED, 
+            getMessageStore()->addMessage(id, log::MSG_ERASED,
                                           "Query Resources Erased.");
         }
     }
@@ -325,7 +325,7 @@ void AsyncQueryManager::addToWriteQueue(DynamicWorkQueue::Callable * callable) {
     globalWriteQueue.add(this, callable);
 }
 
-boost::shared_ptr<qdisp::MessageStore> 
+boost::shared_ptr<qdisp::MessageStore>
 AsyncQueryManager::getMessageStore() {
     if (!_messageStore) {
         // Lazy instantiation of MessageStore.
@@ -405,22 +405,22 @@ void AsyncQueryManager::_readConfig(std::map<std::string,
     _qSession->setDefaultDb(defaultDb);
 }
 
-void AsyncQueryManager::_initFacade(std::string const& cssTech, 
+void AsyncQueryManager::_initFacade(std::string const& cssTech,
                                     std::string const& cssConn) {
     if (cssTech == "zoo") {
-        LOGGER_INF << "Initializing zookeeper-based css, with " 
-                   << cssConn << std::endl;        
+        LOGGER_INF << "Initializing zookeeper-based css, with "
+                   << cssConn << std::endl;
         boost::shared_ptr<css::Facade> cssFPtr(
             css::FacadeFactory::createZooFacade(cssConn));
         _qSession.reset(new qproc::QuerySession(cssFPtr));
     } else if (cssTech == "mem") {
-        LOGGER_INF << "Initializing memory-based css, with " 
+        LOGGER_INF << "Initializing memory-based css, with "
                    << cssConn << std::endl;
         boost::shared_ptr<css::Facade> cssFPtr(
             css::FacadeFactory::createMemFacade(cssConn));
         _qSession.reset(new qproc::QuerySession(cssFPtr));
     } else {
-        LOGGER_ERR << "Unable to determine css technology, check config file." 
+        LOGGER_ERR << "Unable to determine css technology, check config file."
                    << std::endl;
         // FIXME, throw proper exception here. See DM-278 in Jira
         // Also, make sure to validate the cssConn to the extend possible.
@@ -523,7 +523,7 @@ void AsyncQueryManager::_squashExecution() {
     LOGGER_INF << "AsyncQM squashExec " << t << std::endl;
     _isSquashed = true; // Ensure that flag wasn't trampled.
 
-    getMessageStore()->addMessage(-1, log::MSG_EXEC_SQUASHED, 
+    getMessageStore()->addMessage(-1, log::MSG_EXEC_SQUASHED,
                                   "Query Execution Squashed.");
 }
 

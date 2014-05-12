@@ -52,12 +52,12 @@ namespace lsst {
 namespace qserv {
 namespace parser {
     class WhereFactory;
-}   
+}
 namespace query {
     class BoolTerm;
 }}} // End of forward declarations
 
-        
+
 namespace lsst {
 namespace qserv {
 namespace query {

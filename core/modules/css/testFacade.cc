@@ -57,7 +57,7 @@ using std::vector;
 namespace lsst {
 namespace qserv {
 namespace css {
-            
+
 
 struct FacadeFixture {
     FacadeFixture(void) :

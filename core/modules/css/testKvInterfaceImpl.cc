@@ -72,7 +72,7 @@ struct KvInterfaceFixture {
         kvI->create(prefix, v1);
         kvI->create(k1, v1);
         kvI->create(k2, v2);
-        
+
         string s = kvI->get(k1);
         BOOST_CHECK(s == v1);
         BOOST_CHECK(kvI->exists(k1));

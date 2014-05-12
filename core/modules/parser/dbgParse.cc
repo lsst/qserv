@@ -32,7 +32,7 @@
 namespace lsst {
 namespace qserv {
 namespace parser {
-            
+
 class ColumnHandler : public VoidFourRefFunc {
 public:
     virtual ~ColumnHandler() {}
