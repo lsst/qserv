@@ -31,6 +31,8 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <string>
 
 namespace lsst {

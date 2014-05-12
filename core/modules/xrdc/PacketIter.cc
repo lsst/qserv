@@ -27,18 +27,22 @@
 // latency.
 
 #include "xrdc/PacketIter.h"
-#include "xrdc/xrdfile.h"
-#include "log/Logger.h"
 
-#include <fcntl.h>
+// System headers
 #include <errno.h>
+#include <fcntl.h>
 #include <iostream>
+
+// Local headers
+#include "log/Logger.h"
+#include "xrdc/xrdfile.h"
+
 
 namespace lsst {
 namespace qserv {
 namespace xrdc {
 
-    
+
 PacketIter::PacketIter()
   : _xrdFd(-1), _current(0,0), _stop(false)
 {}
@@ -72,7 +76,7 @@ PacketIter::~PacketIter() {
 }
 
 bool PacketIter::incrementExtend() {
-    LOGGER_DBG << "packetiter Realloc to " 
+    LOGGER_DBG << "packetiter Realloc to "
                << _current.second + _fragSize << std::endl;
     void* ptr = ::realloc(_current.first, _current.second + _fragSize);
     if(!ptr) {

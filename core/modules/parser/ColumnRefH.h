@@ -32,13 +32,16 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Standard
+// System headers
 #include <list>
 
+// Third-party include
 #include <boost/shared_ptr.hpp>
 
+// Local headers
 #include "parser/parserBase.h" // VoidFourRefFunc
 #include "parser/parseTreeUtil.h" // tokenText
+
 // Forward
 class SqlSQL2Parser;
 

@@ -23,6 +23,7 @@
 #ifndef LSST_QSERV_MYSQL_SQLCONFIG_H
 #define LSST_QSERV_MYSQL_SQLCONFIG_H
 
+// System headers
 #include <string>
 
 namespace lsst {

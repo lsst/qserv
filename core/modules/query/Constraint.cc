@@ -28,7 +28,10 @@
   */
 
 #include "query/Constraint.h"
+
+// System headers
 #include <iterator>
+
 
 namespace lsst {
 namespace qserv {

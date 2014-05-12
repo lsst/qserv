@@ -29,6 +29,11 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
+#include <sstream>
+
+// Local headers
 #include "wdb/QuerySql.h"
 
 namespace lsst {

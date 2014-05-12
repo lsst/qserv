@@ -35,7 +35,8 @@
 //
 #ifndef LSST_QSERV_CONTROL_SESSIONMANAGER_H
 #define LSST_QSERV_CONTROL_SESSIONMANAGER_H
-// Includes
+
+// Third-party headers
 #include <boost/thread.hpp> // for mutex primitives
 
 namespace lsst {

@@ -22,29 +22,34 @@
 
 #include "XrdSfs/XrdSfsInterface.hh"
 
-#define BOOST_TEST_MODULE MySqlFs_2
-#include "boost/test/included/unit_test.hpp"
-
-#include "XrdSys/XrdSysLogger.hh"
-#include "XrdSys/XrdSysError.hh"
+// System headers
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+
+// Third-party headers
+#include "boost/make_shared.hpp"
 #include "boost/scoped_ptr.hpp"
 #include "boost/shared_ptr.hpp"
-#include "boost/make_shared.hpp"
+#include "XrdSys/XrdSysError.hh"
+#include "XrdSys/XrdSysLogger.hh"
 
+// Local headers
 #include "util/StringHash.h"
 #include "wcontrol/ResultTracker.h"
 #include "wdb/QueryRunner.h"
-#include "xrdfs/MySqlFsFile.h"
 #include "wlog/WLogger.h"
+#include "xrdfs/MySqlFsFile.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE MySqlFs_2
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 using boost::make_shared;
 
-boost::shared_ptr<lsst::qserv::wlog::WLogger> myLog = 
+boost::shared_ptr<lsst::qserv::wlog::WLogger> myLog =
     make_shared<lsst::qserv::wlog::WLogger>();
 
 
@@ -59,7 +64,7 @@ std::string queryNonMagic =
 //SELECT COUNT(*) FROM (SELECT * FROM Subchunks_9880.Object_9880_1 UNION SELECT * FROM Subchunks_9880.Object_9880_3) AS _Obj_Subchunks;
 
 std::string query(queryNonMagic + std::string(4, '\0')); // Force magic EOF
-std::string queryHash = lsst::qserv::util::StringHash::getMd5Hex(query.c_str(), 
+std::string queryHash = lsst::qserv::util::StringHash::getMd5Hex(query.c_str(),
                                                                  query.size());
 std::string queryResultPath = "/result/"+queryHash;
 

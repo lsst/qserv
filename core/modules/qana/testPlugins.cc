@@ -24,22 +24,27 @@
   * @brief Simple testing for QueryPlugin implementations
   *
   */
+
+// Local headers
+#include "css/Facade.h"
+#include "qana/AnalysisError.h"
+#include "qana/QueryPlugin.h"
+#include "query/QueryContext.h"
+#include "query/SelectStmt.h"
+#include "query/TestFactory.h"
+
+// Boost unit test header
 #define BOOST_TEST_MODULE QueryPlugins_1
 #include "boost/test/included/unit_test.hpp"
-#include "css/Facade.h"
-#include "qana/QueryPlugin.h"
-#include "query/TestFactory.h"
-#include "query/SelectStmt.h"
-#include "query/QueryContext.h"
-#include "qana/AnalysisError.h"
 
 namespace test = boost::test_tools;
 
+using lsst::qserv::qana::AnalysisError;
+using lsst::qserv::qana::QueryPlugin;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::query::SelectStmt;
-using lsst::qserv::qana::QueryPlugin;
 using lsst::qserv::query::TestFactory;
-using lsst::qserv::qana::AnalysisError;
+
 
 struct TestFixture {
     TestFixture(void) {

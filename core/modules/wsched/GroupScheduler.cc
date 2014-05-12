@@ -27,10 +27,17 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "wsched/GroupScheduler.h"
+
+// System headers
 #include <iostream>
 #include <sstream>
+
+// Third-party headers
 #include <boost/thread.hpp>
+
+// Local headers
 #include "proto/worker.pb.h"
 #include "wlog/WLogger.h"
 

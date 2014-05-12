@@ -26,27 +26,26 @@
 // ReadCallable and WriteCallable are workqueue object callbacks that
 // allow chunkQuery work to be done in a workqueue(thread pool).
 
-// Standard
-#include <iostream>
+#include "qdisp/ChunkQuery.h"
+
+// System headers
 #include <fcntl.h> // for O_RDONLY, O_WRONLY, etc.
+#include <iostream>
 
-// Boost
-#include <boost/thread.hpp>
+// Third-party headers
 #include <boost/lexical_cast.hpp>
-
-// Xrootd
+#include <boost/thread.hpp>
 #include "XrdPosix/XrdPosixXrootd.hh"
 
-// Package
-#include "qdisp/ChunkQuery.h"
+// Local headers
 #include "control/AsyncQueryManager.h"
-#include "xrdc/PacketIter.h"
-#include "util/xrootd.h"
-#include "util/StringHash.h"
 #include "control/DynamicWorkQueue.h"
-#include "qdisp/MessageStore.h"
 #include "log/msgCode.h"
 #include "log/Logger.h"
+#include "qdisp/MessageStore.h"
+#include "util/xrootd.h"
+#include "util/StringHash.h"
+#include "xrdc/PacketIter.h"
 
 namespace lsst {
 namespace qserv {
@@ -284,7 +283,7 @@ ChunkQuery::ChunkQuery(control::TransactionSpec const& t, int id,
     _result.read = 0;
     _result.localWrite = 0;
     _attempts = 0;
-    _hash = lsst::qserv::util::StringHash::getMd5Hex(_spec.query.c_str(), 
+    _hash = lsst::qserv::util::StringHash::getMd5Hex(_spec.query.c_str(),
                                                      _spec.query.size());
     // Patch the spec to include the magic query terminator.
     _spec.query.append(4,0); // four null bytes.
@@ -377,7 +376,7 @@ std::string ChunkQuery::getDesc() const {
     return ss.str();
 }
 
-boost::shared_ptr<xrdc::PacketIter> 
+boost::shared_ptr<xrdc::PacketIter>
 ChunkQuery::getResultIter() {
     return _packetIter;
 }
@@ -508,7 +507,7 @@ void ChunkQuery::_sendQuery(int fd) {
     }
     _writeTimer.stop();
     ss << _hash << " WriteQuery " << _writeTimer << std::endl;
-    _manager->getMessageStore()->addMessage(_id, log::MSG_XRD_WRITE, 
+    _manager->getMessageStore()->addMessage(_id, log::MSG_XRD_WRITE,
                                             "Query Written.");
 
     if(writeCount != len) {
@@ -566,7 +565,7 @@ void ChunkQuery::_readResultsDefer(int fd) {
     _result.localWrite = 1; // MAGIC: stuff the result so that it doesn't
     // look like an error to skip the local write.
     _state = COMPLETE;
-    _manager->getMessageStore()->addMessage(_id, log::MSG_XRD_READ, 
+    _manager->getMessageStore()->addMessage(_id, log::MSG_XRD_READ,
                                             "Results Read.");
     LOGGER_INF << _hash << " ReadResults defer " << std::endl;
     _notifyManager();
@@ -580,7 +579,7 @@ void ChunkQuery::_readResults(int fd) {
     // Now read.
     _readTimer.start();
     xrdc::xrdReadToLocalFile(fd, fragmentSize, _spec.savePath.c_str(),
-                             &_shouldSquash, &(_result.localWrite), 
+                             &_shouldSquash, &(_result.localWrite),
                              &(_result.read));
     _readTimer.stop();
     LOGGER_INF << _hash << " ReadResults " << _readTimer << std::endl;

@@ -28,9 +28,13 @@
 #ifndef LSST_QSERV_UTIL_MMAPFILE_H
 #define LSST_QSERV_UTIL_MMAPFILE_H
 
-#include <boost/shared_ptr.hpp>
-#include <sys/stat.h>
+// System headers
 #include <string>
+#include <sys/stat.h>
+
+// Third-party headers
+#include <boost/shared_ptr.hpp>
+
 
 #if !defined(_FILE_OFFSET_BITS) || (_FILE_OFFSET_BITS<64)
 // 64-bit support is needed to handle files > 2GB.

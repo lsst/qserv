@@ -30,37 +30,40 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <list>
 #include <map>
+
+// Third-party headers
 #include <antlr/AST.hpp>
+#include <boost/make_shared.hpp>
 #include <boost/shared_ptr.hpp>
 
-// Impl
-#include <boost/make_shared.hpp>
 
-// Forward
+// Forward declarations
 class SqlSQL2Parser;
-
 namespace lsst {
 namespace qserv {
-
+namespace parser {
+    class ColumnRefNodeMap;
+    class FromFactory;
+    class ModFactory;
+    class ParseAliasMap;
+    class SelectListFactory;
+    class ValueExprFactory;
+    class WhereFactory;
+}
 namespace query {
-    // Forward
     class FromList;
     class SelectStmt;
     class WhereClause;
-}
-        
-namespace parser {
+}}} // End of forward declarations
 
-// Forward
-class ParseAliasMap;
-class ColumnRefNodeMap;
-class SelectListFactory;
-class FromFactory;
-class WhereFactory;
-class ModFactory;
-class ValueExprFactory;
+
+namespace lsst {
+namespace qserv {
+namespace parser {
 
 /// SelectFactory is responsible for constructing a SelectStmt (including
 /// SelectList, FromClause, WhereClause, etc.) from ANTLR parse actions

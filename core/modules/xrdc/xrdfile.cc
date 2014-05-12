@@ -22,28 +22,35 @@
 // xrdfile.h -- Wrapper for xrootd client API functions
 
 #include "xrdc/xrdfile.h"
+
+// System headers
+#include <iostream>
+#include <string>
+
+// Local headers
 #include "log/Logger.h"
 
 //#define FAKE_XRD 1
 //#define QSM_PROFILE_XRD 1
-#include <iostream>
-#include <string>
 
 // Boost
 #include <boost/thread/thread.hpp>
 
 #if !FAKE_XRD
-#include <sys/types.h>
-#include <sys/stat.h>
+// System headers
 #include <assert.h>
 #include <fcntl.h>
 #include <limits>
 #include <sstream>
+#include <sys/types.h>
+#include <sys/stat.h>
+// Third-party headers
 #include "XrdPosix/XrdPosixLinkage.hh"
 #include "XrdPosix/XrdPosixExtern.hh"
 #include "XrdPosix/XrdPosixXrootd.hh"
 #include "XrdClient/XrdClientConst.hh"
 #include "XrdClient/XrdClientEnv.hh"
+
 #endif
 
 #if QSM_PROFILE_XRD

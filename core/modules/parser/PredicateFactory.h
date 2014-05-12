@@ -31,25 +31,29 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <boost/shared_ptr.hpp>
+
+// Third-party headers
 #include <antlr/AST.hpp>
+#include <boost/shared_ptr.hpp>
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace parser {
+    class ValueExprFactory;
+}
+namespace query {
+    class BetweenPredicate;
+    class CompPredicate;
+    class InPredicate;
+    class LikePredicate;
+    class NullPredicate;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace query {
-    // Forward
-    class CompPredicate;
-    class BetweenPredicate;
-    class InPredicate;
-    class LikePredicate;
-} // namespace query
-
-
 namespace parser {
-
-// Forward
-class ValueExprFactory;
 
 /// PredicateFactory is a factory for making Predicate objects
 class PredicateFactory {

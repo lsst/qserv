@@ -23,6 +23,7 @@
 #ifndef LSST_QSERV_WSCHED_GROUPSCHEDULER_H
 #define LSST_QSERV_WSCHED_GROUPSCHEDULER_H
 
+// Local headers
 #include "wcontrol/Foreman.h"
 #include "wsched/GroupedQueue.h"
 

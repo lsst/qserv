@@ -24,20 +24,27 @@
 /// response if a match is found (error if no match). StatVS() always
 /// provides a particular arbitrary response indicating a free disk
 /// space abundance.
+
 #include "xrdoss/QservOss.h"
-#include "obsolete/QservPath.h"
-#include "wlog/WLogger.h"
+
+// System headers
 #include <algorithm>
 #include <cstdarg>
 #include <deque>
 #include <iostream>
 #include <map>
-#include <string>
 #include <sstream>
+#include <string>
 #include <sys/time.h>
+
+// Third-party headers
 #include "XrdSys/XrdSysLogger.hh"
-#include "wpublish/MySqlExportMgr.h"
+
+// Local headers
+#include "obsolete/QservPath.h"
+#include "wlog/WLogger.h"
 #include "wpublish/ChunkInventory.h"
+#include "wpublish/MySqlExportMgr.h"
 #include "xrdfs/XrdName.h"
 #include "xrdfs/XrdPrinter.h"
 
@@ -165,7 +172,7 @@ bool QservOss::_checkExist(std::string const& db, int chunk) {
 #if 0
     assert(_pathSet.get());
     return wpublish::MySqlExportMgr::checkExist(*_pathSet, db, chunk);
-#else 
+#else
     return _chunkInventory->has(db, chunk);
 #endif
 }

@@ -21,11 +21,15 @@
  */
 /// TestFactory implementation
 #include "query/TestFactory.h"
+
+// Third-party headers
 #include <boost/make_shared.hpp>
-#include "query/Predicate.h"
-#include "query/SelectStmt.h"
-#include "query/SelectList.h"
+
+// Local headers
 #include "query/FromList.h"
+#include "query/Predicate.h"
+#include "query/SelectList.h"
+#include "query/SelectStmt.h"
 #include "query/TableRef.h"
 #include "query/QueryContext.h"
 #include "query/ValueExpr.h"

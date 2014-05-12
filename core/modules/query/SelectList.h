@@ -27,30 +27,37 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
+#include <deque>
 #include <list>
 #include <map>
-#include <deque>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
+// Local headers
 #include "query/ColumnRef.h"
 #include "query/ValueExpr.h"
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
-
 namespace parser {
-    // Forward
     class SelectListFactory;
 }
-
 namespace query {
+    class ColumnRefNodeMap;
+    class ColumnAliasMap;
+    class QueryTemplate;
+    class BoolTerm;
+    class GroupByClause;
+}}} // End of forward declarations
 
-// Forward
-class ColumnRefNodeMap;
-class ColumnAliasMap;
-class QueryTemplate;
-class BoolTerm;
-class GroupByClause;
+
+namespace lsst {
+namespace qserv {
+namespace query {
 
 /// SelectList is the SELECT... portion of a SELECT...FROM...
 /// SelectList contains a list of the ValueExprs that are representative of the

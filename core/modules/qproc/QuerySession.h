@@ -28,15 +28,15 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Standard library imports
+// System headers
 #include <list>
 #include <string>
 
-// Boost
+// Third-party headers
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/shared_ptr.hpp>
 
-// Local imports
+// Local headers
 #include "css/Facade.h"
 #include "merger/mergeTypes.h"
 #include "qana/QueryPlugin.h"
@@ -54,7 +54,7 @@ namespace css {
 namespace query {
     class SelectStmt;
     class QueryContext;
-}}} // end of forward declarations
+}}} // End of forward declarations
 
 
 namespace lsst {
@@ -106,8 +106,8 @@ public:
     Iter cQueryEnd();
 
     // For test harnesses.
-    struct Test { 
-        int cfgNum; 
+    struct Test {
+        int cfgNum;
         boost::shared_ptr<css::Facade> cssFacade;
         std::string defaultDb;
     };

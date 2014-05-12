@@ -27,15 +27,22 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "wsched/BlendScheduler.h"
+
+// System headers
 #include <iostream>
 #include <sstream>
+
+// Third-party headers
 #include <boost/thread.hpp>
+
+// Local headers
 #include "proto/worker.pb.h"
 #include "wcontrol/Foreman.h"
+#include "wlog/WLogger.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
-#include "wlog/WLogger.h"
 
 template <class Sched>
 inline Sched* other(Sched* notThis, Sched* a, Sched* b) {

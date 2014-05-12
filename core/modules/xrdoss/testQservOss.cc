@@ -21,10 +21,16 @@
  */
 /// Test QservOss oss plugin.
 #define BOOST_TEST_MODULE QservOss_1
-#include "boost/test/included/unit_test.hpp"
-#include "xrdoss/QservOss.h"
+
+// Third-party headers
 #include "XrdSys/XrdSysLogger.hh"
 #include "XrdOuc/XrdOucEnv.hh"
+
+// Local headers
+#include "xrdoss/QservOss.h"
+
+// Boost unit test header
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 using lsst::qserv::xrdoss::QservOss;

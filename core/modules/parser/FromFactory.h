@@ -33,30 +33,30 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// Third-party headers
 #include <antlr/AST.hpp>
+#include <boost/make_shared.hpp>
 #include <boost/shared_ptr.hpp>
 
-// Impl
-#include <boost/make_shared.hpp>
 
-// Forward
+// Forward declarations
 class SqlSQL2Parser;
+namespace lsst {
+namespace qserv {
+namespace query {
+    class FromList;
+}
+namespace parser {
+    class BoolTermFactory;
+    class ParseAliasMap;
+    class ValueExprFactory;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace query {
-    // Forward
-    class FromList;
-}
-    
 namespace parser {
-
-// Forward
-class ParseAliasMap;
-class BoolTermFactory;
-class ValueExprFactory;
-
 
 class FromFactory {
 public:
@@ -66,7 +66,7 @@ public:
     friend class TableRefListH;
     class RefGenerator;
 
-    FromFactory(boost::shared_ptr<ParseAliasMap> aliases, 
+    FromFactory(boost::shared_ptr<ParseAliasMap> aliases,
                 boost::shared_ptr<ValueExprFactory> vf);
 
     boost::shared_ptr<query::FromList> getProduct();

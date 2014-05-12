@@ -31,9 +31,9 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Local headers
 #include "control/transaction.h"
 #include "css/StripingParams.h"
-#include "xrdc/xrdfile.h"
 #include "merger/TableMerger.h"
 #include "query/Constraint.h"
 #include "util/common.h"
@@ -47,7 +47,7 @@ namespace qproc {
     // Forward
     class ChunkSpec;
 } // namespace qproc
-    
+
 namespace control {
 
 enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};

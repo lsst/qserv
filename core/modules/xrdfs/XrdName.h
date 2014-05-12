@@ -22,6 +22,8 @@
  */
 #ifndef LSST_QSERV_XRDFS_XRDNAME_H
 #define LSST_QSERV_XRDFS_XRDNAME_H
+
+// System headers
 #include <cctype>
 #include <cstdlib>
 #include <string>

@@ -28,14 +28,18 @@
   * @author Daniel L. Wang, SLAC
   */
 
-#include "query/Predicate.h"
-#include <boost/algorithm/string.hpp>
 #include "parser/PredicateFactory.h"
-#include "parser/ValueExprFactory.h"
-#include "parser/parseTreeUtil.h"
+
+// Third-party headers
+#include <boost/algorithm/string.hpp>
 #include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
+// Local headers
 #include "log/Logger.h"
+#include "parser/parseTreeUtil.h"
+#include "parser/ValueExprFactory.h"
+#include "query/Predicate.h"
+
 
 namespace lsst {
 namespace qserv {
@@ -44,7 +48,7 @@ namespace parser {
 boost::shared_ptr<query::CompPredicate>
 PredicateFactory::newCompPredicate(antlr::RefAST a) {
     boost::shared_ptr<query::CompPredicate> p(new query::CompPredicate());
-    if(a->getType() == SqlSQL2TokenTypes::COMP_PREDICATE) { 
+    if(a->getType() == SqlSQL2TokenTypes::COMP_PREDICATE) {
         a = a->getFirstChild();
     }
     RefAST left = a;
@@ -58,7 +62,7 @@ PredicateFactory::newCompPredicate(antlr::RefAST a) {
 
 boost::shared_ptr<query::BetweenPredicate> PredicateFactory::newBetweenPredicate(antlr::RefAST a) {
     boost::shared_ptr<query::BetweenPredicate> p(new query::BetweenPredicate());
-    if(a->getType() == SqlSQL2TokenTypes::BETWEEN_PREDICATE) { 
+    if(a->getType() == SqlSQL2TokenTypes::BETWEEN_PREDICATE) {
         a = a->getFirstChild();
     }
     RefAST betweenToken = a->getNextSibling();
@@ -94,7 +98,7 @@ PredicateFactory::newInPredicate(antlr::RefAST a) {
     return p;
 }
 
-boost::shared_ptr<query::LikePredicate> 
+boost::shared_ptr<query::LikePredicate>
 PredicateFactory::newLikePredicate(antlr::RefAST a) {
     boost::shared_ptr<query::LikePredicate> p(new query::LikePredicate());
     if(a->getType() == SqlSQL2TokenTypes::LIKE_PREDICATE) {

@@ -27,7 +27,7 @@
 #ifndef LSST_QSERV_PARSER_PARSEEXCEPTIONS_H
 #define LSST_QSERV_PARSER_PARSEEXCEPTIONS_H
 
-// C++
+// System headers
 #include <string>
 
 namespace lsst {

@@ -28,8 +28,12 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <string>
 #include <vector>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
 namespace lsst {
@@ -49,7 +53,7 @@ public:
     }
 };
 
-std::ostream& 
+std::ostream&
 operator<<(std::ostream& os, Constraint const& c);
 typedef std::vector<Constraint> ConstraintVector;
 

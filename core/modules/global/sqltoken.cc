@@ -26,8 +26,13 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "global/sqltoken.h"
+
+// System headers
 #include <set>
+
+// Third-party headers
 #include <boost/algorithm/string/predicate.hpp>
 
 namespace lsst {

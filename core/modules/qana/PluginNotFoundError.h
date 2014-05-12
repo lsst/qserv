@@ -29,9 +29,11 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <exception>
-#include <string>
 #include <sstream>
+#include <string>
 
 namespace lsst {
 namespace qserv {

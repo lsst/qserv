@@ -29,23 +29,29 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <boost/shared_ptr.hpp>
+
+// System headers
 #include <deque>
 #include <string>
 
+// Third-party headers
+#include <boost/shared_ptr.hpp>
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
-
 namespace parser {
-    // Forward
     class ModFactory;
 }
-    
 namespace query {
+    class QueryTemplate;
+    class ValueExpr;
+}}} // End of forward declarations
 
-// Forward
-class QueryTemplate;
-class ValueExpr;
+
+namespace lsst {
+namespace qserv {
+namespace query {
 
 // GroupByTerm is a element of a GroupByClause
 class GroupByTerm {

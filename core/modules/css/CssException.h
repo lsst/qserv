@@ -31,7 +31,7 @@
 #ifndef LSST_QSERV_CSS_EXCEPTION_HH
 #define LSST_QSERV_CSS_EXCEPTION_HH
 
-// Standard library
+// System headers
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -47,7 +47,7 @@ class CssRunTimeException : public std::runtime_error {
 protected:
     explicit CssRunTimeException(std::string const& msg)
         : std::runtime_error(msg) {}
-};    
+};
 
 /**
  * Specialized run-time error: database does not exist.

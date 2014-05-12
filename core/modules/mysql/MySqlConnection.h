@@ -27,10 +27,13 @@
 #ifndef LSST_QSERV_MYSQL_MYSQLCONNECTION_H
 #define LSST_QSERV_MYSQL_MYSQLCONNECTION_H
 
-#include <mysql/mysql.h>
-// Boost
+// Third-party headers
 #include <boost/thread.hpp>
 #include <boost/utility.hpp>
+
+// Local headers
+#include <mysql/mysql.h>
+
 
 namespace lsst {
 namespace qserv {

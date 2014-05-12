@@ -23,9 +23,11 @@
 #ifndef LSST_QSERV_UTIL_REGEX_H
 #define LSST_QSERV_UTIL_REGEX_H
 
-#include <string>
-#include <regex.h>
+// System headers
 #include <assert.h>
+#include <regex.h>
+#include <string>
+
 
 namespace lsst {
 namespace qserv {

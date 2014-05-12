@@ -23,9 +23,11 @@
 #ifndef LSST_QSERV_CONTROL_DYNAMICWORKQUEUE_H
 #define LSST_QSERV_CONTROL_DYNAMICWORKQUEUE_H
 
+// System headers
 #include <map>
 #include <set>
 
+// Third-party headers
 #include "boost/thread.hpp"
 
 

@@ -31,14 +31,14 @@
 #ifndef LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_HH
 #define LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_HH
 
-// standard library imports
+// System headers
 #include <vector>
 #include <string>
 
-// third-party imports
+// Third-party headers
 #include "zookeeper/zookeeper.h"
 
-// local imports
+// Local headers
 #include "css/KvInterface.h"
 
 namespace lsst {

@@ -27,15 +27,21 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "wsched/ScanScheduler.h"
+
+// System headers
 #include <iostream>
 #include <sstream>
-#include <boost/thread.hpp>
-#include <boost/make_shared.hpp>
 
-#include "wsched/ChunkDisk.h"
+// Third-party headers
+#include <boost/make_shared.hpp>
+#include <boost/thread.hpp>
+
+// Local headers
 #include "wcontrol/Foreman.h"
 #include "wlog/WLogger.h"
+#include "wsched/ChunkDisk.h"
 
 namespace lsst {
 namespace qserv {

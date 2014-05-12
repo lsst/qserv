@@ -25,9 +25,13 @@
 #ifndef LSST_QSERV_WLOG_WLOGGER_H
 #define LSST_QSERV_WLOG_WLOGGER_H
 
+// System headers
 #include <string>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
+
 // Forward
 class XrdSysLogger;
 class XrdSysError;

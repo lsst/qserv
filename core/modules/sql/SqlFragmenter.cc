@@ -28,6 +28,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "sql/SqlFragmenter.h"
 
 namespace lsst {
@@ -45,7 +46,7 @@ SqlFragmenter::SqlFragmenter(std::string const& query)
       _count(0)
 {}
 
-SqlFragmenter::Piece const& 
+SqlFragmenter::Piece const&
 SqlFragmenter::getNextPiece() {
     if(_pNext == _qEnd) {
         _current.first = 0;

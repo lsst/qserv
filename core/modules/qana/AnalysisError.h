@@ -22,7 +22,11 @@
  */
 #ifndef LSST_QSERV_QANA_ANALYSISERROR_H
 #define LSST_QSERV_QANA_ANALYSISERROR_H
+
+// System headers
 #include <stdexcept>
+
+
 namespace lsst {
 namespace qserv {
 namespace qana {

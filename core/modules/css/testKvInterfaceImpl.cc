@@ -30,8 +30,7 @@
   * @Author Jacek Becla, SLAC
   */
 
-
-// standard library imports
+// System headers
 #include <algorithm> // sort
 #include <cstdlib>   // rand
 #include <iostream>
@@ -39,21 +38,22 @@
 #include <stdexcept>
 #include <string.h>  // memset
 
-// boost
-#define BOOST_TEST_MODULE MyTest
-#include <boost/test/included/unit_test.hpp>
+// Third-party headers
 #include <boost/lexical_cast.hpp>
 
-// local imports
+// Kocal headers
 #include "css/KvInterfaceImplMem.h"
 #include "css/KvInterfaceImplZoo.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE MyTest
+#include <boost/test/included/unit_test.hpp>
 
 using std::cout;
 using std::endl;
 using std::ostringstream;
 using std::string;
 using std::vector;
-
 
 struct KvInterfaceFixture {
     KvInterfaceFixture(void) {
@@ -72,7 +72,7 @@ struct KvInterfaceFixture {
         kvI->create(prefix, v1);
         kvI->create(k1, v1);
         kvI->create(k2, v2);
-        
+
         string s = kvI->get(k1);
         BOOST_CHECK(s == v1);
         BOOST_CHECK(kvI->exists(k1));

@@ -26,14 +26,17 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/FromList.h"
-#include <iterator>
+
+// System headers
 #include <algorithm>
+#include <iterator>
+
 
 namespace lsst {
 namespace qserv {
 namespace query {
-
 
 std::ostream&
 operator<<(std::ostream& os, FromList const& fl) {

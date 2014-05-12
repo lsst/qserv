@@ -29,10 +29,12 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <ostream>
 #include <list>
-#include <vector>
 #include <stdint.h>
+#include <vector>
 
 namespace lsst {
 namespace qserv {

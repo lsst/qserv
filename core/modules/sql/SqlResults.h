@@ -29,11 +29,17 @@
 #ifndef LSST_QSERV_SQL_SQLRESULTS_H
 #define LSST_QSERV_SQL_SQLRESULTS_H
 
+// System headers
 #include <string>
 #include <vector>
-#include <mysql/mysql.h>
+
+// Third-party headers
 #include <boost/utility.hpp>
+#include <mysql/mysql.h>
+
+// Local headers
 #include "sql/SqlErrorObject.h"
+
 
 namespace lsst {
 namespace qserv {

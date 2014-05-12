@@ -31,16 +31,16 @@
   *
   */
 
+#include "css/Facade.h"
 
-// Standard library imports
+// System headers
 #include <fstream>
 #include <iostream>
 
-// Boost
+// Third-party headers
 #include <boost/lexical_cast.hpp>
 
-// Local imports
-#include "css/Facade.h"
+// Local headers
 #include "css/CssException.h"
 #include "css/KvInterfaceImplMem.h"
 #include "css/KvInterfaceImplZoo.h"
@@ -54,7 +54,6 @@ using std::vector;
 namespace lsst {
 namespace qserv {
 namespace css {
-
 
 /**
   * Initialize the Facade, the Facade will use Zookeeper-based interface, this is

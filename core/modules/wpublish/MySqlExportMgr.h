@@ -27,13 +27,16 @@
 
 #ifndef LSST_QSERV_WPUBLISH_MYSQLEXPORTMGR_H
 #define LSST_QSERV_WPUBLISH_MYSQLEXPORTMGR_H
+
+// System headers
 #include <deque>
 #include <map>
 #include <set>
 #include <sstream>
 #include <string>
-#include <boost/shared_ptr.hpp>
 
+// Third-party headers
+#include <boost/shared_ptr.hpp>
 
 // Forward declarations
 namespace lsst {

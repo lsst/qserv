@@ -27,26 +27,28 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/FromFactory.h"
-#include "query/FromList.h" // for class FromList
-// C++
+
+// System headers
 #include <deque>
 #include <iterator>
 
 // Package
-#include "parser/SqlSQL2Parser.hpp" // applies several "using antlr::***".
-#include "parser/ColumnRefH.h"
+#include "log/Logger.h"
 #include "parser/BoolTermFactory.h"
+#include "parser/ColumnRefH.h"
 #include "parser/ParseAliasMap.h"
 #include "parser/ParseException.h"
 #include "parser/parseTreeUtil.h"
+#include "parser/SqlSQL2Parser.hpp" // applies several "using antlr::***".
 #include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
+#include "query/FromList.h" // for class FromList
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
-#include "query/TableRef.h"
 #include "query/QueryTemplate.h"
-#include "log/Logger.h"
+#include "query/TableRef.h"
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -62,7 +64,7 @@ inline RefAST walkToSiblingBefore(RefAST node, int typeId) {
     return RefAST();
 }
 
-inline std::string 
+inline std::string
 getSiblingStringBounded(RefAST left, RefAST right) {
     lsst::qserv::parser::CompactPrintVisitor<RefAST> p;
     for(; left.get(); left = left->getNextSibling()) {
@@ -165,7 +167,7 @@ namespace parser {
 ////////////////////////////////////////////////////////////////////////
 // ParseAliasMap misc impl. (to be placed in ParseAliasMap.cc later)
 ////////////////////////////////////////////////////////////////////////
-std::ostream& 
+std::ostream&
 operator<<(std::ostream& os, ParseAliasMap const& m) {
     typedef ParseAliasMap::Miter Miter;
     os << "AliasMap fwd(";
@@ -516,7 +518,7 @@ private:
             return query::TableRef::Ptr(new query::TableRef(qn.getQual(1),
                                                             qn.getName(), alias));
         } else {
-            return query::TableRef::Ptr(new query::TableRef("", 
+            return query::TableRef::Ptr(new query::TableRef("",
                                                             qn.getName(), alias));
         }
     }

@@ -25,11 +25,15 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#define BOOST_TEST_MODULE FifoScheduler_1
-#include "boost/test/included/unit_test.hpp"
+
+// Local headers
+#include "proto/worker.pb.h"
 #include "wcontrol/Task.h"
 #include "wsched/FifoScheduler.h"
-#include "proto/worker.pb.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE FifoScheduler_1
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 

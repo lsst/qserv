@@ -26,12 +26,14 @@
 // all threads have died before returning.
 //
 #include "util/WorkQueue.h"
+
+// System headers
 #include <iostream>
 
 namespace lsst {
 namespace qserv {
 namespace util {
-        
+
 ////////////////////////////////////////////////////////////////////////
 // class WorkQueue::Runner
 ////////////////////////////////////////////////////////////////////////

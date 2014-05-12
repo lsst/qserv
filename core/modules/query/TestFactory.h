@@ -22,20 +22,25 @@
  */
 #ifndef LSST_QSERV_QUERY_TESTFACTORY_H
 #define LSST_QSERV_QUERY_TESTFACTORY_H
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace css {
+    class Facade;
+}
+namespace query {
+    class QueryContext;
+    class SelectStmt;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace css {
-    class Facade; // Forward
-}
-    
 namespace query {
-
-// Forward
-class QueryContext;
-class SelectStmt;
 
 /// TestFactory is a factory for non-parsed query representation objects
 class TestFactory {

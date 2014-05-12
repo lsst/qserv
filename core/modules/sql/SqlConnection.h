@@ -32,27 +32,31 @@
 #ifndef LSST_QSERV_SQL_SQLCONNECTION_H
 #define LSST_QSERV_SQL_SQLCONNECTION_H
 
-// Standard
+// System headers
 #include <string>
 #include <vector>
 
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
+// Local headers
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlErrorObject.h"
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
-
 namespace mysql {
-    // Forward
     class MySqlConnection;
 }
-    
 namespace sql {
+    class SqlResults;
+}}} // End of forward declarations
 
-// Forward
-class SqlResults;
+
+namespace lsst {
+namespace qserv {
+namespace sql {
 
 class SqlResultIter {
 public:
@@ -87,7 +91,7 @@ public:
     virtual bool runQuery(char const* query, int qSize,
                           SqlResults& results, SqlErrorObject&);
     virtual bool runQuery(char const* query, int qSize, SqlErrorObject&);
-    virtual bool runQuery(std::string const query, SqlResults&, 
+    virtual bool runQuery(std::string const query, SqlResults&,
                           SqlErrorObject&);
     /// with runQueryIter SqlConnection is busy until SqlResultIter is closed
     virtual boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query);

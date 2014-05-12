@@ -31,25 +31,27 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// Third-party headers
 #include <antlr/AST.hpp>
 #include <boost/shared_ptr.hpp>
 
-// Forward
+// Forward declarations
 class SqlSQL2Parser;
+namespace lsst {
+namespace qserv {
+namespace parser {
+    class SelectFactory;
+    class ValueExprFactory;
+}
+namespace query {
+    class WhereClause;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace query {
-    // Forward
-    class WhereClause;
-}
-    
 namespace parser {
-
-// Forward
-class SelectFactory;
-class ValueExprFactory;
 
 /// WhereFactory is a factory for WhereClause parsed elements.
 class WhereFactory {

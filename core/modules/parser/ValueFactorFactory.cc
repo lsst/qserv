@@ -27,17 +27,20 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include "parser/ValueFactorFactory.h"
-#include "log/Logger.h"
 
+#include "parser/ValueFactorFactory.h"
+
+// System headers
 #include <stdexcept>
 
+// Local headers
+#include "log/Logger.h"
 #include "parser/ColumnRefH.h"
-#include "query/ColumnRef.h"
-#include "query/FuncExpr.h"
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
-#include "query/ValueExpr.h" // For ValueExpr
+#include "query/ColumnRef.h"
+#include "query/FuncExpr.h"
+#include "query/ValueExpr.h"   // For ValueExpr
 #include "query/ValueFactor.h" // For ValueFactor
 #include "SqlSQL2TokenTypes.hpp"
 

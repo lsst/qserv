@@ -23,7 +23,9 @@
 #ifndef LSST_QSERV_SQL_PARSERBASE_H
 #define LSST_QSERV_SQL_PARSERBASE_H
 
+// Third-party headers
 #include "antlr/CommonAST.hpp"
+
 
 // parserBase.h Abstract types to be used in the SQL grammar.
 // * Not placed in include/

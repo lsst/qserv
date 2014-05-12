@@ -31,22 +31,24 @@
   */
 
 
-// standard library imports
+// system headers
 #include <algorithm> // sort
 #include <cstdlib>   // rand
 #include <iostream>
 #include <stdexcept>
 
-// boost
-#define BOOST_TEST_MODULE TestFacade
-#include <boost/test/included/unit_test.hpp>
+// Third-party headers
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 
-// local imports
+// Local headers
+#include "css/CssException.h"
 #include "css/Facade.h"
 #include "css/KvInterfaceImplZoo.h"
-#include "css/CssException.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE TestFacade
+#include <boost/test/included/unit_test.hpp>
 
 using std::cout;
 using std::endl;
@@ -57,7 +59,7 @@ using std::vector;
 namespace lsst {
 namespace qserv {
 namespace css {
-            
+
 
 struct FacadeFixture {
     FacadeFixture(void) :

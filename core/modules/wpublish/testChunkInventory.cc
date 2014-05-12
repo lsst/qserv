@@ -20,18 +20,22 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// Test ChunkInventory
+
+// Local headers
+#include "sql/MockSql.h"
+#include "wlog/WLogger.h"
+#include "wpublish/ChunkInventory.h"
+
+// Boost unit test header
 #define BOOST_TEST_MODULE ChunkInventory_1
 #include "boost/test/included/unit_test.hpp"
-#include "wpublish/ChunkInventory.h"
-#include "wlog/WLogger.h"
-#include "sql/MockSql.h"
 
 namespace test = boost::test_tools;
-using lsst::qserv::wlog::WLogger;
-using lsst::qserv::wpublish::ChunkInventory;
 using lsst::qserv::sql::MockSql;
 using lsst::qserv::sql::SqlResultIter;
 using lsst::qserv::sql::SqlErrorObject;
+using lsst::qserv::wlog::WLogger;
+using lsst::qserv::wpublish::ChunkInventory;
 
 namespace {
 bool startswith(std::string const& a, std::string const& start) {

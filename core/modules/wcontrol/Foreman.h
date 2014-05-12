@@ -48,7 +48,11 @@
 //  templating or polymorphism.
 #ifndef LSST_QSERV_WCONTROL_FOREMAN_H
 #define LSST_QSERV_WCONTROL_FOREMAN_H
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+
+// Local headers
 #include "wbase/Base.h"
 #include "wcontrol/Task.h"
 
@@ -100,7 +104,7 @@ protected:
     explicit Foreman() {}
 };
 
-    Foreman::Ptr 
+    Foreman::Ptr
     newForeman(Foreman::Scheduler::Ptr s, boost::shared_ptr<wlog::WLogger> log);
 
 }}}  // namespace lsst::qserv::wcontrol

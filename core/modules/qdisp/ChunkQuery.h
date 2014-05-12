@@ -21,32 +21,33 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // class ChunkQuery represents a query regarding a single chunk.
+
 #ifndef LSST_QSERV_QDISP_CHUNKQUERY_H
 #define LSST_QSERV_QDISP_CHUNKQUERY_H
 
-// Scalla/xrootd
+// Third-party headers
+#include <boost/thread.hpp>
 #include "XrdPosix/XrdPosixCallBack.hh"
 
-// Package
+// Local headers
 #include "control/transaction.h"
-#include "xrdc/xrdfile.h"
 #include "util/Timer.h"
+#include "xrdc/xrdfile.h"
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace control {
+    class AsyncQueryManager;
+}
+namespace xrdc {
+    class PacketIter;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace control {
-    // Forward
-    class AsyncQueryManager;
-} // namespace control
-
-namespace xrdc {
-    // Forward
-    class PacketIter;
-} // namespace xrdc
-    
 namespace qdisp {
-
 
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery

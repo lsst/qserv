@@ -20,13 +20,18 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// System headers
+#include <iostream>
 
+// Third-party headers
+#include "boost/scoped_ptr.hpp"
+
+// Local headers
+#include "wconfig/Config.h"
+
+// Boost unit test header
 #define BOOST_TEST_MODULE SanityCheck
 #include "boost/test/included/unit_test.hpp"
-
-#include "wconfig/Config.h"
-#include <iostream>
-#include "boost/scoped_ptr.hpp"
 
 namespace test = boost::test_tools;
 using lsst::qserv::worker::Config;

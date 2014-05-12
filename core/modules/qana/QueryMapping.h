@@ -27,24 +27,28 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <boost/shared_ptr.hpp>
-#include <set>
+
+// System headers
 #include <map>
+#include <set>
+
+// Third-party headers
+#include <boost/shared_ptr.hpp>
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace query {
+    class QueryTemplate;
+}
+namespace qproc {
+    class ChunkSpec;
+    class ChunkSpecSingle;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace query {
-    // Forward
-    class QueryTemplate;
-}
-
-namespace qproc {
-    // Forward
-    class ChunkSpec;
-    class ChunkSpecSingle;
-}
-
 namespace qana {
 
 /// QueryMapping is a value class that stores a mapping that can be
@@ -76,9 +80,9 @@ public:
 
     QueryMapping();
 
-    std::string apply(qproc::ChunkSpec const& s, 
+    std::string apply(qproc::ChunkSpec const& s,
                       query::QueryTemplate const& t) const;
-    std::string apply(qproc::ChunkSpecSingle const& s, 
+    std::string apply(qproc::ChunkSpecSingle const& s,
                       query::QueryTemplate const& t) const;
 
     // Modifiers

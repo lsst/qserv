@@ -31,26 +31,30 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// C++ standard
+// System headers
 #include <list>
 #include <sstream>
 
+// Third-party headers
 #include <boost/shared_ptr.hpp>
-// package
+
+// Local headers
 #include "util/common.h"
+
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace parser {
+    class AntlrParser; // Internally-defined in SelectParser.cc
+}
+namespace query {
+    class SelectStmt;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace query {
-    // Forward
-    class SelectStmt;
-}
-
 namespace parser {
-
-// Forward
-class AntlrParser; // Internally-defined in SelectParser.cc
 
 /// class SelectParser - drives the ANTLR-generated SQL parser for a
 /// SELECT statement. Attaches some simple handlers that populate a

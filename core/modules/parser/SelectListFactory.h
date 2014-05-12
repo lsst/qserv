@@ -28,31 +28,35 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
 #include <list>
 #include <map>
-#include <antlr/AST.hpp>
-#include <boost/shared_ptr.hpp>
 #include <stdexcept>
 
-class SqlSQL2Parser;// forward
+// Third-party headers
+#include <antlr/AST.hpp>
+#include <boost/shared_ptr.hpp>
+
+// Forward declarations
+class SqlSQL2Parser;
 namespace lsst {
 namespace qserv {
-
+namespace parser {
+    class ParseAliasMap;
+    class ValueExprFactory;
+}
 namespace query {
-    // Forward
     class SelectList;
     class ValueExpr;
-}
-    
-namespace parser {
+}}} // End of forward declarations
 
-// Forward
-class ParseAliasMap;
-class ValueExprFactory;
+
+namespace lsst {
+namespace qserv {
+namespace parser {
 
 typedef boost::shared_ptr<query::ValueExpr> ValueExprPtr;
 typedef std::list<ValueExprPtr> ValueExprList;
-
 
 /// SelectListFactory maintains parse state so that a SelectList can be built
 /// from a ANTLR parse tree nodes. It populates some state for SelectFactory.
@@ -74,7 +78,7 @@ private:
 
     // Really private
     void _import(antlr::RefAST selectRoot);
-    
+
     void _addSelectColumn(antlr::RefAST expr);
     void _addSelectStar(antlr::RefAST child=antlr::RefAST());
     ValueExprPtr _newColumnExpr(antlr::RefAST expr);

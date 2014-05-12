@@ -28,6 +28,7 @@
 #ifndef LSST_QSERV_WCONTROL_REQUESTTAKER_H
 #define LSST_QSERV_WCONTROL_REQUESTTAKER_H
 
+// Local headers
 #include "wbase/Base.h" // StringBuffer2
 
 namespace lsst {
@@ -37,7 +38,7 @@ namespace obsolete {
     // Forward
     class QservPath;
 }
-    
+
 namespace wcontrol {
 
 
@@ -45,7 +46,7 @@ class RequestTaker {
 public:
     typedef int64_t Size;
 
-    explicit RequestTaker(wbase::TaskAcceptor::Ptr acceptor, 
+    explicit RequestTaker(wbase::TaskAcceptor::Ptr acceptor,
                           obsolete::QservPath const& path);
     bool receive(Size offset, char const* buffer, Size bufferSize);
     bool complete();

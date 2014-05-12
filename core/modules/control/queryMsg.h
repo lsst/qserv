@@ -25,6 +25,8 @@
 
 #ifndef LSST_QSERV_CONTROL_QUERYMSG_H
 #define LSST_QSERV_CONTROL_QUERYMSG_H
+
+// System headers
 #include <string>
 
 namespace lsst {
@@ -42,4 +44,3 @@ void queryMsgAddMsg(int session, int chunkId, int code, std::string const& messa
 }}} // namespace lsst::qserv::control
 
 #endif // LSST_QSERV_CONTROL_QUERYMSG_H
-

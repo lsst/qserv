@@ -25,27 +25,29 @@
   * @author Daniel L. Wang, SLAC
   */
 // No public interface (no AggregatePlugin.h)
+
+// System headers
 #include <string>
 #include <stdexcept>
-#include "util/common.h"
-#include "query/QueryContext.h"
-#include "qana/QueryPlugin.h"
-#include "query/QueryTemplate.h"
-#include "query/ValueExpr.h"
-#include "query/ValueFactor.h"
-#include "query/FuncExpr.h"
 
+// Local headers
+#include "log/Logger.h"
+#include "qana/QueryPlugin.h"
+#include "query/AggOp.h"
+#include "query/FuncExpr.h"
+#include "query/QueryContext.h"
+#include "query/QueryTemplate.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
-#include "query/AggOp.h"
-
-#include "log/Logger.h"
+#include "query/ValueExpr.h"
+#include "query/ValueFactor.h"
+#include "util/common.h"
 
 namespace lsst {
 namespace qserv {
 namespace qana {
 
-inline query::ValueExprPtr 
+inline query::ValueExprPtr
 newExprFromAlias(std::string const& alias) {
     boost::shared_ptr<query::ColumnRef> cr(new query::ColumnRef("", "", alias));
     boost::shared_ptr<query::ValueFactor> vf;
@@ -165,9 +167,9 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(query::SelectStmt& stmt, 
+    virtual void applyLogical(query::SelectStmt& stmt,
                               query::QueryContext&) {}
-    virtual void applyPhysical(QueryPlugin::Plan& p, 
+    virtual void applyPhysical(QueryPlugin::Plan& p,
                                query::QueryContext&);
 private:
     query::AggOp::Mgr _aMgr;

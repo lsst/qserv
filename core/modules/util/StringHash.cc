@@ -21,15 +21,19 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // StringHash -- Little wrappers for OpenSSL hashing.
+
 #include "util/StringHash.h"
 
+// System headers
 #include <iostream>
 #include <sstream>
+
+// Third-party headers
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
 namespace {
-template <unsigned char *dFunc(const unsigned char *, 
+template <unsigned char *dFunc(const unsigned char *,
                                size_t, unsigned char *),
           int dLength>
 inline std::string wrapHash(void const* buffer, int bufferSize) {
@@ -51,7 +55,7 @@ inline std::string wrapHash(void const* buffer, int bufferSize) {
 namespace lsst {
 namespace qserv {
 namespace util {
-        
+
 /// @return a hexadecimal representation of the MD5 hash of the input buffer
 /// 128 bits -> 16 bytes -> 32 hex digits
 std::string StringHash::getMd5Hex(char const* buffer, int bufferSize) {

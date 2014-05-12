@@ -28,8 +28,10 @@
   */
 
 #include "qproc/ChunkSpec.h"
-#include <iterator>
+
+// System headers
 #include <cassert>
+#include <iterator>
 #include <stdexcept>
 
 

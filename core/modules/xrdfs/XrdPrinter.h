@@ -20,11 +20,17 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #ifndef LSST_QSERV_XRDFS_XRDPRINTER_H
 #define LSST_QSERV_XRDFS_XRDPRINTER_H
-#include "wlog/WLogger.h"
+
+// Third-party headers
 #include "XrdSys/XrdSysLogger.hh"
 #include "XrdSys/XrdSysError.hh"
+
+// Local headers
+#include "wlog/WLogger.h"
+
 
 namespace lsst {
 namespace qserv {

@@ -26,7 +26,11 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/ValueExprFactory.h"
+
+// Local headers
+#include "log/Logger.h"
 #include "parser/ValueFactorFactory.h"
 #include "parser/ColumnRefH.h"
 #include "query/ValueExpr.h" // For ValueExpr, FuncExpr
@@ -34,13 +38,13 @@
 #include "parser/ParseException.h" //
 #include "SqlSQL2TokenTypes.hpp" // antlr-generated
 
-#include "log/Logger.h"
 
 using antlr::RefAST;
 
 namespace lsst {
 namespace qserv {
 namespace parser {
+
 ////////////////////////////////////////////////////////////////////////
 // ValueExprFactory implementation
 ////////////////////////////////////////////////////////////////////////

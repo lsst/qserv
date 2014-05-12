@@ -25,6 +25,8 @@
 
 #ifndef LSST_QSERV_LOG_LOGGERINTERFACE_H
 #define LSST_QSERV_LOG_LOGGERINTERFACE_H
+
+// System headers
 #include <string>
 
 namespace lsst {
@@ -37,4 +39,3 @@ void logger(int severity, std::string const& s);
 }}} // namespace lsst::qserv::log
 
 #endif // LSST_QSERV_LOG_LOGGERINTERFACE_H
-

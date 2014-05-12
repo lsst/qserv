@@ -19,13 +19,16 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #include "wcontrol/Service.h"
+
+// Local headers
 #include "wcontrol/Foreman.h"
-#include "wsched/FifoScheduler.h"
-#include "wsched/ScanScheduler.h"
-#include "wsched/GroupScheduler.h"
-#include "wsched/BlendScheduler.h"
 #include "wlog/WLogger.h"
+#include "wsched/BlendScheduler.h"
+#include "wsched/FifoScheduler.h"
+#include "wsched/GroupScheduler.h"
+#include "wsched/ScanScheduler.h"
 
 namespace lsst {
 namespace qserv {

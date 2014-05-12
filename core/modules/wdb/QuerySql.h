@@ -30,9 +30,13 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <deque>
 #include <ostream>
 #include <string>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
 

@@ -22,9 +22,14 @@
  */
 // xrootd.h -- Helper funcitons for xrootd-based dispatch
 
-#include <sstream>
-#include "boost/format.hpp"
 #include "util/xrootd.h"
+
+// System headers
+#include <sstream>
+
+// Third-party headers
+#include "boost/format.hpp"
+
 
 namespace lsst {
 namespace qserv {
@@ -45,7 +50,7 @@ makeUrl(char const* hostport, std::string const& path) {
 }
 
 std::string
-makeUrl(char const* hostport, char const* typeStr, 
+makeUrl(char const* hostport, char const* typeStr,
         std::string const& s, char mode) {
     // typeStr is either "query" or "result"
     if(hostport == NULL) {

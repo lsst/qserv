@@ -28,8 +28,11 @@
 #ifndef LSST_QSERV_WCONTROL_TASK_H
 #define LSST_QSERV_WCONTROL_TASK_H
 
+// System headers
 #include <deque>
 #include <string>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
 
@@ -42,12 +45,11 @@ namespace wbase {
 namespace proto {
     class TaskMsg;
     class TaskMsg_Fragment;
-}}}
-// End of forward declarations
+}}} // End of forward declarations
 
 
 namespace lsst {
-namespace qserv {        
+namespace qserv {
 namespace wcontrol {
 
 struct Task {

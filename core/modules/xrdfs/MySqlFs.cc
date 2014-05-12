@@ -22,27 +22,29 @@
 
 #include "xrdfs/MySqlFs.h"
 
-#include "XrdSec/XrdSecEntity.hh"
-#include "XrdSys/XrdSysError.hh"
-//#include "XrdOuc/XrdOucCallBack.hh" // For Open-callbacks(FinishListener)
-#include "XrdSfs/XrdSfsCallBack.hh" // For Open-callbacks(FinishListener)
+// System headers
+#include <cerrno>
+#include <iterator>
+#include <iostream>
 
-#include "xrdfs/MySqlFsDirectory.h"
-#include "xrdfs/MySqlFsFile.h"
-#include "wpublish/MySqlExportMgr.h"
-#include "wdb/QueryRunner.h"
+// Third-party headers
+#include "XrdSec/XrdSecEntity.hh"
+#include "XrdSfs/XrdSfsCallBack.hh" // For Open-callbacks(FinishListener)
+#include "XrdSys/XrdSysError.hh"
+
+#include "obsolete/QservPath.h"
+#include "sql/SqlConnection.h"
 #include "wconfig/Config.h"
 #include "wcontrol/Service.h"
+#include "wdb/QueryRunner.h"
 #include "wlog/WLogger.h"
+#include "wpublish/MySqlExportMgr.h"
+#include "xrdfs/MySqlFsDirectory.h"
+#include "xrdfs/MySqlFsFile.h"
 #include "xrdfs/XrdName.h"
 #include "xrdfs/XrdPrinter.h"
 
-#include "sql/SqlConnection.h"
-#include "obsolete/QservPath.h"
 
-#include <cerrno>
-#include <iostream>
-#include <iterator>
 
 // Externally declare XrdSfs loader to cheat on Andy's suggestion.
 #if 1
@@ -370,7 +372,7 @@ extern "C" {
 XrdSfsFileSystem* XrdSfsGetFileSystem(
     XrdSfsFileSystem* native_fs, XrdSysLogger* lp, char const* fileName) {
     static boost::shared_ptr<lsst::qserv::wlog::WLogger> log;
-    boost::shared_ptr<lsst::qserv::wlog::WLogger::Printer> 
+    boost::shared_ptr<lsst::qserv::wlog::WLogger::Printer>
         p(new lsst::qserv::xrdfs::XrdPrinter(lp));
     if(!log.get()) {
         log.reset(new lsst::qserv::wlog::WLogger(p));

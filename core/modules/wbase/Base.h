@@ -23,14 +23,14 @@
 #ifndef LSST_QSERV_WBASE_BASE_H
 #define LSST_QSERV_WBASE_BASE_H
 
-// Std
+// System headers
 #include <deque>
-#include <string>
 #include <sstream>
+#include <string>
 
+// Third-party headers
 #include <boost/thread.hpp>
 #include <boost/format.hpp>
-
 
 // Forward declarations
 class XrdSysError;
@@ -44,8 +44,7 @@ namespace proto {
 namespace wbase {
     class StringBuffer;
     class StringBuffer2;
-}}}
-// End of forward declarations
+}}} // End of forward declarations
 
 
 namespace lsst {

@@ -19,16 +19,24 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#define BOOST_TEST_MODULE Protocol_1
-#include "boost/test/included/unit_test.hpp"
+
+// System headers
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+
+// Third-party headers
 #include "boost/scoped_ptr.hpp"
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+
+// Local headers
 #include "proto/worker.pb.h"
 #include "proto/TaskMsgDigest.h"
-#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+
+// Boost unit test header
+#define BOOST_TEST_MODULE Protocol_1
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 namespace gio = google::protobuf::io;

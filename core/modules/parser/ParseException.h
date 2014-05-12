@@ -27,9 +27,13 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#include <map>
-#include <antlr/AST.hpp>
+
+// System headers
 #include <stdexcept>
+#include <map>
+
+// Third-party headers
+#include <antlr/AST.hpp>
 
 namespace lsst {
 namespace qserv {

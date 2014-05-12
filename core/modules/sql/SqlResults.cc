@@ -20,7 +20,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // SqlResults class implementation file.
+
 #include "sql/SqlResults.h"
+
+// System headers
 #include <sstream>
 
 namespace lsst {

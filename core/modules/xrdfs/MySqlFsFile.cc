@@ -24,6 +24,7 @@
 
 #include "xrdfs/MySqlFsFile.h"
 
+// Third-party headers
 #include "XrdSec/XrdSecEntity.hh"
 #include "XrdSfs/XrdSfsAio.hh"
 #include "XrdSys/XrdSysError.hh"
@@ -38,31 +39,34 @@
 #  include "boost/thread.hpp"
 #  include "boost/format.hpp"
 #endif
-#include "util/Thread.h"
-#include "wdb/QueryRunner.h"
-#include "xrdfs/MySqlFsCommon.h"
-#include "wbase/Base.h"
-#include "wcontrol/RequestTaker.h"
-#include "wlog/WLogger.h"
-#include "obsolete/QservPath.h"
 
+// System headers
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <errno.h>
 #include <fcntl.h>
 #include <functional>
-#include <errno.h>
-#include "mysql/mysql.h"
-#include <numeric>
-#include <unistd.h>
-#include <sstream>
 #include <iostream> // For file-scoped debug output
+#include <numeric>
+#include <sstream>
+#include <unistd.h>
+
+// Local headers
+#include "mysql/mysql.h"
+#include "obsolete/QservPath.h"
+#include "util/Thread.h"
+#include "wbase/Base.h"
+#include "wcontrol/RequestTaker.h"
+#include "wdb/QueryRunner.h"
+#include "wlog/WLogger.h"
+#include "xrdfs/MySqlFsCommon.h"
 
 #define QSERV_USE_STUPID_STRING 1
 
 namespace {
-    
+
 // Boost launching helper
 template <typename Callable>
 void launchThread(Callable const& c) {

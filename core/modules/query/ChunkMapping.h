@@ -23,15 +23,17 @@
 #ifndef LSST_QSERV_QUERY_CHUNKMAPPING_H
 #define LSST_QSERV_QUERY_CHUNKMAPPING_H
 
-// C++
+// System headers
 #include <map>
-#include <string>
 #include <sstream>
-// Boost
+#include <string>
+
+// Third-party headers
 #include "boost/shared_ptr.hpp"
 
-// Package
+// Local headers
 #include "util/common.h"
+
 
 namespace lsst {
 namespace qserv {

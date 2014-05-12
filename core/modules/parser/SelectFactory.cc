@@ -30,30 +30,30 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/SelectFactory.h"
 
-// antlr
+// Third-party headers
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
-// Package
-#include "parser/ColumnRefH.h"
-#include "query/SelectStmt.h"
-#include "query/SelectList.h"
-#include "query/ValueFactor.h"
-// Delegate factories
+// Local headers
+#include "log/Logger.h"
+   // parser: factories
 #include "parser/FromFactory.h"
+#include "parser/SelectListFactory.h"
 #include "parser/WhereFactory.h"
 #include "parser/ModFactory.h"
-#include "parser/SelectListFactory.h"
 #include "parser/ValueExprFactory.h"
 #include "parser/WhereFactory.h"
-
+  // parser: all others
+#include "parser/ColumnRefH.h"
 #include "parser/ParseAliasMap.h"
 #include "parser/ParseException.h"
 #include "parser/parseTreeUtil.h"
-//#include "query/TableRef.h"
+#include "query/SelectList.h"
+#include "query/SelectStmt.h"
+#include "query/ValueFactor.h"
 
-#include "log/Logger.h"
 
 ////////////////////////////////////////////////////////////////////////
 // SelectFactory
@@ -172,7 +172,7 @@ SelectListFactory::attachTo(SqlSQL2Parser& p) {
     p._columnAliasHandler = _columnAliasH;
 }
 
-boost::shared_ptr<query::SelectList> 
+boost::shared_ptr<query::SelectList>
 SelectListFactory::getProduct() {
     boost::shared_ptr<query::SelectList> slist(new query::SelectList());
     slist->_valueExprList = _valueExprList;

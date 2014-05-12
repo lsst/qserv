@@ -28,15 +28,20 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
 #include <iostream>
-#include <boost/shared_ptr.hpp>
+
+// Third-party headers
 #include <antlr/AST.hpp>
+#include <boost/shared_ptr.hpp>
 
-namespace lsst { 
-namespace qserv { 
-
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace parser {
+    class ValueExprFactory;
+}
 namespace query {
-    // Forward
     class AndTerm;
     class BoolFactor;
     class BoolTerm;
@@ -44,13 +49,12 @@ namespace query {
     class PassTerm;
     class OrTerm;
     class UnknownTerm;
-} // namespace query
+}}} // End of forward declarations
 
 
+namespace lsst {
+namespace qserv {
 namespace parser {
-
-// Forward
-class ValueExprFactory;
 
 /// BoolTermFactory is a factory class for BoolTerm objects that get
 /// placed (typically) in WhereClause objects.
@@ -85,7 +89,7 @@ public:
     /// Import a node into the factory
     class bfImport {
     public:
-        bfImport(BoolTermFactory& bf, query::BoolFactor& bfr) : 
+        bfImport(BoolTermFactory& bf, query::BoolFactor& bfr) :
             _bf(bf), _bfr(bfr)  {}
         void operator()(antlr::RefAST a);
     private:

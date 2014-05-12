@@ -28,13 +28,19 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/QueryTemplate.h"
-#include <sstream>
+
+// System headers
 #include <iostream>
+#include <sstream>
+
+// Local headers
 #include "global/sqltoken.h" // sqlShouldSeparate
+#include "log/Logger.h"
 #include "query/ColumnRef.h"
 #include "query/TableRef.h"
-#include "log/Logger.h"
+
 
 namespace lsst {
 namespace qserv {
@@ -73,7 +79,7 @@ std::string outputString(C& c) {
     return ss.str();
 }
 struct MappingWrapper {
-    MappingWrapper(QueryTemplate::EntryMapping const& em_, 
+    MappingWrapper(QueryTemplate::EntryMapping const& em_,
                    QueryTemplate& qt_)
         : em(em_), qt(qt_) {}
     void operator()(boost::shared_ptr<QueryTemplate::Entry> e) {
@@ -152,13 +158,13 @@ QueryTemplate::dbgStr() const {
     return outputString(_entries);
 }
 
-void 
+void
 QueryTemplate::append(std::string const& s) {
     boost::shared_ptr<Entry> e(new StringEntry(s));
     _entries.push_back(e);
 }
 
-void 
+void
 QueryTemplate::append(query::ColumnRef const& cr) {
     boost::shared_ptr<Entry> e(new ColumnEntry(cr));
     _entries.push_back(e);
@@ -175,7 +181,7 @@ QueryTemplate::append(boost::shared_ptr<QueryTemplate::Entry> const& e) {
     _entries.push_back(e);
 }
 
-std::string 
+std::string
 QueryTemplate::generate() const {
     return outputString(_entries);
 }

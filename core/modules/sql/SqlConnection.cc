@@ -20,25 +20,28 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "sql/SqlConnection.h"
+
+// System headers
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <cstdio>
-// Boost
-#include <boost/thread.hpp> // for mutex.
-#include <boost/format.hpp>
 
-// mysql
-#include "sql/SqlConnection.h"
+// Third-party headers
+#include <boost/format.hpp>
+#include <boost/thread.hpp> // for mutex.
+
+// Local headers
 #include "mysql/MySqlConnection.h"
 #include "sql/SqlResults.h"
+
 
 namespace lsst {
 namespace qserv {
 namespace sql {
 
-
-namespace { 
+namespace {
 void
 populateErrorObject(mysql::MySqlConnection& m, SqlErrorObject& o) {
     MYSQL* mysql = m.getMySql();
@@ -85,7 +88,7 @@ SqlResultIter::done() const {
 }
 
 bool
-SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig, 
+SqlResultIter::_setup(mysql::MySqlConfig const& sqlConfig,
                       std::string const& query) {
     _columnCount = 0;
     _connection.reset(new mysql::MySqlConnection(sqlConfig, true));

@@ -25,8 +25,12 @@
  /**
   * @author Daniel L. Wang, SLAC
   */
-#include <queue>
+
+// System headers
 #include <set>
+#include <queue>
+
+// Third-party headers
 #include <boost/scoped_ptr.hpp>
 
 namespace lsst {

@@ -22,11 +22,19 @@
  */
 #ifndef LSST_QSERV_QUERY_JOINREF_H
 #define LSST_QSERV_QUERY_JOINREF_H
+
+
+// System headers
 #include <iostream>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
+// Local headers
 #include "query/JoinSpec.h"
 #include "query/TableRef.h"
+
+
 namespace lsst {
 namespace qserv {
 namespace query {

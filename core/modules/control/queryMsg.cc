@@ -23,7 +23,11 @@
 // queryMsg.h (SWIG-exported functions for accessing QueryMessages)
 
 #include "control/queryMsg.h"
+
+// System headers
 #include <iostream>
+
+// Local headers
 #include "control/AsyncQueryManager.h"
 #include "control/SessionManagerAsync.h"
 #include "qdisp/MessageStore.h"
@@ -31,8 +35,8 @@
 
 namespace lsst {
 namespace qserv {
-namespace control {        
-    
+namespace control {
+
 int queryMsgGetCount(int session) {
     control::AsyncQueryManager& qm = getAsyncManager(session);
     boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();

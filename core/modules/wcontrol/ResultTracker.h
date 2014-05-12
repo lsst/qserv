@@ -23,12 +23,16 @@
 #ifndef LSST_QSERV_WCONTROL_RESULTTRACKER_H
 #define LSST_QSERV_WCONTROL_RESULTTRACKER_H
 
+// System headers
 #include <deque>
 #include <iostream>
 
+// Third-party headers
 #include <boost/signal.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/make_shared.hpp>
+
+// Local headers
 #include "util/WorkQueue.h"
 
 namespace lsst {

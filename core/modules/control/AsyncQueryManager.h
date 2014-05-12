@@ -34,47 +34,44 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Standard
+// System headers
 #include <deque>
 #include <map>
 
-// Boost
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
 
+// Local headers
 #include "control/DynamicWorkQueue.h"
 #include "xrdc/xrdfile.h"
 
+// Forward declarations
 namespace lsst {
 namespace qserv {
-
-namespace qdisp {
-    // Forward
-    class ChunkQuery;
-    class MessageStore;
-} // namespace qdisp
-
+namespace control {
+    class TransactionSpec;
+}
 namespace merger {
-    // Forwad        
     class MergeFixup;
     class TableMerger;
     class TableMergerConfig;
-} // namespace merger
-
+}
+namespace qdisp {
+    class ChunkQuery;
+    class MessageStore;
+}
 namespace qproc {
-    // Forward
-    class QuerySession;
-} // namespace qproc
-
+     class QuerySession;
+}
 namespace xrdc {
-    // Forward
     class PacketIter;
-} // namespace xrdc
-    
-namespace control {
+}}} // End of forward declarations
 
-// Forward
-class TransactionSpec;
+
+namespace lsst {
+namespace qserv {
+namespace control {
 
 //////////////////////////////////////////////////////////////////////
 // class AsyncQueryManager
@@ -124,7 +121,7 @@ public:
     void addToWriteQueue(DynamicWorkQueue::Callable * callable);
 
     qproc::QuerySession& getQuerySession() { return *_qSession; }
-        
+
 private:
     // QuerySpec: ChunkQuery object + result name
     typedef std::pair<boost::shared_ptr<qdisp::ChunkQuery>, std::string> QuerySpec;

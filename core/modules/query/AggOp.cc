@@ -29,11 +29,15 @@
 
 #include "query/AggOp.h"
 
+// System headers
 #include <sstream>
 #include <stdexcept>
+
+// Local headers
 #include "query/FuncExpr.h"
 #include "query/ValueExpr.h"
 #include "query/ValueFactor.h"
+
 
 namespace lsst {
 namespace qserv {

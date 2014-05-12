@@ -22,23 +22,24 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "control/thread.h"
 
-// Standard
+// System headers
+#include <algorithm>
+#include <fcntl.h>
 #include <fstream>
 #include <sys/mman.h>
-#include <fcntl.h>
-#include <algorithm>
-// Boost
-#include <boost/make_shared.hpp>
-// LSST
-#include "log/Logger.h"
-#include "xrdc/xrdfile.h"
-#include "control/thread.h"
-#include "util/xrootd.h"
-#include "merger/TableMerger.h"
 
-// Xrootd
+// Third-party headers
+#include <boost/make_shared.hpp>
 #include "XrdPosix/XrdPosixCallBack.hh"
+
+// Local headers
+#include "log/Logger.h"
+#include "merger/TableMerger.h"
+#include "util/xrootd.h"
+#include "xrdc/xrdfile.h"
+
 
 // Namespace modifiers
 using boost::make_shared;
@@ -77,7 +78,7 @@ int seekMagic(int start, char* buffer, int term) {
 namespace lsst {
 namespace qserv {
 namespace control {
-    
+
 //////////////////////////////////////////////////////////////////////
 // TransactionSpec
 //////////////////////////////////////////////////////////////////////

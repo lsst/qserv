@@ -28,10 +28,15 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// System headers
 #include <list>
 
+// Third-party headers
 #include <boost/shared_ptr.hpp>
+
+// Local headers
 #include "query/TableRef.h"
+
 
 namespace lsst {
 namespace qserv {

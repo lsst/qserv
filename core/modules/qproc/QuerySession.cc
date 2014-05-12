@@ -28,27 +28,31 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "qproc/QuerySession.h"
 
+// System headers
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
 
+// Third-party headers
 #include <antlr/NoViableAltException.hpp>
 
+// Local headers
 #include "css/Facade.h"
-#include "query/Constraint.h"
+#include "log/Logger.h"
+#include "parser/ParseException.h"
+#include "parser/parseExceptions.h"
 #include "parser/SelectParser.h"
-#include "query/SelectStmt.h"
-#include "query/SelectList.h"
-#include "query/QsRestrictor.h"
-#include "query/QueryContext.h"
 #include "qana/AnalysisError.h"
 #include "qana/QueryMapping.h"
 #include "qana/QueryPlugin.h"
-#include "parser/ParseException.h"
-#include "parser/parseExceptions.h"
-#include "log/Logger.h"
+#include "query/Constraint.h"
+#include "query/QsRestrictor.h"
+#include "query/QueryContext.h"
+#include "query/SelectStmt.h"
+#include "query/SelectList.h"
 
 #define DEBUG 0
 
@@ -64,7 +68,7 @@ void printConstraints(query::ConstraintVector const& cv) {
 ////////////////////////////////////////////////////////////////////////
 // class QuerySession
 ////////////////////////////////////////////////////////////////////////
-QuerySession::QuerySession(boost::shared_ptr<css::Facade> cssFacade) : 
+QuerySession::QuerySession(boost::shared_ptr<css::Facade> cssFacade) :
     _cssFacade(cssFacade) {
 }
 

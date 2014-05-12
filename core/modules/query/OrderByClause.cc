@@ -26,12 +26,18 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/OrderByClause.h"
+
+// System headers
 #include <iostream>
 #include <iterator>
 #include <sstream>
 
+// Third-party headers
 #include <boost/make_shared.hpp>
+
+// Local headers
 #include "query/QueryTemplate.h"
 
 

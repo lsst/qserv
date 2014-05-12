@@ -23,8 +23,9 @@
 #ifndef LSST_QSERV_OBSOLETE_QSERVPATH_H
 #define LSST_QSERV_OBSOLETE_QSERVPATH_H
 
-#include <string>
+// System headers
 #include <map>
+#include <string>
 
 namespace lsst {
 namespace qserv {

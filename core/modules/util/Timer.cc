@@ -20,8 +20,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // Generic timer class
+
 #include "util/Timer.h"
 
+// System headers
 #include <cstdio>
 
 namespace lsst {

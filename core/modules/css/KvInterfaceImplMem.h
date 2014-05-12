@@ -32,13 +32,14 @@
 #ifndef LSST_QSERV_KVINTERFACE_IMPL_MEM_HH
 #define LSST_QSERV_KVINTERFACE_IMPL_MEM_HH
 
-// standard library imports
+// System headers
 #include <map>
 #include <string>
 #include <vector>
 
-// local imports
+// Local headers
 #include "css/KvInterface.h"
+
 
 namespace lsst {
 namespace qserv {

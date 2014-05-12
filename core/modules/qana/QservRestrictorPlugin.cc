@@ -28,19 +28,24 @@
   */
 
 // No public interface (no QservRestrictorPlugin.h)
+
+// System headers
 #include <deque>
 #include <string>
+
+// Third-party headers
 #include <boost/pointer_cast.hpp>
 
-#include "qana/QueryPlugin.h" // Parent class
-#include "qana/AnalysisError.h"
+// Local headers
 #include "css/Facade.h"
+#include "qana/AnalysisError.h"
+#include "qana/QueryPlugin.h" // Parent class
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
-#include "query/QueryContext.h"
 #include "query/JoinRef.h"
 #include "query/Predicate.h"
+#include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/ValueFactor.h"
 #include "query/ValueExpr.h"
@@ -104,7 +109,7 @@ newInPred(std::string const& aliasTable,
     query::InPredicate::Ptr p(new query::InPredicate());
     boost::shared_ptr<query::ColumnRef> cr(
                new query::ColumnRef("", aliasTable, keyColumn));
-    p->value = 
+    p->value =
         query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(cr));
 
     typedef std::vector<std::string>::const_iterator Iter;
@@ -170,7 +175,7 @@ public:
         std::string const& db = t.getDb();
         std::string const& table = t.getTable();
 
-        if(db.empty() 
+        if(db.empty()
            || !_cssFacade.containsDb(db)
            || !_cssFacade.containsTable(db, table)) {
             throw qana::AnalysisError("Invalid db/table:" + db + "." + table);
@@ -221,10 +226,10 @@ public:
     virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext& context);
 
 private:
-    query::BoolTerm::Ptr 
+    query::BoolTerm::Ptr
         _makeCondition(boost::shared_ptr<query::QsRestrictor> const restr,
                        RestrictorEntry const& restrictorEntry);
-    boost::shared_ptr<query::QsRestrictor::List> 
+    boost::shared_ptr<query::QsRestrictor::List>
         _getKeyPreds(query::QueryContext&,
                      query::AndTerm::Ptr);
     query::QsRestrictor::Ptr
@@ -234,7 +239,7 @@ private:
     query::QsRestrictor::Ptr
         _newKeyRestrictor(query::QueryContext& context,
                           boost::shared_ptr<query::CompPredicate> cp);
-    query::QsRestrictor::Ptr 
+    query::QsRestrictor::Ptr
         _convertObjectId(query::QueryContext& context,
                          query::QsRestrictor const& original);
 };
@@ -298,7 +303,7 @@ private:
             query::BoolFactor::Ptr newFactor(new query::BoolFactor);
             query::BfTerm::PtrList& terms = newFactor->_terms;
             query::CompPredicate::Ptr cp(new query::CompPredicate());
-            boost::shared_ptr<query::FuncExpr> fe = 
+            boost::shared_ptr<query::FuncExpr> fe =
                 newFuncExpr(fName, e.alias, e.chunkColumns, params);
             cp->left =
                 query::ValueExpr::newSimple(query::ValueFactor::newFuncFactor(fe));
@@ -379,7 +384,7 @@ registerPlugin registerQservRestrictorPlugin;
 // QservRestrictorPlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void
-QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt, 
+QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
                                     query::QueryContext& context) {
     // Idea: For each of the qserv restrictors in the WHERE clause,
     // rewrite in the context of whatever chunked tables exist in the
@@ -448,7 +453,7 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
 }
 
 void
-QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p, 
+QservRestrictorPlugin::applyPhysical(QueryPlugin::Plan& p,
                                      query::QueryContext& context) {
     // Probably nothing is needed here...
 }
@@ -462,7 +467,7 @@ QservRestrictorPlugin::_makeCondition(
 }
 
 inline void
-addPred(boost::shared_ptr<query::QsRestrictor::List>& preds, 
+addPred(boost::shared_ptr<query::QsRestrictor::List>& preds,
         query::QsRestrictor::Ptr p) {
     if(p) {
         if(!preds) {
@@ -473,7 +478,7 @@ addPred(boost::shared_ptr<query::QsRestrictor::List>& preds,
 }
 
 boost::shared_ptr<query::QsRestrictor::List>
-QservRestrictorPlugin::_getKeyPreds(query::QueryContext& context, 
+QservRestrictorPlugin::_getKeyPreds(query::QueryContext& context,
                                     query::AndTerm::Ptr p) {
     typedef query::BoolTerm::PtrList::iterator TermIter;
     typedef query::BfTerm::PtrList::iterator BfIter;
@@ -490,10 +495,10 @@ QservRestrictorPlugin::_getKeyPreds(query::QueryContext& context,
             query::InPredicate::Ptr ip =
                 boost::dynamic_pointer_cast<query::InPredicate>(*b);
             if(ip) {
-                boost::shared_ptr<query::ColumnRef> cr 
+                boost::shared_ptr<query::ColumnRef> cr
                     = resolveAsColumnRef(context, ip->value);
                 if(cr && lookupKey(context, cr)) {
-                    query::QsRestrictor::Ptr p = 
+                    query::QsRestrictor::Ptr p =
                         _newKeyRestrictor(context, cr, ip->cands);
                     addPred(keyPreds, p);
                 }
@@ -559,7 +564,7 @@ QservRestrictorPlugin::_newKeyRestrictor(
                                   query::QueryContext& context,
                                   boost::shared_ptr<query::CompPredicate> cp) {
     query::QsRestrictor::Ptr p;
-    boost::shared_ptr<query::ColumnRef> key = 
+    boost::shared_ptr<query::ColumnRef> key =
         resolveAsColumnRef(context, cp->left);
     int op = cp->op;
     query::ValueExprPtr literalValue = cp->right;
@@ -598,7 +603,7 @@ QservRestrictorPlugin::_convertObjectId(query::QueryContext& context,
     if(!context.cssFacade->containsDb(context.dominantDb)
        || !context.cssFacade->containsTable(context.dominantDb,
                                             context.anonymousTable) ) {
-        throw qana::AnalysisError("Invalid db/table: " + context.dominantDb 
+        throw qana::AnalysisError("Invalid db/table: " + context.dominantDb
                                   + "." + context.anonymousTable);
     }
     std::string keyColumn = context.cssFacade->getKeyColumn(context.dominantDb,

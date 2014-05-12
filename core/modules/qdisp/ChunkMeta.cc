@@ -21,6 +21,5 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // Please see ChunkMeta.h
+
 #include "qdisp/ChunkMeta.h"
-
-

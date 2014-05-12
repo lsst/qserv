@@ -30,8 +30,8 @@
 // No public interface
 #include "qana/QueryPlugin.h" // Parent class
 
+// Local headers
 #include "log/Logger.h"
-#include "util/common.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/QsRestrictor.h"
@@ -39,6 +39,7 @@
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/WhereClause.h"
+#include "util/common.h"
 
 namespace lsst {
 namespace qserv {
@@ -63,12 +64,12 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(query::SelectStmt& stmt, 
+    virtual void applyLogical(query::SelectStmt& stmt,
                               query::QueryContext&);
     virtual void applyFinal(query::QueryContext& context);
 
 private:
-    util::StringPairList _findScanTables(query::SelectStmt& stmt, 
+    util::StringPairList _findScanTables(query::SelectStmt& stmt,
                                          query::QueryContext& context);
     util::StringPairList _scanTables;
 };
@@ -107,7 +108,7 @@ registerPlugin registerScanTablePlugin;
 // ScanTablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void
-ScanTablePlugin::applyLogical(query::SelectStmt& stmt, 
+ScanTablePlugin::applyLogical(query::SelectStmt& stmt,
                               query::QueryContext& context) {
     _scanTables = _findScanTables(stmt, context);
     context.scanTables = _scanTables;
@@ -148,7 +149,7 @@ filterPartitioned(query::TableRefList const& tList) {
 }
 
 util::StringPairList
-ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, 
+ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
                                  query::QueryContext& context) {
     // Might be better as a separate plugin
 

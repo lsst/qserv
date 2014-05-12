@@ -34,19 +34,20 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Standard library includes
-#include <sys/time.h>
-#include <sstream>
-#include <iostream>
+#include "merger/TableMerger.h"
 
-// Boost
+// System headers
+#include <iostream>
+#include <sstream>
+#include <sys/time.h>
+
+// Third-party headers
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
 
-// Local includes
+// Local headers
 #include "log/Logger.h"
 #include "merger/SqlInsertIter.h"
-#include "merger/TableMerger.h"
 #include "sql/SqlConnection.h"
 #include "util/MmapFile.h"
 
@@ -335,7 +336,7 @@ bool TableMerger::_importResult(std::string const& dumpFile) {
 
 bool TableMerger::merge2(std::string const& dumpFile,
                         std::string const& tableName) {
-    boost::shared_ptr<util::MmapFile> m = 
+    boost::shared_ptr<util::MmapFile> m =
         util::MmapFile::newMap(dumpFile, true, false);
     if(!m.get()) {
         // Fallback to non-mmap version.

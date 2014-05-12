@@ -24,11 +24,15 @@
   * @brief Simple testing for query representation
   *
   */
-#define BOOST_TEST_MODULE QueryRepr_1
-#include "boost/test/included/unit_test.hpp"
+
+// Local headers
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/TestFactory.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE QueryRepr_1
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 

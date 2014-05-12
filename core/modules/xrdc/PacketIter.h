@@ -30,9 +30,13 @@
 //
 #ifndef LSST_QSERV_XRDC_PACKETITER_H
 #define LSST_QSERV_XRDC_PACKETITER_H
-#include <boost/shared_ptr.hpp>
+
+// System headers
 #include <string>
 #include <utility>
+
+// Third-party headers
+#include <boost/shared_ptr.hpp>
 
 namespace lsst {
 namespace qserv {

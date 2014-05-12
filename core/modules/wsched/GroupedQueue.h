@@ -25,7 +25,11 @@
  /**
   * @author Daniel L. Wang, SLAC
   */
+
+// System headers
 #include <deque>
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
 namespace lsst {

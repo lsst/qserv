@@ -28,33 +28,33 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Standard
+// System headers
 #include <list>
 
-// Boost
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 #include "query/QueryTemplate.h"
 
-// Forward
+// Forward declarations
 class SqlSQL2Parser;
+namespace lsst {
+namespace qserv {
+namespace parser {
+    class SelectFactory;
+}
+namespace query {
+    class SelectList;
+    class FromList;
+    class WhereClause;
+    class OrderByClause;
+    class GroupByClause;
+    class HavingClause;
+}}} // End of forward declarations
+
 
 namespace lsst {
 namespace qserv {
-
-namespace parser {
-    // Forward
-    class SelectFactory;
-}
-
 namespace query {
-
-// Forward
-class SelectList;
-class FromList;
-class WhereClause;
-class OrderByClause;
-class GroupByClause;
-class HavingClause;
 
 // SelectStmt contains extracted information about a particular parsed
 // SQL select statement. It is not responsible for performing

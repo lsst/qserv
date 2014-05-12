@@ -31,19 +31,25 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "wcontrol/RequestTaker.h"
+
+// Third-party headers
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+
+// Local headers
 #include "obsolete/QservPath.h"
 #include "proto/worker.pb.h"
 
-#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
+
 namespace gio = google::protobuf::io;
 
 namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-RequestTaker::RequestTaker(wbase::TaskAcceptor::Ptr acceptor, 
+RequestTaker::RequestTaker(wbase::TaskAcceptor::Ptr acceptor,
                            obsolete::QservPath const& path)
     : _acceptor(acceptor), _chunk(path.chunk()), _db(path.db()) {
 }

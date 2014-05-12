@@ -45,20 +45,23 @@
   * @author Daniel L. Wang, SLAC
   */
 
+#include "control/dispatcher.h"
+
+// System headers
 #include <fstream>
 #include <sstream>
 
+// Local headers
 #include "control/AsyncQueryManager.h"
-#include "control/dispatcher.h"
-#include "control/thread.h"
 #include "control/SessionManagerAsync.h"
+#include "control/thread.h"
 #include "log/Logger.h"
 #include "obsolete/QservPath.h"
 #include "qproc/ChunkSpec.h"
 #include "qproc/QuerySession.h"
 #include "qproc/TaskMsgFactory2.h"
-#include "util/xrootd.h"
 #include "util/StringHash.h"
+#include "util/xrootd.h"
 #include "xrdc/xrdfile.h"
 
 namespace {
@@ -94,9 +97,9 @@ private:
 
 namespace lsst {
 namespace qserv {
-namespace control {        
-    
-int 
+namespace control {
+
+int
 submitQuery(int session, TransactionSpec const& s,
             std::string const& resultName) {
     LOGGER_DBG << "EXECUTING submitQuery(" << session << ", TransactionSpec s, "
@@ -144,7 +147,7 @@ setupQuery(int session, std::string const& query, std::string const& resultTable
     qs.setQuery(query);
 }
 
-std::string const& 
+std::string const&
 getSessionError(int session) {
     AsyncQueryManager& qm = getAsyncManager(session);
     qproc::QuerySession& qs = qm.getQuerySession();
@@ -338,7 +341,7 @@ getErrorDesc(int session) {
     return ss.str();
 }
 
-int 
+int
 newSession(std::map<std::string,std::string> const& config) {
     AsyncQueryManager::Ptr m =
         boost::make_shared<AsyncQueryManager>(config);
@@ -346,12 +349,12 @@ newSession(std::map<std::string,std::string> const& config) {
     return id;
 }
 
-void 
+void
 configureSessionMerger(int session, merger::TableMergerConfig const& c) {
     getAsyncManager(session).configureMerger(c);
 }
 
-void 
+void
 configureSessionMerger3(int session) {
     AsyncQueryManager& qm = getAsyncManager(session);
     qproc::QuerySession& qs = qm.getQuerySession();
@@ -360,12 +363,12 @@ configureSessionMerger3(int session) {
     qm.configureMerger(m, resultTable);
 }
 
-std::string 
+std::string
 getSessionResultName(int session) {
     return getAsyncManager(session).getMergeResultName();
 }
 
-void 
+void
 discardSession(int session) {
     getSessionManagerAsync().discardSession(session);
 }

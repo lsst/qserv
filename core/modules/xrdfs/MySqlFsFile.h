@@ -24,18 +24,20 @@
 #ifndef LSST_LSST_QSERV_XRDFS_MYSQLFSFILE_H
 #define LSST_LSST_QSERV_XRDFS_MYSQLFSFILE_H
 
+// System headers
+#include <sstream>
+#include <string>
 #include <sys/types.h>
 
-#include <string>
-#include <sstream>
+// Third-party headers
 #include "XrdSfs/XrdSfsInterface.hh"
-#include "mysql/mysql.h"
 
-// pkg includes
+// Local headers
+#include "mysql/mysql.h"
 #include "wbase/Base.h"
 #include "wcontrol/ResultTracker.h"
-#include "xrdfs/MySqlFsCommon.h"
 #include "wcontrol/Service.h"
+#include "xrdfs/MySqlFsCommon.h"
 
 // Forward declarations
 class XrdSysError;
@@ -53,7 +55,7 @@ namespace wcontrol {
 
 namespace lsst {
 namespace qserv {
-namespace xrdfs {        
+namespace xrdfs {
 
 /// A factory functor that exists for the MySqlFsFile to register a callback for
 /// a completed query operation. The callback object is constructed with a

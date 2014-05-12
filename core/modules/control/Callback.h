@@ -23,6 +23,8 @@
 // Callback: generic callback interface class.
 #ifndef LSST_QSERV_CONTROL_CALLBACK_H
 #define LSST_QSERV_CONTROL_CALLBACK_H
+
+// Third-party headers
 #include <boost/shared_ptr.hpp>
 
 namespace lsst {

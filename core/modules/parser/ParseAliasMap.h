@@ -28,7 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Standard
+// System headers
 #include <map>
 
 namespace lsst {

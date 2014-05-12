@@ -22,7 +22,10 @@
 #ifndef LSST_QSERV_WSCHED_FIFOSCHEDULER_H
 #define LSST_QSERV_WSCHED_FIFOSCHEDULER_H
 
+// Third-party headers
 #include <boost/thread/mutex.hpp>
+
+// Local headers
 #include "wcontrol/Foreman.h"
 
 namespace lsst {
@@ -32,7 +35,7 @@ namespace wcontrol {
     // Forward
     class Task;
 }
-   
+
 namespace wsched {
 
 class FifoScheduler : public wcontrol::Foreman::Scheduler {

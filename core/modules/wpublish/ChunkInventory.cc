@@ -20,10 +20,17 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // ChunkInventory implementation.
+
 #include "wpublish/ChunkInventory.h"
-#include <sstream>
+
+// System headers
 #include <iostream>
+#include <sstream>
+
+// Third-party headers
 #include <boost/regex.hpp>
+
+// Local headers
 #include "sql/SqlConnection.h"
 #include "wconfig/Config.h"
 #include "wlog/WLogger.h"
@@ -156,7 +163,7 @@ ChunkInventory::ChunkInventory(std::string const& name, wlog::WLogger& log)
     _init(sc);
 }
 ChunkInventory::ChunkInventory(std::string const& name, wlog::WLogger& log,
-                               boost::shared_ptr<SqlConnection> sc) 
+                               boost::shared_ptr<SqlConnection> sc)
     : _name(name), _log(log) {
     _init(*sc);
 }
@@ -164,14 +171,14 @@ ChunkInventory::ChunkInventory(std::string const& name, wlog::WLogger& log,
 bool ChunkInventory::has(std::string const& db, int chunk, std::string table) {
     ExistMap::const_iterator di = _existMap.find(db);
     if(di == _existMap.end()) { return false; }
- 
+
     ChunkMap const& cm = di->second;
     ChunkMap::const_iterator ci = cm.find(chunk);
     if(ci == cm.end()) { return false; }
 
-    if(table.empty()) { 
-        return true; 
-    } else { 
+    if(table.empty()) {
+        return true;
+    } else {
         StringSet const& si = ci->second;
         return si.find(table) != si.end();
     }

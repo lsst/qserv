@@ -24,7 +24,7 @@
 #ifndef LSST_QSERV_QDISP_CHUNKMETA_H
 #define LSST_QSERV_QDISP_CHUNKMETA_H
 
-// C++
+// System headers
 #include <list>
 #include <string>
 
