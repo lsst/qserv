@@ -37,6 +37,7 @@
 // Should we keep a hash table when column refs are detected, so we can
 // map them?
 // For now, just build the syntax tree without evaluating.
+
 #include "query/SelectList.h"
 
 // System headers

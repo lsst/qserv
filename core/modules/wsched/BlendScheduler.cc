@@ -28,6 +28,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
+#include "wsched/BlendScheduler.h"
+
 // System headers
 #include <iostream>
 #include <sstream>
@@ -39,7 +41,6 @@
 #include "proto/worker.pb.h"
 #include "wcontrol/Foreman.h"
 #include "wlog/WLogger.h"
-#include "wsched/BlendScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
 

@@ -31,6 +31,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/SelectParser.h"
 
 // System headers

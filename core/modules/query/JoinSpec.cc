@@ -22,6 +22,7 @@
 /**
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/JoinSpec.h"
 
 // System headers

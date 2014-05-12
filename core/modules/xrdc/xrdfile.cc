@@ -21,13 +21,14 @@
  */
 // xrdfile.h -- Wrapper for xrootd client API functions
 
+#include "xrdc/xrdfile.h"
+
 // System headers
 #include <iostream>
 #include <string>
 
 // Local headers
 #include "log/Logger.h"
-#include "xrdc/xrdfile.h"
 
 //#define FAKE_XRD 1
 //#define QSM_PROFILE_XRD 1

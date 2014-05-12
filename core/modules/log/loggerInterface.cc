@@ -22,7 +22,6 @@
 // loggerInterface.cc houses the implementation of
 // loggerInterface.h (SWIG-exported functions for writing to log.)
 
-
 #include "log/loggerInterface.h"
 
 // System headers

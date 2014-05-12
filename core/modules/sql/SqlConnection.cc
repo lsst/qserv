@@ -20,6 +20,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "sql/SqlConnection.h"
+
 // System headers
 #include <cstdio>
 #include <fstream>
@@ -32,7 +34,6 @@
 
 // Local headers
 #include "mysql/MySqlConnection.h"
-#include "sql/SqlConnection.h"
 #include "sql/SqlResults.h"
 
 

@@ -28,6 +28,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/QueryTemplate.h"
 
 // System headers

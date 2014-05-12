@@ -28,6 +28,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "qproc/QuerySession.h"
 
 // System headers

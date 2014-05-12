@@ -20,9 +20,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#define BOOST_TEST_MODULE testIter
-#include "boost/test/included/unit_test.hpp"
-
 // System headers
 #include <cstring>
 #include <list>
@@ -32,6 +29,10 @@
 // Local headers
 #include "merger/SqlInsertIter.h"
 #include "xrdc/PacketIter.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE testIter
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 using lsst::qserv::merger::SqlInsertIter;

@@ -26,6 +26,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "wcontrol/Task.h"
 
 // Third-party headers

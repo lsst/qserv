@@ -24,8 +24,6 @@
   * @brief Simple testing for QueryPlugin implementations
   *
   */
-#define BOOST_TEST_MODULE QueryPlugins_1
-#include "boost/test/included/unit_test.hpp"
 
 // Local headers
 #include "css/Facade.h"
@@ -34,6 +32,10 @@
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/TestFactory.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE QueryPlugins_1
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 

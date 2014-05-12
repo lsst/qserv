@@ -21,12 +21,11 @@
  */
 /// See Substitution.h
 
+#include "util/Substitution.h"
+
 // System headers
 #include <map>
 #include <vector>
-
-// Local headers
-#include "util/Substitution.h"
 
 namespace lsst {
 namespace qserv {

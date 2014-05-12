@@ -20,6 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 #include "proto/TaskMsgDigest.h"
+
 #include "worker.pb.h"
 #ifdef __SUNPRO_CC
 #include <sys/md5.h>

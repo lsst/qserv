@@ -26,6 +26,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "global/sqltoken.h"
 
 // System headers

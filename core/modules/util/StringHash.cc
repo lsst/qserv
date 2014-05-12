@@ -21,6 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // StringHash -- Little wrappers for OpenSSL hashing.
+
 #include "util/StringHash.h"
 
 // System headers

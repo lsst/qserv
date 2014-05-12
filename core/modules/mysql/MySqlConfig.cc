@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "MySqlConfig.h"
+#include "mysql/MySqlConfig.h"
 
 // System headers
 #include <fstream>

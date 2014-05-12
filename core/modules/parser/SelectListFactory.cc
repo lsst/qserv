@@ -28,6 +28,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/SelectListFactory.h"
 
 // Local headers

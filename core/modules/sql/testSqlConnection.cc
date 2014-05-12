@@ -19,8 +19,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#define BOOST_TEST_MODULE SqlConnection_1
-#include "boost/test/included/unit_test.hpp"
 
 #include "SqlConnection.h"
 
@@ -28,6 +26,10 @@
 #include <iostream>
 #include <string>
 #include <unistd.h> // for getpass
+
+// Boost unit test header
+#define BOOST_TEST_MODULE SqlConnection_1
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 

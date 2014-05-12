@@ -34,6 +34,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
+#include "merger/TableMerger.h"
+
 // System headers
 #include <iostream>
 #include <sstream>
@@ -46,7 +48,6 @@
 // Local headers
 #include "log/Logger.h"
 #include "merger/SqlInsertIter.h"
-#include "merger/TableMerger.h"
 #include "sql/SqlConnection.h"
 #include "util/MmapFile.h"
 

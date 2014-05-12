@@ -31,7 +31,7 @@
 #ifndef LSST_QSERV_CSS_INTERFACE_HH
 #define LSST_QSERV_CSS_INTERFACE_HH
 
-// System imports
+// System headers
 #include <string>
 #include <vector>
 

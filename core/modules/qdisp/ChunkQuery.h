@@ -26,6 +26,7 @@
 #define LSST_QSERV_QDISP_CHUNKQUERY_H
 
 // Third-party headers
+#include <boost/thread.hpp>
 #include "XrdPosix/XrdPosixCallBack.hh"
 
 // Local headers

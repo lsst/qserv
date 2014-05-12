@@ -31,6 +31,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "wcontrol/RequestTaker.h"
 
 // Third-party headers

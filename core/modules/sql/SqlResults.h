@@ -35,9 +35,9 @@
 
 // Third-party headers
 #include <boost/utility.hpp>
+#include <mysql/mysql.h>
 
 // Local headers
-#include <mysql/mysql.h>
 #include "sql/SqlErrorObject.h"
 
 

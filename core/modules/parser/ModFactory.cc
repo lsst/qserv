@@ -29,6 +29,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/ModFactory.h"
 
 // System headers

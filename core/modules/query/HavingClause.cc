@@ -26,6 +26,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/HavingClause.h"
 
 // System headers

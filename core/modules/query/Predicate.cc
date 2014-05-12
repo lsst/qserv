@@ -26,9 +26,10 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/Predicate.h"
 
-//
+// Local headers
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"

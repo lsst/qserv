@@ -20,9 +20,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#define BOOST_TEST_MODULE SanityCheck
-#include "boost/test/included/unit_test.hpp"
-
 // System headers
 #include <iostream>
 
@@ -32,6 +29,9 @@
 // Local headers
 #include "wconfig/Config.h"
 
+// Boost unit test header
+#define BOOST_TEST_MODULE SanityCheck
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 using lsst::qserv::worker::Config;

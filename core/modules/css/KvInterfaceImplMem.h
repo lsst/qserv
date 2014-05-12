@@ -32,12 +32,12 @@
 #ifndef LSST_QSERV_KVINTERFACE_IMPL_MEM_HH
 #define LSST_QSERV_KVINTERFACE_IMPL_MEM_HH
 
-// System imports
+// System headers
 #include <map>
 #include <string>
 #include <vector>
 
-// Local imports
+// Local headers
 #include "css/KvInterface.h"
 
 

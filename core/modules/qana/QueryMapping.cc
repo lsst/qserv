@@ -28,6 +28,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "qana/QueryMapping.h"
 
 // System headers

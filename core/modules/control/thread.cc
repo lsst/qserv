@@ -22,6 +22,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "control/thread.h"
+
 // System headers
 #include <algorithm>
 #include <fcntl.h>
@@ -33,7 +35,6 @@
 #include "XrdPosix/XrdPosixCallBack.hh"
 
 // Local headers
-#include "control/thread.h"
 #include "log/Logger.h"
 #include "merger/TableMerger.h"
 #include "util/xrootd.h"

@@ -28,6 +28,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "sql/SqlFragmenter.h"
 
 namespace lsst {

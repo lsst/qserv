@@ -23,6 +23,7 @@
 
 /// Includes Config class implementation and declarations of key
 /// environment variables for qserv worker instances.
+
 #include "wconfig/Config.h"
 
 // System headers

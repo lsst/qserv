@@ -22,14 +22,14 @@
  */
 // xrootd.h -- Helper funcitons for xrootd-based dispatch
 
+#include "util/xrootd.h"
+
 // System headers
 #include <sstream>
 
 // Third-party headers
 #include "boost/format.hpp"
 
-// Local headers
-#include "util/xrootd.h"
 
 namespace lsst {
 namespace qserv {

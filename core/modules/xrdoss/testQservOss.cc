@@ -23,12 +23,14 @@
 #define BOOST_TEST_MODULE QservOss_1
 
 // Third-party headers
-#include "boost/test/included/unit_test.hpp"
 #include "XrdSys/XrdSysLogger.hh"
 #include "XrdOuc/XrdOucEnv.hh"
 
 // Local headers
 #include "xrdoss/QservOss.h"
+
+// Boost unit test header
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 using lsst::qserv::xrdoss::QservOss;

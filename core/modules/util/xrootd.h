@@ -25,9 +25,11 @@
 #ifndef LSST_QSERV_UTIL_XROOTD_H
 #define LSST_QSERV_UTIL_XROOTD_H
 
-
 // xrootd.h : consolidates xrootd/lower-level helper functions (i.e.,
 // dealing with xrootd URLs)
+
+// Third-party headers
+#include <string>
 
 namespace lsst {
 namespace qserv {

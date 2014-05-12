@@ -29,6 +29,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/WhereFactory.h"
 
 // System headers

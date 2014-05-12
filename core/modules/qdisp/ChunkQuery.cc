@@ -26,6 +26,8 @@
 // ReadCallable and WriteCallable are workqueue object callbacks that
 // allow chunkQuery work to be done in a workqueue(thread pool).
 
+#include "qdisp/ChunkQuery.h"
+
 // System headers
 #include <fcntl.h> // for O_RDONLY, O_WRONLY, etc.
 #include <iostream>
@@ -40,7 +42,6 @@
 #include "control/DynamicWorkQueue.h"
 #include "log/msgCode.h"
 #include "log/Logger.h"
-#include "qdisp/ChunkQuery.h"
 #include "qdisp/MessageStore.h"
 #include "util/xrootd.h"
 #include "util/StringHash.h"

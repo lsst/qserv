@@ -26,6 +26,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/ValueExprFactory.h"
 
 // Local headers

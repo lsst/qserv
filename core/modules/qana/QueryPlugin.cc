@@ -26,6 +26,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "qana/QueryPlugin.h"
 
 // System headers

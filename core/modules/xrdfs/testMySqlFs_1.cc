@@ -20,8 +20,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#define BOOST_TEST_MODULE MySqlFs_1
-
 // System headers
 #include <cerrno>
 #include <cstdlib>
@@ -30,12 +28,15 @@
 
 // Third-party headers
 #include "boost/scoped_ptr.hpp"
-#include "boost/test/included/unit_test.hpp"
 #include "XrdSfs/XrdSfsInterface.hh"
 #include "XrdSys/XrdSysLogger.hh"
 
 // Local headers
 #include "xrdfs/MySqlFs.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE MySqlFs_1
+#include "boost/test/included/unit_test.hpp"
 
 
 namespace test = boost::test_tools;

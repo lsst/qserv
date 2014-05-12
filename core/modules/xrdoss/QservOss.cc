@@ -25,6 +25,8 @@
 /// provides a particular arbitrary response indicating a free disk
 /// space abundance.
 
+#include "xrdoss/QservOss.h"
+
 // System headers
 #include <algorithm>
 #include <cstdarg>
@@ -45,7 +47,6 @@
 #include "wpublish/MySqlExportMgr.h"
 #include "xrdfs/XrdName.h"
 #include "xrdfs/XrdPrinter.h"
-#include "xrdoss/QservOss.h"
 
 
 namespace {

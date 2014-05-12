@@ -20,13 +20,15 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// Test ChunkInventory
-#define BOOST_TEST_MODULE ChunkInventory_1
-#include "boost/test/included/unit_test.hpp"
 
 // Local headers
 #include "sql/MockSql.h"
 #include "wlog/WLogger.h"
 #include "wpublish/ChunkInventory.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE ChunkInventory_1
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 using lsst::qserv::sql::MockSql;

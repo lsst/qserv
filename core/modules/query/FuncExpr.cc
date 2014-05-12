@@ -27,6 +27,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/FuncExpr.h"
 
 // System headers

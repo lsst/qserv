@@ -21,6 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// class Foreman implementation
+
 #include "wcontrol/Foreman.h"
 
 // System headers

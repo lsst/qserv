@@ -38,8 +38,6 @@
 #include <stdexcept>
 
 // Third-party headers
-#define BOOST_TEST_MODULE TestFacade
-#include <boost/test/included/unit_test.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/shared_ptr.hpp>
 
@@ -47,6 +45,10 @@
 #include "css/CssException.h"
 #include "css/Facade.h"
 #include "css/KvInterfaceImplZoo.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE TestFacade
+#include <boost/test/included/unit_test.hpp>
 
 using std::cout;
 using std::endl;

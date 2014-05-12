@@ -21,13 +21,14 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include "wsched/ChunkDisk.h"
+
 // System headers
 #include <ctime>
 #include <sstream>
 
 // Local headers
 #include "wlog/WLogger.h"
-#include "wsched/ChunkDisk.h"
 
 
 /// ChunkDisk is a data structure that tracks a queue of pending tasks

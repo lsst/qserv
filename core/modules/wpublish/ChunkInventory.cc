@@ -20,6 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 // ChunkInventory implementation.
+
 #include "wpublish/ChunkInventory.h"
 
 // System headers

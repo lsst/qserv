@@ -23,7 +23,6 @@
 
 #include "control/DynamicWorkQueue.h"
 
-
 // System headers
 #include <stdexcept>
 #include <sys/time.h>

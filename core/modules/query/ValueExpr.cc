@@ -30,6 +30,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/ValueExpr.h"
 
 // System headers

@@ -22,9 +22,6 @@
 
 #include "XrdSfs/XrdSfsInterface.hh"
 
-#define BOOST_TEST_MODULE MySqlFs_2
-#include "boost/test/included/unit_test.hpp"
-
 // System headers
 #include <cerrno>
 #include <cstdlib>
@@ -44,6 +41,10 @@
 #include "wdb/QueryRunner.h"
 #include "wlog/WLogger.h"
 #include "xrdfs/MySqlFsFile.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE MySqlFs_2
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 using boost::make_shared;

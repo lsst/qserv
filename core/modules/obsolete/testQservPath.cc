@@ -19,8 +19,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#define BOOST_TEST_MODULE Path_1
-#include "boost/test/included/unit_test.hpp"
 
 // System headers
 #include <iostream>
@@ -30,6 +28,10 @@
 
 // Local headers
 #include "obsolete/QservPath.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE Path_1
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 namespace qsrv = lsst::qserv::obsolete;

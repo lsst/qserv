@@ -27,6 +27,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/ValueFactorFactory.h"
 
 // System headers

@@ -24,6 +24,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "query/QsRestrictor.h"
 
 // System headers

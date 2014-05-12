@@ -30,6 +30,7 @@
 // No public interface
 #include "qana/QueryPlugin.h" // Parent class
 
+// Local headers
 #include "log/Logger.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"

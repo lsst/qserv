@@ -21,6 +21,8 @@
  */
 // See MessageStore.h
 
+#include "qdisp/MessageStore.h"
+
 // System headers
 #include <iostream>
 
@@ -29,8 +31,6 @@
 
 // Local headers
 #include "log/Logger.h"
-#include "qdisp/MessageStore.h"
-
 
 namespace lsst {
 namespace qserv {

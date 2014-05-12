@@ -26,6 +26,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "qproc/ChunkQuerySpec.h"
 
 // System headers

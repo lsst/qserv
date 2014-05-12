@@ -24,12 +24,15 @@
   *
   * @author Daniel L. Wang, SLAC
   */
-#define BOOST_TEST_MODULE
-#include "boost/test/included/unit_test.hpp"
 
+// Local headers
 #include "wsched/CirclePqueue.h"
 #include "wsched/ChunkState.h"
 #include "wsched/GroupedQueue.h"
+
+// Boost unit test header
+#define BOOST_TEST_MODULE
+#include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
 using lsst::qserv::wsched::GroupedQueue;

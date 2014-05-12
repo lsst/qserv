@@ -28,6 +28,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
+#include "wsched/GroupScheduler.h"
+
 // System headers
 #include <iostream>
 #include <sstream>
@@ -38,7 +40,6 @@
 // Local headers
 #include "proto/worker.pb.h"
 #include "wlog/WLogger.h"
-#include "wsched/GroupScheduler.h"
 
 namespace lsst {
 namespace qserv {

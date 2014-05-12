@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "QservPath.h"
+#include "obsolete/QservPath.h"
 
 // System headers
 #include <iostream>

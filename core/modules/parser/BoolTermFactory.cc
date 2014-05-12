@@ -27,6 +27,7 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
 #include "parser/BoolTermFactory.h"
 
 // Local headers

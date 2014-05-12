@@ -20,6 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// QueryPhyResult instances contain and manage result table operations
+
 #include "wdb/QueryPhyResult.h"
 
 // System headers
