@@ -1,16 +1,16 @@
 drop everything;
-create database LSST                   admin/examples/testCppParser_dbPt.params;
-create table LSST.Object               admin/examples/testCppParser_tbObject_ls.params;
-create table LSST.Source               admin/examples/testCppParser_tbSource.params;
-create table LSST.Exposure             admin/examples/testCppParser_tbExposure.params;
-create table LSST.Science_Ccd_Exposure admin/examples/testCppParser_tbScience_Ccd_Exposure.params;
-create table LSST.Filter               admin/examples/testCppParser_tbFilter.params;
-create table LSST.LeapSeconds          admin/examples/testCppParser_tbLeapSeconds.params;
-create table LSST.RefObjMatch          admin/examples/testCppParser_tbRefObjMatch.params;
-create table LSST.SimRefObject         admin/examples/testCppParser_tbSimRefObject.params;
+create database LSST                   admin/examples/testMap_dbPt.params;
+create table LSST.Object               admin/examples/testMap_tbObject_ls.params;
+create table LSST.Source               admin/examples/testMap_tbSource.params;
+create table LSST.Exposure             admin/examples/testMap_tbExposure.params;
+create table LSST.Science_Ccd_Exposure admin/examples/testMap_tbScience_Ccd_Exposure.params;
+create table LSST.Filter               admin/examples/testMap_tbFilter.params;
+create table LSST.LeapSeconds          admin/examples/testMap_tbLeapSeconds.params;
+create table LSST.RefObjMatch          admin/examples/testMap_tbRefObjMatch.params;
+create table LSST.SimRefObject         admin/examples/testMap_tbSimRefObject.params;
 
-create database rplante_PT1_2_u_pt12prod_im3000_qserv     admin/examples/testCppParser_dbPt.params;
-create table rplante_PT1_2_u_pt12prod_im3000_qserv.Object admin/examples/testCppParser_tbObject_rp.params;
-create table rplante_PT1_2_u_pt12prod_im3000_qserv.Source admin/examples/testCppParser_tbSource.params;
+create database rplante_PT1_2_u_pt12prod_im3000_qserv     admin/examples/testMap_dbPt.params;
+create table rplante_PT1_2_u_pt12prod_im3000_qserv.Object admin/examples/testMap_tbObject_rp.params;
+create table rplante_PT1_2_u_pt12prod_im3000_qserv.Source admin/examples/testMap_tbSource.params;
 
-dump everything /tmp/testCppParser.kvmap;
+dump everything /tmp/testMap.kvmap;

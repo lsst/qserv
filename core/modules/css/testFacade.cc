@@ -67,20 +67,19 @@ struct FacadeFixture {
         cout << "My prefix is: " << prefix << endl;
         kv.push_back(make_pair(prefix, ""));
 
-        kv.push_back(make_pair(prefix + "/DATABASE_PARTITIONING", ""));
-        string p = prefix + "/DATABASE_PARTITIONING/_0000000001";
+        kv.push_back(make_pair(prefix + "/PARTITIONING", ""));
+        string p = prefix + "/PARTITIONING/_0000000001";
         kv.push_back(make_pair(p, ""));
         kv.push_back(make_pair(p+"/nStripes", "18"));
         kv.push_back(make_pair(p+"/nSubStripes", "40"));
         kv.push_back(make_pair(p+"/overlap", "0.025"));
 
-        kv.push_back(make_pair(prefix + "/DATABASES", ""));
-        kv.push_back(make_pair(prefix + "/DATABASES/dbA", ""));
-        kv.push_back(make_pair(prefix + "/DATABASES/dbA/partitioningId",
-                               "0000000001"));
-        kv.push_back(make_pair(prefix + "/DATABASES/dbB", ""));
-        kv.push_back(make_pair(prefix + "/DATABASES/dbC", ""));
-        p = prefix + "/DATABASES/dbA/TABLES";
+        kv.push_back(make_pair(prefix + "/DBS", ""));
+        kv.push_back(make_pair(prefix + "/DBS/dbA", ""));
+        kv.push_back(make_pair(prefix + "/DBS/dbA/partitioningId", "0000000001"));
+        kv.push_back(make_pair(prefix + "/DBS/dbB", ""));
+        kv.push_back(make_pair(prefix + "/DBS/dbC", ""));
+        p = prefix + "/DBS/dbA/TABLES";
         kv.push_back(make_pair(p, ""));
         kv.push_back(make_pair(p + "/Object", ""));
         kv.push_back(make_pair(p + "/Object/partitioning", ""));
@@ -100,7 +99,7 @@ struct FacadeFixture {
         kv.push_back(make_pair(p + "/FSource/partitioning/subChunks", "0"));
         kv.push_back(make_pair(p + "/Exposure", ""));
 
-        p = prefix + "/DATABASES/dbB/TABLES";
+        p = prefix + "/DBS/dbB/TABLES";
         kv.push_back(make_pair(p, ""));
         kv.push_back(make_pair(p + "/Exposure", ""));
 

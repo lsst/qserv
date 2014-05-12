@@ -62,7 +62,7 @@ class OneDbWatcher(threading.Thread):
         self._kvI = kvI
         self._db = db
         self._path = pathToWatch
-        self._dbName = pathToWatch[11:] # skip '/DATABASES/'
+        self._dbName = pathToWatch[11:] # skip '/DBS/'
         self._data = None
         self._logger = logging.getLogger("WATCHER.DB_%s" % self._dbName)
         threading.Thread.__init__(self)
@@ -105,7 +105,7 @@ class AllDbsWatcher(threading.Thread):
         """
         self._kvI = kvI
         self._db = db
-        self._path =  "/DATABASES"
+        self._path =  "/DBS"
         self._children = []
         self._watchedDbs = [] # registry of all watched databases
         # make sure the path exists
