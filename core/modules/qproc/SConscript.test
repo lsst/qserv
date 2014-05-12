@@ -10,6 +10,8 @@ import itertools
 programs = []
 
 # build kvmap.h
+# If you need to rebuild the map, use:
+# ./admin/bin/qserv-admin.py < admin/examples/testMap_generateMap
 def charArrayGenerator(filename):
     bSize = 70
     with open(filename,"rb") as f:
