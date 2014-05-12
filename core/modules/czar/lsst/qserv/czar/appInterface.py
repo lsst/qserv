@@ -120,23 +120,24 @@ class AppInterface:
             return ("error","error",a.getError())
         return (resultName, lockName, "")
 
-    def query(self, q, hints):
-        """Issue a query, and return a taskId that can be used for tracking.
-        taskId is a 16 byte string, but should be treated as an
-        opaque identifier.
-        (broken)
-        """
-        # FIXME: Need to fix task tracker.
-        #taskId = self.tracker.track("myquery", a, q)
-        #stats = time.qServQueryTimer[time.qServRunningName]
-        #stats["appInvokeStart"] = time.time()
-        raise StandardError("unimplemented")
-        a = app.HintedQueryAction(q, hints, self.pmap)
-        key = a.queryHash
-        self.actions[key] = a
-        self._callWithThread(a.invoke)
-        #stats["appInvokeFinish"] = time.time()
-        return key
+    # TODO / FIXME: the code below will be revisted when working on DM-211
+    #def query(self, q, hints):
+    #    """Issue a query, and return a taskId that can be used for tracking.
+    #    taskId is a 16 byte string, but should be treated as an
+    #    opaque identifier.
+    #    (broken)
+    #    """
+    #    # FIXME: Need to fix task tracker.
+    #    #taskId = self.tracker.track("myquery", a, q)
+    #    #stats = time.qServQueryTimer[time.qServRunningName]
+    #    #stats["appInvokeStart"] = time.time()
+    #    raise StandardError("unimplemented")
+    #    a = app.HintedQueryAction(q, hints, self.pmap)
+    #    key = a.queryHash
+    #    self.actions[key] = a
+    #    self._callWithThread(a.invoke)
+    #    #stats["appInvokeFinish"] = time.time()
+    #    return key
 
     def killQuery(self, query, taskId):
         """Process a kill query command (experimental)"""
