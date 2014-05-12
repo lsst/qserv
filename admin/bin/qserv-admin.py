@@ -68,6 +68,7 @@ class CommandParser(object):
             'HELP':    self._printHelp,
             'QUIT':    self._justExit,
             'RELEASE': self._parseRelease,
+            'RESTORE': self._restore,
             'SHOW':    self._parseShow
             }
         self._impl = QservAdmin(connInfo)
@@ -80,6 +81,7 @@ class CommandParser(object):
     DROP DATABASE <dbName>;
     DROP EVERYTHING;
     DUMP EVERYTHING [<outFile>];
+    RESTORE <inFile>;
     SHOW DATABASES;
     QUIT;
     EXIT;
@@ -103,7 +105,7 @@ class CommandParser(object):
                 pos = cmd.index(';')
                 try:
                     self._parse(cmd[:pos])
-                except QservAdminException as e:
+                except (QservAdminException, KvException) as e:
                     self._logger.error(e.__str__())
                     print "ERROR: ", e.__str__()
                 cmd = cmd[pos+1:]
@@ -244,8 +246,10 @@ class CommandParser(object):
         """
         Subparser, handle all DUMP requests.
         """
+        if len(tokens) > 2:
+            raise QservAdminException(QservAdminException.WRONG_PARAM)
         t = tokens[0].upper()
-        dest = tokens[1] if len(tokens) > 1 else None
+        dest = tokens[1] if len(tokens) == 2 else None
         if t == 'EVERYTHING':
             self._impl.dumpEverything(dest)
         else:
@@ -265,6 +269,12 @@ class CommandParser(object):
         Subparser - handles all RELEASE requests.
         """
         raise QservAdminException(QservAdminException.NOT_IMPLEMENTED, "RELEASE")
+
+    def _restore(self, tokens):
+        """
+        Restore all data from the file fileName.
+        """
+        self._impl.restore(tokens[0])
 
     def _parseShow(self, tokens):
         """
