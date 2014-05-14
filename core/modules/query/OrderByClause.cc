@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -103,7 +103,14 @@ OrderByClause::getGenerated() {
 void
 OrderByClause::renderTo(QueryTemplate& qt) const {
     if(_terms.get() && _terms->size() > 0) {
-        std::for_each(_terms->begin(), _terms->end(), OrderByTerm::render(qt));
+        bool first = true;
+        List::const_iterator i,e;
+        OrderByTerm::render r(qt);
+        for(i=_terms->begin(), e=_terms->end(); i != e; ++i) {
+            if(!first) { qt.append(","); }
+            else { first = false; }
+            r(*i);
+        }
     }
 }
 

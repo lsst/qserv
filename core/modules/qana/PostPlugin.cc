@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,7 +34,9 @@
 #include <string>
 
 // Local headers
+#include "log/Logger.h"
 #include "qana/QueryPlugin.h"
+#include "query/OrderByClause.h"
 #include "query/QueryContext.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
@@ -64,6 +66,7 @@ public:
     virtual void applyPhysical(QueryPlugin::Plan& p, query::QueryContext&);
 
     int _limit;
+    boost::shared_ptr<query::OrderByClause> _orderBy;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -104,6 +107,9 @@ void
 PostPlugin::applyLogical(query::SelectStmt& stmt,
                          query::QueryContext& context) {
     _limit = stmt.getLimit();
+    if(stmt.hasOrderBy()) {
+        _orderBy = stmt.getOrderBy().clone();
+    }
 }
 
 void
@@ -112,20 +118,41 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
     // Idea: If a limit is available in the user query, compose a
     // merge statement (if one is not available) and turn on merge
     // fixup.
-    if(_limit != -1) { // Make sure merge statement is setup for LIMIT
-        // If empty select in merger, create one with *
-        query::SelectList& mList = p.stmtMerge.getSelectList();
-        boost::shared_ptr<query::ValueExprList> vlist;
-        vlist = mList.getValueExprList();
-        if(!vlist) {
-            throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
+    if(context.hasChunks()) { // For chunked queries only.
+        if((_limit != -1) || _orderBy) { // Aggregating LIMIT or ORDER BY
+            // Prepare merge statment.
+            // If empty select in merger, create one with *
+            query::SelectList& mList = p.stmtMerge.getSelectList();
+            boost::shared_ptr<query::ValueExprList> vlist;
+            vlist = mList.getValueExprList();
+            if(!vlist) {
+                throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
+            }
+            if(vlist->size() == 0) {
+                mList.addStar(std::string());
+            }
+            // Patch MergeFixup.
+            context.needsMerge = true;
+        } // if((_limit != -1) || _orderBy)
+        if(_orderBy) {
+            // Remove orderby from parallel
+            // (no need to sort until we have all the results)
+            SelectStmtList::iterator i,e;
+            for(i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
+                (**i).setOrderBy(boost::shared_ptr<query::OrderByClause>());
+            }
+            // Make sure the merge has an ORDER BY
+            p.stmtMerge.setOrderBy(_orderBy);
         }
-        if(vlist->size() == 0) {
-            mList.addStar(std::string());
+    } else { // For non-chunked queries
+        LOGGER_INF << "Query is non-chunked\n";
+        // Make sure orderby is in the "parallel" section (which is not
+        // really parallel). No merge is needed.
+        SelectStmtList::iterator i,e;
+        for(i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
+            (**i).setOrderBy(_orderBy);
         }
-        // Patch MergeFixup.
-        context.needsMerge = true;
-    } // if limit != -1
+    }
 }
 
 }}} // namespace lsst::qserv::qana

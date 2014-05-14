@@ -142,7 +142,13 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
         throw std::invalid_argument("Cannot _importOrderBy(NULL)");
     }
     while(a.get()) {
+        if(a->getType() == SqlSQL2TokenTypes::COMMA) {
+            a = a->getNextSibling();
+            continue;
+        }
         if(a->getType() != SqlSQL2TokenTypes::SORT_SPEC) {
+            LOGGER_ERR << "Orderby expected sort spec and got " << a->getText()
+                       << std::endl;
             throw std::logic_error("Expected SORT_SPEC token)");
         }
         RefAST key = a->getFirstChild();

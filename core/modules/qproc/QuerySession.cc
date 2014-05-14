@@ -110,9 +110,7 @@ bool QuerySession::hasAggregate() const {
     // multi-pass execution, the statement makes use of a (proper,
     // probably) subset of its components to compose each pass. Right
     // now, the only goal is to support aggregation using two passes.
-
-    // FIXME
-    return false;
+    return _context->needsMerge;
 }
 
 boost::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
