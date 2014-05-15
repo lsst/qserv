@@ -75,9 +75,9 @@ class TestQservAdmin(unittest.TestCase):
         s = "%s/tbSchema_Object.sql" % self._baseDir
         dd = { "tableName":    "Object",
                "compression":  "1",
-               "drivingTable": "Object",
+               "dirTable":     "Object",
                "isRefMatch":   " 0",
-               "keyColName":   "ra_PS",
+               "dirColName":   "ra_PS",
                "lonColName":   "ra_PS",
                "latColName":   "decl_PS",
                "objIdColName": "objectId",

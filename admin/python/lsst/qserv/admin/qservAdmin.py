@@ -163,10 +163,10 @@ class QservAdmin(object):
             ["/isRefMatch"  , "keyColInTable2" ],
             ["/partitioning", "subChunks"      ],
             ["/partitioning", "secIndexColName"],
-            ["/partitioning", "drivingTable"   ],
+            ["/partitioning", "dirTable"       ],
             ["/partitioning", "lonColName"     ],
             ["/partitioning", "latColName"     ],
-            ["/partitioning", "keyColName"     ] ]
+            ["/partitioning", "dirColName"     ] ]
 
         self._logger.debug("Create table '%s.%s', options: %s" % \
                                (dbName, tableName, str(options)))

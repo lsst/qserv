@@ -6,6 +6,6 @@ compression:     0
 isRefMatch:      0
 subChunks:       0
 secIndexColName: id
-drivingTable:    DeepSource
+dirTable:        DeepSource
 latColName:      decl
 lonColName:      ra

@@ -15,7 +15,7 @@
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES	\N
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source	READY
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning	\N
-/DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning/drivingTable	Object
+/DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning/dirTable	Object
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning/secIndexColName	objectIdSourceTest
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning/subChunks	0
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning/lonColName	raObjectTest
@@ -25,7 +25,7 @@
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/isRefMatch	0
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object	READY
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning	\N
-/DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning/drivingTable	Object
+/DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning/dirTable	Object
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning/secIndexColName	objectIdObjTest
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning/subChunks	1
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning/lonColName	ra
@@ -48,7 +48,7 @@
 /DBS/LSST/TABLES	\N
 /DBS/LSST/TABLES/Source	READY
 /DBS/LSST/TABLES/Source/partitioning	\N
-/DBS/LSST/TABLES/Source/partitioning/drivingTable	Object
+/DBS/LSST/TABLES/Source/partitioning/dirTable	Object
 /DBS/LSST/TABLES/Source/partitioning/secIndexColName	objectIdSourceTest
 /DBS/LSST/TABLES/Source/partitioning/subChunks	0
 /DBS/LSST/TABLES/Source/partitioning/lonColName	raObjectTest
@@ -82,7 +82,7 @@
 /DBS/LSST/TABLES/SimRefObject/isRefMatch	1
 /DBS/LSST/TABLES/Object	READY
 /DBS/LSST/TABLES/Object/partitioning	\N
-/DBS/LSST/TABLES/Object/partitioning/drivingTable	Object
+/DBS/LSST/TABLES/Object/partitioning/dirTable	Object
 /DBS/LSST/TABLES/Object/partitioning/secIndexColName	objectIdObjTest
 /DBS/LSST/TABLES/Object/partitioning/subChunks	1
 /DBS/LSST/TABLES/Object/partitioning/lonColName	ra_Test

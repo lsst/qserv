@@ -6,6 +6,6 @@ compression:     0
 isRefMatch:      0
 subChunks:       1
 secIndexColName: objectId
-drivingTable:    Object
+dirTable:        Object
 latColName:      decl_PS
 lonColName:      ra_PS
