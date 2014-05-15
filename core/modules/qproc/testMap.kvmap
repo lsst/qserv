@@ -3,7 +3,6 @@
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv	READY
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/storageClass	L2
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/releaseStatus	UNRELEASED
-/DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/objIdIndex	objectId
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/uuid	94a65f9a-fc7d-4ece-88c3-2886d5ed98d1
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/partitioningId	0000000001
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/LOCK	\N
@@ -37,7 +36,6 @@
 /DBS/LSST	READY
 /DBS/LSST/storageClass	L2
 /DBS/LSST/releaseStatus	UNRELEASED
-/DBS/LSST/objIdIndex	objectId
 /DBS/LSST/uuid	fa7411ac-9b28-42f2-badc-8dd0b8c2bd57
 /DBS/LSST/partitioningId	0000000000
 /DBS/LSST/LOCK	\N

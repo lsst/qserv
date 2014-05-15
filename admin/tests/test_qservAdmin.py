@@ -46,8 +46,7 @@ class TestQservAdmin(unittest.TestCase):
               "partitioningStrategy": "sphBox",
               "nStripes": "10",
               "nSubStripes": "23",
-              "overlap": "0.0001",
-              "objIdIndex": "0.25"}
+              "overlap": "0.0001"}
         self._impl.createDb("db1a", dd)
         self.assertRaises(QservAdminException, self._impl.createDb, "db1a", dd)
         self._impl.createDbLike("db1b", "db1a")

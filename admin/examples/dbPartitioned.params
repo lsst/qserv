@@ -5,4 +5,4 @@ partitioningStrategy: sphBox
 nStripes: 85
 nSubStripes: 12
 overlap: 0.0001
-objIdIndex: objectId
+

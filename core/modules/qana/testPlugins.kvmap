@@ -43,7 +43,6 @@
 /DBS/LSST/TABLES/Object/partitioning/latColName	decl_Test
 /DBS/LSST/TABLES/Object/compression	0
 /DBS/LSST/TABLES/Object/isRefMatch	0
-/DBS/LSST/objIdIndex	objectId
 /PARTITIONING	\N
 /PARTITIONING/_0000000000	\N
 /PARTITIONING/_0000000000/overlap	0.025

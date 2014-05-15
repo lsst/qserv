@@ -326,10 +326,6 @@ class CommandParser(object):
             self._logger.info(
                 "param 'partitioning' not found, will use default: 0")
             opts["partitioning"] = "0"
-        if not opts.has_key("objIdIndex"):
-            self._logger.info(
-                "param 'objIdIndex' not found, will use default: ''")
-            opts["objIdIndex"] = ''
         # these are required options for createDb
         _crDbOpts = { 
             "db_info": ("storageClass", 
