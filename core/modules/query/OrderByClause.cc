@@ -107,8 +107,12 @@ OrderByClause::renderTo(QueryTemplate& qt) const {
         List::const_iterator i,e;
         OrderByTerm::render r(qt);
         for(i=_terms->begin(), e=_terms->end(); i != e; ++i) {
-            if(!first) { qt.append(","); }
-            else { first = false; }
+            if(!first) {
+                qt.append(",");
+            }
+            else {
+                first = false;
+            }
             r(*i);
         }
     }

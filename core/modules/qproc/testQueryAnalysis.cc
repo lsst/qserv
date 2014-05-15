@@ -868,7 +868,6 @@ BOOST_AUTO_TEST_CASE(OrderBySort) {
 BOOST_AUTO_TEST_CASE(LimitOrder) { // Test flipped syntax in DM-661
     std::string bad = "SELECT run FROM LSST.Science_Ccd_Exposure limit 2 order by field";
     std::string good = "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2";
-    std::string badExpected;
     std::string expected = "SELECT run FROM LSST.Science_Ccd_Exposure AS QST_1_ ORDER BY field LIMIT 2";
     testStmt3(qsTest, bad , "ParseException");
     testAndCompare(qsTest, good, expected);
