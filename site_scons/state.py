@@ -172,10 +172,11 @@ def _initEnvironment(src_dir):
     """Construction and basic setup of the state.env variable."""
 
     global env
-    env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'recinstall', 'swig_scanner'])
+    env = Environment(tools=['default', 'textfile', 'pymod', 'recinstall', 'swig_scanner'])
 
     _initVariables(src_dir)
 
+    env.Tool('protoc')
     env.Tool('antlr')
 
     if env['debug'] == 'yes':

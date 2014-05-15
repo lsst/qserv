@@ -7,12 +7,7 @@ def _detect(env):
     try:
         return env['ANTLR']
     except KeyError:
-        pass
-    # antlr is named runantlr on Ubuntu 13.10 and Debian Wheezy
-    antlr = SCons.Util.WhereIs('antlr') or SCons.Util.WhereIs('runantlr')
-    if antlr:
-        return antlr
-    raise SCons.Errors.StopError(
+        raise SCons.Errors.StopError(
         'Could not find antlr parser generator')
 
 
@@ -74,7 +69,7 @@ _antlr_builder = Builder(
 
 def generate(env):
     """Add Builders and construction variables."""    
-    env['ANTLR'] = _detect(env)
+    _detect(env)
     env.SetDefault(
         # Additional command-line flags
         ANTLR_FLAGS = SCons.Util.CLVar(''),
@@ -93,5 +88,6 @@ def generate(env):
 
 
 def exists(env):
-    return _detect(env)
+    _detect(env)
+    return True 
 

@@ -24,14 +24,7 @@ def _detect(env):
     try:
         return env['PROTOC']
     except KeyError:
-        pass
-    # Use SCons.Util.Whereis instead of Environment.WhereIs so that
-    # os.environ["PATH"] is searched as well.
-    protoc = SCons.Util.WhereIs('protoc')
-    if protoc:
-        return protoc
-
-    raise SCons.Errors.StopError(
+        raise SCons.Errors.StopError(
         "Could not detect protoc Compiler")
 
 def _protoc_emitter(target, source, env):
@@ -149,7 +142,7 @@ _protoc_builder = Builder(
 def generate(env):
     """Add Builders and construction variables."""
     
-    env['PROTOC'] = _detect(env)
+    _detect(env)
 
     env.SetDefault(
 
@@ -180,5 +173,6 @@ def generate(env):
     env['BUILDERS']['Protoc'] = _protoc_builder
 
 def exists(env):
-    return _detect(env)
+    _detect(env)
+    return True 
 
