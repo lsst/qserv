@@ -40,12 +40,12 @@
 #include <string>
 
 // Third-party headers
-#include <antlr/NoViableAltException.hpp>
 #include <boost/algorithm/string.hpp>
 
 // Local headers
 #include "css/Facade.h"
 #include "parser/ParseException.h"
+#include "parser/parseExceptions.h"
 #include "parser/SelectParser.h"
 #include "qdisp/ChunkMeta.h"
 #include "qproc/QuerySession.h"
@@ -60,6 +60,7 @@
 #include "boost/test/included/unit_test.hpp"
 
 using lsst::qserv::parser::SelectParser;
+using lsst::qserv::parser::UnknownAntlrError;
 using lsst::qserv::qdisp::ChunkMeta;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
@@ -97,12 +98,16 @@ void testParse(SelectParser::Ptr p) {
     p->setup();
 }
 
-    boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,
+boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,
                                           std::string const& stmt,
                                           char const* expectedErr="") {
     boost::shared_ptr<QuerySession> qs(new QuerySession(t));
     qs->setQuery(stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
+    if(expectedErr) {
+        // Error was expected, do not continue.
+        return qs;
+    }
     ConstraintVec cv(qs->getConstraints());
     boost::shared_ptr<ConstraintVector> cvRaw = cv.getVector();
     if(false && cvRaw) { // DEBUG
@@ -223,7 +228,7 @@ BOOST_AUTO_TEST_CASE(NoContext) {
     qsTest.defaultDb = "";
     boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
-    SelectStmt const& ss = qs->getStmt();
+    //SelectStmt const& ss = qs->getStmt();
 }
 BOOST_AUTO_TEST_CASE(NoSub) {
     std::string stmt = "SELECT * FROM Filter WHERE filterId=4;";
@@ -396,7 +401,7 @@ BOOST_AUTO_TEST_CASE(Triple) {
     std::string expected = "SELECT * FROM Subchunks_LSST_100.Object_100_100000 AS o1,Subchunks_LSST_100.Object_100_100000 AS o2,LSST.Source_100 AS QST_1_ WHERE o1.id!=o2.id AND dista(o1.ra,o1.decl,o2.ra,o2.decl)<1 AND QST_1_.oid=o1.id";
     boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
-    SelectStmt const& ss = qs->getStmt();
+    //SelectStmt const& ss = qs->getStmt();
     BOOST_CHECK(context);
     std::string parallel = computeFirst(*qs);
     BOOST_CHECK_EQUAL(parallel, expected);
@@ -726,9 +731,9 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
 
 BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
     std::string stmt = "SELECT subQueryColumn FROM (SELECT * FROM Object WHERE filterId=4) WHERE rFlux_PS > 0.3;";
-    SelectParser::Ptr p = getParser(stmt);
-    testParse(p);
-    // Expected failure: Subqueries are unsupported.
+    SelectParser::Ptr p;
+    BOOST_CHECK_THROW(p = getParser(stmt), UnknownAntlrError);
+   // Expected failure: Subqueries are unsupported.
 }
 
 BOOST_AUTO_TEST_CASE(FromParen) { // Extra paren. Not supported by our grammar.
@@ -760,10 +765,11 @@ BOOST_AUTO_TEST_CASE(NewParser) {
 BOOST_AUTO_TEST_CASE(Mods) {
     char stmts[][128] = {
         "SELECT * from Object order by ra_PS limit 3;",
+        "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2;",
         "SELECT count(*) from Science_Ccd_Exposure group by visit;",
         "select count(*) from Object group by flags having count(*) > 3;"
     };
-    for(int i=0; i < 3; ++i) {
+    for(int i=0; i < 4; ++i) {
         std::string stmt = stmts[i];
         testStmt3(qsTest, stmt);
     }
@@ -850,6 +856,23 @@ BOOST_AUTO_TEST_CASE(SpecIndexOn) {
         "WHERE o.objectId=430209694171136";
     testAndCompare(qsTest, stmt, expected);
 }
+BOOST_AUTO_TEST_CASE(OrderBySort) {
+    std::string stmt = "SELECT objectId, taiMidPoint "
+        "FROM   Source "
+        "ORDER BY objectId, taiMidPoint ASC;"; // FIXME
+    std::string expected = "SELECT objectId,taiMidPoint FROM LSST.Source_100 AS QST_1_";
+    // TODO: Should check the merge statement to ensure that the order by is handled properly.
+    testAndCompare(qsTest, stmt, expected);
+}
+
+BOOST_AUTO_TEST_CASE(LimitOrder) { // Test flipped syntax in DM-661
+    std::string bad = "SELECT run FROM LSST.Science_Ccd_Exposure limit 2 order by field";
+    std::string good = "SELECT run FROM LSST.Science_Ccd_Exposure order by field limit 2";
+    std::string expected = "SELECT run FROM LSST.Science_Ccd_Exposure AS QST_1_ ORDER BY field LIMIT 2";
+    testStmt3(qsTest, bad , "ParseException");
+    testAndCompare(qsTest, good, expected);
+}
+
 
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -951,8 +974,8 @@ BOOST_AUTO_TEST_CASE(Case01_1012) {
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1013) {
-    // This is unsupported by the SQL92 grammar, which rejects
-    // expressions in ORDER BY because it follows SQL92. Consider
+    // This is unsupported in SQL92, so the parser rejects
+    // expressions in ORDER BY because it uses a SQL92 grammar. Consider
     // patching the grammar to support this.
     std::string stmt = "SELECT objectId, ROUND(iE1_SG, 3), ROUND(ABS(iE1_SG), 3) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ROUND(ABS(iE1_SG), 3);";
     testStmt3(qsTest, stmt,
@@ -968,7 +991,6 @@ BOOST_AUTO_TEST_CASE(Case01_1030) {
         "JOIN   Object USING(objectId) JOIN   Filter USING(filterId) "
         "WHERE qserv_areaspec_box(355, 0, 360, 20) AND filterName = 'g' "
         "ORDER BY objectId, taiMidPoint ASC;";
-    std::string expected = "SELECT objectId,taiMidPoint,scisql_fluxToAbMag(psfFlux) FROM LSST.%$#Source%$# JOIN LSST.%$#Object%$# USING(objectId) JOIN LSST.Filter USING(filterId) WHERE (scisql_s2PtInBox(LSST.%$#Source%$#.raObjectTest,LSST.%$#Source%$#.declObjectTest,355,0,360,20) = 1) AND (scisql_s2PtInBox(LSST.%$#Object%$#.ra_Test,LSST.%$#Object%$#.decl_Test,355,0,360,20) = 1) AND filterName='g' ORDER BY objectId,taiMidPoint ASC;";
     testStmt3(qsTest, stmt);
 #if 0    // FIXME
     BOOST_CHECK(spr->getHasChunks());
@@ -1026,10 +1048,12 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1083) {
-    std::string stmt = "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10) typeId "
+    std::string stmt = "select objectId, sro.*, (sro.refObjectId-1)/2%pow(2,10), typeId "
         "from Source s join RefObjMatch rom using (objectId) "
         "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;";
-    testStmt3(qsTest, stmt);
+    // % is not valid for arithmetic in SQL92
+    char const expectedErr[] = "ParseException:ANTLR parse error:unexpected token: 2:";
+    testStmt3(qsTest, stmt, expectedErr);
 #if 0 // FIXME
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
@@ -1073,21 +1097,17 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
         "FROM Object WHERE rFlux_PS > 10;";
     std::string expected = "SELECT COUNT(*) AS totalCount,SUM(CASE WHEN(typeId=3) THEN 1 ELSE 0 END) AS galaxyCount FROM LSST.%$#Object%$# WHERE rFlux_PS>10;";
 
-    testStmt3(qsTest, stmt);
-#if 0 // FIXME
-    SqlParseRunner::Ptr spr = getRunner(stmt);
-    testStmt2(spr);
-    BOOST_CHECK(spr->getHasChunks());
-    BOOST_CHECK(!spr->getHasSubChunks());
-    BOOST_CHECK(spr->getHasAggregate());
-    BOOST_CHECK_EQUAL(spr->getParseResult(), expected);
-#endif
+    // CASE in column spec is illegal.
+    char const expectedErr[] = "Unknown ANTLR error";
+    testStmt3(qsTest, stmt, expectedErr);
 }
 
 BOOST_AUTO_TEST_CASE(Case01_2006) {
     std::string stmt = "SELECT scisql_fluxToAbMag(uFlux_PS) "
         "FROM   Object WHERE  (objectId % 100 ) = 40;";
-    testStmt3(qsTest, stmt);
+    // % is not a valid arithmetic operator in SQL92.
+    char const expectedErr[] = "ParseException:ANTLR parse error:unexpected token: objectId:";
+    testStmt3(qsTest, stmt, expectedErr);
 #if 0 // FIXME
     SqlParseRunner::Ptr spr = getRunner(stmt);
     testStmt2(spr);
