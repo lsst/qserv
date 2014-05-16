@@ -14,14 +14,14 @@ sudo admin/bootstrap/qserv-install-debian-wheezy.sh
 #   for Ubuntu
 sudo admin/bootstrap/qserv-install-ubuntu-13.10.sh
 
-# Then run  :
-wget http://datasky.in2p3.fr/qserv/distserver-master/newinstall-qserv-6.0.0rc1-master.sh
-chmod u+x newinstall-qserv-6.0.0rc1-master.sh
-./newinstall-qserv-6.0.0rc1-master.sh
-# and follow instructions displayed at the end of install process.
-# i.e.
-
-source ${INSTALL_DIR}/setup-qserv.sh
+# $INSTALL_DIR must be empty
+cd $INSTALL_DIR
+wget http://sw.lsstcorp.org/eupspkg/newinstall.sh
+# script below will ask some questions, answer 'yes' everywhere
+bash newinstall.sh
+source loadLSST.sh
+eups distrib install qserv -r http://lsst-web.ncsa.illinois.edu/~fjammes/qserv
+setup qserv
 
 # Configuration :
 # ---------------
