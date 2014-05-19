@@ -73,13 +73,18 @@ class Benchmark():
             or self.config['qserv']['testdata_dir'] == None
             or not os.path.isdir(self.config['qserv']['testdata_dir'])
             ) :
-            self.logger.critical("Unable to find tests datasets.\n" +
+            self.logger.critical("Unable to find tests datasets.\n--\n" +
+                    "FOR EUPS USERS :\n"+
+                    "Please run :\n"+
+                    "   eups distrib install qservdata\n"+
+                    "   setup qservdata\n"+
+                    "and then reconfigure client by running : \n"+
+                    "   cd $QSERV_DIR\n"+
+                    "   scons client\n--\n"+
+                    "FOR NON-EUPS USERS :\n"+
                     "Please fill 'testdata_dir' value in "+
                     "~/.lsst/qserv.conf with the path of the directory " +
-                    "containing tests datasets.\n" +
-                    "FOR EXPERIMENTED USERS : You can also edit centralized "+
-                    "configuration file (qserv.conf) in $QSERV_DIR/admin and "+
-                    "reconfigure client by running 'scons client'")
+                    "containing tests datasets.\n")
             sys.exit(errno.EIO)        
         else :
             self.testdata_dir = self.config['qserv']['testdata_dir'] 
