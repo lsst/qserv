@@ -239,16 +239,20 @@ env.Alias("qserv", cmd)
 #
 ################################
 
-src_dir=Dir('.').srcnode().abspath
-config_file_name=os.path.join(src_dir, "templates", "client", "qserv.conf")
-homedir=os.path.expanduser("~")
-user_config_dir=os.path.join(homedir, ".lsst")
-user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
-
-make_user_config_cmd = env.Substfile(user_config_file_name, config_file_name,
-SUBST_DICT=script_dict)
-
-env.Alias("userconfig", [make_user_config_cmd])
+def reset_user_config():
+    src_dir=Dir('.').srcnode().abspath
+    config_file_name=os.path.join(src_dir, "templates", "client", "qserv.conf")
+    homedir=os.path.expanduser("~")
+    user_config_dir=os.path.join(homedir, ".lsst")
+    user_config_file_name=os.path.join(user_config_dir, "qserv.conf")
+    try:
+        os.remove(user_config_file_name)
+    except OSError:
+        pass
+    env.Substfile( user_config_file_name, config_file_name, SUBST_DICT=script_dict)
+    return [user_config_file_name]
+    
+env.Alias("userconfig", reset_user_config())
 
 
 #########################

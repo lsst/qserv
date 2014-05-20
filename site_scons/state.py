@@ -39,28 +39,57 @@ env = None
 log = None
 opts = None
 
+def _findPrefixFromName(product):
+    product_envvar = "%s_DIR" % product.upper()
+    prefix = os.getenv(product_envvar)
+    if not prefix:
+        log.fail("Could not locate %s install prefix using %s" % (product, product_envvar))
+    return prefix    
 
-def _findPrefix(product, binName=None):
+def _getBinPath(binName, msg=None):
+    if msg == None:
+        msg = "Looking for %s" % binName
+    log.info(msg)
+    binFullPath = SCons.Util.WhereIs(binName)
+    if not binFullPath:
+        raise SCons.Errors.StopError('Could not locate binary : %s' % binName)
+    else:
+        return binFullPath
+
+def _getBinPathFromBinList(binList, msg=None):
+    binFullPath = None
+    i=0
+    if msg == None:
+        msg = "Looking for %s" % binList
+    log.info(msg)
+    while i < len(binList) and not binFullPath:
+        binName = binList[i]
+        binFullPath = SCons.Util.WhereIs(binName)
+        i=i+1
+    if not binFullPath:
+            raise SCons.Errors.StopError('Could not locate at least one binary in : %s' % binList)
+    else:
+        return binFullPath
+
+
+def _findPrefixFromBin(key, binName):
     """ returns install prefix for  a dependency named 'product'
     - if the dependency binary is PREFIX/bin/binName then PREFIX is used
-    - else env var PRODUCT_DIR is used
-    - if no prefix is detected, exit with an error message
     """
-    prefix = os.getenv("%s_DIR" % product.upper())
-    if binName:
-        binFullPath = SCons.Util.WhereIs(binName)
-        if not binFullPath :
-            log.fail("Unable to locate executable : \"%s\"" % binName)
-        (binpath, binname) = os.path.split(binFullPath)
-        (basepath, bin) = os.path.split(binpath)
-        if bin.lower() == "bin":
-           prefix = basepath
-
-    if not prefix:
-        log.fail("Could not locate %s install prefix" % product)
-
+    prefix = _findPrefixFromPath(key,  _getBinPath(binName))	
     return prefix
 
+def _findPrefixFromPath(key, binFullPath):
+    if not binFullPath :
+        log.fail("_findPrefixFromPath : empty path specified for key %s" % key)
+    (binpath, binname) = os.path.split(binFullPath)
+    (basepath, bin) = os.path.split(binpath)
+    if bin.lower() == "bin":
+        prefix = basepath
+
+    if not prefix:
+        log.fail("Could not locate install prefix for product containing next binary : " % binFullPath )
+    return prefix
 
 def _initOptions():
     SCons.Script.AddOption('--verbose', dest='verbose', action='store_true', default=False,
@@ -80,16 +109,20 @@ def _initLog():
     log.traceback = SCons.Script.GetOption('traceback')
 
 def _initVariables(src_dir):
+    
+    log.info("Initializing variables and looking for build dependencies")
     opts = SCons.Script.Variables("custom.py")
     opts.AddVariables(
             (PathVariable('build_dir', 'Qserv build dir', os.path.join(src_dir,'build'), PathVariable.PathIsDirCreate)),
             (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
-            (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefix("XROOTD", "xrootd"), PathVariable.PathIsDir)),
-            (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefix("MYSQL", "mysqld_safe"), PathVariable.PathIsDir)),
-            (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', _findPrefix("MYSQLPROXY", "mysql-proxy"), PathVariable.PathIsDir)),
-            (PathVariable('PROTOBUF_DIR', 'protobuf install dir', _findPrefix("PROTOBUF", "protoc"), PathVariable.PathIsDir)),
-            (PathVariable('LUA_DIR', 'lua install dir', _findPrefix("LUA", "lua"), PathVariable.PathIsDir)),
-            (PathVariable('ZOOKEEPER_DIR', 'zookeeper install dir', _findPrefix("ZOOKEEPER", "zkEnv.sh"), PathVariable.PathIsDir)),
+            (PathVariable('PROTOC', 'protoc binary path', _getBinPath('protoc',"Looking for protoc compiler"), PathVariable.PathIsFile)),
+            # antlr is named runantlr on Ubuntu 13.10 and Debian Wheezy
+            (PathVariable('ANTLR', 'antlr binary path', _getBinPathFromBinList(['antlr','runantlr'],'Looking for antlr parser generator'), PathVariable.PathIsFile)),
+            (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefixFromBin( 'XROOTD_DIR', "xrootd"), PathVariable.PathIsDir)),
+            (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefixFromBin('MYSQL_DIR', "mysqld_safe"), PathVariable.PathIsDir)),
+            (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', _findPrefixFromBin('MYSQLPROXY_DIR', "mysql-proxy"), PathVariable.PathIsDir)),
+            (PathVariable('LUA_DIR', 'lua install dir', _findPrefixFromBin('LUA_DIR', "lua"), PathVariable.PathIsDir)),
+            (PathVariable('ZOOKEEPER_DIR', 'zookeeper install dir', _findPrefixFromBin('ZOOKEEPER_DIR', "zkEnv.sh"), PathVariable.PathIsDir)),
             (PathVariable('GEOMETRY', 'path to geometry.py', os.getenv("GEOMETRY_LIB"), PathVariable.PathAccept)),
             (PathVariable('python_relative_prefix', 'qserv install directory for python modules, relative to prefix', os.path.join("lib", "python"), PathVariable.PathIsDirCreate)),
             ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH"))
@@ -97,8 +130,15 @@ def _initVariables(src_dir):
     opts.Update(env)
 
     opts.AddVariables(
+            (PathVariable('PROTOBUF_DIR', 'protobuf install dir', _findPrefixFromPath('PROTOBUF_DIR',env['PROTOC']), PathVariable.PathIsDir)),
+            (PathVariable('ANTLR_DIR', 'antlr install dir', _findPrefixFromPath('ANTLR_DIR', env['ANTLR']), PathVariable.PathIsDir)),
+    )
+    opts.Update(env)
+
+    opts.AddVariables(
             (PathVariable('prefix', 'qserv install dir', os.path.join(env['build_dir'], "dist"), PathVariable.PathIsDirCreate)),
-            (PathVariable('PROTOC', 'protoc binary path', None, PathVariable.PathIsFile)),
+            (PathVariable('ANTLR_INC', 'antlr include path', os.path.join(env['ANTLR_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('ANTLR_LIB', 'antlr libraries path', os.path.join(env['ANTLR_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('XROOTD_INC', 'xrootd include path', os.path.join(env['XROOTD_DIR'], "include", "xrootd"), PathVariable.PathIsDir)),
             (PathVariable('XROOTD_LIB', 'xrootd libraries path', os.path.join(env['XROOTD_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('MYSQL_INC', 'mysql include path', os.path.join(env['MYSQL_DIR'], "include"), PathVariable.PathIsDir)),
@@ -119,7 +159,7 @@ def _initVariables(src_dir):
     boost_dir = os.getenv("BOOST_DIR")
     if boost_dir:
         opts.AddVariables(
-            (PathVariable('BOOST_DIR', 'boost install dir', _findPrefix("BOOST"), PathVariable.PathIsDir)),
+            (PathVariable('BOOST_DIR', 'boost install dir', _findPrefixFromName("BOOST"), PathVariable.PathIsDir)),
             (PathVariable('BOOST_INC', 'boost include path', os.path.join(boost_dir, "include"), PathVariable.PathIsDir)),
             (PathVariable('BOOST_LIB', 'boost libraries path', os.path.join(boost_dir, "lib"), PathVariable.PathIsDir)),
             )
@@ -132,15 +172,19 @@ def _initEnvironment(src_dir):
     """Construction and basic setup of the state.env variable."""
 
     global env
-    env = Environment(tools=['default', 'textfile', 'pymod', 'protoc', 'antlr', 'recinstall', 'swig_scanner'])
+    env = Environment(tools=['default', 'textfile', 'pymod', 'recinstall', 'swig_scanner'])
 
     _initVariables(src_dir)
+
+    env.Tool('protoc')
+    env.Tool('antlr')
 
     if env['debug'] == 'yes':
         log.info("Debug build flag (-g) requested.")
         env.Append(CCFLAGS = ['-g'])
     # Increase compiler strictness
     env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-long-long'])
+
 
 # TODO : where to save this file ?
 def _saveState():
