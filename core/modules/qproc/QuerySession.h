@@ -38,11 +38,11 @@
 
 // Local headers
 #include "css/Facade.h"
-#include "merger/mergeTypes.h"
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
+#include "rproc/mergeTypes.h"
 
 
 // Forward declarations
@@ -97,7 +97,7 @@ public:
     css::StripingParams getDbStriping();
     std::string const& getError() const { return _error; }
 
-    merger::MergeFixup makeMergeFixup() const;
+    rproc::MergeFixup makeMergeFixup() const;
 
     /// Finalize a query after chunk coverage has been updated
     void finalize();

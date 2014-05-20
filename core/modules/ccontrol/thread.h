@@ -1,8 +1,7 @@
 // -*- LSST-C++ -*-
-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,8 +25,8 @@
 /// provided thread management for subquery threads.  Much of this is
 /// no longer needed since we have switched to asynchronous
 /// (non-blocking) usage of the Xrootd client libraries.
-#ifndef LSST_QSERV_CONTROL_THREAD_H
-#define LSST_QSERV_CONTROL_THREAD_H
+#ifndef LSST_QSERV_CCONTROL_THREAD_H
+#define LSST_QSERV_CCONTROL_THREAD_H
 
 // System headers
 #include <map>
@@ -39,12 +38,12 @@
 #include "boost/thread.hpp"
 
 // Local headers
-#include "control/transaction.h"
+#include "ccontrol/transaction.h"
 #include "xrdc/xrdfile.h"
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 template<class T> struct joinBoostThread  {
     joinBoostThread() {}
@@ -211,6 +210,6 @@ private:
     std::set<ManagedCallable*> _callables;
 };
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CONTROL_THREAD_H
+#endif // LSST_QSERV_CCONTROL_THREAD_H

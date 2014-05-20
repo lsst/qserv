@@ -2,7 +2,7 @@
 
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,7 +22,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "control/thread.h"
+#include "ccontrol/thread.h"
 
 // System headers
 #include <algorithm>
@@ -36,7 +36,7 @@
 
 // Local headers
 #include "log/Logger.h"
-#include "merger/TableMerger.h"
+#include "rproc/TableMerger.h"
 #include "util/xrootd.h"
 #include "xrdc/xrdfile.h"
 
@@ -77,7 +77,7 @@ int seekMagic(int start, char* buffer, int term) {
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 //////////////////////////////////////////////////////////////////////
 // TransactionSpec
@@ -473,4 +473,4 @@ void QueryManager::ManagedCallable::operator()() {
     _qm->dropCallable(this);
 }
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol

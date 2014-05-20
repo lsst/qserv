@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_MERGER_MERGETYPES_H
-#define LSST_QSERV_MERGER_MERGETYPES_H
+#ifndef LSST_QSERV_RPROC_MERGETYPES_H
+#define LSST_QSERV_RPROC_MERGETYPES_H
 /**
   * @file
   *
@@ -38,7 +38,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace merger {
+namespace rproc {
 
 /// class MergeFixup - A value class that specifies the SQL predicates
 /// to use when merging subqueries into final results.
@@ -62,6 +62,6 @@ public:
     bool needsFixup;
 };
 
-}}} // namespace lsst::qserv::merger
+}}} // namespace lsst::qserv::rproc
 
-#endif // LSST_QSERV_MERGER_MERGETYPES_H
+#endif // LSST_QSERV_RPROC_MERGETYPES_H

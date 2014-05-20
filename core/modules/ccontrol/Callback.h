@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,27 +20,24 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// queryMsg.h declares an interface for the query messaging mechanism for exporting
-/// via SWIG to the python layer of Qserv.
+// Callback: generic callback interface class.
+#ifndef LSST_QSERV_CCONTROL_CALLBACK_H
+#define LSST_QSERV_CCONTROL_CALLBACK_H
 
-#ifndef LSST_QSERV_CONTROL_QUERYMSG_H
-#define LSST_QSERV_CONTROL_QUERYMSG_H
-
-// System headers
-#include <string>
+// Third-party headers
+#include <boost/shared_ptr.hpp>
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
-int queryMsgGetCount(int session);
+class Callback {
+public:
+    typedef boost::shared_ptr<Callback> Ptr;
+    virtual ~Callback() {}
+    void operator()() {}
+};
 
-// Python call: msg, chunkId, code, timestamp = queryMsgGetMsg(session, idx)
-// int* chunkId, int* code, time_t* timestamp matches with %apply directive to help SWIG
-std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, time_t* timestamp);
+}}} // namespace lsst::qserv::ccontrol
 
-void queryMsgAddMsg(int session, int chunkId, int code, std::string const& message);
-
-}}} // namespace lsst::qserv::control
-
-#endif // LSST_QSERV_CONTROL_QUERYMSG_H
+#endif // LSST_QSERV_CCONTROL_CALLBACK_H

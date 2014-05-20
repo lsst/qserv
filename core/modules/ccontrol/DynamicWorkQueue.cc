@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,7 +22,7 @@
  */
 /// @file
 
-#include "control/DynamicWorkQueue.h"
+#include "ccontrol/DynamicWorkQueue.h"
 
 // System headers
 #include <stdexcept>
@@ -30,7 +30,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 // A linked list of Callable objects associated with a specific session.
 struct DynamicWorkQueue::Queue {
@@ -317,4 +317,4 @@ bool DynamicWorkQueue::_shouldDecreaseThreadCount() const {
            _numThreads - _minThreads > _sessions.size()*_minThreadsPerSession;
 }
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol

@@ -47,7 +47,7 @@ header = env.HeaderKvmap('testMap')
 
 
 # deps on other modules
-modDeps = """css global log merger qana query parser proto mysql sql util xrdc""".split()
+modDeps = """css global log rproc qana query parser proto mysql sql util xrdc""".split()
 deps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
 deps = cacheObjs(env, deps, ".o")
 deps = map(lambda i:i, deps) # un-chain

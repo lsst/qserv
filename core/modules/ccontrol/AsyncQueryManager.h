@@ -22,8 +22,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CONTROL_ASYNCQUERYMANAGER_H
-#define LSST_QSERV_CONTROL_ASYNCQUERYMANAGER_H
+#ifndef LSST_QSERV_CCONTROL_ASYNCQUERYMANAGER_H
+#define LSST_QSERV_CCONTROL_ASYNCQUERYMANAGER_H
 /**
   * @file
   *
@@ -43,19 +43,14 @@
 #include <boost/thread.hpp>
 
 // Local headers
-#include "control/DynamicWorkQueue.h"
+#include "ccontrol/DynamicWorkQueue.h"
 #include "xrdc/xrdfile.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
     class TransactionSpec;
-}
-namespace merger {
-    class MergeFixup;
-    class TableMerger;
-    class TableMergerConfig;
 }
 namespace qdisp {
     class ChunkQuery;
@@ -64,6 +59,11 @@ namespace qdisp {
 namespace qproc {
      class QuerySession;
 }
+namespace rproc {
+    class MergeFixup;
+    class TableMerger;
+    class TableMergerConfig;
+}
 namespace xrdc {
     class PacketIter;
 }}} // End of forward declarations
@@ -71,7 +71,7 @@ namespace xrdc {
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 //////////////////////////////////////////////////////////////////////
 // class AsyncQueryManager
@@ -101,8 +101,8 @@ public:
 
     ~AsyncQueryManager() { }
 
-    void configureMerger(merger::TableMergerConfig const& c);
-    void configureMerger(merger::MergeFixup const& m,
+    void configureMerger(rproc::TableMergerConfig const& c);
+    void configureMerger(rproc::MergeFixup const& m,
                          std::string const& resultTable);
 
     boost::shared_ptr<qdisp::MessageStore> getMessageStore();
@@ -169,9 +169,9 @@ private:
     std::string _xrootdHostPort;
     std::string _scratchPath;
     boost::shared_ptr<qdisp::MessageStore> _messageStore;
-    boost::shared_ptr<merger::TableMerger> _merger;
+    boost::shared_ptr<rproc::TableMerger> _merger;
     boost::shared_ptr<qproc::QuerySession> _qSession;
 };
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CONTROL_ASYNCQUERYMANAGER_H
+#endif // LSST_QSERV_CCONTROL_ASYNCQUERYMANAGER_H

@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CONTROL_DISPATCHER_H
-#define LSST_QSERV_CONTROL_DISPATCHER_H
+#ifndef LSST_QSERV_CCONTROL_DISPATCHER_H
+#define LSST_QSERV_CCONTROL_DISPATCHER_H
 /**
   * @file
   *
@@ -33,9 +33,9 @@
   */
 
 // Local headers
-#include "control/transaction.h"
+#include "ccontrol/transaction.h"
 #include "css/StripingParams.h"
-#include "merger/TableMerger.h"
+#include "rproc/TableMerger.h"
 #include "query/Constraint.h"
 #include "util/common.h"
 #include "xrdc/xrdfile.h"
@@ -49,11 +49,11 @@ namespace qproc {
     class ChunkSpec;
 } // namespace qproc
 
-namespace control {
+namespace ccontrol {
 
 enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};
 
-int submitQuery(int session, control::TransactionSpec const& s,
+int submitQuery(int session, ccontrol::TransactionSpec const& s,
                 std::string const& resultName=std::string());
 
 // Parser model 3:
@@ -82,11 +82,11 @@ std::string const& getQueryStateString(QueryState const& qs);
 std::string getErrorDesc(int session);
 int newSession(std::map<std::string,std::string> const& cfg);
 void configureSessionMerger(int session,
-                            lsst::qserv::merger::TableMergerConfig const& c);
+                            lsst::qserv::rproc::TableMergerConfig const& c);
 void configureSessionMerger3(int session);
 std::string getSessionResultName(int session);
 void discardSession(int session);
 
-}}} // namespace lsst::qserv:control
+}}} // namespace lsst::qserv:ccontrol
 
-#endif // LSST_QSERV_CONTROL_DISPATCHER_H
+#endif // LSST_QSERV_CCONTROL_DISPATCHER_H

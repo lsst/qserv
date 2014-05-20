@@ -39,8 +39,8 @@
 #include "XrdPosix/XrdPosixXrootd.hh"
 
 // Local headers
-#include "control/AsyncQueryManager.h"
-#include "control/DynamicWorkQueue.h"
+#include "ccontrol/AsyncQueryManager.h"
+#include "ccontrol/DynamicWorkQueue.h"
 #include "log/msgCode.h"
 #include "log/Logger.h"
 #include "qdisp/MessageStore.h"
@@ -83,7 +83,7 @@ namespace {
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery::WriteCallable
 //////////////////////////////////////////////////////////////////////
-class ChunkQuery::WriteCallable : public control::DynamicWorkQueue::Callable {
+class ChunkQuery::WriteCallable : public ccontrol::DynamicWorkQueue::Callable {
 public:
     explicit WriteCallable(ChunkQuery& cq) :
         _cq(cq)
@@ -136,7 +136,7 @@ private:
 //////////////////////////////////////////////////////////////////////
 // class ChunkQuery::ReadCallable
 //////////////////////////////////////////////////////////////////////
-class ChunkQuery::ReadCallable : public control::DynamicWorkQueue::Callable {
+class ChunkQuery::ReadCallable : public ccontrol::DynamicWorkQueue::Callable {
 public:
     explicit ReadCallable(ChunkQuery& cq) :
         _cq(cq), _isRunning(false)
@@ -270,8 +270,8 @@ void ChunkQuery::Complete(int Result) {
     LOGGER_INF << ss.str();
 }
 
-ChunkQuery::ChunkQuery(control::TransactionSpec const& t, int id,
-                       control::AsyncQueryManager* mgr)
+ChunkQuery::ChunkQuery(ccontrol::TransactionSpec const& t, int id,
+                       ccontrol::AsyncQueryManager* mgr)
     : XrdPosixCallBack(),
       _id(id), _spec(t),
       _manager(mgr),

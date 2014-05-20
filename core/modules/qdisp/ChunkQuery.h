@@ -30,14 +30,14 @@
 #include "XrdPosix/XrdPosixCallBack.hh"
 
 // Local headers
-#include "control/transaction.h"
+#include "ccontrol/transaction.h"
 #include "util/Timer.h"
 #include "xrdc/xrdfile.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
     class AsyncQueryManager;
 }
 namespace xrdc {
@@ -73,8 +73,8 @@ public:
     friend class WriteCallable;
 
     virtual void Complete(int Result);
-    explicit ChunkQuery(control::TransactionSpec const& t, int id,
-                        control::AsyncQueryManager* mgr);
+    explicit ChunkQuery(ccontrol::TransactionSpec const& t, int id,
+                        ccontrol::AsyncQueryManager* mgr);
     virtual ~ChunkQuery();
 
     void run();
@@ -100,7 +100,7 @@ private:
     void _unlinkResult(std::string const& url);
 
     int _id;
-    control::TransactionSpec _spec;
+    ccontrol::TransactionSpec _spec;
     WaitState _state;
     xrdc::XrdTransResult _result;
     boost::mutex _mutex;
@@ -109,7 +109,7 @@ private:
     std::string _resultUrl;
     std::string _queryHostPort;
     boost::shared_ptr<xrdc::PacketIter> _packetIter;
-    control::AsyncQueryManager* _manager;
+    ccontrol::AsyncQueryManager* _manager;
     bool _shouldSquash;
     util::Timer _writeOpenTimer;
     util::Timer _writeTimer;

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,18 +24,18 @@
 // This interface provides static instance retrieval that was formerly
 // buried in dispatcher.cc
 
-#ifndef LSST_QSERV_CONTROL_SESSIONMANAGERASYNC_H
-#define LSST_QSERV_CONTROL_SESSIONMANAGERASYNC_H
+#ifndef LSST_QSERV_CCONTROL_SESSIONMANAGERASYNC_H
+#define LSST_QSERV_CCONTROL_SESSIONMANAGERASYNC_H
 
 // Third-party headers
 #include <boost/shared_ptr.hpp>
 
 // Local headers
-#include "control/SessionManager.h"
+#include "ccontrol/SessionManager.h"
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 class AsyncQueryManager;
 
@@ -45,6 +45,6 @@ typedef boost::shared_ptr<SessionManagerAsync> SessionManagerAsyncPtr;
 SessionManagerAsync& getSessionManagerAsync();
 AsyncQueryManager& getAsyncManager(int session);
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CONTROL_SESSIONMANAGERASYNC_H
+#endif // LSST_QSERV_CCONTROL_SESSIONMANAGERASYNC_H

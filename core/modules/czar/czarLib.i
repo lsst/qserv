@@ -35,18 +35,17 @@ Access to the classes from the qserv_czar library
 %module("threads"=1, package="lsst.qserv.czar") czarLib
 %{
 #define SWIG_FILE_WITH_INIT
-#include "xrdc/xrdfile.h"
 #include "css/StripingParams.h"
-#include "control/dispatcher.h"
-#include "control/queryMsg.h"
-#include "merger/mergeTypes.h"
-#include "util/Substitution.h"
+#include "ccontrol/dispatcher.h"
+#include "ccontrol/queryMsg.h"
+#include "log/loggerInterface.h"
 #include "qdisp/ChunkMeta.h"
 #include "qproc/ChunkSpec.h"
-#include "merger/TableMerger.h"
+#include "rproc/mergeTypes.h"
+#include "rproc/TableMerger.h"
 #include "util/common.h"
-
-#include "log/loggerInterface.h"
+#include "util/Substitution.h"
+#include "xrdc/xrdfile.h"
 %}
 
 // %include "lsst/p_lsstSwig.i"
@@ -119,16 +118,16 @@ namespace std {
 %apply int *OUTPUT { int *write, int *read };
 %apply int *OUTPUT { int* chunkId, int* code, time_t* timestamp };
 
-%include "control/dispatcher.h"
-%include "control/transaction.h"
-%include "control/queryMsg.h"
+%include "ccontrol/dispatcher.h"
+%include "ccontrol/transaction.h"
+%include "ccontrol/queryMsg.h"
 %include "css/StripingParams.h"
-%include "merger/mergeTypes.h"
-%include "merger/TableMerger.h"
 %include "log/loggerInterface.h"
 %include "qdisp/ChunkMeta.h"
 %include "qproc/ChunkSpec.h"
 %include "query/Constraint.h"
+%include "rproc/mergeTypes.h"
+%include "rproc/TableMerger.h"
 %include "util/Substitution.h"
 %include "xrdc/xrdfile.h"
 
