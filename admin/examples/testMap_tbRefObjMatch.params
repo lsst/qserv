@@ -3,5 +3,10 @@ tableName:       RefObjMatch
 partitioning:    1
 schemaFile:      /u1/qserv/sandbox/qserv/meta/examples/tbSchema_RefObjMatch.sql
 compression:     0
-isRefMatch:      1
+match:           1
+dirTable1:       SimRefObject
+dirColName1:     refObjectId
+dirTable2:       Object
+dirColName2:     objectId
+flagColName:     flags
 subChunks:       0

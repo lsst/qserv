@@ -3,5 +3,8 @@ tableName:       SimRefObject
 partitioning:    1
 schemaFile:      /u1/qserv/sandbox/qserv/meta/examples/tbSchema_SimRefObject.sql
 compression:     0
-isRefMatch:      1
-subChunks:       0
+subChunks:       1
+dirColName:      refObjectId
+dirTable:        SimRefObject
+latColName:      refDecl
+lonColName:      refRa

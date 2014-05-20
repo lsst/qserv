@@ -40,12 +40,13 @@
 
 // Local headers
 #include "query/QueryTemplate.h"
-
+#include "query/ValueExpr.h"
 
 namespace lsst {
 namespace qserv {
 namespace query {
 
+namespace {
 char const* getOrderStr(OrderByTerm::Order o) {
     switch(o) {
     case OrderByTerm::ASC: return "ASC";
@@ -54,6 +55,19 @@ char const* getOrderStr(OrderByTerm::Order o) {
     default: return "UNKNOWN_ORDER";
     }
 }
+}
+
+class OrderByTerm::render : public std::unary_function<OrderByTerm, void> {
+public:
+    render(QueryTemplate& qt) : _qt(qt), _count(0) {}
+    void operator()(OrderByTerm const& t) {
+        if (_count++ > 0) { _qt.append(","); }
+        t.renderTo(_qt);
+    }
+    QueryTemplate& _qt;
+    int _count;
+};
+
 ////////////////////////////////////////////////////////////////////////
 // OrderByTerm
 ////////////////////////////////////////////////////////////////////////
@@ -124,6 +138,12 @@ boost::shared_ptr<OrderByClause> OrderByClause::clone() const {
 }
 boost::shared_ptr<OrderByClause> OrderByClause::copySyntax() {
     return boost::make_shared<OrderByClause>(*this);
+}
+
+void OrderByClause::findValueExprs(ValueExprList& list) {
+    for (List::iterator i = _terms->begin(), e = _terms->end(); i != e; ++i) {
+        list.push_back(i->getExpr());
+    }
 }
 
 }}} // namespace lsst::qserv::query

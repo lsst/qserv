@@ -33,13 +33,11 @@
 
 // System headers
 #include <deque>
+#include <list>
 #include <string>
 
 // Third party headers
 #include <boost/shared_ptr.hpp>
-
-// Local headers
-#include "query/ValueExpr.h"
 
 namespace lsst {
 namespace qserv {
@@ -51,10 +49,18 @@ namespace parser {
 
 namespace query {
 
+// Forward declarations
+class QueryTemplate;
+class ValueExpr;
+
+typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
+typedef std::list<ValueExprPtr> ValueExprList;
+
 /// OrderByTerm is an element of an OrderByClause
 class OrderByTerm {
 public:
     enum Order {DEFAULT, ASC, DESC};
+    class render;
 
     OrderByTerm() {}
     OrderByTerm(boost::shared_ptr<ValueExpr> val,
@@ -63,28 +69,20 @@ public:
 
     ~OrderByTerm() {}
 
-    boost::shared_ptr<const ValueExpr> getExpr();
+    boost::shared_ptr<ValueExpr>& getExpr() { return _expr; }
     Order getOrder() const;
     std::string getCollate() const;
     void renderTo(QueryTemplate& qt) const;
-    class render;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByTerm const& ob);
+    friend class render;
     friend class parser::ModFactory;
 
     boost::shared_ptr<ValueExpr> _expr;
     Order _order;
     std::string _collate;
 };
-class OrderByTerm::render : public std::unary_function<OrderByTerm, void> {
-public:
-    render(QueryTemplate& qt) : _qt(qt), _count(0) {}
-    void operator()(OrderByTerm const& t) { t.renderTo(_qt); }
-    QueryTemplate& _qt;
-    int _count;
-};
-
 
 /// OrderByClause is a parsed SQL ORDER BY ... clause
 class OrderByClause {
@@ -92,7 +90,7 @@ public:
     typedef boost::shared_ptr<OrderByClause> Ptr;
     typedef std::deque<OrderByTerm> List;
 
-    OrderByClause() : _terms (new List()) {}
+    OrderByClause() : _terms(new List()) {}
     ~OrderByClause() {}
 
     std::string getGenerated();
@@ -100,6 +98,7 @@ public:
     boost::shared_ptr<OrderByClause> clone() const;
     boost::shared_ptr<OrderByClause> copySyntax();
 
+    void findValueExprs(ValueExprList& list);
 private:
     friend std::ostream& operator<<(std::ostream& os, OrderByClause const& oc);
     friend class parser::ModFactory;

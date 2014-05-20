@@ -48,6 +48,9 @@ namespace query {
 class QueryTemplate;
 class ValueExpr;
 
+typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
+typedef std::list<ValueExprPtr> ValueExprList;
+
 ///  Predicate is a representation of a SQL predicate.
 /// predicate :
 ///       row_value_constructor
@@ -67,46 +70,31 @@ class Predicate : public BfTerm {
 public:
     typedef boost::shared_ptr<Predicate> Ptr;
     typedef std::list<Ptr> PtrList;
-    typedef std::list<boost::shared_ptr<ValueExpr> > ValueExprList;
-    typedef ValueExprList::iterator ValueExprListIter;
 
     virtual ~Predicate() {}
     virtual char const* getName() const { return "Predicate"; }
-
-    virtual void cacheValueExprList() {}
-    virtual ValueExprList::iterator valueExprCacheBegin() { return ValueExprList::iterator(); }
-    virtual ValueExprList::iterator valueExprCacheEnd() { return ValueExprList::iterator(); }
-
-    virtual void findColumnRefs(ColumnRef::List& list) {}
 
     friend std::ostream& operator<<(std::ostream& os, Predicate const& bt);
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
-    virtual BfTerm::Ptr copySyntax() const {
-        return BfTerm::Ptr(); }
+    virtual BfTerm::Ptr copySyntax() const { return BfTerm::Ptr(); }
 };
 
 /// GenericPredicate is a Predicate whose structure whose semantic meaning
 /// is unimportant for qserv
 class GenericPredicate : public Predicate {
 public:
-    typedef boost::shared_ptr<Predicate> Ptr;
+    typedef boost::shared_ptr<GenericPredicate> Ptr;
     typedef std::list<Ptr> PtrList;
 
     virtual ~GenericPredicate() {}
     virtual char const* getName() const { return "GenericPredicate"; }
 
-    /// @return a mutable list iterator for the contained terms
-    //virtual PtrList::iterator iterBegin() { return PtrList::iterator(); }
-    /// @return the terminal iterator
-    //virtual PtrList::iterator iterEnd() { return PtrList::iterator(); }
-
     virtual std::ostream& putStream(std::ostream& os) = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
     virtual BfTerm::Ptr clone() const;
-    virtual BfTerm::Ptr copySyntax() const {
-        return clone(); }
+    virtual BfTerm::Ptr copySyntax() const { return clone(); }
 };
 
 /// CompPredicate is a Predicate involving a row value compared to another row value.
@@ -119,9 +107,7 @@ public:
     virtual ~CompPredicate() {}
     virtual char const* getName() const { return "CompPredicate"; }
 
-    virtual void cacheValueExprList();
-    virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
-    virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
+    virtual void findValueExprs(ValueExprList& list);
     virtual void findColumnRefs(ColumnRef::List& list);
 
     virtual std::ostream& putStream(std::ostream& os) const;
@@ -134,11 +120,9 @@ public:
     static char const* lookupOp(int op);
     static int lookupOp(char const* op);
 
-    boost::shared_ptr<ValueExpr> left;
+    ValueExprPtr left;
     int op; // Parser token type of operator
-    boost::shared_ptr<ValueExpr> right;
-private:
-    boost::shared_ptr<Predicate::ValueExprList> _cache;
+    ValueExprPtr right;
 };
 
 /// InPredicate is a Predicate comparing a row value to a set
@@ -150,9 +134,7 @@ public:
     virtual ~InPredicate() {}
     virtual char const* getName() const { return "InPredicate"; }
 
-    virtual void cacheValueExprList();
-    virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
-    virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
+    virtual void findValueExprs(ValueExprList& list);
     virtual void findColumnRefs(ColumnRef::List& list);
 
     virtual std::ostream& putStream(std::ostream& os) const;
@@ -161,12 +143,10 @@ public:
     virtual BfTerm::Ptr clone() const;
     virtual BfTerm::Ptr copySyntax() const { return clone();}
 
-    boost::shared_ptr<ValueExpr> value;
-
-    std::list<boost::shared_ptr<ValueExpr> > cands;
-private:
-    boost::shared_ptr<Predicate::ValueExprList> _cache;
+    ValueExprPtr value;
+    ValueExprList cands;
 };
+
 /// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
 public:
@@ -176,9 +156,7 @@ public:
     virtual ~BetweenPredicate() {}
     virtual char const* getName() const { return "BetweenPredicate"; }
 
-    virtual void cacheValueExprList();
-    virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
-    virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
+    virtual void findValueExprs(ValueExprList& list);
     virtual void findColumnRefs(ColumnRef::List& list);
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
@@ -186,11 +164,9 @@ public:
     virtual BfTerm::Ptr clone() const;
     virtual BfTerm::Ptr copySyntax() const { return clone(); }
 
-    boost::shared_ptr<ValueExpr> value;
-    boost::shared_ptr<ValueExpr> minValue;
-    boost::shared_ptr<ValueExpr> maxValue;
-private:
-    boost::shared_ptr<Predicate::ValueExprList> _cache;
+    ValueExprPtr value;
+    ValueExprPtr minValue;
+    ValueExprPtr maxValue;
 };
 
 /// LikePredicate is a Predicate involving a row value compared to a pattern
@@ -203,9 +179,7 @@ public:
     virtual ~LikePredicate() {}
     virtual char const* getName() const { return "LikePredicate"; }
 
-    virtual void cacheValueExprList();
-    virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
-    virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
+    virtual void findValueExprs(ValueExprList& list);
     virtual void findColumnRefs(ColumnRef::List& list);
 
     virtual std::ostream& putStream(std::ostream& os) const;
@@ -213,10 +187,8 @@ public:
     virtual BfTerm::Ptr clone() const;
     virtual BfTerm::Ptr copySyntax() const { return clone(); }
 
-    boost::shared_ptr<ValueExpr> value;
-    boost::shared_ptr<ValueExpr> charValue;
-private:
-    boost::shared_ptr<Predicate::ValueExprList> _cache;
+    ValueExprPtr value;
+    ValueExprPtr charValue;
 };
 
 /// NullPredicate is a Predicate involving a row value compared to NULL
@@ -228,9 +200,7 @@ public:
     virtual ~NullPredicate() {}
     virtual char const* getName() const { return "NullPredicate"; }
 
-    virtual void cacheValueExprList();
-    virtual ValueExprList::iterator valueExprCacheBegin() { return _cache->begin(); }
-    virtual ValueExprList::iterator valueExprCacheEnd() { return _cache->end(); }
+    virtual void findValueExprs(ValueExprList& list);
     virtual void findColumnRefs(ColumnRef::List& list);
 
     virtual std::ostream& putStream(std::ostream& os) const;
@@ -240,10 +210,8 @@ public:
 
     static int reverseOp(int op); // Reverses operator token
 
-    boost::shared_ptr<ValueExpr> value;
+    ValueExprPtr value;
     bool hasNot;
-private:
-    boost::shared_ptr<Predicate::ValueExprList> _cache;
 };
 
 }}} // namespace lsst::qserv::query

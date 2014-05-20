@@ -21,29 +21,30 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
-  * @file
-  *
-  * @brief Struct containing 2 integers, for C++-->python swig.
-  *
-  * @Author Jacek Becla, SLAC
-  */
+#ifndef LSST_QSERV_QANA_INVALIDTABLEERROR_H
+#define LSST_QSERV_QANA_INVALIDTABLEERROR_H
 
-#ifndef LSST_QSERV_CSS_STRIPINGPARAMS_H
-#define LSST_QSERV_CSS_STRIPINGPARAMS_H
+// System headers
+#include <stdexcept>
+
+// Local headers
+#include "AnalysisError.h"
+
 
 namespace lsst {
 namespace qserv {
-namespace css {
+namespace qana {
 
-class StripingParams {
+/// `InvalidTableError` is thrown for queries referencing mis-configured or
+/// non-existent tables.
+class InvalidTableError : public AnalysisError {
 public:
-    StripingParams() : stripes(0), subStripes(0), partitioningId(0) {}
-    int stripes;
-    int subStripes;
-    int partitioningId;
+    explicit InvalidTableError(std::string const & what) :
+        AnalysisError(what) {}
+    explicit InvalidTableError(char const* what) :
+        AnalysisError(what) {}
 };
 
-}}} // namespace lsst::qserv::css
+}}} // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_CSS_STRIPINGPARAMS_H
+#endif // LSST_QSERV_QANA_INVALIDTABLEERROR_H

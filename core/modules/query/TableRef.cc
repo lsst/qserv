@@ -108,13 +108,6 @@ void TableRef::apply(TableRef::FuncC& f) const {
     }
 }
 
-/// Visit a TableRef and its JoinRefs recursively, permuting each
-/// DbTablePair into a some number of DbTablePairs, and returning a
-/// vector containing a TableRef using all combinations of DbTablePairs.
-std::vector<TableRef::Ptr> TableRef::permute(TableRef::PermuteFunc& p) const {
-    throw std::logic_error("Undefined");
-}
-
 namespace {
 JoinRef::Ptr joinRefClone(JoinRef::Ptr const& r) {
     return r->clone();

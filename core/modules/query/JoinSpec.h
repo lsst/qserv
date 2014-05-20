@@ -71,7 +71,9 @@ public:
     JoinSpec(boost::shared_ptr<ColumnRef> ref)
         : _usingColumn(ref) {}
 
+    boost::shared_ptr<ColumnRef> getUsing() { return _usingColumn; }
     boost::shared_ptr<ColumnRef const> getUsing() const { return _usingColumn; }
+    boost::shared_ptr<BoolTerm> getOn() { return _onTerm; }
     boost::shared_ptr<BoolTerm const> getOn() const { return _onTerm; }
 
     std::ostream& putStream(std::ostream& os) const;
@@ -80,8 +82,8 @@ public:
 private:
     boost::shared_ptr<ColumnRef> _usingColumn;
     boost::shared_ptr<BoolTerm> _onTerm;
-
 };
+
 std::ostream& operator<<(std::ostream& os, JoinSpec const& js);
 std::ostream& operator<<(std::ostream& os, JoinSpec const* js);
 

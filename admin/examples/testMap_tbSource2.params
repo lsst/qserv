@@ -1,10 +1,8 @@
 [table_info]
-tableName:       Source
+tableName:       Source2
 partitioning:    1
 schemaFile:      /u1/qserv/sandbox/qserv/meta/examples/tbSchema_Source.sql
 compression:     0
 subChunks:       0
-dirColName:      objectIdSourceTest
+dirColName:      objectIdObjTest
 dirTable:        Object
-latColName:      declObjectTest
-lonColName:      raObjectTest

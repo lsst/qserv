@@ -2,7 +2,7 @@
 
 # LSST Data Management System
 # Copyright 2013-2014 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -10,14 +10,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 
@@ -51,7 +51,7 @@ KvException = produceExceptionClass('KvException', [
         (2010, "INVALID_CONNECTION", "Invalid connection information."),
         (2015, "KEY_EXISTS",         "Key already exists."),
         (2020, "KEY_DOES_NOT_EXIST", "Key does not exist."),
-        (2025, "KEY_INVALID",        "Key Invalid key."),
+        (2025, "KEY_INVALID",        "Invalid key."),
         (2030, "MISSING_PARAM",      "Missing parameter."),
         (9998, "NOT_IMPLEMENTED",    "Feature not implemented yet."),
         (9999, "INTERNAL",           "Internal error.")])
@@ -77,7 +77,7 @@ class KvInterface(object):
 
     def create(self, k, v='', sequence=False, ephemeral=False):
         """
-        Add a new key/value entry. Create entire path as necessary. 
+        Add a new key/value entry. Create entire path as necessary.
 
         @param sequence  Sequence flag -- if set to True, a 10-digid, 0-padded
                          suffix (unique sequential number) will be added to the key.
@@ -113,7 +113,7 @@ class KvInterface(object):
 
         @param k   Key.
 
-        @return string  Value for a given key. 
+        @return string  Value for a given key.
 
         @raise     Raise KvException if the key doesn't exist.
         """
@@ -131,7 +131,7 @@ class KvInterface(object):
 
         @param k   Key.
 
-        @return    List_of_children of the node k. 
+        @return    List_of_children of the node k.
 
         @raise     Raise KvException if the key does not exists.
         """
@@ -245,7 +245,7 @@ class KvInterface(object):
                         self._deleteNode("%s%s" % (p, child))
                 else:
                     self._deleteNode("%s/%s" % (p, child))
-            if p != "/": 
+            if p != "/":
                 self._zk.delete(p)
         except NoNodeError:
             pass

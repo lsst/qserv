@@ -75,7 +75,7 @@ class TestQservAdmin(unittest.TestCase):
         dd = { "tableName":    "Object",
                "compression":  "1",
                "dirTable":     "Object",
-               "isRefMatch":   " 0",
+               "match":        "0",
                "dirColName":   "ra_PS",
                "lonColName":   "ra_PS",
                "latColName":   "decl_PS",

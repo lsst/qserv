@@ -3,9 +3,8 @@ tableName:       DeepSource
 partitioning:    1
 schemaFile:      /u1/qserv/sandbox/qserv/meta/examples/tbSchema_Object.sql
 compression:     0
-isRefMatch:      0
 subChunks:       0
-secIndexColName: id
+dirColName:      id
 dirTable:        DeepSource
 latColName:      decl
 lonColName:      ra

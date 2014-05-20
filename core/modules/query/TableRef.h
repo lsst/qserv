@@ -79,17 +79,13 @@ public:
     std::string const& getDb() const { return _db; }
     std::string const& getTable() const { return _table; }
     std::string const& getAlias() const { return _alias; }
-
-    JoinRef const* getJoinRef(int i=0) const;
-    JoinRefList const& getJoins() const {
-        return _joinRefList; }
+    JoinRefList const& getJoins() const { return _joinRefList; }
 
     // Modifiers
     void setAlias(std::string const& a) { _alias=a; }
     void setDb(std::string const& db_) { _db = db_; }
     void setTable(std::string const& table_) { _table = table_; }
-    JoinRefList& getJoins() {
-        return _joinRefList; }
+    JoinRefList& getJoins() { return _joinRefList; }
     void addJoin(boost::shared_ptr<JoinRef> r);
 
     class Func {
@@ -105,11 +101,6 @@ public:
     void apply(Func& f);
     void apply(FuncC& f) const;
 
-    struct PermuteFunc {
-        virtual ~PermuteFunc() {}
-        virtual std::list<query::DbTablePair> operator()(query::DbTablePair const& t) = 0;
-    };
-    std::vector<TableRef::Ptr> permute(PermuteFunc& p) const;
     TableRef::Ptr clone() const;
 
     class render;
@@ -120,7 +111,7 @@ private:
     std::string _table;
     JoinRefList _joinRefList;
 };
-/// class render: helper functor for QueryTemplate conversion
+
 class TableRef::render {
 public:
     render(QueryTemplate& qt) : _qt(qt), _count(0) {}

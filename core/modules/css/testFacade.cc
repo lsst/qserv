@@ -89,7 +89,7 @@ struct FacadeFixture {
         kv.push_back(make_pair(p + "/Object/partitioning/lonColName", "ra_PS"));
         kv.push_back(make_pair(p + "/Object/partitioning/latColName", "decl_PS"));
         kv.push_back(make_pair(p + "/Object/partitioning/subChunks", "1"));
-        kv.push_back(make_pair(p + "/Object/partitioning/secIndexColName","objId"));
+        kv.push_back(make_pair(p + "/Object/partitioning/dirColName","objId"));
         kv.push_back(make_pair(p + "/Source", ""));
         kv.push_back(make_pair(p + "/Source/partitioning", ""));
         kv.push_back(make_pair(p + "/Source/partitioning/lonColName", "ra"));
@@ -239,15 +239,15 @@ BOOST_AUTO_TEST_CASE(getChunkLevel) {
     BOOST_CHECK_EQUAL(facade->getChunkLevel("dbA", "Exposure"), 0);
 }
 
-BOOST_AUTO_TEST_CASE(getKeyColumn) {
+BOOST_AUTO_TEST_CASE(getSecIndexColName) {
     // normal, has value
-    BOOST_CHECK_EQUAL(facade->getKeyColumn("dbA", "Object"), "objId");
+    BOOST_CHECK_EQUAL(facade->getSecIndexColNames("dbA", "Object")[0], "objId");
 
     // normal, does not have value
-    BOOST_CHECK_EQUAL(facade->getKeyColumn("dbA", "Source"), "");
+    BOOST_CHECK_EQUAL(facade->getSecIndexColNames("dbA", "Source").empty(), true);
 
     // for non-existing db
-    BOOST_CHECK_THROW(facade->getKeyColumn("Dummy", "x"), NoSuchDb);
+    BOOST_CHECK_THROW(facade->getSecIndexColNames("Dummy", "x"), NoSuchDb);
 }
 
 BOOST_AUTO_TEST_CASE(getDbStriping) {

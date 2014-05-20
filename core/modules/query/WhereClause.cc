@@ -42,22 +42,19 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
-BoolTerm::Ptr findAndTerm(BoolTerm::Ptr tree) {
-    while(1) {
-        AndTerm* at = dynamic_cast<AndTerm*>(tree.get());
-        if(at) {
-            return tree;
-        } else {
-            OrTerm* ot = dynamic_cast<OrTerm*>(tree.get());
-            if(ot && (ot->_terms.size() == 1)) {
-                tree = ot->_terms.front();
-                continue;
-            } else {
-                return tree;
-            }
+namespace {
+
+    BoolTerm::Ptr skipTrivialOrTerms(BoolTerm::Ptr tree) {
+        OrTerm * ot = dynamic_cast<OrTerm *>(tree.get());
+        while (ot && ot->_terms.size() == 1) {
+            tree = ot->_terms.front();
+            ot = dynamic_cast<OrTerm *>(tree.get());
         }
+        return tree;
     }
+
 }
+
 
 ////////////////////////////////////////////////////////////////////////
 // WhereClause
@@ -109,16 +106,12 @@ WhereClause::getRootAndTerm() {
     // Walk the list to find the global AND. If an OR term is root,
     // and has multiple terms, there is no global AND which means we
     // should return NULL.
-    BoolTerm::Ptr t = findAndTerm(_tree);
+    BoolTerm::Ptr t = skipTrivialOrTerms(_tree);
     return boost::dynamic_pointer_cast<AndTerm>(t);
 }
 
-WhereClause::ValueExprIter WhereClause::vBegin() {
-    return ValueExprIter(this, _tree);
-}
-
-WhereClause::ValueExprIter WhereClause::vEnd() {
-    return ValueExprIter(); // end iterators == default-constructed iterators
+void WhereClause::findValueExprs(ValueExprList& list) {
+    if (_tree) { _tree->findValueExprs(list); }
 }
 
 std::string
@@ -167,7 +160,7 @@ WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
     // Walk to AndTerm and prepend new BoolTerm in front of the
     // list. If the new BoolTerm is an instance of AndTerm, prepend
     // its terms rather than the AndTerm itself.
-    boost::shared_ptr<BoolTerm> insertPos = findAndTerm(_tree);
+    boost::shared_ptr<BoolTerm> insertPos = skipTrivialOrTerms(_tree);
 
     // FIXME: Should deal with case where AndTerm is not found.
     AndTerm* rootAnd = dynamic_cast<AndTerm*>(insertPos.get());
@@ -206,168 +199,6 @@ WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
 void
 WhereClause::resetRestrs() {
     _restrs.reset(new QsRestrictor::List());
-}
-
-////////////////////////////////////////////////////////////////////////
-// WhereClause::ValueExprIter
-////////////////////////////////////////////////////////////////////////
-WhereClause::ValueExprIter::ValueExprIter(WhereClause* wc,
-                                          boost::shared_ptr<BoolTerm> bPos)
-    : _wc(wc) {
-    // How to iterate: walk the bool term tree!
-    // Starting point: BoolTerm
-    // _bPos = tree
-    // _bIter = _bPos->iterBegin()
-    bool setupOk = bPos.get();
-    if(setupOk) {
-        PosTuple p(bPos->iterBegin(), bPos->iterEnd()); // Initial position
-        _posStack.push(p); // Put it on the stack.
-        setupOk = _findFactor();
-        if(setupOk) {
-            setupOk = _setupBfIter();
-        }
-    }
-    if(!setupOk) {
-        while(_posStack.size() > 0) { _posStack.pop(); }
-        _wc = NULL;
-    } // Nothing is valid.
-}
-
-void WhereClause::ValueExprIter::increment() {
-    _incrementValueExpr(); // Advance
-    if(_posStack.empty()) {
-        _wc = NULL; // Clear out WhereClause ptr
-        return;
-    }
-    if(_checkIfValid()) return;
-}
-
-bool WhereClause::ValueExprIter::_checkIfValid() const {
-    return _vIter != _vEnd;
-}
-
-void WhereClause::ValueExprIter::_incrementValueExpr() {
-    assert(_vIter != _vEnd);
-    ++_vIter;
-    if(_vIter == _vEnd) {
-        _incrementBfTerm();
-        return;
-    }
-}
-
-void WhereClause::ValueExprIter::_incrementBfTerm() {
-    if(_bfIter == _bfEnd) {
-        throw std::logic_error("Already at end of iteration.");
-    }
-    ++_bfIter;
-    if(_bfIter == _bfEnd) {
-        _incrementBterm();
-        return;
-    } else {
-        _updateValueExprIter();
-        assert(_vIter != _vEnd);
-    }
-}
-
-void WhereClause::ValueExprIter::_incrementBterm() {
-    if(_posStack.empty()) {
-        throw std::logic_error("Missing _posStack context for _incrementBterm");
-    }
-    PosTuple& tuple = _posStack.top();
-    ++tuple.first; // Advance
-    if(tuple.first == tuple.second) { // At the end? then pop the stack
-        _posStack.pop();
-        if(_posStack.empty()) { // No more to traverse?
-            _reset(); // Set to default-constructed iterator to match end.
-            return;
-        } else {
-            _incrementBterm();
-            return;
-        }
-    }
-    if(!_setupBfIter()) { _incrementBterm(); }
-}
-bool WhereClause::ValueExprIter::equal(WhereClause::ValueExprIter const& other) const {
-    // Compare the posStack (only .first) and the bfIter.
-    if(this->_wc != other._wc) return false;
-    if(!this->_wc) return true; // Both are NULL
-    return (_posStack == other._posStack)
-        && (_bfIter == other._bfIter)
-        && (_vIter == other._vIter);
-}
-
-ValueExprPtr & WhereClause::ValueExprIter::dereference() const {
-    if(_vIter == _vEnd) {
-        throw std::invalid_argument("Cannot dereference end iterator");
-    }
-    return *_vIter;
-}
-
-ValueExprPtr& WhereClause::ValueExprIter::dereference() {
-    if(_vIter == _vEnd) {
-        throw std::invalid_argument("Cannot dereference end iterator");
-    }
-    return *_vIter;
-}
-
-bool WhereClause::ValueExprIter::_findFactor() {
-    if(_posStack.empty()) {
-        throw std::logic_error("Missing state: invalid _posStack ");
-    }
-    while(true) {
-        PosTuple& tuple = _posStack.top();
-        BoolTerm::Ptr tptr = *tuple.first;
-        PosTuple p(tptr->iterBegin(), tptr->iterEnd());
-        if(p.first != p.second) { // Should go deeper
-            _posStack.push(p); // Put it on the stack.
-        } else { // Leaf BoolTerm, ready to setup BoolFactor.
-            return true;
-        }
-    }
-    return false; // Should not get here.
-}
-
-void WhereClause::ValueExprIter::_reset() {
-    _wc = NULL; // NULL _wc is enough to compare as true with default iterator
-}
-
-bool WhereClause::ValueExprIter::_setupBfIter() {
-    // Return true if we successfully setup a valid _bfIter;
-    if(_posStack.empty()) {
-        throw std::logic_error("Missing state: invalid _posStack ");
-    }
-    PosTuple& tuple = _posStack.top();
-    BoolTerm::Ptr tptr = *tuple.first;
-    if(!tptr) {
-        throw std::logic_error("Invalid _posStack state.");
-    }
-    BoolFactor* bf = dynamic_cast<BoolFactor*>(tptr.get());
-    if(bf) {
-        _bfIter = bf->_terms.begin();
-        _bfEnd = bf->_terms.end();
-        _updateValueExprIter();
-
-        return _vIter != _vEnd;
-    } else {
-        // Try recursing deeper.
-        // FIXME
-        return false;
-    }
-}
-void WhereClause::ValueExprIter::_updateValueExprIter() {
-    _vIter = _vEnd = ValueExprListIter();
-    if(_bfIter == _bfEnd) {
-        return;
-    }
-    BfTerm::Ptr b = *_bfIter;
-    assert(b);
-    Predicate* p = dynamic_cast<Predicate*>(b.get());
-    if(!p) {
-        return;
-    }
-    p->cacheValueExprList();
-    _vIter = p->valueExprCacheBegin();
-    _vEnd = p->valueExprCacheEnd();
 }
 
 }}} // namespace lsst::qserv::query
