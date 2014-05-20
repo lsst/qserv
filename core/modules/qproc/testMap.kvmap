@@ -3,7 +3,6 @@
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv	READY
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/storageClass	L2
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/releaseStatus	UNRELEASED
-/DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/objIdIndex	objectId
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/uuid	94a65f9a-fc7d-4ece-88c3-2886d5ed98d1
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/partitioningId	0000000001
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/LOCK	\N
@@ -16,7 +15,7 @@
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES	\N
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source	READY
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning	\N
-/DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning/drivingTable	Object
+/DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning/dirTable	Object
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning/secIndexColName	objectIdSourceTest
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning/subChunks	0
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/partitioning/lonColName	raObjectTest
@@ -26,7 +25,7 @@
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Source/isRefMatch	0
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object	READY
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning	\N
-/DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning/drivingTable	Object
+/DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning/dirTable	Object
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning/secIndexColName	objectIdObjTest
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning/subChunks	1
 /DBS/rplante_PT1_2_u_pt12prod_im3000_qserv/TABLES/Object/partitioning/lonColName	ra
@@ -37,7 +36,6 @@
 /DBS/LSST	READY
 /DBS/LSST/storageClass	L2
 /DBS/LSST/releaseStatus	UNRELEASED
-/DBS/LSST/objIdIndex	objectId
 /DBS/LSST/uuid	fa7411ac-9b28-42f2-badc-8dd0b8c2bd57
 /DBS/LSST/partitioningId	0000000000
 /DBS/LSST/LOCK	\N
@@ -50,7 +48,7 @@
 /DBS/LSST/TABLES	\N
 /DBS/LSST/TABLES/Source	READY
 /DBS/LSST/TABLES/Source/partitioning	\N
-/DBS/LSST/TABLES/Source/partitioning/drivingTable	Object
+/DBS/LSST/TABLES/Source/partitioning/dirTable	Object
 /DBS/LSST/TABLES/Source/partitioning/secIndexColName	objectIdSourceTest
 /DBS/LSST/TABLES/Source/partitioning/subChunks	0
 /DBS/LSST/TABLES/Source/partitioning/lonColName	raObjectTest
@@ -84,7 +82,7 @@
 /DBS/LSST/TABLES/SimRefObject/isRefMatch	1
 /DBS/LSST/TABLES/Object	READY
 /DBS/LSST/TABLES/Object/partitioning	\N
-/DBS/LSST/TABLES/Object/partitioning/drivingTable	Object
+/DBS/LSST/TABLES/Object/partitioning/dirTable	Object
 /DBS/LSST/TABLES/Object/partitioning/secIndexColName	objectIdObjTest
 /DBS/LSST/TABLES/Object/partitioning/subChunks	1
 /DBS/LSST/TABLES/Object/partitioning/lonColName	ra_Test

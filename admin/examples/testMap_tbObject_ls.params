@@ -6,6 +6,6 @@ compression:     0
 isRefMatch:      0
 subChunks:       1
 secIndexColName: objectIdObjTest
-drivingTable:    Object
+dirTable:        Object
 latColName:      decl_Test
 lonColName:      ra_Test

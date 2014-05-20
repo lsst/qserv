@@ -23,8 +23,8 @@ compression: 0
 # Allowed values: 0, 1
 isRefMatch: 0
 # uncomment the lines below and fill if this is refmatch table
-# keyColInTable1: <colName>
-# keyColInTable2: <colName>
+# dirColInTable1: <colName>
+# dirColInTable2: <colName>
 
 
 # is this table subchunked?
@@ -36,20 +36,20 @@ subChunks: 1
 secIndexColName: <columnName>
 
 
-# name of the table that is a driving table.
+# name of the table that is a "director" table.
 # It can be name of the current table, or other table
-# If there is no driving table, use current table name
-drivingTable: <tableName>
+# If there is no director table, use current table name
+dirTable: <tableName>
 
 
-# this must be set for driving table
-# it might be set for non-driving tables.
-# For non driving tables, it will be used if keyColName
+# this must be set for "director" table
+# it might be set for non-director tables.
+# For non-director tables, it will be used if dirColName
 # does not make sense (eg, for sources that don't match objects).
 latColName: <decl col name>
 lonColName: <ra col name>
 
 
-# name of the column used to join with the driving table.
-# uncomment and set for non-driving tables.
-#keyColName: <columnName>
+# name of the column used to join with the director table.
+# uncomment and set for non-director tables.
+#dirColName: <columnName>
