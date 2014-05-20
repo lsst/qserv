@@ -76,10 +76,10 @@ class Benchmark():
             self.logger.critical("Unable to find tests datasets.\n--\n" +
                     "FOR EUPS USERS :\n"+
                     "Please run :\n"+
-                    "   eups distrib install qservdata\n"+
-                    "   setup qservdata\n"+
+                    "   eups distrib install qserv_testdata\n"+
+                    "   setup qserv_testdata\n"+
                     "and then reconfigure client by running : \n"+
-                    "   cd $QSERV_DIR\n"+
+                    "   cd $QSERV_DIR/admin\n"+
                     "   scons client\n--\n"+
                     "FOR NON-EUPS USERS :\n"+
                     "Please fill 'testdata_dir' value in "+
