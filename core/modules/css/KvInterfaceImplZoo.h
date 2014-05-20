@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2014 LSST Corporation.
@@ -21,7 +22,7 @@
  */
 
 /**
-  * @file KvInterface.h
+  * @file
   *
   * @brief Interface to the Common State System - zookeeper-based implementation.
   *

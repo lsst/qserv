@@ -2,7 +2,7 @@
 
 /*
  * LSST Data Management System
- * Copyright 2009-2013 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,7 +25,7 @@
 #ifndef LSST_QSERV_CONTROL_ASYNCQUERYMANAGER_H
 #define LSST_QSERV_CONTROL_ASYNCQUERYMANAGER_H
 /**
-  * @file AsyncQueryManager.h
+  * @file
   *
   * @brief AsyncQueryManager is the class that orchestrates the C++ layer
   * execution of a query. While most of its work is delegated, it is the one

@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2012-2014 LSST Corporation.
@@ -20,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file ValueExpr.cc
+  * @file
   *
   * @brief ValueExpr implementat. A ValueExpr is an object
   * object containing elements of a SQL value expresssion (construct

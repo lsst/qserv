@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2014 LSST Corporation.
@@ -21,7 +22,7 @@
  */
 
 /**
-  * @file StripingParams.h
+  * @file
   *
   * @brief Struct containing 2 integers, for C++-->python swig.
   *

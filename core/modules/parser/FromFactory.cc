@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2012-2014 LSST Corporation.
@@ -20,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file FromFactory.cc
+  * @file
   *
   * @brief Implementation of FromFactory, which is responsible for
   * constructing FromList from an ANTLR parse tree.

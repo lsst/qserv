@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2013-2014 LSST Corporation.
@@ -20,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file BoolTermFactory.cc
+  * @file
   *
   * @brief BoolTermFactory is a factory class for BoolTerm objects that get
   * placed (typically) in WhereClause objects.

@@ -23,7 +23,7 @@
 #ifndef LSST_QSERV_QUERY_PREDICATE_H
 #define LSST_QSERV_QUERY_PREDICATE_H
 /**
-  * @file Predicate.h
+  * @file
   *
   * @brief Predicate is a representation of a boolean term in a WHERE clause
   *

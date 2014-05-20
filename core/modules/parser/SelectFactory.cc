@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2012-2014 LSST Corporation.
@@ -20,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file SelectFactory.cc
+  * @file
   *
   * @brief Implementation of the SelectFactory, which is responsible
   * (through some delegated behavior) for constructing SelectStmt (and

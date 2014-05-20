@@ -1,5 +1,5 @@
 ##
-#  @file utils.py
+#  @file
 #
 #  Internal utilities for sconsUtils.
 ##

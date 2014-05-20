@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2013 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,10 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #ifndef LSST_QSERV_CONTROL_DISPATCHER_H
 #define LSST_QSERV_CONTROL_DISPATCHER_H
 /**
-  * @file dispatcher.h
+  * @file
   *
   * @brief Main interface to be exported via SWIG for the
   * frontend's Python layer to initiate subqueries and join them.

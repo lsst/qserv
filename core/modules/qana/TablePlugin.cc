@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2013-2014 LSST Corporation.
@@ -19,8 +20,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 /**
-  * @file TablePlugin.cc
+  * @file
   *
   * @brief TablePlugin implementation. TablePlugin replaces user query
   * table names with substitutable names and maintains a list of

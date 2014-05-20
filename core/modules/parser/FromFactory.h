@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,10 +23,11 @@
 // FromFactory constructs a FromList that maintains parse state of
 // the FROM clause for future interrogation, manipulation, and
 // reconstruction.
+
 #ifndef LSST_QSERV_PARSER_FROMFACTORY_H
 #define LSST_QSERV_PARSER_FROMFACTORY_H
 /**
-  * @file FromFactory.h
+  * @file
   *
   * @brief FromFactory is a factory for constructing FromLists from
   * ANTLR nodes.

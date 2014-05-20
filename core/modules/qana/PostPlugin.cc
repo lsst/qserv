@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2013-2014 LSST Corporation.
@@ -19,8 +20,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 /**
-  * @file PostPlugin.cc
+  * @file
   *
   * @brief PostPlugin does the right thing to handle LIMIT (and
   * perhaps ORDER BY and GROUP BY) clauses.

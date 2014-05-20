@@ -1,3 +1,4 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
  * Copyright 2014 LSST Corporation.
@@ -21,7 +22,7 @@
  */
 
 /**
-  * @file CssException.h
+  * @file
   *
   * @brief Exception class for KvInterface.
   *

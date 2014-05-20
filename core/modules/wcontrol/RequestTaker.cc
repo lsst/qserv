@@ -1,6 +1,7 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2011-2013 LSST Corporation.
+ * Copyright 2011-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  /**
-  * @file RequestTaker.cc
+  * @file
   *
   * @brief RequestTaker is a class that handles incoming request
   * streams. Migrates some functionality out of MySqlFsFile so that

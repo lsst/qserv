@@ -20,10 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #ifndef LSST_QSERV_QUERY_GROUPBYCLAUSE_H
 #define LSST_QSERV_QUERY_GROUPBYCLAUSE_H
 /**
-  * @file GroupByClause.h
+  * @file
   *
   * @brief GroupByClause is a representation of a group-by clause element.
   *

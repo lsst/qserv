@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,10 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #ifndef LSST_QSERV_WDB_QUERYSQL_BATCH_H
 #define LSST_QSERV_WDB_QUERYSQL_BATCH_H
  /**
-  * @file QuerySql_Batch.h
+  * @file
   *
   * @brief QuerySql::Batch is the actual bundling portion of a QuerySql object.
   *

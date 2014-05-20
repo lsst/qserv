@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2013 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,7 +23,7 @@
 #ifndef LSST_QSERV_PARSER_PARSETREEUTIL_H
 #define LSST_QSERV_PARSER_PARSETREEUTIL_H
 /**
-  * @file parseTreeUtil.h
+  * @file
   *
   * @brief Utility functions for examining,  processing, and
   * manipulating the ANTLR parse tree.

@@ -1,6 +1,7 @@
+// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2013 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,7 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  /**
-  * @file SqlFragmenter.cc
+  * @file
   *
   * @brief SqlFragmenter breaks up a single string containing several
   * SQL statements into one or more fragments, in the effort to avoid

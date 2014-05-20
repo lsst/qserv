@@ -23,7 +23,7 @@
 #ifndef LSST_QSERV_QUERY_ORDERBYCLAUSE_H
 #define LSST_QSERV_QUERY_ORDERBYCLAUSE_H
 /**
-  * @file OrderByClause.h
+  * @file
   *
   * @brief OrderByClause is a representation of a SQL ORDER BY clause.  It
   * consists of OrderByTerm objects.
