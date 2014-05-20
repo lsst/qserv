@@ -24,7 +24,7 @@
 #ifndef LSST_QSERV_QUERY_COLUMNREF_H
 #define LSST_QSERV_QUERY_COLUMNREF_H
 /**
-  * @file ColumnRef.h
+  * @file
   *
   * @author Daniel L. Wang, SLAC
   */

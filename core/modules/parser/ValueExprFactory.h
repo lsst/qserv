@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,7 +25,7 @@
 #ifndef LSST_QSERV_PARSER_VALUEEXPRFACTORY_H
 #define LSST_QSERV_PARSER_VALUEEXPRFACTORY_H
 /**
-  * @file ValueExprFactory.h
+  * @file
   *
   * @brief ValueExprFactory makes ValueExpr objects.
   *

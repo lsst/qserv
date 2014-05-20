@@ -19,8 +19,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 /**
-  * @file QueryTemplate.cc
+  * @file
   *
   * @brief Implementation of QueryTemplate, which is a object that can
   * be used to generate concrete queries from a template, given

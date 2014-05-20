@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,7 +23,7 @@
 #ifndef LSST_QSERV_PARSER_WHEREFACTORY_H
 #define LSST_QSERV_PARSER_WHEREFACTORY_H
 /**
-  * @file WhereFactory.h
+  * @file
   *
   * @brief WhereFactory constructs a WhereClause that maintains parse state of
   * the WHERE clause for future interrogation, manipulation, and

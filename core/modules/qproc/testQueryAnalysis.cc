@@ -19,8 +19,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
  /**
-  * @file testQueryAnalysis.cc
+  * @file
   *
   * @brief Test C++ parsing and query analysis logic.
   *

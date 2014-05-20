@@ -21,7 +21,7 @@
  */
 
 /**
-  * @file CssException.h
+  * @file
   *
   * @brief Exception class for KvInterface.
   *

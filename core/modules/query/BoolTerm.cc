@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file BoolTerm.cc
+  * @file
   *
   * @brief BoolTerm and BoolTermFactory implementations.
   *

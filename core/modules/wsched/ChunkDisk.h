@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,7 +23,7 @@
 #ifndef LSST_QSERV_WSCHED_CHUNKDISK_H
 #define LSST_QSERV_WSCHED_CHUNKDISK_H
  /**
-  * @file ChunkDisk.h
+  * @file
   *
   * @brief ChunkDisk is a resource that queues tasks for chunks on a disk.
   *

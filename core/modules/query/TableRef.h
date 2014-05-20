@@ -20,10 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #ifndef LSST_QSERV_QUERY_TABLEREF_H
 #define LSST_QSERV_QUERY_TABLEREF_H
 /**
-  * @file TableRef.h
+  * @file
   *
   * @brief Declarations for TableRefN and subclasses SimpleTableN and JoinRefN
   *

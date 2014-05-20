@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file FromList.cc
+  * @file
   *
   * @brief Implementation of FromList
   *

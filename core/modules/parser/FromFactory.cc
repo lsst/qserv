@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file FromFactory.cc
+  * @file
   *
   * @brief Implementation of FromFactory, which is responsible for
   * constructing FromList from an ANTLR parse tree.

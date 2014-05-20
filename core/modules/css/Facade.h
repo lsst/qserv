@@ -21,7 +21,7 @@
  */
 
 /**
-  * @file Facade.h
+  * @file
   *
   * @brief A facade to the Central State System used by all Qserv core modules.
   *

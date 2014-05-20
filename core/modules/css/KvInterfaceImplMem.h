@@ -21,7 +21,7 @@
  */
 
 /**
-  * @file KvInterfaceImplMem.h
+  * @file
   *
   * @brief Interface to the Common State System - in memory key-value based
   * implementation.

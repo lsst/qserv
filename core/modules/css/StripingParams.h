@@ -21,7 +21,7 @@
  */
 
 /**
-  * @file StripingParams.h
+  * @file
   *
   * @brief Struct containing 2 integers, for C++-->python swig.
   *

@@ -19,8 +19,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 /**
-  * @file GroupByClause.cc
+  * @file
   *
   * @brief Implementation of GroupByClause and GroupByTerm
   *

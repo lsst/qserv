@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file OrderByClause.cc
+  * @file
   *
   * @brief Implementation of OrderByTerm and OrderByClause
   *

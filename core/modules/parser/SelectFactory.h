@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,7 +23,7 @@
 #ifndef LSST_QSERV_PARSER_SELECTFACTORY_H
 #define LSST_QSERV_PARSER_SELECTFACTORY_H
 /**
-  * @file SelectFactory.h
+  * @file
   *
   * @brief SelectFactory maintains parse state so that a SelectStmt can be built
   * from a parse tree. SelectListFactory depends on some of this state.

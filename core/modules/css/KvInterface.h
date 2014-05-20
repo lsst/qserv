@@ -21,7 +21,7 @@
  */
 
 /**
-  * @file KvInterface.h
+  * @file
   *
   * @brief Abstract Interface to the Common State System.
   *

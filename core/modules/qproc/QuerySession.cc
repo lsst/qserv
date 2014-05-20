@@ -19,8 +19,9 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 /**
-  * @file QueryMapping.cc
+  * @file
   *
   * @brief Implementation of the class QuerySession, which is a
   * container for input query state (and related state available prior

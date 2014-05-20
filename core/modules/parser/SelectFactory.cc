@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file SelectFactory.cc
+  * @file
   *
   * @brief Implementation of the SelectFactory, which is responsible
   * (through some delegated behavior) for constructing SelectStmt (and

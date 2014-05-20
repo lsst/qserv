@@ -23,7 +23,7 @@
  */
 
 /**
-  * @file testFacade.cc
+  * @file
   *
   * @brief Unit test for the Facade class.
   *

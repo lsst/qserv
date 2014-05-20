@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file PredicateFactory.cc
+  * @file
   *
   * @brief PredicateFactory is a factory class for Predicate objects that get
   * placed (typically) in WhereClause objects.

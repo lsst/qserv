@@ -1,4 +1,4 @@
-#  @file state.py
+#  @file
 #
 # This module acts like a singleton, holding all global state for sconsUtils.
 # This includes the primary Environment object (state.env), the message log (state.log),

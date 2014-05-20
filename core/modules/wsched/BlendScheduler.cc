@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
  /**
-  * @file BlendScheduler.cc
+  * @file
   *
   * @brief A scheduler implementation that limits disk scans to one at
   * a time, but allows multiple queries to share I/O.

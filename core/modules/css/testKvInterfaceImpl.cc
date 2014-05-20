@@ -23,7 +23,7 @@
  */
 
 /**
-  * @file testKvInterface.cc
+  * @file
   *
   * @brief Unit test for the implementations of the Common State System Interface.
   *

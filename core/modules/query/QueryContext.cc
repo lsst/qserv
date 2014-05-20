@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file QueryContext.cc
+  * @file
   *
   * @brief QueryContext implementation.
   *

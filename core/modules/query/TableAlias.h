@@ -20,10 +20,11 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #ifndef LSST_QSERV_QUERY_TABLEALIAS_H
 #define LSST_QSERV_QUERY_TABLEALIAS_H
 /**
-  * @file TableAlias.h
+  * @file
   *
   * @brief DbTablePair, TableAlias, and TableAliasReverse declarations.
   *

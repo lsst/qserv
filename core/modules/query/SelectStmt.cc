@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file SelectStmt.cc
+  * @file
   *
   * @brief Implementation of a SelectStmt
   *

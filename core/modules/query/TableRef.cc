@@ -20,7 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-  * @file TableRefN.cc
+  * @file
   *
   * @brief TableRefN, SimpleTableN, JoinRefN implementations
   *
