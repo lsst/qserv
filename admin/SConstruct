@@ -39,7 +39,7 @@ env.Alias('configure',
         env.Alias('scisql'),
         env.Alias('css'),
         env.Alias('qserv'),
-        env.Alias("userconfig")
+        env.Alias("client")
         ]
         )
 
@@ -91,9 +91,15 @@ env.Alias('mkdir', mkdir_target_lst)
 #
 ######################################################
 
+if 'testdata_dir' in config['qserv'].keys() :
+    testdata_dir=config['qserv']['testdata_dir']
+else :
+     testdata_dir=os.environ.get('QSERVDATA_DIR')
+    
+
 script_dict = {
-    '%\(PATH\)s': os.environ['PATH'],
-    '%\(LD_LIBRARY_PATH\)s': os.environ['LD_LIBRARY_PATH'],
+    '%\(PATH\)s': os.environ.get('PATH'),
+    '%\(LD_LIBRARY_PATH\)s': os.environ.get('LD_LIBRARY_PATH'),
     '%\(PYTHON_BIN\)s': SCons.Util.WhereIs("python"),
     '%\(PYTHONPATH\)s': os.environ['PYTHONPATH'],
     '%\(QSERV_MASTER\)s': config['qserv']['master'],
@@ -103,6 +109,7 @@ script_dict = {
     '%\(QSERV_SRC_DIR\)s': config['src_dir'],
     '%\(QSERV_LOG_DIR\)s': config['qserv']['log_dir'],
     '%\(QSERV_PID_DIR\)s': os.path.join(config['qserv']['run_base_dir'],"var", "run"),
+    '%\(QSERV_TESTDATA_DIR\)s': testdata_dir,
     '%\(QSERV_RPC_PORT\)s': config['qserv']['rpc_port'],
     '%\(QSERV_USER\)s': config['qserv']['user'],
     '%\(QSERV_LUA_SHARE\)s': os.path.join(config['lua']['base_dir'],"share","lua","5.1"),
@@ -252,7 +259,7 @@ def reset_user_config():
     env.Substfile( user_config_file_name, config_file_name, SUBST_DICT=script_dict)
     return [user_config_file_name]
     
-env.Alias("userconfig", reset_user_config())
+env.Alias("client", reset_user_config())
 
 
 #########################
@@ -265,7 +272,7 @@ if 'uninstall' in COMMAND_LINE_TARGETS:
             os.path.join(config['qserv']['log_dir']),
             os.path.join(config['mysqld']['data_dir']),
             os.path.join(config['qserv']['scratch_dir']),
-            user_config_dir
+            client_config_dir
             ]
 
     env['uninstallpaths'] = paths

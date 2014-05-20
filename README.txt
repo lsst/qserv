@@ -20,8 +20,16 @@ wget http://sw.lsstcorp.org/eupspkg/newinstall.sh
 # script below will ask some questions, answer 'yes' everywhere
 bash newinstall.sh
 source loadLSST.sh
+
 eups distrib install qserv -r http://lsst-web.ncsa.illinois.edu/~fjammes/qserv
 setup qserv
+
+# Integration tests :
+# -------------------
+
+# install test dataset in order to run Qserv integration tests
+eups distrib install qservdata -r http://lsst-web.ncsa.illinois.edu/~fjammes/qserv
+setup qservdata
 
 # Configuration :
 # ---------------
