@@ -15,12 +15,12 @@ programs = []
 extDeps = "antlr boost_thread boost_system".split()
 
 modDeps = 'global log'.split() # deps on other modules
-deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
-deps = map(lambda s: s, deps) # unchain
-deps.sort(key=str)
-##qtObj = env.Object('../qana/QueryTemplate.cc') ## FIXME
+pDeps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
+pDeps = cacheObjs(env, pDeps, ".o")
+
 localdeps = map(env.Object, libProducts['query'])
-p = env.Program(['testRepr.cc', ] + localdeps + deps,
+
+p = env.Program(['testRepr.cc', ] + localdeps + pDeps,
                 LIBS=findLibs(extDeps))
 programs.append(p)
 
