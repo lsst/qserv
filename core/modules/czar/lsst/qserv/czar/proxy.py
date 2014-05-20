@@ -36,8 +36,7 @@ import lsst.qserv.czar.db
 import time
 import thread
 
-from lsst.qserv.czar import queryMsgGetCount, queryMsgGetMsg
-
+from lsst.qserv.czar import queryMsgGetCount, queryMsgGetMsg, discardSession
 
 class Lock:
     createTmpl = "CREATE TABLE IF NOT EXISTS %s (chunkId SMALLINT, code SMALLINT, message CHAR(255), timeStamp FLOAT) ENGINE=MEMORY;"
@@ -49,6 +48,7 @@ class Lock:
         self._tableName = tablename
         self._sessionId = None
         pass
+
     def lock(self):
         self.db = lsst.qserv.czar.db.Db()
         if not self.db.check(): # Can't lock.
@@ -64,6 +64,10 @@ class Lock:
     def unlock(self):
         self._saveQueryMessages()
         self.db.applySql(Lock.unlockTmpl)
+        # We should not discard session here, but in the current
+        # design the QueryMsg is contained in AsyncQueryMgr, so 
+        # cannot discard until now.
+        discardSession(self._sessionId)
         pass
 
     def unlockAfter(self, threadCreateFunc, function):

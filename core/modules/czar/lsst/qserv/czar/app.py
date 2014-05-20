@@ -484,6 +484,9 @@ class InbandQueryAction:
         if s != QueryState_SUCCESS:
             self._reportError(getErrorDesc(self.sessionId))
         logger.inf("Final state of all queries", getQueryStateString(s))
+        # session should really be discarded here unconditionally,
+        # but in the current design it is used in proxy.py, so it is
+        # (temporarily) discarded there.
         if not self.isValid:
             discardSession(self.sessionId)
 
