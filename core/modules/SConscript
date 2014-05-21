@@ -114,7 +114,6 @@ def getTgts(mName):
         # All .cc, except test files.
         files = filter(lambda f: not os.path.basename(str(f)).startswith("test"),
                        env.Glob(os.path.join(mName, "*.cc")))
-        #print mName, "has files:::::", map(str,files)
         files.sort(key=lambda n: n.str_for_display())
         defaultTgts[mName] = files
         return files

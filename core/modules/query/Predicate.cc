@@ -30,11 +30,13 @@
 
 #include "query/Predicate.h"
 
+// System
+#include <stdexcept>
+
 // Local headers
-#include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "query/QueryTemplate.h"
+#include "query/SqlSQL2Tokens.h" // (generated) SqlSQL2Tokens
 #include "query/ValueExpr.h"
-// FIXME: should not depend on parser/, move logic to factory.
 
 
 namespace lsst {
@@ -87,13 +89,13 @@ void CompPredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r(left);
     switch(op) {
-    case SqlSQL2TokenTypes::EQUALS_OP: qt.append("="); break;
-    case SqlSQL2TokenTypes::NOT_EQUALS_OP: qt.append("<>"); break;
-    case SqlSQL2TokenTypes::LESS_THAN_OP: qt.append("<"); break;
-    case SqlSQL2TokenTypes::GREATER_THAN_OP: qt.append(">"); break;
-    case SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP: qt.append("<="); break;
-    case SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP: qt.append(">="); break;
-    case SqlSQL2TokenTypes::NOT_EQUALS_OP_ALT: qt.append("!="); break;
+    case SqlSQL2Tokens::EQUALS_OP: qt.append("="); break;
+    case SqlSQL2Tokens::NOT_EQUALS_OP: qt.append("<>"); break;
+    case SqlSQL2Tokens::LESS_THAN_OP: qt.append("<"); break;
+    case SqlSQL2Tokens::GREATER_THAN_OP: qt.append(">"); break;
+    case SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP: qt.append("<="); break;
+    case SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP: qt.append(">="); break;
+    case SqlSQL2Tokens::NOT_EQUALS_OP_ALT: qt.append("!="); break;
     }
     r(right);
 }
@@ -164,35 +166,35 @@ void NullPredicate::cacheValueExprList() {
 ///         input token type.
 int CompPredicate::reverseOp(int op) {
     switch(op) {
-    case SqlSQL2TokenTypes::NOT_EQUALS_OP:
-        return SqlSQL2TokenTypes::NOT_EQUALS_OP;
-    case SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP:
-        return SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP;
-    case  SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP:
-        return SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP;
-    case SqlSQL2TokenTypes::LESS_THAN_OP:
-        return SqlSQL2TokenTypes::GREATER_THAN_OP;
-    case  SqlSQL2TokenTypes::GREATER_THAN_OP:
-        return SqlSQL2TokenTypes::LESS_THAN_OP;
-    case SqlSQL2TokenTypes::EQUALS_OP:
-        return SqlSQL2TokenTypes::EQUALS_OP;
+    case SqlSQL2Tokens::NOT_EQUALS_OP:
+        return SqlSQL2Tokens::NOT_EQUALS_OP;
+    case SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP:
+        return SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP;
+    case  SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP:
+        return SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP;
+    case SqlSQL2Tokens::LESS_THAN_OP:
+        return SqlSQL2Tokens::GREATER_THAN_OP;
+    case  SqlSQL2Tokens::GREATER_THAN_OP:
+        return SqlSQL2Tokens::LESS_THAN_OP;
+    case SqlSQL2Tokens::EQUALS_OP:
+        return SqlSQL2Tokens::EQUALS_OP;
     default:
         throw std::logic_error("Invalid op type for reversing");
     }
 }
 char const* CompPredicate::lookupOp(int op) {
     switch(op) {
-    case SqlSQL2TokenTypes::NOT_EQUALS_OP:
+    case SqlSQL2Tokens::NOT_EQUALS_OP:
         return "<>";
-    case SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP:
+    case SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP:
         return "<=";
-    case  SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP:
+    case  SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP:
         return ">=";
-    case SqlSQL2TokenTypes::LESS_THAN_OP:
+    case SqlSQL2Tokens::LESS_THAN_OP:
         return "<";
-    case  SqlSQL2TokenTypes::GREATER_THAN_OP:
+    case  SqlSQL2Tokens::GREATER_THAN_OP:
         return ">";
-    case SqlSQL2TokenTypes::EQUALS_OP:
+    case SqlSQL2Tokens::EQUALS_OP:
         return "==";
     default:
         throw std::invalid_argument("Invalid op type");
@@ -202,16 +204,16 @@ char const* CompPredicate::lookupOp(int op) {
 int CompPredicate::lookupOp(char const* op) {
     switch(op[0]) {
     case '<':
-        if(op[1] == '\0') { return SqlSQL2TokenTypes::LESS_THAN_OP; }
-        else if(op[1] == '>') { return SqlSQL2TokenTypes::NOT_EQUALS_OP; }
-        else if(op[1] == '=') { return SqlSQL2TokenTypes::LESS_THAN_OR_EQUALS_OP; }
+        if(op[1] == '\0') { return SqlSQL2Tokens::LESS_THAN_OP; }
+        else if(op[1] == '>') { return SqlSQL2Tokens::NOT_EQUALS_OP; }
+        else if(op[1] == '=') { return SqlSQL2Tokens::LESS_THAN_OR_EQUALS_OP; }
         else { throw std::invalid_argument("Invalid op string <?"); }
     case '>':
-        if(op[1] == '\0') { return SqlSQL2TokenTypes::GREATER_THAN_OP; }
-        else if(op[1] == '=') { return SqlSQL2TokenTypes::GREATER_THAN_OR_EQUALS_OP; }
+        if(op[1] == '\0') { return SqlSQL2Tokens::GREATER_THAN_OP; }
+        else if(op[1] == '=') { return SqlSQL2Tokens::GREATER_THAN_OR_EQUALS_OP; }
         else { throw std::invalid_argument("Invalid op string >?"); }
     case '=':
-        return SqlSQL2TokenTypes::EQUALS_OP;
+        return SqlSQL2Tokens::EQUALS_OP;
     default:
         throw std::invalid_argument("Invalid op string ?");
     }

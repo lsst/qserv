@@ -1,0 +1,21 @@
+# -*- python -*-
+Import('env')
+Import('extraTgts')
+
+import os
+
+# All .cc, except test files.
+mName = "query"
+files = filter(lambda f: not os.path.basename(str(f)).startswith("test"),
+               env.Glob("*.cc"))
+files.sort(key=lambda n: n.str_for_display())
+
+# Generate token file header
+def convertVocabStub(env, target, source):
+    import convertVocab
+    m = convertVocab.Main()
+    m.convertFile(str(source[0]), str(target[0]))
+
+tokenHdr = env.Command('SqlSQL2Tokens.h', 'SqlSQL2Tokens.txt',
+                       convertVocabStub)
+Return('files')

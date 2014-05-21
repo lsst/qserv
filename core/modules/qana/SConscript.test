@@ -1,4 +1,5 @@
 # -*- python -*-
+# SConscript for qana
 Import('env')
 Import('libProducts')
 Import('defaultTgts')
@@ -14,12 +15,11 @@ programs = []
 extDeps = "antlr boost_thread boost_system zookeeper_mt".split()
 
 modDeps = 'css global log query'.split() # deps on other modules
-deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
-deps = map(lambda s: s, deps) # unchain
-deps.sort(key=str)
+pDeps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
+pDeps = cacheObjs(env, pDeps, ".o")
 
 localdeps = map(env.Object, 'QueryPlugin.cc QservRestrictorPlugin.cc'.split())
-p = env.Program(['testPlugins.cc'] + localdeps + deps, LIBS=findLibs(extDeps))
+p = env.Program(['testPlugins.cc'] + localdeps + pDeps, LIBS=findLibs(extDeps))
 programs.append(p)
 
 Return('programs')
