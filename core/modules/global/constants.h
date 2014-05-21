@@ -31,6 +31,7 @@ namespace lsst {
 namespace qserv {
 const char CHUNK_COLUMN[] = "chunkId";
 const char SUB_CHUNK_COLUMN[] = "subChunkId";
+const int DUMMY_CHUNK = 1234567890;
 
 const char USER_DEFAULT[] = "qsmaster";
 

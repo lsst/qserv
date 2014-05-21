@@ -35,10 +35,13 @@ Access to the classes from the qserv_czar library
 %module("threads"=1, package="lsst.qserv.czar") czarLib
 %{
 #define SWIG_FILE_WITH_INIT
-#include "css/StripingParams.h"
 #include "ccontrol/dispatcher.h"
 #include "ccontrol/queryMsg.h"
+#include "css/StripingParams.h"
+#include "global/constants.h"
 #include "log/loggerInterface.h"
+#include "merger/mergeTypes.h"
+#include "util/Substitution.h"
 #include "qdisp/ChunkMeta.h"
 #include "qproc/ChunkSpec.h"
 #include "rproc/mergeTypes.h"
@@ -122,6 +125,9 @@ namespace std {
 %include "ccontrol/transaction.h"
 %include "ccontrol/queryMsg.h"
 %include "css/StripingParams.h"
+%include "global/constants.h"
+%include "merger/mergeTypes.h"
+%include "merger/TableMerger.h"
 %include "log/loggerInterface.h"
 %include "qdisp/ChunkMeta.h"
 %include "qproc/ChunkSpec.h"

@@ -55,6 +55,7 @@
 #include "ccontrol/AsyncQueryManager.h"
 #include "ccontrol/SessionManagerAsync.h"
 #include "ccontrol/thread.h"
+#include "global/constants.h"
 #include "log/Logger.h"
 #include "obsolete/QservPath.h"
 #include "qproc/ChunkSpec.h"
@@ -206,7 +207,11 @@ addChunk(int session, qproc::ChunkSpec const& cs ) {
 #endif
     AsyncQueryManager& qm = getAsyncManager(session);
     qproc::QuerySession& qs = qm.getQuerySession();
-    qs.addChunk(cs);
+    // If this is not a chunked query, only accept the dummy chunk.
+    // This should collapse out when chunk geometry coverage is moved from Python to C++.
+    if(qs.hasChunks() || cs.chunkId == DUMMY_CHUNK) {
+        qs.addChunk(cs);
+    }
 }
 
 /// Submit the query.

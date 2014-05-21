@@ -77,6 +77,7 @@ from lsst.qserv.czar.db import Db
 
 # SWIG'd functions
 
+from lsst.qserv.czar import CHUNK_COLUMN, SUB_CHUNK_COLUMN, DUMMY_CHUNK
 # xrdfile - raw xrootd access
 from lsst.qserv.czar import xrdOpen, xrdClose, xrdRead, xrdWrite
 from lsst.qserv.czar import xrdLseekSet, xrdReadStr
@@ -109,11 +110,6 @@ from lsst.qserv.czar import queryMsgAddMsg
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
 
-
-# Constant, long-term, this should be defined differently
-dummyEmptyChunk = 1234567890
-CHUNK_COL = "chunkId"
-SUBCHUNK_COL = "subChunkId"
 
 def debug(sig, frame):
     """Interrupt running process, and provide a python prompt for
@@ -264,7 +260,7 @@ class SecondaryIndex:
                                                              lookup.table))
             keys = ",".join(lookup.keyVals)
             condition = "%s IN (%s)" % (lookup.keyColumn, keys)
-            sql = "SELECT %s FROM %s WHERE %s" % (CHUNK_COL, table, condition)
+            sql = "SELECT %s FROM %s WHERE %s" % (CHUNK_COLUMN, table, condition)
             sqls.append(sql)
         if not sqls:
             return
@@ -320,8 +316,6 @@ class InbandQueryAction:
         self._resultName = resultName
         try:
             self._prepareForExec()
-            # Pass up the sessionId for query messages access.
-            setSessionId(self.sessionId)
             # Create query initialization message.
             queryMsgAddMsg(self.sessionId, -1, msgCode.MSG_QUERY_INIT,
                        "Initialize Query: " + self.queryStr);
@@ -335,6 +329,9 @@ class InbandQueryAction:
         except:
             self._error = "Unexpected error: " + str(sys.exc_info())
             logger.err(self._error, traceback.format_exc())
+        finally:
+            # Pass up the sessionId for query messages access.
+            setSessionId(self.sessionId)
         pass
 
     def _reportError(self, message):
@@ -382,6 +379,8 @@ class InbandQueryAction:
         self.dominantDb = getDominantDb(self.sessionId)
         if not containsDb(self.sessionId, self.dominantDb):
             raise ParseError("Illegal db")
+        self.dbStriping = getDbStriping(self.sessionId)
+
         self._applyConstraints()
         self._prepareMerger()
         pass
@@ -408,7 +407,7 @@ class InbandQueryAction:
                     self._intersectIter = map(lambda i: (i,[]), indexRegions)
                 self._isFullSky = False
                 if not self._intersectIter:
-                    self._intersectIter = [(dummyEmptyChunk, [])]
+                    self._intersectIter = [(DUMMY_CHUNK, [])]
         # _isFullSky indicates that no spatial hints were found.
         # However, if spatial tables are not found in the query, then
         # we should use the dummy chunk so the query can be dispatched
@@ -421,22 +420,18 @@ class InbandQueryAction:
         logger.dbg("Affected chunks: ", [x[0] for x in self._intersectIter])
         pass
 
-    def _applyConstraints(self):
-        """Extract constraints from parsed query(C++), re-marshall values,
-        call evaluateHints, and add the chunkIds into the query(C++) """
-        # Retrieve constraints as (name, [param1,param2,param3,...])
+    def _makePmap(self):
+        if (self.dbStriping.stripes < 1) or (self.dbStriping.subStripes < 1):
+            msg = "Partitioner's stripes and substripes must be natural numbers."
+            raise lsst.qserv.czar.config.ConfigError(msg)
+        return spatial.makePmap(self.dominantDb,
+                                self.dbStriping.stripes,
+                                self.dbStriping.subStripes)
+
+    def _importConstraints(self):
         self.constraints = getConstraints(self.sessionId)
         logger.dbg("Getting constraints", self.constraints, "size=",
                    self.constraints.size())
-        dominantDb = getDominantDb(self.sessionId)
-        dbStriping = getDbStriping(self.sessionId)
-        if (dbStriping.stripes < 1) or (dbStriping.subStripes < 1):
-            msg = "Partitioner's stripes and substripes must be natural numbers."
-            raise lsst.qserv.czar.config.ConfigError(msg)
-        self.pmap = spatial.makePmap(dominantDb,
-                                     dbStriping.stripes,
-                                     dbStriping.subStripes)
-
         def iterateConstraints(constraintVec):
             for i in range(constraintVec.size()):
                 yield constraintVec.get(i)
@@ -446,14 +441,12 @@ class InbandQueryAction:
                       for i in range(constraint.paramsSize())]
             self.hints[constraint.name] = params
             self.hintList.append((constraint.name, params))
-            pass
-        self._evaluateHints(dominantDb, self.hintList, self.pmap)
-        self._emptyChunks = metadata.getEmptyChunks(dominantDb)
-        if not self._emptyChunks:
-            raise DataError("No empty chunks for db")
+        pass
+
+    def _generateChunkSpec(self, chunkIter):
         count = 0
         chunkLimit = self.chunkLimit
-        for chunkId, subIter in self._intersectIter:
+        for chunkId, subIter in chunkIter:
             if chunkId in self._emptyChunks:
                 logger.dbg("Rejecting empty chunk:", chunkId)
                 continue
@@ -467,14 +460,29 @@ class InbandQueryAction:
             #    scount += 1
             #    if scount > 7: break ## FIXME: debug now.
             map(c.addSubChunk, sList)
-            addChunk(self.sessionId, c)
+            yield c
             count += 1
             if count >= chunkLimit: break
         if count == 0:
             c = ChunkSpec()
-            c.chunkId = dummyEmptyChunk
+            c.chunkId = DUMMY_CHUNK
             scount=0
-            addChunk(self.sessionId, c)
+            yield c
+        pass
+
+    def _applyConstraints(self):
+        """Extract constraints from parsed query(C++), re-marshall values,
+        call evaluateHints, and add the chunkIds into the query(C++) """
+        # Retrieve constraints as (name, [param1,param2,param3,...])
+        self.pmap = self._makePmap()
+        self._importConstraints()
+        self._evaluateHints(self.dominantDb, self.hintList, self.pmap)
+        self._emptyChunks = metadata.getEmptyChunks(self.dominantDb)
+        if not self._emptyChunks:
+            raise DataError("No empty chunks for db")
+
+        for chunkSpec in self._generateChunkSpec(self._intersectIter):
+            addChunk(self.sessionId, chunkSpec)
         pass
 
 

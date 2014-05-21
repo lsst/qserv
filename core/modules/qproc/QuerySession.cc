@@ -43,6 +43,7 @@
 
 // Local headers
 #include "css/Facade.h"
+#include "global/constants.h"
 #include "log/Logger.h"
 #include "parser/ParseException.h"
 #include "parser/parseExceptions.h"
@@ -113,6 +114,9 @@ bool QuerySession::hasAggregate() const {
     // probably) subset of its components to compose each pass. Right
     // now, the only goal is to support aggregation using two passes.
     return _context->needsMerge;
+}
+bool QuerySession::hasChunks() const {
+    return _context->hasChunks();
 }
 
 boost::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
@@ -191,6 +195,12 @@ void QuerySession::finalize() {
     PluginList::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyFinal(*_context);
+    }
+    // Make up for no chunks (chunk-less query): add the dummy chunk.
+    if(_chunks.empty()) {
+        ChunkSpec cs;
+        cs.chunkId = DUMMY_CHUNK;
+        addChunk(cs);
     }
 }
 

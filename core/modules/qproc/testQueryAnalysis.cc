@@ -821,6 +821,7 @@ BOOST_AUTO_TEST_CASE(Expression) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+////////////////////////////////////////////////////////////////////////
 
 BOOST_FIXTURE_TEST_SUITE(EquiJoin, ParserFixture)
 BOOST_AUTO_TEST_CASE(FreeIndex) {

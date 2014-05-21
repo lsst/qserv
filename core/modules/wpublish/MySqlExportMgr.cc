@@ -32,10 +32,12 @@
 #include <boost/regex.hpp>
 
 // Local headers
+#include "global/constants.h"
 #include "sql/SqlConnection.h"
 #include "wconfig/Config.h"
 #include "wlog/WLogger.h"
 
+using lsst::qserv::wpublish::MySqlExportMgr;
 
 namespace { // File-scope helpers
 
@@ -142,6 +144,9 @@ public:
         chunkMap.clear(); // Clear out stale entries to avoid mixing.
         std::for_each(tables.begin(), tables.end(),
                       doTable(_regex, chunkMap));
+        // All databases get a dummy chunk.
+        MySqlExportMgr::StringSet tablesAtBeginChunk = chunkMap.begin()->second;
+        chunkMap[lsst::qserv::DUMMY_CHUNK]= tablesAtBeginChunk;
 
         //std::for_each(chunkMap.begin(), chunkMap.end(), printChunk(std::cout));
         // TODO: Sanity check: do all tables have the same chunks represented?

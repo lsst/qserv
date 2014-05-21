@@ -77,6 +77,7 @@ public:
     void setDefaultDb(std::string const& db);
     void setQuery(std::string const& q);
     bool hasAggregate() const;
+    bool hasChunks() const;
 
     boost::shared_ptr<query::ConstraintVector> getConstraints() const;
     void addChunk(ChunkSpec const& cs);
