@@ -39,7 +39,7 @@ import thread
 from lsst.qserv.czar import queryMsgGetCount, queryMsgGetMsg, discardSession
 
 class Lock:
-    createTmpl = "CREATE TABLE IF NOT EXISTS %s (chunkId SMALLINT, code SMALLINT, message CHAR(255), timeStamp FLOAT) ENGINE=MEMORY;"
+    createTmpl = "CREATE TABLE IF NOT EXISTS %s (chunkId INT, code SMALLINT, message CHAR(255), timeStamp FLOAT) ENGINE=MEMORY;"
     lockTmpl = "LOCK TABLES %s WRITE;"
     writeTmpl = "INSERT INTO %s VALUES (%d, %d, '%s', %f);"
     unlockTmpl = "UNLOCK TABLES;"
