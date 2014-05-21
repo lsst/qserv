@@ -48,11 +48,10 @@
 #include "query/Predicate.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
+#include "query/SqlSQL2Tokens.h" // (generated) SqlSQL2TokenTypes
 #include "query/ValueFactor.h"
 #include "query/ValueExpr.h"
 #include "query/WhereClause.h"
-#include "query/SqlSQL2Tokens.h" // (generated) SqlSQL2TokenTypes
-
 
 namespace { // File-scope helpers
 std::string const UDF_PREFIX = "scisql_";

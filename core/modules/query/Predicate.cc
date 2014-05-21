@@ -34,8 +34,8 @@
 #include <stdexcept>
 
 // Local headers
-#include "SqlSQL2Tokens.h" // (generated) SqlSQL2Tokens
 #include "query/QueryTemplate.h"
+#include "query/SqlSQL2Tokens.h" // (generated) SqlSQL2Tokens
 #include "query/ValueExpr.h"
 
 
