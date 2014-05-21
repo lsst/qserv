@@ -343,10 +343,13 @@ getErrorDesc(int session) {
 
 int
 newSession(std::map<std::string,std::string> const& config) {
-    AsyncQueryManager::Ptr m =
-        boost::make_shared<AsyncQueryManager>(config);
-    int id = getSessionManagerAsync().newSession(m);
-    return id;
+    try {
+        boost::shared_ptr<AsyncQueryManager> m(new AsyncQueryManager(config));
+        return getSessionManagerAsync().newSession(m);
+    } catch(AsyncQueryManager::ConfigError& e) {
+        LOGGER_ERR << "Cannot create AsyncQueryManager, invalid config.";
+        return -1;
+    }
 }
 
 void
