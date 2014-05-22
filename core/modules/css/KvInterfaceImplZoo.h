@@ -29,8 +29,8 @@
   * @Author Jacek Becla, SLAC
   */
 
-#ifndef LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_HH
-#define LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_HH
+#ifndef LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_H
+#define LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_H
 
 // System headers
 #include <vector>
@@ -68,4 +68,4 @@ private:
 
 }}} // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_HH
+#endif // LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_H

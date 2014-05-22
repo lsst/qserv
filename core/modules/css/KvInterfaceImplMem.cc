@@ -52,7 +52,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 // Local headers
-#include "css/CssException.h"
+#include "css/CssError.h"
 #include "log/Logger.h"
 
 using std::endl;
@@ -82,7 +82,7 @@ namespace css {
   */
 KvInterfaceImplMem::KvInterfaceImplMem(std::istream& mapStream) {
     if(mapStream.fail()) {
-        throw CssException_ConnFailure();
+        throw ConnError();
     }
     string line;
     vector<string> strs;
@@ -113,7 +113,7 @@ KvInterfaceImplMem::create(string const& key, string const& value) {
     LOGGER_INF << "*** KvInterfaceImplMem::create(), " << key << " --> "
                << value << endl;
     if (exists(key)) {
-        throw CssException_KeyDoesNotExist(key);
+        throw NoSuchKey(key);
     }
     _kvMap[key] = value;
 }
@@ -130,7 +130,7 @@ string
 KvInterfaceImplMem::get(string const& key) {
     LOGGER_INF << "*** KvInterfaceImplMem::get(), key: " << key << endl;
     if ( ! exists(key) ) {
-        throw CssException_KeyDoesNotExist(key);
+        throw NoSuchKey(key);
     }
     string s = _kvMap[key];
     LOGGER_INF << "*** got: '" << s << "'" << endl;
@@ -152,7 +152,7 @@ vector<string>
 KvInterfaceImplMem::getChildren(string const& key) {
     LOGGER_INF << "*** KvInterfaceImplMem::getChildren(), key: " << key << endl;
     if ( ! exists(key) ) {
-        throw CssException_KeyDoesNotExist(key);
+        throw NoSuchKey(key);
     }
     vector<string> retV;
     map<string, string>::const_iterator itrM;
@@ -180,7 +180,7 @@ void
 KvInterfaceImplMem::deleteKey(string const& key) {
     LOGGER_INF << "*** KvInterfaceImplMem::deleteKey, key: " << key << endl;
     if ( ! exists(key) ) {
-        throw CssException_KeyDoesNotExist(key);
+        throw NoSuchKey(key);
     }
     _kvMap.erase(key);
 }

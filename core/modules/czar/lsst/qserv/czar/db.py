@@ -191,7 +191,7 @@ class TaskDb:
         if not maxId:
             return 1
         else:
-            return 1 + maxId        
+            return 1 + maxId
         
     def addTask(self, taskparam):
         """
@@ -211,4 +211,3 @@ class TaskDb:
 
     def issueQuery(self, query):
         return self._db.applySql(self, query)
-

@@ -120,4 +120,3 @@ private:
 }}} // namespace lsst::qserv::ccontrol
 
 #endif // LSST_QSERV_CCONTROL_DYNAMICWORKQUEUE_H
-

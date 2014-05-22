@@ -530,4 +530,3 @@ void AsyncQueryManager::_squashRemaining() {
 }
 
 }}} // namespace lsst::qserv::ccontrol
-

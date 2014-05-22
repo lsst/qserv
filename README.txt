@@ -9,7 +9,7 @@ Installing dependencies
   | # Install system dependencies :
   | # for Scientific Linux 6
   | sudo admin/bootstrap/qserv-install-deps-sl6.sh
-  | # for Debian 
+  | # for Debian
   | sudo admin/bootstrap/qserv-install-debian-wheezy.sh
   | # for Ubuntu
   | sudo admin/bootstrap/qserv-install-ubuntu-13.10.sh
@@ -37,7 +37,7 @@ Configuration :
   | # edit qserv.conf, which is the "mother" configuration file from which
   | # configuration parameters will be deployed in all qserv services
   | # configuration files/db
-  | # for a minimalist single node install just leave default 
+  | # for a minimalist single node install just leave default
   | scons
 
 Integration tests :

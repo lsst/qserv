@@ -143,7 +143,7 @@ class Benchmark():
 
 
     def _parseFile(self, qF, withQserv):
-        ''' 
+        '''
         Reads a file with SQL query, filters it based on qserv/mysql mode
         and finds additional pragmas. Returns query text and set of pragmas
         as a dictionary.
