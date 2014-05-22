@@ -94,7 +94,7 @@ env.Alias('mkdir', mkdir_target_lst)
 if 'testdata_dir' in config['qserv'].keys() :
     testdata_dir=config['qserv']['testdata_dir']
 else :
-     testdata_dir=os.environ.get('QSERVDATA_DIR')
+     testdata_dir=os.environ.get('QSERV_TESTDATA_DIR')
     
 
 script_dict = {
