@@ -28,11 +28,18 @@
 #include <set>
 #include <string>
 
+// Third-party headers
+#include <boost/shared_ptr.hpp>
+
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
 namespace sql {
     class SqlErrorObject;
+}
+namespace wbase {
+    class SendChannel;
 }
 namespace wlog {
     class WLogger;
@@ -59,11 +66,15 @@ public:
                           std::string const& user,
                           std::string const& dumpFile,
                           sql::SqlErrorObject&);
+    bool dumpToChannel(wlog::WLogger& log,
+                       std::string const& user,
+                       boost::shared_ptr<wbase::SendChannel> sc,
+                       sql::SqlErrorObject&);
 
 private:
     void _mkdirP(std::string const& filePath);
     std::string _getSpaceResultTables() const;
-
+    std::string _computeTmpFileName() const;
 
     StringSet _resultTables;
     std::string _outDb;

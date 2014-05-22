@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,14 +20,14 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// PacketIter: a fragment-iterated interface to a local file or an
+// XrdBufferSource: a fragment-iterated interface to a local file or an
 // xrootd file descriptor. Facilitates transferring bytes directly
 // from the xrootd realm to a fragment consumer (probably the table
 // merger). Allowing both types input sources makes it easier to
 // reduce buffering and disk usage, theoretically improving overall
 // latency.
 
-#include "xrdc/PacketIter.h"
+#include "xrdc/XrdBufferSource.h"
 
 // System headers
 #include <errno.h>
@@ -43,30 +43,28 @@ namespace lsst {
 namespace qserv {
 namespace xrdc {
 
-
-PacketIter::PacketIter()
-  : _xrdFd(-1), _current(0,0), _stop(false)
-{}
-
-PacketIter::PacketIter(int xrdFd, int fragmentSize)
+////////////////////////////////////////////////////////////////////////
+// XrdBufferSource public
+////////////////////////////////////////////////////////////////////////
+XrdBufferSource::XrdBufferSource(int xrdFd, int fragmentSize)
     : _xrdFd(xrdFd),
+      _buffer(0),
       _fragSize(fragmentSize),
-      _current(0,0),
       _stop(false) {
     _setup(false);
 }
 
-PacketIter::PacketIter(std::string const& fileName, int fragmentSize,
-                       bool debug)
+XrdBufferSource::XrdBufferSource(std::string const& fileName, int fragmentSize,
+                                 bool debug)
     : _xrdFd(0),
       _fileName(fileName),
+      _buffer(0),
       _fragSize(fragmentSize),
-      _current(0,0),
       _stop(false) {
     _setup(debug);
 }
 
-PacketIter::~PacketIter() {
+XrdBufferSource::~XrdBufferSource() {
     if(_buffer != NULL) free(_buffer);
     if(_xrdFd != 0) {
         xrdClose(_xrdFd);
@@ -76,76 +74,85 @@ PacketIter::~PacketIter() {
     }
 }
 
-bool PacketIter::incrementExtend() {
-    LOGGER_DBG << "packetiter Realloc to "
-               << _current.second + _fragSize << std::endl;
-    void* ptr = ::realloc(_current.first, _current.second + _fragSize);
+////////////////////////////////////////////////////////////////////////
+// XrdBufferSource public
+////////////////////////////////////////////////////////////////////////
+util::PacketBuffer::Value XrdBufferSource::getFirstValue() {
+    return Value(_buffer, _occupiedSize);
+}
+
+void XrdBufferSource::increment(util::PacketBuffer& p) {
+    int newSize = _fragSize;
+    _fill(_buffer, newSize);
+    _occupiedSize = newSize;
+    setCurrent(p, _buffer, _occupiedSize);
+}
+
+bool XrdBufferSource::incrementExtend(util::PacketBuffer& p) {
+    LOGGER_DBG << "XrdBufferSource Realloc to "
+               << _occupiedSize + _fragSize << std::endl;
+    void* ptr = ::realloc(_buffer, _occupiedSize + _fragSize);
     if(!ptr) {
         errno = ENOMEM;
-        throw "Failed to realloc for PacketIter.";
+        throw "Failed to realloc for XrdBufferSource.";
     }
-    _buffer = ptr;
-    _current.first = static_cast<char*>(ptr);
-    Value secondHalf(_current.first + _current.second, _fragSize);
-    _fill(secondHalf);
-    _current.second += secondHalf.second;
-    if(secondHalf.second == 0) {
+    _buffer = static_cast<char*>(ptr);
+    int fillSize = _fragSize;
+    char* newFill = _buffer + _occupiedSize;
+    _fill(newFill, fillSize);
+    if(fillSize == 0) {
         return false;
+    } else {
+        _occupiedSize += fillSize;
+        setCurrent(p, _buffer, _occupiedSize);
+        return true;
     }
-    return true;
 }
 
 ////////////////////////////////////////////////////////////////////////
-// PacketIter private methods
+// XrdBufferSource private methods
 ////////////////////////////////////////////////////////////////////////
-void PacketIter::_setup(bool debug) {
+void XrdBufferSource::_setup(bool debug) {
     _errno = 0; // Important to initialize for proper error handling.
     const int minFragment = 65536;
     _memo = false;
     if(!debug && (_fragSize < minFragment)) _fragSize = minFragment;
 
     assert(sizeof(char) == 1);
-    assert(_current.first == 0);
+    assert(_buffer == 0);
     assert(_fragSize > 0);
     // malloc() is used here rather than the "new" operator because a low-level
-    // bucket of bytes is desired.
-    _buffer = malloc(_fragSize);
+    // bucket of bytes is desired, and so we can use realloc
+    _buffer = static_cast<char*>(::malloc(_fragSize));
     if(_buffer == NULL) {
         errno = ENOMEM;
-        throw "Failed to malloc for PacketIter.";
+        throw "Failed to malloc for XrdBufferSource.";
     }
     if(!_fileName.empty()) {
         _realFd = open(_fileName.c_str(), O_RDONLY);
         if(_realFd < 0) {
-            _current.second = 0;
-            _errno = errno;
-            return;
+            throw "couldn't open file in XrdBufferSource";
         }
     }
-    _current.second = _fragSize;
-    _current.first = static_cast<char*>(_buffer);
-    _fill(_current);
+    int newSize = _fragSize;
+    _fill(_buffer, newSize);
+    _occupiedSize = newSize;
 }
 
-void PacketIter::_increment() {
-    _pos += _current.second;
-    _fill(_current);
-}
-
-void PacketIter::_fill(Value& v) {
+void XrdBufferSource::_fill(char*& buf, int& len) {
     int readRes = 0;
     if(_stop) {
-        v.first = 0;
-        v.second = 0;
+        buf = 0;
+        len = 0;
         return;
     }
     if(_xrdFd != 0) {
-        readRes = xrdRead(_xrdFd, v.first, static_cast<unsigned long long>(v.second));
+        readRes = xrdRead(_xrdFd, buf, static_cast<unsigned long long>(len));
         if (readRes < 0) {
             throw "Remote I/O error during XRD read.";
         }
     } else if(!_fileName.empty()) {
-        readRes = ::read(_realFd, v.first, v.second);
+        readRes = ::read(_realFd, buf, len);
     } else {
         readRes = 0;
     }
@@ -154,10 +161,10 @@ void PacketIter::_fill(Value& v) {
         //Report error somehow
         _errno = errno;
     }
-    if(readRes < static_cast<int>(v.second)) {
+    if(readRes < len) {
         _stop = true;
     }
-    v.second = readRes;
+    len = readRes;
 }
 
 }}} // namespace lsst::qserv::xrdc

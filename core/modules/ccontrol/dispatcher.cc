@@ -55,6 +55,7 @@
 #include "ccontrol/AsyncQueryManager.h"
 #include "ccontrol/SessionManagerAsync.h"
 #include "ccontrol/thread.h"
+#include "ccontrol/TmpTableName.h"
 #include "global/constants.h"
 #include "log/Logger.h"
 #include "obsolete/QservPath.h"
@@ -74,34 +75,14 @@ std::string makeSavePath(std::string const& dir,
     ss << dir << "/" << sessionId << "_" << chunkId << "_" << seq;
     return ss.str();
 }
-
-class TmpTableName {
-public:
-    TmpTableName(int sessionId, std::string const& query) {
-        std::stringstream ss;
-        ss << "r_" << sessionId
-           << lsst::qserv::util::StringHash::getMd5Hex(query.data(), query.size())
-           << "_";
-        _prefix = ss.str();
-    }
-    std::string make(int chunkId, int seq=0) {
-        std::stringstream ss;
-        ss << _prefix << chunkId << "_" << seq;
-        return ss.str();
-    }
-private:
-    std::string _prefix;
-};
-
 } // anonymous namespace
-
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
 int
-submitQuery(int session, TransactionSpec const& s,
+submitQuery(int session, qdisp::TransactionSpec const& s,
             std::string const& resultName) {
     LOGGER_DBG << "EXECUTING submitQuery(" << session << ", TransactionSpec s, "
                << resultName << ")" << std::endl;
@@ -236,7 +217,7 @@ submitQuery3(int session) {
         std::string chunkResultName = ttn.make(cs.chunkId);
         f.serializeMsg(cs, chunkResultName, ss);
 
-        TransactionSpec t;
+        qdisp::TransactionSpec t;
         obsolete::QservPath qp;
         qp.setAsCquery(cs.db, cs.chunkId);
         std::string path=qp.path();
@@ -266,29 +247,6 @@ joinSession(int session) {
     } else {
         LOGGER_ERR << "Joined everything (failure!)" << std::endl;
         return ERROR;
-    }
-}
-
-std::string const&
-getQueryStateString(QueryState const& qs) {
-    static const std::string unknown("unknown");
-    static const std::string waiting("waiting");
-    static const std::string dispatched("dispatched");
-    static const std::string success("success");
-    static const std::string error("error");
-    switch(qs) {
-    case UNKNOWN:
-        return unknown;
-    case WAITING:
-        return waiting;
-    case DISPATCHED:
-        return dispatched;
-    case SUCCESS:
-        return success;
-    case ERROR:
-        return error;
-    default:
-        return unknown;
     }
 }
 

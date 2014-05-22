@@ -70,6 +70,7 @@ public:
     class Iter;
     friend class Iter;
     friend class AsyncQueryManager; // factory for QuerySession.
+    typedef boost::shared_ptr<QuerySession> Ptr;
 
     explicit QuerySession(boost::shared_ptr<css::Facade>);
 

@@ -31,6 +31,9 @@
 // Third-party headers
 #include <boost/shared_ptr.hpp>
 
+// Qserv headers
+#include "global/stringTypes.h"
+
 namespace lsst {
 namespace qserv {
 
@@ -55,7 +58,6 @@ public:
     mysql::MySqlConfig const& getSqlConfig() const;
 
 private:
-    typedef std::map<std::string, std::string> StringMap;
     char const* _getEnvDefault(char const* varName, char const* defVal);
     void _load();
     void _validate();

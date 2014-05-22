@@ -38,7 +38,7 @@
 #include "boost/thread.hpp"
 
 // Local headers
-#include "ccontrol/transaction.h"
+#include "qdisp/TransactionSpec.h"
 #include "xrdc/xrdfile.h"
 
 namespace lsst {
@@ -95,37 +95,14 @@ private:
     int _count;
 };
 
-
-class TransactionSpec::Reader {
-public:
-    Reader(std::string const& inFile);
-    ~Reader();
-    TransactionSpec getSpec();
-private:
-    void _readWholeFile(std::string const& inFile);
-    void _setupMmap(std::string const& inFile);
-    void _cleanupMmap();
-    void _advanceMmap();
-
-    char* _rawContents;
-    char* _mmapChunk;
-    int _mmapFd;
-    int _mmapOffset;
-    int _mmapChunkSize;
-    int _mmapDefaultSize;
-    int _mmapMinimum;
-    int _rawLength;
-    int _pos;
-};
-
 class TransactionCallable {
 public:
-    TransactionCallable(TransactionSpec s) : _spec(s) {}
-    TransactionSpec const& getSpec() const { return _spec; }
+    TransactionCallable(qdisp::TransactionSpec s) : _spec(s) {}
+    qdisp::TransactionSpec const& getSpec() const { return _spec; }
     xrdc::XrdTransResult const& getResult() const { return _result; }
     void operator()();
 private:
-    TransactionSpec _spec;
+    qdisp::TransactionSpec _spec;
     xrdc::XrdTransResult _result;
     static Semaphore _sema;
 };
@@ -140,7 +117,7 @@ private:
     void _joinOne();
 
     std::string _file;
-    boost::shared_ptr<TransactionSpec::Reader> _reader;
+    boost::shared_ptr<qdisp::TransactionSpec::Reader> _reader;
     typedef std::deque<boost::shared_ptr<boost::thread> > ThreadDeque;
     ThreadDeque _threads;
     int _highWaterThreads;
@@ -156,7 +133,7 @@ public:
     public:
         explicit ManagedCallable();
 	explicit ManagedCallable(QueryManager& qm, int id,
-				 TransactionSpec const& t);
+				 qdisp::TransactionSpec const& t);
         ManagedCallable& operator=(ManagedCallable const& m);
 
 	void operator()();
@@ -173,7 +150,7 @@ public:
 
     explicit QueryManager() : _highWaterThreads(120) {}
 
-    int add(TransactionSpec const& t, int id=-1);
+    int add(qdisp::TransactionSpec const& t, int id=-1);
     void join(int id);
     bool tryJoin(int id);
     xrdc::XrdTransResult const& status(int id) const;

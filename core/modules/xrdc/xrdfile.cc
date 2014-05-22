@@ -103,8 +103,7 @@ long long xrdLseekSet(int fildes, off_t offset) {
 }}} // namespace lsst::qserv::xrdc
 
 #else // Not faked: choose the real XrdPosix implementation.
-
-extern XrdPosixLinkage Xunix;
+// extern XrdPosixLinkage Xunix; // Enable for old POSIX-file-style dispatch
 
 namespace {
 
@@ -115,7 +114,7 @@ namespace {
     };
 
     XrdInit::XrdInit() : posixXrd(-OPEN_FILES) { // Use non-OS file descriptors
-        Xunix.Init(0);
+        //      Xunix.Init(0); // test removal for new client
 
         // Set timeouts to effectively disable client timeouts.
 

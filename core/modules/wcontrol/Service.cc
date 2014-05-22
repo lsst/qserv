@@ -66,6 +66,13 @@ Service::getAcceptor() {
     return _foreman;
 }
 
+boost::shared_ptr<wbase::MsgProcessor>
+Service::getProcessor() {
+    // Make a task processor that returns results in a channel rather than
+    // a separate file.
+    return _foreman->getProcessor();
+}
+
 void Service::squashByHash(std::string const& hash) {
     _foreman->squashByHash(hash);
 }

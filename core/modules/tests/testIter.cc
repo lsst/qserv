@@ -29,7 +29,8 @@
 
 // Local headers
 #include "rproc/SqlInsertIter.h"
-#include "xrdc/PacketIter.h"
+#include "util/PacketBuffer.h"
+#include "xrdc/XrdBufferSource.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE testIter
@@ -37,7 +38,8 @@
 
 namespace test = boost::test_tools;
 using lsst::qserv::rproc::SqlInsertIter;
-using lsst::qserv::xrdc::PacketIter;
+using lsst::qserv::util::PacketBuffer;
+using lsst::qserv::xrdc::XrdBufferSource;
 using std::string;
 
 
@@ -124,11 +126,14 @@ struct IterFixture {
 BOOST_FIXTURE_TEST_SUITE(IterTests, IterFixture)
 
 BOOST_AUTO_TEST_CASE(PlainIterTest) {
-    PacketIter::Ptr p(new PacketIter(string(dummyFilename), 512, true));
+    XrdBufferSource* bs = new XrdBufferSource(string(dummyFilename),
+                                              512,
+                                              true);
+    PacketBuffer::Ptr p(new PacketBuffer(bs));
     char const* c = dummyBlock;
     bool same = true;
     for(; !p->isDone(); ++(*p)) {
-        PacketIter::Value const& v = **p;
+        PacketBuffer::Value const& v = **p;
         // std::cout << "frag: " << std::string(v.first, v.second)
         //           << std::endl;
         for(unsigned i=0; i < v.second; ++i) {
@@ -141,8 +146,10 @@ BOOST_AUTO_TEST_CASE(PlainIterTest) {
 
 BOOST_AUTO_TEST_CASE(SqlIterTest) {
     for(int fragSize=16; fragSize < 512; fragSize*=2) {
-        PacketIter::Ptr p(new PacketIter(string(dummyFilename),
-                                         fragSize, true));
+        XrdBufferSource* bs = new XrdBufferSource(string(dummyFilename),
+                                              fragSize,
+                                              true);
+        PacketBuffer::Ptr p(new PacketBuffer(bs));
         SqlInsertIter sii(p, tableName, true);
         unsigned sCount = iterateInserts(sii);
         BOOST_CHECK_EQUAL(sCount, totalInserts);
@@ -153,7 +160,6 @@ BOOST_AUTO_TEST_CASE(SqlIterTestPlain) {
     unsigned sCount = iterateInserts(sii);
     BOOST_CHECK_EQUAL(sCount, totalInserts);
 }
-
 
 
 BOOST_AUTO_TEST_SUITE_END()

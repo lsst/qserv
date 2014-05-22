@@ -43,6 +43,7 @@ namespace wlog {
 /// A class to define a logging facility that:
 /// (a)  has logging levels
 /// (b)  has selectable outputs: stdout and xrootd's system log
+/// TODO: During the new logging integration, we probably want to adapt the new logger to use the xrootd backend. Otherwise, we could log separately to a different file (probably same directory as xrootd log, with a similar naming convention.
 class WLogger : boost::noncopyable {
 public:
     class Printer {

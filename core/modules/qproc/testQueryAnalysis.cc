@@ -73,7 +73,7 @@ using lsst::qserv::query::ConstraintVector;
 using lsst::qserv::query::QsRestrictor;
 using lsst::qserv::query::QueryContext;
 using lsst::qserv::query::SelectStmt;
-using lsst::qserv::util::StringPair;
+using lsst::qserv::StringPair;
 
 namespace test = boost::test_tools;
 

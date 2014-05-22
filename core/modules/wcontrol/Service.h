@@ -31,6 +31,7 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
     class TaskAcceptor;
+    class MsgProcessor;
 }
 namespace wcontrol {
     class Foreman;
@@ -51,6 +52,7 @@ public:
     explicit Service(boost::shared_ptr<wlog::WLogger> log=
                           boost::shared_ptr<wlog::WLogger>());
     boost::shared_ptr<wbase::TaskAcceptor> getAcceptor();
+    boost::shared_ptr<wbase::MsgProcessor> getProcessor();
     void squashByHash(std::string const& hash);
 
 private:

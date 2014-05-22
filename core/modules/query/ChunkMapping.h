@@ -33,7 +33,7 @@
 #include "boost/shared_ptr.hpp"
 
 // Local headers
-#include "util/common.h"
+#include "global/stringTypes.h"
 
 
 namespace lsst {
@@ -52,7 +52,7 @@ namespace query {
 //
 class ChunkMapping {
 public:
-    typedef util::StringMap Map;
+    typedef StringMap Map;
     typedef Map::value_type MapValue;
 
     ChunkMapping() :_subPrefix("_sc") {}

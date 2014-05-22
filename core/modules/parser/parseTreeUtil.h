@@ -43,6 +43,7 @@
 
 // Local headers
 #include "global/sqltoken.h"
+#include "global/stringTypes.h"
 
 // Forward
 namespace antlr {
@@ -120,7 +121,6 @@ bool substituteWithMap(std::string& s,
 template <typename AnAst>
 struct SubstituteVisitor {
 public:
-    typedef std::map<std::string, std::string> StringMap;
     SubstituteVisitor(StringMap const& m_) : m(m_) {
         std::string::size_type min = std::string::npos;
         StringMap::const_iterator i;

@@ -59,6 +59,9 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
+namespace wbase {
+    class MsgProcessor;
+}
 namespace wlog {
     class WLogger;
 }}} // End of forward declarations
@@ -98,6 +101,7 @@ public:
     virtual bool squashByHash(std::string const& hash) { return false; }
 
     virtual bool accept(boost::shared_ptr<proto::TaskMsg> msg) { return false; }
+    virtual boost::shared_ptr<wbase::MsgProcessor> getProcessor() = 0;
     virtual ~Foreman() {}
 
 protected:

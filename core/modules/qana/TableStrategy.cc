@@ -39,6 +39,7 @@
 #include "query/JoinSpec.h"
 #include "query/QueryContext.h"
 #include "query/TableRef.h"
+#include "util/Timer.h"
 
 #define CHUNKTAG "%CC%"
 #define SUBCHUNKTAG "%SS%"
@@ -249,12 +250,18 @@ public:
         {}
 
     void operator()(Tuple& t) {
+        util::Timer t1;
         t.allowed = cssFacade->containsDb(t.db); // Db exists?
         if(t.allowed) { // Check table as well.
             t.allowed = cssFacade->containsTable(t.db, t.prePatchTable);
         }
         if(t.allowed) {
+            t1.start();
             t.chunkLevel = cssFacade->getChunkLevel(t.db, t.prePatchTable);
+            t1.stop();
+            LOGGER_INF << "Facade getChunkLevel() elapsed: "
+                       << t1.getElapsed() << std::endl;
+
             if(t.chunkLevel == -1) {
                 t.allowed = false; // No chunk level found: missing/illegal.
                 throw InvalidTableException(t.db, t.prePatchTable);

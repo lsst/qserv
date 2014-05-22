@@ -37,7 +37,7 @@
 #include <boost/shared_ptr.hpp>
 
 // Local headers
-#include "util/common.h"
+#include "global/stringTypes.h"
 
 
 namespace lsst {
@@ -53,7 +53,7 @@ public:
     // Contents could change
     std::string db;
     int chunkId;
-    util::StringPairList scanTables;
+    StringPairList scanTables;
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
     std::vector<std::string> subChunkTables;

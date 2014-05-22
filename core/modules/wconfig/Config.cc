@@ -44,7 +44,7 @@ namespace {
 static const int settingsCount = 7;
 // key, env var name, default, description
 static const char* settings[settingsCount][4] = {
-    {"xrdQueryPath", "QSW_XRDQUERYPATH", "/query2",
+    {"xrdQueryPath", "QSW_XRDQUERYPATH", "/query2", // TODO: eliminate
      "xrootd path for query,e.g. /query2"},
     {"mysqlSocket", "QSW_DBSOCK", "/var/lib/mysql/mysql.sock",
      "MySQL socket file path for db connections"},
@@ -78,11 +78,11 @@ bool isExecutable(std::string const& execFile) {
 std::string validateMysql(Config const& c) {
     // Check config
     MySqlConfig sc;
-    sc.hostname = "";
+    sc.hostname = "invalidhostname_unresolved";
     sc.username = c.getString("mysqlDefaultUser");
     sc.password = "";
     sc.dbName = c.getString("scratchDb");
-    sc.port = 0;
+    sc.port = 9999;
     sc.socket = c.getString("mysqlSocket");
     if(!sc.isValid()) return "Invalid MySQL config:" + sc.asString();
 

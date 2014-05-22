@@ -35,16 +35,9 @@
 #include <map>
 #include <string>
 
-
 namespace lsst {
 namespace qserv {
 namespace util {
-
-typedef std::map<std::string, std::string> StringMap;
-typedef std::map<std::string, StringMap> StringMapMap;
-typedef std::pair<std::string, std::string> StringPair;
-typedef std::list<StringPair> StringPairList;
-typedef std::list<std::string> StringList;
 
 template <class Map>
 typename Map::mapped_type const&

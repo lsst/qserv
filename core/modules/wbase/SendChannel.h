@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,46 +21,45 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CCONTROL_TRANSACTION_H
-#define LSST_QSERV_CCONTROL_TRANSACTION_H
-/**
-  * @file
-  *
-  * @brief Value classes for SWIG-mediated interaction between Python
-  * and C++. Includes TransactionSpec.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+#ifndef LSST_QSERV_WBASE_SENDCHANNEL_H
+#define LSST_QSERV_WBASE_SENDCHANNEL_H
 
 // System headers
-#include <list>
 #include <string>
-#include <vector>
 
 // Third-party headers
 #include <boost/shared_ptr.hpp>
 
+// Qserv headers
+#include "util/Callable.h"
+
+
 namespace lsst {
 namespace qserv {
-namespace ccontrol {
+namespace wbase {
 
-/// class TransactionSpec - A value class for the minimum
-/// specification of a subquery, as far as the xrootd layer is
-/// concerned.
-class TransactionSpec {
+class SendChannel {
 public:
- TransactionSpec() : chunkId(-1) {}
-    int chunkId;
-    std::string path;
-    std::string query;
-    int bufferSize;
-    std::string savePath;
+    typedef util::VoidCallable<void> ReleaseFunc;
+    typedef boost::shared_ptr<ReleaseFunc> ReleaseFuncPtr;
+    typedef long long Size;
 
-    bool isNull() const { return path.length() == 0; }
+    virtual bool send(char const* buf, int bufLen) = 0;
 
-    class Reader;  // defined in thread.h
+    virtual bool sendError(std::string const& msg, int code) = 0;
+    virtual bool sendFile(int fd, Size fSize) = 0;
+    virtual bool sendStream(char const* buf, int bufLen, bool last) {
+        throw "unsupported streaming";
+    }
+
+    void setReleaseFunc(ReleaseFuncPtr r) { _release = r; }
+    void release() {
+        if(_release) {
+            (*_release)();
+        }
+    }
+protected:
+    ReleaseFuncPtr _release;
 };
-
-}}} // namespace lsst::qserv::ccontrol
-
-#endif // LSST_QSERV_CCONTROL_TRANSACTION_H
+}}} // lsst::qserv::wbase
+#endif // LSST_QSERV_WBASE_SENDCHANNEL_H

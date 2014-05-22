@@ -31,9 +31,10 @@
 
 // Third-party headers
 #include <boost/regex.hpp>
+#include <boost/shared_ptr.hpp>
 
 // Local headers
-#include "xrdc/PacketIter.h"
+#include "util/PacketBuffer.h"
 
 namespace lsst {
 namespace qserv {
@@ -49,9 +50,11 @@ public:
     SqlInsertIter() {}
 
     /// Constructor.  Buffer must be valid over this object's lifetime.
+    /// Can query getFirstUnused() to see how much of buffer was used.
     SqlInsertIter(char const* buf, off_t bufSize,
                   std::string const& tableName, bool allowNull);
-    SqlInsertIter(xrdc::PacketIter::Ptr p,
+    /// constructor. Packetized input
+    SqlInsertIter(util::PacketBuffer::Ptr p,
                   std::string const& tableName, bool allowNull);
 
     // Destructor
@@ -71,29 +74,28 @@ public:
     bool isDone() const;
     bool isMatch() const { return _blockFound; }
     bool isNullInsert() const;
+    char const* getLastUsed() const { return _lastUsed; }
 
 private:
     SqlInsertIter operator++(int); // Disable: this isn't safe.
 
     void _init(char const* buf, off_t bufSize, std::string const& tableName);
     void _initRegex(std::string const& tableName);
-    void _setupIter();
+    void _resetMgrIter();
     void _increment();
     bool _incrementFragment();
 
     bool _allowNull;
     Iter _iter;
+    char const* _lastUsed; //< ptr to first unused data in buffer.
     Match _blockMatch;
     bool _blockFound;
-    typedef unsigned long long BufOff;
-    char* _pBuffer;
-    BufOff _pBufSize;
-    BufOff _pBufStart; // Start of non-junk in buffer
-    BufOff _pBufEnd; // End of non-junk in buffer
+    class BufferMgr;
+    // should be scoped_ptr, but requires exposed defn of BufferMgr
+    boost::shared_ptr<BufferMgr> _bufferMgr;
     boost::regex _blockExpr;
     boost::regex _insExpr;
     boost::regex _nullExpr;
-    xrdc::PacketIter::Ptr _pacIterP;
 
     static Iter _nullIter;
 };

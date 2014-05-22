@@ -157,13 +157,90 @@ std::string const TableMerger::_cmdBase("%1% --socket=%2% -u %3% %4%");
 bool TableMergerError::resultTooBig() const {
     return (status == MYSQLEXEC) && (errorCode == 1114);
 }
+
+////////////////////////////////////////////////////////////////////////
+// CreateStmt : helper class for extracting create statements
+// from the dump.
+////////////////////////////////////////////////////////////////////////
+class TableMerger::CreateStmt {
+public:
+    CreateStmt(PacketBufferPtr pb,
+               std::string const& table,
+               std::string const& targetDb,
+               std::string const& targetTable)
+        : _pacBuffer(pb),
+          _table(table) {
+        _setup(targetDb, targetTable);
+    }
+
+    CreateStmt(char const* buf, std::size_t size,
+               std::string const& table,
+               std::string const& targetDb,
+               std::string const& targetTable)
+        : _buf(buf), _size(size),
+          _table(table) {
+        _setup(targetDb, targetTable);
+    }
+
+    std::string const& getTable() const { return _table; }
+
+    std::string getStmt() {
+        if(_pacBuffer) {
+            return _makeStmt(_pacBuffer);
+        } else {
+            assert(_buf);
+            return _makeStmt(_buf, _size);
+        }
+    }
+private:
+    void _setup(std::string const& targetDb, std::string const& targetTable) {
+        _dropQuote = (std::string::npos != targetTable.find("."));
+        _realTarget = dropDbContext(targetTable, targetDb);
+    }
+
+    std::string _makeStmt(PacketBufferPtr pb) {
+        // Perform the (patched) CREATE TABLE, then process as an INSERT.
+        std::string createSql;
+        while(true) {
+//            ::off_t sz = (*pb)->second;
+            createSql = extractReplacedCreateStmt((*pb)->first,
+                                                  (*pb)->second,
+                                                  _table,
+                                                  _realTarget,
+                                                  _dropQuote);
+            if(!createSql.empty()) {
+                break;
+            }
+            // Extend, since we didn't find the CREATE statement.
+            if(!pb->incrementExtend()) {
+                errno = ENOTRECOVERABLE;
+                throw "Create statement not found.";
+            }
+        }
+        return createSql;
+    }
+    std::string _makeStmt(char const* buf, std::size_t size) {
+        return extractReplacedCreateStmt(buf, size,
+                                         _table,
+                                         _realTarget,
+                                         _dropQuote);
+    }
+    PacketBufferPtr _pacBuffer;
+    char const* _buf;
+    std::size_t _size;
+    std::string _table;
+    bool _dropQuote;
+    std::string _realTarget;
+};
+
 ////////////////////////////////////////////////////////////////////////
 // public
 ////////////////////////////////////////////////////////////////////////
 TableMerger::TableMerger(TableMergerConfig const& c)
     : _config(c),
       _sqlConfig(makeSqlConfig(c)),
-      _tableCount(0) {
+      _tableCount(0),
+      _isFinished(false) {
     _fixupTargetName();
     _loadCmd = (boost::format(_cmdBase)
 		% c.mySqlCmd % c.socket % c.user % c.targetDb).str();
@@ -174,30 +251,46 @@ bool TableMerger::merge(std::string const& dumpFile,
     return merge2(dumpFile, tableName);
 }
 
-bool TableMerger::merge(PacketIterPtr pacIter,
-                        std::string const& tableName) {
-    LOGGER_DBG << "EXECUTING TableMerger::merge(pacIter, " << tableName << ")" << std::endl;
-    bool allowNull = false;
-    {
-        LOGGER_DBG << "Importing " << tableName << std::endl;
-        boost::lock_guard<boost::mutex> g(_countMutex);
-        ++_tableCount;
-        if(_tableCount == 1) {
-            bool isOk = _importBufferCreate(pacIter, tableName);
-            if(!isOk) {
-                --_tableCount; // We failed merging the table.
-                return false;
-            }
-            allowNull = true;
-        }
+off_t TableMerger::merge(char const* dumpBuffer, int dumpLength,
+                         std::string const& tableName) {
+    LOGGER_DBG << "EXECUTING TableMerger::merge(packetbuffer, " << tableName << ")" << std::endl;
+    bool allowNull = true;
+    CreateStmt cs(dumpBuffer, dumpLength, tableName,
+                  _config.targetDb, _mergeTable);
+    _createTableIfNotExists(cs);
+    SqlInsertIter sii(dumpBuffer, dumpLength, tableName, allowNull);
+    bool successful = _importIter(sii, tableName);
+    if(!successful) {
+        LOGGER_DBG << "UNSUCCESSFUL TableMerger::merge(buffer), " << tableName << ")" << std::endl;
+        _error.status = TableMergerError::IMPORT;
+        _error.errorCode = 0;
+        _error.description = "Unknown result import error.";
+        return 0;
+    } else if(sii.getLastUsed() == 0) {
+        // Tried to import, no errors, but didn't use anything from the buffer.
+        return 0;
     }
+    off_t used = sii.getLastUsed() - dumpBuffer;
+    return used;
+}
+
+bool TableMerger::merge(boost::shared_ptr<util::PacketBuffer> pb,
+                        std::string const& tableName) {
+    LOGGER_DBG << "EXECUTING TableMerger::merge(packetbuffer, " << tableName << ")" << std::endl;
+    bool allowNull = false;
+    CreateStmt cs(pb, tableName, _config.targetDb, _mergeTable);
+    _createTableIfNotExists(cs);
     // No locking needed if not first, after updating the counter.
     // Once the table is created, everyone should insert.
-    SqlInsertIter sii(pacIter, tableName, allowNull);
+    SqlInsertIter sii(pb, tableName, allowNull);
     return _importIter(sii, tableName);
 }
 
 bool TableMerger::finalize() {
+    if(_isFinished) {
+        LOGGER_ERR << "TableMerger::finalize(), but _isFinished == true"
+                   << std::endl;
+    }
     if(_mergeTable != _config.targetTable) {
         std::string cleanup = (boost::format(_cleanupSql) % _mergeTable).str();
         std::string fixupSuffix = _config.mFixup.post + _buildOrderByLimit();
@@ -213,7 +306,12 @@ bool TableMerger::finalize() {
     }
     LOGGER_INF << "Merged " << _mergeTable << " into " << _config.targetTable
                << std::endl;
+    _isFinished = true;
     return true;
+}
+
+bool TableMerger::isFinished() const {
+    return _isFinished;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -309,6 +407,20 @@ std::string TableMerger::_buildOrderByLimit() {
     return ss.str();
 }
 
+bool TableMerger::_createTableIfNotExists(TableMerger::CreateStmt& cs) {
+    LOGGER_DBG << "Importing " << cs.getTable() << std::endl;
+    boost::lock_guard<boost::mutex> g(_countMutex);
+    ++_tableCount;
+    if(_tableCount == 1) {
+        bool isOk = _dropAndCreate(cs.getTable(), cs.getStmt());
+        if(!isOk) {
+            --_tableCount; // We failed merging the table.
+            return false;
+        }
+    }
+    return true;
+}
+
 void TableMerger::_fixupTargetName() {
     if(_config.targetTable.empty()) {
         assert(!_config.targetDb.empty());
@@ -346,70 +458,15 @@ bool TableMerger::merge2(std::string const& dumpFile,
     char const* buf = static_cast<char const*>(m->getBuf());
     ::off_t size = m->getSize();
     bool allowNull = false;
-    {
-        LOGGER_DBG << "Importing " << tableName << std::endl;
-        boost::lock_guard<boost::mutex> g(_countMutex);
-        ++_tableCount;
-        if(_tableCount == 1) {
-            bool isOk = _importBufferCreate(buf, size, tableName);
-            if(!isOk) {
-                --_tableCount; // We failed merging the table.
-                return false;
-            }
-            allowNull = true;
-        }
-    }
+    CreateStmt cs(buf, size, tableName, _config.targetDb, _mergeTable);
+    _createTableIfNotExists(cs);
     // No locking needed if not first, after updating the counter.
     // Once the table is created, everyone should insert.
     return _importBufferInsert(buf, size, tableName, allowNull);
 }
 
-bool TableMerger::_importBufferCreate(PacketIterPtr pacIter,
-                                      std::string const& tableName) {
-    // Make create statement
-    std::string createStmt = _makeCreateStmt(pacIter, tableName);
-    return _dropAndCreate(tableName, createStmt);
-}
-
-std::string TableMerger::_makeCreateStmt(PacketIterPtr pacIterP,
-                                         std::string const& tableName) {
-    // Perform the (patched) CREATE TABLE, then process as an INSERT.
-    bool dropQuote = (std::string::npos != _mergeTable.find("."));
-    std::string targetTable(dropDbContext(_mergeTable, _config.targetDb));
-    std::string createSql;
-    while(true) {
-        ::off_t sz = (*pacIterP)->second;
-        createSql = extractReplacedCreateStmt((*pacIterP)->first,
-                                              (*pacIterP)->second,
-                                              tableName,
-                                              targetTable,
-                                              dropQuote);
-        if(!createSql.empty()) {
-            break;
-        }
-        // Extend, since we didn't find the CREATE statement.
-        if(!pacIterP->incrementExtend()) {
-            errno = ENOTRECOVERABLE;
-            throw "Create statement not found.";
-        }
-    }
-    return createSql;
-}
-
-bool TableMerger::_importBufferCreate(char const* buf, std::size_t size,
-                                     std::string const& tableName) {
-    // Perform the (patched) CREATE TABLE, then process as an INSERT.
-    bool dropQuote = (std::string::npos != _mergeTable.find("."));
-    std::string targetTable(dropDbContext(_mergeTable, _config.targetDb));
-    std::string createSql = extractReplacedCreateStmt(buf, size,
-                                                      tableName,
-                                                      targetTable,
-                                                      dropQuote);
-    return _dropAndCreate(tableName, createSql);
-}
-
 bool TableMerger::_dropAndCreate(std::string const& tableName,
-                                 std::string& createSql) {
+                                 std::string createSql) {
 
     std::string dropSql = "DROP TABLE IF EXISTS " + tableName + ";";
     if(_config.dropMem) {
@@ -440,24 +497,37 @@ bool TableMerger::_importIter(SqlInsertIter& sii,
                        dropDbContext(_mergeTable, _config.targetDb),
                        dropQuote);
         if(!_applySql(q)) {
-            if(_error.resultTooBig()) {
+            if(!_error.resultTooBig()) {
                 std::stringstream errStrm;
-                errStrm << "Failed importing! " << tableName << " " << _error.description;
+                errStrm << "Failed importing! " << tableName << " "
+                        << _error.description << "(code="
+                        << _error.errorCode << ")";
                 LOGGER_ERR << errStrm.str() << std::endl;
-                throw errStrm.str();
+                throw std::runtime_error(errStrm.str());
+            } else {
+                std::stringstream errStrm;
+                errStrm << "Error importing to " << tableName << " "
+                        << _error.description << "(Result too big)";
+                LOGGER_ERR << errStrm.str() << std::endl;
             }
             return false;
         }
         ++insertsCompleted;
     }
-    return true; //
+    return true;
 }
 
 bool TableMerger::_importBufferInsert(char const* buf, std::size_t size,
                                       std::string const& tableName,
                                       bool allowNull) {
     SqlInsertIter sii(buf, size, tableName, allowNull);
-    return _importIter(sii, tableName);
+    bool successful = _importIter(sii, tableName);
+    if(!successful) {
+        LOGGER_ERR << "Error importing to " << tableName
+                   << " buffer of size=" << size << std::endl;
+        return false;
+    }
+    return true;
 }
 
 bool TableMerger::_slowImport(std::string const& dumpFile,

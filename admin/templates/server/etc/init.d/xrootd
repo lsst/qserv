@@ -55,12 +55,12 @@ start_service() {
 	[ -x ${BINARY} ] || exit 5
 	[ -f ${XROOTD_CONFIG} ] || exit 6
 
-	xrootd_cmd="\"${BINARY} -c ${XROOTD_CONFIG} -l ${LOGFILE} -n ${XROOTD_INSTANCE_NAME} &\""
+	xrootd_cmd="\"${BINARY} -c ${XROOTD_CONFIG} -l ${LOGFILE} -n ${XROOTD_INSTANCE_NAME} -I v4 &\""
     # xrootd modifies log file path, try to guess it here too, this is not critical,
     # it is only used by start() for diagnostic if start fails.
     # TODO: start should not be using envvar from caller scope, if it needs log file name
     # then we should pass it explicitely
-    LOGFILE=${LOG_DIR}/${XROOTD_INSTANCE_NAME}/${prog}.log
+	LOGFILE=${LOG_DIR}/${XROOTD_INSTANCE_NAME}/${prog}.log
 	eval start -p ${pidfile} -l ${lockfile} ${prog} ${xrootd_cmd}
 }
 
