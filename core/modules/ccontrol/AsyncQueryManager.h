@@ -1,5 +1,4 @@
 // -*- LSST-C++ -*-
-
 /*
  * LSST Data Management System
  * Copyright 2009-2014 LSST Corporation.
@@ -37,6 +36,7 @@
 // System headers
 #include <deque>
 #include <map>
+#include <stdexcept>
 
 // Third-party headers
 #include <boost/shared_ptr.hpp>
@@ -88,6 +88,12 @@ public:
     typedef boost::shared_ptr<AsyncQueryManager> Ptr;
     typedef std::map<std::string, std::string> StringMap;
     typedef boost::shared_ptr<xrdc::PacketIter> PacIterPtr;
+
+    class ConfigError : public std::invalid_argument {
+    public:
+        ConfigError(std::string const& msg)
+            : std::invalid_argument(msg) {}
+    };
 
     explicit AsyncQueryManager(std::map<std::string,std::string> const& cfg)
         :_lastId(1000000000),

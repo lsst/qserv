@@ -178,7 +178,6 @@ std::string Logger::LogFilter::do_filter(const std::string& line) {
 std::string Logger::LogFilter::getTimeStamp() {
     char fmt[64], buf[64];
     struct timeval tv;
-    struct tm* tm;
     gettimeofday(&tv, NULL);
     struct tm newtime;
     memset(&newtime, 0, sizeof(struct tm));

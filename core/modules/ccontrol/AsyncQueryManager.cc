@@ -423,10 +423,7 @@ void AsyncQueryManager::_initFacade(std::string const& cssTech,
     } else {
         LOGGER_ERR << "Unable to determine css technology, check config file."
                    << std::endl;
-        // FIXME, throw proper exception here. See DM-278 in Jira
-        // Also, make sure to validate the cssConn to the extend possible.
-        throw std::invalid_argument(
-                     "Unable to determine css technology, check config file..");
+        throw ConfigError("Invalid css technology, check config file.");
     }
 }
 

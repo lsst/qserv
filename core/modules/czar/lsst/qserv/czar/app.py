@@ -206,6 +206,12 @@ class QueryHintError(Exception):
         self.reason = reason
     def __str__(self):
         return repr(self.reason)
+class ConfigError(Exception):
+    """An error in the configuration"""
+    def __init__(self, reason):
+        self.reason = reason
+    def __str__(self):
+        return repr(self.reason)
 class ParseError(Exception):
     """An error in parsing the query"""
     def __init__(self, reason):
@@ -324,6 +330,8 @@ class InbandQueryAction:
             self._error = str(e)
         except ParseError, e:
             self._error = str(e)
+        except ConfigError, e:
+            self._error = str(e)
         except:
             self._error = "Unexpected error: " + str(sys.exc_info())
             logger.err(self._error, traceback.format_exc())
@@ -366,6 +374,8 @@ class InbandQueryAction:
 
         cfg = self._prepareCppConfig()
         self.sessionId = newSession(cfg)
+        if self.sessionId == -1:
+            raise ConfigError("Bad config. Couldn't create AsyncQueryManager session")
         setupQuery(self.sessionId, self.queryStr, self._resultName)
         errorMsg = getSessionError(self.sessionId)
         if errorMsg: raise ParseError(errorMsg)
@@ -423,8 +433,8 @@ class InbandQueryAction:
         if (dbStriping.stripes < 1) or (dbStriping.subStripes < 1):
             msg = "Partitioner's stripes and substripes must be natural numbers."
             raise lsst.qserv.czar.config.ConfigError(msg)
-        self.pmap = spatial.makePmap(dominantDb, 
-                                     dbStriping.stripes, 
+        self.pmap = spatial.makePmap(dominantDb,
+                                     dbStriping.stripes,
                                      dbStriping.subStripes)
 
         def iterateConstraints(constraintVec):
@@ -487,7 +497,7 @@ class InbandQueryAction:
         # session should really be discarded here unconditionally,
         # but in the current design it is used in proxy.py, so it is
         # (temporarily) discarded there.
-        if not self.isValid:
+        if (not self.isValid) and self.sessionId:
             discardSession(self.sessionId)
 
     def _importQconfig(self):

@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+# Copyright 2008-2014 LSST Corporation.
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -30,7 +30,7 @@
 # layer inside the proxy.  Blocking in the Lua scripting layer
 # effectively blocks all query processing in the proxy, since the Lua
 # instance is single-threaded.
-# 
+#
 
 import lsst.qserv.czar.db
 import time
@@ -53,7 +53,7 @@ class Lock:
         self.db = lsst.qserv.czar.db.Db()
         if not self.db.check(): # Can't lock.
             return False
-        self.db.applySql((Lock.createTmpl % self._tableName) 
+        self.db.applySql((Lock.createTmpl % self._tableName)
                          + (Lock.lockTmpl % self._tableName))
         return True
 
@@ -65,9 +65,10 @@ class Lock:
         self._saveQueryMessages()
         self.db.applySql(Lock.unlockTmpl)
         # We should not discard session here, but in the current
-        # design the QueryMsg is contained in AsyncQueryMgr, so 
+        # design the QueryMsg is contained in AsyncQueryMgr, so
         # cannot discard until now.
-        discardSession(self._sessionId)
+        if self._sessionId:
+            discardSession(self._sessionId)
         pass
 
     def unlockAfter(self, threadCreateFunc, function):
@@ -92,7 +93,7 @@ def clearLocks():
     # Might put this function in db class.
     db = lsst.qserv.czar.db.Db()
     db.activate()
-    db.applySql("DROP TABLES %s;" 
+    db.applySql("DROP TABLES %s;"
                 % (" ".join(map(lambda t:resultDb+"."+t,
                                 ["lock_asdf"]))))
-    
+
