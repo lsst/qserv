@@ -28,7 +28,7 @@
 #include <string>
 
 // Local headers
-#include "merger/SqlInsertIter.h"
+#include "rproc/SqlInsertIter.h"
 #include "xrdc/PacketIter.h"
 
 // Boost unit test header
@@ -36,7 +36,7 @@
 #include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
-using lsst::qserv::merger::SqlInsertIter;
+using lsst::qserv::rproc::SqlInsertIter;
 using lsst::qserv::xrdc::PacketIter;
 using std::string;
 

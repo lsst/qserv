@@ -49,8 +49,9 @@ if not env.GetOption('clean'):
     env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC"])
 
 # all modules
-allModules = """control css czar global log merger mysql obsolete
-                parser proto proxy qana qdisp qproc query sql
+allModules = """ccontrol css czar global log mysql obsolete
+                parser proto proxy qana qdisp qproc query 
+                rproc sql
                 tests util
                 wbase wconfig wcontrol wdb wlog wpublish wsched
                 xrdc xrdfs xrdoss""".split()
@@ -77,8 +78,8 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                        mysqlclient_r ssl crypto""".split(),
                            'distDir' : 'lib'
                            },
-               "_czarLib" : {'mods' : """css czar control global
-                                         log merger mysql
+               "_czarLib" : {'mods' : """css czar ccontrol global
+                                         log rproc mysql
                                          parser query
                                          sql util xrdc
                                          obsolete proto

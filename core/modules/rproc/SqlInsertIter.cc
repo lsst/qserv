@@ -25,7 +25,7 @@
 // mysqldump output and iterates over them.
 // Should become obsolete with new  dump-less result transfer processing
 
-#include "merger/SqlInsertIter.h"
+#include "rproc/SqlInsertIter.h"
 
 // System headers
 #include <iostream>
@@ -66,7 +66,7 @@ boost::regex makeNullInsertRegex(std::string const& tableName) {
 // Helpful debugging
 void printInserts(char const* buf, off_t bufSize,
                   std::string const& tableName)  {
-    for(lsst::qserv::merger::SqlInsertIter i(buf, bufSize, tableName, true);
+    for(lsst::qserv::rproc::SqlInsertIter i(buf, bufSize, tableName, true);
         !i.isDone();
         ++i) {
         std::cout << "Sql[" << tableName << "]: "
@@ -84,7 +84,7 @@ void printInserts(char const* buf, off_t bufSize,
 
 namespace lsst {
 namespace qserv {
-namespace merger {
+namespace rproc {
 
 
 ////////////////////////////////////////////////////////////////////////
@@ -260,4 +260,4 @@ void SqlInsertIter::_increment() {
     }
 }
 
-}}} // namespace lsst::qserv::merger
+}}} // namespace lsst::qserv::rproc

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,8 +26,8 @@
 // mysqldump output and iterates over them.
 //
 
-#ifndef LSST_QSERV_MERGER_SQLINSERTITER_H
-#define LSST_QSERV_MERGER_SQLINSERTITER_H
+#ifndef LSST_QSERV_RPROC_SQLINSERTITER_H
+#define LSST_QSERV_RPROC_SQLINSERTITER_H
 
 // Third-party headers
 #include <boost/regex.hpp>
@@ -37,7 +37,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace merger {
+namespace rproc {
 
 class SqlInsertIter {
 public:
@@ -98,6 +98,6 @@ private:
     static Iter _nullIter;
 };
 
-}}} // namespace lsst::qserv::merger
+}}} // namespace lsst::qserv::rproc
 
-#endif // LSST_QSERV_MERGER_SQLINSERTITER_H
+#endif // LSST_QSERV_RPROC_SQLINSERTITER_H

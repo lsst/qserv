@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,30 +23,30 @@
 // queryMsg.cc houses the implementation of
 // queryMsg.h (SWIG-exported functions for accessing QueryMessages)
 
-#include "control/queryMsg.h"
+#include "ccontrol/queryMsg.h"
 
 // System headers
 #include <iostream>
 
 // Local headers
-#include "control/AsyncQueryManager.h"
-#include "control/SessionManagerAsync.h"
+#include "ccontrol/AsyncQueryManager.h"
+#include "ccontrol/SessionManagerAsync.h"
 #include "qdisp/MessageStore.h"
 
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 int queryMsgGetCount(int session) {
-    control::AsyncQueryManager& qm = getAsyncManager(session);
+    ccontrol::AsyncQueryManager& qm = getAsyncManager(session);
     boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();
     return ms->messageCount();
 }
 
 // Python call: msg, chunkId, code, timestamp = queryMsgGetMsg(session, idx)
 std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, time_t* timestamp) {
-    control::AsyncQueryManager& qm = getAsyncManager(session);
+    ccontrol::AsyncQueryManager& qm = getAsyncManager(session);
     boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();
     qdisp::QueryMessage msg = ms->getMessage(idx);
     *chunkId = msg.chunkId;
@@ -57,9 +57,9 @@ std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, time_t
 
 void queryMsgAddMsg(int session, int chunkId, int code,
                             std::string const& message) {
-    control::AsyncQueryManager& qm = getAsyncManager(session);
+    ccontrol::AsyncQueryManager& qm = getAsyncManager(session);
     boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();
     ms->addMessage(chunkId, code, message);
 }
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,33 +20,27 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// SessionManagerAsync.cc houses the static instance of the
-// AsyncQueryManager-type of SessionManager.
+/// queryMsg.h declares an interface for the query messaging mechanism for exporting
+/// via SWIG to the python layer of Qserv.
 
-#include "control/SessionManagerAsync.h"
+#ifndef LSST_QSERV_CCONTROL_QUERYMSG_H
+#define LSST_QSERV_CCONTROL_QUERYMSG_H
 
-// Third-party headers
-#include <boost/make_shared.hpp>
+// System headers
+#include <string>
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
-SessionManagerAsync&
-getSessionManagerAsync() {
+int queryMsgGetCount(int session);
 
-    // Singleton for now.
-    static SessionManagerAsyncPtr sm;
-    if(sm.get() == NULL) {
-        sm = boost::make_shared<SessionManagerAsync>();
-    }
-    assert(sm.get() != NULL);
-    return *sm;
-}
+// Python call: msg, chunkId, code, timestamp = queryMsgGetMsg(session, idx)
+// int* chunkId, int* code, time_t* timestamp matches with %apply directive to help SWIG
+std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, time_t* timestamp);
 
-AsyncQueryManager&
-getAsyncManager(int session) {
-    return *(getSessionManagerAsync().getSession(session));
-}
+void queryMsgAddMsg(int session, int chunkId, int code, std::string const& message);
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol
+
+#endif // LSST_QSERV_CCONTROL_QUERYMSG_H

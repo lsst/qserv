@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,8 +32,8 @@
 /// collected, a fixup step may be needed, as specified when
 /// configuring the TableMerger.
 
-#ifndef LSST_QSERV_MERGER_TABLEMERGER_H
-#define LSST_QSERV_MERGER_TABLEMERGER_H
+#ifndef LSST_QSERV_RPROC_TABLEMERGER_H
+#define LSST_QSERV_RPROC_TABLEMERGER_H
 
 // System headers
 #include <string>
@@ -43,16 +43,16 @@
 #include <boost/shared_ptr.hpp>
 
 // Local headers
-#include "merger/mergeTypes.h"
+#include "rproc/mergeTypes.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace merger {
-    class SqlInsertIter;
-}
 namespace mysql {
     class MySqlConfig;
+}
+namespace rproc {
+    class SqlInsertIter;
 }
 namespace sql {
     class SqlConnection;
@@ -64,7 +64,7 @@ namespace xrdc {
 
 namespace lsst {
 namespace qserv {
-namespace merger {
+namespace rproc {
 
 /// struct TableMergerError - value class for TableMerger error code.
 struct TableMergerError {
@@ -163,11 +163,11 @@ private:
     boost::mutex _sqlMutex;
 };
 
-}}} // namespace lsst::qserv::merger
+}}} // namespace lsst::qserv::rproc
 
 // Local Variables:
 // mode:c++
 // comment-column:0
 // End:
 
-#endif // LSST_QSERV_MERGER_TABLEMERGER_H
+#endif // LSST_QSERV_RPROC_TABLEMERGER_H

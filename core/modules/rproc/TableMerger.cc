@@ -35,7 +35,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
-#include "merger/TableMerger.h"
+#include "rproc/TableMerger.h"
 
 // System headers
 #include <iostream>
@@ -48,7 +48,7 @@
 
 // Local headers
 #include "log/Logger.h"
-#include "merger/SqlInsertIter.h"
+#include "rproc/SqlInsertIter.h"
 #include "sql/SqlConnection.h"
 #include "util/MmapFile.h"
 
@@ -56,7 +56,7 @@
 namespace { // File-scope helpers
 
 using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::merger::TableMergerConfig;
+using lsst::qserv::rproc::TableMergerConfig;
 
 std::string getTimeStampId() {
     struct timeval now;
@@ -142,7 +142,7 @@ std::string dropDbContext(std::string const& tableName,
 
 namespace lsst {
 namespace qserv {
-namespace merger {
+namespace rproc {
 
 std::string const TableMerger::_dropSql("DROP TABLE IF EXISTS %s;");
 std::string const TableMerger::_createSql("CREATE TABLE IF NOT EXISTS %s SELECT * FROM %s;");
@@ -486,4 +486,4 @@ bool TableMerger::_slowImport(std::string const& dumpFile,
     return _applySql(sql);
 }
 
-}}} // namespace lsst::qserv::merger
+}}} // namespace lsst::qserv::rproc

@@ -19,14 +19,14 @@ def _debug_dist_target():
 
 # Manual dependencies for czarLib.i, because the SCons SWIG builder
 # isn't knowledgeable enough to ensure their presence when using VariantDir
-depends = ['control/transaction.h',
-           'control/dispatcher.h',
+depends = ['ccontrol/transaction.h',
+           'ccontrol/dispatcher.h',
            'css/StripingParams.h',
-           'merger/TableMerger.h',
-           'merger/mergeTypes.h',
            'query/Constraint.h',
            'qdisp/ChunkMeta.h',
            'qproc/ChunkSpec.h',
+           'rproc/TableMerger.h',
+           'rproc/mergeTypes.h',
            'util/Substitution.h',
            'xrdc/xrdfile.h']
 depends = map(lambda f: env.File("../"+f), depends)

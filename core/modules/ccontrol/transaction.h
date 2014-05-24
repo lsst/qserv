@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CONTROL_TRANSACTION_H
-#define LSST_QSERV_CONTROL_TRANSACTION_H
+#ifndef LSST_QSERV_CCONTROL_TRANSACTION_H
+#define LSST_QSERV_CCONTROL_TRANSACTION_H
 /**
   * @file
   *
@@ -42,7 +42,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 /// class TransactionSpec - A value class for the minimum
 /// specification of a subquery, as far as the xrootd layer is
@@ -61,6 +61,6 @@ public:
     class Reader;  // defined in thread.h
 };
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CONTROL_TRANSACTION_H
+#endif // LSST_QSERV_CCONTROL_TRANSACTION_H

@@ -45,16 +45,16 @@
   * @author Daniel L. Wang, SLAC
   */
 
-#include "control/dispatcher.h"
+#include "ccontrol/dispatcher.h"
 
 // System headers
 #include <fstream>
 #include <sstream>
 
 // Local headers
-#include "control/AsyncQueryManager.h"
-#include "control/SessionManagerAsync.h"
-#include "control/thread.h"
+#include "ccontrol/AsyncQueryManager.h"
+#include "ccontrol/SessionManagerAsync.h"
+#include "ccontrol/thread.h"
 #include "log/Logger.h"
 #include "obsolete/QservPath.h"
 #include "qproc/ChunkSpec.h"
@@ -97,7 +97,7 @@ private:
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 int
 submitQuery(int session, TransactionSpec const& s,
@@ -350,7 +350,7 @@ newSession(std::map<std::string,std::string> const& config) {
 }
 
 void
-configureSessionMerger(int session, merger::TableMergerConfig const& c) {
+configureSessionMerger(int session, rproc::TableMergerConfig const& c) {
     getAsyncManager(session).configureMerger(c);
 }
 
@@ -359,7 +359,7 @@ configureSessionMerger3(int session) {
     AsyncQueryManager& qm = getAsyncManager(session);
     qproc::QuerySession& qs = qm.getQuerySession();
     std::string const& resultTable = qs.getResultTable();
-    merger::MergeFixup m = qs.makeMergeFixup();
+    rproc::MergeFixup m = qs.makeMergeFixup();
     qm.configureMerger(m, resultTable);
 }
 
@@ -373,4 +373,4 @@ discardSession(int session) {
     getSessionManagerAsync().discardSession(session);
 }
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol

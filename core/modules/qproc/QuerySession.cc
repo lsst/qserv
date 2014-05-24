@@ -165,7 +165,7 @@ QuerySession::getDbStriping() {
     return _context->getDbStriping();
 }
 
-merger::MergeFixup
+rproc::MergeFixup
 QuerySession::makeMergeFixup() const {
     // Make MergeFixup to adapt new query parser/generation framework
     // to older merging code.
@@ -180,7 +180,7 @@ QuerySession::makeMergeFixup() const {
     std::string post = t.generate();
     std::string orderBy; // TODO
     bool needsMerge = _context->needsMerge;
-    return merger::MergeFixup(select, post, orderBy,
+    return rproc::MergeFixup(select, post, orderBy,
                               _stmtMerge->getLimit(), needsMerge);
 }
 

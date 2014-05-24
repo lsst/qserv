@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -34,7 +34,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
-#include "control/AsyncQueryManager.h"
+#include "ccontrol/AsyncQueryManager.h"
 
 // System headers
 #include <iostream>
@@ -48,7 +48,7 @@
 #include "css/Facade.h"
 #include "log/Logger.h"
 #include "log/msgCode.h"
-#include "merger/TableMerger.h"
+#include "rproc/TableMerger.h"
 #include "qdisp/ChunkQuery.h"
 #include "qdisp/MessageStore.h"
 #include "qproc/QuerySession.h"
@@ -61,7 +61,7 @@ using boost::make_shared;
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 
 // Local Helpers --------------------------------------------------
@@ -288,11 +288,11 @@ void AsyncQueryManager::joinEverything() {
     LOGGER_INF << "Query finish. " << _queryCount << " dispatched." << std::endl;
 }
 
-void AsyncQueryManager::configureMerger(merger::TableMergerConfig const& c) {
-    _merger = boost::make_shared<merger::TableMerger>(c);
+void AsyncQueryManager::configureMerger(rproc::TableMergerConfig const& c) {
+    _merger = boost::make_shared<rproc::TableMerger>(c);
 }
 
-void AsyncQueryManager::configureMerger(merger::MergeFixup const& m,
+void AsyncQueryManager::configureMerger(rproc::MergeFixup const& m,
                                         std::string const& resultTable) {
     // Can we configure the merger without involving settings
     // from the python layer? Historically, the Python layer was
@@ -300,7 +300,7 @@ void AsyncQueryManager::configureMerger(merger::MergeFixup const& m,
     // creating them without Python.
     std::string mysqlBin="obsolete";
     std::string dropMem;
-    merger::TableMergerConfig cfg(_resultDbDb,     // cfg result db
+    rproc::TableMergerConfig cfg(_resultDbDb,     // cfg result db
                                   resultTable,     // cfg resultname
                                   m,               // merge fixup obj
                                   _resultDbUser,   // result db credentials
@@ -308,7 +308,7 @@ void AsyncQueryManager::configureMerger(merger::MergeFixup const& m,
                                   mysqlBin,        // Obsolete
                                   dropMem          // cfg
                                   );
-    _merger = boost::make_shared<merger::TableMerger>(cfg);
+    _merger = boost::make_shared<rproc::TableMerger>(cfg);
 }
 
 std::string AsyncQueryManager::getMergeResultName() const {
@@ -445,7 +445,7 @@ void AsyncQueryManager::_addNewResult(int id, PacIterPtr pacIter,
         _squashRemaining();
     }
     if(!mergeResult) {
-        merger::TableMergerError e = _merger->getError();
+        rproc::TableMergerError e = _merger->getError();
         getMessageStore()->addMessage(id, e.errorCode != 0 ? -abs(e.errorCode) : -1,
                                       "Failed to merge results.");
         if(e.resultTooBig()) {
@@ -477,7 +477,7 @@ void AsyncQueryManager::_addNewResult(int id, ssize_t dumpSize,
                        << " errno=" << errno << std::endl;
         }
         if(!mergeResult) {
-            merger::TableMergerError e = _merger->getError();
+            rproc::TableMergerError e = _merger->getError();
             getMessageStore()->addMessage(id, e.errorCode != 0 ? -abs(e.errorCode) : -1,
                                           "Failed to merge results.");
             if(e.resultTooBig()) {
@@ -532,5 +532,5 @@ void AsyncQueryManager::_squashRemaining() {
     _squashExecution();  // Not sure if this is right. FIXME
 }
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol
 

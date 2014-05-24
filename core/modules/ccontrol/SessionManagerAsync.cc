@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,24 +20,33 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// Callback: generic callback interface class.
-#ifndef LSST_QSERV_CONTROL_CALLBACK_H
-#define LSST_QSERV_CONTROL_CALLBACK_H
+// SessionManagerAsync.cc houses the static instance of the
+// AsyncQueryManager-type of SessionManager.
+
+#include "ccontrol/SessionManagerAsync.h"
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
-class Callback {
-public:
-    typedef boost::shared_ptr<Callback> Ptr;
-    virtual ~Callback() {}
-    void operator()() {}
-};
+SessionManagerAsync&
+getSessionManagerAsync() {
 
-}}} // namespace lsst::qserv::control
+    // Singleton for now.
+    static SessionManagerAsyncPtr sm;
+    if(sm.get() == NULL) {
+        sm = boost::make_shared<SessionManagerAsync>();
+    }
+    assert(sm.get() != NULL);
+    return *sm;
+}
 
-#endif // LSST_QSERV_CONTROL_CALLBACK_H
+AsyncQueryManager&
+getAsyncManager(int session) {
+    return *(getSessionManagerAsync().getSession(session));
+}
+
+}}} // namespace lsst::qserv::ccontrol

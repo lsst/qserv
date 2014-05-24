@@ -1,8 +1,7 @@
 // -*- LSST-C++ -*-
-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,15 +32,15 @@
 // * If you store objects, you probably want to store shared_ptrs.
 // * The session manager makes a copy of the Value that is stored.
 //
-#ifndef LSST_QSERV_CONTROL_SESSIONMANAGER_H
-#define LSST_QSERV_CONTROL_SESSIONMANAGER_H
+#ifndef LSST_QSERV_CCONTROL_SESSIONMANAGER_H
+#define LSST_QSERV_CCONTROL_SESSIONMANAGER_H
 
 // Third-party headers
 #include <boost/thread.hpp> // for mutex primitives
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 template <typename Value>
 class SessionManager {
@@ -93,6 +92,6 @@ private:
     int _nextId;
 };
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CONTROL_SESSIONMANAGER_H
+#endif // LSST_QSERV_CCONTROL_SESSIONMANAGER_H

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// @file
-#ifndef LSST_QSERV_CONTROL_DYNAMICWORKQUEUE_H
-#define LSST_QSERV_CONTROL_DYNAMICWORKQUEUE_H
+#ifndef LSST_QSERV_CCONTROL_DYNAMICWORKQUEUE_H
+#define LSST_QSERV_CCONTROL_DYNAMICWORKQUEUE_H
 
 // System headers
 #include <map>
@@ -34,7 +34,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace control {
+namespace ccontrol {
 
 /// A dynamic work queue is a pool of threads created with some initial
 /// number of threads (by default 0). As work is added, threads are created,
@@ -117,7 +117,7 @@ private:
     friend struct Runner;
 };
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol
 
-#endif // LSST_QSERV_CONTROL_DYNAMICWORKQUEUE_H
+#endif // LSST_QSERV_CCONTROL_DYNAMICWORKQUEUE_H
 
