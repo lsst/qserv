@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # for Ubuntu wheezy/sid :
-apt-get install scons python-numpy g++ git zlib1g-dev python-dev ncurses-dev libboost-all-dev openssl antlr swig libreadline-dev  libglib2.0-dev cmake
+apt-get install bison cmake curl doxygen-latex flex g++ git latex2html libboost-all-dev libcurl4-openssl-dev libglib2.0-dev libreadline-dev ncurses-dev  openjdk-7-jdk openssl python-dev python-numpy scons swig zlib1g-dev
 
 # xrootd 
 apt-get install libpthread-workqueue-dev

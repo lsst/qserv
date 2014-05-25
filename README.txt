@@ -1,7 +1,7 @@
 Quick start guide :
 ===================
 
-**NOTE FOR DEVELOPPERS** : The install procedure described in README.txt doesn't install Qserv from your current git repository version, but from a previously packaged Qserv uploaded on Qserv distribution server. See **README-devel.txt** in order to install Qserv from your current git repository version.
+**NOTE FOR DEVELOPERS** : The install procedure described in README.txt doesn't install Qserv from your current git repository version, but from a previously packaged Qserv uploaded on Qserv distribution server. See **README-devel.txt** in order to install Qserv from your current git repository version.
 
 Installing dependencies
 -----------------------
