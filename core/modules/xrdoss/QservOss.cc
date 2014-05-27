@@ -45,7 +45,6 @@
 #include "obsolete/QservPath.h"
 #include "wlog/WLogger.h"
 #include "wpublish/ChunkInventory.h"
-#include "wpublish/MySqlExportMgr.h"
 #include "xrdfs/XrdName.h"
 #include "xrdfs/XrdPrinter.h"
 
@@ -170,12 +169,7 @@ void QservOss::_fillQueryFileStat(struct stat &buf) {
 }
 
 bool QservOss::_checkExist(std::string const& db, int chunk) {
-#if 0
-    assert(_pathSet.get());
-    return wpublish::MySqlExportMgr::checkExist(*_pathSet, db, chunk);
-#else
     return _chunkInventory->has(db, chunk);
-#endif
 }
 /******************************************************************************/
 /*                                 s t a t                                    */
@@ -202,9 +196,6 @@ int QservOss::Stat(const char *path, struct stat *buff, int opts, XrdOucEnv*) {
     // Lookup db/chunk in hash set.
 
     // Extract db and chunk from path
-    std::string db;
-    int chunk;
-    // Unpack path.
     obsolete::QservPath qp(path);
     if(qp.requestType() != obsolete::QservPath::CQUERY) {
         // FIXME: Do we need to support /result here?
@@ -274,17 +265,7 @@ int QservOss::Init(XrdSysLogger* log, const char* cfgFn) {
         _cfgFn = cfgFn;
     }
     _log->info("QservOss Init");
-#if 1
-    _pathSet.reset(new StringSet);
-    wpublish::MySqlExportMgr m(_name, *_log);
-    m.fillDbChunks(*_pathSet);
-    // Print out diags.
     std::ostringstream ss;
-    ss << "Valid paths: ";
-    print(ss, *_pathSet);
-    _log->info(ss.str());
-#endif
-    ss.str("");
     ss << "Valid paths(ci): ";
     _chunkInventory.reset(new wpublish::ChunkInventory(_name, *_log));
     _chunkInventory->dbgPrint(ss);

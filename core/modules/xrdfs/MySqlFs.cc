@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -39,7 +39,7 @@
 #include "wcontrol/Service.h"
 #include "wdb/QueryRunner.h"
 #include "wlog/WLogger.h"
-#include "wpublish/MySqlExportMgr.h"
+#include "wpublish/ChunkInventory.h"
 #include "xrdfs/MySqlFsDirectory.h"
 #include "xrdfs/MySqlFsFile.h"
 #include "xrdfs/XrdName.h"
@@ -132,20 +132,20 @@ public:
 /// Uses exports data struct instead of hitting the filesystem.
 class ChunkValidator : public lsst::qserv::xrdfs::FileValidator {
 public:
+    typedef lsst::qserv::wpublish::ChunkInventory ChunkInventory;
     typedef boost::shared_ptr<ChunkValidator> Ptr;
-    ChunkValidator(lsst::qserv::wpublish::MySqlExportMgr::StringSet const& exports)
-        : _exports(exports) {}
+    ChunkValidator(ChunkInventory::CPtr c)
+        : _chunkInventory(c) {}
     virtual ~ChunkValidator() {}
     virtual bool operator()(std::string const& filename) {
         lsst::qserv::obsolete::QservPath qp(filename);
         if(qp.requestType() != lsst::qserv::obsolete::QservPath::CQUERY) {
             return false; // Don't validate non chunk-query paths now.
         }
-        return lsst::qserv::wpublish::MySqlExportMgr::checkExist(_exports, qp.db(),
-                                                                 qp.chunk());
+        return _chunkInventory->has(qp.db(), qp.chunk());
     }
 private:
-    lsst::qserv::wpublish::MySqlExportMgr::StringSet const& _exports;
+    ChunkInventory::CPtr _chunkInventory;
 };
 } // anonymous namespace
 
@@ -154,6 +154,32 @@ namespace lsst {
 namespace qserv {
 namespace xrdfs {
 
+class XrdfsConfigError : public std::exception {
+public:
+    XrdfsConfigError(std::string const& msg) : _msg(msg) {}
+    virtual ~XrdfsConfigError() throw() {}
+    virtual const char* what() const throw() {
+        try {
+            return _msg.c_str();
+        } catch(...) {} // Silence any exceptions
+        return "";
+    }
+    std::string _msg;
+};
+
+////////////////////////////////////////////////////////////////////////
+// xrdfs-scope helpers
+////////////////////////////////////////////////////////////////////////
+boost::shared_ptr<sql::SqlConnection> makeSqlConnection() {
+    boost::shared_ptr<sql::SqlConnection> conn;
+    mysql::MySqlConfig sqlConfig = wconfig::getConfig().getSqlConfig();
+    // FIXME: Use qsmaster privileges for now.
+    sqlConfig.username = "qsmaster";
+    sqlConfig.dbName = "";
+    conn.reset(new sql::SqlConnection(sqlConfig, true));
+    return conn;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // class MySqlFs
 ////////////////////////////////////////////////////////////////////////
@@ -161,8 +187,9 @@ MySqlFs::MySqlFs(boost::shared_ptr<wlog::WLogger> log, XrdSysLogger* lp,
                  char const* cFileName)
     : XrdSfsFileSystem(), _log(log) {
     if(!wconfig::getConfig().getIsValid()) {
-        log->error(("Configuration invalid: " + wconfig::getConfig().getError()
-                     + " -- Behavior undefined.").c_str());
+        std::string msg("Configuration invalid: "
+                        + wconfig::getConfig().getError());
+        throw XrdfsConfigError(msg);
     }
 #ifdef NO_XROOTD_FS
     _log->info("Skipping load of libXrdOfs.so (non xrootd build).");
@@ -181,8 +208,9 @@ MySqlFs::MySqlFs(boost::shared_ptr<wlog::WLogger> log, XrdSysLogger* lp,
         _log->warn("No XRDLCLROOT set. Bug in xrootd?");
         _localroot = "";
     }
+    boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
     _initExports();
-    assert(_exports.get());
+    assert(_chunkInventory);
     _cleanup();
     _service.reset(new wcontrol::Service(_log));
 }
@@ -209,11 +237,11 @@ MySqlFs::newFile(char* user, int MonID) {
         boost::make_shared<FakeFileValidator>(),
         _service);
 #else
-    assert(_exports.get());
+    assert(_chunkInventory.get());
     return new MySqlFsFile(
         _log, user,
         boost::make_shared<AddCallbackFunc>(),
-        boost::make_shared<ChunkValidator>(*_exports), _service);
+        boost::make_shared<ChunkValidator>(_chunkInventory), _service);
 #endif
 }
 
@@ -320,15 +348,13 @@ int MySqlFs::truncate(
 // MySqlFs private
 ////////////////////////////////////////////////////////////////////////
 void MySqlFs::_initExports() {
-    _exports.reset(new StringSet);
     XrdName x;
-    wpublish::MySqlExportMgr m(x.getName(), *_log);
-    m.fillDbChunks(*_exports);
+    boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
+    assert(conn);
+    _chunkInventory.reset(new wpublish::ChunkInventory(x.getName(), *_log, conn));
     std::ostringstream os;
     os << "Paths exported: ";
-    std::copy(_exports->begin(), _exports->end(),
-              std::ostream_iterator<std::string>(os, ","));
-    //boost::shared_ptr<wlog::WLogger> log2 = log;
+    _chunkInventory->dbgPrint(os);
     _log->info(os.str());
 }
 
@@ -337,28 +363,23 @@ void MySqlFs::_initExports() {
 /// qserv workers. Take heed.
 /// @return true if cleanup was successful, false otherwise.
 bool MySqlFs::_cleanup() {
-    if(wconfig::getConfig().getIsValid()) {
-        mysql::MySqlConfig sqlConfig = wconfig::getConfig().getSqlConfig();
-        // FIXME: Use qsmaster privileges for now.
-        sqlConfig.username = "qsmaster";
-        sqlConfig.dbName = "";
-        sql::SqlConnection sc(sqlConfig, true);
-        sql::SqlErrorObject errObj;
-        std::string dbName = wconfig::getConfig().getString("scratchDb");
-        _log->info((Pformat("Cleaning up scratchDb: %1%.")
-                    % dbName).str());
-        if(!sc.dropDb(dbName, errObj, false)) {
-            _log->error((Pformat("Cfg error! couldn't drop scratchDb: %1% %2%.")
-                         % dbName % errObj.errMsg()).str());
-            return false;
-        }
-        errObj.reset();
-        if(!sc.createDb(dbName, errObj, true)) {
-            _log->error((Pformat("Cfg error! couldn't create scratchDb: %1% %2%.")
-                         % dbName % errObj.errMsg()).str());
-            return false;
-        }
-    } else {
+    boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
+    if(!conn) {
+        return false;
+    }
+    sql::SqlErrorObject errObj;
+    std::string dbName = wconfig::getConfig().getString("scratchDb");
+    _log->info((Pformat("Cleaning up scratchDb: %1%.")
+                % dbName).str());
+    if(!conn->dropDb(dbName, errObj, false)) {
+        _log->error((Pformat("Cfg error! couldn't drop scratchDb: %1% %2%.")
+                     % dbName % errObj.errMsg()).str());
+        return false;
+    }
+    errObj.reset();
+    if(!conn->createDb(dbName, errObj, true)) {
+        _log->error((Pformat("Cfg error! couldn't create scratchDb: %1% %2%.")
+                     % dbName % errObj.errMsg()).str());
         return false;
     }
     return true;

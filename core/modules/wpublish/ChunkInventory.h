@@ -60,6 +60,8 @@ public:
     typedef std::set<std::string> StringSet;
     typedef std::map<int,StringSet> ChunkMap;
     typedef std::map<std::string, ChunkMap> ExistMap;
+    typedef boost::shared_ptr<ChunkInventory> Ptr;
+    typedef boost::shared_ptr<ChunkInventory const> CPtr;
 
     ChunkInventory(std::string const& name, wlog::WLogger& log);
     ChunkInventory(std::string const& name, wlog::WLogger& log,
@@ -70,7 +72,8 @@ public:
         ss << db << chunk << "**key";
         return std::string(ss.str());
     }
-    bool has(std::string const& db, int chunk, std::string table=std::string());
+    bool has(std::string const& db, int chunk,
+             std::string table=std::string()) const;
     void dbgPrint(std::ostream& os);
 private:
     void _init(sql::SqlConnection& sc);
