@@ -20,7 +20,7 @@ Installation :
 
   | # $INSTALL_DIR must be empty
   | cd $INSTALL_DIR
-  | wget http://sw.lsstcorp.org/eupspkg/newinstall.sh
+  | curl -O http://sw.lsstcorp.org/eupspkg/newinstall.sh
   | # script below will ask some questions, answer 'yes' everywhere
   | bash newinstall.sh
   | source loadLSST.sh

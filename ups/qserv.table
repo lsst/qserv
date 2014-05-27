@@ -1,6 +1,7 @@
 setupRequired(antlr)
 setupRequired(boost)
 setupRequired(db)
+setupRequired(geom)
 setupRequired(kazoo)
 setupRequired(luaxmlrpc)
 setupRequired(mysqlproxy)

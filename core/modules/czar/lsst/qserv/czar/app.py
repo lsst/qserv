@@ -69,9 +69,8 @@ import logger
 import metadata
 import spatial
 import lsst.qserv.czar.config
-from lsst.qserv.czar import geometry
-from lsst.qserv.czar.geometry import SphericalBox
-from lsst.qserv.czar.geometry import SphericalConvexPolygon, convexHull
+from lsst.geom.geometry import SphericalBox
+from lsst.geom.geometry import SphericalConvexPolygon, convexHull
 from lsst.qserv.czar.db import TaskDb as Persistence
 from lsst.qserv.czar.db import Db
 

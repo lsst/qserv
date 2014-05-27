@@ -24,7 +24,7 @@
 # at the Python czar/frontend level. This contains only the parts
 # needed to prepare the lower C++ code to rewrite the query properly.
 import lsst.qserv.czar.config
-from lsst.qserv.czar.geometry import SphericalBoxPartitionMap, SphericalBox
+from lsst.geom.geometry import SphericalBoxPartitionMap, SphericalBox
 from lsst.qserv.czar import logger
 
 def makePmap(dominantDb, stripes, subStripes):

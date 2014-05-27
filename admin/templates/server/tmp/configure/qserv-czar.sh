@@ -10,13 +10,6 @@ SQL_DIR=${QSERV_DIR}/tmp/configure/sql
 
 MYSQL_CMD="${MYSQL_DIR}/bin/mysql -vvv --user=${MYSQLD_USER} --password=${MYSQLD_PASS} --sock=${MYSQLD_SOCK}"
 
-DEST="${QSERV_DIR}/lib/python/lsst/qserv/czar/"
-if [ ! -f ${DEST}/geometry.py ]
-then
-    echo "Downloading geometry.py"
-    wget -P ${DEST} http://dev.lsstcorp.org/cgit/LSST/DMS/geom.git/plain/python/lsst/geom/geometry.py
-fi
-
 echo 
 echo "-- Initializing Qserv czar database "
 ${QSERV_DIR}/etc/init.d/mysqld start &&

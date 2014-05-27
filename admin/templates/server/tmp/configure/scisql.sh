@@ -20,7 +20,7 @@ ${QSERV_DIR}/etc/init.d/mysqld start &&
 
 cd ${QSERV_DIR}/tmp &&
 if [ ! -s ${SCISQL_ARCHIVE} ]; then
-    wget https://launchpad.net/scisql/trunk/0.3.2/+download/${SCISQL_ARCHIVE} ||
+    curl -O -L https://launchpad.net/scisql/trunk/0.3.2/+download/${SCISQL_ARCHIVE} ||
     {
         echo "Unable to download ${SCISQL_ARCHIVE}"
         echo "Please copy it manually in ${QSERV_DIR}/tmp"
