@@ -43,6 +43,7 @@
 
 // Local headers
 #include "css/Facade.h"
+#include "global/constants.h"
 #include "log/Logger.h"
 #include "parser/ParseException.h"
 #include "parser/parseExceptions.h"
@@ -113,6 +114,10 @@ bool QuerySession::hasAggregate() const {
     // probably) subset of its components to compose each pass. Right
     // now, the only goal is to support aggregation using two passes.
     return _context->needsMerge;
+}
+
+bool QuerySession::hasChunks() const {
+    return _context->hasChunks();
 }
 
 boost::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
@@ -192,14 +197,22 @@ void QuerySession::finalize() {
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyFinal(*_context);
     }
+    // Make up for no chunks (chunk-less query): add the dummy chunk.
+    if(_chunks.empty()) {
+        ChunkSpec cs;
+        cs.chunkId = DUMMY_CHUNK;
+        addChunk(cs);
+    }
 }
 
 QuerySession::Iter QuerySession::cQueryBegin() {
     return Iter(*this, _chunks.begin());
 }
+
 QuerySession::Iter QuerySession::cQueryEnd() {
     return Iter(*this, _chunks.end());
 }
+
 QuerySession::QuerySession(Test& t)
     : _cssFacade(t.cssFacade), _defaultDb(t.defaultDb) {
     _initContext();
@@ -228,12 +241,14 @@ void QuerySession::_preparePlugins() {
         (**i).prepare();
     }
 }
+
 void QuerySession::_applyLogicPlugins() {
     PluginList::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyLogical(*_stmt, *_context);
     }
 }
+
 void QuerySession::_generateConcrete() {
     _hasMerge = false;
     // In making a statement concrete, the query's execution is split
@@ -260,7 +275,6 @@ void QuerySession::_generateConcrete() {
 
     // TableMerger needs to be integrated into this design.
 }
-
 
 void QuerySession::_applyConcretePlugins() {
     qana::QueryPlugin::Plan p(*_stmt, _stmtParallel, *_stmtMerge, _hasMerge);
@@ -392,6 +406,7 @@ void QuerySession::Iter::_buildCache() const {
         }
     }
 }
+
 boost::shared_ptr<ChunkQuerySpec>
 QuerySession::Iter::_buildFragment(ChunkSpecFragmenter& f) const {
     boost::shared_ptr<ChunkQuerySpec> first;

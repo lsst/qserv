@@ -25,6 +25,7 @@
 #include "wpublish/ChunkInventory.h"
 
 // System headers
+#include <exception>
 #include <iostream>
 #include <sstream>
 
@@ -32,6 +33,7 @@
 #include <boost/regex.hpp>
 
 // Local headers
+#include "global/constants.h"
 #include "sql/SqlConnection.h"
 #include "wconfig/Config.h"
 #include "wlog/WLogger.h"
@@ -42,6 +44,20 @@ using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResultIter;
 using lsst::qserv::wlog::WLogger;
 using lsst::qserv::wpublish::ChunkInventory;
+
+class CorruptDbError : public std::exception {
+public:
+    CorruptDbError(std::string const& msg) : _msg(msg) {}
+    virtual ~CorruptDbError() throw() {}
+    virtual const char* what() const throw() {
+        try {
+            return _msg.c_str();
+        } catch(...) {} // Silence any exceptions
+        return "";
+    }
+
+    std::string _msg;
+};
 
 inline std::string getTableNameDbListing(std::string const& instanceName) {
     return "qservw_" + instanceName + "." + "Dbs";
@@ -73,8 +89,9 @@ void fetchDbs(WLogger& log,
 /// Functor to be called per-table name
 class doTable {
 public:
-    doTable(boost::regex& regex, ChunkInventory::ChunkMap& chunkMap)
-        : _regex(regex), _chunkMap(chunkMap) {}
+    doTable(WLogger& log,
+            boost::regex& regex, ChunkInventory::ChunkMap& chunkMap)
+        : _log(log), _regex(regex), _chunkMap(chunkMap) {}
     void operator()(std::string const& tableName) {
         boost::smatch what;
         if(boost::regex_match(tableName, what, _regex)) {
@@ -88,6 +105,7 @@ public:
         }
     }
 private:
+    WLogger& _log;
     boost::regex _regex;
     ChunkInventory::ChunkMap& _chunkMap;
 };
@@ -123,10 +141,11 @@ struct addDbItem {
 /// Functor to load db
 class doDb {
 public:
-    doDb(SqlConnection& conn,
+    doDb(WLogger& log, SqlConnection& conn,
          boost::regex& regex,
          ChunkInventory::ExistMap& existMap)
-        : _conn(conn),
+        : _log(log),
+          _conn(conn),
           _regex(regex),
           _existMap(existMap)
         {}
@@ -137,23 +156,43 @@ public:
         SqlErrorObject sqlErrorObject;
         bool ok = _conn.listTables(tables,  sqlErrorObject, "", dbName);
         if(!ok) {
-            std::cout << "SQL error: " << sqlErrorObject.errMsg() << std::endl;
+            _log.error("SQL error: " + sqlErrorObject.errMsg());
             assert(ok);
         }
         ChunkInventory::ChunkMap& chunkMap = _existMap[dbName];
         chunkMap.clear(); // Clear out stale entries to avoid mixing.
         std::for_each(tables.begin(), tables.end(),
-                      doTable(_regex, chunkMap));
+                      doTable(_log, _regex, chunkMap));
+        // All databases get a dummy chunk.
+        // Partitioned databases should already have acceptable dummy chunk
+        // partitioned tables (e.g., Object_1234567890, Source_1234567890)
+        // Non-partitioned databases need a dummy chunk anyway.
+        if(chunkMap.empty()) {
+            // No partitioned tables in this db. Publish an empty chunk anyway.
+            chunkMap[lsst::qserv::DUMMY_CHUNK];
+        } else {
+            // Verify that there is a dummy chunk entry
+            if(chunkMap.find(lsst::qserv::DUMMY_CHUNK) == chunkMap.end()) {
+                std::string msg = "Missing dummy chunk for db=" + dbName;
+                _log.error(msg);
 
+                // FIXME enable once loader/installer can ensure that the
+                // dummy chunk exists exactly when appropriate
+
+                // throw CorruptDbError(msg);
+            }
+        }
         //std::for_each(chunkMap.begin(), chunkMap.end(), printChunk(std::cout));
         // TODO: Sanity check: do all tables have the same chunks represented?
-    }
+        }
 private:
+    WLogger& _log;
     SqlConnection& _conn;
     boost::regex& _regex;
     ChunkInventory::ExistMap& _existMap;
 };
 }
+
 namespace lsst {
 namespace qserv {
 namespace wpublish {
@@ -169,7 +208,8 @@ ChunkInventory::ChunkInventory(std::string const& name, wlog::WLogger& log,
     _init(*sc);
 }
 
-bool ChunkInventory::has(std::string const& db, int chunk, std::string table) {
+bool ChunkInventory::has(std::string const& db, int chunk,
+                         std::string table) const {
     ExistMap::const_iterator di = _existMap.find(db);
     if(di == _existMap.end()) { return false; }
 
@@ -185,7 +225,31 @@ bool ChunkInventory::has(std::string const& db, int chunk, std::string table) {
     }
 }
 void ChunkInventory::dbgPrint(std::ostream& os) {
-    os << "ChunkInventory--";
+    os << "ChunkInventory(";
+    ExistMap::const_iterator i,e;
+    bool firstDb = true;
+    for(i=_existMap.begin(), e=_existMap.end();
+        i != e; ++i) {
+        if(!firstDb) {
+            os << std::endl;
+            firstDb = false;
+        }
+        os << "db: " << i->first << " chunks=";
+        ChunkMap::const_iterator ci, ce;
+        bool firstChunk = true;
+        for(ci=i->second.begin(), ce=i->second.end();
+            ci != ce; ++ci) {
+            if(!firstChunk) {
+                os << "; ";
+                firstChunk = false;
+            }
+            os << ci->first << " [";
+            std::copy(ci->second.begin(), ci->second.end(),
+                      std::ostream_iterator<std::string>(os, ","));
+            os << "] \t";
+        }
+    }
+    os << ")";
 }
 
 void ChunkInventory::_init(SqlConnection& sc) {
@@ -203,7 +267,7 @@ void ChunkInventory::_init(SqlConnection& sc) {
     // get chunkList
     // SHOW TABLES IN db;
     std::deque<std::string> chunks;
-    std::for_each(dbs.begin(), dbs.end(), doDb(sc, regex, _existMap));
+    std::for_each(dbs.begin(), dbs.end(), doDb(_log, sc, regex, _existMap));
 }
 
 void ChunkInventory::_fillDbChunks(ChunkInventory::StringSet& s) {

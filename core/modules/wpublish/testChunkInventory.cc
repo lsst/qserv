@@ -52,7 +52,8 @@ struct ChunkInvFixture {
 };
 
 struct ChunkSql : public MockSql {
-    ChunkSql() {
+    ChunkSql(char const* const* tablesBegin, char const* const* tablesEnd)
+        : _tablesBegin(tablesBegin), _tablesEnd(tablesEnd) {
         Tuple t;
         t.push_back("LSST");
         _selectDbTuples.push_back(t);
@@ -62,10 +63,8 @@ struct ChunkSql : public MockSql {
                             SqlErrorObject& errObj,
                             std::string const& prefixed,
                             std::string const& dbName) {
-        char const* tables[] = {"Object_31415", "Source_31415"};
         if(dbName == "LSST") {
-            v.insert(v.begin(),
-                     tables, tables + sizeof(tables)/sizeof(tables[0]));
+            v.insert(v.begin(), _tablesBegin, _tablesEnd);
             return true;
         } else {
             return false;
@@ -91,23 +90,42 @@ struct ChunkSql : public MockSql {
 
     TupleList _selectDbTuples;
     TupleList _nullTuples;
+    char const* const* _tablesBegin;
+    char const* const* _tablesEnd;
 };
+char const* tables[] = {"Object_31415", "Source_31415",
+                        "Object_1234567890", "Source_1234567890", };
+int tablesSize = sizeof(tables)/sizeof(tables[0]);
+
 
 BOOST_FIXTURE_TEST_SUITE(ChunkInv, ChunkInvFixture)
 
 BOOST_AUTO_TEST_CASE(Test1) {
     WLogger w;
-    boost::shared_ptr<ChunkSql> cs(new ChunkSql());
+    boost::shared_ptr<ChunkSql> cs(new ChunkSql(tables, tables+tablesSize));
     ChunkInventory ci("test", w, cs);
     BOOST_CHECK(ci.has("LSST", 31415));
+    BOOST_CHECK(ci.has("LSST", 1234567890));
     BOOST_CHECK(!ci.has("LSST", 123));
 }
 
 BOOST_AUTO_TEST_CASE(Test2) {
     WLogger w;
-    boost::shared_ptr<ChunkSql> cs(new ChunkSql());
+    boost::shared_ptr<ChunkSql> cs(new ChunkSql(tables, tables+tablesSize));
     ChunkInventory ci("test", w, cs);
     BOOST_CHECK(!ci.has("Winter2012", 31415));
     BOOST_CHECK(!ci.has("Winter2012", 123));
+}
+BOOST_AUTO_TEST_CASE(MissingDummy) {
+    WLogger w;
+    // Construct the mock without the dummy chunk
+    boost::shared_ptr<ChunkSql> cs(new ChunkSql(tables, tables+2));
+    // FIXME: enable when throwing on corrupt dbs is enabled.
+    //BOOST_CHECK_THROW(new ChunkInventory("test", w, cs));
+    ChunkInventory ci("test", w, cs);
+    //ci.dbgPrint(std::cout);
+    BOOST_CHECK(ci.has("LSST", 31415));
+    BOOST_CHECK(!ci.has("LSST", 123));
+
 }
 BOOST_AUTO_TEST_SUITE_END()

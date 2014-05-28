@@ -116,7 +116,6 @@ private:
     bool _checkExist(std::string const& db, int chunk);
 
     // fields (non-static)
-    boost::shared_ptr<StringSet> _pathSet;
     boost::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
     std::string _cfgFn;
     std::string _cfgParams;

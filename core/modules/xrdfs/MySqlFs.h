@@ -42,6 +42,9 @@ namespace wcontrol {
 }
 namespace wlog {
     class WLogger;
+}
+namespace wpublish {
+    class ChunkInventory;
 }}} // End of forward declarations
 
 
@@ -113,7 +116,7 @@ private:
     int _isMysqlFail;
     char const* _localroot;
     boost::shared_ptr<wcontrol::Service> _service;
-    boost::shared_ptr<StringSet> _exports;
+    boost::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
     boost::shared_ptr<wlog::WLogger> _log;
 };
 

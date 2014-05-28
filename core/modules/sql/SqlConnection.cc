@@ -350,10 +350,10 @@ SqlConnection::listTables(std::vector<std::string>& v,
                           std::string const& dbName) {
     v.clear();
     if (!connectToDb(errObj)) return false;
-    if ( getActiveDbName().empty() ) {
+    std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
+    if ( _dbName.empty() ) {
         return errObj.addErrMsg("Can't list tables, db not selected. ");
     }
-    std::string _dbName = (dbName == "" ? getActiveDbName() : dbName);
     if (!dbExists(_dbName, errObj)) {
         return errObj.addErrMsg("Can't list tables for db " + _dbName
                                 + " because the database does not exist. ");
