@@ -16,7 +16,7 @@ Once Qserv is installed (cf. README.txt), in order to install your Qserv develop
   | eupspkg -er decl                # declare it to EUPS
   | # Enable your Qserv version, and dependencies, in eups
   | # $VERSION is available by using : 
-  | eups list
+  | eups list qserv
   | setup qserv $VERSION
 
 Updating test cases :

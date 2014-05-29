@@ -1,0 +1,4 @@
+
+Known issues:
+ * DISTINCT is not implemented
+ * subqueries are not implemented

@@ -1,0 +1,61 @@
+R E L E A S E   2014_05
+=======================
+
+Bug fixes:
+ * DM-630: Non-partitioned table query returns duplicate rows
+ * DM-656: Selecting from non-paritioned table is broken
+ * DM-626: ORDER BY and DISTINCT do not work reliably in qserv
+ * DM-633: Query sessions are never destroyed
+ * DM-625: Too many connections from czar to zookeeper
+ * DM-531: Qserv returns error table instead of error code
+ * DM-372: fix testQueryAnalysis
+ * DM-328: mysql-proxy fails to stop
+ * DM-298: restarting mysqld breaks qserv
+ * DM-282: Make sure new metadata exceptions do not crash a qserv czar
+ * DM-596: Fix automated tests after css migration
+
+Code cleanup:
+ * major cleanu pof includes in Qserv core modules (DM-313, DM-560)
+ * cleanup extra file names in docstring
+ * removed dead code (DM-337, DM-612)
+
+Improvements:
+ * renames and reorganizations
+    * DM-699: rename git repository qservdata to qserv_testdata
+    * DM-614: rename qserv_admin.py to qserv-admin.py
+    * DM-509: rename "dbGroup" to "storageClass" in CSS metadata
+    * DM-597: reorganize client module
+    * DM-514: Switch to the "czar" name consistently
+    * DM-290: Eliminate dependence of query analysis on parser and antlr
+ * tweaks to internal zookeeper metadata:
+    * DM-508: shorten internal names in zookeeper
+    * DM-510: Tweak metadata structure for driving table and secondary index
+ * improvements to packaging/install/build system
+    * DM-611: Switch kazoo version to 2.0b1 or later
+    * DM-546: scons rebuilds targets without changes
+    * DM-355: Install and tag multiple Qserv versions on the same distserver
+    * DM-405: Write Linux Standard Base - compliant init.d scripts
+    * DM-623: Package antlr 2.7 in eups
+    * DM-365: Integration tests dataset should be packaged in eupspkg
+ * improved exceptions / error handling
+   * DM-470: Rework exceptions in css (python side)
+   * DM-208: catch exceptions from CSS
+   * DM-278: Improve handling errors occuring in AsyncQueryManager
+   * DM-604: Update parse/analysis tests to detect missing css-kvmap early
+
+New features:
+ * Finished implementation of XrootD client and investigated
+   how to connect it with Qserv (DM-221, DM-222, DM-291)
+ * DM-481: Unit tests install directory
+ * DM-228: Setup dev test environment
+ * DM-460: Implement backup/restore for CSS
+ * DM-52: Qserv configuration - detailed design
+
+Tested and verified:
+ * selections from partitioned tables and non-partitioned tables, both simple (eg by objectId) and more complex
+ * area selections (e.g. distance from a point)
+ * full table scans
+ * scisql astrometry conversions (eg flux to mag)
+ * ORDER BY
+
+All enabled integration tests (34) pass cleanly.
