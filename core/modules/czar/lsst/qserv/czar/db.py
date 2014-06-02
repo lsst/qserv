@@ -20,7 +20,6 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-#
 # lsst.qserv.czar.db - Package for direct-db interaction.
 #
 # This package is meant to abstract database interaction so that
@@ -87,12 +86,18 @@ class Db:
     def getCursor(self):
         return self._conn.cursor()
 
-    def applySql(self, sql):
+    def applySql(self, sql, params=None):
+        """
+        Execute SQL statement, retry in case of some errors.
+        @param sql:       query string
+        @param params:    optional parameters for query
+        @return  all rows of the query result
+        """
         failures = 0
         while True:
             c = self._conn.cursor()
             try:
-                c.execute(sql)
+                c.execute(sql, params)
                 break # Success: break out of the loop
             except _mysql_exceptions.OperationalError, e:
                 failures += 1
@@ -105,10 +110,11 @@ class Db:
         return c.fetchall()    
 
     def makeIfNotExist(self, db=None, table=None):
-        """ Create a database and/or a table
-        @param db : name of db to create
-        @param table : (tableName, columDefStr)"""
-        
+        """
+        Create a database and/or a table
+        @param db:    name of db to create
+        @param table: (tableName, columDefStr)
+        """
         dbTmpl = "CREATE DATABASE IF NOT EXISTS %s;"
         tblTmpl = "CREATE TABLE IF NOT EXISTS %s %s;"
         res = []
@@ -116,10 +122,6 @@ class Db:
         if table:
             res.append(self.applySql(tblTmpl % (table[0], table[1])))
         return res
-            
-        
-            
-
 
 class TaskDb:
     def __init__(self):
@@ -176,11 +178,10 @@ class TaskDb:
                     (3, 0, -fakeInfin, 0.0, -fakeInfin, 0.0),
                     (4, 0, -fakeInfin, 0.0, 0.0, fakeInfin),
                     ]
+        sqlstr = 'INSERT INTO partmap VALUES (%s, %s, %s, %s, %s, %s);'
         for cTuple in fakeRows:
-            sqlstr = 'INSERT INTO partmap VALUES %s;' % str(cTuple) 
-            c.execute(sqlstr)
+            c.execute(sqlstr, cTuple)
         c.close()
-
     
     def nextId(self):
         assert self._db.check()
@@ -190,11 +191,11 @@ class TaskDb:
         if not maxId:
             return 1
         else:
-            return 1 + maxId
-        
+            return 1 + maxId        
         
     def addTask(self, taskparam):
-        """taskparam should be a tuple of (id, query)
+        """
+        taskparam should be a tuple of (id, query)
         You can pass None for id, and let the system assign a safe id.
         """
         assert self._db.check()
@@ -203,12 +204,11 @@ class TaskDb:
             a[0] = int(self.nextId())
             assert type(a[0]) is int
             taskparam = tuple(a)
-        taskstr = str(taskparam)
-        sqlstr = 'INSERT INTO tasks VALUES %s' % taskstr
+        sqlstr = 'INSERT INTO tasks VALUES (%s, %s)'
         logger.inf("---",sqlstr)
-        self._db.getCursor().execute(sqlstr)
+        self._db.getCursor().execute(sqlstr, taskparam)
         return a[0]
 
     def issueQuery(self, query):
         return self._db.applySql(self, query)
-    pass
+

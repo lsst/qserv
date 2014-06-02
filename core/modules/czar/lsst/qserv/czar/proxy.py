@@ -41,7 +41,7 @@ from lsst.qserv.czar import queryMsgGetCount, queryMsgGetMsg, discardSession
 class Lock:
     createTmpl = "CREATE TABLE IF NOT EXISTS %s (chunkId INT, code SMALLINT, message CHAR(255), timeStamp FLOAT) ENGINE=MEMORY;"
     lockTmpl = "LOCK TABLES %s WRITE;"
-    writeTmpl = "INSERT INTO %s VALUES (%d, %d, '%s', %f);"
+    writeTmpl = "INSERT INTO {} VALUES (%s, %s, %s, %s);"
     unlockTmpl = "UNLOCK TABLES;"
 
     def __init__(self, tablename):
@@ -84,8 +84,8 @@ class Lock:
         msgCount = queryMsgGetCount(self._sessionId)
         for i in range(msgCount):
             msg, chunkId, code, timestamp = queryMsgGetMsg(self._sessionId, i)
-            self.db.applySql(Lock.writeTmpl % (self._tableName, chunkId, code, msg, timestamp))
-    pass
+            self.db.applySql(Lock.writeTmpl.format(self._tableName), (chunkId, code, msg, timestamp))
+
 
 def clearLocks():
     """Get rid of all the locks in the db.(UNFINISHED)"""
