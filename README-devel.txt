@@ -19,6 +19,8 @@ Once Qserv is installed (cf. README.txt), in order to install your Qserv develop
   | eups list qserv
   | setup qserv $VERSION
 
+Then re-run configuration and test process, as described in README.txt.
+
 Updating test cases :
 --------------------- 
 
