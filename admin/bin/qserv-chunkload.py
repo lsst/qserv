@@ -21,9 +21,8 @@
 # rafieldname    ra_PS
 # declfieldname  decl_PS
 
-# WARNING : this procedure is redundant with :
+# WARNING : this procedure isn't maintained and is redundant with :
 # - admin/python/lsst/qserv/qservdataloader.py (which load data for test cases)
-# - admin/custom/bin/qserv-admin.pl also have a data loading procedure for PT1.1 data set
 # it should be unified in a global data loading procedure : https://dev.lsstcorp.org/trac/wiki/db/Qserv/DataLoading
 
 from lsst.qserv.admin import commons

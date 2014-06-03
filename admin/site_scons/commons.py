@@ -1,1 +1,0 @@
-../python/lsst/qserv/admin/commons.py

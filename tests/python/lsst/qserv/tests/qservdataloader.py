@@ -104,7 +104,7 @@ class QservDataLoader():
             self.masterCreateAndFeedMetaTable(view,chunk_id_list)
         
         # Create etc/emptychunk.txt
-        empty_chunks_filename = os.path.join(self.config['qserv']['base_dir'],"etc","emptyChunks.txt")
+        empty_chunks_filename = os.path.join(self.config['qserv']['run_base_dir'],"etc","emptyChunks.txt")
         self.masterCreateEmptyChunksFile(chunk_id_list,  empty_chunks_filename)
 
 

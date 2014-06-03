@@ -19,7 +19,7 @@ def read_config(config_file):
 
     global config
     logger = logging.getLogger()
-    logger.debug("Reading build config file : %s" % config_file)
+    logger.debug("Reading config file : %s" % config_file)
 
     if not os.path.isfile(config_file):
         logger.fatal("qserv configuration file not found : %s" % config_file)
@@ -69,7 +69,7 @@ def restart(service_name):
         config = getConfig()
         if len(config)==0 :
             raise RuntimeError("Qserv configuration is empty")
-        initd_path = os.path.join(config['qserv']['base_dir'],'etc','init.d')
+        initd_path = os.path.join(config['qserv']['run_base_dir'],'etc','init.d')
         daemon_script = os.path.join(initd_path,service_name)
         out = os.system("%s stop" % daemon_script)
         out = os.system("%s start" % daemon_script)
@@ -87,7 +87,7 @@ def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, l
     logger = logging.getLogger()
 
     cmd_str= " ".join(cmd_args)
-    logger.log(loglevel, "cmd : {0}".format(cmd_str))
+    logger.log(loglevel, "Running : {0}".format(cmd_str))
 
     sin = None
     if stdin_file != None:

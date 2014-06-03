@@ -1,1 +1,0 @@
-../python/lsst/qserv/admin/logger.py

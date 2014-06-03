@@ -19,22 +19,22 @@
 
 # Source functions library.
 # WARN : this may clean environment
-. %(QSERV_DIR)s/etc/init.d/qserv-functions
+. {{QSERV_RUN_DIR}}/etc/init.d/qserv-functions
 
 NAME="qserv-czar"
 DAEMON=${NAME}
 
-QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
+QSERV_RUN_DIR={{QSERV_RUN_DIR}}
 
 START=startCzar.py
-CONFIG=%(QSERV_DIR)s/etc/local.qserv.cnf
-pidfile=%(QSERV_PID_DIR)s/${NAME}.pid
+CONFIG={{QSERV_RUN_DIR}}/etc/local.qserv.cnf
+pidfile={{QSERV_PID_DIR}}/${NAME}.pid
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${NAME}
-LOGFILE=%(QSERV_LOG_DIR)s/${NAME}.log
+LOGFILE={{QSERV_LOG_DIR}}/${NAME}.log
 starttimeout=1
 
-export PATH=%(PATH)s
-export PYTHONPATH=%(PYTHONPATH)s
+export PATH={{PATH}}
+export PYTHONPATH={{PYTHONPATH}}
 
 export QSW_RESULTDIR=${QSERV_RUN_DIR}/qserv-run/tmp
 # Disabling buffering in python in order to enable "real-time" logging.
