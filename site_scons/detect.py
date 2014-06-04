@@ -42,47 +42,88 @@ def checkMySql(env):
             conf.Finish()
             return True
         else:
-            state.log.fails("mysqlclient too old")
+            state.log.fail("mysqlclient too old")
     else:
         # MySQL support not found or inadequate.
-        state.log.fails("Could not locate MySQL headers (mysql/mysql.h)"\
+        state.log.fail("Could not locate MySQL headers (mysql/mysql.h)"\
             + " or find multithreaded mysql lib (mysqlclient_r)")
 
     conf.Finish()
     return None
 
 class BoostChecker:
+    
     def __init__(self, env):
         self.env = env
         self.suffix = None
+        # TODO: this list is hard-coded for now, there may be variations in the future 
         self.suffixes = ["-gcc41-mt", "-gcc34-mt", "-mt", ""]
         self.cache = {}
-        pass
 
     def getLibName(self, libName):
-        if libName in self.cache:
-            return self.cache[libName]
-
-        r = self._getLibName(libName)
-        self.cache[libName] = r
-        return r
+        '''
+        For a given generic name (such as 'boost_system') find and return a
+        variant with optional suffix. If BOOST_LIB is set in the environment 
+        then use only that location to check for matching libraries. Otherwise
+        ask scons to find it in any accessible location (depends on linker).
+        '''
+        
+        # check cached name first
+        lib = self.cache.get(libName)
+        if lib is None: lib = self._getLibName(libName)
+        self.cache[libName] = lib
+        return lib
 
     def _getLibName(self, libName):
-        if self.suffix == None:
-            conf = self.env.Configure()
+        '''
+        Returns suffixed name of the library, if the suffix is not known yet then 
+        try to guess it by looking at the existing library names. Same suffix is 
+        reused for all boost libraries.
+        '''
 
-            def checkSuffix(sfx):
-                return conf.CheckLib(libName + sfx, language="C++", autoadd=0)
-            for i in self.suffixes:
-                if checkSuffix(i):
-                    self.suffix = i
-                    break
-            if self.suffix == None:
-                print "Can't find boost_" + libName
-                assert self.suffix != None
-            conf.Finish()
-            pass
+        # helper internal method to check for files
+        def _libCheckFile(dirname, libname, env):
+            ''' Check that library exists in a specified directory, tries all known prefix/suffix combinations '''
+            for pfx in env['LIBPREFIXES']:
+                for sfx in env['LIBSUFFIXES']:
+                    path = os.path.join(env.subst(dirname), env.subst(pfx) + libname + env.subst(sfx))
+                    if os.path.exists(path): return True
+            return False
+            
+        if self.suffix is None:
+            # need to guess correct suffix
+            
+            if 'BOOST_LIB' in self.env:
+                
+                # if BOOST_LIB is set then we only look inside that directory
+                for sfx in self.suffixes:
+                    if _libCheckFile('$BOOST_LIB', libName + sfx, self.env):
+                        self.suffix = sfx
+                        break
+
+                if self.suffix is None:
+                    state.log.fail("Failed to find boost library `"+libName+"' in BOOST_LIB="+self.env.subst("$BOOST_LIB"))
+                
+            else:
+                
+                # we are probably using system-installed boost, just use scons autotools to
+                # try to locate correct libraries
+                conf = self.env.Configure()
+    
+                def checkSuffix(sfx):
+                    return conf.CheckLib(libName + sfx, language="C++", autoadd=0)
+                
+                for sfx in self.suffixes:
+                    if checkSuffix(sfx):
+                        self.suffix = sfx
+                        break
+                conf.Finish()
+
+                if self.suffix is None:
+                    state.log.fail("Failed to find boost library "+libName)
+
         return libName + self.suffix
+    
     pass # BoostChecker
 
 class AntlrChecker:
@@ -102,7 +143,7 @@ class AntlrChecker:
         return r
 
     def _getLibName(self, libName):
-        if self.suffix == None:
+        if self.suffix is None:
             conf = self.env.Configure()
 
             def checkSuffix(sfx):
@@ -111,9 +152,8 @@ class AntlrChecker:
                 if checkSuffix(i):
                     self.suffix = i
                     break
-            if self.suffix == None:
-                print "Can't find libantlr : " + libName
-                assert self.suffix != None
+            if self.suffix is None:
+                state.log.fail("Failed to find libantlr : "+libName)
             conf.Finish()
             pass
         return libName + self.suffix
@@ -173,14 +213,14 @@ def checkXrootdLink(env, autoadd=0):
     found = conf.CheckLibs() and conf.CheckCXXHeader(header)
     conf.Finish()
     if not found:
-        state.log.fails("Missing at least one xrootd lib or header file")
+        state.log.fail("Missing at least one xrootd lib or header file")
     return found
 
 
 def setXrootd(env):
     (found, path) = findXrootdInclude(env)
     if not found :
-        state.log.fails("Missing Xrootd include path")
+        state.log.fail("Missing Xrootd include path")
     elif found and path:
         env.Append(CPPPATH=[path])
     return found
