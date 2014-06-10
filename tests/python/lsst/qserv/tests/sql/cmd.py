@@ -45,8 +45,6 @@ class Cmd():
         
         self.logger.debug("SQLCmd._mysql_cmd %s" % self._mysql_cmd )
         
-        self._mysql_cmd.append("-e")
-        
     def _addQservCmdParams(self):
         self._mysql_cmd.append( "--host=%s" % self.config['qserv']['master'])
         self._mysql_cmd.append( "--port=%s" % self.config['mysql_proxy']['port'])
@@ -68,24 +66,28 @@ class Cmd():
         self._mysql_cmd.append("--user=%s" % self.config['mysqld']['user'])
         self._mysql_cmd.append("--password=%s" % self.config['mysqld']['pass'])
 
-    def execute(self, query, stdout = None):
-      """ Some queries cannot run correctly through MySQLdb, so we must use MySQL client instead """
-      self.logger.debug("SQLCmd.execute:  %s" % query)
-      commandLine = self._mysql_cmd + [query]
-      commons.run_command(commandLine, stdout_file=stdout)
+    def execute(self, query, stdout=None, column_names=True):
+        """ Some queries cannot run correctly through MySQLdb, so we must use MySQL client instead """
+        self.logger.debug("SQLCmd.execute:  %s" % query)
+        commandLine = self._mysql_cmd[:]
+        if not column_names: commandLine.append('--skip-column-names')
+        commandLine += ['-e', query]
+        commons.run_command(commandLine, stdout_file=stdout)
       
-    def executeFromFile(self, filename, stdout = None):
-      """ Some queries cannot run correctly through MySQLdb, so we must use MySQL client instead """
-      self.logger.debug("SQLCmd.executeFromFile:  %s" % filename)
-      commandLine = self._mysql_cmd + ["SOURCE %s" % filename]
-      commons.run_command(commandLine, stdout_file=stdout)
+    def executeFromFile(self, filename, stdout=None, column_names=True):
+        """ Some queries cannot run correctly through MySQLdb, so we must use MySQL client instead """
+        self.logger.debug("SQLCmd.executeFromFile:  %s" % filename)
+        commandLine = self._mysql_cmd[:]
+        if not column_names: commandLine.append('--skip-column-names')
+        commandLine += ['-e', "SOURCE " + filename]
+        commons.run_command(commandLine, stdout_file=stdout)
         
     def createAndLoadTable(self, tableName, schemaFile, dataFile, delimiter):
         self.logger.debug("CMD.createAndLoadTable(%s, %s, %s, %s)" % (tableName, schemaFile, dataFile, delimiter))
         self.executeFromFile(schemaFile)
         self.loadData(dataFile, tableName, delimiter)
 
-    def loadData(self, dataFile, tableName,delimiter):
+    def loadData(self, dataFile, tableName, delimiter):
         query = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY '%s';" % (dataFile, tableName,delimiter)
         self.logger.debug("CMD.createAndLoadTable: Loading data  %s" % dataFile)
         self.execute(query)
