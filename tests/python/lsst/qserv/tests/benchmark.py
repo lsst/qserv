@@ -61,6 +61,8 @@ class Benchmark():
 
         self.config = commons.getConfig()
 
+        self.noQservLine = re.compile('[\w\-\."%% ]*-- noQserv')
+
         self._case_id = case_id
         self._logFilePrefix = log_file_prefix
 
@@ -124,34 +126,63 @@ class Benchmark():
         qDir = self._queries_dirname
         self.logger.info("Testing queries from %s" % qDir)
         queries = sorted(os.listdir(qDir))
-        noQservLine = re.compile('[\w\-\."%% ]*-- noQserv')
         for qFN in queries:
             if qFN.endswith(".sql"):
                 if int(qFN[:4]) <= stopAt:
                     query_filename = os.path.join(qDir,qFN)
+
                     qF = open(query_filename, 'r')
-                    qText = ""
-                    for line in qF:
-                        line = line.rstrip().lstrip()
-                        line = re.sub(' +', ' ', line)
-                        if withQserv and line.startswith("-- withQserv"):
-                            qText += line[13:] # skip the "-- withQserv" text
-                        elif line.startswith("--") or line == "":
-                            pass # do nothing with commented or empty lines
-                        else:
-                            qData = noQservLine.search(line)
-                            if not withQserv:
-                                if qData:
-                                    qText += qData.group(0)[:-10]
-                                else:
-                                    qText += line
-                            elif not qData:
-                                qText += line
-                        qText += ' '
+                    qText, pragmas = self._parseFile(qF, withQserv)
+
                     outFile = os.path.join(myOutDir, qFN.replace('.sql', '.txt'))
                     #qText += " INTO OUTFILE '%s'" % outFile
-                    self.logger.info("LAUNCHING QUERY : {1} against {0}, SQL : {2}\n".format(self._mode,qFN, qText))
-                    self._sqlInterface['query'].execute(qText, outFile)
+                    self.logger.info("LAUNCHING QUERY : {1} against {0}, SQL : {2} pragmas : {3}\n".format(self._mode, qFN, qText, pragmas))
+
+                    column_names = 'noheader' not in pragmas
+                    self._sqlInterface['query'].execute(qText, outFile, column_names)
+
+
+    def _parseFile(self, qF, withQserv):
+        ''' 
+        Reads a file with SQL query, filters it based on qserv/mysql mode
+        and finds additional pragmas. Returns query text and set of pragmas
+        as a dictionary.
+        '''
+
+        qText = []
+        pragmas = {}
+        for line in qF:
+
+            # squeeze/strip spaces
+            line = line.strip()
+            line = re.sub(' +', ' ', line)
+
+            if not line:
+                # empty
+                pass
+            elif withQserv and line.startswith("-- withQserv"):
+                # strip the "-- withQserv" text
+                qText.append(line[13:])
+            elif line.startswith("--"):
+                # check for pragma, format is:
+                #    '-- pragma keyval [keyval...]'
+                #    where keyval is 'key=value' or 'key'
+                words = line.split()
+                if len(words) > 1 and words[1] == 'pragma':
+                    for keyval in words[2:]:
+                        kv = keyval.split('=', 1) + [None]
+                        pragmas[kv[0]] = kv[1]
+            else:
+                qData = self.noQservLine.search(line)
+                if not withQserv:
+                    if qData:
+                        qText.append(qData.group(0)[:-10])
+                    else:
+                        qText.append(line)
+                elif not qData:
+                    qText.append(line)
+
+        return ' '.join(qText), pragmas
 
 
     def gunzip(self, table_name, zipped_data_filename):
