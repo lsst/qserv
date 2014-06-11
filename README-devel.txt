@@ -10,6 +10,8 @@ Once Qserv is installed (cf. README.txt), in order to install your Qserv develop
   | QSERV_SRC_DIR=${HOME}/src/qserv/
   | # Build and install your Qserv version
   | cd $QSERV_SRC_DIR
+  | # if following "setup" command fails due to missing packages one has to 
+  | # manually install those packages with regular "eups distrib install ..."
   | setup -r .
   | eupspkg -er build               # build
   | eupspkg -er install             # install to EUPS stack directory
