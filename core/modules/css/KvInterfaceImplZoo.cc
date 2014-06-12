@@ -47,7 +47,7 @@
 #include <string.h> // for memset
 
 // Local headers
-#include "css/CssException.h"
+#include "css/CssError.h"
 #include "log/Logger.h"
 
 using std::endl;
@@ -70,7 +70,7 @@ KvInterfaceImplZoo::KvInterfaceImplZoo(string const& connInfo) {
     zoo_set_debug_level(ZOO_LOG_LEVEL_ERROR);
     _zh = zookeeper_init(connInfo.c_str(), 0, 10000, 0, 0, 0);
     if ( !_zh ) {
-        throw CssException_ConnFailure();
+        throw ConnError();
     }
 }
 
@@ -195,21 +195,21 @@ KvInterfaceImplZoo::_throwZooFailure(int rc, string const& fName,
     string ffName = "*** css::KvInterfaceImplZoo::" + fName + "(). ";
     if (rc==ZNONODE) {
         LOGGER_INF << ffName << "Key '" << key << "' does not exist." << endl;
-        throw CssException_KeyDoesNotExist(key);
+        throw (key);
     } else if (rc==ZCONNECTIONLOSS) {
         LOGGER_INF << ffName << "Can't connect to zookeeper." << endl;
-        throw CssException_ConnFailure();
+        throw ConnError();
     } else if (rc==ZNOAUTH) {
         LOGGER_INF << ffName << "Zookeeper authorization failure." << endl;
-        throw CssException_AuthFailure();
+        throw AuthError();
     } else if (rc==ZBADARGUMENTS) {
         LOGGER_INF << ffName << "Invalid key passed to zookeeper." << endl;
-        throw CssException_KeyDoesNotExist(key);
+        throw NoSuchKey(key);
     }
     ostringstream s;
     s << ffName << "Zookeeper error #" << rc << ". Key: '" << key << "'.";
     LOGGER_INF << s.str() << endl;
-    throw CssException_InternalRunTimeError(s.str());
+    throw CssError(s.str());
 }
 
 }}} // namespace lsst::qserv::css

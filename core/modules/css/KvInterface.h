@@ -29,8 +29,8 @@
   * @Author Jacek Becla, SLAC
   */
 
-#ifndef LSST_QSERV_CSS_INTERFACE_HH
-#define LSST_QSERV_CSS_INTERFACE_HH
+#ifndef LSST_QSERV_CSS_INTERFACE_H
+#define LSST_QSERV_CSS_INTERFACE_H
 
 // System headers
 #include <string>
@@ -46,7 +46,7 @@ public:
 
     /**
      * Create a key/value pair.
-     * Throws CssException if the key already exists (or if any other problem,
+     * Throws CssRunTimeError if the key already exists (or if any other problem,
      * e.g., a connection error is detected).
      */
     virtual void create(std::string const& key, std::string const& value) = 0;
@@ -58,14 +58,14 @@ public:
 
     /**
      * Returns value for a given key.
-     * Throws CssException if the key does not exist (or if any other problem,
+     * Throws CssRunTimeError if the key does not exist (or if any other problem,
      * e.g., a connection error is detected).
      */
     virtual std::string get(std::string const& key) = 0;
 
     /**
      * Returns value for a given key, defaultValue if the key does not exist.
-     * Throws CssException if there are any other problems, e.g., a connection
+     * Throws CssRunTimeError if there are any other problems, e.g., a connection
      * error is detected).
      */
     virtual std::string get(std::string const& key,
@@ -73,14 +73,14 @@ public:
 
     /**
      * Returns children (vector of strings) for a given key.
-     * Throws CssException if the key does not exist (or if any other problem,
+     * Throws CssRunTimeError if the key does not exist (or if any other problem,
      * e.g., a connection error is detected)
      */
     virtual std::vector<std::string> getChildren(std::string const& key) = 0;
 
     /**
      * Delete a key.
-     * Throws CssException on failure.
+     * Throws CssRunTimeError on failure.
      */
     virtual void deleteKey(std::string const& key) = 0;
 
@@ -90,4 +90,4 @@ protected:
 
 }}} // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_INTERFACE_HH
+#endif // LSST_QSERV_CSS_INTERFACE_H

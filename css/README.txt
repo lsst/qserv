@@ -21,7 +21,6 @@ $QSERV_DIR/etc/init.d/zookeeper start
 ##### Testing C bindings #####
 
 export LD_LIBRARY_PATH=<path>/lib:<path>/lib/mysql
-build/css/testCssException
 build/css/testKvInterfaceImpl
 build/css/dist/testFacade
 

@@ -34,7 +34,7 @@ def checkMySql(env):
     state.log.debug("checkMySql() %s %s" % (env["LIBPATH"], env["CPPPATH"]))
 
     conf.CheckCXXHeader('mysql/mysql.h')
-    
+
     if conf.CheckLibWithHeader("mysqlclient_r", "mysql/mysql.h",
                                    language="C++", autoadd=0):
         if conf.CheckDeclaration("mysql_next_result",
@@ -52,22 +52,22 @@ def checkMySql(env):
     return None
 
 class BoostChecker:
-    
+
     def __init__(self, env):
         self.env = env
         self.suffix = None
-        # TODO: this list is hard-coded for now, there may be variations in the future 
+        # TODO: this list is hard-coded for now, there may be variations in the future
         self.suffixes = ["-gcc41-mt", "-gcc34-mt", "-mt", ""]
         self.cache = {}
 
     def getLibName(self, libName):
         '''
         For a given generic name (such as 'boost_system') find and return a
-        variant with optional suffix. If BOOST_LIB is set in the environment 
+        variant with optional suffix. If BOOST_LIB is set in the environment
         then use only that location to check for matching libraries. Otherwise
         ask scons to find it in any accessible location (depends on linker).
         '''
-        
+
         # check cached name first
         lib = self.cache.get(libName)
         if lib is None: lib = self._getLibName(libName)
@@ -76,8 +76,8 @@ class BoostChecker:
 
     def _getLibName(self, libName):
         '''
-        Returns suffixed name of the library, if the suffix is not known yet then 
-        try to guess it by looking at the existing library names. Same suffix is 
+        Returns suffixed name of the library, if the suffix is not known yet then
+        try to guess it by looking at the existing library names. Same suffix is
         reused for all boost libraries.
         '''
 
@@ -89,12 +89,12 @@ class BoostChecker:
                     path = os.path.join(env.subst(dirname), env.subst(pfx) + libname + env.subst(sfx))
                     if os.path.exists(path): return True
             return False
-            
+
         if self.suffix is None:
             # need to guess correct suffix
-            
+
             if 'BOOST_LIB' in self.env:
-                
+
                 # if BOOST_LIB is set then we only look inside that directory
                 for sfx in self.suffixes:
                     if _libCheckFile('$BOOST_LIB', libName + sfx, self.env):
@@ -103,16 +103,16 @@ class BoostChecker:
 
                 if self.suffix is None:
                     state.log.fail("Failed to find boost library `"+libName+"' in BOOST_LIB="+self.env.subst("$BOOST_LIB"))
-                
+
             else:
-                
+
                 # we are probably using system-installed boost, just use scons autotools to
                 # try to locate correct libraries
                 conf = self.env.Configure()
-    
+
                 def checkSuffix(sfx):
                     return conf.CheckLib(libName + sfx, language="C++", autoadd=0)
-                
+
                 for sfx in self.suffixes:
                     if checkSuffix(sfx):
                         self.suffix = sfx
@@ -123,7 +123,7 @@ class BoostChecker:
                     state.log.fail("Failed to find boost library "+libName)
 
         return libName + self.suffix
-    
+
     pass # BoostChecker
 
 class AntlrChecker:
@@ -259,8 +259,8 @@ def importCustom(env, extraTgts):
     state.log.debug("CPPPATH : %s" % env['CPPPATH'])
 
     # Automagically steal PYTHONPATH from envvar
-    extraTgts["PYTHONPATH"] = env.get("PYTHONPATH", []) 
-    return None 
+    extraTgts["PYTHONPATH"] = env.get("PYTHONPATH", [])
+    return None
 
 def checkTwisted():
     try:

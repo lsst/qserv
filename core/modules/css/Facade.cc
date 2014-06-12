@@ -41,7 +41,7 @@
 #include <boost/lexical_cast.hpp>
 
 // Local headers
-#include "css/CssException.h"
+#include "css/CssError.h"
 #include "css/KvInterfaceImplMem.h"
 #include "css/KvInterfaceImplZoo.h"
 #include "log/Logger.h"
@@ -105,7 +105,7 @@ bool
 Facade::containsDb(string const& dbName) const {
     if (dbName.empty()) {
         LOGGER_INF << "Empty database name passed." << endl;
-        throw CssException_DbDoesNotExist("<empty>");
+        throw NoSuchDb("<empty>");
     }
     string p = _prefix + "/DBS/" + dbName;
     bool ret =  _kvI->exists(p);
@@ -113,8 +113,8 @@ Facade::containsDb(string const& dbName) const {
     return ret;
 }
 
-/** Checks if a given table is registered in the qserv metadata. Throws exception
-  * if the database does not exist.
+/** Checks if a given table is registered in the qserv metadata.
+  * Throws runtime_error if the database does not exist.
   *
   * @param dbName database name
   * @param tableName table name
@@ -129,8 +129,8 @@ Facade::containsTable(string const& dbName, string const& tableName) const {
     return _containsTable(dbName, tableName);
 }
 
-/** Checks if a given table is chunked. Throws exception if a given database and/or
-  * table does not exist.
+/** Checks if a given table is chunked. Throws runtime_error if the database
+  * and/or table does not exist.
   *
   * @param dbName database name
   * @param tableName table name
@@ -269,7 +269,7 @@ Facade::getChunkLevel(string const& dbName, string const& tableName) const {
     return 0;
 }
 
-/** Retrieve the key column for a database. Throws exception if the database
+/** Retrieve the key column for a database. Throws runtime_error if the database
   * or table does not exist.
   *
   * @param db database name
@@ -290,7 +290,7 @@ Facade::getKeyColumn(string const& dbName, string const& tableName) const {
     return ret;
 }
 
-/** Retrieve # stripes and subStripes for a database. Throws exception if
+/** Retrieve # stripes and subStripes for a database. Throws runtime_error if
   * the database does not exist. Returns (0,0) for non-partitioned databases.
   *
   * @param db database name
@@ -320,17 +320,17 @@ Facade::_getIntValue(string const& key, int defaultValue) const {
     return boost::lexical_cast<int>(ret);
 }
 
-/** Validates if database exists. Throw exception if it does not.
+/** Validates if database exists. Throw runtime_error if it does not.
   */
 void
 Facade::_throwIfNotDbExists(string const& dbName) const {
     if (!containsDb(dbName)) {
         LOGGER_INF << "Db '" << dbName << "' not found." << endl;
-        throw CssException_DbDoesNotExist(dbName);
+        throw NoSuchDb(dbName);
     }
 }
 
-/** Validates if table exists. Throw exception if it does not.
+/** Validates if table exists. Throw runtime_error if it does not.
     Does not check if the database exists.
   */
 void
@@ -338,11 +338,11 @@ Facade::_throwIfNotTbExists(string const& dbName, string const& tableName) const
     if (!containsTable(dbName, tableName)) {
         LOGGER_INF << "table " << dbName << "." << tableName << " not found"
                    << endl;
-        throw CssException_TableDoesNotExist(dbName+"."+tableName);
+        throw NoSuchTable(dbName+"."+tableName);
     }
 }
 
-/** Validate if database and table exist. Throw exception if either of them
+/** Validate if database and table exist. Throw runtime_error if either of them
     does not.
   */
 void
@@ -412,7 +412,7 @@ boost::shared_ptr<Facade>
 FacadeFactory::createMemFacade(string const& mapPath) {
     std::ifstream f(mapPath.c_str());
     if(f.fail()) {
-        throw CssException_ConnFailure();
+        throw ConnError();
     }
     return FacadeFactory::createMemFacade(f);
 }
