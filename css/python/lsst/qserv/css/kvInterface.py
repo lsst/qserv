@@ -75,7 +75,7 @@ class KvInterface(object):
         self._zk = KazooClient(hosts=connInfo)
         self._zk.start()
 
-    def create(self, k, v='', sequence=False):
+    def create(self, k, v='', sequence=False, ephemeral=False):
         """
         Add a new key/value entry. Create entire path as necessary. 
 
@@ -86,9 +86,11 @@ class KvInterface(object):
 
         @raise     KvException if the key k already exists.
         """
-        self._logger.info("CREATE '%s' --> '%s'" % (k, v))
+        self._logger.info("CREATE '%s' --> '%s', seq=%s, eph=%s" % \
+                              (k, v, sequence, ephemeral))
         try:
-            return self._zk.create(k, v, sequence=sequence, makepath=True)
+            return self._zk.create(k, v, sequence=sequence,
+                                   ephemeral=ephemeral, makepath=True)
         except NodeExistsError:
             self._logger.error("in create(), key %s exists" % k)
             raise KvException(KvException.KEY_EXISTS, k)
@@ -101,7 +103,9 @@ class KvInterface(object):
 
         @return boolean  True if the key exists, False otherwise.
         """
-        return self._zk.exists(k)
+        ret = (self._zk.exists(k) != None)
+        self._logger.info("EXISTS '%s': %s" % (k, ret))
+        return ret
 
     def get(self, k):
         """
@@ -185,6 +189,18 @@ class KvInterface(object):
         Returns entire contents.
         """
         self._printNode("/", fileH)
+
+    def getLockObject(self, k, id):
+        """
+        @param k         Key.
+        @param id        Name to use for this lock contender. This can be useful
+                         for querying to see who the current lock contenders are.
+
+        @return lock object
+        """
+        self._logger.info("Getting lock '%s' on '%s'" % (id, k))
+        lockK = "%s.LOCK" % k
+        return self._zk.Lock(lockK, id)
 
     def _printNode(self, p, fileH=None):
         """
