@@ -427,9 +427,9 @@ OPTIONS
     parser.add_option("-c", dest="connI", default = '127.0.0.1:12181')
                       # default for kazoo (single node, local))
     (options, args) = parser.parse_args()
-    if options.verbT > 50: options.verbT = 50
-    if options.verbT <  0: options.verbT = 0
-    return (options.verbT, options.logF, options.connI)
+    if int(options.verbT) > 50: options.verbT = 50
+    if int(options.verbT) <  0: options.verbT = 0
+    return (int(options.verbT), options.logF, options.connI)
 
 ####################################################################################
 def main():
