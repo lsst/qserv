@@ -23,14 +23,9 @@ Qserv core code
 extraTgts = {}
 extraTgts['dist'] = []
 custom = detect.importCustom(env, extraTgts)
-geomLib = env.get('GEOMETRY',None)
-if geomLib:
-    extraTgts['dist'].append(('lib/python/lsst/qserv/czar', env.File(geomLib)))
-else:
-    state.log.warn("Missing geom.py specification. Distribution won't be runnable")
-    state.log.warn("(e.g., set  GEOMETRY=/path/to/geom/python/lsst/geom/geometry.py in custom.py, or add this file to PYTHONPATH)")
-if not detect.checkTwisted():
-    state.log.warn("Couldn't find Twisted. Check that Twisted is configured for Qserv Czar startup.")
+
+detect.checkGeom()
+detect.checkTwisted()
 
 # Environment
 # Must do all env modifiers here, otherwise SCons complains
@@ -230,8 +225,7 @@ for m in libProducts.keys():
     if tgts: testTgts.append(tgts)
 
 if testTgts: 
-    state.log.debug("Test tgts to install : %s" % testTgts)
-    # FIXME: run tests.
+    state.log.debug("Test tgts to build and install : %s" % testTgts)
 env.Alias("build", testTgts)
 
 installTgts = (extraTgts['dist'], testTgts)

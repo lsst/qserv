@@ -123,7 +123,6 @@ def _initVariables(src_dir):
             (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', _findPrefixFromBin('MYSQLPROXY_DIR', "mysql-proxy"), PathVariable.PathIsDir)),
             (PathVariable('LUA_DIR', 'lua install dir', _findPrefixFromBin('LUA_DIR', "lua"), PathVariable.PathIsDir)),
             (PathVariable('ZOOKEEPER_DIR', 'zookeeper install dir', _findPrefixFromBin('ZOOKEEPER_DIR', "zkEnv.sh"), PathVariable.PathIsDir)),
-            (PathVariable('GEOMETRY', 'path to geometry.py', os.getenv("GEOMETRY_LIB"), PathVariable.PathAccept)),
             (PathVariable('python_relative_prefix', 'qserv install directory for python modules, relative to prefix', os.path.join("lib", "python"), PathVariable.PathIsDirCreate)),
             ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH"))
             )
@@ -146,7 +145,7 @@ def _initVariables(src_dir):
             (PathVariable('PROTOBUF_INC', 'protobuf include path', os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_LIB', 'protobuf libraries path', os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('ZOOKEEPER_INC', 'zookeeper c-binding include path', os.path.join(env['ZOOKEEPER_DIR'], "c-binding", "include"), PathVariable.PathIsDir)),
-            (PathVariable('ZOOKEEPER_LIB', 'zookeeper c-binding libraries path', os.path.join(env['ZOOKEEPER_DIR'], "c-binding", "lib"), PathVariable.PathIsDir))
+            (PathVariable('ZOOKEEPER_LIB', 'zookeeper c-binding library path', os.path.join(env['ZOOKEEPER_DIR'], "c-binding", "lib"), PathVariable.PathIsDir))
             )
     opts.Update(env)
 

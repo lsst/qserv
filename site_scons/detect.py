@@ -31,10 +31,11 @@ def checkMySql(env):
     * a built MySQL directory specified by the env var MYSQL_ROOT
     """
     conf = env.Configure()
-    state.log.debug("checkMySql() %s %s" % (env["LIBPATH"], env["CPPPATH"]))
+    state.log.debug("checkMySql() LIBPATH : %s CPPPATH : %s" % (env["LIBPATH"], env["CPPPATH"]))
 
-    conf.CheckCXXHeader('mysql/mysql.h')
-
+    if not conf.CheckCXXHeader('mysql/mysql.h'):
+        state.log.fail("Could not locate MySQL headers (mysql/mysql.h)")
+    
     if conf.CheckLibWithHeader("mysqlclient_r", "mysql/mysql.h",
                                    language="C++", autoadd=0):
         if conf.CheckDeclaration("mysql_next_result",
@@ -265,8 +266,22 @@ def importCustom(env, extraTgts):
 def checkTwisted():
     try:
         import twisted.internet
+    except ImportError, e:
+        state.log.fail("Missing Twisted python library.\n" +
+                        "Check that Twisted is configured for Qserv Czar startup.")
+        return False
+    else:
         state.log.info("Twisted python library found")
         return True
+
+def checkGeom():
+    try:
+        import lsst.geom.geometry
     except ImportError, e:
-        return None
-    pass
+        state.log.fail("Missing LSST Geometry python library.\n" +
+                        "To correct this please run 'export PYTHONPATH=${PYTHONPATH}:/path/to/geom/python'," +
+                        " assuming geometry.py is in /path/to/geom/python/lsst/geom/geometry.py")
+        return False
+    else:
+        state.log.info("LSST Geometry python library found")
+        return True
