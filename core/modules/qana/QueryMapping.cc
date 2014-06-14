@@ -156,7 +156,6 @@ private:
     std::string _subChunkString;
     IntDeque _subChunks;
     Map _map;
-
 };
 
 ////////////////////////////////////////////////////////////////////////

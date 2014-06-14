@@ -139,25 +139,28 @@ public:
     static std::string makeSubChunkTableTemplate(std::string const& table) {
         return table + "_" CHUNKTAG "_" SUBCHUNKTAG;
     }
+
     /// @return overall chunk level.
+    /// Turns on subchunking if at least two tables are subchunked
     static int patchTuples(Tuples& tuples) {
         // Are multiple subchunked tables involved? Then do
         // overlap... which requires creating a query sequence.
         // For now, skip the sequence part.
         // TODO: need to refactor a bit to allow creating a sequence.
-
-        // If chunked table count > 1, use highest chunkLevel and turn on
-        // subchunking.
         Tuples::iterator i = tuples.begin();
         Tuples::iterator e = tuples.end();
-        int chunkedCount = 0;
+        int chunkedCount = 0, subChunkedCount = 0;
         for(; i != e; ++i) {
             if(i->chunkLevel > 0) {
                 ++chunkedCount;
             }
+            if(i->chunkLevel > 1) {
+                ++subChunkedCount;
+            }
         }
         // Turn on chunking with any chunk table
         int finalChunkLevel = chunkedCount ? 1 : 0;
+
         bool firstSubChunk = true;
         for(i = tuples.begin(); i != e; ++i) {
             std::string const& prePatch = i->prePatchTable;
@@ -169,7 +172,7 @@ public:
                 i->tables.push_back(makeChunkTableTemplate(prePatch));
                 break;
             case 2:
-                if(chunkedCount > 1) {
+                if(subChunkedCount>=2) { // then turn on subchunking
                     i->db = makeSubChunkDbTemplate(i->db);
                     i->tables.push_back(makeSubChunkTableTemplate(prePatch));
                     if(firstSubChunk) {
@@ -186,7 +189,7 @@ public:
             default:
                 if(i->allowed) {
                     throw std::logic_error("Unexpected chunkLevel=" +
-                                           boost::lexical_cast<std::string>(i->chunkLevel));
+                        boost::lexical_cast<std::string>(i->chunkLevel));
                 }
                 break;
             }
@@ -314,7 +317,7 @@ public:
     }
     query::TableRef::Ptr lookup(query::TableRef const& t, int permutation) {
         Tuple const& tuple = tuplesFindByRefRO(_tuples, t);
-        // Probably select one bit out of permutation, based on which
+        // Probably select one bit out of permutation, based on 
         // which subchunked table this is in the query.
         int i = _permutation & 1; // adjust bitshift depending on num
                                   // subchunked tables.
@@ -327,7 +330,6 @@ public:
         query::TableRef::Ptr newT(new query::TableRef(tuple.db,
                                                       table,
                                                       t.getAlias()));
-
         return newT;
     }
 
@@ -371,7 +373,7 @@ boost::shared_ptr<qana::QueryMapping> TableStrategy::exportMapping() {
     return qm;
 
 }
-/// @return permuation count: 1 :singleton count (no subchunking)
+/// @return permutation count: 1 :singleton count (no subchunking)
 ///
 int TableStrategy::getPermutationCount() const {
     // Count permutations by iterating over all tuples and counting the
@@ -388,7 +390,6 @@ int TableStrategy::getPermutationCount() const {
         throw std::logic_error("Support for permuations > 2 is unimplemented");
     }
     return permutations;
-
 }
 
 query::TableRefListPtr
@@ -413,7 +414,7 @@ void TableStrategy::setToPermutation(int permutation, query::TableRefList& p) {
 void TableStrategy::_import(query::FromList const& f) {
     // Read into tuples. Why is the original structure insufficient?
     // Because I want to annotate! The annotations make subsequent
-    // reasonaing and analysis possible. So the point will be to
+    // reasoning and analysis possible. So the point will be to
     // populate a data structure of annotations.
 
     // Iterate over FromList elements

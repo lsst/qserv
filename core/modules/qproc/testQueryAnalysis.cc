@@ -423,7 +423,7 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     std::string stmt = "select * from LSST.Object o, Source s WHERE "
         "qserv_areaspec_box(2,2,3,3) AND o.objectId = s.objectId;";
     std::string expected = "SELECT * "
-        "FROM Subchunks_LSST_100.Object_100_100000 AS o,LSST.Source_100 AS s "
+        "FROM LSST.Object_100 AS o,LSST.Source_100 AS s "
         "WHERE scisql_s2PtInBox(o.ra_Test,o.decl_Test,2,2,3,3)=1 "
         "AND scisql_s2PtInBox(s.raObjectTest,s.declObjectTest,2,2,3,3)=1 "
         "AND o.objectId=s.objectId";
@@ -561,7 +561,7 @@ BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
 
 BOOST_AUTO_TEST_CASE(AliasHandling) {
     std::string stmt = "select o1.ra_PS, o1.ra_PS_Sigma, s.dummy, Exposure.exposureTime from LSST.Object o1,  Source s, Exposure WHERE o1.id = s.objectId AND Exposure.id = o1.exposureId;";
-    std::string expected = "SELECT o1.ra_PS,o1.ra_PS_Sigma,s.dummy,QST_1_.exposureTime FROM Subchunks_LSST_100.Object_100_100000 AS o1,LSST.Source_100 AS s,LSST.Exposure AS QST_1_ WHERE o1.id=s.objectId AND QST_1_.id=o1.exposureId";
+    std::string expected = "SELECT o1.ra_PS,o1.ra_PS_Sigma,s.dummy,QST_1_.exposureTime FROM LSST.Object_100 AS o1,LSST.Source_100 AS s,LSST.Exposure AS QST_1_ WHERE o1.id=s.objectId AND QST_1_.id=o1.exposureId";
 
     boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
     boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
@@ -569,7 +569,7 @@ BOOST_AUTO_TEST_CASE(AliasHandling) {
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_CHECK(!context->restrictors);
     BOOST_CHECK(context->hasChunks());
-    BOOST_CHECK(context->hasSubChunks()); // Design question: do subchunks?
+    BOOST_CHECK(!context->hasSubChunks());
     BOOST_CHECK(!context->needsMerge);
     std::string actual = computeFirst(*qs);
     BOOST_CHECK_EQUAL(actual, expected);
@@ -829,7 +829,7 @@ BOOST_AUTO_TEST_CASE(FreeIndex) {
     std::string stmt = "SELECT s.ra, s.decl, o.foo FROM Source s, Object o "
         "WHERE s.objectId=o.objectId and o.objectIdObjTest = 430209694171136;";
     std::string expected = "SELECT s.ra,s.decl,o.foo "
-        "FROM LSST.Source_100 AS s,Subchunks_LSST_100.Object_100_100000 AS o "
+        "FROM LSST.Source_100 AS s,LSST.Object_100 AS o "
         "WHERE s.objectId=o.objectId AND o.objectIdObjTest=430209694171136";
 
     testAndCompare(qsTest, stmt, expected);
@@ -841,7 +841,7 @@ BOOST_AUTO_TEST_CASE(SpecIndexUsing) {
         "FROM Object o JOIN Source s USING (objectIdObjTest) JOIN Source s2 USING (objectIdObjTest) "
         "WHERE o.objectId = 430209694171136;";
     std::string expected = "SELECT s.ra,s.decl,o.foo "
-        "FROM Subchunks_LSST_100.Object_100_100000 AS o "
+        "FROM LSST.Object_100 AS o "
         "JOIN LSST.Source_100 AS s USING(objectIdObjTest) "
         "JOIN LSST.Source_100 AS s2 USING(objectIdObjTest) "
         "WHERE o.objectId=430209694171136";
@@ -853,7 +853,7 @@ BOOST_AUTO_TEST_CASE(SpecIndexOn) {
         "FROM Object o JOIN Source s ON s.objectIdObjTest = o.objectIdObjTest JOIN Source s2 ON s.objectIdObjTest = s2.objectIdObjTest "
         "WHERE o.objectId = 430209694171136;";
     std::string expected = "SELECT s.ra,s.decl,o.foo "
-        "FROM Subchunks_LSST_100.Object_100_100000 AS o "
+        "FROM LSST.Object_100 AS o "
         "JOIN LSST.Source_100 AS s ON s.objectIdObjTest=o.objectIdObjTest "
         "JOIN LSST.Source_100 AS s2 ON s.objectIdObjTest=s2.objectIdObjTest "
         "WHERE o.objectId=430209694171136";
@@ -947,6 +947,19 @@ BOOST_AUTO_TEST_CASE(Case01_0002) {
                                   params, params+4);
 }
 
+BOOST_AUTO_TEST_CASE(Case01_0003) {
+    std::string stmt = "SELECT s.ra, s.decl, o.raRange, o.declRange "
+        "FROM   Object o "
+        "JOIN   Source s USING (objectId) "
+        "WHERE  o.objectId = 390034570102582 "
+        "AND    o.latestObsTime = s.taiMidPoint;";
+    boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
+    boost::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK(context->hasChunks());
+    BOOST_CHECK(!context->hasSubChunks());
+}
+
 BOOST_AUTO_TEST_CASE(Case01_0012) {
     // This is ticket #2048, actually a proxy problem.
     // Missing paren "(" after WHERE was what the parser received.
@@ -1034,7 +1047,7 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
         "LEFT  JOIN SimRefObject t ON (o2t.refObjectId = t.refObjectId) "
         "WHERE  closestToObj = 1 OR closestToObj is NULL;";
     std::string expected_100 = "SELECT count(*) AS QS1_COUNT "
-        "FROM Subchunks_LSST_100.Object_100_100000 AS o "
+        "FROM LSST.Object_100 AS o "
         "INNER JOIN LSST.RefObjMatch_100 AS o2t ON o.objectId=o2t.objectId "
         "LEFT OUTER JOIN LSST.SimRefObject_100 AS t ON o2t.refObjectId=t.refObjectId "
         "WHERE closestToObj=1 OR closestToObj IS NULL";
