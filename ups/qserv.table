@@ -1,6 +1,7 @@
 setupRequired(antlr)
 setupRequired(boost)
 setupRequired(db)
+setupRequired(swig)
 setupRequired(geom)
 setupRequired(kazoo)
 setupRequired(luaxmlrpc)
