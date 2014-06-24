@@ -69,7 +69,7 @@ qserv-test01()
 qserv-test()
 {
     qserv-prepare
-    qserv-testdata.py
+    qserv-test-integration.py
 }
 
 qserv-kill

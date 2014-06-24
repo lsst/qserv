@@ -10,8 +10,30 @@ from twisted.python.procutils import which
 from lsst.qserv.admin import path
 
 COMPONENTS = ['mysql', 'xrootd', 'qserv-czar', 'scisql']
-STEP_RUN_LIST = ['read-meta-cfg', 'mkdirs', 'etc'] + COMPONENTS + ['client']
-STEP_LIST = ['prep'] + STEP_RUN_LIST
+STEP_RUN_LIST = ['directory-tree', 'etc'] + COMPONENTS + ['client']
+STEP_LIST = ['prepare'] + STEP_RUN_LIST
+STEP_DOC = dict(
+    zip(STEP_LIST, 
+        [
+        """create qserv_run_dir and attach it to current Qserv instance""",	
+        """create directory tree in qserv_run_dir""",	
+        """fill qserv_run_dir configuration files with values issued 
+from meta-config file $qserv_run_dir/qserv.conf""",
+	"""remove MySQL previous data, install db and set password """,
+	"""create xrootd query and result directories""",
+	"""initialize Qserv master and worker databases""",
+	"""install and configure SciSQL""",
+	"""create client configuration file (used by integration tests for
+example)"""
+        ]
+    )
+) 
+
+# used in cmd-line tool
+PREPARE = STEP_LIST[0]
+DIRTREE = STEP_RUN_LIST[0]
+ETC     = STEP_RUN_LIST[1]
+CLIENT  = STEP_RUN_LIST[-1]
 
 def exists_and_is_writable(dir) :
     """
@@ -182,7 +204,7 @@ def _set_perms(file):
     else:
         os.chmod(file, 0660)
 
-def _apply_tpl(src_file, target_file):
+def apply_tpl(src_file, target_file):
     """ Creating one configuration file from one template
     """
 
@@ -222,7 +244,7 @@ def apply_templates(template_root, dest_root):
             src_file = os.path.join(root,f)
             target_file = os.path.join(dest_dir, f)
 
-            _apply_tpl(src_file, target_file)
+            apply_tpl(src_file, target_file)
 
             # applying perms
 	    _set_perms(target_file)

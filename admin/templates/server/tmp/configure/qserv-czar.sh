@@ -19,3 +19,5 @@ ${MYSQL_CMD} < ${SQL_DIR}/qserv-czar.sql &&
 ${MYSQL_CMD} < ${SQL_DIR}/qservw_workerid.sql && 
 ${QSERV_RUN_DIR}/etc/init.d/mysqld stop ||
 exit 1
+
+echo "INFO: Qserv Czar initialization SUCCESSFULL"

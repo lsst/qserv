@@ -18,12 +18,12 @@
 . {{QSERV_RUN_DIR}}/etc/init.d/qserv-functions
 
 XROOTD_DIR={{XROOTD_DIR}}
+XROOTD_RUN_DIR={{XROOTD_RUN_DIR}}
 XROOTD_CONFIG={{QSERV_RUN_DIR}}/etc/lsp.cf
 XROOTD_INSTANCE_NAME="worker"
 
 PID_DIR={{QSERV_PID_DIR}}/${XROOTD_INSTANCE_NAME}
 LOG_DIR={{QSERV_LOG_DIR}}
-
 
 export PATH={{PATH}}
 export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
@@ -32,7 +32,7 @@ export QSW_DBSOCK="{{MYSQLD_SOCK}}"
 export QSW_MYSQLDUMP=`which mysqldump`
 QSW_SCRATCHPATH="{{QSERV_RUN_DIR}}/tmp"
 QSW_SCRATCHDB="qservScratch"
-export QSW_RESULTPATH="{{XROOTD_RUN_DIR}}/result"
+export QSW_RESULTPATH="${XROOTD_RUN_DIR}/result"
 
 start_service() {
 
