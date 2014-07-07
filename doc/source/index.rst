@@ -11,7 +11,9 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-
+   quick-start 
+   quick-start-devel
+   admin/configuration
 
 Indices and tables
 ==================
