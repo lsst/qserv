@@ -1,0 +1,23 @@
+# -*- python -*-
+Import('env')
+Import('libProducts')
+Import('defaultTgts')
+Import('findLibs')
+
+import os
+import itertools
+
+
+programs = []
+# extDeps
+extDeps = "mysqlclient_r boost_thread boost_system ssl crypto".split()
+
+modDeps = 'mysql sql'.split() # deps on other modules
+deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
+deps = map(lambda i:i, deps) # un-chain
+deps.sort(key=str)  # Prevent dependency-order change rebuilding.
+p = env.Program(['testLocalInfile.cc'] + deps,
+                LIBS=findLibs(extDeps))
+programs.append(p)
+
+Return('programs')

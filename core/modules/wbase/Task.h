@@ -25,8 +25,8 @@
 // (over-the-wire) additional concrete info related to physical
 // execution conditions.
 /// @author Daniel L. Wang (danielw)
-#ifndef LSST_QSERV_WCONTROL_TASK_H
-#define LSST_QSERV_WCONTROL_TASK_H
+#ifndef LSST_QSERV_WBASE_TASK_H
+#define LSST_QSERV_WBASE_TASK_H
 
 // System headers
 #include <deque>
@@ -34,7 +34,10 @@
 
 // Third-party headers
 #include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp> // Mutexes
 
+// Qserv headers
+#include "util/Callable.h"
 
 // Forward declarations
 namespace lsst {
@@ -51,7 +54,7 @@ namespace proto {
 
 namespace lsst {
 namespace qserv {
-namespace wcontrol {
+namespace wbase {
 
 struct Task {
 public:
@@ -85,11 +88,18 @@ public:
     char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
+    void poison();
+    void setPoison(boost::shared_ptr<util::VoidCallable<void> > poisonFunc);
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
+
+private:
+    boost::mutex _mutex; // Used for handling poison
+    boost::shared_ptr<util::VoidCallable<void> > _poisonFunc;
+    bool _poisoned;
 };
 typedef std::deque<Task::Ptr> TaskQueue;
 typedef boost::shared_ptr<TaskQueue> TaskQueuePtr;
 
-}}} // namespace lsst::qserv::wcontrol
+}}} // namespace lsst::qserv::wbase
 
-#endif // LSST_QSERV_WCONTROL_TASK_H
+#endif // LSST_QSERV_WBASE_TASK_H

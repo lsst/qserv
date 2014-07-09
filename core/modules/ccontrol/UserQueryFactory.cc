@@ -33,6 +33,7 @@
 #include "css/Facade.h"
 #include "qdisp/Executive.h"
 #include "qproc/QuerySession.h"
+#include "rproc/InfileMerger.h"
 #include "rproc/TableMerger.h"
 
 namespace lsst {
@@ -49,6 +50,7 @@ public:
     qdisp::Executive::Config::Ptr executiveConfig;
     boost::shared_ptr<css::Facade> facade;
     rproc::TableMergerConfig mergerConfigTemplate;
+    rproc::InfileMergerConfig infileMergerConfigTemplate;
     std::string defaultDb;
 };
 
@@ -77,7 +79,15 @@ UserQueryFactory::newUserQuery(std::string const& query,
     rproc::TableMergerConfig* mct
         = new rproc::TableMergerConfig(_impl->mergerConfigTemplate);
     mct->targetTable = resultTable;
+
+    rproc::InfileMergerConfig* ict
+        = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
+    ict->targetTable = resultTable;
+#if 0
     uq->_mergerConfig.reset(mct);
+#else
+    uq->_infileMergerConfig.reset(ict);
+#endif
     return sessionId;
 }
 
@@ -91,15 +101,15 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "localhost:1094");
     executiveConfig.reset(new qdisp::Executive::Config(serviceUrl));
     // This should be overriden by the installer properly.
-    mergerConfigTemplate.socket =  cm.get(
+    infileMergerConfigTemplate.socket = mergerConfigTemplate.socket =  cm.get(
         "resultdb.unix_socket",
         "Error, resultdb.unix_socket not found. Using /u1/local/mysql.sock.",
         "/u1/local/mysql.sock");
-    mergerConfigTemplate.user =  cm.get(
+    infileMergerConfigTemplate.user = mergerConfigTemplate.user =  cm.get(
         "resultdb.user",
         "Error, resultdb.user not found. Using qsmaster.",
         "qsmaster");
-    mergerConfigTemplate.targetDb =  cm.get(
+    infileMergerConfigTemplate.targetDb = mergerConfigTemplate.targetDb =  cm.get(
         "resultdb.db",
         "Error, resultdb.db not found. Using qservResult.",
         "qservResult");

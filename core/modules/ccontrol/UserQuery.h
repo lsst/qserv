@@ -54,6 +54,8 @@ class QuerySession;
 namespace rproc {
 class TableMerger;
 class TableMergerConfig;
+class InfileMerger;
+class InfileMergerConfig;
 }}}
 
 namespace lsst {
@@ -125,6 +127,8 @@ private:
     boost::shared_ptr<qproc::QuerySession> _qSession;
     boost::shared_ptr<rproc::TableMergerConfig> _mergerConfig;
     boost::shared_ptr<rproc::TableMerger> _merger;
+    boost::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
+    boost::shared_ptr<rproc::InfileMerger> _infileMerger;
     int _sessionId;
     int _sequence;
 };

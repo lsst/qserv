@@ -29,7 +29,7 @@
 
 // Local headers
 #include "proto/worker.pb.h"
-#include "wcontrol/Task.h"
+#include "wbase/Task.h"
 #include "wsched/FifoScheduler.h"
 
 // Boost unit test header
@@ -39,9 +39,9 @@
 namespace test = boost::test_tools;
 
 using lsst::qserv::proto::TaskMsg;
-using lsst::qserv::wcontrol::Task;
-using lsst::qserv::wcontrol::TaskQueue;
-using lsst::qserv::wcontrol::TaskQueuePtr;
+using lsst::qserv::wbase::Task;
+using lsst::qserv::wbase::TaskQueue;
+using lsst::qserv::wbase::TaskQueuePtr;
 
 
 Task::Ptr makeTask(boost::shared_ptr<TaskMsg> tm) {

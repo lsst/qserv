@@ -189,6 +189,18 @@ QuerySession::makeMergeFixup() const {
                               _stmtMerge->getLimit(), needsMerge);
 }
 
+/// Returns the merge statment, if appropriate.
+/// If a post-execution merge fixup is not needed, return a NULL pointer.
+boost::shared_ptr<query::SelectStmt>
+QuerySession::getMergeStmt() const {
+    if(_context->needsMerge) {
+        return _stmtMerge;
+    } else {
+        return boost::shared_ptr<query::SelectStmt>();
+    }
+}
+
+
 void QuerySession::finalize() {
     if(_isFinal) {
         return;

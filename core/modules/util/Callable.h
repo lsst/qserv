@@ -38,6 +38,7 @@ template <typename Ret>
 class VoidCallable {
 public:
     typedef boost::shared_ptr<VoidCallable<Ret> > Ptr;
+    typedef Ret R;
     virtual ~VoidCallable() {}
     virtual Ret operator()() = 0;
 };
@@ -46,6 +47,7 @@ template <typename Ret, typename Arg>
 class UnaryCallable {
 public:
     typedef boost::shared_ptr<UnaryCallable<Ret,Arg> > Ptr;
+    typedef Ret R;
     typedef Arg A;
 
     virtual ~UnaryCallable() {}
@@ -56,6 +58,7 @@ template <typename Ret, typename Arg1, typename Arg2>
 class BinaryCallable {
 public:
     typedef boost::shared_ptr<BinaryCallable<Ret,Arg1,Arg2> > Ptr;
+    typedef Ret R;
     typedef Arg1 A1;
     typedef Arg2 A2;
 

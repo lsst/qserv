@@ -69,6 +69,7 @@
 #include "ccontrol/ResultReceiver.h"
 #include "ccontrol/UserQueryError.h"
 #include "global/constants.h"
+#include "global/MsgReceiver.h"
 #include "log/Logger.h"
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
@@ -77,6 +78,7 @@
 #include "qproc/QuerySession.h"
 #include "qproc/TaskMsgFactory2.h"
 #include "rproc/TableMerger.h"
+#include "rproc/InfileMerger.h"
 #include "util/Callable.h"
 
 namespace lsst {
@@ -110,6 +112,26 @@ public:
     virtual void operator()(boost::shared_ptr<proto::TaskMsg> m) {
         std::cout << "Got taskmsg ok";
     }
+};
+
+// Factory to create chunkid-specific MsgReceiver objs linked to the right
+// messagestore
+class ChunkMsgReceiver : public MsgReceiver {
+public:
+    virtual void operator()(int code, std::string const& msg) {
+            messageStore->addMessage(chunkId, code, msg);
+        }
+    static boost::shared_ptr<ChunkMsgReceiver>
+    newInstance(int chunkId,
+                boost::shared_ptr<qdisp::MessageStore> ms) {
+        boost::shared_ptr<ChunkMsgReceiver> r(new ChunkMsgReceiver);
+        r->chunkId = chunkId;
+        r->messageStore = ms;
+        return r;
+    }
+
+    int chunkId;
+    boost::shared_ptr<qdisp::MessageStore> messageStore;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -161,7 +183,7 @@ void UserQuery::submit() {
     LOGGER_DBG << std::flush;
     LOGGER_WRN << std::flush;
     LOGGER_ERR << std::flush;
-    assert(_merger);
+    assert(_merger || _infileMerger);
     qproc::QuerySession::Iter i;
     qproc::QuerySession::Iter e = _qSession->cQueryEnd();
     // Writing query for each chunk
@@ -180,7 +202,13 @@ void UserQuery::submit() {
         ResourceUnit ru;
         ru.setAsDbChunk(cs.db, cs.chunkId);
         boost::shared_ptr<ResultReceiver> rr;
-        rr.reset(new ResultReceiver(_merger, chunkResultName));
+        boost::shared_ptr<ChunkMsgReceiver> cmr;
+        cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
+#if 0
+        rr.reset(new ResultReceiver(cmr, _merger, chunkResultName));
+#else
+        rr.reset(new ResultReceiver(cmr, _infileMerger, chunkResultName));
+#endif
         int refNum = ++_sequence;
         rr->addFinishHook(NotifyExecutive::newInstance(_executive, refNum));
         qdisp::Executive::Spec s = { ru,
@@ -194,7 +222,11 @@ void UserQuery::submit() {
 QueryState UserQuery::join() {
     bool successful = _executive->join();
     if(successful) {
+#if 0
         _merger->finalize();
+#else
+        _infileMerger->finalize();
+#endif
         LOGGER_INF << "Joined everything (success)" << std::endl;
         return SUCCESS;
     } else {
@@ -211,12 +243,19 @@ void UserQuery::discard() {
     _executive.reset();
     _messageStore.reset();
     _qSession.reset(); // TODO: release some portions earlier
+#if 0
     _mergerConfig.reset();
     if(_merger && !_merger->isFinished()) {
         throw UserQueryError("merger unfinished, cannot discard");
     }
     _merger.reset();
-
+#else
+    _infileMergerConfig.reset();
+    if(_infileMerger && !_infileMerger->isFinished()) {
+        throw UserQueryError("merger unfinished, cannot discard");
+    }
+    _infileMerger.reset();
+#endif
     LOGGER_INF << "Discarded UserQuery(" << _sessionId << ")" << std::endl;
 }
 
@@ -237,12 +276,13 @@ std::string UserQuery::getExecDesc() const {
 void UserQuery::_setupMerger() {
     // FIXME: would like to re-do plumbing so TableMerger uses
     // mergeStmt more directly
+#if 0
     _mergerConfig->mFixup = _qSession->makeMergeFixup();
     _merger = boost::make_shared<rproc::TableMerger>(*_mergerConfig);
-    // Can we configure the merger without involving settings
-    // from the python layer? Historically, the Python layer was
-    // needed to generate the merging SQL statements, but we are now
-    // creating them without Python.
+#else // Infile merger.
+    _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
+    _infileMerger = boost::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
+#endif
 }
 
 }}} // lsst::qserv::ccontrol

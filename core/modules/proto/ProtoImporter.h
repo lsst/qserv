@@ -61,13 +61,7 @@ public:
         namespace gio = google::protobuf::io;
 
         boost::shared_ptr<Msg> m(new Msg());
-        gio::ArrayInputStream input(data, size);
-        gio::CodedInputStream coded(&input);
-        // For dev/debugging: accepts a partially-formed message
-        //        m->MergePartialFromCodedStream(&coded);
-
-        // Accept only complete, compliant messages.
-        bool isClean = m->MergeFromCodedStream(&coded);
+        bool isClean = setMsgFrom(*m, data, size);
         if(isClean) {
             if(_acceptor) {
                 (*_acceptor)(m);
@@ -77,6 +71,16 @@ public:
         return isClean;
     }
     inline int getNumAccepted() const { return _numAccepted; }
+
+    static bool setMsgFrom(Msg& m, char const* buf, int bufLen) {
+        namespace gio = google::protobuf::io;
+        // For dev/debugging: accepts a partially-formed message
+        // bool ok = m.ParsePartialFromArray(buf, bufLen);
+
+        // Accept only complete, compliant messages.
+        bool ok = m.ParseFromArray(buf, bufLen);
+        return ok && m.IsInitialized();
+    }
 
 private:
     int _numAccepted;

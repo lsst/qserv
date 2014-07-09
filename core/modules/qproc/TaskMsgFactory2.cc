@@ -113,6 +113,7 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
     // shared
     _taskMsg->set_session(_session);
     _taskMsg->set_db(s.db);
+    _taskMsg->set_protocol(2);
     // scanTables (for shared scans)
     StringList sTables;
     flattenScanTables(sTables, s.scanTables);

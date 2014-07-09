@@ -69,6 +69,9 @@ public:
             (*_release)();
         }
     }
+    static boost::shared_ptr<SendChannel> newNopChannel();
+    static boost::shared_ptr<SendChannel> newStringChannel(std::string& dest);
+
 protected:
     ReleaseFuncPtr _release;
 };

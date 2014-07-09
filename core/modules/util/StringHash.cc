@@ -39,6 +39,15 @@ template <unsigned char *dFunc(const unsigned char *,
 inline std::string wrapHash(void const* buffer, int bufferSize) {
     unsigned char digest[dLength];
     dFunc(reinterpret_cast<unsigned char const*>(buffer), bufferSize, digest);
+    return std::string(reinterpret_cast<char*>(digest), dLength);
+}
+
+template <unsigned char *dFunc(const unsigned char *,
+                               size_t, unsigned char *),
+          int dLength>
+inline std::string wrapHashHex(void const* buffer, int bufferSize) {
+    unsigned char digest[dLength];
+    dFunc(reinterpret_cast<unsigned char const*>(buffer), bufferSize, digest);
     std::ostringstream s;
     s.flags(std::ios::hex);
     s.fill('0');
@@ -59,17 +68,34 @@ namespace util {
 /// @return a hexadecimal representation of the MD5 hash of the input buffer
 /// 128 bits -> 16 bytes -> 32 hex digits
 std::string StringHash::getMd5Hex(char const* buffer, int bufferSize) {
-    return wrapHash<MD5, MD5_DIGEST_LENGTH>(buffer, bufferSize);
+    return wrapHashHex<MD5, MD5_DIGEST_LENGTH>(buffer, bufferSize);
 }
 
 /// @return a hexadecimal representation of the SHA1 hash of the input buffer
 /// 160 bits -> 20 bytes -> 40 hex digits
 std::string StringHash::getSha1Hex(char const* buffer, int bufferSize) {
-    return wrapHash<SHA1, SHA_DIGEST_LENGTH>(buffer, bufferSize);
+    return wrapHashHex<SHA1, SHA_DIGEST_LENGTH>(buffer, bufferSize);
 }
 /// @return a hexadecimal representation of the SHA256 hash of the input buffer
 /// 256 bits -> 32 bytes -> 64 hex digits
 std::string StringHash::getSha256Hex(char const* buffer, int bufferSize) {
+    return wrapHashHex<SHA256, SHA256_DIGEST_LENGTH>(buffer, bufferSize);
+}
+
+/// @return a hexadecimal representation of the MD5 hash of the input buffer
+/// 128 bits -> 16 bytes
+std::string StringHash::getMd5(char const* buffer, int bufferSize) {
+    return wrapHash<MD5, MD5_DIGEST_LENGTH>(buffer, bufferSize);
+}
+
+/// @return the raw SHA1 hash of the input buffer
+/// 160 bits -> 20 bytes
+std::string StringHash::getSha1(char const* buffer, int bufferSize) {
+    return wrapHash<SHA1, SHA_DIGEST_LENGTH>(buffer, bufferSize);
+}
+/// @return the raw SHA256 hash of the input buffer
+/// 256 bits -> 32 bytes
+std::string StringHash::getSha256(char const* buffer, int bufferSize) {
     return wrapHash<SHA256, SHA256_DIGEST_LENGTH>(buffer, bufferSize);
 }
 

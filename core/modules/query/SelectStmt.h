@@ -86,6 +86,7 @@ public:
     FromList const& getFromList() const { return *_fromList; }
     FromList& getFromList() { return *_fromList; }
     void setFromList(boost::shared_ptr<FromList> f) { _fromList = f; }
+    void setFromListAsTable(std::string const& t);
 
     bool hasWhereClause() const { return _whereClause; }
     WhereClause const& getWhereClause() const { return *_whereClause; }
