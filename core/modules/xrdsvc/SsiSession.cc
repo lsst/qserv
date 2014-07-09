@@ -23,13 +23,18 @@
 #include "xrdsvc/SsiSession.h"
 
 // System headers
+#include <deque>
 #include <iostream>
 #include <string>
 
 // Third-party
+#include <boost/thread/locks.hpp>
+#include <boost/thread/condition_variable.hpp>
+#include <boost/thread/mutex.hpp>
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Qserv headers
+#include "global/debugUtil.h"
 #include "global/ResourceUnit.h"
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
@@ -38,22 +43,108 @@
 #include "wbase/SendChannel.h"
 #include "wlog/WLogger.h"
 
+
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
 typedef proto::ProtoImporter<proto::TaskMsg> Importer;
 typedef boost::shared_ptr<Importer> ImporterPtr;
+
+class ChannelStream : public XrdSsiStream {
+public:
+    class SimpleBuffer : public XrdSsiStream::Buffer {
+    public:
+        SimpleBuffer(std::string const& input) {
+            data = new char[input.size()];
+            memcpy(data, input.data(), input.size());
+            next = 0;
+        }
+
+        //!> Call to recycle the buffer when finished
+        virtual void Recycle() {
+            delete this; // Self-destruct. FIXME: Not sure this is right.
+        }
+
+        // Inherited from XrdSsiStream:
+        // char  *data; //!> -> Buffer containing the data
+        // Buffer *next; //!> For chaining by buffer receiver
+
+        virtual ~SimpleBuffer() {
+            if(data) {
+                delete[] data;
+            }
+        }
+    };
+
+    ChannelStream(wlog::WLogger::Ptr log)
+        : XrdSsiStream(isActive),
+          _closed(false),
+          _log(log) {}
+    virtual ~ChannelStream() {
+        std::ostringstream os;
+        os << "Stream (" << (void*)this << ") deleted";
+        _log->info(os.str());
+    }
+    void append(char const* buf, int bufLen, bool last) {
+        if(_closed) {
+            throw std::runtime_error("Stream closed, append(...,last=true) already received");
+        }
+        _log->info(" trying to append message");
+        _log->info(makeByteStreamAnnotated("StreamMsg", buf, bufLen));
+        {
+            boost::unique_lock<boost::mutex> lock(_mutex);
+            _log->info(" trying to append message (flowing)");
+
+            _msgs.push_back(std::string(buf, bufLen));
+            _closed = last; // if last is true, then we are closed.
+            _hasDataCondition.notify_one();
+        }
+    }
+    virtual Buffer *GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
+        boost::unique_lock<boost::mutex> lock(_mutex);
+        while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
+            // wait.
+            _log->info("Waiting, no data ready");
+            _hasDataCondition.wait(lock);
+        }
+        if(_msgs.empty() && _closed) { // We are closed and no more
+            // msgs are available.
+            _log->info("Not waiting, but closed");
+            dlen = 0;
+            eInfo.Set("Not an active stream", EOPNOTSUPP);
+            return 0;
+        }
+        SimpleBuffer* sb = new SimpleBuffer(_msgs.front());
+        dlen = _msgs.front().size();
+        _msgs.pop_front();
+        last = _closed && _msgs.empty();
+        std::ostringstream os;
+        os << "returning buffer (" << dlen << ","
+           << (last ? "(more)" : "(last)");
+        _log->info(os.str());
+        return sb;
+    }
+    bool closed() const { return _closed; }
+private:
+    bool _closed;
+    wlog::WLogger::Ptr _log;
+    // Can keep a deque of (buf, bufsize) to reduce copying, if needed.
+    std::deque<std::string> _msgs;
+    boost::mutex _mutex;
+    boost::condition_variable _hasDataCondition;
+};
+
 ////////////////////////////////////////////////////////////////////////
 // class SsiSession::ReplyChannel
 ////////////////////////////////////////////////////////////////////////
-
 class SsiSession::ReplyChannel : public wbase::SendChannel {
 public:
     typedef XrdSsiResponder::Status Status;
     typedef boost::shared_ptr<ReplyChannel> Ptr;
 
-    ReplyChannel(SsiSession& s) : ssiSession(s) {}
+    ReplyChannel(SsiSession& s)
+        : ssiSession(s), _stream(0) {}
 
     virtual bool send(char const* buf, int bufLen) {
         Status s = ssiSession.SetResponse(buf, bufLen);
@@ -104,7 +195,28 @@ public:
         ssiSession._log->info(os.str());
         return true;
     }
+
+    void _initStream() {
+        //_stream.reset(new Stream);
+        _stream = new ChannelStream(ssiSession._log);
+        ssiSession.SetResponse(_stream);
+    }
+    virtual bool sendStream(char const* buf, int bufLen, bool last) {
+        // Initialize streaming object if not initialized.
+        std::ostringstream os;
+        os << "sendStream, checking stream " << (void*) _stream << ")";
+        ssiSession._log->info(os.str());
+        if(!_stream) {
+            _initStream();
+        } else if(_stream->closed()) {
+            return false;
+        }
+        _stream->append(buf, bufLen, last);
+        return true;
+    }
+//    boost::shared_ptr<Stream> _stream;
     SsiSession& ssiSession;
+    ChannelStream* _stream;
 };
 ////////////////////////////////////////////////////////////////////////
 // class SsiProcessor
@@ -114,17 +226,23 @@ public:
 /// SendChannel
 struct SsiProcessor : public Importer::Acceptor {
     typedef boost::shared_ptr<SsiProcessor> Ptr;
+
     SsiProcessor(ResourceUnit const& ru_,
                  wbase::MsgProcessor::Ptr mp,
-                 boost::shared_ptr<wbase::SendChannel> sc)
-        : ru(ru_), msgProcessor(mp), sendChannel(sc) {}
+                 boost::shared_ptr<wbase::SendChannel> sc,
+                 std::vector<SsiSession::CancelFuncPtr>& cancellers_)
+        : ru(ru_),
+          msgProcessor(mp),
+          sendChannel(sc),
+          cancellers(cancellers_) {}
 
     virtual void operator()(boost::shared_ptr<proto::TaskMsg> m) {
         util::Timer t;
         if(m->has_db() && m->has_chunkid()
            && (ru.db() == m->db()) && (ru.chunk() == m->chunkid())) {
             t.start();
-            (*msgProcessor)(m, sendChannel);
+            SsiSession::CancelFuncPtr p = (*msgProcessor)(m, sendChannel);
+            cancellers.push_back(p);
             t.stop();
             std::cerr << "SsiProcessor msgProcessor call took "
                       << t.getElapsed() << " seconds" << std::endl;
@@ -135,9 +253,11 @@ struct SsiProcessor : public Importer::Acceptor {
             sendChannel->sendError(os.str().c_str(), EINVAL);
         }
     }
+
     ResourceUnit const& ru;
     wbase::MsgProcessor::Ptr msgProcessor;
     boost::shared_ptr<wbase::SendChannel> sendChannel;
+    std::vector<SsiSession::CancelFuncPtr>& cancellers;
 };
 ////////////////////////////////////////////////////////////////////////
 // class SsiSession
@@ -210,6 +330,14 @@ SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
 
+    if(cancel) {
+        // Do cancellation.
+        typedef std::vector<CancelFuncPtr>::iterator Iter;
+        for(Iter i=_cancellers.begin(), e=_cancellers.end(); i != e; ++i) {
+            assert(*i);
+            (**i)();
+        }
+    }
     // No buffers allocated, so don't need to free.
     // We can release/unlink the file now
     std::ostringstream os;
@@ -238,8 +366,7 @@ void SsiSession::enqueue(ResourceUnit const& ru, char* reqData, int reqSize) {
     // reqData has the entire request, so we can unpack it without waiting for
     // more data.
     ReplyChannel::Ptr rc(new ReplyChannel(*this));
-    SsiProcessor::Ptr sp(new SsiProcessor(ru, _processor, rc));
-
+    SsiProcessor::Ptr sp(new SsiProcessor(ru, _processor, rc, _cancellers));
     std::ostringstream os;
     os << "Importing TaskMsg of size " << reqSize;
     _log->info(os.str());

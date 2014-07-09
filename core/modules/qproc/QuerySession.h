@@ -100,6 +100,7 @@ public:
     std::string const& getError() const { return _error; }
 
     rproc::MergeFixup makeMergeFixup() const;
+    boost::shared_ptr<query::SelectStmt> getMergeStmt() const;
 
     /// Finalize a query after chunk coverage has been updated
     void finalize();

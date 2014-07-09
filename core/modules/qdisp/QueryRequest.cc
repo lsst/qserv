@@ -169,7 +169,9 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
 }
 
 void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
-    LOGGER_INF << "ProcessResponse[data] with buflen=" << blen << std::endl;
+    LOGGER_INF << "ProcessResponse[data] with buflen=" << blen
+               << (last ? "(last)" : "(more)")
+               << std::endl;
     if(blen < 0) { // error, check errinfo object.
         int eCode;
         std::string reason(eInfo.Get(eCode));
@@ -207,15 +209,17 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             }
         }
     }
-    if(last || (blen == 0)) {
+    if(last) {
         LOGGER_INF << "Response retrieved, bytes=" << blen << std::endl;
         _receiver->flush(blen, last);
         _status.report(ExecStatus::RESPONSE_DONE);
         _finish();
-    } else {
+    } else if(blen == 0) {
         std::string reason = "Response error, !last and  bufLen == 0";
         LOGGER_ERR << reason << std::endl;
         _status.report(ExecStatus::RESPONSE_DATA_ERROR, -1, reason);
+    } else {
+        LOGGER_INF << "Response recv (wait) bytes=" << blen << std::endl;
     }
 }
 

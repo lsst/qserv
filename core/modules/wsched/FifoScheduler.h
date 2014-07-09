@@ -46,18 +46,18 @@ public:
     explicit FifoScheduler(int maxRunning=-1);
     virtual ~FifoScheduler() {}
 
-    virtual void queueTaskAct(wcontrol::Task::Ptr incoming);
-    virtual wcontrol::TaskQueuePtr nopAct(wcontrol::TaskQueuePtr running);
-    virtual wcontrol::TaskQueuePtr newTaskAct(wcontrol::Task::Ptr incoming,
-                                              wcontrol::TaskQueuePtr running);
-    virtual wcontrol::TaskQueuePtr taskFinishAct(wcontrol::Task::Ptr finished,
-                                                 wcontrol::TaskQueuePtr running);
+    virtual void queueTaskAct(wbase::Task::Ptr incoming);
+    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running);
+    virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
+                                           wbase::TaskQueuePtr running);
+    virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
+                                              wbase::TaskQueuePtr running);
     static std::string getName() { return std::string("FifoSched"); }
 private:
-    wcontrol::TaskQueuePtr _fetchTask();
+    wbase::TaskQueuePtr _fetchTask();
 
     boost::mutex _mutex;
-    wcontrol::TaskQueue _queue;
+    wbase::TaskQueue _queue;
     int _maxRunning;
 };
 

@@ -1,0 +1,115 @@
+// -*- LSST-C++ -*-
+/*
+ * LSST Data Management System
+ * Copyright 2014 LSST Corporation.
+ *
+ * This product includes software developed by the
+ * LSST Project (http://www.lsst.org/).
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the LSST License Statement and
+ * the GNU General Public License along with this program.  If not,
+ * see <http://www.lsstcorp.org/LegalNotices/>.
+ */
+#include "wbase/SendChannel.h"
+
+// System headers
+#include <iostream>
+#include <sstream>
+#include <vector>
+
+namespace lsst {
+namespace qserv {
+namespace wbase {
+
+class NopChannel : public SendChannel {
+public:
+    virtual bool send(char const* buf, int bufLen) {
+        std::cout << "NopChannel send(" << (void*) buf
+                  << ", " << bufLen << ");\n";
+        return true;
+    }
+
+    virtual bool sendError(std::string const& msg, int code) {
+        std::cout << "NopChannel sendError(\"" << msg
+                  << "\", " << code << ");\n";
+        return true;
+    }
+    virtual bool sendFile(int fd, Size fSize) {
+        std::cout << "NopChannel sendFile(" << fd
+                  << ", " << fSize << ");\n";
+        return true;
+    }
+    virtual bool sendStream(char const* buf, int bufLen, bool last) {
+        std::cout << "NopChannel sendStream(" << (void*) buf
+                  << ", " << bufLen << ", "
+                  << (last ? "true" : "false") << ");\n";
+        return true;
+    }
+};
+
+boost::shared_ptr<SendChannel> SendChannel::newNopChannel() {
+    return boost::shared_ptr<NopChannel>(new NopChannel);
+}
+class StringChannel : public SendChannel {
+public:
+    StringChannel(std::string& dest) : _dest(dest) {}
+
+    virtual bool send(char const* buf, int bufLen) {
+        _dest.append(buf, bufLen);
+        return true;
+    }
+
+    virtual bool sendError(std::string const& msg, int code) {
+        std::ostringstream os;
+        os << "(" << code << "," << msg << ")";
+        _dest.append(os.str());
+        return true;
+    }
+
+    virtual bool sendFile(int fd, Size fSize) {
+        Size bytesRead = 0;
+        std::vector<char> buf(fSize);
+        Size remain = fSize;
+        while(remain > 0) {
+            Size frag = ::read(fd, buf.data(), remain);
+            if(frag < 0) {
+                std::cout << "ERROR reading from fd during "
+                          << "StringChannel::sendFile(" << "," << fSize << ")";
+                return false;
+            } else if(frag == 0) {
+                std::cout << "ERROR unexpected 0==read() during "
+                          << "StringChannel::sendFile(" << "," << fSize << ")";
+                return false;
+            }
+            _dest.append(buf.data(), frag);
+            remain -= frag;
+        }
+        return true;
+    }
+
+    virtual bool sendStream(char const* buf, int bufLen, bool last) {
+        _dest.append(buf, bufLen);
+        std::cout << "StringChannel sendStream(" << (void*) buf
+                  << ", " << bufLen << ", "
+                  << (last ? "true" : "false") << ");\n";
+        return true;
+    }
+private:
+    std::string& _dest;
+};
+
+boost::shared_ptr<SendChannel> SendChannel::newStringChannel(std::string& d) {
+    return boost::shared_ptr<StringChannel>(new StringChannel(d));
+}
+
+}}} // namespace lsst::qserv::wbase

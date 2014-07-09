@@ -47,11 +47,11 @@ namespace wbase {
 /// MsgProcessor implementations handle incoming TaskMsg objects and write their
 /// results over a SendChannel
 class MsgProcessor
-    : public util::BinaryCallable<void, // TODO: a refHandle to track so we can squash (DM-1087)
+    : public util::BinaryCallable<boost::shared_ptr<util::VoidCallable<void> >,
                                   boost::shared_ptr<proto::TaskMsg>,
                                   boost::shared_ptr<SendChannel> > {
 public:
-    virtual void operator()(A1 taskMsg, A2 replyChannel) = 0;
+    virtual R operator()(A1 taskMsg, A2 replyChannel) = 0;
 };
 }}} // lsst::qserv::wbase
 #endif // LSST_QSERV_WBASE_MSGPROCESSOR_H

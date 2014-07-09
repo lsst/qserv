@@ -36,6 +36,18 @@ namespace lsst {
 namespace qserv {
 namespace wlog {
 
+class CoutPrinter : public WLogger::Printer {
+public:
+    virtual Printer& operator()(char const* s) {
+        std::cout << s;
+        return *this;
+    }
+};
+
+boost::shared_ptr<WLogger::Printer> WLogger::Printer::newCout() {
+    return boost::shared_ptr<WLogger::Printer>(new CoutPrinter);
+}
+
 void WLogger::message(WLogger::LogLevel logLevel, char const* s) {
     if(logLevel <= _logLevel) { // Lower is higher priority
         std::string o1(_prefix + s);

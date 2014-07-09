@@ -42,22 +42,22 @@ public:
     virtual ~GroupScheduler() {}
 
     virtual bool removeByHash(std::string const& hash);
-    virtual void queueTaskAct(wcontrol::Task::Ptr incoming);
-    virtual wcontrol::TaskQueuePtr nopAct(wcontrol::TaskQueuePtr running);
-    virtual wcontrol::TaskQueuePtr newTaskAct(wcontrol::Task::Ptr incoming,
-                                              wcontrol::TaskQueuePtr running);
-    virtual wcontrol::TaskQueuePtr taskFinishAct(wcontrol::Task::Ptr finished,
-                                                 wcontrol::TaskQueuePtr running);
+    virtual void queueTaskAct(wbase::Task::Ptr incoming);
+    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running);
+    virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
+                                              wbase::TaskQueuePtr running);
+    virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
+                                                 wbase::TaskQueuePtr running);
     static std::string getName()  { return std::string("GroupSched"); }
     bool checkIntegrity();
 
-    typedef GroupedQueue<wcontrol::Task::Ptr, wcontrol::Task::ChunkEqual> Queue;
+    typedef GroupedQueue<wbase::Task::Ptr, wbase::Task::ChunkEqual> Queue;
 
 private:
-    void _enqueueTask(wcontrol::Task::Ptr incoming);
+    void _enqueueTask(wbase::Task::Ptr incoming);
     bool _integrityHelper();
-    wcontrol::TaskQueuePtr _getNextIfAvail(int runCount);
-    wcontrol::TaskQueuePtr _getNextTasks(int max);
+    wbase::TaskQueuePtr _getNextIfAvail(int runCount);
+    wbase::TaskQueuePtr _getNextTasks(int max);
 
     boost::mutex _mutex;
 

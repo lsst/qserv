@@ -67,7 +67,7 @@ MySqlConnection::~MySqlConnection() {
     if(_mysql) {
         if(_mysql_res) {
             MYSQL_ROW row;
-            while(row = mysql_fetch_row(_mysql_res)); // Drain results.
+            while((row = mysql_fetch_row(_mysql_res))); // Drain results.
             _mysql_res = NULL;
         }
         killMySql(_mysql, _useThreadMgmt);

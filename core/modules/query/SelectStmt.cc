@@ -174,6 +174,12 @@ SelectStmt::copySyntax() const {
     return newS;
 }
 
+void SelectStmt::setFromListAsTable(std::string const& t) {
+    TableRefListPtr tr(new TableRefList);
+    tr->push_back(boost::make_shared<TableRef>("", t, ""));
+    _fromList.reset(new FromList(tr));
+}
+
 ////////////////////////////////////////////////////////////////////////
 // class SelectStmt (private)
 ////////////////////////////////////////////////////////////////////////

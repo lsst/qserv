@@ -33,6 +33,7 @@ message TaskMsg {
     optional int32 chunkid = 3;
     repeated string scantables = 4;
     optional string user = 6;
+    optional int32 protocol = 7; // Null or 1: original mysqldump, 2: row-based result
     message Subchunk {
         optional string database = 1; // database (unused)
         repeated string table = 2; // subchunked tables
@@ -61,16 +62,41 @@ message TaskMsg {
 // object.
 // The Header message contains size information so each result can be
 // distinguished.
-message ResultHeader {
-    optional int64 session = 1;
-    message Result {
-        // Meta-info of an upcoming result
-        required string hash = 1; //
-        required int64 resultsize = 3;
-        optional int32 chunkid = 2;
-    }
-    repeated Result result = 2;
+message ProtoHeader {
+    optional int32 protocol = 1;
+    required int32 size = 2; // protobufs discourages messages > megabytes
+    optional bytes md5 = 3;
 }
 
+message ColumnSchema {
+    optional string name = 1; // Optional to allow type-only transmission
+    required bool hasdefault = 2; // unambiguious flag--
+    // has_defaultvalue() often tests true even after clear_defaultvalue()
+    optional bytes defaultvalue = 3;
+    required string sqltype = 4;
+    optional int32 mysqltype = 5;
+}
+message RowSchema {
+    repeated ColumnSchema columnschema = 1;
+}
+message RowBundle {
+    repeated bytes column = 1; // bytes to allow BLOB encoding
+    repeated bool isnull = 2; // Flag to allow sending nulls.
+}
+
+message Result {
+    required int32 nextsize = 1; // Are there additional Result messages
+    optional int64 session = 2;
+    required RowSchema rowschema = 3;
+    optional int32 errorcode = 4;
+    optional string errormsg = 5;
+    repeated RowBundle row = 6;
+}
 /// Future: Serialize MySQL output into protobuf instead of using
 /// mysqldump.
+
+// Result protocol 2:
+// Byte 0: N = unsigned char size of ProtoHeader
+// Byte 1-N: ProtoHeader message
+// Byte N+1, extent = ProtoHeader.size, Result msg
+// (successive Result msgs indicated by size markers in previous Result msgs)

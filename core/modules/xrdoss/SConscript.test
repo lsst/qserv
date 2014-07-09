@@ -1,5 +1,6 @@
 # -*- python -*-
 Import('env')
+Import('cacheObjs')
 Import('libProducts')
 Import('defaultTgts')
 Import('findLibs')
@@ -10,11 +11,12 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "boost_regex boost_system boost_thread mysqlclient_r ssl crypto XrdClient XrdUtils".split()
+extDeps = "boost_regex boost_system boost_thread mysqlclient_r protobuf ssl crypto XrdClient XrdUtils".split()
 
 modDeps = 'wlog mysql obsolete sql wbase wconfig wpublish util'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
-pDeps = itertools.chain(*map(lambda m: libProducts[m], ['xrdoss']))
+pDeps = itertools.chain(*map(lambda m: libProducts[m], ['xrdoss', 'proto']))
+pDeps = cacheObjs(env, pDeps, ".o")
 deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain
 deps.sort(key=str)
 

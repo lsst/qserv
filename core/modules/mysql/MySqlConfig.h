@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_MYSQL_SQLCONFIG_H
-#define LSST_QSERV_MYSQL_SQLCONFIG_H
+#ifndef LSST_QSERV_MYSQL_MYSQLCONFIG_H
+#define LSST_QSERV_MYSQL_MYSQLCONFIG_H
 
 // System headers
 #include <string>
@@ -53,4 +53,4 @@ public:
 
 }}} // namespace lsst::qserv::mysql
 
-#endif // LSST_QSERV_MYSQL_SQLCONFIG_H
+#endif // LSST_QSERV_MYSQL_MYSQLCONFIG_H

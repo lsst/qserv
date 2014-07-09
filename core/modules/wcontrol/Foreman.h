@@ -54,7 +54,7 @@
 
 // Local headers
 #include "wbase/Base.h"
-#include "wcontrol/Task.h"
+#include "wbase/Task.h"
 
 // Forward declarations
 namespace lsst {
@@ -81,8 +81,8 @@ public:
     class TaskWatcher {
     public:
         virtual ~TaskWatcher() {}
-        virtual void markStarted(Task::Ptr t) {}
-        virtual void markFinished(Task::Ptr t) {}
+        virtual void markStarted(wbase::Task::Ptr t) {}
+        virtual void markFinished(wbase::Task::Ptr t) {}
     };
 
     /// An abstract scheduler interface. Foreman objects use Scheduler instances
@@ -93,12 +93,12 @@ public:
         virtual ~Scheduler() {}
 
         virtual bool removeByHash(std::string const& hash) { return false; }
-        virtual void queueTaskAct(Task::Ptr incoming) = 0;
-        virtual TaskQueuePtr nopAct(TaskQueuePtr running) = 0;
-        virtual TaskQueuePtr newTaskAct(Task::Ptr incoming,
-                                        TaskQueuePtr running) = 0;
-        virtual TaskQueuePtr taskFinishAct(Task::Ptr finished,
-                                           TaskQueuePtr running) = 0;
+        virtual void queueTaskAct(wbase::Task::Ptr incoming) = 0;
+        virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running) = 0;
+        virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
+                                               wbase::TaskQueuePtr running) = 0;
+        virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
+                                                  wbase::TaskQueuePtr running) = 0;
     };
 
     virtual bool squashByHash(std::string const& hash) { return false; }
