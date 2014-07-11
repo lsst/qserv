@@ -14,37 +14,40 @@ cd $STACK_DIR ||
     echo "Unable to go to install directory : ${STACK_DIR}"
     exit 1
 }
+echo
 echo "Installing eups"
 echo "==============="
+echo
 curl -O ${NEWINSTALL_URL} ||
 {
     echo "Unable to download from ${NEWINSTALL_URL}"
     exit 1
 }
-bash newinstall.sh
+time bash newinstall.sh
 source loadLSST.sh
 
+echo
 echo "Installing Qserv"
 echo "================"
 echo
-eups distrib install qserv ${REF} -r ${DISTSERVER_URL} &&
+time eups distrib install qserv ${REF} -r ${DISTSERVER_URL} &&
 setup qserv ||
 {
     echo "Unable to install Qserv"
     exit 1
 }
-
+echo
 echo "Installing Qserv integration tests datasets"
 echo "==========================================="
 echo
-eups distrib install qserv_testdata -r ${DISTSERVER_URL} &&
+time eups distrib install qserv_testdata -r ${DISTSERVER_URL} &&
 setup qserv_testdata ||
 {
     echo "Unable to install Qserv test datasets"
     exit 1
 }
 
-
+echo
 echo "Configuring Qserv"
 echo "================="
 echo
@@ -54,7 +57,7 @@ qserv-configure.py --all ||
     exit 1
 }
 
-
+echo
 echo "Starting Qserv"
 echo "=============="
 echo
@@ -64,7 +67,7 @@ qserv-start.sh ||
     exit 1
 }
 
-
+echo
 echo "Running Qserv integration tests"
 echo "==============================="
 echo
@@ -74,6 +77,7 @@ qserv-test-integration.py ||
     exit 1
 }
 
+echo
 echo "Stopping Qserv"
 echo "=============="
 echo
