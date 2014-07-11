@@ -4,11 +4,11 @@
 #xrootd_user=qsmaster
 #scratch_path=/dev/shm/qserv
 #port=7080
-xrootd=%(XROOTD_MANAGER_HOST)s:%(XROOTD_PORT)s
+xrootd={{XROOTD_MANAGER_HOST}}:{{XROOTD_PORT}}
 # Use /dev/shm shared memory for better performance
-scratch_path=%(QSERV_SCRATCH_DIR)s
+scratch_path={{QSERV_SCRATCH_DIR}}
 xrootd_user=qsmaster
-port=%(QSERV_RPC_PORT)s
+port={{QSERV_RPC_PORT}}
 
 #[mgmtdb]
 #db=qservMeta
@@ -19,12 +19,12 @@ port=%(QSERV_RPC_PORT)s
 technology=zoo
 
 # For zoo, provide zookeeper connection information
-# For local zookeeper installation, use "localhost:%(ZOOKEEPER_PORT)s"
+# For local zookeeper installation, use "localhost:{{ZOOKEEPER_PORT}}"
 # For mem, provide location of file containing key-value pairs
 # (to learn how to dump key-value pairs, see
 # qserv/core/modules/css/KvInterfaceImplMem.cc)
 # TODO : localhost doesn't work on Ubuntu 14.04, why ?
-connection=127.0.0.1:%(ZOOKEEPER_PORT)s
+connection=127.0.0.1:{{ZOOKEEPER_PORT}}
 
 [resultdb]
 #host=
@@ -36,13 +36,13 @@ connection=127.0.0.1:%(ZOOKEEPER_PORT)s
 #dropMem=
 passwd =
 db=qservResult
-unix_socket=%(QSERV_DIR)s/var/lib/mysql/mysql.sock
+unix_socket={{QSERV_RUN_DIR}}/var/lib/mysql/mysql.sock
 host=
 user=qsmaster
 port=0
 
 [partitioner]
-emptyChunkListFile=%(QSERV_DIR)s/etc/emptyChunks.txt
+emptyChunkListFile={{QSERV_RUN_DIR}}/etc/emptyChunks.txt
 
 #[tuning]
 #memoryEngine=yes

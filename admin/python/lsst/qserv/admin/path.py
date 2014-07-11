@@ -36,4 +36,3 @@ def is_writable(dir):
     except Exception as e:
         logger.info("No write access to dir %s : %s" % (dir,e))
         return False
-

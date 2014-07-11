@@ -1,0 +1,45 @@
+* TODO : put qserv-functions in source tree
+  etc/init.d/zookeeper:. %(QSERV_RUN_DIR)s/etc/init.d/qserv-functions
+
+* TODO DM-622 : create an admin/configuration directory with admin/SConstruct and templates  (see adin in qserv_dir to see content)
+* TODO DM-622 algo :
+eupspkg -er build
+eupspkg -er install
+eupspkg -er decl
+setup qserv u.fjammes.DM-622-g90a79c9222
+
+use-case : configuration steps
+===============================
+
+1-INSTALL CONF TOOL : qserv-conf.py --install
+---------------------
+
+QSERV_VERSION=`qserv-version`
+# ask user or use default
+# used on in install conf tool procedure
+QSERV_RUN_DIR=${HOME}/qserv-run/$QSERV_VERSION/
+mkdir $QSERV_RUN_DIR
+# A- here use template to set up qserv-run-dir in qserv.conf (this allow to use same conf tool with different qserv-run-dir or have them in diferent locations) ? or guess it (this would allow to mv qserv-run-dir)
+cp -r $QSERV_DIR/admin $QSERV_RUN_DIR/admin
+
+2-CONFIGURE : qserv-conf.py --enable
+-------------
+
+cd $QSERV_RUN_DIR/admin
+# for now edit run_base_dir in qserv.conf (A will do this)
+# ask user to edit qserv.conf or use default (mono-node) ?
+scons
+# do this in scons script from qserv.conf qserv_run_dir variable
+# remove existing QSERV_RUN_DIR instances ?
+export PATH=$QSERV_RUN_DIR/bin:$PATH
+
+use-case : use a previous run-dir with a new Qserv instance/binary
+===================================================================
+
+- edit $QSERV_RUN_DIR/admin/qserv.conf and change Qserv base dir
+- check compliance (version check ?)
+- re-configure
+
+
+use-case : several Qserv instance with several run-dir ?
+========================================================

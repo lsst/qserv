@@ -15,24 +15,24 @@
 #              middleware used between Qserv master and nodes. \ 
 ### END INIT INFO
 
-. %(QSERV_DIR)s/etc/init.d/qserv-functions
+. {{QSERV_RUN_DIR}}/etc/init.d/qserv-functions
 
-XROOTD_DIR=%(XROOTD_DIR)s
-XROOTD_CONFIG=%(QSERV_DIR)s/etc/lsp.cf
+XROOTD_DIR={{XROOTD_DIR}}
+XROOTD_RUN_DIR={{XROOTD_RUN_DIR}}
+XROOTD_CONFIG={{QSERV_RUN_DIR}}/etc/lsp.cf
 XROOTD_INSTANCE_NAME="worker"
 
-PID_DIR=%(QSERV_PID_DIR)s/${XROOTD_INSTANCE_NAME}
-LOG_DIR=%(QSERV_LOG_DIR)s
+PID_DIR={{QSERV_PID_DIR}}/${XROOTD_INSTANCE_NAME}
+LOG_DIR={{QSERV_LOG_DIR}}
 
-
-export PATH=%(PATH)s
-export LD_LIBRARY_PATH=%(LD_LIBRARY_PATH)s
+export PATH={{PATH}}
+export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
 export QSW_XRDQUERYPATH="/q"
-export QSW_DBSOCK="%(MYSQLD_SOCK)s"
+export QSW_DBSOCK="{{MYSQLD_SOCK}}"
 export QSW_MYSQLDUMP=`which mysqldump`
-QSW_SCRATCHPATH="%(QSERV_DIR)s/tmp"
+QSW_SCRATCHPATH="{{QSERV_RUN_DIR}}/tmp"
 QSW_SCRATCHDB="qservScratch"
-export QSW_RESULTPATH="%(XROOTD_RUN_DIR)s/result"
+export QSW_RESULTPATH="${XROOTD_RUN_DIR}/result"
 
 start_service() {
 
@@ -41,7 +41,7 @@ start_service() {
 	prog=${1##*/}
 
 	pidfile=${PID_DIR}/${prog}.pid
-	lockfile=%(QSERV_DIR)s/var/lock/subsys/${prog}
+	lockfile={{QSERV_RUN_DIR}}/var/lock/subsys/${prog}
 	BINARY=${XROOTD_DIR}/bin/${prog}
 	LOGFILE=${LOG_DIR}/${prog}.log
 	[ -x ${BINARY} ] || exit 5
@@ -62,7 +62,7 @@ stop_service() {
         prog=${1##*/}
 
 	pidfile=${PID_DIR}/${prog}.pid
-	lockfile=%(QSERV_DIR)s/var/lock/subsys/${prog}
+	lockfile={{QSERV_RUN_DIR}}/var/lock/subsys/${prog}
 
 	eval stop -p $pidfile -l $lockfile $prog
 	retval=$?
@@ -82,8 +82,8 @@ start_all() {
 
         start_service "xrootd"
 	xrootd_started=$?
-        %(COMMENT_MONO_NODE)sstart_service "cmsd"
-	%(COMMENT_MONO_NODE)scmsd_started=$?
+        {{COMMENT_MONO_NODE}}start_service "cmsd"
+	{{COMMENT_MONO_NODE}}cmsd_started=$?
 	[ $xrootd_started -a $cmsd_started ] && retval=0
 	return $retval
 }
@@ -92,8 +92,8 @@ stop_all() {
         local xrootd_stopped cmsd_stopped=0 retval=1
         stop_service "xrootd"
 	xrootd_stopped=$?
-	%(COMMENT_MONO_NODE)sstop_service "cmsd"
-	%(COMMENT_MONO_NODE)scmsd_stopped=$?
+	{{COMMENT_MONO_NODE}}stop_service "cmsd"
+	{{COMMENT_MONO_NODE}}cmsd_stopped=$?
 	[ $xrootd_stopped -a $cmsd_stopped ] && retval=0
 	return $retval
 }

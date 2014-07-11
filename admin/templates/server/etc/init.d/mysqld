@@ -44,10 +44,9 @@
 # overwritten by settings in the MySQL configuration files.
 
 
-PATH=%(PATH)s
-QSERV_DIR=%(QSERV_DIR)s
-MYSQL_DIR=%(MYSQL_DIR)s
-QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
+PATH={{PATH}}
+QSERV_RUN_DIR={{QSERV_RUN_DIR}}
+MYSQL_DIR={{MYSQL_DIR}}
 
 if [ -n "${MYSQL_DIR}" ]; then
     basedir=${MYSQL_DIR} 
@@ -68,7 +67,7 @@ service_startup_timeout=900
 pid_file=${QSERV_RUN_DIR}/var/run/mysqld/mysqlmanager.pid
 server_pid_file=${QSERV_RUN_DIR}/var/run/mysqld/mysqld.pid
 use_mysqld_safe=1
-user=%(QSERV_UNIX_USER)s
+user={{QSERV_UNIX_USER}}
 if test -z "$basedir"
 then
   log_failure_msg "MySQL basedir ($basedir) could not be found!"
@@ -248,7 +247,7 @@ fi
 # check if it's in the old (depricated) place (datadir) and read it from there
 #
 
-extra_args="--defaults-file=${QSERV_DIR}/etc/my.cnf"
+extra_args="--defaults-file=${QSERV_RUN_DIR}/etc/my.cnf"
 
 parse_server_arguments `$print_defaults $extra_args mysqld server mysql_server mysql.server`
 
@@ -320,7 +319,7 @@ case "$mode" in
       # Give extra arguments to mysqld with the my.cnf file. This script
       # may be overwritten at next upgrade.
       pid_file=$server_pid_file
-      $bindir/mysqld_safe --defaults-file=${QSERV_DIR}/etc/my.cnf --datadir=$datadir --pid-file=$server_pid_file $other_args >/dev/null 2>&1 &
+      $bindir/mysqld_safe --defaults-file=${QSERV_RUN_DIR}/etc/my.cnf --datadir=$datadir --pid-file=$server_pid_file $other_args >/dev/null 2>&1 &
       wait_for_pid created $!; return_value=$?
 
       # Make lock for RedHat / SuSE

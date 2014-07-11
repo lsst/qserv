@@ -19,15 +19,14 @@
 
 # Source functions library.
 # WARN : this may clean environment
-. %(QSERV_DIR)s/etc/init.d/qserv-functions
+. {{QSERV_RUN_DIR}}/etc/init.d/qserv-functions
 
-PATH=%(PATH)s
-QSERV_DIR=%(QSERV_DIR)s
-QSERV_RUN_DIR=%(QSERV_RUN_DIR)s
-QSERV_PID_DIR=%(QSERV_PID_DIR)s
-QSERV_LOG_DIR=%(QSERV_LOG_DIR)s
-QSERV_UNIX_USER=%(QSERV_UNIX_USER)s
-QSERV_RPC_PORT=%(QSERV_RPC_PORT)s
+PATH={{PATH}}
+QSERV_RUN_DIR={{QSERV_RUN_DIR}}
+QSERV_PID_DIR={{QSERV_PID_DIR}}
+QSERV_LOG_DIR={{QSERV_LOG_DIR}}
+QSERV_UNIX_USER={{QSERV_UNIX_USER}}
+QSERV_RPC_PORT={{QSERV_RPC_PORT}}
 
 NAME="mysql-proxy"
 
@@ -44,7 +43,7 @@ fi
 # Set default mysql-proxy configuration.
 PROXY_OPTIONS="--daemon"
 pidfile=${QSERV_PID_DIR}/mysql-proxy.pid
-PROXY_CONFIG=${QSERV_DIR}/etc/my-proxy.cnf
+PROXY_CONFIG=${QSERV_RUN_DIR}/etc/my-proxy.cnf
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$NAME
 
 LUA_DEBUG_LEVEL=0
@@ -55,8 +54,8 @@ QSERV_RPC_PORT=${QSERV_RPC_PORT}
 DAEMON=$NAME
 
 # Source mysql-proxy configuration.
-if [ -f ${QSERV_DIR}/etc/sysconfig/mysql-proxy ]; then
-    . ${QSERV_DIR}/etc/sysconfig/mysql-proxy
+if [ -f ${QSERV_RUN_DIR}/etc/sysconfig/mysql-proxy ]; then
+    . ${QSERV_RUN_DIR}/etc/sysconfig/mysql-proxy
 fi
 
 # WARNING : can only use the --user switch if running as root

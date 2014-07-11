@@ -27,7 +27,6 @@ env.Default(env.Alias("build"))
 env.Depends("install", env.Alias("build"))
 
 env.Requires(env.Alias('python-tests'), env.Alias('admin'))
-env.Requires(env.Alias('python-tests'), env.Alias('dist-css'))
 
 env.Alias("install",
         [
@@ -47,18 +46,6 @@ env.Alias("install",
 python_tests = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("tests", "python"))
 env.Alias("python-tests", python_tests)
 
-# Install css
-#########################
-cssbin_target = os.path.join(env['prefix'], "bin")
-env.RecursiveInstall(cssbin_target, os.path.join("css", "bin"))
-python_css = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("css", "python"))
-env.Alias("dist-css",
-        [
-        python_css,
-        cssbin_target
-        ]
-)
-
 #########################
 #
 # Install admin commands
@@ -66,21 +53,17 @@ env.Alias("dist-css",
 #########################
 adminbin_target = os.path.join(env['prefix'], "bin")
 env.RecursiveInstall(adminbin_target, os.path.join("admin", "bin"))
+env.RecursiveInstall(adminbin_target, os.path.join("tests", "bin"))
 python_admin = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("admin", "python"))
 
 template_target = os.path.join(env['prefix'], "admin", "templates")
 env.RecursiveInstall(template_target, os.path.join("admin", "templates"))
 
-sitescons_target = os.path.join(env['prefix'], "admin", "site_scons")
-env.RecursiveInstall(sitescons_target, os.path.join("admin", "site_scons"))
-
 env.Alias("admin",
         [
         python_admin,
         template_target,
-        sitescons_target,
         adminbin_target,
-        env.Install(os.path.join(env['prefix'], "admin"), os.path.join("admin", "SConstruct"))
         ]
 )
 
@@ -136,11 +119,11 @@ def get_template_targets():
     state.log.info("Applying configuration information via templates files ")
 
     script_dict = {
-        '%\(QSERV_DIR\)s': env['prefix'],
-        '%\(XROOTD_DIR\)s': env['XROOTD_DIR'],
-        '%\(LUA_DIR\)s': env['LUA_DIR'],
-        '%\(MYSQL_DIR\)s': env['MYSQL_DIR'],
-        '%\(MYSQLPROXY_DIR\)s': env['MYSQLPROXY_DIR']
+        '{{QSERV_DIR}}': env['prefix'],
+        '{{XROOTD_DIR}}': env['XROOTD_DIR'],
+        '{{LUA_DIR}}': env['LUA_DIR'],
+        '{{MYSQL_DIR}}': env['MYSQL_DIR'],
+        '{{MYSQLPROXY_DIR}}': env['MYSQLPROXY_DIR']
     }
 
     for src_node in fileutils.recursive_glob(template_dir_path, "*", env):

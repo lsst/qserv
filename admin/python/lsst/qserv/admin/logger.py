@@ -2,7 +2,10 @@ import logging
 import os 
 
 def init_default_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
-    format = '%(asctime)s {%(pathname)s:%(lineno)d} %(levelname)s %(message)s'
+    if level == logging.DEBUG:
+        format = '%(asctime)s {%(pathname)s:%(lineno)d} %(levelname)s %(message)s'
+    else:
+        format = '%(asctime)s %(levelname)s %(message)s'
     add_console_logger(level, format)
     logger = add_file_logger(log_file_prefix, level, log_path, format)
     return logger
