@@ -33,7 +33,7 @@ def parseArgs():
 
     # run dir, all mutable data related to a qserv running instance are
     # located here
-    parser.add_argument("-r", "--data-dir", dest="data_dir",
+    parser.add_argument("-t", "--testdata-dir", dest="testdata_dir",
             default=os.environ.get('QSERV_TESTDATA_DIR'),
             help="full path to directory containing test datasets default to $QSERV_TESTDATA_DIR"
             )
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     config = commons.read_user_config()
     logger.init_default_logger("qserv-test-dataset-all", args.verbose_level, config['qserv']['log_dir'])
     log = logging.getLogger()
-    if args.data_dir is not None:
-	log.debug("Overriding ~/.lsst/qserv.conf testdata_dir value with {0}".format(args.data_dir))
-        config['qserv']['testdata_dir'] = args.data_dir
+    if args.testdata_dir is not None:
+	log.debug("Overriding ~/.lsst/qserv.conf testdata_dir value with {0}".format(args.testdata_dir))
+        config['qserv']['testdata_dir'] = args.testdata_dir
     unittest.TextTestRunner(verbosity=2).run(suite())

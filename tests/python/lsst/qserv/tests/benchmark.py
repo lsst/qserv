@@ -80,13 +80,10 @@ class Benchmark():
                     "Please run :\n"+
                     "   eups distrib install qserv_testdata\n"+
                     "   setup qserv_testdata\n"+
-                    "and then reconfigure client by running : \n"+
-                    "   cd $QSERV_DIR/admin\n"+
-                    "   scons client\n--\n"+
                     "FOR NON-EUPS USERS :\n"+
                     "Please fill 'testdata_dir' value in "+
                     "~/.lsst/qserv.conf with the path of the directory " +
-                    "containing tests datasets.\n")
+                    "containing tests datasets or use --testdata-dir option.\n")
             sys.exit(errno.EIO)        
         else :
             self.testdata_dir = self.config['qserv']['testdata_dir'] 

@@ -35,11 +35,11 @@ Configuration :
 
 Configuration is installed apart from Qserv software.
 
-  | # qserv-configure.py --help give additional informations 
-  | # configuration parameters will be deployed in all 
+  | # qserv-configure.py --help give additional informations
+  | # configuration parameters will be deployed in all
   | # qserv services configuration files/db
   | # for a minimalist single node install just leave default
-  | qserv-configure.py 
+  | qserv-configure.py --all
 
 Integration tests :
 -------------------
@@ -51,7 +51,7 @@ For a mono-node instance.
   Default value for $QSERV_RUN_DIR is $HOME/qserv-run/$QSERV_VERSION,
   with QSERV_VERSION provided by qserv-version.sh command.
 
-  | $QSERV_RUN_DIR/qserv-start.sh
+  | $QSERV_RUN_DIR/bin/qserv-start.sh
   | # launch integration tests for all datasets
   | qserv-test-integration.py
   | # launch integration tests only for dataset n°01
