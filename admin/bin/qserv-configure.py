@@ -226,8 +226,8 @@ def main():
 
             if not is_symlink_correct:
                 if args.force or configure.user_yes_no_query(
-                    ("Do you want to update user configuration file (currently pointing
-on {0}) for new run directory?"
+                    ("Do you want to update user configuration file " +
+                     "(currently pointing on {0}) for new run directory?"
                         .format(os.path.realpath(cfg_link))
                     )
                 ):

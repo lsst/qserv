@@ -15,7 +15,7 @@ import state
 
 src_dir=Dir('.').srcnode().abspath
 state.init(src_dir)
-env = state.env 
+env = state.env
 
 #########################
 #
@@ -27,6 +27,7 @@ env.Default(env.Alias("build"))
 env.Depends("install", env.Alias("build"))
 
 env.Requires(env.Alias('python-tests'), env.Alias('admin'))
+env.Requires(env.Alias('python-tests'), env.Alias('dist-css'))
 
 env.Alias("install",
         [
@@ -45,6 +46,24 @@ env.Alias("install",
 ################################
 python_tests = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("tests", "python"))
 env.Alias("python-tests", python_tests)
+
+#########################
+#
+# Install css
+#
+#########################
+cssbin_target = os.path.join(env['prefix'], "bin")
+env.RecursiveInstall(cssbin_target, os.path.join("css", "bin"))
+python_css = env.InstallPythonModule(
+    target=env['python_prefix'],
+    source=os.path.join("css", "python")
+)
+env.Alias("dist-css",
+        [
+        python_css,
+        cssbin_target
+        ]
+)
 
 #########################
 #
@@ -83,8 +102,8 @@ def get_install_targets() :
   # Setup the #include paths
   # env.Append(CPPPATH="modules")
 
-  (coreFilesToInstall, testTargets) = SConscript('core/modules/SConscript', 
-    variant_dir=env['build_dir'], 
+  (coreFilesToInstall, testTargets) = SConscript('core/modules/SConscript',
+    variant_dir=env['build_dir'],
     duplicate=1,
     exports=['env', 'ARGUMENTS']
     )
@@ -98,14 +117,14 @@ def get_install_targets() :
 
   installTargets = targetFiles + testTargets
   state.log.debug("%s " % installTargets)
-    
+
   return installTargets
 
 env.Alias("dist-core", get_install_targets())
 
 #########################################
 #
-# Templates : 
+# Templates :
 # - fill user configuration file
 # - alias for Qserv start/stop commands
 #
