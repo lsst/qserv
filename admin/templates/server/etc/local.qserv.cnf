@@ -1,9 +1,6 @@
 
 [frontend]
-#xrootd=lsst-dev01:1094
-#xrootd_user=qsmaster
-#scratch_path=/dev/shm/qserv
-#port=7080
+
 xrootd={{XROOTD_MANAGER_HOST}}:{{XROOTD_PORT}}
 # Use /dev/shm shared memory for better performance
 scratch_path={{QSERV_SCRATCH_DIR}}

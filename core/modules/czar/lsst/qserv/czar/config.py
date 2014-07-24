@@ -54,7 +54,7 @@ envFilenameVar = "QSERV_CONFIG"
 # Note that section names and key names are lower-cased by python.
 defaultConfig = StringIO("""\
 [frontend]
-xrootd=lsst-dev01:1094
+xrootd=localhost:1094
 xrootd_user=qsmaster
 scratch_path=/dev/shm/qserv
 port=7080
