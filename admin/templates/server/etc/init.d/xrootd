@@ -34,13 +34,21 @@ QSW_SCRATCHPATH="{{QSERV_RUN_DIR}}/tmp"
 QSW_SCRATCHDB="qservScratch"
 export QSW_RESULTPATH="${XROOTD_RUN_DIR}/result"
 
+# method to guess pid file name,
+# takes single argument - program name
+pid_file_name() {
+    local pidfile=${PID_DIR}/$1.pid
+    test "${1}{{NODE_TYPE}}" = "cmsdmaster" && pidfile=${PID_DIR}/$1.mangr.pid
+    echo $pidfile
+}
+
 start_service() {
 
         local prog
 
 	prog=${1##*/}
 
-	pidfile=${PID_DIR}/${prog}.pid
+	pidfile=$(pid_file_name $prog)
 	lockfile={{QSERV_RUN_DIR}}/var/lock/subsys/${prog}
 	BINARY=${XROOTD_DIR}/bin/${prog}
 	LOGFILE=${LOG_DIR}/${prog}.log
@@ -48,11 +56,12 @@ start_service() {
 	[ -f ${XROOTD_CONFIG} ] || exit 6
 
 	xrootd_cmd="\"${BINARY} -c ${XROOTD_CONFIG} -l ${LOGFILE} -n ${XROOTD_INSTANCE_NAME} &\""
-	# here pid files will be created twice time : one by xrootd/cmsd and one by start()
-	# but it works
+    # xrootd modifies log file path, try to guess it here too, this is not critical,
+    # it is only used by start() for diagnostic if start fails.
+    # TODO: start should not be using envvar from caller scope, if it needs log file name
+    # then we should pass it explicitely
+    LOGFILE=${LOG_DIR}/${XROOTD_INSTANCE_NAME}/${prog}.log
 	eval start -p ${pidfile} -l ${lockfile} ${prog} ${xrootd_cmd}
-	retval=$?
-	return $retval
 }
 
 stop_service() {
@@ -61,12 +70,10 @@ stop_service() {
 
         prog=${1##*/}
 
-	pidfile=${PID_DIR}/${prog}.pid
-	lockfile={{QSERV_RUN_DIR}}/var/lock/subsys/${prog}
+        pidfile=$(pid_file_name $prog)
+        lockfile={{QSERV_RUN_DIR}}/var/lock/subsys/${prog}
 
-	eval stop -p $pidfile -l $lockfile $prog
-	retval=$?
-	return $retval
+        eval stop -p $pidfile -l $lockfile $prog
 }
 
 start_all() {
@@ -81,39 +88,42 @@ start_all() {
         }
 
         start_service "xrootd"
-	xrootd_started=$?
+        xrootd_started=$?
+        
         {{COMMENT_MONO_NODE}}start_service "cmsd"
-	{{COMMENT_MONO_NODE}}cmsd_started=$?
-	[ $xrootd_started -a $cmsd_started ] && retval=0
-	return $retval
+        {{COMMENT_MONO_NODE}}cmsd_started=$?
+        
+        test $xrootd_started -eq 0 -a $cmsd_started -eq 0
 }
 
 stop_all() {
         local xrootd_stopped cmsd_stopped=0 retval=1
+        
         stop_service "xrootd"
-	xrootd_stopped=$?
-	{{COMMENT_MONO_NODE}}stop_service "cmsd"
-	{{COMMENT_MONO_NODE}}cmsd_stopped=$?
-	[ $xrootd_stopped -a $cmsd_stopped ] && retval=0
-	return $retval
+        xrootd_stopped=$?
+        
+        {{COMMENT_MONO_NODE}}stop_service "cmsd"
+        {{COMMENT_MONO_NODE}}cmsd_stopped=$?
+        
+        test $xrootd_stopped -eq 0 -a $cmsd_stopped -eq 0
 }
 
 status_all () {
-        local xrootd_status cmsd_status
-	NAME="xrootd"
-       	DAEMON=$(which ${NAME})
-       	pidfile=${PID_DIR}/${NAME}.pid
-       	status_of_proc -p $pidfile "$DAEMON" "$NAME"
-	[ ! $xrootd_status ] && return 1
+        local xrootd_status cmsd_status=0 retval=1
 
- 	#MONO-NODE# NAME="cmsd"
-       	#MONO-NODE# DAEMON=$(which ${NAME})
-       	#MONO-NODE# pidfile=${PID_DIR}/${NAME}.pid
-       	#MONO-NODE# status_of_proc -p $pidfile "$DAEMON" "$NAME"
-       	#MONO-NODE# cmsd_status=$?
-       	#MONO-NODE# [ ! $cmsd_status ] && return 1
+        NAME="xrootd"
+       	DAEMON=${XROOTD_DIR}/bin/${NAME}
+        pidfile=$(pid_file_name $NAME)
+       	status_of_proc -p $pidfile "$DAEMON" "$NAME" 
+       	xrootd_status=$?
+
+        {{COMMENT_MONO_NODE}}NAME="cmsd"
+       	{{COMMENT_MONO_NODE}}DAEMON=${XROOTD_DIR}/bin/${NAME}
+        {{COMMENT_MONO_NODE}}pidfile=$(pid_file_name $NAME)
+       	{{COMMENT_MONO_NODE}}status_of_proc -p $pidfile "$DAEMON" "$NAME"
+       	{{COMMENT_MONO_NODE}}cmsd_status=$?
  
-       	return 0 
+        test $xrootd_status -eq 0 -a $cmsd_status -eq 0
 }
 
 

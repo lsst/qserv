@@ -56,7 +56,8 @@ makeUrl(char const* hostport, char const* typeStr,
     if(hostport == NULL) {
         hostport = ::getenv("QSERV_XRD");
         if(hostport == NULL) {
-            hostport = "lsst-dev01:1094";
+            // use local host name if nothing is specified
+            hostport = "localhost:1094";
         }
     }
 #if 0

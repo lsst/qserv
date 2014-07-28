@@ -1,10 +1,10 @@
 import commons
-from datetime import datetime
 from distutils.util import strtobool
 import logging
 import os
 import sys
 import string
+import shutil
 from twisted.python.procutils import which
 
 from lsst.qserv.admin import path
@@ -13,21 +13,20 @@ COMPONENTS = ['mysql', 'xrootd', 'qserv-czar', 'scisql']
 STEP_RUN_LIST = ['directory-tree', 'etc'] + COMPONENTS + ['client']
 STEP_LIST = ['prepare'] + STEP_RUN_LIST
 STEP_DOC = dict(
-    zip(STEP_LIST, 
+    zip(STEP_LIST,
         [
-        """create qserv_run_dir and attach it to current Qserv instance""",	
-        """create directory tree in qserv_run_dir""",	
-        """fill qserv_run_dir configuration files with values issued 
+        """create qserv_run_dir and attach it to current Qserv instance""",
+        """create directory tree in qserv_run_dir""",
+        """fill qserv_run_dir configuration files with values issued
 from meta-config file $qserv_run_dir/qserv.conf""",
 	"""remove MySQL previous data, install db and set password """,
 	"""create xrootd query and result directories""",
 	"""initialize Qserv master and worker databases""",
 	"""install and configure SciSQL""",
-	"""create client configuration file (used by integration tests for
-example)"""
+	"""create client configuration file (used by integration tests for example)"""
         ]
     )
-) 
+)
 
 # used in cmd-line tool
 PREPARE = STEP_LIST[0]
@@ -35,7 +34,7 @@ DIRTREE = STEP_RUN_LIST[0]
 ETC     = STEP_RUN_LIST[1]
 CLIENT  = STEP_RUN_LIST[-1]
 
-def exists_and_is_writable(dir) :
+def exists_and_is_writable(dir):
     """
     Test if a dir exists. If no creates it, if yes checks if it is writeable.
     Return True if a writeable directory exists at the end of function execution, else False
@@ -44,9 +43,9 @@ def exists_and_is_writable(dir) :
     logger.debug("Checking existence and write access for : %s", dir)
     if not os.path.exists(dir):
         try:
-                os.makedirs(dir)
-        except OSerror:
-            logger.error("Unable to create dir : %s " % dir)
+            os.makedirs(dir)
+        except OSError:
+            logger.error("Unable to create dir : %s", dir)
             return False
     elif not path.is_writable(dir):
         return False
@@ -58,30 +57,27 @@ def check_root_dirs():
 
     logger = logging.getLogger()
 
-    check_success=True
-
     config = commons.getConfig()
 
-    for (section,option) in (('qserv','base_dir'),('qserv','log_dir'),('qserv','tmp_dir'),('mysqld','data_dir')):
+    for (section, option) in (('qserv', 'base_dir'), ('qserv', 'log_dir'), ('qserv', 'tmp_dir'),
+                             ('mysqld', 'data_dir')):
         dir = config[section][option]
         if not exists_and_is_writable(dir):
-            logging.fatal(  ("%s is not writable check/update permissions or"
-                            " change config['%s']['%s']") %
-                            (dir,section,option)
-                         )
+            logging.fatal("%s is not writable check/update permissions or"
+                            " change config['%s']['%s']", dir, section, option)
             sys.exit(1)
 
     for suffix in ('etc', 'var', 'var/lib', 'var/run', 'var/run/mysqld', 'var/lock/subsys'):
-        dir = os.path.join(config['qserv']['run_base_dir'],suffix)
+        dir = os.path.join(config['qserv']['run_base_dir'], suffix)
         if not exists_and_is_writable(dir):
-            logging.fatal("%s is not writable check/update permissions" % dir)
+            logging.fatal("%s is not writable check/update permissions", dir)
             sys.exit(1)
 
     # user config
-    user_config_dir=os.path.join(os.getenv("HOME"),".lsst")
+    user_config_dir = os.path.join(os.getenv("HOME"), ".lsst")
     if not exists_and_is_writable(user_config_dir):
-            logging.fatal("%s is not writable check/update permissions" % dir)
-            sys.exit(1)
+        logging.fatal("%s is not writable check/update permissions", dir)
+        sys.exit(1)
     logger.info("Qserv directory structure creation succeeded")
 
 def check_root_symlinks():
@@ -89,19 +85,16 @@ def check_root_symlinks():
         i.e. QSERV_RUN_DIR/var/log will be symlinked to  config['qserv']['log_dir'] if needed
     """
     log = logging.getLogger()
-    config=commons.getConfig()
+    config = commons.getConfig()
 
-    for (section,option,symlink_suffix) in (
-        ('qserv','log_dir','var/log'),
-        ('qserv','tmp_dir','tmp'),
-        ('mysqld','data_dir', 'var/lib/mysql')
-        ):
+    for (section, option, symlink_suffix) in (('qserv', 'log_dir', 'var/log'), ('qserv', 'tmp_dir', 'tmp'),
+                                              ('mysqld', 'data_dir', 'var/lib/mysql')):
         symlink_target = config[section][option]
-        default_dir = os.path.join(config['qserv']['run_base_dir'],symlink_suffix)
+        default_dir = os.path.join(config['qserv']['run_base_dir'], symlink_suffix)
 
         # A symlink is needed if the target directory is not set to its default value
         if  not os.path.samefile(symlink_target, os.path.realpath(default_dir)):
-            if os.path.exists(default_dir) :
+            if os.path.exists(default_dir):
                 if os.path.islink(default_dir):
                     os.unlink(default_dir)
                 else:
@@ -113,38 +106,39 @@ def check_root_symlinks():
 
 def _symlink(target, link_name):
     logger = logging.getLogger()
-    logger.debug("Creating symlink, target : %s, link name : %s " % (target,link_name))
+    logger.debug("Creating symlink, target : %s, link name : %s ", target, link_name)
     os.symlink(target, link_name)
 
 def uninstall(target, source, env):
     logger = logging.getLogger()
+    config = commons.getConfig()
     uninstall_paths = [
             os.path.join(config['qserv']['log_dir']),
             os.path.join(config['mysqld']['data_dir']),
             os.path.join(config['qserv']['scratch_dir']),
-            client_config_dir
+#            client_config_dir
             ]
-    for path in uninstall_paths:
-        if not os.path.exists(path):
-            logger.info("Not uninstalling %s because it doesn't exists." % path)
+    for upath in uninstall_paths:
+        if not os.path.exists(upath):
+            logger.info("Not uninstalling %s because it doesn't exists.", upath)
         else:
-            shutil.rmtree(path)
+            shutil.rmtree(upath)
 
 def _get_template_params():
     """ Compute templates parameters from configuration file
     """
-    logger=logging.getLogger()
-    config=commons.getConfig()
+    logger = logging.getLogger()
+    config = commons.getConfig()
 
-    if config['qserv']['node_type']=='mono':
+    if config['qserv']['node_type'] == 'mono':
         comment_mono_node = '#MONO-NODE# '
     else:
         comment_mono_node = ''
 
-    if 'testdata_dir' in config['qserv'].keys() :
-        testdata_dir=config['qserv']['testdata_dir']
-    else :
-        testdata_dir=os.environ.get('QSERV_TESTDATA_DIR')
+    if 'testdata_dir' in config['qserv']:
+        testdata_dir = config['qserv']['testdata_dir']
+    else:
+        testdata_dir = os.environ.get('QSERV_TESTDATA_DIR')
 
     params_dict = {
     'COMMENT_MONO_NODE' : comment_mono_node,
@@ -157,12 +151,12 @@ def _get_template_params():
     'QSERV_RUN_DIR': config['qserv']['run_base_dir'],
     'QSERV_UNIX_USER': os.getlogin(),
     'QSERV_LOG_DIR': config['qserv']['log_dir'],
-    'QSERV_PID_DIR': os.path.join(config['qserv']['run_base_dir'],"var", "run"),
+    'QSERV_PID_DIR': os.path.join(config['qserv']['run_base_dir'], "var", "run"),
     'QSERV_TESTDATA_DIR': testdata_dir,
     'QSERV_RPC_PORT': config['qserv']['rpc_port'],
     'QSERV_USER': config['qserv']['user'],
-    'QSERV_LUA_SHARE': os.path.join(config['lua']['base_dir'],"share","lua","5.1"),
-    'QSERV_LUA_LIB': os.path.join(config['lua']['base_dir'],"lib","lua","5.1"),
+    'QSERV_LUA_SHARE': os.path.join(config['lua']['base_dir'], "share", "lua", "5.1"),
+    'QSERV_LUA_LIB': os.path.join(config['lua']['base_dir'], "lib", "lua", "5.1"),
     'QSERV_SCRATCH_DIR': config['qserv']['scratch_dir'],
     'MYSQL_DIR': config['mysqld']['base_dir'],
     'MYSQLD_DATA_DIR': config['mysqld']['data_dir'],
@@ -176,11 +170,12 @@ def _get_template_params():
     'XROOTD_DIR': config['xrootd']['base_dir'],
     'XROOTD_MANAGER_HOST': config['qserv']['master'],
     'XROOTD_PORT': config['xrootd']['xrootd_port'],
-    'XROOTD_RUN_DIR': os.path.join(config['qserv']['run_base_dir'],"xrootd-run"),
-    'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['run_base_dir'],'tmp'),
+    'XROOTD_RUN_DIR': os.path.join(config['qserv']['run_base_dir'], "xrootd-run"),
+    'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['run_base_dir'], 'tmp'),
     'CMSD_MANAGER_PORT': config['xrootd']['cmsd_manager_port'],
     'ZOOKEEPER_PORT': config['zookeeper']['port'],
-    'HOME': os.path.expanduser("~")
+    'HOME': os.path.expanduser("~"),
+    'NODE_TYPE': config['qserv']['node_type'],
     }
 
     logger.debug("Input parameters :\n {0}".format(params_dict))
@@ -219,8 +214,7 @@ def apply_tpl(src_file, target_file):
     for match in t.pattern.findall(t.template):
         name = match[1]
         if len(name) != 0 and not params_dict.has_key(name):
-            logger.fatal("Template \"{0}\" in file {1}".format(name, src_file) + 
-                " is not defined in configuration tool")
+            logger.fatal("Template \"%s\" in file %s is not defined in configuration tool", name, src_file)
             sys.exit(1)
 
     dirname = os.path.dirname(target_file)
@@ -235,19 +229,18 @@ def apply_templates(template_root, dest_root):
 
     logger.info("Creating configuration using templates files")
 
-    target_files=[]
     for root, dirs, files in os.walk(template_root):
         os.path.normpath(template_root)
-        suffix=root[len(template_root)+1:]
-        dest_dir=os.path.join(dest_root, suffix)
-        for f in files:
-            src_file = os.path.join(root,f)
-            target_file = os.path.join(dest_dir, f)
+        suffix = root[len(template_root)+1:]
+        dest_dir = os.path.join(dest_root, suffix)
+        for fname in files:
+            src_file = os.path.join(root, fname)
+            target_file = os.path.join(dest_dir, fname)
 
             apply_tpl(src_file, target_file)
 
             # applying perms
-	    _set_perms(target_file)
+            _set_perms(target_file)
 
     return True
 
@@ -269,5 +262,3 @@ class QservConfigTemplate(string.Template):
     (?P<invalid>)
     )
     '''
-
-

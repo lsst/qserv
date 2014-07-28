@@ -1,4 +1,8 @@
-SERVICES="mysqld xrootd zookeeper mysql-proxy qserv-czar"
+qserv_node_type="{{NODE_TYPE}}"
+case "$qserv_node_type" in
+    mono|master) SERVICES="mysqld xrootd zookeeper mysql-proxy qserv-czar" ;;
+    worker) SERVICES="mysqld xrootd" ;;
+esac
 
 check_qserv_run_dir() {
 
