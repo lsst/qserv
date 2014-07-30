@@ -1,3 +1,24 @@
+R E L E A S E   2014_07
+=======================
+
+Code improvements:
+ * DM-626: Reworked Qserv configuration scripts
+ * DM-595: Reworked configuration to support for multi-node
+
+R E L E A S E   2014_06
+=======================
+
+Bug fixes:
+ * DM-786: Fixed problems with JOIN queries
+ * DM-516: Fixed race conditions in metadata
+ * DM-782: Fixed issues with automated tests related to column names
+ * DM-794: Fixed issues related to potential SQL injection
+Code improvements:
+ * DM-622: Refactored Qserv configuration to simplify code development
+ * DM-710: Simplified client configuration
+ * DM-817: Switched to using stack-based boost
+ * DM-742: Switched to using geometry from geom package
+
 R E L E A S E   2014_05
 =======================
 
