@@ -4,3 +4,5 @@ build/
 *.pyc
 scons-qserv.log
 config.log
+/quick-start.txt
+/quick-start-devel.txt

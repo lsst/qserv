@@ -47,7 +47,7 @@ Installation
 Configuration
 *************
 
-Configuration is installed apart from Qserv software.
+Configuration data are installed apart from Qserv software.
 
 .. warning::
    The -all option below will remove any previous configuration for the same
