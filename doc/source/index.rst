@@ -13,7 +13,7 @@ Contents:
 
    quick-start 
    quick-start-devel
-   admin/configuration
+   admin/software-architecture
 
 Indices and tables
 ==================

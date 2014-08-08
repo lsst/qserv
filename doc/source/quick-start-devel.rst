@@ -1,8 +1,8 @@
 .. _quick-start-devel:
 
-#################################
-Quick start guide for developpers
-#################################
+################################
+Quick start guide for developers
+################################
 
 Pre-requisites
 --------------
@@ -46,7 +46,7 @@ Once Qserv dependencies are installed, please use next commands in order to inst
    eups list qserv
    setup qserv $VERSION
 
-Then re-run configuration and test process, as described in README.txt.
+Then re-run configuration and test process, as described in :ref:`quick-start`.
 
  .. warning::
  

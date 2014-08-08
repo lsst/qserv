@@ -163,11 +163,9 @@ def _setEnvWithDependencies():
     SCons.Script.Help(opts.GenerateHelpText(env))
 
 
-def _initEnvironment():
+def _setBuildEnv():
     """Construction and basic setup of the state.env variable."""
 
-    env.Tool('default')
-    env.Tool('textfile')
     env.Tool('recinstall')
     env.Tool('swig_scanner')
     env.Tool('protoc')
@@ -229,7 +227,7 @@ def init(src_dir):
 ## @endcond
 
 def initBuild():
-    _initEnvironment()
     _setEnvWithDependencies()
+    _setBuildEnv()
 
 

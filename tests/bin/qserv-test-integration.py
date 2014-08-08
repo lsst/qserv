@@ -47,7 +47,7 @@ def parseArgs():
 if __name__ == '__main__':
     args = parseArgs()
     config = commons.read_user_config()
-    logger.init_default_logger("qserv-test-dataset-all", args.verbose_level, config['qserv']['log_dir'])
+    logger.init_default_logger("qserv-test-integration", args.verbose_level, config['qserv']['log_dir'])
     log = logging.getLogger()
     if args.testdata_dir is not None:
 	log.debug("Overriding ~/.lsst/qserv.conf testdata_dir value with {0}".format(args.testdata_dir))

@@ -25,7 +25,7 @@ def _detect(env):
         return env['PROTOC']
     except KeyError:
         raise SCons.Errors.StopError(
-        "Could not detect protoc Compiler")
+        "Could not detect protoc compiler")
 
 def _protoc_emitter(target, source, env):
     """Process target, sources, and flags"""
