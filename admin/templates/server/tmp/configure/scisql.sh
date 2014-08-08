@@ -36,4 +36,4 @@ make install &&
 ${QSERV_RUN_DIR}/etc/init.d/mysqld stop ||
 exit 1
 
-echo "INFO: SciSQL installation and configuration SUCCESSFULL"
+echo "INFO: SciSQL installation and configuration SUCCESSFUL"

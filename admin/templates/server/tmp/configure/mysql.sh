@@ -41,4 +41,4 @@ ${QSERV_RUN_DIR}/etc/init.d/mysqld stop ||
     exit 1
 }
 
-echo "INFO: MySQL initialization SUCCESSFULL"
+echo "INFO: MySQL initialization SUCCESSFUL"

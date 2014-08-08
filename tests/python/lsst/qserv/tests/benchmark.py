@@ -36,9 +36,9 @@ import shutil
 import tarfile
 
 from lsst.qserv.tests import qservdataloader, mysqldataloader, datareader
-from lsst.qserv.admin import commons, download
+from lsst.qserv.admin import commons, download, logger
 from lsst.qserv.tests.sql import cmd, connection, const
-import errno 
+import errno
 import os
 import re
 import stat
@@ -69,7 +69,7 @@ class Benchmark():
         if out_dirname_prefix == None :
             out_dirname_prefix = self.config['qserv']['tmp_dir']
         self._out_dirname = os.path.join(out_dirname_prefix, "qservTest_case%s" % case_id)
-        
+
         # TODO : check existence and "consistency"
         if ( not 'testdata_dir' in self.config['qserv'].keys()
             or self.config['qserv']['testdata_dir'] == None
@@ -84,9 +84,9 @@ class Benchmark():
                     "Please fill 'testdata_dir' value in "+
                     "~/.lsst/qserv.conf with the path of the directory " +
                     "containing tests datasets or use --testdata-dir option.\n")
-            sys.exit(errno.EIO)        
+            sys.exit(errno.EIO)
         else :
-            self.testdata_dir = self.config['qserv']['testdata_dir'] 
+            self.testdata_dir = self.config['qserv']['testdata_dir']
 
         qserv_tests_dirname = os.path.join(
             self.testdata_dir,
@@ -281,7 +281,7 @@ class Benchmark():
     def analyzeQueryResults(self):
 
         outputs_dir = os.path.join(self._out_dirname, "outputs")
-        
+
         failing_queries=[]
 
         mysql_out_dir = os.path.join(outputs_dir,"mysql")
@@ -294,37 +294,34 @@ class Benchmark():
                 message="{0} and {1} differ".format(os.path.join(mysql_out_dir,query_name), os.path.join(qserv_out_dir,query_name))
                 self.logger.error(message)
                 failing_queries.append(query_name)
-        
+
         return failing_queries
 
-def parseOptions():
-    op = optparse.OptionParser()
-    op.add_option("-i", "--case-no", dest="case_no",
-              default="01",
-              help="test case number")
-    mode_option_values = ['mysql','qserv','all']
-    op.add_option("-m", "--mode", type='choice', dest="mode", choices=mode_option_values,
-              default='all',
-              help= "Qserv test modes (direct mysql connection, or via qserv) : '" +
-              "', '".join(mode_option_values) +
-              "' [default: %default]")
-    op.add_option("-c", "--config-dir", dest="config_dir",
-            help= "Path to directory containing qserv-build.conf and"
-            "qserv-build.default.conf")
-    op.add_option("-s", "--stop-at-query", type="int", dest="stop_at_query",
-              default = 7999,
-              help="Stop at query with given number"  +
-              "' [default: %default]")
-    op.add_option("-l", "--load", action="store_true", dest="load_data",default=False,
-              help="Run queries on previously loaded data"  +
-              "' [default: %default]")
-    op.add_option("-o", "--out-dir", dest="out_dirname",
-              help="Full path to directory for storing temporary results. The results will be stored in <OUTDIR>/qservTest_case<CASENO>/")
-    options = op.parse_args()[0]
+def add_generic_arguments(parser):
 
-    if options.mode=='all':
-        options.mode_list = ['mysql','qserv']
-    else:
-        options.mode_list = [options.mode]
+    verbose_arg_values = logger.verbose_dict.keys()
+    parser.add_argument("-v", "--verbose-level", dest="verbose_str", choices=verbose_arg_values,
+        default='INFO',
+        help="verbosity level"
+        )
 
-    return options
+    # directory containing test dataset
+    parser.add_argument("-t", "--testdata-dir", dest="testdata_dir",
+            default=os.environ.get('QSERV_TESTDATA_DIR'),
+            help="full path to directory containing test datasets. This value is set, by precedence, by this option, then by QSERV_TESTDATA_DIR environment variable if not empty, and finally by setting testdata_dir value in ~/.lsst/qserv.conf"
+            )
+
+    return parser
+
+def init(args, logfile):
+
+    config = commons.read_user_config()
+    logger.init_default_logger(
+            logfile,
+            args.verbose_level,
+            log_path=config['qserv']['log_dir']
+            )
+    log = logging.getLogger()
+    if args.testdata_dir is not None:
+	log.debug("Overriding ~/.lsst/qserv.conf testdata_dir value with {0}".format(args.testdata_dir))
+        config['qserv']['testdata_dir'] = args.testdata_dir

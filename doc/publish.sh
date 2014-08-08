@@ -27,6 +27,11 @@
 
 # @author  Fabrice Jammes, IN2P3
 
+# eval `ssh-agent -s`
+# ssh-add ~/.ssh/id_rsa_lsst
+
 REMOTE_HOST=lsst-dev.ncsa.illinois.edu
-VERSION=$(pkgautoversion)
+#VERSION=$(pkgautoversion)
+VERSION=$(qserv-version.sh)
 rsync -ave ssh  doc/build/html/* ${REMOTE_HOST}:public_html/qserv-doc/${VERSION}
+ssh ${REMOTE_HOST} "ln -sf ${VERSION}/toplevel.html public_html/qserv-doc/index.html; ln -sf ${VERSION}/_static public_html/qserv-doc/_static"

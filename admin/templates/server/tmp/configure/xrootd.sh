@@ -5,5 +5,5 @@ XROOTD_RUN_DIR={{XROOTD_RUN_DIR}}
 mkdir -p ${XROOTD_RUN_DIR}/result
 mkdir -p ${XROOTD_RUN_DIR}/q
 
-echo "INFO: xrootd installation and configuration SUCCESSFULL"
+echo "INFO: xrootd installation and configuration SUCCESSFUL"
 

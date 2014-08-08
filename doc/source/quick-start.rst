@@ -9,7 +9,8 @@ Quick start guide
    *FOR DEVELOPERS*: The procedure below installs a Qserv release published on Qserv distribution server. 
    Please see :ref:`quick-start-devel` in order to install Qserv from your current git repository version.
 
- .. _quick-start_pre-requisites:
+.. _quick-start-pre-requisites:
+
 **************
 Pre-requisites
 **************
@@ -42,6 +43,8 @@ Installation
    # only if you want to run integration tests on a mono-node instance :
    eups distrib install qserv_testdata -r http://lsst-web.ncsa.illinois.edu/~fjammes/qserv
    setup qserv_testdata
+
+.. _quick-start-configuration:
 
 *************
 Configuration

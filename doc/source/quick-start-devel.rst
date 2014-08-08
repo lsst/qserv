@@ -4,10 +4,11 @@
 Quick start guide for developers
 ################################
 
+**************
 Pre-requisites
---------------
+**************
 
-Follow classical install pre-requisites (see :ref:`_quick-start_pre-requisites`), and then install all
+Follow classical install :ref:`quick-start-pre-requisites`, and then install all
 dependencies for the current Qserv release:
  
 .. code-block:: bash
@@ -18,7 +19,7 @@ dependencies for the current Qserv release:
    eups distrib install qserv_testdata
    setup qserv_testdata
  
- .. note::
+.. note::
  
    Above command will install dependencies for the current Qserv release. If you want to develop with an other set of dependencies, you may
    have to install them one by one, or specify a given Qserv version.
@@ -31,22 +32,25 @@ Once Qserv dependencies are installed, please use next commands in order to inst
 
 .. code-block:: bash
 
-   # path to your Qserv git repository
-   QSERV_SRC_DIR=${HOME}/src/qserv/
-   # Build and install your Qserv version
-   cd $QSERV_SRC_DIR
+   # clone Qserv repository
+   SRC_DIR=${HOME}/src
+   mkdir ${SRC_DIR}
+   cd ${SRC_DIR}
+   git clone ssh://git@dev.lsstcorp.org/LSST/DMS/qserv
+   # build and install your Qserv version
+   cd qserv
    # if following "setup" command fails due to missing packages one has to
    # manually install those packages with regular "eups distrib install ..."
    setup -r .
    eupspkg -er build               # build
    eupspkg -er install             # install to EUPS stack directory
    eupspkg -er decl                # declare it to EUPS
-   # Enable your Qserv version, and dependencies, in eups
+   # enable your Qserv version, and dependencies, in eups
    # $VERSION is available by using :
    eups list qserv
    setup qserv $VERSION
 
-Then re-run configuration and test process, as described in :ref:`quick-start`.
+Then re-run configuration and test process (see :ref:`quick-start-configuration`).
 
  .. warning::
  
