@@ -15,6 +15,8 @@ Quick start guide
 Pre-requisites
 **************
 
+.. _quick-start-pre-requisites-system-deps:
+
 Install system dependencies
 ===========================
 
@@ -67,7 +69,7 @@ The :program:`qserv-configure.py` script builds a Qserv configuration be deployi
 
    qserv-configure.py [-h] [-a] [-p] [-d] [-e] [-m] [-x] [-q] [-s] [-c]
                       [-v {DEBUG,INFO,WARNING,FATAL,ERROR}] [-f]
-                      [-r QSERV_RUN_DIR] 
+                      [-d QSERV_RUN_DIR] 
 
 The :program:`qserv-configure.py` script has several important options:
 
@@ -81,7 +83,7 @@ The :program:`qserv-configure.py` script has several important options:
 
    Clean ``QSERV_RUN_DIR`` and fill it with mono-node configuration data.
 
-.. option:: -r <directory>, --qserv-run-dir <directory>
+.. option:: -d <directory>, --qserv-run-dir <directory>
 
    Set configuration data location (i.e. ``QSERV_RUN_DIR``), Default value for
    ``QSERV_RUN_DIR`` is ``$HOME/qserv-run/$QSERV_VERSION``, ``QSERV_VERSION`` being provided by qserv-version.sh command.

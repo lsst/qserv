@@ -64,7 +64,7 @@ FOR A  SETUP FROM SCRATCH.''',
 
     # run dir, all mutable data related to a qserv running instance are
     # located here
-    parser.add_argument("-r", "--qserv-run-dir", dest="qserv_run_dir",
+    parser.add_argument("-d", "--qserv-run-dir", dest="qserv_run_dir",
             default=default_qserv_run_dir,
             help="full path to qserv_run_dir"
             )

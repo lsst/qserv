@@ -1,0 +1,4 @@
+# cut net
+iptables -A OUTPUT -p all -m owner --uid-owner qserv -j DROP
+# undo
+iptables -D OUTPUT -p all -m owner --uid-owner qserv -j DROP
