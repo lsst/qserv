@@ -1,6 +1,15 @@
 import logging
 import os 
 
+# Used to parse cli logging values 
+verbose_dict = {
+    'DEBUG'     : logging.DEBUG,
+    'INFO'      : logging.INFO,
+    'WARNING'   : logging.WARNING,
+    'ERROR'     : logging.ERROR,
+    'FATAL'   : logging.FATAL,
+}
+
 def init_default_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
     if level == logging.DEBUG:
         format = '%(asctime)s {%(pathname)s:%(lineno)d} %(levelname)s %(message)s'

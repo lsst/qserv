@@ -1,7 +1,7 @@
-#!/bin/bash 
+#!/bin/sh
 
 # LSST Data Management System
-# Copyright 2013-2014 LSST Corporation.
+# Copyright 2014 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -21,9 +21,17 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 
-# Return Qserv version number 
-# Used to determine if Qserv run dir is compliant with Qserv version
+# Upload sphinx documentation to LSST web-server.
+# This is a temporary solution which should be replaced by LSST
+# standard procedure for publishing documention. 
 
 # @author  Fabrice Jammes, IN2P3
-QSERV_VERSION="2014_07.0"
-echo "${QSERV_VERSION}"
+
+# eval `ssh-agent -s`
+# ssh-add ~/.ssh/id_rsa_lsst
+
+REMOTE_HOST=lsst-dev.ncsa.illinois.edu
+#VERSION=$(pkgautoversion)
+VERSION=$(qserv-version.sh)
+rsync -ave ssh  doc/build/html/* ${REMOTE_HOST}:public_html/qserv-doc/${VERSION}
+ssh ${REMOTE_HOST} "ln -sf ${VERSION}/toplevel.html public_html/qserv-doc/index.html; ln -sf ${VERSION}/_static public_html/qserv-doc/_static"

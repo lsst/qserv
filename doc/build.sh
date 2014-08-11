@@ -1,7 +1,7 @@
-#!/bin/bash 
+#!/bin/sh
 
 # LSST Data Management System
-# Copyright 2013-2014 LSST Corporation.
+# Copyright 2014 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -21,9 +21,14 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 
-# Return Qserv version number 
-# Used to determine if Qserv run dir is compliant with Qserv version
+# Generate sphinx documentation in html and text format
+# and create link to quickstart in Qserv root directory.
+# Used by "scons doc" command.
 
 # @author  Fabrice Jammes, IN2P3
-QSERV_VERSION="2014_07.0"
-echo "${QSERV_VERSION}"
+
+make html &&
+make text &&
+cd .. &&
+ln --symbolic --force doc/build/text/quick-start.txt && 
+ln --symbolic --force doc/build/text/quick-start-devel.txt  
