@@ -24,7 +24,7 @@ curl -O ${NEWINSTALL_URL} ||
     exit 1
 }
 time bash newinstall.sh
-source loadLSST.sh
+. loadLSST.sh
 
 echo
 echo "Installing Qserv"
