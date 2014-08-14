@@ -27,7 +27,7 @@ DAEMON=${NAME}
 QSERV_RUN_DIR={{QSERV_RUN_DIR}}
 
 START=startCzar.py
-CONFIG={{QSERV_RUN_DIR}}/etc/local.qserv.cnf
+CONFIG=${QSERV_RUN_DIR}/etc/${NAME}.cnf
 pidfile={{QSERV_PID_DIR}}/${NAME}.pid
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${NAME}
 LOGFILE={{QSERV_LOG_DIR}}/${NAME}.log
