@@ -176,6 +176,17 @@ def _setBuildEnv():
     # Increase compiler strictness
     env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-long-long'])
 
+    # to make shared libraries link correctly we need -rpath-link option, for now add everything
+    # that is in LD_LIBRARY_PATH
+    # TODO: this is Linux-gcc-specific, do we have a way to test for a platform we are running on
+    if 'LD_LIBRARY_PATH' in os.environ:
+        env.Append(LINKFLAGS = ["-Wl,-rpath-link="+os.environ["LD_LIBRARY_PATH"]])
+
+    # SCons resets many envvars to make clean build, we want to pass some of them explicitly.
+    # Extend the list if you need to add more.
+    for key in ['LD_LIBRARY_PATH',]:
+        if key in os.environ:
+            env['ENV'][key] = os.environ[key]
 
 
 # TODO : where to save this file ?
