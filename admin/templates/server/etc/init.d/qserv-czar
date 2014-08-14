@@ -35,6 +35,7 @@ starttimeout=1
 
 export PATH={{PATH}}
 export PYTHONPATH={{PYTHONPATH}}
+export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
 
 export QSW_RESULTDIR=${QSERV_RUN_DIR}/qserv-run/tmp
 # Disabling buffering in python in order to enable "real-time" logging.
