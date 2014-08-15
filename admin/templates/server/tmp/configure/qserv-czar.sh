@@ -9,7 +9,7 @@ MYSQLD_PASS={{MYSQLD_PASS}}
 
 SQL_DIR=${QSERV_RUN_DIR}/tmp/configure/sql
 
-MYSQL_CMD="${MYSQL_DIR}/bin/mysql -vvv --user=${MYSQLD_USER} --password=${MYSQLD_PASS} --sock=${MYSQLD_SOCK}"
+MYSQL_CMD="${MYSQL_DIR}/bin/mysql --no-defaults -vvv --user=${MYSQLD_USER} --password=${MYSQLD_PASS} --sock=${MYSQLD_SOCK}"
 
 echo 
 echo "-- Initializing Qserv czar database "

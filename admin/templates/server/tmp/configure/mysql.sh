@@ -10,7 +10,8 @@ MYSQLD_PORT={{MYSQLD_PORT}}
 SQL_DIR=${QSERV_RUN_DIR}/tmp/configure/sql
 
 function is_up {
-    timeout 1 cat < /dev/null > /dev/tcp/${MYSQLD_HOST}/${MYSQLD_PORT}
+    # run command in subshell so that we can redirect errors (which are expected)
+    (timeout 1 cat < /dev/null > /dev/tcp/${MYSQLD_HOST}/${MYSQLD_PORT}) 2>/dev/null
     return ${status}
 }
 
@@ -24,12 +25,13 @@ is_up &&
 echo "-- Removing previous data." &&
 rm -rf ${MYSQLD_DATA_DIR}/* &&
 echo "-- ." &&
-mysql_install_db --defaults-file=${QSERV_RUN_DIR}/etc/my.cnf --user=${USER} &&
+echo "-- Installing mysql database files." &&
+mysql_install_db --defaults-file=${QSERV_RUN_DIR}/etc/my.cnf --user=${USER} >/dev/null&&
 echo "-- Starting mysql server." &&
 ${QSERV_RUN_DIR}/etc/init.d/mysqld start &&
 sleep 5 &&
 echo "-- Changing mysql root password." &&
-mysql -S ${MYSQLD_SOCK} -u root < ${SQL_DIR}/mysql-password.sql &&
+mysql --no-defaults -S ${MYSQLD_SOCK} -u root < ${SQL_DIR}/mysql-password.sql &&
 rm ${SQL_DIR}/mysql-password.sql &&
 echo "-- Shutting down mysql server." &&
 ${QSERV_RUN_DIR}/etc/init.d/mysqld stop || 
