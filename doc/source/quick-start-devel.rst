@@ -4,12 +4,16 @@
 Quick start guide for developers
 ################################
 
+Using Qserv with your own custom code or arbitrary versions can be done by
+connecting your local git clone with an eups software stack containing Qserv
+dependencies.
+
 **************
 Pre-requisites
 **************
 
-Follow classical install :ref:`quick-start-pre-requisites`, and then install all
-dependencies for the current Qserv release:
+Follow classical install :ref:`quick-start-pre-requisites`, and then build and install all
+source dependencies for the current Qserv release:
  
 .. code-block:: bash
  
@@ -28,7 +32,8 @@ dependencies for the current Qserv release:
 Setup current Qserv version in eups
 ***********************************
 
-Once Qserv dependencies are installed, please use next commands in order to install your Qserv development version :
+These commands explain how to connect your local Qserv git repository to an eups software stack containing Qserv dependencies.
+Once Qserv dependencies are installed in eups stack, please use next commands in order to install your Qserv development version:
 
 .. code-block:: bash
 
@@ -36,6 +41,9 @@ Once Qserv dependencies are installed, please use next commands in order to inst
    SRC_DIR=${HOME}/src
    mkdir ${SRC_DIR}
    cd ${SRC_DIR}
+   # anonymous access : 
+   git clone git://dev.lsstcorp.org/LSST/DMS/qserv 
+   # or authenticated access (require a ssh key) :
    git clone ssh://git@dev.lsstcorp.org/LSST/DMS/qserv
    # build and install your Qserv version
    cd qserv
@@ -50,7 +58,8 @@ Once Qserv dependencies are installed, please use next commands in order to inst
    eups list qserv
    setup qserv $VERSION
 
-Then re-run configuration and test process (see :ref:`quick-start-configuration`).
+Once the qserv eups stack is integrated with your local Qserv repository, you
+will need to configure and (if desired) test it (see :ref:`quick-start-configuration`).
 
  .. warning::
  
@@ -72,6 +81,7 @@ If you want to modify tests datasets, please clone Qserv test data repository :
 .. code-block:: bash
 
    cd ~/src/
+   # authenticated access (require a ssh key) :
    git clone ssh://git@dev.lsstcorp.org/LSST/DMS/testdata/qserv_testdata.git
 
 In order to test it with your Qserv version :

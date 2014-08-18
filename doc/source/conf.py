@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Qserv'
-copyright = u'2014, Fabrice Jammes for the Qserv team'
+copyright = u'2014, Jacek Becla, Andy Salnikov, Fabrice Jammes and Daniel Wang for the Qserv team'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

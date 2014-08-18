@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# for Ubuntu wheezy/sid :
+# for Ubuntu 13.10 Saucy Salamander :
 apt-get install scons python-numpy g++ git zlib1g-dev python-dev ncurses-dev libboost-all-dev openssl antlr swig libreadline-dev  libglib2.0-dev cmake
 
 # xrootd 

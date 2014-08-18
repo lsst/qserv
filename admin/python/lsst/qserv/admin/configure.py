@@ -18,7 +18,7 @@ STEP_DOC = dict(
         """create qserv_run_dir and attach it to current Qserv instance""",
         """create directory tree in qserv_run_dir""",
         """fill qserv_run_dir configuration files with values issued
-from meta-config file $qserv_run_dir/qserv.conf""",
+           from meta-config file $qserv_run_dir/qserv.conf""",
 	"""remove MySQL previous data, install db and set password """,
 	"""create xrootd query and result directories""",
 	"""initialize Qserv master and worker databases""",

@@ -19,7 +19,8 @@ def parseArgs():
     parser = argparse.ArgumentParser(
             description='''Qserv configuration tool. Creates an execution
 directory (qserv_run_dir) which will contains configuration and execution
-data for a given Qserv instance. Default behaviour will configure a mono-node
+data for a given Qserv instance. Deploys values from meta-config file $qserv_run_dir/qserv.conf 
+in all Qserv configuration files and databases. Default behaviour will configure a mono-node
 instance in ''' + default_qserv_run_dir + '''. IMPORTANT : --all MUST BE USED
 FOR A  SETUP FROM SCRATCH.''',
             formatter_class=argparse.ArgumentDefaultsHelpFormatter
