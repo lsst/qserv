@@ -25,6 +25,7 @@
 // System headers
 #include <cassert>
 #include <cstring> // For memmove()
+#include <stdexcept>
 
 // Qserv headers
 #include "log/Logger.h"
@@ -42,11 +43,10 @@ ResultReceiver::ResultReceiver(boost::shared_ptr<rproc::TableMerger> merger,
                                std::string const& tableName)
     : _merger(merger), _tableName(tableName),
       _actualSize(ResultReceiver_bufferSize),
+      _actualBuffer(_actualSize),
       _flushed(false), _dirty(false) {
     // Consider allocating buffer lazily, at first invocation of buffer()
-    _actualBuffer.reset(new char[_actualSize]);
-    assert(_actualBuffer);
-    _buffer = _actualBuffer.get();
+    _buffer = &_actualBuffer[0];
     _bufferSize = _actualSize;
 
 }
@@ -115,7 +115,7 @@ bool ResultReceiver::reset() {
         return false; // Can't reset if we have already pushed state.
     }
     // Forget about anything we've put in the buffer so far.
-    _buffer = _actualBuffer.get();
+    _buffer = &_actualBuffer[0];
     _bufferSize = _actualSize;
     return true;
 }
@@ -132,15 +132,15 @@ void ResultReceiver::addFinishHook(util::UnaryCallable<void, bool>::Ptr f) {
 }
 
 bool ResultReceiver::_appendAndMergeBuffer(int bLen) {
-    off_t inputSize = _buffer - _actualBuffer.get() + bLen;
-    off_t mergeSize = _merger->merge(_actualBuffer.get(), inputSize,
+    off_t inputSize = _buffer - &_actualBuffer[0] + bLen;
+    off_t mergeSize = _merger->merge(&_actualBuffer[0], inputSize,
                                      _tableName);
     if(mergeSize > 0) { // Something got merged.
         // Shift buffer contents to receive more.
-        char* unMerged = _actualBuffer.get() + mergeSize;
+        char* unMerged = &_actualBuffer[0] + mergeSize;
         off_t unMergedSize = inputSize - mergeSize;
-        std::memmove(_actualBuffer.get(), unMerged, unMergedSize);
-        _buffer = _actualBuffer.get() + unMergedSize;
+        std::memmove(&_actualBuffer[0], unMerged, unMergedSize);
+        _buffer = &_actualBuffer[0] + unMergedSize;
         _bufferSize = _actualSize - unMergedSize;
         return true;
     } else if(mergeSize == 0) {
@@ -152,7 +152,7 @@ bool ResultReceiver::_appendAndMergeBuffer(int bLen) {
         return false;
     } else {
         LOGGER_ERR << "Die horribly, for TableMerger::merge() returned an impossible value" << std::endl;
-        throw "fatal";
+        throw std::runtime_error("Impossible return value from merge()");
     }
 }
 

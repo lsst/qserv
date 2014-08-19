@@ -90,7 +90,7 @@ void fetchDbs(WLogger& log,
         dbs.push_back((**resultP)[0]);
         nothing = false;
     }
-    if(nothing) log.warn("TEST : No databases found to export."+listq);
+    if(nothing) { log.warn("TEST : No databases found to export." + listq); }
 }
 
 /// Functor to be called per-table name

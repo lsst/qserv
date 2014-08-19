@@ -42,11 +42,9 @@ using lsst::qserv::wconfig::Config;
 
 namespace {
 // Settings declaration ////////////////////////////////////////////////
-static const int settingsCount = 7;
+static const int settingsCount = 6;
 // key, env var name, default, description
 static const char* settings[settingsCount][4] = {
-    {"xrdQueryPath", "QSW_XRDQUERYPATH", "/query2", // TODO: eliminate
-     "xrootd path for query,e.g. /query2"},
     {"mysqlSocket", "QSW_DBSOCK", "/var/lib/mysql/mysql.sock",
      "MySQL socket file path for db connections"},
     {"mysqlDefaultUser", "QSW_DEFUSER", "qsmaster",

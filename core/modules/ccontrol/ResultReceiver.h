@@ -26,10 +26,10 @@
 
 // System headers
 #include <string>
+#include <vector>
 
 // Third-party
 #include <boost/make_shared.hpp>
-#include <boost/scoped_array.hpp>
 
 // Qserv headers
 #include "qdisp/QueryReceiver.h"
@@ -39,16 +39,20 @@
 namespace lsst {
 namespace qserv {
 namespace rproc {
-class TableMerger;
+  class TableMerger;
+}
+namespace ccontrol {
+  class MergeAdapter;
 }}}
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
-class MergeAdapter;
 
 class ResultReceiver : public qdisp::QueryReceiver {
 public:
+    /// @param merger downstream merge acceptor
+    /// @param tableName target table for incoming data
     ResultReceiver(boost::shared_ptr<rproc::TableMerger> merger,
                    std::string const& tableName);
     virtual ~ResultReceiver() {}
@@ -68,19 +72,22 @@ public:
     Error getError() const;
 
 private:
+    /// (helper) merge buffer and shift contents depending on merge size.
     bool _appendAndMergeBuffer(int bLen);
-    boost::shared_ptr<rproc::TableMerger> _merger;
-    std::string _tableName;
-    util::UnaryCallable<void, bool>::Ptr _finishHook;
-    boost::shared_ptr<CancelFunc> _cancelFunc;
 
-    int _bufferSize;
-    int _actualSize;
-    boost::scoped_array<char> _actualBuffer;
-    char* _buffer;
-    bool _flushed;
-    bool _dirty;
-    Error _error;
+    boost::shared_ptr<rproc::TableMerger> _merger; //< Target merging delegate
+    std::string _tableName; //< Target table name
+
+    /// Invoked at receiver completion
+    util::UnaryCallable<void, bool>::Ptr _finishHook;
+
+    int _bufferSize; //< Available size from _buffer
+    int _actualSize; //< Allocated size
+    std::vector<char> _actualBuffer; //< Entire allocated buffer
+    char* _buffer; //< Current buffer insertion point
+    bool _flushed; //< Has data ben flushed into this object?
+    bool _dirty; //< Has data been flushed past this object?
+    Error _error; //< Internal error state
 };
 
 }}} // namespace lsst::qserv::ccontrol

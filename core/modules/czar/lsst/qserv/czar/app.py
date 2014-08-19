@@ -342,12 +342,13 @@ class InbandQueryAction:
         try:
             try:
                 self._prepareForExec()
+                self.isValid = True
             except:
-                print traceback.format_exc()
-            # Create query initialization message.
+                logger.err("Error initializing query for exec."
+                           + traceback.format_exc())
+                # Create query initialization message.
                 self._reportError(-1,  msgCode.MSG_QUERY_INIT,
                                    "Initialize Query: " + self.queryStr);
-            self.isValid = True
         except QueryHintError, e:
             self._error = str(e)
         except ParseError, e:
@@ -363,7 +364,6 @@ class InbandQueryAction:
         pass
 
     def _reportError(self, chunkId, code, message):
-        ## FIXME: Remove print stmt
         logger.dbg("reporting", chunkId, code, message)
         queryMsgAddMsg(self.sessionId, chunkId, code, message)
 

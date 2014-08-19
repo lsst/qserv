@@ -28,18 +28,27 @@
 #include <map>
 #include <string>
 
+// Qserv headers
+#include "global/constants.h" // For DUMMY_CHUNK
+
 namespace lsst {
 namespace qserv {
 
-// ResourceUnit contains a name for an XrdSsi-resolvable resource unit.
-// Not sure this belongs in global, but czar, worker both need it.
-// Other components may as well.
+/// ResourceUnit contains a name for an XrdSsi-resolvable resource unit.
+////
+/// Not sure this belongs in global, but czar, worker both need it.
+/// Other components may as well.
+////
+/// Note that while key-value specifiers are parsed from the path string at
+/// construction, the code for generating a path that includes the key-value
+/// portion is not implemented. It is unclear whether we need the generation
+/// capability, now that key-value pairs can be packed in protobufs messages.
 class ResourceUnit {
 public:
     class Checker;
     enum UnitType {GARBAGE, DBCHUNK, CQUERY, UNKNOWN, RESULT};
 
-    ResourceUnit() : _chunk(-1) {}
+    ResourceUnit() : _unitType(GARBAGE), _chunk(-1) {}
 
     explicit ResourceUnit(std::string const& path);
 
@@ -58,11 +67,10 @@ public:
     static std::string prefix(UnitType const& r);
 
     // Setup a path of a certain type.
-    void setAsDbChunk(std::string const& db, int chunk);
+    void setAsDbChunk(std::string const& db, int chunk=DUMMY_CHUNK);
 
     // Compatibility types
-    void setAsCquery(std::string const& db, int chunk);
-    void setAsCquery(std::string const& db);
+    void setAsCquery(std::string const& db, int chunk=DUMMY_CHUNK);
     void setAsResult(std::string const& hashName);
 
     // Optional specifiers may not be supported by XrdSsi
@@ -73,15 +81,17 @@ public:
 private:
     class Tokenizer;
     void _setFromPath(std::string const& path);
-    void _ingestKeys(std::string const& leafPlusKeys);
+    void _ingestLeafAndKeys(std::string const& leafPlusKeys);
     void _ingestKeyStr(std::string const& keyStr);
 
-    UnitType _unitType;
-    std::string _db;
-    int _chunk;
-    std::string _hashName;
+    UnitType _unitType; //< Type of unit
+    std::string _db; //< for CQUERY and DBCHUNK types
+    int _chunk; //< for CQUERY and DBCHUNK types
+    std::string _hashName; //< for RESULT types
+
     typedef std::map<std::string, std::string> VarMap;
-    VarMap _vars;
+    VarMap _vars; //< Key-value specifiers
+
     static char const _pathSep = '/';
     static char const _varSep = '?';
     static char const _varDelim = '&';

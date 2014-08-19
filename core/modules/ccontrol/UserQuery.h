@@ -68,16 +68,39 @@ public:
     typedef boost::shared_ptr<UserQuery> Ptr;
     friend class UserQueryFactory;
 
+    // Accessors
+
+    /// @return a non-empty string describing the current error state
+    /// Returns an empty string if no errors have been detected.
     std::string const& getError() const;
+
+    /// @return a ConstraintVec for consumption by the python czar that
+    /// describes the query constraints detected in the query.
     lsst::qserv::query::ConstraintVec getConstraints() const;
+
+    /// @return the dominantDb, the database whose partitioning scheme should be
+    /// used to dispatch the query.
     std::string const& getDominantDb() const;
+
+    /// @return StripingParams for the dominant database to be used to determine
+    /// the chunk number spatial mapping
     lsst::qserv::css::StripingParams getDbStriping() const;
+
+    /// @return a description of the current execution state.
     std::string getExecDesc() const;
 
+    /// Add a chunk for later execution
     void addChunk(qproc::ChunkSpec const& cs);
+
+    /// Begin execution of the query over all ChunkSpecs added so far.
     void submit();
+
+    /// Wait until the query has completed execution.
+    /// @return the final execution state.
     QueryState join();
+
     void kill(); //< Stop a query in progress (for immediate shutdowns)
+
     void discard(); //< Release resources related to user query
 
     // Exists only to help app.py with permission checking

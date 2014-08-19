@@ -29,7 +29,10 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
+/// High-level user query state constants
 enum QueryState {UNKNOWN, WAITING, DISPATCHED, SUCCESS, ERROR};
+
+/// @return a string representation of the QueryState
 std::string const& getQueryStateString(QueryState const& qs);
 
 }}}

@@ -34,6 +34,7 @@
 // Third-party headers
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
+#include <boost/lexical_cast.hpp>
 
 // Local headers
 #include "global/stringTypes.h"
@@ -43,6 +44,9 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
+/// ConfigMap is a lightweight facade on top of a basic std::map that performs
+/// type coercion. Qserv components querying configuration values use this class
+/// to simplify code at the call site.
 class ConfigMap {
 public:
     typedef boost::shared_ptr<ConfigMap> Ptr;
@@ -56,10 +60,12 @@ public:
         if(i != _m.end()) {
             return i->second;
         } else {
-            LOGGER_ERR << errorMsg << std::endl;
+            LOGGER_DBG << errorMsg << std::endl;
             return defaultValue;
         }
     }
+
+    /// @return the typed value for a key, defaulting to defaultValue
     template <typename T>
     inline T getTyped(std::string const& key,
                       std::string const& errorMsg,
@@ -71,16 +77,14 @@ public:
         } 
         return defaultValue;
     }
+
     StringMap const& getMap() const { return _m; }
 
 private:
     template<typename T>
     inline T _coerce(std::string const& s, T defaultValue) {
         try {
-            std::istringstream ss(s);
-            T output;
-            ss >> output;
-            return output;
+            return boost::lexical_cast<T>(s);
         } catch (...) {
             return defaultValue;
         }

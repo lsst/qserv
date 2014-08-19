@@ -26,6 +26,7 @@
 
 // System headers
 #include <string>
+#include <stdexcept>
 
 // Third-party headers
 #include <boost/shared_ptr.hpp>
@@ -49,7 +50,7 @@ public:
     virtual bool sendError(std::string const& msg, int code) = 0;
     virtual bool sendFile(int fd, Size fSize) = 0;
     virtual bool sendStream(char const* buf, int bufLen, bool last) {
-        throw "unsupported streaming";
+        throw std::logic_error("Streaming is unimplemented");
     }
 
     void setReleaseFunc(ReleaseFuncPtr r) { _release = r; }

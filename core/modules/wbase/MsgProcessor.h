@@ -35,16 +35,19 @@ namespace lsst {
 namespace qserv {
 namespace proto {
     class TaskMsg;
+}
+namespace wbase {
+    class SendChannel;
 }}} // End of forward declarations
 
 namespace lsst {
 namespace qserv {
 namespace wbase {
 
-class SendChannel;
-
-class MsgProcessor 
-    : public util::BinaryCallable<void, // TODO: a refHandle to track so we can squash.
+/// MsgProcessor implementations handle incoming TaskMsg objects and write their
+/// results over a SendChannel
+class MsgProcessor
+    : public util::BinaryCallable<void, // TODO: a refHandle to track so we can squash (DM-1087)
                                   boost::shared_ptr<proto::TaskMsg>,
                                   boost::shared_ptr<SendChannel> > {
 public:

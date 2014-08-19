@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,17 +21,14 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-// PacketBuffer.h:
-// FIXME
 // An iterator that provides iteration over arbitrarily-sized pieces
 // of a stream. Access either a local file or an xrootd file
 // descriptor. Facilitates transferring bytes directly from the xrootd
 // realm to a fragment consumer (probably the table merger). Allowing
 // both types input sources makes it easier to reduce buffering and
 // disk usage, theoretically improving overall latency.
-//
-#ifndef LSST_QSERV_XRDC_PACKETITER_H
-#define LSST_QSERV_XRDC_PACKETITER_H
+#ifndef LSST_QSERV_UTIL_PACKETBUFFER_H
+#define LSST_QSERV_UTIL_PACKETBUFFER_H
 
 // System headers
 #include <string>
@@ -50,6 +47,7 @@ public:
     typedef std::pair<char*, unsigned> Value;
     typedef unsigned long long Pos;
 
+    /// The interface for a backend to be plugged into a PacketBuffer
     class Source {
     public:
         virtual Value getFirstValue() = 0;
@@ -57,13 +55,15 @@ public:
         virtual bool incrementExtend(PacketBuffer& p) { return false; }
         virtual int getErrno() const { return 0; }
     protected:
-        inline void setPos(PacketBuffer& p, Pos pos) { p._pos = pos; }
-        inline void setCurrent(PacketBuffer&p, char* buf, unsigned len) {
+        void setPos(PacketBuffer& p, Pos pos) { p._pos = pos; }
+        void setCurrent(PacketBuffer&p, char* buf, unsigned len) {
             p._current.first = buf;
             p._current.second = len;
         }
     };
     friend class Source;
+
+    /// A simple Source implementation on top of a fixed buffer.
     class FixedSource : public Source {
     public:
         FixedSource(char const* buf, unsigned size) 
@@ -80,8 +80,7 @@ public:
     /// Constructor.
     /// @param buf read-only buffer. unowned, does not take ownership
     /// @param size size of buffer
-    PacketBuffer(char const* buf, int size) 
-    //        : _source(new FixedSource(buf, size)), _pos(0) {
+    PacketBuffer(char const* buf, int size)
         : _pos(0) {
         _source.reset(new FixedSource(buf, size));
         _current = _source->getFirstValue();         
@@ -122,9 +121,10 @@ public:
     ssize_t getTotalSize() const { return _pos + _current.second; }
 
 private:
-    // Shouldn't really be comparing.
+    /// Unimplemented. Shouldn't really be comparing.
     bool operator==(PacketBuffer const& rhs) const;
-    // Copying this is not really safe without a lot more implementation.
+    /// Unimplemented. Copying this is not really safe without a lot
+    /// more implementation.
     PacketBuffer operator++(int);
 
     std::auto_ptr<Source> _source;
@@ -134,4 +134,4 @@ private:
 
 }}} // namespace lsst::qserv::util
 
-#endif // LSST_QSERV_XRDC_PACKETITER_H
+#endif // LSST_QSERV_UTIL_PACKETBUFFER_H

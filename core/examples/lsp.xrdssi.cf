@@ -40,9 +40,9 @@ oss.localroot /data/lsst/lspexport
 # for "file" writes (which are subquery writes in our case).
 cms.space linger 0 recalc 15 min 10m 11m
 
-# Use asyncronous filesystem API when interfacing with filesystem plugin 
+# Force off async for the XrdSsi API used by qserv.
 # (qserv-worker plugin is tested using this configuration)
-xrootd.async force
+xrootd.async off
 fi
 
 ########################################

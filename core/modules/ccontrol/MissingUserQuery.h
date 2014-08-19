@@ -33,6 +33,9 @@
 #include <sstream>
 #include <string.h>
 
+// Third party headers
+#include <boost/lexical_cast.hpp>
+
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
@@ -40,19 +43,16 @@ namespace ccontrol {
 /// An error of trying to retrieve a non-existent UserQuery by id
 class MissingUserQuery : public std::exception {
 public:
-    explicit MissingUserQuery(int id) : _s(NULL) {
-        std::ostringstream s;
-        s << "Invalid UserQuery["<< id << "]";
-        _s = s.str();
+    explicit MissingUserQuery(int id)
+        : _s("Invalid UserQuery["
+             + boost::lexical_cast<std::string>(id) +  "]") {
     }
     virtual ~MissingUserQuery() throw() {}
-    virtual const char* what() throw() {
-        return _s.c_str();
-    }
+    virtual const char* what() throw() { return _s.c_str(); }
 private:
-    std::string _s;
+    std::string const _s;
 };
 
-}}} // namespace lsst::qserv::control
+}}} // namespace lsst::qserv::ccontrol
 
 #endif // LSST_QSERV_CCONTROL_MISSINGUSERQUERY_H

@@ -69,8 +69,6 @@ namespace xrdsvc {
 boost::shared_ptr<sql::SqlConnection> makeSqlConnection() {
     boost::shared_ptr<sql::SqlConnection> conn;
     mysql::MySqlConfig sqlConfig = wconfig::getConfig().getSqlConfig();
-    // FIXME: Use qsmaster privileges for now.
-    sqlConfig.username = "qsmaster";
     sqlConfig.dbName = "";
     conn.reset(new sql::SqlConnection(sqlConfig, true));
     return conn;

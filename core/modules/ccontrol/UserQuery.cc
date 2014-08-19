@@ -102,13 +102,14 @@ private:
     int _refNum;
 };
 
+/// A class that can be used to parameterize a ProtoImporter<TaskMsg> for
+/// debugging purposes
 class ProtoPrinter : public util::UnaryCallable<void, boost::shared_ptr<proto::TaskMsg> > {
 public:
     ProtoPrinter() {}
     virtual void operator()(boost::shared_ptr<proto::TaskMsg> m) {
         std::cout << "Got taskmsg ok";
     }
-
 };
 
 ////////////////////////////////////////////////////////////////////////

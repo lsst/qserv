@@ -25,6 +25,7 @@
 
 // System headers
 #include <cassert>
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 
@@ -37,13 +38,13 @@ namespace qserv {
 //////////////////////////////////////////////////////////////////////
 class ResourceUnit::Tokenizer {
 public:
-    Tokenizer(std::string s, char sep)
+    Tokenizer(std::string const& s, char sep='/')
         : _cursor(0), _next(0), _s(s), _sep(sep) {
         _seek();
     }
-    
-    std::string token() { 
-        return _s.substr(_cursor, _next-_cursor); 
+
+    std::string token() {
+        return _s.substr(_cursor, _next - _cursor);
     }
 
     int tokenAsInt() {
@@ -56,18 +57,19 @@ public:
     void next() { assert(!done()); _cursor = _next + 1; _seek(); }
 
     bool done() { return _next == std::string::npos; }
+
 private:
     void _seek() { _next = _s.find_first_of(_sep, _cursor); }
 
     std::string::size_type _cursor;
     std::string::size_type _next;
     std::string const _s;
-    char _sep;
+    char const _sep;
 };
 
 //////////////////////////////////////////////////////////////////////
 ResourceUnit::ResourceUnit(std::string const& path)
-    : _chunk(-1) {
+    : _unitType(GARBAGE), _chunk(-1) {
     _setFromPath(path);
 }
 
@@ -90,6 +92,9 @@ ResourceUnit::path() const {
         break;
     case RESULT:
         ss << _hashName;
+        break;
+    default:
+        ::abort();
         break;
     }
     return ss.str();
@@ -136,12 +141,6 @@ ResourceUnit::setAsCquery(std::string const& db, int chunk) {
 }
 
 void
-ResourceUnit::setAsCquery(std::string const& db) {
-    _unitType = CQUERY;
-    _db = db;
-}
-
-void
 ResourceUnit::_setFromPath(std::string const& path) {
     std::string rTypeString;
     Tokenizer t(path, _pathSep);
@@ -162,6 +161,7 @@ ResourceUnit::_setFromPath(std::string const& path) {
         }
         t.next();
         _chunk = t.tokenAsInt();
+        _ingestLeafAndKeys(t.token());
     } else if(rTypeString == prefix(CQUERY)) {
         // Import as chunk query
         _unitType = CQUERY;
@@ -173,6 +173,8 @@ ResourceUnit::_setFromPath(std::string const& path) {
         }
         t.next();
         _chunk = t.tokenAsInt();
+        _ingestLeafAndKeys(t.token());
+
     } else if(rTypeString == prefix(RESULT)) {
         _unitType = RESULT;
         t.next();
@@ -182,14 +184,16 @@ ResourceUnit::_setFromPath(std::string const& path) {
     }
 }
 
+/// Ingest key-value pairs from a string including the last portion of the path,
+/// e.g., somenumber?key1=val1&key2=val2
 void
-ResourceUnit::_ingestKeys(std::string const& leafPlusKeys) {
+ResourceUnit::_ingestLeafAndKeys(std::string const& leafPlusKeys) {
     std::string::size_type start;
     start = leafPlusKeys.find_first_of(_varSep, 0);
     _vars.clear();
 
     if(start == std::string::npos) { // No keys found
-        return; //leafPlusKeys;
+        return;
     }
     ++start;
     Tokenizer t(leafPlusKeys.substr(start), _varDelim);
@@ -198,6 +202,8 @@ ResourceUnit::_ingestKeys(std::string const& leafPlusKeys) {
     }
 }
 
+/// Ingest key-value pairs from a packed key-value representation.
+/// e.g., key1=val1&key2=val2
 void
 ResourceUnit::_ingestKeyStr(std::string const& keyStr) {
     std::string::size_type equalsPos;

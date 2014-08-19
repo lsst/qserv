@@ -44,7 +44,8 @@ oss.localroot {{XROOTD_RUN_DIR}}
 # for "file" writes (which are subquery writes in our case).
 cms.space linger 0 recalc 15 min 10m 11m
 
-# Force disable asyncronous filesystem API when interfacing with filesystem plugin
+# Qserv uses the xrootd XrdSsi, which needs the configuration to
+# force-disable asyncronous access.
 xrootd.async off
 {{COMMENT_MONO_NODE}}fi
 
