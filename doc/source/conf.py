@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Qserv'
-copyright = u'2014, Jacek Becla, Andy Salnikov, Fabrice Jammes and Daniel Wang for the Qserv team'
+copyright = u'2008-2014 AURA/LSST'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -162,6 +162,11 @@ html_static_path = ['_static']
 
 # This is the file name suffix for HTML files (e.g. ".xhtml").
 #html_file_suffix = None
+
+#Add sponsorship and project information to the template context.
+html_context = {
+    'organization': "LSST Data Management System",
+}
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'Qservdoc'
