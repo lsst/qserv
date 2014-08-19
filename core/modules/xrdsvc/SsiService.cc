@@ -23,6 +23,7 @@
 #include "xrdsvc/SsiService.h"
 
 // System headers
+#include <cassert>
 #include <iostream>
 #include <string>
 

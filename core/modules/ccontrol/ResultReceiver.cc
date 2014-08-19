@@ -23,6 +23,7 @@
 #include "ccontrol/ResultReceiver.h"
 
 // System headers
+#include <cassert>
 #include <cstring> // For memmove()
 
 // Qserv headers
@@ -124,6 +125,12 @@ std::ostream& ResultReceiver::print(std::ostream& os) const {
        << (_flushed ? "true)" : "false)") ;
     return os;
 }
+
+void ResultReceiver::addFinishHook(util::UnaryCallable<void, bool>::Ptr f) {
+    assert(!_finishHook);
+    _finishHook = f;
+}
+
 bool ResultReceiver::_appendAndMergeBuffer(int bLen) {
     off_t inputSize = _buffer - _actualBuffer.get() + bLen;
     off_t mergeSize = _merger->merge(_actualBuffer.get(), inputSize,

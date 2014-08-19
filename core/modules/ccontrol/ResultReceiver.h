@@ -61,12 +61,10 @@ public:
     virtual bool reset();
     virtual std::ostream& print(std::ostream& os) const;
 
-    // Add a callback to be invoked when the receiver finishes processing
-    // a response from its request.
-    void addFinishHook(util::UnaryCallable<void, bool>::Ptr f) {
-        assert(!_finishHook);
-        _finishHook = f;
-    }
+    /// Add a callback to be invoked when the receiver finishes processing
+    /// a response from its request.
+    void addFinishHook(util::UnaryCallable<void, bool>::Ptr f);
+
     Error getError() const;
 
 private:

@@ -24,6 +24,7 @@
 #include "xrdfs/MySqlFs.h"
 
 // System headers
+#include <cassert>
 #include <cerrno>
 #include <iterator>
 #include <iostream>

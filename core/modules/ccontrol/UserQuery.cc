@@ -61,6 +61,9 @@
   */
 #include "ccontrol/UserQuery.h"
 
+// System headers
+#include <cassert>
+
 // Qserv headers
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/ResultReceiver.h"

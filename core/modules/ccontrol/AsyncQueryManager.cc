@@ -37,6 +37,7 @@
 #include "ccontrol/AsyncQueryManager.h"
 
 // System headers
+#include <cassert>
 #include <iostream>
 
 // Third-party headers

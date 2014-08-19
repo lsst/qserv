@@ -33,6 +33,7 @@
 #include "wdb/QueryRunner.h"
 
 // System headers
+#include <cassert>
 #include <fcntl.h>
 #include <iostream>
 #include <sys/stat.h>

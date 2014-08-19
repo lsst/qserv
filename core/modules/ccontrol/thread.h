@@ -29,6 +29,7 @@
 #define LSST_QSERV_CCONTROL_THREAD_H
 
 // System headers
+#include <cassert>
 #include <map>
 #include <set>
 

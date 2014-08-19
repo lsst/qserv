@@ -27,6 +27,7 @@
 #include "wconfig/Config.h"
 
 // System headers
+#include <cassert>
 #include <sstream>
 
 // Third-party headers

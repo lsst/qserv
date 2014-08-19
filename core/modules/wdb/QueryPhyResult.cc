@@ -25,6 +25,7 @@
 #include "wdb/QueryPhyResult.h"
 
 // System headers
+#include <cassert>
 #include <fcntl.h>
 #include <iterator>
 #include <sys/stat.h>

@@ -38,6 +38,7 @@
 #include "rproc/TableMerger.h"
 
 // System headers
+#include <cassert>
 #include <iostream>
 #include <sstream>
 #include <sys/time.h>
@@ -51,7 +52,6 @@
 #include "rproc/SqlInsertIter.h"
 #include "sql/SqlConnection.h"
 #include "util/MmapFile.h"
-
 
 namespace { // File-scope helpers
 

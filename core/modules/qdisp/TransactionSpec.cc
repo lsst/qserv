@@ -24,6 +24,7 @@
 #include "qdisp/TransactionSpec.h"
 
 // System headers
+#include <cassert>
 #include <fcntl.h>
 #include <fstream>
 #include <sys/mman.h>

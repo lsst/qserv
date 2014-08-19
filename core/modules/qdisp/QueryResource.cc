@@ -32,6 +32,7 @@
 #include "qdisp/QueryResource.h"
 
 // System headers
+#include <cassert>
 #include <iostream>
 #include <sstream>
 

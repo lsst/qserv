@@ -23,6 +23,7 @@
 #include "ccontrol/UserQueryFactory.h"
 
 // System headers
+#include <cassert>
 #include <stdlib.h>
 
 // Qserv headers

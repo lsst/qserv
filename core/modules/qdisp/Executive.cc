@@ -33,6 +33,7 @@
 
 // System headers
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 #include <sstream>
 
@@ -205,7 +206,7 @@ void Executive::markCompleted(int refNum, bool success) {
                        << "Failed to find tracked id="
                        << refNum << " size=" << _receivers.size()
                        << std::endl;
-            assert(false);
+            assert(i != _receivers.end());
         }
         _statuses[refNum]->report(ExecStatus::RESULT_ERROR, 1);
         LOGGER_ERR << "Executive: error executing refnum=" << refNum << "."

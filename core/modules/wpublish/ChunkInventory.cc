@@ -25,6 +25,7 @@
 #include "wpublish/ChunkInventory.h"
 
 // System headers
+#include <cassert>
 #include <exception>
 #include <iostream>
 #include <sstream>

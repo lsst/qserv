@@ -28,8 +28,9 @@
 #include "rproc/SqlInsertIter.h"
 
 // System headers
-#include <iostream>
+#include <cassert>
 #include <errno.h>
+#include <iostream>
 
 // Local headers
 #include "log/Logger.h"

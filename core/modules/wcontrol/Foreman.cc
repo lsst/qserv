@@ -25,6 +25,7 @@
 #include "wcontrol/Foreman.h"
 
 // System headers
+#include <cassert>
 #include <deque>
 #include <iostream>
 

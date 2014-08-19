@@ -35,6 +35,7 @@
 
 // System headers
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 #include <stdexcept>
 

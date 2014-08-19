@@ -30,6 +30,7 @@
 #include "xrdc/XrdBufferSource.h"
 
 // System headers
+#include <cassert>
 #include <errno.h>
 #include <fcntl.h>
 #include <iostream>

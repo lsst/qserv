@@ -25,6 +25,7 @@
 #include "xrdc/xrdfile.h"
 
 // System headers
+#include <cassert>
 #include <iostream>
 #include <string>
 
