@@ -65,11 +65,11 @@ public:
     /// A simple Source implementation on top of a fixed buffer.
     class FixedSource : public Source {
     public:
-        FixedSource(char const* buf, unsigned size) 
+        FixedSource(char const* buf, unsigned size)
             : _orig(const_cast<char*>(buf), size) {}
 
         virtual Value getFirstValue() { return _orig; }
-        virtual void increment(PacketBuffer& p) { 
+        virtual void increment(PacketBuffer& p) {
             // can increment only once: to end.
             setPos(p, _orig.second);
             setCurrent(p, 0, 0);
@@ -82,14 +82,14 @@ public:
     PacketBuffer(char const* buf, int size)
         : _pos(0) {
         _source.reset(new FixedSource(buf, size));
-        _current = _source->getFirstValue();         
+        _current = _source->getFirstValue();
     }
-    
+
     /// Construct a PacketBuffer with a specified backend.
     /// Takes ownership of Source.
-    PacketBuffer(Source* s) 
-        : _source(s), _pos(0) {        
-        _current = _source->getFirstValue();         
+    PacketBuffer(Source* s)
+        : _source(s), _pos(0) {
+        _current = _source->getFirstValue();
     }
 
     virtual ~PacketBuffer() {}

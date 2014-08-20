@@ -94,4 +94,3 @@ private:
 }}} // namespace lsst::qserv::xrdsvc
 
 #endif // LSST_QSERV_XRDSVC_SSISESSION2_H
-

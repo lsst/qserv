@@ -52,7 +52,7 @@ public:
     typedef boost::shared_ptr<ConfigMap> Ptr;
 
     ConfigMap(StringMap const& m) : _m(m) {}
-    
+
     /// @return the string value for a key, defaulting to defaultValue
     inline std::string get(std::string const& key,
                            std::string const& errorMsg,
@@ -73,9 +73,9 @@ public:
                       T const& defaultValue) {
         static std::string const sentinel(")))))))ConfigMap");
         std::string res = get(key, errorMsg, sentinel);
-        if(res != sentinel) { 
-            return _coerce<T>(res, defaultValue); 
-        } 
+        if(res != sentinel) {
+            return _coerce<T>(res, defaultValue);
+        }
         return defaultValue;
     }
 

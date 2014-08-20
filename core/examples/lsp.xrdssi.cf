@@ -1,8 +1,8 @@
 # Unified configuration for xrootd/cmsd for both manager and server instances
 # "if"-block separates manager-only and server-only configuration.
 
-# if <regexp> block.  Test whether the hostname matches the <regexp>, 
-# Example: tuson121 is the hostname of our manager node within our 
+# if <regexp> block.  Test whether the hostname matches the <regexp>,
+# Example: tuson121 is the hostname of our manager node within our
 # allocation at LLNL.
 
 ############
@@ -31,8 +31,8 @@ ssi.svclib libxrdsvc.so
 # Use qserv worker oss plugin (export path handling)
 ofs.osslib libxrdoss.so
 
-# Set <pathname> for file location resolution.  
-# i.e., <pathname>/somefile will be exported in the xroot URL: 
+# Set <pathname> for file location resolution.
+# i.e., <pathname>/somefile will be exported in the xroot URL:
 # xroot://manager:0000/somefile
 oss.localroot /data/lsst/lspexport
 
@@ -58,13 +58,12 @@ all.adminpath /data/lsst
 # host:port of manager instance (2131 is default)
 all.manager tuson121:2131
 
-# Do not change. This specifies valid virtual paths that can be accessed.  
+# Do not change. This specifies valid virtual paths that can be accessed.
 # "nolock" directive prevents write-locking and is important for qserv
-# qserv is hardcoded for these paths. 
+# qserv is hardcoded for these paths.
 all.export / nolock
 
 
-# Optional: Prevent dns resolution in logs.  
+# Optional: Prevent dns resolution in logs.
 # This may speed up request processing.
 xrd.network nodnr
- 

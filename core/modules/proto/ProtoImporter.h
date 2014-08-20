@@ -56,7 +56,7 @@ public:
 
     ProtoImporter(AcceptorPtr a) : _numAccepted(0), _acceptor(a) {}
     ProtoImporter() : _numAccepted(0) {}
-    
+
     bool operator()(char const* data, int size) {
         namespace gio = google::protobuf::io;
 
@@ -82,4 +82,3 @@ private:
 }}} // lsst::qserv::proto
 
 #endif // #define LSST_QSERV_PROTO_PROTOIMPORTER_H
-

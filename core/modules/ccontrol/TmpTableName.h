@@ -57,4 +57,3 @@ private:
 }}} // namespace lsst::qserv:ccontrol
 
 #endif // LSST_QSERV_CCONTROL_TMPTABLENAME_H
-

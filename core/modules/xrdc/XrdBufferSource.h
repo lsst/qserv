@@ -55,7 +55,7 @@ public:
     XrdBufferSource(int xrdFd, int fragmentSize);
 
     /// For debugging.
-    XrdBufferSource(std::string const& fileName, 
+    XrdBufferSource(std::string const& fileName,
                     int fragmentSize, bool debug);
 
     virtual ~XrdBufferSource();

@@ -455,4 +455,3 @@ void Executive::_printState(std::ostream& os) {
 }
 
 }}} // namespace lsst::qserv::qdisp
-
