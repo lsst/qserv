@@ -50,9 +50,9 @@ namespace lsst {
 namespace qserv {
 namespace xrdsvc {
 
-//////////////////////////////////////////////////////////////////////
-// class SsiService, Qserv XrdSsiService implementation
-//////////////////////////////////////////////////////////////////////
+
+/// SsiService is an XrdSsiService implementation that implements a Qserv query
+/// worker services
 class SsiService : public XrdSsiService {
 public:
     typedef boost::shared_ptr<SsiService> Ptr;

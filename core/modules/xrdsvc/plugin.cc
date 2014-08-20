@@ -20,10 +20,13 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+/// Implement XrdSsiGetServerService() to provide Qserv's SsiService
+/// implementation. Link this file when building a plugin to be used as
+/// ssi.svclib .
+
 
 // System headers
 #include <iostream>
-//#include <string>
 
 // Third-party headers
 #include "XrdSsi/XrdSsiLogger.hh"

@@ -40,6 +40,11 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+/// ExecStatus instances receive timestamped reports of execution State. This
+/// allows a manager object to receive updates on status without exposing its
+/// existence to a delegate class. The ExecStatus class could be extended to
+/// save all received reports to provide a timeline of state changes, but this
+/// is not currently implemented.
 class ExecStatus {
 public:
     typedef boost::shared_ptr<ExecStatus> Ptr;

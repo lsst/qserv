@@ -44,19 +44,41 @@ public:
 
     typedef boost::shared_ptr<QueryReceiver> Ptr;
     virtual ~QueryReceiver() {}
+
+    /// @return the size of the buffer() being returned.
     virtual int bufferSize() const = 0;
+
+    /// @return a buffer for filling by the caller. The receiver implementation
+    /// may need to prepare the buffer prior to returning.
     virtual char* buffer() = 0;
+
+    /// Flush the retrieved buffer where bLen bytes were set. If last==true,
+    /// then no more buffer() and flush() calls should occur.
+    /// @return true if successful (no error)
     virtual bool flush(int bLen, bool last) = 0;
+
+    /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;
+
+    /// @return true if the receiver has completed its duties.
     virtual bool finished() const = 0;
     virtual bool reset() = 0; //< Reset the state that a request can be retried.
+
+    /// Print a string representation of the receiver to an ostream
     virtual std::ostream& print(std::ostream& os) const = 0;
 
+    /// @return an error code and description
     Error getError() const { return Error(); };
 
+    /// Set a function to be called that forcibly cancels the QueryReceiver
+    /// process. The buffer filler should call this function so that it can be
+    /// notified when the receiver no longer cares about being filled.
     virtual void registerCancel(boost::shared_ptr<CancelFunc> cancelFunc) {
         _cancelFunc = cancelFunc;
     }
+
+    /// Cancel operations on the Receiver. This calls _cancelFunc and propagates
+    /// cancellation towards the buffer-filler.
     void cancel() {
         if(_cancelFunc) {
             (*_cancelFunc)();

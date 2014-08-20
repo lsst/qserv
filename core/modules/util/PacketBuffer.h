@@ -20,13 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-// An iterator that provides iteration over arbitrarily-sized pieces
-// of a stream. Access either a local file or an xrootd file
-// descriptor. Facilitates transferring bytes directly from the xrootd
-// realm to a fragment consumer (probably the table merger). Allowing
-// both types input sources makes it easier to reduce buffering and
-// disk usage, theoretically improving overall latency.
 #ifndef LSST_QSERV_UTIL_PACKETBUFFER_H
 #define LSST_QSERV_UTIL_PACKETBUFFER_H
 
@@ -41,6 +34,12 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
+/// An iterator that provides iteration over arbitrarily-sized pieces
+/// of a stream. Access either a local file or an xrootd file
+/// descriptor. Facilitates transferring bytes directly from the xrootd
+/// realm to a fragment consumer (probably the table merger). Allowing
+/// both types input sources makes it easier to reduce buffering and
+/// disk usage, theoretically improving overall latency.
 class PacketBuffer {
 public:
     typedef boost::shared_ptr<PacketBuffer> Ptr;
@@ -86,7 +85,8 @@ public:
         _current = _source->getFirstValue();         
     }
     
-    // Takes ownership of Backend.
+    /// Construct a PacketBuffer with a specified backend.
+    /// Takes ownership of Source.
     PacketBuffer(Source* s) 
         : _source(s), _pos(0) {        
         _current = _source->getFirstValue();         

@@ -49,6 +49,11 @@ namespace qserv {
 namespace xrdsvc {
 class SsiResponder;
 
+/// An implementation of both XrdSsiSession and XrdSsiResponder that is used by
+/// SsiService to provide qserv worker services. The XrdSsi interface encourages
+/// such an approach, and object lifetimes are somewhat unclear when the
+/// responsibilities are separated into separate XrdSsiSession and
+/// XrdSsiResponder classes.
 class SsiSession : public XrdSsiSession, public XrdSsiResponder {
 public:
     typedef boost::shared_ptr<ResourceUnit::Checker> ValidatorPtr;

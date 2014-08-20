@@ -66,8 +66,10 @@ public:
         typedef boost::shared_ptr<Config> Ptr;
         Config(std::string const& serviceUrl_)
             : serviceUrl(serviceUrl_) {}
-        std::string serviceUrl;
+        std::string serviceUrl; //< XrdSsi service URL, e.g. localhost:1094
     };
+
+    /// Specification for something executable by the Executive
     struct Spec {
         ResourceUnit resource; // path, e.g. /q/LSST/23125
         std::string request; // encoded request
@@ -75,15 +77,31 @@ public:
     };
 
     Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms);
+
+    /// Backwards-compatible add() interface to Executive
     void add(int refNum,
              TransactionSpec const& t, std::string const& resultName);
-    void add(int refNum, Spec const& s);
-    bool join();
-    void markCompleted(int refNum, bool success);
-    void requestSquash(int refNum);
-    void squash(); //< Squash everything. should we block?
 
+    /// Add an item with a reference number (not necessarily a chunk number)
+    void add(int refNum, Spec const& s);
+
+    /// Block until execution is completed
+    /// @return true if execution was successful
+    bool join();
+
+    /// Notify the executive that an item has completed
+    void markCompleted(int refNum, bool success);
+
+    /// Try to squash/abort an item in progress
+    void requestSquash(int refNum);
+
+    /// Squash everything. should we block?
+    void squash();
+
+    /// @return number of items in flight.
     int getNumInflight(); // non-const, requires a mutex.
+
+    /// @return a description of the current execution progress.
     std::string getProgressDesc() const;
 
 private:

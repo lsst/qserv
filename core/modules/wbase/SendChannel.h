@@ -39,16 +39,26 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
 
+/// SendChannel objects abstract an byte-output mechanism. Provides a layer of
+/// abstraction to reduce coupling to the XrdSsi API. SendChannel generally
+/// accepts only one call to send bytes, unless the sendStream call is used.
 class SendChannel {
 public:
     typedef util::VoidCallable<void> ReleaseFunc;
     typedef boost::shared_ptr<ReleaseFunc> ReleaseFuncPtr;
     typedef long long Size;
 
+    /// Send a buffer
     virtual bool send(char const* buf, int bufLen) = 0;
 
+    /// Send an error
     virtual bool sendError(std::string const& msg, int code) = 0;
+
+    /// Send the bytes from a POSIX file handle
     virtual bool sendFile(int fd, Size fSize) = 0;
+
+    /// Send a bucket of bytes.
+    /// @param last true if no more sendStream calls will be invoked.
     virtual bool sendStream(char const* buf, int bufLen, bool last) {
         throw std::logic_error("Streaming is unimplemented");
     }

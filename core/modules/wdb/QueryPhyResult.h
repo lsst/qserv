@@ -49,6 +49,7 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 
+/// Management class for handling query results.
 class QueryPhyResult {
 public:
     typedef std::set<std::string> StringSet;
@@ -62,10 +63,13 @@ public:
 
     void reset();
 
+    /// Dump results to a file
     bool performMysqldump(wlog::WLogger& log,
                           std::string const& user,
                           std::string const& dumpFile,
                           sql::SqlErrorObject&);
+
+    /// Dump results to a SendChannel
     bool dumpToChannel(wlog::WLogger& log,
                        std::string const& user,
                        boost::shared_ptr<wbase::SendChannel> sc,

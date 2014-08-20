@@ -133,6 +133,12 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
 bool QueryRequest::_importStream() {
     _resetBuffer();
     LOGGER_INF << "GetResponseData with buffer of " << _bufferRemain << "\n";
+    // TODO: When the new result-protocol is ready, re-implement this to invert
+    // the control scheme to reduce the amount of buffer
+    // (impedance) matching done. This should be possible because
+    // GetResponseData's request size is more strict than expected--the
+    // subsequent ProcessResponseData() call will provide exactly the requested
+    // amount of bytes, unless no more bytes available from the sender.
     bool retrieveInitiated = GetResponseData(_cursor, _bufferRemain); // Step 6
     LOGGER_INF << "Initiated request "
                << (retrieveInitiated ? "ok" : "err")

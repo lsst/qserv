@@ -49,6 +49,7 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
+/// See QueryReceiver API for basic documentation
 class ResultReceiver : public qdisp::QueryReceiver {
 public:
     /// @param merger downstream merge acceptor

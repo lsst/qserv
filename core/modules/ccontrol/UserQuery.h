@@ -99,9 +99,11 @@ public:
     /// @return the final execution state.
     QueryState join();
 
-    void kill(); //< Stop a query in progress (for immediate shutdowns)
+    /// Stop a query in progress (for immediate shutdowns)
+    void kill();
 
-    void discard(); //< Release resources related to user query
+    /// Release resources related to user query
+    void discard();
 
     // Exists only to help app.py with permission checking
     // TODO: Eliminate after geometry is pushed to c++

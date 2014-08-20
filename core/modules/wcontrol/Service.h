@@ -45,6 +45,9 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
+/// Service hides the details of managing running tasks.
+/// TaskAcceptors are used for the file-based dispatch mechanism, while
+/// MsgProcessors are used when abstracted SendChannel are available.
 class Service {
 public:
     typedef boost::shared_ptr<Service> Ptr;

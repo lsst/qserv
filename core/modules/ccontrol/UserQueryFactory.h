@@ -49,6 +49,9 @@ namespace ccontrol {
 class UserQueryFactory : private boost::noncopyable {
 public:
     UserQueryFactory(std::map<std::string,std::string> const& m);
+
+    /// @return a handle to the new UserQuery object to be used with the
+    /// userQueryProxy interface.
     int newUserQuery(std::string const& query, std::string const& resultTable);
 private:
     class Impl;

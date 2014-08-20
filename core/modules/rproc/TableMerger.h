@@ -118,15 +118,18 @@ public:
     /// Probably obsolete
     bool merge2(std::string const& dumpFile, std::string const& tableName);
 
-    // Fragmented merger
+    /// Merge rows from buffer fragments
     bool merge(PacketBufferPtr pb, std::string const& tableName);
-    //
+
+    /// Merge from single raw buffer.
     off_t merge(char const* dumpBuffer, int dumpLength,
                 std::string const& tableName);
 
     TableMergerError const& getError() const { return _error; }
     std::string getTargetTable() const {return _config.targetTable; }
 
+    /// Finalize a merge operation and perform any outstanding aggregation that
+    /// must be deferred until all results are received.
     bool finalize();
     bool isFinished() const;
 

@@ -61,6 +61,7 @@ public:
     int chunk() const {return _chunk;}
     std::string hashName() const { return _hashName; }
 
+    /// Lookup extended path variables (?k=val syntax)
     std::string var(std::string const& key) const;
 
     /// @return the path prefix element for a given request type.

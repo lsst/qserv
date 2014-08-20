@@ -52,13 +52,13 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-//////////////////////////////////////////////////////////////////////
-// class ChunkQuery
-// Handles chunk query execution, like openwritereadsaveclose, but
-// with dual asynchronous opening.  Should lessen need for separate
-// threads.  Not sure if it will be enough though.
-//
-//////////////////////////////////////////////////////////////////////
+/// class ChunkQuery
+/// Handles chunk query execution, like openwritereadsaveclose, but
+/// with dual asynchronous opening.  Should lessen need for separate
+/// threads.  Not sure if it will be enough though.
+///
+/// ChunkQuery is deprecated and will be retired once the XrdSsi-based Executive
+/// + QueryResource/QueryRequest implementation matures.
 class ChunkQuery : public XrdPosixCallBack {
 public:
     static const int MAX_ATTEMPTS = 3;

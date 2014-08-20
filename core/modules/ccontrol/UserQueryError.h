@@ -37,6 +37,7 @@ public:
     explicit UserQueryError(std::string const& msg) : std::runtime_error(msg) {}
 };
 
+/// UserQueryBug is an exception that indicates a bug in the UserQuery code.
 class UserQueryBug : public UserQueryError {
 public:
     explicit UserQueryBug(std::string const& msg)

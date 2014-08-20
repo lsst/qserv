@@ -31,20 +31,7 @@
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Local headers
-//#include "ccontrol/transaction.h"
 #include "util/Callable.h"
-//#include "xrdc/xrdfile.h"
-
-// Forward declarations
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-//    class AsyncQueryManager;
-}
-namespace xrdc {
-//    class PacketIter;
-}}} // End of forward declarations
-
 
 namespace lsst {
 namespace qserv {
@@ -52,6 +39,7 @@ namespace qdisp {
 class ExecStatus;
 class QueryReceiver;
 
+/// Bad response received from xrootd API
 class BadResponseError : public std::exception {
 public:
     BadResponseError(std::string const& s_)
@@ -63,6 +51,8 @@ public:
     }
     std::string s;
 };
+
+/// Error in QueryRequest
 class RequestError : public std::exception {
 public:
     RequestError(std::string const& s_)
@@ -77,6 +67,8 @@ public:
 
 const int QueryRequest_receiveBufferSize = 1024*1024; // 1MB receive buffer
 
+/// A client implementation of an XrdSsiRequest that adapts qserv's executing
+/// queries to the XrdSsi API.
 class QueryRequest : public XrdSsiRequest {
 public:
     QueryRequest(XrdSsiSession* session,
@@ -87,14 +79,18 @@ public:
 
     virtual ~QueryRequest();
 
-    // content of request data
+    /// Called by xrootd to get the request payload
+    /// @return content of request data
     virtual char* GetRequest(int& requestLength);
 
+    /// Called by xrootd to release the allocated request payload
     virtual void RelRequestBuffer();
 
-    // precondition: rInfo.rType != isNone
+    /// Called by xrootd when a response is ready
+    /// precondition: rInfo.rType != isNone
     virtual bool ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk);
 
+    /// Called by xrootd when new data is available.
     virtual void ProcessResponseData(char *buff, int blen, bool last);
 
 private:

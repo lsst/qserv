@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2013 LSST Corporation.
+ * Copyright 2008-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,10 +44,10 @@ namespace mysql {
 
 namespace wconfig {
 
-// The Config object provides a thin abstraction layer to shield code from
-// the details of how the qserv worker is configured.  It currently
-// reads configuration from environment variables, but could later use
-// its own configuration file.
+/// The Config object provides a thin abstraction layer to shield code from
+/// the details of how the qserv worker is configured.  It currently
+/// reads configuration from environment variables, but could later use
+/// its own configuration file.
 class Config {
 public:
     Config();

@@ -26,6 +26,10 @@
 // Third-party headers
 #include <boost/shared_ptr.hpp>
 
+/// VoidCallable, UnaryCallable, and BinaryCallable are convenience templates
+/// for declaring no-argument, unary-argument, and binary-argument function
+/// objects. These classes are useful when defining interfaces.
+
 namespace lsst {
 namespace qserv {
 namespace util {

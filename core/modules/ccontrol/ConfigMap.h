@@ -53,6 +53,7 @@ public:
 
     ConfigMap(StringMap const& m) : _m(m) {}
     
+    /// @return the string value for a key, defaulting to defaultValue
     inline std::string get(std::string const& key,
                            std::string const& errorMsg,
                            std::string const& defaultValue) {

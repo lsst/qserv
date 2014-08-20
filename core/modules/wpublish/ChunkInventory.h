@@ -56,6 +56,8 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
+/// ChunkInventory contains a record of what chunks are available for execution
+/// on a worker node.
 class ChunkInventory {
 public:
     typedef std::deque<std::string> StringDeque;

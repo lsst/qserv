@@ -46,6 +46,8 @@ namespace lsst {
 namespace qserv {
 namespace xrdc {
 
+/// XrdBufferSource is a backend for a PacketBuffer, supplying bytes from an
+/// xrootd file descriptor.
 class XrdBufferSource : public util::PacketBuffer::Source {
 public:
     typedef util::PacketBuffer::Value Value;
