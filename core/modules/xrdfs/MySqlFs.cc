@@ -95,17 +95,15 @@ public:
     virtual void operator()(lsst::qserv::wcontrol::ResultError const& p) {
         if(p.first == 0) {
             // std::cerr << "Callback=OK!\t" << (void*)_callback << std::endl;
-            //_callback->Reply_OK();
             _callback->Reply(SFS_OK, 0, 0);
         } else {
             //std::cerr << "Callback error! " << p.first
             //	      << " desc=" << p.second << std::endl;
-            //_callback->Reply_Error(p.first, p.second.c_str());
             int code = 0;
             switch(p.first) {
-            case -1: code = kXR_FSError; break;
-            case -2: code = kXR_NoMemory; break;
-            default: code = kXR_NotAuthorized; break;
+              case -1: code = kXR_FSError; break;
+              case -2: code = kXR_NoMemory; break;
+              default: code = kXR_NotAuthorized; break;
             };
             _callback->Reply(SFS_ERROR, code, p.second.c_str());
         }

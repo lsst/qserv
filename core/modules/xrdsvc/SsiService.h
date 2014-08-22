@@ -36,20 +36,19 @@ class XrdSsiLogger;
 namespace lsst {
 namespace qserv {
 namespace wcontrol {
-class Service;
+  class Service;
 }
 namespace wlog {
-class WLogger;
+  class WLogger;
 }
 namespace wpublish {
-class ChunkInventory;
+  class ChunkInventory;
 }}} // End of forward declarations
 
 
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
-
 
 /// SsiService is an XrdSsiService implementation that implements a Qserv query
 /// worker services

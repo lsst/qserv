@@ -173,7 +173,7 @@ void UserQuery::submit() {
         std::string msg = ss.str();
 
         pi(msg.data(), msg.size());
-        if(pi.numAccepted() != msgCount) {
+        if(pi.getNumAccepted() != msgCount) {
             throw UserQueryBug("Error serializing TaskMsg.");
         }
 

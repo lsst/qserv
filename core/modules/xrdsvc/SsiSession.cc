@@ -239,20 +239,19 @@ void SsiSession::enqueue(ResourceUnit const& ru, char* reqData, int reqSize) {
     // more data.
     ReplyChannel::Ptr rc(new ReplyChannel(*this));
     SsiProcessor::Ptr sp(new SsiProcessor(ru, _processor, rc));
-//    Importer::Acceptor imp(new Importer(sp));
+
     std::ostringstream os;
     os << "Importing TaskMsg of size " << reqSize;
     _log->info(os.str());
     proto::ProtoImporter<proto::TaskMsg> pi(sp);
 
     pi(reqData, reqSize);
-    if(pi.numAccepted() < 1) {
+    if(pi.getNumAccepted() < 1) {
         // TODO Report error.
     } else {
         os.str("");
         os << "enqueued task ok: " << ru;
         _log->error(os.str());
-
     }
 }
 

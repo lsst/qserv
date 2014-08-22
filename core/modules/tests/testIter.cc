@@ -146,9 +146,10 @@ BOOST_AUTO_TEST_CASE(PlainIterTest) {
 
 BOOST_AUTO_TEST_CASE(SqlIterTest) {
     for(int fragSize=16; fragSize < 512; fragSize*=2) {
-        XrdBufferSource* bs = new XrdBufferSource(string(dummyFilename),
-                                              fragSize,
-                                              true);
+        XrdBufferSource* bs =
+            new XrdBufferSource(string(dummyFilename),
+                                fragSize,
+                                true);
         PacketBuffer::Ptr p(new PacketBuffer(bs));
         SqlInsertIter sii(p, tableName, true);
         unsigned sCount = iterateInserts(sii);

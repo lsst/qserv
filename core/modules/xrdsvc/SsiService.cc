@@ -69,7 +69,7 @@ namespace xrdsvc {
 boost::shared_ptr<sql::SqlConnection> makeSqlConnection() {
     boost::shared_ptr<sql::SqlConnection> conn;
     mysql::MySqlConfig sqlConfig = wconfig::getConfig().getSqlConfig();
-    sqlConfig.dbName = "";
+    sqlConfig.dbName = ""; // Force dbName empty to prevent accidental context
     conn.reset(new sql::SqlConnection(sqlConfig, true));
     return conn;
 }
@@ -101,15 +101,14 @@ SsiService::Provision(XrdSsiService::Resource* r,
     std::ostringstream os;
     os << "Got provision call where rName is:"
        << r->rName;
-    _log->info(os.str()); // Check here.
+    _log->info(os.str());
 
-    XrdSsiSession* session;
-    session = new SsiSession(r->rName,
-                              _chunkInventory->newValidator(),
-                              _service->getProcessor(),
-                              _log);
-    r->ProvisionDone(session); // Step 3
-    // client-side ProvisionDone()
+    XrdSsiSession* session = new SsiSession(
+        r->rName,
+        _chunkInventory->newValidator(),
+        _service->getProcessor(),
+        _log);
+    r->ProvisionDone(session); // Step 3: trigger client-side ProvisionDone()
     return true;
 }
 

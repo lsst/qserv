@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -104,7 +104,6 @@ long long xrdLseekSet(int fildes, off_t offset) {
 }}} // namespace lsst::qserv::xrdc
 
 #else // Not faked: choose the real XrdPosix implementation.
-// extern XrdPosixLinkage Xunix; // Enable for old POSIX-file-style dispatch
 
 namespace {
 
@@ -115,7 +114,6 @@ namespace {
     };
 
     XrdInit::XrdInit() : posixXrd(-OPEN_FILES) { // Use non-OS file descriptors
-        //      Xunix.Init(0); // test removal for new client
 
         // Set timeouts to effectively disable client timeouts.
 

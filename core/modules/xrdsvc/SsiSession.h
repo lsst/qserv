@@ -41,13 +41,15 @@ class XrdSsiService;
 namespace lsst {
 namespace qserv {
 namespace wlog {
-class WLogger;
+  class WLogger;
+}
+namespace xrdsvc {
+  class SsiResponder;
 }}}
 
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
-class SsiResponder;
 
 /// An implementation of both XrdSsiSession and XrdSsiResponder that is used by
 /// SsiService to provide qserv worker services. The XrdSsi interface encourages
@@ -70,9 +72,8 @@ public:
         {}
 
     virtual ~SsiSession() {
-        // XrdSsiSession::sessName is unmanaged
+        // XrdSsiSession::sessName is unmanaged, need to free()
         if(sessName) { ::free(sessName); sessName = 0; }
-        // delete my own resources.
     }
     virtual bool ProcessRequest(XrdSsiRequest* req, unsigned short timeout);
     virtual void RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
@@ -93,4 +94,4 @@ private:
 }; // class SsiSession
 }}} // namespace lsst::qserv::xrdsvc
 
-#endif // LSST_QSERV_XRDSVC_SSISESSION2_H
+#endif // LSST_QSERV_XRDSVC_SSISESSION_H

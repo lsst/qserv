@@ -63,7 +63,10 @@ public:
         boost::shared_ptr<Msg> m(new Msg());
         gio::ArrayInputStream input(data, size);
         gio::CodedInputStream coded(&input);
+        // For dev/debugging: accepts a partially-formed message
         //        m->MergePartialFromCodedStream(&coded);
+
+        // Accept only complete, compliant messages.
         bool isClean = m->MergeFromCodedStream(&coded);
         if(isClean) {
             if(_acceptor) {
@@ -73,7 +76,7 @@ public:
         }
         return isClean;
     }
-    inline int numAccepted() const { return _numAccepted; }
+    inline int getNumAccepted() const { return _numAccepted; }
 
 private:
     int _numAccepted;
