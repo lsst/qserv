@@ -41,7 +41,8 @@ if not env.GetOption('clean'):
     env.Append(CPPPATH=[os.getcwd()]) # top level
     state.log.debug("Scons env : " + env.Dump())
 
-    env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC"])
+    env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC",
+                         "-Wno-unused-local-typedefs"])
 
 # all modules
 allModules = """ccontrol css czar global log mysql obsolete
