@@ -132,7 +132,8 @@ void SsiService::_configure() {
     if(!wconfig::getConfig().getIsValid()) {
         std::string msg("Configuration invalid: "
                         + wconfig::getConfig().getError());
-        throw "XrdfsConfigError, should be exception";
+        _log->fatal(msg);
+        throw std::invalid_argument(msg);
     }
 }
 
