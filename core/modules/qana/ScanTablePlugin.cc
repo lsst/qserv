@@ -40,7 +40,7 @@
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/WhereClause.h"
-#include "util/common.h"
+#include "global/stringTypes.h"
 
 namespace lsst {
 namespace qserv {
@@ -70,9 +70,9 @@ public:
     virtual void applyFinal(query::QueryContext& context);
 
 private:
-    util::StringPairList _findScanTables(query::SelectStmt& stmt,
-                                         query::QueryContext& context);
-    util::StringPairList _scanTables;
+    StringPairList _findScanTables(query::SelectStmt& stmt,
+                                   query::QueryContext& context);
+    StringPairList _scanTables;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -126,21 +126,21 @@ ScanTablePlugin::applyFinal(query::QueryContext& context) {
 }
 
 struct getPartitioned : public query::TableRef::FuncC {
-    getPartitioned(util::StringPairList& sList_) : sList(sList_) {}
+    getPartitioned(StringPairList& sList_) : sList(sList_) {}
     virtual void operator()(query::TableRef const& tRef) {
-        util::StringPair entry(tRef.getDb(), tRef.getTable());
+        StringPair entry(tRef.getDb(), tRef.getTable());
         if(found.end() != found.find(entry)) return;
         sList.push_back(entry);
         found.insert(entry);
     }
-    std::set<util::StringPair> found;
-    util::StringPairList& sList;
+    std::set<StringPair> found;
+    StringPairList& sList;
 };
 
 // helper
-util::StringPairList
+StringPairList
 filterPartitioned(query::TableRefList const& tList) {
-    util::StringPairList list;
+    StringPairList list;
     getPartitioned gp(list);
     for(query::TableRefList::const_iterator i=tList.begin(), e=tList.end();
         i != e; ++i) {
@@ -149,7 +149,7 @@ filterPartitioned(query::TableRefList const& tList) {
     return list;
 }
 
-util::StringPairList
+StringPairList
 ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
                                  query::QueryContext& context) {
     // Might be better as a separate plugin
@@ -236,7 +236,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     }
     // FIXME hasSelectStar is not populated right now. Do we need it?
 
-    util::StringPairList scanTables;
+    StringPairList scanTables;
     // Right now, queries involving less than a threshold number of
     // chunks have their scanTables squashed as non-scanning in the
     // plugin's applyFinal

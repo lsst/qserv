@@ -25,6 +25,7 @@
 #include "wcontrol/Foreman.h"
 
 // System headers
+#include <cassert>
 #include <deque>
 #include <iostream>
 
@@ -35,6 +36,7 @@
 
 // Local headers
 #include "wbase/Base.h"
+#include "wbase/MsgProcessor.h"
 #include "wdb/QueryRunner.h"
 #include "wlog/WLogger.h"
 #include "wsched/FifoScheduler.h"
@@ -66,6 +68,11 @@ public:
 
     bool squashByHash(std::string const& hash);
     bool accept(boost::shared_ptr<proto::TaskMsg> msg);
+    void newTaskAction(wcontrol::Task::Ptr task);
+
+    virtual boost::shared_ptr<wbase::MsgProcessor> getProcessor();
+
+    class Processor;
     class RunnerMgr;
     class Runner  {
     public:
@@ -98,7 +105,6 @@ public:
         ForemanImpl& _f;
         Foreman::TaskWatcher& _taskWatcher;
     };
-
     friend class RunnerMgr;
 
 private:
@@ -287,6 +293,21 @@ void ForemanImpl::Runner::operator()() {
     } // Keep running until we get poisoned.
     _rm.signalDeath(this);
 }
+
+////////////////////////////////////////////////////////////////////////
+// class ForemanImpl::Processor
+////////////////////////////////////////////////////////////////////////
+class ForemanImpl::Processor : public wbase::MsgProcessor {
+public:
+    Processor(ForemanImpl& f) : _foremanImpl(f) {}
+
+    virtual void operator()(boost::shared_ptr<proto::TaskMsg> taskMsg,
+                            boost::shared_ptr<wbase::SendChannel> replyChannel) {
+        wcontrol::Task::Ptr t(new wcontrol::Task(taskMsg, replyChannel));
+        _foremanImpl.newTaskAction(t);
+    }
+    ForemanImpl& _foremanImpl;
+};
 ////////////////////////////////////////////////////////////////////////
 // ForemanImpl
 ////////////////////////////////////////////////////////////////////////
@@ -330,10 +351,15 @@ bool ForemanImpl::squashByHash(std::string const& hash) {
 
 bool
 ForemanImpl::accept(boost::shared_ptr<proto::TaskMsg> msg) {
+    wcontrol::Task::Ptr t(new wcontrol::Task(msg));
+    newTaskAction(t);
+    return false; // FIXME
+}
+
+void ForemanImpl::newTaskAction(wcontrol::Task::Ptr task) {
     // Pass to scheduler.
     assert(_scheduler);
-    wcontrol::Task::Ptr t(new wcontrol::Task(msg));
-    TaskQueuePtr newReady = _scheduler->newTaskAct(t, _running);
+    TaskQueuePtr newReady = _scheduler->newTaskAct(task, _running);
     // Perform only what the scheduler requests.
     if(newReady.get() && (newReady->size() > 0)) {
         TaskQueue::iterator i = newReady->begin();
@@ -341,7 +367,12 @@ ForemanImpl::accept(boost::shared_ptr<proto::TaskMsg> msg) {
             _startRunner(*i);
         }
     }
-    return false; // FIXME
+}
+
+
+
+boost::shared_ptr<wbase::MsgProcessor> ForemanImpl::getProcessor() {
+    return boost::shared_ptr<Processor>(new Processor(*this));
 }
 
 }}} // namespace lsst::qserv::wcontrol

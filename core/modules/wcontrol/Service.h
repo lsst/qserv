@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,6 +31,7 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
     class TaskAcceptor;
+    class MsgProcessor;
 }
 namespace wcontrol {
     class Foreman;
@@ -44,6 +45,9 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
+/// Service hides the details of managing running tasks.
+/// TaskAcceptors are used for the file-based dispatch mechanism, while
+/// MsgProcessors are used when abstracted SendChannel are available.
 class Service {
 public:
     typedef boost::shared_ptr<Service> Ptr;
@@ -51,6 +55,7 @@ public:
     explicit Service(boost::shared_ptr<wlog::WLogger> log=
                           boost::shared_ptr<wlog::WLogger>());
     boost::shared_ptr<wbase::TaskAcceptor> getAcceptor();
+    boost::shared_ptr<wbase::MsgProcessor> getProcessor();
     void squashByHash(std::string const& hash);
 
 private:

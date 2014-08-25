@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2011, 2012 LSST Corporation.
+ * Copyright 2011-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,6 +41,7 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
     class ScriptMeta;
+    class SendChannel;
 }
 namespace proto {
     class TaskMsg;
@@ -71,8 +72,10 @@ public:
     explicit Task() {}
     explicit Task(wbase::ScriptMeta const& s, std::string const& user_=defaultUser);
     explicit Task(TaskMsgPtr t, std::string const& user_=defaultUser);
+    explicit Task(TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc);
 
     TaskMsgPtr msg;
+    boost::shared_ptr<wbase::SendChannel> sendChannel;
     std::string hash;
     std::string dbName;
     std::string resultPath;

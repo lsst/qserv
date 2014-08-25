@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,7 +33,7 @@
 #include "boost/shared_ptr.hpp"
 
 // Local headers
-#include "util/common.h"
+#include "global/stringTypes.h"
 
 
 namespace lsst {
@@ -52,7 +52,7 @@ namespace query {
 //
 class ChunkMapping {
 public:
-    typedef util::StringMap Map;
+    typedef StringMap Map;
     typedef Map::value_type MapValue;
 
     ChunkMapping() :_subPrefix("_sc") {}

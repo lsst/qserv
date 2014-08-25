@@ -148,6 +148,22 @@ Task::Task(Task::TaskMsgPtr t, std::string const& user_) {
     timestr[0] = '\0';
 }
 
+Task::Task(Task::TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc) {
+    // Make msg copy.
+    msg.reset(new proto::TaskMsg(*t));
+    sendChannel = sc;
+    hash = hashTaskMsg(*t);
+    dbName = "q_" + hash;
+    resultPath = wbase::hashToResultPath(hash); // Not needed
+    if(t->has_user()) {
+        user = t->user();
+    } else {
+        user = defaultUser;
+    }
+    needsCreate = true; // Not needed
+    timestr[0] = '\0';
+}
+
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     proto::TaskMsg& m = *t.msg;
     os << "Task: "

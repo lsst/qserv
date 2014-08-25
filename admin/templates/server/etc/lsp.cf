@@ -31,7 +31,8 @@ all.role server
 
 # Use qserv worker filesystem plugin
 # default path is {{QSERV_RUN_DIR}}/xrootd-run/
-xrootd.fslib {{QSERV_DIR}}/lib/libxrdfs.so
+xrootd.fslib libXrdSsi.so
+ssi.svclib {{QSERV_DIR}}/lib/libxrdsvc.so
 ofs.osslib {{QSERV_DIR}}/lib/libxrdoss.so
 
 # Set pathname for file location resolution.
@@ -43,9 +44,9 @@ oss.localroot {{XROOTD_RUN_DIR}}
 # for "file" writes (which are subquery writes in our case).
 cms.space linger 0 recalc 15 min 10m 11m
 
-# Use asyncronous filesystem API when interfacing with filesystem plugin
-# (qserv-worker plugin is tested using this configuration)
-xrootd.async force
+# Qserv uses the xrootd XrdSsi, which needs the configuration to
+# force-disable asyncronous access.
+xrootd.async off
 {{COMMENT_MONO_NODE}}fi
 
 ########################################
@@ -64,8 +65,7 @@ all.adminpath {{XROOTD_ADMIN_DIR}}
 # Do not change. This specifies valid virtual paths that can be accessed.
 # "nolock" directive prevents write-locking and is important for qserv
 # qserv is hardcoded for these paths.
-all.export /q/ nolock
-all.export /result/ nolock
+all.export / nolock
 
 xrd.port {{XROOTD_PORT}}
 
@@ -73,3 +73,5 @@ xrd.port {{XROOTD_PORT}}
 # This may speed up request processing.
 xrd.network nodnr
 
+# Uncomment the following line for detailed xrootd debugging
+# xrootd.trace all

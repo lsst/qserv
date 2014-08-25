@@ -57,6 +57,9 @@ namespace rproc {
 namespace sql {
     class SqlConnection;
 }
+namespace util {
+    class PacketBuffer;
+}
 namespace xrdc {
     class PacketIter;
 }}} // End of forward declarations
@@ -79,6 +82,7 @@ public:
 /// class TableMergerConfig - value class for configuring a TableMerger
 class TableMergerConfig {
 public:
+    TableMergerConfig() {}
     TableMergerConfig(std::string targetDb_, std::string targetTable_,
                       MergeFixup const& mFixup_,
                       std::string user_, std::string socket_,
@@ -106,40 +110,46 @@ public:
 /// be called after each result is read back from the worker.
 class TableMerger {
 public:
-    typedef boost::shared_ptr<xrdc::PacketIter> PacketIterPtr;
-
+    typedef boost::shared_ptr<util::PacketBuffer> PacketBufferPtr;
     explicit TableMerger(TableMergerConfig const& c);
 
+    /// Probably obsolete
     bool merge(std::string const& dumpFile, std::string const& tableName);
+    /// Probably obsolete
     bool merge2(std::string const& dumpFile, std::string const& tableName);
 
-    // Fragmented merger
-    bool merge(PacketIterPtr pacIter, std::string const& tableName);
+    /// Merge rows from buffer fragments
+    bool merge(PacketBufferPtr pb, std::string const& tableName);
+
+    /// Merge from single raw buffer.
+    off_t merge(char const* dumpBuffer, int dumpLength,
+                std::string const& tableName);
 
     TableMergerError const& getError() const { return _error; }
     std::string getTargetTable() const {return _config.targetTable; }
 
+    /// Finalize a merge operation and perform any outstanding aggregation that
+    /// must be deferred until all results are received.
     bool finalize();
+    bool isFinished() const;
+
 private:
+    class CreateStmt;
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql);
     std::string _buildMergeSql(std::string const& tableName, bool create);
     std::string _buildOrderByLimit();
+    bool _createTableIfNotExists(CreateStmt& cs);
+
     void _fixupTargetName();
     bool _importResult(std::string const& dumpFile);
     bool _slowImport(std::string const& dumpFile,
                      std::string const& tableName);
     bool _importFromBuffer(char const* buf, std::size_t size,
                            std::string const& tableName);
-    bool _importBufferCreate(char const* buf, std::size_t size,
-                             std::string const& tableName);
     bool _importBufferInsert(char const* buf, std::size_t size,
                              std::string const& tableName, bool allowNull);
-    bool _importBufferCreate(PacketIterPtr pacIter,
-                             std::string const& tableName);
-    std::string _makeCreateStmt(PacketIterPtr pacIterP,
-                                std::string const& tableName);
-    bool _dropAndCreate(std::string const& tableName, std::string& createSql);
+    bool _dropAndCreate(std::string const& tableName, std::string createSql);
     bool _importIter(SqlInsertIter& sii, std::string const& tableName);
 
     static std::string const _dropSql;
@@ -158,6 +168,7 @@ private:
     TableMergerError _error;
     long long _resultLimit;
     int _tableCount;
+    bool _isFinished;
     boost::mutex _countMutex;
     boost::mutex _popenMutex;
     boost::mutex _sqlMutex;

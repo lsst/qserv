@@ -25,6 +25,7 @@
 #include "wpublish/ChunkInventory.h"
 
 // System headers
+#include <cassert>
 #include <exception>
 #include <iostream>
 #include <sstream>
@@ -78,12 +79,18 @@ void fetchDbs(WLogger& log,
     log.debug("Launching query : " + listq);
     boost::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(listq);
     assert(resultP.get());
+    if(resultP->getErrorObject().isSet()) {
+        SqlErrorObject& seo = resultP->getErrorObject();
+        log.error("ChunkInventory can't get list of publishable dbs.");
+        log.error(seo.printErrMsg());
+        return;
+    }
     bool nothing = true;
     for(; !resultP->done(); ++(*resultP)) {
         dbs.push_back((**resultP)[0]);
         nothing = false;
     }
-    if(nothing) log.warn("TEST : No databases found to export."+listq);
+    if(nothing) { log.warn("TEST : No databases found to export." + listq); }
 }
 
 /// Functor to be called per-table name
@@ -191,7 +198,16 @@ private:
     boost::regex& _regex;
     ChunkInventory::ExistMap& _existMap;
 };
-}
+
+class Validator : public lsst::qserv::ResourceUnit::Checker {
+public:
+    Validator(lsst::qserv::wpublish::ChunkInventory& c) : chunkInventory(c) {}
+    virtual bool operator()(lsst::qserv::ResourceUnit const& ru) {
+        return chunkInventory.has(ru.db(), ru.chunk());
+    }
+    lsst::qserv::wpublish::ChunkInventory& chunkInventory;
+};
+} // anonymous namespace
 
 namespace lsst {
 namespace qserv {
@@ -224,6 +240,11 @@ bool ChunkInventory::has(std::string const& db, int chunk,
         return si.find(table) != si.end();
     }
 }
+
+boost::shared_ptr<ResourceUnit::Checker> ChunkInventory::newValidator() {
+    return boost::shared_ptr<ResourceUnit::Checker>(new Validator(*this));
+}
+
 void ChunkInventory::dbgPrint(std::ostream& os) {
     os << "ChunkInventory(";
     ExistMap::const_iterator i,e;

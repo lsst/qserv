@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,12 +25,15 @@
 #ifndef LSST_QSERV_QDISP_CHUNKQUERY_H
 #define LSST_QSERV_QDISP_CHUNKQUERY_H
 
+// System headers
+#include <memory> // auto_ptr
+
 // Third-party headers
 #include <boost/thread.hpp>
 #include "XrdPosix/XrdPosixCallBack.hh"
 
 // Local headers
-#include "ccontrol/transaction.h"
+#include "qdisp/TransactionSpec.h"
 #include "util/Timer.h"
 #include "xrdc/xrdfile.h"
 
@@ -41,7 +44,7 @@ namespace ccontrol {
     class AsyncQueryManager;
 }
 namespace xrdc {
-    class PacketIter;
+    class XrdBufferSource;
 }}} // End of forward declarations
 
 
@@ -49,13 +52,13 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-//////////////////////////////////////////////////////////////////////
-// class ChunkQuery
-// Handles chunk query execution, like openwritereadsaveclose, but
-// with dual asynchronous opening.  Should lessen need for separate
-// threads.  Not sure if it will be enough though.
-//
-//////////////////////////////////////////////////////////////////////
+/// class ChunkQuery
+/// Handles chunk query execution, like openwritereadsaveclose, but
+/// with dual asynchronous opening.  Should lessen need for separate
+/// threads.  Not sure if it will be enough though.
+///
+/// ChunkQuery is deprecated and will be retired once the XrdSsi-based Executive
+/// + QueryResource/QueryRequest implementation matures.
 class ChunkQuery : public XrdPosixCallBack {
 public:
     static const int MAX_ATTEMPTS = 3;
@@ -73,7 +76,7 @@ public:
     friend class WriteCallable;
 
     virtual void Complete(int Result);
-    explicit ChunkQuery(ccontrol::TransactionSpec const& t, int id,
+    explicit ChunkQuery(qdisp::TransactionSpec const& t, int id,
                         ccontrol::AsyncQueryManager* mgr);
     virtual ~ChunkQuery();
 
@@ -85,7 +88,7 @@ public:
         if(_result.read >= 0) return _result.localWrite;
         else return -1;
     }
-    boost::shared_ptr<xrdc::PacketIter> getResultIter();
+    std::auto_ptr<xrdc::XrdBufferSource> getResultBuffer();
     // Attempt to squash this query's execution.  This implies that
     // nobody cares about this query's results anymore.
     void requestSquash();
@@ -100,7 +103,7 @@ private:
     void _unlinkResult(std::string const& url);
 
     int _id;
-    ccontrol::TransactionSpec _spec;
+    qdisp::TransactionSpec _spec;
     WaitState _state;
     xrdc::XrdTransResult _result;
     boost::mutex _mutex;
@@ -108,7 +111,6 @@ private:
     std::string _hash;
     std::string _resultUrl;
     std::string _queryHostPort;
-    boost::shared_ptr<xrdc::PacketIter> _packetIter;
     ccontrol::AsyncQueryManager* _manager;
     bool _shouldSquash;
     util::Timer _writeOpenTimer;
@@ -118,6 +120,7 @@ private:
     util::Timer _readTimer;
     util::Timer _readCloseTimer;
     int _attempts;
+    int _xrdFd;
 
 };// class ChunkQuery
 

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2013 LSST Corporation.
+ * Copyright 2008-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -27,6 +27,7 @@
 #include "wconfig/Config.h"
 
 // System headers
+#include <cassert>
 #include <sstream>
 
 // Third-party headers
@@ -41,11 +42,9 @@ using lsst::qserv::wconfig::Config;
 
 namespace {
 // Settings declaration ////////////////////////////////////////////////
-static const int settingsCount = 7;
+static const int settingsCount = 6;
 // key, env var name, default, description
 static const char* settings[settingsCount][4] = {
-    {"xrdQueryPath", "QSW_XRDQUERYPATH", "/query2",
-     "xrootd path for query,e.g. /query2"},
     {"mysqlSocket", "QSW_DBSOCK", "/var/lib/mysql/mysql.sock",
      "MySQL socket file path for db connections"},
     {"mysqlDefaultUser", "QSW_DEFUSER", "qsmaster",
@@ -78,11 +77,11 @@ bool isExecutable(std::string const& execFile) {
 std::string validateMysql(Config const& c) {
     // Check config
     MySqlConfig sc;
-    sc.hostname = "";
+    sc.hostname = "invalidhostname_unresolved";
     sc.username = c.getString("mysqlDefaultUser");
     sc.password = "";
     sc.dbName = c.getString("scratchDb");
-    sc.port = 0;
+    sc.port = 9999;
     sc.socket = c.getString("mysqlSocket");
     if(!sc.isValid()) return "Invalid MySQL config:" + sc.asString();
 

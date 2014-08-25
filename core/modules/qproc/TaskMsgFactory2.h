@@ -30,6 +30,10 @@
   * differentiates it from the TaskMsgFactory in the Python layer (which has
   * been deprecated).
   *
+  * TODO: When the Python layer no longer has any need to produce protocol
+  * messages, we can eliminate the Python TaskMsgFactory and rename this one to
+  * TaskMsgFactory.
+  *
   * @author Daniel L. Wang, SLAC
   */
 

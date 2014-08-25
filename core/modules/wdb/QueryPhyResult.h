@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,11 +28,18 @@
 #include <set>
 #include <string>
 
+// Third-party headers
+#include <boost/shared_ptr.hpp>
+
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
 namespace sql {
     class SqlErrorObject;
+}
+namespace wbase {
+    class SendChannel;
 }
 namespace wlog {
     class WLogger;
@@ -42,6 +49,7 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 
+/// Management class for handling query results.
 class QueryPhyResult {
 public:
     typedef std::set<std::string> StringSet;
@@ -55,15 +63,22 @@ public:
 
     void reset();
 
+    /// Dump results to a file
     bool performMysqldump(wlog::WLogger& log,
                           std::string const& user,
                           std::string const& dumpFile,
                           sql::SqlErrorObject&);
 
+    /// Dump results to a SendChannel
+    bool dumpToChannel(wlog::WLogger& log,
+                       std::string const& user,
+                       boost::shared_ptr<wbase::SendChannel> sc,
+                       sql::SqlErrorObject&);
+
 private:
     void _mkdirP(std::string const& filePath);
     std::string _getSpaceResultTables() const;
-
+    std::string _computeTmpFileName() const;
 
     StringSet _resultTables;
     std::string _outDb;

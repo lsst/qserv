@@ -1,7 +1,7 @@
 // -*- lsst-c++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2013 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -37,10 +37,14 @@ Access to the classes from the qserv_czar library
 #define SWIG_FILE_WITH_INIT
 #include "ccontrol/dispatcher.h"
 #include "ccontrol/queryMsg.h"
+#include "ccontrol/QueryState.h"
+#include "ccontrol/UserQueryFactory.h"
+#include "ccontrol/userQueryProxy.h"
 #include "css/StripingParams.h"
 #include "global/constants.h"
 #include "log/loggerInterface.h"
 #include "qdisp/ChunkMeta.h"
+#include "qdisp/TransactionSpec.h"
 #include "qproc/ChunkSpec.h"
 #include "rproc/mergeTypes.h"
 #include "rproc/TableMerger.h"
@@ -120,18 +124,23 @@ namespace std {
 %apply int *OUTPUT { int* chunkId, int* code, time_t* timestamp };
 
 %include "ccontrol/dispatcher.h"
-%include "ccontrol/transaction.h"
 %include "ccontrol/queryMsg.h"
+%include "ccontrol/queryMsg.h"
+%include "ccontrol/QueryState.h"
+%include "ccontrol/UserQueryFactory.h"
+%include "ccontrol/userQueryProxy.h"
 %include "css/StripingParams.h"
 %include "global/constants.h"
 %include "log/loggerInterface.h"
 %include "qdisp/ChunkMeta.h"
+%include "qdisp/TransactionSpec.h"
 %include "qproc/ChunkSpec.h"
 %include "query/Constraint.h"
 %include "rproc/mergeTypes.h"
 %include "rproc/TableMerger.h"
 %include "util/Substitution.h"
 %include "xrdc/xrdfile.h"
+
 
 // Instantiate any templates here:
 // %template(setBool) lsst::daf::base::PropertySet::set<bool>;

@@ -40,7 +40,7 @@
 #include "qana/QueryMapping.h"
 #include "query/DbTablePair.h"
 #include "query/TableAlias.h"
-#include "util/common.h"
+#include "global/stringTypes.h"
 
 namespace lsst {
 namespace qserv {
@@ -72,7 +72,7 @@ public:
     std::string username; ///< unused, but reserved.
     std::vector<lsst::qserv::query::DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
 
-    util::StringPairList scanTables; // Tables scanned (for shared scans)
+    StringPairList scanTables; // Tables scanned (for shared scans)
 
     // Table aliasing
     query::TableAlias tableAliases;

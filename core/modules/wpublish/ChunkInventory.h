@@ -38,6 +38,9 @@
 // Third-party headers
 #include <boost/shared_ptr.hpp>
 
+// Qserv headers
+#include "global/ResourceUnit.h"
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -53,6 +56,8 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
+/// ChunkInventory contains a record of what chunks are available for execution
+/// on a worker node.
 class ChunkInventory {
 public:
     typedef std::deque<std::string> StringDeque;
@@ -74,7 +79,11 @@ public:
     }
     bool has(std::string const& db, int chunk,
              std::string table=std::string()) const;
+
+    boost::shared_ptr<ResourceUnit::Checker> newValidator();
+
     void dbgPrint(std::ostream& os);
+
 private:
     void _init(sql::SqlConnection& sc);
     void _fillDbChunks(ChunkInventory::StringSet& s);

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2010-2013 LSST Corporation.
+ * Copyright 2010-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -64,6 +64,13 @@ Service::Service(wlog::WLogger::Ptr log) {
 wbase::TaskAcceptor::Ptr
 Service::getAcceptor() {
     return _foreman;
+}
+
+boost::shared_ptr<wbase::MsgProcessor>
+Service::getProcessor() {
+    // Make a task processor that returns results in a channel rather than
+    // a separate file.
+    return _foreman->getProcessor();
 }
 
 void Service::squashByHash(std::string const& hash) {

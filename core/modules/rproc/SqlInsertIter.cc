@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,8 +28,9 @@
 #include "rproc/SqlInsertIter.h"
 
 // System headers
-#include <iostream>
+#include <cassert>
 #include <errno.h>
+#include <iostream>
 
 // Local headers
 #include "log/Logger.h"
@@ -86,6 +87,76 @@ namespace lsst {
 namespace qserv {
 namespace rproc {
 
+class SqlInsertIter::BufferMgr {
+public:
+    typedef unsigned long long BufOff;
+    explicit BufferMgr(util::PacketBuffer::Ptr p)
+        : pacBuffer(p) {}
+
+    ~BufferMgr() {
+        if(buffer) {
+            ::free(buffer);
+            buffer = 0;
+        }
+    }
+    void _setup() {
+        assert(!(*pacBuffer).isDone());
+        offStart = 0;
+        offEnd = (*pacBuffer)->second;
+        bufSize = 2 * offEnd; // Size to 2x first fragment size
+        // (which may be bigger than average)
+        buffer = static_cast<char*>(malloc(bufSize));
+
+        memcpy(buffer,(*pacBuffer)->first, offEnd);
+
+    }
+    char* getStart() { return buffer + offStart; }
+    char* getEnd() { return buffer + offEnd; }
+    bool isDone() const { return pacBuffer->isDone(); }
+
+    void advanceTo(char* newStart) {
+        // Set offStart accordingly.
+        offStart = newStart - buffer;
+    }
+
+    bool incrementFragment() {
+        // Advance iterator.
+        ++(*pacBuffer);
+        if(pacBuffer->isDone()) return false; // Any more?
+        util::PacketBuffer::Value v = **pacBuffer;
+        // Make sure there is room in the buffer
+        BufOff keepSize = offEnd - offStart;
+        BufOff needSize = v.second + keepSize;
+        if(needSize > (bufSize - offEnd)) {
+            if(needSize > bufSize) {
+                LOGGER_DBG << bufSize << " is too small" << std::endl
+                           << "sqliter Realloc to " << needSize << std::endl;
+                void* res = realloc(buffer, needSize);
+                if (!res) {
+                    errno = ENOMEM;
+                    throw "Failed to realloc for SqlInsertIter.";
+                }
+                bufSize = needSize;
+                buffer = static_cast<char*>(res);
+            }
+            // Move the part we care about to the beginning of the buffer.
+            memmove(buffer, getStart(), keepSize);
+            offEnd = keepSize;
+            offStart = 0;
+        }
+        // Copy from PacketBuffer into own buffer.
+        memcpy(getEnd(), v.first, v.second);
+        offEnd += v.second;
+        return true;
+    }
+
+    util::PacketBuffer::Ptr pacBuffer;
+    char* buffer;
+    BufOff bufSize;
+    BufOff offStart; // Start of non-junk in buffer
+    BufOff offEnd; // End of non-junk in buffer
+};
+
 
 ////////////////////////////////////////////////////////////////////////
 // SqlInsertIter
@@ -96,15 +167,16 @@ SqlInsertIter::Iter SqlInsertIter::_nullIter;
 SqlInsertIter::SqlInsertIter(char const* buf, off_t bufSize,
                              std::string const& tableName,
                              bool allowNull)
-    : _allowNull(allowNull), _pBuffer(0) {
+    : _allowNull(allowNull), _lastUsed(0) {
     _blockExpr = makeLockInsertRegex(tableName);
     _init(buf, bufSize, tableName);
 }
 
-SqlInsertIter::SqlInsertIter(xrdc::PacketIter::Ptr p,
+SqlInsertIter::SqlInsertIter(util::PacketBuffer::Ptr p,
                              std::string const& tableName,
                              bool allowNull)
-    : _allowNull(allowNull), _pacIterP(p) {
+    : _allowNull(allowNull), _bufferMgr(new BufferMgr(p)) {
+
     // We will need to keep our own buffer.  This is because the regex
     // iterator needs a continuous piece of memory.
 
@@ -122,22 +194,14 @@ SqlInsertIter::SqlInsertIter(xrdc::PacketIter::Ptr p,
     //
     LOGGER_DBG << "EXECUTING SqlInsertIter(PacketIter::Ptr, " << tableName <<
                   ", " << allowNull << ")" << std::endl;
-    assert(!(*p).isDone());
-    _pBufStart = 0;
-    _pBufEnd = (*p)->second;
-    _pBufSize = 2 * _pBufEnd; // Size to 2x first fragment size
-    // (which may be bigger than average)
-    _pBuffer = static_cast<char*>(malloc(_pBufSize));
-
-    memcpy(_pBuffer,(*p)->first, _pBufEnd);
     boost::regex lockInsertExpr(makeLockInsertOpenRegex(tableName));
     boost::regex lockExpr(makeLockOpenRegex(tableName));
     bool found = false;
     while(!found) {
-        char const* buf = _pBuffer; // need to add const to help compiler
-        found = boost::regex_search(buf,
-                                    buf + _pBufEnd,
-                                    _blockMatch, lockInsertExpr);
+        // need to add const to help compiler
+        char const* buf = _bufferMgr->getStart();
+        char const* bufEnd = _bufferMgr->getEnd();
+        found = boost::regex_search(buf, bufEnd, _blockMatch, lockInsertExpr);
         if(found) {
             LOGGER_DBG << "Matched Lock statement within SqlInsertIter" << std::endl;
             break;
@@ -146,10 +210,11 @@ SqlInsertIter::SqlInsertIter(xrdc::PacketIter::Ptr p,
         }
 
         //Add next fragment, if available.
-        if(!_incrementFragment()) {
+        if(!_bufferMgr->incrementFragment()) {
             // Verify presence of Lock statement.
-            if(boost::regex_search(buf, buf + _pBufEnd, _blockMatch,
-                                   lockExpr)) {
+            buf = _bufferMgr->getStart();
+            bufEnd = _bufferMgr->getEnd();
+            if(boost::regex_search(buf, bufEnd, _blockMatch, lockExpr)) {
                 return;
             } else {
                 errno = ENOTRECOVERABLE;
@@ -161,44 +226,14 @@ SqlInsertIter::SqlInsertIter(xrdc::PacketIter::Ptr p,
     _blockFound = found;
     _initRegex(tableName);
     // Might try _blockMatch[3].first, _blockMatch[3].second
-    _setupIter();
+    _resetMgrIter();
 }
 
 SqlInsertIter::~SqlInsertIter() {
-    if(_pBuffer) free(_pBuffer);
 }
 
-void SqlInsertIter::_setupIter() {
-    _iter = Iter(_pBuffer + _pBufStart, _pBuffer + _pBufEnd, _insExpr);
-}
-
-bool SqlInsertIter::_incrementFragment() {
-    // Advance iterator.
-    ++(*_pacIterP);
-    if(_pacIterP->isDone()) return false; // Any more?
-    xrdc::PacketIter::Value v = **_pacIterP;
-    // Make sure there is room in the buffer
-    BufOff keepSize = _pBufEnd - _pBufStart;
-    BufOff needSize = v.second + keepSize;
-    if(needSize > (_pBufSize - _pBufEnd)) {
-        if(needSize > _pBufSize) {
-            LOGGER_DBG << _pBufSize << " is too small" << std::endl
-                       << "sqliter Realloc to " << needSize << std::endl;
-            void* res = realloc(_pBuffer, needSize);
-            if (!res) {
-                errno = ENOMEM;
-                throw "Failed to realloc for SqlInsertIter.";
-            }
-            _pBufSize = needSize;
-            _pBuffer = static_cast<char*>(res);
-        }
-        memmove(_pBuffer, _pBuffer+_pBufStart, keepSize);
-        _pBufEnd = keepSize;
-        _pBufStart = 0;
-    }
-    memcpy(_pBuffer + _pBufEnd, v.first, v.second);
-    _pBufEnd += v.second;
-    return true;
+void SqlInsertIter::_resetMgrIter() {
+    _iter = Iter(_bufferMgr->getStart(), _bufferMgr->getEnd(), _insExpr);
 }
 
 void SqlInsertIter::_initRegex(std::string const& tableName) {
@@ -216,6 +251,9 @@ void SqlInsertIter::_init(char const* buf, off_t bufSize,
         _initRegex(tableName);
         _iter = Iter(_blockMatch[2].first, _blockMatch[3].second,
                      _insExpr);
+        _lastUsed = (*_iter)[0].second;
+    } else {
+        _iter = _nullIter;
     }
 }
 
@@ -233,8 +271,8 @@ SqlInsertIter& SqlInsertIter::operator++() {
 }
 
 bool SqlInsertIter::isDone() const {
-    if(_pacIterP) {
-        return (_iter == _nullIter) || _pacIterP->isDone();
+    if(_bufferMgr) {
+        return (_iter == _nullIter) || _bufferMgr->isDone();
     } else {
         return _iter == _nullIter;
     }
@@ -246,17 +284,21 @@ bool SqlInsertIter::isDone() const {
 /// iterating over the dump in "packets", we may need to advance
 /// the packet iterator.
 void SqlInsertIter::_increment() {
-    if(_pacIterP) {
+    if(_bufferMgr) {
         // Set _pBufStart to end of last match.
-        _pBufStart = static_cast<BufOff>((*_iter)[0].second - _pBuffer);
+        _bufferMgr->advanceTo(const_cast<char*>((*_iter)[0].second));
+        //_pBufStart = static_cast<BufOff>((*_iter)[0].second - _pBuffer);
         ++_iter; // Advance the regex to the next INSERT stmt
-        while((_iter == _nullIter) && !_pacIterP->isDone()) {
-            _incrementFragment(); // Extend buffer
-            _setupIter(); // Reset the iterator.
+        while((_iter == _nullIter) && !_bufferMgr->isDone()) {
+            _bufferMgr->incrementFragment(); // Extend buffer
+            _resetMgrIter(); // Reset the iterator.
         }
         // Either we found an insert or there are no more packets.
     } else { // If fully buffered.
         ++_iter;
+        if(_iter != _nullIter) {
+            _lastUsed = (*_iter)[0].second;
+        }
     }
 }
 

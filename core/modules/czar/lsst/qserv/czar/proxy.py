@@ -41,7 +41,7 @@ from lsst.qserv.czar import queryMsgGetCount, queryMsgGetMsg, discardSession
 class Lock:
     createTmpl = "CREATE TABLE IF NOT EXISTS %s (chunkId INT, code SMALLINT, message CHAR(255), timeStamp FLOAT) ENGINE=MEMORY;"
     lockTmpl = "LOCK TABLES %s WRITE;"
-    writeTmpl = "INSERT INTO {} VALUES (%s, %s, %s, %s);"
+    writeTmpl = "INSERT INTO {0} VALUES (%s, %s, %s, %s);"
     unlockTmpl = "UNLOCK TABLES;"
 
     def __init__(self, tablename):

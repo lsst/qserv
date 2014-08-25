@@ -37,6 +37,7 @@
 #include "ccontrol/AsyncQueryManager.h"
 
 // System headers
+#include <cassert>
 #include <iostream>
 
 // Third-party headers
@@ -45,16 +46,20 @@
 #include <boost/make_shared.hpp>
 
 // Local headers
+#include "ccontrol/ConfigMap.h"
 #include "css/Facade.h"
+#include "global/stringTypes.h"
 #include "log/Logger.h"
 #include "log/msgCode.h"
 #include "rproc/TableMerger.h"
 #include "qdisp/ChunkQuery.h"
 #include "qdisp/MessageStore.h"
+#include "qdisp/TransactionSpec.h"
 #include "qproc/QuerySession.h"
+#include "util/PacketBuffer.h"
 #include "util/Timer.h"
 #include "util/WorkQueue.h"
-#include "xrdc/PacketIter.h"
+#include "xrdc/XrdBufferSource.h"
 
 // Namespace modifiers
 using boost::make_shared;
@@ -141,7 +146,7 @@ public:
 ////////////////////////////////////////////////////////////
 // AsyncQueryManager
 ////////////////////////////////////////////////////////////
-int AsyncQueryManager::add(TransactionSpec const& t,
+int AsyncQueryManager::add(qdisp::TransactionSpec const& t,
                            std::string const& resultName) {
     LOGGER_DBG << "EXECUTING AsyncQueryManager::add(TransactionSpec, "
                << resultName << ")" << std::endl;
@@ -155,7 +160,7 @@ int AsyncQueryManager::add(TransactionSpec const& t,
         // If empty spec or fault already detected, refuse to run.
         return -1;
     }
-    TransactionSpec ts(t);
+    qdisp::TransactionSpec ts(t);
 
     doctorQueryPath(ts.path);
     QuerySpec qs(boost::make_shared<qdisp::ChunkQuery>(ts, id, this),
@@ -192,12 +197,11 @@ void AsyncQueryManager::finalizeQuery(int id,
        && (r.read >= 0)) {
         util::Timer t2;
         t2.start();
-        boost::shared_ptr<xrdc::PacketIter> resIter;
+        boost::shared_ptr<util::PacketBuffer> pacBuffer;
         { // Lock scope for reading
             boost::lock_guard<boost::mutex> lock(_queriesMutex);
             QuerySpec& s = _queries[id];
-            // Set resIter equal to PacketIter associated with ChunkQuery.
-            resIter = s.first->getResultIter();
+            pacBuffer.reset(new util::PacketBuffer(s.first->getResultBuffer().release()));
             dumpFile = s.first->getSavePath();
             dumpSize = s.first->getSaveSize();
             tableName = s.second;
@@ -205,11 +209,8 @@ void AsyncQueryManager::finalizeQuery(int id,
             s.first.reset(); // clear out ChunkQuery.
         }
         // Lock-free merge
-        if(resIter) {
-            _addNewResult(id, resIter, tableName);
-        } else {
-            _addNewResult(id, dumpSize, dumpFile, tableName);
-        }
+
+        _addNewResult(id, pacBuffer, tableName);
         // Erase right before notifying.
         t2.stop();
         ss << id << " QmFinalizeMerge " << t2 << std::endl;
@@ -339,68 +340,46 @@ AsyncQueryManager::getMessageStore() {
 // private: ////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-inline int coerceInt(std::string const& s, int defaultValue) {
-    try {
-        std::istringstream ss(s);
-        int output;
-        ss >> output;
-        return output;
-    } catch (...) {
-        return defaultValue;
-    }
-}
-inline std::string getConfigElement(std::map<std::string,
-                                             std::string> const& cfg,
-                                    std::string const& key,
-                                    std::string const& errorMsg,
-                                    std::string const& defaultValue) {
-    std::map<std::string,std::string>::const_iterator i = cfg.find(key);
-    if(i != cfg.end()) {
-        return i->second;
-    } else {
-        LOGGER_ERR << errorMsg << std::endl;
-        return defaultValue;
-    }
-}
 
 void AsyncQueryManager::_readConfig(std::map<std::string,
                                     std::string> const& cfg) {
+    ConfigMap cm(cfg);
     /// localhost:1094 is the most reasonable default, even though it is
     /// the wrong choice for all but small developer installations.
-    _xrootdHostPort = getConfigElement(
-        cfg, "frontend.xrootd",
+    _xrootdHostPort = cm.get(
+        "frontend.xrootd",
         "WARNING! No xrootd spec. Using localhost:1094",
         "localhost:1094");
-    _scratchPath =  getConfigElement(
-        cfg, "frontend.scratch_path",
+    _scratchPath =  cm.get(
+        "frontend.scratch_path",
         "Error, no scratch path found. Using /tmp.",
         "/tmp");
     // This should be overriden by the installer properly.
-    _resultDbSocket =  getConfigElement(
-        cfg, "resultdb.unix_socket",
+    _resultDbSocket =  cm.get(
+        "resultdb.unix_socket",
         "Error, resultdb.unix_socket not found. Using /u1/local/mysql.sock.",
         "/u1/local/mysql.sock");
-    _resultDbUser =  getConfigElement(
-        cfg, "resultdb.user",
+    _resultDbUser =  cm.get(
+        "resultdb.user",
         "Error, resultdb.user not found. Using qsmaster.",
         "qsmaster");
-    _resultDbDb =  getConfigElement(
-        cfg, "resultdb.db",
+    _resultDbDb =  cm.get(
+        "resultdb.db",
         "Error, resultdb.db not found. Using qservResult.",
         "qservResult");
 
-    std::string cssTech = getConfigElement(
-        cfg, "css.technology",
+    std::string cssTech = cm.get(
+        "css.technology",
         "Error, css.technology not found.",
         "invalid");
-    std::string cssConn = getConfigElement(
-        cfg, "css.connection",
+    std::string cssConn = cm.get(
+        "css.connection",
         "Error, css.connection not found.",
         "");
     _initFacade(cssTech, cssConn);
 
-    std::string defaultDb = getConfigElement(
-        cfg, "table.defaultdb",
+    std::string defaultDb = cm.get(
+        "table.defaultdb",
         "Empty table.defaultdb. Using LSST",
         "LSST");
     _qSession->setDefaultDb(defaultDb);
@@ -427,12 +406,13 @@ void AsyncQueryManager::_initFacade(std::string const& cssTech,
     }
 }
 
-void AsyncQueryManager::_addNewResult(int id, PacIterPtr pacIter,
+void AsyncQueryManager::_addNewResult(int id,
+                                      boost::shared_ptr<util::PacketBuffer> pb,
                                       std::string const& tableName) {
     LOGGER_DBG << "EXECUTING AsyncQueryManager::_addNewResult(" << id
-               << ", pacIter, " << tableName << ")" << std::endl;
-    bool mergeResult = _merger->merge(pacIter, tableName);
-    ssize_t sz = pacIter->getTotalSize();
+               << ", packetbuffer, " << tableName << ")" << std::endl;
+    bool mergeResult = _merger->merge(pb, tableName);
+    ssize_t sz = pb->getTotalSize();
     {
         boost::lock_guard<boost::mutex> lock(_totalSizeMutex);
         _totalSize += sz;

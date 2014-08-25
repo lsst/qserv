@@ -35,6 +35,7 @@
 
 // System headers
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 #include <stdexcept>
 
@@ -132,7 +133,7 @@ boost::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const 
             query::Constraint c;
             query::QsRestrictor const& r = **li;
             c.name = r._name;
-            util::StringList::const_iterator si;
+            StringList::const_iterator si;
             for(si = r._params.begin(); si != r._params.end(); ++si) {
                 c.params.push_back(*si);
             }
@@ -144,7 +145,6 @@ boost::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const 
     } else {
         //LOGGER_INF << "No constraints." << std::endl;
     }
-    // No constraint vector
     return cv;
 }
 
@@ -293,7 +293,7 @@ void QuerySession::_showFinal(std::ostream& os) {
     os << "QuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
     os << "QuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
     if(!_context->scanTables.empty()) {
-        util::StringPairList::const_iterator i,e;
+        StringPairList::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();
             i != e; ++i) {
             os << "ScanTable: " << i->first << "." << i->second

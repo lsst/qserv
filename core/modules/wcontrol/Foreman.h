@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2013 LSST Corporation.
+ * Copyright 2008-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -59,6 +59,9 @@
 // Forward declarations
 namespace lsst {
 namespace qserv {
+namespace wbase {
+    class MsgProcessor;
+}
 namespace wlog {
     class WLogger;
 }}} // End of forward declarations
@@ -81,6 +84,9 @@ public:
         virtual void markStarted(Task::Ptr t) {}
         virtual void markFinished(Task::Ptr t) {}
     };
+
+    /// An abstract scheduler interface. Foreman objects use Scheduler instances
+    /// to determine what tasks to launch upon triggering events.
     class Scheduler : public TaskWatcher {
     public:
         typedef boost::shared_ptr<Scheduler> Ptr;
@@ -97,7 +103,9 @@ public:
 
     virtual bool squashByHash(std::string const& hash) { return false; }
 
+    /// Accept a new task for execution
     virtual bool accept(boost::shared_ptr<proto::TaskMsg> msg) { return false; }
+    virtual boost::shared_ptr<wbase::MsgProcessor> getProcessor() = 0;
     virtual ~Foreman() {}
 
 protected:

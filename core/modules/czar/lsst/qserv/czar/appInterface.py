@@ -1,6 +1,6 @@
 #
 # LSST Data Management System
-# Copyright 2009-2013 LSST Corporation.
+# Copyright 2009-2014 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -53,6 +53,9 @@ class AppInterface:
                                                     'func_doc'),
                                   okname)
         self.reactor = reactor
+        self.reactor.addSystemEventTrigger('before', 'shutdown',
+                                           self.cancelEverything)
+
         self.actions = {}
         # set id counter to seconds since the epoch, mod 1 year.
         self._idCounter = int(time.time() % (60*60*24*365))
@@ -89,7 +92,7 @@ class AppInterface:
         raise StandardError("Unimplemented")
 
     def submitQueryWithLock(self, query, conditions):
-        """Simplified mysqlproxy version.  
+        """Simplified mysqlproxy version.
         @returns result table name, lock/message table name, but before completion."""
         proxyName = conditions["client_dst_name"]
         proxyThread = conditions["server_thread_id"]
@@ -110,7 +113,7 @@ class AppInterface:
         if not lock.lock():
             return ("error", "error",
                     "error locking result, check qserv/db config.")
-        a = app.InbandQueryAction(query, conditions, 
+        a = app.InbandQueryAction(query, conditions,
                                   lock.setSessionId, resultName)
         if a.getIsValid():
             self._callWithThread(a.invoke)
@@ -195,3 +198,8 @@ class AppInterface:
         if self.reactor:
             self.reactor.stop()
         pass
+
+    def cancelEverything(self):
+        """Try to kill the threads running underneath, e.g. xrootd or otherwise
+        children of app"""
+        app.stopAll()

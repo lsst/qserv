@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -70,6 +70,7 @@ public:
     class Iter;
     friend class Iter;
     friend class AsyncQueryManager; // factory for QuerySession.
+    typedef boost::shared_ptr<QuerySession> Ptr;
 
     explicit QuerySession(boost::shared_ptr<css::Facade>);
 

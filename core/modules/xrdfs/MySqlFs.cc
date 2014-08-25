@@ -24,13 +24,15 @@
 #include "xrdfs/MySqlFs.h"
 
 // System headers
+#include <cassert>
 #include <cerrno>
 #include <iterator>
 #include <iostream>
 
 // Third-party headers
+#include "XProtocol/XProtocol.hh"
+#include "XrdOuc/XrdOucCallBack.hh" // For Open-callbacks(FinishListener)
 #include "XrdSec/XrdSecEntity.hh"
-#include "XrdSfs/XrdSfsCallBack.hh" // For Open-callbacks(FinishListener)
 #include "XrdSys/XrdSysError.hh"
 
 #include "obsolete/QservPath.h"
@@ -93,13 +95,17 @@ public:
     virtual void operator()(lsst::qserv::wcontrol::ResultError const& p) {
         if(p.first == 0) {
             // std::cerr << "Callback=OK!\t" << (void*)_callback << std::endl;
-            _callback->Reply_OK();
-            //_callback->Reply(SFS_OK, p.first, "ok");
+            _callback->Reply(SFS_OK, 0, 0);
         } else {
             //std::cerr << "Callback error! " << p.first
             //	      << " desc=" << p.second << std::endl;
-            _callback->Reply_Error(p.first, p.second.c_str());
-            //_callback->Reply(SFS_ERROR, p.first, p.second.c_str());
+            int code = 0;
+            switch(p.first) {
+              case -1: code = kXR_FSError; break;
+              case -2: code = kXR_NoMemory; break;
+              default: code = kXR_NotAuthorized; break;
+            };
+            _callback->Reply(SFS_ERROR, code, p.second.c_str());
         }
         _callback = 0;
         // _callback will be auto-destructed after any Reply_* call.
@@ -114,16 +120,28 @@ public:
     typedef boost::shared_ptr<AddCallbackFunc> Ptr;
     virtual ~AddCallbackFunc() {}
     virtual void operator()(XrdSfsFile& caller, std::string const& filename) {
-        XrdSfsCallBack * callback = XrdSfsCallBack::Create(&(caller.error));
+        XrdOucCallBack * callback = _createCallback(&(caller.error));
         //XrdOucCallBack * callback = new XrdOucCallBack();
         //callback->Init(&(caller.error));
 
         // Register callback with opener.
         //std::cerr << "Callback reg!\t" << (void*)callback << std::endl;
         lsst::qserv::wdb::QueryRunner::getTracker().listenOnce(
-            filename, FinishListener<XrdSfsCallBack>(callback));
+            filename, FinishListener<XrdOucCallBack>(callback));
         // wdb::QueryRunner::getTracker().listenOnce(
         //     filename, FinishListener<XrdOucCallBack>(callback));
+    }
+private:
+    XrdOucCallBack* _createCallback(XrdOucErrInfo* eInfo) {
+        // Trying to use approach from XrdOfsTPCInfo
+        XrdOucCallBack* newCB;
+        newCB = new XrdOucCallBack();
+        if(!newCB->Init(eInfo)) {
+            delete newCB;
+            newCB = 0;
+            throw std::logic_error("Bug in callback creation. Call Andy.");
+        }
+        return newCB;
     }
 };
 #endif // ifndef NO_XROOTD_FS

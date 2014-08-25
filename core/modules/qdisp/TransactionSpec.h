@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CCONTROL_TRANSACTION_H
-#define LSST_QSERV_CCONTROL_TRANSACTION_H
+#ifndef LSST_QSERV_QDISP_TRANSACTIONSPEC_H
+#define LSST_QSERV_QDISP_TRANSACTIONSPEC_H
 /**
   * @file
   *
@@ -42,7 +42,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace ccontrol {
+namespace qdisp {
 
 /// class TransactionSpec - A value class for the minimum
 /// specification of a subquery, as far as the xrootd layer is
@@ -58,9 +58,31 @@ public:
 
     bool isNull() const { return path.length() == 0; }
 
-    class Reader;  // defined in thread.h
+    class Reader;
 };
 
-}}} // namespace lsst::qserv::ccontrol
+class TransactionSpec::Reader {
+public:
+    Reader(std::string const& inFile);
+    ~Reader();
+    TransactionSpec getSpec();
+private:
+    void _readWholeFile(std::string const& inFile);
+    void _setupMmap(std::string const& inFile);
+    void _cleanupMmap();
+    void _advanceMmap();
 
-#endif // LSST_QSERV_CCONTROL_TRANSACTION_H
+    char* _rawContents;
+    char* _mmapChunk;
+    int _mmapFd;
+    int _mmapOffset;
+    int _mmapChunkSize;
+    int _mmapDefaultSize;
+    int _mmapMinimum;
+    int _rawLength;
+    int _pos;
+};
+
+}}} // namespace lsst::qserv::qdisp
+
+#endif // LSST_QSERV_QDISP_TRANSACTIONSPEC_H

@@ -35,7 +35,7 @@ def checkMySql(env):
 
     if not conf.CheckCXXHeader('mysql/mysql.h'):
         state.log.fail("Could not locate MySQL headers (mysql/mysql.h)")
-    
+
     if conf.CheckLibWithHeader("mysqlclient_r", "mysql/mysql.h",
                                    language="C++", autoadd=0):
         if conf.CheckDeclaration("mysql_next_result",
@@ -179,7 +179,7 @@ def checkLibs(context, libList):
 
 ## Look for xrootd headers
 def findXrootdInclude(env):
-    hdrName = os.path.join("XrdPosix","XrdPosixLinkage.hh")
+    hdrName = os.path.join("XrdSsi","XrdSsiErrInfo.hh")
     conf = env.Configure()
     foundPath = None
 
@@ -197,17 +197,33 @@ def findXrootdInclude(env):
     pList.append("/usr/include")
     #pList.append("/usr/local/include")
     for p in pList:
-        path = os.path.join(p, "xrootd")
+        path = p
+        if not path.endswith("xrootd"):
+            path = os.path.join(p, "xrootd")
         if os.access(os.path.join(path, hdrName), os.R_OK):
             conf.Finish()
             return (True, path)
     conf.Finish()
     return (False,None)
 
+def findXrootdLibPath(libName, pathList):
+    fName = "lib%s.so" % (libName)
+    for p in pathList:
+        path = p
+        if os.access(os.path.join(path, fName), os.R_OK):
+            return path
+    print "Couldn't find " + libName
+    return None
+
 def checkXrootdLink(env, autoadd=0):
     libList = "XrdUtils XrdClient XrdPosix XrdPosixPreload".split()
-    header = "XrdPosix/XrdPosixLinkage.hh"
+ #   libList = "XrdPosix".split()
+    header = "XrdSsi/XrdSsiErrInfo.hh"
 
+    #print "ldpath", env.Dump("LIBPATH")
+    xrdLibPath = findXrootdLibPath("XrdCl", env["LIBPATH"])
+    if xrdLibPath:
+        env.Append(RPATH=[xrdLibPath])
     conf = env.Configure(custom_tests={
             'CheckLibs' : lambda c: checkLibs(c,libList)})
 

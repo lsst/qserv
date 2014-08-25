@@ -10,7 +10,7 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "boost_regex boost_system boost_thread mysqlclient_r ssl crypto XrdClient XrdOuc XrdSys XrdUtils".split()
+extDeps = "boost_regex boost_system boost_thread mysqlclient_r ssl crypto XrdClient XrdUtils".split()
 
 modDeps = 'wlog mysql obsolete sql wbase wconfig wpublish util'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))

@@ -44,17 +44,16 @@
 
 // Local headers
 #include "ccontrol/DynamicWorkQueue.h"
+#include "global/stringTypes.h"
 #include "xrdc/xrdfile.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace ccontrol {
-    class TransactionSpec;
-}
 namespace qdisp {
     class ChunkQuery;
     class MessageStore;
+    class TransactionSpec;
 }
 namespace qproc {
      class QuerySession;
@@ -64,8 +63,8 @@ namespace rproc {
     class TableMerger;
     class TableMergerConfig;
 }
-namespace xrdc {
-    class PacketIter;
+namespace util {
+    class PacketBuffer;
 }}} // End of forward declarations
 
 
@@ -86,8 +85,6 @@ public:
     typedef std::deque<Result> ResultDeque;
     typedef std::deque<Result>::const_iterator ResultDequeCItr;
     typedef boost::shared_ptr<AsyncQueryManager> Ptr;
-    typedef std::map<std::string, std::string> StringMap;
-    typedef boost::shared_ptr<xrdc::PacketIter> PacIterPtr;
 
     class ConfigError : public std::invalid_argument {
     public:
@@ -113,7 +110,7 @@ public:
 
     boost::shared_ptr<qdisp::MessageStore> getMessageStore();
 
-    int add(TransactionSpec const& t, std::string const& resultName);
+    int add(qdisp::TransactionSpec const& t, std::string const& resultName);
     void join(int id);
     bool tryJoin(int id);
     void joinEverything();
@@ -146,7 +143,8 @@ private:
     void _printState(std::ostream& os);
     void _addNewResult(int id, ssize_t dumpSize, std::string const& dumpFile,
                        std::string const& tableName);
-    void _addNewResult(int id, PacIterPtr pacIter, std::string const& tableName);
+    void _addNewResult(int id, boost::shared_ptr<util::PacketBuffer> pb,
+                       std::string const& tableName);
     void _squashExecution();
     void _squashRemaining();
 

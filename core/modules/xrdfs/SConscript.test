@@ -11,7 +11,7 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "mysqlclient_r boost_signals boost_regex boost_thread pthread boost_system protobuf ssl crypto XrdClient XrdOfs XrdServer XrdSfs XrdSys XrdUtils".split()
+extDeps = "mysqlclient_r boost_signals boost_regex boost_thread pthread boost_system protobuf ssl crypto XrdClient XrdOfs XrdServer  XrdUtils".split()
 
 modDeps = 'wlog mysql obsolete sql util wbase wconfig wcontrol wdb wpublish wsched xrdfs'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
@@ -20,7 +20,7 @@ pDeps = cacheObjs(env, pDeps, ".o")
 deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain
 deps.sort(key=str)
 
-p = env.Program('testMySqlFs_1.cc')
+p = env.Program('testMySqlFs_1.cc', LIBS=["XrdXrootd"])
 programs.append(p)
 
 p =env.Program(['testMySqlFs_2.cc'] + deps, LIBS=findLibs(extDeps))

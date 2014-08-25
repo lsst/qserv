@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,7 +46,7 @@
 #include "qdisp/MessageStore.h"
 #include "util/xrootd.h"
 #include "util/StringHash.h"
-#include "xrdc/PacketIter.h"
+#include "xrdc/XrdBufferSource.h"
 
 namespace lsst {
 namespace qserv {
@@ -270,7 +270,7 @@ void ChunkQuery::Complete(int Result) {
     LOGGER_INF << ss.str();
 }
 
-ChunkQuery::ChunkQuery(ccontrol::TransactionSpec const& t, int id,
+ChunkQuery::ChunkQuery(qdisp::TransactionSpec const& t, int id,
                        ccontrol::AsyncQueryManager* mgr)
     : XrdPosixCallBack(),
       _id(id), _spec(t),
@@ -377,9 +377,12 @@ std::string ChunkQuery::getDesc() const {
     return ss.str();
 }
 
-boost::shared_ptr<xrdc::PacketIter>
-ChunkQuery::getResultIter() {
-    return _packetIter;
+std::auto_ptr<xrdc::XrdBufferSource>
+ChunkQuery::getResultBuffer() {
+    int const fragmentSize = 4*1024*1024; // 4MB fragment size (param?)
+    // Should limit cumulative result size for merging.  Now is a
+    // good time. Configurable, with default=1G?
+    return std::auto_ptr<xrdc::XrdBufferSource>(new xrdc::XrdBufferSource(_xrdFd, fragmentSize));
 }
 
 void ChunkQuery::requestSquash() {
@@ -556,13 +559,10 @@ void ChunkQuery::_sendQuery(int fd) {
 
 void ChunkQuery::_readResultsDefer(int fd) {
     LOGGER_DBG << "EXECUTING ChunkQuery::_readResultsDefer(" << fd << ")" << std::endl;
-    int const fragmentSize = 4*1024*1024; // 4MB fragment size (param?)
-    // Should limit cumulative result size for merging.  Now is a
-    // good time. Configurable, with default=1G?
-
     // Now read.
-    // packetIter will close fd
-    _packetIter.reset(new xrdc::PacketIter(fd, fragmentSize));
+    // Ready to read: notify the manager, who will request the result buffer.
+    _xrdFd = fd;
+
     _result.localWrite = 1; // MAGIC: stuff the result so that it doesn't
     // look like an error to skip the local write.
     _state = COMPLETE;
