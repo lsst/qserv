@@ -1,7 +1,7 @@
 #!/bin/sh
 
 QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-source ${QSERV_RUN_DIR}/bin/env.sh
+. ${QSERV_RUN_DIR}/bin/env.sh
 
 check_qserv_run_dir
 

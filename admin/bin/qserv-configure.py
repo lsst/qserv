@@ -220,9 +220,13 @@ def main():
             homedir = os.path.expanduser("~")
             cfg_link = os.path.join(homedir, ".lsst", "qserv.conf")
 
-            if os.path.exists(cfg_link):
-
-                is_symlink_correct = os.path.exists(cfg_link) and os.path.samefile(cfg_link, cfg_file)
+            if os.lstat(cfg_link):
+                
+                try:
+                    is_symlink_correct = os.path.samefile(cfg_link, cfg_file)
+                except os.error:
+                    # link is broken
+                    is_symlink_correct = False 
 
                 if not is_symlink_correct:
                     if args.force or configure.user_yes_no_query(
