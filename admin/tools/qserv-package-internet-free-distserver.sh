@@ -1,17 +1,32 @@
 #!/bin/sh
 
+set -e
+
 # First, with lsstsw tools : 
 # rebuild lsst qserv qserv_testdata
 # publish -t current -b bXX lsst qserv qserv_testdata
 
-DISTSERVER_ROOT=${HOME}/distserver
-EUPS_PKGROOT="${DISTSERVER_ROOT}/production"
-PUBLIC_HTML=/lsst/home/fjammes/public_html/qserv-offline
+############################
+# CUSTOMIZE NEXT PARAMETER :
+############################
+
+# above directory must be published via a webserver
+PUBLIC_HTML=${HOME}/qserv-www
+
+#############################
+
+if [[ -z ${LSSTSW} ]]; then
+    echo "ERROR : Please setup lsstsw tools before running this script"
+    exit 1
+fi
+
+source ${LSSTSW}/etc/settings.cfg.sh
+DISTSERVER_ROOT=${LSSTSW}/distserver
 
 EUPS_VERSION=1.5.0
 EUPS_TARBALL="$EUPS_VERSION.tar.gz"
 EUPS_TARURL="https://github.com/RobertLuptonTheGood/eups/archive/$EUPS_TARBALL"
-EUPS_GITREPO="https://github.com/RobertLuptonTheGood/eups.git"
+EUPS_GITREPO="git://github.com/RobertLuptonTheGood/eups.git"
 
 git_update_bare() {
     if [ -z "$1" ]; then
@@ -93,18 +108,24 @@ EUPS_TARURL="file://${DISTSERVER_ROOT}/$EUPS_TARBALL"
 EUPS_GITREPO="${DISTSERVER_ROOT}/eups.git"
 
 echo
-echo "Creating Qserv offline distserver tarball"
+echo "Adding Qserv install script"
+echo "==========================="
+echo
+cp ${BUILDDIR}/qserv/admin/tools/qserv-install.sh ${DISTSERVER_ROOT}
+
+echo
+echo "Creating Qserv internet-free distserver tarball"
 echo "========================================="
 echo
 TOP_DIR=`basename ${DISTSERVER_ROOT}`
-TARBALL=${PUBLIC_HTML}/qserv-offline-distserver.tar.gz
+TARBALL=${PUBLIC_HTML}/qserv-internet-free-distserver.tar.gz
+mkdir -p ${PUBLIC_HTML}
 tar zcvf ${TARBALL} -C ${DISTSERVER_ROOT}/.. ${TOP_DIR} ||
 {
     echo "Unable to create ${TARBALL}"
     exit 1
 }
 
-echo "export DISTSERVER_ROOT=${DISTSERVER_ROOT}"
-echo "export EUPS_PKGROOT=${EUPS_PKGROOT}"
-echo "export EUPS_TARURL=${EUPS_TARURL}"
-echo "export EUPS_GIT_REPO=${EUPS_GITREPO}"
+echo "Offline distribution server archive creation SUCCESSFUL"
+echo "DISTSERVER_ROOT=${DISTSERVER_ROOT}"
+echo "TARBALL=${TARBALL}"

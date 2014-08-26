@@ -6,5 +6,5 @@ Installation
    :maxdepth: 2
 
    quick-start
-   quick-start-devel
-   offline 
+   internet-free
+   automated

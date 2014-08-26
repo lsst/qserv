@@ -1,6 +1,0 @@
-# block internet acces for Qserv user, but keep local network access
-iptables -A OUTPUT -m owner --uid-owner qserv -d 127.0.0.0/8 -j ACCEPT
-iptables -A OUTPUT -m owner --uid-owner qserv -j DROP
-# undo
-iptables -D OUTPUT -m owner --uid-owner qserv -d 127.0.0.0/8 -j ACCEPT
-iptables -D OUTPUT -m owner --uid-owner qserv -j DROP
