@@ -43,21 +43,6 @@ namespace ccontrol {
 // max_allowed_packet on mysqld/mysqlclient
 int const ResultReceiver_bufferSize = 2*1024*1024; // 2 megabytes.
 
-// TODO: delete this once the new protocol works.
-ResultReceiver::ResultReceiver(boost::shared_ptr<MsgReceiver> msgReceiver,
-                               boost::shared_ptr<rproc::TableMerger> merger,
-                               std::string const& tableName)
-    : _msgReceiver(msgReceiver),
-      _merger(merger), _tableName(tableName),
-      _actualSize(ResultReceiver_bufferSize),
-      _actualBuffer(_actualSize),
-      _flushed(false), _dirty(false) {
-    // Consider allocating buffer lazily, at first invocation of buffer()
-    _buffer = &_actualBuffer[0];
-    _bufferSize = _actualSize;
-
-}
-
 ResultReceiver::ResultReceiver(boost::shared_ptr<MsgReceiver> msgReceiver,
                                boost::shared_ptr<rproc::InfileMerger> merger,
                                std::string const& tableName)
@@ -160,15 +145,9 @@ void ResultReceiver::addFinishHook(util::UnaryCallable<void, bool>::Ptr f) {
 bool ResultReceiver::_appendAndMergeBuffer(int bLen) {
     off_t inputSize = _buffer - &_actualBuffer[0] + bLen;
     off_t mergeSize;
-
+    assert(_infileMerger);
     try {
-        if(_infileMerger) {
-            mergeSize = _infileMerger->merge(&_actualBuffer[0], inputSize,
-                                         _tableName);
-        } else {
-            mergeSize = _merger->merge(&_actualBuffer[0], inputSize,
-                                   _tableName);
-        }
+        mergeSize = _infileMerger->merge(&_actualBuffer[0], inputSize);
     } catch(rproc::InfileMergerError& e) {
         if(_msgReceiver) {
             (*_msgReceiver)(log::MSG_MERGE_ERROR, e.description);

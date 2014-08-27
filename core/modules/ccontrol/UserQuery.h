@@ -121,6 +121,7 @@ private:
     explicit UserQuery(boost::shared_ptr<qproc::QuerySession> qs);
     void setSessionId(int session) { _sessionId = session; }
     void _setupMerger();
+    void _discardMerger();
 
     boost::shared_ptr<qdisp::Executive> _executive;
     boost::shared_ptr<qdisp::MessageStore> _messageStore;
