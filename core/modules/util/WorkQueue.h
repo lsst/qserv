@@ -57,6 +57,7 @@ public:
 
     void add(boost::shared_ptr<Callable> c);
     void cancelQueued();
+    bool isEmpty();
 
     boost::shared_ptr<Callable> getNextCallable();
 

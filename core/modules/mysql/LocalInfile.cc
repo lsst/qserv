@@ -29,6 +29,7 @@
 #include <string.h> // for memcpy
 
 // Third-party headers
+#include <boost/thread.hpp>
 #include <mysql/mysql.h>
 
 // Qserv headers
@@ -114,9 +115,65 @@ int LocalInfile::read(char* buf, unsigned int bufLen) {
 int LocalInfile::getError(char* buf, unsigned int bufLen) {
     return 0;
 }
+
 ////////////////////////////////////////////////////////////////////////
 // LocalInfile::Mgr
 ////////////////////////////////////////////////////////////////////////
+class LocalInfile::Mgr::Impl {
+public:
+    Impl() {}
+
+    std::string insertBuffer(boost::shared_ptr<RowBuffer> rb) {
+        std::string f = _nextFilename();
+        _set(f, rb);
+        return f;
+    }
+
+    void setBuffer(std::string const& s, boost::shared_ptr<RowBuffer> rb) {
+        if(get(s)) {
+            throw std::runtime_error("Duplicate insertion in LocalInfile::Mgr");
+        }
+        _set(s, rb);//RowBuffer::newResRowBuffer(result));
+    }
+
+    boost::shared_ptr<RowBuffer> get(std::string const& s) {
+        boost::lock_guard<boost::mutex> lock(_mapMutex);
+        RowBufferMap::iterator i = _map.find(s);
+        if(i == _map.end()) { return boost::shared_ptr<RowBuffer>(); }
+        return i->second;
+    }
+
+private:
+    /// @return next filename
+    std::string _nextFilename() {
+        std::ostringstream os;
+        // Switch to boost::atomic when boost 1.53 or c++11 (std::atomic)
+        static int sequence = 0;
+        static boost::mutex m;
+        boost::lock_guard<boost::mutex> lock(m);
+
+        os << "virtualinfile_" << ++sequence;
+        return os.str();
+    }
+
+    void _set(std::string const& s, boost::shared_ptr<RowBuffer> rb) {
+        boost::lock_guard<boost::mutex> lock(_mapMutex);
+        _map[s] = rb;
+    }
+
+    typedef std::map<std::string, boost::shared_ptr<RowBuffer> > RowBufferMap;
+    RowBufferMap _map;
+    boost::mutex _mapMutex;
+};
+
+
+////////////////////////////////////////////////////////////////////////
+// LocalInfile::Mgr
+////////////////////////////////////////////////////////////////////////
+LocalInfile::Mgr::Mgr()
+    : _impl(new Impl) {
+}
+
 void LocalInfile::Mgr::attach(MYSQL* mysql) {
     mysql_set_local_infile_handler(mysql,
                                    local_infile_init,
@@ -131,19 +188,15 @@ void LocalInfile::Mgr::detachReset(MYSQL* mysql) {
 }
 
 void LocalInfile::Mgr::prepareSrc(std::string const& filename, MYSQL_RES* result) {
-    _map[filename] = RowBuffer::newResRowBuffer(result);
+        _impl->setBuffer(filename, RowBuffer::newResRowBuffer(result));
 }
 
 std::string LocalInfile::Mgr::prepareSrc(MYSQL_RES* result) {
-    std::string f = _nextFilename();
-    _map[f] = RowBuffer::newResRowBuffer(result);
-    return f;
+    return _impl->insertBuffer(RowBuffer::newResRowBuffer(result));
 }
 
 std::string LocalInfile::Mgr::prepareSrc(boost::shared_ptr<RowBuffer> rowBuffer) {
-    std::string f = _nextFilename();
-    _map[f] = rowBuffer;
-    return f;
+    return _impl->insertBuffer(rowBuffer);
 }
 
 // mysql_local_infile_handler interface
@@ -152,7 +205,7 @@ int LocalInfile::Mgr::local_infile_init(void **ptr, const char *filename, void *
     assert(userdata);
     //cout << "New infile:" << filename << "\n";
     LocalInfile::Mgr* m = static_cast<LocalInfile::Mgr*>(userdata);
-    boost::shared_ptr<RowBuffer> rb= m->get(std::string(filename));
+    boost::shared_ptr<RowBuffer> rb= m->_impl->get(std::string(filename));
     assert(rb);
     LocalInfile* lf = new LocalInfile(filename, rb);
     *ptr = lf;

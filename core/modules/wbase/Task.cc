@@ -179,7 +179,9 @@ void Task::poison() {
 void Task::setPoison(boost::shared_ptr<util::VoidCallable<void> > poisonFunc) {
     boost::lock_guard<boost::mutex> lock(_mutex);
     if(_poisoned) {
-        (*poisonFunc)();
+        if(poisonFunc) {
+            (*poisonFunc)();
+        }
     }
     _poisonFunc = poisonFunc;
 }

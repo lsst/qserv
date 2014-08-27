@@ -51,6 +51,10 @@ namespace qserv {
 namespace mysql {
     class MySqlConfig;
 }
+namespace proto {
+    class ProtoHeader;
+    class Result;
+}
 namespace qdisp {
     class MessageStore;
 }
@@ -122,8 +126,7 @@ public:
     typedef boost::shared_ptr<util::PacketBuffer> PacketBufferPtr;
     explicit InfileMerger(InfileMergerConfig const& c);
 
-    off_t merge(char const* dumpBuffer, int dumpLength,
-                std::string const& tableName);
+    off_t merge(char const* dumpBuffer, int dumpLength);
 
     InfileMergerError const& getError() const { return _error; }
     std::string getTargetTable() const {return _config.targetTable; }
@@ -133,9 +136,16 @@ public:
 
 private:
     class Msgs;
-    int _fetchHeader(char const* buffer, int length);
-    int _waitPacket(char const* buffer, int length);
-    void _setupTable(Msgs const& msgs);
+#if 0
+    int _fetchWithHeader(char const* buffer, int length);
+    int _fetchWithoutHeader(char const* buffer, int length);
+#endif
+    int _readHeader(proto::ProtoHeader& header, char const* buffer, int length);
+    int _readResult(proto::Result& result, char const* buffer, int length);
+    bool _verifySession(int sessionId);
+    bool _verifyMd5(std::string const& expected, std::string const& actual);
+    int _importBuffer(char const* buffer, int length, bool setupTable);
+    bool _setupTable(Msgs const& msgs);
     void _setupRow();
 
     class CreateStmt;

@@ -62,6 +62,7 @@
 #include "sql/statement.h"
 #include "util/MmapFile.h"
 #include "util/StringHash.h"
+#include "util/WorkQueue.h"
 
 
 namespace { // File-scope helpers
@@ -91,10 +92,13 @@ boost::shared_ptr<MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
     return sc;
 }
 
+bool readHeader(char const* headerBuffer, int headerLength) {
+    throw "NEED TO FIX THIS";
+    return true;
+
+}
 
 } // anonymous namespace
-
-
 
 namespace lsst {
 namespace qserv {
@@ -124,31 +128,50 @@ public:
     class Action;
     friend class Action;
 
-    Mgr(MySqlConfig const& config);
+    Mgr(MySqlConfig const& config, std::string const& mergeTable);
 
-    /// Should takes ownership of msgs.
-    Action newAction(std::string const& table, boost::shared_ptr<Msgs> msgs);
+    ~Mgr() {}
+
+    void enqueueAction(boost::shared_ptr<Msgs> msgs);
+
+    /// Wait until work queue is empty.
+    bool join() {
+        boost::unique_lock<boost::mutex> lock(_inflightMutex);
+        while(_numInflight > 0) {
+            _inflightZero.wait(lock);
+        }
+        return true;
+    }
+
     bool applyMysql(std::string const& query);
 
     void signalDone() {
         boost::lock_guard<boost::mutex> lock(_inflightMutex);
         --_numInflight;
+        if(_numInflight == 0) {
+            _inflightZero.notify_all();
+        }
     }
+
 
 private:
     inline void _incrementInflight() {
         boost::lock_guard<boost::mutex> lock(_inflightMutex);
         ++_numInflight;
     }
-
     mysql::MySqlConnection _mysqlConn;
-    lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
-    boost::mutex _inflightMutex;
     boost::mutex _mysqlMutex;
+    std::string const& _mergeTable;
+
+    util::WorkQueue _workQueue;
+    boost::mutex _inflightMutex;
+    boost::condition_variable _inflightZero;
     int _numInflight;
+
+    lsst::qserv::mysql::LocalInfile::Mgr _infileMgr;
 };
 
-class InfileMerger::Mgr::Action {
+class InfileMerger::Mgr::Action : public util::WorkQueue::Callable {
 public:
     Action(Mgr& mgr,
            boost::shared_ptr<Msgs> msgs,
@@ -176,14 +199,21 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger::Mgr implementation
 ////////////////////////////////////////////////////////////////////////
-InfileMerger::Mgr::Mgr(MySqlConfig const& config)
+InfileMerger::Mgr::Mgr(MySqlConfig const& config, std::string const& mergeTable)
     : _mysqlConn(config, true),
+      _mergeTable(mergeTable),
+      _workQueue(1),
       _numInflight(0) {
     if(_mysqlConn.connect()) {
         _infileMgr.attach(_mysqlConn.getMySql());
     } else {
         throw InfileMergerError(InfileMergerError::MYSQLCONNECT);
     }
+}
+
+void InfileMerger::Mgr::enqueueAction(boost::shared_ptr<Msgs> msgs) {
+    boost::shared_ptr<Action> a(new Action(*this, msgs, _mergeTable));
+    _workQueue.add(a);
 }
 
 bool InfileMerger::Mgr::applyMysql(std::string const& query) {
@@ -208,7 +238,6 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
       _sqlConfig(makeSqlConfig(c)),
       _tableCount(0),
       _isFinished(false),
-      _mgr(new Mgr(*_sqlConfig)),
       _needCreateTable(true),
       _needHeader(true) {
 
@@ -217,16 +246,18 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
     if(_config.mergeStmt) {
         _config.mergeStmt->setFromListAsTable(_mergeTable);
     }
+    _mgr.reset(new Mgr(*_sqlConfig, _mergeTable));
 }
-
+#if 0
 int InfileMerger::_fetchHeader(char const* buffer, int length) {
     // First char: sizeof protoheader. always less than 255 char.
     unsigned char phSize = *reinterpret_cast<unsigned char const*>(buffer);
     // Advance cursor to point after length
     char const* cursor = buffer + 1;
     int remain = length - 1;
-    boost::shared_ptr<InfileMerger::Msgs> msgs(new InfileMerger::Msgs);
 
+    boost::shared_ptr<InfileMerger::Msgs> msgs(new InfileMerger::Msgs);
+    _readHeader(msgs->protoHeader, cursor, phSize);
     if(!ProtoImporter<ProtoHeader>::setMsgFrom(msgs->protoHeader,
                                                cursor, phSize)) {
         _error.errorCode = InfileMergerError::HEADER_IMPORT;
@@ -289,18 +320,185 @@ int InfileMerger::_fetchHeader(char const* buffer, int length) {
 
     return length;
 }
-int InfileMerger::_waitPacket(char const* buffer, int length) {
-    // process buffer into rows, as much as possible, saving leftover.
-    // consume buffer into rows, and flag return for file handler.
 
-    return 0; // FIXME
+void InfileMerger::_importHeader(char const* headerBuffer, int headerLength) {
+    // First char: sizeof protoheader. always less than 255 char.
+    unsigned char phSize = *reinterpret_cast<unsigned char const*>(buffer);
+    // Advance cursor to point after length
+    char const* cursor = buffer + 1;
+    int remain = length - 1;
+    boost::shared_ptr<InfileMerger::Msgs> msgs(new InfileMerger::Msgs);
 
+    if(!ProtoImporter<ProtoHeader>::setMsgFrom(msgs->protoHeader,
+                                               cursor, phSize)) {
+        _error.errorCode = InfileMergerError::HEADER_IMPORT;
+        _error.description = "Error decoding proto header";
+        // This is only a real error if there are no more bytes.
+        return 0;
+    }
+    cursor += phSize; // Advance to Result msg
+    remain -= phSize;
+    if(remain < msgs->protoHeader.size()) {
+        // TODO: want to handle bigger messages.
+        _error.description = "Buffer too small for result msg, increase buffer size in InfileMerger";
+        _error.errorCode = InfileMergerError::HEADER_OVERFLOW;
+        return 0;
+    }
+    // Now decode Result msg
+    int resultSize = msgs->protoHeader.size();
+    LOGGER_INF << "Importing result msg size=" << msgs->protoHeader.size();
+
+    if(!ProtoImporter<proto::Result>::setMsgFrom(msgs->result,
+                                                 cursor, resultSize)) {
+        _error.errorCode = InfileMergerError::RESULT_IMPORT;
+        _error.description = "Error decoding result msg";
+        throw _error;
+    }
+    remain -= resultSize;
+    //_msgs->result.PrintDebugString(); // wait a second.
+    // doublecheck session
+    msgs->result.session(); // TODO
+    _setupTable(*msgs);
+    if(_error.errorCode) {
+        return -1;
+    }
+    // Check for the no-row condition
+    if(msgs->result.row_size() == 0) {
+        // Nothing further, don't bother importing.
+        return length;
+    }
+    std::string computedMd5 = util::StringHash::getMd5(cursor, resultSize);
+    if(msgs->protoHeader.md5() != computedMd5) {
+        _error.description = "Result message MD5 mismatch";
+        _error.errorCode = InfileMergerError::RESULT_MD5;
+        return 0;
+    }
+    _needHeader = false;
+    // Setup infile properties
+    // Spawn thread to handle infile processing
+#if 1
+    Mgr::enqueueAction(msgs, _mergeTable);
+    msgs.reset();
+#else
+    Mgr::Action a(*_mgr, msgs, _mergeTable);
+    msgs.reset();
+    boost::thread *t = new boost::thread(a);
+    LOGGER_INF << "Started infile thread " << (void*) t << std::endl;
+    t->join();
+    delete t;
+    LOGGER_INF << "Joined infile thread " << (void*) t << std::endl;
+    // FIXME: if we spawn a separate thread, we need to save it if we're going to continue before it completes.
+
+    assert(!msgs.get()); // Ownership should have transferred.
+
+//    _thread = new boost::thread(_mgr.newAction(_mgr, _msgs, _mergeTable));
+#endif
+
+    return length;
+}
+#endif
+
+int InfileMerger::_readHeader(ProtoHeader& header, char const* buffer, int length) {
+    if(!ProtoImporter<ProtoHeader>::setMsgFrom(header, buffer, length)) {
+        _error.errorCode = InfileMergerError::HEADER_IMPORT;
+        _error.description = "Error decoding proto header";
+        // This is only a real error if there are no more bytes.
+        return 0;
+    }
+    return length;
 }
 
-void InfileMerger::_setupTable(InfileMerger::Msgs const& msgs) {
+int InfileMerger::_readResult(proto::Result& result, char const* buffer, int length) {
+    if(!ProtoImporter<proto::Result>::setMsgFrom(result, buffer, length)) {
+        _error.errorCode = InfileMergerError::RESULT_IMPORT;
+        _error.description = "Error decoding result msg";
+        throw _error;
+    }
+    // result.PrintDebugString();
+    return length;
+}
+
+bool InfileMerger::_verifySession(int sessionId) {
+    if(false) {
+        _error.errorCode = InfileMergerError::RESULT_IMPORT;
+        _error.description = "session id mismatch";
+    }
+    return true; // TODO: for better message integrity
+}
+
+bool InfileMerger::_verifyMd5(std::string const& expected, std::string const& actual) {
+    if(expected != actual) {
+        _error.description = "Result message MD5 mismatch";
+        _error.errorCode = InfileMergerError::RESULT_MD5;
+        return false;
+    }
+    return true;
+}
+
+int InfileMerger::_importBuffer(char const* buffer, int length, bool setupResult) {
+    // First char: sizeof protoheader. always less than 255 char.
+    unsigned char phSize = *reinterpret_cast<unsigned char const*>(buffer);
+    // Advance cursor to point after length
+    char const* cursor = buffer + 1;
+    int remain = length - 1;
+    boost::shared_ptr<InfileMerger::Msgs> msgs(new InfileMerger::Msgs);
+    int headerRead =_readHeader(msgs->protoHeader, cursor, phSize);
+    if(headerRead != phSize) {
+        return 0;
+    }
+    cursor += phSize; // Advance to Result msg
+    remain -= phSize;
+
+    // Now decode Result msg
+    int resultSize = msgs->protoHeader.size();
+    LOGGER_INF << "Importing result msg size=" << msgs->protoHeader.size();
+    if(remain < msgs->protoHeader.size()) {
+        // TODO: want to handle bigger messages.
+        _error.description = "Buffer too small for result msg, increase buffer size in InfileMerger";
+        _error.errorCode = InfileMergerError::HEADER_OVERFLOW;
+        return 0;
+    }
+    if(resultSize != _readResult(msgs->result, cursor, resultSize)) {
+        return 0;
+    }
+    remain -= resultSize;
+    if(!_verifySession(msgs->result.session())) {
+        return 0;
+    }
+    // Check for the no-row condition
+    if(msgs->result.row_size() == 0) {
+        // Nothing further, don't bother importing.
+        return length;
+    }
+    if(!_verifyMd5(msgs->protoHeader.md5(), util::StringHash::getMd5(cursor, resultSize))) {
+        return -1;
+    }
+    if(setupResult) {
+        if(!_setupTable(*msgs)) {
+            return -1;
+        }
+    }
+    // Setup infile properties
+    // Spawn thread to handle infile processing
+    Mgr::Action a(*_mgr, msgs, _mergeTable);
+    msgs.reset();
+    boost::thread *t = new boost::thread(a);
+    LOGGER_INF << "Started infile thread " << (void*) t << std::endl;
+    t->join();
+    delete t;
+    LOGGER_INF << "Joined infile thread " << (void*) t << std::endl;
+    // FIXME: if we spawn a separate thread, we need to save it if we're going to continue before it completes.
+
+    assert(!msgs.get()); // Ownership should have transferred.
+
+//    _thread = new boost::thread(_mgr.newAction(_mgr, _msgs, _mergeTable));
+
+    return length;
+}
+
+bool InfileMerger::_setupTable(InfileMerger::Msgs const& msgs) {
     // Create table, using schema
     boost::lock_guard<boost::mutex> lock(_createTableMutex);
-
     if(_needCreateTable) {
         // create schema
         proto::RowSchema const& rs = msgs.result.rowschema();
@@ -329,39 +527,29 @@ void InfileMerger::_setupTable(InfileMerger::Msgs const& msgs) {
             _error.errorCode = InfileMergerError::CREATE_TABLE;
             _error.description = "Error creating table (" + _mergeTable + ")";
             _isFinished = true; // Cannot continue.
-            return;
+            return false;
         }
         _needCreateTable = false;
     } else {
         // Do nothing, table already created.
     }
+    return true;
 }
-void InfileMerger::_setupRow() {
-    /// Setup infile to merge.
-    // ???
-}
-off_t InfileMerger::merge(char const* dumpBuffer, int dumpLength,
-                         std::string const& tableName) {
+
+off_t InfileMerger::merge(char const* dumpBuffer, int dumpLength) {
     if(_error.errorCode) { // Do not attempt when in an error state.
         return -1;
     }
-    LOGGER_DBG << "EXECUTING InfileMerger::merge(packetbuffer, " << tableName << ")" << std::endl;
-    char const* buffer;
-    int length;
+    LOGGER_DBG << "EXECUTING InfileMerger::merge(" << (void*)dumpBuffer << ", "
+               << dumpLength << std::endl;
+    int mergeSize = 0;
     // Now buffer is big enough, start processing.
-    if(_needHeader) {
-        int hSize = _fetchHeader(dumpBuffer, dumpLength);
-        if(hSize == 0) {
-            // Buffer not big enough.
-            return 0;
-        }
-        buffer = dumpBuffer + hSize;
-        length = dumpLength - hSize;
-        _waitPacket(buffer, length);
-    } else {
-        _waitPacket(dumpBuffer, dumpLength);
+    mergeSize = _importBuffer(dumpBuffer, dumpLength, _needCreateTable);
+    if(mergeSize == 0) {
+        // Buffer not big enough.
+        return 0;
     }
-    return dumpLength; // _waitPacket doesn't return until it consumes the whole buffer.
+    return mergeSize;
 }
 
 bool InfileMerger::finalize() {
