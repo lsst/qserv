@@ -20,8 +20,9 @@ pDeps = cacheObjs(env, pDeps, ".o")
 deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain
 deps.sort(key=str)
 
-p = env.Program('testMySqlFs_1.cc', LIBS=["XrdXrootd"])
-programs.append(p)
+## Do not build testMySqlFs_1 -- obsolete.
+# p = env.Program('testMySqlFs_1.cc', LIBS=["XrdXrootd"])
+# programs.append(p)
 
 p =env.Program(['testMySqlFs_2.cc'] + deps, LIBS=findLibs(extDeps))
 programs.append(p)
