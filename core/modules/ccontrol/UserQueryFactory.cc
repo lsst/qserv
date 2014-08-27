@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/ConfigError.h"
 #include "ccontrol/UserQuery.h"
 #include "ccontrol/userQueryProxy.h"
 #include "css/Facade.h"
@@ -151,17 +152,14 @@ void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
         LOGGER_INF << "Initializing zookeeper-based css, with "
                    << cssConn << ", " << timeout_msec << std::endl;
         facade = css::FacadeFactory::createZooFacade(cssConn, timeout_msec);
-//        _qSession.reset(new qproc::QuerySession(cssFPtr));
     } else if (cssTech == "mem") {
         LOGGER_INF << "Initializing memory-based css, with "
                    << cssConn << std::endl;
         facade = css::FacadeFactory::createMemFacade(cssConn);
-//        _qSession.reset(new qproc::QuerySession(cssFPtr));
     } else {
         LOGGER_ERR << "Unable to determine css technology, check config file."
                    << std::endl;
-//        throw ConfigError("Invalid css technology, check config file.");
-// FIXME
+        throw ConfigError("Invalid css technology, check config file.");
     }
 }
 
