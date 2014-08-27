@@ -233,6 +233,15 @@ QueryState UserQuery::join() {
         LOGGER_ERR << "Joined everything (failure!)" << std::endl;
         return ERROR;
     }
+    _discardMerger();
+}
+
+void UserQuery::_discardMerger() {
+    _infileMergerConfig.reset();
+    if(_infileMerger && !_infileMerger->isFinished()) {
+        throw UserQueryError("merger unfinished, cannot discard");
+    }
+    _infileMerger.reset();
 }
 
 void UserQuery::discard() {
@@ -243,19 +252,7 @@ void UserQuery::discard() {
     _executive.reset();
     _messageStore.reset();
     _qSession.reset(); // TODO: release some portions earlier
-#if 0
-    _mergerConfig.reset();
-    if(_merger && !_merger->isFinished()) {
-        throw UserQueryError("merger unfinished, cannot discard");
-    }
-    _merger.reset();
-#else
-    _infileMergerConfig.reset();
-    if(_infileMerger && !_infileMerger->isFinished()) {
-        throw UserQueryError("merger unfinished, cannot discard");
-    }
-    _infileMerger.reset();
-#endif
+    _discardMerger();
     LOGGER_INF << "Discarded UserQuery(" << _sessionId << ")" << std::endl;
 }
 

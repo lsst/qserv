@@ -77,29 +77,12 @@ from lsst.qserv.czar.db import Db
 # SWIG'd functions
 
 from lsst.qserv.czar import CHUNK_COLUMN, SUB_CHUNK_COLUMN, DUMMY_CHUNK
-# xrdfile - raw xrootd access
-from lsst.qserv.czar import xrdOpen, xrdClose, xrdRead, xrdWrite
-from lsst.qserv.czar import xrdLseekSet, xrdReadStr
-from lsst.qserv.czar import xrdReadToLocalFile, xrdOpenWriteReadSaveClose
-
-from lsst.qserv.czar import charArray_frompointer, charArray
 
 # qdisp
 from lsst.qserv.czar import ChunkSpec
 # ccontrol
 from lsst.qserv.czar import getQueryStateString
 from lsst.qserv.czar import SUCCESS as QueryState_SUCCESS
-
-# Dispatcher (replaced by UserQuery system)
-from lsst.qserv.czar import newSession, discardSession
-from lsst.qserv.czar import setupQuery, getSessionError
-from lsst.qserv.czar import getConstraints, addChunk
-from lsst.qserv.czar import getDominantDb
-from lsst.qserv.czar import getDbStriping
-from lsst.qserv.czar import containsDb
-from lsst.qserv.czar import configureSessionMerger3, submitQuery3
-from lsst.qserv.czar import joinSession
-from lsst.qserv.czar import getQueryStateString, getErrorDesc
 
 # UserQuery
 from lsst.qserv.czar import UserQueryFactory
@@ -340,15 +323,15 @@ class InbandQueryAction:
         self._invokeLock.acquire() # Prevent res-retrieval before invoke
         self._resultName = resultName
         try:
-            try:
+#            try:
                 self._prepareForExec()
                 self.isValid = True
-            except:
-                logger.err("Error initializing query for exec."
-                           + traceback.format_exc())
-                # Create query initialization message.
-                self._reportError(-1,  msgCode.MSG_QUERY_INIT,
-                                   "Initialize Query: " + self.queryStr);
+            # except:
+            #     logger.err("Error initializing query for exec."
+            #                + traceback.format_exc())
+            #     # Create query initialization message.
+            #     self._reportError(-1,  msgCode.MSG_QUERY_INIT,
+            #                        "Initialize Query: " + self.queryStr);
         except QueryHintError, e:
             self._error = str(e)
         except ParseError, e:
@@ -407,32 +390,17 @@ class InbandQueryAction:
         self._dbContext = self.hints.get("db", "")
 
         cfg = self._prepareCppConfig()
-        self.mode = "new"
-        if self.mode == "old":
-            self.sessionId = newSession(cfg)
-            if self.sessionId == -1:
-                raise ConfigError("Bad config. Couldn't create AsyncQueryManager session")
-            setupQuery(self.sessionId, self.queryStr, self._resultName)
-            errorMsg = getSessionError(self.sessionId)
-            if errorMsg: raise ParseError(errorMsg)
-            self.dominantDb = getDominantDb(self.sessionId)
-            if not containsDb(self.sessionId, self.dominantDb):
-                raise ParseError("Illegal db")
-            self.dbStriping = getDbStriping(self.sessionId)
-            self._applyConstraints()
-            self._prepareMerger()
-        else: ## self.mode == "new"
-            factory = UserQueryFactory(cfg)
-            logger.dbg("Setting sessionId")
-            self.sessionId = factory.newUserQuery(self.queryStr,
-                                                  self._resultName)
-            errorMsg = UserQuery_getError(self.sessionId)
-            if errorMsg: raise ParseError(errorMsg)
-            self.dominantDb = UserQuery_getDominantDb(self.sessionId)
-            if not UserQuery_containsDb(self.sessionId, self.dominantDb):
-                raise ParseError("Illegal db")
-            self.dbStriping = UserQuery_getDbStriping(self.sessionId)
-            self._addChunks()
+        factory = UserQueryFactory(cfg)
+        logger.dbg("Setting sessionId")
+        self.sessionId = factory.newUserQuery(self.queryStr,
+                                              self._resultName)
+        errorMsg = UserQuery_getError(self.sessionId)
+        if errorMsg: raise ParseError(errorMsg)
+        self.dominantDb = UserQuery_getDominantDb(self.sessionId)
+        if not UserQuery_containsDb(self.sessionId, self.dominantDb):
+            raise ParseError("Illegal db")
+        self.dbStriping = UserQuery_getDbStriping(self.sessionId)
+        self._addChunks()
         pass
 
     def _evaluateHints(self, dominantDb, hintList, pmap):
@@ -517,24 +485,6 @@ class InbandQueryAction:
             yield c
         pass
 
-    def _applyConstraints(self):
-        """Extract constraints from parsed query(C++), re-marshall values,
-        call evaluateHints, and add the chunkIds into the query(C++) """
-        # Retrieve constraints as (name, [param1,param2,param3,...])
-        self.constraints = getConstraints(self.sessionId)
-        logger.dbg("Getting constraints", self.constraints, "size=",
-                   self.constraints.size())
-        self._importConstraints(self.constraints)
-        self.pmap = self._makePmap(self.dominantDb, self.dbStriping)
-        self._evaluateHints(self.dominantDb, self.hintList, self.pmap)
-        self._emptyChunks = metadata.getEmptyChunks(self.dominantDb)
-        if not self._emptyChunks:
-            raise DataError("No empty chunks for db")
-
-        for chunkSpec in self._generateChunkSpec(self._intersectIter):
-            addChunk(self.sessionId, chunkSpec)
-        pass
-
     def _computeConstraintsAsHints(self):
         constraints = UserQuery_getConstraints(self.sessionId)
         logger.dbg("Getting constraints", constraints, "size=",
@@ -565,33 +515,23 @@ class InbandQueryAction:
 
         lastTime = time.time()
         self._reportError(-1, msgCode.MSG_CHUNK_DISPATCH, "Dispatch Query.")
-        if self.mode == "old":
-            submitQuery3(self.sessionId)
-        else:
-            UserQuery_submit(self.sessionId)
+        UserQuery_submit(self.sessionId)
         elapsed = time.time() - lastTime
         logger.inf("Query dispatch (%s) took %f seconds" % (self.sessionId, elapsed))
         lastTime = time.time()
-        if self.mode == "old":
-            s = joinSession(self.sessionId)
-        else:
-            s = UserQuery_join(self.sessionId)
+        s = UserQuery_join(self.sessionId)
         elapsed = time.time() - lastTime
         logger.inf("Query exec (%s) took %f seconds" % (self.sessionId, elapsed))
 
         if s != QueryState_SUCCESS:
-            if self.mode == "old":
-                self._reportError(-1, -1,
-                                  getErrorDesc(self.sessionId))
-            else:
-                self._reportError(-1, -1,
-                                  UserQuery_getExecDesc(self.sessionId))
+            self._reportError(-1, -1,
+                               UserQuery_getExecDesc(self.sessionId))
         logger.inf("Final state of all queries", getQueryStateString(s))
         # session should really be discarded here unconditionally,
         # but in the current design it is used in proxy.py, so it is
         # (temporarily) discarded there.
         if (not self.isValid) and self.sessionId:
-            discardSession(self.sessionId)
+            UserQuery_discard(self.sessionId)
 
     def _importQconfig(self):
         """Import config file settings into self"""
@@ -651,21 +591,6 @@ class InbandQueryAction:
                 raise QueryHintError(s % r.errorDesc)
             return []
         pass
-
-    def _prepareMerger(self):
-        """Prepare session merger to handle incoming results."""
-        c = lsst.qserv.czar.config.config
-        dbSock = c.get("resultdb", "unix_socket")
-        dbUser = c.get("resultdb", "user")
-        dbName = c.get("resultdb", "db")
-        dropMem = c.get("resultdb","dropMem")
-
-        mysqlBin = c.get("mysql", "mysqlclient")
-        if not mysqlBin:
-            mysqlBin = "mysql"
-        configureSessionMerger3(self.sessionId)
-        pass
-
 
     pass # class InbandQueryAction
 
