@@ -215,6 +215,7 @@ void QuerySession::finalize() {
         cs.chunkId = DUMMY_CHUNK;
         addChunk(cs);
     }
+    _cssFacade.reset(); // Release handle on cssFacade so it can be reclaimed.
 }
 
 QuerySession::Iter QuerySession::cQueryBegin() {

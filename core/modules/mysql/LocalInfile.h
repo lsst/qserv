@@ -67,7 +67,7 @@ private:
 /// Can only be attached to one MYSQL*
 class LocalInfile::Mgr {
 public:
-    Mgr() : _seq(0) {}
+    Mgr();
 
     // User interface //////////////////////////////////////////////////
     void attach(MYSQL* mysql);
@@ -92,21 +92,8 @@ public:
                                   unsigned int error_msg_len);
 
 private:
-    inline std::string _nextFilename() {
-        std::ostringstream os;
-        os << "virtualinfile_" << ++_seq;
-        return os.str();
-    }
-
-    inline boost::shared_ptr<RowBuffer> get(std::string const& s) {
-        RowBufferMap::iterator i = _map.find(s);
-        if(i == _map.end()) { return boost::shared_ptr<RowBuffer>(); }
-        return i->second;
-    }
-
-    int _seq;
-    typedef std::map<std::string, boost::shared_ptr<RowBuffer> > RowBufferMap;
-    RowBufferMap _map;
+    class Impl;
+    std::auto_ptr<Impl> _impl;
 };
 
 }}} // namespace lsst::qserv::mysql
