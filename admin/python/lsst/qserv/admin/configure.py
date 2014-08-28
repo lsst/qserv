@@ -125,7 +125,8 @@ def uninstall(target, source, env):
             shutil.rmtree(upath)
 
 def _get_template_params():
-    """ Compute templates parameters from configuration file
+    """ Compute templates parameters from Qserv meta-configuration file
+        from PATH or from environment variables for products not needed during build
     """
     logger = logging.getLogger()
     config = commons.getConfig()
@@ -135,16 +136,27 @@ def _get_template_params():
     else:
         comment_mono_node = ''
 
-    if 'testdata_dir' in config['qserv']:
-        testdata_dir = config['qserv']['testdata_dir']
-    else:
-        testdata_dir = os.environ.get('QSERV_TESTDATA_DIR')
+    testdata_dir = os.getenv('QSERV_TESTDATA_DIR', "NOT-AVAILABLE # please set environment variable QSERV_TESTDATA_DIR if needed")
 
+    if config['qserv']['node_type'] in ['mono', 'worker']:
+        scisql_dir = os.environ.get('SCISQL_DIR')
+        if scisql_dir is None:
+            logger.fatal("Mono-node or worker install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
+            sys.exit(1)
+    else:
+        scisql_dir = "NOT-AVAILABLE # please set environment variable SCISQL_DIR if needed"
+
+    python_bin_list = which("python")
+    if python_bin_list:
+        python_bin=python_bin_list[0]
+    else:
+        python_bin="NOT-AVAILABLE"
+        
     params_dict = {
     'COMMENT_MONO_NODE' : comment_mono_node,
     'PATH': os.environ.get('PATH'),
     'LD_LIBRARY_PATH': os.environ.get('LD_LIBRARY_PATH'),
-    'PYTHON_BIN': which("python"),
+    'PYTHON_BIN': python_bin,
     'PYTHONPATH': os.environ['PYTHONPATH'],
     'QSERV_MASTER': config['qserv']['master'],
     'QSERV_DIR': config['qserv']['base_dir'],
@@ -167,6 +179,7 @@ def _get_template_params():
     'MYSQLD_USER': config['mysqld']['user'],
     'MYSQLD_PASS': config['mysqld']['pass'],
     'MYSQL_PROXY_PORT': config['mysql_proxy']['port'],
+    'SCISQL_DIR': scisql_dir,
     'XROOTD_DIR': config['xrootd']['base_dir'],
     'XROOTD_MANAGER_HOST': config['qserv']['master'],
     'XROOTD_PORT': config['xrootd']['xrootd_port'],
