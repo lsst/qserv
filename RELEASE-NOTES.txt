@@ -1,3 +1,25 @@
+R E L E A S E   2014_08
+=======================
+
+Code impromements:
+ * DM-220: Reworked new xrootd client
+ * DM-70:  Integrated Qserv with the new xrootd client
+ * DM-321: Redid threading and dispatching
+ * DM-366: Refactored install/distribution procedures using lsst-sw
+ * DM-869: Added flag to disable unused-local-typedefs warning
+ * DM-320: Renamed several modules and test programs
+ * DM-999: Renamed config files
+
+Bug fixes:
+ * DM-989:  .my.cnf in user HOME directory breaks setup script
+ * DM-1022: Fix warnings related to libraries pulled through dependent package
+ * DM-1054: init.d/qserv-czar needs LD_LIBRARY path
+ * DM-1029: "source" command is not in standard shell
+
+Documentation improvements:
+ * DM-930: Updated documentation and migrated to REST format
+ * DM-649: Framework for documenting "how to run Qserv" 
+
 R E L E A S E   2014_07
 =======================
 
