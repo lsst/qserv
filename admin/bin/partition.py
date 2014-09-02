@@ -170,6 +170,24 @@ except ImportError:
         def __ne__(self, other):
             return not self == other
 
+
+# We use mysql BIT(1) data type to store boolean values in the database.
+# To load this type of data from external files via LOAD DATA INFILE
+# command it has to be represented as binary 0 or 1 (\x00 or \x01) in a
+# data file. But we also read those files in partitioner an we use Python
+# csv module to parse the data, unfortunately csv module does not like
+# NUL bytes in the records. To workaround the problem we replace binary
+# data in lines before sending them to csv and we do reverse transformation
+# before writing data to a file.
+# (see DM-664 also)
+
+# Replacement strings for zero and one, we need something that will never appear
+# in actual data. QSERV0 and QSERV1 are good as well because there are test
+# data files which use the same placeholders, we could read those files with
+# partitioner and produce correct binary data on output.
+_zero = 'QSERV0'
+_one = 'QSERV1'
+
 # -- Working around pickle limitations --------
 pickleWorkaround = dict()
 pickleWorkaroundCounter = 0
@@ -244,7 +262,9 @@ class FileIter(object):
         if self.file.tell() >= self.end:
             self.file.close()
             raise StopIteration()
-        return self.file.readline()
+        line = self.file.readline()
+        line = line.replace('\x00', _zero).replace('\x01', _one)
+        return line
 
 class InputSplitIter(object):
     """Iterator over CSV records in an InputSplit. Uses regular file IO,
@@ -559,7 +579,9 @@ class CsvFileWriter(object):
             # to be serialized (i.e no interleaved data); be paranoid for now.
             fcntl.lockf(self.file.fileno(), fcntl.LOCK_EX)
             try:
-                self.file.write(self.buffer.getvalue())
+                data = self.buffer.getvalue()
+                data = data.replace(_zero, '\x00').replace(_one, '\x01')
+                self.file.write(data)
                 self.file.flush()
             finally:
                 fcntl.lockf(self.file.fileno(), fcntl.LOCK_UN)
