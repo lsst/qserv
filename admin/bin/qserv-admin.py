@@ -140,6 +140,7 @@ class CommandParser(object):
     def _parseCreateDatabase(self, tokens):
         """
         Subparser - handles all CREATE DATABASE requests.
+        Throws KvException, QservAdminException
         """
         l = len(tokens)
         if l == 2:
@@ -147,24 +148,14 @@ class CommandParser(object):
             configFile = tokens[1]
             options = self._fetchOptionsFromConfigFile(configFile)
             options = self._processDbOptions(options)
-            try:
-                self._impl.createDb(dbName, options)
-            except KvException as e:
-                raise QservAdminException(QservAdminException.CSSERR, 
-                                    "Failed to create database '" + dbName + \
-                                    "', error was: " +  e.__str__())
+            self._impl.createDb(dbName, options)
         elif l == 3:
             if tokens[1].upper() != 'LIKE':
                 raise QservAdminException(QservAdminException.BAD_CMD, 
                                     "Expected 'LIKE', found: '%s'." % tokens[1])
             dbName = tokens[0]
             dbName2 = tokens[2]
-            try:
-                self._impl.createDbLike(dbName, dbName2)
-            except KvException as e:
-                raise QservAdminException(QservAdminException.CSSERR, 
-                             "Failed to create database '" + dbName + "' like '" + \
-                             dbName2 + "', error was: ", e.__str__())
+            self._impl.createDbLike(dbName, dbName2)
         else:
             raise QservAdminException(QservAdminException.BAD_CMD, 
                                 "Unexpected number of arguments.")
@@ -172,6 +163,7 @@ class CommandParser(object):
     def _parseCreateTable(self, tokens):
         """
         Subparser - handles all CREATE TABLE requests.
+        Throws KvException, QservAdminException.
         """
         l = len(tokens)
         if l == 2:
@@ -182,12 +174,7 @@ class CommandParser(object):
             (dbName, tbName) = dbTbName.split('.')
             options = self._fetchOptionsFromConfigFile(configFile)
             options = self._processTbOptions(options)
-            try:
-                self._impl.createTable(dbName, tbName, options)
-            except KvException as e:
-                raise QservAdminException(QservAdminException.CSSERR, 
-                          "Failed to create table '" + dbName + "." + tbName + \
-                          "', error was: " +  e.__str__())
+            self._impl.createTable(dbName, tbName, options)
         elif l == 3:
             (dbTbName, likeToken, dbTbName2) = tokens
             if likeToken.upper() != 'LIKE':
@@ -201,15 +188,9 @@ class CommandParser(object):
                 raise QservAdminException(QservAdminException.BAD_CMD, 
                    "Invalid argument '%s', should be <dbName>.<tbName>" % dbTbName2)
             (dbName2, tbName2) = dbTbName2.split('.')
-            try:
-                # FIXME, createTableLike is not implemented!
-                self._impl.createTableLike(dbName, tableName, dbName2, tableName2,
-                                           options)
-            except KvException as e:
-                raise QservAdminException(QservAdminException.CSSERR, 
-                         "Failed to create table '" + dbName + "." + tbName + \
-                         "' LIKE '" + dbName2 + "." + tbName2 + "', " + \
-                         "'error was: ", e.__str__())
+            # FIXME, createTableLike is not implemented!
+            self._impl.createTableLike(dbName, tableName, dbName2, tableName2,
+                                       options)
         else:
             raise QservAdminException(QservAdminException.BAD_CMD, 
                                 "Unexpected number of arguments.")
@@ -217,6 +198,7 @@ class CommandParser(object):
     def _parseDrop(self, tokens):
         """
         Subparser - handles all DROP requests.
+        Throws KvException, QservAdminException.
         """
         t = tokens[0].upper()
         l = len(tokens)
@@ -224,21 +206,12 @@ class CommandParser(object):
             if l != 2:
                 raise QservAdminException(QservAdminException.BAD_CMD,  
                                     "unexpected number of arguments")
-            try:
-                self._impl.dropDb(tokens[1])
-            except KvException as e:
-                raise QservAdminException(QservAdminException.CSSERR, 
-                                    "Failed to drop database '" + tokens[1] + 
-                                    ", error was: ", e.__str__())
+            self._impl.dropDb(tokens[1])
         elif t == 'TABLE':
-            raise QservAdminException(QservAdminException.NOT_IMPLEMENTED, "DROP TABLE")
-
+            raise QservAdminException(QservAdminException.NOT_IMPLEMENTED,
+                                      "DROP TABLE")
         elif t == 'EVERYTHING':
-            try:
-                self._impl.dropEverything()
-            except KvException as e:
-                raise QservAdminException(QservAdminException.CSSERR, 
-                             "Failed to drop everything, error was: ", e.__str__())
+            self._impl.dropEverything()
         else:
             raise QservAdminException(QservAdminException.BAD_CMD)
 

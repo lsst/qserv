@@ -35,12 +35,11 @@ QservAdminException = produceExceptionClass('QservAdminException', [
     (3010, "CONFIG_NOT_FOUND",  "Config file not found."),
     (3015, "DB_EXISTS",         "Database already exists."),
     (3020, "DB_DOES_NOT_EXIST", "Database does not exist."),
+    (3022, "DB_NAME_IS_SELF",   "Source and destination names are the same."),
     (3025, "MISSING_PARAM",     "Missing parameter."),
     (3030, "TB_EXISTS",         "Table already exists."),
     (3035, "TB_DOES_NOT_EXIST", "Table does not exist."),
     (3040, "WRONG_PARAM",       "Unrecognized parameter."),
     (3045, "WRONG_PARAM_VAL",   "Unrecognized value for parameter."),
-    (9997, "CSSERR",            "CSS error."),
     (9998, "NOT_IMPLEMENTED",   "Feature not implemented yet."),
     (9999, "INTERNAL",          "Internal error.")])
-

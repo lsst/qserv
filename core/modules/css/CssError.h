@@ -29,8 +29,8 @@
   * @Author Jacek Becla, SLAC
   */
 
-#ifndef LSST_QSERV_CSS_RUNTIMEERROR_H
-#define LSST_QSERV_CSS_RUNTIMEERROR_H
+#ifndef LSST_QSERV_CSS_ERROR_H
+#define LSST_QSERV_CSS_ERROR_H
 
 // System headers
 #include <map>
@@ -108,4 +108,4 @@ public:
 
 }}} // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_RUNTIMEERROR_H
+#endif // LSST_QSERV_CSS_ERROR_H
