@@ -125,6 +125,7 @@ class InfileMerger {
 public:
     typedef boost::shared_ptr<util::PacketBuffer> PacketBufferPtr;
     explicit InfileMerger(InfileMergerConfig const& c);
+    ~InfileMerger();
 
     off_t merge(char const* dumpBuffer, int dumpLength);
 

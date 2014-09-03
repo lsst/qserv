@@ -83,26 +83,6 @@
 
 namespace lsst {
 namespace qserv {
-qdisp::Executive::Ptr pointer;
-
-class NotifyExecutive : public util::UnaryCallable<void, bool> {
-public:
-    typedef boost::shared_ptr<NotifyExecutive> Ptr;
-
-    NotifyExecutive(qdisp::Executive::Ptr e, int refNum)
-        : _executive(e), _refNum(refNum) {}
-
-    virtual void operator()(bool success) {
-        _executive->markCompleted(_refNum, success);
-    }
-
-    static Ptr newInstance(qdisp::Executive::Ptr e, int refNum) {
-        return Ptr(new NotifyExecutive(e, refNum));
-    }
-private:
-    qdisp::Executive::Ptr _executive;
-    int _refNum;
-};
 
 /// A class that can be used to parameterize a ProtoImporter<TaskMsg> for
 /// debugging purposes
@@ -204,13 +184,8 @@ void UserQuery::submit() {
         boost::shared_ptr<ResultReceiver> rr;
         boost::shared_ptr<ChunkMsgReceiver> cmr;
         cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
-#if 0
-        rr.reset(new ResultReceiver(cmr, _merger, chunkResultName));
-#else
         rr.reset(new ResultReceiver(cmr, _infileMerger, chunkResultName));
-#endif
         int refNum = ++_sequence;
-        rr->addFinishHook(NotifyExecutive::newInstance(_executive, refNum));
         qdisp::Executive::Spec s = { ru,
                                      ss.str(),
                                      rr };
@@ -220,13 +195,9 @@ void UserQuery::submit() {
     }
 }
 QueryState UserQuery::join() {
-    bool successful = _executive->join();
+    bool successful = _executive->join(); // Wait for all data
+    _infileMerger->finalize(); // Wait for all data to get merged
     if(successful) {
-#if 0
-        _merger->finalize();
-#else
-        _infileMerger->finalize();
-#endif
         LOGGER_INF << "Joined everything (success)" << std::endl;
         return SUCCESS;
     } else {
@@ -251,8 +222,13 @@ void UserQuery::discard() {
     }
     _executive.reset();
     _messageStore.reset();
-    _qSession.reset(); // TODO: release some portions earlier
-    _discardMerger();
+    _qSession.reset();
+    try {
+        _discardMerger();
+    } catch(UserQueryError e) {
+        // Silence merger discarding errors, because this object is being released.
+        // client no longer cares about merger errors.
+    }
     LOGGER_INF << "Discarded UserQuery(" << _sessionId << ")" << std::endl;
 }
 
@@ -271,15 +247,9 @@ std::string UserQuery::getExecDesc() const {
 }
 
 void UserQuery::_setupMerger() {
-    // FIXME: would like to re-do plumbing so TableMerger uses
-    // mergeStmt more directly
-#if 0
-    _mergerConfig->mFixup = _qSession->makeMergeFixup();
-    _merger = boost::make_shared<rproc::TableMerger>(*_mergerConfig);
-#else // Infile merger.
+    LOGGER_INF << "UserQuery::_setupMerger()" << std::endl;
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
     _infileMerger = boost::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
-#endif
 }
 
 }}} // lsst::qserv::ccontrol

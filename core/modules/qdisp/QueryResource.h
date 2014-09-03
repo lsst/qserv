@@ -53,11 +53,13 @@ public:
     QueryResource(std::string const& rPath,
                   std::string const& payload,
                   boost::shared_ptr<QueryReceiver> receiver,
+                  boost::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
                   boost::shared_ptr<util::VoidCallable<void> > retryFunc,
                   ExecStatus& status)
         : Resource(rPath.c_str()),
           _payload(payload),
           _receiver(receiver),
+          _finishFunc(finishFunc),
           _retryFunc(retryFunc),
           _status(status) {
     }
@@ -70,6 +72,7 @@ public:
     QueryRequest* _request; // Owned temporarily, special deletion handling.
     std::string const _payload;
     boost::shared_ptr<QueryReceiver> _receiver;
+    boost::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
     boost::shared_ptr<util::VoidCallable<void> > _retryFunc;
     ExecStatus& _status;
 };

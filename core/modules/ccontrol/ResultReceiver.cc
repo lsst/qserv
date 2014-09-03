@@ -93,9 +93,6 @@ bool ResultReceiver::flush(int bLen, bool last) {
         // Probably want to notify that we're done?
         LOGGER_INF << " Flushed last for tableName="
                    << _tableName << std::endl;
-        if(_finishHook) {
-            (*_finishHook)(true);
-        }
     }
     return mergeOk;
 }
@@ -106,9 +103,6 @@ void ResultReceiver::errorFlush(std::string const& msg, int code) {
     _error.msg = msg;
     _error.code = code;
     LOGGER_ERR << "Error receiving result." << std::endl;
-    if(_finishHook) {
-        (*_finishHook)(false);
-    }
 }
 
 bool ResultReceiver::finished() const {
@@ -133,11 +127,6 @@ std::ostream& ResultReceiver::print(std::ostream& os) const {
     os << "ResultReceiver(" << _tableName << ", flushed="
        << (_flushed ? "true)" : "false)") ;
     return os;
-}
-
-void ResultReceiver::addFinishHook(util::UnaryCallable<void, bool>::Ptr f) {
-    assert(!_finishHook);
-    _finishHook = f;
 }
 
 /// @return false if there was an error (invalid bytes, error in merge process)

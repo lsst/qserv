@@ -284,6 +284,37 @@ class SecondaryIndex:
         del db
         return cids
 
+class Context:
+    """Context for InbandQueryAction construction.
+    Hides management of UserQueryFactory object so that it can be
+    shared among InbandQueryActions."""
+
+    _uqFactory = None # Shared UserQueryFactory object
+
+    def __init__(self, conditions):
+        """Construct a context to pass bulk user conditions to InbandQueryAction.
+        Constructs a UserQueryFactory if one is not available.
+
+        @param conditions dict containing query hints and context
+        """
+        if not Context._uqFactory:
+            Context._initFactory()
+
+        self.uqFactory = Context._uqFactory
+        self.conditions = conditions
+
+    @classmethod
+    def destroyShared(cls):
+        """Destroy shared state, e.g., the UserQueryFactory object. Calling
+        this is not generally necessary unless the configuration changes."""
+        cls._uqFactory = None
+
+    @classmethod
+    def _initFactory(cls):
+        """Initialize the UserQueryFactory instance from our configuration"""
+        cfg = lsst.qserv.czar.config.getStringMap()
+        cls._uqFactory = UserQueryFactory(cfg)
+
 ########################################################################
 class InbandQueryAction:
     """InbandQueryAction is an action which represents a user-query
@@ -291,10 +322,10 @@ class InbandQueryAction:
     from HintedQueryAction, but uses different abstractions
     underneath.
     """
-    def __init__(self, query, hints, setSessionId, resultName=""):
+    def __init__(self, query, context, setSessionId, resultName=""):
         """Construct an InbandQueryAction
         @param query SQL query text (SELECT...)
-        @param hints dict containing query hints and context
+        @param context a user context object containing conditions and a user query factory
         @param setSessionId - unary function. a callback so this object can provide
                           a handle (sessionId) for the caller to access query
                           messages.
@@ -315,7 +346,7 @@ class InbandQueryAction:
         self.chunkLimit = 2**32 # something big
         self.isValid = False
 
-        self.hints = hints
+        self.context = context
         self.hintList = [] # C++ parser-extracted hints only.
 
         self._importQconfig()
@@ -343,7 +374,9 @@ class InbandQueryAction:
             logger.err(self._error, traceback.format_exc())
         finally:
             # Pass up the sessionId for query messages access.
-            setSessionId(self.sessionId)
+            # more serious errors won't even have a sessionId
+            if hasattr(self, "sessionId"):
+                setSessionId(self.sessionId)
         pass
 
     def _reportError(self, chunkId, code, message):
@@ -386,14 +419,13 @@ class InbandQueryAction:
 
     def _prepareForExec(self):
         """Prepare data structures and objects for query execution"""
-        self.hints = self.hints.copy() # make a copy
-        self._dbContext = self.hints.get("db", "")
+        self.hints = self.context.conditions.copy() # make a copy
+        dbContext = self.hints.get("db", "")
 
-        cfg = self._prepareCppConfig()
-        factory = UserQueryFactory(cfg)
         logger.dbg("Setting sessionId")
-        self.sessionId = factory.newUserQuery(self.queryStr,
-                                              self._resultName)
+        self.sessionId = self.context.uqFactory.newUserQuery(self.queryStr,
+                                                             dbContext,
+                                                             self._resultName)
         errorMsg = UserQuery_getError(self.sessionId)
         if errorMsg: raise ParseError(errorMsg)
         self.dominantDb = UserQuery_getDominantDb(self.sessionId)
@@ -548,18 +580,6 @@ class InbandQueryAction:
         # memory on the czar. (no control over worker)
         self._useMemory = cModule.config.get("tuning", "memoryEngine")
         return True
-
-    def _prepareCppConfig(self):
-        """Construct a C++ stringmap for passing settings and context
-        to the C++ layer.
-        @return the C++ StringMap object """
-        cfg = lsst.qserv.czar.config.getStringMap()
-        cfg["frontend.scratchPath"] = setupResultScratch()
-        cfg["table.defaultdb"] = self._dbContext
-        cfg["query.hints"] = ";".join(
-            map(lambda (k,v): k + "," + str(v), self.hints.items()))
-        cfg["table.result"] = self._resultName
-        return cfg
 
     def _computeIndexRegions(self, hintList):
         """Compute spatial region coverage based on hints.
