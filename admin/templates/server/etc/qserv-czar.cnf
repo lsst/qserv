@@ -23,6 +23,9 @@ technology=zoo
 # TODO : localhost doesn't work on Ubuntu 14.04, why ?
 connection=127.0.0.1:{{ZOOKEEPER_PORT}}
 
+# For zoo, you can also overwrite default timeout (10000 milisec)
+#timeout=20000
+
 [resultdb]
 #host=
 #port=0

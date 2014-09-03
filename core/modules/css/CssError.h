@@ -93,6 +93,17 @@ class ConnError : public CssError {
 public:
     ConnError()
         : CssError("Failed to connect to persistent store.") {}
+    ConnError(std::string const& reason)
+        : CssError("Failed to connect to persistent store. (" + reason + ")") {}
+};
+
+/**
+ * Specialized run-time error: node exists.
+ */
+class NodeExistsError : public CssError {
+public:
+    NodeExistsError(std::string const& nodeName)
+        : CssError("Node '" + nodeName +"' already exists.") {}
 };
 
 }}} // namespace lsst::qserv::css

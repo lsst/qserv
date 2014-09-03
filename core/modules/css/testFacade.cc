@@ -64,7 +64,8 @@ namespace css {
 struct FacadeFixture {
     FacadeFixture(void) :
         prefix("/unittest_" + boost::lexical_cast<string>(rand())),
-        facade(FacadeFactory::createZooTestFacade("localhost:2181", prefix)) {
+        facade(FacadeFactory::createZooTestFacade("localhost:12181",
+                                                  10000, prefix)) {
 
         cout << "My prefix is: " << prefix << endl;
         kv.push_back(make_pair(prefix, ""));
@@ -105,7 +106,7 @@ struct FacadeFixture {
         kv.push_back(make_pair(p, ""));
         kv.push_back(make_pair(p + "/Exposure", ""));
 
-        KvInterfaceImplZoo kvI = KvInterfaceImplZoo("localhost:2181");
+        KvInterfaceImplZoo kvI = KvInterfaceImplZoo("localhost:12181", 10000);
         vector<std::pair<string, string> >::const_iterator itr;
         cout << "--------------" << endl;
         for (itr=kv.begin() ; itr!=kv.end() ; ++itr) {
@@ -116,7 +117,7 @@ struct FacadeFixture {
     };
 
     ~FacadeFixture(void) {
-        KvInterfaceImplZoo kvI = KvInterfaceImplZoo("localhost:2181");
+        KvInterfaceImplZoo kvI = KvInterfaceImplZoo("localhost:12181", 10000);
         vector<std::pair<string, string> >::const_reverse_iterator itr;
         for (itr=kv.rbegin() ; itr!=kv.rend() ; ++itr) {
             kvI.deleteKey(itr->first);
