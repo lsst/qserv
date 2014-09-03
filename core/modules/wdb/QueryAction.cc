@@ -265,10 +265,12 @@ bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
                 rawRow->add_isnull(true);
             }
         }
+#if 0 // Enable for tracing result values while debugging.
         std::cout << "row: ";
         std::copy(row, row+numFields,
                   std::ostream_iterator<char*>(std::cout, ","));
         std::cout << "\n";
+#endif
         // Each element needs to be mysql-sanitized
 
     }
@@ -322,7 +324,6 @@ bool QueryAction::Impl::_dispatchChannel() {
                 _fillSchema(res);
                 firstResult = false;
                 numFields = mysql_num_fields(res);
-                std::cout << numFields << " fields per row\n";
             } // TODO: may want to confirm (cheaply) that
             // successive queries have the same result schema.
             // Now get rows...

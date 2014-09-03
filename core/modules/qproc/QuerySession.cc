@@ -216,6 +216,7 @@ void QuerySession::finalize() {
         addChunk(cs);
     }
     _cssFacade.reset(); // Release handle on cssFacade so it can be reclaimed.
+    _context->cssFacade.reset();
 }
 
 QuerySession::Iter QuerySession::cQueryBegin() {

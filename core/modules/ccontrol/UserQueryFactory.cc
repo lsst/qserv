@@ -65,10 +65,11 @@ UserQueryFactory::UserQueryFactory(StringMap const& m) {
 
 int
 UserQueryFactory::newUserQuery(std::string const& query,
+                               std::string const& defaultDb,
                                std::string const& resultTable) {
     qproc::QuerySession::Ptr qs(new qproc::QuerySession(_impl->facade));
     qs->setResultTable(resultTable);
-    qs->setDefaultDb(_impl->defaultDb);
+    qs->setDefaultDb(defaultDb);
     qs->setQuery(query);
 
     UserQuery* uq = new UserQuery(qs);
@@ -77,18 +78,11 @@ UserQueryFactory::newUserQuery(std::string const& query,
     uq->_executive.reset(new qdisp::Executive(
                              _impl->executiveConfig,
                              uq->_messageStore));
-    rproc::TableMergerConfig* mct
-        = new rproc::TableMergerConfig(_impl->mergerConfigTemplate);
-    mct->targetTable = resultTable;
 
     rproc::InfileMergerConfig* ict
         = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
     ict->targetTable = resultTable;
-#if 0
-    uq->_mergerConfig.reset(mct);
-#else
     uq->_infileMergerConfig.reset(ict);
-#endif
     return sessionId;
 }
 
@@ -127,22 +121,6 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "Error, css.timeout not found.",
         "10000").c_str());
     initFacade(cssTech, cssConn, cssTimeout);
-    defaultDb = cm.get(
-        "table.defaultdb",
-        "Empty table.defaultdb. Using LSST",
-        "LSST");
-#if 0 // TODO: Revisit during new result protocol/pipeline
-    merger::TableMergerConfig cfg(_resultDbDb,     // cfg result db
-                                  resultTable,     // cfg resultname
-                                  m,               // merge fixup obj
-                                  _resultDbUser,   // result db credentials
-                                  _resultDbSocket, // result db credentials
-                                  mysqlBin,        // Obsolete
-                                  dropMem          // cfg
-                                  );
-
-#endif
-
 }
 
 void UserQueryFactory::Impl::initFacade(std::string const& cssTech,

@@ -74,6 +74,7 @@ public:
     QueryRequest(XrdSsiSession* session,
                  std::string const& payload,
                  boost::shared_ptr<QueryReceiver> receiver,
+                 boost::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
                  boost::shared_ptr<util::VoidCallable<void> > retryFunc,
                  ExecStatus& status);
 
@@ -109,6 +110,7 @@ private:
     int _bufferRemain;
     std::string _payload;
     boost::shared_ptr<QueryReceiver> _receiver;
+    boost::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
     boost::shared_ptr<util::VoidCallable<void> > _retryFunc;
     ExecStatus& _status;
     std::string _errorDesc;

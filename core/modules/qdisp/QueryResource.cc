@@ -63,7 +63,7 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
         }
         _session = s;
         _request = new QueryRequest(s, _payload, _receiver,
-                                    _retryFunc, _status);
+                                    _finishFunc,  _retryFunc, _status);
         assert(_request);
         // Hand off the request and release ownership.
         _status.report(ExecStatus::REQUEST);

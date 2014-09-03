@@ -68,11 +68,14 @@ private:
 QueryRequest::QueryRequest(XrdSsiSession* session,
                            std::string const& payload,
                            boost::shared_ptr<QueryReceiver> receiver,
+                           boost::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
                            boost::shared_ptr<util::VoidCallable<void> > retryFunc,
                            ExecStatus& status)
     : _session(session),
       _payload(payload),
       _receiver(receiver),
+      _finishFunc(finishFunc),
+      _retryFunc(retryFunc),
       _status(status) {
     _registerSelfDestruct();
     LOGGER_INF << "New QueryRequest with payload(" << payload.size() << ")\n";
@@ -212,6 +215,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     if(last) {
         LOGGER_INF << "Response retrieved, bytes=" << blen << std::endl;
         _receiver->flush(blen, last);
+        _receiver.reset();
         _status.report(ExecStatus::RESPONSE_DONE);
         _finish();
     } else if(blen == 0) {
@@ -230,13 +234,21 @@ void QueryRequest::_errorFinish() {
     else { LOGGER_INF << "Request::Finished() with error (clean).\n"; }
     if(_retryFunc) {
         (*_retryFunc)();
+    } else if(_finishFunc) {
+        (*_finishFunc)(false);
     }
+
+    delete this; // Self-cleanup is expected.
 }
 
 void QueryRequest::_finish() {
     bool ok = Finished();
     if(!ok) { LOGGER_ERR << "Error with Finished()\n"; }
     else { LOGGER_INF << "Finished() ok.\n"; }
+    if(_finishFunc) {
+        (*_finishFunc)(true);
+    }
+    delete this; // Self-cleanup is expected.
 }
 
 void QueryRequest::_registerSelfDestruct() {

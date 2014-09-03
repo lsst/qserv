@@ -113,7 +113,8 @@ class AppInterface:
         if not lock.lock():
             return ("error", "error",
                     "error locking result, check qserv/db config.")
-        a = app.InbandQueryAction(query, conditions,
+        context = app.Context(conditions)
+        a = app.InbandQueryAction(query, context,
                                   lock.setSessionId, resultName)
         if a.getIsValid():
             self._callWithThread(a.invoke)
