@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # LSST Data Management System
-# Copyright 2013 LSST Corporation.
+# Copyright 2013-2014 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -48,18 +48,17 @@ class TestQservAdmin(unittest.TestCase):
               "nSubStripes": "23",
               "overlap": "0.0001"}
         self._impl.createDb("db1a", dd)
-        self.assertRaises(QservAdminException, self._impl.createDb, "db1a", dd)
         self._impl.createDbLike("db1b", "db1a")
         # attempt to create db that already exists
-        self.assertRaises(QservAdminException, self._impl.createDbLike, 
+        self.assertRaises(KvException, self._impl.createDbLike,
                           "db1b", "db1a")
         # attempt to create db like non-existing db
-        self.assertRaises(QservAdminException, self._impl.createDbLike, 
+        self.assertRaises(KvException, self._impl.createDbLike,
                           "db1b", "xxxx")
         # attempt to create db like self
-        self.assertRaises(QservAdminException, self._impl.createDbLike, 
+        self.assertRaises(QservAdminException, self._impl.createDbLike,
                           "db1a", "db1a")
-        self.assertRaises(QservAdminException, self._impl.createDbLike, 
+        self.assertRaises(QservAdminException, self._impl.createDbLike,
                           "xxxx", "xxxx")
 
         self._impl.createDb("db2", dd)

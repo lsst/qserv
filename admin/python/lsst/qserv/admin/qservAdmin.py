@@ -114,6 +114,8 @@ class QservAdmin(object):
         self._logger.info("Creating db '%s' like '%s'" % (dbName, dbName2))
         dbP = "/DBS/%s" % dbName
         dbP2 = "/DBS/%s" % dbName2
+        if dbName == dbName2:
+            raise QservAdminException(QservAdminException.DB_NAME_IS_SELF);
         # Acquire lock in sorted order. Otherwise two admins that run 
         # "CREATE DATABASE A LIKE B" and "CREATE DATABASE B LIKE A" can deadlock.
         (name1, name2) = sorted((dbP, dbP2))
