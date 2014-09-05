@@ -30,8 +30,8 @@
   * @Author Jacek Becla, SLAC
   */
 
-#ifndef LSST_QSERV_KVINTERFACE_IMPL_MEM_H
-#define LSST_QSERV_KVINTERFACE_IMPL_MEM_H
+#ifndef LSST_QSERV_CSS_KVINTERFACEIMPLMEM_H
+#define LSST_QSERV_CSS_KVINTERFACEIMPLMEM_H
 
 // System headers
 #include <map>
@@ -54,11 +54,13 @@ public:
 
     virtual void create(std::string const& key, std::string const& value);
     virtual bool exists(std::string const& key);
-    virtual std::string get(std::string const& key);
-    virtual std::string get(std::string const& key,
-                            std::string const& defaultValue);
     virtual std::vector<std::string> getChildren(std::string const& key);
     virtual void deleteKey(std::string const& key);
+
+protected:
+    std::string _get(std::string const& key,
+                     std::string const& defaultValue,
+                     bool throwIfKeyNotFound);
 
 private:
     std::map<std::string, std::string> _kvMap;
@@ -66,4 +68,4 @@ private:
 
 }}} // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_INTERFACE_IMPL_MEM_H
+#endif // LSST_QSERV_CSS_INTERFACEIMPLMEM_H
