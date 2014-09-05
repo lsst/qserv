@@ -376,7 +376,11 @@ void AsyncQueryManager::_readConfig(std::map<std::string,
         "css.connection",
         "Error, css.connection not found.",
         "");
-    _initFacade(cssTech, cssConn);
+    int cssTimeout = atoi(cm.get(
+        "css.timeout",
+        "Error, css.timeout not found.",
+        "10000").c_str());
+    _initFacade(cssTech, cssConn, cssTimeout);
 
     std::string defaultDb = cm.get(
         "table.defaultdb",
@@ -386,12 +390,13 @@ void AsyncQueryManager::_readConfig(std::map<std::string,
 }
 
 void AsyncQueryManager::_initFacade(std::string const& cssTech,
-                                    std::string const& cssConn) {
+                                    std::string const& cssConn,
+                                    int timeout_msec) {
     if (cssTech == "zoo") {
         LOGGER_INF << "Initializing zookeeper-based css, with "
-                   << cssConn << std::endl;
+                   << cssConn << ", " << timeout_msec << std::endl;
         boost::shared_ptr<css::Facade> cssFPtr(
-            css::FacadeFactory::createZooFacade(cssConn));
+            css::FacadeFactory::createZooFacade(cssConn, timeout_msec));
         _qSession.reset(new qproc::QuerySession(cssFPtr));
     } else if (cssTech == "mem") {
         LOGGER_INF << "Initializing memory-based css, with "

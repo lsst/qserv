@@ -42,7 +42,8 @@ namespace ccontrol {
 class UserQueryFactory::Impl {
 public:
     void readConfig(StringMap const& m);
-    void initFacade(std::string const& cssTech, std::string const& cssConn);
+    void initFacade(std::string const& cssTech, std::string const& cssConn,
+                    int timeout_msec);
     void initMergerTemplate();
 
     qdisp::Executive::Config::Ptr executiveConfig;
@@ -110,7 +111,11 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "css.connection",
         "Error, css.connection not found.",
         "");
-    initFacade(cssTech, cssConn);
+    int cssTimeout = atoi(cm.get(
+        "css.timeout",
+        "Error, css.timeout not found.",
+        "10000").c_str());
+    initFacade(cssTech, cssConn, cssTimeout);
     defaultDb = cm.get(
         "table.defaultdb",
         "Empty table.defaultdb. Using LSST",
@@ -130,11 +135,12 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
 }
 
 void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
-                                        std::string const& cssConn) {
+                                        std::string const& cssConn,
+                                        int timeout_msec) {
     if (cssTech == "zoo") {
         LOGGER_INF << "Initializing zookeeper-based css, with "
-                   << cssConn << std::endl;
-        facade = css::FacadeFactory::createZooFacade(cssConn);
+                   << cssConn << ", " << timeout_msec << std::endl;
+        facade = css::FacadeFactory::createZooFacade(cssConn, timeout_msec);
 //        _qSession.reset(new qproc::QuerySession(cssFPtr));
     } else if (cssTech == "mem") {
         LOGGER_INF << "Initializing memory-based css, with "

@@ -102,7 +102,7 @@ BOOST_FIXTURE_TEST_SUITE(KvInterfaceTest, KvInterfaceFixture)
 
 BOOST_AUTO_TEST_CASE(testZoo) {
     std::cout << "========== Testing ZOO ==========" << std::endl;
-    doIt(new lsst::qserv::css::KvInterfaceImplZoo("localhost:2181"));
+    doIt(new lsst::qserv::css::KvInterfaceImplZoo("localhost:12181", 10000));
 }
 
 BOOST_AUTO_TEST_CASE(testMem) {

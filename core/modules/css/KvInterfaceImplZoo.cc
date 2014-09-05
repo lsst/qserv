@@ -56,22 +56,38 @@ using std::ostringstream;
 using std::string;
 using std::vector;
 
+
+namespace {
+    typedef struct WatcherContext {
+    public:
+        WatcherContext() { isConnected = false; }
+        bool isConnected;
+    } watchctx_t;
+
+    static void
+    connectionWatcher(zhandle_t *, int type, int state,
+                      const char *path, void*v) {
+        watchctx_t *ctx = static_cast<watchctx_t*>(v);
+        ctx->isConnected = (state==ZOO_CONNECTED_STATE);
+    }
+} // annonymous namespace
+
+
 namespace lsst {
 namespace qserv {
 namespace css {
 
-
 /**
  * Initialize the interface.
  *
- * @param connInfo connection information
+ * @param connInfo      connection information
+ * @param timeout_msec  connection timeout in msec
  */
-KvInterfaceImplZoo::KvInterfaceImplZoo(string const& connInfo) {
+KvInterfaceImplZoo::KvInterfaceImplZoo(string const& connInfo, int timeout_msec)
+    : _connInfo(connInfo),
+      _timeout(timeout_msec) {
     zoo_set_debug_level(ZOO_LOG_LEVEL_ERROR);
-    _zh = zookeeper_init(connInfo.c_str(), 0, 10000, 0, 0, 0);
-    if ( !_zh ) {
-        throw ConnError();
-    }
+    _doConnect();
 }
 
 KvInterfaceImplZoo::~KvInterfaceImplZoo() {
@@ -184,6 +200,33 @@ KvInterfaceImplZoo::deleteKey(string const& key) {
     }
 }
 
+void
+KvInterfaceImplZoo::_doConnect() {
+    LOGGER_INF << "Connecting to zookeeper. " << _connInfo << ", " << _timeout
+               << endl;
+    watchctx_t ctx;
+    _zh = zookeeper_init(_connInfo.c_str(), connectionWatcher, _timeout, 0, &ctx, 0);
+
+    // wait up to _timeout time in short increments
+    int waitT = 10;                  // wait 10 microsec at a time
+    int reptN = 1000*_timeout/waitT; // 1000x because _timeout is in milisec, need microsec
+    while (reptN-- > 0) {
+        if (ctx.isConnected) {
+            LOGGER_INF << "Connected" << endl;
+            return;
+        }
+        usleep(waitT);
+    }
+    if ( !_zh ) {
+        throw ConnError("Invalid handle");
+    }
+    if (zoo_state(_zh) != ZOO_CONNECTED_STATE) {
+        ostringstream s;
+        s << "Invalid state: " << zoo_state(_zh);
+        throw ConnError(s.str());
+    }
+}
+
 /**
   * @param rc       return code returned by zookeeper
   * @param fName    function name where the error happened
@@ -196,6 +239,9 @@ KvInterfaceImplZoo::_throwZooFailure(int rc, string const& fName,
     if (rc==ZNONODE) {
         LOGGER_INF << ffName << "Key '" << key << "' does not exist." << endl;
         throw (key);
+    } else if (rc==ZNODEEXISTS) {
+        LOGGER_INF << ffName << "Node already exists." << endl;
+        throw NodeExistsError(key);
     } else if (rc==ZCONNECTIONLOSS) {
         LOGGER_INF << ffName << "Can't connect to zookeeper." << endl;
         throw ConnError();
