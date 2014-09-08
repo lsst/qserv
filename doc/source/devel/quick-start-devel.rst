@@ -28,9 +28,11 @@ source dependencies for the current Qserv release:
    Above command will install dependencies for the current Qserv release. If you want to develop with an other set of dependencies, you may
    have to install them one by one, or specify a given Qserv version.
 
-***********************************
-Setup current Qserv version in eups
-***********************************
+.. _quick-start-devel-setup-qserv:
+
+************************************
+Setup your own Qserv version in eups
+************************************
 
 These commands explain how to connect your local Qserv git repository to an eups software stack containing Qserv dependencies.
 Once Qserv dependencies are installed in eups stack, please use next commands in order to install your Qserv development version:
@@ -42,9 +44,9 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
    mkdir ${SRC_DIR}
    cd ${SRC_DIR}
    # anonymous access : 
-   git clone git://dev.lsstcorp.org/LSST/DMS/qserv 
+   git clone git://git.lsstcorp.org/LSST/DMS/qserv 
    # or authenticated access (require a ssh key) :
-   git clone ssh://git@dev.lsstcorp.org/LSST/DMS/qserv
+   git clone ssh://git@git.lsstcorp.org/LSST/DMS/qserv
    # build and install your Qserv version
    cd qserv
    # if following "setup" command fails due to missing packages one has to
@@ -82,7 +84,7 @@ If you want to modify tests datasets, please clone Qserv test data repository :
 
    cd ~/src/
    # authenticated access (require a ssh key) :
-   git clone ssh://git@dev.lsstcorp.org/LSST/DMS/testdata/qserv_testdata.git
+   git clone ssh://git@git.lsstcorp.org/LSST/DMS/testdata/qserv_testdata.git
 
 In order to test it with your Qserv version :
 

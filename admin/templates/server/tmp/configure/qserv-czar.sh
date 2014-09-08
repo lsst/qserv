@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 QSERV_DIR={{QSERV_DIR}}
 QSERV_RUN_DIR={{QSERV_RUN_DIR}}
 MYSQL_DIR={{MYSQL_DIR}}

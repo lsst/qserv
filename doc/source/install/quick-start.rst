@@ -15,39 +15,59 @@ Quick start guide
 Pre-requisites
 **************
 
+.. _quick-start-pre-requisites-system-deps:
+
 Install system dependencies
 ===========================
 
 Please run next script under **root account**:
 
-* For Fedora 19: :download:`qserv-install-deps-fedora19.sh <../../admin/bootstrap/qserv-install-deps-fedora19.sh>`.
-* For Scientific Linux 6: :download:`qserv-install-deps-sl6.sh <../../admin/bootstrap/qserv-install-deps-sl6.sh>`.
-* For Debian Wheezy: :download:`qserv-install-deps-debian-wheezy.sh <../../admin/bootstrap/qserv-install-deps-debian-wheezy.sh>`.
-* For Ubuntu 12.04: :download:`qserv-install-deps-ubuntu-12.04.sh <../../admin/bootstrap/qserv-install-deps-ubuntu-12.04.sh>`.
-* For Ubuntu 13.10: :download:`qserv-install-deps-ubuntu-13.10.sh <../../admin/bootstrap/qserv-install-deps-ubuntu-13.10.sh>`.
-* For Ubuntu 14.04: :download:`qserv-install-deps-ubuntu-14.04.sh <../../admin/bootstrap/qserv-install-deps-ubuntu-14.04.sh>`.
+* For Fedora 19: :download:`qserv-install-deps-fedora19.sh <../../../admin/bootstrap/qserv-install-deps-fedora19.sh>`.
+* For Scientific Linux 6: :download:`qserv-install-deps-sl6.sh <../../../admin/bootstrap/qserv-install-deps-sl6.sh>`.
+* For Debian Wheezy: :download:`qserv-install-deps-debian-wheezy.sh <../../../admin/bootstrap/qserv-install-deps-debian-wheezy.sh>`.
+* For Ubuntu 12.04: :download:`qserv-install-deps-ubuntu-12.04.sh <../../../admin/bootstrap/qserv-install-deps-ubuntu-12.04.sh>`.
+* For Ubuntu 13.10: :download:`qserv-install-deps-ubuntu-13.10.sh <../../../admin/bootstrap/qserv-install-deps-ubuntu-13.10.sh>`.
+* For Ubuntu 14.04: :download:`qserv-install-deps-ubuntu-14.04.sh <../../../admin/bootstrap/qserv-install-deps-ubuntu-14.04.sh>`.
 
 ************
 Installation
 ************
 
+.. _quick-start-install-lsst-stack:
+
+Install LSST stack
+==================
+
 First, log in with a **non-root user account**.
+
+.. code-block:: bash
+
+   NEWINSTALL_URL=http://sw.lsstcorp.org/pkgs/
+   export EUPS_PKGROOT=${NEWINSTALL_URL}
+   INSTALL_DIR=root/directory/where/qserv/stack/will/be/installed
+   # e.g. ~qserv, please note that $INSTALL_DIR must be empty
+   cd $INSTALL_DIR
+   curl -O ${NEWINSTALL_URL}/newinstall.sh
+   # script below will ask some questions. Unless you know what you're doing,
+   # and you need a fine tuned setup, please answer 'yes' everywhere.
+   bash newinstall.sh
+   . loadLSST.sh
+
+.. _quick-start-install-qserv:
+
+Install Qserv distribution 
+==========================
+
 Then below, please set ``RELEASE`` to "|release|" to install explicitly this release, or remove it to install current Qserv release.
 
 .. code-block:: bash
 
-   INSTALL_DIR=root/directory/where/qserv/stack/will/be/installed
-   # e.g. ~qserv, please note that $INSTALL_DIR must be empty
-   cd $INSTALL_DIR
-   curl -O http://sw.lsstcorp.org/eupspkg/newinstall.sh
-   # script below will ask some questionsr. Unless you know what you're doing,
-   # and you need a fine tuned setup, please answer 'yes' everywhere.
-   bash newinstall.sh
-   . loadLSST.sh
-   eups distrib install qserv $RELEASE --repository=http://lsst-web.ncsa.illinois.edu/~fjammes/qserv
+   export EUPS_PKGROOT=http://lsst-web.ncsa.illinois.edu/~fjammes/qserv
+   # loadLSST.sh must have been sourced before running this (see above)
+   eups distrib install qserv $RELEASE
    setup qserv $RELEASE
    # only if you want to run integration tests on a mono-node instance :
-   eups distrib install qserv_testdata 2014_06.0 --repository=http://lsst-web.ncsa.illinois.edu/~fjammes/qserv
+   eups distrib install qserv_testdata 2014_06.0
    setup qserv_testdata
 
 .. _quick-start-configuration:
@@ -67,7 +87,7 @@ The :program:`qserv-configure.py` script builds a Qserv configuration be deployi
 
    qserv-configure.py [-h] [-a] [-p] [-d] [-e] [-m] [-x] [-q] [-s] [-c]
                       [-v {DEBUG,INFO,WARNING,FATAL,ERROR}] [-f]
-                      [-r QSERV_RUN_DIR] 
+                      [-d QSERV_RUN_DIR] 
 
 The :program:`qserv-configure.py` script has several important options:
 
@@ -81,7 +101,7 @@ The :program:`qserv-configure.py` script has several important options:
 
    Clean ``QSERV_RUN_DIR`` and fill it with mono-node configuration data.
 
-.. option:: -r <directory>, --qserv-run-dir <directory>
+.. option:: -d <directory>, --qserv-run-dir <directory>
 
    Set configuration data location (i.e. ``QSERV_RUN_DIR``), Default value for
    ``QSERV_RUN_DIR`` is ``$HOME/qserv-run/$QSERV_VERSION``, ``QSERV_VERSION`` being provided by qserv-version.sh command.
