@@ -70,6 +70,8 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
+/// Foreman is a pooling thread manager that is pluggable with different
+/// scheduling objects
 class Foreman : public wbase::TaskAcceptor {
 public:
     typedef boost::shared_ptr<Foreman> Ptr;
@@ -112,8 +114,9 @@ protected:
     explicit Foreman() {}
 };
 
-    Foreman::Ptr
-    newForeman(Foreman::Scheduler::Ptr s, boost::shared_ptr<wlog::WLogger> log);
+/// Factory function for Foreman that hooks in a scheduler
+Foreman::Ptr
+newForeman(Foreman::Scheduler::Ptr s, boost::shared_ptr<wlog::WLogger> log);
 
 }}}  // namespace lsst::qserv::wcontrol
 

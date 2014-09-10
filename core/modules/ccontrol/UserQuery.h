@@ -123,15 +123,15 @@ private:
     void _setupMerger();
     void _discardMerger();
 
+    // Delegate classes
     boost::shared_ptr<qdisp::Executive> _executive;
     boost::shared_ptr<qdisp::MessageStore> _messageStore;
     boost::shared_ptr<qproc::QuerySession> _qSession;
-    boost::shared_ptr<rproc::TableMergerConfig> _mergerConfig;
-    boost::shared_ptr<rproc::TableMerger> _merger;
     boost::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
     boost::shared_ptr<rproc::InfileMerger> _infileMerger;
-    int _sessionId;
-    int _sequence;
+
+    int _sessionId; //< External reference number
+    int _sequence; //< Sequence number for subtask ids
 };
 
 }}} // namespace lsst::qserv:ccontrol

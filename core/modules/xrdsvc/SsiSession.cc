@@ -51,8 +51,12 @@ namespace xrdsvc {
 typedef proto::ProtoImporter<proto::TaskMsg> Importer;
 typedef boost::shared_ptr<Importer> ImporterPtr;
 
+/// ChannelStream is an implementation of an XrdSsiStream that accepts
+/// SendChannel streamed data.
 class ChannelStream : public XrdSsiStream {
 public:
+    /// SimpleBuffer is a really simple buffer for transferring data packets to
+    /// XrdSsi
     class SimpleBuffer : public XrdSsiStream::Buffer {
     public:
         SimpleBuffer(std::string const& input) {
@@ -76,16 +80,18 @@ public:
             }
         }
     };
-
+    /// Constructor
     ChannelStream(wlog::WLogger::Ptr log)
         : XrdSsiStream(isActive),
           _closed(false),
           _log(log) {}
+    /// Destructor
     virtual ~ChannelStream() {
         std::ostringstream os;
         os << "Stream (" << (void*)this << ") deleted";
         _log->info(os.str());
     }
+    /// Push in a data packet
     void append(char const* buf, int bufLen, bool last) {
         if(_closed) {
             throw std::runtime_error("Stream closed, append(...,last=true) already received");
@@ -101,6 +107,7 @@ public:
             _hasDataCondition.notify_one();
         }
     }
+    /// Pull out a data packet as a Buffer object (called by XrdSsi code)
     virtual Buffer *GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
         boost::unique_lock<boost::mutex> lock(_mutex);
         while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
@@ -138,6 +145,8 @@ private:
 ////////////////////////////////////////////////////////////////////////
 // class SsiSession::ReplyChannel
 ////////////////////////////////////////////////////////////////////////
+/// ReplyChannel is a SendChannel implementation that adapts XrdSsiSession
+/// objects as backend data acceptors.
 class SsiSession::ReplyChannel : public wbase::SendChannel {
 public:
     typedef XrdSsiResponder::Status Status;
@@ -169,6 +178,7 @@ public:
         }
         return true;
     }
+
     virtual bool sendFile(int fd, Size fSize) {
         util::Timer t;
         t.start();
@@ -201,6 +211,7 @@ public:
         _stream = new ChannelStream(ssiSession._log);
         ssiSession.SetResponse(_stream);
     }
+
     virtual bool sendStream(char const* buf, int bufLen, bool last) {
         // Initialize streaming object if not initialized.
         std::ostringstream os;
@@ -214,7 +225,6 @@ public:
         _stream->append(buf, bufLen, last);
         return true;
     }
-//    boost::shared_ptr<Stream> _stream;
     SsiSession& ssiSession;
     ChannelStream* _stream;
 };
@@ -264,6 +274,7 @@ struct SsiProcessor : public Importer::Acceptor {
 ////////////////////////////////////////////////////////////////////////
 
 // Step 4
+/// Called by XrdSsi to actually process a request.
 bool
 SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     util::Timer t;
@@ -323,6 +334,7 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     return true;
 }
 
+/// Called by XrdSsi to free resources.
 void
 SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
                             bool cancel) { // Step 8
@@ -361,6 +373,8 @@ SsiSession::Unprovision(bool forced) {
     return true; // false if we can't unprovision now.
 }
 
+/// Accept an incoming request addressed to a ResourceUnit, with the particulars
+/// defined in the reqData payload
 void SsiSession::enqueue(ResourceUnit const& ru, char* reqData, int reqSize) {
 
     // reqData has the entire request, so we can unpack it without waiting for

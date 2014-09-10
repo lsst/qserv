@@ -133,6 +133,7 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     return _importError(errorDesc, -1);
 }
 
+/// Retrieve and process results in using the XrdSsi stream mechanism
 bool QueryRequest::_importStream() {
     _resetBuffer();
     LOGGER_INF << "GetResponseData with buffer of " << _bufferRemain << "\n";
@@ -165,6 +166,7 @@ bool QueryRequest::_importStream() {
     }
 }
 
+/// Process an incoming error.
 bool QueryRequest::_importError(std::string const& msg, int code) {
     _receiver->errorFlush(msg, code);
     _errorFinish();
@@ -227,6 +229,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     }
 }
 
+/// Finalize under error conditions and retry or report completion
 void QueryRequest::_errorFinish() {
     LOGGER_DBG << "Error finish" << std::endl;
     bool ok = Finished();
@@ -241,6 +244,7 @@ void QueryRequest::_errorFinish() {
     delete this; // Self-cleanup is expected.
 }
 
+/// Finalize under success conditions and report completion.
 void QueryRequest::_finish() {
     bool ok = Finished();
     if(!ok) { LOGGER_ERR << "Error with Finished()\n"; }
@@ -251,11 +255,14 @@ void QueryRequest::_finish() {
     delete this; // Self-cleanup is expected.
 }
 
+/// Register a cancellation function with the query receiver in order to receive
+/// notifications upon errors detected in the receiver.
 void QueryRequest::_registerSelfDestruct() {
     boost::shared_ptr<Canceller> canceller(new Canceller(*this));
     _receiver->registerCancel(canceller);
 }
 
+/// Reset the response buffer.
 void QueryRequest::_resetBuffer() {
     _buffer = _receiver->buffer();
     _bufferSize = _receiver->bufferSize();

@@ -50,6 +50,19 @@ namespace rproc {
 // Helpers
 ////////////////////////////////////////////////////////////////////////
 
+/// Escape a bytestring for LOAD DATA INFILE, as specified by MySQL doc:
+/// https://dev.mysql.com/doc/refman/5.1/en/load-data.html
+/// This is limited to:
+/// Character	Escape Sequence
+/// \0 	An ASCII NUL (0x00) character
+/// \b 	A backspace character
+/// \n 	A newline (linefeed) character
+/// \r 	A carriage return character
+/// \t 	A tab character.
+/// \Z 	ASCII 26 (Control+Z)
+/// \N 	NULL
+///
+/// @return the number of bytes written to dest
 inline int escapeString(char* dest, char const* src, int srcLength) {
     //mysql_real_escape_string(_mysql, cursor, col, r.lengths[i]);
     assert(srcLength >= 0);
@@ -72,6 +85,7 @@ inline int escapeString(char* dest, char const* src, int srcLength) {
     return src - originalSrc;
 }
 
+/// Copy a rawColumn to an STL container
 template <typename T>
 inline int copyColumn(T& dest, std::string const& rawColumn) {
     //      std::string colValue = rb.column(ci);
@@ -87,14 +101,19 @@ inline int copyColumn(T& dest, std::string const& rawColumn) {
 ////////////////////////////////////////////////////////////////////////
 // ProtoRowBuffer
 ////////////////////////////////////////////////////////////////////////
+
+/// ProtoRowBuffer is an implementation of RowBuffer designed to allow a
+/// LocalInfile object to use a Protobufs Result message as a row source
 class ProtoRowBuffer : public mysql::RowBuffer {
 public:
     ProtoRowBuffer(proto::Result& res);
-    unsigned fetch(char* buffer, unsigned bufLen);
+    virtual unsigned fetch(char* buffer, unsigned bufLen);
+
 private:
     void _initCurrentRow();
     void _initSchema();
     void _readNextRow();
+    // Copy a row bundle into a destination STL char container
     template <typename T>
     int _copyRowBundle(T& dest, proto::RowBundle const& rb) {
         int sizeBefore = dest.size();
@@ -112,15 +131,15 @@ private:
         return dest.size() - sizeBefore;
     }
 
-    std::string _colSep;
-    std::string _rowSep;
-    std::string _nullToken;
-    proto::Result& _result;
+    std::string _colSep; //< Column separator
+    std::string _rowSep; //< Row separator
+    std::string _nullToken; //< Null indicator (e.g. \N)
+    proto::Result& _result; //< Ref to Resultmessage
 
-    sql::Schema _schema;
-    int _rowIdx;
-    int _rowTotal;
-    std::vector<char> _currentRow;
+    sql::Schema _schema; //< Schema object
+    int _rowIdx; //< Row index
+    int _rowTotal; //< Total row count
+    std::vector<char> _currentRow; //< char buffer representing current row.
 };
 
 ProtoRowBuffer::ProtoRowBuffer(proto::Result& res)
@@ -137,6 +156,7 @@ ProtoRowBuffer::ProtoRowBuffer(proto::Result& res)
     }
 }
 
+/// Fetch a up to a single row from from the Result message
 unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
     unsigned fetched = 0;
     if(bufLen <= _currentRow.size()) {
@@ -158,6 +178,7 @@ unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
     return fetched;
 }
 
+/// Import schema from the proto message into a Schema object
 void ProtoRowBuffer::_initSchema() {
     _schema.columns.clear();
     proto::RowSchema const& prs = _result.rowschema();
@@ -178,7 +199,7 @@ void ProtoRowBuffer::_initSchema() {
         _schema.columns.push_back(cs);
     }
 }
-
+/// Import the next row into the buffer
 void ProtoRowBuffer::_readNextRow() {
     ++_rowIdx;
     if(_rowIdx >= _rowTotal) {
@@ -190,7 +211,7 @@ void ProtoRowBuffer::_readNextRow() {
     _copyRowBundle(_currentRow, _result.row(_rowIdx));
 }
 
-//    for(int i=0, e=_result.row_size(); i != e; ++i);
+/// Setup the row byte buffer
 void ProtoRowBuffer::_initCurrentRow() {
     // Copy row and reserve 2x size.
     int rowSize = _copyRowBundle(_currentRow, _result.row(_rowIdx));
@@ -198,7 +219,7 @@ void ProtoRowBuffer::_initCurrentRow() {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// RowBuffer Implementation
+// Factory function for ProtoRowBuffer
 ////////////////////////////////////////////////////////////////////////
 
 mysql::RowBuffer::Ptr newProtoRowBuffer(proto::Result& res) {

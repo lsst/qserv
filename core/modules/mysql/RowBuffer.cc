@@ -125,11 +125,12 @@ ResRowBuffer::ResRowBuffer(MYSQL_RES* result)
     : _result(result),
       _useLargeRow(false),
       _sep("\t"), _rowSep("\n") {
-    // fetch rows.
+    // Defer actual row fetching until fetch() is called
     assert(result);
     _numFields = mysql_num_fields(result);
-//        cout << _numFields << " fields per row\n";
+    // cout << _numFields << " fields per row\n";
 }
+
 unsigned ResRowBuffer::fetch(char* buffer, unsigned bufLen) {
     unsigned fetchSize = 0;
     unsigned estRowSize = 0;
@@ -158,17 +159,18 @@ unsigned ResRowBuffer::fetch(char* buffer, unsigned bufLen) {
             unsigned rowFetch = _addRow(r,
                                         buffer + fetchSize,
                                         bufLen - fetchSize);
-            if(rowFetch) {
+            if(!rowFetch) {
                 break;
             }
             fetchSize += rowFetch;
             fetchSize += addString(buffer + fetchSize, _rowSep);
-            // Ensure
         }
     }
     return fetchSize;
 }
 
+/// Add a row to the buffer pointed to by cursor.
+/// @return the number of bytes added.
 unsigned int ResRowBuffer::_addRow(Row r, char* cursor, int remaining) {
     assert(remaining >= 0); // negative remaining is nonsensical
     char* original = cursor;
@@ -194,7 +196,7 @@ unsigned int ResRowBuffer::_addRow(Row r, char* cursor, int remaining) {
     return cursor - original;
 }
 
-
+/// Fetch a row from _result and fill the caller-supplied Row.
 bool ResRowBuffer::_fetchRow(Row& r) {
     MYSQL_ROW mysqlRow = mysql_fetch_row(_result);
     if(!mysqlRow) {
@@ -207,6 +209,9 @@ bool ResRowBuffer::_fetchRow(Row& r) {
     return true;
 }
 
+/// Attepmpt to fill a buffer from a large row that may not completely fit in
+/// the buffer.
+/// This is unfinished code.
 unsigned ResRowBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
     // Insert field-at-a-time,
     char* cursor = buffer;
@@ -233,6 +238,8 @@ unsigned ResRowBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
     }
     return bufLen - remaining;
 }
+
+/// Init structures for large rows.
 void ResRowBuffer::_initializeLargeRow(Row const& largeRow) {
     _useLargeRow = true;
     _fetchRow(_largeRow);

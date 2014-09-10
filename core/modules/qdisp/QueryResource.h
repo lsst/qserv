@@ -68,11 +68,13 @@ public:
 
     void ProvisionDone(XrdSsiSession* s);
 
-    XrdSsiSession* _session; // unowned, do not delete.
-    QueryRequest* _request; // Owned temporarily, special deletion handling.
-    std::string const _payload;
-    boost::shared_ptr<QueryReceiver> _receiver;
+    XrdSsiSession* _session; //< unowned, do not delete.
+    QueryRequest* _request; //< Owned temporarily, special deletion handling.
+    std::string const _payload; //< Request payload
+    boost::shared_ptr<QueryReceiver> _receiver; //< Response handler
+    /// Called upon transaction finish
     boost::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
+    /// Called to retry the transaction
     boost::shared_ptr<util::VoidCallable<void> > _retryFunc;
     ExecStatus& _status;
 };

@@ -20,9 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// class Executive is in charge of "executing" user query fragments on
-// a qserv cluster.
-
 #ifndef LSST_QSERV_QDISP_EXECSTATUS_H
 #define LSST_QSERV_QDISP_EXECSTATUS_H
 
@@ -65,11 +62,13 @@ public:
                  RESULT_ERROR,
                  MERGE_OK, // ???
                  MERGE_ERROR, COMPLETE=2000};
-
+    /// Report a state transition. Past state history is not currently saved.
     void report(State s, int code=0, std::string const& desc=_empty) {
         boost::lock_guard<boost::mutex> lock(_mutex);
+#if 0
         std::ofstream of("/tmp/deleteme_qs_rpt", std::ofstream::app);
         of << "Reporting " << (void*)this << " state " << stateText(s) << std::endl;
+#endif
         stateTime = ::time(NULL);
         state = s;
         stateCode = code;
@@ -78,7 +77,6 @@ public:
 
     static char const* stateText(State s);
 
-    boost::mutex _mutex; //< Mutex to guard concurrent updates
     ResourceUnit resourceUnit; //< Reference id for status
     // More detailed debugging may store a vector of states, appending
     // with each invocation of report().
@@ -86,7 +84,9 @@ public:
     time_t stateTime; //< Last modified timestamp
     int stateCode; //< Code associated with state (e.g. xrd error code)
     std::string stateDesc; //< Textual description
+
 private:
+    boost::mutex _mutex; //< Mutex to guard concurrent updates
     static std::string _empty;
 };
 std::ostream& operator<<(std::ostream& os, ExecStatus const& es);

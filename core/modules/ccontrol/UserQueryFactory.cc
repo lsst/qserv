@@ -41,18 +41,18 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
+/// Implementation class (PIMPL-style) for UserQueryFactory.
 class UserQueryFactory::Impl {
 public:
-    void readConfig(StringMap const& m);
+    void readConfig(StringMap const& m); /// Import config from caller
     void initFacade(std::string const& cssTech, std::string const& cssConn,
                     int timeout_msec);
-    void initMergerTemplate();
+    void initMergerTemplate(); /// Construct template config for merger
 
+    /// State shared between UserQueries
     qdisp::Executive::Config::Ptr executiveConfig;
     boost::shared_ptr<css::Facade> facade;
-    rproc::TableMergerConfig mergerConfigTemplate;
     rproc::InfileMergerConfig infileMergerConfigTemplate;
-    std::string defaultDb;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -96,15 +96,15 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "localhost:1094");
     executiveConfig.reset(new qdisp::Executive::Config(serviceUrl));
     // This should be overriden by the installer properly.
-    infileMergerConfigTemplate.socket = mergerConfigTemplate.socket =  cm.get(
+    infileMergerConfigTemplate.socket = cm.get(
         "resultdb.unix_socket",
         "Error, resultdb.unix_socket not found. Using /u1/local/mysql.sock.",
         "/u1/local/mysql.sock");
-    infileMergerConfigTemplate.user = mergerConfigTemplate.user =  cm.get(
+    infileMergerConfigTemplate.user = cm.get(
         "resultdb.user",
         "Error, resultdb.user not found. Using qsmaster.",
         "qsmaster");
-    infileMergerConfigTemplate.targetDb = mergerConfigTemplate.targetDb =  cm.get(
+    infileMergerConfigTemplate.targetDb = cm.get(
         "resultdb.db",
         "Error, resultdb.db not found. Using qservResult.",
         "qservResult");

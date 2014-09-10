@@ -63,6 +63,9 @@ public:
         throw std::logic_error("Streaming is unimplemented");
     }
 
+    /// Set a function to be called when a resources from a deferred send*
+    /// operation may be released. This allows a sendFile() caller to be
+    /// notified when the file descriptor may be closed and perhaps reclaimed.
     void setReleaseFunc(ReleaseFuncPtr r) { _release = r; }
     void release() {
         if(_release) {

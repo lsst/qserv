@@ -20,20 +20,14 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-
-/// TableMerger.h declares:
-///
-/// struct TableMergerError
-/// class TableMergerConfig
-/// class TableMerger
-
-/// FIXME:::::The TableMerger classes are responsible for properly feeding in
-/// chunkquery results into a mysql instance. When all results are
-/// collected, a fixup step may be needed, as specified when
-/// configuring the TableMerger.
-
 #ifndef LSST_QSERV_RPROC_INFILEMERGER_H
 #define LSST_QSERV_RPROC_INFILEMERGER_H
+/// InfileMerger.h declares:
+///
+/// struct InfileMergerError
+/// class InfileMergerConfig
+/// class InfileMerger
+/// (see individual class documentation for more information)
 
 // System headers
 #include <string>
@@ -118,29 +112,42 @@ public:
     std::string socket;
 };
 
-/// class InfileMerger : A class that performs merging of subquery
-/// result tables from dumpfiles sent back by workers. merge() should
-/// be called after each result is read back from the worker.
+/// InfileMerger is a row-based merger that imports rows from a result messages
+/// and inserts them into a MySQL table, as specified during construction by
+/// InfileMergerConfig.
+/// To use, construct a configured instance, then call merge() to kick off the
+/// merging process, and finalize() waits for outstanding merging processes and
+/// performs the appropriate post-processing before returning.
+/// merge() right now expects an entire message buffer, where a message buffer
+/// consists of:
+/// Byte 0: unsigned char size of ProtoHeader message
+/// Bytes 1 - size_ph : ProtoHeader message (containing size of result message)
+/// Bytes size_ph - size_ph + size_rm : Result message
+/// At present, Result messages are not chained.
 class InfileMerger {
 public:
     typedef boost::shared_ptr<util::PacketBuffer> PacketBufferPtr;
     explicit InfileMerger(InfileMergerConfig const& c);
     ~InfileMerger();
 
+    /// Merge a message buffer, which contains:
+    /// Size of ProtoHeader message
+    /// ProtoHeader message
+    /// Result message
+    /// @return count of bytes imported.
     off_t merge(char const* dumpBuffer, int dumpLength);
 
+    /// @return error details if finalize() returns false
     InfileMergerError const& getError() const { return _error; }
+    /// @return final target table name  storing results after post processing
     std::string getTargetTable() const {return _config.targetTable; }
-
+    /// Finalize a "merge" and perform postprocessing
     bool finalize();
+    /// Check if the object has completed all processing.
     bool isFinished() const;
 
 private:
-    class Msgs;
-#if 0
-    int _fetchWithHeader(char const* buffer, int length);
-    int _fetchWithoutHeader(char const* buffer, int length);
-#endif
+    struct Msgs;
     int _readHeader(proto::ProtoHeader& header, char const* buffer, int length);
     int _readResult(proto::Result& result, char const* buffer, int length);
     bool _verifySession(int sessionId);
@@ -148,49 +155,25 @@ private:
     int _importBuffer(char const* buffer, int length, bool setupTable);
     bool _setupTable(Msgs const& msgs);
     void _setupRow();
-
-    class CreateStmt;
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql);
-    std::string _buildMergeSql(std::string const& tableName, bool create);
-    std::string _buildOrderByLimit();
-    bool _createTableIfNotExists(CreateStmt& cs);
-
     void _fixupTargetName();
-    bool _importResult(std::string const& dumpFile);
-    bool _slowImport(std::string const& dumpFile,
-                     std::string const& tableName);
-    bool _importFromBuffer(char const* buf, std::size_t size,
-                           std::string const& tableName);
-    bool _importBufferInsert(char const* buf, std::size_t size,
-                             std::string const& tableName, bool allowNull);
-    bool _dropAndCreate(std::string const& tableName, std::string createSql);
-    bool _importIter(SqlInsertIter& sii, std::string const& tableName);
 
-    static std::string const _dropSql;
-    static std::string const _createSql;
-    static std::string const _createFixSql;
-    static std::string const _insertSql;
-    static std::string const _cleanupSql;
-    static std::string const _cmdBase;
+    InfileMergerConfig _config; //< Configuration
+    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig; //< SQL connection config
+    boost::shared_ptr<sql::SqlConnection> _sqlConn; //< SQL connection
 
-    InfileMergerConfig _config;
-    std::string _loadCmd;
-    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig;
-    boost::shared_ptr<sql::SqlConnection> _sqlConn;
+    std::string _mergeTable; //< Table for result loading
+    InfileMergerError _error; //< Error state
 
-    std::string _mergeTable;
-    InfileMergerError _error;
-    int _tableCount;
-    bool _isFinished;
-    boost::mutex _createTableMutex;
-    boost::mutex _sqlMutex;
+    bool _isFinished; //< Completed?
+    boost::mutex _createTableMutex; //< protection from creating tables
+    boost::mutex _sqlMutex; //< Protection for SQL connection
 
     class Mgr;
-    std::auto_ptr<Mgr> _mgr;
+    std::auto_ptr<Mgr> _mgr; //< Delegate merging action object
 
-    bool _needCreateTable;
-    bool _needHeader;
+    bool _needCreateTable; //< Does the target table need creating?
 };
 
 }}} // namespace lsst::qserv::rproc
