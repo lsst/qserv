@@ -66,6 +66,15 @@ namespace wcontrol {
 ////////////////////////////////////////////////////////////////////////
 // ForemanImpl declaration
 ////////////////////////////////////////////////////////////////////////
+
+/// Implementation of class Foreman
+/// Foreman uses internal classes to do most of its work.
+/// Processor: a task acceptor (by processing messages)
+/// Runner: a task actor
+/// RunnerMgr: management of task Runners
+/// A scheduler is consulted when state changes (a new task arrives, a Runner
+/// completes its task, etc), in order to decide if new tasks should be
+/// started. Schedulers never decide to cancel tasks already in flight.
 class ForemanImpl : public Foreman {
 public:
     ForemanImpl(Scheduler::Ptr s, wlog::WLogger::Ptr log);

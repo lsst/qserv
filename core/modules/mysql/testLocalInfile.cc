@@ -12,6 +12,13 @@ using lsst::qserv::sql::ColumnsIter;
 using lsst::qserv::mysql::LocalInfile;
 using lsst::qserv::mysql::SchemaFactory;
 
+/// Test code for exercising LocalInfile by implementing CREATE TABLE
+/// xxxx SELECT * FROM yyyyy . Depends on having the right chunk
+/// table(s) in a local mysqld, and so does not contain enough
+/// information to be run as a unit test. This code is mostly useful
+/// for developing or exploring the mysql_set_local_infile_handler
+/// interface.
+
 class Api {
 public:
     Api() {

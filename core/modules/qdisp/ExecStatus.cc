@@ -47,6 +47,7 @@ namespace qdisp {
 // Static fields
 std::string ExecStatus::_empty;
 
+/// @Return a C-string describing the State
 char const* ExecStatus::stateText(ExecStatus::State s) {
     switch(s) {
     case UNKNOWN: return "Unknown";

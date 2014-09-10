@@ -51,7 +51,7 @@
 #include "qdisp/QueryResource.h"
 
 namespace {
-std::string figureOutError(XrdSsiErrInfo & e) {
+std::string getErrorText(XrdSsiErrInfo & e) {
     std::ostringstream os;
     int errCode;
     os << "XrdSsiError " << e.Get(errCode);
@@ -353,7 +353,10 @@ void Executive::_setup() {
 
     XrdSsiErrInfo eInfo;
     _service = XrdSsiGetClientService(eInfo, _config.serviceUrl.c_str()); // Step 1
-    if(!_service) figureOutError(eInfo);
+    if(!_service) {
+        LOGGER_ERR << "Error obtaining XrdSsiService in Executive: "
+                   << getErrorText(eInfo);
+    }
     assert(_service);
     _requestCount = 0;
 }

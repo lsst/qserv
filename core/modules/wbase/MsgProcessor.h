@@ -51,6 +51,8 @@ class MsgProcessor
                                   boost::shared_ptr<proto::TaskMsg>,
                                   boost::shared_ptr<SendChannel> > {
 public:
+    /// @return a cancellation function.
+    /// This allows the caller to request work stoppage.
     virtual R operator()(A1 taskMsg, A2 replyChannel) = 0;
 };
 }}} // lsst::qserv::wbase

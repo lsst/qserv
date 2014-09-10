@@ -31,6 +31,8 @@ namespace lsst {
 namespace qserv {
 namespace wbase {
 
+/// NopChannel is a NOP implementation of SendChannel for development and
+/// debugging code without an XrdSsi channel.
 class NopChannel : public SendChannel {
 public:
     virtual bool send(char const* buf, int bufLen) {
@@ -60,6 +62,10 @@ public:
 boost::shared_ptr<SendChannel> SendChannel::newNopChannel() {
     return boost::shared_ptr<NopChannel>(new NopChannel);
 }
+
+
+/// StringChannel is an almost-trivial implementation of a SendChannel that
+/// remembers what it has received.
 class StringChannel : public SendChannel {
 public:
     StringChannel(std::string& dest) : _dest(dest) {}
@@ -94,6 +100,7 @@ public:
             _dest.append(buf.data(), frag);
             remain -= frag;
         }
+        release();
         return true;
     }
 

@@ -67,7 +67,7 @@ public:
     virtual bool reset();
     virtual std::ostream& print(std::ostream& os) const;
 
-    Error getError() const;
+    Error getError() const; //< @return details of error conditions from methods
 
 private:
     /// (helper) merge buffer and shift contents depending on merge size.

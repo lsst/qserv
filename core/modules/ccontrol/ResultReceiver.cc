@@ -43,6 +43,9 @@ namespace ccontrol {
 // max_allowed_packet on mysqld/mysqlclient
 int const ResultReceiver_bufferSize = 2*1024*1024; // 2 megabytes.
 
+////////////////////////////////////////////////////////////////////////
+// ResultReceiver public
+////////////////////////////////////////////////////////////////////////
 ResultReceiver::ResultReceiver(boost::shared_ptr<MsgReceiver> msgReceiver,
                                boost::shared_ptr<rproc::InfileMerger> merger,
                                std::string const& tableName)
@@ -123,11 +126,15 @@ bool ResultReceiver::reset() {
     return true;
 }
 
+
 std::ostream& ResultReceiver::print(std::ostream& os) const {
     os << "ResultReceiver(" << _tableName << ", flushed="
        << (_flushed ? "true)" : "false)") ;
     return os;
 }
+////////////////////////////////////////////////////////////////////////
+// ResultReceiver private
+////////////////////////////////////////////////////////////////////////
 
 /// @return false if there was an error (invalid bytes, error in merge process)
 /// If not enough bytes are available (e.g., need more bytes for a full message), this is not an error.

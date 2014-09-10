@@ -39,11 +39,12 @@ class Result;
 namespace lsst {
 namespace qserv {
 namespace mysql {
-////////////////////////////////////////////////////////////////////////
-// Row: a mysql row abstraction
-////////////////////////////////////////////////////////////////////////
+
+/// Row is a mysql row abstraction that bundles field sizes and counts. Row is
+/// shallow, and does not perform any memory management.
 struct Row {
-    Row() {}
+    Row() : row(NULL), lengths(NULL), numFields(-1) {}
+
     // Shallow copies all-around.
     Row(char** row_, unsigned long int* lengths_, int numFields_)
         : row(row_), lengths(lengths_), numFields(numFields_) {}
@@ -61,17 +62,18 @@ struct Row {
     int numFields;
 };
 
-////////////////////////////////////////////////////////////////////////
-// RowBuffer: an buffer from which arbitrarily-sized buckets of bytes
-// can be read. The buffer represents a tab-separated-field,
-// line-delimited-tuple sequence of tuples streamed out of a MYSQL_RES*
-////////////////////////////////////////////////////////////////////////
+/// RowBuffer: an buffer from which arbitrarily-sized buckets of bytes
+/// can be read. The buffer represents a tab-separated-field,
+/// line-delimited-tuple sequence of tuples.
 class RowBuffer {
 public:
     typedef boost::shared_ptr<RowBuffer> Ptr;
 
+    /// Fetch a number of bytes into a buffer. Return the number of bytes
+    /// fetched. Returning less than bufLen does NOT indicate EOF.
     virtual unsigned fetch(char* buffer, unsigned bufLen) = 0;
 
+    /// Construct a RowBuffer tied to a MySQL query result
     static Ptr newResRowBuffer(MYSQL_RES* result);
 };
 

@@ -36,18 +36,25 @@ namespace sql {
 
 class Schema; // Forward
 
+/// Construct a CREATE TABLE statement according to a table name and
+/// a schema.
 std::string formCreateTable(std::string const& table, sql::Schema const& s);
 
+/// Helper struct for patching columns to/from hex to workaround MySQL
+/// limitations in LOAD DATA INFILE
 struct InsertColumn {
     std::string column;
     std::string hexColumn;
 };
 typedef std::vector<InsertColumn> InsertColumnVector;
 
+/// Construct patch spec from a schema
 boost::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s);
 
+/// Compose a LOAD DATA INFILE statement
 std::string formLoadInfile(std::string const& table,
                            std::string const& virtFile);
+/// Compose a LOAD DATA INFILE statement that needs binary patching
 std::string formLoadInfile(std::string const& table,
                            std::string const& virtFile,
                            InsertColumnVector const& icv);

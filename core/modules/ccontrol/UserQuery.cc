@@ -94,8 +94,8 @@ public:
     }
 };
 
-// Factory to create chunkid-specific MsgReceiver objs linked to the right
-// messagestore
+/// Factory to create chunkid-specific MsgReceiver objs linked to the right
+/// messagestore
 class ChunkMsgReceiver : public MsgReceiver {
 public:
     virtual void operator()(int code, std::string const& msg) {
@@ -115,6 +115,7 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////
+// UserQuery implementation
 namespace ccontrol {
 
 std::string const& UserQuery::getError() const {
@@ -129,18 +130,22 @@ std::string const& UserQuery::getError() const {
 lsst::qserv::query::ConstraintVec UserQuery::getConstraints() const {
     return _qSession->getConstraints();
 }
+/// @return database for partitioning and dispatch
 std::string const& UserQuery::getDominantDb() const {
     return _qSession->getDominantDb();
 }
 
+/// @return striping parameters for use by chunk scope evaluation
 lsst::qserv::css::StripingParams UserQuery::getDbStriping() const {
     return _qSession->getDbStriping();
 }
 
+/// Attempt to kill in progress.
 void UserQuery::kill() {
     _executive->squash();
 }
 
+/// Add a chunk to be executed
 void UserQuery::addChunk(qproc::ChunkSpec const& cs) {
     // If this is not a chunked query, only accept the dummy chunk.
     // This should collapse out when chunk geometry coverage is moved from Python to C++.
@@ -149,6 +154,7 @@ void UserQuery::addChunk(qproc::ChunkSpec const& cs) {
     }
 }
 
+/// Begin running on all chunks added so far.
 void UserQuery::submit() {
     _qSession->finalize();
     _setupMerger();
@@ -163,7 +169,7 @@ void UserQuery::submit() {
     LOGGER_DBG << std::flush;
     LOGGER_WRN << std::flush;
     LOGGER_ERR << std::flush;
-    assert(_merger || _infileMerger);
+    assert(_infileMerger);
     qproc::QuerySession::Iter i;
     qproc::QuerySession::Iter e = _qSession->cQueryEnd();
     // Writing query for each chunk
@@ -191,9 +197,11 @@ void UserQuery::submit() {
                                      rr };
         _executive->add(refNum, s);
         ss.str(""); // reset stream
-
     }
 }
+
+/// Block until a submit()'ed query completes.
+/// @return the QueryState indicating success or failure
 QueryState UserQuery::join() {
     bool successful = _executive->join(); // Wait for all data
     _infileMerger->finalize(); // Wait for all data to get merged
@@ -207,6 +215,7 @@ QueryState UserQuery::join() {
     _discardMerger();
 }
 
+/// Release resources held by the merger
 void UserQuery::_discardMerger() {
     _infileMergerConfig.reset();
     if(_infileMerger && !_infileMerger->isFinished()) {
@@ -215,6 +224,7 @@ void UserQuery::_discardMerger() {
     _infileMerger.reset();
 }
 
+/// Release resources.
 void UserQuery::discard() {
     // Make sure resources are released.
     if(_executive && _executive->getNumInflight() > 0) {
@@ -232,20 +242,23 @@ void UserQuery::discard() {
     LOGGER_INF << "Discarded UserQuery(" << _sessionId << ")" << std::endl;
 }
 
+/// Check for database existence
+/// @return true if db is known to Qserv
 bool UserQuery::containsDb(std::string const& dbName) const {
     return _qSession->containsDb(dbName);
 }
 
+/// Constructor. Most setup work done by the UserQueryFactory
 UserQuery::UserQuery(boost::shared_ptr<qproc::QuerySession> qs)
     :  _messageStore(new qdisp::MessageStore()),
        _qSession(qs), _sequence(0) {
     // Some configuration done by factory: See UserQueryFactory
 }
-
+/// @return a plaintext description of query execution progress
 std::string UserQuery::getExecDesc() const {
     return _executive->getProgressDesc();
 }
-
+/// Setup merger (for results handling and aggregation)
 void UserQuery::_setupMerger() {
     LOGGER_INF << "UserQuery::_setupMerger()" << std::endl;
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();

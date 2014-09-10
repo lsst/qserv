@@ -59,6 +59,7 @@ namespace qserv {
 namespace wdb {
 
 ////////////////////////////////////////////////////////////////////////
+/// Bundle of values needed to construct a QueryAction
 struct QueryActionArg {
 public:
     QueryActionArg() {}
@@ -67,11 +68,13 @@ public:
                    wbase::Task::Ptr task_,
                    boost::shared_ptr<ChunkResourceMgr> mgr_)
         : log(log_), task(task_), mgr(mgr_) { }
-    boost::shared_ptr<wlog::WLogger> log;
-    wbase::Task::Ptr task;
-    boost::shared_ptr<ChunkResourceMgr> mgr;
+    boost::shared_ptr<wlog::WLogger> log; //< Logging handle
+    wbase::Task::Ptr task; //< Actual task
+    boost::shared_ptr<ChunkResourceMgr> mgr; //< Resource reservation
 };
 ////////////////////////////////////////////////////////////////////////
+/// A worker-side query action. Depending on contents of the task, writes
+/// results to a table or to a supplied SendChannel.
 class QueryAction {
 public:
     QueryAction(QueryActionArg const& a);
@@ -82,7 +85,7 @@ public:
 
     class Impl;
 private:
-    std::auto_ptr<Impl> _impl;
+    std::auto_ptr<Impl> _impl; //< PIMPL class
 };
 
 }}} // namespace lsst::qserv::wdb

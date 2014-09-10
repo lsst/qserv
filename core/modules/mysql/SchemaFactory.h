@@ -22,7 +22,7 @@
  */
 #ifndef LSST_QSERV_MYSQL_SCHEMAFACTORY_H
 #define LSST_QSERV_MYSQL_SCHEMAFACTORY_H
-// MySQL-dependent construction of schema. Separated from sql::*Schema
+// MySQL-dependent construction of schema objects. Separated from sql::*Schema
 // to provide better isolation of sql module from mysql-isms.
 
 // Third-party headers

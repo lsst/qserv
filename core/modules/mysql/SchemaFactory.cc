@@ -38,7 +38,10 @@ namespace mysql {
 ////////////////////////////////////////////////////////////////////////
 // Helpers
 ////////////////////////////////////////////////////////////////////////
+
 struct ColTypeFactory {
+    /// Construct a ColTypeFactory tied to a ColType. Each invocation of
+    /// buildTo() fills the associated ColType.
     ColTypeFactory(sql::ColType& ct)
         : mysqlType(ct.mysqlType),
           sqlType(ct.sqlType) {}
@@ -140,6 +143,7 @@ private:
     std::string& sqlType;
 };
 
+/// Set a ColSchema according to the contents of a MYSQL_FIELD
 void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) {
     cs.name = f.name;
     cs.hasDefault = false;
@@ -174,6 +178,7 @@ void setColSchemaTo(sql::ColSchema& cs, MYSQL_FIELD const& f) {
 // SchemaFactory implementation
 ////////////////////////////////////////////////////////////////////////
 
+/// Construct a ColType from a MYSQL_FIELD
 sql::ColType SchemaFactory::newColType(MYSQL_FIELD const& f) {
     sql::ColType ct;
     ColTypeFactory ctf(ct);
@@ -181,6 +186,7 @@ sql::ColType SchemaFactory::newColType(MYSQL_FIELD const& f) {
     return ct;
 }
 
+/// Construct a ColSchema from a valid MYSQL_FIELD
 sql::ColSchema SchemaFactory::newColSchema(MYSQL_FIELD const& f) {
     sql::ColSchema cs;
     ColTypeFactory ctf(cs.colType);
@@ -189,7 +195,8 @@ sql::ColSchema SchemaFactory::newColSchema(MYSQL_FIELD const& f) {
     return cs;
 }
 
-/// Must be called after mysql_store_result or mysql_use_result
+/// Construct a Schema from a result.
+/// May not be called except after mysql_store_result or mysql_use_result
 sql::Schema SchemaFactory::newFromResult(MYSQL_RES* result) {
     sql::Schema s;
     MYSQL_FIELD* field;

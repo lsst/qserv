@@ -251,6 +251,7 @@ def setupResultScratch():
     return scratchPath
 
 class IndexLookup:
+    """Value class for SecondaryIndex queries"""
     def __init__(self, db, table, keyColumn, keyVals):
         self.db = db
         self.table = table
@@ -409,12 +410,15 @@ class InbandQueryAction:
         return self._resultName
 
     def getIsValid(self):
+        """@return true if instance is valid and can be executed"""
         return self.isValid
 
     def abort(self):
+        """Abort execution. Not fully implemented"""
         UserQuery_kill(self.sessionId)
 
     def _computeHash(self, bytes):
+        """Compute and return a hash that identifies the contained query"""
         return hashlib.md5(bytes).hexdigest()
 
     def _prepareForExec(self):
@@ -518,6 +522,8 @@ class InbandQueryAction:
         pass
 
     def _computeConstraintsAsHints(self):
+        """Retrieve discovered constraints from the query and
+        evaluate chunk coverage against them."""
         constraints = UserQuery_getConstraints(self.sessionId)
         logger.dbg("Getting constraints", constraints, "size=",
                    constraints.size())
@@ -526,6 +532,8 @@ class InbandQueryAction:
         self._evaluateHints(self.dominantDb, self.hintList, self.pmap)
 
     def _addChunks(self):
+        """Push the covered chunks down to the C++ layer in preparation for
+        execution."""
         self._computeConstraintsAsHints()
         self._emptyChunks = metadata.getEmptyChunks(self.dominantDb)
         if not self._emptyChunks:
@@ -613,6 +621,9 @@ class InbandQueryAction:
         pass
 
     pass # class InbandQueryAction
+
+### Other Action classes for invocation from appInterface and others
+### (unimplemented)
 
 class KillQueryAction:
     def __init__(self, query):

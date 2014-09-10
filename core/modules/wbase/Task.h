@@ -21,9 +21,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /// Task.h
-// class Task defines a query task to be done, containing a TaskMsg
-// (over-the-wire) additional concrete info related to physical
-// execution conditions.
 /// @author Daniel L. Wang (danielw)
 #ifndef LSST_QSERV_WBASE_TASK_H
 #define LSST_QSERV_WBASE_TASK_H
@@ -51,11 +48,16 @@ namespace proto {
     class TaskMsg_Fragment;
 }}} // End of forward declarations
 
-
 namespace lsst {
 namespace qserv {
 namespace wbase {
 
+/// struct Task defines a query task to be done, containing a TaskMsg
+/// (over-the-wire) additional concrete info related to physical
+/// execution conditions.
+/// Task encapsulates nearly zero logic, aside from:
+/// * constructors
+/// * poison()
 struct Task {
 public:
     static std::string const defaultUser;
@@ -77,25 +79,25 @@ public:
     explicit Task(TaskMsgPtr t, std::string const& user_=defaultUser);
     explicit Task(TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc);
 
-    TaskMsgPtr msg;
-    boost::shared_ptr<wbase::SendChannel> sendChannel;
-    std::string hash;
-    std::string dbName;
-    std::string resultPath;
-    std::string user;
-    bool needsCreate;
-    time_t entryTime;
+    TaskMsgPtr msg; //< Protobufs Task spec
+    boost::shared_ptr<wbase::SendChannel> sendChannel; //< For result reporting
+    std::string hash; //< hash of TaskMsg
+    std::string dbName; //< dominant db
+    std::string resultPath; //< Result path for non-SendChannel operation
+    std::string user; //< Incoming username
+    bool needsCreate; //< Deprecated.
+    time_t entryTime; //< Timestamp for task admission
     char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
-    void poison();
+    void poison(); //< Call the previously-set poisonFunc
     void setPoison(boost::shared_ptr<util::VoidCallable<void> > poisonFunc);
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
 private:
     boost::mutex _mutex; // Used for handling poison
     boost::shared_ptr<util::VoidCallable<void> > _poisonFunc;
-    bool _poisoned;
+    bool _poisoned; //< To prevent multiple-poisonings
 };
 typedef std::deque<Task::Ptr> TaskQueue;
 typedef boost::shared_ptr<TaskQueue> TaskQueuePtr;

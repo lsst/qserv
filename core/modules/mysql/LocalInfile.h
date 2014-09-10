@@ -22,8 +22,6 @@
  */
 #ifndef LSST_QSERV_MYSQL_LOCALINFILE_H
 #define LSST_QSERV_MYSQL_LOCALINFILE_H
-// MySQL-dependent construction of schema. Separated from sql::*Schema
-// to provide better isolation of sql module from mysql-isms.
 
 // System headers
 #include <map>
@@ -32,6 +30,7 @@
 
 // Third-party headers
 #include <boost/shared_ptr.hpp>
+#include <boost/utility.hpp>
 #include <mysql/mysql.h>
 
 namespace lsst {
@@ -42,43 +41,79 @@ class RowBuffer; // Forward. Defined in LocalInfile.cc
 
 /// LocalInfile : a virtual LOCAL INFILE handler for mysql to use.
 /// Do not inherit. Used in mysql_set_local_infile_handler .
-class LocalInfile {
+///
+/// The purpose of this class is to provide an efficient means of
+/// pushing rows into the czar's mysqld. LOAD DATA INFILE is currently
+/// recognized as the highest-performing means of getting data rows
+/// into a mysql table, short of directly writing data directly into
+/// the mysqld's data directory (likely only possible with MyISAM
+/// tables).
+/// LocalInfile objects can obtain rows directly from a query result
+/// via a MYSQL_RES* result handle, or via a RowBuffer object, which
+/// is an abstract interface to a buffer of table rows (with constant
+/// schema). In general, client code will not need to construct
+/// LocalInfile objects directly: they instead use the
+/// LocalInfile::Mgr interface that generates them and manages them
+/// implicitly.
+class LocalInfile : boost::noncopyable {
 public:
     class Mgr; // Helper for attaching to MYSQL*
 
     LocalInfile(char const* filename, MYSQL_RES* result);
     LocalInfile(char const* filename, boost::shared_ptr<RowBuffer> rowBuffer);
     ~LocalInfile();
+
+    /// Read up to bufLen bytes of infile contents into buf.
+    /// @return number of bytes filled.
+    /// Filling less than bufLen does not necessarily indicate
+    /// EOF. Returning 0 bytes filled indicates EOF.
     int read(char* buf, unsigned int bufLen);
+    /// Fill a buffer with an NULL-terminated text error description.
+    /// @return an error code if available
     int getError(char* buf, unsigned int bufLen);
+    /// @return true if the instance is valid for usage.
     inline bool isValid() const { return _rowBuffer; }
 
 private:
-    char* _buffer;
-    int _bufferSize;
-    char* _leftover;
-    unsigned _leftoverSize;
-    std::string _filename;
-    boost::shared_ptr<RowBuffer> _rowBuffer;
+    char* _buffer; //< Internal buffer for passing to mysql
+    int _bufferSize; //< Allocated size of internal buffer
+    char* _leftover; //< Ptr to bytes not yet sent to mysql
+    unsigned _leftoverSize; //< Size of bytes not yet sent in _leftover
+    std::string _filename; //< virtual filename for mysql
+    boost::shared_ptr<RowBuffer> _rowBuffer; //< Underlying row source
 
 };
 
-/// Do not inherit. Used in mysql_set_local_infile_handler
+/// Do not inherit or copy. Used in mysql_set_local_infile_handler
 /// Can only be attached to one MYSQL*
-class LocalInfile::Mgr {
+/// Client code should use this interface in nearly all cases rather
+/// than managing LocalInfile instances manually.
+/// See:
+/// http://dev.mysql.com/doc/refman/5.5/en/mysql-set-local-infile-handler.html
+/// for more information on the required interface.
+class LocalInfile::Mgr : boost::noncopyable {
 public:
     Mgr();
 
     // User interface //////////////////////////////////////////////////
+    /// Attach the handler to a mysql client connection
     void attach(MYSQL* mysql);
+    /// Detach this handler from a mysql client connection
     void detachReset(MYSQL* mysql);
 
     /// Prepare a local infile, specifying a filename
     void prepareSrc(std::string const& filename, MYSQL_RES* result);
-    /// Prepare a local infile, using an auto-generated filename
-    std::string prepareSrc(MYSQL_RES* result);
-    std::string prepareSrc(boost::shared_ptr<RowBuffer> rowbuffer);
 
+    /// Prepare a local infile from a MYSQL_RES* and link it to an
+    /// auto-generated filename. A RowBuffer object is constructed and
+    /// used internally.
+    /// @return generated filename
+    std::string prepareSrc(MYSQL_RES* result);
+
+    /// Prepare a local infile from a RowBuffer and link it to an
+    /// auto-generated filename.
+    /// @return generated filename
+    std::string prepareSrc(boost::shared_ptr<RowBuffer> rowbuffer);
 
     // mysql_local_infile_handler interface ////////////////////////////////
     // These function pointers are needed to attach a handler
@@ -93,7 +128,7 @@ public:
 
 private:
     class Impl;
-    std::auto_ptr<Impl> _impl;
+    std::auto_ptr<Impl> _impl; // PIMPL implementation class.
 };
 
 }}} // namespace lsst::qserv::mysql

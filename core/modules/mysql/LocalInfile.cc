@@ -113,6 +113,14 @@ int LocalInfile::read(char* buf, unsigned int bufLen) {
 }
 
 int LocalInfile::getError(char* buf, unsigned int bufLen) {
+    /// TODO: Improve error handling for LocalInfile.
+    /// mysql docs indicate that this is called only when an init() or
+    /// read() fails.
+    char const initFailedMsg[] = "Failure initializing LocalInfile";
+    if(!isValid()) {
+        ::strncpy(buf, initFailedMsg, bufLen);
+        return -1;
+    }
     return 0;
 }
 

@@ -72,11 +72,12 @@ using lsst::qserv::proto::ProtoHeader;
 using lsst::qserv::proto::ProtoImporter;
 using lsst::qserv::rproc::InfileMergerConfig;
 
+/// @return a timestamp id for use in generating temporary result table names.
 std::string getTimeStampId() {
     struct timeval now;
     int rc = gettimeofday(&now, NULL);
     if (rc != 0) throw "Failed to get timestamp.";
-    std::stringstream s;
+    std::ostringstream s;
     s << (now.tv_sec % 10000) << now.tv_usec;
     return s.str();
     // Use the lower digits as pseudo-unique (usec, sec % 10000)
@@ -98,18 +99,14 @@ namespace lsst {
 namespace qserv {
 namespace rproc {
 
-////////////////////////////////////////////////////////////////////////
 // InfileMergerError
-////////////////////////////////////////////////////////////////////////
+/// @return true if the error represents a results-too-big condition
 bool InfileMergerError::resultTooBig() const {
     return (status == MYSQLEXEC) && (errorCode == 1114);
 }
 
-////////////////////////////////////////////////////////////////////////
-// InfileMerger::Msgs
-////////////////////////////////////////////////////////////////////////
-class InfileMerger::Msgs {
-public:
+/// InfileMerger is a value class for imported Protobufs messages
+struct InfileMerger::Msgs {
     lsst::qserv::proto::ProtoHeader protoHeader;
     lsst::qserv::proto::Result result;
 };
@@ -117,6 +114,14 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger::Mgr
 ////////////////////////////////////////////////////////////////////////
+
+/// InfileMerger::Mgr is a delegate class of InfileMerger that manages a queue
+/// of jobs to import rows into a mysqld. The purpose of maintaining a queue and
+/// not performing parallel loading is poor performance (as measured in MySQL
+/// 5.1). While performance might be better when the merge/result table is an
+/// ENGINE=MEMORY table, we cannot use in-memory by default because result
+/// tables could spill physical RAM--baseline LSST query requirements allow for
+/// large result sets.
 class InfileMerger::Mgr {
 public:
     class Action;
@@ -126,9 +131,12 @@ public:
 
     ~Mgr() {}
 
+    /// Enqueue an bundle of result rows to be inserted, as represented by the
+    /// Protobufs message bundle
     void enqueueAction(boost::shared_ptr<Msgs> msgs);
 
     /// Wait until work queue is empty.
+    /// @return true on success
     bool join() {
         boost::unique_lock<boost::mutex> lock(_inflightMutex);
         while(_numInflight > 0) {
@@ -137,8 +145,11 @@ public:
         return true;
     }
 
+    /// Apply a mysql query, using synchronization to prevent contention.
     bool applyMysql(std::string const& query);
 
+    /// Report completion of an action (used by Action threads to report their
+    /// completion before they destroy themselves).
     void signalDone(bool success, Action& a) {
         boost::lock_guard<boost::mutex> lock(_inflightMutex);
         --_numInflight;
@@ -225,10 +236,8 @@ bool InfileMerger::Mgr::applyMysql(std::string const& query) {
 InfileMerger::InfileMerger(InfileMergerConfig const& c)
     : _config(c),
       _sqlConfig(makeSqlConfig(c)),
-      _tableCount(0),
       _isFinished(false),
-      _needCreateTable(true),
-      _needHeader(true) {
+      _needCreateTable(true) {
     //LOGGER_INF << "InfileMerger construct +++++++ ()" << (void*) this << std::endl;
 
     _error.errorCode = InfileMergerError::NONE;
@@ -238,10 +247,101 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
     }
     _mgr.reset(new Mgr(*_sqlConfig, _mergeTable));
 }
+
 InfileMerger::~InfileMerger() {
     //LOGGER_INF << "InfileMerger destruct ------- ()" << (void*) this << std::endl;
 }
 
+
+off_t InfileMerger::merge(char const* dumpBuffer, int dumpLength) {
+    if(_error.errorCode) { // Do not attempt when in an error state.
+        return -1;
+    }
+    LOGGER_DBG << "EXECUTING InfileMerger::merge(" << (void*)dumpBuffer << ", "
+               << dumpLength << std::endl;
+    int mergeSize = 0;
+    // Now buffer is big enough, start processing.
+    mergeSize = _importBuffer(dumpBuffer, dumpLength, _needCreateTable);
+    if(mergeSize == 0) {
+        // Buffer not big enough.
+        return 0;
+    }
+    return mergeSize;
+}
+
+bool InfileMerger::finalize() {
+    bool finalizeOk = _mgr->join();
+    // TODO: Should check for error condition before continuing.
+    if(_isFinished) {
+        LOGGER_ERR << "InfileMerger::finalize(), but _isFinished == true"
+                   << std::endl;
+    }
+    if(_mergeTable != _config.targetTable) {
+        // Aggregation needed: Do the aggregation.
+        std::string mergeSelect = _config.mergeStmt->getTemplate().generate();
+        std::string createMerge = "CREATE TABLE " + _config.targetTable
+            + " " + mergeSelect;
+        LOGGER_INF << "Merging w/" << createMerge << std::endl;
+        finalizeOk = _applySqlLocal(createMerge);
+
+        // Cleanup merge table.
+        sql::SqlErrorObject eObj;
+        // Don't report failure on not exist
+        LOGGER_INF << "Cleaning up " << _mergeTable << std::endl;
+#if 1 // Set to 0 when we want to retain mergeTables for debugging.
+        bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj,
+                                             false,
+                                             _config.targetDb);
+#else
+        bool cleanupOk = true;
+#endif
+        if(!cleanupOk) {
+            LOGGER_INF << "Failure cleaning up table "
+                       << _mergeTable << std::endl;
+        }
+    }
+    LOGGER_INF << "Merged " << _mergeTable << " into " << _config.targetTable
+               << std::endl;
+    _isFinished = true;
+    return finalizeOk;
+}
+
+bool InfileMerger::isFinished() const {
+    return _isFinished;
+}
+
+////////////////////////////////////////////////////////////////////////
+// InfileMerger private
+////////////////////////////////////////////////////////////////////////
+
+/// Apply a SQL query, setting the appropriate error upon failure.
+bool InfileMerger::_applySqlLocal(std::string const& sql) {
+    boost::lock_guard<boost::mutex> m(_sqlMutex);
+    sql::SqlErrorObject errObj;
+    if(!_sqlConn.get()) {
+        _sqlConn.reset(new sql::SqlConnection(*_sqlConfig, true));
+        if(!_sqlConn->connectToDb(errObj)) {
+            _error.status = InfileMergerError::MYSQLCONNECT;
+            _error.errorCode = errObj.errNo();
+            _error.description = "Error connecting to db. " + errObj.printErrMsg();
+            _sqlConn.reset();
+            return false;
+        } else {
+            LOGGER_INF << "InfileMerger " << (void*) this
+                       << " connected to db." << std::endl;
+        }
+    }
+    if(!_sqlConn->runQuery(sql, errObj)) {
+        _error.status = InfileMergerError::MYSQLEXEC;
+        _error.errorCode = errObj.errNo();
+        _error.description = "Error applying sql. " + errObj.printErrMsg();
+        return false;
+    }
+    return true;
+}
+
+/// Read a ProtoHeader message from a buffer and return the number of bytes
+/// consumed.
 int InfileMerger::_readHeader(ProtoHeader& header, char const* buffer, int length) {
     if(!ProtoImporter<ProtoHeader>::setMsgFrom(header, buffer, length)) {
         _error.errorCode = InfileMergerError::HEADER_IMPORT;
@@ -252,6 +352,7 @@ int InfileMerger::_readHeader(ProtoHeader& header, char const* buffer, int lengt
     return length;
 }
 
+/// Read a Result message and return the number of bytes consumed.
 int InfileMerger::_readResult(proto::Result& result, char const* buffer, int length) {
     if(!ProtoImporter<proto::Result>::setMsgFrom(result, buffer, length)) {
         _error.errorCode = InfileMergerError::RESULT_IMPORT;
@@ -262,6 +363,10 @@ int InfileMerger::_readResult(proto::Result& result, char const* buffer, int len
     return length;
 }
 
+/// Verify that the sessionId is the same as what we were expecting.
+/// This is an additional safety check to protect from importing a message from
+/// another session.
+/// TODO: this is incomplete.
 bool InfileMerger::_verifySession(int sessionId) {
     if(false) {
         _error.errorCode = InfileMergerError::RESULT_IMPORT;
@@ -270,6 +375,8 @@ bool InfileMerger::_verifySession(int sessionId) {
     return true; // TODO: for better message integrity
 }
 
+/// Verify the expected MD5 against the actual computed MD5, returning false
+/// and setting the error code if they mismatch.
 bool InfileMerger::_verifyMd5(std::string const& expected, std::string const& actual) {
     if(expected != actual) {
         _error.description = "Result message MD5 mismatch";
@@ -279,6 +386,8 @@ bool InfileMerger::_verifyMd5(std::string const& expected, std::string const& ac
     return true;
 }
 
+/// Import a buffer passed in by client code.
+/// @param setupResult : true to hint that a table should be created.
 int InfileMerger::_importBuffer(char const* buffer, int length, bool setupResult) {
     // First char: sizeof protoheader. always less than 255 char.
     unsigned char phSize = *reinterpret_cast<unsigned char const*>(buffer);
@@ -328,6 +437,8 @@ int InfileMerger::_importBuffer(char const* buffer, int length, bool setupResult
     return length;
 }
 
+/// Create a table with the appropriate schema according to the
+/// supplied Protobufs message
 bool InfileMerger::_setupTable(InfileMerger::Msgs const& msgs) {
     // Create table, using schema
     boost::lock_guard<boost::mutex> lock(_createTableMutex);
@@ -368,91 +479,8 @@ bool InfileMerger::_setupTable(InfileMerger::Msgs const& msgs) {
     return true;
 }
 
-off_t InfileMerger::merge(char const* dumpBuffer, int dumpLength) {
-    if(_error.errorCode) { // Do not attempt when in an error state.
-        return -1;
-    }
-    LOGGER_DBG << "EXECUTING InfileMerger::merge(" << (void*)dumpBuffer << ", "
-               << dumpLength << std::endl;
-    int mergeSize = 0;
-    // Now buffer is big enough, start processing.
-    mergeSize = _importBuffer(dumpBuffer, dumpLength, _needCreateTable);
-    if(mergeSize == 0) {
-        // Buffer not big enough.
-        return 0;
-    }
-    return mergeSize;
-}
-
-bool InfileMerger::finalize() {
-    bool finalizeOk = _mgr->join();
-    // TODO: Should check for error condition before continuing.
-    if(_isFinished) {
-        LOGGER_ERR << "InfileMerger::finalize(), but _isFinished == true"
-                   << std::endl;
-    }
-    if(_mergeTable != _config.targetTable) {
-        // Aggregation needed: Do the aggregation.
-        std::string mergeSelect = _config.mergeStmt->getTemplate().generate();
-        std::string createMerge = "CREATE TABLE " + _config.targetTable
-            + " " + mergeSelect;
-        LOGGER_INF << "Merging w/" << createMerge << std::endl;
-        finalizeOk = _applySqlLocal(createMerge);
-
-        // Cleanup merge table.
-        sql::SqlErrorObject eObj;
-        // Don't report failure on not exist
-        LOGGER_INF << "Cleaning up " << _mergeTable << std::endl;
-#if 1
-        bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj,
-                                             false,
-                                             _config.targetDb);
-#else
-        bool cleanupOk = true;
-#endif
-        if(!cleanupOk) {
-            LOGGER_INF << "Failure cleaning up table "
-                       << _mergeTable << std::endl;
-        }
-    }
-    LOGGER_INF << "Merged " << _mergeTable << " into " << _config.targetTable
-               << std::endl;
-    _isFinished = true;
-    return finalizeOk;
-}
-
-bool InfileMerger::isFinished() const {
-    return _isFinished;
-}
-
-bool InfileMerger::_applySqlLocal(std::string const& sql) {
-    boost::lock_guard<boost::mutex> m(_sqlMutex);
-    sql::SqlErrorObject errObj;
-    if(!_sqlConn.get()) {
-        _sqlConn.reset(new sql::SqlConnection(*_sqlConfig, true));
-        if(!_sqlConn->connectToDb(errObj)) {
-            _error.status = InfileMergerError::MYSQLCONNECT;
-            _error.errorCode = errObj.errNo();
-            _error.description = "Error connecting to db. " + errObj.printErrMsg();
-            _sqlConn.reset();
-            return false;
-        } else {
-            LOGGER_INF << "InfileMerger " << (void*) this
-                       << " connected to db." << std::endl;
-        }
-    }
-    if(!_sqlConn->runQuery(sql, errObj)) {
-        _error.status = InfileMergerError::MYSQLEXEC;
-        _error.errorCode = errObj.errNo();
-        _error.description = "Error applying sql. " + errObj.printErrMsg();
-        return false;
-    }
-    return true;
-}
-
-////////////////////////////////////////////////////////////////////////
-// private
-////////////////////////////////////////////////////////////////////////
+/// Choose the appropriate target name, depending on whether post-processing is
+/// needed on the result rows.
 void InfileMerger::_fixupTargetName() {
     if(_config.targetTable.empty()) {
         assert(!_config.targetDb.empty());

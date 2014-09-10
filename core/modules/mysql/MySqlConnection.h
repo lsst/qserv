@@ -42,6 +42,9 @@ namespace mysql {
 // Forward
 class MySqlConfig;
 
+/// MySqlConnection is a thin wrapper around the MySQL C-API that partially
+/// shields clients from the raw API, while still providing raw access for
+/// clients that need it.
 class MySqlConnection : boost::noncopyable {
 public:
     MySqlConnection();

@@ -29,7 +29,7 @@
 namespace lsst {
 namespace qserv {
 namespace rproc {
-
+/// Construct a RowBuffer with a Result message row source.
 mysql::RowBuffer::Ptr newProtoRowBuffer(proto::Result& r);
 
 }}} // namespace lsst::qserv::rproc

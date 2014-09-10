@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -98,6 +98,7 @@ MySqlConnection::connect() {
     _isConnected = (c != NULL);
     return _isConnected;
 }
+
 bool
 MySqlConnection::queryUnbuffered(std::string const& query) {
     // run query, store into list.
