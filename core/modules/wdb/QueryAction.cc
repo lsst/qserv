@@ -106,6 +106,7 @@ private:
 
     boost::shared_ptr<wlog::WLogger> _log;
     wbase::Task::Ptr _task;
+    boost::shared_ptr<ChunkResourceMgr> _chunkResourceMgr;
     std::string _dbName;
     boost::shared_ptr<proto::TaskMsg> _msg;
     bool _poisoned;
@@ -136,6 +137,7 @@ public:
 QueryAction::Impl::Impl(QueryActionArg const& a)
     : _log(a.log),
       _task(a.task),
+      _chunkResourceMgr(a.mgr),
       _dbName(a.task->dbName),
       _msg(a.task->msg),
       _poisoned(false),
@@ -154,9 +156,6 @@ bool QueryAction::Impl::act() {
     _setDb();
     bool connOk = _initConnection();
     if(!connOk) { return false; }
-
-//    int chunkId = _selectChunkId();
-    // TODO: Prepare subchunks as necessary
 
     if(_msg->has_protocol()) {
         switch(_msg->protocol()) {
@@ -306,8 +305,11 @@ bool QueryAction::Impl::_dispatchChannel() {
     if(m.fragment_size() < 1) {
         throw std::runtime_error("No fragments to execute in TaskMsg");
     }
+    ChunkResourceRequest req(_chunkResourceMgr, m);
+
     for(int i=0; i < m.fragment_size(); ++i) {
         wbase::Task::Fragment const& f(m.fragment(i));
+        ChunkResource cr(req.getResourceFragment(i));
         // Use query fragment as-is, funnel results.
         for(int qi=0, qe=f.query_size(); qi != qe; ++qi) {
             MYSQL_RES* res = _primeResult(f.query(qi));
