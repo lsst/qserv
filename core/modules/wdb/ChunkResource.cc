@@ -24,9 +24,7 @@
  /**
   * @file
   *
-  * @brief
-  *
-  *
+  * @brief ChunkResource implementation
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -41,9 +39,9 @@
 #include <boost/thread.hpp>
 
 // Local headers
-// #include "global/constants.h"
-// #include "proto/worker.pb.h"
+#include "global/constants.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlErrorObject.h"
 #include "wbase/Base.h"
 #include "wdb/QuerySql.h"
 
@@ -82,8 +80,17 @@ namespace wdb {
 class ChunkResource::Info {
 public:
     Info(std::string const& db_, int chunkId_,
-         StringVector const& tables, IntVector const& subChunkIds_)
-        : db(db_), chunkId(chunkId_), subChunkIds(subChunkIds_) {}
+         StringVector const& tables_, IntVector const& subChunkIds_)
+        : db(db_), chunkId(chunkId_),
+          tables(tables_), subChunkIds(subChunkIds_) {}
+
+    Info(std::string const& db_, int chunkId_,
+         StringVector const& tables_)
+        : db(db_), chunkId(chunkId_), tables(tables_) {}
+
+    Info(Info const& i)
+        : db(i.db), chunkId(i.chunkId),
+          tables(i.tables), subChunkIds(i.subChunkIds) {}
     std::string db;
     int chunkId;
     StringVector tables;
@@ -111,6 +118,13 @@ ChunkResource::ChunkResource(ChunkResourceMgr& mgr,
 ChunkResource::ChunkResource(ChunkResource const& cr)
     : _mgr(cr._mgr), _info(new Info(*cr._info)) {
     _mgr.acquireUnit(*_info);
+}
+
+ChunkResource& ChunkResource::operator=(ChunkResource const& cr) {
+    _mgr = cr._mgr;
+    _info = std::auto_ptr<Info>(new Info(*cr._info));
+    _mgr.acquireUnit(*_info);
+    return *this;
 }
 
 ChunkResource::~ChunkResource() {
@@ -145,25 +159,71 @@ struct ScTable {
     std::string table;
     int subChunkId;
 };
+std::ostream& operator<<(std::ostream& os, ScTable const& st) {
+    return os << "Subchunks_" << st.db << "_" << st.chunkId << "."
+              << st.table << "_" << st.subChunkId;
+}
 typedef std::vector<ScTable> ScTableVector;
-class SqlBackend;
+
 class Backend {
 public:
     typedef boost::shared_ptr<Backend> Ptr;
-    void load(ScTableVector const&) {
-        throw "unimplemented";
+    void load(ScTableVector const& v) {
+        if(_isFake) {
+            std::cout << "Pretending to load:";
+            std::copy(v.begin(), v.end(),
+                      std::ostream_iterator<ScTable>(std::cout, ","));
+            std::cout << std::endl;
+        } else {
+            for(ScTableVector::const_iterator i=v.begin(), e=v.end();
+                i != e; ++i) {
+                std::string create =
+                    (boost::format(lsst::qserv::wbase::CREATE_SUBCHUNK_SCRIPT)
+                     % i->db % i->table % SUB_CHUNK_COLUMN
+                     % i->chunkId % i->subChunkId).str();
+                sql::SqlErrorObject err;
+                if(!_sqlConn.runQuery(create, err)) {
+                    throw err; // FIXME
+                }
+            }
+        }
     }
-    void discard(ScTableVector const&) {
-        throw "unimplemented";
+    void discard(ScTableVector const& v) {
+        if(_isFake) {
+            std::cout << "Pretending to discard:";
+            std::copy(v.begin(), v.end(),
+                      std::ostream_iterator<ScTable>(std::cout, ","));
+            std::cout << std::endl;
+        } else {
+            for(ScTableVector::const_iterator i=v.begin(), e=v.end();
+                i != e; ++i) {
+                std::string discard =
+                    (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
+                     % i->db % i->table
+                     % i->chunkId % i->subChunkId).str();
+                sql::SqlErrorObject err;
+                if(!_sqlConn.runQuery(discard, err)) {
+                    throw err; // FIXME
+                }
+            }
+        }
     }
     static boost::shared_ptr<Backend>
     newInstance(mysql::MySqlConfig const& mc) {
         return boost::shared_ptr<Backend>(new Backend(mc));
     }
+    static boost::shared_ptr<Backend>
+    newFakeInstance() {
+        return boost::shared_ptr<Backend>(new Backend('f'));
+    }
 private:
+    /// Construct a fake instance
+    Backend(char)
+        : _isFake(true) {}
     Backend(mysql::MySqlConfig const& mc)
-        : _sqlConn(mc) {}
+        : _isFake(false), _sqlConn(mc) {}
 
+    bool _isFake;
     sql::SqlConnection _sqlConn;
 };
 
@@ -174,31 +234,36 @@ public:
     typedef std::map<std::string, SubChunkMap> TableMap; // tablename -> subchunk map
 
     typedef boost::shared_ptr<ChunkEntry> Ptr;
+
     ChunkEntry(int chunkId)
         : _chunkId(chunkId) {}
+
     void acquire(std::string const& db,
                  StringVector const& tables,
                  IntVector const& sc, Backend::Ptr backend) {
         ScTableVector needed;
-            boost::lock_guard<boost::mutex> lock(_mutex);
-            StringVector::const_iterator ti, te;
-            for(ti=tables.begin(), te=tables.end(); ti != te; ++ti) {
-                SubChunkMap& scm = _tableMap[*ti]; // implicit creation OK.
-                IntVector::const_iterator i, e;
-                for(i=sc.begin(), e=sc.end(); i != e; ++i) {
-                    SubChunkMap::iterator it = scm.find(*i);
-                    int last = 0;
-                    if(it == scm.end()) {
-                        needed.push_back(ScTable(db, _chunkId, *ti, *i));
-                    } else {
-                        last = it->second;
-                    }
-                    scm[*i] = last + 1; // write new value
-                } // All subchunks
-            } // All tables
-            // For now, every other user of this chunk must wait while
-            // we fetch the resource.
+        boost::lock_guard<boost::mutex> lock(_mutex);
+        ++_refCount; // Increase usage count
+        StringVector::const_iterator ti, te;
+        for(ti=tables.begin(), te=tables.end(); ti != te; ++ti) {
+            SubChunkMap& scm = _tableMap[*ti]; // implicit creation OK.
+            IntVector::const_iterator i, e;
+            for(i=sc.begin(), e=sc.end(); i != e; ++i) {
+                SubChunkMap::iterator it = scm.find(*i);
+                int last = 0;
+                if(it == scm.end()) {
+                    needed.push_back(ScTable(db, _chunkId, *ti, *i));
+                } else {
+                    last = it->second;
+                }
+                scm[*i] = last + 1; // write new value
+            } // All subchunks
+        } // All tables
+        // For now, every other user of this chunk must wait while
+        // we fetch the resource.
+        if(needed.size() > 0) {
             backend->load(needed);
+        }
     }
     void release(std::string const& db,
                  StringVector const& tables,
@@ -212,7 +277,7 @@ public:
                 for(i=sc.begin(), e=sc.end(); i != e; ++i) {
                     SubChunkMap::iterator it = scm.find(*i); // Should be there
                     if(it == scm.end()) {
-                         throw std::runtime_error("Error releasing un-acquired resource");
+                        throw std::runtime_error("Error releasing un-acquired resource");
                     }
                     scm[*i] = it->second - 1; // write new value
                 } // All subchunks
@@ -221,6 +286,7 @@ public:
         flush(db, backend); // Discard resources no longer needed by anyone.
         // flush could be detached from the release function, to be called at a
         // high-water mark and/or on periodic intervals
+        --_refCount;
     }
     void flush(std::string const& db, Backend::Ptr backend) {
         ScTableVector discardable;
@@ -250,12 +316,15 @@ public:
             }
         } // All tables
         // Delegate actual table dropping to the backend.
-        backend->discard(discardable);
+        if(discardable.size() > 0) {
+            backend->discard(discardable);
+        }
     }
 private:
-    boost::shared_ptr<Backend> _backend;
+    boost::shared_ptr<Backend> _backend; //< Delegate stage/unstage
     int _chunkId;
-    TableMap _tableMap;
+    int _refCount; //< Number of known users
+    TableMap _tableMap; //< tables in use
     boost::mutex _mutex;
 };
 
@@ -270,63 +339,40 @@ public:
     virtual ChunkResource acquire(std::string const& db, int chunkId,
                                   StringVector const& tables) {
         // Make sure that the chunk is ready. (NOP right now.)
-        return ChunkResource(*this);
+        ChunkResource cr(*this, new ChunkResource::Info(db, chunkId,
+                                                        tables));
+        return cr;
     }
     virtual ChunkResource acquire(std::string const& db, int chunkId,
                                   StringVector const& tables,
                                   IntVector const& subChunks) {
         ChunkResource cr(*this, new ChunkResource::Info(db, chunkId,
-                                                        tables,subChunks));
-
-        // TODO: Increase refcount
+                                                        tables, subChunks));
 
         return cr;
     }
 
     virtual void release(ChunkResource::Info const& i) {
-        // Only care about subchunks now.
-        // TODO: Check refcounts
-        ChunkEntry* ce = 0;
-        std::cout << "Releasing: " << i << std::endl;
-        {
-            boost::lock_guard<boost::mutex> lock(_mapMutex);
-            DbMap::iterator di = _dbMap.find(i.db);
-            assert(di != _dbMap.end());
-            Map& map = di->second;
-            Map::iterator it = map.find(i.chunkId);
-            if(it == map.end()) {
-                throw std::runtime_error("Invalid ChunkResource::release(): no matching unit");
-            } else {
-                ce = it->second.get();
-            }
-            assert(ce);
-            if(!_isFake) {
-                ce->release(i.db, i.tables, i.subChunkIds, _backend);
-            }
+        if(_isFake) {
+            std::cout << "Releasing: " << i << std::endl;
         }
-        // TODO: Delete subchunk tables
-    }
-    virtual void acquireUnit(ChunkResource::Info const& i) {
-        std::cout << "Acquiring: " << i << std::endl;
-        // Actually acquire the resource.
-        ChunkEntry* ce;
         {
             boost::lock_guard<boost::mutex> lock(_mapMutex);
             Map& map = _getMap(i.db);
-            Map::iterator it = map.find(i.chunkId);
-            if(it == map.end()) {
-                // FIXME
-                Map::value_type v(i.chunkId,
-                                  ChunkEntry::Ptr(new ChunkEntry(i.chunkId)));
-                map.insert(v);
-                ce = v.second.get();
-            } else {
-                ce = it->second.get();
-            }
-            assert(ce);
-            if(!_isFake) {
-                ce->acquire(i.db, i.tables, i.subChunkIds, _backend);
-            }
+            ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
+            ce.release(i.db, i.tables, i.subChunkIds, _backend);
+        }
+    }
+    virtual void acquireUnit(ChunkResource::Info const& i) {
+        if(_isFake) {
+            std::cout << "Acquiring: " << i << std::endl;
+        }
+        {
+            boost::lock_guard<boost::mutex> lock(_mapMutex);
+            Map& map = _getMap(i.db); // Select db
+            ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
+            // Actually acquire
+            ce.acquire(i.db, i.tables, i.subChunkIds, _backend);
         }
 
     }
@@ -335,9 +381,10 @@ private:
     Impl(mysql::MySqlConfig const& c)
         : _isFake(false), _backend(Backend::newInstance(c)) {
     }
-    Impl() : _isFake(true) {}
+    Impl() : _isFake(true), _backend(Backend::newFakeInstance()) {}
 
     /// precondition: _mapMutex is held (locked by the caller)
+    /// Get the ChunkEntry map for a db, creating if necessary
     Map& _getMap(std::string const& db) {
         DbMap::iterator it = _dbMap.find(db);
         if(it == _dbMap.end()) {
@@ -346,6 +393,18 @@ private:
             it = _dbMap.find(db);
         }
         return it->second;
+    }
+    /// precondition: _mapMutex is held (locked by the caller)
+    /// Get the ChunkEntry for a chunkId, creating if necessary
+    ChunkEntry& _getChunkEntry(Map& m, int chunkId) {
+        Map::iterator it = m.find(chunkId); // Select chunkId
+        if(it == m.end()) { // Insert if not exist
+            Map::value_type v(chunkId,
+                              ChunkEntry::Ptr(new ChunkEntry(chunkId)));
+            m.insert(v);
+            return *(v.second.get());
+        }
+        return *(it->second.get());
     }
 
     friend class ChunkResourceMgr;

@@ -44,14 +44,43 @@ using lsst::qserv::wdb::ChunkResourceMgr;
 struct Fixture {
 
     Fixture() {
+        for(int i=11; i<16; ++i) {
+            subchunks.push_back(i);
+        }
+        thedb = "Snowden";
+        tables.push_back("hello");
+        tables.push_back("goodbye");
     }
     ~Fixture() {}
+
+    std::vector<int> subchunks;
+    std::string thedb;
+    std::vector<std::string> tables;
 };
 
 
 BOOST_FIXTURE_TEST_SUITE(All, Fixture)
 
 BOOST_AUTO_TEST_CASE(Basic) {
+
+    boost::shared_ptr<ChunkResourceMgr> crm(ChunkResourceMgr::newFakeMgr());
+    {
+        ChunkResource cr12345(crm->acquire(thedb, 12345, tables));
+        ChunkResource cr12345sub(crm->acquire(thedb, 12345, tables, subchunks));
+        {
+            ChunkResource foo = cr12345;
+            ChunkResource bar(cr12345sub);
+        }
+        {
+            ChunkResource foo = cr12345sub;
+            ChunkResource bar(cr12345);
+        }
+        // now, these resources should be in acquired
+    }
+    // Now, these resources should be freed.
+}
+
+BOOST_AUTO_TEST_CASE(TwoChunk) {
 
     boost::shared_ptr<ChunkResourceMgr> crm(ChunkResourceMgr::newFakeMgr());
     int scarray[] = {11, 12, 13, 14, 15};
@@ -67,7 +96,6 @@ BOOST_AUTO_TEST_CASE(Basic) {
         // now, these resources should be in acquired
     }
     // Now, these resources should be freed.
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()
