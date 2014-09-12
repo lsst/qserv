@@ -29,8 +29,8 @@
   * @Author Jacek Becla, SLAC
   */
 
-#ifndef LSST_QSERV_CSS_INTERFACE_H
-#define LSST_QSERV_CSS_INTERFACE_H
+#ifndef LSST_QSERV_CSS_KVINTERFACE_H
+#define LSST_QSERV_CSS_KVINTERFACE_H
 
 // System headers
 #include <string>
@@ -58,18 +58,23 @@ public:
 
     /**
      * Returns value for a given key.
-     * Throws CssRunTimeError if the key does not exist (or if any other problem,
-     * e.g., a connection error is detected).
+     * Throws CssRunTimeError if there are any other problems, e.g., a connection
+     * error is detected).
+     * Throws CssNoSuchKey if the key is not found.
      */
-    virtual std::string get(std::string const& key) = 0;
+    std::string get(std::string const& key) {
+        return _get(key, std::string(), true);
+    }
 
     /**
      * Returns value for a given key, defaultValue if the key does not exist.
      * Throws CssRunTimeError if there are any other problems, e.g., a connection
      * error is detected).
      */
-    virtual std::string get(std::string const& key,
-                            std::string const& defaultValue) = 0;
+    std::string get(std::string const& key,
+                    std::string const& defaultValue) {
+        return _get(key, defaultValue, false);
+    }
 
     /**
      * Returns children (vector of strings) for a given key.
@@ -86,8 +91,11 @@ public:
 
 protected:
     KvInterface() {}
+    virtual std::string _get(std::string const& key,
+                             std::string const& defaultValue,
+                             bool throwIfKeyNotFound) = 0;
 };
 
 }}} // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_INTERFACE_H
+#endif // LSST_QSERV_CSS_KVINTERFACE_H

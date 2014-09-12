@@ -29,8 +29,8 @@
   * @Author Jacek Becla, SLAC
   */
 
-#ifndef LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_H
-#define LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_H
+#ifndef LSST_QSERV_CSS_INTERFACEIMPLZOO_H
+#define LSST_QSERV_CSS_INTERFACEIMPLZOO_H
 
 // System headers
 #include <vector>
@@ -53,14 +53,17 @@ public:
 
     virtual void create(std::string const& key, std::string const& value);
     virtual bool exists(std::string const& key);
-    virtual std::string get(std::string const& key);
-    virtual std::string get(std::string const& key,
-                            std::string const& defaultValue);
     virtual std::vector<std::string> getChildren(std::string const& key);
     virtual void deleteKey(std::string const& key);
 
+protected:
+    virtual std::string _get(std::string const& key,
+                             std::string const& defaultValue,
+                             bool throwIfKeyNotFound);
+
 private:
     void _doConnect();
+    void _disconnect();
     void _throwZooFailure(int, std::string const& fName, std::string const& key);
 
 private:
@@ -71,4 +74,4 @@ private:
 
 }}} // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_INTERFACE_IMPL_ZOO_H
+#endif // LSST_QSERV_CSS_INTERFACEIMPLZOO_H

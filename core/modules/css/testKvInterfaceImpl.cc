@@ -32,11 +32,12 @@
 
 // System headers
 #include <algorithm> // sort
-#include <cstdlib>   // rand
+#include <cstdlib>   // rand, srand
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <string.h>  // memset
+#include <time.h>    // time
 
 // Third-party headers
 #include <boost/lexical_cast.hpp>
@@ -57,6 +58,7 @@ using std::vector;
 
 struct KvInterfaceFixture {
     KvInterfaceFixture(void) {
+        srand (time(NULL));
         prefix = "/unittest_" + boost::lexical_cast<std::string>(rand());
         k1 = prefix + "/xyzA";
         k2 = prefix + "/xyzB";
@@ -73,8 +75,7 @@ struct KvInterfaceFixture {
         kvI->create(k1, v1);
         kvI->create(k2, v2);
 
-        string s = kvI->get(k1);
-        BOOST_CHECK(s == v1);
+        BOOST_CHECK(kvI->get(k1) == v1);
         BOOST_CHECK(kvI->exists(k1));
         BOOST_CHECK(!kvI->exists(k3));
 
@@ -85,6 +86,7 @@ struct KvInterfaceFixture {
         BOOST_CHECK(v[1]=="xyzB");
 
         kvI->deleteKey(k1);
+        BOOST_CHECK(kvI->get(k1, "xyz4") == "xyz4");
 
         v = kvI->getChildren(prefix);
         BOOST_CHECK(1 == v.size());

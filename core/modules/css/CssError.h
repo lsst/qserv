@@ -29,8 +29,8 @@
   * @Author Jacek Becla, SLAC
   */
 
-#ifndef LSST_QSERV_CSS_ERROR_H
-#define LSST_QSERV_CSS_ERROR_H
+#ifndef LSST_QSERV_CSSERROR_H
+#define LSST_QSERV_CSSERROR_H
 
 // System headers
 #include <map>
@@ -98,14 +98,24 @@ public:
 };
 
 /**
- * Specialized run-time error: node exists.
+ * Specialized run-time error: key exists.
  */
-class NodeExistsError : public CssError {
+class KeyExistsError : public CssError {
 public:
-    NodeExistsError(std::string const& nodeName)
-        : CssError("Node '" + nodeName +"' already exists.") {}
+    KeyExistsError(std::string const& key)
+        : CssError("Key '" + key +"' already exists.") {}
+};
+
+/**
+ * Specialized run-time error: can't allocate memory to get data for a given key.
+ */
+class BadAllocError : public CssError {
+public:
+    BadAllocError(std::string const& key, std::string const& sizeTried)
+        : CssError("Can't allocate memory to get data for key'" + key +"'"
+                   + ", tried allocating up to " + sizeTried + " bytes.") {}
 };
 
 }}} // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_ERROR_H
+#endif // LSST_QSERV_CSSERROR_H
