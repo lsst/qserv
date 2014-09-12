@@ -49,10 +49,12 @@
 #include "ccontrol/SessionManager.h"
 #include "ccontrol/userQueryProxy.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
 #include "ccontrol/MissingUserQuery.h"
 #include "ccontrol/UserQuery.h"
-#include "log/Logger.h"
 #include "util/StringHash.h"
 
 namespace {
@@ -113,7 +115,7 @@ void UserQuery_addChunk(int session, qproc::ChunkSpec const& cs) {
 
 /// Dispatch all chunk queries for this query
 void UserQuery_submit(int session) {
-    LOGGER_DBG << "EXECUTING UserQuery_submit(" << session << ")" << std::endl;
+    LOGF_DEBUG("EXECUTING UserQuery_submit(%1%)" % session);
     uqManager.get(session)->submit();
 }
 
@@ -137,7 +139,7 @@ int UserQuery_takeOwnership(UserQuery* uq) {
 }
 
 bool UserQuery_containsDb(int session, std::string const& dbName) {
-    LOGGER_DBG << "EXECUTING submitQuery3(" << session << ")" << std::endl;
+    LOGF_DEBUG("EXECUTING submitQuery3(%1%)" % session);
     return uqManager.get(session)->containsDb(dbName);
 }
 

@@ -24,8 +24,10 @@
 // System headers
 #include <map>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Third-party headers
-#include "log/Logger.h"
 #include "parser/parserBase.h"
 #include "parser/parseTreeUtil.h"
 
@@ -39,11 +41,8 @@ public:
     virtual ~ColumnHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b,
                             antlr::RefAST c, antlr::RefAST d) {
-        LOGGER_INF << "col _" << tokenText(a)
-                   << "_ _" << tokenText(b)
-                   << "_ _" << tokenText(c)
-                   << "_ _" << tokenText(d)
-                   << "_ ";
+        LOGF_INFO("col _%1%_ _%2%_ _%3%_ _%4%_" % tokenText(a)
+                  % tokenText(b) % tokenText(c) % tokenText(d));
         a->setText("AWESOMECOLUMN");
     }
 };
@@ -53,9 +52,8 @@ public:
     virtual ~TableHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b,
                             antlr::RefAST c)  {
-        LOGGER_INF << "qualname " << tokenText(a)
-                   << " " << tokenText(b) << " "
-                   << tokenText(c) << " ";
+        LOGF_INFO("qualname %1% %2% %3% " % tokenText(a)
+                  % tokenText(b) % tokenText(c));
         a->setText("AwesomeTable");
     }
 };
@@ -65,8 +63,7 @@ public:
     virtual ~TestAliasHandler() {}
     virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
         if(b.get()) {
-            LOGGER_INF << "Alias " << tokenText(a)
-                       << " = " << tokenText(b) << std::endl;
+            LOGF_INFO("Alias %1% = %2%" % tokenText(a) % tokenText(b));
         }
     }
 };
@@ -76,8 +73,8 @@ public:
     virtual ~TestSelectListHandler() {}
     virtual void operator()(antlr::RefAST a) {
         antlr::RefAST bound = parser::getLastSibling(a);
-        LOGGER_INF << "SelectList " << walkTreeString(a)
-                   << "--From " << a << " to " << bound << std::endl;
+        LOGF_INFO("SelectList %1%--From %2% to %3%"
+                  % walkTreeString(a) % a % bound);
     }
 };
 
@@ -96,14 +93,13 @@ public:
     }
     virtual ~TestSetFuncHandler() {}
     virtual void operator()(antlr::RefAST a) {
-        LOGGER_INF << "Got setfunc " << walkTreeString(a)
-                   << std::endl;
+        LOGF_INFO("Got setfunc %1%" % walkTreeString(a));
         //verify aggregation cmd.
         std::string origAgg = tokenText(a);
         MapConstIter i = _map.find(origAgg); // case-sensitivity?
         if(i == _map.end()) {
-            LOGGER_INF << origAgg << " is not an aggregate." << std::endl;
-            return; // Skip.  Actually, this would be an parser bug.
+            LOGF_INFO("%1% is not an aggregate." % origAgg);
+            return; // Skip.  Actually, this would be a parser bug.
         }
         // Extract meaning and label parts.
         // meaning is function + arguments

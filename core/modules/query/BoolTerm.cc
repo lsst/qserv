@@ -32,10 +32,13 @@
 
 // System headers
 #include <algorithm>
+#include <iterator>
 #include <stdexcept>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
-#include "log/Logger.h"
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
@@ -220,7 +223,7 @@ boost::shared_ptr<BoolTerm> BoolFactor::getReduced() {
 #if 0
         QueryTemplate qt;
         bf->renderTo(qt);
-        LOGGER_DBG << "reduced. " << qt.generate() << std::endl;
+        LOGF_DEBUG("reduced. %1%" % qt.generate());
 #endif
         return boost::shared_ptr<BoolFactor>(bf);
     } else {

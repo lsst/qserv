@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,8 +30,9 @@
 // Third-party headers
 #include <boost/format.hpp>
 
-// Local headers
-#include "log/Logger.h"
+// LSST headers
+#include "lsst/log/Log.h"
+
 
 namespace lsst {
 namespace qserv {
@@ -43,9 +44,9 @@ namespace qdisp {
 
 void MessageStore::addMessage(int chunkId, int code, std::string const& description) {
     if (code < 0) {
-        LOGGER_ERR << "Msg: " << chunkId << " " << code << " " << description << std::endl;;
+        LOGF_ERROR("Msg: %1% %2% %3%" % chunkId % code % description);
     } else {
-        LOGGER_DBG << "Msg: " << chunkId << " " << code << " " << description << std::endl;;
+        LOGF_DEBUG("Msg: %1% %2% %3%" % chunkId % code % description);
     }
     {
         boost::lock_guard<boost::mutex> lock(_storeMutex);

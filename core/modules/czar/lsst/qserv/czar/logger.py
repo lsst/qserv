@@ -2,7 +2,7 @@
 
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
+# Copyright 2008-2014 LSST Corporation.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -25,30 +25,36 @@
 # logger.py : A module with a logging interface that utilizes SWIG
 # enabled Logger class.
 
-# Package imports
-from lsst.qserv.czar import logger_threshold
-from lsst.qserv.czar import logger
+# Import new logging module
+import lsst.log as newlog
+
 
 def threshold_dbg():
-    logger_threshold(0)
+    newlog.setLevel("", newlog.DEBUG)
 
 def threshold_inf():
-    logger_threshold(1)
+    newlog.setLevel("", newlog.INFO)
 
 def threshold_wrn():
-    logger_threshold(2)
+    newlog.setLevel("", newlog.WARN)
 
 def threshold_err():
-    logger_threshold(3)
+    newlog.setLevel("", newlog.ERROR)
+
+def newlog_msg(level, args):
+    newlog.log("", level, '%s', ' '.join(map(str, args)), depth=3)
+
+def log_msg(level, args):
+    logger(level, ' '.join(map(str, args)))
 
 def dbg(*args):
-    logger(0, ' '.join(map(str, args)))
+    newlog_msg(newlog.DEBUG, args)
 
 def inf(*args):
-    logger(1, ' '.join(map(str, args)))
+    newlog_msg(newlog.INFO, args)
 
 def wrn(*args):
-    logger(2, ' '.join(map(str, args)))
+    newlog_msg(newlog.WARN, args)
 
 def err(*args):
-    logger(3, ' '.join(map(str, args)))
+    newlog_msg(newlog.ERROR, args)

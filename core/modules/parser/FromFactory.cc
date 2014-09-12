@@ -35,8 +35,10 @@
 #include <deque>
 #include <iterator>
 
-// Package
-#include "log/Logger.h"
+// LSST headers
+#include "lsst/log/Log.h"
+
+// Local headers
 #include "parser/BoolTermFactory.h"
 #include "parser/ColumnRefH.h"
 #include "parser/ParseAliasMap.h"
@@ -95,13 +97,13 @@ public:
         RefAST current;
         RefAST nextCache;
         Iter operator++(int) {
-            //LOGGER_INF << "advancingX..: " << current->getText() << std::endl;
+            //LOGF_INFO("advancingX..: %1%" % current->getText());
             Iter tmp = *this;
             ++*this;
             return tmp;
         }
         Iter& operator++() {
-            //LOGGER_INF << "advancing..: " << current->getText() << std::endl;
+            //LOGF_INFO("advancing..: %1%" % current->getText());
             Check c;
             if(nextCache.get()) {
                 current = nextCache;
@@ -263,8 +265,8 @@ public:
             next();
             break;
         default:
-            // LOGGER_INF << "next type is:" << _cursor->getType()
-            //           << " and text is:" << _cursor->getText() << std::endl;
+            // LOGF_INFO("next type is:%1% and text is:%2%"
+            //           % _cursor->getType % _cursor->getText());
             break;
         }
     }
@@ -559,10 +561,9 @@ FromFactory::_import(antlr::RefAST a) {
     boost::shared_ptr<query::TableRefList> r(new query::TableRefList());
     _list.reset(new query::FromList(r));
 
-    // LOGGER_INF << "FROM starts with: " << a->getText()
-    //           << " (" << a->getType() << ")" << std::endl;
+    // LOGF_INFO("FROM starts with: %1% (%2%)" % a->getText() % a->getType());
     std::stringstream ss;
-    //LOGGER_INF << "FROM indented: " << walkIndentedString(a) << std::endl;
+    // LOGF_INFO("FROM indented: %1%" % walkIndentedString(a));
     assert(_bFactory);
     for(RefGenerator refGen(a, _aliases, *_bFactory);
         !refGen.isDone();
@@ -572,7 +573,9 @@ FromFactory::_import(antlr::RefAST a) {
         _list->_tableRefs->push_back(p);
     }
     std::string s(ss.str());
-    if(s.size() > 0) { LOGGER_INF << s << std::endl; }
+    if(s.size() > 0) {
+        LOGF_INFO("%1%" % s);
+    }
 }
 
 }}} // namespace lsst::qserv::parser

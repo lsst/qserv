@@ -31,8 +31,10 @@
 
 #include "parser/BoolTermFactory.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
-#include "log/Logger.h"
 #include "parser/PredicateFactory.h"
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
@@ -190,10 +192,12 @@ BoolTermFactory::newAndTerm(antlr::RefAST a) {
 query::BoolFactor::Ptr
 BoolTermFactory::newBoolFactor(antlr::RefAST a) {
 #if 0
-    LOGGER_INF << "bool factor:";
-    spacePrint sp(LOG_STRM(Info));
-    forEachSibs(a, sp);
-    LOGGER_INF << std::endl;
+    if (LOG_CHECK_INFO()) {
+        std::stringstream ss;
+        spacePrint sp(ss);
+        forEachSibs(a, sp);
+        LOGF_INFO("bool factor: %1%" % ss.str());
+    }
 #endif
     query::BoolFactor::Ptr bf(new query::BoolFactor());
     bfImport bfi(*this, *bf);
@@ -203,7 +207,7 @@ BoolTermFactory::newBoolFactor(antlr::RefAST a) {
 /// Construct an UnknownTerm(BoolTerm)
 query::UnknownTerm::Ptr
 BoolTermFactory::newUnknown(antlr::RefAST a) {
-    LOGGER_INF << "unknown term:" << walkTreeString(a) << std::endl;
+    LOGF_INFO("unknown term: %1%" % walkTreeString(a));
     return query::UnknownTerm::Ptr(new query::UnknownTerm());
 }
 /// Construct an PassTerm

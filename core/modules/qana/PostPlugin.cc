@@ -35,8 +35,10 @@
 #include <stdexcept>
 #include <string>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
-#include "log/Logger.h"
 #include "qana/QueryPlugin.h"
 #include "query/OrderByClause.h"
 #include "query/QueryContext.h"
@@ -147,7 +149,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
             p.stmtMerge.setOrderBy(_orderBy);
         }
     } else { // For non-chunked queries
-        LOGGER_INF << "Query is non-chunked\n";
+        LOGF_INFO("Query is non-chunked");
         // Make sure orderby is in the "parallel" section (which is not
         // really parallel). No merge is needed.
         SelectStmtList::iterator i,e;

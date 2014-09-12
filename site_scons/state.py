@@ -71,7 +71,6 @@ def _getBinPathFromBinList(binList, msg=None):
     else:
         return binFullPath
 
-
 def _findPrefixFromBin(key, binName):
     """ returns install prefix for  a dependency named 'product'
     - if the dependency binary is PREFIX/bin/binName then PREFIX is used
@@ -119,6 +118,8 @@ def _setEnvWithDependencies():
             (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefixFromBin( 'XROOTD_DIR', "xrootd"), PathVariable.PathIsDir)),
             (PathVariable('MYSQL_DIR', 'mysql install dir', _findPrefixFromBin('MYSQL_DIR', "mysqld_safe"), PathVariable.PathIsDir)),
             (PathVariable('MYSQLPROXY_DIR', 'mysqlproxy install dir', _findPrefixFromBin('MYSQLPROXY_DIR', "mysql-proxy"), PathVariable.PathIsDir)),
+            (PathVariable('LOG4CXX_DIR', 'log4cxx install dir', _findPrefixFromName('LOG4CXX'), PathVariable.PathIsDir)),
+            (PathVariable('LOG_DIR', 'log install dir', _findPrefixFromName('LOG'), PathVariable.PathIsDir)),
             (PathVariable('LUA_DIR', 'lua install dir', _findPrefixFromBin('LUA_DIR', "lua"), PathVariable.PathIsDir)),
             (PathVariable('ZOOKEEPER_DIR', 'zookeeper install dir', _findPrefixFromBin('ZOOKEEPER_DIR', "zkEnv.sh"), PathVariable.PathIsDir)),
             (PathVariable('python_relative_prefix', 'qserv install directory for python modules, relative to prefix', os.path.join("lib", "python"), PathVariable.PathIsDirCreate)),
@@ -138,6 +139,10 @@ def _setEnvWithDependencies():
             (PathVariable('XROOTD_LIB', 'xrootd libraries path', os.path.join(env['XROOTD_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('MYSQL_INC', 'mysql include path', os.path.join(env['MYSQL_DIR'], "include"), PathVariable.PathIsDir)),
             (PathVariable('MYSQL_LIB', 'mysql libraries path', os.path.join(env['MYSQL_DIR'], "lib"), PathVariable.PathIsDir)),
+            (PathVariable('LOG4CXX_INC', 'log4cxx include path', os.path.join(env['LOG4CXX_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('LOG4CXX_LIB', 'log4cxx libraries path', os.path.join(env['LOG4CXX_DIR'], "lib"), PathVariable.PathIsDir)),
+            (PathVariable('LOG_INC', 'log include path', os.path.join(env['LOG_DIR'], "include"), PathVariable.PathIsDir)),
+            (PathVariable('LOG_LIB', 'log libraries path', os.path.join(env['LOG_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_INC', 'protobuf include path', os.path.join(env['PROTOBUF_DIR'], "include"), PathVariable.PathIsDir)),
             (PathVariable('PROTOBUF_LIB', 'protobuf libraries path', os.path.join(env['PROTOBUF_DIR'], "lib"), PathVariable.PathIsDir)),
             (PathVariable('ZOOKEEPER_INC', 'zookeeper c-binding include path', os.path.join(env['ZOOKEEPER_DIR'], "c-binding", "include"), PathVariable.PathIsDir)),

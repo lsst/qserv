@@ -32,8 +32,10 @@
 #include <string>
 #include <stdexcept>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
-#include "log/Logger.h"
 #include "qana/QueryPlugin.h"
 #include "query/AggOp.h"
 #include "query/FuncExpr.h"
@@ -242,11 +244,10 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     std::for_each(vlist->begin(), vlist->end(), ca);
     query::QueryTemplate qt;
     pList.renderTo(qt);
-    //LOGGER_INF << "pass: " << qt.dbgStr() << std::endl;
+    // LOGF_INFO("pass: %1%" % qt.dbgStr());
     qt.clear();
     mList.renderTo(qt);
-    //LOGGER_INF << "fixup: " << qt.dbgStr() << std::endl;
-
+    // LOGF_INFO("fixup: %1%" % qt.dbgStr());
     // Also need to operate on GROUP BY.
     // update context.
     if(m.hasAggregate()) { context.needsMerge = true; }

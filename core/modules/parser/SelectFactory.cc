@@ -37,8 +37,10 @@
 // Third-party headers
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
-#include "log/Logger.h"
    // parser: factories
 #include "parser/FromFactory.h"
 #include "parser/SelectListFactory.h"
@@ -182,9 +184,7 @@ SelectListFactory::getProduct() {
 
 void
 SelectListFactory::_import(RefAST selectRoot) {
-    //    LOGGER_INF << "Type of selectRoot is "
-    //              << selectRoot->getType() << std::endl;
-
+    // LOGF_INFO("Type of selectRoot is %1%" % selectRoot->getType());
     for(; selectRoot.get();
         selectRoot = selectRoot->getNextSibling()) {
         RefAST child = selectRoot->getFirstChild();
@@ -216,8 +216,7 @@ SelectListFactory::_import(RefAST selectRoot) {
 void
 SelectListFactory::_addSelectColumn(RefAST expr) {
     // Figure out what type of value expr, and create it properly.
-    // LOGGER_INF << "SelectCol Type of:" << expr->getText()
-    //           << "(" << expr->getType() << ")" << std::endl;
+    // LOGF_INFO("SelectCol Type of:%1% (%2%)" % expr->getText() % expr->getType());
     if(!expr.get()) {
         throw std::invalid_argument("Attempted _addSelectColumn(NULL)");
     }
@@ -228,7 +227,7 @@ SelectListFactory::_addSelectColumn(RefAST expr) {
     if(!child.get()) {
         throw ParseException("Missing VALUE_EXP child", expr);
     }
-    //    LOGGER_INF << "child is " << child->getType() << std::endl;
+    // LOGF_INFO("child is %1%" % child->getType());
     ValueExprPtr ve = _vFactory->newExpr(child);
 
     // Annotate if alias found.
@@ -255,7 +254,7 @@ SelectListFactory::_addSelectStar(RefAST child) {
             throw ParseException("Missing name node.", child);
         }
         tableName = tokenText(table);
-        LOGGER_INF << "table ref'd for *: " << tableName << std::endl;
+        LOGF_INFO("table ref'd for *: %1%" % tableName);
     }
     vt = query::ValueFactor::newStarFactor(tableName);
     _valueExprList->push_back(query::ValueExpr::newSimple(vt));

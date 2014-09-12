@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2013 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -136,12 +136,12 @@ void
 WorkQueue::signalDeath(Runner* r) {
     boost::lock_guard<boost::mutex> lock(_runnersMutex);
     RunnerDeque::iterator end = _runners.end();
-    //LOGGER_INF << (void*) r << " dying" << std::endl;
+    // LOGF_INFO("%1% dying" % (void*) r);
     for(RunnerDeque::iterator i = _runners.begin(); i != end; ++i) {
         if(*i == r) {
             _runners.erase(i);
             _runnersEmpty.notify_all();
-            //LOGGER_INF << _runners.size() << " runners left" << std::endl;
+            // LOGF_INFO("%1% runners left" % _runners.size());
             return;
         }
     }

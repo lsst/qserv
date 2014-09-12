@@ -12,7 +12,7 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "antlr boost_thread boost_system zookeeper_mt".split()
+extDeps = "antlr boost_thread boost_system log log4cxx zookeeper_mt".split()
 
 modDeps = 'css global log query'.split() # deps on other modules
 pDeps = itertools.chain(*map(lambda m: libProducts[m], modDeps))

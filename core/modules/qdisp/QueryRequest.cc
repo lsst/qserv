@@ -33,8 +33,10 @@
 // System headers
 #include <iostream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
-#include "log/Logger.h"
 #include "qdisp/ExecStatus.h"
 #include "qdisp/QueryReceiver.h"
 
@@ -45,8 +47,11 @@ namespace qdisp {
 inline void unprovisionSession(XrdSsiSession* session) {
     if(session) {
         bool ok = session->Unprovision();
-        if(!ok) { LOGGER_ERR << "Error unprovisioning\n"; }
-        else { LOGGER_DBG << "Unprovision ok.\n"; }
+        if(!ok) {
+            LOGF_ERROR("Error unprovisioning");
+        } else {
+            LOGF_DEBUG("Unprovision ok.");
+        }
     }
 }
 
@@ -78,7 +83,7 @@ QueryRequest::QueryRequest(XrdSsiSession* session,
       _retryFunc(retryFunc),
       _status(status) {
     _registerSelfDestruct();
-    LOGGER_INF << "New QueryRequest with payload(" << payload.size() << ")\n";
+    LOGF_INFO("New QueryRequest with payload(%1%)" % payload.size());
 }
 
 QueryRequest::~QueryRequest() {
@@ -88,14 +93,13 @@ QueryRequest::~QueryRequest() {
 // content of request data
 char* QueryRequest::GetRequest(int& requestLength) {
     requestLength = _payload.size();
-    LOGGER_DBG << "Requesting [" << requestLength << "] "
-               << _payload << std::endl;
+    LOGF_DEBUG("Requesting [%1%] %2%" % requestLength % _payload);
     // Andy promises that his code won't corrupt it.
     return const_cast<char*>(_payload.data());
 }
 
 void QueryRequest::RelRequestBuffer() {
-    LOGGER_DBG << "Early release of request buffer\n";
+    LOGF_DEBUG("Early release of request buffer");
     _payload.clear();
 }
 // precondition: rInfo.rType != isNone
@@ -108,7 +112,7 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
         _status.report(ExecStatus::RESPONSE_ERROR);
         return true;
     }
-    //LOGGER_DBG << "Response type is " << rInfo.State() << std::endl;;
+    //LOGF_DEBUG("Response type is %1%" % rInfo.State());
     switch(rInfo.rType) {
     case XrdSsiRespInfo::isNone: // All responses are non-null right now
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isNone";
@@ -136,7 +140,7 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
 /// Retrieve and process results in using the XrdSsi stream mechanism
 bool QueryRequest::_importStream() {
     _resetBuffer();
-    LOGGER_INF << "GetResponseData with buffer of " << _bufferRemain << "\n";
+    LOGF_INFO("GetResponseData with buffer of %1%" % _bufferRemain);
     // TODO: When the new result-protocol is ready, re-implement this to invert
     // the control scheme to reduce the amount of buffer
     // (impedance) matching done. This should be possible because
@@ -144,9 +148,7 @@ bool QueryRequest::_importStream() {
     // subsequent ProcessResponseData() call will provide exactly the requested
     // amount of bytes, unless no more bytes available from the sender.
     bool retrieveInitiated = GetResponseData(_cursor, _bufferRemain); // Step 6
-    LOGGER_INF << "Initiated request "
-               << (retrieveInitiated ? "ok" : "err")
-               << std::endl;
+    LOGF_INFO("Initiated request %1%" % (retrieveInitiated ? "ok" : "err"));
     if(!retrieveInitiated) {
         _status.report(ExecStatus::RESPONSE_DATA_ERROR);
         bool ok = Finished();
@@ -174,15 +176,13 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
 }
 
 void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
-    LOGGER_INF << "ProcessResponse[data] with buflen=" << blen
-               << (last ? "(last)" : "(more)")
-               << std::endl;
+    LOGF_INFO("ProcessResponse[data] with buflen=%1% %2%" % 
+              blen % (last ? "(last)" : "(more)"));
     if(blen < 0) { // error, check errinfo object.
         int eCode;
         std::string reason(eInfo.Get(eCode));
         _status.report(ExecStatus::RESPONSE_DATA_NACK, eCode, reason);
-        LOGGER_ERR << " ProcessResponse[data] error(" << eCode
-                   <<",\"" << reason << "\")" << std::endl;
+        LOGF_ERROR("ProcessResponse[data] error(%1%,\"%2%\")" % eCode % reason);
         _receiver->errorFlush("Couldn't retrieve response data:" + reason, eCode);
         _errorFinish();
         return;
@@ -215,7 +215,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
         }
     }
     if(last) {
-        LOGGER_INF << "Response retrieved, bytes=" << blen << std::endl;
+        LOGF_INFO("Response retrieved, bytes=%1%" % blen);
         if(!_receiver->flush(blen, last)) {
             _status.report(ExecStatus::RESULT_ERROR);
         } else {
@@ -224,19 +224,22 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
         _finish();
     } else if(blen == 0) {
         std::string reason = "Response error, !last and  bufLen == 0";
-        LOGGER_ERR << reason << std::endl;
+        LOGF_ERROR("%1%" % reason);
         _status.report(ExecStatus::RESPONSE_DATA_ERROR, -1, reason);
     } else {
-        LOGGER_INF << "Response recv (wait) bytes=" << blen << std::endl;
+        LOGF_INFO("Response recv (wait) bytes=%1%" % blen);
     }
 }
 
 /// Finalize under error conditions and retry or report completion
 void QueryRequest::_errorFinish() {
-    LOGGER_DBG << "Error finish" << std::endl;
+    LOGF_DEBUG("Error finish");
     bool ok = Finished();
-    if(!ok) { LOGGER_ERR << "Error cleaning up QueryRequest\n"; }
-    else { LOGGER_INF << "Request::Finished() with error (clean).\n"; }
+    if(!ok) {
+        LOGF_ERROR("Error cleaning up QueryRequest");
+    } else {
+        LOGF_INFO("Request::Finished() with error (clean).");
+    }
     if(_retryFunc) {
         (*_retryFunc)();
     } else if(_finishFunc) {
@@ -249,8 +252,11 @@ void QueryRequest::_errorFinish() {
 /// Finalize under success conditions and report completion.
 void QueryRequest::_finish() {
     bool ok = Finished();
-    if(!ok) { LOGGER_ERR << "Error with Finished()\n"; }
-    else { LOGGER_INF << "Finished() ok.\n"; }
+    if(!ok) {
+        LOGF_ERROR("Error with Finished()");
+    } else {
+        LOGF_INFO("Finished() ok.");
+    }
     if(_finishFunc) {
         (*_finishFunc)(true);
     }

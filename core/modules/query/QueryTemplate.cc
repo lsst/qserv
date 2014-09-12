@@ -37,9 +37,11 @@
 #include <iostream>
 #include <sstream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
 #include "global/sqltoken.h" // sqlShouldSeparate
-#include "log/Logger.h"
 #include "query/ColumnRef.h"
 #include "query/TableRef.h"
 
@@ -213,10 +215,10 @@ QueryTemplate::optimize() {
     }
     em.pack();
     _entries.swap(em._entries);
-    //LOGGER_DBG << "merged " << _entries.size() << " entries to "
-    //           << em._entries.size() << std::endl;
-    //LOGGER_DBG << "was: " << outputString(_elements) << std::endl;
-    //LOGGER_DBG << "now: " << outputString(em._entries) << std::endl;
+    //LOGF_DEBUG("merged %1% entries to %2%"
+    //           % _entries.size() % em._entries.size());
+    //LOGF_DEBUG("was: %1%" % outputString(_elements));
+    //LOGF_DEBUG("now: %1%" % outputString(em._entries));
 }
 
 }}} // namespace lsst::qserv::query
