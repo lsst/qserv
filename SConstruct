@@ -27,16 +27,11 @@ env.Default(env.Alias("build"))
 env.Depends("build", env.Alias("init-build-env"))
 env.Depends("install", env.Alias("build"))
 
-env.Depends("python-tests", env.Alias("init-build-env"))
-env.Requires(env.Alias('python-tests'), env.Alias('admin'))
-env.Requires(env.Alias('python-tests'), env.Alias('dist-css'))
-
 env.Alias("install",
         [
         env.Alias("dist-core"),
         env.Alias("dist-css"),
         env.Alias("admin"),
-        env.Alias("python-tests"),
         env.Alias("templates")
         ]
 )
@@ -61,14 +56,6 @@ else:
 #
 ################################
     state.initBuild()
-
-################################
-#
-# Install tests python modules
-#
-################################
-    python_tests = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("tests", "python"))
-    env.Alias("python-tests", python_tests)
 
 #########################
 #
@@ -95,7 +82,6 @@ else:
 #########################
     adminbin_target = os.path.join(env['prefix'], "bin")
     env.RecursiveInstall(adminbin_target, os.path.join("admin", "bin"))
-    env.RecursiveInstall(adminbin_target, os.path.join("tests", "bin"))
     python_admin = env.InstallPythonModule(target=env['python_prefix'], source=os.path.join("admin", "python"))
 
     template_target = os.path.join(env['prefix'], "admin", "templates")
