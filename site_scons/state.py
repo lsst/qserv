@@ -180,7 +180,7 @@ def _setBuildEnv():
         log.info("Debug build flag (-g) requested.")
         env.Append(CCFLAGS = ['-g'])
     # Increase compiler strictness
-    env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-long-long'])
+    env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-long-long', '-Wno-variadic-macros'])
 
     # to make shared libraries link correctly we need -rpath-link option, for now add everything
     # that is in LD_LIBRARY_PATH
