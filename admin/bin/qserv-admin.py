@@ -319,16 +319,16 @@ class CommandParser(object):
             self._logger.info(
                 "param 'clusteredIndex' not found, will use default: ''")
             opts["clusteredIndex"] = "NULL"
-        if not opts.has_key("isRefMatch"):
-            self._logger.info("param 'isRefMatch' not found, will use default: No")
-            opts["isRefMatch"] = "No"
+        if not opts.has_key("match"):
+            self._logger.info("param 'match' not found, will use default: 0")
+            opts["match"] = "0"
         # these are required options for createTable
         _crTbOpts = {
             "table_info":("tableName",
                           "partitioning",
                           "schemaFile",
                           "clusteredIndex",
-                          "isRefMatch",
+                          "match",
                           "isView")}
         _crTbPSOpts = {
             "sphBox":("overlap",

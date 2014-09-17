@@ -39,14 +39,11 @@
 
 // Third-party headers
 #include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/iterator_adaptors.hpp>
 
 // Local headers
 #include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
 #include "query/QsRestrictor.h"
-#include "query/ValueExpr.h"
 
 // Forward declarations
 namespace lsst {
@@ -69,24 +66,21 @@ class WhereClause {
 public:
     WhereClause() {}
     ~WhereClause() {}
-    class ValueExprIter; // iteratable interface.
-    friend class ValueExprIter;
 
     boost::shared_ptr<QsRestrictor::List const> getRestrs() const {
-        return _restrs; }
-    boost::shared_ptr<BoolTerm const> getRootTerm() const {
-        return _tree;
+        return _restrs;
     }
+    boost::shared_ptr<BoolTerm const> getRootTerm() const { return _tree; }
+    boost::shared_ptr<BoolTerm> getRootTerm() { return _tree; }
     boost::shared_ptr<ColumnRef::List const> getColumnRefs() const;
     boost::shared_ptr<AndTerm> getRootAndTerm();
-
-    ValueExprIter vBegin();
-    ValueExprIter vEnd();
 
     std::string getGenerated() const;
     void renderTo(QueryTemplate& qt) const;
     boost::shared_ptr<WhereClause> clone() const;
     boost::shared_ptr<WhereClause> copySyntax();
+
+    void findValueExprs(ValueExprList& list);
 
     void resetRestrs();
     void prependAndTerm(boost::shared_ptr<BoolTerm> t);
@@ -99,47 +93,6 @@ private:
     boost::shared_ptr<BoolTerm> _tree;
     boost::shared_ptr<QsRestrictor::List> _restrs;
 
-};
-
-/// ValueExprIter facilitates iteration over value expressions in WhereClause
-/// objects for analysis and manipulation.
-class WhereClause::ValueExprIter : public boost::iterator_facade <
-    WhereClause::ValueExprIter, ValueExprPtr, boost::forward_traversal_tag> {
-public:
-    ValueExprIter() : _wc() {}
-
-private:
-    explicit ValueExprIter(WhereClause* wc,
-                           boost::shared_ptr<BoolTerm> bPos);
-
-    friend class WhereClause;
-    friend class boost::iterator_core_access;
-
-    void increment();
-    bool equal(ValueExprIter const& other) const;
-    ValueExprPtr& dereference() const;
-    ValueExprPtr& dereference();
-
-    bool _checkIfValid() const;
-    void _incrementValueExpr();
-    void _incrementBfTerm();
-    void _incrementBterm();
-    bool _findFactor();
-    void _reset();
-    bool _setupBfIter();
-    void _updateValueExprIter();
-
-
-    WhereClause* _wc; // no shared_ptr available
-    // A position tuple is: cursor, end
-    typedef std::pair<BoolTerm::PtrList::iterator,
-                      BoolTerm::PtrList::iterator> PosTuple;
-    std::stack<PosTuple> _posStack;
-    BfTerm::PtrList::iterator _bfIter;
-    BfTerm::PtrList::iterator _bfEnd;
-    typedef ValueExprList::iterator ValueExprListIter;
-    ValueExprListIter _vIter;
-    ValueExprListIter _vEnd;
 };
 
 }}} // namespace lsst::qserv::query

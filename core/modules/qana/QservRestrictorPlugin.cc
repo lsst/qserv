@@ -53,15 +53,16 @@
 #include "query/ValueExpr.h"
 #include "query/WhereClause.h"
 
+
 namespace { // File-scope helpers
-std::string const UDF_PREFIX = "scisql_";
+    std::string const UDF_PREFIX = "scisql_";
 } // anonymous
 
 namespace lsst {
 namespace qserv {
 namespace qana {
 
-typedef std::pair<std::string,std::string> StringPair;
+typedef std::pair<std::string, std::string> StringPair;
 
 boost::shared_ptr<query::ColumnRef>
 resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
@@ -75,19 +76,24 @@ resolveAsColumnRef(query::QueryContext& context, query::ValueExprPtr vexpr) {
     return cr;
 }
 
-/// @return true if cr represents a valid key column.
+/// @return true if cr represents a valid secondary index column.
 bool
-lookupKey(query::QueryContext& context, boost::shared_ptr<query::ColumnRef> cr) {
-    // Match cr as a column ref against the key column for a database's
-    // partitioning strategy.
+lookupSecIndex(query::QueryContext& context,
+               boost::shared_ptr<query::ColumnRef> cr) {
+    // Match cr as a column ref against the secondary index column for a
+    // database's partitioning strategy.
     if((!cr) || !context.cssFacade) { return false; }
     if(!context.cssFacade->containsDb(cr->db)
        || !context.cssFacade->containsTable(cr->db, cr->table)) {
         throw qana::AnalysisError("Invalid db/table:"
                                   + cr->db + "." + cr->table);
         }
-    std::string keyColumn = context.cssFacade->getKeyColumn(cr->db, cr->table);
-    return (!cr->column.empty()) && (keyColumn == cr->column);
+    if (cr->column.empty()) {
+        return false;
+    }
+    std::vector<std::string> sics = context.cssFacade->getSecIndexColNames(
+        cr->db, cr->table);
+    return std::find(sics.begin(), sics.end(), cr->column) != sics.end();
 }
 
 query::PassTerm::Ptr newPass(std::string const& s) {
@@ -104,11 +110,11 @@ query::PassListTerm::Ptr newPassList(C& c) {
 
 query::InPredicate::Ptr
 newInPred(std::string const& aliasTable,
-          std::string const& keyColumn,
+          std::string const& secIndexColumn,
           std::vector<std::string> const& params) {
     query::InPredicate::Ptr p(new query::InPredicate());
     boost::shared_ptr<query::ColumnRef> cr(
-               new query::ColumnRef("", aliasTable, keyColumn));
+               new query::ColumnRef("", aliasTable, secIndexColumn));
     p->value =
         query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(cr));
 
@@ -147,14 +153,14 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
 struct RestrictorEntry {
     RestrictorEntry(std::string const& alias_,
                  StringPair const& chunkColumns_,
-                 std::string const& keyColumn_)
+                 std::string const& secIndexColumn_)
         : alias(alias_),
           chunkColumns(chunkColumns_),
-          keyColumn(keyColumn_)
+          secIndexColumn(secIndexColumn_)
         {}
     std::string alias;
     StringPair chunkColumns;
-    std::string keyColumn;
+    std::string secIndexColumn;
 };
 typedef std::deque<RestrictorEntry> RestrictorEntries;
 class getTable : public query::TableRef::Func {
@@ -230,15 +236,15 @@ private:
         _makeCondition(boost::shared_ptr<query::QsRestrictor> const restr,
                        RestrictorEntry const& restrictorEntry);
     boost::shared_ptr<query::QsRestrictor::List>
-        _getKeyPreds(query::QueryContext&,
-                     query::AndTerm::Ptr);
+        _getSecIndexPreds(query::QueryContext&,
+                          query::AndTerm::Ptr);
     query::QsRestrictor::Ptr
-        _newKeyRestrictor(query::QueryContext& context,
-                          boost::shared_ptr<query::ColumnRef> cr,
-                          query::ValueExprList& vList);
+        _newSecIndexRestrictor(query::QueryContext& context,
+                               boost::shared_ptr<query::ColumnRef> cr,
+                               query::ValueExprList& vList);
     query::QsRestrictor::Ptr
-        _newKeyRestrictor(query::QueryContext& context,
-                          boost::shared_ptr<query::CompPredicate> cp);
+        _newSecIndexRestrictor(query::QueryContext& context,
+                               boost::shared_ptr<query::CompPredicate> cp);
     query::QsRestrictor::Ptr
         _convertObjectId(query::QueryContext& context,
                          query::QsRestrictor const& original);
@@ -281,7 +287,7 @@ private:
         virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             query::BoolFactor::Ptr newFactor(new query::BoolFactor);
             query::BfTerm::PtrList& terms = newFactor->_terms;
-            terms.push_back(newInPred(e.alias, e.keyColumn, params));
+            terms.push_back(newInPred(e.alias, e.secIndexColumn, params));
             return newFactor;
         }
         std::vector<std::string> params;
@@ -407,8 +413,8 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
 
     boost::shared_ptr<query::QsRestrictor::List const> rListP = wc.getRestrs();
     query::AndTerm::Ptr originalAnd(wc.getRootAndTerm());
-    boost::shared_ptr<query::QsRestrictor::List> keyPreds;
-    keyPreds = _getKeyPreds(context, originalAnd);
+    boost::shared_ptr<query::QsRestrictor::List> secIndexPreds =
+        _getSecIndexPreds(context, originalAnd);
     query::AndTerm::Ptr newTerm;
     // Now handle the explicit restrictors
     if(rListP && !rListP->empty()) {
@@ -438,12 +444,13 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     }
     wc.resetRestrs();
     // Merge in the implicit restrictors
-    if(keyPreds) {
+    if(secIndexPreds) {
         if(!context.restrictors) {
-            context.restrictors = keyPreds;
+            context.restrictors = secIndexPreds;
         } else {
-        context.restrictors->insert(context.restrictors->end(),
-                                    keyPreds->begin(), keyPreds->end());
+            context.restrictors->insert(context.restrictors->end(),
+                                        secIndexPreds->begin(),
+                                        secIndexPreds->end());
         }
     }
     if(context.restrictors && context.restrictors->empty()) {
@@ -478,13 +485,13 @@ addPred(boost::shared_ptr<query::QsRestrictor::List>& preds,
 }
 
 boost::shared_ptr<query::QsRestrictor::List>
-QservRestrictorPlugin::_getKeyPreds(query::QueryContext& context,
-                                    query::AndTerm::Ptr p) {
+QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
+                                         query::AndTerm::Ptr p) {
     typedef query::BoolTerm::PtrList::iterator TermIter;
     typedef query::BfTerm::PtrList::iterator BfIter;
-    boost::shared_ptr<query::QsRestrictor::List> keyPreds;
+    boost::shared_ptr<query::QsRestrictor::List> secIndexPreds;
 
-    if(!p) return keyPreds;
+    if(!p) return secIndexPreds;
 
     for(TermIter i = p->iterBegin(); i != p->iterEnd(); ++i) {
         query::BoolFactor* factor = dynamic_cast<query::BoolFactor*>(i->get());
@@ -497,22 +504,22 @@ QservRestrictorPlugin::_getKeyPreds(query::QueryContext& context,
             if(ip) {
                 boost::shared_ptr<query::ColumnRef> cr
                     = resolveAsColumnRef(context, ip->value);
-                if(cr && lookupKey(context, cr)) {
+                if(cr && lookupSecIndex(context, cr)) {
                     query::QsRestrictor::Ptr p =
-                        _newKeyRestrictor(context, cr, ip->cands);
-                    addPred(keyPreds, p);
+                        _newSecIndexRestrictor(context, cr, ip->cands);
+                    addPred(secIndexPreds, p);
                 }
             } else {
                 query::CompPredicate::Ptr cp =
                     boost::dynamic_pointer_cast<query::CompPredicate>(*b);
                 if(cp) {
-                    query::QsRestrictor::Ptr p = _newKeyRestrictor(context, cp);
-                    addPred(keyPreds, p);
+                    query::QsRestrictor::Ptr p = _newSecIndexRestrictor(context, cp);
+                    addPred(secIndexPreds, p);
                 }
             }
         }
     }
-    return keyPreds;
+    return secIndexPreds;
 }
 
 inline bool isValidLiteral(query::ValueExprPtr p) {
@@ -535,9 +542,11 @@ struct extractLiteral {
 /// @return a new QsRestrictor from the column ref and the set of
 /// specified values or NULL if one of the values is a non-literal.
 query::QsRestrictor::Ptr
-QservRestrictorPlugin::_newKeyRestrictor(query::QueryContext& context,
-                                         boost::shared_ptr<query::ColumnRef> cr,
-                                         query::ValueExprList& vList) {
+QservRestrictorPlugin::_newSecIndexRestrictor(
+    query::QueryContext& context,
+    boost::shared_ptr<query::ColumnRef> cr,
+    query::ValueExprList& vList)
+{
     // Extract the literals, bailing out if we see a non-literal
     bool isValid = true;
     std::for_each(vList.begin(), vList.end(), validateLiteral(isValid));
@@ -560,34 +569,35 @@ QservRestrictorPlugin::_newKeyRestrictor(query::QueryContext& context,
 
 /// @return a new QsRestrictor from a CompPredicate
 query::QsRestrictor::Ptr
-QservRestrictorPlugin::_newKeyRestrictor(
-                                  query::QueryContext& context,
-                                  boost::shared_ptr<query::CompPredicate> cp) {
+QservRestrictorPlugin::_newSecIndexRestrictor(
+    query::QueryContext& context,
+    boost::shared_ptr<query::CompPredicate> cp)
+{
     query::QsRestrictor::Ptr p;
-    boost::shared_ptr<query::ColumnRef> key =
+    boost::shared_ptr<query::ColumnRef> secIndex =
         resolveAsColumnRef(context, cp->left);
     int op = cp->op;
     query::ValueExprPtr literalValue = cp->right;
-    // Find the key column ref: Is it on the rhs or lhs?
-    if(key && lookupKey(context, key)) {
+    // Find the secondary index column ref: Is it on the rhs or lhs?
+    if(secIndex && lookupSecIndex(context, secIndex)) {
         // go on.
     } else {
-        key = resolveAsColumnRef(context, cp->right);
-        if(key && lookupKey(context, key)) {
+        secIndex = resolveAsColumnRef(context, cp->right);
+        if(secIndex && lookupSecIndex(context, secIndex)) {
             op = query::CompPredicate::reverseOp(op);
             literalValue = cp->left;
         } else {
-            return p; // No key column ref. Leave it alone.
+            return p; // No secondary index column ref. Leave it alone.
         }
     }
     // Make sure the expected literal is a literal
     bool isValid = true;
     validateLiteral vl(isValid);
     vl(literalValue);
-    if(!isValid) { return p; } // No key. Leave alone.
+    if(!isValid) { return p; } // No secondary index. Leave alone.
     std::list<boost::shared_ptr<query::ValueExpr> > cands;
     cands.push_back(literalValue);
-    return _newKeyRestrictor(context, key, cands);
+    return _newSecIndexRestrictor(context, secIndex, cands);
 }
 
 query::QsRestrictor::Ptr
@@ -606,9 +616,11 @@ QservRestrictorPlugin::_convertObjectId(query::QueryContext& context,
         throw qana::AnalysisError("Invalid db/table: " + context.dominantDb
                                   + "." + context.anonymousTable);
     }
-    std::string keyColumn = context.cssFacade->getKeyColumn(context.dominantDb,
-                                                            context.anonymousTable);
-    p->_params.push_back(keyColumn);
+    // TODO: The qserv_objectId hint/restrictor should be removed.
+    // For now, assume that "objectId" refers to the director column.
+    std::string dirColumn = context.cssFacade->getDirColName(
+        context.dominantDb, context.anonymousTable);
+    p->_params.push_back(dirColumn);
     std::copy(original._params.begin(), original._params.end(),
               std::back_inserter(p->_params));
     return p;

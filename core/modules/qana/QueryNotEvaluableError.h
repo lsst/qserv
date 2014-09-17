@@ -21,29 +21,27 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
-  * @file
-  *
-  * @brief Struct containing 2 integers, for C++-->python swig.
-  *
-  * @Author Jacek Becla, SLAC
-  */
+#ifndef LSST_QSERV_QANA_QUERYNOTEVALUABLEERROR_H
+#define LSST_QSERV_QANA_QUERYNOTEVALUABLEERROR_H
 
-#ifndef LSST_QSERV_CSS_STRIPINGPARAMS_H
-#define LSST_QSERV_CSS_STRIPINGPARAMS_H
+// Local headers
+#include "AnalysisError.h"
+
 
 namespace lsst {
 namespace qserv {
-namespace css {
+namespace qana {
 
-class StripingParams {
+/// `QueryNotEvaluableError` is thrown for queries that are syntactically
+/// valid, but not evaluable by Qserv.
+class QueryNotEvaluableError : public AnalysisError {
 public:
-    StripingParams() : stripes(0), subStripes(0), partitioningId(0) {}
-    int stripes;
-    int subStripes;
-    int partitioningId;
+    explicit QueryNotEvaluableError(std::string const& what) :
+        AnalysisError(what) {}
+    explicit QueryNotEvaluableError(char const* what) :
+        AnalysisError(what) {}
 };
 
-}}} // namespace lsst::qserv::css
+}}} // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_CSS_STRIPINGPARAMS_H
+#endif // LSST_QSERV_QANA_QUERYNOTEVALUABLEERROR_H

@@ -34,6 +34,7 @@
 
 // Third-party headers
 #include <boost/shared_ptr.hpp>
+
 #include "query/QueryTemplate.h"
 
 // Forward declarations
@@ -103,6 +104,11 @@ public:
     GroupByClause const& getGroupBy() const { return *_groupBy; }
     GroupByClause& getGroupBy() { return *_groupBy; }
     void setGroupBy(boost::shared_ptr<GroupByClause> g) { _groupBy = g; }
+
+    bool hasHaving() const { return _having; }
+    HavingClause const& getHaving() const { return *_having; }
+    HavingClause& getHaving() { return *_having; }
+    void setHaving(boost::shared_ptr<HavingClause> h) { _having = h; }
 
  private:
     // Declarations

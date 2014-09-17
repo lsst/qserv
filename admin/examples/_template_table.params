@@ -19,37 +19,36 @@ schemaFile: /full/path/to/the/schema/file
 compression: 0
 
 
-# *RefMatch tables need special handling.
-# Allowed values: 0, 1
-isRefMatch: 0
-# uncomment the lines below and fill if this is refmatch table
-# dirColInTable1: <colName>
-# dirColInTable2: <colName>
+# Match tables relate two "director" tables and require special handling.
+# Allowed values: 0 (the default), 1
+match: 0
+# The name of the first "director" table involved in a match. Required if match = 1.
+#dirTable1: <tableName>
+# The name of the the column used to join with dirTable1. Required if match = 1.
+#dirColName1: <colName>
+# The name of the second "director" table involved in a match. Required if match = 1.
+#dirTable2: <tableName>
+# The name of the column used to join with dirTable2. Required if match = 1.
+#dirColName2: <colName>
+# The name of the match flags column. Required if match = 1.
+#flagColName: <colName>
 
-
-# is this table subchunked?
-# Allowed values: 0, 1
+# Is this table subchunked? Allowed values: 0, 1
 subChunks: 1
 
-
-# name of column used as secondary index (if any)
-secIndexColName: <columnName>
-
-
-# name of the table that is a "director" table.
-# It can be name of the current table, or other table
-# If there is no director table, use current table name
+# Name of the "director" table for this table. It can be the name of the
+# current table, or another table. If this parameter is unspecified or empty,
+# and the current table is not a match table, then the current table is assumed
+# to be a "director".
 dirTable: <tableName>
 
 
-# this must be set for "director" table
-# it might be set for non-director tables.
-# For non-director tables, it will be used if dirColName
-# does not make sense (eg, for sources that don't match objects).
+# This must be set for a "director" table, and might be set for non-director
+# tables. For non-director tables, it will be used if dirColName does not
+# make sense (e.g. for sources that don't match objects).
 latColName: <decl col name>
 lonColName: <ra col name>
 
 
-# name of the column used to join with the director table.
-# uncomment and set for non-director tables.
-#dirColName: <columnName>
+# Name of the column used to join with the director table.
+dirColName: <columnName>

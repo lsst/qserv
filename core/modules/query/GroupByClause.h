@@ -33,6 +33,7 @@
 
 // System headers
 #include <deque>
+#include <list>
 #include <string>
 
 // Third-party headers
@@ -44,15 +45,15 @@ namespace qserv {
 namespace parser {
     class ModFactory;
 }
-namespace query {
-    class QueryTemplate;
-    class ValueExpr;
-}}} // End of forward declarations
 
-
-namespace lsst {
-namespace qserv {
 namespace query {
+
+// Forward declarations
+class QueryTemplate;
+class ValueExpr;
+
+typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
+typedef std::list<ValueExprPtr> ValueExprList;
 
 // GroupByTerm is a element of a GroupByClause
 class GroupByTerm {
@@ -63,7 +64,7 @@ public:
     GroupByTerm() {}
     ~GroupByTerm() {}
 
-    boost::shared_ptr<const ValueExpr> getExpr();
+    ValueExprPtr& getExpr() { return _expr; }
     std::string getCollate() const { return _collate; }
     GroupByTerm cloneValue() const;
 
@@ -73,9 +74,10 @@ private:
     friend std::ostream& operator<<(std::ostream& os, GroupByTerm const& gb);
     friend class parser::ModFactory;
 
-    boost::shared_ptr<ValueExpr> _expr;
+    ValueExprPtr _expr;
     std::string _collate;
 };
+
 /// GroupByClause is a parsed GROUP BY ... element.
 class GroupByClause {
 public:
@@ -89,6 +91,8 @@ public:
     void renderTo(QueryTemplate& qt) const;
     boost::shared_ptr<GroupByClause> clone() const;
     boost::shared_ptr<GroupByClause> copySyntax();
+
+    void findValueExprs(ValueExprList& list);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByClause const& gc);

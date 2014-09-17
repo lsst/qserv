@@ -23,7 +23,7 @@
 /**
   * @file
   *
-  * @brief BoolTerm and BoolTermFactory implementations.
+  * @brief BoolTerm implementations.
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -36,6 +36,7 @@
 
 // Local headers
 #include "log/Logger.h"
+#include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
 
@@ -75,20 +76,22 @@ std::ostream& BoolTermFactor::putStream(std::ostream& os) const {
     if(_term) { return _term->putStream(os); }
     return os;
 }
+
 namespace {
-template <typename Plist>
-inline void renderList(QueryTemplate& qt,
-                       Plist const& lst,
-                       std::string const& sep) {
-    int count=0;
-    typename Plist::const_iterator i;
-    for(i = lst.begin(); i != lst.end(); ++i) {
-        if(!sep.empty() && ++count > 1) { qt.append(sep); }
-        if(!*i) { throw std::logic_error("Bad list term"); }
-        (**i).renderTo(qt);
+    template <typename Plist>
+    inline void renderList(QueryTemplate& qt,
+                           Plist const& lst,
+                           std::string const& sep) {
+        int count=0;
+        typename Plist::const_iterator i;
+        for(i = lst.begin(); i != lst.end(); ++i) {
+            if(!sep.empty() && ++count > 1) { qt.append(sep); }
+            if(!*i) { throw std::logic_error("Bad list term"); }
+            (**i).renderTo(qt);
+        }
     }
 }
-}
+
 void OrTerm::renderTo(QueryTemplate& qt) const {
     renderList(qt, _terms, "OR");
 }
@@ -121,24 +124,7 @@ void PassListTerm::renderTo(QueryTemplate& qt) const {
 void BoolTermFactor::renderTo(QueryTemplate& qt) const {
     if(_term) { _term->renderTo(qt); }
 }
-void BoolFactor::findColumnRefs(ColumnRef::List& list) {
-    BfTerm::PtrList::const_iterator i;
-    for(i = _terms.begin(); i != _terms.end(); ++i) {
-        (**i).findColumnRefs(list);
-    }
-}
 
-void BoolTermFactor::findColumnRefs(ColumnRef::List& cList) {
-    struct btFind : public BfTerm::Op {
-        btFind(ColumnRef::List& cList_) : cList(cList_) {}
-        virtual void operator()(BfTerm& t) { t.findColumnRefs(cList); }
-        ColumnRef::List& cList;
-    };
-    if(_term) {
-        btFind find(cList);
-        _term->visitBfTerm(find);
-    }
-}
 boost::shared_ptr<BoolTerm> OrTerm::getReduced() {
     // Can I eliminate myself?
     if(_terms.size() == 1) {
@@ -242,26 +228,30 @@ boost::shared_ptr<BoolTerm> BoolFactor::getReduced() {
     }
 }
 
-struct syntaxCopy {
-    inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) {
-        return t ? t->copySyntax() : BoolTerm::Ptr();
+namespace {
+    struct syntaxCopy {
+        inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) {
+            return t ? t->copySyntax() : BoolTerm::Ptr();
+        }
+        inline BfTerm::Ptr operator()(BfTerm::Ptr const& t) {
+            return t ? t->copySyntax() : BfTerm::Ptr();
+        }
+    };
+
+    struct deepCopy {
+        inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) {
+            return t ? t->clone() : BoolTerm::Ptr();
+        }
+        inline BfTerm::Ptr operator()(BfTerm::Ptr const& t) {
+            return t ? t->clone() : BfTerm::Ptr();
+        }
+    };
+
+    template <typename List, class Copy>
+    inline void copyTerms(List& dest, List const& src) {
+        std::transform(src.begin(), src.end(), std::back_inserter(dest), Copy());
     }
-    inline BfTerm::Ptr operator()(BfTerm::Ptr const& t) {
-        return t ? t->copySyntax() : BfTerm::Ptr();
-    }
-};
-struct deepCopy {
-    inline BoolTerm::Ptr operator()(BoolTerm::Ptr const& t) {
-        return t ? t->clone() : BoolTerm::Ptr();
-    }
-    inline BfTerm::Ptr operator()(BfTerm::Ptr const& t) {
-        return t ? t->clone() : BfTerm::Ptr();
-    }
-};
-template <typename List, class Copy>
-inline void copyTerms(List& dest, List const& src) {
-    std::transform(src.begin(), src.end(), std::back_inserter(dest), Copy());
-}
+} // anonymous namespace
 
 boost::shared_ptr<BoolTerm> OrTerm::clone() const {
     boost::shared_ptr<OrTerm> ot(new OrTerm());
@@ -316,7 +306,6 @@ BfTerm::Ptr PassTerm::copySyntax() const {
     p->_text = _text;
     return BfTerm::Ptr(p);
 }
-
 BfTerm::Ptr PassListTerm::copySyntax() const {
     PassListTerm* p = new PassListTerm;
     p->_terms = _terms;

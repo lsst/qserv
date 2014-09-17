@@ -67,9 +67,7 @@ class SelectList {
 public:
     typedef boost::shared_ptr<SelectList> Ptr;
 
-    SelectList()
-        : _valueExprList(new ValueExprList())
-        {}
+    SelectList() : _valueExprList(new ValueExprList()) {}
     ~SelectList() {}
     void addStar(std::string const& table);
     void dbgPrint(std::ostream& os) const;
@@ -80,14 +78,14 @@ public:
     boost::shared_ptr<SelectList> copySyntax();
 
     // non-const accessor for query manipulation.
-    boost::shared_ptr<ValueExprList> getValueExprList()
-        { return _valueExprList; }
+    boost::shared_ptr<ValueExprList> getValueExprList() {
+        return _valueExprList;
+    }
 
     friend class parser::SelectListFactory;
 private:
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
     boost::shared_ptr<ValueExprList> _valueExprList;
-    boost::shared_ptr<ColumnRefNodeMap const> _aliasMap;
 };
 
 }}} // namespace lsst::qserv::query

@@ -32,18 +32,24 @@
 // Third-party headers
 #include <boost/shared_ptr.hpp>
 
+// Local headers
+#include "query/BoolTerm.h"
+
+// Forward declarations
 namespace lsst {
 namespace qserv {
-
 namespace parser {
-    // Forward
     class ModFactory;
 }
-
 namespace query {
+    class BoolTerm;
+    class QueryTemplate;
+}}}
 
-class QueryTemplate;
-class BoolTerm;
+
+namespace lsst {
+namespace qserv {
+namespace query {
 
 /// HavingClause: a representation of SQL HAVING. Support for this construct is
 /// incomplete.
@@ -56,6 +62,7 @@ public:
     void renderTo(QueryTemplate& qt) const;
     boost::shared_ptr<HavingClause> clone() const;
     boost::shared_ptr<HavingClause> copySyntax();
+    void findValueExprs(ValueExprList& list);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, HavingClause const& h);

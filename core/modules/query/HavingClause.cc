@@ -82,4 +82,9 @@ HavingClause::copySyntax() {
     return boost::make_shared<HavingClause>(*this);
 }
 
+void
+HavingClause::findValueExprs(ValueExprList& list) {
+    if (_tree) { _tree->findValueExprs(list); }
+}
+
 }}} // namespace lsst::qserv::query

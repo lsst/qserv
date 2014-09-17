@@ -41,6 +41,7 @@
 // Third-party headers
 #include <boost/algorithm/string/predicate.hpp> // string iequal
 
+// Local headers
 #include "query/FromList.h"
 #include "query/GroupByClause.h"
 #include "query/HavingClause.h"

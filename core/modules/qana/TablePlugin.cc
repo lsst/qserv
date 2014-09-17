@@ -21,27 +21,44 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
-  * @file
-  *
-  * @brief TablePlugin implementation. TablePlugin replaces user query
-  * table names with substitutable names and maintains a list of
-  * tables that need to be substituted.
-  *
-  * @author Daniel L. Wang, SLAC
-  */
+/// \file
+/// \brief TablePlugin implementation.
+///
+/// TablePlugin modifies the parsed query to assign an alias to all the table
+/// references in the query from-list. It then rewrites all column references
+/// (e.g. in the where clause) to use the appropriate aliases. This allows
+/// changing a table reference in a query without editing anything except the
+/// from-clause.
+///
+/// During the concrete query planning phase, TablePlugin determines whether
+/// each query proposed for parallel (worker-side) execution is actually
+/// parallelizable and how this should be done - that is, it determines whether
+/// or not sub-chunking should be used and which director table(s) to use
+/// overlap for. Finally, it rewrites table references to use name patterns
+/// into which (sub-)chunk numbers can be substituted. This act of substitution
+/// is the final step in generating the queries sent out to workers.
+///
+/// \author Daniel L. Wang, SLAC
+
 // No public interface (no TablePlugin.h)
 
 // System headers
 #include <string>
 
 // Local headers
+#include "QueryMapping.h"
+#include "QueryPlugin.h"
+#include "RelationGraph.h"
+#include "TableInfoPool.h"
+
 #include "log/Logger.h"
-#include "qana/QueryMapping.h"
-#include "qana/QueryPlugin.h"
-#include "qana/TableStrategy.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
+#include "query/GroupByClause.h"
+#include "query/HavingClause.h"
+#include "query/JoinRef.h"
+#include "query/JoinSpec.h"
+#include "query/OrderByClause.h"
 #include "query/QueryContext.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
@@ -49,8 +66,6 @@
 #include "query/ValueFactor.h"
 #include "query/WhereClause.h"
 #include "util/common.h"
-
-using lsst::qserv::query::DbTableVector;
 
 namespace lsst {
 namespace qserv {
@@ -116,9 +131,6 @@ public:
         if(t.get()) { t->apply(*this); }
     }
     void operator()(query::TableRef& t) {
-        // LOGGER_INF << "tableref:";
-        // t->putStream(LOG_STRM(Info));
-        // LOGGER_INF << std::endl;
         // If no alias, then add one.
         std::string alias = t.getAlias();
         if(alias.empty()) {
@@ -130,7 +142,7 @@ public:
     }
 private:
     G _generate; // Functor that creates a new alias name
-    A _addMap; // Functor that adds a new alias mapping for matchin
+    A _addMap; // Functor that adds a new alias mapping for matching
                // later clauses.
 };
 
@@ -143,7 +155,9 @@ private:
 ////////////////////////////////////////////////////////////////////////
 class fixExprAlias {
 public:
-    explicit fixExprAlias(query::TableAliasReverse& r) : _tableAliasReverse(r) {}
+    fixExprAlias(std::string const& db, query::TableAliasReverse& r) :
+        _defaultDb(db), _tableAliasReverse(r) {}
+
     void operator()(query::ValueExprPtr& vep) {
         if(!vep.get()) {
             return;
@@ -179,8 +193,9 @@ public:
             }
         }
     }
+
 private:
-    inline void _patchColumnRef(query::ColumnRef& ref) {
+    void _patchColumnRef(query::ColumnRef& ref) {
         std::string newAlias = _getAlias(ref.db, ref.table);
         if(newAlias.empty()) { return; } //  Ignore if no replacement
                                          //  exists.
@@ -190,12 +205,12 @@ private:
         ref.table.assign(newAlias);
     }
 
-    inline void _patchFuncExpr(query::FuncExpr& fe) {
+    void _patchFuncExpr(query::FuncExpr& fe) {
         std::for_each(fe.params.begin(), fe.params.end(),
-                      fixExprAlias(_tableAliasReverse));
+                      fixExprAlias(_defaultDb, _tableAliasReverse));
     }
 
-    inline void _patchStar(query::ValueFactor& vt) {
+    void _patchStar(query::ValueFactor& vt) {
         // TODO: No support for <db>.<table>.* in framework
         // Only <table>.* is supported.
         std::string newAlias = _getAlias("", vt.getTableStar());
@@ -204,12 +219,12 @@ private:
         else { vt.setTableStar(newAlias); }
     }
 
-    inline std::string _getAlias(std::string const& db,
-                                 std::string const& table) {
-        //LOGGER_INF << "lookup: " << db << "." << table << std::endl;
-        return _tableAliasReverse.get(db, table);
+    std::string _getAlias(std::string const& db,
+                          std::string const& table) {
+        return _tableAliasReverse.get(db.empty() ? _defaultDb : db, table);
     }
 
+    std::string const& _defaultDb;
     query::TableAliasReverse& _tableAliasReverse;
 };
 
@@ -232,7 +247,7 @@ public:
     virtual void applyPhysical(QueryPlugin::Plan& p,
                                query::QueryContext& context);
 private:
-    int _rewriteTables(qana::SelectStmtList& outList,
+    int _rewriteTables(SelectStmtList& outList,
                        query::SelectStmt& in,
                        query::QueryContext& context,
                        boost::shared_ptr<qana::QueryMapping>& mapping);
@@ -262,8 +277,8 @@ public:
 namespace {
 struct registerPlugin {
     registerPlugin() {
-    TablePluginFactory::Ptr f(new TablePluginFactory());
-    QueryPlugin::registerClass(f);
+        TablePluginFactory::Ptr f(new TablePluginFactory());
+        QueryPlugin::registerClass(f);
     }
 };
 // Static registration
@@ -276,164 +291,108 @@ registerPlugin registerTablePlugin;
 void
 TablePlugin::applyLogical(query::SelectStmt& stmt,
                           query::QueryContext& context) {
-    // Idea: Add aliases to all table references in the from-list (if
-    // they don't exist already) and then patch the other clauses so
-    // that they refer to the aliases.
-    // The purpose of this is to confine table name references to the
-    // from-list so that the later table-name substitution is confined
-    // to modifying the from-list.
+
     query::FromList& fList = stmt.getFromList();
-    // std::cout << "TABLE:Logical:orig fromlist "
-    //           << fList.getGenerated()
-    //           << (fList.isJoin() ? " is join" : "")
-    //           << std::endl;
-
     query::TableRefList& tList = fList.getTableRefList();
-
-    // For each tableref, modify to add alias.
-    int seq=0;
-    addMap addMapContext(context.tableAliases, context.tableAliasReverses);
-
-    std::for_each(tList.begin(), tList.end(),
-                  addAlias<generateAlias,addMap>(generateAlias(seq),
-                                                 addMapContext));
-
-    // Now snoop around the other clauses (SELECT, WHERE, etc. and
-    // patch their table references)
-    // select list
-    query::SelectList& sList = stmt.getSelectList();
-    query::ValueExprList& exprList = *sList.getValueExprList();
-    std::for_each(exprList.begin(), exprList.end(),
-                  fixExprAlias(context.tableAliasReverses));
-    // where
-    if(stmt.hasWhereClause()) {
-        query::WhereClause& wClause = stmt.getWhereClause();
-        query::WhereClause::ValueExprIter veI = wClause.vBegin();
-        query::WhereClause::ValueExprIter veEnd = wClause.vEnd();
-        std::for_each(veI, veEnd, fixExprAlias(context.tableAliasReverses));
-    }
     // Fill-in default db context.
-    DbTableVector v = fList.computeResolverTables();
+    query::DbTableVector v = fList.computeResolverTables();
     context.resolverTables.swap(v);
-
     query::DbTablePair p;
     addDbContext adc(context, p.db, p.table);
     std::for_each(tList.begin(), tList.end(), adc);
     _dominantDb = context.dominantDb = p.db;
     context.anonymousTable = p.table;
 
-    // Apply function using the iterator...
-    // wClause.walk(fixExprAlias(reverseAlias));
-    // order by
-    // having
+    // Add aliases to all table references in the from-list (if
+    // they don't exist already) and then patch the other clauses so
+    // that they refer to the aliases.
+    //
+    // The purpose of this is to confine table name references to the
+    // from-list so that the later table-name substitution is confined
+    // to modifying the from-list.
+    //
+    // Note also that this must happen after the default db context
+    // has been filled in, or alias lookups will be incorrect.
+
+    // For each tableref, modify to add alias.
+    int seq=0;
+    addMap addMapContext(context.tableAliases, context.tableAliasReverses);
+    std::for_each(tList.begin(), tList.end(),
+                  addAlias<generateAlias,addMap>(generateAlias(seq),
+                                                 addMapContext));
+
+    // Patch table references in the select list,
+    query::SelectList& sList = stmt.getSelectList();
+    query::ValueExprList& exprList = *sList.getValueExprList();
+    std::for_each(exprList.begin(), exprList.end(), fixExprAlias(
+        context.defaultDb, context.tableAliasReverses));
+    // where clause,
+    if(stmt.hasWhereClause()) {
+        query::ValueExprList e;
+        stmt.getWhereClause().findValueExprs(e);
+        std::for_each(e.begin(), e.end(), fixExprAlias(
+            context.defaultDb, context.tableAliasReverses));
+    }
+    // group by clause,
+    if(stmt.hasGroupBy()) {
+        query::ValueExprList e;
+        stmt.getGroupBy().findValueExprs(e);
+        std::for_each(e.begin(), e.end(), fixExprAlias(
+            context.defaultDb, context.tableAliasReverses));
+    }
+    // having clause,
+    if(stmt.hasHaving()) {
+        query::ValueExprList e;
+        stmt.getHaving().findValueExprs(e);
+        std::for_each(e.begin(), e.end(), fixExprAlias(
+            context.defaultDb, context.tableAliasReverses));
+    }
+    // order by clause,
+    if(stmt.hasOrderBy()) {
+        query::ValueExprList e;
+        stmt.getOrderBy().findValueExprs(e);
+        std::for_each(e.begin(), e.end(), fixExprAlias(
+            context.defaultDb, context.tableAliasReverses));
+    }
+    // and in the on clauses of all join specifications.
+    typedef query::TableRefList::iterator TableRefIter;
+    typedef query::JoinRefList::iterator JoinRefIter;
+    for (TableRefIter t = tList.begin(), te = tList.end(); t != te; ++t) {
+        query::JoinRefList& jList = (*t)->getJoins();
+        for (JoinRefIter j = jList.begin(), je = jList.end(); j != je; ++j) {
+            boost::shared_ptr<query::JoinSpec> spec = (*j)->getSpec();
+            if (spec) {
+                fixExprAlias fix(context.defaultDb, context.tableAliasReverses);
+                // A column name in a using clause should be unqualified,
+                // so only patch on clauses.
+                boost::shared_ptr<query::BoolTerm> on = spec->getOn();
+                if (on) {
+                    query::ValueExprList e;
+                    on->findValueExprs(e);
+                    std::for_each(e.begin(), e.end(), fix);
+                }
+            }
+        }
+    }
 }
 
 void
 TablePlugin::applyPhysical(QueryPlugin::Plan& p,
-                           query::QueryContext& context) {
-    // For each entry in original's SelectList, modify the SelectList
-    // for the parallel and merge versions.
-    // Set hasMerge to true if aggregation is detected.
-    query::SelectList& oList = p.stmtOriginal.getSelectList();
-    boost::shared_ptr<query::ValueExprList> vlist;
-    vlist = oList.getValueExprList();
-    if(!vlist) {
-        throw std::logic_error("Invalid stmtOriginal.SelectList");
+                           query::QueryContext& context)
+{
+    TableInfoPool pool;
+    if (!context.queryMapping) {
+        context.queryMapping.reset(new QueryMapping());
+    }
+    // Process each entry in the parallel select statement set.
+    typedef SelectStmtList::iterator Iter;
+    SelectStmtList newList;
+    for(Iter i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
+        RelationGraph g(context, **i, pool);
+        g.rewrite(newList, *context.queryMapping);
     }
     p.dominantDb = _dominantDb;
-
-    typedef qana::SelectStmtList::iterator Iter;
-    qana::SelectStmtList newList;
-    for(Iter i=p.stmtParallel.begin(), e=p.stmtParallel.end();
-        i != e; ++i) {
-        int added;
-        added = _rewriteTables(newList, **i, context, p.queryMapping);
-        if(added == 0) {
-            newList.push_back(*i);
-        }
-    }
     p.stmtParallel.swap(newList);
-}
-
-/// Patch the FromList tables in an input SelectStmt.
-/// Or, if a query split is involved (to operate using overlap
-/// tables), place new SelectStmts in the outList instead of patching
-/// the existing SelectStmt.
-/// This allows the caller to forgo excess SelectStmt manipulation by
-/// reusing the existing SelectStmt in the common case where overlap
-/// tables are not needed.
-/// @return the number of statements added to the outList.
-int TablePlugin::_rewriteTables(qana::SelectStmtList& outList,
-                                query::SelectStmt& in,
-                                query::QueryContext& context,
-                                boost::shared_ptr<qana::QueryMapping>& mapping) {
-    int added = 0;
-    // Idea: Rewrite table names in from-list of the parallel
-    // query. This is sufficient because table aliases were added in
-    // the logical plugin stage so that real table refs should only
-    // exist in the from-list.
-    query::FromList& fList = in.getFromList();
-    //    LOGGER_INF << "orig fromlist " << fList.getGenerated() << std::endl;
-
-    // TODO: Better join handling by leveraging JOIN...ON syntax.
-    // Before rewriting, compute the need for chunking and subchunking
-    // based entirely on the FROM list. Queries that involve chunked
-    // tables are necessarily chunked. Subchunking is inferred when
-    // two chunked tables are joined (often the same table) and not on
-    // a common key (key-equi-join). This check yields the decision:
-    // ** for each table:
-    //   availability of chunking and overlap
-    //   desired chunking-level, with/without overlap
-    // The QueryMapping abstraction provides a symbolic mapping so
-    // that a later query generation stage can generate queries from
-    // templatable queries a list of partition tuples.
-
-    // In order for this to work while preserving join syntax, we
-    // probably need to change the model. Previously, we did:
-    // 1. Ingest a flattened sequence of tables.
-    // 2. Look them up.
-    // 3. (decide on subchunking)
-    // 4. Create the new FromList entirely from the sequence.
-    // We can ingest in a way that allows step 4 to create not from
-    // scratch, but by doing a filter-copy of the original FromList,
-    // and replacing each table ref one at a time.  This preserves the
-    // structure. It might be desirable to alter the structure as an
-    // optimization, but this can come later.
-    TableStrategy ts(fList, context);
-    int permutationCount = ts.getPermutationCount();
-    if(permutationCount > 1)
-        for(int i=0; i < permutationCount; ++i) {
-            boost::shared_ptr<query::SelectStmt> stmt = in.clone();
-            query::TableRefListPtr trl =
-                ts.getPermutation(i, fList.getTableRefList());
-            query::FromList::Ptr f(new query::FromList(trl));
-            stmt->setFromList(f);
-            outList.push_back(stmt);
-            ++added;
-    } else {
-        ts.setToPermutation(0, fList.getTableRefList());
-    }
-    qana::QueryMapping::Ptr qm = ts.exportMapping();
-    // Now add/merge the mapping to the Plan
-    if(!mapping.get()) {
-        mapping = qm;
-    } else {
-        mapping->update(*qm);
-    }
-    // Query generation needs to be sensitive to this.
-    // If no subchunks are needed,
-
-    //
-    // For each tableref, modify to replace tablename with
-    // substitutable.
-    return added;
-}
-
-    bool testIfSecondary(query::BoolTerm& t) {
-    // FIXME: Look for secondary key in the bool term.
-    LOGGER_INF << "Testing ";
-    t.putStream(LOG_STRM(Info)) << std::endl;
-    return false;
 }
 
 }}} // namespace lsst::qserv::qana

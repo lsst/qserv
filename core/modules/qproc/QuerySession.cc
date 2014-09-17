@@ -233,6 +233,7 @@ void QuerySession::_preparePlugins() {
     _plugins->push_back(qana::QueryPlugin::newInstance("Where"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Aggregate"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Table"));
+    _plugins->push_back(qana::QueryPlugin::newInstance("MatchTable"));
     _plugins->push_back(qana::QueryPlugin::newInstance("QservRestrictor"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Post"));
     _plugins->push_back(qana::QueryPlugin::newInstance("ScanTable"));

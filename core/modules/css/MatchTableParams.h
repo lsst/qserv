@@ -21,29 +21,24 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
-  * @file
-  *
-  * @brief Struct containing 2 integers, for C++-->python swig.
-  *
-  * @Author Jacek Becla, SLAC
-  */
+#ifndef LSST_QSERV_CSS_MATCHTABLEPARAMS_H
+#define LSST_QSERV_CSS_MATCHTABLEPARAMS_H
 
-#ifndef LSST_QSERV_CSS_STRIPINGPARAMS_H
-#define LSST_QSERV_CSS_STRIPINGPARAMS_H
+#include <string>
 
 namespace lsst {
 namespace qserv {
 namespace css {
 
-class StripingParams {
-public:
-    StripingParams() : stripes(0), subStripes(0), partitioningId(0) {}
-    int stripes;
-    int subStripes;
-    int partitioningId;
+/// A container for match-table metadata.
+struct MatchTableParams {
+    std::string dirTable1;   ///< First director-table involved in match.
+    std::string dirColName1; ///< The column used to join with dirTable1.
+    std::string dirTable2;   ///< Second director-table involved in match.
+    std::string dirColName2; ///< The column used to join with dirTable2.
+    std::string flagColName; ///< Match-flags column name.
 };
 
 }}} // namespace lsst::qserv::css
 
-#endif // LSST_QSERV_CSS_STRIPINGPARAMS_H
+#endif // LSST_QSERV_CSS_MATCHTABLEPARAMS_H

@@ -3,4 +3,3 @@ tableName:    Exposure
 partitioning: 0
 schemaFile:   /u1/qserv/sandbox/qserv/meta/examples/tbSchema_Exposure.sql
 compression:  0
-isRefMatch:   0

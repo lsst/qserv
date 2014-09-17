@@ -2,6 +2,7 @@ drop everything;
 create database LSST                   admin/examples/testMap_dbPt.params;
 create table LSST.Object               admin/examples/testMap_tbObject_ls.params;
 create table LSST.Source               admin/examples/testMap_tbSource.params;
+create table LSST.Source2              admin/examples/testMap_tbSource2.params;
 create table LSST.Exposure             admin/examples/testMap_tbExposure.params;
 create table LSST.Science_Ccd_Exposure admin/examples/testMap_tbScience_Ccd_Exposure.params;
 create table LSST.Filter               admin/examples/testMap_tbFilter.params;

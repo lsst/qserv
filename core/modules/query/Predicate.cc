@@ -47,6 +47,7 @@ void CompPredicate::findColumnRefs(ColumnRef::List& list) {
     if(left) { left->findColumnRefs(list); }
     if(right) { right->findColumnRefs(list); }
 }
+
 void InPredicate::findColumnRefs(ColumnRef::List& list) {
     if(value) { value->findColumnRefs(list); }
     std::list<boost::shared_ptr<ValueExpr> >::iterator i;
@@ -54,11 +55,13 @@ void InPredicate::findColumnRefs(ColumnRef::List& list) {
         (**i).findColumnRefs(list);
     }
 }
+
 void BetweenPredicate::findColumnRefs(ColumnRef::List& list) {
     if(value) { value->findColumnRefs(list); }
     if(minValue) { minValue->findColumnRefs(list); }
     if(maxValue) { maxValue->findColumnRefs(list); }
 }
+
 void LikePredicate::findColumnRefs(ColumnRef::List& list) {
     if(value) { value->findColumnRefs(list); }
     if(charValue) { charValue->findColumnRefs(list); }
@@ -118,6 +121,7 @@ void BetweenPredicate::renderTo(QueryTemplate& qt) const {
     qt.append("AND");
     r(maxValue);
 }
+
 void LikePredicate::renderTo(QueryTemplate& qt) const {
     ValueExpr::render r(qt, false);
     r(value);
@@ -133,33 +137,30 @@ void NullPredicate::renderTo(QueryTemplate& qt) const {
     qt.append("NULL");
 }
 
-void CompPredicate::cacheValueExprList() {
-    _cache.reset(new ValueExprList());
-    _cache->push_back(left);
-    _cache->push_back(right);
-}
-void InPredicate::cacheValueExprList() {
-    _cache.reset(new ValueExprList());
-    _cache->push_back(value);
-    _cache->insert(_cache->end(), cands.begin(), cands.end());
-}
-void BetweenPredicate::cacheValueExprList() {
-    _cache.reset(new ValueExprList());
-    _cache->push_back(value);
-    _cache->push_back(minValue);
-    _cache->push_back(maxValue);
+void CompPredicate::findValueExprs(ValueExprList& list) {
+    list.push_back(left);
+    list.push_back(right);
 }
 
-void LikePredicate::cacheValueExprList() {
-    _cache.reset(new ValueExprList());
-    _cache->push_back(value);
-    _cache->push_back(charValue);
-}
-void NullPredicate::cacheValueExprList() {
-    _cache.reset(new ValueExprList());
-    _cache->push_back(value);
+void InPredicate::findValueExprs(ValueExprList& list) {
+    list.push_back(value);
+    list.insert(list.end(), cands.begin(), cands.end());
 }
 
+void BetweenPredicate::findValueExprs(ValueExprList& list) {
+    list.push_back(value);
+    list.push_back(minValue);
+    list.push_back(maxValue);
+}
+
+void LikePredicate::findValueExprs(ValueExprList& list) {
+    list.push_back(value);
+    list.push_back(charValue);
+}
+
+void NullPredicate::findValueExprs(ValueExprList& list) {
+    list.push_back(value);
+}
 
 // CompPredicate special function
 /// @return a parse token type that is the reversed operator of the
@@ -182,6 +183,7 @@ int CompPredicate::reverseOp(int op) {
         throw std::logic_error("Invalid op type for reversing");
     }
 }
+
 char const* CompPredicate::lookupOp(int op) {
     switch(op) {
     case SqlSQL2Tokens::NOT_EQUALS_OP:
@@ -226,16 +228,19 @@ BfTerm::Ptr CompPredicate::clone() const {
     if(right) p->right = right->clone();
     return BfTerm::Ptr(p);
 }
+
 BfTerm::Ptr GenericPredicate::clone() const {
     //return BfTerm::Ptr(new GenericPredicate());
     return BfTerm::Ptr();
 }
 
-struct valueExprCopy {
-    inline ValueExprPtr operator()(ValueExprPtr const& p) {
-        return p ? p->clone() : ValueExprPtr();
-    }
-};
+namespace {
+    struct valueExprCopy {
+        inline ValueExprPtr operator()(ValueExprPtr const& p) {
+            return p ? p->clone() : ValueExprPtr();
+        }
+    };
+}
 
 BfTerm::Ptr InPredicate::clone() const {
     InPredicate::Ptr p(new InPredicate);
@@ -245,6 +250,7 @@ BfTerm::Ptr InPredicate::clone() const {
                    valueExprCopy());
     return BfTerm::Ptr(p);
 }
+
 BfTerm::Ptr BetweenPredicate::clone() const {
     BetweenPredicate::Ptr p(new BetweenPredicate);
     if(value) p->value = value->clone();
