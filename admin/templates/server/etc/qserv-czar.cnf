@@ -4,7 +4,6 @@
 xrootd={{XROOTD_MANAGER_HOST}}:{{XROOTD_PORT}}
 # Use /dev/shm shared memory for better performance
 scratch_path={{QSERV_SCRATCH_DIR}}
-xrootd_user=qsmaster
 port={{QSERV_RPC_PORT}}
 
 #[mgmtdb]
@@ -27,13 +26,6 @@ connection=127.0.0.1:{{ZOOKEEPER_PORT}}
 #timeout=20000
 
 [resultdb]
-#host=
-#port=0
-#unix_socket=/u1/local/mysql.sock
-#db=qservResult
-#user=qsmaster
-#passwd=
-#dropMem=
 passwd =
 db=qservResult
 unix_socket={{QSERV_RUN_DIR}}/var/lib/mysql/mysql.sock
@@ -52,4 +44,3 @@ emptyChunkListFile={{QSERV_RUN_DIR}}/etc/emptyChunks.txt
 
 #[mysql]
 #mysqlclient=
-
