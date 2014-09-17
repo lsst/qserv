@@ -25,6 +25,7 @@
 // System headers
 #include <iostream>
 #include <string>
+#include <cctype>
 
 // Third-party
 #include "XrdSsi/XrdSsiRequest.hh"
@@ -38,6 +39,36 @@
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
 #include "xrdsvc/SsiSession_ReplyChannel.h"
+
+namespace {
+
+char hexdigit(unsigned x) {
+    if (x > 15) return '?';
+    if (x > 9) return char(x - 10 + 'a');
+    return char(x + '0');
+}
+
+// format buffer and replace non-printable characters with hex notation
+std::string
+quote(const char* data, int size) {
+    std::string res;
+    res.reserve(size);
+    for (int i = 0; i != size; ++i) {
+        char ch = data[i];
+        if (std::iscntrl(ch)) {
+            char buf[5] = "\\x00";
+            buf[2] = ::hexdigit((ch >> 4) & 0xf);
+            buf[3] = ::hexdigit(ch & 0xf);
+            res += buf;
+        } else {
+            res += ch;
+        }
+    }
+    return res;
+}
+
+}
+
 
 namespace lsst {
 namespace qserv {
@@ -73,8 +104,7 @@ public:
             SsiSession::CancelFuncPtr p = (*_msgProcessor)(m, _sendChannel);
             _cancellers.push_back(p);
             t.stop();
-            std::cerr << "SsiProcessor msgProcessor call took "
-                      << t.getElapsed() << " seconds" << std::endl;
+            LOGF_INFO("SsiProcessor msgProcessor call took %1% seconds" % t.getElapsed());
         } else {
             std::ostringstream os;
             os << "Mismatched db/chunk in msg on resource db="
@@ -111,8 +141,7 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     t.stop();
     LOGF_INFO("GetRequest took %1% seconds" % t.getElapsed());
 
-    LOGF_INFO("### %1% byte request: %2%" % reqSize %
-            std::string(reqData, reqSize));
+    LOGF_INFO("### %1% byte request: %2%" % reqSize % ::quote(reqData, reqSize));
     ResourceUnit ru(sessName);
     if(ru.unitType() == ResourceUnit::DBCHUNK) {
         if(!(*_validator)(ru)) {
@@ -191,7 +220,7 @@ void SsiSession::enqueue(ResourceUnit const& ru, char* reqData, int reqSize) {
     if(pi.getNumAccepted() < 1) {
         // TODO Report error.
     } else {
-        LOGF_ERROR("enqueued task ok: %1%" % ru);
+        LOGF_INFO("enqueued task ok: %1%" % ru);
     }
 }
 
