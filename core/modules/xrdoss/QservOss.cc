@@ -45,7 +45,6 @@
 #include "obsolete/QservPath.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdfs/XrdName.h"
-#include "xrdfs/XrdPrinter.h"
 
 
 namespace {

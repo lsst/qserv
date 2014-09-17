@@ -44,7 +44,6 @@
 #include "xrdfs/MySqlFsDirectory.h"
 #include "xrdfs/MySqlFsFile.h"
 #include "xrdfs/XrdName.h"
-#include "xrdfs/XrdPrinter.h"
 
 
 
