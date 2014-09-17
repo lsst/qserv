@@ -41,7 +41,6 @@
 // Qserv headers
 #include "global/Bug.h"
 #include "proto/worker.pb.h"
-#include "wlog/WLogger.h"
 
 namespace lsst {
 namespace qserv {
@@ -49,9 +48,9 @@ namespace wsched {
 ////////////////////////////////////////////////////////////////////////
 // class GroupScheduler
 ////////////////////////////////////////////////////////////////////////
-GroupScheduler::GroupScheduler(wlog::WLogger::Ptr logger)
+GroupScheduler::GroupScheduler()
     : _maxRunning(4), // FIXME: set to some multiple of system proc count.
-      _logger(logger) {
+      _logger(LOG_GET(getName())) {
 }
 
 struct matchHash {
@@ -99,10 +98,8 @@ GroupScheduler::taskFinishAct(wbase::Task::Ptr finished,
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
 
-    std::ostringstream os;
-    os << "Completed: " << "(" << finished->msg->chunkid()
-       << ")" << finished->msg->fragment(0).query(0);
-    _logger->debug(os.str());
+    LOGF(_logger, LOG_LVL_DEBUG, "Completed: (%1%) %2%" %
+            finished->msg->chunkid() % finished->msg->fragment(0).query(0));
     return _getNextIfAvail(running->size());
 }
 
@@ -140,10 +137,7 @@ wbase::TaskQueuePtr
 GroupScheduler::_getNextTasks(int max) {
     // FIXME: Select disk based on chunk location.
     if(max < 1) { throw Bug("GroupScheduler::_getNextTasks: max < 1)"); }
-    std::ostringstream os;
-    os << "_getNextTasks(" << max << ")>->->";
-    _logger->debug(os.str());
-    os.str("");
+    LOGF(_logger, LOG_LVL_DEBUG, "_getNextTasks(%1%)>->->" % max);
     wbase::TaskQueuePtr tq;
     if(_queue.size() > 0) {
         tq.reset(new wbase::TaskQueue());
@@ -155,11 +149,10 @@ GroupScheduler::_getNextTasks(int max) {
         }
     }
     if(tq) {
-        os << "Returning " << tq->size() << " to launch";
-        _logger->debug(os.str());
+        LOGF(_logger, LOG_LVL_DEBUG, "Returning %1% to launch" % tq->size());
     }
     assert(_integrityHelper());
-    _logger->debug("_getNextTasks <<<<<");
+    LOG(_logger, LOG_LVL_DEBUG, "_getNextTasks <<<<<");
     return tq;
 }
 
@@ -170,11 +163,9 @@ GroupScheduler::_enqueueTask(wbase::Task::Ptr incoming) {
         throw Bug("GroupScheduler::_enqueueTask: null task");
     }
     _queue.insert(incoming);
-    std::ostringstream os;
     proto::TaskMsg const& msg = *(incoming->msg);
-    os << "Adding new task: " << msg.chunkid()
-       << " : " << msg.fragment(0).query(0);
-    _logger->debug(os.str());
+    LOGF(_logger, LOG_LVL_DEBUG, "Adding new task: %1% : %2%" % msg.chunkid()
+            % msg.fragment(0).query(0));
 }
 
 }}} // namespace lsst::qserv::wsched

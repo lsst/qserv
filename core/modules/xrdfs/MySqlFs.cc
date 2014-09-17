@@ -40,7 +40,6 @@
 #include "wconfig/Config.h"
 #include "wcontrol/Service.h"
 #include "wdb/QueryRunner.h"
-#include "wlog/WLogger.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdfs/MySqlFsDirectory.h"
 #include "xrdfs/MySqlFsFile.h"
@@ -201,36 +200,35 @@ boost::shared_ptr<sql::SqlConnection> makeSqlConnection() {
 ////////////////////////////////////////////////////////////////////////
 // class MySqlFs
 ////////////////////////////////////////////////////////////////////////
-MySqlFs::MySqlFs(boost::shared_ptr<wlog::WLogger> log, XrdSysLogger* lp,
-                 char const* cFileName)
-    : XrdSfsFileSystem(), _log(log) {
+MySqlFs::MySqlFs(XrdSysLogger* lp, char const* cFileName)
+    : XrdSfsFileSystem(), _log(LOG_GET("")) {
     if(!wconfig::getConfig().getIsValid()) {
         std::string msg("Configuration invalid: "
                         + wconfig::getConfig().getError());
         throw XrdfsConfigError(msg);
     }
 #ifdef NO_XROOTD_FS
-    _log->info("Skipping load of libXrdOfs.so (non xrootd build).");
+    LOG(_log, LOG_LVL_INFO, "Skipping load of libXrdOfs.so (non xrootd build).");
 #else
     // Passing NULL XrdOucEnv*. The XrdOucEnv* parameter was new in xrootd 3.3.x
     XrdSfsFileSystem* fs;
     fs = XrdSfsGetDefaultFileSystem(0, lp, cFileName, 0);
     if(fs == 0) {
-        _log->warn("Problem loading XrdSfsDefaultFileSystem. Clustering won't work.");
+        LOG(_log, LOG_LVL_WARN, "Problem loading XrdSfsDefaultFileSystem. Clustering won't work.");
     }
 #endif
     wbase::updateResultPath();
     wbase::clearResultPath();
     _localroot = ::getenv("XRDLCLROOT");
     if (!_localroot) {
-        _log->warn("No XRDLCLROOT set. Bug in xrootd?");
+        LOG(_log, LOG_LVL_WARN, "No XRDLCLROOT set. Bug in xrootd?");
         _localroot = "";
     }
     boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
     _initExports();
     assert(_chunkInventory);
     _cleanup();
-    _service.reset(new wcontrol::Service(_log));
+    _service.reset(new wcontrol::Service());
 }
 
 MySqlFs::~MySqlFs(void) {
@@ -369,11 +367,11 @@ void MySqlFs::_initExports() {
     XrdName x;
     boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
     assert(conn);
-    _chunkInventory.reset(new wpublish::ChunkInventory(x.getName(), *_log, conn));
+    _chunkInventory.reset(new wpublish::ChunkInventory(x.getName(), conn));
     std::ostringstream os;
     os << "Paths exported: ";
     _chunkInventory->dbgPrint(os);
-    _log->info(os.str());
+    LOGF(_log, LOG_LVL_INFO, "%1%" % os.str());
 }
 
 /// Cleanup scratch space and scratch dbs.
@@ -387,17 +385,16 @@ bool MySqlFs::_cleanup() {
     }
     sql::SqlErrorObject errObj;
     std::string dbName = wconfig::getConfig().getString("scratchDb");
-    _log->info((Pformat("Cleaning up scratchDb: %1%.")
-                % dbName).str());
+    LOGF(_log, LOG_LVL_INFO, "Cleaning up scratchDb: %1%." % dbName);
     if(!conn->dropDb(dbName, errObj, false)) {
-        _log->error((Pformat("Cfg error! couldn't drop scratchDb: %1% %2%.")
-                     % dbName % errObj.errMsg()).str());
+        LOGF(_log, LOG_LVL_ERROR, "Cfg error! couldn't drop scratchDb: %1% %2%."
+                % dbName % errObj.errMsg());
         return false;
     }
     errObj.reset();
     if(!conn->createDb(dbName, errObj, true)) {
-        _log->error((Pformat("Cfg error! couldn't create scratchDb: %1% %2%.")
-                     % dbName % errObj.errMsg()).str());
+        LOGF(_log, LOG_LVL_ERROR, "Cfg error! couldn't create scratchDb: %1% %2%."
+                     % dbName % errObj.errMsg());
         return false;
     }
     return true;
@@ -411,16 +408,11 @@ extern "C" {
 
 XrdSfsFileSystem* XrdSfsGetFileSystem(
     XrdSfsFileSystem* native_fs, XrdSysLogger* lp, char const* fileName) {
-    static boost::shared_ptr<lsst::qserv::wlog::WLogger> log;
-    boost::shared_ptr<lsst::qserv::wlog::WLogger::Printer>
-        p(new lsst::qserv::xrdfs::XrdPrinter(lp));
-    if(!log.get()) {
-        log.reset(new lsst::qserv::wlog::WLogger(p));
-    }
-    static lsst::qserv::xrdfs::MySqlFs myFS(log, lp, fileName);
 
-    log->info("MySqlFs (MySQL File System)");
-    log->info(myFS.getVersion());
+    static lsst::qserv::xrdfs::MySqlFs myFS(lp, fileName);
+
+    LOG_INFO("MySqlFs (MySQL File System)");
+    LOG_INFO(myFS.getVersion());
     return &myFS;
 }
 

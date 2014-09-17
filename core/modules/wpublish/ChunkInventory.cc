@@ -35,15 +35,14 @@
 
 // Local headers
 #include "global/constants.h"
+#include "lsst/log/Log.h"
 #include "sql/SqlConnection.h"
 #include "wconfig/Config.h"
-#include "wlog/WLogger.h"
 
 namespace { // File-scope helpers
 using lsst::qserv::sql::SqlConnection;
 using lsst::qserv::sql::SqlErrorObject;
 using lsst::qserv::sql::SqlResultIter;
-using lsst::qserv::wlog::WLogger;
 using lsst::qserv::wpublish::ChunkInventory;
 
 class CorruptDbError : public std::exception {
@@ -65,8 +64,7 @@ inline std::string getTableNameDbListing(std::string const& instanceName) {
 }
 
 template <class C>
-void fetchDbs(WLogger& log,
-              std::string const& instanceName,
+void fetchDbs(std::string const& instanceName,
               SqlConnection& sc,
               C& dbs) {
 
@@ -76,13 +74,13 @@ void fetchDbs(WLogger& log,
     std::string tableNameDbListing = getTableNameDbListing(instanceName);
 
     std::string listq = "SELECT db FROM " + tableNameDbListing;
-    log.debug("Launching query : " + listq);
+    LOGF_DEBUG("Launching query : %1%" % listq);
     boost::shared_ptr<SqlResultIter> resultP = sc.getQueryIter(listq);
     assert(resultP.get());
     if(resultP->getErrorObject().isSet()) {
         SqlErrorObject& seo = resultP->getErrorObject();
-        log.error("ChunkInventory can't get list of publishable dbs.");
-        log.error(seo.printErrMsg());
+        LOG_ERROR("ChunkInventory can't get list of publishable dbs.");
+        LOGF_ERROR("%1%" % seo.printErrMsg());
         return;
     }
     bool nothing = true;
@@ -90,15 +88,14 @@ void fetchDbs(WLogger& log,
         dbs.push_back((**resultP)[0]);
         nothing = false;
     }
-    if(nothing) { log.warn("TEST : No databases found to export." + listq); }
+    if(nothing) { LOGF_WARN("TEST : No databases found to export: %1%" % listq); }
 }
 
 /// Functor to be called per-table name
 class doTable {
 public:
-    doTable(WLogger& log,
-            boost::regex& regex, ChunkInventory::ChunkMap& chunkMap)
-        : _log(log), _regex(regex), _chunkMap(chunkMap) {}
+    doTable(boost::regex& regex, ChunkInventory::ChunkMap& chunkMap)
+        : _regex(regex), _chunkMap(chunkMap) {}
     void operator()(std::string const& tableName) {
         boost::smatch what;
         if(boost::regex_match(tableName, what, _regex)) {
@@ -112,7 +109,6 @@ public:
         }
     }
 private:
-    WLogger& _log;
     boost::regex _regex;
     ChunkInventory::ChunkMap& _chunkMap;
 };
@@ -148,11 +144,10 @@ struct addDbItem {
 /// Functor to load db
 class doDb {
 public:
-    doDb(WLogger& log, SqlConnection& conn,
+    doDb(SqlConnection& conn,
          boost::regex& regex,
          ChunkInventory::ExistMap& existMap)
-        : _log(log),
-          _conn(conn),
+        : _conn(conn),
           _regex(regex),
           _existMap(existMap)
         {}
@@ -163,13 +158,13 @@ public:
         SqlErrorObject sqlErrorObject;
         bool ok = _conn.listTables(tables,  sqlErrorObject, "", dbName);
         if(!ok) {
-            _log.error("SQL error: " + sqlErrorObject.errMsg());
+            LOGF_ERROR("SQL error: %1%" % sqlErrorObject.errMsg());
             assert(ok);
         }
         ChunkInventory::ChunkMap& chunkMap = _existMap[dbName];
         chunkMap.clear(); // Clear out stale entries to avoid mixing.
         std::for_each(tables.begin(), tables.end(),
-                      doTable(_log, _regex, chunkMap));
+                      doTable(_regex, chunkMap));
         // All databases get a dummy chunk.
         // Partitioned databases should already have acceptable dummy chunk
         // partitioned tables (e.g., Object_1234567890, Source_1234567890)
@@ -180,12 +175,12 @@ public:
         } else {
             // Verify that there is a dummy chunk entry
             if(chunkMap.find(lsst::qserv::DUMMY_CHUNK) == chunkMap.end()) {
-                std::string msg = "Missing dummy chunk for db=" + dbName;
-                _log.error(msg);
+                LOGF_ERROR("Missing dummy chunk for db=%1%" % dbName);
 
                 // FIXME enable once loader/installer can ensure that the
                 // dummy chunk exists exactly when appropriate
 
+                // std::string msg = "Missing dummy chunk for db=" + dbName;
                 // throw CorruptDbError(msg);
             }
         }
@@ -193,7 +188,6 @@ public:
         // TODO: Sanity check: do all tables have the same chunks represented?
         }
 private:
-    WLogger& _log;
     SqlConnection& _conn;
     boost::regex& _regex;
     ChunkInventory::ExistMap& _existMap;
@@ -213,14 +207,14 @@ namespace lsst {
 namespace qserv {
 namespace wpublish {
 
-ChunkInventory::ChunkInventory(std::string const& name, wlog::WLogger& log)
-    : _name(name), _log(log) {
+ChunkInventory::ChunkInventory(std::string const& name)
+    : _name(name) {
     SqlConnection sc(wconfig::getConfig().getSqlConfig(), true);
     _init(sc);
 }
-ChunkInventory::ChunkInventory(std::string const& name, wlog::WLogger& log,
+ChunkInventory::ChunkInventory(std::string const& name,
                                boost::shared_ptr<SqlConnection> sc)
-    : _name(name), _log(log) {
+    : _name(name) {
     _init(*sc);
 }
 
@@ -280,7 +274,7 @@ void ChunkInventory::_init(SqlConnection& sc) {
 
     std::deque<std::string> dbs;
 
-    fetchDbs(_log, _name, sc, dbs);
+    fetchDbs(_name, sc, dbs);
     // If we want to merge in the fs-level files/dirs, we will need the
     // export path (from getenv(XRDLCLROOT))
     // std::string exportRoot("/tmp/testExport");
@@ -288,7 +282,7 @@ void ChunkInventory::_init(SqlConnection& sc) {
     // get chunkList
     // SHOW TABLES IN db;
     std::deque<std::string> chunks;
-    std::for_each(dbs.begin(), dbs.end(), doDb(_log, sc, regex, _existMap));
+    std::for_each(dbs.begin(), dbs.end(), doDb(sc, regex, _existMap));
 }
 
 void ChunkInventory::_fillDbChunks(ChunkInventory::StringSet& s) {

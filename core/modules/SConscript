@@ -62,16 +62,16 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                       wlog global""".split(),
                           'libs' : """ssl crypto mysqlclient_r protobuf
                                       boost_regex boost_thread
-                                      boost_signals
-                                      XrdServer XrdClient
-                                      XrdOfs  XrdUtils""".split(),
+                                      boost_signals log log4cxx
+                                      XrdSsi XrdServer XrdClient
+                                      XrdOfs XrdUtils""".split(),
                           'distDir' : 'lib'},
 
                "xrdoss" : {'mods' : """wlog mysql obsolete sql util
                                        wbase wconfig
                                        xrdoss wpublish""".split(),
-                           'libs' : """boost_regex boost_signals boost_thread
-                                       mysqlclient_r ssl crypto""".split(),
+                           'libs' : """boost_regex boost_signals boost_thread log log4cxx
+                                       mysqlclient_r ssl crypto XrdSsi""".split(),
                            'distDir' : 'lib'
                            },
                "xrdsvc" : {'mods' : """global mysql proto
@@ -80,7 +80,7 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                        wpublish wsched
                                        xrdsvc""".split(),
                            'libs' : """boost_regex boost_signals boost_thread
-                                       mysqlclient_r protobuf
+                                       mysqlclient_r protobuf log log4cxx
                                        ssl crypto XrdSsi""".split(),
                            'distDir' : 'lib'
                            },

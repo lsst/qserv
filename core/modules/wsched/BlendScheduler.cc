@@ -42,7 +42,6 @@
 #include "global/Bug.h"
 #include "proto/worker.pb.h"
 #include "wcontrol/Foreman.h"
-#include "wlog/WLogger.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
 
@@ -59,12 +58,11 @@ BlendScheduler* dbgBlendScheduler=0; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler
 ////////////////////////////////////////////////////////////////////////
-BlendScheduler::BlendScheduler(boost::shared_ptr<wlog::WLogger> logger,
-                               boost::shared_ptr<GroupScheduler> group,
+BlendScheduler::BlendScheduler(boost::shared_ptr<GroupScheduler> group,
                                boost::shared_ptr<ScanScheduler> scan)
     : _group(group),
       _scan(scan),
-      _logger(logger)
+      _logger(LOG_GET(getName()))
 {
     dbgBlendScheduler = this;
     if(!group || !scan) { throw Bug("BlendScheduler: missing scheduler"); }
@@ -80,13 +78,15 @@ BlendScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
     assert(_scan);
     wcontrol::Foreman::Scheduler* s = 0;
     if(incoming->msg->scantables_size() > 0) {
-        std::ostringstream ss;
-        int size = incoming->msg->scantables_size();
-        ss << "Blend chose scan for:";
-        for(int i=0; i < size; ++i) {
-            ss << i << " " << incoming->msg->scantables(i);
+        if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
+            std::ostringstream ss;
+            int size = incoming->msg->scantables_size();
+            ss << "Blend chose scan for:";
+            for(int i=0; i < size; ++i) {
+                ss << i << " " << incoming->msg->scantables(i);
+            }
+            LOGF(_logger, LOG_LVL_DEBUG, "%1%" % ss.str());
         }
-        _logger->debug(ss.str());
         s = _scan.get();
     } else {
         s = _group.get();
@@ -132,13 +132,11 @@ BlendScheduler::taskFinishAct(wbase::Task::Ptr finished,
         s = i->second;
         _map.erase(i);
     }
-    std::ostringstream os;
-    os << "Completed: " << "(" << finished->msg->chunkid()
-       << ")" << finished->msg->fragment(0).query(0);
-    _logger->debug(os.str());
+    LOGF(_logger, LOG_LVL_DEBUG, "Completed: (%1%) %2%" %
+            finished->msg->chunkid() % finished->msg->fragment(0).query(0));
     wbase::TaskQueuePtr t = s->taskFinishAct(finished, running);
     if(!t) { // Try other scheduler.
-        _logger->debug("Blend trying other sched.");
+        LOG(_logger, LOG_LVL_DEBUG, "Blend trying other sched.");
         return other<wcontrol::Foreman::Scheduler>(s, _group.get(),
                                                    _scan.get())->nopAct(running);
     }
@@ -212,7 +210,7 @@ BlendScheduler::_getNextIfAvail(wbase::TaskQueuePtr running) {
         if(ts) { tg->insert(tg->end(), ts->begin(), ts->end()); }
         return tg;
     } else {
-        if(!ts) _logger->debug("BlendScheduler: no tasks available");
+        if(!ts) LOG(_logger, LOG_LVL_DEBUG, "BlendScheduler: no tasks available");
         return ts;
     }
 }

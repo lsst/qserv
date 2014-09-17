@@ -28,13 +28,12 @@
 #include <boost/shared_ptr.hpp>
 #include "XrdSfs/XrdSfsInterface.hh"
 
+// Local headers
+#include "lsst/log/Log.h"
+
 // Forward declarations
 class XrdSysError;
-namespace lsst {
-namespace qserv {
-namespace wlog {
-    class WLogger;
-}}} // End of forward declarations
+// End of forward declarations
 
 
 namespace lsst {
@@ -46,7 +45,7 @@ namespace xrdfs {
 /// any meaning in qserv.
 class MySqlFsDirectory : public XrdSfsDirectory {
 public:
-    MySqlFsDirectory(boost::shared_ptr<wlog::WLogger> log, char* user = 0);
+    MySqlFsDirectory(LOG_LOGGER const& log, char* user = 0);
     ~MySqlFsDirectory(void);
 
     int open(char const* dirName, XrdSecEntity const* client = 0,
@@ -56,7 +55,7 @@ public:
     char const* FName(void);
 
 private:
-    boost::shared_ptr<wlog::WLogger> _log;
+    LOG_LOGGER _log;
 };
 
 }}} // namespace lsst::qserv::xrdfs

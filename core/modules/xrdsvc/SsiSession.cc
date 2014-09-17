@@ -31,12 +31,12 @@
 
 // Qserv headers
 #include "global/ResourceUnit.h"
+#include "lsst/log/Log.h"
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "util/Timer.h"
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
-#include "wlog/WLogger.h"
 #include "xrdsvc/SsiSession_ReplyChannel.h"
 
 namespace lsst {
@@ -98,36 +98,25 @@ bool
 SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     util::Timer t;
     // Figure out what the request is.
-    std::ostringstream os;
-    os << "ProcessRequest, service=" << sessName;
-    _log->info(os.str());
+    LOGF_INFO("ProcessRequest, service=%1%" % sessName);
     t.start();
     BindRequest(req, this); // Step 5
     t.stop();
-    os.str("");
-    os << "BindRequest took " << t.getElapsed() << " seconds";
-    _log->info(os.str());
+    LOGF_INFO("BindRequest took %1% seconds" % t.getElapsed());
 
     char *reqData = 0;
     int   reqSize;
     t.start();
     reqData = req->GetRequest(reqSize);
     t.stop();
-    os.str("");
-    os << "GetRequest took " << t.getElapsed() << " seconds";
-    _log->info(os.str());
+    LOGF_INFO("GetRequest took %1% seconds" % t.getElapsed());
 
-    os.str("");
-    os << "### " << reqSize <<" byte request: "
-       << std::string(reqData, reqSize);
-    _log->info(os.str());
+    LOGF_INFO("### %1% byte request: %2%" % reqSize %
+            std::string(reqData, reqSize));
     ResourceUnit ru(sessName);
     if(ru.unitType() == ResourceUnit::DBCHUNK) {
         if(!(*_validator)(ru)) {
-            os.str("");
-            os << "WARNING: unowned chunk query detected: "
-               << ru.path();
-            _log->warn(os.str());
+            LOGF_WARN("WARNING: unowned chunk query detected: %1%" % ru.path());
             //error.setErrInfo(ENOENT, "File does not exist");
             return false;
         }
@@ -135,18 +124,14 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
         t.start();
         enqueue(ru, reqData, reqSize);
         t.stop();
-        os.str("");
-        os << "SsiSession::enqueue took " << t.getElapsed() << " seconds";
-        _log->info(os.str());
+        LOGF_INFO("SsiSession::enqueue took %1% seconds" % t.getElapsed());
 
         ReleaseRequestBuffer();
     } else {
         // Ignore this request.
         // Should send an error...
-        os.str("");
-        os << "TODO: Should send an error for Garbage request:"
-           << sessName << std::endl;
-        _log->info(os.str());
+        LOGF_INFO("TODO: Should send an error for Garbage request: %1%" %
+                sessName);
         ReleaseRequestBuffer();
         return false;
     }
@@ -171,18 +156,17 @@ SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
     }
     // No buffers allocated, so don't need to free.
     // We can release/unlink the file now
-    std::ostringstream os;
-    os << "RequestFinished ";
+    const char* type = "";
     switch(rinfo.rType) {
-    case XrdSsiRespInfo::isNone: os << "type=isNone"; break;
-    case XrdSsiRespInfo::isData: os << "type=isData"; break;
-    case XrdSsiRespInfo::isError: os << "type=isError"; break;
-    case XrdSsiRespInfo::isFile: os << "type=isFile"; break;
-    case XrdSsiRespInfo::isStream: os << "type=isStream"; break;
+    case XrdSsiRespInfo::isNone: type = "type=isNone"; break;
+    case XrdSsiRespInfo::isData: type = "type=isData"; break;
+    case XrdSsiRespInfo::isError: type = "type=isError"; break;
+    case XrdSsiRespInfo::isFile: type = "type=isFile"; break;
+    case XrdSsiRespInfo::isStream: type = "type=isStream"; break;
     }
     // We can't do much other than close the file.
     // It should work (on linux) to unlink the file after we open it, though.
-    _log->info(os.str());
+    LOGF_INFO("RequestFinished %1%" % type);
 }
 
 bool
@@ -200,18 +184,14 @@ void SsiSession::enqueue(ResourceUnit const& ru, char* reqData, int reqSize) {
     // more data.
     ReplyChannel::Ptr rc(new ReplyChannel(*this));
     SsiProcessor::Ptr sp(new SsiProcessor(ru, _processor, rc, _cancellers));
-    std::ostringstream os;
-    os << "Importing TaskMsg of size " << reqSize;
-    _log->info(os.str());
+    LOGF_INFO("Importing TaskMsg of size %1%" % reqSize);
     proto::ProtoImporter<proto::TaskMsg> pi(sp);
 
     pi(reqData, reqSize);
     if(pi.getNumAccepted() < 1) {
         // TODO Report error.
     } else {
-        os.str("");
-        os << "enqueued task ok: " << ru;
-        _log->error(os.str());
+        LOGF_ERROR("enqueued task ok: %1%" % ru);
     }
 }
 

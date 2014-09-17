@@ -39,18 +39,11 @@
 #include <boost/thread.hpp>
 
 // Local headers
+#include "lsst/log/Log.h"
 #include "proto/worker.pb.h"
 #include "wsched/ChunkState.h"
 #include "wbase/Task.h"
 
-
-// Forward declarations
-namespace lsst {
-namespace qserv {
-namespace wlog {
-    class WLogger;
-}}}
-// End of forward declarations
 
 namespace lsst {
 namespace qserv {
@@ -61,7 +54,7 @@ public:
     typedef boost::shared_ptr<wbase::Task> TaskPtr;
     typedef std::set<wbase::Task const*> TaskSet;
 
-    ChunkDisk(boost::shared_ptr<wlog::WLogger> logger)
+    ChunkDisk(LOG_LOGGER const& logger)
         : _chunkState(2), _logger(logger) {}
     TaskSet getInflight() const;
 
@@ -135,7 +128,7 @@ private:
     mutable boost::mutex _inflightMutex;
     TaskSet _inflight;
     bool _completed;
-    boost::shared_ptr<wlog::WLogger>_logger;
+    LOG_LOGGER _logger;
 };
 
 }}} // namespace lsst::qserv::wsched

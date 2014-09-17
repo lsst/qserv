@@ -37,9 +37,6 @@ class XrdSsiService;
 
 namespace lsst {
 namespace qserv {
-namespace wlog {
-  class WLogger;
-}
 namespace xrdsvc {
   class SsiResponder;
 }}}
@@ -61,13 +58,11 @@ public:
 
     SsiSession(char const* sname,
                ValidatorPtr validator,
-               boost::shared_ptr<wbase::MsgProcessor> processor,
-               boost::shared_ptr<wlog::WLogger> log)
+               boost::shared_ptr<wbase::MsgProcessor> processor)
         : XrdSsiSession(strdup(sname), 0),
           XrdSsiResponder(this, (void *)0),
           _validator(validator),
-          _processor(processor),
-          _log(log)
+          _processor(processor)
         {}
 
     virtual ~SsiSession() {
@@ -88,7 +83,6 @@ private:
 
     ValidatorPtr _validator; ///< validates request against what's available
     boost::shared_ptr<wbase::MsgProcessor> _processor; ///< actual msg processor
-    boost::shared_ptr<wlog::WLogger> _log; ///< Logging handle
 
     /// Stash of cancellation functions to be called to cancel msgs in flight on
     /// _processor.

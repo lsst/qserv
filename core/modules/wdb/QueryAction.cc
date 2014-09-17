@@ -52,7 +52,6 @@
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
-#include "wlog/WLogger.h"
 
 namespace lsst {
 namespace qserv {
@@ -81,8 +80,8 @@ private:
         _mysqlConn.reset(new mysql::MySqlConnection(sc, true));
 
         if(!_mysqlConn->connect()) {
-            _log->info((Pformat("Cfg error! connect MySQL as %1% using %2%")
-                        % wconfig::getConfig().getString("mysqlSocket") % _user).str());
+            LOGF(_log, LOG_LVL_INFO, "Cfg error! connect MySQL as %1% using %2%"
+                        % wconfig::getConfig().getString("mysqlSocket") % _user);
             _addErrorMsg(-1, "Unable to connect to MySQL as " + _user);
             return false;
         }
@@ -93,7 +92,7 @@ private:
     void _setDb() {
         if(_msg->has_db()) {
             _dbName = _msg->db();
-            _log->warn("QueryAction overriding dbName with " + _dbName);
+            LOGF(_log, LOG_LVL_WARN, "QueryAction overriding dbName with %1%" % _dbName);
         }
     }
 
@@ -107,7 +106,7 @@ private:
     void _initMsgs();
     void _transmitResult();
 
-    boost::shared_ptr<wlog::WLogger> _log;
+    LOG_LOGGER _log;
     wbase::Task::Ptr _task;
     boost::shared_ptr<ChunkResourceMgr> _chunkResourceMgr;
     std::string _dbName;
@@ -155,7 +154,7 @@ QueryAction::Impl::Impl(QueryActionArg const& a)
 
 bool QueryAction::Impl::act() {
     char msg[] = "Exec in flight for Db = %1%, dump = %2%";
-    _log->info((Pformat(msg) % _task->dbName % _task->resultPath).str());
+    LOGF(_log, LOG_LVL_INFO, msg % _task->dbName % _task->resultPath);
     _setDb();
     bool connOk = _initConnection();
     if(!connOk) { return false; }
@@ -205,9 +204,7 @@ void QueryAction::Impl::_fillSchema(MYSQL_RES* result) {
         if(i->hasDefault) {
             cs->set_hasdefault(true);
             cs->set_defaultvalue(i->defaultValue);
-            std::ostringstream os;
-            os << i->name << " has default.";
-            _log->info(os.str());
+            LOGF(_log, LOG_LVL_INFO, "%1% has default." % i->name);
         } else {
             cs->set_hasdefault(false);
             cs->clear_defaultvalue();
@@ -341,7 +338,7 @@ bool QueryAction::Impl::_dispatchChannel() {
 
 void QueryAction::Impl::poison() {
     // TODO: Figure out how to cancel a MySQL C-API call in-flight
-    _log->error("Ignoring QueryAction::Impl::poision() call, unimplemented");
+    LOG(_log, LOG_LVL_ERROR, "Ignoring QueryAction::Impl::poision() call, unimplemented");
 }
 
 ////////////////////////////////////////////////////////////////////////

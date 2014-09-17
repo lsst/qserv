@@ -24,14 +24,12 @@
 #define LSST_QSERV_WSCHED_BLENDSCHEDULER_H
 
 // Local headers
+#include "lsst/log/Log.h"
 #include "wcontrol/Foreman.h"
 
 // Forward declarations
 namespace lsst {
 namespace qserv {
-namespace wlog {
-    class WLogger;
-}
 namespace wsched {
     class GroupScheduler;
     class ScanScheduler;
@@ -52,8 +50,7 @@ class BlendScheduler : public wcontrol::Foreman::Scheduler {
 public:
     typedef boost::shared_ptr<BlendScheduler> Ptr;
 
-    BlendScheduler(boost::shared_ptr<wlog::WLogger> logger,
-                   boost::shared_ptr<GroupScheduler> group,
+    BlendScheduler(boost::shared_ptr<GroupScheduler> group,
                    boost::shared_ptr<ScanScheduler> scan);
     virtual ~BlendScheduler() {}
 
@@ -79,7 +76,7 @@ private:
 
     boost::shared_ptr<GroupScheduler> _group;
     boost::shared_ptr<ScanScheduler> _scan;
-    boost::shared_ptr<wlog::WLogger> _logger;
+    LOG_LOGGER _logger;
     typedef std::map<wbase::Task*, wcontrol::Foreman::Scheduler*> Map;
     Map _map;
     boost::mutex _mapMutex;

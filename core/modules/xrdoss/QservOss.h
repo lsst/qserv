@@ -39,15 +39,14 @@
 #include <boost/shared_ptr.hpp>
 #include "XrdOss/XrdOss.hh"
 
+// Local headers
+#include "lsst/log/Log.h"
+
 // Forward declarations
 class XrdOss;
 class XrdOucEnv;
-class XrdSysLogger;
 namespace lsst {
 namespace qserv {
-namespace wlog {
-    class WLogger;
-}
 namespace wpublish {
     class ChunkInventory;
 }}} // End of forward declarations
@@ -120,8 +119,7 @@ private:
     std::string _cfgFn;
     std::string _cfgParams;
     std::string _name;
-    XrdSysLogger* _xrdSysLogger;
-    boost::shared_ptr<wlog::WLogger> _log;
+    LOG_LOGGER _log;
     time_t _initTime;
 };
 

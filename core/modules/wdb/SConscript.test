@@ -11,9 +11,9 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "boost_regex boost_signals boost_thread boost_system mysqlclient_r protobuf pthread ssl crypto".split()
+extDeps = "boost_regex boost_signals boost_thread boost_system mysqlclient_r protobuf log log4cxx pthread ssl crypto".split()
 
-modDeps = 'wlog mysql sql util wbase wconfig wdb'.split() # deps on other modules
+modDeps = 'mysql sql util wbase wconfig wdb'.split() # deps on other modules
 #modDeps = 'wbase wconfig wdb'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
 pDeps = itertools.chain(*map(lambda m: libProducts[m], ["proto"]))
@@ -32,5 +32,9 @@ programs.append(p)
 
 p = env.Program(['testChunkResource.cc'] + deps, LIBS=findLibs(extDeps))
 programs.append(p)
+
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=utest)
 
 Return('programs')
