@@ -40,6 +40,7 @@
 
 // Third-party headers
 #include <boost/algorithm/string/predicate.hpp> // string iequal
+#include <boost/make_shared.hpp>
 
 // Local headers
 #include "query/FromList.h"
