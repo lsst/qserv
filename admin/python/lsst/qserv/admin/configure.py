@@ -1,5 +1,6 @@
 import commons
 from distutils.util import strtobool
+import getpass
 import logging
 import os
 import sys
@@ -161,7 +162,7 @@ def _get_template_params():
     'QSERV_MASTER': config['qserv']['master'],
     'QSERV_DIR': config['qserv']['base_dir'],
     'QSERV_RUN_DIR': config['qserv']['run_base_dir'],
-    'QSERV_UNIX_USER': os.getlogin(),
+    'QSERV_UNIX_USER': getpass.getuser(),
     'QSERV_LOG_DIR': config['qserv']['log_dir'],
     'QSERV_PID_DIR': os.path.join(config['qserv']['run_base_dir'], "var", "run"),
     'QSERV_RPC_PORT': config['qserv']['rpc_port'],

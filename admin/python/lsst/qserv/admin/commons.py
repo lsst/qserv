@@ -1,6 +1,7 @@
 import io
 import os
 import hashlib
+import getpass 
 import logging
 import re
 import subprocess
@@ -47,7 +48,7 @@ def read_config(config_file):
 
     # computable configuration parameters
     config['qserv']['scratch_dir'] = os.path.join( "/dev", "shm", "qserv-%s-%s" %
-                                        (os.getlogin(),
+                                        (getpass.getuser(),
                                         hashlib.sha224(config['qserv']['run_base_dir']).hexdigest())
                                     )
 
