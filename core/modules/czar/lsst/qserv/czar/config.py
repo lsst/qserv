@@ -55,7 +55,6 @@ envFilenameVar = "QSERV_CONFIG"
 defaultConfig = StringIO("""\
 [frontend]
 xrootd=localhost:1094
-xrootd_user=qsmaster
 scratch_path=/dev/shm/qserv
 port=7080
 
@@ -81,7 +80,6 @@ unix_socket=/u1/local/mysql.sock
 db=qservResult
 user=qsmaster
 passwd=
-dropMem=
 
 [partitioner]
 emptyChunkListFile=

@@ -1,18 +1,8 @@
 [partitioner]
-stripes = 60
-substripes = 18
-
 
 [frontend]
 xrootd = ir2farm01:1094
 scratch_path = /dev/shm/qserv
-xrootd_user = qsmaster
-
-[table]
-### chunked=Source        # this is now handled through css
-### subchunked=Object     # ditto
-### alloweddbs=LSST,Test1 # ditto
-### partitionCols=Object:ra_PS,decl_PS,objectId;Source:raObject,declObject,objectId # ditto
 
 [resultdb]
 passwd = 
@@ -24,4 +14,3 @@ port = 0
 
 [mysql]
 mysqlclient=
-
