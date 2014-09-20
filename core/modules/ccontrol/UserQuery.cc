@@ -119,7 +119,10 @@ public:
 namespace ccontrol {
 
 std::string const& UserQuery::getError() const {
-    return _qSession->getError();
+    std::string div = (_errorExtra.size() && _qSession->getError().size())
+        ? " " : "";
+    _errorExtraCache = _qSession->getError() + div + _errorExtra;
+    return _errorExtraCache;
 }
 
 // Consider exposing querySession to userQueryProxy

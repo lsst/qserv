@@ -67,22 +67,30 @@ int
 UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& defaultDb,
                                std::string const& resultTable) {
+    bool sessionValid = true;
     qproc::QuerySession::Ptr qs(new qproc::QuerySession(_impl->facade));
-    qs->setResultTable(resultTable);
-    qs->setDefaultDb(defaultDb);
-    qs->setQuery(query);
-
+    try {
+        qs->setResultTable(resultTable);
+        qs->setDefaultDb(defaultDb);
+        qs->setQuery(query);
+    } catch (...) {
+        sessionValid = false;
+    }
     UserQuery* uq = new UserQuery(qs);
     int sessionId = UserQuery_takeOwnership(uq);
     uq->_sessionId = sessionId;
-    uq->_executive.reset(new qdisp::Executive(
-                             _impl->executiveConfig,
-                             uq->_messageStore));
+    if(sessionValid) {
+        uq->_executive.reset(new qdisp::Executive(
+                                 _impl->executiveConfig,
+                                 uq->_messageStore));
 
-    rproc::InfileMergerConfig* ict
-        = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
-    ict->targetTable = resultTable;
-    uq->_infileMergerConfig.reset(ict);
+        rproc::InfileMergerConfig* ict
+            = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
+        ict->targetTable = resultTable;
+        uq->_infileMergerConfig.reset(ict);
+    } else {
+        uq->_errorExtra += "Unknown error setting QuerySession";
+    }
     return sessionId;
 }
 
