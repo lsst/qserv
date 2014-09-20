@@ -263,6 +263,9 @@ off_t InfileMerger::merge(char const* dumpBuffer, int dumpLength) {
     // Now buffer is big enough, start processing.
     mergeSize = _importBuffer(dumpBuffer, dumpLength, _needCreateTable);
     if(mergeSize == 0) {
+        LOGGER_DBG << "WARNING, zero merge from InfileMerger::merge("
+                   << (void*)dumpBuffer << ", "
+                   << dumpLength << std::endl;
         // Buffer not big enough.
         return 0;
     }
@@ -418,12 +421,10 @@ int InfileMerger::_importBuffer(char const* buffer, int length, bool setupResult
     if(!_verifySession(msgs->result.session())) {
         return 0;
     }
-    // Check for the no-row condition
-    if(msgs->result.row_size() == 0) {
-        // Nothing further, don't bother importing.
-        return length;
-    }
-    if(!_verifyMd5(msgs->protoHeader.md5(), util::StringHash::getMd5(cursor, resultSize))) {
+    // Potentially, we can skip verifying the hash if the result reports
+    // no rows, but if the hash disagrees, then the schema is suspect as well.
+    if(!_verifyMd5(msgs->protoHeader.md5(),
+                   util::StringHash::getMd5(cursor, resultSize))) {
         return -1;
     }
     if(setupResult) {
@@ -431,9 +432,15 @@ int InfileMerger::_importBuffer(char const* buffer, int length, bool setupResult
             return -1;
         }
     }
-    // Delegate merging thread mgmt to mgr, which will handle LocalInfile objects
-    _mgr->enqueueAction(msgs);
+    // Check for the no-row condition
+    if(msgs->result.row_size() == 0) {
 
+        // Nothing further, don't bother importing
+    } else {
+        // Delegate merging thread mgmt to mgr, which will handle
+        // LocalInfile objects
+        _mgr->enqueueAction(msgs);
+    }
     return length;
 }
 
