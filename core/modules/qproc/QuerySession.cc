@@ -44,6 +44,7 @@
 
 // Local headers
 #include "css/Facade.h"
+#include "css/CssError.h"
 #include "global/constants.h"
 #include "log/Logger.h"
 #include "parser/ParseException.h"
@@ -98,6 +99,8 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         //_showFinal(std::cout); // DEBUG
     } catch(qana::AnalysisError& e) {
         _error = std::string("AnalysisError:") + e.what();
+    } catch(css::NoSuchDb& e) {
+        _error = std::string("NoSuchDb:") + e.what();
     } catch(parser::ParseException& e) {
         _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {

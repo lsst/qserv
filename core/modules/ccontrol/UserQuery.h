@@ -132,6 +132,8 @@ private:
 
     int _sessionId; //< External reference number
     int _sequence; //< Sequence number for subtask ids
+    std::string _errorExtra; //< Additional error information
+    mutable std::string _errorExtraCache; //< Cache so getError can return a ref
 };
 
 }}} // namespace lsst::qserv:ccontrol
