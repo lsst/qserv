@@ -24,4 +24,8 @@ p = env.Program(['testRepr.cc', ] + localdeps + pDeps,
                 LIBS=findLibs(extDeps))
 programs.append(p)
 
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=utest)
+
 Return('programs')

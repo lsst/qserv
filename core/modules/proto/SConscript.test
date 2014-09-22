@@ -18,4 +18,8 @@ libObjs = map(convertObj, libProducts['proto'])
 p = env.Program(source=[obj], LIBS=['pthread', 'protobuf', 'libssl'] + libObjs + ['libcrypto'])
 programs.append(p)
 
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=utest)
+
 Return('programs')

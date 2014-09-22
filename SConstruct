@@ -14,7 +14,10 @@ env = state.env
 #
 #########################
 
-env.Default(env.Alias("build"))
+# by default run build+test
+all = env.Alias("all", [env.Alias("build"), env.Alias("test")])
+env.Default(all)
+
 env.Depends("build", env.Alias("init-build-env"))
 env.Depends("install", env.Alias("build"))
 
@@ -106,7 +109,7 @@ else:
             targetFiles.append(targetFile)
 
         installTargets = targetFiles + testTargets
-        state.log.debug("%s " % installTargets)
+        state.log.debug("installTargets: %s" % map(str, installTargets))
 
         return installTargets
 

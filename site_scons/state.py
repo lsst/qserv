@@ -170,6 +170,7 @@ def _setBuildEnv():
     env.Tool('swig_scanner')
     env.Tool('protoc')
     env.Tool('antlr')
+    env.Tool('unittest')
     if env['debug'] == 'yes':
         log.info("Debug build flag (-g) requested.")
         env.Append(CCFLAGS = ['-g'])
