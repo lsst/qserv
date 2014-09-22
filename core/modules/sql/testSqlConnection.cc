@@ -193,25 +193,25 @@ BOOST_AUTO_TEST_CASE(ListTables) {
     if ( !sqlConn->listTables(v, errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
-    BOOST_CHECK_EQUAL(v.size(), 5);
+    BOOST_CHECK_EQUAL(v.size(), 5U);
 
     // list "object" tables, should get 3
     if ( !sqlConn->listTables(v, errObj, "object_") ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
-    BOOST_CHECK_EQUAL(v.size(), 3);
+    BOOST_CHECK_EQUAL(v.size(), 3U);
 
     // list "source" tables, should get 2
     if ( !sqlConn->listTables(v, errObj, "source_") ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
-    BOOST_CHECK_EQUAL(v.size(), 2);
+    BOOST_CHECK_EQUAL(v.size(), 2U);
 
     // list nonExisting tables, should get 0
     if ( !sqlConn->listTables(v, errObj, "whatever") ) {
         BOOST_FAIL(errObj.printErrMsg());
     }
-    BOOST_CHECK_EQUAL(v.size(), 0);
+    BOOST_CHECK_EQUAL(v.size(), 0U);
     // drop db
     if ( !sqlConn->dropDb(dbN, errObj) ) {
         BOOST_FAIL(errObj.printErrMsg());

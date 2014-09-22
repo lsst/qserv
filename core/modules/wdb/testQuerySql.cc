@@ -90,7 +90,6 @@ BOOST_AUTO_TEST_CASE(QueryBatch) {
 
     QuerySql::Batch build("QueryBuildSub", qSql->buildList);
     QuerySql::Batch& batch=build;
-    int i=0;
     while(!batch.isDone()) {
         std::string piece = batch.current();
         batch.next();
