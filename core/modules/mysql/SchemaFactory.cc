@@ -50,36 +50,36 @@ struct ColTypeFactory {
     void buildTo(MYSQL_FIELD const& f) {
         mysqlType = f.type;
         switch(f.type) {
-        case MYSQL_TYPE_DECIMAL: _setDecimal(f); break;
-        case MYSQL_TYPE_TINY: _setGeneric("TINYINT", f.length); break;//,n
-        case MYSQL_TYPE_SHORT: _setGeneric("SMALLINT", f.length); break;//,n
-        case MYSQL_TYPE_LONG: _setGeneric("INT", f.length); break; //,n
-        case MYSQL_TYPE_FLOAT: sqlType = "FLOAT"; break; // n,m
-        case MYSQL_TYPE_DOUBLE: sqlType = "DOUBLE"; break; // n,m
-        case MYSQL_TYPE_NULL: sqlType = "NULL"; break;
+          case MYSQL_TYPE_DECIMAL: _setDecimal(f); break;
+          case MYSQL_TYPE_TINY: _setGeneric("TINYINT", f.length); break;//,n
+          case MYSQL_TYPE_SHORT: _setGeneric("SMALLINT", f.length); break;//,n
+          case MYSQL_TYPE_LONG: _setGeneric("INT", f.length); break; //,n
+          case MYSQL_TYPE_FLOAT: sqlType = "FLOAT"; break; // n,m
+          case MYSQL_TYPE_DOUBLE: sqlType = "DOUBLE"; break; // n,m
+          case MYSQL_TYPE_NULL: sqlType = "NULL"; break;
 
-        case MYSQL_TYPE_TIMESTAMP: sqlType = "TIMESTAMP"; break;
-        case MYSQL_TYPE_LONGLONG: _setGeneric("BIGINT", f.length); break;
-        case MYSQL_TYPE_INT24: sqlType = "INT24??"; break;
-        case MYSQL_TYPE_DATE: sqlType = "DATE"; break;
-        case MYSQL_TYPE_TIME: sqlType = "TIME"; break;
-        case MYSQL_TYPE_DATETIME: sqlType = "DATETIME"; break;
-        case MYSQL_TYPE_YEAR: sqlType = "YEAR"; break;
-        case MYSQL_TYPE_NEWDATE: sqlType = "DATE"; break;
-        case MYSQL_TYPE_VARCHAR: sqlType = "VARCHAR"; break; // n
-        case MYSQL_TYPE_BIT: sqlType = "BIT?"; break; // length handling??
-        case MYSQL_TYPE_NEWDECIMAL: _setDecimal(f); break;
-        case MYSQL_TYPE_ENUM: sqlType = "ENUM??"; break; // flag handling??
-        case MYSQL_TYPE_SET: sqlType = "SET??"; break; // flag handling??
-        case MYSQL_TYPE_TINY_BLOB: _setBlobOrText("TINY", f); break;
-        case MYSQL_TYPE_MEDIUM_BLOB: _setBlobOrText("MEDIUM", f); break;
-        case MYSQL_TYPE_LONG_BLOB: _setBlobOrText("LONG", f); break;
-        case MYSQL_TYPE_BLOB: _setBlobOrText("", f); break;
-        case MYSQL_TYPE_VAR_STRING: _setVarString(f); break;
-        case MYSQL_TYPE_STRING: _setString(f); break;
-        case MYSQL_TYPE_GEOMETRY: sqlType = "GEOM??"; break; // point, linestring, etc.
-        default:
-            break;
+          case MYSQL_TYPE_TIMESTAMP: sqlType = "TIMESTAMP"; break;
+          case MYSQL_TYPE_LONGLONG: _setGeneric("BIGINT", f.length); break;
+          case MYSQL_TYPE_INT24: sqlType = "INT24??"; break;
+          case MYSQL_TYPE_DATE: sqlType = "DATE"; break;
+          case MYSQL_TYPE_TIME: sqlType = "TIME"; break;
+          case MYSQL_TYPE_DATETIME: sqlType = "DATETIME"; break;
+          case MYSQL_TYPE_YEAR: sqlType = "YEAR"; break;
+          case MYSQL_TYPE_NEWDATE: sqlType = "DATE"; break;
+          case MYSQL_TYPE_VARCHAR: sqlType = "VARCHAR"; break; // n
+          case MYSQL_TYPE_BIT: sqlType = "BIT?"; break; // length handling??
+          case MYSQL_TYPE_NEWDECIMAL: _setDecimal(f); break;
+          case MYSQL_TYPE_ENUM: sqlType = "ENUM??"; break; // flag handling??
+          case MYSQL_TYPE_SET: sqlType = "SET??"; break; // flag handling??
+          case MYSQL_TYPE_TINY_BLOB: _setBlobOrText("TINY", f); break;
+          case MYSQL_TYPE_MEDIUM_BLOB: _setBlobOrText("MEDIUM", f); break;
+          case MYSQL_TYPE_LONG_BLOB: _setBlobOrText("LONG", f); break;
+          case MYSQL_TYPE_BLOB: _setBlobOrText("", f); break;
+          case MYSQL_TYPE_VAR_STRING: _setVarString(f); break;
+          case MYSQL_TYPE_STRING: _setString(f); break;
+          case MYSQL_TYPE_GEOMETRY: sqlType = "GEOM??"; break; // point, linestring, etc.
+          default:
+              break;
         }
     }
 
