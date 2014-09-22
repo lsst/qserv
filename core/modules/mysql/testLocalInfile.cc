@@ -7,6 +7,7 @@
 #include "sql/Schema.h"
 typedef unsigned long long uint64_t;
 
+using lsst::qserv::sql::ColSchema;
 using lsst::qserv::sql::Schema;
 using lsst::qserv::sql::ColumnsIter;
 using lsst::qserv::mysql::LocalInfile;
@@ -209,20 +210,47 @@ void playRead() {
     std::cout << "Init returned "
               << LocalInfile::Mgr::local_infile_init(&infileptr, virtFile.c_str(), &mgr)
               << std::endl;
-    int bufLen = 8192;
+    const int bufLen = 8192;
     char buf[bufLen];
     std::cout << "Read returned "
               << LocalInfile::Mgr::local_infile_read(infileptr, buf, bufLen)
               << std::endl;
 }
+
+void checkDoubleTable() {
+    Api a; // Source: will execute "select ..."
+    a.connect();
+
+    if(!a.exec("create table test.twofloats (one float, two float);")) {
+        std::cout << "error creating test.twofloats.\n";
+        return;
+    }
+
+    MYSQL_RES* res = a.execStart("SELECT * FROM test.twofloats;");
+    Schema schema = SchemaFactory::newFromResult(res);
+    std::cout << "Two floats schema: ";
+    std::copy(schema.columns.begin(), schema.columns.end(),
+              std::ostream_iterator<ColSchema>(std::cout, ","));
+    std::cout << std::endl;
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(res))) {
+        // Just drain the result
+    }
+    mysql_free_result(res);
+    a.exec("drop table test.twofloats;");
+}
+
 int main(int,char**) {
-    int blah = 2;
+    int blah = 3;
     switch(blah) {
     case 1:
         play();
         break;
     case 2:
         playDouble();
+        break;
+    case 3:
+        checkDoubleTable();
         break;
     default:
         playRead();

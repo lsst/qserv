@@ -54,7 +54,7 @@ struct ColTypeFactory {
         case MYSQL_TYPE_TINY: _setGeneric("TINYINT", f.length); break;//,n
         case MYSQL_TYPE_SHORT: _setGeneric("SMALLINT", f.length); break;//,n
         case MYSQL_TYPE_LONG: _setGeneric("INT", f.length); break; //,n
-        case MYSQL_TYPE_FLOAT: sqlType = "FLOAT"; // n,m
+        case MYSQL_TYPE_FLOAT: sqlType = "FLOAT"; break; // n,m
         case MYSQL_TYPE_DOUBLE: sqlType = "DOUBLE"; break; // n,m
         case MYSQL_TYPE_NULL: sqlType = "NULL"; break;
 
@@ -67,10 +67,10 @@ struct ColTypeFactory {
         case MYSQL_TYPE_YEAR: sqlType = "YEAR"; break;
         case MYSQL_TYPE_NEWDATE: sqlType = "DATE"; break;
         case MYSQL_TYPE_VARCHAR: sqlType = "VARCHAR"; break; // n
-        case MYSQL_TYPE_BIT: sqlType = "BIT"; // length landling
-        case MYSQL_TYPE_NEWDECIMAL:
-        case MYSQL_TYPE_ENUM: sqlType = "ENUM??"; break; // flag handling
-        case MYSQL_TYPE_SET: sqlType = "SET??"; break; // flag handling
+        case MYSQL_TYPE_BIT: sqlType = "BIT?"; break; // length handling??
+        case MYSQL_TYPE_NEWDECIMAL: _setDecimal(f); break;
+        case MYSQL_TYPE_ENUM: sqlType = "ENUM??"; break; // flag handling??
+        case MYSQL_TYPE_SET: sqlType = "SET??"; break; // flag handling??
         case MYSQL_TYPE_TINY_BLOB: _setBlobOrText("TINY", f); break;
         case MYSQL_TYPE_MEDIUM_BLOB: _setBlobOrText("MEDIUM", f); break;
         case MYSQL_TYPE_LONG_BLOB: _setBlobOrText("LONG", f); break;
