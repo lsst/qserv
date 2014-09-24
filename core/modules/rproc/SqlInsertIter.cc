@@ -91,7 +91,7 @@ class SqlInsertIter::BufferMgr {
 public:
     typedef unsigned long long BufOff;
     explicit BufferMgr(util::PacketBuffer::Ptr p)
-        : pacBuffer(p) {}
+        : pacBuffer(p) {_setup(); }
 
     ~BufferMgr() {
         if(buffer) {

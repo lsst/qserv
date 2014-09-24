@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -517,8 +517,8 @@ bool MySqlFsFile::_flushWrite() {
 }
 
 bool MySqlFsFile::_flushWriteDetach() {
-    wcontrol::Task::Ptr t(
-        new wcontrol::Task(wbase::ScriptMeta(_queryBuffer, _chunkId), _userName));
+    wbase::Task::Ptr t(
+        new wbase::Task(wbase::ScriptMeta(_queryBuffer, _chunkId), _userName));
     wdb::QueryRunnerArg a(_log, t);
     return flushOrQueue(a);
 }

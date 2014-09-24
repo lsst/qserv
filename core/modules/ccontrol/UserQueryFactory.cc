@@ -28,28 +28,31 @@
 
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/ConfigError.h"
 #include "ccontrol/UserQuery.h"
 #include "ccontrol/userQueryProxy.h"
 #include "css/Facade.h"
 #include "qdisp/Executive.h"
 #include "qproc/QuerySession.h"
+#include "rproc/InfileMerger.h"
 #include "rproc/TableMerger.h"
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
+/// Implementation class (PIMPL-style) for UserQueryFactory.
 class UserQueryFactory::Impl {
 public:
-    void readConfig(StringMap const& m);
+    void readConfig(StringMap const& m); /// Import config from caller
     void initFacade(std::string const& cssTech, std::string const& cssConn,
                     int timeout_msec);
-    void initMergerTemplate();
+    void initMergerTemplate(); /// Construct template config for merger
 
+    /// State shared between UserQueries
     qdisp::Executive::Config::Ptr executiveConfig;
     boost::shared_ptr<css::Facade> facade;
-    rproc::TableMergerConfig mergerConfigTemplate;
-    std::string defaultDb;
+    rproc::InfileMergerConfig infileMergerConfigTemplate;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -62,22 +65,32 @@ UserQueryFactory::UserQueryFactory(StringMap const& m) {
 
 int
 UserQueryFactory::newUserQuery(std::string const& query,
+                               std::string const& defaultDb,
                                std::string const& resultTable) {
+    bool sessionValid = true;
     qproc::QuerySession::Ptr qs(new qproc::QuerySession(_impl->facade));
-    qs->setResultTable(resultTable);
-    qs->setDefaultDb(_impl->defaultDb);
-    qs->setQuery(query);
-
+    try {
+        qs->setResultTable(resultTable);
+        qs->setDefaultDb(defaultDb);
+        qs->setQuery(query);
+    } catch (...) {
+        sessionValid = false;
+    }
     UserQuery* uq = new UserQuery(qs);
     int sessionId = UserQuery_takeOwnership(uq);
     uq->_sessionId = sessionId;
-    uq->_executive.reset(new qdisp::Executive(
-                             _impl->executiveConfig,
-                             uq->_messageStore));
-    rproc::TableMergerConfig* mct
-        = new rproc::TableMergerConfig(_impl->mergerConfigTemplate);
-    mct->targetTable = resultTable;
-    uq->_mergerConfig.reset(mct);
+    if(sessionValid) {
+        uq->_executive.reset(new qdisp::Executive(
+                                 _impl->executiveConfig,
+                                 uq->_messageStore));
+
+        rproc::InfileMergerConfig* ict
+            = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
+        ict->targetTable = resultTable;
+        uq->_infileMergerConfig.reset(ict);
+    } else {
+        uq->_errorExtra += "Unknown error setting QuerySession";
+    }
     return sessionId;
 }
 
@@ -91,15 +104,15 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "localhost:1094");
     executiveConfig.reset(new qdisp::Executive::Config(serviceUrl));
     // This should be overriden by the installer properly.
-    mergerConfigTemplate.socket =  cm.get(
+    infileMergerConfigTemplate.socket = cm.get(
         "resultdb.unix_socket",
         "Error, resultdb.unix_socket not found. Using /u1/local/mysql.sock.",
         "/u1/local/mysql.sock");
-    mergerConfigTemplate.user =  cm.get(
+    infileMergerConfigTemplate.user = cm.get(
         "resultdb.user",
         "Error, resultdb.user not found. Using qsmaster.",
         "qsmaster");
-    mergerConfigTemplate.targetDb =  cm.get(
+    infileMergerConfigTemplate.targetDb = cm.get(
         "resultdb.db",
         "Error, resultdb.db not found. Using qservResult.",
         "qservResult");
@@ -116,22 +129,6 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "Error, css.timeout not found.",
         "10000").c_str());
     initFacade(cssTech, cssConn, cssTimeout);
-    defaultDb = cm.get(
-        "table.defaultdb",
-        "Empty table.defaultdb. Using LSST",
-        "LSST");
-#if 0 // TODO: Revisit during new result protocol/pipeline
-    merger::TableMergerConfig cfg(_resultDbDb,     // cfg result db
-                                  resultTable,     // cfg resultname
-                                  m,               // merge fixup obj
-                                  _resultDbUser,   // result db credentials
-                                  _resultDbSocket, // result db credentials
-                                  mysqlBin,        // Obsolete
-                                  dropMem          // cfg
-                                  );
-
-#endif
-
 }
 
 void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
@@ -141,17 +138,14 @@ void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
         LOGGER_INF << "Initializing zookeeper-based css, with "
                    << cssConn << ", " << timeout_msec << std::endl;
         facade = css::FacadeFactory::createZooFacade(cssConn, timeout_msec);
-//        _qSession.reset(new qproc::QuerySession(cssFPtr));
     } else if (cssTech == "mem") {
         LOGGER_INF << "Initializing memory-based css, with "
                    << cssConn << std::endl;
         facade = css::FacadeFactory::createMemFacade(cssConn);
-//        _qSession.reset(new qproc::QuerySession(cssFPtr));
     } else {
         LOGGER_ERR << "Unable to determine css technology, check config file."
                    << std::endl;
-//        throw ConfigError("Invalid css technology, check config file.");
-// FIXME
+        throw ConfigError("Invalid css technology, check config file.");
     }
 }
 

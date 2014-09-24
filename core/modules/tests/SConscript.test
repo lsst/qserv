@@ -3,17 +3,28 @@ Import("env")
 Import("libProducts")
 Import("defaultTgts")
 Import('findLibs')
+Import('cacheObjs')
+
 import glob
 import itertools
 
+def imposeStaticObj(f):
+    if str(f).endswith(".cc"):
+        return env.StaticObject(f)[0]
+    else:
+        return f
+
 def getDerived(m):
-    if m in defaultTgts: return defaultTgts[m]
-    else: return libProducts[m]
+    if m in defaultTgts:
+        return map(imposeStaticObj, defaultTgts[m])
+    else:
+        return map(imposeStaticObj, libProducts[m])
+
 
 programs = []
 
 # deps on other modules
-modDeps = """log rproc mysql sql util xrdc""".split()
+modDeps = """global log proto query rproc mysql sql util xrdc""".split()
 
 deps = itertools.chain(*map(getDerived, modDeps))
 deps = map(lambda i:i, deps) # un-chain
@@ -22,7 +33,7 @@ deps.sort(key=lambda n: n.str_for_display())
 #print "test deps~~~~~~~", map(lambda n: n.str_for_display(), deps)
 
 myDeps = filter(lambda i: not str(i).startswith("test"), env.Glob("*.cc"))
-extDeps = "boost_regex mysqlclient_r boost_thread boost_system crypto XrdPosix XrdPosixPreload XrdClient XrdUtils".split()
+extDeps = "boost_regex mysqlclient_r boost_thread boost_system crypto protobuf XrdPosix XrdPosixPreload XrdClient XrdUtils".split()
 p = env.Program(["testIter.cc"] + deps, LIBS=findLibs(extDeps))
 
 programs.append(p)

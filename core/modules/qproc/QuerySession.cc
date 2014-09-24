@@ -44,6 +44,7 @@
 
 // Local headers
 #include "css/Facade.h"
+#include "css/CssError.h"
 #include "global/constants.h"
 #include "log/Logger.h"
 #include "parser/ParseException.h"
@@ -98,6 +99,8 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         //_showFinal(std::cout); // DEBUG
     } catch(qana::AnalysisError& e) {
         _error = std::string("AnalysisError:") + e.what();
+    } catch(css::NoSuchDb& e) {
+        _error = std::string("NoSuchDb:") + e.what();
     } catch(parser::ParseException& e) {
         _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {
@@ -189,6 +192,18 @@ QuerySession::makeMergeFixup() const {
                               _stmtMerge->getLimit(), needsMerge);
 }
 
+/// Returns the merge statment, if appropriate.
+/// If a post-execution merge fixup is not needed, return a NULL pointer.
+boost::shared_ptr<query::SelectStmt>
+QuerySession::getMergeStmt() const {
+    if(_context->needsMerge) {
+        return _stmtMerge;
+    } else {
+        return boost::shared_ptr<query::SelectStmt>();
+    }
+}
+
+
 void QuerySession::finalize() {
     if(_isFinal) {
         return;
@@ -203,6 +218,8 @@ void QuerySession::finalize() {
         cs.chunkId = DUMMY_CHUNK;
         addChunk(cs);
     }
+    _cssFacade.reset(); // Release handle on cssFacade so it can be reclaimed.
+    _context->cssFacade.reset();
 }
 
 QuerySession::Iter QuerySession::cQueryBegin() {

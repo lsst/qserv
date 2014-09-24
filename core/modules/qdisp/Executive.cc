@@ -51,7 +51,7 @@
 #include "qdisp/QueryResource.h"
 
 namespace {
-std::string figureOutError(XrdSsiErrInfo & e) {
+std::string getErrorText(XrdSsiErrInfo & e) {
     std::ostringstream os;
     int errCode;
     os << "XrdSsiError " << e.Get(errCode);
@@ -154,6 +154,25 @@ private:
     ExecStatus& _status; //< Reference back to exec status
 };
 
+class NotifyExecutive : public util::UnaryCallable<void, bool> {
+public:
+    typedef boost::shared_ptr<NotifyExecutive> Ptr;
+
+    NotifyExecutive(qdisp::Executive& e, int refNum)
+        : _executive(e), _refNum(refNum) {}
+
+    virtual void operator()(bool success) {
+        _executive.markCompleted(_refNum, success);
+    }
+
+    static Ptr newInstance(qdisp::Executive& e, int refNum) {
+        return Ptr(new NotifyExecutive(e, refNum));
+    }
+private:
+    qdisp::Executive& _executive;
+    int _refNum;
+};
+
 /// Add a spec to be executed. Not thread-safe.
 void Executive::add(int refNum, Executive::Spec const& s) {
 
@@ -167,7 +186,6 @@ void Executive::add(int refNum, Executive::Spec const& s) {
     std::string msg = "Exec add pth=" + s.resource.path();
     LOGGER_INF << msg << std::endl << std::flush;
     _messageStore->addMessage(s.resource.chunk(), log::MSG_MGR_ADD, msg);
-    boost::shared_ptr<util::VoidCallable<void> > retryFunc; // FIXME
 
     _dispatchQuery(refNum,
                    s.resource.path(),
@@ -184,11 +202,16 @@ bool Executive::join() {
     struct successF {
         static bool f(Executive::StatusMap::value_type const& entry) {
             ExecStatus const& es = *entry.second;
+            LOGGER_INF << "entry state:" << (void*)&es << " " << es << std::endl;
             return es.state == ExecStatus::RESPONSE_DONE; } };
     int sCount = std::count_if(_statuses.begin(), _statuses.end(), successF::f);
 
     LOGGER_INF << "Query exec finish. " << _requestCount << " dispatched." << std::endl;
     _reportStatuses();
+    if(sCount != _requestCount) {
+        LOGGER_INF << "Query exec error:. " << _requestCount << " !="
+                   << sCount << std::endl;
+    }
     return sCount == _requestCount;
 }
 
@@ -237,7 +260,8 @@ void Executive::requestSquash(int refNum) {
 
 void Executive::squash() {
     LOGGER_INF << "Trying to cancel all queries...\n";
-    std::vector<int> pending;
+    std::vector<int> pendingIds;
+    std::vector<ReceiverPtr> pendingReceivers;
     {
         boost::lock_guard<boost::mutex> lock(_receiversMutex);
         std::ostringstream os;
@@ -247,16 +271,20 @@ void Executive::squash() {
                    << "Loop cancel all queries...\n";
         ReceiverMap::iterator i,e;
         for(i=_receivers.begin(), e=_receivers.end(); i != e; ++i) {
-            i->second->cancel();
-            pending.push_back(i->first);
+            pendingReceivers.push_back(i->second);
+            pendingIds.push_back(i->first);
         }
-        LOGGER_INF << "Loop cancel all queries...done\n";
+        LOGGER_INF << "Enqueued receivers for cancelling...done\n";
     }
-    { // Should be possible to convert this to a for_each call.
-        std::vector<int>::iterator i,e;
-        for(i=pending.begin(), e=pending.end(); i != e; ++i) {
-            _unTrack(*i);
+    {
+        std::vector<ReceiverPtr>::iterator i, e;
+        for(i=pendingReceivers.begin(), e=pendingReceivers.end(); i != e; ++i) {
+            // Could get stuck because it waits on xrootd,
+            // which may be waiting on a thread blocked in _unTrack().
+            // Don't do this while holding _receiversMutex
+            (**i).cancel();
         }
+        LOGGER_INF << "Cancelled all query receivers...done\n";
     }
 }
 
@@ -304,6 +332,7 @@ void Executive::_dispatchQuery(int refNum,
     QueryResource* r = new QueryResource(path,
                                          payload,
                                          receiver,
+                                         NotifyExecutive::newInstance(*this, refNum),
                                          retryFunc,
                                          status);
     status.report(ExecStatus::PROVISION);
@@ -313,8 +342,8 @@ void Executive::_dispatchQuery(int refNum,
                    << std::endl;
         populateState(status, ExecStatus::PROVISION_ERROR, r->eInfo);
         _unTrack(refNum);
-            delete r;
-            // handle error
+        delete r;
+        // handle error
     }
     LOGGER_DBG << "Provision was ok\n";
 }
@@ -324,7 +353,10 @@ void Executive::_setup() {
 
     XrdSsiErrInfo eInfo;
     _service = XrdSsiGetClientService(eInfo, _config.serviceUrl.c_str()); // Step 1
-    if(!_service) figureOutError(eInfo);
+    if(!_service) {
+        LOGGER_ERR << "Error obtaining XrdSsiService in Executive: "
+                   << getErrorText(eInfo);
+    }
     assert(_service);
     _requestCount = 0;
 }
@@ -405,7 +437,7 @@ void Executive::_reportStatuses() {
         os << ExecStatus::stateText(es.state)
            << " " << es.stateCode;
         if(!es.stateDesc.empty()) {
-            os << " " << es.stateDesc;
+            os << " (" << es.stateDesc << ")";
         }
         os << " " << es.stateTime;
         _messageStore->addMessage(es.resourceUnit.chunk(),

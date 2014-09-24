@@ -47,6 +47,7 @@ namespace qdisp {
 // Static fields
 std::string ExecStatus::_empty;
 
+/// @Return a C-string describing the State
 char const* ExecStatus::stateText(ExecStatus::State s) {
     switch(s) {
     case UNKNOWN: return "Unknown";
@@ -61,7 +62,7 @@ char const* ExecStatus::stateText(ExecStatus::State s) {
     case RESPONSE_DATA: return "Retrieving response data";
     case RESPONSE_DATA_ERROR: return "Error retrieving response";
     case RESPONSE_DATA_NACK: return "Error in response data";
-    case RESPONSE_DONE: return "Finished retriving result";
+    case RESPONSE_DONE: return "Finished retrieving result";
     case RESULT_ERROR: return "Error in result data.";
     case MERGE_OK: return "Merge complete";
     case MERGE_ERROR: return "Error merging result";

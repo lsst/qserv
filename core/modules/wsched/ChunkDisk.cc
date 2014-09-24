@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -66,7 +66,7 @@ namespace wsched {
 ////////////////////////////////////////////////////////////////////////
 
 /// @return chunkId of task
-inline int taskChunkId(wcontrol::Task const& e) {
+inline int taskChunkId(wbase::Task const& e) {
     assert(e.msg);
     assert(e.msg->has_chunkid());
     return e.msg->chunkid();

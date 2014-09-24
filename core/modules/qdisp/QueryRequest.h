@@ -74,6 +74,7 @@ public:
     QueryRequest(XrdSsiSession* session,
                  std::string const& payload,
                  boost::shared_ptr<QueryReceiver> receiver,
+                 boost::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
                  boost::shared_ptr<util::VoidCallable<void> > retryFunc,
                  ExecStatus& status);
 
@@ -103,15 +104,20 @@ private:
 
     XrdSsiSession* _session;
 
-    char* _buffer;
-    char* _cursor;
-    int _bufferSize;
-    int _bufferRemain;
-    std::string _payload;
-    boost::shared_ptr<QueryReceiver> _receiver;
+    char* _buffer; //< Response buffer
+    char* _cursor; //< Response buffer cursor
+    int _bufferSize; //< Response buffer size
+    int _bufferRemain; //< Remaining size (_cursor to end)
+    std::string _payload; //< Request buffer
+    boost::shared_ptr<QueryReceiver> _receiver; //< Response receiver
+
+    /// To be called when the request completes
+    boost::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
+    /// To be called to retry a failed request
     boost::shared_ptr<util::VoidCallable<void> > _retryFunc;
+    /// Reference to an updatable Status
     ExecStatus& _status;
-    std::string _errorDesc;
+    std::string _errorDesc; //< Error description
     class Canceller;
     friend class Canceller;
 }; // class QueryRequest

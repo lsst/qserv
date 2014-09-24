@@ -75,13 +75,13 @@ ScanScheduler::removeByHash(std::string const& hash) {
 }
 
 void
-ScanScheduler::queueTaskAct(wcontrol::Task::Ptr incoming) {
+ScanScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     _enqueueTask(incoming);
 }
 
-wcontrol::TaskQueuePtr
-ScanScheduler::nopAct(wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+ScanScheduler::nopAct(wbase::TaskQueuePtr running) {
     if(!running) { throw std::invalid_argument("null run list"); }
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
@@ -91,9 +91,9 @@ ScanScheduler::nopAct(wcontrol::TaskQueuePtr running) {
 
 /// @return a queue of all tasks ready to run.
 ///
-wcontrol::TaskQueuePtr
-ScanScheduler::newTaskAct(wcontrol::Task::Ptr incoming,
-                          wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+ScanScheduler::newTaskAct(wbase::Task::Ptr incoming,
+                          wbase::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
     if(!running) { throw std::invalid_argument("null run list"); }
@@ -104,14 +104,14 @@ ScanScheduler::newTaskAct(wcontrol::Task::Ptr incoming,
     // spindle.
     int available = _maxRunning - running->size();
     if(available <= 0) {
-        return wcontrol::TaskQueuePtr();
+        return wbase::TaskQueuePtr();
     }
     return _getNextTasks(available);
 }
 
-wcontrol::TaskQueuePtr
-ScanScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
-                             wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+ScanScheduler::taskFinishAct(wbase::Task::Ptr finished,
+                             wbase::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
 
@@ -124,20 +124,20 @@ ScanScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
     _logger->debug(os.str());
     int available = _maxRunning - running->size();
     if(available <= 0) {
-        return wcontrol::TaskQueuePtr();
+        return wbase::TaskQueuePtr();
     }
     return _getNextTasks(available);
 }
 
 void
-ScanScheduler::markStarted(wcontrol::Task::Ptr t) {
+ScanScheduler::markStarted(wbase::Task::Ptr t) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(!_disks.empty());
     _disks.front()->registerInflight(t);
 }
 
 void
-ScanScheduler::markFinished(wcontrol::Task::Ptr t) {
+ScanScheduler::markFinished(wbase::Task::Ptr t) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(!_disks.empty());
     _disks.front()->removeInflight(t);
@@ -165,7 +165,7 @@ ScanScheduler::_integrityHelper() {
 /// @return new tasks to run
 /// TODO: preferential treatment for chunkId just run?
 /// or chunkId that are currently running?
-wcontrol::TaskQueuePtr
+wbase::TaskQueuePtr
 ScanScheduler::_getNextTasks(int max) {
     // FIXME: Select disk based on chunk location.
     assert(!_disks.empty());
@@ -174,7 +174,7 @@ ScanScheduler::_getNextTasks(int max) {
     os << "_getNextTasks(" << max << ")>->->";
     _logger->debug(os.str());
     os.str("");
-    wcontrol::TaskQueuePtr tq;
+    wbase::TaskQueuePtr tq;
     ChunkDisk& disk = *_disks.front();
 
     // Check disks for candidate ones.
@@ -182,11 +182,11 @@ ScanScheduler::_getNextTasks(int max) {
     // from both disks. (for multi-disk support)
     bool allowNewChunk = (!disk.busy() && !disk.empty());
     while(max > 0) {
-        wcontrol::Task::Ptr p = disk.getNext(allowNewChunk);
+        wbase::Task::Ptr p = disk.getNext(allowNewChunk);
         if(!p) { break; }
         allowNewChunk = false; // Only allow one new chunk
         if(!tq) {
-            tq.reset(new wcontrol::TaskQueue());
+            tq.reset(new wbase::TaskQueue());
         }
         tq->push_back(p);
 
@@ -206,7 +206,7 @@ ScanScheduler::_getNextTasks(int max) {
 
 /// Precondition: _mutex is locked.
 void
-ScanScheduler::_enqueueTask(wcontrol::Task::Ptr incoming) {
+ScanScheduler::_enqueueTask(wbase::Task::Ptr incoming) {
     if(!incoming) { throw std::invalid_argument("No task to enqueue"); }
     // FIXME: Select disk based on chunk location.
     assert(!_disks.empty());

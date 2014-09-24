@@ -68,11 +68,14 @@ private:
 QueryRequest::QueryRequest(XrdSsiSession* session,
                            std::string const& payload,
                            boost::shared_ptr<QueryReceiver> receiver,
+                           boost::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
                            boost::shared_ptr<util::VoidCallable<void> > retryFunc,
                            ExecStatus& status)
     : _session(session),
       _payload(payload),
       _receiver(receiver),
+      _finishFunc(finishFunc),
+      _retryFunc(retryFunc),
       _status(status) {
     _registerSelfDestruct();
     LOGGER_INF << "New QueryRequest with payload(" << payload.size() << ")\n";
@@ -130,6 +133,7 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     return _importError(errorDesc, -1);
 }
 
+/// Retrieve and process results in using the XrdSsi stream mechanism
 bool QueryRequest::_importStream() {
     _resetBuffer();
     LOGGER_INF << "GetResponseData with buffer of " << _bufferRemain << "\n";
@@ -162,6 +166,7 @@ bool QueryRequest::_importStream() {
     }
 }
 
+/// Process an incoming error.
 bool QueryRequest::_importError(std::string const& msg, int code) {
     _receiver->errorFlush(msg, code);
     _errorFinish();
@@ -169,7 +174,9 @@ bool QueryRequest::_importError(std::string const& msg, int code) {
 }
 
 void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
-    LOGGER_INF << "ProcessResponse[data] with buflen=" << blen << std::endl;
+    LOGGER_INF << "ProcessResponse[data] with buflen=" << blen
+               << (last ? "(last)" : "(more)")
+               << std::endl;
     if(blen < 0) { // error, check errinfo object.
         int eCode;
         std::string reason(eInfo.Get(eCode));
@@ -207,18 +214,22 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             }
         }
     }
-    if(last || (blen == 0)) {
+    if(last) {
         LOGGER_INF << "Response retrieved, bytes=" << blen << std::endl;
         _receiver->flush(blen, last);
+        _receiver.reset();
         _status.report(ExecStatus::RESPONSE_DONE);
         _finish();
-    } else {
+    } else if(blen == 0) {
         std::string reason = "Response error, !last and  bufLen == 0";
         LOGGER_ERR << reason << std::endl;
         _status.report(ExecStatus::RESPONSE_DATA_ERROR, -1, reason);
+    } else {
+        LOGGER_INF << "Response recv (wait) bytes=" << blen << std::endl;
     }
 }
 
+/// Finalize under error conditions and retry or report completion
 void QueryRequest::_errorFinish() {
     LOGGER_DBG << "Error finish" << std::endl;
     bool ok = Finished();
@@ -226,20 +237,32 @@ void QueryRequest::_errorFinish() {
     else { LOGGER_INF << "Request::Finished() with error (clean).\n"; }
     if(_retryFunc) {
         (*_retryFunc)();
+    } else if(_finishFunc) {
+        (*_finishFunc)(false);
     }
+
+    delete this; // Self-cleanup is expected.
 }
 
+/// Finalize under success conditions and report completion.
 void QueryRequest::_finish() {
     bool ok = Finished();
     if(!ok) { LOGGER_ERR << "Error with Finished()\n"; }
     else { LOGGER_INF << "Finished() ok.\n"; }
+    if(_finishFunc) {
+        (*_finishFunc)(true);
+    }
+    delete this; // Self-cleanup is expected.
 }
 
+/// Register a cancellation function with the query receiver in order to receive
+/// notifications upon errors detected in the receiver.
 void QueryRequest::_registerSelfDestruct() {
     boost::shared_ptr<Canceller> canceller(new Canceller(*this));
     _receiver->registerCancel(canceller);
 }
 
+/// Reset the response buffer.
 void QueryRequest::_resetBuffer() {
     _buffer = _receiver->buffer();
     _bufferSize = _receiver->bufferSize();

@@ -11,7 +11,7 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "boost_signals boost_thread boost_system mysqlclient_r protobuf pthread ssl crypto".split()
+extDeps = "boost_regex boost_signals boost_thread boost_system mysqlclient_r protobuf pthread ssl crypto".split()
 
 modDeps = 'wlog mysql sql util wbase wconfig wdb'.split() # deps on other modules
 #modDeps = 'wbase wconfig wdb'.split() # deps on other modules
@@ -21,6 +21,12 @@ pDeps = cacheObjs(env, pDeps, ".o")
 deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain
 deps.sort(key=str)
 p = env.Program(['testQuerySql.cc'] + deps, LIBS=findLibs(extDeps))
+programs.append(p)
+
+p = env.Program(['testQueryAction.cc'] + deps, LIBS=findLibs(extDeps))
+programs.append(p)
+
+p = env.Program(['testChunkResource.cc'] + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
 Return('programs')

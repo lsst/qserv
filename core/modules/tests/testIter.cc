@@ -144,6 +144,26 @@ BOOST_AUTO_TEST_CASE(PlainIterTest) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(pbtest) {
+    for(int fragSize=16; fragSize < 512; fragSize*=2) {
+        XrdBufferSource* bs =
+            new XrdBufferSource(string(dummyFilename),
+                                fragSize,
+                                true);
+        PacketBuffer::Ptr p(new PacketBuffer(bs));
+        while(!p->isDone()) {
+            PacketBuffer::Value v = **p;
+#if 0
+            std::cout << "frag:"
+                      << (unsigned long long)v.first
+                      << " " << "sz=" << v.second << std::endl
+                      << std::string(v.first, v.second) << std::endl;
+#endif
+                ++(*p);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(SqlIterTest) {
     for(int fragSize=16; fragSize < 512; fragSize*=2) {
         XrdBufferSource* bs =

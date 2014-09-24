@@ -30,6 +30,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include <vector>
 
 namespace lsst {
 namespace qserv {
@@ -38,5 +39,6 @@ typedef std::map<std::string, StringMap> StringMapMap;
 typedef std::pair<std::string, std::string> StringPair;
 typedef std::list<StringPair> StringPairList;
 typedef std::list<std::string> StringList;
+typedef std::vector<std::string> StringVector;
 }}
 #endif // LSST_QSERV_STRINGTYPES_H

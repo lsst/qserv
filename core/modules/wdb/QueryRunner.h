@@ -43,7 +43,7 @@
 #include "mysql/mysql.h"
 #include "sql/SqlErrorObject.h"
 #include "wbase/Base.h"
-#include "wcontrol/Task.h"
+#include "wbase/Task.h"
 #include "wcontrol/ResultTracker.h"
 
 
@@ -72,11 +72,11 @@ public:
     QueryRunnerArg() {}
 
     QueryRunnerArg(boost::shared_ptr<wlog::WLogger> log_,
-                   wcontrol::Task::Ptr task_,
+                   wbase::Task::Ptr task_,
                    std::string overrideDump_=std::string())
         : log(log_), task(task_), overrideDump(overrideDump_) { }
     boost::shared_ptr<wlog::WLogger> log;
-    wcontrol::Task::Ptr task;
+    wbase::Task::Ptr task;
     std::string overrideDump;
 };
 class ArgFunc {
@@ -113,7 +113,7 @@ private:
 
     bool _act();
     std::string _getDumpTableList(std::string const& script);
-    bool _runTask(wcontrol::Task::Ptr t);
+    bool _runTask(wbase::Task::Ptr t);
     bool _runFragment(sql::SqlConnection& sqlConn,
                       wdb::QuerySql const& qSql);
     void _buildSubchunkScripts(std::string const& script,
@@ -137,7 +137,7 @@ private:
     sql::SqlErrorObject _errObj;
     std::string _user;
     boost::shared_ptr<wdb::QueryPhyResult> _pResult;
-    wcontrol::Task::Ptr _task;
+    wbase::Task::Ptr _task;
     std::string _scriptId;
     boost::shared_ptr<boost::mutex> _poisonedMutex;
     StringDeque _poisoned;

@@ -20,9 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// class Executive is in charge of "executing" user query fragments on
-// a qserv cluster.
-
 #ifndef LSST_QSERV_XRDSVC_SSISESSION_H
 #define LSST_QSERV_XRDSVC_SSISESSION_H
 
@@ -59,6 +56,8 @@ namespace xrdsvc {
 class SsiSession : public XrdSsiSession, public XrdSsiResponder {
 public:
     typedef boost::shared_ptr<ResourceUnit::Checker> ValidatorPtr;
+    typedef util::VoidCallable<void> CancelFunc;
+    typedef boost::shared_ptr<CancelFunc> CancelFuncPtr;
 
     SsiSession(char const* sname,
                ValidatorPtr validator,
@@ -87,10 +86,13 @@ private:
     class ReplyChannel;
     friend class ReplyChannel;
 
-    ValidatorPtr _validator;
-    boost::shared_ptr<wbase::MsgProcessor> _processor;
-    boost::shared_ptr<wlog::WLogger> _log;
-    std::vector<boost::shared_ptr<wbase::SendChannel> > _channels;
+    ValidatorPtr _validator; //< validates request against what's available
+    boost::shared_ptr<wbase::MsgProcessor> _processor; //< actual msg processor
+    boost::shared_ptr<wlog::WLogger> _log; //< Logging handle
+
+    /// Stash of cancellation functions to be called to cancel msgs in flight on
+    /// _processor.
+    std::vector<boost::shared_ptr<CancelFunc> > _cancellers;
 }; // class SsiSession
 }}} // namespace lsst::qserv::xrdsvc
 

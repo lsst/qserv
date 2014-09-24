@@ -55,7 +55,7 @@ GroupScheduler::GroupScheduler(wlog::WLogger::Ptr logger)
 
 struct matchHash {
     explicit matchHash(std::string const& hash_) : hash(hash_) {}
-    bool operator()(wcontrol::Task::Ptr const& t) {
+    bool operator()(wbase::Task::Ptr const& t) {
         return t && (t->hash == hash);
     }
     std::string const hash;
@@ -68,13 +68,13 @@ GroupScheduler::removeByHash(std::string const& hash) {
 }
 
 void
-GroupScheduler::queueTaskAct(wcontrol::Task::Ptr incoming) {
+GroupScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     _enqueueTask(incoming);
 }
 
-wcontrol::TaskQueuePtr
-GroupScheduler::nopAct(wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+GroupScheduler::nopAct(wbase::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
     return _getNextIfAvail(running->size());
@@ -82,9 +82,9 @@ GroupScheduler::nopAct(wcontrol::TaskQueuePtr running) {
 
 /// @return a queue of all tasks ready to run.
 ///
-wcontrol::TaskQueuePtr
-GroupScheduler::newTaskAct(wcontrol::Task::Ptr incoming,
-                           wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+GroupScheduler::newTaskAct(wbase::Task::Ptr incoming,
+                           wbase::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
     assert(running.get());
@@ -92,9 +92,9 @@ GroupScheduler::newTaskAct(wcontrol::Task::Ptr incoming,
     return _getNextIfAvail(running->size());
 }
 
-wcontrol::TaskQueuePtr
-GroupScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
-                              wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+GroupScheduler::taskFinishAct(wbase::Task::Ptr finished,
+                              wbase::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
 
@@ -124,18 +124,18 @@ GroupScheduler::_integrityHelper() {
 /// @return new tasks to run
 /// TODO: preferential treatment for chunkId just run?
 /// or chunkId that are currently running?
-wcontrol::TaskQueuePtr
+wbase::TaskQueuePtr
 GroupScheduler::_getNextIfAvail(int runCount) {
     int available = _maxRunning - runCount;
     if(available <= 0) {
-        return wcontrol::TaskQueuePtr();
+        return wbase::TaskQueuePtr();
     }
     return _getNextTasks(available);
 }
 
 /// Precondition: _mutex is already locked.
 /// @return new tasks to run
-wcontrol::TaskQueuePtr
+wbase::TaskQueuePtr
 GroupScheduler::_getNextTasks(int max) {
     // FIXME: Select disk based on chunk location.
     if(max < 1) { throw std::invalid_argument("max < 1)"); }
@@ -143,12 +143,12 @@ GroupScheduler::_getNextTasks(int max) {
     os << "_getNextTasks(" << max << ")>->->";
     _logger->debug(os.str());
     os.str("");
-    wcontrol::TaskQueuePtr tq;
+    wbase::TaskQueuePtr tq;
     if(_queue.size() > 0) {
-        tq.reset(new wcontrol::TaskQueue());
+        tq.reset(new wbase::TaskQueue());
         for(int i=max; i >= 0; --i) {
             if(_queue.empty()) { break; }
-            wcontrol::Task::Ptr t = _queue.front();
+            wbase::Task::Ptr t = _queue.front();
             tq->push_back(t);
             _queue.pop_front();
         }
@@ -164,7 +164,7 @@ GroupScheduler::_getNextTasks(int max) {
 
 /// Precondition: _mutex is locked.
 void
-GroupScheduler::_enqueueTask(wcontrol::Task::Ptr incoming) {
+GroupScheduler::_enqueueTask(wbase::Task::Ptr incoming) {
     if(!incoming) {
         throw std::invalid_argument("null task");
     }
