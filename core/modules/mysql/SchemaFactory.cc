@@ -93,16 +93,15 @@ private:
         return f.flags & UNSIGNED_FLAG;
     }
 
-
     inline void _setBlobOrText(char const* variant, MYSQL_FIELD const& f) {
         std::ostringstream os;
-        os <<  variant << (_hasCharset(f) ? "TEXT" : "BLOB");
+        os << variant << (_hasCharset(f) ? "TEXT" : "BLOB");
         sqlType = os.str();
     }
 
     void _setGeneric(char const* baseType, int length) {
         std::ostringstream os;
-        os <<  baseType << "(" << length << ")";
+        os << baseType << "(" << length << ")";
         sqlType = os.str();
     }
 
@@ -112,7 +111,7 @@ private:
         if(_hasFlagUnsigned(f)) --tmp;
         if(f.decimals > 0) --tmp;
         std::ostringstream os;
-        os << "DECIMAL(" << tmp << "," <<  f.decimals << ")";
+        os << "DECIMAL(" << tmp << "," << f.decimals << ")";
         sqlType = os.str();
     }
 

@@ -81,7 +81,6 @@ private:
     unsigned _leftoverSize; //< Size of bytes not yet sent in _leftover
     std::string _filename; //< virtual filename for mysql
     boost::shared_ptr<RowBuffer> _rowBuffer; //< Underlying row source
-
 };
 
 /// Do not inherit or copy. Used in mysql_set_local_infile_handler
@@ -132,4 +131,5 @@ private:
 };
 
 }}} // namespace lsst::qserv::mysql
+
 #endif // LSST_QSERV_MYSQL_LOCALINFILE_H
