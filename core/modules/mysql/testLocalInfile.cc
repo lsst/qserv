@@ -5,6 +5,7 @@
 #include "mysql/LocalInfile.h"
 #include "mysql/SchemaFactory.h"
 #include "sql/Schema.h"
+
 typedef unsigned long long uint64_t;
 
 using lsst::qserv::sql::ColSchema;
@@ -74,15 +75,18 @@ public:
         MYSQL_RES* result = mysql_use_result(&cursor);
         return result;
     }
+
     bool createTable(std::string table, Schema const& s) {
         std::string formedCreate = formCreateStatement(table, s);
         std::cout << "Formed create: " << formedCreate << "\n";
         //return false;
         return exec(formedCreate);
     }
+
     Schema getSchema(MYSQL_RES* result) {
         return SchemaFactory::newFromResult(result);
     }
+
     std::string formCreateStatement(std::string const& table, Schema const& s) {
         std::ostringstream os;
         os << "CREATE TABLE " << table << " (";
@@ -96,6 +100,7 @@ public:
         os << ")";
         return os.str();
     }
+
     std::string formInfileStatement(std::string const& table,
                                     std::string const& virtFile) {
         std::ostringstream os;
@@ -162,7 +167,6 @@ public:
                           std::ostream_iterator<char*>(std::cout, ","));
                 std::cout << "\n";
                 // Each element needs to be mysql-sanitized
-
             }
             mysql_free_result(result);
         } else  { // mysql_store_result() returned nothing

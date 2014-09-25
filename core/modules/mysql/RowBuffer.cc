@@ -56,6 +56,7 @@ inline unsigned updateEstRowSize(unsigned lastRowSize, Row const& r) {
     }
     return lastRowSize;
 }
+
 inline int addString(char* cursor, std::string const& s) {
     int sSize = s.size();
     memcpy(cursor, s.data(), sSize);
@@ -83,10 +84,12 @@ inline int escapeString(char* dest, char const* src, int srcLength) {
     }
     return src - originalSrc;
 }
+
 inline int maxColFootprint(int columnLength, std::string const& sep) {
     const int overhead = 2 + sep.size(); // NULL decl + sep size
     return overhead + (2 * columnLength);
 }
+
 inline int addColumn(char* cursor, char* colData, int colSize) {
     int added = 0;
     if(colData) {
@@ -185,7 +188,6 @@ unsigned int ResRowBuffer::_addRow(Row r, char* cursor, int remaining) {
         // largeRowThreshold should prevent this.
         throw "Buffer too small for row";
     }
-
     for(int i=0; i < r.numFields; ++i) {
         if(i) {  // add separator
             cursor += addString(cursor, _sep);
@@ -209,7 +211,7 @@ bool ResRowBuffer::_fetchRow(Row& r) {
     return true;
 }
 
-/// Attepmpt to fill a buffer from a large row that may not completely fit in
+/// Attempt to fill a buffer from a large row that may not completely fit in
 /// the buffer.
 /// This is unfinished code.
 unsigned ResRowBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
@@ -219,8 +221,8 @@ unsigned ResRowBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
 
     while(maxColFootprint(_largeRow.lengths[_fieldOffset], _sep) > remaining) {
         int addLength = addColumn(cursor,
-                                   _largeRow.row[_fieldOffset],
-                                   _largeRow.lengths[_fieldOffset]);
+                                  _largeRow.row[_fieldOffset],
+                                  _largeRow.lengths[_fieldOffset]);
         cursor += addLength;
         remaining -= addLength;
         ++_fieldOffset;
