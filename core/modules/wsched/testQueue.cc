@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE(Grouped_2) {
         KeyedElem e(elts[(i*2) + 1]);
         gQueue.insert(e);
     }
-    BOOST_CHECK_EQUAL(gQueue.size(), eltSize);
+    BOOST_CHECK_EQUAL(gQueue.size(), (unsigned)eltSize);
 
     for(int i=0; i < eltSize; ++i ) {
         KeyedElem e = gQueue.front();
@@ -198,14 +198,14 @@ BOOST_AUTO_TEST_CASE(Grouped_4) {
             gQueue.insert(e);
         }
     }
-    BOOST_CHECK_EQUAL(gQueue.size(), eltSize*3);
+    BOOST_CHECK_EQUAL(gQueue.size(), (unsigned)(eltSize*3));
     // Remove the 2-groups
     for(int i=0; i < eltSize*2; ++i ) {
         KeyedElem e = gQueue.front();
         BOOST_CHECK_EQUAL(orderElts[i/2], e);
         gQueue.pop_front();
     }
-    BOOST_CHECK_EQUAL(gQueue.size(), eltSize);
+    BOOST_CHECK_EQUAL(gQueue.size(), (unsigned)eltSize);
     // Loner sequence should remain.
     for(int i=0; i < eltSize; ++i ) {
         KeyedElem e = gQueue.front();
@@ -240,11 +240,11 @@ BOOST_AUTO_TEST_CASE(Circle_2) {
     for(int i=(eltSize-1)/2; i >= 0; --i ) {
         circle.insert(elts[i*2]);
     }
-    BOOST_CHECK_EQUAL(circle.size(), 4);
+    BOOST_CHECK_EQUAL(circle.size(), 4U);
     for(int i=0; i < eltSize/2; ++i ) {
         circle.insert(elts[(i*2) + 1]);
     }
-    BOOST_CHECK_EQUAL(circle.size(), eltSize);
+    BOOST_CHECK_EQUAL(circle.size(), (unsigned)eltSize);
     BOOST_REQUIRE((int)circle.size() == eltSize);
 
     // Now pull contents out.

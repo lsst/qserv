@@ -23,7 +23,15 @@ deps.sort(key=str)
 p = env.Program(['testFifoScheduler.cc'] + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=utest)
+
 p = env.Program('testQueue.cc');
 programs.append(p)
+
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=utest)
 
 Return('programs')

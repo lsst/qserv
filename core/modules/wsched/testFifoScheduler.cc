@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(Basic) {
     TaskQueuePtr next = fs.newTaskAct(second, emptyTqp);
     BOOST_REQUIRE(next.get());
     BOOST_CHECK_EQUAL(next->front(), first);
-    BOOST_CHECK_EQUAL(next->size(), 1);
+    BOOST_CHECK_EQUAL(next->size(), 1U);
 
     next = fs.taskFinishAct(first, emptyTqp);
     BOOST_REQUIRE(next.get());

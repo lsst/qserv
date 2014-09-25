@@ -57,4 +57,8 @@ p = env.Program(["testQueryAnalysis.cc"] + myDeps + deps, LIBS=findLibs(extDeps)
 env.Depends(p, header)
 programs.append(p)
 
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=utest)
+
 Return('programs')

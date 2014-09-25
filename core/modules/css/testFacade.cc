@@ -176,7 +176,7 @@ BOOST_AUTO_TEST_CASE(tableIsSubChunked) {
 
 BOOST_AUTO_TEST_CASE(getAllowedDbs) {
     vector<string> v = facade->getAllowedDbs();
-    BOOST_CHECK_EQUAL(3, v.size());
+    BOOST_CHECK_EQUAL(3U, v.size());
     std::sort (v.begin(), v.end());
     BOOST_CHECK_EQUAL(v[0], "dbA");
     BOOST_CHECK_EQUAL(v[1], "dbB");
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE(getAllowedDbs) {
 BOOST_AUTO_TEST_CASE(getChunkedTables) {
     // normal, 3 values
     vector<string> v = facade->getChunkedTables("dbA");
-    BOOST_CHECK_EQUAL(3, v.size());
+    BOOST_CHECK_EQUAL(3U, v.size());
     std::sort (v.begin(), v.end());
     BOOST_CHECK_EQUAL(v[0], "FSource");
     BOOST_CHECK_EQUAL(v[1], "Object");
@@ -194,7 +194,7 @@ BOOST_AUTO_TEST_CASE(getChunkedTables) {
 
     // normal, no values
     v = facade->getChunkedTables("dbB");
-    BOOST_CHECK_EQUAL(0, v.size());
+    BOOST_CHECK_EQUAL(0U, v.size());
 
     // for non-existing db
     BOOST_CHECK_THROW(facade->getChunkedTables("Dummy"), NoSuchDb);
@@ -203,13 +203,13 @@ BOOST_AUTO_TEST_CASE(getChunkedTables) {
 BOOST_AUTO_TEST_CASE(getSubChunkedTables) {
     // normal, 2 values
     vector<string> v = facade->getSubChunkedTables("dbA");
-    BOOST_CHECK_EQUAL(1, v.size());
+    BOOST_CHECK_EQUAL(1U, v.size());
     //std::sort (v.begin(), v.end());
     BOOST_CHECK_EQUAL(v[0], "Object");
 
     // normal, no values
     v = facade->getSubChunkedTables("dbB");
-    BOOST_CHECK_EQUAL(0, v.size());
+    BOOST_CHECK_EQUAL(0U, v.size());
 
     // for non-existing db
     BOOST_CHECK_THROW(facade->getSubChunkedTables("Dummy"), NoSuchDb);
@@ -218,13 +218,13 @@ BOOST_AUTO_TEST_CASE(getSubChunkedTables) {
 BOOST_AUTO_TEST_CASE(getPartitionCols) {
     // normal, has value
     vector<string> v = facade->getPartitionCols("dbA", "Object");
-    BOOST_CHECK_EQUAL(v.size(), 3);
+    BOOST_CHECK_EQUAL(v.size(), 3U);
     BOOST_CHECK_EQUAL(v[0], "ra_PS");
     BOOST_CHECK_EQUAL(v[1], "decl_PS");
     BOOST_CHECK_EQUAL(v[2], "objId");
 
     v = facade->getPartitionCols("dbA", "Source");
-    BOOST_CHECK_EQUAL(v.size(), 3);
+    BOOST_CHECK_EQUAL(v.size(), 3U);
     BOOST_CHECK_EQUAL(v[0], "ra");
     BOOST_CHECK_EQUAL(v[1], "decl");
     BOOST_CHECK_EQUAL(v[2], "");
