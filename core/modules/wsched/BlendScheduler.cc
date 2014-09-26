@@ -38,7 +38,8 @@
 // Third-party headers
 #include <boost/thread.hpp>
 
-// Local headers
+// Qserv headers
+#include "global/Bug.h"
 #include "proto/worker.pb.h"
 #include "wcontrol/Foreman.h"
 #include "wlog/WLogger.h"
@@ -66,14 +67,14 @@ BlendScheduler::BlendScheduler(boost::shared_ptr<wlog::WLogger> logger,
       _logger(logger)
 {
     dbgBlendScheduler = this;
-    if(!group || !scan) { throw std::invalid_argument("missing scheduler"); }
+    if(!group || !scan) { throw Bug("BlendScheduler: missing scheduler"); }
 }
 
 void
 BlendScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
     // Check for scan tables
     if(!incoming || !incoming->msg) {
-        throw std::invalid_argument("null task");
+        throw Bug("BlendScheduler::queueTaskAct: null task");
     }
     assert(_group);
     assert(_scan);
@@ -126,7 +127,7 @@ BlendScheduler::taskFinishAct(wbase::Task::Ptr finished,
         boost::lock_guard<boost::mutex> guard(_mapMutex);
         Map::iterator i = _map.find(finished.get());
         if(i == _map.end()) {
-            throw std::logic_error("Finished untracked task");
+            throw Bug("BlendScheduler::taskFinishAct: Finished untracked task");
         }
         s = i->second;
         _map.erase(i);

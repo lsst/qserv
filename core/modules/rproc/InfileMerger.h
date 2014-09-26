@@ -79,9 +79,9 @@ public:
     enum {NONE=0, HEADER_IMPORT, HEADER_OVERFLOW,
           RESULT_IMPORT, RESULT_MD5, MYSQLOPEN, MERGEWRITE, TERMINATE,
           CREATE_TABLE,
-          MYSQLCONNECT, MYSQLEXEC} status;
+          MYSQLCONNECT, MYSQLEXEC, INTERNAL} status;
     InfileMergerError() {}
-    InfileMergerError(int code) : errorCode(code) {}
+    explicit InfileMergerError(int code) : errorCode(code) {}
     InfileMergerError(int code, char const* desc)
         : errorCode(code), description(desc) {}
     int errorCode;

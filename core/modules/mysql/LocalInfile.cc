@@ -25,7 +25,6 @@
 // System headers
 #include <cassert>
 #include <limits>
-#include <stdexcept>
 #include <string.h> // for memcpy
 
 // Third-party headers
@@ -33,6 +32,7 @@
 #include <mysql/mysql.h>
 
 // Qserv headers
+#include "mysql/LocalInfileError.h"
 #include "mysql/RowBuffer.h"
 
 namespace lsst {
@@ -139,7 +139,7 @@ public:
 
     void setBuffer(std::string const& s, boost::shared_ptr<RowBuffer> rb) {
         if(get(s)) {
-            throw std::runtime_error("Duplicate insertion in LocalInfile::Mgr");
+            throw LocalInfileError("Duplicate insertion in LocalInfile::Mgr");
         }
         _set(s, rb);//RowBuffer::newResRowBuffer(result));
     }
