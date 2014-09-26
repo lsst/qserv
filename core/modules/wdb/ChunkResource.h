@@ -45,7 +45,6 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
-//#include "mysql/MySqlConfig.h"
 
 // Forward declarations
 namespace lsst {

@@ -32,8 +32,8 @@
 #include <boost/shared_ptr.hpp>
 
 // Qserv headers
+#include "global/Bug.h"
 #include "util/Callable.h"
-
 
 namespace lsst {
 namespace qserv {
@@ -60,7 +60,7 @@ public:
     /// Send a bucket of bytes.
     /// @param last true if no more sendStream calls will be invoked.
     virtual bool sendStream(char const* buf, int bufLen, bool last) {
-        throw std::logic_error("Streaming is unimplemented");
+        throw Bug("Streaming is unimplemented, should not see this");
     }
 
     /// Set a function to be called when a resources from a deferred send*

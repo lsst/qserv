@@ -38,12 +38,12 @@
 // System headers
 #include <stdexcept>
 
-// Local headers
+// Qserv headers
 #include "log/Logger.h"
 #include "proto/worker.pb.h"
 #include "qproc/ChunkQuerySpec.h"
+#include "qproc/QueryProcessingBug.h"
 #include "util/common.h"
-
 
 namespace lsst {
 namespace qserv {
@@ -59,7 +59,7 @@ flattenScanTables(StringList& outputList,
         if(db.empty()) {
             db = i->first;
         } else if(db != i->first) {
-            throw std::logic_error("Multiple dbs prohibited");
+            throw QueryProcessingBug("Multiple dbs prohibited");
         }
         outputList.push_back(db + "." + i->second);
     }

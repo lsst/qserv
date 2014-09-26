@@ -35,10 +35,12 @@
 // System headers
 #include <iostream>
 
-// // Third-party headers
+// Third-party headers
 #include <mysql/mysql.h>
 
-// // Local headers
+// Qserv headers
+#include "global/Bug.h"
+#include "global/UnsupportedError.h"
 #include "proto/worker.pb.h"
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
@@ -161,14 +163,14 @@ bool QueryAction::Impl::act() {
     if(_msg->has_protocol()) {
         switch(_msg->protocol()) {
         case 1:
-            throw std::runtime_error("Expected protocol > 1 in TaskMsg");
+            throw UnsupportedError("QueryAction: Expected protocol > 1 in TaskMsg");
         case 2:
             return _dispatchChannel();
         default:
-            throw std::runtime_error("Invalid protocol in TaskMsg");
+            throw UnsupportedError("QueryAction: Invalid protocol in TaskMsg");
         }
     } else {
-        throw std::runtime_error("Expected protocol > 1 in TaskMsg");
+        throw UnsupportedError("QueryAction: Expected protocol > 1 in TaskMsg");
     }
 }
 
@@ -304,7 +306,7 @@ bool QueryAction::Impl::_dispatchChannel() {
     bool firstResult = true;
     int numFields = -1;
     if(m.fragment_size() < 1) {
-        throw std::runtime_error("No fragments to execute in TaskMsg");
+        throw Bug("QueryAction: No fragments to execute in TaskMsg");
     }
     ChunkResourceRequest req(_chunkResourceMgr, m);
 

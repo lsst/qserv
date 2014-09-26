@@ -27,6 +27,7 @@
 #include <boost/utility.hpp>
 
 // Qserv headers
+#include "global/Bug.h"
 #include "global/debugUtil.h"
 
 namespace lsst {
@@ -82,7 +83,7 @@ ChannelStream::~ChannelStream() {
 void
 ChannelStream::append(char const* buf, int bufLen, bool last) {
     if(_closed) {
-        throw std::runtime_error("Stream closed, append(...,last=true) already received");
+        throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
     _log->info(" trying to append message");
     _log->info(makeByteStreamAnnotated("StreamMsg", buf, bufLen));

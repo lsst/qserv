@@ -39,6 +39,7 @@
 #include <boost/thread.hpp>
 
 // Local headers
+#include "global/Bug.h"
 #include "global/constants.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlErrorObject.h"
@@ -180,7 +181,7 @@ public:
                      % i->chunkId % i->subChunkId).str();
                 sql::SqlErrorObject err;
                 if(!_sqlConn.runQuery(create, err)) {
-                    throw err; // FIXME
+                    throw err;
                 }
             }
         }
@@ -200,7 +201,7 @@ public:
                      % i->chunkId % i->subChunkId).str();
                 sql::SqlErrorObject err;
                 if(!_sqlConn.runQuery(discard, err)) {
-                    throw err; // FIXME
+                    throw err;
                 }
             }
         }
@@ -235,6 +236,7 @@ public:
     ChunkEntry(int chunkId)
         : _chunkId(chunkId) {}
 
+    /// Acquire a resource, loading if needed
     void acquire(std::string const& db,
                  StringVector const& tables,
                  IntVector const& sc, Backend::Ptr backend) {
@@ -262,6 +264,8 @@ public:
             backend->load(needed);
         }
     }
+
+    /// Release a resource, flushing if no more users need it.
     void release(std::string const& db,
                  StringVector const& tables,
                  IntVector const& sc, Backend::Ptr backend) {
@@ -274,7 +278,7 @@ public:
                 for(i=sc.begin(), e=sc.end(); i != e; ++i) {
                     SubChunkMap::iterator it = scm.find(*i); // Should be there
                     if(it == scm.end()) {
-                        throw std::runtime_error("Error releasing un-acquired resource");
+                        throw Bug("ChunkResource ChunkEntry::release: Error releasing un-acquired resource");
                     }
                     scm[*i] = it->second - 1; // write new value
                 } // All subchunks
@@ -285,6 +289,8 @@ public:
         // high-water mark and/or on periodic intervals
         --_refCount;
     }
+
+    /// Flush resources no longer needed by anybody
     void flush(std::string const& db, Backend::Ptr backend) {
         ScTableVector discardable;
 
@@ -301,7 +307,7 @@ public:
                                                   si->second));
                     mapDiscardable.push_back(si->second);
                 } else if(si->second < 0) {
-                    throw std::runtime_error("Invalid negative use count when flushing subchunks");
+                    throw Bug("ChunkResource ChunkEntry::flush: Invalid negative use count when flushing subchunks");
                 }
             } // All subchunks
             // Prune zero elements for this db+table+chunk

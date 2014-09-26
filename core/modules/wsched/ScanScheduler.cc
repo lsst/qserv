@@ -40,6 +40,7 @@
 #include <boost/thread.hpp>
 
 // Local headers
+#include "global/Bug.h"
 #include "wcontrol/Foreman.h"
 #include "wlog/WLogger.h"
 #include "wsched/ChunkDisk.h"
@@ -82,7 +83,7 @@ ScanScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
 
 wbase::TaskQueuePtr
 ScanScheduler::nopAct(wbase::TaskQueuePtr running) {
-    if(!running) { throw std::invalid_argument("null run list"); }
+    if(!running) { throw Bug("ScanScheduler::nopAct: null run list"); }
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
     int available = _maxRunning - running->size();
@@ -96,7 +97,7 @@ ScanScheduler::newTaskAct(wbase::Task::Ptr incoming,
                           wbase::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(_integrityHelper());
-    if(!running) { throw std::invalid_argument("null run list"); }
+    if(!running) { throw Bug("ScanScheduler::newTaskAct: null run list"); }
 
     _enqueueTask(incoming);
     // No free threads? Exit.
@@ -207,7 +208,7 @@ ScanScheduler::_getNextTasks(int max) {
 /// Precondition: _mutex is locked.
 void
 ScanScheduler::_enqueueTask(wbase::Task::Ptr incoming) {
-    if(!incoming) { throw std::invalid_argument("No task to enqueue"); }
+    if(!incoming) { throw Bug("ScanScheduler::_enqueueTaskAct: No task to enqueue"); }
     // FIXME: Select disk based on chunk location.
     assert(!_disks.empty());
     assert(_disks.front());

@@ -71,12 +71,16 @@ using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::proto::ProtoHeader;
 using lsst::qserv::proto::ProtoImporter;
 using lsst::qserv::rproc::InfileMergerConfig;
+using lsst::qserv::rproc::InfileMergerError;
 
 /// @return a timestamp id for use in generating temporary result table names.
 std::string getTimeStampId() {
     struct timeval now;
     int rc = gettimeofday(&now, NULL);
-    if (rc != 0) throw "Failed to get timestamp.";
+    if (rc != 0) {
+        throw InfileMergerError(InfileMergerError::INTERNAL,
+                                "Failed to get timestamp.");
+    }
     std::ostringstream s;
     s << (now.tv_sec % 10000) << now.tv_usec;
     return s.str();

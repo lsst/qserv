@@ -38,7 +38,8 @@
 // Third-party headers
 #include <boost/thread.hpp>
 
-// Local headers
+// Qserv headers
+#include "global/Bug.h"
 #include "proto/worker.pb.h"
 #include "wlog/WLogger.h"
 
@@ -138,7 +139,7 @@ GroupScheduler::_getNextIfAvail(int runCount) {
 wbase::TaskQueuePtr
 GroupScheduler::_getNextTasks(int max) {
     // FIXME: Select disk based on chunk location.
-    if(max < 1) { throw std::invalid_argument("max < 1)"); }
+    if(max < 1) { throw Bug("GroupScheduler::_getNextTasks: max < 1)"); }
     std::ostringstream os;
     os << "_getNextTasks(" << max << ")>->->";
     _logger->debug(os.str());
@@ -166,7 +167,7 @@ GroupScheduler::_getNextTasks(int max) {
 void
 GroupScheduler::_enqueueTask(wbase::Task::Ptr incoming) {
     if(!incoming) {
-        throw std::invalid_argument("null task");
+        throw Bug("GroupScheduler::_enqueueTask: null task");
     }
     _queue.insert(incoming);
     std::ostringstream os;

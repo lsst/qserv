@@ -33,6 +33,7 @@
 #include <mysql/mysql.h>
 
 // Qserv headers
+#include "mysql/LocalInfileError.h"
 #include "proto/worker.pb.h"
 #include "sql/Schema.h"
 
@@ -138,7 +139,7 @@ unsigned ResRowBuffer::fetch(char* buffer, unsigned bufLen) {
     unsigned fetchSize = 0;
     unsigned estRowSize = 0;
     if(bufLen <= 0) {
-        throw std::invalid_argument("Can't fetch non-positive bytes");
+        throw LocalInfileError("ResRowBuffer::fetch Can't fetch non-positive bytes");
     }
     if(_useLargeRow) {
         return _fetchFromLargeRow(buffer, bufLen);
@@ -186,7 +187,7 @@ unsigned int ResRowBuffer::_addRow(Row r, char* cursor, int remaining) {
         // Make buffer size in LocalInfile larger than largest
         // row.
         // largeRowThreshold should prevent this.
-        throw "Buffer too small for row";
+        throw LocalInfileError("ResRowBuffer::_addRow: Buffer too small for row");
     }
     for(int i=0; i < r.numFields; ++i) {
         if(i) {  // add separator
@@ -243,7 +244,7 @@ unsigned ResRowBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
         // FIXME: unfinished
     }
     if(cursor == buffer) { // Were we able to put anything in?
-        throw "Buffer too small for single column!";
+        throw LocalInfileError("ResRowBuffer::_fetchFromLargeRow: Buffer too small for single column!");
     }
     return bufLen - remaining;
 }

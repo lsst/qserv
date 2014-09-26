@@ -23,18 +23,10 @@
 #ifndef LSST_QSERV_XRDSVC_SSISESSION_REPLYCHANNEL_H
 #define LSST_QSERV_XRDSVC_SSISESSION_REPLYCHANNEL_H
 
-// System headers
-//#include <deque>
-
 // Third-party headers
-//#include <boost/thread/condition_variable.hpp>
-//#include <boost/thread/mutex.hpp>
-//#include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream 
-//#include "XrdSsi/XrdSsiStream.hh"
 #include "XrdSsi/XrdSsiResponder.hh"
 
 // Qserv headers
-//#include "wlog/WLogger.h"
 #include "wbase/SendChannel.h"
 #include "xrdsvc/SsiSession.h"
 
@@ -60,7 +52,7 @@ public:
     virtual bool sendFile(int fd, Size fSize);
     virtual bool sendStream(char const* buf, int bufLen, bool last);
 
-private:    
+private:
     void _initStream();
 
     SsiSession& _ssiSession;

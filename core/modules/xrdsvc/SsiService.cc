@@ -35,6 +35,7 @@
 #include "sql/SqlConnection.h"
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
+#include "wconfig/ConfigError.h"
 #include "wcontrol/Service.h"
 #include "wlog/WLogger.h"
 #include "wpublish/ChunkInventory.h"
@@ -85,7 +86,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
     _setupResultPath();
 
     if(!_setupScratchDb()) {
-        throw "Couldn't setup scratch db"; // TODO: exception
+        throw wconfig::ConfigError("Couldn't setup scratch db");
     }
     _service.reset(new wcontrol::Service(_log));
 
@@ -133,7 +134,7 @@ void SsiService::_configure() {
         std::string msg("Configuration invalid: "
                         + wconfig::getConfig().getError());
         _log->fatal(msg);
-        throw std::invalid_argument(msg);
+        throw wconfig::ConfigError(msg);
     }
 }
 
