@@ -213,7 +213,14 @@ bool ResRowBuffer::_fetchRow(Row& r) {
 
 /// Attempt to fill a buffer from a large row that may not completely fit in
 /// the buffer.
-/// This is unfinished code.
+/// This is unfinished code, but is only triggered for rows > 500kB.  Also,
+/// RowBuffer objects are used to buffer rows for LocalInfile, and because
+/// ResRowBuffer is an implementation that fetches rows from a MYSQL_RES handle,
+/// and Qserv will generally use rows received over-the-wire in protobufs
+/// messages, ResRowBuffer objects are not planned for use in a normally
+/// operating Qserv system. Still, ResRowBuffer is useful for *testing*
+/// LocalInfile (e.g., loading the result of a SELECT statement using LOAD DATA
+/// INFILE).
 unsigned ResRowBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
     // Insert field-at-a-time,
     char* cursor = buffer;

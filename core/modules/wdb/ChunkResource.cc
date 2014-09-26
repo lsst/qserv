@@ -88,9 +88,6 @@ public:
          StringVector const& tables_)
         : db(db_), chunkId(chunkId_), tables(tables_) {}
 
-    Info(Info const& i)
-        : db(i.db), chunkId(i.chunkId),
-          tables(i.tables), subChunkIds(i.subChunkIds) {}
     std::string db;
     int chunkId;
     StringVector tables;
@@ -122,7 +119,7 @@ ChunkResource::ChunkResource(ChunkResource const& cr)
 
 ChunkResource& ChunkResource::operator=(ChunkResource const& cr) {
     _mgr = cr._mgr;
-    _info = std::auto_ptr<Info>(new Info(*cr._info));
+    _info.reset(new Info(*cr._info));
     _mgr.acquireUnit(*_info);
     return *this;
 }

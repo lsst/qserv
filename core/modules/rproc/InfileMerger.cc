@@ -164,6 +164,15 @@ private:
         boost::lock_guard<boost::mutex> lock(_inflightMutex);
         ++_numInflight;
     }
+
+    bool _setupConnection() {
+        if(_mysqlConn.connect()) {
+            _infileMgr.attach(_mysqlConn.getMySql());
+            return true;
+        }
+        return false;
+    }
+
     mysql::MySqlConnection _mysqlConn;
     boost::mutex _mysqlMutex;
     std::string const& _mergeTable;
@@ -180,10 +189,13 @@ class InfileMerger::Mgr::Action : public util::WorkQueue::Callable {
 public:
     Action(Mgr& mgr, boost::shared_ptr<Msgs> msgs, std::string const& table)
         : _mgr(mgr), _msgs(msgs), _table(table) {
-        _virtFile = mgr._infileMgr.prepareSrc(rproc::newProtoRowBuffer(msgs->result));
         mgr._incrementInflight();
+        // Delay preparing the virtual file until just before it is needed.
     }
     void operator()() {
+        _virtFile = _mgr._infileMgr.prepareSrc(
+            rproc::newProtoRowBuffer(_msgs->result));
+
         // load data infile.
         std::string infileStatement = sql::formLoadInfile(_table, _virtFile);
         bool result = _mgr.applyMysql(infileStatement);
@@ -204,9 +216,7 @@ InfileMerger::Mgr::Mgr(MySqlConfig const& config, std::string const& mergeTable)
       _mergeTable(mergeTable),
       _workQueue(1),
       _numInflight(0) {
-    if(_mysqlConn.connect()) {
-        _infileMgr.attach(_mysqlConn.getMySql());
-    } else {
+    if(!_setupConnection()) {
         throw InfileMergerError(InfileMergerError::MYSQLCONNECT);
     }
 }
@@ -219,8 +229,11 @@ void InfileMerger::Mgr::enqueueAction(boost::shared_ptr<Msgs> msgs) {
 bool InfileMerger::Mgr::applyMysql(std::string const& query) {
     boost::lock_guard<boost::mutex> lock(_mysqlMutex);
     if(!_mysqlConn.connected()) {
-        return false; // should have connected during Mgr construction
-        // Maybe we should reconnect?
+        // should have connected during Mgr construction
+        // Try reconnecting--maybe we timed out.
+        if(!_setupConnection()) {
+            return false; // Reconnection failed. This is an error.
+        }
     }
     // Go direct--MySqlConnection API expects results and will report
     // an error if there is no result.

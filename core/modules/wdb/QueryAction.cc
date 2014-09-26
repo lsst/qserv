@@ -47,6 +47,7 @@
 #include "sql/Schema.h"
 #include "wbase/SendChannel.h"
 #include "util/StringHash.h"
+#include "wbase/Base.h"
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
 #include "wlog/WLogger.h"
@@ -350,7 +351,6 @@ QueryAction::QueryAction(QueryActionArg const& a)
 }
 
 QueryAction::~QueryAction() {
-    // Nothing to do here? (doublecheck before merge)
 }
 
 bool QueryAction::operator()() {
@@ -361,9 +361,9 @@ void QueryAction::poison() {
     _impl->poison();
 }
 }}} // lsst::qserv::wdb
-#if 0
 
-// Record query in query cache table
+// Future idea: Query cache
+// Pseudocode: Record query in query cache table
 /*
   result = runQuery(db.get(),
   "INSERT INTO qcache.Queries "
@@ -380,4 +380,3 @@ void QueryAction::poison() {
   return false;
   }
 */
-#endif

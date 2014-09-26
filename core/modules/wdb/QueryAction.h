@@ -36,11 +36,7 @@
 // System headers
 #include <memory>
 
-// Third-party headers
-#include "boost/thread.hpp" // for mutex support
-
-// Local headers
-#include "wbase/Base.h"
+// Qserv headers
 #include "wbase/Task.h"
 
 // Forward declarations
@@ -90,4 +86,4 @@ private:
 
 }}} // namespace lsst::qserv::wdb
 
-#endif // LSST_QSERV_WDB_QUERYRUNNER_H
+#endif // LSST_QSERV_WDB_QUERYACTION_H
