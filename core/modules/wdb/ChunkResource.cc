@@ -283,11 +283,11 @@ public:
                     scm[*i] = it->second - 1; // write new value
                 } // All subchunks
             } // All tables
+            --_refCount;
         }
         flush(db, backend); // Discard resources no longer needed by anyone.
         // flush could be detached from the release function, to be called at a
         // high-water mark and/or on periodic intervals
-        --_refCount;
     }
 
     /// Flush resources no longer needed by anybody

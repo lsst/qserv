@@ -124,7 +124,7 @@ public:
     /// already. Clients should not need to call this explicitly.
     virtual void acquireUnit(ChunkResource::Info const& i) = 0;
 private:
-    class Impl;
+    class Impl; // Nested to share friend access to ChunkResource
 };
 }}} // namespace lsst::qserv::wdb
 
