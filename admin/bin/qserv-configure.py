@@ -19,7 +19,7 @@ def parseArgs():
     parser = argparse.ArgumentParser(
             description='''Qserv configuration tool. Creates an execution
 directory (qserv_run_dir) which will contains configuration and execution
-data for a given Qserv instance. Deploys values from meta-config file $qserv_run_dir/qserv.conf 
+data for a given Qserv instance. Deploys values from meta-config file $qserv_run_dir/qserv.conf
 in all Qserv configuration files and databases. Default behaviour will configure a mono-node
 instance in ''' + default_qserv_run_dir + '''. IMPORTANT : --all MUST BE USED
 FOR A  SETUP FROM SCRATCH.''',
@@ -201,16 +201,16 @@ def main():
 
             for comp in components_to_configure:
                 cfg_script = os.path.join(configuration_scripts_dir, comp+".sh")
-		if os.path.isfile(cfg_script):
+                if os.path.isfile(cfg_script):
                     commons.run_command([cfg_script])
 
             def client_cfg_from_tpl(product):
                 homedir = os.path.expanduser("~")
                 if product == configure.QSERV:
-	            filename = "qserv-client.conf"
+                    filename = "qserv-client.conf"
                     cfg_link = os.path.join(homedir, ".lsst", "qserv.conf")
                 elif product == configure.MYSQL:
-	            filename = "my-client.cnf"
+                    filename = "my-client.cnf"
                     cfg_link = os.path.join(homedir, ".my.cnf")
                 else:
                     logging.fatal("Unable to apply configuration template for product %s", product)
@@ -231,12 +231,12 @@ def main():
                 )
 
                 if os.path.isfile(cfg_link) and os.lstat(cfg_link):
-                
+
                     try:
                         is_symlink_correct = os.path.samefile(cfg_link, cfg_file)
                     except os.error:
                         # link is broken
-                        is_symlink_correct = False 
+                        is_symlink_correct = False
 
                     if not is_symlink_correct:
                         if args.force or configure.user_yes_no_query(
@@ -258,13 +258,13 @@ def main():
                         # might need to create directory first
                         try:
                             os.makedirs(os.path.join(homedir, ".lsst"))
-		            logging.debug("Creating client configuration directory : ~/.lsst")
+                            logging.debug("Creating client configuration directory : ~/.lsst")
                         except os.error:
                             pass
 
                     try:
-		        os.remove(cfg_link)
-		        logging.debug("Removing broken symbolic link : {0}".format(cfg_link))
+                        os.remove(cfg_link)
+                        logging.debug("Removing broken symbolic link : {0}".format(cfg_link))
                     except os.error:
                         pass
 
