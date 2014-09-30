@@ -30,10 +30,10 @@ namespace lsst {
 namespace qserv {
 
 /// Bug is a generic Qserv exception that indicates a probable bug
-class Bug : public std::runtime_error {
+class Bug : public std::logic_error {
 public:
-    explicit Bug(char const* msg) : std::runtime_error(msg) {}
-    explicit Bug(std::string const& msg) : std::runtime_error(msg) {}
+    explicit Bug(char const* msg) : std::logic_error(msg) {}
+    explicit Bug(std::string const& msg) : std::logic_error(msg) {}
 };
 }} // namespace lsst::qserv
 

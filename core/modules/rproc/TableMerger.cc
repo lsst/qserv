@@ -419,10 +419,9 @@ bool TableMerger::_createTableIfNotExists(TableMerger::CreateStmt& cs) {
         } else {
             return true;
         }
-    } else { // Don't know how to handle things otherwise.
-        return false;
     }
-    return true;
+    // Don't know how to handle things otherwise.
+    return false;
 }
 
 void TableMerger::_fixupTargetName() {

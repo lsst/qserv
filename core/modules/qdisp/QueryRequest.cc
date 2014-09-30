@@ -216,9 +216,11 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     }
     if(last) {
         LOGGER_INF << "Response retrieved, bytes=" << blen << std::endl;
-        _receiver->flush(blen, last);
-        _receiver.reset();
-        _status.report(ExecStatus::RESPONSE_DONE);
+        if(!_receiver->flush(blen, last)) {
+            _status.report(ExecStatus::RESULT_ERROR);
+        } else {
+            _status.report(ExecStatus::RESPONSE_DONE);
+        }
         _finish();
     } else if(blen == 0) {
         std::string reason = "Response error, !last and  bufLen == 0";

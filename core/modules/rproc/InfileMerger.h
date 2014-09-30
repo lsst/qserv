@@ -112,14 +112,14 @@ public:
     std::string socket;
 };
 
-/// InfileMerger is a row-based merger that imports rows from a result messages
+/// InfileMerger is a row-based merger that imports rows from result messages
 /// and inserts them into a MySQL table, as specified during construction by
 /// InfileMergerConfig.
+///
 /// To use, construct a configured instance, then call merge() to kick off the
-/// merging process, and finalize() waits for outstanding merging processes and
-/// performs the appropriate post-processing before returning.
-/// merge() right now expects an entire message buffer, where a message buffer
-/// consists of:
+/// merging process, and finalize() to wait for outstanding merging processes
+/// and perform the appropriate post-processing before returning.  merge() right
+/// now expects an entire message buffer, where a message buffer consists of:
 /// Byte 0: unsigned char size of ProtoHeader message
 /// Bytes 1 - size_ph : ProtoHeader message (containing size of result message)
 /// Bytes size_ph - size_ph + size_rm : Result message
@@ -177,10 +177,5 @@ private:
 };
 
 }}} // namespace lsst::qserv::rproc
-
-// Local Variables:
-// mode:c++
-// comment-column:0
-// End:
 
 #endif // LSST_QSERV_RPROC_INFILEMERGER_H

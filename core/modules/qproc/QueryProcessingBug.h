@@ -23,18 +23,18 @@
 #ifndef LSST_QSERV_QPROC_QUERYPROCESSINGBUG_H
 #define LSST_QSERV_QPROC_QUERYPROCESSINGBUG_H
 
-// System headers
-#include <stdexcept>
+// Qserv headers
+#include "global/Bug.h"
 
 namespace lsst {
 namespace qserv {
 namespace qproc {
 
 /// QueryProcessingBug is a trivial exception that marks a bug in qproc
-class QueryProcessingBug : public std::runtime_error {
+class QueryProcessingBug : public Bug {
 public:
-    explicit QueryProcessingBug(char const* msg) : std::runtime_error(msg) {}
-    explicit QueryProcessingBug(std::string const& msg) : std::runtime_error(msg) {}
+    explicit QueryProcessingBug(char const* msg) : Bug(msg) {}
+    explicit QueryProcessingBug(std::string const& msg) : Bug(msg) {}
 };
 }}} // namespace lsst::qserv::qana
 

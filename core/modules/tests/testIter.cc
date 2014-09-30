@@ -145,13 +145,16 @@ BOOST_AUTO_TEST_CASE(PlainIterTest) {
 }
 
 BOOST_AUTO_TEST_CASE(pbtest) {
+    char const* c = dummyBlock;
+    bool same = true;
     for(int fragSize=16; fragSize < 512; fragSize*=2) {
         XrdBufferSource* bs =
             new XrdBufferSource(string(dummyFilename),
                                 fragSize,
                                 true);
-        PacketBuffer::Ptr p(new PacketBuffer(bs));
-        while(!p->isDone()) {
+
+        for(PacketBuffer::Ptr p(new PacketBuffer(bs));
+            !p->isDone(); ++(*p)) {
             PacketBuffer::Value v = **p;
 #if 0
             std::cout << "frag:"
@@ -159,7 +162,11 @@ BOOST_AUTO_TEST_CASE(pbtest) {
                       << " " << "sz=" << v.second << std::endl
                       << std::string(v.first, v.second) << std::endl;
 #endif
-                ++(*p);
+            for(unsigned i=0; i < v.second; ++i) {
+                same = same && (*c == v.first[i]);
+                ++c;
+            }
+
         }
     }
 }

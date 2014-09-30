@@ -146,7 +146,8 @@ class AppInterface:
 
     ### Deprecated/unused: the Lua interface is single-threaded and doesn't
     ### tolerate blocking well, so we never want it to wait for a query to
-    ### complete in this manner.
+    ### complete in this manner. We still want to support this (or
+    ### equivalent) in the non proxy interface.
     def joinQuery(self, taskId):
         """Wait for a query to finish, then return its results."""
         if str(taskId) not in self.actions:

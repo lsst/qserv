@@ -201,12 +201,14 @@ bool Executive::join() {
     // Okay to merge. probably not the Executive's responsibility
     struct successF {
         static bool f(Executive::StatusMap::value_type const& entry) {
-            ExecStatus const& es = *entry.second;
-            LOGGER_INF << "entry state:" << (void*)&es << " " << es << std::endl;
-            return es.state == ExecStatus::RESPONSE_DONE; } };
+            ExecStatus::Info const& esI = entry.second->getInfo();
+            LOGGER_INF << "entry state:" << (void*)entry.second.get()
+                       << " " << esI << std::endl;
+            return esI.state == ExecStatus::RESPONSE_DONE; } };
     int sCount = std::count_if(_statuses.begin(), _statuses.end(), successF::f);
 
-    LOGGER_INF << "Query exec finish. " << _requestCount << " dispatched." << std::endl;
+    LOGGER_INF << "Query exec finish. " << _requestCount
+               << " dispatched." << std::endl;
     _reportStatuses();
     if(sCount != _requestCount) {
         LOGGER_INF << "Query exec error:. " << _requestCount << " !="
@@ -260,7 +262,6 @@ void Executive::requestSquash(int refNum) {
 
 void Executive::squash() {
     LOGGER_INF << "Trying to cancel all queries...\n";
-    std::vector<int> pendingIds;
     std::vector<ReceiverPtr> pendingReceivers;
     {
         boost::lock_guard<boost::mutex> lock(_receiversMutex);
@@ -272,7 +273,6 @@ void Executive::squash() {
         ReceiverMap::iterator i,e;
         for(i=_receivers.begin(), e=_receivers.end(); i != e; ++i) {
             pendingReceivers.push_back(i->second);
-            pendingIds.push_back(i->first);
         }
         LOGGER_INF << "Enqueued receivers for cancelling...done\n";
     }
@@ -432,16 +432,17 @@ void Executive::_reapReceivers(boost::unique_lock<boost::mutex> const&) {
 void Executive::_reportStatuses() {
     StatusMap::const_iterator i,e;
     for(i=_statuses.begin(), e=_statuses.end(); i != e; ++i) {
-        ExecStatus const& es = *i->second;
+        ExecStatus::Info info = i->second->getInfo();
+
         std::ostringstream os;
-        os << ExecStatus::stateText(es.state)
-           << " " << es.stateCode;
-        if(!es.stateDesc.empty()) {
-            os << " (" << es.stateDesc << ")";
+        os << ExecStatus::stateText(info.state)
+           << " " << info.stateCode;
+        if(!info.stateDesc.empty()) {
+            os << " (" << info.stateDesc << ")";
         }
-        os << " " << es.stateTime;
-        _messageStore->addMessage(es.resourceUnit.chunk(),
-                                  es.state, os.str());
+        os << " " << info.stateTime;
+        _messageStore->addMessage(info.resourceUnit.chunk(),
+                                  info.state, os.str());
     }
 }
 
