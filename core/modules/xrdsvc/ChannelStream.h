@@ -27,8 +27,8 @@
 #include <deque>
 
 // Third-party headers
-#include <boost/thread/condition_variable.hpp>
-#include <boost/thread/mutex.hpp>
+#include "boost/thread/condition_variable.hpp"
+#include "boost/thread/mutex.hpp"
 #include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream
 #include "XrdSsi/XrdSsiStream.hh"
 

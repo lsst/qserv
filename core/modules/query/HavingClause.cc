@@ -34,7 +34,7 @@
 #include <iostream>
 
 // Third-party headers
-#include <boost/make_shared.hpp>
+#include "boost/make_shared.hpp"
 
 // Local headers
 #include "query/BoolTerm.h"

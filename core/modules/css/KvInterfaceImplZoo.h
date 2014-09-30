@@ -37,7 +37,7 @@
 #include <string>
 
 // Third-party headers
-#include <boost/thread/mutex.hpp>
+#include "boost/thread/mutex.hpp"
 #include "zookeeper/zookeeper.h"
 
 // Local headers

@@ -34,7 +34,7 @@
 #include <set>
 
 // Third-party headers
-#include <boost/algorithm/string/predicate.hpp>
+#include "boost/algorithm/string/predicate.hpp"
 
 namespace lsst {
 namespace qserv {

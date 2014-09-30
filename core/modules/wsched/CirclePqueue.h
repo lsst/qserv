@@ -31,7 +31,7 @@
 #include <queue>
 
 // Third-party headers
-#include <boost/scoped_ptr.hpp>
+#include "boost/scoped_ptr.hpp"
 
 namespace lsst {
 namespace qserv {

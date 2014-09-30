@@ -39,7 +39,7 @@
 #include <stdexcept>
 
 // Third-party headers
-#include <boost/lexical_cast.hpp>
+#include "boost/lexical_cast.hpp"
 
 // Local headers
 #include "qproc/ChunkSpec.h"

@@ -35,7 +35,7 @@
 #include <string>
 
 // Third-party headers
-#include <boost/pointer_cast.hpp>
+#include "boost/pointer_cast.hpp"
 
 // Local headers
 #include "css/Facade.h"

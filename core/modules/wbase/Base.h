@@ -30,8 +30,8 @@
 #include <string>
 
 // Third-party headers
-#include <boost/thread.hpp>
-#include <boost/format.hpp>
+#include "boost/thread.hpp"
+#include "boost/format.hpp"
 
 // Forward declarations
 class XrdSysError;

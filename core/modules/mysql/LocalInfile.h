@@ -29,8 +29,8 @@
 #include <string>
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
-#include <boost/utility.hpp>
+#include "boost/shared_ptr.hpp"
+#include "boost/utility.hpp"
 #include <mysql/mysql.h>
 
 namespace lsst {

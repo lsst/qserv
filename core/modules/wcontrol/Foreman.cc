@@ -30,9 +30,9 @@
 #include <iostream>
 
 // Third-party headers
-#include <boost/make_shared.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/thread.hpp>
+#include "boost/make_shared.hpp"
+#include "boost/scoped_ptr.hpp"
+#include "boost/thread.hpp"
 
 // Local headers
 #include "lsst/log/Log.h"

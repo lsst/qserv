@@ -35,8 +35,8 @@
 #include <vector>
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
+#include "boost/shared_ptr.hpp"
+#include "boost/thread.hpp"
 
 // Local headers
 #include "lsst/log/Log.h"

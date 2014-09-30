@@ -37,7 +37,7 @@
 #include <iterator>
 
 // Third-party headers
-#include <boost/make_shared.hpp>
+#include "boost/make_shared.hpp"
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
 // LSST headers

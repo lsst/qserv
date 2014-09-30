@@ -28,7 +28,7 @@
 #include <iostream>
 
 // Third-party headers
-#include <boost/format.hpp>
+#include "boost/format.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"

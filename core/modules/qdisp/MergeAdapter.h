@@ -25,7 +25,7 @@
 #define LSST_QSERV_QDISP_MERGEADAPTER_H
 
 // Third-party
-#include <boost/make_shared.hpp>
+#include "boost/make_shared.hpp"
 
 #include "qdisp/QueryReceiver.h"
 

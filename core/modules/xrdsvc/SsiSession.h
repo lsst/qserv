@@ -24,7 +24,7 @@
 #define LSST_QSERV_XRDSVC_SSISESSION_H
 
 // Third-party headers
-#include <boost/thread.hpp> // boost::mutex
+#include "boost/thread.hpp" // boost::mutex
 #include "XrdSsi/XrdSsiSession.hh"
 #include "XrdSsi/XrdSsiResponder.hh"
 

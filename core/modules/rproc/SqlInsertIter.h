@@ -30,8 +30,8 @@
 #define LSST_QSERV_RPROC_SQLINSERTITER_H
 
 // Third-party headers
-#include <boost/regex.hpp>
-#include <boost/shared_ptr.hpp>
+#include "boost/regex.hpp"
+#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "util/PacketBuffer.h"

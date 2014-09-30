@@ -26,7 +26,7 @@
 #include "ccontrol/SessionManagerAsync.h"
 
 // Third-party headers
-#include <boost/make_shared.hpp>
+#include "boost/make_shared.hpp"
 
 namespace lsst {
 namespace qserv {

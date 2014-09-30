@@ -23,8 +23,8 @@
 #include "xrdsvc/ChannelStream.h"
 
 // Third-party headers
-#include <boost/thread/locks.hpp>
-#include <boost/utility.hpp>
+#include "boost/thread/locks.hpp"
+#include "boost/utility.hpp"
 #include "lsst/log/Log.h"
 
 // Qserv headers

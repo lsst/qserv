@@ -24,7 +24,7 @@
 #include "query/TestFactory.h"
 
 // Third-party headers
-#include <boost/make_shared.hpp>
+#include "boost/make_shared.hpp"
 
 // Local headers
 #include "query/FromList.h"

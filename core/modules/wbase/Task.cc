@@ -31,8 +31,8 @@
 #include "wbase/Task.h"
 
 // Third-party headers
-#include <boost/regex.hpp>
-#include <boost/thread.hpp>
+#include "boost/regex.hpp"
+#include "boost/thread.hpp"
 
 // Local headers
 #include "proto/TaskMsgDigest.h"

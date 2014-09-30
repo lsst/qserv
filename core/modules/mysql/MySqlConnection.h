@@ -28,8 +28,8 @@
 #define LSST_QSERV_MYSQL_MYSQLCONNECTION_H
 
 // Third-party headers
-#include <boost/thread.hpp>
-#include <boost/utility.hpp>
+#include "boost/thread.hpp"
+#include "boost/utility.hpp"
 
 // Local headers
 #include <mysql/mysql.h>

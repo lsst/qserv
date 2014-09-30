@@ -43,8 +43,8 @@
 // Third-party headers
 #include <antlr/CommonAST.hpp>
 #include <antlr/NoViableAltException.hpp>
-#include <boost/bind.hpp>
-#include <boost/make_shared.hpp>
+#include "boost/bind.hpp"
+#include "boost/make_shared.hpp"
 
 // Local headers
 #include "parser/ParseException.h"

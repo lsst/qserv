@@ -42,7 +42,7 @@
 #include <string>
 
 // Third-party headers
-#include <boost/algorithm/string.hpp>
+#include "boost/algorithm/string.hpp"
 
 // Local headers
 #include "css/Facade.h"

@@ -39,8 +39,8 @@
 #include <stdexcept>
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
+#include "boost/shared_ptr.hpp"
+#include "boost/thread.hpp"
 
 // Local headers
 #include "ccontrol/DynamicWorkQueue.h"

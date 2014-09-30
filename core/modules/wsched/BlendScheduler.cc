@@ -36,7 +36,7 @@
 #include <sstream>
 
 // Third-party headers
-#include <boost/thread.hpp>
+#include "boost/thread.hpp"
 
 // Qserv headers
 #include "global/Bug.h"

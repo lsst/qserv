@@ -29,7 +29,7 @@
 #include <memory> // auto_ptr
 
 // Third-party headers
-#include <boost/thread.hpp>
+#include "boost/thread.hpp"
 #include "XrdPosix/XrdPosixCallBack.hh"
 
 // Local headers

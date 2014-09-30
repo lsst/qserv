@@ -35,7 +35,7 @@
 // #include <iostream> // Enable for debugging.
 
 // Third-party headers
-#include <boost/thread.hpp>
+#include "boost/thread.hpp"
 
 
 namespace lsst {

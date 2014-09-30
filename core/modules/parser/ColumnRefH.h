@@ -36,7 +36,7 @@
 #include <list>
 
 // Third-party include
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "parser/parserBase.h" // VoidFourRefFunc

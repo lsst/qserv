@@ -33,8 +33,8 @@
 #include <string>
 
 // Third-party headers
-#include <boost/thread.hpp> // for mutex.
-#include <boost/shared_ptr.hpp>
+#include "boost/thread.hpp" // for mutex.
+#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "rproc/mergeTypes.h"

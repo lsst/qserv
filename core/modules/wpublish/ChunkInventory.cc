@@ -31,7 +31,7 @@
 #include <sstream>
 
 // Third-party headers
-#include <boost/regex.hpp>
+#include "boost/regex.hpp"
 
 // Local headers
 #include "global/constants.h"

@@ -36,8 +36,8 @@
 #include <sstream>
 
 // Third-party headers
-#include <boost/make_shared.hpp>
-#include <boost/thread.hpp>
+#include "boost/make_shared.hpp"
+#include "boost/thread.hpp"
 
 // Local headers
 #include "global/Bug.h"

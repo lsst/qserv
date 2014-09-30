@@ -24,7 +24,7 @@
 #define LSST_QSERV_QUERY_TESTFACTORY_H
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 
 // Forward declarations
 namespace lsst {

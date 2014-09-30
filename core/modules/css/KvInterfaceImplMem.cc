@@ -48,8 +48,8 @@
 #include <string.h> // for memset
 
 // Third-party headers
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/predicate.hpp>
+#include "boost/algorithm/string.hpp"
+#include "boost/algorithm/string/predicate.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"

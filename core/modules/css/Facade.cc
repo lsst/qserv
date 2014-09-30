@@ -37,7 +37,7 @@
 #include <iostream>
 
 // Third-party headers
-#include <boost/lexical_cast.hpp>
+#include "boost/lexical_cast.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"

@@ -29,9 +29,9 @@
 #include <iostream>
 
 // Third-party headers
-#include <boost/signal.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/make_shared.hpp>
+#include "boost/signal.hpp"
+#include "boost/shared_ptr.hpp"
+#include "boost/make_shared.hpp"
 
 // Local headers
 #include "util/WorkQueue.h"

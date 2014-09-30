@@ -34,7 +34,7 @@
 #include <string.h>
 
 // Third party headers
-#include <boost/lexical_cast.hpp>
+#include "boost/lexical_cast.hpp"
 
 namespace lsst {
 namespace qserv {

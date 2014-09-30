@@ -28,7 +28,7 @@
 #include <string.h> // for memcpy
 
 // Third-party headers
-#include <boost/thread.hpp>
+#include "boost/thread.hpp"
 #include <mysql/mysql.h>
 
 // Qserv headers

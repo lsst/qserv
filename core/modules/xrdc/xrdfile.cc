@@ -37,7 +37,7 @@
 //#define QSM_PROFILE_XRD 1
 
 // Boost
-#include <boost/thread/thread.hpp>
+#include "boost/thread/thread.hpp"
 
 #if !FAKE_XRD
 // System headers

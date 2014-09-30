@@ -37,8 +37,8 @@
 #include <string>
 
 // Third-party headers
-#include <boost/thread.hpp> // for mutex.
-#include <boost/shared_ptr.hpp> // for mutex.
+#include "boost/thread.hpp" // for mutex.
+#include "boost/shared_ptr.hpp" // for mutex.
 
 
 namespace lsst {

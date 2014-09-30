@@ -34,7 +34,7 @@
 
 // Third-party headers
 #include <antlr/AST.hpp>
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 
 // Forward declarations
 class SqlSQL2Parser;

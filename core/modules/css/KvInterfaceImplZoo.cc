@@ -46,7 +46,7 @@
 #include <string.h> // for memset
 
 // Third-party headers
-#include <boost/thread.hpp>
+#include "boost/thread.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"

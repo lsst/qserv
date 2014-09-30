@@ -30,7 +30,7 @@
 #include <vector>
 
 // Third-party headers
-#include <boost/thread.hpp> // boost::mutex
+#include "boost/thread.hpp" // boost::mutex
 
 // Local headers
 #include "global/ResourceUnit.h"

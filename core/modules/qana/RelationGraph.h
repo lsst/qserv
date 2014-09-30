@@ -477,8 +477,8 @@
 #include <vector>
 
 // Third-party headers
-#include <boost/math/special_functions/fpclassify.hpp> // for isnan, isinf
-#include <boost/shared_ptr.hpp>
+#include "boost/math/special_functions/fpclassify.hpp" // for isnan, isinf
+#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "ColumnVertexMap.h"

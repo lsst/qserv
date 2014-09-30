@@ -34,7 +34,7 @@
 #include <vector>
 
 // Third-party headers
-#include <boost/utility.hpp>
+#include "boost/utility.hpp"
 #include <mysql/mysql.h>
 
 // Local headers

@@ -36,7 +36,7 @@
 #include <iterator>
 
 // Third-party headers
-#include <boost/make_shared.hpp>
+#include "boost/make_shared.hpp"
 
 // Local headers
 #include "query/QueryTemplate.h"
