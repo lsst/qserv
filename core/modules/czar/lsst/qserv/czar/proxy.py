@@ -36,9 +36,20 @@ import lsst.qserv.czar.db
 import time
 import thread
 
-from lsst.qserv.czar import queryMsgGetCount, queryMsgGetMsg, discardSession
+from lsst.qserv.czar import queryMsgGetCount, queryMsgGetMsg, UserQuery_discard
+
 
 class Lock:
+    """The Lock class manages the table locking mechanism used to
+    allow the mysql-proxy to effectively wait for a query's completion
+    by the czar without blocking. This is achieved by including a
+    table-lock acquired by the czar during query submission. The
+    mysql-proxy is advised of the name of the locked table, and is
+    instructed to query its associated results-hosting mysqld after
+    acquiring a lock on the table. mysql-proxy can service other
+    requests when it is waiting on mysql queries that it knowingly
+    initiates in its C-layer, whereas it treats its Lua plugin code as a
+    single-threaded black-box."""
     createTmpl = "CREATE TABLE IF NOT EXISTS %s (chunkId INT, code SMALLINT, message CHAR(255), timeStamp FLOAT) ENGINE=MEMORY;"
     lockTmpl = "LOCK TABLES %s WRITE;"
     writeTmpl = "INSERT INTO {0} VALUES (%s, %s, %s, %s);"
@@ -68,7 +79,7 @@ class Lock:
         # design the QueryMsg is contained in AsyncQueryMgr, so
         # cannot discard until now.
         if self._sessionId:
-            discardSession(self._sessionId)
+            UserQuery_discard(self._sessionId)
         pass
 
     def unlockAfter(self, threadCreateFunc, function):

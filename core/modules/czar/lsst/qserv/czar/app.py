@@ -77,29 +77,12 @@ from lsst.qserv.czar.db import Db
 # SWIG'd functions
 
 from lsst.qserv.czar import CHUNK_COLUMN, SUB_CHUNK_COLUMN, DUMMY_CHUNK
-# xrdfile - raw xrootd access
-from lsst.qserv.czar import xrdOpen, xrdClose, xrdRead, xrdWrite
-from lsst.qserv.czar import xrdLseekSet, xrdReadStr
-from lsst.qserv.czar import xrdReadToLocalFile, xrdOpenWriteReadSaveClose
-
-from lsst.qserv.czar import charArray_frompointer, charArray
 
 # qdisp
 from lsst.qserv.czar import ChunkSpec
 # ccontrol
 from lsst.qserv.czar import getQueryStateString
 from lsst.qserv.czar import SUCCESS as QueryState_SUCCESS
-
-# Dispatcher (replaced by UserQuery system)
-from lsst.qserv.czar import newSession, discardSession
-from lsst.qserv.czar import setupQuery, getSessionError
-from lsst.qserv.czar import getConstraints, addChunk
-from lsst.qserv.czar import getDominantDb
-from lsst.qserv.czar import getDbStriping
-from lsst.qserv.czar import containsDb
-from lsst.qserv.czar import configureSessionMerger3, submitQuery3
-from lsst.qserv.czar import joinSession
-from lsst.qserv.czar import getQueryStateString, getErrorDesc
 
 # UserQuery
 from lsst.qserv.czar import UserQueryFactory
@@ -221,30 +204,32 @@ class SleepingThread(threading.Thread):
         time.sleep(self.howlong)
 
 ########################################################################
-class QueryHintError(Exception):
+class CzarError(Exception):
+    """Generic error in the czar"""
+    def __init__(self, reason):
+        self.reason = reason
+    def __str__(self):
+        return repr(self.reason)
+
+class AccessError(CzarError):
+    """Missing/unauthorized access"""
+    __init__ = CzarError.__init__
+
+class QueryHintError(CzarError):
     """An error in handling query hints"""
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return repr(self.reason)
-class ConfigError(Exception):
+    __init__ = CzarError.__init__
+
+class ConfigError(CzarError):
     """An error in the configuration"""
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return repr(self.reason)
-class ParseError(Exception):
+    __init__ = CzarError.__init__
+
+class ParseError(CzarError):
     """An error in parsing the query"""
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return repr(self.reason)
-class DataError(Exception):
+    __init__ = CzarError.__init__
+
+class DataError(CzarError):
     """An error with Qserv data. The data underlying qserv is not consistent."""
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return repr(self.reason)
+    __init__ = CzarError.__init__
 
 ########################################################################
 def setupResultScratch():
@@ -268,6 +253,7 @@ def setupResultScratch():
     return scratchPath
 
 class IndexLookup:
+    """Value class for SecondaryIndex queries"""
     def __init__(self, db, table, keyColumn, keyVals):
         self.db = db
         self.table = table
@@ -301,6 +287,37 @@ class SecondaryIndex:
         del db
         return cids
 
+class Context:
+    """Context for InbandQueryAction construction.
+    Hides management of UserQueryFactory object so that it can be
+    shared among InbandQueryActions."""
+
+    _uqFactory = None # Shared UserQueryFactory object
+
+    def __init__(self, conditions):
+        """Construct a context to pass bulk user conditions to InbandQueryAction.
+        Constructs a UserQueryFactory if one is not available.
+
+        @param conditions dict containing query hints and context
+        """
+        if not Context._uqFactory:
+            Context._initFactory()
+
+        self.uqFactory = Context._uqFactory
+        self.conditions = conditions
+
+    @classmethod
+    def destroyShared(cls):
+        """Destroy shared state, e.g., the UserQueryFactory object. Calling
+        this is not generally necessary unless the configuration changes."""
+        cls._uqFactory = None
+
+    @classmethod
+    def _initFactory(cls):
+        """Initialize the UserQueryFactory instance from our configuration"""
+        cfg = lsst.qserv.czar.config.getStringMap()
+        cls._uqFactory = UserQueryFactory(cfg)
+
 ########################################################################
 class InbandQueryAction:
     """InbandQueryAction is an action which represents a user-query
@@ -308,10 +325,10 @@ class InbandQueryAction:
     from HintedQueryAction, but uses different abstractions
     underneath.
     """
-    def __init__(self, query, hints, setSessionId, resultName=""):
+    def __init__(self, query, context, setSessionId, resultName=""):
         """Construct an InbandQueryAction
         @param query SQL query text (SELECT...)
-        @param hints dict containing query hints and context
+        @param context a user context object containing conditions and a user query factory
         @param setSessionId - unary function. a callback so this object can provide
                           a handle (sessionId) for the caller to access query
                           messages.
@@ -332,7 +349,7 @@ class InbandQueryAction:
         self.chunkLimit = 2**32 # something big
         self.isValid = False
 
-        self.hints = hints
+        self.context = context
         self.hintList = [] # C++ parser-extracted hints only.
 
         self._importQconfig()
@@ -340,15 +357,8 @@ class InbandQueryAction:
         self._invokeLock.acquire() # Prevent res-retrieval before invoke
         self._resultName = resultName
         try:
-            try:
-                self._prepareForExec()
-                self.isValid = True
-            except:
-                logger.err("Error initializing query for exec."
-                           + traceback.format_exc())
-                # Create query initialization message.
-                self._reportError(-1,  msgCode.MSG_QUERY_INIT,
-                                   "Initialize Query: " + self.queryStr);
+            self._prepareForExec()
+            self.isValid = True
         except QueryHintError, e:
             self._error = str(e)
         except ParseError, e:
@@ -358,9 +368,14 @@ class InbandQueryAction:
         except:
             self._error = "Unexpected error: " + str(sys.exc_info())
             logger.err(self._error, traceback.format_exc())
+            self._reportError(-1,
+                              msgCode.MSG_QUERY_INIT,
+                              "Initialize Query: " + self.queryStr);
         finally:
             # Pass up the sessionId for query messages access.
-            setSessionId(self.sessionId)
+            # more serious errors won't even have a sessionId
+            if hasattr(self, "sessionId"):
+                setSessionId(self.sessionId)
         pass
 
     def _reportError(self, chunkId, code, message):
@@ -393,46 +408,33 @@ class InbandQueryAction:
         return self._resultName
 
     def getIsValid(self):
+        """@return true if instance is valid and can be executed"""
         return self.isValid
 
     def abort(self):
+        """Abort execution. Not fully implemented"""
         UserQuery_kill(self.sessionId)
 
     def _computeHash(self, bytes):
+        """Compute and return a hash that identifies the contained query"""
         return hashlib.md5(bytes).hexdigest()
 
     def _prepareForExec(self):
         """Prepare data structures and objects for query execution"""
-        self.hints = self.hints.copy() # make a copy
-        self._dbContext = self.hints.get("db", "")
+        self.hints = self.context.conditions.copy() # make a copy
+        dbContext = self.hints.get("db", "")
 
-        cfg = self._prepareCppConfig()
-        self.mode = "new"
-        if self.mode == "old":
-            self.sessionId = newSession(cfg)
-            if self.sessionId == -1:
-                raise ConfigError("Bad config. Couldn't create AsyncQueryManager session")
-            setupQuery(self.sessionId, self.queryStr, self._resultName)
-            errorMsg = getSessionError(self.sessionId)
-            if errorMsg: raise ParseError(errorMsg)
-            self.dominantDb = getDominantDb(self.sessionId)
-            if not containsDb(self.sessionId, self.dominantDb):
-                raise ParseError("Illegal db")
-            self.dbStriping = getDbStriping(self.sessionId)
-            self._applyConstraints()
-            self._prepareMerger()
-        else: ## self.mode == "new"
-            factory = UserQueryFactory(cfg)
-            logger.dbg("Setting sessionId")
-            self.sessionId = factory.newUserQuery(self.queryStr,
-                                                  self._resultName)
-            errorMsg = UserQuery_getError(self.sessionId)
-            if errorMsg: raise ParseError(errorMsg)
-            self.dominantDb = UserQuery_getDominantDb(self.sessionId)
-            if not UserQuery_containsDb(self.sessionId, self.dominantDb):
-                raise ParseError("Illegal db")
-            self.dbStriping = UserQuery_getDbStriping(self.sessionId)
-            self._addChunks()
+        logger.dbg("Setting sessionId")
+        self.sessionId = self.context.uqFactory.newUserQuery(self.queryStr,
+                                                             dbContext,
+                                                             self._resultName)
+        errorMsg = UserQuery_getError(self.sessionId)
+        if errorMsg: raise ParseError(errorMsg)
+        self.dominantDb = UserQuery_getDominantDb(self.sessionId)
+        if not UserQuery_containsDb(self.sessionId, self.dominantDb):
+            raise ParseError("Illegal db")
+        self.dbStriping = UserQuery_getDbStriping(self.sessionId)
+        self._addChunks()
         pass
 
     def _evaluateHints(self, dominantDb, hintList, pmap):
@@ -517,25 +519,9 @@ class InbandQueryAction:
             yield c
         pass
 
-    def _applyConstraints(self):
-        """Extract constraints from parsed query(C++), re-marshall values,
-        call evaluateHints, and add the chunkIds into the query(C++) """
-        # Retrieve constraints as (name, [param1,param2,param3,...])
-        self.constraints = getConstraints(self.sessionId)
-        logger.dbg("Getting constraints", self.constraints, "size=",
-                   self.constraints.size())
-        self._importConstraints(self.constraints)
-        self.pmap = self._makePmap(self.dominantDb, self.dbStriping)
-        self._evaluateHints(self.dominantDb, self.hintList, self.pmap)
-        self._emptyChunks = metadata.getEmptyChunks(self.dominantDb)
-        if not self._emptyChunks:
-            raise DataError("No empty chunks for db")
-
-        for chunkSpec in self._generateChunkSpec(self._intersectIter):
-            addChunk(self.sessionId, chunkSpec)
-        pass
-
     def _computeConstraintsAsHints(self):
+        """Retrieve discovered constraints from the query and
+        evaluate chunk coverage against them."""
         constraints = UserQuery_getConstraints(self.sessionId)
         logger.dbg("Getting constraints", constraints, "size=",
                    constraints.size())
@@ -544,6 +530,8 @@ class InbandQueryAction:
         self._evaluateHints(self.dominantDb, self.hintList, self.pmap)
 
     def _addChunks(self):
+        """Push the covered chunks down to the C++ layer in preparation for
+        execution."""
         self._computeConstraintsAsHints()
         self._emptyChunks = metadata.getEmptyChunks(self.dominantDb)
         if not self._emptyChunks:
@@ -565,33 +553,23 @@ class InbandQueryAction:
 
         lastTime = time.time()
         self._reportError(-1, msgCode.MSG_CHUNK_DISPATCH, "Dispatch Query.")
-        if self.mode == "old":
-            submitQuery3(self.sessionId)
-        else:
-            UserQuery_submit(self.sessionId)
+        UserQuery_submit(self.sessionId)
         elapsed = time.time() - lastTime
         logger.inf("Query dispatch (%s) took %f seconds" % (self.sessionId, elapsed))
         lastTime = time.time()
-        if self.mode == "old":
-            s = joinSession(self.sessionId)
-        else:
-            s = UserQuery_join(self.sessionId)
+        s = UserQuery_join(self.sessionId)
         elapsed = time.time() - lastTime
         logger.inf("Query exec (%s) took %f seconds" % (self.sessionId, elapsed))
 
         if s != QueryState_SUCCESS:
-            if self.mode == "old":
-                self._reportError(-1, -1,
-                                  getErrorDesc(self.sessionId))
-            else:
-                self._reportError(-1, -1,
-                                  UserQuery_getExecDesc(self.sessionId))
+            self._reportError(-1, -1,
+                               UserQuery_getExecDesc(self.sessionId))
         logger.inf("Final state of all queries", getQueryStateString(s))
         # session should really be discarded here unconditionally,
         # but in the current design it is used in proxy.py, so it is
         # (temporarily) discarded there.
         if (not self.isValid) and self.sessionId:
-            discardSession(self.sessionId)
+            UserQuery_discard(self.sessionId)
 
     def _importQconfig(self):
         """Import config file settings into self"""
@@ -608,18 +586,6 @@ class InbandQueryAction:
         # memory on the czar. (no control over worker)
         self._useMemory = cModule.config.get("tuning", "memoryEngine")
         return True
-
-    def _prepareCppConfig(self):
-        """Construct a C++ stringmap for passing settings and context
-        to the C++ layer.
-        @return the C++ StringMap object """
-        cfg = lsst.qserv.czar.config.getStringMap()
-        cfg["frontend.scratchPath"] = setupResultScratch()
-        cfg["table.defaultdb"] = self._dbContext
-        cfg["query.hints"] = ";".join(
-            map(lambda (k,v): k + "," + str(v), self.hints.items()))
-        cfg["table.result"] = self._resultName
-        return cfg
 
     def _computeIndexRegions(self, hintList):
         """Compute spatial region coverage based on hints.
@@ -652,22 +618,10 @@ class InbandQueryAction:
             return []
         pass
 
-    def _prepareMerger(self):
-        """Prepare session merger to handle incoming results."""
-        c = lsst.qserv.czar.config.config
-        dbSock = c.get("resultdb", "unix_socket")
-        dbUser = c.get("resultdb", "user")
-        dbName = c.get("resultdb", "db")
-        dropMem = c.get("resultdb","dropMem")
-
-        mysqlBin = c.get("mysql", "mysqlclient")
-        if not mysqlBin:
-            mysqlBin = "mysql"
-        configureSessionMerger3(self.sessionId)
-        pass
-
-
     pass # class InbandQueryAction
+
+### Other Action classes for invocation from appInterface and others
+### (unimplemented)
 
 class KillQueryAction:
     def __init__(self, query):

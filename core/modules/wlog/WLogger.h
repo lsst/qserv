@@ -50,6 +50,7 @@ public:
     public:
         virtual ~Printer() {}
         virtual Printer& operator()(char const* s) = 0;
+        static boost::shared_ptr<Printer> newCout();
     };
     typedef boost::shared_ptr<WLogger> Ptr;
 

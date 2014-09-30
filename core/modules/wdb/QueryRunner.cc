@@ -286,7 +286,7 @@ QueryRunner::_getErrorString() const {
   }
 */
 bool
-QueryRunner::_runTask(wcontrol::Task::Ptr t) {
+QueryRunner::_runTask(wbase::Task::Ptr t) {
     mysql::MySqlConfig sc(wconfig::getConfig().getSqlConfig());
     sc.username = _user.c_str(); // Override with czar-passed username.
     sql::SqlConnection _sqlConn(sc, true);
@@ -310,7 +310,7 @@ QueryRunner::_runTask(wcontrol::Task::Ptr t) {
     std::string defaultDb = "test";
     if(m.has_db()) { defaultDb = m.db(); }
     for(int i=0; i < m.fragment_size(); ++i) {
-        wcontrol::Task::Fragment const& f(m.fragment(i));
+        wbase::Task::Fragment const& f(m.fragment(i));
 
         if(f.has_resulttable()) { resultTable = f.resulttable(); }
         assert(!resultTable.empty());

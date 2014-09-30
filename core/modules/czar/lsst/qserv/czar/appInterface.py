@@ -86,11 +86,6 @@ class AppInterface:
     def submitQuery(self, query, conditions):
         return self.submitQueryWithLock(query, conditions)
 
-    def submitQueryPlain(self, query, conditions):
-        """Simplified mysqlproxy version.  returns table name.
-        (broken)"""
-        raise StandardError("Unimplemented")
-
     def submitQueryWithLock(self, query, conditions):
         """Simplified mysqlproxy version.
         @returns result table name, lock/message table name, but before completion."""
@@ -113,7 +108,8 @@ class AppInterface:
         if not lock.lock():
             return ("error", "error",
                     "error locking result, check qserv/db config.")
-        a = app.InbandQueryAction(query, conditions,
+        context = app.Context(conditions)
+        a = app.InbandQueryAction(query, context,
                                   lock.setSessionId, resultName)
         if a.getIsValid():
             self._callWithThread(a.invoke)
@@ -148,6 +144,10 @@ class AppInterface:
         self._callWithThread(a.invoke)
         return "Attempt: " + query
 
+    ### Deprecated/unused: the Lua interface is single-threaded and doesn't
+    ### tolerate blocking well, so we never want it to wait for a query to
+    ### complete in this manner. We still want to support this (or
+    ### equivalent) in the non proxy interface.
     def joinQuery(self, taskId):
         """Wait for a query to finish, then return its results."""
         if str(taskId) not in self.actions:

@@ -54,39 +54,39 @@ FifoScheduler::FifoScheduler(int maxRunning)
 }
 
 void
-FifoScheduler::queueTaskAct(wcontrol::Task::Ptr incoming) {
+FifoScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     _queue.push_back(incoming);
 }
 
-wcontrol::TaskQueuePtr
-FifoScheduler::nopAct(wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+FifoScheduler::nopAct(wbase::TaskQueuePtr running) {
     // For now, do nothing when there is no event.
 
     // Perhaps better: Check to see how many are running, and schedule
     // a task if the number of running jobs is below a threshold.
-    return wcontrol::TaskQueuePtr();
+    return wbase::TaskQueuePtr();
 }
 
-wcontrol::TaskQueuePtr
-FifoScheduler::newTaskAct(wcontrol::Task::Ptr incoming,
-                          wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+FifoScheduler::newTaskAct(wbase::Task::Ptr incoming,
+                          wbase::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
     assert(running.get());
     assert(incoming.get());
 
     _queue.push_back(incoming);
-    if(running->size() < _maxRunning) {
+    if(running->size() < static_cast<unsigned>(_maxRunning)) {
         return _fetchTask();
     }
-    return wcontrol::TaskQueuePtr();
+    return wbase::TaskQueuePtr();
 }
 
-wcontrol::TaskQueuePtr
-FifoScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
-                             wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+FifoScheduler::taskFinishAct(wbase::Task::Ptr finished,
+                             wbase::TaskQueuePtr running) {
     boost::lock_guard<boost::mutex> guard(_mutex);
-    wcontrol::TaskQueuePtr tq;
+    wbase::TaskQueuePtr tq;
     assert(running.get());
     assert(finished.get());
 
@@ -98,14 +98,14 @@ FifoScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
 
 /// Fetch a task from the queue
 /// precondition: Caller must have _mutex locked.
-wcontrol::TaskQueuePtr
+wbase::TaskQueuePtr
 FifoScheduler::_fetchTask() {
-    wcontrol::TaskQueuePtr tq;
+    wbase::TaskQueuePtr tq;
     if(!_queue.empty()) {
-        wcontrol::Task::Ptr t = _queue.front();
+        wbase::Task::Ptr t = _queue.front();
         _queue.pop_front();
         assert(t); // Memory corruption if t is null.
-        tq.reset(new wcontrol::TaskQueue());
+        tq.reset(new wbase::TaskQueue());
         tq->push_back(t);
     }
     return tq;

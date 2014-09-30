@@ -20,18 +20,16 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-// class Executive is in charge of "executing" user query fragments on
-// a qserv cluster.
-
 #ifndef LSST_QSERV_QDISP_EXECSTATUS_H
 #define LSST_QSERV_QDISP_EXECSTATUS_H
 
 // System headers
 #include <string>
 #include <time.h>
-
+#include <fstream>
 // Third-party headers
 #include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
 
 // Local headers
 #include "global/ResourceUnit.h"
@@ -48,7 +46,7 @@ namespace qdisp {
 class ExecStatus {
 public:
     typedef boost::shared_ptr<ExecStatus> Ptr;
-    ExecStatus(ResourceUnit const& r) : resourceUnit(r) {}
+    ExecStatus(ResourceUnit const& r) : _info(r) {}
 
     // TODO: these shouldn't be exposed, and so shouldn't be user-level error
     // codes, but maybe we can be clever and avoid an ugly remap/translation
@@ -64,27 +62,48 @@ public:
                  RESULT_ERROR,
                  MERGE_OK, // ???
                  MERGE_ERROR, COMPLETE=2000};
-
-    inline void report(State s, int code=0, std::string const& desc=_empty) {
-        stateTime = ::time(NULL);
-        state = s;
-        stateCode = code;
-        stateDesc = desc;
+    /// Report a state transition. Past state history is not currently saved.
+    void report(State s, int code=0, std::string const& desc=_empty) {
+        boost::lock_guard<boost::mutex> lock(_mutex);
+#if 0
+        std::ofstream of("/tmp/deleteme_qs_rpt", std::ofstream::app);
+        of << "Reporting " << (void*)this
+           << " state " << stateText(s) << std::endl;
+#endif
+        _info.stateTime = ::time(NULL);
+        _info.state = s;
+      _info.stateCode = code;
+      _info.stateDesc = desc;
     }
 
     static char const* stateText(State s);
+    struct Info {
+        Info(ResourceUnit const& resourceUnit_);
+        ResourceUnit const resourceUnit; ///< Reference id for status
+        // More detailed debugging may store a vector of states, appending
+        // with each invocation of report().
+        State state; ///< Actual state
+        time_t stateTime; ///< Last modified timestamp
+        int stateCode; ///< Code associated with state (e.g. xrd error code)
+        std::string stateDesc; ///< Textual description
+    };
+    ResourceUnit const& getResourceUnit() const { return _info.resourceUnit; }
 
-    ResourceUnit resourceUnit;
-    // More detailed debugging may store a vector of states, appending
-    // with each invocation of report().
-    State state;
-    time_t stateTime;
-    int stateCode;
-    std::string stateDesc;
+    Info getInfo() const {
+        boost::lock_guard<boost::mutex> lock(_mutex);
+        return _info;
+    }
+
 private:
-    static std::string _empty;
+    friend std::ostream& operator<<(std::ostream& os, ExecStatus const& es);
+    Info _info;
+
+private:
+    mutable boost::mutex _mutex; ///< Mutex to guard concurrent updates
+    static std::string const _empty;
 };
 std::ostream& operator<<(std::ostream& os, ExecStatus const& es);
+std::ostream& operator<<(std::ostream& os, ExecStatus::Info const& inf);
 
 }}} // namespace lsst::qserv::qdisp
 

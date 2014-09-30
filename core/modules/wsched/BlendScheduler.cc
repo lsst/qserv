@@ -38,7 +38,8 @@
 // Third-party headers
 #include <boost/thread.hpp>
 
-// Local headers
+// Qserv headers
+#include "global/Bug.h"
 #include "proto/worker.pb.h"
 #include "wcontrol/Foreman.h"
 #include "wlog/WLogger.h"
@@ -53,7 +54,7 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-BlendScheduler* dbgBlendScheduler=0; //< A symbol for gdb
+BlendScheduler* dbgBlendScheduler=0; ///< A symbol for gdb
 
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler
@@ -66,14 +67,14 @@ BlendScheduler::BlendScheduler(boost::shared_ptr<wlog::WLogger> logger,
       _logger(logger)
 {
     dbgBlendScheduler = this;
-    if(!group || !scan) { throw std::invalid_argument("missing scheduler"); }
+    if(!group || !scan) { throw Bug("BlendScheduler: missing scheduler"); }
 }
 
 void
-BlendScheduler::queueTaskAct(wcontrol::Task::Ptr incoming) {
+BlendScheduler::queueTaskAct(wbase::Task::Ptr incoming) {
     // Check for scan tables
     if(!incoming || !incoming->msg) {
-        throw std::invalid_argument("null task");
+        throw Bug("BlendScheduler::queueTaskAct: null task");
     }
     assert(_group);
     assert(_scan);
@@ -97,36 +98,36 @@ BlendScheduler::queueTaskAct(wcontrol::Task::Ptr incoming) {
     s->queueTaskAct(incoming);
 }
 
-wcontrol::TaskQueuePtr
-BlendScheduler::nopAct(wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+BlendScheduler::nopAct(wbase::TaskQueuePtr running) {
     // For now, do nothing when there is no event.
 
     // Perhaps better: Check to see how many are running, and schedule
     // a task if the number of running jobs is below a threshold.
-    return wcontrol::TaskQueuePtr();
+    return wbase::TaskQueuePtr();
 }
 
 /// @return a queue of all tasks ready to run.
 ///
-wcontrol::TaskQueuePtr
-BlendScheduler::newTaskAct(wcontrol::Task::Ptr incoming,
-                           wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+BlendScheduler::newTaskAct(wbase::Task::Ptr incoming,
+                           wbase::TaskQueuePtr running) {
     queueTaskAct(incoming);
     assert(_integrityHelper());
     assert(running.get());
     return _getNextIfAvail(running);
 }
 
-wcontrol::TaskQueuePtr
-BlendScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
-                              wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+BlendScheduler::taskFinishAct(wbase::Task::Ptr finished,
+                              wbase::TaskQueuePtr running) {
     assert(_integrityHelper());
     wcontrol::Foreman::Scheduler* s = 0;
     {
         boost::lock_guard<boost::mutex> guard(_mapMutex);
         Map::iterator i = _map.find(finished.get());
         if(i == _map.end()) {
-            throw std::logic_error("Finished untracked task");
+            throw Bug("BlendScheduler::taskFinishAct: Finished untracked task");
         }
         s = i->second;
         _map.erase(i);
@@ -135,7 +136,7 @@ BlendScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
     os << "Completed: " << "(" << finished->msg->chunkid()
        << ")" << finished->msg->fragment(0).query(0);
     _logger->debug(os.str());
-    wcontrol::TaskQueuePtr t = s->taskFinishAct(finished, running);
+    wbase::TaskQueuePtr t = s->taskFinishAct(finished, running);
     if(!t) { // Try other scheduler.
         _logger->debug("Blend trying other sched.");
         return other<wcontrol::Foreman::Scheduler>(s, _group.get(),
@@ -145,7 +146,7 @@ BlendScheduler::taskFinishAct(wcontrol::Task::Ptr finished,
 }
 
 void
-BlendScheduler::markStarted(wcontrol::Task::Ptr t) {
+BlendScheduler::markStarted(wbase::Task::Ptr t) {
     wcontrol::Foreman::Scheduler* s = lookup(t);
     if(s == _group.get()) {
         _group->markStarted(t);
@@ -155,7 +156,7 @@ BlendScheduler::markStarted(wcontrol::Task::Ptr t) {
 }
 
 void
-BlendScheduler::markFinished(wcontrol::Task::Ptr t) {
+BlendScheduler::markFinished(wbase::Task::Ptr t) {
     wcontrol::Foreman::Scheduler* s = lookup(t);
     if(s == _group.get()) {
         _group->markFinished(t);
@@ -173,7 +174,7 @@ BlendScheduler::checkIntegrity() {
 
 /// @return ptr to scheduler that is tracking p
 wcontrol::Foreman::Scheduler*
-BlendScheduler::lookup(wcontrol::Task::Ptr p) {
+BlendScheduler::lookup(wbase::Task::Ptr p) {
     boost::lock_guard<boost::mutex> guard(_mapMutex);
     Map::iterator i = _map.find(p.get());
     return i->second;
@@ -201,11 +202,11 @@ BlendScheduler::_integrityHelper() const {
 
 /// Precondition: _mutex is already locked.
 /// @return new tasks to run
-wcontrol::TaskQueuePtr
-BlendScheduler::_getNextIfAvail(wcontrol::TaskQueuePtr running) {
+wbase::TaskQueuePtr
+BlendScheduler::_getNextIfAvail(wbase::TaskQueuePtr running) {
     // Get from interactive queue first
-    wcontrol::TaskQueuePtr tg = _group->nopAct(running);
-    wcontrol::TaskQueuePtr ts = _scan->nopAct(running);
+    wbase::TaskQueuePtr tg = _group->nopAct(running);
+    wbase::TaskQueuePtr ts = _scan->nopAct(running);
     // Merge
     if(tg) {
         if(ts) { tg->insert(tg->end(), ts->begin(), ts->end()); }

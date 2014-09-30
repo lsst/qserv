@@ -40,6 +40,7 @@
 
 // Third-party headers
 #include <boost/algorithm/string/predicate.hpp> // string iequal
+#include <boost/make_shared.hpp>
 
 // Local headers
 #include "query/FromList.h"
@@ -172,6 +173,12 @@ SelectStmt::copySyntax() const {
     copySyntaxIf(newS->_having, _having);
     // For the other fields, default-copied versions are okay.
     return newS;
+}
+
+void SelectStmt::setFromListAsTable(std::string const& t) {
+    TableRefListPtr tr(new TableRefList);
+    tr->push_back(boost::make_shared<TableRef>("", t, ""));
+    _fromList.reset(new FromList(tr));
 }
 
 ////////////////////////////////////////////////////////////////////////

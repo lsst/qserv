@@ -54,6 +54,8 @@ class QuerySession;
 namespace rproc {
 class TableMerger;
 class TableMergerConfig;
+class InfileMerger;
+class InfileMergerConfig;
 }}}
 
 namespace lsst {
@@ -119,14 +121,19 @@ private:
     explicit UserQuery(boost::shared_ptr<qproc::QuerySession> qs);
     void setSessionId(int session) { _sessionId = session; }
     void _setupMerger();
+    void _discardMerger();
 
+    // Delegate classes
     boost::shared_ptr<qdisp::Executive> _executive;
     boost::shared_ptr<qdisp::MessageStore> _messageStore;
     boost::shared_ptr<qproc::QuerySession> _qSession;
-    boost::shared_ptr<rproc::TableMergerConfig> _mergerConfig;
-    boost::shared_ptr<rproc::TableMerger> _merger;
-    int _sessionId;
-    int _sequence;
+    boost::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
+    boost::shared_ptr<rproc::InfileMerger> _infileMerger;
+
+    int _sessionId; ///< External reference number
+    int _sequence; ///< Sequence number for subtask ids
+    std::string _errorExtra; ///< Additional error information
+    mutable std::string _errorExtraCache; ///< Cache so getError can return a ref
 };
 
 }}} // namespace lsst::qserv:ccontrol

@@ -416,9 +416,12 @@ bool TableMerger::_createTableIfNotExists(TableMerger::CreateStmt& cs) {
         if(!isOk) {
             --_tableCount; // We failed merging the table.
             return false;
+        } else {
+            return true;
         }
     }
-    return true;
+    // Don't know how to handle things otherwise.
+    return false;
 }
 
 void TableMerger::_fixupTargetName() {

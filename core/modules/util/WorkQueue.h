@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2013 LSST Corporation.
+ * Copyright 2009-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,13 +20,6 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-//  class WorkQueue -- A class that implements a fixed-size
-//  thread-pool for performing tasks.  No pre-emption, so if all
-//  threads are blocked, the queue will stall.
-//
-//  Used to do lightweight concurrent things without thread
-//  creation/destruction overhead.
-//
 #ifndef LSST_QSERV_UTIL_WORKQUEUE_H
 #define LSST_QSERV_UTIL_WORKQUEUE_H
 
@@ -37,11 +30,19 @@
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 
-
 namespace lsst {
 namespace qserv {
 namespace util {
 
+///  class WorkQueue -- A class that implements a fixed-size
+///  thread-pool for performing tasks.  No pre-emption, so if all
+///  threads are blocked, the queue will stall.
+///
+///  Used to do lightweight concurrent things without thread
+///  creation/destruction overhead. No API for blocking until all work is
+///  complete: callers should have external means of knowing when their actions
+///  are complete (i.e., the work they submit performs callbacks upon
+///  completion).
 class WorkQueue {
 public:
     class Callable {

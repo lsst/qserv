@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -57,36 +57,36 @@ public:
                    boost::shared_ptr<ScanScheduler> scan);
     virtual ~BlendScheduler() {}
 
-    virtual void queueTaskAct(wcontrol::Task::Ptr incoming);
-    virtual wcontrol::TaskQueuePtr nopAct(wcontrol::TaskQueuePtr running);
-    virtual wcontrol::TaskQueuePtr newTaskAct(wcontrol::Task::Ptr incoming,
-                                              wcontrol::TaskQueuePtr running);
-    virtual wcontrol::TaskQueuePtr taskFinishAct(wcontrol::Task::Ptr finished,
-                                                 wcontrol::TaskQueuePtr running);
+    virtual void queueTaskAct(wbase::Task::Ptr incoming);
+    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running);
+    virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
+                                              wbase::TaskQueuePtr running);
+    virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
+                                                 wbase::TaskQueuePtr running);
 
     // TaskWatcher interface
-    virtual void markStarted(wcontrol::Task::Ptr t);
-    virtual void markFinished(wcontrol::Task::Ptr t);
+    virtual void markStarted(wbase::Task::Ptr t);
+    virtual void markFinished(wbase::Task::Ptr t);
 
     static std::string getName()  { return std::string("BlendSched"); }
     bool checkIntegrity();
 
-    wcontrol::Foreman::Scheduler* lookup(wcontrol::Task::Ptr p);
+    wcontrol ::Foreman::Scheduler* lookup(wbase::Task::Ptr p);
 private:
-    wcontrol::TaskQueuePtr _getNextIfAvail(wcontrol::TaskQueuePtr running);
+    wbase::TaskQueuePtr _getNextIfAvail(wbase::TaskQueuePtr running);
     bool _integrityHelper() const;
-    wcontrol::Foreman::Scheduler* _lookup(wcontrol::Task::Ptr p);
+    wcontrol::Foreman::Scheduler* _lookup(wbase::Task::Ptr p);
 
     boost::shared_ptr<GroupScheduler> _group;
     boost::shared_ptr<ScanScheduler> _scan;
     boost::shared_ptr<wlog::WLogger> _logger;
-    typedef std::map<wcontrol::Task*, wcontrol::Foreman::Scheduler*> Map;
+    typedef std::map<wbase::Task*, wcontrol::Foreman::Scheduler*> Map;
     Map _map;
     boost::mutex _mapMutex;
 };
 
 }}} // namespace lsst::qserv::wsched
 
-extern lsst::qserv::wsched::BlendScheduler* dbgBlendScheduler; //< A symbol for gdb
+extern lsst::qserv::wsched::BlendScheduler* dbgBlendScheduler; ///< A symbol for gdb
 
 #endif // LSST_QSERV_WSCHED_BLENDSCHEDULER_H

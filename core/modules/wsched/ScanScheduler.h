@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
+ * Copyright 2013-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -53,33 +53,33 @@ public:
     virtual ~ScanScheduler() {}
 
     virtual bool removeByHash(std::string const& hash);
-    virtual void queueTaskAct(wcontrol::Task::Ptr incoming);
-    virtual wcontrol::TaskQueuePtr nopAct(wcontrol::TaskQueuePtr running);
-    virtual wcontrol::TaskQueuePtr newTaskAct(wcontrol::Task::Ptr incoming,
-                                              wcontrol::TaskQueuePtr running);
-    virtual wcontrol::TaskQueuePtr taskFinishAct(wcontrol::Task::Ptr finished,
-                                                 wcontrol::TaskQueuePtr running);
+    virtual void queueTaskAct(wbase::Task::Ptr incoming);
+    virtual wbase::TaskQueuePtr nopAct(wbase::TaskQueuePtr running);
+    virtual wbase::TaskQueuePtr newTaskAct(wbase::Task::Ptr incoming,
+                                           wbase::TaskQueuePtr running);
+    virtual wbase::TaskQueuePtr taskFinishAct(wbase::Task::Ptr finished,
+                                              wbase::TaskQueuePtr running);
     // TaskWatcher interface
-    virtual void markStarted(wcontrol::Task::Ptr t);
-    virtual void markFinished(wcontrol::Task::Ptr t);
+    virtual void markStarted(wbase::Task::Ptr t);
+    virtual void markFinished(wbase::Task::Ptr t);
 
     static std::string getName()  { return std::string("ScanSched"); }
     bool checkIntegrity();
 private:
-    wcontrol::TaskQueuePtr _getNextTasks(int max);
-    void _enqueueTask(wcontrol::Task::Ptr incoming);
+    wbase::TaskQueuePtr _getNextTasks(int max);
+    void _enqueueTask(wbase::Task::Ptr incoming);
     bool _integrityHelper();
 
+    int _maxRunning;
     ChunkDiskList _disks;
     boost::shared_ptr<wlog::WLogger> _logger;
     boost::mutex _mutex;
-    int _maxRunning;
 };
 
 }}} // namespace lsst::qserv::wsched
 
-extern lsst::qserv::wsched::ScanScheduler* dbgScanScheduler; //< A symbol for gdb
-extern lsst::qserv::wsched::ChunkDisk* dbgChunkDisk1; //< A symbol for gdb
+extern lsst::qserv::wsched::ScanScheduler* dbgScanScheduler; ///< A symbol for gdb
+extern lsst::qserv::wsched::ChunkDisk* dbgChunkDisk1; ///< A symbol for gdb
 
 #endif // LSST_QSERV_WSCHED_SCANSCHEDULER_H
 

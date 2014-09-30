@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2011-2013 LSST Corporation.
+ * Copyright 2011-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -97,19 +97,12 @@ struct ProtocolFixture {
         return nonFragEq && fEqual && sTablesEq;
     }
 
-    lsst::qserv::proto::ResultHeader* makeResultHeader() {
-        lsst::qserv::proto::ResultHeader* r(new lsst::qserv::proto::ResultHeader());
-        r->set_session(256+counter);
-        for(int i=0; i < 4; ++i) {
-            lsst::qserv::proto::ResultHeader::Result* res = r->add_result();
-            std::stringstream hash;
-            while(hash.tellp() < 16) { hash << counter; }
-            res->set_hash(hash.str().substr(0,16));
-            res->set_resultsize(65536+counter);
-            res->set_chunkid(100+i+counter);
-        }
-        ++counter;
-        return r;
+    lsst::qserv::proto::ProtoHeader* makeProtoHeader() {
+        lsst::qserv::proto::ProtoHeader* p(new lsst::qserv::proto::ProtoHeader());
+        p->set_protocol(2);
+        p->set_size(500);
+        p->set_md5(std::string("1234567890abcdef0"));
+        return p;
     }
 
     bool compareSubchunk(lsst::qserv::proto::TaskMsg_Subchunk const& s1,
@@ -143,24 +136,12 @@ struct ProtocolFixture {
         return qEqual && sEqual;
     }
 
-    bool compareResultHeaders(lsst::qserv::proto::ResultHeader const& r1,
-                              lsst::qserv::proto::ResultHeader const& r2) {
-        bool same = r1.session() == r2.session();
-        same = same && (r1.result_size() == r2.result_size());
-        for(int i=0; i < r1.result_size(); ++i) {
-            same = same && compareResults(r1.result(i),
-                                         r2.result(i));
-        }
-        return same;
+    bool compareProtoHeaders(lsst::qserv::proto::ProtoHeader const& p1,
+                              lsst::qserv::proto::ProtoHeader const& p2) {
+        return ((p1.protocol() == p2.protocol())
+                && (p1.size() == p2.size())
+                && (p1.md5() == p2.md5()));
     }
-
-    bool compareResults(lsst::qserv::proto::ResultHeader_Result const& r1,
-                        lsst::qserv::proto::ResultHeader_Result const& r2) {
-        return (r1.hash() == r2.hash())
-            && (r1.resultsize() == r2.resultsize())
-            && (r1.chunkid() == r2.chunkid());
-    }
-
 
     int counter;
 };
@@ -184,21 +165,21 @@ BOOST_AUTO_TEST_CASE(TaskMsgMsgSanity) {
 
 BOOST_AUTO_TEST_CASE(ResultMsgSanity) {
     std::stringstream ss;
-    boost::scoped_ptr<lsst::qserv::proto::ResultHeader> r1(makeResultHeader());
+    boost::scoped_ptr<lsst::qserv::proto::ProtoHeader> r1(makeProtoHeader());
     BOOST_CHECK(r1.get());
     r1->SerializeToOstream(&ss);
 
     std::string blah = ss.str();
     std::stringstream ss2(blah);
-    boost::scoped_ptr<lsst::qserv::proto::ResultHeader> r2(new lsst::qserv::proto::ResultHeader());
+    boost::scoped_ptr<lsst::qserv::proto::ProtoHeader> r2(new lsst::qserv::proto::ProtoHeader());
     BOOST_CHECK(r1.get());
     r2->ParseFromIstream(&ss2);
-    BOOST_CHECK(compareResultHeaders(*r1, *r2));
+    BOOST_CHECK(compareProtoHeaders(*r1, *r2));
 }
 
 BOOST_AUTO_TEST_CASE(MsgBuffer) {
     std::stringstream ss;
-    boost::scoped_ptr<lsst::qserv::proto::ResultHeader> r1(makeResultHeader());
+    boost::scoped_ptr<lsst::qserv::proto::ProtoHeader> r1(makeProtoHeader());
     BOOST_CHECK(r1.get());
     r1->SerializeToOstream(&ss);
 
@@ -206,10 +187,10 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
     gio::ArrayInputStream input(raw.data(),
                                 raw.size());
     gio::CodedInputStream coded(&input);
-    boost::scoped_ptr<lsst::qserv::proto::ResultHeader> r2(new lsst::qserv::proto::ResultHeader());
+    boost::scoped_ptr<lsst::qserv::proto::ProtoHeader> r2(new lsst::qserv::proto::ProtoHeader());
     BOOST_CHECK(r1.get());
     r2->MergePartialFromCodedStream(&coded);
-    BOOST_CHECK(compareResultHeaders(*r1, *r2));
+    BOOST_CHECK(compareProtoHeaders(*r1, *r2));
 }
 
 BOOST_AUTO_TEST_CASE(ProtoHashDigest) {

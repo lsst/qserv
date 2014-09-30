@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+# Copyright 2009-2014 LSST Corporation.
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -24,8 +24,8 @@
 #
 # This package is meant to abstract database interaction so that
 # efforts to port qserv to other database implementations can be
-# localized here. 
-# 
+# localized here.
+#
 # Non-functioning task-tracking db operations reside here as well.
 
 import sys
@@ -101,13 +101,13 @@ class Db:
                 break # Success: break out of the loop
             except _mysql_exceptions.OperationalError, e:
                 failures += 1
-                if failures > 5: # MAGIC 5 
+                if failures > 5: # MAGIC 5
                     logger.wrn("Too many SQL failures, not retrying.")
                     self._conn = None
                     return None
                 logger.err("operational error, retrying", e)
             pass # Try again
-        return c.fetchall()    
+        return c.fetchall()
 
     def makeIfNotExist(self, db=None, table=None):
         """
@@ -146,8 +146,8 @@ class TaskDb:
         c.execute("CREATE TABLE tasks (id int, queryText text);")
         # We aren't in charge of the partition map anymore.
         # c.execute("CREATE TABLE partmap (%s);" % (", ".join([
-        #                 "chunkId int", "subchunkId int", 
-        #                 "ramin float", "ramax float", 
+        #                 "chunkId int", "subchunkId int",
+        #                 "ramin float", "ramax float",
         #                 "declmin float", "declmax float"])))
         # self._populatePartFake()
         c.close()
@@ -163,14 +163,14 @@ class TaskDb:
         # +----+-----+    center at 0,0
         # | 3  |  4  |
         # +----+-----+
-        # 
+        #
         # ^
         # |
         # |ra+
         #
         # decl+
         # -------->
-        
+
         # chunkId, subchunkId, ramin, ramax, declmin, declmax
         fakeInfin = 100.0
         fakeRows = [(1, 0, 0.0, fakeInfin, -fakeInfin, 0.0),
@@ -182,7 +182,7 @@ class TaskDb:
         for cTuple in fakeRows:
             c.execute(sqlstr, cTuple)
         c.close()
-    
+
     def nextId(self):
         assert self._db.check()
         c = self._db.getCursor()
@@ -192,7 +192,7 @@ class TaskDb:
             return 1
         else:
             return 1 + maxId
-        
+
     def addTask(self, taskparam):
         """
         taskparam should be a tuple of (id, query)

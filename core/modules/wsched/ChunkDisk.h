@@ -41,7 +41,7 @@
 // Local headers
 #include "proto/worker.pb.h"
 #include "wsched/ChunkState.h"
-#include "wcontrol/Task.h"
+#include "wbase/Task.h"
 
 
 // Forward declarations
@@ -58,8 +58,8 @@ namespace wsched {
 
 class ChunkDisk {
 public:
-    typedef boost::shared_ptr<wcontrol::Task> TaskPtr;
-    typedef std::set<wcontrol::Task const*> TaskSet;
+    typedef boost::shared_ptr<wbase::Task> TaskPtr;
+    typedef std::set<wbase::Task const*> TaskSet;
 
     ChunkDisk(boost::shared_ptr<wlog::WLogger> logger)
         : _chunkState(2), _logger(logger) {}
@@ -92,7 +92,7 @@ private:
         typedef TaskPtr value_type;
         // pqueue takes "less" and provides a maxheap.
         // We want minheap, so provide "more"
-        typedef wcontrol::Task::ChunkIdGreater compare;
+        typedef wbase::Task::ChunkIdGreater compare;
 
         typedef std::vector<value_type> Container;
         Container& impl() { return _c; }

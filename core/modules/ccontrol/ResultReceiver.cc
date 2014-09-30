@@ -28,7 +28,11 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "global/debugUtil.h"
+#include "global/MsgReceiver.h"
 #include "log/Logger.h"
+#include "log/msgCode.h"
+#include "rproc/InfileMerger.h"
 #include "rproc/TableMerger.h"
 
 namespace lsst {
@@ -39,16 +43,20 @@ namespace ccontrol {
 // max_allowed_packet on mysqld/mysqlclient
 int const ResultReceiver_bufferSize = 2*1024*1024; // 2 megabytes.
 
-ResultReceiver::ResultReceiver(boost::shared_ptr<rproc::TableMerger> merger,
+////////////////////////////////////////////////////////////////////////
+// ResultReceiver public
+////////////////////////////////////////////////////////////////////////
+ResultReceiver::ResultReceiver(boost::shared_ptr<MsgReceiver> msgReceiver,
+                               boost::shared_ptr<rproc::InfileMerger> merger,
                                std::string const& tableName)
-    : _merger(merger), _tableName(tableName),
+    : _msgReceiver(msgReceiver),
+      _infileMerger(merger), _tableName(tableName),
       _actualSize(ResultReceiver_bufferSize),
       _actualBuffer(_actualSize),
       _flushed(false), _dirty(false) {
     // Consider allocating buffer lazily, at first invocation of buffer()
     _buffer = &_actualBuffer[0];
     _bufferSize = _actualSize;
-
 }
 
 int ResultReceiver::bufferSize() const {
@@ -65,11 +73,15 @@ bool ResultReceiver::flush(int bLen, bool last) {
     LOGGER_INF << "Receiver flushing " << bLen << " bytes "
                << (last ? " (last)" : " (more)")
                << " to table=" << _tableName << std::endl;
+    LOGGER_INF << makeByteStreamAnnotated("ResultReceiver flushbytes",
+                                          _buffer, bLen) << std::endl;
+
     assert(!_tableName.empty());
     bool mergeOk = false;
     if(bLen == 0) {
         // just end it.
     } else if(bLen > 0) {
+        assert(_infileMerger);
         mergeOk = _appendAndMergeBuffer(bLen);
         if(mergeOk) {
             _dirty = true;
@@ -84,9 +96,6 @@ bool ResultReceiver::flush(int bLen, bool last) {
         // Probably want to notify that we're done?
         LOGGER_INF << " Flushed last for tableName="
                    << _tableName << std::endl;
-        if(_finishHook) {
-            (*_finishHook)(true);
-        }
     }
     return mergeOk;
 }
@@ -97,9 +106,6 @@ void ResultReceiver::errorFlush(std::string const& msg, int code) {
     _error.msg = msg;
     _error.code = code;
     LOGGER_ERR << "Error receiving result." << std::endl;
-    if(_finishHook) {
-        (*_finishHook)(false);
-    }
 }
 
 bool ResultReceiver::finished() const {
@@ -120,21 +126,30 @@ bool ResultReceiver::reset() {
     return true;
 }
 
+
 std::ostream& ResultReceiver::print(std::ostream& os) const {
     os << "ResultReceiver(" << _tableName << ", flushed="
        << (_flushed ? "true)" : "false)") ;
     return os;
 }
+////////////////////////////////////////////////////////////////////////
+// ResultReceiver private
+////////////////////////////////////////////////////////////////////////
 
-void ResultReceiver::addFinishHook(util::UnaryCallable<void, bool>::Ptr f) {
-    assert(!_finishHook);
-    _finishHook = f;
-}
-
+/// @return false if there was an error (invalid bytes, error in merge process)
+/// If not enough bytes are available (e.g., need more bytes for a full message), this is not an error.
 bool ResultReceiver::_appendAndMergeBuffer(int bLen) {
     off_t inputSize = _buffer - &_actualBuffer[0] + bLen;
-    off_t mergeSize = _merger->merge(&_actualBuffer[0], inputSize,
-                                     _tableName);
+    off_t mergeSize;
+    assert(_infileMerger);
+    try {
+        mergeSize = _infileMerger->merge(&_actualBuffer[0], inputSize);
+    } catch(rproc::InfileMergerError& e) {
+        if(_msgReceiver) {
+            (*_msgReceiver)(log::MSG_MERGE_ERROR, e.description);
+        }
+        return false;
+    }
     if(mergeSize > 0) { // Something got merged.
         // Shift buffer contents to receive more.
         char* unMerged = &_actualBuffer[0] + mergeSize;
@@ -144,16 +159,26 @@ bool ResultReceiver::_appendAndMergeBuffer(int bLen) {
         _bufferSize = _actualSize - unMergedSize;
         return true;
     } else if(mergeSize == 0) {
-            LOGGER_ERR << "No merge in input. Receive buffer too small? "
-                       << "Tried to merge " << inputSize
-                       << " bytes, fresh=" << bLen
-                       << " actualsize=" << _actualSize
-                       << std::endl;
-        return false;
-    } else {
-        LOGGER_ERR << "Die horribly, for TableMerger::merge() returned an impossible value" << std::endl;
-        throw std::runtime_error("Impossible return value from merge()");
+        // Shift the cursor and wait for more bytes.
+        _buffer = &_actualBuffer[0] + inputSize;
+        _bufferSize = _actualSize = inputSize;
+
+        std::ostringstream os;
+        os << "No merge in input. Receive buffer too small? "
+           << "Tried to merge " << inputSize
+           << " bytes, fresh=" << bLen
+           << " actualsize=" << _actualSize
+           << std::endl;
+        std::string msg = os.str();
+        LOGGER_WRN << msg << std::endl;
+        return true;
     }
+    std::string msg = "Merger::merge() returned an impossible value";
+    LOGGER_ERR << "Die horribly " << msg << std::endl;
+    if(_msgReceiver) {
+        (*_msgReceiver)(log::MSG_MERGE_ERROR, msg);
+    }
+    return false;
 }
 
 }}} // lsst::qserv::ccontrol

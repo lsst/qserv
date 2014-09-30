@@ -37,6 +37,7 @@
 #include "wbase/MsgProcessor.h"
 #include "wbase/SendChannel.h"
 #include "wlog/WLogger.h"
+#include "xrdsvc/SsiSession_ReplyChannel.h"
 
 namespace lsst {
 namespace qserv {
@@ -44,106 +45,55 @@ namespace xrdsvc {
 
 typedef proto::ProtoImporter<proto::TaskMsg> Importer;
 typedef boost::shared_ptr<Importer> ImporterPtr;
-////////////////////////////////////////////////////////////////////////
-// class SsiSession::ReplyChannel
-////////////////////////////////////////////////////////////////////////
 
-class SsiSession::ReplyChannel : public wbase::SendChannel {
-public:
-    typedef XrdSsiResponder::Status Status;
-    typedef boost::shared_ptr<ReplyChannel> Ptr;
-
-    ReplyChannel(SsiSession& s) : ssiSession(s) {}
-
-    virtual bool send(char const* buf, int bufLen) {
-        Status s = ssiSession.SetResponse(buf, bufLen);
-        if(s != XrdSsiResponder::wasPosted) {
-            std::ostringstream os;
-            os << "DANGER: Couldn't post response of length="
-               << bufLen << std::endl;
-            ssiSession._log->error(os.str());
-            return false;
-        }
-        return true;
-    }
-
-    virtual bool sendError(std::string const& msg, int code) {
-        Status s = ssiSession.SetErrResponse(msg.c_str(), code);
-        if(s != XrdSsiResponder::wasPosted) {
-            std::ostringstream os;
-            os << "DANGER: Couldn't post error response " << msg
-               << std::endl;
-            ssiSession._log->error(os.str());
-            return false;
-        }
-        return true;
-    }
-    virtual bool sendFile(int fd, Size fSize) {
-        util::Timer t;
-        t.start();
-        Status s = ssiSession.SetResponse(fSize, fd);
-        std::ostringstream os;
-        if(s == XrdSsiResponder::wasPosted) {
-            os << "file posted ok";
-        } else {
-            if(s == XrdSsiResponder::notActive) {
-                os << "DANGER: Couldn't post response file of length="
-                   << fSize << " responder not active.\n";
-            } else {
-                os << "DANGER: Couldn't post response file of length="
-                   << fSize << std::endl;
-            }
-            release();
-            sendError("Internal error posting response file", 1);
-            return false; // sendError handles everything else.
-        }
-        ssiSession._log->error(os.str());
-        t.stop();
-        os.str("");
-        os << "sendFile took " << t.getElapsed() << " seconds";
-        ssiSession._log->info(os.str());
-        return true;
-    }
-    SsiSession& ssiSession;
-};
 ////////////////////////////////////////////////////////////////////////
 // class SsiProcessor
 ////////////////////////////////////////////////////////////////////////
 
 /// Feed ProtoImporter results to msgprocessor by bundling the responder as a
 /// SendChannel
-struct SsiProcessor : public Importer::Acceptor {
+class SsiProcessor : public Importer::Acceptor {
+public:
     typedef boost::shared_ptr<SsiProcessor> Ptr;
-    SsiProcessor(ResourceUnit const& ru_,
+
+    SsiProcessor(ResourceUnit const& ru,
                  wbase::MsgProcessor::Ptr mp,
-                 boost::shared_ptr<wbase::SendChannel> sc)
-        : ru(ru_), msgProcessor(mp), sendChannel(sc) {}
+                 boost::shared_ptr<wbase::SendChannel> sc,
+                 std::vector<SsiSession::CancelFuncPtr>& cancellers)
+        : _ru(ru),
+          _msgProcessor(mp),
+          _sendChannel(sc),
+          _cancellers(cancellers) {}
 
     virtual void operator()(boost::shared_ptr<proto::TaskMsg> m) {
         util::Timer t;
         if(m->has_db() && m->has_chunkid()
-           && (ru.db() == m->db()) && (ru.chunk() == m->chunkid())) {
+           && (_ru.db() == m->db()) && (_ru.chunk() == m->chunkid())) {
             t.start();
-            (*msgProcessor)(m, sendChannel);
+            SsiSession::CancelFuncPtr p = (*_msgProcessor)(m, _sendChannel);
+            _cancellers.push_back(p);
             t.stop();
             std::cerr << "SsiProcessor msgProcessor call took "
                       << t.getElapsed() << " seconds" << std::endl;
         } else {
             std::ostringstream os;
             os << "Mismatched db/chunk in msg on resource db="
-               << ru.db() << " chunkId=" << ru.chunk();
-            sendChannel->sendError(os.str().c_str(), EINVAL);
+               << _ru.db() << " chunkId=" << _ru.chunk();
+            _sendChannel->sendError(os.str().c_str(), EINVAL);
         }
     }
-    ResourceUnit const& ru;
-    wbase::MsgProcessor::Ptr msgProcessor;
-    boost::shared_ptr<wbase::SendChannel> sendChannel;
+private:
+    ResourceUnit const& _ru;
+    wbase::MsgProcessor::Ptr _msgProcessor;
+    boost::shared_ptr<wbase::SendChannel> _sendChannel;
+    std::vector<SsiSession::CancelFuncPtr>& _cancellers;
 };
 ////////////////////////////////////////////////////////////////////////
 // class SsiSession
 ////////////////////////////////////////////////////////////////////////
 
 // Step 4
+/// Called by XrdSsi to actually process a request.
 bool
 SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     util::Timer t;
@@ -203,6 +153,7 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     return true;
 }
 
+/// Called by XrdSsi to free resources.
 void
 SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
                             bool cancel) { // Step 8
@@ -210,6 +161,14 @@ SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
 
+    if(cancel) {
+        // Do cancellation.
+        typedef std::vector<CancelFuncPtr>::iterator Iter;
+        for(Iter i=_cancellers.begin(), e=_cancellers.end(); i != e; ++i) {
+            assert(*i);
+            (**i)();
+        }
+    }
     // No buffers allocated, so don't need to free.
     // We can release/unlink the file now
     std::ostringstream os;
@@ -233,13 +192,14 @@ SsiSession::Unprovision(bool forced) {
     return true; // false if we can't unprovision now.
 }
 
+/// Accept an incoming request addressed to a ResourceUnit, with the particulars
+/// defined in the reqData payload
 void SsiSession::enqueue(ResourceUnit const& ru, char* reqData, int reqSize) {
 
     // reqData has the entire request, so we can unpack it without waiting for
     // more data.
     ReplyChannel::Ptr rc(new ReplyChannel(*this));
-    SsiProcessor::Ptr sp(new SsiProcessor(ru, _processor, rc));
-
+    SsiProcessor::Ptr sp(new SsiProcessor(ru, _processor, rc, _cancellers));
     std::ostringstream os;
     os << "Importing TaskMsg of size " << reqSize;
     _log->info(os.str());
