@@ -1,3 +1,30 @@
+R E L E A S E   2014_09
+=======================
+
+Code impromements:
+ * DM-198:  Rework JOIN support, including Ref*Match tables
+ * DM-199:  Develop new master-worker result system
+ * DM-207:  Migrate Qserv czar code to the new logging system 
+ * DM-1005: Migrate Qserv worker code to the new logging system
+ * DM-602:  Add support for installing qserv on machines without internet
+ * DM-750:  Integrate sciSQL in eups
+ * DM-953:  Move qserv-testdata.py to qserv_testdata package
+ * DM-518:  Rework exceptions in qserv client
+ * DM-1152: Css C++ client needs to auto-reconnect
+ * DM-648:  Add support for running unit tests in scons
+ * DM-666   Partition package has to detect eups-related boost
+ * DM-1147: Create a top-level qserv_distrib package
+ * DM-1055: Remove unnecessary pieces from qserv czar config
+ * DM-559:  Clean up include <> --> "" for third party includes
+
+Bug fixes:
+ * DM-800:  Zookeeper times out
+ * DM-664:  "out of range value" message when running qserv-testdata (loader.py)
+ * DM-863:  near neighbor does not return results
+
+Documentation improvements:
+ * DM-1118: Improve documentation of code from DM-70
+
 R E L E A S E   2014_08
 =======================
 
