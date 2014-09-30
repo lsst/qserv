@@ -10,9 +10,23 @@ from twisted.python.procutils import which
 
 from lsst.qserv.admin import path
 
-COMPONENTS = ['mysql', 'xrootd', 'qserv-czar', 'scisql']
-STEP_RUN_LIST = ['directory-tree', 'etc'] + COMPONENTS + ['client']
-STEP_LIST = ['prepare'] + STEP_RUN_LIST
+
+# used in cmd-line tool
+PREPARE = 'prepare'
+DIRTREE = 'directory-tree' 
+ETC     = 'etc' 
+CLIENT  = 'client' 
+
+MYSQL = 'mysql'
+XROOTD = 'xrootd'
+CSS = 'css'
+CZAR = 'qserv-czar'
+QSERV = 'qserv'
+SCISQL =  'scisql'
+
+COMPONENTS = [MYSQL, XROOTD, CSS, CZAR, SCISQL]
+STEP_RUN_LIST = [DIRTREE, ETC] + COMPONENTS + [CLIENT]
+STEP_LIST = [PREPARE] + STEP_RUN_LIST
 STEP_DOC = dict(
     zip(STEP_LIST,
         [
@@ -22,6 +36,7 @@ STEP_DOC = dict(
            from meta-config file $qserv_run_dir/qserv.conf""",
 	"""remove MySQL previous data, install db and set password """,
 	"""create xrootd query and result directories""",
+	"""configure CSS (i.e. MySQL credentials for css-watcher)""",
 	"""initialize Qserv master and worker databases""",
 	"""install and configure SciSQL""",
 	"""create client configuration file (used by integration tests for example)"""
@@ -29,11 +44,12 @@ STEP_DOC = dict(
     )
 )
 
-# used in cmd-line tool
-PREPARE = STEP_LIST[0]
-DIRTREE = STEP_RUN_LIST[0]
-ETC     = STEP_RUN_LIST[1]
-CLIENT  = STEP_RUN_LIST[-1]
+STEP_ABBR = dict()
+for step in STEP_LIST:
+    if step in COMPONENTS:
+        STEP_ABBR[step]=step[0].upper()
+    else:
+        STEP_ABBR[step]=step[0]
 
 def exists_and_is_writable(dir):
     """

@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -e
-
 QSERV_RUN_DIR={{QSERV_RUN_DIR}}
 SCISQL_DIR={{SCISQL_DIR}}
 MYSQL_DIR={{MYSQL_DIR}}
@@ -17,10 +15,14 @@ export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
 
 ${QSERV_RUN_DIR}/etc/init.d/mysqld start &&
 cd ${SCISQL_DIR} &&
-echo "-- Installing and configuring sciSQL"
-./configure --prefix=${MYSQL_DIR} --mysql-user=root --mysql-password="${MYSQLD_PASS}" --mysql-socket=${MYSQLD_SOCK}  &&
-make &&
-make install &&
+echo "-- Deploying sciSQL plugin in MySQL database"
+# password is given on stdin, so that is can't be catched by ps command
+PASSFILE=${QSERV_RUN_DIR}/tmp/pass.txt
+cat <<EOF > ${PASSFILE}
+${MYSQLD_PASS} 
+EOF
+cat  ${PASSFILE} | scisql-deploy.py --mysql-socket=${QSERV_RUN_DIR}/var/lib/mysql/mysql.sock
+rm ${PASSFILE}
 ${QSERV_RUN_DIR}/etc/init.d/mysqld stop ||
 exit 1
 

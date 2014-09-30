@@ -19,7 +19,7 @@ def parseArgs():
     parser = argparse.ArgumentParser(
             description='''Qserv configuration tool. Creates an execution
 directory (qserv_run_dir) which will contains configuration and execution
-data for a given Qserv instance. Deploys values from meta-config file $qserv_run_dir/qserv.conf 
+data for a given Qserv instance. Deploys values from meta-config file $qserv_run_dir/qserv.conf
 in all Qserv configuration files and databases. Default behaviour will configure a mono-node
 instance in ''' + default_qserv_run_dir + '''. IMPORTANT : --all MUST BE USED
 FOR A  SETUP FROM SCRATCH.''',
@@ -33,7 +33,7 @@ FOR A  SETUP FROM SCRATCH.''',
     # Defining option of each configuration step
     for step_name in configure.STEP_LIST:
         parser.add_argument(
-            "-{0}".format(step_name[0]),
+            "-{0}".format(configure.STEP_ABBR[step_name]),
             "--{0}".format(step_name),
             dest="step_list",
             action='append_const',
@@ -73,7 +73,7 @@ FOR A  SETUP FROM SCRATCH.''',
     # services configuration files
     args = parser.parse_args()
     default_meta_config_file = os.path.join(args.qserv_run_dir, "qserv.conf")
-    parser.add_argument("-C", "--metaconfig", dest="meta_config_file",
+    parser.add_argument("-m", "--metaconfig", dest="meta_config_file",
             default=default_meta_config_file,
             help="full path to Qserv meta-configuration file"
             )
@@ -200,67 +200,86 @@ def main():
                 components_to_configure.remove('scisql')
 
             for comp in components_to_configure:
-                script = os.path.join(configuration_scripts_dir, comp+".sh")
-                commons.run_command([script])
+                cfg_script = os.path.join(configuration_scripts_dir, comp+".sh")
+                if os.path.isfile(cfg_script):
+                    commons.run_command([cfg_script])
+
+            def client_cfg_from_tpl(product):
+                homedir = os.path.expanduser("~")
+                if product == configure.QSERV:
+                    filename = "qserv-client.conf"
+                    cfg_link = os.path.join(homedir, ".lsst", "qserv.conf")
+                elif product == configure.MYSQL:
+                    filename = "my-client.cnf"
+                    cfg_link = os.path.join(homedir, ".my.cnf")
+                else:
+                    logging.fatal("Unable to apply configuration template for product %s", product)
+                    sys.exit(1)
+
+                template_file = os.path.join(
+                    run_base_dir, "templates", "server", "etc", filename
+                )
+                cfg_file = os.path.join(
+                    run_base_dir, "etc", filename
+                )
+                configure.apply_tpl(
+                    template_file,
+                    cfg_file
+                )
+                logging.info(
+                    "Client configuration file created : {0}".format(cfg_file)
+                )
+
+                if os.path.isfile(cfg_link) and os.lstat(cfg_link):
+
+                    try:
+                        is_symlink_correct = os.path.samefile(cfg_link, cfg_file)
+                    except os.error:
+                        # link is broken
+                        is_symlink_correct = False
+
+                    if not is_symlink_correct:
+                        if args.force or configure.user_yes_no_query(
+                            ("Do you want to update link to {0} user configuration file "
+                                 .format(product) +
+                             "(currently pointing to {0}) with {1}?"
+                                .format(os.path.realpath(cfg_link), cfg_file)
+                            )
+                        ):
+                            os.remove(cfg_link)
+                            os.symlink(cfg_file, cfg_link)
+                        else:
+                            logging.info("Client configuration unmodified. Exiting.")
+                            sys.exit(1)
+
+                else:
+
+                    if product == configure.QSERV:
+                        # might need to create directory first
+                        try:
+                            os.makedirs(os.path.join(homedir, ".lsst"))
+                            logging.debug("Creating client configuration directory : ~/.lsst")
+                        except os.error:
+                            pass
+
+                    try:
+                        os.remove(cfg_link)
+                        logging.debug("Removing broken symbolic link : {0}".format(cfg_link))
+                    except os.error:
+                        pass
+
+                    os.symlink(cfg_file, cfg_link)
+
+                logging.info(
+                    "{0} is now pointing to : {1}".format(cfg_link, cfg_file)
+                )
+
+
+        if configure.CSS in args.step_list:
+                client_cfg_from_tpl(configure.MYSQL)
 
         if configure.CLIENT in args.step_list:
-            template_file = os.path.join(
-                run_base_dir, "templates", "server", "etc", "qserv-client.conf"
-            )
-            cfg_file = os.path.join(
-                run_base_dir, "etc", "qserv-client.conf"
-            )
-            configure.apply_tpl(
-                template_file,
-                cfg_file
-            )
-            logging.info(
-                "Client configuration file created : {0}".format(cfg_file)
-            )
-            homedir = os.path.expanduser("~")
-            cfg_link = os.path.join(homedir, ".lsst", "qserv.conf")
-
-            if os.path.isfile(cfg_link) and os.lstat(cfg_link):
-                
-                try:
-                    is_symlink_correct = os.path.samefile(cfg_link, cfg_file)
-                except os.error:
-                    # link is broken
-                    is_symlink_correct = False 
-
-                if not is_symlink_correct:
-                    if args.force or configure.user_yes_no_query(
-                        ("Do you want to update user configuration file " +
-                         "(currently pointing to {0}) for new run directory?"
-                            .format(os.path.realpath(cfg_link))
-                        )
-                    ):
-                        os.remove(cfg_link)
-                        os.symlink(cfg_file, cfg_link)
-                    else:
-                        logging.info("Client configuration unmodified.")
-                        sys.exit(1)
-
-            else:
-
-                # might need to create directory first
-                try:
-                    os.makedirs(os.path.join(homedir, ".lsst"))
-		    logging.debug("Creating client configuration directory : ~/.lsst")
-                except os.error:
-                    pass
-
-                try:
-		    os.remove(cfg_link)
-		    logging.debug("Removing broken symbolic link : {0}".format(cfg_link))
-                except os.error:
-                    pass
-
-                os.symlink(cfg_file, cfg_link)
-
-            logging.info(
-                "{0} is now pointing to : {1}".format(cfg_link, cfg_file)
-            )
+            client_cfg_from_tpl(configure.QSERV)
 
 if __name__ == '__main__':
     main()
