@@ -25,7 +25,7 @@
 #define LSST_QSERV_CCONTROL_CALLBACK_H
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 
 namespace lsst {
 namespace qserv {

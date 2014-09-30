@@ -24,7 +24,7 @@
 #define LSST_QSERV_WSCHED_SCANSCHEDULER_H
 
 // Third party headers
-#include <boost/thread/mutex.hpp>
+#include "boost/thread/mutex.hpp"
 
 // Local headers
 #include "lsst/log/Log.h"

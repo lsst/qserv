@@ -29,7 +29,7 @@
 #include <vector>
 
 // Third-party
-#include <boost/make_shared.hpp>
+#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "qdisp/QueryReceiver.h"

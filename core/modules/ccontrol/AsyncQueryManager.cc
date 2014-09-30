@@ -43,8 +43,8 @@
 
 // Third-party headers
 #include "boost/date_time/posix_time/posix_time_types.hpp"
-#include <boost/format.hpp>
-#include <boost/make_shared.hpp>
+#include "boost/format.hpp"
+#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"

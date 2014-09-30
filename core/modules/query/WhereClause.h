@@ -38,7 +38,7 @@
 #include <stack>
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "query/BoolTerm.h"

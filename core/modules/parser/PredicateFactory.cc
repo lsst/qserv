@@ -32,7 +32,7 @@
 #include "parser/PredicateFactory.h"
 
 // Third-party headers
-#include <boost/algorithm/string.hpp>
+#include "boost/algorithm/string.hpp"
 #include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
 // LSST headers

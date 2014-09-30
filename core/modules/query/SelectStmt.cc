@@ -39,8 +39,8 @@
 #include <map>
 
 // Third-party headers
-#include <boost/algorithm/string/predicate.hpp> // string iequal
-#include <boost/make_shared.hpp>
+#include "boost/algorithm/string/predicate.hpp" // string iequal
+#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"

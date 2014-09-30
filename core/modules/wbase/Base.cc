@@ -40,7 +40,7 @@
 #include <iostream>
 
 // Third-party headers
-#include <boost/format.hpp>
+#include "boost/format.hpp"
 
 // Local headers
 #include "util/StringHash.h"

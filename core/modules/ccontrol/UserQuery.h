@@ -32,8 +32,8 @@
   */
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
-#include <boost/utility.hpp>
+#include "boost/shared_ptr.hpp"
+#include "boost/utility.hpp"
 
 // Local headers
 #include "ccontrol/QueryState.h"

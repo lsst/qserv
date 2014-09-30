@@ -25,7 +25,7 @@
 #define LSST_QSERV_XRDSVC_SSISERVICE_H
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 #include "XrdSsi/XrdSsiService.hh"
 
 // Local headers

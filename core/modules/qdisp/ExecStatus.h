@@ -28,8 +28,8 @@
 #include <time.h>
 #include <fstream>
 // Third-party headers
-#include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
+#include "boost/shared_ptr.hpp"
+#include "boost/thread.hpp"
 
 // Local headers
 #include "global/ResourceUnit.h"

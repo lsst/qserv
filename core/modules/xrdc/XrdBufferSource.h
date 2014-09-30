@@ -37,7 +37,7 @@
 #include <utility>
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 
 // Qserv headers
 #include "util/PacketBuffer.h"

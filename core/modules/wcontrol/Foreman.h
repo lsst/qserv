@@ -50,7 +50,7 @@
 #define LSST_QSERV_WCONTROL_FOREMAN_H
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "wbase/Base.h"

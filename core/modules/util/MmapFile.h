@@ -34,7 +34,7 @@
 #include <sys/stat.h>
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 
 
 #if !defined(_FILE_OFFSET_BITS) || (_FILE_OFFSET_BITS<64)

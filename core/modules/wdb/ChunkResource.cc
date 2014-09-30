@@ -35,8 +35,8 @@
 #include <iostream>
 
 // Third-party headers
-#include <boost/format.hpp>
-#include <boost/thread.hpp>
+#include "boost/format.hpp"
+#include "boost/thread.hpp"
 
 // Local headers
 #include "global/Bug.h"

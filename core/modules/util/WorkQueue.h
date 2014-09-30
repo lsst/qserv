@@ -27,8 +27,8 @@
 #include <deque>
 
 // Third-party headers
-#include <boost/thread.hpp>
-#include <boost/shared_ptr.hpp>
+#include "boost/thread.hpp"
+#include "boost/shared_ptr.hpp"
 
 namespace lsst {
 namespace qserv {

@@ -31,7 +31,7 @@
 #include <sstream>
 
 // Third-party headers
-#include <boost/thread/once.hpp>
+#include "boost/thread/once.hpp"
 
 // Local headers
 #include "mysql/MySqlConfig.h"

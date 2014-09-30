@@ -40,7 +40,7 @@
 #include <time.h>    // time
 
 // Third-party headers
-#include <boost/lexical_cast.hpp>
+#include "boost/lexical_cast.hpp"
 
 // Kocal headers
 #include "css/KvInterfaceImplMem.h"
@@ -48,7 +48,7 @@
 
 // Boost unit test header
 #define BOOST_TEST_MODULE MyTest
-#include <boost/test/included/unit_test.hpp>
+#include "boost/test/included/unit_test.hpp"
 
 using std::cout;
 using std::endl;

@@ -36,7 +36,7 @@
 #define LSST_QSERV_CCONTROL_SESSIONMANAGER_H
 
 // Third-party headers
-#include <boost/thread.hpp> // for mutex primitives
+#include "boost/thread.hpp" // for mutex primitives
 
 namespace lsst {
 namespace qserv {

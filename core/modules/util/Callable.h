@@ -24,7 +24,7 @@
 #define LSST_QSERV_UTIL_CALLABLE_H
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 
 /// VoidCallable, UnaryCallable, and BinaryCallable are convenience templates
 /// for declaring no-argument, unary-argument, and binary-argument function

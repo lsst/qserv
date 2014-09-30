@@ -25,7 +25,7 @@
 #define LSST_QSERV_XRDFS_MYSQLFSDIRECTORY_H
 
 // Third-party include
-#include <boost/shared_ptr.hpp>
+#include "boost/shared_ptr.hpp"
 #include "XrdSfs/XrdSfsInterface.hh"
 
 // Local headers

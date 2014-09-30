@@ -39,8 +39,8 @@
 #include <vector>
 
 // Third-party headers
-#include <boost/shared_ptr.hpp>
-#include <boost/utility.hpp>
+#include "boost/shared_ptr.hpp"
+#include "boost/utility.hpp"
 
 // Qserv headers
 #include "global/intTypes.h"

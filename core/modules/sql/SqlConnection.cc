@@ -30,8 +30,8 @@
 #include <sstream>
 
 // Third-party headers
-#include <boost/format.hpp>
-#include <boost/thread.hpp> // for mutex.
+#include "boost/format.hpp"
+#include "boost/thread.hpp" // for mutex.
 
 // Local headers
 #include "mysql/MySqlConnection.h"

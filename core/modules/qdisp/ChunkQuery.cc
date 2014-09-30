@@ -34,8 +34,8 @@
 #include <iostream>
 
 // Third-party headers
-#include <boost/lexical_cast.hpp>
-#include <boost/thread.hpp>
+#include "boost/lexical_cast.hpp"
+#include "boost/thread.hpp"
 #include "XrdPosix/XrdPosixXrootd.hh"
 
 // LSST headers

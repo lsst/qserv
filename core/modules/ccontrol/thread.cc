@@ -28,7 +28,7 @@
 #include <algorithm>
 
 // Third-party headers
-#include <boost/make_shared.hpp>
+#include "boost/make_shared.hpp"
 #include "XrdPosix/XrdPosixCallBack.hh"
 
 // LSST headers
