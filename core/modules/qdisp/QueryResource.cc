@@ -52,24 +52,24 @@ namespace qdisp {
 /// May not throw exceptions because the calling code comes from
 /// xrootd land and will not catch any exceptions.
 void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
-        LOGF_INFO("Provision done");
-        if(!s) {
-            // Check eInfo in resource for error details
-            int code;
-            char const* msg = eInfo.Get(code);
-            LOGF_ERROR("Error provisioning, msg=%1% code=%2%" % msg % code);
-            _status.report(ExecStatus::PROVISION_NACK, code, std::string(msg));
-            // FIXME code may be wrong.
-            _receiver->errorFlush(std::string(msg), code);
-            return;
-        }
-        _session = s;
-        _request = new QueryRequest(s, _payload, _receiver,
-                                    _finishFunc,  _retryFunc, _status);
-        assert(_request);
-        // Hand off the request and release ownership.
-        _status.report(ExecStatus::REQUEST);
-        bool requestSent = _session->ProcessRequest(_request);
+    LOGF_INFO("Provision done");
+    if(!s) {
+        // Check eInfo in resource for error details
+        int code;
+        char const* msg = eInfo.Get(code);
+        LOGF_ERROR("Error provisioning, msg=%1% code=%2%" % msg % code);
+        _status.report(ExecStatus::PROVISION_NACK, code, std::string(msg));
+        // FIXME code may be wrong.
+        _receiver->errorFlush(std::string(msg), code);
+        return;
+    }
+    _session = s;
+    _request = new QueryRequest(s, _payload, _receiver,
+                                _finishFunc,  _retryFunc, _status);
+    assert(_request);
+    // Hand off the request and release ownership.
+    _status.report(ExecStatus::REQUEST);
+    bool requestSent = _session->ProcessRequest(_request);
     if(requestSent) {
         _request = 0; // _session now has ownership
     } else {
