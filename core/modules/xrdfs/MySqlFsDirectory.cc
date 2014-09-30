@@ -31,7 +31,6 @@
 #include "XrdSys/XrdSysError.hh"
 
 // Local headers
-#include "wlog/WLogger.h"
 
 
 namespace lsst {
@@ -39,8 +38,7 @@ namespace qserv {
 namespace xrdfs {
 
 
-MySqlFsDirectory::MySqlFsDirectory(boost::shared_ptr<wlog::WLogger> log,
-                                   char* user) :
+MySqlFsDirectory::MySqlFsDirectory(LOG_LOGGER const& log, char* user) :
     XrdSfsDirectory(user), _log(log) {
 }
 
@@ -64,7 +62,7 @@ int MySqlFsDirectory::close(void) {
 }
 
 char const* MySqlFsDirectory::FName(void) {
-    _log->info("In MySqlFsDirectory::Fname()");
+    LOG(_log, LOG_LVL_INFO, "In MySqlFsDirectory::Fname()");
     return 0;
 }
 

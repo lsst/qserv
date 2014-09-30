@@ -38,7 +38,6 @@
 #include "wbase/Base.h"
 #include "wbase/SendChannel.h"
 #include "wconfig/Config.h"
-#include "wlog/WLogger.h"
 #include "util/StringHash.h"
 
 namespace lsst {
@@ -110,7 +109,7 @@ std::string QueryPhyResult::_computeTmpFileName() const {
     return os.str();
 }
 
-bool QueryPhyResult::dumpToChannel(wlog::WLogger& log,
+bool QueryPhyResult::dumpToChannel(LOG_LOGGER const& log,
                                    std::string const& user,
                                    boost::shared_ptr<wbase::SendChannel> sc,
                                    sql::SqlErrorObject& errObj) {
@@ -142,7 +141,7 @@ bool QueryPhyResult::dumpToChannel(wlog::WLogger& log,
     return true;
 }
 
-bool QueryPhyResult::performMysqldump(wlog::WLogger& log,
+bool QueryPhyResult::performMysqldump(LOG_LOGGER const& log,
                                       std::string const& user,
                                       std::string const& dumpFile,
                                       sql::SqlErrorObject& errObj) {
@@ -161,14 +160,12 @@ bool QueryPhyResult::performMysqldump(wlog::WLogger& log,
          % user
          % dumpFile % _outDb
          % _getSpaceResultTables()).str();
-    log.info((Pformat("dump cmdline: %1%") % cmd).str());
+    LOGF(log, LOG_LVL_INFO, "dump cmdline: %1%" % cmd);
 
-    log.info((Pformat("TIMING,000000QueryDumpStart,%1%")
-            % ::time(NULL)).str());
+    LOGF(log, LOG_LVL_INFO, "TIMING,000000QueryDumpStart,%1%" % ::time(NULL));
     int cmdResult = system(cmd.c_str());
 
-    log.info((Pformat("TIMING,000000QueryDumpFinish,%1%")
-            % ::time(NULL)).str());
+    LOGF(log, LOG_LVL_INFO, "TIMING,000000QueryDumpFinish,%1%" % ::time(NULL));
 
     if (cmdResult != 0) {
         errObj.setErrNo(errno);

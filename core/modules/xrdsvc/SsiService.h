@@ -38,9 +38,6 @@ namespace qserv {
 namespace wcontrol {
   class Service;
 }
-namespace wlog {
-  class WLogger;
-}
 namespace wpublish {
   class ChunkInventory;
 }}} // End of forward declarations
@@ -69,7 +66,6 @@ private:
     void _setupResultPath();
     bool _setupScratchDb();
 
-    boost::shared_ptr<wlog::WLogger> _log;
     boost::shared_ptr<wpublish::ChunkInventory> _chunkInventory;
     boost::shared_ptr<wcontrol::Service> _service;
 

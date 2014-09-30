@@ -35,6 +35,7 @@
 #include <boost/thread.hpp>
 
 // Local headers
+#include "lsst/log/Log.h"
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"
@@ -43,7 +44,6 @@
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryAction.h"
 #include "wdb/QueryRunner.h"
-#include "wlog/WLogger.h"
 #include "wsched/FifoScheduler.h"
 
 ////////////////////////////////////////////////////////////////////////
@@ -77,7 +77,7 @@ namespace wcontrol {
 /// started. Schedulers never decide to cancel tasks already in flight.
 class ForemanImpl : public Foreman {
 public:
-    ForemanImpl(Scheduler::Ptr s, wlog::WLogger::Ptr log);
+    ForemanImpl(Scheduler::Ptr s);
     virtual ~ForemanImpl();
 
     bool squashByHash(std::string const& hash);
@@ -101,7 +101,7 @@ public:
         RunnerMgr& _rm;
         wbase::Task::Ptr _task;
         bool _isPoisoned;
-        wlog::WLogger::Ptr _log;
+        LOG_LOGGER _log;
         boost::shared_ptr<wdb::QueryAction> _action;
     };
     // For use by runners.
@@ -115,7 +115,7 @@ public:
         void reportStart(wbase::Task::Ptr t);
         void signalDeath(Runner* r);
         wbase::Task::Ptr getNextTask(Runner* r, wbase::Task::Ptr previous);
-        wlog::WLogger::Ptr getLog();
+        LOG_LOGGER getLog();
         bool squashByHash(std::string const& hash);
 
     private:
@@ -137,7 +137,7 @@ private:
     Scheduler::Ptr _scheduler;
     RunnerDeque _runners;
     boost::scoped_ptr<RunnerMgr> _rManager;
-    wlog::WLogger::Ptr _log;
+    LOG_LOGGER _log;
 
     wbase::TaskQueuePtr _running;
 };
@@ -145,11 +145,11 @@ private:
 // Foreman factory function
 ////////////////////////////////////////////////////////////////////////
 Foreman::Ptr
-newForeman(Foreman::Scheduler::Ptr sched, wlog::WLogger::Ptr log) {
+newForeman(Foreman::Scheduler::Ptr sched) {
     if(!sched) {
         sched.reset(new wsched::FifoScheduler());
     }
-    ForemanImpl::Ptr fmi(new ForemanImpl(sched, log));
+    ForemanImpl::Ptr fmi(new ForemanImpl(sched));
     return fmi;;
 }
 
@@ -177,9 +177,7 @@ ForemanImpl::RunnerMgr::registerRunner(Runner* r, wbase::Task::Ptr t) {
         _f._runners.push_back(r);
     }
 
-    std::ostringstream os;
-    os << "Registered runner " << (void*)r;
-    _f._log->debug(os.str());
+    LOGF(_f._log, LOG_LVL_DEBUG, "Registered runner %1%" % (void*)r);
     _reportStartHelper(t);
 }
 
@@ -205,9 +203,7 @@ ForemanImpl::RunnerMgr::reportComplete(wbase::Task::Ptr t) {
         assert(popped);
     }
 
-    std::ostringstream os;
-    os << "Finished task " << *t;
-    _f._log->debug(os.str());
+    LOGF(_f._log, LOG_LVL_DEBUG, "Finished task %1%" % *t);
     _taskWatcher.markFinished(t);
 }
 
@@ -222,9 +218,7 @@ ForemanImpl::RunnerMgr::_reportStartHelper(wbase::Task::Ptr t) {
         boost::lock_guard<boost::mutex> lock(_f._runnersMutex);
         _f._running->push_back(t);
     }
-    std::ostringstream os;
-    os << "Started task " << *t;
-    _f._log->debug(os.str());
+    LOGF(_f._log, LOG_LVL_DEBUG, "Started task %1%" % *t);
     _taskWatcher.markStarted(t);
 }
 
@@ -254,7 +248,7 @@ ForemanImpl::RunnerMgr::getNextTask(Runner* r, wbase::Task::Ptr previous) {
     return tq->front();
 }
 
-wlog::WLogger::Ptr
+LOG_LOGGER
 ForemanImpl::RunnerMgr::getLog() {
     return _f._log;
 }
@@ -322,9 +316,7 @@ void ForemanImpl::Runner::_runProtocol2() {
 void ForemanImpl::Runner::operator()() {
     _rm.registerRunner(this, _task);
     while(!_isPoisoned) {
-        std::ostringstream ss;
-        ss << "Runner running " << *_task;
-        _log->info(ss.str());
+        LOGF(_log, LOG_LVL_INFO, "Runner running %1%" % *_task);
         proto::TaskMsg const& msg = *_task->msg;
         if(msg.has_protocol() && msg.protocol() == 2) {
             _runProtocol2();
@@ -371,16 +363,8 @@ public:
 ////////////////////////////////////////////////////////////////////////
 // ForemanImpl
 ////////////////////////////////////////////////////////////////////////
-ForemanImpl::ForemanImpl(Scheduler::Ptr s,
-                         wlog::WLogger::Ptr log)
-    : _scheduler(s), _running(new wbase::TaskQueue()) {
-    if(!log) {
-        // Make basic logger.
-        _log.reset(new wlog::WLogger());
-    } else {
-        _log.reset(new wlog::WLogger(log));
-        _log->setPrefix("Foreman:");
-    }
+ForemanImpl::ForemanImpl(Scheduler::Ptr s)
+    : _scheduler(s), _log(LOG_GET("Foreman")), _running(new wbase::TaskQueue()) {
     // Make the chunk resource mgr
     mysql::MySqlConfig c(wconfig::getConfig().getSqlConfig());
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(c);

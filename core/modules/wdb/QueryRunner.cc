@@ -53,33 +53,32 @@
 #include "wdb/QueryPhyResult.h"
 #include "wdb/QuerySql.h"
 #include "wdb/QuerySql_Batch.h"
-#include "wlog/WLogger.h"
 
 
 namespace {
 bool
-runBatch(boost::shared_ptr<lsst::qserv::wlog::WLogger> log,
+runBatch(LOG_LOGGER const& log,
          lsst::qserv::sql::SqlConnection& sqlConn,
          lsst::qserv::sql::SqlErrorObject& errObj,
          std::string const& scriptId,
          lsst::qserv::wdb::QuerySql::Batch& batch,
          lsst::qserv::wbase::CheckFlag* checkAbort) {
-    log->info((Pformat("TIMING,%1%%2%Start,%3%")
-                 % scriptId % batch.name % ::time(NULL)).str().c_str());
+    LOGF(log, LOG_LVL_INFO, "TIMING,%1%%2%Start,%3%" % scriptId % batch.name
+            % ::time(NULL));
     bool batchAborted = false;
     while(!batch.isDone()) {
         std::string piece = batch.current();
         if(!sqlConn.runQuery(piece.data(), piece.size(), errObj) ) {
             // On error, the partial error is as good as the global.
             if(errObj.isSet() ) {
-                log->error((Pformat(">>%1%<<---Error with piece %2% complete (size=%3%).")
-                            % errObj.errMsg()
-                            % batch.pos % batch.sequence.size()).str().c_str());
+                LOGF(log, LOG_LVL_ERROR,
+                        ">>%1%<<---Error with piece %2% complete (size=%3%)."
+                        % errObj.errMsg() % batch.pos % batch.sequence.size());
                 batchAborted = true;
                 break;
             } else if(checkAbort && (*checkAbort)()) {
-                log->error((Pformat("Aborting query by request (%1% complete).")
-                            % batch.pos).str().c_str());
+                LOGF(log, LOG_LVL_ERROR, "Aborting query by request (%1% complete)."
+                        % batch.pos);
                 errObj.addErrMsg("Query poisoned by client request");
                 batchAborted = true;
                 break;
@@ -87,13 +86,13 @@ runBatch(boost::shared_ptr<lsst::qserv::wlog::WLogger> log,
         }
         batch.next();
     }
-    log->info((Pformat("TIMING,%1%%2%Finish,%3%")
-               % scriptId % batch.name % ::time(NULL)).str().c_str());
+    LOGF(log, LOG_LVL_INFO, "TIMING,%1%%2%Finish,%3%" % scriptId % batch.name
+            % ::time(NULL));
     if(batchAborted) {
         errObj.addErrMsg("(during " + batch.name
                          + ")\nQueryFragment: " + batch.current());
-        log->info((Pformat("Broken! ,%1%%2%---%3%")
-                   % scriptId % batch.name % errObj.errMsg()).str().c_str());
+        LOGF(log, LOG_LVL_INFO, "Broken! ,%1%%2%---%3%"
+                   % scriptId % batch.name % errObj.errMsg());
         return false;
     }
     return true;
@@ -101,7 +100,7 @@ runBatch(boost::shared_ptr<lsst::qserv::wlog::WLogger> log,
 
 // Newer, flexibly-batched system.
 bool
-runScriptPieces(boost::shared_ptr<lsst::qserv::wlog::WLogger> log,
+runScriptPieces(LOG_LOGGER const& log,
                 lsst::qserv::sql::SqlConnection& sqlConn,
                 lsst::qserv::sql::SqlErrorObject& errObj,
                 std::string const& scriptId,
@@ -113,8 +112,8 @@ runScriptPieces(boost::shared_ptr<lsst::qserv::wlog::WLogger> log,
     bool sequenceOk = false;
     if(runBatch(log, sqlConn, errObj, scriptId, build, checkAbort)) {
         if(!runBatch(log, sqlConn, errObj, scriptId, exec, checkAbort)) {
-            log->error((Pformat("Fail QueryExec phase for %1%: %2%")
-                        % scriptId % errObj.errMsg()).str().c_str());
+            LOGF(log, LOG_LVL_ERROR, "Fail QueryExec phase for %1%: %2%" %
+                    scriptId % errObj.errMsg());
         } else {
             sequenceOk = true;
         }
@@ -217,36 +216,34 @@ QueryRunner::actOnce() {
 
 bool
 QueryRunner::_act() {
-    char msg[] = "Exec in flight for Db = %1%, dump = %2%";
-    _log->info((Pformat(msg) % _task->dbName % _task->resultPath).str());
+
+    LOGF(_log, LOG_LVL_INFO, "Exec in flight for Db = %1%, dump = %2%" %
+            _task->dbName % _task->resultPath);
 
     // Do not print query-- could be multi-megabytes.
-    std::string dbDump = (Pformat("Db = %1%, dump = %2%")
-                          % _task->dbName % _task->resultPath).str();
-    _log->info((Pformat("(fileobj:%1%) %2%")
-            % (void*)(this) % dbDump).str());
+    std::string dbDump = "Db = " + _task->dbName + ", dump = " + _task->resultPath;
+    LOGF(_log, LOG_LVL_INFO, "(fileobj:%1%) %2%" % (void*)(this) % dbDump);
 
     // Result files shouldn't get reused right now
     // since we trash them after they are read once
 #if 0
     if (dumpFileExists(_meta.resultPath)) {
-        _log->info((Pformat("Reusing pre-existing dump = %1% (chk=%2%)")
-                % _task->resultPath % _task->chunkId).str());
+        LOGF(_log, LOG_LVL_INFO, "Reusing pre-existing dump = %1% (chk=%2%)"
+                % _task->resultPath % _task->chunkId);
         // The system should probably catch this earlier.
         getTracker().notify(_task->hash, wcontrol::ResultError(0,""));
         return true;
     }
 #endif
     if (!_runTask(_task)) {
-        _log->info((Pformat("(FinishFail:%1%) %2% hash=%3%")
-                % (void*)(this) % dbDump % _task->hash).str());
+        LOGF(_log, LOG_LVL_INFO, "(FinishFail:%1%) %2% hash=%3%"
+                % (void*)(this) % dbDump % _task->hash);
         getTracker().notify(_task->hash,
                             wcontrol::ResultError(-1,"Script exec failure "
                                                   + _getErrorString()));
         return false;
     }
-    _log->info((Pformat("(FinishOK:%1%) %2%")
-            % (void*)(this) % dbDump).str());
+    LOGF(_log, LOG_LVL_INFO, "(FinishOK:%1%) %2%" % (void*)(this) % dbDump);
     getTracker().notify(_task->hash, wcontrol::ResultError(0,""));
     return true;
 }
@@ -292,8 +289,8 @@ QueryRunner::_runTask(wbase::Task::Ptr t) {
     sql::SqlConnection _sqlConn(sc, true);
     bool success = true;
     _scriptId = t->dbName.substr(0, 6);
-    _log->info((Pformat("TIMING,%1%ScriptStart,%2%")
-                 % _scriptId % ::time(NULL)).str());
+    LOGF(_log, LOG_LVL_INFO, "TIMING,%1%ScriptStart,%2%"
+                 % _scriptId % ::time(NULL));
     // For now, coalesce all fragments.
     std::string resultTable;
     _pResult->reset();
@@ -301,8 +298,8 @@ QueryRunner::_runTask(wbase::Task::Ptr t) {
     assert(t->msg.get());
     proto::TaskMsg& m(*t->msg);
     if(!_sqlConn.connectToDb(_errObj)) {
-        _log->info((Pformat("Cfg error! connect MySQL as %1% using %2%")
-                    % wconfig::getConfig().getString("mysqlSocket") % _user).str());
+        LOGF(_log, LOG_LVL_INFO, "Cfg error! connect MySQL as %1% using %2%"
+                    % wconfig::getConfig().getString("mysqlSocket") % _user);
         return _errObj.addErrMsg("Unable to connect to MySQL as " + _user);
     }
     int chunkId = 1234567890;
@@ -328,14 +325,14 @@ QueryRunner::_runTask(wbase::Task::Ptr t) {
         if(!success) return false;
         _pResult->addResultTable(resultTable);
     }
-    _log->info("about to dump table " + resultTable);
+    LOGF(_log, LOG_LVL_INFO, "about to dump table %1%" % resultTable);
     if(success) {
         if(_task->sendChannel) {
-            if(!_pResult->dumpToChannel(*_log, _user,
+            if(!_pResult->dumpToChannel(_log, _user,
                                         _task->sendChannel, _errObj)) {
                 return false;
             }
-        } else if(!_pResult->performMysqldump(*_log,
+        } else if(!_pResult->performMysqldump(_log,
                                               _user,
                                               _task->resultPath,
                                               _errObj)) {
@@ -364,8 +361,8 @@ QueryRunner::_runFragment(sql::SqlConnection& sqlConn,
                          qSql, check.get()) ) {
         return false;
     }
-    _log->info((Pformat("TIMING,%1%ScriptFinish,%2%")
-                % _scriptId % ::time(NULL)).str().c_str());
+    LOGF(_log, LOG_LVL_INFO, "TIMING,%1%ScriptFinish,%2%"
+                % _scriptId % ::time(NULL));
     return true;
 }
 
@@ -378,18 +375,15 @@ QueryRunner::_prepareAndSelectResultDb(sql::SqlConnection& sqlConn,
     if(dbName.empty()) {
         dbName = wconfig::getConfig().getString("scratchDb");
     } else if(sqlConn.dropDb(dbName, _errObj, false)) {
-        _log->info((Pformat("Cfg error! couldn't drop resultdb. %1%.")
-                % result).str().c_str());
+        LOGF(_log, LOG_LVL_INFO, "Cfg error! couldn't drop resultdb. %1%." % result);
         return false;
     }
     if(!sqlConn.createDb(dbName, _errObj, false)) {
-        _log->info((Pformat("Cfg error! couldn't create resultdb. %1%.")
-                % result).str().c_str());
+        LOGF(_log, LOG_LVL_INFO, "Cfg error! couldn't create resultdb. %1%." % result);
         return false;
     }
     if (!sqlConn.selectDb(dbName, _errObj)) {
-        _log->info((Pformat("Cfg error! couldn't select resultdb. %1%.")
-                % result).str().c_str());
+        LOGF(_log, LOG_LVL_INFO, "Cfg error! couldn't select resultdb. %1%." % result);
         return _errObj.addErrMsg("Unable to select database " + dbName);
     }
     _pResult->setDb(dbName);
@@ -401,13 +395,13 @@ QueryRunner::_prepareScratchDb(sql::SqlConnection& sqlConn) {
     std::string dbName = wconfig::getConfig().getString("scratchDb");
 
     if ( !sqlConn.createDb(dbName, _errObj, false) ) {
-        _log->info((Pformat("Cfg error! couldn't create scratch db. %1%.")
-                % _errObj.errMsg()).str().c_str());
+        LOGF(_log, LOG_LVL_INFO, "Cfg error! couldn't create scratch db. %1%."
+                % _errObj.errMsg());
         return false;
     }
     if ( !sqlConn.selectDb(dbName, _errObj) ) {
-        _log->info((Pformat("Cfg error! couldn't select scratch db. %1%.")
-                % _errObj.errMsg()).str().c_str());
+        LOGF(_log, LOG_LVL_INFO, "Cfg error! couldn't select scratch db. %1%."
+                % _errObj.errMsg());
         return _errObj.addErrMsg("Unable to select database " + dbName);
     }
     return true;

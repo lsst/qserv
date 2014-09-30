@@ -11,9 +11,9 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "boost_regex boost_signals boost_system boost_thread mysqlclient_r protobuf pthread ssl crypto".split()
+extDeps = "boost_regex boost_signals boost_system boost_thread mysqlclient_r protobuf log log4cxx pthread ssl crypto".split()
 
-modDeps = 'wlog mysql sql util wbase wconfig wcontrol wdb wsched'.split() # deps on other modules
+modDeps = 'mysql sql util wbase wconfig wcontrol wdb wsched'.split() # deps on other modules
 deps = itertools.chain(*map(lambda m: defaultTgts[m], modDeps))
 pDeps = itertools.chain(*map(lambda m: libProducts[m], ['proto']))
 pDeps = cacheObjs(env, pDeps, ".o")

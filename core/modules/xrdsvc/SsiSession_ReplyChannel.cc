@@ -22,9 +22,11 @@
  */
 #include "xrdsvc/SsiSession_ReplyChannel.h"
 
+// Third-party headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "util/Timer.h"
-#include "wlog/WLogger.h"
 #include "xrdsvc/ChannelStream.h"
 
 namespace lsst {
@@ -35,10 +37,7 @@ bool
 SsiSession::ReplyChannel::send(char const* buf, int bufLen) {
     Status s = _ssiSession.SetResponse(buf, bufLen);
     if(s != XrdSsiResponder::wasPosted) {
-        std::ostringstream os;
-        os << "DANGER: Couldn't post response of length="
-           << bufLen << std::endl;
-        _ssiSession._log->error(os.str());
+        LOGF_ERROR("DANGER: Couldn't post response of length=%1%" % bufLen);
         return false;
     }
     return true;
@@ -48,10 +47,7 @@ bool
 SsiSession::ReplyChannel::sendError(std::string const& msg, int code) {
     Status s = _ssiSession.SetErrResponse(msg.c_str(), code);
     if(s != XrdSsiResponder::wasPosted) {
-        std::ostringstream os;
-        os << "DANGER: Couldn't post error response " << msg
-           << std::endl;
-        _ssiSession._log->error(os.str());
+        LOGF_ERROR("DANGER: Couldn't post error response %1%" % msg);
         return false;
     }
     return true;
@@ -62,35 +58,28 @@ SsiSession::ReplyChannel::sendFile(int fd, Size fSize) {
     util::Timer t;
     t.start();
     Status s = _ssiSession.SetResponse(fSize, fd);
-    std::ostringstream os;
     if(s == XrdSsiResponder::wasPosted) {
-        os << "file posted ok";
+        LOG_INFO("file posted ok");
     } else {
         if(s == XrdSsiResponder::notActive) {
-            os << "DANGER: Couldn't post response file of length="
-               << fSize << " responder not active.\n";
+            LOGF_ERROR("DANGER: Couldn't post response file of length=%1%"
+               " responder not active." % fSize);
         } else {
-            os << "DANGER: Couldn't post response file of length="
-               << fSize << std::endl;
+            LOGF_ERROR("DANGER: Couldn't post response file of length=%1%" % fSize);
         }
         release();
         sendError("Internal error posting response file", 1);
         return false; // sendError handles everything else.
     }
-    _ssiSession._log->error(os.str());
     t.stop();
-    os.str("");
-    os << "sendFile took " << t.getElapsed() << " seconds";
-    _ssiSession._log->info(os.str());
+    LOGF_INFO("sendFile took %1% seconds" % t.getElapsed());
     return true;
 }
 
 bool
 SsiSession::ReplyChannel::sendStream(char const* buf, int bufLen, bool last) {
     // Initialize streaming object if not initialized.
-    std::ostringstream os;
-    os << "sendStream, checking stream " << (void*) _stream << ")";
-    _ssiSession._log->info(os.str());
+    LOGF_INFO("sendStream, checking stream %1%" % (void*) _stream);
     if(!_stream) {
         _initStream();
     } else if(_stream->closed()) {
@@ -103,7 +92,7 @@ SsiSession::ReplyChannel::sendStream(char const* buf, int bufLen, bool last) {
 void
 SsiSession::ReplyChannel::_initStream() {
     //_stream.reset(new Stream);
-    _stream = new ChannelStream(_ssiSession._log);
+    _stream = new ChannelStream();
     _ssiSession.SetResponse(_stream);
 }
 

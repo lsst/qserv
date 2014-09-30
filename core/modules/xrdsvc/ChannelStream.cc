@@ -25,6 +25,7 @@
 // Third-party headers
 #include <boost/thread/locks.hpp>
 #include <boost/utility.hpp>
+#include "lsst/log/Log.h"
 
 // Qserv headers
 #include "global/Bug.h"
@@ -63,18 +64,15 @@ public:
 ////////////////////////////////////////////////////////////////////////
 
 /// Constructor
-ChannelStream::ChannelStream(wlog::WLogger::Ptr log)
+ChannelStream::ChannelStream()
     : XrdSsiStream(isActive),
-      _closed(false),
-      _log(log) {}
+      _closed(false) {}
 
 /// Destructor
 ChannelStream::~ChannelStream() {
 #if 0 // Enable to debug ChannelStream lifetime
     try {
-        std::ostringstream os;
-        os << "Stream (" << (void*)this << ") deleted";
-        _log->info(os.str());
+        LOGF_INFO("Stream (%1%) deleted" % (void*)this);
     } catch (...) {} // Destructors have nowhere to throw exceptions
 #endif
 }
@@ -85,11 +83,11 @@ ChannelStream::append(char const* buf, int bufLen, bool last) {
     if(_closed) {
         throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
-    _log->info(" trying to append message");
-    _log->info(makeByteStreamAnnotated("StreamMsg", buf, bufLen));
+    LOG_INFO(" trying to append message");
+    LOGF_INFO("%1%" % makeByteStreamAnnotated("StreamMsg", buf, bufLen));
     {
         boost::unique_lock<boost::mutex> lock(_mutex);
-        _log->info(" trying to append message (flowing)");
+        LOG_INFO(" trying to append message (flowing)");
 
         _msgs.push_back(std::string(buf, bufLen));
         _closed = last; // if last is true, then we are closed.
@@ -103,12 +101,12 @@ ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
     boost::unique_lock<boost::mutex> lock(_mutex);
     while(_msgs.empty() && !_closed) { // No msgs, but we aren't done
         // wait.
-        _log->info("Waiting, no data ready");
+        LOG_INFO("Waiting, no data ready");
         _hasDataCondition.wait(lock);
     }
     if(_msgs.empty() && _closed) { // We are closed and no more
         // msgs are available.
-        _log->info("Not waiting, but closed");
+        LOG_INFO("Not waiting, but closed");
         dlen = 0;
         eInfo.Set("Not an active stream", EOPNOTSUPP);
         return 0;
@@ -117,11 +115,7 @@ ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
     dlen = _msgs.front().size();
     _msgs.pop_front();
     last = _closed && _msgs.empty();
-    std::ostringstream os;
-    os << "returning buffer (" << dlen << ","
-       << (last ? "(more)" : "(last)")
-       << ")";
-    _log->info(os.str());
+    LOGF_INFO("returning buffer (%1%, %2%)" % dlen % (last ? "(last)" : "(more)"));
     return sb;
 }
 

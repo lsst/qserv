@@ -25,7 +25,6 @@
 
 // Local headers
 #include "wcontrol/Foreman.h"
-#include "wlog/WLogger.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
@@ -35,30 +34,19 @@ namespace lsst {
 namespace qserv {
 namespace wcontrol {
 
-Service::Service(wlog::WLogger::Ptr log) {
-    if(!log.get()) {
-        log.reset(new wlog::WLogger());
-    }
-    wlog::WLogger::Ptr schedLog(new wlog::WLogger(log));
+Service::Service() {
 #if 0 // Shared scan only
-    schedLog->setPrefix(ScanScheduler::getName() + ":");
-    ScanScheduler::Ptr sch(new ScanScheduler(schedLog));
+    ScanScheduler::Ptr sch(new ScanScheduler());
 #elif 0 // Group scan only (interactive)
-    schedLog->setPrefix(wsched::GroupScheduler::getName() + ":");
-    wsched::GroupScheduler::Ptr sch(new wsched::GroupScheduler(schedLog));
+    wsched::GroupScheduler::Ptr sch(new wsched::GroupScheduler());
 #else // Blend scheduler
-    wlog::WLogger::Ptr gLog(new wlog::WLogger(log));
-    gLog->setPrefix(wsched::GroupScheduler::getName() + ":");
-    wsched::GroupScheduler::Ptr gro(new wsched::GroupScheduler(gLog));
+    wsched::GroupScheduler::Ptr gro(new wsched::GroupScheduler());
 
-    wlog::WLogger::Ptr sLog(new wlog::WLogger(log));
-    sLog->setPrefix(wsched::ScanScheduler::getName() + ":");
-    wsched::ScanScheduler::Ptr sca(new wsched::ScanScheduler(sLog));
+    wsched::ScanScheduler::Ptr sca(new wsched::ScanScheduler());
 
-    schedLog->setPrefix(wsched::BlendScheduler::getName() + ":");
-    wsched::BlendScheduler::Ptr sch(new wsched::BlendScheduler(schedLog, gro, sca));
+    wsched::BlendScheduler::Ptr sch(new wsched::BlendScheduler(gro, sca));
 #endif
-    _foreman = newForeman(sch, log);
+    _foreman = newForeman(sch);
 }
 
 wbase::TaskAcceptor::Ptr

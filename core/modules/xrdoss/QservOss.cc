@@ -43,10 +43,8 @@
 
 // Local headers
 #include "obsolete/QservPath.h"
-#include "wlog/WLogger.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdfs/XrdName.h"
-#include "xrdfs/XrdPrinter.h"
 
 
 namespace {
@@ -203,10 +201,10 @@ int QservOss::Stat(const char *path, struct stat *buff, int opts, XrdOucEnv*) {
     }
     if(_checkExist(qp.db(), qp.chunk())) {
         _fillQueryFileStat(*buff);
-        _log->info(std::string("QservOss Stat ") + path + " OK");
+        LOGF(_log, LOG_LVL_INFO, "QservOss Stat %1% OK" % path);
         return XrdOssOK;
     } else {
-        _log->info(std::string("QservOss Stat ") + path + " non-existant");
+        LOGF(_log, LOG_LVL_INFO, "QservOss Stat %1% non-existant" % path);
         return -ENOENT;
     }
 }
@@ -230,12 +228,12 @@ int QservOss::StatVS(XrdOssVSInfo *sP, const char *sname,
     // the amount never prevents the manager xrootd/cmsd from
     // selecting us as a write target (qserv dispatch target)
     if(!sP) {
-        _log->warn("QservOss StatVS null struct or name");
+        LOG(_log, LOG_LVL_WARN, "QservOss StatVS null struct or name");
         return -EEXIST; // Invalid request if name or info struct is null
     } else if(!sname) { // Null name okay.
-        _log->info("QservOss StatVS all space");
+        LOG(_log, LOG_LVL_INFO, "QservOss StatVS all space");
     } else {
-        _log->info(std::string("QservOss StatVS ") + sname);
+        LOGF(_log, LOG_LVL_INFO, "QservOss StatVS %1%" % sname);
     }
     fillVSInfo(sP, sname);
     return XrdOssOK;
@@ -251,25 +249,18 @@ int QservOss::StatVS(XrdOssVSInfo *sP, const char *sname,
 */
 
 int QservOss::Init(XrdSysLogger* log, const char* cfgFn) {
-    _xrdSysLogger = log;
-    boost::shared_ptr<xrdfs::XrdPrinter> printer(new xrdfs::XrdPrinter(log));
-    if(log) {
-        _log.reset(new wlog::WLogger(printer));
-        _log->setPrefix("QservOss");
-    } else {
-        _log.reset(new wlog::WLogger());
-    }
+    _log = LOG_GET("QservOss");
     if(!cfgFn) {
         _cfgFn.assign("");
     } else {
         _cfgFn = cfgFn;
     }
-    _log->info("QservOss Init");
+    LOG(_log, LOG_LVL_INFO, "QservOss Init");
     std::ostringstream ss;
     ss << "Valid paths(ci): ";
-    _chunkInventory.reset(new wpublish::ChunkInventory(_name, *_log));
+    _chunkInventory.reset(new wpublish::ChunkInventory(_name));
     _chunkInventory->dbgPrint(ss);
-    _log->info(ss.str());
+    LOGF(_log, LOG_LVL_INFO, "%1%" % ss.str());
     // TODO: update self with new config?
     return 0;
 }

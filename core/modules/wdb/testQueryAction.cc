@@ -28,6 +28,7 @@
   */
 
 // Third-party headers
+#include "lsst/log/Log.h"
 
 // Local headers
 #include "proto/worker.pb.h"
@@ -37,7 +38,6 @@
 #include "wbase/Task.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryAction.h"
-#include "wlog/WLogger.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAction
@@ -59,7 +59,6 @@ using lsst::qserv::wdb::ChunkResource;
 using lsst::qserv::wdb::ChunkResourceMgr;
 using lsst::qserv::wdb::QueryAction;
 using lsst::qserv::wdb::QueryActionArg;
-using lsst::qserv::wlog::WLogger;
 
 struct Fixture {
     boost::shared_ptr<TaskMsg> newTaskMsg() {
@@ -77,7 +76,7 @@ struct Fixture {
         boost::shared_ptr<TaskMsg> msg(newTaskMsg());
         boost::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
         lsst::qserv::wbase::Task::Ptr t(new lsst::qserv::wbase::Task(msg, sc));
-        boost::shared_ptr<WLogger> w(new WLogger(WLogger::Printer::newCout()));
+        LOG_LOGGER w(LOG_GET("test"));
         boost::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newFakeMgr();
         QueryActionArg a(w, t, crm);
         return a;

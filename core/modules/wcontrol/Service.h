@@ -35,9 +35,6 @@ namespace wbase {
 }
 namespace wcontrol {
     class Foreman;
-}
-namespace wlog {
-    class WLogger;
 }}} // End of forward declarations
 
 
@@ -52,8 +49,7 @@ class Service {
 public:
     typedef boost::shared_ptr<Service> Ptr;
 
-    explicit Service(boost::shared_ptr<wlog::WLogger> log=
-                          boost::shared_ptr<wlog::WLogger>());
+    Service();
     boost::shared_ptr<wbase::TaskAcceptor> getAcceptor();
     boost::shared_ptr<wbase::MsgProcessor> getProcessor();
     void squashByHash(std::string const& hash);

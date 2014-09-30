@@ -33,6 +33,7 @@ export QSW_MYSQLDUMP=`which mysqldump`
 QSW_SCRATCHPATH="{{QSERV_RUN_DIR}}/tmp"
 QSW_SCRATCHDB="qservScratch"
 export QSW_RESULTPATH="${XROOTD_RUN_DIR}/result"
+export LSST_LOG_CONFIG={{QSERV_RUN_DIR}}/etc/log4xrootd.properties
 
 # method to guess pid file name,
 # takes single argument - program name

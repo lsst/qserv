@@ -61,7 +61,6 @@
 #include "wbase/Base.h"
 #include "wcontrol/RequestTaker.h"
 #include "wdb/QueryRunner.h"
-#include "wlog/WLogger.h"
 #include "xrdfs/MySqlFsCommon.h"
 
 #define QSERV_USE_STUPID_STRING 1
@@ -191,7 +190,7 @@ namespace xrdfs {
 //////////////////////////////////////////////////////////////////////////////
 // MySqlFsFile
 //////////////////////////////////////////////////////////////////////////////
-MySqlFsFile::MySqlFsFile(boost::shared_ptr<wlog::WLogger> log,
+MySqlFsFile::MySqlFsFile(LOG_LOGGER const& log,
                          char const* user,
                          AddCallbackFunction::Ptr acf,
                          FileValidator::Ptr fv,
@@ -222,13 +221,13 @@ int MySqlFsFile::_acceptFile(char const* fileName) {
     switch(rt) {
     case obsolete::QservPath::GARBAGE:
     case obsolete::QservPath::UNKNOWN:
-        _log->error((Pformat("Unrecognized file open %1% by %2%")
-                   % fileName % _userName).str().c_str());
+        LOGF(_log, LOG_LVL_ERROR, "Unrecognized file open %1% by %2%"
+                   % fileName % _userName);
         return SFS_ERROR;
 
     case obsolete::QservPath::OLDQ1:
-        _log->error((Pformat("Unrecognized file open %1% by %2%")
-                     % fileName % _userName).str().c_str());
+        LOGF(_log, LOG_LVL_ERROR, "Unrecognized file open %1% by %2%"
+                     % fileName % _userName);
 
         return SFS_ERROR; // Unimplemented
     case obsolete::QservPath::CQUERY:
@@ -237,8 +236,8 @@ int MySqlFsFile::_acceptFile(char const* fileName) {
         //              % fileName % _path->chunk()).str().c_str());
         if(!(*_validator)(fileName)) {
             error.setErrInfo(ENOENT, "File does not exist");
-            _log->warn((Pformat("WARNING: unowned chunk query detected: %1%(%2%)")
-                         % fileName % _chunkId ).str().c_str());
+            LOGF(_log, LOG_LVL_WARN, "WARNING: unowned chunk query detected: %1%(%2%)"
+                         % fileName % _chunkId);
             return SFS_ERROR;
         }
         _requestTaker.reset(new wcontrol::RequestTaker(_service->getAcceptor(),
@@ -249,27 +248,27 @@ int MySqlFsFile::_acceptFile(char const* fileName) {
     case obsolete::QservPath::RESULT:
         rc = _checkForHash(_path->hashName());
         if(rc == SFS_ERROR) {
-            _log->error((Pformat("File open %1% fail. Query error: %2%.")
-                         % fileName % error.getErrText()).str().c_str());
+            LOGF(_log, LOG_LVL_ERROR, "File open %1% fail. Query error: %2%."
+                         % fileName % error.getErrText());
         } else if (rc == SFS_OK) {
-            _log->info((Pformat("File open %1% for result reading by %2%")
-                       % fileName % _userName).str().c_str());
+            LOGF(_log, LOG_LVL_INFO, "File open %1% for result reading by %2%"
+                       % fileName % _userName);
         }
         return rc;
     case obsolete::QservPath::OLDQ2:
         _chunkId = _path->chunk();
-        _log->info((Pformat("File open %1% for query invocation by %2%")
-                     % fileName % _userName).str().c_str());
+        LOGF(_log, LOG_LVL_INFO, "File open %1% for query invocation by %2%"
+                     % fileName % _userName);
         if(!(*_validator)(fileName)) {
             error.setErrInfo(ENOENT, "File does not exist");
-            _log->warn((Pformat("WARNING: unowned chunk query detected: %1%(%2%)")
-                         % fileName % _chunkId ).str().c_str());
+            LOGF(_log, LOG_LVL_WARN, "WARNING: unowned chunk query detected: %1%(%2%)"
+                         % fileName % _chunkId);
             return SFS_ERROR;
         }
         return SFS_OK;
     default:
-        _log->error((Pformat("Unrecognized file open %1% by %2%")
-                     % fileName % _userName).str().c_str());
+        LOGF(_log, LOG_LVL_ERROR, "Unrecognized file open %1% by %2%"
+                     % fileName % _userName);
         return SFS_ERROR;
     }
 }
@@ -287,8 +286,8 @@ int MySqlFsFile::open(char const* fileName,
 }
 
 int MySqlFsFile::close(void) {
-    _log->info((Pformat("File close(%1%) by %2%")
-               % _path->chunk() % _userName).str().c_str());
+    LOGF(_log, LOG_LVL_INFO, "File close(%1%) by %2%"
+               % _path->chunk() % _userName);
     if(_path->requestType() == obsolete::QservPath::RESULT) {
         // Get rid of the news.
         std::string hash = stripPath(_dumpName);
@@ -298,10 +297,10 @@ int MySqlFsFile::close(void) {
         // _eDest->Say((Pformat("Not Removing dump file(%1%)")
         // 		 % _dumpName ).str().c_str());
         int result = ::unlink(_dumpName.c_str());
-        _log->info((Pformat("Unlink: %1%") % _dumpName ).str().c_str());
+        LOGF(_log, LOG_LVL_INFO, "Unlink: %1%" % _dumpName);
         if(result != 0) {
-            _log->error((Pformat("Error removing dump file(%1%): %2%")
-                        % _dumpName % strerror(errno)).str().c_str());
+            LOGF(_log, LOG_LVL_ERROR, "Error removing dump file(%1%): %2%"
+                        % _dumpName % strerror(errno));
         }
     }
     return SFS_OK;
@@ -316,8 +315,8 @@ int MySqlFsFile::fctl(
 }
 
 char const* MySqlFsFile::FName(void) {
-    _log->info((Pformat("File FName(%1%) by %2%")
-               % _path->chunk() % _userName).str().c_str());
+    LOGF(_log, LOG_LVL_INFO, "File FName(%1%) by %2%"
+               % _path->chunk() % _userName);
     return 0;
 }
 
@@ -329,12 +328,11 @@ int MySqlFsFile::getMmap(void** Addr, off_t &Size) {
 int MySqlFsFile::read(XrdSfsFileOffset fileOffset,
                                XrdSfsXferSize prereadSz) {
     _hasRead = true;
-    _log->info((Pformat("File read(%1%) at %2% by %3%")
-               % _path->chunk() % fileOffset % _userName).str().c_str());
+    LOGF(_log, LOG_LVL_INFO, "File read(%1%) at %2% by %3%"
+               % _path->chunk() % fileOffset % _userName);
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
     if (!wdb::dumpFileExists(_dumpName)) {
-        std::string s = "Can't find dumpfile: " + _dumpName;
-        _log->error(s);
+        LOGF(_log, LOG_LVL_ERROR, "Can't find dumpfile: %1%" % _dumpName);
 
         error.setErrInfo(ENOENT, "Query results missing");
         //return SFS_ERROR;
@@ -352,24 +350,19 @@ XrdSfsXferSize MySqlFsFile::read(
         statbuf.st_size = -errno;
     }
 
-    msg = (Pformat("File read(%1%) at %2% for %3% by %4% [actual=%5% %6%]")
+    LOGF(_log, LOG_LVL_INFO, "File read(%1%) at %2% for %3% by %4% [actual=%5% %6%]"
            % _path->chunk() % fileOffset % bufferSize % _userName
-           % _dumpName % statbuf.st_size).str();
-    _log->info(msg);
+           % _dumpName % statbuf.st_size);
     if(_dumpName.empty()) { _setDumpNameAsChunkId(); }
     int fd = wdb::dumpFileOpen(_dumpName);
     if (fd == -1) {
-      std::stringstream ss;
-      ss << (void*)this << "  Can't open dumpfile: " << _dumpName;
-      _log->error(ss.str());
+      LOGF(_log, LOG_LVL_ERROR, "%1%  Can't open dumpfile: %2%" % (void*)this % _dumpName);
 
       error.setErrInfo(errno, "Query results missing");
         //return -1;
         return -errno;
     } else {
-      std::stringstream ss;
-      ss << (void*)this << "  Dumpfile OK: " << _dumpName;
-      _log->info(ss.str());
+        LOGF(_log, LOG_LVL_INFO, "%1%  Dumpfile OK: %2%" % (void*)this % _dumpName);
     }
     off_t pos = ::lseek(fd, fileOffset, SEEK_SET);
     if (pos == static_cast<off_t>(-1) || pos != fileOffset) {
@@ -398,11 +391,10 @@ XrdSfsXferSize MySqlFsFile::write(
     XrdSfsFileOffset fileOffset, char const* buffer,
     XrdSfsXferSize bufferSize) {
     Timer t;
-    std::stringstream ss;
     t.start();
     std::string descr((Pformat("File write(%1%) at %2% for %3% by %4%")
                        % _chunkId % fileOffset % bufferSize % _userName).str());
-    _log->info(descr);
+    LOGF(_log, LOG_LVL_INFO, "%1%" % descr);
     //    return -EINVAL; // Garble for error testing.
 
     if (bufferSize <= 0) {
@@ -417,23 +409,22 @@ XrdSfsXferSize MySqlFsFile::write(
         } else return -EIO;
     }
     _addWritePacket(fileOffset, buffer, bufferSize);
-    _log->info((Pformat("File write(%1%) Added.") % _chunkId).str());
+    LOGF(_log, LOG_LVL_INFO, "File write(%1%) Added." % _chunkId);
 
     if(_hasPacketEof(buffer, bufferSize)) {
-        _log->info((Pformat("File write(%1%) Flushing.") % _chunkId).str());
+        LOGF(_log, LOG_LVL_INFO, "File write(%1%) Flushing." % _chunkId);
         bool querySuccess = _flushWrite();
         if(!querySuccess) {
-            _log->info("Flush returned fail.");
+            LOG(_log, LOG_LVL_INFO, "Flush returned fail.");
             error.setErrInfo(EIO, "Error executing query.");
             //return -1;
             return -EIO;
         }
-        _log->info("Flush ok, ready to return good.");
+        LOG(_log, LOG_LVL_INFO, "Flush ok, ready to return good.");
     }
-    _log->info(descr + " --FINISH--");
+    LOGF(_log, LOG_LVL_INFO, "%1% %2%" % descr % "--FINISH--");
     t.stop();
-    ss << _chunkId << " WriteSpawn " << t;
-    _log->info(ss.str());
+    LOGF(_log, LOG_LVL_INFO, "%1% WriteSpawn %2%" % _chunkId % t);
     return bufferSize;
 }
 
@@ -441,7 +432,7 @@ int MySqlFsFile::write(XrdSfsAio* aioparm) {
     aioparm->Result = write(aioparm->sfsAio.aio_offset,
                             (const char*)aioparm->sfsAio.aio_buf,
                             aioparm->sfsAio.aio_nbytes);
-    _log->info("AIO write.");
+    LOG(_log, LOG_LVL_INFO, "AIO write.");
 
     if(aioparm->Result != (int)aioparm->sfsAio.aio_nbytes) {
         // overwrite error result with generic IO error?
@@ -509,7 +500,7 @@ bool MySqlFsFile::_flushWrite() {
     case obsolete::QservPath::OLDQ1:
         return _flushWriteSync();
     default:
-        _log->error("Wrong filestate for writing. FIX THIS BUG.");
+        LOG(_log, LOG_LVL_ERROR, "Wrong filestate for writing. FIX THIS BUG.");
         _queryBuffer.reset(); // Kill the buffer.
         return false;
     }

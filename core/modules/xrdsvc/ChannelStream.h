@@ -32,9 +32,6 @@
 #include "XrdSsi/XrdSsiErrInfo.hh" // required by XrdSsiStream
 #include "XrdSsi/XrdSsiStream.hh"
 
-// Qserv headers
-#include "wlog/WLogger.h"
-
 namespace lsst {
 namespace qserv {
 namespace xrdsvc {
@@ -42,7 +39,7 @@ namespace xrdsvc {
 /// SendChannel streamed data.
 class ChannelStream : public XrdSsiStream {
 public:
-    ChannelStream(wlog::WLogger::Ptr log);
+    ChannelStream();
     virtual ~ChannelStream();
 
     /// Push in a data packet
@@ -55,7 +52,6 @@ public:
 
 private:
     bool _closed; ///< Closed to new append() calls?
-    wlog::WLogger::Ptr _log; ///< Handle to logger
     // Can keep a deque of (buf, bufsize) to reduce copying, if needed.
     std::deque<std::string> _msgs; ///< Message queue
     boost::mutex _mutex; ///< _msgs protection

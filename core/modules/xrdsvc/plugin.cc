@@ -44,8 +44,6 @@ XrdSsiService *XrdSsiGetServerService(XrdSsiLogger  *logP,
                                       const char    *cfgFn,
                                       const char    *parms)
 {
-    std::cerr << " Returning new Service " << std::endl;
-    logP->Msg("pfx", "Hello");
     return new lsst::qserv::xrdsvc::SsiService(logP);
 }
 } // extern "C"

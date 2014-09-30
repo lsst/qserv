@@ -46,9 +46,6 @@ namespace lsst {
 namespace qserv {
 namespace sql {
     class SqlConnection;
-}
-namespace wlog {
-    class WLogger;
 }}} // End of forward declarations
 
 
@@ -68,9 +65,8 @@ public:
     typedef boost::shared_ptr<ChunkInventory> Ptr;
     typedef boost::shared_ptr<ChunkInventory const> CPtr;
 
-    ChunkInventory(std::string const& name, wlog::WLogger& log);
-    ChunkInventory(std::string const& name, wlog::WLogger& log,
-                   boost::shared_ptr<sql::SqlConnection> sc);
+    ChunkInventory(std::string const& name);
+    ChunkInventory(std::string const& name, boost::shared_ptr<sql::SqlConnection> sc);
 
     static inline std::string makeKey(std::string const& db, int chunk) {
         std::stringstream ss;
@@ -90,7 +86,6 @@ private:
 
     ExistMap _existMap;
     std::string _name;
-    wlog::WLogger& _log;
 };
 
 }}} // namespace lsst::qserv::wpublish

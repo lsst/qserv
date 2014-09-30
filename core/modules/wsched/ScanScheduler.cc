@@ -42,7 +42,6 @@
 // Local headers
 #include "global/Bug.h"
 #include "wcontrol/Foreman.h"
-#include "wlog/WLogger.h"
 #include "wsched/ChunkDisk.h"
 
 namespace lsst {
@@ -56,10 +55,13 @@ ChunkDisk* dbgChunkDisk1 = 0; ///< A symbol for gdb
 ////////////////////////////////////////////////////////////////////////
 // class ScanScheduler
 ////////////////////////////////////////////////////////////////////////
-ScanScheduler::ScanScheduler(wlog::WLogger::Ptr logger)
-    : _maxRunning(32), // FIXME: set to some multiple of system proc count.
-      _logger(logger) {
-    _disks.push_back(boost::make_shared<ChunkDisk>(logger));
+ScanScheduler::ScanScheduler()
+    : _maxRunning(32),  // FIXME: set to some multiple of system proc count.
+      _disks(),
+      _logger(LOG_GET(getName())),
+      _mutex()
+{
+    _disks.push_back(boost::make_shared<ChunkDisk>(_logger));
     dbgChunkDisk1 = _disks.front().get();
     dbgScanScheduler = this;
     assert(!_disks.empty());
@@ -119,10 +121,8 @@ ScanScheduler::taskFinishAct(wbase::Task::Ptr finished,
     // No free threads? Exit.
     // FIXME: Can do an I/O bound scan if there is memory and an idle
     // spindle.
-    std::ostringstream os;
-    os << "Completed: " << "(" << finished->msg->chunkid()
-       << ")" << finished->msg->fragment(0).query(0);
-    _logger->debug(os.str());
+    LOGF(_logger, LOG_LVL_DEBUG, "Completed: (%1%) %2%" %
+            finished->msg->chunkid() % finished->msg->fragment(0).query(0));
     int available = _maxRunning - running->size();
     if(available <= 0) {
         return wbase::TaskQueuePtr();
@@ -171,10 +171,7 @@ ScanScheduler::_getNextTasks(int max) {
     // FIXME: Select disk based on chunk location.
     assert(!_disks.empty());
     assert(_disks.front());
-    std::ostringstream os;
-    os << "_getNextTasks(" << max << ")>->->";
-    _logger->debug(os.str());
-    os.str("");
+    LOGF(_logger, LOG_LVL_DEBUG, "_getNextTasks(%1%)>->->" % max);
     wbase::TaskQueuePtr tq;
     ChunkDisk& disk = *_disks.front();
 
@@ -191,17 +188,14 @@ ScanScheduler::_getNextTasks(int max) {
         }
         tq->push_back(p);
 
-        os << "Making ready: " << *(tq->front());
-        _logger->debug(os.str());
-        os.str("");
+        LOGF(_logger, LOG_LVL_DEBUG, "Making ready: %1%" % *(tq->front()));
         --max;
     }
     if(tq) {
-        os << "Returning " << tq->size() << " to launch";
-        _logger->debug(os.str());
+        LOGF(_logger, LOG_LVL_DEBUG, "Returning %1% to launch" % tq->size());
     }
     assert(_integrityHelper());
-    _logger->debug("_getNextTasks <<<<<");
+    LOG(_logger, LOG_LVL_DEBUG, "_getNextTasks <<<<<");
     return tq;
 }
 
@@ -213,11 +207,9 @@ ScanScheduler::_enqueueTask(wbase::Task::Ptr incoming) {
     assert(!_disks.empty());
     assert(_disks.front());
     _disks.front()->enqueue(incoming);
-    std::ostringstream os;
     proto::TaskMsg const& msg = *(incoming->msg);
-    os << "Adding new task: " << msg.chunkid()
-       << " : " << msg.fragment(0).query(0);
-    _logger->debug(os.str());
+    LOGF(_logger, LOG_LVL_DEBUG, "Adding new task: %1% : %2%" % msg.chunkid()
+            % msg.fragment(0).query(0));
 }
 
 }}} // namespace lsst::qserv::wsched

@@ -24,7 +24,6 @@
 
 // Local headers
 #include "sql/MockSql.h"
-#include "wlog/WLogger.h"
 #include "wpublish/ChunkInventory.h"
 
 // Boost unit test header
@@ -35,7 +34,6 @@ namespace test = boost::test_tools;
 using lsst::qserv::sql::MockSql;
 using lsst::qserv::sql::SqlResultIter;
 using lsst::qserv::sql::SqlErrorObject;
-using lsst::qserv::wlog::WLogger;
 using lsst::qserv::wpublish::ChunkInventory;
 
 namespace {
@@ -101,28 +99,25 @@ int tablesSize = sizeof(tables)/sizeof(tables[0]);
 BOOST_FIXTURE_TEST_SUITE(ChunkInv, ChunkInvFixture)
 
 BOOST_AUTO_TEST_CASE(Test1) {
-    WLogger w;
     boost::shared_ptr<ChunkSql> cs(new ChunkSql(tables, tables+tablesSize));
-    ChunkInventory ci("test", w, cs);
+    ChunkInventory ci("test", cs);
     BOOST_CHECK(ci.has("LSST", 31415));
     BOOST_CHECK(ci.has("LSST", 1234567890));
     BOOST_CHECK(!ci.has("LSST", 123));
 }
 
 BOOST_AUTO_TEST_CASE(Test2) {
-    WLogger w;
     boost::shared_ptr<ChunkSql> cs(new ChunkSql(tables, tables+tablesSize));
-    ChunkInventory ci("test", w, cs);
+    ChunkInventory ci("test", cs);
     BOOST_CHECK(!ci.has("Winter2012", 31415));
     BOOST_CHECK(!ci.has("Winter2012", 123));
 }
 BOOST_AUTO_TEST_CASE(MissingDummy) {
-    WLogger w;
     // Construct the mock without the dummy chunk
     boost::shared_ptr<ChunkSql> cs(new ChunkSql(tables, tables+2));
     // FIXME: enable when throwing on corrupt dbs is enabled.
     //BOOST_CHECK_THROW(new ChunkInventory("test", w, cs));
-    ChunkInventory ci("test", w, cs);
+    ChunkInventory ci("test", cs);
     //ci.dbgPrint(std::cout);
     BOOST_CHECK(ci.has("LSST", 31415));
     BOOST_CHECK(!ci.has("LSST", 123));

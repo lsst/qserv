@@ -36,6 +36,9 @@
 // System headers
 #include <memory>
 
+// Third-party headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "wbase/Task.h"
 
@@ -44,9 +47,6 @@ namespace lsst {
 namespace qserv {
 namespace wdb {
 class ChunkResourceMgr;
-}
-namespace wlog {
-    class WLogger;
 }}} // End of forward declarations
 
 
@@ -60,11 +60,11 @@ struct QueryActionArg {
 public:
     QueryActionArg() {}
 
-    QueryActionArg(boost::shared_ptr<wlog::WLogger> log_,
+    QueryActionArg(LOG_LOGGER const& log_,
                    wbase::Task::Ptr task_,
                    boost::shared_ptr<ChunkResourceMgr> mgr_)
         : log(log_), task(task_), mgr(mgr_) { }
-    boost::shared_ptr<wlog::WLogger> log; ///< Logging handle
+    LOG_LOGGER log; ///< Logging handle
     wbase::Task::Ptr task; ///< Actual task
     boost::shared_ptr<ChunkResourceMgr> mgr; ///< Resource reservation
 };
