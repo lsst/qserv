@@ -153,7 +153,7 @@ KvInterfaceImplMem::getChildren(string const& key) {
     map<string, string>::const_iterator itrM;
     for (itrM=_kvMap.begin() ; itrM!=_kvMap.end() ; itrM++) {
         string fullKey = itrM->first;
-        LOGF_INFO("fullKey: %1%" % fullKey)
+        LOGF_INFO("fullKey: %1%" % fullKey);
         if (boost::starts_with(fullKey, key+"/")) {
             string theChild = fullKey.substr(key.length()+1);
             if (theChild.size() > 0) {
@@ -175,7 +175,7 @@ KvInterfaceImplMem::getChildren(string const& key) {
 
 void
 KvInterfaceImplMem::deleteKey(string const& key) {
-    LOGF_INFO("*** KvInterfaceImplMem::deleteKey(%1%)." % key)
+    LOGF_INFO("*** KvInterfaceImplMem::deleteKey(%1%)." % key);
     if ( ! exists(key) ) {
         throw NoSuchKey(key);
     }
