@@ -88,7 +88,10 @@ inline int escapeString(char* dest, char const* src, int srcLength) {
 /// Copy a rawColumn to an STL container
 template <typename T>
 inline int copyColumn(T& dest, std::string const& rawColumn) {
-    //      std::string colValue = rb.column(ci);
+    // Consider reserving dest and writing directly to it instead of using an
+    // intermediate vector<char>. Note this would force escapeString() to use an
+    // iterator interface--for T=string, writing to internal string memory is
+    // discouraged.
     std::vector<char> colBuf(2 * rawColumn.size());
     int valSize = escapeString(&colBuf[0],
                            rawColumn.data(), rawColumn.size());
@@ -168,11 +171,9 @@ unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
             memcpy(buffer, &_currentRow[0], _currentRow.size());
             fetched = _currentRow.size();
             _currentRow.clear();
-        } else if(_rowIdx >= _rowTotal) {
-            return 0; // Nothing to fetch, then.
         }
     }
-    if(_currentRow.size() == 0) {
+    if((_currentRow.size() == 0) && (_rowIdx < _rowTotal)) {
         _readNextRow();
     }
     return fetched;

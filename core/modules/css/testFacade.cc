@@ -106,21 +106,23 @@ struct FacadeFixture {
         kv.push_back(make_pair(p, ""));
         kv.push_back(make_pair(p + "/Exposure", ""));
 
-        KvInterfaceImplZoo kvI = KvInterfaceImplZoo("localhost:12181", 10000);
+        std::auto_ptr<KvInterfaceImplZoo> kvI(
+            new KvInterfaceImplZoo("localhost:12181", 10000));
         vector<std::pair<string, string> >::const_iterator itr;
         cout << "--------------" << endl;
         for (itr=kv.begin() ; itr!=kv.end() ; ++itr) {
             cout << itr->first << " --> " << itr->second << endl;
-            kvI.create(itr->first, itr->second);
+            kvI->create(itr->first, itr->second);
         }
         cout << "--------------" << endl;
     };
 
     ~FacadeFixture(void) {
-        KvInterfaceImplZoo kvI = KvInterfaceImplZoo("localhost:12181", 10000);
+        std::auto_ptr<KvInterfaceImplZoo> kvI(
+            new KvInterfaceImplZoo("localhost:12181", 10000));
         vector<std::pair<string, string> >::const_reverse_iterator itr;
         for (itr=kv.rbegin() ; itr!=kv.rend() ; ++itr) {
-            kvI.deleteKey(itr->first);
+            kvI->deleteKey(itr->first);
         }
     };
 

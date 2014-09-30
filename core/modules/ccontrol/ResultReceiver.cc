@@ -53,7 +53,7 @@ ResultReceiver::ResultReceiver(boost::shared_ptr<MsgReceiver> msgReceiver,
       _infileMerger(merger), _tableName(tableName),
       _actualSize(ResultReceiver_bufferSize),
       _actualBuffer(_actualSize),
-      _flushed(false) {
+      _flushed(false), _dirty(false) {
     // Consider allocating buffer lazily, at first invocation of buffer()
     _buffer = &_actualBuffer[0];
     _bufferSize = _actualSize;
@@ -172,15 +172,13 @@ bool ResultReceiver::_appendAndMergeBuffer(int bLen) {
         std::string msg = os.str();
         LOGGER_WRN << msg << std::endl;
         return true;
-    } else {
-        std::string msg = "Merger::merge() returned an impossible value";
-        LOGGER_ERR << "Die horribly " << msg << std::endl;
-        if(_msgReceiver) {
-            (*_msgReceiver)(log::MSG_MERGE_ERROR, msg);
-        }
-        return false;
     }
-    // All conditions caught: should've returned before this point.
+    std::string msg = "Merger::merge() returned an impossible value";
+    LOGGER_ERR << "Die horribly " << msg << std::endl;
+    if(_msgReceiver) {
+        (*_msgReceiver)(log::MSG_MERGE_ERROR, msg);
+    }
+    return false;
 }
 
 }}} // lsst::qserv::ccontrol

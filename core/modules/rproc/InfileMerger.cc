@@ -85,7 +85,8 @@ std::string getTimeStampId() {
     s << (now.tv_sec % 10000) << now.tv_usec;
     return s.str();
     // Use the lower digits as pseudo-unique (usec, sec % 10000)
-    // FIXME: is there a better idea?
+    // Alternative (for production?) Use boost::uuid to construct ids that are
+    // guaranteed to be unique.
 }
 
 boost::shared_ptr<MySqlConfig> makeSqlConfig(InfileMergerConfig const& c) {
@@ -109,7 +110,10 @@ bool InfileMergerError::resultTooBig() const {
     return (status == MYSQLEXEC) && (errorCode == 1114);
 }
 
-/// InfileMerger is a value class for imported Protobufs messages
+/// InfileMerger is a value class for imported Protobufs messages. Incoming
+/// messages are bundled here so they can be be constructed by the shared
+/// InfileMerger code and then tied to Actions, which load results
+/// into the czar's tables.
 struct InfileMerger::Msgs {
     lsst::qserv::proto::ProtoHeader protoHeader;
     lsst::qserv::proto::Result result;
@@ -279,12 +283,10 @@ off_t InfileMerger::merge(char const* dumpBuffer, int dumpLength) {
     int mergeSize = 0;
     // Now buffer is big enough, start processing.
     mergeSize = _importBuffer(dumpBuffer, dumpLength, _needCreateTable);
-    if(mergeSize == 0) {
+    if(mergeSize == 0) { // Buffer not big enough.
         LOGGER_DBG << "WARNING, zero merge from InfileMerger::merge("
                    << (void*)dumpBuffer << ", "
                    << dumpLength << std::endl;
-        // Buffer not big enough.
-        return 0;
     }
     return mergeSize;
 }

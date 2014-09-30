@@ -37,6 +37,7 @@
 #include <string>
 
 // Third-party headers
+#include <boost/thread/mutex.hpp>
 #include "zookeeper/zookeeper.h"
 
 // Local headers
@@ -67,9 +68,10 @@ private:
     void _throwZooFailure(int, std::string const& fName, std::string const& key);
 
 private:
-    zhandle_t *_zh; // zhookeeper handle
+    boost::mutex _mutex;
+    zhandle_t *_zh; ///< zhookeeper handle
     const std::string _connInfo;
-    int _timeout;   // in milisec
+    int _timeout;   ///< in millisec
 };
 
 }}} // namespace lsst::qserv::css

@@ -20,22 +20,21 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_CCONTROL_CONFIGERROR_H
-#define LSST_QSERV_CCONTROL_CONFIGERROR_H
+#ifndef LSST_QSERV_CONFIGERROR_H
+#define LSST_QSERV_CONFIGERROR_H
 
-// Qserv headers
-#include "global/ConfigError.h"
+// System headers
+#include <stdexcept>
 
 namespace lsst {
 namespace qserv {
-namespace ccontrol {
 
-/// ConfigError : error in qserv configuration detected by the czar controller
-class ConfigError : public lsst::qserv::ConfigError {
+/// ConfigError : an error in qserv configuration
+class ConfigError : public std::runtime_error {
 public:
     ConfigError(std::string const& msg)
-        : lsst::qserv::ConfigError(msg) {}
+        : std::runtime_error(msg) {}
 };
-}}} // namespace lsst::qserv::ccontrol
+}} // namespace lsst::qserv
 
-#endif // LSST_QSERV_CCONTROL_CONFIGERROR_H
+#endif // LSST_QSERV_CONFIGERROR_H

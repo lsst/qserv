@@ -26,26 +26,18 @@
 // System headers
 #include <iostream>
 
-namespace {
-int seekMagic(int start, char* buffer, int term) {
-    // Find magic sequence
-    const char m[] = "####"; // MAGIC!
-    for(int p = start; p < term; ++p) {
-        if(((term - p) > 4) &&
-           (buffer[p+0] == m[0]) && (buffer[p+1] == m[1]) &&
-           (buffer[p+2] == m[2]) && (buffer[p+3] == m[3])) {
-            return p;
-        }
-    }
-    return term;
-}
-} // anonymous namespace
-
 namespace lsst {
 namespace qserv {
 namespace qdisp {
 // Static fields
-std::string ExecStatus::_empty;
+std::string const ExecStatus::_empty;
+
+ExecStatus::Info::Info(ResourceUnit const& resourceUnit_)
+    : resourceUnit(resourceUnit_),
+      state(UNKNOWN),
+      stateCode(0) {
+    stateTime = ::time(NULL);
+}
 
 /// @Return a C-string describing the State
 char const* ExecStatus::stateText(ExecStatus::State s) {
@@ -72,17 +64,23 @@ char const* ExecStatus::stateText(ExecStatus::State s) {
 }
 
 std::ostream& operator<<(std::ostream& os, ExecStatus const& es) {
+    ExecStatus::Info info = es.getInfo();
+    return os << info;
+}
+
+std::ostream& operator<<(std::ostream& os, ExecStatus::Info const& info) {
     // At least 26 byes, according to "man ctime", but might be too small.
     const int BLEN=64;
     char buffer[BLEN];
     struct tm mytm;
     char const timefmt[] = "%Y%m%d-%H:%M:%S";
     int tsLen = ::strftime(buffer, BLEN, timefmt,
-                           ::localtime_r(&es.stateTime, &mytm));
+                           ::localtime_r(&info.stateTime, &mytm));
     std::string ts(buffer, tsLen);
 
-    os << es.resourceUnit << ": " << ts << ", " << es.stateText(es.state)
-       << ", " << es.stateCode << ", " << es.stateDesc;
+    os << info.resourceUnit << ": " << ts << ", "
+       << ExecStatus::stateText(info.state)
+       << ", " << info.stateCode << ", " << info.stateDesc;
     return os;
 }
 

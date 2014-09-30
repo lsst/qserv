@@ -44,10 +44,10 @@ namespace ccontrol {
 /// Implementation class (PIMPL-style) for UserQueryFactory.
 class UserQueryFactory::Impl {
 public:
-    void readConfig(StringMap const& m); /// Import config from caller
+    void readConfig(StringMap const& m); ///< Import config from caller
     void initFacade(std::string const& cssTech, std::string const& cssConn,
                     int timeout_msec);
-    void initMergerTemplate(); /// Construct template config for merger
+    void initMergerTemplate(); ///< Construct template config for merger
 
     /// State shared between UserQueries
     qdisp::Executive::Config::Ptr executiveConfig;

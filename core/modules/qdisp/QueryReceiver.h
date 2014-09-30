@@ -36,6 +36,7 @@ namespace qdisp {
 class QueryReceiver {
 public:
     struct Error {
+        Error() : code(0) {}
         std::string msg;
         int code;
     };

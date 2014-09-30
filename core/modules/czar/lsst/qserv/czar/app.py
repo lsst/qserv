@@ -204,30 +204,32 @@ class SleepingThread(threading.Thread):
         time.sleep(self.howlong)
 
 ########################################################################
-class QueryHintError(Exception):
+class CzarError(Exception):
+    """Generic error in the czar"""
+    def __init__(self, reason):
+        self.reason = reason
+    def __str__(self):
+        return repr(self.reason)
+
+class AccessError(CzarError):
+    """Missing/unauthorized access"""
+    __init__ = CzarError.__init__
+
+class QueryHintError(CzarError):
     """An error in handling query hints"""
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return repr(self.reason)
-class ConfigError(Exception):
+    __init__ = CzarError.__init__
+
+class ConfigError(CzarError):
     """An error in the configuration"""
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return repr(self.reason)
-class ParseError(Exception):
+    __init__ = CzarError.__init__
+
+class ParseError(CzarError):
     """An error in parsing the query"""
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return repr(self.reason)
-class DataError(Exception):
+    __init__ = CzarError.__init__
+
+class DataError(CzarError):
     """An error with Qserv data. The data underlying qserv is not consistent."""
-    def __init__(self, reason):
-        self.reason = reason
-    def __str__(self):
-        return repr(self.reason)
+    __init__ = CzarError.__init__
 
 ########################################################################
 def setupResultScratch():
@@ -355,15 +357,8 @@ class InbandQueryAction:
         self._invokeLock.acquire() # Prevent res-retrieval before invoke
         self._resultName = resultName
         try:
-#            try:
-                self._prepareForExec()
-                self.isValid = True
-            # except:
-            #     logger.err("Error initializing query for exec."
-            #                + traceback.format_exc())
-            #     # Create query initialization message.
-            #     self._reportError(-1,  msgCode.MSG_QUERY_INIT,
-            #                        "Initialize Query: " + self.queryStr);
+            self._prepareForExec()
+            self.isValid = True
         except QueryHintError, e:
             self._error = str(e)
         except ParseError, e:
@@ -373,6 +368,9 @@ class InbandQueryAction:
         except:
             self._error = "Unexpected error: " + str(sys.exc_info())
             logger.err(self._error, traceback.format_exc())
+            self._reportError(-1,
+                              msgCode.MSG_QUERY_INIT,
+                              "Initialize Query: " + self.queryStr);
         finally:
             # Pass up the sessionId for query messages access.
             # more serious errors won't even have a sessionId

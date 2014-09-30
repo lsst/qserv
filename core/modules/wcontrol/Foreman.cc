@@ -102,7 +102,6 @@ public:
         wbase::Task::Ptr _task;
         bool _isPoisoned;
         wlog::WLogger::Ptr _log;
-        boost::mutex* _actionMutex;
         boost::shared_ptr<wdb::QueryAction> _action;
     };
     // For use by runners.
@@ -316,18 +315,8 @@ void ForemanImpl::Runner::_runWithDump() {
 }
 
 void ForemanImpl::Runner::_runProtocol2() {
-    boost::mutex mutex;
-    {
-        boost::lock_guard<boost::mutex> lock(mutex);
-        _actionMutex = &mutex;
-        _action = _rm.newQueryAction(_task);
-    }
+    _action = _rm.newQueryAction(_task);
     (*_action)();
-    {
-        boost::lock_guard<boost::mutex> lock(mutex);
-        _action.reset();
-        _actionMutex = NULL;
-    }
 }
 
 void ForemanImpl::Runner::operator()() {

@@ -70,7 +70,7 @@ message ProtoHeader {
 
 message ColumnSchema {
     optional string name = 1; // Optional to allow type-only transmission
-    required bool hasdefault = 2; // unambiguious flag--
+    required bool hasdefault = 2; // unambiguous flag--
     // has_defaultvalue() often tests true even after clear_defaultvalue()
     optional bytes defaultvalue = 3;
     required string sqltype = 4;
@@ -92,8 +92,6 @@ message Result {
     optional string errormsg = 5;
     repeated RowBundle row = 6;
 }
-/// Future: Serialize MySQL output into protobuf instead of using
-/// mysqldump.
 
 // Result protocol 2:
 // Byte 0: N = unsigned char size of ProtoHeader

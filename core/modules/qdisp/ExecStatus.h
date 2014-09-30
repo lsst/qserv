@@ -46,7 +46,7 @@ namespace qdisp {
 class ExecStatus {
 public:
     typedef boost::shared_ptr<ExecStatus> Ptr;
-    ExecStatus(ResourceUnit const& r) : resourceUnit(r) {}
+    ExecStatus(ResourceUnit const& r) : _info(r) {}
 
     // TODO: these shouldn't be exposed, and so shouldn't be user-level error
     // codes, but maybe we can be clever and avoid an ugly remap/translation
@@ -67,29 +67,43 @@ public:
         boost::lock_guard<boost::mutex> lock(_mutex);
 #if 0
         std::ofstream of("/tmp/deleteme_qs_rpt", std::ofstream::app);
-        of << "Reporting " << (void*)this << " state " << stateText(s) << std::endl;
+        of << "Reporting " << (void*)this
+           << " state " << stateText(s) << std::endl;
 #endif
-        stateTime = ::time(NULL);
-        state = s;
-        stateCode = code;
-        stateDesc = desc;
+        _info.stateTime = ::time(NULL);
+        _info.state = s;
+      _info.stateCode = code;
+      _info.stateDesc = desc;
     }
 
     static char const* stateText(State s);
+    struct Info {
+        Info(ResourceUnit const& resourceUnit_);
+        ResourceUnit const resourceUnit; //< Reference id for status
+        // More detailed debugging may store a vector of states, appending
+        // with each invocation of report().
+        State state; //< Actual state
+        time_t stateTime; //< Last modified timestamp
+        int stateCode; //< Code associated with state (e.g. xrd error code)
+        std::string stateDesc; //< Textual description
+    };
+    ResourceUnit const& getResourceUnit() const { return _info.resourceUnit; }
 
-    ResourceUnit resourceUnit; //< Reference id for status
-    // More detailed debugging may store a vector of states, appending
-    // with each invocation of report().
-    State state; //< Actual state
-    time_t stateTime; //< Last modified timestamp
-    int stateCode; //< Code associated with state (e.g. xrd error code)
-    std::string stateDesc; //< Textual description
+    Info getInfo() const {
+        boost::lock_guard<boost::mutex> lock(_mutex);
+        return _info;
+    }
 
 private:
-    boost::mutex _mutex; //< Mutex to guard concurrent updates
-    static std::string _empty;
+    friend std::ostream& operator<<(std::ostream& os, ExecStatus const& es);
+    Info _info;
+
+private:
+    mutable boost::mutex _mutex; //< Mutex to guard concurrent updates
+    static std::string const _empty;
 };
 std::ostream& operator<<(std::ostream& os, ExecStatus const& es);
+std::ostream& operator<<(std::ostream& os, ExecStatus::Info const& inf);
 
 }}} // namespace lsst::qserv::qdisp
 

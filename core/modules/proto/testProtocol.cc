@@ -142,14 +142,6 @@ struct ProtocolFixture {
                 && (p1.size() == p2.size())
                 && (p1.md5() == p2.md5()));
     }
-#if 0
-    bool compareResults(lsst::qserv::proto::ProtoHeader_Result const& r1,
-                        lsst::qserv::proto::ProtoHeader_Result const& r2) {
-        return (r1.hash() == r2.hash())
-            && (r1.resultsize() == r2.resultsize())
-            && (r1.chunkid() == r2.chunkid());
-    }
-#endif
 
     int counter;
 };
