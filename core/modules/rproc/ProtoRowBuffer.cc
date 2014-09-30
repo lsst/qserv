@@ -134,15 +134,15 @@ private:
         return dest.size() - sizeBefore;
     }
 
-    std::string _colSep; //< Column separator
-    std::string _rowSep; //< Row separator
-    std::string _nullToken; //< Null indicator (e.g. \N)
-    proto::Result& _result; //< Ref to Resultmessage
+    std::string _colSep; ///< Column separator
+    std::string _rowSep; ///< Row separator
+    std::string _nullToken; ///< Null indicator (e.g. \N)
+    proto::Result& _result; ///< Ref to Resultmessage
 
-    sql::Schema _schema; //< Schema object
-    int _rowIdx; //< Row index
-    int _rowTotal; //< Total row count
-    std::vector<char> _currentRow; //< char buffer representing current row.
+    sql::Schema _schema; ///< Schema object
+    int _rowIdx; ///< Row index
+    int _rowTotal; ///< Total row count
+    std::vector<char> _currentRow; ///< char buffer representing current row.
 };
 
 ProtoRowBuffer::ProtoRowBuffer(proto::Result& res)

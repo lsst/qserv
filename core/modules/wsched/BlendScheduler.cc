@@ -54,7 +54,7 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-BlendScheduler* dbgBlendScheduler=0; //< A symbol for gdb
+BlendScheduler* dbgBlendScheduler=0; ///< A symbol for gdb
 
 ////////////////////////////////////////////////////////////////////////
 // class BlendScheduler

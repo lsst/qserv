@@ -63,7 +63,7 @@ public:
 
     /// @return true if the receiver has completed its duties.
     virtual bool finished() const = 0;
-    virtual bool reset() = 0; //< Reset the state that a request can be retried.
+    virtual bool reset() = 0; ///< Reset the state that a request can be retried.
 
     /// Print a string representation of the receiver to an ostream
     virtual std::ostream& print(std::ostream& os) const = 0;

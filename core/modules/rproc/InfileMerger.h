@@ -159,21 +159,21 @@ private:
     bool _applySqlLocal(std::string const& sql);
     void _fixupTargetName();
 
-    InfileMergerConfig _config; //< Configuration
-    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig; //< SQL connection config
-    boost::shared_ptr<sql::SqlConnection> _sqlConn; //< SQL connection
+    InfileMergerConfig _config; ///< Configuration
+    boost::shared_ptr<mysql::MySqlConfig> _sqlConfig; ///< SQL connection config
+    boost::shared_ptr<sql::SqlConnection> _sqlConn; ///< SQL connection
 
-    std::string _mergeTable; //< Table for result loading
-    InfileMergerError _error; //< Error state
+    std::string _mergeTable; ///< Table for result loading
+    InfileMergerError _error; ///< Error state
 
-    bool _isFinished; //< Completed?
-    boost::mutex _createTableMutex; //< protection from creating tables
-    boost::mutex _sqlMutex; //< Protection for SQL connection
+    bool _isFinished; ///< Completed?
+    boost::mutex _createTableMutex; ///< protection from creating tables
+    boost::mutex _sqlMutex; ///< Protection for SQL connection
 
     class Mgr;
-    std::auto_ptr<Mgr> _mgr; //< Delegate merging action object
+    std::auto_ptr<Mgr> _mgr; ///< Delegate merging action object
 
-    bool _needCreateTable; //< Does the target table need creating?
+    bool _needCreateTable; ///< Does the target table need creating?
 };
 
 }}} // namespace lsst::qserv::rproc

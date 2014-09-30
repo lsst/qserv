@@ -74,20 +74,20 @@ private:
     /// (helper) merge buffer and shift contents depending on merge size.
     bool _appendAndMergeBuffer(int bLen);
 
-    boost::shared_ptr<MsgReceiver> _msgReceiver; //< Message code receiver
-    boost::shared_ptr<rproc::InfileMerger> _infileMerger; //< Merging delegate
-    std::string _tableName; //< Target table name
+    boost::shared_ptr<MsgReceiver> _msgReceiver; ///< Message code receiver
+    boost::shared_ptr<rproc::InfileMerger> _infileMerger; ///< Merging delegate
+    std::string _tableName; ///< Target table name
 
     /// Invoked at receiver completion
     util::UnaryCallable<void, bool>::Ptr _finishHook;
 
-    int _bufferSize; //< Available size from _buffer
-    int _actualSize; //< Allocated size
-    std::vector<char> _actualBuffer; //< Entire allocated buffer
-    char* _buffer; //< Current buffer insertion point
-    bool _flushed; //< Has data ben flushed into this object?
-    bool _dirty; //< Has data been flushed past this object?
-    Error _error; //< Internal error state
+    int _bufferSize; ///< Available size from _buffer
+    int _actualSize; ///< Allocated size
+    std::vector<char> _actualBuffer; ///< Entire allocated buffer
+    char* _buffer; ///< Current buffer insertion point
+    bool _flushed; ///< Has data ben flushed into this object?
+    bool _dirty; ///< Has data been flushed past this object?
+    Error _error; ///< Internal error state
 };
 
 }}} // namespace lsst::qserv::ccontrol

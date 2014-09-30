@@ -64,9 +64,9 @@ public:
                    wbase::Task::Ptr task_,
                    boost::shared_ptr<ChunkResourceMgr> mgr_)
         : log(log_), task(task_), mgr(mgr_) { }
-    boost::shared_ptr<wlog::WLogger> log; //< Logging handle
-    wbase::Task::Ptr task; //< Actual task
-    boost::shared_ptr<ChunkResourceMgr> mgr; //< Resource reservation
+    boost::shared_ptr<wlog::WLogger> log; ///< Logging handle
+    wbase::Task::Ptr task; ///< Actual task
+    boost::shared_ptr<ChunkResourceMgr> mgr; ///< Resource reservation
 };
 ////////////////////////////////////////////////////////////////////////
 /// A worker-side query action. Depending on contents of the task, writes
@@ -81,7 +81,7 @@ public:
 
     class Impl;
 private:
-    std::auto_ptr<Impl> _impl; //< PIMPL class
+    std::auto_ptr<Impl> _impl; ///< PIMPL class
 };
 
 }}} // namespace lsst::qserv::wdb

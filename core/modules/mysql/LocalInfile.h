@@ -75,12 +75,12 @@ public:
     inline bool isValid() const { return _rowBuffer; }
 
 private:
-    char* _buffer; //< Internal buffer for passing to mysql
-    int _bufferSize; //< Allocated size of internal buffer
-    char* _leftover; //< Ptr to bytes not yet sent to mysql
-    unsigned _leftoverSize; //< Size of bytes not yet sent in _leftover
-    std::string _filename; //< virtual filename for mysql
-    boost::shared_ptr<RowBuffer> _rowBuffer; //< Underlying row source
+    char* _buffer; ///< Internal buffer for passing to mysql
+    int _bufferSize; ///< Allocated size of internal buffer
+    char* _leftover; ///< Ptr to bytes not yet sent to mysql
+    unsigned _leftoverSize; ///< Size of bytes not yet sent in _leftover
+    std::string _filename; ///< virtual filename for mysql
+    boost::shared_ptr<RowBuffer> _rowBuffer; ///< Underlying row source
 };
 
 /// Do not inherit or copy. Used in mysql_set_local_infile_handler

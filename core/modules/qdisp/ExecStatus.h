@@ -79,13 +79,13 @@ public:
     static char const* stateText(State s);
     struct Info {
         Info(ResourceUnit const& resourceUnit_);
-        ResourceUnit const resourceUnit; //< Reference id for status
+        ResourceUnit const resourceUnit; ///< Reference id for status
         // More detailed debugging may store a vector of states, appending
         // with each invocation of report().
-        State state; //< Actual state
-        time_t stateTime; //< Last modified timestamp
-        int stateCode; //< Code associated with state (e.g. xrd error code)
-        std::string stateDesc; //< Textual description
+        State state; ///< Actual state
+        time_t stateTime; ///< Last modified timestamp
+        int stateCode; ///< Code associated with state (e.g. xrd error code)
+        std::string stateDesc; ///< Textual description
     };
     ResourceUnit const& getResourceUnit() const { return _info.resourceUnit; }
 
@@ -99,7 +99,7 @@ private:
     Info _info;
 
 private:
-    mutable boost::mutex _mutex; //< Mutex to guard concurrent updates
+    mutable boost::mutex _mutex; ///< Mutex to guard concurrent updates
     static std::string const _empty;
 };
 std::ostream& operator<<(std::ostream& os, ExecStatus const& es);

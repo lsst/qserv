@@ -87,6 +87,6 @@ private:
 
 }}} // namespace lsst::qserv::wsched
 
-extern lsst::qserv::wsched::BlendScheduler* dbgBlendScheduler; //< A symbol for gdb
+extern lsst::qserv::wsched::BlendScheduler* dbgBlendScheduler; ///< A symbol for gdb
 
 #endif // LSST_QSERV_WSCHED_BLENDSCHEDULER_H

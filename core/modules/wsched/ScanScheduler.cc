@@ -49,8 +49,8 @@ namespace lsst {
 namespace qserv {
 namespace wsched {
 
-ScanScheduler* dbgScanScheduler = 0; //< A symbol for gdb
-ChunkDisk* dbgChunkDisk1 = 0; //< A symbol for gdb
+ScanScheduler* dbgScanScheduler = 0; ///< A symbol for gdb
+ChunkDisk* dbgChunkDisk1 = 0; ///< A symbol for gdb
 
 
 ////////////////////////////////////////////////////////////////////////

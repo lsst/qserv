@@ -79,25 +79,25 @@ public:
     explicit Task(TaskMsgPtr t, std::string const& user_=defaultUser);
     explicit Task(TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc);
 
-    TaskMsgPtr msg; //< Protobufs Task spec
-    boost::shared_ptr<wbase::SendChannel> sendChannel; //< For result reporting
-    std::string hash; //< hash of TaskMsg
-    std::string dbName; //< dominant db
-    std::string resultPath; //< Result path for non-SendChannel operation
-    std::string user; //< Incoming username
-    bool needsCreate; //< Deprecated.
-    time_t entryTime; //< Timestamp for task admission
+    TaskMsgPtr msg; ///< Protobufs Task spec
+    boost::shared_ptr<wbase::SendChannel> sendChannel; ///< For result reporting
+    std::string hash; ///< hash of TaskMsg
+    std::string dbName; ///< dominant db
+    std::string resultPath; ///< Result path for non-SendChannel operation
+    std::string user; ///< Incoming username
+    bool needsCreate; ///< Deprecated.
+    time_t entryTime; ///< Timestamp for task admission
     char timestr[100]; ///< ::ctime_r(&t.entryTime, timestr)
     // Note that manpage spec of "26 bytes"  is insufficient
 
-    void poison(); //< Call the previously-set poisonFunc
+    void poison(); ///< Call the previously-set poisonFunc
     void setPoison(boost::shared_ptr<util::VoidCallable<void> > poisonFunc);
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
 private:
     boost::mutex _mutex; // Used for handling poison
     boost::shared_ptr<util::VoidCallable<void> > _poisonFunc;
-    bool _poisoned; //< To prevent multiple-poisonings
+    bool _poisoned; ///< To prevent multiple-poisonings
 };
 typedef std::deque<Task::Ptr> TaskQueue;
 typedef boost::shared_ptr<TaskQueue> TaskQueuePtr;

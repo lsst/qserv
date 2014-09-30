@@ -324,10 +324,10 @@ public:
         }
     }
 private:
-    boost::shared_ptr<Backend> _backend; //< Delegate stage/unstage
+    boost::shared_ptr<Backend> _backend; ///< Delegate stage/unstage
     int _chunkId;
-    int _refCount; //< Number of known users
-    TableMap _tableMap; //< tables in use
+    int _refCount; ///< Number of known users
+    TableMap _tableMap; ///< tables in use
     boost::mutex _mutex;
 };
 

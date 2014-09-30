@@ -86,9 +86,9 @@ private:
     class ReplyChannel;
     friend class ReplyChannel;
 
-    ValidatorPtr _validator; //< validates request against what's available
-    boost::shared_ptr<wbase::MsgProcessor> _processor; //< actual msg processor
-    boost::shared_ptr<wlog::WLogger> _log; //< Logging handle
+    ValidatorPtr _validator; ///< validates request against what's available
+    boost::shared_ptr<wbase::MsgProcessor> _processor; ///< actual msg processor
+    boost::shared_ptr<wlog::WLogger> _log; ///< Logging handle
 
     /// Stash of cancellation functions to be called to cancel msgs in flight on
     /// _processor.

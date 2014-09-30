@@ -39,8 +39,8 @@ namespace sql {
 /// Type information for a single column
 struct ColType {
 
-    std::string sqlType; //< Typespec to use in CREATE TABLE
-    int mysqlType; //< Internal MYSQL type code
+    std::string sqlType; ///< Typespec to use in CREATE TABLE
+    int mysqlType; ///< Internal MYSQL type code
 };
 
 inline std::ostream& operator<<(std::ostream& os, ColType const& ct) {
@@ -50,10 +50,10 @@ inline std::ostream& operator<<(std::ostream& os, ColType const& ct) {
 
 /// Schema for a single column
 struct ColSchema {
-    std::string name; //< Column name
-    bool hasDefault; //< true if column has a default
+    std::string name; ///< Column name
+    bool hasDefault; ///< true if column has a default
     std::string defaultValue; // default value
-    ColType colType; //< Column type
+    ColType colType; ///< Column type
 };
 
 // Related ColSchema types for convenience

@@ -68,9 +68,9 @@ public:
         mysql_thread_end();
     }
 
-    bool act(); //< Perform the task
-    void poison(); //< Stop the task if it is already running, or prevent it
-                   //< from starting.
+    bool act(); ///< Perform the task
+    void poison(); ///< Stop the task if it is already running, or prevent it
+                   ///< from starting.
 private:
     class Poisoner;
 
@@ -119,7 +119,7 @@ private:
 
     typedef std::pair<int, std::string> IntString;
     typedef std::vector<IntString> IntStringVector;
-    IntStringVector _errors; //< Error log
+    IntStringVector _errors; ///< Error log
 
     boost::shared_ptr<proto::ProtoHeader> _protoHeader;
     boost::shared_ptr<proto::Result> _result;
