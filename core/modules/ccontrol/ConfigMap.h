@@ -36,9 +36,11 @@
 #include <boost/utility.hpp>
 #include <boost/lexical_cast.hpp>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
 #include "global/stringTypes.h"
-#include "log/Logger.h"
 
 namespace lsst {
 namespace qserv {
@@ -61,7 +63,7 @@ public:
         if(i != _m.end()) {
             return i->second;
         } else {
-            LOGGER_DBG << errorMsg << std::endl;
+            LOGF_DEBUG("%1%" % errorMsg);
             return defaultValue;
         }
     }

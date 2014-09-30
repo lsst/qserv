@@ -35,8 +35,10 @@
 #include <fcntl.h>
 #include <iostream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
-#include "log/Logger.h"
 #include "xrdc/xrdfile.h"
 
 
@@ -90,8 +92,8 @@ void XrdBufferSource::increment(util::PacketBuffer& p) {
 }
 
 bool XrdBufferSource::incrementExtend(util::PacketBuffer& p) {
-    LOGGER_DBG << "XrdBufferSource Realloc to "
-               << _occupiedSize + _fragSize << std::endl;
+    LOGF_DEBUG("XrdBufferSource Realloc to %1%" %
+               (_occupiedSize + _fragSize));
     void* ptr = ::realloc(_buffer, _occupiedSize + _fragSize);
     if(!ptr) {
         errno = ENOMEM;

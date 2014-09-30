@@ -40,8 +40,10 @@
 #include <boost/make_shared.hpp>
 #include "SqlSQL2Parser.hpp" // applies several "using antlr::***".
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
-#include "log/Logger.h"
 #include "parser/BoolTermFactory.h"
 #include "parser/parserBase.h"   // Handler base classes
 #include "parser/parseTreeUtil.h"
@@ -75,8 +77,7 @@ class ModFactory::OrderByH : public VoidOneRefFunc {
 public:
     OrderByH(ModFactory& mf) : _mf(mf) {}
     virtual void operator()(antlr::RefAST n) {
-        // Log this.
-        //LOGGER_INF << "Importing Orderby:" << walkIndentedString(n) << std::endl;
+        //LOGF_INFO("Importing Orderby:%1%" % walkIndentedString(n));
         _mf._importOrderBy(n);
     }
 private:
@@ -127,7 +128,7 @@ void ModFactory::attachTo(SqlSQL2Parser& p) {
 
 void ModFactory::_importLimit(antlr::RefAST a) {
     // Limit always has an int.
-    LOGGER_INF << "Limit got " << walkTreeString(a) << std::endl;
+    LOGF_INFO("Limit got %1%" % walkTreeString(a));
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importLimit(NULL)");
     }
@@ -138,7 +139,7 @@ void ModFactory::_importLimit(antlr::RefAST a) {
 void ModFactory::_importOrderBy(antlr::RefAST a) {
     _orderBy.reset(new query::OrderByClause());
     // ORDER BY takes a column ref (expression)
-    //LOGGER_INF << "orderby got " << walkTreeString(a) << std::endl;
+    //LOGF_INFO("orderby got %1%" % walkTreeString(a));
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importOrderBy(NULL)");
     }
@@ -148,8 +149,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
             continue;
         }
         if(a->getType() != SqlSQL2TokenTypes::SORT_SPEC) {
-            LOGGER_ERR << "Orderby expected sort spec and got " << a->getText()
-                       << std::endl;
+            LOGF_ERROR("Orderby expected sort spec and got %1%" % a->getText());
             throw std::logic_error("Expected SORT_SPEC token)");
         }
         RefAST key = a->getFirstChild();
@@ -192,7 +192,7 @@ void ModFactory::_importOrderBy(antlr::RefAST a) {
 void ModFactory::_importGroupBy(antlr::RefAST a) {
     _groupBy = boost::make_shared<query::GroupByClause>();
     // GROUP BY takes a column reference (expression?)
-    //LOGGER_INF << "groupby got " << walkTreeString(a) << std::endl;
+    //LOGF_INFO("groupby got %1%" % walkTreeString(a));
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importGroupBy(NULL)");
     }
@@ -232,7 +232,7 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     if(!a.get()) {
         throw std::invalid_argument("Cannot _importHaving(NULL)");
     }
-    //LOGGER_INF << "having got " << walkTreeString(a) << std::endl;
+    //LOGF_INFO("having got %1%" % walkTreeString(a));
     // For now, we will silently traverse and recognize but ignore.
 
     // TODO:
@@ -254,7 +254,7 @@ void ModFactory::_importHaving(antlr::RefAST a) {
     _having->_tree.reset(); // NULL-out. Unhandled syntax.
 
     // FIXME: Log this at the WARNING level
-    LOGGER_WRN << "Parse warning: HAVING clause unhandled." << std::endl;
+    LOGF_WARN("Parse warning: HAVING clause unhandled.");
 }
 
 }}} // namespace lsst::qserv::parser

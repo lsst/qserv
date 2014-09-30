@@ -31,8 +31,10 @@
 #include <boost/make_shared.hpp>
 #include "XrdPosix/XrdPosixCallBack.hh"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
-#include "log/Logger.h"
 #include "rproc/TableMerger.h"
 #include "util/xrootd.h"
 #include "xrdc/xrdfile.h"
@@ -72,13 +74,13 @@ Semaphore TransactionCallable::_sema(120);
 
 void TransactionCallable::operator()() {
     using namespace lsst::qserv::xrdc;
-    LOGGER_INF << _spec.path << " in flight\n";
+    LOGF_INFO("%1% in flight" % _spec.path);
     _result = xrdOpenWriteReadSaveClose(_spec.path.c_str(),
                                         _spec.query.c_str(),
                                         _spec.query.length(),
                                         _spec.bufferSize,
                                         _spec.savePath.c_str());
-    LOGGER_INF << _spec.path << " finished\n";
+    LOGF_INFO("%1% finished" % _spec.path);
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -126,18 +128,17 @@ void Manager::run() {
         thisSize = _threads.size();
         if(thisSize > _highWaterThreads) {
             lastReap = thisReap;
-            LOGGER_INF << "Reaping, "<< inFlight << " dispatched.\n";
+            LOGF_INFO("Reaping, %1% dispatched." % inFlight);
             _joinOne();
             time(&thisReap);
             reapSize = _threads.size();
-            LOGGER_INF << thisReap << " Done reaping, " << reapSize
-                      << " still flying, completion rate="
-                      << (1.0+thisSize - reapSize)*1.0/(1.0+thisReap - lastReap)
-                      << "\n"  ;
+            LOGF_INFO("%1% Done reaping, %2% still flying, completion rate=%3%"
+                      % thisReap % reapSize
+                      % ((1.0+thisSize - reapSize)*1.0/(1.0+thisReap - lastReap)));
         }
         if(_threads.size() > 1000) break; // DEBUG early exit.
     }
-    LOGGER_INF << "Joining\n";
+    LOGF_INFO("Joining");
     std::for_each(_threads.begin(), _threads.end(),
                   joinBoostThread<boost::shared_ptr<boost::thread> >());
 }
@@ -262,11 +263,11 @@ void QueryManager::joinEverything() {
     time_t now;
     time_t last;
     while(1) {
-        LOGGER_INF << "Threads left:" << _threads.size() << std::endl;
+        LOGF_INFO("Threads left:%1%" % _threads.size());
         time(&last);
         _tryJoinAll();
         time(&now);
-        LOGGER_INF << "Joinloop took:" << now-last << std::endl;
+        LOGF_INFO("Joinloop took:%1%" % (now-last));
         if(_threads.size() > 0) {
             sleep(1);
         } else {

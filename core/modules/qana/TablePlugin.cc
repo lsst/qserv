@@ -45,13 +45,15 @@
 // System headers
 #include <string>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
 #include "QueryMapping.h"
 #include "QueryPlugin.h"
 #include "RelationGraph.h"
 #include "TableInfoPool.h"
 
-#include "log/Logger.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
 #include "query/GroupByClause.h"
@@ -80,8 +82,7 @@ public:
         : _tableAlias(t), _tableAliasReverse(r) {}
     void operator()(std::string const& alias,
                     std::string const& db, std::string const& table) {
-        // LOGGER_INF << "set: " << alias << "->"
-        //           << db << "." << table << std::endl;
+        // LOGF_INFO("set: %1%->%2%.%3%" % alias % db % table);
         _tableAlias.set(db, table, alias);
         _tableAliasReverse.set(db, table, alias);
     }
@@ -170,7 +171,7 @@ public:
                 throw std::logic_error("Bad ValueExpr::FactorOps");
             }
             query::ValueFactor& t = *i->factor;
-            //LOGGER_INF << "fixing factor: " << *vep << std::endl;
+            // LOGF_INFO("fixing factor: %1%" % *vep);
             switch(t.getType()) {
             case query::ValueFactor::COLUMNREF:
                 // check columnref.
@@ -188,7 +189,7 @@ public:
             case query::ValueFactor::CONST:
                 break; // Constants don't need patching.
             default:
-                LOGGER_WRN << "Unhandled ValueFactor:" << t << std::endl;
+                LOGF_WARN("Unhandled ValueFactor:%1%" % t);
                 break;
             }
         }

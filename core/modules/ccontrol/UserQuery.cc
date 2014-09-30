@@ -64,13 +64,15 @@
 // System headers
 #include <cassert>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/ResultReceiver.h"
 #include "ccontrol/UserQueryError.h"
 #include "global/constants.h"
 #include "global/MsgReceiver.h"
-#include "log/Logger.h"
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
@@ -168,10 +170,7 @@ void UserQuery::submit() {
     std::ostringstream ss;
     proto::ProtoImporter<proto::TaskMsg> pi;
     int msgCount = 0;
-    LOGGER_INF << "UserQuery beginning submission\n" << std::flush;
-    LOGGER_DBG << std::flush;
-    LOGGER_WRN << std::flush;
-    LOGGER_ERR << std::flush;
+    LOGF_INFO("UserQuery beginning submission");
     assert(_infileMerger);
     qproc::QuerySession::Iter i;
     qproc::QuerySession::Iter e = _qSession->cQueryEnd();
@@ -209,10 +208,10 @@ QueryState UserQuery::join() {
     bool successful = _executive->join(); // Wait for all data
     _infileMerger->finalize(); // Wait for all data to get merged
     if(successful) {
-        LOGGER_INF << "Joined everything (success)" << std::endl;
+        LOGF_INFO("Joined everything (success)");
         return SUCCESS;
     } else {
-        LOGGER_ERR << "Joined everything (failure!)" << std::endl;
+        LOGF_ERROR("Joined everything (failure!)");
         return ERROR;
     }
     _discardMerger();
@@ -242,7 +241,7 @@ void UserQuery::discard() {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
-    LOGGER_INF << "Discarded UserQuery(" << _sessionId << ")" << std::endl;
+    LOGF_INFO("Discarded UserQuery(%1%)" % _sessionId);
 }
 
 /// Check for database existence
@@ -263,7 +262,7 @@ std::string UserQuery::getExecDesc() const {
 }
 /// Setup merger (for results handling and aggregation)
 void UserQuery::_setupMerger() {
-    LOGGER_INF << "UserQuery::_setupMerger()" << std::endl;
+    LOGF_INFO("UserQuery::_setupMerger()");
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
     _infileMerger = boost::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
 }

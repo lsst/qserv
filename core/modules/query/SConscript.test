@@ -12,7 +12,7 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "antlr boost_thread boost_system".split()
+extDeps = "antlr boost_thread boost_system log log4cxx".split()
 
 modDeps = 'global log'.split() # deps on other modules
 pDeps = itertools.chain(*map(lambda m: libProducts[m], modDeps))

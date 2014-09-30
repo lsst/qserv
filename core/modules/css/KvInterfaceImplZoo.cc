@@ -45,9 +45,14 @@
 #include <stdexcept>
 #include <string.h> // for memset
 
+// Third-party headers
+#include <boost/thread.hpp>
+
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
 #include "css/CssError.h"
-#include "log/Logger.h"
 
 using std::endl;
 using std::ostringstream;
@@ -69,7 +74,7 @@ namespace {
     void addToMapIfNeeded(boost::thread::id tId) {
         boost::mutex::scoped_lock scoped_lock(mapMutex);
         if ( isConnectedMap.count(tId) == 0 ) {
-            LOGGER_INF << "tid=" << tId << " adding to map" << endl;
+            LOGF_INFO("adding tId=%1% to map" % tId);
             isConnectedMap[tId] = 0;
         }
     }
@@ -152,8 +157,7 @@ KvInterfaceImplZoo::~KvInterfaceImplZoo() {
 
 void
 KvInterfaceImplZoo::create(string const& key, string const& value) {
-    LOGGER_INF << "*** KvInterfaceImplZoo::create(), " << key << " --> "
-               << value << endl;
+    LOGF_INFO("*** KvInterfaceImplZoo::create(%1%, %2%)" % key % value);
     int rc=ZINVALIDSTATE, nAttempts=0;
     while (nAttempts++<2) {
         rc = zoo_create(_zh, key.data(), value.data(), value.size(),
@@ -161,8 +165,7 @@ KvInterfaceImplZoo::create(string const& key, string const& value) {
         if (rc==ZOK) {
             return;
         }
-        LOGGER_WRN << "zoo_create failed (err:" << rc << "), "
-                   << "attempting to reconnect" << endl;
+        LOGF_WARN("zoo_create failed (err:%1%), reconnecting" % rc);
         _doConnect();
     }
     _throwZooFailure(rc, "create", key);
@@ -170,7 +173,7 @@ KvInterfaceImplZoo::create(string const& key, string const& value) {
 
 bool
 KvInterfaceImplZoo::exists(string const& key) {
-    LOGGER_INF << "*** KvInterfaceImplZoo::exist(), key: " << key << endl;
+    LOGF_INFO("KvInterfaceImplZoo::exist(), key: %1%" % key);
     struct Stat stat;
     int rc=ZINVALIDSTATE, nAttempts=0;
     while (nAttempts++<2) {
@@ -181,8 +184,7 @@ KvInterfaceImplZoo::exists(string const& key) {
         } else if (rc==ZNONODE) {
             return false;
         }
-        LOGGER_WRN << "zoo_exists failed (err:" << rc << "), "
-                   << "attempting to reconnect" << endl;
+        LOGF_WARN("zoo_exists failed (err:%1%), reconnecting" % rc);
         _doConnect();
     }
     _throwZooFailure(rc, "exists", key);
@@ -193,7 +195,7 @@ string
 KvInterfaceImplZoo::_get(string const& key,
                          string const& defaultValue,
                          bool throwIfKeyNotFound) {
-    LOGGER_INF << "*** KvInterfaceImplZoo::get(), key: " << key << endl;
+    LOGF_INFO("*** KvInterfaceImplZoo::get(), key: %1%" % key);
     Buffer buffer(64, 5);
     struct Stat stat;
     int rc=ZINVALIDSTATE, nAttempts=0;
@@ -201,26 +203,24 @@ KvInterfaceImplZoo::_get(string const& key,
         memset(&stat, 0, sizeof(Stat));
         int rsvLen = buffer.size();
         rc = zoo_get(_zh, key.data(), 0, buffer.data(), &rsvLen, &stat);
-        LOGGER_INF << "Got rc: " << rc << ", size: " << rsvLen << endl;
+        LOGF_INFO("Got rc: %1%, size: %2%" % rc % rsvLen);
         if (rc==ZOK) {
             if (rsvLen >= buffer.size()) {
                 buffer.incrSize(key);
                 nAttempts--;
                 continue;
             }
-            LOGGER_INF << "Got: '" << buffer.data() << "'" << endl;
+            LOGF_INFO("Got: '%1%'" % buffer.data());
             return buffer.dataAsString();
         }
         if (rc==ZNONODE) {
             if (throwIfKeyNotFound) {
                 throw NoSuchKey(key);
             }
-            LOGGER_INF << "Returning default value: '"
-                       << defaultValue << "'" << endl;
+            LOGF_INFO("Returning default value: '%1%'" % defaultValue);
             return defaultValue;
         }
-        LOGGER_WRN << "zoo_get failed (err:" << rc << "), for key: "
-                   << key << ", attempting to reconnect" << endl;
+        LOGF_WARN("zoo_get failed (err:%1%), key: %2%, reconnecting" % rc % key);
         _doConnect();
     }
     _throwZooFailure(rc, "get", key);
@@ -229,7 +229,7 @@ KvInterfaceImplZoo::_get(string const& key,
 
 vector<string>
 KvInterfaceImplZoo::getChildren(string const& key) {
-    LOGGER_INF << "*** KvInterfaceImplZoo::getChildren(), key: " << key << endl;
+    LOGF_INFO("*** KvInterfaceImplZoo::getChildren(), key: %1%" % key);
     struct String_vector strings;
     vector<string> v;
     int rc=ZINVALIDSTATE, nAttempts=0;
@@ -237,16 +237,15 @@ KvInterfaceImplZoo::getChildren(string const& key) {
         memset(&strings, 0, sizeof(strings));
         rc = zoo_get_children(_zh, key.data(), 0, &strings);
         if (rc==ZOK) {
-            LOGGER_INF << "got " << strings.count << " children" << endl;
+            LOGF_INFO("got %1% children" %  strings.count);
             int i;
             for (i=0 ; i<strings.count ; i++) {
-                LOGGER_INF << "   " << i+1 << ": " << strings.data[i] << endl;
+                LOGF_INFO("   %1%: %2%" % (i+1) % strings.data[i]);
                 v.push_back(strings.data[i]);
             }
             return v;
         }
-        LOGGER_WRN << "zoo_get_children failed (err:" << rc << "), "
-                   << "attempting to reconnect" << endl;
+        LOGF_WARN("zoo_get_children failed (err:%1%), reconnecting" % rc);
         _doConnect();
     }
     _throwZooFailure(rc, "getChildren", key);
@@ -255,15 +254,14 @@ KvInterfaceImplZoo::getChildren(string const& key) {
 
 void
 KvInterfaceImplZoo::deleteKey(string const& key) {
-    LOGGER_INF << "*** KvInterfaceImplZoo::deleteKey, key: " << key << endl;
+    LOGF_INFO("*** KvInterfaceImplZoo::deleteKey, key: %1%" % key);
     int rc=ZINVALIDSTATE, nAttempts=0;
     while (nAttempts++<2) {
         rc = zoo_delete(_zh, key.data(), -1);
         if (rc==ZOK) {
             return;
         }
-        LOGGER_WRN << "zoo_delete failed (err:" << rc << "), "
-                   << "attempting to reconnect" << endl;
+        LOGF_WARN("zoo_delete failed (err:%1%), reconnecting" % rc);
         _doConnect();
     }
     _throwZooFailure(rc, "deleteKey", key);
@@ -271,8 +269,7 @@ KvInterfaceImplZoo::deleteKey(string const& key) {
 
 void
 KvInterfaceImplZoo::_doConnect() {
-    LOGGER_INF << "Connecting to zookeeper. " << _connInfo << ", " << _timeout
-               << endl;
+    LOGF_INFO("Connecting to zookeeper. %1%, %2%msec" % _connInfo % _timeout);
     if ( !_zh ) {
         _disconnect();
     }
@@ -286,7 +283,7 @@ KvInterfaceImplZoo::_doConnect() {
     int reptN = 1000*_timeout/waitT; // 1000x because _timeout in mili, need micro
     while (reptN-- > 0) {
         if (checkIsConnected(tId)) {
-            LOGGER_INF << "Connected" << endl;
+            LOGF_INFO("Connected");
             return;
         }
         usleep(waitT);
@@ -306,10 +303,10 @@ KvInterfaceImplZoo::_disconnect() {
     if (!_zh) {
         return;
     }
-    LOGGER_INF << "Disconnecting from zookeeper." << endl;
+    LOGF_INFO("Disconnecting");
     int rc = zookeeper_close(_zh);
     if ( rc != ZOK ) {
-        LOGGER_ERR << "Zookeeper error " << rc << "when closing connection" << endl;
+        LOGF_ERROR("Zookeeper error %1% when closing connection" % rc);
     }
     _zh = 0;
 }
@@ -322,26 +319,26 @@ KvInterfaceImplZoo::_disconnect() {
 void
 KvInterfaceImplZoo::_throwZooFailure(int rc, string const& fName,
                                      string const& key) {
-    string ffName = "*** css::KvInterfaceImplZoo::" + fName + "(). ";
+    string ffName = fName + "().";
     if (rc==ZNONODE) {
-        LOGGER_INF << ffName << "Key '" << key << "' does not exist." << endl;
+        LOGF_INFO("%1% Key '%2%' does not exist." % ffName % key);
         throw (key);
     } else if (rc==ZNODEEXISTS) {
-        LOGGER_INF << ffName << "Key '" << key << "' already exists." << endl;
+        LOGF_INFO("%1% Key '%2%' already exists." % ffName % key);
         throw KeyExistsError(key);
     } else if (rc==ZCONNECTIONLOSS) {
-        LOGGER_INF << ffName << "Can't connect to zookeeper." << endl;
+        LOGF_INFO("%1% Can't connect to zookeeper." % ffName);
         throw ConnError();
     } else if (rc==ZNOAUTH) {
-        LOGGER_INF << ffName << "Zookeeper authorization failure." << endl;
+        LOGF_INFO("%1% Zookeeper authorization failure." % ffName);
         throw AuthError();
     } else if (rc==ZBADARGUMENTS) {
-        LOGGER_INF << ffName << "Invalid key passed to zookeeper." << endl;
+        LOGF_INFO("%1% Invalid key '%2%' passed to zookeeper." % ffName % key);
         throw NoSuchKey(key);
     }
     ostringstream s;
     s << ffName << "Zookeeper error #" << rc << ". Key: '" << key << "'.";
-    LOGGER_INF << s.str() << endl;
+    LOGF_INFO("%1% Zookeeper error #%2%. Key: '%3%'" % ffName % rc % key);
     throw CssError(s.str());
 }
 

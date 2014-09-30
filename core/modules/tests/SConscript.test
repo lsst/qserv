@@ -33,7 +33,7 @@ deps.sort(key=lambda n: n.str_for_display())
 #print "test deps~~~~~~~", map(lambda n: n.str_for_display(), deps)
 
 myDeps = filter(lambda i: not str(i).startswith("test"), env.Glob("*.cc"))
-extDeps = "boost_regex mysqlclient_r boost_thread boost_system crypto protobuf XrdPosix XrdPosixPreload XrdClient XrdUtils".split()
+extDeps = "boost_regex mysqlclient_r boost_thread boost_system crypto log log4cxx protobuf XrdPosix XrdPosixPreload XrdClient XrdUtils".split()
 p = env.Program(["testIter.cc"] + deps, LIBS=findLibs(extDeps))
 
 programs.append(p)

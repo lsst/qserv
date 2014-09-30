@@ -46,8 +46,10 @@
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
-#include "log/Logger.h"
 #include "mysql/LocalInfile.h"
 #include "mysql/MySqlConnection.h"
 #include "proto/worker.pb.h"
@@ -259,8 +261,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
       _sqlConfig(makeSqlConfig(c)),
       _isFinished(false),
       _needCreateTable(true) {
-    //LOGGER_INF << "InfileMerger construct +++++++ ()" << (void*) this << std::endl;
-
+    //LOGF_INFO("InfileMerger construct +++++++ ()%1%" % (void*) this");
     _error.errorCode = InfileMergerError::NONE;
     _fixupTargetName();
     if(_config.mergeStmt) {
@@ -270,7 +271,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c)
 }
 
 InfileMerger::~InfileMerger() {
-    //LOGGER_INF << "InfileMerger destruct ------- ()" << (void*) this << std::endl;
+    //LOGF_INFO("InfileMerger destruct ------- ()%1%" % (void*) this);
 }
 
 
@@ -278,15 +279,14 @@ off_t InfileMerger::merge(char const* dumpBuffer, int dumpLength) {
     if(_error.errorCode) { // Do not attempt when in an error state.
         return -1;
     }
-    LOGGER_DBG << "EXECUTING InfileMerger::merge(" << (void*)dumpBuffer << ", "
-               << dumpLength << std::endl;
+    LOGF_DEBUG("EXECUTING InfileMerger::merge(%1%, %2%)"
+               % (void*)dumpBuffer % dumpLength);
     int mergeSize = 0;
     // Now buffer is big enough, start processing.
     mergeSize = _importBuffer(dumpBuffer, dumpLength, _needCreateTable);
     if(mergeSize == 0) { // Buffer not big enough.
-        LOGGER_DBG << "WARNING, zero merge from InfileMerger::merge("
-                   << (void*)dumpBuffer << ", "
-                   << dumpLength << std::endl;
+        LOGF_DEBUG("WARNING, zero merge from InfileMerger::merge(%1%, %2%)"
+                   % (void*)dumpBuffer % dumpLength);
     }
     return mergeSize;
 }
@@ -295,21 +295,20 @@ bool InfileMerger::finalize() {
     bool finalizeOk = _mgr->join();
     // TODO: Should check for error condition before continuing.
     if(_isFinished) {
-        LOGGER_ERR << "InfileMerger::finalize(), but _isFinished == true"
-                   << std::endl;
+        LOGF_ERROR("InfileMerger::finalize(), but _isFinished == true");
     }
     if(_mergeTable != _config.targetTable) {
         // Aggregation needed: Do the aggregation.
         std::string mergeSelect = _config.mergeStmt->getTemplate().generate();
         std::string createMerge = "CREATE TABLE " + _config.targetTable
             + " " + mergeSelect;
-        LOGGER_INF << "Merging w/" << createMerge << std::endl;
+        LOGF_INFO("Merging w/%1%" % createMerge);
         finalizeOk = _applySqlLocal(createMerge);
 
         // Cleanup merge table.
         sql::SqlErrorObject eObj;
         // Don't report failure on not exist
-        LOGGER_INF << "Cleaning up " << _mergeTable << std::endl;
+        LOGF_INFO("Cleaning up %1%" % _mergeTable);
 #if 1 // Set to 0 when we want to retain mergeTables for debugging.
         bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj,
                                              false,
@@ -318,12 +317,10 @@ bool InfileMerger::finalize() {
         bool cleanupOk = true;
 #endif
         if(!cleanupOk) {
-            LOGGER_INF << "Failure cleaning up table "
-                       << _mergeTable << std::endl;
+            LOGF_INFO("Failure cleaning up table %1%" % _mergeTable);
         }
     }
-    LOGGER_INF << "Merged " << _mergeTable << " into " << _config.targetTable
-               << std::endl;
+    LOGF_INFO("Merged %1% into %2%" % _mergeTable % _config.targetTable);
     _isFinished = true;
     return finalizeOk;
 }
@@ -349,8 +346,7 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
             _sqlConn.reset();
             return false;
         } else {
-            LOGGER_INF << "InfileMerger " << (void*) this
-                       << " connected to db." << std::endl;
+            LOGF_INFO("InfileMerger %1% connected to db." % (void*) this);
         }
     }
     if(!_sqlConn->runQuery(sql, errObj)) {
@@ -426,7 +422,7 @@ int InfileMerger::_importBuffer(char const* buffer, int length, bool setupResult
 
     // Now decode Result msg
     int resultSize = msgs->protoHeader.size();
-    LOGGER_INF << "Importing result msg size=" << msgs->protoHeader.size();
+    LOGF_INFO("Importing result msg size=%1%" % msgs->protoHeader.size());
     if(remain < msgs->protoHeader.size()) {
         // TODO: want to handle bigger messages.
         _error.description = "Buffer too small for result msg, increase buffer size in InfileMerger";
@@ -490,7 +486,7 @@ bool InfileMerger::_setupTable(InfileMerger::Msgs const& msgs) {
             s.columns.push_back(scs);
         }
         std::string createStmt = sql::formCreateTable(_mergeTable, s);
-        LOGGER_DBG << "InfileMerger create table:" << createStmt << std::endl;
+        LOGF_DEBUG("InfileMerger create table:%1%" % createStmt);
 
         if(!_applySqlLocal(createStmt)) {
             _error.errorCode = InfileMergerError::CREATE_TABLE;

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -49,16 +49,14 @@ MmapFile::newMap(std::string const& filename, bool read, bool write) {
 MmapFile::~MmapFile() {
     if(_buf) {
         if(-1 == ::munmap(_buf, _fstat.st_size)) {
-            // LOGGER_ERR << "Munmap failed (" << (void*)_buf
-            //            << ", " << _fstat.st_size
-            //            << "). Memory corruption likely." << std::endl;
+            // LOGF_ERROR("Munmap failed (%1%, %2%). Memory corruption likely."
+            //            % (void*)_buf % _fstat.st_size);
         }
         _buf = 0;
     }
     if(_fd > 0) {
         if(-1 == close(_fd)) {
-            // LOGGER_WRN << "Warning, broken close of " << _filename
-            //            << " (fd=" << _fd << ")" << std::endl;
+            // LOGF_WARN("Warning, broken close of %1% (fd=%2%)" % _filename % _fd);
         }
         _fd = 0;
     }
@@ -83,7 +81,7 @@ MmapFile::_init(std::string const& filename, bool read_, bool write_) {
     }
     _fd = ::open(_filename.c_str(), openFlags);
     if(_fd == -1) {
-        //LOGGER_WRN << "Error opening file." << std::endl;
+        // LOGF_WARN("Error opening file.");
         _fd = 0;
     }
     if((-1 == ::fstat(_fd, &_fstat)) || // get filesize
@@ -92,7 +90,7 @@ MmapFile::_init(std::string const& filename, bool read_, bool write_) {
         )
        ) {
         if((MAP_FAILED == _buf) && _fstat.st_size > ((off_t)1ULL << 30)) {
-            //LOGGER_WRN << "file too big? (mmap failed) " << std::endl;
+            // LOGF_WARN("file too big? (mmap failed)");
         }
         _buf = 0; // reset buffer.
     }

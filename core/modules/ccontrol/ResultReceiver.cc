@@ -27,10 +27,12 @@
 #include <cstring> // For memmove()
 #include <stdexcept>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "global/debugUtil.h"
 #include "global/MsgReceiver.h"
-#include "log/Logger.h"
 #include "log/msgCode.h"
 #include "rproc/InfileMerger.h"
 #include "rproc/TableMerger.h"
@@ -70,12 +72,10 @@ char* ResultReceiver::buffer() {
 
 bool ResultReceiver::flush(int bLen, bool last) {
     // Do something with the buffer.
-    LOGGER_INF << "Receiver flushing " << bLen << " bytes "
-               << (last ? " (last)" : " (more)")
-               << " to table=" << _tableName << std::endl;
-    LOGGER_INF << makeByteStreamAnnotated("ResultReceiver flushbytes",
-                                          _buffer, bLen) << std::endl;
-
+    LOGF_INFO("Receiver flushing %1% bytes (%2%) to table=%3%" %
+              bLen % (last ? "last" : "more") % _tableName);
+    LOGF_INFO("%1%" % makeByteStreamAnnotated("ResultReceiver flushbytes",
+                                              _buffer, bLen));
     assert(!_tableName.empty());
     bool mergeOk = false;
     if(bLen == 0) {
@@ -87,15 +87,14 @@ bool ResultReceiver::flush(int bLen, bool last) {
             _dirty = true;
         }
     } else {
-        LOGGER_ERR << "Possible error: flush with negative length" << std::endl;
+        LOGF_ERROR("Possible error: flush with negative length");
         return false;
     }
 
     _flushed = true;
     if(last) {
         // Probably want to notify that we're done?
-        LOGGER_INF << " Flushed last for tableName="
-                   << _tableName << std::endl;
+        LOGF_INFO("Flushed last for tableName=%1%" % _tableName);
     }
     return mergeOk;
 }
@@ -105,7 +104,7 @@ void ResultReceiver::errorFlush(std::string const& msg, int code) {
     // Do something about the error. FIXME.
     _error.msg = msg;
     _error.code = code;
-    LOGGER_ERR << "Error receiving result." << std::endl;
+    LOGF_ERROR("Error receiving result.");
 }
 
 bool ResultReceiver::finished() const {
@@ -163,18 +162,11 @@ bool ResultReceiver::_appendAndMergeBuffer(int bLen) {
         _buffer = &_actualBuffer[0] + inputSize;
         _bufferSize = _actualSize = inputSize;
 
-        std::ostringstream os;
-        os << "No merge in input. Receive buffer too small? "
-           << "Tried to merge " << inputSize
-           << " bytes, fresh=" << bLen
-           << " actualsize=" << _actualSize
-           << std::endl;
-        std::string msg = os.str();
-        LOGGER_WRN << msg << std::endl;
+        LOGF_WARN("No merge in input. Receive buffer too small? Tried to merge %1% bytes, fresh=%2% actualsize=%3%" % inputSize % bLen % _actualSize);
         return true;
     }
     std::string msg = "Merger::merge() returned an impossible value";
-    LOGGER_ERR << "Die horribly " << msg << std::endl;
+    LOGF_ERROR("Die horribly %1%" % msg);
     if(_msgReceiver) {
         (*_msgReceiver)(log::MSG_MERGE_ERROR, msg);
     }

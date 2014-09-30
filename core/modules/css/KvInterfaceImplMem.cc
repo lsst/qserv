@@ -51,9 +51,11 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
 #include "css/CssError.h"
-#include "log/Logger.h"
 
 using std::endl;
 using std::map;
@@ -101,7 +103,7 @@ KvInterfaceImplMem::KvInterfaceImplMem(std::istream& mapStream) {
     //    if (itrM->second != "") {
     //        val = itrM->second;
     //    }
-    //    LOGGER_INF << itrM->first << "\t" << val << endl;
+    //    LOGF_INFO("%1%\t%2%" % itrM->first % val);
     //}
 }
 
@@ -110,8 +112,7 @@ KvInterfaceImplMem::~KvInterfaceImplMem() {
 
 void
 KvInterfaceImplMem::create(string const& key, string const& value) {
-    LOGGER_INF << "*** KvInterfaceImplMem::create(), " << key << " --> "
-               << value << endl;
+    LOGF_INFO("*** KvInterfaceImplMem::create(%1%, %2%)" % key % value);
     if (exists(key)) {
         throw NoSuchKey(key);
     }
@@ -121,8 +122,8 @@ KvInterfaceImplMem::create(string const& key, string const& value) {
 bool
 KvInterfaceImplMem::exists(string const& key) {
     bool ret = _kvMap.find(key) != _kvMap.end();
-    LOGGER_INF << "*** KvInterfaceImplMem::exists(), key: " << key
-               << ": " << ret << endl;
+    LOGF_INFO("*** KvInterfaceImplMem::exists(%1%): %2%"
+              % key % (ret?"YES":"NO"));
     return ret;
 }
 
@@ -130,7 +131,7 @@ string
 KvInterfaceImplMem::_get(string const& key,
                          string const& defaultValue,
                          bool throwIfKeyNotFound) {
-    LOGGER_INF << "*** KvInterfaceImplMem::get(), key: " << key << endl;
+    LOGF_INFO("*** KvInterfaceImplMem::get(%1%)" % key);
     if ( !exists(key) ) {
         if (throwIfKeyNotFound) {
             throw NoSuchKey(key);
@@ -138,13 +139,13 @@ KvInterfaceImplMem::_get(string const& key,
         return defaultValue;
     }
     string s = _kvMap[key];
-    LOGGER_INF << "*** got: '" << s << "'" << endl;
+    LOGF_INFO("got: '%1%'" % s);
     return s;
 }
 
 vector<string>
 KvInterfaceImplMem::getChildren(string const& key) {
-    LOGGER_INF << "*** KvInterfaceImplMem::getChildren(), key: " << key << endl;
+    LOGF_INFO("*** KvInterfaceImplMem::getChildren(), key: %1%" % key);
     if ( ! exists(key) ) {
         throw NoSuchKey(key);
     }
@@ -152,27 +153,29 @@ KvInterfaceImplMem::getChildren(string const& key) {
     map<string, string>::const_iterator itrM;
     for (itrM=_kvMap.begin() ; itrM!=_kvMap.end() ; itrM++) {
         string fullKey = itrM->first;
-        LOGGER_INF << "fullKey: " << fullKey << endl;
+        LOGF_INFO("fullKey: %1%" % fullKey)
         if (boost::starts_with(fullKey, key+"/")) {
             string theChild = fullKey.substr(key.length()+1);
             if (theChild.size() > 0) {
-                LOGGER_INF << "child: " << theChild << endl;
+                LOGF_INFO("child: %1%" % theChild);
                 retV.push_back(theChild);
             }
         }
     }
-    LOGGER_INF << "got " << retV.size() << " children:" << endl;
-    vector<string>::const_iterator itrV;
-    for (itrV=retV.begin(); itrV!=retV.end() ; itrV++) {
-        LOGGER_INF << "'" << *itrV << "', ";
+    if (LOG_CHECK_INFO()) {
+        vector<string>::const_iterator itrV;
+        std::stringstream ss;
+        for (itrV=retV.begin(); itrV!=retV.end() ; itrV++) {
+            ss << *itrV;
+        }
+        LOGF_INFO("got: %1% children: %2%" % retV.size() % ss.str());
     }
-    LOGGER_INF << endl;
     return retV;
 }
 
 void
 KvInterfaceImplMem::deleteKey(string const& key) {
-    LOGGER_INF << "*** KvInterfaceImplMem::deleteKey, key: " << key << endl;
+    LOGF_INFO("*** KvInterfaceImplMem::deleteKey(%1%)." % key)
     if ( ! exists(key) ) {
         throw NoSuchKey(key);
     }

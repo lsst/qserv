@@ -37,16 +37,19 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 
 // Third-party headers
 #include <antlr/NoViableAltException.hpp>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Local headers
 #include "css/Facade.h"
 #include "css/CssError.h"
 #include "global/constants.h"
-#include "log/Logger.h"
 #include "parser/ParseException.h"
 #include "parser/parseExceptions.h"
 #include "parser/SelectParser.h"
@@ -67,8 +70,12 @@ namespace qserv {
 namespace qproc {
 
 void printConstraints(query::ConstraintVector const& cv) {
-    std::copy(cv.begin(), cv.end(),
-              std::ostream_iterator<query::Constraint>(LOG_STRM(Info), ","));
+    if (LOG_CHECK_INFO()) {
+        std::stringstream ss;
+        std::copy(cv.begin(), cv.end(),
+                  std::ostream_iterator<query::Constraint>(ss, ","));
+        LOGF_INFO("%1%" % ss.str());
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -149,7 +156,7 @@ boost::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const 
         //printConstraints(*cv);
         return cv;
     } else {
-        //LOGGER_INF << "No constraints." << std::endl;
+        // LOGF_INFO("No constraints.");
     }
     return cv;
 }
@@ -346,34 +353,30 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
         tlist.push_back((**i).getTemplate());
     }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
-        LOGGER_INF << "QuerySession::_buildChunkQueries() : Non-subchunked" << std::endl;
+        LOGF_INFO("Non-subchunked");
         for(TlistIter i=tlist.begin(), e=tlist.end(); i != e; ++i) {
             q.push_back(_context->queryMapping->apply(s, *i));
         }
     } else { // subchunked:
-        LOGGER_INF << "QuerySession::_buildChunkQueries() : subchunked " << std::endl;
         ChunkSpecSingle::List sList = ChunkSpecSingle::makeList(s);
-
-        LOGGER_DBG << "QuerySession::_buildChunkQueries() : subchunks :";
-        std::copy(sList.begin(), sList.end(),
-            std::ostream_iterator<ChunkSpecSingle>(LOG_STRM(Debug), ","));
-        LOGGER_DBG << std::endl;
+        if (LOG_CHECK_INFO()) {
+            std::stringstream ss;
+            std::copy(sList.begin(), sList.end(),
+                      std::ostream_iterator<ChunkSpecSingle>(ss, ","));
+            LOGF_INFO("subchunks: %1%" % ss.str());
+        }
         typedef ChunkSpecSingle::List::const_iterator ChunkIter;
         for(ChunkIter i=sList.begin(), e=sList.end(); i != e; ++i) {
             for(TlistIter j=tlist.begin(), je=tlist.end(); j != je; ++j) {
-
-	      LOGGER_DBG << "QuerySession::_buildChunkQueries() : adding query "
-                         << _context->queryMapping->apply(*i, *j) << std::endl;
-              q.push_back(_context->queryMapping->apply(*i, *j));
+                LOGF_DEBUG("adding query %1%" % _context->queryMapping->apply(*i, *j));
+                q.push_back(_context->queryMapping->apply(*i, *j));
             }
         }
     }
-
-    LOGGER_DBG << "QuerySession::_buildChunkQueries() : returning  queries : " << std::endl;
+    LOGF_DEBUG("returning  queries: ");
     for(unsigned int t=0;t<q.size();t++){
-        LOGGER_DBG << q.at(t) << std::endl;
+        LOGF_DEBUG("%1%" % q.at(t));
     }
-
     return q;
 }
 
@@ -397,10 +400,8 @@ ChunkQuerySpec& QuerySession::Iter::dereference() const {
 void QuerySession::Iter::_buildCache() const {
     assert(_qs != NULL);
     _cache.db = _qs->_context->dominantDb;
-    // LOGGER_INF << "scantables "
-    //            << (_qs->_context->scanTables.empty() ? "is " : "is not ")
-    //            << " empty" << std::endl;
-
+    // LOGF_INFO("scantables %1% empty"
+    //           % (_qs->_context->scanTables.empty() ? "is" : "is not"));
     _cache.scanTables = _qs->_context->scanTables;
     _cache.chunkId = _pos->chunkId;
     _cache.nextFragment.reset();
