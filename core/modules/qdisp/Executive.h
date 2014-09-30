@@ -65,7 +65,7 @@ public:
         typedef boost::shared_ptr<Config> Ptr;
         Config(std::string const& serviceUrl_)
             : serviceUrl(serviceUrl_) {}
-        std::string serviceUrl; //< XrdSsi service URL, e.g. localhost:1094
+        std::string serviceUrl; ///< XrdSsi service URL, e.g. localhost:1094
     };
 
     /// Specification for something executable by the Executive
@@ -127,12 +127,12 @@ private:
     // for debugging
     void _printState(std::ostream& os);
 
-    Config _config; //< Personal copy of config
-    boost::shared_ptr<MessageStore> _messageStore; //< MessageStore for logging
-    XrdSsiService* _service; //< RPC interface
-    ReceiverMap _receivers; //< Receivers for results from submitted tasks
-    StatusMap _statuses; //< Statuses of submitted tasks
-    int _requestCount; //< Count of submitted tasks
+    Config _config; ///< Personal copy of config
+    boost::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
+    XrdSsiService* _service; ///< RPC interface
+    ReceiverMap _receivers; ///< Receivers for results from submitted tasks
+    StatusMap _statuses; ///< Statuses of submitted tasks
+    int _requestCount; ///< Count of submitted tasks
 
     // Mutexes
     boost::mutex _receiversMutex;
@@ -140,7 +140,7 @@ private:
 
     boost::mutex _retryMutex;
     typedef std::map<int,int> IntIntMap;
-    IntIntMap _retryMap; //< Counter for task retries.
+    IntIntMap _retryMap; ///< Counter for task retries.
 }; // class Executive
 }}} // namespace lsst::qserv::qdisp
 

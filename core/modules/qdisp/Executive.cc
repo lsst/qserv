@@ -151,7 +151,7 @@ private:
     std::string const _path;
     std::string const _payload;
     boost::shared_ptr<QueryReceiver> _receiver;
-    ExecStatus& _status; //< Reference back to exec status
+    ExecStatus& _status; ///< Reference back to exec status
 };
 
 class NotifyExecutive : public util::UnaryCallable<void, bool> {

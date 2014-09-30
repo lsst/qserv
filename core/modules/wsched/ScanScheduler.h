@@ -78,8 +78,8 @@ private:
 
 }}} // namespace lsst::qserv::wsched
 
-extern lsst::qserv::wsched::ScanScheduler* dbgScanScheduler; //< A symbol for gdb
-extern lsst::qserv::wsched::ChunkDisk* dbgChunkDisk1; //< A symbol for gdb
+extern lsst::qserv::wsched::ScanScheduler* dbgScanScheduler; ///< A symbol for gdb
+extern lsst::qserv::wsched::ChunkDisk* dbgChunkDisk1; ///< A symbol for gdb
 
 #endif // LSST_QSERV_WSCHED_SCANSCHEDULER_H
 

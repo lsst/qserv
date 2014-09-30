@@ -54,12 +54,12 @@ public:
     bool closed() const { return _closed; }
 
 private:
-    bool _closed; //< Closed to new append() calls?
-    wlog::WLogger::Ptr _log; //< Handle to logger
+    bool _closed; ///< Closed to new append() calls?
+    wlog::WLogger::Ptr _log; ///< Handle to logger
     // Can keep a deque of (buf, bufsize) to reduce copying, if needed.
-    std::deque<std::string> _msgs; //< Message queue
-    boost::mutex _mutex; //< _msgs protection
-    boost::condition_variable _hasDataCondition; //< _msgs condition
+    std::deque<std::string> _msgs; ///< Message queue
+    boost::mutex _mutex; ///< _msgs protection
+    boost::condition_variable _hasDataCondition; ///< _msgs condition
 };
 
 }}} // namespace lsst::qserv::xrdsvc
