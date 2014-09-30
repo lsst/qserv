@@ -51,18 +51,12 @@
 # Standard Python imports
 import errno
 import hashlib
-from itertools import chain, imap, ifilter
 import os
-import cProfile as profile
-import pstats
-import random
-import re
 from subprocess import Popen, PIPE
 import sys
 import threading
 import time
 import traceback
-from string import Template
 
 # Package imports
 import logger
@@ -94,7 +88,6 @@ from lsst.qserv.czar import queryMsgAddMsg
 
 # Experimental interactive prompt (not currently working)
 import code, traceback, signal
-
 
 def debug(sig, frame):
     """Interrupt running process, and provide a python prompt for
