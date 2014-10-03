@@ -102,6 +102,7 @@ bool ResultReceiver::flush(int bLen, bool last) {
 void ResultReceiver::errorFlush(std::string const& msg, int code) {
     // Might want more info from result service.
     // Do something about the error. FIXME.
+    boost::lock_guard<boost::mutex> lock(_errorMutex);
     _error.msg = msg;
     _error.code = code;
     LOGF_ERROR("Error receiving result.");
@@ -130,6 +131,19 @@ std::ostream& ResultReceiver::print(std::ostream& os) const {
     os << "ResultReceiver(" << _tableName << ", flushed="
        << (_flushed ? "true)" : "false)") ;
     return os;
+}
+
+void ResultReceiver::cancel() {
+    // If some error has already been recorded, leave it alone and don't worry about cancelling. Otherwise, set the error and invoke cancellation.
+    boost::lock_guard<boost::mutex> lock(_errorMutex);
+    if(!_error.code) {
+        _error.code = -1;
+        _error.msg = "Squashed";
+    }
+    if(_cancelFunc) {
+        _callCancel();
+        _cancelFunc.reset();
+    }
 }
 ////////////////////////////////////////////////////////////////////////
 // ResultReceiver private
@@ -167,6 +181,7 @@ bool ResultReceiver::_appendAndMergeBuffer(int bLen) {
     }
     std::string msg = "Merger::merge() returned an impossible value";
     LOGF_ERROR("Die horribly %1%" % msg);
+
     if(_msgReceiver) {
         (*_msgReceiver)(log::MSG_MERGE_ERROR, msg);
     }

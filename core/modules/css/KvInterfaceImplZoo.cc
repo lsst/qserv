@@ -157,6 +157,7 @@ KvInterfaceImplZoo::~KvInterfaceImplZoo() {
 
 void
 KvInterfaceImplZoo::create(string const& key, string const& value) {
+    boost::lock_guard<boost::mutex> lock(_mutex);
     LOGF_INFO("*** KvInterfaceImplZoo::create(%1%, %2%)" % key % value);
     int rc=ZINVALIDSTATE, nAttempts=0;
     while (nAttempts++<2) {
@@ -173,6 +174,7 @@ KvInterfaceImplZoo::create(string const& key, string const& value) {
 
 bool
 KvInterfaceImplZoo::exists(string const& key) {
+    boost::lock_guard<boost::mutex> lock(_mutex);
     LOGF_INFO("KvInterfaceImplZoo::exist(), key: %1%" % key);
     struct Stat stat;
     int rc=ZINVALIDSTATE, nAttempts=0;
@@ -229,6 +231,7 @@ KvInterfaceImplZoo::_get(string const& key,
 
 vector<string>
 KvInterfaceImplZoo::getChildren(string const& key) {
+    boost::lock_guard<boost::mutex> lock(_mutex);
     LOGF_INFO("*** KvInterfaceImplZoo::getChildren(), key: %1%" % key);
     struct String_vector strings;
     vector<string> v;
@@ -254,6 +257,7 @@ KvInterfaceImplZoo::getChildren(string const& key) {
 
 void
 KvInterfaceImplZoo::deleteKey(string const& key) {
+    boost::lock_guard<boost::mutex> lock(_mutex);
     LOGF_INFO("*** KvInterfaceImplZoo::deleteKey, key: %1%" % key);
     int rc=ZINVALIDSTATE, nAttempts=0;
     while (nAttempts++<2) {

@@ -30,6 +30,7 @@
 
 // Third-party
 #include "boost/make_shared.hpp"
+#include "boost/thread/mutex.hpp"
 
 // Qserv headers
 #include "qdisp/QueryReceiver.h"
@@ -68,7 +69,8 @@ public:
     virtual std::ostream& print(std::ostream& os) const;
 
     /// @return details of error conditions from methods
-    Error getError() const { return _error; }
+    virtual Error getError() const { return _error; }
+    virtual void cancel();
 
 private:
     /// (helper) merge buffer and shift contents depending on merge size.
@@ -87,6 +89,7 @@ private:
     char* _buffer; ///< Current buffer insertion point
     bool _flushed; ///< Has data ben flushed into this object?
     bool _dirty; ///< Has data been flushed past this object?
+    boost::mutex _errorMutex; ///< Protect error state
     Error _error; ///< Internal error state
 };
 
