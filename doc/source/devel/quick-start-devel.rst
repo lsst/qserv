@@ -18,15 +18,15 @@ source dependencies for the current Qserv release:
 .. code-block:: bash
  
    # use Qserv official distribution server
-   eups distrib install --onlydepend --repository http://lsst-web.ncsa.illinois.edu/~fjammes/qserv qserv
+   eups distrib install --onlydepend qserv -t qserv
    # only if you want to launch integration tests with your Qserv code
-   eups distrib install qserv_testdata
-   setup qserv_testdata
+   eups distrib install qserv_testdata -t qserv
+   setup qserv_testdata -t qserv
  
 .. note::
  
-   Above command will install dependencies for the current Qserv release. If you want to develop with an other set of dependencies, you may
-   have to install them one by one, or specify a given Qserv version.
+   Above command will install dependencies for the current Qserv release. If you want to develop with an other set of dependencies,
+   you may have to install them one by one, or specify a given Qserv version, instead of ``-t qserv``.
 
 .. _quick-start-devel-setup-qserv:
 
