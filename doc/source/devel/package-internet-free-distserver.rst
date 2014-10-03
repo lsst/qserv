@@ -39,7 +39,7 @@ Then rebuild Qserv distribution :
 
    rebuild git lsst qserv_distrib
    # bXXX is the build id and is available at the bottom of rebuild command standard output
-   publish -b bXXX -t current git lsst qserv_distrib
+   publish -b bXXX -t qserv git lsst qserv_distrib
 
 And then adapt and run next script :download:`qserv-package-internet-free-distserver.sh <../../../admin/tools/qserv-package-internet-free-distserver.sh>` to prepare the internet-free distserver archive and copy it to the webserver.
 
