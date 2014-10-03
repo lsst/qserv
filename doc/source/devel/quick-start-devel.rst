@@ -52,27 +52,17 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
    # if following "setup" command fails due to missing packages one has to
    # manually install those packages with regular "eups distrib install ..."
    setup -r .
-   eupspkg -er build               # build
-   eupspkg -er install             # install to EUPS stack directory
-   eupspkg -er decl                # declare it to EUPS
+   # build and install Qserv in ${SRC_DIR}/qserv/build/dist
+   scons install
+   mkdir build/dist/ups
+   eups expandtable ups/qserv.table build/dist/ups
    # enable your Qserv version, and dependencies, in eups
-   # $VERSION is available by using :
-   eups list qserv
-   setup qserv $VERSION
+   setup qserv -r build/dist
+   # Each time you want to test your code, run :
+   scons install
 
 Once the qserv eups stack is integrated with your local Qserv repository, you
 will need to configure and (if desired) test it (see :ref:`quick-start-configuration`).
-
- .. warning::
- 
-   Be advised that eupspkg may generate different version numbers depending on
-   whether the code has changed after checkout. For example it may generate
-   version which looks like "master-g86a30ec72a" for freshly checked-out code but
-   if you change anything in your repository it will generate new version
-   "master-g86a30ec72a-dirty". You may end up with two versions of qserv
-   installed, be very careful and remember to run "setup qserv" with the correct
-   version number.
-
 
 *******************
 Updating test cases

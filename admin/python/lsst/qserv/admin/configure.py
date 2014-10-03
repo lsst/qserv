@@ -13,9 +13,9 @@ from lsst.qserv.admin import path
 
 # used in cmd-line tool
 PREPARE = 'prepare'
-DIRTREE = 'directory-tree' 
-ETC     = 'etc' 
-CLIENT  = 'client' 
+DIRTREE = 'directory-tree'
+ETC     = 'etc'
+CLIENT  = 'client'
 
 MYSQL = 'mysql'
 XROOTD = 'xrootd'
@@ -34,12 +34,12 @@ STEP_DOC = dict(
         """create directory tree in qserv_run_dir""",
         """fill qserv_run_dir configuration files with values issued
            from meta-config file $qserv_run_dir/qserv.conf""",
-	"""remove MySQL previous data, install db and set password """,
-	"""create xrootd query and result directories""",
-	"""configure CSS (i.e. MySQL credentials for css-watcher)""",
-	"""initialize Qserv master and worker databases""",
-	"""install and configure SciSQL""",
-	"""create client configuration file (used by integration tests for example)"""
+        """remove MySQL previous data, install db and set password """,
+        """create xrootd query and result directories""",
+        """configure CSS (i.e. MySQL credentials for css-watcher)""",
+        """initialize Qserv master and worker databases""",
+        """install and configure SciSQL""",
+        """create client configuration file (used by integration tests for example)"""
         ]
     )
 )
@@ -168,7 +168,7 @@ def _get_template_params():
         python_bin=python_bin_list[0]
     else:
         python_bin="NOT-AVAILABLE"
-        
+
     params_dict = {
     'COMMENT_MONO_NODE' : comment_mono_node,
     'PATH': os.environ.get('PATH'),
@@ -228,13 +228,15 @@ def _set_perms(file):
     else:
         os.chmod(file, 0660)
 
-def apply_tpl(src_file, target_file):
+def apply_tpl(src_file, target_file, params_dict = None):
     """ Creating one configuration file from one template
     """
 
     logger = logging.getLogger()
     logger.debug("Creating {0} from {1}".format(target_file, src_file))
-    params_dict = _get_template_params()
+
+    if params_dict is None:
+        params_dict = _get_template_params()
 
     with open(src_file, "r") as tpl:
         t = QservConfigTemplate(tpl.read())
@@ -256,7 +258,10 @@ def apply_templates(template_root, dest_root):
 
     logger = logging.getLogger()
 
-    logger.info("Creating configuration using templates files")
+    logger.info("Creating configuration from templates")
+    if not os.path.isdir(template_root):
+        logger.fatal("Template root directory: {0} doesn't exist.".format(template_root))
+        sys.exit(1)
 
     for root, dirs, files in os.walk(template_root):
         os.path.normpath(template_root)
