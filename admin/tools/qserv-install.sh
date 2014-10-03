@@ -49,7 +49,8 @@ while getopts "dr:i:v:h" o; do
                 fi 
                 EUPS_PKGROOT="${LOCAL_DISTSERVER_ROOT}/production"
                 NEWINSTALL_URL="file://${EUPS_PKGROOT}/newinstall.sh"
-                export EUPS_TARURL=file://${LOCAL_DISTSERVER_ROOT}/1.5.0.tar.gz
+                export EUPS_VERSION="1.5.0"
+                export EUPS_TARURL=file://${LOCAL_DISTSERVER_ROOT}/${EUPS_VERSION}.tar.gz
                 export EUPS_GIT_REPO=${LOCAL_DISTSERVER_ROOT}/eups.git
                 ;;
         i)
@@ -114,16 +115,22 @@ time bash newinstall.sh ||
 # EUPS_PKGROOT, this isn't compliant with internet-free mode
 # TODO : if first url in EUPS_PKGROOT isn't available eups fails without
 # trying next ones
+if [[ -n ${LOCAL_OPTION} ]]; then
+    EUPS_PKG_ROOT_BACKUP=${EUPS_PKGROOT}
+fi
 . ${STACK_DIR}/loadLSST.sh ||
 {
     >&2 echo "ERROR : unable to load LSST stack environment"
     exit 1
 }
+if [[ -n ${LOCAL_OPTION} ]]; then
+    export EUPS_PKGROOT=${EUPS_PKG_ROOT_BACKUP}
+fi
 
 echo
-underline "Installing Qserv distribution (version : $VERSION)"
+underline "Installing Qserv distribution (version: $VERSION, distserver: ${EUPS_PKGROOT})"
 echo
-time eups distrib install qserv_distrib ${VERSION} -r ${EUPS_PKGROOT} &&
+time eups distrib install qserv_distrib ${VERSION} &&
 setup qserv_distrib ${VERSION} ||
 {
     >&2 echo "Unable to install Qserv"
