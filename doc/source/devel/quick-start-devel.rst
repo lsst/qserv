@@ -25,8 +25,8 @@ source dependencies for the current Qserv release:
 
 .. note::
 
-   Above command will install dependencies for the current Qserv release. If you want to develop with an other set of dependencies, you may
-   have to install them one by one, or specify a given Qserv version.
+   Above 'eups distrib' command will install dependencies for the current Qserv release. If you want to develop with an other set of dependencies, you may
+   have to install them one by one, or specify a given Qserv version or tag (using -t). See :ref:`build-qserv-with-specific-dependencies` for additional informations.
 
 .. _quick-start-devel-setup-qserv:
 
@@ -84,3 +84,4 @@ In order to test it with your Qserv version :
    setup -k -r .
    eupspkg -e build                # build
    eupspkg -e PREFIX=$PWD install  # install in-place
+
