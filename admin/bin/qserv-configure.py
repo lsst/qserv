@@ -120,7 +120,7 @@ def main():
         in_config_dir = os.path.join(qserv_dir, "cfg")
         in_template_config_dir = os.path.join(in_config_dir, "templates")
         out_template_config_dir = os.path.join(args.qserv_run_dir, "templates")
-        logging.info("Copying template configuration from {1} to {0}"
+        logging.info("Copying template configuration from {0} to {1}"
             .format(in_template_config_dir, args.qserv_run_dir)
         )
         shutil.copytree(in_template_config_dir, out_template_config_dir)
