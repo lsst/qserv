@@ -133,7 +133,7 @@ else:
                         "{0}".format(template_dir_path) 
         )
 
-        script_dict = {'{{QSERV_DIR}}': env['prefix'],
+        script_dict = {'{{QSERV_DIR}}': os.path.abspath(env['prefix']),
                        '{{XROOTD_DIR}}': env['XROOTD_DIR'],
                        '{{LUA_DIR}}': env['LUA_DIR'],
                        '{{MYSQL_DIR}}': env['MYSQL_DIR'],
