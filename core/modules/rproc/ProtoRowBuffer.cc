@@ -63,42 +63,38 @@ namespace rproc {
 /// \N 	NULL
 ///
 /// @return the number of bytes written to dest
-inline int escapeString(char* dest, char const* src, int srcLength) {
+template <typename Iter, typename CIter>
+inline int escapeString(Iter destBegin, CIter srcBegin, CIter srcEnd) {
     //mysql_real_escape_string(_mysql, cursor, col, r.lengths[i]);
-    assert(srcLength >= 0);
-    assert(srcLength < std::numeric_limits<int>::max() / 2);
-    char const* end = src + srcLength;
-    char const * originalSrc = src;
-    while(src != end) {
-        switch(*src) {
-        case '\0': *dest++ = '\\'; *dest++ = '0'; break;
-        case '\b': *dest++ = '\\'; *dest++ = 'b'; break;
-        case '\n': *dest++ = '\\'; *dest++ = 'n'; break;
-        case '\r': *dest++ = '\\'; *dest++ = 'r'; break;
-        case '\t': *dest++ = '\\'; *dest++ = 't'; break;
-        case '\032': *dest++ = '\\'; *dest++ = 'Z'; break;
-        default: *dest++ = *src; break;
+    assert(srcBegin != srcEnd);
+    assert(srcEnd - srcBegin > 0);
+    assert(srcEnd - srcBegin < std::numeric_limits<int>::max() / 2);
+    Iter destI = destBegin;
+    for(CIter i = srcBegin; i != srcEnd; ++i) {
+        switch(*i) {
+          case '\0':   *destI++ = '\\'; *destI++ = '0'; break;
+          case '\b':   *destI++ = '\\'; *destI++ = 'b'; break;
+          case '\n':   *destI++ = '\\'; *destI++ = 'n'; break;
+          case '\r':   *destI++ = '\\'; *destI++ = 'r'; break;
+          case '\t':   *destI++ = '\\'; *destI++ = 't'; break;
+          case '\032': *destI++ = '\\'; *destI++ = 'Z'; break;
+          default: *destI++ = *i; break;
             // Null (\N) is not treated by escaping in this context.
         }
-        ++src;
     }
-    return src - originalSrc;
+    return destI - destBegin;
 }
 
 /// Copy a rawColumn to an STL container
 template <typename T>
 inline int copyColumn(T& dest, std::string const& rawColumn) {
-    // Consider reserving dest and writing directly to it instead of using an
-    // intermediate vector<char>. Note this would force escapeString() to use an
-    // iterator interface--for T=string, writing to internal string memory is
-    // discouraged.
-    std::vector<char> colBuf(2 * rawColumn.size());
-    int valSize = escapeString(&colBuf[0],
-                           rawColumn.data(), rawColumn.size());
-    dest.push_back('\'');
-    dest.insert(dest.end(),
-                colBuf.begin(), colBuf.begin() + valSize);
-    dest.push_back('\'');
+    int existingSize = dest.size();
+    dest.resize(existingSize + 2 + 2 * rawColumn.size());
+    dest[existingSize] = '\'';
+    int valSize = escapeString(dest.begin() + existingSize + 1,
+                               rawColumn.begin(), rawColumn.end());
+    dest[existingSize + 1 + valSize] = '\'';
+    dest.resize(existingSize + 2 + valSize);
     return 2 + valSize;
 }
 ////////////////////////////////////////////////////////////////////////
