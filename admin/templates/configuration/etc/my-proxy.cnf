@@ -13,6 +13,3 @@ log-level=debug
 # when using mysql-proxy init.d startup script
 pid-file = {{QSERV_PID_DIR}}/mysql-proxy.pid
 
-lua-path={{QSERV_LUA_SHARE}}/?.lua;{{QSERV_LUA_SHARE}}/?/init.lua;{{QSERV_LUA_SHARE}}/?/?.lua
-lua-cpath={{QSERV_LUA_LIB}}/?.so;{{QSERV_LUA_LIB}}/?/?.so
-proxy-lua-script = {{QSERV_DIR}}/proxy/mysqlProxy.lua
