@@ -19,7 +19,7 @@ def parseArgs():
     parser = argparse.ArgumentParser(
             description='''Qserv configuration tool. Creates an execution
 directory (qserv_run_dir) which will contains configuration and execution
-data for a given Qserv instance. Deploys values from meta-config file $qserv_run_dir/qserv.conf
+data for a given Qserv instance. Deploys values from meta-config file $qserv_run_dir/qserv-meta.conf
 in all Qserv configuration files and databases. Default behaviour will configure a mono-node
 instance in ''' + default_qserv_run_dir + '''. IMPORTANT : --all MUST BE USED
 FOR A  SETUP FROM SCRATCH.''',
@@ -151,7 +151,7 @@ def main():
     if  contains_configuration_step(args.step_list):
 
         try:
-            logging.info("Reading meta-configuration file")
+            logging.info("Reading meta-configuration file {0}".format(args.meta_config_file))
             config = commons.read_config(args.meta_config_file)
         except ConfigParser.NoOptionError, exc:
             logging.fatal("An option is missing in your configuration file: %s", exc)
