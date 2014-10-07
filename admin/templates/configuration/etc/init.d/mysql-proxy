@@ -22,6 +22,12 @@
 . {{QSERV_RUN_DIR}}/etc/init.d/qserv-functions
 
 PATH={{PATH}}
+
+# Variables belows may depends on Qserv and lua versions
+QSERV_DIR={{QSERV_DIR}}
+QSERV_LUA_SHARE={{QSERV_LUA_SHARE}}
+QSERV_LUA_LIB={{QSERV_LUA_LIB}}
+
 QSERV_RUN_DIR={{QSERV_RUN_DIR}}
 QSERV_PID_DIR={{QSERV_PID_DIR}}
 QSERV_LOG_DIR={{QSERV_LOG_DIR}}
@@ -41,7 +47,10 @@ if [ "${NETWORKING}" = "no" ]; then
 fi
 
 # Set default mysql-proxy configuration.
-PROXY_OPTIONS="--daemon"
+PROXY_OPTIONS="--daemon \
+        --proxy-lua-script=${QSERV_DIR}/proxy/mysqlProxy.lua \
+        --lua-path=\"${QSERV_LUA_SHARE}/?.lua;${QSERV_LUA_SHARE}/?/init.lua;${QSERV_LUA_SHARE}/?/?.lua\" \
+        --lua-cpath=\"${QSERV_LUA_LIB}/?.so;${QSERV_LUA_LIB}/?/?.so\""
 pidfile=${QSERV_PID_DIR}/mysql-proxy.pid
 PROXY_CONFIG=${QSERV_RUN_DIR}/etc/my-proxy.cnf
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$NAME
