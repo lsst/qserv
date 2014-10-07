@@ -135,6 +135,9 @@ public:
     /// ProtoHeader message
     /// Result message
     /// @return count of bytes imported.
+    /// merge() can be called by multiple threads as buffers arrive for merging,
+    /// validating and enqueuing the inputs so that a separate thread may
+    /// perform the I/O-dependent physical table loading.
     off_t merge(char const* dumpBuffer, int dumpLength);
 
     /// @return error details if finalize() returns false
