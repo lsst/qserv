@@ -75,6 +75,7 @@
 #include "global/MsgReceiver.h"
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
+#include "ccontrol/MergingRequester.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
 #include "qproc/QuerySession.h"
@@ -189,14 +190,15 @@ void UserQuery::submit() {
 
         ResourceUnit ru;
         ru.setAsDbChunk(cs.db, cs.chunkId);
-        boost::shared_ptr<ResultReceiver> rr;
         boost::shared_ptr<ChunkMsgReceiver> cmr;
         cmr = ChunkMsgReceiver::newInstance(cs.chunkId, _messageStore);
-        rr.reset(new ResultReceiver(cmr, _infileMerger, chunkResultName));
-        int refNum = ++_sequence;
+        boost::shared_ptr<MergingRequester> mr;
+        mr.reset(new MergingRequester(cmr, _infileMerger, chunkResultName));
         qdisp::Executive::Spec s = { ru,
                                      ss.str(),
-                                     rr };
+                                     mr};
+
+        int refNum = ++_sequence;
         _executive->add(refNum, s);
         ss.str(""); // reset stream
     }
