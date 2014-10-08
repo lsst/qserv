@@ -39,6 +39,7 @@
 // Qserv headers
 #include "qdisp/ExecStatus.h"
 #include "qdisp/QueryReceiver.h"
+#include "qdisp/ResponseRequester.h"
 
 namespace lsst {
 namespace qserv {
@@ -72,13 +73,13 @@ private:
 ////////////////////////////////////////////////////////////////////////
 QueryRequest::QueryRequest(XrdSsiSession* session,
                            std::string const& payload,
-                           boost::shared_ptr<QueryReceiver> receiver,
+                           boost::shared_ptr<ResponseRequester> requester,
                            boost::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
                            boost::shared_ptr<util::VoidCallable<void> > retryFunc,
                            ExecStatus& status)
     : _session(session),
       _payload(payload),
-      _receiver(receiver),
+      _requester(requester),
       _finishFunc(finishFunc),
       _retryFunc(retryFunc),
       _status(status) {
@@ -107,7 +108,7 @@ void QueryRequest::RelRequestBuffer() {
 bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     std::string errorDesc;
     if(!isOk) {
-        _receiver->errorFlush(std::string("Request failed"), -1);
+        _requester->errorFlush(std::string("Request failed"), -1);
         _errorFinish();
         _status.report(ExecStatus::RESPONSE_ERROR);
         return true;
@@ -139,15 +140,24 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
 
 /// Retrieve and process results in using the XrdSsi stream mechanism
 bool QueryRequest::_importStream() {
-    _resetBuffer();
+    bool retrieveInitiated = false;
+    // Pass ResponseRequester's buffer directly.
+    std::vector<char>& buffer = _requester->nextBuffer();
     LOGF_INFO("GetResponseData with buffer of %1%" % _bufferRemain);
+    retrieveInitiated = GetResponseData(&buffer[0], buffer.size());
+#if 0
+    } else {
+        _resetBuffer();
+        LOGF_INFO("GetResponseData with buffer of %1%" % _bufferRemain);
     // TODO: When the new result-protocol is ready, re-implement this to invert
     // the control scheme to reduce the amount of buffer
     // (impedance) matching done. This should be possible because
     // GetResponseData's request size is more strict than expected--the
     // subsequent ProcessResponseData() call will provide exactly the requested
     // amount of bytes, unless no more bytes available from the sender.
-    bool retrieveInitiated = GetResponseData(_cursor, _bufferRemain); // Step 6
+        retrieveInitiated = GetResponseData(_cursor, _bufferRemain); // Step 6
+    }
+#endif
     LOGF_INFO("Initiated request %1%" % (retrieveInitiated ? "ok" : "err"));
     if(!retrieveInitiated) {
         _status.report(ExecStatus::RESPONSE_DATA_ERROR);
@@ -166,29 +176,47 @@ bool QueryRequest::_importStream() {
     } else {
         return true;
     }
+
 }
 
 /// Process an incoming error.
 bool QueryRequest::_importError(std::string const& msg, int code) {
-    _receiver->errorFlush(msg, code);
+    _requester->errorFlush(msg, code);
     _errorFinish();
     return true;
 }
 
 void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Step 7
-    LOGF_INFO("ProcessResponse[data] with buflen=%1% %2%" % 
+    LOGF_INFO("ProcessResponse[data] with buflen=%1% %2%" %
               blen % (last ? "(last)" : "(more)"));
     if(blen < 0) { // error, check errinfo object.
         int eCode;
         std::string reason(eInfo.Get(eCode));
         _status.report(ExecStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGF_ERROR("ProcessResponse[data] error(%1%,\"%2%\")" % eCode % reason);
-        _receiver->errorFlush("Couldn't retrieve response data:" + reason, eCode);
+        _requester->errorFlush("Couldn't retrieve response data:" + reason, eCode);
         _errorFinish();
         return;
     }
     _status.report(ExecStatus::RESPONSE_DATA);
+    bool flushOk = _requester->flush(blen, last);
+    if(flushOk) {
+        if(last) {
+            _status.report(ExecStatus::COMPLETE);
+            _finish();
+        } else {
+            std::vector<char>& buffer = _requester->nextBuffer();
+            if(!GetResponseData(&buffer[0], buffer.size())) {
+                _errorFinish();
+            }
+        }
+    } else {
+        _status.report(ExecStatus::MERGE_ERROR);
+    }
 
+}
+#if 0
+void QueryRequest::_processBuffered(char *buff, int blen, bool last) {
     if(blen > 0) {
         _cursor = _cursor + blen;
         _bufferRemain = _bufferRemain - blen;
@@ -230,7 +258,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
         LOGF_INFO("Response recv (wait) bytes=%1%" % blen);
     }
 }
-
+#endif
 /// Finalize under error conditions and retry or report completion
 void QueryRequest::_errorFinish() {
     LOGF_DEBUG("Error finish");
@@ -267,15 +295,7 @@ void QueryRequest::_finish() {
 /// notifications upon errors detected in the receiver.
 void QueryRequest::_registerSelfDestruct() {
     boost::shared_ptr<Canceller> canceller(new Canceller(*this));
-    _receiver->registerCancel(canceller);
-}
-
-/// Reset the response buffer.
-void QueryRequest::_resetBuffer() {
-    _buffer = _receiver->buffer();
-    _bufferSize = _receiver->bufferSize();
-    _cursor = _buffer;
-    _bufferRemain = _bufferSize;
+    _requester->registerCancel(canceller);
 }
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r) {

@@ -44,6 +44,7 @@
 #include "qdisp/QueryRequest.h"
 #include "qdisp/QueryResource.h"
 #include "qdisp/QueryReceiver.h"
+#include "qdisp/ResponseRequester.h"
 
 namespace lsst {
 namespace qserv {
@@ -60,11 +61,11 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
         LOGF_ERROR("Error provisioning, msg=%1% code=%2%" % msg % code);
         _status.report(ExecStatus::PROVISION_NACK, code, std::string(msg));
         // FIXME code may be wrong.
-        _receiver->errorFlush(std::string(msg), code);
+        _requester->errorFlush(std::string(msg), code);
         return;
     }
     _session = s;
-    _request = new QueryRequest(s, _payload, _receiver,
+    _request = new QueryRequest(s, _payload, _requester,
                                 _finishFunc,  _retryFunc, _status);
     assert(_request);
     // Hand off the request and release ownership.
