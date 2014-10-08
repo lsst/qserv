@@ -37,6 +37,8 @@
 #include "rproc/InfileMerger.h"
 #include "rproc/TableMerger.h"
 
+using lsst::qserv::qdisp::QueryReceiver;
+
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
@@ -102,9 +104,11 @@ bool ResultReceiver::flush(int bLen, bool last) {
 void ResultReceiver::errorFlush(std::string const& msg, int code) {
     // Might want more info from result service.
     // Do something about the error. FIXME.
-    boost::lock_guard<boost::mutex> lock(_errorMutex);
-    _error.msg = msg;
-    _error.code = code;
+    {
+        boost::lock_guard<boost::mutex> lock(_errorMutex);
+        _error.msg = msg;
+        _error.code = code;
+    }
     LOGF_ERROR("Error receiving result.");
 }
 
@@ -133,16 +137,25 @@ std::ostream& ResultReceiver::print(std::ostream& os) const {
     return os;
 }
 
-void ResultReceiver::cancel() {
-    // If some error has already been recorded, leave it alone and don't worry about cancelling. Otherwise, set the error and invoke cancellation.
+QueryReceiver::Error ResultReceiver::getError() const {
     boost::lock_guard<boost::mutex> lock(_errorMutex);
-    if(!_error.code) {
-        _error.code = -1;
-        _error.msg = "Squashed";
+    return _error;
+}
+
+void ResultReceiver::cancel() {
+    // If some error has already been recorded, leave it alone and don't worry
+    // about cancelling. Otherwise, set the error and invoke cancellation.
+    boost::shared_ptr<CancelFunc> f;
+    {
+        boost::lock_guard<boost::mutex> lock(_errorMutex);
+        if(!_error.code) {
+            _error.code = -1;
+            _error.msg = "Squashed";
+            f.swap(_cancelFunc);
+        }
     }
-    if(_cancelFunc) {
-        _callCancel();
-        _cancelFunc.reset();
+    if(f) {
+        (*f)();
     }
 }
 ////////////////////////////////////////////////////////////////////////

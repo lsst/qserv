@@ -240,13 +240,15 @@ void Executive::markCompleted(int refNum, bool success) {
 
 void Executive::requestSquash(int refNum) {
     ReceiverPtr toSquash;
+    bool needToWarn = false;
+    QueryReceiver::Error e;
     {
         boost::lock_guard<boost::mutex> lock(_receiversMutex);
         ReceiverMap::iterator i = _receivers.find(refNum);
         if(i != _receivers.end()) {
             QueryReceiver::Error e = i->second->getError();
             if(e.code) {
-                LOGF_WARN("Warning, requestSquash(%1%), but %2% has already failed (%3%, %4%)." % refNum % refNum % e.code % e.msg);
+                needToWarn = true;
             } else {
                 toSquash = i->second; // Remember which one to squash
             }
@@ -254,6 +256,10 @@ void Executive::requestSquash(int refNum) {
             throw Bug("Executive::requestSquash() with invalid refNum");
         }
     }
+    if(needToWarn) {
+        LOGF_WARN("Warning, requestSquash(%1%), but %2% has already failed (%3%, %4%)." % refNum % refNum % e.code % e.msg);
+    }
+
     if(toSquash) { // Squash outside of the mutex
         toSquash->cancel();
     }

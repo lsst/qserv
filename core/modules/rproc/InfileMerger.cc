@@ -112,9 +112,9 @@ bool InfileMergerError::resultTooBig() const {
     return (status == MYSQLEXEC) && (errorCode == 1114);
 }
 
-/// InfileMerger is a value class for imported Protobufs messages. Incoming
-/// messages are bundled here so they can be be constructed by the shared
-/// InfileMerger code and then tied to Actions, which load results
+/// InfileMerger::Msgs is a value class for imported Protobufs
+/// messages. Incoming messages are bundled here so they can be be constructed
+/// by the shared InfileMerger code and then tied to Actions, which load results
 /// into the czar's tables.
 struct InfileMerger::Msgs {
     lsst::qserv::proto::ProtoHeader protoHeader;

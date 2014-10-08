@@ -69,7 +69,7 @@ public:
     virtual std::ostream& print(std::ostream& os) const;
 
     /// @return details of error conditions from methods
-    virtual Error getError() const { return _error; }
+    virtual Error getError() const;
     virtual void cancel();
 
 private:
@@ -89,7 +89,7 @@ private:
     char* _buffer; ///< Current buffer insertion point
     bool _flushed; ///< Has data ben flushed into this object?
     bool _dirty; ///< Has data been flushed past this object?
-    boost::mutex _errorMutex; ///< Protect error state
+    mutable boost::mutex _errorMutex; ///< Protect error state
     Error _error; ///< Internal error state
 };
 
