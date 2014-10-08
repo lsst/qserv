@@ -52,7 +52,7 @@
 // Local headers
 #include "mysql/LocalInfile.h"
 #include "mysql/MySqlConnection.h"
-#include "proto/worker.pb.h"
+#include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
 #include "query/SelectStmt.h"
 #include "rproc/ProtoRowBuffer.h"
@@ -72,6 +72,7 @@ namespace { // File-scope helpers
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::proto::ProtoHeader;
 using lsst::qserv::proto::ProtoImporter;
+using lsst::qserv::proto::WorkerResponse;
 using lsst::qserv::rproc::InfileMergerConfig;
 using lsst::qserv::rproc::InfileMergerError;
 
@@ -112,15 +113,6 @@ bool InfileMergerError::resultTooBig() const {
     return (status == MYSQLEXEC) && (errorCode == 1114);
 }
 
-/// InfileMerger::Msgs is a value class for imported Protobufs
-/// messages. Incoming messages are bundled here so they can be be constructed
-/// by the shared InfileMerger code and then tied to Actions, which load results
-/// into the czar's tables.
-struct InfileMerger::Msgs {
-    lsst::qserv::proto::ProtoHeader protoHeader;
-    lsst::qserv::proto::Result result;
-};
-
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger::Mgr
 ////////////////////////////////////////////////////////////////////////
@@ -143,7 +135,7 @@ public:
 
     /// Enqueue an bundle of result rows to be inserted, as represented by the
     /// Protobufs message bundle
-    void enqueueAction(boost::shared_ptr<Msgs> msgs);
+    void enqueueAction(boost::shared_ptr<WorkerResponse> response);
 
     /// Wait until work queue is empty.
     /// @return true on success
@@ -197,14 +189,15 @@ private:
 
 class InfileMerger::Mgr::Action : public util::WorkQueue::Callable {
 public:
-    Action(Mgr& mgr, boost::shared_ptr<Msgs> msgs, std::string const& table)
-        : _mgr(mgr), _msgs(msgs), _table(table) {
+    Action(Mgr& mgr, boost::shared_ptr<WorkerResponse> response,
+           std::string const& table)
+        : _mgr(mgr), _response(response), _table(table) {
         mgr._incrementInflight();
         // Delay preparing the virtual file until just before it is needed.
     }
     void operator()() {
         _virtFile = _mgr._infileMgr.prepareSrc(
-            rproc::newProtoRowBuffer(_msgs->result));
+            rproc::newProtoRowBuffer(_response->result));
 
         // load data infile.
         std::string infileStatement = sql::formLoadInfile(_table, _virtFile);
@@ -213,7 +206,7 @@ public:
         _mgr.signalDone(result, *this);
     }
     Mgr& _mgr;
-    boost::shared_ptr<Msgs> _msgs;
+    boost::shared_ptr<WorkerResponse> _response;
     std::string _table;
     std::string _virtFile;
 };
@@ -231,8 +224,8 @@ InfileMerger::Mgr::Mgr(MySqlConfig const& config, std::string const& mergeTable)
     }
 }
 
-void InfileMerger::Mgr::enqueueAction(boost::shared_ptr<Msgs> msgs) {
-    boost::shared_ptr<Action> a(new Action(*this, msgs, _mergeTable));
+void InfileMerger::Mgr::enqueueAction(boost::shared_ptr<WorkerResponse> response) {
+    boost::shared_ptr<Action> a(new Action(*this, response, _mergeTable));
     _workQueue.add(a);
 }
 
@@ -274,21 +267,22 @@ InfileMerger::~InfileMerger() {
     //LOGF_INFO("InfileMerger destruct ------- ()%1%" % (void*) this);
 }
 
+bool InfileMerger::merge(boost::shared_ptr<proto::WorkerResponse> response) {
+    if(!response) {
+        return false;
+    }
+    // TODO: Check session id (once session id mgmt is implemented)
 
-off_t InfileMerger::merge(char const* dumpBuffer, int dumpLength) {
-    if(_error.errorCode) { // Do not attempt when in an error state.
-        return -1;
+    LOGF_DEBUG("EXECUTING InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%)"
+               % response->headerSize
+               % response->protoHeader.size()
+               % response->result.row_size());
+    if(_needCreateTable) {
+        if(!_setupTable(*response)) {
+            return false;
+        }
     }
-    LOGF_DEBUG("EXECUTING InfileMerger::merge(%1%, %2%)"
-               % (void*)dumpBuffer % dumpLength);
-    int mergeSize = 0;
-    // Now buffer is big enough, start processing.
-    mergeSize = _importBuffer(dumpBuffer, dumpLength, _needCreateTable);
-    if(mergeSize == 0) { // Buffer not big enough.
-        LOGF_DEBUG("WARNING, zero merge from InfileMerger::merge(%1%, %2%)"
-                   % (void*)dumpBuffer % dumpLength);
-    }
-    return mergeSize;
+    return _importResponse(response);
 }
 
 bool InfileMerger::finalize() {
@@ -393,80 +387,26 @@ bool InfileMerger::_verifySession(int sessionId) {
     return true; // TODO: for better message integrity
 }
 
-/// Verify the expected MD5 against the actual computed MD5, returning false
-/// and setting the error code if they mismatch.
-bool InfileMerger::_verifyMd5(std::string const& expected, std::string const& actual) {
-    if(expected != actual) {
-        _error.description = "Result message MD5 mismatch";
-        _error.errorCode = InfileMergerError::RESULT_MD5;
-        return false;
-    }
-    return true;
-}
-
-/// Import a buffer passed in by client code.
-/// @param setupResult : true to hint that a table should be created.
-int InfileMerger::_importBuffer(char const* buffer, int length, bool setupResult) {
-    // First char: sizeof protoheader. always less than 255 char.
-    unsigned char phSize = *reinterpret_cast<unsigned char const*>(buffer);
-    // Advance cursor to point after length
-    char const* cursor = buffer + 1;
-    int remain = length - 1;
-    boost::shared_ptr<InfileMerger::Msgs> msgs(new InfileMerger::Msgs);
-    int headerRead =_readHeader(msgs->protoHeader, cursor, phSize);
-    if(headerRead != phSize) {
-        return 0;
-    }
-    cursor += phSize; // Advance to Result msg
-    remain -= phSize;
-
-    // Now decode Result msg
-    int resultSize = msgs->protoHeader.size();
-    LOGF_INFO("Importing result msg size=%1%" % msgs->protoHeader.size());
-    if(remain < msgs->protoHeader.size()) {
-        // TODO: want to handle bigger messages.
-        _error.description = "Buffer too small for result msg, increase buffer size in InfileMerger";
-        _error.errorCode = InfileMergerError::HEADER_OVERFLOW;
-        return 0;
-    }
-    if(resultSize != _readResult(msgs->result, cursor, resultSize)) {
-        return 0;
-    }
-    remain -= resultSize;
-    if(!_verifySession(msgs->result.session())) {
-        return 0;
-    }
-    // Potentially, we can skip verifying the hash if the result reports
-    // no rows, but if the hash disagrees, then the schema is suspect as well.
-    if(!_verifyMd5(msgs->protoHeader.md5(),
-                   util::StringHash::getMd5(cursor, resultSize))) {
-        return -1;
-    }
-    if(setupResult) {
-        if(!_setupTable(*msgs)) {
-            return -1;
-        }
-    }
+bool InfileMerger::_importResponse(boost::shared_ptr<WorkerResponse> response) {
     // Check for the no-row condition
-    if(msgs->result.row_size() == 0) {
-
+    if(response->result.row_size() == 0) {
         // Nothing further, don't bother importing
     } else {
         // Delegate merging thread mgmt to mgr, which will handle
         // LocalInfile objects
-        _mgr->enqueueAction(msgs);
+        _mgr->enqueueAction(response);
     }
-    return length;
+    return true;
 }
 
 /// Create a table with the appropriate schema according to the
 /// supplied Protobufs message
-bool InfileMerger::_setupTable(InfileMerger::Msgs const& msgs) {
+bool InfileMerger::_setupTable(WorkerResponse const& response) {
     // Create table, using schema
     boost::lock_guard<boost::mutex> lock(_createTableMutex);
     if(_needCreateTable) {
         // create schema
-        proto::RowSchema const& rs = msgs.result.rowschema();
+        proto::RowSchema const& rs = response.result.rowschema();
         sql::Schema s;
         for(int i=0, e=rs.columnschema_size(); i != e; ++i) {
             proto::ColumnSchema const& cs = rs.columnschema(i);

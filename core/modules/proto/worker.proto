@@ -62,6 +62,8 @@ message TaskMsg {
 // object.
 // The Header message contains size information so each result can be
 // distinguished.
+// This message must be 255 characters or less, because its size is
+// transmitted as an unsigned char.
 message ProtoHeader {
     optional int32 protocol = 1;
     required int32 size = 2; // protobufs discourages messages > megabytes
