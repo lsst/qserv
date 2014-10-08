@@ -38,6 +38,7 @@ namespace qserv {
 namespace qdisp {
 class ExecStatus;
 class QueryReceiver;
+class ResponseRequester;
 
 /// Bad response received from xrootd API
 class BadResponseError : public std::exception {
@@ -73,7 +74,7 @@ class QueryRequest : public XrdSsiRequest {
 public:
     QueryRequest(XrdSsiSession* session,
                  std::string const& payload,
-                 boost::shared_ptr<QueryReceiver> receiver,
+                 boost::shared_ptr<ResponseRequester> requester,
                  boost::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
                  boost::shared_ptr<util::VoidCallable<void> > retryFunc,
                  ExecStatus& status);
@@ -100,7 +101,6 @@ private:
     void _errorFinish();
     void _finish();
     void _registerSelfDestruct();
-    void _resetBuffer();
 
     XrdSsiSession* _session;
 
@@ -109,7 +109,7 @@ private:
     int _bufferSize; ///< Response buffer size
     int _bufferRemain; ///< Remaining size (_cursor to end)
     std::string _payload; ///< Request buffer
-    boost::shared_ptr<QueryReceiver> _receiver; ///< Response receiver
+    boost::shared_ptr<ResponseRequester> _requester; ///< Response requester
 
     /// To be called when the request completes
     boost::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;

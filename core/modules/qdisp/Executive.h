@@ -53,6 +53,7 @@ namespace qserv {
 namespace qdisp {
 class MessageStore;
 class QueryReceiver;
+class ResponseRequester;
 
 /// class Executive manages the execution of tasks for a UserQuery, while
 /// maintaining minimal information about the tasks themselves.
@@ -72,7 +73,7 @@ public:
     struct Spec {
         ResourceUnit resource; // path, e.g. /q/LSST/23125
         std::string request; // encoded request
-        boost::shared_ptr<QueryReceiver> receiver;
+        boost::shared_ptr<ResponseRequester> requester;
     };
 
     Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms);
@@ -104,24 +105,24 @@ public:
     std::string getProgressDesc() const;
 
 private:
-    typedef boost::shared_ptr<QueryReceiver> ReceiverPtr;
-    typedef std::map<int, ReceiverPtr> ReceiverMap;
+    typedef boost::shared_ptr<ResponseRequester> RequesterPtr;
+    typedef std::map<int, RequesterPtr> RequesterMap;
 
     class DispatchAction;
     friend class DispatchAction;
     void _dispatchQuery(int refNum,
-                       std::string const& path,
-                       std::string const& payload,
-                       boost::shared_ptr<QueryReceiver> receiver,
-                       ExecStatus& status);
+                        Spec const& spec,
+                        ExecStatus& status);
 
     void _setup();
     bool _shouldRetry(int refNum);
     ExecStatus& _insertNewStatus(int refNum, ResourceUnit const& r);
-    bool _track(int refNum, ReceiverPtr r);
+
+    bool _track(int refNum, RequesterPtr r);
     void _unTrack(int refNum);
     void _waitUntilEmpty();
-    void _reapReceivers(boost::unique_lock<boost::mutex> const& receiversLock);
+
+    void _reapRequesters(boost::unique_lock<boost::mutex> const& requestersLock);
     void _reportStatuses();
 
     // for debugging
@@ -130,13 +131,13 @@ private:
     Config _config; ///< Personal copy of config
     boost::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
     XrdSsiService* _service; ///< RPC interface
-    ReceiverMap _receivers; ///< Receivers for results from submitted tasks
+    RequesterMap _requesters; ///< RequesterMap for results from submitted tasks
     StatusMap _statuses; ///< Statuses of submitted tasks
     int _requestCount; ///< Count of submitted tasks
 
     // Mutexes
-    boost::mutex _receiversMutex;
-    boost::condition_variable _receiversEmpty;
+    boost::mutex _requestersMutex;
+    boost::condition_variable _requestersEmpty;
 
     boost::mutex _retryMutex;
     typedef std::map<int,int> IntIntMap;

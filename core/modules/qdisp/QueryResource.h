@@ -40,6 +40,7 @@ namespace qdisp {
 class ExecStatus;
 class QueryReceiver;
 class QueryRequest;
+class ResponseRequester;
 
 /// Note: this object takes responsibility for deleting itself once it is passed
 /// off via service->Provision(resourceptr).
@@ -47,18 +48,18 @@ class QueryResource : public XrdSsiService::Resource {
 public:
     /// @param rPath resource path, e.g. /LSST/12312
     /// @param payload serialized protobuf request message
-    /// @param receiver result receiver
+    /// @param requester response requester
     /// @param retryFunc high-level retry function.
     /// @param status reference to update the current execution status
     QueryResource(std::string const& rPath,
                   std::string const& payload,
-                  boost::shared_ptr<QueryReceiver> receiver,
+                  boost::shared_ptr<ResponseRequester> requester,
                   boost::shared_ptr<util::UnaryCallable<void, bool> > finishFunc,
                   boost::shared_ptr<util::VoidCallable<void> > retryFunc,
                   ExecStatus& status)
         : Resource(rPath.c_str()),
           _payload(payload),
-          _receiver(receiver),
+          _requester(requester),
           _finishFunc(finishFunc),
           _retryFunc(retryFunc),
           _status(status) {
@@ -71,7 +72,7 @@ public:
     XrdSsiSession* _session; ///< unowned, do not delete.
     QueryRequest* _request; ///< Owned temporarily, special deletion handling.
     std::string const _payload; ///< Request payload
-    boost::shared_ptr<QueryReceiver> _receiver; ///< Response handler
+    boost::shared_ptr<ResponseRequester> _requester; ///< Response requester
     /// Called upon transaction finish
     boost::shared_ptr<util::UnaryCallable<void, bool> > _finishFunc;
     /// Called to retry the transaction

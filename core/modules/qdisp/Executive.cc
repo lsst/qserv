@@ -52,6 +52,7 @@
 #include "qdisp/MessageStore.h"
 #include "qdisp/MergeAdapter.h"
 #include "qdisp/QueryResource.h"
+#include "qdisp/ResponseRequester.h"
 
 namespace {
 std::string getErrorText(XrdSsiErrInfo & e) {
@@ -81,10 +82,6 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-std::ostream& operator<<(std::ostream& os, QueryReceiver const& qr) {
-    return qr.print(os);
-}
-
 template <typename Ptr>
 struct printMapSecond {
     printMapSecond(std::ostream& os_, std::string sep_)
@@ -111,18 +108,7 @@ Executive::Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms)
 
 void Executive::add(int refNum, TransactionSpec const& t,
                     std::string const& resultName) {
-    LOGF_INFO("EXECUTING Executive::add(TransactionSpec, %1%)" % 
-              resultName);
-    Spec s;
-    s.resource = ResourceUnit(t.path);
-    if(s.resource.unitType() == ResourceUnit::CQUERY) {
-        s.resource.setAsDbChunk(s.resource.db(), s.resource.chunk());
-    }
-    s.request = t.query;
-    // FIXME: finish this out if we want to do a hybrid
-    // old/new dispatch to new workers.
-    s.receiver = MergeAdapter::newInstance(); //savePath, resultName);
-    add(refNum, s);
+    throw Bug("Unsupported old transactions in Executive");
 }
 
 class Executive::DispatchAction : public util::VoidCallable<void> {
@@ -130,27 +116,22 @@ public:
     typedef boost::shared_ptr<DispatchAction> Ptr;
     DispatchAction(Executive& executive,
                    int refNum,
-                   std::string const& path,
-                   std::string const& payload,
-                   boost::shared_ptr<QueryReceiver> receiver,
+                   Executive::Spec const& spec,
                    ExecStatus& status)
-        : _executive(executive), _refNum(refNum), _path(path),
-          _payload(payload), _receiver(receiver), _status(status) {
+        : _executive(executive), _refNum(refNum),
+          _spec(spec), _status(status) {
     }
     virtual ~DispatchAction() {}
     virtual void operator()() {
-        if(_receiver->reset()) { // Must be able to reset receiver state
-            _executive._dispatchQuery(_refNum, _path, _payload,
-                                      _receiver, _status);
-        } else { // Do nothing-- can't retry.
+        if(_spec.requester->reset()) { // Must be able to reset state
+            _executive._dispatchQuery(_refNum, _spec, _status);
         }
+        // If the reset fails, do nothing-- can't retry.
     }
 private:
     Executive& _executive;
     int _refNum;
-    std::string const _path;
-    std::string const _payload;
-    boost::shared_ptr<QueryReceiver> _receiver;
+    Spec _spec;
     ExecStatus& _status; ///< Reference back to exec status
 };
 
@@ -175,8 +156,7 @@ private:
 
 /// Add a spec to be executed. Not thread-safe.
 void Executive::add(int refNum, Executive::Spec const& s) {
-
-    bool trackOk =_track(refNum, s.receiver); // Remember so we can join.
+    bool trackOk = _track(refNum, s.requester); // Remember so we can join
     if(!trackOk) {
         LOGF_WARN("Ignoring duplicate add(%1%)" % refNum);
         return;
@@ -188,22 +168,21 @@ void Executive::add(int refNum, Executive::Spec const& s) {
     _messageStore->addMessage(s.resource.chunk(), log::MSG_MGR_ADD, msg);
 
     _dispatchQuery(refNum,
-                   s.resource.path(),
-                   s.request,
-                   s.receiver,
+                   s,
                    status);
 }
 
 bool Executive::join() {
     // To join, we make sure that all of the chunks added so far are complete.
-    // Check to see if _receivers is empty, if not, then sleep on a condition.
+    // Check to see if _requesters is empty, if not, then sleep on a condition.
     _waitUntilEmpty();
     // Okay to merge. probably not the Executive's responsibility
     struct successF {
         static bool f(Executive::StatusMap::value_type const& entry) {
             ExecStatus::Info const& esI = entry.second->getInfo();
             LOGF_INFO("entry state:%1% %2%)" % (void*)entry.second.get() % esI);
-            return esI.state == ExecStatus::RESPONSE_DONE; } };
+            return (esI.state == ExecStatus::RESPONSE_DONE)
+                || (esI.state == ExecStatus::COMPLETE); } };
     int sCount = std::count_if(_statuses.begin(), _statuses.end(), successF::f);
 
     LOGF_INFO("Query exec finish. %1% dispatched." % _requestCount);
@@ -215,12 +194,12 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(int refNum, bool success) {
-    QueryReceiver::Error e;
+    ResponseRequester::Error e;
     LOGF_INFO("Executive::markCompletion(%1%,%2%)" % refNum % success);
     if(!success) {
-        boost::lock_guard<boost::mutex> lock(_receiversMutex);
-        ReceiverMap::iterator i = _receivers.find(refNum);
-        if(i != _receivers.end()) {
+        boost::lock_guard<boost::mutex> lock(_requestersMutex);
+        RequesterMap::iterator i = _requesters.find(refNum);
+        if(i != _requesters.end()) {
             e = i->second->getError();
         } else {
             LOGF_ERROR("Executive(%1%) failed to find tracked id=%2% size=%3%" %
@@ -239,14 +218,14 @@ void Executive::markCompleted(int refNum, bool success) {
 }
 
 void Executive::requestSquash(int refNum) {
-    ReceiverPtr toSquash;
+    RequesterPtr toSquash;
     bool needToWarn = false;
-    QueryReceiver::Error e;
+    ResponseRequester::Error e;
     {
-        boost::lock_guard<boost::mutex> lock(_receiversMutex);
-        ReceiverMap::iterator i = _receivers.find(refNum);
-        if(i != _receivers.end()) {
-            QueryReceiver::Error e = i->second->getError();
+        boost::lock_guard<boost::mutex> lock(_requestersMutex);
+        RequesterMap::iterator i = _requesters.find(refNum);
+        if(i != _requesters.end()) {
+            ResponseRequester::Error e = i->second->getError();
             if(e.code) {
                 needToWarn = true;
             } else {
@@ -267,28 +246,28 @@ void Executive::requestSquash(int refNum) {
 
 void Executive::squash() {
     LOGF_INFO("Trying to cancel all queries...");
-    std::vector<ReceiverPtr> pendingReceivers;
+    std::vector<RequesterPtr> pendingRequesters;
     {
-        boost::lock_guard<boost::mutex> lock(_receiversMutex);
+        boost::lock_guard<boost::mutex> lock(_requestersMutex);
         std::ostringstream os;
         os << "STATE=";
         _printState(os);
         LOGF_INFO("%1%\nLoop cancel all queries..." % os.str());
-        ReceiverMap::iterator i,e;
-        for(i=_receivers.begin(), e=_receivers.end(); i != e; ++i) {
-            pendingReceivers.push_back(i->second);
+        RequesterMap::iterator i,e;
+        for(i=_requesters.begin(), e=_requesters.end(); i != e; ++i) {
+            pendingRequesters.push_back(i->second);
         }
-        LOGF_INFO("Enqueued receivers for cancelling...done");
+        LOGF_INFO("Enqueued requesters for cancelling...done");
     }
     {
-        std::vector<ReceiverPtr>::iterator i, e;
-        for(i=pendingReceivers.begin(), e=pendingReceivers.end(); i != e; ++i) {
+        std::vector<RequesterPtr>::iterator i, e;
+        for(i=pendingRequesters.begin(), e=pendingRequesters.end(); i != e; ++i) {
             // Could get stuck because it waits on xrootd,
             // which may be waiting on a thread blocked in _unTrack().
-            // Don't do this while holding _receiversMutex
+            // Don't do this while holding _requestersMutex
             (**i).cancel();
         }
-        LOGF_INFO("Cancelled all query receivers...done");
+        LOGF_INFO("Cancelled all query requesters...done");
     }
 }
 
@@ -308,8 +287,8 @@ struct printMapEntry {
 };
 
 int Executive::getNumInflight() {
-    boost::unique_lock<boost::mutex> lock(_receiversMutex);
-    return _receivers.size();
+    boost::unique_lock<boost::mutex> lock(_requestersMutex);
+    return _requesters.size();
 }
 
 std::string Executive::getProgressDesc() const {
@@ -323,26 +302,24 @@ std::string Executive::getProgressDesc() const {
 // class Executive (private)
 ////////////////////////////////////////////////////////////////////////
 void Executive::_dispatchQuery(int refNum,
-                              std::string const& path,
-                              std::string const& payload,
-                              boost::shared_ptr<QueryReceiver> receiver,
-                              ExecStatus& status) {
+                               Executive::Spec const& spec,
+                               ExecStatus& status) {
     boost::shared_ptr<DispatchAction> retryFunc;
     if(_shouldRetry(refNum)) { // limit retries for each request.
         retryFunc.reset(new DispatchAction(*this, refNum,
-                                           path, payload, receiver,
+                                           spec,
                                            status));
     }
-    QueryResource* r = new QueryResource(path,
-                                         payload,
-                                         receiver,
+    QueryResource* r = new QueryResource(spec.resource.path(),
+                                         spec.request,
+                                         spec.requester,
                                          NotifyExecutive::newInstance(*this, refNum),
                                          retryFunc,
                                          status);
     status.report(ExecStatus::PROVISION);
     bool provisionOk = _service->Provision(r);  // 2
     if(!provisionOk) {
-        LOGF_ERROR("Resource provision error %1%" % path);
+        LOGF_ERROR("Resource provision error %1%" % spec.resource.path());
         populateState(status, ExecStatus::PROVISION_ERROR, r->eInfo);
         _unTrack(refNum);
         delete r;
@@ -385,13 +362,16 @@ ExecStatus& Executive::_insertNewStatus(int refNum,
     return *es;
 }
 
-bool Executive::_track(int refNum, ReceiverPtr r) {
-    assert(r);
+template <typename Map, typename Ptr>
+bool trackHelper(void* caller, Map& m, typename Map::key_type key,
+           Ptr ptr,
+           boost::mutex& mutex) {
+    assert(ptr);
     {
-        boost::lock_guard<boost::mutex> lock(_receiversMutex);
-        LOGF_DEBUG("Executive (%1%) tracking id=%2%" % (void*)this % refNum);
-        if(_receivers.find(refNum) == _receivers.end()) {
-            _receivers[refNum] = r;
+        boost::lock_guard<boost::mutex> lock(mutex);
+        LOGF_DEBUG("Executive (%1%) tracking id=%2%" % (void*)caller % key);
+        if(m.find(key) == m.end()) {
+            m[key] = ptr;
         } else {
             return false;
         }
@@ -399,25 +379,36 @@ bool Executive::_track(int refNum, ReceiverPtr r) {
     return true;
 }
 
-void Executive::_unTrack(int refNum) {
-    boost::lock_guard<boost::mutex> lock(_receiversMutex);
-    ReceiverMap::iterator i = _receivers.find(refNum);
-    if(i != _receivers.end()) {
-        LOGF_INFO("Executive (%1%) UNTRACKING id=%2%" % (void*)this % refNum);
-        _receivers.erase(i);
-        if(_receivers.empty()) _receiversEmpty.notify_all();
-    }
+bool Executive::_track(int refNum, RequesterPtr r) {
+    return trackHelper(this, _requesters, refNum, r, _requestersMutex);
 }
 
-void Executive::_reapReceivers(boost::unique_lock<boost::mutex> const&) {
-    ReceiverMap::iterator i, e;
+template <typename Map>
+void unTrack(void* caller, Map& m, typename Map::key_type key,
+             boost::mutex& mutex,
+             boost::condition_variable& condition) {
+    boost::lock_guard<boost::mutex> lock(mutex);
+    typename Map::iterator i = m.find(key);
+    if(i != m.end()) {
+        LOGF_INFO("Executive (%1%) UNTRACKING id=%2%" % caller % key);
+        m.erase(i);
+        if(m.empty()) condition.notify_all();
+    }
+}
+void Executive::_unTrack(int refNum) {
+    unTrack(this, _requesters, refNum, _requestersMutex, _requestersEmpty);
+}
+
+template <typename Map>
+void reap(void* caller, Map& m, boost::unique_lock<boost::mutex> const&) {
+    typename Map::iterator i, e;
     while(true) {
         bool reaped = false;
-        for(i=_receivers.begin(), e=_receivers.end(); i != e; ++i) {
+        for(i=m.begin(), e=m.end(); i != e; ++i) {
             if(!i->second->getError().msg.empty()) {
-                // Receiver should have logged the error to the messageStore
-                LOGF_INFO("Executive (%1%) REAPED id=%2%" % (void*)this % i->first);
-                _receivers.erase(i);
+                // Requester should have logged the error to the messageStore
+                LOGF_INFO("Executive (%1%) REAPED id=%2%" % (void*)caller % i->first);
+                m.erase(i);
                 reaped = true;
                 break;
             }
@@ -426,6 +417,10 @@ void Executive::_reapReceivers(boost::unique_lock<boost::mutex> const&) {
             break;
         }
     }
+}
+
+void Executive::_reapRequesters(boost::unique_lock<boost::mutex> const& lock) {
+    reap(this, _requesters, lock);
 }
 
 void Executive::_reportStatuses() {
@@ -446,16 +441,16 @@ void Executive::_reportStatuses() {
 }
 
 void Executive::_waitUntilEmpty() {
-    boost::unique_lock<boost::mutex> lock(_receiversMutex);
+    boost::unique_lock<boost::mutex> lock(_requestersMutex);
     int lastCount = -1;
     int count;
     int moreDetailThreshold = 5;
     int complainCount = 0;
     const boost::posix_time::seconds statePrintDelay(5);
     //_printState(LOG_STRM(Debug));
-    while(!_receivers.empty()) {
-        count = _receivers.size();
-        _reapReceivers(lock);
+    while(!_requesters.empty()) {
+        count = _requesters.size();
+        _reapRequesters(lock);
         if(count != lastCount) {
             LOGF_INFO("Still %1% in flight." % count);
             count = lastCount;
@@ -469,7 +464,7 @@ void Executive::_waitUntilEmpty() {
                 complainCount = 0;
             }
         }
-        _receiversEmpty.timed_wait(lock, statePrintDelay);
+        _requestersEmpty.timed_wait(lock, statePrintDelay);
     }
 }
 
@@ -480,10 +475,10 @@ std::ostream& operator<<(std::ostream& os,
     return os;
 }
 
-/// precondition: _receiversMutex is held by current thread.
+/// precondition: _requestersMutex is held by current thread.
 void Executive::_printState(std::ostream& os) {
-    std::for_each(_receivers.begin(), _receivers.end(),
-                  printMapSecond<ReceiverMap::value_type>(os, "\n"));
+    std::for_each(_requesters.begin(), _requesters.end(),
+                  printMapSecond<RequesterMap::value_type>(os, "\n"));
     os << std::endl << getProgressDesc() << std::endl;
 
     std::copy(_statuses.begin(), _statuses.end(),
