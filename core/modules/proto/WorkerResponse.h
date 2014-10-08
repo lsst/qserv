@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2014 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,32 +20,23 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// msgCode.h maintains message codes used by the query messaging system
-/// within the C++ layer of Qesrv.
 
-#ifndef LSST_QSERV_LOG_MSGCODE_H
-#define LSST_QSERV_LOG_MSGCODE_H
+#ifndef LSST_QSERV_PROTO_WORKERRESPONSE_H
+#define LSST_QSERV_PROTO_WORKERRESPONSE_H
+
+// Qserv headers
+#include "proto/worker.pb.h"
 
 namespace lsst {
 namespace qserv {
-namespace log {
+namespace proto {
 
-// Codes for czar C++ layer are >= 1000.
-// (<1000 reserved for Python layer.)
-const int MSG_MGR_ADD       = 1200;
-const int MSG_XRD_OPEN_FAIL = 1290;
-const int MSG_XRD_WRITE     = 1300;
-const int MSG_XRD_READ      = 1400;
-const int MSG_RESULT_MD5    = 1420;
-const int MSG_RESULT_DECODE = 1430;
-const int MSG_RESULT_ERROR  = 1470;
-const int MSG_MERGE_ERROR   = 1480;
-const int MSG_MERGED        = 1500;
-const int MSG_ERASED        = 1600;
-const int MSG_EXEC_SQUASHED = 1990;
-const int MSG_FINALIZED     = 2000;
+struct WorkerResponse {
+    unsigned char headerSize;
+    ProtoHeader protoHeader;
+    Result result;
+};
 
-}}} // namespace lsst::qserv::log
+}}} // lsst::qserv::proto
 
-#endif // LSST_QSERV_LOG_MSGCODE_H
-
+#endif // #define LSST_QSERV_PROTO_WORKERRESPONSE_H
