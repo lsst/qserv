@@ -60,6 +60,11 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
    # Each time you want to test your code, run :
    scons install
 
+.. note::
+   In above commands ``scons`` can be replaced with 
+   ``eupspkg -e PREFIX=$PWD`` which will compute the number of processor on your system
+   and launch a parallel build using all of them (see `scons -j` option).
+
 Once the qserv eups stack is integrated with your local Qserv repository, you
 will need to configure and (if desired) test it (see :ref:`quick-start-configuration`).
 
