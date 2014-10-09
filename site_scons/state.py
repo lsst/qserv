@@ -235,8 +235,9 @@ def init(src_dir):
  
     opts.Update(env)
 
+    # Default to in-place install
     opts.AddVariables(
-            (PathVariable('prefix', 'qserv install dir', os.path.join(env['build_dir'], "dist"), PathVariable.PathIsDirCreate))
+            (PathVariable('prefix', 'qserv install dir', src_dir, PathVariable.PathIsDirCreate))
     )
     opts.Update(env)
 
