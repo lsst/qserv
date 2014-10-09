@@ -55,25 +55,10 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
    # build Qserv. Optional, covered by next command (i.e. install)
    scons build
    # install Qserv in-place (i.e. in ${SRC_DIR}/qserv/)
-   scons install prefix=${PWD}
+   scons install
 
    # Each time you want to test your code, run :
-   scons install prefix=${PWD}
-
-
-You can also replace previous ``scons`` commands with next ``eupspkg``
-commands, please note that these commands are usable with any git repository
-whose code is eups-compliant, and which support in-place build:
-
-.. code-block:: bash
-
-   # build Qserv. Optional, covered by next command (i.e. install)
-   eupspkg -e build
-   # install Qserv in-place (i.e. in ${SRC_DIR}/qserv/)
-   eupspkg -e PREFIX=$PWD install
-
-   # Each time you want to test your code, run :
-   eupspkg -e PREFIX=$PWD install
+   scons install
 
 Once the qserv eups stack is integrated with your local Qserv repository, you
 will need to configure and (if desired) test it (see :ref:`quick-start-configuration`).
