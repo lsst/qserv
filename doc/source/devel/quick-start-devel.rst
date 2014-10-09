@@ -25,7 +25,7 @@ source dependencies for the current Qserv release:
 
 .. note::
 
-   Above 'eups distrib' command will install dependencies for the current Qserv release. If you want to develop with an other set of dependencies, you may
+   Above ``eups distrib`` command will install dependencies for the current Qserv release. If you want to develop with an other set of dependencies, you may
    have to install them one by one, or specify a given Qserv version or tag (using -t). See :ref:`build-qserv-with-specific-dependencies` for additional informations.
 
 .. _quick-start-devel-setup-qserv:
@@ -59,6 +59,11 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
 
    # Each time you want to test your code, run :
    scons install
+
+.. note::
+   In above commands ``scons`` can be replaced with 
+   ``eupspkg -e`` which will compute the number of processor on your system
+   and launch a parallel build using all of them (see `scons -j` option).
 
 Once the qserv eups stack is integrated with your local Qserv repository, you
 will need to configure and (if desired) test it (see :ref:`quick-start-configuration`).
