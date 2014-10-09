@@ -7,6 +7,10 @@ Building Qserv with specific dependencies
 You may want to build Qserv against a specific set of
 dependencies. Several solutions are available:
 
+.. note::
+
+   Commands below require that you've already sourced an eups environment.
+
 ************************************
 Setup dependencies after Qserv setup
 ************************************
