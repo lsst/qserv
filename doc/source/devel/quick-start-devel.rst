@@ -53,6 +53,21 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
    # manually install those packages with regular "eups distrib install ..."
    setup -k -r .
    # build Qserv. Optional, covered by next command (i.e. install)
+   scons build
+   # install Qserv in-place (i.e. in ${SRC_DIR}/qserv/)
+   scons install prefix=${PWD}
+
+   # Each time you want to test your code, run :
+   scons install prefix=${PWD}
+
+
+You can also replace previous ``scons`` commands with next ``eupspkg``
+commands, please note that these commands are usable with any git repository
+whose code is eups-compliant, and which support in-place build:
+
+.. code-block:: bash
+
+   # build Qserv. Optional, covered by next command (i.e. install)
    eupspkg -e build
    # install Qserv in-place (i.e. in ${SRC_DIR}/qserv/)
    eupspkg -e PREFIX=$PWD install
@@ -82,6 +97,40 @@ In order to test it with your Qserv version :
    QSERV_TESTDATA_SRC_DIR=${HOME}/src/qserv_testdata/
    cd $QSERV_TESTDATA_SRC_DIR
    setup -k -r .
-   eupspkg -e build                # build
-   eupspkg -e PREFIX=$PWD install  # install in-place
+   scons build                # build
+   scons install prefix=dist  # install (qserv_testdata doesn't support
+                              # in-place install)
+   cd dist
+   setup -k -r .
+
+   # Each time you want to test your code, run :
+   cd ..
+   scons install prefix=dist
+
+*********************************
+Updating other Qserv dependencies
+*********************************
+
+``eupspkg`` provide an abstraction layer which allow you to easily develop
+with any eups-distributed package. Please note that commands below are usable with any git repository
+whose code is eups-compliant, and which supports in-place install:
+
+.. code-block:: bash
+
+   # clone Qserv repository
+   SRC_DIR=${HOME}/src
+   cd ${SRC_DIR}
+   # authenticated access (require a ssh key) :
+   git clone ssh://git@git.lsstcorp.org/LSST/DMS/dependency
+   # build and install your version of this Qserv dependency
+   cd dependency 
+   # if following "setup" command fails due to missing packages one has to
+   # manually install those packages with regular "eups distrib install ..."
+   setup -k -r .
+   eupspkg -e build
+   # install dependency in-place (if possible)
+   eupspkg -e PREFIX=$PWD install
+
+   # Each time you want to test your code, run :
+   eupspkg -e PREFIX=$PWD install
 
