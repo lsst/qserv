@@ -103,7 +103,7 @@ Updating other Qserv dependencies
 
 ``eupspkg`` provide an abstraction layer which allow you to easily develop
 with any eups-distributed package. Please note that commands below are usable with any git repository
-whose code is eups-compliant, and which supports in-place build:
+whose code is eups-compliant, and which supports in-place install:
 
 .. code-block:: bash
 
