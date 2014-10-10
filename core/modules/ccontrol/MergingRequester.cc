@@ -86,8 +86,8 @@ MergingRequester::MergingRequester(
     : _msgReceiver(msgReceiver),
       _infileMerger(merger),
       _tableName(tableName),
-      _flushed(false),
-      _response(new WorkerResponse) {
+      _response(new WorkerResponse),
+      _flushed(false) {
     _initState();
 }
 
@@ -95,9 +95,9 @@ bool MergingRequester::flush(int bLen, bool last) {
     if((bLen < 0) || (bLen != (int)_buffer.size())) {
         if(_state != RESULT_EXTRA) {
             LOGF_ERROR("MergingRequester size mismatch: expected %1%  got %2%"
-                   % _buffer.size() % bLen);        
+                   % _buffer.size() % bLen);
             // Worker sent corrupted data, or there is some other error.
-        }    
+        }
     }
     switch(_state) {
       case HEADER_SIZE_WAIT:
@@ -111,8 +111,7 @@ bool MergingRequester::flush(int bLen, bool last) {
           if(!ProtoImporter<proto::ProtoHeader>::setMsgFrom(
                  _response->protoHeader,
                  &_buffer[0], _buffer.size())) {
-              _error.code = -1;
-              _error.msg = "Error decoding proto header";
+              _setError(-1, "Error decoding proto header");
               _state = HEADER_ERR;
               return false;
           }
@@ -124,8 +123,7 @@ bool MergingRequester::flush(int bLen, bool last) {
           if(!ProtoImporter<proto::Result>::setMsgFrom(
                  _response->result,
                  &_buffer[0], _buffer.size())) {
-              _error.code = -1;
-              _error.msg = "Error decoding result msg";
+              _setError(-1, "Error decoding result msg");
               _state = RESULT_ERR;
               return false;
           }
@@ -148,22 +146,19 @@ bool MergingRequester::flush(int bLen, bool last) {
       case RESULT_RECV:
       case HEADER_ERR:
       case RESULT_ERR:
-          _error.code = -1;
-          _error.msg = "Unexpected message";
-          return false;          
+          _setError(-1, "Unexpected message");
+          return false;
       default:
           break;
     }
-    _error.code = -1;
-    _error.msg = "Unexpected message (invalid)";
-    return false;          
+    _setError(-1, "Unexpected message (invalid)");
+    return false;
 }
 
 void MergingRequester::errorFlush(std::string const& msg, int code) {
+    _setError(code, msg);
     // Might want more info from result service.
     // Do something about the error. FIXME.
-    _error.msg = msg;
-    _error.code = code;
     LOGF_ERROR("Error receiving result.");
 }
 
@@ -197,8 +192,7 @@ void MergingRequester::_initState() {
     _buffer.resize(1);
     // _response.reset(new WorkerResponse);// Will be overwritten
     _state = HEADER_SIZE_WAIT;
-    _error.code = 0;
-    _error.msg = "";
+    _setError(0, "");
 }
 
 bool MergingRequester::_merge() {
@@ -210,11 +204,16 @@ bool MergingRequester::_merge() {
         _response.reset();
     } else {
         // Fetch error from merger?
-        _error.code = -1;
-        _error.msg = "Error merging.";
+        _setError(-1, "Error merging.");
         _state = RESULT_ERR;
     }
     return success;
+}
+
+void MergingRequester::_setError(int code, std::string const& msg) {
+    boost::lock_guard<boost::mutex> lock(_errorMutex);
+    _error.code = code;
+    _error.msg = msg;
 }
 
 }}} // lsst::qserv::ccontrol
