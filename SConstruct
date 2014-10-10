@@ -48,7 +48,7 @@ else:
 #
 ################################
     state.initBuild()
-
+    env.Replace(configuration_prefix = os.path.join( env['prefix'], "cfg"))
 #########################
 #
 # Install css
@@ -72,8 +72,8 @@ else:
     python_admin = env.InstallPythonModule(target=env['python_prefix'],
                                            source=os.path.join("admin", "python"))
 
-    template_target = os.path.join(env['prefix'], "admin", "templates")
-    env.RecursiveInstall(template_target, os.path.join("admin", "templates"))
+    template_target = os.path.join(env['configuration_prefix'], "templates")
+    env.RecursiveInstall(template_target, os.path.join("admin", "templates", "configuration"))
 
     env.Alias("admin",
               [python_admin,
@@ -125,12 +125,15 @@ else:
 
     def get_template_targets():
 
-        template_dir_path = os.path.join("admin", "templates", "install")
+        template_dir_path = os.path.join("admin", "templates", "installation")
         target_lst = []
 
-        state.log.info("Applying configuration information via templates files")
+        state.log.info("Applying configuration information " + 
+                        "via templates files located in " +
+                        "{0}".format(template_dir_path) 
+        )
 
-        script_dict = {'{{QSERV_DIR}}': env['prefix'],
+        script_dict = {'{{QSERV_DIR}}': os.path.abspath(env['prefix']),
                        '{{XROOTD_DIR}}': env['XROOTD_DIR'],
                        '{{LUA_DIR}}': env['LUA_DIR'],
                        '{{MYSQL_DIR}}': env['MYSQL_DIR'],
@@ -139,7 +142,7 @@ else:
 
         for src_node in fileutils.recursive_glob(template_dir_path, "*", env):
 
-            target_node = fileutils.replace_base_path(template_dir_path, env['prefix'], src_node, env)
+            target_node = fileutils.replace_base_path(template_dir_path, env['configuration_prefix'], src_node, env)
 
             if isinstance(src_node, SCons.Node.FS.File):
 

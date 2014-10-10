@@ -19,7 +19,7 @@ def parseArgs():
     parser = argparse.ArgumentParser(
             description='''Qserv configuration tool. Creates an execution
 directory (qserv_run_dir) which will contains configuration and execution
-data for a given Qserv instance. Deploys values from meta-config file $qserv_run_dir/qserv.conf
+data for a given Qserv instance. Deploys values from meta-config file $qserv_run_dir/qserv-meta.conf
 in all Qserv configuration files and databases. Default behaviour will configure a mono-node
 instance in ''' + default_qserv_run_dir + '''. IMPORTANT : --all MUST BE USED
 FOR A  SETUP FROM SCRATCH.''',
@@ -72,7 +72,7 @@ FOR A  SETUP FROM SCRATCH.''',
     # meta-configuration file whose parameters will be dispatched in Qserv
     # services configuration files
     args = parser.parse_args()
-    default_meta_config_file = os.path.join(args.qserv_run_dir, "qserv.conf")
+    default_meta_config_file = os.path.join(args.qserv_run_dir, "qserv-meta.conf")
     parser.add_argument("-m", "--metaconfig", dest="meta_config_file",
             default=default_meta_config_file,
             help="full path to Qserv meta-configuration file"
@@ -88,22 +88,6 @@ FOR A  SETUP FROM SCRATCH.''',
     args.verbose_level = verbose_dict[args.verbose_str]
 
     return args
-
-def recursive_copy(src, dest, ignore=None):
-    if os.path.isdir(src):
-        if not os.path.isdir(dest):
-            os.makedirs(dest)
-        files = os.listdir(src)
-        if ignore is not None:
-            ignored = ignore(src, files)
-        else:
-            ignored = set()
-        for fname in files:
-            if fname not in ignored:
-                recursive_copy(os.path.join(src, fname), os.path.join(dest, fname), ignore)
-    else:
-        shutil.copyfile(src, dest)
-
 
 def main():
 
@@ -122,11 +106,6 @@ def main():
                 )
 
     if configure.PREPARE in args.step_list:
-        template_config_dir = os.path.join(qserv_dir, "admin")
-
-        logging.info("Initializing template configuration in {1} using {0}"
-            .format(template_config_dir, args.qserv_run_dir)
-        )
 
         if os.path.exists(args.qserv_run_dir):
             if args.force or configure.user_yes_no_query(
@@ -138,10 +117,22 @@ def main():
                 logging.info("Stopping Qserv configuration, please specify an other configuration directory")
                 sys.exit(1)
 
-        recursive_copy(template_config_dir, args.qserv_run_dir)
+        in_config_dir = os.path.join(qserv_dir, "cfg")
+        in_template_config_dir = os.path.join(in_config_dir, "templates")
+        out_template_config_dir = os.path.join(args.qserv_run_dir, "templates")
+        logging.info("Copying template configuration from {0} to {1}"
+            .format(in_template_config_dir, args.qserv_run_dir)
+        )
+        shutil.copytree(in_template_config_dir, out_template_config_dir)
 
-        for line in fileinput.input(args.meta_config_file, inplace=1):
-            print line.replace("run_base_dir =", "run_base_dir = " + args.qserv_run_dir),
+        in_meta_config_file = os.path.join(in_config_dir, "qserv-meta.conf")
+        logging.info("Creating meta-configuration file: {0}"
+            .format(args.meta_config_file)
+        )
+        params_dict = {
+            'RUN_BASE_DIR' : args.qserv_run_dir 
+        }
+        configure.apply_tpl(in_meta_config_file, args.meta_config_file, params_dict) 
 
     def intersect(seq1, seq2):
         ''' returns subset of seq1 which is contained in seq2 keeping original ordering of items '''
@@ -160,7 +151,7 @@ def main():
     if  contains_configuration_step(args.step_list):
 
         try:
-            logging.info("Reading meta-configuration file")
+            logging.info("Reading meta-configuration file {0}".format(args.meta_config_file))
             config = commons.read_config(args.meta_config_file)
         except ConfigParser.NoOptionError, exc:
             logging.fatal("An option is missing in your configuration file: %s", exc)
@@ -183,7 +174,7 @@ def main():
                 "Creating configuration files in {0}".format(os.path.join(run_base_dir, "etc")) +
                 " and scripts in {0}".format(os.path.join(run_base_dir, "tmp"))
             )
-            template_root = os.path.join(run_base_dir, "templates", "server")
+            template_root = os.path.join(run_base_dir, "templates")
             dest_root = os.path.join(run_base_dir)
             configure.apply_templates(
                 template_root,
@@ -217,7 +208,7 @@ def main():
                     sys.exit(1)
 
                 template_file = os.path.join(
-                    run_base_dir, "templates", "server", "etc", filename
+                    run_base_dir, "templates", "etc", filename
                 )
                 cfg_file = os.path.join(
                     run_base_dir, "etc", filename

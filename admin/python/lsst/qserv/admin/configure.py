@@ -13,9 +13,9 @@ from lsst.qserv.admin import path
 
 # used in cmd-line tool
 PREPARE = 'prepare'
-DIRTREE = 'directory-tree' 
-ETC     = 'etc' 
-CLIENT  = 'client' 
+DIRTREE = 'directory-tree'
+ETC     = 'etc'
+CLIENT  = 'client'
 
 MYSQL = 'mysql'
 XROOTD = 'xrootd'
@@ -33,13 +33,13 @@ STEP_DOC = dict(
         """create qserv_run_dir and attach it to current Qserv instance""",
         """create directory tree in qserv_run_dir""",
         """fill qserv_run_dir configuration files with values issued
-           from meta-config file $qserv_run_dir/qserv.conf""",
-	"""remove MySQL previous data, install db and set password """,
-	"""create xrootd query and result directories""",
-	"""configure CSS (i.e. MySQL credentials for css-watcher)""",
-	"""initialize Qserv master and worker databases""",
-	"""install and configure SciSQL""",
-	"""create client configuration file (used by integration tests for example)"""
+           from meta-config file $qserv_run_dir/qserv-meta.conf""",
+        """remove MySQL previous data, install db and set password """,
+        """create xrootd query and result directories""",
+        """configure CSS (i.e. MySQL credentials for css-watcher)""",
+        """initialize Qserv master and worker databases""",
+        """install and configure SciSQL""",
+        """create client configuration file (used by integration tests for example)"""
         ]
     )
 )
@@ -141,6 +141,7 @@ def uninstall(target, source, env):
         else:
             shutil.rmtree(upath)
 
+template_params_dict = None
 def _get_template_params():
     """ Compute templates parameters from Qserv meta-configuration file
         from PATH or from environment variables for products not needed during build
@@ -148,66 +149,73 @@ def _get_template_params():
     logger = logging.getLogger()
     config = commons.getConfig()
 
-    if config['qserv']['node_type'] == 'mono':
-        comment_mono_node = '#MONO-NODE# '
+    global template_params_dict
+
+    if template_params_dict is None:
+
+        if config['qserv']['node_type'] == 'mono':
+            comment_mono_node = '#MONO-NODE# '
+        else:
+            comment_mono_node = ''
+
+        testdata_dir = os.getenv('QSERV_TESTDATA_DIR', "NOT-AVAILABLE # please set environment variable QSERV_TESTDATA_DIR if needed")
+
+        if config['qserv']['node_type'] in ['mono', 'worker']:
+            scisql_dir = os.environ.get('SCISQL_DIR')
+            if scisql_dir is None:
+                logger.fatal("Mono-node or worker install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
+                sys.exit(1)
+        else:
+            scisql_dir = "NOT-AVAILABLE # please set environment variable SCISQL_DIR if needed"
+
+        python_bin_list = which("python")
+        if python_bin_list:
+            python_bin=python_bin_list[0]
+        else:
+            python_bin="NOT-AVAILABLE"
+
+        params_dict = {
+        'COMMENT_MONO_NODE' : comment_mono_node,
+        'PATH': os.environ.get('PATH'),
+        'LD_LIBRARY_PATH': os.environ.get('LD_LIBRARY_PATH'),
+        'PYTHON_BIN': python_bin,
+        'PYTHONPATH': os.environ['PYTHONPATH'],
+        'QSERV_MASTER': config['qserv']['master'],
+        'QSERV_DIR': config['qserv']['base_dir'],
+        'QSERV_RUN_DIR': config['qserv']['run_base_dir'],
+        'QSERV_UNIX_USER': getpass.getuser(),
+        'QSERV_LOG_DIR': config['qserv']['log_dir'],
+        'QSERV_PID_DIR': os.path.join(config['qserv']['run_base_dir'], "var", "run"),
+        'QSERV_RPC_PORT': config['qserv']['rpc_port'],
+        'QSERV_USER': config['qserv']['user'],
+        'QSERV_LUA_SHARE': os.path.join(config['lua']['base_dir'], "share", "lua", "5.1"),
+        'QSERV_LUA_LIB': os.path.join(config['lua']['base_dir'], "lib", "lua", "5.1"),
+        'QSERV_SCRATCH_DIR': config['qserv']['scratch_dir'],
+        'MYSQL_DIR': config['mysqld']['base_dir'],
+        'MYSQLD_DATA_DIR': config['mysqld']['data_dir'],
+        'MYSQLD_PORT': config['mysqld']['port'],
+        # used for mysql-proxy in mono-node
+        'MYSQLD_HOST': '127.0.0.1',
+        'MYSQLD_SOCK': config['mysqld']['sock'],
+        'MYSQLD_USER': config['mysqld']['user'],
+        'MYSQLD_PASS': config['mysqld']['pass'],
+        'MYSQL_PROXY_PORT': config['mysql_proxy']['port'],
+        'SCISQL_DIR': scisql_dir,
+        'XROOTD_DIR': config['xrootd']['base_dir'],
+        'XROOTD_MANAGER_HOST': config['qserv']['master'],
+        'XROOTD_PORT': config['xrootd']['xrootd_port'],
+        'XROOTD_RUN_DIR': os.path.join(config['qserv']['run_base_dir'], "xrootd-run"),
+        'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['run_base_dir'], 'tmp'),
+        'CMSD_MANAGER_PORT': config['xrootd']['cmsd_manager_port'],
+        'ZOOKEEPER_PORT': config['zookeeper']['port'],
+        'HOME': os.path.expanduser("~"),
+        'NODE_TYPE': config['qserv']['node_type'],
+        }
+
+        logger.debug("Template input parameters:\n {0}".format(params_dict))
+        template_params_dict=params_dict
     else:
-        comment_mono_node = ''
-
-    testdata_dir = os.getenv('QSERV_TESTDATA_DIR', "NOT-AVAILABLE # please set environment variable QSERV_TESTDATA_DIR if needed")
-
-    if config['qserv']['node_type'] in ['mono', 'worker']:
-        scisql_dir = os.environ.get('SCISQL_DIR')
-        if scisql_dir is None:
-            logger.fatal("Mono-node or worker install : sciSQL is missing, please install it and set SCISQL_DIR environment variable.")
-            sys.exit(1)
-    else:
-        scisql_dir = "NOT-AVAILABLE # please set environment variable SCISQL_DIR if needed"
-
-    python_bin_list = which("python")
-    if python_bin_list:
-        python_bin=python_bin_list[0]
-    else:
-        python_bin="NOT-AVAILABLE"
-        
-    params_dict = {
-    'COMMENT_MONO_NODE' : comment_mono_node,
-    'PATH': os.environ.get('PATH'),
-    'LD_LIBRARY_PATH': os.environ.get('LD_LIBRARY_PATH'),
-    'PYTHON_BIN': python_bin,
-    'PYTHONPATH': os.environ['PYTHONPATH'],
-    'QSERV_MASTER': config['qserv']['master'],
-    'QSERV_DIR': config['qserv']['base_dir'],
-    'QSERV_RUN_DIR': config['qserv']['run_base_dir'],
-    'QSERV_UNIX_USER': getpass.getuser(),
-    'QSERV_LOG_DIR': config['qserv']['log_dir'],
-    'QSERV_PID_DIR': os.path.join(config['qserv']['run_base_dir'], "var", "run"),
-    'QSERV_RPC_PORT': config['qserv']['rpc_port'],
-    'QSERV_USER': config['qserv']['user'],
-    'QSERV_LUA_SHARE': os.path.join(config['lua']['base_dir'], "share", "lua", "5.1"),
-    'QSERV_LUA_LIB': os.path.join(config['lua']['base_dir'], "lib", "lua", "5.1"),
-    'QSERV_SCRATCH_DIR': config['qserv']['scratch_dir'],
-    'MYSQL_DIR': config['mysqld']['base_dir'],
-    'MYSQLD_DATA_DIR': config['mysqld']['data_dir'],
-    'MYSQLD_PORT': config['mysqld']['port'],
-    # used for mysql-proxy in mono-node
-    'MYSQLD_HOST': '127.0.0.1',
-    'MYSQLD_SOCK': config['mysqld']['sock'],
-    'MYSQLD_USER': config['mysqld']['user'],
-    'MYSQLD_PASS': config['mysqld']['pass'],
-    'MYSQL_PROXY_PORT': config['mysql_proxy']['port'],
-    'SCISQL_DIR': scisql_dir,
-    'XROOTD_DIR': config['xrootd']['base_dir'],
-    'XROOTD_MANAGER_HOST': config['qserv']['master'],
-    'XROOTD_PORT': config['xrootd']['xrootd_port'],
-    'XROOTD_RUN_DIR': os.path.join(config['qserv']['run_base_dir'], "xrootd-run"),
-    'XROOTD_ADMIN_DIR': os.path.join(config['qserv']['run_base_dir'], 'tmp'),
-    'CMSD_MANAGER_PORT': config['xrootd']['cmsd_manager_port'],
-    'ZOOKEEPER_PORT': config['zookeeper']['port'],
-    'HOME': os.path.expanduser("~"),
-    'NODE_TYPE': config['qserv']['node_type'],
-    }
-
-    logger.debug("Input parameters :\n {0}".format(params_dict))
+        params_dict=template_params_dict
 
     return params_dict
 
@@ -228,13 +236,15 @@ def _set_perms(file):
     else:
         os.chmod(file, 0660)
 
-def apply_tpl(src_file, target_file):
+def apply_tpl(src_file, target_file, params_dict = None):
     """ Creating one configuration file from one template
     """
 
     logger = logging.getLogger()
     logger.debug("Creating {0} from {1}".format(target_file, src_file))
-    params_dict = _get_template_params()
+
+    if params_dict is None:
+        params_dict = _get_template_params()
 
     with open(src_file, "r") as tpl:
         t = QservConfigTemplate(tpl.read())
@@ -256,7 +266,10 @@ def apply_templates(template_root, dest_root):
 
     logger = logging.getLogger()
 
-    logger.info("Creating configuration using templates files")
+    logger.info("Creating configuration from templates")
+    if not os.path.isdir(template_root):
+        logger.fatal("Template root directory: {0} doesn't exist.".format(template_root))
+        sys.exit(1)
 
     for root, dirs, files in os.walk(template_root):
         os.path.normpath(template_root)

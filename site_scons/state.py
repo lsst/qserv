@@ -122,7 +122,7 @@ def _setEnvWithDependencies():
             (PathVariable('LOG_DIR', 'log install dir', _findPrefixFromName('LOG'), PathVariable.PathIsDir)),
             (PathVariable('LUA_DIR', 'lua install dir', _findPrefixFromBin('LUA_DIR', "lua"), PathVariable.PathIsDir)),
             (PathVariable('ZOOKEEPER_DIR', 'zookeeper install dir', _findPrefixFromBin('ZOOKEEPER_DIR', "zkEnv.sh"), PathVariable.PathIsDir)),
-            (PathVariable('python_relative_prefix', 'qserv install directory for python modules, relative to prefix', os.path.join("lib", "python"), PathVariable.PathIsDirCreate)),
+            (PathVariable('python_relative_prefix', 'qserv install directory for python modules, relative to prefix', os.path.join("lib", "python"), PathVariable.PathIsDirCreate))
             )
     opts.Update(env)
 
@@ -235,8 +235,9 @@ def init(src_dir):
  
     opts.Update(env)
 
+    # Default to in-place install
     opts.AddVariables(
-            (PathVariable('prefix', 'qserv install dir', os.path.join(env['build_dir'], "dist"), PathVariable.PathIsDirCreate))
+            (PathVariable('prefix', 'qserv install dir', src_dir, PathVariable.PathIsDirCreate))
     )
     opts.Update(env)
 

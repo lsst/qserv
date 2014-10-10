@@ -14,9 +14,9 @@ Pre-requisites
 
 Follow classical install :ref:`quick-start-pre-requisites`, and then build and install all
 source dependencies for the current Qserv release:
- 
+
 .. code-block:: bash
- 
+
    # use Qserv official distribution server
    eups distrib install --onlydepend qserv -t qserv
    # only if you want to launch integration tests with your Qserv code
@@ -24,9 +24,9 @@ source dependencies for the current Qserv release:
    setup qserv_testdata -t qserv
  
 .. note::
- 
-   Above command will install dependencies for the current Qserv release. If you want to develop with an other set of dependencies,
-   you may have to install them one by one, or specify a given Qserv version, instead of ``-t qserv``.
+
+   Above 'eups distrib' command will install dependencies for the current Qserv release. If you want to develop with an other set of dependencies, you may
+   have to install them one by one, or specify a given Qserv version or tag (instead of ``-t qserv``). See :ref:`build-qserv-with-specific-dependencies` for additional informations.
 
 .. _quick-start-devel-setup-qserv:
 
@@ -43,36 +43,30 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
    SRC_DIR=${HOME}/src
    mkdir ${SRC_DIR}
    cd ${SRC_DIR}
-   # anonymous access : 
-   git clone git://git.lsstcorp.org/LSST/DMS/qserv 
+   # anonymous access :
+   git clone git://git.lsstcorp.org/LSST/DMS/qserv
    # or authenticated access (require a ssh key) :
    git clone ssh://git@git.lsstcorp.org/LSST/DMS/qserv
    # build and install your Qserv version
    cd qserv
    # if following "setup" command fails due to missing packages one has to
    # manually install those packages with regular "eups distrib install ..."
-   setup -r .
-   eupspkg -er build               # build
-   eupspkg -er install             # install to EUPS stack directory
-   eupspkg -er decl                # declare it to EUPS
-   # enable your Qserv version, and dependencies, in eups
-   # $VERSION is available by using :
-   eups list qserv
-   setup qserv $VERSION
+   setup -k -r .
+   # build Qserv. Optional, covered by next command (i.e. install)
+   scons build
+   # install Qserv in-place (i.e. in ${SRC_DIR}/qserv/)
+   scons install
+
+   # Each time you want to test your code, run :
+   scons install
+
+.. note::
+   In above commands ``scons`` can be replaced with 
+   ``eupspkg -e PREFIX=$PWD`` which will compute the number of processor on your system
+   and launch a parallel build using all of them (see `scons -j` option).
 
 Once the qserv eups stack is integrated with your local Qserv repository, you
 will need to configure and (if desired) test it (see :ref:`quick-start-configuration`).
-
- .. warning::
- 
-   Be advised that eupspkg may generate different version numbers depending on
-   whether the code has changed after checkout. For example it may generate
-   version which looks like "master-g86a30ec72a" for freshly checked-out code but
-   if you change anything in your repository it will generate new version
-   "master-g86a30ec72a-dirty". You may end up with two versions of qserv
-   installed, be very careful and remember to run "setup qserv" with the correct
-   version number.
-
 
 *******************
 Updating test cases
@@ -92,11 +86,41 @@ In order to test it with your Qserv version :
 
    QSERV_TESTDATA_SRC_DIR=${HOME}/src/qserv_testdata/
    cd $QSERV_TESTDATA_SRC_DIR
-   setup -r .
-   eupspkg -er build               # build
-   eupspkg -er install             # install to EUPS stack directory
-   eupspkg -er decl                # declare it to EUPS
-   # Enable your Qserv version, and dependencies, in eups
-   # $VERSION is available by using :
-   eups list
-   setup qserv_testdata $VERSION
+   setup -k -r .
+   scons build                # build
+   scons install prefix=dist  # install (qserv_testdata doesn't support
+                              # in-place install)
+   cd dist
+   setup -k -r .
+
+   # Each time you want to test your code, run :
+   cd ..
+   scons install prefix=dist
+
+*********************************
+Updating other Qserv dependencies
+*********************************
+
+``eupspkg`` provide an abstraction layer which allow you to easily develop
+with any eups-distributed package. Please note that commands below are usable with any git repository
+whose code is eups-compliant, and which supports in-place install:
+
+.. code-block:: bash
+
+   # clone Qserv repository
+   SRC_DIR=${HOME}/src
+   cd ${SRC_DIR}
+   # authenticated access (require a ssh key) :
+   git clone ssh://git@git.lsstcorp.org/LSST/DMS/dependency
+   # build and install your version of this Qserv dependency
+   cd dependency 
+   # if following "setup" command fails due to missing packages one has to
+   # manually install those packages with regular "eups distrib install ..."
+   setup -k -r .
+   eupspkg -e build
+   # install dependency in-place (if possible)
+   eupspkg -e PREFIX=$PWD install
+
+   # Each time you want to test your code, run :
+   eupspkg -e PREFIX=$PWD install
+
