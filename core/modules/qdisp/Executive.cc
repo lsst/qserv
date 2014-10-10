@@ -38,6 +38,7 @@
 #include <sstream>
 
 // Third-party headers
+#include "boost/format.hpp"
 #include "XrdSsi/XrdSsiErrInfo.hh"
 #include "XrdSsi/XrdSsiService.hh" // Resource
 #include "XrdOuc/XrdOucTrace.hh"
@@ -196,14 +197,18 @@ void Executive::markCompleted(int refNum, bool success) {
     ResponseRequester::Error e;
     LOGF_INFO("Executive::markCompletion(%1%,%2%)" % refNum % success);
     if(!success) {
-        boost::lock_guard<boost::mutex> lock(_requestersMutex);
-        RequesterMap::iterator i = _requesters.find(refNum);
-        if(i != _requesters.end()) {
-            e = i->second->getError();
-        } else {
-            LOGF_ERROR("Executive(%1%) failed to find tracked id=%2% size=%3%" %
-                       (void*)this % refNum % _requesters.size());
-            throw Bug("Executive::markCompleted() invalid refNum");
+        {
+            boost::lock_guard<boost::mutex> lock(_requestersMutex);
+            RequesterMap::iterator i = _requesters.find(refNum);
+            if(i != _requesters.end()) {
+                e = i->second->getError();
+            } else {
+                std::string msg =
+                    (boost::format("Executive::markCompleted(%1%) "
+                                   "failed to find tracked id=%2% size=%3%")
+                     % (void*)this % refNum % _requesters.size()).str();
+                throw Bug(msg);
+            }
         }
         _statuses[refNum]->report(ExecStatus::RESULT_ERROR, 1);
         LOGF_ERROR("Executive: error executing refnum=%1%. Code=%2% %3%" %
@@ -246,18 +251,18 @@ void Executive::requestSquash(int refNum) {
 void Executive::squash() {
     LOGF_INFO("Trying to cancel all queries...");
     std::vector<RequesterPtr> pendingRequesters;
+    std::ostringstream os;
+    os << "STATE=";
     {
         boost::lock_guard<boost::mutex> lock(_requestersMutex);
-        std::ostringstream os;
-        os << "STATE=";
         _printState(os);
-        LOGF_INFO("%1%\nLoop cancel all queries..." % os.str());
         RequesterMap::iterator i,e;
         for(i=_requesters.begin(), e=_requesters.end(); i != e; ++i) {
             pendingRequesters.push_back(i->second);
         }
-        LOGF_INFO("Enqueued requesters for cancelling...done");
     }
+    LOGF_INFO("%1%\nLoop cancel all queries..." % os.str());
+    LOGF_INFO("Enqueued requesters for cancelling...done");
     {
         std::vector<RequesterPtr>::iterator i, e;
         for(i=pendingRequesters.begin(), e=pendingRequesters.end(); i != e; ++i) {
@@ -388,12 +393,18 @@ template <typename Map>
 void unTrack(void* caller, Map& m, typename Map::key_type key,
              boost::mutex& mutex,
              boost::condition_variable& condition) {
-    boost::lock_guard<boost::mutex> lock(mutex);
-    typename Map::iterator i = m.find(key);
-    if(i != m.end()) {
+    bool untracked = false;
+    {
+        boost::lock_guard<boost::mutex> lock(mutex);
+        typename Map::iterator i = m.find(key);
+        if(i != m.end()) {
+            m.erase(i);
+            untracked = true;
+            if(m.empty()) condition.notify_all();
+        }
+    }
+    if(untracked) {
         LOGF_INFO("Executive (%1%) UNTRACKING id=%2%" % caller % key);
-        m.erase(i);
-        if(m.empty()) condition.notify_all();
     }
 }
 void Executive::_unTrack(int refNum) {
@@ -453,16 +464,20 @@ void Executive::_waitUntilEmpty() {
         count = _requesters.size();
         _reapRequesters(lock);
         if(count != lastCount) {
-            LOGF_INFO("Still %1% in flight." % count);
             count = lastCount;
             ++complainCount;
-            if(complainCount > moreDetailThreshold) {
-                if (LOG_CHECK_WARN()) {
+            if (LOG_CHECK_INFO()) {
+                std::string summary = (boost::format("Still %1% in flight.")
+                                       % count).str();
+                if(complainCount > moreDetailThreshold) {
                     std::stringstream ss;
                     _printState(ss);
-                    LOGF_WARN("%1%" % ss.str());
+                    summary += "\n" + summary;
                 }
                 complainCount = 0;
+                lock.unlock(); // release the lock while we trigger logging.
+                LOGF_INFO(summary);
+                lock.lock();
             }
         }
         _requestersEmpty.timed_wait(lock, statePrintDelay);

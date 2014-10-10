@@ -56,8 +56,8 @@ MergingRequester::MergingRequester(
     : _msgReceiver(msgReceiver),
       _infileMerger(merger),
       _tableName(tableName),
-      _flushed(false),
-      _response(new WorkerResponse) {
+      _response(new WorkerResponse),
+      _flushed(false) {
     _initState();
 }
 
@@ -65,9 +65,9 @@ bool MergingRequester::flush(int bLen, bool last) {
     if((bLen < 0) || (bLen != (int)_buffer.size())) {
         if(_state != RESULT_EXTRA) {
             LOGF_ERROR("MergingRequester size mismatch: expected %1%  got %2%"
-                   % _buffer.size() % bLen);        
+                   % _buffer.size() % bLen);
             // Worker sent corrupted data, or there is some other error.
-        }    
+        }
     }
     switch(_state) {
       case HEADER_SIZE_WAIT:
@@ -122,10 +122,9 @@ bool MergingRequester::flush(int bLen, bool last) {
 }
 
 void MergingRequester::errorFlush(std::string const& msg, int code) {
+    _setError(code, msg);
     // Might want more info from result service.
     // Do something about the error. FIXME.
-    _error.msg = msg;
-    _error.code = code;
     LOGF_ERROR("Error receiving result.");
 }
 
@@ -159,8 +158,7 @@ void MergingRequester::_initState() {
     _buffer.resize(1);
     // _response.reset(new WorkerResponse);// Will be overwritten
     _state = HEADER_SIZE_WAIT;
-    _error.code = 0;
-    _error.msg = "";
+    _setError(0, "");
 }
 
 bool MergingRequester::_merge() {
@@ -183,6 +181,7 @@ void MergingRequester::_setError(int code, std::string const& msg) {
     _error.code = code;
     _error.msg = msg;
 }
+
 bool MergingRequester::_setResult() {
     if(!ProtoImporter<proto::Result>::setMsgFrom(
            _response->result,
@@ -202,4 +201,5 @@ bool MergingRequester::_verifyResult() {
     }
     return true;
 }
+
 }}} // lsst::qserv::ccontrol

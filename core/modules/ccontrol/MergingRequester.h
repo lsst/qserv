@@ -28,7 +28,6 @@
 
 // Qserv headers
 #include "qdisp/ResponseRequester.h"
-//#include "util/Callable.h"
 
 // Forward decl
 namespace lsst {
@@ -53,7 +52,8 @@ namespace ccontrol {
 /// InfileMerger.
 class MergingRequester : public qdisp::ResponseRequester {
 public:
-    enum MsgState { INVALID, HEADER_SIZE_WAIT, 
+    /// Possible MergingRequester message state
+    enum MsgState { INVALID, HEADER_SIZE_WAIT,
                     HEADER_WAIT, RESULT_WAIT, RESULT_RECV,
                     RESULT_EXTRA, RESULT_LAST,
                     HEADER_ERR, RESULT_ERR };
@@ -73,7 +73,7 @@ public:
     /// before flush(), unless the response is completed (no more
     /// bytes) or there is an error.
     virtual std::vector<char>& nextBuffer() { return _buffer; }
- 
+
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
     /// @return true if successful (no error)
@@ -91,12 +91,15 @@ public:
     virtual std::ostream& print(std::ostream& os) const;
 
     /// @return an error code and description
-    virtual Error getError() const { return _error; }
+    virtual Error getError() const {
+        boost::lock_guard<boost::mutex> lock(_errorMutex);
+        return _error;
+    }
 
     using ResponseRequester::registerCancel;
     using ResponseRequester::cancel;
 
-private:    
+private:
     void _initState();
     bool _merge();
     void _setError(int code, std::string const& msg);
