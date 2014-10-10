@@ -218,14 +218,31 @@ void Executive::markCompleted(int refNum, bool success) {
 }
 
 void Executive::requestSquash(int refNum) {
-    boost::lock_guard<boost::mutex> lock(_requestersMutex);
-    RequesterMap::iterator i = _requesters.find(refNum);
-    if(i != _requesters.end()) {
-        ResponseRequester::Error e = i->second->getError();
-        LOGF_WARN("Warning, requestSquash(%1%), but %2% has already failed (%3%, %4%)." % refNum % refNum % e.code % e.msg);
-    } else {
-        i->second->cancel();
+    RequesterPtr toSquash;
+    bool needToWarn = false;
+    ResponseRequester::Error e;
+    {
+        boost::lock_guard<boost::mutex> lock(_requestersMutex);
+        RequesterMap::iterator i = _requesters.find(refNum);
+        if(i != _requesters.end()) {
+            ResponseRequester::Error e = i->second->getError();
+            if(e.code) {
+                needToWarn = true;
+            } else {
+                toSquash = i->second; // Remember which one to squash
+            }
+        } else {
+            throw Bug("Executive::requestSquash() with invalid refNum");
+        }
     }
+    if(needToWarn) {
+        LOGF_WARN("Warning, requestSquash(%1%), but %2% has already failed (%3%, %4%)." % refNum % refNum % e.code % e.msg);
+    }
+
+    if(toSquash) { // Squash outside of the mutex
+        toSquash->cancel();
+    }
+
 }
 
 void Executive::squash() {
