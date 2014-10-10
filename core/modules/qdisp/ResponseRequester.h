@@ -28,6 +28,7 @@
 #include <vector>
 
 // Third-party headers
+#include "boost/thread/locks.hpp"
 #include "boost/thread/mutex.hpp"
 #include "boost/shared_ptr.hpp"
 
