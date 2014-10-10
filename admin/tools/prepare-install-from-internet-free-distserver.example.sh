@@ -28,6 +28,8 @@ curl -O ${DISTSERVER_ARCHIVE_URL}
 cd ${INTERNET_FREE_DISTSERVER_PARENT_DIR} 
 tar zxvf ${TARBALL_DIR}/qserv-internet-free-distserver.tar.gz
 
-# OPTIONAL : python 2.7 is required, if it isn't available on you system, and
-# if you can't install system packages, Anaconda may be a solution :
+#### OPTIONAL : python 2.7 is required, if it isn't available on you system, and
+#### if you can't install system packages, Anaconda may be a solution :
+# cd ${INTERNET_FREE_DISTSERVER_DIR}
 # curl -O http://repo.continuum.io/archive/Anaconda-1.8.0-Linux-x86_64.sh
+# chmod a+x Anaconda-1.8.0-Linux-x86_64.sh

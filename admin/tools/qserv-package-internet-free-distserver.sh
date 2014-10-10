@@ -4,7 +4,7 @@ set -e
 
 # First, with lsstsw tools : 
 # rebuild lsst qserv qserv_testdata
-# publish -t current -b bXX lsst qserv qserv_testdata
+# publish -t qserv -b bXX lsst qserv qserv_testdata
 
 ############################
 # CUSTOMIZE NEXT PARAMETER :

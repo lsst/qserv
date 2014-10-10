@@ -58,17 +58,15 @@ First, log in with a **non-root user account**.
 Install Qserv distribution 
 ==========================
 
-Then below, please set ``RELEASE`` to "|release|" to install explicitly this release, or remove it to install current Qserv release.
+Then below, please set ``RELEASE`` to "|release|" to install explicitly this release, or replace it with ``-t qserv`` to install current Qserv release.
 
 .. code-block:: bash
 
-   export EUPS_PKGROOT=http://lsst-web.ncsa.illinois.edu/~fjammes/qserv
+   # First, define RELEASE, here we install current Qserv release
+   RELEASE="-t qserv"
    # loadLSST.sh must have been sourced before running this (see above)
-   eups distrib install qserv $RELEASE
-   setup qserv $RELEASE
-   # only if you want to run integration tests on a mono-node instance :
-   eups distrib install qserv_testdata 2014_06.0
-   setup qserv_testdata
+   eups distrib install qserv_distrib $RELEASE
+   setup qserv_distrib $RELEASE
 
 .. _quick-start-configuration:
 

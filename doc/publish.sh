@@ -30,11 +30,17 @@
 # eval `ssh-agent -s`
 # ssh-add ~/.ssh/id_rsa_lsst
 DIR=$(cd "$(dirname "$0")"; pwd -P)
-
+cd $DIR/..
+(
+echo "Generating documentation"
+scons doc
+)
 REMOTE_HOST=lsst-dev.ncsa.illinois.edu
 #VERSION=$(pkgautoversion)
 VERSION=`${DIR}/../admin/bin/qserv-version.sh`
+echo "Uploading documentation from $PWD to $REMOTE_HOST"
 rsync -ave ssh  doc/build/html/* ${REMOTE_HOST}:public_html/qserv-doc/${VERSION}
 ssh ${REMOTE_HOST} "ln -sf ${VERSION}/toplevel.html public_html/qserv-doc/index.html; ln -sf ${VERSION}/_static public_html/qserv-doc/_static"
 # alternate solution :
 #lftp -u datasky,xxx sftp://datasky.in2p3.fr -e "mirror -e -R  $HOME/src/qserv/doc/build/html htdocs/qserv-doc/2014_09.0 ; quit"
+cd -

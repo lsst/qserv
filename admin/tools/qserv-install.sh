@@ -5,6 +5,15 @@ set -e
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 # . $DIR/../etc/settings.cfg.sh
 
+# Default values below may be overidden by cmd-line options
+MODE="internet mode"
+DEV_DISTSERVER_ROOT="http://lsst-web.ncsa.illinois.edu/~fjammes/qserv-dev"
+EUPS_PKGROOT="http://sw.lsstcorp.org/eupspkg"
+NEWINSTALL_URL="http://sw.lsstcorp.org/eupspkg/newinstall.sh"
+VERSION="-t qserv"     
+
+underline() { echo $1; echo "${1//?/${2:-=}}";}
+
 usage()
 {
 cat << EOF
@@ -13,17 +22,36 @@ This script install Qserv according to LSST packaging standards.
 
 OPTIONS:
    -h      Show this message and exit
+   -d      Use development distribution server: ${DEV_DISTSERVER_ROOT}  
    -r      Local distribution server root directory, 
            used in internet-free mode
    -i      Install directory : MANDATORY
-   -v      Qserv version to install 
+   -v      Qserv version to install, default to the one with the 'qserv' tag
 EOF
 }
 
-while getopts ":r:i:v:h" o; do
+while getopts "dr:i:v:h" o; do
         case "$o" in
+        d)
+                DEV_OPTION=1
+                MODE="development/internet mode"
+                VERSION="-t qserv-dev"
+                EUPS_PKGROOT="${EUPS_PKGROOT}|${DEV_DISTSERVER_ROOT}"
+                ;;
         r)
+                LOCAL_OPTION=1
+                MODE="internet-free mode"
                 LOCAL_DISTSERVER_ROOT="${OPTARG}"
+                if [[ ! -d ${LOCAL_DISTSERVER_ROOT} ]]; then
+                    >&2 echo "ERROR : $MODE require a local distribution server"
+                    usage
+                    exit 1
+                fi 
+                EUPS_PKGROOT="${LOCAL_DISTSERVER_ROOT}/production"
+                NEWINSTALL_URL="file://${EUPS_PKGROOT}/newinstall.sh"
+                export EUPS_VERSION="1.5.0"
+                export EUPS_TARURL=file://${LOCAL_DISTSERVER_ROOT}/${EUPS_VERSION}.tar.gz
+                export EUPS_GIT_REPO=${LOCAL_DISTSERVER_ROOT}/eups.git
                 ;;
         i)
                 STACK_DIR="${OPTARG}"
@@ -38,134 +66,111 @@ while getopts ":r:i:v:h" o; do
         esac
 done
 
+
 if [[ -z "${STACK_DIR}" ]]
 then
+     >&2 echo "ERROR : install directory required, use -i option."
      usage
      exit 1
 fi
+
+if [[ -n ${DEV_OPTION} && -n ${LOCAL_OPTION} ]]; then
+    >&2 echo "ERROR : -r and -d options are not compatible"
+    usage
+    exit 1
+fi 
 
 if [[ -d ${STACK_DIR} ]]; then
     chmod -R 755 $STACK_DIR &&
     rm -rf $STACK_DIR ||
     {
-        echo "Unable to remove install directory previous content : ${STACK_DIR}"
+        >&2 echo "Unable to remove install directory previous content : ${STACK_DIR}"
         exit 1
     }
 fi
 mkdir $STACK_DIR &&
 cd $STACK_DIR ||
 {
-    echo "Unable to go to install directory : ${STACK_DIR}"
+    >&2 echo "Unable to go to install directory : ${STACK_DIR}"
     exit 1
 }
 
 echo
-echo "Installing LSST stack"
-echo "====================="
+underline "Installing LSST stack : $MODE, version : $VERSION" 
 echo
-if [[ -z "${LOCAL_DISTSERVER_ROOT}" ]]; then
-    echo
-    echo "Online mode"
-    echo "==========="
-    echo
-    export EUPS_PKGROOT="http://sw.lsstcorp.org/eupspkg|http://lsst-web.ncsa.illinois.edu/~fjammes/qserv"
-    NEWINSTALL_URL="http://sw.lsstcorp.org/eupspkg/newinstall.sh"
-else
-    echo
-    echo "Offline mode"
-    echo "============"
-    echo
-    export EUPS_PKGROOT="${LOCAL_DISTSERVER_ROOT}/production"
-    NEWINSTALL_URL="file://${EUPS_PKGROOT}/newinstall.sh"
-    export EUPS_TARURL=file://${LOCAL_DISTSERVER_ROOT}/1.5.0.tar.gz
-    export EUPS_GIT_REPO=${LOCAL_DISTSERVER_ROOT}/eups.git
-fi
-
+export EUPS_PKGROOT
 curl -O ${NEWINSTALL_URL} ||
 {
-    echo "Unable to download from ${NEWINSTALL_URL}"
+    >&2 echo "Unable to download from ${NEWINSTALL_URL}"
     exit 2
 }
 
 time bash newinstall.sh ||
 {
-    echo "ERROR : newinstall.sh failed"
+    >&2 echo "ERROR : newinstall.sh failed"
     exit 1
 }
-
-
-EUPS_PKGROOT_QSERV=${EUPS_PKGROOT}
 
 # TODO : warn loadLSST.sh append http://sw.lsstcorp.org/eupspkg to
 # EUPS_PKGROOT, this isn't compliant with internet-free mode
 # TODO : if first url in EUPS_PKGROOT isn't available eups fails without
 # trying next ones
+if [[ -n ${LOCAL_OPTION} ]]; then
+    EUPS_PKG_ROOT_BACKUP=${EUPS_PKGROOT}
+fi
 . ${STACK_DIR}/loadLSST.sh ||
 {
-    echo "ERROR : unable to load LSST stack environment"
+    >&2 echo "ERROR : unable to load LSST stack environment"
     exit 1
 }
+if [[ -n ${LOCAL_OPTION} ]]; then
+    export EUPS_PKGROOT=${EUPS_PKG_ROOT_BACKUP}
+fi
 
 echo
-echo "Installing Qserv"
-echo "================"
+underline "Installing Qserv distribution (version: $VERSION, distserver: ${EUPS_PKGROOT})"
 echo
-time eups distrib install qserv ${VERSION} -r ${EUPS_PKGROOT_QSERV} &&
-setup qserv ${VERSION} ||
+time eups distrib install qserv_distrib ${VERSION} &&
+setup qserv_distrib ${VERSION} ||
 {
-    echo "Unable to install Qserv"
+    >&2 echo "Unable to install Qserv"
     exit 1
 }
 
 echo
-echo "Installing Qserv integration tests datasets"
-echo "==========================================="
-echo
-time eups distrib install qserv_testdata -r ${EUPS_PKGROOT_QSERV} &&
-setup qserv_testdata ||
-{
-    echo "Unable to install Qserv test datasets"
-    exit 1
-}
-
-echo
-echo "Configuring Qserv"
-echo "================="
+underline "Configuring Qserv"
 echo
 cd $QSERV_DIR/admin &&
 qserv-configure.py --all ||
 {
-    echo "Unable to configure Qserv as a mono-node instance"
+    >&2 echo "Unable to configure Qserv as a mono-node instance"
     exit 1
 }
 
 echo
-echo "Starting Qserv"
-echo "=============="
+underline "Starting Qserv"
 echo
 CFG_VERSION=`qserv-version.sh`
 ${HOME}/qserv-run/${CFG_VERSION}/bin/qserv-start.sh ||
 {
-    echo "Unable to start Qserv"
+    >&2 echo "Unable to start Qserv"
     exit 1
 }
 
 echo
-echo "Running Qserv integration tests"
-echo "==============================="
+underline "Running Qserv integration tests"
 echo
 qserv-test-integration.py ||
 {
-    echo "Integration tests failed"
+    >&2 echo "Integration tests failed"
     exit 1
 }
 
 echo
-echo "Stopping Qserv"
-echo "=============="
+underline "Stopping Qserv"
 echo
 ${HOME}/qserv-run/${CFG_VERSION}/bin/qserv-stop.sh ||
 {
-    echo "Unable to stop Qserv"
+    >&2 echo "Unable to stop Qserv"
     exit 1
 }

@@ -44,7 +44,11 @@ You can then **apply customizations below** to standard Qserv install procedure 
 
 .. code-block:: bash
 
-   NEWINSTALL_URL=${INTERNET_FREE_DISTSERVER_DIR}
+   export EUPS_PKGROOT="${INTERNET_FREE_DISTSERVER_DIR}/production"
+   NEWINSTALL_URL="file://${EUPS_PKGROOT}"
+   export EUPS_VERSION=1.5.0
+   export EUPS_TARURL=file://${INTERNET_FREE_DISTSERVER_DIR}/${EUPS_VERSION}.tar.gz
+   export EUPS_GIT_REPO=${INTERNET_FREE_DISTSERVER_DIR}/eups.git
 
 - `newinstall.sh` script will ask you two questions, answer "no" to the first one (i.e. install git with eups), and and "no" to the second (i.e. don't install anaconda with eups).
 
@@ -54,5 +58,5 @@ You can then **apply customizations below** to standard Qserv install procedure 
 
    # `. loadLSST.sh` instruction updates EUPS_PKGROOT value, that's why you need to correct it 
    # before installing Qserv
-   export EUPS_PKGROOT=${INTERNET_FREE_DISTSERVER_DIR}
+   export EUPS_PKGROOT="${INTERNET_FREE_DISTSERVER_DIR}/production"
 
