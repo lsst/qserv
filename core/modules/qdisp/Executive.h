@@ -52,7 +52,6 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 class MessageStore;
-class QueryReceiver;
 class ResponseRequester;
 
 /// class Executive manages the execution of tasks for a UserQuery, while

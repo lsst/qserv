@@ -203,7 +203,7 @@ void Executive::markCompleted(int refNum, bool success) {
             e = i->second->getError();
         } else {
             LOGF_ERROR("Executive(%1%) failed to find tracked id=%2% size=%3%" %
-                       (void*)this % refNum % _receivers.size());
+                       (void*)this % refNum % _requesters.size());
             throw Bug("Executive::markCompleted() invalid refNum");
         }
         _statuses[refNum]->report(ExecStatus::RESULT_ERROR, 1);
