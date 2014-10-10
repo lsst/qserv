@@ -113,7 +113,6 @@ private:
     MsgState _state; ///< Received message state
     boost::shared_ptr<proto::WorkerResponse> _response; ///< protobufs msg buf
     bool _flushed; ///< flushed to InfileMerger?
-
 };
 
 }}} // namespace lsst::qserv::qdisp
