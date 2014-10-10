@@ -44,6 +44,12 @@ namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
+/// MergingRequester is an implementation of a ResponseRequester that implements
+/// czar-side knowledge of the worker's response protocol. It leverages XrdSsi's
+/// API by pulling the exact number of bytes needed for the next logical
+/// fragment instead of performing buffer size and offset
+/// management. Fully-constructed protocol messages are then passed towards an
+/// InfileMerger.
 class MergingRequester : public qdisp::ResponseRequester {
 public:
     /// Possible MergingRequester message state
