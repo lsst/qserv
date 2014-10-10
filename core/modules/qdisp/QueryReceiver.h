@@ -69,7 +69,7 @@ public:
     virtual std::ostream& print(std::ostream& os) const = 0;
 
     /// @return an error code and description
-    Error getError() const { return Error(); };
+    virtual Error getError() const { return Error(); };
 
     /// Set a function to be called that forcibly cancels the QueryReceiver
     /// process. The buffer filler should call this function so that it can be
@@ -80,13 +80,16 @@ public:
 
     /// Cancel operations on the Receiver. This calls _cancelFunc and propagates
     /// cancellation towards the buffer-filler.
-    void cancel() {
+    /// Default behavior invokes registered function.
+    virtual void cancel() { _callCancel(); }
+
+protected:
+    /// Call _cancelFunc.
+    void _callCancel() {
         if(_cancelFunc) {
             (*_cancelFunc)();
         }
     }
-
-protected:
     boost::shared_ptr<CancelFunc> _cancelFunc;
 
 };

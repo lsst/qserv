@@ -33,10 +33,4 @@ namespace rproc {
 mysql::RowBuffer::Ptr newProtoRowBuffer(proto::Result& r);
 
 }}} // namespace lsst::qserv::rproc
-
-// Local Variables:
-// mode:c++
-// comment-column:0
-// End:
-
 #endif // LSST_QSERV_RPROC_PROTOROWBUFFER_H

@@ -46,6 +46,7 @@
 #include "lsst/log/Log.h"
 
 // Local headers
+#include "global/Bug.h"
 #include "global/ResourceUnit.h"
 #include "log/msgCode.h"
 #include "qdisp/MessageStore.h"
@@ -224,7 +225,7 @@ void Executive::markCompleted(int refNum, bool success) {
         } else {
             LOGF_ERROR("Executive(%1%) failed to find tracked id=%2% size=%3%" %
                        (void*)this % refNum % _receivers.size());
-            assert(i != _receivers.end());
+            throw Bug("Executive::markCompleted() invalid refNum");
         }
         _statuses[refNum]->report(ExecStatus::RESULT_ERROR, 1);
         LOGF_ERROR("Executive: error executing refnum=%1%. Code=%2% %3%" %
@@ -238,13 +239,29 @@ void Executive::markCompleted(int refNum, bool success) {
 }
 
 void Executive::requestSquash(int refNum) {
-    boost::lock_guard<boost::mutex> lock(_receiversMutex);
-    ReceiverMap::iterator i = _receivers.find(refNum);
-    if(i != _receivers.end()) {
-        QueryReceiver::Error e = i->second->getError();
+    ReceiverPtr toSquash;
+    bool needToWarn = false;
+    QueryReceiver::Error e;
+    {
+        boost::lock_guard<boost::mutex> lock(_receiversMutex);
+        ReceiverMap::iterator i = _receivers.find(refNum);
+        if(i != _receivers.end()) {
+            QueryReceiver::Error e = i->second->getError();
+            if(e.code) {
+                needToWarn = true;
+            } else {
+                toSquash = i->second; // Remember which one to squash
+            }
+        } else {
+            throw Bug("Executive::requestSquash() with invalid refNum");
+        }
+    }
+    if(needToWarn) {
         LOGF_WARN("Warning, requestSquash(%1%), but %2% has already failed (%3%, %4%)." % refNum % refNum % e.code % e.msg);
-    } else {
-        i->second->cancel();
+    }
+
+    if(toSquash) { // Squash outside of the mutex
+        toSquash->cancel();
     }
 }
 
