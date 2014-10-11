@@ -38,6 +38,7 @@
 #include <sstream>
 
 // Third-party headers
+#include "boost/format.hpp"
 #include "XrdSsi/XrdSsiErrInfo.hh"
 #include "XrdSsi/XrdSsiService.hh" // Resource
 #include "XrdOuc/XrdOucTrace.hh"
@@ -196,14 +197,18 @@ void Executive::markCompleted(int refNum, bool success) {
     ResponseRequester::Error e;
     LOGF_INFO("Executive::markCompletion(%1%,%2%)" % refNum % success);
     if(!success) {
-        boost::lock_guard<boost::mutex> lock(_requestersMutex);
-        RequesterMap::iterator i = _requesters.find(refNum);
-        if(i != _requesters.end()) {
-            e = i->second->getError();
-        } else {
-            LOGF_ERROR("Executive(%1%) failed to find tracked id=%2% size=%3%" %
-                       (void*)this % refNum % _requesters.size());
-            throw Bug("Executive::markCompleted() invalid refNum");
+        {
+            boost::lock_guard<boost::mutex> lock(_requestersMutex);
+            RequesterMap::iterator i = _requesters.find(refNum);
+            if(i != _requesters.end()) {
+                e = i->second->getError();
+            } else {
+                std::string msg =
+                    (boost::format("Executive::markCompleted(%1%) "
+                                   "failed to find tracked id=%2% size=%3%")
+                     % (void*)this % refNum % _requesters.size()).str();
+                throw Bug(msg);
+            }
         }
         _statuses[refNum]->report(ExecStatus::RESULT_ERROR, 1);
         LOGF_ERROR("Executive: error executing refnum=%1%. Code=%2% %3%" %
