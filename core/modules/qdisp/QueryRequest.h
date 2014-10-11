@@ -37,7 +37,6 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 class ExecStatus;
-class QueryReceiver;
 class ResponseRequester;
 
 /// Bad response received from xrootd API
@@ -65,8 +64,6 @@ public:
     }
     std::string s;
 };
-
-const int QueryRequest_receiveBufferSize = 1024*1024; // 1MB receive buffer
 
 /// A client implementation of an XrdSsiRequest that adapts qserv's executing
 /// queries to the XrdSsi API.

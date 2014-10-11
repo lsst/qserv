@@ -38,7 +38,6 @@ namespace qserv {
 namespace qdisp {
 // Local forward declarations
 class ExecStatus;
-class QueryReceiver;
 class QueryRequest;
 class ResponseRequester;
 

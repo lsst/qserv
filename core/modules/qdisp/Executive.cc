@@ -50,7 +50,6 @@
 #include "global/ResourceUnit.h"
 #include "log/msgCode.h"
 #include "qdisp/MessageStore.h"
-#include "qdisp/MergeAdapter.h"
 #include "qdisp/QueryResource.h"
 #include "qdisp/ResponseRequester.h"
 

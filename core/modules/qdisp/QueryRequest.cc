@@ -38,7 +38,6 @@
 
 // Qserv headers
 #include "qdisp/ExecStatus.h"
-#include "qdisp/QueryReceiver.h"
 #include "qdisp/ResponseRequester.h"
 
 namespace lsst {
@@ -145,19 +144,6 @@ bool QueryRequest::_importStream() {
     std::vector<char>& buffer = _requester->nextBuffer();
     LOGF_INFO("GetResponseData with buffer of %1%" % _bufferRemain);
     retrieveInitiated = GetResponseData(&buffer[0], buffer.size());
-#if 0
-    } else {
-        _resetBuffer();
-        LOGF_INFO("GetResponseData with buffer of %1%" % _bufferRemain);
-    // TODO: When the new result-protocol is ready, re-implement this to invert
-    // the control scheme to reduce the amount of buffer
-    // (impedance) matching done. This should be possible because
-    // GetResponseData's request size is more strict than expected--the
-    // subsequent ProcessResponseData() call will provide exactly the requested
-    // amount of bytes, unless no more bytes available from the sender.
-        retrieveInitiated = GetResponseData(_cursor, _bufferRemain); // Step 6
-    }
-#endif
     LOGF_INFO("Initiated request %1%" % (retrieveInitiated ? "ok" : "err"));
     if(!retrieveInitiated) {
         _status.report(ExecStatus::RESPONSE_DATA_ERROR);
@@ -215,50 +201,7 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     }
 
 }
-#if 0
-void QueryRequest::_processBuffered(char *buff, int blen, bool last) {
-    if(blen > 0) {
-        _cursor = _cursor + blen;
-        _bufferRemain = _bufferRemain - blen;
-        // Consider flushing when _bufferRemain is small, but non-zero.
-        if(_bufferRemain == 0) {
-            bool flushOk = _receiver->flush(_bufferSize, last);
-            if(flushOk) {
-                if(last) {
-                    _status.report(ExecStatus::COMPLETE);
-                } else {
-                    _status.report(ExecStatus::MERGE_OK);
-                }
-            } else {
-                _status.report(ExecStatus::MERGE_ERROR);
-            }
-            _resetBuffer();
-        }
-        if(!last) {
-            bool askAgainOk = GetResponseData(_cursor, _bufferRemain);
-            if(!askAgainOk) {
-                _errorFinish();
-                return;
-            }
-        }
-    }
-    if(last) {
-        LOGF_INFO("Response retrieved, bytes=%1%" % blen);
-        if(!_receiver->flush(blen, last)) {
-            _status.report(ExecStatus::RESULT_ERROR);
-        } else {
-            _status.report(ExecStatus::RESPONSE_DONE);
-        }
-        _finish();
-    } else if(blen == 0) {
-        std::string reason = "Response error, !last and  bufLen == 0";
-        LOGF_ERROR("%1%" % reason);
-        _status.report(ExecStatus::RESPONSE_DATA_ERROR, -1, reason);
-    } else {
-        LOGF_INFO("Response recv (wait) bytes=%1%" % blen);
-    }
-}
-#endif
+
 /// Finalize under error conditions and retry or report completion
 void QueryRequest::_errorFinish() {
     LOGF_DEBUG("Error finish");

@@ -64,12 +64,14 @@
 // System headers
 #include <cassert>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
 #include "ccontrol/TmpTableName.h"
-#include "ccontrol/ResultReceiver.h"
 #include "ccontrol/UserQueryError.h"
 #include "global/constants.h"
 #include "global/MsgReceiver.h"

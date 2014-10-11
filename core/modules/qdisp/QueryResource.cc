@@ -43,7 +43,6 @@
 #include "qdisp/ExecStatus.h"
 #include "qdisp/QueryRequest.h"
 #include "qdisp/QueryResource.h"
-#include "qdisp/QueryReceiver.h"
 #include "qdisp/ResponseRequester.h"
 
 namespace lsst {
