@@ -2,7 +2,7 @@
 
 # LSST Data Management System
 # Copyright 2013-2014 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -10,138 +10,276 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
 """
-Database Watcher - runs on each Qserv node and maintains Qserv databases (creates databases, deletes databases, creates tables, drops tables etc).
+Database Watcher - runs on each Qserv node and maintains Qserv databases
+(creates databases, deletes databases, creates tables, drops tables etc).
+
+This script will be a long-running daemon which watches the state of
+metadata database (currently works with zookeeper only) and makes sure
+that state of the local mysql server correctly reflects the state of
+metadata by creating/deleting databases and tables.
+
+The implementation is based on kazoo watchers. There are several watchers
+involved:
+- session watcher which re-starts everyhting when zookeeper disconnects
+  and then re-connects again (disconnects loose regular watchers)
+- "root exists" watcher which is called when root node (/DBS) is created
+  or destroyed. It is needed to restart other watchers in case root node
+  disappears for some reason (which causes loss of children watchers)
+- "root children" watcher which is called when root node children are
+  added or removed, it starts database watcher with each new child
+- database watchers observe state of the database nodes (/DBS<DBNAME>)
+  by reading data associated with the node and create/delete
+  corresponding database instance in mysql.
 
 @author  Jacek Becla, SLAC
 
-
 Known issues and todos:
- * need to go through kvInterface interface, now bypassing it in two places:
-    - @self._interface._zk.DataWatch
-    - @self._interface._zk.ChildrenWatch
- * considering implementing garbage collection for threads corresponding to
-   deleted databases.
- * If all metadata is deleted when the watcher is running, the watcher will die
-   with: ERROR:kazoo.handlers.threading:Exception in worker queue thread.
-   To reproduce, just run (when watcher is running): 
-       echo "drop everything;" | ./admin/bin/qserv-admin.py
+ * need to go through kvInterface interface, now bypassing it
 """
 
 import logging
 from optparse import OptionParser
 import os
-import time
-import threading
+import Queue
 
+from kazoo.client import KazooState
+from kazoo.protocol.states import EventType, WatchedEvent
+from kazoo.exceptions import NoNodeError, KazooException
 from lsst.qserv.css.kvInterface import KvInterface
 from lsst.db.db import Db, DbException
 
 
-class OneDbWatcher(threading.Thread):
-    """
-    This class implements a database watcher. Each instance is responsible for
-    creating / dropping one database. It is relying on Zookeeper's DataWatch.
-    It runs in a dedicated thread.
-    """
+####################################################################################
 
-    def __init__(self, kvI, db, pathToWatch):
-        """
-        Initialize shared state.
-        """
-        self._kvI = kvI
-        self._db = db
-        self._path = pathToWatch
-        self._dbName = pathToWatch[11:] # skip '/DBS/'
-        self._data = None
-        self._logger = logging.getLogger("WATCHER.DB_%s" % self._dbName)
-        threading.Thread.__init__(self)
+class CreateDatabase(object):
+    """
+    Action class which is responsible for creating databases.
 
-    def run(self):
+    Instances of this class will be added to the action queue.
+    """
+    def __init__(self, dbname):
+        self._dbname = dbname
+
+    def __call__(self, db):
         """
-        Watch for changes, and act upon them: create/drop databases.
+        Execute an action. Method takes database instance as an argument.
         """
-        @self._kvI._zk.DataWatch(self._path, allow_missing_node=True)
-        def my_watcher_func(newData, stat):
-            if newData == self._data: return
-            if newData is None and stat is None:
-                self._logger.info(
-                    "Path %s deleted. (was %s)" % (self._path, self._data))
-                self._logger.info("Dropping my database")
-                self._db.dropDb(self._dbName)
-            elif newData == 'PENDING':
-                    self._logger.info("Meta not initialized yet for my database.")
-            elif newData == 'READY':
-                self._logger.info("Creating my database")
-                self._db.createDb(self._dbName, mayExist=True)
-            else:
-                self._logger.error("Unsupported status '%s' for my db." % newData)
-            self._data = newData
+        logging.info('Creating database %s', self._dbname)
+        db.createDb(self._dbname, mayExist=True)
 
 ####################################################################################
-class AllDbsWatcher(threading.Thread):
-    """
-    This class implements watcher that watches for new znodes that represent
-    databases. A new OnedbWatcher is setup for each new znode that is creeated. 
-    If ensures only one watcher runs, even if a database is created/deleted/created
-    again. It currently does NOT do any garbage collection of threads for deleted
-    databases. It is relying on Zookeeper's ChildrenWatch. It runs in a dedicated
-    thread.
-    """
 
-    def __init__(self, kvI, db):
-        """
-        Initialize shared data.
-        """
-        self._kvI = kvI
-        self._db = db
-        self._path =  "/DBS"
-        self._children = []
-        self._watchedDbs = [] # registry of all watched databases
-        # make sure the path exists
-        if not kvI.exists(self._path): kvI.create(self._path)
-        self._logger = logging.getLogger("WATCHER.ALLDBS")
-        threading.Thread.__init__(self)
+class DropDatabase(object):
+    """
+    Action class which is responsible for deleting databases.
 
-    def run(self):
+    Instances of this class will be added to the action queue.
+    """
+    def __init__(self, dbname):
+        self._dbname = dbname
+
+    def __call__(self, db):
         """
-        Watch for new/deleted nodes, and act upon them: setup new watcher for each
-        new database.
+        Execute an action. Method takes database instance as an argument.
         """
-        @self._kvI._zk.ChildrenWatch(self._path)
-        def my_watcher_func(children):
-            # look for new entries
-            for val in children:
-                if not val in self._children:
-                    self._logger.info("node '%s' was added" % val)
-                    # set data watcher for this node (unless it is already up)
-                    p2 = "%s/%s" % (self._path, val)
-                    if p2 not in self._watchedDbs:
-                        self._logger.info("Setting a new watcher for '%s'" % p2)
-                        w = OneDbWatcher(self._kvI, self._db, p2)
-                        w.start()
-                        self._watchedDbs.append(p2)
-                    else:
-                        self._logger.debug("Already have a watcher for '%s'" % p2)
-                    self._children.append(val)
-            # look for entries that were removed
-            for val in self._children:
-                if not val in children:
-                    self._logger.info("node '%s' was removed" % val)
-                    self._children.remove(val)
+        logging.info('Dropping database %s', self._dbname)
+        db.dropDb(self._dbname)
 
 ####################################################################################
-class SimpleOptionParser:
+
+class SessionListener(object):
+    """ Class defining callable watcher for kazoo session callbacks """
+
+    def __init__(self, zk, rootExists, node):
+        self._zk = zk
+        self._rootExists = rootExists
+        self._node = node
+        self._logger = logging.getLogger("WATCHER.SessionListener")
+
+    def __call__(self, state):
+        if state == KazooState.LOST:
+            self._logger.warn("zookeeper session is lost")
+        elif state == KazooState.SUSPENDED:
+            self._logger.warn("zookeeper session is suspended")
+        else:
+            self._logger.info("zookeeper session is connected")
+
+            # we need to restart whole shebang again, for that fake
+            # the CREATED event
+            event = WatchedEvent(EventType.CREATED, state, self._node)
+            self._rootExists(event)
+
+####################################################################################
+
+class RootExistsListener(object):
+    """ Class defining callable watcher for root node (/DBS) """
+
+    def __init__(self, zk, rootChildren):
+        self._zk = zk
+        self._rootChildren = rootChildren
+        self._logger = logging.getLogger("WATCHER.RootExistsListener")
+
+    def __call__(self, event):
+
+        self._logger.info("event: %s", event)
+        if event.type == EventType.CREATED:
+
+            # the node has been created, need to start watching it
+            # for new children, use fake event for that
+            self._rootChildren(WatchedEvent(EventType.CHILD, event.state, event.path))
+            wexists = True
+
+        elif event.type == EventType.DELETED:
+            # root node being deleted is something out of ordinary,
+            # should not normally happen
+            wexists = False
+
+        elif event.type == EventType.CHANGED:
+            # root node being deleted is something out of ordinary,
+            # should not normally happen
+            wexists = True
+
+        # get current state and re-register callback, note that node state
+        # could have changed between callback being triggered and this point
+        exists = self._zk.retry(self._zk.exists, event.path, self)
+        if exists and not wexists:
+            # if current state is different from triggered state then do children
+            self._rootChildren(WatchedEvent(EventType.CHILD, event.state, event.path))
+
+####################################################################################
+
+class RootChildrenListener(object):
+    """ Class defining callable watcher for root node (/DBS) """
+
+    def __init__(self, zk, queue):
+        self._zk = zk
+        self._queue = queue
+        self._logger = logging.getLogger("WATCHER.RootChildrenListener")
+        self._children = {}
+
+    def __call__(self, event):
+        self._logger.info("event: %s", event)
+
+        if event.type == EventType.DELETED:
+            # This is not supposed to happen in normal life but have
+            # to handle it anyways
+            children = []
+        else:
+            # get current set of children and re-register callback.
+            # could it fail if the node is deleted simultaneously?
+            try:
+                children = self._zk.get_children(event.path, self)
+            except NoNodeError:
+                self._logger.info("node disappeared")
+                children = []
+            except KazooException:
+                # unexpected exception, this is problematic as watcher is likely
+                # not registered if exception happened. We could retry but this could
+                # cause delays which are potential problems in callbacks. For now just
+                # return like nothing had happened
+                self._logger.warning("exception in get_children(), call, callback is likely lost",
+                                     exc_info=True)
+                return
+
+        # filter out bad names
+        children = set(RootChildrenListener.filterNodes(children))
+
+        # look at the new list, if there is anything new there make a watcher for it
+        for node in children:
+            if node not in self._children:
+
+                path = event.path + '/' +node
+                self._logger.info("create ChildrenDataListener watcher for %s", path)
+                watcher = ChildrenDataListener(self._zk, self._queue)
+                self._children[node] = watcher
+
+                # make it start its own watching by faking a CREATED event
+                watcher(WatchedEvent(EventType.CREATED, event.state, path))
+
+        # remove any watchers that disappeared
+        old = set(self._children.keys())
+        for node in old-children:
+            del self._children[node]
+
+    @staticmethod
+    def filterNodes(nodes):
+        """Remove special names from the node list"""
+        for node in nodes:
+            if node.endswith(".LOCK"):
+                continue
+            yield node
+
+####################################################################################
+
+class ChildrenDataListener(object):
+    """ Class defining callable watcher for database nodes (/DBS/<DBNAME>) """
+
+    def __init__(self, zk, queue):
+        self._zk = zk
+        self._queue = queue
+        self._logger = logging.getLogger("WATCHER.ChildrenDataListener")
+        self._dbExists = None      # one of (True, False, None)
+
+    def __call__(self, event):
+        self._logger.info("event: %s", event)
+
+        # logic is screwed up here, thanks to kazoo one-time watchers
+        if event.type == EventType.DELETED:
+            # ternary logic here (True, False, None)
+            if self._dbExists != False:
+                self._logger.info("Path %s deleted", event.path)
+                dbname = event.path.split('/')[-1]
+                self._logger.info("Add action to drop database %s", dbname)
+                self._queue.put(DropDatabase(dbname))
+                self._dbExists = False
+
+        # check node state (its data), create database if needed,
+        # note that node can disappear at any moment
+        try:
+            data, dummy_stat = self._zk.get(event.path, self)
+
+            # ternary logic for _dbExists here (True, False, None)
+            if data == 'READY' and self._dbExists == True: return
+
+            dbname = event.path.split('/')[-1]
+            self._logger.info("Add action to create database %s", dbname)
+            self._queue.put(CreateDatabase(dbname))
+            self._dbExists = True
+
+        except NoNodeError:
+
+            # ternary logic here (True, False, None)
+            if self._dbExists == False: return
+
+            dbname = event.path.split('/')[-1]
+            self._logger.info("Path %s deleted", event.path)
+            self._logger.info("Add action to drop database %s", dbname)
+            self._queue.put(DropDatabase(dbname))
+            self._dbExists = False
+
+        except KazooException:
+
+            # unexpected exception, this is problematic as watcher is likely
+            # not registered if exception happened. We could retry but this could
+            # cause delays which are potential problems in callbacks. For now just
+            # return like nothing had happened
+            self._logger.warning("exception in get(), call, callback is likely lost",
+                                 exc_info=True)
+            return
+
+####################################################################################
+class SimpleOptionParser(object):
     """
     Parse command line options.
     """
@@ -201,11 +339,11 @@ OPTIONS
         parser.add_option("-c", "--connection", dest="connI")
         parser.add_option("-a", "--credFile",   dest="credF")
 
-        (options, args) = parser.parse_args()
-        if options.verbT: 
+        (options, dummy_args) = parser.parse_args()
+        if options.verbT:
             self._verbosity = int(options.verbT)
             if   self._verbosity > 50: self._verbosity = 50
-            elif self._verbosity <  0: self._verbosity = 0
+            elif self._verbosity < 0: self._verbosity = 0
         if options.logFN: self._logFN = options.logFN
         if options.connI: self._connI = options.connI
         if options.credF: self._credF = options.credF
@@ -220,37 +358,59 @@ def main():
     if p.logFileName:
         logging.basicConfig(
             filename=p.logFileName,
-            format='%(asctime)s %(name)s %(levelname)s: %(message)s', 
-            datefmt='%m/%d/%Y %I:%M:%S', 
+            format='%(asctime)s %(name)s %(levelname)s: %(message)s',
+            datefmt='%m/%d/%Y %I:%M:%S',
             level=p.verbosity)
     else:
         logging.basicConfig(
-            format='%(asctime)s %(name)s %(levelname)s: %(message)s', 
-            datefmt='%m/%d/%Y %I:%M:%S', 
+            format='%(asctime)s %(name)s %(levelname)s: %(message)s',
+            datefmt='%m/%d/%Y %I:%M:%S',
             level=p.verbosity)
 
     # disable kazoo logging if requested
     kL = os.getenv('KAZOO_LOGGING')
     if kL: logging.getLogger("kazoo.client").setLevel(int(kL))
 
-    # initialize CSS
-    kvI = KvInterface(p.connInfo)
-
     # initialize database connection, and connect (to catch issues early)
     db = Db(read_default_file=p.credFile)
     try:
         db.connect()
     except DbException as e:
-        print e.getErrMgs()
+        logging.error("%s", e.getErrMgs())
         return
 
-    # setup the thread watching
-    try:
-        w1 = AllDbsWatcher(kvI, db)
-        w1.start()
-        while True: time.sleep(60)
-    except(KeyboardInterrupt, SystemExit):
-        print ""
+    # initialize CSS
+    kvI = KvInterface(p.connInfo)
+
+    # we only need Kazoo client instance
+    zk = kvI._zk
+
+    # queue used by callbacks to push actions into it
+    queue = Queue.Queue()
+
+    root = '/DBS'
+    rootChildrenListener = RootChildrenListener(zk, queue)
+    rootExistsListener = RootExistsListener(zk, rootChildrenListener)
+
+    # add session watcher to handle ZK disappearing/reappearing
+    session_listener = SessionListener(zk, rootExistsListener, root)
+    zk.add_listener(session_listener)
+
+    # start whole business, for that we fake connected event
+    session_listener(KazooState.CONNECTED)
+
+    while True:
+        # get next action from a queue and execute it
+        try:
+            # timeout is needed to be able to terminate it with Ctrl-C
+            action = queue.get(False, 1)
+        except Queue.Empty:
+            continue
+        try:
+            action(db)
+        except Exception:
+            logging.error('exception while executing database action', exc_info=True)
+        queue.task_done()
 
 if __name__ == "__main__":
     main()
