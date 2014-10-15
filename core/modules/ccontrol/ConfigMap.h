@@ -93,7 +93,7 @@ private:
         }
     }
 private:
-    StringMap _m;
+    StringMap const& _m;
 };
 
 }}} // namespace lsst::qserv:ccontrol
