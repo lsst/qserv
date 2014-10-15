@@ -89,7 +89,8 @@ virtual     MatchTableParams getMatchTableParams(std::string const& dbName,
 private:
     Facade(std::string const& connInfo, int timeout_msec);
     Facade(std::string const& connInfo, int timeout_msec, std::string const& prefix);
-    Facade(std::istream& mapStream);
+    explicit Facade(std::istream& mapStream);
+    explicit Facade(boost::shared_ptr<KvInterfaceImplMem> kv);
 
     void _throwIfNotDbExists(std::string const& dbName) const;
     void _throwIfNotTbExists(std::string const& dbName,
@@ -108,6 +109,8 @@ private:
 
 private:
     boost::shared_ptr<KvInterface> _kvI;
+protected:
+    Facade() {}
     std::string _prefix; // optional prefix, for isolating tests from production
 };
 

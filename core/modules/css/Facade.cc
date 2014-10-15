@@ -46,6 +46,7 @@
 #include "css/CssError.h"
 #include "css/KvInterfaceImplMem.h"
 #include "css/KvInterfaceImplZoo.h"
+#include "global/stringTypes.h"
 
 using std::endl;
 using std::map;
@@ -86,7 +87,7 @@ Facade::Facade(string const& connInfo, int timeout_msec, string const& prefix) :
   *                  ./admin/bin/qserv-admin.py
   */
 Facade::Facade(std::istream& mapStream) {
-    _kvI.reset(new KvInterfaceImplMem(mapStream))
+    _kvI.reset(new KvInterfaceImplMem(mapStream));
 }
 
 Facade::~Facade() {
@@ -487,7 +488,7 @@ public:
     }
     virtual bool containsTable(std::string const& dbName,
                                std::string const& tableName) const {
-        if (!containsDb()) {
+        if (!containsDb(dbName)) {
             throw NoSuchDb(dbName);
         }
         if (tableName.empty()) {
@@ -515,7 +516,7 @@ public:
                                    std::string const& tableName) const {
         string p = _prefix + "/DBS/" + dbName + "/TABLES/" +
             tableName + "/partitioning/" + "subChunks";
-        Map::const_iterator m = _map.find(p);
+        StringMap::const_iterator m = _map.find(p);
         bool ret = (m != _map.end()) && (m->second == "1");
         LOGF_INFO("*** %1%.%2% %3% subChunked."
                   % dbName % tableName % (ret ? "is" : "is NOT"));
@@ -527,8 +528,8 @@ public:
         if (!containsTable(dbName, tableName)) {
                 throw NoSuchTable(dbName + "." + tableName);
         }
-        string k = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName + "/match";
-        Map::const_iterator m = _map.find(p);
+        string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName + "/match";
+        StringMap::const_iterator m = _map.find(p);
         bool ret = (m != _map.end()) && (m->second == "1");
         LOGF_INFO("%1%.%2% is %3% a match table"
                   % dbName % tableName % (ret ? "" : "not "));
@@ -559,9 +560,13 @@ private:
 #endif
 };
 
-boost::shared_ptr<Facade> createCacheFacade(boost::shared_ptr<KvInterfaceImplMem> kv) {
-    boost::shared_ptr<css::Facade> facade(new Facade());
-    facade->_kvI = kv;
+Facade::Facade(boost::shared_ptr<KvInterfaceImplMem> kv)
+    : _kvI(kv) {
+}
+
+boost::shared_ptr<Facade>
+FacadeFactory::createCacheFacade(boost::shared_ptr<KvInterfaceImplMem> kv) {
+    boost::shared_ptr<css::Facade> facade(new Facade(kv));
     return facade;
 }
 }}} // namespace lsst::qserv::css

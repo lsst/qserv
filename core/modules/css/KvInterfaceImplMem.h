@@ -38,6 +38,9 @@
 #include <string>
 #include <vector>
 
+// Third-party
+#include "boost/shared_ptr.hpp"
+
 // Local headers
 #include "css/KvInterface.h"
 
@@ -57,6 +60,7 @@ public:
     virtual std::vector<std::string> getChildren(std::string const& key);
     virtual void deleteKey(std::string const& key);
 
+    boost::shared_ptr<KvInterfaceImplMem> clone();
 protected:
     std::string _get(std::string const& key,
                      std::string const& defaultValue,
