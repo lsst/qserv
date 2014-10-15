@@ -468,6 +468,97 @@ FacadeFactory::createZooTestFacade(string const& connInfo,
     return cssFPtr;
 }
 
+class FacadeSnapshot : public Facade {
+public:
+    StringMap _map; // Path --> key
+
+    FacadeSnapshot() {
+    }
+
+    virtual bool containsDb(std::string const& dbName) const {
+        if (dbName.empty()) {
+            LOGF_INFO("Empty database name passed.");
+            throw NoSuchDb("<empty>");
+        }
+        string p = _prefix + "/DBS/" + dbName;
+        bool ret =  (_map.find(p) != _map.end());
+        LOGF_INFO("*** containsDb(%1%): %2%" % dbName % ret);
+        return ret;
+    }
+    virtual bool containsTable(std::string const& dbName,
+                               std::string const& tableName) const {
+        if (!containsDb()) {
+            throw NoSuchDb(dbName);
+        }
+        if (tableName.empty()) {
+            LOGF_INFO("Empty table name passed.");
+            throw NoSuchTable("<empty>");
+        }
+        string p = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
+        bool ret =  (_map.find(p) != _map.end());
+        LOGF_INFO("*** containsTable returns: %1%" % ret);
+        return ret;
+    }
+    virtual bool tableIsChunked(std::string const& dbName,
+                                std::string const& tableName) const {
+        if (!containsTable(dbName, tableName)) {
+            throw NoSuchTable(dbName + "." + tableName);
+        }
+        string p = _prefix + "/DBS/" + dbName + "/TABLES/" +
+               tableName + "/partitioning";
+        bool ret =  (_map.find(p) != _map.end());
+        LOGF_INFO("*** %1%.%2% %3% chunked."
+                  % dbName % tableName % (ret?"is":"is NOT"));
+        return ret;
+    }
+    virtual bool tableIsSubChunked(std::string const& dbName,
+                                   std::string const& tableName) const {
+        string p = _prefix + "/DBS/" + dbName + "/TABLES/" +
+            tableName + "/partitioning/" + "subChunks";
+        Map::const_iterator m = _map.find(p);
+        bool ret = (m != _map.end()) && (m->second == "1");
+        LOGF_INFO("*** %1%.%2% %3% subChunked."
+                  % dbName % tableName % (ret ? "is" : "is NOT"));
+        return ret;
+    }
+    virtual bool isMatchTable(std::string const& dbName,
+                              std::string const& tableName) const {
+        LOGF_INFO("isMatchTable(%1%.%2%)" % dbName % tableName);
+        if (!containsTable(dbName, tableName)) {
+                throw NoSuchTable(dbName + "." + tableName);
+        }
+        string k = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName + "/match";
+        Map::const_iterator m = _map.find(p);
+        bool ret = (m != _map.end()) && (m->second == "1");
+        LOGF_INFO("%1%.%2% is %3% a match table"
+                  % dbName % tableName % (ret ? "" : "not "));
+            return ret;
+    }
+#if 0
+    virtual std::vector<std::string> getAllowedDbs() const {
+    };
+    virtual std::vector<std::string> getChunkedTables(std::string const& dbName) const;
+    virtual std::vector<std::string> getSubChunkedTables(std::string const& dbName) const;
+    virtual std::vector<std::string> getPartitionCols(std::string const& dbName,
+                                                      std::string const& tableName) const;
+    virtual int getChunkLevel(std::string const& dbName,
+                              std::string const& tableName) const;
+    virtual std::string getDirTable(std::string const& dbName,
+                                    std::string const& tableName) const;
+    virtual std::string getDirColName(std::string const& dbName,
+                                      std::string const& tableName) const;
+    virtual std::vector<std::string> getSecIndexColNames(std::string const& dbName,
+                                                         std::string const& tableName) const;
+    virtual StripingParams getDbStriping(std::string const& dbName) const;
+    virtual double getOverlap(std::string const& dbName) const;
+    virtual MatchTableParams getMatchTableParams(std::string const& dbName,
+                                                 std::string const& tableName) const;
+
+
+private:
+#endif
+};
+
 boost::shared_ptr<Facade> createCacheFacade(boost::shared_ptr<KvInterfaceImplMem> kv) {
     boost::shared_ptr<css::Facade> facade(new Facade());
     facade->_kvI = kv;

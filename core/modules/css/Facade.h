@@ -55,37 +55,36 @@ class KvInterfaceImplMem;
 /** The class stores Qserv-specific metadata and state information from the
     Central State System.
  */
-
 class Facade {
 public:
-    ~Facade();
+virtual     ~Facade();
 
     // accessors
-    bool containsDb(std::string const& dbName) const;
-    bool containsTable(std::string const& dbName,
+virtual bool containsDb(std::string const& dbName) const;
+virtual     bool containsTable(std::string const& dbName,
                        std::string const& tableName) const;
-    bool tableIsChunked(std::string const& dbName,
+virtual     bool tableIsChunked(std::string const& dbName,
                         std::string const& tableName) const;
-    bool tableIsSubChunked(std::string const& dbName,
+virtual     bool tableIsSubChunked(std::string const& dbName,
                            std::string const& tableName) const;
-    bool isMatchTable(std::string const& dbName,
+virtual     bool isMatchTable(std::string const& dbName,
                       std::string const& tableName) const;
-    std::vector<std::string> getAllowedDbs() const;
-    std::vector<std::string> getChunkedTables(std::string const& dbName) const;
-    std::vector<std::string> getSubChunkedTables(std::string const& dbName) const;
-    std::vector<std::string> getPartitionCols(std::string const& dbName,
+virtual     std::vector<std::string> getAllowedDbs() const;
+virtual     std::vector<std::string> getChunkedTables(std::string const& dbName) const;
+virtual     std::vector<std::string> getSubChunkedTables(std::string const& dbName) const;
+virtual     std::vector<std::string> getPartitionCols(std::string const& dbName,
                                               std::string const& tableName) const;
-    int getChunkLevel(std::string const& dbName,
+virtual     int getChunkLevel(std::string const& dbName,
                       std::string const& tableName) const;
-    std::string getDirTable(std::string const& dbName,
+virtual     std::string getDirTable(std::string const& dbName,
                             std::string const& tableName) const;
-    std::string getDirColName(std::string const& dbName,
+virtual     std::string getDirColName(std::string const& dbName,
                               std::string const& tableName) const;
-    std::vector<std::string> getSecIndexColNames(std::string const& dbName,
+virtual     std::vector<std::string> getSecIndexColNames(std::string const& dbName,
                                                  std::string const& tableName) const;
-    StripingParams getDbStriping(std::string const& dbName) const;
-    double getOverlap(std::string const& dbName) const;
-    MatchTableParams getMatchTableParams(std::string const& dbName,
+virtual     StripingParams getDbStriping(std::string const& dbName) const;
+virtual     double getOverlap(std::string const& dbName) const;
+virtual     MatchTableParams getMatchTableParams(std::string const& dbName,
                                          std::string const& tableName) const;
 private:
     Facade(std::string const& connInfo, int timeout_msec);
