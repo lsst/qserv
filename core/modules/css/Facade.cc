@@ -63,7 +63,7 @@ namespace css {
   * @param timeout  connection timeout in msec.
   */
 Facade::Facade(string const& connInfo, int timeout_msec) {
-    _kvI = new KvInterfaceImplZoo(connInfo, timeout_msec);
+    _kvI.reset(new KvInterfaceImplZoo(connInfo, timeout_msec));
 }
 
 /** Creates a new Facade over metadata in a Zookeeper key-value store.
@@ -77,7 +77,7 @@ Facade::Facade(string const& connInfo, int timeout_msec) {
   */
 Facade::Facade(string const& connInfo, int timeout_msec, string const& prefix) :
     _prefix(prefix) {
-    _kvI = new KvInterfaceImplZoo(connInfo, timeout_msec);
+    _kvI.reset(new KvInterfaceImplZoo(connInfo, timeout_msec));
 }
 
 /** Creates a new Facade over metadata in an in-memory key-value store.
@@ -86,11 +86,10 @@ Facade::Facade(string const& connInfo, int timeout_msec, string const& prefix) :
   *                  ./admin/bin/qserv-admin.py
   */
 Facade::Facade(std::istream& mapStream) {
-    _kvI = new KvInterfaceImplMem(mapStream);
+    _kvI.reset(new KvInterfaceImplMem(mapStream))
 }
 
 Facade::~Facade() {
-    delete _kvI;
 }
 
 /** Returns true if the given database exists.
@@ -469,4 +468,9 @@ FacadeFactory::createZooTestFacade(string const& connInfo,
     return cssFPtr;
 }
 
+boost::shared_ptr<Facade> createCacheFacade(boost::shared_ptr<KvInterfaceImplMem> kv) {
+    boost::shared_ptr<css::Facade> facade(new Facade());
+    facade->_kvI = kv;
+    return facade;
+}
 }}} // namespace lsst::qserv::css

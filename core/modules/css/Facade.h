@@ -50,6 +50,7 @@ namespace qserv {
 namespace css {
 
 class KvInterface; // forward declaration
+class KvInterfaceImplMem;
 
 /** The class stores Qserv-specific metadata and state information from the
     Central State System.
@@ -107,7 +108,7 @@ private:
     friend class FacadeFactory;
 
 private:
-    KvInterface* _kvI;
+    boost::shared_ptr<KvInterface> _kvI;
     std::string _prefix; // optional prefix, for isolating tests from production
 };
 
@@ -121,6 +122,7 @@ public:
                                                      std::string const& connInfo,
                                                      int timeout_msec,
                                                      std::string const& prefix);
+    static boost::shared_ptr<Facade> createCacheFacade(boost::shared_ptr<KvInterfaceImplMem> kv);
 };
 
 }}} // namespace lsst::qserv::css
