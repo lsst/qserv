@@ -33,9 +33,10 @@
 
 // system headers
 #include <algorithm> // sort
-#include <cstdlib>   // rand
+#include <cstdlib>   // rand, srand
 #include <iostream>
 #include <stdexcept>
+#include <time.h>    // time
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
@@ -59,6 +60,13 @@ using std::vector;
 namespace lsst {
 namespace qserv {
 namespace css {
+
+struct InitRand {
+    InitRand() {
+        srand(time(NULL));
+    }
+};
+InitRand _initRand;
 
 
 struct FacadeFixture {
