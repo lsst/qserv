@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,6 +38,13 @@
 // Local headers
 #include "global/stringTypes.h"
 
+// Forward declarations
+namespace lsst {
+namespace qserv {
+namespace css {
+  class KvInterface;
+}}}
+
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
@@ -48,7 +55,9 @@ namespace ccontrol {
 ///  constant between successive user queries.
 class UserQueryFactory : private boost::noncopyable {
 public:
-    UserQueryFactory(std::map<std::string,std::string> const& m);
+    typedef boost::shared_ptr<lsst::qserv::css::KvInterface> KviPtr;
+    UserQueryFactory(std::map<std::string,std::string> const& m,
+                     KviPtr kvi=KviPtr());
 
     /// @return a handle to the new UserQuery object to be used with the
     /// userQueryProxy interface.
