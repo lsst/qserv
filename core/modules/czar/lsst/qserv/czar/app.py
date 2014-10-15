@@ -68,6 +68,7 @@ from string import Template
 import logger
 import metadata
 import spatial
+import css
 import lsst.qserv.czar.config
 from lsst.geom.geometry import SphericalBox
 from lsst.geom.geometry import SphericalConvexPolygon, convexHull
@@ -306,6 +307,7 @@ class Context:
         self.uqFactory = Context._uqFactory
         self.conditions = conditions
 
+
     @classmethod
     def destroyShared(cls):
         """Destroy shared state, e.g., the UserQueryFactory object. Calling
@@ -316,7 +318,11 @@ class Context:
     def _initFactory(cls):
         """Initialize the UserQueryFactory instance from our configuration"""
         cfg = lsst.qserv.czar.config.getStringMap()
-        cls._uqFactory = UserQueryFactory(cfg)
+        cssItems = lsst.qserv.czar.config.config.items("css")
+        cf = css.CssCacheFactory(config=cssItems)
+        cls._uqFactory = UserQueryFactory(cfg, cf.createKvMem())
+        cls._cssCacheFactory = cf
+
 
 ########################################################################
 class InbandQueryAction:

@@ -99,10 +99,7 @@ def main():
     config.printTo(sys.stdout)
 
     # Configure logging
-    try:
-        logConfig = config.config.get('log', 'logConfig')
-    except ConfigParser.Error:
-        logConfig = None
+    logConfig = config.config.get('log', 'logConfig')
     if logConfig:
         newlog.configure(logConfig)
     else:
