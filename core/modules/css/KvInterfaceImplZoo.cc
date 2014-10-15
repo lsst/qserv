@@ -172,6 +172,25 @@ KvInterfaceImplZoo::create(string const& key, string const& value) {
     _throwZooFailure(rc, "create", key);
 }
 
+void
+KvInterfaceImplZoo::set(string const& key, string const& value) {
+    // Untested, but this code is likely to disappear in favor of using kazoo in
+    // python for zk access.
+    boost::lock_guard<boost::mutex> lock(_mutex);
+    LOGF_INFO("*** KvInterfaceImplZoo::set(%1%, %2%)" % key % value);
+    int rc=ZINVALIDSTATE, nAttempts=0;
+    while (nAttempts++<2) {
+        rc = zoo_set(_zh, key.data(), value.data(), value.size(),
+                     -1); // -1: skip node version check.
+        if (rc==ZOK) {
+            return;
+        }
+        LOGF_WARN("zoo_set failed (err:%1%), reconnecting" % rc);
+        _doConnect();
+    }
+    _throwZooFailure(rc, "set", key);
+}
+
 bool
 KvInterfaceImplZoo::exists(string const& key) {
     boost::lock_guard<boost::mutex> lock(_mutex);

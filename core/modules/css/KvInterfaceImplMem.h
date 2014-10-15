@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,6 +38,9 @@
 #include <string>
 #include <vector>
 
+// Third-party
+#include "boost/shared_ptr.hpp"
+
 // Local headers
 #include "css/KvInterface.h"
 
@@ -46,16 +49,21 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
-class KvInterfaceImplMem : public KvInterface {
+class KvInterfaceImplMem : public lsst::qserv::css::KvInterface {
 public:
     KvInterfaceImplMem() {}
     KvInterfaceImplMem(std::istream& mapStream);
+    KvInterfaceImplMem(std::string const& filename);
+
     virtual ~KvInterfaceImplMem();
 
     virtual void create(std::string const& key, std::string const& value);
+    virtual void set(std::string const& key, std::string const& value);
     virtual bool exists(std::string const& key);
     virtual std::vector<std::string> getChildren(std::string const& key);
     virtual void deleteKey(std::string const& key);
+
+    boost::shared_ptr<KvInterfaceImplMem> clone() const;
 
 protected:
     std::string _get(std::string const& key,
@@ -63,6 +71,7 @@ protected:
                      bool throwIfKeyNotFound);
 
 private:
+    void _init(std::istream& mapStream);
     std::map<std::string, std::string> _kvMap;
 };
 

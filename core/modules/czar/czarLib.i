@@ -1,7 +1,7 @@
 // -*- lsst-c++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2014 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,13 +41,15 @@ Access to the classes from the qserv_czar library
 #include "ccontrol/UserQueryFactory.h"
 #include "ccontrol/userQueryProxy.h"
 #include "css/StripingParams.h"
+#include "css/KvInterface.h"
+#include "css/KvInterfaceImplMem.h"
 #include "global/constants.h"
 #include "log/loggerInterface.h"
 #include "qdisp/ChunkMeta.h"
 #include "qdisp/TransactionSpec.h"
 #include "qproc/ChunkSpec.h"
 #include "rproc/mergeTypes.h"
-#include "rproc/TableMerger.h"
+//#include "rproc/TableMerger.h"
 #include "util/common.h"
 #include "util/Substitution.h"
 #include "xrdc/xrdfile.h"
@@ -109,6 +111,9 @@ namespace std {
 // ------------------------------------------------------------------------
 
 
+%include "boost_shared_ptr.i"
+SWIG_SHARED_PTR(KvInterface, lsst::qserv::css::KvInterface)
+SWIG_SHARED_PTR_DERIVED(KvInterfaceImplMem, lsst::qserv::css::KvInterface, lsst::qserv::css::KvInterfaceImplMem)
 
 // Define any smart pointers here:
 // SWIG_SHARED_PTR(Persistable, lsst::daf::base::Persistable)
@@ -130,6 +135,8 @@ namespace std {
 %include "ccontrol/UserQueryFactory.h"
 %include "ccontrol/userQueryProxy.h"
 %include "css/StripingParams.h"
+%include "css/KvInterface.h"
+%include "css/KvInterfaceImplMem.h"
 %include "global/constants.h"
 %include "log/loggerInterface.h"
 %include "qdisp/ChunkMeta.h"
@@ -137,7 +144,7 @@ namespace std {
 %include "qproc/ChunkSpec.h"
 %include "query/Constraint.h"
 %include "rproc/mergeTypes.h"
-%include "rproc/TableMerger.h"
+ //%include "rproc/TableMerger.h"
 %include "util/Substitution.h"
 %include "xrdc/xrdfile.h"
 

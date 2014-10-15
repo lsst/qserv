@@ -2,8 +2,8 @@
 
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+# Copyright 2008-2014 AURA/LSST.
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -150,6 +150,11 @@ class TestAppFunctions(unittest.TestCase):
         self._invokeTimedServerQuery(selectSmallQuery, "LowVolSpatial")
         self.assert_(True)
         pass
+
+    def testCss(self):
+        "Test the czar css module"
+        import css
+        css.selftest()
 
     def clearTables(self):
         p = app.Persistence()

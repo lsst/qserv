@@ -2,8 +2,8 @@
 
 # 
 # LSST Data Management System
-# Copyright 2008-2014 LSST Corporation.
-# 
+# Copyright 2008-2014 AURA/LSST.
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -99,10 +99,7 @@ def main():
     config.printTo(sys.stdout)
 
     # Configure logging
-    try:
-        logConfig = config.config.get('log', 'logConfig')
-    except ConfigParser.Error:
-        logConfig = None
+    logConfig = config.config.get('log', 'logConfig')
     if logConfig:
         newlog.configure(logConfig)
     else:

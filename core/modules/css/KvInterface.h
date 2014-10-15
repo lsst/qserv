@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014 LSST/AURA.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -46,10 +46,18 @@ public:
 
     /**
      * Create a key/value pair.
-     * Throws CssRunTimeError if the key already exists (or if any other problem,
+     * Throws KeyExistsError if the key already exists (or if any other problem,
      * e.g., a connection error is detected).
      */
     virtual void create(std::string const& key, std::string const& value) = 0;
+
+    /**
+     * Set a key/value pair. If the key already exists, its value is
+     * overwritten.
+     * Throws CssError when unable to set the pair (error with the underlying
+     * persistence).
+     */
+    virtual void set(std::string const& key, std::string const& value) = 0;
 
     /**
      * Check if the key exists.
