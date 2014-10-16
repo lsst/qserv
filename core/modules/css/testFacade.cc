@@ -81,8 +81,8 @@ struct FacadeFixture {
         kv.push_back(make_pair(prefix + "/PARTITIONING", ""));
         string p = prefix + "/PARTITIONING/_0000000001";
         kv.push_back(make_pair(p, ""));
-        kv.push_back(make_pair(p+"/nStripes", "18"));
-        kv.push_back(make_pair(p+"/nSubStripes", "40"));
+        kv.push_back(make_pair(p+"/nStripes", "60"));
+        kv.push_back(make_pair(p+"/nSubStripes", "18"));
         kv.push_back(make_pair(p+"/overlap", "0.025"));
 
         kv.push_back(make_pair(prefix + "/DBS", ""));
@@ -97,7 +97,7 @@ struct FacadeFixture {
         kv.push_back(make_pair(p + "/Object/partitioning/lonColName", "ra_PS"));
         kv.push_back(make_pair(p + "/Object/partitioning/latColName", "decl_PS"));
         kv.push_back(make_pair(p + "/Object/partitioning/subChunks", "1"));
-        kv.push_back(make_pair(p + "/Object/partitioning/dirColName","objId"));
+        kv.push_back(make_pair(p + "/Object/partitioning/dirColName","objectId"));
         kv.push_back(make_pair(p + "/Source", ""));
         kv.push_back(make_pair(p + "/Source/partitioning", ""));
         kv.push_back(make_pair(p + "/Source/partitioning/lonColName", "ra"));
@@ -231,7 +231,7 @@ BOOST_AUTO_TEST_CASE(getPartitionCols) {
     BOOST_CHECK_EQUAL(v.size(), 3U);
     BOOST_CHECK_EQUAL(v[0], "ra_PS");
     BOOST_CHECK_EQUAL(v[1], "decl_PS");
-    BOOST_CHECK_EQUAL(v[2], "objId");
+    BOOST_CHECK_EQUAL(v[2], "objectId");
 
     v = facade->getPartitionCols("dbA", "Source");
     BOOST_CHECK_EQUAL(v.size(), 3U);
@@ -251,7 +251,7 @@ BOOST_AUTO_TEST_CASE(getChunkLevel) {
 
 BOOST_AUTO_TEST_CASE(getSecIndexColName) {
     // normal, has value
-    BOOST_CHECK_EQUAL(facade->getSecIndexColNames("dbA", "Object")[0], "objId");
+    BOOST_CHECK_EQUAL(facade->getSecIndexColNames("dbA", "Object")[0], "objectId");
 
     // normal, does not have value
     BOOST_CHECK_EQUAL(facade->getSecIndexColNames("dbA", "Source").empty(), true);
@@ -262,8 +262,8 @@ BOOST_AUTO_TEST_CASE(getSecIndexColName) {
 
 BOOST_AUTO_TEST_CASE(getDbStriping) {
     StripingParams s = facade->getDbStriping("dbA");
-    BOOST_CHECK_EQUAL(s.stripes, 18);
-    BOOST_CHECK_EQUAL(s.subStripes, 40);
+    BOOST_CHECK_EQUAL(s.stripes, 60);
+    BOOST_CHECK_EQUAL(s.subStripes, 18);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
