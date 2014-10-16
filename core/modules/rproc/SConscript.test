@@ -15,8 +15,9 @@ def convertObj(o):
     if oStr.endswith(".cc"): return env.Object(oStr+".staticobj", o)
     return o
 libObjs = map(convertObj, libProducts['proto'])
-p = env.Program(source=[obj], LIBS=['protobuf', 'libssl', 'libcrypto'] + libObjs)
-#p = env.Program(source=[obj], LIBS=['pthread', 'protobuf', 'libssl'] + libObjs + ['libcrypto'])
+ubuntuDeps=['pthread']
+# libcrypto MUST be at the end of the list in order to build successfully on Ubuntu 14.04
+p = env.Program(source=[obj], LIBS=['protobuf', 'libssl'] + libObjs + ubuntuDeps+ ['libcrypto'])
 programs.append(p)
 
 # add a unit test which runs on every build
