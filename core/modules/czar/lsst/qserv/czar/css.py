@@ -75,8 +75,92 @@ class CssCacheFactory(object):
         self._zk = KazooClient(hosts=connInfo)
         self._zk.start()
         self._pull()
+
     def _pull(self):
-        
+
+        pass
+
+    def createKvMem(self):
+        kvi = KvInterfaceImplMem()
+        class KviFactory:
+            def __init__(self, kvi):
+                self.kvi = kvi
+                pass
+            def isPacked(self, path):
+                def noSlash(p):
+                    return "/" not in p
+                pstr = "/PARTITIONING/"
+                if path.startswith(pstr) and noSlash(path[len(pstr):]):
+                    return True # /PARTITIONING/_<id>
+                dbstr = "/DBS/"
+                if path.startswith(dbstr):
+                    remain = path[dbstr:]
+                    suffixes = ["/INFO", "/LOCK"]
+                    for s in suffixes:
+                        if remain.endswith(s) and noSlash(remain[:-s]):
+                            return True # /DBS/<dbName>/{INFO,LOCK}
+
+                if path.startswith(dbstr) and (
+                    path.endswith(lockstr)
+                    and noSlash(path[len(dbstr):-len(lockstr)])):
+                    return True # /DBS/<dbName>/LOCK
+
+
+
+            def acceptFunc(self, path, data):
+                return path != "/zookeeper"
+            def dataFunc(self, path, data):
+                if self.isPacked(path):
+                    self.insertPack(path, json.loads(data))
+                    pass
+                else:
+                    print "Creating kvi key: %s = %s" % (path, data)
+                    self.kvi.create(path, data)
+            def insertObj(self, path, obj):
+                if isinstance(obj, list):
+                    # inspect type: int, float/double, string
+                    self.kvi.create(path, obj, len(obj))
+                elif isinstance(obj, dict):
+                    for k in obj:
+                        self.insertObj(path + "/" + k, obj[k])
+                else: self.kvi.create(path, obj)
+            pass
+        kf = KviFactory(kvi)
+        self._visit("/", kf.dataFunc, kf.acceptFunc)
+        return kvi
+
+    def dump(self):
+        class NodePrinter:
+            def __init__(self):
+                self.contents = ""
+                pass
+            def dataFunc(self, path, data):
+                self.contents.write(
+                    p + '\t'
+                    + (data if data else '\N')
+                    + '\n')
+            pass
+        np = NodePrinter()
+        self._visit("/", lambda p, d: np.nodeFunc, lambda p: p != "/zookeeper")
+
+    def _visit(self, p, dataNodeFunc, acceptFunc):
+        if not acceptFunc(p): return
+        children = None
+        data = None
+        stat = None
+        try:
+            children = self._zk.get_children(p)
+            data, stat = self._zk.get(p)
+            dataNodeFunc(p, data)
+            for child in children:
+                self._visit(p + "/" + child, dataNodeFunc, acceptFunc)
+        except NoNodeError:
+            self._logger.warning("Caught NoNodeError, someone deleted node just now")
+            None
+
+
+
+class DummyObject:
     def create(self, k, v='', sequence=False, ephemeral=False):
         """
         Add a new key/value entry. Create entire path as necessary.
