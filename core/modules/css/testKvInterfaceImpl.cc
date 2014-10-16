@@ -58,7 +58,7 @@ using std::vector;
 
 struct KvInterfaceFixture {
     KvInterfaceFixture(void) {
-        srand (time(NULL));
+        srand(time(NULL));
         prefix = "/unittest_" + boost::lexical_cast<std::string>(rand());
         k1 = prefix + "/xyzA";
         k2 = prefix + "/xyzB";

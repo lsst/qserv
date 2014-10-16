@@ -81,7 +81,7 @@ class QservAdmin(object):
             try:
                 if self._kvI.exists(dbP):
                     self._logger.info("createDb database '%s' exists, aborting." % \
-                                          dbName)
+                                      dbName)
                     return
                 self._kvI.create(dbP, "PENDING")
                 ptP = self._kvI.create("/PARTITIONING/_", sequence=True)
