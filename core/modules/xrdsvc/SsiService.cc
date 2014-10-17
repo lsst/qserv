@@ -114,7 +114,7 @@ void SsiService::_configure() {
     if(!wconfig::getConfig().getIsValid()) {
         std::string msg("Configuration invalid: "
                         + wconfig::getConfig().getError());
-        LOG_FATAL(msg);
+        LOG_FATAL(msg.c_str());
         throw wconfig::ConfigError(msg);
     }
 }
