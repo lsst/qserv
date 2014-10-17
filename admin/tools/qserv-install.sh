@@ -10,20 +10,20 @@ MODE="internet mode"
 DEV_DISTSERVER_ROOT="http://lsst-web.ncsa.illinois.edu/~fjammes/qserv-dev"
 EUPS_PKGROOT="http://sw.lsstcorp.org/eupspkg"
 NEWINSTALL_URL="http://sw.lsstcorp.org/eupspkg/newinstall.sh"
-VERSION="-t qserv"     
+VERSION="-t qserv"
 
 underline() { echo $1; echo "${1//?/${2:-=}}";}
 
 usage()
 {
 cat << EOF
-Usage: $0 [[-r <path/to/local/distserver>]] [[-i <path/to/install/dir>]] [[-v <version>]] 
+Usage: $0 [[-r <path/to/local/distserver>]] [[-i <path/to/install/dir>]] [[-v <version>]]
 This script install Qserv according to LSST packaging standards.
 
 OPTIONS:
    -h      Show this message and exit
-   -d      Use development distribution server: ${DEV_DISTSERVER_ROOT}  
-   -r      Local distribution server root directory, 
+   -d      Use development distribution server: ${DEV_DISTSERVER_ROOT}
+   -r      Local distribution server root directory,
            used in internet-free mode
    -i      Install directory : MANDATORY
    -v      Qserv version to install, default to the one with the 'qserv' tag
@@ -46,7 +46,7 @@ while getopts "dr:i:v:h" o; do
                     >&2 echo "ERROR : $MODE require a local distribution server"
                     usage
                     exit 1
-                fi 
+                fi
                 EUPS_PKGROOT="${LOCAL_DISTSERVER_ROOT}/production"
                 NEWINSTALL_URL="file://${EUPS_PKGROOT}/newinstall.sh"
                 export EUPS_VERSION="1.5.0"
@@ -78,17 +78,29 @@ if [[ -n ${DEV_OPTION} && -n ${LOCAL_OPTION} ]]; then
     >&2 echo "ERROR : -r and -d options are not compatible"
     usage
     exit 1
-fi 
+fi
 
-if [[ -d ${STACK_DIR} ]]; then
-    chmod -R 755 $STACK_DIR &&
-    rm -rf $STACK_DIR ||
+if [[ -d ${STACK_DIR} || -L ${STACK_DIR} ]]; then
+    [ "$(ls -A ${STACK_DIR})" ] &&
     {
-        >&2 echo "Unable to remove install directory previous content : ${STACK_DIR}"
+        echo "Cleaning install directory"
+        chmod -R 755 $STACK_DIR/* &&
+        rm -rf $STACK_DIR/* ||
+        {
+            >&2 echo "Unable to remove install directory previous content : ${STACK_DIR}"
+            exit 1
+        }
+    }
+else
+    mkdir $STACK_DIR ||
+    {
+        >&2 echo "Unable to create install directory
+        >${STACK_DIR}"
         exit 1
     }
+
 fi
-mkdir $STACK_DIR &&
+
 cd $STACK_DIR ||
 {
     >&2 echo "Unable to go to install directory : ${STACK_DIR}"
@@ -96,7 +108,7 @@ cd $STACK_DIR ||
 }
 
 echo
-underline "Installing LSST stack : $MODE, version : $VERSION" 
+underline "Installing LSST stack : $MODE, version : $VERSION"
 echo
 export EUPS_PKGROOT
 curl -O ${NEWINSTALL_URL} ||
