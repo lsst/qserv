@@ -152,7 +152,6 @@ setup qserv_distrib ${VERSION} ||
 echo
 underline "Configuring Qserv"
 echo
-cd $QSERV_DIR/admin &&
 qserv-configure.py --all ||
 {
     >&2 echo "Unable to configure Qserv as a mono-node instance"
