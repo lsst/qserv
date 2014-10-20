@@ -95,8 +95,13 @@ chunkLimit=-1
 [mysql]
 mysqlclient=
 
+[log]
+logConfig=
 """)
-
+# Note: It is important to have defaults for config variables specified
+#  here. Completely missing sections and keys will raise exceptions
+#  that, even if caught properly, will be reported by errors by
+#  Python's unittest framework.
 
 # Module variables:
 config = None
