@@ -94,8 +94,7 @@ if [[ -d ${STACK_DIR} || -L ${STACK_DIR} ]]; then
 else
     mkdir $STACK_DIR ||
     {
-        >&2 echo "Unable to create install directory
-        >${STACK_DIR}"
+        >&2 echo "Unable to create install directory ${STACK_DIR}"
         exit 1
     }
 
