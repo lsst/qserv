@@ -54,7 +54,8 @@ while getopts "dr:i:v:h" o; do
                 export EUPS_GIT_REPO=${LOCAL_DISTSERVER_ROOT}/eups.git
                 ;;
         i)
-                STACK_DIR="${OPTARG}"
+                # Remove trailing slashes
+                STACK_DIR=`echo "${OPTARG}" | sed 's#/*$##'`
                 ;;
         v)
                 VERSION="${OPTARG}"
@@ -83,9 +84,10 @@ fi
 if [[ -d ${STACK_DIR} || -L ${STACK_DIR} ]]; then
     [ "$(ls -A ${STACK_DIR})" ] &&
     {
-        echo "Cleaning install directory"
+        echo "Cleaning install directory: ${STACK_DIR}"
         chmod -R 755 $STACK_DIR/* &&
-        rm -rf $STACK_DIR/* ||
+        # / below is required if ${STACK_DIR} is a symlink
+        find ${STACK_DIR}/ -mindepth 1 -delete ||
         {
             >&2 echo "Unable to remove install directory previous content : ${STACK_DIR}"
             exit 1
