@@ -17,22 +17,16 @@
 #              sends it to mysql-client. \
 ### END INIT INFO
 
-# Source functions library.
-# WARN : this may clean environment
-. {{QSERV_RUN_DIR}}/etc/init.d/qserv-functions
-
-# Variables belows may depends on Qserv and lua versions
-PATH={{PATH}}
-QSERV_DIR={{QSERV_DIR}}
-LUA_DIR={{LUA_DIR}}
-
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-QSERV_PID_DIR={{QSERV_PID_DIR}}
-QSERV_LOG_DIR={{QSERV_LOG_DIR}}
-QSERV_UNIX_USER={{QSERV_UNIX_USER}}
-QSERV_RPC_PORT={{QSERV_RPC_PORT}}
+DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 NAME="mysql-proxy"
+DAEMON=$NAME
+
+# Source functions library.
+# WARN : this may clean environment
+. ${DIR}/qserv-functions
+
+source_config $NAME
 
 # Source networking configuration.
 if [ -f /etc/sysconfig/network ]; then
@@ -59,13 +53,6 @@ LUA_DEBUG_LEVEL=0
 LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
 LOGFILE=${QSERV_LOG_DIR}/mysql-proxy.log
 QSERV_RPC_PORT=${QSERV_RPC_PORT}
-
-DAEMON=$NAME
-
-# Source mysql-proxy configuration.
-if [ -f ${QSERV_RUN_DIR}/etc/sysconfig/mysql-proxy ]; then
-    . ${QSERV_RUN_DIR}/etc/sysconfig/mysql-proxy
-fi
 
 # WARNING : can only use the --user switch if running as root
 proxy_user_option=""
