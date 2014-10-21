@@ -11,9 +11,17 @@ if [ -n ${EUPS_DIR} ]; then
     QSERV_ENV="(eups environment)"
 else
     QSERV_ENV="(meta-config environment)"
+
     export PATH={{PATH}}
+
+    # qserv-czar
     export PYTHONPATH={{PYTHONPATH}}
     export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
+
+    # mysql-proxy
+    QSERV_DIR={{QSERV_DIR}}
+    LUA_DIR={{LUA_DIR}}
+
 fi
 
 #
@@ -275,7 +283,7 @@ status_of_proc () {
     fi
 }
 
-read_config() {
+source_config() {
     # Test syntax.
     if [ "$#" = 0 ] ; then
 	    echo $"Usage: read_config {program}"

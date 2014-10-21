@@ -26,7 +26,7 @@ DAEMON=${NAME}
 # WARN: this may update environment
 . ${DIR}/qserv-functions
 
-read_config $NAME
+source_config $NAME
     
 start=startCzar.py
 config=${QSERV_RUN_DIR}/etc/${NAME}.cnf
