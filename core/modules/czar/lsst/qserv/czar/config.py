@@ -72,6 +72,8 @@ technology=zoo
 # qserv/core/modules/css/KvInterfaceImplMem.cc)
 # TODO : localhost doesn't work on Ubuntu 14.04, why ?
 connection=127.0.0.1:2181
+# Timeout in milliseconds
+timeout=10000
 
 [resultdb]
 host=

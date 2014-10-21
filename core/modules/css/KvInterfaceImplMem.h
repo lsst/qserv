@@ -49,10 +49,12 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
-class KvInterfaceImplMem : public KvInterface {
+class KvInterfaceImplMem : public lsst::qserv::css::KvInterface {
 public:
     KvInterfaceImplMem() {}
     KvInterfaceImplMem(std::istream& mapStream);
+    KvInterfaceImplMem(std::string const& filename);
+
     virtual ~KvInterfaceImplMem();
 
     virtual void create(std::string const& key, std::string const& value);
@@ -60,13 +62,15 @@ public:
     virtual std::vector<std::string> getChildren(std::string const& key);
     virtual void deleteKey(std::string const& key);
 
-    boost::shared_ptr<KvInterfaceImplMem> clone();
+    boost::shared_ptr<KvInterfaceImplMem> clone() const;
+
 protected:
     std::string _get(std::string const& key,
                      std::string const& defaultValue,
                      bool throwIfKeyNotFound);
 
 private:
+    void _init(std::istream& mapStream);
     std::map<std::string, std::string> _kvMap;
 };
 

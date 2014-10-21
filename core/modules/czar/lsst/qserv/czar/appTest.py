@@ -151,6 +151,11 @@ class TestAppFunctions(unittest.TestCase):
         self.assert_(True)
         pass
 
+    def testCss(self):
+        "Test the czar css module"
+        import css
+        css.selftest()
+
     def clearTables(self):
         p = app.Persistence()
         p.activate()

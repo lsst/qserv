@@ -90,7 +90,7 @@ private:
     Facade(std::string const& connInfo, int timeout_msec);
     Facade(std::string const& connInfo, int timeout_msec, std::string const& prefix);
     explicit Facade(std::istream& mapStream);
-    explicit Facade(boost::shared_ptr<KvInterfaceImplMem> kv);
+    explicit Facade(boost::shared_ptr<KvInterface> kv);
 
     void _throwIfNotDbExists(std::string const& dbName) const;
     void _throwIfNotTbExists(std::string const& dbName,
@@ -124,7 +124,7 @@ public:
                                                      std::string const& connInfo,
                                                      int timeout_msec,
                                                      std::string const& prefix);
-    static boost::shared_ptr<Facade> createCacheFacade(boost::shared_ptr<KvInterfaceImplMem> kv);
+    static boost::shared_ptr<Facade> createCacheFacade(boost::shared_ptr<KvInterface> kv);
 };
 
 }}} // namespace lsst::qserv::css

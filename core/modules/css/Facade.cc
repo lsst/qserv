@@ -560,12 +560,12 @@ private:
 #endif
 };
 
-Facade::Facade(boost::shared_ptr<KvInterfaceImplMem> kv)
+Facade::Facade(boost::shared_ptr<KvInterface> kv)
     : _kvI(kv) {
 }
 
 boost::shared_ptr<Facade>
-FacadeFactory::createCacheFacade(boost::shared_ptr<KvInterfaceImplMem> kv) {
+FacadeFactory::createCacheFacade(boost::shared_ptr<KvInterface> kv) {
     boost::shared_ptr<css::Facade> facade(new Facade(kv));
     return facade;
 }

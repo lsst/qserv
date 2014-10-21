@@ -35,6 +35,7 @@
 #include "ccontrol/UserQuery.h"
 #include "ccontrol/userQueryProxy.h"
 #include "css/Facade.h"
+#include "css/KvInterfaceImplMem.h"
 #include "qdisp/Executive.h"
 #include "qproc/QuerySession.h"
 #include "rproc/InfileMerger.h"
@@ -47,9 +48,16 @@ namespace ccontrol {
 /// Implementation class (PIMPL-style) for UserQueryFactory.
 class UserQueryFactory::Impl {
 public:
-    void readConfig(StringMap const& m); ///< Import config from caller
+    /// Import non-Facade-related config from caller
+    void readConfig(StringMap const& m);
+
+    /// Import facade config and construct Facade
+    void readConfigFacade(StringMap const& m);
+
     void initFacade(std::string const& cssTech, std::string const& cssConn,
                     int timeout_msec);
+    void initFacade(boost::shared_ptr<css::KvInterface> kvi);
+
     void initMergerTemplate(); ///< Construct template config for merger
 
     /// State shared between UserQueries
@@ -59,11 +67,17 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////
-UserQueryFactory::UserQueryFactory(StringMap const& m) {
+UserQueryFactory::UserQueryFactory(StringMap const& m,
+                                   boost::shared_ptr<css::KvInterface> kvi) {
     ::putenv((char*)"XRDDEBUG=1");
     _impl.reset(new Impl);
     assert(_impl);
     _impl->readConfig(m);
+    if(!kvi) {
+        _impl->readConfigFacade(m);
+    } else {
+        _impl->initFacade(kvi);
+    }
 }
 
 int
@@ -119,6 +133,10 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "resultdb.db",
         "Error, resultdb.db not found. Using qservResult.",
         "qservResult");
+}
+
+void UserQueryFactory::Impl::readConfigFacade(StringMap const& m) {
+    ConfigMap cm(m);
     std::string cssTech = cm.get(
         "css.technology",
         "Error, css.technology not found.",
@@ -148,6 +166,13 @@ void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
         LOGF_ERROR("Unable to determine css technology, check config file.");
         throw ConfigError("Invalid css technology, check config file.");
     }
+}
+
+void UserQueryFactory::Impl::initFacade(
+    boost::shared_ptr<css::KvInterface> kvi) {
+
+    facade = css::FacadeFactory::createCacheFacade(kvi);
+    LOGF_INFO("Initializing cache-based css facade");
 }
 
 }}} // lsst::qserv::ccontrol
