@@ -185,6 +185,7 @@ def _get_template_params():
         'QSERV_RUN_DIR': config['qserv']['run_base_dir'],
         'QSERV_UNIX_USER': getpass.getuser(),
         'QSERV_LOG_DIR': config['qserv']['log_dir'],
+        'QSERV_META_CONFIG_FILE': config['qserv']['meta_config_file'],
         'QSERV_PID_DIR': os.path.join(config['qserv']['run_base_dir'], "var", "run"),
         'QSERV_RPC_PORT': config['qserv']['rpc_port'],
         'QSERV_USER': config['qserv']['user'],

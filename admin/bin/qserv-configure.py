@@ -153,6 +153,10 @@ def main():
         try:
             logging.info("Reading meta-configuration file {0}".format(args.meta_config_file))
             config = commons.read_config(args.meta_config_file)
+
+            # used in templates targets comments
+            config['qserv']['meta_config_file'] = args.meta_config_file
+
         except ConfigParser.NoOptionError, exc:
             logging.fatal("An option is missing in your configuration file: %s", exc)
             sys.exit(1)
