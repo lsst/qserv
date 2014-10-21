@@ -3,6 +3,18 @@
 # Author: Fabrice Jammes <fabrice.jammes@in2p3.fr> (09.17.2013)
 #-------------------------------------------------------------------------------
 
+# Make sure umask is sane
+umask 022
+
+# Set up a default search path.
+if [ -n ${EUPS_DIR} ]; then
+    QSERV_ENV="(eups environment)"
+else
+    QSERV_ENV="(meta-config environment)"
+    export PATH={{PATH}}
+    export PYTHONPATH={{PYTHONPATH}}
+    export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
+fi
 
 #
 # Use LSB init script functions for printing messages, if possible
@@ -68,7 +80,7 @@ wait_for_pid () {
         fi
 
         # there's nothing that will affect the file.
-        log_failure_msg " : Manager of pid-file quit without updating file."
+        log_failure_msg ": Manager of pid-file quit without updating file."
         return 1  # not waiting any more.
       fi
     fi
@@ -120,7 +132,7 @@ start() {
 	fi
 
  	# check to see if it's already running
- 	echo -n "Starting $prog"
+ 	echo -n "Starting $prog, ${QSERV_ENV}"
 	if [ -f ${pidfile} ]; then
                 log_success_msg " : (already up)"
 		retval=0
@@ -260,5 +272,23 @@ status_of_proc () {
     else
         log_failure_msg "$name is not running"
         return $status
+    fi
+}
+
+read_config() {
+    # Test syntax.
+    if [ "$#" = 0 ] ; then
+	    echo $"Usage: read_config {program}"
+	    return 1
+    fi
+    prog=${1##*/}
+    # Read configuration variable file if it is present
+    # DIR is defined in init.d script
+    etc_dir=`dirname ${DIR}`
+    if [ -r ${etc_dir}/sysconfig/${prog} ]; then
+	. ${etc_dir}/sysconfig/${prog}
+    else
+	log_failure_msg "Unable to load $NAME default configuration parameters"
+	exit 1
     fi
 }
