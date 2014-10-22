@@ -158,7 +158,7 @@ def main():
             config['qserv']['meta_config_file'] = args.meta_config_file
 
         except ConfigParser.NoOptionError, exc:
-            logging.fatal("An option is missing in your configuration file: %s", exc)
+            logging.fatal("Missing option in meta-configuration file: %s", exc)
             sys.exit(1)
 
         if configure.DIRTREE in args.step_list:
