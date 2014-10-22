@@ -18,6 +18,9 @@ else
     # qserv-czar, xrootd
     export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
 
+    # mysql
+    MYSQL_DIR={{MYSQL_DIR}}
+
     # mysql-proxy
     QSERV_DIR={{QSERV_DIR}}
     LUA_DIR={{LUA_DIR}}
