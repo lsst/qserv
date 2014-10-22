@@ -21,13 +21,16 @@
 # chkconfig: 2345 89 9 
 # description: zookeeper
 
-. {{QSERV_RUN_DIR}}/etc/init.d/qserv-functions
+DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-PATH={{PATH}}
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-QSERV_PID_DIR={{QSERV_PID_DIR}}
-QSERV_LOG_DIR={{QSERV_LOG_DIR}}
-QSERV_UNIX_USER={{QSERV_UNIX_USER}}
+# Source functions library.
+. ${DIR}/qserv-functions
+
+NAME="zookeeper"
+DAEMON=${NAME}
+
+. ${DIR}/path.cfg.sh
+source_sysconfig ${NAME}
 
 export ZOOCFGDIR=${QSERV_RUN_DIR}/etc
 export ZOO_LOG_DIR=${QSERV_LOG_DIR}
