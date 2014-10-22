@@ -19,14 +19,15 @@
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-NAME="mysql-proxy"
-DAEMON=$NAME
-
 # Source functions library.
-# WARN : this may clean environment
 . ${DIR}/qserv-functions
 
-source_config $NAME
+NAME="mysql-proxy"
+DAEMON=${NAME}
+
+# Source environment
+. ${DIR}/qserv-env
+source_config ${NAME}
 
 # Source networking configuration.
 if [ -f /etc/sysconfig/network ]; then
