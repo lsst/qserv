@@ -43,10 +43,13 @@
 # If you change base dir, you must also change datadir. These may get
 # overwritten by settings in the MySQL configuration files.
 
+DIR=$(cd "$(dirname "$0")"; pwd -P)
+. ${DIR}/qserv-functions
 
-PATH={{PATH}}
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-MYSQL_DIR={{MYSQL_DIR}}
+NAME="mysqld"
+
+. ${DIR}/path.cfg.sh
+source_sysconfig ${NAME}
 
 if [ -n "${MYSQL_DIR}" ]; then
     basedir=${MYSQL_DIR} 
@@ -67,7 +70,7 @@ service_startup_timeout=900
 pid_file=${QSERV_RUN_DIR}/var/run/mysqld/mysqlmanager.pid
 server_pid_file=${QSERV_RUN_DIR}/var/run/mysqld/mysqld.pid
 use_mysqld_safe=1
-user={{QSERV_UNIX_USER}}
+user=${QSERV_UNIX_USER}
 if test -z "$basedir"
 then
   log_failure_msg "MySQL basedir ($basedir) could not be found!"
