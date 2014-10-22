@@ -6,29 +6,6 @@
 # Make sure umask is sane
 umask 022
 
-# Set up a default search path.
-if [ -n ${EUPS_DIR} ]; then
-    QSERV_ENV="(eups environment)"
-else
-    QSERV_ENV="(meta-config environment)"
-
-    # all
-    export PATH={{PATH}}
-
-    # qserv-czar
-    export PYTHONPATH={{PYTHONPATH}}
-
-    # qserv-czar, xrootd
-    export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
-
-    # mysql-proxy
-    QSERV_DIR={{QSERV_DIR}}
-    LUA_DIR={{LUA_DIR}}
-
-    # xrootd
-    XROOTD_DIR={{XROOTD_DIR}}
-fi
-
 #
 # Use LSB init script functions for printing messages, if possible
 #
@@ -288,7 +265,7 @@ status_of_proc () {
     fi
 }
 
-source_config() {
+source_sysconfig() {
     # Test syntax.
     if [ "$#" = 0 ] ; then
 	    echo $"Usage: read_config {program}"
