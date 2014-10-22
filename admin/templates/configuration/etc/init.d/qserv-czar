@@ -19,14 +19,14 @@
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
+# Source functions library.
+. ${DIR}/qserv-functions
+
 NAME="qserv-czar"
 DAEMON=${NAME}
 
-# Source functions library.
-# WARN: this may update environment
-. ${DIR}/qserv-functions
-
-source_config $NAME
+. ${DIR}/path.cfg.sh
+source_sysconfig ${NAME}
     
 start=startCzar.py
 config=${QSERV_RUN_DIR}/etc/${NAME}.cnf
