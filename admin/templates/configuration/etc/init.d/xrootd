@@ -17,14 +17,15 @@
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-NAME="xrootd"
-
 # Source functions library.
-# WARN: this may update environment
 . ${DIR}/qserv-functions
 
-source_config ${NAME}
+NAME="xrootd"
+DAEMON=${NAME}
 
+. ${DIR}/path.cfg.sh
+source_sysconfig ${NAME}
+    
 XROOTD_CONFIG="${QSERV_RUN_DIR}/etc/lsp.cf"
 XROOTD_INSTANCE_NAME="worker"
 
