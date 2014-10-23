@@ -28,3 +28,27 @@ else
     # xrootd
     XROOTD_DIR={{XROOTD_DIR}}
 fi
+
+check_existence() {
+    # Test syntax.
+    if [ "$#" = 0 ] ; then
+	    echo $"Usage: check_existence {varname1} ... {varnameN}"
+	    return 1
+    fi
+    for varname in "$@"
+    do
+        var=${!varname}
+        if [ -z "${var}" ]; then
+            log_failure_msg "Failure in service $NAME: undefined \$$varname"
+            exit 1
+        fi
+    done
+}
+
+if [ $NAME = 'mysqld' ]; then
+    check_existence MYSQL_DIR
+elif [ $NAME = 'xrootd' ]; then
+    check_existence XROOTD_DIR
+elif [ $NAME = 'mysql-proxy' ]; then
+    check_existence QSERV_DIR LUA_DIR
+fi
