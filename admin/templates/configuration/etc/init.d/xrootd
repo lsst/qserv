@@ -23,7 +23,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="xrootd"
 DAEMON=${NAME}
 
-. ${DIR}/path.cfg.sh
 source_sysconfig ${NAME}
     
 XROOTD_CONFIG="${QSERV_RUN_DIR}/etc/lsp.cf"

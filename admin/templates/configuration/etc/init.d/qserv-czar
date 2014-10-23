@@ -25,7 +25,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="qserv-czar"
 DAEMON=${NAME}
 
-. ${DIR}/path.cfg.sh
 source_sysconfig ${NAME}
     
 start=startCzar.py
