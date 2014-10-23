@@ -25,7 +25,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="mysql-proxy"
 DAEMON=${NAME}
 
-. ${DIR}/path.cfg.sh
 source_sysconfig ${NAME}
 
 # Source networking configuration.
