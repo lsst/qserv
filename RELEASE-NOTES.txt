@@ -1,7 +1,7 @@
 R E L E A S E   2014_09
 =======================
 
-Code impromements:
+Code improvements:
  * DM-198:  Rework JOIN support, including Ref*Match tables
  * DM-199:  Develop new master-worker result system
  * DM-207:  Migrate Qserv czar code to the new logging system 
