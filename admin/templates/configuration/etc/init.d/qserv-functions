@@ -267,7 +267,7 @@ status_of_proc () {
 
 source_sysconfig() {
     # Test syntax.
-    if [ "$#" = 0 ] ; then
+    if [ "$#" != 1 ] ; then
 	    echo $"Usage: source_sysconfig {program}"
 	    return 1
     fi
@@ -290,4 +290,3 @@ source_sysconfig() {
 	exit 1
     fi
 }
-
