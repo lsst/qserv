@@ -48,7 +48,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 NAME="mysqld"
 
-. ${DIR}/path.cfg.sh
 source_sysconfig ${NAME}
 
 if [ -n "${MYSQL_DIR}" ]; then
