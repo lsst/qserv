@@ -111,6 +111,8 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         _error = std::string("AnalysisError:") + e.what();
     } catch(css::NoSuchDb& e) {
         _error = std::string("NoSuchDb:") + e.what();
+    } catch(css::NoSuchTable& e) {
+        _error = std::string("NoSuchTable:") + e.what();
     } catch(parser::ParseException& e) {
         _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {
