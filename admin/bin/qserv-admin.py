@@ -391,7 +391,7 @@ OPTIONS
    -f
         Name of the output log file. If not specified, the output goes to stderr.
    -c
-        Connection information.
+        Connection information (hostname:port)
 """
 
     parser = OptionParser(usage=usage)
