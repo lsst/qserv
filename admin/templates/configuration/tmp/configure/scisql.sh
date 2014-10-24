@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 QSERV_RUN_DIR={{QSERV_RUN_DIR}}
 SCISQL_DIR={{SCISQL_DIR}}
 MYSQL_DIR={{MYSQL_DIR}}
@@ -13,8 +15,8 @@ PYTHON_DIR=`dirname ${PYTHON_BIN}`
 export PATH=${PYTHON_DIR}:${PATH}
 export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
 
-${QSERV_RUN_DIR}/etc/init.d/mysqld start &&
-cd ${SCISQL_DIR} &&
+${QSERV_RUN_DIR}/etc/init.d/mysqld start
+cd ${SCISQL_DIR}
 echo "-- Deploying sciSQL plugin in MySQL database"
 # password is given on stdin, so that is can't be catched by ps command
 PASSFILE=${QSERV_RUN_DIR}/tmp/pass.txt
