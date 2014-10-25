@@ -118,30 +118,20 @@ class QservAdmin(object):
                                                   "overlap","uuid"])
                                      ])
                 self._addPacked(ptP, partOptions)
-                # old
-                # for x in ["nStripes", "nSubStripes", "overlap", "uuid"]:
-                #     self._kvI.create("%s/%s" % (ptP, x), options[x])
 
-                pId = ptP[-10:] # the partitioning id is always 10 digit, 0 padded
+                pId = ptP[-10:] # Partitioning id is always 10 digit, 0 padded
                 dbOpts = {"uuid" : str(uuid.uuid4()),
                           "partitioningId" : pId,
                           "releaseStatus" : "UNRELEASED",
                           "storageClass" : options["storageClass"]}
                 self._addPacked(dbP, dbOpts)
-                # self._kvI.create("%s/uuid" % dbP, str(uuid.uuid4()))
-                # self._kvI.create("%s/partitioningId" % dbP, str(pId))
-                # self._kvI.create("%s/releaseStatus" % dbP,"UNRELEASED")
-                # for x in ["storageClass"]:
-                #     self._kvI.create("%s/%s" % (dbP, x), options[x])
                 self._createDbLockSection(dbP)
                 self._kvI.set(dbP, "READY")
             except KvException as e:
                 self._logger.error("Failed to create database '%s', " % dbName +
                                    "error was: " + e.__str__())
                 self._deletePacked(dbP)
-                #self._kvI.delete(dbP, recursive=True)
                 if ptP is not None: self._deletePacked(ptP)
-                #if ptP is not None: self._kvI.delete(ptP, recursive=True)
                 raise
         self._logger.debug("Create database '%s' succeeded." % dbName)
 
@@ -173,16 +163,12 @@ class QservAdmin(object):
             parms = json.loads(packedParms)
             parms["uuid"] = str(uuid.uuid4())
             self._addPacked(dbP, parms)
-            # self._kvI.create("%s/uuid" % dbP, str(uuid.uuid4()))
-            # self._copyKeyValue(dbName, dbName2,
-            #                    ("storageClass", "partitioningId", "releaseStatus"))
             self._createDbLockSection(dbP)
             self._kvI.set(dbP, "READY")
         except KvException as e:
             self._logger.error("Failed to create database '%s' like '%s', " % \
                                    (dbName, dbName2) + "error was: " + e.__str__())
             self._deletePacked(dbP)
-            #self._kvI.delete(dbP, recursive=True)
             raise
 
     def dropDb(self, dbName):
@@ -199,7 +185,6 @@ class QservAdmin(object):
                                   dbName)
                 return
             self._deletePacked(dbP)
-            #self._kvI.delete(dbP, recursive=True)
 
     def showDatabases(self):
         """
@@ -242,23 +227,6 @@ class QservAdmin(object):
         pass
 
     def _createTable(self, options, dbName, tableName):
-        possibleOptions = [
-            [""             , "schema"         ],
-            [""             , "compression"    ],
-            [""             , "match"          ],
-            [""             , "uuid"           ],
-            ["/match"       , "dirTable1"      ],
-            ["/match"       , "dirColName1"    ],
-            ["/match"       , "dirTable2"      ],
-            ["/match"       , "dirColName2"    ],
-            ["/match"       , "flagColName"    ],
-            ["/partitioning", "subChunks"      ],
-            ["/partitioning", "dirTable"       ],
-            ["/partitioning", "lonColName"     ],
-            ["/partitioning", "latColName"     ],
-            ["/partitioning", "dirColName"     ] ]
-
-
         tbP = "/DBS/%s/TABLES/%s" % (dbName, tableName)
         tbOpts = dict([(k, options[k])
                        for k in possibleOpts["table"]
@@ -276,13 +244,6 @@ class QservAdmin(object):
             self._addPacked(tbP, tbOpts)
             self._addPacked(tbP+"/match", matchOpts)
             self._addPacked(tbP+"/partitioning", partitionOpts)
-            # for o in possibleOptions:
-            #     if o[1] in options:
-            #         k = "%s%s/%s" % (tbP, o[0], o[1])
-            #         v = options[o[1]]
-            #         self._kvI.create(k, v)
-            #     else:
-            #         self._logger.info("'%s' not provided" % o[0])
             self._kvI.set(tbP, "READY")
         except KvException as e:
             self._logger.error("Failed to create table '%s.%s', " % \
@@ -374,12 +335,6 @@ class QservAdmin(object):
         lockOptList = "comments estimatedDuration lockedBy lockedTime mode reason"
         lockOpts = dict([(k,"") for k in lockOptList.split()])
         self._addPacked(dbP + "/LOCK.json", lockOpts)
-        # self._kvI.create("%s/LOCK/comments" % dbP)
-        # self._kvI.create("%s/LOCK/estimatedDuration" % dbP)
-        # self._kvI.create("%s/LOCK/lockedBy" % dbP)
-        # self._kvI.create("%s/LOCK/lockedTime" % dbP)
-        # self._kvI.create("%s/LOCK/mode" % dbP)
-        # self._kvI.create("%s/LOCK/reason" % dbP)
 
     ##### Locking related ##########################################################
     def _getDbLock(self, dbName):
