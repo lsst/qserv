@@ -49,7 +49,6 @@ Access to the classes from the qserv_czar library
 #include "qdisp/TransactionSpec.h"
 #include "qproc/ChunkSpec.h"
 #include "rproc/mergeTypes.h"
-//#include "rproc/TableMerger.h"
 #include "util/common.h"
 #include "util/Substitution.h"
 #include "xrdc/xrdfile.h"
@@ -143,7 +142,6 @@ SWIG_SHARED_PTR_DERIVED(KvInterfaceImplMem, lsst::qserv::css::KvInterface, lsst:
 %include "qproc/ChunkSpec.h"
 %include "query/Constraint.h"
 %include "rproc/mergeTypes.h"
- //%include "rproc/TableMerger.h"
 %include "util/Substitution.h"
 %include "xrdc/xrdfile.h"
 
