@@ -41,8 +41,8 @@ Access to the classes from the qserv_czar library
 #include "ccontrol/UserQueryFactory.h"
 #include "ccontrol/userQueryProxy.h"
 #include "css/StripingParams.h"
-#include "css/KvInterface.h" // For debug
-#include "css/KvInterfaceImplMem.h" // For debug
+#include "css/KvInterface.h"
+#include "css/KvInterfaceImplMem.h"
 #include "global/constants.h"
 #include "log/loggerInterface.h"
 #include "qdisp/ChunkMeta.h"
@@ -134,7 +134,8 @@ SWIG_SHARED_PTR_DERIVED(KvInterfaceImplMem, lsst::qserv::css::KvInterface, lsst:
 %include "ccontrol/UserQueryFactory.h"
 %include "ccontrol/userQueryProxy.h"
 %include "css/StripingParams.h"
-%include "css/KvInterfaceImplMem.h" // For debug
+%include "css/KvInterface.h"
+%include "css/KvInterfaceImplMem.h"
 %include "global/constants.h"
 %include "log/loggerInterface.h"
 %include "qdisp/ChunkMeta.h"
