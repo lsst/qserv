@@ -88,9 +88,11 @@ struct printMapSecond {
         : os(os_), sep(sep_), first(true)  {}
 
     void operator()(Ptr const& p) {
-        if(!first) { os << sep; }
+        if(!first) {
+            os << sep;
+        }
         os << *(p.second);
-        first = true;
+        first = false;
     }
     std::ostream& os;
     std::string sep;
