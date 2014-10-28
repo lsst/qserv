@@ -131,7 +131,7 @@ time bash newinstall.sh ||
 if [[ -n ${LOCAL_OPTION} ]]; then
     EUPS_PKG_ROOT_BACKUP=${EUPS_PKGROOT}
 fi
-. ${STACK_DIR}/loadLSST.sh ||
+. ${STACK_DIR}/loadLSST.bash ||
 {
     >&2 echo "ERROR : unable to load LSST stack environment"
     exit 1
