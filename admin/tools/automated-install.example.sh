@@ -28,6 +28,7 @@ fi
 if [[ ! -z  ${INTERNET_FREE_DISTSERVER_DIR} ]]; then
     INTERNET_FREE_OPT="-r ${INTERNET_FREE_DISTSERVER_DIR}"
 fi
+QSERV_RUN_DIR_OPT="-R ${QSERV_RUN_DIR}"
 
 # automated install script is available ether in internet-free distserver, or in Qserv sources :
 if [[ ! -z  ${INTERNET_FREE_DISTSERVER_DIR} ]]; then
@@ -36,4 +37,4 @@ if [[ ! -z  ${INTERNET_FREE_DISTSERVER_DIR} ]]; then
 else
     QSERV_INSTALL_SCRIPT=${QSERV_SRC_DIR}/admin/tools/qserv-install.sh
 fi
-bash ${QSERV_INSTALL_SCRIPT} ${INTERNET_FREE_OPT} -i ${INSTALL_DIR}
+bash ${QSERV_INSTALL_SCRIPT} ${INTERNET_FREE_OPT} ${QSERV_RUN_DIR_OPT} -i ${INSTALL_DIR}

@@ -26,11 +26,12 @@ OPTIONS:
    -r      Local distribution server root directory,
            used in internet-free mode
    -i      Install directory : MANDATORY
+   -R      Qserv execution directory (configuration and data) 
    -v      Qserv version to install, default to the one with the 'qserv' tag
 EOF
 }
 
-while getopts "dr:i:v:h" o; do
+while getopts "dr:i:v:R:h" o; do
         case "$o" in
         d)
                 DEV_OPTION=1
@@ -56,6 +57,10 @@ while getopts "dr:i:v:h" o; do
         i)
                 # Remove trailing slashes
                 STACK_DIR=`echo "${OPTARG}" | sed 's#/*$##'`
+                ;;
+        R)
+                QSERV_RUN_DIR=`echo "${OPTARG}" | sed 's#/*$##'`
+                QSERV_RUN_DIR_OPT="-R ${QSERV_RUN_DIR}"
                 ;;
         v)
                 VERSION="${OPTARG}"
@@ -153,7 +158,7 @@ setup qserv_distrib ${VERSION} ||
 echo
 underline "Configuring Qserv"
 echo
-qserv-configure.py --all ||
+qserv-configure.py --all ${QSERV_RUN_DIR_OPT} ||
 {
     >&2 echo "Unable to configure Qserv as a mono-node instance"
     exit 1
@@ -162,8 +167,11 @@ qserv-configure.py --all ||
 echo
 underline "Starting Qserv"
 echo
-CFG_VERSION=`qserv-version.sh`
-${HOME}/qserv-run/${CFG_VERSION}/bin/qserv-start.sh ||
+if [ -z ${QSERV_RUN_DIR} ]; then
+    CFG_VERSION=`qserv-version.sh`
+    QSERV_RUN_DIR=${HOME}/qserv-run/${CFG_VERSION}
+fi
+${QSERV_RUN_DIR}/bin/qserv-start.sh ||
 {
     >&2 echo "Unable to start Qserv"
     exit 1
@@ -181,7 +189,7 @@ qserv-test-integration.py ||
 echo
 underline "Stopping Qserv"
 echo
-${HOME}/qserv-run/${CFG_VERSION}/bin/qserv-stop.sh ||
+${QSERV_RUN_DIR}/bin/qserv-stop.sh ||
 {
     >&2 echo "Unable to stop Qserv"
     exit 1
