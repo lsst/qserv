@@ -26,6 +26,7 @@ OPTIONS:
    -r      Local distribution server root directory,
            used in internet-free mode
    -i      Install directory : MANDATORY
+   -R      Qserv execution directory (configuration and data) 
    -v      Qserv version to install, default to the one with the 'qserv' tag
 EOF
 }
@@ -56,6 +57,10 @@ while getopts "dr:i:v:h" o; do
         i)
                 # Remove trailing slashes
                 STACK_DIR=`echo "${OPTARG}" | sed 's#/*$##'`
+                ;;
+        R)
+                QSERV_RUN_DIR=`echo "${OPTARG}" | sed 's#/*$##'`
+                QSERV_RUN_DIR_OPT="-R ${QSERV_RUN_DIR}"
                 ;;
         v)
                 VERSION="${OPTARG}"
@@ -153,7 +158,7 @@ setup qserv_distrib ${VERSION} ||
 echo
 underline "Configuring Qserv"
 echo
-qserv-configure.py --all ||
+qserv-configure.py --all ${QSERV_RUN_DIR_OPT} ||
 {
     >&2 echo "Unable to configure Qserv as a mono-node instance"
     exit 1
