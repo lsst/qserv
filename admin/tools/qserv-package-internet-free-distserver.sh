@@ -4,7 +4,9 @@ set -e
 
 # First, with lsstsw tools : 
 # rebuild lsst qserv qserv_testdata
-# publish -t qserv -b bXX lsst qserv qserv_testdata
+# publish -t qserv -b bXXX git lsst qserv_distrib
+# publish with current tag will add newinstall.sh to distserver
+# publish -t current -b bXXX git lsst qserv_distrib
 
 ############################
 # CUSTOMIZE NEXT PARAMETER :
@@ -89,15 +91,6 @@ if [ ! -d ${EUPS_PKGROOT} ]; then
     echo "Please create it using lsstsw with package mode"
     exit 1
 fi
-
-# newinstall.sh in EUPS_PKGROOT is obsolete
-echo
-echo "Downloading LSST stack install script"
-echo "====================================="
-echo
-curl -O http://sw.lsstcorp.org/eupspkg/newinstall.sh
-mv newinstall.sh ${EUPS_PKGROOT}
-
 
 if ! git_update_bare ${EUPS_GITREPO}; then
     echo "Unable to synchronize with next git repository : ${EUPS_GITREPO}"
