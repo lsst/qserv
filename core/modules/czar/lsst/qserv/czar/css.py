@@ -36,6 +36,7 @@ Known issues and todos:
 
 # standard library imports
 import logging
+import json
 import sys
 import time
 
@@ -83,12 +84,14 @@ class CssCacheFactory(object):
             self._cfg = { "technology" : "zoo",
                           "connection" : kwargs["connInfo"],
                           "timeout" : 10000 }
-            self._setupBackend(self._cfg)
         elif "config" in kwargs:
-            self._cfg = kwags["config"]
+            self._cfg = kwargs["config"]
+            #raise KvException(KvException.MISSING_PARAM, str(self._cfg))
+            self._logger.info("Using css config: %s" %  str(self._cfg))
             pass
         else:
             raise KvException(KvException.MISSING_PARAM, "<None>")
+        self._setupBackend(self._cfg)
         self.refresh()
 
     def _setupBackend(self, cfg):
@@ -96,7 +99,7 @@ class CssCacheFactory(object):
             self._zk = KazooClient(
                 hosts=cfg["connection"],
                 # timeout in ms, kazoo expects seconds
-                timeout=(cfg["timeout"]/1000.0))
+                timeout=(float(cfg["timeout"])/1000.0))
             self._zk.start()
         elif cfg["technology"] == "mem":
             self._file = str(cfg["connection"])
@@ -175,7 +178,7 @@ class CssCacheFactory(object):
                 return path != "/zookeeper"
             def dataFunc(self, path, data):
                 if self.isPacked(path):
-                    self.insertObj(path[:len(self.jsonsuffix)],
+                    self.insertObj(path[:-len(self.jsonsuffix)],
                                    json.loads(data))
                     pass
                 else:
@@ -190,8 +193,8 @@ class CssCacheFactory(object):
                     p = path
                     if p.endswith("/"): p = path[:-1] # clip the /
                     for k in obj:
-                        self.insertObj(path + "/" + k, obj[k])
-                else: self.kvi.create(path, obj)
+                        self.insertObj(path + "/" + k, str(obj[k]))
+                else: self.kvi.create(str(path), str(obj))
             pass
         kf = KviFactory(kvi)
         self._visit("/", kf.dataFunc, kf.acceptFunc)

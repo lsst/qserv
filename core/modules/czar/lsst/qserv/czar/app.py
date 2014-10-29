@@ -318,9 +318,9 @@ class Context:
     def _initFactory(cls):
         """Initialize the UserQueryFactory instance from our configuration"""
         cfg = lsst.qserv.czar.config.getStringMap()
-        cssItems = lsst.qserv.czar.config.config.items("css")
+        cssItems = dict(lsst.qserv.czar.config.config.items("css"))
         cf = css.CssCacheFactory(config=cssItems)
-        cls._uqFactory = UserQueryFactory(cfg, cf.createKvMem())
+        cls._uqFactory = UserQueryFactory(cfg, cf.getSnapshot())
         cls._cssCacheFactory = cf
 
 
