@@ -48,6 +48,7 @@ namespace mysql {
 namespace proto {
     class ProtoHeader;
     class Result;
+    struct WorkerResponse;
 }
 namespace qdisp {
     class MessageStore;
@@ -130,15 +131,12 @@ public:
     explicit InfileMerger(InfileMergerConfig const& c);
     ~InfileMerger();
 
-    /// Merge a message buffer, which contains:
+    /// Merge a worker response, which contains:
     /// Size of ProtoHeader message
     /// ProtoHeader message
     /// Result message
-    /// @return count of bytes imported.
-    /// merge() can be called by multiple threads as buffers arrive for merging,
-    /// validating and enqueuing the inputs so that a separate thread may
-    /// perform the I/O-dependent physical table loading.
-    off_t merge(char const* dumpBuffer, int dumpLength);
+    /// @return true if merge was successfully imported (queued)
+    bool merge(boost::shared_ptr<proto::WorkerResponse> response);
 
     /// @return error details if finalize() returns false
     InfileMergerError const& getError() const { return _error; }
@@ -150,13 +148,11 @@ public:
     bool isFinished() const;
 
 private:
-    struct Msgs;
     int _readHeader(proto::ProtoHeader& header, char const* buffer, int length);
     int _readResult(proto::Result& result, char const* buffer, int length);
     bool _verifySession(int sessionId);
-    bool _verifyMd5(std::string const& expected, std::string const& actual);
-    int _importBuffer(char const* buffer, int length, bool setupTable);
-    bool _setupTable(Msgs const& msgs);
+    bool _importResponse(boost::shared_ptr<proto::WorkerResponse> response);
+    bool _setupTable(proto::WorkerResponse const& response);
     void _setupRow();
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql);

@@ -20,10 +20,16 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QDISP_QUERYRECEIVER_H
-#define LSST_QSERV_QDISP_QUERYRECEIVER_H
+#ifndef LSST_QSERV_QDISP_RESPONSEREQUESTER_H
+#define LSST_QSERV_QDISP_RESPONSEREQUESTER_H
+
+// System headers
+#include <string>
+#include <vector>
 
 // Third-party headers
+#include "boost/thread/locks.hpp"
+#include "boost/thread/mutex.hpp"
 #include "boost/shared_ptr.hpp"
 
 // Qserv headers
@@ -33,7 +39,7 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-class QueryReceiver {
+class ResponseRequester {
 public:
     struct Error {
         Error() : code(0) {}
@@ -43,15 +49,14 @@ public:
 
     typedef util::VoidCallable<void> CancelFunc;
 
-    typedef boost::shared_ptr<QueryReceiver> Ptr;
-    virtual ~QueryReceiver() {}
+    typedef boost::shared_ptr<ResponseRequester> Ptr;
+    virtual ~ResponseRequester() {}
 
-    /// @return the size of the buffer() being returned.
-    virtual int bufferSize() const = 0;
-
-    /// @return a buffer for filling by the caller. The receiver implementation
-    /// may need to prepare the buffer prior to returning.
-    virtual char* buffer() = 0;
+    /// @return a char vector to receive the next message. The vector
+    /// should be sized to the request size. The buffer will be filled
+    /// before flush(), unless the response is completed (no more
+    /// bytes) or there is an error.
+    virtual std::vector<char>& nextBuffer() = 0;
 
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
@@ -71,10 +76,11 @@ public:
     /// @return an error code and description
     virtual Error getError() const { return Error(); };
 
-    /// Set a function to be called that forcibly cancels the QueryReceiver
+    /// Set a function to be called that forcibly cancels the ResponseRequester
     /// process. The buffer filler should call this function so that it can be
     /// notified when the receiver no longer cares about being filled.
     virtual void registerCancel(boost::shared_ptr<CancelFunc> cancelFunc) {
+        boost::lock_guard<boost::mutex> lock(_cancelMutex);
         _cancelFunc = cancelFunc;
     }
 
@@ -86,14 +92,24 @@ public:
 protected:
     /// Call _cancelFunc.
     void _callCancel() {
-        if(_cancelFunc) {
-            (*_cancelFunc)();
+        boost::shared_ptr<CancelFunc> f;
+        {
+            boost::lock_guard<boost::mutex> lock(_cancelMutex);
+            f.swap(_cancelFunc);
+        }
+        if(f) {
+            (*f)();
         }
     }
     boost::shared_ptr<CancelFunc> _cancelFunc;
-
+    boost::mutex _cancelMutex;
 };
+
+inline std::ostream& operator<<(std::ostream& os, ResponseRequester const& r) {
+    return r.print(os);
+}
+
 
 }}} // namespace lsst::qserv::qdisp
 
-#endif // LSST_QSERV_QDISP_QUERYRECEIVER_H
+#endif // LSST_QSERV_QDISP_RESPONSEREQUESTER_H
