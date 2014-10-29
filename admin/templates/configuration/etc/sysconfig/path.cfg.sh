@@ -4,51 +4,49 @@
 #-------------------------------------------------------------------------------
 
 # Set up a default search path.
-if [ -n ${EUPS_DIR} ]; then
-    QSERV_ENV="(eups environment)"
-else
-    QSERV_ENV="(meta-config environment)"
+# Using value from QSERV_RUN_DIR/qserv-meta.conf
 
-    # all
-    export PATH={{PATH}}
-
-    # qserv-czar
-    export PYTHONPATH={{PYTHONPATH}}
-
-    # qserv-czar, xrootd
-    export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
-
-    # mysql
-    MYSQL_DIR={{MYSQL_DIR}}
-
-    # mysql-proxy
-    QSERV_DIR={{QSERV_DIR}}
-    LUA_DIR={{LUA_DIR}}
-
-    # xrootd
-    XROOTD_DIR={{XROOTD_DIR}}
-fi
-
-check_existence() {
+check_dir_availability() {
     # Test syntax.
     if [ "$#" = 0 ] ; then
-	    echo $"Usage: check_existence {varname1} ... {varnameN}"
+	    echo $"Usage: check_dir_availability {varname1} ... {varnameN}"
 	    return 1
     fi
     for varname in "$@"
     do
         var=${!varname}
-        if [ -z "${var}" ]; then
-            log_failure_msg "Failure in service $NAME: undefined \$$varname"
+        if [ ! -r "${var}" ]; then
+            log_failure_msg "Failure in service $NAME: \$$varname doesn't \
+exists or read permission isn't granted"
+            exit 1
+        elif [ ! -d "${var}" ]; then
+            log_failure_msg "Failure in service $NAME: \$$varname isn't a \
+directory"
             exit 1
         fi
     done
 }
 
-if [ $NAME = 'mysqld' ]; then
-    check_existence MYSQL_DIR
+# Used by all services 
+export PATH={{PATH}}
+
+
+if [ $NAME = 'qserv-czar' ]; then
+    export PYTHONPATH={{PYTHONPATH}}
+    export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
+
+elif [ $NAME = 'mysqld' ]; then
+    MYSQL_DIR={{MYSQL_DIR}}
+    check_dir_availability MYSQL_DIR
+
 elif [ $NAME = 'xrootd' ]; then
-    check_existence XROOTD_DIR
+    export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
+    XROOTD_DIR={{XROOTD_DIR}}
+    check_dir_availability XROOTD_DIR
+
 elif [ $NAME = 'mysql-proxy' ]; then
-    check_existence QSERV_DIR LUA_DIR
+    QSERV_DIR={{QSERV_DIR}}
+    LUA_DIR={{LUA_DIR}}
+    check_dir_availability QSERV_DIR LUA_DIR
+
 fi
