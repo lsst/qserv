@@ -266,27 +266,13 @@ status_of_proc () {
 }
 
 source_sysconfig() {
-    # Test syntax.
-    if [ "$#" != 1 ] ; then
-	    echo $"Usage: source_sysconfig {program}"
-	    return 1
-    fi
-    prog=${1##*/}
-    # Read configuration variable file if it is present
-    # DIR is defined in init.d script
-    etc_dir=`dirname ${DIR}`
-    PATHS_CFG=${etc_dir}/sysconfig/path.cfg.sh
-    if [ -r ${PATHS_CFG} ]; then
-	. ${PATHS_CFG}
+    local_etc_dir=`dirname ${DIR}`
+    local_sysconfig_file=${local_etc_dir}/sysconfig/qserv
+    if [ -r ${local_sysconfig_file} ]; then
+	. ${local_sysconfig_file}
     else
-	log_failure_msg "Unable to load paths for Qserv and dependencies"
-	exit 1
-    fi
-    PROG_CFG=${etc_dir}/sysconfig/${prog}
-    if [ -r ${PROG_CFG} ]; then
-	. ${PROG_CFG}
-    else
-	log_failure_msg "Unable to load $NAME configuration parameters"
+	log_failure_msg "Unable to load Qserv configuration: \
+${local_sysconfig_file}"
 	exit 1
     fi
 }
