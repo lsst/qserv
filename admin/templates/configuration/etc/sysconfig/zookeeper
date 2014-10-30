@@ -1,9 +1,0 @@
-# Configuration file for the mysql-proxy service.
-
-# Automatically generated using meta-configuration file:
-# {{QSERV_META_CONFIG_FILE}}
-
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-QSERV_PID_DIR={{QSERV_PID_DIR}}
-QSERV_LOG_DIR={{QSERV_LOG_DIR}}
-QSERV_UNIX_USER={{QSERV_UNIX_USER}}
