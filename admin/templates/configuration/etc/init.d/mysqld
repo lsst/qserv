@@ -48,7 +48,7 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 NAME="mysqld"
 
-source_sysconfig ${NAME}
+source_sysconfig
 
 if [ -n "${MYSQL_DIR}" ]; then
     basedir=${MYSQL_DIR} 
