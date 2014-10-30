@@ -26,6 +26,7 @@ NAME="mysql-proxy"
 DAEMON=${NAME}
 
 source_sysconfig
+check_dir_readable QSERV_DIR LUA_DIR
 
 # Source networking configuration.
 if [ -f /etc/sysconfig/network ]; then

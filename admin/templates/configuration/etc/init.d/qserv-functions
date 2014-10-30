@@ -276,3 +276,26 @@ ${local_sysconfig_file}"
 	exit 1
     fi
 }
+
+check_dir_readable() {
+    # Test syntax.
+    if [ "$#" = 0 ] ; then
+            echo $"Usage: check_dir_readable {varname1} ... {varnameN}"
+            return 1
+    fi
+    for local_varname in "$@"
+    do
+        local_varid="\$$local_varname"
+        local_varval=`eval "echo $local_varid"`
+        echo "XXXXXXXXXXxxx ${local_varval}"
+        if [ ! -r "${local_varval}" ]; then
+            log_failure_msg "Failure in service $NAME: \$$local_varname doesn't \
+exists or read permission isn't granted"
+            exit 1
+        elif [ ! -d "${local_varval}" ]; then
+            log_failure_msg "Failure in service $NAME: \$$local_varname isn't a \
+directory"
+            exit 1
+        fi
+    done
+}
