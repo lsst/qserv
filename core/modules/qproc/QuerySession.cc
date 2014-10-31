@@ -119,6 +119,8 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         _error = std::string("ANTLR exception:") + e.getMessage();
     } catch(parser::UnknownAntlrError& e) {
         _error = e.what();
+    } catch(Bug& b) {
+        _error = std::string("Qserv bug:") + b.what();
     }
 }
 
