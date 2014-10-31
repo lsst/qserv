@@ -279,4 +279,8 @@ source_sysconfig() {
 ${local_sysconfig_file}"
 	exit 1
     fi
+    local_sysconfig_check_file=${local_etc_dir}/init.d/qserv-check-config
+    if [ -r ${local_sysconfig_check_file} ]; then
+	. ${local_sysconfig_check_file}
+    fi
 }
