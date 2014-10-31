@@ -266,7 +266,11 @@ status_of_proc () {
 }
 
 source_sysconfig() {
-    local_etc_dir=`dirname ${DIR}`
+    if [ "$#" -ne 1 ] ; then
+            echo "Usage: $0 {etc_dir}"
+            return 1
+    fi
+    local_etc_dir=`dirname $1`
     local_sysconfig_file=${local_etc_dir}/sysconfig/qserv
     if [ -r ${local_sysconfig_file} ]; then
 	. ${local_sysconfig_file}

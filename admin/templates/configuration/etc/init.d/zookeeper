@@ -29,7 +29,7 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="zookeeper"
 DAEMON=${NAME}
 
-source_sysconfig
+source_sysconfig ${DIR}
 
 export ZOOCFGDIR=${QSERV_RUN_DIR}/etc
 export ZOO_LOG_DIR=${QSERV_LOG_DIR}
