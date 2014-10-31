@@ -32,9 +32,11 @@
 
 // System headers
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 
 // Local headers
+#include "global/Bug.h"
 #include "query/Predicate.h"
 #include "query/QueryTemplate.h"
 
@@ -79,7 +81,11 @@ void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRef::List& list) {
         if(bf) {
             findColumnRefs(bf, list);
         } else {
-            throw std::logic_error("Unexpected non BoolFactor in BoolTerm");
+            std::ostringstream os;
+            t->putStream(os);
+            throw Bug(std::string("Unexpected non BoolFactor in BoolTerm(")
+                      + t->getName()
+                      + "): " + os.str());
         }
     } else {
         for(; i != e; ++i) {
