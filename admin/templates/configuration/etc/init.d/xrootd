@@ -24,7 +24,6 @@ NAME="xrootd"
 DAEMON=${NAME}
 
 source_sysconfig ${DIR}
-check_dir_readable ${NAME} XROOTD_DIR
     
 XROOTD_CONFIG="${QSERV_RUN_DIR}/etc/lsp.cf"
 XROOTD_INSTANCE_NAME="worker"

@@ -279,28 +279,8 @@ source_sysconfig() {
 ${local_sysconfig_file}"
 	exit 1
     fi
-}
-
-check_dir_readable() {
-    # Test syntax.
-    if [ "$#" = 0 ] ; then
-            echo $"Usage: check_dir_readable {service_name} {varname1} ... {varnameN}"
-            return 1
+    local_check_config_file=${local_etc_dir}/init.d/qserv-check-config
+    if [ -r "${local_check_config_file}" ]; then
+        .  ${local_check_config_file}
     fi
-    local_service_name="$1"
-    shift
-    for local_varname in "$@"
-    do
-        local_varid="\$$local_varname"
-        local_varval=`eval "echo $local_varid"`
-        if [ ! -r "${local_varval}" ]; then
-            log_failure_msg "Failure in service $local_service_name: \$$local_varname doesn't \
-exists or read permission isn't granted"
-            exit 1
-        elif [ ! -d "${local_varval}" ]; then
-            log_failure_msg "Failure in service local_service_name=: \$$local_varname isn't a \
-directory"
-            exit 1
-        fi
-    done
 }

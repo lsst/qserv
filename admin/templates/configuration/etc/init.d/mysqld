@@ -49,7 +49,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="mysqld"
 
 source_sysconfig ${DIR}
-check_dir_readable ${NAME} MYSQL_DIR
 
 if [ -n "${MYSQL_DIR}" ]; then
     basedir=${MYSQL_DIR} 
