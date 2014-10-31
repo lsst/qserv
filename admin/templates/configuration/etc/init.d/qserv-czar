@@ -25,7 +25,7 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 NAME="qserv-czar"
 DAEMON=${NAME}
 
-source_sysconfig
+source_sysconfig ${DIR}
     
 start=startCzar.py
 config=${QSERV_RUN_DIR}/etc/${NAME}.cnf
