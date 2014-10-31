@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -50,46 +50,47 @@ namespace qserv {
 namespace css {
 
 class KvInterface; // forward declaration
+class KvInterfaceImplMem;
 
 /** The class stores Qserv-specific metadata and state information from the
     Central State System.
  */
-
 class Facade {
 public:
-    ~Facade();
+virtual     ~Facade();
 
     // accessors
-    bool containsDb(std::string const& dbName) const;
-    bool containsTable(std::string const& dbName,
+virtual bool containsDb(std::string const& dbName) const;
+virtual     bool containsTable(std::string const& dbName,
                        std::string const& tableName) const;
-    bool tableIsChunked(std::string const& dbName,
+virtual     bool tableIsChunked(std::string const& dbName,
                         std::string const& tableName) const;
-    bool tableIsSubChunked(std::string const& dbName,
+virtual     bool tableIsSubChunked(std::string const& dbName,
                            std::string const& tableName) const;
-    bool isMatchTable(std::string const& dbName,
+virtual     bool isMatchTable(std::string const& dbName,
                       std::string const& tableName) const;
-    std::vector<std::string> getAllowedDbs() const;
-    std::vector<std::string> getChunkedTables(std::string const& dbName) const;
-    std::vector<std::string> getSubChunkedTables(std::string const& dbName) const;
-    std::vector<std::string> getPartitionCols(std::string const& dbName,
+virtual     std::vector<std::string> getAllowedDbs() const;
+virtual     std::vector<std::string> getChunkedTables(std::string const& dbName) const;
+virtual     std::vector<std::string> getSubChunkedTables(std::string const& dbName) const;
+virtual     std::vector<std::string> getPartitionCols(std::string const& dbName,
                                               std::string const& tableName) const;
-    int getChunkLevel(std::string const& dbName,
+virtual     int getChunkLevel(std::string const& dbName,
                       std::string const& tableName) const;
-    std::string getDirTable(std::string const& dbName,
+virtual     std::string getDirTable(std::string const& dbName,
                             std::string const& tableName) const;
-    std::string getDirColName(std::string const& dbName,
+virtual     std::string getDirColName(std::string const& dbName,
                               std::string const& tableName) const;
-    std::vector<std::string> getSecIndexColNames(std::string const& dbName,
+virtual     std::vector<std::string> getSecIndexColNames(std::string const& dbName,
                                                  std::string const& tableName) const;
-    StripingParams getDbStriping(std::string const& dbName) const;
-    double getOverlap(std::string const& dbName) const;
-    MatchTableParams getMatchTableParams(std::string const& dbName,
+virtual     StripingParams getDbStriping(std::string const& dbName) const;
+virtual     double getOverlap(std::string const& dbName) const;
+virtual     MatchTableParams getMatchTableParams(std::string const& dbName,
                                          std::string const& tableName) const;
 private:
     Facade(std::string const& connInfo, int timeout_msec);
     Facade(std::string const& connInfo, int timeout_msec, std::string const& prefix);
-    Facade(std::istream& mapStream);
+    explicit Facade(std::istream& mapStream);
+    explicit Facade(boost::shared_ptr<KvInterface> kv);
 
     void _throwIfNotDbExists(std::string const& dbName) const;
     void _throwIfNotTbExists(std::string const& dbName,
@@ -107,7 +108,9 @@ private:
     friend class FacadeFactory;
 
 private:
-    KvInterface* _kvI;
+    boost::shared_ptr<KvInterface> _kvI;
+protected:
+    Facade() {}
     std::string _prefix; // optional prefix, for isolating tests from production
 };
 
@@ -121,6 +124,7 @@ public:
                                                      std::string const& connInfo,
                                                      int timeout_msec,
                                                      std::string const& prefix);
+    static boost::shared_ptr<Facade> createCacheFacade(boost::shared_ptr<KvInterface> kv);
 };
 
 }}} // namespace lsst::qserv::css

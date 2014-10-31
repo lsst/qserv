@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2014 LSST/AURA
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -422,6 +422,11 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
         query::QsRestrictor::List const& rList = *rListP;
         context.restrictors.reset(new query::QueryContext::RestrList);
         newTerm.reset(new query::AndTerm);
+
+        // At least one table should exist in the restrictor entries
+        if(entries.empty()) {
+            throw AnalysisError("Spatial restrictor w/o partitioned table");
+        }
 
         // Now, for each of the qserv restrictors:
         for(query::QsRestrictor::List::const_iterator i=rList.begin();

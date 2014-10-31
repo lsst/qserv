@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2014 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -111,12 +111,16 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         _error = std::string("AnalysisError:") + e.what();
     } catch(css::NoSuchDb& e) {
         _error = std::string("NoSuchDb:") + e.what();
+    } catch(css::NoSuchTable& e) {
+        _error = std::string("NoSuchTable:") + e.what();
     } catch(parser::ParseException& e) {
         _error = std::string("ParseException:") + e.what();
     } catch(antlr::NoViableAltException& e) {
         _error = std::string("ANTLR exception:") + e.getMessage();
     } catch(parser::UnknownAntlrError& e) {
         _error = e.what();
+    } catch(Bug& b) {
+        _error = std::string("Qserv bug:") + b.what();
     }
 }
 

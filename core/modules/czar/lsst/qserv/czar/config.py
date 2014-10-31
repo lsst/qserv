@@ -1,6 +1,6 @@
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
+# Copyright 2008-2014 AURA/LSST.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -72,6 +72,8 @@ technology=zoo
 # qserv/core/modules/css/KvInterfaceImplMem.cc)
 # TODO : localhost doesn't work on Ubuntu 14.04, why ?
 connection=127.0.0.1:2181
+# Timeout in milliseconds
+timeout=10000
 
 [resultdb]
 host=
@@ -93,8 +95,13 @@ chunkLimit=-1
 [mysql]
 mysqlclient=
 
+[log]
+logConfig=
 """)
-
+# Note: It is important to have defaults for config variables specified
+#  here. Completely missing sections and keys will raise exceptions
+#  that, even if caught properly, will be reported by errors by
+#  Python's unittest framework.
 
 # Module variables:
 config = None

@@ -2,7 +2,7 @@
 
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -83,28 +83,12 @@ namespace css {
   *    mv /tmp/testMap.kvmap <destination>
   */
 KvInterfaceImplMem::KvInterfaceImplMem(std::istream& mapStream) {
-    if(mapStream.fail()) {
-        throw ConnError();
-    }
-    string line;
-    vector<string> strs;
-    while ( std::getline(mapStream, line) ) {
-        boost::split(strs, line, boost::is_any_of("\t"));
-        string theKey = strs[0];
-        string theVal = strs[1];
-        if (theVal == "\\N") {
-            theVal = "";
-        }
-        _kvMap[theKey] = theVal;
-    }
-    //map<string, string>::const_iterator itrM;
-    //for (itrM=_kvMap.begin() ; itrM!=_kvMap.end() ; itrM++) {
-    //    string val = "\\N";
-    //    if (itrM->second != "") {
-    //        val = itrM->second;
-    //    }
-    //    LOGF_INFO("%1%\t%2%" % itrM->first % val);
-    //}
+    _init(mapStream);
+}
+
+KvInterfaceImplMem::KvInterfaceImplMem(std::string const& filename) {
+    std::ifstream f(filename.c_str());
+    _init(f);
 }
 
 KvInterfaceImplMem::~KvInterfaceImplMem() {
@@ -114,8 +98,15 @@ void
 KvInterfaceImplMem::create(string const& key, string const& value) {
     LOGF_INFO("*** KvInterfaceImplMem::create(%1%, %2%)" % key % value);
     if (exists(key)) {
-        throw NoSuchKey(key);
+        throw KeyExistsError(key);
     }
+    _kvMap[key] = value;
+}
+
+void
+KvInterfaceImplMem::set(string const& key, string const& value) {
+    // Should always succeed, as long as std::map works.
+    LOGF_INFO("*** KvInterfaceImplMem::set(%1%, %2%)" % key % value);
     _kvMap[key] = value;
 }
 
@@ -180,6 +171,38 @@ KvInterfaceImplMem::deleteKey(string const& key) {
         throw NoSuchKey(key);
     }
     _kvMap.erase(key);
+}
+
+void KvInterfaceImplMem::_init(std::istream& mapStream) {
+    if(mapStream.fail()) {
+        throw ConnError();
+    }
+    string line;
+    vector<string> strs;
+    while ( std::getline(mapStream, line) ) {
+        boost::split(strs, line, boost::is_any_of("\t"));
+        string theKey = strs[0];
+        string theVal = strs[1];
+        if (theVal == "\\N") {
+            theVal = "";
+        }
+        _kvMap[theKey] = theVal;
+    }
+    //map<string, string>::const_iterator itrM;
+    //for (itrM=_kvMap.begin() ; itrM!=_kvMap.end() ; itrM++) {
+    //    string val = "\\N";
+    //    if (itrM->second != "") {
+    //        val = itrM->second;
+    //    }
+    //    LOGF_INFO("%1%\t%2%" % itrM->first % val);
+    //}
+}
+
+boost::shared_ptr<KvInterfaceImplMem>
+KvInterfaceImplMem::clone() const {
+    boost::shared_ptr<KvInterfaceImplMem> newOne(new KvInterfaceImplMem);
+    newOne->_kvMap = _kvMap;
+    return newOne;
 }
 
 }}} // namespace lsst::qserv::css
