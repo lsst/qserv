@@ -267,7 +267,7 @@ status_of_proc () {
 
 source_sysconfig() {
     if [ "$#" -ne 1 ] ; then
-            echo "Usage: $0 {etc_dir}"
+            echo "Usage: $0 {initd_dir}"
             return 1
     fi
     local_etc_dir=`dirname $1`
