@@ -27,6 +27,45 @@ DAEMON=${NAME}
 
 source_sysconfig ${DIR}
 
+# Check variables which are not controlled by application
+local_err_msg="Failure while starting ${NAME}:"
+if [ ! -w "${QSERV_RUN_DIR}" -o ! -d "${QSERV_RUN_DIR}" ]; then
+    log_failure_msg "${local_err_msg} \$QSERV_RUN_DIR isn't a writable \
+directory"
+    exit 1
+fi
+if [ ! -w "${QSERV_PID_DIR}" -o ! -d "${QSERV_PID_DIR}" ]; then
+    log_failure_msg "${local_err_msg} \$QSERV_PID_DIR isn't a writable \
+directory"
+    exit 1
+fi
+if [ ! -w "${QSERV_LOG_DIR}" -o ! -d "${QSERV_LOG_DIR}" ]; then
+    log_failure_msg "${local_err_msg} \$QSERV_LOG_DIR isn't a writable \
+directory"
+    exit 1
+fi
+if [ ! -r "${QSERV_DIR}" -o ! -d "${QSERV_DIR}" ]; then
+    log_failure_msg "${local_err_msg} \$QSERV_DIR isn't a readable \
+directory"
+    exit 1
+fi
+if [ ! -r "${LUA_DIR}" -o ! -d "${LUA_DIR}" ]; then
+    log_failure_msg "${local_err_msg} \$LUA_DIR isn't a readable \
+directory"
+    exit 1
+fi
+# These parameters should be in mysql-proxy configuration file
+if [ -z "${QSERV_UNIX_USER}" ]; then
+    log_failure_msg "${local_err_msg} \$QSERV_UNIX_USER is an empty \
+string"
+    exit 1
+fi
+[ "$QSERV_RPC_PORT" -eq "$QSERV_RPC_PORT" ] 2> /dev/null ||
+{
+    log_failure_msg "${local_err_msg} \$QSERV_RPC_PORT isn't an integer"
+    exit 1
+}
+
 # Set default mysql-proxy configuration.
 LUA_SHARE_DIR="${LUA_DIR}/share/lua/5.1"
 LUA_LIB_DIR="${LUA_DIR}/lib/lua/5.1"
