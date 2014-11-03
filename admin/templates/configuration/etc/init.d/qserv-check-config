@@ -20,7 +20,7 @@ if [ -z "${QSERV_UNIX_USER}" ]; then
 string"
     exit 1
 fi
-if [ "$QSERV_RPC_PORT" -neq "$QSERV_RPC_PORT" ] 2> /dev/null; then
+if [ "$QSERV_RPC_PORT" -ne "$QSERV_RPC_PORT" ] 2> /dev/null; then
     log_failure_msg "${local_err_msg} \$QSERV_RPC_PORT isn't an integer"
     exit 1
 fi
@@ -44,22 +44,22 @@ fi
 
 # Pathes to Qserv and dependencies
 # installation directories
-if [ ! -w "${MYSQL_DIR}" -o ! -d "${MYSQL_DIR}" ]; then
+if [ ! -r "${MYSQL_DIR}" -o ! -d "${MYSQL_DIR}" ]; then
     log_failure_msg "${local_err_msg} \$MYSQL_DIR isn't a readable \
 directory"
     exit 1
 fi
-if [ ! -w "${XROOTD_DIR}" -o ! -d "${XROOTD_DIR}" ]; then
+if [ ! -r "${XROOTD_DIR}" -o ! -d "${XROOTD_DIR}" ]; then
     log_failure_msg "${local_err_msg} \$XROOTD_DIR isn't a readable \
 directory"
     exit 1
 fi
-if [ ! -w "${QSERV_DIR}" -o ! -d "${QSERV_DIR}" ]; then
+if [ ! -r "${QSERV_DIR}" -o ! -d "${QSERV_DIR}" ]; then
     log_failure_msg "${local_err_msg} \$QSERV_DIR isn't a readable \
 directory"
     exit 1
 fi
-if [ ! -w "${LUA_DIR}" -o ! -d "${LUA_DIR}" ]; then
+if [ ! -r "${LUA_DIR}" -o ! -d "${LUA_DIR}" ]; then
     log_failure_msg "${local_err_msg} \$LUA_DIR isn't a readable \
 directory"
     exit 1
