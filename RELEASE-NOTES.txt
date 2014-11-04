@@ -1,3 +1,19 @@
+R E L E A S E   2014_10
+=======================
+
+Code improvements:
+ * DM-1210: Invert buffering for czar in row-based result handling
+ * DM-1249: Reimplement CSS using JSON-packing, czar kazoo + c++ snapshotting, #1
+
+Bug fixes:
+ * DM-1360: Fix minor loose ends from new result plumbing
+ * DM-1381: Fix testFacade - make the location random
+ * DM-513:  Fix threading issues in CSS watcher
+ * DM-1279: Fix Scisql deployment test error (doc.py)
+
+Documentation improvements:
+ * DM-1287: Propose and document a recipe to build Qserv in eups
+
 R E L E A S E   2014_09
 =======================
 
