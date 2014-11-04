@@ -51,19 +51,10 @@ NAME="mysqld"
 source_sysconfig ${DIR}
 
 # Check variables which are not controlled by application
-local_err_msg="Failure while starting ${NAME}:"
-if [ ! -w "${QSERV_RUN_DIR}" -o ! -d "${QSERV_RUN_DIR}" ]; then
-    log_failure_msg "${local_err_msg} \$QSERV_RUN_DIR isn't a writable \
-directory"
-    exit 1
-fi
-if [ ! -r "${MYSQL_DIR}" -o ! -d "${MYSQL_DIR}" ]; then
-    log_failure_msg "${local_err_msg} \$MYSQL_DIR isn't a readable \
-directory"
-    exit 1
-else
-    basedir=${MYSQL_DIR} 
-fi
+check_writable ${NAME} "QSERV_RUN_DIR"
+check_readable ${NAME} "MYSQL_DIR"
+
+basedir=${MYSQL_DIR}
 
 datadir=
 
