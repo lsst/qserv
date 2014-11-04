@@ -32,22 +32,9 @@ DAEMON=${NAME}
 source_sysconfig ${DIR}
 
 # Check variables which are not controlled by application
-local_err_msg="Failure while starting ${NAME}:"
-if [ ! -w "${QSERV_RUN_DIR}" -o ! -d "${QSERV_RUN_DIR}" ]; then
-    log_failure_msg "${local_err_msg} \$QSERV_RUN_DIR isn't a writable \
-directory"
-    exit 1
-fi
-if [ ! -w "${QSERV_PID_DIR}" -o ! -d "${QSERV_PID_DIR}" ]; then
-    log_failure_msg "${local_err_msg} \$QSERV_PID_DIR isn't a writable \
-directory"
-    exit 1
-fi
-if [ ! -w "${QSERV_LOG_DIR}" -o ! -d "${QSERV_LOG_DIR}" ]; then
-    log_failure_msg "${local_err_msg} \$QSERV_LOG_DIR isn't a writable \
-directory"
-    exit 1
-fi
+check_writable ${NAME} "QSERV_RUN_DIR"
+check_writable ${NAME} "QSERV_PID_DIR"
+check_writable ${NAME} "QSERV_LOG_DIR"
 
 export ZOOCFGDIR=${QSERV_RUN_DIR}/etc
 export ZOO_LOG_DIR=${QSERV_LOG_DIR}
