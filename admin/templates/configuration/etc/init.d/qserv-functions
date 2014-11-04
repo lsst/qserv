@@ -3,6 +3,8 @@
 # Author: Fabrice Jammes <fabrice.jammes@in2p3.fr> (09.17.2013)
 #-------------------------------------------------------------------------------
 
+# Make sure umask is sane
+umask 022
 
 #
 # Use LSB init script functions for printing messages, if possible
@@ -68,7 +70,7 @@ wait_for_pid () {
         fi
 
         # there's nothing that will affect the file.
-        log_failure_msg " : Manager of pid-file quit without updating file."
+        log_failure_msg ": Manager of pid-file quit without updating file."
         return 1  # not waiting any more.
       fi
     fi
@@ -261,4 +263,66 @@ status_of_proc () {
         log_failure_msg "$name is not running"
         return $status
     fi
+}
+
+source_sysconfig() {
+    if [ "$#" -ne 1 ] ; then
+            echo "Usage: $0 {initd_dir}"
+            return 1
+    fi
+    local_etc_dir=`dirname $1`
+    local_sysconfig_file=${local_etc_dir}/sysconfig/qserv
+    if [ -r ${local_sysconfig_file} ]; then
+	. ${local_sysconfig_file}
+    else
+	log_failure_msg "Unable to load Qserv configuration: \
+${local_sysconfig_file}"
+	exit 1
+    fi
+}
+
+check_permissions() {
+    if [ "$#" -ne 3 ] ; then
+            echo "Usage: $0 perms(r|w) service varname"
+            return 1
+    fi
+    local_access_type="$1"
+    local_service_name="$2"
+    local_varname="$3"
+    # value of variable named varname will be stored in local_dir_location
+    eval "local_dir_location=\$$local_varname"
+    local_err_msg="Failure while starting ${NAME}:"
+    case "$local_access_type" in "w")
+        if [ ! -w "${local_dir_location}" -o ! -d "${local_dir_location}" ]; then
+            log_failure_msg "${local_err_msg} \$${local_varname} isn't writable"
+            exit 1
+        fi
+    ;;
+    "r")
+        if [ ! -r "${local_dir_location}" -o ! -d "${local_dir_location}" ]; then
+            log_failure_msg "${local_err_msg} \$${local_varname} isn't readable"
+            exit 1
+        fi
+    ;;
+    *)
+        echo "$0 first parameter must be 'r' or 'w'"
+        exit 1
+    ;;
+    esac
+}
+
+check_readable() {
+    if [ "$#" -ne 2 ] ; then
+            echo "Usage: $0 service varname"
+            exit 1
+    fi
+    check_permissions "r" "$1" "$2"
+}
+
+check_writable() {
+    if [ "$#" -ne 2 ] ; then
+            echo "Usage: $0 service varname"
+            exit 1
+    fi
+    check_permissions "w" "$1" "$2"
 }

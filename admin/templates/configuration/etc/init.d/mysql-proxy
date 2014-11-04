@@ -17,31 +17,43 @@
 #              sends it to mysql-client. \
 ### END INIT INFO
 
-# Source functions library.
-# WARN : this may clean environment
-. {{QSERV_RUN_DIR}}/etc/init.d/qserv-functions
+DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-PATH={{PATH}}
-QSERV_RUN_DIR={{QSERV_RUN_DIR}}
-QSERV_PID_DIR={{QSERV_PID_DIR}}
-QSERV_LOG_DIR={{QSERV_LOG_DIR}}
-QSERV_UNIX_USER={{QSERV_UNIX_USER}}
-QSERV_RPC_PORT={{QSERV_RPC_PORT}}
+# Source functions library.
+. ${DIR}/qserv-functions
 
 NAME="mysql-proxy"
+DAEMON=${NAME}
 
-# Source networking configuration.
-if [ -f /etc/sysconfig/network ]; then
-    . /etc/sysconfig/network
-fi
+source_sysconfig ${DIR}
 
-# Check that networking is up.
-if [ "${NETWORKING}" = "no" ]; then 
-    exit 0
+# Check variables which are not controlled by application
+check_writable ${NAME} "QSERV_RUN_DIR"
+check_writable ${NAME} "QSERV_PID_DIR"
+check_writable ${NAME} "QSERV_LOG_DIR"
+check_readable ${NAME} "LUA_DIR"
+check_readable ${NAME} "QSERV_DIR"
+
+# These parameters should be in mysql-proxy configuration file
+err_msg="Failure while starting ${NAME}:"
+if [ -z "${QSERV_UNIX_USER}" ]; then
+    log_failure_msg "${local_err_msg} \$QSERV_UNIX_USER is an empty \
+string"
+    exit 1
 fi
+[ "$QSERV_RPC_PORT" -eq "$QSERV_RPC_PORT" ] 2> /dev/null ||
+{
+    log_failure_msg "${local_err_msg} \$QSERV_RPC_PORT isn't an integer"
+    exit 1
+}
 
 # Set default mysql-proxy configuration.
-PROXY_OPTIONS="--daemon"
+LUA_SHARE_DIR="${LUA_DIR}/share/lua/5.1"
+LUA_LIB_DIR="${LUA_DIR}/lib/lua/5.1"
+PROXY_OPTIONS="--daemon \
+        --proxy-lua-script=${QSERV_DIR}/proxy/mysqlProxy.lua \
+        --lua-path=\"${LUA_SHARE_DIR}/?.lua;${LUA_SHARE_DIR}/?/init.lua;${LUA_SHARE_DIR}/?/?.lua\" \
+        --lua-cpath=\"${LUA_LIB_DIR}/?.so;${LUA_LIB_DIR}/?/?.so\""
 pidfile=${QSERV_PID_DIR}/mysql-proxy.pid
 PROXY_CONFIG=${QSERV_RUN_DIR}/etc/my-proxy.cnf
 lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$NAME
@@ -50,13 +62,6 @@ LUA_DEBUG_LEVEL=0
 LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
 LOGFILE=${QSERV_LOG_DIR}/mysql-proxy.log
 QSERV_RPC_PORT=${QSERV_RPC_PORT}
-
-DAEMON=$NAME
-
-# Source mysql-proxy configuration.
-if [ -f ${QSERV_RUN_DIR}/etc/sysconfig/mysql-proxy ]; then
-    . ${QSERV_RUN_DIR}/etc/sysconfig/mysql-proxy
-fi
 
 # WARNING : can only use the --user switch if running as root
 proxy_user_option=""

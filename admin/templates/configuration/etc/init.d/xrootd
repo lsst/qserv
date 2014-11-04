@@ -12,34 +12,51 @@
 # Short-Description: start and stop xrootd/cmsd
 # Description: XRootD software framework is a fully generic suite for fast, \
 #              low latency and scalable data access. It's the communication \
-#              middleware used between Qserv master and nodes. \ 
+#              middleware used between Qserv master and nodes. \
 ### END INIT INFO
 
-. {{QSERV_RUN_DIR}}/etc/init.d/qserv-functions
+DIR=$(cd "$(dirname "$0")"; pwd -P)
 
-XROOTD_DIR={{XROOTD_DIR}}
-XROOTD_RUN_DIR={{XROOTD_RUN_DIR}}
-XROOTD_CONFIG={{QSERV_RUN_DIR}}/etc/lsp.cf
+# Source functions library.
+. ${DIR}/qserv-functions
+
+NAME="xrootd"
+DAEMON=${NAME}
+
+source_sysconfig ${DIR}
+
+# Check variables which are not controlled by application
+check_writable ${NAME} "QSERV_RUN_DIR"
+check_writable ${NAME} "QSERV_PID_DIR"
+check_writable ${NAME} "QSERV_LOG_DIR"
+check_writable ${NAME} "XROOTD_RUN_DIR"
+check_readable ${NAME} "XROOTD_DIR"
+
+err_msg="Failure while starting ${NAME}:"
+if [ -z "${NODE_TYPE}" ]; then
+    log_failure_msg "${local_err_msg} \$NODE_TYPE is an empty string"
+    exit 1
+fi
+
+XROOTD_CONFIG="${QSERV_RUN_DIR}/etc/lsp.cf"
 XROOTD_INSTANCE_NAME="worker"
 
-PID_DIR={{QSERV_PID_DIR}}/${XROOTD_INSTANCE_NAME}
-LOG_DIR={{QSERV_LOG_DIR}}
+PID_DIR=${QSERV_PID_DIR}/${XROOTD_INSTANCE_NAME}
+LOG_DIR=${QSERV_LOG_DIR}
 
-export PATH={{PATH}}
-export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
 export QSW_XRDQUERYPATH="/q"
-export QSW_DBSOCK="{{MYSQLD_SOCK}}"
+export QSW_DBSOCK="${MYSQLD_SOCK}"
 export QSW_MYSQLDUMP=`which mysqldump`
-QSW_SCRATCHPATH="{{QSERV_RUN_DIR}}/tmp"
+QSW_SCRATCHPATH="${QSERV_RUN_DIR}/tmp"
 QSW_SCRATCHDB="qservScratch"
 export QSW_RESULTPATH="${XROOTD_RUN_DIR}/result"
-export LSST_LOG_CONFIG={{QSERV_RUN_DIR}}/etc/log4xrootd.properties
+export LSST_LOG_CONFIG="${QSERV_RUN_DIR}/etc/log4xrootd.properties"
 
 # method to guess pid file name,
 # takes single argument - program name
 pid_file_name() {
     local pidfile=${PID_DIR}/$1.pid
-    test "${1}{{NODE_TYPE}}" = "cmsdmaster" && pidfile=${PID_DIR}/$1.mangr.pid
+    test "${1}${NODE_TYPE}" = "cmsdmaster" && pidfile=${PID_DIR}/$1.mangr.pid
     echo $pidfile
 }
 
@@ -50,7 +67,7 @@ start_service() {
 	prog=${1##*/}
 
 	pidfile=$(pid_file_name $prog)
-	lockfile={{QSERV_RUN_DIR}}/var/lock/subsys/${prog}
+	lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
 	BINARY=${XROOTD_DIR}/bin/${prog}
 	LOGFILE=${LOG_DIR}/${prog}.log
 	[ -x ${BINARY} ] || exit 5
@@ -72,7 +89,7 @@ stop_service() {
         prog=${1##*/}
 
         pidfile=$(pid_file_name $prog)
-        lockfile={{QSERV_RUN_DIR}}/var/lock/subsys/${prog}
+        lockfile=${QSERV_RUN_DIR}/var/lock/subsys/${prog}
 
         eval stop -p $pidfile -l $lockfile $prog
 }
@@ -81,7 +98,7 @@ start_all() {
         local xrootd_started cmsd_started=0 retval=1
         mkdir -p ${QSW_RESULTPATH} || {
            log_failure_msg "Failed to create ${QSW_RESULTPATH}"
-           return 1 
+           return 1
         }
          mkdir -p ${PID_DIR} || {
            log_failure_msg "Failed to create ${PID_DIR}"
@@ -90,22 +107,26 @@ start_all() {
 
         start_service "xrootd"
         xrootd_started=$?
-        
-        {{COMMENT_MONO_NODE}}start_service "cmsd"
-        {{COMMENT_MONO_NODE}}cmsd_started=$?
-        
+
+        if [ ${NODE_TYPE} != "mono" ]; then
+            start_service "cmsd"
+            cmsd_started=$?
+        fi
+
         test $xrootd_started -eq 0 -a $cmsd_started -eq 0
 }
 
 stop_all() {
         local xrootd_stopped cmsd_stopped=0 retval=1
-        
+
         stop_service "xrootd"
         xrootd_stopped=$?
-        
-        {{COMMENT_MONO_NODE}}stop_service "cmsd"
-        {{COMMENT_MONO_NODE}}cmsd_stopped=$?
-        
+
+        if [ ${NODE_TYPE} != "mono" ]; then
+            stop_service "cmsd"
+            cmsd_stopped=$?
+        fi
+
         test $xrootd_stopped -eq 0 -a $cmsd_stopped -eq 0
 }
 
@@ -115,15 +136,17 @@ status_all () {
         NAME="xrootd"
        	DAEMON=${XROOTD_DIR}/bin/${NAME}
         pidfile=$(pid_file_name $NAME)
-       	status_of_proc -p $pidfile "$DAEMON" "$NAME" 
+        status_of_proc -p $pidfile "$DAEMON" "$NAME"
        	xrootd_status=$?
 
-        {{COMMENT_MONO_NODE}}NAME="cmsd"
-       	{{COMMENT_MONO_NODE}}DAEMON=${XROOTD_DIR}/bin/${NAME}
-        {{COMMENT_MONO_NODE}}pidfile=$(pid_file_name $NAME)
-       	{{COMMENT_MONO_NODE}}status_of_proc -p $pidfile "$DAEMON" "$NAME"
-       	{{COMMENT_MONO_NODE}}cmsd_status=$?
- 
+        if [ ${NODE_TYPE} != "mono" ]; then
+            NAME="cmsd"
+            DAEMON=${XROOTD_DIR}/bin/${NAME}
+            pidfile=$(pid_file_name $NAME)
+            status_of_proc -p $pidfile "$DAEMON" "$NAME"
+            cmsd_status=$?
+        fi
+
         test $xrootd_status -eq 0 -a $cmsd_status -eq 0
 }
 

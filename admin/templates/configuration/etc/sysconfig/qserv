@@ -1,0 +1,44 @@
+# Configuration file for Qserv services 
+# Automatically generated using meta-configuration file:
+# {{QSERV_META_CONFIG_FILE}}
+
+# Configuration variables
+# used by Qserv and depencies
+##############################
+
+# used by all
+QSERV_RUN_DIR={{QSERV_RUN_DIR}}
+# used by mysql-proxy, xrootd, zookeeper, qserv-czar
+QSERV_PID_DIR={{QSERV_PID_DIR}}
+QSERV_LOG_DIR={{QSERV_LOG_DIR}}
+# used by mysqld, mysql-proxy
+QSERV_UNIX_USER={{QSERV_UNIX_USER}}
+# used by mysql-proxy
+QSERV_RPC_PORT={{QSERV_RPC_PORT}}
+# used by xrootd
+NODE_TYPE={{NODE_TYPE}}
+MYSQLD_SOCK={{MYSQLD_SOCK}}
+XROOTD_RUN_DIR={{XROOTD_RUN_DIR}}
+
+# Pathes to Qserv and dependencies
+# installation directories 
+###################################
+
+# used by mysqld
+MYSQL_DIR={{MYSQL_DIR}}
+# used by xrootd
+XROOTD_DIR={{XROOTD_DIR}}
+# used by mysql-proxy
+QSERV_DIR={{QSERV_DIR}}
+LUA_DIR={{LUA_DIR}}
+
+# Environment variables
+########################
+
+# used by all
+export PATH={{PATH}}
+# used by qserv-czar
+export PYTHONPATH={{PYTHONPATH}}
+# used by qserv-czar, xrootd
+export LD_LIBRARY_PATH={{LD_LIBRARY_PATH}}
+
