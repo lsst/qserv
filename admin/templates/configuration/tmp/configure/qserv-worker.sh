@@ -14,11 +14,11 @@ SQL_DIR=${QSERV_RUN_DIR}/tmp/configure/sql
 MYSQL_CMD="${MYSQL_DIR}/bin/mysql --no-defaults -vvv --user=${MYSQLD_USER} --password=${MYSQLD_PASS} --sock=${MYSQLD_SOCK}"
 
 echo 
-echo "-- Initializing Qserv czar database "
+echo "-- Initializing Qserv worker database"
 ${QSERV_RUN_DIR}/etc/init.d/mysqld start &&
 echo "-- Inserting data"
-${MYSQL_CMD} < ${SQL_DIR}/qserv-czar.sql && 
+${MYSQL_CMD} < ${SQL_DIR}/qservw_workerid.sql && 
 ${QSERV_RUN_DIR}/etc/init.d/mysqld stop ||
 exit 1
 
-echo "INFO: Qserv Czar initialization SUCCESSFUL"
+echo "INFO: Qserv Worker initialization SUCCESSFUL"
