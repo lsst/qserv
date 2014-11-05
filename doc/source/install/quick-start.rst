@@ -42,7 +42,7 @@ First, log in with a **non-root user account**.
 
 .. code-block:: bash
 
-   NEWINSTALL_URL=https://sw.lsstcorp.org/pkgs/newinstall.sh
+   NEWINSTALL_URL=https://sw.lsstcorp.org/eupspkg/newinstall.sh
    export EUPS_PKGROOT=${NEWINSTALL_URL}
    INSTALL_DIR=root/directory/where/qserv/stack/will/be/installed
    # e.g. ~qserv, please note that $INSTALL_DIR must be empty
@@ -58,14 +58,20 @@ First, log in with a **non-root user account**.
 Install Qserv distribution 
 ==========================
 
-Then below, please set ``RELEASE`` to "|release|" to install explicitly this release, or replace it with ``-t qserv`` to install current Qserv release.
+Then below, please set ``RELEASE`` to "|release|" to install explicitly this release, or replace it with ``qserv`` to install current Qserv release.
 
 .. code-block:: bash
 
    # First, define RELEASE, here we install current Qserv release
+<<<<<<< HEAD
    RELEASE="-t qserv"
    # loadLSST.bash must have been sourced before running this (see above)
    eups distrib install qserv_distrib $RELEASE
+=======
+   RELEASE="qserv"
+   # loadLSST.sh must have been sourced before running this (see above)
+   eups distrib install qserv_distrib -t $RELEASE
+>>>>>>> 1c40767... Fix Qserv quick-start documentation
    setup qserv_distrib $RELEASE
 
 .. _quick-start-configuration:
