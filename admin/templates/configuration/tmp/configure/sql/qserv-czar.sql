@@ -1,15 +1,17 @@
-CREATE DATABASE IF NOT EXISTS LSST;
 CREATE DATABASE IF NOT EXISTS qservResult;
-CREATE DATABASE IF NOT EXISTS qservScratch;
-GRANT ALL ON LSST.* TO 'qsmaster'@'localhost';
 GRANT ALL ON qservResult.* TO 'qsmaster'@'localhost';
-GRANT ALL ON qservScratch.* TO 'qsmaster'@'localhost';
 
--- come from previous file master/example/qserv-master-perms.sql
-GRANT SELECT ON *.* TO 'qsmaster'@'localhost';
-GRANT EXECUTE ON `LSST`.* TO 'qsmaster'@'localhost';
-GRANT SELECT ON `qserv`.* TO 'qsmaster'@'localhost';
-GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE ON `Subchunks\_%`.* TO 'qsmaster'@'localhost' WITH GRANT OPTION;
-GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, REFERENCES, INDEX, ALTER, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE ON `q\_%`.* TO 'qsmaster'@'localhost' WITH GRANT OPTION;
+-- Secondary index database (i.e. objectId/chunkId relation)
+-- created by integration test script/loader for now
+CREATE DATABASE IF NOT EXISTS qservMeta;
+GRANT ALL ON qservMeta.* TO 'qsmaster'@'localhost';
 
+-- Database for business (i.e. LSST) data
+-- In the long term:
+--    * has to created by the dataloader
+--    * should be only on workers
+-- For now, mysql-proxy fails if this table
+-- doesn't exist in the database.
+CREATE DATABASE IF NOT EXISTS LSST;
+GRANT SELECT ON LSST.* TO 'qsmaster'@'localhost';
 
