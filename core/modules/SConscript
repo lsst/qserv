@@ -9,7 +9,7 @@ from itertools import chain, izip, repeat
 from collections import defaultdict
 import SCons.Util
 import detect # Qserv dep detector
-
+import cctarget # default cc builder
 
 # Describe what your package contains here.
 env.Help("""
@@ -110,7 +110,6 @@ def getSrcs(mName):
     srcs = os.listdir(mName)
     return map(lambda s: os.path.join(mName, s), srcs)
 
-
 def getTgts(mName):
     scriptPath = os.path.join(mName, "SConscript")
     if env.Glob(scriptPath): # os.access is faulty with VariantDir
@@ -120,9 +119,7 @@ def getTgts(mName):
     else:
         #print "No targets for %s, using glob" % mName
         # All .cc, except test files.
-        files = filter(lambda f: not os.path.basename(str(f)).startswith("test"),
-                       env.Glob(os.path.join(mName, "*.cc")))
-        files.sort(key=lambda n: n.str_for_display())
+        files = cctarget.getDefaultTargets(env, mName)
         defaultTgts[mName] = files
         return files
 
