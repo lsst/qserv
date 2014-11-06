@@ -1,4 +1,5 @@
 # -*- python -*-
+# Qserv czar SConscript
 import distutils.sysconfig
 import errno
 import os
@@ -68,7 +69,7 @@ state.log.debug("extraTgts['dist'] %s" % extraTgts['dist'])
 
 distTgts = swigged_tgt + [pySwig]
 _debug_dist_target()
-pyTargets = pytarget.getPyTargets(env, ["lsst","qserv","czar"], distTgts)
+pyTargets = pytarget.getPyTargets2(env, ["lsst","qserv","czar"], distTgts)
 extraTgts['dist'].extend(pyTargets)
 _debug_dist_target()
 
