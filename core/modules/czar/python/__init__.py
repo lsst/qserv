@@ -1,6 +1,6 @@
 # 
 # LSST Data Management System
-# Copyright 2008, 2009, 2010 LSST Corporation.
+# Copyright 2009-2014 AURA/LSST.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -23,4 +23,5 @@
 # lsst.qserv.czar module initialization
 
 # Import SWIG'd C++ code
+import lsst.qserv.css # Force import of csslib for kvinterface symbols
 from czarLib import *

@@ -67,7 +67,7 @@ class QservAdmin(object):
 
         @param connInfo     Connection information.
         """
-        self._kvI = KvInterface(connInfo)
+        self._kvI = KvInterface.newImpl(connInfo=connInfo)
         self._logger = logging.getLogger("QADMI")
         self._uniqueLockId = 0
 

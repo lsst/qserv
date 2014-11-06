@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # LSST Data Management System
-# Copyright 2013 LSST Corporation.
+# Copyright 2013-2014 AURA/LSST.
 # 
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -35,7 +35,7 @@ from kvInterface import KvInterface, KvException
 
 class TestKvInterface(unittest.TestCase):
     def setUp(self):
-        self._kvI = KvInterface('127.0.0.1:12181')
+        self._kvI = KvInterface.newImpl(connInfo='127.0.0.1:12181')
 
     def testCreateGetSetDelete(self):
         # first delete everything
