@@ -35,7 +35,7 @@ from kvInterface import KvInterface, KvException
 
 class TestKvInterface(unittest.TestCase):
     def setUp(self):
-        self._kvI = KvInterface('127.0.0.1:12181')
+        self._kvI = KvInterface.newImpl(connInfo='127.0.0.1:12181')
 
     def testCreateGetSetDelete(self):
         # first delete everything

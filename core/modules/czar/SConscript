@@ -1,8 +1,11 @@
 # -*- python -*-
+# Qserv czar SConscript
 import distutils.sysconfig
 import errno
 import os
 import state
+import pytarget
+
 Import('env')
 Import('extraTgts')
 #env.Tool('swig')
@@ -12,10 +15,8 @@ Import('extraTgts')
 
 def _debug_dist_target():
     if state.log.verbose:
-        state.log.debug("extraTgts['dist']")
-        for (path,f) in extraTgts['dist']:
-            state.log.debug("   path : %s, file : %s" % (path,str(f)))
-
+        t = ["   path : %s, file : %s" % (path,str(f)) for (path, f) in extraTgts['dist']]
+        state.log.debug("extraTgts['dist']" + "\n".join(t))
 
 # Manual dependencies for czarLib.i, because the SCons SWIG builder
 # isn't knowledgeable enough to ensure their presence when using VariantDir
@@ -66,35 +67,16 @@ extraTgts["czarLib.py"] = pySwig
 
 state.log.debug("extraTgts['dist'] %s" % extraTgts['dist'])
 
-def markForInstall(env, pathList, extras):
-    state.log.debug("markForInstall()")
-    _debug_dist_target()
-    python_libpath=os.path.join("lib","python")
-    pyDir = os.path.join(python_libpath,*pathList)
-    srcPyDir = os.path.join(*pathList)
-
-    state.log.debug("pathList, %s" % pathList)
-    state.log.debug("srcPyDir %s" % srcPyDir)
-    # install py files
-    for s in env.Glob(os.path.join(srcPyDir,"*.py")):
-        extraTgts['dist'].append((pyDir, s))
-        #env.Alias("install", env.Install(pyDir, s))
-    _debug_dist_target()
-    for s in extras:
-        state.log.debug("extra %s" % s)
-        extraTgts['dist'].append((pyDir, s))
-    # touch init files will be done by python builder used 
-    # for deploying others python/lsst/qserv package. See
-    # InstallPythonModule() in main SConstruct
-
 distTgts = swigged_tgt + [pySwig]
-
-markForInstall(env, ["lsst","qserv","czar"], distTgts)
+_debug_dist_target()
+pyTargets = pytarget.getPyTargets2(env, ["lsst","qserv","czar"], distTgts)
+extraTgts['dist'].extend(pyTargets)
+_debug_dist_target()
 
 for f in env.Glob("bin/*py"):
     extraTgts['dist'].append(('bin', f))
 
-_debug_dist_target()
+#_debug_dist_target()
 
 extraTgts["czarPy"] = distTgts
 Return('swigged_tgt')

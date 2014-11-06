@@ -1,0 +1,68 @@
+# -*- python -*-
+# Qserv css module SConscript
+import distutils.sysconfig
+import errno
+import os
+import state
+import pytarget
+import cctarget
+
+Import('env')
+Import('extraTgts')
+Import('extraSrcs')
+#env.Tool('swig')
+#env['SWIGFLAGS'] = ['-python', '-c++', '-Iinclude'],
+#env.Append(CPPPATH = [distutils.sysconfig.get_python_inc()])
+#env['SHLIBPREFIX'] = "" # Pushed to higher level SConscript
+
+def _debug_dist_target():
+    if state.log.verbose:
+        t = ["   path : %s, file : %s" % (path,str(f)) for (path, f) in extraTgts['dist']]
+        state.log.debug("extraTgts['dist']" + "\n".join(t))
+
+# Manual dependencies for czarLib.i, because the SCons SWIG builder
+# isn't knowledgeable enough to ensure their presence when using VariantDir
+depends = ["css/constants.h"]
+depends = map(lambda f: env.File("../"+f), depends)
+
+localCpppath = env['CPPPATH']
+if type(localCpppath) == type(""): localCpppath = [localCpppath]
+localCpppath.append(distutils.sysconfig.get_python_inc())
+swigged = env.SharedObject(source="cssLib.i",
+                            SWIGFLAGS=['-python', '-c++', '-Iinclude'],
+                            SWIGPATH=['..',
+                                      distutils.sysconfig.get_python_inc()],
+                            CPPPATH=localCpppath,
+                            LDMODULEPREFIX='_', LDMODULESUFFIX = '.so'
+                            )
+#env.Append(SWIGPATH=['..', distutils.sysconfig.get_python_inc()])
+#swigged = [env.File("czarLib.i")]
+
+# print swigged # prints ['czarLib_wrap.os']
+
+swigged_tgt = map(env.File, swigged)
+env.Depends(swigged_tgt, depends)
+extraSrcs["css"] = swigged_tgt
+
+# # Create entry for python file, which SCons SWIG builder ignores
+pySwig = env.File('cssLib.py')
+extraTgts["cssLib.py"] = pySwig
+
+# state.log.debug("extraTgts['dist'] %s" % extraTgts['dist'])
+
+distTgts = swigged_tgt + [pySwig]
+
+# state.log.debug("pytarget.getPyTargets()")
+# _debug_dist_target()
+pyFiles = pytarget.getPyTargets2(env, ["lsst","qserv","css"], distTgts)
+extraTgts['dist'].extend(pyFiles)
+
+# extraTgts["czarPy"] = distTgts
+# Return('swigged_tgt')
+import time
+t1 = time.time()
+defaultTargets = cctarget.getDefaultTargets(env, '.', lambda f: str(f) == "cssLib_wrap.cc")
+
+t2 = time.time()
+#print "Elapsed css target time=", t2-t1, map(str,defaultTargets)
+Return('defaultTargets')

@@ -1,4 +1,5 @@
 # -*- python -*-
+# Qserv top-level SConstruct
 import os
 import fileutils
 import SCons.Node.FS
@@ -23,7 +24,6 @@ env.Depends("install", env.Alias("build"))
 
 env.Alias("install",
           [env.Alias("dist-core"),
-           env.Alias("dist-css"),
            env.Alias("admin"),
            env.Alias("templates")])
 
@@ -49,18 +49,6 @@ else:
 ################################
     state.initBuild()
     env.Replace(configuration_prefix = os.path.join( env['prefix'], "cfg"))
-#########################
-#
-# Install css
-#
-#########################
-    cssbin_target = os.path.join(env['prefix'], "bin")
-    env.RecursiveInstall(cssbin_target, os.path.join("css", "bin"))
-    python_css = env.InstallPythonModule(
-        target=env['python_prefix'],
-        source=os.path.join("css", "python")
-    )
-    env.Alias("dist-css", [python_css, cssbin_target])
 
 #########################
 #

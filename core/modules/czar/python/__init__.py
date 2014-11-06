@@ -23,4 +23,5 @@
 # lsst.qserv.czar module initialization
 
 # Import SWIG'd C++ code
+import lsst.qserv.css # Force import of csslib for kvinterface symbols
 from czarLib import *
