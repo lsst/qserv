@@ -25,6 +25,7 @@ import state # for qserv scons logging
 
 def getPyTargets(env, pathList, extras):
     """@return list of py targets to be appended to extraTgts['dist']
+    Assumes that source py files are in python/*pathList/
     """
     python_libpath=os.path.join("lib", "python")
     pyDir = os.path.join(python_libpath,*pathList)
@@ -39,3 +40,18 @@ def getPyTargets(env, pathList, extras):
     # touch init files will be done by python builder used 
     # for deploying others python/lsst/qserv package. See
     # InstallPythonModule() in main SConstruct
+
+def getPyTargets2(env, pathList, extras):
+    """@return list of py targets to be appended to extraTgts['dist']
+    Assumes that source py files are in python/
+    """
+    python_libpath=os.path.join("lib", "python")
+    pyDir = os.path.join(python_libpath,*pathList)
+    srcPyDir = os.path.join("python")
+
+    state.log.debug("pathList, %s" % pathList)
+    state.log.debug("srcPyDir %s" % srcPyDir)
+    # return list of installable py files
+    pathFiles = [(pyDir, s) for s in env.Glob(os.path.join(srcPyDir,"*.py"))]
+    extraFiles = [(pyDir, s) for s in extras]
+    return pathFiles + extraFiles

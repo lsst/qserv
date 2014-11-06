@@ -1,4 +1,5 @@
 # -*- python -*-
+# Qserv css module SConscript
 import distutils.sysconfig
 import errno
 import os
@@ -72,7 +73,7 @@ def _debug_dist_target():
 # state.log.debug("pytarget.getPyTargets()")
 # _debug_dist_target()
 distTgts = []
-pyFiles = pytarget.getPyTargets(env, ["lsst","qserv","css"], distTgts)
+pyFiles = pytarget.getPyTargets2(env, ["lsst","qserv","css"], distTgts)
 extraTgts['dist'].extend(pyFiles)
 # _debug_dist_target()
 
