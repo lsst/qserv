@@ -43,6 +43,14 @@ import uuid
 from lsst.qserv.css.kvInterface import KvInterface, KvException
 from lsst.qserv.admin.qservAdminException import QservAdminException
 
+# Define version of metadata structure.
+# NOTE: THIS NUMBER MUST MATCH VERSION DEFINED IN CSS/FACADE.
+# Version number is stored in the KV store by this class when first
+# database is created. All other clients are supposed to check stored
+# version against compiled-in version and fail if they do not match.
+VERSION = 1
+VERSION_KEY = '/css_meta/version'
+
 # Possible options
 possibleOpts = {"table" : "schema compression match".split(),
                 "match" : ["dirTable1", "dirColName1",
@@ -101,6 +109,14 @@ class QservAdmin(object):
             if x not in options:
                 self._logger.error("Required option '%s' missing" % x)
                 raise KvException(KvException.MISSING_PARAM, x)
+
+        # first check version or store it
+        with self._kvI.getLockObject(VERSION_KEY, self._uniqueId()):
+            if self._kvI.exists(VERSION_KEY):
+                self._versionCheck()
+            else:
+                self._versionSave()
+
         dbP = "/DBS/%s" % dbName
         ptP = None
         with self._getDbLock(dbName):
@@ -143,6 +159,10 @@ class QservAdmin(object):
         @param templateDbName   Database name (of the template database)
         """
         self._logger.info("Creating db '%s' like '%s'" % (dbName, templateDbName))
+
+        # first check version
+        self._versionCheck()
+
         dbP = "/DBS/%s" % dbName
         dbP2 = "/DBS/%s" % templateDbName
         if dbName == templateDbName:
@@ -178,6 +198,10 @@ class QservAdmin(object):
         @param dbName    Database name.
         """
         self._logger.info("Drop database '%s'" % dbName)
+
+        # first check version
+        self._versionCheck()
+
         with self._getDbLock(dbName):
             dbP = "/DBS/%s" % dbName
             if not self._kvI.exists(dbP):
@@ -206,6 +230,9 @@ class QservAdmin(object):
         """
         self._logger.debug("Create table '%s.%s', options: %s"
                            % (dbName, tableName, str(options)))
+
+        # first check version
+        self._versionCheck()
 
         with self._getDbLock(dbName):
             if not self._kvI.exists("/DBS/%s" % dbName):
@@ -337,6 +364,28 @@ class QservAdmin(object):
         lockOptList = "comments estimatedDuration lockedBy lockedTime mode reason"
         lockOpts = dict([(k,"") for k in lockOptList.split()])
         self._addPacked(dbP + "/LOCK", lockOpts)
+
+    def _versionCheck(self):
+        """
+        Checks the store version number against our own version
+        Returns normally if they match, throws exception if versions do not match
+        or version is missing.
+        """
+        if self._kvI.exists(VERSION_KEY):
+            versionString = self._kvI.get(VERSION_KEY)
+            if versionString == str(VERSION):
+                return
+            else:
+                raise QservAdminException(QservAdminException.VERSION_MISMATCH)
+        else:
+            raise QservAdminException(QservAdminException.VERSION_MISSING)
+
+    def _versionSave(self):
+        """
+        Stores version number. Version key must not exist yet.
+        It is recommended to lock version key before calling this method.
+        """
+        self._kvI.create(VERSION_KEY, str(VERSION))
 
     ##### Locking related ##########################################################
     def _getDbLock(self, dbName):

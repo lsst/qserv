@@ -116,6 +116,24 @@ public:
                    + ", tried allocating up to " + sizeTried + " bytes.") {}
 };
 
+/**
+ * Specialized run-time error: missing version number
+ */
+class VersionMissingError : public CssError {
+public:
+    VersionMissingError(std::string const& key)
+        : CssError("Key for CSS version is not defined: '" + key +"'") {}
+};
+
+/**
+ * Specialized run-time error: version number mismatch
+ */
+class VersionMismatchError : public CssError {
+public:
+    VersionMismatchError(std::string const& expected, std::string const& actual)
+        : CssError("CSS version number mismatch: expected=" + expected +", actual=" + actual) {}
+};
+
 }}} // namespace lsst::qserv::css
 
 #endif // LSST_QSERV_CSSERROR_H
