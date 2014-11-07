@@ -41,5 +41,7 @@ QservAdminException = produceExceptionClass('QservAdminException', [
     (3035, "TB_DOES_NOT_EXIST", "Table does not exist."),
     (3040, "WRONG_PARAM",       "Unrecognized parameter."),
     (3045, "WRONG_PARAM_VAL",   "Unrecognized value for parameter."),
+    (3050, "VERSION_MISMATCH",  "CSS schema/data version does not match current SW version."),
+    (3055, "VERSION_MISSING",   "CSS schema/data version does not exist."),
     (9998, "NOT_IMPLEMENTED",   "Feature not implemented yet."),
     (9999, "INTERNAL",          "Internal error.")])

@@ -53,6 +53,23 @@ using std::map;
 using std::string;
 using std::vector;
 
+namespace {
+
+// Define version of metadata structure.
+// NOTE: THIS NUMBER MUST MATCH VERSION DEFINED IN qservAdmin.py.
+// Version number is stored in the KV store by qservAdmin when first
+// database is created. All other clients are supposed to check stored
+// version against compiled-in version and fail if they do not match.
+// Another place where version number appears is qproc/testMap.kvmap.
+
+// version is an integer number, but kvInterface treats everything as strings,
+// so to avoid unnecessary conversions work with strings
+const std::string VERSION("1");
+const std::string VERSION_KEY("/css_meta/version");
+
+}
+
+
 namespace lsst {
 namespace qserv {
 namespace css {
@@ -65,6 +82,7 @@ namespace css {
   */
 Facade::Facade(string const& connInfo, int timeout_msec) {
     _kvI.reset(new KvInterfaceImplZoo(connInfo, timeout_msec));
+    _versionCheck();
 }
 
 /** Creates a new Facade over metadata in a Zookeeper key-value store.
@@ -79,6 +97,7 @@ Facade::Facade(string const& connInfo, int timeout_msec) {
 Facade::Facade(string const& connInfo, int timeout_msec, string const& prefix) :
     _prefix(prefix) {
     _kvI.reset(new KvInterfaceImplZoo(connInfo, timeout_msec));
+    _versionCheck();
 }
 
 /** Creates a new Facade over metadata in an in-memory key-value store.
@@ -88,6 +107,7 @@ Facade::Facade(string const& connInfo, int timeout_msec, string const& prefix) :
   */
 Facade::Facade(std::istream& mapStream) {
     _kvI.reset(new KvInterfaceImplMem(mapStream));
+    _versionCheck();
 }
 
 Facade::~Facade() {
@@ -365,6 +385,18 @@ Facade::getMatchTableParams(std::string const& dbName,
     return p;
 }
 
+void
+Facade::_versionCheck() const
+{
+    const string vstr = _kvI->get(::VERSION_KEY, string());
+    if (vstr.empty()) {
+        throw VersionMissingError(::VERSION_KEY);
+    }
+    if (vstr != ::VERSION) {
+        throw VersionMismatchError(::VERSION, vstr);
+    }
+}
+
 int
 Facade::_getIntValue(string const& key, int defaultValue) const {
     string s = boost::lexical_cast<string>(defaultValue);
@@ -565,6 +597,7 @@ private:
 
 Facade::Facade(boost::shared_ptr<KvInterface> kv)
     : _kvI(kv) {
+    if (_kvI) _versionCheck();
 }
 
 boost::shared_ptr<Facade>
