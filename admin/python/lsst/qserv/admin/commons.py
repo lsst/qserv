@@ -53,10 +53,9 @@ def read_config(config_file):
                                     )
 
     # TODO : manage special characters for pass (see config file comments for additional information)
-    config['mysqld']['pass']    = parser.get("mysqld","pass",raw=True)
-    config['mysqld']['port'] = parser.getint('mysqld','port')
-    # computable configuration parameter
-    config['mysqld']['sock']    = os.path.join(config['qserv']['run_base_dir'], "var","lib","mysql","mysql.sock")
+    config['mysqld']['pass'] = parser.get("mysqld","pass",raw=True)
+    if parser.has_option('mysqld','port'):
+        config['mysqld']['port'] = parser.getint('mysqld','port')
 
     config['mysql_proxy']['port'] = parser.getint('mysql_proxy','port')
 
