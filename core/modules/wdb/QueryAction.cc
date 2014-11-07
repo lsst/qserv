@@ -80,7 +80,7 @@ private:
         _mysqlConn.reset(new mysql::MySqlConnection(sc, true));
 
         if(!_mysqlConn->connect()) {
-            LOGF(_log, LOG_LVL_INFO, "Cfg error! connect MySQL as %1% using %2%"
+            LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
                         % wconfig::getConfig().getString("mysqlSocket") % _user);
             _addErrorMsg(-1, "Unable to connect to MySQL as " + _user);
             return false;
