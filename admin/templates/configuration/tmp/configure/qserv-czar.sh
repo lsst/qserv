@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
@@ -8,8 +8,8 @@ SQL_FILE=qserv-czar.sql
 
 echo 
 echo "-- Initializing Qserv czar database "
-if [ -r ${SQL_LOADER} ]; then
-    . ${SQL_LOADER}
+if [ -r "${SQL_LOADER}" ]; then
+    . "${SQL_LOADER}"
 else
     >&2 echo "Unable to source ${SQL_LOADER}"
     exit 1
