@@ -9,7 +9,7 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 MODE="internet mode"
 DEV_DISTSERVER_ROOT="http://lsst-web.ncsa.illinois.edu/~fjammes/qserv-dev"
 EUPS_PKGROOT="http://sw.lsstcorp.org/eupspkg"
-NEWINSTALL_URL="http://sw.lsstcorp.org/eupspkg/newinstall.sh"
+NEWINSTALL_URL="https://sw.lsstcorp.org/eupspkg/newinstall.sh"
 VERSION="-t qserv"
 
 underline() { echo $1; echo "${1//?/${2:-=}}";}
