@@ -124,14 +124,14 @@ time bash newinstall.sh ||
     exit 1
 }
 
-# TODO : warn loadLSST.sh append http://sw.lsstcorp.org/eupspkg to
+# TODO : warn loadLSST.bash append http://sw.lsstcorp.org/eupspkg to
 # EUPS_PKGROOT, this isn't compliant with internet-free mode
 # TODO : if first url in EUPS_PKGROOT isn't available eups fails without
 # trying next ones
 if [[ -n ${LOCAL_OPTION} ]]; then
     EUPS_PKG_ROOT_BACKUP=${EUPS_PKGROOT}
 fi
-. ${STACK_DIR}/loadLSST.sh ||
+. ${STACK_DIR}/loadLSST.bash ||
 {
     >&2 echo "ERROR : unable to load LSST stack environment"
     exit 1
