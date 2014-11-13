@@ -188,11 +188,25 @@ def main():
         components_to_configure = intersect(args.step_list, configure.COMPONENTS)
         if len(components_to_configure) > 0:
             logging.info("Running configuration scripts")
-            configuration_scripts_dir = os.path.join(run_base_dir, 'tmp', 'configure')
+            configuration_scripts_dir = os.path.join(
+                run_base_dir, 'tmp', 'configure'
+            )
 
-            if config['qserv']['node_type'] not in ['mono', 'worker']:
-                logging.info("Service isn't a worker or a mono-node instance : not configuring sciSQL")
-                components_to_configure.remove('scisql')
+            if config['qserv']['node_type'] in ['master']:
+                logging.info(
+                    "Master instance : not configuring " +
+                    "%s and %s",
+                    configure.SCISQL,
+                    configure.WORKER
+                )
+                components_to_configure.remove(configure.SCISQL)
+                components_to_configure.remove(configure.WORKER)
+            elif config['qserv']['node_type'] in ['worker']:
+                logging.info(
+                    "Worker instance : not configuring " +
+                    "{0}".format(configure.CZAR)
+                )
+                components_to_configure.remove(configure.CZAR)
 
             for comp in components_to_configure:
                 cfg_script = os.path.join(configuration_scripts_dir, comp+".sh")

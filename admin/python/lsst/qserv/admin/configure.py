@@ -21,33 +21,34 @@ MYSQL = 'mysql'
 XROOTD = 'xrootd'
 CSS = 'css'
 CZAR = 'qserv-czar'
+WORKER = 'qserv-worker'
 QSERV = 'qserv'
 SCISQL =  'scisql'
 
-COMPONENTS = [MYSQL, XROOTD, CSS, CZAR, SCISQL]
+COMPONENTS = [MYSQL, XROOTD, CSS, CZAR, WORKER, SCISQL]
 STEP_RUN_LIST = [DIRTREE, ETC] + COMPONENTS + [CLIENT]
 STEP_LIST = [PREPARE] + STEP_RUN_LIST
-STEP_DOC = dict(
-    zip(STEP_LIST,
-        [
-        """create qserv_run_dir and attach it to current Qserv instance""",
-        """create directory tree in qserv_run_dir""",
-        """fill qserv_run_dir configuration files with values issued
-           from meta-config file $qserv_run_dir/qserv-meta.conf""",
-        """remove MySQL previous data, install db and set password """,
-        """create xrootd query and result directories""",
-        """configure CSS (i.e. MySQL credentials for css-watcher)""",
-        """initialize Qserv master and worker databases""",
-        """install and configure SciSQL""",
-        """create client configuration file (used by integration tests for example)"""
-        ]
-    )
-)
+STEP_DOC = {
+    PREPARE: "create qserv_run_dir and attach it to current Qserv instance",
+    DIRTREE: "create directory tree in qserv_run_dir",
+    ETC: "fill qserv_run_dir configuration files with values issued "+
+         "from meta-config file $qserv_run_dir/qserv-meta.conf""",
+    MYSQL: "remove MySQL previous data, install db and set password",
+    XROOTD: "create xrootd query and result directories",
+    CSS: "configure CSS (i.e. MySQL credentials for css-watcher)",
+    CZAR: "initialize Qserv master databases",
+    WORKER: "initialize Qserv worker database",
+    SCISQL: "install and configure SciSQL",
+    CLIENT: "create client configuration file (used by integration tests for example)"
+}
 
 STEP_ABBR = dict()
 for step in STEP_LIST:
     if step in COMPONENTS:
-        STEP_ABBR[step]=step[0].upper()
+        if step == WORKER:
+            STEP_ABBR[step]='W'
+        else:
+            STEP_ABBR[step]=step[0].upper()
     else:
         STEP_ABBR[step]=step[0]
 
@@ -221,13 +222,7 @@ def _get_template_params():
 
 def _set_perms(file):
     (path, basename) = os.path.split(file)
-    script_list = [
-        "xrootd.sh",
-        "mysql.sh",
-        "css.sh",
-        "scisql.sh",
-        "qserv-czar.sh"
-        ]
+    script_list = [c+".sh" for c in COMPONENTS]
     if (os.path.basename(path) == "bin" or
         os.path.basename(path) == "init.d" or
         basename in script_list):

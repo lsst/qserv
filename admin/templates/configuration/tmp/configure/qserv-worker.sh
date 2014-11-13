@@ -4,7 +4,7 @@ set -e
 
 DIR=$(cd "$(dirname "$0")"; pwd -P)
 SQL_LOADER=${DIR}/tools/sql-loader.sh
-SQL_FILE=qserv-czar.sql
+SQL_FILE=qserv-worker.sql
 
 echo 
 echo "-- Initializing Qserv czar database "
