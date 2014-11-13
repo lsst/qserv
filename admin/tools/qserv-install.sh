@@ -12,7 +12,11 @@ EUPS_PKGROOT="http://sw.lsstcorp.org/eupspkg"
 NEWINSTALL_URL="https://sw.lsstcorp.org/eupspkg/newinstall.sh"
 VERSION="-t qserv"
 
-underline() { echo $1; echo "${1//?/${2:-=}}";}
+underline() {
+    printf "\n%s\n" "${1}"
+    printf "%s" "${1}" | sed "s/./=/g"
+    printf "\n\n";
+}
 
 usage()
 {
@@ -25,7 +29,7 @@ OPTIONS:
    -d      Use development distribution server: ${DEV_DISTSERVER_ROOT}
    -r      Local distribution server root directory,
            used in internet-free mode
-   -i      Install directory : MANDATORY
+   -i      Install directory : MANDATORY, MUST BE AN ABSOLUTE PATH
    -v      Qserv version to install, default to the one with the 'qserv' tag
 EOF
 }
@@ -42,8 +46,9 @@ while getopts "dr:i:v:h" o; do
                 LOCAL_OPTION=1
                 MODE="internet-free mode"
                 LOCAL_DISTSERVER_ROOT="${OPTARG}"
-                if [[ ! -d ${LOCAL_DISTSERVER_ROOT} ]]; then
-                    >&2 echo "ERROR : $MODE require a local distribution server"
+                if [ ! -d "${LOCAL_DISTSERVER_ROOT}" ]; then
+                    >&2 printf "ERROR : %s require a local distribution\
+server\n" "$MODE"
                     usage
                     exit 1
                 fi
@@ -55,7 +60,7 @@ while getopts "dr:i:v:h" o; do
                 ;;
         i)
                 # Remove trailing slashes
-                STACK_DIR=`echo "${OPTARG}" | sed 's#/*$##'`
+                STACK_DIR=`printf "%s" "${OPTARG}" | sed 's#/*$##'`
                 ;;
         v)
                 VERSION="${OPTARG}"
@@ -68,35 +73,36 @@ while getopts "dr:i:v:h" o; do
 done
 
 
-if [[ -z "${STACK_DIR}" ]]
+if [ -z "${STACK_DIR}" ]
 then
-     >&2 echo "ERROR : install directory required, use -i option."
+     >&2 printf "ERROR : install directory required, use -i option.\n"
      usage
      exit 1
 fi
 
-if [[ -n ${DEV_OPTION} && -n ${LOCAL_OPTION} ]]; then
-    >&2 echo "ERROR : -r and -d options are not compatible"
+if [ -n "${DEV_OPTION}" -a -n "${LOCAL_OPTION}" ]; then
+    >&2 printf "ERROR : -r and -d options are not compatible\n"
     usage
     exit 1
 fi
 
-if [[ -d ${STACK_DIR} || -L ${STACK_DIR} ]]; then
+if [ -d "${STACK_DIR}" -o -L "${STACK_DIR}" ]; then
     [ "$(ls -A ${STACK_DIR})" ] &&
     {
-        echo "Cleaning install directory: ${STACK_DIR}"
+        printf "Cleaning install directory: ${STACK_DIR}\n"
         chmod -R 755 $STACK_DIR/* &&
         # / below is required if ${STACK_DIR} is a symlink
         find ${STACK_DIR}/ -mindepth 1 -delete ||
         {
-            >&2 echo "Unable to remove install directory previous content : ${STACK_DIR}"
+            >&2 printf "Unable to remove install directory previous content:\
+ ${STACK_DIR}\n"
             exit 1
         }
     }
 else
     mkdir $STACK_DIR ||
     {
-        >&2 echo "Unable to create install directory ${STACK_DIR}"
+        >&2 printf "Unable to create install directory ${STACK_DIR}\n"
         exit 1
     }
 
@@ -104,23 +110,21 @@ fi
 
 cd $STACK_DIR ||
 {
-    >&2 echo "Unable to go to install directory : ${STACK_DIR}"
+    >&2 printf "Unable to go to install directory : ${STACK_DIR}\n"
     exit 1
 }
 
-echo
 underline "Installing LSST stack : $MODE, version : $VERSION"
-echo
 export EUPS_PKGROOT
 curl -O ${NEWINSTALL_URL} ||
 {
-    >&2 echo "Unable to download from ${NEWINSTALL_URL}"
+    >&2 printf "Unable to download from ${NEWINSTALL_URL}\n"
     exit 2
 }
 
 time bash newinstall.sh ||
 {
-    >&2 echo "ERROR : newinstall.sh failed"
+    >&2 printf "ERROR : newinstall.sh failed\n"
     exit 1
 }
 
@@ -128,61 +132,51 @@ time bash newinstall.sh ||
 # EUPS_PKGROOT, this isn't compliant with internet-free mode
 # TODO : if first url in EUPS_PKGROOT isn't available eups fails without
 # trying next ones
-if [[ -n ${LOCAL_OPTION} ]]; then
+if [ -n "${LOCAL_OPTION}" ]; then
     EUPS_PKG_ROOT_BACKUP=${EUPS_PKGROOT}
 fi
 . ${STACK_DIR}/loadLSST.bash ||
 {
-    >&2 echo "ERROR : unable to load LSST stack environment"
+    >&2 printf "ERROR : unable to load LSST stack environment\n"
     exit 1
 }
-if [[ -n ${LOCAL_OPTION} ]]; then
+if [ -n "${LOCAL_OPTION}" ]; then
     export EUPS_PKGROOT=${EUPS_PKG_ROOT_BACKUP}
 fi
 
-echo
 underline "Installing Qserv distribution (version: $VERSION, distserver: ${EUPS_PKGROOT})"
-echo
 time eups distrib install qserv_distrib ${VERSION} &&
 setup qserv_distrib ${VERSION} ||
 {
-    >&2 echo "Unable to install Qserv"
+    >&2 printf "Unable to install Qserv\n"
     exit 1
 }
 
-echo
 underline "Configuring Qserv"
-echo
 qserv-configure.py --all ||
 {
-    >&2 echo "Unable to configure Qserv as a mono-node instance"
+    >&2 printf "Unable to configure Qserv as a mono-node instance"
     exit 1
 }
 
-echo
 underline "Starting Qserv"
-echo
 CFG_VERSION=`qserv-version.sh`
 ${HOME}/qserv-run/${CFG_VERSION}/bin/qserv-start.sh ||
 {
-    >&2 echo "Unable to start Qserv"
+    >&2 printf "Unable to start Qserv\n"
     exit 1
 }
 
-echo
 underline "Running Qserv integration tests"
-echo
 qserv-test-integration.py ||
 {
-    >&2 echo "Integration tests failed"
+    >&2 printf "Integration tests failed\n"
     exit 1
 }
 
-echo
 underline "Stopping Qserv"
-echo
 ${HOME}/qserv-run/${CFG_VERSION}/bin/qserv-stop.sh ||
 {
-    >&2 echo "Unable to stop Qserv"
+    >&2 printf "Unable to stop Qserv\n"
     exit 1
 }
