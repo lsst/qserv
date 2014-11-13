@@ -23,12 +23,14 @@
 import os
 import state
 
-def getDefaultTargets(env, path):
+def getDefaultTargets(env, path, ignore=lambda f:False):
     """ 
     @param env   a SCons environment
     @param path  relative path to the module
+    @param ignore a function that returns True if a file should be ignored.
     """
-    files = filter(lambda f: not os.path.basename(str(f)).startswith("test"),
+    files = filter(lambda f: not (os.path.basename(str(f)).startswith("test")
+                                  or ignore(f)),
                    env.Glob(os.path.join(path, "*.cc")))
     files.sort(key=lambda n: n.str_for_display())
     return files

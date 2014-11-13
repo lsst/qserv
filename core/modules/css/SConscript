@@ -21,72 +21,46 @@ def _debug_dist_target():
 
 # Manual dependencies for czarLib.i, because the SCons SWIG builder
 # isn't knowledgeable enough to ensure their presence when using VariantDir
-# depends = ['ccontrol/dispatcher.h',
-#            'css/StripingParams.h',
-#            'query/Constraint.h',
-#            'qdisp/ChunkMeta.h',
-#            'qproc/ChunkSpec.h',
-#            'rproc/TableMerger.h',
-#            'rproc/mergeTypes.h',
-#            'util/Substitution.h',
-#            'xrdc/xrdfile.h']
-# depends = map(lambda f: env.File("../"+f), depends)
+depends = ["css/constants.h"]
+depends = map(lambda f: env.File("../"+f), depends)
 
-# localCpppath = env['CPPPATH']
-# if type(localCpppath) == type(""): localCpppath = [localCpppath]
-# localCpppath.append(distutils.sysconfig.get_python_inc())
-# swigged = env.SharedObject(source="czarLib.i",
-#                            SWIGFLAGS=['-python', '-c++', '-Iinclude'],
-#                            SWIGPATH=['..',
-#                                      distutils.sysconfig.get_python_inc()],
-#                            CPPPATH=localCpppath,
-#                            LDMODULEPREFIX='_', LDMODULESUFFIX = '.so'
-#                            )
-# swigged = env.swig(source="czarLib.i",
-#                    SWIGPATH=['..',
-#                              distutils.sysconfig.get_python_inc()],
-#                    LDMODULEPREFIX='_', LDMODULESUFFIX = '.so'
-#                    )
-
+localCpppath = env['CPPPATH']
+if type(localCpppath) == type(""): localCpppath = [localCpppath]
+localCpppath.append(distutils.sysconfig.get_python_inc())
+swigged = env.SharedObject(source="cssLib.i",
+                            SWIGFLAGS=['-python', '-c++', '-Iinclude'],
+                            SWIGPATH=['..',
+                                      distutils.sysconfig.get_python_inc()],
+                            CPPPATH=localCpppath,
+                            LDMODULEPREFIX='_', LDMODULESUFFIX = '.so'
+                            )
 #env.Append(SWIGPATH=['..', distutils.sysconfig.get_python_inc()])
 #swigged = [env.File("czarLib.i")]
 
 # print swigged # prints ['czarLib_wrap.os']
 
-# swigged_tgt = []
-# for f in swigged:
-#     swigged_tgt.append(env.File(f))
-
-# env.Depends(swigged_tgt, depends)
+swigged_tgt = map(env.File, swigged)
+env.Depends(swigged_tgt, depends)
 
 # # Create entry for python file, which SCons SWIG builder ignores
-# pySwig = env.File('czarLib.py')
-# #env.Depends(pySwig, swigged[0]) # This causes a cycle (why?),
-# # but "scons --tree=all" shows that a sufficient dep
-# # is already there (on czarLib.i)
-# extraTgts["czarLib.py"] = pySwig
+pySwig = env.File('cssLib.py')
+extraTgts["cssLib.py"] = pySwig
 
 # state.log.debug("extraTgts['dist'] %s" % extraTgts['dist'])
 
-# distTgts = swigged_tgt + [pySwig]
+distTgts = swigged_tgt + [pySwig]
 
 # state.log.debug("pytarget.getPyTargets()")
 # _debug_dist_target()
-distTgts = []
 pyFiles = pytarget.getPyTargets2(env, ["lsst","qserv","css"], distTgts)
 extraTgts['dist'].extend(pyFiles)
-# _debug_dist_target()
-
-# for f in env.Glob("bin/*py"):
-#     extraTgts['dist'].append(('bin', f))
-
-# _debug_dist_target()
 
 # extraTgts["czarPy"] = distTgts
 # Return('swigged_tgt')
 import time
 t1 = time.time()
-defaultTargets = cctarget.getDefaultTargets(env, '.')
+defaultTargets = cctarget.getDefaultTargets(env, '.', lambda f: str(f) == "cssLib_wrap.cc")
+
 t2 = time.time()
-print "Elapsed css target time=", t2-t1
+print "Elapsed css target time=", t2-t1, map(str,defaultTargets)
 Return('defaultTargets')
