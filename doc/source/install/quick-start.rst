@@ -42,16 +42,16 @@ First, log in with a **non-root user account**.
 
 .. code-block:: bash
 
-   NEWINSTALL_URL=http://sw.lsstcorp.org/pkgs/
+   NEWINSTALL_URL=https://sw.lsstcorp.org/pkgs/newinstall.sh
    export EUPS_PKGROOT=${NEWINSTALL_URL}
    INSTALL_DIR=root/directory/where/qserv/stack/will/be/installed
    # e.g. ~qserv, please note that $INSTALL_DIR must be empty
    cd $INSTALL_DIR
-   curl -O ${NEWINSTALL_URL}/newinstall.sh
+   curl -O ${NEWINSTALL_URL}
    # script below will ask some questions. Unless you know what you're doing,
    # and you need a fine tuned setup, please answer 'yes' everywhere.
    bash newinstall.sh
-   . loadLSST.sh
+   . loadLSST.bash
 
 .. _quick-start-install-qserv:
 
@@ -64,7 +64,7 @@ Then below, please set ``RELEASE`` to "|release|" to install explicitly this rel
 
    # First, define RELEASE, here we install current Qserv release
    RELEASE="-t qserv"
-   # loadLSST.sh must have been sourced before running this (see above)
+   # loadLSST.bash must have been sourced before running this (see above)
    eups distrib install qserv_distrib $RELEASE
    setup qserv_distrib $RELEASE
 

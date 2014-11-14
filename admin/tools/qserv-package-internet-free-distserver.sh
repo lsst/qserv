@@ -95,7 +95,7 @@ echo
 echo "Downloading LSST stack install script"
 echo "====================================="
 echo
-curl -O http://sw.lsstcorp.org/eupspkg/newinstall.sh
+curl -O https://sw.lsstcorp.org/eupspkg/newinstall.sh
 mv newinstall.sh ${EUPS_PKGROOT}
 
 

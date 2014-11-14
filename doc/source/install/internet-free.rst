@@ -56,7 +56,7 @@ You can then **apply customizations below** to standard Qserv install procedure 
 
 .. code-block:: bash
 
-   # `. loadLSST.sh` instruction updates EUPS_PKGROOT value, that's why you need to correct it 
+   # `. loadLSST.bash` instruction updates EUPS_PKGROOT value, that's why you need to correct it 
    # before installing Qserv
    export EUPS_PKGROOT="${INTERNET_FREE_DISTSERVER_DIR}/production"
 
