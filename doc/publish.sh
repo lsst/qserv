@@ -35,7 +35,7 @@ cd $DIR/..
 echo "Generating documentation"
 scons doc
 )
-REMOTE_HOST=lsst-dev.ncsa.illinois.edu
+REMOTE_HOST=lsst-dev
 #VERSION=$(pkgautoversion)
 VERSION=`${DIR}/../admin/bin/qserv-version.sh`
 echo "Uploading documentation from $PWD to $REMOTE_HOST"

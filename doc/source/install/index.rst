@@ -8,3 +8,4 @@ Installation
    quick-start
    internet-free
    automated
+   docker
