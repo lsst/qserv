@@ -7,3 +7,4 @@ Administration reference
 
    configuration
    test-set
+   docker
