@@ -24,8 +24,8 @@ RUN bash newinstall.sh < /tmp/answers.txt
 RUN rm /tmp/answers.txt
 RUN bash -c ". loadLSST.bash && eups distrib install qserv_distrib -t qserv"
 # Mono-node configuration and tests
-RUN bash -c ". loadLSST.bash && setup qserv -t qserv && qserv-configure.py \
- --all -R $HOME/qserv-run"
-RUN bash -c ". loadLSST.bash && setup qserv_testdata -t qserv && \
- $HOME/qserv-run/bin/qserv-start.sh && qserv-test-integration.py && \
- $HOME/qserv-run/bin/qserv-stop.sh"
+# RUN bash -c ". loadLSST.bash && setup qserv -t qserv && qserv-configure.py \
+# --all -R $HOME/qserv-run"
+# RUN bash -c ". loadLSST.bash && setup qserv_testdata -t qserv && \
+# $HOME/qserv-run/bin/qserv-start.sh && qserv-test-integration.py && \
+# $HOME/qserv-run/bin/qserv-stop.sh"
