@@ -36,6 +36,7 @@ Known issues and todos:
 
 # standard library imports
 import logging
+import json
 import sys
 import time
 
@@ -57,29 +58,279 @@ KvException = produceExceptionClass('KvException', [
         (9999, "INTERNAL",           "Internal error.")])
 
 ####################################################################################
+
+def encodePacked(aDict):
+    """Encode a dict into a packed value suitable for inserting
+    into a CSS kv store
+    @return string representing the encoded dict (currently, a JSON obj)"""
+    return json.dumps(aDict)
+
+def decode(packed):
+    """Decode a packed value in CSS (packed in JSON).
+    @return dict representing the decoded input string.
+    """
+    return json.loads(packed)
+
+
 class KvInterface(object):
     """
     @brief KvInterface class defines interface to the Central State Service CSS).
-
-    @param connInfo  Connection information.
     """
+    @classmethod
+    def newImpl(cls, connInfo):
+        """
+        Initialize a KvInterface
 
-    def __init__(self, connInfo):
+        @param connInfo  Connection information for zk mode
+        or @param config  Config containing css config (technology,
+        connection, timeout keys)
+
+        self._filename : filename for css info.
+        self._zk : a KazooClient object, valid "if not self._filename:"
         """
-        Initialize the interface.
+        if ("connInfo" in kwargs) and kwargs["connInfo"]:
+            return KvInterfaceZoo(connection=kwargs["connInfo"],
+                                  timeout=10000))
+        elif "config" in kwargs:
+            if cfg["technology"] == "zoo":
+            return KvInterfaceZoo(**kwargs)
+        elif cfg["technology"] == "mem":
+            return KvInterfaceMem(kwargs["connection"])
+        elif cfg["technology"] == "fake":
+            return KvInterfaceFake()
+        else:
+            raise KvException(KvException.MISSING_PARAM, "<None>")
+
+    @property
+    def lastUpdated(self):
+        """Return time of last update to the css cluster for a node.
+        If the value is different from previous invocations, the
+        caller may invoke refresh() to update the snapshot.
+
+        @param path of the node.
         """
-        self._logger = logging.getLogger("CSS")
-        if connInfo is None:
-            raise KvException(KvException.INVALID_CONNECTION, "<None>")
-        self._logger.info("conn is: %s" % connInfo)
-        self._zk = KazooClient(hosts=connInfo)
-        self._zk.start()
+        raise KvException(KvException.NOT_IMPLEMENTED)
 
     def create(self, k, v='', sequence=False, ephemeral=False):
         """
         Add a new key/value entry. Create entire path as necessary.
 
-        @param sequence  Sequence flag -- if set to True, a 10-digid, 0-padded
+        @param sequence  Sequence flag -- if set to True, a 10-digit, 0-padded
+                         suffix (unique sequential number) will be added to the key.
+
+        @return string   Real path to the just created node.
+
+        @raise     KvException if the key k already exists.
+        """
+        raise KvException(KvException.NOT_IMPLEMENTED)
+
+    def exists(self, k):
+        """
+        Check if a given key exists.
+
+        @param k Key.
+
+        @return boolean  True if the key exists, False otherwise.
+        """
+        raise KvException(KvException.NOT_IMPLEMENTED)
+
+    def get(self, k):
+        """
+        Return value for a key.
+
+        @param k   Key.
+
+        @return string  Value for a given key.
+
+        @raise     Raise KvException if the key doesn't exist.
+        """
+        raise KvException(KvException.NOT_IMPLEMENTED)
+
+    def getChildren(self, k):
+        """
+        Return the list of the children of the node k.
+
+        @param k   Key.
+
+        @return    List_of_children of the node k.
+
+        @raise     Raise KvException if the key does not exists.
+        """
+        raise KvException(KvException.NOT_IMPLEMENTED)
+
+    def set(self, k, v):
+        """
+        Set value for a given key. Raise exception if the key doesn't exist.
+
+        @param k  Key.
+        @param v  Value.
+
+        @raise     Raise KvException if the key doesn't exist.
+        """
+        raise KvException(KvException.NOT_IMPLEMENTED)
+
+    def setForce(self, k, v):
+        """
+        Set value for a given key.
+
+        @param k  Key.
+        @param v  Value.
+        """
+        raise KvException(KvException.NOT_IMPLEMENTED)
+
+    def delete(self, k, recursive=False):
+        """
+        Delete a key, including all children if recursive flag is set.
+
+        @param k         Key.
+        @param recursive Flag. If set, all existing children nodes will be
+                         deleted.
+
+        @raise     Raise KvException if the key doesn't exist.
+        """
+        raise KvException(KvException.NOT_IMPLEMENTED)
+
+    def dumpAll(self, fileH=sys.stdout):
+        """
+        Returns entire contents in a string.
+        """
+        raise KvException(KvException.NOT_IMPLEMENTED)
+
+    def getLockObject(self, k, id):
+        """
+        @param k         Key.
+        @param id        Name to use for this lock contender. This can be useful
+                         for querying to see who the current lock contenders are.
+
+        @return lock object
+        """
+        raise KvException(KvException.NOT_IMPLEMENTED)
+
+    def visitPrefix(self, p, nodeFunc, acceptFunc=lambda n: True):
+        """Visit a path recursively, in prefix-order. Call nodeFunc(path)
+        on each node. For a node (and its children) to be visited,
+        acceptFunc(path) must return true. Parent paths are visited before
+        their children.
+
+        For example, if
+        acceptFunc("/") returns false and _visit begins at "/", no
+        nodeFunc will not be called. Similarly, if
+        acceptFunc("/foo") returns false, then _visit("/",...) will
+        visit every node (and call nodeFunc) except /foo and its
+        children.
+        """
+        try:
+            children = self.getChildren(p)
+            nodeFunc(p)
+            if p == "/": p = "" # Prevent // in concatenated path.
+            for child in children:
+                self.visitPrefix(p + "/" + child, nodeFunc, acceptFunc)
+        except NoNodeError:
+            self._logger.warning("Caught NoNodeError: accessed deleted node.")
+
+    def visitPostfix(self, p, nodeFunc, acceptFunc=lambda n: True):
+        """Visit a path recursively, in postfix-order. Call nodeFunc(path)
+        on each node. For a node (and its children) to be visited,
+        acceptFunc(path) must return true.
+
+        In contrast to visitPrefix, parent paths are visited after their
+        children.
+
+        See visitPrefix for more details on nodeFunc and acceptFunc
+        """
+        try:
+            children = self.getChildren(p)
+            if p == "/": p = "" # Prevent // in concatenated path.
+            for child in children:
+                self.visitPrefix(p + "/" + child, nodeFunc, acceptFunc)
+            nodeFunc(p)
+
+        except NoNodeError:
+            self._logger.warning("Caught NoNodeError, someone deleted node just now")
+    def isPacked(self, path):
+        """@return path-root for unpacking if path indicates a packed value.
+        Otherwise return None.
+        
+        Currently, if a path has a .json suffix, this indicates that its data 
+        value is encoded in json.
+
+        For example, a zookeeper node with path /foo/bar.json will
+        have a json object as its data. If the contents are: { "name"
+        : "John", "rank":"private"}, then an unpacking will yield
+        logical paths: /foo/bar/name -> John, /foo/bar/rank ->
+        private."""
+        if path.endswith(self.jsonsuffix):
+            return path[:-len(self.jsonsuffix)]
+        return None
+
+    def getUnpacked(self, path):
+        """
+        @param path path to the packed key (i.e. /some/path/key.json )
+        @return a dict containing the keys and values stored at a path
+        """
+        return decode(self.get(path))
+
+
+    class Printer:
+        """A helper class for printing values from KvInterface objects"""
+        def __init__(self, kv):
+            self.lines = []
+            self.kv = kv
+        def visit(self, p):
+            data = self.kv.get(p)
+            self.lines.append("%s\t%s" % (p, data))
+        pass
+
+
+  pass
+
+########################################################################
+# KvInterfaceZoo: Zk-based interface for KvInterface
+########################################################################
+class KvInterfaceZoo(KvInterface):
+    """
+    @brief KvInterfaceZoo class implements a zk-backed key-value store
+    for Qserv CSS.
+
+    """
+
+    def __init__(self, connection, timeout):
+        """
+        Initialize the interface.
+
+        @param connection  "host:port" of zk instance
+                           or instances "host1:port1,host2:port2,..."
+        @param timeout retry timeout in millisecond
+        """
+        self._logger = logging.getLogger("CSS")
+        if not connection:
+            raise KvException(KvException.INVALID_CONNECTION, "<None>")
+
+        self._zk = KazooClient(hosts=connection,
+                               # timeout in ms, kazoo expects seconds
+                               timeout=(float(timeout)/1000.0))
+        self._zk.start()
+
+    @property
+    def lastUpdated(self):
+        """Return time of last update to the css cluster for a node.
+        If the value is different from previous invocations, the
+        caller may invoke refresh() to update the snapshot.
+
+        @param path of the node.
+        """
+        if self._filename:
+            stat = os.stat(self._filename)
+            return stat.st_mtime
+        # use zk
+        data, stat = self._zk.get("/")
+        return stat.last_modified
+
+    def create(self, k, v='', sequence=False, ephemeral=False):
+        """
+        Add a new key/value entry. Create entire path as necessary.
+
+        @param sequence  Sequence flag -- if set to True, a 10-digit, 0-padded
                          suffix (unique sequential number) will be added to the key.
 
         @return string   Real path to the just created node.
@@ -158,6 +409,19 @@ class KvInterface(object):
             self._logger.error("in set(), key %s does not exist" % k)
             raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
 
+    def setForce(self, k, v):
+        """
+        Set value for a given key.
+
+        @param k  Key.
+        @param v  Value.
+        """
+        self._logger.info("SETFORCE '%s' --> '%s'" % (k, v))
+        try:
+            self._zk.set(k, v)
+        except NoNodeError:
+            self._zk.create(k, v)
+
     def delete(self, k, recursive=False):
         """
         Delete a key, including all children if recursive flag is set.
@@ -188,7 +452,11 @@ class KvInterface(object):
         """
         Returns entire contents.
         """
-        self._printNode("/", fileH)
+        contents = self._printNode("/")
+        if fileH:
+            fileH.write(contents)
+        else:
+            print contents
 
     def getLockObject(self, k, id):
         """
@@ -208,28 +476,209 @@ class KvInterface(object):
 
         @param p  Path.
         """
-        children = None
-        data = None
-        stat = None
+        printer = KvInterface.Printer(self)
+        self.visitPrefix(p, printer.visit,
+                         lambda p: not p.startswith("/zookeeper"))
+        return "\n".join(printer.lines)
+
+    def _deleteNode(self, p):
+        """
+        Delete one path and its children.
+
+        @param p  Path.
+        """
+        # Leverage recursion provided by zk-persistence
         try:
-            children = self._zk.get_children(p)
-            data, stat = self._zk.get(p)
-            if fileH is not None:
-                fileH.write(p)
-                fileH.write('\t')
-                fileH.write((data if data else '\N'))
-                fileH.write('\n')
+            if p = "/":
+                children = self._zk.get_children(p)
+                for child in ifilter(lambda c: c != "zookeeper", children):
+                    self._zk.delete("%s%s" % (p, child), recursive=True)
             else:
-                print p, '\t', (data if data else '\N')
-            for child in children:
-                if p == "/":
-                    if child != "zookeeper":
-                        self._printNode("%s%s" % (p, child), fileH)
-                else:
-                    self._printNode("%s/%s" % (p, child), fileH)
+                self._zk.delete(p, recursive=True)
         except NoNodeError:
-            self._logger.warning("Caught NoNodeError, someone deleted node just now")
-            None
+            pass
+
+########################################################################
+# KvInterfaceMem: in-memory impl of KvInterface, pre-loaded with a file
+########################################################################
+class KvInterfaceMem(KvInterface):
+    """
+    @brief KvInterfaceMem class implements a file-initialized
+    key-value store for Qserv CSS.
+
+    """
+
+    def __init__(self, filename):
+        """
+        Initialize the interface.
+
+        @param filename backing file
+        """
+        self._logger = logging.getLogger("CSS")
+        if filename:
+            self.load(filename)
+
+    def load(self, filename):
+        self._filename = filename
+        self._kvi = KvInterfaceImplMem(self._filename)
+
+
+    @property
+    def lastUpdated(self):
+        """Return time of last update to the css cluster for a node.
+        If the value is different from previous invocations, the
+        caller may invoke refresh() to update the snapshot.
+
+        @param path of the node.
+        """
+        stat = os.stat(self._filename)
+        return stat.st_mtime
+
+    def create(self, k, v='', sequence=False, ephemeral=False):
+        """
+        Add a new key/value entry. Create entire path as necessary.
+
+        @return string   Real path to the just created node.
+
+        @raise     KvException if the key k already exists.
+        """
+        if self._kvi.exists(k):
+            self._logger.error("in create(), key %s exists" % k)
+            raise KvException(KvException.KEY_EXISTS, k)
+        else:
+            self._kvi.create(k, v)
+        return k
+
+    def exists(self, k):
+        """
+        Check if a given key exists.
+
+        @param k Key.
+
+        @return boolean  True if the key exists, False otherwise.
+        """
+        ret = (self._kvi.exists(k) != None)
+        self._logger.info("EXISTS '%s': %s" % (k, ret))
+        return ret
+
+    def get(self, k):
+        """
+        Return value for a key.
+
+        @param k   Key.
+
+        @return string  Value for a given key.
+
+        @raise     Raise KvException if the key doesn't exist.
+        """
+        try:
+            v, stat = self._kvi.get(k)
+            self._logger.info("GET '%s' --> '%s'" % (k, v))
+            return v
+        except NoNodeError:
+            self._logger.error("in get(), key %s does not exist" % k)
+            raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
+
+    def getChildren(self, k):
+        """
+        Return the list of the children of the node k.
+
+        @param k   Key.
+
+        @return    List_of_children of the node k.
+
+        @raise     Raise KvException if the key does not exists.
+        """
+        try:
+            self._logger.info("GETCHILDREN '%s'" % (k))
+            return self._kvi.get_children(k)
+        except NoNodeError:
+            self._logger.error("in getChildren(), key %s does not exist" % k)
+            raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
+
+    def set(self, k, v):
+        """
+        Set value for a given key. Raise exception if the key doesn't exist.
+
+        @param k  Key.
+        @param v  Value.
+
+        @raise     Raise KvException if the key doesn't exist.
+        """
+        self._logger.info("SET '%s' --> '%s'" % (k, v))
+        if not self.kvi.exists(k):
+            self._logger.error("in getChildren(), key %s does not exist" % k)
+            raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
+        self._kvi.set(k, v)
+
+    def setForce(self, k, v):
+        """
+        Set value for a given key.
+
+        @param k  Key.
+        @param v  Value.
+        """
+        self._logger.info("SETFORCE '%s' --> '%s'" % (k, v))
+        self._kvi.set(k, v)
+
+    def delete(self, k, recursive=False):
+        """
+        Delete a key, including all children if recursive flag is set.
+
+        @param k         Key.
+        @param recursive Flag. If set, all existing children nodes will be
+                         deleted.
+
+        @raise     Raise KvException if the key doesn't exist.
+        """
+        if recursive:
+            self.visitPostfix(k, lambda p: self._kvi.delete(k))
+        else:
+            self._kvi.delete
+        try:
+
+            else
+            if k == "/": # zookeeper will fail badly if we try to delete root node
+                if recursive:
+                    for child in self.getChildren("/"):
+                        if child != "zookeeper": # skip zookeeper internals
+                            self._logger.info("DELETE '/%s'" % (child))
+                            self._zk.delete("/%s" % child, recursive=True)
+                else:
+                    pass
+            else:
+                self._logger.info("DELETE '%s'" % (k))
+                self._zk.delete(k, recursive=recursive)
+        except NoNodeError:
+            self._logger.error("in delete(), key %s does not exist" % k)
+            raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
+
+    def dumpAll(self, fileH=sys.stdout):
+        """
+        Returns entire contents.
+        """
+        self._printNode("/", fileH)
+
+    def getLockObject(self, k, id):
+        """
+        @param k         Key.
+        @param id        Name to use for this lock contender. This can be useful
+                         for querying to see who the current lock contenders are.
+
+        @return lock object
+        """
+        self._logger.info("Getting lock '%s' on '%s' (in-mem, NOP)" % (id, k))
+        return self
+
+    def _printNode(self, p, fileH=None):
+        """
+        Print content of one key/value to stdout. Note, this function is recursive.
+
+        @param p  Path.
+        """
+        printer = KvInterface.Printer(self)
+        self.visitPrefix(p, printer.visit, lambda p: True)
+        return "\n".join(printer.lines)
 
     def _deleteNode(self, p):
         """
@@ -237,15 +686,5 @@ class KvInterface(object):
 
         @param p  Path.
         """
-        try:
-            children = self._zk.get_children(p)
-            for child in children:
-                if p == "/":
-                    if child != "zookeeper": # skip "/zookeeper"
-                        self._deleteNode("%s%s" % (p, child))
-                else:
-                    self._deleteNode("%s/%s" % (p, child))
-            if p != "/":
-                self._zk.delete(p)
-        except NoNodeError:
-            pass
+        # May need to catch c++ exceptions
+        self.visitPostfix(p, self._kvi.deleteKey, lambda p: True)
