@@ -62,5 +62,5 @@ t1 = time.time()
 defaultTargets = cctarget.getDefaultTargets(env, '.', lambda f: str(f) == "cssLib_wrap.cc")
 
 t2 = time.time()
-print "Elapsed css target time=", t2-t1, map(str,defaultTargets)
+#print "Elapsed css target time=", t2-t1, map(str,defaultTargets)
 Return('defaultTargets')
