@@ -77,7 +77,7 @@ class KvInterface(object):
     @brief KvInterface class defines interface to the Central State Service CSS).
     """
     @classmethod
-    def newImpl(cls, connInfo):
+    def newImpl(cls, **kwargs):
         """
         Initialize a KvInterface
 
@@ -90,14 +90,14 @@ class KvInterface(object):
         """
         if ("connInfo" in kwargs) and kwargs["connInfo"]:
             return KvInterfaceZoo(connection=kwargs["connInfo"],
-                                  timeout=10000))
+                                  timeout=10000)
         elif "config" in kwargs:
             if cfg["technology"] == "zoo":
-            return KvInterfaceZoo(**kwargs)
-        elif cfg["technology"] == "mem":
-            return KvInterfaceMem(kwargs["connection"])
-        elif cfg["technology"] == "fake":
-            return KvInterfaceFake()
+                return KvInterfaceZoo(**kwargs)
+            elif cfg["technology"] == "mem":
+                return KvInterfaceMem(kwargs["connection"])
+            elif cfg["technology"] == "fake":
+                return KvInterfaceFake()
         else:
             raise KvException(KvException.MISSING_PARAM, "<None>")
 
@@ -282,7 +282,7 @@ class KvInterface(object):
         pass
 
 
-  pass
+    pass
 
 ########################################################################
 # KvInterfaceZoo: Zk-based interface for KvInterface
@@ -489,7 +489,7 @@ class KvInterfaceZoo(KvInterface):
         """
         # Leverage recursion provided by zk-persistence
         try:
-            if p = "/":
+            if p == "/":
                 children = self._zk.get_children(p)
                 for child in ifilter(lambda c: c != "zookeeper", children):
                     self._zk.delete("%s%s" % (p, child), recursive=True)
@@ -634,24 +634,7 @@ class KvInterfaceMem(KvInterface):
         if recursive:
             self.visitPostfix(k, lambda p: self._kvi.delete(k))
         else:
-            self._kvi.delete
-        try:
-
-            else
-            if k == "/": # zookeeper will fail badly if we try to delete root node
-                if recursive:
-                    for child in self.getChildren("/"):
-                        if child != "zookeeper": # skip zookeeper internals
-                            self._logger.info("DELETE '/%s'" % (child))
-                            self._zk.delete("/%s" % child, recursive=True)
-                else:
-                    pass
-            else:
-                self._logger.info("DELETE '%s'" % (k))
-                self._zk.delete(k, recursive=recursive)
-        except NoNodeError:
-            self._logger.error("in delete(), key %s does not exist" % k)
-            raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
+            self._kvi.delete(k)
 
     def dumpAll(self, fileH=sys.stdout):
         """
