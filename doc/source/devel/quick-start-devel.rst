@@ -86,15 +86,11 @@ In order to test it with your Qserv version :
 
    QSERV_TESTDATA_SRC_DIR=${HOME}/src/qserv_testdata/
    cd $QSERV_TESTDATA_SRC_DIR
+   # Assuming you have already installed in eups stack
+   # qserv_testdata dependencies
    setup -k -r .
-   scons install prefix=dist  # install (qserv_testdata doesn't support
-                              # in-place install)
-   cd dist
-   setup -k -r .
+   scons                    # Build for in-place use
 
-   # Each time you want to test your code, run :
-   cd ..
-   scons install prefix=dist
 
 *********************************
 Updating other Qserv dependencies
