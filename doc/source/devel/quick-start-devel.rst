@@ -87,7 +87,6 @@ In order to test it with your Qserv version :
    QSERV_TESTDATA_SRC_DIR=${HOME}/src/qserv_testdata/
    cd $QSERV_TESTDATA_SRC_DIR
    setup -k -r .
-   scons build                # build
    scons install prefix=dist  # install (qserv_testdata doesn't support
                               # in-place install)
    cd dist
