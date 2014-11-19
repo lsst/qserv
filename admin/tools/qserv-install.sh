@@ -48,7 +48,7 @@ while getopts "dr:i:v:h" o; do
                 LOCAL_DISTSERVER_ROOT="${OPTARG}"
                 if [ ! -d "${LOCAL_DISTSERVER_ROOT}" ]; then
                     >&2 printf "ERROR : %s require a local distribution\
-server\n" "$MODE"
+ server\n" "$MODE"
                     usage
                     exit 1
                 fi
@@ -155,7 +155,7 @@ setup qserv_distrib ${VERSION} ||
 underline "Configuring Qserv"
 qserv-configure.py --all ||
 {
-    >&2 printf "Unable to configure Qserv as a mono-node instance"
+    >&2 printf "Unable to configure Qserv as a mono-node instance\n"
     exit 1
 }
 
