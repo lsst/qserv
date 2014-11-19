@@ -31,6 +31,7 @@ Access to the classes from the qserv_css library
 %{
 #define SWIG_FILE_WITH_INIT
 #include "css/constants.h"
+#include "css/KvInterfaceImplMem.h"
 %}
 
 %include typemaps.i
@@ -53,4 +54,4 @@ Access to the classes from the qserv_css library
 /* }; */
 
 %include "css/constants.h"
-
+%include "css/KvInterfaceImplMem.h"

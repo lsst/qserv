@@ -1,4 +1,5 @@
 # -*- python -*-
+# Qserv core/modules SConscript
 #
 # Setup our environment
 #
@@ -85,19 +86,26 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                            'distDir' : 'lib'
                            },
 
-               "_czarLib" : {'mods' : """css czar ccontrol global
+               "_czarLib" : {'mods' : """czar ccontrol global
                                          log rproc mysql
                                          parser query
                                          sql util xrdc
                                          obsolete proto
                                          qana qdisp qproc""".split(),
+                             'shmods' : ['css'],
                              'libs' : """ssl crypto antlr log
                                       mysqlclient_r protobuf
                                       XrdClient XrdPosix XrdSsi XrdUtils
                                       boost_regex boost_thread boost_system
                                       boost_signals zookeeper_mt""".split(),
                                'SHLIBPREFIX' : '',
-                               'distDir' : os.path.join(env['python_relative_prefix'],"lsst","qserv","czar")}
+                               'distDir' : os.path.join(env['python_relative_prefix'],"lsst","qserv","czar")},
+               "_cssLib" : {'mods' : [],
+                            'shmods' : ['css'],
+                            'libs' : "log boost_thread zookeeper_mt".split(),
+                            'SHLIBPREFIX' : '',
+                            'distDir' : os.path.join(env['python_relative_prefix'],"lsst","qserv","css")},
+
                }
 
 # modules used in shProducts
@@ -187,8 +195,19 @@ for m in defaultTgts:
     objs = [makeSharedObjectCC(env, a) for a in set(files)]
     defaultTgts[m] = objs
 
+# Compute internal shlib targets
+shlibs = dict()
+shmods = set(chain(*[shProducts[m]['shmods'] for m in shProducts
+                     if shProducts[m].has_key('shmods')]))
 
-# Compute shlib targets
+for m in shmods:
+    # files = cctarget.getDefaultTargets(env, m)
+    # objs = [makeSharedObjectCC(env, a) for a in set(files)]
+
+    shlibs[m] = env.SharedLibrary("libqserv_"+m, libProducts[m])
+    pass
+
+# Compute shProduct targets
 for (pkg, opts) in shProducts.items():
     srcs = []
     for m in opts['mods']: # Visit modules and compose union of LIBS
@@ -208,11 +227,17 @@ for (pkg, opts) in shProducts.items():
     #env.Append(LIBS=libs)
     #extLibFlags = ["-l"+lib for lib in findLibs(opts['libs'])]
     extLibs = [lib for lib in findLibs(opts['libs'])]
+    intDeps = [] # internal dependencies on .so
+    if opts.has_key('shmods'):
+        intDeps = [shlibs[m] for m in opts['shmods']]
+        extLibs.extend(["qserv_" + s for s in opts['shmods']])
     if opts.has_key('SHLIBPREFIX'):
         out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs,
                                 SHLIBPREFIX=opts['SHLIBPREFIX'])
     else:
         out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs)
+    if intDeps:
+        env.Depends(out, intDeps)
     env.Alias("build", out)
     for f in out:
         extraTgts['dist'].append((opts['distDir'], f))
