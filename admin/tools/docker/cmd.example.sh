@@ -10,7 +10,7 @@ docker run --hostname="qserv-host" --interactive=true --tty "fjammes/qserv:2014_
 #
 # Create an image from a container
 #
-# Show all containers and choose one you've worked on 
+# Show all containers and choose one you've worked on
 docker ps -all
 CONTAINER_ID=f98249856123
 # Commit your current container state in image jdoe/qserv:dm-1234
@@ -31,5 +31,5 @@ docker push jdoe/qserv:dm-1234
 #
 # Clean old local images
 docker images | grep 'hours ago' | awk '{print $3}' | xargs --no-run-if-empty docker rmi
-# Clean old local containers 
+# Clean old local containers
 docker ps -a | grep 'hours ago' | awk '{print $1}' | xargs --no-run-if-empty docker rm
