@@ -4,10 +4,26 @@ RUN apt-get update
 RUN apt-get install -y git
 RUN groupadd -r qserv
 RUN useradd -r -m -g qserv qserv
-RUN apt-get -y install python-numpy g++ zlib1g-dev python-dev \
-    ncurses-dev openssl libreadline-dev \
-    libglib2.0-dev cmake bison bzip2 curl flex gettext libbz2-dev \
-    make openjdk-7-jre-headless python-setuptools libpthread-workqueue-dev
+RUN apt-get --yes install bash \
+    bison \
+    bzip2 \
+    cmake \
+    curl \
+    flex \
+    g++ \
+    gettext \
+    libbz2-dev \
+    libglib2.0-dev \
+    libpthread-workqueue-dev \
+    libreadline-dev \
+    make \
+    ncurses-dev \
+    openjdk-7-jre-headless \
+    openssl \
+    python-dev \
+    python-numpy \
+    python-setuptools \
+    zlib1g-dev
 # Should be removed: cf. DM-1516 
 RUN apt-get -y install swig
 # development tools
