@@ -92,10 +92,11 @@ class KvInterface(object):
             return KvInterfaceZoo(connection=kwargs["connInfo"],
                                   timeout=10000)
         elif "config" in kwargs:
+            cfg = kwargs["config"]
             if cfg["technology"] == "zoo":
-                return KvInterfaceZoo(**kwargs)
+                return KvInterfaceZoo(**cfg)
             elif cfg["technology"] == "mem":
-                return KvInterfaceMem(kwargs["connection"])
+                return KvInterfaceMem(config["connection"])
             elif cfg["technology"] == "fake":
                 return KvInterfaceFake()
         else:

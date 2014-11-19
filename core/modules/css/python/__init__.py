@@ -36,11 +36,16 @@ Top level Central State System (CSS) module
 # from kazoo.exceptions import NodeExistsError, NoNodeError
 
 # local imports
+import cssLib
+from cssLib import *
+
 import snapshot
 import kvInterface
 
+
+
 #getSnapshot = snapshot.Snapshot(kvi)
 
-getKvi = kvInterface.KvInterface
+getKvi = kvInterface.KvInterface.newImpl
 
 

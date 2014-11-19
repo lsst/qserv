@@ -37,7 +37,8 @@ from kazoo.exceptions import NodeExistsError, NoNodeError
 
 # local imports
 from lsst.db.exception import produceExceptionClass
-from lsst.qserv.czar import KvInterface, KvInterfaceImplMem
+from cssLib import KvInterfaceImplMem
+from kvInterface import KvInterface
 
 def getSnapshot(kvi):
     pass
@@ -55,12 +56,14 @@ class Unpacker:
             return path != "/zookeeper"
 
         def nodeFunc(path):
-            packRoot = kvi.isPacked(path):
+            packRoot = kvi.isPacked(path)
+            if packRoot:
                 obj = kvi.getUnpacked(path)
-                self.insertObj(path[:-len(self.jsonsuffix)], obj)
+                self.insertObj(packRoot, obj)
             else:
                 print "Creating kvi key: %s = %s" % (path, data)
                 self.target.set(str(path), str(data))
+            pass
         inputKvi.visitPrefix("/", nodeFunc, acceptFunc)
 
     def insertObj(self, path, obj):
@@ -90,6 +93,7 @@ class Unpacker:
         if not self.target.exists(str(path)):
             self.target.create(str(path), "")
         pass
+
 class Snapshot(object):
     """
     @brief Constructs CssCache objects that contain snapshots of the
@@ -129,7 +133,7 @@ class FakeStat:
         pass
     pass
 
-class FakeZk:
+class FakeZk(KvInterface):
     def __init__(self):
         dummyStat = FakeStat(lastModified=time.time())
         dummyData = ("", dummyStat)
@@ -170,20 +174,21 @@ class Test:
         fakeZk = FakeZk()
         config = { "technology" : "fake",
                    "connection" : fakeZk}
-        cf = CssCacheFactory(config=config)
-        print cf.dump()
-        mykvi = cf.getSnapshot()
+
+        s = Snapshot(fakeZk)
+        print s.dump()
+        mykvi = s.snapshot
         getFunc = KvInterface.get
         assert getFunc(mykvi, "/alice/secret") == "My dog has fleas"
         assert getFunc(mykvi, "/eve/LOCK/password") == "123password"
 
-    def tryZkConstruct(self):
-        cf = CssCacheFactory(connInfo="localhost:2181")
-        print "Dump of zk",cf.dump()
-        mykvi = cf.getSnapshot()
+    # def tryZkConstruct(self):
+    #     cf = CssCacheFactory(connInfo="localhost:2181")
+    #     print "Dump of zk",cf.dump()
+    #     mykvi = cf.getSnapshot()
 
     def go(self):
-        self.tryZkConstruct()
+#        self.tryZkConstruct()
         self.testFake()
 
 def selftest():
