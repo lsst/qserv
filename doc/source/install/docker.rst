@@ -10,14 +10,14 @@ Basic use cases
 
 Once you have run Qserv image in Docker container, see
 :ref:`quick-start-configuration` in order to configure Qserv as a mono-node
-instance. 
+instance.
 
 .. literalinclude:: ../../../admin/tools/docker/cmd.example.sh
-   :language: bash 
+   :language: bash
    :linenos:
 
 File below allows to create a Qserv image for Docker from scratch.
 
 .. literalinclude:: ../../../admin/tools/docker/Dockerfile
-   :language: bash 
+   :language: bash
    :linenos:
