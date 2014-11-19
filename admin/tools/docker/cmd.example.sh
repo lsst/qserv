@@ -29,7 +29,7 @@ docker push jdoe/qserv:dm-1234
 #
 # Cleanup
 #
-# Clean old local images
-docker images | grep 'hours ago' | awk '{print $3}' | xargs --no-run-if-empty docker rmi
 # Clean old local containers 
 docker ps -a | grep 'hours ago' | awk '{print $1}' | xargs --no-run-if-empty docker rm
+# Clean old local images
+docker images | grep 'hours ago' | awk '{print $3}' | xargs --no-run-if-empty docker rmi
