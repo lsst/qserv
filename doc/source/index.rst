@@ -11,9 +11,9 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   install/installation
-   admin/administration-reference
-   devel/development-reference
+   install/index
+   admin/index
+   devel/index
    acknowledgement
 
 Indices and tables
