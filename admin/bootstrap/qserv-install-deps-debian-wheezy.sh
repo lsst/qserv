@@ -1,7 +1,22 @@
 #!/bin/sh
 
-apt-get -y install scons python-numpy g++ git zlib1g-dev python-dev \
-    ncurses-dev libboost-dev openssl swig libreadline-dev \
-    libglib2.0-dev cmake bison bzip2 curl flex gettext libbz2-dev \
-    make python-setuptools libpthread-workqueue-dev
-
+apt-get --yes install bash \
+    bison \
+    bzip2 \
+    cmake \
+    curl \
+    flex \
+    g++ \
+    gettext \
+    libbz2-dev \
+    libglib2.0-dev \
+    libpthread-workqueue-dev \
+    libreadline-dev \
+    make \
+    ncurses-dev \
+    openjdk-7-jre-headless \
+    openssl \
+    python-dev \
+    python-numpy \
+    python-setuptools \
+    zlib1g-dev
