@@ -200,11 +200,12 @@ shlibs = dict()
 shmods = set(chain(*[shProducts[m]['shmods'] for m in shProducts
                      if shProducts[m].has_key('shmods')]))
 
+# Compute shared lib targets used by products
 for m in shmods:
-    # files = cctarget.getDefaultTargets(env, m)
-    # objs = [makeSharedObjectCC(env, a) for a in set(files)]
-
-    shlibs[m] = env.SharedLibrary("libqserv_"+m, libProducts[m])
+    out = env.SharedLibrary("libqserv_"+m, libProducts[m])
+    shlibs[m] = out
+    for f in out:
+        extraTgts['dist'].append(('lib', f))
     pass
 
 # Compute shProduct targets
