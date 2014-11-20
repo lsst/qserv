@@ -228,14 +228,18 @@ for (pkg, opts) in shProducts.items():
     #extLibFlags = ["-l"+lib for lib in findLibs(opts['libs'])]
     extLibs = [lib for lib in findLibs(opts['libs'])]
     intDeps = [] # internal dependencies on .so
+    libPath = env['LIBPATH'][:] # Clone to avoid polluting env.
     if opts.has_key('shmods'):
         intDeps = [shlibs[m] for m in opts['shmods']]
         extLibs.extend(["qserv_" + s for s in opts['shmods']])
+        libPath.append(os.path.dirname(intDeps[0][0].get_abspath()))
     if opts.has_key('SHLIBPREFIX'):
         out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs,
-                                SHLIBPREFIX=opts['SHLIBPREFIX'])
+                                SHLIBPREFIX=opts['SHLIBPREFIX'],
+                                LIBPATH=libPath)
     else:
-        out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs)
+        out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs,
+                                LIBPATH=libPath)
     if intDeps:
         env.Depends(out, intDeps)
     env.Alias("build", out)
