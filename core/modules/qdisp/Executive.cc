@@ -466,7 +466,7 @@ void Executive::_waitUntilEmpty() {
         count = _requesters.size();
         _reapRequesters(lock);
         if(count != lastCount) {
-            count = lastCount;
+            lastCount = count;
             ++complainCount;
             if (LOG_CHECK_INFO()) {
                 std::ostringstream os;
