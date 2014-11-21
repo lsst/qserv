@@ -84,6 +84,7 @@ user=qsmaster
 passwd=
 
 [partitioner]
+emptyChunkPath=
 emptyChunkListFile=
 
 [tuning]

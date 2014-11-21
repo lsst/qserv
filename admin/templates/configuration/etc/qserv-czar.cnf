@@ -34,6 +34,7 @@ user=qsmaster
 port=0
 
 [partitioner]
+emptyChunkPath={{QSERV_RUN_DIR}}/etc
 emptyChunkListFile={{QSERV_RUN_DIR}}/etc/emptyChunks.txt
 
 #[tuning]
