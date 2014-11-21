@@ -9,6 +9,7 @@ import cctarget
 
 Import('env')
 Import('extraTgts')
+Import('extraSrcs')
 #env.Tool('swig')
 #env['SWIGFLAGS'] = ['-python', '-c++', '-Iinclude'],
 #env.Append(CPPPATH = [distutils.sysconfig.get_python_inc()])
@@ -41,6 +42,7 @@ swigged = env.SharedObject(source="cssLib.i",
 
 swigged_tgt = map(env.File, swigged)
 env.Depends(swigged_tgt, depends)
+extraSrcs["css"] = swigged_tgt
 
 # # Create entry for python file, which SCons SWIG builder ignores
 pySwig = env.File('cssLib.py')

@@ -21,7 +21,8 @@ Qserv core code
 #  * Make the configure-check optional.
 ###
 ###
-extraTgts = {}
+extraSrcs = {} # Per-module Extra sources (if other srcs are for shared module)
+extraTgts = {} # Other build outputs, e.g., distribution 'dist', etc.
 extraTgts['dist'] = []
 custom = detect.importCustom(env, extraTgts)
 
@@ -103,6 +104,7 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                "_cssLib" : {'mods' : [],
                             'shmods' : ['css'],
                             'libs' : "log boost_thread zookeeper_mt".split(),
+                            'extraSrcs' : ['css'],
                             'SHLIBPREFIX' : '',
                             'distDir' : os.path.join(env['python_relative_prefix'],"lsst","qserv","css")},
 
@@ -121,8 +123,10 @@ def getSrcs(mName):
 def getTgts(mName):
     scriptPath = os.path.join(mName, "SConscript")
     if env.Glob(scriptPath): # os.access is faulty with VariantDir
-        tgts = SConscript(scriptPath,
-                          exports={'env': env, 'extraTgts': extraTgts})
+        tgts = SConscript(scriptPath, exports={
+                'env': env,
+                'extraTgts': extraTgts,
+                'extraSrcs' : extraSrcs,})
         return tgts
     else:
         #print "No targets for %s, using glob" % mName
@@ -172,11 +176,12 @@ def getTests(env, mName):
     state.log.debug("Looking for %s tests" % mName)
     scriptPath = os.path.join(mName, "SConscript.test")
     if env.Glob(scriptPath):
-        tgts = SConscript(scriptPath, exports={'env' : env,
-                                                'libProducts' : libProducts,
-                                                'defaultTgts' : defaultTgts,
-                                                'findLibs' : findLibs,
-                                                'cacheObjs' : cacheObjs})
+        tgts = SConscript(scriptPath, exports={
+                'env' : env,
+                'libProducts' : libProducts,
+                'defaultTgts' : defaultTgts,
+                'findLibs' : findLibs,
+                'cacheObjs' : cacheObjs})
         return tgts
     else:
         return None
@@ -218,6 +223,8 @@ for (pkg, opts) in shProducts.items():
             prods = libProducts[m]
             srcs.extend(prods)
         pass
+    if opts.has_key('extraSrcs'):
+        srcs.extend(chain(*map(lambda m: extraSrcs[m], opts['extraSrcs'])))
 
     # Eliminate dupes for srcs and libs, and
     # convert .cc to SharedObject to prevent warning
@@ -225,6 +232,7 @@ for (pkg, opts) in shProducts.items():
     srcs = [makeSharedObjectCC(env, a) for a in set(srcs)]
     # Sort to prevent dependency-order rebuilding
     srcs.sort(key=lambda n: n.str_for_display())
+
     #env.Append(LIBS=libs)
     #extLibFlags = ["-l"+lib for lib in findLibs(opts['libs'])]
     extLibs = [lib for lib in findLibs(opts['libs'])]
