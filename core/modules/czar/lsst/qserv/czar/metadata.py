@@ -30,6 +30,7 @@
 # Pkg imports
 import logger
 import config
+import os
 import string
 
 class Runtime:
@@ -40,8 +41,11 @@ class Runtime:
         self.emptyChunkInfo = {}
         self.defaultEmptyChunks = config.config.get("partitioner",
                                         "emptyChunkListFile")
-        logger.inf("Using %s as default empty chunks file." % (self.defaultEmptyChunks))
+        logger.inf("Using %s as default empty chunks file.", (self.defaultEmptyChunks))
         self.emptyChunkInfo[""] = self.loadIntsFromFile(self.defaultEmptyChunks)
+        self.emptyChunkPath = config.config.get("partitioner",
+                                        "emptyChunkPath")
+        logger.inf("Using %s as empty chunks path", (self.emptyChunkPath))
         pass
 
     def populateEmptyChunkInfo(self, dbName):
@@ -56,7 +60,10 @@ class Runtime:
             logger.wrn("WARNING, dbName=", dbName,
                        "contains questionable characters. sanitized=",
                        sanitizedDbName)
-        name = "empty_%s.txt" % sanitizedDbName
+        name = os.path.join(
+            self.emptyChunkPath,
+            "empty_{0}.txt".format(sanitizedDbName)
+        )
         info = self.loadIntsFromFile(name)
         if not info and type(info) != type(list):
             logger.err("Couldn't find %s, using %s." % (name,
