@@ -12,6 +12,5 @@ GRANT ALL ON qservMeta.* TO 'qsmaster'@'localhost';
 --    * should be only on workers
 -- For now, mysql-proxy fails if this table
 -- doesn't exist in the database.
-CREATE DATABASE IF NOT EXISTS LSST;
-GRANT SELECT ON LSST.* TO 'qsmaster'@'localhost';
-
+-- CREATE DATABASE IF NOT EXISTS LSST;
+-- GRANT SELECT ON LSST.* TO 'qsmaster'@'localhost';

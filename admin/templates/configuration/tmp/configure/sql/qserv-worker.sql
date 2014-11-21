@@ -19,6 +19,6 @@ GRANT ALL ON `Subchunks\_%`.* TO 'qsmaster'@'localhost';
 
 -- Database for business (i.e. LSST) data
 -- Has to be created by the dataloader in the long term
-CREATE DATABASE IF NOT EXISTS LSST;
-GRANT ALL ON LSST.* TO 'qsmaster'@'localhost';
-INSERT INTO qservw_worker.Dbs VALUES('LSST');
+-- CREATE DATABASE IF NOT EXISTS LSST;
+-- GRANT ALL ON LSST.* TO 'qsmaster'@'localhost';
+-- INSERT INTO qservw_worker.Dbs VALUES('LSST');
