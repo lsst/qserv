@@ -24,7 +24,7 @@
 """
 This module implements interface to the Central State System (CSS).
 
-@author  Jacek Becla, SLAC
+@author  Jacek Becla, SLAC; Daniel L. Wang, SLAC
 
 
 Known issues and todos:
@@ -59,6 +59,7 @@ KvException = produceExceptionClass('KvException', [
 
 ####################################################################################
 
+# JSON-coding/decoding
 def encodePacked(aDict):
     """Encode a dict into a packed value suitable for inserting
     into a CSS kv store
@@ -71,7 +72,10 @@ def decode(packed):
     """
     return json.loads(packed)
 
+# constants
+jsonsuffix = ".json"
 
+########################################################################
 class KvInterface(object):
     """
     @brief KvInterface class defines interface to the Central State Service CSS).
@@ -94,9 +98,11 @@ class KvInterface(object):
         elif "config" in kwargs:
             cfg = kwargs["config"]
             if cfg["technology"] == "zoo":
-                return KvInterfaceZoo(**cfg)
+                cfgClean = cfg.copy()
+                cfgClean.pop("technology")
+                return KvInterfaceZoo(**cfgClean)
             elif cfg["technology"] == "mem":
-                return KvInterfaceMem(config["connection"])
+                return KvInterfaceMem(cfg["connection"])
             elif cfg["technology"] == "fake":
                 return KvInterfaceFake()
         else:
@@ -251,8 +257,8 @@ class KvInterface(object):
     def isPacked(self, path):
         """@return path-root for unpacking if path indicates a packed value.
         Otherwise return None.
-        
-        Currently, if a path has a .json suffix, this indicates that its data 
+
+        Currently, if a path has a .json suffix, this indicates that its data
         value is encoded in json.
 
         For example, a zookeeper node with path /foo/bar.json will
@@ -260,8 +266,8 @@ class KvInterface(object):
         : "John", "rank":"private"}, then an unpacking will yield
         logical paths: /foo/bar/name -> John, /foo/bar/rank ->
         private."""
-        if path.endswith(self.jsonsuffix):
-            return path[:-len(self.jsonsuffix)]
+        if path.endswith(jsonsuffix):
+            return path[:-len(jsonsuffix)]
         return None
 
     def getUnpacked(self, path):
@@ -513,11 +519,15 @@ class KvInterfaceMem(KvInterface):
         """
         Initialize the interface.
 
-        @param filename backing file
+        @param filename backing file (type == 'str'), or C++ Kvi
         """
         self._logger = logging.getLogger("CSS")
         if filename:
-            self.load(filename)
+            if type(filename) == type(""):
+                self.load(filename)
+            else:
+                self._filename = "UnderlyingC++Kvi"
+                self._kvi = filename
 
     def load(self, filename):
         self._filename = filename
@@ -573,7 +583,7 @@ class KvInterfaceMem(KvInterface):
         @raise     Raise KvException if the key doesn't exist.
         """
         try:
-            v, stat = self._kvi.get(k)
+            v = self._kvi.get(k)
             self._logger.info("GET '%s' --> '%s'" % (k, v))
             return v
         except NoNodeError:
@@ -592,7 +602,10 @@ class KvInterfaceMem(KvInterface):
         """
         try:
             self._logger.info("GETCHILDREN '%s'" % (k))
-            return self._kvi.get_children(k)
+            c = self._kvi.getChildren(k)
+#            if c.length > 0: return list(c)
+            print "children", c
+            return self._kvi.getChildren(k)
         except NoNodeError:
             self._logger.error("in getChildren(), key %s does not exist" % k)
             raise KvException(KvException.KEY_DOES_NOT_EXIST, k)

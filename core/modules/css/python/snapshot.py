@@ -22,7 +22,7 @@
 
 
 """ lsst.qserv.css.snapshot: a module for taking css snapshots for use
-in lower levels.
+in lower levels (c++ execution).
 """
 
 # standard library imports
@@ -45,7 +45,6 @@ def getSnapshot(kvi):
 
 
 class Unpacker:
-    jsonsuffix = ".json"
     def __init__(self, target):
         """accepts css.python KvInterface instance"""
         self.target = target
@@ -56,12 +55,13 @@ class Unpacker:
             return path != "/zookeeper"
 
         def nodeFunc(path):
-            packRoot = kvi.isPacked(path)
+            packRoot = inputKvi.isPacked(path)
             if packRoot:
-                obj = kvi.getUnpacked(path)
+                obj = inputKvi.getUnpacked(path)
                 self.insertObj(packRoot, obj)
             else:
-                print "Creating kvi key: %s = %s" % (path, data)
+                data = inputKvi.get(path)
+                #print "Creating kvi key: %s = %s" % (path, data)
                 self.target.set(str(path), str(data))
             pass
         inputKvi.visitPrefix("/", nodeFunc, acceptFunc)
@@ -84,7 +84,7 @@ class Unpacker:
             self.ensureKey(path)
             for k in obj:
                 self.insertObj(path + "/" + k, str(obj[k]))
-            else: self.target.set(str(path), str(obj))
+        else: self.target.set(str(path), str(obj))
 
     def ensureKey(self, path):
         """Ensure that a self.kvi.exists(path) evaluates to
@@ -122,7 +122,7 @@ class Snapshot(object):
                     + (data if data else '\N'))
             pass
         np = NodePrinter()
-        self._visit("/", np.dataFunc,
+        self.visitPrefix("/", np.dataFunc,
                     lambda p: p != "/zookeeper")
         return "\n".join(np.entries)
 
@@ -133,10 +133,10 @@ class FakeStat:
         pass
     pass
 
-class FakeZk(KvInterface):
+class FakeZk:
     def __init__(self):
         dummyStat = FakeStat(lastModified=time.time())
-        dummyData = ("", dummyStat)
+        dummyData = ("(dummy)", dummyStat)
         def makeFakeData(txt):
             return (txt, dummyStat)
         recipe = json.dumps({ "name":"Apple Pie",
@@ -167,20 +167,29 @@ class FakeZk(KvInterface):
     def get_children(self, key):
         return self.getChildDict.get(key, [])
 
+class TestKvi(KvInterface):
+    def __init__(self):
+        self.zk = FakeZk()
+
+    def get(self, key):
+        return self.zk.get(key)[0]
+
+    def getChildren(self, key):
+        return self.zk.get_children(key)
+
 class Test:
     """Test basic css module behavior"""
 
     def testFake(self):
-        fakeZk = FakeZk()
-        config = { "technology" : "fake",
-                   "connection" : fakeZk}
-
-        s = Snapshot(fakeZk)
-        print s.dump()
-        mykvi = s.snapshot
-        getFunc = KvInterface.get
-        assert getFunc(mykvi, "/alice/secret") == "My dog has fleas"
-        assert getFunc(mykvi, "/eve/LOCK/password") == "123password"
+        kvi = TestKvi()
+        s = Snapshot(kvi)
+        mykvi = KvInterface.newImpl(config={
+                "technology" : "mem",
+                "connection" : s.snapshot})
+        mykvi.dumpAll()
+        getFunc = mykvi.get
+        assert mykvi.get("/alice/secret") == "My dog has fleas"
+        assert mykvi.get("/eve/LOCK/password") == "123password"
 
     # def tryZkConstruct(self):
     #     cf = CssCacheFactory(connInfo="localhost:2181")

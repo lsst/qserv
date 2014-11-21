@@ -39,9 +39,9 @@ Access to the classes from the qserv_css library
 %include cstring.i
 /* %include carrays.i */
 /* %include "std_map.i" */
-/* %include "std_string.i" */
-/* %include "std_vector.i" */
-/* %include "stdint.i" */
+%include "std_string.i"
+%include "std_vector.i"
+%include "stdint.i"
 
 /* %include cdata.i */
 /* %array_class(char, charArray); */
@@ -49,10 +49,11 @@ Access to the classes from the qserv_css library
 // %lsst_exceptions()
 // %import "lsst/pex/exceptions/exceptionsLib.i"
 
-// Instantiate the map we need
-/* namespace std { */
-/*     %template(StringMap) map<std::string, std::string>; */
-/* }; */
+// Instantiate types
+namespace std {
+    %template(StringVector) vector<string>;
+};
+
 
 %include "css/constants.h"
 %include "css/KvInterface.h"

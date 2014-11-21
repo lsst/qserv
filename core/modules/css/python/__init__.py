@@ -43,8 +43,9 @@ import snapshot
 import kvInterface
 
 
-
-#getSnapshot = snapshot.Snapshot(kvi)
+def getSnapshot(kvi):
+    s = snapshot.Snapshot(kvi)
+    return s.snapshot
 
 getKvi = kvInterface.KvInterface.newImpl
 

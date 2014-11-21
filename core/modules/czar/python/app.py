@@ -321,7 +321,7 @@ class Context:
         cssItems = dict(lsst.qserv.czar.config.config.items("css"))
         kvi = lsst.qserv.css.getKvi(config=cssItems)
         snap = lsst.qserv.css.getSnapshot(kvi)
-        cls._uqFactory = UserQueryFactory(cfg, snap.getUnpack())
+        cls._uqFactory = UserQueryFactory(cfg, snap.clone())
         cls._cssKvi = kvi
 
 
