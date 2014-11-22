@@ -155,11 +155,7 @@ void UserQueryFactory::Impl::readConfigFacade(StringMap const& m) {
 void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
                                         std::string const& cssConn,
                                         int timeout_msec) {
-    if (cssTech == "zoo") {
-        LOGF_INFO("Initializing zookeeper-based css, with %1%, %2%msec"
-                  % cssConn % timeout_msec);
-        facade = css::FacadeFactory::createZooFacade(cssConn, timeout_msec);
-    } else if (cssTech == "mem") {
+    if (cssTech == "mem") {
         LOGF_INFO("Initializing memory-based css, with %1%" % cssConn);
         facade = css::FacadeFactory::createMemFacade(cssConn);
     } else {

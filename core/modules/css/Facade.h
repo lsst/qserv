@@ -87,8 +87,6 @@ virtual     double getOverlap(std::string const& dbName) const;
 virtual     MatchTableParams getMatchTableParams(std::string const& dbName,
                                          std::string const& tableName) const;
 private:
-    Facade(std::string const& connInfo, int timeout_msec);
-    Facade(std::string const& connInfo, int timeout_msec, std::string const& prefix);
     explicit Facade(std::istream& mapStream);
     explicit Facade(boost::shared_ptr<KvInterface> kv);
 
@@ -116,14 +114,8 @@ protected:
 
 class FacadeFactory {
 public:
-    static boost::shared_ptr<Facade> createZooFacade(std::string const& connInfo,
-                                                     int timeout_msec);
     static boost::shared_ptr<Facade> createMemFacade(std::string const& mapPath);
     static boost::shared_ptr<Facade> createMemFacade(std::istream& mapStream);
-    static boost::shared_ptr<Facade> createZooTestFacade(
-                                                     std::string const& connInfo,
-                                                     int timeout_msec,
-                                                     std::string const& prefix);
     static boost::shared_ptr<Facade> createCacheFacade(boost::shared_ptr<KvInterface> kv);
 };
 

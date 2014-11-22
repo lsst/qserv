@@ -42,9 +42,8 @@
 // Third-party headers
 #include "boost/lexical_cast.hpp"
 
-// Kocal headers
+// Local headers
 #include "css/KvInterfaceImplMem.h"
-#include "css/KvInterfaceImplZoo.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE MyTest
@@ -101,11 +100,6 @@ struct KvInterfaceFixture {
 };
 
 BOOST_FIXTURE_TEST_SUITE(KvInterfaceTest, KvInterfaceFixture)
-
-BOOST_AUTO_TEST_CASE(testZoo) {
-    std::cout << "========== Testing ZOO ==========" << std::endl;
-    doIt(new lsst::qserv::css::KvInterfaceImplZoo("localhost:12181", 10000));
-}
 
 BOOST_AUTO_TEST_CASE(testMem) {
     std::cout << "========== Testing MEM ==========" << std::endl;
