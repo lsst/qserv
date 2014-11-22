@@ -147,7 +147,7 @@ KvInterfaceImplMem::getChildren(string const& key) {
         LOGF_INFO("fullKey: %1%" % fullKey);
         if (boost::starts_with(fullKey, key+"/")) {
             string theChild = fullKey.substr(key.length()+1);
-            if (theChild.size() > 0) {
+            if (!theChild.empty() && (theChild.find("/") == string::npos)) {
                 LOGF_INFO("child: %1%" % theChild);
                 retV.push_back(theChild);
             }
