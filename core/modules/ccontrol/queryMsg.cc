@@ -29,58 +29,32 @@
 #include <iostream>
 
 // Local headers
-#include "ccontrol/AsyncQueryManager.h"
 #include "ccontrol/userQueryProxy.h"
 #include "ccontrol/UserQuery.h"
-#include "ccontrol/SessionManagerAsync.h"
 #include "qdisp/MessageStore.h"
-
 
 namespace lsst {
 namespace qserv {
 namespace ccontrol {
 
 int queryMsgGetCount(int session) {
-    if(UserQueryEnable == 1) {
-        return UserQuery_get(session).getMessageStore()->messageCount();
-    } else {
-        ccontrol::AsyncQueryManager& qm = getAsyncManager(session);
-        boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();
-        return ms->messageCount();
-    }
+    return UserQuery_get(session).getMessageStore()->messageCount();
 }
 
 // Python call: msg, chunkId, code, timestamp = queryMsgGetMsg(session, idx)
 std::string queryMsgGetMsg(int session, int idx, int* chunkId, int* code, time_t* timestamp) {
 
-
-    if(UserQueryEnable == 1) {
-        qdisp::QueryMessage msg = UserQuery_get(session).getMessageStore()->getMessage(idx);
-        *chunkId = msg.chunkId;
-        *code = msg.code;
-        *timestamp = msg.timestamp;
-        return msg.description;
-    } else {
-        ccontrol::AsyncQueryManager& qm = getAsyncManager(session);
-        boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();
-        qdisp::QueryMessage msg = ms->getMessage(idx);
-        *chunkId = msg.chunkId;
-        *code = msg.code;
-        *timestamp = msg.timestamp;
-        return msg.description;
-    }
+    qdisp::QueryMessage msg = UserQuery_get(session).getMessageStore()->getMessage(idx);
+    *chunkId = msg.chunkId;
+    *code = msg.code;
+    *timestamp = msg.timestamp;
+    return msg.description;
 }
 
 void queryMsgAddMsg(int session, int chunkId, int code,
                             std::string const& message) {
-    if(UserQueryEnable == 1) {
-        UserQuery_get(session).getMessageStore()->addMessage(chunkId,
-                                                             code, message);
-    } else {
-        ccontrol::AsyncQueryManager& qm = getAsyncManager(session);
-        boost::shared_ptr<qdisp::MessageStore> ms = qm.getMessageStore();
-        ms->addMessage(chunkId, code, message);
-    }
+    UserQuery_get(session).getMessageStore()->addMessage(chunkId,
+                                                         code, message);
 }
 
 }}} // namespace lsst::qserv::ccontrol

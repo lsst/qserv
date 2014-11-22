@@ -28,62 +28,14 @@
   *
   * @brief Main interface to be exported via SWIG for the
   * frontend's Python layer to initiate subqueries and join them.
-   *
+   * (obsolete)
   * @author Daniel L. Wang, SLAC
   */
 
 // Local headers
-#include "ccontrol/QueryState.h"
-#include "css/StripingParams.h"
-#include "rproc/TableMerger.h"
-#include "qdisp/TransactionSpec.h"
-#include "query/Constraint.h"
-#include "util/common.h"
-#include "xrdc/xrdfile.h"
-
 namespace lsst {
 namespace qserv {
-
-namespace qproc {
-    // Forward
-    class ChunkSpec;
-} // namespace qproc
-
 namespace ccontrol {
-
-int submitQuery(int session, lsst::qserv::qdisp::TransactionSpec const& s,
-                std::string const& resultName=std::string());
-
-// Parser model 3:
-/// Setup a query for execution.
-void setupQuery(int session,
-                std::string const& query,
-                std::string const& resultTable);
-/// @return error description
-std::string const& getSessionError(int session);
-/// @return discovered constraints in the query
-lsst::qserv::query::ConstraintVec getConstraints(int session);
-/// @return the dominant db for the query
-std::string const& getDominantDb(int session);
-/// @return true if CSS contains given db
-bool containsDb(int session, std::string const& dbName);
-/// @return number of stripes and substripes
-lsst::qserv::css::StripingParams getDbStriping(int session);
-/// Add a chunk spec for execution
-void addChunk(int session, qproc::ChunkSpec const& cs );
-/// Dispatch all chunk queries for this query
-void submitQuery3(int session);
-// TODO: need pokes into running state for debugging.
-
-lsst::qserv::ccontrol::QueryState joinSession(int session);
-std::string getErrorDesc(int session);
-int newSession(std::map<std::string,std::string> const& cfg);
-void configureSessionMerger(int session,
-                            lsst::qserv::rproc::TableMergerConfig const& c);
-void configureSessionMerger3(int session);
-std::string getSessionResultName(int session);
-void discardSession(int session);
-
 }}} // namespace lsst::qserv:ccontrol
 
 #endif // LSST_QSERV_CCONTROL_DISPATCHER_H
