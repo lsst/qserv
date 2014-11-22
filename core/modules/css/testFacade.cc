@@ -45,7 +45,7 @@
 // Local headers
 #include "css/CssError.h"
 #include "css/Facade.h"
-#include "css/KvInterfaceImplZoo.h"
+#include "css/KvInterfaceImplMem.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE TestFacade
@@ -71,26 +71,24 @@ InitRand _initRand;
 
 struct FacadeFixture {
     FacadeFixture(void) :
-        prefix("/unittest_" + boost::lexical_cast<string>(rand())),
-        facade(FacadeFactory::createZooTestFacade("localhost:12181",
-                                                  10000, prefix)) {
+        kvI(new KvInterfaceImplMem()),
+        facade(FacadeFactory::createCacheFacade(kvI)) {
 
-        cout << "My prefix is: " << prefix << endl;
-        kv.push_back(make_pair(prefix, ""));
+        kv.push_back(make_pair("/", ""));
 
-        kv.push_back(make_pair(prefix + "/PARTITIONING", ""));
-        string p = prefix + "/PARTITIONING/_0000000001";
+        kv.push_back(make_pair("/PARTITIONING", ""));
+        string p = "/PARTITIONING/_0000000001";
         kv.push_back(make_pair(p, ""));
         kv.push_back(make_pair(p+"/nStripes", "60"));
         kv.push_back(make_pair(p+"/nSubStripes", "18"));
         kv.push_back(make_pair(p+"/overlap", "0.025"));
 
-        kv.push_back(make_pair(prefix + "/DBS", ""));
-        kv.push_back(make_pair(prefix + "/DBS/dbA", ""));
-        kv.push_back(make_pair(prefix + "/DBS/dbA/partitioningId", "0000000001"));
-        kv.push_back(make_pair(prefix + "/DBS/dbB", ""));
-        kv.push_back(make_pair(prefix + "/DBS/dbC", ""));
-        p = prefix + "/DBS/dbA/TABLES";
+        kv.push_back(make_pair("/DBS", ""));
+        kv.push_back(make_pair("/DBS/dbA", ""));
+        kv.push_back(make_pair("/DBS/dbA/partitioningId", "0000000001"));
+        kv.push_back(make_pair("/DBS/dbB", ""));
+        kv.push_back(make_pair("/DBS/dbC", ""));
+        p = "/DBS/dbA/TABLES";
         kv.push_back(make_pair(p, ""));
         kv.push_back(make_pair(p + "/Object", ""));
         kv.push_back(make_pair(p + "/Object/partitioning", ""));
@@ -110,12 +108,10 @@ struct FacadeFixture {
         kv.push_back(make_pair(p + "/FSource/partitioning/subChunks", "0"));
         kv.push_back(make_pair(p + "/Exposure", ""));
 
-        p = prefix + "/DBS/dbB/TABLES";
+        p = "/DBS/dbB/TABLES";
         kv.push_back(make_pair(p, ""));
         kv.push_back(make_pair(p + "/Exposure", ""));
 
-        std::auto_ptr<KvInterfaceImplZoo> kvI(
-            new KvInterfaceImplZoo("localhost:12181", 10000));
         vector<std::pair<string, string> >::const_iterator itr;
         cout << "--------------" << endl;
         for (itr=kv.begin() ; itr!=kv.end() ; ++itr) {
@@ -126,15 +122,10 @@ struct FacadeFixture {
     };
 
     ~FacadeFixture(void) {
-        std::auto_ptr<KvInterfaceImplZoo> kvI(
-            new KvInterfaceImplZoo("localhost:12181", 10000));
-        vector<std::pair<string, string> >::const_reverse_iterator itr;
-        for (itr=kv.rbegin() ; itr!=kv.rend() ; ++itr) {
-            kvI->deleteKey(itr->first);
-        }
     };
 
     std::string prefix;
+    boost::shared_ptr<KvInterfaceImplMem> kvI;
     vector<std::pair<string, string> > kv;
     boost::shared_ptr<Facade> facade;
 };

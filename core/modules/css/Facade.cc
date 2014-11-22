@@ -45,7 +45,6 @@
 // Local headers
 #include "css/CssError.h"
 #include "css/KvInterfaceImplMem.h"
-#include "css/KvInterfaceImplZoo.h"
 #include "global/stringTypes.h"
 
 using std::endl;
@@ -56,30 +55,6 @@ using std::vector;
 namespace lsst {
 namespace qserv {
 namespace css {
-
-/** Creates a new Facade over metadata in a Zookeeper key-value store.
-  *
-  * @param connInfo A comma separated list of host:port pairs, each
-  *                 each corresponding to a Zookeeper server.
-  * @param timeout  connection timeout in msec.
-  */
-Facade::Facade(string const& connInfo, int timeout_msec) {
-    _kvI.reset(new KvInterfaceImplZoo(connInfo, timeout_msec));
-}
-
-/** Creates a new Facade over metadata in a Zookeeper key-value store.
-  * The given prefix will be used on all key names and can be used to
-  * avoid polluting the production namespace.
-  *
-  * @param connInfo A comma separated list of host:port pairs, each
-  *                 each corresponding to a Zookeeper server.
-  * @param prefix   Key name prefix. If non-empty, should be of the
-  *                 form "/XXX".
-  */
-Facade::Facade(string const& connInfo, int timeout_msec, string const& prefix) :
-    _prefix(prefix) {
-    _kvI.reset(new KvInterfaceImplZoo(connInfo, timeout_msec));
-}
 
 /** Creates a new Facade over metadata in an in-memory key-value store.
   *
@@ -440,12 +415,6 @@ Facade::_tableIsSubChunked(string const& dbName,
 }
 
 boost::shared_ptr<Facade>
-FacadeFactory::createZooFacade(string const& connInfo, int timeout_msec) {
-    boost::shared_ptr<css::Facade> cssFPtr(new css::Facade(connInfo, timeout_msec));
-    return cssFPtr;
-}
-
-boost::shared_ptr<Facade>
 FacadeFactory::createMemFacade(string const& mapPath) {
     std::ifstream f(mapPath.c_str());
     if(f.fail()) {
@@ -460,14 +429,6 @@ FacadeFactory::createMemFacade(std::istream& mapStream) {
     return cssFPtr;
 }
 
-boost::shared_ptr<Facade>
-FacadeFactory::createZooTestFacade(string const& connInfo,
-                                   int timeout_msec,
-                                   string const& prefix) {
-    boost::shared_ptr<css::Facade> cssFPtr(
-                        new css::Facade(connInfo, timeout_msec, prefix));
-    return cssFPtr;
-}
 
 /// Unfinished. Planned to be a re-thinking of Facade that collapses some
 /// genericity and simplifies things using the assumption of running on a
