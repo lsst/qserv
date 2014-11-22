@@ -17,8 +17,7 @@ deps = map(lambda i:i, deps) # un-chain
 myDeps = filter(lambda i: not (str(i).startswith("test")
                                or str(i) == "cssLib_wrap.cc"),
                 env.Glob("*.cc"))
-extDeps = "antlr boost_regex boost_thread boost_system protobuf ssl crypto log log4cxx XrdPosix XrdClient XrdPosixPreload XrdUtils mysqlclient_r zookeeper_mt".split()
-
+extDeps = "log log4cxx".split()
 p = env.Program(["testKvInterfaceImpl.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
