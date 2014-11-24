@@ -184,14 +184,14 @@ ForemanImpl::RunnerMgr::registerRunner(Runner* r, wbase::Task::Ptr t) {
 boost::shared_ptr<wdb::QueryAction>
 ForemanImpl::RunnerMgr::newQueryAction(wbase::Task::Ptr t) {
     wdb::QueryActionArg a(_f._log, t, _f._chunkResourceMgr);
-    boost::shared_ptr<wdb::QueryAction> qa(new wdb::QueryAction(a));
+    boost::shared_ptr<wdb::QueryAction> qa = boost::make_shared<wdb::QueryAction>(a);
     return qa;
 }
 
 boost::shared_ptr<wdb::QueryRunner>
 ForemanImpl::RunnerMgr::newQueryRunner(wbase::Task::Ptr t) {
     wdb::QueryRunnerArg a(_f._log, t);
-    boost::shared_ptr<wdb::QueryRunner> qr(new wdb::QueryRunner(a));
+    boost::shared_ptr<wdb::QueryRunner> qr = boost::make_shared<wdb::QueryRunner>(a);
     return qr;
 }
 
@@ -356,7 +356,8 @@ public:
 
         wbase::Task::Ptr t(new wbase::Task(taskMsg, replyChannel));
         _foremanImpl.newTaskAction(t);
-        return boost::shared_ptr<Cancel>(new Cancel(t));
+        boost::shared_ptr<Cancel> c = boost::make_shared<Cancel>(t);
+        return c;
     }
     ForemanImpl& _foremanImpl;
 };
