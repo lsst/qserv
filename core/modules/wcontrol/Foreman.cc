@@ -82,7 +82,7 @@ public:
 
     bool squashByHash(std::string const& hash);
     bool accept(boost::shared_ptr<proto::TaskMsg> msg);
-    void newTaskAction(wbase::Task::Ptr task);
+    void newTaskAction(wbase::Task::Ptr task) const;
 
     virtual boost::shared_ptr<wbase::MsgProcessor> getProcessor();
 
@@ -129,7 +129,7 @@ public:
 private:
     typedef std::deque<Runner*> RunnerDeque;
 
-    void _startRunner(wbase::Task::Ptr t);
+    void _startRunner(wbase::Task::Ptr t) const;
 
     boost::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
     boost::mutex _mutex;
@@ -184,14 +184,14 @@ ForemanImpl::RunnerMgr::registerRunner(Runner* r, wbase::Task::Ptr t) {
 boost::shared_ptr<wdb::QueryAction>
 ForemanImpl::RunnerMgr::newQueryAction(wbase::Task::Ptr t) {
     wdb::QueryActionArg a(_f._log, t, _f._chunkResourceMgr);
-    boost::shared_ptr<wdb::QueryAction> qa(new wdb::QueryAction(a));
+    boost::shared_ptr<wdb::QueryAction> qa = boost::make_shared<wdb::QueryAction>(a);
     return qa;
 }
 
 boost::shared_ptr<wdb::QueryRunner>
 ForemanImpl::RunnerMgr::newQueryRunner(wbase::Task::Ptr t) {
     wdb::QueryRunnerArg a(_f._log, t);
-    boost::shared_ptr<wdb::QueryRunner> qr(new wdb::QueryRunner(a));
+    boost::shared_ptr<wdb::QueryRunner> qr = boost::make_shared<wdb::QueryRunner>(a);
     return qr;
 }
 
@@ -348,7 +348,7 @@ public:
         }
         wbase::Task::Ptr _t;
     };
-    Processor(ForemanImpl& f) : _foremanImpl(f) {}
+    Processor(const ForemanImpl& f) : _foremanImpl(f) {}
 
     virtual boost::shared_ptr<util::VoidCallable<void> >
     operator()(boost::shared_ptr<proto::TaskMsg> taskMsg,
@@ -356,9 +356,10 @@ public:
 
         wbase::Task::Ptr t(new wbase::Task(taskMsg, replyChannel));
         _foremanImpl.newTaskAction(t);
-        return boost::shared_ptr<Cancel>(new Cancel(t));
+        boost::shared_ptr<Cancel> c = boost::make_shared<Cancel>(t);
+        return c;
     }
-    ForemanImpl& _foremanImpl;
+    const ForemanImpl& _foremanImpl;
 };
 ////////////////////////////////////////////////////////////////////////
 // ForemanImpl
@@ -378,7 +379,7 @@ ForemanImpl::~ForemanImpl() {
 }
 
 void
-ForemanImpl::_startRunner(wbase::Task::Ptr t) {
+ForemanImpl::_startRunner(wbase::Task::Ptr t) const {
     boost::thread(Runner(*_rManager, t));
 }
 
@@ -403,7 +404,7 @@ ForemanImpl::accept(boost::shared_ptr<proto::TaskMsg> msg) {
     return true;
 }
 
-void ForemanImpl::newTaskAction(wbase::Task::Ptr task) {
+void ForemanImpl::newTaskAction(wbase::Task::Ptr task) const {
     // Pass to scheduler.
     assert(_scheduler);
     wbase::TaskQueuePtr newReady = _scheduler->newTaskAct(task, _running);
@@ -419,7 +420,8 @@ void ForemanImpl::newTaskAction(wbase::Task::Ptr task) {
 
 
 boost::shared_ptr<wbase::MsgProcessor> ForemanImpl::getProcessor() {
-    return boost::shared_ptr<Processor>(new Processor(*this));
+    boost::shared_ptr<Processor> p = boost::make_shared<Processor>(*this);
+    return p;
 }
 
 }}} // namespace lsst::qserv::wcontrol
