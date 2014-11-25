@@ -552,13 +552,13 @@ void
 FromFactory::attachTo(SqlSQL2Parser& p) {
     boost::shared_ptr<TableRefListH> lh(new TableRefListH(*this));
     p._tableListHandler = lh;
-    boost::shared_ptr<TableRefAuxH> ah(new TableRefAuxH(_aliases));
+    boost::shared_ptr<TableRefAuxH> ah = boost::make_shared<TableRefAuxH>(_aliases);
     p._tableAliasHandler = ah;
 }
 
 void
 FromFactory::_import(antlr::RefAST a) {
-    boost::shared_ptr<query::TableRefList> r(new query::TableRefList());
+    boost::shared_ptr<query::TableRefList> r = boost::make_shared<query::TableRefList>();
     _list.reset(new query::FromList(r));
 
     // LOGF_INFO("FROM starts with: %1% (%2%)" % a->getText() % a->getType());
