@@ -37,6 +37,9 @@
 #include <iterator>
 #include <sstream>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -182,7 +185,8 @@ WhereFactory::getProduct() {
 
 boost::shared_ptr<query::WhereClause>
 WhereFactory::newEmpty() {
-    return boost::shared_ptr<query::WhereClause>(new query::WhereClause());
+    boost::shared_ptr<query::WhereClause> w = boost::make_shared<query::WhereClause>();
+    return w;
 }
 
 void
