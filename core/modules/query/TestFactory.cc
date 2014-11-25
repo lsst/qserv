@@ -43,7 +43,7 @@ namespace query {
 
 boost::shared_ptr<QueryContext>
 TestFactory::newContext() {
-    boost::shared_ptr<QueryContext> context(new QueryContext());
+    boost::shared_ptr<QueryContext> context = boost::make_shared<QueryContext>();
     context->defaultDb = "Somedb";
     context->username = "alice";
     return context;
@@ -51,7 +51,7 @@ TestFactory::newContext() {
 
 boost::shared_ptr<QueryContext>
 TestFactory::newContext(boost::shared_ptr<css::Facade> cssFacade) {
-    boost::shared_ptr<QueryContext> context(new QueryContext());
+    boost::shared_ptr<QueryContext> context = boost::make_shared<QueryContext>();
     context->cssFacade = cssFacade;
     context->defaultDb = "Somedb";
     context->username = "alice";
@@ -61,11 +61,11 @@ TestFactory::newContext(boost::shared_ptr<css::Facade> cssFacade) {
 boost::shared_ptr<SelectStmt>
 TestFactory::newStmt() {
     // Create a "SELECT foo f FROM Bar b WHERE b.baz=42;
-    boost::shared_ptr<SelectStmt> stmt(new SelectStmt());
+    boost::shared_ptr<SelectStmt> stmt = boost::make_shared<SelectStmt>();
 
     // SELECT foo f
     SelectList::Ptr sl(new SelectList());
-    boost::shared_ptr<ColumnRef> cr(new ColumnRef("","","foo"));
+    boost::shared_ptr<ColumnRef> cr = boost::make_shared<ColumnRef>("","","foo");
     ValueFactorPtr fact(ValueFactor::newColumnRefFactor(cr));
     ValueExprPtr expr(new ValueExpr());
     expr->getFactorOps().push_back(ValueExpr::FactorOp(fact));
@@ -80,7 +80,7 @@ TestFactory::newStmt() {
     stmt->setFromList(fl);
 
     // WHERE b.baz=42
-    boost::shared_ptr<WhereClause> wc(new WhereClause());
+    boost::shared_ptr<WhereClause> wc = boost::make_shared<WhereClause>();
     CompPredicate::Ptr cp(new CompPredicate());
     cp->left = ValueExprPtr(new ValueExpr()); // baz
     fact = ValueFactor::newColumnRefFactor((ColumnRef::newShared("","b","baz")));
