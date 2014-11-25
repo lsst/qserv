@@ -91,7 +91,7 @@ ValueExprPtr ValueExpr::newSimple(boost::shared_ptr<ValueFactor> vt)  {
     if(!vt) {
         throw std::invalid_argument("Unexpected NULL ValueFactor");
     }
-    boost::shared_ptr<ValueExpr> ve(new ValueExpr);
+    boost::shared_ptr<ValueExpr> ve = boost::make_shared<ValueExpr>();
     FactorOp t(vt, NONE);
     ve->_factorOps.push_back(t);
     return ve;
