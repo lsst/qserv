@@ -87,7 +87,6 @@ public:
     }
 
     virtual bool sendFile(int fd, Size fSize) {
-        Size bytesRead = 0;
         std::vector<char> buf(fSize);
         Size remain = fSize;
         while(remain > 0) {
