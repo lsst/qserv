@@ -89,7 +89,7 @@ SelectFactory::attachTo(SqlSQL2Parser& p) {
 
 boost::shared_ptr<query::SelectStmt>
 SelectFactory::getStatement() {
-    boost::shared_ptr<query::SelectStmt> stmt(new query::SelectStmt());
+    boost::shared_ptr<query::SelectStmt> stmt = boost::make_shared<query::SelectStmt>();
     stmt->_selectList = _slFactory->getProduct();
     stmt->_fromList = _fFactory->getProduct();
     stmt->_whereClause = _wFactory->getProduct();
@@ -102,7 +102,7 @@ SelectFactory::getStatement() {
 
 void
 SelectFactory::_attachShared(SqlSQL2Parser& p) {
-    boost::shared_ptr<ColumnRefH> crh(new ColumnRefH());
+    boost::shared_ptr<ColumnRefH> crh = boost::make_shared<ColumnRefH>();
     crh->setListener(_columnRefNodeMap);
     p._columnRefHandler = crh;
 }
@@ -177,7 +177,7 @@ SelectListFactory::attachTo(SqlSQL2Parser& p) {
 
 boost::shared_ptr<query::SelectList>
 SelectListFactory::getProduct() {
-    boost::shared_ptr<query::SelectList> slist(new query::SelectList());
+    boost::shared_ptr<query::SelectList> slist = boost::make_shared<query::SelectList>();
     slist->_valueExprList = _valueExprList;
     return slist;
 }
