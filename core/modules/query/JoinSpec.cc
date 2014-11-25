@@ -29,6 +29,9 @@
 // System headers
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "query/BoolTerm.h"
 #include "query/ColumnRef.h"
@@ -77,7 +80,7 @@ JoinSpec::Ptr JoinSpec::clone() const {
         throw std::logic_error("Can't clone JoinSpec with ON and USING");
     }
     if(_usingColumn) {
-        boost::shared_ptr<ColumnRef> col(new ColumnRef(*_usingColumn));
+        boost::shared_ptr<ColumnRef> col = boost::make_shared<ColumnRef>(*_usingColumn);
         return Ptr(new JoinSpec(col));
     } else {
         return Ptr(new JoinSpec(_onTerm->copySyntax()));
