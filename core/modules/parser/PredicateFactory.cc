@@ -33,6 +33,7 @@
 
 // Third-party headers
 #include "boost/algorithm/string.hpp"
+#include "boost/make_shared.hpp"
 #include "SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 
 // LSST headers
@@ -50,7 +51,7 @@ namespace parser {
 
 boost::shared_ptr<query::CompPredicate>
 PredicateFactory::newCompPredicate(antlr::RefAST a) {
-    boost::shared_ptr<query::CompPredicate> p(new query::CompPredicate());
+    boost::shared_ptr<query::CompPredicate> p = boost::make_shared<query::CompPredicate>();
     if(a->getType() == SqlSQL2TokenTypes::COMP_PREDICATE) {
         a = a->getFirstChild();
     }
@@ -64,7 +65,7 @@ PredicateFactory::newCompPredicate(antlr::RefAST a) {
 }
 
 boost::shared_ptr<query::BetweenPredicate> PredicateFactory::newBetweenPredicate(antlr::RefAST a) {
-    boost::shared_ptr<query::BetweenPredicate> p(new query::BetweenPredicate());
+    boost::shared_ptr<query::BetweenPredicate> p = boost::make_shared<query::BetweenPredicate>();
     if(a->getType() == SqlSQL2TokenTypes::BETWEEN_PREDICATE) {
         a = a->getFirstChild();
     }
@@ -80,7 +81,7 @@ boost::shared_ptr<query::BetweenPredicate> PredicateFactory::newBetweenPredicate
 
 boost::shared_ptr<query::InPredicate>
 PredicateFactory::newInPredicate(antlr::RefAST a) {
-    boost::shared_ptr<query::InPredicate> p(new query::InPredicate());
+    boost::shared_ptr<query::InPredicate> p = boost::make_shared<query::InPredicate>();
     if(a->getType() == SqlSQL2TokenTypes::IN_PREDICATE) {
         a = a->getFirstChild();
     }
@@ -103,7 +104,7 @@ PredicateFactory::newInPredicate(antlr::RefAST a) {
 
 boost::shared_ptr<query::LikePredicate>
 PredicateFactory::newLikePredicate(antlr::RefAST a) {
-    boost::shared_ptr<query::LikePredicate> p(new query::LikePredicate());
+    boost::shared_ptr<query::LikePredicate> p = boost::make_shared<query::LikePredicate>();
     if(a->getType() == SqlSQL2TokenTypes::LIKE_PREDICATE) {
         a = a->getFirstChild();
     }
@@ -119,7 +120,7 @@ PredicateFactory::newLikePredicate(antlr::RefAST a) {
 
 boost::shared_ptr<query::NullPredicate>
 PredicateFactory::newNullPredicate(antlr::RefAST a) {
-    boost::shared_ptr<query::NullPredicate> p(new query::NullPredicate());
+    boost::shared_ptr<query::NullPredicate> p = boost::make_shared<query::NullPredicate>();
 
     if(a->getType() == SqlSQL2TokenTypes::NULL_PREDICATE) { a = a->getFirstChild(); }
     RefAST value = a;
