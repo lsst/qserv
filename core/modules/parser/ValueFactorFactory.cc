@@ -34,6 +34,9 @@
 // System headers
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -137,7 +140,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         t = child;
         child = t->getFirstChild();
     }
-    boost::shared_ptr<query::ValueFactor> vt(new query::ValueFactor());
+    boost::shared_ptr<query::ValueFactor> vt = boost::make_shared<query::ValueFactor>();
     boost::shared_ptr<query::FuncExpr> fe;
     RefAST last;
     // LOGF_INFO("colterm: %1% %2%" % t->getType() % t->getText());
@@ -210,7 +213,7 @@ boost::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     assert(_columnRefNodeMap);
     // ColumnRefNodeMap& cMap = *_columnRefNodeMap; // for gdb
-    boost::shared_ptr<query::FuncExpr> fe(new query::FuncExpr());
+    boost::shared_ptr<query::FuncExpr> fe = boost::make_shared<query::FuncExpr>();
     // LOGF_INFO("set_fct_spec %1%" % walkTreeString(expr));
     RefAST nNode = expr->getFirstChild();
     if(!nNode.get()) {
