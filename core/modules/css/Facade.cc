@@ -38,6 +38,7 @@
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
+#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -441,7 +442,12 @@ Facade::_tableIsSubChunked(string const& dbName,
 
 boost::shared_ptr<Facade>
 FacadeFactory::createZooFacade(string const& connInfo, int timeout_msec) {
-    boost::shared_ptr<css::Facade> cssFPtr(new css::Facade(connInfo, timeout_msec));
+    struct make_shared_enabler : public css::Facade {
+        make_shared_enabler() : A() {
+        }
+    };
+
+    boost::shared_ptr<css::Facade> cssFPtr = boost::make_shared<make_shared_enabler>(connInfo, timeout_msec);
     return cssFPtr;
 }
 
@@ -456,7 +462,7 @@ FacadeFactory::createMemFacade(string const& mapPath) {
 
 boost::shared_ptr<Facade>
 FacadeFactory::createMemFacade(std::istream& mapStream) {
-    boost::shared_ptr<css::Facade> cssFPtr(new css::Facade(mapStream));
+    boost::shared_ptr<css::Facade> cssFPtr = boost::make_shared<css::Facade>(mapStream);
     return cssFPtr;
 }
 
@@ -569,7 +575,7 @@ Facade::Facade(boost::shared_ptr<KvInterface> kv)
 
 boost::shared_ptr<Facade>
 FacadeFactory::createCacheFacade(boost::shared_ptr<KvInterface> kv) {
-    boost::shared_ptr<css::Facade> facade(new Facade(kv));
+    boost::shared_ptr<css::Facade> facade = boost::make_shared<Facade>(kv);
     return facade;
 }
 }}} // namespace lsst::qserv::css
