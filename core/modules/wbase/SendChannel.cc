@@ -27,6 +27,9 @@
 #include <sstream>
 #include <vector>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 namespace lsst {
 namespace qserv {
 namespace wbase {
@@ -60,7 +63,8 @@ public:
 };
 
 boost::shared_ptr<SendChannel> SendChannel::newNopChannel() {
-    return boost::shared_ptr<NopChannel>(new NopChannel);
+    boost::shared_ptr<NopChannel> n = boost::make_shared<NopChannel>();
+    return n;
 }
 
 
