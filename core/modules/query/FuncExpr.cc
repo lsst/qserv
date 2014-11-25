@@ -35,6 +35,9 @@
 // System headers
 #include <iostream>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
@@ -55,7 +58,7 @@ FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
 
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
-    boost::shared_ptr<ColumnRef> cr(new ColumnRef("","",arg1));
+    boost::shared_ptr<ColumnRef> cr = boost::make_shared<ColumnRef>("","",arg1);
     return newArg1(newName,
                    ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr)));
 }
