@@ -32,6 +32,9 @@
 
 #include "parser/SelectListFactory.h"
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "parser/ParseAliasMap.h"
 #include "parser/ParseException.h"
@@ -114,7 +117,7 @@ SelectListFactory::attachTo(SqlSQL2Parser& p) {
 }
 
 boost::shared_ptr<query::SelectList> SelectListFactory::getProduct() {
-    boost::shared_ptr<query::SelectList> slist(new query::SelectList());
+    boost::shared_ptr<query::SelectList> slist = boost::make_shared<query::SelectList>();
     slist->_valueExprList = _valueExprList;
     return slist;
 }
