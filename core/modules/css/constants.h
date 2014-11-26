@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2014 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,21 +21,16 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CCONTROL_DISPATCHER_H
-#define LSST_QSERV_CCONTROL_DISPATCHER_H
-/**
-  * @file
-  *
-  * @brief Main interface to be exported via SWIG for the
-  * frontend's Python layer to initiate subqueries and join them.
-   * (obsolete)
-  * @author Daniel L. Wang, SLAC
-  */
+#ifndef LSST_QSERV_CSS_CONSTANTS_H
+#define LSST_QSERV_CSS_CONSTANTS_H
 
-// Local headers
 namespace lsst {
 namespace qserv {
-namespace ccontrol {
-}}} // namespace lsst::qserv:ccontrol
+namespace css {
 
-#endif // LSST_QSERV_CCONTROL_DISPATCHER_H
+char const VERSION_PATH[] = "/CSSversion"; ///< Path to version
+char const VERSION[] = "1"; ///< Current supported version
+
+}}} // namespace lsst::qserv::css
+
+#endif // LSST_QSERV_CSS_CONSTANTS_H

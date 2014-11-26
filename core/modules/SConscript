@@ -1,4 +1,5 @@
 # -*- python -*-
+# Qserv core/modules SConscript
 #
 # Setup our environment
 #
@@ -9,7 +10,7 @@ from itertools import chain, izip, repeat
 from collections import defaultdict
 import SCons.Util
 import detect # Qserv dep detector
-
+import cctarget # default cc builder
 
 # Describe what your package contains here.
 env.Help("""
@@ -20,7 +21,8 @@ Qserv core code
 #  * Make the configure-check optional.
 ###
 ###
-extraTgts = {}
+extraSrcs = {} # Per-module Extra sources (if other srcs are for shared module)
+extraTgts = {} # Other build outputs, e.g., distribution 'dist', etc.
 extraTgts['dist'] = []
 custom = detect.importCustom(env, extraTgts)
 
@@ -55,6 +57,8 @@ allModules = """ccontrol css czar global log mysql obsolete
 # Dependencies to fix:
 # packetiter in util depends on xrdc, util shouldn't depend on anything
 # Products
+def pyDistRelative(env, module):
+    return os.path.join(env['python_relative_prefix'],"lsst","qserv",module)
 shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                                       mysql sql obsolete util
                                       wbase wconfig wcontrol wdb
@@ -85,19 +89,28 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                            'distDir' : 'lib'
                            },
 
-               "_czarLib" : {'mods' : """css czar ccontrol global
+               "_czarLib" : {'mods' : """czar ccontrol global
                                          log rproc mysql
                                          parser query
                                          sql util xrdc
                                          obsolete proto
                                          qana qdisp qproc""".split(),
+                             'shmods' : ['css'],
                              'libs' : """ssl crypto antlr log
                                       mysqlclient_r protobuf
                                       XrdClient XrdPosix XrdSsi XrdUtils
                                       boost_regex boost_thread boost_system
                                       boost_signals zookeeper_mt""".split(),
                                'SHLIBPREFIX' : '',
-                               'distDir' : os.path.join(env['python_relative_prefix'],"lsst","qserv","czar")}
+                               'distDir' : pyDistRelative(env,"czar")},
+
+               "_cssLib" : {'mods' : [],
+                            'shmods' : ['css'],
+                            'libs' : "log boost_thread zookeeper_mt".split(),
+                            'extraSrcs' : ['css'],
+                            'SHLIBPREFIX' : '',
+                            'distDir' : pyDistRelative(env, "css")},
+
                }
 
 # modules used in shProducts
@@ -110,19 +123,18 @@ def getSrcs(mName):
     srcs = os.listdir(mName)
     return map(lambda s: os.path.join(mName, s), srcs)
 
-
 def getTgts(mName):
     scriptPath = os.path.join(mName, "SConscript")
     if env.Glob(scriptPath): # os.access is faulty with VariantDir
-        tgts = SConscript(scriptPath,
-                          exports={'env': env, 'extraTgts': extraTgts})
+        tgts = SConscript(scriptPath, exports={
+                'env': env,
+                'extraTgts': extraTgts,
+                'extraSrcs' : extraSrcs,})
         return tgts
     else:
         #print "No targets for %s, using glob" % mName
         # All .cc, except test files.
-        files = filter(lambda f: not os.path.basename(str(f)).startswith("test"),
-                       env.Glob(os.path.join(mName, "*.cc")))
-        files.sort(key=lambda n: n.str_for_display())
+        files = cctarget.getDefaultTargets(env, mName)
         defaultTgts[mName] = files
         return files
 
@@ -167,11 +179,12 @@ def getTests(env, mName):
     state.log.debug("Looking for %s tests" % mName)
     scriptPath = os.path.join(mName, "SConscript.test")
     if env.Glob(scriptPath):
-        tgts = SConscript(scriptPath, exports={'env' : env,
-                                                'libProducts' : libProducts,
-                                                'defaultTgts' : defaultTgts,
-                                                'findLibs' : findLibs,
-                                                'cacheObjs' : cacheObjs})
+        tgts = SConscript(scriptPath, exports={
+                'env' : env,
+                'libProducts' : libProducts,
+                'defaultTgts' : defaultTgts,
+                'findLibs' : findLibs,
+                'cacheObjs' : cacheObjs})
         return tgts
     else:
         return None
@@ -190,8 +203,19 @@ for m in defaultTgts:
     objs = [makeSharedObjectCC(env, a) for a in set(files)]
     defaultTgts[m] = objs
 
+# Compute internal shlib targets
+shlibs = dict()
+shmods = set(chain(*[product.get('shmods', [])
+                     for product in shProducts.values()]))
+# Compute shared lib targets used by products
+for m in shmods:
+    out = env.SharedLibrary("libqserv_"+m, libProducts[m])
+    shlibs[m] = out
+    for f in out:
+        extraTgts['dist'].append(('lib', f))
+    pass
 
-# Compute shlib targets
+# Compute shProduct targets
 for (pkg, opts) in shProducts.items():
     srcs = []
     for m in opts['mods']: # Visit modules and compose union of LIBS
@@ -201,6 +225,8 @@ for (pkg, opts) in shProducts.items():
             prods = libProducts[m]
             srcs.extend(prods)
         pass
+    if opts.has_key('extraSrcs'):
+        srcs.extend(chain(*[extraSrcs[m] for m in opts['extraSrcs']]))
 
     # Eliminate dupes for srcs and libs, and
     # convert .cc to SharedObject to prevent warning
@@ -208,14 +234,25 @@ for (pkg, opts) in shProducts.items():
     srcs = [makeSharedObjectCC(env, a) for a in set(srcs)]
     # Sort to prevent dependency-order rebuilding
     srcs.sort(key=lambda n: n.str_for_display())
+
     #env.Append(LIBS=libs)
     #extLibFlags = ["-l"+lib for lib in findLibs(opts['libs'])]
-    extLibs = [lib for lib in findLibs(opts['libs'])]
+    extLibs = list(findLibs(opts['libs']))
+    intDeps = [] # internal dependencies on .so
+    libPath = env['LIBPATH'][:] # Clone to avoid polluting env.
+    if opts.has_key('shmods'):
+        intDeps = [shlibs[m] for m in opts['shmods']]
+        extLibs.extend(["qserv_" + s for s in opts['shmods']])
+        libPath.append(os.path.dirname(intDeps[0][0].get_abspath()))
     if opts.has_key('SHLIBPREFIX'):
         out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs,
-                                SHLIBPREFIX=opts['SHLIBPREFIX'])
+                                SHLIBPREFIX=opts['SHLIBPREFIX'],
+                                LIBPATH=libPath)
     else:
-        out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs)
+        out = env.SharedLibrary(pkg + ".so", srcs, LIBS=extLibs,
+                                LIBPATH=libPath)
+    if intDeps:
+        env.Requires(out, intDeps)
     env.Alias("build", out)
     for f in out:
         extraTgts['dist'].append((opts['distDir'], f))

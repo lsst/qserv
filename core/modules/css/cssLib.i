@@ -1,7 +1,7 @@
-// -*- LSST-C++ -*-
+// -*- lsst-c++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2014 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,21 +21,40 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CCONTROL_DISPATCHER_H
-#define LSST_QSERV_CCONTROL_DISPATCHER_H
-/**
-  * @file
-  *
-  * @brief Main interface to be exported via SWIG for the
-  * frontend's Python layer to initiate subqueries and join them.
-   * (obsolete)
-  * @author Daniel L. Wang, SLAC
-  */
+%define qserv_css_DOCSTRING
+"
+Access to the classes from the qserv_css library
+"
+%enddef
 
-// Local headers
-namespace lsst {
-namespace qserv {
-namespace ccontrol {
-}}} // namespace lsst::qserv:ccontrol
+%module("threads"=1, package="lsst.qserv.css") cssLib
+%{
+#define SWIG_FILE_WITH_INIT
+#include "css/constants.h"
+#include "css/KvInterface.h"
+#include "css/KvInterfaceImplMem.h"
+%}
 
-#endif // LSST_QSERV_CCONTROL_DISPATCHER_H
+%include typemaps.i
+%include cstring.i
+/* %include carrays.i */
+/* %include "std_map.i" */
+%include "std_string.i"
+%include "std_vector.i"
+%include "stdint.i"
+
+/* %include cdata.i */
+/* %array_class(char, charArray); */
+
+// %lsst_exceptions()
+// %import "lsst/pex/exceptions/exceptionsLib.i"
+
+// Instantiate types
+namespace std {
+    %template(StringVector) vector<string>;
+};
+
+
+%include "css/constants.h"
+%include "css/KvInterface.h"
+%include "css/KvInterfaceImplMem.h"

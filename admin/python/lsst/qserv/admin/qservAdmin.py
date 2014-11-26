@@ -67,7 +67,7 @@ class QservAdmin(object):
 
         @param connInfo     Connection information.
         """
-        self._kvI = KvInterface(connInfo)
+        self._kvI = KvInterface.newImpl(connInfo=connInfo)
         self._logger = logging.getLogger("QADMI")
         self._uniqueLockId = 0
 
@@ -142,7 +142,7 @@ class QservAdmin(object):
         @param dbName    Database name (of the database to create)
         @param templateDbName   Database name (of the template database)
         """
-        self._logger.info("Creating db '%s' like '%s'" % (dbName, dbName2))
+        self._logger.info("Creating db '%s' like '%s'" % (dbName, templateDbName))
         dbP = "/DBS/%s" % dbName
         dbP2 = "/DBS/%s" % templateDbName
         if dbName == templateDbName:
@@ -150,9 +150,8 @@ class QservAdmin(object):
         # Acquire lock in sorted order. Otherwise two admins that run
         # "CREATE DATABASE A LIKE B" and "CREATE DATABASE B LIKE A" can deadlock.
         (name1, name2) = sorted((dbP, dbP2))
-        with self._getDbLock(name1):
-            with self._getDbLock(name2):
-                self._createDbLikeLocked(dbP, dbName, templateDbName)
+        with self._getDbLock(name1), self._getDbLock(name2):
+            self._createDbLikeLocked(dbName, templateDbName)
 
     def _createDbLikeLocked(self, dbName, templateDbName):
         dbP = "/DBS/%s" % dbName
@@ -166,8 +165,9 @@ class QservAdmin(object):
             self._createDbLockSection(dbP)
             self._kvI.set(dbP, "READY")
         except KvException as e:
-            self._logger.error("Failed to create database '%s' like '%s', " % \
-                                   (dbName, dbName2) + "error was: " + e.__str__())
+            self._logger.error("Failed to create database '%s' like '%s', "
+                               % (dbName, templateDbName)
+                               + "error was: " + e.__str__())
             self._deletePacked(dbP)
             raise
 
