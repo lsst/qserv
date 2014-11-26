@@ -437,11 +437,13 @@ class InbandQueryAction:
                                                              self._resultName)
         errorMsg = UserQuery_getError(self.sessionId)
         if errorMsg: raise ParseError(errorMsg)
-        self.dominantDb = UserQuery_getDominantDb(self.sessionId)
-        if not UserQuery_containsDb(self.sessionId, self.dominantDb):
-            raise ParseError("Illegal db")
-        self.dbStriping = UserQuery_getDbStriping(self.sessionId)
-        self._addChunks()
+        if True: # Turn off for c++ geometry
+            self.dominantDb = UserQuery_getDominantDb(self.sessionId)
+            if not UserQuery_containsDb(self.sessionId, self.dominantDb):
+                raise ParseError("Illegal db")
+            self.dbStriping = UserQuery_getDbStriping(self.sessionId)
+            self._addChunks()
+
         pass
 
     def _evaluateHints(self, dominantDb, hintList, pmap):
