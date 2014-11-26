@@ -50,7 +50,7 @@ OutputIt copy_if(InputIt first, InputIt last,
 }
 
 std::string makeDefaultFilename() {
-    return std::string("emptyChunks.txt");
+    return "emptyChunks.txt";
 }
 
 bool isSafe(std::string::value_type const& c) {
@@ -92,15 +92,17 @@ std::string makeFilename(std::string const& db) {
     return "empty_" + sanitizeName(db) + ".txt";
 }
 
-void populate(IntSet& s, std::string const& db) {
-    std::ifstream rawStream(makeFilename(db).c_str());
+void populate(std::string const& path, IntSet& s, std::string const& db) {
+    std::string best = path + "/" + makeFilename(db);
+    std::string fallback = path + "/" + makeDefaultFilename();
+    std::ifstream rawStream(best.c_str());
     if(!rawStream.good()) { // On error, try using default filename
         rawStream.close();
-        rawStream.open(makeDefaultFilename().c_str());
+        rawStream.open(fallback.c_str());
     }
     if(!rawStream.good()) {
-        throw ConfigError("No such empty chunks file: " + makeFilename(db)
-                          + " or " + makeDefaultFilename());
+        throw ConfigError("No such empty chunks file: " + best
+                          + " or " + fallback);
     }
     std::istream_iterator<int> chunkStream(rawStream);
     std::istream_iterator<int> eos;
@@ -121,13 +123,13 @@ boost::shared_ptr<IntSet const> EmptyChunks::getEmpty(std::string const& db) {
     }
     IntSetPtr newSet = boost::make_shared<IntSet>();
     _sets.insert(IntSetMap::value_type(db, newSet));
-    populate(*newSet, db); // Populate reference
+    populate(_path, *newSet, db); // Populate reference
     return IntSetConstPtr(newSet);
 }
 
 bool EmptyChunks::isEmpty(std::string const& db, int chunk) {
     IntSetConstPtr s = getEmpty(db);
-    return s->end() == s->find(chunk);
+    return s->end() != s->find(chunk);
 }
 
 }}} // namespace lsst::qserv::css
