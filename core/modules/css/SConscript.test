@@ -24,4 +24,7 @@ programs.append(p)
 p = env.Program(["testFacade.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
+p = env.Program(["testEmptyChunks.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
+programs.append(p)
+
 Return('programs')

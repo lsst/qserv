@@ -59,7 +59,7 @@ namespace css {
 /// group may be extremely sparse).
 class EmptyChunks {
 public:
-    EmptyChunks() {}
+    EmptyChunks(std::string const& path=".") {}
 
     // accessors
 
@@ -69,12 +69,15 @@ public:
     /// @return true if db/chunk is empty
     bool isEmpty(std::string const& db, int chunk);
 
-private:
+    // Convenience types
     typedef boost::shared_ptr<IntSet> IntSetPtr;
     typedef boost::shared_ptr<IntSet const> IntSetConstPtr;
+
+private:
     typedef std::map<std::string, IntSetPtr> IntSetMap;
 
-    IntSetMap _sets;
+    std::string _path; ///< Search path for empty chunks files
+    IntSetMap _sets; ///< Container for empty chunks sets
     boost::mutex _setsMutex;
 };
 
