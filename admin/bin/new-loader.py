@@ -219,6 +219,7 @@ class Loader(object):
         self.files = None      # list of data files after uncompressing
         self.schema = None     # "CREATE TABLE" statement
 
+
     def run(self):
         """
         Do actual loading based on parameters defined in constructor.
@@ -230,6 +231,7 @@ class Loader(object):
         finally:
             self._cleanup()
 
+
     def _run(self):
         """
         Do loading only, cleanup is done in _cleanup()
@@ -238,32 +240,14 @@ class Loader(object):
         # parse all config files
         self.partOptions = PartOptions(self.args.part_config)
 
-        # css instance
-        self.css = QservAdmin(self.args.css_conn)
-
         # mysql connection
         self.mysql = self._dbConnect()
 
+        # css instance
+        self.css = QservAdmin(self.args.css_conn)
+
         # see if database is already defined in CSS and get its partitioning info
-        dbPartConfig = None
-        cssDbExists = False # self.css.dbExists(self.args.database)
-        if cssDbExists:
-
-            # get partitioning ID and partitioning config
-            dbConfigJson = self.css.getDbInfo(self.args.database)
-            partId = dbConfigJson.get('partitioningId')
-            if partId is not None:
-                dbPartConfig = self.css.getPartInfo(partId)
-
-            # also check that table does not exist in CSS, or optionally remove it
-            cssTableExists = False  # self.css.tableExists(self.args.database, self.args.table)
-            if cssTableExists:
-                if self.args.css_remove:
-                    # try to remove it
-                    self.css.dropTable(self.args.database, self.args.table)
-                else:
-                    logging.error('Table is already defined in CSS')
-                    raise RuntimeError('table exists in CSS')
+        self._checkCss()
 
         # make chunks directory or check that there are usable data there already
         self._makeOrCheckChunksDir()
@@ -282,6 +266,9 @@ class Loader(object):
 
         # load data
         self._loadData()
+
+        # update CSS with info for this table
+        self._updateCss()
 
 
     def _cleanup(self):
@@ -303,6 +290,55 @@ class Loader(object):
             except Exception as exc:
                 logging.error('Failed to remove chunks directory: %s', exc)
 
+
+    def _checkCss(self):
+        """
+        Check CSS for existing configuration and see if it matches ours.
+        Throws exception f any irregulatrities are observed.
+        """
+
+        # get database config
+        dbConfig = self.css.getDbInfo(self.args.database)
+        logging.debug('CSS database info: %s', dbConfig)
+        if dbConfig is None:
+            return
+
+        # get partitioning ID
+        partId = dbConfig.get('partitioningId')
+        if partId is None:
+            raise RuntimeError("CSS error: partitioningId is not defined for database " \
+                               + self.args.database)
+
+        # get partitioning config
+        partConfig = self.css.getPartInfo(partId)
+        logging.debug('CSS partitioning info: %s', partConfig)
+
+        # check parameters
+        self._checkPartParam(self.partOptions, 'part.num-stripes', partConfig, 'nStripes', int)
+        self._checkPartParam(self.partOptions, 'part.num-sub-stripes', partConfig, 'nSubStripes', int)
+        self._checkPartParam(self.partOptions, 'part.overlap', partConfig, 'overlap', float)
+
+        # also check that table does not exist in CSS, or optionally remove it
+        cssTableExists = self.css.tableExists(self.args.database, self.args.table)
+        if cssTableExists:
+            if self.args.css_remove:
+                # try to remove it
+                self.css.dropTable(self.args.database, self.args.table)
+            else:
+                logging.error('Table is already defined in CSS')
+                raise RuntimeError('table exists in CSS')
+
+    @staticmethod
+    def _checkPartParam(partOptions, partKey, cssOptions, cssKey, optType=str):
+        """
+        Check that partitioning parameters are compatible. Throws exception
+        if there is a mismatch.
+        """
+        optValue = optType(partOptions[partKey])
+        cssValue = optType(cssOptions[cssKey])
+        if optValue != cssValue:
+            raise ValueError('Option "%s" does not match CSS "%s": %s != %s' % \
+                             (partKey, cssKey, optValue, cssValue))
 
     def _makeOrCheckChunksDir(self):
         '''create directory for chunk data or check that it exists, throws in case of errors'''
@@ -580,6 +616,62 @@ class Loader(object):
         except Exception as exc:
             logging.critical('Failed to load data into non-partitioned table: %s', exc)
             raise
+
+
+    def _updateCss(self):
+        """
+        Update CSS with information about loaded table and database
+        """
+
+        # create database in CSS if not there yet
+        if not self.css.dbExists(self.args.database):
+            logging.debug('Creating database CSS info')
+            options = {}
+            options['nStripes'] = self.partOptions['part.num-stripes']
+            options['nSubStripes'] = self.partOptions['part.num-sub-stripes']
+            options['overlap'] = self.partOptions['part.overlap']
+            options['storageClass'] = self.partOptions.get('storageClass', 'L2')
+            self.css.createDb(self.args.database, options)
+
+        # define options for table
+        options = {}
+
+        options['schema'] = self._schemaForCSS()
+        options['compression'] = '0'
+
+        # refmatch table has part.pos1 instead of part.pos, CSS expects a string, not a number
+        isRefMatch = 'part.pos1' in self.partOptions and 'part.pos2' in self.partOptions
+        options['match'] = '1' if isRefMatch else '0'
+
+        options['dirTable'] = self.partOptions.get('dirTable', 'Object')
+        options['dirColName'] = self.partOptions.get('dirColName', 'objectId')
+
+        if 'part.pos' in self.partOptions:
+            pos = self.partOptions['part.pos'].split(',')
+            raCol, declCol = pos[0].strip(), pos[1].strip()
+            options['latColName'] = declCol
+            options['lonColName'] = raCol
+
+        self.css.createTable(self.args.database, self.args.table, options)
+
+
+    def _schemaForCSS(self):
+        """
+        Returns schema string for CSS, which is a create table only without
+        create table, only column definitions
+        """
+
+        cursor = self.mysql.cursor()
+
+        # make table using DDL from non-chunked one
+        q = "SHOW CREATE TABLE {0}".format(self.args.table)
+        cursor.execute(q)
+        data = cursor.fetchone()[1]
+
+        # strip CREATE TABLE
+        i = data.find('(')
+        j = data.rfind(')')
+        return data[i:j + 1]
 
 if __name__ == "__main__":
     loader = Loader()

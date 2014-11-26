@@ -52,13 +52,13 @@ VERSION = 1
 VERSION_KEY = '/css_meta/version'
 
 # Possible options
-possibleOpts = {"table" : "schema compression match".split(),
-                "match" : ["dirTable1", "dirColName1",
-                           "dirTable2", "dirColName2",
-                           "flagColName"],
-                "partition": ["subChunks", "dirTable",
-                              "lonColName", "latColName",
-                              "dirColName"]
+possibleOpts = {"table" : set(["schema", "compression", "match"]),
+                "match" : set(["dirTable1", "dirColName1",
+                               "dirTable2", "dirColName2",
+                               "flagColName"]),
+                "partition": set(["subChunks", "dirTable",
+                                  "lonColName", "latColName",
+                                  "dirColName"])
                 }
 
 class QservAdmin(object):
@@ -76,7 +76,7 @@ class QservAdmin(object):
         @param connInfo     Connection information.
         """
         self._kvI = KvInterface.newImpl(connInfo=connInfo)
-        self._logger = logging.getLogger("QADMI")
+        self._logger = logging.getLogger("QADM")
         self._uniqueLockId = 0
 
     def _addPacked(self, origPath, valueDict):
@@ -94,20 +94,72 @@ class QservAdmin(object):
         except KvException:
             pass # Ignore missing (dummy) node
 
+    def _getMaybePacked(self, node, keys):
+        """Ged data from a node which could be packed or not"""
+        # try packed stuff first
+        if self._kvI.exists(node + '.json'):
+            # if json packed then convert back to Python object
+            data = self._kvI.get(node + '.json')
+            return json.loads(data)
+        else:
+            # try unpacked, check for every key and get whatever is defined
+            if self._kvI.exists(node):
+                info = {}
+                for key in keys:
+                    try:
+                        info[key] = self._kvI.get(node + '/' + key)
+                    except KvException:
+                        pass
+                return info
+
     #### DATABASES #################################################################
+    def dbExists(self, dbName):
+        """
+        Check if the database exists.
+
+        @param dbName    Database name.
+        """
+        p = "/DBS/%s" % dbName
+        return self._kvI.exists(p)
+
+    def getDbInfo(self, dbName):
+        """
+        Returns dictionary with database configuration or None if database
+        does not exist.
+
+        @param dbName:    Database name
+        """
+        node = "/DBS/" + dbName
+        return self._getMaybePacked(node, ['releaseStatus', 'uuid', 'storageClass', 'partitioningId'])
+
+    def getPartInfo(self, partId):
+        """
+        Returns dictionary with partitioning configuration or None if partitioning ID
+        does not exist.
+
+        @param partId:    partitioning ID
+        """
+        node = "/PARTITIONING/_" + partId
+        return self._getMaybePacked(node, ['nStripes', 'nSubStripes', 'overlap', 'uuid'])
+
     def createDb(self, dbName, options):
         """
-        Create database (options specified explicitly).
+        Create database (options specified explicitly). Options is a dictionary
+        with these keys and values:
+          - nStripes:     number of partitioning stripes
+          - nSubStripes:  number of partitioning sub-stripes
+          - overlap:      size of chunk overlap
+          - storageClass: one of 'L1', 'L2', 'L3'
 
         @param dbName    Database name
-        @param options   Array with options (key/value)
+        @param options   Dictionary with options (key/value)
         """
-        self._logger.debug("Create database '%s', options: %s"
-                           % (dbName, str(options)))
+        self._logger.debug("Create database '%s', options: %s",
+                           dbName, options)
         # double check if all required options are specified
         for x in ["nStripes", "nSubStripes", "overlap", "storageClass"]:
             if x not in options:
-                self._logger.error("Required option '%s' missing" % x)
+                self._logger.error("Required option '%s' missing", x)
                 raise KvException(KvException.MISSING_PARAM, x)
 
         # first check version or store it
@@ -220,13 +272,39 @@ class QservAdmin(object):
             print self._kvI.getChildren("/DBS")
 
     #### TABLES ####################################################################
+    def tableExists(self, dbName, tableName):
+        """
+        Check if the table exists.
+
+        @param dbName    Database name.
+        @param tableName Table name.
+        """
+        p = "/DBS/%s/TABLES/%s" % (dbName, tableName)
+        return self._kvI.exists(p)
+
     def createTable(self, dbName, tableName, options):
         """
-        Create table (options specified explicitly).
+        Create table (options specified explicitly). Options is a dictionary
+        with these keys and values:
+          - schema:
+          - compression:
+          - match:
+          For match tables:
+          - dirTable1:
+          - dirColName1:
+          - dirTable2:
+          - dirColName2:
+          - flagColName:
+          For partitioned tables:
+          - subChunks:
+          - dirTable:
+          - lonColName:
+          - latColName:
+          - dirColName:
 
         @param dbName    Database name
         @param tableName Table name
-        @param options   Array with options (key/value)
+        @param options   Dictionary with options (key/value)
         """
         self._logger.debug("Create table '%s.%s', options: %s"
                            % (dbName, tableName, str(options)))
@@ -240,6 +318,19 @@ class QservAdmin(object):
                                   % dbName)
                 return
             self._createTable(options, dbName, tableName)
+
+    def dropTable(self, dbName, tableName):
+        """
+        Delete table information
+
+        @param dbName    Database name
+        @param tableName Table name
+        """
+        self._logger.debug("Drop table '%s.%s'" % (dbName, tableName))
+
+        with self._getDbLock(dbName):
+            tbP = "/DBS/%s/TABLES/%s" % (dbName, tableName)
+            self._deletePacked(tbP)
 
     def _normalizeTableOpts(self, tbOpts, matchOpts, partitionOpts):
         """Apply defaults and fixups to table options."""
@@ -255,16 +346,13 @@ class QservAdmin(object):
 
     def _createTable(self, options, dbName, tableName):
         tbP = "/DBS/%s/TABLES/%s" % (dbName, tableName)
-        tbOpts = dict([(k, options[k])
-                       for k in possibleOpts["table"]
-                       if k in options])
+        tbOpts = dict(item for item in options.items()
+                      if item[0] in possibleOpts["table"])
         options["uuid"] = str(uuid.uuid4())
-        matchOpts = dict([(k, options[k])
-                          for k in possibleOpts["match"]
-                          if k in options])
-        partitionOpts = dict([(k, options[k])
-                              for k in possibleOpts["partition"]
-                              if k in options])
+        matchOpts = dict(item for item in options.items()
+                         if item[0] in possibleOpts["match"])
+        partitionOpts = dict(item for item in options.items()
+                             if item[0] in possibleOpts["partition"])
         self._normalizeTableOpts(tbOpts, matchOpts, partitionOpts)
         try:
             self._kvI.create(tbP, "PENDING")
@@ -320,25 +408,6 @@ class QservAdmin(object):
             print "Can't find file: '" + fileName + "'."
         finally:
             f.close()
-
-    def _dbExists(self, dbName):
-        """
-        Check if the database exists.
-
-        @param dbName    Database name.
-        """
-        p = "/DBS/%s" % dbName
-        return self._kvI.exists(p)
-
-    def _tableExists(self, dbName, tableName):
-        """
-        Check if the table exists.
-
-        @param dbName    Database name.
-        @param tableName Table name.
-        """
-        p = "/DBS/%s/TABLES/%s" % (dbName, tableName)
-        return self._kvI.exists(p)
 
     def _copyKeyValue(self, dbDest, dbSrc, theList):
         """
