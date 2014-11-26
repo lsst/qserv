@@ -59,7 +59,7 @@ namespace css {
 /// group may be extremely sparse).
 class EmptyChunks {
 public:
-    EmptyChunks(std::string const& path=".") {}
+    EmptyChunks(std::string const& path=".") : _path(path) {}
 
     // accessors
 

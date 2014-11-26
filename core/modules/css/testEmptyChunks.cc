@@ -91,6 +91,7 @@ struct DummyFile {
         for(int i=begin; i < end; ++i) {
             os << i << std::endl;
         }
+        os.close();
     }
     std::string _path;
 };
