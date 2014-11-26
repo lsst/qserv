@@ -26,7 +26,6 @@ extraTgts = {} # Other build outputs, e.g., distribution 'dist', etc.
 extraTgts['dist'] = []
 custom = detect.importCustom(env, extraTgts)
 
-detect.checkGeom()
 detect.checkTwisted()
 
 # Environment

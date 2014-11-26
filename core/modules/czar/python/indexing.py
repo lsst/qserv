@@ -37,11 +37,12 @@
 # downloading overhead, so reducing unnecessary
 # dispatch/result-download is a big win for performance.
 #
+# Indexing is currently done in the c++ layer.
+# See qproc/{IndexMap,SecondaryIndex}*
 
 # Pkg imports.
 import app
 import config
-import metadata
 import logger
 from db import Db
 
