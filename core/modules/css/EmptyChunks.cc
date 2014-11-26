@@ -32,6 +32,7 @@
 // Third-party headers
 #include "boost/shared_ptr.hpp"
 #include "boost/make_shared.hpp"
+#include "boost/thread.hpp"
 
 // Local headers
 #include "global/ConfigError.h"
