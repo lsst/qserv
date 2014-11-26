@@ -129,13 +129,42 @@ class PartOptions(UserDict.UserDict):
                 logging.error('Required option is missing from configuration files: %s', key)
                 raise KeyError('missing required option')
 
-
-
     @property
     def partitioned(self):
         """Returns True if table is partitioned"""
         return 'part.pos' in self.data or 'part.pos1' in self.data
 
+    def cssDbOptions(self):
+        """
+        Returns dictionary of CSS options for database.
+        """
+        options = {'nStripes': self['part.num-stripes'],
+                   'nSubStripes': self['part.num-sub-stripes'],
+                   'storageClass': self.get('storageClass', 'L2')
+                   }
+        return options
+
+    def cssTableOptions(self):
+        """
+        Returns dictionary of CSS options for a table.
+        """
+        options = {'compression': '0',
+                   'dirTable': self.get('dirTable', 'Object'),
+                   'dirColName': self.get('dirColName', 'objectId')
+                   }
+
+        # refmatch table has part.pos1 instead of part.pos, CSS expects a string, not a number
+        isRefMatch = 'part.pos1' in self and 'part.pos2' in self
+        options['match'] = '1' if isRefMatch else '0'
+
+        if 'part.pos' in self:
+            pos = self['part.pos'].split(',')
+            raCol, declCol = pos[0].strip(), pos[1].strip()
+            options['latColName'] = declCol
+            options['lonColName'] = raCol
+            options['overlap'] = self['part.overlap']
+
+        return options
 
 #------------------------
 # Exported definitions --
@@ -316,7 +345,7 @@ class Loader(object):
         # check parameters
         self._checkPartParam(self.partOptions, 'part.num-stripes', partConfig, 'nStripes', int)
         self._checkPartParam(self.partOptions, 'part.num-sub-stripes', partConfig, 'nSubStripes', int)
-        self._checkPartParam(self.partOptions, 'part.overlap', partConfig, 'overlap', float)
+#         self._checkPartParam(self.partOptions, 'part.overlap', partConfig, 'overlap', float)
 
         # also check that table does not exist in CSS, or optionally remove it
         cssTableExists = self.css.tableExists(self.args.database, self.args.table)
@@ -390,6 +419,7 @@ class Loader(object):
 
         try:
             # run partitioner
+            logging.debug('run partitioner: %s', ' '.join(args))
             output = subprocess.check_output(args=args)
         except Exception as exc:
             logging.error('Failed to run partitioner: %s', exc)
@@ -626,32 +656,14 @@ class Loader(object):
         # create database in CSS if not there yet
         if not self.css.dbExists(self.args.database):
             logging.debug('Creating database CSS info')
-            options = {}
-            options['nStripes'] = self.partOptions['part.num-stripes']
-            options['nSubStripes'] = self.partOptions['part.num-sub-stripes']
-            options['overlap'] = self.partOptions['part.overlap']
-            options['storageClass'] = self.partOptions.get('storageClass', 'L2')
+            options = self.partOptions.cssDbOptions()
             self.css.createDb(self.args.database, options)
 
         # define options for table
-        options = {}
-
+        options = self.partOptions.cssTableOptions()
         options['schema'] = self._schemaForCSS()
-        options['compression'] = '0'
 
-        # refmatch table has part.pos1 instead of part.pos, CSS expects a string, not a number
-        isRefMatch = 'part.pos1' in self.partOptions and 'part.pos2' in self.partOptions
-        options['match'] = '1' if isRefMatch else '0'
-
-        options['dirTable'] = self.partOptions.get('dirTable', 'Object')
-        options['dirColName'] = self.partOptions.get('dirColName', 'objectId')
-
-        if 'part.pos' in self.partOptions:
-            pos = self.partOptions['part.pos'].split(',')
-            raCol, declCol = pos[0].strip(), pos[1].strip()
-            options['latColName'] = declCol
-            options['lonColName'] = raCol
-
+        logging.debug('Creating table CSS info')
         self.css.createTable(self.args.database, self.args.table, options)
 
 
@@ -668,10 +680,11 @@ class Loader(object):
         cursor.execute(q)
         data = cursor.fetchone()[1]
 
-        # strip CREATE TABLE
+        # strip CREATE TABLE and all table options
         i = data.find('(')
         j = data.rfind(')')
         return data[i:j + 1]
+
 
 if __name__ == "__main__":
     loader = Loader()

@@ -58,7 +58,7 @@ possibleOpts = {"table" : set(["schema", "compression", "match"]),
                                "flagColName"]),
                 "partition": set(["subChunks", "dirTable",
                                   "lonColName", "latColName",
-                                  "dirColName"])
+                                  "dirColName", "overlap"])
                 }
 
 class QservAdmin(object):
@@ -157,7 +157,7 @@ class QservAdmin(object):
         self._logger.debug("Create database '%s', options: %s",
                            dbName, options)
         # double check if all required options are specified
-        for x in ["nStripes", "nSubStripes", "overlap", "storageClass"]:
+        for x in ["nStripes", "nSubStripes", "storageClass"]:
             if x not in options:
                 self._logger.error("Required option '%s' missing", x)
                 raise KvException(KvException.MISSING_PARAM, x)
@@ -181,10 +181,8 @@ class QservAdmin(object):
                 ptP = self._kvI.create("/PARTITIONING/_", sequence=True)
 
                 options["uuid"] = str(uuid.uuid4())
-                partOptions = dict([ (k,v) for k,v in options.items()
-                                     if k in set(["nStripes","nSubStripes",
-                                                  "overlap","uuid"])
-                                     ])
+                partOptions = dict((k, v) for k, v in options.items()
+                                   if k in ["nStripes", "nSubStripes", "uuid"])
                 self._addPacked(ptP, partOptions)
 
                 pId = ptP[-10:] # Partitioning id is always 10 digit, 0 padded
@@ -301,6 +299,7 @@ class QservAdmin(object):
           - lonColName:
           - latColName:
           - dirColName:
+          - overlap:
 
         @param dbName    Database name
         @param tableName Table name
