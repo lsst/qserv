@@ -17,13 +17,14 @@ deps = map(lambda i:i, deps) # un-chain
 myDeps = filter(lambda i: not (str(i).startswith("test")
                                or str(i) == "cssLib_wrap.cc"),
                 env.Glob("*.cc"))
-extDeps = "log log4cxx".split()
+extDeps = "log log4cxx boost_thread".split()
 p = env.Program(["testKvInterfaceImpl.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
 p = env.Program(["testFacade.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
+#extDeps = "log log4cxx boost_thread".split()
 p = env.Program(["testEmptyChunks.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
