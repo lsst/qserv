@@ -43,17 +43,20 @@ using lsst::qserv::IntSet;
 namespace {
 // Workaround lack of copy_if before C++11
 template<class InputIt, class OutputIt, class UnaryPredicate>
-OutputIt copy_if(InputIt first, InputIt last,
+OutputIt
+copy_if(InputIt first, InputIt last,
                  OutputIt d_first, UnaryPredicate pred)
 {
     return std::remove_copy_if(first, last, d_first, std::not1(pred));
 }
 
-std::string makeDefaultFilename() {
+std::string
+makeDefaultFilename() {
     return "emptyChunks.txt";
 }
 
-bool isSafe(std::string::value_type const& c) {
+bool
+isSafe(std::string::value_type const& c) {
     std::locale loc;
     if(std::isalnum(c)) { // Not sure that using the default locale is safe.
         return true;
@@ -65,6 +68,7 @@ bool isSafe(std::string::value_type const& c) {
         return false;
     }
 }
+
 struct isSafePred {
     inline bool operator()(std::string::value_type const& c) const {
         return isSafe(c);
@@ -72,7 +76,8 @@ struct isSafePred {
     typedef std::string::value_type argument_type;
 };
 
-std::string sanitizeName(std::string const& name) {
+std::string
+sanitizeName(std::string const& name) {
     std::string out;
 #if 0
     copy_if(
@@ -88,11 +93,13 @@ std::string sanitizeName(std::string const& name) {
     return out;
 }
 
-std::string makeFilename(std::string const& db) {
+std::string
+makeFilename(std::string const& db) {
     return "empty_" + sanitizeName(db) + ".txt";
 }
 
-void populate(std::string const& path, IntSet& s, std::string const& db) {
+void
+populate(std::string const& path, IntSet& s, std::string const& db) {
     std::string best = path + "/" + makeFilename(db);
     std::string fallback = path + "/" + makeDefaultFilename();
     std::ifstream rawStream(best.c_str());
@@ -114,7 +121,8 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
-boost::shared_ptr<IntSet const> EmptyChunks::getEmpty(std::string const& db) {
+boost::shared_ptr<IntSet const>
+EmptyChunks::getEmpty(std::string const& db) const {
     boost::lock_guard<boost::mutex> lock(_setsMutex);
     IntSetMap::const_iterator i = _sets.find(db);
     if(i != _sets.end()) {
@@ -127,7 +135,8 @@ boost::shared_ptr<IntSet const> EmptyChunks::getEmpty(std::string const& db) {
     return IntSetConstPtr(newSet);
 }
 
-bool EmptyChunks::isEmpty(std::string const& db, int chunk) {
+bool
+EmptyChunks::isEmpty(std::string const& db, int chunk) const {
     IntSetConstPtr s = getEmpty(db);
     return s->end() != s->find(chunk);
 }
