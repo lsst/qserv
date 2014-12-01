@@ -39,13 +39,11 @@ class Runtime:
     def __init__(self):
         self.metaDbName = config.config.get("mgmtdb", "db")
         self.emptyChunkInfo = {}
-        self.defaultEmptyChunks = config.config.get("partitioner",
-                                        "emptyChunkListFile")
-        logger.inf("Using %s as default empty chunks file.", (self.defaultEmptyChunks))
+        self.defaultEmptyChunks = config.config.get("partitioner", "emptyChunkListFile")
+        logger.inf("Using %s as default empty chunks file." % self.defaultEmptyChunks)
         self.emptyChunkInfo[""] = self.loadIntsFromFile(self.defaultEmptyChunks)
-        self.emptyChunkPath = config.config.get("partitioner",
-                                        "emptyChunkPath")
-        logger.inf("Using %s as empty chunks path", (self.emptyChunkPath))
+        self.emptyChunkPath = config.config.get("partitioner", "emptyChunkPath")
+        logger.inf("Using %s as empty chunks path" % self.emptyChunkPath)
         pass
 
     def populateEmptyChunkInfo(self, dbName):

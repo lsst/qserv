@@ -34,6 +34,8 @@ user=qsmaster
 port=0
 
 [partitioner]
+# emptyChunkPath is used to check existence of the chunklist file
+# If it doesn't exist, a default once is created using emptyChunkListFile
 emptyChunkPath={{QSERV_RUN_DIR}}/etc
 emptyChunkListFile={{QSERV_RUN_DIR}}/etc/emptyChunks.txt
 
