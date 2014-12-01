@@ -58,113 +58,22 @@ import sys
 import os
 import re
 import argparse
-import itertools
 import logging
 import shutil
 import subprocess
 import tempfile
 import MySQLdb as mysql
 import warnings
-import UserDict
 
 #-----------------------------
 # Imports for other modules --
 #-----------------------------
 from lsst.qserv.admin.qservAdmin import QservAdmin
-from lsst.qserv.admin.configParser import ConfigParser
+from lsst.qserv.admin.partConfig import PartConfig
 
 #----------------------------------
 # Local non-exported definitions --
 #----------------------------------
-
-class PartOptions(UserDict.UserDict):
-    """
-    Class which holds all table partition options.
-    Implemented as a dictionary with some extra methods.
-    """
-
-    # keys that must be defined in partitioner config files
-    requiredConfigKeys = ['part.num-stripes', 'part.num-sub-stripes', 'part.overlap',
-                          ]
-
-    def __init__(self, files):
-        """
-        Process all config files, throws on error
-        """
-
-        UserDict.UserDict.__init__(self)
-
-        def _options(group):
-            '''massage options list, takes list of (key, opt) pairs'''
-            options = list(opt for k, opt in group)
-            if len(options) == 1:
-                options = options[0]
-            return options
-
-        for config in files:
-
-            # parse whole thing
-            try:
-                cfgParser = ConfigParser(open(config))
-                options = cfgParser.parse()
-            except Exception as ex:
-                logging.error('Failed to parse configuration file: %s', ex)
-                raise
-
-            # options are returned as a list of (key, value) pairs, there will be
-            # more than one key appearance for some options, merge this together and
-            # make a dict out of it
-            options.sort()
-            options = dict((key, _options(group)) for key, group
-                           in itertools.groupby(options, lambda pair: pair[0]))
-
-            # in partitioner config files loaded earlier have higer priority
-            # (options are not overwritten by later configs), do the same here
-            options.update(self.data)
-            self.data = options
-
-        # check that we have a set of required options defined
-        for key in self.requiredConfigKeys:
-            if key not in self.data:
-                logging.error('Required option is missing from configuration files: %s', key)
-                raise KeyError('missing required option')
-
-    @property
-    def partitioned(self):
-        """Returns True if table is partitioned"""
-        return 'part.pos' in self.data or 'part.pos1' in self.data
-
-    def cssDbOptions(self):
-        """
-        Returns dictionary of CSS options for database.
-        """
-        options = {'nStripes': self['part.num-stripes'],
-                   'nSubStripes': self['part.num-sub-stripes'],
-                   'storageClass': self.get('storageClass', 'L2')
-                   }
-        return options
-
-    def cssTableOptions(self):
-        """
-        Returns dictionary of CSS options for a table.
-        """
-        options = {'compression': '0',
-                   'dirTable': self.get('dirTable', 'Object'),
-                   'dirColName': self.get('dirColName', 'objectId')
-                   }
-
-        # refmatch table has part.pos1 instead of part.pos, CSS expects a string, not a number
-        isRefMatch = 'part.pos1' in self and 'part.pos2' in self
-        options['match'] = '1' if isRefMatch else '0'
-
-        if 'part.pos' in self:
-            pos = self['part.pos'].split(',')
-            raCol, declCol = pos[0].strip(), pos[1].strip()
-            options['latColName'] = declCol
-            options['lonColName'] = raCol
-            options['overlap'] = self['part.overlap']
-
-        return options
 
 #------------------------
 # Exported definitions --
@@ -267,7 +176,7 @@ class Loader(object):
         """
 
         # parse all config files
-        self.partOptions = PartOptions(self.args.part_config)
+        self.partOptions = PartConfig(self.args.part_config)
 
         # mysql connection
         self.mysql = self._dbConnect()
