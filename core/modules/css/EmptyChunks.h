@@ -64,10 +64,10 @@ public:
     // accessors
 
     /// @return set of empty chunks for this db
-    boost::shared_ptr<IntSet const> getEmpty(std::string const& db);
+    boost::shared_ptr<IntSet const> getEmpty(std::string const& db) const;
 
     /// @return true if db/chunk is empty
-    bool isEmpty(std::string const& db, int chunk);
+    bool isEmpty(std::string const& db, int chunk) const;
 
     // Convenience types
     typedef boost::shared_ptr<IntSet> IntSetPtr;
@@ -77,8 +77,8 @@ private:
     typedef std::map<std::string, IntSetPtr> IntSetMap;
 
     std::string _path; ///< Search path for empty chunks files
-    IntSetMap _sets; ///< Container for empty chunks sets
-    boost::mutex _setsMutex;
+    mutable IntSetMap _sets; ///< Container for empty chunks sets (cache)
+    mutable boost::mutex _setsMutex;
 };
 
 }}} // namespace lsst::qserv::css
