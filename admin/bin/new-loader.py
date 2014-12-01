@@ -205,6 +205,9 @@ class Loader(object):
         # load data
         self._loadData()
 
+        # create special dummy chunk
+        self._createDummyChunk()
+
         # update CSS with info for this table
         self._updateCss()
 
@@ -511,9 +514,30 @@ class Loader(object):
                 # load data into chunk table
                 self._loadOneFile(table, file, csvPrefix)
 
-        if not self.args.one_table:
-            # also make special dummy chunk in case of partitioned data
+
+    def _createDummyChunk(self):
+        """
+        Make special dummy chunk in case of partitioned data
+        """
+
+        if not self.partOptions.partitioned or self.args.one_table:
+            # only do it for true partitioned stuff
+            return
+
+        if not self.partOptions.isView:
+            # just make regular chunk with special ID, do not load any data
             self._makeChunkTable(1234567890, False)
+        else:
+            # TODO: table is a actually a view, need somethig special. Old loader was
+            # creating new view just by renaming Table to Table_1234567890, I'm not sure
+            # this is a correct procedure. In any case here is the code that does it
+
+            cursor = self.mysql.cursor()
+            q = "RENAME TABLE {0}.{1} to {0}.{1}_1234567890".format(self.args.database, self.args.table)
+
+            logging.debug('Rename view: %s', q)
+            cursor.execute(q)
+
 
     def _makeChunkTable(self, chunkId, overlap):
         """ Create table foa chunk if it does not exist yet. Returns table name. """

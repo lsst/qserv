@@ -103,6 +103,11 @@ class PartConfig(UserDict.UserDict):
         """Returns True if table is partitioned"""
         return 'part.pos' in self.data or 'part.pos1' in self.data
 
+    @property
+    def isView(self):
+        """Returns True if table is a view"""
+        return bool(self.data.get('view', False))
+
     def cssDbOptions(self):
         """
         Returns dictionary of CSS options for database.
@@ -118,19 +123,31 @@ class PartConfig(UserDict.UserDict):
         Returns dictionary of CSS options for a table.
         """
         options = {'compression': '0',
-                   'dirTable': self.get('dirTable', 'Object'),
-                   'dirColName': self.get('dirColName', 'objectId')
+                   'match': '0'
                    }
 
         # refmatch table has part.pos1 instead of part.pos, CSS expects a string, not a number
         isRefMatch = 'part.pos1' in self and 'part.pos2' in self
-        options['match'] = '1' if isRefMatch else '0'
 
         if 'part.pos' in self:
+
+            # partitioned table
             pos = self['part.pos'].split(',')
             raCol, declCol = pos[0].strip(), pos[1].strip()
             options['latColName'] = declCol
             options['lonColName'] = raCol
             options['overlap'] = self['part.overlap']
+            options['subChunks'] = self.get('part.subChunks', '1')
+            options['dirTable'] = self.get('dirTable', 'Object')
+            options['dirColName'] = self.get('dirColName', 'objectId')
+
+        elif 'part.pos1' in self and 'part.pos2' in self:
+
+            # refmatch table
+            options['match'] = '1'
+            options['dirTable1'] = self.get('dirTable1', 'Object')
+            options['dirColName1'] = self.get('dirColName1', 'objectId')
+            options['dirTable2'] = self.get('dirTable2', 'Object')
+            options['dirColName2'] = self.get('dirColName2', 'objectId')
 
         return options
