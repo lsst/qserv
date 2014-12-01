@@ -59,7 +59,7 @@ class DataLoader(object):
 
     def __init__(self, configFiles, mysqlConn, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
-                 cssConn='localhost:12181', cssClear=False):
+                 cssConn='localhost:12181', cssClear=False, loggerName="Loader"):
         """
         Constructor parse all arguments and prepares for execution.
 
@@ -75,6 +75,7 @@ class DataLoader(object):
                              create chunk tables.
         @param cssConn:      Connection string for CSS service.
         @param cssClear:     If true then CSS info for a table will be deleted first.
+        @param loggerName:   Logger name used for logging all messaged from loader.
         """
 
         self.configFiles = configFiles
@@ -98,6 +99,8 @@ class DataLoader(object):
 
         # connect to CSS
         self.css = QservAdmin(self.cssConn)
+
+        self._log = logging.getLogger(loggerName)
 
 
     def load(self, database, table, schema, data):
@@ -162,14 +165,14 @@ class DataLoader(object):
             try:
                 shutil.rmtree(self.unzipDir)
             except Exception as exc:
-                logging.error('Failed to remove unzipped files: %s', exc)
+                self._log.error('Failed to remove unzipped files: %s', exc)
 
         # remove chunks directory, only if we created it
         if not self.keepChunks and self.cleanupChunksDir:
             try:
                 shutil.rmtree(self.chunksDir)
             except Exception as exc:
-                logging.error('Failed to remove chunks directory: %s', exc)
+                self._log.error('Failed to remove chunks directory: %s', exc)
 
 
     def _checkCss(self, database, table):
@@ -180,7 +183,7 @@ class DataLoader(object):
 
         # get database config
         dbConfig = self.css.getDbInfo(database)
-        logging.debug('CSS database info: %s', dbConfig)
+        self._log.debug('CSS database info: %s', dbConfig)
         if dbConfig is None:
             return
 
@@ -192,7 +195,7 @@ class DataLoader(object):
 
         # get partitioning config
         partConfig = self.css.getPartInfo(partId)
-        logging.debug('CSS partitioning info: %s', partConfig)
+        self._log.debug('CSS partitioning info: %s', partConfig)
 
         # check parameters
         self._checkPartParam(self.partOptions, 'part.num-stripes', partConfig, 'nStripes', int)
@@ -206,7 +209,7 @@ class DataLoader(object):
                 # try to remove it
                 self.css.dropTable(database, table)
             else:
-                logging.error('Table is already defined in CSS')
+                self._log.error('Table is already defined in CSS')
                 raise RuntimeError('table exists in CSS')
 
     @staticmethod
@@ -231,30 +234,30 @@ class DataLoader(object):
         if os.path.exists(chunks_dir):
             exists = True
             if not os.path.isdir(chunks_dir):
-                logging.error('Path for chunks exists but is not a directory: %s',
+                self._log.error('Path for chunks exists but is not a directory: %s',
                               chunks_dir)
                 raise RuntimeError('chunk path is not directory')
 
         if self.skipPart:
             # directory must exist and have some files (chunk_index.bin at least)
             if not exists:
-                logging.error('Chunks directory does not exist: %s', chunks_dir)
+                self._log.error('Chunks directory does not exist: %s', chunks_dir)
                 raise RuntimeError('chunk directory is missing')
             path = os.path.join(chunks_dir, 'chunk_index.bin')
             if not os.path.exists(path):
-                logging.error('Could not find required file (chunk_index.bin) in chunks directory')
+                self._log.error('Could not find required file (chunk_index.bin) in chunks directory')
                 raise RuntimeError('chunk_index.bin is missing')
         else:
             if exists:
                 # must be empty, we do not want any extraneous stuff there
                 if os.listdir(chunks_dir):
-                    logging.error('Chunks directory is not empty: %s', chunks_dir)
+                    self._log.error('Chunks directory is not empty: %s', chunks_dir)
                     raise RuntimeError('chunks directory is not empty')
             else:
                 try:
                     os.makedirs(chunks_dir)
                 except Exception as exc:
-                    logging.error('Failed to create chunks directory: %s', exc)
+                    self._log.error('Failed to create chunks directory: %s', exc)
                     raise
             self.cleanupChunksDir = True
 
@@ -271,10 +274,10 @@ class DataLoader(object):
 
         try:
             # run partitioner
-            logging.debug('run partitioner: %s', ' '.join(args))
+            self._log.debug('run partitioner: %s', ' '.join(args))
             subprocess.check_output(args=args)
         except Exception as exc:
-            logging.error('Failed to run partitioner: %s', exc)
+            self._log.error('Failed to run partitioner: %s', exc)
             raise
 
 
@@ -294,23 +297,23 @@ class DataLoader(object):
                     try:
                         self.unzipDir = tempfile.mkdtemp(dir=self.chunksDir)
                     except Exception as exc:
-                        logging.critical('Failed to create tempt directory for uncompressed files: %s', exc)
+                        self._log.critical('Failed to create tempt directory for uncompressed files: %s', exc)
                         raise
-                    logging.info('Created temporary directory %s', self.unzipDir)
+                    self._log.info('Created temporary directory %s', self.unzipDir)
 
                 # construct output file name
                 outfile = os.path.basename(infile)
                 outfile = os.path.splitext(outfile)[0]
                 outfile = os.path.join(self.unzipDir, outfile)
 
-                logging.info('Uncompressing %s to %s', infile, outfile)
+                self._log.info('Uncompressing %s to %s', infile, outfile)
                 try:
                     input = open(infile)
                     output = open(outfile, 'wb')
                     cmd = ['gzip', '-d', '-c']
                     subprocess.check_call(args=cmd, stdin=input, stdout=output)
                 except Exception as exc:
-                    logging.critical('Failed to uncompress data file: %s', exc)
+                    self._log.critical('Failed to uncompress data file: %s', exc)
                     raise
 
             result.append(outfile)
@@ -329,16 +332,16 @@ class DataLoader(object):
         try:
             self.schema = open(schema).read()
         except Exception as exc:
-            logging.critical('Failed to read table schema file: %s', exc)
+            self._log.critical('Failed to read table schema file: %s', exc)
             raise
 
         # create table
         try:
             cursor.execute("USE %s" % database)
-            logging.debug('Creating table')
+            self._log.debug('Creating table')
             cursor.execute(self.schema)
         except Exception as exc:
-            logging.critical('Failed to create mysql table: %s', exc)
+            self._log.critical('Failed to create mysql table: %s', exc)
             raise
 
         # finish with this session, otherwise ATER TABLE will fail
@@ -374,10 +377,10 @@ class DataLoader(object):
             q = 'ALTER TABLE %s ' % table
             q += ', '.join(mods)
 
-            logging.debug('Alter table: %s', q)
+            self._log.debug('Alter table: %s', q)
             cursor.execute(q)
         except Exception as exc:
-            logging.critical('Failed to alter mysql table: %s', exc)
+            self._log.critical('Failed to alter mysql table: %s', exc)
             raise
 
     def _loadData(self, table, files):
@@ -452,7 +455,7 @@ class DataLoader(object):
             cursor = self.mysql.cursor()
             q = "RENAME TABLE {0}.{1} to {0}.{1}_1234567890".format(database, table)
 
-            logging.debug('Rename view: %s', q)
+            self._log.debug('Rename view: %s', q)
             cursor.execute(q)
 
 
@@ -469,7 +472,7 @@ class DataLoader(object):
         # make table using DDL from non-chunked one
         q = "CREATE TABLE IF NOT EXISTS {0} LIKE {1}".format(ctable, table)
 
-        logging.debug('Make chunk table: %s', ctable)
+        self._log.debug('Make chunk table: %s', ctable)
         cursor.execute(q)
 
         return ctable
@@ -496,13 +499,13 @@ class DataLoader(object):
         # need to know field separator, default is the same as in partitioner.
         separator = self.partOptions.get(csvPrefix + '.delimiter', '\t')
 
-        logging.debug('load data: table=%s file=%s', table, file)
+        self._log.debug('load data: table=%s file=%s', table, file)
         q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY '%s'" % \
             (file, table, separator)
         try:
             cursor.execute(q)
         except Exception as exc:
-            logging.critical('Failed to load data into non-partitioned table: %s', exc)
+            self._log.critical('Failed to load data into non-partitioned table: %s', exc)
             raise
 
 
@@ -513,7 +516,7 @@ class DataLoader(object):
 
         # create database in CSS if not there yet
         if not self.css.dbExists(database):
-            logging.debug('Creating database CSS info')
+            self._log.debug('Creating database CSS info')
             options = self.partOptions.cssDbOptions()
             self.css.createDb(database, options)
 
@@ -521,7 +524,7 @@ class DataLoader(object):
         options = self.partOptions.cssTableOptions()
         options['schema'] = self._schemaForCSS(table)
 
-        logging.debug('Creating table CSS info')
+        self._log.debug('Creating table CSS info')
         self.css.createTable(database, table, options)
 
 

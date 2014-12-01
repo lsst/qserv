@@ -69,6 +69,21 @@ from lsst.qserv.admin.dataLoader import DataLoader
 # Local non-exported definitions --
 #----------------------------------
 
+class _LogFilter(object):
+    """Filter for logging which passes all records from specified logger only"""
+    def __init__(self, loggerName):
+        self.loggerName = loggerName
+        self.loggerNameDot = loggerName + '.'
+
+    def filter(self, record):
+        if record.levelno > logging.INFO:
+            return 1
+        if record.name == self.loggerName:
+            return 1
+        if record.name.startswith(self.loggerNameDot):
+            return 1
+        return 0
+
 #------------------------
 # Exported definitions --
 #------------------------
@@ -88,6 +103,8 @@ class Loader(object):
 
         parser.add_argument('-v', '--verbose', dest='verbose', default=[], action='append_const',
                             const=None, help='More verbose output, can use several times.')
+        parser.add_argument('--verbose-all', dest='verboseAll', default=False, action='store_true',
+                            help='Apply verbosity to all loggers, by default only loader level is set.')
 
         group = parser.add_argument_group('Partitioning options',
                                           'Options defining how partitioning is performed')
@@ -142,9 +159,18 @@ class Loader(object):
         # parse all arguments
         self.args = parser.parse_args()
 
+        # configure logging
+        loggerName = "Loader"
         verbosity = len(self.args.verbose)
         levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
-        logging.basicConfig(level=levels.get(verbosity, logging.DEBUG))
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("[%(levelname)s] %(name)s: %(message)s"))
+        if not self.args.verboseAll:
+            # suppress INFO/DEBUG regular messages from other loggers
+            handler.addFilter(_LogFilter(loggerName))
+        logger = logging.getLogger()
+        logger.setLevel(level=levels.get(verbosity, logging.DEBUG))
+        logger.addHandler(handler)
 
         # connect to mysql server
         mysqlConn = self._dbConnect()
@@ -157,7 +183,8 @@ class Loader(object):
                                  skipPart=self.args.skipPart,
                                  oneTable=self.args.oneTable,
                                  cssConn=self.args.cssConn,
-                                 cssClear=self.args.cssClear)
+                                 cssClear=self.args.cssClear,
+                                 loggerName=loggerName)
 
     def run(self):
         """
@@ -165,6 +192,7 @@ class Loader(object):
         This will throw exception if anyhting goes wrong.
         """
         self.loader.load(self.args.database, self.args.table, self.args.schema, self.args.data)
+        logging.getLogger('Loader').info('loaded chunks: %s', ' '.join(map(str, self.loader.chunks)))
         return 0
 
 
