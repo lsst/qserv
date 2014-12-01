@@ -83,7 +83,7 @@ struct FacadeFixture {
         std::istringstream stream("/css_meta\t\\N\n/css_meta/version\t" +
                 boost::lexical_cast<string>(Facade::cssVersion()));
         kvI.reset(new KvInterfaceImplMem(stream));
-        facade = FacadeFactory::createCacheFacade(kvI);
+        facade = FacadeFactory::createCacheFacade(kvI, ".");
 
         kv.push_back(make_pair("/", ""));
 
@@ -146,14 +146,14 @@ BOOST_FIXTURE_TEST_SUITE(FacadeTest, FacadeFixture)
 BOOST_FIXTURE_TEST_CASE(test_noVersion, EmptyFixture) {
     // check that Facade throws exception for missing version key
     boost::shared_ptr<KvInterfaceImplMem> kvI = boost::make_shared<KvInterfaceImplMem>();
-    BOOST_CHECK_THROW(FacadeFactory::createCacheFacade(kvI), VersionMissingError);
+    BOOST_CHECK_THROW(FacadeFactory::createCacheFacade(kvI, "."), VersionMissingError);
 }
 
 BOOST_FIXTURE_TEST_CASE(test_wrongVersion, EmptyFixture) {
     // check that Facade throws exception for mismatching version key
     std::istringstream stream("/css_meta\t\\N\n/css_meta/version\t1000000000");
     boost::shared_ptr<KvInterfaceImplMem> kvI(new KvInterfaceImplMem(stream));
-    BOOST_CHECK_THROW(FacadeFactory::createCacheFacade(kvI), VersionMismatchError);
+    BOOST_CHECK_THROW(FacadeFactory::createCacheFacade(kvI, "."), VersionMismatchError);
 }
 
 BOOST_FIXTURE_TEST_CASE(test_okVersion, EmptyFixture) {
@@ -161,7 +161,7 @@ BOOST_FIXTURE_TEST_CASE(test_okVersion, EmptyFixture) {
     std::istringstream stream("/css_meta\t\\N\n/css_meta/version\t" +
             boost::lexical_cast<string>(Facade::cssVersion()));
     boost::shared_ptr<KvInterfaceImplMem> kvI(new KvInterfaceImplMem(stream));
-    BOOST_CHECK_NO_THROW(FacadeFactory::createCacheFacade(kvI));
+    BOOST_CHECK_NO_THROW(FacadeFactory::createCacheFacade(kvI, "."));
 }
 
 BOOST_AUTO_TEST_CASE(containsDb) {

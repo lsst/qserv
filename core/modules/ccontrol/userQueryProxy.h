@@ -52,15 +52,6 @@ enum _userQueryProxyConst {UserQueryEnable=1};
 /// @return error description
 std::string const& UserQuery_getError(int session);
 
-/// @return discovered constraints in the query
-lsst::qserv::query::ConstraintVec UserQuery_getConstraints(int session);
-
-/// @return the dominant db for the query
-std::string const& UserQuery_getDominantDb(int session);
-
-/// @return number of stripes and substripes
-lsst::qserv::css::StripingParams UserQuery_getDbStriping(int session);
-
 /// @return a string describing the progress on the query at a chunk-by-chunk
 /// level. Userful for diagnosis when queries are squashed or return errors.
 std::string UserQuery_getExecDesc(int session);
@@ -81,9 +72,6 @@ void UserQuery_discard(int session);
 
 /// @return sessionId
 int UserQuery_takeOwnership(UserQuery* uq);
-
-/// @return true if czar/css believes db exists
-bool UserQuery_containsDb(int session, std::string const& dbName);
 
 /// For peer python-interface code. Not to be called directly from
 /// the Python layer.

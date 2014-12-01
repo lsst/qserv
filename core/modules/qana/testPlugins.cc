@@ -52,7 +52,8 @@ struct TestFixture {
         // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
         // Use admin/examples/testMap_generateMap
         std::string kvMapPath = "./modules/qana/testPlugins.kvmap"; // FIXME
-        cssFacade = lsst::qserv::css::FacadeFactory::createMemFacade(kvMapPath);
+        cssFacade = lsst::qserv::css::FacadeFactory::createMemFacade(
+            kvMapPath, ".");
     }
 
     ~TestFixture(void) {}

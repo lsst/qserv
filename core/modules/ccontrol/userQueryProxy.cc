@@ -83,21 +83,6 @@ std::string const& UserQuery_getError(int session) {
     return uqManager.get(session)->getError();
 }
 
-/// @return discovered constraints in the query
-lsst::qserv::query::ConstraintVec UserQuery_getConstraints(int session) {
-    return uqManager.get(session)->getConstraints();
-}
-
-/// @return the dominant db for the query
-std::string const& UserQuery_getDominantDb(int session) {
-    return uqManager.get(session)->getDominantDb();
-}
-
-/// @return number of stripes and substripes
-lsst::qserv::css::StripingParams UserQuery_getDbStriping(int session) {
-    return uqManager.get(session)->getDbStriping();
-}
-
 /// @return a string describing the progress on the query at a chunk-by-chunk
 /// level. Userful for diagnosis when queries are squashed or return errors.
 std::string UserQuery_getExecDesc(int session) {
@@ -137,11 +122,6 @@ void UserQuery_discard(int session) {
 int UserQuery_takeOwnership(UserQuery* uq) {
     UserQuery::Ptr uqp(uq);
     return uqManager.newSession(uqp);
-}
-
-bool UserQuery_containsDb(int session, std::string const& dbName) {
-    LOGF_DEBUG("EXECUTING submitQuery3(%1%)" % session);
-    return uqManager.get(session)->containsDb(dbName);
 }
 
 UserQuery& UserQuery_get(int session) {

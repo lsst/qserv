@@ -41,8 +41,10 @@
 #include "ccontrol/userQueryProxy.h"
 #include "css/Facade.h"
 #include "css/KvInterfaceImplMem.h"
+#include "mysql/MySqlConfig.h"
 #include "qdisp/Executive.h"
 #include "qproc/QuerySession.h"
+#include "qproc/SecondaryIndex.h"
 #include "rproc/InfileMerger.h"
 #include "rproc/TableMerger.h"
 
@@ -57,11 +59,15 @@ public:
     void readConfig(StringMap const& m);
 
     /// Import facade config and construct Facade
-    void readConfigFacade(StringMap const& m);
+    void readConfigFacade(StringMap const& m,
+                          boost::shared_ptr<css::KvInterface> kvi);
 
     void initFacade(std::string const& cssTech, std::string const& cssConn,
-                    int timeout_msec);
-    void initFacade(boost::shared_ptr<css::KvInterface> kvi);
+                    int timeout,
+                    std::string const& emptyChunkPath);
+
+    void initFacade(boost::shared_ptr<css::KvInterface> kvi,
+                    std::string const& emptyChunkPath);
 
     void initMergerTemplate(); ///< Construct template config for merger
 
@@ -69,6 +75,7 @@ public:
     qdisp::Executive::Config::Ptr executiveConfig;
     boost::shared_ptr<css::Facade> facade;
     rproc::InfileMergerConfig infileMergerConfigTemplate;
+    boost::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -78,11 +85,7 @@ UserQueryFactory::UserQueryFactory(StringMap const& m,
     ::putenv((char*)"XRDDEBUG=1");
     assert(_impl);
     _impl->readConfig(m);
-    if(!kvi) {
-        _impl->readConfigFacade(m);
-    } else {
-        _impl->initFacade(kvi);
-    }
+    _impl->readConfigFacade(m, kvi);
 }
 
 int
@@ -97,11 +100,13 @@ UserQueryFactory::newUserQuery(std::string const& query,
         qs->setDefaultDb(defaultDb);
         qs->setQuery(query);
     } catch (...) {
+        LOGF_INFO("Error setting up QuerySession (query is invalid).");
         sessionValid = false;
     }
     UserQuery* uq = new UserQuery(qs);
     int sessionId = UserQuery_takeOwnership(uq);
     uq->_sessionId = sessionId;
+    uq->_secondaryIndex = _impl->secondaryIndex;
     if(sessionValid) {
         uq->_executive = boost::make_shared<qdisp::Executive>(
                 _impl->executiveConfig, uq->_messageStore);
@@ -110,6 +115,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
             = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
         ict->targetTable = resultTable;
         uq->_infileMergerConfig.reset(ict);
+        uq->_setupChunking();
     } else {
         uq->_errorExtra += "Unknown error setting QuerySession";
     }
@@ -138,31 +144,49 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "resultdb.db",
         "Error, resultdb.db not found. Using qservResult.",
         "qservResult");
+    mysql::MySqlConfig mc;
+    mc.username = infileMergerConfigTemplate.user;
+    mc.dbName = infileMergerConfigTemplate.targetDb; // any valid db is ok.
+    mc.socket = infileMergerConfigTemplate.socket;
+    secondaryIndex = boost::make_shared<qproc::SecondaryIndex>(mc);
 }
 
-void UserQueryFactory::Impl::readConfigFacade(StringMap const& m) {
+void UserQueryFactory::Impl::readConfigFacade(
+    StringMap const& m,
+    boost::shared_ptr<css::KvInterface> kvi) {
     ConfigMap cm(m);
-    std::string cssTech = cm.get(
-        "css.technology",
-        "Error, css.technology not found.",
-        "invalid");
-    std::string cssConn = cm.get(
-        "css.connection",
-        "Error, css.connection not found.",
-        "");
-    int cssTimeout = atoi(cm.get(
-        "css.timeout",
-        "Error, css.timeout not found.",
-        "10000").c_str());
-    initFacade(cssTech, cssConn, cssTimeout);
+
+    std::string emptyChunkPath = cm.get(
+        "partitioner.emptychunkpath",
+        "Error, missing path for Empty chunk file, using '.'.",
+        ".");
+    if (!kvi) {
+        std::string cssTech = cm.get(
+            "css.technology",
+            "Error, css.technology not found.",
+            "invalid");
+        std::string cssConn = cm.get(
+            "css.connection",
+            "Error, css.connection not found.",
+            "");
+        int cssTimeout = cm.getTyped<int>(
+            "css.timeout",
+            "Error, css.timeout not found.",
+            10000);
+
+        initFacade(cssTech, cssConn, cssTimeout, emptyChunkPath);
+    } else {
+        initFacade(kvi, emptyChunkPath);
+    }
 }
 
 void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
                                         std::string const& cssConn,
-                                        int timeout_msec) {
+                                        int timeout_msec,
+                                        std::string const& emptyChunkPath) {
     if (cssTech == "mem") {
         LOGF_INFO("Initializing memory-based css, with %1%" % cssConn);
-        facade = css::FacadeFactory::createMemFacade(cssConn);
+        facade = css::FacadeFactory::createMemFacade(cssConn, emptyChunkPath);
     } else {
         LOGF_ERROR("Unable to determine css technology, check config file.");
         throw ConfigError("Invalid css technology, check config file.");
@@ -170,9 +194,9 @@ void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
 }
 
 void UserQueryFactory::Impl::initFacade(
-    boost::shared_ptr<css::KvInterface> kvi) {
-
-    facade = css::FacadeFactory::createCacheFacade(kvi);
+    boost::shared_ptr<css::KvInterface> kvi,
+    std::string const& emptyChunkPath) {
+    facade = css::FacadeFactory::createCacheFacade(kvi, emptyChunkPath);
     LOGF_INFO("Initializing cache-based css facade");
 }
 
