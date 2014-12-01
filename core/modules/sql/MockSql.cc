@@ -20,6 +20,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
+// Local headers
 #include "sql/MockSql.h"
 
 namespace lsst {
@@ -37,7 +41,7 @@ namespace sql {
 boost::shared_ptr<SqlResultIter>
 MockSql::getQueryIter(std::string const& query) {
     typedef VecList::const_iterator SubIter;
-    boost::shared_ptr<Iter<SubIter> > iter(new Iter<SubIter>(vec.begin(), vec.end()));
+    boost::shared_ptr<Iter<SubIter> > iter = boost::make_shared<Iter<SubIter> >(vec.begin(), vec.end());
     return iter;
 }
 
