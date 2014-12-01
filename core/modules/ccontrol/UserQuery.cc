@@ -135,15 +135,18 @@ std::string const& UserQuery::getError() const {
 /// For valid constraints: see lsst.qserv.czar.spatial
 /// Region factory must handle or explicitly ignore all constraints.
 /// Most constraints generated in QsRestrictor
+/// Consider for removing (C++ geom)
 lsst::qserv::query::ConstraintVec UserQuery::getConstraints() const {
     return _qSession->getConstraints();
 }
 /// @return database for partitioning and dispatch
+/// Consider for removing (C++ geom)
 std::string const& UserQuery::getDominantDb() const {
     return _qSession->getDominantDb();
 }
 
 /// @return striping parameters for use by chunk scope evaluation
+/// Consider for removing (C++ geom)
 lsst::qserv::css::StripingParams UserQuery::getDbStriping() const {
     return _qSession->getDbStriping();
 }
@@ -270,6 +273,70 @@ void UserQuery::_setupMerger() {
     LOGF_INFO("UserQuery::_setupMerger()");
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
     _infileMerger = boost::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
+}
+
+// Temporary
+class PartitioningMap {
+public:
+    /// Placeholder
+    template <typename T>
+    explicit PartitioningMap(T& t) {
+        // FIXME
+    }
+    template <typename T>
+    explicit PartitioningMap(T t) {
+        // FIXME
+    }
+    template <typename T>
+    void applyConstraints(T& constraints) {
+        // FIXME
+    }
+};
+void UserQuery::_setupChunking() {
+    //     self.dominantDb = UserQuery_getDominantDb(self.sessionId)
+    std::string dominantDb = _qSession->getDominantDb();
+    if(!_qSession->validateDominantDb()) {
+        // FIXME: mark error.
+        return;
+    }
+    { //            self._computeConstraintsAsHints()
+        // """Retrieve discovered constraints from the query and
+        // evaluate chunk coverage against them."""
+        boost::shared_ptr<query::ConstraintVector> constraints
+            = _qSession->getConstraints();
+        // map constraints into hintsdict and hintlist
+        
+        // self.pmap = self._makePmap(self.dominantDb, self.dbStriping)
+        PartitioningMap pm(_qSession->getDbStriping());
+        pm.applyConstraints(constraints);
+    }
+    boost::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
+    {
+        //self._emptyChunks = metadata.getEmptyChunks(self.dominantDb)
+        eSet = _qSession->getEmptyChunks();
+        if(!eSet) {
+            // FIXME: mark error, no empty chunks
+        }
+    }
+    if (_qSession->hasChunks()) {
+        //   iterate chunk
+        int count = 0;
+        int chunkId = 1234;
+        for(; false; ) { // Iterate over pm, filtering out emptychunks
+            ++count;
+            if (eSet->find(chunkId) == eSet->end()) {
+                // log: skipping empty chunk
+                continue;
+            }
+            //addChunk(chunkSpec);                
+            ++count;
+        }
+    } else {
+        //addChunk(dummychunk);
+    }   
+
+    // self._addChunks()
+    
 }
 
 }}} // lsst::qserv::ccontrol
