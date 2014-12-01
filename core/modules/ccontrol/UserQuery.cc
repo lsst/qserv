@@ -109,7 +109,7 @@ public:
     static boost::shared_ptr<ChunkMsgReceiver>
     newInstance(int chunkId,
                 boost::shared_ptr<qdisp::MessageStore> ms) {
-        boost::shared_ptr<ChunkMsgReceiver> r(new ChunkMsgReceiver);
+        boost::shared_ptr<ChunkMsgReceiver> r = boost::make_shared<ChunkMsgReceiver>();
         r->chunkId = chunkId;
         r->messageStore = ms;
         return r;
