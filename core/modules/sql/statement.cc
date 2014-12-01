@@ -25,6 +25,9 @@
 // System headers
 #include <sstream>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Qserv headers
 #include "global/Bug.h"
 #include "sql/Schema.h"
@@ -51,7 +54,7 @@ std::string formCreateTable(std::string const& table, sql::Schema const& s) {
 }
 
 boost::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s) {
-    boost::shared_ptr<InsertColumnVector> icv(new InsertColumnVector);
+    boost::shared_ptr<InsertColumnVector> icv = boost::make_shared<InsertColumnVector>();
     ColumnsIter b, i, e;
     for(i=b=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
         InsertColumn ic;
