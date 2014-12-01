@@ -49,6 +49,7 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
+class EmptyChunks;
 class KvInterface; // forward declaration
 class KvInterfaceImplMem;
 
@@ -93,6 +94,9 @@ virtual     MatchTableParams getMatchTableParams(std::string const& dbName,
      */
     static int cssVersion();
 
+virtual     EmptyChunks const& getEmptyChunks() const;
+
+
 private:
     explicit Facade(std::istream& mapStream);
     explicit Facade(boost::shared_ptr<KvInterface> kv);
@@ -115,6 +119,8 @@ private:
 
 private:
     boost::shared_ptr<KvInterface> _kvI;
+    std::auto_ptr<EmptyChunks> _emptyChunks;
+
 protected:
     Facade() {}
     std::string _prefix; // optional prefix, for isolating tests from production

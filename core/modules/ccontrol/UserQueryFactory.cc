@@ -110,6 +110,9 @@ UserQueryFactory::newUserQuery(std::string const& query,
             = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
         ict->targetTable = resultTable;
         uq->_infileMergerConfig.reset(ict);
+        if (false) {
+            uq->_setupChunking();
+        }
     } else {
         uq->_errorExtra += "Unknown error setting QuerySession";
     }

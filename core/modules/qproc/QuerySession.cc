@@ -49,6 +49,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "css/EmptyChunks.h"
 #include "css/Facade.h"
 #include "css/CssError.h"
 #include "global/constants.h"
@@ -184,9 +185,20 @@ bool QuerySession::containsDb(std::string const& dbName) const {
     return _context->containsDb(dbName);
 }
 
+bool QuerySession::validateDominantDb() const {
+    // FIXME: Check striping: if stripes or substripes < 1, mark error.
+    return _context->containsDb(_context->dominantDb);
+}
+
 css::StripingParams
 QuerySession::getDbStriping() {
     return _context->getDbStriping();
+}
+
+boost::shared_ptr<IntSet const>
+QuerySession::getEmptyChunks() {
+    // FIXME: do we need to catch an exception here?
+    return _cssFacade->getEmptyChunks().getEmpty(_context->dominantDb);
 }
 
 rproc::MergeFixup
