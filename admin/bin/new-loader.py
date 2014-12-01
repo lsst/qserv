@@ -247,7 +247,7 @@ class Loader(object):
         self.unzipDir = None   # directory used for uncompressed data
         self.files = None      # list of data files after uncompressing
         self.schema = None     # "CREATE TABLE" statement
-
+        self.chunks = set()    # set of chunks that were loaded
 
     def run(self):
         """
@@ -586,6 +586,11 @@ class Loader(object):
         csvPrefix = "out.csv"
 
         for file, chunkId, overlap in self._chunkFiles():
+
+            # remember all chunks that we loaded
+            if not overlap:
+                self.chunks.add(chunkId)
+
             if self.args.one_table:
                 # just load everything into existing table
                 self._loadOneFile(self.args.table, file, csvPrefix)
@@ -597,6 +602,9 @@ class Loader(object):
                 # load data into chunk table
                 self._loadOneFile(table, file, csvPrefix)
 
+        if not self.args.one_table:
+            # also make special dummy chunk in case of partitioned data
+            self._makeChunkTable(1234567890, False)
 
     def _makeChunkTable(self, chunkId, overlap):
         """ Create table foa chunk if it does not exist yet. Returns table name. """
