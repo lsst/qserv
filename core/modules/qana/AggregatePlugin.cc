@@ -32,6 +32,9 @@
 #include <string>
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -53,7 +56,7 @@ namespace qana {
 
 inline query::ValueExprPtr
 newExprFromAlias(std::string const& alias) {
-    boost::shared_ptr<query::ColumnRef> cr(new query::ColumnRef("", "", alias));
+    boost::shared_ptr<query::ColumnRef> cr = boost::make_shared<query::ColumnRef>("", "", alias);
     boost::shared_ptr<query::ValueFactor> vf;
     vf = query::ValueFactor::newColumnRefFactor(cr);
     return query::ValueExpr::newSimple(vf);
