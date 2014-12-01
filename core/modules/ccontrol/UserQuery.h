@@ -122,6 +122,7 @@ private:
     void setSessionId(int session) { _sessionId = session; }
     void _setupMerger();
     void _discardMerger();
+    void _setupChunking();
 
     // Delegate classes
     boost::shared_ptr<qdisp::Executive> _executive;

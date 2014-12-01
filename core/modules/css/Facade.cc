@@ -44,6 +44,7 @@
 
 // Local headers
 #include "css/CssError.h"
+#include "css/EmptyChunks.h"
 #include "css/KvInterfaceImplMem.h"
 #include "global/stringTypes.h"
 
@@ -81,6 +82,7 @@ namespace css {
 Facade::Facade(std::istream& mapStream) {
     _kvI.reset(new KvInterfaceImplMem(mapStream));
     _versionCheck();
+    _emptyChunks.reset(new EmptyChunks());
 }
 
 Facade::~Facade() {
@@ -356,6 +358,12 @@ Facade::getMatchTableParams(std::string const& dbName,
         }
     }
     return p;
+}
+
+EmptyChunks const&
+Facade::getEmptyChunks() const {
+    assert(_emptyChunks.get());
+    return *_emptyChunks;
 }
 
 void
