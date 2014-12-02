@@ -52,11 +52,15 @@ public:
     void readConfig(StringMap const& m);
 
     /// Import facade config and construct Facade
-    void readConfigFacade(StringMap const& m);
+    void readConfigFacade(StringMap const& m,
+                          boost::shared_ptr<css::KvInterface> kvi);
 
     void initFacade(std::string const& cssTech, std::string const& cssConn,
-                    int timeout_msec);
-    void initFacade(boost::shared_ptr<css::KvInterface> kvi);
+                    int timeout,
+                    std::string const& emptyChunkPath);
+
+    void initFacade(boost::shared_ptr<css::KvInterface> kvi,
+                    std::string const& emptyChunkPath);
 
     void initMergerTemplate(); ///< Construct template config for merger
 
@@ -73,11 +77,7 @@ UserQueryFactory::UserQueryFactory(StringMap const& m,
     _impl.reset(new Impl);
     assert(_impl);
     _impl->readConfig(m);
-    if(!kvi) {
-        _impl->readConfigFacade(m);
-    } else {
-        _impl->initFacade(kvi);
-    }
+    _impl->readConfigFacade(m, kvi);
 }
 
 int
@@ -139,29 +139,42 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "qservResult");
 }
 
-void UserQueryFactory::Impl::readConfigFacade(StringMap const& m) {
+void UserQueryFactory::Impl::readConfigFacade(
+    StringMap const& m,
+    boost::shared_ptr<css::KvInterface> kvi) {
     ConfigMap cm(m);
-    std::string cssTech = cm.get(
-        "css.technology",
-        "Error, css.technology not found.",
-        "invalid");
-    std::string cssConn = cm.get(
-        "css.connection",
-        "Error, css.connection not found.",
-        "");
-    int cssTimeout = atoi(cm.get(
-        "css.timeout",
-        "Error, css.timeout not found.",
-        "10000").c_str());
-    initFacade(cssTech, cssConn, cssTimeout);
+
+    std::string emptyChunkPath = cm.get(
+        "partitioning.emptyChunkPath",
+        "Error, missing path for Empty chunk file, using '.'.",
+        ".");
+    if (!kvi) {
+        std::string cssTech = cm.get(
+            "css.technology",
+            "Error, css.technology not found.",
+            "invalid");
+        std::string cssConn = cm.get(
+            "css.connection",
+            "Error, css.connection not found.",
+            "");
+        int cssTimeout = cm.getTyped<int>(
+            "css.timeout",
+            "Error, css.timeout not found.",
+            10000);
+
+        initFacade(cssTech, cssConn, cssTimeout, emptyChunkPath);
+    } else {
+        initFacade(kvi, emptyChunkPath);
+    }
 }
 
 void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
                                         std::string const& cssConn,
-                                        int timeout_msec) {
+                                        int timeout_msec,
+                                        std::string const& emptyChunkPath) {
     if (cssTech == "mem") {
         LOGF_INFO("Initializing memory-based css, with %1%" % cssConn);
-        facade = css::FacadeFactory::createMemFacade(cssConn);
+        facade = css::FacadeFactory::createMemFacade(cssConn, emptyChunkPath);
     } else {
         LOGF_ERROR("Unable to determine css technology, check config file.");
         throw ConfigError("Invalid css technology, check config file.");
@@ -169,9 +182,9 @@ void UserQueryFactory::Impl::initFacade(std::string const& cssTech,
 }
 
 void UserQueryFactory::Impl::initFacade(
-    boost::shared_ptr<css::KvInterface> kvi) {
-
-    facade = css::FacadeFactory::createCacheFacade(kvi);
+    boost::shared_ptr<css::KvInterface> kvi,
+    std::string const& emptyChunkPath) {
+    facade = css::FacadeFactory::createCacheFacade(kvi, emptyChunkPath);
     LOGF_INFO("Initializing cache-based css facade");
 }
 
