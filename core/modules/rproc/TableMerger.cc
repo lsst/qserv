@@ -72,7 +72,7 @@ std::string getTimeStampId() {
 }
 
 boost::shared_ptr<MySqlConfig> makeSqlConfig(TableMergerConfig const& c) {
-    boost::shared_ptr<MySqlConfig> sc(new MySqlConfig());
+    boost::shared_ptr<MySqlConfig> sc = boost::make_shared<MySqlConfig>();
     assert(sc.get());
     sc->username = c.user;
     sc->dbName = c.targetDb;
