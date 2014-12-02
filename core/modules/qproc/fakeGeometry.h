@@ -31,6 +31,13 @@
   */
 
 // System headers
+#include <vector>
+
+// Other external headers
+#include "boost/make_shared.hpp"
+
+// Qserv headers
+#include "css/StripingParams.h"
 
 namespace lsst {
 namespace qserv {
