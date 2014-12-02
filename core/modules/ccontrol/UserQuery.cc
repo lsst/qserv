@@ -71,6 +71,7 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
+#include "qproc/fakeGeometry.h" // Temporary
 
 // Qserv headers
 #include "ccontrol/MergingRequester.h"
@@ -82,6 +83,7 @@
 #include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
+#include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
 #include "qproc/TaskMsgFactory2.h"
 #include "rproc/InfileMerger.h"
@@ -277,25 +279,9 @@ void UserQuery::_setupMerger() {
     _infileMerger = boost::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
 }
 
-// Temporary
-class PartitioningMap {
-public:
-    /// Placeholder
-    template <typename T>
-    explicit PartitioningMap(T& t) {
-        // FIXME
-    }
-    template <typename T>
-    explicit PartitioningMap(T t) {
-        // FIXME
-    }
-    template <typename T>
-    void applyConstraints(T& constraints) {
-        // FIXME
-    }
-};
 void UserQuery::_setupChunking() {
     //     self.dominantDb = UserQuery_getDominantDb(self.sessionId)
+    boost::shared_ptr<qproc::IndexMap> im;
     std::string dominantDb = _qSession->getDominantDb();
     if(!_qSession->validateDominantDb()) {
         // FIXME: mark error.
@@ -309,8 +295,11 @@ void UserQuery::_setupChunking() {
         // map constraints into hintsdict and hintlist
         
         // self.pmap = self._makePmap(self.dominantDb, self.dbStriping)
-        PartitioningMap pm(_qSession->getDbStriping());
-        pm.applyConstraints(constraints);
+        css::StripingParams partStriping = _qSession->getDbStriping();
+        boost::shared_ptr<qproc::PartitioningMap> pm(partStriping);
+        im = boost::make_shared<qproc::IndexMap>(pm);
+
+        im.applyConstraints(constraints);
     }
     boost::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
     {
