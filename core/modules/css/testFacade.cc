@@ -72,7 +72,7 @@ InitRand _initRand;
 struct FacadeFixture {
     FacadeFixture(void) :
         kvI(new KvInterfaceImplMem()),
-        facade(FacadeFactory::createCacheFacade(kvI)) {
+        facade(FacadeFactory::createCacheFacade(kvI, ".")) {
 
         kv.push_back(make_pair("/", ""));
 
