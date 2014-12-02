@@ -78,17 +78,6 @@ namespace test = boost::test_tools;
 
 namespace {
 
-ChunkSpec makeChunkSpec(int chunkNum, bool withSubChunks=false) {
-    ChunkSpec cs;
-    cs.chunkId = chunkNum;
-    if(withSubChunks) {
-        int base = 1000 * chunkNum;
-        cs.subChunks.push_back(base);
-        cs.subChunks.push_back(base+10);
-        cs.subChunks.push_back(base+20);
-    }
-    return cs;
-}
 void testParse(SelectParser::Ptr p) {
     p->setup();
 }
@@ -117,7 +106,7 @@ boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,
 }
 
 std::string computeFirst(QuerySession& qs, bool withSubChunks=true) {
-    qs.addChunk(makeChunkSpec(100, withSubChunks));
+    qs.addChunk(ChunkSpec::makeFake(100, withSubChunks));
     QuerySession::Iter i = qs.cQueryBegin();
     QuerySession::Iter e = qs.cQueryEnd();
     BOOST_REQUIRE(i != e);
@@ -361,7 +350,7 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     BOOST_CHECK_EQUAL_COLLECTIONS(r._params.begin(), r._params.end(),
                                   params, params+4);
 
-    qs->addChunk(makeChunkSpec(100,true));
+    qs->addChunk(ChunkSpec::makeFake(100,true));
     QuerySession::Iter i = qs->cQueryBegin();
     QuerySession::Iter e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
@@ -671,7 +660,7 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_CHECK(!context->restrictors);
 
-    qs->addChunk(makeChunkSpec(100,true));
+    qs->addChunk(ChunkSpec::makeFake(100,true));
     QuerySession::Iter i = qs->cQueryBegin();
     QuerySession::Iter e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
@@ -919,7 +908,7 @@ BOOST_AUTO_TEST_CASE(NoSpec) {
         "NATURAL LEFT OUTER JOIN LSST.Source_100 AS s2 "
         "WHERE s1.bar=s2.bar";
     boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt);
-    qs->addChunk(makeChunkSpec(100,true));
+    qs->addChunk(ChunkSpec::makeFake(100,true));
     QuerySession::Iter i = qs->cQueryBegin();
     QuerySession::Iter e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
@@ -1096,7 +1085,7 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     BOOST_CHECK(context);
     BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
     BOOST_CHECK(!context->restrictors);
-    qs->addChunk(makeChunkSpec(100,true));
+    qs->addChunk(ChunkSpec::makeFake(100,true));
     QuerySession::Iter i = qs->cQueryBegin();
     QuerySession::Iter e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);

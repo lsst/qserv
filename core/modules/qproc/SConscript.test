@@ -53,13 +53,19 @@ deps = map(lambda i:i, deps) # un-chain
 deps = cacheObjs(env, deps, ".o")
 
 myDeps = filter(lambda i: not str(i).startswith("test"), env.Glob("*.cc"))
+myDeps = map(env.Object, myDeps)
 extDeps = "antlr boost_regex boost_thread pthread boost_system protobuf ssl crypto log log4cxx XrdPosix XrdClient XrdPosixPreload XrdUtils mysqlclient_r zookeeper_mt".split()
 p = env.Program(["testQueryAnalysis.cc"] + myDeps + deps, LIBS=findLibs(extDeps))
 env.Depends(p, header)
 programs.append(p)
 
+p = env.Program(["testChunkSpec.cc"] + myDeps + deps, LIBS=findLibs(extDeps))
+programs.append(p)
+p = env.Program(["testIndexMap.cc"] + myDeps + deps, LIBS=findLibs(extDeps))
+programs.append(p)
+
 # add a unit test which runs on every build
 utest = env.UnitTest(p)
-env.Append(UNIT_TESTS=utest)
+env.Append(UNIT_TESTS=map(env.UnitTest, programs))
 
 Return('programs')

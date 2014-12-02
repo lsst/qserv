@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014-2015 AURA/LSST.
+ * Copyright 2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,20 +20,24 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_INTTYPES_H
-#define LSST_QSERV_INTTYPES_H
- /**
-  * @brief  Global int types
-  *
-  */
-#include <stdint.h>
-#include <set>
-#include <vector>
+#ifndef LSST_QSERV_QPROC_QUERYPROCESSINGERROR_H
+#define LSST_QSERV_QPROC_QUERYPROCESSINGERROR_H
+
+// System headers
+#include <stdexcept>
 
 namespace lsst {
 namespace qserv {
-typedef std::set<int> IntSet;
-typedef std::vector<int> IntVector;
-typedef std::vector<int32_t> Int32Vector;
-}}
-#endif // LSST_QSERV_INTTYPES_H
+namespace qproc {
+
+/// QueryProcessingError marks an runtime error in query processing.
+class QueryProcessingError : public std::runtime_error {
+public:
+    explicit QueryProcessingError(char const* msg)
+        : std::runtime_error(msg) {}
+    explicit QueryProcessingError(std::string const& msg)
+        : std::runtime_error(msg) {}
+};
+}}} // namespace lsst::qserv::qproc
+
+#endif // LSST_QSERV_QPROC_QUERYPROCESSINGERROR_H
