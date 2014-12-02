@@ -187,7 +187,7 @@ function utilities()
         q = string.gsub(q, '[\n\t]+', ' ')
 
         -- remove all spaces at the beginning
-        q = string.ltrim(q)
+        q = string.gsub(q, "^%s*", "")
 
         -- remove all spaces before/after '='
         q = string.gsub(q, '[ ]+=', '=')
@@ -475,7 +475,7 @@ function queryType()
     }
 end
 
-
+qType = queryType()
 
 -------------------------------------------------------------------------------
 --                            Query processing                               --
@@ -642,8 +642,6 @@ function read_query(packet)
             -- it is useful to always have a space
             -- even at the end of last predicate
         local qU = string.upper(q) .. ' '
-
-        qType = queryType()
 
         -- check for special queries that can be handled locally
         -- note we make no modifications to proxy.queries,
