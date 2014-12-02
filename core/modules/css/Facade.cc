@@ -67,7 +67,6 @@ namespace css {
 Facade::Facade(std::istream& mapStream)
     : _kvI(new KvInterfaceImplMem(mapStream)) {
     _versionCheck();
-    _emptyChunks.reset(new EmptyChunks());
 }
 
 Facade::~Facade() {
@@ -445,17 +444,20 @@ Facade::_tableIsSubChunked(string const& dbName,
 }
 
 boost::shared_ptr<Facade>
-FacadeFactory::createMemFacade(string const& mapPath) {
+FacadeFactory::createMemFacade(string const& mapPath,
+                               std::string const& emptyChunkPath) {
     std::ifstream f(mapPath.c_str());
     if(f.fail()) {
         throw ConnError();
     }
-    return FacadeFactory::createMemFacade(f);
+    return FacadeFactory::createMemFacade(f, emptyChunkPath);
 }
 
 boost::shared_ptr<Facade>
-FacadeFactory::createMemFacade(std::istream& mapStream) {
+FacadeFactory::createMemFacade(std::istream& mapStream,
+                               std::string const& emptyChunkPath) {
     boost::shared_ptr<css::Facade> cssFPtr(new css::Facade(mapStream));
+    cssFPtr->_emptyChunks.reset(new EmptyChunks(emptyChunkPath));
     return cssFPtr;
 }
 
@@ -560,8 +562,10 @@ Facade::Facade(boost::shared_ptr<KvInterface> kv)
 }
 
 boost::shared_ptr<Facade>
-FacadeFactory::createCacheFacade(boost::shared_ptr<KvInterface> kv) {
+FacadeFactory::createCacheFacade(boost::shared_ptr<KvInterface> kv,
+                                 std::string const& emptyChunkPath) {
     boost::shared_ptr<css::Facade> facade(new Facade(kv));
+    facade->_emptyChunks.reset(new EmptyChunks(emptyChunkPath));
     return facade;
 }
 }}} // namespace lsst::qserv::css

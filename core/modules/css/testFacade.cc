@@ -83,7 +83,7 @@ struct FacadeFixture {
         std::istringstream stream("/css_meta\t\\N\n/css_meta/version\t" +
                 boost::lexical_cast<string>(Facade::cssVersion()));
         kvI.reset(new KvInterfaceImplMem(stream));
-        facade = FacadeFactory::createCacheFacade(kvI);
+        facade = FacadeFactory::createCacheFacade(kvI, ".");
 
         kv.push_back(make_pair("/", ""));
 

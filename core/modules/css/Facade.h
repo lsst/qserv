@@ -128,9 +128,12 @@ protected:
 
 class FacadeFactory {
 public:
-    static boost::shared_ptr<Facade> createMemFacade(std::string const& mapPath);
-    static boost::shared_ptr<Facade> createMemFacade(std::istream& mapStream);
-    static boost::shared_ptr<Facade> createCacheFacade(boost::shared_ptr<KvInterface> kv);
+    static boost::shared_ptr<Facade> createMemFacade(
+        std::string const& mapPath, std::string const& emptyChunkPath);
+    static boost::shared_ptr<Facade> createMemFacade(
+        std::istream& mapStream, std::string const& emptyChunkPath);
+    static boost::shared_ptr<Facade> createCacheFacade(
+        boost::shared_ptr<KvInterface> kv, std::string const& emptyChunkPath);
 };
 
 }}} // namespace lsst::qserv::css
