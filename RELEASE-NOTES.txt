@@ -1,3 +1,27 @@
+R E L E A S E   2014_11
+=======================
+
+Code improvements:
+ * DM-1395: Reimplement CSS using JSON-packing, czar kazoo + c++ snapshotting phase 2
+ * DM-1252: Implement structure for DB/table metadata in CSS
+ * DM-1453: Add data versions to Zookeeper
+ * DM-1539: Add support for mysql JDBC driver
+ * DM-658:  Database name used by integration tests should use their own dedicated
+            database, not "LSST"
+ * DM-1338: Make QSERV_RUN_DIR scripts able to detect qserv install paths using eups
+ * DM-1506: Support new version of newinstall.sh
+ * DM-1446: Fine tune czar and worker database initialization
+ * DM-1428: Add return codes for qserv-check-integration.py and qserv-testunit.py
+
+New features:
+ * DM-1497: Package Qserv mono-node instance in Docker
+
+Documentation improvements:
+ * DM-1475: Fix 2014_09 documentation
+
+Known issues:
+ * Problems with swig 1.0 (Fedora 19 and Ubuntu 14.04 ship with 1.0).
+
 R E L E A S E   2014_10
 =======================
 
