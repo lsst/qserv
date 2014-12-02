@@ -160,8 +160,10 @@ struct ParserFixture {
         std::string mapBuffer(reinterpret_cast<char const*>(testMap),
                               testMap_length);
         std::istringstream mapStream(mapBuffer);
+        std::string emptyChunkPath(".");
         qsTest.cssFacade =
-            lsst::qserv::css::FacadeFactory::createMemFacade(mapStream);
+            lsst::qserv::css::FacadeFactory::createMemFacade(mapStream,
+                                                             emptyChunkPath);
     };
     ~ParserFixture(void) { };
 
