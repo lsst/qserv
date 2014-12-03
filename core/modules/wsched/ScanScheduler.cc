@@ -184,7 +184,7 @@ ScanScheduler::_getNextTasks(int max) {
         if(!p) { break; }
         allowNewChunk = false; // Only allow one new chunk
         if(!tq) {
-            tq.reset(new wbase::TaskQueue());
+            tq = boost::make_shared<wbase::TaskQueue>();
         }
         tq->push_back(p);
 

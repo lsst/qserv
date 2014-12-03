@@ -36,6 +36,7 @@
 #include <sstream>
 
 // Third-party headers
+#include "boost/make_shared.hpp"
 #include "boost/thread.hpp"
 
 // Qserv headers
@@ -140,7 +141,7 @@ GroupScheduler::_getNextTasks(int max) {
     LOGF(_logger, LOG_LVL_DEBUG, "_getNextTasks(%1%)>->->" % max);
     wbase::TaskQueuePtr tq;
     if(_queue.size() > 0) {
-        tq.reset(new wbase::TaskQueue());
+        tq = boost::make_shared<wbase::TaskQueue>();
         for(int i=max; i >= 0; --i) {
             if(_queue.empty()) { break; }
             wbase::Task::Ptr t = _queue.front();
