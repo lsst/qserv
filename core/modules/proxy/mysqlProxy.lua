@@ -182,6 +182,22 @@ function utilities()
 
     ---------------------------------------------------------------------------
 
+    local removeLeadingComment = function (q)
+        qRet = q
+        x1 = string.find(q, '%\%*')
+        x2 = string.find(q, '%*%/')
+        if x1 and x2 then
+            if x1 > 1 then
+                qRet = string.sub(q, 0, x1) .. string.sub(q, x2+2, string.len(q))
+            else
+                qRet = string.sub(q, x2+2, string.len(q))
+            end
+        end
+        return qRet
+    end
+
+    ---------------------------------------------------------------------------
+
     local removeExtraWhiteSpaces = function (q)
         -- convert new lines and tabs to a space
         q = string.gsub(q, '[\n\t]+', ' ')
@@ -217,6 +233,7 @@ function utilities()
     return {
         tableToString = tableToString,
         csvToTable = csvToTable,
+        removeLeadingComment = removeLeadingComment,
         removeExtraWhiteSpaces = removeExtraWhiteSpaces,
         startsWith = startsWith
     }
@@ -638,7 +655,8 @@ function read_query(packet)
         print("\n*******************\nIntercepted: " .. string.sub(packet, 2))
 
         -- massage the query string to simplify its processing
-        local q = utils.removeExtraWhiteSpaces(string.sub(packet,2))
+        local q = utils.removeLeadingComment(string.sub(packet,2))
+        q = utils.removeExtraWhiteSpaces(q)
             -- it is useful to always have a space
             -- even at the end of last predicate
         local qU = string.upper(q) .. ' '
