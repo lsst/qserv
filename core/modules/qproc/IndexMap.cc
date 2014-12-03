@@ -32,22 +32,42 @@
 #include "qproc/IndexMap.h"
 
 // System headers
+#include <algorithm>
 #include <cassert>
 #include <iterator>
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/lexical_cast.hpp"
+
+// Qserv headers
 #include "global/stringTypes.h"
+#include "qproc/fakeGeometry.h"
+#include "query/Constraint.h"
 
 using lsst::qserv::StringVector;
+using lsst::qserv::qproc::Region;
+using lsst::qserv::qproc::BoxRegion;
+using lsst::qserv::qproc::CircleRegion;
+using lsst::qserv::qproc::EllipseRegion;
+using lsst::qserv::qproc::ConvexPolyRegion;
+using lsst::qserv::qproc::Coordinate;
+
 namespace { // File-scope helpers
 template <typename T>
 std::vector<T> convertVec(StringVector const& v) {
+    std::vector<T> out;
+    std::transform(v.begin(), v.end(), std::back_inserter(out),
+                   boost::lexical_cast<T, std::string>);
+    return out;
 }
-
 template <typename T>
 boost::shared_ptr<Region> make(StringVector const& v) {    
-    return boost::shared_ptr<Region>(new T(convertVec<Coordinate>(v)))
+        return boost::shared_ptr<Region>(new T(convertVec<Coordinate>(v)));
 }
+
+typedef boost::shared_ptr<Region>(*MakeFunc)(StringVector const& v);
+
 struct FuncMap {
     FuncMap() {        
         fMap["box"] = make<BoxRegion>;
@@ -59,8 +79,9 @@ struct FuncMap {
         fMap["qserv_areaspec_ellipse"] = make<EllipseRegion>;
         fMap["qserv_areaspec_poly"] = make<ConvexPolyRegion>;
     }
-    std::map<std::string, int> fMap;
+    std::map<std::string, MakeFunc> fMap;
 };
+
 static FuncMap funcMap;
 } // anonymous namespace
 
@@ -68,9 +89,10 @@ namespace lsst {
 namespace qserv {
 namespace qproc {
 
+boost::shared_ptr<Region> getRegion(query::Constraint const& c) {
+    return funcMap.fMap[c.name](c.params);
+}
+
 }}} // namespace lsst::qserv::qproc
 
 
-boost::shared_ptr<Region> getRegion(Constraint const& c) {
-    return funcMap.fMap[c.name](c.params);
-}

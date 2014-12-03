@@ -34,11 +34,14 @@
 // Temporary
 #include "qproc/fakeGeometry.h"
 
+// Qserv headers
+#include "query/Constraint.h"
+
 namespace lsst {
 namespace qserv {
 namespace qproc {
 
-boost::shared_ptr<Region> getRegion(Constraint const& c);
+boost::shared_ptr<Region> getRegion(query::Constraint const& c);
 
 class IndexMap {
 public:
