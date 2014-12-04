@@ -293,14 +293,16 @@ void UserQuery::_setupChunking() {
         boost::shared_ptr<query::ConstraintVector> constraints
             = _qSession->getConstraints();
         // map constraints into hintsdict and hintlist
-        
+
         // self.pmap = self._makePmap(self.dominantDb, self.dbStriping)
         css::StripingParams partStriping = _qSession->getDbStriping();
-        boost::shared_ptr<qproc::PartitioningMap> pm(partStriping);
+        boost::shared_ptr<qproc::PartitioningMap> pm
+            = boost::make_shared<qproc::PartitioningMap>(partStriping);
         im = boost::make_shared<qproc::IndexMap>(pm);
-
-        im.applyConstraints(constraints);
+        qproc::ChunkSpecVector csv = im->getIntersect(*constraints);
+        _qSession->addChunk(im->getIntersect(*constraints));
     }
+
     boost::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
     {
         //self._emptyChunks = metadata.getEmptyChunks(self.dominantDb)
@@ -319,15 +321,15 @@ void UserQuery::_setupChunking() {
                 // log: skipping empty chunk
                 continue;
             }
-            //addChunk(chunkSpec);                
+            //addChunk(chunkSpec);
             ++count;
         }
     } else {
         //addChunk(dummychunk);
-    }   
+    }
 
     // self._addChunks()
-    
+
 }
 
 }}} // lsst::qserv::ccontrol
