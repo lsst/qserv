@@ -171,6 +171,11 @@ void QuerySession::addChunk(ChunkSpec const& cs) {
     _chunks.push_back(cs);
 }
 
+void QuerySession::addChunk(ChunkSpecVector const& csv) {
+    std::copy(csv.begin(), csv.end(), std::back_inserter(_chunks));
+    _context->chunkCount += csv.size();
+}
+
 void QuerySession::setResultTable(std::string const& resultTable) {
     _resultTable = resultTable;
 }
