@@ -27,7 +27,10 @@
 
 #include "mysql/MySqlConnection.h"
 
-// Local headers
+// Third-party headers
+#include "boost/make_shared.hpp"
+
+// Qserv headers
 #include "mysql/MySqlConfig.h"
 
 
@@ -58,7 +61,7 @@ MySqlConnection::MySqlConnection()
 MySqlConnection::MySqlConnection(MySqlConfig const& sqlConfig,
                                  bool useThreadMgmt)
     : _mysql(NULL), _mysql_res(NULL),
-      _sqlConfig(new MySqlConfig(sqlConfig)),
+      _sqlConfig(boost::make_shared<MySqlConfig>()),
       _useThreadMgmt(useThreadMgmt) {
     _initMySql();
 }
