@@ -83,6 +83,7 @@ public:
 
     boost::shared_ptr<query::ConstraintVector> getConstraints() const;
     void addChunk(ChunkSpec const& cs);
+    void addChunk(ChunkSpecVector const& cs);
 
     query::SelectStmt const& getStmt() const { return *_stmt; }
 
