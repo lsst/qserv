@@ -93,6 +93,26 @@ boost::shared_ptr<Region> getRegion(query::Constraint const& c) {
     return funcMap.fMap[c.name](c.params);
 }
 
+ChunkSpec convertChunkTuple(ChunkTuple const& ct) {
+    ChunkSpec cs;
+    cs.chunkId = ct.chunkId;
+    cs.subChunks.resize(ct.subChunkIds.size());
+    std::copy(ct.subChunkIds.begin(), ct.subChunkIds.end(),
+              cs.subChunks.begin());
+    return cs;
+}
+
+ChunkSpecVector IndexMap::getIntersect(query::ConstraintVector const& cv) {
+    RegionPtrVector rv;
+    std::transform(cv.begin(), cv.end(), std::back_inserter(rv), getRegion);
+    ChunkRegion cr = _pm->getIntersect(rv);
+    ChunkSpecVector csv;
+    std::transform(cr.begin(), cr.end(),
+                   std::back_inserter(csv), convertChunkTuple);
+    return csv;
+}
+
+
 }}} // namespace lsst::qserv::qproc
 
 

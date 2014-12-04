@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "query/Constraint.h"
+#include "qproc/ChunkSpec.h"
 
 namespace lsst {
 namespace qserv {
@@ -45,12 +46,11 @@ boost::shared_ptr<Region> getRegion(query::Constraint const& c);
 
 class IndexMap {
 public:
-    IndexMap(boost::shared_ptr<PartitioningMap> pm) {}
-    void applyConstraints(boost::shared_ptr<query::ConstraintVector> cv) {
-        
-    }
-    
+    IndexMap(boost::shared_ptr<PartitioningMap> pm) : _pm(pm) {}
+    ChunkSpecVector getIntersect(query::ConstraintVector const& cv);
 
+private:
+    boost::shared_ptr<PartitioningMap> _pm;
 };
 
 
