@@ -49,6 +49,8 @@ class Region {
 public:
     virtual ~Region() {}
 };
+typedef boost::shared_ptr<Region> RegionPtr;
+typedef std::vector<RegionPtr> RegionPtrVector;
 
 class BoxRegion : public Region {
 public:
@@ -70,7 +72,8 @@ public:
     ConvexPolyRegion(std::vector<Coordinate> const& params) {}
 };
 
-struct ChunkTuple {
+
+struct ChunkTuple { // Geometry will have a struct like this.
     int chunkId;
     std::vector<int> subChunkIds;
     static ChunkTuple makeFake(int i) {
@@ -96,6 +99,19 @@ public:
         boost::shared_ptr<ChunkRegion> cr = boost::make_shared<ChunkRegion>();
         cr->push_back(ChunkTuple::makeFake(1));
         cr->push_back(ChunkTuple::makeFake(2));
+        return cr;
+    }
+    ChunkRegion getIntersect(Region const& r) {
+        ChunkRegion cr;
+        cr.push_back(ChunkTuple::makeFake(1000));
+        return cr;
+    }
+
+    ChunkRegion getIntersect(RegionPtrVector const& rv) {
+        ChunkRegion cr;
+        cr.push_back(ChunkTuple::makeFake(100));
+        cr.push_back(ChunkTuple::makeFake(200));
+        cr.push_back(ChunkTuple::makeFake(300));
         return cr;
     }
 
