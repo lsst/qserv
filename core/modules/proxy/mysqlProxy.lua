@@ -184,7 +184,7 @@ function utilities()
 
     local removeLeadingComment = function (q)
         qRet = q
-        x1 = string.find(q, '%\%*')
+        x1 = string.find(q, '%/%*')
         x2 = string.find(q, '%*%/')
         if x1 and x2 then
             if x1 > 1 then
