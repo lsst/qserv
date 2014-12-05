@@ -36,6 +36,7 @@
 #include <cassert>
 #include <iterator>
 #include <stdexcept>
+#include <set>
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
@@ -43,6 +44,7 @@
 // Qserv headers
 #include "global/stringTypes.h"
 #include "qproc/fakeGeometry.h"
+#include "qproc/SecondaryIndex.h"
 #include "query/Constraint.h"
 
 using lsst::qserv::StringVector;
@@ -62,14 +64,14 @@ std::vector<T> convertVec(StringVector const& v) {
     return out;
 }
 template <typename T>
-boost::shared_ptr<Region> make(StringVector const& v) {    
+boost::shared_ptr<Region> make(StringVector const& v) {
         return boost::shared_ptr<Region>(new T(convertVec<Coordinate>(v)));
 }
 
 typedef boost::shared_ptr<Region>(*MakeFunc)(StringVector const& v);
 
 struct FuncMap {
-    FuncMap() {        
+    FuncMap() {
         fMap["box"] = make<BoxRegion>;
         fMap["circle"] = make<CircleRegion>;
         fMap["ellipse"] = make<EllipseRegion>;
@@ -77,6 +79,7 @@ struct FuncMap {
         fMap["qserv_areaspec_box"]  = make<BoxRegion>;
         fMap["qserv_areaspec_circle"] = make<CircleRegion>;
         fMap["qserv_areaspec_ellipse"] = make<EllipseRegion>;
+        fMap["qserv_areaspec_poly"] = make<ConvexPolyRegion>;
         fMap["qserv_areaspec_poly"] = make<ConvexPolyRegion>;
     }
     std::map<std::string, MakeFunc> fMap;
@@ -102,8 +105,54 @@ ChunkSpec convertChunkTuple(ChunkTuple const& ct) {
     return cs;
 }
 
+bool isIndex(query::Constraint const& c) {
+    return c.name == "sIndex";
+}
+bool isNotIndex(query::Constraint const& c) {
+    return c.name != "sIndex";
+}
+
+class ChunkSpecMap {
+public:
+    typedef std::map<int, std::vector<int> > Map;
+
+    ChunkSpecMap(ChunkSpecVector const& a) {
+        ChunkSpecVector::const_iterator i, e;
+        for(i = a.begin(), e = a.end(); i != e; ++i) {
+            ChunkSpec const& cs = *i;
+            _intersect(_map[cs.chunkId], cs.subChunks);
+        }
+    }
+private:
+    ///
+    void _intersect(std::vector<int>& left, std::vector<int> const& right) {
+
+    }
+    Map _map;
+
+};
+ChunkSpecVector intersect(ChunkSpecVector const& a, ChunkSpecVector const& b) {
+    ChunkSpecMap::Map intersection;
+    return ChunkSpecVector(); // FIXME
+
+}
+
 ChunkSpecVector IndexMap::getIntersect(query::ConstraintVector const& cv) {
     RegionPtrVector rv;
+
+    // Index lookups
+    query::ConstraintVector indexConstraints;
+    //    std::copy_if(cv.begin(), cv.end(), std::back_inserter(indexConstraints),
+    //                 isIndex);
+    // copy_if not available before c++11
+
+    std::copy(cv.begin(), cv.end(), std::back_inserter(indexConstraints));
+    std::remove_if(indexConstraints.begin(), indexConstraints.end(),
+                   isNotIndex);
+    SecondaryIndex si;
+    ChunkSpecVector indexSpecs = si.lookup(indexConstraints);
+
+    // Spatial portion
     std::transform(cv.begin(), cv.end(), std::back_inserter(rv), getRegion);
     ChunkRegion cr = _pm->getIntersect(rv);
     ChunkSpecVector csv;
