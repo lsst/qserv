@@ -26,6 +26,9 @@
 #include <cassert>
 #include <stdlib.h>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -68,9 +71,9 @@ public:
 
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(StringMap const& m,
-                                   boost::shared_ptr<css::KvInterface> kvi) {
+                                   boost::shared_ptr<css::KvInterface> kvi)
+    :  _impl(boost::shared_ptr<Impl>()) {
     ::putenv((char*)"XRDDEBUG=1");
-    _impl.reset(new Impl);
     assert(_impl);
     _impl->readConfig(m);
     if(!kvi) {
@@ -85,7 +88,8 @@ UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& defaultDb,
                                std::string const& resultTable) {
     bool sessionValid = true;
-    qproc::QuerySession::Ptr qs(new qproc::QuerySession(_impl->facade));
+    qproc::QuerySession::Ptr qs =
+            boost::make_shared<qproc::QuerySession>(_impl->facade);
     try {
         qs->setResultTable(resultTable);
         qs->setDefaultDb(defaultDb);
@@ -97,9 +101,8 @@ UserQueryFactory::newUserQuery(std::string const& query,
     int sessionId = UserQuery_takeOwnership(uq);
     uq->_sessionId = sessionId;
     if(sessionValid) {
-        uq->_executive.reset(new qdisp::Executive(
-                                 _impl->executiveConfig,
-                                 uq->_messageStore));
+        uq->_executive = boost::make_shared<qdisp::Executive>(
+                _impl->executiveConfig, uq->_messageStore);
 
         rproc::InfileMergerConfig* ict
             = new rproc::InfileMergerConfig(_impl->infileMergerConfigTemplate);
@@ -119,7 +122,7 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "frontend.xrootd", // czar.serviceUrl
         "WARNING! No xrootd spec. Using localhost:1094",
         "localhost:1094");
-    executiveConfig.reset(new qdisp::Executive::Config(serviceUrl));
+    executiveConfig = boost::make_shared<qdisp::Executive::Config>(serviceUrl);
     // This should be overriden by the installer properly.
     infileMergerConfigTemplate.socket = cm.get(
         "resultdb.unix_socket",
