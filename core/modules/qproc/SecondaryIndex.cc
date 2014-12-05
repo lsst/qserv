@@ -20,49 +20,38 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QPROC_INDEXMAP_H
-#define LSST_QSERV_QPROC_INDEXMAP_H
+
 /**
   * @file
   *
-  * @brief IndexMap to look up chunk numbers
+  * @brief SecondaryIndex implementation
   *
   * @author Daniel L. Wang, SLAC
   */
 
-// System headers
-// Temporary
-//#include "qproc/fakeGeometry.h"
+#include "qproc/SecondaryIndex.h"
 
-// Qserv headers
-#include "query/Constraint.h"
-#include "qproc/ChunkSpec.h"
+// System headersn
 
 namespace lsst {
 namespace qserv {
 namespace qproc {
 
-class PartitioningMap;
-class Region;
-
-class SecondaryIndex;
-
-boost::shared_ptr<Region> getRegion(query::Constraint const& c);
-
-class IndexMap {
-public:
-    IndexMap(boost::shared_ptr<PartitioningMap> pm,
-             boost::shared_ptr<SecondaryIndex> si)
-        : _pm(pm), _si(si) {}
-    ChunkSpecVector getIntersect(query::ConstraintVector const& cv);
-
-private:
-    boost::shared_ptr<PartitioningMap> _pm;
-    boost::shared_ptr<SecondaryIndex> _si;
-};
-
-
+#if 0
+       logger.inf("Looking for indexhints in ", hintList)
+        secIndexSpecs = ifilter(lambda t: t[0] == "sIndex", hintList)
+        lookups = []
+        for s in secIndexSpecs:
+            params = s[1]
+// db table keycolumn, values
+            lookup = IndexLookup(params[0], params[1], params[2], params[3:])
+            lookups.append(lookup)
+            pass
+        index = SecondaryIndex()
+        chunkIds = index.lookup(lookups)
+        logger.inf("lookup got chunks:", chunkIds)
+        return chunkIds
+#endif
 
 }}} // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_QPROC_INDEXMAP_H

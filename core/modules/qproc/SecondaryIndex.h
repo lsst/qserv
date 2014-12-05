@@ -20,49 +20,34 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QPROC_INDEXMAP_H
-#define LSST_QSERV_QPROC_INDEXMAP_H
+#ifndef LSST_QSERV_QPROC_SECONDARYINDEX_H
+#define LSST_QSERV_QPROC_SECONDARYINDEX_H
 /**
   * @file
   *
-  * @brief IndexMap to look up chunk numbers
+  * @brief SecondaryIndex to plug into index map to handle lookups
   *
   * @author Daniel L. Wang, SLAC
   */
 
 // System headers
-// Temporary
-//#include "qproc/fakeGeometry.h"
 
 // Qserv headers
-#include "query/Constraint.h"
 #include "qproc/ChunkSpec.h"
+#include "query/Constraint.h"
 
 namespace lsst {
 namespace qserv {
 namespace qproc {
 
-class PartitioningMap;
-class Region;
-
-class SecondaryIndex;
-
-boost::shared_ptr<Region> getRegion(query::Constraint const& c);
-
-class IndexMap {
+class SecondaryIndex {
 public:
-    IndexMap(boost::shared_ptr<PartitioningMap> pm,
-             boost::shared_ptr<SecondaryIndex> si)
-        : _pm(pm), _si(si) {}
-    ChunkSpecVector getIntersect(query::ConstraintVector const& cv);
-
+    SecondaryIndex() {}
+    ChunkSpecVector lookup(query::ConstraintVector const& cv) {} // FIXME
 private:
-    boost::shared_ptr<PartitioningMap> _pm;
-    boost::shared_ptr<SecondaryIndex> _si;
+    int fixme;
 };
-
-
 
 }}} // namespace lsst::qserv::qproc
 
-#endif // LSST_QSERV_QPROC_INDEXMAP_H
+#endif // LSST_QSERV_QPROC_SECONDARYINDEX_H
