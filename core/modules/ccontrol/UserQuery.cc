@@ -257,7 +257,7 @@ bool UserQuery::containsDb(std::string const& dbName) const {
 
 /// Constructor. Most setup work done by the UserQueryFactory
 UserQuery::UserQuery(boost::shared_ptr<qproc::QuerySession> qs)
-    :  _messageStore(new qdisp::MessageStore()),
+    :  _messageStore(boost::make_shared<qdisp::MessageStore>()),
        _qSession(qs), _sequence(0) {
     // Some configuration done by factory: See UserQueryFactory
 }
