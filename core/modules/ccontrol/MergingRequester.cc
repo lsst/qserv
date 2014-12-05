@@ -56,7 +56,7 @@ MergingRequester::MergingRequester(
     : _msgReceiver(msgReceiver),
       _infileMerger(merger),
       _tableName(tableName),
-      _response(new WorkerResponse),
+      _response(boost::make_shared<WorkerResponse>()),
       _flushed(false) {
     _initState();
 }
