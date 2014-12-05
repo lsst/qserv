@@ -59,7 +59,8 @@ class DataLoader(object):
 
     def __init__(self, configFiles, mysqlConn, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
-                 cssConn='localhost:12181', cssClear=False, loggerName="Loader"):
+                 cssConn='localhost:12181', cssClear=False, emptyChunks=None,
+                 loggerName="Loader"):
         """
         Constructor parse all arguments and prepares for execution.
 
@@ -75,6 +76,7 @@ class DataLoader(object):
                              create chunk tables.
         @param cssConn:      Connection string for CSS service.
         @param cssClear:     If true then CSS info for a table will be deleted first.
+        @param emptyChunks:  Path name for "empty chunks" file, may be None.
         @param loggerName:   Logger name used for logging all messaged from loader.
         """
 
@@ -85,8 +87,8 @@ class DataLoader(object):
         self.keepChunks = keepChunks
         self.skipPart = skipPart
         self.oneTable = oneTable
-        self.cssConn = cssConn
         self.cssClear = cssClear
+        self.emptyChunks = emptyChunks
 
         self.chunkRe = re.compile('^' + self.chunkPrefix + '_(?P<id>[0-9]+)(?P<ov>_overlap)?[.]txt$')
         self.cleanupChunksDir = False
@@ -98,7 +100,27 @@ class DataLoader(object):
         self.partOptions = PartConfig(configFiles)
 
         # connect to CSS
-        self.css = QservAdmin(self.cssConn)
+        self.css = None
+        if cssConn:
+            self.css = QservAdmin(cssConn)
+
+        # Logic is slightly complicated here, so pre-calculate options that we need below:
+        # 1. If self.skipPart and self.oneTable are both true then we skip partitioning
+        #    even for partitioned tables abnd load original data. So if self.skipPart and
+        #    self.oneTable are both true then we say table is not partitioned
+        # 2. Partitioing is done only for partitioned table, if self.skipPart is true then
+        #    pre-partitioned data must exist already and we skip calling partitioner
+
+        # is table needs to be partitioned (or is it pre-partitioned)?
+        self.partitioned = self.partOptions.partitioned and \
+                           not (self.skipPart and self.oneTable)
+
+        # do we need to run partitioner?
+        self.callPartitioner = self.partitioned and not self.skipPart
+
+        # do we ever need input files? They are needed as input for partitioner or loader
+        # if table is not partitioned
+        self.needInput = not self.partitioned or not self.skipPart
 
         self._log = logging.getLogger(loggerName)
 
@@ -127,7 +149,8 @@ class DataLoader(object):
         """
 
         # see if database is already defined in CSS and get its partitioning info
-        self._checkCss(database, table)
+        if self.css is not None:
+            self._checkCss(database, table)
 
         # make chunks directory or check that there are usable data there already
         self._makeOrCheckChunksDir()
@@ -135,11 +158,11 @@ class DataLoader(object):
         # uncompress data files that are compressed, this is only needed if
         # table is not partitioned or if we are not reusing existing chunks
         files = data
-        if not self.partOptions.partitioned or not self.skipPart:
+        if self.needInput:
             files = self._gunzip(data)
 
         # run partitioner if necessary
-        if files and self.partOptions.partitioned and not self.skipPart:
+        if files and self.callPartitioner:
             self._runPartitioner(files)
 
         # create table
@@ -152,8 +175,11 @@ class DataLoader(object):
         self._createDummyChunk(database, table)
 
         # update CSS with info for this table
-        self._updateCss(database, table)
+        if self.css is not None:
+            self._updateCss(database, table)
 
+        # optionally make emptyChunks file
+        self._makeEmptyChunks()
 
     def _cleanup(self):
         """
@@ -163,6 +189,7 @@ class DataLoader(object):
         # remove dir with unzipped files
         if self.unzipDir is not None:
             try:
+                self._log.debug('Deleting directory: %s', self.unzipDir)
                 shutil.rmtree(self.unzipDir)
             except Exception as exc:
                 self._log.error('Failed to remove unzipped files: %s', exc)
@@ -170,6 +197,7 @@ class DataLoader(object):
         # remove chunks directory, only if we created it
         if not self.keepChunks and self.cleanupChunksDir:
             try:
+                self._log.debug('Deleting directory: %s', self.chunksDir)
                 shutil.rmtree(self.chunksDir)
             except Exception as exc:
                 self._log.error('Failed to remove chunks directory: %s', exc)
@@ -180,6 +208,8 @@ class DataLoader(object):
         Check CSS for existing configuration and see if it matches ours.
         Throws exception f any irregulatrities are observed.
         """
+
+        self._log.info('Verifying CSS info for table %s', table)
 
         # get database config
         dbConfig = self.css.getDbInfo(database)
@@ -238,7 +268,7 @@ class DataLoader(object):
                               chunks_dir)
                 raise RuntimeError('chunk path is not directory')
 
-        if self.skipPart:
+        if self.partitioned and self.skipPart:
             # directory must exist and have some files (chunk_index.bin at least)
             if not exists:
                 self._log.error('Chunks directory does not exist: %s', chunks_dir)
@@ -255,6 +285,7 @@ class DataLoader(object):
                     raise RuntimeError('chunks directory is not empty')
             else:
                 try:
+                    self._log.debug('Creating chunks directory %s', chunks_dir)
                     os.makedirs(chunks_dir)
                 except Exception as exc:
                     self._log.error('Failed to create chunks directory: %s', exc)
@@ -274,7 +305,8 @@ class DataLoader(object):
 
         try:
             # run partitioner
-            self._log.debug('run partitioner: %s', ' '.join(args))
+            self._log.info('run partitioner on files: %s', ' '.join(files))
+            self._log.debug('args: %s', ' '.join(args))
             subprocess.check_output(args=args)
         except Exception as exc:
             self._log.error('Failed to run partitioner: %s', exc)
@@ -299,7 +331,7 @@ class DataLoader(object):
                     except Exception as exc:
                         self._log.critical('Failed to create tempt directory for uncompressed files: %s', exc)
                         raise
-                    self._log.info('Created temporary directory %s', self.unzipDir)
+                    self._log.debug('Created temporary directory %s', self.unzipDir)
 
                 # construct output file name
                 outfile = os.path.basename(infile)
@@ -337,8 +369,11 @@ class DataLoader(object):
 
         # create table
         try:
-            cursor.execute("USE %s" % database)
-            self._log.debug('Creating table')
+            q = "USE %s" % database
+            self._log.debug('query: %s', q)
+            cursor.execute(q)
+            self._log.info('Creating table %s', table)
+            self._log.debug('query: %s', self.schema)
             cursor.execute(self.schema)
         except Exception as exc:
             self._log.critical('Failed to create mysql table: %s', exc)
@@ -348,7 +383,7 @@ class DataLoader(object):
         del cursor
 
         # add/remove chunk columns for partitioned tables only
-        if self.partOptions.partitioned:
+        if self.partitioned:
             self._alterTable(table)
 
 
@@ -374,11 +409,14 @@ class DataLoader(object):
             toAdd = ["chunkId", "subChunkId"]
             mods += ['ADD COLUMN %s INT(11) NOT NULL' % col for col in toAdd if col not in columns]
 
-            q = 'ALTER TABLE %s ' % table
-            q += ', '.join(mods)
+            if mods:
+                self._log.info('Altering schema for table %s', table)
 
-            self._log.debug('Alter table: %s', q)
-            cursor.execute(q)
+                q = 'ALTER TABLE %s ' % table
+                q += ', '.join(mods)
+
+                self._log.debug('query: %s', q)
+                cursor.execute(q)
         except Exception as exc:
             self._log.critical('Failed to alter mysql table: %s', exc)
             raise
@@ -387,7 +425,7 @@ class DataLoader(object):
         """
         Load data into existing table.
         """
-        if self.partOptions.partitioned:
+        if self.partitioned:
             self._loadChunkedData(table)
         else:
             self._loadNonChunkedData(table, files)
@@ -440,7 +478,7 @@ class DataLoader(object):
         Make special dummy chunk in case of partitioned data
         """
 
-        if not self.partOptions.partitioned or self.oneTable:
+        if not self.partitioned or self.oneTable:
             # only do it for true partitioned stuff
             return
 
@@ -455,7 +493,8 @@ class DataLoader(object):
             cursor = self.mysql.cursor()
             q = "RENAME TABLE {0}.{1} to {0}.{1}_1234567890".format(database, table)
 
-            self._log.debug('Rename view: %s', q)
+            self._log.debug('Rename view')
+            self._log.debug('query: %s', q)
             cursor.execute(q)
 
 
@@ -472,7 +511,8 @@ class DataLoader(object):
         # make table using DDL from non-chunked one
         q = "CREATE TABLE IF NOT EXISTS {0} LIKE {1}".format(ctable, table)
 
-        self._log.debug('Make chunk table: %s', ctable)
+        self._log.info('Make chunk table: %s', ctable)
+        self._log.debug('query: %s', q)
         cursor.execute(q)
 
         return ctable
@@ -499,9 +539,10 @@ class DataLoader(object):
         # need to know field separator, default is the same as in partitioner.
         separator = self.partOptions.get(csvPrefix + '.delimiter', '\t')
 
-        self._log.debug('load data: table=%s file=%s', table, file)
+        self._log.info('load table %s from file %s', table, file)
         q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY '%s'" % \
             (file, table, separator)
+        self._log.debug('query: %s', q)
         try:
             cursor.execute(q)
         except Exception as exc:
@@ -516,7 +557,7 @@ class DataLoader(object):
 
         # create database in CSS if not there yet
         if not self.css.dbExists(database):
-            self._log.debug('Creating database CSS info')
+            self._log.info('Creating database CSS info')
             options = self.partOptions.cssDbOptions()
             self.css.createDb(database, options)
 
@@ -524,7 +565,7 @@ class DataLoader(object):
         options = self.partOptions.cssTableOptions()
         options['schema'] = self._schemaForCSS(table)
 
-        self._log.debug('Creating table CSS info')
+        self._log.info('Creating table CSS info')
         self.css.createTable(database, table, options)
 
 
@@ -545,3 +586,29 @@ class DataLoader(object):
         i = data.find('(')
         j = data.rfind(')')
         return data[i:j + 1]
+
+
+    def _makeEmptyChunks(self):
+        """
+        Generate empty chinks file, should be called after loading is complete.
+        """
+
+        if not self.emptyChunks:
+            # need a file name
+            return
+
+        # only makes sence for true partitioned tables
+        if not self.partitioned:
+            self._log.info('Table is not partitioned, will not make empty chunks file %s', self.emptyChunks)
+            return
+
+        # max possible number of chunks
+        nStripes = int(self.partOptions['part.num-stripes'])
+        maxChunks = 2 * nStripes ** 2
+
+        self._log.info('Making empty chunk list (max.chunk=%d) %s', maxChunks, self.emptyChunks)
+
+        out = open(self.emptyChunks, 'w')
+        for chunk in range(maxChunks):
+            if chunk not in self.chunks:
+                print >> out, chunk

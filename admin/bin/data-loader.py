@@ -113,23 +113,28 @@ class Loader(object):
                            help='Partitioner configuration file, required, more than one acceptable.')
         group.add_argument('-d', '--chunks-dir', dest='chunksDir', metavar='PATH',
                            default="./loader_chunks", help='Directory where to store chunk data, must '
-                           'have enough space to keep all data. If option --skip-partition is specified, '
-                           'then directory must exist and have existing data in it. Otherwise directory '
-                           'must be empty or do not exist. def: %(default)s.')
+                           'have enough space to keep all data. If option --skip-partition is specified '
+                           '(without --one-table) then directory must exist and have existing data in it. '
+                           'Otherwise directory must be empty or do not exist. def: %(default)s.')
         group.add_argument('-k', '--keep-chunks', dest='keepChunks', action='store_true', default=False,
                            help='If specified then chunks will not be deleted after loading.')
         group.add_argument('-s', '--skip-partition', dest='skipPart', action='store_true', default=False,
                            help='If specified then skip partitioning, chunks must exist already '
-                           '(from previous run with -k option).')
+                           'if option --one-table is not specified (from previous run with -k option).')
         group.add_argument('-1', '--one-table', dest='oneTable', action='store_true', default=False,
-                           help='If specified then load whole dataset into one table, even if it is '
-                           'partitioned. This is useful for testing quries against mysql directly.')
+                           help='If specified then load whole dataset into one table. This is useful for '
+                           'testing quries against mysql directly. If --skip-partition is specified '
+                           'then original non-partitioned data will be loaded, otherwise data will be '
+                           'partitioned but still loaded into a single table.')
 
         group = parser.add_argument_group('CSS options', 'Options controlling CSS metadata')
-        group.add_argument('-c', '--css-conn', dest='cssConn', default='localhost:12181',
+        parser.set_defaults(cssConn='localhost:12181')
+        group.add_argument('-c', '--css-conn', dest='cssConn',
                            help='Connection string for zookeeper, def: %(default)s.')
         group.add_argument('-r', '--css-remove', dest='cssClear', default=False, action='store_true',
                            help='Remove CSS table info if it already exists.')
+        group.add_argument('-C', '--no-css', dest='cssConn', action='store_const', const=None,
+                           help='Disable CSS updates.')
 
         group = parser.add_argument_group('Database options', 'Options for database connection')
         group.add_argument('-H', '--host', dest='mysqlHost', default='localhost', metavar='HOST',
@@ -142,6 +147,11 @@ class Loader(object):
                            help='Port number to use for connection, def: %(default)s.')
         group.add_argument('-S', '--socket', dest='mysqlSocket', default=None, metavar='PATH',
                            help='The socket file to use for connection.')
+
+        group = parser.add_argument_group('Control options', 'Options for controlling other operations')
+        group.add_argument('-E', '--empty-chunks', dest='emptyChunks', default=None, metavar='PATH',
+                           help='Path name for "empty chunks" file, if not specified then this file is '
+                           'not produced.')
 
         parser.add_argument('database',
                             help='Database name, Expected to exist and have correct permissions.')
@@ -184,6 +194,7 @@ class Loader(object):
                                  oneTable=self.args.oneTable,
                                  cssConn=self.args.cssConn,
                                  cssClear=self.args.cssClear,
+                                 emptyChunks=self.args.emptyChunks,
                                  loggerName=loggerName)
 
     def run(self):
@@ -192,7 +203,8 @@ class Loader(object):
         This will throw exception if anyhting goes wrong.
         """
         self.loader.load(self.args.database, self.args.table, self.args.schema, self.args.data)
-        logging.getLogger('Loader').info('loaded chunks: %s', ' '.join(map(str, self.loader.chunks)))
+        if self.loader.chunks:
+            logging.getLogger('Loader').info('loaded chunks: %s', ' '.join(map(str, self.loader.chunks)))
         return 0
 
 
