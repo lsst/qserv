@@ -44,18 +44,36 @@ namespace qproc {
 /// used to compose a concrete chunk query for a specific chunk from an input
 /// parsed query statement. Contains A specification of chunkId and subChunkId
 /// list.
+/// Do not inherit.
 struct ChunkSpec {
 public:
     ChunkSpec() : chunkId(-1) {}
-    int32_t chunkId;
+    static int32_t const CHUNKID_INVALID = -1;
+
+    int32_t chunkId; ///< ChunkId of interest
+    /// Subchunks of interest; empty indicates all subchunks are involved.
     std::vector<int32_t> subChunks;
+
     void addSubChunk(int s) { subChunks.push_back(s); }
     bool shouldSplit() const;
+
+    /// @return the intersection with the chunk.
+    /// If both ChunkSpecs have non-empty subChunks, but do not intersect, chunkId is set to be invalid (-1)
+    ChunkSpec intersect(ChunkSpec const& cs) const;
+    void merge(ChunkSpec const& rhs);
+
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c);
 
 typedef std::list<ChunkSpec> ChunkSpecList;
 typedef std::vector<ChunkSpec> ChunkSpecVector;
+
+/// ChunkSpecVector intersection.
+/// Computes ChunkSpecVector intersection, overwriting dest with the result.
+///
+void intersectSorted(ChunkSpecVector& dest, ChunkSpecVector const& a);
+
+ChunkSpecVector intersect(ChunkSpecVector const& a, ChunkSpecVector const& b);
 
 /// An iterating fragmenter to reduce the number of subChunkIds per ChunkSpec
 class ChunkSpecFragmenter {
