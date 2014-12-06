@@ -42,8 +42,8 @@ namespace qproc {
 
 class SecondaryIndex {
 public:
-    SecondaryIndex() {}
-    ChunkSpecVector lookup(query::ConstraintVector const& cv) {} // FIXME
+    SecondaryIndex();
+    ChunkSpecVector lookup(query::ConstraintVector const& cv);
 private:
     int fixme;
 };

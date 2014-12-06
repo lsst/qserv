@@ -57,6 +57,49 @@ std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
     return os;
 }
 
+
+/// ChunkSpecVector intersection.
+/// Computes ChunkSpecVector intersection, overwriting dest with the result.
+///
+void intersectSorted(ChunkSpecVector& dest, ChunkSpecVector const& a) {
+    ChunkSpecVector::iterator di = dest.begin();
+    ChunkSpecVector::iterator de = dest.end();
+    ChunkSpecVector::const_iterator ai = a.begin();
+    ChunkSpecVector::const_iterator ae = a.end();
+    while(di != de) { // march down dest vector
+        // For each item in dest, advance through a to find a matching chunkId.
+        while(ai->chunkId < di->chunkId) {
+            ++ai;
+        }
+        if(ai->chunkId == di->chunkId) {
+            // On a match, perform the intersection.
+            di->merge(*ai);
+            if(di->chunkId = ChunkSpec::CHUNKID_INVALID) {
+                // Drop ai
+                di = dest.erase(di);
+            } else {
+                ++di;
+            }
+        } else {
+            // No match -> no intersection, so drop the original item.
+            // Drop ai
+            di = dest.erase(di);
+        }
+        // dest advances either by increment or erasing.
+    }
+}
+
+
+ChunkSpecVector intersect(ChunkSpecVector const& a, ChunkSpecVector const& b) {
+    ChunkSpecVector asort, bsort;
+    asort = a;
+    std::sort(asort.begin(), asort.end());
+    bsort = b;
+    std::sort(bsort.begin(), bsort.end());
+    intersectSorted(asort, bsort);
+    return asort;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // ChunkSpec
 ////////////////////////////////////////////////////////////////////////

@@ -31,11 +31,29 @@
 
 #include "qproc/SecondaryIndex.h"
 
-// System headersn
+// System headers
+
+// Qserv headers
+#include "qproc/ChunkSpec.h"
 
 namespace lsst {
 namespace qserv {
 namespace qproc {
+
+SecondaryIndex::SecondaryIndex() {
+
+}
+
+ChunkSpecVector SecondaryIndex::lookup(query::ConstraintVector const& cv) {
+    // cv should only contain index constraints
+    // Because the only constraint possible is "objectid in []", and all
+    // constraints are AND-ed, it really only makes sense to have one index
+    // constraint.
+    IntVector ids;
+
+    ChunkSpecVector output;
+    return output; // FIXME
+}
 
 #if 0
        logger.inf("Looking for indexhints in ", hintList)
