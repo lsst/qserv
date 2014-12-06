@@ -59,8 +59,8 @@ class DataLoader(object):
 
     def __init__(self, configFiles, mysqlConn, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
-                 cssConn='localhost:12181', cssClear=False, emptyChunks=None,
-                 loggerName="Loader"):
+                 cssConn='localhost:12181', cssClear=False, indexDb='qservMeta',
+                 emptyChunks=None, deleteTables=False, loggerName="Loader"):
         """
         Constructor parse all arguments and prepares for execution.
 
@@ -76,7 +76,9 @@ class DataLoader(object):
                              create chunk tables.
         @param cssConn:      Connection string for CSS service.
         @param cssClear:     If true then CSS info for a table will be deleted first.
+        @param indexDb:      Name of  database for object indices.
         @param emptyChunks:  Path name for "empty chunks" file, may be None.
+        @param deleteTables: If True then existing tables in database will be deleted.
         @param loggerName:   Logger name used for logging all messaged from loader.
         """
 
@@ -88,7 +90,9 @@ class DataLoader(object):
         self.skipPart = skipPart
         self.oneTable = oneTable
         self.cssClear = cssClear
+        self.indexDb = indexDb
         self.emptyChunks = emptyChunks
+        self.deleteTables = deleteTables
 
         self.chunkRe = re.compile('^' + self.chunkPrefix + '_(?P<id>[0-9]+)(?P<ov>_overlap)?[.]txt$')
         self.cleanupChunksDir = False
@@ -165,6 +169,10 @@ class DataLoader(object):
         if files and self.callPartitioner:
             self._runPartitioner(files)
 
+        # drop existing tables
+        if self.deleteTables:
+            self._deleteTable(database, table)
+
         # create table
         self._createTable(database, table, schema)
 
@@ -173,6 +181,9 @@ class DataLoader(object):
 
         # create special dummy chunk
         self._createDummyChunk(database, table)
+
+        # create index on czar size
+        self._makeIndex(database, table)
 
         # update CSS with info for this table
         if self.css is not None:
@@ -351,6 +362,32 @@ class DataLoader(object):
             result.append(outfile)
 
         return result
+
+
+    def _deleteTable(self, database, table):
+        """
+        Drop existing table and all chunks
+        """
+
+        self._log.info('Deleting existing table %s (and chunks)', table)
+
+        cursor = self.mysql.cursor()
+
+        q = "USE %s" % database
+        self._log.debug('query: %s', q)
+        cursor.execute(q)
+
+        # regexp matching al chunk table names
+        tblre = re.compile('^' + table + '((FullOverlap)?_[0-9]+)?$')
+
+        q = 'SHOW TABLES'
+        cursor.execute(q)
+        tables = [row[0] for row in cursor.fetchall()]
+        for tbl in tables:
+            if tblre.match(tbl):
+                q = 'DROP TABLE IF EXISTS ' + tbl
+                self._log.debug('query: %s', q)
+                cursor.execute(q)
 
 
     def _createTable(self, database, table, schema):
@@ -563,13 +600,13 @@ class DataLoader(object):
 
         # define options for table
         options = self.partOptions.cssTableOptions()
-        options['schema'] = self._schemaForCSS(table)
+        options['schema'] = self._schemaForCSS(database, table)
 
         self._log.info('Creating table CSS info')
         self.css.createTable(database, table, options)
 
 
-    def _schemaForCSS(self, table):
+    def _schemaForCSS(self, database, table):
         """
         Returns schema string for CSS, which is a create table only without
         create table, only column definitions
@@ -578,7 +615,7 @@ class DataLoader(object):
         cursor = self.mysql.cursor()
 
         # make table using DDL from non-chunked one
-        q = "SHOW CREATE TABLE {0}".format(table)
+        q = "SHOW CREATE TABLE {0}.{1}".format(database, table)
         cursor.execute(q)
         data = cursor.fetchone()[1]
 
@@ -612,3 +649,42 @@ class DataLoader(object):
         for chunk in range(maxChunks):
             if chunk not in self.chunks:
                 print >> out, chunk
+
+
+    def _makeIndex(self, database, table):
+        """
+        Generate object index in czar meta database.
+        """
+
+        # only makes sense for true partitioned tables
+        if not self.partitioned or not self.indexDb:
+            return
+
+        metaTable = database + '__' + table
+        self._log.info('Generating index %s.%s', self.indexDb, metaTable)
+
+        cursor = self.mysql.cursor()
+
+        q = "USE " + self.indexDb
+        self._log.debug('query: %s', q)
+        cursor.execute(q)
+
+        if self.deleteTables:
+            q = "DROP TABLE IF EXISTS {0}".format(metaTable)
+            self._log.debug('query: %s', q)
+            cursor.execute(q)
+
+        # index column
+        idxCol = self.partOptions['id']
+
+        # make a table
+        q = "CREATE TABLE {0} ({1} BIGINT NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT)".format(metaTable, idxCol)
+        self._log.debug('query: %s', q)
+        cursor.execute(q)
+
+        # load data from all chunks
+        for chunk in self.chunks:
+            q = "INSERT INTO {0} SELECT {1}, chunkId, subChunkId FROM {2}.{3}_{4}"
+            q = q.format(metaTable, idxCol, database, table, chunk)
+            self._log.debug('query: %s', q)
+            cursor.execute(q)

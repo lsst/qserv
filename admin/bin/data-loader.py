@@ -152,6 +152,13 @@ class Loader(object):
         group.add_argument('-E', '--empty-chunks', dest='emptyChunks', default=None, metavar='PATH',
                            help='Path name for "empty chunks" file, if not specified then this file is '
                            'not produced.')
+        group.add_argument('-i', '--index-db', dest='indexDb', default='qservMeta', metavar='DB_NAME',
+                           help='Name of the database which keeps czar-side object index, '
+                           'def: %(default)s. Set to empty string to avoid building index. '
+                           'If name is not empty then database must already exist.')
+        group.add_argument('-e', '--delete-tables', dest='deleteTables', default=False, action='store_true',
+                           help='If specified then existing tables in database will be deleted if '
+                           'they exist, this includes both data and metadata.')
 
         parser.add_argument('database',
                             help='Database name, Expected to exist and have correct permissions.')
@@ -194,7 +201,9 @@ class Loader(object):
                                  oneTable=self.args.oneTable,
                                  cssConn=self.args.cssConn,
                                  cssClear=self.args.cssClear,
+                                 indexDb=self.args.indexDb,
                                  emptyChunks=self.args.emptyChunks,
+                                 deleteTables=self.args.deleteTables,
                                  loggerName=loggerName)
 
     def run(self):
