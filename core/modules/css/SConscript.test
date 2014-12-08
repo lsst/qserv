@@ -4,7 +4,6 @@ Import('libProducts')
 Import('cacheObjs')
 Import('findLibs')
 
-import os
 import itertools
 
 programs = []
@@ -21,7 +20,15 @@ extDeps = "log log4cxx".split()
 p = env.Program(["testKvInterfaceImpl.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=utest)
+
 p = env.Program(["testFacade.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
 programs.append(p)
+
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=utest)
 
 Return('programs')

@@ -69,13 +69,19 @@ class QservAdmin(object):
     # this produces a string in a form: 198.129.220.176_2899, used for unique id
     _addrPort = str(socket.getaddrinfo(socket.gethostname(), None)[0][4][0]) + '_' + str(os.getpid())
 
-    def __init__(self, connInfo):
+    def __init__(self, connInfo=None, config=None):
         """
-        Initialize: create KvInterface object.
+        Initialize: create KvInterface object. One of the
+        connInfo or config parametrs must be supplied,
 
-        @param connInfo     Connection information.
+        @param connInfo     Connection information string, e.g. 'localhost:12181'.
+        @param config       Dictionary with configuration options, same as
+                            accepted by KvInterface.newImpl.
         """
-        self._kvI = KvInterface.newImpl(connInfo=connInfo)
+        if connInfo is not None:
+            self._kvI = KvInterface.newImpl(connInfo=connInfo)
+        else:
+            self._kvI = KvInterface.newImpl(config=config)
         self._logger = logging.getLogger("QADM")
         self._uniqueLockId = 0
 
