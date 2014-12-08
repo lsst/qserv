@@ -63,7 +63,8 @@ namespace {
 
 // version is an integer number, but kvInterface treats everything as strings,
 // so to avoid unnecessary conversions work with strings
-const std::string VERSION("1");
+const int VERSION_NUMBER = 1;
+const std::string VERSION("1");  // must be the the same as number on previous line
 const std::string VERSION_KEY("/css_meta/version");
 
 }
@@ -356,6 +357,15 @@ Facade::getMatchTableParams(std::string const& dbName,
         }
     }
     return p;
+}
+
+/*
+ *  Returns current compiled-in version number of CSS data structures.
+ *  This is not normally useful for clients but can be used by various tests.
+ */
+int
+Facade::cssVersion() {
+    return ::VERSION_NUMBER;
 }
 
 void

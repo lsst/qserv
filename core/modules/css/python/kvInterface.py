@@ -46,6 +46,7 @@ from kazoo.exceptions import NodeExistsError, NoNodeError
 
 # local imports
 from lsst.db.exception import produceExceptionClass
+from lsst.qserv.css import KvInterfaceImplMem
 
 ####################################################################################
 KvException = produceExceptionClass('KvException', [
@@ -569,7 +570,7 @@ class KvInterfaceMem(KvInterface):
 
         @return boolean  True if the key exists, False otherwise.
         """
-        ret = (self._kvi.exists(k) != None)
+        ret = self._kvi.exists(k)
         self._logger.info("EXISTS '%s': %s" % (k, ret))
         return ret
 
@@ -621,7 +622,7 @@ class KvInterfaceMem(KvInterface):
         @raise     Raise KvException if the key doesn't exist.
         """
         self._logger.info("SET '%s' --> '%s'" % (k, v))
-        if not self.kvi.exists(k):
+        if not self._kvi.exists(k):
             self._logger.error("in getChildren(), key %s does not exist" % k)
             raise KvException(KvException.KEY_DOES_NOT_EXIST, k)
         self._kvi.set(k, v)
@@ -648,9 +649,9 @@ class KvInterfaceMem(KvInterface):
         @raise     Raise KvException if the key doesn't exist.
         """
         if recursive:
-            self.visitPostfix(k, lambda p: self._kvi.delete(k))
+            self.visitPostfix(k, lambda p: self._kvi.deleteKey(k))
         else:
-            self._kvi.delete(k)
+            self._kvi.deleteKey(k)
 
     def dumpAll(self, fileH=sys.stdout):
         """
@@ -687,3 +688,17 @@ class KvInterfaceMem(KvInterface):
         """
         # May need to catch c++ exceptions
         self.visitPostfix(p, self._kvi.deleteKey, lambda p: True)
+
+    def __enter__(self):
+        """
+        This instance can be used as a context manager, have to provide
+        standard method which is no-op.
+        """
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        This instance can be used as a context manager, have to provide
+        standard method which is no-op.
+        """
+        pass
