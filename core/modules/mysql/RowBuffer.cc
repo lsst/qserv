@@ -30,6 +30,7 @@
 #include <string.h>
 
 // Third-party headers
+#include <boost/make_shared.hpp>
 #include <mysql/mysql.h>
 
 // Qserv headers
@@ -260,6 +261,7 @@ void ResRowBuffer::_initializeLargeRow(Row const& largeRow) {
 // RowBuffer Implementation
 ////////////////////////////////////////////////////////////////////////
 boost::shared_ptr<RowBuffer> RowBuffer::newResRowBuffer(MYSQL_RES* result) {
-    return Ptr(new ResRowBuffer(result));
+    Ptr p = boost::make_shared<ResRowBuffer>(result);
+    return p;
 }
 }}} // lsst::qserv::mysql
