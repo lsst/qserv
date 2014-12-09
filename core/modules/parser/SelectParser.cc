@@ -110,8 +110,8 @@ SelectParser::SelectParser(std::string const& statement)
 
 void
 SelectParser::setup() {
-    _selectStmt.reset(new query::SelectStmt());
-    _aParser.reset(new AntlrParser(_statement));
+    _selectStmt = boost::make_shared<query::SelectStmt>();
+    _aParser = boost::make_shared<AntlrParser>(_statement);
     // model 3: parse tree construction to build intermediate expr.
     SelectFactory sf;
     sf.attachTo(_aParser->parser);
