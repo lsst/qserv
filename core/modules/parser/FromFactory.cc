@@ -364,11 +364,13 @@ private:
         }
         RefAST tableChild = sib->getFirstChild();
         query::TableRef::Ptr right = _generate(tableChild);
-        return query::JoinRef::Ptr(new query::JoinRef(
-                                     right,
-                                     j,
-                                     true, // Natural join, no conditions
-                                     query::JoinSpec::Ptr()));
+        boost::shared_ptr<query::JoinRef> p =
+                boost::make_shared<query::JoinRef>(
+                        right,
+                        j,
+                        true, // Natural join, no conditions
+                        query::JoinSpec::Ptr());
+        return p;
     }
     /// "union" "join" table_ref
     query::JoinRef::Ptr _makeUnionJoin(RefAST sib) const {
@@ -386,11 +388,11 @@ private:
         }
         RefAST tableChild = sib->getFirstChild();
         query::TableRef::Ptr right = _generate(tableChild);
-        return query::JoinRef::Ptr(
-            new query::JoinRef(right,
-                               query::JoinRef::UNION,
-                               false, // union join: no condititons
-                               query::JoinSpec::Ptr()));
+        boost::shared_ptr<query::JoinRef> p =
+                boost::make_shared<query::JoinRef>(right, query::JoinRef::UNION,
+                        false, // union join: no condititons
+                        query::JoinSpec::Ptr());
+        return p;
     }
     /// "cross" "join" table_ref
     query::JoinRef::Ptr _makeCrossJoin(RefAST sib) const {
@@ -408,11 +410,13 @@ private:
         }
         RefAST tableChild = sib->getFirstChild();
         query::TableRef::Ptr right = _generate(tableChild);
-        return query::JoinRef::Ptr(new query::JoinRef(
-                                    right,
-                                    query::JoinRef::CROSS,
-                                    false, // cross join: no conditions
-                                    query::JoinSpec::Ptr()));
+        boost::shared_ptr<query::JoinRef> p =
+                boost::make_shared<query::JoinRef>(
+                        right,
+                        query::JoinRef::CROSS,
+                        false, // cross join: no conditions
+                        query::JoinSpec::Ptr());
+        return p;
     }
 
     /// USING_SPEC:
@@ -441,7 +445,8 @@ private:
                || token->getType() != SqlSQL2TokenTypes::COLUMN_NAME_LIST) {
                 break;
             }
-            js.reset(new query::JoinSpec(_processColumn(token->getFirstChild())));
+            js = boost::make_shared<query::JoinSpec>(
+                    _processColumn(token->getFirstChild()));
             token = token->getNextSibling();
             if(!token.get()
                || token->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
@@ -460,7 +465,8 @@ private:
                 throw ParseException("Expected OR_OP in join condition", specToken);
             }
             bt = _bFactory.newOrTerm(token);
-            return query::JoinSpec::Ptr(new query::JoinSpec(bt->getReduced()));
+            js = boost::make_shared<query::JoinSpec>(bt->getReduced());
+            return js;
 
         default:
             break;
@@ -507,8 +513,9 @@ private:
             throw ParseException("NULL column node", sib); }
         if(sib->getType() != SqlSQL2TokenTypes::REGULAR_ID) {
             throw ParseException("Bad column node for USING", sib); }
-        return boost::shared_ptr<query::ColumnRef>(
-            new query::ColumnRef("", "", tokenText(sib)));
+        boost::shared_ptr<query::ColumnRef> c =
+                boost::make_shared<query::ColumnRef>("", "", tokenText(sib));
+        return c;
     }
     query::TableRef::Ptr _processQualifiedName(RefAST n) const {
         RefAST qnStub = n;
