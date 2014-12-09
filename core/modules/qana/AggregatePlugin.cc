@@ -123,7 +123,7 @@ private:
         // constituent ValueFactors, compute the lists in parallel, and
         // then compute the expression result from the parallel
         // results during merging.
-        query::ValueExprPtr mergeExpr(new query::ValueExpr);
+        query::ValueExprPtr mergeExpr = boost::make_shared<query::ValueExpr>();
         query::ValueExpr::FactorOpList& mergeFactorOps = mergeExpr->getFactorOps();
         for(query::ValueExpr::FactorOpList::const_iterator i=factorOps.begin();
             i != factorOps.end(); ++i) {
@@ -194,7 +194,8 @@ public:
 
     virtual std::string getName() const { return "Aggregate"; }
     virtual QueryPlugin::Ptr newInstance() {
-        return QueryPlugin::Ptr(new AggregatePlugin());
+        QueryPlugin::Ptr p =boost::make_shared<AggregatePlugin>();
+        return p;
     }
 };
 

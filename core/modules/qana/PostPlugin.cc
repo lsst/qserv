@@ -35,6 +35,9 @@
 #include <stdexcept>
 #include <string>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -85,7 +88,8 @@ public:
 
     virtual std::string getName() const { return "Post"; }
     virtual QueryPlugin::Ptr newInstance() {
-        return QueryPlugin::Ptr(new PostPlugin());
+        QueryPlugin::Ptr p = boost::make_shared<PostPlugin>();
+        return p;
     }
 };
 

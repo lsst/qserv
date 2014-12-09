@@ -35,6 +35,7 @@
 #include <string>
 
 // Third-party headers
+#include "boost/make_shared.hpp"
 #include "boost/pointer_cast.hpp"
 
 // Local headers
@@ -97,13 +98,13 @@ lookupSecIndex(query::QueryContext& context,
 }
 
 query::PassTerm::Ptr newPass(std::string const& s) {
-    query::PassTerm::Ptr p(new query::PassTerm);
+    query::PassTerm::Ptr p = boost::make_shared<query::PassTerm>();
     p->_text = s;
     return p;
 }
 template <typename C>
 query::PassListTerm::Ptr newPassList(C& c) {
-    query::PassListTerm::Ptr p(new query::PassListTerm);
+    query::PassListTerm::Ptr p = boost::make_shared<query::PassListTerm>();
     p->_terms.insert(p->_terms.begin(), c.begin(), c.end());
     return p;
 }
@@ -112,9 +113,10 @@ query::InPredicate::Ptr
 newInPred(std::string const& aliasTable,
           std::string const& secIndexColumn,
           std::vector<std::string> const& params) {
-    query::InPredicate::Ptr p(new query::InPredicate());
-    boost::shared_ptr<query::ColumnRef> cr(
-               new query::ColumnRef("", aliasTable, secIndexColumn));
+    query::InPredicate::Ptr p = boost::make_shared<query::InPredicate>();
+    boost::shared_ptr<query::ColumnRef> cr =
+               boost::make_shared<query::ColumnRef>(
+                       "", aliasTable, secIndexColumn);
     p->value =
         query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(cr));
 
@@ -132,15 +134,16 @@ query::FuncExpr::Ptr newFuncExpr(char const fName[],
                                  std::string const& tableAlias,
                                  StringPair const& chunkColumns,
                                  C& c) {
-    typedef boost::shared_ptr<query::ColumnRef> CrPtr;
-    query::FuncExpr::Ptr fe(new query::FuncExpr);
+    query::FuncExpr::Ptr fe = boost::make_shared<query::FuncExpr>();
     fe->name = UDF_PREFIX + fName;
     fe->params.push_back(
           query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
-          CrPtr(new query::ColumnRef("", tableAlias, chunkColumns.first)))));
+                  boost::make_shared<query::ColumnRef>(
+                          "", tableAlias, chunkColumns.first))));
     fe->params.push_back(
           query::ValueExpr::newSimple(query::ValueFactor::newColumnRefFactor(
-          CrPtr(new query::ColumnRef("", tableAlias, chunkColumns.second)))));
+                  boost::make_shared<query::ColumnRef>(
+                          "", tableAlias, chunkColumns.second))));
 
     typename C::const_iterator i;
     for(i = c.begin(); i != c.end(); ++i) {
