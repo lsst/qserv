@@ -160,16 +160,17 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
             ColumnRefNodeMap::Ref r = it->second;
 
             boost::shared_ptr<query::ColumnRef> newColumnRef;
-            newColumnRef.reset(new query::ColumnRef(tokenText(r.db),
-                                                    tokenText(r.table),
-                                                    tokenText(r.column)));
+            newColumnRef = boost::make_shared<query::ColumnRef>(
+                    tokenText(r.db),
+                    tokenText(r.table),
+                    tokenText(r.column));
             vt = query::ValueFactor::newColumnRefFactor(newColumnRef);
         }
         return vt;
     case SqlSQL2TokenTypes::FUNCTION_SPEC:
         // LOGF_INFO("col child (fct): %1% %2%"
         //           % child->getType() % child->getText());
-        fe.reset(new query::FuncExpr());
+        fe = boost::make_shared<query::FuncExpr>();
         last = walkToSiblingBefore(child, SqlSQL2TokenTypes::LEFT_PAREN);
         fe->name = getSiblingStringBounded(child, last);
         last = last->getNextSibling(); // Advance to LEFT_PAREN
