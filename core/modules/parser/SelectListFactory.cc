@@ -104,13 +104,13 @@ SelectListFactory::SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
                                      boost::shared_ptr<ValueExprFactory> vf)
     : _aliases(aliasMap),
       _vFactory(vf),
-      _valueExprList(new ValueExprList()) {
+      _valueExprList(boost::make_shared<ValueExprList>()) {
 }
 
 void
 SelectListFactory::attachTo(SqlSQL2Parser& p) {
     _selectListH.reset(new SelectListH(*this));
-    _columnAliasH.reset(new ColumnAliasH(_aliases));
+    _columnAliasH = boost::make_shared<ColumnAliasH>(_aliases);
     p._selectListHandler = _selectListH;
     p._selectStarHandler.reset(new SelectStarH(*this));
     p._columnAliasHandler = _columnAliasH;
