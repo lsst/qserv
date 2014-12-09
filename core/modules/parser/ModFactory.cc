@@ -137,7 +137,7 @@ void ModFactory::_importLimit(antlr::RefAST a) {
 }
 
 void ModFactory::_importOrderBy(antlr::RefAST a) {
-    _orderBy.reset(new query::OrderByClause());
+    _orderBy = boost::make_shared<query::OrderByClause>();
     // ORDER BY takes a column ref (expression)
     //LOGF_INFO("orderby got %1%" % walkTreeString(a));
     if(!a.get()) {
