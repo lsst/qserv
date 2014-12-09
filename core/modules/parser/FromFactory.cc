@@ -342,10 +342,9 @@ private:
         sib = sib->getNextSibling();
         boost::shared_ptr<query::JoinSpec> js = _processJoinSpec(sib);
 
-        return query::JoinRef::Ptr(new query::JoinRef(right,
-                                                      j,
-                                                      false,
-                                                      js));
+        boost::shared_ptr<query::JoinRef> p =
+                boost::make_shared<query::JoinRef>(right, j, false, js);
+        return p;
     }
     /// "natural" ( "inner" | outer_join_type ("outer")? )? "join" table_ref
     query::JoinRef::Ptr _makeJoinNoSpec(RefAST sib) const {
