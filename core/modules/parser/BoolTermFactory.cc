@@ -31,6 +31,9 @@
 
 #include "parser/BoolTermFactory.h"
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -171,7 +174,7 @@ BoolTermFactory::newBoolTerm(antlr::RefAST a) {
 /// Construct a new OrTerm from a node
 query::OrTerm::Ptr
 BoolTermFactory::newOrTerm(antlr::RefAST a) {
-    query::OrTerm::Ptr p(new query::OrTerm());
+    query::OrTerm::Ptr p = boost::make_shared<query::OrTerm>();
     multiImport<query::OrTerm> oi(*this, *p);
     matchType matchOr(SqlSQL2TokenTypes::SQL2RW_or);
     applyExcept<multiImport<query::OrTerm>,matchType> ae(oi, matchOr);
@@ -181,7 +184,7 @@ BoolTermFactory::newOrTerm(antlr::RefAST a) {
 /// Construct a new AndTerm from a node
 query::AndTerm::Ptr
 BoolTermFactory::newAndTerm(antlr::RefAST a) {
-    query::AndTerm::Ptr p(new query::AndTerm());
+    query::AndTerm::Ptr p = boost::make_shared<query::AndTerm>();
     multiImport<query::AndTerm> ai(*this, *p);
     matchType matchAnd(SqlSQL2TokenTypes::SQL2RW_and);
     applyExcept<multiImport<query::AndTerm>,matchType> ae(ai, matchAnd);
@@ -199,7 +202,7 @@ BoolTermFactory::newBoolFactor(antlr::RefAST a) {
         LOGF_INFO("bool factor: %1%" % ss.str());
     }
 #endif
-    query::BoolFactor::Ptr bf(new query::BoolFactor());
+    query::BoolFactor::Ptr bf = boost::make_shared<query::BoolFactor>();
     bfImport bfi(*this, *bf);
     forEachSibs(a, bfi);
     return bf;
@@ -208,12 +211,13 @@ BoolTermFactory::newBoolFactor(antlr::RefAST a) {
 query::UnknownTerm::Ptr
 BoolTermFactory::newUnknown(antlr::RefAST a) {
     LOGF_INFO("unknown term: %1%" % walkTreeString(a));
-    return query::UnknownTerm::Ptr(new query::UnknownTerm());
+    query::UnknownTerm::Ptr p = boost::make_shared<query::UnknownTerm>();
+    return p;
 }
 /// Construct an PassTerm
 query::PassTerm::Ptr
 BoolTermFactory::newPassTerm(antlr::RefAST a) {
-    query::PassTerm::Ptr p(new query::PassTerm());
+    query::PassTerm::Ptr p = boost::make_shared<query::PassTerm>();
     p->_text = tokenText(a); // FIXME: Should this be a tree walk?
     return p;
 }
@@ -221,7 +225,7 @@ BoolTermFactory::newPassTerm(antlr::RefAST a) {
 /// Construct an BoolTermFactor
 query::BoolTermFactor::Ptr
 BoolTermFactory::newBoolTermFactor(antlr::RefAST a) {
-    query::BoolTermFactor::Ptr p(new query::BoolTermFactor());
+    query::BoolTermFactor::Ptr p = boost::make_shared<query::BoolTermFactor>();
     p->_term = newBoolTerm(a);
     return p;
 }
