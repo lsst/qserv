@@ -47,12 +47,14 @@ namespace qproc {
 /// Do not inherit.
 struct ChunkSpec {
 public:
+    typedef std::vector<int32_t> Int32Vector;
+
     ChunkSpec() : chunkId(-1) {}
     static int32_t const CHUNKID_INVALID = -1;
 
     int32_t chunkId; ///< ChunkId of interest
     /// Subchunks of interest; empty indicates all subchunks are involved.
-    std::vector<int32_t> subChunks;
+    Int32Vector subChunks;
 
     void addSubChunk(int s) { subChunks.push_back(s); }
     bool shouldSplit() const;
@@ -62,6 +64,7 @@ public:
     ChunkSpec intersect(ChunkSpec const& cs) const;
     void merge(ChunkSpec const& rhs);
 
+    bool operator<(ChunkSpec const& rhs) const;
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c);
 

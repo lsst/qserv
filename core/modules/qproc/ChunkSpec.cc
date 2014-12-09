@@ -32,10 +32,13 @@
 #include "qproc/ChunkSpec.h"
 
 // System headers
+#include <algorithm>
 #include <cassert>
 #include <iterator>
 #include <stdexcept>
 
+// Qserv headers
+#include "global/Bug.h"
 
 namespace { // File-scope helpers
 /// A "good" number of subchunks to include in a chunk query.  This is
@@ -61,11 +64,16 @@ std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
 /// ChunkSpecVector intersection.
 /// Computes ChunkSpecVector intersection, overwriting dest with the result.
 ///
+/// precondition: Elements in ChunkSpecVector should be minimized in the sense
+/// that there should be only one element for a particular chunkId. i.e., for
+/// all ChunkSpec A element, there is no ChunkSpec B element in the same vector
+/// where A.chunkId == B.chunkId.
 void intersectSorted(ChunkSpecVector& dest, ChunkSpecVector const& a) {
     ChunkSpecVector::iterator di = dest.begin();
     ChunkSpecVector::iterator de = dest.end();
     ChunkSpecVector::const_iterator ai = a.begin();
     ChunkSpecVector::const_iterator ae = a.end();
+
     while(di != de) { // march down dest vector
         // For each item in dest, advance through a to find a matching chunkId.
         while(ai->chunkId < di->chunkId) {
@@ -74,7 +82,7 @@ void intersectSorted(ChunkSpecVector& dest, ChunkSpecVector const& a) {
         if(ai->chunkId == di->chunkId) {
             // On a match, perform the intersection.
             di->merge(*ai);
-            if(di->chunkId = ChunkSpec::CHUNKID_INVALID) {
+            if(di->chunkId == ChunkSpec::CHUNKID_INVALID) {
                 // Drop ai
                 di = dest.erase(di);
             } else {
@@ -105,6 +113,44 @@ ChunkSpecVector intersect(ChunkSpecVector const& a, ChunkSpecVector const& b) {
 ////////////////////////////////////////////////////////////////////////
 bool ChunkSpec::shouldSplit() const {
     return subChunks.size() > (unsigned)GOOD_SUBCHUNK_COUNT;
+}
+
+ChunkSpec ChunkSpec::intersect(ChunkSpec const& cs) const {
+    throw Bug("unimplemented"); // FIXME
+}
+
+void ChunkSpec::merge(ChunkSpec const& rhs) {
+    if(chunkId != rhs.chunkId) {
+        throw Bug("ChunkSpec::merge with different chunkId");
+    }
+    std::sort(subChunks.begin(), subChunks.end());
+    Int32Vector rhsSort, output;
+    rhsSort.assign(rhs.subChunks.begin(), rhs.subChunks.end());
+    std::sort(rhsSort.begin(), rhsSort.end());
+    std::set_intersection(
+        subChunks.begin(), subChunks.end(),
+        rhsSort.begin(), rhsSort.end(),
+        std::insert_iterator<Int32Vector>(output, output.end()));
+    subChunks.swap(output);
+}
+
+bool ChunkSpec::operator<(ChunkSpec const& rhs) const {
+    typedef std::vector<int32_t>::const_iterator VecIter;
+
+    if(chunkId < rhs.chunkId) return true;
+    else if(chunkId > rhs.chunkId) return false;
+    else {
+        std::pair<VecIter,VecIter> mism
+            = std::mismatch(subChunks.begin(), subChunks.end(),
+                            rhs.subChunks.begin());
+        if(mism.first == subChunks.end()) {
+            return mism.second != rhs.subChunks.end();
+        } else if(mism.second == rhs.subChunks.end()) {
+            return false;
+        } else { // both are valid;
+            return ((*mism.first) < (*mism.second));
+        }
+    }
 }
 ////////////////////////////////////////////////////////////////////////
 // ChunkSpecFragmenter
