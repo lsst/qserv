@@ -42,6 +42,7 @@
 
 // Third-party headers
 #include <antlr/NoViableAltException.hpp>
+#include "boost/make_shared.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -143,7 +144,7 @@ boost::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const 
     boost::shared_ptr<query::QsRestrictor::List const> p = _context->restrictors;
 
     if(p.get()) {
-        cv.reset(new query::ConstraintVector(p->size()));
+        cv = boost::make_shared<query::ConstraintVector>(p->size());
         int i=0;
         query::QsRestrictor::List::const_iterator li;
         for(li = p->begin(); li != p->end(); ++li) {
@@ -251,7 +252,7 @@ QuerySession::QuerySession(Test& t)
 }
 
 void QuerySession::_initContext() {
-    _context.reset(new query::QueryContext());
+    _context = boost::make_shared<query::QueryContext>();
     _context->defaultDb = _defaultDb;
     _context->username = "default";
     _context->needsMerge = false;
@@ -260,7 +261,7 @@ void QuerySession::_initContext() {
 }
 
 void QuerySession::_preparePlugins() {
-    _plugins.reset(new PluginList);
+    _plugins = boost::make_shared<PluginList>();
 
     _plugins->push_back(qana::QueryPlugin::newInstance("Where"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Aggregate"));
@@ -440,10 +441,10 @@ QuerySession::Iter::_buildFragment(ChunkSpecFragmenter& f) const {
     boost::shared_ptr<ChunkQuerySpec> last;
     while(!f.isDone()) {
         if(last.get()) {
-            last->nextFragment.reset(new ChunkQuerySpec);
+            last->nextFragment = boost::make_shared<ChunkQuerySpec>();
             last = last->nextFragment;
         } else {
-            last.reset(new ChunkQuerySpec);
+            last = boost::make_shared<ChunkQuerySpec>();
             first = last;
         }
         ChunkSpec s = f.get();
