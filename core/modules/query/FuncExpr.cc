@@ -50,7 +50,7 @@ namespace query {
 
 FuncExpr::Ptr
 FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
-    FuncExpr::Ptr e(new FuncExpr());
+    FuncExpr::Ptr e = boost::make_shared<FuncExpr>();
     e->name = newName;
     e->params = src.params; // Shallow list copy.
     return e;
@@ -65,7 +65,7 @@ FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
 
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
-    FuncExpr::Ptr e(new FuncExpr());
+    FuncExpr::Ptr e = boost::make_shared<FuncExpr>();
     e->name = newName;
     e->params.push_back(ve);
     return e;

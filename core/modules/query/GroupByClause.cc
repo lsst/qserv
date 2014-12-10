@@ -113,7 +113,7 @@ GroupByTerm callClone(GroupByTerm const& t) {
 }
 
 boost::shared_ptr<GroupByClause> GroupByClause::clone() const {
-    GroupByClause::Ptr p(new GroupByClause());
+    GroupByClause::Ptr p = boost::make_shared<GroupByClause>();
     std::transform(_terms->begin(), _terms->end(),
                    std::back_inserter(*p->_terms), callClone);
     return p;
