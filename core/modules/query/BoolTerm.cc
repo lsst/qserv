@@ -177,7 +177,7 @@ bool BoolFactor::_reduceTerms(BfTerm::PtrList& newTerms,
                     } else {
                         // still a reduction in the term, replace
                         boost::shared_ptr<BoolTermFactor> newBtf;
-                        newBtf.reset(new BoolTermFactor());
+                        newBtf = boost::make_shared<BoolTermFactor>();
                         newBtf->_term = reduced;
                         newTerms.push_back(newBtf);
                         hasReduction = true;
@@ -276,7 +276,7 @@ boost::shared_ptr<BoolTerm> BoolFactor::clone() const {
 }
 
 boost::shared_ptr<BoolTerm> UnknownTerm::clone() const {
-    return BoolTerm::Ptr(new UnknownTerm); // TODO what is unknown now?
+    return  boost::make_shared<UnknownTerm>(); // TODO what is unknown now?
 }
 
 BfTerm::Ptr PassListTerm::clone() const {
