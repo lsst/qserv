@@ -31,6 +31,9 @@
 // No public interface
 #include "qana/QueryPlugin.h" // Parent class
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -89,7 +92,7 @@ public:
 
     virtual std::string getName() const { return "ScanTable"; }
     virtual QueryPlugin::Ptr newInstance() {
-        return QueryPlugin::Ptr(new ScanTablePlugin());
+        return boost::make_shared<ScanTablePlugin>();
     }
 };
 
@@ -99,7 +102,7 @@ public:
 namespace {
 struct registerPlugin {
     registerPlugin() {
-        ScanTablePluginFactory::Ptr f(new ScanTablePluginFactory());
+        ScanTablePluginFactory::Ptr f = boost::make_shared<ScanTablePluginFactory>();
         QueryPlugin::registerClass(f);
     }
 };
