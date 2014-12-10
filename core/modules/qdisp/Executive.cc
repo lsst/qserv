@@ -31,6 +31,9 @@
 
 #include "qdisp/Executive.h"
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // System headers
 #include <algorithm>
 #include <cassert>
@@ -365,7 +368,7 @@ bool Executive::_shouldRetry(int refNum) {
 
 ExecStatus& Executive::_insertNewStatus(int refNum,
                                         ResourceUnit const& r) {
-    ExecStatus::Ptr es(new ExecStatus(r));
+    ExecStatus::Ptr es = boost::make_shared<ExecStatus>(r);
     _statuses.insert(StatusMap::value_type(refNum, es));
     return *es;
 }
