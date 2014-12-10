@@ -35,7 +35,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
+#include "boost/make_shared.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -54,7 +54,7 @@ public:
     static Ptr newShared(std::string const& db_,
                          std::string const& table_,
                          std::string const& column_) {
-        return Ptr(new ColumnRef(db_, table_, column_));
+        return boost::make_shared<ColumnRef>(db_, table_, column_);
     }
 
     std::string db;

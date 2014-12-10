@@ -23,6 +23,9 @@
 
 #include "query/JoinRef.h"
 
+ // Third-party headers
+#include "boost/make_shared.hpp"
+
 namespace lsst {
 namespace qserv {
 namespace query {
@@ -49,7 +52,7 @@ JoinRef::Ptr JoinRef::clone() const {
     if(_right) { r = _right->clone(); }
     JoinSpec::Ptr s;
     if(_spec) { s = _spec->clone(); }
-    return Ptr(new JoinRef(r, _joinType, _isNatural, s));
+    return boost::make_shared<JoinRef>(r, _joinType, _isNatural, s);
 }
 
 void JoinRef::_putJoinTemplate(QueryTemplate& qt) const {
