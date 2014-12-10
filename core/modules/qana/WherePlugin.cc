@@ -32,6 +32,9 @@
 #include <string>
 #include "util/common.h"
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "qana/QueryPlugin.h"
 #include "query/BoolTerm.h"
@@ -74,7 +77,7 @@ public:
 
     virtual std::string getName() const { return "Where"; }
     virtual QueryPlugin::Ptr newInstance() {
-        return QueryPlugin::Ptr(new WherePlugin());
+        return boost::make_shared<WherePlugin>();
     }
 };
 
@@ -84,7 +87,7 @@ public:
 namespace {
 struct registerPlugin {
     registerPlugin() {
-        WherePluginFactory::Ptr f(new WherePluginFactory());
+        WherePluginFactory::Ptr f = boost::make_shared<WherePluginFactory>();
         QueryPlugin::registerClass(f);
     }
 };

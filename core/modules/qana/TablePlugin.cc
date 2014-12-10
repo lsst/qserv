@@ -45,10 +45,13 @@
 // System headers
 #include <string>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Local headers
+// Qserv headers
 #include "QueryMapping.h"
 #include "QueryPlugin.h"
 #include "RelationGraph.h"
@@ -268,7 +271,7 @@ public:
 
     virtual std::string getName() const { return "Table"; }
     virtual QueryPlugin::Ptr newInstance() {
-        return QueryPlugin::Ptr(new TablePlugin());
+        return boost::make_shared<TablePlugin>();
     }
 };
 
@@ -278,7 +281,7 @@ public:
 namespace {
 struct registerPlugin {
     registerPlugin() {
-        TablePluginFactory::Ptr f(new TablePluginFactory());
+        TablePluginFactory::Ptr f = boost::make_shared<TablePluginFactory>();
         QueryPlugin::registerClass(f);
     }
 };
@@ -383,7 +386,7 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
 {
     TableInfoPool pool;
     if (!context.queryMapping) {
-        context.queryMapping.reset(new QueryMapping());
+        context.queryMapping = boost::make_shared<QueryMapping>();
     }
     // Process each entry in the parallel select statement set.
     typedef SelectStmtList::iterator Iter;
