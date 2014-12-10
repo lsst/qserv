@@ -81,9 +81,9 @@ JoinSpec::Ptr JoinSpec::clone() const {
     }
     if(_usingColumn) {
         boost::shared_ptr<ColumnRef> col = boost::make_shared<ColumnRef>(*_usingColumn);
-        return Ptr(new JoinSpec(col));
+        return boost::make_shared<JoinSpec>(col);
     } else {
-        return Ptr(new JoinSpec(_onTerm->copySyntax()));
+        return boost::make_shared<JoinSpec>(_onTerm->copySyntax());
     }
 
 }

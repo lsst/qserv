@@ -37,6 +37,7 @@
 #include <string>
 
 // Third-party headers
+#include "boost/make_shared.hpp"
 #include "boost/shared_ptr.hpp"
 
 // Forward declarations
@@ -84,7 +85,7 @@ public:
     typedef boost::shared_ptr<GroupByClause> Ptr;
     typedef std::deque<GroupByTerm> List;
 
-    GroupByClause() : _terms(new List()) {}
+    GroupByClause() : _terms(boost::make_shared<List>()) {}
     ~GroupByClause() {}
 
     std::string getGenerated();
