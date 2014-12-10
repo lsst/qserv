@@ -333,27 +333,28 @@ private:
 
     void _setGenerator(query::QsRestrictor const& r) {
         if(r._name == "qserv_areaspec_box") {
-            // TODO: keep this syntax or not?
-            _generator = boost::static_pointer_cast<Generator>(
-                    boost::make_shared<AreaGenerator>("s2PtInBox", 4, r._params));
+            _generator = boost::make_shared<AreaGenerator>("s2PtInBox",
+                                                           4,
+                                                           r._params
+                                                          );
         } else if(r._name == "qserv_areaspec_circle") {
-            _generator = boost::static_pointer_cast<Generator>(
-                    boost::make_shared<AreaGenerator>(
-                            "s2PtInCircle", 3, r._params));
+            _generator = boost::make_shared<AreaGenerator>("s2PtInCircle",
+                                                           3,
+                                                           r._params
+                                                          );
         } else if(r._name == "qserv_areaspec_ellipse") {
-            _generator = boost::static_pointer_cast<Generator>(
-                    boost::make_shared<AreaGenerator>(
-                            "s2PtInEllipse", 5, r._params));
+            _generator = boost::make_shared<AreaGenerator>("s2PtInEllipse",
+                                                           5,
+                                                           r._params
+                                                          );
         } else if(r._name == "qserv_areaspec_poly") {
             const int use_string = AreaGenerator::USE_STRING;
-            // TODO: why using AreaGenerator::USE_STRING in call below return
-            // a compile-time error?
-            _generator = boost::static_pointer_cast<Generator>(
-                    boost::make_shared<AreaGenerator>(
-                            "s2PtInCPoly", use_string, r._params));
+            _generator = boost::make_shared<AreaGenerator>("s2PtInCPoly",
+                                                           use_string,
+                                                           r._params
+                                                          );
         } else if(_name == "qserv_objectId") {
-            _generator = boost::static_pointer_cast<Generator>(
-                                boost::make_shared<ObjectIdGenerator>(r._params));
+            _generator = boost::make_shared<ObjectIdGenerator>(r._params);
         } else {
             throw qana::AnalysisBug("Unmatched restriction spec: " + _name);
         }
