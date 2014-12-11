@@ -39,6 +39,7 @@
 #include <sys/time.h>
 
 // Third-party headers
+#include "boost/make_shared.hpp"
 #include "XrdSys/XrdSysLogger.hh"
 
 // Local headers
@@ -258,7 +259,7 @@ int QservOss::Init(XrdSysLogger* log, const char* cfgFn) {
     LOG(_log, LOG_LVL_INFO, "QservOss Init");
     std::ostringstream ss;
     ss << "Valid paths(ci): ";
-    _chunkInventory.reset(new wpublish::ChunkInventory(_name));
+    _chunkInventory = boost::make_shared<wpublish::ChunkInventory>(_name);
     _chunkInventory->dbgPrint(ss);
     LOGF(_log, LOG_LVL_INFO, "%1%" % ss.str());
     // TODO: update self with new config?

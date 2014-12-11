@@ -86,7 +86,7 @@ private:
 
     /// Stash of cancellation functions to be called to cancel msgs in flight on
     /// _processor.
-    std::vector<CancelFuncPtr > _cancellers;
+    std::vector<CancelFuncPtr> _cancellers;
 }; // class SsiSession
 }}} // namespace lsst::qserv::xrdsvc
 
