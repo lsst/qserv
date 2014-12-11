@@ -30,6 +30,7 @@
 #include <unistd.h>
 
 // Third-party headers
+#include "boost/make_shared.hpp"
 #include "lsst/log/Log.h"
 #include "XProtocol/XProtocol.hh"
 #include "XrdSsi/XrdSsiLogger.hh"
@@ -58,7 +59,7 @@ boost::shared_ptr<sql::SqlConnection> makeSqlConnection() {
     boost::shared_ptr<sql::SqlConnection> conn;
     mysql::MySqlConfig sqlConfig = wconfig::getConfig().getSqlConfig();
     sqlConfig.dbName = ""; // Force dbName empty to prevent accidental context
-    conn.reset(new sql::SqlConnection(sqlConfig, true));
+    conn = boost::make_shared<sql::SqlConnection>(sqlConfig, true);
     return conn;
 }
 
@@ -73,7 +74,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
     if(!_setupScratchDb()) {
         throw wconfig::ConfigError("Couldn't setup scratch db");
     }
-    _service.reset(new wcontrol::Service());
+    _service = boost::make_shared<wcontrol::Service>();
 
 }
 
@@ -98,7 +99,11 @@ void SsiService::_initInventory() {
     xrdfs::XrdName x;
     boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
     assert(conn);
-    _chunkInventory.reset(new wpublish::ChunkInventory(x.getName(), conn));
+    _chunkInventory =
+            boost::make_shared<wpublish::ChunkInventory>(
+                                                         x.getName(),
+                                                         conn
+                                                        );
     std::ostringstream os;
     os << "Paths exported: ";
     _chunkInventory->dbgPrint(os);

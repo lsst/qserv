@@ -213,6 +213,7 @@ void SsiSession::enqueue(ResourceUnit const& ru, char* reqData, int reqSize) {
     // more data.
     ReplyChannel::Ptr rc(new ReplyChannel(*this));
     SsiProcessor::Ptr sp(new SsiProcessor(ru, _processor, rc, _cancellers));
+
     LOGF_INFO("Importing TaskMsg of size %1%" % reqSize);
     proto::ProtoImporter<proto::TaskMsg> pi(sp);
 
