@@ -192,7 +192,7 @@ boost::shared_ptr<sql::SqlConnection> makeSqlConnection() {
     // FIXME: Use qsmaster privileges for now.
     sqlConfig.username = "qsmaster";
     sqlConfig.dbName = "";
-    conn.reset(new sql::SqlConnection(sqlConfig, true));
+    conn = boost::make_shared<sql::SqlConnection>(sqlConfig, true);
     return conn;
 }
 
@@ -227,7 +227,7 @@ MySqlFs::MySqlFs(XrdSysLogger* lp, char const* cFileName)
     _initExports();
     assert(_chunkInventory);
     _cleanup();
-    _service.reset(new wcontrol::Service());
+    _service = boost::make_shared<wcontrol::Service>();
 }
 
 MySqlFs::~MySqlFs(void) {
@@ -366,7 +366,11 @@ void MySqlFs::_initExports() {
     XrdName x;
     boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
     assert(conn);
-    _chunkInventory.reset(new wpublish::ChunkInventory(x.getName(), conn));
+    _chunkInventory =
+            boost::make_shared<wpublish::ChunkInventory>(
+                                                         x.getName(),
+                                                         conn
+                                                        );
     std::ostringstream os;
     os << "Paths exported: ";
     _chunkInventory->dbgPrint(os);
