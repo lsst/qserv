@@ -38,6 +38,7 @@
 
 // Third party headers
 #include "boost/shared_ptr.hpp"
+#include "boost/make_shared.hpp"
 
 namespace lsst {
 namespace qserv {
@@ -90,7 +91,7 @@ public:
     typedef boost::shared_ptr<OrderByClause> Ptr;
     typedef std::deque<OrderByTerm> List;
 
-    OrderByClause() : _terms(new List()) {}
+    OrderByClause() : _terms(boost::make_shared<List>()) {}
     ~OrderByClause() {}
 
     std::string getGenerated();

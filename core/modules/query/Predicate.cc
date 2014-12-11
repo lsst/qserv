@@ -243,7 +243,7 @@ namespace {
 }
 
 BfTerm::Ptr InPredicate::clone() const {
-    InPredicate::Ptr p(new InPredicate);
+    InPredicate::Ptr p  = boost::make_shared<InPredicate>();
     if(value) p->value = value->clone();
     std::transform(cands.begin(), cands.end(),
                    std::back_inserter(p->cands),
@@ -252,7 +252,7 @@ BfTerm::Ptr InPredicate::clone() const {
 }
 
 BfTerm::Ptr BetweenPredicate::clone() const {
-    BetweenPredicate::Ptr p(new BetweenPredicate);
+    BetweenPredicate::Ptr p = boost::make_shared<BetweenPredicate>();
     if(value) p->value = value->clone();
     if(minValue) p->minValue = minValue->clone();
     if(maxValue) p->maxValue = maxValue->clone();
@@ -260,14 +260,14 @@ BfTerm::Ptr BetweenPredicate::clone() const {
 }
 
 BfTerm::Ptr LikePredicate::clone() const {
-    LikePredicate::Ptr p(new LikePredicate);
+    LikePredicate::Ptr p = boost::make_shared<LikePredicate>();
     if(value) p->value = value->clone();
     if(charValue) p->charValue = charValue->clone();
     return BfTerm::Ptr(p);
 }
 
 BfTerm::Ptr NullPredicate::clone() const {
-    NullPredicate::Ptr p(new NullPredicate);
+    NullPredicate::Ptr p = boost::make_shared<NullPredicate>();
     if(value) p->value = value->clone();
     p->hasNot = hasNot;
     return BfTerm::Ptr(p);
