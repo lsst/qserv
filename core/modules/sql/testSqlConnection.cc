@@ -28,6 +28,9 @@
 #include <string>
 #include <unistd.h> // for getpass
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Boost unit test header
 #define BOOST_TEST_MODULE SqlConnection_1
 #include "boost/test/included/unit_test.hpp"
@@ -82,7 +85,7 @@ struct PerTestFixture {
             std::cout << "Enter mysql socket: ";
             std::cin >> sqlConfig.socket;
         }
-        sqlConn.reset(new SqlConnection(sqlConfig));
+        sqlConn = boost::make_shared<SqlConnection>(sqlConfig);
     }
     ~PerTestFixture () {}
     boost::shared_ptr<SqlConnection> sqlConn;
@@ -219,7 +222,7 @@ BOOST_AUTO_TEST_CASE(ListTables) {
 }
 
 BOOST_AUTO_TEST_CASE(UnbufferedQuery) {
-    sqlConn.reset(new SqlConnection(sqlConfig, true));
+    sqlConn = boost::make_shared<SqlConnection>(sqlConfig, true);
     // Setup for "list tables"
     std::string dbN = "one_xysdfed34d";
     std::string tList[] = {
