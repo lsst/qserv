@@ -178,9 +178,9 @@ SelectStmt::copySyntax() const {
 }
 
 void SelectStmt::setFromListAsTable(std::string const& t) {
-    TableRefListPtr tr(new TableRefList);
+    TableRefListPtr tr = boost::make_shared<TableRefList>();
     tr->push_back(boost::make_shared<TableRef>("", t, ""));
-    _fromList.reset(new FromList(tr));
+    _fromList = boost::make_shared<FromList>(tr);
 }
 
 ////////////////////////////////////////////////////////////////////////
