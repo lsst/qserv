@@ -52,14 +52,14 @@ namespace qserv {
 namespace query {
 
 ValueFactorPtr ValueFactor::newColumnRefFactor(boost::shared_ptr<ColumnRef const> cr) {
-    ValueFactorPtr term(new ValueFactor());
+    ValueFactorPtr term = boost::make_shared<ValueFactor>();
     term->_type = COLUMNREF;
-    term->_columnRef.reset(new ColumnRef(*cr));
+    term->_columnRef = boost::make_shared<ColumnRef>(*cr);
     return term;
 }
 
 ValueFactorPtr ValueFactor::newStarFactor(std::string const& table) {
-    ValueFactorPtr term(new ValueFactor());
+    ValueFactorPtr term = boost::make_shared<ValueFactor>();
     term->_type = STAR;
     if(!table.empty()) {
         term->_tableStar = table;
@@ -67,14 +67,14 @@ ValueFactorPtr ValueFactor::newStarFactor(std::string const& table) {
     return term;
 }
 ValueFactorPtr ValueFactor::newFuncFactor(boost::shared_ptr<FuncExpr> fe) {
-    ValueFactorPtr term(new ValueFactor());
+    ValueFactorPtr term = boost::make_shared<ValueFactor>();
     term->_type = FUNCTION;
     term->_funcExpr = fe;
     return term;
 }
 
 ValueFactorPtr ValueFactor::newAggFactor(boost::shared_ptr<FuncExpr> fe) {
-    ValueFactorPtr term(new ValueFactor());
+    ValueFactorPtr term = boost::make_shared<ValueFactor>();
     term->_type = AGGFUNC;
     term->_funcExpr = fe;
     return term;
@@ -82,7 +82,7 @@ ValueFactorPtr ValueFactor::newAggFactor(boost::shared_ptr<FuncExpr> fe) {
 
 ValueFactorPtr
 ValueFactor::newConstFactor(std::string const& alnum) {
-    ValueFactorPtr term(new ValueFactor());
+    ValueFactorPtr term = boost::make_shared<ValueFactor>();
     term->_type = CONST;
     term->_tableStar = alnum;
     return term;
@@ -90,7 +90,7 @@ ValueFactor::newConstFactor(std::string const& alnum) {
 
 ValueFactorPtr
 ValueFactor::newExprFactor(boost::shared_ptr<ValueExpr> ve) {
-    ValueFactorPtr factor(new ValueFactor());
+    ValueFactorPtr factor = boost::make_shared<ValueFactor>();
     factor->_type = EXPR;
     factor->_valueExpr = ve;
     return factor;
@@ -116,17 +116,17 @@ void ValueFactor::findColumnRefs(ColumnRef::List& list) {
 }
 
 ValueFactorPtr ValueFactor::clone() const{
-    ValueFactorPtr expr(new ValueFactor(*this));
+    ValueFactorPtr expr = boost::make_shared<ValueFactor>(*this);
     // Clone refs.
     // FIXME: not sure these are deep copies.
     if(_columnRef.get()) {
-        expr->_columnRef.reset(new ColumnRef(*_columnRef));
+        expr->_columnRef = boost::make_shared<ColumnRef>(*_columnRef);
     }
     if(_funcExpr.get()) {
-        expr->_funcExpr.reset(new FuncExpr(*_funcExpr));
+        expr->_funcExpr = boost::make_shared<FuncExpr>(*_funcExpr);
     }
     if(_valueExpr.get()) {
-        expr->_funcExpr.reset(new FuncExpr(*_funcExpr));
+        expr->_funcExpr = boost::make_shared<FuncExpr>(*_funcExpr);
     }
     return expr;
 }
