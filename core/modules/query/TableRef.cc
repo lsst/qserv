@@ -34,6 +34,9 @@
 #include <algorithm>
 #include <sstream>
 
+ // Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
@@ -115,7 +118,7 @@ JoinRef::Ptr joinRefClone(JoinRef::Ptr const& r) {
 } // anonymous
 
 TableRef::Ptr TableRef::clone() const {
-    TableRef::Ptr newCopy(new TableRef(_db, _table, _alias));
+    TableRef::Ptr newCopy = boost::make_shared<TableRef>(_db, _table, _alias);
     std::transform(_joinRefList.begin(), _joinRefList.end(),
                    std::back_inserter(newCopy->_joinRefList), joinRefClone);
     return newCopy;
