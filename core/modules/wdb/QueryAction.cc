@@ -36,6 +36,7 @@
 #include <iostream>
 
 // Third-party headers
+#include "boost/make_shared.hpp"
 #include <mysql/mysql.h>
 
 // Qserv headers
@@ -186,8 +187,8 @@ void QueryAction::Impl::_addErrorMsg(int code, std::string const& msg) {
 }
 
 void QueryAction::Impl::_initMsgs() {
-    _protoHeader.reset(new proto::ProtoHeader);
-    _result.reset(new proto::Result);
+    _protoHeader = boost::make_shared<proto::ProtoHeader>();
+    _result = boost::make_shared<proto::Result>();
     if(_msg->has_session()) {
         _result->set_session(_msg->session());
     }
