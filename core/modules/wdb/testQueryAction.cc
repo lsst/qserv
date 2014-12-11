@@ -76,7 +76,8 @@ struct Fixture {
     QueryActionArg newArg() {
         boost::shared_ptr<TaskMsg> msg(newTaskMsg());
         boost::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
-        lsst::qserv::wbase::Task::Ptr t(new lsst::qserv::wbase::Task(msg, sc));
+        lsst::qserv::wbase::Task::Ptr t =
+                boost::make_shared<lsst::qserv::wbase::Task>(msg, sc);
         LOG_LOGGER w(LOG_GET("test"));
         boost::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newFakeMgr();
         QueryActionArg a(w, t, crm);
