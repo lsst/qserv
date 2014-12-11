@@ -31,6 +31,7 @@
 #include "wbase/Task.h"
 
 // Third-party headers
+#include "boost/make_shared.hpp"
 #include "boost/regex.hpp"
 #include "boost/thread.hpp"
 
@@ -123,7 +124,7 @@ std::string const
 Task::defaultUser = "qsmaster";
 
 Task::Task(wbase::ScriptMeta const& s, std::string const& user_) {
-    TaskMsgPtr t(new proto::TaskMsg());
+    TaskMsgPtr t = boost::make_shared<proto::TaskMsg>();
     // Try to force non copy-on-write
     hash.assign(s.hash.c_str());
     dbName.assign(s.dbName.c_str());
@@ -144,7 +145,7 @@ Task::Task(Task::TaskMsgPtr t, std::string const& user_) {
     dbName = "q_" + hash;
     resultPath = wbase::hashToResultPath(hash);
     // Try to force non copy-on-write
-    msg.reset(new proto::TaskMsg(*t));
+    msg = boost::make_shared<proto::TaskMsg>(*t);
     user = user_;
     needsCreate = true;
     timestr[0] = '\0';
@@ -153,7 +154,7 @@ Task::Task(Task::TaskMsgPtr t, std::string const& user_) {
 
 Task::Task(Task::TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc) {
     // Make msg copy.
-    msg.reset(new proto::TaskMsg(*t));
+    msg = boost::make_shared<proto::TaskMsg>(*t);
     sendChannel = sc;
     hash = hashTaskMsg(*t);
     dbName = "q_" + hash;
