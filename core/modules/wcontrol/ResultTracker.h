@@ -116,7 +116,7 @@ public:
             typename NewsMap::iterator i = _news.find(k);
             if(i != _news.end()) { // If already reported, reuse.
                 boost::shared_ptr<ResultCallable<Callable> > rc;
-                rc.reset(new ResultCallable<Callable>(c,i->second));
+                rc = boost::make_shared<ResultCallable<Callable> >(c,i->second);
                 _workQueue.add(rc);
                 return;
             }
@@ -134,7 +134,7 @@ public:
             typename NewsMap::iterator i = _news.find(k);
             if(i != _news.end()) {
                 boost::shared_ptr<ResultCallable<Callable> > rc;
-                rc.reset(new ResultCallable<Callable>(c,i->second));
+                rc = boost::make_shared<ResultCallable<Callable> >(c,i->second);
                 _workQueue.add(rc);
                 return;
             } else {
