@@ -27,6 +27,9 @@
 #include <map>
 #include <string>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "rproc/SqlInsertIter.h"
 #include "util/PacketBuffer.h"
@@ -129,7 +132,7 @@ BOOST_AUTO_TEST_CASE(PlainIterTest) {
     XrdBufferSource* bs = new XrdBufferSource(string(dummyFilename),
                                               512,
                                               true);
-    PacketBuffer::Ptr p(new PacketBuffer(bs));
+    PacketBuffer::Ptr p = boost::make_shared<PacketBuffer>(bs);
     char const* c = dummyBlock;
     bool same = true;
     for(; !p->isDone(); ++(*p)) {
@@ -153,7 +156,7 @@ BOOST_AUTO_TEST_CASE(pbtest) {
                                 fragSize,
                                 true);
 
-        for(PacketBuffer::Ptr p(new PacketBuffer(bs));
+        for(PacketBuffer::Ptr p = boost::make_shared<PacketBuffer>(bs);
             !p->isDone(); ++(*p)) {
             PacketBuffer::Value v = **p;
 #if 0
@@ -177,7 +180,7 @@ BOOST_AUTO_TEST_CASE(SqlIterTest) {
             new XrdBufferSource(string(dummyFilename),
                                 fragSize,
                                 true);
-        PacketBuffer::Ptr p(new PacketBuffer(bs));
+        PacketBuffer::Ptr p = boost::make_shared<PacketBuffer>(bs);
         SqlInsertIter sii(p, tableName, true);
         unsigned sCount = iterateInserts(sii);
         BOOST_CHECK_EQUAL(sCount, totalInserts);
