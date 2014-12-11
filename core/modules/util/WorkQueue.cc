@@ -31,6 +31,9 @@
 // System headers
 #include <iostream>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 namespace lsst {
 namespace qserv {
 namespace util {
@@ -208,7 +211,7 @@ void test() {
     lsst::qserv::util::WorkQueue wq(10);
     cout << "wq started " << endl;
     for(int i=0; i < 50; ++i) {
-        wq.add(MyCallable::Ptr(new MyCallable(i, 0.2)));
+        wq.add(boost::make_shared<MyCallable>(i, 0.2));
     }
     cout << "added items" << endl;
     //nanosleep(&ts,&rem);
