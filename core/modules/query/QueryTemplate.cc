@@ -143,8 +143,9 @@ struct EntryMerger {
     void _mergeCurrent() {
         if(_candidates.size() > 1) {
             boost::shared_ptr<QueryTemplate::Entry> e;
-            e.reset(
-                new QueryTemplate::StringEntry(outputString(_candidates)));
+            e = boost::make_shared<QueryTemplate::StringEntry>(
+                                                   outputString(_candidates)
+                                                              );
             _entries.push_back(e);
             _candidates.clear();
         } else if(!_candidates.empty()) {
