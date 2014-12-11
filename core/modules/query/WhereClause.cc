@@ -147,7 +147,7 @@ boost::shared_ptr<WhereClause> WhereClause::clone() const {
         newC->_tree = _tree->copySyntax();
     }
     if(_restrs.get()) {
-        newC->_restrs.reset(new QsRestrictor::List(*_restrs));
+        newC->_restrs = boost::make_shared<QsRestrictor::List>(*_restrs);
     }
     // For the other fields, default-copied versions are okay.
     return newC;
@@ -207,7 +207,7 @@ WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
 ////////////////////////////////////////////////////////////////////////
 void
 WhereClause::resetRestrs() {
-    _restrs.reset(new QsRestrictor::List());
+    _restrs = boost::make_shared<QsRestrictor::List>();
 }
 
 }}} // namespace lsst::qserv::query
