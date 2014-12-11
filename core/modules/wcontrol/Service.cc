@@ -23,6 +23,9 @@
 
 #include "wcontrol/Service.h"
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "wcontrol/Foreman.h"
 #include "wsched/BlendScheduler.h"
@@ -36,15 +39,19 @@ namespace wcontrol {
 
 Service::Service() {
 #if 0 // Shared scan only
-    ScanScheduler::Ptr sch(new ScanScheduler());
+    ScanScheduler::Ptr schrc = boost::make_shared<ScanScheduler>();
 #elif 0 // Group scan only (interactive)
-    wsched::GroupScheduler::Ptr sch(new wsched::GroupScheduler());
+    wsched::GroupScheduler::Ptr sch =
+            boost::make_shared<wsched::GroupScheduler>();
 #else // Blend scheduler
-    wsched::GroupScheduler::Ptr gro(new wsched::GroupScheduler());
+    wsched::GroupScheduler::Ptr gro =
+            boost::make_shared<wsched::GroupScheduler>();
 
-    wsched::ScanScheduler::Ptr sca(new wsched::ScanScheduler());
+    wsched::ScanScheduler::Ptr sca =
+            boost::make_shared<wsched::ScanScheduler>();
 
-    wsched::BlendScheduler::Ptr sch(new wsched::BlendScheduler(gro, sca));
+    wsched::BlendScheduler::Ptr sch =
+            boost::make_shared<wsched::BlendScheduler>(gro, sca);
 #endif
     _foreman = newForeman(sch);
 }
