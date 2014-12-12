@@ -182,7 +182,7 @@ class QservAdmin(object):
 
                 options["uuid"] = str(uuid.uuid4())
                 partOptions = dict((k, v) for k, v in options.items()
-                                   if k in ["nStripes", "nSubStripes", "uuid"])
+                                   if k in ["nStripes", "nSubStripes", "overlap", "uuid"])
                 self._addPacked(ptP, partOptions)
 
                 pId = ptP[-10:] # Partitioning id is always 10 digit, 0 padded
