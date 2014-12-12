@@ -7,6 +7,7 @@ Development reference
 
    quick-start-devel
    build-qserv-with-specific-dependencies
+   bisect 
    package-internet-free-distserver
    build-partition-without-eups
    css
