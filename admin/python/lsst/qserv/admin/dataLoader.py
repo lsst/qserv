@@ -677,8 +677,19 @@ class DataLoader(object):
         # index column
         idxCol = self.partOptions['id']
 
+        # get index column type from original table
+        idxColType = 'BIGINT'
+        q = "SHOW COLUMNS FROM {0}.{1}".format(database, table)
+        self._log.debug('query: %s', q)
+        cursor.execute(q)
+        for row in cursor.fetchall():
+            if row[0] == idxCol:
+                idxColType = row[1]
+                break
+
         # make a table
-        q = "CREATE TABLE {0} ({1} BIGINT NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT)".format(metaTable, idxCol)
+        q = "CREATE TABLE {table} ({column} {type} NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT)"
+        q = q.format(table=metaTable, column=idxCol, type=idxColType)
         self._log.debug('query: %s', q)
         cursor.execute(q)
 
