@@ -6,7 +6,7 @@ Quick start guide
 
 .. note::
 
-   This procedure is for RELEASED and PUBLISHED Qserv software. 
+   This procedure is for RELEASED and PUBLISHED Qserv software.
    Developers interested in modifying code or running unreleased versions should see :ref:`quick-start-devel`.
 
 .. _quick-start-pre-requisites:
@@ -55,7 +55,7 @@ First, log in with a **non-root user account**.
 
 .. _quick-start-install-qserv:
 
-Install Qserv distribution 
+Install Qserv distribution
 ==========================
 
 Then below, please set ``RELEASE`` to "|release|" to install explicitly this release, or replace it with ``qserv`` to install current Qserv release.
@@ -65,8 +65,8 @@ Then below, please set ``RELEASE`` to "|release|" to install explicitly this rel
    # First, define RELEASE, here we install current Qserv release
    RELEASE="qserv"
    # loadLSST.bash must have been sourced before running this (see above)
-   eups distrib install qserv_distrib -t $RELEASE
-   setup qserv_distrib -t $RELEASE
+   eups distrib install --current-all --tag $RELEASE qserv_distrib
+   setup qserv_distrib
 
 .. _quick-start-configuration:
 
@@ -85,7 +85,7 @@ The :program:`qserv-configure.py` script builds a Qserv configuration be deployi
 
    qserv-configure.py [-h] [-a] [-p] [-d] [-e] [-m] [-x] [-q] [-s] [-c]
                       [-v {DEBUG,INFO,WARNING,FATAL,ERROR}] [-f]
-                      [-R QSERV_RUN_DIR] 
+                      [-R QSERV_RUN_DIR]
 
 The :program:`qserv-configure.py` script has several important options:
 
@@ -113,7 +113,7 @@ Mono-node instance
 
 .. code-block:: bash
 
-   # for a minimalist single node install : 
+   # for a minimalist single node install :
    qserv-configure.py --all
 
 *******
