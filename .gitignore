@@ -11,3 +11,6 @@ config.log
 /lib/
 /proxy/
 /cfg/
+/qserv-start.sh
+/qserv-stop.sh
+/qserv-status.sh
