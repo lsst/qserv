@@ -49,7 +49,7 @@ namespace qdisp {
 /// concerned.
 class TransactionSpec {
 public:
- TransactionSpec() : chunkId(-1) {}
+    TransactionSpec() : chunkId(-1) {}
     int chunkId;
     std::string path;
     std::string query;
@@ -58,29 +58,27 @@ public:
 
     bool isNull() const { return path.length() == 0; }
 
-    class Reader;
-};
+    class Reader {
+    public:
+        Reader(std::string const& inFile);
+        ~Reader();
+        TransactionSpec getSpec();
+    private:
+        void _readWholeFile(std::string const& inFile);
+        void _setupMmap(std::string const& inFile);
+        void _cleanupMmap();
+        void _advanceMmap();
 
-class TransactionSpec::Reader {
-public:
-    Reader(std::string const& inFile);
-    ~Reader();
-    TransactionSpec getSpec();
-private:
-    void _readWholeFile(std::string const& inFile);
-    void _setupMmap(std::string const& inFile);
-    void _cleanupMmap();
-    void _advanceMmap();
-
-    char* _rawContents;
-    char* _mmapChunk;
-    int _mmapFd;
-    int _mmapOffset;
-    int _mmapChunkSize;
-    int _mmapDefaultSize;
-    int _mmapMinimum;
-    int _rawLength;
-    int _pos;
+        char* _rawContents;
+        char* _mmapChunk;
+        int _mmapFd;
+        int _mmapOffset;
+        int _mmapChunkSize;
+        int _mmapDefaultSize;
+        int _mmapMinimum;
+        int _rawLength;
+        int _pos;
+    };
 };
 
 }}} // namespace lsst::qserv::qdisp
