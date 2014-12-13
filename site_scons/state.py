@@ -113,6 +113,7 @@ def _setEnvWithDependencies():
     opts.AddVariables(
             (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
             (PathVariable('PROTOC', 'protoc binary path', _getBinPath('protoc',"Looking for protoc compiler"), PathVariable.PathIsFile)),
+            (PathVariable('SWIG', 'swig binary path', _getBinPath('swig',"Looking for swig preprocessor"), PathVariable.PathIsFile)),
             # antlr is named runantlr on Ubuntu 13.10 and Debian Wheezy
             (PathVariable('ANTLR', 'antlr binary path', _getBinPathFromBinList(['antlr','runantlr'],'Looking for antlr parser generator'), PathVariable.PathIsFile)),
             (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefixFromBin( 'XROOTD_DIR', "xrootd"), PathVariable.PathIsDir)),
