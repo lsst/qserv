@@ -30,6 +30,8 @@ Access to the classes from the qserv_czar library
 %ignore lsst::qserv::query::operator<<;
 %ignore lsst::qserv::qproc::operator<<;
 
+%ignore lsst::qserv::qdisp::TransactionSpec::Reader;
+
  //%feature("autodoc", "1");
  //%module("threads"=1, package="lsst.qserv.czar", docstring=qserv_czar_DOCSTRING) czarLib
 %module("threads"=1, package="lsst.qserv.czar") czarLib
@@ -38,10 +40,11 @@ Access to the classes from the qserv_czar library
 #include "ccontrol/dispatcher.h"
 #include "ccontrol/queryMsg.h"
 #include "ccontrol/QueryState.h"
+#include "css/KvInterface.h"
+#include "css/KvInterfaceImplMem.h"
 #include "ccontrol/UserQueryFactory.h"
 #include "ccontrol/userQueryProxy.h"
 #include "css/StripingParams.h"
-#include "css/KvInterfaceImplMem.h"
 #include "global/constants.h"
 #include "log/loggerInterface.h"
 #include "qdisp/ChunkMeta.h"
@@ -110,12 +113,10 @@ namespace std {
 
 
 %include "boost_shared_ptr.i"
-SWIG_SHARED_PTR(KvInterface, lsst::qserv::css::KvInterface)
-SWIG_SHARED_PTR_DERIVED(KvInterfaceImplMem, lsst::qserv::css::KvInterface, lsst::qserv::css::KvInterfaceImplMem)
-
-// Define any smart pointers here:
-// SWIG_SHARED_PTR(Persistable, lsst::daf::base::Persistable)
-// SWIG_SHARED_PTR_DERIVED(PropertySet, lsst::daf::base::Persistable, lsst::daf::base::PropertySet)
+%shared_ptr(lsst::qserv::css::KvInterface)
+%shared_ptr(lsst::qserv::css::KvInterfaceImplMem)
+//%shared_ptr(lsst::daf::base::Persistable)
+//%shared_ptr(lsst::daf::base::PropertySet)
 
 // Include all classes to wrap:
 // %include "lsst/qserv/czar/Master.h"
@@ -130,10 +131,11 @@ SWIG_SHARED_PTR_DERIVED(KvInterfaceImplMem, lsst::qserv::css::KvInterface, lsst:
 %include "ccontrol/queryMsg.h"
 %include "ccontrol/queryMsg.h"
 %include "ccontrol/QueryState.h"
+%include "css/KvInterface.h"
+%include "css/KvInterfaceImplMem.h"
 %include "ccontrol/UserQueryFactory.h"
 %include "ccontrol/userQueryProxy.h"
 %include "css/StripingParams.h"
-%include "css/KvInterfaceImplMem.h"
 %include "global/constants.h"
 %include "log/loggerInterface.h"
 %include "qdisp/ChunkMeta.h"
