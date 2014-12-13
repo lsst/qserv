@@ -58,28 +58,29 @@ class DataLoader(object):
     """
 
     def __init__(self, configFiles, mysqlConn, chunksDir="./loader_chunks",
-                 chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
-                 cssConn='localhost:12181', cssClear=False, indexDb='qservMeta',
+                 chunkPrefix='chunk', keepChunks=False, keepInputData=False, skipPart=False,
+                 oneTable=False, cssConn='localhost:12181', cssClear=False, indexDb='qservMeta',
                  emptyChunks=None, deleteTables=False, loggerName="Loader"):
         """
         Constructor parse all arguments and prepares for execution.
 
-        @param configFiles:  Sequence of the files defininig all partitioning options.
-        @param mysqlConn:    Mysql connection object.
-        @param chunksDir:    Temporary directory to store chunks files, will be created
-                             if does not exist.
-        @param chunkPrefix:  File name prefix for generated chunk files.
-        @param keepChunks:   Chunks will not be deleted if this argument is set to True.
-        @param skipPart:     If set to True then partitioning will not be performed
-                             (chunks should exist already).
-        @param oneTable:     If set to True then load all data into one table, do not
-                             create chunk tables.
-        @param cssConn:      Connection string for CSS service.
-        @param cssClear:     If true then CSS info for a table will be deleted first.
-        @param indexDb:      Name of  database for object indices.
-        @param emptyChunks:  Path name for "empty chunks" file, may be None.
-        @param deleteTables: If True then existing tables in database will be deleted.
-        @param loggerName:   Logger name used for logging all messaged from loader.
+        @param configFiles:      Sequence of the files defininig all partitioning options.
+        @param mysqlConn:        Mysql connection object.
+        @param chunksDir:        Temporary directory to store chunks files, will be created
+                                 if does not exist.
+        @param chunkPrefix:      File name prefix for generated chunk files.
+        @param keepChunks:       Chunks will not be deleted if this argument is set to True.
+        @param keepInputData:    Input data will not be deleted if this argument is set to True.
+        @param skipPart:         If set to True then partitioning will not be performed
+                                 (chunks should exist already).
+        @param oneTable:         If set to True then load all data into one table, do not
+                                 create chunk tables.
+        @param cssConn:          Connection string for CSS service.
+        @param cssClear:         If true then CSS info for a table will be deleted first.
+        @param indexDb:          Name of  database for object indices.
+        @param emptyChunks:      Path name for "empty chunks" file, may be None.
+        @param deleteTables:     If True then existing tables in database will be deleted.
+        @param loggerName:       Logger name used for logging all messaged from loader.
         """
 
         self.configFiles = configFiles
@@ -87,6 +88,7 @@ class DataLoader(object):
         self.chunksDir = chunksDir
         self.chunkPrefix = chunkPrefix
         self.keepChunks = keepChunks
+        self.keepInputData = keepInputData
         self.skipPart = skipPart
         self.oneTable = oneTable
         self.cssClear = cssClear
@@ -198,7 +200,7 @@ class DataLoader(object):
         """
 
         # remove dir with unzipped files
-        if self.unzipDir is not None:
+        if self.unzipDir is not None and not self.keepInputData:
             try:
                 self._log.debug('Deleting directory: %s', self.unzipDir)
                 shutil.rmtree(self.unzipDir)
