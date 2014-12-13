@@ -118,6 +118,8 @@ class Loader(object):
                            'Otherwise directory must be empty or do not exist. def: %(default)s.')
         group.add_argument('-k', '--keep-chunks', dest='keepChunks', action='store_true', default=False,
                            help='If specified then chunks will not be deleted after loading.')
+        group.add_argument(''-K', --keep-input-data', dest='keepChunks', action='store_true', default=False,
+                           help='If specified then input data will not be deleted after loading.')
         group.add_argument('-s', '--skip-partition', dest='skipPart', action='store_true', default=False,
                            help='If specified then skip partitioning, chunks must exist already '
                            'if option --one-table is not specified (from previous run with -k option).')
