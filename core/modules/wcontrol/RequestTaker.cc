@@ -38,6 +38,7 @@
 // Third-party headers
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/io/coded_stream.h>
 
 // Local headers
 #include "obsolete/QservPath.h"
