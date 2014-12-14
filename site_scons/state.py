@@ -182,15 +182,17 @@ def _setBuildEnv():
     # Increase compiler strictness
     env.Append(CCFLAGS=['-pedantic', '-Wall', '-Wno-long-long', '-Wno-variadic-macros'])
 
-    # to make shared libraries link correctly we need -rpath-link option, for now add everything
-    # that is in LD_LIBRARY_PATH
-    # TODO: this is Linux-gcc-specific, do we have a way to test for a platform we are running on
-    if 'LD_LIBRARY_PATH' in os.environ:
-        env.Append(LINKFLAGS = ["-Wl,-rpath-link="+os.environ["LD_LIBRARY_PATH"]])
+    # Make sure the linker knows where to find the dynamic libraries
+    if env['PLATFORM'] == 'darwin':
+        if not re.search(r"-install_name", str(env['SHLINKFLAGS'])):
+            env.Append(SHLINKFLAGS = ["-Wl,-install_name", "-Wl,${TARGET.file}"])
+    elif env["PLATFORM"] == 'linux' and os.environ.has_key("LD_LIBRARY_PATH"):
+        env.Append(LINKFLAGS = ["-Wl,-rpath-link"])
+        env.Append(LINKFLAGS = ["-Wl,%s" % os.environ["LD_LIBRARY_PATH"]])
 
     # SCons resets many envvars to make clean build, we want to pass some of them explicitly.
     # Extend the list if you need to add more.
-    for key in ['LD_LIBRARY_PATH',]:
+    for key in ['LD_LIBRARY_PATH', 'DYLD_LIBRARY_PATH', 'PATH']:
         if key in os.environ:
             env['ENV'][key] = os.environ[key]
 
@@ -247,5 +249,3 @@ def init(src_dir):
 def initBuild():
     _setEnvWithDependencies()
     _setBuildEnv()
-
-
