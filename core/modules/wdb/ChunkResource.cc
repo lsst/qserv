@@ -36,6 +36,7 @@
 
 // Third-party headers
 #include "boost/format.hpp"
+#include "boost/make_shared.hpp"
 #include "boost/thread.hpp"
 
 // Local headers
@@ -402,8 +403,10 @@ private:
     ChunkEntry& _getChunkEntry(Map& m, int chunkId) {
         Map::iterator it = m.find(chunkId); // Select chunkId
         if(it == m.end()) { // Insert if not exist
-            Map::value_type v(chunkId,
-                              ChunkEntry::Ptr(new ChunkEntry(chunkId)));
+            Map::value_type v(
+                              chunkId,
+                              boost::make_shared<ChunkEntry>(chunkId)
+                             );
             m.insert(v);
             return *(v.second.get());
         }
@@ -425,6 +428,7 @@ private:
 boost::shared_ptr<ChunkResourceMgr>
 ChunkResourceMgr::newMgr(mysql::MySqlConfig const& c) {
     return boost::shared_ptr<ChunkResourceMgr>(new Impl(c));
+
 }
 
 boost::shared_ptr<ChunkResourceMgr>

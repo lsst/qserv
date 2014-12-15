@@ -31,7 +31,10 @@
 #include <memory>
 #include <utility>
 
-// Local headers
+// Third-party headers
+#include "boost/make_shared.hpp"
+
+// Qserv headers
 #include "InvalidTableError.h"
 #include "TableInfo.h"
 

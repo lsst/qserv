@@ -45,6 +45,9 @@
 #include <iterator>
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "query/QueryTemplate.h"
 #include "query/ValueFactor.h"
@@ -116,8 +119,8 @@ struct copyValueExpr {
     }
 };
 boost::shared_ptr<SelectList> SelectList::clone() {
-    boost::shared_ptr<SelectList> newS(new SelectList(*this));
-    newS->_valueExprList.reset(new ValueExprList());
+    boost::shared_ptr<SelectList> newS = boost::make_shared<SelectList>(*this);
+    newS->_valueExprList  = boost::make_shared<ValueExprList>();
     ValueExprList& src = *_valueExprList;
     std::transform(src.begin(), src.end(),
                    std::back_inserter(*newS->_valueExprList),
@@ -129,9 +132,9 @@ boost::shared_ptr<SelectList> SelectList::clone() {
 }
 
 boost::shared_ptr<SelectList> SelectList::copySyntax() {
-    boost::shared_ptr<SelectList> newS(new SelectList(*this));
+    boost::shared_ptr<SelectList> newS = boost::make_shared<SelectList>(*this);
     // Shallow copy of expr list is okay.
-    newS->_valueExprList.reset(new ValueExprList(*_valueExprList));
+    newS->_valueExprList = boost::make_shared<ValueExprList>(*_valueExprList);
     // For the other fields, default-copied versions are okay.
     return newS;
 }

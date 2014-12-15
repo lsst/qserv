@@ -36,6 +36,7 @@
 #include "wcontrol/RequestTaker.h"
 
 // Third-party headers
+#include "boost/make_shared.hpp"
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
@@ -63,7 +64,7 @@ RequestTaker::receive(Size offset, char const* buffer, Size bufferSize) {
 
 bool
 RequestTaker::complete() {
-    boost::shared_ptr<proto::TaskMsg> tm(new proto::TaskMsg());
+    boost::shared_ptr<proto::TaskMsg> tm = boost::make_shared<proto::TaskMsg>();
     gio::ArrayInputStream input(_queryBuffer.getData(),
                                 _queryBuffer.getLength());
     gio::CodedInputStream coded(&input);

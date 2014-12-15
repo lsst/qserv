@@ -35,6 +35,9 @@
 #include <iterator>
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -174,7 +177,7 @@ bool BoolFactor::_reduceTerms(BfTerm::PtrList& newTerms,
                     } else {
                         // still a reduction in the term, replace
                         boost::shared_ptr<BoolTermFactor> newBtf;
-                        newBtf.reset(new BoolTermFactor());
+                        newBtf = boost::make_shared<BoolTermFactor>();
                         newBtf->_term = reduced;
                         newTerms.push_back(newBtf);
                         hasReduction = true;
@@ -257,23 +260,23 @@ namespace {
 } // anonymous namespace
 
 boost::shared_ptr<BoolTerm> OrTerm::clone() const {
-    boost::shared_ptr<OrTerm> ot(new OrTerm());
+    boost::shared_ptr<OrTerm> ot = boost::make_shared<OrTerm>();
     copyTerms<BoolTerm::PtrList, deepCopy>(ot->_terms, _terms);
     return ot;
 }
 boost::shared_ptr<BoolTerm> AndTerm::clone() const {
-    boost::shared_ptr<AndTerm> t(new AndTerm());
+    boost::shared_ptr<AndTerm> t = boost::make_shared<AndTerm>();
     copyTerms<BoolTerm::PtrList, deepCopy>(t->_terms, _terms);
     return t;
 }
 boost::shared_ptr<BoolTerm> BoolFactor::clone() const {
-    boost::shared_ptr<BoolFactor> t(new BoolFactor());
+    boost::shared_ptr<BoolFactor> t = boost::make_shared<BoolFactor>();
     copyTerms<BfTerm::PtrList, deepCopy>(t->_terms, _terms);
     return t;
 }
 
 boost::shared_ptr<BoolTerm> UnknownTerm::clone() const {
-    return BoolTerm::Ptr(new UnknownTerm); // TODO what is unknown now?
+    return  boost::make_shared<UnknownTerm>(); // TODO what is unknown now?
 }
 
 BfTerm::Ptr PassListTerm::clone() const {
@@ -289,17 +292,17 @@ BfTerm::Ptr BoolTermFactor::clone() const {
 
 // copySyntax
 boost::shared_ptr<BoolTerm> OrTerm::copySyntax() const {
-    boost::shared_ptr<OrTerm> ot(new OrTerm());
+    boost::shared_ptr<OrTerm> ot = boost::make_shared<OrTerm>();
     copyTerms<BoolTerm::PtrList, syntaxCopy>(ot->_terms, _terms);
     return ot;
 }
 boost::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
-    boost::shared_ptr<AndTerm> at(new AndTerm());
+    boost::shared_ptr<AndTerm> at = boost::make_shared<AndTerm>();
     copyTerms<BoolTerm::PtrList, syntaxCopy>(at->_terms, _terms);
     return at;
 }
 boost::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
-    boost::shared_ptr<BoolFactor> bf(new BoolFactor());
+    boost::shared_ptr<BoolFactor> bf = boost::make_shared<BoolFactor>();
     copyTerms<BfTerm::PtrList, syntaxCopy>(bf->_terms, _terms);
     return bf;
 }

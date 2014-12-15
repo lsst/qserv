@@ -35,6 +35,9 @@
 // System headers
 #include <iostream>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "query/ColumnRef.h"
 #include "query/QueryTemplate.h"
@@ -47,7 +50,7 @@ namespace query {
 
 FuncExpr::Ptr
 FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
-    FuncExpr::Ptr e(new FuncExpr());
+    FuncExpr::Ptr e = boost::make_shared<FuncExpr>();
     e->name = newName;
     e->params = src.params; // Shallow list copy.
     return e;
@@ -55,14 +58,14 @@ FuncExpr::newLike(FuncExpr const& src, std::string const& newName) {
 
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, std::string const& arg1) {
-    boost::shared_ptr<ColumnRef> cr(new ColumnRef("","",arg1));
+    boost::shared_ptr<ColumnRef> cr = boost::make_shared<ColumnRef>("","",arg1);
     return newArg1(newName,
                    ValueExpr::newSimple(ValueFactor::newColumnRefFactor(cr)));
 }
 
 FuncExpr::Ptr
 FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
-    FuncExpr::Ptr e(new FuncExpr());
+    FuncExpr::Ptr e = boost::make_shared<FuncExpr>();
     e->name = newName;
     e->params.push_back(ve);
     return e;

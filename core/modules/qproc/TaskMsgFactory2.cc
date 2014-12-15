@@ -38,6 +38,10 @@
 // System headers
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -111,7 +115,7 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
                                std::string const& chunkResultName) {
     std::string resultTable = _resultTable;
     if(!chunkResultName.empty()) { resultTable = chunkResultName; }
-    _taskMsg.reset(new proto::TaskMsg);
+    _taskMsg = boost::make_shared<proto::TaskMsg>();
     // shared
     _taskMsg->set_session(_session);
     _taskMsg->set_db(s.db);
@@ -159,7 +163,7 @@ TaskMsgFactory2::Impl::makeMsg(ChunkQuerySpec const& s,
 // class TaskMsgFactory2
 ////////////////////////////////////////////////////////////////////////
 TaskMsgFactory2::TaskMsgFactory2(int session)
-    : _impl(new Impl(session, "Asdfasfd" )) {
+    : _impl(boost::make_shared<Impl>(session, "Asdfasfd" )) {
 
 }
 void TaskMsgFactory2::serializeMsg(ChunkQuerySpec const& s,

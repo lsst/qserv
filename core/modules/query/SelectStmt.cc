@@ -136,7 +136,7 @@ SelectStmt::getWhere() const {
 
 boost::shared_ptr<SelectStmt>
 SelectStmt::clone() const {
-    boost::shared_ptr<SelectStmt> newS(new SelectStmt(*this));
+    boost::shared_ptr<SelectStmt> newS = boost::make_shared<SelectStmt>(*this);
     // Starting from a shallow copy, make a copy of the syntax portion.
     cloneIf(newS->_fromList, _fromList);
     cloneIf(newS->_selectList, _selectList);
@@ -150,7 +150,7 @@ SelectStmt::clone() const {
 
 boost::shared_ptr<SelectStmt>
 SelectStmt::copyMerge() const {
-    boost::shared_ptr<SelectStmt> newS(new SelectStmt(*this));
+    boost::shared_ptr<SelectStmt> newS = boost::make_shared<SelectStmt>(*this);
     // Starting from a shallow copy, copy only the pieces that matter
     // for the merge clause.
     copySyntaxIf(newS->_selectList, _selectList);
@@ -165,7 +165,7 @@ SelectStmt::copyMerge() const {
 
 boost::shared_ptr<SelectStmt>
 SelectStmt::copySyntax() const {
-    boost::shared_ptr<SelectStmt> newS(new SelectStmt(*this));
+    boost::shared_ptr<SelectStmt> newS = boost::make_shared<SelectStmt>(*this);
     // Starting from a shallow copy, make a copy of the syntax portion.
     copySyntaxIf(newS->_fromList, _fromList);
     copySyntaxIf(newS->_selectList, _selectList);
@@ -178,9 +178,9 @@ SelectStmt::copySyntax() const {
 }
 
 void SelectStmt::setFromListAsTable(std::string const& t) {
-    TableRefListPtr tr(new TableRefList);
+    TableRefListPtr tr = boost::make_shared<TableRefList>();
     tr->push_back(boost::make_shared<TableRef>("", t, ""));
-    _fromList.reset(new FromList(tr));
+    _fromList = boost::make_shared<FromList>(tr);
 }
 
 ////////////////////////////////////////////////////////////////////////

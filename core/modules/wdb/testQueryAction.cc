@@ -29,6 +29,7 @@
 
 // Third-party headers
 #include "lsst/log/Log.h"
+#include "boost/make_shared.hpp"
 
 // Local headers
 #include "proto/worker.pb.h"
@@ -62,7 +63,7 @@ using lsst::qserv::wdb::QueryActionArg;
 
 struct Fixture {
     boost::shared_ptr<TaskMsg> newTaskMsg() {
-        boost::shared_ptr<TaskMsg> t(new TaskMsg);
+        boost::shared_ptr<TaskMsg> t = boost::make_shared<TaskMsg>();
         t->set_protocol(2);
         t->set_session(123456);
         t->set_chunkid(3240); // hardcoded
@@ -75,7 +76,8 @@ struct Fixture {
     QueryActionArg newArg() {
         boost::shared_ptr<TaskMsg> msg(newTaskMsg());
         boost::shared_ptr<SendChannel> sc(SendChannel::newNopChannel());
-        lsst::qserv::wbase::Task::Ptr t(new lsst::qserv::wbase::Task(msg, sc));
+        lsst::qserv::wbase::Task::Ptr t =
+                boost::make_shared<lsst::qserv::wbase::Task>(msg, sc);
         LOG_LOGGER w(LOG_GET("test"));
         boost::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newFakeMgr();
         QueryActionArg a(w, t, crm);

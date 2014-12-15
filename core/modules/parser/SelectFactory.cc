@@ -66,15 +66,16 @@ namespace qserv {
 namespace parser {
 
 SelectFactory::SelectFactory()
-    : _columnAliases(new ParseAliasMap()),
-      _tableAliases(new ParseAliasMap()),
-      _columnRefNodeMap(new ColumnRefNodeMap()),
-      _vFactory(new ValueExprFactory(_columnRefNodeMap)) {
+    : _columnAliases(boost::make_shared<ParseAliasMap>()),
+      _tableAliases(boost::make_shared<ParseAliasMap>()),
+      _columnRefNodeMap(boost::make_shared<ColumnRefNodeMap>()),
+      _vFactory(boost::make_shared<ValueExprFactory>(_columnRefNodeMap)) {
 
-    _fFactory.reset(new FromFactory(_tableAliases, _vFactory));
-    _slFactory.reset(new SelectListFactory(_columnAliases, _vFactory));
-    _mFactory.reset(new ModFactory(_vFactory));
-    _wFactory.reset(new WhereFactory(_vFactory));
+    _fFactory = boost::make_shared<FromFactory>(_tableAliases, _vFactory);
+    _slFactory = boost::shared_ptr<SelectListFactory>(
+            new SelectListFactory(_columnAliases, _vFactory));
+    _mFactory = boost::make_shared<ModFactory>(_vFactory);
+    _wFactory = boost::make_shared<WhereFactory>(_vFactory);
 }
 
 void
@@ -89,7 +90,7 @@ SelectFactory::attachTo(SqlSQL2Parser& p) {
 
 boost::shared_ptr<query::SelectStmt>
 SelectFactory::getStatement() {
-    boost::shared_ptr<query::SelectStmt> stmt(new query::SelectStmt());
+    boost::shared_ptr<query::SelectStmt> stmt = boost::make_shared<query::SelectStmt>();
     stmt->_selectList = _slFactory->getProduct();
     stmt->_fromList = _fFactory->getProduct();
     stmt->_whereClause = _wFactory->getProduct();
@@ -102,7 +103,7 @@ SelectFactory::getStatement() {
 
 void
 SelectFactory::_attachShared(SqlSQL2Parser& p) {
-    boost::shared_ptr<ColumnRefH> crh(new ColumnRefH());
+    boost::shared_ptr<ColumnRefH> crh = boost::make_shared<ColumnRefH>();
     crh->setListener(_columnRefNodeMap);
     p._columnRefHandler = crh;
 }
@@ -177,7 +178,7 @@ SelectListFactory::attachTo(SqlSQL2Parser& p) {
 
 boost::shared_ptr<query::SelectList>
 SelectListFactory::getProduct() {
-    boost::shared_ptr<query::SelectList> slist(new query::SelectList());
+    boost::shared_ptr<query::SelectList> slist = boost::make_shared<query::SelectList>();
     slist->_valueExprList = _valueExprList;
     return slist;
 }

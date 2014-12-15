@@ -67,7 +67,7 @@ class SelectList {
 public:
     typedef boost::shared_ptr<SelectList> Ptr;
 
-    SelectList() : _valueExprList(new ValueExprList()) {}
+    SelectList() : _valueExprList(boost::make_shared<ValueExprList>()) {}
     ~SelectList() {}
     void addStar(std::string const& table);
     void dbgPrint(std::ostream& os) const;

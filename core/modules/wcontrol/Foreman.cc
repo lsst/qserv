@@ -147,9 +147,9 @@ private:
 Foreman::Ptr
 newForeman(Foreman::Scheduler::Ptr sched) {
     if(!sched) {
-        sched.reset(new wsched::FifoScheduler());
+        sched = boost::make_shared<wsched::FifoScheduler>();
     }
-    ForemanImpl::Ptr fmi(new ForemanImpl(sched));
+    ForemanImpl::Ptr fmi = boost::make_shared<ForemanImpl>(sched);
     return fmi;;
 }
 
@@ -184,14 +184,14 @@ ForemanImpl::RunnerMgr::registerRunner(Runner* r, wbase::Task::Ptr t) {
 boost::shared_ptr<wdb::QueryAction>
 ForemanImpl::RunnerMgr::newQueryAction(wbase::Task::Ptr t) {
     wdb::QueryActionArg a(_f._log, t, _f._chunkResourceMgr);
-    boost::shared_ptr<wdb::QueryAction> qa(new wdb::QueryAction(a));
+    boost::shared_ptr<wdb::QueryAction> qa = boost::make_shared<wdb::QueryAction>(a);
     return qa;
 }
 
 boost::shared_ptr<wdb::QueryRunner>
 ForemanImpl::RunnerMgr::newQueryRunner(wbase::Task::Ptr t) {
     wdb::QueryRunnerArg a(_f._log, t);
-    boost::shared_ptr<wdb::QueryRunner> qr(new wdb::QueryRunner(a));
+    boost::shared_ptr<wdb::QueryRunner> qr = boost::make_shared<wdb::QueryRunner>(a);
     return qr;
 }
 
@@ -354,9 +354,10 @@ public:
     operator()(boost::shared_ptr<proto::TaskMsg> taskMsg,
                boost::shared_ptr<wbase::SendChannel> replyChannel) {
 
-        wbase::Task::Ptr t(new wbase::Task(taskMsg, replyChannel));
+        wbase::Task::Ptr t = boost::make_shared<wbase::Task>(taskMsg, replyChannel);
         _foremanImpl.newTaskAction(t);
-        return boost::shared_ptr<Cancel>(new Cancel(t));
+        boost::shared_ptr<Cancel> c = boost::make_shared<Cancel>(t);
+        return c;
     }
     ForemanImpl& _foremanImpl;
 };
@@ -364,7 +365,8 @@ public:
 // ForemanImpl
 ////////////////////////////////////////////////////////////////////////
 ForemanImpl::ForemanImpl(Scheduler::Ptr s)
-    : _scheduler(s), _log(LOG_GET("Foreman")), _running(new wbase::TaskQueue()) {
+    : _scheduler(s), _log(LOG_GET("Foreman")),
+      _running(boost::make_shared<wbase::TaskQueue>()) {
     // Make the chunk resource mgr
     mysql::MySqlConfig c(wconfig::getConfig().getSqlConfig());
     _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(c);
@@ -398,7 +400,7 @@ bool ForemanImpl::squashByHash(std::string const& hash) {
 
 bool
 ForemanImpl::accept(boost::shared_ptr<proto::TaskMsg> msg) {
-    wbase::Task::Ptr t(new wbase::Task(msg));
+    wbase::Task::Ptr t = boost::make_shared<wbase::Task>(msg);
     newTaskAction(t);
     return true;
 }

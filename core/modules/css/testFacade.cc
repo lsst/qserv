@@ -40,6 +40,7 @@
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
+#include "boost/make_shared.hpp"
 #include "boost/shared_ptr.hpp"
 
 // Local headers
@@ -71,7 +72,7 @@ InitRand _initRand;
 
 struct FacadeFixture {
     FacadeFixture(void) :
-        kvI(new KvInterfaceImplMem()),
+        kvI(boost::make_shared<KvInterfaceImplMem>()),
         facade(FacadeFactory::createCacheFacade(kvI)) {
 
         kv.push_back(make_pair("/", ""));

@@ -161,9 +161,9 @@ namespace wdb {
 QueryRunner::QueryRunner(QueryRunnerArg const& a)
     : _log(a.log),
       _user(a.task->user),
-      _pResult(new QueryPhyResult()),
+      _pResult(boost::make_shared<QueryPhyResult>()),
       _task(a.task),
-      _poisonedMutex(new boost::mutex()) {
+      _poisonedMutex(boost::make_shared<boost::mutex>()) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     if(!a.overrideDump.empty()) {
@@ -316,10 +316,14 @@ QueryRunner::_runTask(wbase::Task::Ptr t) {
         // If protocol gives us a query sequence, we won't need to
         // split fragments.
         bool first = t->needsCreate && (i==0);
-        boost::shared_ptr<wdb::QuerySql> qSql(new QuerySql(defaultDb, chunkId,
-                                                           f,
-                                                           first,
-                                                           resultTable));
+        boost::shared_ptr<wdb::QuerySql> qSql =
+                boost::make_shared<QuerySql>(
+                                             defaultDb,
+                                             chunkId,
+                                             f,
+                                             first,
+                                             resultTable
+                                            );
 
         success = _runFragment(_sqlConn, *qSql);
         if(!success) return false;

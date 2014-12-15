@@ -35,6 +35,9 @@
 #include <sstream>
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "global/Bug.h"
 #include "query/Predicate.h"
@@ -96,7 +99,7 @@ void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRef::List& list) {
 
 boost::shared_ptr<ColumnRef::List const>
 WhereClause::getColumnRefs() const {
-    boost::shared_ptr<ColumnRef::List> list(new ColumnRef::List());
+    boost::shared_ptr<ColumnRef::List> list = boost::make_shared<ColumnRef::List>();
 
     // Idea: Walk the expression tree and add all column refs to the
     // list. We will walk in depth-first order, but the interface spec
@@ -138,13 +141,13 @@ void WhereClause::renderTo(QueryTemplate& qt) const {
 
 boost::shared_ptr<WhereClause> WhereClause::clone() const {
     // FIXME
-    boost::shared_ptr<WhereClause> newC(new WhereClause(*this));
+    boost::shared_ptr<WhereClause> newC = boost::make_shared<WhereClause>(*this);
     // Shallow copy of expr list is okay.
     if(_tree.get()) {
         newC->_tree = _tree->copySyntax();
     }
     if(_restrs.get()) {
-        newC->_restrs.reset(new QsRestrictor::List(*_restrs));
+        newC->_restrs = boost::make_shared<QsRestrictor::List>(*_restrs);
     }
     // For the other fields, default-copied versions are okay.
     return newC;
@@ -152,7 +155,7 @@ boost::shared_ptr<WhereClause> WhereClause::clone() const {
 }
 
 boost::shared_ptr<WhereClause> WhereClause::copySyntax() {
-    boost::shared_ptr<WhereClause> newC(new WhereClause(*this));
+    boost::shared_ptr<WhereClause> newC = boost::make_shared<WhereClause>(*this);
     // Shallow copy of expr list is okay.
     if(_tree.get()) {
         newC->_tree = _tree->copySyntax();
@@ -171,7 +174,7 @@ WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
     // FIXME: Should deal with case where AndTerm is not found.
     AndTerm* rootAnd = dynamic_cast<AndTerm*>(insertPos.get());
     if(!rootAnd) {
-        boost::shared_ptr<AndTerm> a(new AndTerm());
+        boost::shared_ptr<AndTerm> a = boost::make_shared<AndTerm>();
         boost::shared_ptr<BoolTerm> oldTree(_tree);
         _tree = a;
         if(oldTree.get()) { // Only add oldTree root if non-NULL
@@ -204,7 +207,7 @@ WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
 ////////////////////////////////////////////////////////////////////////
 void
 WhereClause::resetRestrs() {
-    _restrs.reset(new QsRestrictor::List());
+    _restrs = boost::make_shared<QsRestrictor::List>();
 }
 
 }}} // namespace lsst::qserv::query

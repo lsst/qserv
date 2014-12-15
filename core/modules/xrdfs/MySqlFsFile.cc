@@ -216,7 +216,7 @@ MySqlFsFile::~MySqlFsFile(void) {
 
 int MySqlFsFile::_acceptFile(char const* fileName) {
     int rc;
-    _path.reset(new obsolete::QservPath(fileName));
+    _path = boost::make_shared<obsolete::QservPath>(fileName);
     obsolete::QservPath::RequestType rt = _path->requestType();
     switch(rt) {
     case obsolete::QservPath::GARBAGE:
@@ -240,8 +240,11 @@ int MySqlFsFile::_acceptFile(char const* fileName) {
                          % fileName % _chunkId);
             return SFS_ERROR;
         }
-        _requestTaker.reset(new wcontrol::RequestTaker(_service->getAcceptor(),
-                                                       *_path));
+        _requestTaker =
+                boost::make_shared<wcontrol::RequestTaker>(
+                                                           _service->getAcceptor(),
+                                                           *_path
+                                                          );
         _chunkId = -1; // unused.
         return SFS_OK; // No other action is needed.
 
@@ -508,8 +511,14 @@ bool MySqlFsFile::_flushWrite() {
 }
 
 bool MySqlFsFile::_flushWriteDetach() {
-    wbase::Task::Ptr t(
-        new wbase::Task(wbase::ScriptMeta(_queryBuffer, _chunkId), _userName));
+    wbase::Task::Ptr t =
+            boost::make_shared<wbase::Task>(
+                                            wbase::ScriptMeta(
+                                                              _queryBuffer,
+                                                              _chunkId
+                                                             ),
+                                            _userName
+                                           );
     wdb::QueryRunnerArg a(_log, t);
     return flushOrQueue(a);
 }

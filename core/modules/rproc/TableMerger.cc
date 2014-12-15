@@ -45,6 +45,7 @@
 
 // Third-party headers
 #include "boost/format.hpp"
+#include "boost/make_shared.hpp"
 #include "boost/regex.hpp"
 
 // LSST headers
@@ -72,7 +73,7 @@ std::string getTimeStampId() {
 }
 
 boost::shared_ptr<MySqlConfig> makeSqlConfig(TableMergerConfig const& c) {
-    boost::shared_ptr<MySqlConfig> sc(new MySqlConfig());
+    boost::shared_ptr<MySqlConfig> sc = boost::make_shared<MySqlConfig>();
     assert(sc.get());
     sc->username = c.user;
     sc->dbName = c.targetDb;
@@ -359,7 +360,7 @@ bool TableMerger::_applySqlLocal(std::string const& sql) {
     boost::lock_guard<boost::mutex> m(_sqlMutex);
     sql::SqlErrorObject errObj;
     if(!_sqlConn.get()) {
-        _sqlConn.reset(new sql::SqlConnection(*_sqlConfig, true));
+        _sqlConn = boost::make_shared<sql::SqlConnection>(*_sqlConfig, true);
         if(!_sqlConn->connectToDb(errObj)) {
             _error.status = TableMergerError::MYSQLCONNECT;
             _error.errorCode = errObj.errNo();

@@ -27,7 +27,10 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// Local headers
+// Third-party headers
+#include "boost/make_shared.hpp"
+
+// Qserv headers
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
 #include "wsched/FifoScheduler.h"
@@ -45,7 +48,7 @@ using lsst::qserv::wbase::TaskQueuePtr;
 
 
 Task::Ptr makeTask(boost::shared_ptr<TaskMsg> tm) {
-    return Task::Ptr(new Task(tm));
+    return boost::make_shared<Task>(tm);
 }
 struct SchedulerFixture {
     typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
@@ -53,8 +56,7 @@ struct SchedulerFixture {
     SchedulerFixture(void)
         : fs(1) {
         counter = 1;
-        emptyTqp.reset(new TaskQueue());
-
+        emptyTqp = boost::make_shared<TaskQueue>();
     }
     ~SchedulerFixture(void) { }
 

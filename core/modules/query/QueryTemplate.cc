@@ -37,6 +37,9 @@
 #include <iostream>
 #include <sstream>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -140,8 +143,9 @@ struct EntryMerger {
     void _mergeCurrent() {
         if(_candidates.size() > 1) {
             boost::shared_ptr<QueryTemplate::Entry> e;
-            e.reset(
-                new QueryTemplate::StringEntry(outputString(_candidates)));
+            e = boost::make_shared<QueryTemplate::StringEntry>(
+                                                   outputString(_candidates)
+                                                              );
             _entries.push_back(e);
             _candidates.clear();
         } else if(!_candidates.empty()) {
@@ -164,19 +168,19 @@ QueryTemplate::dbgStr() const {
 
 void
 QueryTemplate::append(std::string const& s) {
-    boost::shared_ptr<Entry> e(new StringEntry(s));
+    boost::shared_ptr<Entry> e = boost::make_shared<StringEntry>(s);
     _entries.push_back(e);
 }
 
 void
 QueryTemplate::append(query::ColumnRef const& cr) {
-    boost::shared_ptr<Entry> e(new ColumnEntry(cr));
+    boost::shared_ptr<Entry> e = boost::make_shared<ColumnEntry>(cr);
     _entries.push_back(e);
 }
 
 void
 QueryTemplate::append(TableEntry const& te) {
-    boost::shared_ptr<Entry> e(new TableEntry(te));
+    boost::shared_ptr<Entry> e = boost::make_shared<TableEntry>(te);
     _entries.push_back(e);
 }
 

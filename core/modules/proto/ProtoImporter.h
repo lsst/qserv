@@ -29,6 +29,7 @@
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
+#include "boost/make_shared.hpp"
 
 // Qserv headers
 #include "util/Callable.h"
@@ -55,7 +56,7 @@ public:
     ProtoImporter() : _numAccepted(0) {}
 
     bool operator()(char const* data, int size) {
-        boost::shared_ptr<Msg> m(new Msg());
+        boost::shared_ptr<Msg> m = boost::make_shared<Msg>();
         bool isClean = setMsgFrom(*m, data, size);
         if(isClean) {
             if(_acceptor) {

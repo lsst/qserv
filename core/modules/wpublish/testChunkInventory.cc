@@ -22,6 +22,9 @@
  */
 /// Test ChunkInventory
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "sql/MockSql.h"
 #include "wpublish/ChunkInventory.h"
@@ -74,8 +77,10 @@ struct ChunkSql : public MockSql {
     virtual boost::shared_ptr<SqlResultIter> getQueryIter(std::string const& query) {
         if(startswith(query, "SELECT db FROM")) {
             boost::shared_ptr<SqlIter> it;
-            it.reset(new SqlIter(_selectDbTuples.begin(),
-                                 _selectDbTuples.end()));
+            it = boost::make_shared<SqlIter>(
+                                             _selectDbTuples.begin(),
+                                             _selectDbTuples.end()
+                                            );
             return it;
         }
         return boost::shared_ptr<SqlIter>();
@@ -99,7 +104,7 @@ int tablesSize = sizeof(tables)/sizeof(tables[0]);
 BOOST_FIXTURE_TEST_SUITE(ChunkInv, ChunkInvFixture)
 
 BOOST_AUTO_TEST_CASE(Test1) {
-    boost::shared_ptr<ChunkSql> cs(new ChunkSql(tables, tables+tablesSize));
+    boost::shared_ptr<ChunkSql> cs = boost::make_shared<ChunkSql>(tables, tables+tablesSize);
     ChunkInventory ci("test", cs);
     BOOST_CHECK(ci.has("LSST", 31415));
     BOOST_CHECK(ci.has("LSST", 1234567890));
@@ -107,14 +112,14 @@ BOOST_AUTO_TEST_CASE(Test1) {
 }
 
 BOOST_AUTO_TEST_CASE(Test2) {
-    boost::shared_ptr<ChunkSql> cs(new ChunkSql(tables, tables+tablesSize));
+    boost::shared_ptr<ChunkSql> cs = boost::make_shared<ChunkSql>(tables, tables+tablesSize);
     ChunkInventory ci("test", cs);
     BOOST_CHECK(!ci.has("Winter2012", 31415));
     BOOST_CHECK(!ci.has("Winter2012", 123));
 }
 BOOST_AUTO_TEST_CASE(MissingDummy) {
     // Construct the mock without the dummy chunk
-    boost::shared_ptr<ChunkSql> cs(new ChunkSql(tables, tables+2));
+    boost::shared_ptr<ChunkSql> cs = boost::make_shared<ChunkSql>(tables, tables+2);
     // FIXME: enable when throwing on corrupt dbs is enabled.
     //BOOST_CHECK_THROW(new ChunkInventory("test", w, cs));
     ChunkInventory ci("test", cs);

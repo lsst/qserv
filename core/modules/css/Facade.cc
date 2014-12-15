@@ -78,8 +78,8 @@ namespace css {
   * @param mapStream An input stream to data dumped using
   *                  ./admin/bin/qserv-admin.py
   */
-Facade::Facade(std::istream& mapStream) {
-    _kvI.reset(new KvInterfaceImplMem(mapStream));
+Facade::Facade(std::istream& mapStream)
+    : _kvI(new KvInterfaceImplMem(mapStream)) {
     _versionCheck();
 }
 

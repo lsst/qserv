@@ -34,6 +34,9 @@
 // System headers
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -137,7 +140,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
         t = child;
         child = t->getFirstChild();
     }
-    boost::shared_ptr<query::ValueFactor> vt(new query::ValueFactor());
+    boost::shared_ptr<query::ValueFactor> vt = boost::make_shared<query::ValueFactor>();
     boost::shared_ptr<query::FuncExpr> fe;
     RefAST last;
     // LOGF_INFO("colterm: %1% %2%" % t->getType() % t->getText());
@@ -157,16 +160,17 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
             ColumnRefNodeMap::Ref r = it->second;
 
             boost::shared_ptr<query::ColumnRef> newColumnRef;
-            newColumnRef.reset(new query::ColumnRef(tokenText(r.db),
-                                                    tokenText(r.table),
-                                                    tokenText(r.column)));
+            newColumnRef = boost::make_shared<query::ColumnRef>(
+                    tokenText(r.db),
+                    tokenText(r.table),
+                    tokenText(r.column));
             vt = query::ValueFactor::newColumnRefFactor(newColumnRef);
         }
         return vt;
     case SqlSQL2TokenTypes::FUNCTION_SPEC:
         // LOGF_INFO("col child (fct): %1% %2%"
         //           % child->getType() % child->getText());
-        fe.reset(new query::FuncExpr());
+        fe = boost::make_shared<query::FuncExpr>();
         last = walkToSiblingBefore(child, SqlSQL2TokenTypes::LEFT_PAREN);
         fe->name = getSiblingStringBounded(child, last);
         last = last->getNextSibling(); // Advance to LEFT_PAREN
@@ -210,7 +214,7 @@ boost::shared_ptr<query::ValueFactor>
 ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     assert(_columnRefNodeMap);
     // ColumnRefNodeMap& cMap = *_columnRefNodeMap; // for gdb
-    boost::shared_ptr<query::FuncExpr> fe(new query::FuncExpr());
+    boost::shared_ptr<query::FuncExpr> fe = boost::make_shared<query::FuncExpr>();
     // LOGF_INFO("set_fct_spec %1%" % walkTreeString(expr));
     RefAST nNode = expr->getFirstChild();
     if(!nNode.get()) {

@@ -109,7 +109,7 @@ public:
     static boost::shared_ptr<ChunkMsgReceiver>
     newInstance(int chunkId,
                 boost::shared_ptr<qdisp::MessageStore> ms) {
-        boost::shared_ptr<ChunkMsgReceiver> r(new ChunkMsgReceiver);
+        boost::shared_ptr<ChunkMsgReceiver> r = boost::make_shared<ChunkMsgReceiver>();
         r->chunkId = chunkId;
         r->messageStore = ms;
         return r;
@@ -257,7 +257,7 @@ bool UserQuery::containsDb(std::string const& dbName) const {
 
 /// Constructor. Most setup work done by the UserQueryFactory
 UserQuery::UserQuery(boost::shared_ptr<qproc::QuerySession> qs)
-    :  _messageStore(new qdisp::MessageStore()),
+    :  _messageStore(boost::make_shared<qdisp::MessageStore>()),
        _qSession(qs), _sequence(0) {
     // Some configuration done by factory: See UserQueryFactory
 }

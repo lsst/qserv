@@ -34,6 +34,9 @@
 #include <sstream>
 #include <stdexcept>
 
+// Third-party headers
+#include "boost/make_shared.hpp"
+
 // Local headers
 #include "query/FuncExpr.h"
 #include "query/ValueExpr.h"
@@ -54,7 +57,7 @@ public:
     explicit PassAggOp(AggOp::Mgr& mgr) : AggOp(mgr) {}
 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
-        AggRecord::Ptr arp(new AggRecord());
+        AggRecord::Ptr arp = boost::make_shared<AggRecord>();
         arp->orig = orig.clone();
         arp->parallel.push_back(ValueExpr::newSimple(orig.clone()));
         arp->merge = orig.clone();
@@ -69,7 +72,7 @@ public:
     explicit CountAggOp(AggOp::Mgr& mgr) : AggOp(mgr) {}
 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
-        AggRecord::Ptr arp(new AggRecord());
+        AggRecord::Ptr arp = boost::make_shared<AggRecord>();
         std::string interName = _mgr.getAggName("COUNT");
         arp->orig = orig.clone();
         boost::shared_ptr<FuncExpr> fe;
@@ -101,7 +104,7 @@ public:
     }
 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
-        AggRecord::Ptr arp(new AggRecord());
+        AggRecord::Ptr arp = boost::make_shared<AggRecord>();
         std::string interName = _mgr.getAggName(accName);
         arp->orig = orig.clone();
         boost::shared_ptr<FuncExpr> fe;
@@ -128,7 +131,7 @@ public:
 
     virtual AggRecord::Ptr operator()(ValueFactor const& orig) {
 
-        AggRecord::Ptr arp(new AggRecord());
+        AggRecord::Ptr arp = boost::make_shared<AggRecord>();
         arp->orig = orig.clone();
         // Parallel: get each aggregation subterm.
         boost::shared_ptr<FuncExpr> fe;
@@ -150,7 +153,7 @@ public:
         boost::shared_ptr<FuncExpr> feCount;
         feSum = FuncExpr::newArg1("SUM", sAlias);
         feCount = FuncExpr::newArg1("SUM", cAlias);
-        ve.reset(new ValueExpr());
+        ve = boost::make_shared<ValueExpr>();
         ve->setAlias(orig.getAlias());
         ValueExpr::FactorOpList& factorOps = ve->getFactorOps();
         factorOps.clear();

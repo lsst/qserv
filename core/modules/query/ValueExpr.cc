@@ -91,7 +91,7 @@ ValueExprPtr ValueExpr::newSimple(boost::shared_ptr<ValueFactor> vt)  {
     if(!vt) {
         throw std::invalid_argument("Unexpected NULL ValueFactor");
     }
-    boost::shared_ptr<ValueExpr> ve(new ValueExpr);
+    boost::shared_ptr<ValueExpr> ve = boost::make_shared<ValueExpr>();
     FactorOp t(vt, NONE);
     ve->_factorOps.push_back(t);
     return ve;
@@ -108,7 +108,9 @@ boost::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
     boost::shared_ptr<ValueFactor> factor = _factorOps.front().factor;
     assert(factor);
     cr = factor->getColumnRef();
-    if(cr) { cr.reset(new ColumnRef(*cr)); } // Make a copy
+    if(cr) {
+        cr = boost::make_shared<ColumnRef>(*cr);  // Make a copy
+    }
     return cr;
 }
 
@@ -189,7 +191,7 @@ bool ValueExpr::isColumnRef() const {
 
 ValueExprPtr ValueExpr::clone() const {
     // First, make a shallow copy
-    ValueExprPtr expr(new ValueExpr(*this));
+    ValueExprPtr expr = boost::make_shared<ValueExpr>(*this);
     FactorOpList::iterator ti = expr->_factorOps.begin();
     for(FactorOpList::const_iterator i=_factorOps.begin();
         i != _factorOps.end(); ++i, ++ti) {
