@@ -138,12 +138,17 @@ class Loader(object):
 
         group = parser.add_argument_group('Database options', 'Options for database connection')
         group.add_argument('-H', '--host', dest='mysqlHost', default='localhost', metavar='HOST',
-                           help='Host name for mysql server, def: %(default)s.')
+                           help='Host name for czar mysql server, def: %(default)s.')
+        group.add_argument('-W', '--worker-host', dest='workerHosts', default=[], action='append',
+                           metavar='HOST', help='Host name for worker server, may be specified '
+                           'more than once. If missing then czar server is used to store worker '
+                           'data. If more than one host is given then chunks are distributed '
+                           'randomly across all hosts.')
         group.add_argument('-u', '--user', dest='user', default=None,
                            help='User name to use when connecting to server.')
         group.add_argument('-p', '--password', dest='password', default=None,
                            help='Password to use when connecting to server.')
-        group.add_argument('-P', '--port', dest='mysqlPort', default=3306, metavar='PORT_NUMBER',
+        group.add_argument('-P', '--port', dest='mysqlPort', default=3306, metavar='PORT_NUMBER', type=int,
                            help='Port number to use for connection, def: %(default)s.')
         group.add_argument('-S', '--socket', dest='mysqlSocket', default=None, metavar='PATH',
                            help='The socket file to use for connection.')
@@ -189,12 +194,18 @@ class Loader(object):
         logger.setLevel(level=levels.get(verbosity, logging.DEBUG))
         logger.addHandler(handler)
 
-        # connect to mysql server
-        mysqlConn = self._dbConnect()
+        # connect to czar mysql server
+        mysqlConn = self._dbConnect(self.args.mysqlHost)
+
+        # connect to all worker servers
+        workerConnMap = {}
+        for worker in self.args.workerHosts:
+            workerConnMap[worker] = self._dbConnect(worker)
 
         # instantiate loader
         self.loader = DataLoader(self.args.configFiles,
                                  mysqlConn,
+                                 workerConnMap=workerConnMap,
                                  chunksDir=self.args.chunksDir,
                                  keepChunks=self.args.keepChunks,
                                  skipPart=self.args.skipPart,
@@ -217,13 +228,13 @@ class Loader(object):
         return 0
 
 
-    def _dbConnect(self):
+    def _dbConnect(self, host):
         """
         Connect to mysql server, returns connection or throws exception.
         """
         kws = dict(local_infile=1)
-        if self.args.mysqlHost:
-            kws['host'] = self.args.mysqlHost
+        if host:
+            kws['host'] = host
         if self.args.user:
             kws['user'] = self.args.user
         if self.args.password:
