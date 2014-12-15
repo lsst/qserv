@@ -69,14 +69,20 @@ class QservAdmin(object):
     # this produces a string in a form: 198.129.220.176_2899, used for unique id
     _addrPort = str(socket.getaddrinfo(socket.gethostname(), None)[0][4][0]) + '_' + str(os.getpid())
 
-    def __init__(self, connInfo):
+    def __init__(self, connInfo=None, config=None):
         """
-        Initialize: create KvInterface object.
+        Initialize: create KvInterface object. One of the
+        connInfo or config parametrs must be supplied,
 
-        @param connInfo     Connection information.
+        @param connInfo     Connection information string, e.g. 'localhost:12181'.
+        @param config       Dictionary with configuration options, same as
+                            accepted by KvInterface.newImpl.
         """
-        self._kvI = KvInterface.newImpl(connInfo=connInfo)
-        self._logger = logging.getLogger("QADM")
+        if connInfo is not None:
+            self._kvI = KvInterface.newImpl(connInfo=connInfo)
+        else:
+            self._kvI = KvInterface.newImpl(config=config)
+        self._logger = logging.getLogger("QADMI")
         self._uniqueLockId = 0
 
     def _addPacked(self, origPath, valueDict):
@@ -174,7 +180,7 @@ class QservAdmin(object):
         with self._getDbLock(dbName):
             try:
                 if self._kvI.exists(dbP):
-                    self._logger.info("createDb database '%s' exists, aborting." % \
+                    self._logger.info("createDb database '%s' exists, aborting.",
                                       dbName)
                     return
                 self._kvI.create(dbP, "PENDING")
@@ -194,12 +200,12 @@ class QservAdmin(object):
                 self._createDbLockSection(dbP)
                 self._kvI.set(dbP, "READY")
             except KvException as e:
-                self._logger.error("Failed to create database '%s', " % dbName +
-                                   "error was: " + e.__str__())
+                self._logger.error("Failed to create database '%s', error was: %s",
+                                   dbName, e)
                 self._deletePacked(dbP)
                 if ptP is not None: self._deletePacked(ptP)
                 raise
-        self._logger.debug("Create database '%s' succeeded." % dbName)
+        self._logger.debug("Create database '%s' succeeded.", dbName)
 
     def createDbLike(self, dbName, templateDbName):
         """
@@ -208,7 +214,7 @@ class QservAdmin(object):
         @param dbName    Database name (of the database to create)
         @param templateDbName   Database name (of the template database)
         """
-        self._logger.info("Creating db '%s' like '%s'" % (dbName, templateDbName))
+        self._logger.info("Creating db '%s' like '%s'", dbName, templateDbName)
 
         # first check version
         self._versionCheck()
@@ -216,7 +222,7 @@ class QservAdmin(object):
         dbP = "/DBS/%s" % dbName
         dbP2 = "/DBS/%s" % templateDbName
         if dbName == templateDbName:
-            raise QservAdminException(QservAdminException.DB_NAME_IS_SELF);
+            raise QservAdminException(QservAdminException.DB_NAME_IS_SELF)
         # Acquire lock in sorted order. Otherwise two admins that run
         # "CREATE DATABASE A LIKE B" and "CREATE DATABASE B LIKE A" can deadlock.
         (name1, name2) = sorted((dbP, dbP2))
@@ -235,9 +241,8 @@ class QservAdmin(object):
             self._createDbLockSection(dbP)
             self._kvI.set(dbP, "READY")
         except KvException as e:
-            self._logger.error("Failed to create database '%s' like '%s', "
-                               % (dbName, templateDbName)
-                               + "error was: " + e.__str__())
+            self._logger.error("Failed to create database '%s' like '%s', error was: %s",
+                               dbName, templateDbName, e)
             self._deletePacked(dbP)
             raise
 
@@ -247,7 +252,7 @@ class QservAdmin(object):
 
         @param dbName    Database name.
         """
-        self._logger.info("Drop database '%s'" % dbName)
+        self._logger.info("Drop database '%s'", dbName)
 
         # first check version
         self._versionCheck()
@@ -255,7 +260,7 @@ class QservAdmin(object):
         with self._getDbLock(dbName):
             dbP = "/DBS/%s" % dbName
             if not self._kvI.exists(dbP):
-                self._logger.info("dropDb database '%s' gone, aborting.." % \
+                self._logger.info("dropDb database '%s' gone, aborting..",
                                   dbName)
                 return
             self._deletePacked(dbP)
@@ -279,6 +284,11 @@ class QservAdmin(object):
         """
         p = "/DBS/%s/TABLES/%s" % (dbName, tableName)
         return self._kvI.exists(p)
+
+    def tables(self, dbName):
+        """ Returns the list of table names defined in CSS """
+        key = "/DBS/%s/TABLES" % (dbName,)
+        return self._cssChildren(key, [])
 
     def createTable(self, dbName, tableName, options):
         """
@@ -305,16 +315,16 @@ class QservAdmin(object):
         @param tableName Table name
         @param options   Dictionary with options (key/value)
         """
-        self._logger.debug("Create table '%s.%s', options: %s"
-                           % (dbName, tableName, str(options)))
+        self._logger.debug("Create table '%s.%s', options: %s",
+                           dbName, tableName, options)
 
         # first check version
         self._versionCheck()
 
         with self._getDbLock(dbName):
             if not self._kvI.exists("/DBS/%s" % dbName):
-                self._logger.info("createTable: database '%s' missing, aborting."
-                                  % dbName)
+                self._logger.info("createTable: database '%s' missing, aborting.",
+                                  dbName)
                 return
             self._createTable(options, dbName, tableName)
 
@@ -325,7 +335,7 @@ class QservAdmin(object):
         @param dbName    Database name
         @param tableName Table name
         """
-        self._logger.debug("Drop table '%s.%s'" % (dbName, tableName))
+        self._logger.debug("Drop table '%s.%s'", dbName, tableName)
 
         with self._getDbLock(dbName):
             tbP = "/DBS/%s/TABLES/%s" % (dbName, tableName)
@@ -336,7 +346,7 @@ class QservAdmin(object):
         def check(d, possible):
             for k in possible:
                 if k not in d:
-                    self._logger.info("'%s' not provided" % k)
+                    self._logger.info("'%s' not provided", k)
         check(tbOpts, possibleOpts["table"])
         check(matchOpts, possibleOpts["match"])
         check(partitionOpts, possibleOpts["partition"])
@@ -362,20 +372,70 @@ class QservAdmin(object):
                 self._addPacked(tbP+"/partitioning", partitionOpts)
             self._kvI.set(tbP, "READY")
         except KvException as e:
-            self._logger.error("Failed to create table '%s.%s', " % \
-                                (dbName, tableName) + "error was: " + e.__str__())
+            self._logger.error("Failed to create table '%s.%s', error was: %s",
+                                dbName, tableName, e)
             self._kvI.delete(tbP, recursive=True)
             raise
-        self._logger.debug("Create table '%s.%s' succeeded." % (dbName, tableName))
+        self._logger.debug("Create table '%s.%s' succeeded.", dbName, tableName)
+
+    #### CHUNKS ####################################################################
+    def chunks(self, dbName, tableName):
+        """
+        Returns all chunks defined in CSS. Returned object is a dictionary with
+        chunk number as a key and list of worker names as value. Empty dict is
+        returned if no chunk info is defined.
+        """
+        res = {}
+        with self._getDbLock(dbName):
+            key = "/DBS/%s/TABLES/%s/CHUNKS" % (dbName, tableName)
+            for chunk in self._cssChildren(key, []):
+                hosts = []
+                replKey = "%s/%s/REPLICAS" % (key, chunk)
+                for repl in self._cssChildren(replKey, []):
+                    host = None
+                    if repl.endswith('.json'):
+                        data = self._cssGet(replKey + '/' + repl)
+                        if data:
+                            data = json.loads(data)
+                            host = data.get('nodeName')
+                    else:
+                        host = self._cssGet(replKey + '/' + repl + '/nodeName')
+                    if host:
+                        hosts.append(host)
+                res[int(chunk)] = hosts
+        return res
+
+    def addChunk(self, dbName, tableName, chunk, hosts):
+        """
+        Retuns all chunks defined in CSS. Returned object is a dictionary with
+        chunk number as a key and list of worker names as value. Empty dict is
+        returned if no chunk info is defined.
+        """
+
+        self._logger.debug("Add chunk replicas '%s.%s', chunk: %s hosts: %s",
+                           dbName, tableName, chunk, hosts)
+
+        with self._getDbLock(dbName):
+
+            key = "/DBS/%s/TABLES/%s/CHUNKS/%s/REPLICAS" % (dbName, tableName, chunk)
+
+            for host in hosts:
+                path = self._kvI.create(key + '/', sequence=True)
+                self._logger.debug("New chunk replica key: %s", path)
+                self._addPacked(path, dict(nodeName=host))
 
     ################################################################################
     def dumpEverything(self, dest=None):
         """
         Dumps entire metadata in CSS. Output goes to file (if provided through
-        "dest"), otherwise to stdout.
+        "dest"), otherwise to stdout. Argument can be a file object instance
+        (anything that has write() method) or a string in which case it is
+        assumed to be a file name to write to.
         """
         if dest is None:
             self._kvI.dumpAll()
+        elif getattr(dest, 'write'):
+            self._kvI.dumpAll(dest)
         else:
             with open(dest, "w") as f:
                 self._kvI.dumpAll(f)
@@ -399,7 +459,7 @@ class QservAdmin(object):
             f = open(fileName, 'r')
             for line in f.readlines():
                 (k, v) = line.rstrip().split()
-                if v == '\N':
+                if v == r'\N':
                     v = ''
                 if k != '/':
                     self._kvI.create(k, v)
@@ -416,7 +476,7 @@ class QservAdmin(object):
         @param dbSrc     Source database name
         @param theList   The list of elements to copy.
         """
-        dbS  = "/DBS/%s" % dbSrc
+        dbS = "/DBS/%s" % dbSrc
         dbD = "/DBS/%s" % dbDest
         for x in theList:
             v = self._kvI.get("%s/%s" % (dbS, x))
@@ -430,7 +490,7 @@ class QservAdmin(object):
         @param dbP    Path to the database.
         """
         lockOptList = "comments estimatedDuration lockedBy lockedTime mode reason"
-        lockOpts = dict([(k,"") for k in lockOptList.split()])
+        lockOpts = dict([(k, "") for k in lockOptList.split()])
         self._addPacked(dbP + "/LOCK", lockOpts)
 
     def _versionCheck(self):
@@ -455,9 +515,22 @@ class QservAdmin(object):
         """
         self._kvI.create(VERSION_KEY, str(VERSION))
 
+    ##### convenience ##########################################################
+    def _cssGet(self, key, default=None):
+        "Returns key value or default if key does not exist"
+        if self._kvI.exists(key):
+            return self._kvI.get(key)
+        return default
+
+    def _cssChildren(self, key, default=None):
+        "Returns list of children or default if key does not exist"
+        if self._kvI.exists(key):
+            return self._kvI.getChildren(key)
+        return default
+
     ##### Locking related ##########################################################
     def _getDbLock(self, dbName):
-            return self._kvI.getLockObject("/DBS/%s" % dbName, self._uniqueId())
+        return self._kvI.getLockObject("/DBS/%s" % dbName, self._uniqueId())
 
     def _uniqueId(self):
         self._uniqueLockId += 1

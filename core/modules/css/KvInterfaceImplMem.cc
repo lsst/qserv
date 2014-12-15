@@ -100,6 +100,15 @@ KvInterfaceImplMem::create(string const& key, string const& value) {
     if (exists(key)) {
         throw KeyExistsError(key);
     }
+    // create all parents
+    string parent = key;
+    for (string::size_type p = parent.rfind('/'); p != string::npos; p = parent.rfind('/')) {
+        parent = parent.substr(0, p);
+        if (parent.empty()) break;
+        if (_kvMap.find(parent) != _kvMap.end()) break;
+        _kvMap.insert(std::make_pair(parent, std::string()));
+    }
+    // store the key with value
     _kvMap[key] = value;
 }
 
@@ -140,13 +149,14 @@ KvInterfaceImplMem::getChildren(string const& key) {
     if ( ! exists(key) ) {
         throw NoSuchKey(key);
     }
+    const std::string pfx(key == "/" ? key : key + "/");
     vector<string> retV;
     map<string, string>::const_iterator itrM;
     for (itrM=_kvMap.begin() ; itrM!=_kvMap.end() ; itrM++) {
         string fullKey = itrM->first;
         LOGF_INFO("fullKey: %1%" % fullKey);
-        if (boost::starts_with(fullKey, key+"/")) {
-            string theChild = fullKey.substr(key.length()+1);
+        if (boost::starts_with(fullKey, pfx)) {
+            string theChild = fullKey.substr(pfx.length());
             if (!theChild.empty() && (theChild.find("/") == string::npos)) {
                 LOGF_INFO("child: %1%" % theChild);
                 retV.push_back(theChild);
