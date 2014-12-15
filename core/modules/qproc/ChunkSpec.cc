@@ -24,7 +24,7 @@
 /**
   * @file
   *
-  * @brief Implementation of helper printers for ChunkSpec
+  * @brief Implementation of helpers for ChunkSpec
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -69,31 +69,27 @@ std::ostream& operator<<(std::ostream& os, ChunkSpec const& c) {
 /// all ChunkSpec A element, there is no ChunkSpec B element in the same vector
 /// where A.chunkId == B.chunkId.
 void intersectSorted(ChunkSpecVector& dest, ChunkSpecVector const& a) {
-    ChunkSpecVector::iterator di = dest.begin();
-    ChunkSpecVector::iterator de = dest.end();
+    ChunkSpecVector tmp;
+    tmp.swap(dest);
+    ChunkSpecVector::iterator di = tmp.begin();
+    ChunkSpecVector::iterator de = tmp.end();
     ChunkSpecVector::const_iterator ai = a.begin();
     ChunkSpecVector::const_iterator ae = a.end();
-
     while(di != de) { // march down dest vector
         // For each item in dest, advance through a to find a matching chunkId.
         while(ai->chunkId < di->chunkId) {
             ++ai;
         }
+
         if(ai->chunkId == di->chunkId) {
+            ChunkSpec cs = *di;
             // On a match, perform the intersection.
-            di->merge(*ai);
-            if(di->chunkId == ChunkSpec::CHUNKID_INVALID) {
-                // Drop ai
-                di = dest.erase(di);
-            } else {
-                ++di;
+            cs.merge(*ai);
+            if(di->chunkId != ChunkSpec::CHUNKID_INVALID) {
+                dest.push_back(cs);
             }
-        } else {
-            // No match -> no intersection, so drop the original item.
-            // Drop ai
-            di = dest.erase(di);
         }
-        // dest advances either by increment or erasing.
+        ++di;
     }
 }
 
@@ -116,7 +112,9 @@ bool ChunkSpec::shouldSplit() const {
 }
 
 ChunkSpec ChunkSpec::intersect(ChunkSpec const& cs) const {
-    throw Bug("unimplemented"); // FIXME
+    ChunkSpec output(*this);
+    output.merge(cs);
+    return output;
 }
 
 void ChunkSpec::merge(ChunkSpec const& rhs) {
@@ -152,6 +150,27 @@ bool ChunkSpec::operator<(ChunkSpec const& rhs) const {
         }
     }
 }
+
+bool ChunkSpec::operator==(ChunkSpec const& rhs) const {
+    typedef std::vector<int32_t>::const_iterator VecIter;
+
+    if(chunkId != rhs.chunkId) return false;
+    return subChunks == rhs.subChunks;
+}
+
+ChunkSpec ChunkSpec::makeFake(int chunkId, bool withSubChunks) {
+    ChunkSpec cs;
+    cs.chunkId = chunkId;
+    assert(chunkId < 1000000);
+    if(withSubChunks) {
+        int base = 1000 * chunkId;
+        cs.subChunks.push_back(base);
+        cs.subChunks.push_back(base+10);
+        cs.subChunks.push_back(base+20);
+    }
+    return cs;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // ChunkSpecFragmenter
 ////////////////////////////////////////////////////////////////////////

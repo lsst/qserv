@@ -65,8 +65,14 @@ public:
     void merge(ChunkSpec const& rhs);
 
     bool operator<(ChunkSpec const& rhs) const;
+    bool operator==(ChunkSpec const& rhs) const;
+
+
+    // For testing
+    static ChunkSpec makeFake(int chunkId, bool withSubChunks=false);
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c);
+
 
 typedef std::list<ChunkSpec> ChunkSpecList;
 typedef std::vector<ChunkSpec> ChunkSpecVector;
