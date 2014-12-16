@@ -73,6 +73,7 @@ public:
     qdisp::Executive::Config::Ptr executiveConfig;
     boost::shared_ptr<css::Facade> facade;
     rproc::InfileMergerConfig infileMergerConfigTemplate;
+    boost::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -102,6 +103,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
     UserQuery* uq = new UserQuery(qs);
     int sessionId = UserQuery_takeOwnership(uq);
     uq->_sessionId = sessionId;
+    uq->_secondaryIndex = _impl->secondaryIndex;
     if(sessionValid) {
         uq->_executive = boost::make_shared<qdisp::Executive>(
                 _impl->executiveConfig, uq->_messageStore);
@@ -141,6 +143,11 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "resultdb.db",
         "Error, resultdb.db not found. Using qservResult.",
         "qservResult");
+    MySqlConfig mc;
+    mc.username = infileMergerConfigTemplate.user;
+    mc.dbName = infileMergerConfigTemplate.targetDb; // any valid db is ok.
+    mc.socket = infileMergerConfigTemplate.socket;
+    secondaryIndex = boost::make_shared<qproc::SecondaryIndex>(mc);
 }
 
 void UserQueryFactory::Impl::readConfigFacade(
