@@ -33,26 +33,121 @@
 
 // System headers
 
+// Third-party headers
+#include "boost/make_unique.hpp"
+
 // Qserv headers
+#include "global/intTypes.h"
+#include "global/constants.h"
 #include "qproc/ChunkSpec.h"
 
 namespace lsst {
 namespace qserv {
 namespace qproc {
-
-SecondaryIndex::SecondaryIndex() {
-
+char const lookupSqlTemplate[] = "SELECT chunkId, subChunkId FROM %s WHERE %s IN (%s);";
+std::string makeIndexTableName(
+    std::string const& db,
+    std::string const& table
+) {
+    return (std::string(SEC_INDEX_DB) + "."
+            + sanitizeName(db) + "__" + sanitizeName(table));
 }
 
-ChunkSpecVector SecondaryIndex::lookup(query::ConstraintVector const& cv) {
+std::string makeLookupSql(
+    std::string const& db,
+    std::string const& table,
+    std::string const& keyColumn,
+    std::string const& stringValues
+    //std::vector<int32_t> const& keyValues
+) {
+    // Template: "SELECT chunkId, subChunkId FROM %s WHERE %s IN (%s);";
+    std::string s;
+    s += std::string("SELECT ") + CHUNK_COLUMN + "," + SUB_CHUNK_COLUMN
+        + " FROM " + makeIndexTableName(db, table) + " WHERE "
+        + keyColumn + " IN " + "(";
+#if 0
+    std::ostringstream os;
+    bool notFirst = false;
+    std::vector<int32_t>::const_iterator i,e;
+    for(i=keyValues.begin(), e=keyValues.end(); i != e; ++i) {
+        if (notFirst) {
+            os << ",";
+        } else {
+            notFirst = true;
+        }
+        os << *i;
+    }
+    s += os.str() + ")";
+#else
+    s += stringValues + ")";
+#endif
+    return s;
+}
+class SecondaryIndex::Backend {
+public:
+    virtual ~Backend() {}
+    virtual ChunkSpecVector lookup(query::ConstraintVector const& cv) = 0;
+};
+
+class MySqlBackend : public SecondaryIndex::Backend {
+public:
+    MySqlBackend(MySqlConfig const& c)
+        : _sqlConnection(c, true) {
+    }
+    virtual ChunkSpecVector lookup(query::ConstraintVector const& cv) {
     // cv should only contain index constraints
     // Because the only constraint possible is "objectid in []", and all
     // constraints are AND-ed, it really only makes sense to have one index
     // constraint.
     IntVector ids;
-
+    // For now, use only the first constraint, assert that it is an index
+    // constraint.
+    if (cv.empty()) { raise Bug("SecondaryIndex::lookup without constraint"); }
+    Constraint const& c = cv[0];
+    if (c.name != "sIndex") {
+        raise Bug("SecondaryIndex::lookup cv[0] != index constraint");
+    }
+    std::string lookupSql = makeLookupSql(c.params[0], c.params[1],
+                                          c.params[2], c.params[3]);
+    ChunkSpecMap m;
+    for(boost::shared_ptr<SqlResultIter> results
+            = _sqlConnection->getQueryIter(lookupSql);
+        !results->done();
+        ++(*results)) {
+        SqlResultIter::List const& row = **results;
+        ChunkSpecMap::iterator e = m.find(row[0]);
+        if (e == m.end()) {
+            ChunkSpec& cs = m[row[0]];
+            cs.chunkId = row[0];
+            cs.subChunks.push_back(row[1]);
+        } else {
+            ChunkSpec& cs = *e;
+            cs.subChunks.push_Back(row[1]);
+        }
+    }
     ChunkSpecVector output;
-    return output; // FIXME
+    for(ChunkSpecMap::const_iterator i=m.begin(), e=m.end();
+        i != e; ++i) {
+        output.push_back(i->second);
+    }
+    return output;
+    }
+private:
+    SqlConnection    SqlConnection();
+    SqlConnection _sqlConnection;
+
+};
+
+SecondaryIndex::SecondaryIndex(MySqlConfig const& c)
+    : _backend(boost::make_unique<MySqlBackend>(c)) {
+}
+
+ChunkSpecVector SecondaryIndex::lookup(query::ConstraintVector const& cv) {
+    if (_backend) {
+        return _backend->lookup(cv);
+    } else {
+        raise Bug("SecondaryIndex : no backend initialized");
+    }
 }
 
 #if 0
