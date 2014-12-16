@@ -32,6 +32,9 @@
 
 // System headers
 
+// Third-party headers
+#include "boost/unique_ptr.hpp"
+
 // Qserv headers
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
@@ -40,12 +43,17 @@ namespace lsst {
 namespace qserv {
 namespace qproc {
 
+/// SecondaryIndex handles lookups into a secondary index. Only one instance of
+/// this is necessary: all user queries can share a single instance.
 class SecondaryIndex {
 public:
-    SecondaryIndex();
+    SecondaryIndex(MySqlConfig const& c);
+    SecondaryIndex(int); // Construct a fake instance
+
     ChunkSpecVector lookup(query::ConstraintVector const& cv);
 private:
-    int fixme;
+    class Backend;
+    boost::unique_ptr<Backend> _backend;
 };
 
 }}} // namespace lsst::qserv::qproc
