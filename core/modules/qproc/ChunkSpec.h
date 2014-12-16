@@ -76,6 +76,7 @@ std::ostream& operator<<(std::ostream& os, ChunkSpec const& c);
 
 typedef std::list<ChunkSpec> ChunkSpecList;
 typedef std::vector<ChunkSpec> ChunkSpecVector;
+typedef std::map<int, ChunkSpec> ChunkSpecMap;
 
 /// ChunkSpecVector intersection.
 /// Computes ChunkSpecVector intersection, overwriting dest with the result.
