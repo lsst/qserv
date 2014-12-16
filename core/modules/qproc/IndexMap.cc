@@ -131,12 +131,6 @@ private:
     Map _map;
 
 };
-ChunkSpecVector intersect(ChunkSpecVector const& a, ChunkSpecVector const& b) {
-    ChunkSpecMap::Map intersection;
-    return ChunkSpecVector(); // FIXME
-
-}
-
 ChunkSpecVector IndexMap::getIntersect(query::ConstraintVector const& cv) {
     RegionPtrVector rv;
 
