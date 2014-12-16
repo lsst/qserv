@@ -714,6 +714,13 @@ class DataLoader(object):
 
         self._log.info('Making empty chunk list (max.chunk=%d) %s', maxChunks, self.emptyChunks)
 
+        emptyChunkDir = os.path.dirname(self.emptyChunks)
+        try:
+            os.makedirs(emptyChunkDir)
+        except OSError:
+            if not os.path.isdir(emptyChunkDir):
+                raise
+
         out = open(self.emptyChunks, 'w')
         for chunk in range(maxChunks):
             if chunk not in self.chunks:
