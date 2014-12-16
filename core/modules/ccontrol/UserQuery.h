@@ -130,6 +130,7 @@ private:
     boost::shared_ptr<qproc::QuerySession> _qSession;
     boost::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
     boost::shared_ptr<rproc::InfileMerger> _infileMerger;
+    boost::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
 
     int _sessionId; ///< External reference number
     int _sequence; ///< Sequence number for subtask ids
