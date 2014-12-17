@@ -86,6 +86,13 @@ virtual     StripingParams getDbStriping(std::string const& dbName) const;
 virtual     double getOverlap(std::string const& dbName) const;
 virtual     MatchTableParams getMatchTableParams(std::string const& dbName,
                                          std::string const& tableName) const;
+
+    /**
+     *  Returns current compiled-in version number of CSS data structures.
+     *  This is not normally useful for clients but can be used by various tests.
+     */
+    static int cssVersion();
+
 private:
     explicit Facade(std::istream& mapStream);
     explicit Facade(boost::shared_ptr<KvInterface> kv);

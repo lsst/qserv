@@ -60,10 +60,10 @@ namespace {
 // database is created. All other clients are supposed to check stored
 // version against compiled-in version and fail if they do not match.
 // Another place where version number appears is qproc/testMap.kvmap.
-
-// version is an integer number, but kvInterface treats everything as strings,
-// so to avoid unnecessary conversions work with strings
-const std::string VERSION("1");
+const int VERSION = 1;
+// kvInterface treats everything as strings, so to avoid multiple
+// conversions I define this string once and use it with kvInterface
+const std::string VERSION_STR = boost::lexical_cast<std::string>(VERSION);
 const std::string VERSION_KEY("/css_meta/version");
 
 }
@@ -358,14 +358,23 @@ Facade::getMatchTableParams(std::string const& dbName,
     return p;
 }
 
+/*
+ *  Returns current compiled-in version number of CSS data structures.
+ *  This is not normally useful for clients but can be used by various tests.
+ */
+int
+Facade::cssVersion() {
+    return ::VERSION;
+}
+
 void
 Facade::_versionCheck() const {
     const string& vstr = _kvI->get(::VERSION_KEY, string());
     if (vstr.empty()) {
         throw VersionMissingError(::VERSION_KEY);
     }
-    if (vstr != ::VERSION) {
-        throw VersionMismatchError(::VERSION, vstr);
+    if (vstr != ::VERSION_STR) {
+        throw VersionMismatchError(::VERSION_STR, vstr);
     }
 }
 

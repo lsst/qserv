@@ -35,6 +35,7 @@
 #include <algorithm> // sort
 #include <cstdlib>   // rand, srand
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <time.h>    // time
 
@@ -42,6 +43,7 @@
 #include "boost/lexical_cast.hpp"
 #include "boost/make_shared.hpp"
 #include "boost/shared_ptr.hpp"
+#include "boost/make_shared.hpp"
 
 // Local headers
 #include "css/CssError.h"
@@ -69,11 +71,19 @@ struct InitRand {
 };
 InitRand _initRand;
 
+// some tests do not need fixure
+struct EmptyFixture {
+};
 
+// Test fixure that instantiates a Facade with pre-loaded data
 struct FacadeFixture {
-    FacadeFixture(void) :
-        kvI(boost::make_shared<KvInterfaceImplMem>()),
-        facade(FacadeFactory::createCacheFacade(kvI)) {
+    FacadeFixture() {
+
+        // version key must exist before Facade is instantiated
+        std::istringstream stream("/css_meta\t\\N\n/css_meta/version\t" +
+                boost::lexical_cast<string>(Facade::cssVersion()));
+        kvI.reset(new KvInterfaceImplMem(stream));
+        facade = FacadeFactory::createCacheFacade(kvI);
 
         kv.push_back(make_pair("/", ""));
 
@@ -132,6 +142,27 @@ struct FacadeFixture {
 };
 
 BOOST_FIXTURE_TEST_SUITE(FacadeTest, FacadeFixture)
+
+BOOST_FIXTURE_TEST_CASE(test_noVersion, EmptyFixture) {
+    // check that Facade throws exception for missing version key
+    boost::shared_ptr<KvInterfaceImplMem> kvI = boost::make_shared<KvInterfaceImplMem>();
+    BOOST_CHECK_THROW(FacadeFactory::createCacheFacade(kvI), VersionMissingError);
+}
+
+BOOST_FIXTURE_TEST_CASE(test_wrongVersion, EmptyFixture) {
+    // check that Facade throws exception for mismatching version key
+    std::istringstream stream("/css_meta\t\\N\n/css_meta/version\t1000000000");
+    boost::shared_ptr<KvInterfaceImplMem> kvI(new KvInterfaceImplMem(stream));
+    BOOST_CHECK_THROW(FacadeFactory::createCacheFacade(kvI), VersionMismatchError);
+}
+
+BOOST_FIXTURE_TEST_CASE(test_okVersion, EmptyFixture) {
+    // check that Facade throws exception for mismatching version key
+    std::istringstream stream("/css_meta\t\\N\n/css_meta/version\t" +
+            boost::lexical_cast<string>(Facade::cssVersion()));
+    boost::shared_ptr<KvInterfaceImplMem> kvI(new KvInterfaceImplMem(stream));
+    BOOST_CHECK_NO_THROW(FacadeFactory::createCacheFacade(kvI));
+}
 
 BOOST_AUTO_TEST_CASE(containsDb) {
     BOOST_CHECK_EQUAL(facade->containsDb("dbA"), true);
