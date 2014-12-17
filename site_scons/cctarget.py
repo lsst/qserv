@@ -21,7 +21,6 @@
 #
 # cctarget.py -- helpers for modules to publish c++ modules
 import os
-import state
 
 def getDefaultTargets(env, path, ignore=lambda f:False):
     """ 
@@ -34,3 +33,9 @@ def getDefaultTargets(env, path, ignore=lambda f:False):
                    env.Glob(os.path.join(path, "*.cc")))
     files.sort(key=lambda n: n.str_for_display())
     return files
+
+def getList(env, key):
+    value = env[key]
+    if not value: return []
+    elif type(value) == type(""): return [value]
+    return value
