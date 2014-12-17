@@ -4,6 +4,7 @@ import distutils.sysconfig
 import errno
 import os
 import state
+import cctarget
 import pytarget
 
 Import('env')
@@ -31,16 +32,17 @@ depends = ['ccontrol/dispatcher.h',
            'xrdc/xrdfile.h']
 depends = map(lambda f: env.File("../"+f), depends)
 
-localCpppath = env['CPPPATH']
-if type(localCpppath) == type(""): localCpppath = [localCpppath]
-localCpppath.append(distutils.sysconfig.get_python_inc())
+pythonInc = distutils.sysconfig.get_python_inc()
+cppPath = cctarget.getList(env, 'CPPPATH') + [pythonInc]
 swigged = env.SharedObject(source="czarLib.i",
                            SWIGFLAGS=['-python', '-c++', '-Iinclude'],
-                           SWIGPATH=['..',
-                                     distutils.sysconfig.get_python_inc()],
-                           CPPPATH=localCpppath,
-                           LDMODULEPREFIX='_', LDMODULESUFFIX = '.so'
+                           SWIGPATH=['..', pythonInc],
+                           CPPPATH=cppPath,
+                           LDMODULEPREFIX='_',
+                           LDMODULESUFFIX = '.so',
                            )
+
+
 # swigged = env.swig(source="czarLib.i",
 #                    SWIGPATH=['..',
 #                              distutils.sysconfig.get_python_inc()],

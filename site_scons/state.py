@@ -166,6 +166,16 @@ def _setEnvWithDependencies():
             )
         opts.Update(env)
 
+    # SWIG_SWIG_LIB specification: Useful when swig can't find its own *.i files
+    # This is SWIG_LIB, read by swig, not the same as the location of swig's *.so libs
+    # No validation: a custom SWIG_SWIG_LIB is not essential.
+    opts.AddVariables(
+        (PathVariable('SWIG_SWIG_LIB', 'swig SWIG_LIB for broken swig setups', [], PathVariable.PathAccept)) 
+        )
+    opts.Update(env)
+    swig_swig_lib = env['SWIG_SWIG_LIB']
+    if swig_swig_lib and os.path.isdir(swig_swig_lib):
+        env['ENV']['SWIG_LIB'] = swig_swig_lib
     SCons.Script.Help(opts.GenerateHelpText(env))
 
 
