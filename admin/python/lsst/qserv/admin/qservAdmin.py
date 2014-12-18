@@ -60,6 +60,10 @@ possibleOpts = {"table" : set(["schema", "compression", "match"]),
                                   "lonColName", "latColName",
                                   "dirColName", "overlap"])
                 }
+# match and partition options are only required if table is match or
+# partitioned, respectively. In each cases, all possible opts in
+# its category are required.
+requiredOpts = { "table" : ["schema"]}
 
 class QservAdmin(object):
     """
@@ -162,11 +166,16 @@ class QservAdmin(object):
         """
         self._logger.debug("Create database '%s', options: %s",
                            dbName, options)
-        # double check if all required options are specified
-        for x in ["nStripes", "nSubStripes", "overlap", "storageClass"]:
-            if x not in options:
-                self._logger.error("Required option '%s' missing", x)
-                raise KvException(KvException.MISSING_PARAM, x)
+        # client should guarantee existence of "partitioning" option
+        if "partitioning" not in options:
+            raise QservAdminException(QservAdminException.INTERNAL)
+        usePartitioning = options["partitioning"]
+        if usePartitioning:
+            # double check if all required options are specified
+            for x in ["nStripes", "nSubStripes", "storageClass"]:
+                if x not in options:
+                    self._logger.error("Required option '%s' missing", x)
+                    raise KvException(KvException.MISSING_PARAM, x)
 
         # first check version or store it
         with self._kvI.getLockObject(VERSION_KEY, self._uniqueId()):
@@ -184,18 +193,20 @@ class QservAdmin(object):
                                       dbName)
                     return
                 self._kvI.create(dbP, "PENDING")
-                ptP = self._kvI.create("/PARTITIONING/_", sequence=True)
-
                 options["uuid"] = str(uuid.uuid4())
-                partOptions = dict((k, v) for k, v in options.items()
-                                   if k in ["nStripes", "nSubStripes", "overlap", "uuid"])
-                self._addPacked(ptP, partOptions)
-
-                pId = ptP[-10:] # Partitioning id is always 10 digit, 0 padded
                 dbOpts = {"uuid" : str(uuid.uuid4()),
-                          "partitioningId" : pId,
                           "releaseStatus" : "UNRELEASED",
                           "storageClass" : options["storageClass"]}
+                if usePartitioning:
+                    ptP = self._kvI.create("/PARTITIONING/_", sequence=True)
+                    partOptions = dict((k, v) for k, v in options.items()
+                                       if k in ["nStripes",
+                                                "nSubStripes",
+                                                "overlap",
+                                                "uuid"])
+                    self._addPacked(ptP, partOptions)
+                    # Partitioning id is always 10 digit, 0 padded
+                    dbOpts["partitioningId"] = ptP[-10:]
                 self._addPacked(dbP, dbOpts)
                 self._createDbLockSection(dbP)
                 self._kvI.set(dbP, "READY")
@@ -346,10 +357,19 @@ class QservAdmin(object):
         def check(d, possible):
             for k in possible:
                 if k not in d:
-                    self._logger.info("'%s' not provided", k)
+                    self._logger.info("'%s' not provided" % k)
+        def checkFail(d, required):
+            for k in required:
+                if k not in d:
+                    self._logger.error("'%s' not provided" % k)
+                    raise QservAdminException(
+                        QservAdminException.MISSING_PARAM)
         check(tbOpts, possibleOpts["table"])
-        check(matchOpts, possibleOpts["match"])
-        check(partitionOpts, possibleOpts["partition"])
+        checkFail(tbOpts, requiredOpts["table"])
+        if matchOpts:
+            checkFail(matchOpts, possibleOpts["match"])
+        if partitionOpts:
+            checkFail(partitionOpts, possibleOpts["partition"])
         # Not sure where defaults should be stored now.
         pass
 
