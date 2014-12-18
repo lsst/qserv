@@ -1,3 +1,21 @@
+R E L E A S E   2014_12
+=======================
+
+Code improvements:
+ * DM-336:  Improve code that initializes shared pointers
+ * Add unit test to to verify zookeeper versioning works
+
+New features:
+ * DM-621:  User friendly single node loading script
+
+Bug fixes:
+ * DM-1601: Fix related to queries with c-style comments
+ * DM-1603: Fix qserv build to use eups version of SWIG
+ * DM-1661: czar log4cxx link/load bug on Ubuntu 14.04
+
+Documentation improvements:
+ * DM-1538: Dev documentation
+
 R E L E A S E   2014_11
 =======================
 
