@@ -110,7 +110,7 @@ class TestCssVersion(unittest.TestCase):
 /css_meta/version\t""" + str(qservAdmin.VERSION)
         admin = _makeAdmin(initData)
 
-        # dor database, this checks version number
+        # drop database, this checks version number
         admin.dropDb('TESTDB')
 
     def test4(self):
