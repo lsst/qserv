@@ -154,7 +154,7 @@ class QservAdmin(object):
         with these keys and values:
           - nStripes:     number of partitioning stripes
           - nSubStripes:  number of partitioning sub-stripes
-          - overlap:      size of chunk overlap
+          - overlap:      size of chunk overlap, default per-database value
           - storageClass: one of 'L1', 'L2', 'L3'
 
         @param dbName    Database name
@@ -163,7 +163,7 @@ class QservAdmin(object):
         self._logger.debug("Create database '%s', options: %s",
                            dbName, options)
         # double check if all required options are specified
-        for x in ["nStripes", "nSubStripes", "storageClass"]:
+        for x in ["nStripes", "nSubStripes", "overlap", "storageClass"]:
             if x not in options:
                 self._logger.error("Required option '%s' missing", x)
                 raise KvException(KvException.MISSING_PARAM, x)

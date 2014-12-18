@@ -241,7 +241,7 @@ class DataLoader(object):
         # check parameters
         self._checkPartParam(self.partOptions, 'part.num-stripes', partConfig, 'nStripes', int)
         self._checkPartParam(self.partOptions, 'part.num-sub-stripes', partConfig, 'nSubStripes', int)
-#         self._checkPartParam(self.partOptions, 'part.overlap', partConfig, 'overlap', float)
+        self._checkPartParam(self.partOptions, 'part.default-overlap', partConfig, 'overlap', float)
 
         # also check that table does not exist in CSS, or optionally remove it
         cssTableExists = self.css.tableExists(database, table)

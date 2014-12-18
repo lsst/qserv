@@ -54,7 +54,8 @@ class PartConfig(UserDict.UserDict):
     """
 
     # keys that must be defined in partitioner config files
-    requiredConfigKeys = ['part.num-stripes', 'part.num-sub-stripes']
+    requiredConfigKeys = ['part.num-stripes', 'part.num-sub-stripes',
+                          'part.default-overlap']
 
     def __init__(self, files):
         """
@@ -96,7 +97,7 @@ class PartConfig(UserDict.UserDict):
         for key in self.requiredConfigKeys:
             if key not in self.data:
                 logging.error('Required option is missing from configuration files: %s', key)
-                raise KeyError('missing required option')
+                raise KeyError('required option is missing: ' + key)
 
     @property
     def partitioned(self):
@@ -114,6 +115,7 @@ class PartConfig(UserDict.UserDict):
         """
         options = {'nStripes': self['part.num-stripes'],
                    'nSubStripes': self['part.num-sub-stripes'],
+                   'overlap': self['part.default-overlap'],
                    'storageClass': self.get('storageClass', 'L2')
                    }
         return options
