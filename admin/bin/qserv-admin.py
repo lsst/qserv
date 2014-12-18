@@ -53,6 +53,40 @@ class CommandParser(object):
     Parse commands and calls appropriate function from qservAdmin.
     """
 
+    requiredOpts = {
+        "createDb" : [ # Db opts
+            "storageClass",
+            "partitioning",
+            "partitioningStrategy"
+            ],
+        "createDbSphBox" : [
+            "nStripes",
+            "nSubStripes",
+            "overlap"],
+        "createTable" : [
+            "tableName",
+            "partitioning",
+            "schema", # "schemaFile" can be read into "schema"
+            "clusteredIndex",
+            "match",
+            "isView"],
+        "createTableSphBox" : [
+            "overlap"],
+        "createTableDir" : [
+            "dirTable",
+            "dirColName",
+            "latColName",
+            "lonColName"
+            ],
+        "createChildTableJ" : [
+            "dirTable",
+            "dirColName",
+            ]
+        "createChildTableExtra" : [
+            "latColName",
+            "lonColName"]
+        }
+
     def __init__(self, connInfo):
         """
         Initialize shared metadata, including list of supported commands.
@@ -286,54 +320,69 @@ class CommandParser(object):
                 xx[option] = config.get(section, option)
         return xx
 
+    def _checkExist(self, opts, required):
+        for r in required:
+            if r not in opts:
+                raise QservAdminException(QservAdminException.MISSING_PARAM, r)
+
     def _processDbOptions(self, opts):
         """
         Validate options used by createDb, add default values for missing
         parameters.
         """
-        if not opts.has_key("clusteredIndex"):
-            self._logger.info(
-                "param 'clusteredIndex' not found, will use default: ''")
-            opts["clusteredIndex"] = ''
-        if not opts.has_key("partitioning"):
-            self._logger.info(
-                "param 'partitioning' not found, will use default: 0")
-            opts["partitioning"] = "0"
+        self._setDefault(opts, "partitioning", "0")
+        self._setDefault(opts, "clusteredIndex", "NULL")
         # these are required options for createDb
-        _crDbOpts = { 
-            "db_info": ("storageClass", 
-                        "partitioning", 
+        _crDbOpts = {
+            "db_info": ("storageClass",
+                        "partitioning",
                         "partitioningStrategy")}
         _crDbPSOpts = {
-            "sphBox": ("nStripes", 
-                       "nSubStripes", 
+            "sphBox": ("nStripes",
+                       "nSubStripes",
                        "overlap")}
+        self._checkExist(opts, CommandParser.requiredOpts["createDb"])
+        if opts["partitioning"] != "0":
+            if opts["partitioningStrategy"].lower() == "sphBox".lower():
+                self._checkExist(opts,
+                                 CommandParser.requiredOpts["createDbSphBox"])
+            else:
+                raise QservAdminException(QservAdminException.WRONG_PARAM,
+                                          opts["partitioningStrategy"])
         return opts
+
+    def _setDefault(self, opts, key, defaultValue):
+        if not opts.has_key(key):
+            self._logger.info(
+                "param '" + key + "' not found, will use default: " + str(defaultValue))
+            opts[key] = defaultValue
 
     def _processTbOptions(self, opts):
         """
         Validate options used by createTable, add default values for missing
         parameters.
         """
-        if not opts.has_key("clusteredIndex"):
-            self._logger.info(
-                "param 'clusteredIndex' not found, will use default: ''")
-            opts["clusteredIndex"] = "NULL"
-        if not opts.has_key("match"):
-            self._logger.info("param 'match' not found, will use default: 0")
-            opts["match"] = "0"
+        self._setDefault(opts, "partitioning", "0")
+        self._setDefault(opts, "clusteredIndex", "NULL")
+        self._setDefault(opts, "match", "0")
+        self._setDefault(opts, "isView", "0")
+        if opts.has_key("schemaFile"):
+            if opts.has_key("schema"):
+                self._logger.info("Both schema and schemaFile specified. " +
+                                  "Ignoring schemaFile")
+            else: # Create schema field from file.
+                self._logger.info("Importing schema from " + opts["schemaFile"])
+                opts["schema"] = open(opts["schemaFile"]).read()
+                # Note: Consider stripping comments here.
+        elif not opts.has_key("schema"):
+            raise QservAdminException(QservAdminException.MISSING_PARAM,
+                                      "Missing 'schema' or 'schemaFile'")
         # these are required options for createTable
-        _crTbOpts = {
-            "table_info":("tableName",
-                          "partitioning",
-                          "schemaFile",
-                          "clusteredIndex",
-                          "match",
-                          "isView")}
-        _crTbPSOpts = {
-            "sphBox":("overlap",
-                      "lonColName", 
-                      "latColName")}
+        self._checkExist(opts, CommandParser.requiredOpts["createTable"])
+        if opts["partitioning"] != "0":
+            # only sphBox allowed
+            self._checkExist(opts,
+                             CommandParser.requiredOpts["createTableSphBox"])
         return opts
 
 
