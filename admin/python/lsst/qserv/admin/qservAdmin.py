@@ -101,7 +101,7 @@ class QservAdmin(object):
             pass # Ignore missing (dummy) node
 
     def _getMaybePacked(self, node, keys):
-        """Ged data from a node which could be packed or not"""
+        """Get data from a node which could be packed or not"""
         # try packed stuff first
         if self._kvI.exists(node + '.json'):
             # if json packed then convert back to Python object
