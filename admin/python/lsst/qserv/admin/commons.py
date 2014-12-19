@@ -76,11 +76,8 @@ def restart(service_name):
 
 
 def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, loglevel=logging.INFO) :
-    """ Run a shell command
-
-    Keyword arguments
-    cmd_args -- a list of arguments
-    logger_name -- the name of a logger, if not specified, will log to stdout
+    """
+    Run a shell command
 
     Return a string containing stdout and stderr
     """
@@ -107,19 +104,6 @@ def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, l
         serr=open(stderr_file,"w")
     else:
         serr=subprocess.PIPE
-
-# TODO : use this with python 2.7 :
-#  try :
-#        out = subprocess.check_output(
-#                cmd_args,
-#                stderr=subprocess.STDOUT
-#              )
-#
-#    except subprocess.CalledProcessError as e:
-#        logger.fatal("Error : '%s' %s  while running command : '%s'" %
-#            (e,out,cmd_str)
-#        )
-#        sys.exit(1)
 
     try :
         process = subprocess.Popen(
