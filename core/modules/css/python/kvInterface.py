@@ -657,7 +657,11 @@ class KvInterfaceMem(KvInterface):
         """
         Returns entire contents.
         """
-        self._printNode("/", fileH)
+        contents = self._printNode("/")
+        if fileH:
+            fileH.write(contents)
+        else:
+            print contents
 
     def getLockObject(self, k, id):
         """

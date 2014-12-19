@@ -41,6 +41,7 @@ import tempfile
 #-----------------------------
 from lsst.qserv.admin.partConfig import PartConfig
 from lsst.qserv.admin.qservAdmin import QservAdmin
+from lsst.qserv.admin.chunkMapping import ChunkMapping
 
 #----------------------------------
 # Local non-exported definitions --
@@ -57,15 +58,18 @@ class DataLoader(object):
     files which are passed to constructor.
     """
 
-    def __init__(self, configFiles, mysqlConn, chunksDir="./loader_chunks",
+    def __init__(self, configFiles, mysqlConn, workerConnMap={}, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
                  cssConn='localhost:12181', cssClear=False, indexDb='qservMeta',
                  emptyChunks=None, deleteTables=False, loggerName="Loader"):
         """
-        Constructor parse all arguments and prepares for execution.
+        Constructor parses all arguments and prepares for execution.
 
         @param configFiles:  Sequence of the files defininig all partitioning options.
-        @param mysqlConn:    Mysql connection object.
+        @param mysqlConn:    Mysql connection object for czar-side database.
+        @param workerConnMap: Dictionary mapping worker host name to corresponding
+                             mysql connection object. May be empty, in which case czar
+                             server will be used for all data.
         @param chunksDir:    Temporary directory to store chunks files, will be created
                              if does not exist.
         @param chunkPrefix:  File name prefix for generated chunk files.
@@ -84,6 +88,7 @@ class DataLoader(object):
 
         self.configFiles = configFiles
         self.mysql = mysqlConn
+        self.workerConnMap = workerConnMap.copy()
         self.chunksDir = chunksDir
         self.chunkPrefix = chunkPrefix
         self.keepChunks = keepChunks
@@ -99,6 +104,7 @@ class DataLoader(object):
         self.unzipDir = None   # directory used for uncompressed data
         self.schema = None     # "CREATE TABLE" statement
         self.chunks = set()    # set of chunks that were loaded
+        self.chunkMap = None
 
         # parse all config files, this can raise an exception
         self.partOptions = PartConfig(configFiles)
@@ -108,11 +114,12 @@ class DataLoader(object):
         if cssConn:
             self.css = QservAdmin(cssConn)
 
+
         # Logic is slightly complicated here, so pre-calculate options that we need below:
         # 1. If self.skipPart and self.oneTable are both true then we skip partitioning
         #    even for partitioned tables abnd load original data. So if self.skipPart and
         #    self.oneTable are both true then we say table is not partitioned
-        # 2. Partitioing is done only for partitioned table, if self.skipPart is true then
+        # 2. Partitioning is done only for partitioned table, if self.skipPart is true then
         #    pre-partitioned data must exist already and we skip calling partitioner
 
         # is table needs to be partitioned (or is it pre-partitioned)?
@@ -132,7 +139,7 @@ class DataLoader(object):
     def load(self, database, table, schema, data):
         """
         Do actual loading based on parameters defined in constructor.
-        This will throw exception if anyhting goes wrong.
+        This will throw exception if anything goes wrong.
 
         @param database:     Database name.
         @param table:        Table name.
@@ -156,6 +163,9 @@ class DataLoader(object):
         if self.css is not None:
             self._checkCss(database, table)
 
+        # make chunk mapper
+        self.chunkMap = ChunkMapping(self.workerConnMap.keys(), database, table, self.css)
+
         # make chunks directory or check that there are usable data there already
         self._makeOrCheckChunksDir()
 
@@ -177,7 +187,7 @@ class DataLoader(object):
         self._createTable(database, table, schema)
 
         # load data
-        self._loadData(table, files)
+        self._loadData(database, table, files)
 
         # create special dummy chunk
         self._createDummyChunk(database, table)
@@ -351,10 +361,10 @@ class DataLoader(object):
 
                 self._log.info('Uncompressing %s to %s', infile, outfile)
                 try:
-                    input = open(infile)
-                    output = open(outfile, 'wb')
+                    finput = open(infile)
+                    foutput = open(outfile, 'wb')
                     cmd = ['gzip', '-d', '-c']
-                    subprocess.check_call(args=cmd, stdin=input, stdout=output)
+                    subprocess.check_call(args=cmd, stdin=finput, stdout=foutput)
                 except Exception as exc:
                     self._log.critical('Failed to uncompress data file: %s', exc)
                     raise
@@ -364,6 +374,25 @@ class DataLoader(object):
         return result
 
 
+    def _connections(self, useCzar, useWorkers):
+        """
+        Returns a list of connections, for each conection there is a
+        tuple (name, connection) where name is something like "czar" or
+        "worker lsst-dbdev2". If czar connection is included then it
+        is always first in the list.
+
+        @param useCzar:     if True then include czar in the list
+        @param useWorkers:  if True then include all workers in the list
+        """
+        res = []
+        if useCzar:
+            res += [("czar", self.mysql)]
+        if useWorkers:
+            for worker, conn in self.workerConnMap.items():
+                res += [('worker ' + worker, conn)]
+        return res
+
+
     def _deleteTable(self, database, table):
         """
         Drop existing table and all chunks
@@ -371,31 +400,31 @@ class DataLoader(object):
 
         self._log.info('Deleting existing table %s (and chunks)', table)
 
-        cursor = self.mysql.cursor()
-
-        q = "USE %s" % database
-        self._log.debug('query: %s', q)
-        cursor.execute(q)
-
-        # regexp matching al chunk table names
+        # regexp matching all chunk table names
         tblre = re.compile('^' + table + '((FullOverlap)?_[0-9]+)?$')
 
-        q = 'SHOW TABLES'
-        cursor.execute(q)
-        tables = [row[0] for row in cursor.fetchall()]
-        for tbl in tables:
-            if tblre.match(tbl):
-                q = 'DROP TABLE IF EXISTS ' + tbl
-                self._log.debug('query: %s', q)
-                cursor.execute(q)
+        for name, conn in self._connections(useCzar=True, useWorkers=True):
 
+            logging.info('Deleting table from %s', name)
+
+            cursor = conn.cursor()
+
+            q = 'SHOW TABLES FROM ' + database
+            cursor.execute(q)
+            tables = [row[0] for row in cursor.fetchall()]
+            for tbl in tables:
+                if tblre.match(tbl):
+                    q = 'DROP TABLE IF EXISTS {0}.{1}'.format(database, tbl)
+                    self._log.debug('query: %s', q)
+                    cursor.execute(q)
+
+            cursor.close()
 
     def _createTable(self, database, table, schema):
         """
-        Create database and table if needed.
+        Create table in the database. Just executes whatever SQL was given to
+        us in a schema file. Additionally applies fixes to a schema after loading.
         """
-
-        cursor = self.mysql.cursor()
 
         # read table schema
         try:
@@ -404,32 +433,38 @@ class DataLoader(object):
             self._log.critical('Failed to read table schema file: %s', exc)
             raise
 
-        # create table
-        try:
-            q = "USE %s" % database
-            self._log.debug('query: %s', q)
-            cursor.execute(q)
-            self._log.info('Creating table %s', table)
-            self._log.debug('query: %s', self.schema)
-            cursor.execute(self.schema)
-        except Exception as exc:
-            self._log.critical('Failed to create mysql table: %s', exc)
-            raise
+        # create table on czar and every worker
+        for name, conn in self._connections(useCzar=True, useWorkers=True):
 
-        # finish with this session, otherwise ALTER TABLE will fail
-        del cursor
+            cursor = conn.cursor()
 
-        # add/remove chunk columns for partitioned tables only
-        if self.partitioned:
-            self._alterTable(table)
+            # create table
+            try:
+                # have to use "USE db" here
+                q = "USE %s" % database
+                self._log.debug('query: %s', q)
+                cursor.execute(q)
+                self._log.info('Creating table %s in %s', table, name)
+                self._log.debug('query: %s', self.schema)
+                cursor.execute(self.schema)
+            except Exception as exc:
+                self._log.critical('Failed to create mysql table: %s', exc)
+                raise
+
+            # finish with this session, otherwise ALTER TABLE will fail
+            del cursor
+
+            # add/remove chunk columns for partitioned tables only
+            if self.partitioned:
+                self._alterTable(table, conn)
 
 
-    def _alterTable(self, table):
+    def _alterTable(self, table, conn):
         """
         Change table schema, drop _chunkId, _subChunkId, add chunkId, subChunkId
         """
 
-        cursor = self.mysql.cursor()
+        cursor = conn.cursor()
 
         try:
             # get current column set
@@ -458,14 +493,14 @@ class DataLoader(object):
             self._log.critical('Failed to alter mysql table: %s', exc)
             raise
 
-    def _loadData(self, table, files):
+    def _loadData(self, database, table, files):
         """
         Load data into existing table.
         """
         if self.partitioned:
-            self._loadChunkedData(table)
+            self._loadChunkedData(database, table)
         else:
-            self._loadNonChunkedData(table, files)
+            self._loadNonChunkedData(database, table, files)
 
 
     def _chunkFiles(self):
@@ -483,7 +518,7 @@ class DataLoader(object):
                     yield (path, chunkId, overlap)
 
 
-    def _loadChunkedData(self, table):
+    def _loadChunkedData(self, database, table):
         """
         Load chunked data into mysql table, if one-table option is specified then all chunks
         are loaded into a single table with original name, otherwise we create one table per chunk.
@@ -499,15 +534,30 @@ class DataLoader(object):
                 self.chunks.add(chunkId)
 
             if self.oneTable:
+
                 # just load everything into existing table
-                self._loadOneFile(table, path, csvPrefix)
+                self._loadOneFile(self.mysql, database, table, path, csvPrefix)
+
             else:
 
+                if self.workerConnMap:
+                    # find database for this chunk
+                    worker = self.chunkMap.worker(chunkId)
+                    conn = self.workerConnMap.get(worker)
+                    if conn is None:
+                        raise RuntimeError('Existing chunk mapping is not in the list of workers: %s',
+                                           worker)
+                    self._log.info('load chunk %s to worker %s', chunkId, worker)
+                else:
+                    # all goes to single node
+                    self._log.info('load chunk %s to czar', chunkId)
+                    conn = self.mysql
+
                 # make table if needed
-                ctable = self._makeChunkTable(table, chunkId, overlap)
+                ctable = self._makeChunkTable(conn, database, table, chunkId, overlap)
 
                 # load data into chunk table
-                self._loadOneFile(ctable, path, csvPrefix)
+                self._loadOneFile(conn, database, ctable, path, csvPrefix)
 
 
     def _createDummyChunk(self, database, table):
@@ -519,23 +569,32 @@ class DataLoader(object):
             # only do it for true partitioned stuff
             return
 
-        if not self.partOptions.isView:
-            # just make regular chunk with special ID, do not load any data
-            self._makeChunkTable(table, 1234567890, False)
-        else:
-            # TODO: table is a actually a view, need somethig special. Old loader was
-            # creating new view just by renaming Table to Table_1234567890, I'm not sure
-            # this is a correct procedure. In any case here is the code that does it
+        # this is only needed on worker (or czar if there are no workers)
+        connections = self._connections(useCzar=False, useWorkers=True)
+        if not connections:
+            connections = self._connections(useCzar=True, useWorkers=False)
 
-            cursor = self.mysql.cursor()
-            q = "RENAME TABLE {0}.{1} to {0}.{1}_1234567890".format(database, table)
+        for name, conn in connections:
 
-            self._log.debug('Rename view')
-            self._log.debug('query: %s', q)
-            cursor.execute(q)
+            self._log.info('Make dummy chunk table for %s', name)
+
+            if not self.partOptions.isView:
+                # just make regular chunk with special ID, do not load any data
+                self._makeChunkTable(conn, database, table, 1234567890, False)
+            else:
+                # TODO: table is a actually a view, need somethig special. Old loader was
+                # creating new view just by renaming Table to Table_1234567890, I'm not sure
+                # this is a correct procedure. In any case here is the code that does it
+
+                cursor = conn.cursor()
+                q = "RENAME TABLE {0}.{1} to {0}.{1}_1234567890".format(database, table)
+
+                self._log.debug('Rename view')
+                self._log.debug('query: %s', q)
+                cursor.execute(q)
 
 
-    def _makeChunkTable(self, table, chunkId, overlap):
+    def _makeChunkTable(self, conn, database, table, chunkId, overlap):
         """ Create table for a chunk if it does not exist yet. Returns table name. """
 
         # build a table name
@@ -543,10 +602,10 @@ class DataLoader(object):
         ctable += ['_', 'FullOverlap_'][overlap]
         ctable += str(chunkId)
 
-        cursor = self.mysql.cursor()
+        cursor = conn.cursor()
 
         # make table using DDL from non-chunked one
-        q = "CREATE TABLE IF NOT EXISTS {0} LIKE {1}".format(ctable, table)
+        q = "CREATE TABLE IF NOT EXISTS {2}.{0} LIKE {2}.{1}".format(ctable, table, database)
 
         self._log.info('Make chunk table: %s', ctable)
         self._log.debug('query: %s', q)
@@ -555,7 +614,7 @@ class DataLoader(object):
         return ctable
 
 
-    def _loadNonChunkedData(self, table, files):
+    def _loadNonChunkedData(self, database, table, files):
         """
         Load non-chunked data into mysql table. We use (unzipped) files that
         we got for input.
@@ -565,20 +624,27 @@ class DataLoader(object):
         # we use "in.csv" option for that.
         csvPrefix = "in.csv"
 
-        for file in files:
-            self._loadOneFile(table, file, csvPrefix)
+        # this is only needed on workers (or czar if there are no workers)
+        connections = self._connections(useCzar=False, useWorkers=True)
+        if not connections:
+            connections = self._connections(useCzar=True, useWorkers=False)
+
+        for name, conn in connections:
+            self._log.info('load non-chunked data to %s', name)
+            for file in files:
+                self._loadOneFile(conn, database, table, file, csvPrefix)
 
 
-    def _loadOneFile(self, table, file, csvPrefix):
+    def _loadOneFile(self, conn, database, table, file, csvPrefix):
         """Load data from a single file into existing table"""
-        cursor = self.mysql.cursor()
+        cursor = conn.cursor()
 
         # need to know field separator, default is the same as in partitioner.
         separator = self.partOptions.get(csvPrefix + '.delimiter', '\t')
 
         self._log.info('load table %s from file %s', table, file)
-        q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s FIELDS TERMINATED BY '%s'" % \
-            (file, table, separator)
+        q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s.%s FIELDS TERMINATED BY '%s'" % \
+            (file, database, table, separator)
         self._log.debug('query: %s', q)
         try:
             cursor.execute(q)
@@ -605,6 +671,9 @@ class DataLoader(object):
         self._log.info('Creating table CSS info')
         self.css.createTable(database, table, options)
 
+        # save chunk mapping too
+        self._log.info('Saving updated chunk map to CSS')
+        self.chunkMap.save()
 
     def _schemaForCSS(self, database, table):
         """
@@ -660,19 +729,15 @@ class DataLoader(object):
         if not self.partitioned or not self.indexDb:
             return
 
-        metaTable = database + '__' + table
-        self._log.info('Generating index %s.%s', self.indexDb, metaTable)
+        metaTable = self.indexDb + '.' + database + '__' + table
+        self._log.info('Generating index %s', metaTable)
 
-        cursor = self.mysql.cursor()
-
-        q = "USE " + self.indexDb
-        self._log.debug('query: %s', q)
-        cursor.execute(q)
+        czarCursor = self.mysql.cursor()
 
         if self.deleteTables:
             q = "DROP TABLE IF EXISTS {0}".format(metaTable)
             self._log.debug('query: %s', q)
-            cursor.execute(q)
+            czarCursor.execute(q)
 
         # index column
         idxCol = self.partOptions['id']
@@ -681,8 +746,8 @@ class DataLoader(object):
         idxColType = 'BIGINT'
         q = "SHOW COLUMNS FROM {0}.{1}".format(database, table)
         self._log.debug('query: %s', q)
-        cursor.execute(q)
-        for row in cursor.fetchall():
+        czarCursor.execute(q)
+        for row in czarCursor.fetchall():
             if row[0] == idxCol:
                 idxColType = row[1]
                 break
@@ -691,7 +756,57 @@ class DataLoader(object):
         q = "CREATE TABLE {table} ({column} {type} NOT NULL PRIMARY KEY, chunkId INT, subChunkId INT)"
         q = q.format(table=metaTable, column=idxCol, type=idxColType)
         self._log.debug('query: %s', q)
-        cursor.execute(q)
+        czarCursor.execute(q)
+
+        czarCursor.close()
+
+        # call one of the two methods
+        if self.workerConnMap:
+            self._makeIndexMultiNode(database, table, metaTable, idxCol)
+        else:
+            self._makeIndexSingleNode(database, table, metaTable, idxCol)
+
+
+    def _makeIndexMultiNode(self, database, table, metaTable, idxCol):
+        """
+        Generate object index in czar meta database in case chunks are on a separate
+        server from index database. It needs to copy all index data over network,
+        may need special optimization or parameters.
+        """
+
+        czarCursor = self.mysql.cursor()
+
+        # load data from all chunks
+        for chunk in self.chunks:
+
+            # get worker name for this chunk
+            wname = self.chunkMap.worker(chunk)
+
+            conn = self.workerConnMap[wname]
+            wCursor = conn.cursor()
+
+            q = "SELECT {0}, chunkId, subChunkId FROM {1}.{2}_{3}"
+            q = q.format(idxCol, database, table, chunk)
+            self._log.debug('query: %s', q)
+            wCursor.execute(q)
+
+            q = "INSERT INTO {0} VALUES (%s, %s, %s)".format(metaTable)
+            while True:
+                seq = wCursor.fetchmany(1000000)
+                if not seq:
+                    break
+                czarCursor.executemany(q, seq)
+
+            wCursor.close()
+
+        czarCursor.close()
+
+    def _makeIndexSingleNode(self, database, table, metaTable, idxCol):
+        """
+        Generate object index in czar meta database in case all chunks are also on czar.
+        """
+
+        cursor = self.mysql.cursor()
 
         # load data from all chunks
         for chunk in self.chunks:
@@ -699,3 +814,5 @@ class DataLoader(object):
             q = q.format(metaTable, idxCol, database, table, chunk)
             self._log.debug('query: %s', q)
             cursor.execute(q)
+
+        cursor.close()
