@@ -327,7 +327,7 @@ class DataLoader(object):
         try:
             # run partitioner
             self._log.info('run partitioner on files: %s', ' '.join(files))
-            self._log.debug('args: %s', ' '.join(args))
+            self._log.debug('Run shell command: %s', ' '.join(args))
             subprocess.check_output(args=args)
         except Exception as exc:
             self._log.error('Failed to run partitioner: %s', exc)

@@ -78,13 +78,11 @@ def restart(service_name):
 def run_command(cmd_args, stdin_file=None, stdout_file=None, stderr_file=None, loglevel=logging.INFO) :
     """
     Run a shell command
-
-    Return a string containing stdout and stderr
     """
     logger = logging.getLogger()
 
     cmd_str= ' '.join(cmd_args)
-    logger.log(loglevel, "Running : {0}".format(cmd_str))
+    logger.log(loglevel, "Run shell command: {0}".format(cmd_str))
 
     sin = None
     if stdin_file != None:
