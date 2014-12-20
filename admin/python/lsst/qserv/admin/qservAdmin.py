@@ -328,6 +328,10 @@ class QservAdmin(object):
                 return
             self._createTable(options, dbName, tableName)
 
+    def createTableLike(self, dbName, tableName, options):
+        """FIXME, createTableLike is not implemented!"""
+        raise QservAdminException(QservAdminException.NOT_IMPLEMENTED)
+
     def dropTable(self, dbName, tableName):
         """
         Delete table information
