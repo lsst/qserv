@@ -347,8 +347,11 @@ bool InfileMerger::_applySqlLocal(std::string const& sql) {
         _error.status = InfileMergerError::MYSQLEXEC;
         _error.errorCode = errObj.errNo();
         _error.description = "Error applying sql. " + errObj.printErrMsg();
+
+        LOGF_ERROR("InfileMerger sql error: %1%" % _error.description);
         return false;
     }
+    LOGF_DEBUG("InfileMerger sql ok");
     return true;
 }
 
@@ -432,12 +435,14 @@ bool InfileMerger::_setupTable(WorkerResponse const& response) {
             _error.errorCode = InfileMergerError::CREATE_TABLE;
             _error.description = "Error creating table (" + _mergeTable + ")";
             _isFinished = true; // Cannot continue.
+            LOGF_ERROR("InfileMerger error: %1%" % _error.description);
             return false;
         }
         _needCreateTable = false;
     } else {
         // Do nothing, table already created.
     }
+    LOGF_DEBUG("InfileMerger table setup succeed");
     return true;
 }
 

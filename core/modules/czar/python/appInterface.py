@@ -58,7 +58,7 @@ class AppInterface:
 
         self.actions = {}
         # set id counter to seconds since the epoch, mod 1 year.
-        self._idCounter = int(time.time() % (60*60*24*365))
+        self._idCounter = int((time.time() % (60*60*24*365))*10)
         self._resultDb = config.config.get("resultdb", "db")
         pass
 

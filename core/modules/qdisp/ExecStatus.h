@@ -65,10 +65,11 @@ public:
     /// Report a state transition. Past state history is not currently saved.
     void report(State s, int code=0, std::string const& desc=_empty) {
         boost::lock_guard<boost::mutex> lock(_mutex);
-#if 0
+#if 1
         std::ofstream of("/tmp/deleteme_qs_rpt", std::ofstream::app);
         of << "Reporting " << (void*)this
            << " state " << stateText(s) << std::endl;
+        of.close();
 #endif
         _info.stateTime = ::time(NULL);
         _info.state = s;
