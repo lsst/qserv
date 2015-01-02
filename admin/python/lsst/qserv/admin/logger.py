@@ -13,22 +13,36 @@ verbose_dict = {
 }
 
 
-def setup_logging(default_path='logging.yaml',
-                  default_level=logging.INFO,
-                  env_key='LOG_CFG'):
+def add_logfile_opt(parser):
+    """
+    Add option to command line interface in order to set path to standar
+    configuration file for python logger
+    """
+
+    default_log_conf = "{0}/.lsst/logging.yaml".format(os.path.expanduser('~'))
+    parser.add_argument("-V", "--log-cfg", dest="log_conf",
+                        default=default_log_conf,
+                        help="Absolute path to yaml file containing python" +
+                        "logger standard configuration file")
+    return parser
+
+
+def setup_logging(path='logging.yaml',
+                  default_level=logging.INFO):
     """
     Setup logging configuration from yaml file
+    if the yaml file doesn't exists:
+    - return false
+    - configure logging to default_level
     """
-    path = default_path
-    value = os.getenv(env_key, None)
-    if value:
-        path = value
     if os.path.exists(path):
         with open(path, 'rt') as f:
             config = yaml.load(f.read())
         logging.config.dictConfig(config)
+        return True
     else:
         logging.basicConfig(level=default_level)
+        return False
 
 
 def init_default_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
