@@ -46,6 +46,7 @@ from lsst.qserv.admin.chunkMapping import ChunkMapping
 #----------------------------------
 # Local non-exported definitions --
 #----------------------------------
+_LOG = logging.getLogger(__name__)
 
 #------------------------
 # Exported definitions --
@@ -61,7 +62,7 @@ class DataLoader(object):
     def __init__(self, configFiles, mysqlConn, workerConnMap={}, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
                  cssConn='localhost:12181', cssClear=False, indexDb='qservMeta',
-                 emptyChunks=None, deleteTables=False, loggerName="Loader"):
+                 emptyChunks=None, deleteTables=False, loggerName=None):
         """
         Constructor parses all arguments and prepares for execution.
 
@@ -83,8 +84,16 @@ class DataLoader(object):
         @param indexDb:      Name of  database for object indices.
         @param emptyChunks:  Path name for "empty chunks" file, may be None.
         @param deleteTables: If True then existing tables in database will be deleted.
-        @param loggerName:   Logger name used for logging all messaged from loader.
+        @param loggerName:   Logger name used for logging all messages from loader.
         """
+        
+        if not loggerName:
+            loggerName = __name__
+        self._log = logging.getLogger(loggerName)
+        global _LOG
+        self._log = _LOG
+
+        _LOG.debug("SUPERTOTOTITI")
 
         self.configFiles = configFiles
         self.mysql = mysqlConn
@@ -132,8 +141,6 @@ class DataLoader(object):
         # do we ever need input files? They are needed as input for partitioner or loader
         # if table is not partitioned
         self.needInput = not self.partitioned or not self.skipPart
-
-        self._log = logging.getLogger(loggerName)
 
 
     def load(self, database, table, schema, data):
@@ -405,7 +412,7 @@ class DataLoader(object):
 
         for name, conn in self._connections(useCzar=True, useWorkers=True):
 
-            logging.info('Deleting table from %s', name)
+            self._log.info('Deleting table from %s', name)
 
             cursor = conn.cursor()
 
