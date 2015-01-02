@@ -70,7 +70,9 @@ if [ "$USER" = "root" ]; then
     proxy_user_option="--user=$proxy_user"
 fi
 
-cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_RPC_PORT} ${DAEMON} $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option --defaults-file=${PROXY_CONFIG} &> ${LUA_LOG_FILE}"
+cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_RPC_PORT} ${DAEMON} \
+    $PROXY_OPTIONS --pid-file=$pidfile $proxy_user_option \
+    --defaults-file=${PROXY_CONFIG} > ${LUA_LOG_FILE} 2>&1 &"
 
 start_cmd() {
     start -p $pidfile -l $lockfile $NAME "${cmd}"
