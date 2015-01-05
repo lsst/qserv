@@ -8,7 +8,7 @@ Qserv test provide a tool which automate testing a given version of Qserv source
 Basic use case
 **************
 
-Please follow next procedure ref:`quick-start-devel-setup-qserv` and then:
+Please follow next procedure :ref:`quick-start-devel-setup-qserv` and then:
 
 .. code-block:: bash
 
