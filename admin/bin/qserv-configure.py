@@ -245,8 +245,8 @@ def main():
                                                       ".lsst",
                                                       "logging.yaml"))
                 elif product == configure.MYSQL:
-                   _template_to_symlink("my-client.cnf",
-                                        os.path.join(homedir, ".my.cnf"))
+                    _template_to_symlink("my-client.cnf",
+                                         os.path.join(homedir, ".my.cnf"))
                 else:
                     logging.fatal("Unable to apply configuration template " +
                                   "for product %s", product)
