@@ -3,10 +3,12 @@ R E L E A S E   2014_12
 
 Code improvements:
  * DM-336:  Improve code that initializes shared pointers
- * Add unit test to to verify zookeeper versioning works
+ * DM-1621: Add unit test to to verify zookeeper versioning works
 
 New features:
  * DM-621:  User friendly single node loading script
+ * DM-1678: Handling of overlap parameter in new data loader
+ * DM-1653: Extend data loading script to support multi-node setup
 
 Bug fixes:
  * DM-1601: Fix related to queries with c-style comments
