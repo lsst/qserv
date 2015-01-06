@@ -24,7 +24,6 @@ def read_config(config_file):
 
     global config, log
     log.debug("Reading config file : %s" % config_file)
-
     if not os.path.isfile(config_file):
         log.fatal("qserv configuration file not found : %s" % config_file)
         exit(1)
@@ -49,7 +48,6 @@ def read_config(config_file):
             if re.match(".*_dir", option):
                 config[section][option] = os.path.normpath(
                     config[section][option])
-
     # computable configuration parameters
     config['qserv']['scratch_dir'] = os.path.join("/dev", "shm", "qserv-%s-%s" %
                                                   (getpass.getuser(),
@@ -70,7 +68,6 @@ def read_config(config_file):
 def getConfig():
     return config
 
-
 def restart(service_name):
 
     config = getConfig()
@@ -86,9 +83,13 @@ def run_command(cmd_args, stdin_file=None, stdout=None, stderr=None,
                 loglevel=logging.INFO):
     """
     Run a shell command
-    @stdout can be sys.stdout, a filename, or None
-            which redirect to current processus output
-    @stderr same as stdout
+    @cmdargs  command arguments
+    @stdin    can be a filename, or None
+    @stdout   can be sys.stdout, a filename, or None
+              which redirect to current processus output
+    @stderr   same as stdout
+    @loglevel print stdin, stdout and stderr if current module logger
+              verbosity is greater than loglevel
     """
     global log
 

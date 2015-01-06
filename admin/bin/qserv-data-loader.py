@@ -41,7 +41,7 @@ Script can be run in two modes:
   1. Normal partitioning, where partitioned tables have their data split
      into chunks and each chunk is loaded into separate table
   2. Non-partitioned, all table data stored in one table, it is used to load
-     non-partitioned tables into Qserv and also for testing and doing 
+     non-partitioned tables into Qserv and also for testing and doing
      comparison of qserv to direct mysql queries
 
 Currently not supported is duplication mode when data from one sky segment
@@ -65,7 +65,7 @@ import warnings
 #-----------------------------
 # Imports for other modules --
 #-----------------------------
-from lsst.qserv.admin.dataloader import DataLoader
+from lsst.qserv.admin.dataLoader import DataLoader
 import lsst.qserv.admin.logger
 
 #----------------------------------
