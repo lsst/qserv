@@ -68,6 +68,7 @@ while getopts "r:i:v:dh" o; do
                 ;;
         esac
 done
+shift `expr $OPTIND - 1`
 
 
 if [ -z "${STACK_DIR}" ]

@@ -36,7 +36,7 @@ def setup_logging(path='logging.yaml',
     - configure logging to default_level
     """
     if os.path.exists(path):
-        with open(path, 'rt') as f:
+        with open(path, 'r') as f:
             config = yaml.load(f.read())
         logging.config.dictConfig(config)
         return True
@@ -47,17 +47,17 @@ def setup_logging(path='logging.yaml',
 
 def init_default_logger(log_file_prefix, level=logging.DEBUG, log_path="."):
     if level == logging.DEBUG:
-        _format = '%(asctime)s {%(pathname)s:%(lineno)d} %(levelname)s %(message)s'
+        fmt = '%(asctime)s {%(pathname)s:%(lineno)d} %(levelname)s %(message)s'
     else:
-        _format = '%(asctime)s %(levelname)s %(message)s'
-    add_console_logger(level, _format)
-    logger = add_file_logger(log_file_prefix, level, log_path, format)
+        fmt = '%(asctime)s %(levelname)s %(message)s'
+    add_console_logger(level, fmt)
+    logger = add_file_logger(log_file_prefix, level, log_path, fmt)
     return logger
 
 
-def add_console_logger(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s'):
+def add_console_logger(level=logging.DEBUG, fmt='%(asctime)s %(levelname)s %(message)s'):
     logger = logging.getLogger()
-    formatter = logging.Formatter(format)
+    formatter = logging.Formatter(fmt)
     logger.setLevel(level)
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
