@@ -22,7 +22,7 @@
 
 # Standard
 from itertools import ifilter
-import datetime
+import time
 
 # Package imports
 import logger
@@ -57,12 +57,9 @@ class AppInterface:
                                            self.cancelEverything)
 
         self.actions = {}
-        # set id counter to milliseconds since the beginning
-        # of the current year
-        now = datetime.datetime.now()
-        delta = now - datetime.datetime(now.year, 1, 1)
-        self._idCounter = int(delta.total_seconds() * 1000)
-        logger.dbg("_idCounter, time:", self._idCounter, now)
+        # set id counter to milliseconds since the epoch, mod 1 year.
+        self._idCounter = int((time.time() % (60*60*24*365)) * 1000)
+        logger.dbg("_idCounter", self._idCounter)
         self._resultDb = config.config.get("resultdb", "db")
         pass
 

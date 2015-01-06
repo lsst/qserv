@@ -46,7 +46,6 @@ from lsst.qserv.admin.chunkMapping import ChunkMapping
 #----------------------------------
 # Local non-exported definitions --
 #----------------------------------
-_LOG = logging.getLogger(__name__)
 
 #------------------------
 # Exported definitions --
@@ -90,10 +89,6 @@ class DataLoader(object):
         if not loggerName:
             loggerName = __name__
         self._log = logging.getLogger(loggerName)
-        global _LOG
-        self._log = _LOG
-
-        _LOG.debug("SUPERTOTOTITI")
 
         self.configFiles = configFiles
         self.mysql = mysqlConn
