@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,12 +23,13 @@
 // queryMsg.cc houses the implementation of
 // queryMsg.h (SWIG-exported functions for accessing QueryMessages)
 
+// Class header
 #include "ccontrol/queryMsg.h"
 
 // System headers
 #include <iostream>
 
-// Local headers
+// Qserv headers
 #include "ccontrol/userQueryProxy.h"
 #include "ccontrol/UserQuery.h"
 #include "qdisp/MessageStore.h"

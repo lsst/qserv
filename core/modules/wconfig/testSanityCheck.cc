@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2013 LSST Corporation.
+ * Copyright 2012-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -27,7 +27,7 @@
 // Third-party headers
 #include "boost/scoped_ptr.hpp"
 
-// Local headers
+// Qserv headers
 #include "wconfig/Config.h"
 
 // Boost unit test header
@@ -38,8 +38,7 @@ namespace test = boost::test_tools;
 using lsst::qserv::worker::Config;
 
 struct SanityFixture {
-    SanityFixture(void) {
-    };
+    SanityFixture(void) { };
     ~SanityFixture(void) { };
 };
 

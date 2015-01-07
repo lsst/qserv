@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,9 +28,10 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "parser/ParseException.h"
 
-// Local headers
+// Qserv headers
 #include "parser/parseTreeUtil.h"
 
 ////////////////////////////////////////////////////////////////////////

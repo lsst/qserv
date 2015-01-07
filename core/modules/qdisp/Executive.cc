@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST/AURA.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,6 +29,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "qdisp/Executive.h"
 
 // Third-party headers
@@ -49,7 +50,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Local headers
+// Qserv headers
 #include "global/Bug.h"
 #include "global/ResourceUnit.h"
 #include "log/msgCode.h"

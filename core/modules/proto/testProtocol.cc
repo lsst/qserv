@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2011-2014 LSST Corporation.
+ * Copyright 2011-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,7 +31,7 @@
 #include "boost/scoped_ptr.hpp"
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
-// Local headers
+// Qserv headers
 #include "proto/worker.pb.h"
 #include "proto/TaskMsgDigest.h"
 #include "proto/FakeProtocolFixture.h"

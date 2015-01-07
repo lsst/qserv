@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,6 +25,7 @@
 // mysqldump output and iterates over them.
 // Should become obsolete with new  dump-less result transfer processing
 
+// Class header
 #include "rproc/SqlInsertIter.h"
 
 // System headers
@@ -32,7 +33,7 @@
 #include <errno.h>
 #include <iostream>
 
- // Third-party headers
+// Third-party headers
 #include "boost/make_shared.hpp"
 
 // LSST headers

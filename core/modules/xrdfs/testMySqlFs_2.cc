@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2008-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,6 +21,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// Class header
 #include "XrdSfs/XrdSfsInterface.hh"
 
 // System headers
@@ -36,8 +37,10 @@
 #include "XrdSys/XrdSysError.hh"
 #include "XrdSys/XrdSysLogger.hh"
 
-// Local headers
+// LSST headers
 #include "lsst/log/Log.h"
+
+// Qserv headers
 #include "util/StringHash.h"
 #include "wcontrol/ResultTracker.h"
 #include "wdb/QueryRunner.h"
