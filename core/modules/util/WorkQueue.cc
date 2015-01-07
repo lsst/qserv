@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,7 +25,8 @@
 //  when there is work to do.
 // When the WorkQueue is destructed, it poisons the queue and waits until
 // all threads have died before returning.
-//
+
+// Class header
 #include "util/WorkQueue.h"
 
 // System headers

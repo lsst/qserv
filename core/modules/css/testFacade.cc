@@ -2,7 +2,7 @@
 
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,7 +31,7 @@
   */
 
 
-// system headers
+// System headers
 #include <algorithm> // sort
 #include <cstdlib>   // rand, srand
 #include <iostream>
@@ -45,7 +45,7 @@
 #include "boost/shared_ptr.hpp"
 #include "boost/make_shared.hpp"
 
-// Local headers
+// Qserv headers
 #include "css/CssError.h"
 #include "css/Facade.h"
 #include "css/KvInterfaceImplMem.h"

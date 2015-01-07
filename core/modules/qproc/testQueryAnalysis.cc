@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -44,7 +44,7 @@
 // Third-party headers
 #include "boost/algorithm/string.hpp"
 
-// Local headers
+// Qserv headers
 #include "css/Facade.h"
 #include "parser/ParseException.h"
 #include "parser/parseExceptions.h"

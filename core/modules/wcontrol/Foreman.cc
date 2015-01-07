@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2008-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,6 +22,7 @@
  */
 /// class Foreman implementation
 
+// Class header
 #include "wcontrol/Foreman.h"
 
 // System headers
@@ -34,8 +35,10 @@
 #include "boost/scoped_ptr.hpp"
 #include "boost/thread.hpp"
 
-// Local headers
+// LSST headers
 #include "lsst/log/Log.h"
+
+// Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -59,6 +59,8 @@
   *
   * @author Daniel L. Wang, SLAC
   */
+
+// Class header
 #include "ccontrol/UserQuery.h"
 
 // System headers
@@ -71,19 +73,19 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "ccontrol/MergingRequester.h"
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
 #include "global/constants.h"
 #include "global/MsgReceiver.h"
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
-#include "ccontrol/MergingRequester.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
 #include "qproc/QuerySession.h"
 #include "qproc/TaskMsgFactory2.h"
-#include "rproc/TableMerger.h"
 #include "rproc/InfileMerger.h"
+#include "rproc/TableMerger.h"
 #include "util/Callable.h"
 
 namespace lsst {

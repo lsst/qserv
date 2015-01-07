@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2010-2014 LSST Corporation.
+ * Copyright 2010-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,12 +21,13 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// Class header
 #include "wcontrol/Service.h"
 
 // Third-party headers
 #include "boost/make_shared.hpp"
 
-// Local headers
+// Qserv headers
 #include "wcontrol/Foreman.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"

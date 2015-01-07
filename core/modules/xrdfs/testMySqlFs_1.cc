@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2008-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,7 +32,7 @@
 #include "XrdSfs/XrdSfsInterface.hh"
 #include "XrdSys/XrdSysLogger.hh"
 
-// Local headers
+// Qserv headers
 #include "xrdfs/MySqlFs.h"
 
 // Boost unit test header

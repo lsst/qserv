@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -29,6 +29,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Parent class
 #include "qana/QueryPlugin.h"
 
 // System headers
@@ -37,9 +38,8 @@
 // Third-party headers
 #include "boost/thread/locks.hpp"
 #include "boost/thread/mutex.hpp"
-//#include "boost/thread/call_once.hpp"
 
-// Local headers
+// Qserv headers
 #include "qana/PluginNotFoundError.h"
 
 namespace lsst {

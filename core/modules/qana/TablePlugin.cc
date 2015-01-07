@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -41,6 +41,8 @@
 /// \author Daniel L. Wang, SLAC
 
 // No public interface (no TablePlugin.h)
+// Parent class
+#include "qana/QueryPlugin.h"
 
 // System headers
 #include <string>
@@ -52,10 +54,9 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "QueryMapping.h"
-#include "QueryPlugin.h"
-#include "RelationGraph.h"
-#include "TableInfoPool.h"
+#include "qana/QueryMapping.h"
+#include "qana/RelationGraph.h"
+#include "qana/TableInfoPool.h"
 
 #include "query/FromList.h"
 #include "query/FuncExpr.h"

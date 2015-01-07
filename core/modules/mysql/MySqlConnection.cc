@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,6 +25,7 @@
 // function invocations should move into this class (and perhaps its
 // delegates).
 
+// Class header
 #include "mysql/MySqlConnection.h"
 
 // Third-party headers

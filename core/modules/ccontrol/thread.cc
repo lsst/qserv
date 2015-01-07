@@ -2,7 +2,7 @@
 
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,6 +22,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// Class header
 #include "ccontrol/thread.h"
 
 // System headers
@@ -34,7 +35,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Local headers
+// Qserv headers
 #include "rproc/TableMerger.h"
 #include "util/xrootd.h"
 #include "xrdc/xrdfile.h"

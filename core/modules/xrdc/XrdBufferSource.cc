@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -27,6 +27,7 @@
 // reduce buffering and disk usage, theoretically improving overall
 // latency.
 
+// Class header
 #include "xrdc/XrdBufferSource.h"
 
 // System headers
@@ -38,9 +39,8 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Local headers
+// Qserv headers
 #include "xrdc/xrdfile.h"
-
 
 namespace lsst {
 namespace qserv {

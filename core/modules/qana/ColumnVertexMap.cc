@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,15 +24,16 @@
 /// \file
 /// \brief Implementation of column to table reference resolution
 
-#include "ColumnVertexMap.h"
+// Class header
+#include "qana/ColumnVertexMap.h"
 
 // System headers
 #include <algorithm>
 #include <utility>
 
-// Local headers
-#include "QueryNotEvaluableError.h"
-#include "RelationGraph.h"
+// Qserv headers
+#include "qana/QueryNotEvaluableError.h"
+#include "qana/RelationGraph.h"
 
 #include "query/QueryTemplate.h"
 

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -35,6 +35,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "rproc/TableMerger.h"
 
 // System headers
@@ -51,7 +52,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Local headers
+// Qserv headers
 #include "rproc/SqlInsertIter.h"
 #include "sql/SqlConnection.h"
 #include "util/MmapFile.h"
