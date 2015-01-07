@@ -226,7 +226,7 @@ def main():
                 """
                 Create configuration files for a product from qserv_run_dir
                 templates files, and symlink it to client configuration
-                (for example ~/.lsst/ directory for Qserv product) 
+                (for example ~/.lsst/ directory for Qserv product)
                 """
                 homedir = os.path.expanduser("~")
                 if product == configure.QSERV:
@@ -241,9 +241,9 @@ def main():
                                          os.path.join(homedir,
                                                       ".lsst",
                                                       "qserv.conf"))
-                    _template_to_symlink("logging.yaml",os.path.join(homedir,
+                    _template_to_symlink("logging.ini",os.path.join(homedir,
                                                       ".lsst",
-                                                      "logging.yaml"))
+                                                      "logging.ini"))
                 elif product == configure.MYSQL:
                     _template_to_symlink("my-client.cnf",
                                          os.path.join(homedir, ".my.cnf"))
