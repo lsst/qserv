@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -27,7 +27,7 @@
 // Third-party headers
 #include "boost/scoped_ptr.hpp"
 
-// Local headers
+// Qserv headers
 #include "obsolete/QservPath.h"
 
 // Boost unit test header

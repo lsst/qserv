@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,7 +24,8 @@
 /// \file
 /// \brief Table metadata object pooling implementation.
 
-#include "TableInfoPool.h"
+// Class header
+#include "qana/TableInfoPool.h"
 
 // System headers
 #include <algorithm>
@@ -35,10 +36,9 @@
 #include "boost/make_shared.hpp"
 
 // Qserv headers
-#include "InvalidTableError.h"
-#include "TableInfo.h"
-
 #include "css/Facade.h"
+#include "qana/InvalidTableError.h"
+#include "qana/TableInfo.h"
 #include "query/QueryContext.h"
 
 

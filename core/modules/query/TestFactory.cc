@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,13 +20,14 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/// TestFactory implementation
+
+// Class header
 #include "query/TestFactory.h"
 
 // Third-party headers
 #include "boost/make_shared.hpp"
 
-// Local headers
+// Qserv headers
 #include "query/FromList.h"
 #include "query/Predicate.h"
 #include "query/SelectList.h"

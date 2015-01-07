@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -25,7 +25,7 @@
 // Third-party headers
 #include "boost/make_shared.hpp"
 
-// Local headers
+// Qserv headers
 #include "sql/MockSql.h"
 #include "wpublish/ChunkInventory.h"
 

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,16 +24,17 @@
 /// \file
 /// \brief Implementation of parallel query validation/rewriting.
 
-#include "RelationGraph.h"
+// Class header
+#include "qana/RelationGraph.h"
 
 // System headers
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
 
-// Local headers
-#include "QueryNotEvaluableError.h"
-#include "TableInfoPool.h"
+// Qserv headers
+#include "qana/QueryNotEvaluableError.h"
+#include "qana/TableInfoPool.h"
 
 #include "parser/SqlSQL2Parser.hpp" // (generated) SqlSQL2TokenTypes
 #include "query/ColumnRef.h"

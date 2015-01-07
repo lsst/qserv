@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,6 +23,7 @@
 // SessionManagerAsync.cc houses the static instance of the
 // AsyncQueryManager-type of SessionManager.
 
+// Class header
 #include "ccontrol/SessionManagerAsync.h"
 
 // Third-party headers

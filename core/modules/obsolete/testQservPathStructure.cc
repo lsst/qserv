@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,7 +24,7 @@
 // System headers
 #include <iostream>
 
-// Local headers
+// Qserv headers
 #include "obsolete/QservPathStructure.h"
 
 // Boost unit test header

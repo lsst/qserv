@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST Corporation.
+ * Copyright 2013-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,13 +21,12 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+// Class header
 #include "wsched/ChunkDisk.h"
 
 // System headers
 #include <ctime>
 #include <sstream>
-
-// Local headers
 
 
 /// ChunkDisk is a data structure that tracks a queue of pending tasks

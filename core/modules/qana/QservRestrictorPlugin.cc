@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2013-2014 LSST/AURA
+ * Copyright 2013-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,7 +28,8 @@
   * @author Daniel L. Wang, SLAC
   */
 
-// No public interface (no QservRestrictorPlugin.h)
+// Parent class
+#include "qana/QueryPlugin.h"
 
 // System headers
 #include <deque>
@@ -38,10 +39,9 @@
 #include "boost/make_shared.hpp"
 #include "boost/pointer_cast.hpp"
 
-// Local headers
+// Qserv headers
 #include "css/Facade.h"
 #include "qana/AnalysisError.h"
-#include "qana/QueryPlugin.h" // Parent class
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/FuncExpr.h"

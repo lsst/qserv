@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -23,6 +23,7 @@
 /// Implements MySqlFsFile, the primary way of interfacing qserv
 /// worker functionality to an xrootd file-system interface.
 
+// Class header
 #include "xrdfs/MySqlFsFile.h"
 
 // Third-party headers
@@ -54,7 +55,7 @@
 #include <sstream>
 #include <unistd.h>
 
-// Local headers
+// Qserv headers
 #include "mysql/mysql.h"
 #include "obsolete/QservPath.h"
 #include "util/Thread.h"

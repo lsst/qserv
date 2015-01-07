@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012, 2013 LSST Corporation.
+ * Copyright 2012-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,6 +26,7 @@
 /// provides a particular arbitrary response indicating a free disk
 /// space abundance.
 
+// Class header
 #include "xrdoss/QservOss.h"
 
 // System headers
@@ -42,7 +43,7 @@
 #include "boost/make_shared.hpp"
 #include "XrdSys/XrdSysLogger.hh"
 
-// Local headers
+// Qserv headers
 #include "obsolete/QservPath.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdfs/XrdName.h"

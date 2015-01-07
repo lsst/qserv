@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,12 +24,13 @@
 /// \file
 /// \brief Table metadata class implementations.
 
-#include "TableInfo.h"
+// Class header
+#include "qana/TableInfo.h"
 
 // Third-party headers
 #include "boost/make_shared.hpp"
 
-// Local headers
+// Qserv headers
 #include "query/ColumnRef.h"
 
 namespace lsst {

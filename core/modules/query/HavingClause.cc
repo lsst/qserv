@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "query/HavingClause.h"
 
 // System headers
@@ -36,7 +37,7 @@
 // Third-party headers
 #include "boost/make_shared.hpp"
 
-// Local headers
+// Qserv headers
 #include "query/BoolTerm.h"
 #include "query/QueryTemplate.h"
 

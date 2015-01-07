@@ -2,7 +2,7 @@
 
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -42,7 +42,7 @@
 // Third-party headers
 #include "boost/lexical_cast.hpp"
 
-// Local headers
+// Qserv headers
 #include "css/KvInterfaceImplMem.h"
 
 // Boost unit test header
