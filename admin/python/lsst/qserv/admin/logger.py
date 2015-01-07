@@ -1,7 +1,6 @@
 
 import logging.config
 import os
-import yaml
 
 # Used to parse cli logging values
 verbose_dict = {
@@ -12,14 +11,13 @@ verbose_dict = {
     'FATAL': logging.FATAL,
 }
 
-
 def add_logfile_opt(parser):
     """
     Add option to command line interface in order to set path to standar
     configuration file for python logger
     """
 
-    default_log_conf = "{0}/.lsst/logging.yaml".format(os.path.expanduser('~'))
+    default_log_conf = "{0}/.lsst/logging.ini".format(os.path.expanduser('~'))
     parser.add_argument("-V", "--log-cfg", dest="log_conf",
                         default=default_log_conf,
                         help="Absolute path to yaml file containing python" +
@@ -27,7 +25,7 @@ def add_logfile_opt(parser):
     return parser
 
 
-def setup_logging(path='logging.yaml',
+def setup_logging(path='logging.ini',
                   default_level=logging.INFO):
     """
     Setup logging configuration from yaml file
@@ -37,8 +35,7 @@ def setup_logging(path='logging.yaml',
     """
     if os.path.exists(path):
         with open(path, 'r') as f:
-            config = yaml.load(f.read())
-        logging.config.dictConfig(config)
+            logging.config.fileConfig(f)
         return True
     else:
         logging.basicConfig(level=default_level)
@@ -66,7 +63,8 @@ def add_console_logger(level=logging.DEBUG, fmt='%(asctime)s %(levelname)s %(mes
     return logger
 
 
-def add_file_logger(log_file_prefix, level=logging.DEBUG, log_path=".", format='%(asctime)s %(levelname)s %(message)s'):
+def add_file_logger(log_file_prefix, level=logging.DEBUG, log_path=".",
+                    format='%(asctime)s %(levelname)s %(message)s'):
 
     logger = logging.getLogger()
     formatter = logging.Formatter(format)
