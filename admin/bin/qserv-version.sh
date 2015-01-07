@@ -25,5 +25,5 @@
 # Used to determine if Qserv run dir is compliant with Qserv version
 
 # @author  Fabrice Jammes, IN2P3
-QSERV_VERSION="2014_12"
+QSERV_VERSION="2015_01"
 echo "${QSERV_VERSION}"

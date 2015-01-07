@@ -7,7 +7,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 # Default values below may be overidden by cmd-line options
 MODE="internet mode"
-DEV_DISTSERVER_ROOT="http://lsst-web.ncsa.illinois.edu/~fjammes/qserv-dev"
 EUPS_PKGROOT="http://sw.lsstcorp.org/eupspkg"
 NEWINSTALL_URL="https://sw.lsstcorp.org/eupspkg/newinstall.sh"
 VERSION="-t qserv"
@@ -26,22 +25,16 @@ This script install Qserv according to LSST packaging standards.
 
 OPTIONS:
    -h      Show this message and exit
-   -d      Use development distribution server: ${DEV_DISTSERVER_ROOT}
    -r      Local distribution server root directory,
            used in internet-free mode
    -i      Install directory : MANDATORY, MUST BE AN ABSOLUTE PATH
    -v      Qserv version to install, default to the one with the 'qserv' tag
+   -d      Install Qserv version tagged 'qserv-dev'
 EOF
 }
 
-while getopts "dr:i:v:h" o; do
+while getopts "r:i:v:dh" o; do
         case "$o" in
-        d)
-                DEV_OPTION=1
-                MODE="development/internet mode"
-                VERSION="-t qserv-dev"
-                EUPS_PKGROOT="${EUPS_PKGROOT}|${DEV_DISTSERVER_ROOT}"
-                ;;
         r)
                 LOCAL_OPTION=1
                 MODE="internet-free mode"
@@ -65,6 +58,10 @@ while getopts "dr:i:v:h" o; do
         v)
                 VERSION="${OPTARG}"
                 ;;
+        d)
+                MODE="development version"
+                VERSION="-t qserv-dev"
+                ;;
         h)
                 usage
                 exit 1
@@ -78,12 +75,6 @@ then
      >&2 printf "ERROR : install directory required, use -i option.\n"
      usage
      exit 1
-fi
-
-if [ -n "${DEV_OPTION}" -a -n "${LOCAL_OPTION}" ]; then
-    >&2 printf "ERROR : -r and -d options are not compatible\n"
-    usage
-    exit 1
 fi
 
 if [ -d "${STACK_DIR}" -o -L "${STACK_DIR}" ]; then
