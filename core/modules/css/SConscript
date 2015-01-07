@@ -15,14 +15,12 @@ def _debug_dist_target():
              for (path, f) in extraTgts['dist']]
         state.log.debug("extraTgts['dist']" + "\n".join(t))
 
-localCpppath = env['CPPPATH']
-if type(localCpppath) == type(""): localCpppath = [localCpppath]
-localCpppath.append(distutils.sysconfig.get_python_inc())
+pythonInc = distutils.sysconfig.get_python_inc()
+cppPath = cctarget.getList(env, 'CPPPATH') + [pythonInc]
 swigged = env.SharedObject(source="cssLib.i",
                             SWIGFLAGS=['-python', '-c++', '-Iinclude'],
-                            SWIGPATH=['..',
-                                      distutils.sysconfig.get_python_inc()],
-                            CPPPATH=localCpppath,
+                            SWIGPATH=['..', pythonInc],
+                            CPPPATH=cppPath,
                             LDMODULEPREFIX='_', LDMODULESUFFIX='.so'
                             )
 
