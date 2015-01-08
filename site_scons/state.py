@@ -11,7 +11,6 @@
 # (particularly dependencies.configure()).
 ##
 
-import sys
 import os
 import SCons.Script
 import SCons.Util
@@ -44,7 +43,7 @@ def _findPrefixFromName(product):
     prefix = os.getenv(product_envvar)
     if not prefix:
         log.fail("Could not locate %s install prefix using %s" % (product, product_envvar))
-    return prefix    
+    return prefix
 
 def _getBinPath(binName, msg=None):
     if msg == None:
@@ -75,7 +74,7 @@ def _findPrefixFromBin(key, binName):
     """ returns install prefix for  a dependency named 'product'
     - if the dependency binary is PREFIX/bin/binName then PREFIX is used
     """
-    prefix = _findPrefixFromPath(key,  _getBinPath(binName))	
+    prefix = _findPrefixFromPath(key,  _getBinPath(binName))
     return prefix
 
 def _findPrefixFromPath(key, binFullPath):
@@ -166,16 +165,21 @@ def _setEnvWithDependencies():
             )
         opts.Update(env)
 
-    # SWIG_SWIG_LIB specification: Useful when swig can't find its own *.i files
-    # This is SWIG_LIB, read by swig, not the same as the location of swig's *.so libs
-    # No validation: a custom SWIG_SWIG_LIB is not essential.
+    # SWIG_LIB_ENV specification: Useful when swig can't find its own *.i files
+    # This is a SWIG_LIB envvar, read by swig, not the same as the location of
+    # swig's *.so libs. For system-installed swig, this is usually /usr/share/swig/x.y.z
+    # or path/to/lsst/stack/Linux64/swig/x.y.z/share/swig/x.y.z
+    # No validation: a custom SWIG_LIB_ENV is not essential.
     opts.AddVariables(
-        (PathVariable('SWIG_SWIG_LIB', 'swig SWIG_LIB for broken swig setups', [], PathVariable.PathAccept)) 
+        (PathVariable('SWIG_LIB_ENV',
+                      'swig SWIG_LIB envvar for broken swig setups',
+                      None,
+                      PathVariable.PathIsDir))
         )
     opts.Update(env)
-    swig_swig_lib = env['SWIG_SWIG_LIB']
-    if swig_swig_lib and os.path.isdir(swig_swig_lib):
-        env['ENV']['SWIG_LIB'] = swig_swig_lib
+    if 'SWIG_LIB_ENV' in env:  # PathIsDir tests os.path.isdir
+        env['ENV']['SWIG_LIB'] = env['SWIG_LIB_ENV']
+
     SCons.Script.Help(opts.GenerateHelpText(env))
 
 
@@ -243,7 +247,7 @@ def init(src_dir):
             (PathVariable('build_dir', 'Qserv build dir', os.path.join(src_dir, 'build'), PathVariable.PathIsDirCreate)),
             ('PYTHONPATH', 'pythonpath', os.getenv("PYTHONPATH"))
     )
- 
+
     opts.Update(env)
 
     # Default to in-place install
