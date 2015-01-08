@@ -166,13 +166,12 @@ bool MergingRequester::_merge() {
         throw Bug("MergingRequester::_merge : already flushed");
     }
     bool success = _infileMerger->merge(_response);
-    if(success) {
-        _response.reset();
-    } else {
-        // Fetch error from merger?
-        _setError(log::MSG_MERGE_ERROR, "Error merging.");
+    if(!success) {
+        rproc::InfileMergerError const& err = _infileMerger->getError();
+        _setError(log::MSG_RESULT_ERROR, err.description);
         _state = RESULT_ERR;
     }
+    _response.reset();
     return success;
 }
 

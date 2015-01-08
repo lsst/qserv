@@ -277,6 +277,13 @@ bool InfileMerger::merge(boost::shared_ptr<proto::WorkerResponse> response) {
                % response->headerSize
                % response->protoHeader.size()
                % response->result.row_size());
+
+    if(response->result.has_errorcode() || response->result.has_errormsg()) {
+        _error.status = InfileMergerError::MYSQLEXEC;
+        _error.errorCode = response->result.errorcode();
+        _error.description = response->result.errormsg();
+        return false;
+    }
     if(_needCreateTable) {
         if(!_setupTable(*response)) {
             return false;
