@@ -806,6 +806,20 @@ BOOST_AUTO_TEST_CASE(Expression) {
     testStmt3(qsTest, stmt);
 }
 
+BOOST_AUTO_TEST_CASE(dm646) {
+    std::string stmt = "SELECT DISTINCT foo FROM Filter f;";
+    std::string expected = "SELECT DISTINCT foo FROM LSST.Filter AS f";
+    testAndCompare(qsTest, stmt, expected);
+    stmt = "SELECT DISTINCT zNumObs FROM Object;";
+    expected = "SELECT DISTINCT zNumObs FROM LSST.Object_100 AS QST_1_";
+    testAndCompare(qsTest, stmt, expected);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+////////////////////////////////////////////////////////////////////////
+
+BOOST_FIXTURE_TEST_SUITE(Match, ParserFixture)
+
 BOOST_AUTO_TEST_CASE(MatchTableWithoutWhere) {
     std::string stmt = "SELECT * FROM RefObjMatch;";
     std::string expected = "SELECT * FROM LSST.RefObjMatch_100 AS QST_1_ WHERE "
@@ -892,7 +906,6 @@ BOOST_AUTO_TEST_CASE(LimitOrder) { // Test flipped syntax in DM-661
     // testStmt3(qsTest, bad, "ParseException");
     testAndCompare(qsTest, good, expected);
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()
 
