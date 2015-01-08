@@ -63,6 +63,7 @@ typedef std::list<ValueExprPtr> ValueExprList;
 class SelectListFactory {
 public:
     boost::shared_ptr<query::SelectList> getProduct();
+    void import(antlr::RefAST selectRoot);
 private:
     friend class SelectFactory;
 
@@ -74,10 +75,10 @@ private:
     // For "friends"
     SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
                       boost::shared_ptr<ValueExprFactory> vf);
-    void attachTo(SqlSQL2Parser& p);
+    void attachTo(SqlSQL2Parser& p); ///< deprecated
 
     // Really private
-    void _import(antlr::RefAST selectRoot);
+    void _import(antlr::RefAST selectRoot); ///< deprecated
 
     void _addSelectColumn(antlr::RefAST expr);
     void _addSelectStar(antlr::RefAST child=antlr::RefAST());

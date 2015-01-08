@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -79,6 +79,9 @@ public:
     boost::shared_ptr<SelectStmt> copyMerge() const;
     boost::shared_ptr<SelectStmt> copySyntax() const;
 
+    bool getDistinct() const { return _hasDistinct; }
+    void setDistinct(bool d) { _hasDistinct = d; }
+
     SelectList const& getSelectList() const { return *_selectList; }
     SelectList& getSelectList() { return *_selectList; }
     void setSelectList(boost::shared_ptr<SelectList> s) { _selectList = s; }
@@ -126,6 +129,8 @@ public:
     boost::shared_ptr<OrderByClause> _orderBy; // Ordering
     boost::shared_ptr<GroupByClause> _groupBy; // Aggr. grouping
     boost::shared_ptr<HavingClause> _having; // Aggr. grouping
+
+    bool _hasDistinct; ///< SELECT DISTINCT (consider merging with ALL)
 
     int  _limit; // result limit
     StringList OutputMods; // Output modifiers (order, grouping,

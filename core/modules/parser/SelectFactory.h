@@ -81,6 +81,7 @@ public:
     boost::shared_ptr<WhereFactory> getWhereFactory() {
         return _wFactory; }
 
+    void setDistinct(bool d) { _hasDistinct = d; }
 private:
     void _attachShared(SqlSQL2Parser& p);
 
@@ -90,6 +91,7 @@ private:
     boost::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
 
     // delegates
+    bool _hasDistinct;
     boost::shared_ptr<SelectListFactory> _slFactory;
     boost::shared_ptr<FromFactory> _fFactory;
     boost::shared_ptr<WhereFactory> _wFactory;

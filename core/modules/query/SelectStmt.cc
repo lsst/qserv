@@ -101,7 +101,11 @@ std::string SelectStmt::diagnose() {
 QueryTemplate
 SelectStmt::getTemplate() const {
     QueryTemplate qt;
-    renderTemplate(qt, "SELECT", _selectList);
+    std::string selectQuant = "SELECT";
+    if(_hasDistinct) {
+        selectQuant += " DISTINCT";
+    }
+    renderTemplate(qt, selectQuant.c_str(), _selectList);
     renderTemplate(qt, "FROM", _fromList);
     renderTemplate(qt, "WHERE", _whereClause);
     renderTemplate(qt, "GROUP BY", _groupBy);
