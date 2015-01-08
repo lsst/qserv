@@ -25,7 +25,7 @@
   * (through some delegated behavior) for constructing SelectStmt (and
   * SelectList, etc.) from an ANTLR parse tree.
   *
-  * Includes parse handlers: SelectListH, SelectStarH, ColumnAliasH
+  * Includes parse handlers: SelectStarH, ColumnAliasH
   *
   * @author Daniel L. Wang, SLAC
   */
@@ -49,19 +49,6 @@
 namespace lsst {
 namespace qserv {
 namespace parser {
-
-////////////////////////////////////////////////////////////////////////
-// SelectListFactory::SelectListH
-////////////////////////////////////////////////////////////////////////
-class SelectListFactory::SelectListH : public VoidOneRefFunc {
-public:
-    explicit SelectListH(SelectListFactory& f) : _f(f) {}
-    virtual ~SelectListH() {}
-    virtual void operator()(RefAST a) {
-        _f._import(a); // Trigger select list construction
-    }
-    SelectListFactory& _f;
-};
 
 ////////////////////////////////////////////////////////////////////////
 // SelectListFactory::SelectStarH
@@ -108,12 +95,12 @@ SelectListFactory::SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
       _valueExprList(boost::make_shared<ValueExprList>()) {
 }
 
+/// attach the column alias handler. This is needed until we implement code to
+/// visit the tree to handle column aliases. We can probably put the visit code
+/// in a function to be called at the beginning of the import() call.
 void
 SelectListFactory::attachTo(SqlSQL2Parser& p) {
-    _selectListH.reset(new SelectListH(*this));
     _columnAliasH = boost::make_shared<ColumnAliasH>(_aliases);
-    p._selectListHandler = _selectListH;
-    p._selectStarHandler.reset(new SelectStarH(*this));
     p._columnAliasHandler = _columnAliasH;
 }
 
@@ -124,7 +111,7 @@ boost::shared_ptr<query::SelectList> SelectListFactory::getProduct() {
 }
 
 void
-SelectListFactory::_import(RefAST selectRoot) {
+SelectListFactory::import(RefAST selectRoot) {
     for(; selectRoot.get();
         selectRoot = selectRoot->getNextSibling()) {
         RefAST child = selectRoot->getFirstChild();
@@ -143,14 +130,18 @@ SelectListFactory::_import(RefAST selectRoot) {
             break;
         case SqlSQL2TokenTypes::ASTERISK: // Not sure this will be
                                           // handled here.
-            _addSelectStar();
-            // should only have a single unqualified "*"
+            throw ParseException("Unexpected * in SELECT_LIST", selectRoot);
             break;
         default:
-            throw ParseException("Invalid SelectList token type",selectRoot);
+            throw ParseException("Invalid SelectList token type", selectRoot);
 
         } // end switch
     } // end for-each select_list child.
+}
+
+void
+SelectListFactory::importStar(RefAST selectRoot) {
+    _addSelectStar();
 }
 
 void

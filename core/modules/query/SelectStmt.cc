@@ -101,7 +101,11 @@ std::string SelectStmt::diagnose() {
 QueryTemplate
 SelectStmt::getTemplate() const {
     QueryTemplate qt;
-    renderTemplate(qt, "SELECT", _selectList);
+    std::string selectQuant = "SELECT";
+    if(_hasDistinct) {
+        selectQuant += " DISTINCT";
+    }
+    renderTemplate(qt, selectQuant.c_str(), _selectList);
     renderTemplate(qt, "FROM", _fromList);
     renderTemplate(qt, "WHERE", _whereClause);
     renderTemplate(qt, "GROUP BY", _groupBy);
@@ -145,6 +149,7 @@ SelectStmt::clone() const {
     cloneIf(newS->_orderBy, _orderBy);
     cloneIf(newS->_groupBy, _groupBy);
     cloneIf(newS->_having, _having);
+    assert(_hasDistinct == newS->_hasDistinct);
     // For the other fields, default-copied versions are okay.
     return newS;
 }
@@ -161,6 +166,7 @@ SelectStmt::copyMerge() const {
     // Eliminate the parts that don't matter, e.g., the where clause
     newS->_whereClause.reset();
     newS->_fromList.reset();
+    assert(_hasDistinct == newS->_hasDistinct);
     return newS;
 }
 
@@ -174,6 +180,7 @@ SelectStmt::copySyntax() const {
     copySyntaxIf(newS->_orderBy, _orderBy);
     copySyntaxIf(newS->_groupBy, _groupBy);
     copySyntaxIf(newS->_having, _having);
+    assert(_hasDistinct == newS->_hasDistinct);
     // For the other fields, default-copied versions are okay.
     return newS;
 }
@@ -208,6 +215,7 @@ void SelectStmt::_print() {
     //_selectList->getColumnRefList()->printRefs();
     LOGF_INFO("from %1%" % _fromList);
     LOGF_INFO("select %1%" % _selectList);
+    if(_hasDistinct) { LOGF_INFO("distinct"); }
     LOGF_INFO("where %1%" % _whereClause);
     LOGF_INFO("groupby %1%" % _groupBy);
     LOGF_INFO("having %1%" % _having);
