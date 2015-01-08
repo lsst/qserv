@@ -31,7 +31,9 @@ def checkMySql(env):
     * a built MySQL directory specified by the env var MYSQL_ROOT
     """
     conf = env.Configure()
-    state.log.debug("checkMySql() LIBPATH : %s CPPPATH : %s" % (env["LIBPATH"], env["CPPPATH"]))
+    state.log.debug("checkMySql():\n" +
+                    "\tCPPPATH : %s\n" % env['CPPPATH'] +
+                    "\tLIBPATH : %s" % env['LIBPATH'])
 
     if not conf.CheckCXXHeader('mysql/mysql.h'):
         state.log.fail("Could not locate MySQL headers (mysql/mysql.h)")
@@ -273,7 +275,9 @@ def importCustom(env, extraTgts):
     env.Append(LIBPATH=getExt("_LIB")) ## *LIB --> LIBPATH
     env.Append(CPPPATH=getExt("_INC")) ## *INC --> CPPPATH
 
-    state.log.debug("CPPPATH : %s" % env['CPPPATH'])
+    state.log.debug("importCustom():\n" +
+                    "\tCPPPATH : %s\n" % env['CPPPATH'] +
+                    "\tLIBPATH : %s" % env['LIBPATH'])
 
     # Automagically steal PYTHONPATH from envvar
     extraTgts["PYTHONPATH"] = env.get("PYTHONPATH", [])

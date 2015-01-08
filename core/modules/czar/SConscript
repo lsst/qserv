@@ -1,8 +1,6 @@
 # -*- python -*-
 # Qserv czar SConscript
 import distutils.sysconfig
-import errno
-import os
 import state
 import cctarget
 import pytarget
@@ -16,8 +14,11 @@ Import('extraTgts')
 
 def _debug_dist_target():
     if state.log.verbose:
-        t = ["   path : %s, file : %s" % (path,str(f)) for (path, f) in extraTgts['dist']]
-        state.log.debug("extraTgts['dist']" + "\n".join(t))
+        template = "\t{SRCFILE:80} {INSTALLPATH}\n"
+        log_msg = template.format(SRCFILE="SOURCE FILE", INSTALLPATH="INSTALL PATH")
+        for (path, f) in extraTgts['dist']:
+            log_msg += template.format(SRCFILE=str(f), INSTALLPATH=path)
+        state.log.debug("extraTgts['dist']:\n" + log_msg)
 
 # Manual dependencies for czarLib.i, because the SCons SWIG builder
 # isn't knowledgeable enough to ensure their presence when using VariantDir
@@ -67,18 +68,14 @@ pySwig = env.File('czarLib.py')
 # is already there (on czarLib.i)
 extraTgts["czarLib.py"] = pySwig
 
-state.log.debug("extraTgts['dist'] %s" % extraTgts['dist'])
-
 distTgts = swigged_tgt + [pySwig]
-_debug_dist_target()
 pyTargets = pytarget.getPyTargets(env, ["lsst","qserv","czar"], distTgts)
 extraTgts['dist'].extend(pyTargets)
-_debug_dist_target()
 
 for f in env.Glob("bin/*py"):
     extraTgts['dist'].append(('bin', f))
 
-#_debug_dist_target()
+_debug_dist_target()
 
 extraTgts["czarPy"] = distTgts
 Return('swigged_tgt')
