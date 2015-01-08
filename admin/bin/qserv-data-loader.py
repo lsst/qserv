@@ -40,8 +40,9 @@ Script performs these tasks:
 Script can be run in two modes:
   1. Normal partitioning, where partitioned tables have their data split
      into chunks and each chunk is loaded into separate table
-  2. Non-partitioned, all table data stored in one table, this is useful
-     for testing and doing comparison of qserv to direct mysql queries
+  2. Non-partitioned, all table data stored in one table, it is used to load
+     non-partitioned tables into Qserv and also for testing and doing
+     comparison of qserv to direct mysql queries
 
 Currently not supported is duplication mode when data from one sky segment
 is replicated multiple times to other segments to cover whole sky. This
@@ -54,6 +55,7 @@ option will be added later.
 #--------------------------------
 #  Imports of standard modules --
 #--------------------------------
+import os
 import sys
 import argparse
 import logging
@@ -64,6 +66,7 @@ import warnings
 # Imports for other modules --
 #-----------------------------
 from lsst.qserv.admin.dataLoader import DataLoader
+import lsst.qserv.admin.logger
 
 #----------------------------------
 # Local non-exported definitions --
@@ -105,7 +108,7 @@ class Loader(object):
                             const=None, help='More verbose output, can use several times.')
         parser.add_argument('--verbose-all', dest='verboseAll', default=False, action='store_true',
                             help='Apply verbosity to all loggers, by default only loader level is set.')
-
+        parser = lsst.qserv.admin.logger.add_logfile_opt(parser)
         group = parser.add_argument_group('Partitioning options',
                                           'Options defining how partitioning is performed')
         group.add_argument('-f', '--config', dest='configFiles', default=[], action='append',
@@ -182,17 +185,23 @@ class Loader(object):
         self.args = parser.parse_args()
 
         # configure logging
-        loggerName = "Loader"
-        verbosity = len(self.args.verbose)
-        levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter("[%(levelname)s] %(name)s: %(message)s"))
-        if not self.args.verboseAll:
-            # suppress INFO/DEBUG regular messages from other loggers
-            handler.addFilter(_LogFilter(loggerName))
-        logger = logging.getLogger()
-        logger.setLevel(level=levels.get(verbosity, logging.DEBUG))
-        logger.addHandler(handler)
+        loggerName = None
+        if lsst.qserv.admin.logger.setup_logging(self.args.log_conf):
+            logger = logging.getLogger()
+        else:
+            # if global configuration file for logging isn't available
+            # then use custom procedure (could be removed to simplify code?)
+            loggerName = "Loader"
+            verbosity = len(self.args.verbose)
+            levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter("[%(levelname)s] %(name)s: %(message)s"))
+            if not self.args.verboseAll:
+                # suppress INFO/DEBUG regular messages from other loggers
+                handler.addFilter(_LogFilter(loggerName))
+            logger = logging.getLogger()
+            logger.setLevel(level=levels.get(verbosity, logging.DEBUG))
+            logger.addHandler(handler)
 
         # connect to czar mysql server
         mysqlConn = self._dbConnect(self.args.mysqlHost)

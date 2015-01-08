@@ -34,10 +34,12 @@ user=qsmaster
 port=0
 
 [partitioner]
-# emptyChunkPath is used to check existence of the chunklist file
-# If it doesn't exist, a default once is created using emptyChunkListFile
-emptyChunkPath={{QSERV_RUN_DIR}}/etc
-emptyChunkListFile={{QSERV_RUN_DIR}}/etc/emptyChunks.txt
+# emptyChunkPath is used to check existence of empty_$DBNAME.txt
+emptyChunkPath={{QSERV_RUN_DIR}}/var/lib/qserv
+
+# If emptyChunkPath isn't defined or emptyChunkPath/empty_$DBNAME.txt
+# doesn't exist then emptyChunkListFile is used for queries on $DBNAME
+emptyChunkListFile={{QSERV_RUN_DIR}}/var/lib/qserv/emptyChunks.txt
 
 #[tuning]
 #memoryEngine=yes

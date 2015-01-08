@@ -57,8 +57,9 @@ class AppInterface:
                                            self.cancelEverything)
 
         self.actions = {}
-        # set id counter to seconds since the epoch, mod 1 year.
-        self._idCounter = int(time.time() % (60*60*24*365))
+        # set id counter to milliseconds since the epoch, mod 1 year.
+        self._idCounter = int((time.time() % (60*60*24*365)) * 1000)
+        logger.dbg("_idCounter", self._idCounter)
         self._resultDb = config.config.get("resultdb", "db")
         pass
 
@@ -98,6 +99,8 @@ class AppInterface:
         if quickResult: return quickResult
         taskId = self._idCounter # RAW hazard, but this part is single-threaded
         self._idCounter += 1
+
+        logger.dbg("taskId", taskId)
 
         # resultName should be shorter than 20 characters so it is always
         # shorter than intermediate table names.

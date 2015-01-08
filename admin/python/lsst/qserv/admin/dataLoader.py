@@ -61,7 +61,7 @@ class DataLoader(object):
     def __init__(self, configFiles, mysqlConn, workerConnMap={}, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
                  cssConn='localhost:12181', cssClear=False, indexDb='qservMeta',
-                 emptyChunks=None, deleteTables=False, loggerName="Loader"):
+                 emptyChunks=None, deleteTables=False, loggerName=None):
         """
         Constructor parses all arguments and prepares for execution.
 
@@ -83,8 +83,12 @@ class DataLoader(object):
         @param indexDb:      Name of  database for object indices.
         @param emptyChunks:  Path name for "empty chunks" file, may be None.
         @param deleteTables: If True then existing tables in database will be deleted.
-        @param loggerName:   Logger name used for logging all messaged from loader.
+        @param loggerName:   Logger name used for logging all messages from loader.
         """
+        
+        if not loggerName:
+            loggerName = __name__
+        self._log = logging.getLogger(loggerName)
 
         self.configFiles = configFiles
         self.mysql = mysqlConn
@@ -132,8 +136,6 @@ class DataLoader(object):
         # do we ever need input files? They are needed as input for partitioner or loader
         # if table is not partitioned
         self.needInput = not self.partitioned or not self.skipPart
-
-        self._log = logging.getLogger(loggerName)
 
 
     def load(self, database, table, schema, data):
@@ -327,7 +329,7 @@ class DataLoader(object):
         try:
             # run partitioner
             self._log.info('run partitioner on files: %s', ' '.join(files))
-            self._log.debug('args: %s', ' '.join(args))
+            self._log.debug('Run shell command: %s', ' '.join(args))
             subprocess.check_output(args=args)
         except Exception as exc:
             self._log.error('Failed to run partitioner: %s', exc)
@@ -405,7 +407,7 @@ class DataLoader(object):
 
         for name, conn in self._connections(useCzar=True, useWorkers=True):
 
-            logging.info('Deleting table from %s', name)
+            self._log.info('Deleting table from %s', name)
 
             cursor = conn.cursor()
 
@@ -713,6 +715,13 @@ class DataLoader(object):
         maxChunks = 2 * nStripes ** 2
 
         self._log.info('Making empty chunk list (max.chunk=%d) %s', maxChunks, self.emptyChunks)
+
+        emptyChunkDir = os.path.dirname(self.emptyChunks)
+        try:
+            os.makedirs(emptyChunkDir)
+        except OSError:
+            if not os.path.isdir(emptyChunkDir):
+                raise
 
         out = open(self.emptyChunks, 'w')
         for chunk in range(maxChunks):
