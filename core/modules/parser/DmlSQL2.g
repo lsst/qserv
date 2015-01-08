@@ -576,8 +576,7 @@ qualified_name :
 select_list : 
     astr:ASTERISK {handleSelectStar(astr_AST);}
     | a:select_sublist (COMMA! select_sublist)* {        
-            #select_list = #([SELECT_LIST,"SELECT_LIST"], #select_list);
-            handleSelectList(a_AST);}
+            #select_list = #([SELECT_LIST,"SELECT_LIST"], #select_list); }
 ;
 //}
 
@@ -1079,7 +1078,9 @@ simple_table :
 //  Rule #475 <select_stmt_single_row> was incorporated in the rule #430 <query_spec>
 //{ Rule #430 <query_spec> additionally incorporates the rule #475 <select_stmt_single_row> - see EXF5
 query_spec : 
-	"select" (set_quantifier)? select_list (into_clause)? table_exp       
+	a:"select" (set_quantifier)? select_list (into_clause)? table_exp  {
+                #query_spec =  #([QUERY_SPEC,"QUERY_SPEC"], #query_spec);
+                handleQuerySpec(a_AST);}
 ;
 //}
 
