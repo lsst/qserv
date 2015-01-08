@@ -109,11 +109,16 @@ SelectListFactory::SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
 
 void
 SelectListFactory::attachTo(SqlSQL2Parser& p) {
-    _selectListH.reset(new SelectListH(*this));
+//    _selectListH.reset(new SelectListH(*this)); // deprecated
     _columnAliasH = boost::make_shared<ColumnAliasH>(_aliases);
-    p._selectListHandler = _selectListH;
+//    p._selectListHandler = _selectListH; // deprecated
     p._selectStarHandler.reset(new SelectStarH(*this));
     p._columnAliasHandler = _columnAliasH;
+}
+
+void
+SelectListFactory::import(antlr::RefAST a) {
+    _import(a);
 }
 
 boost::shared_ptr<query::SelectList> SelectListFactory::getProduct() {

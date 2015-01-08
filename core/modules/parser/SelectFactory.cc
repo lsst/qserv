@@ -69,6 +69,7 @@ SelectFactory::SelectFactory()
     : _columnAliases(boost::make_shared<ParseAliasMap>()),
       _tableAliases(boost::make_shared<ParseAliasMap>()),
       _columnRefNodeMap(boost::make_shared<ColumnRefNodeMap>()),
+      _hasDistinct(false),
       _vFactory(boost::make_shared<ValueExprFactory>(_columnRefNodeMap)) {
 
     _fFactory = boost::make_shared<FromFactory>(_tableAliases, _vFactory);
@@ -98,169 +99,57 @@ SelectFactory::getStatement() {
     stmt->_groupBy = _mFactory->getGroupBy();
     stmt->_having = _mFactory->getHaving();
     stmt->_limit = _mFactory->getLimit();
+    stmt->_hasDistinct = _hasDistinct;
     return stmt;
 }
+
+/// Handle:
+/// query_spec :
+///        "select" (set_quantifier)? select_list (into_clause)? table_exp  {
+///                #query_spec =  #([QUERY_SPEC,"QUERY_SPEC"], #query_spec);
+class QuerySpecH : public VoidOneRefFunc {
+public:
+    QuerySpecH(SelectFactory& sf, SelectListFactory& slf)
+        : _sf(sf), _slf(slf) {}
+    virtual ~QuerySpecH() {}
+    virtual void operator()(RefAST a) {
+        RefAST selectRoot = a;
+        std::cout << "query spec got " << walkIndentedString(a) << std::endl;
+        //a; // should point at "SELECT"
+        a = a->getNextSibling();
+        RefAST child;
+        for(; a; a = a->getNextSibling()) {
+            switch(a->getType()) {
+              case SqlSQL2TokenTypes::SQL2RW_distinct:
+                  _sf.setDistinct(true);
+                  break;
+              case SqlSQL2TokenTypes::SELECT_LIST:
+                  child = a->getFirstChild();
+                  if(!child.get()) {
+                      throw ParseException("Expected select list", a);
+                  } else {
+                      _slf.import(child);
+                  }
+                  break;
+              default:
+                  // For now, ignore into_clause and table_exp
+                  // and let the other parse handlers take it.
+                  break;
+            }
+        }
+    }
+    SelectFactory& _sf;
+    SelectListFactory& _slf;
+};
 
 void
 SelectFactory::_attachShared(SqlSQL2Parser& p) {
     boost::shared_ptr<ColumnRefH> crh = boost::make_shared<ColumnRefH>();
+    // Non-const argument, can't use make_shared.
+    boost::shared_ptr<QuerySpecH> qsh(new QuerySpecH(*this, *_slFactory));
     crh->setListener(_columnRefNodeMap);
     p._columnRefHandler = crh;
+    p._querySpecHandler = qsh;
 }
-
-#if 0
-////////////////////////////////////////////////////////////////////////
-// SelectListFactory::SelectListH
-////////////////////////////////////////////////////////////////////////
-class SelectListFactory::SelectListH : public VoidOneRefFunc {
-public:
-    explicit SelectListH(SelectListFactory& f) : _f(f) {}
-    virtual ~SelectListH() {}
-    virtual void operator()(RefAST a) {
-        _f._import(a); // Trigger select list construction
-    }
-    SelectListFactory& _f;
-};
-
-////////////////////////////////////////////////////////////////////////
-// SelectListFactory::SelectStarH
-////////////////////////////////////////////////////////////////////////
-class SelectListFactory::SelectStarH : public VoidOneRefFunc {
-public:
-    explicit SelectStarH(SelectListFactory& f) : _f(f) {}
-    virtual ~SelectStarH() {}
-    virtual void operator()(antlr::RefAST a) {
-        _f._addSelectStar();
-    }
-private:
-    SelectListFactory& _f;
-}; // SelectStarH
-
-
-////////////////////////////////////////////////////////////////////////
-// SelectListFactory::ColumnAliasH
-////////////////////////////////////////////////////////////////////////
-class SelectListFactory::ColumnAliasH : public VoidTwoRefFunc {
-public:
-    ColumnAliasH(boost::shared_ptr<ParseAliasMap> map) : _map(map) {}
-    virtual ~ColumnAliasH() {}
-    virtual void operator()(antlr::RefAST a, antlr::RefAST b)  {
-        if(b.get()) {
-            b->setType(SqlSQL2TokenTypes::COLUMN_ALIAS_NAME);
-            _map->addAlias(b, a);
-        }
-        // Save column ref for pass/fixup computation,
-        // regardless of alias.
-    }
-private:
-    boost::shared_ptr<ParseAliasMap> _map;
-}; // class ColumnAliasH
-
-
-////////////////////////////////////////////////////////////////////////
-// class SelectListFactory
-////////////////////////////////////////////////////////////////////////
-SelectListFactory::SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
-                                     boost::shared_ptr<ValueExprFactory> vf)
-    : _aliases(aliasMap),
-      _vFactory(vf),
-      _valueExprList(new ValueExprList()) {
-}
-
-void
-SelectListFactory::attachTo(SqlSQL2Parser& p) {
-    _selectListH.reset(new SelectListH(*this));
-    _columnAliasH.reset(new ColumnAliasH(_aliases));
-    p._selectListHandler = _selectListH;
-    p._selectStarHandler.reset(new SelectStarH(*this));
-    p._columnAliasHandler = _columnAliasH;
-}
-
-boost::shared_ptr<query::SelectList>
-SelectListFactory::getProduct() {
-    boost::shared_ptr<query::SelectList> slist = boost::make_shared<query::SelectList>();
-    slist->_valueExprList = _valueExprList;
-    return slist;
-}
-
-void
-SelectListFactory::_import(RefAST selectRoot) {
-    // LOGF_INFO("Type of selectRoot is %1%" % selectRoot->getType());
-    for(; selectRoot.get();
-        selectRoot = selectRoot->getNextSibling()) {
-        RefAST child = selectRoot->getFirstChild();
-        switch(selectRoot->getType()) {
-        case SqlSQL2TokenTypes::SELECT_COLUMN:
-            if(!child.get()) {
-                throw ParseException("Expected select column", selectRoot);
-            }
-            _addSelectColumn(child);
-            break;
-        case SqlSQL2TokenTypes::SELECT_TABLESTAR:
-            if(!child.get()) {
-                throw ParseException("Missing table.*", selectRoot);
-            }
-            _addSelectStar(child);
-            break;
-        case SqlSQL2TokenTypes::ASTERISK: // Not sure this will be
-                                          // handled here.
-            _addSelectStar();
-            // should only have a single unqualified "*"
-            break;
-        default:
-            throw ParseException("Invalid SelectList token type",selectRoot);
-
-        } // end switch
-    } // end for-each select_list child.
-}
-
-void
-SelectListFactory::_addSelectColumn(RefAST expr) {
-    // Figure out what type of value expr, and create it properly.
-    // LOGF_INFO("SelectCol Type of:%1% (%2%)" % expr->getText() % expr->getType());
-    if(!expr.get()) {
-        throw std::invalid_argument("Attempted _addSelectColumn(NULL)");
-    }
-    if(expr->getType() != SqlSQL2TokenTypes::VALUE_EXP) {
-        throw ParseException("Expected VALUE_EXP", expr);
-    }
-    RefAST child = expr->getFirstChild();
-    if(!child.get()) {
-        throw ParseException("Missing VALUE_EXP child", expr);
-    }
-    // LOGF_INFO("child is %1%" % child->getType());
-    ValueExprPtr ve = _vFactory->newExpr(child);
-
-    // Annotate if alias found.
-    RefAST alias = _aliases->getAlias(expr);
-    if(alias.get()) {
-        ve->setAlias(tokenText(alias));
-    }
-    _valueExprList->push_back(ve);
-}
-
-void
-SelectListFactory::_addSelectStar(RefAST child) {
-    // Note a "Select *".
-    // If child.get(), this means that it's in the form of
-    // "table.*". There might be sibling handling (i.e., multiple
-    // table.* expressions).
-    query::ValueFactorPtr vt;
-    std::string tableName;
-    if(child.get()) {
-        // child should be QUALIFIED_NAME, so its child should be a
-        // table name.
-        RefAST table = child->getFirstChild();
-        if(!table.get()) {
-            throw ParseException("Missing name node.", child);
-        }
-        tableName = tokenText(table);
-        LOGF_INFO("table ref'd for *: %1%" % tableName);
-    }
-    vt = query::ValueFactor::newStarFactor(tableName);
-    _valueExprList->push_back(query::ValueExpr::newSimple(vt));
-}
-
-#endif
 
 }}} // namespace lsst::qserv::parser
