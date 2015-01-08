@@ -30,7 +30,7 @@ yum install python-devel
 yum install ncurses-devel glibc-devel
 
 # qserv
-yum install boost-devel openssl-devel antlr swig java
+yum install boost-devel openssl-devel java
 
 # lua
 yum install readline-devel
