@@ -9,12 +9,6 @@ Import('env')
 Import('extraTgts')
 Import('extraSrcs')
 
-def _debug_dist_target():
-    if state.log.verbose:
-        t = ["   path : %s, file : %s" % (path, str(f))
-             for (path, f) in extraTgts['dist']]
-        state.log.debug("extraTgts['dist']" + "\n".join(t))
-
 pythonInc = distutils.sysconfig.get_python_inc()
 cppPath = cctarget.getList(env, 'CPPPATH') + [pythonInc]
 swigged = env.SharedObject(source="cssLib.i",
@@ -30,9 +24,6 @@ extraSrcs["css"] = swigged
 pySwig = env.File('cssLib.py')
 extraTgts["cssLib.py"] = pySwig
 
-# state.log.debug("extraTgts['dist'] %s" % extraTgts['dist'])
-# state.log.debug("pytarget.getPyTargets()")
-# _debug_dist_target()
 pyFiles = pytarget.getPyTargets(env, ["lsst", "qserv", "css"], [pySwig])
 extraTgts['dist'].extend(pyFiles)
 

@@ -41,10 +41,10 @@ if not env.GetOption('clean'):
         raise StandardError("Can't build")
 
     env.Append(CPPPATH=[os.getcwd()]) # top level
-    state.log.debug("Scons env : " + env.Dump())
 
     env.Append(CPPFLAGS=["-D_FILE_OFFSET_BITS=64", "-fPIC",
                          "-Wno-unused-local-typedefs"])
+    state.log.debug("Scons env:\n" + env.Dump())
 
 # all modules
 allModules = """ccontrol css czar global log mysql obsolete
