@@ -332,15 +332,8 @@ class CommandParser(object):
         """
         self._setDefault(opts, "partitioning", "0")
         self._setDefault(opts, "clusteredIndex", "NULL")
+        self._forceOption(opts, "storageClass", "L2")
         # these are required options for createDb
-        _crDbOpts = {
-            "db_info": ("storageClass",
-                        "partitioning",
-                        "partitioningStrategy")}
-        _crDbPSOpts = {
-            "sphBox": ("nStripes",
-                       "nSubStripes",
-                       "overlap")}
         self._checkExist(opts, CommandParser.requiredOpts["createDb"])
         if opts["partitioning"] != "0":
             if opts["partitioningStrategy"].lower() == "sphBox".lower():
@@ -356,6 +349,15 @@ class CommandParser(object):
             self._logger.info(
                 "param '" + key + "' not found, will use default: " + str(defaultValue))
             opts[key] = defaultValue
+
+    def _forceOption(self, opts, key, defaultValue):
+        if not opts.has_key(key):
+            self._logger.info(
+                "param '" + key + "' not found, will use default: " + str(defaultValue))
+            opts[key] = defaultValue
+        elif opts[key] != defaultValue:
+            raise QservAdminException(QservAdminException.WRONG_PARAM,
+                                      opts[key])
 
     def _processTbOptions(self, opts):
         """
