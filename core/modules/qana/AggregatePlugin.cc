@@ -256,7 +256,9 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     // LOGF_INFO("fixup: %1%" % qt.dbgStr());
     // Also need to operate on GROUP BY.
     // update context.
-    if(m.hasAggregate()) { context.needsMerge = true; }
+    if(p.stmtOriginal.getDistinct() || m.hasAggregate()) {
+        context.needsMerge = true;
+    }
 
     // Make the select lists of other statements in the parallel
     // portion the same.

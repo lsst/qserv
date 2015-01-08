@@ -197,9 +197,9 @@ void handleFunctionSpec(RefAST name, RefAST params) {
     }
     return; // Do-nothing placeholder
 }
-void handleSelectList(RefAST a) {
-    if(_selectListHandler.get()) {
-        (*_selectListHandler)(a);
+void handleQuerySpec(RefAST a) {
+    if(_querySpecHandler.get()) {
+        (*_querySpecHandler)(a);
     }
     return; // Do-nothing placeholder
     
@@ -287,7 +287,7 @@ boost::shared_ptr<VoidTwoRefFunc> _columnAliasHandler;
 boost::shared_ptr<VoidFourRefFunc> _tableAliasHandler;
 boost::shared_ptr<VoidOneRefFunc> _setFctSpecHandler;
 boost::shared_ptr<VoidTwoRefFunc> _functionSpecHandler;
-boost::shared_ptr<VoidOneRefFunc> _selectListHandler;
+boost::shared_ptr<VoidOneRefFunc> _querySpecHandler;
 boost::shared_ptr<VoidOneRefFunc> _selectStarHandler;
 boost::shared_ptr<VoidOneRefFunc> _groupByHandler;
 boost::shared_ptr<VoidOneRefFunc> _groupColumnHandler;
