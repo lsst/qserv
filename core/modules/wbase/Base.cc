@@ -44,6 +44,7 @@
 #include "boost/format.hpp"
 
 // Qserv headers
+#include "global/constants.h"
 #include "util/StringHash.h"
 
 
@@ -72,17 +73,18 @@ namespace wbase {
 // Must end in a slash.
 std::string DUMP_BASE = "/tmp/qserv/";
 
+std::string const SUBCHUNKDB_PREFIX_STR = SUBCHUNKDB_PREFIX;
 // Parameters:
 // %1% database (e.g., LSST)
 // %2% table (e.g., Object)
 // %3% subchunk column name (e.g. x_subChunkId)
 // %4% chunkId (e.g. 2523)
 // %5% subChunkId (e.g., 34)
-std::string CREATE_SUBCHUNK_SCRIPT =
-    "CREATE DATABASE IF NOT EXISTS Subchunks_%1%_%4%;"
-    "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%_%4%_%5% ENGINE = MEMORY "
+std::string const CREATE_SUBCHUNK_SCRIPT =
+    "CREATE DATABASE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%;"
+    "CREATE TABLE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%.%2%_%4%_%5% ENGINE = MEMORY "
     "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
-    "CREATE TABLE IF NOT EXISTS Subchunks_%1%_%4%.%2%FullOverlap_%4%_%5% "
+    "CREATE TABLE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%.%2%FullOverlap_%4%_%5% "
     "ENGINE = MEMORY "
     "AS SELECT * FROM %1%.%2%FullOverlap_%4% WHERE %3% = %5%;"
     ;
@@ -92,10 +94,10 @@ std::string CREATE_SUBCHUNK_SCRIPT =
 // %2% table (e.g., Object)
 // %3% chunkId (e.g. 2523)
 // %4% subChunkId (e.g., 34)
-std::string CLEANUP_SUBCHUNK_SCRIPT =
-    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%_%3%_%4%;"
-//    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%SelfOverlap_%3%_%4%;"
-    "DROP TABLE IF EXISTS Subchunks_%1%_%3%.%2%FullOverlap_%3%_%4%;"
+std::string const CLEANUP_SUBCHUNK_SCRIPT =
+    "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%_%3%_%4%;"
+//    "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%SelfOverlap_%3%_%4%;"
+    "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%FullOverlap_%3%_%4%;"
     ;
 
 // Note:
