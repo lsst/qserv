@@ -159,7 +159,7 @@ struct ScTable {
     int subChunkId;
 };
 std::ostream& operator<<(std::ostream& os, ScTable const& st) {
-    return os << "Subchunks_" << st.db << "_" << st.chunkId << "."
+    return os << SUBCHUNKDB_PREFIX << st.db << "_" << st.chunkId << "."
               << st.table << "_" << st.subChunkId;
 }
 typedef std::vector<ScTable> ScTableVector;

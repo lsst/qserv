@@ -37,5 +37,8 @@ const char USER_DEFAULT[] = "qsmaster";
 
 const char ENV_WRESULTPATH[] = "QSW_RESULTPATH";
 const char ENV_XRDID[] = "XRDNAME";
+
+const char SUBCHUNKDB_PREFIX[] = "Subchunks_";
+const char SCISQLDB_PREFIX[] = "scisql_";
 }}
 #endif // LSST_QSERV_CONSTANTS_H
