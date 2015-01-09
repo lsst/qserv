@@ -71,17 +71,17 @@ class CommandParser(object):
             "match",
             "isView"],
         "createTableSphBox" : [
-            "overlap"],
-        "createTableDir" : [
             "dirTable",
+            # "overlap" # overlap should inherit from db if unspecified.
+            ],
+        "createTableDir" : [
             "dirColName",
             "latColName",
             "lonColName"
             ],
-        "createChildTableJ" : [
-            "dirTable",
+        "createChildTable" : [
             "dirColName",
-            ]
+            ],
         "createChildTableExtra" : [
             "latColName",
             "lonColName"]
@@ -385,6 +385,10 @@ class CommandParser(object):
             # only sphBox allowed
             self._checkExist(opts,
                              CommandParser.requiredOpts["createTableSphBox"])
+            if opts["tableName"] == opts["dirTable"]:
+                self._checkExist(opts, CommandParser.requiredOpts["createTableDir"])
+            else: # child table
+                self._checkExist(opts, CommandParser.requiredOpts["createChildTable"])
         return opts
 
 
