@@ -28,8 +28,17 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
-char const VERSION_PATH[] = "/CSSversion"; ///< Path to version
-char const VERSION[] = "1"; ///< Current supported version
+// Current version of metadata store.
+// VERSION and VERSION_KEY are used by qservAdmin.py and css/Facade .
+// Version number is stored in the KV store by qservAdmin when first
+// database is created. All other clients are supposed to check stored
+// version against compiled-in version and fail if they do not match.
+// Another place where version number appears is qproc/testMap.kvmap.
+char const VERSION_KEY[] = "/css_meta/version"; ///< Path to version
+int const VERSION = 1; ///< Current supported version (integer)
+// kvInterface treats everything as strings, so to avoid multiple
+// conversions I define this string once and use it with kvInterface
+char const VERSION_STR[] = "1"; ///< Current supported version
 
 }}} // namespace lsst::qserv::css
 

@@ -41,15 +41,10 @@ import socket
 import uuid
 
 from lsst.qserv.css.kvInterface import KvInterface, KvException
+# Current metadata version info
+from lsst.qserv.css import VERSION_KEY
+from lsst.qserv.css import VERSION
 from lsst.qserv.admin.qservAdminException import QservAdminException
-
-# Define version of metadata structure.
-# NOTE: THIS NUMBER MUST MATCH VERSION DEFINED IN CSS/FACADE.
-# Version number is stored in the KV store by this class when first
-# database is created. All other clients are supposed to check stored
-# version against compiled-in version and fail if they do not match.
-VERSION = 1
-VERSION_KEY = '/css_meta/version'
 
 # Possible options
 possibleOpts = {"table" : set(["schema", "compression", "match"]),

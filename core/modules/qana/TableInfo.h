@@ -68,6 +68,9 @@
 // Third-party headers
 #include "boost/shared_ptr.hpp"
 
+// Qserv headers
+#include "global/constants.h" // for SUBCHUNKDB_PREFIX
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -158,7 +161,7 @@ struct TableInfo {
     }
 
     std::string const getSubChunkDb() const {
-        return "Subchunks_" + database + "_" + CHUNK_TAG;
+        return SUBCHUNKDB_PREFIX + database + "_" + CHUNK_TAG;
     }
     std::string const getChunkTemplate() const {
         return table + "_" + CHUNK_TAG;

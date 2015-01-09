@@ -43,6 +43,7 @@
 #include "lsst/log/Log.h"
 
 // Local headers
+#include "css/constants.h"
 #include "css/CssError.h"
 #include "css/KvInterfaceImplMem.h"
 #include "global/stringTypes.h"
@@ -51,23 +52,6 @@ using std::endl;
 using std::map;
 using std::string;
 using std::vector;
-
-namespace {
-
-// Define version of metadata structure.
-// NOTE: THIS NUMBER MUST MATCH VERSION DEFINED IN qservAdmin.py.
-// Version number is stored in the KV store by qservAdmin when first
-// database is created. All other clients are supposed to check stored
-// version against compiled-in version and fail if they do not match.
-// Another place where version number appears is qproc/testMap.kvmap.
-const int VERSION = 1;
-// kvInterface treats everything as strings, so to avoid multiple
-// conversions I define this string once and use it with kvInterface
-const std::string VERSION_STR = boost::lexical_cast<std::string>(VERSION);
-const std::string VERSION_KEY("/css_meta/version");
-
-}
-
 
 namespace lsst {
 namespace qserv {
@@ -364,17 +348,17 @@ Facade::getMatchTableParams(std::string const& dbName,
  */
 int
 Facade::cssVersion() {
-    return ::VERSION;
+    return lsst::qserv::css::VERSION;
 }
 
 void
 Facade::_versionCheck() const {
-    const string& vstr = _kvI->get(::VERSION_KEY, string());
+    const string& vstr = _kvI->get(lsst::qserv::css::VERSION_KEY, string());
     if (vstr.empty()) {
-        throw VersionMissingError(::VERSION_KEY);
+        throw VersionMissingError(lsst::qserv::css::VERSION_KEY);
     }
-    if (vstr != ::VERSION_STR) {
-        throw VersionMismatchError(::VERSION_STR, vstr);
+    if (vstr != lsst::qserv::css::VERSION_STR) {
+        throw VersionMismatchError(lsst::qserv::css::VERSION_STR, vstr);
     }
 }
 

@@ -33,6 +33,7 @@ Access to the classes from the qserv_css library
 #include "css/constants.h"
 #include "css/KvInterface.h"
 #include "css/KvInterfaceImplMem.h"
+#include "global/constants.h"
 %}
 
 %include typemaps.i
@@ -58,3 +59,4 @@ namespace std {
 %include "css/constants.h"
 %include "css/KvInterface.h"
 %include "css/KvInterfaceImplMem.h"
+%include "global/constants.h"
