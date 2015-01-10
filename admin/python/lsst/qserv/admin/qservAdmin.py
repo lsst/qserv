@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # LSST Data Management System
-# Copyright 2013-2014 AURA/LSST.
+# Copyright 2013-2015 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -44,6 +44,10 @@ from lsst.qserv.css.kvInterface import KvInterface, KvException
 # Current metadata version info
 from lsst.qserv.css import VERSION_KEY
 from lsst.qserv.css import VERSION
+# Disallowed db prefixes
+from lsst.qserv.css import SUBCHUNKDB_PREFIX
+from lsst.qserv.css import SCISQLDB_PREFIX
+
 from lsst.qserv.admin.qservAdminException import QservAdminException
 
 # Possible options
@@ -59,6 +63,48 @@ possibleOpts = {"table" : set(["schema", "compression", "match"]),
 # partitioned, respectively. In each cases, all possible opts in
 # its category are required.
 requiredOpts = { "table" : ["schema"]}
+
+reservedDbPrefixes = [SCISQLDB_PREFIX, SUBCHUNKDB_PREFIX]
+
+def validateDbNameOrThrow(dbName):
+    for p in reservedDbPrefixes:
+        if dbName.startswith(p):
+            raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, dbName)
+    return
+
+def validateTableNameOrThrow(tableName):
+    if False: # placeholder
+        raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, tableName)
+
+def validateMatchTableOpts(matchOpts):
+    # See TableInfoPool.cc for match table constraints.
+    for k in ["dirTable1", "dirTable2", "dirColName1", "dirColName2"]:
+        if k not in matchOpts:
+            raise QservAdminException(
+                QservAdminException.MISSING_PARAM, k)
+        if not matchOpts.get(k): # Zero-length?
+            raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, k)
+    # match same table?
+    if matchOpts["dirTable1"] == matchOpts["dirTable2"]:
+        raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, "dirTable2")
+    dirCol1 = matchOpts["dirColName1"]
+    dirCol2 = matchOpts["dirColName2"]
+    if (not dirCol1) or (not dirCol2) or (dirCol1 == dirCol2):
+        raise QservAdminException(
+            QservAdminException.WRONG_PARAM_VAL,
+            "Director column names must be non-empty and distinct")
+    # Unsure how to validate flagColName
+    return
+
+def validateDirTableOpts(opts):
+    if not opts.get("subChunks", "0") in "012":
+        raise QservAdminException(
+            QservAdminException.WRONG_PARAM_VAL, "subChunks")
+    # Make sure these exist and are non-empty
+    for k in ["lonColName", "latColName", "dirColName"]:
+        if not opts.get(k, None):
+            raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, k)
+    return
 
 class QservAdmin(object):
     """
@@ -161,6 +207,7 @@ class QservAdmin(object):
         """
         self._logger.debug("Create database '%s', options: %s",
                            dbName, options)
+        validateDbNameOrThrow(dbName)
         # client should guarantee existence of "partitioning" option
         if "partitioning" not in options:
             raise QservAdminException(QservAdminException.INTERNAL)
@@ -225,6 +272,7 @@ class QservAdmin(object):
         # first check version
         self._versionCheck()
 
+        validateDbNameOrThrow(dbName)
         dbP = "/DBS/%s" % dbName
         dbP2 = "/DBS/%s" % templateDbName
         if dbName == templateDbName:
@@ -324,6 +372,9 @@ class QservAdmin(object):
         self._logger.debug("Create table '%s.%s', options: %s",
                            dbName, tableName, options)
 
+        validateDbNameOrThrow(dbName)
+        validateTableNameOrThrow(tableName)
+
         # first check version
         self._versionCheck()
 
@@ -336,6 +387,8 @@ class QservAdmin(object):
 
     def createTableLike(self, dbName, tableName, options):
         """FIXME, createTableLike is not implemented!"""
+        validateDbNameOrThrow(dbName)
+        validateTableNameOrThrow(tableName)
         raise QservAdminException(QservAdminException.NOT_IMPLEMENTED)
 
     def dropTable(self, dbName, tableName):
@@ -362,7 +415,7 @@ class QservAdmin(object):
                 if k not in d:
                     self._logger.error("'%s' not provided" % k)
                     raise QservAdminException(
-                        QservAdminException.MISSING_PARAM)
+                        QservAdminException.MISSING_PARAM, k)
         check(tbOpts, possibleOpts["table"])
         checkFail(tbOpts, requiredOpts["table"])
         if matchOpts:

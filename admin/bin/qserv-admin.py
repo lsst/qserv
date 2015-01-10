@@ -45,6 +45,7 @@ import sys
 # local imports
 from lsst.qserv.css.kvInterface import KvException
 from lsst.qserv.admin.qservAdmin import QservAdmin
+from lsst.qserv.admin.qservAdmin import validateMatchTableOpts
 from lsst.qserv.admin.qservAdminException import QservAdminException
 
 ####################################################################################
@@ -84,7 +85,12 @@ class CommandParser(object):
             ],
         "createChildTableExtra" : [
             "latColName",
-            "lonColName"]
+            "lonColName"],
+        "createTableMatch" : [
+            "dirTable1",
+            "dirColName1",
+            "dirTable2",
+            "dirColName2"],
         }
 
     def __init__(self, connInfo):
@@ -382,9 +388,19 @@ class CommandParser(object):
         # these are required options for createTable
         self._checkExist(opts, CommandParser.requiredOpts["createTable"])
         if opts["partitioning"] != "0":
-            # only sphBox allowed
-            self._checkExist(opts,
-                             CommandParser.requiredOpts["createTableSphBox"])
+            self._processTbPartitionOpts(opts)
+        return opts
+
+    def _processTbPartitionOpts(self, opts):
+        # only sphBox allowed
+        self._checkExist(opts,
+                         CommandParser.requiredOpts["createTableSphBox"])
+        if opts.get("match", "0") != "0":
+            pass # Defer to qservAdmin to check opts
+        else:
+            # Fill-in dirTable
+            if not opts.get("dirTable", None):
+                opts["dirTable"] = opts["tableName"]
             if opts["tableName"] == opts["dirTable"]:
                 self._checkExist(opts, CommandParser.requiredOpts["createTableDir"])
             else: # child table
