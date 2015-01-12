@@ -53,9 +53,16 @@ class PartConfig(UserDict.UserDict):
     Implemented as a dictionary with some extra methods.
     """
 
-    # keys that must be defined in partitioner config files
-    requiredConfigKeys = ['part.num-stripes', 'part.num-sub-stripes',
-                          'part.default-overlap']
+    # keys that must be defined in partitioner config files for any table
+    requiredConfigKeys = []
+    # keys that must be defined for refMatch tables
+    requiredRefMatchKeys = ['part.num-stripes', 'part.num-sub-stripes',
+                            'part.default-overlap', 'dirTable1', 'dirColName1',
+                            'dirTable2', 'dirColName2']
+    # keys that must be defined for partitioned non-refMatch tables
+    requiredPartKeys = ['part.num-stripes', 'part.num-sub-stripes',
+                        'part.default-overlap', 'part.overlap',
+                        'dirTable']
 
     def __init__(self, files):
         """
@@ -94,10 +101,14 @@ class PartConfig(UserDict.UserDict):
             self.data = options
 
         # check that we have a set of required options defined
-        for key in self.requiredConfigKeys:
-            if key not in self.data:
-                logging.error('Required option is missing from configuration files: %s', key)
-                raise KeyError('required option is missing: ' + key)
+        missing = [key for key in self.requiredConfigKeys if key not in self.data]
+        if self.isRefMatch:
+            missing += [key for key in self.requiredRefMatchKeys if key not in self.data]
+        elif self.partitioned:
+            missing += [key for key in self.requiredPartKeys if key not in self.data]
+        if missing:
+            logging.error('Required options are missing from configuration files: %s', ' '.join(missing))
+            raise KeyError('required options are missing: ' + ' '.join(missing))
 
     @property
     def partitioned(self):
@@ -105,9 +116,22 @@ class PartConfig(UserDict.UserDict):
         return 'part.pos' in self.data or 'part.pos1' in self.data
 
     @property
+    def isRefMatch(self):
+        """Returns True if table is a view"""
+        return 'part.pos1' in self and 'part.pos2' in self
+
+    @property
     def isView(self):
         """Returns True if table is a view"""
         return bool(self.data.get('view', False))
+
+    def isDirector(self, tableName):
+        """
+        Returns True if table is a director table. Director table name
+        is determined by dirTable parameter, if dirTable is not set then
+        Object is assumed to be a director table.
+        """
+        return tableName == self['dirTable']
 
     def cssDbOptions(self):
         """
@@ -128,10 +152,16 @@ class PartConfig(UserDict.UserDict):
                    'match': '0'
                    }
 
-        # refmatch table has part.pos1 instead of part.pos, CSS expects a string, not a number
-        isRefMatch = 'part.pos1' in self and 'part.pos2' in self
+        if self.isRefMatch:
 
-        if 'part.pos' in self:
+            # refmatch table
+            options['match'] = '1'
+            options['dirTable1'] = self['dirTable1']
+            options['dirColName1'] = self['dirColName1']
+            options['dirTable2'] = self['dirTable2']
+            options['dirColName2'] = self['dirColName2']
+
+        elif self.partitioned:
 
             # partitioned table
             pos = self['part.pos'].split(',')
@@ -140,16 +170,11 @@ class PartConfig(UserDict.UserDict):
             options['lonColName'] = raCol
             options['overlap'] = self['part.overlap']
             options['subChunks'] = self.get('part.subChunks', '1')
-            options['dirTable'] = self.get('dirTable', 'Object')
-            options['dirColName'] = self.get('dirColName', 'objectId')
-
-        elif 'part.pos1' in self and 'part.pos2' in self:
-
-            # refmatch table
-            options['match'] = '1'
-            options['dirTable1'] = self.get('dirTable1', 'Object')
-            options['dirColName1'] = self.get('dirColName1', 'objectId')
-            options['dirTable2'] = self.get('dirTable2', 'Object')
-            options['dirColName2'] = self.get('dirColName2', 'objectId')
+            options['dirTable'] = self['dirTable']
+            if 'dirColName' in self:
+                options['dirColName'] = self['dirColName']
+            else:
+                # for director table use id column name instead
+                options['dirColName'] = self['id']
 
         return options

@@ -80,7 +80,8 @@ class DataLoader(object):
                              create chunk tables.
         @param cssConn:      Connection string for CSS service.
         @param cssClear:     If true then CSS info for a table will be deleted first.
-        @param indexDb:      Name of  database for object indices.
+        @param indexDb:      Name of  database for object indices, index is generated for director
+                             table when it is partitioned, use empty string to disable index.
         @param emptyChunks:  Path name for "empty chunks" file, may be None.
         @param deleteTables: If True then existing tables in database will be deleted.
         @param loggerName:   Logger name used for logging all messages from loader.
@@ -121,7 +122,7 @@ class DataLoader(object):
 
         # Logic is slightly complicated here, so pre-calculate options that we need below:
         # 1. If self.skipPart and self.oneTable are both true then we skip partitioning
-        #    even for partitioned tables abnd load original data. So if self.skipPart and
+        #    even for partitioned tables and load original data. So if self.skipPart and
         #    self.oneTable are both true then we say table is not partitioned
         # 2. Partitioning is done only for partitioned table, if self.skipPart is true then
         #    pre-partitioned data must exist already and we skip calling partitioner
@@ -734,8 +735,8 @@ class DataLoader(object):
         Generate object index in czar meta database.
         """
 
-        # only makes sense for true partitioned tables
-        if not self.partitioned or not self.indexDb:
+        # only makes sense for director table
+        if not self.partitioned or not self.partOptions.isDirector(table) or not self.indexDb:
             return
 
         metaTable = self.indexDb + '.' + database + '__' + table
