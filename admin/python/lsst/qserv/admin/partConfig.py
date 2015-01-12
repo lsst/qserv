@@ -109,6 +109,14 @@ class PartConfig(UserDict.UserDict):
         """Returns True if table is a view"""
         return bool(self.data.get('view', False))
 
+    def isDirector(self, tableName):
+        """
+        Returns True if table is a director table. Director table name
+        is determined by dirTable parameter, if dirTable is not set then
+        Object is assumed to be a director table.
+        """
+        return tableName == self.get('dirTable', 'Object')
+
     def cssDbOptions(self):
         """
         Returns dictionary of CSS options for database.
