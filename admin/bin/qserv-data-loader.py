@@ -161,9 +161,10 @@ class Loader(object):
                            help='Path name for "empty chunks" file, if not specified then this file is '
                            'not produced.')
         group.add_argument('-i', '--index-db', dest='indexDb', default='qservMeta', metavar='DB_NAME',
-                           help='Name of the database which keeps czar-side object index, '
-                           'def: %(default)s. Set to empty string to avoid building index. '
-                           'If name is not empty then database must already exist.')
+                           help='Name of the database which keeps czar-side object index, def: '
+                           '%(default)s. Index is generated only for director table which is specified '
+                           'with dirTable option in configuration file. Set to empty string to avoid '
+                           'building index. If name is not empty then database must already exist.')
         group.add_argument('-e', '--delete-tables', dest='deleteTables', default=False, action='store_true',
                            help='If specified then existing tables in database will be deleted if '
                            'they exist, this includes both data and metadata.')
