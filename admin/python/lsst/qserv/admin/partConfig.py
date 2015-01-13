@@ -137,7 +137,9 @@ class PartConfig(UserDict.UserDict):
         """
         Returns dictionary of CSS options for database.
         """
-        options = {'nStripes': self['part.num-stripes'],
+        options = {'partitioning': "1",
+                   'partitioningStrategy': "sphBox",
+                   'nStripes': self['part.num-stripes'],
                    'nSubStripes': self['part.num-sub-stripes'],
                    'overlap': self['part.default-overlap'],
                    'storageClass': self.get('storageClass', 'L2')
