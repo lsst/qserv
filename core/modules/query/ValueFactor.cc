@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,6 +33,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "query/ValueFactor.h"
 
 // System headers
@@ -40,12 +41,11 @@
 #include <iterator>
 #include <sstream>
 
-// Local headers
+// Qserv headers
 #include "query/ColumnRef.h"
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueExpr.h"
-
 
 namespace lsst {
 namespace qserv {

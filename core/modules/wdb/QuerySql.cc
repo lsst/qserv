@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -32,12 +32,13 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "wdb/QuerySql.h"
 
 // System headers
 #include <iostream>
 
-// Local headers
+// Qserv headers
 #include "global/constants.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"

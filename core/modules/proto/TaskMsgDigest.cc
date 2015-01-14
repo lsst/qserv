@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012 LSST Corporation.
+ * Copyright 2012-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,14 +20,20 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
+// Class header
 #include "proto/TaskMsgDigest.h"
 
-#include "worker.pb.h"
+// System headers
 #ifdef __SUNPRO_CC
 #include <sys/md5.h>
 #else // Linux?
 #include <openssl/md5.h>
 #endif
+
+// Qserv headers
+#include "worker.pb.h"
+
 namespace {
     char hexChar[16] = {'0', '1', '2', '3',
                         '4', '5', '6', '7',

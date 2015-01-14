@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2009-2014 LSST Corporation.
+ * Copyright 2009-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,7 +30,7 @@
 // Third-party headers
 #include "boost/make_shared.hpp"
 
-// Local headers
+// Qserv headers
 #include "rproc/SqlInsertIter.h"
 #include "util/PacketBuffer.h"
 #include "xrdc/XrdBufferSource.h"

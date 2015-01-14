@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2013 LSST Corporation.
+ * Copyright 2008-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -22,6 +22,7 @@
  */
 /// Implements MySqlFsDirectory, which rejects directory modification ops.
 
+// Class header
 #include "xrdfs/MySqlFsDirectory.h"
 
 // System headers
@@ -29,8 +30,6 @@
 
 // Third-party headers
 #include "XrdSys/XrdSysError.hh"
-
-// Local headers
 
 
 namespace lsst {

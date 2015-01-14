@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -31,7 +31,7 @@
 #include "lsst/log/Log.h"
 #include "boost/make_shared.hpp"
 
-// Local headers
+// Qserv headers
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
 #include "util/StringHash.h"

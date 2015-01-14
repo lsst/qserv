@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2012-2014 LSST Corporation.
+ * Copyright 2012-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "wbase/Task.h"
 
 // Third-party headers
@@ -35,7 +36,7 @@
 #include "boost/regex.hpp"
 #include "boost/thread.hpp"
 
-// Local headers
+// Qserv headers
 #include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "wbase/Base.h"

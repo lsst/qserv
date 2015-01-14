@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008, 2009, 2010 LSST Corporation.
+ * Copyright 2008-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -27,6 +27,7 @@
 //  Should parameterize things to stop hardcoding table names
 // and column names.
 
+// Class header
 #include "wbase/Base.h"
 
 // System headers
@@ -42,7 +43,7 @@
 // Third-party headers
 #include "boost/format.hpp"
 
-// Local headers
+// Qserv headers
 #include "util/StringHash.h"
 
 

@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2011-2014 LSST Corporation.
+ * Copyright 2011-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -33,6 +33,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
 #include "wcontrol/RequestTaker.h"
 
 // Third-party headers
@@ -40,7 +41,7 @@
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
-// Local headers
+// Qserv headers
 #include "obsolete/QservPath.h"
 #include "proto/worker.pb.h"
 

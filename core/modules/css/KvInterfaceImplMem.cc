@@ -2,7 +2,7 @@
 
 /*
  * LSST Data Management System
- * Copyright 2014 AURA/LSST.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,6 +38,7 @@
  *  - perhaps switch to async (seems to be recommended by zookeeper)
  */
 
+// Class header
 #include "css/KvInterfaceImplMem.h"
 
 // System headers
@@ -55,7 +56,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Local headers
+// Qserv headers
 #include "css/CssError.h"
 
 using std::endl;

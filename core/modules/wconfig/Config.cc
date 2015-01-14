@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2014 LSST Corporation.
+ * Copyright 2008-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -24,6 +24,7 @@
 /// Includes Config class implementation and declarations of key
 /// environment variables for qserv worker instances.
 
+// Class header
 #include "wconfig/Config.h"
 
 // System headers
@@ -34,7 +35,7 @@
 #include "boost/make_shared.hpp"
 #include "boost/thread/once.hpp"
 
-// Local headers
+// Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlConnection.h"
 
