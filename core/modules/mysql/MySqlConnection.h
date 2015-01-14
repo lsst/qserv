@@ -66,6 +66,8 @@ public:
         assert(_mysql);
         return mysql_field_count(_mysql);
     }
+    unsigned int getErrno() const { assert(_mysql); return mysql_errno(_mysql); }
+    const std::string getError() const { assert(_mysql); return std::string(mysql_error(_mysql)); }
     MySqlConfig const& getConfig() const { return *_sqlConfig; }
     bool selectDb(std::string const& dbName);
 

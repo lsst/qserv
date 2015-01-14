@@ -198,9 +198,9 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             }
         }
     } else {
-        _status.report(ExecStatus::MERGE_ERROR);
+        ResponseRequester::Error err = _requester->getError();
+        _status.report(ExecStatus::MERGE_ERROR, err.code, err.msg);
     }
-
 }
 
 /// Finalize under error conditions and retry or report completion

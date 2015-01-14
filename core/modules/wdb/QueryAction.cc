@@ -101,7 +101,11 @@ private:
     bool _dispatchChannel();
     /// Obtain a result handle for a query.
     MYSQL_RES* _primeResult(std::string const& query);
+
+    // FIXME: break this out to a utility "multierror" class?
     void _addErrorMsg(int errorCode, std::string const& errorMsg);
+    std::string _getCombinedErrorMsg();
+
     bool _fillRows(MYSQL_RES* result, int numFields);
     void _fillSchema(MYSQL_RES* result);
     void _initMsgs();
@@ -117,6 +121,7 @@ private:
     std::auto_ptr<mysql::MySqlConnection> _mysqlConn;
     std::string _user;
 
+    // FIXME: break this out to a utility "multierror" class?
     typedef std::pair<int, std::string> IntString;
     typedef std::vector<IntString> IntStringVector;
     IntStringVector _errors; ///< Error log
@@ -177,6 +182,7 @@ bool QueryAction::Impl::act() {
 MYSQL_RES* QueryAction::Impl::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if(!queryOk) {
+            _addErrorMsg(_mysqlConn->getErrno(), _mysqlConn->getError());
             return NULL;
         }
         return _mysqlConn->getResult();
@@ -186,9 +192,28 @@ void QueryAction::Impl::_addErrorMsg(int code, std::string const& msg) {
     _errors.push_back(IntString(code, msg));
 }
 
+std::string QueryAction::Impl::_getCombinedErrorMsg() {
+    std::ostringstream str;
+    switch(_errors.size()) {
+    case 0:
+        break;
+    case 1:
+        str << "[" << _errors.front().first << "] " << _errors.front().second;
+        break;
+    default:
+        str << "Multi-error:";
+        for(QueryAction::Impl::IntStringVector::const_iterator i=_errors.begin(); i!=_errors.end(); ++i) {
+            str << std::endl << "    [" << i->first << "] " << i->second;
+        }
+        break;
+    }
+    return str.str();
+}
+
 void QueryAction::Impl::_initMsgs() {
     _protoHeader = boost::make_shared<proto::ProtoHeader>();
     _result = boost::make_shared<proto::Result>();
+    _result->mutable_rowschema();
     if(_msg->has_session()) {
         _result->set_session(_msg->session());
     }
@@ -243,10 +268,14 @@ bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
 
 /// Send results through SendChannel stream
 void QueryAction::Impl::_transmitResult() {
-    // FIXME: send errors too!
     // Serialize result first, because we need the size and md5 for the header
     std::string resultString;
     _result->set_nextsize(0);
+    if (!_errors.empty()) {
+        std::string msg = _getCombinedErrorMsg();
+        _result->set_errormsg(msg);
+        LOGF(_log, LOG_LVL_INFO, msg);
+    }
     _result->SerializeToString(&resultString);
 
     // Set header
@@ -302,6 +331,7 @@ bool QueryAction::Impl::_dispatchChannel() {
     proto::TaskMsg& m = *_task->msg;
     _initMsgs();
     bool firstResult = true;
+    bool erred = false;
     int numFields = -1;
     if(m.fragment_size() < 1) {
         throw Bug("QueryAction: No fragments to execute in TaskMsg");
@@ -315,9 +345,8 @@ bool QueryAction::Impl::_dispatchChannel() {
         for(int qi=0, qe=f.query_size(); qi != qe; ++qi) {
             MYSQL_RES* res = _primeResult(f.query(qi));
             if(!res) {
-                // FIXME: report a sensible error that can be handled and returned to the user.
-                throw std::runtime_error("Couldn't get result");
-                return false;
+                erred = true;
+                continue;
             }
             if(firstResult) {
                 _fillSchema(res);
@@ -327,14 +356,14 @@ bool QueryAction::Impl::_dispatchChannel() {
             // successive queries have the same result schema.
             // Now get rows...
             if(!_fillRows(res, numFields)) {
-                break;
+                erred = true;
             }
             _mysqlConn->freeResult();
         } // Each query in a fragment
     } // Each fragment in a msg.
     // Send results.
     _transmitResult();
-    return true;
+    return !erred;
 }
 
 void QueryAction::Impl::poison() {
