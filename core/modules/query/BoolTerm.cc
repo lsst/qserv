@@ -93,7 +93,10 @@ namespace {
         for(i = lst.begin(); i != lst.end(); ++i) {
             if(!sep.empty() && ++count > 1) { qt.append(sep); }
             if(!*i) { throw std::logic_error("Bad list term"); }
+            bool parensNeeded = (sep == "AND") && (dynamic_cast<OrTerm*>(&(**i)) != NULL);
+            if (parensNeeded) qt.append("(");
             (**i).renderTo(qt);
+            if (parensNeeded) qt.append(")");
         }
     }
 }
