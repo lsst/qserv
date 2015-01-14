@@ -28,6 +28,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// No public interface (no QservRestrictorPlugin.h)
 // Parent class
 #include "qana/QueryPlugin.h"
 

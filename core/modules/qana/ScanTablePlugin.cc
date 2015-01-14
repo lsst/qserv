@@ -28,6 +28,11 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// No public interface (no ScanTablePlugin.h)
+// Parent class
+#include "qana/QueryPlugin.h"
+
+
 // Third-party headers
 #include "boost/make_shared.hpp"
 
@@ -36,7 +41,6 @@
 
 // Qserv headers
 #include "global/stringTypes.h"
-#include "qana/QueryPlugin.h" // Parent class
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/QsRestrictor.h"

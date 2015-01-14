@@ -46,6 +46,9 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Class header
+#include "ccontrol/userQueryProxy.h"
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -53,7 +56,6 @@
 #include "ccontrol/MissingUserQuery.h"
 #include "ccontrol/SessionManager.h"
 #include "ccontrol/UserQuery.h"
-#include "ccontrol/userQueryProxy.h"
 #include "util/StringHash.h"
 
 namespace {

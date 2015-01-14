@@ -26,6 +26,7 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// No public interface (no WherePlugin.h)
 // Parent class
 #include "qana/QueryPlugin.h"
 
