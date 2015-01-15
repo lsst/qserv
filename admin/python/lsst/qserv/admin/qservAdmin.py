@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # LSST Data Management System
-# Copyright 2013-2014 AURA/LSST.
+# Copyright 2013-2015 AURA/LSST.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -41,15 +41,13 @@ import socket
 import uuid
 
 from lsst.qserv.css.kvInterface import KvInterface, KvException
+# Disallowed db prefixes
+from lsst.qserv.css import SUBCHUNKDB_PREFIX
+from lsst.qserv.css import SCISQLDB_PREFIX
+# Current metadata version info
+from lsst.qserv.css import VERSION_KEY
+from lsst.qserv.css import VERSION
 from lsst.qserv.admin.qservAdminException import QservAdminException
-
-# Define version of metadata structure.
-# NOTE: THIS NUMBER MUST MATCH VERSION DEFINED IN CSS/FACADE.
-# Version number is stored in the KV store by this class when first
-# database is created. All other clients are supposed to check stored
-# version against compiled-in version and fail if they do not match.
-VERSION = 1
-VERSION_KEY = '/css_meta/version'
 
 # Possible options
 possibleOpts = {"table" : set(["schema", "compression", "match"]),
@@ -60,6 +58,52 @@ possibleOpts = {"table" : set(["schema", "compression", "match"]),
                                   "lonColName", "latColName",
                                   "dirColName", "overlap"])
                 }
+# match and partition options are only required if table is match or
+# partitioned, respectively. In each cases, all possible opts in
+# its category are required.
+requiredOpts = { "table" : ["schema"]}
+
+reservedDbPrefixes = [SCISQLDB_PREFIX, SUBCHUNKDB_PREFIX]
+
+def validateDbNameOrThrow(dbName):
+    for p in reservedDbPrefixes:
+        if dbName.startswith(p):
+            raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, dbName)
+    return
+
+def validateTableNameOrThrow(tableName):
+    if False: # placeholder
+        raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, tableName)
+
+def validateMatchTableOpts(matchOpts):
+    # See TableInfoPool.cc for match table constraints.
+    for k in ["dirTable1", "dirTable2", "dirColName1", "dirColName2"]:
+        if k not in matchOpts:
+            raise QservAdminException(
+                QservAdminException.MISSING_PARAM, k)
+        if not matchOpts.get(k): # Zero-length?
+            raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, k)
+    # match same table?
+    if matchOpts["dirTable1"] == matchOpts["dirTable2"]:
+        raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, "dirTable2")
+    dirCol1 = matchOpts["dirColName1"]
+    dirCol2 = matchOpts["dirColName2"]
+    if (not dirCol1) or (not dirCol2) or (dirCol1 == dirCol2):
+        raise QservAdminException(
+            QservAdminException.WRONG_PARAM_VAL,
+            "Director column names must be non-empty and distinct")
+    # Unsure how to validate flagColName
+    return
+
+def validateDirTableOpts(opts):
+    if not opts.get("subChunks", "0") in "012":
+        raise QservAdminException(
+            QservAdminException.WRONG_PARAM_VAL, "subChunks")
+    # Make sure these exist and are non-empty
+    for k in ["lonColName", "latColName", "dirColName"]:
+        if not opts.get(k, None):
+            raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, k)
+    return
 
 class QservAdmin(object):
     """
@@ -101,7 +145,7 @@ class QservAdmin(object):
             pass # Ignore missing (dummy) node
 
     def _getMaybePacked(self, node, keys):
-        """Ged data from a node which could be packed or not"""
+        """Get data from a node which could be packed or not"""
         # try packed stuff first
         if self._kvI.exists(node + '.json'):
             # if json packed then convert back to Python object
@@ -152,21 +196,32 @@ class QservAdmin(object):
         """
         Create database (options specified explicitly). Options is a dictionary
         with these keys and values:
+          Required:
+          - storageClass: one of 'L1', 'L2', 'L3'
+          - partitioning: '0' or '1'
+          Required if partitioning != '0'
+          - partitioningStrategy: 'sphBox' (no other strategies supported now)
           - nStripes:     number of partitioning stripes
           - nSubStripes:  number of partitioning sub-stripes
           - overlap:      size of chunk overlap, default per-database value
-          - storageClass: one of 'L1', 'L2', 'L3'
 
         @param dbName    Database name
         @param options   Dictionary with options (key/value)
         """
         self._logger.debug("Create database '%s', options: %s",
                            dbName, options)
-        # double check if all required options are specified
-        for x in ["nStripes", "nSubStripes", "overlap", "storageClass"]:
-            if x not in options:
-                self._logger.error("Required option '%s' missing", x)
-                raise KvException(KvException.MISSING_PARAM, x)
+        validateDbNameOrThrow(dbName)
+        # client should guarantee existence of "partitioning" option
+        if "partitioning" not in options:
+            raise QservAdminException(QservAdminException.INTERNAL,
+                                      "createDb without partitioning option")
+        usePartitioning = options["partitioning"]
+        if usePartitioning:
+            # double check if all required options are specified
+            for x in ["nStripes", "nSubStripes", "storageClass"]:
+                if x not in options:
+                    self._logger.error("Required option '%s' missing", x)
+                    raise KvException(KvException.MISSING_PARAM, x)
 
         # first check version or store it
         with self._kvI.getLockObject(VERSION_KEY, self._uniqueId()):
@@ -184,18 +239,19 @@ class QservAdmin(object):
                                       dbName)
                     return
                 self._kvI.create(dbP, "PENDING")
-                ptP = self._kvI.create("/PARTITIONING/_", sequence=True)
-
-                options["uuid"] = str(uuid.uuid4())
-                partOptions = dict((k, v) for k, v in options.items()
-                                   if k in ["nStripes", "nSubStripes", "overlap", "uuid"])
-                self._addPacked(ptP, partOptions)
-
-                pId = ptP[-10:] # Partitioning id is always 10 digit, 0 padded
                 dbOpts = {"uuid" : str(uuid.uuid4()),
-                          "partitioningId" : pId,
                           "releaseStatus" : "UNRELEASED",
                           "storageClass" : options["storageClass"]}
+                if usePartitioning:
+                    ptP = self._kvI.create("/PARTITIONING/_", sequence=True)
+                    partOptions = dict((k, v) for k, v in options.items()
+                                       if k in ["nStripes",
+                                                "nSubStripes",
+                                                "overlap"])
+                    partOptions["uuid"] = str(uuid.uuid4())
+                    self._addPacked(ptP, partOptions)
+                    # Partitioning id is always 10 digit, 0 padded
+                    dbOpts["partitioningId"] = ptP[-10:]
                 self._addPacked(dbP, dbOpts)
                 self._createDbLockSection(dbP)
                 self._kvI.set(dbP, "READY")
@@ -219,6 +275,7 @@ class QservAdmin(object):
         # first check version
         self._versionCheck()
 
+        validateDbNameOrThrow(dbName)
         dbP = "/DBS/%s" % dbName
         dbP2 = "/DBS/%s" % templateDbName
         if dbName == templateDbName:
@@ -318,6 +375,9 @@ class QservAdmin(object):
         self._logger.debug("Create table '%s.%s', options: %s",
                            dbName, tableName, options)
 
+        validateDbNameOrThrow(dbName)
+        validateTableNameOrThrow(tableName)
+
         # first check version
         self._versionCheck()
 
@@ -327,6 +387,12 @@ class QservAdmin(object):
                                   dbName)
                 return
             self._createTable(options, dbName, tableName)
+
+    def createTableLike(self, dbName, tableName, options):
+        """FIXME, createTableLike is not implemented!"""
+        validateDbNameOrThrow(dbName)
+        validateTableNameOrThrow(tableName)
+        raise QservAdminException(QservAdminException.NOT_IMPLEMENTED)
 
     def dropTable(self, dbName, tableName):
         """
@@ -341,15 +407,46 @@ class QservAdmin(object):
             tbP = "/DBS/%s/TABLES/%s" % (dbName, tableName)
             self._deletePacked(tbP)
 
-    def _normalizeTableOpts(self, tbOpts, matchOpts, partitionOpts):
+    def _getDefaults(self, dbName, tableName):
+        """Try to retrieve defaults based on a database and table"""
+        defaults = {}
+        dbInfo = self.getDbInfo(dbName)
+        partId =  dbInfo["partitioningId"]
+        if partId:
+            partInfo = self.getPartInfo(partId)
+            if "overlap" in partInfo:
+                defaults["overlap"] = partInfo["overlap"]
+        return defaults
+
+    def _setDefault(self, keys, opts, defaults):
+        for k in keys:
+            if k in opts:
+                continue # nothing to do, already set
+            elif k in defaults:
+                opts[k] = defaults[k]
+            else:
+                self._logger.debug("Missing '%s', no default value" % (k))
+        return
+
+    def _normalizeTableOpts(self, tbOpts, matchOpts, partitionOpts, defaults):
         """Apply defaults and fixups to table options."""
         def check(d, possible):
             for k in possible:
                 if k not in d:
                     self._logger.info("'%s' not provided", k)
+        def checkFail(d, required):
+            for k in required:
+                if k not in d:
+                    self._logger.error("'%s' not provided", k)
+                    raise QservAdminException(
+                        QservAdminException.MISSING_PARAM, k)
         check(tbOpts, possibleOpts["table"])
-        check(matchOpts, possibleOpts["match"])
-        check(partitionOpts, possibleOpts["partition"])
+        checkFail(tbOpts, requiredOpts["table"])
+        if matchOpts:
+            checkFail(matchOpts, possibleOpts["match"])
+        if partitionOpts:
+            self._setDefault(["overlap"], partitionOpts, defaults)
+            checkFail(partitionOpts, possibleOpts["partition"])
         # Not sure where defaults should be stored now.
         pass
 
@@ -362,7 +459,13 @@ class QservAdmin(object):
                          if item[0] in possibleOpts["match"])
         partitionOpts = dict(item for item in options.items()
                              if item[0] in possibleOpts["partition"])
-        self._normalizeTableOpts(tbOpts, matchOpts, partitionOpts)
+        try:
+            defaults = self._getDefaults(dbName, tableName)
+            self._normalizeTableOpts(tbOpts, matchOpts, partitionOpts, defaults)
+        except QservAdminException as e:
+            self._logger.error("Failed to normalize opts for table '%s.%s', error was: %s",
+                                dbName, tableName, e)
+            raise
         try:
             self._kvI.create(tbP, "PENDING")
             self._addPacked(tbP, tbOpts)

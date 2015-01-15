@@ -56,9 +56,9 @@ typedef long long StringBufferOffset;
 typedef int StringBufferSize;
 
 // Constants
-extern std::string DUMP_BASE;
-extern std::string CREATE_SUBCHUNK_SCRIPT;
-extern std::string CLEANUP_SUBCHUNK_SCRIPT;
+extern std::string DUMP_BASE; // Non-const to allow runtime-update via config
+extern std::string const CREATE_SUBCHUNK_SCRIPT;
+extern std::string const CLEANUP_SUBCHUNK_SCRIPT;
 
 // Result-writing
 void updateResultPath(char const* resultPath=0);
