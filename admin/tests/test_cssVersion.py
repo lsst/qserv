@@ -61,7 +61,13 @@ def _makeAdmin(data=None):
 
 
 class TestCssVersion(unittest.TestCase):
-
+    def setUp(self):
+        self.defaultDbOptions = dict(nStripes='10',
+                                     nSubStripes='10',
+                                     overlap='0.0',
+                                     storageClass='L2',
+                                     partitioning='1',
+                                     partitioningStrategy='sphBox')
     def test1(self):
         """
         Check that if version is missing then it is created on
@@ -72,7 +78,7 @@ class TestCssVersion(unittest.TestCase):
         admin = _makeAdmin()
 
         # create database, this should also create version key
-        dbOptions = dict(nStripes='10', nSubStripes='10', overlap='0.0', storageClass='L2')
+        dbOptions = self.defaultDbOptions
         admin.createDb('TESTDB', dbOptions)
 
         # look at the version key
@@ -93,7 +99,7 @@ class TestCssVersion(unittest.TestCase):
         admin = _makeAdmin(initData)
 
         # create database, this checks version number
-        dbOptions = dict(nStripes='10', nSubStripes='10', overlap='0.0', storageClass='L2')
+        dbOptions = self.defaultDbOptions
         admin.createDb('TESTDB', dbOptions)
 
     def test3(self):
@@ -126,7 +132,7 @@ class TestCssVersion(unittest.TestCase):
         admin = _makeAdmin(initData)
 
         # create database, this checks version number
-        dbOptions = dict(nStripes='10', nSubStripes='10', overlap='0.0', storageClass='L2')
+        dbOptions = self.defaultDbOptions
         with self.assertRaises(QservAdminException):
             admin.createDb('TESTDB', dbOptions)
 
