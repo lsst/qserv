@@ -67,7 +67,93 @@ BOOST_AUTO_TEST_CASE(Factory) {
     QueryContext::Ptr context = tf.newContext();
 }
 
-BOOST_AUTO_TEST_CASE(RenderParentheses) {
+BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
+
+    PassTerm::Ptr pta = boost::make_shared<PassTerm>();
+    pta->_text = "A";
+    BoolFactor::Ptr bfa = boost::make_shared<BoolFactor>();
+    bfa->_terms.push_back(pta);
+
+    PassTerm::Ptr ptb = boost::make_shared<PassTerm>();
+    ptb->_text = "B";
+    BoolFactor::Ptr bfb = boost::make_shared<BoolFactor>();
+    bfb->_terms.push_back(ptb);
+
+    PassTerm::Ptr ptc = boost::make_shared<PassTerm>();
+    ptc->_text = "C";
+    BoolFactor::Ptr bfc = boost::make_shared<BoolFactor>();
+    bfc->_terms.push_back(ptc);
+
+    // AND
+    // +-- AND
+    // |   +-- A
+    // |   +-- B
+    // +-- C
+    {
+        AndTerm::Ptr t0 = boost::make_shared<AndTerm>();
+        t0->_terms.push_back(bfa);
+        t0->_terms.push_back(bfb);
+        AndTerm::Ptr t1 = boost::make_shared<AndTerm>();
+        t1->_terms.push_back(t0);
+        t1->_terms.push_back(bfc);
+        std::ostringstream str;
+        str << *t1;
+        BOOST_CHECK_EQUAL(str.str(), "A AND B AND C");
+    }
+
+    // AND
+    // +-- OR
+    // |   +-- A
+    // |   +-- B
+    // +-- C
+    {
+        OrTerm::Ptr t0 = boost::make_shared<OrTerm>();
+        t0->_terms.push_back(bfa);
+        t0->_terms.push_back(bfb);
+        AndTerm::Ptr t1 = boost::make_shared<AndTerm>();
+        t1->_terms.push_back(t0);
+        t1->_terms.push_back(bfc);
+        std::ostringstream str;
+        str << *t1;
+        BOOST_CHECK_EQUAL(str.str(), "(A OR B) AND C");
+    }
+
+    // OR
+    // +-- AND
+    // |   +-- A
+    // |   +-- B
+    // +-- C
+    {
+        AndTerm::Ptr t0 = boost::make_shared<AndTerm>();
+        t0->_terms.push_back(bfa);
+        t0->_terms.push_back(bfb);
+        OrTerm::Ptr t1 = boost::make_shared<OrTerm>();
+        t1->_terms.push_back(t0);
+        t1->_terms.push_back(bfc);
+        std::ostringstream str;
+        str << *t1;
+        BOOST_CHECK_EQUAL(str.str(), "A AND B OR C");
+    }
+
+    // OR
+    // +-- OR
+    // |   +-- A
+    // |   +-- B
+    // +-- C
+    {
+        OrTerm::Ptr t0 = boost::make_shared<OrTerm>();
+        t0->_terms.push_back(bfa);
+        t0->_terms.push_back(bfb);
+        OrTerm::Ptr t1 = boost::make_shared<OrTerm>();
+        t1->_terms.push_back(t0);
+        t1->_terms.push_back(bfc);
+        std::ostringstream str;
+        str << *t1;
+        BOOST_CHECK_EQUAL(str.str(), "A OR B OR C");
+    }
+}
+
+BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
 
     // Construct "refObjectId IS NULL OR flags<>2"
     ColumnRef::Ptr cr0 = ColumnRef::newShared("", "", "refObjectId");
@@ -122,10 +208,13 @@ BOOST_AUTO_TEST_CASE(RenderParentheses) {
     boost::shared_ptr<WhereClause> wc0 = boost::make_shared<WhereClause>();
     wc0->prependAndTerm(at0);
 
-    // Prepend the OR clause onto the WHERE as an additional AND term
-    wc0->prependAndTerm(ot0);
-    BOOST_TEST_MESSAGE(*wc0);
-
+    // Prepend the OR clause onto the WHERE as an additional AND term,
+    // render result, and check.  Should have parens around OR clause.
+    boost::shared_ptr<WhereClause> wc1 = wc0->clone();
+    wc1->prependAndTerm(ot0);
+    std::ostringstream str0;
+    str0 << *wc1;
+    BOOST_CHECK_EQUAL(str0.str(), "WHERE (refObjectId IS NULL OR flags<>2) AND foo!=bar AND baz<3.14159");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -87,13 +87,18 @@ namespace {
     template <typename Plist>
     inline void renderList(QueryTemplate& qt,
                            Plist const& lst,
+                           BoolTerm::OpPrecedence listOpPrecedence,
                            std::string const& sep) {
         int count=0;
         typename Plist::const_iterator i;
         for(i = lst.begin(); i != lst.end(); ++i) {
             if(!sep.empty() && ++count > 1) { qt.append(sep); }
             if(!*i) { throw std::logic_error("Bad list term"); }
-            bool parensNeeded = (sep == "AND") && (dynamic_cast<OrTerm*>(&(**i)) != NULL);
+            BoolTerm *asBoolTerm = dynamic_cast<BoolTerm*>(&**i);
+            BoolTerm::OpPrecedence termOpPrecedence = asBoolTerm
+                ? asBoolTerm->getOpPrecedence()
+                : BoolTerm::OTHER_PRECEDENCE;
+            bool parensNeeded = listOpPrecedence > termOpPrecedence;
             if (parensNeeded) qt.append("(");
             (**i).renderTo(qt);
             if (parensNeeded) qt.append(")");
@@ -102,14 +107,14 @@ namespace {
 }
 
 void OrTerm::renderTo(QueryTemplate& qt) const {
-    renderList(qt, _terms, "OR");
+    renderList(qt, _terms, getOpPrecedence(), "OR");
 }
 void AndTerm::renderTo(QueryTemplate& qt) const {
-    renderList(qt, _terms, "AND");
+    renderList(qt, _terms, getOpPrecedence(), "AND");
 }
 void BoolFactor::renderTo(QueryTemplate& qt) const {
     std::string s;
-    renderList(qt, _terms, s);
+    renderList(qt, _terms, getOpPrecedence(), s);
 }
 void UnknownTerm::renderTo(QueryTemplate& qt) const {
     qt.append("unknown");
