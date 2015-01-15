@@ -808,7 +808,10 @@ BOOST_AUTO_TEST_CASE(Expression) {
 
 BOOST_AUTO_TEST_CASE(dm646) {
     std::string stmt = "SELECT DISTINCT foo FROM Filter f;";
-    std::string expected = "SELECT DISTINCT foo FROM LSST.Filter f;";
+    std::string expected = "SELECT DISTINCT foo FROM LSST.Filter AS f";
+    testAndCompare(qsTest, stmt, expected);
+    stmt = "SELECT DISTINCT zNumObs FROM Object;";
+    expected = "SELECT DISTINCT zNumObs FROM LSST.Object_100 AS QST_1_";
     testAndCompare(qsTest, stmt, expected);
 }
 
