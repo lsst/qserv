@@ -80,6 +80,15 @@ public:
     virtual ~BoolTerm() {}
     virtual char const* getName() const { return "BoolTerm"; }
 
+    enum OpPrecedence {
+        OTHER_PRECEDENCE   = 3,  // terms joined stronger than AND -- no parens needed
+        AND_PRECEDENCE     = 2,  // terms joined by AND
+        OR_PRECEDENCE      = 1,  // terms joined by OR
+        UNKNOWN_PRECEDENCE = 0   // terms joined by ??? -- always add parens
+    };
+
+    virtual OpPrecedence getOpPrecedence() const { return UNKNOWN_PRECEDENCE; }
+
     virtual void findValueExprs(ValueExprList& list) {}
     virtual void findColumnRefs(ColumnRef::List& list) {}
 
@@ -109,6 +118,7 @@ public:
     typedef boost::shared_ptr<OrTerm> Ptr;
 
     virtual char const* getName() const { return "OrTerm"; }
+    virtual OpPrecedence getOpPrecedence() const { return OR_PRECEDENCE; }
 
     virtual void findValueExprs(ValueExprList& list) {
         typedef BoolTerm::PtrList::iterator Iter;
@@ -142,6 +152,7 @@ public:
     typedef boost::shared_ptr<AndTerm> Ptr;
 
     virtual char const* getName() const { return "AndTerm"; }
+    virtual OpPrecedence getOpPrecedence() const { return AND_PRECEDENCE; }
 
     virtual void findValueExprs(ValueExprList& list) {
         typedef BoolTerm::PtrList::iterator Iter;
@@ -174,6 +185,7 @@ class BoolFactor : public BoolTerm {
 public:
     typedef boost::shared_ptr<BoolFactor> Ptr;
     virtual char const* getName() const { return "BoolFactor"; }
+    virtual OpPrecedence getOpPrecedence() const { return OTHER_PRECEDENCE; }
 
     virtual void findValueExprs(ValueExprList& list) {
         typedef BfTerm::PtrList::iterator Iter;
