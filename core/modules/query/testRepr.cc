@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(Factory) {
 
 BOOST_AUTO_TEST_CASE(RenderParentheses) {
 
-    // refObjectId IS NULL OR flags<>2
+    // Construct "refObjectId IS NULL OR flags<>2"
     ColumnRef::Ptr cr0 = ColumnRef::newShared("", "", "refObjectId");
     boost::shared_ptr<ValueFactor> vf0 = ValueFactor::newColumnRefFactor(cr0);
     boost::shared_ptr<ValueExpr> ve0 = ValueExpr::newSimple(vf0);
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(RenderParentheses) {
     ot0->_terms.push_back(bf0);
     ot0->_terms.push_back(bf1);
 
-    // WHERE foo!=bar AND baz<3.14159
+    // Construct "WHERE foo!=bar AND baz<3.14159"
     ColumnRef::Ptr cr2 = ColumnRef::newShared("", "", "foo");
     boost::shared_ptr<ValueFactor> vf3 = ValueFactor::newColumnRefFactor(cr2);
     boost::shared_ptr<ValueExpr> ve3 = ValueExpr::newSimple(vf3);
@@ -122,9 +122,9 @@ BOOST_AUTO_TEST_CASE(RenderParentheses) {
     boost::shared_ptr<WhereClause> wc0 = boost::make_shared<WhereClause>();
     wc0->prependAndTerm(at0);
 
+    // Prepend the OR clause onto the WHERE as an additional AND term
     wc0->prependAndTerm(ot0);
     BOOST_TEST_MESSAGE(*wc0);
-    BOOST_TEST_MESSAGE(wc0->getRootAndTerm()->_terms.size());
 
 }
 
