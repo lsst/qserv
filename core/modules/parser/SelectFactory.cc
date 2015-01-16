@@ -115,7 +115,7 @@ public:
     virtual ~QuerySpecH() {}
     virtual void operator()(RefAST a) {
         RefAST selectRoot = a;
-        std::cout << "query spec got " << walkIndentedString(a) << std::endl;
+        //std::cout << "query spec got " << walkIndentedString(a) << std::endl;
         //a; // should point at "SELECT"
         a = a->getNextSibling();
         RefAST child;
