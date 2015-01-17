@@ -42,7 +42,7 @@
 
 // Qserv headers
 #include "util/StringHash.h"
-#include "wcontrol/ResultTracker.h"
+#include "wdb/ResultTracker.h"
 #include "wdb/QueryRunner.h"
 #include "xrdfs/MySqlFsFile.h"
 

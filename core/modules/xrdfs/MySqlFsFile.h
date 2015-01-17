@@ -36,7 +36,7 @@
 #include "mysql/mysql.h"
 #include "lsst/log/Log.h"
 #include "wbase/Base.h"
-#include "wcontrol/ResultTracker.h"
+#include "wdb/ResultTracker.h"
 #include "wcontrol/Service.h"
 #include "xrdfs/MySqlFsCommon.h"
 
