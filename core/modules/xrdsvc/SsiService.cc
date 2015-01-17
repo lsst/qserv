@@ -43,7 +43,7 @@
 #include "wcontrol/Service.h"
 #include "wlog/XrootdAppender.h"
 #include "wpublish/ChunkInventory.h"
-#include "xrdfs/XrdName.h"
+#include "xrdsvc/XrdName.h"
 #include "xrdsvc/SsiSession.h"
 
 
@@ -96,7 +96,7 @@ SsiService::Provision(XrdSsiService::Resource* r,
 }
 
 void SsiService::_initInventory() {
-    xrdfs::XrdName x;
+    XrdName x;
     boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
     assert(conn);
     _chunkInventory =
