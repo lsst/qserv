@@ -9,10 +9,6 @@ alias yum="yum -y"
 
 # sconsUtils
 yum install scons gettext flex bison
-
-
-# data partitioning dependency
-yum install numpy
             
 # redhat-lsb ?
 yum install perl-ExtUtils-MakeMaker
