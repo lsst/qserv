@@ -510,9 +510,12 @@ class QservAdmin(object):
 
     def addChunk(self, dbName, tableName, chunk, hosts):
         """
-        Retuns all chunks defined in CSS. Returned object is a dictionary with
-        chunk number as a key and list of worker names as value. Empty dict is
-        returned if no chunk info is defined.
+        Add new replicas of the specified chunk.
+
+        @param dbName:      database name
+        @param tableName:   table name
+        @param chunk:       chunk ID, number
+        @param hosts:       list of host names for specified chunk
         """
 
         self._logger.debug("Add chunk replicas '%s.%s', chunk: %s hosts: %s",
@@ -521,6 +524,8 @@ class QservAdmin(object):
         with self._getDbLock(dbName):
 
             key = "/DBS/%s/TABLES/%s/CHUNKS/%s/REPLICAS" % (dbName, tableName, chunk)
+
+            # TODO: no checks yet whether host already has the chunk registered
 
             for host in hosts:
                 path = self._kvI.create(key + '/', sequence=True)
