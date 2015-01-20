@@ -7,7 +7,6 @@ DIR=$(cd "$(dirname "$0")"; pwd -P)
 
 # Default values below may be overidden by cmd-line options
 MODE="internet mode"
-EUPS_PKGROOT="http://sw.lsstcorp.org/eupspkg"
 NEWINSTALL_URL="https://sw.lsstcorp.org/eupspkg/newinstall.sh"
 VERSION="-t qserv"
 
@@ -45,7 +44,7 @@ while getopts "r:i:v:dh" o; do
                     usage
                     exit 1
                 fi
-                EUPS_PKGROOT="${LOCAL_DISTSERVER_ROOT}/production"
+                export EUPS_PKGROOT="${LOCAL_DISTSERVER_ROOT}/production"
                 NEWINSTALL_URL="file://${EUPS_PKGROOT}/newinstall.sh"
                 export EUPS_VERSION="1.5.0"
                 export EUPS_TARURL=file://${LOCAL_DISTSERVER_ROOT}/${EUPS_VERSION}.tar.gz
@@ -107,7 +106,6 @@ cd $STACK_DIR ||
 }
 
 underline "Installing LSST stack : $MODE, version : $VERSION"
-export EUPS_PKGROOT
 curl -O ${NEWINSTALL_URL} ||
 {
     >&2 printf "Unable to download from ${NEWINSTALL_URL}\n"

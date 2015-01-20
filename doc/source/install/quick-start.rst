@@ -43,7 +43,6 @@ First, log in with a **non-root user account**.
 .. code-block:: bash
 
    NEWINSTALL_URL=https://sw.lsstcorp.org/eupspkg/newinstall.sh
-   export EUPS_PKGROOT=${NEWINSTALL_URL}
    INSTALL_DIR=root/directory/where/qserv/stack/will/be/installed
    # e.g. ~qserv, please note that $INSTALL_DIR must be empty
    cd $INSTALL_DIR
