@@ -1,7 +1,10 @@
 #!/bin/bash
 
 # for Ubuntu 14.04 Trusty Tahr :
-apt-get install bison cmake curl doxygen-latex flex g++ git latex2html libboost-all-dev libcurl4-openssl-dev libglib2.0-dev libreadline-dev ncurses-dev  openjdk-7-jdk openssl python-dev python-numpy scons zlib1g-dev python-setuptools
+apt-get install bison cmake curl doxygen-latex flex g++ git latex2html \
+    libboost-all-dev libcurl4-openssl-dev libglib2.0-dev libreadline-dev \
+    ncurses-dev  openjdk-7-jdk openssl python-dev scons zlib1g-dev \
+    python-setuptools
 
 # eups
 apt-get install patch bzip2 libbz2-dev

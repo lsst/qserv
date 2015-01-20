@@ -21,7 +21,6 @@ RUN apt-get --yes install bash \
     openjdk-7-jre-headless \
     openssl \
     python-dev \
-    python-numpy \
     python-setuptools \
     zlib1g-dev
 # development tools
