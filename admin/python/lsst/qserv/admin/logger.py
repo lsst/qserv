@@ -11,15 +11,18 @@ verbose_dict = {
     'FATAL': logging.FATAL,
 }
 
+def get_default_log_conf():
+    default_log_conf = "{0}/.lsst/logging.ini".format(os.path.expanduser('~'))
+    return default_log_conf
+
 def add_logfile_opt(parser):
     """
     Add option to command line interface in order to set path to standar
     configuration file for python logger
     """
 
-    default_log_conf = "{0}/.lsst/logging.ini".format(os.path.expanduser('~'))
     parser.add_argument("-V", "--log-cfg", dest="log_conf",
-                        default=default_log_conf,
+                        default=get_default_log_conf(),
                         help="Absolute path to yaml file containing python" +
                         "logger standard configuration file")
     return parser
