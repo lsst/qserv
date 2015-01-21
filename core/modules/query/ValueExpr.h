@@ -113,8 +113,12 @@ private:
 /// A helper functor for rendering to QueryTemplates
 class ValueExpr::render : public std::unary_function<ValueExpr, void> {
 public:
-    render(QueryTemplate& qt, bool needsComma)
-        : _qt(qt), _needsComma(needsComma), _count(0) {}
+    render(QueryTemplate& qt, bool needsComma, bool isProtected=false)
+        : _qt(qt),
+          _needsComma(needsComma),
+          _isProtected(isProtected),
+          _count(0)
+        {}
     void operator()(ValueExpr const& ve);
     void operator()(ValueExpr const* vep) {
         if(vep) (*this)(*vep); }
@@ -122,6 +126,7 @@ public:
         (*this)(vep.get()); }
     QueryTemplate& _qt;
     bool _needsComma;
+    bool _isProtected;
     int _count;
 };
 

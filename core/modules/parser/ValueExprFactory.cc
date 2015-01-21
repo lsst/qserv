@@ -56,7 +56,7 @@ namespace parser {
 // ValueExprFactory implementation
 ////////////////////////////////////////////////////////////////////////
 ValueExprFactory::ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap)
-    : _valueFactorFactory(boost::make_shared<ValueFactorFactory>(cMap)) {
+    : _valueFactorFactory(new ValueFactorFactory(cMap, *this)) {
 }
 
 // VALUE_EXP                     //

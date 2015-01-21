@@ -45,6 +45,7 @@
 #include "parser/ColumnRefH.h"
 #include "parser/parseTreeUtil.h"
 #include "parser/ParseException.h"
+#include "parser/ValueExprFactory.h"   // For expression nesting
 #include "query/ColumnRef.h"
 #include "query/FuncExpr.h"
 #include "query/ValueExpr.h"   // For ValueExpr
@@ -90,8 +91,10 @@ newConstFactor(RefAST t) {
 ////////////////////////////////////////////////////////////////////////
 // ValueFactorFactory implementation
 ////////////////////////////////////////////////////////////////////////
-ValueFactorFactory::ValueFactorFactory(boost::shared_ptr<ColumnRefNodeMap> cMap)
-    : _columnRefNodeMap(cMap) {
+ValueFactorFactory::ValueFactorFactory(
+    boost::shared_ptr<ColumnRefNodeMap> cMap,
+    ValueExprFactory& exprFactory)
+    : _columnRefNodeMap(cMap), _exprFactory(exprFactory) {
 }
 
 
@@ -109,20 +112,31 @@ ValueFactorFactory::newFactor(antlr::RefAST a) {
         a = a->getFirstChild(); // FACTOR is a parent placeholder element
     }
     eType = a->getType();
-    LOGF_DEBUG("new ValueFactor: %1%" % tokenText(a));
+    //LOGF_DEBUG("new ValueFactor: %1%" % tokenText(a));
     switch(a->getType()) {
     case SqlSQL2TokenTypes::COLUMN_REF:
         a = a->getFirstChild();
         // COLUMN_REF should have REGULAR_ID as only child.
         // Fall through to REGULAR_ID handler
     case SqlSQL2TokenTypes::REGULAR_ID:
+        vt = _newColumnFactor(a); // Column ref or id.
+        break;
     case SqlSQL2TokenTypes::FUNCTION_SPEC:
-        vt = _newColumnFactor(a);
+        vt = _newFunctionSpecFactor(a);
         break;
     case SqlSQL2TokenTypes::SET_FCT_SPEC:
         vt = _newSetFctSpec(a);
         break;
+    case SqlSQL2TokenTypes::UNSIGNED_INTEGER:
+    case SqlSQL2TokenTypes::EXACT_NUM_LIT:
+        vt = newConstFactor(a);
+        break;
+    case SqlSQL2TokenTypes::LEFT_PAREN:
+        vt = _newSubFactor(a);
+        break;
+
     default:
+        LOGF_DEBUG("Unhandled RefAST type in ValueFactor %1%" % a->getType());
         vt = newConstFactor(a);
         break;
     }
@@ -183,7 +197,7 @@ ValueFactorFactory::_newColumnFactor(antlr::RefAST t) {
             current.get(); current = current->getNextSibling()) {
             // Should be a * or a value expr.
             boost::shared_ptr<query::ValueFactor> pvt;
-            // LOGF_INFO("fctspec param: %1% %2%" 
+            // LOGF_INFO("fctspec param: %1% %2%"
             //           % current->getType() % current->getText());
             switch(current->getType()) {
             case SqlSQL2TokenTypes::VALUE_EXP:
@@ -246,6 +260,68 @@ ValueFactorFactory::_newSetFctSpec(antlr::RefAST expr) {
     }
     fe->params.push_back(query::ValueExpr::newSimple(pvt));
     return query::ValueFactor::newAggFactor(fe);
+}
+
+boost::shared_ptr<query::ValueFactor>
+ValueFactorFactory::_newFunctionSpecFactor(antlr::RefAST fspec) {
+    assert(_columnRefNodeMap);
+    boost::shared_ptr<query::FuncExpr> fe = boost::make_shared<query::FuncExpr>();
+    //LOGF_DEBUG("fspec: %1%" % walkIndentedString(fspec));
+    // LOGF_INFO("set_fct_spec %1%" % walkTreeString(expr));
+    RefAST nNode = fspec->getFirstChild();
+    if(!nNode.get()) {
+        throw ParseException("Missing name node of function spec", fspec);
+    }
+    fe->name = nNode->getText();
+    // Now fill params.
+    antlr::RefAST current = nNode->getNextSibling();
+    // Aggregation functions can only have one param.
+    if(current->getType() != SqlSQL2TokenTypes::LEFT_PAREN) {
+        throw ParseException("Expected LEFT_PAREN", current);
+    }
+    current = current->getNextSibling();
+    if(!current.get()) {
+        throw ParseException("Expected parameter in function", fspec);
+    }
+    while(current->getType() != SqlSQL2TokenTypes::RIGHT_PAREN) {
+        // Should be a value expression
+        if(current->getType() != SqlSQL2TokenTypes::VALUE_EXP) {
+            throw ParseException("Expected VALUE_EXP for parameter", current);
+        }
+        RefAST child = current->getFirstChild();
+        boost::shared_ptr<query::ValueExpr> ve = _exprFactory.newExpr(child);
+        fe->params.push_back(ve);
+        current = current->getNextSibling();
+        if(!current.get()) {
+            throw ParseException("Expected COMMA,VALUE_EXP,RIGHT_PAREN", fspec);
+        }
+        if(current->getType() == SqlSQL2TokenTypes::COMMA) {
+            current = current->getNextSibling();
+        }
+        if(!current.get()) {
+            throw ParseException("Expected VALUE_EXP,RIGHT_PAREN", fspec);
+        }
+    }
+    return query::ValueFactor::newFuncFactor(fe);
+}
+
+boost::shared_ptr<query::ValueFactor>
+ValueFactorFactory::_newSubFactor(antlr::RefAST s) {
+    // Subfactor is an expression of factor and factor-op.
+    // ( expr )
+    RefAST lparen = s;
+    RefAST expr = s->getNextSibling();
+    RefAST rparen = expr->getNextSibling();
+    if(expr->getType() != SqlSQL2TokenTypes::VALUE_EXP) {
+        throw ParseException("Expected VALUE_EXP", expr);
+    }
+    //LOGF_DEBUG("expr: %1%" % walkIndentedString(expr));
+    RefAST exprChild = expr->getFirstChild();
+    boost::shared_ptr<query::ValueExpr> ve = _exprFactory.newExpr(exprChild);
+    if(ve && ve->isFactor() && ve->getAlias().empty()) {
+        return ve->getFactorOps().front().factor;
+    }
+    return query::ValueFactor::newExprFactor(ve);
 }
 
 }}} // namespace lsst::qserv::parser

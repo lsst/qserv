@@ -625,8 +625,7 @@ function_ref :
 
 function_spec : 
         a:function_ref LEFT_PAREN b:function_parameter_spec RIGHT_PAREN {
-            #function_spec = #([FUNCTION_SPEC,"FUNCTION_SPEC"], #function_spec);
-            handleFunctionSpec(a_AST, b_AST);}
+            #function_spec = #([FUNCTION_SPEC,"FUNCTION_SPEC"], #function_spec);}
     ;
 
 

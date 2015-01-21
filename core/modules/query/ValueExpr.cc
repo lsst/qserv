@@ -62,7 +62,7 @@ output(std::ostream& os, ValueExprPtrVector const& vel) {
 }
 void
 renderList(QueryTemplate& qt, ValueExprPtrVector const& vel) {
-    std::for_each(vel.begin(), vel.end(), ValueExpr::render(qt, true));
+    std::for_each(vel.begin(), vel.end(), ValueExpr::render(qt, true, true));
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -222,8 +222,10 @@ std::ostream& operator<<(std::ostream& os, ValueExpr const* ve) {
 void ValueExpr::render::operator()(ValueExpr const& ve) {
     if(_needsComma && _count++ > 0) { _qt.append(","); }
     ValueFactor::render render(_qt);
-    if(ve._factorOps.size() > 1) { // Need opening parenthesis
+    bool needsClose = false;
+    if(!_isProtected && ve._factorOps.size() > 1) { // Need opening parenthesis
         _qt.append("(");
+        needsClose = true;
     }
     for(FactorOpVector::const_iterator i=ve._factorOps.begin();
         i != ve._factorOps.end(); ++i) {
@@ -242,7 +244,7 @@ void ValueExpr::render::operator()(ValueExpr const& ve) {
             throw ss.str();
         }
     }
-    if(ve._factorOps.size() > 1) { // Need closing parenthesis
+    if(needsClose) { // Need closing parenthesis
         _qt.append(")");
     }
     if(!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
