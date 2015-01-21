@@ -503,8 +503,10 @@ class QservAdmin(object):
             for child in self._cssChildren(nodeKey, []):
                 data[child] = self._cssGet(nodeKey + '/' + child)
         else:
-            message = 'Node key: ' + nodeKey
-            raise QservAdminException(QservAdminException.NODE_DOES_NOT_EXIST, [message])
+            messages = ['Node: ' + nodeName,
+                        'No key: ' + nodeKey,
+                        'No key: ' + nodeKey + '.json']
+            raise QservAdminException(QservAdminException.NODE_DOES_NOT_EXIST, messages)
 
         return data
 
@@ -546,11 +548,13 @@ class QservAdmin(object):
         # first check version
         self._versionCheck()
 
-        # node must not exist
+        # node must not exist, check both packed and non-packed keys
         nodeKey = '/NODES/' + nodeName
-        if self._kvI.exists(nodeKey):
-            message = 'Node key: ' + nodeKey
-            raise QservAdminException(QservAdminException.NODE_EXISTS, [message])
+        for ext in ['', '.json']:
+            path = nodeKey + ext
+            if self._kvI.exists(path):
+                messages = ['Node: ' + nodeName, 'Existing key: ' + path]
+                raise QservAdminException(QservAdminException.NODE_EXISTS, messages)
 
         # make a node and set all options
         options = dict(type=nodeType, host=host, runDir=runDir, mysqlConn=mysqlConn)

@@ -44,6 +44,6 @@ QservAdminException = produceExceptionClass('QservAdminException', [
     (3050, "VERSION_MISMATCH",  "CSS schema/data version does not match current SW version."),
     (3055, "VERSION_MISSING",   "CSS schema/data version does not exist."),
     (3060, "NODE_EXISTS",       "Node already exists."),
-    (3065, "NODE_DOES_NOT_EXIST", "Node does not exists."),
+    (3065, "NODE_DOES_NOT_EXIST", "Node does not exist."),
     (9998, "NOT_IMPLEMENTED",   "Feature not implemented yet."),
     (9999, "INTERNAL",          "Internal error.")])
