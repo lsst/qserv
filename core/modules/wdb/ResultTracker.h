@@ -38,7 +38,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace wcontrol {
+namespace wdb {
 
 typedef std::pair<int,char const*> ResultItem;
 typedef std::pair<int, std::string> ResultError;

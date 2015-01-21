@@ -89,7 +89,7 @@ class QueryRunner {
 // write a new one to leverage the new xrootd interface and new result
 // transfer. ResultTracker may be eliminated.
 public:
-    typedef wcontrol::ResultTracker<std::string, wcontrol::ResultError> Tracker;
+    typedef ResultTracker<std::string, ResultError> Tracker;
     QueryRunner(QueryRunnerArg const& a);
     ~QueryRunner();
     bool operator()(); // exec and loop as long as there are queries

@@ -389,7 +389,7 @@ bool ForemanImpl::squashByHash(std::string const& hash) {
     success = success || _rManager->squashByHash(hash);
     if(success) {
         // Notify the tracker in case someone is waiting.
-        ResultError r(-2, "Squashed by request");
+        wdb::ResultError r(-2, "Squashed by request");
         wdb::QueryRunner::getTracker().notify(hash, r);
         // Remove squash notification to prevent future poisioning.
         wdb::QueryRunner::getTracker().clearNews(hash);
