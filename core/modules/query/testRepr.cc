@@ -67,90 +67,97 @@ BOOST_AUTO_TEST_CASE(Factory) {
     QueryContext::Ptr context = tf.newContext();
 }
 
+
+const std::string RenderedBoolTermFromRPN(const char **rpn)
+{
+    BoolTerm::PtrList pdl;
+    int opcount;
+
+    for(const char **t=rpn; *t; ++t) {
+        if (sscanf(*t, "%d", &opcount)==1) {
+            ;
+        } else if (!strcmp(*t, "AND")) {
+            AndTerm::Ptr andt = boost::make_shared<AndTerm>();
+            for(int i=0; i<opcount; ++i) {
+                andt->_terms.push_back(pdl.front());
+                pdl.pop_front();
+            }
+            pdl.push_front(andt);
+        } else if (!strcmp(*t, "OR")) {
+            OrTerm::Ptr ort = boost::make_shared<OrTerm>();
+            for(int i=0; i<opcount; ++i) {
+                ort->_terms.push_back(pdl.front());
+                pdl.pop_front();
+            }
+            pdl.push_front(ort);
+        } else {
+            PassTerm::Ptr pt = boost::make_shared<PassTerm>();
+            pt->_text = *t;
+            BoolFactor::Ptr bf = boost::make_shared<BoolFactor>();
+            bf->_terms.push_back(pt);
+            pdl.push_front(bf);
+        }
+    }
+
+    std::ostringstream str;
+    str << *(pdl.front());
+    return str.str();
+}
+
 BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
 
-    PassTerm::Ptr pta = boost::make_shared<PassTerm>();
-    pta->_text = "A";
-    BoolFactor::Ptr bfa = boost::make_shared<BoolFactor>();
-    bfa->_terms.push_back(pta);
-
-    PassTerm::Ptr ptb = boost::make_shared<PassTerm>();
-    ptb->_text = "B";
-    BoolFactor::Ptr bfb = boost::make_shared<BoolFactor>();
-    bfb->_terms.push_back(ptb);
-
-    PassTerm::Ptr ptc = boost::make_shared<PassTerm>();
-    ptc->_text = "C";
-    BoolFactor::Ptr bfc = boost::make_shared<BoolFactor>();
-    bfc->_terms.push_back(ptc);
-
     // AND
     // +-- AND
     // |   +-- A
     // |   +-- B
     // +-- C
-    {
-        AndTerm::Ptr t0 = boost::make_shared<AndTerm>();
-        t0->_terms.push_back(bfa);
-        t0->_terms.push_back(bfb);
-        AndTerm::Ptr t1 = boost::make_shared<AndTerm>();
-        t1->_terms.push_back(t0);
-        t1->_terms.push_back(bfc);
-        std::ostringstream str;
-        str << *t1;
-        BOOST_CHECK_EQUAL(str.str(), "A AND B AND C");
-    }
+    const char *test0[] = {"C", "B", "A", "2", "AND", "2", "AND", NULL};
+    BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test0), "A AND B AND C");
 
     // AND
     // +-- OR
     // |   +-- A
     // |   +-- B
     // +-- C
-    {
-        OrTerm::Ptr t0 = boost::make_shared<OrTerm>();
-        t0->_terms.push_back(bfa);
-        t0->_terms.push_back(bfb);
-        AndTerm::Ptr t1 = boost::make_shared<AndTerm>();
-        t1->_terms.push_back(t0);
-        t1->_terms.push_back(bfc);
-        std::ostringstream str;
-        str << *t1;
-        BOOST_CHECK_EQUAL(str.str(), "(A OR B) AND C");
-    }
+    const char *test1[] = {"C", "B", "A", "2", "OR", "2", "AND", NULL};
+    BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test1), "(A OR B) AND C");
 
     // OR
     // +-- AND
     // |   +-- A
     // |   +-- B
     // +-- C
-    {
-        AndTerm::Ptr t0 = boost::make_shared<AndTerm>();
-        t0->_terms.push_back(bfa);
-        t0->_terms.push_back(bfb);
-        OrTerm::Ptr t1 = boost::make_shared<OrTerm>();
-        t1->_terms.push_back(t0);
-        t1->_terms.push_back(bfc);
-        std::ostringstream str;
-        str << *t1;
-        BOOST_CHECK_EQUAL(str.str(), "A AND B OR C");
-    }
+    const char *test2[] = {"C", "B", "A", "2", "AND", "2", "OR", NULL};
+    BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test2), "A AND B OR C");
 
     // OR
     // +-- OR
     // |   +-- A
     // |   +-- B
     // +-- C
-    {
-        OrTerm::Ptr t0 = boost::make_shared<OrTerm>();
-        t0->_terms.push_back(bfa);
-        t0->_terms.push_back(bfb);
-        OrTerm::Ptr t1 = boost::make_shared<OrTerm>();
-        t1->_terms.push_back(t0);
-        t1->_terms.push_back(bfc);
-        std::ostringstream str;
-        str << *t1;
-        BOOST_CHECK_EQUAL(str.str(), "A OR B OR C");
-    }
+    const char *test3[] = {"C", "B", "A", "2", "OR", "2", "OR", NULL};
+    BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test3), "A OR B OR C");
+
+    // AND
+    // +-- A
+    // +-- OR
+    // |   +-- B
+    // |   +-- C
+    // |   +-- D
+    // +-- E
+    const char *test4[] = {"E", "D", "C", "B", "3", "OR", "A", "3", "AND", NULL};
+    BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test4), "A AND (B OR C OR D) AND E");
+
+    // OR
+    // +-- A
+    // +-- AND
+    // |   +-- B
+    // |   +-- C
+    // |   +-- D
+    // +-- E
+    const char *test5[] = {"E", "D", "C", "B", "3", "AND", "A", "3", "OR", NULL};
+    BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test5), "A OR B AND C AND D OR E");
+
 }
 
 BOOST_AUTO_TEST_CASE(DM_737_REGRESSION) {
