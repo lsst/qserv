@@ -36,6 +36,7 @@
 #include "query/ValueExpr.h"
 
 // System headers
+#include <algorithm>
 #include <iostream>
 #include <iterator>
 #include <sstream>
@@ -250,4 +251,17 @@ void ValueExpr::render::operator()(ValueExpr const& ve) {
     if(!ve._alias.empty()) { _qt.append("AS"); _qt.append(ve._alias); }
 }
 
+// Miscellaneous
+struct _copyValueExpr {
+    ValueExprPtr operator()(ValueExprPtr const& p) {
+        return p->clone();
+    }
+};
+void cloneValueExprPtrVector(ValueExprPtrVector& dest,
+                             ValueExprPtrVector const& src) {
+    dest.resize(src.size()); // Presize destination
+    std::transform(src.begin(), src.end(),
+                   dest.begin(),
+                   _copyValueExpr());
+}
 }}} // namespace lsst::qserv::query

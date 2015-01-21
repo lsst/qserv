@@ -114,20 +114,10 @@ SelectList::renderTo(QueryTemplate& qt) const {
                   ValueExpr::render(qt, true));
 
 }
-struct copyValueExpr {
-    ValueExprPtr operator()(ValueExprPtr const& p) {
-        return p->clone();
-    }
-};
 boost::shared_ptr<SelectList> SelectList::clone() {
     boost::shared_ptr<SelectList> newS = boost::make_shared<SelectList>(*this);
     newS->_valueExprList  = boost::make_shared<ValueExprPtrVector>();
-    ValueExprPtrVector& src = *_valueExprList;
-    std::transform(src.begin(), src.end(),
-                   std::back_inserter(*newS->_valueExprList),
-                   // std::mem_fun(&ValueExpr::clone));
-                   copyValueExpr());
-
+    cloneValueExprPtrVector(*(newS->_valueExprList), *_valueExprList);
     // For the other fields, default-copied versions are okay.
     return newS;
 }

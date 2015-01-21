@@ -130,6 +130,8 @@ public:
     int _count;
 };
 
+void cloneValueExprPtrVector(ValueExprPtrVector& dest,
+                             ValueExprPtrVector const& src);
 }}} // namespace lsst::qserv::query
 
 #endif // LSST_QSERV_QUERY_VALUEEXPR_H

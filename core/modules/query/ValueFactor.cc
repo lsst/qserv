@@ -118,15 +118,14 @@ void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) {
 ValueFactorPtr ValueFactor::clone() const{
     ValueFactorPtr expr = boost::make_shared<ValueFactor>(*this);
     // Clone refs.
-    // FIXME: not sure these are deep copies.
     if(_columnRef.get()) {
         expr->_columnRef = boost::make_shared<ColumnRef>(*_columnRef);
     }
     if(_funcExpr.get()) {
-        expr->_funcExpr = boost::make_shared<FuncExpr>(*_funcExpr);
+        expr->_funcExpr = _funcExpr->clone();
     }
     if(_valueExpr.get()) {
-        expr->_funcExpr = boost::make_shared<FuncExpr>(*_funcExpr);
+        expr->_valueExpr = _valueExpr->clone();
     }
     return expr;
 }

@@ -65,7 +65,8 @@ public:
     static FuncExpr::Ptr newArg1(std::string const& newName,
                                  ValueExprPtr ve);
 
-    void findColumnRefs(ColumnRef::Vector& vector);
+    void findColumnRefs(ColumnRef::Vector& outputRefs);
+    boost::shared_ptr<FuncExpr> clone() const;
 
     // Fields
     std::string name;
