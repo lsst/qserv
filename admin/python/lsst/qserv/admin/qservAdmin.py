@@ -481,6 +481,86 @@ class QservAdmin(object):
             raise
         self._logger.debug("Create table '%s.%s' succeeded.", dbName, tableName)
 
+    #### NODES ####################################################################
+
+    def getNode(self, nodeName):
+        """
+        Returns node definition for specified node name. Returned dictionary has
+        keys defined in https://dev.lsstcorp.org/trac/wiki/db/Qserv/CSS#Node-related
+        If node does not exist then exception is raised.
+        """
+
+        # first check version
+        self._versionCheck()
+
+        nodeKey = '/NODES/' + nodeName
+        if self._kvI.exists(nodeKey + '.json'):
+            data = self._cssGet(nodeKey + '.json')
+            if data:
+                data = json.loads(data)
+        elif self._kvI.exists(nodeKey):
+            data = {}
+            for child in self._cssChildren(nodeKey, []):
+                data[child] = self._cssGet(nodeKey + '/' + child)
+        else:
+            messages = ['Node: ' + nodeName,
+                        'No key: ' + nodeKey,
+                        'No key: ' + nodeKey + '.json']
+            raise QservAdminException(QservAdminException.NODE_DOES_NOT_EXIST, messages)
+
+        return data
+
+    def getNodes(self):
+        """
+        Returns all node definitions. Returnes dictionary which has node names as keys
+        and node options as values. Node options is a dictionary returned by getNode().
+        Returns empty dictionary if no nodes are defined.
+        """
+
+        # first check version
+        self._versionCheck()
+
+        # we support both JSON-packed data and non-packed data
+        result = {}
+        for node in self._cssChildren('/NODES', []):
+            if node.endswith('.json'):
+                node = node[:-5]
+            data = self.getNode(node)
+            if data:
+                result[node] = data
+        return result
+
+    def addNode(self, nodeName, nodeType, host, runDir, mysqlConn):
+        """
+        Create new node definition in CSS according to
+        https://dev.lsstcorp.org/trac/wiki/db/Qserv/CSS#Node-related
+
+        @param nodeName:   Node name, unique string identifying the node. Node name
+                           is not the same as host name, there may be more than one
+                           node defined for the same host.
+        @param nodeType:   String identifying node type, e.g. "worker".
+        @param host:       String, host name or IP address.
+        @param runDir:     Run directory location for qserv instance.
+        @param mysqlConn:  String specifying comma-separated set of connection options,
+                           see above URL for definition.
+        """
+
+        # first check version
+        self._versionCheck()
+
+        # node must not exist, check both packed and non-packed keys
+        nodeKey = '/NODES/' + nodeName
+        for ext in ['', '.json']:
+            path = nodeKey + ext
+            if self._kvI.exists(path):
+                messages = ['Node: ' + nodeName, 'Existing key: ' + path]
+                raise QservAdminException(QservAdminException.NODE_EXISTS, messages)
+
+        # make a node and set all options
+        options = dict(type=nodeType, host=host, runDir=runDir, mysqlConn=mysqlConn)
+        self._kvI.create(nodeKey, "")
+        self._addPacked(nodeKey, options)
+
     #### CHUNKS ####################################################################
     def chunks(self, dbName, tableName):
         """
@@ -510,9 +590,12 @@ class QservAdmin(object):
 
     def addChunk(self, dbName, tableName, chunk, hosts):
         """
-        Retuns all chunks defined in CSS. Returned object is a dictionary with
-        chunk number as a key and list of worker names as value. Empty dict is
-        returned if no chunk info is defined.
+        Add new replicas of the specified chunk.
+
+        @param dbName:      database name
+        @param tableName:   table name
+        @param chunk:       chunk ID, number
+        @param hosts:       list of host names for specified chunk
         """
 
         self._logger.debug("Add chunk replicas '%s.%s', chunk: %s hosts: %s",
@@ -521,6 +604,8 @@ class QservAdmin(object):
         with self._getDbLock(dbName):
 
             key = "/DBS/%s/TABLES/%s/CHUNKS/%s/REPLICAS" % (dbName, tableName, chunk)
+
+            # TODO: no checks yet whether host already has the chunk registered
 
             for host in hosts:
                 path = self._kvI.create(key + '/', sequence=True)
