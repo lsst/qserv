@@ -12,6 +12,12 @@ dataset from a remote server using next command:
 
     This part require rsync and a ssh key to access lsst-dev.ncsa.illinois.edu.
 
+.. note::
+
+    Example below (case #04) provides around 16GB data extracted from Winter13, it
+    requires a 40GB storage for preparing and loading the data, and will create
+    a MySQL database of 33 GB (for both Qserv and plain MySQL), in QSERV_RUN_DIR.
+
 .. code-block:: bash
 
    qserv-check-integration.py --download --work-dir=/path/to/large/storage --case-id=04 --custom-case-id=<new-id>
