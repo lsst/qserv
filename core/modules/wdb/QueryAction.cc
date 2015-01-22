@@ -31,13 +31,13 @@
   */
 
 #include "wdb/QueryAction.h"
-
 // System headers
 #include <iostream>
 
 // Third-party headers
 #include "boost/make_shared.hpp"
 #include <mysql/mysql.h>
+#include "../util/MultiError.h"
 
 // Qserv headers
 #include "global/Bug.h"
@@ -83,7 +83,8 @@ private:
         if(!_mysqlConn->connect()) {
             LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
                         % wconfig::getConfig().getString("mysqlSocket") % _user);
-            _addErrorMsg(-1, "Unable to connect to MySQL as " + _user);
+            util::Error error(-1, "Unable to connect to MySQL as " + _user);
+            _multiError.push_back(error);
             return false;
         }
         return true;
@@ -121,10 +122,7 @@ private:
     std::auto_ptr<mysql::MySqlConnection> _mysqlConn;
     std::string _user;
 
-    // FIXME: break this out to a utility "multierror" class?
-    typedef std::pair<int, std::string> IntString;
-    typedef std::vector<IntString> IntStringVector;
-    IntStringVector _errors; ///< Error log
+    util::MultiError _multiError; // Error log
 
     boost::shared_ptr<proto::ProtoHeader> _protoHeader;
     boost::shared_ptr<proto::Result> _result;
@@ -182,7 +180,8 @@ bool QueryAction::Impl::act() {
 MYSQL_RES* QueryAction::Impl::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if(!queryOk) {
-            _addErrorMsg(_mysqlConn->getErrno(), _mysqlConn->getError());
+            util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
+            _multiError.push_back(error);
             return NULL;
         }
         return _mysqlConn->getResult();
@@ -271,8 +270,8 @@ void QueryAction::Impl::_transmitResult() {
     // Serialize result first, because we need the size and md5 for the header
     std::string resultString;
     _result->set_nextsize(0);
-    if (!_errors.empty()) {
-        std::string msg = _getCombinedErrorMsg();
+    if (!_multiError.empty()) {
+        std::string msg = _multiError.toString();
         _result->set_errormsg(msg);
         LOGF(_log, LOG_LVL_INFO, msg);
     }
