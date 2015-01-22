@@ -33,23 +33,32 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
+typedef std::pair<int, std::string> IntStringError;
+
+/*
+std::ostream& operator<<(std::ostream &out,
+        IntStringError const& intStringError) {
+    out << "    [" << intStringError.first << "] " << intStringError.second;
+    return out;
+}
+*/
+
+template<typename Error> class ErrorStack;
+
+template<typename Error>
+std::ostream& operator<<(std::ostream &out,
+        ErrorStack<Error> const& errorContainer);
+
 template<typename Error>
 class ErrorStack: public std::exception {
 public:
-    typedef std::pair<int, std::string> IntString;
-
-    ErrorStack();
-    virtual ~ErrorStack();
-
     void push(Error const&);
-
     std::string toString() const;
-
-    friend std::ostream& operator<<(std::ostream &out,
-            ErrorStack<Error> const& errorContainer) {
-        out << errorContainer.toString();
-        return out;
+    virtual ~ErrorStack() throw () {
     }
+
+    friend std::ostream& operator<<<Error>(std::ostream &out,
+            ErrorStack<Error> const& errorContainer);
 
 private:
     std::vector<Error> _errors;
@@ -58,5 +67,7 @@ private:
 }
 }
 } // namespace lsst::qserv::util
+
+template class lsst::qserv::util::ErrorStack<std::pair<int, std::string> > ;
 
 #endif /* UTIL_ERRORCONTAINER_H_ */
