@@ -30,34 +30,21 @@
 
 
 // System headers
+#include <iostream>
+#include <sstream>
 #include <string>
+
 
 // Third-party headers
 
 // Qserv headers
 #include "util/ErrorStack.h"
 
-// Boost unit test header
-#define BOOST_TEST_MODULE ErrorStack
-#include "boost/test/included/unit_test.hpp"
-
-namespace test = boost::test_tools;
 namespace util = lsst::qserv::util;
 
-struct Fixture {
+int main()
+{
 
-};
-
-
-BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
-
-BOOST_AUTO_TEST_CASE(Simple) {
-
-    util::ErrorStack<util::IntStringError> errorStack;
-    //BOOST_CHECK(errorStack);
-}
-
-BOOST_AUTO_TEST_CASE(Output) {
     std::string out;
     util::ErrorStack<util::IntStringError> errorStack;
 
@@ -70,26 +57,4 @@ BOOST_AUTO_TEST_CASE(Output) {
     }
 
     std::cout << errorStack;
-    //BOOST_CHECK(errorStack);
-/*
-    unsigned char phSize = *reinterpret_cast<unsigned char const*>(out.data());
-    char const* cursor = out.data() + 1;
-    int remain = out.size() - 1;
-    lsst::qserv::proto::ProtoHeader ph;
-    BOOST_REQUIRE(ProtoImporter<ProtoHeader>::setMsgFrom(ph, cursor, phSize));
-    cursor += phSize; // Advance to Result msg
-    remain -= phSize;
-    BOOST_CHECK_EQUAL(remain, ph.size());
-    ph.PrintDebugString();
-    lsst::qserv::proto::Result result;
-    BOOST_REQUIRE(ProtoImporter<Result>::setMsgFrom(result, cursor, remain));
-    result.PrintDebugString();
-    std::string computedMd5 = util::StringHash::getMd5(cursor, remain);
-    BOOST_CHECK_EQUAL(ph.md5(), computedMd5);
-    BOOST_CHECK_EQUAL(aa.task->msg->session(), result.session());
-    */
-
 }
-
-
-BOOST_AUTO_TEST_SUITE_END()

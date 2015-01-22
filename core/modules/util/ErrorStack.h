@@ -28,6 +28,8 @@
 #include <exception>
 #include <ostream>
 #include <vector>
+#include <algorithm>
+#include <iterator>
 
 namespace lsst {
 namespace qserv {
@@ -35,13 +37,12 @@ namespace util {
 
 typedef std::pair<int, std::string> IntStringError;
 
-/*
 std::ostream& operator<<(std::ostream &out,
         IntStringError const& intStringError) {
     out << "    [" << intStringError.first << "] " << intStringError.second;
     return out;
 }
-*/
+
 
 template<typename Error> class ErrorStack;
 
@@ -52,22 +53,51 @@ std::ostream& operator<<(std::ostream &out,
 template<typename Error>
 class ErrorStack: public std::exception {
 public:
-    void push(Error const&);
+    void push(Error const& error);
     std::string toString() const;
     virtual ~ErrorStack() throw () {
     }
 
-    friend std::ostream& operator<<<Error>(std::ostream &out,
+    friend std::ostream& operator<< <Error>(std::ostream &out,
             ErrorStack<Error> const& errorContainer);
 
 private:
-    std::vector<Error> _errors;
+    std::vector<Error> _errors ;
 };
+
+//---------------------------------------------------------------------------
+
+template<typename Error>
+void ErrorStack<Error>::push(Error const& error) {
+    _errors.push_back(error);
+}
+
+template<typename Error>
+std::string ErrorStack<Error>::toString() const {
+    std::ostringstream oss;
+
+    oss << "[";
+
+    if (!_errors.empty()) {
+        std::ostream_iterator<Error> string_it(oss, ",");
+        std::copy(_errors.begin(), _errors.end() - 1, string_it);
+
+        oss << _errors.back();
+    }
+    oss << "]";
+    return oss.str();
+}
+
+template<typename Error>
+std::ostream& operator<<(std::ostream &out,
+        ErrorStack<Error> const& errorContainer) {
+    out << errorContainer.toString();
+    return out;
+}
 
 }
 }
 } // namespace lsst::qserv::util
 
-template class lsst::qserv::util::ErrorStack<std::pair<int, std::string> > ;
 
 #endif /* UTIL_ERRORCONTAINER_H_ */
