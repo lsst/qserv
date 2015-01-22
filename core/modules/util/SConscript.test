@@ -1,0 +1,27 @@
+# -*- python -*-
+Import('env')
+Import('libProducts')
+Import('cacheObjs')
+Import('findLibs')
+
+import itertools
+
+programs = []
+
+# deps on other modules
+modDeps = [] 
+deps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
+deps = cacheObjs(env, deps, ".o")
+deps = map(lambda i:i, deps) # un-chain
+myDeps = filter(lambda i: not (str(i).startswith("test")),
+                env.Glob("*.cc"))
+extDeps = "boost_thread boost_system ssl crypto".split()
+
+p = env.Program(["testErrorStack.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
+programs.append(p)
+
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=utest)
+
+Return('programs')
