@@ -20,38 +20,42 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+/**
+ * @file
+ *
+ * @brief ErrorStack stores a generic throwable errors message list
+ * Error is a template type whose operator << is used for output.
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
 
-#ifndef LSST_QSERV_UTIL_ERRORCONTAINER_H
-#define LSST_QSERV_UTIL_ERRORCONTAINER_H
+#include "Error.h"
 
 // System headers
-#include <exception>
-#include <ostream>
-#include <vector>
-
-// Qserv headers
-#include "util/Error.h"
+#include <sstream>
 
 namespace lsst {
 namespace qserv {
 namespace util {
 
-class ErrorStack: public std::exception {
-public:
-    void push(Error const& error);
-    std::string toString() const;
-    virtual ~ErrorStack() throw () {
-    }
+Error::Error(int code, std::string msg) :
+        code(code), msg(msg) {
+}
 
-    friend std::ostream& operator<<(std::ostream &out,
-            ErrorStack const& errorContainer);
+Error::~Error() {
+}
 
-private:
-    std::vector<Error> _errors;
-};
+std::string Error::toString() const {
+    std::ostringstream str;
+    str << "[" << code << "] " << msg;
+    return str.str();
+}
+
+std::ostream& operator<<(std::ostream &out, Error const& error) {
+    out << error.toString();
+    return out;
+}
 
 }
 }
-} // namespace lsst::qserv::util
-
-#endif /* UTIL_ERRORCONTAINER_H_ */
+} // lsst::qserv::util

@@ -28,33 +28,83 @@
  * @author Fabrice Jammes, IN2P3/SLAC
  */
 
-
 // System headers
 #include <iostream>
 #include <sstream>
 #include <string>
-
 
 // Third-party headers
 
 // Qserv headers
 #include "util/ErrorStack.h"
 
+// Boost unit test header
+#define BOOST_TEST_MODULE ErrorStack
+#include "boost/test/included/unit_test.hpp"
+
+namespace test = boost::test_tools;
+
 namespace util = lsst::qserv::util;
 
-int main()
-{
+struct Fixture {
+    void throw_it(std::exception e)
+    {
+      throw e;
+    }
+};
 
-    std::string out;
-    util::ErrorStack<util::IntStringError> errorStack;
+BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 
-    for( int errCode = 10; errCode < 20; errCode = errCode + 1 ) {
+BOOST_AUTO_TEST_CASE(MonoError) {
+
+    test::output_test_stream output;
+    util::ErrorStack errorStack;
+
+    int errCode = 1;
+    std::string errMsg = "Stupid error message";
+    util::Error error(errCode, errMsg);
+    errorStack.push(error);
+
+    output << errorStack;
+    std::cout << errorStack;
+    BOOST_REQUIRE(output.is_equal("[1] Stupid error message\n"));
+}
+
+BOOST_AUTO_TEST_CASE(MultiError) {
+
+    test::output_test_stream output;
+    util::ErrorStack errorStack;
+
+    const char* str = "Multi-error:\n"
+            "[10] Error code is: 10\n"
+            "[11] Error code is: 11\n"
+            "[12] Error code is: 12\n";
+
+    for (int errCode = 10; errCode < 13; errCode = errCode + 1) {
         std::stringstream ss;
         ss << "Error code is: " << errCode;
         std::string errMsg = ss.str();
-        util::IntStringError error(errCode, errMsg);
+        util::Error error(errCode, errMsg);
         errorStack.push(error);
     }
 
+    output << errorStack;
     std::cout << errorStack;
+    BOOST_CHECK(output.is_equal(str));
 }
+
+BOOST_AUTO_TEST_CASE(ThrowErrorStack) {
+    util::ErrorStack errorStack;
+    int errCode = 5;
+    std::string errMsg = "Error stack thrown";
+    util::Error error(errCode, errMsg);
+    errorStack.push(error);
+
+    BOOST_REQUIRE_THROW(throw_it(errorStack), std::exception);
+}
+
+BOOST_AUTO_TEST_CASE(Exception) {
+    std::string out;
+}
+
+BOOST_AUTO_TEST_SUITE_END()

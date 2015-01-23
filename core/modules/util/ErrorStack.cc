@@ -20,38 +20,46 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+/**
+ * @file
+ *
+ * @brief ErrorStack stores a generic throwable errors message list
+ * Error is a template type whose operator << is used for output.
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
 
-#ifndef LSST_QSERV_UTIL_ERRORCONTAINER_H
-#define LSST_QSERV_UTIL_ERRORCONTAINER_H
+#include "ErrorStack.h"
 
 // System headers
-#include <exception>
-#include <ostream>
-#include <vector>
-
-// Qserv headers
-#include "util/Error.h"
+#include <algorithm>
+#include <iterator>
+#include <sstream>
 
 namespace lsst {
 namespace qserv {
 namespace util {
 
-class ErrorStack: public std::exception {
-public:
-    void push(Error const& error);
-    std::string toString() const;
-    virtual ~ErrorStack() throw () {
+void ErrorStack::push(Error const& error) {
+    _errors.push_back(error);
+}
+
+std::string ErrorStack::toString() const {
+    std::ostringstream oss;
+
+    if (!_errors.empty()) {
+        std::ostream_iterator<Error> string_it(oss, "\n");
+        if (_errors.size()>1) oss << "Multi-error:\n";
+        std::copy(_errors.begin(), _errors.end(), string_it);
     }
+    return oss.str();
+}
 
-    friend std::ostream& operator<<(std::ostream &out,
-            ErrorStack const& errorContainer);
-
-private:
-    std::vector<Error> _errors;
-};
-
+std::ostream& operator<<(std::ostream &out,
+        ErrorStack const& errorStack) {
+    out << errorStack.toString();
+    return out;
 }
 }
-} // namespace lsst::qserv::util
-
-#endif /* UTIL_ERRORCONTAINER_H_ */
+}
+} // lsst::qserv::util
