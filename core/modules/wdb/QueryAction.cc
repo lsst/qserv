@@ -37,7 +37,6 @@
 // Third-party headers
 #include "boost/make_shared.hpp"
 #include <mysql/mysql.h>
-#include "../util/MultiError.h"
 
 // Qserv headers
 #include "global/Bug.h"
@@ -50,6 +49,7 @@
 #include "sql/Schema.h"
 #include "wbase/SendChannel.h"
 #include "util/StringHash.h"
+#include "util/MultiError.h"
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
@@ -102,10 +102,6 @@ private:
     bool _dispatchChannel();
     /// Obtain a result handle for a query.
     MYSQL_RES* _primeResult(std::string const& query);
-
-    // FIXME: break this out to a utility "multierror" class?
-    void _addErrorMsg(int errorCode, std::string const& errorMsg);
-    std::string _getCombinedErrorMsg();
 
     bool _fillRows(MYSQL_RES* result, int numFields);
     void _fillSchema(MYSQL_RES* result);
@@ -163,6 +159,7 @@ bool QueryAction::Impl::act() {
     bool connOk = _initConnection();
     if(!connOk) { return false; }
 
+
     if(_msg->has_protocol()) {
         switch(_msg->protocol()) {
         case 1:
@@ -185,28 +182,6 @@ MYSQL_RES* QueryAction::Impl::_primeResult(std::string const& query) {
             return NULL;
         }
         return _mysqlConn->getResult();
-}
-
-void QueryAction::Impl::_addErrorMsg(int code, std::string const& msg) {
-    _errors.push_back(IntString(code, msg));
-}
-
-std::string QueryAction::Impl::_getCombinedErrorMsg() {
-    std::ostringstream str;
-    switch(_errors.size()) {
-    case 0:
-        break;
-    case 1:
-        str << "[" << _errors.front().first << "] " << _errors.front().second;
-        break;
-    default:
-        str << "Multi-error:";
-        for(QueryAction::Impl::IntStringVector::const_iterator i=_errors.begin(); i!=_errors.end(); ++i) {
-            str << std::endl << "    [" << i->first << "] " << i->second;
-        }
-        break;
-    }
-    return str.str();
 }
 
 void QueryAction::Impl::_initMsgs() {
@@ -367,7 +342,7 @@ bool QueryAction::Impl::_dispatchChannel() {
 
 void QueryAction::Impl::poison() {
     // TODO: Figure out how to cancel a MySQL C-API call in-flight
-    LOG(_log, LOG_LVL_ERROR, "Ignoring QueryAction::Impl::poision() call, unimplemented");
+    LOG(_log, LOG_LVL_ERROR, "Ignoring QueryAction::Impl::poison() call, unimplemented");
 }
 
 ////////////////////////////////////////////////////////////////////////
