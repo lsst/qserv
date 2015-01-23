@@ -85,7 +85,7 @@ private:
             LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
                         % wconfig::getConfig().getString("mysqlSocket") % _user);
             util::Error error(-1, "Unable to connect to MySQL as " + _user);
-            _errors.push(error);
+            _errors.push_back(error);
             return false;
         }
         return true;
@@ -179,7 +179,7 @@ MYSQL_RES* QueryAction::Impl::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if(!queryOk) {
             util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
-            _errors.push(error);
+            _errors.push_back(error);
             return NULL;
         }
         return _mysqlConn->getResult();

@@ -40,17 +40,13 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-void ErrorStack::push(Error const& error) {
-    _errors.push_back(error);
-}
-
 std::string ErrorStack::toString() const {
     std::ostringstream oss;
 
-    if (!_errors.empty()) {
+    if (!this->empty()) {
         std::ostream_iterator<Error> string_it(oss, "\n");
-        if (_errors.size()>1) oss << "Multi-error:\n";
-        std::copy(_errors.begin(), _errors.end(), string_it);
+        if (this->size()>1) oss << "Multi-error:\n";
+        std::copy(this->begin(), this->end(), string_it);
     }
     return oss.str();
 }

@@ -36,12 +36,8 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-class ErrorStack: public std::exception {
+class ErrorStack: public std::exception, public std::vector<Error> {
 public:
-    void push(Error const& error);
-    bool empty() const {
-        return _errors.empty();
-    }
     std::string toString() const;
     virtual ~ErrorStack() throw () {
     }
@@ -49,8 +45,6 @@ public:
     friend std::ostream& operator<<(std::ostream &out,
             ErrorStack const& errorStack);
 
-private:
-    std::vector<Error> _errors;
 };
 
 }

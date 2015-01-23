@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(MonoError) {
     int errCode = 1;
     std::string errMsg = "Stupid error message";
     util::Error error(errCode, errMsg);
-    errorStack.push(error);
+    errorStack.push_back(error);
 
     output << errorStack;
     std::cout << errorStack;
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(MultiError) {
         ss << "Error code is: " << errCode;
         std::string errMsg = ss.str();
         util::Error error(errCode, errMsg);
-        errorStack.push(error);
+        errorStack.push_back(error);
     }
 
     output << errorStack;
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(ThrowErrorStack) {
     int errCode = 5;
     std::string errMsg = "Error stack thrown";
     util::Error error(errCode, errMsg);
-    errorStack.push(error);
+    errorStack.push_back(error);
 
     BOOST_REQUIRE_THROW(throw_it(errorStack), std::exception);
 }

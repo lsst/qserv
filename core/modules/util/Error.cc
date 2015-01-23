@@ -38,13 +38,6 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-Error::Error(int code, std::string msg) :
-        code(code), msg(msg) {
-}
-
-Error::~Error() {
-}
-
 std::string Error::toString() const {
     std::ostringstream str;
     str << "[" << code << "] " << msg;

@@ -17,20 +17,21 @@ namespace util {
 
 class Error {
 public:
-    Error(int code, std::string msg);
-    virtual ~Error();
+    Error(int code, std::string msg) :
+            code(code), msg(msg) {
+    }
+    virtual ~Error() {
+    }
     std::string toString() const;
 
     int code;
     std::string msg;
 
-    friend std::ostream& operator<<(std::ostream &out,
-            Error const& error);
+    friend std::ostream& operator<<(std::ostream &out, Error const& error);
 };
 
-
-} /* namespace util */
-} /* namespace qserv */
-} /* namespace lsst */
+}
+}
+} // lsst::qserv::util
 
 #endif /* UTIL_ERROR_H_ */
