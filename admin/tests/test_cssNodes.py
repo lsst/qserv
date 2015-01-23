@@ -141,7 +141,9 @@ class TestConfigParser(unittest.TestCase):
 /css_meta\t\\N
 /css_meta/version\t{version}
 /NODES\t\\N
+/NODES/worker-1\t\\N
 /NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-1", "mysqlConn": "3306"}}
+/NODES/worker-2\t\\N
 /NODES/worker-2.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-2", "mysqlConn": "3307"}}
 """
 
