@@ -20,18 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-/**
- * @file
- *
- * @brief ErrorStack stores a generic throwable errors message list
- * Error is a template type whose operator << is used for output.
- *
- * @author Fabrice Jammes, IN2P3/SLAC
- */
 
-#include "ErrorStack.h"
-
-// System headers
+#include "MultiError.h"
 #include <algorithm>
 #include <iterator>
 #include <sstream>
@@ -40,7 +30,11 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-std::string ErrorStack::toString() const {
+/** Return a string representation of the object
+ *
+ * @return a string representation of the object
+ */
+std::string MultiError::toString() const {
     std::ostringstream oss;
 
     if (!this->empty()) {
@@ -51,9 +45,15 @@ std::string ErrorStack::toString() const {
     return oss.str();
 }
 
+/** Overload output operator for this class
+ *
+ * @param out
+ * @param multiError
+ * @return an output stream
+ */
 std::ostream& operator<<(std::ostream &out,
-        ErrorStack const& errorStack) {
-    out << errorStack.toString();
+        MultiError const& multiError) {
+    out << multiError.toString();
     return out;
 }
 }

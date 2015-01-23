@@ -20,8 +20,17 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+/**
+* @file
+*
+* @ingroup util
+*
+* @brief Implement a generic error container for Qserv
+*
+* @author Fabrice Jammes, IN2P3/SLAC
+*/
 
-#ifndef LSST_QSERV_UTIL_ERRORCONTAINER_H
+#ifndef LSST_QSERV_UTIL_ERROR_H
 #define LSST_QSERV_UTIL_ERRORCONTAINER_H
 
 // System headers
@@ -36,14 +45,22 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-class ErrorStack: public std::exception, public std::vector<Error> {
+/** @class
+ * @brief Implement a generic error container for Qserv
+ *
+ * Store Qserv errors in a throwable vector.
+ * util::Error operator << is used for output.
+ *
+ */
+class MultiError: public std::exception, public std::vector<Error> {
 public:
+
     std::string toString() const;
-    virtual ~ErrorStack() throw () {
+    virtual ~MultiError() throw () {
     }
 
     friend std::ostream& operator<<(std::ostream &out,
-            ErrorStack const& errorStack);
+            MultiError const& multiError);
 
 };
 

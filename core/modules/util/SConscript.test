@@ -17,7 +17,7 @@ myDeps = filter(lambda i: not (str(i).startswith("test")),
                 env.Glob("*.cc"))
 extDeps = "boost_thread boost_system ssl crypto".split()
 
-p = env.Program(["testErrorStack.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
+p = env.Program(["testMultiError.cc"] + env.Object(myDeps) + deps, LIBS=findLibs(extDeps))
 programs.append(p)
 
 # add a unit test which runs on every build

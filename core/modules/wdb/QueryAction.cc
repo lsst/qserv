@@ -31,13 +31,13 @@
   */
 
 #include "wdb/QueryAction.h"
-
 // System headers
 #include <iostream>
 
 // Third-party headers
 #include "boost/make_shared.hpp"
 #include <mysql/mysql.h>
+#include "../util/MultiError.h"
 
 // Qserv headers
 #include "global/Bug.h"
@@ -50,7 +50,6 @@
 #include "sql/Schema.h"
 #include "wbase/SendChannel.h"
 #include "util/StringHash.h"
-#include "util/ErrorStack.h"
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
@@ -85,7 +84,7 @@ private:
             LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
                         % wconfig::getConfig().getString("mysqlSocket") % _user);
             util::Error error(-1, "Unable to connect to MySQL as " + _user);
-            _errors.push_back(error);
+            _multiError.push_back(error);
             return false;
         }
         return true;
@@ -119,7 +118,7 @@ private:
     std::auto_ptr<mysql::MySqlConnection> _mysqlConn;
     std::string _user;
 
-    util::ErrorStack _errors; ///< Error log
+    util::MultiError _multiError; // Error log
 
     boost::shared_ptr<proto::ProtoHeader> _protoHeader;
     boost::shared_ptr<proto::Result> _result;
@@ -179,7 +178,7 @@ MYSQL_RES* QueryAction::Impl::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if(!queryOk) {
             util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
-            _errors.push_back(error);
+            _multiError.push_back(error);
             return NULL;
         }
         return _mysqlConn->getResult();
@@ -246,8 +245,8 @@ void QueryAction::Impl::_transmitResult() {
     // Serialize result first, because we need the size and md5 for the header
     std::string resultString;
     _result->set_nextsize(0);
-    if (!_errors.empty()) {
-        std::string msg = _errors.toString();
+    if (!_multiError.empty()) {
+        std::string msg = _multiError.toString();
         _result->set_errormsg(msg);
         LOGF(_log, LOG_LVL_INFO, msg);
     }

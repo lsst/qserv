@@ -23,7 +23,9 @@
 /**
  * @file
  *
- * @brief Simple testing for class ErrorStack
+ * @ingroup util
+ *
+ * @brief test MultiError class
  *
  * @author Fabrice Jammes, IN2P3/SLAC
  */
@@ -36,10 +38,10 @@
 // Third-party headers
 
 // Qserv headers
-#include "util/ErrorStack.h"
+#include "MultiError.h"
 
 // Boost unit test header
-#define BOOST_TEST_MODULE ErrorStack
+#define BOOST_TEST_MODULE multiError
 #include "boost/test/included/unit_test.hpp"
 
 namespace test = boost::test_tools;
@@ -47,33 +49,38 @@ namespace test = boost::test_tools;
 namespace util = lsst::qserv::util;
 
 struct Fixture {
-    void throw_it(std::exception e)
-    {
-      throw e;
+    void _throw_it(std::exception e) {
+        throw e;
     }
 };
 
 BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
 
+/** @test
+ * Print a MultiError object containing only one error
+ */
 BOOST_AUTO_TEST_CASE(MonoError) {
 
     test::output_test_stream output;
-    util::ErrorStack errorStack;
+    util::MultiError multiError;
 
     int errCode = 1;
     std::string errMsg = "Stupid error message";
     util::Error error(errCode, errMsg);
-    errorStack.push_back(error);
+    multiError.push_back(error);
 
-    output << errorStack;
-    std::cout << errorStack;
+    output << multiError;
+    std::cout << multiError;
     BOOST_REQUIRE(output.is_equal("[1] Stupid error message\n"));
 }
 
+/** @test
+ * Print a MultiError object containing several errors
+ */
 BOOST_AUTO_TEST_CASE(MultiError) {
 
     test::output_test_stream output;
-    util::ErrorStack errorStack;
+    util::MultiError multiError;
 
     const char* str = "Multi-error:\n"
             "[10] Error code is: 10\n"
@@ -85,22 +92,25 @@ BOOST_AUTO_TEST_CASE(MultiError) {
         ss << "Error code is: " << errCode;
         std::string errMsg = ss.str();
         util::Error error(errCode, errMsg);
-        errorStack.push_back(error);
+        multiError.push_back(error);
     }
 
-    output << errorStack;
-    std::cout << errorStack;
+    output << multiError;
+    std::cout << multiError;
     BOOST_CHECK(output.is_equal(str));
 }
 
-BOOST_AUTO_TEST_CASE(ThrowErrorStack) {
-    util::ErrorStack errorStack;
+/** @test
+ * Throw a MultiError object containing one error
+ */
+BOOST_AUTO_TEST_CASE(ThrowMultiError) {
+    util::MultiError multiError;
     int errCode = 5;
     std::string errMsg = "Error stack thrown";
     util::Error error(errCode, errMsg);
-    errorStack.push_back(error);
+    multiError.push_back(error);
 
-    BOOST_REQUIRE_THROW(throw_it(errorStack), std::exception);
+    BOOST_REQUIRE_THROW(_throw_it(multiError), std::exception);
 }
 
 BOOST_AUTO_TEST_CASE(Exception) {
