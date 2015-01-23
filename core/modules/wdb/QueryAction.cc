@@ -50,6 +50,7 @@
 #include "sql/Schema.h"
 #include "wbase/SendChannel.h"
 #include "util/StringHash.h"
+#include "util/ErrorStack.h"
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
@@ -83,7 +84,8 @@ private:
         if(!_mysqlConn->connect()) {
             LOGF(_log, LOG_LVL_ERROR, "Cfg error! connect MySQL as %1% using %2%"
                         % wconfig::getConfig().getString("mysqlSocket") % _user);
-            _addErrorMsg(-1, "Unable to connect to MySQL as " + _user);
+            util::Error error(-1, "Unable to connect to MySQL as " + _user);
+            _errors.push(error);
             return false;
         }
         return true;
@@ -102,10 +104,6 @@ private:
     /// Obtain a result handle for a query.
     MYSQL_RES* _primeResult(std::string const& query);
 
-    // FIXME: break this out to a utility "multierror" class?
-    void _addErrorMsg(int errorCode, std::string const& errorMsg);
-    std::string _getCombinedErrorMsg();
-
     bool _fillRows(MYSQL_RES* result, int numFields);
     void _fillSchema(MYSQL_RES* result);
     void _initMsgs();
@@ -121,10 +119,7 @@ private:
     std::auto_ptr<mysql::MySqlConnection> _mysqlConn;
     std::string _user;
 
-    // FIXME: break this out to a utility "multierror" class?
-    typedef std::pair<int, std::string> IntString;
-    typedef std::vector<IntString> IntStringVector;
-    IntStringVector _errors; ///< Error log
+    util::ErrorStack _errors; ///< Error log
 
     boost::shared_ptr<proto::ProtoHeader> _protoHeader;
     boost::shared_ptr<proto::Result> _result;
@@ -165,6 +160,7 @@ bool QueryAction::Impl::act() {
     bool connOk = _initConnection();
     if(!connOk) { return false; }
 
+
     if(_msg->has_protocol()) {
         switch(_msg->protocol()) {
         case 1:
@@ -182,32 +178,11 @@ bool QueryAction::Impl::act() {
 MYSQL_RES* QueryAction::Impl::_primeResult(std::string const& query) {
         bool queryOk = _mysqlConn->queryUnbuffered(query);
         if(!queryOk) {
-            _addErrorMsg(_mysqlConn->getErrno(), _mysqlConn->getError());
+            util::Error error(_mysqlConn->getErrno(), _mysqlConn->getError());
+            _errors.push(error);
             return NULL;
         }
         return _mysqlConn->getResult();
-}
-
-void QueryAction::Impl::_addErrorMsg(int code, std::string const& msg) {
-    _errors.push_back(IntString(code, msg));
-}
-
-std::string QueryAction::Impl::_getCombinedErrorMsg() {
-    std::ostringstream str;
-    switch(_errors.size()) {
-    case 0:
-        break;
-    case 1:
-        str << "[" << _errors.front().first << "] " << _errors.front().second;
-        break;
-    default:
-        str << "Multi-error:";
-        for(QueryAction::Impl::IntStringVector::const_iterator i=_errors.begin(); i!=_errors.end(); ++i) {
-            str << std::endl << "    [" << i->first << "] " << i->second;
-        }
-        break;
-    }
-    return str.str();
 }
 
 void QueryAction::Impl::_initMsgs() {
@@ -272,7 +247,7 @@ void QueryAction::Impl::_transmitResult() {
     std::string resultString;
     _result->set_nextsize(0);
     if (!_errors.empty()) {
-        std::string msg = _getCombinedErrorMsg();
+        std::string msg = _errors.toString();
         _result->set_errormsg(msg);
         LOGF(_log, LOG_LVL_INFO, msg);
     }
@@ -368,7 +343,7 @@ bool QueryAction::Impl::_dispatchChannel() {
 
 void QueryAction::Impl::poison() {
     // TODO: Figure out how to cancel a MySQL C-API call in-flight
-    LOG(_log, LOG_LVL_ERROR, "Ignoring QueryAction::Impl::poision() call, unimplemented");
+    LOG(_log, LOG_LVL_ERROR, "Ignoring QueryAction::Impl::poison() call, unimplemented");
 }
 
 ////////////////////////////////////////////////////////////////////////

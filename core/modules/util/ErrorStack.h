@@ -39,12 +39,15 @@ namespace util {
 class ErrorStack: public std::exception {
 public:
     void push(Error const& error);
+    bool empty() const {
+        return _errors.empty();
+    }
     std::string toString() const;
     virtual ~ErrorStack() throw () {
     }
 
     friend std::ostream& operator<<(std::ostream &out,
-            ErrorStack const& errorContainer);
+            ErrorStack const& errorStack);
 
 private:
     std::vector<Error> _errors;
