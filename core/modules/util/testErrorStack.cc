@@ -46,13 +46,13 @@ int main()
 {
 
     std::string out;
-    util::ErrorStack<util::IntStringError> errorStack;
+    util::ErrorStack errorStack;
 
     for( int errCode = 10; errCode < 20; errCode = errCode + 1 ) {
         std::stringstream ss;
         ss << "Error code is: " << errCode;
         std::string errMsg = ss.str();
-        util::IntStringError error(errCode, errMsg);
+        util::Error error(errCode, errMsg);
         errorStack.push(error);
     }
 
