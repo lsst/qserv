@@ -58,6 +58,16 @@ BOOST_AUTO_TEST_CASE(TestEscape) {
     BOOST_CHECK_EQUAL(target.substr(0, count), eTest1);
 }
 
+BOOST_AUTO_TEST_CASE(TestEscapeEmptyString) {
+    std::string test1("");
+
+    std::string target("XXX");
+
+    int count = escapeString(target.begin(), test1.begin(), test1.end());
+    BOOST_CHECK_EQUAL(count, 0);
+    BOOST_CHECK_EQUAL(target.substr(0, count), "");
+}
+
 BOOST_AUTO_TEST_CASE(TestCopyColumn) {
     std::string simple = "Hello my name is bob";
     std::string eSimple = "'" + simple + "'";
