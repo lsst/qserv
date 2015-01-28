@@ -50,7 +50,6 @@ public:
     typedef boost::shared_ptr<Service> Ptr;
 
     Service();
-    boost::shared_ptr<wbase::TaskAcceptor> getAcceptor();
     boost::shared_ptr<wbase::MsgProcessor> getProcessor();
     void squashByHash(std::string const& hash);
 

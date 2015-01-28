@@ -57,11 +57,6 @@ Service::Service() {
     _foreman = newForeman(sch);
 }
 
-wbase::TaskAcceptor::Ptr
-Service::getAcceptor() {
-    return _foreman;
-}
-
 boost::shared_ptr<wbase::MsgProcessor>
 Service::getProcessor() {
     // Make a task processor that returns results in a channel rather than

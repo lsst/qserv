@@ -30,7 +30,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace xrdfs {
+namespace xrdsvc {
 
 /// XrdName is a small class that helps extract the name of a running xrootd (or
 /// cmsd) instance. It does this by checking an environment variable that is
