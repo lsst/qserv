@@ -38,6 +38,7 @@
 
 // Qserv headers
 #include "css/StripingParams.h"
+#include "qproc/QueryProcessingBug.h"
 
 namespace lsst {
 namespace qserv {
@@ -51,7 +52,7 @@ public:
 };
 typedef boost::shared_ptr<Region> RegionPtr;
 typedef std::vector<RegionPtr> RegionPtrVector;
-typedef std::pair<Coordinate> UnitVector3d;
+typedef std::pair<Coordinate, Coordinate> UnitVector3d;
 
 class BoxRegion : public Region {
 public:
@@ -75,7 +76,6 @@ class CircleRegion : public Region {
 public:
     // FIXME: Is circle chord squared in radians? probably...
     CircleRegion(std::pair<Coordinate, Coordinate> const& u, Coordinate cl2) {
-        return CircleRegion();
     }
 private:
     CircleRegion() {}
@@ -87,7 +87,7 @@ CircleRegion getCircleFromParams(std::vector<Coordinate> const& params) {
     if(params.size() != 3) {
         throw QueryProcessingBug("Invalid number or parameters for region");
     }
-    std::pair<Coordinate> uv3(params[0], params[1]);
+    UnitVector3d uv3(params[0], params[1]);
     return CircleRegion(uv3, params[2]*params[2]);
 }
 
@@ -96,7 +96,7 @@ public:
     EllipseRegion(UnitVector3d const& center,
                   double alphaRad,
                   double betaRad,
-                  double orientRad);
+                  double orientRad) {}
 private:
     EllipseRegion(std::vector<Coordinate> const& params) {}
 };
@@ -136,7 +136,7 @@ getConvexPolyFromParams(std::vector<Coordinate> const& params) {
         throw QueryProcessingBug("Invalid number or parameters for region");
     }
     std::vector<UnitVector3d> uv3;
-    for(int i=0; i < params.size(); i += 2) {
+    for(unsigned i=0; i < params.size(); i += 2) {
         uv3.push_back(UnitVector3d(params[i], params[i+1]));
     }
     return ConvexPolyRegion(uv3);
