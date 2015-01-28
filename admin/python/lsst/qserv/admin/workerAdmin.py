@@ -28,6 +28,11 @@ start/stop worker processes. Current implementation is based on SSH
 tunneling (or direct mysql connection if possible), in the future there
 is supposed to be a special service for worker administration.
 
+WorkerAdmin uses information about worker nodes defined in Qserv CSS, for
+details see https://dev.lsstcorp.org/trac/wiki/db/Qserv/CSS#Node-related.
+For testing purposes it it also possible to provide worker information as
+a set of parameters to constructor.
+
 @author  Andy Salnikov, SLAC
 """
 
@@ -120,7 +125,7 @@ class _SSHCommand(object):
 
 class _SSHTunnel(object):
     """
-    Class imlementing SSH tunneling of TCP port(s).
+    Class implementing SSH tunneling of TCP port(s).
 
     Instance of this class starts separate SSH process configured for TCP
     forwarding. Instance also controls lifetime of the process, when
