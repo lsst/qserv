@@ -33,6 +33,7 @@
 // System headers
 #include <ostream>
 #include <list>
+#include <map>
 #include <stdint.h>
 #include <vector>
 
