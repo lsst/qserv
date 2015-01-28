@@ -180,6 +180,17 @@ def _setEnvWithDependencies():
     if 'SWIG_LIB_ENV' in env:  # PathIsDir tests os.path.isdir
         env['ENV']['SWIG_LIB'] = env['SWIG_LIB_ENV']
 
+    # if during load of 'default' tools (i.e. Environment construction):
+    #   1. swig binary path was not in default internal scons PATH
+    #      (this prevent recognition of .i files by scons and break the build)
+    #   2. swig binary path was not the one specified by the user
+    # then it is required to add it and reload the swig scons tool.
+    if SCons.Util.WhereIs("swig", env['ENV']['PATH']) != env['SWIG']:
+        swig_dirname = os.path.dirname(env['SWIG'])
+        env.AppendENVPath('PATH', swig_dirname)
+        env.Tool('swig')
+        log.debug("swig tool loaded using: {0}".format(env['SWIG']))
+
     SCons.Script.Help(opts.GenerateHelpText(env))
 
 
