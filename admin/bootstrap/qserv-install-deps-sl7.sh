@@ -8,7 +8,7 @@
 yum install --assumeyes bash git tar make
 
 # sconsUtils
-yum install --assumeyes gettext flex bison 
+yum install --assumeyes gettext flex bison
 
 # eups
 yum install --assumeyes patch bzip2 bzip2-devel
@@ -23,7 +23,7 @@ yum install --assumeyes python-devel
 yum install --assumeyes ncurses-devel glibc-devel
 
 # qserv
-yum install --assumeyes boost-devel openssl-devel java
+yum install --assumeyes boost-devel openssl-devel java redhat-lsb
 
 # lua
 yum install --assumeyes readline-devel
@@ -34,5 +34,5 @@ yum install --assumeyes glib2-devel
 # kazoo
 yum install --assumeyes python-setuptools
 
-# FIXME qserv: deprecated since 2015_01
-yum install --assumeyes numpy
+# FIXME qserv: deprecated by 2015_01
+yum install --assumeyes numpy swig
