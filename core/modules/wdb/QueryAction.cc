@@ -153,8 +153,8 @@ QueryAction::Impl::Impl(QueryActionArg const& a)
 }
 
 bool QueryAction::Impl::act() {
-    char msg[] = "Exec in flight for Db = %1%, dump = %2%";
-    LOGF(_log, LOG_LVL_INFO, msg % _task->dbName % _task->resultPath);
+    char msg[] = "Exec in flight for Db = %1%";
+    LOGF(_log, LOG_LVL_INFO, msg % _task->dbName);
     _setDb();
     bool connOk = _initConnection();
     if(!connOk) { return false; }

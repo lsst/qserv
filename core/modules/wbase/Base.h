@@ -139,14 +139,6 @@ private:
     unsigned _bytesWritten;
 };
 
-class TaskAcceptor {
-public:
-    typedef boost::shared_ptr<TaskAcceptor> Ptr;
-
-    TaskAcceptor() {}
-    virtual bool accept(boost::shared_ptr<proto::TaskMsg> msg) = 0;
-};
-
 }}} // namespace lsst::qserv::wbase
 
 #if DO_NOT_USE_BOOST

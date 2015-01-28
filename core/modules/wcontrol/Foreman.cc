@@ -46,8 +46,6 @@
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryAction.h"
-#include "wdb/QueryRunner.h"
-#include "wsched/FifoScheduler.h"
 
 ////////////////////////////////////////////////////////////////////////
 // anonymous helpers
@@ -84,7 +82,6 @@ public:
     virtual ~ForemanImpl();
 
     bool squashByHash(std::string const& hash);
-    bool accept(boost::shared_ptr<proto::TaskMsg> msg);
     void newTaskAction(wbase::Task::Ptr task);
 
     virtual boost::shared_ptr<wbase::MsgProcessor> getProcessor();
@@ -112,7 +109,6 @@ public:
     public:
         RunnerMgr(ForemanImpl& f);
         void registerRunner(Runner* r, wbase::Task::Ptr t);
-        boost::shared_ptr<wdb::QueryRunner> newQueryRunner(wbase::Task::Ptr t);
         boost::shared_ptr<wdb::QueryAction> newQueryAction(wbase::Task::Ptr t);
         void reportComplete(wbase::Task::Ptr t);
         void reportStart(wbase::Task::Ptr t);
@@ -149,11 +145,8 @@ private:
 ////////////////////////////////////////////////////////////////////////
 Foreman::Ptr
 newForeman(Foreman::Scheduler::Ptr sched) {
-    if(!sched) {
-        sched = boost::make_shared<wsched::FifoScheduler>();
-    }
     ForemanImpl::Ptr fmi = boost::make_shared<ForemanImpl>(sched);
-    return fmi;;
+    return fmi;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -189,13 +182,6 @@ ForemanImpl::RunnerMgr::newQueryAction(wbase::Task::Ptr t) {
     wdb::QueryActionArg a(_f._log, t, _f._chunkResourceMgr);
     boost::shared_ptr<wdb::QueryAction> qa = boost::make_shared<wdb::QueryAction>(a);
     return qa;
-}
-
-boost::shared_ptr<wdb::QueryRunner>
-ForemanImpl::RunnerMgr::newQueryRunner(wbase::Task::Ptr t) {
-    wdb::QueryRunnerArg a(_f._log, t);
-    boost::shared_ptr<wdb::QueryRunner> qr = boost::make_shared<wdb::QueryRunner>(a);
-    return qr;
 }
 
 void
@@ -259,9 +245,6 @@ ForemanImpl::RunnerMgr::getLog() {
 class matchHash {
 public:
     matchHash(std::string const& hash_) : hash(hash_) {}
-    inline bool operator()(wdb::QueryRunnerArg const& a) {
-        return a.task->hash == hash;
-    }
     inline bool operator()(ForemanImpl::Runner const* r) {
         return r->getHash() == hash;
     }
@@ -305,12 +288,6 @@ void ForemanImpl::Runner::poison() {
     _isPoisoned = true;
 }
 
-void ForemanImpl::Runner::_runWithDump() {
-    boost::shared_ptr<wdb::QueryRunner> qr;
-    qr = _rm.newQueryRunner(_task);
-    qr->actOnce();
-}
-
 void ForemanImpl::Runner::_runProtocol2() {
     _action = _rm.newQueryAction(_task);
     (*_action)();
@@ -324,7 +301,7 @@ void ForemanImpl::Runner::operator()() {
         if(msg.has_protocol() && msg.protocol() == 2) {
             _runProtocol2();
         } else {
-            _runWithDump();
+//            _runWithDump();
         }
         if(_isPoisoned) break;
         // Request new work from the manager
@@ -364,6 +341,7 @@ public:
     }
     ForemanImpl& _foremanImpl;
 };
+
 ////////////////////////////////////////////////////////////////////////
 // ForemanImpl
 ////////////////////////////////////////////////////////////////////////
@@ -382,8 +360,7 @@ ForemanImpl::~ForemanImpl() {
     // FIXME: Poison and drain runners.
 }
 
-void
-ForemanImpl::_startRunner(wbase::Task::Ptr t) {
+void ForemanImpl::_startRunner(wbase::Task::Ptr t) {
     boost::thread(Runner(*_rManager, t));
 }
 
@@ -391,21 +368,7 @@ bool ForemanImpl::squashByHash(std::string const& hash) {
     boost::lock_guard<boost::mutex> m(_mutex);
     bool success = _scheduler->removeByHash(hash);
     success = success || _rManager->squashByHash(hash);
-    if(success) {
-        // Notify the tracker in case someone is waiting.
-        ResultError r(-2, "Squashed by request");
-        wdb::QueryRunner::getTracker().notify(hash, r);
-        // Remove squash notification to prevent future poisioning.
-        wdb::QueryRunner::getTracker().clearNews(hash);
-    }
     return success;
-}
-
-bool
-ForemanImpl::accept(boost::shared_ptr<proto::TaskMsg> msg) {
-    wbase::Task::Ptr t = boost::make_shared<wbase::Task>(msg);
-    newTaskAction(t);
-    return true;
 }
 
 void ForemanImpl::newTaskAction(wbase::Task::Ptr task) {
@@ -420,8 +383,6 @@ void ForemanImpl::newTaskAction(wbase::Task::Ptr task) {
         }
     }
 }
-
-
 
 boost::shared_ptr<wbase::MsgProcessor> ForemanImpl::getProcessor() {
     return boost::shared_ptr<Processor>(new Processor(*this));

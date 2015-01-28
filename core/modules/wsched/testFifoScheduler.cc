@@ -45,10 +45,10 @@ using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wbase::TaskQueue;
 using lsst::qserv::wbase::TaskQueuePtr;
-
+using lsst::qserv::wbase::SendChannel;
 
 Task::Ptr makeTask(boost::shared_ptr<TaskMsg> tm) {
-    return boost::make_shared<Task>(tm);
+    return boost::make_shared<Task>(tm, boost::shared_ptr<SendChannel>());
 }
 struct SchedulerFixture {
     typedef boost::shared_ptr<TaskMsg> TaskMsgPtr;
