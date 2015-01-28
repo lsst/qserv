@@ -50,6 +50,7 @@ class MessageStore;
 }
 namespace qproc {
 class QuerySession;
+class SecondaryIndex;
 }
 namespace rproc {
 class TableMerger;
