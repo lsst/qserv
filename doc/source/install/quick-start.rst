@@ -24,9 +24,9 @@ Please run next script under **root account**:
 
 * For Fedora 19: :download:`qserv-install-deps-fedora19.sh <../../../admin/bootstrap/qserv-install-deps-fedora19.sh>`.
 * For Scientific Linux 6: :download:`qserv-install-deps-sl6.sh <../../../admin/bootstrap/qserv-install-deps-sl6.sh>`.
+* For Scientific Linux 7: :download:`qserv-install-deps-sl7.sh <../../../admin/bootstrap/qserv-install-deps-sl7.sh>`.
 * For Debian Wheezy: :download:`qserv-install-deps-debian-wheezy.sh <../../../admin/bootstrap/qserv-install-deps-debian-wheezy.sh>`.
 * For Ubuntu 12.04: :download:`qserv-install-deps-ubuntu-12.04.sh <../../../admin/bootstrap/qserv-install-deps-ubuntu-12.04.sh>`.
-* For Ubuntu 13.10: :download:`qserv-install-deps-ubuntu-13.10.sh <../../../admin/bootstrap/qserv-install-deps-ubuntu-13.10.sh>`.
 * For Ubuntu 14.04: :download:`qserv-install-deps-ubuntu-14.04.sh <../../../admin/bootstrap/qserv-install-deps-ubuntu-14.04.sh>`.
 
 ************
