@@ -47,7 +47,6 @@
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryAction.h"
 #include "wdb/QueryRunner.h"
-#include "wsched/FifoScheduler.h"
 
 ////////////////////////////////////////////////////////////////////////
 // anonymous helpers
@@ -149,11 +148,8 @@ private:
 ////////////////////////////////////////////////////////////////////////
 Foreman::Ptr
 newForeman(Foreman::Scheduler::Ptr sched) {
-    if(!sched) {
-        sched = boost::make_shared<wsched::FifoScheduler>();
-    }
     ForemanImpl::Ptr fmi = boost::make_shared<ForemanImpl>(sched);
-    return fmi;;
+    return fmi;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -393,7 +389,7 @@ bool ForemanImpl::squashByHash(std::string const& hash) {
     success = success || _rManager->squashByHash(hash);
     if(success) {
         // Notify the tracker in case someone is waiting.
-        ResultError r(-2, "Squashed by request");
+        wdb::ResultError r(-2, "Squashed by request");
         wdb::QueryRunner::getTracker().notify(hash, r);
         // Remove squash notification to prevent future poisioning.
         wdb::QueryRunner::getTracker().clearNews(hash);
