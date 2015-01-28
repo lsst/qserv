@@ -53,8 +53,8 @@ struct InsensitiveCompare {
 /// implementations. Possibilities: hashing, lookup tables.
 struct CompareMap {
     CompareMap() {
-        const char* sepWords[] = {"select", "from", "where", "by", "limit"};
-        const int swSize=5;
+        const char* sepWords[] = {"select", "from", "where", "by", "limit", "and", "or"};
+        const int swSize=7;
         _sepWords.insert(sepWords, sepWords + swSize);
     }
     inline bool isSeparatingWord(std::string const& w) {
