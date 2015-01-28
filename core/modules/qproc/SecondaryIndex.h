@@ -33,9 +33,10 @@
 // System headers
 
 // Third-party headers
-#include "boost/unique_ptr.hpp"
+#include "boost/shared_ptr.hpp"
 
 // Qserv headers
+#include "mysql/MySqlConfig.h"
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
 
@@ -47,13 +48,14 @@ namespace qproc {
 /// this is necessary: all user queries can share a single instance.
 class SecondaryIndex {
 public:
-    SecondaryIndex(MySqlConfig const& c);
+    SecondaryIndex(mysql::MySqlConfig const& c);
     SecondaryIndex(int); // Construct a fake instance
 
     ChunkSpecVector lookup(query::ConstraintVector const& cv);
-private:
     class Backend;
-    boost::unique_ptr<Backend> _backend;
+private:
+    // change to unique_ptr
+    boost::shared_ptr<Backend> _backend;
 };
 
 }}} // namespace lsst::qserv::qproc
