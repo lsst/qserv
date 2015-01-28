@@ -52,33 +52,12 @@ allModules = """ccontrol css czar global log mysql obsolete
                 rproc sql
                 tests util
                 wbase wconfig wcontrol wdb wlog wpublish wsched
-                xrdc xrdfs xrdoss xrdsvc""".split()
+                xrdsvc""".split()
 
-# Dependencies to fix:
-# packetiter in util depends on xrdc, util shouldn't depend on anything
 # Products
 def pyDistRelative(env, module):
     return os.path.join(env['python_relative_prefix'],"lsst","qserv",module)
-shProducts = { "xrdfs" : {'mods' : """proto xrdfs
-                                      mysql sql obsolete util
-                                      wbase wconfig wcontrol wdb
-                                      wpublish wsched
-                                      wlog global""".split(),
-                          'libs' : """ssl crypto mysqlclient_r protobuf
-                                      boost_regex boost_thread
-                                      boost_signals log log4cxx
-                                      XrdSsi XrdServer XrdClient
-                                      XrdOfs XrdUtils""".split(),
-                          'distDir' : 'lib'},
-
-               "xrdoss" : {'mods' : """wlog mysql obsolete sql util
-                                       wbase wconfig
-                                       xrdoss wpublish""".split(),
-                           'libs' : """boost_regex boost_signals boost_thread log log4cxx
-                                       mysqlclient_r ssl crypto XrdSsi""".split(),
-                           'distDir' : 'lib'
-                           },
-               "xrdsvc" : {'mods' : """global mysql proto
+shProducts = { "xrdsvc" : {'mods' : """global mysql proto
                                        sql util wbase
                                        wcontrol wconfig wdb wlog
                                        wpublish wsched
@@ -92,7 +71,7 @@ shProducts = { "xrdfs" : {'mods' : """proto xrdfs
                "_czarLib" : {'mods' : """czar ccontrol global
                                          log rproc mysql
                                          parser query
-                                         sql util xrdc
+                                         sql util
                                          obsolete proto
                                          qana qdisp qproc""".split(),
                              'shmods' : ['css'],
