@@ -34,17 +34,27 @@
 // System headers
 
 // Third-party headers
-#include "boost/make_unique.hpp"
+#include "boost/make_shared.hpp" // switch to make_unique
+#include "boost/lexical_cast.hpp"
 
 // Qserv headers
+#include "global/Bug.h"
 #include "global/intTypes.h"
 #include "global/constants.h"
 #include "qproc/ChunkSpec.h"
+#include "query/Constraint.h"
+#include "sql/SqlConnection.h"
 
 namespace lsst {
 namespace qserv {
 namespace qproc {
 char const lookupSqlTemplate[] = "SELECT chunkId, subChunkId FROM %s WHERE %s IN (%s);";
+
+std::string sanitizeName(
+    std::string const& input) {
+    return input; // FIXME. need to expose sanitizeName used in css/EmptyChunks
+}
+
 std::string makeIndexTableName(
     std::string const& db,
     std::string const& table
@@ -91,7 +101,7 @@ public:
 
 class MySqlBackend : public SecondaryIndex::Backend {
 public:
-    MySqlBackend(MySqlConfig const& c)
+    MySqlBackend(mysql::MySqlConfig const& c)
         : _sqlConnection(c, true) {
     }
     virtual ChunkSpecVector lookup(query::ConstraintVector const& cv) {
@@ -102,27 +112,29 @@ public:
     IntVector ids;
     // For now, use only the first constraint, assert that it is an index
     // constraint.
-    if (cv.empty()) { raise Bug("SecondaryIndex::lookup without constraint"); }
-    Constraint const& c = cv[0];
+    if (cv.empty()) { throw Bug("SecondaryIndex::lookup without constraint"); }
+    query::Constraint const& c = cv[0];
     if (c.name != "sIndex") {
-        raise Bug("SecondaryIndex::lookup cv[0] != index constraint");
+        throw Bug("SecondaryIndex::lookup cv[0] != index constraint");
     }
     std::string lookupSql = makeLookupSql(c.params[0], c.params[1],
                                           c.params[2], c.params[3]);
     ChunkSpecMap m;
-    for(boost::shared_ptr<SqlResultIter> results
-            = _sqlConnection->getQueryIter(lookupSql);
+    for(boost::shared_ptr<sql::SqlResultIter> results
+            = _sqlConnection.getQueryIter(lookupSql);
         !results->done();
         ++(*results)) {
-        SqlResultIter::List const& row = **results;
-        ChunkSpecMap::iterator e = m.find(row[0]);
+        sql::SqlResultIter::List const& row = **results;
+        int chunkId = boost::lexical_cast<int>(row[0]);
+        int subChunkId = boost::lexical_cast<int>(row[1]);
+        ChunkSpecMap::iterator e = m.find(chunkId);
         if (e == m.end()) {
             ChunkSpec& cs = m[row[0]];
-            cs.chunkId = row[0];
-            cs.subChunks.push_back(row[1]);
+            cs.chunkId = chunkId;
+            cs.subChunks.push_back(subChunkId);
         } else {
             ChunkSpec& cs = *e;
-            cs.subChunks.push_Back(row[1]);
+            cs.subChunks.push_back(subChunkId);
         }
     }
     ChunkSpecVector output;
@@ -133,13 +145,13 @@ public:
     return output;
     }
 private:
-    SqlConnection    SqlConnection();
-    SqlConnection _sqlConnection;
+    sql::SqlConnection    SqlConnection();
+    sql::SqlConnection _sqlConnection;
 
 };
 
-SecondaryIndex::SecondaryIndex(MySqlConfig const& c)
-    : _backend(boost::make_unique<MySqlBackend>(c)) {
+SecondaryIndex::SecondaryIndex(mysql::MySqlConfig const& c)
+    : _backend(boost::make_shared<MySqlBackend>(c)) {
 }
 
 ChunkSpecVector SecondaryIndex::lookup(query::ConstraintVector const& cv) {
