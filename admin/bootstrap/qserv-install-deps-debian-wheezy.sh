@@ -17,6 +17,8 @@ apt-get --yes install bash \
     openjdk-7-jre-headless \
     openssl \
     python-dev \
-    python-numpy \
     python-setuptools \
     zlib1g-dev
+
+# deprecated: remove in 2015_01
+apt-get --yes install swig python-numpy
