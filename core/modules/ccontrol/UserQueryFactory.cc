@@ -41,6 +41,7 @@
 #include "ccontrol/userQueryProxy.h"
 #include "css/Facade.h"
 #include "css/KvInterfaceImplMem.h"
+#include "mysql/MySqlConfig.h"
 #include "qdisp/Executive.h"
 #include "qproc/QuerySession.h"
 #include "rproc/InfileMerger.h"
@@ -143,7 +144,7 @@ void UserQueryFactory::Impl::readConfig(StringMap const& m) {
         "resultdb.db",
         "Error, resultdb.db not found. Using qservResult.",
         "qservResult");
-    MySqlConfig mc;
+    mysql::MySqlConfig mc;
     mc.username = infileMergerConfigTemplate.user;
     mc.dbName = infileMergerConfigTemplate.targetDb; // any valid db is ok.
     mc.socket = infileMergerConfigTemplate.socket;
