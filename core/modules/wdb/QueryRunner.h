@@ -45,7 +45,7 @@
 #include "sql/SqlErrorObject.h"
 #include "wbase/Base.h"
 #include "wbase/Task.h"
-#include "wdb/ResultTracker.h"
+#include "wcontrol/ResultTracker.h"
 
 
 // Forward declarations
@@ -89,7 +89,7 @@ class QueryRunner {
 // write a new one to leverage the new xrootd interface and new result
 // transfer. ResultTracker may be eliminated.
 public:
-    typedef ResultTracker<std::string, ResultError> Tracker;
+    typedef wcontrol::ResultTracker<std::string, wcontrol::ResultError> Tracker;
     QueryRunner(QueryRunnerArg const& a);
     ~QueryRunner();
     bool operator()(); // exec and loop as long as there are queries

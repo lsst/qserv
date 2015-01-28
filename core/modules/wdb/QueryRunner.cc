@@ -240,12 +240,12 @@ QueryRunner::_act() {
         LOGF(_log, LOG_LVL_INFO, "(FinishFail:%1%) %2% hash=%3%"
                 % (void*)(this) % dbDump % _task->hash);
         getTracker().notify(_task->hash,
-                            ResultError(-1,"Script exec failure "
-                                        + _getErrorString()));
+                            wcontrol::ResultError(-1,"Script exec failure "
+                                                  + _getErrorString()));
         return false;
     }
     LOGF(_log, LOG_LVL_INFO, "(FinishOK:%1%) %2%" % (void*)(this) % dbDump);
-    getTracker().notify(_task->hash, ResultError(0,""));
+    getTracker().notify(_task->hash, wcontrol::ResultError(0,""));
     return true;
 }
 

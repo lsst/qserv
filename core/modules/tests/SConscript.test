@@ -24,7 +24,7 @@ def getDerived(m):
 programs = []
 
 # deps on other modules
-modDeps = """global log proto query rproc mysql sql util""".split()
+modDeps = """global log proto query rproc mysql sql util xrdc""".split()
 
 deps = itertools.chain(*map(getDerived, modDeps))
 deps = map(lambda i:i, deps) # un-chain

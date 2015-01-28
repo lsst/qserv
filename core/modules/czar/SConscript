@@ -29,7 +29,8 @@ depends = ['ccontrol/dispatcher.h',
            'qproc/ChunkSpec.h',
            'rproc/TableMerger.h',
            'rproc/mergeTypes.h',
-           'util/Substitution.h']
+           'util/Substitution.h',
+           'xrdc/xrdfile.h']
 depends = map(lambda f: env.File("../"+f), depends)
 
 pythonInc = distutils.sysconfig.get_python_inc()

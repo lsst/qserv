@@ -38,7 +38,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace wdb {
+namespace wcontrol {
 
 typedef std::pair<int,char const*> ResultItem;
 typedef std::pair<int, std::string> ResultError;
@@ -155,7 +155,7 @@ public:
 
     int getNewsCount() {
         boost::unique_lock<boost::mutex> lock(_newsMutex);
-        return _news.size();
+        return _news.size(); //
     }
     int getSignalCount() {
         boost::unique_lock<boost::mutex> lock(_signalsMutex);
