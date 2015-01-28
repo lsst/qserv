@@ -19,3 +19,6 @@ apt-get --yes install bash \
     python-dev \
     python-setuptools \
     zlib1g-dev
+
+# deprecated: remove in 2015_01
+apt-get --yes install swig python-numpy

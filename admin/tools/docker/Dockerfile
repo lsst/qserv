@@ -23,6 +23,8 @@ RUN apt-get --yes install bash \
     python-dev \
     python-setuptools \
     zlib1g-dev
+# Should be removed: cf. DM-1516
+RUN apt-get -y install swig
 # development tools
 RUN apt-get -y install vim byobu
 USER qserv

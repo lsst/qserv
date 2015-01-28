@@ -1,0 +1,1 @@
+DEPS=debian-wheezy
