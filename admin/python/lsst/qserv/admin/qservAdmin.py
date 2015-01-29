@@ -622,7 +622,7 @@ class QservAdmin(object):
         """
         if dest is None:
             self._kvI.dumpAll()
-        elif getattr(dest, 'write'):
+        elif hasattr(dest, 'write'):
             self._kvI.dumpAll(dest)
         else:
             with open(dest, "w") as f:
