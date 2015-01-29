@@ -126,6 +126,9 @@ class CommandParser(object):
     EXIT;
     ...more coming soon
 """
+        # only prompt if input comes from terminal
+        self._prompt = "qserv > " if sys.stdin.isatty() else ""
+
 
     def receiveCommands(self):
         """
@@ -135,11 +138,12 @@ class CommandParser(object):
         """
         line = ''
         cmd = ''
-        prompt = "qserv > "
+        prompt = self._prompt
         while True:
             line = raw_input(prompt).decode("utf-8").strip()
             cmd += line + ' '
-            prompt = "qserv > " if line.endswith(';') else "~ "
+            if prompt:
+                prompt = self._prompt if line.endswith(';') else "~ "
             while re.search(';', cmd):
                 pos = cmd.index(';')
                 try:
@@ -451,7 +455,7 @@ NAME
         qserv-admin - the client program for Central State System (CSS)
 
 SYNOPSIS
-        qserv-admin [OPTIONS]
+        qserv-admin [OPTIONS] [command ...]
 
 OPTIONS
    -v
@@ -462,6 +466,11 @@ OPTIONS
         Name of the output log file. If not specified, the output goes to stderr.
    -c
         Connection information (hostname:port)
+
+If commands are provided then they are executed and application will exit.
+Every argument is treated as separate command, use quotes if command contains
+spaces or special characters. If any command fails then all other commands are
+ignored and non-zero code is returned to caller.
 """
 
     parser = OptionParser(usage=usage)
@@ -472,12 +481,12 @@ OPTIONS
     (options, args) = parser.parse_args()
     if int(options.verbT) > 50: options.verbT = 50
     if int(options.verbT) <  0: options.verbT = 0
-    return (int(options.verbT), options.logF, options.connI)
+    return (int(options.verbT), options.logF, options.connI, args)
 
 ####################################################################################
 def main():
 
-    (verbosity, logFileName, connInfo) = getOptions()
+    (verbosity, logFileName, connInfo, args) = getOptions()
 
     # configure logging
     if logFileName:
@@ -492,11 +501,22 @@ def main():
             datefmt='%m/%d/%Y %I:%M:%S',
             level=verbosity)
 
-    # wait for commands and process
-    try:
-        CommandParser(connInfo).receiveCommands()
-    except(KeyboardInterrupt, SystemExit, EOFError):
-        print ""
+    parser = CommandParser(connInfo)
+    if args:
+        for cmd in args:
+            # strip semicolons just in case
+            cmd = cmd.strip().rstrip(';')
+            try:
+                parser._parse(cmd)
+            except (QservAdminException, KvException) as e:
+                print "ERROR: ", e.__str__()
+                sys.exit(1)
+    else:
+        try:
+            # wait for commands and process
+            parser.receiveCommands()
+        except(KeyboardInterrupt, SystemExit, EOFError):
+            print ""
 
 if __name__ == "__main__":
     main()
