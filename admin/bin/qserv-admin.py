@@ -90,6 +90,11 @@ class CommandParser(object):
             "dirColName1",
             "dirTable2",
             "dirColName2"],
+        "createNode" : [
+            "type",
+            "host",
+            "runDir",
+            "mysqlConn"],
         }
 
     def __init__(self, connInfo):
@@ -117,6 +122,7 @@ class CommandParser(object):
     CREATE DATABASE <dbName> LIKE <dbName2>;
     CREATE TABLE <dbName>.<tableName> <configFile>;
     CREATE TABLE <dbName>.<tableName> LIKE <dbName2>.<tableName2>;
+    CREATE NODE <nodeName> <key=value ...>;  # keys: type, host, runDir, mysqlConn
     DROP DATABASE <dbName>;
     DROP EVERYTHING;
     DUMP EVERYTHING [<outFile>];
@@ -147,13 +153,13 @@ class CommandParser(object):
             while re.search(';', cmd):
                 pos = cmd.index(';')
                 try:
-                    self._parse(cmd[:pos])
+                    self.parse(cmd[:pos])
                 except (QservAdminException, KvException) as e:
                     self._logger.error(e.__str__())
                     print "ERROR: ", e.__str__()
                 cmd = cmd[pos+1:]
 
-    def _parse(self, cmd):
+    def parse(self, cmd):
         """
         Parse, and dispatch to subparsers based on first word. Raise
         exceptions on errors.
@@ -177,6 +183,8 @@ class CommandParser(object):
             self._parseCreateDatabase(tokens[1:])
         elif t == 'TABLE':
             self._parseCreateTable(tokens[1:])
+        elif t == 'NODE':
+            self._parseCreateNode(tokens[1:])
         else:
             raise QservAdminException(QservAdminException.BAD_CMD)
 
@@ -236,6 +244,40 @@ class CommandParser(object):
         else:
             raise QservAdminException(QservAdminException.BAD_CMD,
                                 "Unexpected number of arguments.")
+
+    def _parseCreateNode(self, tokens):
+        """
+        Subparser - handles all CREATE NODE requests.
+        Throws KvException, QservAdminException.
+        """
+        if len(tokens) < 2:
+            raise QservAdminException(QservAdminException.BAD_CMD,
+                                "Unexpected number of arguments.")
+
+        requiredKeys = self.requiredOpts['createNode']
+
+        # parse command, 'type' is optional, rest is required
+        options = {'nodeName': tokens[0], 'type': 'worker'}
+        for opt in tokens[1:]:
+            if '=' not in opt:
+                raise QservAdminException(QservAdminException.BAD_CMD,
+                   "Invalid argument '%s', should be <key>=<value>" % opt)
+            key, value = opt.split('=', 1)
+
+            if key not in requiredKeys:
+                raise QservAdminException(QservAdminException.BAD_CMD,
+                   "Unrecognized option key '%s', possible keys: %s" % \
+                   (key, ' '.join(requiredKeys)))
+
+            options[key] = value
+
+        # check that all required options are there
+        self._checkExist(options, requiredKeys)
+
+        # call CSS to do the rest, remap options to argument names
+        options['nodeType'] = options['type']
+        del options['type']
+        self._impl.addNode(**options)
 
     def _parseDrop(self, tokens):
         """
@@ -507,7 +549,7 @@ def main():
             # strip semicolons just in case
             cmd = cmd.strip().rstrip(';')
             try:
-                parser._parse(cmd)
+                parser.parse(cmd)
             except (QservAdminException, KvException) as e:
                 print "ERROR: ", e.__str__()
                 sys.exit(1)

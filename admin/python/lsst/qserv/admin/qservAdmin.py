@@ -503,10 +503,9 @@ class QservAdmin(object):
             for child in self._cssChildren(nodeKey, []):
                 data[child] = self._cssGet(nodeKey + '/' + child)
         else:
-            messages = ['Node: ' + nodeName,
-                        'No key: ' + nodeKey,
-                        'No key: ' + nodeKey + '.json']
-            raise QservAdminException(QservAdminException.NODE_DOES_NOT_EXIST, messages)
+            raise QservAdminException(QservAdminException.NODE_DOES_NOT_EXIST,
+                                      'Node: ' + nodeName, 'No key: ' + nodeKey,
+                                      'No key: ' + nodeKey + '.json')
 
         return data
 
@@ -545,16 +544,20 @@ class QservAdmin(object):
                            see above URL for definition.
         """
 
-        # first check version
-        self._versionCheck()
+        # first check version or store it
+        with self._kvI.getLockObject(VERSION_KEY, self._uniqueId()):
+            if self._kvI.exists(VERSION_KEY):
+                self._versionCheck()
+            else:
+                self._versionSave()
 
         # node must not exist, check both packed and non-packed keys
         nodeKey = '/NODES/' + nodeName
         for ext in ['', '.json']:
             path = nodeKey + ext
             if self._kvI.exists(path):
-                messages = ['Node: ' + nodeName, 'Existing key: ' + path]
-                raise QservAdminException(QservAdminException.NODE_EXISTS, messages)
+                raise QservAdminException(QservAdminException.NODE_EXISTS,
+                                          'Node: ' + nodeName, 'Existing key: ' + path)
 
         # make a node and set all options
         options = dict(type=nodeType, host=host, runDir=runDir, mysqlConn=mysqlConn)
@@ -565,7 +568,8 @@ class QservAdmin(object):
     def chunks(self, dbName, tableName):
         """
         Returns all chunks defined in CSS. Returned object is a dictionary with
-        chunk number as a key and list of worker names as value. Empty dict is
+        chunk number as a key and list of node names as value (node name can be used
+        as an argument to getNode method to retrieve node information). Empty dict is
         returned if no chunk info is defined.
         """
         res = {}
