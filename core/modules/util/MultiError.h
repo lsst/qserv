@@ -31,7 +31,7 @@
  */
 
 #ifndef LSST_QSERV_UTIL_ERROR_H
-#define LSST_QSERV_UTIL_ERRORCONTAINER_H
+#define LSST_QSERV_UTIL_ERROR_H
 
 // System headers
 #include <exception>
