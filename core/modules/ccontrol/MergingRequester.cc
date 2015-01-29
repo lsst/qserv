@@ -76,6 +76,7 @@ bool MergingRequester::flush(int bLen, bool last) {
         // First char: sizeof protoheader. always less than 255 char.
         _response->headerSize =
             *reinterpret_cast<unsigned char const*>(&_buffer[0]);
+        LOGF_DEBUG("HEADER_SIZE_WAIT: Resizing buffer to %i" % _response->headerSize);
         _buffer.resize(_response->headerSize);
         _state = HEADER_WAIT;
         return true;
@@ -87,6 +88,7 @@ bool MergingRequester::flush(int bLen, bool last) {
             _state = HEADER_ERR;
             return false;
         }
+        LOGF_DEBUG("HEADER_WAIT: Resizing buffer to %1%" % _response->protoHeader.size());
         _buffer.resize(_response->protoHeader.size());
         _state = RESULT_WAIT;
         return true;
