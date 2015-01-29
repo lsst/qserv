@@ -30,8 +30,8 @@
  * @author Fabrice Jammes, IN2P3/SLAC
  */
 
-#ifndef LSST_QSERV_UTIL_ERROR_H
-#define LSST_QSERV_UTIL_ERRORCONTAINER_H
+#ifndef LSST_QSERV_UTIL_MULTIERROR_H
+#define LSST_QSERV_UTIL_MULTIERROR_H
 
 // System headers
 #include <exception>
@@ -80,4 +80,4 @@ private:
 
 }}} // namespace lsst::qserv::util
 
-#endif /* UTIL_ERRORCONTAINER_H_ */
+#endif /* LSST_QSERV_UTIL_MULTIERROR_H */
