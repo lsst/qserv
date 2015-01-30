@@ -333,29 +333,22 @@ private:
     };
 
     void _setGenerator(query::QsRestrictor const& r) {
-
-        // Add case insensitive behavior
-        // in order to mimic MySQL functions/procedures
-        std::string lowercase_r_name = r._name;
-        std::transform(lowercase_r_name.begin(), lowercase_r_name.end(),
-                       lowercase_r_name.begin(), ::tolower);
-
-        if(lowercase_r_name == "qserv_areaspec_box") {
+        if(r._name == "qserv_areaspec_box") {
             _generator = boost::make_shared<AreaGenerator>("s2PtInBox",
                                                            4,
                                                            r._params
                                                           );
-        } else if(lowercase_r_name == "qserv_areaspec_circle") {
+        } else if(r._name == "qserv_areaspec_circle") {
             _generator = boost::make_shared<AreaGenerator>("s2PtInCircle",
                                                            3,
                                                            r._params
                                                           );
-        } else if(lowercase_r_name == "qserv_areaspec_ellipse") {
+        } else if(r._name == "qserv_areaspec_ellipse") {
             _generator = boost::make_shared<AreaGenerator>("s2PtInEllipse",
                                                            5,
                                                            r._params
                                                           );
-        } else if(lowercase_r_name == "qserv_areaspec_poly") {
+        } else if(r._name == "qserv_areaspec_poly") {
             const int use_string = AreaGenerator::USE_STRING;
             _generator = boost::make_shared<AreaGenerator>("s2PtInCPoly",
                                                            use_string,

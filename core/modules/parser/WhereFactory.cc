@@ -35,6 +35,7 @@
 #include "parser/WhereFactory.h"
 
 // System headers
+#include <algorithm>
 #include <iterator>
 #include <sstream>
 
@@ -245,6 +246,14 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     }
     if(!_clause->_restrs) {
         throw std::logic_error("Invalid WhereClause._restrs");
+    }
+    // Add case insensitive behavior
+    // in order to mimic MySQL functions/procedures
+    if (r != "sIndex" && r != "qserv_objectId") {
+        std::transform(r.begin(), r.end(), r.begin(), ::tolower);
+        if (LOG_CHECK_DEBUG()) {
+            LOGF_DEBUG("Qserv restrictor changed to lower-case %s:"% r);
+        }
     }
     restr->_name = r;
     _clause->_restrs->push_back(restr);
