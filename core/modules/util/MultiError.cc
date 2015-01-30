@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,7 +21,10 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "MultiError.h"
+// Class header
+#include "util/MultiError.h"
+
+// System headers
 #include <algorithm>
 #include <iterator>
 #include <sstream>
@@ -37,11 +40,7 @@ namespace util {
 std::string MultiError::toString() const {
     std::ostringstream oss;
 
-    if (!this->empty()) {
-        std::ostream_iterator<Error> string_it(oss, "\n");
-        if (this->size()>1) oss << "Multi-error:\n";
-        std::copy(this->begin(), this->end(), string_it);
-    }
+    oss << *this;
     return oss.str();
 }
 
@@ -53,7 +52,14 @@ std::string MultiError::toString() const {
  */
 std::ostream& operator<<(std::ostream &out,
         MultiError const& multiError) {
-    out << multiError.toString();
+    if (!multiError.empty()) {
+          if (multiError.size()>1) {
+              std::ostream_iterator<Error> string_it(out, "\n");
+              out << "Multi-error:\n";
+              std::copy(multiError.begin(), multiError.end()-1, string_it);
+          }
+          out << multiError.back();
+      }
     return out;
 }
 }

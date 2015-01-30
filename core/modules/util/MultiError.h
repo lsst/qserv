@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,14 +21,14 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 /**
-* @file
-*
-* @ingroup util
-*
-* @brief Implement a generic error container for Qserv
-*
-* @author Fabrice Jammes, IN2P3/SLAC
-*/
+ * @file
+ *
+ * @ingroup util
+ *
+ * @brief Implement a generic error container for Qserv
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
 
 #ifndef LSST_QSERV_UTIL_ERROR_H
 #define LSST_QSERV_UTIL_ERRORCONTAINER_H
@@ -64,8 +64,6 @@ public:
 
 };
 
-}
-}
-} // namespace lsst::qserv::util
+}}} // namespace lsst::qserv::util
 
 #endif /* UTIL_ERRORCONTAINER_H_ */
