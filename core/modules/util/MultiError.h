@@ -52,15 +52,29 @@ namespace util {
  * util::Error operator << is used for output.
  *
  */
-class MultiError: public std::exception, public std::vector<Error> {
+class MultiError: public std::exception {
 public:
-
     std::string toString() const;
     virtual ~MultiError() throw () {
     }
 
     friend std::ostream& operator<<(std::ostream &out,
             MultiError const& multiError);
+
+    bool empty() const;
+
+    std::vector<Error>::size_type size() const;
+
+    std::vector<Error>::const_iterator begin() const;
+
+    std::vector<Error>::const_iterator end() const;
+
+    std::vector<Error>::const_reference back() const;
+
+    void push_back (const std::vector<Error>::value_type& val);
+
+private:
+    std::vector<Error> errorVector;
 
 };
 

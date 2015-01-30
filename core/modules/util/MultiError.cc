@@ -44,6 +44,30 @@ std::string MultiError::toString() const {
     return oss.str();
 }
 
+bool MultiError::empty() const {
+    return errorVector.empty();
+}
+
+std::vector<Error>::size_type MultiError::size() const{
+    return errorVector.size();
+}
+
+std::vector<Error>::const_iterator MultiError::begin() const {
+    return errorVector.begin();
+}
+
+std::vector<Error>::const_iterator MultiError::end() const{
+    return errorVector.end();
+}
+
+std::vector<Error>::const_reference MultiError::back() const{
+    return errorVector.back();
+}
+
+void MultiError::push_back (const std::vector<Error>::value_type& val) {
+    errorVector.push_back(val);
+}
+
 /** Overload output operator for this class
  *
  * @param out
