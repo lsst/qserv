@@ -40,7 +40,6 @@ import tempfile
 # Imports for other modules --
 #-----------------------------
 from lsst.qserv.admin.partConfig import PartConfig
-from lsst.qserv.admin.qservAdmin import QservAdmin
 from lsst.qserv.admin.chunkMapping import ChunkMapping
 
 #----------------------------------
@@ -60,7 +59,7 @@ class DataLoader(object):
 
     def __init__(self, configFiles, mysqlConn, workerConnMap={}, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
-                 cssConn='localhost:12181', cssClear=False, indexDb='qservMeta',
+                 qservAdmin=None, cssClear=False, indexDb='qservMeta',
                  emptyChunks=None, deleteTables=False, loggerName=None):
         """
         Constructor parses all arguments and prepares for execution.
@@ -78,7 +77,7 @@ class DataLoader(object):
                              (chunks should exist already).
         @param oneTable:     If set to True then load all data into one table, do not
                              create chunk tables.
-        @param cssConn:      Connection string for CSS service.
+        @param qservAdmin:   Instance of QservAdmin class, None if CSS operations are disabled.
         @param cssClear:     If true then CSS info for a table will be deleted first.
         @param indexDb:      Name of  database for object indices, index is generated for director
                              table when it is partitioned, use empty string to disable index.
@@ -99,6 +98,7 @@ class DataLoader(object):
         self.keepChunks = keepChunks
         self.skipPart = skipPart
         self.oneTable = oneTable
+        self.css = qservAdmin
         self.cssClear = cssClear
         self.indexDb = indexDb
         self.emptyChunks = emptyChunks
@@ -113,12 +113,6 @@ class DataLoader(object):
 
         # parse all config files, this can raise an exception
         self.partOptions = PartConfig(configFiles)
-
-        # connect to CSS
-        self.css = None
-        if cssConn:
-            self.css = QservAdmin(cssConn)
-
 
         # Logic is slightly complicated here, so pre-calculate options that we need below:
         # 1. If self.skipPart and self.oneTable are both true then we skip partitioning

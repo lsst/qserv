@@ -66,6 +66,8 @@ import warnings
 # Imports for other modules --
 #-----------------------------
 from lsst.qserv.admin.dataLoader import DataLoader
+from lsst.qserv.admin.qservAdmin import QservAdmin
+from lsst.qserv.admin.workerAdmin import WorkerAdmin
 import lsst.qserv.admin.logger
 
 #----------------------------------
@@ -142,11 +144,14 @@ class Loader(object):
         group = parser.add_argument_group('Database options', 'Options for database connection')
         group.add_argument('-H', '--host', dest='mysqlHost', default='localhost', metavar='HOST',
                            help='Host name for czar mysql server, def: %(default)s.')
-        group.add_argument('-W', '--worker-host', dest='workerHosts', default=[], action='append',
-                           metavar='HOST', help='Host name for worker server, may be specified '
+        group.add_argument('-W', '--worker', dest='workerNodes', default=[], action='append',
+                           metavar='STRING', help='Node name for worker server, may be specified '
                            'more than once. If missing then czar server is used to store worker '
-                           'data. If more than one host is given then chunks are distributed '
-                           'randomly across all hosts.')
+                           'data. If more than one node is given then chunks are distributed '
+                           'randomly across all hosts. If CSS is used then nodes must already be '
+                           'defined in CSS (using qserv-admin command "CREATE NODE ..."). If CSS '
+                           'is disabled (with --no-css) then node name will be treated as a host '
+                           'name.')
         group.add_argument('-u', '--user', dest='user', default=None,
                            help='User name to use when connecting to server.')
         group.add_argument('-p', '--password', dest='password', default=None,
@@ -179,6 +184,9 @@ class Loader(object):
                             'Input can be empty, e.g. in case of defining SQL view instead of '
                             'regular table.')
 
+        # this will keep worker DB objects to control their lifetime
+        self._dbs = []
+
         # suppress some warnings from mysql
         warnings.filterwarnings('ignore', category=mysql.Warning)
 
@@ -205,12 +213,17 @@ class Loader(object):
             logger.addHandler(handler)
 
         # connect to czar mysql server
-        mysqlConn = self._dbConnect(self.args.mysqlHost)
+        mysqlConn = self._czarDbConnect()
+
+        # instantiate CSS interface
+        qservAdmin = None
+        if self.args.cssConn:
+            qservAdmin = QservAdmin(self.args.cssConn)
 
         # connect to all worker servers
         workerConnMap = {}
-        for worker in self.args.workerHosts:
-            workerConnMap[worker] = self._dbConnect(worker)
+        for worker in self.args.workerNodes:
+            workerConnMap[worker] = self._workerDbConnect(worker, qservAdmin)
 
         # instantiate loader
         self.loader = DataLoader(self.args.configFiles,
@@ -220,7 +233,7 @@ class Loader(object):
                                  keepChunks=self.args.keepChunks,
                                  skipPart=self.args.skipPart,
                                  oneTable=self.args.oneTable,
-                                 cssConn=self.args.cssConn,
+                                 qservAdmin=qservAdmin,
                                  cssClear=self.args.cssClear,
                                  indexDb=self.args.indexDb,
                                  emptyChunks=self.args.emptyChunks,
@@ -238,13 +251,13 @@ class Loader(object):
         return 0
 
 
-    def _dbConnect(self, host):
+    def _czarDbConnect(self):
         """
-        Connect to mysql server, returns connection or throws exception.
+        Connect to czar mysql server, returns connection or throws exception.
         """
         kws = dict(local_infile=1)
-        if host:
-            kws['host'] = host
+        if self.args.mysqlHost:
+            kws['host'] = self.args.mysqlHost
         if self.args.user:
             kws['user'] = self.args.user
         if self.args.password:
@@ -256,6 +269,38 @@ class Loader(object):
 
         try:
             return mysql.Connection(**kws)
+        except Exception as exc:
+            logging.critical('Failed to connect to mysql database: %s', exc)
+            raise
+
+
+    def _workerDbConnect(self, nodeName, qservAdmin):
+        """
+        Connect to worker mysql server, returns connection or throws exception.
+        """
+
+        if qservAdmin:
+            # will get node info from CSS
+            wAdmin = WorkerAdmin(name=nodeName, qservAdmin=qservAdmin)
+        else:
+            # no CSS, use node name as host name for direct mysql connection
+            mysqlConn = str(self.args.mysqlPort)
+            wAdmin = WorkerAdmin(host=nodeName, mysqlConn=mysqlConn)
+
+        kws = dict(local_infile=1)
+        if self.args.user:
+            kws['user'] = self.args.user
+        if self.args.password:
+            kws['passwd'] = self.args.password
+
+        try:
+            # this will return db.Db instance
+            db = wAdmin.mysqlConn(**kws)
+            self._dbs.append(db)
+            db.connect()
+            # extract mysql connection object from Db, this is a hack to be used for now
+            # in the future we'll need to use Db API directly in data loader
+            return db._conn
         except Exception as exc:
             logging.critical('Failed to connect to mysql database: %s', exc)
             raise
