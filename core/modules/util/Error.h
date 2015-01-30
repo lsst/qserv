@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -48,7 +48,7 @@ namespace util {
  */
 class Error {
 public:
-    Error(int code, std::string msg) :
+    Error(int code, std::string const& msg) :
             code(code), msg(msg) {
     }
     virtual ~Error() {
@@ -61,8 +61,6 @@ public:
     friend std::ostream& operator<<(std::ostream &out, Error const& error);
 };
 
-}
-}
-} // lsst::qserv::util
+}}} // namespace lsst::qserv::util
 
 #endif /* UTIL_ERROR_H_ */

@@ -159,7 +159,6 @@ bool QueryAction::Impl::act() {
     bool connOk = _initConnection();
     if(!connOk) { return false; }
 
-
     if(_msg->has_protocol()) {
         switch(_msg->protocol()) {
         case 1:
