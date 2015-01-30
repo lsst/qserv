@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -21,7 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "Error.h"
+// Class header
+#include "util/Error.h"
 
 // System headers
 #include <sstream>
@@ -36,7 +37,7 @@ namespace util {
  */
 std::string Error::toString() const {
     std::ostringstream str;
-    str << "[" << code << "] " << msg;
+    str << *this;
     return str.str();
 }
 
@@ -47,10 +48,8 @@ std::string Error::toString() const {
  * @return an output stream
  */
 std::ostream& operator<<(std::ostream &out, Error const& error) {
-    out << error.toString();
+    out << "[" << error.code << "] " << error.msg;
     return out;
 }
 
-}
-}
-} // lsst::qserv::util
+}}} // namespace lsst::qserv::util

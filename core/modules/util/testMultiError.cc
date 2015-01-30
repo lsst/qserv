@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(MonoError) {
 
     output << multiError;
     std::cout << multiError;
-    BOOST_REQUIRE(output.is_equal("[1] Stupid error message\n"));
+    BOOST_REQUIRE(output.is_equal("[1] Stupid error message"));
 }
 
 /** @test
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(MultiError) {
     const char* str = "Multi-error:\n"
             "[10] Error code is: 10\n"
             "[11] Error code is: 11\n"
-            "[12] Error code is: 12\n";
+            "[12] Error code is: 12";
 
     for (int errCode = 10; errCode < 13; errCode = errCode + 1) {
         std::stringstream ss;
