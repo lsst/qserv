@@ -28,6 +28,9 @@
 #include <map>
 #include <string>
 
+// Third-party headers
+#include "boost/function.hpp"
+
 // Qserv headers
 #include "global/constants.h" // For DUMMY_CHUNK
 
@@ -45,7 +48,7 @@ namespace qserv {
 /// capability, now that key-value pairs can be packed in protobufs messages.
 class ResourceUnit {
 public:
-    class Checker;
+    typedef boost::function<bool(ResourceUnit const& ru)> Checker;
     enum UnitType {GARBAGE, DBCHUNK, CQUERY, UNKNOWN, RESULT};
 
     ResourceUnit() : _unitType(GARBAGE), _chunk(-1) {}
@@ -98,11 +101,6 @@ private:
     static char const _varDelim = '&';
 
     friend std::ostream& operator<<(std::ostream& os, ResourceUnit const& ru);
-};
-
-class ResourceUnit::Checker {
-public:
-    virtual bool operator()(ResourceUnit const& ru) = 0;
 };
 
 }} // namespace lsst::qserv

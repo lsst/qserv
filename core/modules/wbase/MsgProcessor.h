@@ -25,6 +25,7 @@
 #define LSST_QSERV_WBASE_MSGPROCESSOR_H
 
 // Third-party headers
+#include "boost/function.hpp"
 #include "boost/shared_ptr.hpp"
 
 // Qserv headers
@@ -46,14 +47,26 @@ namespace wbase {
 
 /// MsgProcessor implementations handle incoming TaskMsg objects and write their
 /// results over a SendChannel
-class MsgProcessor
-    : public util::BinaryCallable<boost::shared_ptr<util::VoidCallable<void> >,
-                                  boost::shared_ptr<proto::TaskMsg>,
-                                  boost::shared_ptr<SendChannel> > {
-public:
-    /// @return a cancellation function.
-    /// This allows the caller to request work stoppage.
-    virtual R operator()(A1 taskMsg, A2 replyChannel) = 0;
-};
+// class MsgProcessor
+//     : public util::BinaryCallable<boost::shared_ptr<util::VoidCallable<void> >,
+//                                   boost::shared_ptr<proto::TaskMsg>,
+//                                   boost::shared_ptr<SendChannel> > {
+// public:
+//     /// @return a cancellation function.
+//     /// This allows the caller to request work stoppage.
+//     virtual R operator()(A1 taskMsg, A2 replyChannel) = 0;
+// };
+
+typedef boost::function<
+    void()
+> MsgCanceller;
+
+typedef boost::function<
+    wbase::MsgCanceller(
+        boost::shared_ptr<proto::TaskMsg> taskMsg,
+        boost::shared_ptr<wbase::SendChannel> replyChannel
+    )
+> MsgProcessor;
+
 }}} // lsst::qserv::wbase
 #endif // LSST_QSERV_WBASE_MSGPROCESSOR_H

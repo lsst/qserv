@@ -76,7 +76,7 @@ public:
     bool has(std::string const& db, int chunk,
              std::string table=std::string()) const;
 
-    boost::shared_ptr<ResourceUnit::Checker> newValidator();
+    ResourceUnit::Checker newValidator();
 
     void dbgPrint(std::ostream& os);
 

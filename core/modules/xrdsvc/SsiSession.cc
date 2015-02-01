@@ -88,9 +88,9 @@ public:
     typedef boost::shared_ptr<SsiProcessor> Ptr;
 
     SsiProcessor(ResourceUnit const& ru,
-                 wbase::MsgProcessor::Ptr mp,
+                 wbase::MsgProcessor mp,
                  boost::shared_ptr<wbase::SendChannel> sc,
-                 std::vector<SsiSession::CancelFuncPtr>& cancellers)
+                 std::vector<wbase::MsgCanceller>& cancellers)
         : _ru(ru),
           _msgProcessor(mp),
           _sendChannel(sc),
@@ -101,8 +101,7 @@ public:
         if(m->has_db() && m->has_chunkid()
            && (_ru.db() == m->db()) && (_ru.chunk() == m->chunkid())) {
             t.start();
-            SsiSession::CancelFuncPtr p = (*_msgProcessor)(m, _sendChannel);
-            _cancellers.push_back(p);
+            _cancellers.push_back(_msgProcessor(m, _sendChannel));
             t.stop();
             LOGF_INFO("SsiProcessor msgProcessor call took %1% seconds" % t.getElapsed());
         } else {
@@ -114,9 +113,9 @@ public:
     }
 private:
     ResourceUnit const& _ru;
-    wbase::MsgProcessor::Ptr _msgProcessor;
+    wbase::MsgProcessor _msgProcessor;
     boost::shared_ptr<wbase::SendChannel> _sendChannel;
-    std::vector<SsiSession::CancelFuncPtr>& _cancellers;
+    std::vector<wbase::MsgCanceller>& _cancellers;
 };
 ////////////////////////////////////////////////////////////////////////
 // class SsiSession
@@ -144,9 +143,8 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
     LOGF_INFO("### %1% byte request: %2%" % reqSize % ::quote(reqData, reqSize));
     ResourceUnit ru(sessName);
     if(ru.unitType() == ResourceUnit::DBCHUNK) {
-        if(!(*_validator)(ru)) {
+        if(!(_validator)(ru)) {
             LOGF_WARN("WARNING: unowned chunk query detected: %1%" % ru.path());
-            //error.setErrInfo(ENOENT, "File does not exist");
             return false;
         }
 
@@ -177,10 +175,10 @@ SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
 
     if(cancel) {
         // Do cancellation.
-        typedef std::vector<CancelFuncPtr>::iterator Iter;
+        typedef std::vector<wbase::MsgCanceller>::iterator Iter;
         for(Iter i=_cancellers.begin(), e=_cancellers.end(); i != e; ++i) {
             assert(*i);
-            (**i)();
+            (*i)();
         }
     }
     // No buffers allocated, so don't need to free.

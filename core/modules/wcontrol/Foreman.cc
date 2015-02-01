@@ -84,9 +84,9 @@ public:
     bool squashByHash(std::string const& hash);
     void newTaskAction(wbase::Task::Ptr task);
 
-    virtual boost::shared_ptr<wbase::MsgProcessor> getProcessor();
+    virtual wbase::MsgProcessor getProcessor();
 
-    class Processor;
+//    class Processor;
     class RunnerMgr;
     class Runner  {
     public:
@@ -139,6 +139,11 @@ private:
     LOG_LOGGER _log;
 
     wbase::TaskQueuePtr _running;
+
+    wbase::MsgCanceller _processMsg(
+        boost::shared_ptr<proto::TaskMsg> taskMsg,
+        boost::shared_ptr<wbase::SendChannel> replyChannel
+    );
 };
 ////////////////////////////////////////////////////////////////////////
 // Foreman factory function
@@ -315,32 +320,41 @@ void ForemanImpl::Runner::operator()() {
     _rm.signalDeath(this);
 }
 
+boost::function<void ()> ForemanImpl::_processMsg(
+    boost::shared_ptr<proto::TaskMsg> taskMsg,
+    boost::shared_ptr<wbase::SendChannel> replyChannel)
+{
+    wbase::Task::Ptr t = boost::make_shared<wbase::Task>(taskMsg, replyChannel);
+    newTaskAction(t);
+    return boost::bind(&wbase::Task::poison, t);
+}
+
 ////////////////////////////////////////////////////////////////////////
 // class ForemanImpl::Processor
 ////////////////////////////////////////////////////////////////////////
-class ForemanImpl::Processor : public wbase::MsgProcessor {
-public:
-    class Cancel : public util::VoidCallable<void> {
-    public:
-        Cancel(wbase::Task::Ptr t) : _t(t) {}
-        virtual void operator()() {
-            _t->poison();
-        }
-        wbase::Task::Ptr _t;
-    };
-    Processor(ForemanImpl& f) : _foremanImpl(f) {}
+// class ForemanImpl::Processor : public wbase::MsgProcessor {
+// public:
+//     class Cancel : public util::VoidCallable<void> {
+//     public:
+//         Cancel(wbase::Task::Ptr t) : _t(t) {}
+//         virtual void operator()() {
+//             _t->poison();
+//         }
+//         wbase::Task::Ptr _t;
+//     };
+//     Processor(ForemanImpl& f) : _foremanImpl(f) {}
 
-    virtual boost::shared_ptr<util::VoidCallable<void> >
-    operator()(boost::shared_ptr<proto::TaskMsg> taskMsg,
-               boost::shared_ptr<wbase::SendChannel> replyChannel) {
+//     virtual boost::shared_ptr<util::VoidCallable<void> >
+//     operator()(boost::shared_ptr<proto::TaskMsg> taskMsg,
+//                boost::shared_ptr<wbase::SendChannel> replyChannel) {
 
-        wbase::Task::Ptr t = boost::make_shared<wbase::Task>(taskMsg, replyChannel);
-        _foremanImpl.newTaskAction(t);
-        boost::shared_ptr<Cancel> c = boost::make_shared<Cancel>(t);
-        return c;
-    }
-    ForemanImpl& _foremanImpl;
-};
+//         wbase::Task::Ptr t = boost::make_shared<wbase::Task>(taskMsg, replyChannel);
+//         _foremanImpl.newTaskAction(t);
+//         boost::shared_ptr<Cancel> c = boost::make_shared<Cancel>(t);
+//         return c;
+//     }
+//     ForemanImpl& _foremanImpl;
+// };
 
 ////////////////////////////////////////////////////////////////////////
 // ForemanImpl
@@ -384,8 +398,9 @@ void ForemanImpl::newTaskAction(wbase::Task::Ptr task) {
     }
 }
 
-boost::shared_ptr<wbase::MsgProcessor> ForemanImpl::getProcessor() {
-    return boost::shared_ptr<Processor>(new Processor(*this));
+wbase::MsgProcessor ForemanImpl::getProcessor() {
+//    return boost::shared_ptr<Processor>(new Processor(*this));
+    return boost::bind(&ForemanImpl::_processMsg, this, _1, _2);
 }
 
 }}} // namespace lsst::qserv::wcontrol

@@ -33,6 +33,7 @@
 
 // Third-party headers
 #include "boost/regex.hpp"
+#include "boost/bind.hpp"
 
 // Qserv headers
 #include "global/constants.h"
@@ -236,8 +237,8 @@ bool ChunkInventory::has(std::string const& db, int chunk,
     }
 }
 
-boost::shared_ptr<ResourceUnit::Checker> ChunkInventory::newValidator() {
-    return boost::shared_ptr<ResourceUnit::Checker>(new Validator(*this));
+ResourceUnit::Checker ChunkInventory::newValidator() {
+    return boost::bind(&ChunkInventory::Check, this);
 }
 
 void ChunkInventory::dbgPrint(std::ostream& os) {

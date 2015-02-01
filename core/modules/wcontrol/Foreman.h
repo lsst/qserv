@@ -54,14 +54,8 @@
 
 // Local headers
 #include "wbase/Base.h"
+#include "wbase/MsgProcessor.h"
 #include "wbase/Task.h"
-
-// Forward declarations
-namespace lsst {
-namespace qserv {
-namespace wbase {
-    class MsgProcessor;
-}}} // End of forward declarations
 
 namespace lsst {
 namespace qserv {
@@ -102,7 +96,7 @@ public:
 
     virtual bool squashByHash(std::string const& hash) { return false; }
 
-    virtual boost::shared_ptr<wbase::MsgProcessor> getProcessor() = 0;
+    virtual wbase::MsgProcessor getProcessor() = 0;
     virtual ~Foreman() {}
 
 protected:
