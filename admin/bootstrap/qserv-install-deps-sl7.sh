@@ -33,6 +33,3 @@ yum install --assumeyes glib2-devel
 
 # kazoo
 yum install --assumeyes python-setuptools
-
-# FIXME qserv: deprecated by 2015_01
-yum install --assumeyes numpy swig
