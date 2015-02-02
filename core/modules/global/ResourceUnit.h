@@ -102,6 +102,7 @@ private:
 
 class ResourceUnit::Checker {
 public:
+    virtual ~Checker() {};
     virtual bool operator()(ResourceUnit const& ru) = 0;
 };
 
