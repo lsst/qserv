@@ -69,6 +69,8 @@ class RowBuffer {
 public:
     typedef boost::shared_ptr<RowBuffer> Ptr;
 
+    virtual ~RowBuffer() {};
+
     /// Fetch a number of bytes into a buffer. Return the number of bytes
     /// fetched. Returning less than bufLen does NOT indicate EOF.
     virtual unsigned fetch(char* buffer, unsigned bufLen) = 0;
