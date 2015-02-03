@@ -1,1 +1,1 @@
-DEP=SL7
+DEPS=sl7
