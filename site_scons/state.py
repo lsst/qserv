@@ -53,6 +53,7 @@ def _getBinPath(binName, msg=None):
     if not binFullPath:
         raise SCons.Errors.StopError('Could not locate binary : %s' % binName)
     else:
+        log.debug("Found %s here %s" % (binName, binFullPath))
         return binFullPath
 
 def _getBinPathFromBinList(binList, msg=None):
@@ -112,7 +113,7 @@ def _setEnvWithDependencies():
     opts.AddVariables(
             (EnumVariable('debug', 'debug gcc output and symbols', 'yes', allowed_values=('yes', 'no'))),
             (PathVariable('PROTOC', 'protoc binary path', _getBinPath('protoc',"Looking for protoc compiler"), PathVariable.PathIsFile)),
-            (PathVariable('SWIG', 'swig binary path', _getBinPath('swig',"Looking for swig preprocessor"), PathVariable.PathIsFile)),
+            (PathVariable('SWIG_BIN', 'swig binary path', _getBinPath('swig',"Looking for swig preprocessor"), PathVariable.PathIsFile)),
             # antlr is named runantlr on Ubuntu 13.10 and Debian Wheezy
             (PathVariable('ANTLR', 'antlr binary path', _getBinPathFromBinList(['antlr','runantlr'],'Looking for antlr parser generator'), PathVariable.PathIsFile)),
             (PathVariable('XROOTD_DIR', 'xrootd install dir', _findPrefixFromBin( 'XROOTD_DIR', "xrootd"), PathVariable.PathIsDir)),
@@ -165,6 +166,8 @@ def _setEnvWithDependencies():
             )
         opts.Update(env)
 
+
+
     # SWIG_LIB_ENV specification: Useful when swig can't find its own *.i files
     # This is a SWIG_LIB envvar, read by swig, not the same as the location of
     # swig's *.so libs. For system-installed swig, this is usually /usr/share/swig/x.y.z
@@ -185,11 +188,11 @@ def _setEnvWithDependencies():
     #      (this prevent recognition of .i files by scons and break the build)
     #   2. swig binary path was not the one specified by the user
     # then it is required to add it and reload the swig scons tool.
-    if SCons.Util.WhereIs("swig", env['ENV']['PATH']) != env['SWIG']:
-        swig_dirname = os.path.dirname(env['SWIG'])
-        env.AppendENVPath('PATH', swig_dirname)
+    if SCons.Util.WhereIs("swig", env['ENV']['PATH']) != env['SWIG_BIN']:
+        swig_dirname = os.path.dirname(env['SWIG_BIN'])
+        env.PrependENVPath('PATH', swig_dirname)
         env.Tool('swig')
-        log.debug("swig tool loaded using: {0}".format(env['SWIG']))
+        log.debug("swig tool loaded using: {0}".format(env['SWIG_BIN']))
 
     SCons.Script.Help(opts.GenerateHelpText(env))
 
