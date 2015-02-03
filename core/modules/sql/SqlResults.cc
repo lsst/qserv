@@ -56,7 +56,7 @@ SqlResults::extractFirstColumn(std::vector<std::string>& ret,
     int i, s = _results.size();
     for (i=0 ; i<s ; i++) {
         MYSQL_ROW row;
-        while (row = mysql_fetch_row(_results[i])) {
+        while ((row = mysql_fetch_row(_results[i])) != NULL) {
             ret.push_back(row[0]);
         }
         mysql_free_result(_results[i]);
@@ -72,7 +72,7 @@ SqlResults::extractFirst2Columns(std::vector<std::string>& col1,
     int i, s = _results.size();
     for (i=0 ; i<s ; i++) {
         MYSQL_ROW row;
-        while (row = mysql_fetch_row(_results[i])) {
+        while ((row = mysql_fetch_row(_results[i])) != NULL) {
             col1.push_back(row[0]);
             col2.push_back(row[1]);
         }
@@ -90,7 +90,7 @@ SqlResults::extractFirst3Columns(std::vector<std::string>& col1,
     int i, s = _results.size();
     for (i=0 ; i<s ; i++) {
         MYSQL_ROW row;
-        while (row = mysql_fetch_row(_results[i])) {
+        while ((row = mysql_fetch_row(_results[i])) != NULL) {
             col1.push_back(row[0]);
             col2.push_back(row[1]);
             col3.push_back(row[2]);
@@ -110,7 +110,7 @@ SqlResults::extractFirst4Columns(std::vector<std::string>& col1,
     int i, s = _results.size();
     for (i=0 ; i<s ; i++) {
         MYSQL_ROW row;
-        while (row = mysql_fetch_row(_results[i])) {
+        while ((row = mysql_fetch_row(_results[i])) != NULL) {
             col1.push_back(row[0]);
             col2.push_back(row[1]);
             col3.push_back(row[2]);
