@@ -47,10 +47,15 @@ cmd="${PYTHON} ${start} -c ${config} >> ${logfile} 2>&1 &"
 
 start_cmd() {
     start -p $pidfile -l $lockfile -t ${starttimeout} $NAME "${cmd}"
+    ret=$?
+    [ $ret -eq 0 ] || echo "See startup logfile : ${logfile}"
+    return $ret
 }
 
 stop_cmd() {
     stop -p $pidfile -l $lockfile $NAME
+    ret=$?
+    return $ret
 }
 
 # See how we were called.
