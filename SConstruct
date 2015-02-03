@@ -20,12 +20,15 @@ all = env.Alias("all", [env.Alias("build"), env.Alias("test")])
 env.Default(all)
 
 env.Depends("build", env.Alias("init-build-env"))
-env.Depends("install", env.Alias("build"))
+env.Depends("install-notest", env.Alias("build"))
 
-env.Alias("install",
+env.Alias("install-notest",
           [env.Alias("dist-core"),
            env.Alias("admin"),
            env.Alias("templates")])
+env.Alias("install",
+          [env.Alias("test"),
+           env.Alias("install-notest")])
 
 ################################
 #
@@ -96,8 +99,12 @@ else:
             env.InstallAs(targetFile, sourceNode)
             targetFiles.append(targetFile)
 
-        installTargets = targetFiles + testTargets
+        installTargets = targetFiles
         state.log.debug("installTargets: %s" % map(str, installTargets))
+
+        if testTargets:
+            env.Alias("test", testTargets)
+            state.log.debug("Test tgts to build: %s" % map(str, testTargets))
 
         return installTargets
 
