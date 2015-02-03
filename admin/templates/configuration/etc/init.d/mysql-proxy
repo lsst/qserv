@@ -60,7 +60,7 @@ lockfile=${QSERV_RUN_DIR}/var/lock/subsys/$NAME
 
 LUA_DEBUG_LEVEL=0
 LUA_LOG_FILE=${QSERV_LOG_DIR}/mysql-proxy-lua.log
-LOGFILE=${QSERV_LOG_DIR}/mysql-proxy.log
+logfile=${QSERV_LOG_DIR}/mysql-proxy.log
 QSERV_RPC_PORT=${QSERV_RPC_PORT}
 
 # WARNING : can only use the --user switch if running as root
@@ -76,6 +76,9 @@ cmd="DEBUG=${LUA_DEBUG_LEVEL} QSERV_RPC_PORT=${QSERV_RPC_PORT} ${DAEMON} \
 
 start_cmd() {
     start -p $pidfile -l $lockfile $NAME "${cmd}"
+    ret=$?
+    [ $ret -eq 0 ] || echo "See startup logfile : ${logfile}"
+    return $ret
 }
 
 stop_cmd() {
