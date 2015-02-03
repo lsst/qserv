@@ -40,10 +40,13 @@
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
 #include "wconfig/ConfigError.h"
-#include "wcontrol/Service.h"
+#include "wcontrol/Foreman.h"
+#include "wsched/BlendScheduler.h"
+#include "wsched/GroupScheduler.h"
+#include "wsched/ScanScheduler.h"
 #include "wlog/XrootdAppender.h"
 #include "wpublish/ChunkInventory.h"
-#include "xrdfs/XrdName.h"
+#include "xrdsvc/XrdName.h"
 #include "xrdsvc/SsiSession.h"
 
 
@@ -74,8 +77,13 @@ SsiService::SsiService(XrdSsiLogger* log) {
     if(!_setupScratchDb()) {
         throw wconfig::ConfigError("Couldn't setup scratch db");
     }
-    _service = boost::make_shared<wcontrol::Service>();
 
+    _foreman = wcontrol::newForeman(
+        boost::make_shared<wsched::BlendScheduler>(
+            boost::make_shared<wsched::GroupScheduler>(),
+            boost::make_shared<wsched::ScanScheduler>()
+        )
+    );
 }
 
 SsiService::~SsiService() {
@@ -90,13 +98,13 @@ SsiService::Provision(XrdSsiService::Resource* r,
     XrdSsiSession* session = new SsiSession(
         r->rName,
         _chunkInventory->newValidator(),
-        _service->getProcessor());
+        _foreman->getProcessor());
     r->ProvisionDone(session); // Step 3: trigger client-side ProvisionDone()
     return true;
 }
 
 void SsiService::_initInventory() {
-    xrdfs::XrdName x;
+    XrdName x;
     boost::shared_ptr<sql::SqlConnection> conn = makeSqlConnection();
     assert(conn);
     _chunkInventory =
