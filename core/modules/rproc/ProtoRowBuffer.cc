@@ -66,7 +66,8 @@ namespace rproc {
 template <typename Iter, typename CIter>
 inline int escapeString(Iter destBegin, CIter srcBegin, CIter srcEnd) {
     //mysql_real_escape_string(_mysql, cursor, col, r.lengths[i]);
-    assert(srcBegin != srcEnd);
+    // empty string isn't escaped
+    if (srcEnd == srcBegin) return 0;
     assert(srcEnd - srcBegin > 0);
     assert(srcEnd - srcBegin < std::numeric_limits<int>::max() / 2);
     Iter destI = destBegin;
