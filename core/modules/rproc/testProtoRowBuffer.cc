@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(TestEscape) {
     std::string target(test1.size() * 2, 'X');
 
     int count = escapeString(target.begin(), test1.begin(), test1.end());
-    BOOST_CHECK_EQUAL(count, eTest1.size());
+    BOOST_CHECK_EQUAL(count, static_cast<int>(eTest1.size()));
     BOOST_CHECK_EQUAL(target.substr(0, count), eTest1);
 }
 
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(TestCopyColumn) {
     std::string eSimple = "'" + simple + "'";
     std::string target;
     int copied = copyColumn(target, simple);
-    BOOST_CHECK_EQUAL(copied, eSimple.size());
+    BOOST_CHECK_EQUAL(copied, static_cast<int>(eSimple.size()));
     BOOST_CHECK_EQUAL(target, eSimple);
 }
 
