@@ -48,7 +48,7 @@ public:
     typedef boost::shared_ptr<ReleaseFunc> ReleaseFuncPtr;
     typedef long long Size;
 
-    virtual ~SendChannel() {};
+    virtual ~SendChannel() {}
 
     /// Send a buffer
     virtual bool send(char const* buf, int bufLen) = 0;
