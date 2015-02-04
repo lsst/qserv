@@ -1,3 +1,43 @@
+R E L E A S E   2015_01
+=======================
+
+Code improvements:
+ * DM-1720: Make secondary index for director table only
+ * DM-1762: Export SUI data (DC_W13_Stripe82_subset)
+ * DM-1742: Remove swig/antlr from Qserv system dependency list
+ * DM-1677: multi-error utility class
+ * DM-1213: cleanup order/grouping of header files
+ * DM-370: improved how default values for CSS are handled
+ * DM-1090: Log now takes a char const* format
+ * DM-1919: Address misc. compiler warnings
+ * DM-1917: Fix missing virtual destructors
+
+New features:
+ * DM-627: Switch to using new partitioner, loader
+ * DM-520: Remove old partitioner/ loader and duplicator
+ * DM-1616: Implement remote host access for management framework (workerAdmin)
+ * DM-1615: Design and implement CSS structure for distributed Qserv setup
+ * DM-1046: W15 Central State System, support for db/table/query metadata
+ * DM-1037: W15 Loading data into distributed Qserv-managed databases
+ * DM-1755: Create an integration test case with GB-sized data
+ * DM-1844: Qserv tested on SL7
+
+Bug fixes:
+ * DM-1886: qserv-admin crash in DUMP EVERYTHING
+ * DM-1582: Qserv spatial restrictor names are case sensitive
+ * DM-1743: CSV reader for Qserv partitioner doesn't handle no-escape and no-quote options properly
+ * DM-737: Rendering an IR node tree should produce properly parenthesized output
+ * DM-655: unknown column derails Qserv
+ * DM-1673: Allow SWIG override for broken SWIG installations
+ * DM-1744: Fix SWIG_SWIG_LIB empty list default value
+ * DM-1732: Fix bug with 2 results table with same id
+
+Documentation improvements:
+ * DM-1792: Update documentation and automatic install script w.r.t. new newinstall.sh script
+ * DM-1658: Document 'git bisect' use
+ * DM-1658: Improve command-line ReST documentation
+ * DM-1822: Fix bug related to mysql empty string
+
 R E L E A S E   2014_12
 =======================
 
@@ -64,7 +104,7 @@ R E L E A S E   2014_09
 Code improvements:
  * DM-198:  Rework JOIN support, including Ref*Match tables
  * DM-199:  Develop new master-worker result system
- * DM-207:  Migrate Qserv czar code to the new logging system 
+ * DM-207:  Migrate Qserv czar code to the new logging system
  * DM-1005: Migrate Qserv worker code to the new logging system
  * DM-602:  Add support for installing qserv on machines without internet
  * DM-750:  Integrate sciSQL in eups
@@ -105,7 +145,7 @@ Bug fixes:
 
 Documentation improvements:
  * DM-930: Updated documentation and migrated to REST format
- * DM-649: Framework for documenting "how to run Qserv" 
+ * DM-649: Framework for documenting "how to run Qserv"
 
 R E L E A S E   2014_07
 =======================
