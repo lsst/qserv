@@ -90,6 +90,11 @@ class CommandParser(object):
             "dirColName1",
             "dirTable2",
             "dirColName2"],
+        "createNode" : [
+            "type",
+            "host",
+            "runDir",
+            "mysqlConn"],
         }
 
     def __init__(self, connInfo):
@@ -117,6 +122,7 @@ class CommandParser(object):
     CREATE DATABASE <dbName> LIKE <dbName2>;
     CREATE TABLE <dbName>.<tableName> <configFile>;
     CREATE TABLE <dbName>.<tableName> LIKE <dbName2>.<tableName2>;
+    CREATE NODE <nodeName> <key=value ...>;  # keys: type, host, runDir, mysqlConn
     DROP DATABASE <dbName>;
     DROP EVERYTHING;
     DUMP EVERYTHING [<outFile>];
@@ -126,6 +132,9 @@ class CommandParser(object):
     EXIT;
     ...more coming soon
 """
+        # only prompt if input comes from terminal
+        self._prompt = "qserv > " if sys.stdin.isatty() else ""
+
 
     def receiveCommands(self):
         """
@@ -135,21 +144,22 @@ class CommandParser(object):
         """
         line = ''
         cmd = ''
-        prompt = "qserv > "
+        prompt = self._prompt
         while True:
             line = raw_input(prompt).decode("utf-8").strip()
             cmd += line + ' '
-            prompt = "qserv > " if line.endswith(';') else "~ "
+            if prompt:
+                prompt = self._prompt if line.endswith(';') else "~ "
             while re.search(';', cmd):
                 pos = cmd.index(';')
                 try:
-                    self._parse(cmd[:pos])
+                    self.parse(cmd[:pos])
                 except (QservAdminException, KvException) as e:
                     self._logger.error(e.__str__())
                     print "ERROR: ", e.__str__()
                 cmd = cmd[pos+1:]
 
-    def _parse(self, cmd):
+    def parse(self, cmd):
         """
         Parse, and dispatch to subparsers based on first word. Raise
         exceptions on errors.
@@ -173,6 +183,8 @@ class CommandParser(object):
             self._parseCreateDatabase(tokens[1:])
         elif t == 'TABLE':
             self._parseCreateTable(tokens[1:])
+        elif t == 'NODE':
+            self._parseCreateNode(tokens[1:])
         else:
             raise QservAdminException(QservAdminException.BAD_CMD)
 
@@ -232,6 +244,40 @@ class CommandParser(object):
         else:
             raise QservAdminException(QservAdminException.BAD_CMD,
                                 "Unexpected number of arguments.")
+
+    def _parseCreateNode(self, tokens):
+        """
+        Subparser - handles all CREATE NODE requests.
+        Throws KvException, QservAdminException.
+        """
+        if len(tokens) < 2:
+            raise QservAdminException(QservAdminException.BAD_CMD,
+                                "Unexpected number of arguments.")
+
+        requiredKeys = self.requiredOpts['createNode']
+
+        # parse command, 'type' is optional, rest is required
+        options = {'nodeName': tokens[0], 'type': 'worker'}
+        for opt in tokens[1:]:
+            if '=' not in opt:
+                raise QservAdminException(QservAdminException.BAD_CMD,
+                   "Invalid argument '%s', should be <key>=<value>" % opt)
+            key, value = opt.split('=', 1)
+
+            if key not in requiredKeys:
+                raise QservAdminException(QservAdminException.BAD_CMD,
+                   "Unrecognized option key '%s', possible keys: %s" % \
+                   (key, ' '.join(requiredKeys)))
+
+            options[key] = value
+
+        # check that all required options are there
+        self._checkExist(options, requiredKeys)
+
+        # call CSS to do the rest, remap options to argument names
+        options['nodeType'] = options['type']
+        del options['type']
+        self._impl.addNode(**options)
 
     def _parseDrop(self, tokens):
         """
@@ -451,7 +497,7 @@ NAME
         qserv-admin - the client program for Central State System (CSS)
 
 SYNOPSIS
-        qserv-admin [OPTIONS]
+        qserv-admin [OPTIONS] [command ...]
 
 OPTIONS
    -v
@@ -462,6 +508,11 @@ OPTIONS
         Name of the output log file. If not specified, the output goes to stderr.
    -c
         Connection information (hostname:port)
+
+If commands are provided then they are executed and application will exit.
+Every argument is treated as separate command, use quotes if command contains
+spaces or special characters. If any command fails then all other commands are
+ignored and non-zero code is returned to caller.
 """
 
     parser = OptionParser(usage=usage)
@@ -472,12 +523,12 @@ OPTIONS
     (options, args) = parser.parse_args()
     if int(options.verbT) > 50: options.verbT = 50
     if int(options.verbT) <  0: options.verbT = 0
-    return (int(options.verbT), options.logF, options.connI)
+    return (int(options.verbT), options.logF, options.connI, args)
 
 ####################################################################################
 def main():
 
-    (verbosity, logFileName, connInfo) = getOptions()
+    (verbosity, logFileName, connInfo, args) = getOptions()
 
     # configure logging
     if logFileName:
@@ -492,11 +543,22 @@ def main():
             datefmt='%m/%d/%Y %I:%M:%S',
             level=verbosity)
 
-    # wait for commands and process
-    try:
-        CommandParser(connInfo).receiveCommands()
-    except(KeyboardInterrupt, SystemExit, EOFError):
-        print ""
+    parser = CommandParser(connInfo)
+    if args:
+        for cmd in args:
+            # strip semicolons just in case
+            cmd = cmd.strip().rstrip(';')
+            try:
+                parser.parse(cmd)
+            except (QservAdminException, KvException) as e:
+                print "ERROR: ", e.__str__()
+                sys.exit(1)
+    else:
+        try:
+            # wait for commands and process
+            parser.receiveCommands()
+        except(KeyboardInterrupt, SystemExit, EOFError):
+            print ""
 
 if __name__ == "__main__":
     main()
