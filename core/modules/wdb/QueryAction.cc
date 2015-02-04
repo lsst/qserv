@@ -247,7 +247,7 @@ void QueryAction::Impl::_transmitResult() {
     if (!_multiError.empty()) {
         std::string msg = _multiError.toString();
         _result->set_errormsg(msg);
-        LOGF(_log, LOG_LVL_INFO, msg);
+        LOGF(_log, LOG_LVL_ERROR, msg);
     }
     _result->SerializeToString(&resultString);
 
