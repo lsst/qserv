@@ -49,6 +49,7 @@ public:
     /// The interface for a backend to be plugged into a PacketBuffer
     class Source {
     public:
+        virtual ~Source() {}
         virtual Value getFirstValue() = 0;
         virtual void increment(PacketBuffer& p) = 0;
         virtual bool incrementExtend(PacketBuffer& p) { return false; }
