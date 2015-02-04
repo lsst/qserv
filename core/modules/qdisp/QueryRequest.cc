@@ -96,7 +96,7 @@ QueryRequest::~QueryRequest() {
 // content of request data
 char* QueryRequest::GetRequest(int& requestLength) {
     requestLength = _payload.size();
-    LOGF_DEBUG("Requesting [%1%] %2%" % requestLength % _payload);
+    LOGF_DEBUG("Requesting, payload size: [%1%]" % requestLength);
     // Andy promises that his code won't corrupt it.
     return const_cast<char*>(_payload.data());
 }
