@@ -275,7 +275,7 @@ bool InfileMerger::merge(boost::shared_ptr<proto::WorkerResponse> response) {
     // TODO: Check session id (once session id mgmt is implemented)
 
     LOGF_DEBUG("EXECUTING InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%)"
-               % response->headerSize
+               % static_cast<short>(response->headerSize)
                % response->protoHeader.size()
                % response->result.row_size());
 
