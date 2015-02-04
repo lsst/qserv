@@ -96,7 +96,6 @@ public:
         std::string const& getHash() const { return _task->hash; }
 
     private:
-        void _runWithDump();
         void _runProtocol2();
         RunnerMgr& _rm;
         wbase::Task::Ptr _task;
@@ -298,11 +297,12 @@ void ForemanImpl::Runner::operator()() {
     while(!_isPoisoned) {
         LOGF(_log, LOG_LVL_INFO, "Runner running %1%" % *_task);
         proto::TaskMsg const& msg = *_task->msg;
-        if(msg.has_protocol() && msg.protocol() == 2) {
-            _runProtocol2();
-        } else {
-//            _runWithDump();
+        if(!msg.has_protocol() || msg.protocol() < 2) {
+
+
+
         }
+        _runProtocol2();
         if(_isPoisoned) break;
         // Request new work from the manager
         // (mgr is a role of the foreman, who will check with the
@@ -341,6 +341,7 @@ public:
     }
     ForemanImpl& _foremanImpl;
 };
+
 ////////////////////////////////////////////////////////////////////////
 // ForemanImpl
 ////////////////////////////////////////////////////////////////////////
@@ -383,8 +384,6 @@ void ForemanImpl::newTaskAction(wbase::Task::Ptr task) {
         }
     }
 }
-
-
 
 boost::shared_ptr<wbase::MsgProcessor> ForemanImpl::getProcessor() {
     return boost::shared_ptr<Processor>(new Processor(*this));
