@@ -32,8 +32,8 @@ Access to the classes from the qserv_czar library
 
 %ignore lsst::qserv::qdisp::TransactionSpec::Reader;
 
- //%feature("autodoc", "1");
- //%module("threads"=1, package="lsst.qserv.czar", docstring=qserv_czar_DOCSTRING) czarLib
+//%feature("autodoc", "1");
+//%module("threads"=1, package="lsst.qserv.czar", docstring=qserv_czar_DOCSTRING) czarLib
 %module("threads"=1, package="lsst.qserv.czar") czarLib
 %{
 #define SWIG_FILE_WITH_INIT
@@ -75,7 +75,6 @@ namespace std {
     %template(StringMap) map<std::string, std::string>;
 };
 
-
 // ------------------------------------------------------------------------
 // Copied from http://www.swig.org/Doc1.3/Python.html#Python_nn59
 
@@ -110,7 +109,6 @@ namespace std {
 
 // ------------------------------------------------------------------------
 
-
 %include "boost_shared_ptr.i"
 %shared_ptr(lsst::qserv::css::KvInterface)
 %shared_ptr(lsst::qserv::css::KvInterfaceImplMem)
@@ -118,7 +116,7 @@ namespace std {
 // Include all classes to wrap:
 // %include "lsst/qserv/czar/Master.h"
 
- //%apply (void *STRING, unsigned long long LENGTH) { (void *buf, unsigned long long nbyte) };
+//%apply (void *STRING, unsigned long long LENGTH) { (void *buf, unsigned long long nbyte) };
 %apply (char *STRING, int LENGTH) { (char *str, int len) };
 //%apply (const char *STRING, int LENGTH) { (const char *str, int len) };
 %apply int *OUTPUT { int *write, int *read };
@@ -141,7 +139,6 @@ namespace std {
 %include "query/Constraint.h"
 %include "rproc/mergeTypes.h"
 %include "util/Substitution.h"
-
 
 // Instantiate any templates here:
 // %template(setBool) lsst::daf::base::PropertySet::set<bool>;

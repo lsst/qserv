@@ -380,8 +380,6 @@ void ForemanImpl::newTaskAction(wbase::Task::Ptr task) {
     }
 }
 
-
-
 boost::shared_ptr<wbase::MsgProcessor> ForemanImpl::getProcessor() {
     return boost::shared_ptr<Processor>(new Processor(*this));
 }
