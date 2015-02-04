@@ -274,10 +274,10 @@ bool InfileMerger::merge(boost::shared_ptr<proto::WorkerResponse> response) {
     }
     // TODO: Check session id (once session id mgmt is implemented)
 
-    LOGF_DEBUG("EXECUTING InfileMerger::merge(sizes=%1%, %2%, rowcount=%3%)"
-               % response->headerSize
-               % response->protoHeader.size()
-               % response->result.row_size());
+    LOG_DEBUG("EXECUTING InfileMerger::merge(size=%u, %i, rowcount=%i)",
+              response->headerSize,
+              response->protoHeader.size(),
+              response->result.row_size());
 
     if(response->result.has_errorcode() || response->result.has_errormsg()) {
         _error.status = InfileMergerError::MYSQLEXEC;
