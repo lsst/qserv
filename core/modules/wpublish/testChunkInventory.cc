@@ -87,12 +87,11 @@ struct ChunkSql : public MockSql {
     }
 
     typedef std::vector<std::string> Tuple;
-    typedef std::list<Tuple> TupleList;
-    typedef TupleList::const_iterator TupleListIter;
-    typedef MockSql::Iter<TupleListIter> SqlIter;
+    typedef std::vector<Tuple> TupleVector;
+    typedef TupleVector::const_iterator TupleVectorIter;
+    typedef MockSql::Iter<TupleVectorIter> SqlIter;
 
-    TupleList _selectDbTuples;
-    TupleList _nullTuples;
+    TupleVector _selectDbTuples;
     char const* const* _tablesBegin;
     char const* const* _tablesEnd;
 };

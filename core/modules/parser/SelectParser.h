@@ -32,7 +32,6 @@
   */
 
 // System headers
-#include <list>
 #include <sstream>
 
 // Third-party headers
