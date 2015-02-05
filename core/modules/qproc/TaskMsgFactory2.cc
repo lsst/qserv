@@ -58,10 +58,10 @@ namespace qproc {
 
 void
 flattenScanTables(StringList& outputList,
-                  StringPairList const& scanTables) {
+                  StringPairVector const& scanTables) {
     std::string db;
     outputList.clear();
-    for(StringPairList::const_iterator i=scanTables.begin(),
+    for(StringPairVector::const_iterator i=scanTables.begin(),
         e=scanTables.end() ; i != e; ++i) {
         if(db.empty()) {
             db = i->first;

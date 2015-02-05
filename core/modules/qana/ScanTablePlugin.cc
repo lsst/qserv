@@ -77,9 +77,9 @@ public:
     virtual void applyFinal(query::QueryContext& context);
 
 private:
-    StringPairList _findScanTables(query::SelectStmt& stmt,
+    StringPairVector _findScanTables(query::SelectStmt& stmt,
                                    query::QueryContext& context);
-    StringPairList _scanTables;
+    StringPairVector _scanTables;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -132,7 +132,7 @@ ScanTablePlugin::applyFinal(query::QueryContext& context) {
 }
 
 struct getPartitioned : public query::TableRef::FuncC {
-    getPartitioned(StringPairList& sList_) : sList(sList_) {}
+    getPartitioned(StringPairVector& sList_) : sList(sList_) {}
     virtual void operator()(query::TableRef const& tRef) {
         StringPair entry(tRef.getDb(), tRef.getTable());
         if(found.end() != found.find(entry)) return;
@@ -140,13 +140,13 @@ struct getPartitioned : public query::TableRef::FuncC {
         found.insert(entry);
     }
     std::set<StringPair> found;
-    StringPairList& sList;
+    StringPairVector& sList;
 };
 
 // helper
-StringPairList
+StringPairVector
 filterPartitioned(query::TableRefList const& tList) {
-    StringPairList list;
+    StringPairVector list;
     getPartitioned gp(list);
     for(query::TableRefList::const_iterator i=tList.begin(), e=tList.end();
         i != e; ++i) {
@@ -155,7 +155,7 @@ filterPartitioned(query::TableRefList const& tList) {
     return list;
 }
 
-StringPairList
+StringPairVector
 ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
                                  query::QueryContext& context) {
     // Might be better as a separate plugin
@@ -242,7 +242,7 @@ ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
     }
     // FIXME hasSelectStar is not populated right now. Do we need it?
 
-    StringPairList scanTables;
+    StringPairVector scanTables;
     // Right now, queries involving less than a threshold number of
     // chunks have their scanTables squashed as non-scanning in the
     // plugin's applyFinal
