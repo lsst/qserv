@@ -53,7 +53,7 @@ public:
     // Contents could change
     std::string db;
     int chunkId;
-    StringPairList scanTables;
+    StringPairVector scanTables;
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
     std::vector<std::string> subChunkTables;
