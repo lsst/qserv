@@ -72,7 +72,7 @@ public:
     std::string username; ///< unused, but reserved.
     std::vector<lsst::qserv::query::DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
 
-    StringPairList scanTables; // Tables scanned (for shared scans)
+    StringPairVector scanTables; // Tables scanned (for shared scans)
 
     // Table aliasing
     query::TableAlias tableAliases;
