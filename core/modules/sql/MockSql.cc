@@ -29,10 +29,10 @@
 namespace lsst {
 namespace qserv {
 
-typedef std::vector<sql::SqlResultIter::List> VecList;
+typedef std::vector<StringVector> StringVectorVector;
 
 namespace { // anonymous
-VecList vec;
+StringVectorVector vec;
 }
 
 namespace sql {
@@ -40,7 +40,7 @@ namespace sql {
 
 boost::shared_ptr<SqlResultIter>
 MockSql::getQueryIter(std::string const& query) {
-    typedef VecList::const_iterator SubIter;
+    typedef StringVectorVector::const_iterator SubIter;
     boost::shared_ptr<Iter<SubIter> > iter = boost::make_shared<Iter<SubIter> >(vec.begin(), vec.end());
     return iter;
 }

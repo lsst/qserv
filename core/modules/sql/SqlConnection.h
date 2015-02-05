@@ -41,6 +41,7 @@
 #include "boost/shared_ptr.hpp"
 
 // Local headers
+#include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
 #include "sql/SqlErrorObject.h"
 
@@ -61,13 +62,12 @@ namespace sql {
 
 class SqlResultIter {
 public:
-    typedef std::vector<std::string> List;
     SqlResultIter() {}
     SqlResultIter(mysql::MySqlConfig const& sc, std::string const& query);
     virtual ~SqlResultIter() {}
     virtual SqlErrorObject& getErrorObject() { return _errObj; }
 
-    virtual List const& operator*() const { return _current; }
+    virtual StringVector const& operator*() const { return _current; }
     virtual SqlResultIter& operator++(); // pre-increment iterator advance.
     virtual bool done() const; // Would like to relax LSST standard 3-4 for iterator classes
 
@@ -75,7 +75,7 @@ private:
     bool _setup(mysql::MySqlConfig const& sqlConfig, std::string const& query);
 
     boost::shared_ptr<mysql::MySqlConnection> _connection;
-    List _current;
+    StringVector _current;
     SqlErrorObject _errObj;
     int _columnCount;
 };
