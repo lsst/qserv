@@ -124,7 +124,7 @@ boost::shared_ptr<GroupByClause> GroupByClause::copySyntax() {
     return boost::make_shared<GroupByClause>(*this);
 }
 
-void GroupByClause::findValueExprs(ValueExprList& list) {
+void GroupByClause::findValueExprs(ValueExprPtrVector& list) {
     for (List::iterator i = _terms->begin(), e = _terms->end(); i != e; ++i) {
         list.push_back(i->getExpr());
     }

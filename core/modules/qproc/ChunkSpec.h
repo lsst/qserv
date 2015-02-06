@@ -32,7 +32,6 @@
 
 // System headers
 #include <ostream>
-#include <list>
 #include <stdint.h>
 #include <vector>
 
@@ -54,7 +53,6 @@ public:
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpec const& c);
 
-typedef std::list<ChunkSpec> ChunkSpecList;
 typedef std::vector<ChunkSpec> ChunkSpecVector;
 
 /// An iterating fragmenter to reduce the number of subChunkIds per ChunkSpec
@@ -74,11 +72,11 @@ private:
 /// TODO: Consider renaming this. (SubChunkSpec?)
 class ChunkSpecSingle {
 public:
-    typedef std::list<ChunkSpecSingle> List;
+    typedef std::vector<ChunkSpecSingle> Vector;
     ChunkSpecSingle() : chunkId(-1), subChunkId(-1) {}
     int32_t chunkId;
     int32_t subChunkId;
-    static List makeList(ChunkSpec const& spec);
+    static Vector makeVector(ChunkSpec const& spec);
 };
 std::ostream& operator<<(std::ostream& os, ChunkSpecSingle const& c);
 

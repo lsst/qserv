@@ -33,7 +33,6 @@
   */
 
 // System headers
-#include <list>
 
 // Third-party include
 #include "boost/shared_ptr.hpp"

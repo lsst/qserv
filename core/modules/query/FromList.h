@@ -30,7 +30,6 @@
   */
 
 // System headers
-#include <list>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
@@ -53,7 +52,6 @@ namespace query {
 class FromList {
 public:
     typedef boost::shared_ptr<FromList> Ptr;
-    typedef std::list<Ptr> PtrList;
     explicit FromList(TableRefListPtr p) : _tableRefs(p) {}
     ~FromList() {}
     /// @return a list of TableRef that occur

@@ -124,7 +124,7 @@ void PassTerm::renderTo(QueryTemplate& qt) const {
 }
 void PassListTerm::renderTo(QueryTemplate& qt) const {
     qt.append("(");
-    StringList::const_iterator i;
+    StringVector::const_iterator i;
     bool isFirst=true;
     for(i=_terms.begin(); i != _terms.end(); ++i) {
         if(!isFirst) {
@@ -165,9 +165,9 @@ boost::shared_ptr<BoolTerm> AndTerm::getReduced() {
     return boost::shared_ptr<BoolTerm>();
 }
 
-bool BoolFactor::_reduceTerms(BfTerm::PtrList& newTerms,
-                              BfTerm::PtrList& oldTerms) {
-    typedef BfTerm::PtrList::iterator Iter;
+bool BoolFactor::_reduceTerms(BfTerm::PtrVector& newTerms,
+                              BfTerm::PtrVector& oldTerms) {
+    typedef BfTerm::PtrVector::iterator Iter;
     bool hasReduction = false;
     for(Iter i=oldTerms.begin(), e=oldTerms.end(); i != e; ++i) {
         BfTerm& term = **i;
@@ -205,7 +205,7 @@ bool BoolFactor::_reduceTerms(BfTerm::PtrList& newTerms,
     return hasReduction;
 }
 
-bool BoolFactor::_checkParen(BfTerm::PtrList& terms) {
+bool BoolFactor::_checkParen(BfTerm::PtrVector& terms) {
     if(terms.size() != 3) { return false; }
 
     PassTerm* pt = dynamic_cast<PassTerm*>(terms.front().get());
@@ -219,12 +219,13 @@ bool BoolFactor::_checkParen(BfTerm::PtrList& terms) {
 
 boost::shared_ptr<BoolTerm> BoolFactor::getReduced() {
     // Get reduced versions of my children.
-    BfTerm::PtrList newTerms;
+    BfTerm::PtrVector newTerms;
     bool hasReduction = false;
     hasReduction = _reduceTerms(newTerms, _terms);
     // Parentheses reduction
     if(_checkParen(newTerms)) {
-        newTerms.pop_front();
+        assert(!newTerms.empty());
+        newTerms.erase(newTerms.begin());
         newTerms.pop_back();
         hasReduction = true;
     }
@@ -269,17 +270,17 @@ namespace {
 
 boost::shared_ptr<BoolTerm> OrTerm::clone() const {
     boost::shared_ptr<OrTerm> ot = boost::make_shared<OrTerm>();
-    copyTerms<BoolTerm::PtrList, deepCopy>(ot->_terms, _terms);
+    copyTerms<BoolTerm::PtrVector, deepCopy>(ot->_terms, _terms);
     return ot;
 }
 boost::shared_ptr<BoolTerm> AndTerm::clone() const {
     boost::shared_ptr<AndTerm> t = boost::make_shared<AndTerm>();
-    copyTerms<BoolTerm::PtrList, deepCopy>(t->_terms, _terms);
+    copyTerms<BoolTerm::PtrVector, deepCopy>(t->_terms, _terms);
     return t;
 }
 boost::shared_ptr<BoolTerm> BoolFactor::clone() const {
     boost::shared_ptr<BoolFactor> t = boost::make_shared<BoolFactor>();
-    copyTerms<BfTerm::PtrList, deepCopy>(t->_terms, _terms);
+    copyTerms<BfTerm::PtrVector, deepCopy>(t->_terms, _terms);
     return t;
 }
 
@@ -301,17 +302,17 @@ BfTerm::Ptr BoolTermFactor::clone() const {
 // copySyntax
 boost::shared_ptr<BoolTerm> OrTerm::copySyntax() const {
     boost::shared_ptr<OrTerm> ot = boost::make_shared<OrTerm>();
-    copyTerms<BoolTerm::PtrList, syntaxCopy>(ot->_terms, _terms);
+    copyTerms<BoolTerm::PtrVector, syntaxCopy>(ot->_terms, _terms);
     return ot;
 }
 boost::shared_ptr<BoolTerm> AndTerm::copySyntax() const {
     boost::shared_ptr<AndTerm> at = boost::make_shared<AndTerm>();
-    copyTerms<BoolTerm::PtrList, syntaxCopy>(at->_terms, _terms);
+    copyTerms<BoolTerm::PtrVector, syntaxCopy>(at->_terms, _terms);
     return at;
 }
 boost::shared_ptr<BoolTerm> BoolFactor::copySyntax() const {
     boost::shared_ptr<BoolFactor> bf = boost::make_shared<BoolFactor>();
-    copyTerms<BfTerm::PtrList, syntaxCopy>(bf->_terms, _terms);
+    copyTerms<BfTerm::PtrVector, syntaxCopy>(bf->_terms, _terms);
     return bf;
 }
 

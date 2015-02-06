@@ -106,7 +106,7 @@ WherePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext&) {
     query::WhereClause& wc = stmt.getWhereClause();
     boost::shared_ptr<query::AndTerm> at = wc.getRootAndTerm();
     if(!at) { return; }
-    typedef query::BoolTerm::PtrList::iterator Iter;
+    typedef query::BoolTerm::PtrVector::iterator Iter;
     for(Iter i=at->iterBegin(), e=at->iterEnd(); i != e; ++i) {
         boost::shared_ptr<query::BoolTerm> reduced = (**i).getReduced();
         if(reduced) {

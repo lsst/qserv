@@ -29,8 +29,8 @@
   */
 
 // System headers
-#include <list>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/iterator/iterator_facade.hpp"
@@ -118,7 +118,8 @@ public:
     boost::shared_ptr<query::QueryContext> dbgGetContext() { return _context; }
 
 private:
-    typedef std::list<qana::QueryPlugin::Ptr> PluginList;
+    typedef std::vector<qana::QueryPlugin::Ptr> QueryPluginPtrVector;
+    typedef std::vector<boost::shared_ptr<query::SelectStmt> > SelectStmtVector;
 
     // Pipeline helpers
     void _initContext();
@@ -138,7 +139,7 @@ private:
     boost::shared_ptr<query::QueryContext> _context;
     boost::shared_ptr<query::SelectStmt> _stmt;
     /// Group of parallel statements (not a sequence)
-    std::list<boost::shared_ptr<query::SelectStmt> > _stmtParallel;
+    SelectStmtVector _stmtParallel;
     boost::shared_ptr<query::SelectStmt> _stmtMerge;
     bool _hasMerge;
     std::string _tmpTable;
@@ -146,8 +147,8 @@ private:
     std::string _error;
     int _isFinal;
 
-    ChunkSpecList _chunks;
-    boost::shared_ptr<PluginList> _plugins;
+    ChunkSpecVector _chunks;
+    boost::shared_ptr<QueryPluginPtrVector> _plugins;
 };
 
 /// Iterates over a ChunkSpecList to return ChunkQuerySpecs for execution
@@ -157,7 +158,7 @@ public:
     Iter() : _qs(NULL) {}
 
 private:
-    Iter(QuerySession& qs, ChunkSpecList::iterator i);
+    Iter(QuerySession& qs, ChunkSpecVector::iterator i);
     friend class QuerySession;
     friend class boost::iterator_core_access;
 
@@ -179,7 +180,7 @@ private:
     boost::shared_ptr<ChunkQuerySpec> _buildFragment(ChunkSpecFragmenter& f) const;
 
     QuerySession* _qs;
-    ChunkSpecList::const_iterator _pos;
+    ChunkSpecVector::const_iterator _pos;
     bool _hasChunks;
     bool _hasSubChunks;
     mutable ChunkQuerySpec _cache;

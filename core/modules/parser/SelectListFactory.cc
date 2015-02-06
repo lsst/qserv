@@ -92,7 +92,7 @@ SelectListFactory::SelectListFactory(boost::shared_ptr<ParseAliasMap> aliasMap,
                                      boost::shared_ptr<ValueExprFactory> vf)
     : _aliases(aliasMap),
       _vFactory(vf),
-      _valueExprList(boost::make_shared<ValueExprList>()) {
+      _valueExprList(boost::make_shared<ValueExprPtrVector>()) {
 }
 
 /// attach the column alias handler. This is needed until we implement code to

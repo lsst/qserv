@@ -31,13 +31,13 @@
   */
 
 // System headers
-#include <list>
 #include <string>
 
 // Third party headers
 #include "boost/shared_ptr.hpp"
 
 // Local headers
+#include "query/types.h"
 #include "query/BoolTerm.h"
 
 namespace lsst {
@@ -46,10 +46,6 @@ namespace query {
 
 // Forward
 class QueryTemplate;
-class ValueExpr;
-
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
 
 ///  Predicate is a representation of a SQL predicate.
 /// predicate :
@@ -69,7 +65,6 @@ typedef std::list<ValueExprPtr> ValueExprList;
 class Predicate : public BfTerm {
 public:
     typedef boost::shared_ptr<Predicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~Predicate() {}
     virtual char const* getName() const { return "Predicate"; }
@@ -86,7 +81,6 @@ public:
 class GenericPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<GenericPredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~GenericPredicate() {}
     virtual char const* getName() const { return "GenericPredicate"; }
@@ -102,13 +96,12 @@ public:
 class CompPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<CompPredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~CompPredicate() {}
     virtual char const* getName() const { return "CompPredicate"; }
 
-    virtual void findValueExprs(ValueExprList& list);
-    virtual void findColumnRefs(ColumnRef::List& list);
+    virtual void findValueExprs(ValueExprPtrVector& vector);
+    virtual void findColumnRefs(ColumnRef::Vector& vector);
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
@@ -129,13 +122,12 @@ public:
 class InPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<InPredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~InPredicate() {}
     virtual char const* getName() const { return "InPredicate"; }
 
-    virtual void findValueExprs(ValueExprList& list);
-    virtual void findColumnRefs(ColumnRef::List& list);
+    virtual void findValueExprs(ValueExprPtrVector& vector);
+    virtual void findColumnRefs(ColumnRef::Vector& vector);
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
@@ -144,20 +136,19 @@ public:
     virtual BfTerm::Ptr copySyntax() const { return clone();}
 
     ValueExprPtr value;
-    ValueExprList cands;
+    ValueExprPtrVector cands;
 };
 
 /// BetweenPredicate is a Predicate comparing a row value to a range
 class BetweenPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<BetweenPredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~BetweenPredicate() {}
     virtual char const* getName() const { return "BetweenPredicate"; }
 
-    virtual void findValueExprs(ValueExprList& list);
-    virtual void findColumnRefs(ColumnRef::List& list);
+    virtual void findValueExprs(ValueExprPtrVector& vector);
+    virtual void findColumnRefs(ColumnRef::Vector& vector);
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
     /// Deep copy this term.
@@ -174,13 +165,12 @@ public:
 class LikePredicate : public Predicate {
 public:
     typedef boost::shared_ptr<LikePredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~LikePredicate() {}
     virtual char const* getName() const { return "LikePredicate"; }
 
-    virtual void findValueExprs(ValueExprList& list);
-    virtual void findColumnRefs(ColumnRef::List& list);
+    virtual void findValueExprs(ValueExprPtrVector& vector);
+    virtual void findColumnRefs(ColumnRef::Vector& vector);
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
@@ -195,13 +185,12 @@ public:
 class NullPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<NullPredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~NullPredicate() {}
     virtual char const* getName() const { return "NullPredicate"; }
 
-    virtual void findValueExprs(ValueExprList& list);
-    virtual void findColumnRefs(ColumnRef::List& list);
+    virtual void findValueExprs(ValueExprPtrVector& vector);
+    virtual void findColumnRefs(ColumnRef::Vector& vector);
 
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;

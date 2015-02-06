@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(Factory) {
 
 const std::string RenderedBoolTermFromRPN(const char **rpn)
 {
-    BoolTerm::PtrList pdl;
+    BoolTerm::PtrVector pdl;
     int opcount;
 
     for(const char **t=rpn; *t; ++t) {
@@ -84,22 +84,24 @@ const std::string RenderedBoolTermFromRPN(const char **rpn)
             AndTerm::Ptr andt = boost::make_shared<AndTerm>();
             for(int i=0; i<opcount; ++i) {
                 andt->_terms.push_back(pdl.front());
-                pdl.pop_front();
+                assert(!pdl.empty());
+                pdl.erase(pdl.begin());
             }
-            pdl.push_front(andt);
+            pdl.insert(pdl.begin(),andt);
         } else if (!strcmp(*t, "OR")) {
             OrTerm::Ptr ort = boost::make_shared<OrTerm>();
             for(int i=0; i<opcount; ++i) {
                 ort->_terms.push_back(pdl.front());
-                pdl.pop_front();
+                assert(!pdl.empty());
+                pdl.erase(pdl.begin());
             }
-            pdl.push_front(ort);
+            pdl.insert(pdl.begin(),ort);
         } else {
             PassTerm::Ptr pt = boost::make_shared<PassTerm>();
             pt->_text = *t;
             BoolFactor::Ptr bf = boost::make_shared<BoolFactor>();
             bf->_terms.push_back(pt);
-            pdl.push_front(bf);
+            pdl.insert(pdl.begin(),bf);
         }
     }
 

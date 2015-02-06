@@ -25,21 +25,25 @@
 #define LSST_QSERV_QDISP_CHUNKMETA_H
 
 // System headers
-#include <list>
 #include <string>
+#include <vector>
 
 namespace lsst {
 namespace qserv {
 namespace qdisp {
 
-struct ChunkMetaEntry {
+class ChunkMetaEntry {
+public:
     ChunkMetaEntry(std::string const& db_,
                    std::string const& table_,
                    int chunkLevel_)
         : db(db_), table(table_), chunkLevel(chunkLevel_)
         { }
-    std::string const db;
-    std::string const table;
+    std::string getTable() const { return table; }
+    int getChunkLevel() const { return chunkLevel; }
+private:
+    std::string db;
+    std::string table;
     int chunkLevel;
 };
 // class ChunkMeta is a value class that is used to transfer db/table
@@ -47,7 +51,7 @@ struct ChunkMetaEntry {
 //
 class ChunkMeta {
 public:
-    typedef std::list<ChunkMetaEntry> EntryList;
+    typedef std::vector<ChunkMetaEntry> EntryVector;
 
     // Mutators:
 
@@ -60,9 +64,9 @@ public:
     void add(ChunkMetaEntry const& e) { _entries.push_back(e); }
 
     // Const access (to create chunk mapping setup TableNamer)
-    EntryList const& getEntries() const { return _entries; }
+    EntryVector const& getEntries() const { return _entries; }
 private:
-    EntryList _entries;
+    EntryVector _entries;
 };
 
 }}} // namespace lsst::qserv::qdisp

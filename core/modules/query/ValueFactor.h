@@ -31,7 +31,6 @@
   */
 
 // System headers
-#include <list>
 #include <string>
 
 // Third-party headers
@@ -51,7 +50,6 @@ class ValueExpr; // To support nested expressions.
 
 class ValueFactor;
 typedef boost::shared_ptr<ValueFactor> ValueFactorPtr;
-typedef std::list<ValueFactorPtr> ValueFactorList;
 
 /// ValueFactor is some kind of value that can exist in a column. It can be
 /// logical (i.e. a column name) or physical (a constant number or value).
@@ -74,7 +72,7 @@ public:
     std::string const& getTableStar() const { return _tableStar; }
     void setTableStar(std::string const& a) { _tableStar = a; }
 
-    void findColumnRefs(ColumnRef::List& list);
+    void findColumnRefs(ColumnRef::Vector& vector);
 
     ValueFactorPtr clone() const;
 

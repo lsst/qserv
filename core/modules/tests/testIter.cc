@@ -23,7 +23,6 @@
 
 // System headers
 #include <cstring>
-#include <list>
 #include <map>
 #include <string>
 

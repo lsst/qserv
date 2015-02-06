@@ -96,20 +96,20 @@ ValueFactor::newExprFactor(boost::shared_ptr<ValueExpr> ve) {
     return factor;
 }
 
-void ValueFactor::findColumnRefs(ColumnRef::List& list) {
+void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) {
     switch(_type) {
     case COLUMNREF:
-        list.push_back(_columnRef);
+        vector.push_back(_columnRef);
         break;
     case FUNCTION:
     case AGGFUNC:
-        _funcExpr->findColumnRefs(list);
+        _funcExpr->findColumnRefs(vector);
         break;
     case STAR:
     case CONST:
         break;
     case EXPR:
-        _valueExpr->findColumnRefs(list);
+        _valueExpr->findColumnRefs(vector);
         break;
     default: break;
     }

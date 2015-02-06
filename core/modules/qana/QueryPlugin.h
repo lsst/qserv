@@ -29,8 +29,8 @@
   */
 
 // System headers
-#include <list>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
@@ -51,7 +51,7 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-typedef std::list<boost::shared_ptr<query::SelectStmt> > SelectStmtList;
+typedef std::vector<boost::shared_ptr<query::SelectStmt> > SelectStmtVector;
 
 /// QueryPlugin is an interface for classes which implement rewrite/optimization
 /// rules for incoming SQL queries by operating on query representations.
@@ -101,7 +101,7 @@ public:
 /// A bundle of references to a components that form a "plan"
 class QueryPlugin::Plan {
 public:
-    Plan(query::SelectStmt& stmtOriginal_, SelectStmtList& stmtParallel_,
+    Plan(query::SelectStmt& stmtOriginal_, SelectStmtVector& stmtParallel_,
          query::SelectStmt& stmtMerge_, bool hasMerge_)
         :  stmtOriginal(stmtOriginal_),
            stmtParallel(stmtParallel_),
@@ -110,7 +110,7 @@ public:
 
     // Each of these should become a sequence for two-step queries.
     query::SelectStmt& stmtOriginal;
-    SelectStmtList& stmtParallel; //< Group of parallel statements (not a sequence)
+    SelectStmtVector& stmtParallel; //< Group of parallel statements (not a sequence)
     query::SelectStmt& stmtMerge;
     std::string dominantDb;
     boost::shared_ptr<QueryMapping> queryMapping;
