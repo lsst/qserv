@@ -77,9 +77,6 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-typedef std::list<std::string> StringList;
-
-
 class addMap {
 public:
     addMap(query::TableAlias& t, query::TableAliasReverse& r)
