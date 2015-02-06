@@ -66,7 +66,6 @@ class QueryTemplate;
 class Predicate : public BfTerm {
 public:
     typedef boost::shared_ptr<Predicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~Predicate() {}
     virtual char const* getName() const { return "Predicate"; }
@@ -83,7 +82,6 @@ public:
 class GenericPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<GenericPredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~GenericPredicate() {}
     virtual char const* getName() const { return "GenericPredicate"; }
@@ -99,7 +97,6 @@ public:
 class CompPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<CompPredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~CompPredicate() {}
     virtual char const* getName() const { return "CompPredicate"; }
@@ -126,7 +123,6 @@ public:
 class InPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<InPredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~InPredicate() {}
     virtual char const* getName() const { return "InPredicate"; }
@@ -148,7 +144,6 @@ public:
 class BetweenPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<BetweenPredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~BetweenPredicate() {}
     virtual char const* getName() const { return "BetweenPredicate"; }
@@ -171,7 +166,6 @@ public:
 class LikePredicate : public Predicate {
 public:
     typedef boost::shared_ptr<LikePredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~LikePredicate() {}
     virtual char const* getName() const { return "LikePredicate"; }
@@ -192,7 +186,6 @@ public:
 class NullPredicate : public Predicate {
 public:
     typedef boost::shared_ptr<NullPredicate> Ptr;
-    typedef std::list<Ptr> PtrList;
 
     virtual ~NullPredicate() {}
     virtual char const* getName() const { return "NullPredicate"; }
