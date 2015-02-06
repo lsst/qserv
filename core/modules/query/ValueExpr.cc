@@ -55,13 +55,13 @@ namespace qserv {
 namespace query {
 
 std::ostream&
-output(std::ostream& os, ValueExprList const& vel) {
+output(std::ostream& os, ValueExprPtrVector const& vel) {
     std::copy(vel.begin(), vel.end(),
               std::ostream_iterator<ValueExprPtr>(os, ";"));
     return os;
 }
 void
-renderList(QueryTemplate& qt, ValueExprList const& vel) {
+renderList(QueryTemplate& qt, ValueExprPtrVector const& vel) {
     std::for_each(vel.begin(), vel.end(), ValueExpr::render(qt, true));
 }
 
@@ -147,11 +147,11 @@ double ValueExpr::copyAsType<double>(double const& defaultValue) const;
 template int ValueExpr::copyAsType<int>(int const&) const;
 
 
-void ValueExpr::findColumnRefs(ColumnRef::List& list) {
-    for(FactorOpList::iterator i=_factorOps.begin();
+void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) {
+    for(FactorOpVector::iterator i=_factorOps.begin();
         i != _factorOps.end(); ++i) {
         assert(i->factor); // FactorOps should never have null ValueFactors
-        i->factor->findColumnRefs(list);
+        i->factor->findColumnRefs(vector);
     }
 }
 
@@ -193,8 +193,8 @@ bool ValueExpr::isColumnRef() const {
 ValueExprPtr ValueExpr::clone() const {
     // First, make a shallow copy
     ValueExprPtr expr = boost::make_shared<ValueExpr>(*this);
-    FactorOpList::iterator ti = expr->_factorOps.begin();
-    for(FactorOpList::const_iterator i=_factorOps.begin();
+    FactorOpVector::iterator ti = expr->_factorOps.begin();
+    for(FactorOpVector::const_iterator i=_factorOps.begin();
         i != _factorOps.end(); ++i, ++ti) {
         // Deep copy (clone) each factor.
         ti->factor = i->factor->clone();
@@ -225,7 +225,7 @@ void ValueExpr::render::operator()(ValueExpr const& ve) {
     if(ve._factorOps.size() > 1) { // Need opening parenthesis
         _qt.append("(");
     }
-    for(FactorOpList::const_iterator i=ve._factorOps.begin();
+    for(FactorOpVector::const_iterator i=ve._factorOps.begin();
         i != ve._factorOps.end(); ++i) {
         render(i->factor);
         switch(i->op) {

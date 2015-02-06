@@ -507,7 +507,7 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-typedef std::list<boost::shared_ptr<query::SelectStmt> > SelectStmtList;
+typedef std::vector<boost::shared_ptr<query::SelectStmt> > SelectStmtVector;
 
 struct Vertex;
 
@@ -625,7 +625,7 @@ public:
     bool empty() const { return _vertices.empty(); }
 
     /// `rewrite` rewrites the input query into a set of output queries.
-    void rewrite(SelectStmtList& outputs,
+    void rewrite(SelectStmtVector& outputs,
                  QueryMapping& mapping);
 
     void swap(RelationGraph& g) {

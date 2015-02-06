@@ -44,32 +44,32 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
-void CompPredicate::findColumnRefs(ColumnRef::List& list) {
-    if(left) { left->findColumnRefs(list); }
-    if(right) { right->findColumnRefs(list); }
+void CompPredicate::findColumnRefs(ColumnRef::Vector& vector) {
+    if(left) { left->findColumnRefs(vector); }
+    if(right) { right->findColumnRefs(vector); }
 }
 
-void InPredicate::findColumnRefs(ColumnRef::List& list) {
-    if(value) { value->findColumnRefs(list); }
-    std::list<boost::shared_ptr<ValueExpr> >::iterator i;
+void InPredicate::findColumnRefs(ColumnRef::Vector& vector) {
+    if(value) { value->findColumnRefs(vector); }
+    std::vector<boost::shared_ptr<ValueExpr> >::iterator i;
     for(i=cands.begin(); i != cands.end(); ++i) {
-        (**i).findColumnRefs(list);
+        (**i).findColumnRefs(vector);
     }
 }
 
-void BetweenPredicate::findColumnRefs(ColumnRef::List& list) {
-    if(value) { value->findColumnRefs(list); }
-    if(minValue) { minValue->findColumnRefs(list); }
-    if(maxValue) { maxValue->findColumnRefs(list); }
+void BetweenPredicate::findColumnRefs(ColumnRef::Vector& vector) {
+    if(value) { value->findColumnRefs(vector); }
+    if(minValue) { minValue->findColumnRefs(vector); }
+    if(maxValue) { maxValue->findColumnRefs(vector); }
 }
 
-void LikePredicate::findColumnRefs(ColumnRef::List& list) {
-    if(value) { value->findColumnRefs(list); }
-    if(charValue) { charValue->findColumnRefs(list); }
+void LikePredicate::findColumnRefs(ColumnRef::Vector& vector) {
+    if(value) { value->findColumnRefs(vector); }
+    if(charValue) { charValue->findColumnRefs(vector); }
 }
 
-void NullPredicate::findColumnRefs(ColumnRef::List& list) {
-    if(value) { value->findColumnRefs(list); }
+void NullPredicate::findColumnRefs(ColumnRef::Vector& vector) {
+    if(value) { value->findColumnRefs(vector); }
 }
 
 std::ostream& CompPredicate::putStream(std::ostream& os) const {
@@ -138,29 +138,29 @@ void NullPredicate::renderTo(QueryTemplate& qt) const {
     qt.append("NULL");
 }
 
-void CompPredicate::findValueExprs(ValueExprList& list) {
-    list.push_back(left);
-    list.push_back(right);
+void CompPredicate::findValueExprs(ValueExprPtrVector& vector) {
+    vector.push_back(left);
+    vector.push_back(right);
 }
 
-void InPredicate::findValueExprs(ValueExprList& list) {
-    list.push_back(value);
-    list.insert(list.end(), cands.begin(), cands.end());
+void InPredicate::findValueExprs(ValueExprPtrVector& vector) {
+    vector.push_back(value);
+    vector.insert(vector.end(), cands.begin(), cands.end());
 }
 
-void BetweenPredicate::findValueExprs(ValueExprList& list) {
-    list.push_back(value);
-    list.push_back(minValue);
-    list.push_back(maxValue);
+void BetweenPredicate::findValueExprs(ValueExprPtrVector& vector) {
+    vector.push_back(value);
+    vector.push_back(minValue);
+    vector.push_back(maxValue);
 }
 
-void LikePredicate::findValueExprs(ValueExprList& list) {
-    list.push_back(value);
-    list.push_back(charValue);
+void LikePredicate::findValueExprs(ValueExprPtrVector& vector) {
+    vector.push_back(value);
+    vector.push_back(charValue);
 }
 
-void NullPredicate::findValueExprs(ValueExprList& list) {
-    list.push_back(value);
+void NullPredicate::findValueExprs(ValueExprPtrVector& vector) {
+    vector.push_back(value);
 }
 
 // CompPredicate special function

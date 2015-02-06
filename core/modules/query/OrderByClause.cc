@@ -141,7 +141,7 @@ boost::shared_ptr<OrderByClause> OrderByClause::copySyntax() {
     return boost::make_shared<OrderByClause>(*this);
 }
 
-void OrderByClause::findValueExprs(ValueExprList& list) {
+void OrderByClause::findValueExprs(ValueExprPtrVector& list) {
     for (List::iterator i = _terms->begin(), e = _terms->end(); i != e; ++i) {
         list.push_back(i->getExpr());
     }

@@ -49,7 +49,7 @@ public:
     /// List of expressions to pass for parallel execution.
     /// Some aggregations need more than one aggregation to be computed (per
     /// chunk) in order to compute the final aggregation value (e.g., AVG)
-    query::ValueExprList parallel;
+    query::ValueExprPtrVector parallel;
     /// ValueFactor representing merge step. Not a list, because the original
     /// wasn't a list and we want the final result to correspond.
     query::ValueFactorPtr merge;

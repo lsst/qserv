@@ -62,7 +62,7 @@ public:
     void renderTo(QueryTemplate& qt) const;
     boost::shared_ptr<HavingClause> clone() const;
     boost::shared_ptr<HavingClause> copySyntax();
-    void findValueExprs(ValueExprList& list);
+    void findValueExprs(ValueExprPtrVector& list);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, HavingClause const& h);

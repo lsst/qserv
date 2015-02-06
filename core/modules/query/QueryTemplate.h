@@ -29,7 +29,7 @@
   */
 
 // System headers
-#include <list>
+#include <vector>
 #include <string>
 
 // Third-party headers
@@ -73,6 +73,7 @@ class TableRefAux;
 ///
 class QueryTemplate {
 public:
+
     /// An abstract entry in a query template
     class Entry {
     public:
@@ -81,6 +82,9 @@ public:
         /// isDynamic signals whether the entry is concrete or substitutable.
         virtual bool isDynamic() const { return false; }
     };
+
+    typedef std::vector<boost::shared_ptr<Entry> > EntryPtrVector;
+
     class StringEntry : public Entry {
     public:
         StringEntry(std::string const& s_) : s(s_) {}
@@ -125,9 +129,8 @@ public:
 
 
 private:
-    std::list<boost::shared_ptr<Entry> > _entries;
+    EntryPtrVector _entries;
 };
-typedef std::list<boost::shared_ptr<QueryTemplate> >QueryTemplateList;
 
 }}} // namespace lsst::qserv::query
 

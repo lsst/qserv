@@ -33,15 +33,14 @@
   */
 
 // System headers
-#include <list>
 #include <string>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
 
 // Local headers
+#include "query/types.h"
 #include "query/ColumnRef.h"
-
 
 namespace lsst {
 namespace qserv {
@@ -49,16 +48,13 @@ namespace query {
 
 // Forward
 class QueryTemplate;
-class ValueExpr;
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
 
 // FuncExpr is a function expression, e.g., foo(1,2,bar)
 class FuncExpr {
 public:
     typedef boost::shared_ptr<FuncExpr> Ptr;
     std::string getName() const;
-    ValueExprList getParams() const;
+    ValueExprPtrVector getParams() const;
 
     /// Construct a new FuncExpr like an existing one.
     static FuncExpr::Ptr newLike(FuncExpr const& src, std::string const& newName);
@@ -69,11 +65,11 @@ public:
     static FuncExpr::Ptr newArg1(std::string const& newName,
                                  ValueExprPtr ve);
 
-    void findColumnRefs(ColumnRef::List& list);
+    void findColumnRefs(ColumnRef::Vector& vector);
 
     // Fields
     std::string name;
-    ValueExprList params;
+    ValueExprPtrVector params;
     friend std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);
     friend std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
     void renderTo(QueryTemplate& qt) const;
@@ -83,8 +79,8 @@ std::ostream& operator<<(std::ostream& os, FuncExpr const& fe);
 std::ostream& operator<<(std::ostream& os, FuncExpr const* fe);
 
 // output helpers
-std::ostream& output(std::ostream& os, ValueExprList const& vel);
-void renderList(QueryTemplate& qt, ValueExprList const& vel);
+std::ostream& output(std::ostream& os, ValueExprPtrVector const& vel);
+void renderList(QueryTemplate& qt, ValueExprPtrVector const& vel);
 
 }}} // namespace lsst::qserv::query
 

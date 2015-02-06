@@ -34,7 +34,6 @@
 // System headers
 #include <cassert>
 #include <iostream>
-#include <list>
 #include <map>
 #include <sstream>
 

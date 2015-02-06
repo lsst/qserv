@@ -73,11 +73,11 @@ FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
 }
 
 void
-FuncExpr::findColumnRefs(ColumnRef::List& list) {
-    for(ValueExprList::iterator i=params.begin();
+FuncExpr::findColumnRefs(ColumnRef::Vector& vector) {
+    for(ValueExprPtrVector::iterator i=params.begin();
         i != params.end(); ++i) {
         if(*i) {
-            (**i).findColumnRefs(list);
+            (**i).findColumnRefs(vector);
         }
     }
 }

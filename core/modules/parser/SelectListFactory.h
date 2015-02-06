@@ -29,7 +29,6 @@
   */
 
 // System headers
-#include <list>
 #include <map>
 #include <stdexcept>
 
@@ -56,7 +55,7 @@ namespace qserv {
 namespace parser {
 
 typedef boost::shared_ptr<query::ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
+typedef std::vector<ValueExprPtr> ValueExprPtrVector;
 
 /// SelectListFactory maintains parse state so that a SelectList can be built
 /// from a ANTLR parse tree nodes. It populates some state for SelectFactory.
@@ -89,7 +88,7 @@ private:
     // data
     boost::shared_ptr<ParseAliasMap> _aliases;
     boost::shared_ptr<ValueExprFactory> _vFactory;
-    boost::shared_ptr<ValueExprList> _valueExprList;
+    boost::shared_ptr<ValueExprPtrVector> _valueExprList;
 
 };
 

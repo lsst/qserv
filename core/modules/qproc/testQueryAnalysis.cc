@@ -36,7 +36,6 @@
 #include <algorithm>
 #include <iostream>
 #include <iterator>
-#include <list>
 #include <map>
 #include <sstream>
 #include <string>

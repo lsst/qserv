@@ -29,7 +29,6 @@
   */
 
 // System headers
-#include <list>
 #include <string>
 
 // Third-party headers
@@ -62,7 +61,7 @@ public:
     typedef boost::shared_ptr<QueryContext> Ptr;
 
     QueryContext() {}
-    typedef std::list<boost::shared_ptr<QsRestrictor> > RestrList;
+    typedef std::vector<boost::shared_ptr<QsRestrictor> > RestrList;
 
     boost::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive
                                               ///  for this lifetime.

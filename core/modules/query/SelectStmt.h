@@ -30,11 +30,12 @@
   */
 
 // System headers
-#include <list>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
 
+// Local headers
+#include "global/stringTypes.h"
 #include "query/QueryTemplate.h"
 
 // Forward declarations
@@ -66,7 +67,6 @@ class SelectStmt  {
 public:
     typedef boost::shared_ptr<SelectStmt> Ptr;
     typedef boost::shared_ptr<SelectStmt const> Cptr;
-    typedef std::list<std::string> StringList; // placeholder
 
     SelectStmt();
 
@@ -133,7 +133,7 @@ public:
     bool _hasDistinct; ///< SELECT DISTINCT (consider merging with ALL)
 
     int  _limit; // result limit
-    StringList OutputMods; // Output modifiers (order, grouping,
+    StringVector OutputMods; // Output modifiers (order, grouping,
                            // sort, limit
 };
 

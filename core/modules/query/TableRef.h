@@ -33,7 +33,6 @@
 
 // System headers
 #include <iostream>
-#include <list>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -52,7 +51,7 @@ namespace query {
 class QueryTemplate; // Forward
 class JoinSpec;
 class JoinRef;
-typedef std::list<boost::shared_ptr<JoinRef> > JoinRefList;
+typedef std::vector<boost::shared_ptr<JoinRef> > JoinRefPtrVector;
 
 /// TableRefN is a parsed table reference node
 // table_ref :
@@ -63,7 +62,6 @@ class TableRef {
 public:
     typedef boost::shared_ptr<TableRef> Ptr;
     typedef boost::shared_ptr<TableRef const> CPtr;
-    typedef std::list<Ptr> PtrList;
 
     TableRef(std::string const& db_, std::string const& table_,
                std::string const& alias_)
@@ -75,17 +73,17 @@ public:
     std::ostream& putStream(std::ostream& os) const;
     void putTemplate(QueryTemplate& qt) const;
 
-    bool isSimple() const { return _joinRefList.empty(); }
+    bool isSimple() const { return _joinRefs.empty(); }
     std::string const& getDb() const { return _db; }
     std::string const& getTable() const { return _table; }
     std::string const& getAlias() const { return _alias; }
-    JoinRefList const& getJoins() const { return _joinRefList; }
+    JoinRefPtrVector const& getJoins() const { return _joinRefs; }
 
     // Modifiers
     void setAlias(std::string const& a) { _alias=a; }
     void setDb(std::string const& db_) { _db = db_; }
     void setTable(std::string const& table_) { _table = table_; }
-    JoinRefList& getJoins() { return _joinRefList; }
+    JoinRefPtrVector& getJoins() { return _joinRefs; }
     void addJoin(boost::shared_ptr<JoinRef> r);
 
     class Func {
@@ -109,7 +107,7 @@ private:
     std::string _alias;
     std::string _db;
     std::string _table;
-    JoinRefList _joinRefList;
+    JoinRefPtrVector _joinRefs;
 };
 
 class TableRef::render {

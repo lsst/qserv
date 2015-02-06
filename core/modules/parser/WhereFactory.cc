@@ -46,6 +46,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/stringTypes.h"
 #include "parser/BoolTermFactory.h"
 #include "parser/parserBase.h" // Handler base classes
 #include "parser/parseTreeUtil.h"
@@ -200,7 +201,7 @@ WhereFactory::attachTo(SqlSQL2Parser& p) {
 void
 WhereFactory::_import(antlr::RefAST a) {
     _clause = boost::make_shared<query::WhereClause>();
-    _clause->_restrs = boost::make_shared<query::QsRestrictor::List>();
+    _clause->_restrs = boost::make_shared<query::QsRestrictor::PtrVector>();
     // LOGF_INFO("WHERE starts with: %1% (%2%)" 
     //           % a->getText() % a->getType());
     // LOGF_INFO("WHERE indented: %1%" % walkIndentedString(a));
@@ -230,7 +231,7 @@ WhereFactory::_addQservRestrictor(antlr::RefAST a) {
     ParamGenerator pg(a->getNextSibling());
 
     query::QsRestrictor::Ptr restr = boost::make_shared<query::QsRestrictor>();
-    query::QsRestrictor::StringList& params = restr->_params;
+    StringVector& params = restr->_params;
 
     // for(ParamGenerator::Iter it = pg.begin();
     //     it != pg.end();

@@ -155,8 +155,8 @@ struct EntryMerger {
             _candidates.pop_back();
         }
     }
-    std::list<boost::shared_ptr<QueryTemplate::Entry> > _candidates;
-    std::list<boost::shared_ptr<QueryTemplate::Entry> > _entries;
+    QueryTemplate::EntryPtrVector _candidates;
+    QueryTemplate::EntryPtrVector _entries;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -212,7 +212,8 @@ QueryTemplate::clear() {
 ////////////////////////////////////////////////////////////////////////
 void
 QueryTemplate::optimize() {
-    typedef std::list<boost::shared_ptr<Entry> >::const_iterator Iter;
+
+    typedef EntryPtrVector::const_iterator Iter;
 
     EntryMerger em;
     for(Iter i=_entries.begin(); i != _entries.end(); ++i) {

@@ -31,7 +31,6 @@
 
 // System headers
 #include <deque>
-#include <list>
 #include <map>
 
 // Third-party headers
@@ -67,7 +66,7 @@ class SelectList {
 public:
     typedef boost::shared_ptr<SelectList> Ptr;
 
-    SelectList() : _valueExprList(boost::make_shared<ValueExprList>()) {}
+    SelectList() : _valueExprList(boost::make_shared<ValueExprPtrVector>()) {}
     ~SelectList() {}
     void addStar(std::string const& table);
     void dbgPrint(std::ostream& os) const;
@@ -78,14 +77,14 @@ public:
     boost::shared_ptr<SelectList> copySyntax();
 
     // non-const accessor for query manipulation.
-    boost::shared_ptr<ValueExprList> getValueExprList() {
+    boost::shared_ptr<ValueExprPtrVector> getValueExprList() {
         return _valueExprList;
     }
 
     friend class parser::SelectListFactory;
 private:
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
-    boost::shared_ptr<ValueExprList> _valueExprList;
+    boost::shared_ptr<ValueExprPtrVector> _valueExprList;
 };
 
 }}} // namespace lsst::qserv::query
