@@ -40,8 +40,8 @@
 #include "boost/shared_ptr.hpp"
 
 // Local headers
+#include "query/types.h"
 #include "query/ColumnRef.h"
-
 
 namespace lsst {
 namespace qserv {
@@ -49,9 +49,6 @@ namespace query {
 
 // Forward
 class QueryTemplate;
-class ValueExpr;
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
 
 // FuncExpr is a function expression, e.g., foo(1,2,bar)
 class FuncExpr {

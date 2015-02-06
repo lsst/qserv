@@ -43,6 +43,7 @@
 #include "boost/iterator_adaptors.hpp"
 
 // Local headers
+#include "query/types.h"
 #include "query/ColumnRef.h"
 
 namespace lsst {
@@ -51,10 +52,6 @@ namespace query {
 
 // Forward declarations
 class QueryTemplate;
-class ValueExpr;
-
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
 
 /// BfTerm is a term in a in a BoolFactor
 class BfTerm {

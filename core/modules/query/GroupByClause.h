@@ -40,6 +40,9 @@
 #include "boost/make_shared.hpp"
 #include "boost/shared_ptr.hpp"
 
+// Local headers
+#include "query/types.h"
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -51,10 +54,6 @@ namespace query {
 
 // Forward declarations
 class QueryTemplate;
-class ValueExpr;
-
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
 
 // GroupByTerm is a element of a GroupByClause
 class GroupByTerm {

@@ -38,6 +38,7 @@
 #include "boost/shared_ptr.hpp"
 
 // Local headers
+#include "query/types.h"
 #include "query/ColumnRef.h"
 
 
@@ -56,9 +57,6 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
-class ValueExpr;
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
 class ValueFactor;
 /// ValueExpr is a general value expression in a SQL statement. It is allowed to
 /// have an alias and a single level of ValueFactors joined by arithmetic

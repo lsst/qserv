@@ -38,6 +38,7 @@
 #include "boost/shared_ptr.hpp"
 
 // Local headers
+#include "query/types.h"
 #include "query/BoolTerm.h"
 
 namespace lsst {
@@ -46,10 +47,6 @@ namespace query {
 
 // Forward
 class QueryTemplate;
-class ValueExpr;
-
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
 
 ///  Predicate is a representation of a SQL predicate.
 /// predicate :
