@@ -85,7 +85,7 @@ class DataLoader(object):
         @param deleteTables: If True then existing tables in database will be deleted.
         @param loggerName:   Logger name used for logging all messages from loader.
         """
-        
+
         if not loggerName:
             loggerName = __name__
         self._log = logging.getLogger(loggerName)
@@ -636,12 +636,20 @@ class DataLoader(object):
         """Load data from a single file into existing table"""
         cursor = conn.cursor()
 
-        # need to know field separator, default is the same as in partitioner.
-        separator = self.partOptions.get(csvPrefix + '.delimiter', '\t')
+        # need to know field delimiter, default is the same as in partitioner
+        special_chars = [self.partOptions.get(csvPrefix + '.delimiter', '\t'),
+                         self.partOptions.get(csvPrefix + '.enclose', '"'),
+                         self.partOptions.get(csvPrefix + '.escape', '\\'),
+                         self.partOptions.get(csvPrefix + '.newline', '\n')]
+
+        special_chars = map(repr, special_chars)
 
         self._log.info('load table %s from file %s', table, file)
-        q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s.%s FIELDS TERMINATED BY '%s'" % \
-            (file, database, table, separator)
+        q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s.%s" % (file,
+                                                              database,
+                                                              table)
+        q += (" FIELDS TERMINATED BY {0} ENCLOSED BY {1} ESCAPED BY {2}"
+              " LINES TERMINATED BY {3}").format(*special_chars)
         self._log.debug('query: %s', q)
         try:
             cursor.execute(q)
@@ -753,7 +761,7 @@ class DataLoader(object):
         czarCursor.execute(q)
         for row in czarCursor.fetchall():
             if row[0] == idxCol:
-                idxColType = row[1]
+                IdxColType = row[1]
                 break
 
         # make a table
@@ -801,7 +809,7 @@ class DataLoader(object):
                     break
                 czarCursor.executemany(q, seq)
 
-            wCursor.close()
+            Wcursor.close()
 
         czarCursor.close()
 
