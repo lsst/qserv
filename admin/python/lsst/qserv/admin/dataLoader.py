@@ -85,7 +85,7 @@ class DataLoader(object):
         @param deleteTables: If True then existing tables in database will be deleted.
         @param loggerName:   Logger name used for logging all messages from loader.
         """
-        
+
         if not loggerName:
             loggerName = __name__
         self._log = logging.getLogger(loggerName)
@@ -634,17 +634,32 @@ class DataLoader(object):
 
     def _loadOneFile(self, conn, database, table, file, csvPrefix):
         """Load data from a single file into existing table"""
+
+        self._log.info('load table %s.%s from file %s', database, table, file)
+
+        data = {'file': file}
+        # need to know special characters used in csv
+        # default delimiter is the same as in partitioner
+        special_chars = {'delimiter': '\t',
+                         'enclose':  '"',
+                         'escape': '\\',
+                         'newline': '\n'}
+
+        for name, default in special_chars.items():
+            data[name] = self.partOptions.get(csvPrefix + '.' + name, default)
+
+        # mysql-python prevents table name from being a parameter
+        # TODO: check for correct user input for database and table
+        # other parameters are processed by mysql-python to prevent SQL-injection
+        sql = "LOAD DATA LOCAL INFILE %(file)s INTO TABLE {0}.{1}".format(database, table)
+
+        sql += (" FIELDS TERMINATED BY %(delimiter)s ENCLOSED BY %(enclose)s"
+                " ESCAPED BY %(escape)s LINES TERMINATED BY %(newline)s")
+
         cursor = conn.cursor()
-
-        # need to know field separator, default is the same as in partitioner.
-        separator = self.partOptions.get(csvPrefix + '.delimiter', '\t')
-
-        self._log.info('load table %s from file %s', table, file)
-        q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s.%s FIELDS TERMINATED BY '%s'" % \
-            (file, database, table, separator)
-        self._log.debug('query: %s', q)
         try:
-            cursor.execute(q)
+            self._log.debug("query: %s",sql % conn.literal(data))
+            cursor.execute(sql, data)
         except Exception as exc:
             self._log.critical('Failed to load data into non-partitioned table: %s', exc)
             raise
