@@ -32,8 +32,6 @@
 
 // Qserv headers
 #include "rproc/SqlInsertIter.h"
-#include "util/PacketBuffer.h"
-#include "xrdc/XrdBufferSource.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE testIter
@@ -41,8 +39,6 @@
 
 namespace test = boost::test_tools;
 using lsst::qserv::rproc::SqlInsertIter;
-using lsst::qserv::util::PacketBuffer;
-using lsst::qserv::xrdc::XrdBufferSource;
 using std::string;
 
 
@@ -127,64 +123,6 @@ struct IterFixture {
 
 BOOST_FIXTURE_TEST_SUITE(IterTests, IterFixture)
 
-BOOST_AUTO_TEST_CASE(PlainIterTest) {
-    XrdBufferSource* bs = new XrdBufferSource(string(dummyFilename),
-                                              512,
-                                              true);
-    PacketBuffer::Ptr p = boost::make_shared<PacketBuffer>(bs);
-    char const* c = dummyBlock;
-    bool same = true;
-    for(; !p->isDone(); ++(*p)) {
-        PacketBuffer::Value const& v = **p;
-        // std::cout << "frag: " << std::string(v.first, v.second)
-        //           << std::endl;
-        for(unsigned i=0; i < v.second; ++i) {
-            same = same && (*c == v.first[i]);
-            ++c;
-        }
-        BOOST_CHECK(same);
-    }
-}
-
-BOOST_AUTO_TEST_CASE(pbtest) {
-    char const* c = dummyBlock;
-    bool same = true;
-    for(int fragSize=16; fragSize < 512; fragSize*=2) {
-        XrdBufferSource* bs =
-            new XrdBufferSource(string(dummyFilename),
-                                fragSize,
-                                true);
-
-        for(PacketBuffer::Ptr p = boost::make_shared<PacketBuffer>(bs);
-            !p->isDone(); ++(*p)) {
-            PacketBuffer::Value v = **p;
-#if 0
-            std::cout << "frag:"
-                      << (unsigned long long)v.first
-                      << " " << "sz=" << v.second << std::endl
-                      << std::string(v.first, v.second) << std::endl;
-#endif
-            for(unsigned i=0; i < v.second; ++i) {
-                same = same && (*c == v.first[i]);
-                ++c;
-            }
-
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(SqlIterTest) {
-    for(int fragSize=16; fragSize < 512; fragSize*=2) {
-        XrdBufferSource* bs =
-            new XrdBufferSource(string(dummyFilename),
-                                fragSize,
-                                true);
-        PacketBuffer::Ptr p = boost::make_shared<PacketBuffer>(bs);
-        SqlInsertIter sii(p, tableName, true);
-        unsigned sCount = iterateInserts(sii);
-        BOOST_CHECK_EQUAL(sCount, totalInserts);
-    }
-}
 BOOST_AUTO_TEST_CASE(SqlIterTestPlain) {
     SqlInsertIter sii(dummyBlock, dummyLen, tableName, true);
     unsigned sCount = iterateInserts(sii);

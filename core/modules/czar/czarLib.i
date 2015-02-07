@@ -53,7 +53,6 @@ Access to the classes from the qserv_czar library
 #include "rproc/mergeTypes.h"
 #include "util/common.h"
 #include "util/Substitution.h"
-#include "xrdc/xrdfile.h"
 %}
 
 // %include "lsst/p_lsstSwig.i"
@@ -140,7 +139,6 @@ namespace std {
 %include "query/Constraint.h"
 %include "rproc/mergeTypes.h"
 %include "util/Substitution.h"
-%include "xrdc/xrdfile.h"
 
 // Instantiate any templates here:
 // %template(setBool) lsst::daf::base::PropertySet::set<bool>;
