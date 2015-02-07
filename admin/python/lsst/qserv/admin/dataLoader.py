@@ -85,7 +85,7 @@ class DataLoader(object):
         @param deleteTables: If True then existing tables in database will be deleted.
         @param loggerName:   Logger name used for logging all messages from loader.
         """
-        
+
         if not loggerName:
             loggerName = __name__
         self._log = logging.getLogger(loggerName)
@@ -638,10 +638,18 @@ class DataLoader(object):
 
         # need to know field separator, default is the same as in partitioner.
         separator = self.partOptions.get(csvPrefix + '.delimiter', '\t')
+        escape = self.partOptions.get(csvPrefix + '.escape', '\\')
+        enclose = self.partOptions.get(csvPrefix + '.enclose', '"')
+
 
         self._log.info('load table %s from file %s', table, file)
-        q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s.%s FIELDS TERMINATED BY '%s'" % \
+        q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s.%s FIELDS TERMINATED BY '%s' " % \
             (file, database, table, separator)
+        escape='\\\\'
+        newline='\\n'
+        q += "ENCLOSED BY '%s' ESCAPED BY '%s' LINES TERMINATED BY '%s'" % (enclose,
+                                                                            escape,
+                                                                            newline)
         self._log.debug('query: %s', q)
         try:
             cursor.execute(q)
