@@ -118,7 +118,6 @@ struct IterFixture {
         return sCount;
     }
 
-
     char const* dummyBlock;
     int dummyLen;
     char const* dummyFilename;
@@ -192,6 +191,4 @@ BOOST_AUTO_TEST_CASE(SqlIterTestPlain) {
     BOOST_CHECK_EQUAL(sCount, totalInserts);
 }
 
-
 BOOST_AUTO_TEST_SUITE_END()
-

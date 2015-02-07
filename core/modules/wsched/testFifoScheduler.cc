@@ -46,7 +46,6 @@ using lsst::qserv::wbase::Task;
 using lsst::qserv::wbase::TaskQueue;
 using lsst::qserv::wbase::TaskQueuePtr;
 
-
 Task::Ptr makeTask(boost::shared_ptr<TaskMsg> tm) {
     return boost::make_shared<Task>(tm);
 }
