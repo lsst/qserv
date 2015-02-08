@@ -4,7 +4,7 @@ Qserv documentation
 Previous releases
 =================
 
-See http://lsst-web.ncsa.illinois.edu/~fjammes/qserv-doc/
+See http://slac.stanford.edu/exp/lsst/qserv/
 
 Current version
 ===============
