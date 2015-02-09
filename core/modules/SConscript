@@ -215,7 +215,8 @@ for (pkg, opts) in shProducts.items():
             srcs.extend(defaultTgts[m])
         else:
             prods = libProducts[m]
-            srcs.extend(prods)
+            if prods:
+                srcs.extend(prods)
         pass
     if opts.has_key('extraSrcs'):
         srcs.extend(chain(*[extraSrcs[m] for m in opts['extraSrcs']]))
