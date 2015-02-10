@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -300,6 +300,12 @@ private:
     proto::TaskMsg const& _msg;
 };
 
+/// Construct util::Error based on sql::SqlErrorObject. Consider making
+/// sql::SqlErrorObject inherit from util::Error.
+util::Error makeError(sql::SqlErrorObject const& e) {
+    return util::Error(e.errNo(), e.errMsg());
+}
+
 bool QueryAction::Impl::_dispatchChannel() {
     proto::TaskMsg& m = *_task->msg;
     _initMsgs();
@@ -311,29 +317,35 @@ bool QueryAction::Impl::_dispatchChannel() {
     }
     ChunkResourceRequest req(_chunkResourceMgr, m);
 
-    for(int i=0; i < m.fragment_size(); ++i) {
-        wbase::Task::Fragment const& f(m.fragment(i));
-        ChunkResource cr(req.getResourceFragment(i));
-        // Use query fragment as-is, funnel results.
-        for(int qi=0, qe=f.query_size(); qi != qe; ++qi) {
-            MYSQL_RES* res = _primeResult(f.query(qi));
-            if(!res) {
-                erred = true;
-                continue;
-            }
-            if(firstResult) {
-                _fillSchema(res);
-                firstResult = false;
-                numFields = mysql_num_fields(res);
-            } // TODO: may want to confirm (cheaply) that
-            // successive queries have the same result schema.
-            // Now get rows...
-            if(!_fillRows(res, numFields)) {
-                erred = true;
-            }
-            _mysqlConn->freeResult();
-        } // Each query in a fragment
-    } // Each fragment in a msg.
+    try {
+        for(int i=0; i < m.fragment_size(); ++i) {
+            wbase::Task::Fragment const& f(m.fragment(i));
+            ChunkResource cr(req.getResourceFragment(i));
+            // Use query fragment as-is, funnel results.
+            for(int qi=0, qe=f.query_size(); qi != qe; ++qi) {
+                MYSQL_RES* res = _primeResult(f.query(qi));
+                if(!res) {
+                    erred = true;
+                    continue;
+                }
+                if(firstResult) {
+                    _fillSchema(res);
+                    firstResult = false;
+                    numFields = mysql_num_fields(res);
+                } // TODO: may want to confirm (cheaply) that
+                // successive queries have the same result schema.
+                // TODO fritzm: revisit this error strategy
+                // (see pull-request for DM-216)
+                // Now get rows...
+                if(!_fillRows(res, numFields)) {
+                    erred = true;
+                }
+                _mysqlConn->freeResult();
+            } // Each query in a fragment
+        } // Each fragment in a msg.
+    } catch(sql::SqlErrorObject const& e) {
+        _multiError.push_back(makeError(e));
+    }
     // Send results.
     _transmitResult();
     return !erred;

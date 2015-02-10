@@ -168,7 +168,7 @@ typedef std::vector<ScTable> ScTableVector;
 class Backend {
 public:
     typedef boost::shared_ptr<Backend> Ptr;
-    void load(ScTableVector const& v) {
+    bool load(ScTableVector const& v, sql::SqlErrorObject& err) {
         if(_isFake) {
             std::cout << "Pretending to load:";
             std::copy(v.begin(), v.end(),
@@ -181,32 +181,16 @@ public:
                     (boost::format(lsst::qserv::wbase::CREATE_SUBCHUNK_SCRIPT)
                      % i->db % i->table % SUB_CHUNK_COLUMN
                      % i->chunkId % i->subChunkId).str();
-                sql::SqlErrorObject err;
                 if(!_sqlConn.runQuery(create, err)) {
-                    throw err;
+                    _discard(v.begin(), i);
+                    return false;
                 }
             }
         }
+        return true;
     }
     void discard(ScTableVector const& v) {
-        if(_isFake) {
-            std::cout << "Pretending to discard:";
-            std::copy(v.begin(), v.end(),
-                      std::ostream_iterator<ScTable>(std::cout, ","));
-            std::cout << std::endl;
-        } else {
-            for(ScTableVector::const_iterator i=v.begin(), e=v.end();
-                i != e; ++i) {
-                std::string discard =
-                    (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
-                     % i->db % i->table
-                     % i->chunkId % i->subChunkId).str();
-                sql::SqlErrorObject err;
-                if(!_sqlConn.runQuery(discard, err)) {
-                    throw err;
-                }
-            }
-        }
+        _discard(v.begin(), v.end());
     }
     static boost::shared_ptr<Backend>
     newInstance(mysql::MySqlConfig const& mc) {
@@ -223,11 +207,33 @@ private:
     Backend(mysql::MySqlConfig const& mc)
         : _isFake(false), _sqlConn(mc) {}
 
+    void _discard(ScTableVector::const_iterator begin,
+                  ScTableVector::const_iterator end) {
+        if(_isFake) {
+            std::cout << "Pretending to discard:";
+            std::copy(begin, end,
+                      std::ostream_iterator<ScTable>(std::cout, ","));
+            std::cout << std::endl;
+        } else {
+            for(ScTableVector::const_iterator i=begin, e=end; i != e; ++i) {
+                std::string discard =
+                    (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT)
+                     % i->db % i->table
+                     % i->chunkId % i->subChunkId).str();
+                sql::SqlErrorObject err;
+                if(!_sqlConn.runQuery(discard, err)) {
+                    throw err;
+                }
+            }
+        }
+    }
+
     bool _isFake;
     sql::SqlConnection _sqlConn;
 };
 
-// ChunkEntry
+/// ChunkEntry is an entry that represents table subchunks for a given
+/// database and chunkid.
 class ChunkEntry {
 public:
     typedef std::map<int, int> SubChunkMap; // subchunkid -> count
@@ -263,7 +269,13 @@ public:
         // For now, every other user of this chunk must wait while
         // we fetch the resource.
         if(needed.size() > 0) {
-            backend->load(needed);
+            sql::SqlErrorObject err;
+            bool loadOk = backend->load(needed, err);
+            if(!loadOk) {
+                // Release
+                _release(needed);
+                throw err;
+            }
         }
     }
 
@@ -326,6 +338,17 @@ public:
         }
     }
 private:
+    void _release(ScTableVector const& needed) {
+        // _mutex should be held.
+        // Release subChunkId for the right table
+        for(ScTableVector::const_iterator i=needed.begin(), e=needed.end();
+            i != e; ++i) {
+            SubChunkMap& scm = _tableMap[i->table];
+            int last = scm[i->subChunkId];
+            scm[i->subChunkId] = last - 1;
+        }
+    }
+
     boost::shared_ptr<Backend> _backend; ///< Delegate stage/unstage
     int _chunkId;
     int _refCount; ///< Number of known users
