@@ -169,6 +169,7 @@ class Backend {
 public:
     typedef boost::shared_ptr<Backend> Ptr;
     bool load(ScTableVector const& v, sql::SqlErrorObject& err) {
+        using namespace lsst::qserv::wbase;
         if(_isFake) {
             std::cout << "Pretending to load:";
             std::copy(v.begin(), v.end(),
@@ -177,8 +178,14 @@ public:
         } else {
             for(ScTableVector::const_iterator i=v.begin(), e=v.end();
                 i != e; ++i) {
+                std::string const* createScript = 0;
+                if(i->chunkId == DUMMY_CHUNK) {
+                    createScript = &CREATE_DUMMY_SUBCHUNK_SCRIPT;
+                } else {
+                    createScript = &CREATE_SUBCHUNK_SCRIPT;
+                }
                 std::string create =
-                    (boost::format(lsst::qserv::wbase::CREATE_SUBCHUNK_SCRIPT)
+                    (boost::format(*createScript)
                      % i->db % i->table % SUB_CHUNK_COLUMN
                      % i->chunkId % i->subChunkId).str();
                 if(!_sqlConn.runQuery(create, err)) {

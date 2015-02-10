@@ -100,6 +100,21 @@ std::string const CLEANUP_SUBCHUNK_SCRIPT =
     "DROP TABLE IF EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%3%.%2%FullOverlap_%3%_%4%;"
     ;
 
+// Parameters:
+// %1% database (e.g., LSST)
+// %2% table (e.g., Object)
+// %3% subchunk column name (e.g. x_subChunkId)
+// %4% chunkId (e.g. 2523)
+// %5% subChunkId (e.g., 34)
+std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT =
+    "CREATE DATABASE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%;"
+    "CREATE TABLE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%.%2%_%4%_%5% ENGINE = MEMORY "
+    "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
+    "CREATE TABLE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR + "%1%_%4%.%2%FullOverlap_%4%_%5% "
+    "ENGINE = MEMORY "
+    "AS SELECT * FROM %1%.%2%_%4% WHERE %3% = %5%;"
+    ;
+
 // Note:
 // Not all Object partitions will have overlap tables created by the
 // partitioner.  Thus we need to create empty overlap tables to prevent
