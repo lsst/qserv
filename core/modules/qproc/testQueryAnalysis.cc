@@ -589,7 +589,7 @@ BOOST_AUTO_TEST_CASE(SpatialRestr2) { // Redundant?
 BOOST_AUTO_TEST_CASE(ChunkDensityFail) {
     // Should fail since leading _ is disallowed.
     std::string stmt = " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;";
-    char const expectedErr[] = "Unknown ANTLR error";
+    char const expectedErr[] = "ParseException:Parse token mismatch error:expecting a character string, found 'FROM':";
 
     boost::shared_ptr<QuerySession> qs = testStmt3(qsTest, stmt, expectedErr);
     // Remaining session state is undefined after unknown antlr error.
@@ -710,7 +710,7 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
 BOOST_AUTO_TEST_CASE(Subquery) { // ticket #2053
     std::string stmt = "SELECT subQueryColumn FROM (SELECT * FROM Object WHERE filterId=4) WHERE rFlux_PS > 0.3;";
     SelectParser::Ptr p;
-    BOOST_CHECK_THROW(p = getParser(stmt), UnknownAntlrError);
+    BOOST_CHECK_THROW(p = getParser(stmt), lsst::qserv::parser::ParseException);
    // Expected failure: Subqueries are unsupported.
 }
 
@@ -803,6 +803,24 @@ BOOST_AUTO_TEST_CASE(dm646) {
     stmt = "SELECT DISTINCT zNumObs FROM Object;";
     expected = "SELECT DISTINCT zNumObs FROM LSST.Object_100 AS QST_1_";
     testAndCompare(qsTest, stmt, expected);
+}
+
+BOOST_AUTO_TEST_CASE(dm681) {
+    std::string stmt = "SELECT foo FROM Filter f limit 5";
+    std::string stmt2 = "SELECT foo FROM Filter f limit 5;";
+    std::string stmt3 = "SELECT foo FROM Filter f limit 5;; ";
+    std::string expected = "SELECT foo FROM LSST.Filter AS f LIMIT 5";
+    testAndCompare(qsTest, stmt, expected);
+    testAndCompare(qsTest, stmt2, expected);
+    testAndCompare(qsTest, stmt3, expected);
+
+    stmt = "SELECT foo from Filter f limit 5 garbage query !#$%!#$";
+    stmt2 = "SELECT foo from Filter f limit 5; garbage query !#$%!#$";
+    char const expectedErr[] = "ParseException:Parse token mismatch error:expecting EOF, found 'garbage':";
+    boost::shared_ptr<QuerySession> qs;
+    qs = testStmt3(qsTest, stmt, expectedErr);
+    qs = testStmt3(qsTest, stmt2, expectedErr);
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -1007,7 +1025,7 @@ BOOST_AUTO_TEST_CASE(Case01_1012) {
     // patching the grammar to support this.
     std::string stmt = "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ABS(iE1_SG);";
     testStmt3(qsTest, stmt,
-              "ParseException:ANTLR parse error:unexpected token: (:");
+              "ParseException:Parse error(ANTLR):unexpected token: (:");
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1013) {
@@ -1016,7 +1034,7 @@ BOOST_AUTO_TEST_CASE(Case01_1013) {
     // patching the grammar to support this.
     std::string stmt = "SELECT objectId, ROUND(iE1_SG, 3), ROUND(ABS(iE1_SG), 3) FROM Object WHERE iE1_SG between -0.1 and 0.1 ORDER BY ROUND(ABS(iE1_SG), 3);";
     testStmt3(qsTest, stmt,
-              "ParseException:ANTLR parse error:unexpected token: (:");
+              "ParseException:Parse error(ANTLR):unexpected token: (:");
 }
 
 
@@ -1106,7 +1124,7 @@ BOOST_AUTO_TEST_CASE(Case01_1083) {
         "from Source s join RefObjMatch rom using (objectId) "
         "join SimRefObject sro using (refObjectId) where isStar =1 limit 10;";
     // % is not valid for arithmetic in SQL92
-    char const expectedErr[] = "ParseException:ANTLR parse error:unexpected token: 2:";
+    char const expectedErr[] = "ParseException:Parse error(ANTLR):unexpected token: 2:";
     testStmt3(qsTest, stmt, expectedErr);
 #if 0 // FIXME
     SqlParseRunner::Ptr spr = getRunner(stmt);
@@ -1152,7 +1170,7 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
     std::string expected = "SELECT COUNT(*) AS totalCount,SUM(CASE WHEN(typeId=3) THEN 1 ELSE 0 END) AS galaxyCount FROM LSST.%$#Object%$# WHERE rFlux_PS>10;";
 
     // CASE in column spec is illegal.
-    char const expectedErr[] = "Unknown ANTLR error";
+    char const expectedErr[] = "ParseException:ValueFactorFactory::newColumnFactor with :CASE WHEN OR_OP THEN VALUE_EXP ELSE VALUE_EXP END";
     testStmt3(qsTest, stmt, expectedErr);
 }
 
@@ -1160,7 +1178,7 @@ BOOST_AUTO_TEST_CASE(Case01_2006) {
     std::string stmt = "SELECT scisql_fluxToAbMag(uFlux_PS) "
         "FROM   Object WHERE  (objectId % 100 ) = 40;";
     // % is not a valid arithmetic operator in SQL92.
-    char const expectedErr[] = "ParseException:ANTLR parse error:unexpected token: objectId:";
+    char const expectedErr[] = "ParseException:Parse error(ANTLR):unexpected token: objectId:";
     testStmt3(qsTest, stmt, expectedErr);
 #if 0 // FIXME
     SqlParseRunner::Ptr spr = getRunner(stmt);

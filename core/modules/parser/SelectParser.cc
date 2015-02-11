@@ -43,11 +43,12 @@
 
 // Third-party headers
 #include <antlr/CommonAST.hpp>
-#include <antlr/NoViableAltException.hpp>
+
 #include "boost/bind.hpp"
 #include "boost/make_shared.hpp"
 
 // Qserv headers
+#include "global/Bug.h"
 #include "parser/ParseException.h"
 #include "parser/parseExceptions.h"
 #include "parser/parseTreeUtil.h"
@@ -57,6 +58,14 @@
 #include "SqlSQL2Lexer.hpp"
 #include "SqlSQL2TokenTypes.hpp"
 
+// ANTLR headers, declare after auto-generated headers to
+// reduce namespace pollution
+#include <antlr/MismatchedCharException.hpp>
+#include <antlr/MismatchedTokenException.hpp>
+#include <antlr/NoViableAltException.hpp>
+#include <antlr/NoViableAltForCharException.hpp>
+#include <antlr/RecognitionException.hpp>
+#include <antlr/SemanticException.hpp>
 
 namespace lsst {
 namespace qserv {
@@ -77,12 +86,36 @@ public:
         parser.initializeASTFactory(factory);
         parser.setASTFactory(&factory);
         try {
-            parser.sql_stmt();
+            parser.qserv_stmt();
         } catch(antlr::NoViableAltException& e) {
-            throw ParseException("ANTLR parse error:" + e.getMessage(), e.node);
+            throw ParseException("Parse error(ANTLR):"
+                                 + e.getMessage(), e.node);
+        } catch(antlr::NoViableAltForCharException& e) {
+            throw ParseException("Parse error(unexpected char lex):"
+                                 + e.getMessage(), e);
+        } catch(antlr::MismatchedCharException& e) {
+            throw ParseException("Parse char mismatch error:"
+                                 + e.getMessage(), e);
+        } catch(antlr::MismatchedTokenException& e) {
+            throw ParseException("Parse token mismatch error:"
+                                 + e.getMessage(), e.node);
+        } catch(antlr::SemanticException& e) {
+            throw ParseException("Parse error(corrupted, semantic):"
+                                 + e.getMessage(), e);
+        } catch(antlr::RecognitionException& e) {
+            throw ParseException("Parse error(corrupted, recognition):"
+                                 + e.getMessage(), e);
+        } catch(antlr::ANTLRException& e) {
+            throw ParseException("Unknown ANTLR error:" + e.getMessage(), e);
+        } catch(ParseException& e) {
+            throw;
+        } catch (Bug& b) {
+            throw ParseException(b);
+        } catch (std::logic_error& e) {
+            throw Bug(e.what());
         } catch (...) {
             // leading underscores in literals as value_expr throw this.
-            throw UnknownAntlrError();
+            throw Bug("Unknown parsing error");
         }
         RefAST a = parser.getAST();
     }
