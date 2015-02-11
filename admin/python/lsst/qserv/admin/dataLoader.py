@@ -45,6 +45,19 @@ from lsst.qserv.admin.chunkMapping import ChunkMapping
 #----------------------------------
 # Local non-exported definitions --
 #----------------------------------
+def _mysql_identifier_validator(db_or_table_name):
+    """
+    Check database and table name to prevent SQL-injection
+    see http://dev.mysql.com/doc/refman/5.0/en/identifiers.html
+    other query parameters will be processed by mysal-python:
+    see http://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
+
+    @param db_or_table_name: a mysql database or table name
+    @return True if name match MySQL requirements
+    """
+    name_validator = re.compile(r'^[0-9a-zA-Z_\$]+$')
+    is_correct = name_validator.match(db_or_table_name) is not None
+    return is_correct
 
 #------------------------
 # Exported definitions --
@@ -145,6 +158,11 @@ class DataLoader(object):
                              defining views instead of tables).
         """
 
+        if not _mysql_identifier_validator(table):
+            raise ValueError('MySQL table name not allowed: %s', table)
+        if not _mysql_identifier_validator(database):
+            raise ValueError('MySQL database name not allowed: %s', database)
+
         try:
             return self._run(database, table, schema, data)
         finally:
@@ -207,7 +225,7 @@ class DataLoader(object):
         # remove dir with unzipped files
         if self.unzipDir is not None:
             try:
-                self._log.debug('Deleting directory: %s', self.unzipDir)
+                self._log.debug('Deleting directory: %s',Sequence of the files defininig all partitioning options. self.unzipDir)
                 shutil.rmtree(self.unzipDir)
             except Exception as exc:
                 self._log.error('Failed to remove unzipped files: %s', exc)
