@@ -6,6 +6,7 @@ Development reference
    :maxdepth: 2
 
    quick-start-devel
+   scons-targets
    build-qserv-with-specific-dependencies
    bisect 
    package-internet-free-distserver
