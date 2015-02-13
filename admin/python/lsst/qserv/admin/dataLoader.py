@@ -45,6 +45,20 @@ from lsst.qserv.admin.chunkMapping import ChunkMapping
 #----------------------------------
 # Local non-exported definitions --
 #----------------------------------
+def _mysql_identifier_validator(db_or_table_name):
+    """
+    Check database and table name to prevent SQL-injection
+    see http://dev.mysql.com/doc/refman/5.0/en/identifiers.html
+    other query parameters will be processed by mysal-python:
+    see http://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
+
+    @param db_or_table_name: a mysql database or table name
+    @return True if name match MySQL requirements
+    """
+    if not hasattr(_mysql_identifier_validator, "name_validator"):
+        name_validator = re.compile(r'^[0-9a-zA-Z_\$]+$')
+    is_correct = name_validator.match(db_or_table_name) is not None
+    return is_correct
 
 #------------------------
 # Exported definitions --
@@ -85,7 +99,7 @@ class DataLoader(object):
         @param deleteTables: If True then existing tables in database will be deleted.
         @param loggerName:   Logger name used for logging all messages from loader.
         """
-        
+
         if not loggerName:
             loggerName = __name__
         self._log = logging.getLogger(loggerName)
@@ -144,6 +158,11 @@ class DataLoader(object):
         @param data:         List of file names with data, may be empty (e.g. when
                              defining views instead of tables).
         """
+
+        if not _mysql_identifier_validator(table):
+            raise ValueError('MySQL table name not allowed: %s', table)
+        if not _mysql_identifier_validator(database):
+            raise ValueError('MySQL database name not allowed: %s', database)
 
         try:
             return self._run(database, table, schema, data)
@@ -634,17 +653,33 @@ class DataLoader(object):
 
     def _loadOneFile(self, conn, database, table, file, csvPrefix):
         """Load data from a single file into existing table"""
+
+        self._log.info('load table %s.%s from file %s', database, table, file)
+
+        data = {'file': file}
+        # need to know special characters used in csv
+        # default delimiter is the same as in partitioner
+        special_chars = {'delimiter': '\t',
+                         'enclose':  '"',
+                         'escape': '\\',
+                         'newline': '\n'}
+
+        for name, default in special_chars.items():
+            data[name] = self.partOptions.get(csvPrefix + '.' + name, default)
+
+        # mysql-python prevents table name from being a parameter
+        # TODO: check for correct user input for database and table
+        # other parameters are processed by mysql-python to prevent SQL-injection
+        sql = "LOAD DATA LOCAL INFILE %(file)s INTO TABLE {0}.{1}".format(database, table)
+
+        sql += " FIELDS TERMINATED BY %(delimiter)s ENCLOSED BY %(enclose)s \
+                 ESCAPED BY %(escape)s LINES TERMINATED BY %(newline)s"
+
         cursor = conn.cursor()
-
-        # need to know field separator, default is the same as in partitioner.
-        separator = self.partOptions.get(csvPrefix + '.delimiter', '\t')
-
-        self._log.info('load table %s from file %s', table, file)
-        q = "LOAD DATA LOCAL INFILE '%s' INTO TABLE %s.%s FIELDS TERMINATED BY '%s'" % \
-            (file, database, table, separator)
-        self._log.debug('query: %s', q)
         try:
-            cursor.execute(q)
+            if self._log.isEnabledFor(logging.DEBUG):
+                self._log.debug("query: %s",sql % conn.literal(data))
+            cursor.execute(sql, data)
         except Exception as exc:
             self._log.critical('Failed to load data into non-partitioned table: %s', exc)
             raise
