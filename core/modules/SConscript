@@ -278,10 +278,6 @@ for m in libProducts.keys():
     tgts = getTests(env, m)
     if tgts: testTgts.extend(Flatten(tgts))
 
-if testTgts:
-    state.log.debug("Test tgts to build: %s" % map(str, testTgts))
-env.Alias("build", testTgts)
-
 # unit tests to run
 utests = env.get('UNIT_TESTS', [])
 if utests:
@@ -290,7 +286,7 @@ if utests:
     state.log.debug("Unit tests to run: %s" % map(str, utests))
     # special builder that checks that unit tests were successful
     utestCheck = env.UnitTestCheck('unit-test-check-tag', utests)
-    env.Alias('test', utestCheck)
+    testTgts.extend(utestCheck)
 
 installTgts = (extraTgts['dist'], testTgts)
 
