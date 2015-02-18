@@ -124,48 +124,17 @@ Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
 std::string const
 Task::defaultUser = "qsmaster";
 
-Task::Task(wbase::ScriptMeta const& s, std::string const& user_) {
-    TaskMsgPtr t = boost::make_shared<proto::TaskMsg>();
-    // Try to force non copy-on-write
-    hash.assign(s.hash.c_str());
-    dbName.assign(s.dbName.c_str());
-    resultPath.assign(s.resultPath.c_str());
-    t->set_chunkid(s.chunkId);
-    proto::TaskMsg::Fragment* f = t->add_fragment();
-    updateSubchunks(s.script, *f);
-    updateResultTables(s.script, *f);
-    f->add_query(s.script);
-    needsCreate = false;
-    msg = t;
-    timestr[0] = '\0';
-    _poisoned = false;
-}
-
-Task::Task(Task::TaskMsgPtr t, std::string const& user_) {
-    hash = hashTaskMsg(*t);
-    dbName = "q_" + hash;
-    resultPath = wbase::hashToResultPath(hash);
-    // Try to force non copy-on-write
-    msg = boost::make_shared<proto::TaskMsg>(*t);
-    user = user_;
-    needsCreate = true;
-    timestr[0] = '\0';
-    _poisoned = false;
-}
-
 Task::Task(Task::TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc) {
     // Make msg copy.
     msg = boost::make_shared<proto::TaskMsg>(*t);
     sendChannel = sc;
     hash = hashTaskMsg(*t);
     dbName = "q_" + hash;
-    resultPath = wbase::hashToResultPath(hash); // Not needed
     if(t->has_user()) {
         user = t->user();
     } else {
         user = defaultUser;
     }
-    needsCreate = true; // Not needed
     timestr[0] = '\0';
     _poisoned = false;
 }

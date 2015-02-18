@@ -46,7 +46,7 @@
 // Qserv headers
 #include "obsolete/QservPath.h"
 #include "wpublish/ChunkInventory.h"
-#include "xrdfs/XrdName.h"
+#include "xrdsvc/XrdName.h"
 
 
 namespace {
@@ -291,7 +291,7 @@ XrdOssGetStorageSystem(XrdOss       *native_oss,
 {
     lsst::qserv::xrdoss::QservOss* oss =
         lsst::qserv::xrdoss::QservOss::getInstance();
-    lsst::qserv::xrdfs::XrdName x;
+    lsst::qserv::xrdsvc::XrdName x;
     std::string name = x.getName();
     oss->reset(native_oss, Logger, config_fn, parms, name.c_str());
     static XrdSysError eRoute(Logger, "QservOssFs");
