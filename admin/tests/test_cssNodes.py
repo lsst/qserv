@@ -32,6 +32,7 @@ import tempfile
 import unittest
 
 import lsst.qserv.admin.qservAdmin as qservAdmin
+import lsst.qserv.admin.workerMgmt as workerMgmt
 
 
 def _makeAdmin(data=None):
@@ -59,7 +60,7 @@ def _makeAdmin(data=None):
     return admin
 
 
-class TestConfigParser(unittest.TestCase):
+class TestCssNodes(unittest.TestCase):
 
     def testGetNode(self):
         """ Test for getting nodes """
@@ -264,7 +265,78 @@ class TestConfigParser(unittest.TestCase):
         node = admin.getNode('worker-2')
         self.assertEqual(node['state'], qservAdmin.NodeState.INACTIVE)
 
+    def testMgmtSelect(self):
+        """ Test for WorkerMgmt.select methods """
+
+        # instantiate kvI with come initial data
+        initData = """\
+/\t\\N
+/css_meta\t\\N
+/css_meta/version\t{version}
+/NODES\t\\N
+/NODES/worker-1\tACTIVE
+/NODES/worker-1.json\t{{"type": "worker", "host": "worker.domain", "runDir": "/tmp/worker-1", "mysqlConn": "3306"}}
+/NODES/worker-2\tINACTIVE
+/NODES/worker-2.json\t{{"type": "backup", "host": "worker.domain", "runDir": "/tmp/worker-2", "mysqlConn": "3307"}}
+"""
+
+        initData = initData.format(version=qservAdmin.VERSION)
+        admin = _makeAdmin(initData)
+
+        mgr = workerMgmt.WorkerMgmt(admin)
+
+        # should return all nodes
+        nodes = mgr.selectDict()
+        self.assertEqual(len(nodes), 2)
+        self.assertIn('worker-1', nodes)
+        self.assertIn('worker-2', nodes)
+
+        # select 'ACTIVE' or 'INACTIVE', should return two nodes
+        nodes = mgr.selectDict(state=[qservAdmin.NodeState.ACTIVE, qservAdmin.NodeState.INACTIVE])
+        self.assertEqual(len(nodes), 2)
+        self.assertIn('worker-1', nodes)
+        self.assertIn('worker-2', nodes)
+
+        # select 'ACTIVE', should return one node
+        nodes = mgr.selectDict(state=[qservAdmin.NodeState.ACTIVE])
+        self.assertEqual(len(nodes), 1)
+        self.assertIn('worker-1', nodes)
+
+        # select 'INACTIVE', should return one node
+        nodes = mgr.selectDict(state=qservAdmin.NodeState.INACTIVE)
+        self.assertEqual(len(nodes), 1)
+        self.assertIn('worker-2', nodes)
+
+        # select 'worker' or 'backup', should return two nodes
+        nodes = mgr.selectDict(nodeType=['worker', 'backup'])
+        self.assertEqual(len(nodes), 2)
+        self.assertIn('worker-1', nodes)
+        self.assertIn('worker-2', nodes)
+
+        # select 'worker', should return one node
+        nodes = mgr.selectDict(nodeType=['worker'])
+        self.assertEqual(len(nodes), 1)
+        self.assertIn('worker-1', nodes)
+
+        # select 'backup', should return one node
+        nodes = mgr.selectDict(nodeType='backup')
+        self.assertEqual(len(nodes), 1)
+        self.assertIn('worker-2', nodes)
+
+        # combinations
+        nodes = mgr.selectDict(state=qservAdmin.NodeState.ACTIVE, nodeType='worker')
+        self.assertEqual(len(nodes), 1)
+        self.assertIn('worker-1', nodes)
+        nodes = mgr.selectDict(state=qservAdmin.NodeState.INACTIVE, nodeType='backup')
+        self.assertEqual(len(nodes), 1)
+        self.assertIn('worker-2', nodes)
+        nodes = mgr.selectDict(state=qservAdmin.NodeState.ACTIVE, nodeType='backup')
+        self.assertEqual(len(nodes), 0)
+        nodes = mgr.selectDict(state=qservAdmin.NodeState.INACTIVE, nodeType='worker')
+        self.assertEqual(len(nodes), 0)
+
 ####################################################################################
 
 if __name__ == "__main__":
-    unittest.main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestCssNodes)
+    unittest.TextTestRunner(verbosity=3).run(suite)
