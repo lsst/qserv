@@ -116,6 +116,14 @@ class PartConfig(UserDict.UserDict):
         return 'part.pos' in self.data or 'part.pos1' in self.data
 
     @property
+    def isSubChunked(self):
+        """
+        Returns True if table is sub-chunked. By default all partitioned tables
+        are sub-chunked unles part.subChunks is set to 0
+        """
+        return self.partitioned and bool(int(self.get('part.subChunks', 1)))
+
+    @property
     def isRefMatch(self):
         """Returns True if table is a view"""
         return 'part.pos1' in self and 'part.pos2' in self
