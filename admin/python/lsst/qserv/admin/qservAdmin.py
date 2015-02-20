@@ -38,6 +38,7 @@ import logging
 import json
 import os
 import socket
+import types
 import uuid
 
 from lsst.qserv.css.kvInterface import KvInterface, KvException
@@ -48,6 +49,13 @@ from lsst.qserv.css import SCISQLDB_PREFIX
 from lsst.qserv.css import VERSION_KEY
 from lsst.qserv.css import VERSION
 from lsst.qserv.admin.qservAdminException import QservAdminException
+
+class NodeState(object):
+    """ Class which is a namespace for the constants defining Node states """
+    ACTIVE = 'ACTIVE'
+    INACTIVE = 'INACTIVE'
+    # list of all states, update if you change definitions above
+    STATES = [ACTIVE, INACTIVE]
 
 # Possible options
 possibleOpts = {"table" : set(["schema", "compression", "match"]),
@@ -411,7 +419,7 @@ class QservAdmin(object):
         """Try to retrieve defaults based on a database and table"""
         defaults = {}
         dbInfo = self.getDbInfo(dbName)
-        partId =  dbInfo["partitioningId"]
+        partId = dbInfo["partitioningId"]
         if partId:
             partInfo = self.getPartInfo(partId)
             if "overlap" in partInfo:
@@ -486,7 +494,9 @@ class QservAdmin(object):
     def getNode(self, nodeName):
         """
         Returns node definition for specified node name. Returned dictionary has
-        keys defined in https://dev.lsstcorp.org/trac/wiki/db/Qserv/CSS#Node-related
+        keys defined in https://dev.lsstcorp.org/trac/wiki/db/Qserv/CSS#Node-related.
+        The state of the node (which does not have separate key in CSS) is returned
+        as 'state' key in the dictionary.
         If node does not exist then exception is raised.
         """
 
@@ -498,8 +508,9 @@ class QservAdmin(object):
             data = self._cssGet(nodeKey + '.json')
             if data:
                 data = json.loads(data)
+                data['state'] = self._cssGet(nodeKey, None)
         elif self._kvI.exists(nodeKey):
-            data = {}
+            data = {'state': self._kvI.get(nodeKey)}
             for child in self._cssChildren(nodeKey, []):
                 data[child] = self._cssGet(nodeKey + '/' + child)
         else:
@@ -529,7 +540,7 @@ class QservAdmin(object):
                 result[node] = data
         return result
 
-    def addNode(self, nodeName, nodeType, host, runDir, mysqlConn):
+    def addNode(self, nodeName, nodeType, host, runDir, mysqlConn, state=NodeState.ACTIVE):
         """
         Create new node definition in CSS according to
         https://dev.lsstcorp.org/trac/wiki/db/Qserv/CSS#Node-related
@@ -542,7 +553,11 @@ class QservAdmin(object):
         @param runDir:     Run directory location for qserv instance.
         @param mysqlConn:  String specifying comma-separated set of connection options,
                            see above URL for definition.
+        @param state:      State for newly created node.
         """
+
+        if state not in NodeState.STATES:
+            raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, 'state: ' + str(state))
 
         # first check version or store it
         with self._kvI.getLockObject(VERSION_KEY, self._uniqueId()):
@@ -561,8 +576,35 @@ class QservAdmin(object):
 
         # make a node and set all options
         options = dict(type=nodeType, host=host, runDir=runDir, mysqlConn=mysqlConn)
-        self._kvI.create(nodeKey, "")
+        self._kvI.create(nodeKey, str(state))
         self._addPacked(nodeKey, options)
+
+    def setNodeState(self, nodes, state):
+        """
+        Change the state of the node (or multiple nodes).
+
+        @param nodes:    Lsit of node names or single node name
+        """
+
+        if state not in NodeState.STATES:
+            raise QservAdminException(QservAdminException.WRONG_PARAM_VAL, 'state: ' + str(state))
+
+        # first check version
+        self._versionCheck()
+
+        # if argument is a string then it's a single node name
+        if isinstance(nodes, types.StringTypes):
+            nodes = [nodes]
+
+        for node in nodes:
+            # check that node exists
+            nodeKey = '/NODES/' + node
+            if not self._kvI.exists(nodeKey):
+                raise QservAdminException(QservAdminException.NODE_DOES_NOT_EXIST,
+                                          'Node: ' + node, 'Key: ' + nodeKey)
+
+            # update its state
+            self._kvI.set(nodeKey, state)
 
     #### CHUNKS ####################################################################
     def chunks(self, dbName, tableName):

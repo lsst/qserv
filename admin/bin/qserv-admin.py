@@ -44,7 +44,7 @@ import sys
 
 # local imports
 from lsst.qserv.css.kvInterface import KvException
-from lsst.qserv.admin.qservAdmin import QservAdmin
+from lsst.qserv.admin.qservAdmin import QservAdmin, NodeState
 from lsst.qserv.admin.qservAdminException import QservAdminException
 
 ####################################################################################
@@ -94,7 +94,10 @@ class CommandParser(object):
             "type",
             "host",
             "runDir",
-            "mysqlConn"],
+            "mysqlConn",
+            "state"],
+        "updateNode" : [
+            "state"],
         }
 
     def __init__(self, connInfo):
@@ -113,7 +116,8 @@ class CommandParser(object):
             'QUIT':    self._justExit,
             'RELEASE': self._parseRelease,
             'RESTORE': self._restore,
-            'SHOW':    self._parseShow
+            'SHOW':    self._parseShow,
+            'UPDATE':  self._parseUpdate
             }
         self._impl = QservAdmin(connInfo)
         self._supportedCommands = """
@@ -122,12 +126,14 @@ class CommandParser(object):
     CREATE DATABASE <dbName> LIKE <dbName2>;
     CREATE TABLE <dbName>.<tableName> <configFile>;
     CREATE TABLE <dbName>.<tableName> LIKE <dbName2>.<tableName2>;
-    CREATE NODE <nodeName> <key=value ...>;  # keys: type, host, runDir, mysqlConn
+    CREATE NODE <nodeName> <key=value ...>;  # keys: type, host, runDir, mysqlConn, state
+    UPDATE NODE <nodeName> state=value;  # value: ACTIVE, INACTIVE
     DROP DATABASE <dbName>;
     DROP EVERYTHING;
     DUMP EVERYTHING [<outFile>];
     RESTORE <inFile>;
     SHOW DATABASES;
+    SHOW NODES;
     QUIT;
     EXIT;
     ...more coming soon
@@ -256,19 +262,10 @@ class CommandParser(object):
 
         requiredKeys = self.requiredOpts['createNode']
 
-        # parse command, 'type' is optional, rest is required
-        options = {'nodeName': tokens[0], 'type': 'worker'}
-        for opt in tokens[1:]:
-            if '=' not in opt:
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                   "Invalid argument '%s', should be <key>=<value>" % opt)
-            key, value = opt.split('=', 1)
+        # parse command, 'type' and 'state' are optional, rest is required
+        options = {'nodeName': tokens[0], 'type': 'worker', 'state': NodeState.ACTIVE}
 
-            if key not in requiredKeys:
-                raise QservAdminException(QservAdminException.BAD_CMD,
-                   "Unrecognized option key '%s', possible keys: %s" % \
-                   (key, ' '.join(requiredKeys)))
-
+        for key, value in self._parseKVList(tokens[1:], requiredKeys):
             options[key] = value
 
         # check that all required options are there
@@ -340,8 +337,78 @@ class CommandParser(object):
         t = tokens[0].upper()
         if t == 'DATABASES':
             self._impl.showDatabases()
+        elif t == 'NODES':
+            self._parseShowNodes()
         else:
             raise QservAdminException(QservAdminException.BAD_CMD)
+
+    def _parseShowNodes(self):
+        """
+        Subparser, handle all SHOW NODES requests.
+        """
+
+        nodes = self._impl.getNodes()
+        if not nodes:
+            print "No nodes defined in CSS"
+        for node in sorted(nodes.keys()):
+            options = sorted(nodes[node].items())
+            options = ["{0}={1}".format(k, v) for k, v in options]
+            print "{0} {1}".format(node, ' '.join(options))
+
+    def _parseUpdate(self, tokens):
+        """
+        Subparser - handles all UPDATE requests.
+        """
+        t = tokens[0].upper()
+        if t == 'NODE':
+            self._parseUpdateNode(tokens[1:])
+        else:
+            raise QservAdminException(QservAdminException.BAD_CMD)
+
+    def _parseUpdateNode(self, tokens):
+        """
+        Subparser - handles all UPDATE NODE requests.
+        Throws KvException, QservAdminException.
+        """
+        if len(tokens) < 2:
+            raise QservAdminException(QservAdminException.BAD_CMD,
+                                "Unexpected number of arguments.")
+
+        requiredKeys = self.requiredOpts['updateNode']
+
+        # parse key=value pairs
+        options = {'nodes': [tokens[0]]}
+
+        for key, value in self._parseKVList(tokens[1:], requiredKeys):
+            options[key] = value
+
+        # check that all required options are there
+        self._checkExist(options, requiredKeys)
+
+        # call CSS to do the rest, remap options to argument names
+        self._impl.setNodeState(**options)
+
+    def _parseKVList(self, tokens, possibleKeys=None):
+        """
+        Parse the series of key=value strings, returns the list of (key, value)
+        tuples. If possibleKeys is not None then keys are checked agains that
+        list, exception is raised if key is not in the list.
+        """
+        kvList = []
+        for opt in tokens:
+            if '=' not in opt:
+                raise QservAdminException(QservAdminException.BAD_CMD,
+                   "Invalid argument '%s', should be <key>=<value>" % opt)
+            key, value = opt.split('=', 1)
+
+            if possibleKeys is not None and key not in possibleKeys:
+                raise QservAdminException(QservAdminException.BAD_CMD,
+                   "Unrecognized option key '%s', possible keys: %s" % \
+                   (key, ' '.join(possibleKeys)))
+
+            kvList.append((key, value))
+
+        return kvList
 
     def _createDb(self, dbName, configFile):
         """
