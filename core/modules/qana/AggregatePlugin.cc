@@ -91,7 +91,7 @@ private:
         bool hasAgg = false;
         checkAgg ca(hasAgg);
         std::string origAlias = e.getAlias();
-        query::ValueExpr::FactorOpList const& factorOps = e.getFactorOps();
+        query::ValueExpr::FactorOpVector const& factorOps = e.getFactorOps();
         std::for_each(factorOps.begin(), factorOps.end(), ca);
 
         if(!ca.hasAgg) {
@@ -126,8 +126,8 @@ private:
         // then compute the expression result from the parallel
         // results during merging.
         query::ValueExprPtr mergeExpr = boost::make_shared<query::ValueExpr>();
-        query::ValueExpr::FactorOpList& mergeFactorOps = mergeExpr->getFactorOps();
-        for(query::ValueExpr::FactorOpList::const_iterator i=factorOps.begin();
+        query::ValueExpr::FactorOpVector& mergeFactorOps = mergeExpr->getFactorOps();
+        for(query::ValueExpr::FactorOpVector::const_iterator i=factorOps.begin();
             i != factorOps.end(); ++i) {
             query::ValueFactorPtr newFactor = i->factor->clone();
             if(newFactor->getType() != query::ValueFactor::AGGFUNC) {
@@ -233,7 +233,7 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     query::SelectList& pList = p.stmtParallel.front()->getSelectList();
     bool hasLimit = p.stmtOriginal.getLimit() != -1;
     query::SelectList& mList = p.stmtMerge.getSelectList();
-    boost::shared_ptr<query::ValueExprList> vlist;
+    boost::shared_ptr<query::ValueExprPtrVector> vlist;
     vlist = oList.getValueExprList();
     if(!vlist) {
         throw std::invalid_argument("No select list in original SelectStmt");
@@ -244,9 +244,9 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     pList.getValueExprList()->clear();
     mList.getValueExprList()->clear();
     query::AggOp::Mgr m; // Eventually, this can be shared?
-    convertAgg<query::ValueExprList> ca(*pList.getValueExprList(),
-                                        *mList.getValueExprList(),
-                                        m);
+    convertAgg<query::ValueExprPtrVector> ca(*pList.getValueExprList(),
+                                             *mList.getValueExprList(),
+                                             m);
     std::for_each(vlist->begin(), vlist->end(), ca);
     query::QueryTemplate qt;
     pList.renderTo(qt);
@@ -262,9 +262,9 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
 
     // Make the select lists of other statements in the parallel
     // portion the same.
-    typedef SelectStmtList::iterator Iter;
-    typedef query::ValueExprList::iterator Viter;
-    boost::shared_ptr<query::ValueExprList> veList = pList.getValueExprList();
+    typedef SelectStmtPtrVector::iterator Iter;
+    typedef query::ValueExprPtrVector::iterator Viter;
+    boost::shared_ptr<query::ValueExprPtrVector> veList = pList.getValueExprList();
     for(Iter b=p.stmtParallel.begin(), i=b, e=p.stmtParallel.end();
         i != e;
         ++i) {
@@ -275,7 +275,7 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
 
         if(i == b) continue;
         query::SelectList& pList2 = (*i)->getSelectList();
-        boost::shared_ptr<query::ValueExprList> veList2 = pList2.getValueExprList();
+        boost::shared_ptr<query::ValueExprPtrVector> veList2 = pList2.getValueExprList();
         veList2->clear();
         for(Viter j=veList->begin(), je=veList->end(); j != je; ++j) {
             veList2->push_back((**j).clone());

@@ -30,12 +30,14 @@
   */
 
 // System headers
-#include <list>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
 
+// Qserv headers
+#include "global/stringTypes.h"
 
 namespace lsst {
 namespace qserv {
@@ -65,8 +67,7 @@ class QueryTemplate;
 class QsRestrictor {
 public:
     typedef boost::shared_ptr<QsRestrictor> Ptr;
-    typedef std::list<Ptr> List;
-    typedef std::list<std::string> StringList;
+    typedef std::vector<Ptr> PtrVector;
 
     class render {
     public:
@@ -76,7 +77,7 @@ public:
     };
 
     std::string _name;
-    StringList _params;
+    StringVector _params;
 };
 std::ostream& operator<<(std::ostream& os, QsRestrictor const& q);
 

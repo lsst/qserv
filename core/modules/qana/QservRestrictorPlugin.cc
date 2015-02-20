@@ -42,6 +42,7 @@
 
 // Qserv headers
 #include "css/Facade.h"
+#include "global/stringTypes.h"
 #include "qana/AnalysisError.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
@@ -206,9 +207,9 @@ public:
                            StringPair(pCols[0], pCols[1]),
                            pCols[2]);
         _entries.push_back(se);
-        query::JoinRefList& jList = t.getJoins();
-        typedef query::JoinRefList::iterator Iter;
-        for(Iter i=jList.begin(), e=jList.end(); i != e; ++i) {
+        query::JoinRefPtrVector& joinRefs = t.getJoins();
+        typedef query::JoinRefPtrVector::iterator Iter;
+        for(Iter i=joinRefs.begin(), e=joinRefs.end(); i != e; ++i) {
             (*this)((**i).getRight());
         }
     }
@@ -239,13 +240,13 @@ private:
     query::BoolTerm::Ptr
         _makeCondition(boost::shared_ptr<query::QsRestrictor> const restr,
                        RestrictorEntry const& restrictorEntry);
-    boost::shared_ptr<query::QsRestrictor::List>
+    boost::shared_ptr<query::QsRestrictor::PtrVector>
         _getSecIndexPreds(query::QueryContext&,
                           query::AndTerm::Ptr);
     query::QsRestrictor::Ptr
         _newSecIndexRestrictor(query::QueryContext& context,
                                boost::shared_ptr<query::ColumnRef> cr,
-                               query::ValueExprList& vList);
+                               query::ValueExprPtrVector& vList);
     query::QsRestrictor::Ptr
         _newSecIndexRestrictor(query::QueryContext& context,
                                boost::shared_ptr<query::CompPredicate> cp);
@@ -284,14 +285,14 @@ public:
 private:
     class ObjectIdGenerator : public Generator {
     public:
-        ObjectIdGenerator(query::QsRestrictor::StringList const& params_)
+        ObjectIdGenerator(StringVector const& params_)
             : params(params_.begin(), params_.end()) {
         }
 
         virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             query::BoolFactor::Ptr newFactor =
                     boost::make_shared<query::BoolFactor>();
-            query::BfTerm::PtrList& terms = newFactor->_terms;
+            query::BfTerm::PtrVector& terms = newFactor->_terms;
             terms.push_back(newInPred(e.alias, e.secIndexColumn, params));
             return newFactor;
         }
@@ -301,7 +302,7 @@ private:
     class AreaGenerator : public Generator {
     public:
         AreaGenerator(char const* fName_, int paramCount_,
-                      query::QsRestrictor::StringList const& params_)
+                      StringVector const& params_)
             :  fName(fName_), paramCount(paramCount_), params(params_) {
             if(paramCount_ == USE_STRING) {
                 // Convert param list to one quoted string.
@@ -313,7 +314,7 @@ private:
         virtual query::BoolFactor::Ptr operator()(RestrictorEntry const& e) {
             query::BoolFactor::Ptr newFactor =
                     boost::make_shared<query::BoolFactor>();
-            query::BfTerm::PtrList& terms = newFactor->_terms;
+            query::BfTerm::PtrVector& terms = newFactor->_terms;
             query::CompPredicate::Ptr cp =
                     boost::make_shared<query::CompPredicate>();
             boost::shared_ptr<query::FuncExpr> fe =
@@ -328,7 +329,7 @@ private:
         }
         char const* const fName;
         int const paramCount;
-        query::QsRestrictor::StringList const& params;
+        StringVector const& params;
         static const int USE_STRING = -999;
     };
 
@@ -421,15 +422,15 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
     // Prepare to patch the WHERE clause
     query::WhereClause& wc = stmt.getWhereClause();
 
-    boost::shared_ptr<query::QsRestrictor::List const> rListP = wc.getRestrs();
+    boost::shared_ptr<query::QsRestrictor::PtrVector const> restrsPtr = wc.getRestrs();
     query::AndTerm::Ptr originalAnd(wc.getRootAndTerm());
-    boost::shared_ptr<query::QsRestrictor::List> secIndexPreds =
+    boost::shared_ptr<query::QsRestrictor::PtrVector> secIndexPreds =
         _getSecIndexPreds(context, originalAnd);
     query::AndTerm::Ptr newTerm;
     // Now handle the explicit restrictors
-    if(rListP && !rListP->empty()) {
+    if(restrsPtr && !restrsPtr->empty()) {
         // spatial restrictions
-        query::QsRestrictor::List const& rList = *rListP;
+        query::QsRestrictor::PtrVector const& restrs = *restrsPtr;
         context.restrictors = boost::make_shared<query::QueryContext::RestrList>();
         newTerm = boost::make_shared<query::AndTerm>();
 
@@ -439,8 +440,8 @@ QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt,
         }
 
         // Now, for each of the qserv restrictors:
-        for(query::QsRestrictor::List::const_iterator i=rList.begin();
-            i != rList.end(); ++i) {
+        for(query::QsRestrictor::PtrVector::const_iterator i=restrs.begin();
+            i != restrs.end(); ++i) {
             // for each restrictor entry
             // generate a restrictor condition.
             for(RestrictorEntries::const_iterator j = entries.begin();
@@ -489,22 +490,22 @@ QservRestrictorPlugin::_makeCondition(
 }
 
 inline void
-addPred(boost::shared_ptr<query::QsRestrictor::List>& preds,
+addPred(boost::shared_ptr<query::QsRestrictor::PtrVector>& preds,
         query::QsRestrictor::Ptr p) {
     if(p) {
         if(!preds) {
-            preds = boost::make_shared<query::QsRestrictor::List>();
+            preds = boost::make_shared<query::QsRestrictor::PtrVector>();
         }
         preds->push_back(p);
     }
 }
 
-boost::shared_ptr<query::QsRestrictor::List>
+boost::shared_ptr<query::QsRestrictor::PtrVector>
 QservRestrictorPlugin::_getSecIndexPreds(query::QueryContext& context,
                                          query::AndTerm::Ptr p) {
-    typedef query::BoolTerm::PtrList::iterator TermIter;
-    typedef query::BfTerm::PtrList::iterator BfIter;
-    boost::shared_ptr<query::QsRestrictor::List> secIndexPreds;
+    typedef query::BoolTerm::PtrVector::iterator TermIter;
+    typedef query::BfTerm::PtrVector::iterator BfIter;
+    boost::shared_ptr<query::QsRestrictor::PtrVector> secIndexPreds;
 
     if(!p) return secIndexPreds;
 
@@ -560,7 +561,7 @@ query::QsRestrictor::Ptr
 QservRestrictorPlugin::_newSecIndexRestrictor(
     query::QueryContext& context,
     boost::shared_ptr<query::ColumnRef> cr,
-    query::ValueExprList& vList)
+    query::ValueExprPtrVector& vList)
 {
     // Extract the literals, bailing out if we see a non-literal
     bool isValid = true;
@@ -610,7 +611,7 @@ QservRestrictorPlugin::_newSecIndexRestrictor(
     validateLiteral vl(isValid);
     vl(literalValue);
     if(!isValid) { return p; } // No secondary index. Leave alone.
-    std::list<boost::shared_ptr<query::ValueExpr> > cands;
+    std::vector<boost::shared_ptr<query::ValueExpr> > cands;
     cands.push_back(literalValue);
     return _newSecIndexRestrictor(context, secIndex, cands);
 }

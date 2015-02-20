@@ -86,16 +86,16 @@ ChunkMapping::getMapReference(int chunk, int subChunk) {
 
 void
 ChunkMapping::setFromMeta(qdisp::ChunkMeta const& m) {
-    qdisp::ChunkMeta::EntryList const& elist = m.getEntries();
-    typedef qdisp::ChunkMeta::EntryList::const_iterator Citer;
+    qdisp::ChunkMeta::EntryVector const& elist = m.getEntries();
+    typedef qdisp::ChunkMeta::EntryVector::const_iterator Citer;
     Citer begin = elist.begin();
     Citer end = elist.end();
     for(Citer i = begin; i != end; ++i) {
         // Discard i->db since it's not in the mapping.
         // Ignore collisions if tables (of different dbs)
         // have different partitioning.
-        if(i->chunkLevel == 1) addChunkKey(i->table);
-        else if(i->chunkLevel == 2) addSubChunkKey(i->table);
+        if(i->getChunkLevel() == 1) addChunkKey(i->getTable());
+        else if(i->getChunkLevel() == 2) addSubChunkKey(i->getTable());
     }
 }
 

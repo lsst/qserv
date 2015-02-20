@@ -61,7 +61,7 @@ using query::ColumnRef;
 using query::CompPredicate;
 using query::FuncExpr;
 using query::JoinRef;
-using query::JoinRefList;
+using query::JoinRefPtrVector;
 using query::JoinSpec;
 using query::OrTerm;
 using query::QueryContext;
@@ -69,7 +69,7 @@ using query::QueryTemplate;
 using query::SelectStmt;
 using query::TableRef;
 using query::TableRefList;
-using query::ValueExprList;
+using query::ValueExprPtrVector;
 using query::ValueExprPtr;
 using query::ValueFactor;
 using query::ValueFactorPtr;
@@ -331,7 +331,7 @@ size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on,
     AndTerm::Ptr at = boost::dynamic_pointer_cast<AndTerm>(on);
     if (at) {
         // Recurse to the children.
-        typedef BoolTerm::PtrList::const_iterator BtIter;
+        typedef BoolTerm::PtrVector::const_iterator BtIter;
         for (BtIter i = at->_terms.begin(), e = at->_terms.end(); i != e; ++i) {
             numEdges += _addOnEqEdges(*i, outer, g);
         }
@@ -462,7 +462,7 @@ size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where)
     AndTerm::Ptr at = boost::dynamic_pointer_cast<AndTerm>(where);
     if (at) {
         // Recurse to the children.
-        typedef BoolTerm::PtrList::const_iterator BtIter;
+        typedef BoolTerm::PtrVector::const_iterator BtIter;
         for (BtIter i = at->_terms.begin(), e = at->_terms.end(); i != e; ++i) {
             numEdges += _addWhereEqEdges(*i);
         }
@@ -497,7 +497,7 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt, double overlap)
     AndTerm::Ptr at = boost::dynamic_pointer_cast<AndTerm>(bt);
     if (at) {
         // Recurse to the children.
-        typedef BoolTerm::PtrList::const_iterator BtIter;
+        typedef BoolTerm::PtrVector::const_iterator BtIter;
         for (BtIter i = at->_terms.begin(), e = at->_terms.end(); i != e; ++i) {
             numEdges += _addSpEdges(*i, overlap);
         }
@@ -548,7 +548,7 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt, double overlap)
         return 0;
     }
     // Extract column references from fe
-    ValueExprList::const_iterator j = fe->params.begin();
+    ValueExprPtrVector::const_iterator j = fe->params.begin();
     ColumnRef::Ptr cr[4];
     Vertex* v[4];
     for (int i = 0; i < 4; ++i) {
@@ -732,8 +732,8 @@ RelationGraph::RelationGraph(QueryContext const& ctx,
     // reference resolution - for instance, an unqualified column reference
     // "foo" might be unambiguous in the ON clause of "A JOIN B", but ambiguous
     // in the ON clause for "(A JOIN B) JOIN C".
-    JoinRefList const& joins = tr->getJoins();
-    typedef JoinRefList::const_iterator Iter;
+    JoinRefPtrVector const& joins = tr->getJoins();
+    typedef JoinRefPtrVector::const_iterator Iter;
     for (Iter i = joins.begin(), e = joins.end(); i != e; ++i) {
         JoinRef& j = **i;
         RelationGraph tmp(ctx, j.getRight(), overlap, pool);
@@ -944,7 +944,7 @@ RelationGraph::RelationGraph(QueryContext const& ctx,
     swap(g);
 }
 
-void RelationGraph::rewrite(SelectStmtList& outputs,
+void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
                             QueryMapping& mapping)
 {
     typedef std::list<Vertex>::iterator ListIter;

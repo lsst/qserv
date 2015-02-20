@@ -33,17 +33,18 @@
   */
 
 // System headers
-#include <list>
-#include <stack>
 #include <string>
 #include <utility>
+#include <vector>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
 #include "boost/iterator_adaptors.hpp"
 
 // Local headers
+#include "global/stringTypes.h"
 #include "query/ColumnRef.h"
+#include "typedefs.h"
 
 namespace lsst {
 namespace qserv {
@@ -51,31 +52,27 @@ namespace query {
 
 // Forward declarations
 class QueryTemplate;
-class ValueExpr;
-
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
 
 /// BfTerm is a term in a in a BoolFactor
 class BfTerm {
 public:
     typedef boost::shared_ptr<BfTerm> Ptr;
-    typedef std::list<Ptr> PtrList;
+    typedef std::vector<Ptr> PtrVector;
     virtual ~BfTerm() {}
     virtual Ptr clone() const = 0;
     virtual Ptr copySyntax() const = 0;
     virtual std::ostream& putStream(std::ostream& os) const = 0;
     virtual void renderTo(QueryTemplate& qt) const = 0;
 
-    virtual void findValueExprs(ValueExprList& list) {}
-    virtual void findColumnRefs(ColumnRef::List& list) {}
+    virtual void findValueExprs(ValueExprPtrVector& vector) {}
+    virtual void findColumnRefs(ColumnRef::Vector& vector) {}
 };
 
 /// BoolTerm is a representation of a boolean-valued term in a SQL WHERE
 class BoolTerm {
 public:
     typedef boost::shared_ptr<BoolTerm> Ptr;
-    typedef std::list<Ptr> PtrList;
+    typedef std::vector<Ptr> PtrVector;
 
     virtual ~BoolTerm() {}
     virtual char const* getName() const { return "BoolTerm"; }
@@ -89,13 +86,13 @@ public:
 
     virtual OpPrecedence getOpPrecedence() const { return UNKNOWN_PRECEDENCE; }
 
-    virtual void findValueExprs(ValueExprList& list) {}
-    virtual void findColumnRefs(ColumnRef::List& list) {}
+    virtual void findValueExprs(ValueExprPtrVector& vector) {}
+    virtual void findColumnRefs(ColumnRef::Vector& vector) {}
 
-    /// @return a mutable list iterator for the contained terms
-    virtual PtrList::iterator iterBegin() { return PtrList::iterator(); }
+    /// @return a mutable vector iterator for the contained terms
+    virtual PtrVector::iterator iterBegin() { return PtrVector::iterator(); }
     /// @return the terminal iterator
-    virtual PtrList::iterator iterEnd() { return PtrList::iterator(); }
+    virtual PtrVector::iterator iterEnd() { return PtrVector::iterator(); }
 
     /// @return the reduced form of this term, or null if no reduction is
     /// possible.
@@ -120,21 +117,21 @@ public:
     virtual char const* getName() const { return "OrTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return OR_PRECEDENCE; }
 
-    virtual void findValueExprs(ValueExprList& list) {
-        typedef BoolTerm::PtrList::iterator Iter;
+    virtual void findValueExprs(ValueExprPtrVector& vector) {
+        typedef BoolTerm::PtrVector::iterator Iter;
         for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findValueExprs(list); }
+            if (*i) { (*i)->findValueExprs(vector); }
         }
     }
-    virtual void findColumnRefs(ColumnRef::List& list) {
-        typedef BoolTerm::PtrList::iterator Iter;
+    virtual void findColumnRefs(ColumnRef::Vector& vector) {
+        typedef BoolTerm::PtrVector::iterator Iter;
         for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findColumnRefs(list); }
+            if (*i) { (*i)->findColumnRefs(vector); }
         }
     }
 
-    virtual PtrList::iterator iterBegin() { return _terms.begin(); }
-    virtual PtrList::iterator iterEnd() { return _terms.end(); }
+    virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
+    virtual PtrVector::iterator iterEnd() { return _terms.end(); }
 
     virtual boost::shared_ptr<BoolTerm> getReduced();
 
@@ -143,7 +140,7 @@ public:
     virtual boost::shared_ptr<BoolTerm> clone() const;
     virtual boost::shared_ptr<BoolTerm> copySyntax() const;
 
-    BoolTerm::PtrList _terms;
+    BoolTerm::PtrVector _terms;
 };
 
 /// AndTerm is a set of AND-connected BoolTerms
@@ -154,21 +151,21 @@ public:
     virtual char const* getName() const { return "AndTerm"; }
     virtual OpPrecedence getOpPrecedence() const { return AND_PRECEDENCE; }
 
-    virtual void findValueExprs(ValueExprList& list) {
-        typedef BoolTerm::PtrList::iterator Iter;
+    virtual void findValueExprs(ValueExprPtrVector& vector) {
+        typedef BoolTerm::PtrVector::iterator Iter;
         for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findValueExprs(list); }
+            if (*i) { (*i)->findValueExprs(vector); }
         }
     }
-    virtual void findColumnRefs(ColumnRef::List& list) {
-        typedef BoolTerm::PtrList::iterator Iter;
+    virtual void findColumnRefs(ColumnRef::Vector& vector) {
+        typedef BoolTerm::PtrVector::iterator Iter;
         for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findColumnRefs(list); }
+            if (*i) { (*i)->findColumnRefs(vector); }
         }
     }
 
-    virtual PtrList::iterator iterBegin() { return _terms.begin(); }
-    virtual PtrList::iterator iterEnd() { return _terms.end(); }
+    virtual PtrVector::iterator iterBegin() { return _terms.begin(); }
+    virtual PtrVector::iterator iterEnd() { return _terms.end(); }
 
     virtual boost::shared_ptr<BoolTerm> getReduced();
 
@@ -177,7 +174,7 @@ public:
 
     virtual boost::shared_ptr<BoolTerm> clone() const;
     virtual boost::shared_ptr<BoolTerm> copySyntax() const;
-    BoolTerm::PtrList _terms;
+    BoolTerm::PtrVector _terms;
 };
 
 /// BoolFactor is a plain factor in a BoolTerm
@@ -187,16 +184,16 @@ public:
     virtual char const* getName() const { return "BoolFactor"; }
     virtual OpPrecedence getOpPrecedence() const { return OTHER_PRECEDENCE; }
 
-    virtual void findValueExprs(ValueExprList& list) {
-        typedef BfTerm::PtrList::iterator Iter;
+    virtual void findValueExprs(ValueExprPtrVector& vector) {
+        typedef BfTerm::PtrVector::iterator Iter;
         for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findValueExprs(list); }
+            if (*i) { (*i)->findValueExprs(vector); }
         }
     }
-    virtual void findColumnRefs(ColumnRef::List& list) {
-        typedef BfTerm::PtrList::iterator Iter;
+    virtual void findColumnRefs(ColumnRef::Vector& vector) {
+        typedef BfTerm::PtrVector::iterator Iter;
         for (Iter i = _terms.begin(), e = _terms.end(); i != e; ++i) {
-            if (*i) { (*i)->findColumnRefs(list); }
+            if (*i) { (*i)->findColumnRefs(vector); }
         }
     }
 
@@ -207,10 +204,10 @@ public:
     virtual boost::shared_ptr<BoolTerm> clone() const;
     virtual boost::shared_ptr<BoolTerm> copySyntax() const;
 
-    BfTerm::PtrList _terms;
+    BfTerm::PtrVector _terms;
 private:
-    bool _reduceTerms(BfTerm::PtrList& newTerms, BfTerm::PtrList& oldTerms);
-    bool _checkParen(BfTerm::PtrList& terms);
+    bool _reduceTerms(BfTerm::PtrVector& newTerms, BfTerm::PtrVector& oldTerms);
+    bool _checkParen(BfTerm::PtrVector& terms);
 };
 
 /// UnknownTerm is a catch-all term intended to help the framework pass-through
@@ -240,14 +237,13 @@ public: // text
 /// PassListTerm is like a PassTerm, but holds a list of passing strings
 class PassListTerm : public BfTerm {
 public: // ( term, term, term )
-    typedef std::list<std::string> StringList;
     typedef boost::shared_ptr<PassListTerm> Ptr;
 
     virtual BfTerm::Ptr clone() const;
     virtual BfTerm::Ptr copySyntax() const;
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
-    StringList _terms;
+    StringVector _terms;
 };
 
 /// BoolTermFactor is a bool factor term that contains a bool term. Occurs often
@@ -262,11 +258,11 @@ public:
     virtual std::ostream& putStream(std::ostream& os) const;
     virtual void renderTo(QueryTemplate& qt) const;
 
-    virtual void findValueExprs(ValueExprList& list) {
-        if (_term) { _term->findValueExprs(list); }
+    virtual void findValueExprs(ValueExprPtrVector& vector) {
+        if (_term) { _term->findValueExprs(vector); }
     }
-    virtual void findColumnRefs(ColumnRef::List& list) {
-        if (_term) { _term->findColumnRefs(list); }
+    virtual void findColumnRefs(ColumnRef::Vector& vector) {
+        if (_term) { _term->findColumnRefs(vector); }
     }
 
     boost::shared_ptr<BoolTerm> _term;

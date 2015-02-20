@@ -133,7 +133,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
             // Prepare merge statment.
             // If empty select in merger, create one with *
             query::SelectList& mList = p.stmtMerge.getSelectList();
-            boost::shared_ptr<query::ValueExprList> vlist;
+            boost::shared_ptr<query::ValueExprPtrVector> vlist;
             vlist = mList.getValueExprList();
             if(!vlist) {
                 throw std::logic_error("Unexpected NULL ValueExpr in SelectList");
@@ -147,7 +147,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
         if(_orderBy) {
             // Remove orderby from parallel
             // (no need to sort until we have all the results)
-            SelectStmtList::iterator i,e;
+            SelectStmtPtrVector::iterator i, e;
             for(i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
                 (**i).setOrderBy(boost::shared_ptr<query::OrderByClause>());
             }
@@ -158,7 +158,7 @@ PostPlugin::applyPhysical(QueryPlugin::Plan& p,
         LOGF_INFO("Query is non-chunked");
         // Make sure orderby is in the "parallel" section (which is not
         // really parallel). No merge is needed.
-        SelectStmtList::iterator i,e;
+        SelectStmtPtrVector::iterator i, e;
         for(i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
             (**i).setOrderBy(_orderBy);
         }

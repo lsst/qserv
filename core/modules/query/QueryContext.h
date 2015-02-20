@@ -29,8 +29,8 @@
   */
 
 // System headers
-#include <list>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
@@ -62,7 +62,7 @@ public:
     typedef boost::shared_ptr<QueryContext> Ptr;
 
     QueryContext() {}
-    typedef std::list<boost::shared_ptr<QsRestrictor> > RestrList;
+    typedef std::vector<boost::shared_ptr<QsRestrictor> > RestrList;
 
     boost::shared_ptr<css::Facade> cssFacade; ///< Unowned, assumed to be alive
                                               ///  for this lifetime.
@@ -72,7 +72,7 @@ public:
     std::string username; ///< unused, but reserved.
     std::vector<lsst::qserv::query::DbTablePair> resolverTables; ///< Implicit column resolution context. Will obsolete anonymousTable.
 
-    StringPairList scanTables; // Tables scanned (for shared scans)
+    StringPairVector scanTables; // Tables scanned (for shared scans)
 
     // Table aliasing
     query::TableAlias tableAliases;

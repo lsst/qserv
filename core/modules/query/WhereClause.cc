@@ -70,20 +70,20 @@ operator<<(std::ostream& os, WhereClause const& wc) {
     os << "WHERE " << wc.getGenerated();
     return os;
 }
-void findColumnRefs(boost::shared_ptr<BoolFactor> f, ColumnRef::List& list) {
+void findColumnRefs(boost::shared_ptr<BoolFactor> f, ColumnRef::Vector& vector) {
     if(f) {
-        f->findColumnRefs(list);
+        f->findColumnRefs(vector);
     }
 }
-void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRef::List& list) {
+void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRef::Vector& vector) {
     if(!t) { return; }
-    BoolTerm::PtrList::iterator i = t->iterBegin();
-    BoolTerm::PtrList::iterator e = t->iterEnd();
+    BoolTerm::PtrVector::iterator i = t->iterBegin();
+    BoolTerm::PtrVector::iterator e = t->iterEnd();
     if(i == e) { // Leaf.
         // Bool factor?
         boost::shared_ptr<BoolFactor> bf = boost::dynamic_pointer_cast<BoolFactor>(t);
         if(bf) {
-            findColumnRefs(bf, list);
+            findColumnRefs(bf, vector);
         } else {
             std::ostringstream os;
             t->putStream(os);
@@ -93,21 +93,21 @@ void findColumnRefs(boost::shared_ptr<BoolTerm> t, ColumnRef::List& list) {
         }
     } else {
         for(; i != e; ++i) {
-            findColumnRefs(*i, list); // Recurse
+            findColumnRefs(*i, vector); // Recurse
         }
     }
 }
 
-boost::shared_ptr<ColumnRef::List const>
+boost::shared_ptr<ColumnRef::Vector const>
 WhereClause::getColumnRefs() const {
-    boost::shared_ptr<ColumnRef::List> list = boost::make_shared<ColumnRef::List>();
+    boost::shared_ptr<ColumnRef::Vector> vector = boost::make_shared<ColumnRef::Vector>();
 
     // Idea: Walk the expression tree and add all column refs to the
     // list. We will walk in depth-first order, but the interface spec
     // doesn't require any particular order.
-    findColumnRefs(_tree, *list);
+    findColumnRefs(_tree, *vector);
 
-    return list;
+    return vector;
 }
 
 
@@ -120,8 +120,8 @@ WhereClause::getRootAndTerm() {
     return boost::dynamic_pointer_cast<AndTerm>(t);
 }
 
-void WhereClause::findValueExprs(ValueExprList& list) {
-    if (_tree) { _tree->findValueExprs(list); }
+void WhereClause::findValueExprs(ValueExprPtrVector& vector) {
+    if (_tree) { _tree->findValueExprs(vector); }
 }
 
 std::string
@@ -148,7 +148,7 @@ boost::shared_ptr<WhereClause> WhereClause::clone() const {
         newC->_tree = _tree->copySyntax();
     }
     if(_restrs.get()) {
-        newC->_restrs = boost::make_shared<QsRestrictor::List>(*_restrs);
+        newC->_restrs = boost::make_shared<QsRestrictor::PtrVector>(*_restrs);
     }
     // For the other fields, default-copied versions are okay.
     return newC;
@@ -208,7 +208,7 @@ WhereClause::prependAndTerm(boost::shared_ptr<BoolTerm> t) {
 ////////////////////////////////////////////////////////////////////////
 void
 WhereClause::resetRestrs() {
-    _restrs = boost::make_shared<QsRestrictor::List>();
+    _restrs = boost::make_shared<QsRestrictor::PtrVector>();
 }
 
 }}} // namespace lsst::qserv::query

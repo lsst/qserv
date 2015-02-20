@@ -33,7 +33,6 @@
   */
 
 // System headers
-#include <list>
 #include <string>
 #include <vector>
 

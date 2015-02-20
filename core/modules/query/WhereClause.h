@@ -34,7 +34,6 @@
 
 // System headers
 #include <iostream>
-#include <list>
 #include <stack>
 
 // Third-party headers
@@ -67,12 +66,12 @@ public:
     WhereClause() {}
     ~WhereClause() {}
 
-    boost::shared_ptr<QsRestrictor::List const> getRestrs() const {
+    boost::shared_ptr<QsRestrictor::PtrVector const> getRestrs() const {
         return _restrs;
     }
     boost::shared_ptr<BoolTerm const> getRootTerm() const { return _tree; }
     boost::shared_ptr<BoolTerm> getRootTerm() { return _tree; }
-    boost::shared_ptr<ColumnRef::List const> getColumnRefs() const;
+    boost::shared_ptr<ColumnRef::Vector const> getColumnRefs() const;
     boost::shared_ptr<AndTerm> getRootAndTerm();
 
     std::string getGenerated() const;
@@ -80,7 +79,7 @@ public:
     boost::shared_ptr<WhereClause> clone() const;
     boost::shared_ptr<WhereClause> copySyntax();
 
-    void findValueExprs(ValueExprList& list);
+    void findValueExprs(ValueExprPtrVector& list);
 
     void resetRestrs();
     void prependAndTerm(boost::shared_ptr<BoolTerm> t);
@@ -91,7 +90,7 @@ private:
 
     std::string _original;
     boost::shared_ptr<BoolTerm> _tree;
-    boost::shared_ptr<QsRestrictor::List> _restrs;
+    boost::shared_ptr<QsRestrictor::PtrVector> _restrs;
 
 };
 

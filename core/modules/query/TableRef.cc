@@ -65,8 +65,8 @@ void TableRef::render::operator()(TableRef const& ref) {
 std::ostream& TableRef::putStream(std::ostream& os) const {
     os << "Table(" << _db << "." << _table << ")";
     if(!_alias.empty()) { os << " AS " << _alias; }
-    typedef JoinRefList::const_iterator Iter;
-    for(Iter i=_joinRefList.begin(), e=_joinRefList.end(); i != e; ++i) {
+    typedef JoinRefPtrVector::const_iterator Iter;
+    for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
         JoinRef const& j = **i;
         os << " " << j;
     }
@@ -83,21 +83,21 @@ void TableRef::putTemplate(QueryTemplate& qt) const {
         qt.append("AS");
         qt.append(_alias);
     }
-    typedef JoinRefList::const_iterator Iter;
-    for(Iter i=_joinRefList.begin(), e=_joinRefList.end(); i != e; ++i) {
+    typedef JoinRefPtrVector::const_iterator Iter;
+    for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
         JoinRef const& j = **i;
         j.putTemplate(qt);
     }
 }
 
 void TableRef::addJoin(boost::shared_ptr<JoinRef> r) {
-    _joinRefList.push_back(r);
+    _joinRefs.push_back(r);
 }
 
 void TableRef::apply(TableRef::Func& f) {
     f(*this);
-    typedef JoinRefList::iterator Iter;
-    for(Iter i=_joinRefList.begin(), e=_joinRefList.end(); i != e; ++i) {
+    typedef JoinRefPtrVector::iterator Iter;
+    for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
         JoinRef& j = **i;
         j.getRight()->apply(f);
     }
@@ -105,8 +105,8 @@ void TableRef::apply(TableRef::Func& f) {
 
 void TableRef::apply(TableRef::FuncC& f) const {
     f(*this);
-    typedef JoinRefList::const_iterator Iter;
-    for(Iter i=_joinRefList.begin(), e=_joinRefList.end(); i != e; ++i) {
+    typedef JoinRefPtrVector::const_iterator Iter;
+    for(Iter i=_joinRefs.begin(), e=_joinRefs.end(); i != e; ++i) {
         JoinRef const& j = **i;
         j.getRight()->apply(f);
     }
@@ -120,8 +120,8 @@ JoinRef::Ptr joinRefClone(JoinRef::Ptr const& r) {
 
 TableRef::Ptr TableRef::clone() const {
     TableRef::Ptr newCopy = boost::make_shared<TableRef>(_db, _table, _alias);
-    std::transform(_joinRefList.begin(), _joinRefList.end(),
-                   std::back_inserter(newCopy->_joinRefList), joinRefClone);
+    std::transform(_joinRefs.begin(), _joinRefs.end(),
+                   std::back_inserter(newCopy->_joinRefs), joinRefClone);
     return newCopy;
 }
 

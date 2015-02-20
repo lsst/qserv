@@ -30,9 +30,9 @@
   */
 
 // System headers
-#include <list>
 #include <ostream>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/make_shared.hpp"
@@ -47,7 +47,7 @@ class QueryTemplate; // Forward
 class ColumnRef {
 public:
     typedef boost::shared_ptr<ColumnRef>  Ptr;
-    typedef std::list<Ptr> List;
+    typedef std::vector<Ptr> Vector;
 
     ColumnRef(std::string db_, std::string table_, std::string column_)
         : db(db_), table(table_), column(column_) {}

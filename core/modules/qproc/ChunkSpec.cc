@@ -93,8 +93,8 @@ bool ChunkSpecFragmenter::isDone() {
 // ChunkSpecSingle
 ////////////////////////////////////////////////////////////////////////
 // precondition: !spec.subChunks.empty()
-ChunkSpecSingle::List ChunkSpecSingle::makeList(ChunkSpec const& spec) {
-    List list;
+ChunkSpecSingle::Vector ChunkSpecSingle::makeVector(ChunkSpec const& spec) {
+    Vector vector;
     if(spec.subChunks.empty()) {
         throw std::logic_error("Attempted subchunk spec list without subchunks.");
     }
@@ -104,9 +104,9 @@ ChunkSpecSingle::List ChunkSpecSingle::makeList(ChunkSpec const& spec) {
     for(i = spec.subChunks.begin();
         i != spec.subChunks.end(); ++i) {
         s.subChunkId = *i;
-        list.push_back(s);
+        vector.push_back(s);
     }
-    return list;
+    return vector;
 }
 
 std::ostream& operator<<(std::ostream& os, ChunkSpecSingle const& c) {

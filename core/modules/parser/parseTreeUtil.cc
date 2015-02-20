@@ -45,12 +45,12 @@ public:
     typedef std::map<AnAst, std::string> AstMap;
 
     DigraphVisitor() : i(0) {}
-    void operator()(AnAst a, C& p) {
+    void operator()(AnAst const& a, C const& p) {
         std::string parent = stringify(p.back());
         s << "\"" << parent << "\"" << " -> "
           << "\"" << stringify(a) << "\"" << "\n";
     }
-    std::string stringify(AnAst a) {
+    std::string stringify(AnAst const& a) {
         typename AstMap::const_iterator e(ids.end());
         if(ids.find(a) == e) {
             std::stringstream t;
@@ -106,8 +106,8 @@ insertTextNodeBefore(antlr::ASTFactory* factory,
 
 void
 printDigraph(std::string lbl, std::ostream& o, antlr::RefAST n) {
-    DigraphVisitor<antlr::RefAST, std::list<antlr::RefAST> > dv;
-    std::list<antlr::RefAST> c;
+    DigraphVisitor<antlr::RefAST, std::vector<antlr::RefAST> > dv;
+    std::vector<antlr::RefAST> c;
     visitTreeRooted(n, dv, c);
     dv.output(lbl, o);
 }

@@ -121,8 +121,8 @@ struct copyValueExpr {
 };
 boost::shared_ptr<SelectList> SelectList::clone() {
     boost::shared_ptr<SelectList> newS = boost::make_shared<SelectList>(*this);
-    newS->_valueExprList  = boost::make_shared<ValueExprList>();
-    ValueExprList& src = *_valueExprList;
+    newS->_valueExprList  = boost::make_shared<ValueExprPtrVector>();
+    ValueExprPtrVector& src = *_valueExprList;
     std::transform(src.begin(), src.end(),
                    std::back_inserter(*newS->_valueExprList),
                    // std::mem_fun(&ValueExpr::clone));
@@ -135,7 +135,7 @@ boost::shared_ptr<SelectList> SelectList::clone() {
 boost::shared_ptr<SelectList> SelectList::copySyntax() {
     boost::shared_ptr<SelectList> newS = boost::make_shared<SelectList>(*this);
     // Shallow copy of expr list is okay.
-    newS->_valueExprList = boost::make_shared<ValueExprList>(*_valueExprList);
+    newS->_valueExprList = boost::make_shared<ValueExprPtrVector>(*_valueExprList);
     // For the other fields, default-copied versions are okay.
     return newS;
 }

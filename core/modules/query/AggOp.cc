@@ -155,7 +155,7 @@ public:
         feCount = FuncExpr::newArg1("SUM", cAlias);
         ve = boost::make_shared<ValueExpr>();
         ve->setAlias(orig.getAlias());
-        ValueExpr::FactorOpList& factorOps = ve->getFactorOps();
+        ValueExpr::FactorOpVector& factorOps = ve->getFactorOps();
         factorOps.clear();
         ValueExpr::FactorOp fo;
         fo.factor = ValueFactor::newFuncFactor(feSum);

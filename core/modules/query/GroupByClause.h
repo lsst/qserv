@@ -33,12 +33,14 @@
 
 // System headers
 #include <deque>
-#include <list>
 #include <string>
 
 // Third-party headers
 #include "boost/make_shared.hpp"
 #include "boost/shared_ptr.hpp"
+
+// Local headers
+#include "query/typedefs.h"
 
 // Forward declarations
 namespace lsst {
@@ -51,10 +53,6 @@ namespace query {
 
 // Forward declarations
 class QueryTemplate;
-class ValueExpr;
-
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
 
 // GroupByTerm is a element of a GroupByClause
 class GroupByTerm {
@@ -93,7 +91,7 @@ public:
     boost::shared_ptr<GroupByClause> clone() const;
     boost::shared_ptr<GroupByClause> copySyntax();
 
-    void findValueExprs(ValueExprList& list);
+    void findValueExprs(ValueExprPtrVector& list);
 
 private:
     friend std::ostream& operator<<(std::ostream& os, GroupByClause const& gc);

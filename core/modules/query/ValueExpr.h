@@ -30,15 +30,16 @@
 
 // System headers
 #include <iostream>
-#include <list>
 #include <sstream>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
 
 // Local headers
 #include "query/ColumnRef.h"
+#include "query/typedefs.h"
 
 
 // Forward declarations
@@ -56,9 +57,6 @@ namespace lsst {
 namespace qserv {
 namespace query {
 
-class ValueExpr;
-typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
-typedef std::list<ValueExprPtr> ValueExprList;
 class ValueFactor;
 /// ValueExpr is a general value expression in a SQL statement. It is allowed to
 /// have an alias and a single level of ValueFactors joined by arithmetic
@@ -74,23 +72,23 @@ public:
         boost::shared_ptr<ValueFactor> factor;
         Op op;
     };
-    typedef std::list<FactorOp> FactorOpList;
+    typedef std::vector<FactorOp> FactorOpVector;
     friend std::ostream& operator<<(std::ostream& os, FactorOp const& fo);
 
     std::string const& getAlias() const { return _alias; }
     void setAlias(std::string const& a) { _alias = a; }
 
     /// @return a list of ValueFactor-Op
-    FactorOpList& getFactorOps() { return _factorOps; }
+    FactorOpVector& getFactorOps() { return _factorOps; }
     /// @return a const list of ValueFactor-Op
-    FactorOpList const& getFactorOps() const { return _factorOps; }
+    FactorOpVector const& getFactorOps() const { return _factorOps; }
 
     boost::shared_ptr<ColumnRef> copyAsColumnRef() const;
     std::string copyAsLiteral() const;
     template<typename T>
     T copyAsType(T const& defaultValue) const;
 
-    void findColumnRefs(ColumnRef::List& list);
+    void findColumnRefs(ColumnRef::Vector& vector);
 
     bool isStar() const;
     bool isFactor() const;
@@ -110,7 +108,7 @@ public:
     friend class render;
 private:
     std::string _alias;
-    std::list<FactorOp> _factorOps;
+    FactorOpVector _factorOps;
 };
 /// A helper functor for rendering to QueryTemplates
 class ValueExpr::render : public std::unary_function<ValueExpr, void> {

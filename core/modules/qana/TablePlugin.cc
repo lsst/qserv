@@ -77,9 +77,6 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-typedef std::list<std::string> StringList;
-
-
 class addMap {
 public:
     addMap(query::TableAlias& t, query::TableAliasReverse& r)
@@ -168,8 +165,8 @@ public:
             return;
         }
         // For each factor in the expr, patch for aliasing:
-        query::ValueExpr::FactorOpList& factorOps = vep->getFactorOps();
-        for(query::ValueExpr::FactorOpList::iterator i=factorOps.begin();
+        query::ValueExpr::FactorOpVector& factorOps = vep->getFactorOps();
+        for(query::ValueExpr::FactorOpVector::iterator i=factorOps.begin();
             i != factorOps.end(); ++i) {
             if(!i->factor) {
                 throw std::logic_error("Bad ValueExpr::FactorOps");
@@ -252,7 +249,7 @@ public:
     virtual void applyPhysical(QueryPlugin::Plan& p,
                                query::QueryContext& context);
 private:
-    int _rewriteTables(SelectStmtList& outList,
+    int _rewriteTables(SelectStmtPtrVector& outList,
                        query::SelectStmt& in,
                        query::QueryContext& context,
                        boost::shared_ptr<qana::QueryMapping>& mapping);
@@ -328,43 +325,43 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
 
     // Patch table references in the select list,
     query::SelectList& sList = stmt.getSelectList();
-    query::ValueExprList& exprList = *sList.getValueExprList();
+    query::ValueExprPtrVector& exprList = *sList.getValueExprList();
     std::for_each(exprList.begin(), exprList.end(), fixExprAlias(
         context.defaultDb, context.tableAliasReverses));
     // where clause,
     if(stmt.hasWhereClause()) {
-        query::ValueExprList e;
+        query::ValueExprPtrVector e;
         stmt.getWhereClause().findValueExprs(e);
         std::for_each(e.begin(), e.end(), fixExprAlias(
             context.defaultDb, context.tableAliasReverses));
     }
     // group by clause,
     if(stmt.hasGroupBy()) {
-        query::ValueExprList e;
+        query::ValueExprPtrVector e;
         stmt.getGroupBy().findValueExprs(e);
         std::for_each(e.begin(), e.end(), fixExprAlias(
             context.defaultDb, context.tableAliasReverses));
     }
     // having clause,
     if(stmt.hasHaving()) {
-        query::ValueExprList e;
+        query::ValueExprPtrVector e;
         stmt.getHaving().findValueExprs(e);
         std::for_each(e.begin(), e.end(), fixExprAlias(
             context.defaultDb, context.tableAliasReverses));
     }
     // order by clause,
     if(stmt.hasOrderBy()) {
-        query::ValueExprList e;
+        query::ValueExprPtrVector e;
         stmt.getOrderBy().findValueExprs(e);
         std::for_each(e.begin(), e.end(), fixExprAlias(
             context.defaultDb, context.tableAliasReverses));
     }
     // and in the on clauses of all join specifications.
     typedef query::TableRefList::iterator TableRefIter;
-    typedef query::JoinRefList::iterator JoinRefIter;
+    typedef query::JoinRefPtrVector::iterator JoinRefIter;
     for (TableRefIter t = tList.begin(), te = tList.end(); t != te; ++t) {
-        query::JoinRefList& jList = (*t)->getJoins();
-        for (JoinRefIter j = jList.begin(), je = jList.end(); j != je; ++j) {
+        query::JoinRefPtrVector& joinRefs = (*t)->getJoins();
+        for (JoinRefIter j = joinRefs.begin(), je = joinRefs.end(); j != je; ++j) {
             boost::shared_ptr<query::JoinSpec> spec = (*j)->getSpec();
             if (spec) {
                 fixExprAlias fix(context.defaultDb, context.tableAliasReverses);
@@ -372,7 +369,7 @@ TablePlugin::applyLogical(query::SelectStmt& stmt,
                 // so only patch on clauses.
                 boost::shared_ptr<query::BoolTerm> on = spec->getOn();
                 if (on) {
-                    query::ValueExprList e;
+                    query::ValueExprPtrVector e;
                     on->findValueExprs(e);
                     std::for_each(e.begin(), e.end(), fix);
                 }
@@ -390,8 +387,8 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
         context.queryMapping = boost::make_shared<QueryMapping>();
     }
     // Process each entry in the parallel select statement set.
-    typedef SelectStmtList::iterator Iter;
-    SelectStmtList newList;
+    typedef SelectStmtPtrVector::iterator Iter;
+    SelectStmtPtrVector newList;
     for(Iter i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
         RelationGraph g(context, **i, pool);
         g.rewrite(newList, *context.queryMapping);

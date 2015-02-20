@@ -52,6 +52,7 @@
 #include "css/Facade.h"
 #include "css/CssError.h"
 #include "global/constants.h"
+#include "global/stringTypes.h"
 #include "parser/ParseException.h"
 #include "parser/parseExceptions.h"
 #include "parser/SelectParser.h"
@@ -64,6 +65,7 @@
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/SelectList.h"
+#include "query/typedefs.h"
 
 #define DEBUG 0
 
@@ -142,17 +144,17 @@ bool QuerySession::hasChunks() const {
 
 boost::shared_ptr<query::ConstraintVector> QuerySession::getConstraints() const {
     boost::shared_ptr<query::ConstraintVector> cv;
-    boost::shared_ptr<query::QsRestrictor::List const> p = _context->restrictors;
+    boost::shared_ptr<query::QsRestrictor::PtrVector const> p = _context->restrictors;
 
     if(p.get()) {
         cv = boost::make_shared<query::ConstraintVector>(p->size());
         int i=0;
-        query::QsRestrictor::List::const_iterator li;
+        query::QsRestrictor::PtrVector::const_iterator li;
         for(li = p->begin(); li != p->end(); ++li) {
             query::Constraint c;
             query::QsRestrictor const& r = **li;
             c.name = r._name;
-            StringList::const_iterator si;
+            StringVector::const_iterator si;
             for(si = r._params.begin(); si != r._params.end(); ++si) {
                 c.params.push_back(*si);
             }
@@ -225,7 +227,7 @@ void QuerySession::finalize() {
     if(_isFinal) {
         return;
     }
-    PluginList::iterator i;
+    QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyFinal(*_context);
     }
@@ -262,7 +264,7 @@ void QuerySession::_initContext() {
 }
 
 void QuerySession::_preparePlugins() {
-    _plugins = boost::make_shared<PluginList>();
+    _plugins = boost::make_shared<QueryPluginPtrVector>();
 
     _plugins->push_back(qana::QueryPlugin::newInstance("Where"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Aggregate"));
@@ -271,14 +273,14 @@ void QuerySession::_preparePlugins() {
     _plugins->push_back(qana::QueryPlugin::newInstance("QservRestrictor"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Post"));
     _plugins->push_back(qana::QueryPlugin::newInstance("ScanTable"));
-    PluginList::iterator i;
+    QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).prepare();
     }
 }
 
 void QuerySession::_applyLogicPlugins() {
-    PluginList::iterator i;
+    QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyLogical(*_stmt, *_context);
     }
@@ -313,7 +315,7 @@ void QuerySession::_generateConcrete() {
 
 void QuerySession::_applyConcretePlugins() {
     qana::QueryPlugin::Plan p(*_stmt, _stmtParallel, *_stmtMerge, _hasMerge);
-    PluginList::iterator i;
+    QueryPluginPtrVector::iterator i;
     for(i=_plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyPhysical(p, *_context);
     }
@@ -328,7 +330,7 @@ void QuerySession::_showFinal(std::ostream& os) {
     os << "QuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
     os << "QuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
     if(!_context->scanTables.empty()) {
-        StringPairList::const_iterator i,e;
+        StringPairVector::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();
             i != e; ++i) {
             os << "ScanTable: " << i->first << "." << i->second
@@ -349,31 +351,31 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
     }
     qana::QueryMapping const& queryMapping = *_context->queryMapping;
 
-    typedef std::list<boost::shared_ptr<query::SelectStmt> >::const_iterator Iter;
-    typedef std::list<query::QueryTemplate> Tlist;
-    typedef Tlist::const_iterator TlistIter;
-    Tlist tlist;
+    typedef std::vector<query::QueryTemplate> QueryTplVector;
+    typedef QueryTplVector::const_iterator QueryTplVectorIter;
+    QueryTplVector queryTemplates;
 
+    typedef query::SelectStmtPtrVector::const_iterator Iter;
     for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end();
         i != e; ++i) {
-        tlist.push_back((**i).getTemplate());
+        queryTemplates.push_back((**i).getTemplate());
     }
     if(!queryMapping.hasSubChunks()) { // Non-subchunked?
         LOGF_INFO("Non-subchunked");
-        for(TlistIter i=tlist.begin(), e=tlist.end(); i != e; ++i) {
+        for(QueryTplVectorIter i=queryTemplates.begin(), e=queryTemplates.end(); i != e; ++i) {
             q.push_back(_context->queryMapping->apply(s, *i));
         }
     } else { // subchunked:
-        ChunkSpecSingle::List sList = ChunkSpecSingle::makeList(s);
+        ChunkSpecSingle::Vector sVector = ChunkSpecSingle::makeVector(s);
         if (LOG_CHECK_INFO()) {
             std::stringstream ss;
-            std::copy(sList.begin(), sList.end(),
+            std::copy(sVector.begin(), sVector.end(),
                       std::ostream_iterator<ChunkSpecSingle>(ss, ","));
             LOGF_INFO("subchunks: %1%" % ss.str());
         }
-        typedef ChunkSpecSingle::List::const_iterator ChunkIter;
-        for(ChunkIter i=sList.begin(), e=sList.end(); i != e; ++i) {
-            for(TlistIter j=tlist.begin(), je=tlist.end(); j != je; ++j) {
+        typedef ChunkSpecSingle::Vector::const_iterator ChunkIter;
+        for(ChunkIter i=sVector.begin(), e=sVector.end(); i != e; ++i) {
+            for(QueryTplVectorIter j=queryTemplates.begin(), je=queryTemplates.end(); j != je; ++j) {
                 LOGF_DEBUG("adding query %1%" % _context->queryMapping->apply(*i, *j));
                 q.push_back(_context->queryMapping->apply(*i, *j));
             }
@@ -389,7 +391,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
 ////////////////////////////////////////////////////////////////////////
 // QuerySession::Iter
 ////////////////////////////////////////////////////////////////////////
-QuerySession::Iter::Iter(QuerySession& qs, ChunkSpecList::iterator i)
+QuerySession::Iter::Iter(QuerySession& qs, ChunkSpecVector::iterator i)
     : _qs(&qs), _pos(i), _dirty(true) {
     if(!qs._context) {
         throw QueryProcessingBug("NULL QuerySession");
