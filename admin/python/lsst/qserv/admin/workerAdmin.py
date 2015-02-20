@@ -228,6 +228,7 @@ class WorkerAdmin(object):
                 raise _Exception(_Exception.CSS_HOST_NAME_MISS, "node=" + name)
             self.runDir = params.get('runDir')
             self.mysqlConnStr = params.get('mysqlConn')
+            self._name = name
 
         else:
 
@@ -237,6 +238,14 @@ class WorkerAdmin(object):
             self.host = host
             self.runDir = runDir
             self.mysqlConnStr = mysqlConn
+            self._name = host + ':' + mysqlConn
+
+    def name(self):
+        """
+        Returns worker name as defined in CSS, if instance was not made from
+        CSS returns some arbitrary unique name.
+        """
+        return self._name
 
     def _mysqlTunnel(self):
         """

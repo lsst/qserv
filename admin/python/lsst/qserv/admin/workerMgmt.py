@@ -34,6 +34,7 @@ worker nodes, for example creating/deleting databases or tables.
 #--------------------------------
 #  Imports of standard modules --
 #--------------------------------
+import logging
 import types
 
 #-----------------------------
@@ -76,6 +77,7 @@ class WorkerMgmt(object):
         """
 
         self.css = qservAdmin
+        self._log = logging.getLogger('WorkerMgmt')
 
     #-------------------
     #  Public methods --
@@ -158,18 +160,28 @@ class WorkerMgmt(object):
         for worker in nodes:
             db = worker.mysqlConn(**kwargs)
             if not db.dbExists(dbName):
+
+                self._log.debug('Creating database %s on node %s', dbName, worker.name())
+
                 # race condition here obviously, so we set mayExist=True to suppress
                 # exception in case someone else managed to create database at this instant
                 db.createDb(dbName, mayExist=True)
                 nCreated += 1
 
                 if grantUser:
+                    self._log.debug('Granting permissions to user %s', grantUser)
                     grant = "GRANT ALL ON {0}.* to '{1}'@'{2}'"
                     # TODO: grant ALL to user@localhost, we may also want to extend this
                     # with user@127.0.0.1, or user@%, need to look at his again when I
                     # have better understanding of deployment model
                     hostmatch = ['localhost']
                     for host in hostmatch:
+                        query = grant.format(dbName, grantUser, host)
+                        self._log.debug('query: %s', query)
                         db.execCommand0(grant.format(dbName, grantUser, host))
 
+            else:
+                self._log.debug('Database %s already exists on node %s', dbName, worker.name())
+
+        self._log.debug('Created databases on %d nodes out of %d', nCreated, len(nodes))
         return len(nodes), nCreated
