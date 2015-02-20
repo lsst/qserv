@@ -245,8 +245,8 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
     mList.getValueExprList()->clear();
     query::AggOp::Mgr m; // Eventually, this can be shared?
     convertAgg<query::ValueExprPtrVector> ca(*pList.getValueExprList(),
-                                        *mList.getValueExprList(),
-                                        m);
+                                             *mList.getValueExprList(),
+                                             m);
     std::for_each(vlist->begin(), vlist->end(), ca);
     query::QueryTemplate qt;
     pList.renderTo(qt);
@@ -262,7 +262,7 @@ AggregatePlugin::applyPhysical(QueryPlugin::Plan& p,
 
     // Make the select lists of other statements in the parallel
     // portion the same.
-    typedef SelectStmtVector::iterator Iter;
+    typedef SelectStmtPtrVector::iterator Iter;
     typedef query::ValueExprPtrVector::iterator Viter;
     boost::shared_ptr<query::ValueExprPtrVector> veList = pList.getValueExprList();
     for(Iter b=p.stmtParallel.begin(), i=b, e=p.stmtParallel.end();

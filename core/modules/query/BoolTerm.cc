@@ -224,7 +224,6 @@ boost::shared_ptr<BoolTerm> BoolFactor::getReduced() {
     hasReduction = _reduceTerms(newTerms, _terms);
     // Parentheses reduction
     if(_checkParen(newTerms)) {
-        assert(!newTerms.empty());
         newTerms.erase(newTerms.begin());
         newTerms.pop_back();
         hasReduction = true;

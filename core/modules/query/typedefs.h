@@ -25,8 +25,7 @@
  *
  * @ingroup global
  *
- * @brief Query-related C++ types used by query parser and qana module
-<<<<<<< HEAD
+ * @brief Query-related C++ types used by query, parser, and qana modules
  *                                                                                                                                                                                       
  * @author Fabrice Jammes, IN2P3/SLAC                                                                                                                                                    
  */                                                                                                                                                                                 
@@ -48,9 +47,12 @@ namespace qserv {
 namespace query {
 
 class ValueExpr;
-
 typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
 typedef std::vector<ValueExprPtr> ValueExprPtrVector;
+
+class SelectStmt;
+typedef boost::shared_ptr<SelectStmt> SelectStmtPtr;
+typedef std::vector<boost::shared_ptr<SelectStmt> > SelectStmtPtrVector;
 
 }}} // namespace lsst::qserv::query
 

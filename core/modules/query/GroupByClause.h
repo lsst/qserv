@@ -40,7 +40,7 @@
 #include "boost/shared_ptr.hpp"
 
 // Local headers
-#include "query/types.h"
+#include "query/typedefs.h"
 
 // Forward declarations
 namespace lsst {

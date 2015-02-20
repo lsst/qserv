@@ -249,7 +249,7 @@ public:
     virtual void applyPhysical(QueryPlugin::Plan& p,
                                query::QueryContext& context);
 private:
-    int _rewriteTables(SelectStmtVector& outList,
+    int _rewriteTables(SelectStmtPtrVector& outList,
                        query::SelectStmt& in,
                        query::QueryContext& context,
                        boost::shared_ptr<qana::QueryMapping>& mapping);
@@ -387,8 +387,8 @@ TablePlugin::applyPhysical(QueryPlugin::Plan& p,
         context.queryMapping = boost::make_shared<QueryMapping>();
     }
     // Process each entry in the parallel select statement set.
-    typedef SelectStmtVector::iterator Iter;
-    SelectStmtVector newList;
+    typedef SelectStmtPtrVector::iterator Iter;
+    SelectStmtPtrVector newList;
     for(Iter i=p.stmtParallel.begin(), e=p.stmtParallel.end(); i != e; ++i) {
         RelationGraph g(context, **i, pool);
         g.rewrite(newList, *context.queryMapping);

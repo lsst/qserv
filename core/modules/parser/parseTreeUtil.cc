@@ -45,12 +45,12 @@ public:
     typedef std::map<AnAst, std::string> AstMap;
 
     DigraphVisitor() : i(0) {}
-    void operator()(AnAst const &a, C const & p) {
+    void operator()(AnAst const& a, C const& p) {
         std::string parent = stringify(p.back());
         s << "\"" << parent << "\"" << " -> "
           << "\"" << stringify(a) << "\"" << "\n";
     }
-    std::string stringify(AnAst const &a) {
+    std::string stringify(AnAst const& a) {
         typename AstMap::const_iterator e(ids.end());
         if(ids.find(a) == e) {
             std::stringstream t;

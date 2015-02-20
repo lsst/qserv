@@ -35,6 +35,7 @@
 // System headers
 #include <string>
 #include <utility>
+#include <vector>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
@@ -42,8 +43,8 @@
 
 // Local headers
 #include "global/stringTypes.h"
-#include "query/types.h"
 #include "query/ColumnRef.h"
+#include "typedefs.h"
 
 namespace lsst {
 namespace qserv {

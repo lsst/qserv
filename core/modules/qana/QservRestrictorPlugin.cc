@@ -302,7 +302,7 @@ private:
     class AreaGenerator : public Generator {
     public:
         AreaGenerator(char const* fName_, int paramCount_,
-                StringVector const& params_)
+                      StringVector const& params_)
             :  fName(fName_), paramCount(paramCount_), params(params_) {
             if(paramCount_ == USE_STRING) {
                 // Convert param list to one quoted string.
