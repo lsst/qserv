@@ -42,6 +42,7 @@
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
 #include "query/Constraint.h"
+#include "query/typedefs.h"
 #include "rproc/mergeTypes.h"
 
 
@@ -119,7 +120,6 @@ public:
 
 private:
     typedef std::vector<qana::QueryPlugin::Ptr> QueryPluginPtrVector;
-    typedef std::vector<boost::shared_ptr<query::SelectStmt> > SelectStmtVector;
 
     // Pipeline helpers
     void _initContext();
@@ -139,8 +139,8 @@ private:
     boost::shared_ptr<query::QueryContext> _context;
     boost::shared_ptr<query::SelectStmt> _stmt;
     /// Group of parallel statements (not a sequence)
-    SelectStmtVector _stmtParallel;
-    boost::shared_ptr<query::SelectStmt> _stmtMerge;
+    query::SelectStmtPtrVector _stmtParallel;
+    query::SelectStmtPtr _stmtMerge;
     bool _hasMerge;
     std::string _tmpTable;
     std::string _resultTable;

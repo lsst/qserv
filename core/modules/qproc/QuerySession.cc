@@ -65,6 +65,7 @@
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
 #include "query/SelectList.h"
+#include "query/typedefs.h"
 
 #define DEBUG 0
 
@@ -354,7 +355,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(ChunkSpec const& s) co
     typedef QueryTplVector::const_iterator QueryTplVectorIter;
     QueryTplVector queryTemplates;
 
-    typedef SelectStmtVector::const_iterator Iter;
+    typedef query::SelectStmtPtrVector::const_iterator Iter;
     for(Iter i=_stmtParallel.begin(), e=_stmtParallel.end();
         i != e; ++i) {
         queryTemplates.push_back((**i).getTemplate());

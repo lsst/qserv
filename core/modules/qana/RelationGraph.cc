@@ -944,7 +944,7 @@ RelationGraph::RelationGraph(QueryContext const& ctx,
     swap(g);
 }
 
-void RelationGraph::rewrite(SelectStmtVector& outputs,
+void RelationGraph::rewrite(SelectStmtPtrVector& outputs,
                             QueryMapping& mapping)
 {
     typedef std::list<Vertex>::iterator ListIter;

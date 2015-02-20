@@ -87,12 +87,11 @@ const std::string RenderedBoolTermFromRPN(const char **rpn)
                 assert(!pdl.empty());
                 pdl.erase(pdl.begin());
             }
-            pdl.insert(pdl.begin(),andt);
+            pdl.insert(pdl.begin(), andt);
         } else if (!strcmp(*t, "OR")) {
             OrTerm::Ptr ort = boost::make_shared<OrTerm>();
             for(int i=0; i<opcount; ++i) {
                 ort->_terms.push_back(pdl.front());
-                assert(!pdl.empty());
                 pdl.erase(pdl.begin());
             }
             pdl.insert(pdl.begin(),ort);

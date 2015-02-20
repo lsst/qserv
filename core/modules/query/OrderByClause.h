@@ -40,7 +40,7 @@
 #include "boost/make_shared.hpp"
 
 // Local headers
-#include "query/types.h"
+#include "query/typedefs.h"
 
 namespace lsst {
 namespace qserv {

@@ -30,9 +30,9 @@
   */
 
 // System headers
-#include <vector>
 #include <ostream>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/make_shared.hpp"

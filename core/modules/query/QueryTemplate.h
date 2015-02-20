@@ -29,8 +29,8 @@
   */
 
 // System headers
-#include <vector>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"

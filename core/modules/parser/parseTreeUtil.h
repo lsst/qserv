@@ -36,6 +36,7 @@
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <vector>
 
 // Third-party headers
 #include "antlr/AST.hpp"
@@ -54,7 +55,7 @@ namespace qserv {
 namespace parser {
 
 template <typename AnAst>
-std::string tokenText(AnAst const &r) {
+std::string tokenText(AnAst const& r) {
     if(r.get()) {
 	return r->getText();
     } else return std::string();
@@ -174,17 +175,17 @@ template <typename AnAst, typename C>
 class IndentPrinter {
 public:
     IndentPrinter(std::ostream& o_) : o(o_) {}
-    void operator()(AnAst const &a, C const &p) const {
+    void operator()(AnAst const& a, C const& p) const {
         o << p.size() << std::string(p.size(), ' ') << tokenText(a) << std::endl;
     }
     std::ostream& o;
 };
 
 // AnAST: e.g. RefAST
-// V: Visitor: implements void operator()(AnAst const &a, C const & p)
+// V: Visitor: implements void operator()(AnAst const& a, C const& p)
 // C: Container of AnAst, e.g. std::vector<RefAST>
 template <typename AnAst, typename V, typename C>
-void visitTreeRooted(AnAst const &r, V &v, C& p) {
+void visitTreeRooted(AnAst const& r, V& v, C& p) {
     //DFS walk
     antlr::RefAST s = r;
     while(s.get()) {

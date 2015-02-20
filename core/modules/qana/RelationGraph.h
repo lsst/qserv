@@ -488,6 +488,7 @@
 #include "query/JoinRef.h"
 #include "query/JoinSpec.h"
 #include "query/TableRef.h"
+#include "query/typedefs.h"
 
 // Forward declarations
 namespace lsst {
@@ -507,7 +508,7 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-typedef std::vector<boost::shared_ptr<query::SelectStmt> > SelectStmtVector;
+using query::SelectStmtPtrVector;
 
 struct Vertex;
 
@@ -625,7 +626,7 @@ public:
     bool empty() const { return _vertices.empty(); }
 
     /// `rewrite` rewrites the input query into a set of output queries.
-    void rewrite(SelectStmtVector& outputs,
+    void rewrite(SelectStmtPtrVector& outputs,
                  QueryMapping& mapping);
 
     void swap(RelationGraph& g) {

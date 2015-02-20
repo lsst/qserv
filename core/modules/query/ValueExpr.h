@@ -32,13 +32,14 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
 
 // Local headers
-#include "query/types.h"
 #include "query/ColumnRef.h"
+#include "query/typedefs.h"
 
 
 // Forward declarations
