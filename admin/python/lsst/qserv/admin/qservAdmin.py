@@ -69,7 +69,7 @@ possibleOpts = {"table" : set(["schema", "compression", "match"]),
 # match and partition options are only required if table is match or
 # partitioned, respectively. In each cases, all possible opts in
 # its category are required.
-requiredOpts = { "table" : ["schema"]}
+requiredOpts = {"table" : ["schema"]}
 
 reservedDbPrefixes = [SCISQLDB_PREFIX, SUBCHUNKDB_PREFIX]
 
@@ -153,7 +153,15 @@ class QservAdmin(object):
             pass # Ignore missing (dummy) node
 
     def _getMaybePacked(self, node, keys):
-        """Get data from a node which could be packed or not"""
+        """
+        Get data from a node which could be packed or not. Returns dictionary containing
+        unpacked data, dictionary will include all keys defined in packed object if data
+        was packed or the keys defined in keys argument if data is unpacked. Returns None
+        if key is not found at all.
+
+        @param node:   Node name
+        @param keys:   Lsit of sub-keys, only used if key is not packed.
+        """
         # try packed stuff first
         if self._kvI.exists(node + '.json'):
             # if json packed then convert back to Python object
@@ -354,6 +362,29 @@ class QservAdmin(object):
         """ Returns the list of table names defined in CSS """
         key = "/DBS/%s/TABLES" % (dbName,)
         return self._cssChildren(key, [])
+
+    def getTableSchema(self, dbName, tableName):
+        """
+        Returns table schema which was saved earlier by createTable() method.
+
+        @param dbName:    Database name
+        @param tableName: Table name
+        @return: String containing table schema (without CREATE TABLE part)
+        @raise Exception: if table schema is not defined in CSS
+        """
+
+        self._logger.debug("Get table schema '%s.%s'", dbName, tableName)
+
+        tableKey = "/DBS/%s/TABLES/%s" % (dbName, tableName)
+        tableData = self._getMaybePacked(tableKey, ['schema'])
+        if tableData is None:
+            raise QservAdminException(QservAdminException.TB_DOES_NOT_EXIST,
+                                      'No key: ' + tableKey)
+        schema = tableData.get('schema')
+        if schema is None:
+            raise QservAdminException(QservAdminException.TB_SCHEMA_MISSING,
+                                      'schema key was not found in CSS, node: ' + tableKey)
+        return schema
 
     def createTable(self, dbName, tableName, options):
         """
