@@ -1,4 +1,7 @@
 == qserv quick installation guide ==
+
+For the last Qserv release, see: http://www.slac.stanford.edu/exp/lsst/qserv/
+
 [[wiki:LSSTDatabase LSST Data Mgmt]] [[wiki:dbScalableArch qserv]] 
 
 === Preliminaries ===

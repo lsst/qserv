@@ -1,5 +1,0 @@
-# -*- python -*-
-Import('env')
-
-# This package is build outside of the LSST stack
-#env.Doxygen("doxygen.conf")
