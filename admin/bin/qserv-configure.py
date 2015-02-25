@@ -138,7 +138,7 @@ def main():
         params_dict = {
             'RUN_BASE_DIR': args.qserv_run_dir
         }
-        configure.apply_tpl(
+        configure.apply_tpl_once(
             in_meta_config_file, args.meta_config_file, params_dict)
 
     def intersect(seq1, seq2):
@@ -187,7 +187,7 @@ def main():
             )
             template_root = os.path.join(run_base_dir, "templates")
             dest_root = os.path.join(run_base_dir)
-            configure.apply_templates(
+            configure.apply_tpl_all(
                 template_root,
                 dest_root
             )
@@ -263,7 +263,7 @@ def main():
                 cfg_file = os.path.join(
                     run_base_dir, "etc", filename
                 )
-                configure.apply_tpl(
+                configure.apply_tpl_once(
                     template_file,
                     cfg_file
                 )
