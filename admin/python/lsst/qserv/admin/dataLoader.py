@@ -359,6 +359,9 @@ class DataLoader(object):
 
         result = []
         for infile in data:
+
+            # we rely on file extension to decide whether it is compressed or not,
+            # for more reliable way we could use something like "magic" module
             if infile.endswith('.gz'):
 
                 if self.unzipDir is None:
@@ -366,7 +369,7 @@ class DataLoader(object):
                     try:
                         self.unzipDir = tempfile.mkdtemp(dir=self.chunksDir)
                     except Exception as exc:
-                        self._log.critical('Failed to create tempt directory for uncompressed files: %s', exc)
+                        self._log.critical('Failed to create temp directory for uncompressed files: %s', exc)
                         raise
                     self._log.debug('Created temporary directory %s', self.unzipDir)
 
@@ -384,6 +387,12 @@ class DataLoader(object):
                 except Exception as exc:
                     self._log.critical('Failed to uncompress data file: %s', exc)
                     raise
+
+            else:
+
+                # file is already uncompressed
+                self._log.debug('Using input file which is not compressed: %s', infile)
+                outfile = infile
 
             result.append(outfile)
 
