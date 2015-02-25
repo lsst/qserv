@@ -142,9 +142,10 @@ class AppInterface:
 
     def killQuery(self, query, taskId):
         """Process a kill query command (experimental)"""
-        a = app.KillQueryAction(query)
-        self._callWithThread(a.invoke)
-        return "Attempt: " + query
+        ## Disable query killing DM-1715
+        ##a = app.KillQueryAction(query)
+        ##self._callWithThread(a.invoke)
+        return "Attempt query kill: " + query
 
     ### Deprecated/unused: the Lua interface is single-threaded and doesn't
     ### tolerate blocking well, so we never want it to wait for a query to
