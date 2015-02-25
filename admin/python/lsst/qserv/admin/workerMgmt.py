@@ -40,11 +40,16 @@ import types
 #-----------------------------
 # Imports for other modules --
 #-----------------------------
+from lsst.db.exception import produceExceptionClass
 from .workerAdmin import WorkerAdmin
 
 #----------------------------------
 # Local non-exported definitions --
 #----------------------------------
+
+_Exception = produceExceptionClass('WorkerMgmtException', [
+    (100, "TABLE_SCHEMA_ERR", "Invalid table schema specification"),
+    ])
 
 #------------------------
 # Exported definitions --
@@ -138,7 +143,7 @@ class WorkerMgmt(object):
         are passed to WorkerAdmin.mysqlConn() method. Note that in the future
         we will likely replaces those positional arguments with something else.
 
-        If database already exists on some it will not be re-created.
+        If database already exists on some nodes it will not be re-created.
 
         @param dbName:    database name to be created
         @param grantUser: optional user name, if specified then this user is granted
@@ -184,4 +189,64 @@ class WorkerMgmt(object):
                 self._log.debug('Database %s already exists on node %s', dbName, worker.name())
 
         self._log.debug('Created databases on %d nodes out of %d', nCreated, len(nodes))
+        return len(nodes), nCreated
+
+
+    def createTable(self, dbName, tableName, state=None, nodeType=None, **kwargs):
+        """
+        Create table on a set of nodes. Table schema must already be defined
+        in CSS.
+
+        Method takes arguments that select the list of nodes (same arguments
+        as defined for select() method) and additional keyword arguments that
+        are passed to WorkerAdmin.mysqlConn() method. Note that in the future
+        we will likely replaces those positional arguments with something else.
+
+        If table already exists on some nodes it will not be re-created.
+
+        @param dbName:    database name for new table
+        @param tableName: table name to be created
+        @param state:     same as in select() method
+        @param nodeType:  same as in select() method
+        @param kwargs:    optional keyword arguments passed to WorkerAdmin.mysqlConn()
+                          method
+        @return: tuple of two integers, first integer is the number of workers selected,
+                 second is the number of workers where table did not exist and was created
+        @raise DbException: when database operations fail (e.g. failed to connect to database)
+        @raise Exception: when table schema is invalid.
+        """
+
+        # get schema from CSS
+        tableSchema = self.css.getTableSchema(dbName, tableName)
+
+        # some pre-validation, check that schema does not include "CREATE ..."
+        # and only starts with opening parenthesis
+        schemaWords = tableSchema.lower().split()
+        if not schemaWords:
+            raise _Exception(_Exception.TABLE_SCHEMA_ERR, "schema is empty")
+        if schemaWords[0] == 'create':
+            raise _Exception(_Exception.TABLE_SCHEMA_ERR, "CREATE TABLE present in schema")
+        if schemaWords[0][0] != '(':
+            raise _Exception(_Exception.TABLE_SCHEMA_ERR, "schema does not start with parenthesis")
+
+        # get a bunch of nodes to work with
+        nodes = self.select(state, nodeType)
+
+        # make database on each of them if does not exist
+        nCreated = 0
+        for worker in nodes:
+            dbi = worker.mysqlConn(**kwargs)
+            if not dbi.tableExists(tableName, dbName):
+
+                self._log.debug('Creating table %s.%s on node %s', dbName, tableName, worker.name())
+
+                # race condition here obviously, so we set mayExist=True to suppress
+                # exception in case someone else managed to create table at this instant
+                dbi.createTable(tableName, tableSchema, dbName, mayExist=True)
+                nCreated += 1
+
+            else:
+                self._log.debug('Table %s.%s already exists on node %s', dbName, tableName, worker.name())
+
+        self._log.debug('Created tables on %d nodes out of %d', nCreated, len(nodes))
         return len(nodes), nCreated
