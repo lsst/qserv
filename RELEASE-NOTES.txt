@@ -1,3 +1,28 @@
+R E L E A S E   2015_02
+=======================
+
+Code improvements:
+ * DM-215:  Implement C++ geometry primitives for Qserv
+ * DM-216:  Switch Qserv to C++ geometry primitives
+ * DM-1952: Change log priority for message "Unknown column 'whatever' in 'field
+            list'"
+ * DM-548:  rearchitect Qserv to fix dependencies between modules in qserv/core
+ * DM-335:  Migrate std::lists to std::vectors
+
+New features:
+ * DM-646:  Implement DISTINCT aggregate in qserv
+ * DM-1618: Implement distributed database creation
+ * DM-1619: Implement distributed table creation
+ * DM-1617: Client library for accessing distributed database/table information
+            from CSS
+
+Bug fixes:
+ * DM-1842: Fix encoding problem in qserv-czar.log
+ * DM-1888: scons install pass even if scons unit test fails
+ * DM-1974: Fix enclose, escape, and line termination characters in
+            qserv-data-loader
+ * DM-2157: Data loader crashes on uncompressed data.
+
 R E L E A S E   2015_01
 =======================
 
@@ -25,15 +50,17 @@ New features:
 Bug fixes:
  * DM-1886: qserv-admin crash in DUMP EVERYTHING
  * DM-1582: Qserv spatial restrictor names are case sensitive
- * DM-1743: CSV reader for Qserv partitioner doesn't handle no-escape and no-quote options properly
- * DM-737: Rendering an IR node tree should produce properly parenthesized output
- * DM-655: unknown column derails Qserv
+ * DM-1743: CSV reader for Qserv partitioner doesn't handle no-escape and no-quote
+            options properly
+ * DM-737:  Rendering an IR node tree should produce properly parenthesized output
+ * DM-655:  unknown column derails Qserv
  * DM-1673: Allow SWIG override for broken SWIG installations
  * DM-1744: Fix SWIG_SWIG_LIB empty list default value
  * DM-1732: Fix bug with 2 results table with same id
 
 Documentation improvements:
- * DM-1792: Update documentation and automatic install script w.r.t. new newinstall.sh script
+ * DM-1792: Update documentation and automatic install script w.r.t. new
+            newinstall.sh script
  * DM-1658: Document 'git bisect' use
  * DM-1658: Improve command-line ReST documentation
  * DM-1822: Fix bug related to mysql empty string
