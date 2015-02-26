@@ -56,7 +56,7 @@ namespace parser {
 // ValueExprFactory implementation
 ////////////////////////////////////////////////////////////////////////
 ValueExprFactory::ValueExprFactory(boost::shared_ptr<ColumnRefNodeMap> cMap)
-    : _valueFactorFactory(boost::make_shared<ValueFactorFactory>(cMap)) {
+    : _valueFactorFactory(new ValueFactorFactory(cMap, *this)) {
 }
 
 // VALUE_EXP                     //
@@ -106,6 +106,13 @@ ValueExprFactory::newExpr(antlr::RefAST a) {
         LOGF_INFO("Imported expr: %1%" % ss.str());
     }
 #endif
+    if(expr->isFactor() && expr->getAlias().empty()) {
+        // Singleton factor? Check inside for optimization opportunities.
+        if(expr->getFactor()->getType() == query::ValueFactor::EXPR) {
+            // Pop the value expr out.
+            return expr->getFactorOps().front().factor->getExpr();
+        }
+    }
     return expr;
 }
 }}} // namespace lsst::qserv::parser

@@ -30,6 +30,9 @@
   * @author Daniel L. Wang, SLAC
   */
 
+// Standard headers
+#include <memory>
+
 // Third-party headers
 #include <antlr/AST.hpp>
 #include "boost/shared_ptr.hpp"
@@ -43,6 +46,7 @@ namespace query {
 }
 namespace parser {
     class ColumnRefNodeMap;
+    class ValueExprFactory;
 }}} // End of forward declarations
 
 
@@ -53,14 +57,18 @@ namespace parser {
 /// ValueFactorFactory constructs ValueFactor instances from antlr nodes.
 class ValueFactorFactory {
 public:
-    ValueFactorFactory(boost::shared_ptr<ColumnRefNodeMap> cMap);
+    ValueFactorFactory(boost::shared_ptr<ColumnRefNodeMap> cMap,
+                       ValueExprFactory& exprFactory);
     boost::shared_ptr<query::ValueFactor> newFactor(antlr::RefAST a);
 
 private:
     boost::shared_ptr<query::ValueFactor> _newColumnFactor(antlr::RefAST t);
     boost::shared_ptr<query::ValueFactor> _newSetFctSpec(antlr::RefAST expr);
-
+    boost::shared_ptr<query::ValueFactor> _newFunctionSpecFactor(antlr::RefAST fspec);
+    boost::shared_ptr<query::ValueFactor> _newSubFactor(antlr::RefAST s);
     boost::shared_ptr<ColumnRefNodeMap> _columnRefNodeMap;
+    /// For handling nested expressions
+    ValueExprFactory& _exprFactory;
 };
 
 }}} // namespace lsst::qserv::parser

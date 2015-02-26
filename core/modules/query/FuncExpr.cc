@@ -73,13 +73,21 @@ FuncExpr::newArg1(std::string const& newName, ValueExprPtr ve) {
 }
 
 void
-FuncExpr::findColumnRefs(ColumnRef::Vector& vector) {
+FuncExpr::findColumnRefs(ColumnRef::Vector& outputRefs) {
     for(ValueExprPtrVector::iterator i=params.begin();
         i != params.end(); ++i) {
         if(*i) {
-            (**i).findColumnRefs(vector);
+            (**i).findColumnRefs(outputRefs);
         }
     }
+}
+
+boost::shared_ptr<FuncExpr>
+FuncExpr::clone() const {
+    FuncExpr::Ptr e = boost::make_shared<FuncExpr>();
+    e->name = name;
+    cloneValueExprPtrVector(e->params, params);
+    return e;
 }
 
 std::ostream&
