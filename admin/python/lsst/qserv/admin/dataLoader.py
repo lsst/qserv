@@ -49,7 +49,7 @@ def _mysql_identifier_validator(db_or_table_name):
     """
     Check database and table name to prevent SQL-injection
     see http://dev.mysql.com/doc/refman/5.0/en/identifiers.html
-    other query parameters will be processed by mysal-python:
+    other query parameters will be processed by MySQL-python:
     see http://dev.mysql.com/doc/connector-python/en/connector-python-api-mysqlcursor-execute.html
 
     @param db_or_table_name: a mysql database or table name
@@ -66,7 +66,7 @@ def _mysql_identifier_validator(db_or_table_name):
 
 class DataLoader(object):
     """
-    DataLoader class defines all loginc for loading data, including data
+    DataLoader class defines all logic for loading data, including data
     partitioning, CSS updating, etc. It is driven by a set of configuration
     files which are passed to constructor.
     """
@@ -78,7 +78,7 @@ class DataLoader(object):
         """
         Constructor parses all arguments and prepares for execution.
 
-        @param configFiles:  Sequence of the files defininig all partitioning options.
+        @param configFiles:  Sequence of the files defining all partitioning options.
         @param mysqlConn:    Mysql connection object for czar-side database.
         @param workerConnMap: Dictionary mapping worker host name to corresponding
                              mysql connection object. May be empty, in which case czar
@@ -243,7 +243,7 @@ class DataLoader(object):
     def _checkCss(self, database, table):
         """
         Check CSS for existing configuration and see if it matches ours.
-        Throws exception f any irregulatrities are observed.
+        Throws exception if any irregularities are observed.
         """
 
         self._log.info('Verifying CSS info for table %s', table)
@@ -292,7 +292,7 @@ class DataLoader(object):
                              (partKey, cssKey, optValue, cssValue))
 
     def _makeOrCheckChunksDir(self):
-        '''create directory for chunk data or check that it exists, throws in case of errors'''
+        '''Create directory for chunk data or check that it exists, throws in case of errors.'''
 
         chunks_dir = self.chunksDir
 
@@ -331,7 +331,7 @@ class DataLoader(object):
 
 
     def _runPartitioner(self, files):
-        '''run partitioner to fill chunks directory with data, returns 0 on success'''
+        '''Run partitioner to fill chunks directory with data, returns 0 on success.'''
 
         # build arguments list
         args = ['sph-partition', '--out.dir', self.chunksDir, '--part.prefix', self.chunkPrefix]
@@ -420,7 +420,7 @@ class DataLoader(object):
 
     def _deleteTable(self, database, table):
         """
-        Drop existing table and all chunks
+        Drop existing table and all chunks.
         """
 
         self._log.info('Deleting existing table %s (and chunks)', table)
@@ -611,7 +611,7 @@ class DataLoader(object):
 
     def _createDummyChunk(self, database, table):
         """
-        Make special dummy chunk in case of partitioned data
+        Make special dummy chunk in case of partitioned data.
         """
 
         if not self.partitioned or self.oneTable:
@@ -723,7 +723,7 @@ class DataLoader(object):
 
     def _updateCss(self, database, table):
         """
-        Update CSS with information about loaded table and database
+        Update CSS with information about loaded table and database.
         """
 
         # create database in CSS if not there yet
