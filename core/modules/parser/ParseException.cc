@@ -47,5 +47,17 @@ ParseException::ParseException(char const* msg, antlr::RefAST subTree)
 ParseException::ParseException(std::string const& msg, antlr::RefAST subTree)
     : std::runtime_error(msg + ":" + walkSiblingString(subTree))
 {}
+ParseException::ParseException(std::string const& msg,
+                               antlr::RecognitionException const&)
+    : std::runtime_error(msg)
+{}
+ParseException::ParseException(std::string const& msg,
+                               antlr::ANTLRException const&)
+    : std::runtime_error(msg)
+{}
+
+ParseException::ParseException(Bug const& b)
+    : std::runtime_error(std::string("Bug during parse:") + b.what()) {
+}
 
 }}} // namespace lsst::qserv::parser

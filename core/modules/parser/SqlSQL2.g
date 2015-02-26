@@ -309,6 +309,11 @@ boost::shared_ptr<VoidTwoRefFunc> _qservFctSpecHandler;
 // ---------------
 // Top-level rules
 // ---------------
+// Qserv-supported statement, requires end of file, no statement chaining
+qserv_stmt : 
+      select_stmt (SEMICOLON)* EOF
+    ;
+
 //{ Rule #--- <sql_stmt> is a proxy rule for all types of sql statements
 sql_stmt : 
 	  sql_data_stmt 
