@@ -1,9 +1,0 @@
-qserv relies on spatial UDFs installed on the worker nodes.
-
-"""
-The other thing that is not automatic in all of this is the installation  
-of the UDFs themselves. To start using them, one needs to copy  
-bld/udf/libqserv_udf.so to $MYSQL_SERVER_DIR/lib/mysql/plugin and then run  
-the udf/createMySqlUdfs.sql script.
-""" -Serge Monkewitz (smm)
-

@@ -7,7 +7,7 @@ SQL_LOADER=${DIR}/tools/sql-loader.sh
 SQL_FILE=qserv-worker.sql
 
 echo 
-echo "-- Initializing Qserv czar database "
+echo "-- Initializing Qserv Worker database "
 if [ -r "${SQL_LOADER}" ]; then
     . "${SQL_LOADER}"
 else
@@ -15,4 +15,4 @@ else
     exit 1
 fi
 
-echo "INFO: Qserv Czar initialization SUCCESSFUL"
+echo "INFO: Qserv Worker initialization SUCCESSFUL"
