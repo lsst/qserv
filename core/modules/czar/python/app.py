@@ -66,12 +66,8 @@ from string import Template
 
 # Package imports
 import logger
-import metadata
-import spatial
 import lsst.qserv.css
 import lsst.qserv.czar.config
-from lsst.geom.geometry import SphericalBox
-from lsst.geom.geometry import SphericalConvexPolygon, convexHull
 from lsst.qserv.czar.db import TaskDb as Persistence
 from lsst.qserv.czar.db import Db
 
@@ -79,28 +75,18 @@ from lsst.qserv.czar.db import Db
 
 from lsst.qserv.czar import CHUNK_COLUMN, SUB_CHUNK_COLUMN, DUMMY_CHUNK
 
-# qdisp
-from lsst.qserv.czar import ChunkSpec
 # ccontrol
 from lsst.qserv.czar import getQueryStateString
 from lsst.qserv.czar import SUCCESS as QueryState_SUCCESS
 
 # UserQuery
 from lsst.qserv.czar import UserQueryFactory
-from lsst.qserv.czar import UserQuery_containsDb
-from lsst.qserv.czar import UserQuery_getConstraints
-from lsst.qserv.czar import UserQuery_getDominantDb
-from lsst.qserv.czar import UserQuery_getDbStriping
 from lsst.qserv.czar import UserQuery_getExecDesc
 from lsst.qserv.czar import UserQuery_getError
-from lsst.qserv.czar import UserQuery_addChunk
 from lsst.qserv.czar import UserQuery_submit
 from lsst.qserv.czar import UserQuery_join
 from lsst.qserv.czar import UserQuery_kill
 from lsst.qserv.czar import UserQuery_discard
-
-# Parser
-from lsst.qserv.czar import ChunkMeta
 
 # queryMsg
 from lsst.qserv.czar import msgCode
@@ -261,32 +247,6 @@ class IndexLookup:
         self.keyColumn = keyColumn
         self.keyVals = keyVals
         pass
-class SecondaryIndex:
-## FIXME: subchunk index creation
-##    "SELECT DISTINCT %s, %s FROM %s" % (CHUNK_COL, SUBCHUNK_COL, table)
-
-    def lookup(self, indexLookups):
-        sqls = []
-        for lookup in indexLookups:
-            table = metadata.getIndexNameForTable("%s.%s" % (lookup.db,
-                                                             lookup.table))
-            keys = ",".join(lookup.keyVals)
-            condition = "%s IN (%s)" % (lookup.keyColumn, keys)
-            sql = "SELECT %s FROM %s WHERE %s" % (CHUNK_COLUMN, table, condition)
-            sqls.append(sql)
-        if not sqls:
-            return
-        sql = " UNION ".join(sqls)
-        db = Db()
-        db.activate()
-        cids = db.applySql(sql)
-        try:
-            logger.inf("cids are ", cids)
-            cids = map(lambda t: t[0], cids)
-        except:
-            raise QueryHintError("mysqld error during index lookup q=" + sql)
-        del db
-        return cids
 
 class Context:
     """Context for InbandQueryAction construction.
@@ -437,122 +397,7 @@ class InbandQueryAction:
                                                              self._resultName)
         errorMsg = UserQuery_getError(self.sessionId)
         if errorMsg: raise ParseError(errorMsg)
-        self.dominantDb = UserQuery_getDominantDb(self.sessionId)
-        if not UserQuery_containsDb(self.sessionId, self.dominantDb):
-            raise ParseError("Illegal db")
-        self.dbStriping = UserQuery_getDbStriping(self.sessionId)
-        self._addChunks()
         pass
-
-    def _evaluateHints(self, dominantDb, hintList, pmap):
-        """Modify self.fullSky and self.partitionCoverage according to
-        spatial hints. This is copied from older parser model."""
-        self._isFullSky = True
-        self._intersectIter = pmap
-        if hintList:
-            regions = self._computeSpatialRegions(hintList)
-            indexRegions = self._computeIndexRegions(hintList)
-
-            if regions != []:
-                # Remove the region portion from the intersection tuple
-                self._intersectIter = map(
-                    lambda i: (i[0], map(lambda j:j[0], i[1])),
-                    pmap.intersect(regions))
-                self._isFullSky = False
-            if indexRegions:
-                if regions != []:
-                    self._intersectIter = chain(self._intersectIter, indexRegions)
-                else:
-                    self._intersectIter = map(lambda i: (i,[]), indexRegions)
-                self._isFullSky = False
-                if not self._intersectIter:
-                    self._intersectIter = [(DUMMY_CHUNK, [])]
-        # _isFullSky indicates that no spatial hints were found.
-        # However, if spatial tables are not found in the query, then
-        # we should use the dummy chunk so the query can be dispatched
-        # once to a node of the balancer's choosing.
-
-        # If hints only apply when partitioned tables are in play.
-        # FIXME: we should check if partitionined tables are being accessed,
-        # and then act to support the heaviest need (e.g., if a chunked table
-        # is being used, then issue chunked queries).
-        logger.dbg("Affected chunks: ", [x[0] for x in self._intersectIter])
-        pass
-
-    def _makePmap(self, dominantDb, dbStriping):
-        if (dbStriping.stripes < 1) or (dbStriping.subStripes < 1):
-            msg = "Partitioner's stripes and substripes must be natural numbers."
-            raise lsst.qserv.czar.config.ConfigError(msg)
-        return spatial.makePmap(dominantDb,
-                                dbStriping.stripes,
-                                dbStriping.subStripes)
-
-    def _importConstraints(self, constraints):
-        def iterateConstraints(constraintVec):
-            for i in range(constraintVec.size()):
-                yield constraintVec.get(i)
-        for constraint in iterateConstraints(constraints):
-            logger.inf("constraint=", constraint)
-            params = [constraint.paramsGet(i)
-                      for i in range(constraint.paramsSize())]
-            self.hints[constraint.name] = params
-            self.hintList.append((constraint.name, params))
-        pass
-
-    def _generateChunkSpec(self, chunkIter):
-        count = 0
-        chunkLimit = self.chunkLimit
-        for chunkId, subIter in chunkIter:
-            if chunkId in self._emptyChunks:
-                logger.dbg("Rejecting empty chunk:", chunkId)
-                continue
-            #prepare chunkspec
-            c = ChunkSpec()
-            c.chunkId = chunkId
-            scount=0
-            sList = [s for s in subIter]
-            #for s in sList: # debugging
-            #    c.addSubChunk(s)
-            #    scount += 1
-            #    if scount > 7: break ## FIXME: debug now.
-            map(c.addSubChunk, sList)
-            yield c
-            count += 1
-            if count >= chunkLimit: break
-        if count == 0:
-            c = ChunkSpec()
-            c.chunkId = DUMMY_CHUNK
-            scount=0
-            yield c
-        pass
-
-    def _computeConstraintsAsHints(self):
-        """Retrieve discovered constraints from the query and
-        evaluate chunk coverage against them."""
-        constraints = UserQuery_getConstraints(self.sessionId)
-        logger.dbg("Getting constraints", constraints, "size=",
-                   constraints.size())
-        self._importConstraints(constraints)
-        self.pmap = self._makePmap(self.dominantDb, self.dbStriping)
-        self._evaluateHints(self.dominantDb, self.hintList, self.pmap)
-
-    def _addChunks(self):
-        """Push the covered chunks down to the C++ layer in preparation for
-        execution."""
-        self._computeConstraintsAsHints()
-        self._emptyChunks = metadata.getEmptyChunks(self.dominantDb)
-        if not self._emptyChunks:
-            raise DataError("No empty chunks for db")
-
-        ## UserQuery rejects non-dummy chunks when chunking is not needed
-        ## on partitioned tables.
-        debugLimit=2
-        current=[]
-        for chunkSpec in self._generateChunkSpec(self._intersectIter):
-            UserQuery_addChunk(self.sessionId, chunkSpec)
-            current.append(chunkSpec)
-            #if len(current) >= debugLimit: break ### DEBUGDEBUG REMOVE
-
 
     def _execAndJoin(self):
         """Signal dispatch to C++ layer and block until execution completes"""
@@ -593,37 +438,6 @@ class InbandQueryAction:
         # memory on the czar. (no control over worker)
         self._useMemory = cModule.config.get("tuning", "memoryEngine")
         return True
-
-    def _computeIndexRegions(self, hintList):
-        """Compute spatial region coverage based on hints.
-        @return list of regions"""
-        logger.inf("Looking for indexhints in ", hintList)
-        secIndexSpecs = ifilter(lambda t: t[0] == "sIndex", hintList)
-        lookups = []
-        for s in secIndexSpecs:
-            params = s[1]
-            lookup = IndexLookup(params[0], params[1], params[2], params[3:])
-            lookups.append(lookup)
-            pass
-        index = SecondaryIndex()
-        chunkIds = index.lookup(lookups)
-        logger.inf("lookup got chunks:", chunkIds)
-        return chunkIds
-
-    def _computeSpatialRegions(self, hintList):
-        """Compute spatial region coverage based on hints.
-        @return list of regions"""
-        r = spatial.getRegionFactory()
-        regs = r.getRegionFromHint(hintList)
-        if regs != None:
-            return regs
-        else:
-            if r.errorDesc:
-                # How can we give a good error msg to the client?
-                s = "Error parsing hint string %s"
-                raise QueryHintError(s % r.errorDesc)
-            return []
-        pass
 
     pass # class InbandQueryAction
 

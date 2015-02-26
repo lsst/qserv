@@ -46,6 +46,7 @@
 // Qserv headers
 #include "css/constants.h"
 #include "css/CssError.h"
+#include "css/EmptyChunks.h"
 #include "css/KvInterfaceImplMem.h"
 #include "global/stringTypes.h"
 
@@ -62,10 +63,30 @@ namespace css {
   *
   * @param mapStream An input stream to data dumped using
   *                  ./admin/bin/qserv-admin.py
+  * @param emptyChunkPath Path to a directory containing: empty_<dbname>.txt
   */
-Facade::Facade(std::istream& mapStream)
+Facade::Facade(std::istream& mapStream,
+               std::string const& emptyChunkPath)
     : _kvI(new KvInterfaceImplMem(mapStream)) {
     _versionCheck();
+    if (!emptyChunkPath.empty()) {
+        _emptyChunks.reset(new EmptyChunks(emptyChunkPath));
+    } // empty str: no empty chunks available.
+}
+
+/** Creates a new Facade over metadata in an in-memory key-value store.
+  *
+  * @param kv A pre-built KvInterface on top of the Facade will use
+  *           for querying.
+  * @param emptyChunkPath Path to a directory containing: empty_<dbname>.txt
+  */
+Facade::Facade(boost::shared_ptr<KvInterface> kv,
+               std::string const& emptyChunkPath)
+    : _kvI(kv) {
+    if (_kvI) _versionCheck();
+    if (!emptyChunkPath.empty()) {
+        _emptyChunks.reset(new EmptyChunks(emptyChunkPath));
+    } // empty str: no empty chunks available.
 }
 
 Facade::~Facade() {
@@ -352,6 +373,12 @@ Facade::cssVersion() {
     return lsst::qserv::css::VERSION;
 }
 
+EmptyChunks const&
+Facade::getEmptyChunks() const {
+    assert(_emptyChunks.get());
+    return *_emptyChunks;
+}
+
 void
 Facade::_versionCheck() const {
     const string& vstr = _kvI->get(lsst::qserv::css::VERSION_KEY, string());
@@ -438,17 +465,20 @@ Facade::_tableIsSubChunked(string const& dbName,
 }
 
 boost::shared_ptr<Facade>
-FacadeFactory::createMemFacade(string const& mapPath) {
+FacadeFactory::createMemFacade(string const& mapPath,
+                               std::string const& emptyChunkPath) {
     std::ifstream f(mapPath.c_str());
     if(f.fail()) {
         throw ConnError();
     }
-    return FacadeFactory::createMemFacade(f);
+    return FacadeFactory::createMemFacade(f, emptyChunkPath);
 }
 
 boost::shared_ptr<Facade>
-FacadeFactory::createMemFacade(std::istream& mapStream) {
-    boost::shared_ptr<css::Facade> cssFPtr(new css::Facade(mapStream));
+FacadeFactory::createMemFacade(std::istream& mapStream,
+                               std::string const& emptyChunkPath) {
+    boost::shared_ptr<css::Facade> cssFPtr(new css::Facade(
+                                               mapStream, emptyChunkPath));
     return cssFPtr;
 }
 
@@ -547,14 +577,10 @@ private:
 #endif
 };
 
-Facade::Facade(boost::shared_ptr<KvInterface> kv)
-    : _kvI(kv) {
-    if (_kvI) _versionCheck();
-}
-
 boost::shared_ptr<Facade>
-FacadeFactory::createCacheFacade(boost::shared_ptr<KvInterface> kv) {
-    boost::shared_ptr<css::Facade> facade(new Facade(kv));
+FacadeFactory::createCacheFacade(boost::shared_ptr<KvInterface> kv,
+                                 std::string const& emptyChunkPath) {
+    boost::shared_ptr<css::Facade> facade(new Facade(kv, emptyChunkPath));
     return facade;
 }
 }}} // namespace lsst::qserv::css

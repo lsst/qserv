@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -26,11 +26,14 @@
   * @brief  Global int types
   *
   */
-
+#include <stdint.h>
+#include <set>
 #include <vector>
 
 namespace lsst {
 namespace qserv {
+typedef std::set<int> IntSet;
 typedef std::vector<int> IntVector;
+typedef std::vector<int32_t> Int32Vector;
 }}
 #endif // LSST_QSERV_INTTYPES_H

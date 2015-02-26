@@ -59,6 +59,7 @@ typedef int StringBufferSize;
 extern std::string DUMP_BASE; // Non-const to allow runtime-update via config
 extern std::string const CREATE_SUBCHUNK_SCRIPT;
 extern std::string const CLEANUP_SUBCHUNK_SCRIPT;
+extern std::string const CREATE_DUMMY_SUBCHUNK_SCRIPT;
 
 // Result-writing
 void updateResultPath(char const* resultPath=0);

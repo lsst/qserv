@@ -38,6 +38,7 @@
 
 // Local headers
 #include "css/Facade.h"
+#include "global/intTypes.h"
 #include "qana/QueryPlugin.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/ChunkSpec.h"
@@ -83,6 +84,9 @@ public:
 
     boost::shared_ptr<query::ConstraintVector> getConstraints() const;
     void addChunk(ChunkSpec const& cs);
+    void addChunk(ChunkSpecVector const& cs);
+    void setDummy();
+
 
     query::SelectStmt const& getStmt() const { return *_stmt; }
 
@@ -97,7 +101,9 @@ public:
     /// used for unqualified table and column references
     std::string const& getDominantDb() const;
     bool containsDb(std::string const& dbName) const;
+    bool validateDominantDb() const;
     css::StripingParams getDbStriping();
+    boost::shared_ptr<IntSet const> getEmptyChunks();
     std::string const& getError() const { return _error; }
 
     rproc::MergeFixup makeMergeFixup() const;
@@ -142,6 +148,7 @@ private:
     query::SelectStmtPtrVector _stmtParallel;
     query::SelectStmtPtr _stmtMerge;
     bool _hasMerge;
+    bool _isDummy; ///< Use dummy chunk, disabling subchunks or any real chunks
     std::string _tmpTable;
     std::string _resultTable;
     std::string _error;

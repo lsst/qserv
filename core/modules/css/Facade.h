@@ -49,6 +49,7 @@ namespace lsst {
 namespace qserv {
 namespace css {
 
+class EmptyChunks;
 class KvInterface; // forward declaration
 class KvInterfaceImplMem;
 
@@ -93,9 +94,14 @@ virtual     MatchTableParams getMatchTableParams(std::string const& dbName,
      */
     static int cssVersion();
 
+virtual     EmptyChunks const& getEmptyChunks() const;
+
+
 private:
-    explicit Facade(std::istream& mapStream);
-    explicit Facade(boost::shared_ptr<KvInterface> kv);
+    Facade(std::istream& mapStream,
+           std::string const& emptyChunkPath="");
+    Facade(boost::shared_ptr<KvInterface> kv,
+           std::string const& emptyChunkPath="");
 
     void _throwIfNotDbExists(std::string const& dbName) const;
     void _throwIfNotTbExists(std::string const& dbName,
@@ -115,6 +121,8 @@ private:
 
 private:
     boost::shared_ptr<KvInterface> _kvI;
+    std::auto_ptr<EmptyChunks> _emptyChunks;
+
 protected:
     Facade() {}
     std::string _prefix; // optional prefix, for isolating tests from production
@@ -122,9 +130,12 @@ protected:
 
 class FacadeFactory {
 public:
-    static boost::shared_ptr<Facade> createMemFacade(std::string const& mapPath);
-    static boost::shared_ptr<Facade> createMemFacade(std::istream& mapStream);
-    static boost::shared_ptr<Facade> createCacheFacade(boost::shared_ptr<KvInterface> kv);
+    static boost::shared_ptr<Facade> createMemFacade(
+        std::string const& mapPath, std::string const& emptyChunkPath);
+    static boost::shared_ptr<Facade> createMemFacade(
+        std::istream& mapStream, std::string const& emptyChunkPath);
+    static boost::shared_ptr<Facade> createCacheFacade(
+        boost::shared_ptr<KvInterface> kv, std::string const& emptyChunkPath);
 };
 
 }}} // namespace lsst::qserv::css

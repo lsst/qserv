@@ -50,6 +50,7 @@ class MessageStore;
 }
 namespace qproc {
 class QuerySession;
+class SecondaryIndex;
 }
 namespace rproc {
 class TableMerger;
@@ -76,18 +77,6 @@ public:
     /// Returns an empty string if no errors have been detected.
     std::string const& getError() const;
 
-    /// @return a ConstraintVec for consumption by the python czar that
-    /// describes the query constraints detected in the query.
-    lsst::qserv::query::ConstraintVec getConstraints() const;
-
-    /// @return the dominantDb, the database whose partitioning scheme should be
-    /// used to dispatch the query.
-    std::string const& getDominantDb() const;
-
-    /// @return StripingParams for the dominant database to be used to determine
-    /// the chunk number spatial mapping
-    lsst::qserv::css::StripingParams getDbStriping() const;
-
     /// @return a description of the current execution state.
     std::string getExecDesc() const;
 
@@ -107,10 +96,6 @@ public:
     /// Release resources related to user query
     void discard();
 
-    // Exists only to help app.py with permission checking
-    // TODO: Eliminate after geometry is pushed to c++
-    bool containsDb(std::string const& dbName) const;
-
     // Delegate objects
     boost::shared_ptr<qdisp::Executive> getExecutive() {
         return _executive; }
@@ -122,6 +107,7 @@ private:
     void setSessionId(int session) { _sessionId = session; }
     void _setupMerger();
     void _discardMerger();
+    void _setupChunking();
 
     // Delegate classes
     boost::shared_ptr<qdisp::Executive> _executive;
@@ -129,6 +115,7 @@ private:
     boost::shared_ptr<qproc::QuerySession> _qSession;
     boost::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
     boost::shared_ptr<rproc::InfileMerger> _infileMerger;
+    boost::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
 
     int _sessionId; ///< External reference number
     int _sequence; ///< Sequence number for subtask ids

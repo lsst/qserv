@@ -82,6 +82,8 @@
 #include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
+#include "qproc/geomAdapter.h"
+#include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
 #include "qproc/TaskMsgFactory2.h"
 #include "rproc/InfileMerger.h"
@@ -130,24 +132,6 @@ std::string const& UserQuery::getError() const {
         ? " " : "";
     _errorExtraCache = _qSession->getError() + div + _errorExtra;
     return _errorExtraCache;
-}
-
-// Consider exposing querySession to userQueryProxy
-
-/// For valid constraints: see lsst.qserv.czar.spatial
-/// Region factory must handle or explicitly ignore all constraints.
-/// Most constraints generated in QsRestrictor
-lsst::qserv::query::ConstraintVec UserQuery::getConstraints() const {
-    return _qSession->getConstraints();
-}
-/// @return database for partitioning and dispatch
-std::string const& UserQuery::getDominantDb() const {
-    return _qSession->getDominantDb();
-}
-
-/// @return striping parameters for use by chunk scope evaluation
-lsst::qserv::css::StripingParams UserQuery::getDbStriping() const {
-    return _qSession->getDbStriping();
 }
 
 /// Attempt to kill in progress.
@@ -251,12 +235,6 @@ void UserQuery::discard() {
     LOGF_INFO("Discarded UserQuery(%1%)" % _sessionId);
 }
 
-/// Check for database existence
-/// @return true if db is known to Qserv
-bool UserQuery::containsDb(std::string const& dbName) const {
-    return _qSession->containsDb(dbName);
-}
-
 /// Constructor. Most setup work done by the UserQueryFactory
 UserQuery::UserQuery(boost::shared_ptr<qproc::QuerySession> qs)
     :  _messageStore(boost::make_shared<qdisp::MessageStore>()),
@@ -272,6 +250,46 @@ void UserQuery::_setupMerger() {
     LOGF_INFO("UserQuery::_setupMerger()");
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
     _infileMerger = boost::make_shared<rproc::InfileMerger>(*_infileMergerConfig);
+}
+
+void UserQuery::_setupChunking() {
+    boost::shared_ptr<qproc::IndexMap> im;
+    std::string dominantDb = _qSession->getDominantDb();
+    if(!_qSession->validateDominantDb()) {
+        // TODO: Revisit this for L3
+        throw UserQueryError("Couldn't determine dominantDb for dispatch");
+    }
+
+    boost::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
+    {
+        eSet = _qSession->getEmptyChunks();
+        if(!eSet) {
+            eSet = boost::make_shared<IntSet>();
+            LOGF_WARN("Missing empty chunks info for %s" % dominantDb);
+        }
+    }
+    if (_qSession->hasChunks()) {
+        boost::shared_ptr<query::ConstraintVector> constraints
+            = _qSession->getConstraints();
+        css::StripingParams partStriping = _qSession->getDbStriping();
+
+        im = boost::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
+        qproc::ChunkSpecVector csv;
+        if(constraints) {
+            csv = im->getIntersect(*constraints);
+        } else { // Unconstrained: full-sky
+            csv = im->getAll();
+        }
+        // Filter out empty chunks
+        for(qproc::ChunkSpecVector::const_iterator i=csv.begin(), e=csv.end();
+            i != e;
+            ++i) {
+            if(eSet->count(i->chunkId) == 0) { // chunk not in empty?
+                _qSession->addChunk(*i);
+            }
+        }
+    } else { // querysession will add dummy chunk when no chunks added.
+    }
 }
 
 }}} // lsst::qserv::ccontrol

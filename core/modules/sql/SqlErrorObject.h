@@ -30,7 +30,7 @@
 namespace lsst {
 namespace qserv {
 namespace sql {
-
+/// SqlErrorObject should be considered for inheriting from util::Error
 class SqlErrorObject {
 public:
     SqlErrorObject() : _errNo(0) {}

@@ -49,6 +49,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "css/EmptyChunks.h"
 #include "css/Facade.h"
 #include "css/CssError.h"
 #include "global/constants.h"
@@ -174,6 +175,21 @@ void QuerySession::addChunk(ChunkSpec const& cs) {
     _chunks.push_back(cs);
 }
 
+void QuerySession::addChunk(ChunkSpecVector const& csv) {
+    std::copy(csv.begin(), csv.end(), std::back_inserter(_chunks));
+    _context->chunkCount += csv.size();
+}
+
+void QuerySession::setDummy() {
+    _isDummy = true;
+    // Clear out chunk counts and _chunks, and replace with dummy chunk.
+    _context->chunkCount = 1;
+    _chunks.clear();
+    IntVector v;
+    v.push_back(1); // Dummy subchunk
+    _chunks.push_back(ChunkSpec(DUMMY_CHUNK, v));
+}
+
 void QuerySession::setResultTable(std::string const& resultTable) {
     _resultTable = resultTable;
 }
@@ -186,9 +202,19 @@ bool QuerySession::containsDb(std::string const& dbName) const {
     return _context->containsDb(dbName);
 }
 
+bool QuerySession::validateDominantDb() const {
+    return _context->containsDb(_context->dominantDb);
+}
+
 css::StripingParams
 QuerySession::getDbStriping() {
     return _context->getDbStriping();
+}
+
+boost::shared_ptr<IntSet const>
+QuerySession::getEmptyChunks() {
+    // FIXME: do we need to catch an exception here?
+    return _cssFacade->getEmptyChunks().getEmpty(_context->dominantDb);
 }
 
 rproc::MergeFixup
@@ -233,9 +259,7 @@ void QuerySession::finalize() {
     }
     // Make up for no chunks (chunk-less query): add the dummy chunk.
     if(_chunks.empty()) {
-        ChunkSpec cs;
-        cs.chunkId = DUMMY_CHUNK;
-        addChunk(cs);
+        setDummy();
     }
     _cssFacade.reset(); // Release handle on cssFacade so it can be reclaimed.
     _context->cssFacade.reset();
@@ -288,6 +312,7 @@ void QuerySession::_applyLogicPlugins() {
 
 void QuerySession::_generateConcrete() {
     _hasMerge = false;
+    _isDummy = false;
     // In making a statement concrete, the query's execution is split
     // into a parallel portion and a merging/aggregation portion.  In
     // many cases, not much needs to be done for the latter, since

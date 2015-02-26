@@ -26,7 +26,6 @@ extraTgts = {} # Other build outputs, e.g., distribution 'dist', etc.
 extraTgts['dist'] = []
 custom = detect.importCustom(env, extraTgts)
 
-detect.checkGeom()
 detect.checkTwisted()
 
 # Environment
@@ -49,7 +48,7 @@ if not env.GetOption('clean'):
 # all modules
 allModules = """ccontrol css czar global log mysql obsolete
                 parser proto proxy qana qdisp qproc query
-                rproc sql
+                rproc sql sg
                 tests util
                 wbase wconfig wcontrol wdb wlog wpublish wsched
                 xrdoss xrdsvc""".split()
@@ -79,7 +78,7 @@ shProducts = { "xrdoss" : {'mods' : """wlog mysql obsolete sql util
                "_czarLib" : {'mods' : """czar ccontrol global
                                          log rproc mysql
                                          parser query
-                                         sql util
+                                         sql util sg
                                          obsolete proto
                                          qana qdisp qproc""".split(),
                              'shmods' : ['css'],
@@ -142,7 +141,7 @@ def cacheObjs(env, depList, oType):
     result = []
     for d in depList:
         (name,ext) = os.path.splitext(str(d))
-        if ext == ".cc":
+        if (ext == ".cc") or (ext == ".cpp"):
             oName = name + oType
             if not cache[oName]:
                 if oType == ".o": cache[oName] = env.Object(oName, d)
@@ -215,7 +214,8 @@ for (pkg, opts) in shProducts.items():
             srcs.extend(defaultTgts[m])
         else:
             prods = libProducts[m]
-            srcs.extend(prods)
+            if prods:
+                srcs.extend(prods)
         pass
     if opts.has_key('extraSrcs'):
         srcs.extend(chain(*[extraSrcs[m] for m in opts['extraSrcs']]))

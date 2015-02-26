@@ -29,7 +29,6 @@ import logger
 import app
 import proxy
 import lsst.qserv.czar.config as config
-import lsst.qserv.czar.spatial as spatial
 
 # Main AppInterface class
 #
