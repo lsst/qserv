@@ -160,9 +160,9 @@ class DataLoader(object):
         """
 
         if not _mysql_identifier_validator(table):
-            raise ValueError('MySQL table name not allowed: %s', table)
+            raise ValueError('MySQL table name not allowed: ' + table)
         if not _mysql_identifier_validator(database):
-            raise ValueError('MySQL database name not allowed: %s', database)
+            raise ValueError('MySQL database name not allowed: ' + database)
 
         try:
             return self._run(database, table, schema, data)
@@ -565,24 +565,48 @@ class DataLoader(object):
 
             else:
 
+                # Partitioner may potentially produce empty overlap files even
+                # in cases when we should not make overlap tables. Check and
+                # filter out empty files or complain about non-empty.
+                if overlap and not self.partOptions.isSubChunked:
+                    # check contents, try to read some data and strip spaces
+                    data = open(path).read(1024).strip()
+                    if data:
+                        raise RuntimeError('Found non-empty overlap file for non-subchunked table: ' + path)
+                    else:
+                        self._log.info('Ignore empty overlap file %s', path)
+
                 if self.workerConnMap:
                     # find database for this chunk
                     worker = self.chunkMap.worker(chunkId)
                     conn = self.workerConnMap.get(worker)
                     if conn is None:
-                        raise RuntimeError('Existing chunk mapping is not in the list of workers: %s',
-                                           worker)
+                        raise RuntimeError('Existing chunk mapping is not in the list of workers: ' + worker)
                     self._log.info('load chunk %s to worker %s', chunkId, worker)
                 else:
                     # all goes to single node
                     self._log.info('load chunk %s to czar', chunkId)
                     conn = self.mysql
 
-                # make table if needed
-                ctable = self._makeChunkTable(conn, database, table, chunkId, overlap)
+                # make tables if needed
+                self._makeChunkAndOverlapTable(conn, database, table, chunkId)
 
                 # load data into chunk table
+                ctable = self._chunkTableName(table, chunkId, overlap)
                 self._loadOneFile(conn, database, ctable, path, csvPrefix)
+
+
+    @staticmethod
+    def _chunkTableName(table, chunkId, overlap):
+        """
+        Return full chunk table name or overlap table name.
+        """
+        ctable = table
+        if overlap:
+            ctable += 'FullOverlap'
+        ctable += '_'
+        ctable += str(chunkId)
+        return ctable
 
 
     def _createDummyChunk(self, database, table):
@@ -605,7 +629,7 @@ class DataLoader(object):
 
             if not self.partOptions.isView:
                 # just make regular chunk with special ID, do not load any data
-                self._makeChunkTable(conn, database, table, 1234567890, False)
+                self._makeChunkAndOverlapTable(conn, database, table, 1234567890)
             else:
                 # TODO: table is a actually a view, need somethig special. Old loader was
                 # creating new view just by renaming Table to Table_1234567890, I'm not sure
@@ -619,24 +643,27 @@ class DataLoader(object):
                 cursor.execute(q)
 
 
-    def _makeChunkTable(self, conn, database, table, chunkId, overlap):
-        """ Create table for a chunk if it does not exist yet. Returns table name. """
+    def _makeChunkAndOverlapTable(self, conn, database, table, chunkId):
+        """
+        Create table for a chunk if it does not exist yet, both regular
+        and overlap tables are created.
+        """
 
-        # build a table name
-        ctable = table
-        ctable += ['_', 'FullOverlap_'][overlap]
-        ctable += str(chunkId)
+        # build table names, regular non-overlap chunk table is always there
+        tables = [self._chunkTableName(table, chunkId, False)]
+        if self.partOptions.isSubChunked:
+            # only make overlap tables for sub-chunked tables
+            tables += [self._chunkTableName(table, chunkId, True)]
 
         cursor = conn.cursor()
+        for ctable in tables:
 
-        # make table using DDL from non-chunked one
-        q = "CREATE TABLE IF NOT EXISTS {2}.{0} LIKE {2}.{1}".format(ctable, table, database)
+            # make table using DDL from non-chunked one
+            q = "CREATE TABLE IF NOT EXISTS {2}.{0} LIKE {2}.{1}".format(ctable, table, database)
 
-        self._log.info('Make chunk table: %s', ctable)
-        self._log.debug('query: %s', q)
-        cursor.execute(q)
-
-        return ctable
+            self._log.info('Make chunk table: %s', ctable)
+            self._log.debug('query: %s', q)
+            cursor.execute(q)
 
 
     def _loadNonChunkedData(self, database, table, files):
@@ -687,7 +714,7 @@ class DataLoader(object):
         cursor = conn.cursor()
         try:
             if self._log.isEnabledFor(logging.DEBUG):
-                self._log.debug("query: %s",sql % conn.literal(data))
+                self._log.debug("query: %s", sql % conn.literal(data))
             cursor.execute(sql, data)
         except Exception as exc:
             self._log.critical('Failed to load data into non-partitioned table: %s', exc)
