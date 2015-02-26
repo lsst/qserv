@@ -77,7 +77,7 @@ def check_root_dirs():
 
     config = commons.getConfig()
 
-    for (section, option) in (('qserv', 'base_dir'), ('qserv', 'log_dir'), ('qserv', 'tmp_dir'),
+    for (section, option) in (('qserv', 'log_dir'), ('qserv', 'tmp_dir'),
                              ('mysqld', 'data_dir')):
         dir = config[section][option]
         if not exists_and_is_writable(dir):
