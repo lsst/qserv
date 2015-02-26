@@ -23,7 +23,7 @@
 /// @file
 
 // Class header
-#include "ccontrol/DynamicWorkQueue.h"
+#include "util/DynamicWorkQueue.h"
 
 // System headers
 #include <stdexcept>
@@ -31,7 +31,7 @@
 
 namespace lsst {
 namespace qserv {
-namespace ccontrol {
+namespace util {
 
 // A linked list of Callable objects associated with a specific session.
 struct DynamicWorkQueue::Queue {
@@ -318,4 +318,4 @@ bool DynamicWorkQueue::_shouldDecreaseThreadCount() const {
            _numThreads - _minThreads > _sessions.size()*_minThreadsPerSession;
 }
 
-}}} // namespace lsst::qserv::ccontrol
+}}} // namespace lsst::qserv::util
