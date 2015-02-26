@@ -101,7 +101,7 @@ shProducts = { "xrdoss" : {'mods' : """wlog mysql obsolete sql util
 
 # external libs for shmods
 shmodLibs = {
-  'css': ['log']
+  'css': ['log', 'boost_system']
 }
 
 # modules used in shProducts
