@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # LSST Data Management System
-# Copyright 2013-2014 LSST Corporation.
+# Copyright 2013-2015 LSST Corporation.
 #
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
@@ -25,5 +25,5 @@
 # Used to determine if Qserv run dir is compliant with Qserv version
 
 # @author  Fabrice Jammes, IN2P3
-QSERV_VERSION="2015_02"
+QSERV_VERSION="2015_03"
 echo "${QSERV_VERSION}"
