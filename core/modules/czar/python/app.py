@@ -109,6 +109,7 @@ listen()
 invokedActions = set()
 def stopAll():
     """Try to stop all InbandQueryActions in flight"""
+    return # Disable query killing DM-1715
     deathQueue = [i for i in invokedActions]
     for action in deathQueue:
         action.abort()

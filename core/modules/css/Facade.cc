@@ -98,7 +98,7 @@ bool
 Facade::containsDb(string const& dbName) const {
     if (dbName.empty()) {
         LOGF_INFO("Empty database name passed.");
-        throw NoSuchDb("<empty>");
+        return false;
     }
     string p = _prefix + "/DBS/" + dbName;
     bool ret =  _kvI->exists(p);

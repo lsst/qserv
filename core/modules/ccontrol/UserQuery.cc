@@ -255,7 +255,7 @@ void UserQuery::_setupMerger() {
 void UserQuery::_setupChunking() {
     boost::shared_ptr<qproc::IndexMap> im;
     std::string dominantDb = _qSession->getDominantDb();
-    if(!_qSession->validateDominantDb()) {
+    if(dominantDb.empty() || !_qSession->validateDominantDb()) {
         // TODO: Revisit this for L3
         throw UserQueryError("Couldn't determine dominantDb for dispatch");
     }
