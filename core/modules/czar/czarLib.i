@@ -37,7 +37,6 @@ Access to the classes from the qserv_czar library
 %module("threads"=1, package="lsst.qserv.czar") czarLib
 %{
 #define SWIG_FILE_WITH_INIT
-#include "ccontrol/dispatcher.h"
 #include "ccontrol/queryMsg.h"
 #include "ccontrol/QueryState.h"
 #include "css/KvInterface.h"
@@ -121,8 +120,6 @@ namespace std {
 %apply int *OUTPUT { int *write, int *read };
 %apply int *OUTPUT { int* chunkId, int* code, time_t* timestamp };
 
-%include "ccontrol/dispatcher.h"
-%include "ccontrol/queryMsg.h"
 %include "ccontrol/queryMsg.h"
 %include "ccontrol/QueryState.h"
 %include "css/KvInterface.h"

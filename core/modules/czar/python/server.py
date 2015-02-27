@@ -20,24 +20,26 @@
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
-# server.py : This module implements the HTTP and XML-RPC interfacing
-# logic using the Twisted networking library.  The XML-RPC interface
-# exposes functionality from the AppInterface class, while the HTTP
-# interface has not yet been updated to do the same.
+# server.py : This module implements XML-RPC and HTTP interfacing
+# logic using the Twisted networking library.  All methods on AppInterface
+# whose names do not include '_' are exported on both interfaces, along
+# with a few server utility commands.
 
 # Standard Python imports
-from itertools import ifilter
+from itertools import ifilter, imap
+import inspect
 import os
 import sys
+import string
 import time
 
 # Twisted imports
 from twisted.internet import reactor
-import twisted.web.resource
-import twisted.web.static
 import twisted.web
+import twisted.web.resource
 import twisted.web.server
-from twisted.web import xmlrpc
+import twisted.web.static
+import twisted.web.xmlrpc
 
 # Package imports
 import logger
@@ -46,196 +48,106 @@ import config
 
 # Module settings
 defaultPort = 8000
-defaultPath = "c"
+defaultHttpPath = "c"
 defaultXmlPath = "x"
 concurrencyLimit = 50
 
 
-class ClientResource(twisted.web.resource.Resource):
-    def __init__(self, interface):
-        twisted.web.resource.Resource.__init__(self)
-        self.interface = interface
+class XmlRpcInterface(twisted.web.xmlrpc.XMLRPC):
+    def __init__(self, endpoints):
+        twisted.web.xmlrpc.XMLRPC.__init__(self)
+        for endpoint in endpoints:
+            setattr(self, "_".join(["xmlrpc", endpoint.__name__]), endpoint)
+        self.help = [(endpoint.__name__, endpoint.__doc__) for endpoint in endpoints]
+        self.help.append(("help", "Provide a summary of available commands."))
+        self.help.sort()
 
-    def render_GET(self, request):
-        logger.inf("rendering get")
-        if "action" in request.args:
-            action = request.args["action"][0]
-            flattenedargs = dict(map(lambda t:(t[0],t[1][0]), request.args.items()))
-            return self.interface.execute(action, flattenedargs, lambda x:None)
-        return "Error, no action found"
+    def xmlrpc_help(self):
+        return self.help
 
-    def getChild(self, name, request):
-        logger.inf("trying to get child ", name)
-        if name == '':
-            return self
-
-        return twisted.web.resource.Resource.getChild(
-            self, name, request)
-
-def printdir(obj):
-    for f in dir(obj):
-        logger.inf("%s -- %s" % (f, getattr(obj,f)))
 
 class FunctionResource(twisted.web.resource.Resource):
     isLeaf = True
-    def __init__(self, func=lambda args:"Null function"):
+    doc = string.Template("<html><body>\n$body\n</body></html>")
+    def __init__(self, endpoint):
         twisted.web.resource.Resource.__init__(self)
-        self.function = func
+        self.func = endpoint
 
     def render_GET(self, request):
-        logger.inf("rendering get, args are", request.args)
-        logger.inf("postpath is", request.postpath)
-        return self.function(request)
-
-    def getChild(self, name, request):
-        if name == '':
-            return self
-        return twisted.web.resource.Resource.getChild(
-            self, name, request)
-
-class XmlRpcInterface(xmlrpc.XMLRPC):
-    def __init__(self, appInterface):
-        xmlrpc.XMLRPC.__init__(self)
-        self.appInterface = appInterface
-        self._bindAppInterface()
-        pass
-
-    def _bindAppInterface(self):
-        """Import the appInterface functions for publishing."""
-        prefix = 'xmlrpc'
-        map(lambda x: setattr(self, "_".join([prefix,x]),
-                              getattr(self.appInterface, x)),
-            self.appInterface.publishable)
-        logger.inf("contents:"," ".join(filter(lambda x:"xmlrpc_" in x, dir(self))))
-        pass
-
-    def xmlrpc_echo(self, echostr):
-        "Echo a string back (useful for sanity checking)."
-        s = str(echostr)
-        return s
+        body = str(self.func(*map(lambda x: request.args[x][0],
+            ifilter(lambda x: x != "self",
+                inspect.getargspec(self.func).args))))
+        return FunctionResource.doc.substitute(body=body)
 
 
-class HttpInterface:
-    def __init__(self, appInterface):
-        self.appInterface = appInterface
-        okname = ifilter(lambda x: "_" not in x, dir(self))
-        self.publishable = filter(lambda x: hasattr(getattr(self,x), 'func_doc'),
-                                  okname)
-    def query(self, req):
-        "Issue a query. Params: q=querystring, h=hintstring"
-        logger.inf(req)
-        flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
-        #printdir(arg)
-
-        if 'q' in req.args:
-            h = flatargs.get('h', None)
-            resp = ""
-            if h:
-                warning = "FIXME: No unmarshalling code for hints."
-                warning += "WARNING, no partitions will be used."
-                resp += warning
-                logger.wrn(warning)
-                h = None
-
-            taskId = self.appInterface.query(flatargs('q'), h)
-            resp += "Server processed, q='" + flatargs['q'] + "' your id is %d" % (taskId)
-            return resp
-        else:
-            return "no query in string, try q='select...'"
-
-    def help(self, req):
-        """A brief help message showing available commands"""
-        r = "" ## self._handyHeader()
-        r += "\n<pre>available commands:\n"
-        sorted =  map(lambda x: (x, getattr(self, x)), self.publishable)
-        sorted.sort()
-        for (k,v) in sorted:
-            r += "%-20s : %s\n" %(k, v.func_doc)
-        r += "</pre>\n"
-        return r
+class HttpInterface(twisted.web.resource.Resource):
+    def __init__(self, endpoints):
+        twisted.web.resource.Resource.__init__(self)
+        for endpoint in endpoints:
+            self.putChild(endpoint.__name__, FunctionResource(endpoint))
+        help = [(endpoint.__name__, endpoint.__doc__) for endpoint in endpoints]
+        help.append(("help", "Provide a summary of available commands."))
+        help.sort()
+        helpList = string.Template("<dl>\n$items</dl>")
+        helpItem = string.Template("<dt>$name</dt><dd>$doc</dd>\n")
+        items = ""
+        for (name, doc) in help:
+            items += helpItem.substitute(name=name, doc=doc)
+        self.helpstr = helpList.substitute(items=items)
+        self.putChild("help", FunctionResource(lambda: self.helpstr))
 
 
-    def check(self, req):
-        "Check status of query or task. Params: h=handle"
-        logger.inf(req)
-        key = 'id'
-        flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
-        if key in req.args and int(flatargs[key]):
-            res = self.appInterface.check(flatargs[key])
-            resp = ["checking status of query with handle %s" % flatargs[key],
-                    " would return \%done got %d", res]
-            return "\n".join(resp)
-
-        else:
-            return "\n".join([ "no handle in string, try %s=<taskId> " % key,
-                               "where <taskId> was returned from the initial query."])
-    def results(self, req):
-        "Get results location for a query or task. Params: h=handle"
-        logger.inf(req)
-        flatargs = dict(map(lambda t:(t[0],t[1][0]), req.args.items()))
-        key = 'id'
-        if key in req.args:
-            return "\n".join(["retrieving status of query with handle %s" % flatargs[key],
-                              " would return db handle ",
-                              self.appInterface(flatargs[key])])
-        else:
-            return "\n".join([ "no handle in string, try h=handle ",
-                               "where handle is the handle you got back from your initial query."])
-
-
-    def reset(self, req):
-        "Resets/restarts server uncleanly. No params."
-        return self.appInterface.reset() # Should not return
-
-    def stop(self, req):
-        "Unceremoniously stop the server."
-        return self.appInterface.stop()
-        reactor.stop()
-    pass
-
-
-class Master:
-
+class Czar:
     def __init__(self):
         try:
             cfg = config.config
-            self.port = cfg.getint("frontend","port")
+            self.port = cfg.getint("frontend", "port")
         except:
-            logger.wrn("Bad or missing port for server. Using",defaultPort)
+            logger.wrn("Bad or missing port for server. Using", defaultPort)
             self.port = defaultPort
-        pass
 
     def listen(self):
-        twisted.internet.reactor.suggestThreadPoolSize(concurrencyLimit)
+        self.ai = AppInterface(reactor.callInThread)
+        endpoints = self.endpoints()
         root = twisted.web.resource.Resource()
+        root.putChild(defaultXmlPath, XmlRpcInterface(endpoints))
+        root.putChild(defaultHttpPath, HttpInterface(endpoints))
         twisted.web.static.loadMimeTypes() # load from /etc/mime.types
-
-        ai = AppInterface(reactor)
-        c = HttpInterface(ai)
-        xml = XmlRpcInterface(ai)
-
-        # not sure I need the sub-pat http interface
-        root.putChild(defaultPath, ClientResource(c))
-        root.putChild(defaultXmlPath, xml)
-
-        # publish the client functions
-        for x in c.publishable:
-            root.putChild(x, FunctionResource(getattr(c, x)))
-
-        # init listening
+        reactor.suggestThreadPoolSize(concurrencyLimit)
+        reactor.addSystemEventTrigger('before', 'shutdown', self.ai.cancelEverything)
         reactor.listenTCP(self.port, twisted.web.server.Site(root))
-
         logger.inf("Starting Qserv interface on port: %d"% self.port)
+        reactor.run() # won't return until reactor.stop() is called
 
-        # Insert a memento so we can check if the reactor is running.
-        reactor.lsstRunning = True
-        reactor.run()
-        pass
+    def endpoints(self):
+        endpoints = filter(inspect.ismethod,
+            imap(lambda x: getattr(self.ai, x),
+                ifilter(lambda x: '_' not in x,
+                    dir(self.ai))))
+        endpoints.extend([self.echo, self.stop, self.reset])
+        logger.inf("endpoints:", endpoints)
+        return endpoints
+
+    def echo(self, echostr):
+        "Echo a string back (useful for sanity checking)."
+        return str(echostr)
+
+    def stop(self):
+        "Unceremoniously stop the server."
+        reactor.stop()
+
+    def reset(self):
+        "Resets/restarts server uncleanly. No params."
+        args = sys.argv #take the original arguments
+        args.insert(0, sys.executable) # add python
+        os.execv(sys.executable, args) # replace self with new python.
+        # Normally we won't get here -- os.execv should overwrite us.
+        logger.err("Reset failed:", sys.executable, str(args))
+
 
 def runServer():
-    m = Master()
-    m.listen()
-    pass
+    cz = Czar()
+    cz.listen()
 
 
 if __name__ == "__main__":

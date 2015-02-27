@@ -45,50 +45,32 @@ import lsst.qserv.czar.config as config
 # czar daemon. It is unclear whether this still works.
 class AppInterface:
     """An implemented interface to the Qserv czar application logic. """
-    def __init__(self, reactor=None):
+    def __init__(self, threadFunc=None):
+        self._threadFunc = threadFunc
         self.tracker = app.TaskTracker()
-        okname = ifilter(lambda x: "_" not in x, dir(self))
-        self.publishable = filter(lambda x: hasattr(getattr(self,x),
-                                                    'func_doc'),
-                                  okname)
-        self.reactor = reactor
-        self.reactor.addSystemEventTrigger('before', 'shutdown',
-                                           self.cancelEverything)
-
-        self.actions = {}
         # set id counter to milliseconds since the epoch, mod 1 year.
         self._idCounter = int((time.time() % (60*60*24*365)) * 1000)
         logger.dbg("_idCounter", self._idCounter)
         self._resultDb = config.config.get("resultdb", "db")
         pass
 
-    def _callWithThread(self, function):
-        if 'lsstRunning' in dir(self.reactor):
-            self.reactor.callInThread(function)
+    def _maybeCallWithThread(self, function):
+        """If we have a designated thread func, use it to execute function in a new thread.  Otherwise,
+        execute function inline.
+        @returns bool indicating whether function was called in a new thread."""
+        if self._threadFunc:
+            self._threadFunc(function)
+            return True
         else:
             function()
+            return False
         pass
-
-    def _getThreadFunc(self):
-        if 'lsstRunning' in dir(self.reactor):
-            return self.reactor.callInThread
-        else:
-            return lambda f: thread.start_new_thread(f, tuple())
-        pass
-
-    def queryNow(self, q, hints):
-        """Issue a query. q=querystring, h=hint list
-        @return query result table name
-        This executes the query, waits for completion, and returns results.
-        (broken)"""
-        raise StandardError("Unimplemented")
 
     def submitQuery(self, query, conditions):
-        return self.submitQueryWithLock(query, conditions)
-
-    def submitQueryWithLock(self, query, conditions):
-        """Simplified mysqlproxy version.
+        """Issue a query.  Params: query, conditions.
         @returns result table name, lock/message table name, but before completion."""
+        # FIXME: Need to fix task tracker, and return taskID for tracking
+
         proxyName = conditions["client_dst_name"]
         proxyThread = conditions["server_thread_id"]
         ## FIXME: Use the proxyId to match up
@@ -114,34 +96,15 @@ class AppInterface:
         a = app.InbandQueryAction(query, context,
                                   lock.setSessionId, resultName)
         if a.getIsValid():
-            self._callWithThread(a.invoke)
-            lock.unlockAfter(self._getThreadFunc(), a.getResult)
+            self._maybeCallWithThread(a.invoke)
+            lock.unlockAfter(self._threadFunc, a.getResult)
         else:
             lock.unlock()
             return ("error","error",a.getError())
         return (resultName, lockName, "")
 
-    # TODO / FIXME: the code below will be revisted when working on DM-211
-    #def query(self, q, hints):
-    #    """Issue a query, and return a taskId that can be used for tracking.
-    #    taskId is a 16 byte string, but should be treated as an
-    #    opaque identifier.
-    #    (broken)
-    #    """
-    #    # FIXME: Need to fix task tracker.
-    #    #taskId = self.tracker.track("myquery", a, q)
-    #    #stats = time.qServQueryTimer[time.qServRunningName]
-    #    #stats["appInvokeStart"] = time.time()
-    #    raise StandardError("unimplemented")
-    #    a = app.HintedQueryAction(q, hints, self.pmap)
-    #    key = a.queryHash
-    #    self.actions[key] = a
-    #    self._callWithThread(a.invoke)
-    #    #stats["appInvokeFinish"] = time.time()
-    #    return key
-
     def killQuery(self, query, taskId):
-        """Process a kill query command (experimental)"""
+        """Process a kill query command (experimental).  Params: query, taskId."""
         ## Disable query killing DM-1715
         ##a = app.KillQueryAction(query)
         ##self._callWithThread(a.invoke)
@@ -152,57 +115,28 @@ class AppInterface:
     ### complete in this manner. We still want to support this (or
     ### equivalent) in the non proxy interface.
     def joinQuery(self, taskId):
-        """Wait for a query to finish, then return its results."""
+        """Wait for a query to finish, then return its results. Params: taskId."""
         if str(taskId) not in self.actions:
             return None
         a = self.actions[taskId]
         r = a.getResult()
         return r
 
-    def help(self):
-        """A brief help message showing available commands"""
-        r = "" ## self._handyHeader()
-        r += "\n<pre>available commands:\n"
-        sorted =  map(lambda x: (x, getattr(self, x)), self.publishable)
-        sorted.sort()
-        for (k,v) in sorted:
-            r += "%-20s : %s\n" %(k, v.func_doc)
-        r += "</pre>\n"
-        return r
-
     def check(self, taskId):
-        "Check status of query or task. Params: "
+        "Check status of query or task. Params: taskId."
         a = app.CheckAction(self.tracker, taskId)
         a.invoke()
         return a.results
 
     def results(self, taskId):
-        "Get results location for a query or task. Params: taskId"
+        "Get results location for a query or task. Params: taskId."
         return app.results(self.tracker, taskId)
 
     def resultTableString(self, table):
         """Get contents of a result table."""
         return app.getResultTable(table)
 
-    def reset(self):
-        "Resets/restarts server uncleanly. No params."
-        if self.reactor:
-            args = sys.argv #take the original arguments
-            args.insert(0, sys.executable) # add python
-            os.execv(sys.executable, args) # replace self with new python.
-            logger.err("Reset failed:", sys.executable, str(args))
-            return # This will not return.  os.execv should overwrite us.
-        else:
-            logger.err("<Not resetting: no reactor>")
-        pass
-
-    def stop(self):
-        "Unceremoniously stop the server."
-        if self.reactor:
-            self.reactor.stop()
-        pass
-
     def cancelEverything(self):
         """Try to kill the threads running underneath, e.g. xrootd or otherwise
-        children of app"""
+        children of app.  No Params."""
         app.stopAll()
