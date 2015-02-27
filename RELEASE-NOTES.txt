@@ -8,6 +8,10 @@ Code improvements:
             list'"
  * DM-548:  rearchitect Qserv to fix dependencies between modules in qserv/core
  * DM-335:  Migrate std::lists to std::vectors
+ * DM-1570: Create integration test case using data duplicator
+ * DM-1145: Remove code made obsolete
+ * DM-1715: Disable query killing
+ * DM-322:  Trim python importing by czar in app.py
 
 New features:
  * DM-646:  Implement DISTINCT aggregate in qserv
@@ -18,10 +22,16 @@ New features:
 
 Bug fixes:
  * DM-1842: Fix encoding problem in qserv-czar.log
+ * DM-1784: Fix errors in parsing or rendering nested expressions
+ * DM-2058: Data loader should always create overlap tables
+ * DM-681:  Parser ignores syntax after LIMIT
  * DM-1888: scons install pass even if scons unit test fails
  * DM-1974: Fix enclose, escape, and line termination characters in
             qserv-data-loader
  * DM-2157: Data loader crashes on uncompressed data.
+
+Documentation improvements:
+ * DM-814:  Cleanup in core/examples and core/doc
 
 R E L E A S E   2015_01
 =======================
