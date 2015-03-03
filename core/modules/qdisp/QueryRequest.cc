@@ -64,7 +64,7 @@ class QueryRequest::Canceller : public util::VoidCallable<void> {
 public:
     Canceller(QueryRequest& qr) : _queryRequest(qr) {}
     virtual void operator()() {
-        _queryRequest.Finished(true); // Abort using XrdSsiRequest interface
+        _queryRequest.cancel();
     }
 private:
     QueryRequest& _queryRequest;
@@ -84,7 +84,8 @@ QueryRequest::QueryRequest(
       _requester(requester),
       _finishFunc(finishFunc),
       _retryFunc(retryFunc),
-      _status(status) {
+      _status(status),
+      _cancelled(false) {
     _registerSelfDestruct();
     LOGF_INFO("New QueryRequest with payload(%1%)" % payload.size());
 }
@@ -110,6 +111,11 @@ void QueryRequest::RelRequestBuffer() {
 // Callback function for XrdSsiRequest.
 bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     std::string errorDesc;
+    bool shouldStop = cancelled();
+    if(shouldStop) {
+        cancel();
+        return true;
+    }
     if(!isOk) {
         _requester->errorFlush(std::string("Request failed"), -1);
         _status.report(ExecStatus::RESPONSE_ERROR);
@@ -208,11 +214,29 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
     }
 }
 
+void QueryRequest::cancel() {
+    {
+        boost::lock_guard<boost::mutex> lock(_cancelledMutex);
+        if(_cancelled) {
+            return; // Don't do anything if already cancelled.
+        }
+        _cancelled = true;
+        _retryFunc.reset(); // Prevent retries.
+    }
+    _status.report(ExecStatus::CANCEL);
+    _errorFinish(true);
+}
+
+bool QueryRequest::cancelled() {
+    boost::lock_guard<boost::mutex> lock(_cancelledMutex);
+    return _cancelled;
+}
+
 /// Finalize under error conditions and retry or report completion
 /// This function will destroy this object.
-void QueryRequest::_errorFinish() {
+void QueryRequest::_errorFinish(bool shouldCancel) {
     LOGF_DEBUG("Error finish");
-    bool ok = Finished();
+    bool ok = Finished(shouldCancel);
     if(!ok) {
         LOGF_ERROR("Error cleaning up QueryRequest");
     } else {

@@ -44,6 +44,18 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 
+class QueryResourceDebug {
+public:
+    static ExecStatus& getStatus(QueryResource& qr) {
+        return qr._status;
+    }
+    static std::string const& getPayload(QueryResource& qr) {
+        return qr._payload;
+    }
+    static void finish(QueryResource& qr) {
+        qr._finishFunc->operator ()(true);
+    }
+};
 
 util::FlagNotify<bool> XrdSsiServiceMock::_go(true);
 util::Sequential<int> XrdSsiServiceMock::_count(0);
@@ -74,15 +86,15 @@ bool XrdSsiServiceMock::Provision(Resource *resP, unsigned short  timeOut){
  * The payload of qr should contain the number of milliseconds this function will sleep before returning.
  */
 void XrdSsiServiceMock::mockProvisionTest(qdisp::QueryResource *qr, unsigned short  timeOut){
-    string payload = qr->_payload;
+    string payload = QueryResourceDebug::getPayload(*qr);
     int millisecs = atoi(payload.c_str());
     // barrier for all threads when _go is false.
     _go.wait(true);
     LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep begin");
     boost::this_thread::sleep(boost::posix_time::milliseconds(millisecs));
     LOGF_INFO("XrdSsiServiceMock::mockProvisionTest sleep end");
-    qr->_status.report(ExecStatus::RESPONSE_DONE);
-    qr->_finishFunc->operator ()(true); // This should call class NotifyExecutive::operator()
+    QueryResourceDebug::getStatus(*qr).report(ExecStatus::RESPONSE_DONE);
+    QueryResourceDebug::finish(*qr); // This should call class NotifyExecutive::operator()
 }
 
 }}} // namespace

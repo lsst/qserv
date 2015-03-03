@@ -22,13 +22,25 @@
 
 # Standard
 from itertools import ifilter
+import string
 import time
+import traceback
 
 # Package imports
 import logger
 import app
 import proxy
 import lsst.qserv.czar.config as config
+
+## Helpers:
+def parseKillId(killQuery):
+    """From a "KILL QUERY 1234" string, return 1234"""
+    tokens = map(string.strip, killQuery.split())
+    try:
+        # Could add validation code here, but shouldn't be necessary.
+        return int(tokens[2])
+    except:
+        return None
 
 # Main AppInterface class
 #
@@ -52,6 +64,7 @@ class AppInterface:
         self._idCounter = int((time.time() % (60*60*24*365)) * 1000)
         logger.dbg("_idCounter", self._idCounter)
         self._resultDb = config.config.get("resultdb", "db")
+        self._clientToServerId = {}
         pass
 
     def _maybeCallWithThread(self, function):
@@ -68,12 +81,10 @@ class AppInterface:
 
     def submitQuery(self, query, conditions):
         """Issue a query.  Params: query, conditions.
-        @returns result table name, lock/message table name, but before completion."""
-        # FIXME: Need to fix task tracker, and return taskID for tracking
+        @returns (result table name, lock/message table name, error)
 
-        proxyName = conditions["client_dst_name"]
-        proxyThread = conditions["server_thread_id"]
-        ## FIXME: Use the proxyId to match up
+        Does not block for query completion."""
+        # FIXME: Need to fix task tracker, and return taskID for tracking
 
         # Short-circuit the standard proxy/client queries.
         quickResult = app.computeShortCircuitQuery(query, conditions)
@@ -101,14 +112,41 @@ class AppInterface:
         else:
             lock.unlock()
             return ("error","error",a.getError())
+
+        # Remember client context for kill-operations
+        proxyName = conditions["client_dst_name"]
+        proxyThread = conditions["server_thread_id"]
+        self._clientToServerId[(proxyThread, proxyName)] = a.sessionId
+
         return (resultName, lockName, "")
 
-    def killQuery(self, query, taskId):
-        """Process a kill query command (experimental).  Params: query, taskId."""
-        ## Disable query killing DM-1715
-        ##a = app.KillQueryAction(query)
-        ##self._callWithThread(a.invoke)
-        return "Attempt query kill: " + query
+    def killQuery(self, sessionId):
+        """Process a kill query command (experimental).
+        @param sessionId : InbandQueryAction session id ."""
+        a = app.KillQueryAction(sessionId)
+        self._maybeCallWithThread(a.invoke)
+        return "Attempt query kill: " + str(sessionId)
+
+    def killQueryUgly(self, killStr, clientId):
+        """Process a kill query command (experimental).
+        @param killStr : (client)proxy-provided "KILL QUERY ..." string
+        @param clientId : client_dst_name from proxy"""
+        #lookup sessionId using thread_id (parsed from killStr) and clientId
+        try:
+            print "killStr, clientId", killStr, clientId
+            clientThreadId = parseKillId(killStr)
+            print "clientThreadId = ", clientThreadId
+            print "mapping:", self._clientToServerId
+            sessionId = self._clientToServerId[(clientThreadId, clientId)]
+            self.killQuery(sessionId)
+        except Exception, e:
+            traceStr = traceback.format_exc()
+            info = "Error parsing or finding task to kill: %s, %s" % (
+                killStr, clientId)
+            logger.wrn("Error killing query: " + info + "\n" + traceStr)
+            return info
+
+        return True
 
     ### Deprecated/unused: the Lua interface is single-threaded and doesn't
     ### tolerate blocking well, so we never want it to wait for a query to

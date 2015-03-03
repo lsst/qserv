@@ -57,6 +57,8 @@ public:
                   boost::shared_ptr<util::VoidCallable<void> > retryFunc,
                   ExecStatus& status)
         : Resource(rPath.c_str()),
+          _session(NULL),
+          _request(NULL),
           _payload(payload),
           _requester(requester),
           _finishFunc(finishFunc),
@@ -69,6 +71,11 @@ public:
     void ProvisionDone(XrdSsiSession* s);
     const char* eInfoGet(int &code);
 
+    std::string const& getPayload() const { return _payload; }
+
+    friend class QueryResourceDebug;
+
+private:
     XrdSsiSession* _session; ///< unowned, do not delete.
     QueryRequest* _request; ///< Owned temporarily, special deletion handling.
     std::string const _payload; ///< Request payload

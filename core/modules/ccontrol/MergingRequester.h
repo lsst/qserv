@@ -97,8 +97,12 @@ public:
         return _error;
     }
 
+    /// Cancel operations on the Receiver.
+    /// This cancels internal state and calls _cancelFunc .
+    ///
+    virtual void cancel();
+
     using ResponseRequester::registerCancel;
-    using ResponseRequester::cancel;
 
 private:
     void _initState();
@@ -116,6 +120,8 @@ private:
     MsgState _state; ///< Received message state
     boost::shared_ptr<proto::WorkerResponse> _response; ///< protobufs msg buf
     bool _flushed; ///< flushed to InfileMerger?
+    boost::mutex _cancelledMutex; ///< Protect check/write of cancel flag.
+    bool _cancelled; ///< Cancelled?
 };
 
 }}} // namespace lsst::qserv::qdisp

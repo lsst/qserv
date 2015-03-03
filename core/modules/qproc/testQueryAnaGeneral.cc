@@ -791,7 +791,18 @@ BOOST_AUTO_TEST_CASE(MatchTableWithWhere) {
 
 BOOST_AUTO_TEST_SUITE_END()
 ////////////////////////////////////////////////////////////////////////
+BOOST_FIXTURE_TEST_SUITE(Garbage, ParserFixture)
+BOOST_AUTO_TEST_CASE(Garbled) {
+    std::string stmt = "LECT sce.filterName,sce.field "
+        "FROM LSST.Science_Ccd_Exposure AS sce "
+        "WHERE sce.field=535 AND sce.camcol LIKE '%' ";
+    boost::shared_ptr<QuerySession> qs =
+        testStmt3(qsTest, stmt,
+                  "ParseException:Parse error(ANTLR):unexpected token: LECT:");
 
+}
+BOOST_AUTO_TEST_SUITE_END()
+////////////////////////////////////////////////////////////////////////
 BOOST_FIXTURE_TEST_SUITE(EquiJoin, ParserFixture)
 BOOST_AUTO_TEST_CASE(FreeIndex) {
     // Equi-join using index and free-form syntax

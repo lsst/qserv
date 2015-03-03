@@ -64,6 +64,9 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
         _requester->errorFlush(std::string(msg), code);
         return;
     }
+    if(_requester->cancelled()) {
+        return; // Don't bother doing anything if the requester doesn't care.
+    }
     _session = s;
     _request = new QueryRequest(s, _payload, _requester,
                                 _finishFunc,  _retryFunc, _status);

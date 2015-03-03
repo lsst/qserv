@@ -48,8 +48,7 @@ namespace test = boost::test_tools;
 using namespace lsst::qserv;
 
 typedef util::Sequential<int> SequentialInt;
-
-BOOST_AUTO_TEST_SUITE(Suite)
+typedef std::vector<qdisp::ResponseRequester::Ptr> RequesterVector;
 
 class ChunkMsgReceiverMock : public MsgReceiver {
 public:
@@ -135,11 +134,25 @@ public:
     bool _finished;
 };
 
+/** Add dummy requests to an executive corresponding to the requesters
+ */
+void addFakeRequests(qdisp::Executive &ex, SequentialInt &sequence, std::string const& millisecs, RequesterVector& rv) {
+    ResourceUnit ru;
+    int copies = rv.size();
+    std::vector<qdisp::Executive::Spec> s(copies);
+    for(int j=0; j < copies; ++j) {
+        s[j].resource = ru; // dummy
+        s[j].request = millisecs; // Request = stringified milliseconds
+        s[j].requester = rv[j];
+        ex.add(sequence.incr(), s[j]); // ex.add() is not thread safe.
+    }
+}
+
 /** Start adds 'copies' number of test requests that each sleep for 'millisecs' time
  * before signaling to 'ex' that they are done.
  * Returns time to complete in seconds.
  */
-void executiveTest(qdisp::Executive &ex, SequentialInt &sequence, SequentialInt &chunkId, std::string &millisecs, int copies) {
+void executiveTest(qdisp::Executive &ex, SequentialInt &sequence, SequentialInt &chunkId, std::string const& millisecs, int copies) {
     // Test class Executive::add
     // Modeled after ccontrol::UserQuery::submit()
     ResourceUnit ru;
@@ -148,14 +161,13 @@ void executiveTest(qdisp::Executive &ex, SequentialInt &sequence, SequentialInt 
     boost::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId.get());
     ccontrol::MergingRequester::Ptr mr = boost::make_shared<ccontrol::MergingRequester>(cmr, infileMerger, chunkResultName);
     std::string msg = millisecs;
-    std::vector<qdisp::Executive::Spec> s(copies);
+    RequesterVector rv;
     for (int j=0; j < copies; ++j) {
-        s[j].resource = ru;
-        s[j].request = msg;
-        s[j].requester = mr;
-        ex.add(sequence.incr(), s[j]); // ex.add() is not thread safe.
+        rv.push_back(mr);
     }
+    addFakeRequests(ex, sequence, millisecs, rv);
 }
+
 
 /** This function is run in a separate thread to fail the test if it takes too long
  * for the jobs to complete.
@@ -167,6 +179,8 @@ void timeoutFunc(util::Flag<bool>& flagDone, int millisecs) {
     LOGF_INFO("timeoutFunc sleep over millisecs=%1% done=%2%" % millisecs % done);
     BOOST_REQUIRE(done == true);
 }
+
+BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(Executive) {
     LOGF_INFO("Executive test 1");
@@ -370,5 +384,111 @@ BOOST_AUTO_TEST_CASE(TransactionSpec) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE(Squash)
+
+class CancellableRequester : public qdisp::ResponseRequester {
+public:
+    using ResponseRequester::CancelFunc;
+
+    typedef boost::shared_ptr<CancellableRequester> Ptr;
+    CancellableRequester()
+        : _cancelCalls(0) {
+        reset();
+    }
+    virtual ~CancellableRequester() {}
+
+    virtual std::vector<char>& nextBuffer() {
+        return _buffer;
+    }
+
+    virtual bool flush(int bLen, bool last) {
+        _flushedBytes += bLen;
+        if(_receivedLast) {
+            throw std::runtime_error("Duplicate last");
+        }
+        _receivedLast = last;
+        return true;
+    }
+    virtual void errorFlush(std::string const& msg, int code) {
+        _lastError.msg = msg;
+        _lastError.code = code;
+    }
+
+    virtual bool finished() const { return false; }
+    virtual bool reset() {
+        _flushedBytes = 0;
+        _receivedLast = false;
+        _lastError = Error();
+        return true;
+    }
+
+    virtual std::ostream& print(std::ostream& os) const {
+        return os << "CancellableRequester";
+    }
+
+    virtual Error getError() const { return _lastError; }
+
+    virtual void registerCancel(boost::shared_ptr<CancelFunc> cancelFunc) {
+        throw std::runtime_error("Unexpected registerCancel() call");
+    }
+
+    virtual void cancel() { _cancelCalls += 1; }
+    virtual bool cancelled() { return _cancelCalls > 0; }
+
+    // Leave "public" to allow test checking.
+    std::vector<char> _buffer;
+    int _flushedBytes;
+    bool _receivedLast;
+    int _cancelCalls;
+    Error _lastError;
+};
+
+BOOST_AUTO_TEST_CASE(ExecutiveSquash) {
+    qdisp::Executive ex(boost::make_shared<qdisp::Executive::Config>(0,0),
+                        boost::make_shared<qdisp::MessageStore>());
+    SequentialInt sequence(0);
+    SequentialInt chunkId(1234);
+    int jobs = 0;
+    const int CHUNK_COUNT=4;
+
+    int millisInt = 200;
+    std::string millis(boost::lexical_cast<std::string>(millisInt));
+    jobs += CHUNK_COUNT;
+    RequesterVector rv;
+    for (int j=0; j < CHUNK_COUNT; ++j) {
+        rv.push_back(boost::make_shared<CancellableRequester>());
+    }
+    addFakeRequests(ex, sequence, millis, rv);
+    LOGF_INFO("jobs=%1%" % jobs);
+    ex.requestSquash(2); // Squash one of the items.
+    ex.join();
+    BOOST_CHECK(ex.getEmpty() == true);
+    // See if the requesters got the cancellation message.
+    int rCancels = 0;
+    for (int j=0; j < CHUNK_COUNT; ++j) {
+        int c = dynamic_cast<CancellableRequester*>(rv[j].get())->_cancelCalls;
+        if (c > 0) { ++rCancels; }
+    }
+    BOOST_CHECK_EQUAL(rCancels, 1);
+
+    for (int j=0; j < CHUNK_COUNT; ++j) { // Reset rv
+        rv[j] = boost::make_shared<CancellableRequester>();
+    }
+    addFakeRequests(ex, sequence, millis, rv);
+    LOGF_INFO("jobs=%1%" % jobs);
+    ex.squash();
+    ex.join();
+    BOOST_CHECK(ex.getEmpty() == true);
+    // See if the requesters got the cancellation message.
+    rCancels = 0;
+    for (int j=0; j < CHUNK_COUNT; ++j) {
+        int c = dynamic_cast<CancellableRequester*>(rv[j].get())->_cancelCalls;
+        if (c > 0) { ++rCancels; }
+    }
+    BOOST_CHECK_EQUAL(rCancels, 4);
+
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 

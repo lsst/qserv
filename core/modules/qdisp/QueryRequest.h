@@ -28,6 +28,7 @@
 #include <string>
 #include "boost/shared_ptr.hpp"
 #include "boost/make_shared.hpp"
+#include "boost/thread/mutex.hpp"
 #include "XrdSsi/XrdSsiRequest.hh"
 
 // Local headers
@@ -93,10 +94,13 @@ public:
     /// Called by xrootd when new data is available.
     virtual void ProcessResponseData(char *buff, int blen, bool last);
 
+    virtual void cancel();
+    virtual bool cancelled();
+
 private:
     bool _importStream();
     bool _importError(std::string const& msg, int code);
-    void _errorFinish();
+    void _errorFinish(bool shouldCancel=false);
     void _finish();
     void _registerSelfDestruct();
 
@@ -116,6 +120,9 @@ private:
     /// Reference to an updatable Status
     ExecStatus& _status;
     std::string _errorDesc; ///< Error description
+
+    boost::mutex _cancelledMutex;
+    bool _cancelled;
     class Canceller;
     friend class Canceller;
 }; // class QueryRequest

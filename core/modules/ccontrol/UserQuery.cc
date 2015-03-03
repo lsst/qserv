@@ -136,6 +136,7 @@ std::string const& UserQuery::getError() const {
 
 /// Attempt to kill in progress.
 void UserQuery::kill() {
+    LOGF_INFO("UserQuery kill");
     _executive->squash();
 }
 
@@ -253,6 +254,7 @@ void UserQuery::_setupMerger() {
 }
 
 void UserQuery::_setupChunking() {
+    // Do not throw exceptions here, set _errorExtra .
     boost::shared_ptr<qproc::IndexMap> im;
     std::string dominantDb = _qSession->getDominantDb();
     if(dominantDb.empty() || !_qSession->validateDominantDb()) {

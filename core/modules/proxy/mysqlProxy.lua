@@ -228,7 +228,6 @@ function utilities()
        return string.sub(String,1,string.len(Start))==Start
     end
 
-
     ---------------------------------------------------------------------------
     return {
         tableToString = tableToString,
@@ -548,7 +547,6 @@ function queryProcessing()
            return err.set(ERR_QSERV_PARSE, "Qserv error: " .. qservError)
         end
 
-
         return SUCCESS
      end
 
@@ -578,16 +576,24 @@ function queryProcessing()
 
     ---------------------------------------------------------------------------
 
-    local killQservQuery = function(q, qU)
+    local killQservQuery = function(qU)
+        -- Idea: "KILL QUERY <server.thread_id>" is in the parameter, so we
+        -- just have to pass along qU and the original client id so
+        -- that the server can differentiate among clients and kill
+        -- the right query.
         proxy.response.type = proxy.MYSQLD_PACKET_OK
         local callError, ok, res =
            pcall(xmlrpc.http.call,
-                 rpcHP, "killQuery", q, qU)
+                 rpcHP, "killQueryUgly", qU, proxy.connection.client.dst.name)
+
         if (not callError) then
-           return err.set(ERR_RPC_CALL, "Cannot connect to Qserv master; "
+           err.set(ERR_RPC_CALL, "Cannot connect to Qserv master; "
                           .. "Exception in RPC call: " .. ok)
+           return err.send()
         elseif (not ok) then
-           return err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
+           print("\nKill query RPC failure: " .. res .. "---" .. proxy.connection.client.dst.name)
+           err.set(ERR_RPC_CALL, "rpc call failed for " .. rpcHP)
+           return err.send()
         end
         -- Assemble result
         proxy.response.resultset = {
