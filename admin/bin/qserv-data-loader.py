@@ -121,6 +121,10 @@ class Loader(object):
                            'have enough space to keep all data. If option --skip-partition is specified '
                            '(without --one-table) then directory must exist and have existing data in it. '
                            'Otherwise directory must be empty or do not exist. def: %(default)s.')
+        group.add_argument('-t', '--tmp-dir', dest='tmpDir', metavar='PATH',
+                           default=None, help='Directory for non-chunk temporary files, e.g. uncompressed '
+                           'data files. By default temporary directory with random name inside chunks-dir '
+                           'is created to hold temporary data.')
         group.add_argument('-k', '--keep-chunks', dest='keepChunks', action='store_true', default=False,
                            help='If specified then chunks will not be deleted after loading.')
         group.add_argument('-s', '--skip-partition', dest='skipPart', action='store_true', default=False,
@@ -210,6 +214,7 @@ class Loader(object):
                 handler.addFilter(_LogFilter(loggerName))
             logger = logging.getLogger()
             logger.setLevel(level=levels.get(verbosity, logging.DEBUG))
+            logger.handlers = []
             logger.addHandler(handler)
 
         # connect to czar mysql server
@@ -231,6 +236,7 @@ class Loader(object):
                                  workerConnMap=workerConnMap,
                                  chunksDir=self.args.chunksDir,
                                  keepChunks=self.args.keepChunks,
+                                 tmpDir=self.args.tmpDir,
                                  skipPart=self.args.skipPart,
                                  oneTable=self.args.oneTable,
                                  qservAdmin=qservAdmin,
