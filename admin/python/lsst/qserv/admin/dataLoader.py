@@ -73,7 +73,7 @@ class DataLoader(object):
 
     def __init__(self, configFiles, mysqlConn, workerConnMap={}, chunksDir="./loader_chunks",
                  chunkPrefix='chunk', keepChunks=False, skipPart=False, oneTable=False,
-                 qservAdmin=None, cssClear=False, indexDb='qservMeta',
+                 qservAdmin=None, cssClear=False, indexDb='qservMeta', tmpDir=None,
                  emptyChunks=None, deleteTables=False, loggerName=None):
         """
         Constructor parses all arguments and prepares for execution.
@@ -95,6 +95,8 @@ class DataLoader(object):
         @param cssClear:     If true then CSS info for a table will be deleted first.
         @param indexDb:      Name of  database for object indices, index is generated for director
                              table when it is partitioned, use empty string to disable index.
+        @param tmpDir:       Temporary directory to store uncompressed files. If None then directory
+                             inside chunksDir will be used. Will be created if does not exist.
         @param emptyChunks:  Path name for "empty chunks" file, may be None.
         @param deleteTables: If True then existing tables in database will be deleted.
         @param loggerName:   Logger name used for logging all messages from loader.
@@ -108,18 +110,20 @@ class DataLoader(object):
         self.mysql = mysqlConn
         self.workerConnMap = workerConnMap.copy()
         self.chunksDir = chunksDir
+        self.tmpDir = tmpDir
         self.chunkPrefix = chunkPrefix
         self.keepChunks = keepChunks
         self.skipPart = skipPart
         self.oneTable = oneTable
         self.css = qservAdmin
         self.cssClear = cssClear
-        self.indexDb = indexDb
+        self.indexDb = None if oneTable else indexDb
         self.emptyChunks = emptyChunks
         self.deleteTables = deleteTables
 
         self.chunkRe = re.compile('^' + self.chunkPrefix + '_(?P<id>[0-9]+)(?P<ov>_overlap)?[.]txt$')
-        self.cleanupChunksDir = False
+        self.cleanupDirs = []
+        self.cleanupFiles = []
         self.unzipDir = None   # directory used for uncompressed data
         self.schema = None     # "CREATE TABLE" statement
         self.chunks = set()    # set of chunks that were loaded
@@ -135,9 +139,8 @@ class DataLoader(object):
         # 2. Partitioning is done only for partitioned table, if self.skipPart is true then
         #    pre-partitioned data must exist already and we skip calling partitioner
 
-        # is table needs to be partitioned (or is it pre-partitioned)?
-        self.partitioned = self.partOptions.partitioned and \
-                           not (self.skipPart and self.oneTable)
+        # is table partitioned (or pre-partitioned)?
+        self.partitioned = self.partOptions.partitioned
 
         # do we need to run partitioner?
         self.callPartitioner = self.partitioned and not self.skipPart
@@ -183,7 +186,7 @@ class DataLoader(object):
         self.chunkMap = ChunkMapping(self.workerConnMap.keys(), database, table, self.css)
 
         # make chunks directory or check that there are usable data there already
-        self._makeOrCheckChunksDir()
+        self._makeOrCheckChunksDir(data)
 
         # uncompress data files that are compressed, this is only needed if
         # table is not partitioned or if we are not reusing existing chunks
@@ -223,21 +226,21 @@ class DataLoader(object):
         Do cleanup, remove all temporary files, this should not throw.
         """
 
-        # remove dir with unzipped files
-        if self.unzipDir is not None:
+        # remove tmp files
+        for fName in self.cleanupFiles:
             try:
-                self._log.debug('Deleting directory: %s', self.unzipDir)
-                shutil.rmtree(self.unzipDir)
+                self._log.debug('Deleting temporary file: %s', fName)
+                os.unlink(fName)
             except Exception as exc:
-                self._log.error('Failed to remove unzipped files: %s', exc)
+                self._log.error('Failed to remove temporary file: %s', exc)
 
-        # remove chunks directory, only if we created it
-        if not self.keepChunks and self.cleanupChunksDir:
+        # remove directories
+        for dirName in self.cleanupDirs:
             try:
-                self._log.debug('Deleting directory: %s', self.chunksDir)
-                shutil.rmtree(self.chunksDir)
+                self._log.debug('Deleting directory: %s', dirName)
+                shutil.rmtree(dirName)
             except Exception as exc:
-                self._log.error('Failed to remove chunks directory: %s', exc)
+                self._log.error('Failed to remove directory: %s', exc)
 
 
     def _checkCss(self, database, table):
@@ -291,8 +294,17 @@ class DataLoader(object):
             raise ValueError('Option "%s" does not match CSS "%s": %s != %s' % \
                              (partKey, cssKey, optValue, cssValue))
 
-    def _makeOrCheckChunksDir(self):
+    def _makeOrCheckChunksDir(self, data):
         '''Create directory for chunk data or check that it exists, throws in case of errors.'''
+
+        # only need it for partitioned table
+        if not self.partitioned:
+            return
+
+        # in case we do skip-part but load into one table then we just take
+        # data from command line if it is specified
+        if self.oneTable and self.skipPart and data:
+            return
 
         chunks_dir = self.chunksDir
 
@@ -301,11 +313,10 @@ class DataLoader(object):
         if os.path.exists(chunks_dir):
             exists = True
             if not os.path.isdir(chunks_dir):
-                self._log.error('Path for chunks exists but is not a directory: %s',
-                              chunks_dir)
-                raise RuntimeError('chunk path is not directory')
+                self._log.error('Path for chunks exists but is not a directory: %s', chunks_dir)
+                raise IOError('chunk path is not directory: ' + chunks_dir)
 
-        if self.partitioned and self.skipPart:
+        if self.skipPart:
             # directory must exist and have some files (chunk_index.bin at least)
             if not exists:
                 self._log.error('Chunks directory does not exist: %s', chunks_dir)
@@ -319,19 +330,28 @@ class DataLoader(object):
                 # must be empty, we do not want any extraneous stuff there
                 if os.listdir(chunks_dir):
                     self._log.error('Chunks directory is not empty: %s', chunks_dir)
-                    raise RuntimeError('chunks directory is not empty')
+                    raise RuntimeError('chunks directory is not empty: ' + chunks_dir)
             else:
                 try:
                     self._log.debug('Creating chunks directory %s', chunks_dir)
                     os.makedirs(chunks_dir)
+                    # will remove it later
+                    if not self.keepChunks:
+                        self.cleanupDirs.append(chunks_dir)
                 except Exception as exc:
                     self._log.error('Failed to create chunks directory: %s', exc)
                     raise
-            self.cleanupChunksDir = True
 
 
     def _runPartitioner(self, files):
         '''Run partitioner to fill chunks directory with data, returns 0 on success.'''
+
+        def fileList(dirName):
+            '''Generate a sequence of file names in directory, exclude directories'''
+            for fName in os.listdir(dirName):
+                path = os.path.join(dirName, fName)
+                if os.path.isfile(path):
+                    yield path
 
         # build arguments list
         args = ['sph-partition', '--out.dir', self.chunksDir, '--part.prefix', self.chunkPrefix]
@@ -348,6 +368,10 @@ class DataLoader(object):
         except Exception as exc:
             self._log.error('Failed to run partitioner: %s', exc)
             raise
+        finally:
+            # some chunk files may have been created, add them to cleanup list
+            if not self.keepChunks:
+                self.cleanupFiles += list(fileList(self.chunksDir))
 
 
     def _gunzip(self, data):
@@ -364,19 +388,51 @@ class DataLoader(object):
             # for more reliable way we could use something like "magic" module
             if infile.endswith('.gz'):
 
-                if self.unzipDir is None:
-                    # directory needs sufficient space, use output chunks directory for that
+                if self.tmpDir is None:
+
+                    # use chunks directory for that
+                    if os.path.exists(self.chunksDir):
+                        if not os.path.isdir(self.chunksDir):
+                            self._log.error('Path for chunks is not a directory: %s', self.chunksDir)
+                            raise IOError('chunk path is not directory: ' + self.chunksDir)
+                    else:
+                        # create it, but don't forget to delete it later
+                        self._log.debug('Creating chunks directory %s', self.chunksDir)
+                        os.makedirs(self.chunksDir)
+                        if not self.keepChunks:
+                            self.cleanupDirs.append(self.chunksDir)
+
                     try:
-                        self.unzipDir = tempfile.mkdtemp(dir=self.chunksDir)
+                        self.tmpDir = tempfile.mkdtemp(dir=self.chunksDir)
+                        # need to remove it later, before chunks dir
+                        self.cleanupDirs.insert(0, self.tmpDir)
                     except Exception as exc:
                         self._log.critical('Failed to create temp directory for uncompressed files: %s', exc)
                         raise
-                    self._log.debug('Created temporary directory %s', self.unzipDir)
+                    self._log.debug('Created temporary directory %s', self.tmpDir)
+                else:
+                    # check and create if needed
+                    if os.path.exists(self.tmpDir):
+                        if not os.path.isdir(self.tmpDir):
+                            self._log.critical('Temporary location is not a directory: %s', self.tmpDir)
+                            raise IOError('Temporary location is not a directory: ' + self.tmpDir)
+                    else:
+                        try:
+                            os.mkdir(self.tmpDir)
+                            self._log.debug('Created temporary directory %s', self.tmpDir)
+                            # need to remove it later
+                            self.cleanupDirs.append(self.tmpDir)
+                        except Exception as exc:
+                            self._log.critical('Failed to create temp directory: %s', exc)
+                            raise
 
                 # construct output file name
                 outfile = os.path.basename(infile)
                 outfile = os.path.splitext(outfile)[0]
-                outfile = os.path.join(self.unzipDir, outfile)
+                outfile = os.path.join(self.tmpDir, outfile)
+
+                # will cleanup it later
+                self.cleanupFiles.append(outfile)
 
                 self._log.info('Uncompressing %s to %s', infile, outfile)
                 try:
@@ -522,10 +578,12 @@ class DataLoader(object):
         """
         Load data into existing table.
         """
-        if self.partitioned:
-            self._loadChunkedData(database, table)
-        else:
+        if not self.partitioned or (self.oneTable and self.skipPart and files):
+            # load files given on command line
             self._loadNonChunkedData(database, table, files)
+        else:
+            # load data from chunk directory
+            self._loadChunkedData(database, table)
 
 
     def _chunkFiles(self):
@@ -560,8 +618,11 @@ class DataLoader(object):
 
             if self.oneTable:
 
-                # just load everything into existing table
-                self._loadOneFile(self.mysql, database, table, path, csvPrefix)
+                # just load everything into existing table, do not load overlaps
+                if not overlap:
+                    self._loadOneFile(self.mysql, database, table, path, csvPrefix)
+                else:
+                    self._log.info('Ignore overlap file %s', path)
 
             else:
 

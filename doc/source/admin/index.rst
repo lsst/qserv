@@ -8,3 +8,4 @@ Administration reference
    configuration
    test-set
    gb-sized-integration-test
+   data-loader
