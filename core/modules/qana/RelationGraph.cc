@@ -913,6 +913,7 @@ RelationGraph::RelationGraph(QueryContext const& ctx,
         stmt.getSelectList().getValueExprList()->empty()) {
         throw QueryNotEvaluableError("Query has no select list");
     }
+
     // Check that the FROM clause isn't empty.
     TableRefList const& refs = stmt.getFromList().getTableRefList();
     if (refs.empty()) {

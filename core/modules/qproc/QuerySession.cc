@@ -288,10 +288,12 @@ void QuerySession::_initContext() {
 }
 
 void QuerySession::_preparePlugins() {
+    // TODO: use C++11 syntax to refactor this code
     _plugins = boost::make_shared<QueryPluginPtrVector>();
 
     _plugins->push_back(qana::QueryPlugin::newInstance("Where"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Aggregate"));
+    _plugins->push_back(qana::QueryPlugin::newInstance("DuplicateSelectExpr"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Table"));
     _plugins->push_back(qana::QueryPlugin::newInstance("MatchTable"));
     _plugins->push_back(qana::QueryPlugin::newInstance("QservRestrictor"));
