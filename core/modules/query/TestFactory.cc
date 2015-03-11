@@ -60,7 +60,52 @@ TestFactory::newContext(boost::shared_ptr<css::Facade> cssFacade) {
 }
 
 boost::shared_ptr<SelectStmt>
-TestFactory::newStmt() {
+TestFactory::newDuplicateSelectExprStmt() {
+    // Create a "SELECT foo f FROM Bar b WHERE b.baz=42;
+    boost::shared_ptr<SelectStmt> stmt = boost::make_shared<SelectStmt>();
+
+    // SELECT foo1, foo2
+    SelectList::Ptr sl = boost::make_shared<SelectList>();
+
+    boost::shared_ptr<ColumnRef> cr = boost::make_shared<ColumnRef>("","","foo1");
+    ValueFactorPtr fact(ValueFactor::newColumnRefFactor(cr));
+    ValueExprPtr expr = boost::make_shared<ValueExpr>();
+    expr->getFactorOps().push_back(ValueExpr::FactorOp(fact));
+    sl->getValueExprList()->push_back(expr);
+
+    cr = boost::make_shared<ColumnRef>("","","foo2");
+    fact = ValueFactor::newColumnRefFactor(cr);
+    expr = boost::make_shared<ValueExpr>();
+    expr->getFactorOps().push_back(ValueExpr::FactorOp(fact));
+    sl->getValueExprList()->push_back(expr);
+
+    stmt->setSelectList(sl);
+
+    // FROM Bar b
+    TableRefListPtr refp = boost::make_shared<TableRefList>();
+    TableRef::Ptr tr = boost::make_shared<TableRef>("", "Bar", "b");
+    refp->push_back(tr);
+    FromList::Ptr fl = boost::make_shared<FromList>(refp);
+    stmt->setFromList(fl);
+
+    // WHERE b.baz=42
+    boost::shared_ptr<WhereClause> wc = boost::make_shared<WhereClause>();
+    CompPredicate::Ptr cp = boost::make_shared<CompPredicate>();
+    cp->left = boost::make_shared<ValueExpr>(); // baz
+    fact = ValueFactor::newColumnRefFactor((ColumnRef::newShared("","b","baz")));
+    cp->left->getFactorOps().push_back(ValueExpr::FactorOp(fact));
+    cp->op = CompPredicate::lookupOp("==");
+    cp->right = boost::make_shared<ValueExpr>(); // 42
+    fact = ValueFactor::newConstFactor("42");
+    cp->right->getFactorOps().push_back(ValueExpr::FactorOp(fact));
+    BoolFactor::Ptr bfactor = boost::make_shared<BoolFactor>();
+    bfactor->_terms.push_back(cp);
+    wc->prependAndTerm(bfactor);
+    return stmt;
+}
+
+boost::shared_ptr<SelectStmt>
+TestFactory::newSimpleStmt() {
     // Create a "SELECT foo f FROM Bar b WHERE b.baz=42;
     boost::shared_ptr<SelectStmt> stmt = boost::make_shared<SelectStmt>();
 
@@ -70,7 +115,7 @@ TestFactory::newStmt() {
     ValueFactorPtr fact(ValueFactor::newColumnRefFactor(cr));
     ValueExprPtr expr = boost::make_shared<ValueExpr>();
     expr->getFactorOps().push_back(ValueExpr::FactorOp(fact));
-        sl->getValueExprList()->push_back(expr);
+    sl->getValueExprList()->push_back(expr);
     stmt->setSelectList(sl);
 
     // FROM Bar b

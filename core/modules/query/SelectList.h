@@ -37,6 +37,7 @@
 #include "boost/shared_ptr.hpp"
 
 // Local headers
+#include "global/stringTypes.h"
 #include "query/ColumnRef.h"
 #include "query/ValueExpr.h"
 
@@ -70,6 +71,7 @@ public:
     ~SelectList() {}
     void addStar(std::string const& table);
     void dbgPrint(std::ostream& os) const;
+    StringVector getDuplicateSelectExprNames() const;
 
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;

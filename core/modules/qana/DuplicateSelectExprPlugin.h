@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,39 +20,46 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QUERY_TESTFACTORY_H
-#define LSST_QSERV_QUERY_TESTFACTORY_H
+/**
+ * @file
+ *
+ * @ingroup WRITE MODULE HERE
+ *
+ * @brief WRITE DESCRIPTION HERE
+ *
+ * @author Fabrice Jammes, IN2P3/SLAC
+ */
+
+// Parent class
+#include "qana/QueryPlugin.h"
+
+// System headers
 
 // Third-party headers
-#include "boost/shared_ptr.hpp"
 
-// Forward declarations
-namespace lsst {
-namespace qserv {
-namespace css {
-    class Facade;
-}
-namespace query {
-    class QueryContext;
-    class SelectStmt;
-}}} // End of forward declarations
+// LSST headers
+#include "lsst/log/Log.h"
 
+// Qserv headers
+#include "query/QueryContext.h"
+#include "query/SelectStmt.h"
+
+#ifndef LSST_QSERV_QANA_DUPLICATESELECTEXPRPLUGIN_H
+#define LSST_QSERV_QANA_DUPLICATESELECTEXPRPLUGIN_H
 
 namespace lsst {
 namespace qserv {
-namespace query {
+namespace qana {
 
-/// TestFactory is a factory for non-parsed query representation objects
-class TestFactory {
+class DuplicateSelectExprPlugin : public QueryPlugin {
 public:
-    TestFactory() {}
-    boost::shared_ptr<QueryContext> newContext();
-    boost::shared_ptr<QueryContext> newContext(
-                         boost::shared_ptr<css::Facade> cssFacade);
-    boost::shared_ptr<SelectStmt> newSimpleStmt();
-    boost::shared_ptr<SelectStmt> newDuplicateSelectExprStmt();
+    virtual ~DuplicateSelectExprPlugin() {}
+
+    virtual void applyLogical(query::SelectStmt& stmt, query::QueryContext&);
+
 };
 
-}}} // namespace lsst::qserv::query
+}}} // namespace lsst::qserv::qana
 
-#endif // LSST_QSERV_QUERY_TESTFACTORY_H
+
+#endif

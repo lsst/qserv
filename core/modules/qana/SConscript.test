@@ -18,7 +18,11 @@ modDeps = 'css global log query'.split() # deps on other modules
 pDeps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
 pDeps = cacheObjs(env, pDeps, ".o")
 
-localdeps = map(env.Object, 'QueryPlugin.cc QservRestrictorPlugin.cc'.split())
+localdeps = map(env.Object,
+                ['QueryPlugin.cc',
+                 'QservRestrictorPlugin.cc',
+                 'DuplicateSelectExprPlugin.cc']
+               )
 p = env.Program(['testPlugins.cc'] + localdeps + pDeps, LIBS=findLibs(extDeps))
 programs.append(p)
 

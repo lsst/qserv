@@ -83,19 +83,29 @@ public:
     /// @return a const list of ValueFactor-Op
     FactorOpVector const& getFactorOps() const { return _factorOps; }
 
+    void dbgPrint(std::ostream& os);
+
     boost::shared_ptr<ColumnRef> copyAsColumnRef() const;
+
     std::string copyAsLiteral() const;
+
     template<typename T>
     T copyAsType(T const& defaultValue) const;
 
     void findColumnRefs(ColumnRef::Vector& vector);
 
+    bool hasAggregation() const;
+
+    ColumnRef const& getColumnRef() const;
+    boost::shared_ptr<ValueFactor const> getFactor() const;
+
     bool isStar() const;
     bool isFactor() const;
-    boost::shared_ptr<ValueFactor const> getFactor() const;
 
     // Convenience checkers
     bool isColumnRef() const;
+
+    std::string toString() const;
 
     ValueExprPtr clone() const;
     friend std::ostream& operator<<(std::ostream& os, ValueExpr const& ve);
