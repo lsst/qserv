@@ -92,6 +92,7 @@ public:
 protected:
     /// Call _cancelFunc.
     void _callCancel() {
+    	// Ensure _cancelFunc is only called once.
         boost::shared_ptr<CancelFunc> f;
         {
             boost::lock_guard<boost::mutex> lock(_cancelMutex);

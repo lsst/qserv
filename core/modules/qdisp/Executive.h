@@ -30,6 +30,7 @@
 #include <vector>
 
 // Third-party headers
+#include "boost/make_shared.hpp"
 #include "boost/thread.hpp" // boost::mutex
 
 // Local headers
@@ -37,6 +38,8 @@
 #include "global/stringTypes.h"
 #include "qdisp/TransactionSpec.h"
 #include "qdisp/ExecStatus.h"
+#include "util/Callable.h"
+#include "util/threadSafe.h"
 
 // Forward declarations
 class XrdSsiService;
@@ -66,6 +69,7 @@ public:
         Config(std::string const& serviceUrl_)
             : serviceUrl(serviceUrl_) {}
         std::string serviceUrl; ///< XrdSsi service URL, e.g. localhost:1094
+        static std::string getMockStr() {return "Mock";};
     };
 
     /// Specification for something executable by the Executive
@@ -76,10 +80,6 @@ public:
     };
 
     Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms);
-
-    /// Backwards-compatible add() interface to Executive
-    void add(int refNum,
-             TransactionSpec const& t, std::string const& resultName);
 
     /// Add an item with a reference number (not necessarily a chunk number)
     void add(int refNum, Spec const& s);
@@ -97,11 +97,16 @@ public:
     /// Squash everything. should we block?
     void squash();
 
+    bool getEmpty() {return _empty.get();}
+
     /// @return number of items in flight.
     int getNumInflight(); // non-const, requires a mutex.
 
     /// @return a description of the current execution progress.
     std::string getProgressDesc() const;
+
+    static boost::shared_ptr<util::UnaryCallable<void, bool> > newNotifier(Executive& e, int refNum);
+
 
 private:
     typedef boost::shared_ptr<ResponseRequester> RequesterPtr;
@@ -119,7 +124,7 @@ private:
 
     bool _track(int refNum, RequesterPtr r);
     void _unTrack(int refNum);
-    void _waitUntilEmpty();
+    void _waitAllUntilEmpty();
 
     void _reapRequesters(boost::unique_lock<boost::mutex> const& requestersLock);
     void _reportStatuses();
@@ -128,6 +133,7 @@ private:
     void _printState(std::ostream& os);
 
     Config _config; ///< Personal copy of config
+    util::Flag<bool> _empty;
     boost::shared_ptr<MessageStore> _messageStore; ///< MessageStore for logging
     XrdSsiService* _service; ///< RPC interface
     RequesterMap _requesters; ///< RequesterMap for results from submitted tasks
@@ -142,6 +148,7 @@ private:
     typedef std::map<int,int> IntIntMap;
     IntIntMap _retryMap; ///< Counter for task retries.
 }; // class Executive
+
 }}} // namespace lsst::qserv::qdisp
 
 #endif // LSST_QSERV_QDISP_EXECUTIVE_H

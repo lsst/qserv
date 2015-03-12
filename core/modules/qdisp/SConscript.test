@@ -1,0 +1,39 @@
+# -*- python -*-
+Import('env')
+Import('libProducts')
+Import('cacheObjs')
+Import('findLibs')
+
+import os
+import itertools
+
+programs = []
+
+# If you need to rebuild the map, use:
+# ./admin/bin/qserv-admin.py < admin/examples/testMap_generateMap
+def charArrayGenerator(filename):
+    bSize = 70
+    with open(filename,"rb") as f:
+        while True:
+            block = f.read(10)
+            if not block: return
+            yield ",".join(map(lambda s: hex(ord(s)), block))
+
+# deps on other modules
+modDeps = """ccontrol css global log rproc qana qproc query parser proto mysql sql util sg""".split()
+deps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
+deps = map(lambda i:i, deps) # un-chain
+deps = cacheObjs(env, deps, ".o")
+
+myDeps = filter(lambda i: not str(i).startswith("test"), env.Glob("*.cc"))
+myDeps = map(env.Object, myDeps)
+extDeps = "antlr boost_chrono boost_thread boost_system crypto mysqlclient_r log log4cxx protobuf XrdPosix XrdClient XrdPosixPreload XrdSsi XrdUtils".split()
+p = env.Program(["testQDisp.cc"] + myDeps + deps, LIBS=findLibs(extDeps))
+#env.Depends(p, header)
+programs.append(p)
+
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=map(env.UnitTest, programs))
+
+Return('programs')

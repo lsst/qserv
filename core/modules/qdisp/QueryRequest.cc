@@ -107,15 +107,15 @@ void QueryRequest::RelRequestBuffer() {
 }
 // precondition: rInfo.rType != isNone
 // Must not throw exceptions: calling thread cannot trap them.
+// Callback function for XrdSsiRequest.
 bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
     std::string errorDesc;
     if(!isOk) {
         _requester->errorFlush(std::string("Request failed"), -1);
-        _errorFinish();
         _status.report(ExecStatus::RESPONSE_ERROR);
+        _errorFinish(); // deletes this
         return true;
     }
-    //LOGF_DEBUG("Response type is %1%" % rInfo.State());
     switch(rInfo.rType) {
     case XrdSsiRespInfo::isNone: // All responses are non-null right now
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isNone";
@@ -124,7 +124,6 @@ bool QueryRequest::ProcessResponse(XrdSsiRespInfo const& rInfo, bool isOk) {
         errorDesc += "Unexpected XrdSsiRespInfo.rType == isData";
         break;
     case XrdSsiRespInfo::isError: // isOk == true
-        //errorDesc += "isOk == true, but XrdSsiRespInfo.rType == isError";
         _status.report(ExecStatus::RESPONSE_ERROR, rInfo.eNum,
                        std::string(rInfo.eMsg));
         return _importError(std::string(rInfo.eMsg), rInfo.eNum);
@@ -150,17 +149,15 @@ bool QueryRequest::_importStream() {
     LOGF_INFO("Initiated request %1%" % (retrieveInitiated ? "ok" : "err"));
     if(!retrieveInitiated) {
         _status.report(ExecStatus::RESPONSE_DATA_ERROR);
-        bool ok = Finished();
+        if (Finished()) {
+            _status.report(ExecStatus::RESPONSE_DATA_ERROR_OK);
+        } else {
+            _status.report(ExecStatus::RESPONSE_DATA_ERROR_CORRUPT);
+        }
         if(_retryFunc) { // Retry.
             (*_retryFunc)();
         }
-        // delete this; // Don't delete! need to stay alive for error.
-        // Not sure when to delete.
-        if(ok) {
-            _errorDesc += "Couldn't initiate result retr (clean)";
-        } else {
-            _errorDesc += "Couldn't initiate result retr (UNCLEAN)";
-        }
+        _errorFinish();
         return false;
     } else {
         return true;
@@ -180,7 +177,8 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
               blen % (last ? "(last)" : "(more)"));
     if(blen < 0) { // error, check errinfo object.
         int eCode;
-        std::string reason(eInfo.Get(eCode));
+        const char* chs = eInfo.Get(eCode);
+        std::string reason = (chs == NULL) ? "Null" : chs;
         _status.report(ExecStatus::RESPONSE_DATA_NACK, eCode, reason);
         LOGF_ERROR("ProcessResponse[data] error(%1%,\"%2%\")" % eCode % reason);
         _requester->errorFlush("Couldn't retrieve response data:" + reason, eCode);
@@ -197,15 +195,21 @@ void QueryRequest::ProcessResponseData(char *buff, int blen, bool last) { // Ste
             std::vector<char>& buffer = _requester->nextBuffer();
             if(!GetResponseData(&buffer[0], buffer.size())) {
                 _errorFinish();
+                return;
             }
         }
     } else {
         ResponseRequester::Error err = _requester->getError();
         _status.report(ExecStatus::MERGE_ERROR, err.code, err.msg);
+        // @todo DM-2378 Take a closer look at what causes this error and take
+        // appropriate action. There could be cases where this is recoverable.
+        _retryFunc.reset();
+        _errorFinish();
     }
 }
 
 /// Finalize under error conditions and retry or report completion
+/// This function will destroy this object.
 void QueryRequest::_errorFinish() {
     LOGF_DEBUG("Error finish");
     bool ok = Finished();
