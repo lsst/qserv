@@ -44,9 +44,9 @@ Once Qserv dependencies are installed in eups stack, please use next commands in
    mkdir ${SRC_DIR}
    cd ${SRC_DIR}
    # anonymous access :
-   git clone git://git.lsstcorp.org/LSST/DMS/qserv
+   git clone git://github.com/LSST/qserv
    # or authenticated access (require a ssh key) :
-   git clone ssh://git@git.lsstcorp.org/LSST/DMS/qserv
+   git clone ssh://git@github.com/LSST/qserv
    # build and install your Qserv version
    cd qserv
    # if following "setup" command fails due to missing packages one has to
