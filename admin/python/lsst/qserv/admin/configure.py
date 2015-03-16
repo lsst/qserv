@@ -232,7 +232,7 @@ def _set_perms(file):
     else:
         os.chmod(file, 0660)
 
-def apply_tpl(src_file, target_file, params_dict = None):
+def apply_tpl_once(src_file, target_file, params_dict = None):
     """ Creating one configuration file from one template
     """
 
@@ -258,7 +258,7 @@ def apply_tpl(src_file, target_file, params_dict = None):
     with open(target_file, "w") as cfg:
         cfg.write(out_cfg)
 
-def apply_templates(template_root, dest_root):
+def apply_tpl_all(template_root, dest_root):
 
     logger = logging.getLogger()
 
@@ -275,7 +275,7 @@ def apply_templates(template_root, dest_root):
             src_file = os.path.join(root, fname)
             target_file = os.path.join(dest_dir, fname)
 
-            apply_tpl(src_file, target_file)
+            apply_tpl_once(src_file, target_file)
 
             # applying perms
             _set_perms(target_file)
