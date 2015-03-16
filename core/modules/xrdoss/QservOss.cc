@@ -41,12 +41,18 @@
 
 // Third-party headers
 #include "boost/make_shared.hpp"
+#include "XrdSys/XrdSysError.hh"
 #include "XrdSys/XrdSysLogger.hh"
 
 // Qserv headers
 #include "obsolete/QservPath.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdsvc/XrdName.h"
+
+namespace XrdSsi
+{
+    extern XrdSysError Log;
+}
 
 
 namespace {
@@ -289,6 +295,7 @@ XrdOssGetStorageSystem(XrdOss       *native_oss,
                        const char   *config_fn,
                        const char   *parms)
 {
+    XrdSsi::Log.logger(Logger);
     lsst::qserv::xrdoss::QservOss* oss =
         lsst::qserv::xrdoss::QservOss::getInstance();
     lsst::qserv::xrdsvc::XrdName x;
@@ -303,3 +310,7 @@ XrdOssGetStorageSystem(XrdOss       *native_oss,
 }
 } // extern C
 
+// As recommended by XrdOss/XrdOss.h, declare the version.
+#include "XrdVersion.hh"
+// Compiler complains if we terminate with a ';'
+XrdVERSIONINFO(XrdOssGetStorageSystem,QservOssGeneric)
