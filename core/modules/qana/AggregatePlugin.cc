@@ -163,8 +163,6 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(query::SelectStmt& stmt,
-                              query::QueryContext&) {}
     virtual void applyPhysical(QueryPlugin::Plan& p,
                                query::QueryContext&);
 private:

@@ -26,6 +26,9 @@
 // Third-party headers
 #include "boost/shared_ptr.hpp"
 
+// Qserv headers
+#include "global/stringTypes.h"
+
 // Forward declarations
 namespace lsst {
 namespace qserv {
@@ -50,7 +53,11 @@ public:
     boost::shared_ptr<QueryContext> newContext(
                          boost::shared_ptr<css::Facade> cssFacade);
     boost::shared_ptr<SelectStmt> newSimpleStmt();
-    boost::shared_ptr<SelectStmt> newDuplicateSelectExprStmt();
+    boost::shared_ptr<SelectStmt> newDuplSelectExprStmt();
+private:
+    static void addSelectField(boost::shared_ptr<SelectStmt> const& stmt, StringVector const& fields);
+    static void addFrom(boost::shared_ptr<SelectStmt> const& stmt);
+    static void addWhere(boost::shared_ptr<SelectStmt> const& stmt);
 };
 
 }}} // namespace lsst::qserv::query

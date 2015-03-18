@@ -112,22 +112,22 @@ ValueExpr::ValueExpr() {
  */
 void ValueExpr::dbgPrint(std::ostream& os) {
     query::ColumnRef::Vector cList;
-    os << "ValueExpr: " << *this << "\n";
-    os << "  Alias: " << this->_alias << "\n";
-    os << "  IsColumnRef: " << this->isColumnRef() << "\n";
-    os << "  IsFactor: " << this->isFactor() << "\n";
-    os << "  IsStar: " << this->isStar() << "\n";
+    os << "ValueExpr:\t\"" << *this << "\"\n";
+    os << "\tAlias:\t\"" << this->_alias << "\"\n";
+    os << "\tIsColumnRef:\t" << this->isColumnRef() << "\n";
+    os << "\tIsFactor:\t" << this->isFactor() << "\n";
+    os << "\tIsStar:\t" << this->isStar() << "\n";
     this->findColumnRefs(cList);
     typedef query::ColumnRef::Vector::const_iterator ColIter;
     for(ColIter i=cList.begin(), e=cList.end(); i != e; ++i) {
-        os << "  ColumnRef: " << *i << "\n";
+        os << "\tColumnRef:\t" << *i << "\n";
     }
     bool hasAgg = false;
     qana::CheckAggregation ca(hasAgg);
     for(FactorOpVector::const_iterator i=this->_factorOps.begin(),
             e=this->_factorOps.end(); i != e; i++) {
             ca(*i);
-            os << " FactorOp: " << *i << ", hasAgg: " << hasAgg << "\n";
+            os << "\tFactorOp:\t\"" << *i << "\", hasAgg: " << hasAgg << "\n";
     }
 }
 
@@ -194,11 +194,17 @@ bool ValueExpr::hasAggregation() const {
     return hasAgg;
 }
 
-
-ColumnRef const& ValueExpr::getColumnRef() const {
-    assert(isColumnRef());
-    ValueFactor const& factor = *_factorOps.front().factor;
-    return *(factor.getColumnRef());
+// TODO C++11 move nullptr_cr to nullptr
+ColumnRef::Ptr ValueExpr::getColumnRef() const {
+    ColumnRef::Ptr nullptr_cr;
+    if (_factorOps.size() != 1) {
+        return nullptr_cr;
+    }
+    ValueFactorPtr const& vf = _factorOps.front().factor;
+    if (!vf) {
+        return nullptr_cr;
+    }
+    return vf->getColumnRef();
 }
 
 /// @return true if holding a single ValueFactor, and that factor is a *

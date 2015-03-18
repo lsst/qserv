@@ -93,6 +93,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
                                std::string const& defaultDb,
                                std::string const& resultTable) {
     bool sessionValid = true;
+    std::string errorExtra;
     qproc::QuerySession::Ptr qs =
             boost::make_shared<qproc::QuerySession>(_impl->facade);
     try {
@@ -100,7 +101,12 @@ UserQueryFactory::newUserQuery(std::string const& query,
         qs->setDefaultDb(defaultDb);
         qs->setQuery(query);
     } catch (...) {
-        LOGF_INFO("Error setting up QuerySession (query is invalid).");
+        errorExtra = "Unknown failure occured setting up QuerySession (query is invalid).";
+        LOGF_INFO(errorExtra);
+        sessionValid = false;
+    }
+    if(!qs->getError().empty()) {
+        LOGF_INFO("Invalid query: %s" % qs->getError());
         sessionValid = false;
     }
     if(!qs->getError().empty()) {
@@ -121,7 +127,7 @@ UserQueryFactory::newUserQuery(std::string const& query,
         uq->_infileMergerConfig.reset(ict);
         uq->_setupChunking();
     } else {
-        uq->_errorExtra += "Unknown error setting QuerySession";
+        uq->_errorExtra += errorExtra;
     }
     return sessionId;
 }

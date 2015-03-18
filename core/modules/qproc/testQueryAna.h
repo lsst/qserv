@@ -63,13 +63,24 @@ void testParse(SelectParser::Ptr p) {
     p->setup();
 }
 
-boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,
+/**
+* @brief Prepare the query session used to process SQL queries
+* issued from MySQL client.
+*
+* @param t Test environment required by the object
+* @param sql query to process
+* @param expectedErr expected error message
+* @param plugins plugin list loaded by the query session
+* list will be loaded
+*
+*/
+boost::shared_ptr<QuerySession> prepareTestQuerySession(QuerySession::Test& t,
                                           std::string const& stmt,
-                                          char const* expectedErr="") {
+                                          std::string expectedErr="") {
     boost::shared_ptr<QuerySession> qs(new QuerySession(t));
     qs->setQuery(stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
-    if(expectedErr) {
+    if(expectedErr.size()>0) {
         // Error was expected, do not continue.
         return qs;
     }
@@ -86,7 +97,7 @@ boost::shared_ptr<QuerySession> testStmt3(QuerySession::Test& t,
     return qs;
 }
 
-std::string computeFirst(QuerySession& qs, bool withSubChunks=true) {
+std::string computeFirstChunkQuery(QuerySession& qs, bool withSubChunks=true) {
     qs.addChunk(ChunkSpec::makeFake(100, withSubChunks));
     QuerySession::Iter i = qs.cQueryBegin();
     QuerySession::Iter e = qs.cQueryEnd();
@@ -97,11 +108,12 @@ std::string computeFirst(QuerySession& qs, bool withSubChunks=true) {
 
 boost::shared_ptr<QuerySession> testAndCompare(QuerySession::Test& t,
                                                std::string const& stmt,
-                                               std::string const& expected) {
+                                               std::string const& expected,
+                                               std::string const& expectedErr="") {
 
-    boost::shared_ptr<QuerySession> qs = testStmt3(t, stmt);
+    boost::shared_ptr<QuerySession> qs = prepareTestQuerySession(t, stmt, expectedErr);
     if(qs->getError().empty()) {
-        std::string actual = computeFirst(*qs);
+        std::string actual = computeFirstChunkQuery(*qs);
         BOOST_CHECK_EQUAL(actual, expected);
     }
     return qs;
@@ -115,10 +127,6 @@ void printChunkQuerySpecs(boost::shared_ptr<QuerySession> qs) {
         std::cout << "Spec: " << cs << std::endl;
     }
 }
-
-char const * const NOT_EVALUABLE = "AnalysisError:Query involves "
-    "partitioned table joins that Qserv does not know how to evaluate "
-    "using only partition-local data";
 
 } // anonymous namespace
 
