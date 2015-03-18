@@ -362,7 +362,11 @@ bool QueryAction::Impl::_dispatchChannel() {
 }
 
 void QueryAction::Impl::poison() {
-    LOG(_log, LOG_LVL_ERROR, "Trying QueryAction::Impl::poison() call, unimplemented");
+    LOG(_log, LOG_LVL_WARN, "Trying QueryAction::Impl::poison() call, experimental");
+    if(!_mysqlConn.get()) {
+    LOG(_log, LOG_LVL_WARN, "QueryAction::Impl::poison() no MysqlConn");
+        return;
+    }
     int status = _mysqlConn->cancel();
     switch (status) {
       case -1:
