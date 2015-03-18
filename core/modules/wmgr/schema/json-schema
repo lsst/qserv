@@ -1,0 +1,172 @@
+{
+	"$schema": "http://json-schema.org/schema#",
+
+	"definitions": {
+		"title": "Common Definitions",
+		"description": "This is not a real schema but a set of useful definitions reused below.",
+
+		"db-repr" : {
+			"description": "JSON representation of single database.",
+			"type": "object",
+			"properties": {
+				"name": {"type": "string"},
+				"uri": {"type": "string", "format": "uri"}
+			},
+			"required": ["name"]
+		},
+		"table-repr": {
+			"description": "JSON representation of single database table.",
+			"type": "object",
+			"properties": {
+				"name": {"type": "string"},
+				"uri": {"type": "string", "format": "uri"}
+			},
+			"required": ["name"]
+		},
+		"chunk-repr": {
+			"description": "JSON representation of single chunk in partitioned table.",
+			"type": "object",
+			"properties": {
+				"chunkId": {"type": "number"},
+				"uri": {"type": "string", "format": "uri"}
+			},
+			"required": ["chunkId"]
+		},
+		"service-repr": {
+			"description": "JSON representation of single service on worker node.",
+			"type": "object",
+			"properties": {
+				"name": {"type": "string"},
+				"uri": {"type": "string", "format": "uri"},
+				"PID": {"type": "number"}
+			},
+			"required": ["name"]
+		}
+	},
+
+
+	"exception-response": {
+		"title": "Exception Response",
+		"description": "Response representing exception generated on server side, typically includes exception type and message.",
+		"type": "object",
+		"properties": {
+			"exception": {"type": "string"},
+			"message": {"type": "string"},
+			"cause": {"type": "string"}
+		},
+		"required": ["exception"]
+	},
+
+	"status-response": {
+		"title": "Status Response",
+		"description": "Response representing status code returned from server, consists of status value and optional message.",
+		"type": "object",
+		"properties": {
+			"type": "object",
+			"properties": {
+				"status": {"type": "number"},
+				"message": {"type": "string"}
+			},
+			"required": ["status"]
+		},
+		"required": ["result"]
+	},
+
+	"db-list" : {
+		"title": "Database List",
+		"description": "Structure defining array of database descriptions",
+		"type": "object",
+		"properties": {
+			"results": {
+				"type": "array",
+				"items": {"$ref": "#definitions/db-repr"}
+			}
+		},
+		"required": ["results"]
+	},
+
+	"db" : {
+		"title": "Database Description",
+		"description": "Structure defining single database description",
+		"type": "object",
+		"properties": {
+			"result": {"$ref": "#definitions/db-repr"}
+		},
+		"required": ["result"]
+	},
+
+	"table-list" : {
+		"title": "Table List",
+		"description": "Structure defining array of table descriptions",
+		"type": "object",
+		"properties": {
+			"results": {
+				"type": "array",
+				"items": {"$ref": "#definitions/table-repr"}
+			},
+			"database": {"type": "string"}
+		},
+		"required": ["results"]
+	},
+
+	"table" : {
+		"title": "Table Description",
+		"description": "Structure defining single table description",
+		"type": "object",
+		"properties": {
+			"result": {"$ref": "#definitions/table-repr"},
+			"database": {"type": "string"}
+		},
+		"required": ["result"]
+	},
+
+	"chunk-list" : {
+		"title": "Chunk List",
+		"description": "Structure defining array of chunk descriptions",
+		"type": "object",
+		"properties": {
+			"results": {
+				"type": "array",
+				"items": {"$ref": "#definitions/chunk-repr"}
+			},
+			"database": {"type": "string"},
+			"table": {"type": "string"}
+		},
+		"required": ["results"]
+	},
+
+	"index-data" : {
+		"title": "Secondary Index",
+		"description": "Structure for secondary index data, it is an array of arrays of three elements: [object ID, chunk ID, sub-chunk ID]",
+		"type": "object",
+		"properties": {
+			"results": {
+				"type": "array",
+				"items": {
+					"type": "array",
+					"items": {"type": "number"},
+					"minItems": 3,
+					"maxItems": 3
+				}
+			},
+			"database": {"type": "string"},
+			"table": {"type": "string"},
+			"chunk": {"type": "number"}
+		},
+		"required": ["results"]
+	},
+
+	"services" : {
+		"title": "Services",
+		"description": "Structure describing a list services",
+		"type": "object",
+		"properties": {
+			"results": {
+				"type": "array",
+				"items": {"$ref": "#definitions/service-repr"}
+			}
+		},
+		"required": ["results"]
+	}
+
+}
