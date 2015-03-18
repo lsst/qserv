@@ -83,6 +83,11 @@ public:
     /// @return a const list of ValueFactor-Op
     FactorOpVector const& getFactorOps() const { return _factorOps; }
 
+    /**
+     * Output ValueExpr for debugging purpose
+     *
+     * @param os output stream
+     */
     void dbgPrint(std::ostream& os);
 
     boost::shared_ptr<ColumnRef> copyAsColumnRef() const;
@@ -94,9 +99,18 @@ public:
 
     void findColumnRefs(ColumnRef::Vector& vector);
 
+    /*
+     * Check if at least one of the FactorOps of the
+     * ValueExpr contains an aggregation function call
+     *
+     * @return boolean
+     */
     bool hasAggregation() const;
 
-    ColumnRef const& getColumnRef() const;
+    /**
+     * @return the ColumnRef in current object if there is one.
+     */
+    ColumnRef::Ptr getColumnRef() const;
     boost::shared_ptr<ValueFactor const> getFactor() const;
 
     bool isStar() const;

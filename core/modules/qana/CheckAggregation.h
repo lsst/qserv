@@ -25,8 +25,7 @@
  *
  * @ingroup qana
  *
- * @brief Functor class to check if a FactorOp
- *        is related to a SQL aggregation function
+ * @brief Functor class which check for aggregation functions in sql queries
  *
  * @author Fabrice Jammes, IN2P3/SLAC
  */
@@ -46,20 +45,35 @@ namespace lsst {
 namespace qserv {
 namespace qana {
 
-// Simply check for aggregation functions
+/**
+ * Functor class to check if a FactorOp is related to a SQL aggregation
+ * function. Can be applied easily to a list of FactorOp
+ */
 class CheckAggregation {
 public:
     CheckAggregation(bool& hasAgg_) : hasAgg(hasAgg_) {}
+
+    /**
+     * Simply check for aggregation functions in a FactorOp
+     *
+     * set CheckAggregation::hasAgg to true if an SQL aggregation
+     * function is detected
+     *
+     * @param fo the FactorOp to check
+     * @return void
+     */
     inline void operator()(query::ValueExpr::FactorOp const& fo) {
         if(!fo.factor.get());
         if(fo.factor->getType() == query::ValueFactor::AGGFUNC) {
             hasAgg = true; }
     }
+
+    /**
+     * Set to true if an SQL aggregation is detected
+     */
     bool& hasAgg;
 };
 
-} /* namespace qana */
-} /* namespace qserv */
-} /* namespace lsst */
+}}} /* namespace qana::qserv::lsst */
 
 #endif /* QANA_CHECKAGGREGATION_H_ */

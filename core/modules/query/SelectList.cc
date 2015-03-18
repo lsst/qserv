@@ -43,14 +43,19 @@
 #include "query/SelectList.h"
 
 // System headers
+#include <algorithm>
 #include <iterator>
 #include <stdexcept>
 
 // Third-party headers
 #include "boost/make_shared.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "global/stringTypes.h"
+#include "global/vectorUtil.h"
 #include "qana/AnalysisError.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueFactor.h"
@@ -58,6 +63,9 @@
 namespace lsst {
 namespace qserv {
 namespace query {
+
+
+LOG_LOGGER SelectList::_logger = LOG_GET("lsst.qserv.query.SelectList");
 
 template <typename T>
 struct renderWithSep {
@@ -88,47 +96,12 @@ SelectList::dbgPrint(std::ostream& os) const {
     if(!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
-    os << "Parsed value expression for select list." << std::endl;
     for(ValueExprPtrVectorConstIter viter = _valueExprList->begin();
             viter != _valueExprList->end();
             viter++)
     {
         (*viter)->dbgPrint(os);
     }
-}
-
-StringVector SelectList::getDuplicateSelectExprNames() const {
-    if(!_valueExprList) {
-        throw std::logic_error("Corrupt SelectList object");
-    }
-    StringVector selectExprNames;
-
-    for(ValueExprPtrVectorConstIter viter = _valueExprList->begin();
-            viter != _valueExprList->end();
-            viter++)
-    {
-        ValueExpr const& ve = *(*viter);
-        if (ve.isStar()) continue;
-
-        std::string alias = ve.getAlias();
-        if (!alias.empty()) {
-            selectExprNames.push_back(alias);
-        }
-        // Handled by AggregatePlugin.cc
-        else if (ve.hasAggregation()) continue;
-        // no alias and no aggregation => must be a column name
-        else if (ve.isColumnRef()) {
-            selectExprNames.push_back(ve.getColumnRef().column);
-        }
-        else {
-            throw qana::AnalysisBug("Unable to parse select list expression: " + ve.toString());
-        }
-    }
-
-    std::sort(selectExprNames.begin(), selectExprNames.end());
-    StringVector::iterator firstDup  = std::unique(selectExprNames.begin(), selectExprNames.end());
-    StringVector dupSelectExprNames(firstDup, selectExprNames.end());
-    return dupSelectExprNames;
 }
 
 std::ostream&

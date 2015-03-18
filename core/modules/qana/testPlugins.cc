@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(DuplicateSelectExpr) {
     QueryPlugin::Ptr qp = QueryPlugin::newInstance("DuplicateSelectExpr");
     TestFactory factory;
     boost::shared_ptr<QueryContext> qc = factory.newContext(cssFacade);
-    boost::shared_ptr<SelectStmt> stmt = factory.newDuplicateSelectExprStmt();
+    boost::shared_ptr<SelectStmt> stmt = factory.newDuplSelectExprStmt();
     qp->prepare();
     BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);
 }

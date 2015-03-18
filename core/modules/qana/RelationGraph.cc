@@ -151,14 +151,10 @@ bool isOuterJoin(JoinRef::Type jt) {
 /// `getColumnRef` returns the ColumnRef in `ve` if there is one.
 ColumnRef::Ptr getColumnRef(ValueExprPtr const& ve) {
     ColumnRef::Ptr cr;
-    if (!ve || ve->getFactorOps().size() != 1) {
+    if (!ve) {
         return cr;
     }
-    ValueFactorPtr vf = ve->getFactorOps().front().factor;
-    if (!vf) {
-        return cr;
-    }
-    return vf->getColumnRef();
+    return ve->getColumnRef();
 }
 
 /// `verifyColumnRef` checks that a column reference has a column name and an
@@ -913,7 +909,6 @@ RelationGraph::RelationGraph(QueryContext const& ctx,
         stmt.getSelectList().getValueExprList()->empty()) {
         throw QueryNotEvaluableError("Query has no select list");
     }
-
     // Check that the FROM clause isn't empty.
     TableRefList const& refs = stmt.getFromList().getTableRefList();
     if (refs.empty()) {

@@ -54,10 +54,34 @@ namespace util {
  */
 class MultiError: public std::exception {
 public:
+    static std::string const HEADER_MSG;
+
+    /** Return a string representation of the object
+     *
+     * Can be used in the log
+     *
+     * @return a string representation of the object
+     */
     std::string toString() const;
+
+    /** Return a minimalist string representation of the object
+     *
+     * Can be used to print error messages to the
+     * command-line interface
+     *
+     * @return a string representation of the object
+     */
+    std::string toOneLineString() const;
+
     virtual ~MultiError() throw () {
     }
 
+    /** Overload output operator for this class
+     *
+     * @param out
+     * @param multiError
+     * @return an output stream, with no newline at the end
+     */
     friend std::ostream& operator<<(std::ostream &out,
             MultiError const& multiError);
 

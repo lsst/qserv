@@ -30,11 +30,13 @@
   */
 
 // System headers
-#include <deque>
-#include <map>
+#include <vector>
 
 // Third-party headers
 #include "boost/shared_ptr.hpp"
+
+// LSST headers
+#include "lsst/log/Log.h"
 
 // Local headers
 #include "global/stringTypes.h"
@@ -71,7 +73,6 @@ public:
     ~SelectList() {}
     void addStar(std::string const& table);
     void dbgPrint(std::ostream& os) const;
-    StringVector getDuplicateSelectExprNames() const;
 
     std::string getGenerated();
     void renderTo(QueryTemplate& qt) const;
@@ -79,14 +80,17 @@ public:
     boost::shared_ptr<SelectList> copySyntax();
 
     // non-const accessor for query manipulation.
-    boost::shared_ptr<ValueExprPtrVector> getValueExprList() {
+    boost::shared_ptr<ValueExprPtrVector> getValueExprList() const {
         return _valueExprList;
     }
 
     friend class parser::SelectListFactory;
 private:
+
     friend std::ostream& operator<<(std::ostream& os, SelectList const& sl);
     boost::shared_ptr<ValueExprPtrVector> _valueExprList;
+
+    static LOG_LOGGER _logger;
 };
 
 }}} // namespace lsst::qserv::query
