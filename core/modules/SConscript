@@ -50,7 +50,7 @@ allModules = """ccontrol css czar global log mysql obsolete
                 parser proto proxy qana qdisp qproc query
                 rproc sql sg
                 tests util
-                wbase wconfig wcontrol wdb wlog wpublish wsched
+                wbase wconfig wcontrol wdb wlog wpublish wsched wmgr
                 xrdoss xrdsvc""".split()
 
 # Products
