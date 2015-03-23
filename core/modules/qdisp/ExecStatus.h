@@ -57,7 +57,8 @@ public:
                  PROVISION_OK, // ???
                  REQUEST, REQUEST_ERROR,
                  RESPONSE_READY, RESPONSE_ERROR,
-                 RESPONSE_DATA, RESPONSE_DATA_ERROR, RESPONSE_DATA_NACK,
+                 RESPONSE_DATA, RESPONSE_DATA_NACK, RESPONSE_DATA_ERROR,
+                 RESPONSE_DATA_ERROR_OK, RESPONSE_DATA_ERROR_CORRUPT,
                  RESPONSE_DONE,
                  RESULT_ERROR,
                  MERGE_OK, // ???
@@ -68,12 +69,12 @@ public:
 #if 0
         std::ofstream of("/tmp/deleteme_qs_rpt", std::ofstream::app);
         of << "Reporting " << (void*)this
-           << " state " << stateText(s) << std::endl;
+                << " state " << stateText(s) << std::endl;
 #endif
         _info.stateTime = ::time(NULL);
         _info.state = s;
-      _info.stateCode = code;
-      _info.stateDesc = desc;
+        _info.stateCode = code;
+        _info.stateDesc = desc;
     }
 
     static char const* stateText(State s);

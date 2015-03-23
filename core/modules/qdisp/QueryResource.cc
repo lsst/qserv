@@ -56,8 +56,8 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
     LOGF_INFO("Provision done");
     if(!s) {
         // Check eInfo in resource for error details
-        int code;
-        char const* msg = eInfo.Get(code);
+        int code = -1;
+        std::string msg = eInfoGet(code);
         LOGF_ERROR("Error provisioning, msg=%1% code=%2%" % msg % code);
         _status.report(ExecStatus::PROVISION_NACK, code, std::string(msg));
         // FIXME code may be wrong.
@@ -75,7 +75,7 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
         _request = 0; // _session now has ownership
     } else {
         int code;
-        char const* msg = eInfo.Get(code);
+        std::string msg = eInfoGet(code);
         _status.report(ExecStatus::REQUEST_ERROR, code, msg);
         LOGF_ERROR("Failed to send request %1%" % *_request);
         delete _request;
@@ -89,6 +89,15 @@ void QueryResource::ProvisionDone(XrdSsiSession* s) { // Step 3
     // If we are not doing anything else with the session,
     // we can stop it after our requests are complete.
     delete this; // Delete ourselves, nobody needs this resource anymore.
+}
+
+const char* QueryResource::eInfoGet(int &code) {
+    char const* message = eInfo.Get(code);
+    std::string msg = "no message from XrdSsi, code may not be reliable";
+    if (message) {
+        msg = message;
+    }
+    return msg.c_str();
 }
 
 }}} // lsst::qserv::qdisp

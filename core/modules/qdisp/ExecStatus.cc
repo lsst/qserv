@@ -53,6 +53,8 @@ char const* ExecStatus::stateText(ExecStatus::State s) {
     case RESPONSE_ERROR: return "Response error";
     case RESPONSE_DATA: return "Retrieving response data";
     case RESPONSE_DATA_ERROR: return "Error retrieving response";
+    case RESPONSE_DATA_ERROR_OK: return "Error retrieving response session is OK";
+    case RESPONSE_DATA_ERROR_CORRUPT: return "Error retrieving response session is corrupt";
     case RESPONSE_DATA_NACK: return "Error in response data";
     case RESPONSE_DONE: return "Finished retrieving result";
     case RESULT_ERROR: return "Error in result data.";

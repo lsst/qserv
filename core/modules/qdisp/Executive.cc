@@ -57,6 +57,7 @@
 #include "qdisp/MessageStore.h"
 #include "qdisp/QueryResource.h"
 #include "qdisp/ResponseRequester.h"
+#include "qdisp/XrdSsiMocks.h"
 
 namespace {
 std::string getErrorText(XrdSsiErrInfo & e) {
@@ -103,18 +104,32 @@ struct printMapSecond {
     bool first;
 };
 
+class NotifyExecutive : public util::UnaryCallable<void, bool> {
+public:
+    typedef boost::shared_ptr<NotifyExecutive> Ptr;
+
+    NotifyExecutive(qdisp::Executive& e, int refNum)
+        : _executive(e), _refNum(refNum) {}
+
+    virtual void operator()(bool success) {
+        _executive.markCompleted(_refNum, success);
+    }
+
+    static Ptr newInstance(qdisp::Executive& e, int refNum) {
+        return boost::make_shared<NotifyExecutive>(boost::ref(e), refNum);;
+    }
+private:
+    qdisp::Executive& _executive;
+    int _refNum;
+};
+
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms)
-    : _config(*c),
+    : _config(*c), _empty(true),
       _messageStore(ms) {
     _setup();
-}
-
-void Executive::add(int refNum, TransactionSpec const& t,
-                    std::string const& resultName) {
-    throw Bug("Unsupported old transactions in Executive");
 }
 
 class Executive::DispatchAction : public util::VoidCallable<void> {
@@ -141,26 +156,8 @@ private:
     ExecStatus& _status; ///< Reference back to exec status
 };
 
-class NotifyExecutive : public util::UnaryCallable<void, bool> {
-public:
-    typedef boost::shared_ptr<NotifyExecutive> Ptr;
-
-    NotifyExecutive(qdisp::Executive& e, int refNum)
-        : _executive(e), _refNum(refNum) {}
-
-    virtual void operator()(bool success) {
-        _executive.markCompleted(_refNum, success);
-    }
-
-    static Ptr newInstance(qdisp::Executive& e, int refNum) {
-        return Ptr(new NotifyExecutive(e, refNum));
-    }
-private:
-    qdisp::Executive& _executive;
-    int _refNum;
-};
-
 /// Add a spec to be executed. Not thread-safe.
+///
 void Executive::add(int refNum, Executive::Spec const& s) {
     bool trackOk = _track(refNum, s.requester); // Remember so we can join
     if(!trackOk) {
@@ -168,6 +165,8 @@ void Executive::add(int refNum, Executive::Spec const& s) {
         return;
     }
     ExecStatus& status = _insertNewStatus(refNum, s.resource);
+    _empty.set(false);
+    LOGF_DEBUG("Flag set to false %1%" % _empty.get());
     ++_requestCount;
     std::string msg = "Exec add pth=" + s.resource.path();
     LOGF_INFO("%1%" % msg);
@@ -181,7 +180,7 @@ void Executive::add(int refNum, Executive::Spec const& s) {
 bool Executive::join() {
     // To join, we make sure that all of the chunks added so far are complete.
     // Check to see if _requesters is empty, if not, then sleep on a condition.
-    _waitUntilEmpty();
+    _waitAllUntilEmpty();
     // Okay to merge. probably not the Executive's responsibility
     struct successF {
         static bool f(Executive::StatusMap::value_type const& entry) {
@@ -194,9 +193,12 @@ bool Executive::join() {
     LOGF_INFO("Query exec finish. %1% dispatched." % _requestCount);
     _reportStatuses();
     if(sCount != _requestCount) {
-        LOGF_INFO("Query exec error:. %1% != %2%" % _requestCount % sCount);
+        LOGF_INFO("Query exec:. %1% != %2%" % _requestCount % sCount);
     }
-    return sCount == _requestCount;
+    bool empty = (sCount == _requestCount);
+    _empty.set(empty);
+    LOGF_DEBUG("Flag set to _empty=%1% sCount=%2% requestCount=%3%" % empty % sCount % _requestCount);
+    return empty;
 }
 
 void Executive::markCompleted(int refNum, bool success) {
@@ -225,6 +227,11 @@ void Executive::markCompleted(int refNum, bool success) {
         LOGF_ERROR("Executive: requesting squash (cause refnum=%1% with code=%2% %3%)" % refNum % e.code % e.msg);
         squash(); // ask to squash
     }
+}
+
+boost::shared_ptr<util::UnaryCallable<void, bool> >
+Executive::newNotifier(Executive &e, int refNum) {
+    return NotifyExecutive::newInstance(e, refNum);
 }
 
 void Executive::requestSquash(int refNum) {
@@ -342,17 +349,24 @@ void Executive::_setup() {
     XrdSsi::Trace.What = TRACE_ALL | TRACE_Debug;
 
     XrdSsiErrInfo eInfo;
-    _service = XrdSsiGetClientService(eInfo, _config.serviceUrl.c_str()); // Step 1
+    _empty.set(true);
+    _requestCount = 0;
+    // If unit testing, load the mock service.
+    if (_config.serviceUrl.compare(_config.getMockStr()) == 0) {
+        _service = new XrdSsiServiceMock(this);
+    } else {
+        _service = XrdSsiGetClientService(eInfo, _config.serviceUrl.c_str()); // Step 1
+    }
     if(!_service) {
         LOGF_ERROR("Error obtaining XrdSsiService in Executive: "
                    %  getErrorText(eInfo));
     }
     assert(_service);
-    _requestCount = 0;
 }
 
-/// Check to see if a requester should retry, based on how many retries have
-/// been attempted. Increments the retry counter as a side effect.
+/** Check to see if a requester should retry, based on how many retries have
+ * been attempted. Increments the retry counter as a side effect.
+ */
 bool Executive::_shouldRetry(int refNum) {
     const int MAX_RETRY = 5;
     boost::lock_guard<boost::mutex> lock(_retryMutex);
@@ -367,8 +381,12 @@ bool Executive::_shouldRetry(int refNum) {
     return true;
 }
 
-ExecStatus& Executive::_insertNewStatus(int refNum,
-                                        ResourceUnit const& r) {
+/** Returning a reference instead of a shared pointer is an optimization.
+ * It requires that the reference does not outlast the pointer in _statuses.
+ * At the time of writing, everything in _statuses lasts until this Executive
+ * is deleted.
+ */
+ExecStatus& Executive::_insertNewStatus(int refNum, ResourceUnit const& r) {
     ExecStatus::Ptr es = boost::make_shared<ExecStatus>(r);
     _statuses.insert(StatusMap::value_type(refNum, es));
     return *es;
@@ -458,7 +476,9 @@ void Executive::_reportStatuses() {
     }
 }
 
-void Executive::_waitUntilEmpty() {
+/** This function blocks until it has reaped all the requesters.
+ */
+void Executive::_waitAllUntilEmpty() {
     boost::unique_lock<boost::mutex> lock(_requestersMutex);
     int lastCount = -1;
     int count;

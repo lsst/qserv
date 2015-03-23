@@ -67,6 +67,7 @@ public:
     virtual ~QueryResource() {}
 
     void ProvisionDone(XrdSsiSession* s);
+    const char* eInfoGet(int &code);
 
     XrdSsiSession* _session; ///< unowned, do not delete.
     QueryRequest* _request; ///< Owned temporarily, special deletion handling.
