@@ -78,6 +78,8 @@ class Config(object):
         # CSS connection info
         self.useCss = appConfig.get('USE_CSS', True)
         self.cssConn = appConfig.get('CSS_CONN', 'localhost:12181')
+        # Location of the run directory for qserv, must contain etc/ stuff
+        self.runDir = appConfig.get('RUN_DIR')
 
         self._db = None
         self._dbPriv = None

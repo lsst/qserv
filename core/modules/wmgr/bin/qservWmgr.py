@@ -38,7 +38,7 @@ import sys
 #-----------------------------
 from flask import Flask
 from lsst.qserv.wmgr.config import Config
-from lsst.qserv.wmgr import dbMgr
+from lsst.qserv.wmgr import dbMgr, procMgr
 
 #----------------------------------
 # Local non-exported definitions --
@@ -76,6 +76,7 @@ def main():
 
     # add few blueprints
     app.register_blueprint(dbMgr.dbService, url_prefix='/dbs')
+    app.register_blueprint(procMgr.procService, url_prefix='/services')
 
     # run
     app.run()
