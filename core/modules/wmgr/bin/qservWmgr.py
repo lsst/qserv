@@ -78,8 +78,9 @@ def main():
     app.register_blueprint(dbMgr.dbService, url_prefix='/dbs')
     app.register_blueprint(procMgr.procService, url_prefix='/services')
 
-    # run
-    app.run()
+    # run, port number comes from SERVER_HOST configuration
+    host = app.config.get('WMGR_INTERFACE')
+    app.run(host)
 
 
 if __name__ == '__main__':

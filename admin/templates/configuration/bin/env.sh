@@ -1,7 +1,7 @@
 qserv_node_type="{{NODE_TYPE}}"
 case "$qserv_node_type" in
-    mono|master) SERVICES="mysqld xrootd zookeeper mysql-proxy qserv-czar" ;;
-    worker) SERVICES="mysqld xrootd" ;;
+    mono|master) SERVICES="mysqld xrootd zookeeper mysql-proxy qserv-czar qserv-wmgr" ;;
+    worker) SERVICES="mysqld xrootd qserv-wmgr" ;;
 esac
 
 check_qserv_run_dir() {
