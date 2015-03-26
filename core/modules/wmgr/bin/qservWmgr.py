@@ -38,7 +38,7 @@ import sys
 #-----------------------------
 from flask import Flask
 from lsst.qserv.wmgr.config import Config
-from lsst.qserv.wmgr import dbMgr, procMgr
+from lsst.qserv.wmgr import dbMgr, procMgr, xrdMgr
 
 #----------------------------------
 # Local non-exported definitions --
@@ -77,6 +77,7 @@ def main():
     # add few blueprints
     app.register_blueprint(dbMgr.dbService, url_prefix='/dbs')
     app.register_blueprint(procMgr.procService, url_prefix='/services')
+    app.register_blueprint(xrdMgr.xrdService, url_prefix='/xrootd')
 
     # run, port number comes from SERVER_HOST configuration
     host = app.config.get('WMGR_INTERFACE')

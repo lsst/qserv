@@ -36,7 +36,7 @@ starttimeout=1
 # Disabling buffering in python in order to enable "real-time" logging.
 export PYTHONUNBUFFERED=1
 
-cmd="${PYTHON} ${start} -c ${config} >> ${logfile} 2>&1 &"
+cmd="${PYTHON} ${start} -c ${config} -v >> ${logfile} 2>&1 &"
 
 start_cmd() {
     start -p $pidfile -l $lockfile -t ${starttimeout} $NAME "${cmd}"

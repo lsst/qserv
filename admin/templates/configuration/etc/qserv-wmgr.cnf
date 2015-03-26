@@ -21,7 +21,7 @@ JSONIFY_PRETTYPRINT_REGULAR = False
 # ======== application-specific parameters =========
 
 #  database connection parameters, use None for defaults
-DB_HOST = 'localhost'
+DB_HOST = '127.0.0.1'
 DB_PORT = {{MYSQLD_PORT}}
 DB_SOCKET = '{{MYSQLD_SOCK}}'
 
