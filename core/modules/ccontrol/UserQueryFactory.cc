@@ -102,11 +102,11 @@ UserQueryFactory::newUserQuery(std::string const& query,
         qs->setQuery(query);
     } catch (...) {
         errorExtra = "Unknown failure occured setting up QuerySession (query is invalid).";
-        LOGF_INFO(errorExtra);
+        LOGF_ERROR(errorExtra);
         sessionValid = false;
     }
     if(!qs->getError().empty()) {
-        LOGF_INFO("Invalid query: %s" % qs->getError());
+        LOGF_ERROR("Invalid query: %s" % qs->getError());
         sessionValid = false;
     }
     UserQuery* uq = new UserQuery(qs);

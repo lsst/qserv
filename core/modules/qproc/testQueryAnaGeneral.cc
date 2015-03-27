@@ -54,7 +54,7 @@
 #include "parser/SelectParser.h"
 #include "qdisp/ChunkMeta.h"
 #include "qproc/QuerySession.h"
-#include "../qana/DuplSelectExprPlugin.h"
+#include "qana/DuplSelectExprPlugin.h"
 #include "query/Constraint.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"

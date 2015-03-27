@@ -63,9 +63,10 @@ public:
      * @return void
      */
     inline void operator()(query::ValueExpr::FactorOp const& fo) {
-        if(!fo.factor.get());
-        if(fo.factor->getType() == query::ValueFactor::AGGFUNC) {
-            hasAgg = true; }
+        if (!fo.factor.get());
+        if (fo.factor->getType() == query::ValueFactor::AGGFUNC) {
+            hasAgg = true;
+        }
     }
 
     /**
@@ -74,6 +75,6 @@ public:
     bool& hasAgg;
 };
 
-}}} /* namespace qana::qserv::lsst */
+}}} /* namespace lsst::qserv::qana */
 
 #endif /* QANA_CHECKAGGREGATION_H_ */

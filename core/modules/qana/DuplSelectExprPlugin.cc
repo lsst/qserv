@@ -32,7 +32,10 @@
  */
 
 // Class header
-#include "DuplSelectExprPlugin.h"
+#include "qana/DuplSelectExprPlugin.h"
+
+// Third-party headers
+#include "boost/algorithm/string/case_conv.hpp"
 #include "boost/shared_ptr.hpp"
 
 // LSST headers
@@ -40,7 +43,6 @@
 
 // Qserv headers
 #include "global/vectorUtil.h"
-#include "global/stringUtil.h"
 #include "qana/AnalysisError.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
@@ -97,7 +99,6 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
     }
 
     if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
-
           std::string msg;
           if (!multiError.empty()) {
               msg = "Duplicate select fields found:\n" + multiError.toString();
@@ -105,10 +106,8 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
           else {
               msg = "No duplicate select field.";
           }
-
           LOGF(_logger, LOG_LVL_DEBUG, msg);
     }
-
     return multiError;
 }
 
@@ -127,31 +126,30 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
     StringVector selectExprNormalizedNames;
 
     for(query::ValueExprPtrVectorConstIter viter = valueExprList.begin();
-            viter != valueExprList.end();
-            viter++)
-    {
+        viter != valueExprList.end();
+        viter++) {
         query::ValueExpr const& ve = *(*viter);
-        if (ve.isStar()) continue;
-
+        if (ve.isStar()) {
+            continue;
+        }
         std::string name;
         std::string alias = ve.getAlias();
         if (!alias.empty()) {
             name = alias;
-        }
-        else if (ve.isColumnRef()) {
+        } else if (ve.isColumnRef()) {
             name = ve.getColumnRef()->column;
-        }
-        else {
+        } else {
             name = ve.toString();
         }
-        selectExprNormalizedNames.push_back(toLower(name));
+        boost::algorithm::to_lower(name);
+        selectExprNormalizedNames.push_back(name);
     }
 
     return getDuplicateAndPosition(selectExprNormalizedNames);
 }
 
 void DuplSelectExprPlugin::applyLogical(query::SelectStmt& stmt,
-                          query::QueryContext&) {
+                                        query::QueryContext&) {
 
     util::MultiError const dupSelectErrors = getDuplicateSelectErrors(stmt);
 

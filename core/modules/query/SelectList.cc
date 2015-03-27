@@ -96,10 +96,10 @@ SelectList::dbgPrint(std::ostream& os) const {
     if(!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
-    for(ValueExprPtrVectorConstIter viter = _valueExprList->begin();
-            viter != _valueExprList->end();
-            viter++)
-    {
+    for(ValueExprPtrVectorConstIter viter = _valueExprList->begin(),
+        e = _valueExprList->end();
+        viter != e;
+        viter++) {
         (*viter)->dbgPrint(os);
     }
 }

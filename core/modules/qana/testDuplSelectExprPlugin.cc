@@ -33,8 +33,8 @@
 #include "boost/format.hpp"
 #include "boost/make_shared.hpp"
 
-// Qserv headers+
-#include "DuplSelectExprPlugin.h"
+// Qserv headers
+#include "qana/DuplSelectExprPlugin.h"
 #include "util/Error.h"
 #include "util/MultiError.h"
 
