@@ -18,3 +18,4 @@ config.log
 .tags_sorted_by_file
 qserv_client_error.log
 qserv_client_info.log
+/parallel-cmd-log/
