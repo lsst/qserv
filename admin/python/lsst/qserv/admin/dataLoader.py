@@ -41,6 +41,7 @@ import tempfile
 #-----------------------------
 from lsst.qserv.admin.partConfig import PartConfig
 from lsst.qserv.admin.chunkMapping import ChunkMapping
+import MySQLdb
 
 #----------------------------------
 # Local non-exported definitions --
@@ -724,7 +725,13 @@ class DataLoader(object):
 
             self._log.info('Make chunk table: %s', ctable)
             self._log.debug('query: %s', q)
-            cursor.execute(q)
+            try:
+                cursor.execute(q)
+            except MySQLdb.Warning as exc:
+                # Usually we suppress mysql warnings via warnings.filterwarnings(ignore, ..)
+                # but there may be other libraries that re-enable it and make exceptions.
+                # Just catch and ignore it
+                self._log.debug('warning: %s', exc)
 
 
     def _loadNonChunkedData(self, database, table, files):
