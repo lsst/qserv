@@ -37,6 +37,7 @@
 #include <string>
 
 // Third-party headers
+#include "boost/algorithm/string/join.hpp"
 
 // LSST headers
 
@@ -44,30 +45,6 @@
 
 namespace lsst {
 namespace qserv {
-
-/**
- * Print an iterable data structure
- *
- * @param begin an iterator on the first element of a data structure
- * @param end an iterator on the last element of a data structure
- * @return a string containing the serialized data structure
- *
- * @overload toString(Iterable const& v)
- */
-template<typename Iterator>
-std::string toString(Iterator const& begin, Iterator const& end) {
-    std::ostringstream stream;
-    stream << "[";
-    if (begin!=end) {
-        for (Iterator it = begin ; it != end-1; ++it) {
-            stream << *(it) << ", ";
-        }
-        stream << *(end-1);
-    }
-    stream << "]";
-    return stream.str();
-
-}
 
 /**
  * Print an iterable data structure
@@ -84,8 +61,10 @@ std::string toString(Iterator const& begin, Iterator const& end) {
  */
 template<typename Iterable>
 std::string toString(Iterable const& v) {
-    return toString(v.begin(), v.end());
-
+     std::string list = "[ ";
+     list += boost::algorithm::join(v, ", ");
+     list += " ]";
+     return list;
 }
 
 }} // namespace lsst::qserv

@@ -40,10 +40,10 @@
 // Third-party headers
 
 // Qserv headers
-#include "query/Constraint.h"
 #include "parser/SelectParser.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/QuerySession.h"
+#include "query/Constraint.h"
 
 // Boost unit test header
 #include "boost/test/included/unit_test.hpp"
@@ -76,11 +76,11 @@ void testParse(SelectParser::Ptr p) {
 */
 boost::shared_ptr<QuerySession> prepareTestQuerySession(QuerySession::Test& t,
                                           std::string const& stmt,
-                                          std::string expectedErr="") {
+                                          std::string const& expectedErr="") {
     boost::shared_ptr<QuerySession> qs(new QuerySession(t));
     qs->setQuery(stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
-    if(expectedErr.size()>0) {
+    if(!expectedErr.empty()) {
         // Error was expected, do not continue.
         return qs;
     }
@@ -99,8 +99,7 @@ boost::shared_ptr<QuerySession> prepareTestQuerySession(QuerySession::Test& t,
 
 std::string computeFirstChunkQuery(QuerySession& qs, bool withSubChunks=true) {
     qs.addChunk(ChunkSpec::makeFake(100, withSubChunks));
-    QuerySession::Iter i = qs.cQueryBegin();
-    QuerySession::Iter e = qs.cQueryEnd();
+    QuerySession::Iter i = qs.cQueryBegin(), e = qs.cQueryEnd();
     BOOST_REQUIRE(i != e);
     ChunkQuerySpec& first = *i;
     return first.queries[0];
@@ -120,9 +119,8 @@ boost::shared_ptr<QuerySession> testAndCompare(QuerySession::Test& t,
 }
 
 void printChunkQuerySpecs(boost::shared_ptr<QuerySession> qs) {
-    QuerySession::Iter i;
-    QuerySession::Iter e = qs->cQueryEnd();
-    for(i = qs->cQueryBegin(); i != e; ++i) {
+    for(QuerySession::Iter i = qs->cQueryBegin(),  e = qs->cQueryEnd();
+        i != e; ++i) {
         lsst::qserv::qproc::ChunkQuerySpec& cs = *i;
         std::cout << "Spec: " << cs << std::endl;
     }
@@ -147,8 +145,7 @@ struct ParserFixture {
     ~ParserFixture(void) { };
 
     SelectParser::Ptr getParser(std::string const& stmt) {
-        SelectParser::Ptr p;
-        p = SelectParser::newInstance(stmt);
+        SelectParser::Ptr p = SelectParser::newInstance(stmt);
         p->setup();
         return p;
     }

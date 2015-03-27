@@ -33,8 +33,8 @@
 #include "boost/format.hpp"
 #include "boost/make_shared.hpp"
 
-// Qserv headers+
-#include "DuplSelectExprPlugin.h"
+// Qserv headers
+#include "qana/DuplSelectExprPlugin.h"
 #include "util/Error.h"
 #include "util/MultiError.h"
 
@@ -54,7 +54,7 @@ namespace test
      */
     class DuplSelectExprPluginTestHelper
     {
-        public:
+    public:
         DuplSelectExprPluginTestHelper()
         {
             plugin = DuplSelectExprPlugin();
@@ -74,7 +74,7 @@ namespace test
             return errors;
         }
 
-        private:
+    private:
             DuplSelectExprPlugin plugin;
     };
 }

@@ -39,7 +39,7 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Local headers
+// Qserv headers
 #include "css/Facade.h"
 #include "global/intTypes.h"
 #include "qana/QueryPlugin.h"

@@ -65,19 +65,5 @@ sanitizeName(std::string const& name) {
     return out;
 }
 
-/**
- * Convert a string to lowercase
- *
- * @param name input string to convert to lowercase
- * @return the converted string
- */
-inline std::string toLower(std::string const& name) {
-    std::string out=name;
-    std::transform(out.begin(),
-            out.end(),
-            out.begin(),::tolower);
-    return out;
-}
-
 }} // namespace lsst::qserv
 #endif // LSST_QSERV_STRINGUTIL_H

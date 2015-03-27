@@ -54,7 +54,7 @@
 #include "parser/SelectParser.h"
 #include "qdisp/ChunkMeta.h"
 #include "qproc/QuerySession.h"
-#include "../qana/DuplSelectExprPlugin.h"
+#include "qana/DuplSelectExprPlugin.h"
 #include "query/Constraint.h"
 #include "query/QsRestrictor.h"
 #include "query/QueryContext.h"
@@ -427,7 +427,7 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
 }
 
 BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
-    // o2.ra_PS and o2.ra_PS_Sigma have to be aliased in order to produces
+    // o2.ra_PS and o2.ra_PS_Sigma have to be aliased in order to produce
     // a result that can't be stored in a table as-is.
     // It's also a non-distance-bound spatially-unlimited query. Qserv should
     // reject this during query analysis. But the parser should still handle it.

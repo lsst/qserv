@@ -31,6 +31,9 @@
  * @author Fabrice Jammes, IN2P3/SLAC
  */
 
+#ifndef LSST_QSERV_QANA_DUPLSELECTEXPRPLUGIN_H
+#define LSST_QSERV_QANA_DUPLSELECTEXPRPLUGIN_H
+
 // Parent class
 #include "qana/QueryPlugin.h"
 
@@ -46,9 +49,6 @@
 #include "query/SelectStmt.h"
 #include "query/typedefs.h"
 #include "util/MultiError.h"
-
-#ifndef LSST_QSERV_QANA_DUPLSELECTEXPRPLUGIN_H
-#define LSST_QSERV_QANA_DUPLSELECTEXPRPLUGIN_H
 
 namespace lsst {
 namespace qserv {
