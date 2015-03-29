@@ -33,9 +33,9 @@ Module defining Config class and related methods.
 #-----------------------------
 # Imports for other modules --
 #-----------------------------
+from .errors import ExceptionResponse
 from lsst.db import db
 from lsst.qserv.admin.qservAdmin import QservAdmin
-from .errors import ExceptionResponse
 
 #----------------------------------
 # Local non-exported definitions --
@@ -77,7 +77,7 @@ class Config(object):
         self.dbPasswdPriv = appConfig.get('DB_PASSWD_PRIV')
         # CSS connection info
         self.useCss = appConfig.get('USE_CSS', True)
-        self.cssConn = appConfig.get('CSS_CONN', 'localhost:12181')
+        self.cssConn = appConfig.get('CSS_CONN')
         # Location of the run directory for qserv, must contain etc/ stuff
         self.runDir = appConfig.get('RUN_DIR')
 
@@ -110,7 +110,7 @@ class Config(object):
         it throws an ExceptionResponse exception with code 409 (CONFLICT).
         """
         if not self.useCss:
-            # cannot sio that, return 409 (CONFLICT) code
+            # CSS disabled in config, return 409 (CONFLICT) code
             raise ExceptionResponse(409, "CSSDisabled",
                                     "CSS access is disabled by service configuration")
         return QservAdmin(self.cssConn)

@@ -63,7 +63,8 @@ def main():
     verbosity = len(args.verbose)
     levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
     level = levels.get(verbosity, logging.DEBUG)
-    fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    fmt = "%(asctime)s [PID:%(process)d] [%(levelname)s] (%(funcName)s() at %(filename)s:%(lineno)d) " \
+          "%(name)s: %(message)s"
     logging.basicConfig(level=level, format=fmt)
 
     # instanciate and configure app
@@ -79,7 +80,7 @@ def main():
     app.register_blueprint(procMgr.procService, url_prefix='/services')
     app.register_blueprint(xrdMgr.xrdService, url_prefix='/xrootd')
 
-    # run, port number comes from SERVER_HOST configuration
+    # port number comes from SERVER_HOST configuration
     host = app.config.get('WMGR_INTERFACE')
     app.run(host)
 

@@ -51,7 +51,7 @@ _svcNames = ['xrootd', 'mysqld']
 
 def _svcDict(svc, running=None):
     """ Make service instance dict out of service name """
-    svcDict = dict(name=svc, uri=url_for('.state', service=svc))
+    svcDict = dict(name=svc, uri=url_for('.getServiceState', service=svc))
     if running is not None:
         svcDict['state'] = 'active' if running else 'stopped'
     return svcDict
@@ -68,7 +68,6 @@ def _runCmd(cmd, noexcept=True):
         if noexcept:
             return exc.returncode
         else:
-            # re-throw
             raise
 
 #------------------------
@@ -90,7 +89,7 @@ def services():
 
 
 @procService.route('/<service>', methods=['GET'])
-def state(service):
+def getServiceState(service):
     """
     Return service state.
     """
@@ -110,7 +109,7 @@ def state(service):
 
 
 @procService.route('/<service>', methods=['PUT'])
-def action(service):
+def execAction(service):
     """
     Do something with service.
 
@@ -128,7 +127,8 @@ def action(service):
     if not action:
         raise ExceptionResponse(400, "MissingArgument", "Action argument (action) is missing")
     if action not in ['start', 'stop', 'restart']:
-        raise ExceptionResponse(400, "MissingArgument", "Action argument (action) is missing")
+        raise ExceptionResponse(400, "InvalidArgument",
+                                "Unexpected 'action' argument, expecting one of start, stop, restart")
 
     runDir = Config.instance().runDir
     initScript = os.path.join(runDir, 'etc/init.d', service)

@@ -87,7 +87,10 @@ class wmgrDbTest(unittest.TestCase):
         Method called immediately after the test method has been called and
         the result recorded.
         """
-        pass
+        # delete it in case failure happened and database was not removed by test
+        response = self._getJson(self.app.get('/dbs'))
+        if self.dbName in [db['name'] for db in response['results']]:
+            self.app.delete('/dbs/' + self.dbName)
 
     def _getJson(self, rv, expectCode=200):
         """ convert response to json """

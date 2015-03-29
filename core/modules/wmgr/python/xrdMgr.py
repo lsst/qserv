@@ -29,9 +29,9 @@ Module defining Flask blueprint for xrootd management.
 #--------------------------------
 #  Imports of standard modules --
 #--------------------------------
-import re
 import logging
 import os
+import re
 import subprocess
 
 #-----------------------------
@@ -39,8 +39,8 @@ import subprocess
 #-----------------------------
 from .config import Config
 from .errors import errorResponse, ExceptionResponse
-from lsst.db import db
 from flask import Blueprint, json, request, url_for
+from lsst.db import db
 
 #----------------------------------
 # Local non-exported definitions --
@@ -79,7 +79,7 @@ def _getArgFlag(mdict, option, default=True):
 
 def _dbDict(dbName):
     """ Make database instance dict out of db name """
-    return dict(name=dbName, uri=url_for('.chunks', dbName=dbName))
+    return dict(name=dbName, uri=url_for('.listChunks', dbName=dbName))
 
 def _runCmd(cmd, noexcept=True):
     """ Run command in a subprocess """
@@ -92,7 +92,6 @@ def _runCmd(cmd, noexcept=True):
         if noexcept:
             return exc.returncode
         else:
-            # re-throw
             raise
 
 def _restartXrootd():
@@ -142,7 +141,7 @@ def dbs():
     dbs = dbConn.execCommandN('SELECT db FROM qservw_worker.Dbs')
 
     dbs = [row[0] for row in dbs]
-    _log.debug('dbs(): dbs = %s', dbs)
+    _log.debug('dbs = %s', dbs)
 
     dbData = []
     for dbName in dbs:
@@ -152,9 +151,9 @@ def dbs():
 
 
 @xrdService.route('/dbs', methods=['POST'])
-def dbAdd():
+def registerDb():
     """
-    Add new database.
+    Register new database in xrootd chunk inventory.
 
     Following parameters are expected to come in a request (in request body
     with application/x-www-form-urlencoded content like regular form):
@@ -174,7 +173,7 @@ def dbAdd():
     _validateDbName(dbName)
 
     xrootdRestart = _getArgFlag(request.form, 'xrootdRestart', True)
-    _log.debug('dbAdd(): xrootdRestart: %s', xrootdRestart)
+    _log.debug('xrootdRestart: %s', xrootdRestart)
 
     # apparently for now we need to use privileged account
     # as our regular account can only read from qservw_worker
@@ -187,7 +186,7 @@ def dbAdd():
         if dbs:
             raise ExceptionResponse(409, "DatabaseExists", "Database %s is already defined" % dbName)
     except db.DbException as exc:
-        _log.error('dbAdd(): exception when checking qservw_worker.Dbs: %s', exc)
+        _log.error('exception when checking qservw_worker.Dbs: %s', exc)
         raise
 
     # now add it
@@ -195,10 +194,10 @@ def dbAdd():
         query = "INSERT INTO qservw_worker.Dbs (db) VALUES ('{0}')".format(dbName)
         dbs = dbConn.execCommand0(query)
     except db.DbException as exc:
-        _log.error('dbAdd(): exception when adding database %s: %s', dbName, exc)
+        _log.error('exception when adding database %s: %s', dbName, exc)
         raise
 
-    _log.debug('dbAdd(): database %s added', dbName)
+    _log.debug('database %s added', dbName)
 
     # presently we have to restart xrootd to update ChunkInventory
     if xrootdRestart:
@@ -210,11 +209,11 @@ def dbAdd():
 
 
 @xrdService.route('/dbs/<dbName>', methods=['DELETE'])
-def dbRemove(dbName):
+def unregisterDb(dbName):
     """
-    Remove database. Optional boolean xrootdRestart option can be given in
-    a query string (acceptable values are "0', "1", "yes", "no"), if set
-    to false it will disable xrootd restart.
+    Unregister database from xrootd chunk inventory. Optional boolean xrootdRestart
+    option can be given in a query string (acceptable values are "0', "1", "yes", "no"),
+    if set to false it will disable xrootd restart.
     """
 
     _log.debug('request: %s', request)
@@ -223,7 +222,7 @@ def dbRemove(dbName):
     _validateDbName(dbName)
 
     xrootdRestart = _getArgFlag(request.args, 'xrootdRestart', True)
-    _log.debug('dbAdd(): xrootdRestart: %s', xrootdRestart)
+    _log.debug('xrootdRestart: %s', xrootdRestart)
 
     # apparently for now we need to use privileged account
     # as our regular account can only read from qservw_worker
@@ -234,16 +233,16 @@ def dbRemove(dbName):
     cursor = dbConn._conn.cursor()
     try:
         query = "DELETE FROM qservw_worker.Dbs WHERE db=%s;"
-        _log.debug('dbRemove(): executing: %s for %s', query, dbName)
+        _log.debug('executing: %s for %s', query, dbName)
         cursor.execute(query, [dbName])
         if cursor.rowcount == 0:
-            _log.error('dbRemove(): no rows have been removed')
+            _log.error('no rows have been removed')
             raise ExceptionResponse(409, "DatabaseMissing", "Database %s is not defined" % dbName)
     except db.DbException as exc:
-        _log.error('dbRemove(): exception when executing query: %s', exc)
+        _log.error('exception when executing query: %s', exc)
         raise
 
-    _log.debug('dbRemove(): database %s removed', dbName)
+    _log.debug('database %s removed', dbName)
 
     if xrootdRestart:
         # presently we have to restart xrootd to update ChunkInventory
@@ -255,7 +254,7 @@ def dbRemove(dbName):
 
 
 @xrdService.route('/dbs/<dbName>', methods=['GET'])
-def chunks(dbName):
+def listChunks(dbName):
     """
     Return the list of chunk IDs in a database.
 
@@ -267,5 +266,5 @@ def chunks(dbName):
     # validate it
     _validateDbName(dbName)
 
-    _log.error('chunks(): method not implemented yet')
+    _log.error('method not implemented yet')
     raise ExceptionResponse(501, "NotImplemented", "Chunk listing method is not implemented yet")

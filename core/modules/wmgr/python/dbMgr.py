@@ -29,17 +29,17 @@ Module defining Flask blueprint for database management.
 #--------------------------------
 #  Imports of standard modules --
 #--------------------------------
-import re
 import logging
+import re
 
 #-----------------------------
 # Imports for other modules --
 #-----------------------------
 from .config import Config
 from .errors import errorResponse, ExceptionResponse
+from flask import Blueprint, json, request, url_for
 from lsst.db import db
 from lsst.qserv.admin.qservAdminException import QservAdminException
-from flask import Blueprint, json, request, url_for
 from MySQLdb.constants import FIELD_TYPE
 
 #----------------------------------
@@ -79,15 +79,15 @@ _createTableRe = re.compile(r'^\s*CREATE\s+TABLE\s+(\w\.)?(\w+)', re.I)
 
 def _dbDict(dbName):
     """ Make database instance dict out of db name """
-    return dict(name=dbName, uri=url_for('.dbDelete', dbName=dbName))
+    return dict(name=dbName, uri=url_for('.dropDb', dbName=dbName))
 
 def _tblDict(dbName, tblName):
     """ Make table instance dict out of table name """
-    return dict(name=tblName, uri=url_for('.tableDelete', dbName=dbName, tblName=tblName))
+    return dict(name=tblName, uri=url_for('.deleteTable', dbName=dbName, tblName=tblName))
 
 def _chunkDict(dbName, tblName, chunkId):
     """ Make table instance dict out of table name """
-    uri = url_for('.chunkDelete', dbName=dbName, tblName=tblName, chunkId=chunkId)
+    uri = url_for('.deleteChunk', dbName=dbName, tblName=tblName, chunkId=chunkId)
     return dict(chunkId=chunkId, uri=uri, chunkTable=False, overlapTable=False)
 
 def _getArgFlag(mdict, option, default=True):
@@ -128,18 +128,18 @@ def dbExceptionHandler(error):
     return errorResponse(500, "db.DbException", str(error))
 
 @dbService.route('', methods=['GET'])
-def dbs():
+def listDbs():
     """ Return the list of databases """
 
     _log.debug('request: %s', request)
-    _log.debug('dbs() GET => get database list')
+    _log.debug('GET => get database list')
 
     # use non-privileged account, may limit the list of databases returned.
     dbConn = Config.instance().dbConn()
     dbs = dbConn.execCommandN('SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA')
 
     dbs = [row[0] for row in dbs]
-    _log.debug('dbs(): dbs = %s', dbs)
+    _log.debug('dbs = %s', dbs)
 
     dbData = []
     for dbName in dbs:
@@ -150,9 +150,11 @@ def dbs():
 
 
 @dbService.route('', methods=['POST'])
-def dbCreate():
+def createDb():
     """
-    Create new database, database name comes in a query string
+    Create new database, database name comes in a query string. In addition to creating
+    database itself this method also grants all privileges on this database to regular
+    non-privileged account.
 
     Following parameters are expected to come in a request (in request body
     with application/x-www-form-urlencoded content like regular form):
@@ -161,7 +163,7 @@ def dbCreate():
 
     _log.debug('request: %s', request)
     _log.debug('request.form: %s', request.form)
-    _log.debug('dbCreate() POST => make database')
+    _log.debug('POST => make database')
 
     # get database name from query
     dbName = request.form.get('db', '').strip()
@@ -176,12 +178,12 @@ def dbCreate():
     try:
         dbConn.createDb(dbName)
     except db.DbException as exc:
-        _log.error('dbCreate(): exception when creating database %s: %s', dbName, exc)
+        _log.error('exception when creating database %s: %s', dbName, exc)
         if exc.errCode() == db.DbException.DB_EXISTS:
             raise ExceptionResponse(409, "DatabaseExists", "Database %s already exists" % dbName)
         raise
 
-    _log.debug('dbCreate(): database %s created', dbName)
+    _log.debug('database %s created', dbName)
 
     # grant full access to non-privileged account
     cmd = "GRANT ALL PRIVILEGES ON {0}.* TO '{1}'@'{2}'"
@@ -191,11 +193,11 @@ def dbCreate():
         try:
             dbConn.execCommand0(cmd.format(dbName, user, host))
         except db.DbException as exc:
-            _log.error('dbCreate(): exception when adding grants on database: %s', exc)
+            _log.error('exception when adding grants on database: %s', exc)
             raise ExceptionResponse(500, "GrantFailed", "Database %s created but GRANT failed" % dbName,
                                     str(exc))
 
-    _log.debug('dbCreate(): grants added')
+    _log.debug('grants added')
 
     # return representation for new database, 201 code is for CREATED
     response = json.jsonify(result=_dbDict(dbName))
@@ -204,12 +206,12 @@ def dbCreate():
 
 
 @dbService.route('/<dbName>', methods=['DELETE'])
-def dbDelete(dbName):
+def dropDb(dbName):
     """ Drop database """
 
     _log.debug('request: %s', request)
     _log.debug('request.form: %s', request.form)
-    _log.debug('dbDelete() DELETE => drop database')
+    _log.debug('DELETE => drop database')
 
     # validate it
     _validateDbName(dbName)
@@ -219,23 +221,23 @@ def dbDelete(dbName):
     try:
         dbConn.dropDb(dbName)
     except db.DbException as exc:
-        _log.error('dbDelete(): exception when dropping database %s: %s', dbName, exc)
+        _log.error('exception when dropping database %s: %s', dbName, exc)
         if exc.errCode() == db.DbException.DB_DOES_NOT_EXIST:
             raise ExceptionResponse(404, "DatabaseMissing", "Database %s does not exist" % dbName)
         raise
 
-    _log.debug('dbDelete(): successfully dropped database %s', dbName)
+    _log.debug('successfully dropped database %s', dbName)
 
     # return representation for deleted database
     return json.jsonify(result=_dbDict(dbName))
 
 
 @dbService.route('/<dbName>/tables', methods=['GET'])
-def tables(dbName):
+def listTables(dbName):
     """ Return the list of tables in a database """
 
     _log.debug('request: %s', request)
-    _log.debug('tables() GET => get table list')
+    _log.debug('GET => get table list')
 
     # validate it
     _validateDbName(dbName)
@@ -247,14 +249,14 @@ def tables(dbName):
 
     # list tables
     tables = dbConn.listTables(dbName)
-    _log.debug('tables(): tables=%s', tables)
+    _log.debug('tables=%s', tables)
     tblData = [_tblDict(dbName, tblName) for tblName in tables]
 
     return json.jsonify(results=tblData)
 
 
 @dbService.route('/<dbName>/tables', methods=['POST'])
-def tableCreate(dbName):
+def createTable(dbName):
     """
     Create new table, following parameters are expected to come in a request
     (in request body with application/x-www-form-urlencoded content like regular form):
@@ -275,7 +277,7 @@ def tableCreate(dbName):
 
     _log.debug('request: %s', request)
     _log.debug('request.form: %s', request.form)
-    _log.debug('tableCreate() POST => create table')
+    _log.debug('POST => create table')
 
     # validate database name
     _validateDbName(dbName)
@@ -315,10 +317,10 @@ def tableCreate(dbName):
             raise ExceptionResponse(400, "InvalidArgument",
                                     "CREATE TABLE statement includes database name")
         schemaTblName = match.group(2)
-        _log.debug('tableCreate(): table name from schema in request: %s', schemaTblName)
+        _log.debug('table name from schema in request: %s', schemaTblName)
         if tblName:
             if schemaTblName != tblName:
-                _log.error('tableCreate(): table name does not match schema table name')
+                _log.error('table name does not match schema table name')
                 raise ExceptionResponse(400, "InvalidArgument",
                                         "Table name in `schema` does not match `table`: %s vs %s" %
                                         (schemaTblName, tblName))
@@ -329,11 +331,11 @@ def tableCreate(dbName):
         # need to drop CREATE TABLE part, everything before (
         idx = schema.find('(')
         if idx < 0:
-            _log.error('tableCreate(): schema is missing opening parenthesis: %s', schema)
+            _log.error('schema is missing opening parenthesis: %s', schema)
             raise ExceptionResponse(400, "InvalidArgument",
                                     "CREATE TABLE statement has no open parenthesis")
         schema = schema[idx:]
-        _log.debug('tableCreate(): schema from request: %s', schema)
+        _log.debug('schema from request: %s', schema)
 
     elif schemaSource == 'css':
 
@@ -341,9 +343,9 @@ def tableCreate(dbName):
         try:
             css = Config.instance().qservAdmin()
             schema = css.getTableSchema(dbName, tblName)
-            _log.debug('tableCreate(): schema from CSS: %s', schema)
+            _log.debug('schema from CSS: %s', schema)
         except QservAdminException as exc:
-            _log.error('tableCreate(): Failed to retrieve table schema from CSS: %s', exc)
+            _log.error('Failed to retrieve table schema from CSS: %s', exc)
             raise ExceptionResponse(500, "CSSError", "Failed to retrieve table schema from CSS", str(exc))
 
         # schema in CSS is stored without CREATE TABLE, so we are already OK
@@ -353,12 +355,12 @@ def tableCreate(dbName):
     try:
         dbConn.createTable(tblName, schema, dbName)
     except db.DbException as exc:
-        _log.error('tableCreate(): Exception when creating table: %s', exc)
+        _log.error('Exception when creating table: %s', exc)
         if exc.errCode() == db.DbException.TB_EXISTS:
             raise ExceptionResponse(409, "TableExists", "Table %s.%s already exists" % (dbName, tblName))
         raise
 
-    _log.debug('tableCreate(): table %s.%s created succesfully', dbName, tblName)
+    _log.debug('table %s.%s created succesfully', dbName, tblName)
 
     # return representation for new database, 201 code is for CREATED
     response = json.jsonify(result=_tblDict(dbName, tblName))
@@ -367,7 +369,7 @@ def tableCreate(dbName):
 
 
 @dbService.route('/<dbName>/tables/<tblName>', methods=['DELETE'])
-def tableDelete(dbName, tblName):
+def deleteTable(dbName, tblName):
     """
     Drop a table and optionally all chunk/overlap tables.
 
@@ -377,7 +379,7 @@ def tableDelete(dbName, tblName):
     """
 
     _log.debug('request: %s', request)
-    _log.debug('tableDelete() DELETE => drop table')
+    _log.debug('DELETE => drop table')
 
     # validate names
     _validateDbName(dbName)
@@ -385,7 +387,7 @@ def tableDelete(dbName, tblName):
 
     # get options
     dropChunks = _getArgFlag(request.args, 'dropChunks', False)
-    _log.debug('tableDelete(): dropChunks: %s', dropChunks)
+    _log.debug('dropChunks: %s', dropChunks)
 
     dbConn = Config.instance().dbConn()
     if not dbConn.dbExists(dbName):
@@ -393,26 +395,26 @@ def tableDelete(dbName, tblName):
 
     try:
         # drop chunks first
-        nchunks = 0
+        nChunks = 0
         if dropChunks:
             # regexp matching all chunk table names
-            tblre = re.compile('^' + tblName + '(FullOverlap)?_[0-9]+$')
+            tblRe = re.compile('^' + tblName + '(FullOverlap)?_[0-9]+$')
             for table in dbConn.listTables(dbName):
-                if tblre.match(table):
-                    _log.debug('tableDelete(): dropping chunk table %s.%s', dbName, table)
+                if tblRe.match(table):
+                    _log.debug('dropping chunk table %s.%s', dbName, table)
                     dbConn.dropTable(table, dbName)
-                    nchunks += 1
+                    nChunks += 1
 
         # drop main table
-        _log.debug('tableDelete(): dropping main table %s.%s', dbName, tblName)
+        _log.debug('dropping main table %s.%s', dbName, tblName)
         dbConn.dropTable(tblName, dbName)
 
     except db.DbException as exc:
-        _log.error('tableCreate(): Exception when dropping tables: %s', exc)
+        _log.error('Exception when dropping tables: %s', exc)
         if exc.errCode() == db.DbException.TB_DOES_NOT_EXIST:
             chunkMsg = ""
-            if nchunks:
-                chunkMsg = ", but {0} chunk tables have been dropped".format(nchunks)
+            if nChunks:
+                chunkMsg = ", but {0} chunk tables have been dropped".format(nChunks)
             raise ExceptionResponse(404, "TableMissing",
                                     "Table %s.%s does not exist%s" % (dbName, tblName, chunkMsg))
         raise
@@ -421,11 +423,11 @@ def tableDelete(dbName, tblName):
 
 
 @dbService.route('/<dbName>/tables/<tblName>/chunks', methods=['GET'])
-def chunks(dbName, tblName):
+def listChunks(dbName, tblName):
     """ Return the list of chunks in a table. For non-chunked table empty list is returned. """
 
     _log.debug('request: %s', request)
-    _log.debug('chunks() GET => get chunk list')
+    _log.debug('GET => get chunk list')
 
     # validate params
     _validateDbName(dbName)
@@ -438,10 +440,10 @@ def chunks(dbName, tblName):
 
     # regexp matching chunk table names
     # TODO: we need some central location for things like this
-    tblre = re.compile('^' + tblName + '(FullOverlap)?_([0-9]+)$')
+    tblRe = re.compile('^' + tblName + '(FullOverlap)?_([0-9]+)$')
     chunks = {}
     for table in dbConn.listTables(dbName):
-        match = tblre.match(table)
+        match = tblRe.match(table)
         if match is not None:
             chunkId = int(match.group(2))
             chunk = chunks.get(chunkId)
@@ -453,13 +455,13 @@ def chunks(dbName, tblName):
             else:
                 chunk['overlapTable'] = True
 
-    _log.debug('chunks(): found chunks: %s', chunks.keys())
+    _log.debug('found chunks: %s', chunks.keys())
 
     return json.jsonify(results=chunks.values())
 
 
 @dbService.route('/<dbName>/tables/<tblName>/chunks', methods=['POST'])
-def chunkCreate(dbName, tblName):
+def createChunk(dbName, tblName):
     """
     Create new chunk, following parameters are expected to come in a request
     (in request body with application/x-www-form-urlencoded content like regular form):
@@ -471,7 +473,7 @@ def chunkCreate(dbName, tblName):
 
     _log.debug('request: %s', request)
     _log.debug('request.form: %s', request.form)
-    _log.debug('chunkDelete() POST => create chunk')
+    _log.debug('POST => create chunk')
 
     # validate params
     _validateDbName(dbName)
@@ -502,16 +504,16 @@ def chunkCreate(dbName, tblName):
     tables = {'chunkTable': tblName + '_' + str(chunkId)}
     if overlapFlag:
         tables['overlapTable'] = tblName + 'FullOverlap_' + str(chunkId)
-    _log.debug('chunkCreate(): will create tables: %s', tables)
+    _log.debug('will create tables: %s', tables)
     for tblType, chunkTable in tables.items():
 
         # make table using DDL from non-chunked one
         query = "CREATE TABLE {2}.{0} LIKE {2}.{1}".format(chunkTable, tblName, dbName)
-        _log.debug('chunkCreate(): make chunk table: %s', chunkTable)
+        _log.debug('make chunk table: %s', chunkTable)
         try:
             dbConn.execCommand0(query)
         except db.DbException as exc:
-            _log.error('chunkCreate(): Exception when creating table: %s', exc)
+            _log.error('Exception when creating table: %s', exc)
             if exc.errCode() == db.DbException.TB_EXISTS:
                 raise ExceptionResponse(409, "TableExists",
                                         "Table %s.%s already exists" % (dbName, chunkTable))
@@ -525,12 +527,12 @@ def chunkCreate(dbName, tblName):
 
 
 @dbService.route('/<dbName>/tables/<tblName>/chunks/<int:chunkId>', methods=['DELETE'])
-def chunkDelete(dbName, tblName, chunkId):
+def deleteChunk(dbName, tblName, chunkId):
     """ Delete chunk from a table, both chunk data and overlap data is dropped. """
 
     _log.debug('request: %s', request)
     _log.debug('request.form: %s', request.form)
-    _log.debug('chunkDelete() DELETE => delete chunk')
+    _log.debug('DELETE => delete chunk')
 
     # validate params
     _validateDbName(dbName)
@@ -551,7 +553,7 @@ def chunkDelete(dbName, tblName, chunkId):
     if dbConn.tableExists(table, dbName):
 
         # drop table
-        _log.debug('chunkDelete(): drop chunk table: %s', table)
+        _log.debug('drop chunk table: %s', table)
         dbConn.dropTable(table, dbName)
 
         chunkRepr = _chunkDict(dbName, tblName, chunkId)
@@ -563,21 +565,21 @@ def chunkDelete(dbName, tblName, chunkId):
     if dbConn.tableExists(table, dbName):
 
         # drop table
-        _log.debug('chunkDelete(): drop chunk table: %s', table)
+        _log.debug('drop chunk table: %s', table)
         dbConn.dropTable(table, dbName)
 
         if chunkRepr is not None:
             chunkRepr['overlapTable'] = True
         else:
             # chunk data table is missing
-            _log.error('chunkDelete(): Chunk does not exist, but overlap does')
+            _log.error('Chunk does not exist, but overlap does')
             raise ExceptionResponse(404, "ChunkDeleteFailed", "Cannot delete chunk data table",
                                     "Chunk %s is not found for table %s.%s (but overlap table was deleted)" %
                                     (chunkId, dbName, tblName))
 
     if chunkRepr is None:
         # nothing found
-        _log.error('chunkDelete(): Chunk does not exist')
+        _log.error('Chunk does not exist')
         raise ExceptionResponse(404, "ChunkDeleteFailed", "Cannot delete chunk data table",
                                 "Chunk %s is not found for table %s.%s" % (chunkId, dbName, tblName))
 
@@ -587,7 +589,7 @@ def chunkDelete(dbName, tblName, chunkId):
 @dbService.route('/<dbName>/tables/<tblName>/data', methods=['POST'])
 @dbService.route('/<dbName>/tables/<tblName>/chunks/<int:chunkId>/data', methods=['POST'])
 @dbService.route('/<dbName>/tables/<tblName>/chunks/<int:chunkId>/overlap', methods=['POST'])
-def dataLoad(dbName, tblName, chunkId=None):
+def locadData(dbName, tblName, chunkId=None):
     """
     Upload data into a table or chunk using the file format supported by mysql
     command LOAD DATA [LOCAL] INFILE.
@@ -596,13 +598,13 @@ def dataLoad(dbName, tblName, chunkId=None):
     """
 
     _log.debug('request: %s', request)
-    _log.debug('tableDataLoad() POST => load data into chunk or overlap')
+    _log.debug('POST => load data into chunk or overlap')
 
     # validate params
     _validateDbName(dbName)
     _validateTableName(tblName)
 
-    _log.error('dataLoad(): method not implemented yet')
+    _log.error('method not implemented yet')
     raise ExceptionResponse(501, "NotImplemented", "Data loading operations are not implemented yet")
 
 
@@ -620,7 +622,7 @@ def getIndex(dbName, tblName, chunkId=None):
     """
 
     _log.debug('request: %s', request)
-    _log.debug('getIndex() GET => get index')
+    _log.debug('GET => get index')
 
     # validate params
     _validateDbName(dbName)
@@ -642,10 +644,10 @@ def getIndex(dbName, tblName, chunkId=None):
 
     # regexp matching chunk table names (but not overlap tables).
     # TODO: we need some central location for things like this
-    tblre = re.compile('^' + tblName + '_([0-9]+)$')
+    tblRe = re.compile('^' + tblName + '_([0-9]+)$')
     tables = []
     for table in dbConn.listTables(dbName):
-        match = tblre.match(table)
+        match = tblRe.match(table)
         if match is not None:
             if chunkId is not None:
                 if chunkId == int(match.group(1)):
@@ -656,12 +658,12 @@ def getIndex(dbName, tblName, chunkId=None):
 
     # we expect at least one chunk table to be found
     if not tables:
-        _log.error('getIndex(): no matching chunk tables found for table %s.%s chunkId=%s',
+        _log.error('no matching chunk tables found for table %s.%s chunkId=%s',
                    dbName, tblName, chunkId)
         raise ExceptionResponse(404, "NoMatchingChunks", "Failed to find any chunk data table",
                                 "No matching cunks for table %s.%s chunkId=%s" % (dbName, tblName, chunkId))
 
-    _log.debug("getIndex(): tables to scan: %s", tables)
+    _log.debug("tables to scan: %s", tables)
 
     # TODO: list of lists is probably not the most efficient storage
     result = []
@@ -678,7 +680,7 @@ def getIndex(dbName, tblName, chunkId=None):
             descr = [dict(name=d[0], type=_typeCode2Name(d[1])) for d in cursor.description]
         else:
             descr = [dict(name=name) for name in columns]
-        _log.debug("getIndex(): description: %s", descr)
+        _log.debug("description: %s", descr)
 
         while True:
             rows = cursor.fetchmany(1000000)
@@ -687,6 +689,6 @@ def getIndex(dbName, tblName, chunkId=None):
             for row in rows:
                 result.append(list(row))
 
-    _log.debug("getIndex(): retrieved %d index rows", len(result))
+    _log.debug("retrieved %d index rows", len(result))
 
     return json.jsonify(result=dict(rows=result, description=descr))
