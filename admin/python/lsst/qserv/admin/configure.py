@@ -212,6 +212,7 @@ def _get_template_params():
         'ZOOKEEPER_PORT': config['zookeeper']['port'],
         'HOME': os.path.expanduser("~"),
         'NODE_TYPE': config['qserv']['node_type'],
+        'WMGR_PORT': config['wmgr']['port'],
         }
 
         logger.debug("Template input parameters:\n {0}".format(params_dict))

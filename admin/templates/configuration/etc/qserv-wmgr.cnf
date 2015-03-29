@@ -1,0 +1,41 @@
+#
+# configuration file for wmgrService, production version
+#
+
+# port number is determined by this
+SERVER_NAME = '127.0.0.1:{{WMGR_PORT}}'
+
+# interface to listen to, defaults to 127.0.0.1
+WMGR_INTERFACE = '0.0.0.0'
+
+# for production set both to 0
+DEBUG = 0
+TESTING = 0
+
+LOGGER_NAME = "wmgr"
+
+JSON_AS_ASCII = False
+JSON_SORT_KEYS = True
+JSONIFY_PRETTYPRINT_REGULAR = False
+
+# ======== application-specific parameters =========
+
+#  database connection parameters, use None for defaults
+DB_HOST = '127.0.0.1'
+DB_PORT = {{MYSQLD_PORT}}
+DB_SOCKET = '{{MYSQLD_SOCK}}'
+
+# regular database account
+DB_USER = '{{QSERV_USER}}'
+DB_PASSWD = ''
+
+# special account used to create new databases
+DB_USER_PRIV = '{{MYSQLD_USER}}'
+DB_PASSWD_PRIV = '{{MYSQLD_PASS}}'
+
+# CSS-related parameters
+USE_CSS = True
+CSS_CONN = '{{QSERV_MASTER}}:{{ZOOKEEPER_PORT}}'
+
+# location of the run directory
+RUN_DIR = "{{QSERV_RUN_DIR}}"
