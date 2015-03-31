@@ -89,7 +89,7 @@ public:
                      int opts=0, XrdOucEnv*e=NULL);
     virtual int StatVS(XrdOssVSInfo *sP,
                        const char *sname=0,
-                       int updt=0, XrdOucEnv*e=NULL);
+                       int updt=0);
 
     virtual int Init(XrdSysLogger* log, const char* cfgFn);
 

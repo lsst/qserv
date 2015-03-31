@@ -231,7 +231,7 @@ int QservOss::Stat(const char *path, struct stat *buff, int opts, XrdOucEnv*) {
 */
 
 int QservOss::StatVS(XrdOssVSInfo *sP, const char *sname,
-                     int updt, XrdOucEnv*) {
+                     int updt) {
     // Idea: Always return some large amount of space, so that
     // the amount never prevents the manager xrootd/cmsd from
     // selecting us as a write target (qserv dispatch target)
