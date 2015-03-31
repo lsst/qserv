@@ -12,14 +12,26 @@ import itertools
 
 programs = []
 # extDeps
-extDeps = "antlr boost_thread boost_system log log4cxx zookeeper_mt".split()
+extDeps = "antlr boost_thread boost_system crypto log log4cxx ssl zookeeper_mt".split()
 
-modDeps = 'css global log query'.split() # deps on other modules
+modDeps = 'css global log query util'.split() # deps on other modules
 pDeps = itertools.chain(*map(lambda m: libProducts[m], modDeps))
 pDeps = cacheObjs(env, pDeps, ".o")
 
-localdeps = map(env.Object, 'QueryPlugin.cc QservRestrictorPlugin.cc'.split())
+localdeps = map(env.Object,
+                ['QueryPlugin.cc',
+                 'QservRestrictorPlugin.cc',
+                 'DuplSelectExprPlugin.cc']
+               )
 p = env.Program(['testPlugins.cc'] + localdeps + pDeps, LIBS=findLibs(extDeps))
 programs.append(p)
+
+p = env.Program(['testDuplSelectExprPlugin.cc', ] + localdeps + pDeps,
+LIBS=findLibs(extDeps))
+programs.append(p)
+
+# add a unit test which runs on every build
+utest = env.UnitTest(p)
+env.Append(UNIT_TESTS=map(env.UnitTest, programs))
 
 Return('programs')

@@ -43,19 +43,29 @@
 #include "query/SelectList.h"
 
 // System headers
+#include <algorithm>
 #include <iterator>
 #include <stdexcept>
 
 // Third-party headers
 #include "boost/make_shared.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
+#include "global/stringTypes.h"
+#include "global/vectorUtil.h"
+#include "qana/AnalysisError.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueFactor.h"
 
 namespace lsst {
 namespace qserv {
 namespace query {
+
+
+LOG_LOGGER SelectList::_logger = LOG_GET("lsst.qserv.query.SelectList");
 
 template <typename T>
 struct renderWithSep {
@@ -86,10 +96,12 @@ SelectList::dbgPrint(std::ostream& os) const {
     if(!_valueExprList) {
         throw std::logic_error("Corrupt SelectList object");
     }
-    os << "Parsed value expression for select list." << std::endl;
-    std::copy(_valueExprList->begin(),
-              _valueExprList->end(),
-              std::ostream_iterator<ValueExprPtr>(os, "\n"));
+    for(ValueExprPtrVectorConstIter viter = _valueExprList->begin(),
+        e = _valueExprList->end();
+        viter != e;
+        ++viter) {
+        (*viter)->dbgPrint(os);
+    }
 }
 
 std::ostream&

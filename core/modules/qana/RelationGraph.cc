@@ -151,14 +151,10 @@ bool isOuterJoin(JoinRef::Type jt) {
 /// `getColumnRef` returns the ColumnRef in `ve` if there is one.
 ColumnRef::Ptr getColumnRef(ValueExprPtr const& ve) {
     ColumnRef::Ptr cr;
-    if (!ve || ve->getFactorOps().size() != 1) {
+    if (!ve) {
         return cr;
     }
-    ValueFactorPtr vf = ve->getFactorOps().front().factor;
-    if (!vf) {
-        return cr;
-    }
-    return vf->getColumnRef();
+    return ve->getColumnRef();
 }
 
 /// `verifyColumnRef` checks that a column reference has a column name and an

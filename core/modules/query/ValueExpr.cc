@@ -46,6 +46,7 @@
 #include "boost/make_shared.hpp"
 
 // Qserv headers
+#include "qana/CheckAggregation.h"
 #include "query/FuncExpr.h"
 #include "query/QueryTemplate.h"
 #include "query/ValueFactor.h"
@@ -104,6 +105,32 @@ ValueExprPtr ValueExpr::newSimple(boost::shared_ptr<ValueFactor> vt)  {
 ValueExpr::ValueExpr() {
 }
 
+/** Print a string representation of the object
+ *
+ * @param out
+ * @return void
+ */
+void ValueExpr::dbgPrint(std::ostream& os) {
+    query::ColumnRef::Vector cList;
+    os << "ValueExpr:\t\"" << *this << "\"\n";
+    os << "\tAlias:\t\"" << this->_alias << "\"\n";
+    os << "\tIsColumnRef:\t" << this->isColumnRef() << "\n";
+    os << "\tIsFactor:\t" << this->isFactor() << "\n";
+    os << "\tIsStar:\t" << this->isStar() << "\n";
+    this->findColumnRefs(cList);
+    typedef query::ColumnRef::Vector::const_iterator ColIter;
+    for(ColIter i=cList.begin(), e=cList.end(); i != e; ++i) {
+        os << "\tColumnRef:\t" << *i << "\n";
+    }
+    bool hasAgg = false;
+    qana::CheckAggregation ca(hasAgg);
+    for(FactorOpVector::const_iterator i=this->_factorOps.begin(),
+            e=this->_factorOps.end(); i != e; ++i) {
+            ca(*i);
+            os << "\tFactorOp:\t\"" << *i << "\", hasAgg: " << hasAgg << "\n";
+    }
+}
+
 boost::shared_ptr<ColumnRef> ValueExpr::copyAsColumnRef() const {
     boost::shared_ptr<ColumnRef> cr;
     if(_factorOps.size() != 1) { return cr; } // Empty or Not a single ColumnRef
@@ -156,6 +183,30 @@ void ValueExpr::findColumnRefs(ColumnRef::Vector& vector) {
     }
 }
 
+/** Check if the current ValueExpr contains an aggregation function.
+ *  This function assume the ValueExpr was part of a SelectList
+ * @return true if the object contains an aggregation function
+ */
+bool ValueExpr::hasAggregation() const {
+    bool hasAgg = false;
+    qana::CheckAggregation ca(hasAgg);
+    std::for_each(_factorOps.begin(), _factorOps.end(), ca);
+    return hasAgg;
+}
+
+// TODO C++11 move nullptr_cr to nullptr
+ColumnRef::Ptr ValueExpr::getColumnRef() const {
+    ColumnRef::Ptr nullptr_cr;
+    if (_factorOps.size() != 1) {
+        return nullptr_cr;
+    }
+    ValueFactorPtr const& vf = _factorOps.front().factor;
+    if (!vf) {
+        return nullptr_cr;
+    }
+    return vf->getColumnRef();
+}
+
 /// @return true if holding a single ValueFactor, and that factor is a *
 bool ValueExpr::isStar() const {
     if(!_factorOps.empty() && _factorOps.size() == 1) {
@@ -203,6 +254,16 @@ ValueExprPtr ValueExpr::clone() const {
     return expr;
 }
 
+/** Return a string representation of the object
+ *
+ * @return a string representation of the object
+ */
+std::string ValueExpr::toString() const {
+    std::ostringstream oss;
+
+    oss << *this;
+    return oss.str();
+}
 
 std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
     // Reuse QueryTemplate-based rendering

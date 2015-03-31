@@ -74,6 +74,8 @@ namespace lsst {
 namespace qserv {
 namespace qproc {
 
+LOG_LOGGER QuerySession::_logger = LOG_GET("lsst.qserv.qproc.QuerySession");
+
 void printConstraints(query::ConstraintVector const& cv) {
     if (LOG_CHECK_INFO()) {
         std::stringstream ss;
@@ -109,7 +111,13 @@ void QuerySession::setQuery(std::string const& inputQuery) {
         _applyLogicPlugins();
         _generateConcrete();
         _applyConcretePlugins();
-        //_showFinal(std::cout); // DEBUG
+
+        if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
+            std::ostringstream stream;
+            _showFinal(stream);
+            LOGF(_logger, LOG_LVL_DEBUG, "Query Plugins applied:\n %1%" % stream.str());
+        }
+
     } catch(QueryProcessingBug& b) {
         _error = std::string("QuerySession bug:") + b.what();
     } catch(qana::AnalysisError& e) {
@@ -288,8 +296,10 @@ void QuerySession::_initContext() {
 }
 
 void QuerySession::_preparePlugins() {
+    // TODO: use C++11 syntax to refactor this code
     _plugins = boost::make_shared<QueryPluginPtrVector>();
 
+    _plugins->push_back(qana::QueryPlugin::newInstance("DuplicateSelectExpr"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Where"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Aggregate"));
     _plugins->push_back(qana::QueryPlugin::newInstance("Table"));
@@ -352,8 +362,8 @@ void QuerySession::_showFinal(std::ostream& os) {
     query::QueryTemplate par = _stmtParallel.front()->getTemplate();
     query::QueryTemplate mer = _stmtMerge->getTemplate();
 
-    os << "QuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
-    os << "QuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
+    os << "\tQuerySession::_showFinal() : parallel: " << par.dbgStr() << std::endl;
+    os << "\tQuerySession::_showFinal() : merge: " << mer.dbgStr() << std::endl;
     if(!_context->scanTables.empty()) {
         StringPairVector::const_iterator i,e;
         for(i=_context->scanTables.begin(), e=_context->scanTables.end();

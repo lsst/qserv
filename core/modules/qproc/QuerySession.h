@@ -36,7 +36,10 @@
 #include "boost/iterator/iterator_facade.hpp"
 #include "boost/shared_ptr.hpp"
 
-// Local headers
+// LSST headers
+#include "lsst/log/Log.h"
+
+// Qserv headers
 #include "css/Facade.h"
 #include "global/intTypes.h"
 #include "qana/QueryPlugin.h"
@@ -86,7 +89,6 @@ public:
     void addChunk(ChunkSpec const& cs);
     void addChunk(ChunkSpecVector const& cs);
     void setDummy();
-
 
     query::SelectStmt const& getStmt() const { return *_stmt; }
 
@@ -144,8 +146,35 @@ private:
     std::string _original;
     boost::shared_ptr<query::QueryContext> _context;
     boost::shared_ptr<query::SelectStmt> _stmt;
+
     /// Group of parallel statements (not a sequence)
+    /**
+    * Store the template used to generate queries on the workers
+    * Example:
+    *    - input user query:
+    *    select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr)
+    *    from LSST.Object where bMagF > 20.0 GROUP BY chunkId;
+    *    - template for worker queries:
+    *    SELECT sum(pm_declErr) AS QS1_SUM,chunkId AS f1,chunkId AS f1,
+    *    COUNT(pm_declErr) AS QS2_COUNT,SUM(pm_declErr) AS QS3_SUM
+    *    FROM LSST.Object_%CC% AS QST_1_ WHERE bMagF>20.0 GROUP BY chunkId
+    *
+    */
     query::SelectStmtPtrVector _stmtParallel;
+
+    /**
+    * Store the query used to aggregate results on the czar.
+    * Aggregation is optional, so this variable may be empty
+    * It will run against a table named: result_ID_m, where ID is an integer
+    * Example:
+    *    - input user query:
+    *    select sum(pm_declErr), chunkId as f1, chunkId AS f1, avg(pm_declErr)
+    *    from LSST.Object where bMagF > 20.0 GROUP BY chunkId;
+    *    - merge query:
+    *    SELECT SUM(QS1_SUM),f1 AS f1,f1 AS f1,(SUM(QS3_SUM)/SUM(QS2_COUNT))
+    *    GROUP BY chunkId
+    *
+    */
     query::SelectStmtPtr _stmtMerge;
     bool _hasMerge;
     bool _isDummy; ///< Use dummy chunk, disabling subchunks or any real chunks
@@ -156,6 +185,8 @@ private:
 
     ChunkSpecVector _chunks;
     boost::shared_ptr<QueryPluginPtrVector> _plugins;
+
+    static LOG_LOGGER _logger;
 };
 
 /// Iterates over a ChunkSpecList to return ChunkQuerySpecs for execution

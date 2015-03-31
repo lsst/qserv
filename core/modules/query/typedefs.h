@@ -49,6 +49,7 @@ namespace query {
 class ValueExpr;
 typedef boost::shared_ptr<ValueExpr> ValueExprPtr;
 typedef std::vector<ValueExprPtr> ValueExprPtrVector;
+typedef ValueExprPtrVector::const_iterator ValueExprPtrVectorConstIter;
 
 class SelectStmt;
 typedef boost::shared_ptr<SelectStmt> SelectStmtPtr;
