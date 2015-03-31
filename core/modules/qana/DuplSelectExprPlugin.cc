@@ -127,7 +127,7 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
 
     for (query::ValueExprPtrVectorConstIter viter = valueExprList.begin();
         viter != valueExprList.end();
-        viter++) {
+        ++viter) {
         query::ValueExpr const& ve = *(*viter);
         if (ve.isStar()) {
             continue;

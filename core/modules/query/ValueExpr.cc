@@ -125,7 +125,7 @@ void ValueExpr::dbgPrint(std::ostream& os) {
     bool hasAgg = false;
     qana::CheckAggregation ca(hasAgg);
     for(FactorOpVector::const_iterator i=this->_factorOps.begin(),
-            e=this->_factorOps.end(); i != e; i++) {
+            e=this->_factorOps.end(); i != e; ++i) {
             ca(*i);
             os << "\tFactorOp:\t\"" << *i << "\", hasAgg: " << hasAgg << "\n";
     }

@@ -99,7 +99,7 @@ SelectList::dbgPrint(std::ostream& os) const {
     for(ValueExprPtrVectorConstIter viter = _valueExprList->begin(),
         e = _valueExprList->end();
         viter != e;
-        viter++) {
+        ++viter) {
         (*viter)->dbgPrint(os);
     }
 }

@@ -35,7 +35,7 @@ namespace sql {
 void
 SqlResults::freeResults() {
     int i, s = _results.size();
-    for (i=0 ; i<s ; i++) {
+    for (i=0 ; i<s ; ++i) {
         mysql_free_result(_results[i]);
     }
     _results.clear();
@@ -54,7 +54,7 @@ bool
 SqlResults::extractFirstColumn(std::vector<std::string>& ret,
                                SqlErrorObject& errObj) {
     int i, s = _results.size();
-    for (i=0 ; i<s ; i++) {
+    for (i=0 ; i<s ; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != NULL) {
             ret.push_back(row[0]);
@@ -70,7 +70,7 @@ SqlResults::extractFirst2Columns(std::vector<std::string>& col1,
                                  std::vector<std::string>& col2,
                                  SqlErrorObject& errObj) {
     int i, s = _results.size();
-    for (i=0 ; i<s ; i++) {
+    for (i=0 ; i<s ; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != NULL) {
             col1.push_back(row[0]);
@@ -88,7 +88,7 @@ SqlResults::extractFirst3Columns(std::vector<std::string>& col1,
                                  std::vector<std::string>& col3,
                                  SqlErrorObject& errObj) {
     int i, s = _results.size();
-    for (i=0 ; i<s ; i++) {
+    for (i=0 ; i<s ; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != NULL) {
             col1.push_back(row[0]);
@@ -108,7 +108,7 @@ SqlResults::extractFirst4Columns(std::vector<std::string>& col1,
                                  std::vector<std::string>& col4,
                                  SqlErrorObject& errObj) {
     int i, s = _results.size();
-    for (i=0 ; i<s ; i++) {
+    for (i=0 ; i<s ; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != NULL) {
             col1.push_back(row[0]);
