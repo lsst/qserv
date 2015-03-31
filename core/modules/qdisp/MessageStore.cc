@@ -66,7 +66,7 @@ const int MessageStore::messageCount() {
 const int MessageStore::messageCount(int code) {
     int count = 0;
     for (std::vector<QueryMessage>::const_iterator i = _queryMessages.begin();
-         i != _queryMessages.end(); i++) {
+         i != _queryMessages.end(); ++i) {
         if (i->code == code) count++;
     }
     return count;
