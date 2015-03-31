@@ -54,7 +54,7 @@ namespace test
      */
     class DuplSelectExprPluginTestHelper
     {
-        public:
+    public:
         DuplSelectExprPluginTestHelper()
         {
             plugin = DuplSelectExprPlugin();
@@ -74,7 +74,7 @@ namespace test
             return errors;
         }
 
-        private:
+    private:
             DuplSelectExprPlugin plugin;
     };
 }

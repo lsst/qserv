@@ -64,22 +64,22 @@ std::string const DuplSelectExprPlugin::ERR_MSG = "'%1%' at positions:%2%";
 
 util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector const& v) const {
 
-    typedef std::multimap<std::string,int> MultiMap;
+    typedef std::multimap<std::string, int> MultiMap;
 
     util::MultiError multiError;
 
     if (LOG_CHECK_LVL(_logger, LOG_LVL_DEBUG)) {
-              LOGF(_logger, LOG_LVL_DEBUG, "Looking for duplicate fields in: %1%" % toString(v));
+        LOGF(_logger, LOG_LVL_DEBUG, "Looking for duplicate fields in: %1%" % toString(v));
     }
 
     MultiMap mm;
     int pos;
     for (StringVector::const_iterator it = v.begin(), end = v.end(); it!=end; ++it) {
         pos = it - v.begin();
-        mm.insert(std::pair<std::string,int>(*it,pos));
+        mm.insert(std::pair<std::string, int>(*it,pos));
      }
 
-    for(MultiMap::iterator it = mm.begin(), end = mm.end();
+    for (MultiMap::iterator it = mm.begin(), end = mm.end();
         it != end;
         it = mm.upper_bound(it->first))
     {
@@ -125,7 +125,7 @@ DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStmt const& stmt) co
 
     StringVector selectExprNormalizedNames;
 
-    for(query::ValueExprPtrVectorConstIter viter = valueExprList.begin();
+    for (query::ValueExprPtrVectorConstIter viter = valueExprList.begin();
         viter != valueExprList.end();
         ++viter) {
         query::ValueExpr const& ve = *(*viter);

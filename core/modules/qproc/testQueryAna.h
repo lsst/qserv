@@ -80,7 +80,7 @@ boost::shared_ptr<QuerySession> prepareTestQuerySession(QuerySession::Test& t,
     boost::shared_ptr<QuerySession> qs(new QuerySession(t));
     qs->setQuery(stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
-    if(expectedErr.size()>0) {
+    if(!expectedErr.empty()) {
         // Error was expected, do not continue.
         return qs;
     }
