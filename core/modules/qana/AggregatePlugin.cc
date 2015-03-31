@@ -42,6 +42,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "qana/CheckAggregation.h"
 #include "query/AggOp.h"
 #include "query/FuncExpr.h"
 #include "query/QueryContext.h"
@@ -75,26 +76,11 @@ public:
     }
 
 private:
-    // Simply check for aggregation functions
-    class checkAgg {
-    public:
-        checkAgg(bool& hasAgg_) : hasAgg(hasAgg_) {}
-        inline void operator()(query::ValueExpr::FactorOp const& fo) {
-            if(!fo.factor.get());
-            if(fo.factor->getType() == query::ValueFactor::AGGFUNC) {
-                hasAgg = true; }
-        }
-        bool& hasAgg;
-    };
 
     void _makeRecord(query::ValueExpr const& e) {
-        bool hasAgg = false;
-        checkAgg ca(hasAgg);
         std::string origAlias = e.getAlias();
-        query::ValueExpr::FactorOpVector const& factorOps = e.getFactorOps();
-        std::for_each(factorOps.begin(), factorOps.end(), ca);
 
-        if(!ca.hasAgg) {
+        if(!e.hasAggregation()) {
             // Compute aliases as necessary to protect select list
             // elements so that result tables can be dumped and the
             // columns can be re-referenced in merge queries.
@@ -127,6 +113,7 @@ private:
         // results during merging.
         query::ValueExprPtr mergeExpr = boost::make_shared<query::ValueExpr>();
         query::ValueExpr::FactorOpVector& mergeFactorOps = mergeExpr->getFactorOps();
+        query::ValueExpr::FactorOpVector const& factorOps = e.getFactorOps();
         for(query::ValueExpr::FactorOpVector::const_iterator i=factorOps.begin();
             i != factorOps.end(); ++i) {
             query::ValueFactorPtr newFactor = i->factor->clone();
@@ -176,8 +163,6 @@ public:
 
     virtual void prepare() {}
 
-    virtual void applyLogical(query::SelectStmt& stmt,
-                              query::QueryContext&) {}
     virtual void applyPhysical(QueryPlugin::Plan& p,
                                query::QueryContext&);
 private:

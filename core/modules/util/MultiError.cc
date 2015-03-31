@@ -33,14 +33,24 @@ namespace lsst {
 namespace qserv {
 namespace util {
 
-/** Return a string representation of the object
- *
- * @return a string representation of the object
- */
+std::string const MultiError::HEADER_MSG = "Error(s):\n";
+
 std::string MultiError::toString() const {
     std::ostringstream oss;
 
     oss << *this;
+    return oss.str();
+}
+
+std::string MultiError::toOneLineString() const {
+    std::ostringstream oss;
+    if (!this->empty()) {
+          if (this->size()>1) {
+              std::ostream_iterator<Error> string_it(oss, ", ");
+              std::copy(this->begin(), this->end()-1, string_it);
+          }
+          oss << this->back();
+    }
     return oss.str();
 }
 
@@ -68,24 +78,16 @@ void MultiError::push_back (const std::vector<Error>::value_type& val) {
     errorVector.push_back(val);
 }
 
-/** Overload output operator for this class
- *
- * @param out
- * @param multiError
- * @return an output stream
- */
-std::ostream& operator<<(std::ostream &out,
-        MultiError const& multiError) {
+std::ostream& operator<<(std::ostream &out, MultiError const& multiError) {
     if (!multiError.empty()) {
+          out << MultiError::HEADER_MSG << "\t";
           if (multiError.size()>1) {
-              std::ostream_iterator<Error> string_it(out, "\n");
-              out << "Multi-error:\n";
+              std::ostream_iterator<Error> string_it(out, "\n\t");
               std::copy(multiError.begin(), multiError.end()-1, string_it);
           }
           out << multiError.back();
       }
     return out;
 }
-}
-}
-} // lsst::qserv::util
+
+}}} // lsst::qserv::util

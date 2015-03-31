@@ -48,16 +48,31 @@ namespace util {
  */
 class Error {
 public:
+
+    /**
+     * List of known Qserv errors
+     * TODO: centralize all error code (here?) see: DM-2416
+     */
+    static enum {NONE=0, DUPLICATE_SELECT_EXPR} status;
+
     Error(int code, std::string const& msg) :
             code(code), msg(msg) {
     }
+
     virtual ~Error() {
     }
+
     std::string toString() const;
 
     int code;
     std::string msg;
 
+    /** Overload output operator for current class
+     *
+     * @param out
+     * @param error
+     * @return an output stream
+     */
     friend std::ostream& operator<<(std::ostream &out, Error const& error);
 };
 

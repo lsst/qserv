@@ -54,7 +54,7 @@ hashTaskMsg(TaskMsg const& m) {
     m.SerializeToString(&str); // Use whole, serialized message
     MD5(reinterpret_cast<unsigned char const*>(str.data()),
         str.size(), hashVal);
-    for(int i=0; i < MD5_DIGEST_LENGTH; i++) {
+    for(int i=0; i < MD5_DIGEST_LENGTH; ++i) {
         output[i*2] = hexChar[(hashVal[i] >> 4) & 0x0F];
         output[i*2 + 1] = hexChar[hashVal[i] & 0x0F];
     }

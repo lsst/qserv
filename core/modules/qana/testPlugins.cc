@@ -51,7 +51,7 @@ struct TestFixture {
     TestFixture(void) {
         // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
         // Use admin/examples/testMap_generateMap
-        std::string kvMapPath = "./modules/qana/testPlugins.kvmap"; // FIXME
+        std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap"; // FIXME
         cssFacade = lsst::qserv::css::FacadeFactory::createMemFacade(
             kvMapPath, ".");
     }
@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(Exceptions) {
     QueryPlugin::Ptr qp = QueryPlugin::newInstance("QservRestrictor");
     TestFactory factory;
     boost::shared_ptr<QueryContext> qc = factory.newContext(cssFacade);
-    boost::shared_ptr<SelectStmt> stmt = factory.newStmt();
+    boost::shared_ptr<SelectStmt> stmt = factory.newSimpleStmt();
     qp->prepare();
     BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);
 #if 0
@@ -82,6 +82,15 @@ BOOST_AUTO_TEST_CASE(Exceptions) {
     qp->applyPhysical(p, *qc);
     qp->applyFinal(*qc);
 #endif
+}
+
+BOOST_AUTO_TEST_CASE(DuplicateSelectExpr) {
+    QueryPlugin::Ptr qp = QueryPlugin::newInstance("DuplicateSelectExpr");
+    TestFactory factory;
+    boost::shared_ptr<QueryContext> qc = factory.newContext(cssFacade);
+    boost::shared_ptr<SelectStmt> stmt = factory.newDuplSelectExprStmt();
+    qp->prepare();
+    BOOST_CHECK_THROW(qp->applyLogical(*stmt, *qc), AnalysisError);
 }
 
 

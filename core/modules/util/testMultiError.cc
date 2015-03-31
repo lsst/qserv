@@ -38,7 +38,7 @@
 // Third-party headers
 
 // Qserv headers
-#include "MultiError.h"
+#include "util/MultiError.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE multiError
@@ -64,6 +64,9 @@ BOOST_AUTO_TEST_CASE(MonoError) {
     test::output_test_stream output;
     util::MultiError multiError;
 
+    std::string expected_err_msg = util::MultiError::HEADER_MSG +
+            "\t[1] Stupid error message";
+
     int errCode = 1;
     std::string errMsg = "Stupid error message";
     util::Error error(errCode, errMsg);
@@ -71,7 +74,7 @@ BOOST_AUTO_TEST_CASE(MonoError) {
 
     output << multiError;
     std::cout << multiError;
-    BOOST_REQUIRE(output.is_equal("[1] Stupid error message"));
+    BOOST_REQUIRE(output.is_equal(expected_err_msg));
 }
 
 /** @test
@@ -82,9 +85,9 @@ BOOST_AUTO_TEST_CASE(MultiError) {
     test::output_test_stream output;
     util::MultiError multiError;
 
-    const char* str = "Multi-error:\n"
-            "[10] Error code is: 10\n"
-            "[11] Error code is: 11\n"
+    std::string expected_err_msg = util::MultiError::HEADER_MSG+"\t"
+            "[10] Error code is: 10\n\t"
+            "[11] Error code is: 11\n\t"
             "[12] Error code is: 12";
 
     for (int errCode = 10; errCode < 13; errCode = errCode + 1) {
@@ -97,7 +100,7 @@ BOOST_AUTO_TEST_CASE(MultiError) {
 
     output << multiError;
     std::cout << multiError;
-    BOOST_CHECK(output.is_equal(str));
+    BOOST_CHECK(output.is_equal(expected_err_msg));
 }
 
 /** @test

@@ -63,7 +63,7 @@ BOOST_FIXTURE_TEST_SUITE(Suite, TestFixture)
 
 BOOST_AUTO_TEST_CASE(Factory) {
     TestFactory tf;
-    SelectStmt::Ptr stmt = tf.newStmt();
+    SelectStmt::Ptr stmt = tf.newSimpleStmt();
     QueryContext::Ptr context = tf.newContext();
 }
 
