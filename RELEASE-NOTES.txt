@@ -1,3 +1,29 @@
+R E L E A S E   2015_03
+=======================
+
+Code improvements:
+ * DM-202:  Qserv: unit testing (query execution)
+ * DM-2387: Build testQDisp.cc on ubuntu
+ * DM-2390: Errors need to be checked in UserQueryFactory from QuerySession objects
+
+New features:
+ * DM-1900: Worker management service - design
+ * DM-2176: Worker management service - impl
+ * DM-998:  Adapt integration test to multi-node setup v1
+
+Bug fixes:
+ * DM-1841: Fix query error on case03: "SELECT scienceCcdExposureId FROM
+            Science_Ccd_Exposure_Metadata"
+ * DM-854:  duplicate column name when running near neighbor query
+ * DM-2451: Fix interface between QservOss and new cmsd version
+ * DM-2417: Data loader script crashes trying to create chunk table
+ * DM-2294: Unable to start cmsd on Qserv worker node
+
+Documentation improvements:
+ * DM-2190: Documentation for data loader
+ * DM-2309: Update dev quick-start guide to new git repositories
+
+
 R E L E A S E   2015_02
 =======================
 
