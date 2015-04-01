@@ -59,7 +59,8 @@ MergingRequester::MergingRequester(
       _infileMerger(merger),
       _tableName(tableName),
       _response(boost::make_shared<WorkerResponse>()),
-      _flushed(false) {
+      _flushed(false),
+      _cancelled(false) {
     _initState();
 }
 
@@ -148,6 +149,14 @@ bool MergingRequester::reset() {
     return true;
 }
 
+void MergingRequester::cancel() {
+    {
+        boost::lock_guard<boost::mutex> lock(_cancelledMutex);
+        _setError(log::MSG_EXEC_SQUASHED, "Cancellation requested");
+        _cancelled = true;
+    }
+    _callCancel(); // Pass cancellation down to worker.
+}
 
 std::ostream& MergingRequester::print(std::ostream& os) const {
     return os << "MergingRequester(" << _tableName << ", flushed="
@@ -165,6 +174,11 @@ void MergingRequester::_initState() {
 }
 
 bool MergingRequester::_merge() {
+    boost::lock_guard<boost::mutex> lock(_cancelledMutex);
+    if(_cancelled) {
+        LOGF_INFO("MergingRequester::_merge(), but already cancelled");
+        return false;
+    }
     if(_flushed) {
         throw Bug("MergingRequester::_merge : already flushed");
     }

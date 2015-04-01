@@ -74,7 +74,7 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    explicit Task() {}
+    explicit Task() : _poisoned(false) {}
     explicit Task(TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc);
 
     TaskMsgPtr msg; ///< Protobufs Task spec

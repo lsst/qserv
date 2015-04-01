@@ -319,6 +319,9 @@ bool QueryAction::Impl::_dispatchChannel() {
 
     try {
         for(int i=0; i < m.fragment_size(); ++i) {
+            if (_poisoned) {
+                break;
+            }
             wbase::Task::Fragment const& f(m.fragment(i));
             ChunkResource cr(req.getResourceFragment(i));
             // Use query fragment as-is, funnel results.
@@ -346,14 +349,42 @@ bool QueryAction::Impl::_dispatchChannel() {
     } catch(sql::SqlErrorObject const& e) {
         _multiError.push_back(makeError(e));
     }
-    // Send results.
-    _transmitResult();
+    if(!_poisoned) {
+        // Send results.
+        _transmitResult();
+    } else {
+        erred = true;
+        // Send poison error.
+        _multiError.push_back(util::Error(-1, "Poisoned."));
+        // Do we need to do any cleanup?
+    }
     return !erred;
 }
 
 void QueryAction::Impl::poison() {
-    // TODO: Figure out how to cancel a MySQL C-API call in-flight
-    LOG(_log, LOG_LVL_ERROR, "Ignoring QueryAction::Impl::poison() call, unimplemented");
+    LOG(_log, LOG_LVL_WARN, "Trying QueryAction::Impl::poison() call, experimental");
+    if(!_mysqlConn.get()) {
+    LOG(_log, LOG_LVL_WARN, "QueryAction::Impl::poison() no MysqlConn");
+        return;
+    }
+    int status = _mysqlConn->cancel();
+    switch (status) {
+      case -1:
+          LOG(_log, LOG_LVL_ERROR, "poison() NOP");
+          break;
+      case 0:
+          LOG(_log, LOG_LVL_ERROR, "poison() success");
+          break;
+      case 1:
+          LOG(_log, LOG_LVL_ERROR, "poison() Error connecting to kill query.");
+          break;
+      case 2:
+          LOG(_log, LOG_LVL_ERROR, "poison() Error processing kill query.");
+          break;
+      default:
+          LOG(_log, LOG_LVL_ERROR, "poison() unknown error");
+          break;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////

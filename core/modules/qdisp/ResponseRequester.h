@@ -50,6 +50,7 @@ public:
     typedef util::VoidCallable<void> CancelFunc;
 
     typedef boost::shared_ptr<ResponseRequester> Ptr;
+    ResponseRequester() : _cancelled(false) {}
     virtual ~ResponseRequester() {}
 
     /// @return a char vector to receive the next message. The vector
@@ -88,6 +89,10 @@ public:
     /// cancellation towards the buffer-filler.
     /// Default behavior invokes registered function.
     virtual void cancel() { _callCancel(); }
+    virtual bool cancelled() {
+        boost::lock_guard<boost::mutex> lock(_cancelMutex);
+        return _cancelled;
+    }
 
 protected:
     /// Call _cancelFunc.
@@ -97,12 +102,14 @@ protected:
         {
             boost::lock_guard<boost::mutex> lock(_cancelMutex);
             f.swap(_cancelFunc);
+            _cancelled = true;
         }
         if(f) {
             (*f)();
         }
     }
     boost::shared_ptr<CancelFunc> _cancelFunc;
+    bool _cancelled;
     boost::mutex _cancelMutex;
 };
 

@@ -317,11 +317,13 @@ class ForemanImpl::Processor : public wbase::MsgProcessor {
 public:
     class Cancel : public util::VoidCallable<void> {
     public:
-        Cancel(wbase::Task::Ptr t) : _t(t) {}
+        Cancel(wbase::Task::Ptr t, Scheduler::Ptr s) : _t(t), _s(s) {}
         virtual void operator()() {
             _t->poison();
+            _s->removeByHash(_t->hash);
         }
         wbase::Task::Ptr _t;
+        Scheduler::Ptr _s;
     };
     Processor(ForemanImpl& f) : _foremanImpl(f) {}
 
@@ -331,7 +333,8 @@ public:
 
         wbase::Task::Ptr t = boost::make_shared<wbase::Task>(taskMsg, replyChannel);
         _foremanImpl.newTaskAction(t);
-        boost::shared_ptr<Cancel> c = boost::make_shared<Cancel>(t);
+        boost::shared_ptr<Cancel> c
+            = boost::make_shared<Cancel>(t, _foremanImpl._scheduler);
         return c;
     }
     ForemanImpl& _foremanImpl;
@@ -353,6 +356,7 @@ ForemanImpl::ForemanImpl(Scheduler::Ptr s)
 }
 ForemanImpl::~ForemanImpl() {
     // FIXME: Poison and drain runners.
+    // This should only (get called on shutdown/restart).
 }
 
 void
@@ -361,6 +365,9 @@ ForemanImpl::_startRunner(wbase::Task::Ptr t) {
 }
 
 bool ForemanImpl::squashByHash(std::string const& hash) {
+    // Most (all?) cancellations are invoked by client with the
+    // active/outstanding request. This should only get called when a client not
+    // directly holding the active query wishes to cancel the query.
     boost::lock_guard<boost::mutex> m(_mutex);
     bool success = _scheduler->removeByHash(hash);
     success = success || _rManager->squashByHash(hash);

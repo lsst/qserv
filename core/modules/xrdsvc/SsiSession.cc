@@ -90,19 +90,22 @@ public:
     SsiProcessor(ResourceUnit const& ru,
                  wbase::MsgProcessor::Ptr mp,
                  boost::shared_ptr<wbase::SendChannel> sc,
-                 std::vector<SsiSession::CancelFuncPtr>& cancellers)
+                 SsiSession& ssiSession)
         : _ru(ru),
           _msgProcessor(mp),
           _sendChannel(sc),
-          _cancellers(cancellers) {}
+          _ssiSession(ssiSession) {}
 
+    /// Accept a TaskMsg. Pass the msg to _msgProcessor, which returns a
+    /// cancellation function to be called if the _msgProcessor's async
+    /// operations (outputting through _sendChannel) should be cancelled
     virtual void operator()(boost::shared_ptr<proto::TaskMsg> m) {
         util::Timer t;
         if(m->has_db() && m->has_chunkid()
            && (_ru.db() == m->db()) && (_ru.chunk() == m->chunkid())) {
             t.start();
             SsiSession::CancelFuncPtr p = (*_msgProcessor)(m, _sendChannel);
-            _cancellers.push_back(p);
+            _ssiSession._addCanceller(p);
             t.stop();
             LOGF_INFO("SsiProcessor msgProcessor call took %1% seconds" % t.getElapsed());
         } else {
@@ -116,7 +119,7 @@ private:
     ResourceUnit const& _ru;
     wbase::MsgProcessor::Ptr _msgProcessor;
     boost::shared_ptr<wbase::SendChannel> _sendChannel;
-    std::vector<SsiSession::CancelFuncPtr>& _cancellers;
+    SsiSession& _ssiSession;
 };
 ////////////////////////////////////////////////////////////////////////
 // class SsiSession
@@ -151,7 +154,7 @@ SsiSession::ProcessRequest(XrdSsiRequest* req, unsigned short timeout) {
         }
 
         t.start();
-        enqueue(ru, reqData, reqSize);
+        _enqueue(ru, reqData, reqSize);
         t.stop();
         LOGF_INFO("SsiSession::enqueue took %1% seconds" % t.getElapsed());
 
@@ -174,13 +177,15 @@ SsiSession::RequestFinished(XrdSsiRequest* req, XrdSsiRespInfo const& rinfo,
     // This call is sync (blocking).
     // client finished retrieving response, or cancelled.
     // release response resources (e.g. buf)
-
-    if(cancel) {
-        // Do cancellation.
-        typedef std::vector<CancelFuncPtr>::iterator Iter;
-        for(Iter i=_cancellers.begin(), e=_cancellers.end(); i != e; ++i) {
-            assert(*i);
-            (**i)();
+    {
+        boost::lock_guard<boost::mutex> lock(_cancelMutex);
+        if(!_cancelled && cancel) { // Cancel if not already cancelled
+            _cancelled = true;
+            typedef std::vector<CancelFuncPtr>::iterator Iter;
+            for(Iter i=_cancellers.begin(), e=_cancellers.end(); i != e; ++i) {
+                assert(*i);
+                (**i)();
+            }
         }
     }
     // No buffers allocated, so don't need to free.
@@ -205,14 +210,30 @@ SsiSession::Unprovision(bool forced) {
     return true; // false if we can't unprovision now.
 }
 
-/// Accept an incoming request addressed to a ResourceUnit, with the particulars
+void SsiSession::_addCanceller(CancelFuncPtr p) {
+    bool shouldCall = false;
+    {
+        boost::lock_guard<boost::mutex> lock(_cancelMutex);
+        if(_cancelled) {
+            // Don't add the canceller, just call it.
+            shouldCall = true;
+        } else {
+            _cancellers.push_back(p);
+        }
+    }
+    if (shouldCall) {
+        (*p)(); // call outside of the lock
+    }
+}
+
+// Accept an incoming request addressed to a ResourceUnit, with the particulars
 /// defined in the reqData payload
-void SsiSession::enqueue(ResourceUnit const& ru, char* reqData, int reqSize) {
+void SsiSession::_enqueue(ResourceUnit const& ru, char* reqData, int reqSize) {
 
     // reqData has the entire request, so we can unpack it without waiting for
     // more data.
     ReplyChannel::Ptr rc(new ReplyChannel(*this));
-    SsiProcessor::Ptr sp(new SsiProcessor(ru, _processor, rc, _cancellers));
+    SsiProcessor::Ptr sp(new SsiProcessor(ru, _processor, rc, *this));
 
     LOGF_INFO("Importing TaskMsg of size %1%" % reqSize);
     proto::ProtoImporter<proto::TaskMsg> pi(sp);

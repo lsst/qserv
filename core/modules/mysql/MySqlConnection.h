@@ -60,6 +60,8 @@ public:
     MySqlConfig const& getMySqlConfig() const { return *_sqlConfig; }
 
     bool queryUnbuffered(std::string const& query);
+    int cancel();
+
     MYSQL_RES* getResult() { return _mysql_res; }
     void freeResult() { mysql_free_result(_mysql_res); _mysql_res = NULL; }
     int getResultFieldCount() {
@@ -71,9 +73,9 @@ public:
     MySqlConfig const& getConfig() const { return *_sqlConfig; }
     bool selectDb(std::string const& dbName);
 
-
 private:
     bool _initMySql();
+    MYSQL* _connectHelper();
     static boost::mutex _mysqlShared;
     static bool _mysqlReady;
 
@@ -82,6 +84,9 @@ private:
     bool _isConnected;
     boost::shared_ptr<MySqlConfig> _sqlConfig;
     bool _useThreadMgmt;
+    bool _isExecuting; ///< true during mysql_real_query and mysql_use_result
+    bool _interrupted; ///< true if cancellation requested
+    boost::mutex _interruptMutex;
 };
 
 }}} // namespace lsst::qserv::mysql

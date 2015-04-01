@@ -62,7 +62,8 @@ public:
                  RESPONSE_DONE,
                  RESULT_ERROR,
                  MERGE_OK, // ???
-                 MERGE_ERROR, COMPLETE=2000};
+                 MERGE_ERROR,
+                 CANCEL, COMPLETE=2000};
     /// Report a state transition. Past state history is not currently saved.
     void report(State s, int code=0, std::string const& desc=_empty) {
         boost::lock_guard<boost::mutex> lock(_mutex);

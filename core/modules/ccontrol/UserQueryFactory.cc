@@ -113,6 +113,10 @@ UserQueryFactory::newUserQuery(std::string const& query,
         LOGF_INFO("Invalid query: %s" % qs->getError());
         sessionValid = false;
     }
+    if(!qs->getError().empty()) {
+        LOGF_INFO("Invalid query: %s" % qs->getError());
+        sessionValid = false;
+    }
     UserQuery* uq = new UserQuery(qs);
     int sessionId = UserQuery_takeOwnership(uq);
     uq->_sessionId = sessionId;

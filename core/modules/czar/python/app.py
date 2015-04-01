@@ -373,7 +373,7 @@ class InbandQueryAction:
         return self.isValid
 
     def abort(self):
-        """Abort execution. Not fully implemented"""
+        """Abort execution. This might work."""
         UserQuery_kill(self.sessionId)
 
     def _computeHash(self, bytes):
@@ -439,12 +439,13 @@ class InbandQueryAction:
 ### (unimplemented)
 
 class KillQueryAction:
-    def __init__(self, query):
-        self.query = query
+    def __init__(self, sessionId):
+        self.sessionId = sessionId
         pass
     def invoke(self):
-        logger.err("invoking kill query", self.query)
-        return "Unimplemented"
+        logger.err("invoking kill query", self.sessionId)
+        UserQuery_kill(self.sessionId)
+        return True
 
 class CheckAction:
     def __init__(self, tracker, handle):

@@ -62,7 +62,8 @@ public:
         : XrdSsiSession(strdup(sname), 0),
           XrdSsiResponder(this, (void *)0),
           _validator(validator),
-          _processor(processor)
+          _processor(processor),
+          _cancelled(false)
         {}
 
     virtual ~SsiSession() {
@@ -76,7 +77,8 @@ public:
     virtual bool Unprovision(bool forced);
 
 private:
-    void enqueue(ResourceUnit const& ru, char* reqData, int reqSize);
+    void _enqueue(ResourceUnit const& ru, char* reqData, int reqSize);
+    void _addCanceller(CancelFuncPtr p);
 
     class ReplyChannel;
     friend class ReplyChannel;
@@ -87,6 +89,10 @@ private:
     /// Stash of cancellation functions to be called to cancel msgs in flight on
     /// _processor.
     std::vector<CancelFuncPtr> _cancellers;
+    boost::mutex _cancelMutex; ///< For _cancellers and _cancelled
+    bool _cancelled; ///< true if the session has been cancelled.
+
+    friend class SsiProcessor; // Allow access for cancellation
 }; // class SsiSession
 }}} // namespace lsst::qserv::xrdsvc
 

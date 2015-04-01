@@ -91,6 +91,7 @@ std::string UserQuery_getExecDesc(int session) {
 
 /// Abort a running query
 void UserQuery_kill(int session) {
+    LOGF_INFO("EXECUTING UserQuery_kill(%1%)" % session);
     uqManager.get(session)->kill();
 }
 

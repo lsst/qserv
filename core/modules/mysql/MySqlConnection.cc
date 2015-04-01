@@ -30,6 +30,7 @@
 
 // Third-party headers
 #include "boost/make_shared.hpp"
+#include "boost/lexical_cast.hpp"
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
@@ -55,15 +56,23 @@ boost::mutex MySqlConnection::_mysqlShared;
 
 
 MySqlConnection::MySqlConnection()
-    : _mysql(NULL), _mysql_res(NULL) {
+    : _mysql(NULL),
+      _mysql_res(NULL),
+      _isConnected(false),
+      _useThreadMgmt(false),
+      _isExecuting(false),
+      _interrupted(false) {
     _initMySql();
 }
 
 MySqlConnection::MySqlConnection(MySqlConfig const& sqlConfig,
                                  bool useThreadMgmt)
     : _mysql(NULL), _mysql_res(NULL),
+      _isConnected(false),
       _sqlConfig(boost::make_shared<MySqlConfig>(sqlConfig)),
-      _useThreadMgmt(useThreadMgmt) {
+      _useThreadMgmt(useThreadMgmt),
+      _isExecuting(false),
+      _interrupted(false) {
     _initMySql();
 }
 
@@ -87,19 +96,8 @@ MySqlConnection::connect() {
     if(_useThreadMgmt) {
         mysql_thread_init();
     }
-    _mysql = mysql_init(NULL);
-    if(!_mysql) return false;
-    unsigned long clientFlag = CLIENT_MULTI_STATEMENTS;
-    MYSQL* c = mysql_real_connect(
-        _mysql,
-        _sqlConfig->socket.empty() ?_sqlConfig->hostname.c_str() : 0,
-        _sqlConfig->username.empty() ? 0 : _sqlConfig->username.c_str(),
-        _sqlConfig->password.empty() ? 0 : _sqlConfig->password.c_str(),
-        _sqlConfig->dbName.empty() ? 0 : _sqlConfig->dbName.c_str(),
-        _sqlConfig->port,
-        _sqlConfig->socket.empty() ? 0 : _sqlConfig->socket.c_str(),
-        clientFlag);
-    _isConnected = (c != NULL);
+    _mysql = _connectHelper();
+    _isConnected = (_mysql != NULL);
     return _isConnected;
 }
 
@@ -107,11 +105,48 @@ bool
 MySqlConnection::queryUnbuffered(std::string const& query) {
     // run query, store into list.
     int rc;
+    {
+        boost::lock_guard<boost::mutex> lock(_interruptMutex);
+        _isExecuting = true;
+        _interrupted = false;
+    }
     rc = mysql_real_query(_mysql, query.c_str(), query.length());
     if(rc) { return false; }
     _mysql_res = mysql_use_result(_mysql);
+    _isExecuting = false;
     if(!_mysql_res) { return false; }
     return true;
+}
+
+/// Cancel existing query
+/// @return 0 on success.
+/// 1 indicates error in connecting. (may try again)
+/// 2 indicates error executing kill query. (do not try again)
+/// -1 indicates NOP: No query in progress or query already interrupted.
+int
+MySqlConnection::cancel() {
+    boost::lock_guard<boost::mutex> lock(_interruptMutex);
+    int rc;
+    if(!_isExecuting || _interrupted) {
+        // Should we log this?
+        return -1; // No further action needed.
+    }
+    _interrupted = true; // Prevent others from trying to interrupt
+    MYSQL* killMysql = _connectHelper();
+    if (!killMysql) {
+        _interrupted = false; // Didn't try
+        return 1;
+        // Handle broken connection
+    }
+    // KILL QUERY only, not KILL CONNECTION.
+    int threadId = mysql_thread_id(_mysql);
+    std::string killSql = "KILL QUERY " + boost::lexical_cast<int>(threadId);
+    rc = mysql_real_query(killMysql, killSql.c_str(), killSql.size());
+    mysql_close(killMysql);
+    if(rc) {
+        return 2;
+    }
+    return 0;
 }
 
 bool
@@ -139,6 +174,29 @@ MySqlConnection::_initMySql() {
         _mysqlReady = true;
     }
     return true;
+}
+
+MYSQL* MySqlConnection::_connectHelper() {
+    MYSQL* m = mysql_init(NULL);
+    if (!m) {
+        return m;
+    }
+    unsigned long clientFlag = CLIENT_MULTI_STATEMENTS;
+    MYSQL* c = mysql_real_connect(
+        m,
+        _sqlConfig->socket.empty() ?_sqlConfig->hostname.c_str() : 0,
+        _sqlConfig->username.empty() ? 0 : _sqlConfig->username.c_str(),
+        _sqlConfig->password.empty() ? 0 : _sqlConfig->password.c_str(),
+        _sqlConfig->dbName.empty() ? 0 : _sqlConfig->dbName.c_str(),
+        _sqlConfig->port,
+        _sqlConfig->socket.empty() ? 0 : _sqlConfig->socket.c_str(),
+        clientFlag);
+    if (!c) {
+        // Failed to connect: free resources.
+        mysql_close(m);
+        return c;
+    }
+    return m;
 }
 
 }}} // namespace lsst::qserv::mysql

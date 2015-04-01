@@ -55,6 +55,7 @@ namespace lsst {
 namespace qserv {
 namespace qdisp {
 class MessageStore;
+class QueryResource;
 class ResponseRequester;
 
 /// class Executive manages the execution of tasks for a UserQuery, while
@@ -68,6 +69,8 @@ public:
         typedef boost::shared_ptr<Config> Ptr;
         Config(std::string const& serviceUrl_)
             : serviceUrl(serviceUrl_) {}
+        Config(int,int) : serviceUrl(getMockStr()) {}
+
         std::string serviceUrl; ///< XrdSsi service URL, e.g. localhost:1094
         static std::string getMockStr() {return "Mock";};
     };
@@ -79,6 +82,9 @@ public:
         boost::shared_ptr<ResponseRequester> requester;
     };
 
+    /// Construct an Executive.
+    /// If c->serviceUrl == Config::getMockStr(), then use XrdSsiServiceMock
+    /// instead of a real XrdSsiService
     Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms);
 
     /// Add an item with a reference number (not necessarily a chunk number)
@@ -116,18 +122,19 @@ private:
     friend class DispatchAction;
     void _dispatchQuery(int refNum,
                         Spec const& spec,
-                        ExecStatus& status);
+                        ExecStatus::Ptr execStatus);
 
     void _setup();
     bool _shouldRetry(int refNum);
-    ExecStatus& _insertNewStatus(int refNum, ResourceUnit const& r);
+    ExecStatus::Ptr _insertNewStatus(int refNum, ResourceUnit const& r);
 
     bool _track(int refNum, RequesterPtr r);
     void _unTrack(int refNum);
-    void _waitAllUntilEmpty();
 
     void _reapRequesters(boost::unique_lock<boost::mutex> const& requestersLock);
     void _reportStatuses();
+
+    void _waitAllUntilEmpty();
 
     // for debugging
     void _printState(std::ostream& os);
@@ -139,14 +146,18 @@ private:
     RequesterMap _requesters; ///< RequesterMap for results from submitted tasks
     StatusMap _statuses; ///< Statuses of submitted tasks
     int _requestCount; ///< Count of submitted tasks
+    bool _cancelled; ///< Has execution been cancelled?
 
     // Mutexes
     boost::mutex _requestersMutex;
     boost::condition_variable _requestersEmpty;
-
+    mutable boost::mutex _statusesMutex;
     boost::mutex _retryMutex;
+    boost::mutex _cancelledMutex;
+
     typedef std::map<int,int> IntIntMap;
     IntIntMap _retryMap; ///< Counter for task retries.
+
 }; // class Executive
 
 }}} // namespace lsst::qserv::qdisp

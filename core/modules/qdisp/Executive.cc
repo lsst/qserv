@@ -26,6 +26,11 @@
   *
   * @brief Executive. It executes things.
   *
+  * TODO: Consider merging RequesterMap and StatusMap. Originally, RequesterMap
+  * was separate from StatusMap to reduce contention when things are just
+  * updating statuses, but if the contention is small, we can simplify by
+  * combining them (Requester, status) into a single map.
+  *
   * @author Daniel L. Wang, SLAC
   */
 
@@ -67,6 +72,7 @@ std::string getErrorText(XrdSsiErrInfo & e) {
     os <<  " Code=" << errCode;
     return os.str();
 }
+
 void populateState(lsst::qserv::qdisp::ExecStatus& es,
                    lsst::qserv::qdisp::ExecStatus::State s,
                    XrdSsiErrInfo& e) {
@@ -74,6 +80,22 @@ void populateState(lsst::qserv::qdisp::ExecStatus& es,
     std::string desc(e.Get(code));
     es.report(s, code, desc);
 }
+
+/// Atomically set var to value.
+/// @param m the mutex protecting var.
+/// @return previous value of var.
+inline bool atomicSet(bool& var, bool value, boost::mutex& m) {
+    boost::lock_guard<boost::mutex> lock(m);
+    bool oldValue = var;
+    var = value;
+    return oldValue;
+}
+
+inline bool lockedRead(bool& var, boost::mutex& m) {
+    boost::lock_guard<boost::mutex> lock(m);
+    return var;
+}
+
 } // anonymous namespace
 
 // Declare to allow force-on XrdSsi tracing
@@ -127,8 +149,10 @@ private:
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(Config::Ptr c, boost::shared_ptr<MessageStore> ms)
-    : _config(*c), _empty(true),
-      _messageStore(ms) {
+    : _config(*c),
+      _empty(true),
+      _messageStore(ms),
+      _cancelled(false) {
     _setup();
 }
 
@@ -138,14 +162,14 @@ public:
     DispatchAction(Executive& executive,
                    int refNum,
                    Executive::Spec const& spec,
-                   ExecStatus& status)
+                   ExecStatus::Ptr execStatus)
         : _executive(executive), _refNum(refNum),
-          _spec(spec), _status(status) {
+          _spec(spec), _execStatus(execStatus) {
     }
     virtual ~DispatchAction() {}
     virtual void operator()() {
         if(_spec.requester->reset()) { // Must be able to reset state
-            _executive._dispatchQuery(_refNum, _spec, _status);
+            _executive._dispatchQuery(_refNum, _spec, _execStatus);
         }
         // If the reset fails, do nothing-- can't retry.
     }
@@ -153,20 +177,26 @@ private:
     Executive& _executive;
     int _refNum;
     Spec _spec;
-    ExecStatus& _status; ///< Reference back to exec status
+    ExecStatus::Ptr _execStatus; ///< Points at status in Executive::_statusMap
 };
 
 /// Add a spec to be executed. Not thread-safe.
 ///
 void Executive::add(int refNum, Executive::Spec const& s) {
+    bool alreadyCancelled = lockedRead(_cancelled, _cancelledMutex);
+    if(alreadyCancelled) {
+        LOGF_INFO("Ignoring add(%1%), already cancelled" % refNum);
+        return;
+    }
     bool trackOk = _track(refNum, s.requester); // Remember so we can join
     if(!trackOk) {
         LOGF_WARN("Ignoring duplicate add(%1%)" % refNum);
         return;
     }
-    ExecStatus& status = _insertNewStatus(refNum, s.resource);
+    ExecStatus::Ptr execStatus = _insertNewStatus(refNum, s.resource);
     _empty.set(false);
     LOGF_DEBUG("Flag set to false %1%" % _empty.get());
+
     ++_requestCount;
     std::string msg = "Exec add pth=" + s.resource.path();
     LOGF_INFO("%1%" % msg);
@@ -174,7 +204,7 @@ void Executive::add(int refNum, Executive::Spec const& s) {
 
     _dispatchQuery(refNum,
                    s,
-                   status);
+                   execStatus);
 }
 
 bool Executive::join() {
@@ -187,8 +217,14 @@ bool Executive::join() {
             ExecStatus::Info const& esI = entry.second->getInfo();
             LOGF_INFO("entry state:%1% %2%)" % (void*)entry.second.get() % esI);
             return (esI.state == ExecStatus::RESPONSE_DONE)
-                || (esI.state == ExecStatus::COMPLETE); } };
-    int sCount = std::count_if(_statuses.begin(), _statuses.end(), successF::f);
+                || (esI.state == ExecStatus::COMPLETE); }
+    };
+
+    int sCount = 0;
+    {
+        boost::lock_guard<boost::mutex> lock(_statusesMutex);
+        sCount = std::count_if(_statuses.begin(), _statuses.end(), successF::f);
+    }
 
     LOGF_INFO("Query exec finish. %1% dispatched." % _requestCount);
     _reportStatuses();
@@ -218,7 +254,10 @@ void Executive::markCompleted(int refNum, bool success) {
                 throw Bug(msg);
             }
         }
-        _statuses[refNum]->report(ExecStatus::RESULT_ERROR, 1);
+        {
+            boost::lock_guard<boost::mutex> lock(_statusesMutex);
+            _statuses[refNum]->report(ExecStatus::RESULT_ERROR, 1);
+        }
         LOGF_ERROR("Executive: error executing refnum=%1%. Code=%2% %3%" %
                    refNum % e.code % e.msg);
     }
@@ -262,6 +301,12 @@ void Executive::requestSquash(int refNum) {
 }
 
 void Executive::squash() {
+    bool alreadyCancelled = atomicSet(_cancelled, true, _cancelledMutex);
+    if(alreadyCancelled) {
+        LOGF_WARN("Executive::squash() already cancelled! refusing.");
+        return;
+    }
+
     LOGF_INFO("Trying to cancel all queries...");
     std::vector<RequesterPtr> pendingRequesters;
     std::ostringstream os;
@@ -309,6 +354,7 @@ int Executive::getNumInflight() {
 }
 
 std::string Executive::getProgressDesc() const {
+    boost::lock_guard<boost::mutex> lock(_statusesMutex);
     std::ostringstream os;
     std::for_each(_statuses.begin(), _statuses.end(), printMapEntry(os, "\n"));
     LOGF_ERROR("%1%" % os.str());
@@ -320,29 +366,35 @@ std::string Executive::getProgressDesc() const {
 ////////////////////////////////////////////////////////////////////////
 void Executive::_dispatchQuery(int refNum,
                                Executive::Spec const& spec,
-                               ExecStatus& status) {
+                               ExecStatus::Ptr execStatus) {
     boost::shared_ptr<DispatchAction> retryFunc;
     if(_shouldRetry(refNum)) { // limit retries for each request.
         retryFunc.reset(new DispatchAction(*this, refNum,
                                            spec,
-                                           status));
+                                           execStatus));
     }
     QueryResource* r = new QueryResource(spec.resource.path(),
                                          spec.request,
                                          spec.requester,
                                          NotifyExecutive::newInstance(*this, refNum),
                                          retryFunc,
-                                         status);
-    status.report(ExecStatus::PROVISION);
+                                         *execStatus);
+    execStatus->report(ExecStatus::PROVISION);
     bool provisionOk = _service->Provision(r);  // 2
+
     if(!provisionOk) {
+        // handle error
         LOGF_ERROR("Resource provision error %1%" % spec.resource.path());
-        populateState(status, ExecStatus::PROVISION_ERROR, r->eInfo);
+        populateState(*execStatus, ExecStatus::PROVISION_ERROR, r->eInfo);
         _unTrack(refNum);
         delete r;
-        // handle error
+        return;
     }
+    
     LOGF_DEBUG("Provision was ok");
+    // FIXME: For squashing, need to hold ptr to QueryResource, so we can
+    // instruct it to call XrdSsiRequest::Finished(cancel=true). Also, can send
+    // cancellation into requester.
 }
 
 void Executive::_setup() {
@@ -381,15 +433,12 @@ bool Executive::_shouldRetry(int refNum) {
     return true;
 }
 
-/** Returning a reference instead of a shared pointer is an optimization.
- * It requires that the reference does not outlast the pointer in _statuses.
- * At the time of writing, everything in _statuses lasts until this Executive
- * is deleted.
- */
-ExecStatus& Executive::_insertNewStatus(int refNum, ResourceUnit const& r) {
+ExecStatus::Ptr Executive::_insertNewStatus(int refNum,
+                                            ResourceUnit const& r) {
     ExecStatus::Ptr es = boost::make_shared<ExecStatus>(r);
+    boost::lock_guard<boost::mutex> lock(_statusesMutex);
     _statuses.insert(StatusMap::value_type(refNum, es));
-    return *es;
+    return es;
 }
 
 template <typename Map, typename Ptr>
@@ -460,10 +509,10 @@ void Executive::_reapRequesters(boost::unique_lock<boost::mutex> const&) {
 }
 
 void Executive::_reportStatuses() {
+    boost::lock_guard<boost::mutex> lock(_statusesMutex);
     StatusMap::const_iterator i,e;
     for(i=_statuses.begin(), e=_statuses.end(); i != e; ++i) {
         ExecStatus::Info info = i->second->getInfo();
-
         std::ostringstream os;
         os << ExecStatus::stateText(info.state)
            << " " << info.stateCode;
@@ -521,9 +570,6 @@ void Executive::_printState(std::ostream& os) {
     std::for_each(_requesters.begin(), _requesters.end(),
                   printMapSecond<RequesterMap::value_type>(os, "\n"));
     os << std::endl << getProgressDesc() << std::endl;
-
-    std::copy(_statuses.begin(), _statuses.end(),
-              std::ostream_iterator<StatusMap::value_type>(os, "\n"));
 }
 
 }}} // namespace lsst::qserv::qdisp

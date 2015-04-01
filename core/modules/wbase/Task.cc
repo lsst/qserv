@@ -140,21 +140,33 @@ Task::Task(Task::TaskMsgPtr t, boost::shared_ptr<wbase::SendChannel> sc) {
 }
 
 void Task::poison() {
-    boost::lock_guard<boost::mutex> lock(_mutex);
-    if(_poisonFunc && !_poisoned) {
-        (*_poisonFunc)();
+    boost::shared_ptr<util::VoidCallable<void> > func;
+    {
+        boost::lock_guard<boost::mutex> lock(_mutex);
+        if(_poisonFunc && !_poisoned) {
+            func.swap(_poisonFunc);
+        }
+        _poisoned = true;
     }
-    _poisoned = true;
+    if(func) {
+        (*func)();
+    }
 }
+
 void Task::setPoison(boost::shared_ptr<util::VoidCallable<void> > poisonFunc) {
-    boost::lock_guard<boost::mutex> lock(_mutex);
-    // Were we poisoned without a poison function available?
-    if(_poisoned && !_poisonFunc) {
-        if(poisonFunc) { // Call the poison function.
-            (*poisonFunc)();
+    boost::shared_ptr<util::VoidCallable<void> > func;
+    {
+        boost::lock_guard<boost::mutex> lock(_mutex);
+        // Were we poisoned without a poison function available?
+        if(_poisoned && !_poisonFunc) {
+            func = _poisonFunc;
+        } else {
+            _poisonFunc = poisonFunc;
         }
     }
-    _poisonFunc = poisonFunc;
+    if(func) {
+        (*func)();
+    } 
 }
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
