@@ -268,7 +268,8 @@ struct MatchTableInfo : TableInfo {
     std::pair<std::string, std::string> fk;
 
     MatchTableInfo(std::string const& db, std::string const& t) :
-        TableInfo(db, t, MATCH), director(0, 0) {}
+        TableInfo(db, t, MATCH),
+        director(static_cast<DirTableInfo*>(NULL), static_cast<DirTableInfo*>(NULL)) {}
 
     virtual std::vector<ColumnRefConstPtr> const makeColumnRefs(
         std::string const& tableAlias) const;

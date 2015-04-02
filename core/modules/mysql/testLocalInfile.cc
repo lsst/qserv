@@ -31,8 +31,6 @@
 #include "mysql/SchemaFactory.h"
 #include "sql/Schema.h"
 
-typedef unsigned long long uint64_t;
-
 using lsst::qserv::sql::ColSchema;
 using lsst::qserv::sql::Schema;
 using lsst::qserv::sql::ColumnsIter;
