@@ -797,7 +797,7 @@ BOOST_AUTO_TEST_CASE(Garbled) {
         "FROM LSST.Science_Ccd_Exposure AS sce "
         "WHERE sce.field=535 AND sce.camcol LIKE '%' ";
     boost::shared_ptr<QuerySession> qs =
-        testStmt3(qsTest, stmt,
+        prepareTestQuerySession(qsTest, stmt,
                   "ParseException:Parse error(ANTLR):unexpected token: LECT:");
 
 }
