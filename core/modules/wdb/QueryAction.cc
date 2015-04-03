@@ -65,7 +65,6 @@ public:
         if(_task) { // Detach poisoner
             _task->setPoison(boost::shared_ptr<util::VoidCallable<void> >());
         }
-        mysql_thread_end();
     }
 
     bool act(); ///< Perform the task
