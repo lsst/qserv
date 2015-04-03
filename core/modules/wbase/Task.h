@@ -58,7 +58,7 @@ namespace wbase {
 /// Task encapsulates nearly zero logic, aside from:
 /// * constructors
 /// * poison()
-struct Task {
+struct Task : public boost::noncopyable {
 public:
     static std::string const defaultUser;
 
