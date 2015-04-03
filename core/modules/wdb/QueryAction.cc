@@ -65,14 +65,14 @@ public:
         if(_task) { // Detach poisoner
             _task->setPoison(boost::shared_ptr<util::VoidCallable<void> >());
         }
-        mysql_thread_end();
     }
 
     bool act(); ///< Perform the task
     void poison(); ///< Stop the task if it is already running, or prevent it
                    ///< from starting.
-private:
     class Poisoner;
+
+private:
 
     /// Initialize the db connection
     bool _initConnection() {
@@ -115,7 +115,7 @@ private:
     boost::shared_ptr<proto::TaskMsg> _msg;
     bool _poisoned;
     boost::shared_ptr<wbase::SendChannel> _sendChannel;
-    std::auto_ptr<mysql::MySqlConnection> _mysqlConn;
+    std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
     std::string _user;
 
     util::MultiError _multiError; // Error log
@@ -126,11 +126,11 @@ private:
 
 class QueryAction::Impl::Poisoner : public util::VoidCallable<void> {
 public:
-    Poisoner(Impl& i) : _i(i) {}
+    Poisoner(std::shared_ptr<Impl> i) : _i(i) {}
     void operator()() {
-        _i.poison();
+        _i->poison();
     }
-    Impl& _i;
+    std::shared_ptr<Impl> _i;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -148,8 +148,6 @@ QueryAction::Impl::Impl(QueryActionArg const& a)
     int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_msg);
-    // Attach a poisoner that will use us.
-    _task->setPoison(boost::shared_ptr<Poisoner>(new Poisoner(*this)));
 }
 
 bool QueryAction::Impl::act() {
@@ -390,9 +388,11 @@ void QueryAction::Impl::poison() {
 ////////////////////////////////////////////////////////////////////////
 // QueryAction implementation
 ////////////////////////////////////////////////////////////////////////
-QueryAction::QueryAction(QueryActionArg const& a)
+QueryAction::QueryAction(QueryActionArg& a)
     : _impl(new Impl(a)) {
-
+    auto p = boost::make_shared<Impl::Poisoner>(_impl);
+    // Attach a poisoner that will use us.
+    a.task->setPoison(p);
 }
 
 QueryAction::~QueryAction() {

@@ -39,9 +39,11 @@
 namespace { // File-scope helpers
 inline void killMySql(MYSQL* mysql, bool useThreadMgmt) {
     mysql_close(mysql);
-    if(useThreadMgmt) {
-        mysql_thread_end();
-    }
+    // Dangerous to use mysql_thread_end(), because caller may belong to a
+    // different thread other than the one that called mysql_init(). Suggest
+    // using thread-local-storage to track users of mysql_init(), and to call
+    // mysql_thread_end() appropriately. Not an easy thing to do right now, and
+    // shouldn't be a big deal because we thread-pool anyway.
 }
 } // anonymous namespace
 
@@ -93,9 +95,6 @@ MySqlConnection::connect() {
     if(_mysql) killMySql(_mysql, _useThreadMgmt);
     _isConnected = false;
     // Make myself a thread
-    if(_useThreadMgmt) {
-        mysql_thread_init();
-    }
     _mysql = _connectHelper();
     _isConnected = (_mysql != NULL);
     return _isConnected;

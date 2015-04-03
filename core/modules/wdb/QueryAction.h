@@ -73,7 +73,7 @@ public:
 /// results to a table or to a supplied SendChannel.
 class QueryAction {
 public:
-    QueryAction(QueryActionArg const& a);
+    QueryAction(QueryActionArg& a);
     ~QueryAction();
     bool operator()(); // Execute action
 
@@ -81,7 +81,7 @@ public:
 
     class Impl;
 private:
-    std::auto_ptr<Impl> _impl; ///< PIMPL class
+    std::shared_ptr<Impl> _impl; ///< PIMPL class
 };
 
 }}} // namespace lsst::qserv::wdb
