@@ -91,7 +91,7 @@ public:
     void setFromList(boost::shared_ptr<FromList> f) { _fromList = f; }
     void setFromListAsTable(std::string const& t);
 
-    bool hasWhereClause() const { return _whereClause; }
+    bool hasWhereClause() const { return static_cast<bool>(_whereClause); }
     WhereClause const& getWhereClause() const { return *_whereClause; }
     WhereClause& getWhereClause() { return *_whereClause; }
     void setWhereClause(boost::shared_ptr<WhereClause> w) { _whereClause = w; }
@@ -99,17 +99,17 @@ public:
     int getLimit() const { return _limit; }
     void setLimit(int limit) { _limit = limit; }
 
-    bool hasOrderBy() const { return _orderBy; }
+    bool hasOrderBy() const { return static_cast<bool>(_orderBy); }
     OrderByClause const& getOrderBy() const { return *_orderBy; }
     OrderByClause& getOrderBy() { return *_orderBy; }
     void setOrderBy(boost::shared_ptr<OrderByClause> o) { _orderBy = o; }
 
-    bool hasGroupBy() const { return _groupBy; }
+    bool hasGroupBy() const { return static_cast<bool>(_groupBy); }
     GroupByClause const& getGroupBy() const { return *_groupBy; }
     GroupByClause& getGroupBy() { return *_groupBy; }
     void setGroupBy(boost::shared_ptr<GroupByClause> g) { _groupBy = g; }
 
-    bool hasHaving() const { return _having; }
+    bool hasHaving() const { return static_cast<bool>(_having); }
     HavingClause const& getHaving() const { return *_having; }
     HavingClause& getHaving() { return *_having; }
     void setHaving(boost::shared_ptr<HavingClause> h) { _having = h; }

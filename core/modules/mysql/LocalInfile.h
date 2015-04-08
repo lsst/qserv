@@ -72,7 +72,7 @@ public:
     /// @return an error code if available
     int getError(char* buf, unsigned int bufLen);
     /// @return true if the instance is valid for usage.
-    inline bool isValid() const { return _rowBuffer; }
+    inline bool isValid() const { return static_cast<bool>(_rowBuffer); }
 
 private:
     char* _buffer; ///< Internal buffer for passing to mysql
