@@ -27,32 +27,41 @@
   * result reflected in the db state or returned via a SendChannel. Works with
   * new XrdSsi API.
   *
-  * @author Daniel L. Wang, SLAC
+  * @author Daniel L. Wang, SLAC; John Gates, SLAC
   */
 
-#include "wdb/QueryAction.h"
+
 // System headers
+#include <algorithm>
 #include <iostream>
+#include <memory>
 
 // Third-party headers
 #include "boost/make_shared.hpp"
 #include <mysql/mysql.h>
 
 // Qserv headers
+#include "lsst/log/Log.h"
 #include "global/Bug.h"
 #include "global/UnsupportedError.h"
-#include "proto/worker.pb.h"
+#include "lsst/log/Log.h"
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
 #include "mysql/SchemaFactory.h"
+#include "proto/ProtoHeaderWrap.h"
+#include "proto/worker.pb.h"
 #include "sql/SqlErrorObject.h"
 #include "sql/Schema.h"
 #include "wbase/SendChannel.h"
-#include "util/StringHash.h"
+#include "util/common.h"
 #include "util/MultiError.h"
+#include "util/StringHash.h"
+#include "util/threadSafe.h"
 #include "wbase/Base.h"
 #include "wconfig/Config.h"
 #include "wdb/ChunkResource.h"
+
+#include "wdb/QueryAction.h"
 
 namespace lsst {
 namespace qserv {
@@ -106,22 +115,26 @@ private:
     bool _fillRows(MYSQL_RES* result, int numFields);
     void _fillSchema(MYSQL_RES* result);
     void _initMsgs();
-    void _transmitResult();
+    void _initMsg();
+    void _transmit(bool last);
+    void _transmitHeader(std::string& msg);
 
     LOG_LOGGER _log;
     wbase::Task::Ptr _task;
-    boost::shared_ptr<ChunkResourceMgr> _chunkResourceMgr;
+    std::shared_ptr<ChunkResourceMgr> _chunkResourceMgr;
     std::string _dbName;
     boost::shared_ptr<proto::TaskMsg> _msg;
-    bool _poisoned;
+    util::Flag<bool> _poisoned;
     boost::shared_ptr<wbase::SendChannel> _sendChannel;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
     std::string _user;
+    uint _maxMsgBytes;
 
     util::MultiError _multiError; // Error log
 
-    boost::shared_ptr<proto::ProtoHeader> _protoHeader;
-    boost::shared_ptr<proto::Result> _result;
+    std::shared_ptr<proto::ProtoHeader> _protoHeader;
+    // _resultCurrent points to _resultA's buffer or _resultB's buffer as needed.
+    std::shared_ptr<proto::Result> _result;
 };
 
 class QueryAction::Impl::Poisoner : public util::VoidCallable<void> {
@@ -144,7 +157,8 @@ QueryAction::Impl::Impl(QueryActionArg const& a)
       _msg(a.task->msg),
       _poisoned(false),
       _sendChannel(a.task->sendChannel),
-      _user(a.task->user) {
+      _user(a.task->user),
+      _maxMsgBytes(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT) {
     int rc = mysql_thread_init();
     assert(rc == 0);
     assert(_msg);
@@ -182,9 +196,14 @@ MYSQL_RES* QueryAction::Impl::_primeResult(std::string const& query) {
 }
 
 void QueryAction::Impl::_initMsgs() {
-    _protoHeader = boost::make_shared<proto::ProtoHeader>();
-    _result = boost::make_shared<proto::Result>();
+    _protoHeader = std::make_shared<proto::ProtoHeader>();
+    _initMsg();
+}
+
+void QueryAction::Impl::_initMsg() {
+    _result = std::make_shared<proto::Result>();
     _result->mutable_rowschema();
+    _result->set_continues(0);
     if(_msg->has_session()) {
         _result->set_session(_msg->session());
     }
@@ -192,10 +211,9 @@ void QueryAction::Impl::_initMsgs() {
 
 void QueryAction::Impl::_fillSchema(MYSQL_RES* result) {
     // Build schema obj from result
-    sql::Schema s = mysql::SchemaFactory::newFromResult(result);
+    auto s = mysql::SchemaFactory::newFromResult(result);
     // Fill _result's schema from Schema obj
-    sql::ColSchemaVector::const_iterator i, e;
-    for(i=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
+    for(auto i=s.columns.begin(), e=s.columns.end(); i != e; ++i) {
         proto::ColumnSchema* cs = _result->mutable_rowschema()->add_columnschema();
         cs->set_name(i->name);
         if(i->hasDefault) {
@@ -211,11 +229,16 @@ void QueryAction::Impl::_fillSchema(MYSQL_RES* result) {
     }
 }
 
-/// Fill one row in the Result msg from one row in MYSQL_RES*
+/** Fill one row in the Result msg from one row in MYSQL_RES*
+ * If the message has gotten larger than the desired message size,
+ * it will be transmitted with a flag set indicating the result
+ * continues in later messages.
+ */
 bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
     MYSQL_ROW row;
+    uint size = 0;
     while ((row = mysql_fetch_row(result))) {
-        proto::RowBundle* rawRow =_result->add_row();
+        proto::RowBundle* rawRow = _result->add_row();
         for(int i=0; i < numFields; ++i) {
             if(row[i]) {
                 rawRow->add_column(row[i]);
@@ -225,52 +248,68 @@ bool QueryAction::Impl::_fillRows(MYSQL_RES* result, int numFields) {
                 rawRow->add_isnull(true);
             }
         }
+        size += rawRow->ByteSize();
 #if 0 // Enable for tracing result values while debugging.
         std::cout << "row: ";
         std::copy(row, row+numFields,
-                  std::ostream_iterator<char*>(std::cout, ","));
+                std::ostream_iterator<char*>(std::cout, ","));
         std::cout << "\n";
 #endif
         // Each element needs to be mysql-sanitized
-
+        if (size > _maxMsgBytes) {
+            if (size > proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
+                LOGF_ERROR("Message single row too large to send using protobuffer");
+                return false;
+            }
+            LOGF_INFO("Large message size=%1%, splitting message" % size);
+            _transmit(false);
+            size = 0;
+            _initMsg();
+        }
     }
     return true;
 }
 
-/// Send results through SendChannel stream
-void QueryAction::Impl::_transmitResult() {
-    // Serialize result first, because we need the size and md5 for the header
+/** Transmit result data with its header.
+ * If 'last' is true, this is the last message in the result set
+ * and flags are set accordingly.
+ */
+void QueryAction::Impl::_transmit(bool last) {
+    LOGF_DEBUG("_transmit last=%1%" % last);
     std::string resultString;
-    _result->set_nextsize(0);
+    _result->set_continues(!last);
     if (!_multiError.empty()) {
         std::string msg = _multiError.toString();
         _result->set_errormsg(msg);
         LOGF(_log, LOG_LVL_ERROR, msg);
     }
     _result->SerializeToString(&resultString);
+    _transmitHeader(resultString);
+    LOGF_DEBUG("_transmit last=%1% resultString=%2%" % last % util::prettyCharList(resultString, 5));
+    _sendChannel->sendStream(resultString.data(), resultString.size(), last);
+}
 
+/** Transmit the protoHeader
+ */
+void QueryAction::Impl::_transmitHeader(std::string& msg) {
+    LOGF_DEBUG("_transmitHeader");
     // Set header
     _protoHeader->set_protocol(2); // protocol 2: row-by-row message
-    _protoHeader->set_size(resultString.size());
-    _protoHeader->set_md5(util::StringHash::getMd5(resultString.data(),
-                                                   resultString.size()));
+    _protoHeader->set_size(msg.size());
+    _protoHeader->set_md5(util::StringHash::getMd5(msg.data(), msg.size()));
     std::string protoHeaderString;
     _protoHeader->SerializeToString(&protoHeaderString);
 
     // Flush to channel.
-    // Make sure protoheadeder size can be encoded in a byte.
+    // Make sure protoheader size can be encoded in a byte.
     assert(protoHeaderString.size() < 255);
-    unsigned char phSize = static_cast<unsigned char>(protoHeaderString.size());
-    _sendChannel->sendStream(reinterpret_cast<char const*>(&phSize), 1, false);
-    _sendChannel->sendStream(protoHeaderString.data(),
-                             protoHeaderString.size(), false);
-    _sendChannel->sendStream(resultString.data(),
-                             resultString.size(), true);
+    auto msgBuf = proto::ProtoHeaderWrap::wrap(protoHeaderString);
+    _sendChannel->sendStream(msgBuf.data(), msgBuf.size(), false);
 }
 
 class ChunkResourceRequest {
 public:
-    ChunkResourceRequest(boost::shared_ptr<ChunkResourceMgr> mgr,
+    ChunkResourceRequest(std::shared_ptr<ChunkResourceMgr> mgr,
                          proto::TaskMsg const& msg)
         : _mgr(mgr), _msg(msg) {}
 
@@ -294,7 +333,7 @@ public:
 
     }
 private:
-    boost::shared_ptr<ChunkResourceMgr> _mgr;
+    std::shared_ptr<ChunkResourceMgr> _mgr;
     proto::TaskMsg const& _msg;
 };
 
@@ -317,7 +356,7 @@ bool QueryAction::Impl::_dispatchChannel() {
 
     try {
         for(int i=0; i < m.fragment_size(); ++i) {
-            if (_poisoned) {
+            if (_poisoned.get()) {
                 break;
             }
             wbase::Task::Fragment const& f(m.fragment(i));
@@ -347,9 +386,9 @@ bool QueryAction::Impl::_dispatchChannel() {
     } catch(sql::SqlErrorObject const& e) {
         _multiError.push_back(makeError(e));
     }
-    if(!_poisoned) {
+    if(!_poisoned.get()) {
         // Send results.
-        _transmitResult();
+        _transmit(true);
     } else {
         erred = true;
         // Send poison error.
@@ -360,27 +399,28 @@ bool QueryAction::Impl::_dispatchChannel() {
 }
 
 void QueryAction::Impl::poison() {
-    LOG(_log, LOG_LVL_WARN, "Trying QueryAction::Impl::poison() call, experimental");
+    LOGF(_log, LOG_LVL_WARN, "Trying QueryAction::Impl::poison() call, experimental");
+    _poisoned.set(true);
     if(!_mysqlConn.get()) {
-    LOG(_log, LOG_LVL_WARN, "QueryAction::Impl::poison() no MysqlConn");
+    LOGF(_log, LOG_LVL_WARN, "QueryAction::Impl::poison() no MysqlConn");
         return;
     }
     int status = _mysqlConn->cancel();
     switch (status) {
       case -1:
-          LOG(_log, LOG_LVL_ERROR, "poison() NOP");
+          LOGF(_log, LOG_LVL_ERROR, "poison() NOP");
           break;
       case 0:
-          LOG(_log, LOG_LVL_ERROR, "poison() success");
+          LOGF(_log, LOG_LVL_ERROR, "poison() success");
           break;
       case 1:
-          LOG(_log, LOG_LVL_ERROR, "poison() Error connecting to kill query.");
+          LOGF(_log, LOG_LVL_ERROR, "poison() Error connecting to kill query.");
           break;
       case 2:
-          LOG(_log, LOG_LVL_ERROR, "poison() Error processing kill query.");
+          LOGF(_log, LOG_LVL_ERROR, "poison() Error processing kill query.");
           break;
       default:
-          LOG(_log, LOG_LVL_ERROR, "poison() unknown error");
+          LOGF(_log, LOG_LVL_ERROR, "poison() unknown error");
           break;
     }
 }

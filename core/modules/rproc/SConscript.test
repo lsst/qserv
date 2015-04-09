@@ -17,7 +17,8 @@ def convertObj(o):
 libObjs = map(convertObj, libProducts['proto'])
 ubuntuDeps=['pthread']
 # libcrypto MUST be at the end of the list in order to build successfully on Ubuntu 14.04
-p = env.Program(source=[obj], LIBS=['protobuf', 'libssl'] + libObjs + ubuntuDeps+ ['libcrypto'])
+extDeps = ['protobuf', 'libssl'] + libObjs + ubuntuDeps+ ['libcrypto'] + "log log4cxx".split()
+p = env.Program(source=[obj], LIBS=extDeps)
 programs.append(p)
 
 # add a unit test which runs on every build

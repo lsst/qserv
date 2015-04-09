@@ -15,7 +15,8 @@ def convertObj(o):
     if oStr.endswith(".cc"): return env.Object(oStr+".staticobj", o)
     return o
 libObjs = map(convertObj, libProducts['proto'])
-p = env.Program(source=[obj], LIBS=['pthread', 'protobuf', 'libssl'] + libObjs + ['libcrypto'])
+extDeps = ['pthread', 'protobuf', 'libssl'] + libObjs + ['libcrypto'] + "log log4cxx".split()
+p = env.Program(source=[obj], LIBS=extDeps)
 programs.append(p)
 
 # add a unit test which runs on every build

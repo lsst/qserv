@@ -79,7 +79,7 @@ struct Fixture {
         lsst::qserv::wbase::Task::Ptr t =
                 boost::make_shared<lsst::qserv::wbase::Task>(msg, sc);
         LOG_LOGGER w(LOG_GET("test"));
-        boost::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newFakeMgr();
+        std::shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newFakeMgr();
         QueryActionArg a(w, t, crm);
         return a;
     }

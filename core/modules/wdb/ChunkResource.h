@@ -95,8 +95,8 @@ private:
 class ChunkResourceMgr {
 public:
     /// Factory
-    static boost::shared_ptr<ChunkResourceMgr> newMgr(mysql::MySqlConfig const& c);
-    static boost::shared_ptr<ChunkResourceMgr> newFakeMgr();
+    static std::shared_ptr<ChunkResourceMgr> newMgr(mysql::MySqlConfig const& c);
+    static std::shared_ptr<ChunkResourceMgr> newFakeMgr();
     virtual ~ChunkResourceMgr() {}
 
     /// Reserve a chunk. Currently, this does not result in any explicit chunk

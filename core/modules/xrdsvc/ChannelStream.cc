@@ -30,6 +30,7 @@
 // Qserv headers
 #include "global/Bug.h"
 #include "global/debugUtil.h"
+#include "util/common.h"
 
 namespace lsst {
 namespace qserv {
@@ -83,8 +84,8 @@ ChannelStream::append(char const* buf, int bufLen, bool last) {
     if(_closed) {
         throw Bug("ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
-    LOG_INFO(" trying to append message");
-    LOGF_INFO("%1%" % makeByteStreamAnnotated("StreamMsg", buf, bufLen));
+    //LOGF_INFO("last=%1% %2%" % last % makeByteStreamAnnotated("StreamMsg", buf, bufLen));
+    LOGF_INFO("last=%1% %2%" % last % util::prettyCharBuf(buf, bufLen, 10));
     {
         boost::unique_lock<boost::mutex> lock(_mutex);
         LOG_INFO(" trying to append message (flowing)");

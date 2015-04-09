@@ -1,7 +1,7 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2014 LSST Corporation.
+ * Copyright 2014-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -62,11 +62,11 @@ public:
 
     QueryActionArg(LOG_LOGGER const& log_,
                    wbase::Task::Ptr task_,
-                   boost::shared_ptr<ChunkResourceMgr> mgr_)
+                   std::shared_ptr<ChunkResourceMgr> mgr_)
         : log(log_), task(task_), mgr(mgr_) { }
     LOG_LOGGER log; ///< Logging handle
     wbase::Task::Ptr task; ///< Actual task
-    boost::shared_ptr<ChunkResourceMgr> mgr; ///< Resource reservation
+    std::shared_ptr<ChunkResourceMgr> mgr; ///< Resource reservation
 };
 ////////////////////////////////////////////////////////////////////////
 /// A worker-side query action. Depending on contents of the task, writes

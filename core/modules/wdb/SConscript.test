@@ -20,20 +20,22 @@ pDeps = itertools.chain(*map(lambda m: libProducts[m], ["proto"]))
 pDeps = cacheObjs(env, pDeps, ".o")
 deps = map(lambda i:i, itertools.chain(deps, pDeps)) # un-chain
 deps.sort(key=str)
-p = env.Program(['testQuerySql.cc'] + deps, LIBS=findLibs(extDeps))
-programs.append(p)
 
 # add a unit test which runs on every build
+p = env.Program(['testQuerySql.cc'] + deps, LIBS=findLibs(extDeps))
+programs.append(p)
 utest = env.UnitTest(p)
 env.Append(UNIT_TESTS=utest)
 
+# Compile it but don't run on every build as it needs MySQL to run.
 p = env.Program(['testQueryAction.cc'] + deps, LIBS=findLibs(extDeps))
 programs.append(p)
-
-p = env.Program(['testChunkResource.cc'] + deps, LIBS=findLibs(extDeps))
-programs.append(p)
+#utest = env.UnitTest(p)
+#env.Append(UNIT_TESTS=utest)
 
 # add a unit test which runs on every build
+p = env.Program(['testChunkResource.cc'] + deps, LIBS=findLibs(extDeps))
+programs.append(p)
 utest = env.UnitTest(p)
 env.Append(UNIT_TESTS=utest)
 

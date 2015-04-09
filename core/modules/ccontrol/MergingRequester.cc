@@ -36,8 +36,10 @@
 #include "global/MsgReceiver.h"
 #include "log/msgCode.h"
 #include "proto/ProtoImporter.h"
+#include "proto/ProtoHeaderWrap.h"
 #include "proto/WorkerResponse.h"
 #include "rproc/InfileMerger.h"
+#include "util/common.h"
 #include "util/StringHash.h"
 
 using lsst::qserv::proto::ProtoImporter;
@@ -55,68 +57,105 @@ MergingRequester::MergingRequester(
     boost::shared_ptr<MsgReceiver> msgReceiver,
     boost::shared_ptr<rproc::InfileMerger> merger,
     std::string const& tableName)
-    : _msgReceiver(msgReceiver),
-      _infileMerger(merger),
+    : _msgReceiver{msgReceiver},
+      _infileMerger{merger},
       _tableName(tableName),
-      _response(boost::make_shared<WorkerResponse>()),
-      _flushed(false),
-      _cancelled(false) {
+      _response{new WorkerResponse()},
+      _flushed{false},
+      _cancelled{false} {
     _initState();
 }
 
+const char* MergingRequester::getStateStr(MsgState const& state) {
+    switch(state) {
+    case MsgState::INVALID:          return "INVALID";
+    case MsgState::HEADER_SIZE_WAIT: return "HEADER_SIZE_WAIT";
+    case MsgState::HEADER_WAIT:      return "HEADER_WAIT";
+    case MsgState::RESULT_WAIT:      return "RESULT_WAIT";
+    case MsgState::RESULT_RECV:      return "RESULT_RECV";
+    case MsgState::RESULT_EXTRA:     return "RESULT_EXTRA";
+    case MsgState::BUFFER_DRAIN:     return "BUFFER_DRAIN";
+    case MsgState::RESULT_LAST:      return "RESULT_LAST";
+    case MsgState::HEADER_ERR:       return "HEADER_ERR";
+    case MsgState::RESULT_ERR:       return "RESULT_ERR";
+    }
+    return "unknown";
+}
+
 bool MergingRequester::flush(int bLen, bool last) {
+    LOGF_INFO("flush state=%1% blen=%2% last=%3%" % getStateStr(_state) % bLen % last);
     if((bLen < 0) || (bLen != (int)_buffer.size())) {
-        if(_state != RESULT_EXTRA) {
+        if(_state != MsgState::RESULT_EXTRA) {
             LOGF_ERROR("MergingRequester size mismatch: expected %1%  got %2%"
                    % _buffer.size() % bLen);
             // Worker sent corrupted data, or there is some other error.
         }
     }
     switch(_state) {
-      case HEADER_SIZE_WAIT:
-        // First char: sizeof protoheader. always less than 255 char.
-        _response->headerSize = static_cast<unsigned char const>(_buffer[0]);
-        LOGF_DEBUG("HEADER_SIZE_WAIT: Resizing buffer to %1%" % static_cast<short>(_response->headerSize));
-        _buffer.resize(_response->headerSize);
-        _state = HEADER_WAIT;
-        return true;
-      case HEADER_WAIT:
-        if(!ProtoImporter<proto::ProtoHeader>::setMsgFrom(
-               _response->protoHeader,
-               &_buffer[0], _buffer.size())) {
-            _setError(log::MSG_RESULT_DECODE, "Error decoding proto header");
-            _state = HEADER_ERR;
-            return false;
-        }
-        LOGF_DEBUG("HEADER_WAIT: Resizing buffer to %1%" % _response->protoHeader.size());
-        _buffer.resize(_response->protoHeader.size());
-        _state = RESULT_WAIT;
-        return true;
+      case MsgState::HEADER_SIZE_WAIT:
+          _response->headerSize = static_cast<unsigned char>(_buffer[0]);
+          if (!proto::ProtoHeaderWrap::unwrap(_response, _buffer)) {
+              _setError(log::MSG_RESULT_DECODE,
+                      std::string("Error decoding proto header for ") + getStateStr(_state));
+              _state = MsgState::HEADER_ERR;
+              return false;
+          }
+          LOGF_DEBUG("HEADER_SIZE_WAIT: Resizing buffer to %1%" % _response->protoHeader.size());
+          _buffer.resize(_response->protoHeader.size());
+          _state = MsgState::RESULT_WAIT;
+          return true;
 
-      case RESULT_WAIT:
+      case MsgState::RESULT_WAIT:
         if(!_verifyResult()) { return false; }
         if(!_setResult()) { return false; }
-        _buffer.resize(0); // Nothing further needed
-        _state = RESULT_RECV;
-        if(!last) {
-            _buffer.resize(1); // Need to make sure nothing is left
-            _state = RESULT_EXTRA;
-        }
-        LOGF_INFO("Flushed last for tableName=%1%" % _tableName);
-        return _merge();
+        LOGF_INFO("_buffer %1%" % util::prettyCharList(_buffer, 5));
+        {
+            bool msgContinues = _response->result.continues();
+            _buffer.resize(0); // Nothing further needed
+            _state = MsgState::RESULT_RECV;
+            if(msgContinues) {
+                LOGF_INFO("Messages continues, waiting for next header.");
+                _state = MsgState::RESULT_EXTRA;
+                _buffer.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
+            }
+            LOGF_INFO("Flushed msgContinues=%1% last=%2% for tableName=%3%" %
+                      msgContinues % last % _tableName);
 
-      case RESULT_EXTRA: // future: handle multiple Result messages
-        if((bLen != 0) || !last) {
-            LOGF_INFO("Extra results for tableName=%1% size=%2%"
-                      % _tableName % bLen);
-        } else {
-            _state = RESULT_LAST;
-            return true;
+            auto success = _merge();
+            if(msgContinues) {
+                _response.reset(new WorkerResponse());
+            }
+            return success;
         }
-        // Fall-through
-      case RESULT_RECV:
-      case HEADER_ERR:
-      case RESULT_ERR:
+
+      case MsgState::RESULT_EXTRA:
+          if (!proto::ProtoHeaderWrap::unwrap(_response, _buffer)) {
+              _setError(log::MSG_RESULT_DECODE,
+                        std::string("Error decoding proto header for ") + getStateStr(_state));
+              _state = MsgState::HEADER_ERR;
+              return false;
+          }
+          LOGF_INFO("RESULT_EXTRA: Resizing buffer to %1%" % _response->protoHeader.size());
+          _buffer.resize(_response->protoHeader.size());
+          _state = MsgState::RESULT_WAIT;
+          return true;
+
+      case MsgState::RESULT_RECV:
+          LOGF_INFO("RESULT_RECV last = %1%" % last);
+          if (!last) {
+              _state = MsgState::BUFFER_DRAIN;
+              _buffer.resize(1);
+          }
+          return true;
+      case MsgState::BUFFER_DRAIN:
+          // The buffer should always be empty, but last is not always set to true by xrootd
+          // unless we ask xrootd to read at least one character.
+          LOGF_INFO("BUFFER_DRAIN last=%1% bLen=%2% buffer=%3%" %
+                    last % bLen % util::prettyCharList(_buffer));
+          _buffer.resize(1);
+          return true;
+      case MsgState::HEADER_ERR:
+      case MsgState::RESULT_ERR:
         _setError(log::MSG_RESULT_ERROR, "Unexpected message");
         return false;
       default:
@@ -167,9 +206,8 @@ std::ostream& MergingRequester::print(std::ostream& os) const {
 ////////////////////////////////////////////////////////////////////////
 
 void MergingRequester::_initState() {
-    _buffer.resize(1);
-    // _response.reset(new WorkerResponse);// Will be overwritten
-    _state = HEADER_SIZE_WAIT;
+    _buffer.resize(proto::ProtoHeaderWrap::PROTO_HEADER_SIZE);
+    _state = MsgState::HEADER_SIZE_WAIT;
     _setError(0, "");
 }
 
@@ -186,33 +224,32 @@ bool MergingRequester::_merge() {
     if(!success) {
         rproc::InfileMergerError const& err = _infileMerger->getError();
         _setError(log::MSG_RESULT_ERROR, err.description);
-        _state = RESULT_ERR;
+        _state = MsgState::RESULT_ERR;
     }
     _response.reset();
     return success;
 }
 
 void MergingRequester::_setError(int code, std::string const& msg) {
+    LOGF_INFO("setError");
+    LOGF_INFO("setError %1% %2%" % code % msg);
     boost::lock_guard<boost::mutex> lock(_errorMutex);
     _error.code = code;
     _error.msg = msg;
 }
 
 bool MergingRequester::_setResult() {
-    if(!ProtoImporter<proto::Result>::setMsgFrom(
-           _response->result,
-           &_buffer[0], _buffer.size())) {
+    if(!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &_buffer[0], _buffer.size())) {
         _setError(log::MSG_RESULT_DECODE, "Error decoding result msg");
-        _state = RESULT_ERR;
+        _state = MsgState::RESULT_ERR;
         return false;
     }
     return true;
 }
 bool MergingRequester::_verifyResult() {
-    if(_response->protoHeader.md5() !=
-       util::StringHash::getMd5(_buffer.data(), _buffer.size())) {
+    if(_response->protoHeader.md5() != util::StringHash::getMd5(_buffer.data(), _buffer.size())) {
         _setError(log::MSG_RESULT_MD5, "Result message MD5 mismatch");
-        _state = RESULT_ERR;
+        _state = MsgState::RESULT_ERR;
         return false;
     }
     return true;

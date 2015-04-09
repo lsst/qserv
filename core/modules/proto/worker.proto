@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
- * Copyright 2011-2014 LSST Corporation.
+ * Copyright 2011-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -65,8 +65,8 @@ message TaskMsg {
 // This message must be 255 characters or less, because its size is
 // transmitted as an unsigned char.
 message ProtoHeader {
-    optional int32 protocol = 1;
-    required int32 size = 2; // protobufs discourages messages > megabytes
+    optional fixed32 protocol = 1;
+    required sfixed32 size = 2; // protobufs discourages messages > megabytes
     optional bytes md5 = 3;
 }
 
@@ -87,7 +87,7 @@ message RowBundle {
 }
 
 message Result {
-    required int32 nextsize = 1; // Are there additional Result messages
+    required bool continues = 1; // Are there additional Result messages
     optional int64 session = 2;
     required RowSchema rowschema = 3;
     optional int32 errorcode = 4;

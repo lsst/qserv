@@ -54,10 +54,11 @@ namespace ccontrol {
 class MergingRequester : public qdisp::ResponseRequester {
 public:
     /// Possible MergingRequester message state
-    enum MsgState { INVALID, HEADER_SIZE_WAIT,
-                    HEADER_WAIT, RESULT_WAIT, RESULT_RECV,
-                    RESULT_EXTRA, RESULT_LAST,
+    enum class MsgState { INVALID, HEADER_SIZE_WAIT,
+                    HEADER_WAIT, RESULT_WAIT, RESULT_EXTRA,
+                    RESULT_RECV, BUFFER_DRAIN, RESULT_LAST,
                     HEADER_ERR, RESULT_ERR };
+    static const char* getStateStr(MsgState const& st);
 
     typedef boost::shared_ptr<MergingRequester> Ptr;
     virtual ~MergingRequester() {}
@@ -118,7 +119,7 @@ private:
     Error _error; ///< Error description
     mutable boost::mutex _errorMutex; ///< Protect readers from partial updates
     MsgState _state; ///< Received message state
-    boost::shared_ptr<proto::WorkerResponse> _response; ///< protobufs msg buf
+    std::shared_ptr<proto::WorkerResponse> _response; ///< protobufs msg buf
     bool _flushed; ///< flushed to InfileMerger?
     boost::mutex _cancelledMutex; ///< Protect check/write of cancel flag.
     bool _cancelled; ///< Cancelled?

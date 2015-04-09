@@ -63,7 +63,7 @@ BOOST_FIXTURE_TEST_SUITE(All, Fixture)
 
 BOOST_AUTO_TEST_CASE(Basic) {
 
-    boost::shared_ptr<ChunkResourceMgr> crm(ChunkResourceMgr::newFakeMgr());
+    std::shared_ptr<ChunkResourceMgr> crm(ChunkResourceMgr::newFakeMgr());
     {
         ChunkResource cr12345(crm->acquire(thedb, 12345, tables));
         ChunkResource cr12345sub(crm->acquire(thedb, 12345, tables, subchunks));
@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE(Basic) {
 
 BOOST_AUTO_TEST_CASE(TwoChunk) {
 
-    boost::shared_ptr<ChunkResourceMgr> crm(ChunkResourceMgr::newFakeMgr());
+    std::shared_ptr<ChunkResourceMgr> crm(ChunkResourceMgr::newFakeMgr());
     int scarray[] = {11, 12, 13, 14, 15};
     std::vector<int> subchunks(scarray, scarray+5);
     std::string thedb("Snowden");
