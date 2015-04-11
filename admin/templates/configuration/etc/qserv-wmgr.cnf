@@ -18,6 +18,9 @@ JSON_AS_ASCII = False
 JSON_SORT_KEYS = True
 JSONIFY_PRETTYPRINT_REGULAR = False
 
+# complex secret key is needed for things like auth and sessions
+SECRET_KEY = '{{WMGR_SECRET_KEY}}'
+
 # ======== application-specific parameters =========
 
 #  database connection parameters, use None for defaults
@@ -42,3 +45,9 @@ RUN_DIR = "{{QSERV_RUN_DIR}}"
 
 # location of the temporary directory, used for data loading
 TMP_DIR = "{{QSERV_RUN_DIR}}/tmp"
+
+# Authentication type used by the service, one of "none", "basic" or "digest"
+AUTH_TYPE = "digest"
+
+# location of the file containing a secret
+SECRET_FILE = "{{QSERV_RUN_DIR}}/etc/wmgr.secret"
