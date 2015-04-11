@@ -39,3 +39,6 @@ CSS_CONN = '{{QSERV_MASTER}}:{{ZOOKEEPER_PORT}}'
 
 # location of the run directory
 RUN_DIR = "{{QSERV_RUN_DIR}}"
+
+# location of the temporary directory, used for data loading
+TMP_DIR = "{{QSERV_RUN_DIR}}/tmp"

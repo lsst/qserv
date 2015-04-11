@@ -29,8 +29,14 @@ Module defining Flask blueprint for database management.
 #--------------------------------
 #  Imports of standard modules --
 #--------------------------------
+from contextlib import closing, contextmanager
+import gzip
 import logging
+import os
 import re
+import shutil
+import tempfile
+from threading import Thread
 
 #-----------------------------
 # Imports for other modules --
@@ -40,7 +46,9 @@ from .errors import errorResponse, ExceptionResponse
 from flask import Blueprint, json, request, url_for
 from lsst.db import db
 from lsst.qserv.admin.qservAdminException import QservAdminException
+import MySQLdb
 from MySQLdb.constants import FIELD_TYPE
+from werkzeug.urls import url_decode
 
 #----------------------------------
 # Local non-exported definitions --
@@ -123,9 +131,11 @@ dbService = Blueprint('dbService', __name__, template_folder='dbService')
 
 
 @dbService.errorhandler(db.DbException)
+@dbService.errorhandler(MySQLdb.Error)
+@dbService.errorhandler(MySQLdb.Warning)
 def dbExceptionHandler(error):
     """ All leaked DbException exceptions make 500 error """
-    return errorResponse(500, "db.DbException", str(error))
+    return errorResponse(500, error.__class__.__name__, str(error))
 
 @dbService.route('', methods=['GET'])
 def listDbs():
@@ -589,13 +599,60 @@ def deleteChunk(dbName, tblName, chunkId):
 @dbService.route('/<dbName>/tables/<tblName>/data', methods=['POST'])
 @dbService.route('/<dbName>/tables/<tblName>/chunks/<int:chunkId>/data', methods=['POST'])
 @dbService.route('/<dbName>/tables/<tblName>/chunks/<int:chunkId>/overlap', methods=['POST'])
-def locadData(dbName, tblName, chunkId=None):
+def loadData(dbName, tblName, chunkId=None):
     """
     Upload data into a table or chunk using the file format supported by mysql
     command LOAD DATA [LOCAL] INFILE.
 
-    Not implemented yet.
+    For this method we expect all data to come in one request, and in addition
+    to table data we also need few parameters which define how data is formatted
+    (things like column separator, line terminator, escape, etc.) The whole
+    request must be multipart/form-data and contain two parts:
+    - one with the name "load-options" which contains set of options encoded
+      with usual application/x-www-form-urlencoded content type, options are:
+      - delimiter - defaults to TAB
+      - enclose - defaults to double quote
+      - escape - defaults to backslash
+      - terminate - defaults to newline
+      - compressed - "0" or "1", by default is guessed from file extension (.gz)
+    - one with the file data (name "table-data"), the data come in original
+      format with binary/octet-stream content type and binary encoding, and it
+      may be compressed with gzip.
     """
+
+    def _copy(tableData, fifoName, compressed):
+        """ Helper method to run data copy in a separate thread """
+        if compressed:
+            # gzip.GzipFile supports 'with' starting with python 2.7
+            with gzip.GzipFile(fileobj=tableData.stream, mode='rb') as src:
+                with open(fifoName, 'wb') as dst:
+                    shutil.copyfileobj(src, dst)
+                    _log.info('uncompressed table data to file %s', fifoName)
+        else:
+            tableData.save(fifoName)
+            _log.info('copied table data to file %s', fifoName)
+
+    @contextmanager
+    def tmpDirMaker():
+        """ Special context manager which creates/destroys temporary directory """
+        # create and return directory
+        tmpDir = tempfile.mkdtemp()
+        yield tmpDir
+
+        # do not forget to delete it on exit
+        try:
+            _log.info('deleting temporary directory %s', tmpDir)
+            shutil.rmtree(tmpDir)
+        except Exception as exc:
+            _log.warning('failed to delete temporary directory %s: %s', tmpDir, exc)
+
+    @contextmanager
+    def threadStartJoin(thread):
+        """ Special context manager which starts a thread and joins it on exit """
+        thread.start()
+        yield thread
+        _log.debug('joining data copy thread')
+        thread.join()
 
     _log.debug('request: %s', request)
     _log.debug('POST => load data into chunk or overlap')
@@ -604,8 +661,73 @@ def locadData(dbName, tblName, chunkId=None):
     _validateDbName(dbName)
     _validateTableName(tblName)
 
-    _log.error('method not implemented yet')
-    raise ExceptionResponse(501, "NotImplemented", "Data loading operations are not implemented yet")
+    # check that table exists
+    dbConn = Config.instance().dbConn()
+    if not dbConn.tableExists(tblName, dbName):
+        raise ExceptionResponse(404, "TableMissing", "Table %s.%s does not exist" % (dbName, tblName))
+
+    # determine chunk table name (if loading to chunk)
+    if chunkId is not None:
+        if request.path.endswith('/overlap'):
+            tblName = tblName + 'FullOverlap_' + str(chunkId)
+        else:
+            tblName = tblName + '_' + str(chunkId)
+        if not dbConn.tableExists(tblName, dbName):
+            raise ExceptionResponse(404, "ChunkTableMissing",
+                                    "Chunk table %s.%s does not exist" % (dbName, tblName))
+
+    # optional load-options
+    options = dict(delimiter='\t', enclose='"', escape='\\', terminate='\n',
+                   compressed=None, local="0")
+    formOptions = request.form.get('load-options')
+    _log.debug('formOptions: %s', formOptions)
+    if formOptions:
+        formOptions = url_decode(formOptions)
+
+        # check that there are no non-recognized options
+        for key, value in formOptions.items():
+            if key not in options:
+                raise ExceptionResponse(400, "IllegalOption",
+                                        "unrecognized option %s in load-options" % key)
+            options[key] = value
+        _log.debug('options: %s', options)
+
+    # get table data
+    with closing(request.files.get('table-data')) as data:
+        if data is None:
+            raise ExceptionResponse(400, "MissingFileData", "table-data part is missing from request")
+        _log.debug('data: name=%s filename=%s', data.name, data.filename)
+
+        # named pipe to send data to mysql, make it in a temporary dir
+        with tmpDirMaker() as tmpDir:
+            fifoName = os.path.join(tmpDir, 'tabledata.dat')
+            os.mkfifo(fifoName, 0600)
+
+            # do we need to uncompress?
+            compressed = _getArgFlag(options, 'compressed', None)
+            if compressed is None:
+                compressed = data.filename.endswith('.gz')
+
+            _log.debug('starting data copy thread')
+            args = data, fifoName, compressed
+            with threadStartJoin(Thread(target=_copy, args=args)) as copyThread:
+
+                # Build the query, we use LOCAL data loading to avoid messing with grants and
+                # file protection.
+                sql = "LOAD DATA LOCAL INFILE %(file)s INTO TABLE {0}.{1}".format(dbName, tblName)
+                sql += " FIELDS TERMINATED BY %(delimiter)s ENCLOSED BY %(enclose)s \
+                         ESCAPED BY %(escape)s LINES TERMINATED BY %(terminate)s"
+
+                del options['compressed']
+                options['file'] = fifoName
+
+                # execute query
+                _log.debug("query: %s, data: %s", sql, options)
+                cursor = dbConn._conn.cursor()
+                cursor.execute(sql, options)
+                count = cursor.rowcount
+
+    return json.jsonify(result=dict(status="OK", count=count))
 
 
 @dbService.route('/<dbName>/tables/<tblName>/index', methods=['GET'])

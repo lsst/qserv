@@ -29,6 +29,8 @@ Module defining Config class and related methods.
 #--------------------------------
 #  Imports of standard modules --
 #--------------------------------
+import tempfile
+import warnings
 
 #-----------------------------
 # Imports for other modules --
@@ -36,6 +38,7 @@ Module defining Config class and related methods.
 from .errors import ExceptionResponse
 from lsst.db import db
 from lsst.qserv.admin.qservAdmin import QservAdmin
+import MySQLdb
 
 #----------------------------------
 # Local non-exported definitions --
@@ -80,6 +83,10 @@ class Config(object):
         self.cssConn = appConfig.get('CSS_CONN')
         # Location of the run directory for qserv, must contain etc/ stuff
         self.runDir = appConfig.get('RUN_DIR')
+        self.tmpDir = appConfig.get('TMP_DIR', '/tmp')
+
+        # all temporary files will be created in that location
+        tempfile.tempdir = self.tmpDir
 
         self._db = None
         self._dbPriv = None
@@ -92,7 +99,10 @@ class Config(object):
         if self.dbSocket: kwargs['unix_socket'] = self.dbSocket
         if self.dbUser: kwargs['user'] = self.dbUser
         if self.dbPasswd: kwargs['passwd'] = self.dbPasswd
-        return db.Db(**kwargs)
+        inst = db.Db(**kwargs)
+        # ignore mysql warnings
+        warnings.filterwarnings("ignore", category=MySQLdb.Warning)
+        return inst
 
     def privDbConn(self):
         """ Return database connection for priviledged account """
@@ -102,7 +112,10 @@ class Config(object):
         if self.dbSocket: kwargs['unix_socket'] = self.dbSocket
         if self.dbUserPriv: kwargs['user'] = self.dbUserPriv
         if self.dbPasswdPriv: kwargs['passwd'] = self.dbPasswdPriv
-        return db.Db(**kwargs)
+        inst = db.Db(**kwargs)
+        # ignore mysql warnings
+        warnings.filterwarnings("ignore", category=MySQLdb.Warning)
+        return inst
 
     def qservAdmin(self):
         """
