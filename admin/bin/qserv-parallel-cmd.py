@@ -167,7 +167,7 @@ class ParallelCmd(object):
         : TODO check if exception is effectively launched
         """
         params = {'command': self.args.command}
-        cmd_tpl='{command}'
+        cmd_tpl = '{command}'
         if self.args.sudo_user:
             params['sudo_user'] = self.args.sudo_user
             params['stdin_opt'] = ''
