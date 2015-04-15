@@ -59,7 +59,7 @@ def pyDistRelative(env, module):
 shProducts = { "xrdoss" : {'mods' : """global mysql obsolete sql util wconfig
                                        wpublish xrdoss""".split(),
                            'libs' : """boost_regex boost_thread crypto log
-                                       log4cxx mysqlclient_r ssl XrdSsi""".split(),
+                                       log4cxx mysqlclient_r ssl""".split(),
                            'distDir' : 'lib'
                            },
 
