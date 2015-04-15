@@ -49,12 +49,6 @@
 #include "wpublish/ChunkInventory.h"
 #include "xrdsvc/XrdName.h"
 
-namespace XrdSsi
-{
-    extern XrdSysError Log;
-}
-
-
 namespace {
 /*
  * sP - ptr to XrdOssVSInfo to be filled
@@ -295,7 +289,6 @@ XrdOssGetStorageSystem(XrdOss       *native_oss,
                        const char   *config_fn,
                        const char   *parms)
 {
-    XrdSsi::Log.logger(Logger);
     lsst::qserv::xrdoss::QservOss* oss =
         lsst::qserv::xrdoss::QservOss::getInstance();
     lsst::qserv::xrdsvc::XrdName x;
