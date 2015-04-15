@@ -50,6 +50,8 @@ populateErrorObject(mysql::MySqlConnection& m, SqlErrorObject& o) {
     MYSQL* mysql = m.getMySql();
     if(mysql == NULL) {
         o.setErrNo(-999);
+        o.addErrMsg("Error connecting to mysql with config:"
+                    + m.getConfig().asString());
     } else {
         o.setErrNo( mysql_errno(mysql) );
         o.addErrMsg( mysql_error(mysql) );
