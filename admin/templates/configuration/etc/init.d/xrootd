@@ -73,7 +73,7 @@ start_service() {
 	[ -x ${BINARY} ] || exit 5
 	[ -f ${XROOTD_CONFIG} ] || exit 6
 
-	cmd="${BINARY} -c ${XROOTD_CONFIG} -l ${logfile} -n ${XROOTD_INSTANCE_NAME} -I v4 &"
+	cmd="${BINARY} -c ${XROOTD_CONFIG} -l ${logfile} -n ${XROOTD_INSTANCE_NAME} -I v4  >/dev/null 2>&1 &"
 	start -p ${pidfile} -l ${lockfile} ${prog} "${cmd}"
         ret=$?
         # xrootd modifies log file path, try to guess it here too for logging
