@@ -45,6 +45,7 @@
 #include "XrdSys/XrdSysLogger.hh"
 
 // Qserv headers
+#include "global/version.h"
 #include "obsolete/QservPath.h"
 #include "wpublish/ChunkInventory.h"
 #include "xrdsvc/XrdName.h"
@@ -296,8 +297,8 @@ XrdOssGetStorageSystem(XrdOss       *native_oss,
     oss->reset(native_oss, Logger, config_fn, parms, name.c_str());
     static XrdSysError eRoute(Logger, "QservOssFs");
     std::stringstream ss;
-    ss << "QservOss (Qserv Oss for server cmsd) ";
-    ss << "\"" << name << "\"";
+    ss << "QservOss (for server cmsd) " << QSERV_SOURCE_VERSION;
+    ss << " \"" << name << "\"";
     eRoute.Say(ss.str().c_str());
     return oss;
 }
